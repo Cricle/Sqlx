@@ -11,6 +11,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
 using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Linq;
 using System.Text;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
@@ -101,6 +102,19 @@ public abstract class AbstractGenerator : ISourceGenerator
         }
     }
 
+    internal static ITypeSymbol UnwrapNullableType(ITypeSymbol type)
+    {
+        if (type is INamedTypeSymbol namedTypeSymbol)
+        {
+            if (type.Name == "Nullable")
+            {
+                return namedTypeSymbol.TypeArguments[0];
+            }
+        }
+
+        return type;
+    }
+
     /// <summary>
     /// Gets parameters list.
     /// </summary>
@@ -154,19 +168,6 @@ public abstract class AbstractGenerator : ISourceGenerator
         }
 
         return "@" + parameterName;
-    }
-
-    private static ITypeSymbol UnwrapNullableType(ITypeSymbol type)
-    {
-        if (type is INamedTypeSymbol namedTypeSymbol)
-        {
-            if (type.Name == "Nullable")
-            {
-                return namedTypeSymbol.TypeArguments[0];
-            }
-        }
-
-        return type;
     }
 
     private static string GetParameterSqlDbType(ITypeSymbol type)
@@ -472,7 +473,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             return $"var connection = this.{connectionSymbol.Name};";
         }
 
-        if (methodGenerationContext.IsNotDbContext)
+        if (methodGenerationContext.UseDbConnection || methodGenerationContext.HasTransaction)
         {
             var dbContextParameterSymbol = methodGenerationContext.DbContextParameter;
             if (dbContextParameterSymbol != null)
@@ -1000,9 +1001,36 @@ public abstract class AbstractGenerator : ISourceGenerator
             source.AppendLine(getConnection);
         }
 
-        if (isNotDbContext)
+        var hasTransactionsDbContext = methodGenerationContext.HasTransaction;
+        if (hasTransactionsDbContext || methodGenerationContext.UseDbConnection)
         {
-            source.AppendLine("using var command = connection.CreateCommand();");
+            var connParName = methodGenerationContext.ConnectionParameter?.Name ?? "connection";
+            if (methodGenerationContext.UseDbConnection)
+            {
+                source.AppendLine($"if({connParName}.State != global::System.Data.ConnectionState.Open)");
+                source.AppendLine("{");
+                source.PushIndent();
+                if (methodGenerationContext.IsTask || methodGenerationContext.IsAsyncEnumerable)
+                {
+                    if (methodGenerationContext.CancellationTokenParameter == null)
+                    {
+                        source.AppendLine($"await {connParName}.OpenAsync().ConfigureAwait(false);");
+                    }
+                    else
+                    {
+                        source.AppendLine($"await {connParName}.OpenAsync({methodGenerationContext.CancellationTokenParameter.Name}).ConfigureAwait(false);");
+                    }
+                }
+                else
+                {
+                    source.AppendLine($"{connParName}.Open();");
+                }
+
+                source.PopIndent();
+                source.AppendLine("}");
+            }
+
+            source.AppendLine($"using var command = {connParName}.CreateCommand();");
         }
 
         if (parameters.Length > 0 && isNotDbContext)
@@ -1048,8 +1076,6 @@ public abstract class AbstractGenerator : ISourceGenerator
             }
         }
 
-        var hasTransactionsDbContext = !methodGenerationContext.UseDbConnection
-            && (isScalarType || methodGenerationContext.TransactionParameter != null || (isList && (IsTuple(itemType) || IsScalarType(itemType))));
         if (hasTransactionsDbContext || methodGenerationContext.UseDbConnection)
         {
             var transactionStatment = this.GetDbTransactionStatement(methodGenerationContext);

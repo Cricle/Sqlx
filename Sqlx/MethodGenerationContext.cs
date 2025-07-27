@@ -60,6 +60,11 @@ internal class MethodGenerationContext
 
     internal bool IsNotDbContext => !this.UseDbConnection && ((this.IsList || this.IsEnumerable || this.IsAsyncEnumerable) && (IsTuple(this.ItemType) || IsScalarType(this.ItemType)));
 
+    internal bool HasTransaction => !this.UseDbConnection
+            && ((IsScalarType(AbstractGenerator.UnwrapNullableType(this.ReturnType))
+            || this.ReturnType.SpecialType == SpecialType.System_Void
+            || this.ReturnType.Name == "Task") || this.TransactionParameter != null || (this.IsList && (IsTuple(this.ItemType) || IsScalarType(this.ItemType))));
+
     internal IParameterSymbol? ConnectionParameter { get; }
 
     internal IParameterSymbol? TransactionParameter { get; }

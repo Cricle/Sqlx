@@ -1,7 +1,7 @@
-SqlMarshal
+Sqlx
 ===========================
 
-[![NuGet](https://img.shields.io/nuget/v/SqlMarshal.svg?style=flat)](https://www.nuget.org/packages/SqlMarshal/)
+[![NuGet](https://img.shields.io/nuget/v/Sqlx.svg?style=flat)](https://www.nuget.org/packages/Sqlx/)
 
 NativeAOT-friendly mini-ORM which care about nullability checks.
 
@@ -10,10 +10,10 @@ Database connection can be used from the DbContext of DbConnection objects.
 
 # How to use
 
-Add `SqlMarshal` Nuget package using
+Add `Sqlx` Nuget package using
 
 ```
-dotnet add package SqlMarshal
+dotnet add package Sqlx
 ```
 
 Then create your data context class inside your project.
@@ -31,15 +31,15 @@ public partial class DataContext
 
     public DataContext(DbConnection connection) => this.connection = connection;
 
-    [SqlMarshal("persons_list")]
+    [Sqlx("persons_list")]
     public partial IList<PersonInformation> GetPersons();
 
-    [SqlMarshal]
+    [Sqlx]
     public partial IList<PersonInformation> GetPersonFromSql([RawSql]string sql, int id);
 }
 ```
 
-You can have simplified repository generator. 
+You can have simplified repository generator.
 Detection happens by name, and I plan to automatically support more naming conventions.
 
 ```csharp
@@ -126,7 +126,7 @@ public partial class DataContext
 
     public DataContext(DbConnection connection) => this.connection = connection;
 
-    [SqlMarshal("persons_list")]
+    [Sqlx("persons_list")]
     public partial IList<Item> GetResult();
 }
 ...
@@ -151,7 +151,7 @@ Same rule applies to code which uses DbContext.
 
 In the repository located sample application which I use for testing, but they can be helpful as usage examples.
 
-- https://github.com/kant2002/SqlMarshal/tree/main/SqlMarshal.CompilationTests
+- https://github.com/kant2002/Sqlx/tree/main/Sqlx.CompilationTests
 
 ## Performance
 
@@ -167,7 +167,7 @@ public partial class DataContext
 {
     private DbConnection connection;
 
-    [SqlMarshal("persons_list")]
+    [Sqlx("persons_list")]
     public partial IList<Item> GetResult();
 }
 ```
@@ -183,7 +183,7 @@ public partial class DataContext
 {
     private DbConnection connection;
 
-    [SqlMarshal("persons_search")]
+    [Sqlx("persons_search")]
     public partial IList<Item> GetResults(string name, string city);
 }
 ```
@@ -200,7 +200,7 @@ public partial class DataContext
 {
     private DbConnection connection;
 
-    [SqlMarshal]
+    [Sqlx]
     public partial IList<PersonInformation> GetResultFromSql([RawSql]string sql, int maxId);
 }
 ```
@@ -212,7 +212,7 @@ public partial class DataContext
 {
     private DbConnection connection;
 
-    [SqlMarshal("persons_search_ex")]
+    [Sqlx("persons_search_ex")]
     public partial IList<Item> GetResults2(string name, string city, out int totalCount);
 }
 ```
@@ -227,7 +227,7 @@ public partial class DataContext
 {
     private DbConnection connection;
 
-    [SqlMarshal("persons_by_id")]
+    [Sqlx("persons_by_id")]
     public partial Item GetResults(int personId);
 }
 ```
@@ -241,12 +241,12 @@ public partial class DataContext
 {
     private DbConnection connection;
 
-    [SqlMarshal("total_orders")]
+    [Sqlx("total_orders")]
     public partial int GetTotal(int clientId);
 }
 ```
 
-This code translated to `EXEC total_orders @client_id`. Instead of executing over data reader, ExecuteScalar called. 
+This code translated to `EXEC total_orders @client_id`. Instead of executing over data reader, ExecuteScalar called.
 
 ### Sequence results
 
@@ -255,7 +255,7 @@ public partial class DataContext
 {
     private DbConnection connection;
 
-    [SqlMarshal("total_orders")]
+    [Sqlx("total_orders")]
     public partial IList<string> GetStrings(int clientId);
 }
 ```
@@ -268,7 +268,7 @@ public partial class DataContext
 {
     private DbConnection connection;
 
-    [SqlMarshal("total_orders")]
+    [Sqlx("total_orders")]
     public partial IList<(string, int)> GetPairs(int clientId);
 }
 ```
@@ -284,12 +284,12 @@ public partial class DataContext
 {
     private DbConnection connection;
 
-    [SqlMarshal("process_data")]
+    [Sqlx("process_data")]
     public partial void ProcessData(int year);
 }
 ```
 
-This code translated to `EXEC process_data @year`. No data was returned, ExecuteNonQuery called. 
+This code translated to `EXEC process_data @year`. No data was returned, ExecuteNonQuery called.
 
 ## DbContext examples
 
@@ -300,7 +300,7 @@ public partial class DataContext
 {
     private CustomDbContext dbContext;
 
-    [SqlMarshal("persons_list")]
+    [Sqlx("persons_list")]
     public partial IList<Item> GetResult();
 }
 ```
@@ -315,7 +315,7 @@ public partial class DataContext
 {
     private CustomDbContext dbContext;
 
-    [SqlMarshal("persons_search")]
+    [Sqlx("persons_search")]
     public partial IList<Item> GetResults(string name, string city);
 }
 ```
@@ -329,7 +329,7 @@ public partial class DataContext
 {
     private CustomDbContext dbContext;
 
-    [SqlMarshal("persons_search_ex")]
+    [Sqlx("persons_search_ex")]
     public partial IList<Item> GetResults2(string name, string city, out int totalCount);
 }
 ```
@@ -344,7 +344,7 @@ public partial class DataContext
 {
     private CustomDbContext dbContext;
 
-    [SqlMarshal("persons_by_id")]
+    [Sqlx("persons_by_id")]
     public partial Item GetResults(int personId);
 }
 ```
@@ -358,12 +358,12 @@ public partial class DataContext
 {
     private CustomDbContext dbContext;
 
-    [SqlMarshal("total_orders")]
+    [Sqlx("total_orders")]
     public partial int GetTotal(int clientId);
 }
 ```
 
-This code translated to `EXEC total_orders @client_id`. Instead of executing over data reader, ExecuteScalar called. 
+This code translated to `EXEC total_orders @client_id`. Instead of executing over data reader, ExecuteScalar called.
 
 ### Without results
 
@@ -372,12 +372,12 @@ public partial class DataContext
 {
     private CustomDbContext dbContext;
 
-    [SqlMarshal("process_data")]
+    [Sqlx("process_data")]
     public partial void ProcessData(int year);
 }
 ```
 
-This code translated to `EXEC process_data @year`. No data was returned, ExecuteNonQuery called. 
+This code translated to `EXEC process_data @year`. No data was returned, ExecuteNonQuery called.
 
 ### Join transactions
 
@@ -393,7 +393,7 @@ public partial class DataContext
 {
     private DbConnection connection;
 
-    [SqlMarshal("total_orders")]
+    [Sqlx("total_orders")]
     public partial Task<int> GetTotal(int clientId);
 }
 ```
@@ -405,7 +405,7 @@ public partial class DataContext
 {
     private CustomDbContext dbContext;
 
-    [SqlMarshal("persons_search")]
+    [Sqlx("persons_search")]
     public partial Task<IList<Item>> GetResults(string name, string city);
 }
 ```
@@ -420,7 +420,7 @@ public partial class DataContext
 {
     private DbConnection connection;
 
-    [SqlMarshal("get_error_message")]
+    [Sqlx("get_error_message")]
     public partial string? GetErrorMessage(int? clientId);
 }
 ```
@@ -435,7 +435,7 @@ public partial class DataContext
 {
     private DbConnection connection;
 
-    [SqlMarshal("get_error_message")]
+    [Sqlx("get_error_message")]
     public partial string? GetErrorMessage(ref int? clientId);
 }
 ```
@@ -447,10 +447,10 @@ Instead of having DbConnection as a field of the class, it can be passed as para
 ```csharp
 public static partial class DataContext
 {
-    [SqlMarshal("persons_list")]
+    [Sqlx("persons_list")]
     public static partial IList<Item> GetResult(DbConnection connection);
 
-    [SqlMarshal("persons_by_id")]
+    [Sqlx("persons_by_id")]
     public static partial Item GetResults(DbConnection connection, int personId);
 }
 ```
@@ -462,10 +462,10 @@ If you want finegrained control over transactions, if you pass `DbTransaction` a
 ```csharp
 public static partial class DataContext
 {
-    [SqlMarshal("persons_list")]
+    [Sqlx("persons_list")]
     public static partial IList<Item> GetResult(DbTransaction tran);
 
-    [SqlMarshal("persons_by_id")]
+    [Sqlx("persons_by_id")]
     public static partial Item GetResults(DbTransaction tran, int personId);
 }
 ```
@@ -478,7 +478,7 @@ You can use that with DbContext too.
 ```csharp
 public static partial class DataContext
 {
-    [SqlMarshal("total_orders")]
+    [Sqlx("total_orders")]
     public partial Task<int> GetTotal(DbConnection connection, int clientId, CancellationToken cancellationToken);
 }
 ```

@@ -82,7 +82,7 @@ namespace Foo
     class C
     {
         [Sqlx(""sp_TestSP"")]
-        public partial Task<IList<Item>> M(int clientId, out int? personId, CancellationToken cancellationToken)
+        public partial Task<IList<Item>> M(int clientId, int? personId, CancellationToken cancellationToken)
     }
 }";
         await VerifyCSharp(source, NullableContextOptions.Disable);

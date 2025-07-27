@@ -48,6 +48,7 @@ namespace Foo
 
 namespace Foo
 {
+
     using System;
     using System.Collections.Generic;
     using System.Data.Common;
@@ -58,25 +59,27 @@ namespace Foo
         public partial IList<Foo.TestEntity> FindAll()
         {
             var connection = this.connection;
+            if(connection.State != global::System.Data.ConnectionState.Open)
+            {
+                connection.Open();
+            }
             using var command = connection.CreateCommand();
-
             var sqlQuery = @""SELECT id, name FROM test_entity"";
             command.CommandText = sqlQuery;
-            using var reader = command.ExecuteReader();
+            using global::System.Data.Common.DbDataReader reader = command.ExecuteReader();
             var __result = new List<TestEntity>();
             while (reader.Read())
             {
                 var item = new TestEntity();
-                var value_0 = reader.GetValue(0);
-                item.Id = (int)value_0;
-                var value_1 = reader.GetValue(1);
-                item.Name = value_1 == DBNull.Value ? (string?)null : (string)value_1;
+                item.Id = reader.GetInt32(0);
+                item.Name = reader.GetString(1);
                 __result.Add(item);
             }
 
             reader.Close();
             return __result;
         }
+
     }
 }";
         Assert.AreEqual(expectedOutput, output);
@@ -118,6 +121,7 @@ namespace Foo
 
 namespace Foo
 {
+
     using System;
     using System.Collections.Generic;
     using System.Data.Common;
@@ -128,34 +132,26 @@ namespace Foo
         public partial Foo.TestEntity? FindById(int id)
         {
             var connection = this.connection;
-            using var command = connection.CreateCommand();
-
-            var idParameter = command.CreateParameter();
-            idParameter.ParameterName = ""@id"";
-            idParameter.Value = id;
-
-            var parameters = new DbParameter[]
+            if(connection.State != global::System.Data.ConnectionState.Open)
             {
-                idParameter,
-            };
-
+                connection.Open();
+            }
+            using var command = connection.CreateCommand();
             var sqlQuery = @""SELECT id, name FROM test_entity WHERE id = @id"";
             command.CommandText = sqlQuery;
-            command.Parameters.AddRange(parameters);
-            using var reader = command.ExecuteReader(System.Data.CommandBehavior.SingleResult | System.Data.CommandBehavior.SingleRow);
+            using global::System.Data.Common.DbDataReader reader = command.ExecuteReader(global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow);
             if (!reader.Read())
             {
-                return null;
+                return default;
             }
 
             var __result = new TestEntity();
-            var value_0 = reader.GetValue(0);
-            __result.Id = (int)value_0;
-            var value_1 = reader.GetValue(1);
-            __result.Name = value_1 == DBNull.Value ? (string?)null : (string)value_1;
+            __result.Id = reader.GetInt32(0);
+            __result.Name = reader.GetString(1);
             reader.Close();
             return __result;
         }
+
     }
 }";
         Assert.AreEqual(expectedOutput, output);
@@ -197,6 +193,7 @@ namespace Foo
 
 namespace Foo
 {
+
     using System;
     using System.Collections.Generic;
     using System.Data.Common;
@@ -207,13 +204,17 @@ namespace Foo
         public partial int Count()
         {
             var connection = this.connection;
+            if(connection.State != global::System.Data.ConnectionState.Open)
+            {
+                connection.Open();
+            }
             using var command = connection.CreateCommand();
-
             var sqlQuery = @""SELECT COUNT(1) FROM test_entity"";
             command.CommandText = sqlQuery;
             var __result = command.ExecuteScalar();
             return (int)__result!;
         }
+
     }
 }";
         Assert.AreEqual(expectedOutput, output);
@@ -255,6 +256,7 @@ namespace Foo
 
 namespace Foo
 {
+
     using System;
     using System.Collections.Generic;
     using System.Data.Common;
@@ -265,12 +267,16 @@ namespace Foo
         public partial void DeleteAll()
         {
             var connection = this.connection;
+            if(connection.State != global::System.Data.ConnectionState.Open)
+            {
+                connection.Open();
+            }
             using var command = connection.CreateCommand();
-
             var sqlQuery = @""DELETE FROM test_entity"";
             command.CommandText = sqlQuery;
             command.ExecuteNonQuery();
         }
+
     }
 }";
         Assert.AreEqual(expectedOutput, output);
@@ -312,6 +318,7 @@ namespace Foo
 
 namespace Foo
 {
+
     using System;
     using System.Collections.Generic;
     using System.Data.Common;
@@ -322,22 +329,16 @@ namespace Foo
         public partial void DeleteById(int id)
         {
             var connection = this.connection;
-            using var command = connection.CreateCommand();
-
-            var idParameter = command.CreateParameter();
-            idParameter.ParameterName = ""@id"";
-            idParameter.Value = id;
-
-            var parameters = new DbParameter[]
+            if(connection.State != global::System.Data.ConnectionState.Open)
             {
-                idParameter,
-            };
-
+                connection.Open();
+            }
+            using var command = connection.CreateCommand();
             var sqlQuery = @""DELETE FROM test_entity WHERE id = @id"";
             command.CommandText = sqlQuery;
-            command.Parameters.AddRange(parameters);
             command.ExecuteNonQuery();
         }
+
     }
 }";
         Assert.AreEqual(expectedOutput, output);
@@ -381,6 +382,7 @@ namespace Foo
 
 namespace Foo
 {
+
     using System;
     using System.Collections.Generic;
     using System.Data.Common;
@@ -391,32 +393,16 @@ namespace Foo
         public partial void Update(int id, string name, string description)
         {
             var connection = this.connection;
-            using var command = connection.CreateCommand();
-
-            var idParameter = command.CreateParameter();
-            idParameter.ParameterName = ""@id"";
-            idParameter.Value = id;
-
-            var nameParameter = command.CreateParameter();
-            nameParameter.ParameterName = ""@name"";
-            nameParameter.Value = name == null ? (object)DBNull.Value : name;
-
-            var descriptionParameter = command.CreateParameter();
-            descriptionParameter.ParameterName = ""@description"";
-            descriptionParameter.Value = description == null ? (object)DBNull.Value : description;
-
-            var parameters = new DbParameter[]
+            if(connection.State != global::System.Data.ConnectionState.Open)
             {
-                idParameter,
-                nameParameter,
-                descriptionParameter,
-            };
-
+                connection.Open();
+            }
+            using var command = connection.CreateCommand();
             var sqlQuery = @""UPDATE test_entity SET name = @name, description = @description WHERE id = @id"";
             command.CommandText = sqlQuery;
-            command.Parameters.AddRange(parameters);
             command.ExecuteNonQuery();
         }
+
     }
 }";
         Assert.AreEqual(expectedOutput, output);
@@ -466,6 +452,7 @@ namespace Foo
 
 namespace Foo
 {
+
     using System;
     using System.Collections.Generic;
     using System.Data.Common;
@@ -476,32 +463,16 @@ namespace Foo
         public partial void Update(int id, string name, string description)
         {
             var connection = this.connection;
-            using var command = connection.CreateCommand();
-
-            var idParameter = command.CreateParameter();
-            idParameter.ParameterName = ""@id"";
-            idParameter.Value = id;
-
-            var nameParameter = command.CreateParameter();
-            nameParameter.ParameterName = ""@name"";
-            nameParameter.Value = name == null ? (object)DBNull.Value : name;
-
-            var descriptionParameter = command.CreateParameter();
-            descriptionParameter.ParameterName = ""@description"";
-            descriptionParameter.Value = description == null ? (object)DBNull.Value : description;
-
-            var parameters = new DbParameter[]
+            if(connection.State != global::System.Data.ConnectionState.Open)
             {
-                idParameter,
-                nameParameter,
-                descriptionParameter,
-            };
-
+                connection.Open();
+            }
+            using var command = connection.CreateCommand();
             var sqlQuery = @""UPDATE TestEntity SET Name = @name, Description = @description WHERE Id = @id"";
             command.CommandText = sqlQuery;
-            command.Parameters.AddRange(parameters);
             command.ExecuteNonQuery();
         }
+
     }
 }";
         Assert.AreEqual(expectedOutput, output);
@@ -545,6 +516,7 @@ namespace Foo
 
 namespace Foo
 {
+
     using System;
     using System.Collections.Generic;
     using System.Data.Common;
@@ -555,32 +527,16 @@ namespace Foo
         public partial void Insert(int id, string name, string description)
         {
             var connection = this.connection;
-            using var command = connection.CreateCommand();
-
-            var idParameter = command.CreateParameter();
-            idParameter.ParameterName = ""@id"";
-            idParameter.Value = id;
-
-            var nameParameter = command.CreateParameter();
-            nameParameter.ParameterName = ""@name"";
-            nameParameter.Value = name == null ? (object)DBNull.Value : name;
-
-            var descriptionParameter = command.CreateParameter();
-            descriptionParameter.ParameterName = ""@description"";
-            descriptionParameter.Value = description == null ? (object)DBNull.Value : description;
-
-            var parameters = new DbParameter[]
+            if(connection.State != global::System.Data.ConnectionState.Open)
             {
-                idParameter,
-                nameParameter,
-                descriptionParameter,
-            };
-
+                connection.Open();
+            }
+            using var command = connection.CreateCommand();
             var sqlQuery = @""INSERT INTO test_entity(id, name, description) VALUES (@id, @name, @description)"";
             command.CommandText = sqlQuery;
-            command.Parameters.AddRange(parameters);
             command.ExecuteNonQuery();
         }
+
     }
 }";
         Assert.AreEqual(expectedOutput, output);

@@ -19,6 +19,11 @@ namespace Foo
         public partial async Task<IList<Foo.Item>> M(CancellationToken cancellationToken)
         {
             var connection = this.connection;
+            if(connection.State != global::System.Data.ConnectionState.Open)
+            {
+                await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+            }
+            using var command = connection.CreateCommand();
             var sqlQuery = @"sp_TestSP";
             command.CommandText = sqlQuery;
             using global::System.Data.Common.DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);

@@ -19,6 +19,11 @@ namespace Foo
         public partial async Task M(int clientId, string? personId, CancellationToken cancellationToken)
         {
             var connection = this.connection;
+            if(connection.State != global::System.Data.ConnectionState.Open)
+            {
+                await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+            }
+            using var command = connection.CreateCommand();
             var sqlQuery = @"sp_TestSP @client_id, @person_id";
             command.CommandText = sqlQuery;
             await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);

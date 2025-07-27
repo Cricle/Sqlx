@@ -40,6 +40,7 @@ namespace Foo
 
 namespace Foo
 {
+
     using System;
     using System.Collections.Generic;
     using System.Data.Common;
@@ -50,27 +51,16 @@ namespace Foo
         public partial int M(string sql, int clientId, string? personId)
         {
             var connection = this.connection;
-            using var command = connection.CreateCommand();
-
-            var clientIdParameter = command.CreateParameter();
-            clientIdParameter.ParameterName = ""@client_id"";
-            clientIdParameter.Value = clientId;
-
-            var personIdParameter = command.CreateParameter();
-            personIdParameter.ParameterName = ""@person_id"";
-            personIdParameter.Value = personId == null ? (object)DBNull.Value : personId;
-
-            var parameters = new DbParameter[]
+            if(connection.State != global::System.Data.ConnectionState.Open)
             {
-                clientIdParameter,
-                personIdParameter,
-            };
-
+                connection.Open();
+            }
+            using var command = connection.CreateCommand();
             command.CommandText = sql;
-            command.Parameters.AddRange(parameters);
             var __result = command.ExecuteScalar();
             return (int)__result!;
         }
+
     }
 }";
         Assert.AreEqual(expectedOutput, output);
@@ -111,6 +101,7 @@ namespace Foo
 
 namespace Foo
 {
+
     using System;
     using System.Collections.Generic;
     using System.Data.Common;
@@ -121,26 +112,27 @@ namespace Foo
         public partial IList<Foo.Item> M(string sql)
         {
             var connection = this.connection;
+            if(connection.State != global::System.Data.ConnectionState.Open)
+            {
+                connection.Open();
+            }
             using var command = connection.CreateCommand();
-
             command.CommandText = sql;
-            using var reader = command.ExecuteReader();
+            using global::System.Data.Common.DbDataReader reader = command.ExecuteReader();
             var __result = new List<Item>();
             while (reader.Read())
             {
                 var item = new Item();
-                var value_0 = reader.GetValue(0);
-                item.StringValue = value_0 == DBNull.Value ? (string?)null : (string)value_0;
-                var value_1 = reader.GetValue(1);
-                item.Int32Value = (int)value_1;
-                var value_2 = reader.GetValue(2);
-                item.NullableInt32Value = value_2 == DBNull.Value ? (int?)null : (int)value_2;
+                item.StringValue = reader.GetString(0);
+                item.Int32Value = reader.GetInt32(1);
+                item.NullableInt32Value = reader.GetInt32(2);
                 __result.Add(item);
             }
 
             reader.Close();
             return __result;
         }
+
     }
 }";
         Assert.AreEqual(expectedOutput, output);

@@ -40,6 +40,7 @@ namespace Foo
 
 namespace Foo
 {
+
     using System;
     using System.Collections.Generic;
     using System.Data.Common;
@@ -50,28 +51,17 @@ namespace Foo
         public partial System.Data.Common.DbDataReader M(int clientId, string? personId)
         {
             var connection = this.connection;
-            using var command = connection.CreateCommand();
-
-            var clientIdParameter = command.CreateParameter();
-            clientIdParameter.ParameterName = ""@client_id"";
-            clientIdParameter.Value = clientId;
-
-            var personIdParameter = command.CreateParameter();
-            personIdParameter.ParameterName = ""@person_id"";
-            personIdParameter.Value = personId == null ? (object)DBNull.Value : personId;
-
-            var parameters = new DbParameter[]
+            if(connection.State != global::System.Data.ConnectionState.Open)
             {
-                clientIdParameter,
-                personIdParameter,
-            };
-
+                connection.Open();
+            }
+            using var command = connection.CreateCommand();
             var sqlQuery = @""sp_TestSP @client_id, @person_id"";
             command.CommandText = sqlQuery;
-            command.Parameters.AddRange(parameters);
             var __result = command.ExecuteReader();
             return __result;
         }
+
     }
 }";
         Assert.AreEqual(expectedOutput, output);

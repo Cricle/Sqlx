@@ -28,29 +28,29 @@ public class CSharpGenerator : AbstractGenerator
 
 namespace Sqlx.Annotations
 {
-    [System.Diagnostics.Conditional(""DEBUG"")]
-    [System.AttributeUsage(System.AttributeTargets.Method, AllowMultiple=true)]
+    [global::System.Diagnostics.Conditional(""DEBUG"")]
+    [global::System.AttributeUsage(System.AttributeTargets.Method, AllowMultiple = true)]
     internal sealed class SqlxAttribute: System.Attribute
     {
         public SqlxAttribute()
-            => (StoredProcedureName) = (string.Empty);
+            => StoredProcedureName = string.Empty;
 
         public SqlxAttribute(string name)
-            => (StoredProcedureName) = (name);
+            => StoredProcedureName = name;
 
         public string StoredProcedureName { get; }
     }
 
-    [System.Diagnostics.Conditional(""DEBUG"")]
-    [System.AttributeUsage(System.AttributeTargets.Parameter, AllowMultiple=false)]
+    [global::System.Diagnostics.Conditional(""DEBUG"")]
+    [global::System.AttributeUsage(System.AttributeTargets.Parameter, AllowMultiple = false)]
     internal sealed class RawSqlAttribute: System.Attribute
     {
         public RawSqlAttribute() {}
     }
     
-    [System.Diagnostics.Conditional(""DEBUG"")]
-    [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple=false)]
-    internal sealed class RepositoryAttribute: System.Attribute
+    [global::System.Diagnostics.Conditional(""DEBUG"")]
+    [global::System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = false)]
+    internal sealed class RepositoryAttribute: global::System.Attribute
     {
         public RepositoryAttribute(global::System.Type entityType)
         {
@@ -87,23 +87,25 @@ namespace Sqlx.Annotations
         var typeAsClause = ParseTypeName(parameter.Type.ToDisplayString()).WithTrailingTrivia(Whitespace(" "));
         if (parameter.RefKind == RefKind.Out)
         {
-            var parameterSyntax = Parameter(default, SyntaxTokenList.Create(Token(SyntaxKind.OutKeyword).WithTrailingTrivia(Whitespace(" "))), typeAsClause, Identifier(parameter.Name), @default: null);
-            return parameterSyntax;
+            return CreateParameterSyntax(SyntaxKind.OutKeyword);
         }
         else if (parameter.RefKind == RefKind.Ref)
         {
-            var parameterSyntax = Parameter(default, SyntaxTokenList.Create(Token(SyntaxKind.RefKeyword).WithTrailingTrivia(Whitespace(" "))), typeAsClause, Identifier(parameter.Name), @default: null);
-            return parameterSyntax;
+            return CreateParameterSyntax(SyntaxKind.RefKeyword);
         }
         else if (methodSymbol.IsExtensionMethod && index == 0)
         {
-            var parameterSyntax = Parameter(default, SyntaxTokenList.Create(Token(SyntaxKind.ThisKeyword).WithTrailingTrivia(Whitespace(" "))), typeAsClause, Identifier(parameter.Name), @default: null);
-            return parameterSyntax;
+            return CreateParameterSyntax(SyntaxKind.ThisKeyword);
         }
         else
         {
             var parameterSyntax = Parameter(default, default, typeAsClause, Identifier(parameter.Name), @default: null);
             return parameterSyntax;
+        }
+
+        ParameterSyntax CreateParameterSyntax(SyntaxKind kind)
+        {
+            return Parameter(default, SyntaxTokenList.Create(Token(kind).WithTrailingTrivia(Whitespace(" "))), typeAsClause, Identifier(parameter.Name), @default: null);
         }
     }
 

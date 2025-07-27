@@ -62,15 +62,14 @@ internal class ClassGenerationContext
 
     public INamedTypeSymbol CreateTaskType(ITypeSymbol nestedType)
     {
-        var taskType = this.GeneratorExecutionContext.Compilation.GetTypeByMetadataName($"System.Threading.Tasks.Task`1")!;
+        var taskType = this.GeneratorExecutionContext.Compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1")!;
         var taskedType = taskType.Construct(ImmutableArray.Create(nestedType), ImmutableArray.Create(nestedType.NullableAnnotation == NullableAnnotation.None ? NullableAnnotation.Annotated : nestedType.NullableAnnotation));
         return taskedType;
     }
 
     private static IFieldSymbol? GetConnectionField(INamedTypeSymbol classSymbol)
     {
-        var fieldSymbols = classSymbol.GetMembers().OfType<IFieldSymbol>();
-        foreach (var fieldSymbol in fieldSymbols)
+        foreach (var fieldSymbol in classSymbol.GetMembers().OfType<IFieldSymbol>())
         {
             if (fieldSymbol.Type.IsDbConnection())
             {
@@ -88,8 +87,7 @@ internal class ClassGenerationContext
 
     private static IFieldSymbol? GetContextField(INamedTypeSymbol classSymbol)
     {
-        var fieldSymbols = classSymbol.GetMembers().OfType<IFieldSymbol>();
-        foreach (var fieldSymbol in fieldSymbols)
+        foreach (var fieldSymbol in classSymbol.GetMembers().OfType<IFieldSymbol>())
         {
             if (fieldSymbol.Type.IsDbContext())
             {

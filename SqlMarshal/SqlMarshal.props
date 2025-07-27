@@ -1,7 +1,0 @@
-<Project>
-
-  <ItemGroup>
-    <Using Include="SqlMarshal.Annotations"/>
-  </ItemGroup>
-
-</Project>

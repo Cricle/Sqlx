@@ -39,7 +39,7 @@ public abstract class AbstractGenerator : ISourceGenerator
     public void Execute(GeneratorExecutionContext context)
     {
         // Retrieve the populated receiver
-        if (!(context.SyntaxContextReceiver is ISqlxSyntaxReceiver receiver))
+        if (context.SyntaxContextReceiver is not ISqlxSyntaxReceiver receiver)
         {
             return;
         }
@@ -81,7 +81,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                 continue;
             }
 
-            context.AddSource($"{key.ToDisplayString().Replace(".", "_")}_Sp.cs", SourceText.From(sourceCode, Encoding.UTF8));
+            context.AddSource($"{key.ToDisplayString().Replace(".", "_")}.Sp.g.cs", SourceText.From(sourceCode, Encoding.UTF8));
         }
     }
 
@@ -104,12 +104,9 @@ public abstract class AbstractGenerator : ISourceGenerator
 
     internal static ITypeSymbol UnwrapNullableType(ITypeSymbol type)
     {
-        if (type is INamedTypeSymbol namedTypeSymbol)
+        if (type is INamedTypeSymbol namedTypeSymbol && type.Name == "Nullable")
         {
-            if (type.Name == "Nullable")
-            {
-                return namedTypeSymbol.TypeArguments[0];
-            }
+            return namedTypeSymbol.TypeArguments[0];
         }
 
         return type;
@@ -122,17 +119,6 @@ public abstract class AbstractGenerator : ISourceGenerator
     /// <returns>Generated syntax node for the parameters list.</returns>
     protected abstract SyntaxNode GetParameters(IMethodSymbol methodSymbol);
 
-    private static string GetAccessibility(Accessibility a)
-    {
-        return a switch
-        {
-            Accessibility.Public => "public",
-            Accessibility.Friend => "internal",
-            Accessibility.Private => "private",
-            _ => string.Empty,
-        };
-    }
-
     private static IPropertySymbol? GetDbSetField(IFieldSymbol? dbContextSymbol, ITypeSymbol itemTypeSymbol)
     {
         if (dbContextSymbol == null)
@@ -140,11 +126,9 @@ public abstract class AbstractGenerator : ISourceGenerator
             return null;
         }
 
-        var members = dbContextSymbol.Type.GetMembers().OfType<IPropertySymbol>();
-        foreach (var fieldSymbol in members)
+        foreach (var fieldSymbol in dbContextSymbol.Type.GetMembers().OfType<IPropertySymbol>())
         {
-            var fieldType = fieldSymbol.Type;
-            if (fieldType is INamedTypeSymbol namedTypeSymbol)
+            if (fieldSymbol.Type is INamedTypeSymbol namedTypeSymbol)
             {
                 namedTypeSymbol = namedTypeSymbol.UnwrapNullableType();
                 if (namedTypeSymbol.Name == "DbSet"
@@ -170,84 +154,6 @@ public abstract class AbstractGenerator : ISourceGenerator
         return "@" + parameterName;
     }
 
-    private static string GetParameterSqlDbType(ITypeSymbol type)
-    {
-        type = UnwrapNullableType(type);
-        switch (type.SpecialType)
-        {
-            case SpecialType.System_String:
-                return "global::System.Data.DbType.String";
-            case SpecialType.System_Byte:
-                return "global::System.Data.DbType.Byte";
-            case SpecialType.System_SByte:
-                return "global::System.Data.DbType.SByte";
-            case SpecialType.System_Int16:
-                return "global::System.Data.DbType.Int16";
-            case SpecialType.System_Int32:
-                return "global::System.Data.DbType.Int32";
-            case SpecialType.System_Int64:
-                return "global::System.Data.DbType.Int64";
-            case SpecialType.System_UInt16:
-                return "global::System.Data.DbType.UInt16";
-            case SpecialType.System_UInt32:
-                return "global::System.Data.DbType.UInt32";
-            case SpecialType.System_UInt64:
-                return "global::System.Data.DbType.UInt64";
-            case SpecialType.System_Single:
-                return "global::System.Data.DbType.Single";
-            case SpecialType.System_Double:
-                return "global::System.Data.DbType.Double";
-            case SpecialType.System_DateTime:
-                return "global::System.Data.DbType.DateTime2";
-            default:
-                throw new NotImplementedException();
-        }
-    }
-
-    private static string GetDataReaderMethod(ITypeSymbol type)
-    {
-        type = UnwrapNullableType(type);
-        switch (type.SpecialType)
-        {
-            case SpecialType.System_Char:
-                return "GetChar";
-            case SpecialType.System_String:
-                return "GetString";
-            case SpecialType.System_Byte:
-                return "GetByte";
-            case SpecialType.System_SByte:
-                return "GetSByte";
-            case SpecialType.System_Int16:
-                return "GetInt16";
-            case SpecialType.System_Int32:
-                return "GetInt32";
-            case SpecialType.System_Int64:
-                return "GetInt64";
-            case SpecialType.System_UInt16:
-                return "GetUInt16";
-            case SpecialType.System_UInt32:
-                return "GetUInt32";
-            case SpecialType.System_UInt64:
-                return "GetUInt64";
-            case SpecialType.System_Single:
-                return "GetSingle";
-            case SpecialType.System_Double:
-                return "GetDouble";
-            case SpecialType.System_DateTime:
-                return "GetDateTime";
-            case SpecialType.System_Object:
-                return "GetValue";
-            default: break;
-        }
-
-        if (type.Name == "Guid")
-        {
-            return "GetGuid";
-        }
-
-        throw new NotSupportedException($"No support type {type.Name}");
-    }
-
     private static void DeclareParameter(IndentedStringBuilder source, bool hasNullableAnnotations, IParameterSymbol parameter, bool isFirst)
     {
         var requireParameterNullCheck = parameter.Type.CanHaveNullValue(hasNullableAnnotations);
@@ -257,7 +163,7 @@ public abstract class AbstractGenerator : ISourceGenerator
 ");
         if (parameter.RefKind == RefKind.Out || parameter.RefKind == RefKind.Ref)
         {
-            var parameterSqlDbType = GetParameterSqlDbType(parameter.Type);
+            var parameterSqlDbType = parameter.Type.GetParameterSqlDbType();
             source.AppendLine($@"parameter.DbType = {parameterSqlDbType};");
             var direction = parameter.RefKind == RefKind.Out ? "global::System.Data.ParameterDirection.Output" : "global::System.Data.ParameterDirection.InputOutput";
             source.AppendLine($@"parameter.Direction = {direction};");
@@ -302,7 +208,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         if (returnType.CanHaveNullValue(hasNullableAnnotations))
         {
             var nonNullExpression = CastExpression(
-                ParseTypeName(UnwrapNullableType(returnType).ToDisplayString()),
+                ParseTypeName(returnType.UnwrapNullableType().ToDisplayString()),
                 IdentifierName(identifier));
             var nullExpression = CastExpression(
                 ParseTypeName(returnType.ToDisplayString()),
@@ -467,7 +373,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             return $"var connection = {connectionParameterSymbol.Name};";
         }
 
-        var connectionSymbol = methodGenerationContext.ClassGenerationContext.ConnectionField;
+        var connectionSymbol = methodGenerationContext.ClassGenerationContext.DbConnectionSymbol;
         if (connectionSymbol != null)
         {
             return $"var connection = this.{connectionSymbol.Name};";
@@ -496,7 +402,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             return $"{dbContextParameterSymbol.Name}.Database.OpenConnection();";
         }
 
-        var connectionSymbol = methodGenerationContext.ClassGenerationContext.ConnectionField;
+        var connectionSymbol = methodGenerationContext.ClassGenerationContext.DbConnectionSymbol;
         if (connectionSymbol != null)
         {
             return $"this.{connectionSymbol.Name}.Open();";
@@ -528,7 +434,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             return $"command.Transaction = {dbContextParameterSymbol.Name}.Database.CurrentTransaction?.GetDbTransaction();";
         }
 
-        var connectionSymbol = methodGenerationContext.ClassGenerationContext.ConnectionField;
+        var connectionSymbol = methodGenerationContext.ClassGenerationContext.DbConnectionSymbol;
         if (connectionSymbol != null)
         {
             return string.Empty;
@@ -552,7 +458,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             return $"{dbContextParameterSymbol.Name}.Database.CloseConnection();";
         }
 
-        var connectionSymbol = methodGenerationContext.ClassGenerationContext.ConnectionField;
+        var connectionSymbol = methodGenerationContext.ClassGenerationContext.DbConnectionSymbol;
         if (connectionSymbol != null)
         {
             return $"this.{connectionSymbol.Name}.Close();";
@@ -618,7 +524,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                 source.PushIndent();
                 if (IsScalarType(itemType))
                 {
-                    source.AppendLine($@"__result.Add(reader.{GetDataReaderMethod(itemType)}(0))");
+                    source.AppendLine($@"__result.Add(reader.{itemType.GetDataReaderMethod()}(0))");
                 }
                 else if (IsTuple(itemType))
                 {
@@ -628,7 +534,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                     source.PushIndent();
                     for (var i = 0; i < types.Length; i++)
                     {
-                        var callExp = $@"reader.{GetDataReaderMethod(types[i])}({i})";
+                        var callExp = $@"reader.{types[i].GetDataReaderMethod()}({i})";
                         if (i < types.Length - 1)
                         {
                             callExp += ",";
@@ -657,7 +563,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                     int i = 0;
                     foreach (var propertyName in itemType.GetMembers().OfType<IPropertySymbol>())
                     {
-                        source.AppendLine($@"item.{propertyName.Name} = reader.{GetDataReaderMethod(propertyName.Type)}({i});");
+                        source.AppendLine($@"item.{propertyName.Name} = reader.{propertyName.Type.GetDataReaderMethod()}({i});");
                         i++;
                     }
                 }
@@ -703,7 +609,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                 int i = 0;
                 foreach (var propertyName in itemType.GetMembers().OfType<IPropertySymbol>())
                 {
-                    source.AppendLine($@"__result.{propertyName.Name} = reader.{GetDataReaderMethod(propertyName.Type)}({i});");
+                    source.AppendLine($@"__result.{propertyName.Name} = reader.{propertyName.Type.GetDataReaderMethod()}({i});");
                     i++;
                 }
 
@@ -719,7 +625,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         }
         else
         {
-            var dbContextSymbol = methodGenerationContext.ClassGenerationContext.DbContextField;
+            var dbContextSymbol = methodGenerationContext.ClassGenerationContext.DbContextSymbol;
             var contextName = methodGenerationContext.ClassGenerationContext.DbContextName;
             var dbsetField = GetDbSetField(dbContextSymbol, itemType);
             var itemTypeProperty = dbsetField?.Name ?? itemType.Name + "s";
@@ -991,7 +897,7 @@ public abstract class AbstractGenerator : ISourceGenerator
 
         var isNotDbContext = methodGenerationContext.IsNotDbContext;
 
-        source.AppendLine($@"        {GetAccessibility(symbol.DeclaredAccessibility)} {(methodSymbol.IsStatic ? "static " : string.Empty)}partial {(isTask ? "async " : string.Empty)}{returnTypeName} {methodSymbol.Name}{signature}");
+        source.AppendLine($@"        {symbol.DeclaredAccessibility.GetAccessibility()} {(methodSymbol.IsStatic ? "static " : string.Empty)}partial {(isTask ? "async " : string.Empty)}{returnTypeName} {methodSymbol.Name}{signature}");
         source.PushIndent();
         source.PushIndent();
         source.AppendLine("{");

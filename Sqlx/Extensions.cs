@@ -7,6 +7,7 @@
 namespace Sqlx;
 
 using Microsoft.CodeAnalysis;
+using System;
 using System.Linq;
 
 internal static class Extensions
@@ -24,23 +25,17 @@ internal static class Extensions
 
     internal static bool IsDbConnection(this ITypeSymbol typeSymbol)
     {
-        if (typeSymbol.Name == "DbConnection")
-        {
-            return true;
-        }
-
-        var baseType = typeSymbol.BaseType;
-        if (baseType == null)
-        {
-            return false;
-        }
-
-        return IsDbConnection(baseType);
+        return IsTypes(typeSymbol, x => x.Name == "DbConnection");
     }
 
     internal static bool IsDbTransaction(this ITypeSymbol typeSymbol)
     {
-        if (typeSymbol.Name == "DbTransaction")
+        return IsTypes(typeSymbol, x => x.Name == "DbTransaction");
+    }
+
+    internal static bool IsTypes(ITypeSymbol typeSymbol, Func<ITypeSymbol, bool> check)
+    {
+        if (check(typeSymbol))
         {
             return true;
         }
@@ -51,33 +46,17 @@ internal static class Extensions
             return false;
         }
 
-        return IsDbTransaction(baseType);
+        return IsTypes(baseType, check);
     }
 
     internal static bool IsDbContext(this ITypeSymbol typeSymbol)
     {
-        if (typeSymbol.Name == "DbContext")
-        {
-            return true;
-        }
-
-        var baseType = typeSymbol.BaseType;
-        if (baseType == null)
-        {
-            return false;
-        }
-
-        return IsDbContext(baseType);
+        return IsTypes(typeSymbol, x => x.Name == "DbContext");
     }
 
     internal static bool IsCancellationToken(this ITypeSymbol typeSymbol)
     {
-        if (typeSymbol.Name == "CancellationToken")
-        {
-            return true;
-        }
-
-        return false;
+        return typeSymbol.Name == "CancellationToken";
     }
 
     internal static ITypeSymbol UnwrapTaskType(this ITypeSymbol type)
@@ -97,10 +76,7 @@ internal static class Extensions
     {
         if (type is INamedTypeSymbol namedTypeSymbol)
         {
-            if (type.Name == "Nullable")
-            {
-                return namedTypeSymbol.TypeArguments[0];
-            }
+            return UnwrapNullableType(namedTypeSymbol);
         }
 
         return type;
@@ -201,7 +177,7 @@ internal static class Extensions
     internal static IPropertySymbol? FindMember(this ITypeSymbol returnType, string parameterName)
     {
         return returnType.GetMembers().OfType<IPropertySymbol>()
-            .FirstOrDefault(propertySymbol => string.Equals(propertySymbol.Name, parameterName, System.StringComparison.InvariantCultureIgnoreCase));
+            .FirstOrDefault(propertySymbol => string.Equals(propertySymbol.Name, parameterName, StringComparison.InvariantCultureIgnoreCase));
     }
 
     internal static string GetSqlName(this IPropertySymbol propertySymbol)
@@ -242,5 +218,88 @@ internal static class Extensions
     internal static string GetParameterName(this IParameterSymbol parameterSymbol)
     {
         return "@" + NameMapper.MapName(parameterSymbol.Name);
+    }
+
+    internal static string GetAccessibility(this Accessibility a)
+    {
+        return a switch
+        {
+            Accessibility.Public => "public",
+            Accessibility.Friend => "internal",
+            Accessibility.Private => "private",
+            Accessibility.ProtectedAndInternal => "protected internal",
+            Accessibility.Protected =>"protected",
+            _ => string.Empty,
+        };
+    }
+
+    internal static string GetParameterSqlDbType(this ITypeSymbol type)
+    {
+        return UnwrapNullableType(type).SpecialType switch
+        {
+            SpecialType.System_Boolean => "global::System.Data.DbType.Boolean",
+            SpecialType.System_String => "global::System.Data.DbType.String",
+            SpecialType.System_Char => "global::System.Data.DbType.Char",
+            SpecialType.System_Byte => "global::System.Data.DbType.Byte",
+            SpecialType.System_SByte => "global::System.Data.DbType.SByte",
+            SpecialType.System_Int16 => "global::System.Data.DbType.Int16",
+            SpecialType.System_Int32 => "global::System.Data.DbType.Int32",
+            SpecialType.System_Int64 => "global::System.Data.DbType.Int64",
+            SpecialType.System_UInt16 => "global::System.Data.DbType.UInt16",
+            SpecialType.System_UInt32 => "global::System.Data.DbType.UInt32",
+            SpecialType.System_UInt64 => "global::System.Data.DbType.UInt64",
+            SpecialType.System_Single => "global::System.Data.DbType.Single",
+            SpecialType.System_Double => "global::System.Data.DbType.Double",
+            SpecialType.System_Decimal => "global::System.Data.DbType.Decimal",
+            SpecialType.System_DateTime => "global::System.Data.DbType.DateTime2",
+            _ => throw new NotImplementedException(),
+        };
+    }
+
+    internal static string GetDataReaderMethod(this ITypeSymbol type)
+    {
+        switch (UnwrapNullableType(type).SpecialType)
+        {
+            case SpecialType.System_Boolean:
+                return "GetBoolean";
+            case SpecialType.System_Char:
+                return "GetChar";
+            case SpecialType.System_String:
+                return "GetString";
+            case SpecialType.System_Byte:
+                return "GetByte";
+            case SpecialType.System_SByte:
+                return "GetSByte";
+            case SpecialType.System_Int16:
+                return "GetInt16";
+            case SpecialType.System_Int32:
+                return "GetInt32";
+            case SpecialType.System_Int64:
+                return "GetInt64";
+            case SpecialType.System_UInt16:
+                return "GetUInt16";
+            case SpecialType.System_UInt32:
+                return "GetUInt32";
+            case SpecialType.System_UInt64:
+                return "GetUInt64";
+            case SpecialType.System_Single:
+                return "GetSingle";
+            case SpecialType.System_Double:
+                return "GetDouble";
+            case SpecialType.System_Decimal:
+                return "GetDecimal";
+            case SpecialType.System_DateTime:
+                return "GetDateTime";
+            case SpecialType.System_Object:
+                return "GetValue";
+            default: break;
+        }
+
+        if (type.Name == "Guid")
+        {
+            return "GetGuid";
+        }
+
+        throw new NotSupportedException($"No support type {type.Name}");
     }
 }

@@ -6,6 +6,7 @@
 
 namespace Sqlx;
 
+using System;
 using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
@@ -24,31 +25,11 @@ internal class MethodGenerationContext
         this.CustomSqlParameter = GetCustomSqlParameter(methodSymbol);
         this.CancellationTokenParameter = GetCancellationTokenParameter(methodSymbol);
         var parameters = methodSymbol.Parameters;
-        if (this.ConnectionParameter != null)
-        {
-            parameters = parameters.Remove(this.ConnectionParameter);
-        }
-
-        if (this.DbContextParameter != null)
-        {
-            parameters = parameters.Remove(this.DbContextParameter);
-        }
-
-        if (this.TransactionParameter != null)
-        {
-            parameters = parameters.Remove(this.TransactionParameter);
-        }
-
-        if (this.CustomSqlParameter != null)
-        {
-            parameters = parameters.Remove(this.CustomSqlParameter);
-        }
-
-        if (this.CancellationTokenParameter != null)
-        {
-            parameters = parameters.Remove(this.CancellationTokenParameter);
-        }
-
+        RemoveIfExists(ref parameters, this.ConnectionParameter);
+        RemoveIfExists(ref parameters, this.DbContextParameter);
+        RemoveIfExists(ref parameters, this.TransactionParameter);
+        RemoveIfExists(ref parameters, this.CustomSqlParameter);
+        RemoveIfExists(ref parameters, this.CancellationTokenParameter);
         this.SqlParameters = parameters;
     }
 
@@ -56,7 +37,7 @@ internal class MethodGenerationContext
 
     internal ClassGenerationContext ClassGenerationContext { get; }
 
-    internal bool UseDbConnection => this.ClassGenerationContext.ConnectionField != null || this.ConnectionParameter != null;
+    internal bool UseDbConnection => this.ClassGenerationContext.DbConnectionSymbol != null || this.ConnectionParameter != null;
 
     internal bool IsNotDbContext => !this.UseDbConnection && ((this.IsList || this.IsEnumerable || this.IsAsyncEnumerable) && (IsTuple(this.ItemType) || IsScalarType(this.ItemType)));
 
@@ -65,16 +46,34 @@ internal class MethodGenerationContext
             || this.ReturnType.SpecialType == SpecialType.System_Void
             || this.ReturnType.Name == "Task") || this.TransactionParameter != null || (this.IsList && (IsTuple(this.ItemType) || IsScalarType(this.ItemType))));
 
+    /// <summary>
+    /// Gets the <see cref="System.Data.Common.DbConnection"/> if the method paramters has.
+    /// </summary>
     internal IParameterSymbol? ConnectionParameter { get; }
 
+    /// <summary>
+    ///  Gets the <see cref="System.Data.Common.DbTransaction"/> if the method paramters has.
+    /// </summary>
     internal IParameterSymbol? TransactionParameter { get; }
 
+    /// <summary>
+    ///  Gets the DbContext if the method paramters has.
+    /// </summary>
     internal IParameterSymbol? DbContextParameter { get; }
 
+    /// <summary>
+    ///  Gets the SqlAttribute if the method paramters has.
+    /// </summary>
     internal IParameterSymbol? CustomSqlParameter { get; }
 
+    /// <summary>
+    ///  Gets the <see cref="System.Threading.CancellationToken"/> if the method paramters has.
+    /// </summary>
     internal IParameterSymbol? CancellationTokenParameter { get; }
 
+    /// <summary>
+    /// Gets the method paramters remove the extars.
+    /// </summary>
     internal ImmutableArray<IParameterSymbol> SqlParameters { get; }
 
     internal bool IsTask => this.MethodSymbol.ReturnType.Name == "Task";
@@ -93,81 +92,44 @@ internal class MethodGenerationContext
 
     private static IParameterSymbol? GetConnectionParameter(IMethodSymbol methodSymbol)
     {
-        foreach (var parameterSymbol in methodSymbol.Parameters)
-        {
-            if (parameterSymbol.Type.IsDbConnection())
-            {
-                return parameterSymbol;
-            }
-        }
+        return GetParameter(methodSymbol, x => x.Type.IsDbConnection());
+    }
 
-        return null;
+    private static void RemoveIfExists(ref ImmutableArray<IParameterSymbol> pars, IParameterSymbol? symbol)
+    {
+        if (symbol != null)
+        {
+            pars = pars.Remove(symbol);
+        }
     }
 
     private static IParameterSymbol? GetOutputResultsetParameter(IMethodSymbol methodSymbol)
     {
-        foreach (var parameterSymbol in methodSymbol.Parameters)
-        {
-            if (parameterSymbol.Type.IsList() && (parameterSymbol.RefKind == RefKind.Out || parameterSymbol.RefKind == RefKind.Ref))
-            {
-                return parameterSymbol;
-            }
-        }
-
-        return null;
+        return methodSymbol.Parameters.FirstOrDefault(x => x.Type.IsList() && (x.RefKind == RefKind.Out || x.RefKind == RefKind.Ref));
     }
 
     private static IParameterSymbol? GetTransactionParameter(IMethodSymbol methodSymbol)
     {
-        foreach (var parameterSymbol in methodSymbol.Parameters)
-        {
-            if (parameterSymbol.Type.IsDbTransaction())
-            {
-                return parameterSymbol;
-            }
-        }
-
-        return null;
+        return GetParameter(methodSymbol, x => x.Type.IsDbTransaction());
     }
 
     private static IParameterSymbol? GetDbContextParameter(IMethodSymbol methodSymbol)
     {
-        foreach (var parameterSymbol in methodSymbol.Parameters)
-        {
-            if (parameterSymbol.Type.IsDbContext())
-            {
-                return parameterSymbol;
-            }
-        }
-
-        return null;
+        return GetParameter(methodSymbol, x => x.Type.IsDbContext());
     }
 
     private static IParameterSymbol? GetCancellationTokenParameter(IMethodSymbol methodSymbol)
     {
-        foreach (var parameterSymbol in methodSymbol.Parameters)
-        {
-            if (parameterSymbol.Type.IsCancellationToken())
-            {
-                return parameterSymbol;
-            }
-        }
+        return GetParameter(methodSymbol, x => x.Type.IsCancellationToken());
+    }
 
-        return null;
+    private static IParameterSymbol? GetParameter(IMethodSymbol methodSymbol, Func<IParameterSymbol, bool> check)
+    {
+        return methodSymbol.Parameters.FirstOrDefault(check);
     }
 
     private static IParameterSymbol? GetCustomSqlParameter(IMethodSymbol methodSymbol)
     {
-        foreach (var parameterSymbol in methodSymbol.Parameters)
-        {
-            var customSqlAttributeCandidate = parameterSymbol.GetAttributes()
-                .FirstOrDefault(_ => _.AttributeClass?.Name == "RawSqlAttribute");
-            if (customSqlAttributeCandidate != null)
-            {
-                return parameterSymbol;
-            }
-        }
-
-        return null;
+        return methodSymbol.Parameters.Where(x => x.GetAttributes().Any(x => x.AttributeClass?.Name == "RawSqlAttribute")).FirstOrDefault();
     }
 }

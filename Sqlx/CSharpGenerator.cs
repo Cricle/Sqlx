@@ -67,7 +67,7 @@ namespace Sqlx.Annotations
     {
         context.RegisterForPostInitialization((pi) =>
         {
-            pi.AddSource("SqlxAttribute.cs", CSharpAttributeSource);
+            pi.AddSource("SqlxAttribute.g.cs", CSharpAttributeSource);
         });
         context.RegisterForSyntaxNotifications(() => new SyntaxReceiver());
     }
@@ -119,8 +119,7 @@ namespace Sqlx.Annotations
             if (context.Node is MethodDeclarationSyntax methodDeclarationSyntax)
             {
                 // Get the symbol being declared by the field, and keep it if its annotated
-                IMethodSymbol? methodSymbol = context.SemanticModel.GetDeclaredSymbol(context.Node) as IMethodSymbol;
-                if (methodSymbol == null)
+                if (context.SemanticModel.GetDeclaredSymbol(context.Node) is not IMethodSymbol methodSymbol)
                 {
                     return;
                 }

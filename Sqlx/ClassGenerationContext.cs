@@ -6,6 +6,7 @@
 
 namespace Sqlx;
 
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -28,8 +29,8 @@ internal class ClassGenerationContext
         this.GeneratorExecutionContext = context;
         this.NullableContextOptions = context.Compilation.Options.NullableContextOptions;
 
-        this.ConnectionField = GetConnectionField(classSymbol);
-        this.DbContextField = GetContextField(classSymbol);
+        this.DbConnectionSymbol = GetSymbol(classSymbol, x => x.IsDbConnection());
+        this.DbContextSymbol = GetSymbol(classSymbol, x => x.IsDbContext());
     }
 
     public INamedTypeSymbol ClassSymbol { get; }
@@ -46,17 +47,17 @@ internal class ClassGenerationContext
 
     public bool HasNullableAnnotations => this.NullableContextOptions != NullableContextOptions.Disable;
 
-    public IFieldSymbol? ConnectionField { get; }
+    public INamedTypeSymbol? DbConnectionSymbol { get; }
 
-    public IFieldSymbol? DbContextField { get; }
+    public INamedTypeSymbol? DbContextSymbol { get; }
 
-    public string DbContextName => this.DbContextField?.Name ?? "dbContext";
+    public string DbContextName => this.DbContextSymbol?.Name ?? "dbContext";
 
     public bool IsRepository => this.ClassSymbol.GetAttributes().Any(ad => ad.AttributeClass!.Equals(this.RepositoryAttributeSymbol, SymbolEqualityComparer.Default));
 
     public ITypeSymbol? RepositoryEntityType => (ITypeSymbol?)this.ClassSymbol.GetAttributes().Single(ad => ad.AttributeClass!.Equals(this.RepositoryAttributeSymbol, SymbolEqualityComparer.Default)).ConstructorArguments.ElementAtOrDefault(0).Value;
 
-    public bool HasEfCore => this.ConnectionField == null && this.Methods.All(_ => _.ConnectionParameter == null);
+    public bool HasEfCore => this.DbConnectionSymbol == null && this.Methods.All(_ => _.ConnectionParameter == null);
 
     public bool HasCollections => !this.HasEfCore || this.Methods.Any(_ => (_.IsList || _.IsEnumerable) && (IsScalarType(_.ItemType) || IsTuple(_.ItemType)));
 
@@ -67,31 +68,21 @@ internal class ClassGenerationContext
         return taskedType;
     }
 
-    private static IFieldSymbol? GetConnectionField(INamedTypeSymbol classSymbol)
+    public string DeclareCommand(string parName) => $"using(global::System.Data.Common.DbCommand cmd = )";
+
+    private static INamedTypeSymbol? GetSymbol(INamedTypeSymbol symbol, Func<INamedTypeSymbol, bool> check)
     {
-        foreach (var fieldSymbol in classSymbol.GetMembers().OfType<IFieldSymbol>())
+        if (symbol is ITypeSymbol type)
         {
-            if (fieldSymbol.Type.IsDbConnection())
+            var target = type.GetMembers().OfType<INamedTypeSymbol>().FirstOrDefault(check);
+            if (target != null)
             {
-                return fieldSymbol;
+                return target;
             }
-        }
 
-        if (classSymbol.BaseType != null)
-        {
-            return GetConnectionField(classSymbol.BaseType);
-        }
-
-        return null;
-    }
-
-    private static IFieldSymbol? GetContextField(INamedTypeSymbol classSymbol)
-    {
-        foreach (var fieldSymbol in classSymbol.GetMembers().OfType<IFieldSymbol>())
-        {
-            if (fieldSymbol.Type.IsDbContext())
+            if (type.BaseType != null)
             {
-                return fieldSymbol;
+                return GetSymbol(type.BaseType, check);
             }
         }
 

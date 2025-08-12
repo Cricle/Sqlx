@@ -18,8 +18,5 @@ namespace Sqlx.CompilationTests
 
         [Sqlx("persons_list")]
         public static partial Task<IList<PersonInformation>> GetResultAsync(this DbConnection connection, CancellationToken cancellationToken);
-
-        [Sqlx("persons_list")]
-        public static partial DbDataReader GetResultReader(this DbConnection connection);
     }
 }

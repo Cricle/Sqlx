@@ -21,49 +21,53 @@ internal sealed class IndentedStringBuilder
     /// <param name="content">Initial content for the string builder.</param>
     public IndentedStringBuilder(string content)
     {
-        this.builder = new StringBuilder(content);
+        builder = new StringBuilder(content);
     }
 
     public void Append(string value)
     {
-        this.WriteIndent();
-        this.builder.Append(value);
+        WriteIndent();
+        builder.Append(value);
+    }
+
+    public void Append(char value)
+    {
+        WriteIndent();
+        builder.Append(value);
     }
 
     public void AppendLine()
     {
-        this.builder.AppendLine();
+        builder.AppendLine();
     }
 
     public void AppendLine(string value)
     {
-        this.WriteIndent();
-        this.builder.AppendLine(value);
+        WriteIndent();
+        builder.AppendLine(value);
     }
 
     public void PushIndent()
     {
-        this.depthLevel++;
+        depthLevel++;
     }
 
     public void PopIndent()
     {
-        if (this.depthLevel == 0)
-        {
+        if (depthLevel == 0)
             throw new InvalidOperationException("Cannot pop at depthlevel 0");
-        }
 
-        this.depthLevel--;
+        depthLevel--;
     }
 
     /// <inheritdoc/>
-    public override string ToString() => this.builder.ToString();
+    public override string ToString() => builder.ToString();
 
     private void WriteIndent()
     {
-        if (this.depthLevel > 0)
+        if (depthLevel > 0)
         {
-            this.builder.Append(' ', this.depthLevel * IndentSize);
+            builder.Append(' ', depthLevel * IndentSize);
         }
     }
 }

@@ -29,7 +29,7 @@ public partial class DataContext
 {
     private DbConnection connection;
 
-    public DataContext(DbConnection connection) => this.connection = connection;
+    public DataContext(DbConnection connection) => connection = connection;
 
     [Sqlx("persons_list")]
     public partial IList<PersonInformation> GetPersons();
@@ -56,7 +56,7 @@ public partial class DataContext
 {
     private DbConnection connection;
 
-    public DataContext(DbConnection connection) => this.connection = connection;
+    public DataContext(DbConnection connection) => connection = connection;
 
     public partial IList<Product> FetchAll();
 
@@ -124,7 +124,7 @@ public partial class DataContext
 {
     private DbConnection connection;
 
-    public DataContext(DbConnection connection) => this.connection = connection;
+    public DataContext(DbConnection connection) => connection = connection;
 
     [Sqlx("persons_list")]
     public partial IList<Item> GetResult();

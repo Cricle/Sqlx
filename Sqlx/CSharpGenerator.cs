@@ -11,7 +11,6 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Collections.Generic;
 using System.Linq;
-using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 /// <summary>
 /// Stored procedures generator for C#.
@@ -26,11 +25,14 @@ public class CSharpGenerator : AbstractGenerator
 // </auto-generated>
 #nullable enable
 
+using System.Data;
+using System.Data.Common;
+
 namespace Sqlx.Annotations
 {
     [global::System.Diagnostics.Conditional(""DEBUG"")]
-    [global::System.AttributeUsage(System.AttributeTargets.Method, AllowMultiple = true)]
-    internal sealed class SqlxAttribute: System.Attribute
+    [global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = true)]
+    internal sealed class SqlxAttribute : global::System.Attribute
     {
         public SqlxAttribute()
             => StoredProcedureName = string.Empty;
@@ -39,26 +41,56 @@ namespace Sqlx.Annotations
             => StoredProcedureName = name;
 
         public string StoredProcedureName { get; }
+
+        public string ParameterPrefix { get; set; } = ""@"";
     }
 
     [global::System.Diagnostics.Conditional(""DEBUG"")]
-    [global::System.AttributeUsage(System.AttributeTargets.Parameter, AllowMultiple = false)]
-    internal sealed class RawSqlAttribute: System.Attribute
-    {
-        public RawSqlAttribute() {}
-    }
-    
-    [global::System.Diagnostics.Conditional(""DEBUG"")]
-    [global::System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = false)]
-    internal sealed class RepositoryAttribute: global::System.Attribute
-    {
-        public RepositoryAttribute(global::System.Type entityType)
-        {
-            EntityType = entityType;
-        }
+    [global::System.AttributeUsage(global::System.AttributeTargets.Parameter, AllowMultiple = false)]
+    internal sealed class RawSqlAttribute : global::System.Attribute { }
 
-        public global::System.Type EntityType { get; }
+    [global::System.Diagnostics.Conditional(""DEBUG"")]
+    [global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = false)]
+    internal sealed class ExecuteNoQueryAttribute : global::System.Attribute { }
+
+    [global::System.Diagnostics.Conditional(""DEBUG"")]
+    [global::System.AttributeUsage(global::System.AttributeTargets.Method
+        | global::System.AttributeTargets.Class
+        | global::System.AttributeTargets.Field
+        | global::System.AttributeTargets.Property
+        | global::System.AttributeTargets.Method
+        | global::System.AttributeTargets.Parameter, AllowMultiple = false)]
+    internal sealed class TimeoutAttribute : global::System.Attribute
+    {
+        public TimeoutAttribute() { }
+
+        public TimeoutAttribute(int timeout) => Timeout = timeout;
+
+        public int Timeout { get; }
     }
+
+    [global::System.Diagnostics.Conditional(""DEBUG"")]
+    [global::System.AttributeUsage(global::System.AttributeTargets.Parameter, AllowMultiple = false)]
+    internal sealed class DbColumnAttribute : global::System.Attribute
+    {
+        public DbColumnAttribute() { }
+
+        public DbColumnAttribute(string? name) => Name = name;
+
+        public string? Name { get; }
+
+        public byte Precision { get; }
+        public byte Scale { get; }
+        public byte Size { get; }
+        public global::System.Data.ParameterDirection Direction { get; }
+    }
+
+    /// <summary>
+    /// Tag to paramter make it as <see cref=""Func{DbDataReader, Task}""/> or <see cref=""Action{DbDataReader}""/> for read data
+    /// </summary>
+    [global::System.Diagnostics.Conditional(""DEBUG"")]
+    [global::System.AttributeUsage(global::System.AttributeTargets.Parameter, AllowMultiple = false)]
+    internal sealed class ReaderHandlerAttribute : global::System.Attribute { }
 }
 ";
 
@@ -72,43 +104,6 @@ namespace Sqlx.Annotations
         context.RegisterForSyntaxNotifications(() => new SyntaxReceiver());
     }
 
-    /// <inheritdoc/>
-    protected override SyntaxNode GetParameters(IMethodSymbol methodSymbol)
-    {
-        var parametersNodes = methodSymbol.Parameters.Select((parameterSymbol, index) => GetParameterDeclaration(methodSymbol, parameterSymbol, index));
-        var separatedList = methodSymbol.Parameters.Length == 0
-            ? SeparatedList<ParameterSyntax>()
-            : SeparatedList(parametersNodes, methodSymbol.Parameters.Take(methodSymbol.Parameters.Length - 1).Select(_ => Token(SyntaxKind.CommaToken).WithTrailingTrivia(Whitespace(" "))));
-        return ParameterList(separatedList);
-    }
-
-    private static ParameterSyntax GetParameterDeclaration(IMethodSymbol methodSymbol, IParameterSymbol parameter, int index)
-    {
-        var typeAsClause = ParseTypeName(parameter.Type.ToDisplayString()).WithTrailingTrivia(Whitespace(" "));
-        if (parameter.RefKind == RefKind.Out)
-        {
-            return CreateParameterSyntax(SyntaxKind.OutKeyword);
-        }
-        else if (parameter.RefKind == RefKind.Ref)
-        {
-            return CreateParameterSyntax(SyntaxKind.RefKeyword);
-        }
-        else if (methodSymbol.IsExtensionMethod && index == 0)
-        {
-            return CreateParameterSyntax(SyntaxKind.ThisKeyword);
-        }
-        else
-        {
-            var parameterSyntax = Parameter(default, default, typeAsClause, Identifier(parameter.Name), @default: null);
-            return parameterSyntax;
-        }
-
-        ParameterSyntax CreateParameterSyntax(SyntaxKind kind)
-        {
-            return Parameter(default, SyntaxTokenList.Create(Token(kind).WithTrailingTrivia(Whitespace(" "))), typeAsClause, Identifier(parameter.Name), @default: null);
-        }
-    }
-
     internal class SyntaxReceiver : ISqlxSyntaxReceiver
     {
         public List<IMethodSymbol> Methods { get; } = new List<IMethodSymbol>();
@@ -119,19 +114,11 @@ namespace Sqlx.Annotations
             if (context.Node is MethodDeclarationSyntax methodDeclarationSyntax)
             {
                 // Get the symbol being declared by the field, and keep it if its annotated
-                if (context.SemanticModel.GetDeclaredSymbol(context.Node) is not IMethodSymbol methodSymbol)
-                {
-                    return;
-                }
+                if (context.SemanticModel.GetDeclaredSymbol(context.Node) is not IMethodSymbol methodSymbol) return;
 
                 if (methodSymbol.GetAttributes().Any(ad => ad.AttributeClass?.ToDisplayString() == "Sqlx.Annotations.SqlxAttribute"))
                 {
-                    this.Methods.Add(methodSymbol);
-                }
-
-                if (methodSymbol.ContainingType.GetAttributes().Any(ad => ad.AttributeClass?.ToDisplayString() == "Sqlx.Annotations.RepositoryAttribute"))
-                {
-                    this.Methods.Add(methodSymbol);
+                    Methods.Add(methodSymbol);
                 }
             }
         }

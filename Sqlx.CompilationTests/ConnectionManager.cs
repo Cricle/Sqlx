@@ -6,9 +6,9 @@
 
 namespace Sqlx.CompilationTests;
 
+using Microsoft.Data.SqlClient;
 using System.Collections.Generic;
 using System.Data.Common;
-using Microsoft.Data.SqlClient;
 
 internal partial class ConnectionManager
 {

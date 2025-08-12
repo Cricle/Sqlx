@@ -23,78 +23,62 @@ internal static class Extensions
         return requireParameterNullCheck;
     }
 
-    internal static bool IsDbConnection(this ITypeSymbol typeSymbol)
+    internal static bool IsDbConnection(this ISymbol typeSymbol)
     {
         return IsTypes(typeSymbol, x => x.Name == "DbConnection");
     }
 
-    internal static bool IsDbTransaction(this ITypeSymbol typeSymbol)
+    internal static bool IsDbTransaction(this ISymbol typeSymbol)
     {
         return IsTypes(typeSymbol, x => x.Name == "DbTransaction");
     }
 
-    internal static bool IsTypes(ITypeSymbol typeSymbol, Func<ITypeSymbol, bool> check)
+    internal static bool IsTypes(ISymbol typeSymbol, Func<ITypeSymbol, bool> check)
     {
-        if (check(typeSymbol))
-        {
-            return true;
-        }
+        if (typeSymbol is IParameterSymbol parSymbol && check(parSymbol.Type)) return true;
+        if (typeSymbol is IFieldSymbol fieldSymbol && check(fieldSymbol.Type)) return true;
+        if (typeSymbol is IPropertySymbol propertySymbol && check(propertySymbol.Type)) return true;
+        if (typeSymbol is INamedTypeSymbol ntSymbol && check(ntSymbol)) return true;
+        return false;
+    }
 
-        var baseType = typeSymbol.BaseType;
-        if (baseType == null)
+    internal static bool IsDbContext(this ISymbol typeSymbol)
+    {
+        return IsTypes(typeSymbol, x =>
         {
+            var type = x;
+            while (type != null)
+            {
+                if (type.Name == "DbContext")
+                {
+                    return true;
+                }
+
+                type = type.BaseType;
+            }
+
             return false;
-        }
-
-        return IsTypes(baseType, check);
+        });
     }
 
-    internal static bool IsDbContext(this ITypeSymbol typeSymbol)
-    {
-        return IsTypes(typeSymbol, x => x.Name == "DbContext");
-    }
-
-    internal static bool IsCancellationToken(this ITypeSymbol typeSymbol)
+    internal static bool IsCancellationToken(this ISymbol typeSymbol)
     {
         return typeSymbol.Name == "CancellationToken";
     }
 
-    internal static ITypeSymbol UnwrapTaskType(this ITypeSymbol type)
-    {
-        if (type is INamedTypeSymbol namedTypeSymbol)
-        {
-            if (type.Name == "Task" && namedTypeSymbol.IsGenericType)
-            {
-                return namedTypeSymbol.TypeArguments[0];
-            }
-        }
+    internal static ITypeSymbol UnwrapTaskType(this ITypeSymbol type) => UnwrapType(type, "Task");
 
-        return type;
-    }
+    internal static ITypeSymbol UnwrapListType(this ITypeSymbol type) => UnwrapType(type, "List", "IList", "ICollection", "IReadonlyList", "IEnumerable", "IAsyncEnumerable");
 
     internal static ITypeSymbol UnwrapNullableType(this ITypeSymbol type)
-    {
-        if (type is INamedTypeSymbol namedTypeSymbol)
-        {
-            return UnwrapNullableType(namedTypeSymbol);
-        }
-
-        return type;
-    }
+        => type is INamedTypeSymbol namedTypeSymbol ? UnwrapNullableType(namedTypeSymbol) : type;
 
     internal static INamedTypeSymbol UnwrapNullableType(this INamedTypeSymbol namedTypeSymbol)
-    {
-        if (namedTypeSymbol.Name == "Nullable")
-        {
-            return (INamedTypeSymbol)namedTypeSymbol.TypeArguments[0];
-        }
-
-        return namedTypeSymbol;
-    }
+        => namedTypeSymbol.Name == "Nullable" ? (INamedTypeSymbol)namedTypeSymbol.TypeArguments[0] : namedTypeSymbol;
 
     internal static bool IsScalarType(ITypeSymbol returnType)
     {
-        return returnType.SpecialType switch
+        return UnwrapNullableType(UnwrapTaskType(returnType)).SpecialType switch
         {
             SpecialType.System_String => true,
             SpecialType.System_Boolean => true,
@@ -113,66 +97,7 @@ internal static class Extensions
         };
     }
 
-    internal static bool IsTuple(ITypeSymbol returnType)
-    {
-        return returnType.Name == "Tuple" || returnType.Name == "ValueTuple";
-    }
-
-    internal static ITypeSymbol GetUnderlyingType(ITypeSymbol returnType)
-    {
-        if (returnType is INamedTypeSymbol namedTypeSymbol)
-        {
-            if (!namedTypeSymbol.IsGenericType || namedTypeSymbol.TypeArguments.Length != 1)
-            {
-                return returnType;
-            }
-
-            return namedTypeSymbol.TypeArguments[0];
-        }
-
-        return returnType;
-    }
-
-    internal static bool IsList(this ITypeSymbol returnType) => returnType.Name == "IList" || returnType.Name == "List";
-
-    internal static bool IsEnumerable(ITypeSymbol returnType) => returnType.Name == "IEnumerable";
-
-    internal static bool IsAsyncEnumerable(ITypeSymbol returnType) => returnType.Name == "IAsyncEnumerable";
-
-    internal static ITypeSymbol UnwrapListItem(ITypeSymbol returnType)
-    {
-        if (returnType is INamedTypeSymbol namedTypeSymbol)
-        {
-            if (!IsList(returnType) && !IsEnumerable(returnType))
-            {
-                return returnType;
-            }
-
-            if (!namedTypeSymbol.IsGenericType || namedTypeSymbol.TypeArguments.Length != 1)
-            {
-                return returnType;
-            }
-
-            return namedTypeSymbol.TypeArguments[0];
-        }
-
-        return returnType;
-    }
-
-    internal static IPropertySymbol? FindIdMember(this ITypeSymbol returnType)
-    {
-        return returnType.GetMembers().OfType<IPropertySymbol>().FirstOrDefault(IsPrimaryKey);
-    }
-
-    internal static bool IsPrimaryKey(this IPropertySymbol propertySymbol)
-    {
-        return propertySymbol.Name == "Id";
-    }
-
-    internal static bool IsPrimaryKey(this IParameterSymbol propertySymbol)
-    {
-        return propertySymbol.Name == "Id" || propertySymbol.Name == "id";
-    }
+    internal static bool IsTuple(ITypeSymbol returnType) => returnType.Name == "Tuple" || returnType.Name == "ValueTuple";
 
     internal static IPropertySymbol? FindMember(this ITypeSymbol returnType, string parameterName)
     {
@@ -180,9 +105,9 @@ internal static class Extensions
             .FirstOrDefault(propertySymbol => string.Equals(propertySymbol.Name, parameterName, StringComparison.InvariantCultureIgnoreCase));
     }
 
-    internal static string GetSqlName(this IPropertySymbol propertySymbol)
+    internal static string GetSqlName(this ISymbol propertySymbol)
     {
-        var attribute = propertySymbol.GetAttributes().FirstOrDefault(attribute => attribute.AttributeClass?.ToDisplayString() == "System.ComponentModel.DataAnnotations.Schema.ColumnAttribute");
+        var attribute = propertySymbol.GetAttributes().FirstOrDefault(attribute => attribute.AttributeClass?.Name == "DbColumnAttribute");
         if (attribute != null)
         {
             var overrideName = attribute.ConstructorArguments.FirstOrDefault().Value as string;
@@ -195,30 +120,8 @@ internal static class Extensions
         return NameMapper.MapName(propertySymbol.Name);
     }
 
-    internal static string GetSqlName(this ITypeSymbol typeSymbol)
-    {
-        var attribute = typeSymbol.GetAttributes().FirstOrDefault(attribute => attribute.AttributeClass?.ToDisplayString() == "System.ComponentModel.DataAnnotations.Schema.TableAttribute");
-        if (attribute != null)
-        {
-            var overrideName = attribute.ConstructorArguments.FirstOrDefault().Value as string;
-            if (overrideName is not null)
-            {
-                return overrideName;
-            }
-        }
-
-        return NameMapper.MapName(typeSymbol.Name);
-    }
-
-    internal static string GetParameterName(this IPropertySymbol propertySymbol)
-    {
-        return "@" + NameMapper.MapName(propertySymbol.Name);
-    }
-
-    internal static string GetParameterName(this IParameterSymbol parameterSymbol)
-    {
-        return "@" + NameMapper.MapName(parameterSymbol.Name);
-    }
+    internal static string GetParameterName(this ISymbol propertySymbol, string parameterPrefx)
+        => parameterPrefx + GetSqlName(propertySymbol);
 
     internal static string GetAccessibility(this Accessibility a)
     {
@@ -233,7 +136,7 @@ internal static class Extensions
         };
     }
 
-    internal static string GetParameterSqlDbType(this ITypeSymbol type)
+    internal static string GetDbType(this ITypeSymbol type)
     {
         return UnwrapNullableType(type).SpecialType switch
         {
@@ -256,50 +159,71 @@ internal static class Extensions
         };
     }
 
-    internal static string GetDataReaderMethod(this ITypeSymbol type)
+    internal static string? GetDataReaderMethod(this ITypeSymbol type)
     {
-        switch (UnwrapNullableType(type).SpecialType)
+        var unwrapType = UnwrapNullableType(type);
+        var method = unwrapType.SpecialType switch
         {
-            case SpecialType.System_Boolean:
-                return "GetBoolean";
-            case SpecialType.System_Char:
-                return "GetChar";
-            case SpecialType.System_String:
-                return "GetString";
-            case SpecialType.System_Byte:
-                return "GetByte";
-            case SpecialType.System_SByte:
-                return "GetSByte";
-            case SpecialType.System_Int16:
-                return "GetInt16";
-            case SpecialType.System_Int32:
-                return "GetInt32";
-            case SpecialType.System_Int64:
-                return "GetInt64";
-            case SpecialType.System_UInt16:
-                return "GetUInt16";
-            case SpecialType.System_UInt32:
-                return "GetUInt32";
-            case SpecialType.System_UInt64:
-                return "GetUInt64";
-            case SpecialType.System_Single:
-                return "GetSingle";
-            case SpecialType.System_Double:
-                return "GetDouble";
-            case SpecialType.System_Decimal:
-                return "GetDecimal";
-            case SpecialType.System_DateTime:
-                return "GetDateTime";
-            case SpecialType.System_Object:
-                return "GetValue";
-            default: break;
+            SpecialType.System_Boolean => "GetBoolean",
+            SpecialType.System_Char => "GetChar",
+            SpecialType.System_String => "GetString",
+            SpecialType.System_Byte => "GetByte",
+            SpecialType.System_SByte => "GetSByte",
+            SpecialType.System_Int16 => "GetInt16",
+            SpecialType.System_Int32 => "GetInt32",
+            SpecialType.System_Int64 => "GetInt64",
+            SpecialType.System_UInt16 => "GetUInt16",
+            SpecialType.System_UInt32 => "GetUInt32",
+            SpecialType.System_UInt64 => "GetUInt64",
+            SpecialType.System_Single => "GetFloat",
+            SpecialType.System_Double => "GetDouble",
+            SpecialType.System_Decimal => "GetDecimal",
+            SpecialType.System_DateTime => "GetDateTime",
+            SpecialType.System_Object => "GetValue",
+            _ => null,
+        };
+        if (type.Name == "Guid") method = "GetGuid";
+        return method;
+    }
+
+    internal static string GetDataReadIndexExpression(this ITypeSymbol type, string readerName, int index)
+    {
+        var isNullable = UnwrapNullableType(type) != type;
+        var method = GetDataReaderMethod(type);
+
+        if (isNullable)
+        {
+            return $"{readerName}.IsDBNull(reader.GetOrdinal(0)) ? {readerName}.{method}({index}) : default";
         }
 
-        if (type.Name == "Guid")
+        return $"{readerName}.{method}({index})";
+    }
+
+    internal static string GetDataReadExpression(this ITypeSymbol type, string readerName, string columnName)
+    {
+        var unwrapType = UnwrapNullableType(type);
+        var method = GetDataReaderMethod(type);
+
+        if (!string.IsNullOrEmpty(method))
         {
-            return "GetGuid";
+            if (unwrapType.IsValueType || unwrapType.SpecialType == SpecialType.System_String || type.Name == "Guid")
+            {
+                return $"{readerName}.IsDBNull({readerName}.GetOrdinal(\"{columnName}\")) ? {readerName}.{method}({readerName}.GetOrdinal(\"{columnName}\")) : default";
+            }
+
+            return $"{readerName}.{method}({readerName}.GetOrdinal(\"{columnName}\"))";
         }
 
         throw new NotSupportedException($"No support type {type.Name}");
+    }
+
+    private static ITypeSymbol UnwrapType(this ITypeSymbol type, params string[] names)
+    {
+        if (type is INamedTypeSymbol namedTypeSymbol && names.Contains(type.Name) && namedTypeSymbol.IsGenericType)
+        {
+            return namedTypeSymbol.TypeArguments[0];
+        }
+
+        return type;
     }
 }

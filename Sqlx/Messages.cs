@@ -23,5 +23,7 @@ namespace Sqlx
         public static DiagnosticDescriptor SP0007 { get; } = new DiagnosticDescriptor("SP0007", "No RawSqlAttribute or SqlxAttribute tag", "No command text", "Sqlx", DiagnosticSeverity.Error, true);
 
         public static DiagnosticDescriptor SP0008 { get; } = new DiagnosticDescriptor("SP0008", "Execute no query return must be int or Task<int>", "Return type error", "Sqlx", DiagnosticSeverity.Error, true);
+
+        public static DiagnosticDescriptor SP0009 { get; } = new DiagnosticDescriptor("SP0009", "Tuple dbcontext must has DbSetTypeAttribute tag", "No dbset", "Sqlx", DiagnosticSeverity.Error, true);
     }
 }

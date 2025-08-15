@@ -20,22 +20,30 @@ internal partial class DbContextManager
     }
 
     [Sqlx("persons_list")]
+    [DbSetType(typeof(PersonDbContext.Person))]
     public partial IList<PersonDbContext.Person> GetResult();
 
+    // [Sqlx("persons_list")]
+    // [DbSetType(typeof(PersonDbContext.Person))]
+    // public partial IList<(int PersonId, string PersonName)> GetTupleResult();
     [Sqlx("persons_list")]
-    public partial IList<(int Id, string Name)> GetTupleResult();
-
-    [Sqlx("persons_list")]
+    [DbSetType(typeof(PersonDbContext.Person))]
     public partial IEnumerable<PersonDbContext.Person> GetEnumerableResult();
 
     [Sqlx("persons_list")]
+    [DbSetType(typeof(PersonDbContext.Person))]
     public partial Task<IList<PersonDbContext.Person>> GetResultAsync();
 
+    // [Sqlx("persons_list")]
+    // [DbSetType(typeof(PersonDbContext.Person))]
+    // public partial Task<IList<(int PersonId, string PersonName)>> GetTupleResultAsync();
     [Sqlx("persons_list")]
-    public partial Task<IList<(int Id, string Name)>> GetTupleResultAsync();
+    [DbSetType(typeof(PersonDbContext.Person))]
+    public partial Task<PersonDbContext.Person?> GetFirstOrDefaultAsync();
 
     [Sqlx("persons_list")]
-    public partial Task<PersonDbContext.Person?> GetFirstOrDefaultAsync();
+    [DbSetType(typeof(PersonDbContext.Person))]
+    public partial Task<PersonDbContext.PersonDto?> GetFirstOrDefaultDtoAsync();
 
     [Sqlx("non_existing")]
     public partial int GetScalarResult();
@@ -50,8 +58,10 @@ internal partial class DbContextManager
     public partial Task<int?> GetNullableScalarResultAsync();
 
     [Sqlx("persons_by_id")]
+    [DbSetType(typeof(PersonDbContext.Person))]
     public partial PersonDbContext.Person GetPersonById(int personId);
 
     [Sqlx("users_list")]
+    [DbSetType(typeof(PersonDbContext.User))]
     public partial IList<PersonDbContext.User> GetUsers();
 }

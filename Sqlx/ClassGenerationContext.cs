@@ -55,6 +55,7 @@ internal class ClassGenerationContext : GenerationContextBase
 // </auto-generated>");
 
         sb.AppendLine("#nullable enable");
+        sb.AppendLine("#pragma warning disable CS8605, CS8603, CS8634");
         sb.AppendLine();
         sb.AppendLine("using System.Linq;");
         sb.AppendLine();

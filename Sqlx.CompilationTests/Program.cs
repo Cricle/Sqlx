@@ -40,8 +40,9 @@ internal class Program
             TestConnectionManager(connectionManager);
             Console.WriteLine("**** Testing Extension methods ! ****");
             TestExtensionMethods(sqlConnection);
-            Console.WriteLine("**** Testing Data Reader methods ! ****");
-            TestDataReaderMethods(sqlConnection);
+
+            // Console.WriteLine("**** Testing Data Reader methods ! ****");
+            // TestDataReaderMethods(sqlConnection);
         }
         catch (DbException ex)
         {
@@ -60,6 +61,7 @@ internal class Program
         }
     }
 
+    /*
     private static void TestDataReaderMethods(DbConnection sqlConnection)
     {
         using var reader = sqlConnection.GetResultReader();
@@ -76,6 +78,7 @@ internal class Program
             i++;
         }
     }
+    */
 
     private static void TestConnectionManager(ConnectionManager connectionManager)
     {
@@ -139,6 +142,7 @@ internal class Program
             WritePerson(personInfo);
         }
 
+        /*
         var persons4 = manager.GetTupleResult();
         WriteLine("Print first 10 rows from persons_list SP using tuples");
         foreach (var personInfo in persons4.Take(10))
@@ -158,6 +162,7 @@ internal class Program
 
             transaction.Commit();
         }
+        */
 
         Write("Get person with id 33: ");
         var person = manager.GetPersonById(33);
@@ -207,6 +212,7 @@ internal class Program
             WriteLine("No person returned");
         }
 
+        /*
         var persons4 = await manager.GetTupleResultAsync();
         WriteLine("Print first 10 rows from persons_list SP using tuples");
         foreach (var personInfo in persons4.Take(10))
@@ -226,6 +232,7 @@ internal class Program
 
             transaction.Commit();
         }
+        */
     }
 
     private static void WritePerson(PersonInformation personInfo)

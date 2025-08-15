@@ -85,12 +85,17 @@ namespace Sqlx.Annotations
         public global::System.Data.ParameterDirection Direction { get; }
     }
 
-    /// <summary>
-    /// Tag to paramter make it as <see cref=""Func{DbDataReader, Task}""/> or <see cref=""Action{DbDataReader}""/> for read data
-    /// </summary>
     [global::System.Diagnostics.Conditional(""DEBUG"")]
     [global::System.AttributeUsage(global::System.AttributeTargets.Parameter, AllowMultiple = false)]
     internal sealed class ReaderHandlerAttribute : global::System.Attribute { }
+
+    [global::System.Diagnostics.Conditional(""DEBUG"")]
+    [global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = false)]
+    sealed class DbSetTypeAttribute : global::System.Attribute
+    {
+        public DbSetTypeAttribute(global::System.Type type) => Type = type;
+        public global::System.Type Type { get; }
+    }
 }
 ";
 

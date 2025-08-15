@@ -7,10 +7,8 @@
 namespace Sqlx;
 
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -158,7 +156,11 @@ internal class MethodGenerationContext : GenerationContextBase
         }
         else
         {
-            WriteReturn(sb, columnDefines);
+            var succeed = WriteReturn(sb, columnDefines);
+            if (!succeed)
+            {
+                return false;
+            }
         }
 
         sb.PopIndent();
@@ -226,7 +228,7 @@ internal class MethodGenerationContext : GenerationContextBase
         sb.AppendLine($"return ({ReturnType.ToDisplayString()})global::System.Convert.ChangeType({ResultName}, typeof({ReturnType.ToDisplayString()}));");
     }
 
-    private void WriteReturn(IndentedStringBuilder sb, List<ColumnDefine> columnDefines)
+    private bool WriteReturn(IndentedStringBuilder sb, List<ColumnDefine> columnDefines)
     {
         var dbContext = DbContext ?? ClassGenerationContext.DbContext;
         var dbConnection = DbConnection ?? ClassGenerationContext.DbConnection;
@@ -307,7 +309,7 @@ internal class MethodGenerationContext : GenerationContextBase
 
             sb.PopIndent();
             sb.AppendLine("}");
-            return;
+            return true;
         }
 
         var cancellationToken = CancellationTokenParameter?.Name ?? "default";
@@ -323,11 +325,51 @@ internal class MethodGenerationContext : GenerationContextBase
         var firstOrDefaultAsyncMethod = "global::Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.FirstOrDefaultAsync";
         var toListAsyncMethod = "global::Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync";
 
-        var queryCall = $"{fromSqlRawMethod}({dbContext!.Name}.Set<{ElementType.ToDisplayString()}>(),{CmdName}.CommandText, {CmdName}.Parameters.OfType<global::System.Object>().ToArray())";
+        ISymbol setSymbol = ElementType;
+
+        if (GetDbSetElement(out var dbSetEle))
+        {
+            setSymbol = dbSetEle!;
+        }
+
+        var queryCall = $"{fromSqlRawMethod}({dbContext!.Name}.Set<{setSymbol.ToDisplayString()}>(),{CmdName}.CommandText, {CmdName}.Parameters.OfType<global::System.Object>().ToArray())";
+
+        var convert = string.Empty;
+        if (!SymbolEqualityComparer.Default.Equals(ElementType, setSymbol) && setSymbol is INamedTypeSymbol setNameTypeSymbol)
+        {
+            string constructExpress = string.Empty;
+            if (isTuple)
+            {
+                constructExpress = $"({string.Join(", ", ((INamedTypeSymbol)ElementType).TupleElements.Select(x => $"x.{x.Name}"))})";
+            }
+            else
+            {
+                var propertyTypes = setNameTypeSymbol.GetMembers().OfType<IPropertySymbol>().ToArray();
+                var construct = ((INamedTypeSymbol)ElementType).Constructors.FirstOrDefault(x => x.Parameters.All(HasProperty));
+                if (construct == null)
+                {
+                    // TODO: report
+                    return false;
+                }
+
+                constructExpress = $"new {ElementType.ToDisplayString(NullableFlowState.None)}({string.Join(", ", construct.Parameters.Select(x => $"x.{FindProperty(x)!.Name}"))})";
+                var properties = ElementType.GetMembers().OfType<IPropertySymbol>().Where(x => !construct.Parameters.All(y => y.Name.Equals(x.Name, StringComparison.OrdinalIgnoreCase))).ToList();
+                if (properties.Count != 0)
+                {
+                    constructExpress += $"{{ {string.Join(", ", properties.Select(x => $"{x.Name} = x.{x.Name}"))} }}";
+                }
+
+                IPropertySymbol? FindProperty(IParameterSymbol symbol) => propertyTypes.FirstOrDefault(x => SymbolEqualityComparer.Default.Equals(x.Type, symbol.Type) && x.Name.Equals(symbol.Name, StringComparison.OrdinalIgnoreCase));
+
+                bool HasProperty(IParameterSymbol symbol) => FindProperty(symbol) != null;
+            }
+
+            convert = $".Select(x => {constructExpress})";
+        }
 
         if (DeclareReturnType == ReturnTypes.IEnumerable || DeclareReturnType == ReturnTypes.IAsyncEnumerable)
         {
-            sb.AppendLine($"{awaitBlock}foreach (var item in {queryCall})");
+            sb.AppendLine($"{awaitBlock}foreach (var item in {queryCall}{convert})");
             sb.AppendLine("{");
             sb.PushIndent();
             sb.AppendLine("yield return item;");
@@ -337,6 +379,7 @@ internal class MethodGenerationContext : GenerationContextBase
         }
         else
         {
+            queryCall += convert;
             if (IsAsync())
             {
                 if (DeclareReturnType != ReturnTypes.List)
@@ -358,6 +401,22 @@ internal class MethodGenerationContext : GenerationContextBase
             WriteOutput(sb, columnDefines);
             sb.AppendLine($"return {ResultName};");
         }
+
+        return true;
+    }
+
+    private bool GetDbSetElement(out ISymbol? symbol)
+    {
+        symbol = null;
+        var setElement = MethodSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "DbSetTypeAttribute");
+        if (setElement == null)
+        {
+            ClassGenerationContext.GeneratorExecutionContext.ReportDiagnostic(Diagnostic.Create(Messages.SP0009, MethodSymbol.Locations[0]));
+            return false;
+        }
+
+        symbol = (ISymbol)setElement.ConstructorArguments[0].Value!;
+        return true;
     }
 
     private List<IPropertySymbol> GetPropertySymbols(ITypeSymbol symbol)

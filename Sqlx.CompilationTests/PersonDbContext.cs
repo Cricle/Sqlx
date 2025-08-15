@@ -37,5 +37,17 @@ namespace Sqlx.CompilationTests
             [Column("user_name")]
             public string? UserName { get; set; }
         }
+
+        internal class PersonDto
+        {
+            public PersonDto(int personId)
+            {
+                PersonId = personId;
+            }
+
+            public int PersonId { get; }
+
+            public string? PersonName { get; set; }
+        }
     }
 }

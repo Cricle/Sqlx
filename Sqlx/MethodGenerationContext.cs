@@ -41,6 +41,18 @@ internal class MethodGenerationContext : GenerationContextBase
         RemoveIfExists(ref parameters, TimeoutParameter);
         SqlParameters = parameters;
         DeclareReturnType = GetReturnType();
+        CancellationTokenKey = CancellationTokenParameter?.Name ?? "default";
+        IsAsync = MethodSymbol.ReturnType.Name == "Task" || MethodSymbol.ReturnType.Name == "IAsyncEnumerable";
+        if (IsAsync)
+        {
+            AsyncKey = "async ";
+            AwaitKey = "await ";
+        }
+        else
+        {
+            AsyncKey = string.Empty;
+            AwaitKey = string.Empty;
+        }
     }
 
     internal IMethodSymbol MethodSymbol { get; }
@@ -84,23 +96,25 @@ internal class MethodGenerationContext : GenerationContextBase
 
     internal ITypeSymbol ElementType => ReturnType.UnwrapListType();
 
+    internal string AsyncKey { get; }
+
+    internal string AwaitKey { get; }
+
+    internal string CancellationTokenKey { get; }
+
+    internal bool IsAsync { get; }
+
     public bool DeclareCommand(IndentedStringBuilder sb)
     {
         var args = string.Join(", ", MethodSymbol.Parameters.Select(x =>
         {
-            var hasThis = x.DeclaringSyntaxReferences[0].GetSyntax() as ParameterSyntax;
-            var prefx = string.Join(" ", hasThis!.Modifiers.Select(y => y.ToString()));
-            if (hasThis!.Modifiers.Count != 0)
-            {
-                prefx += " ";
-            }
-
-            var str = prefx + x.ToDisplayString();
-            return str;
+            var paramterSyntax = (ParameterSyntax)x.DeclaringSyntaxReferences[0].GetSyntax();
+            var prefx = string.Join(" ", paramterSyntax.Modifiers.Select(y => y.ToString()));
+            if (paramterSyntax!.Modifiers.Count != 0) prefx += " ";
+            return prefx + x.ToDisplayString();
         }));
-        var async = IsAsync() ? "async " : string.Empty;
         var staticKeyword = MethodSymbol.IsStatic ? "static " : string.Empty;
-        sb.AppendLine($"{MethodSymbol.DeclaredAccessibility.GetAccessibility()} {async}{staticKeyword}partial {MethodSymbol.ReturnType.ToDisplayString()} {MethodSymbol.Name}({args})");
+        sb.AppendLine($"{MethodSymbol.DeclaredAccessibility.GetAccessibility()} {AsyncKey}{staticKeyword}partial {MethodSymbol.ReturnType.ToDisplayString()} {MethodSymbol.Name}({args})");
         sb.AppendLine("{");
         sb.PushIndent();
 
@@ -157,10 +171,7 @@ internal class MethodGenerationContext : GenerationContextBase
         else
         {
             var succeed = WriteReturn(sb, columnDefines);
-            if (!succeed)
-            {
-                return false;
-            }
+            if (!succeed) return false;
         }
 
         sb.PopIndent();
@@ -177,14 +188,10 @@ internal class MethodGenerationContext : GenerationContextBase
     }
 
     private static ISymbol? GetParameter(IMethodSymbol methodSymbol, Func<IParameterSymbol, bool> check)
-    {
-        return methodSymbol.Parameters.FirstOrDefault(check);
-    }
+        => methodSymbol.Parameters.FirstOrDefault(check);
 
     private static IParameterSymbol? GetAttributeParamter(IMethodSymbol methodSymbol, string attributeName)
-    {
-        return methodSymbol.Parameters.FirstOrDefault(x => x.GetAttributes().Any(y => y.AttributeClass?.Name == attributeName));
-    }
+        => methodSymbol.Parameters.FirstOrDefault(x => x.GetAttributes().Any(y => y.AttributeClass?.Name == attributeName));
 
     private bool IsExecuteNoQuery() => MethodSymbol.GetAttributes().Any(x => x.AttributeClass?.Name == "ExecuteNoQueryAttribute");
 
@@ -197,7 +204,7 @@ internal class MethodGenerationContext : GenerationContextBase
             return false;
         }
 
-        if (IsAsync())
+        if (IsAsync)
         {
             sb.AppendLine($"var {ResultName} = {cmdName}.ExecuteNonQuery();");
         }
@@ -215,7 +222,7 @@ internal class MethodGenerationContext : GenerationContextBase
     {
         var cancellationTokenName = CancellationTokenParameter?.Name ?? string.Empty;
 
-        if (IsAsync())
+        if (IsAsync)
         {
             sb.AppendLine($"var {ResultName} = await {cmdName}.ExecuteScalarAsync({cancellationTokenName});");
         }
@@ -241,7 +248,7 @@ internal class MethodGenerationContext : GenerationContextBase
 
         if (hasHandler || dbConnection != null)
         {
-            var executeMethod = IsAsync() ? $"await {CmdName}.ExecuteReaderAsync({CancellationTokenParameter?.Name ?? "default"})" : $"{CmdName}.ExecuteReader()";
+            var executeMethod = IsAsync ? $"await {CmdName}.ExecuteReaderAsync({CancellationTokenKey})" : $"{CmdName}.ExecuteReader()";
             sb.AppendLine($"using(global::System.Data.Common.DbDataReader {DbReaderName} = {executeMethod})");
             sb.AppendLine("{");
             sb.PushIndent();
@@ -312,15 +319,6 @@ internal class MethodGenerationContext : GenerationContextBase
             return true;
         }
 
-        var cancellationToken = CancellationTokenParameter?.Name ?? "default";
-
-        var (awaitBlock, callMethod) = (IsAsync(), DeclareReturnType == ReturnTypes.List) switch
-        {
-            (true, false) => ("await ", string.Empty),
-            (true, true) => ("await ", string.Empty),
-            (false, false) => (string.Empty, ".FirstOrDefault()"),
-            (false, true) => (string.Empty, ".ToList()"),
-        };
         var fromSqlRawMethod = "global::Microsoft.EntityFrameworkCore.RelationalQueryableExtensions.FromSqlRaw";
         var firstOrDefaultAsyncMethod = "global::Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.FirstOrDefaultAsync";
         var toListAsyncMethod = "global::Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync";
@@ -369,7 +367,7 @@ internal class MethodGenerationContext : GenerationContextBase
 
         if (DeclareReturnType == ReturnTypes.IEnumerable || DeclareReturnType == ReturnTypes.IAsyncEnumerable)
         {
-            sb.AppendLine($"{awaitBlock}foreach (var item in {queryCall}{convert})");
+            sb.AppendLine($"{AwaitKey}foreach (var item in {queryCall}{convert})");
             sb.AppendLine("{");
             sb.PushIndent();
             sb.AppendLine("yield return item;");
@@ -380,22 +378,23 @@ internal class MethodGenerationContext : GenerationContextBase
         else
         {
             queryCall += convert;
-            if (IsAsync())
+            if (IsAsync)
             {
                 if (DeclareReturnType != ReturnTypes.List)
                 {
-                    queryCall = $"{firstOrDefaultAsyncMethod}({queryCall}, {cancellationToken})";
+                    queryCall = $"{firstOrDefaultAsyncMethod}({queryCall}, {CancellationTokenKey})";
                 }
                 else
                 {
-                    queryCall = $"{toListAsyncMethod}({queryCall}, {cancellationToken})";
+                    queryCall = $"{toListAsyncMethod}({queryCall}, {CancellationTokenKey})";
                 }
 
-                sb.AppendLine($"var {ResultName} = {awaitBlock}{queryCall};");
+                sb.AppendLine($"var {ResultName} = {AwaitKey}{queryCall};");
             }
             else
             {
-                sb.AppendLine($"var {ResultName} = {awaitBlock}{queryCall}{callMethod};");
+                var callMethod = DeclareReturnType == ReturnTypes.List ? ".ToList()" : ".FirstOrDefault()";
+                sb.AppendLine($"var {ResultName} = {AwaitKey}{queryCall}{callMethod};");
             }
 
             WriteOutput(sb, columnDefines);
@@ -434,10 +433,9 @@ internal class MethodGenerationContext : GenerationContextBase
 
     private void WriteBeginReader(IndentedStringBuilder sb)
     {
-        if (IsAsync())
+        if (IsAsync)
         {
-            var cancellationToken = CancellationTokenParameter?.Name ?? "default";
-            sb.AppendLine($"while(await {DbReaderName}.ReadAsync({cancellationToken}))");
+            sb.AppendLine($"while(await {DbReaderName}.ReadAsync({CancellationTokenKey}))");
         }
         else
         {
@@ -491,7 +489,7 @@ internal class MethodGenerationContext : GenerationContextBase
                 && typeSymbol.TypeArguments[1].Name == "CancellationToken"
                 && (typeSymbol.TypeArguments[2].Name == "Task" || typeSymbol.TypeArguments[2].Name == "ValueTask"))
             {
-                return $"await {ReaderHandlerParameter.Name}({DbReaderName}, {CancellationTokenParameter?.Name ?? "default"});";
+                return $"await {ReaderHandlerParameter.Name}({DbReaderName}, {CancellationTokenKey});";
             }
 
             return null;
@@ -587,20 +585,14 @@ internal class MethodGenerationContext : GenerationContextBase
         return sqlAttr?.NamedArguments.FirstOrDefault(x => x.Key == "ParameterPrefix").Value.Value?.ToString() ?? "@";
     }
 
-    private bool IsAsync() => MethodSymbol.ReturnType.Name == "Task" || MethodSymbol.ReturnType.Name == "IAsyncEnumerable";
-
     private ReturnTypes GetReturnType()
     {
         if (ReturnType.SpecialType == SpecialType.System_Void) return ReturnTypes.Void;
         var actualType = ReturnType;
 
-        if (actualType.Name == "DbDataReader") return ReturnTypes.DbDataReader;
-        if (actualType.Name == "IDataRecord") return ReturnTypes.IDataRecord;
-        if (actualType.Name == "IDataReader") return ReturnTypes.IDataReader;
         if (actualType.Name == "IEnumerable") return ReturnTypes.IEnumerable;
         if (actualType.Name == "IAsyncEnumerable") return ReturnTypes.IAsyncEnumerable;
         if (actualType.Name == "List" || actualType.Name == "IList") return ReturnTypes.List;
-        if (IsTuple(actualType)) return ReturnTypes.Tuple;
         if (IsScalarType(actualType)) return ReturnTypes.Scalar;
         if (actualType.Name == "Dictionary"
             && actualType is INamedTypeSymbol symbol
@@ -629,12 +621,8 @@ internal enum ReturnTypes
 {
     Void = 0,
     Scalar = 1,
-    DbDataReader = 2,
-    IDataRecord = 3,
-    IDataReader = 4,
-    IEnumerable = 5,
-    IAsyncEnumerable = 6,
-    List = 7,
-    Tuple = 8,
-    DictionaryStringObject = 9,
+    IEnumerable = 2,
+    IAsyncEnumerable = 3,
+    List = 4,
+    DictionaryStringObject = 5,
 }

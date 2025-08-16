@@ -6,6 +6,7 @@
 
 namespace Sqlx.SqlGen
 {
+    using System.Diagnostics;
     using System.Linq;
     using System.Text.RegularExpressions;
     using Microsoft.CodeAnalysis;
@@ -14,13 +15,13 @@ namespace Sqlx.SqlGen
     {
         public static string GetColumnName(string name)
         {
-            return Regex.Replace(name, "[A-Z]", x => $"{x.Value.ToLower()}_").TrimEnd('_');
+            return Regex.Replace(name, "[A-Z]", x => $"_{x.Value.ToLower()}").TrimStart('_');
         }
     }
 
     internal sealed record InsertGenerateContext(MethodGenerationContext Context, string TableName, IParameterSymbol VisitorSymbol, ObjectMap Entry) : GenerateContext(Context)
     {
-        private string GetParamterName(string prefx, string name) => $"{prefx}p{name}";
+        private string GetParamterName(string prefx, string name) => $"{prefx}p{GetColumnName(name)}";
 
         public string GetParamterNames(string prefx) => string.Join(", ", Entry.Properties.Select(x => GetParamterName(prefx, x.Name)));
 

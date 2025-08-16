@@ -125,6 +125,8 @@ internal class MethodGenerationContext : GenerationContextBase
 
     private string MethodNameString => $"\"{MethodSymbol.Name}\"";
 
+    private bool ReturnIsEnumerable => ReturnType.Name == "IEnumerable" || ReturnType.Name == "IAsyncEnumerable";
+
     public bool DeclareCommand(IndentedStringBuilder sb)
     {
         var args = string.Join(", ", MethodSymbol.Parameters.Select(x =>
@@ -196,10 +198,13 @@ internal class MethodGenerationContext : GenerationContextBase
         }
 
         sb.AppendLine($"global::System.Int64 {StartTimeName} = {GetTimestampMethod};");
-        sb.AppendLine("try");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        sb.AppendLine($"{MethodExecuting}({MethodNameString}, {CmdName});");
+        if (!ReturnIsEnumerable)
+        {
+            sb.AppendLine("try");
+            sb.AppendLine("{");
+            sb.PushIndent();
+            sb.AppendLine($"{MethodExecuting}({MethodNameString}, {CmdName});");
+        }
 
         // Execute
         if (IsExecuteNoQuery())
@@ -216,17 +221,20 @@ internal class MethodGenerationContext : GenerationContextBase
             if (!succeed) return false;
         }
 
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.AppendLine("catch (global::System.Exception ex)");
-        sb.AppendLine("{");
-        sb.PushIndent();
+        if (!ReturnIsEnumerable)
+        {
+            sb.PopIndent();
+            sb.AppendLine("}");
+            sb.AppendLine("catch (global::System.Exception ex)");
+            sb.AppendLine("{");
+            sb.PushIndent();
 
-        sb.AppendLine($"{MethodExecuteFail}({MethodNameString}, {CmdName}, ex, {GetTimestampMethod} - {StartTimeName});");
-        sb.AppendLine("throw;");
+            sb.AppendLine($"{MethodExecuteFail}({MethodNameString}, {CmdName}, ex, {GetTimestampMethod} - {StartTimeName});");
+            sb.AppendLine("throw;");
 
-        sb.PopIndent();
-        sb.AppendLine("}");
+            sb.PopIndent();
+            sb.AppendLine("}");
+        }
 
         sb.PopIndent();
         sb.AppendLine("}");
@@ -268,7 +276,13 @@ internal class MethodGenerationContext : GenerationContextBase
         return true;
     }
 
-    private void WriteMethodExecuted(IndentedStringBuilder sb, string resultName) => sb.AppendLine($"{MethodExecuted}({MethodNameString}, {CmdName}, {resultName}, {GetTimestampMethod} - {StartTimeName});");
+    private void WriteMethodExecuted(IndentedStringBuilder sb, string resultName)
+    {
+        if (!ReturnIsEnumerable)
+        {
+            sb.AppendLine($"{MethodExecuted}({MethodNameString}, {CmdName}, {resultName}, {GetTimestampMethod} - {StartTimeName});");
+        }
+    }
 
     private void WriteScalar(IndentedStringBuilder sb, List<ColumnDefine> columnDefines)
     {
@@ -284,8 +298,34 @@ internal class MethodGenerationContext : GenerationContextBase
         }
 
         WriteOutput(sb, columnDefines);
-        WriteMethodExecuted(sb, ResultName);
-        sb.AppendLine($"return ({ReturnType.ToDisplayString()})global::System.Convert.ChangeType({ResultName}, typeof({ReturnType.ToDisplayString()}));");
+        if (!ReturnIsEnumerable)
+        {
+            WriteMethodExecuted(sb, ResultName);
+        }
+
+        if (ReturnType.Name == "Nullable")
+        {
+            sb.AppendLine("try");
+            sb.AppendLine("{");
+            sb.PushIndent();
+
+            WriteReturn();
+
+            sb.PopIndent();
+            sb.AppendLine("}");
+            sb.AppendLine("catch (global::System.InvalidCastException)");
+            sb.AppendLine("{");
+            sb.PushIndent();
+            sb.AppendLine("return default;");
+            sb.PopIndent();
+            sb.AppendLine("}");
+        }
+        else
+        {
+            WriteReturn();
+        }
+
+        void WriteReturn() => sb.AppendLine($"return ({ReturnType.ToDisplayString()})global::System.Convert.ChangeType({ResultName}, typeof({ReturnType.ToDisplayString()}));");
     }
 
     private bool WriteReturn(IndentedStringBuilder sb, List<ColumnDefine> columnDefines)

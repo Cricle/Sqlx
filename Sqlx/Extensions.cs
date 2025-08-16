@@ -76,7 +76,7 @@ internal static class Extensions
     internal static INamedTypeSymbol UnwrapNullableType(this INamedTypeSymbol namedTypeSymbol)
         => namedTypeSymbol.Name == "Nullable" ? (INamedTypeSymbol)namedTypeSymbol.TypeArguments[0] : namedTypeSymbol;
 
-    internal static bool IsScalarType(ITypeSymbol returnType)
+    internal static bool IsScalarType(this ITypeSymbol returnType)
     {
         return UnwrapNullableType(UnwrapTaskType(returnType)).SpecialType switch
         {
@@ -121,7 +121,7 @@ internal static class Extensions
     }
 
     internal static string GetParameterName(this ISymbol propertySymbol, string parameterPrefx)
-        => parameterPrefx + GetSqlName(propertySymbol);
+        => parameterPrefx + "p" + GetSqlName(propertySymbol);
 
     internal static string GetAccessibility(this Accessibility a)
     {

@@ -77,6 +77,8 @@ internal class ClassGenerationContext : GenerationContextBase
             sb.AppendLine();
         }
 
+        WriteInterceptMethods(sb);
+
         sb.PopIndent();
         sb.AppendLine("}");
 
@@ -112,5 +114,17 @@ internal class ClassGenerationContext : GenerationContextBase
         if (symbol == null) return null;
 
         return symbol.GetAttributes().FirstOrDefault(check);
+    }
+
+    private void WriteInterceptMethods(IndentedStringBuilder sb)
+    {
+        sb.AppendLine($"partial void {MethodGenerationContext.MethodExecuting}(global::System.String methodName, global::System.Data.Common.DbCommand command);");
+        sb.AppendLine();
+
+        sb.AppendLine($"partial void {MethodGenerationContext.MethodExecuted}(global::System.String methodName, global::System.Data.Common.DbCommand command, global::System.Object result, global::System.Int64 elpased);");
+        sb.AppendLine();
+
+        sb.AppendLine($"partial void {MethodGenerationContext.MethodExecuteFail}(global::System.String methodName, global::System.Data.Common.DbCommand command, global::System.Exception exception, global::System.Int64 elpased);");
+        sb.AppendLine();
     }
 }

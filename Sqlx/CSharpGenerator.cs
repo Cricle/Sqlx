@@ -28,6 +28,7 @@ public class CSharpGenerator : AbstractGenerator
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Sqlx.Annotations
 {
@@ -42,13 +43,15 @@ namespace Sqlx.Annotations
             => StoredProcedureName = name;
 
         public string StoredProcedureName { get; }
-
-        public string ParameterPrefix { get; set; } = ""@"";
     }
 
     [global::System.Diagnostics.Conditional(""DEBUG"")]
-    [global::System.AttributeUsage(global::System.AttributeTargets.Parameter, AllowMultiple = false)]
-    sealed class RawSqlAttribute : global::System.Attribute { }
+    [global::System.AttributeUsage(global::System.AttributeTargets.Parameter| global::System.AttributeTargets.Method, AllowMultiple = false)]
+    sealed class RawSqlAttribute : global::System.Attribute
+    {
+        public RawSqlAttribute() { }
+        public RawSqlAttribute(global::System.String sql) { }
+    }
 
     [global::System.Diagnostics.Conditional(""DEBUG"")]
     [global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = false)]
@@ -109,10 +112,10 @@ namespace Sqlx.Annotations
     {
         public SqlDefineAttribute(SqlDefineTypes type) { }
 
-        public SqlDefineAttribute(global::System.String ColumnLeft,
-                                  global::System.String ColumnRight,
-                                  global::System.String StringLeft,
-                                  global::System.String StringRight,
+        public SqlDefineAttribute(global::System.String columnLeft,
+                                  global::System.String columnRight,
+                                  global::System.String stringLeft,
+                                  global::System.String stringRight,
                                   global::System.String ParamterPrefx) { }
     }
 
@@ -121,7 +124,21 @@ namespace Sqlx.Annotations
         MySql = 0,
         SqlServer = 1,
         Postgresql = 2,
+    }
 
+    [global::System.Diagnostics.Conditional(""DEBUG"")]
+    [global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = false)]
+    sealed class SqlExecuteTypeAttribute : global::System.Attribute
+    {
+        public SqlExecuteTypeAttribute(SqlExecuteTypes Type, string TableName) { }
+    }
+
+    internal enum SqlExecuteTypes
+    {
+        Select = 0,
+        Update = 1,
+        Insert = 2,
+        Delete = 3,
     }
 }
 ";

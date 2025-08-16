@@ -8,9 +8,11 @@ namespace Sqlx;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Sqlx.SqlGen;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 using static Sqlx.Extensions;
 
@@ -20,6 +22,13 @@ internal class MethodGenerationContext : GenerationContextBase
     internal const string DbReaderName = "__reader__";
     internal const string ResultName = "__result__";
     internal const string DataName = "__data__";
+    internal const string StartTimeName = "__startTime__";
+
+    internal const string MethodExecuting = "OnExecuting";
+    internal const string MethodExecuted = "OnExecuted";
+    internal const string MethodExecuteFail = "OnExecuteFail";
+
+    internal const string GetTimestampMethod = "global::System.Diagnostics.Stopwatch.GetTimestamp()";
 
     internal MethodGenerationContext(ClassGenerationContext classGenerationContext, IMethodSymbol methodSymbol)
     {
@@ -27,7 +36,15 @@ internal class MethodGenerationContext : GenerationContextBase
         MethodSymbol = methodSymbol;
 
         CancellationTokenParameter = GetParameter(methodSymbol, x => x.Type.IsCancellationToken());
+
+        var rawSqlIsInParamter = true;
         RawSqlParameter = GetAttributeParamter(methodSymbol, "RawSqlAttribute");
+        if (RawSqlParameter == null && MethodSymbol.GetAttributes().Any(x => x.AttributeClass?.Name == "RawSqlAttribute"))
+        {
+            rawSqlIsInParamter = false;
+            RawSqlParameter = methodSymbol;
+        }
+
         TimeoutParameter = GetAttributeParamter(methodSymbol, "TimeoutAttribute");
         ReaderHandlerParameter = GetAttributeParamter(methodSymbol, "ReaderHandlerAttribute");
 
@@ -35,12 +52,12 @@ internal class MethodGenerationContext : GenerationContextBase
         RemoveIfExists(ref parameters, DbContext);
         RemoveIfExists(ref parameters, DbConnection);
         RemoveIfExists(ref parameters, TransactionParameter);
-        RemoveIfExists(ref parameters, RawSqlParameter);
+        if (rawSqlIsInParamter) RemoveIfExists(ref parameters, RawSqlParameter);
         RemoveIfExists(ref parameters, CancellationTokenParameter);
         RemoveIfExists(ref parameters, TimeoutParameter);
         SqlParameters = parameters;
         DeclareReturnType = GetReturnType();
-        CancellationTokenKey = CancellationTokenParameter?.Name ?? "default";
+        CancellationTokenKey = CancellationTokenParameter?.Name ?? "default(global::System.Threading.CancellationToken)";
         IsAsync = MethodSymbol.ReturnType.Name == "Task" || MethodSymbol.ReturnType.Name == "IAsyncEnumerable";
         SqlDef = GetSqlDefine();
         if (IsAsync)
@@ -70,7 +87,7 @@ internal class MethodGenerationContext : GenerationContextBase
     /// <summary>
     ///  Gets the SqlAttribute if the method paramters has.
     /// </summary>
-    internal IParameterSymbol? RawSqlParameter { get; }
+    internal ISymbol? RawSqlParameter { get; }
 
     /// <summary>
     ///  Gets the <see cref="System.Threading.CancellationToken"/> if the method paramters has.
@@ -105,6 +122,8 @@ internal class MethodGenerationContext : GenerationContextBase
     internal bool IsAsync { get; }
 
     private SqlDefine SqlDef { get; }
+
+    private string MethodNameString => $"\"{MethodSymbol.Name}\"";
 
     public bool DeclareCommand(IndentedStringBuilder sb)
     {
@@ -151,30 +170,63 @@ internal class MethodGenerationContext : GenerationContextBase
         sb.AppendLine();
 
         // Paramters
-        var parameterPrefx = GetParamterPrefx();
         var columnDefines = new List<ColumnDefine>();
         foreach (var item in SqlParameters)
         {
-            var parName = DeclareParamter(sb, item, parameterPrefx);
-            sb.AppendLine($"{CmdName}.Parameters.Add({parName.ParameterName});");
-            sb.AppendLine();
-            columnDefines.Add(parName);
+            var isScalarType = item.Type.IsScalarType();
+            if (isScalarType)
+            {
+                HandlerColumn(item, item.Type, string.Empty);
+            }
+            else
+            {
+                foreach (var deepMember in item.Type.GetMembers().OfType<IPropertySymbol>())
+                {
+                    HandlerColumn(deepMember, deepMember.Type, $"{item.Name}");
+                }
+            }
+
+            void HandlerColumn(ISymbol par, ITypeSymbol parType, string prefx)
+            {
+                var parName = DeclareParamter(sb, par, parType, prefx);
+                sb.AppendLine($"{CmdName}.Parameters.Add({parName.ParameterName});");
+                sb.AppendLine();
+                columnDefines.Add(parName);
+            }
         }
+
+        sb.AppendLine($"global::System.Int64 {StartTimeName} = {GetTimestampMethod};");
+        sb.AppendLine("try");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine($"{MethodExecuting}({MethodNameString}, {CmdName});");
 
         // Execute
         if (IsExecuteNoQuery())
         {
-            WriteExecuteNoQuery(sb, CmdName, columnDefines);
+            WriteExecuteNoQuery(sb, columnDefines);
         }
-        else if (IsScalarType(ReturnType))
+        else if (ReturnType.IsScalarType())
         {
-            WriteScalar(sb, CmdName, columnDefines);
+            WriteScalar(sb, columnDefines);
         }
         else
         {
             var succeed = WriteReturn(sb, columnDefines);
             if (!succeed) return false;
         }
+
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine("catch (global::System.Exception ex)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+
+        sb.AppendLine($"{MethodExecuteFail}({MethodNameString}, {CmdName}, ex, {GetTimestampMethod} - {StartTimeName});");
+        sb.AppendLine("throw;");
+
+        sb.PopIndent();
+        sb.AppendLine("}");
 
         sb.PopIndent();
         sb.AppendLine("}");
@@ -197,7 +249,7 @@ internal class MethodGenerationContext : GenerationContextBase
 
     private bool IsExecuteNoQuery() => MethodSymbol.GetAttributes().Any(x => x.AttributeClass?.Name == "ExecuteNoQueryAttribute");
 
-    private bool WriteExecuteNoQuery(IndentedStringBuilder sb, string cmdName, List<ColumnDefine> columnDefines)
+    private bool WriteExecuteNoQuery(IndentedStringBuilder sb, List<ColumnDefine> columnDefines)
     {
         if (!(ReturnType.SpecialType == SpecialType.System_Int32))
         {
@@ -206,29 +258,33 @@ internal class MethodGenerationContext : GenerationContextBase
         }
 
         if (IsAsync)
-            sb.AppendLine($"var {ResultName} = {cmdName}.ExecuteNonQuery();");
+            sb.AppendLine($"var {ResultName} = {CmdName}.ExecuteNonQuery();");
         else
-            sb.AppendLine($"var {ResultName} = await {cmdName}.ExecuteNonQueryAsync({CancellationTokenKey});");
+            sb.AppendLine($"var {ResultName} = await {CmdName}.ExecuteNonQueryAsync({CancellationTokenKey});");
 
         WriteOutput(sb, columnDefines);
+        WriteMethodExecuted(sb, ResultName);
         sb.AppendLine($"return {ResultName};");
         return true;
     }
 
-    private void WriteScalar(IndentedStringBuilder sb, string cmdName, List<ColumnDefine> columnDefines)
+    private void WriteMethodExecuted(IndentedStringBuilder sb, string resultName) => sb.AppendLine($"{MethodExecuted}({MethodNameString}, {CmdName}, {resultName}, {GetTimestampMethod} - {StartTimeName});");
+
+    private void WriteScalar(IndentedStringBuilder sb, List<ColumnDefine> columnDefines)
     {
         var cancellationTokenName = CancellationTokenParameter?.Name ?? string.Empty;
 
         if (IsAsync)
         {
-            sb.AppendLine($"var {ResultName} = await {cmdName}.ExecuteScalarAsync({cancellationTokenName});");
+            sb.AppendLine($"var {ResultName} = await {CmdName}.ExecuteScalarAsync({cancellationTokenName});");
         }
         else
         {
-            sb.AppendLine($"var {ResultName} = {cmdName}.ExecuteScalar();");
+            sb.AppendLine($"var {ResultName} = {CmdName}.ExecuteScalar();");
         }
 
         WriteOutput(sb, columnDefines);
+        WriteMethodExecuted(sb, ResultName);
         sb.AppendLine($"return ({ReturnType.ToDisplayString()})global::System.Convert.ChangeType({ResultName}, typeof({ReturnType.ToDisplayString()}));");
     }
 
@@ -259,7 +315,7 @@ internal class MethodGenerationContext : GenerationContextBase
                 if (isList) WriteDeclareReturnList(sb);
 
                 WriteBeginReader(sb);
-                if (IsScalarType(returnType))
+                if (returnType.IsScalarType())
                 {
                     if (isList)
                     {
@@ -294,6 +350,7 @@ internal class MethodGenerationContext : GenerationContextBase
 
                 WriteEndReader(sb);
                 WriteOutput(sb, columnDefines);
+                WriteMethodExecuted(sb, isList ? ResultName : "null");
 
                 if (isList)
                     sb.AppendLine($"return {ResultName};");
@@ -308,7 +365,10 @@ internal class MethodGenerationContext : GenerationContextBase
                 // List<T> or T
                 WriteDeclareObjectExpression(sb, returnType, isList ? ResultName : null, writeableProperties);
 
-                sb.AppendLine(isList ? $"return {ResultName};" : $"return {DataName};");
+                var selectName = isList ? ResultName : DataName;
+
+                WriteMethodExecuted(sb, selectName);
+                sb.AppendLine($"return {selectName};");
             }
 
             sb.PopIndent();
@@ -425,7 +485,7 @@ internal class MethodGenerationContext : GenerationContextBase
 
     private void WriteDeclareReturnList(IndentedStringBuilder sb)
     {
-        sb.AppendLine($"global::System.Collections.Generic.List<{ElementType.ToDisplayString()}> {ResultName} = new global::System.Collections.Generic.List<{ElementType.ToDisplayString()}>();");
+        sb.AppendLine($"global::System.Collections.Generic.List<{ElementType.ToDisplayString()}> {ResultName} = new global::System.Collections.Generic.List<{ElementType.ToDisplayString(NullableFlowState.None)}>();");
     }
 
     private void WriteBeginReader(IndentedStringBuilder sb)
@@ -456,7 +516,7 @@ internal class MethodGenerationContext : GenerationContextBase
         var expCall = IsTuple(symbol) ? string.Empty : " ()";
 
         // Declare class same as "xx data = new xx()".
-        sb.AppendLine($"{symbol.ToDisplayString()} {DataName} = {newExp} {symbol.ToDisplayString()}{expCall};");
+        sb.AppendLine($"{symbol.ToDisplayString()} {DataName} = {newExp} {symbol.ToDisplayString(NullableFlowState.None)}{expCall};");
 
         foreach (var item in properties)
         {
@@ -506,9 +566,9 @@ internal class MethodGenerationContext : GenerationContextBase
     {
         foreach (var item in columnDefines)
         {
-            if (item.Symbol.RefKind == RefKind.Ref || item.Symbol.RefKind == RefKind.Out)
+            if (item.Symbol is IParameterSymbol parSymbol && (parSymbol.RefKind == RefKind.Ref || parSymbol.RefKind == RefKind.Out))
             {
-                sb.AppendLine($"{item.Symbol.Name} = ({item.Symbol.Type.ToDisplayString()}){item.ParameterName};");
+                sb.AppendLine($"{item.Symbol.Name} = ({parSymbol.Type.ToDisplayString()}){item.ParameterName};");
             }
         }
     }
@@ -538,24 +598,27 @@ internal class MethodGenerationContext : GenerationContextBase
             methodDef.ConstructorArguments[4].ToString()!);
     }
 
-    private ColumnDefine DeclareParamter(IndentedStringBuilder sb, IParameterSymbol par, string parameterPrefx)
+    private ColumnDefine DeclareParamter(IndentedStringBuilder sb, ISymbol par, ITypeSymbol parType, string prefx)
     {
         var columnDefine = par.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "DbColumnAttribute");
 
-        var parName = par.GetParameterName(parameterPrefx);
-        var name = par.GetParameterName(parameterPrefx);
-        var dbType = par.Type.GetDbType();
+        var visitPath = string.IsNullOrEmpty(prefx) ? string.Empty : prefx + ".";
+        visitPath = visitPath.Replace(".", "?.");
+        var parNamePrefx = string.IsNullOrEmpty(prefx) ? string.Empty : prefx.Replace(".", "_");
+        var parName = par.GetParameterName(SqlDef.ParamterPrefx + parNamePrefx);
+        var name = par.GetParameterName(SqlDef.ParamterPrefx);
+        var dbType = parType.GetDbType();
 
         sb.AppendLine($"global::System.Data.Common.DbParameter {parName} = {CmdName}.CreateParameter();");
         sb.AppendLine($"{parName}.ParameterName = \"{name}\";");
         sb.AppendLine($"{parName}.DbType = {dbType};");
-        sb.AppendLine($"{parName}.Value = {par.Name};");
+        sb.AppendLine($"{parName}.Value = {visitPath}{par.Name};");
         WriteParamterSpecial(sb, par, parName, columnDefine?.NamedArguments.ToDictionary(x => x.Key, x => x.Value.Value!) ?? new Dictionary<string, object>());
 
         return new ColumnDefine(parName, par);
     }
 
-    private void WriteParamterSpecial(IndentedStringBuilder sb, IParameterSymbol par, string parName, Dictionary<string, object> map)
+    private void WriteParamterSpecial(IndentedStringBuilder sb, ISymbol par, string parName, Dictionary<string, object> map)
     {
         if (map.TryGetValue("Precision", out var precision))
             sb.AppendLine($"{parName}.Precision = {precision};");
@@ -567,21 +630,41 @@ internal class MethodGenerationContext : GenerationContextBase
         {
             sb.AppendLine($"{parName}.Direction = global::System.Data.{direction};");
         }
-        else if (par.RefKind == RefKind.Ref)
+        else if (par is IParameterSymbol parSymbol)
         {
-            sb.AppendLine($"{parName}.Direction = global::System.Data.InputOutput;");
-        }
-        else if (par.RefKind == RefKind.Out)
-        {
-            sb.AppendLine($"{parName}.Direction = global::System.Data.Output;");
+            if (parSymbol.RefKind == RefKind.Ref)
+            {
+                sb.AppendLine($"{parName}.Direction = global::System.Data.InputOutput;");
+            }
+            else if (parSymbol.RefKind == RefKind.Out)
+            {
+                sb.AppendLine($"{parName}.Direction = global::System.Data.Output;");
+            }
         }
     }
 
     private string? GetSql()
     {
-        if (RawSqlParameter != null) return RawSqlParameter.Name;
-        var sqlxAttr = MethodSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlAttribute");
-        return $"\"{sqlxAttr?.ConstructorArguments.FirstOrDefault().Value}\"";
+        if (RawSqlParameter != null)
+        {
+            var attr = RawSqlParameter.GetAttributes().First(x => x.AttributeClass?.Name == "RawSqlAttribute");
+            if (attr.ConstructorArguments.Length == 0)
+            {
+                return RawSqlParameter.Name;
+            }
+
+            return $"\"\"\"\n{attr.ConstructorArguments[0].Value?.ToString()}\n\"\"\"";
+        }
+
+        var sqlExeucteType = MethodSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlExecuteTypeAttribute");
+        if (sqlExeucteType != null && MethodSymbol.Parameters.Length == 1)
+        {
+            var type = (SqlExecuteTypes)Enum.Parse(typeof(SqlExecuteTypes), sqlExeucteType.ConstructorArguments[0].Value?.ToString());
+            var sql = new SqlGenerator().Generate(SqlDef, type, new InsertGenerateContext(this, sqlExeucteType.ConstructorArguments[1].Value?.ToString() ?? string.Empty, MethodSymbol.Parameters[0], new ObjectMap(MethodSymbol.Parameters[0])));
+            if (!string.IsNullOrEmpty(sql)) return $"\"{sql}\"";
+        }
+
+        return string.Empty;
     }
 
     private string? GetTimeoutExpression()
@@ -601,12 +684,6 @@ internal class MethodGenerationContext : GenerationContextBase
         return null;
     }
 
-    private string GetParamterPrefx()
-    {
-        var sqlAttr = MethodSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlAttribute");
-        return sqlAttr?.NamedArguments.FirstOrDefault(x => x.Key == "ParameterPrefix").Value.Value?.ToString() ?? "@";
-    }
-
     private ReturnTypes GetReturnType()
     {
         if (ReturnType.SpecialType == SpecialType.System_Void) return ReturnTypes.Void;
@@ -615,7 +692,7 @@ internal class MethodGenerationContext : GenerationContextBase
         if (actualType.Name == "IEnumerable") return ReturnTypes.IEnumerable;
         if (actualType.Name == "IAsyncEnumerable") return ReturnTypes.IAsyncEnumerable;
         if (actualType.Name == "List" || actualType.Name == "IList") return ReturnTypes.List;
-        if (IsScalarType(actualType)) return ReturnTypes.Scalar;
+        if (actualType.IsScalarType()) return ReturnTypes.Scalar;
         if (actualType.Name == "Dictionary"
             && actualType is INamedTypeSymbol symbol
             && symbol.IsGenericType
@@ -625,18 +702,7 @@ internal class MethodGenerationContext : GenerationContextBase
         return ReturnTypes.Void;
     }
 
-    private sealed record ColumnDefine(string ParameterName, IParameterSymbol Symbol);
-
-    private sealed record SqlDefine(string ColumnLeft, string ColumnRight, string StringLeft, string StringRight, string ParamterPrefx)
-    {
-        public static readonly SqlDefine MySql = new SqlDefine("`", "`", "'", "'", "@");
-        public static readonly SqlDefine SqlService = new SqlDefine("[", "]", "'", "'", "@");
-        public static readonly SqlDefine PgSql = new SqlDefine("\"", "\"", "'", "'", ":");
-
-        public string WrapString(string input) => $"{StringLeft}{input}{StringRight}";
-
-        public string WrapColumn(string input) => $"{ColumnLeft}{input}{ColumnRight}";
-    }
+    private sealed record ColumnDefine(string ParameterName, ISymbol Symbol);
 }
 
 internal enum ReturnTypes
@@ -647,4 +713,11 @@ internal enum ReturnTypes
     IAsyncEnumerable = 3,
     List = 4,
     DictionaryStringObject = 5,
+}
+
+internal enum SqlTypes
+{
+    MySql = 0,
+    SqlServer = 1,
+    Postgresql = 2,
 }

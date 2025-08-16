@@ -1,6 +1,6 @@
 ﻿// -----------------------------------------------------------------------
-// <copyright file="CSharpGenerator.cs" company="Andrii Kurdiumov">
-// Copyright (c) Andrii Kurdiumov. All rights reserved.
+// <copyright file="CSharpGenerator.cs" company="Cricle">
+// Copyright (c) Cricle. All rights reserved.
 // </copyright>
 // -----------------------------------------------------------------------
 
@@ -27,12 +27,13 @@ public class CSharpGenerator : AbstractGenerator
 
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
 
 namespace Sqlx.Annotations
 {
     [global::System.Diagnostics.Conditional(""DEBUG"")]
     [global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = true)]
-    internal sealed class SqlxAttribute : global::System.Attribute
+    sealed class SqlxAttribute : global::System.Attribute
     {
         public SqlxAttribute()
             => StoredProcedureName = string.Empty;
@@ -47,11 +48,11 @@ namespace Sqlx.Annotations
 
     [global::System.Diagnostics.Conditional(""DEBUG"")]
     [global::System.AttributeUsage(global::System.AttributeTargets.Parameter, AllowMultiple = false)]
-    internal sealed class RawSqlAttribute : global::System.Attribute { }
+    sealed class RawSqlAttribute : global::System.Attribute { }
 
     [global::System.Diagnostics.Conditional(""DEBUG"")]
     [global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = false)]
-    internal sealed class ExecuteNoQueryAttribute : global::System.Attribute { }
+    sealed class ExecuteNoQueryAttribute : global::System.Attribute { }
 
     [global::System.Diagnostics.Conditional(""DEBUG"")]
     [global::System.AttributeUsage(global::System.AttributeTargets.Method
@@ -60,7 +61,7 @@ namespace Sqlx.Annotations
         | global::System.AttributeTargets.Property
         | global::System.AttributeTargets.Method
         | global::System.AttributeTargets.Parameter, AllowMultiple = false)]
-    internal sealed class TimeoutAttribute : global::System.Attribute
+    sealed class TimeoutAttribute : global::System.Attribute
     {
         public TimeoutAttribute() { }
 
@@ -71,7 +72,7 @@ namespace Sqlx.Annotations
 
     [global::System.Diagnostics.Conditional(""DEBUG"")]
     [global::System.AttributeUsage(global::System.AttributeTargets.Parameter, AllowMultiple = false)]
-    internal sealed class DbColumnAttribute : global::System.Attribute
+    sealed class DbColumnAttribute : global::System.Attribute
     {
         public DbColumnAttribute() { }
 
@@ -85,16 +86,42 @@ namespace Sqlx.Annotations
         public global::System.Data.ParameterDirection Direction { get; }
     }
 
+    /// <summary>
+    /// Tag to paramter make it as <see cref=""Func{DbDataReader, Task}""/> or <see cref=""Action{DbDataReader}""/> for read data
+    /// </summary>
     [global::System.Diagnostics.Conditional(""DEBUG"")]
     [global::System.AttributeUsage(global::System.AttributeTargets.Parameter, AllowMultiple = false)]
-    internal sealed class ReaderHandlerAttribute : global::System.Attribute { }
+    sealed class ReaderHandlerAttribute : global::System.Attribute { }
 
     [global::System.Diagnostics.Conditional(""DEBUG"")]
-    [global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = false)]
+    [global::System.AttributeUsage(global::System.AttributeTargets.Parameter, AllowMultiple = false)]
     sealed class DbSetTypeAttribute : global::System.Attribute
     {
         public DbSetTypeAttribute(global::System.Type type) => Type = type;
+
+
         public global::System.Type Type { get; }
+    }
+
+    [global::System.Diagnostics.Conditional(""DEBUG"")]
+    [global::System.AttributeUsage(global::System.AttributeTargets.Method | global::System.AttributeTargets.Class, AllowMultiple = false)]
+    sealed class SqlDefineAttribute : global::System.Attribute
+    {
+        public SqlDefineAttribute(SqlDefineTypes type) { }
+
+        public SqlDefineAttribute(global::System.String ColumnLeft,
+                                  global::System.String ColumnRight,
+                                  global::System.String StringLeft,
+                                  global::System.String StringRight,
+                                  global::System.String ParamterPrefx) { }
+    }
+
+    enum SqlDefineTypes
+    {
+        MySql = 0,
+        SqlServer = 1,
+        Postgresql = 2,
+
     }
 }
 ";

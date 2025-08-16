@@ -4,7 +4,7 @@
   "settings": {
     "documentationRules": {
       "documentationCulture": "en-US",
-      "companyName": "Andrii Kurdiumov",
+      "companyName": "Cricle",
       "copyrightText": "Copyright (c) {companyName}. All rights reserved.",
       "headerDecoration": "-----------------------------------------------------------------------",
       "xmlHeader": true,

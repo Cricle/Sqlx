@@ -1,6 +1,6 @@
 ﻿// -----------------------------------------------------------------------
-// <copyright file="CancellationTokenTests.cs" company="Andrii Kurdiumov">
-// Copyright (c) Andrii Kurdiumov. All rights reserved.
+// <copyright file="CancellationTokenTests.cs" company="Cricle">
+// Copyright (c) Cricle. All rights reserved.
 // </copyright>
 // -----------------------------------------------------------------------
 

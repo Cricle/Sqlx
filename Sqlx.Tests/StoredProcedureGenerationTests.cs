@@ -1,6 +1,6 @@
 // -----------------------------------------------------------------------
-// <copyright file="StoredProcedureGenerationTests.cs" company="Andrii Kurdiumov">
-// Copyright (c) Andrii Kurdiumov. All rights reserved.
+// <copyright file="StoredProcedureGenerationTests.cs" company="Cricle">
+// Copyright (c) Cricle. All rights reserved.
 // </copyright>
 // -----------------------------------------------------------------------
 

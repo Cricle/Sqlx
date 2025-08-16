@@ -1,6 +1,6 @@
 ﻿// -----------------------------------------------------------------------
-// <copyright file="ClassGenerationContext.cs" company="Andrii Kurdiumov">
-// Copyright (c) Andrii Kurdiumov. All rights reserved.
+// <copyright file="ClassGenerationContext.cs" company="Cricle">
+// Copyright (c) Cricle. All rights reserved.
 // </copyright>
 // -----------------------------------------------------------------------
 
@@ -9,8 +9,6 @@ namespace Sqlx;
 using Microsoft.CodeAnalysis;
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Linq;
 
 internal class ClassGenerationContext : GenerationContextBase

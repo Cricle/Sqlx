@@ -1,14 +1,12 @@
 ﻿// -----------------------------------------------------------------------
-// <copyright file="PersonInformation.cs" company="Cricle">
+// <copyright file="IsExternalInit.cs" company="Cricle">
 // Copyright (c) Cricle. All rights reserved.
 // </copyright>
 // -----------------------------------------------------------------------
 
-namespace Sqlx.CompilationTests;
-
-internal class PersonInformation
+namespace System.Runtime.CompilerServices
 {
-    public int PersonId { get; set; }
-
-    public string? PersonName { get; set; }
+    internal abstract class IsExternalInit
+    {
+    }
 }

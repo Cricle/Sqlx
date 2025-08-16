@@ -1,6 +1,6 @@
 ﻿// -----------------------------------------------------------------------
-// <copyright file="JoinTransactionTests.cs" company="Andrii Kurdiumov">
-// Copyright (c) Andrii Kurdiumov. All rights reserved.
+// <copyright file="JoinTransactionTests.cs" company="Cricle">
+// Copyright (c) Cricle. All rights reserved.
 // </copyright>
 // -----------------------------------------------------------------------
 

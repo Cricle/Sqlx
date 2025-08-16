@@ -1,6 +1,6 @@
 ﻿// -----------------------------------------------------------------------
-// <copyright file="MethodGenerationContext.cs" company="Andrii Kurdiumov">
-// Copyright (c) Andrii Kurdiumov. All rights reserved.
+// <copyright file="MethodGenerationContext.cs" company="Cricle">
+// Copyright (c) Cricle. All rights reserved.
 // </copyright>
 // -----------------------------------------------------------------------
 
@@ -11,7 +11,6 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Linq;
 using static Sqlx.Extensions;
 
@@ -43,6 +42,7 @@ internal class MethodGenerationContext : GenerationContextBase
         DeclareReturnType = GetReturnType();
         CancellationTokenKey = CancellationTokenParameter?.Name ?? "default";
         IsAsync = MethodSymbol.ReturnType.Name == "Task" || MethodSymbol.ReturnType.Name == "IAsyncEnumerable";
+        SqlDef = GetSqlDefine();
         if (IsAsync)
         {
             AsyncKey = "async ";
@@ -103,6 +103,8 @@ internal class MethodGenerationContext : GenerationContextBase
     internal string CancellationTokenKey { get; }
 
     internal bool IsAsync { get; }
+
+    private SqlDefine SqlDef { get; }
 
     public bool DeclareCommand(IndentedStringBuilder sb)
     {
@@ -197,7 +199,6 @@ internal class MethodGenerationContext : GenerationContextBase
 
     private bool WriteExecuteNoQuery(IndentedStringBuilder sb, string cmdName, List<ColumnDefine> columnDefines)
     {
-        var cancellationTokenName = CancellationTokenParameter?.Name ?? string.Empty;
         if (!(ReturnType.SpecialType == SpecialType.System_Int32))
         {
             ClassGenerationContext.GeneratorExecutionContext.ReportDiagnostic(Diagnostic.Create(Messages.SP0008, MethodSymbol.Locations.FirstOrDefault()));
@@ -205,13 +206,9 @@ internal class MethodGenerationContext : GenerationContextBase
         }
 
         if (IsAsync)
-        {
             sb.AppendLine($"var {ResultName} = {cmdName}.ExecuteNonQuery();");
-        }
         else
-        {
-            sb.AppendLine($"var {ResultName} = await {cmdName}.ExecuteNonQueryAsync({cancellationTokenName});");
-        }
+            sb.AppendLine($"var {ResultName} = await {cmdName}.ExecuteNonQueryAsync({CancellationTokenKey});");
 
         WriteOutput(sb, columnDefines);
         sb.AppendLine($"return {ResultName};");
@@ -516,6 +513,31 @@ internal class MethodGenerationContext : GenerationContextBase
         }
     }
 
+    private SqlDefine GetSqlDefine()
+    {
+        var methodDef = MethodSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlDefineAttribute") ??
+            ClassGenerationContext.ClassSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlDefineAttribute");
+        if (methodDef == null) return SqlDefine.MySql;
+
+        if (methodDef.ConstructorArguments.Length == 1)
+        {
+            var define = (int)methodDef.ConstructorArguments[0].Value!;
+            return define switch
+            {
+                1 => SqlDefine.SqlService,
+                2 => SqlDefine.PgSql,
+                _ => SqlDefine.MySql,
+            };
+        }
+
+        return new SqlDefine(
+            methodDef.ConstructorArguments[0].ToString()!,
+            methodDef.ConstructorArguments[1].ToString()!,
+            methodDef.ConstructorArguments[2].ToString()!,
+            methodDef.ConstructorArguments[3].ToString()!,
+            methodDef.ConstructorArguments[4].ToString()!);
+    }
+
     private ColumnDefine DeclareParamter(IndentedStringBuilder sb, IParameterSymbol par, string parameterPrefx)
     {
         var columnDefine = par.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "DbColumnAttribute");
@@ -603,17 +625,17 @@ internal class MethodGenerationContext : GenerationContextBase
         return ReturnTypes.Void;
     }
 
-    private sealed class ColumnDefine
+    private sealed record ColumnDefine(string ParameterName, IParameterSymbol Symbol);
+
+    private sealed record SqlDefine(string ColumnLeft, string ColumnRight, string StringLeft, string StringRight, string ParamterPrefx)
     {
-        public ColumnDefine(string parameterName, IParameterSymbol symbol)
-        {
-            ParameterName = parameterName;
-            Symbol = symbol;
-        }
+        public static readonly SqlDefine MySql = new SqlDefine("`", "`", "'", "'", "@");
+        public static readonly SqlDefine SqlService = new SqlDefine("[", "]", "'", "'", "@");
+        public static readonly SqlDefine PgSql = new SqlDefine("\"", "\"", "'", "'", ":");
 
-        public string ParameterName { get; }
+        public string WrapString(string input) => $"{StringLeft}{input}{StringRight}";
 
-        public IParameterSymbol Symbol { get; }
+        public string WrapColumn(string input) => $"{ColumnLeft}{input}{ColumnRight}";
     }
 }
 

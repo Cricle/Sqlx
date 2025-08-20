@@ -14,10 +14,12 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
+using System.Text.RegularExpressions;
 using static Sqlx.Extensions;
 
 internal class MethodGenerationContext : GenerationContextBase
 {
+    internal const string DbConnectionName = "__conn__";
     internal const string CmdName = "__cmd__";
     internal const string DbReaderName = "__reader__";
     internal const string ResultName = "__result__";
@@ -46,7 +48,7 @@ internal class MethodGenerationContext : GenerationContextBase
         }
 
         TimeoutParameter = GetAttributeParamter(methodSymbol, "TimeoutAttribute");
-        ReaderHandlerParameter = GetAttributeParamter(methodSymbol, "ReaderHandlerAttribute");
+        ReaderHandlerParameter = GetAttributeParamter(methodSymbol, "ReadHandlerAttribute");
 
         var parameters = methodSymbol.Parameters;
         RemoveIfExists(ref parameters, DbContext);
@@ -151,7 +153,24 @@ internal class MethodGenerationContext : GenerationContextBase
 
         var dbConnectionExpression = dbConnection == null ? $"global::Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.GetDbConnection({dbContext!.Name}.Database)" : dbConnection.Name;
 
-        sb.AppendLine($"using(global::System.Data.Common.DbCommand {CmdName} = {dbConnectionExpression}.CreateCommand())");
+        sb.AppendLine($"global::System.Data.Common.DbConnection {DbConnectionName} = {dbConnectionExpression};");
+        sb.AppendLine($"if({DbConnectionName}.State != global::System.Data.ConnectionState.Open )");
+        sb.AppendLine("{");
+        sb.PushIndent();
+
+        if (IsAsync)
+        {
+            sb.AppendLine($"await {DbConnectionName}.OpenAsync({CancellationTokenKey});");
+        }
+        else
+        {
+            sb.AppendLine($"{DbConnectionName}.Open();");
+        }
+
+        sb.PopIndent();
+        sb.AppendLine("}");
+
+        sb.AppendLine($"using(global::System.Data.Common.DbCommand {CmdName} = {DbConnectionName}.CreateCommand())");
         sb.AppendLine("{");
         sb.PushIndent();
 
@@ -395,6 +414,24 @@ internal class MethodGenerationContext : GenerationContextBase
                 if (isList)
                     sb.AppendLine($"return {ResultName};");
             }
+            else if (DeclareReturnType == ReturnTypes.ListDictionaryStringObject)
+            {
+                var mapType = "global::System.Collections.Generic.Dictionary<global::System.String,global::System.Object?>";
+                var listType = $"global::System.Collections.Generic.List<{mapType}>";
+                sb.AppendLine($"{listType} {ResultName} = new {listType}();");
+                WriteBeginReader(sb);
+                sb.AppendLine($"{mapType} {DataName} = new {mapType}({DbReaderName}.FieldCount);");
+                sb.AppendLine($"for (int i = 0; i < {DbReaderName}.FieldCount; i++)");
+                sb.AppendLine("{");
+                sb.PushIndent();
+                sb.AppendLine($"{DataName}[{DbReaderName}.GetName(i)] = {DbReaderName}[i];");
+                sb.PopIndent();
+                sb.AppendLine("}");
+                sb.AppendLine($"{ResultName}.Add({DataName});");
+                WriteEndReader(sb);
+                WriteOutput(sb, columnDefines);
+                sb.AppendLine($"return {ResultName};");
+            }
             else
             {
                 var writeableProperties = GetPropertySymbols(returnType);
@@ -407,6 +444,7 @@ internal class MethodGenerationContext : GenerationContextBase
 
                 var selectName = isList ? ResultName : DataName;
 
+                WriteOutput(sb, columnDefines);
                 WriteMethodExecuted(sb, selectName);
                 sb.AppendLine($"return {selectName};");
             }
@@ -646,6 +684,7 @@ internal class MethodGenerationContext : GenerationContextBase
         visitPath = visitPath.Replace(".", "?.");
         var parNamePrefx = string.IsNullOrEmpty(prefx) ? string.Empty : prefx.Replace(".", "_");
         var parName = par.GetParameterName(SqlDef.ParamterPrefx + parNamePrefx);
+        parName = Regex.Replace(parName, "[^a-zA-Z0-9@_]", "_");
         var name = par.GetParameterName(SqlDef.ParamterPrefx);
         var dbType = parType.GetDbType();
 
@@ -668,17 +707,17 @@ internal class MethodGenerationContext : GenerationContextBase
             sb.AppendLine($"{parName}.Size = {size};");
         if (map.TryGetValue("Direction", out var direction))
         {
-            sb.AppendLine($"{parName}.Direction = global::System.Data.{direction};");
+            sb.AppendLine($"{parName}.Direction = global::System.Data.ParameterDirection.{direction};");
         }
         else if (par is IParameterSymbol parSymbol)
         {
             if (parSymbol.RefKind == RefKind.Ref)
             {
-                sb.AppendLine($"{parName}.Direction = global::System.Data.InputOutput;");
+                sb.AppendLine($"{parName}.Direction = global::System.Data.ParameterDirection.InputOutput;");
             }
             else if (parSymbol.RefKind == RefKind.Out)
             {
-                sb.AppendLine($"{parName}.Direction = global::System.Data.Output;");
+                sb.AppendLine($"{parName}.Direction = global::System.Data.ParameterDirection.Output;");
             }
         }
     }
@@ -731,14 +770,17 @@ internal class MethodGenerationContext : GenerationContextBase
 
         if (actualType.Name == "IEnumerable") return ReturnTypes.IEnumerable;
         if (actualType.Name == "IAsyncEnumerable") return ReturnTypes.IAsyncEnumerable;
-        if (actualType.Name == "List" || actualType.Name == "IList") return ReturnTypes.List;
-        if (actualType.IsScalarType()) return ReturnTypes.Scalar;
-        if (actualType.Name == "Dictionary"
+        if (actualType.Name == "List"
             && actualType is INamedTypeSymbol symbol
             && symbol.IsGenericType
-            && symbol.TypeParameters.Length == 2
-            && symbol.TypeParameters[0].Name == "String"
-            && symbol.TypeParameters[1].Name == "Object") return ReturnTypes.DictionaryStringObject;
+            && symbol.TypeParameters.Length == 1
+            && symbol.TypeArguments[0] is INamedTypeSymbol mapType
+            && mapType.IsGenericType
+            && mapType.TypeArguments.Length == 2
+            && mapType.TypeArguments[0].Name == "String"
+            && mapType.TypeArguments[1].Name == "Object") return ReturnTypes.ListDictionaryStringObject;
+        if (actualType.Name == "List" || actualType.Name == "IList") return ReturnTypes.List;
+        if (actualType.IsScalarType()) return ReturnTypes.Scalar;
         return ReturnTypes.Void;
     }
 
@@ -752,7 +794,7 @@ internal enum ReturnTypes
     IEnumerable = 2,
     IAsyncEnumerable = 3,
     List = 4,
-    DictionaryStringObject = 5,
+    ListDictionaryStringObject = 5,
 }
 
 internal enum SqlTypes

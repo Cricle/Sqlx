@@ -9,8 +9,10 @@ namespace Sqlx;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Text;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 /// <summary>
 /// Stored procedures generator for C#.
@@ -94,7 +96,7 @@ namespace Sqlx.Annotations
     /// </summary>
     [global::System.Diagnostics.Conditional(""DEBUG"")]
     [global::System.AttributeUsage(global::System.AttributeTargets.Parameter, AllowMultiple = false)]
-    sealed class ReaderHandlerAttribute : global::System.Attribute { }
+    sealed class ReadHandlerAttribute : global::System.Attribute { }
 
     [global::System.Diagnostics.Conditional(""DEBUG"")]
     [global::System.AttributeUsage(global::System.AttributeTargets.Parameter, AllowMultiple = false)]
@@ -148,7 +150,7 @@ namespace Sqlx.Annotations
     {
         context.RegisterForPostInitialization((pi) =>
         {
-            pi.AddSource("SqlxAttribute.g.cs", CSharpAttributeSource);
+            pi.AddSource("SqlxAttribute.g.cs", SourceText.From(CSharpAttributeSource, Encoding.UTF8));
         });
         context.RegisterForSyntaxNotifications(() => new SyntaxReceiver());
     }

@@ -121,7 +121,7 @@ internal static class Extensions
     }
 
     internal static string GetParameterName(this ISymbol propertySymbol, string parameterPrefx)
-        => parameterPrefx + "p" + GetSqlName(propertySymbol);
+        => parameterPrefx + GetSqlName(propertySymbol);
 
     internal static string GetAccessibility(this Accessibility a)
     {
@@ -193,7 +193,7 @@ internal static class Extensions
 
         if (isNullable)
         {
-            return $"{readerName}.IsDBNull(reader.GetOrdinal(0)) ? {readerName}.{method}({index}) : default";
+            return $"{readerName}.IsDBNull(reader.GetOrdinal(0)) ? default : {readerName}.{method}({index})";
         }
 
         return $"{readerName}.{method}({index})";

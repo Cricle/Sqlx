@@ -10,7 +10,7 @@ internal sealed record SqlDefine(string ColumnLeft, string ColumnRight, string S
 {
     public static readonly SqlDefine MySql = new SqlDefine("`", "`", "'", "'", "@");
     public static readonly SqlDefine SqlService = new SqlDefine("[", "]", "'", "'", "@");
-    public static readonly SqlDefine PgSql = new SqlDefine("\"", "\"", "'", "'", ":");
+    public static readonly SqlDefine PgSql = new SqlDefine("\\\"", "\\\"", "'", "'", "@");
 
     public string WrapString(string input) => $"{StringLeft}{input}{StringRight}";
 

@@ -44,7 +44,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             var ctx = new ClassGenerationContext(key, group.ToList(), attributeSymbol, context);
             var sb = new IndentedStringBuilder(string.Empty);
 
-            if (ctx.CreateSource(sb)) context.AddSource($"{key.ToDisplayString().Replace(".", "_")}.Sql.g.cs", SourceText.From(sb.ToString(), Encoding.UTF8));
+            if (ctx.CreateSource(sb)) context.AddSource($"{key.ToDisplayString().Replace(".", "_")}.Sql.g.cs", SourceText.From(sb.ToString().Trim(), Encoding.UTF8));
         }
     }
 }

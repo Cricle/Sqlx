@@ -21,7 +21,7 @@ namespace Sqlx.SqlGen
 
     internal sealed record InsertGenerateContext(MethodGenerationContext Context, string TableName, IParameterSymbol VisitorSymbol, ObjectMap Entry) : GenerateContext(Context)
     {
-        private string GetParamterName(string prefx, string name) => $"{prefx}p{GetColumnName(name)}";
+        private string GetParamterName(string prefx, string name) => $"{prefx}{GetColumnName(name)}";
 
         public string GetParamterNames(string prefx) => string.Join(", ", Entry.Properties.Select(x => GetParamterName(prefx, x.Name)));
 

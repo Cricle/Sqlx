@@ -24,40 +24,52 @@ internal sealed class IndentedStringBuilder
         builder = new StringBuilder(content);
     }
 
-    public void Append(string value)
+    public IndentedStringBuilder Append(string value)
     {
         WriteIndent();
         builder.Append(value);
+        return this;
     }
 
-    public void Append(char value)
+    public IndentedStringBuilder Append(char value)
     {
         WriteIndent();
         builder.Append(value);
+        return this;
     }
 
-    public void AppendLine()
+    public IndentedStringBuilder AppendLine()
     {
         builder.AppendLine();
+        return this;
     }
 
-    public void AppendLine(string value)
+    public IndentedStringBuilder AppendLineIf(bool condition, string trueValue, string falseValue)
+    {
+        AppendLine(condition ? trueValue : falseValue);
+        return this;
+    }
+
+    public IndentedStringBuilder AppendLine(string value)
     {
         WriteIndent();
         builder.AppendLine(value);
+        return this;
     }
 
-    public void PushIndent()
+    public IndentedStringBuilder PushIndent()
     {
         depthLevel++;
+        return this;
     }
 
-    public void PopIndent()
+    public IndentedStringBuilder PopIndent()
     {
         if (depthLevel == 0)
             throw new InvalidOperationException("Cannot pop at depthlevel 0");
 
         depthLevel--;
+        return this;
     }
 
     /// <inheritdoc/>

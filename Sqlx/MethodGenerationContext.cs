@@ -12,7 +12,6 @@ using Sqlx.SqlGen;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
 using static Sqlx.Extensions;
@@ -284,10 +283,7 @@ internal class MethodGenerationContext : GenerationContextBase
             return false;
         }
 
-        if (IsAsync)
-            sb.AppendLine($"var {ResultName} = {CmdName}.ExecuteNonQuery();");
-        else
-            sb.AppendLine($"var {ResultName} = await {CmdName}.ExecuteNonQueryAsync({CancellationTokenKey});");
+        sb.AppendLineIf(IsAsync, $"var {ResultName} = {CmdName}.ExecuteNonQuery();", $"var {ResultName} = await {CmdName}.ExecuteNonQueryAsync({CancellationTokenKey});");
 
         WriteOutput(sb, columnDefines);
         WriteMethodExecuted(sb, ResultName);
@@ -307,14 +303,7 @@ internal class MethodGenerationContext : GenerationContextBase
     {
         var cancellationTokenName = CancellationTokenParameter?.Name ?? string.Empty;
 
-        if (IsAsync)
-        {
-            sb.AppendLine($"var {ResultName} = await {CmdName}.ExecuteScalarAsync({cancellationTokenName});");
-        }
-        else
-        {
-            sb.AppendLine($"var {ResultName} = {CmdName}.ExecuteScalar();");
-        }
+        sb.AppendLineIf(IsAsync, $"var {ResultName} = await {CmdName}.ExecuteScalarAsync({cancellationTokenName});", $"var {ResultName} = {CmdName}.ExecuteScalar();");
 
         WriteOutput(sb, columnDefines);
         if (!ReturnIsEnumerable)
@@ -344,7 +333,11 @@ internal class MethodGenerationContext : GenerationContextBase
             WriteReturn();
         }
 
-        void WriteReturn() => sb.AppendLine($"return ({ReturnType.ToDisplayString()})global::System.Convert.ChangeType({ResultName}, typeof({ReturnType.ToDisplayString()}));");
+        void WriteReturn()
+        {
+            sb.AppendLine($"if({ResultName} == null) return default;");
+            sb.AppendLine($"return ({ReturnType.ToDisplayString()})global::System.Convert.ChangeType({ResultName}, typeof({ReturnType.UnwrapNullableType().ToDisplayString(NullableFlowState.NotNull)}));");
+        }
     }
 
     private bool WriteReturn(IndentedStringBuilder sb, List<ColumnDefine> columnDefines)
@@ -376,26 +369,12 @@ internal class MethodGenerationContext : GenerationContextBase
                 WriteBeginReader(sb);
                 if (returnType.IsScalarType())
                 {
-                    if (isList)
-                    {
-                        sb.AppendLine($"{ResultName}.Add({returnType.GetDataReadIndexExpression(DbReaderName, 0)});");
-                    }
-                    else
-                    {
-                        sb.AppendLine($"yield return {returnType.GetDataReadIndexExpression(DbReaderName, 0)};");
-                    }
+                    sb.AppendLineIf(isList, $"{ResultName}.Add({returnType.GetDataReadIndexExpression(DbReaderName, 0)});", $"yield return {returnType.GetDataReadIndexExpression(DbReaderName, 0)};");
                 }
                 else if (isTuple)
                 {
                     var tupleJoins = string.Join(", ", ((INamedTypeSymbol)returnType.UnwrapTaskType()).TypeArguments.Select((x, index) => x.GetDataReadIndexExpression(DbReaderName, index)));
-                    if (isList)
-                    {
-                        sb.AppendLine($"{ResultName}.Add(({tupleJoins}));");
-                    }
-                    else
-                    {
-                        sb.AppendLine($"yield return ({tupleJoins});");
-                    }
+                    sb.AppendLineIf(isList, $"{ResultName}.Add(({tupleJoins}));", $"yield return ({tupleJoins});");
                 }
                 else
                 {
@@ -438,6 +417,9 @@ internal class MethodGenerationContext : GenerationContextBase
 
                 var isList = DeclareReturnType == ReturnTypes.List;
                 if (isList) WriteDeclareReturnList(sb);
+
+                var readMethod = IsAsync ? $"ReadAsync({CancellationTokenKey})" : "Read()";
+                sb.AppendLine($"if(!{AwaitKey}{DbReaderName}.{readMethod}) return default;");
 
                 // List<T> or T
                 WriteDeclareObjectExpression(sb, returnType, isList ? ResultName : null, writeableProperties);
@@ -684,7 +666,7 @@ internal class MethodGenerationContext : GenerationContextBase
         visitPath = visitPath.Replace(".", "?.");
         var parNamePrefx = string.IsNullOrEmpty(prefx) ? string.Empty : prefx.Replace(".", "_");
         var parName = par.GetParameterName(SqlDef.ParamterPrefx + parNamePrefx);
-        parName = Regex.Replace(parName, "[^a-zA-Z0-9@_]", "_");
+        parName = Regex.Replace(parName, "[^a-zA-Z0-9@_]", "_") + "_p";
         var name = par.GetParameterName(SqlDef.ParamterPrefx);
         var dbType = parType.GetDbType();
 

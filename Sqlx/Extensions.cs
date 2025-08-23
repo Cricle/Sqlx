@@ -23,15 +23,9 @@ internal static class Extensions
         return requireParameterNullCheck;
     }
 
-    internal static bool IsDbConnection(this ISymbol typeSymbol)
-    {
-        return IsTypes(typeSymbol, x => x.Name == "DbConnection");
-    }
+    internal static bool IsDbConnection(this ISymbol typeSymbol) => IsTypes(typeSymbol, x => x.Name == "DbConnection");
 
-    internal static bool IsDbTransaction(this ISymbol typeSymbol)
-    {
-        return IsTypes(typeSymbol, x => x.Name == "DbTransaction");
-    }
+    internal static bool IsDbTransaction(this ISymbol typeSymbol) => IsTypes(typeSymbol, x => x.Name == "DbTransaction");
 
     internal static bool IsTypes(ISymbol typeSymbol, Func<ITypeSymbol, bool> check)
     {
@@ -50,10 +44,7 @@ internal static class Extensions
             while (type != null)
             {
                 if (type.Name == "DbContext")
-                {
                     return true;
-                }
-
                 type = type.BaseType;
             }
 
@@ -61,10 +52,7 @@ internal static class Extensions
         });
     }
 
-    internal static bool IsCancellationToken(this ISymbol typeSymbol)
-    {
-        return typeSymbol.Name == "CancellationToken";
-    }
+    internal static bool IsCancellationToken(this ISymbol typeSymbol) => typeSymbol.Name == "CancellationToken";
 
     internal static ITypeSymbol UnwrapTaskType(this ITypeSymbol type) => UnwrapType(type, "Task");
 
@@ -108,13 +96,9 @@ internal static class Extensions
     internal static string GetSqlName(this ISymbol propertySymbol)
     {
         var attribute = propertySymbol.GetAttributes().FirstOrDefault(attribute => attribute.AttributeClass?.Name == "DbColumnAttribute");
-        if (attribute != null)
+        if (attribute != null && attribute.ConstructorArguments.FirstOrDefault().Value is string name)
         {
-            var overrideName = attribute.ConstructorArguments.FirstOrDefault().Value as string;
-            if (overrideName is not null)
-            {
-                return overrideName;
-            }
+            return name;
         }
 
         return NameMapper.MapName(propertySymbol.Name);
@@ -188,15 +172,10 @@ internal static class Extensions
 
     internal static string GetDataReadIndexExpression(this ITypeSymbol type, string readerName, int index)
     {
-        var isNullable = UnwrapNullableType(type) != type;
         var method = GetDataReaderMethod(type);
-
-        if (isNullable)
-        {
-            return $"{readerName}.IsDBNull(reader.GetOrdinal(0)) ? default : {readerName}.{method}({index})";
-        }
-
-        return $"{readerName}.{method}({index})";
+        return UnwrapNullableType(type) != type
+            ? $"{readerName}.IsDBNull(reader.GetOrdinal(0)) ? default : {readerName}.{method}({index})"
+            : $"{readerName}.{method}({index})";
     }
 
     internal static string GetDataReadExpression(this ITypeSymbol type, string readerName, string columnName)
@@ -208,7 +187,7 @@ internal static class Extensions
         {
             if (unwrapType.IsValueType || unwrapType.SpecialType == SpecialType.System_String || type.Name == "Guid")
             {
-                return $"{readerName}.IsDBNull({readerName}.GetOrdinal(\"{columnName}\")) ? {readerName}.{method}({readerName}.GetOrdinal(\"{columnName}\")) : default";
+                return $"{readerName}.IsDBNull({readerName}.GetOrdinal(\"{columnName}\")) ? default : {readerName}.{method}({readerName}.GetOrdinal(\"{columnName}\"))";
             }
 
             return $"{readerName}.{method}({readerName}.GetOrdinal(\"{columnName}\"))";

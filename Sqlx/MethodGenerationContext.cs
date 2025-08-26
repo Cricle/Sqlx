@@ -59,18 +59,10 @@ internal class MethodGenerationContext : GenerationContextBase
         SqlParameters = parameters;
         DeclareReturnType = GetReturnType();
         CancellationTokenKey = CancellationTokenParameter?.Name ?? "default(global::System.Threading.CancellationToken)";
-        IsAsync = MethodSymbol.ReturnType.Name == "Task" || MethodSymbol.ReturnType.Name == "IAsyncEnumerable";
+        IsAsync = MethodSymbol.ReturnType.Name == "Task" || MethodSymbol.ReturnType.Name == Consts.IAsyncEnumerable;
         SqlDef = GetSqlDefine();
-        if (IsAsync)
-        {
-            AsyncKey = "async ";
-            AwaitKey = "await ";
-        }
-        else
-        {
-            AsyncKey = string.Empty;
-            AwaitKey = string.Empty;
-        }
+        AsyncKey = IsAsync ? "async " : string.Empty;
+        AwaitKey = IsAsync ? "await " : string.Empty;
     }
 
     internal IMethodSymbol MethodSymbol { get; }
@@ -79,11 +71,11 @@ internal class MethodGenerationContext : GenerationContextBase
 
     internal ClassGenerationContext ClassGenerationContext { get; }
 
-    internal override ISymbol? DbConnection => GetParameter(MethodSymbol, x => x.Type.IsDbConnection());
+    internal override ISymbol? DbConnection => GetParameter(MethodSymbol, x => x.Type.IsDbConnection()) ?? ClassGenerationContext.DbContext;
 
-    internal override ISymbol? DbContext => GetParameter(MethodSymbol, x => x.Type.IsDbContext());
+    internal override ISymbol? DbContext => GetParameter(MethodSymbol, x => x.Type.IsDbContext()) ?? ClassGenerationContext.DbContext;
 
-    internal override ISymbol? TransactionParameter => GetParameter(MethodSymbol, x => x.Type.IsDbTransaction());
+    internal override ISymbol? TransactionParameter => GetParameter(MethodSymbol, x => x.Type.IsDbTransaction()) ?? ClassGenerationContext.TransactionParameter;
 
     /// <summary>
     ///  Gets the SqlAttribute if the method paramters has.
@@ -126,7 +118,7 @@ internal class MethodGenerationContext : GenerationContextBase
 
     private string MethodNameString => $"\"{MethodSymbol.Name}\"";
 
-    private bool ReturnIsEnumerable => ReturnType.Name == "IEnumerable" || ReturnType.Name == "IAsyncEnumerable";
+    private bool ReturnIsEnumerable => ReturnType.Name == "IEnumerable" || ReturnType.Name == Consts.IAsyncEnumerable;
 
     public bool DeclareCommand(IndentedStringBuilder sb)
     {
@@ -142,15 +134,15 @@ internal class MethodGenerationContext : GenerationContextBase
         sb.AppendLine("{");
         sb.PushIndent();
 
-        var dbContext = DbContext ?? ClassGenerationContext.DbContext;
-        var dbConnection = DbConnection ?? ClassGenerationContext.DbConnection;
+        var dbContext = DbContext;
+        var dbConnection = DbConnection;
         if (dbContext == null && dbConnection == null)
         {
             ClassGenerationContext.GeneratorExecutionContext.ReportDiagnostic(Diagnostic.Create(Messages.SP0006, MethodSymbol.Locations[0]));
             return false;
         }
 
-        var dbConnectionExpression = dbConnection == null ? $"global::Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.GetDbConnection({dbContext!.Name}.Database)" : dbConnection.Name;
+        var dbConnectionExpression = dbConnection == null ? $"global::Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.GetDbConnection({DbContext!.Name}.Database)" : dbConnection.Name;
 
         sb.AppendLine($"global::System.Data.Common.DbConnection {DbConnectionName} = {dbConnectionExpression};");
         sb.AppendLine($"if({DbConnectionName}.State != global::System.Data.ConnectionState.Open )");
@@ -342,8 +334,7 @@ internal class MethodGenerationContext : GenerationContextBase
 
     private bool WriteReturn(IndentedStringBuilder sb, List<ColumnDefine> columnDefines)
     {
-        var dbContext = DbContext ?? ClassGenerationContext.DbContext;
-        var dbConnection = DbConnection ?? ClassGenerationContext.DbConnection;
+        var dbConnection = DbConnection;
 
         var handler = GetHandlerInvoke();
         var hasHandler = !string.IsNullOrEmpty(handler);
@@ -442,12 +433,9 @@ internal class MethodGenerationContext : GenerationContextBase
 
         ISymbol setSymbol = ElementType;
 
-        if (GetDbSetElement(out var dbSetEle))
-        {
-            setSymbol = dbSetEle!;
-        }
+        if (GetDbSetElement(out var dbSetEle)) setSymbol = dbSetEle!;
 
-        var queryCall = $"{fromSqlRawMethod}({dbContext!.Name}.Set<{setSymbol.ToDisplayString()}>(),{CmdName}.CommandText, {CmdName}.Parameters.OfType<global::System.Object>().ToArray())";
+        var queryCall = $"{fromSqlRawMethod}({DbContext!.Name}.Set<{setSymbol.ToDisplayString()}>(),{CmdName}.CommandText, {CmdName}.Parameters.OfType<global::System.Object>().ToArray())";
 
         var convert = string.Empty;
         if (!SymbolEqualityComparer.Default.Equals(ElementType, setSymbol) && setSymbol is INamedTypeSymbol setNameTypeSymbol)
@@ -721,7 +709,7 @@ internal class MethodGenerationContext : GenerationContextBase
         if (sqlExeucteType != null && MethodSymbol.Parameters.Length == 1)
         {
             var type = (SqlExecuteTypes)Enum.Parse(typeof(SqlExecuteTypes), sqlExeucteType.ConstructorArguments[0].Value?.ToString());
-            var sql = new SqlGenerator().Generate(SqlDef, type, new InsertGenerateContext(this, sqlExeucteType.ConstructorArguments[1].Value?.ToString() ?? string.Empty, MethodSymbol.Parameters[0], new ObjectMap(MethodSymbol.Parameters[0])));
+            var sql = new SqlGenerator().Generate(SqlDef, type, new InsertGenerateContext(this, sqlExeucteType.ConstructorArguments[1].Value?.ToString() ?? string.Empty, new ObjectMap(MethodSymbol.Parameters[0])));
             if (!string.IsNullOrEmpty(sql)) return $"\"{sql}\"";
         }
 
@@ -751,7 +739,7 @@ internal class MethodGenerationContext : GenerationContextBase
         var actualType = ReturnType;
 
         if (actualType.Name == "IEnumerable") return ReturnTypes.IEnumerable;
-        if (actualType.Name == "IAsyncEnumerable") return ReturnTypes.IAsyncEnumerable;
+        if (actualType.Name == Consts.IAsyncEnumerable) return ReturnTypes.IAsyncEnumerable;
         if (actualType.Name == "List"
             && actualType is INamedTypeSymbol symbol
             && symbol.IsGenericType

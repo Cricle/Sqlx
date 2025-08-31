@@ -3,13 +3,20 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.2.32414.248
 MinimumVisualStudioVersion = 15.0.26124.0
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sqlx", "Sqlx\Sqlx.csproj", "{4A276620-5BE8-4C19-B6A4-D09F85D3EFE2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sqlx", "src\Sqlx\Sqlx.csproj", "{4A276620-5BE8-4C19-B6A4-D09F85D3EFE2}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sqlx.Tests", "Sqlx.Tests\Sqlx.Tests.csproj", "{64973327-8AE6-4F9E-867E-BA391274A852}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{B8F42F0A-4D1C-4B5E-9C4E-5F7B8A6E9C4D}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sqlx.Tests", "tests\Sqlx.Tests\Sqlx.Tests.csproj", "{64973327-8AE6-4F9E-867E-BA391274A852}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Samples", "Samples", "{C9E4D7B2-6F3A-4B5E-8C7D-5F8E9A1B2C4D}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sqlx.CompilationTests", "samples\CompilationTests\Sqlx.CompilationTests.csproj", "{578C09C1-9CBA-42BC-9CF3-AB9B0FEAA6D2}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{1C28AF7C-60F4-4329-A19B-EA77B2246581}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
+		.gitignore = .gitignore
 		Directory.Build.props = Directory.Build.props
 		Directory.Packages.props = Directory.Packages.props
 		License.txt = License.txt
@@ -18,7 +25,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		stylecop.json = stylecop.json
 	EndProjectSection
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sqlx.CompilationTests", "Sqlx.CompilationTests\Sqlx.CompilationTests.csproj", "{578C09C1-9CBA-42BC-9CF3-AB9B0FEAA6D2}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tools", "Tools", "{91441283-7573-4C48-AA67-F79CA62A36F5}"
+	ProjectSection(SolutionItems) = preProject
+		tools\push-nuget.ps1 = tools\push-nuget.ps1
+		tools\push-nuget.sh = tools\push-nuget.sh
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentation", "{AECA725D-8681-4A09-9927-32E2265E2F53}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -61,14 +74,15 @@ Global
 		{578C09C1-9CBA-42BC-9CF3-AB9B0FEAA6D2}.Debug|x86.ActiveCfg = Debug|Any CPU
 		{578C09C1-9CBA-42BC-9CF3-AB9B0FEAA6D2}.Debug|x86.Build.0 = Debug|Any CPU
 		{578C09C1-9CBA-42BC-9CF3-AB9B0FEAA6D2}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{578C09C1-9CBA-42BC-9CF3-AB9B0FEAA6D2}.Release|Any CPU.Build.0 = Release|Any CPU
 		{578C09C1-9CBA-42BC-9CF3-AB9B0FEAA6D2}.Release|x64.ActiveCfg = Release|Any CPU
-		{578C09C1-9CBA-42BC-9CF3-AB9B0FEAA6D2}.Release|x64.Build.0 = Release|Any CPU
 		{578C09C1-9CBA-42BC-9CF3-AB9B0FEAA6D2}.Release|x86.ActiveCfg = Release|Any CPU
-		{578C09C1-9CBA-42BC-9CF3-AB9B0FEAA6D2}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{64973327-8AE6-4F9E-867E-BA391274A852} = {B8F42F0A-4D1C-4B5E-9C4E-5F7B8A6E9C4D}
+		{578C09C1-9CBA-42BC-9CF3-AB9B0FEAA6D2} = {C9E4D7B2-6F3A-4B5E-8C7D-5F8E9A1B2C4D}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {E18E939C-FD52-4D7F-8232-5E7BE9DF8EBF}

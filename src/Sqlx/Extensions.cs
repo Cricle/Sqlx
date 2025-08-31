@@ -12,15 +12,22 @@ using System.Linq;
 
 internal static class Extensions
 {
-    public static bool CanHaveNullValue(this ITypeSymbol typeSymbol, bool hasNullableAnnotations)
+    public static bool CanHaveNullValue(this ITypeSymbol typeSymbol)
     {
         if (typeSymbol.NullableAnnotation == NullableAnnotation.Annotated)
         {
             return true;
         }
 
-        var requireParameterNullCheck = !hasNullableAnnotations && !typeSymbol.IsValueType;
-        return requireParameterNullCheck;
+        // Reference types can have null values unless they're non-nullable in a nullable context
+        return !typeSymbol.IsValueType || typeSymbol.NullableAnnotation == NullableAnnotation.Annotated;
+    }
+
+    internal static bool IsNullableType(this ITypeSymbol type)
+    {
+        return type.NullableAnnotation == NullableAnnotation.Annotated ||
+               (type is INamedTypeSymbol namedType && namedType.IsGenericType &&
+                namedType.ConstructedFrom.SpecialType == SpecialType.System_Nullable_T);
     }
 
     internal static bool IsDbConnection(this ISymbol typeSymbol) => IsTypes(typeSymbol, x => x.Name == "DbConnection");
@@ -107,6 +114,9 @@ internal static class Extensions
     internal static string GetParameterName(this ISymbol propertySymbol, string parameterPrefx)
         => parameterPrefx + GetSqlName(propertySymbol);
 
+    internal static string GetParameterName(this ITypeSymbol typeSymbol, string baseName)
+        => "@" + baseName.Replace("_", string.Empty); // Generate valid C# identifier
+
     internal static string GetAccessibility(this Accessibility a)
     {
         return a switch
@@ -178,19 +188,63 @@ internal static class Extensions
             : $"{readerName}.{method}({index})";
     }
 
-    internal static string GetDataReadExpression(this ITypeSymbol type, string readerName, string columnName)
+    internal static string GetDataReadExpression(this ITypeSymbol type, string readerName, string columnIndex, bool isNullable)
     {
-        var unwrapType = UnwrapNullableType(type);
         var method = GetDataReaderMethod(type);
 
         if (!string.IsNullOrEmpty(method))
         {
-            if (unwrapType.IsValueType || unwrapType.SpecialType == SpecialType.System_String || type.Name == "Guid")
+            if (isNullable || type.SpecialType == SpecialType.System_String)
             {
-                return $"{readerName}.IsDBNull({readerName}.GetOrdinal(\"{columnName}\")) ? default : {readerName}.{method}({readerName}.GetOrdinal(\"{columnName}\"))";
+                // For nullable types, check for DBNull
+                return $"{readerName}.IsDBNull({columnIndex}) ? null : {readerName}.{method}({columnIndex})";
+            }
+            else
+            {
+                // For non-nullable types, direct access
+                return $"{readerName}.{method}({columnIndex})";
+            }
+        }
+
+        throw new NotSupportedException($"No support type {type.Name}");
+    }
+
+    internal static string GetDataReadExpression(this ITypeSymbol type, string readerName, string columnName)
+    {
+        var unwrapType = UnwrapNullableType(type);
+        var method = GetDataReaderMethod(type);
+        var isNullable = IsNullableType(type);
+        var ordinalExpression = $"{readerName}.GetOrdinal(\"{columnName}\")";
+
+        if (!string.IsNullOrEmpty(method))
+        {
+            // For nullable types or nullable reference types, check for DBNull
+            if (isNullable || unwrapType.IsValueType || unwrapType.SpecialType == SpecialType.System_String || type.Name == "Guid")
+            {
+                // For nullable value types and strings, return proper null handling
+                if (unwrapType.SpecialType == SpecialType.System_String)
+                {
+                    // String special case: can be null or empty string
+                    return $"{readerName}.IsDBNull({ordinalExpression}) ? null : {readerName}.{method}({ordinalExpression})";
+                }
+                else if (isNullable && unwrapType.IsValueType)
+                {
+                    // Nullable value types: return null if DBNull
+                    return $"{readerName}.IsDBNull({ordinalExpression}) ? null : {readerName}.{method}({ordinalExpression})";
+                }
+                else if (unwrapType.IsValueType)
+                {
+                    // Non-nullable value types: return default if DBNull
+                    return $"{readerName}.IsDBNull({ordinalExpression}) ? default : {readerName}.{method}({ordinalExpression})";
+                }
+                else
+                {
+                    // Reference types: return null if DBNull
+                    return $"{readerName}.IsDBNull({ordinalExpression}) ? null : {readerName}.{method}({ordinalExpression})";
+                }
             }
 
-            return $"{readerName}.{method}({readerName}.GetOrdinal(\"{columnName}\"))";
+            return $"{readerName}.{method}({ordinalExpression})";
         }
 
         throw new NotSupportedException($"No support type {type.Name}");

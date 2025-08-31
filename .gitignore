@@ -4,3 +4,4 @@ bin/
 obj/
 *.user
 BenchmarkDotNet.Artifacts/
+/tests/Sqlx.Tests/TestResults

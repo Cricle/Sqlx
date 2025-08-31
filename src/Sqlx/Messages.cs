@@ -12,6 +12,8 @@ namespace Sqlx
     {
         public static DiagnosticDescriptor SP0001 { get; } = new DiagnosticDescriptor("SP0001", "No stored procedure attribute", "Internal analyzer error.", "Internal", DiagnosticSeverity.Error, true);
 
+        public static DiagnosticDescriptor SP0002 { get; } = new DiagnosticDescriptor("SP0002", "Invalid method signature", "Method signature is not supported for code generation.", "Sqlx", DiagnosticSeverity.Error, true);
+
         public static DiagnosticDescriptor SP0003 { get; } = new DiagnosticDescriptor("SP0003", "Id property cannot be guessed", "Cannot find id property for entity type {0}.", "Sqlx", DiagnosticSeverity.Error, true);
 
         public static DiagnosticDescriptor SP0004 { get; } = new DiagnosticDescriptor("SP0004", "Entity property corresponding to parameter cannot be guessed", "Cannot find property in entity type {0} corresponding to parameter {1}.", "Sqlx", DiagnosticSeverity.Error, true);

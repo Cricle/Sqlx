@@ -39,23 +39,38 @@ internal class MethodGenerationContext : GenerationContextBase
         CancellationTokenParameter = GetParameter(methodSymbol, x => x.Type.IsCancellationToken());
 
         var rawSqlIsInParamter = true;
-        RawSqlParameter = GetAttributeParamter(methodSymbol, "RawSqlAttribute");
-        if (RawSqlParameter == null && MethodSymbol.GetAttributes().Any(x => x.AttributeClass?.Name == "RawSqlAttribute"))
+        var rawSqlShouldRemoveFromParams = false;
+        var rawSqlParam = GetAttributeParamter(methodSymbol, "RawSqlAttribute");
+        if (rawSqlParam != null)
+        {
+            RawSqlParameter = rawSqlParam;
+
+            // Check if RawSql has a constructor argument (pre-defined SQL)
+            var attr = rawSqlParam.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "RawSqlAttribute");
+            rawSqlShouldRemoveFromParams = attr?.ConstructorArguments.Length > 0;
+        }
+        else if (MethodSymbol.GetAttributes().Any(x => x.AttributeClass?.Name == "RawSqlAttribute"))
         {
             rawSqlIsInParamter = false;
             RawSqlParameter = methodSymbol;
         }
+        else
+        {
+            RawSqlParameter = null;
+        }
 
         TimeoutParameter = GetAttributeParamter(methodSymbol, "TimeoutAttribute");
         ReaderHandlerParameter = GetAttributeParamter(methodSymbol, "ReadHandlerAttribute");
+        ExpressionToSqlParameter = GetAttributeParamter(methodSymbol, "ExpressionToSqlAttribute");
 
         var parameters = methodSymbol.Parameters;
         RemoveIfExists(ref parameters, DbContext);
         RemoveIfExists(ref parameters, DbConnection);
         RemoveIfExists(ref parameters, TransactionParameter);
-        if (rawSqlIsInParamter) RemoveIfExists(ref parameters, RawSqlParameter);
+        if (rawSqlIsInParamter && rawSqlShouldRemoveFromParams) RemoveIfExists(ref parameters, RawSqlParameter);
         RemoveIfExists(ref parameters, CancellationTokenParameter);
         RemoveIfExists(ref parameters, TimeoutParameter);
+        RemoveIfExists(ref parameters, ExpressionToSqlParameter);
         SqlParameters = parameters;
         DeclareReturnType = GetReturnType();
         CancellationTokenKey = CancellationTokenParameter?.Name ?? "default(global::System.Threading.CancellationToken)";
@@ -71,7 +86,7 @@ internal class MethodGenerationContext : GenerationContextBase
 
     internal ClassGenerationContext ClassGenerationContext { get; }
 
-    internal override ISymbol? DbConnection => GetParameter(MethodSymbol, x => x.Type.IsDbConnection()) ?? ClassGenerationContext.DbContext;
+    internal override ISymbol? DbConnection => GetParameter(MethodSymbol, x => x.Type.IsDbConnection()) ?? ClassGenerationContext.DbConnection;
 
     internal override ISymbol? DbContext => GetParameter(MethodSymbol, x => x.Type.IsDbContext()) ?? ClassGenerationContext.DbContext;
 
@@ -96,6 +111,11 @@ internal class MethodGenerationContext : GenerationContextBase
     /// Gets the DbReaderHandler.
     /// </summary>
     internal IParameterSymbol? ReaderHandlerParameter { get; }
+
+    /// <summary>
+    /// Gets the ExpressionToSql parameter for LINQ expression processing.
+    /// </summary>
+    internal IParameterSymbol? ExpressionToSqlParameter { get; }
 
     /// <summary>
     /// Gets the method paramters remove the extars.
@@ -144,8 +164,8 @@ internal class MethodGenerationContext : GenerationContextBase
 
         var dbConnectionExpression = dbConnection == null ? $"global::Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.GetDbConnection({DbContext!.Name}.Database)" : dbConnection.Name;
 
-        sb.AppendLine($"global::System.Data.Common.DbConnection {DbConnectionName} = {dbConnectionExpression};");
-        sb.AppendLine($"if({DbConnectionName}.State != global::System.Data.ConnectionState.Open )");
+        sb.AppendLine($"global::System.Data.Common.DbConnection {DbConnectionName} = {dbConnectionExpression} ?? throw new global::System.ArgumentNullException(\"{dbConnectionExpression}\");");
+        sb.AppendLine($"if({DbConnectionName}.State != global::System.Data.ConnectionState.Open)");
         sb.AppendLine("{");
         sb.PushIndent();
 
@@ -178,7 +198,23 @@ internal class MethodGenerationContext : GenerationContextBase
             return false;
         }
 
-        sb.AppendLine($"{CmdName}.CommandText = {sql};");
+        // Handle ExpressionToSql parameters if present
+        if (ExpressionToSqlParameter != null)
+        {
+            sb.AppendLine($"var __template__ = {ExpressionToSqlParameter.Name}.ToTemplate();");
+            sb.AppendLine($"{CmdName}.CommandText = __template__.Sql;");
+            sb.AppendLine($"foreach(var __param__ in __template__.Parameters)");
+            sb.AppendLine("{");
+            sb.PushIndent();
+            sb.AppendLine($"{CmdName}.Parameters.Add(__param__);");
+            sb.PopIndent();
+            sb.AppendLine("}");
+        }
+        else
+        {
+            sb.AppendLine($"{CmdName}.CommandText = {sql};");
+        }
+
         sb.AppendLine();
 
         // Paramters
@@ -256,7 +292,10 @@ internal class MethodGenerationContext : GenerationContextBase
 
     private static void RemoveIfExists(ref ImmutableArray<IParameterSymbol> pars, ISymbol? symbol)
     {
-        if (symbol != null) pars = pars.Remove((IParameterSymbol)symbol);
+        if (symbol is IParameterSymbol parameter)
+        {
+            pars = pars.Remove(parameter);
+        }
     }
 
     private static ISymbol? GetParameter(IMethodSymbol methodSymbol, Func<IParameterSymbol, bool> check)
@@ -327,7 +366,18 @@ internal class MethodGenerationContext : GenerationContextBase
 
         void WriteReturn()
         {
-            sb.AppendLine($"if({ResultName} == null) return default;");
+            var canReturnNull = ReturnType.IsNullableType() ||
+                              (!ReturnType.IsValueType && ReturnType.NullableAnnotation == NullableAnnotation.Annotated);
+
+            if (canReturnNull)
+            {
+                sb.AppendLine($"if({ResultName} == null) return default;");
+            }
+            else
+            {
+                sb.AppendLine($"if({ResultName} == null) throw new global::System.InvalidOperationException(\"Sequence contains no elements\");");
+            }
+
             sb.AppendLine($"return ({ReturnType.ToDisplayString()})global::System.Convert.ChangeType({ResultName}, typeof({ReturnType.UnwrapNullableType().ToDisplayString(NullableFlowState.NotNull)}));");
         }
     }
@@ -369,8 +419,7 @@ internal class MethodGenerationContext : GenerationContextBase
                 }
                 else
                 {
-                    var writeableProperties = GetPropertySymbols(returnType);
-                    WriteDeclareObjectExpression(sb, returnType, isList ? ResultName : null, writeableProperties);
+                    WriteDeclareObjectExpression(sb, returnType, isList ? ResultName : null, GetPropertySymbols(returnType));
                     if (!isList)
                     {
                         sb.AppendLine($"yield return {DataName};");
@@ -410,7 +459,21 @@ internal class MethodGenerationContext : GenerationContextBase
                 if (isList) WriteDeclareReturnList(sb);
 
                 var readMethod = IsAsync ? $"ReadAsync({CancellationTokenKey})" : "Read()";
-                sb.AppendLine($"if(!{AwaitKey}{DbReaderName}.{readMethod}) return default;");
+
+                // Check if return type allows null
+                var canReturnNull = ReturnType.IsNullableType() ||
+                                  (!ReturnType.IsValueType && ReturnType.NullableAnnotation == NullableAnnotation.Annotated);
+
+                if (canReturnNull)
+                {
+                    sb.AppendLine($"if(!{AwaitKey}{DbReaderName}.{readMethod}) return default;");
+                }
+                else
+                {
+                    sb.AppendLine($"if(!{AwaitKey}{DbReaderName}.{readMethod}) throw new global::System.InvalidOperationException(\"Sequence contains no elements\");");
+                }
+
+                sb.AppendLine();
 
                 // List<T> or T
                 WriteDeclareObjectExpression(sb, returnType, isList ? ResultName : null, writeableProperties);
@@ -427,14 +490,11 @@ internal class MethodGenerationContext : GenerationContextBase
             return true;
         }
 
-        var fromSqlRawMethod = "global::Microsoft.EntityFrameworkCore.RelationalQueryableExtensions.FromSqlRaw";
-        var firstOrDefaultAsyncMethod = "global::Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.FirstOrDefaultAsync";
-        var toListAsyncMethod = "global::Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync";
-
         ISymbol setSymbol = ElementType;
 
         if (GetDbSetElement(out var dbSetEle)) setSymbol = dbSetEle!;
 
+        var fromSqlRawMethod = "global::Microsoft.EntityFrameworkCore.RelationalQueryableExtensions.FromSqlRaw";
         var queryCall = $"{fromSqlRawMethod}({DbContext!.Name}.Set<{setSymbol.ToDisplayString()}>(),{CmdName}.CommandText, {CmdName}.Parameters.OfType<global::System.Object>().ToArray())";
 
         var convert = string.Empty;
@@ -487,11 +547,11 @@ internal class MethodGenerationContext : GenerationContextBase
             {
                 if (DeclareReturnType != ReturnTypes.List)
                 {
-                    queryCall = $"{firstOrDefaultAsyncMethod}({queryCall}, {CancellationTokenKey})";
+                    queryCall = $"global::Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.FirstOrDefaultAsync({queryCall}, {CancellationTokenKey})";
                 }
                 else
                 {
-                    queryCall = $"{toListAsyncMethod}({queryCall}, {CancellationTokenKey})";
+                    queryCall = $"global::Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync({queryCall}, {CancellationTokenKey})";
                 }
 
                 sb.AppendLine($"var {ResultName} = {AwaitKey}{queryCall};");
@@ -503,7 +563,26 @@ internal class MethodGenerationContext : GenerationContextBase
             }
 
             WriteOutput(sb, columnDefines);
-            sb.AppendLine($"return {ResultName};");
+
+            // Check if return type allows null for EF Core queries
+            if (DeclareReturnType != ReturnTypes.List)
+            {
+                var canReturnNull = ReturnType.IsNullableType() ||
+                                  (!ReturnType.IsValueType && ReturnType.NullableAnnotation == NullableAnnotation.Annotated);
+
+                if (!canReturnNull)
+                {
+                    sb.AppendLine($"return {ResultName} ?? throw new global::System.InvalidOperationException(\"Sequence contains no elements\");");
+                }
+                else
+                {
+                    sb.AppendLine($"return {ResultName};");
+                }
+            }
+            else
+            {
+                sb.AppendLine($"return {ResultName};");
+            }
         }
 
         return true;
@@ -696,13 +775,37 @@ internal class MethodGenerationContext : GenerationContextBase
     {
         if (RawSqlParameter != null)
         {
-            var attr = RawSqlParameter.GetAttributes().First(x => x.AttributeClass?.Name == "RawSqlAttribute");
-            if (attr.ConstructorArguments.Length == 0)
+            var attr = RawSqlParameter.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "RawSqlAttribute");
+            if (attr != null)
             {
-                return RawSqlParameter.Name;
-            }
+                if (attr.ConstructorArguments.Length == 0)
+                {
+                    return RawSqlParameter.Name;
+                }
 
-            return $"\"\"\"\n{attr.ConstructorArguments[0].Value?.ToString()}\n\"\"\"";
+                return $"\"\"\"\n{attr.ConstructorArguments[0].Value?.ToString()}\n\"\"\"";
+            }
+        }
+
+        // Also check for ExpressionToSql parameter
+        if (ExpressionToSqlParameter != null)
+        {
+            // For ExpressionToSql, we handle this separately in DeclareCommand
+            return "\"\""; // placeholder, will be overridden
+        }
+
+        // Check for SqlxAttribute (stored procedure)
+        var sqlxAttr = MethodSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlxAttribute");
+        if (sqlxAttr != null)
+        {
+            var procedureName = sqlxAttr.ConstructorArguments.Length > 0
+                ? sqlxAttr.ConstructorArguments[0].Value?.ToString()
+                : MethodSymbol.Name;
+
+            if (!string.IsNullOrEmpty(procedureName))
+            {
+                return $"\"EXEC {procedureName}\"";
+            }
         }
 
         var sqlExeucteType = MethodSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlExecuteTypeAttribute");

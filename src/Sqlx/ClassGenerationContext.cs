@@ -53,7 +53,7 @@ internal class ClassGenerationContext : GenerationContextBase
 // </auto-generated>");
 
         sb.AppendLine("#nullable enable");
-        sb.AppendLine("#pragma warning disable CS8605, CS8603, CS8634");
+        sb.AppendLine("#pragma warning disable CS8618, CS8625, CS8629");
         sb.AppendLine();
         sb.AppendLine("using System.Linq;");
         sb.AppendLine();
@@ -118,13 +118,15 @@ internal class ClassGenerationContext : GenerationContextBase
 
     private void WriteInterceptMethods(IndentedStringBuilder sb)
     {
-        sb.AppendLine($"partial void {MethodGenerationContext.MethodExecuting}(global::System.String methodName, global::System.Data.Common.DbCommand command);");
+        var staticKeyword = ClassSymbol.IsStatic ? "static " : string.Empty;
+
+        sb.AppendLine($"{staticKeyword}partial void {MethodGenerationContext.MethodExecuting}(global::System.String methodName, global::System.Data.Common.DbCommand command);");
         sb.AppendLine();
 
-        sb.AppendLine($"partial void {MethodGenerationContext.MethodExecuted}(global::System.String methodName, global::System.Data.Common.DbCommand command, global::System.Object result, global::System.Int64 elpased);");
+        sb.AppendLine($"{staticKeyword}partial void {MethodGenerationContext.MethodExecuted}(global::System.String methodName, global::System.Data.Common.DbCommand command, global::System.Object? result, global::System.Int64 elpased);");
         sb.AppendLine();
 
-        sb.AppendLine($"partial void {MethodGenerationContext.MethodExecuteFail}(global::System.String methodName, global::System.Data.Common.DbCommand command, global::System.Exception exception, global::System.Int64 elpased);");
+        sb.AppendLine($"{staticKeyword}partial void {MethodGenerationContext.MethodExecuteFail}(global::System.String methodName, global::System.Data.Common.DbCommand command, global::System.Exception exception, global::System.Int64 elpased);");
         sb.AppendLine();
     }
 }

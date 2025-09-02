@@ -6,11 +6,12 @@
 
 namespace Sqlx.Tests;
 
-using System.Linq;
 using System.Reflection;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
+using System.Linq;
 
 /// <summary>
 /// Tests for Extensions utility methods.

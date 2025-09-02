@@ -8,6 +8,7 @@ namespace Sqlx.Tests;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.Linq;
 
 /// <summary>
 /// Unit tests for the IndentedStringBuilder class.

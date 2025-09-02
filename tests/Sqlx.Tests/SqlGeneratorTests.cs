@@ -7,6 +7,11 @@
 namespace Sqlx.Tests;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Sqlx;
+using Sqlx.SqlGen;
+using Moq;
+using System;
+using System.Linq;
 
 /// <summary>
 /// Unit tests for SQL generation functionality.
@@ -1062,5 +1067,13 @@ public class SqlGeneratorTests
         Assert.AreEqual("Update", updateResult);
         Assert.AreEqual("Insert", insertResult);
         Assert.AreEqual("Delete", deleteResult);
+    }
+
+    private InsertGenerateContext CreateTestContext()
+    {
+        // Create a mock IParameterSymbol for testing
+        var mockSymbol = new Mock<IParameterSymbol>();
+        var objectMap = new ObjectMap(mockSymbol.Object);
+        return new InsertGenerateContext(new MethodGenerationContext(), "test_table", objectMap);
     }
 }

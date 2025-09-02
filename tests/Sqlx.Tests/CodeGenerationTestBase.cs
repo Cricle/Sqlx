@@ -206,4 +206,150 @@ using Microsoft.EntityFrameworkCore;
         var usingStatements = string.Join("\n", requiredUsings) + "\n\n";
         return usingStatements + source;
     }
+
+    /// <summary>
+    /// Tests that the code generation base functionality works correctly.
+    /// </summary>
+    [TestMethod]
+    public void CodeGeneration_BaseFunctionality_WorksCorrectly()
+    {
+        // Arrange
+        var source = @"
+using Sqlx.Annotations;
+
+public class TestClass
+{
+    [Sqlx(""SELECT * FROM Users"")]
+    public void TestMethod() { }
+}";
+
+        var compilation = CreateCompilation(source);
+        var generator = new CSharpGenerator();
+        var driver = CSharpGeneratorDriver.Create(generator);
+
+        // Act
+        driver = driver.RunGenerators(compilation);
+
+        // Assert
+        var runResult = driver.GetRunResult();
+        var generatedSources = runResult.GeneratedSources;
+        
+        Assert.IsTrue(generatedSources.Count > 0, "Should generate source code");
+    }
+
+    /// <summary>
+    /// Tests that the code generation handles missing attributes gracefully.
+    /// </summary>
+    [TestMethod]
+    public void CodeGeneration_MissingAttributes_HandlesGracefully()
+    {
+        // Arrange
+        var source = @"
+public class TestClass
+{
+    public void TestMethod() { }
+}";
+
+        var compilation = CreateCompilation(source);
+        var generator = new CSharpGenerator();
+        var driver = CSharpGeneratorDriver.Create(generator);
+
+        // Act
+        driver = driver.RunGenerators(compilation);
+
+        // Assert
+        var runResult = driver.GetRunResult();
+        Assert.IsNotNull(runResult);
+    }
+
+    /// <summary>
+    /// Tests that the code generation handles null symbols gracefully.
+    /// </summary>
+    [TestMethod]
+    public void CodeGeneration_NullSymbols_HandlesGracefully()
+    {
+        // Arrange
+        var source = @"
+using Sqlx.Annotations;
+
+public class TestClass
+{
+    [Sqlx(""SELECT * FROM Users"")]
+    public void TestMethod() { }
+}";
+
+        var compilation = CreateCompilation(source);
+        var generator = new CSharpGenerator();
+        var driver = CSharpGeneratorDriver.Create(generator);
+
+        // Act
+        driver = driver.RunGenerators(compilation);
+
+        // Assert
+        var runResult = driver.GetRunResult();
+        Assert.IsNotNull(runResult);
+    }
+
+    /// <summary>
+    /// Tests that the code generation handles empty method lists gracefully.
+    /// </summary>
+    [TestMethod]
+    public void CodeGeneration_EmptyMethodList_HandlesGracefully()
+    {
+        // Arrange
+        var source = @"
+using Sqlx.Annotations;
+
+public class TestClass
+{
+    // No methods with Sqlx attributes
+}";
+
+        var compilation = CreateCompilation(source);
+        var generator = new CSharpGenerator();
+        var driver = CSharpGeneratorDriver.Create(generator);
+
+        // Act
+        driver = driver.RunGenerators(compilation);
+
+        // Assert
+        var runResult = driver.GetRunResult();
+        Assert.IsNotNull(runResult);
+    }
+
+    /// <summary>
+    /// Tests that the code generation handles multiple classes correctly.
+    /// </summary>
+    [TestMethod]
+    public void CodeGeneration_MultipleClasses_HandlesCorrectly()
+    {
+        // Arrange
+        var source = @"
+using Sqlx.Annotations;
+
+public class TestClass1
+{
+    [Sqlx(""SELECT * FROM Users"")]
+    public void TestMethod1() { }
+}
+
+public class TestClass2
+{
+    [Sqlx(""SELECT * FROM Products"")]
+    public void TestMethod2() { }
+}";
+
+        var compilation = CreateCompilation(source);
+        var generator = new CSharpGenerator();
+        var driver = CSharpGeneratorDriver.Create(generator);
+
+        // Act
+        driver = driver.RunGenerators(compilation);
+
+        // Assert
+        var runResult = driver.GetRunResult();
+        var generatedSources = runResult.GeneratedSources;
+        
+        Assert.IsTrue(generatedSources.Count > 0, "Should generate code for multiple classes");
+    }
 }

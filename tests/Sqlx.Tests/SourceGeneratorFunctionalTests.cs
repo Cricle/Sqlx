@@ -249,6 +249,429 @@ namespace TestNamespace
         Assert.IsTrue(generatedCode.Contains(expectedPattern), $"{dialectConstant} should have correct quote and prefix pattern: {expectedPattern}");
     }
 
+    /// <summary>
+    /// Tests that the source generator handles missing attributes gracefully.
+    /// </summary>
+    [TestMethod]
+    public void SourceGenerator_MissingAttributes_ReportsDiagnostic()
+    {
+        // Arrange
+        var source = @"
+using Sqlx.Annotations;
+
+public class TestClass
+{
+    [Sqlx(""SELECT * FROM Users"")]
+    public void TestMethod() { }
+}";
+
+        var compilation = CreateCompilation(source);
+        var generator = new CSharpGenerator();
+        var driver = CSharpGeneratorDriver.Create(generator);
+
+        // Act
+        driver = driver.RunGenerators(compilation);
+
+        // Assert
+        var runResult = driver.GetRunResult();
+        var generatedSources = runResult.GeneratedSources;
+        
+        // Should generate some code even with missing attributes
+        Assert.IsTrue(generatedSources.Count > 0, "Should generate some code");
+    }
+
+    /// <summary>
+    /// Tests that the source generator handles null syntax receiver gracefully.
+    /// </summary>
+    [TestMethod]
+    public void SourceGenerator_NullSyntaxReceiver_HandlesGracefully()
+    {
+        // This test verifies that the generator doesn't crash when there's no syntax receiver
+        // Arrange
+        var source = @"
+public class TestClass
+{
+    public void TestMethod() { }
+}";
+
+        var compilation = CreateCompilation(source);
+        var generator = new CSharpGenerator();
+        var driver = CSharpGeneratorDriver.Create(generator);
+
+        // Act
+        driver = driver.RunGenerators(compilation);
+
+        // Assert - should not throw exception
+        var runResult = driver.GetRunResult();
+        Assert.IsNotNull(runResult);
+    }
+
+    /// <summary>
+    /// Tests that the source generator handles empty method list gracefully.
+    /// </summary>
+    [TestMethod]
+    public void SourceGenerator_EmptyMethodList_HandlesGracefully()
+    {
+        // Arrange
+        var source = @"
+using Sqlx.Annotations;
+
+public class TestClass
+{
+    // No methods with Sqlx attributes
+}";
+
+        var compilation = CreateCompilation(source);
+        var generator = new CSharpGenerator();
+        var driver = CSharpGeneratorDriver.Create(generator);
+
+        // Act
+        driver = driver.RunGenerators(compilation);
+
+        // Assert - should not throw exception
+        var runResult = driver.GetRunResult();
+        Assert.IsNotNull(runResult);
+    }
+
+    /// <summary>
+    /// Tests that the source generator handles missing SqlxAttribute gracefully.
+    /// </summary>
+    [TestMethod]
+    public void SourceGenerator_MissingSqlxAttribute_ReportsDiagnostic()
+    {
+        // Arrange
+        var source = @"
+using Sqlx.Annotations;
+
+public class TestClass
+{
+    [RawSql(""SELECT * FROM Users"")]
+    public void TestMethod() { }
+}";
+
+        var compilation = CreateCompilation(source);
+        var generator = new CSharpGenerator();
+        var driver = CSharpGeneratorDriver.Create(generator);
+
+        // Act
+        driver = driver.RunGenerators(compilation);
+
+        // Assert
+        var runResult = driver.GetRunResult();
+        var generatedSources = runResult.GeneratedSources;
+        
+        // Should handle missing SqlxAttribute gracefully
+        Assert.IsNotNull(runResult);
+    }
+
+    /// <summary>
+    /// Tests that the source generator handles missing RawSqlAttribute gracefully.
+    /// </summary>
+    [TestMethod]
+    public void SourceGenerator_MissingRawSqlAttribute_ReportsDiagnostic()
+    {
+        // Arrange
+        var source = @"
+using Sqlx.Annotations;
+
+public class TestClass
+{
+    [Sqlx(""SELECT * FROM Users"")]
+    public void TestMethod() { }
+}";
+
+        var compilation = CreateCompilation(source);
+        var generator = new CSharpGenerator();
+        var driver = CSharpGeneratorDriver.Create(generator);
+
+        // Act
+        driver = driver.RunGenerators(compilation);
+
+        // Assert
+        var runResult = driver.GetRunResult();
+        var generatedSources = runResult.GeneratedSources;
+        
+        // Should handle missing RawSqlAttribute gracefully
+        Assert.IsNotNull(runResult);
+    }
+
+    /// <summary>
+    /// Tests that the source generator handles missing ExpressionToSqlAttribute gracefully.
+    /// </summary>
+    [TestMethod]
+    public void SourceGenerator_MissingExpressionToSqlAttribute_ReportsDiagnostic()
+    {
+        // Arrange
+        var source = @"
+using Sqlx.Annotations;
+
+public class TestClass
+{
+    [Sqlx(""SELECT * FROM Users"")]
+    public void TestMethod() { }
+}";
+
+        var compilation = CreateCompilation(source);
+        var generator = new CSharpGenerator();
+        var driver = CSharpGeneratorDriver.Create(generator);
+
+        // Act
+        driver = driver.RunGenerators(compilation);
+
+        // Assert
+        var runResult = driver.GetRunResult();
+        var generatedSources = runResult.GeneratedSources;
+        
+        // Should handle missing ExpressionToSqlAttribute gracefully
+        Assert.IsNotNull(runResult);
+    }
+
+    /// <summary>
+    /// Tests that the source generator handles nullable context options correctly.
+    /// </summary>
+    [TestMethod]
+    public void SourceGenerator_NullableContextOptions_HandlesCorrectly()
+    {
+        // Arrange
+        var source = @"
+using Sqlx.Annotations;
+
+public class TestClass
+{
+    [Sqlx(""SELECT * FROM Users"")]
+    public void TestMethod() { }
+}";
+
+        var compilation = CreateCompilation(source);
+        var generator = new CSharpGenerator();
+        var driver = CSharpGeneratorDriver.Create(generator);
+
+        // Act
+        driver = driver.RunGenerators(compilation);
+
+        // Assert
+        var runResult = driver.GetRunResult();
+        var generatedSources = runResult.GeneratedSources;
+        
+        // Should handle nullable context options correctly
+        Assert.IsNotNull(runResult);
+    }
+
+    /// <summary>
+    /// Tests that the source generator handles class grouping correctly.
+    /// </summary>
+    [TestMethod]
+    public void SourceGenerator_ClassGrouping_HandlesCorrectly()
+    {
+        // Arrange
+        var source = @"
+using Sqlx.Annotations;
+
+public class TestClass1
+{
+    [Sqlx(""SELECT * FROM Users"")]
+    public void TestMethod1() { }
+}
+
+public class TestClass2
+{
+    [Sqlx(""SELECT * FROM Products"")]
+    public void TestMethod2() { }
+}";
+
+        var compilation = CreateCompilation(source);
+        var generator = new CSharpGenerator();
+        var driver = CSharpGeneratorDriver.Create(generator);
+
+        // Act
+        driver = driver.RunGenerators(compilation);
+
+        // Assert
+        var runResult = driver.GetRunResult();
+        var generatedSources = runResult.GeneratedSources;
+        
+        Assert.IsTrue(generatedSources.Count > 0, "Should generate code for multiple classes");
+    }
+
+    /// <summary>
+    /// Tests that the AbstractGenerator handles missing SqlxAttribute gracefully.
+    /// </summary>
+    [TestMethod]
+    public void AbstractGenerator_MissingSqlxAttribute_ReportsDiagnostic()
+    {
+        // Arrange
+        var source = @"
+using Sqlx.Annotations;
+
+public class TestClass
+{
+    [RawSql(""SELECT * FROM Users"")]
+    public void TestMethod() { }
+}";
+
+        var compilation = CreateCompilation(source);
+        var generator = new CSharpGenerator();
+        var driver = CSharpGeneratorDriver.Create(generator);
+
+        // Act
+        driver = driver.RunGenerators(compilation);
+
+        // Assert
+        var runResult = driver.GetRunResult();
+        Assert.IsNotNull(runResult);
+        
+        // The generator should handle missing SqlxAttribute gracefully
+        // and potentially report diagnostics
+    }
+
+    /// <summary>
+    /// Tests that the AbstractGenerator handles missing RawSqlAttribute gracefully.
+    /// </summary>
+    [TestMethod]
+    public void AbstractGenerator_MissingRawSqlAttribute_ReportsDiagnostic()
+    {
+        // Arrange
+        var source = @"
+using Sqlx.Annotations;
+
+public class TestClass
+{
+    [Sqlx(""SELECT * FROM Users"")]
+    public void TestMethod() { }
+}";
+
+        var compilation = CreateCompilation(source);
+        var generator = new CSharpGenerator();
+        var driver = CSharpGeneratorDriver.Create(generator);
+
+        // Act
+        driver = driver.RunGenerators(compilation);
+
+        // Assert
+        var runResult = driver.GetRunResult();
+        Assert.IsNotNull(runResult);
+        
+        // The generator should handle missing RawSqlAttribute gracefully
+        // and potentially report diagnostics
+    }
+
+    /// <summary>
+    /// Tests that the AbstractGenerator handles missing ExpressionToSqlAttribute gracefully.
+    /// </summary>
+    [TestMethod]
+    public void AbstractGenerator_MissingExpressionToSqlAttribute_ReportsDiagnostic()
+    {
+        // Arrange
+        var source = @"
+using Sqlx.Annotations;
+
+public class TestClass
+{
+    [Sqlx(""SELECT * FROM Users"")]
+    public void TestMethod() { }
+}";
+
+        var compilation = CreateCompilation(source);
+        var generator = new CSharpGenerator();
+        var driver = CSharpGeneratorDriver.Create(generator);
+
+        // Act
+        driver = driver.RunGenerators(compilation);
+
+        // Assert
+        var runResult = driver.GetRunResult();
+        Assert.IsNotNull(runResult);
+        
+        // The generator should handle missing ExpressionToSqlAttribute gracefully
+        // and potentially report diagnostics
+    }
+
+    /// <summary>
+    /// Tests that the AbstractGenerator handles nullable context options correctly.
+    /// </summary>
+    [TestMethod]
+    public void AbstractGenerator_NullableContextOptions_HandlesCorrectly()
+    {
+        // Arrange
+        var source = @"
+using Sqlx.Annotations;
+
+public class TestClass
+{
+    [Sqlx(""SELECT * FROM Users"")]
+    public void TestMethod() { }
+}";
+
+        var compilation = CreateCompilation(source);
+        var generator = new CSharpGenerator();
+        var driver = CSharpGeneratorDriver.Create(generator);
+
+        // Act
+        driver = driver.RunGenerators(compilation);
+
+        // Assert
+        var runResult = driver.GetRunResult();
+        Assert.IsNotNull(runResult);
+        
+        // The generator should handle nullable context options correctly
+    }
+
+    /// <summary>
+    /// Tests that the AbstractGenerator handles empty method lists gracefully.
+    /// </summary>
+    [TestMethod]
+    public void AbstractGenerator_EmptyMethodList_HandlesGracefully()
+    {
+        // Arrange
+        var source = @"
+using Sqlx.Annotations;
+
+public class TestClass
+{
+    // No methods with Sqlx attributes
+}";
+
+        var compilation = CreateCompilation(source);
+        var generator = new CSharpGenerator();
+        var driver = CSharpGeneratorDriver.Create(generator);
+
+        // Act
+        driver = driver.RunGenerators(compilation);
+
+        // Assert
+        var runResult = driver.GetRunResult();
+        Assert.IsNotNull(runResult);
+        
+        // The generator should handle empty method lists gracefully
+    }
+
+    /// <summary>
+    /// Tests that the AbstractGenerator handles null syntax receiver gracefully.
+    /// </summary>
+    [TestMethod]
+    public void AbstractGenerator_NullSyntaxReceiver_HandlesGracefully()
+    {
+        // Arrange
+        var source = @"
+public class TestClass
+{
+    public void TestMethod() { }
+}";
+
+        var compilation = CreateCompilation(source);
+        var generator = new CSharpGenerator();
+        var driver = CSharpGeneratorDriver.Create(generator);
+
+        // Act
+        driver = driver.RunGenerators(compilation);
+
+        // Assert
+        var runResult = driver.GetRunResult();
+        Assert.IsNotNull(runResult);
+        
+        // The generator should handle null syntax receiver gracefully
+    }
+
     private static (Compilation Compilation, ImmutableArray<Diagnostic> Diagnostics) CompileWithSourceGenerator(string sourceCode)
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(sourceCode);

@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Reflection;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -68,7 +69,7 @@ public class UtilityClassesFunctionalTests
         var syntaxTree = CSharpSyntaxTree.ParseText(result);
         var diagnostics = syntaxTree.GetDiagnostics();
         var syntaxErrors = diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
-        Assert.IsFalse(syntaxErrors.Any(), $"Generated code should be syntactically valid. Errors: {string.Join(", ", syntaxErrors.Select(e => e.GetMessage()))}");
+        Assert.IsFalse(syntaxErrors.Any(), $"Generated code should be syntactically valid. Errors: {string.Join(", ", syntaxErrors.Select(e => e.ToString()))}");
     }
 
     #endregion
@@ -85,10 +86,16 @@ public class UtilityClassesFunctionalTests
         var compilation = CSharpCompilation.Create("test");
         var objectType = compilation.GetSpecialType(SpecialType.System_Object);
 
-        // Test parameter name generation using Extensions methods
-        var param1Name = Extensions.GetParameterName(objectType, "userId");
-        var param2Name = Extensions.GetParameterName(objectType, "userName");
-        var param3Name = Extensions.GetParameterName(objectType, "userId"); // Same name should get unique suffix
+        // Test parameter name generation using Extensions methods via reflection
+        var extensionsType = Type.GetType("Sqlx.Extensions, Sqlx");
+        Assert.IsNotNull(extensionsType, "Extensions class should exist");
+        
+        var getParameterNameMethod = extensionsType.GetMethod("GetParameterName", BindingFlags.NonPublic | BindingFlags.Static);
+        Assert.IsNotNull(getParameterNameMethod, "GetParameterName method should exist");
+
+        var param1Name = (string)getParameterNameMethod.Invoke(null, new object[] { objectType, "userId" });
+        var param2Name = (string)getParameterNameMethod.Invoke(null, new object[] { objectType, "userName" });
+        var param3Name = (string)getParameterNameMethod.Invoke(null, new object[] { objectType, "userId" }); // Same name should get unique suffix
 
         Assert.IsNotNull(param1Name);
         Assert.IsNotNull(param2Name);
@@ -122,8 +129,15 @@ public class UtilityClassesFunctionalTests
         var type = compilation.GetTypeByMetadataName(typeName);
         Assert.IsNotNull(type, $"Type {typeName} should be found");
 
-        // Test data read expression generation
-        var expression = Extensions.GetDataReadExpression(type, "__reader__", "columnName");
+        // Test data read expression generation using Extensions methods via reflection
+        var extensionsType = Type.GetType("Sqlx.Extensions, Sqlx");
+        Assert.IsNotNull(extensionsType, "Extensions class should exist");
+        
+        var getDataReadExpressionMethod = extensionsType.GetMethod("GetDataReadExpression", BindingFlags.NonPublic | BindingFlags.Static, 
+            null, new[] { typeof(ITypeSymbol), typeof(string), typeof(string) }, null);
+        Assert.IsNotNull(getDataReadExpressionMethod, "GetDataReadExpression method should exist");
+
+        var expression = (string)getDataReadExpressionMethod.Invoke(null, new object[] { type, "__reader__", "columnName" });
 
         Assert.IsNotNull(expression);
         Assert.IsTrue(expression.Contains(expectedMethod), $"Expression for {typeName} should contain {expectedMethod}. Generated: {expression}");
@@ -142,16 +156,28 @@ public class UtilityClassesFunctionalTests
         var intType = compilation.GetSpecialType(SpecialType.System_Int32);
         var stringType = compilation.GetSpecialType(SpecialType.System_String);
 
-        // Test nullable detection
-        var intNullable = Extensions.IsNullableType(intType);
-        var stringNullable = Extensions.CanHaveNullValue(stringType);
+        // Test nullable detection using Extensions methods via reflection
+        var extensionsType = Type.GetType("Sqlx.Extensions, Sqlx");
+        Assert.IsNotNull(extensionsType, "Extensions class should exist");
+        
+        var isNullableTypeMethod = extensionsType.GetMethod("IsNullableType", BindingFlags.NonPublic | BindingFlags.Static);
+        var canHaveNullValueMethod = extensionsType.GetMethod("CanHaveNullValue", BindingFlags.Public | BindingFlags.Static);
+        var getDataReadExpressionMethod = extensionsType.GetMethod("GetDataReadExpression", BindingFlags.NonPublic | BindingFlags.Static, 
+            null, new[] { typeof(ITypeSymbol), typeof(string), typeof(string) }, null);
+        
+        Assert.IsNotNull(isNullableTypeMethod, "IsNullableType method should exist");
+        Assert.IsNotNull(canHaveNullValueMethod, "CanHaveNullValue method should exist");
+        Assert.IsNotNull(getDataReadExpressionMethod, "GetDataReadExpression method should exist");
+
+        var intNullable = (bool)isNullableTypeMethod.Invoke(null, new object[] { intType });
+        var stringNullable = (bool)canHaveNullValueMethod.Invoke(null, new object[] { stringType });
 
         Assert.IsFalse(intNullable, "Int32 should not be considered nullable by default");
         Assert.IsTrue(stringNullable, "String should be considered nullable");
 
         // Test data read expressions for nullable types
-        var intExpression = Extensions.GetDataReadExpression(intType, "__reader__", "id");
-        var stringExpression = Extensions.GetDataReadExpression(stringType, "__reader__", "name");
+        var intExpression = (string)getDataReadExpressionMethod.Invoke(null, new object[] { intType, "__reader__", "id" });
+        var stringExpression = (string)getDataReadExpressionMethod.Invoke(null, new object[] { stringType, "__reader__", "name" });
 
         Assert.IsTrue(intExpression.Contains("GetInt32"), "Int expression should use GetInt32");
         Assert.IsTrue(stringExpression.Contains("IsDBNull"), "Nullable string expression should include null check");
@@ -346,8 +372,8 @@ public class UtilityClassesFunctionalTests
     [TestMethod]
     public void IsExternalInit_Class_HasCorrectStructure()
     {
-        // Arrange
-        var isExternalInitType = typeof(IsExternalInit);
+        // Arrange - Use full type name to avoid resolution issues
+        var isExternalInitType = Type.GetType("Sqlx.IsExternalInit, Sqlx");
 
         // Act & Assert
         Assert.IsNotNull(isExternalInitType, "IsExternalInit class should exist");
@@ -703,9 +729,9 @@ public class UtilityClassesFunctionalTests
         // Test instantiation
         var generator = new CSharpGenerator();
         Assert.IsNotNull(generator);
-        Assert.IsInstanceOfType(generator, typeof(CSharpGenerator));
-        Assert.IsInstanceOfType(generator, typeof(AbstractGenerator));
-        Assert.IsInstanceOfType(generator, typeof(Microsoft.CodeAnalysis.ISourceGenerator));
+        Assert.IsTrue(generator is CSharpGenerator);
+        Assert.IsTrue(generator is AbstractGenerator);
+        Assert.IsTrue(generator is Microsoft.CodeAnalysis.ISourceGenerator);
     }
 
     /// <summary>

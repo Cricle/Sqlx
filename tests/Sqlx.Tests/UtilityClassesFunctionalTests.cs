@@ -7,10 +7,14 @@
 namespace Sqlx.Tests;
 
 using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Sqlx;
+using Sqlx.SqlGen;
 
 /// <summary>
 /// Functional tests for utility classes like IndentedStringBuilder, NameMapper, etc.
@@ -343,14 +347,14 @@ public class UtilityClassesFunctionalTests
     public void IsExternalInit_Class_HasCorrectStructure()
     {
         // Arrange
-        var isExternalInitType = typeof(System.Runtime.CompilerServices.IsExternalInit);
+        var isExternalInitType = typeof(IsExternalInit);
 
         // Act & Assert
         Assert.IsNotNull(isExternalInitType, "IsExternalInit class should exist");
         Assert.IsTrue(isExternalInitType.IsNotPublic, "IsExternalInit should be internal");
         Assert.IsTrue(isExternalInitType.IsAbstract, "IsExternalInit should be abstract");
         Assert.IsFalse(isExternalInitType.IsSealed, "IsExternalInit should not be sealed");
-        Assert.AreEqual("System.Runtime.CompilerServices", isExternalInitType.Namespace, "IsExternalInit should be in correct namespace");
+        Assert.AreEqual("Sqlx", isExternalInitType.Namespace, "IsExternalInit should be in Sqlx namespace");
         Assert.AreEqual(typeof(object), isExternalInitType.BaseType, "IsExternalInit should inherit from object");
         Assert.IsFalse(isExternalInitType.IsInterface, "IsExternalInit should not be an interface");
         Assert.IsFalse(isExternalInitType.IsValueType, "IsExternalInit should not be a value type");

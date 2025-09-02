@@ -53,7 +53,7 @@ jobs:
       
     - name: Upload coverage reports
       uses: codecov/codecov-action@v4
-      if: !always()
+      if: always()
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: '**/coverage.cobertura.xml'

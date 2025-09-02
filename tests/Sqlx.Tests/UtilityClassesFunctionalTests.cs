@@ -16,7 +16,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Sqlx;
 using Sqlx.SqlGen;
-using Sqlx.SqlDefine;
+using static Sqlx.SqlDefine;
 
 /// <summary>
 /// Functional tests for utility classes like IndentedStringBuilder, NameMapper, etc.

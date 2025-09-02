@@ -6,7 +6,9 @@
 
 namespace Sqlx.Tests;
 
+using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Linq;
 
 [TestClass]
 public class NameMapperTests

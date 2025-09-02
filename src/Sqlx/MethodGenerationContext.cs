@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 // <copyright file="MethodGenerationContext.cs" company="Cricle">
 // Copyright (c) Cricle. All rights reserved.
 // </copyright>
@@ -711,7 +711,7 @@ internal class MethodGenerationContext : GenerationContextBase
             var define = (int)methodDef.ConstructorArguments[0].Value!;
             return define switch
             {
-                1 => SqlDefine.SqlService,
+                1 => SqlDefine.SqlServer,
                 2 => SqlDefine.PgSql,
                 _ => SqlDefine.MySql,
             };

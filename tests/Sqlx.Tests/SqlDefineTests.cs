@@ -132,7 +132,7 @@ namespace TestNamespace
 
         // PostgreSQL should use double quotes for columns and $ for parameters
         Assert.IsTrue(
-            generatedCode.Contains("PgSql = (\"\\u0022\", \"\\u0022\", \"'\", \"'\", \"$\")"),
+            generatedCode.Contains("PgSql = (\"\\\"\", \"\\\"\", \"'\", \"'\", \"$\")"),
             "PostgreSQL dialect should have double quotes for columns and $ prefix");
     }
 
@@ -146,7 +146,7 @@ namespace TestNamespace
     [TestMethod]
     [DataRow("MySql", "`", "`", "@")]
     [DataRow("SqlServer", "[", "]", "@")]
-    [DataRow("PgSql", "\\u0022", "\\u0022", "$")]
+    [DataRow("PgSql", "\\\"", "\\\"", "$")]
     public void SqlDefine_DialectConstants_HaveCorrectFormat(string dialectName, string expectedLeftQuote, string expectedRightQuote, string expectedPrefix)
     {
         string sourceCode = $@"

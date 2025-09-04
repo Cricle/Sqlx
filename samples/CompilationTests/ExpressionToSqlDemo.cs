@@ -27,7 +27,7 @@ internal static class ExpressionToSqlDemo
 
         // 1. 独立使用 - 直接生成SQL
         WriteLine("1. 独立生成SQL:");
-        var query = ExpressionToSql<PersonInformation>.ForSqlite()
+        var query = Sqlx.Annotations.ExpressionToSql<PersonInformation>.Create()
             .Where(p => p.PersonId > 1)
             .Where(p => p.PersonName!.Contains("Alice"))
             .OrderBy(p => p.PersonName)
@@ -41,7 +41,7 @@ internal static class ExpressionToSqlDemo
 
         // 2. 复杂查询示例
         WriteLine("\n2. 复杂查询:");
-        var complexQuery = ExpressionToSql<PersonInformation>.ForSqlite()
+        var complexQuery = Sqlx.Annotations.ExpressionToSql<PersonInformation>.Create()
             .Where(p => p.PersonId >= 1 && p.PersonId <= 10)
             .Where(p => p.PersonName!.StartsWith("A") || p.PersonName!.EndsWith("n"))
             .OrderBy(p => p.PersonId)
@@ -72,7 +72,7 @@ internal static class ExpressionToSqlDemo
 
             // 使用ExpressionToSql作为参数
             WriteLine("1. 作为方法参数使用:");
-            var filterQuery = ExpressionToSql<PersonInformation>.ForSqlite()
+            var filterQuery = Sqlx.Annotations.ExpressionToSql<PersonInformation>.Create()
                 .Where(p => p.PersonId <= 3);
 
             var results = manager.GetPersonsWithExpression(filterQuery);
@@ -82,7 +82,7 @@ internal static class ExpressionToSqlDemo
 
             // 使用扩展方法
             WriteLine("\n2. 使用扩展方法:");
-            var extQuery = ExpressionToSql<PersonInformation>.ForSqlite()
+            var extQuery = Sqlx.Annotations.ExpressionToSql<PersonInformation>.Create()
                 .Where(p => p.PersonName!.Contains("o"));
 
             var extResults = connection.QueryWithExpression(extQuery);
@@ -102,21 +102,21 @@ internal static class ExpressionToSqlDemo
     private static void DemoDialects()
     {
         // MySQL
-        var mysqlQuery = ExpressionToSql<PersonInformation>.ForMySql()
+        var mysqlQuery = Sqlx.Annotations.ExpressionToSql<PersonInformation>.Create()
             .Where(p => p.PersonId > 5)
             .Take(10);
         WriteLine($"   MySQL: {mysqlQuery.ToSql()}");
         mysqlQuery.Dispose();
 
         // SQL Server
-        var sqlServerQuery = ExpressionToSql<PersonInformation>.ForSqlServer()
+        var sqlServerQuery = Sqlx.Annotations.ExpressionToSql<PersonInformation>.Create()
             .Where(p => p.PersonId > 5)
             .Take(10);
         WriteLine($"   SQL Server: {sqlServerQuery.ToSql()}");
         sqlServerQuery.Dispose();
 
         // PostgreSQL
-        var pgQuery = ExpressionToSql<PersonInformation>.ForPostgreSQL()
+        var pgQuery = Sqlx.Annotations.ExpressionToSql<PersonInformation>.Create()
             .Where(p => p.PersonId > 5)
             .Take(10);
         WriteLine($"   PostgreSQL: {pgQuery.ToSql()}");

@@ -259,7 +259,7 @@ public class NameMapperTests
     [ExpectedException(typeof(ArgumentNullException))]
     public void MapName_NullInput_ThrowsArgumentNullException()
     {
-        NameMapper.MapName(null);
+        NameMapper.MapName(null!);
     }
 
     /// <summary>
@@ -269,7 +269,7 @@ public class NameMapperTests
     public void MapName_NullInput_ThrowsArgumentNullException_Alternative()
     {
         // Act & Assert
-        var exception = Assert.ThrowsException<ArgumentNullException>(() => NameMapper.MapName(null));
+        var exception = Assert.ThrowsException<ArgumentNullException>(() => NameMapper.MapName(null!));
         Assert.AreEqual("parameterName", exception.ParamName);
     }
 
@@ -285,7 +285,7 @@ public class NameMapperTests
         // Act & Assert
         try
         {
-            NameMapper.MapName(nullInput);
+            NameMapper.MapName(nullInput!);
             Assert.Fail("Should have thrown ArgumentNullException");
         }
         catch (ArgumentNullException ex)
@@ -301,7 +301,7 @@ public class NameMapperTests
     public void MapName_NullInput_ThrowsArgumentNullException_AssertThrows()
     {
         // Act & Assert
-        var exception = Assert.ThrowsException<ArgumentNullException>(() => NameMapper.MapName(null));
+        var exception = Assert.ThrowsException<ArgumentNullException>(() => NameMapper.MapName(null!));
         Assert.AreEqual("parameterName", exception.ParamName);
     }
 }

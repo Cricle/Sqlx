@@ -13,30 +13,54 @@ using System.Linq;
 
 internal class ClassGenerationContext : GenerationContextBase
 {
+    private GeneratorExecutionContext _generatorExecutionContext;
+    private NullableContextOptions _nullableContextOptions;
+
     public ClassGenerationContext(
         INamedTypeSymbol classSymbol,
         List<IMethodSymbol> methods,
-        ISymbol attributeSymbol,
-        GeneratorExecutionContext context)
+        INamedTypeSymbol attributeSymbol)
     {
         ClassSymbol = classSymbol;
         Methods = methods.Select(_ => new MethodGenerationContext(this, _)).ToList();
         AttributeSymbol = attributeSymbol;
-        GeneratorExecutionContext = context;
-        NullableContextOptions = context.Compilation.Options.NullableContextOptions;
+        _nullableContextOptions = NullableContextOptions.Disable;
+    }
+
+    // Parameterless constructor for testing/mocking
+    internal ClassGenerationContext()
+    {
+        ClassSymbol = default!;
+        Methods = new List<MethodGenerationContext>();
+        AttributeSymbol = default!;
+        _nullableContextOptions = NullableContextOptions.Disable;
     }
 
     public INamedTypeSymbol ClassSymbol { get; }
 
     public List<MethodGenerationContext> Methods { get; }
 
-    public ISymbol AttributeSymbol { get; }
+    public INamedTypeSymbol AttributeSymbol { get; }
+    
+    /// <summary>
+    /// Alias for AttributeSymbol for test compatibility
+    /// </summary>
+    public INamedTypeSymbol SqlxAttributeSymbol => AttributeSymbol;
 
-    public GeneratorExecutionContext GeneratorExecutionContext { get; }
+    public GeneratorExecutionContext GeneratorExecutionContext => _generatorExecutionContext;
 
-    public NullableContextOptions NullableContextOptions { get; }
+    public NullableContextOptions NullableContextOptions => _nullableContextOptions;
 
     public bool HasNullableAnnotations => NullableContextOptions != NullableContextOptions.Disable;
+
+    /// <summary>
+    /// Sets the generator execution context and nullable options
+    /// </summary>
+    public void SetExecutionContext(GeneratorExecutionContext context)
+    {
+        _generatorExecutionContext = context;
+        _nullableContextOptions = context.Compilation.Options.NullableContextOptions;
+    }
 
     internal override ISymbol? DbConnection => GetSymbol(ClassSymbol, x => x.IsDbConnection());
 
@@ -91,9 +115,9 @@ internal class ClassGenerationContext : GenerationContextBase
         return true;
     }
 
-    public INamedTypeSymbol? GetFieldOrProperty(Func<ISymbol, bool> check)
+    public ISymbol? GetFieldOrProperty(Func<ISymbol, bool> check)
     {
-        return GetFieldOrProperty(ClassSymbol, check) ?? GetFieldOrProperty(ClassSymbol.BaseType, check);
+        return GetFieldOrPropertyInternal(ClassSymbol, check) ?? GetFieldOrPropertyInternal(ClassSymbol.BaseType, check);
     }
 
     public AttributeData? GetAttribute(Func<AttributeData, bool> check)
@@ -101,12 +125,12 @@ internal class ClassGenerationContext : GenerationContextBase
         return GetAttribute(ClassSymbol, check) ?? GetAttribute(ClassSymbol.BaseType, check);
     }
 
-    private INamedTypeSymbol? GetFieldOrProperty(INamedTypeSymbol? symbol, Func<ISymbol, bool> check)
+    private ISymbol? GetFieldOrPropertyInternal(INamedTypeSymbol? symbol, Func<ISymbol, bool> check)
     {
         if (symbol == null) return null;
 
-        return (INamedTypeSymbol)symbol.GetMembers().OfType<IFieldSymbol>().FirstOrDefault(check) ??
-            (INamedTypeSymbol)symbol.GetMembers().OfType<IPropertySymbol>().FirstOrDefault(check);
+        return symbol.GetMembers().OfType<IFieldSymbol>().FirstOrDefault(check) ??
+            (ISymbol?)symbol.GetMembers().OfType<IPropertySymbol>().FirstOrDefault(check);
     }
 
     private AttributeData? GetAttribute(INamedTypeSymbol? symbol, Func<AttributeData, bool> check)

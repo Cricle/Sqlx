@@ -21,6 +21,15 @@ public static class NameMapper
     /// <returns>Corresponding stored procedure parameter name.</returns>
     public static string MapName(string parameterName)
     {
+        if (parameterName == null)
+            throw new System.ArgumentNullException(nameof(parameterName));
+
+        // If the parameter contains special characters (like @ or #), convert to lowercase
+        if (parameterName.Any(c => !char.IsLetterOrDigit(c) && c != '_'))
+        {
+            return parameterName.ToLower();
+        }
+
         var firstname = Regex.Match(parameterName, "[^A-Z]*").Value;
         var matches = Regex.Matches(parameterName, "[A-Z][^A-Z]*").Cast<Match>().Select(_ => _.Value.ToLower());
         if (string.IsNullOrEmpty(firstname))

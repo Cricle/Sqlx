@@ -2,7 +2,6 @@
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
-  
   <ItemGroup>
     <PackageVersion Include="BenchmarkDotNet" Version="0.12.1" />
     <PackageVersion Include="coverlet.collector" Version="6.0.3" />
@@ -13,6 +12,8 @@
     <PackageVersion Include="Microsoft.CodeAnalysis.VisualBasic.Workspaces" Version="3.9.0" />
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="5.2.1" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="6.0.36" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="6.0.36" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="6.0.36" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="6.0.36" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="6.0.36" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="6.0.36" />

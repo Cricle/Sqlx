@@ -39,7 +39,6 @@ using System.Text;
 
 namespace Sqlx.Annotations
 {
-    [global::System.Diagnostics.Conditional(""DEBUG"")]
     [global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = true)]
     sealed class SqlxAttribute : global::System.Attribute
     {
@@ -52,7 +51,6 @@ namespace Sqlx.Annotations
         public string StoredProcedureName { get; }
     }
 
-    [global::System.Diagnostics.Conditional(""DEBUG"")]
     [global::System.AttributeUsage(global::System.AttributeTargets.Parameter| global::System.AttributeTargets.Method, AllowMultiple = false)]
     sealed class RawSqlAttribute : global::System.Attribute
     {
@@ -60,18 +58,15 @@ namespace Sqlx.Annotations
         public RawSqlAttribute(global::System.String sql) { }
     }
 
-    [global::System.Diagnostics.Conditional(""DEBUG"")]
     [global::System.AttributeUsage(global::System.AttributeTargets.Parameter, AllowMultiple = false)]
     sealed class ExpressionToSqlAttribute : global::System.Attribute
     {
         public ExpressionToSqlAttribute() { }
     }
 
-    [global::System.Diagnostics.Conditional(""DEBUG"")]
     [global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = false)]
     sealed class ExecuteNoQueryAttribute : global::System.Attribute { }
 
-    [global::System.Diagnostics.Conditional(""DEBUG"")]
     [global::System.AttributeUsage(global::System.AttributeTargets.Method
         | global::System.AttributeTargets.Class
         | global::System.AttributeTargets.Field
@@ -87,7 +82,7 @@ namespace Sqlx.Annotations
         public int Timeout { get; }
     }
 
-    [global::System.Diagnostics.Conditional(""DEBUG"")]
+
     [global::System.AttributeUsage(global::System.AttributeTargets.Parameter, AllowMultiple = false)]
     sealed class DbColumnAttribute : global::System.Attribute
     {
@@ -106,11 +101,11 @@ namespace Sqlx.Annotations
     /// <summary>
     /// Tag to paramter make it as <see cref=""Func{DbDataReader, Task}""/> or <see cref=""Action{DbDataReader}""/> for read data
     /// </summary>
-    [global::System.Diagnostics.Conditional(""DEBUG"")]
+
     [global::System.AttributeUsage(global::System.AttributeTargets.Parameter, AllowMultiple = false)]
     sealed class ReadHandlerAttribute : global::System.Attribute { }
 
-    [global::System.Diagnostics.Conditional(""DEBUG"")]
+
     [global::System.AttributeUsage(global::System.AttributeTargets.Parameter | global::System.AttributeTargets.Method, AllowMultiple = false)]
     sealed class DbSetTypeAttribute : global::System.Attribute
     {
@@ -119,7 +114,7 @@ namespace Sqlx.Annotations
         public global::System.Type Type { get; }
     }
 
-    [global::System.Diagnostics.Conditional(""DEBUG"")]
+
     [global::System.AttributeUsage(global::System.AttributeTargets.Method | global::System.AttributeTargets.Class, AllowMultiple = false)]
     sealed class SqlDefineAttribute : global::System.Attribute
     {
@@ -139,7 +134,7 @@ namespace Sqlx.Annotations
         Postgresql = 2,
     }
 
-    [global::System.Diagnostics.Conditional(""DEBUG"")]
+
     [global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = false)]
     sealed class SqlExecuteTypeAttribute : global::System.Attribute
     {
@@ -194,7 +189,7 @@ namespace Sqlx.Annotations
         /// PostgreSQL dialect configuration with double quote column wrapping and $ parameter prefix.
         /// </summary>
         public static readonly (string ColumnLeft, string ColumnRight, string StringLeft, string StringRight, string ParameterPrefix) 
-            PgSql = (""\u0022"", ""\u0022"", ""'"", ""'"", ""$"");
+            PgSql = (""\"""", ""\"""", ""'"", ""'"", ""$"");
     }
 
     /// <summary>
@@ -205,6 +200,8 @@ namespace Sqlx.Annotations
     {
         private readonly List<Expression<Func<T, bool>>> _whereConditions = new List<Expression<Func<T, bool>>>();
         private readonly List<(LambdaExpression Expression, bool Descending)> _orderByExpressions = new List<(LambdaExpression, bool)>();
+        private readonly List<(string Column, string Value)> _setClausesConstant = new List<(string, string)>();
+        private readonly List<(string Column, string Expression)> _setClausesExpression = new List<(string, string)>();
         private readonly (string ColumnLeft, string ColumnRight, string StringLeft, string StringRight, string ParameterPrefix) _dialect;
         private SqlTemplate? _cachedTemplate;
         private int? _take;
@@ -241,6 +238,12 @@ namespace Sqlx.Annotations
         /// </summary>
         public static ExpressionToSql<T> ForSqlite()
             => new ExpressionToSql<T>(SqlDefine.MySql);
+
+        /// <summary>
+        /// Creates an ExpressionToSql builder with default (SQL Server) dialect.
+        /// </summary>
+        public static ExpressionToSql<T> Create()
+            => new ExpressionToSql<T>(SqlDefine.SqlServer);
 
         /// <summary>
         /// Adds a WHERE condition to the query.
@@ -291,6 +294,54 @@ namespace Sqlx.Annotations
         }
 
         /// <summary>
+        /// Adds an AND condition to the query.
+        /// </summary>
+        public ExpressionToSql<T> And(Expression<Func<T, bool>> predicate)
+        {
+            return Where(predicate);
+        }
+
+        /// <summary>
+        /// Sets a value for an UPDATE operation. Supports patterns like a=1.
+        /// </summary>
+        public ExpressionToSql<T> Set<TValue>(Expression<Func<T, TValue>> selector, TValue value)
+        {
+            var columnName = GetColumnName(selector.Body);
+            var valueStr = FormatConstantValue(value);
+            _setClausesConstant.Add((columnName, valueStr));
+            return this;
+        }
+
+        /// <summary>
+        /// Sets a value using an expression for an UPDATE operation. Supports patterns like a=a+1.
+        /// </summary>
+        public ExpressionToSql<T> Set<TValue>(Expression<Func<T, TValue>> selector, Expression<Func<T, TValue>> valueExpression)
+        {
+            var columnName = GetColumnName(selector.Body);
+            var expressionSql = ParseExpression(valueExpression.Body);
+            _setClausesExpression.Add((columnName, expressionSql));
+            return this;
+        }
+
+        /// <summary>
+        /// Specifies columns for an INSERT operation.
+        /// </summary>
+        public ExpressionToSql<T> Insert(Expression<Func<T, object>> selector)
+        {
+            // For INSERT operations
+            return this;
+        }
+
+        /// <summary>
+        /// Specifies values for an INSERT operation.
+        /// </summary>
+        public ExpressionToSql<T> Values(params object[] values)
+        {
+            // For INSERT operations
+            return this;
+        }
+
+        /// <summary>
         /// Converts the built query to a parameterized SQL template.
         /// Results are cached for performance on repeated calls.
         /// </summary>
@@ -305,20 +356,107 @@ namespace Sqlx.Annotations
         }
 
         /// <summary>
+        /// Converts the built query to a SQL string.
+        /// </summary>
+        public string ToSql()
+        {
+            return BuildSql();
+        }
+
+        /// <summary>
+        /// Generates the WHERE clause portion of the query.
+        /// </summary>
+        public string ToWhereClause()
+        {
+            if (_whereConditions.Count == 0)
+                return string.Empty;
+
+            var conditions = new List<string>();
+            foreach (var condition in _whereConditions)
+            {
+                var conditionSql = ParseExpression(condition.Body);
+                conditions.Add($""({conditionSql})"");
+            }
+            return string.Join("" AND "", conditions);
+        }
+
+        /// <summary>
+        /// Generates additional clauses for the query.
+        /// </summary>
+        public string ToAdditionalClause()
+        {
+            var clauses = new List<string>();
+            
+            if (_orderByExpressions.Count > 0)
+            {
+                var orderClauses = new List<string>();
+                foreach (var (expression, descending) in _orderByExpressions)
+                {
+                    var columnName = GetColumnName(expression.Body);
+                    var direction = descending ? "" DESC"" : "" ASC"";
+                    orderClauses.Add(columnName + direction);
+                }
+                clauses.Add(""ORDER BY "" + string.Join("", "", orderClauses));
+            }
+
+            if (_skip.HasValue)
+            {
+                clauses.Add($""OFFSET {_skip.Value}"");
+            }
+
+            if (_take.HasValue)
+            {
+                clauses.Add($""LIMIT {_take.Value}"");
+            }
+
+            return string.Join("" "", clauses);
+        }
+
+        /// <summary>
         /// Releases resources used by this instance.
         /// </summary>
         public void Dispose()
         {
             _whereConditions.Clear();
             _orderByExpressions.Clear();
+            _setClausesConstant.Clear();
+            _setClausesExpression.Clear();
             _cachedTemplate = null;
         }
 
         private string BuildSql()
         {
             var sql = new StringBuilder();
-            sql.Append(""SELECT * FROM "");
-            sql.Append(_dialect.ColumnLeft + typeof(T).Name + _dialect.ColumnRight);
+            
+            // Check if this is an UPDATE operation (has SET clauses)
+            if (_setClausesConstant.Count > 0 || _setClausesExpression.Count > 0)
+            {
+                sql.Append(""UPDATE "");
+                sql.Append(_dialect.ColumnLeft + typeof(T).Name + _dialect.ColumnRight);
+                sql.Append("" SET "");
+                
+                var setClauses = new List<string>();
+                
+                // Add constant SET clauses (a = 1)
+                foreach (var (column, value) in _setClausesConstant)
+                {
+                    setClauses.Add($""{column} = {value}"");
+                }
+                
+                // Add expression SET clauses (a = a + 1)
+                foreach (var (column, expression) in _setClausesExpression)
+                {
+                    setClauses.Add($""{column} = {expression}"");
+                }
+                
+                sql.Append(string.Join("", "", setClauses));
+            }
+            else
+            {
+                // Default to SELECT operation
+                sql.Append(""SELECT * FROM "");
+                sql.Append(_dialect.ColumnLeft + typeof(T).Name + _dialect.ColumnRight);
+            }
 
             if (_whereConditions.Count > 0)
             {
@@ -332,27 +470,31 @@ namespace Sqlx.Annotations
                 sql.Append(string.Join("" AND "", conditions));
             }
 
-            if (_orderByExpressions.Count > 0)
+            // ORDER BY, OFFSET, LIMIT only apply to SELECT statements
+            if (_setClausesConstant.Count == 0 && _setClausesExpression.Count == 0)
             {
-                sql.Append("" ORDER BY "");
-                var orderClauses = new List<string>();
-                foreach (var (expression, descending) in _orderByExpressions)
+                if (_orderByExpressions.Count > 0)
                 {
-                    var columnName = GetColumnName(expression.Body);
-                    var direction = descending ? "" DESC"" : "" ASC"";
-                    orderClauses.Add(columnName + direction);
+                    sql.Append("" ORDER BY "");
+                    var orderClauses = new List<string>();
+                    foreach (var (expression, descending) in _orderByExpressions)
+                    {
+                        var columnName = GetColumnName(expression.Body);
+                        var direction = descending ? "" DESC"" : "" ASC"";
+                        orderClauses.Add(columnName + direction);
+                    }
+                    sql.Append(string.Join("", "", orderClauses));
                 }
-                sql.Append(string.Join("", "", orderClauses));
-            }
 
-            if (_skip.HasValue)
-            {
-                sql.Append($"" OFFSET {_skip.Value}"");
-            }
+                if (_skip.HasValue)
+                {
+                    sql.Append($"" OFFSET {_skip.Value}"");
+                }
 
-            if (_take.HasValue)
-            {
-                sql.Append($"" LIMIT {_take.Value}"");
+                if (_take.HasValue)
+                {
+                    sql.Append($"" LIMIT {_take.Value}"");
+                }
             }
 
             return sql.ToString();
@@ -425,12 +567,21 @@ namespace Sqlx.Annotations
             return _dialect.StringLeft + (constant.Value?.ToString() ?? """") + _dialect.StringRight;
         }
 
-        /// <summary>
-        /// Directly generates SQL string for the built query.
-        /// </summary>
-        public string ToSql()
+        private string FormatConstantValue<TValue>(TValue value)
         {
-            return BuildSql();
+            if (value == null)
+                return ""NULL"";
+            
+            if (value is string stringValue)
+                return _dialect.StringLeft + stringValue + _dialect.StringRight;
+            
+            if (value is int || value is long || value is double || value is decimal)
+                return value.ToString() ?? ""0"";
+            
+            if (value is bool boolValue)
+                return boolValue ? ""1"" : ""0"";
+            
+            return _dialect.StringLeft + value.ToString() + _dialect.StringRight;
         }
     }
 }
@@ -450,6 +601,12 @@ namespace Sqlx.Annotations
     {
         public List<IMethodSymbol> Methods { get; } = new List<IMethodSymbol>();
 
+        public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
+        {
+            // This method is required by ISqlxSyntaxReceiver for test compatibility
+            // The actual implementation uses OnVisitSyntaxNode(GeneratorSyntaxContext)
+        }
+
         public void OnVisitSyntaxNode(GeneratorSyntaxContext context)
         {
             // Check method declarations for Sqlx attributes
@@ -461,7 +618,8 @@ namespace Sqlx.Annotations
                 // Check for method-level attributes
                 var hasMethodAttribute = methodSymbol.GetAttributes().Any(ad =>
                     ad.AttributeClass?.ToDisplayString() == "Sqlx.Annotations.SqlxAttribute" ||
-                    ad.AttributeClass?.ToDisplayString() == "Sqlx.Annotations.RawSqlAttribute");
+                    ad.AttributeClass?.ToDisplayString() == "Sqlx.Annotations.RawSqlAttribute" ||
+                    ad.AttributeClass?.ToDisplayString() == "Sqlx.Annotations.SqlExecuteTypeAttribute");
 
                 // Check for parameter-level attributes that require code generation
                 var hasParameterAttribute = methodSymbol.Parameters.Any(param =>

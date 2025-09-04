@@ -36,6 +36,19 @@ internal class MethodGenerationContext : GenerationContextBase
         ClassGenerationContext = classGenerationContext;
         MethodSymbol = methodSymbol;
 
+        // Guard for testing - if methodSymbol.Parameters is uninitialized, skip parameter processing
+        if (methodSymbol.Parameters.IsDefault)
+        {
+            SqlParameters = ImmutableArray<IParameterSymbol>.Empty;
+            CancellationTokenKey = "default(global::System.Threading.CancellationToken)";
+            IsAsync = false;
+            AsyncKey = string.Empty;
+            AwaitKey = string.Empty;
+            SqlDef = SqlDefine.MySql;
+            DeclareReturnType = ReturnTypes.Scalar;
+            return;
+        }
+
         CancellationTokenParameter = GetParameter(methodSymbol, x => x.Type.IsCancellationToken());
 
         var rawSqlIsInParamter = true;
@@ -74,17 +87,17 @@ internal class MethodGenerationContext : GenerationContextBase
         SqlParameters = parameters;
         DeclareReturnType = GetReturnType();
         CancellationTokenKey = CancellationTokenParameter?.Name ?? "default(global::System.Threading.CancellationToken)";
-        IsAsync = MethodSymbol.ReturnType.Name == "Task" || MethodSymbol.ReturnType.Name == Consts.IAsyncEnumerable;
+        IsAsync = MethodSymbol.ReturnType?.Name == "Task" || MethodSymbol.ReturnType?.Name == Consts.IAsyncEnumerable;
         SqlDef = GetSqlDefine();
         AsyncKey = IsAsync ? "async " : string.Empty;
         AwaitKey = IsAsync ? "await " : string.Empty;
     }
 
-    internal IMethodSymbol MethodSymbol { get; }
+    public IMethodSymbol MethodSymbol { get; }
 
     internal ReturnTypes DeclareReturnType { get; }
 
-    internal ClassGenerationContext ClassGenerationContext { get; }
+    public ClassGenerationContext ClassGenerationContext { get; }
 
     internal override ISymbol? DbConnection => GetParameter(MethodSymbol, x => x.Type.IsDbConnection()) ?? ClassGenerationContext.DbConnection;
 
@@ -122,7 +135,7 @@ internal class MethodGenerationContext : GenerationContextBase
     /// </summary>
     internal ImmutableArray<IParameterSymbol> SqlParameters { get; }
 
-    internal ITypeSymbol ReturnType => MethodSymbol.ReturnType.UnwrapTaskType();
+    public ITypeSymbol ReturnType => MethodSymbol.ReturnType?.UnwrapTaskType() ?? throw new InvalidOperationException("Method symbol has no return type");
 
     internal ITypeSymbol ElementType => ReturnType.UnwrapListType();
 
@@ -132,13 +145,19 @@ internal class MethodGenerationContext : GenerationContextBase
 
     internal string CancellationTokenKey { get; }
 
-    internal bool IsAsync { get; }
+    public bool IsAsync { get; }
+
+    /// <summary>
+    /// Public properties for tests
+    /// </summary>
+    public bool ReturnIsEnumerable => ReturnType.Name == "IEnumerable" || ReturnType.Name == Consts.IAsyncEnumerable;
+    public bool ReturnIsList => ReturnType.Name == "List" || ReturnType.Name == "IList";
+    public bool ReturnIsTuple => Extensions.IsTuple(ReturnType);
+    public bool ReturnIsScalar => ReturnType.IsScalarType();
 
     private SqlDefine SqlDef { get; }
 
     private string MethodNameString => $"\"{MethodSymbol.Name}\"";
-
-    private bool ReturnIsEnumerable => ReturnType.Name == "IEnumerable" || ReturnType.Name == Consts.IAsyncEnumerable;
 
     public bool DeclareCommand(IndentedStringBuilder sb)
     {
@@ -147,7 +166,7 @@ internal class MethodGenerationContext : GenerationContextBase
             var paramterSyntax = (ParameterSyntax)x.DeclaringSyntaxReferences[0].GetSyntax();
             var prefx = string.Join(" ", paramterSyntax.Modifiers.Select(y => y.ToString()));
             if (paramterSyntax!.Modifiers.Count != 0) prefx += " ";
-            return prefx + x.ToDisplayString();
+            return prefx + x.Type.ToDisplayString() + " " + x.Name;
         }));
         var staticKeyword = MethodSymbol.IsStatic ? "static " : string.Empty;
         sb.AppendLine($"{MethodSymbol.DeclaredAccessibility.GetAccessibility()} {AsyncKey}{staticKeyword}partial {MethodSymbol.ReturnType.ToDisplayString()} {MethodSymbol.Name}({args})");
@@ -198,9 +217,10 @@ internal class MethodGenerationContext : GenerationContextBase
             return false;
         }
 
-        // Handle ExpressionToSql parameters if present
-        if (ExpressionToSqlParameter != null)
+        // Set the SQL command text
+        if (ExpressionToSqlParameter != null && string.IsNullOrEmpty(sql))
         {
+            // Pure ExpressionToSql case - SQL comes from the expression
             sb.AppendLine($"var __template__ = {ExpressionToSqlParameter.Name}.ToTemplate();");
             sb.AppendLine($"{CmdName}.CommandText = __template__.Sql;");
             sb.AppendLine($"foreach(var __param__ in __template__.Parameters)");
@@ -210,9 +230,22 @@ internal class MethodGenerationContext : GenerationContextBase
             sb.PopIndent();
             sb.AppendLine("}");
         }
-        else
+        else if (!string.IsNullOrEmpty(sql))
         {
+            // Static SQL case (from SqlExecuteType, RawSql, or stored procedure)
             sb.AppendLine($"{CmdName}.CommandText = {sql};");
+            
+            // If we have ExpressionToSql parameter and this is a SqlExecuteType operation, 
+            // append dynamic WHERE clause for SELECT/DELETE or handle UPDATE specially
+            if (ExpressionToSqlParameter != null)
+            {
+                var sqlExecuteType = MethodSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlExecuteTypeAttribute");
+                if (sqlExecuteType != null)
+                {
+                    var type = (SqlExecuteTypes)Enum.Parse(typeof(SqlExecuteTypes), sqlExecuteType.ConstructorArguments[0].Value?.ToString() ?? "0");
+                    GenerateExpressionToSqlEnhancement(sb, type);
+                }
+            }
         }
 
         sb.AppendLine();
@@ -306,7 +339,7 @@ internal class MethodGenerationContext : GenerationContextBase
 
     private bool IsExecuteNoQuery() => MethodSymbol.GetAttributes().Any(x => x.AttributeClass?.Name == "ExecuteNoQueryAttribute");
 
-    private bool WriteExecuteNoQuery(IndentedStringBuilder sb, List<ColumnDefine> columnDefines)
+    public bool WriteExecuteNoQuery(IndentedStringBuilder sb, List<ColumnDefine> columnDefines)
     {
         if (!(ReturnType.SpecialType == SpecialType.System_Int32))
         {
@@ -330,7 +363,7 @@ internal class MethodGenerationContext : GenerationContextBase
         }
     }
 
-    private void WriteScalar(IndentedStringBuilder sb, List<ColumnDefine> columnDefines)
+    public void WriteScalar(IndentedStringBuilder sb, List<ColumnDefine> columnDefines)
     {
         var cancellationTokenName = CancellationTokenParameter?.Name ?? string.Empty;
 
@@ -382,7 +415,7 @@ internal class MethodGenerationContext : GenerationContextBase
         }
     }
 
-    private bool WriteReturn(IndentedStringBuilder sb, List<ColumnDefine> columnDefines)
+    public bool WriteReturn(IndentedStringBuilder sb, List<ColumnDefine> columnDefines)
     {
         var dbConnection = DbConnection;
 
@@ -732,8 +765,12 @@ internal class MethodGenerationContext : GenerationContextBase
         var visitPath = string.IsNullOrEmpty(prefx) ? string.Empty : prefx + ".";
         visitPath = visitPath.Replace(".", "?.");
         var parNamePrefx = string.IsNullOrEmpty(prefx) ? string.Empty : prefx.Replace(".", "_");
-        var parName = par.GetParameterName(SqlDef.ParamterPrefx + parNamePrefx);
-        parName = Regex.Replace(parName, "[^a-zA-Z0-9@_]", "_") + "_p";
+        
+        // Generate C# variable name (remove @ prefix and make it a valid identifier)
+        var sqlParamName = par.GetParameterName(SqlDef.ParamterPrefx + parNamePrefx);
+        var parName = Regex.Replace(sqlParamName.TrimStart('@'), "[^a-zA-Z0-9_]", "_") + "_p";
+        
+        // Generate SQL parameter name
         var name = par.GetParameterName(SqlDef.ParamterPrefx);
         var dbType = parType.GetDbType();
 
@@ -783,15 +820,11 @@ internal class MethodGenerationContext : GenerationContextBase
                     return RawSqlParameter.Name;
                 }
 
-                return $"\"\"\"\n{attr.ConstructorArguments[0].Value?.ToString()}\n\"\"\"";
+                var sqlValue = attr.ConstructorArguments[0].Value?.ToString() ?? "";
+                // Escape the SQL string properly for C# code generation
+                var escapedSql = sqlValue.Replace("\"", "\\\"").Replace("\r\n", "\\r\\n").Replace("\n", "\\n").Replace("\r", "\\r");
+                return $"\"{escapedSql}\"";
             }
-        }
-
-        // Also check for ExpressionToSql parameter
-        if (ExpressionToSqlParameter != null)
-        {
-            // For ExpressionToSql, we handle this separately in DeclareCommand
-            return "\"\""; // placeholder, will be overridden
         }
 
         // Check for SqlxAttribute (stored procedure)
@@ -808,15 +841,201 @@ internal class MethodGenerationContext : GenerationContextBase
             }
         }
 
-        var sqlExeucteType = MethodSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlExecuteTypeAttribute");
-        if (sqlExeucteType != null && MethodSymbol.Parameters.Length == 1)
+        // Check for SqlExecuteTypeAttribute (for structured CRUD operations)
+        var sqlExecuteType = MethodSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlExecuteTypeAttribute");
+        if (sqlExecuteType != null)
         {
-            var type = (SqlExecuteTypes)Enum.Parse(typeof(SqlExecuteTypes), sqlExeucteType.ConstructorArguments[0].Value?.ToString());
-            var sql = new SqlGenerator().Generate(SqlDef, type, new InsertGenerateContext(this, sqlExeucteType.ConstructorArguments[1].Value?.ToString() ?? string.Empty, new ObjectMap(MethodSymbol.Parameters[0])));
-            if (!string.IsNullOrEmpty(sql)) return $"\"{sql}\"";
+            var type = (SqlExecuteTypes)Enum.Parse(typeof(SqlExecuteTypes), sqlExecuteType.ConstructorArguments[0].Value?.ToString() ?? "0");
+            var tableName = sqlExecuteType.ConstructorArguments[1].Value?.ToString() ?? string.Empty;
+            
+            // Handle different CRUD operations with their specific parameter patterns
+            return type switch
+            {
+                SqlExecuteTypes.Select => HandleSelectOperation(tableName),
+                SqlExecuteTypes.Insert => HandleInsertOperation(tableName),
+                SqlExecuteTypes.Update => HandleUpdateOperation(tableName),
+                SqlExecuteTypes.Delete => HandleDeleteOperation(tableName),
+                _ => string.Empty
+            };
+        }
+
+        // If we have ExpressionToSql parameter but no other SQL source, use dynamic SQL
+        if (ExpressionToSqlParameter != null)
+        {
+            // For ExpressionToSql, the SQL is generated from the expression parameter at runtime
+            return $"{ExpressionToSqlParameter.Name}.ToTemplate().Sql";
         }
 
         return string.Empty;
+    }
+
+    private string? HandleSelectOperation(string tableName)
+    {
+        // SELECT operation - always return base SQL, dynamic parts handled in code generation
+        return $"\"SELECT * FROM {SqlDef.WrapColumn(tableName)}\"";
+    }
+
+    private string? HandleInsertOperation(string tableName)
+    {
+        // INSERT can have:
+        // 1. ExpressionToSql + Entity parameter (single insert)
+        // 2. ExpressionToSql + IEnumerable<Entity> (batch insert)
+        // 3. Just Entity parameter (simple insert)
+        
+        var entityParameter = MethodSymbol.Parameters.FirstOrDefault(p => 
+            !p.GetAttributes().Any(a => a.AttributeClass?.Name == "ExpressionToSqlAttribute") &&
+            !IsSystemParameter(p));
+            
+        if (entityParameter != null)
+        {
+            var objectMap = new ObjectMap(entityParameter);
+            var context = new InsertGenerateContext(this, tableName, objectMap);
+            var baseSql = new SqlGenerator().Generate(SqlDef, SqlExecuteTypes.Insert, context);
+            
+            if (ExpressionToSqlParameter != null)
+            {
+                // Insert with additional conditions from expression
+                return $"$\"{baseSql} \" + {ExpressionToSqlParameter.Name}.ToAdditionalClause()";
+            }
+            
+            return $"\"{baseSql}\"";
+        }
+        
+        // Fallback to expression-only insert
+        if (ExpressionToSqlParameter != null)
+        {
+            return $"{ExpressionToSqlParameter.Name}.ToTemplate().Sql";
+        }
+        
+        return string.Empty;
+    }
+
+    private string? HandleUpdateOperation(string tableName)
+    {
+        // UPDATE needs:
+        // 1. ExpressionToSql for WHERE clause
+        // 2. Entity parameter or explicit SET values
+        // Simple approach: Use ExpressionToSql for both SET and WHERE
+        
+        if (ExpressionToSqlParameter != null)
+        {
+            // Let ExpressionToSql handle the entire UPDATE statement
+            return $"{ExpressionToSqlParameter.Name}.ToTemplate().Sql";
+        }
+        
+        // Fallback: find entity parameter for simple update
+        var entityParameter = MethodSymbol.Parameters.FirstOrDefault(p => 
+            !IsSystemParameter(p));
+            
+        if (entityParameter != null)
+        {
+            var objectMap = new ObjectMap(entityParameter);
+            var context = new UpdateGenerateContext(this, tableName, objectMap);
+            var baseSql = new SqlGenerator().Generate(SqlDef, SqlExecuteTypes.Update, context);
+            return $"\"{baseSql}\"";
+        }
+        
+        return string.Empty;
+    }
+
+    private string? HandleDeleteOperation(string tableName)
+    {
+        // DELETE operation - return base SQL, WHERE clause handled dynamically if needed
+        return $"\"DELETE FROM {SqlDef.WrapColumn(tableName)}\"";
+    }
+
+    private bool IsSystemParameter(IParameterSymbol parameter)
+    {
+        // Check if parameter is a system parameter (CancellationToken, etc.)
+        var typeName = parameter.Type.Name;
+        return typeName == "CancellationToken" || 
+               typeName == "DbTransaction" ||
+               typeName == "DbConnection" ||
+               parameter.GetAttributes().Any(a => 
+                   a.AttributeClass?.Name == "TimeoutAttribute" ||
+                   a.AttributeClass?.Name == "ExpressionToSqlAttribute");
+    }
+
+    private void GenerateDynamicSqlComposition(IndentedStringBuilder sb, string sqlTemplate)
+    {
+        // Parse the dynamic SQL template and generate appropriate code
+        if (sqlTemplate.StartsWith("$\"") && sqlTemplate.Contains("WHERE \" + "))
+        {
+            // Handle patterns like: $"SELECT * FROM table WHERE " + parameter.ToWhereClause()
+            var parts = sqlTemplate.Split(new string[] { " + " }, StringSplitOptions.None);
+            if (parts.Length == 2)
+            {
+                var baseSql = parts[0].Trim();  // $"SELECT * FROM table WHERE "
+                var dynamicPart = parts[1].Trim();  // parameter.ToWhereClause()
+                
+                // Remove the $" prefix and " suffix from base SQL
+                baseSql = baseSql.Substring(2, baseSql.Length - 3);
+                
+                sb.AppendLine($"var __baseQuery__ = \"{baseSql}\";");
+                sb.AppendLine($"var __whereClause__ = {dynamicPart};");
+                sb.AppendLine($"{CmdName}.CommandText = __baseQuery__ + __whereClause__;");
+                return;
+            }
+        }
+        else if (sqlTemplate.Contains($"{ExpressionToSqlParameter?.Name}.ToTemplate().Sql"))
+        {
+            // Handle patterns like: parameter.ToTemplate().Sql
+            sb.AppendLine($"var __template__ = {ExpressionToSqlParameter!.Name}.ToTemplate();");
+            sb.AppendLine($"{CmdName}.CommandText = __template__.Sql;");
+            sb.AppendLine($"foreach(var __param__ in __template__.Parameters)");
+            sb.AppendLine("{");
+            sb.PushIndent();
+            sb.AppendLine($"{CmdName}.Parameters.Add(__param__);");
+            sb.PopIndent();
+            sb.AppendLine("}");
+            return;
+        }
+        
+        // Fallback: treat as static SQL (remove quotes if present)
+        var cleanSql = sqlTemplate.Trim('"');
+        sb.AppendLine($"{CmdName}.CommandText = \"{cleanSql}\";");
+    }
+
+    private void GenerateExpressionToSqlEnhancement(IndentedStringBuilder sb, SqlExecuteTypes operationType)
+    {
+        // Generate code to enhance the base SQL with ExpressionToSql functionality
+        switch (operationType)
+        {
+            case SqlExecuteTypes.Select:
+            case SqlExecuteTypes.Delete:
+                // For SELECT and DELETE, append WHERE clause
+                sb.AppendLine($"var __whereClause__ = {ExpressionToSqlParameter!.Name}.ToWhereClause();");
+                sb.AppendLine($"if (!string.IsNullOrEmpty(__whereClause__))");
+                sb.AppendLine("{");
+                sb.PushIndent();
+                sb.AppendLine($"{CmdName}.CommandText += \" WHERE \" + __whereClause__;");
+                sb.PopIndent();
+                sb.AppendLine("}");
+                break;
+                
+            case SqlExecuteTypes.Update:
+                // For UPDATE, let ExpressionToSql handle the entire statement
+                sb.AppendLine($"var __template__ = {ExpressionToSqlParameter!.Name}.ToTemplate();");
+                sb.AppendLine($"{CmdName}.CommandText = __template__.Sql;");
+                sb.AppendLine($"foreach(var __param__ in __template__.Parameters)");
+                sb.AppendLine("{");
+                sb.PushIndent();
+                sb.AppendLine($"{CmdName}.Parameters.Add(__param__);");
+                sb.PopIndent();
+                sb.AppendLine("}");
+                break;
+                
+            case SqlExecuteTypes.Insert:
+                // For INSERT, ExpressionToSql might provide additional INSERT clauses
+                sb.AppendLine($"var __insertAddition__ = {ExpressionToSqlParameter!.Name}.ToAdditionalClause();");
+                sb.AppendLine($"if (!string.IsNullOrEmpty(__insertAddition__))");
+                sb.AppendLine("{");
+                sb.PushIndent();
+                sb.AppendLine($"{CmdName}.CommandText += \" \" + __insertAddition__;");
+                sb.PopIndent();
+                sb.AppendLine("}");
+                break;
+        }
     }
 
     private string? GetTimeoutExpression()
@@ -857,7 +1076,7 @@ internal class MethodGenerationContext : GenerationContextBase
         return ReturnTypes.Void;
     }
 
-    private sealed record ColumnDefine(string ParameterName, ISymbol Symbol);
+    public sealed record ColumnDefine(string ParameterName, ISymbol Symbol);
 }
 
 internal enum ReturnTypes

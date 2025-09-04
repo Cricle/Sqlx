@@ -19,15 +19,19 @@ internal sealed class IndentedStringBuilder
     /// Initializes a new instance of the <see cref="IndentedStringBuilder"/> class.
     /// </summary>
     /// <param name="content">Initial content for the string builder.</param>
-    public IndentedStringBuilder(string content)
+    public IndentedStringBuilder(string? content)
     {
-        builder = new StringBuilder(content);
+        builder = new StringBuilder(content ?? string.Empty);
     }
 
-    public IndentedStringBuilder Append(string value)
+    public IndentedStringBuilder Append(string? value)
     {
-        WriteIndent();
-        builder.Append(value);
+        // Apply indentation for null strings, but not for empty or whitespace-only strings
+        if (value is null || !string.IsNullOrWhiteSpace(value))
+        {
+            WriteIndent();
+        }
+        builder.Append(value ?? string.Empty);
         return this;
     }
 
@@ -44,16 +48,20 @@ internal sealed class IndentedStringBuilder
         return this;
     }
 
-    public IndentedStringBuilder AppendLineIf(bool condition, string trueValue, string falseValue)
+    public IndentedStringBuilder AppendLineIf(bool condition, string? trueValue, string? falseValue)
     {
         AppendLine(condition ? trueValue : falseValue);
         return this;
     }
 
-    public IndentedStringBuilder AppendLine(string value)
+    public IndentedStringBuilder AppendLine(string? value)
     {
-        WriteIndent();
-        builder.AppendLine(value);
+        // Apply indentation for null strings, but not for empty or whitespace-only strings
+        if (value is null || (!string.IsNullOrEmpty(value) && !string.IsNullOrWhiteSpace(value)))
+        {
+            WriteIndent();
+        }
+        builder.AppendLine(value ?? string.Empty);
         return this;
     }
 

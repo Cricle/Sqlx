@@ -664,12 +664,25 @@ namespace Foo
     public void SqlConnectionFound()
     {
         string source = @"
+using System.Data;
 using System.Data.Common;
 using Sqlx.Annotations;
 
 namespace Foo
 {
-    partial class SqlConnection: DbConnection {}
+    partial class SqlConnection: DbConnection 
+    {
+        public override string ConnectionString { get; set; } = "";
+        public override string Database => "";
+        public override string DataSource => "";
+        public override string ServerVersion => "";
+        public override ConnectionState State => ConnectionState.Open;
+        public override void ChangeDatabase(string databaseName) {}
+        public override void Close() {}
+        public override void Open() {}
+        protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel) => null!;
+        protected override DbCommand CreateDbCommand() => null!;
+    }
 
     partial class C
     {

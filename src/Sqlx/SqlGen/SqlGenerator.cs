@@ -14,13 +14,26 @@ namespace Sqlx.SqlGen
     {
         public string Generate(SqlDefine def, SqlExecuteTypes type, GenerateContext ctx)
         {
-            if (type == SqlExecuteTypes.Insert)
-                return GenerateInsert(def, (InsertGenerateContext)ctx);
-
-            return string.Empty;
+            return type switch
+            {
+                SqlExecuteTypes.Select => GenerateSelect(def, (SelectGenerateContext)ctx),
+                SqlExecuteTypes.Insert => GenerateInsert(def, (InsertGenerateContext)ctx),
+                SqlExecuteTypes.Update => GenerateUpdate(def, (UpdateGenerateContext)ctx),
+                SqlExecuteTypes.Delete => GenerateDelete(def, (DeleteGenerateContext)ctx),
+                _ => string.Empty
+            };
         }
 
+        private string GenerateSelect(SqlDefine def, SelectGenerateContext ctx)
+            => $"SELECT {ctx.GetColumnNames()} FROM {def.WrapColumn(ctx.TableName)}";
+
         private string GenerateInsert(SqlDefine def, InsertGenerateContext ctx)
-            => $"INSERT INTO {def.WrapColumn(ctx.TableName)}({ctx.GetColumnNames()}) VALUES ({ctx.GetParamterNames(def.ParamterPrefx)});";
+            => $"INSERT INTO {def.WrapColumn(ctx.TableName)}({ctx.GetColumnNames()}) VALUES ({ctx.GetParamterNames(def.ParamterPrefx)})";
+
+        private string GenerateUpdate(SqlDefine def, UpdateGenerateContext ctx)
+            => $"UPDATE {def.WrapColumn(ctx.TableName)} SET {ctx.GetUpdateSet(def.ParamterPrefx)} WHERE {{0}}";
+
+        private string GenerateDelete(SqlDefine def, DeleteGenerateContext ctx)
+            => $"DELETE FROM {def.WrapColumn(ctx.TableName)} WHERE {{0}}";
     }
 }

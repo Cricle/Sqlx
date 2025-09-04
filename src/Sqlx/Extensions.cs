@@ -23,16 +23,44 @@ internal static class Extensions
         return !typeSymbol.IsValueType || typeSymbol.NullableAnnotation == NullableAnnotation.Annotated;
     }
 
-    internal static bool IsNullableType(this ITypeSymbol type)
+    public static bool IsNullableType(this ITypeSymbol type)
     {
         return type.NullableAnnotation == NullableAnnotation.Annotated ||
                (type is INamedTypeSymbol namedType && namedType.IsGenericType &&
                 namedType.ConstructedFrom.SpecialType == SpecialType.System_Nullable_T);
     }
 
-    internal static bool IsDbConnection(this ISymbol typeSymbol) => IsTypes(typeSymbol, x => x.Name == "DbConnection");
+    internal static bool IsDbConnection(this ISymbol typeSymbol)
+    {
+        return IsTypes(typeSymbol, x =>
+        {
+            var type = x;
+            while (type != null)
+            {
+                if (type.Name == "DbConnection")
+                    return true;
+                type = type.BaseType;
+            }
 
-    internal static bool IsDbTransaction(this ISymbol typeSymbol) => IsTypes(typeSymbol, x => x.Name == "DbTransaction");
+            return false;
+        });
+    }
+
+    internal static bool IsDbTransaction(this ISymbol typeSymbol)
+    {
+        return IsTypes(typeSymbol, x =>
+        {
+            var type = x;
+            while (type != null)
+            {
+                if (type.Name == "DbTransaction")
+                    return true;
+                type = type.BaseType;
+            }
+
+            return false;
+        });
+    }
 
     internal static bool IsTypes(ISymbol typeSymbol, Func<ITypeSymbol, bool> check)
     {
@@ -68,7 +96,7 @@ internal static class Extensions
     internal static ITypeSymbol UnwrapNullableType(this ITypeSymbol type)
         => type is INamedTypeSymbol namedTypeSymbol ? UnwrapNullableType(namedTypeSymbol) : type;
 
-    internal static INamedTypeSymbol UnwrapNullableType(this INamedTypeSymbol namedTypeSymbol)
+    private static INamedTypeSymbol UnwrapNullableType(INamedTypeSymbol namedTypeSymbol)
         => namedTypeSymbol.Name == "Nullable" ? (INamedTypeSymbol)namedTypeSymbol.TypeArguments[0] : namedTypeSymbol;
 
     internal static bool IsScalarType(this ITypeSymbol returnType)
@@ -114,8 +142,11 @@ internal static class Extensions
     internal static string GetParameterName(this ISymbol propertySymbol, string parameterPrefx)
         => parameterPrefx + GetSqlName(propertySymbol);
 
-    internal static string GetParameterName(this ITypeSymbol typeSymbol, string baseName)
-        => "@" + baseName.Replace("_", string.Empty); // Generate valid C# identifier
+    /// <summary>
+    /// Public version of GetParameterName for ITypeSymbol - used by tests
+    /// </summary>
+    public static string GetParameterName(this ITypeSymbol typeSymbol, string baseName)
+        => "@" + baseName.Replace("_", string.Empty);
 
     internal static string GetAccessibility(this Accessibility a)
     {
@@ -188,28 +219,7 @@ internal static class Extensions
             : $"{readerName}.{method}({index})";
     }
 
-    internal static string GetDataReadExpression(this ITypeSymbol type, string readerName, string columnIndex, bool isNullable)
-    {
-        var method = GetDataReaderMethod(type);
-
-        if (!string.IsNullOrEmpty(method))
-        {
-            if (isNullable || type.SpecialType == SpecialType.System_String)
-            {
-                // For nullable types, check for DBNull
-                return $"{readerName}.IsDBNull({columnIndex}) ? null : {readerName}.{method}({columnIndex})";
-            }
-            else
-            {
-                // For non-nullable types, direct access
-                return $"{readerName}.{method}({columnIndex})";
-            }
-        }
-
-        throw new NotSupportedException($"No support type {type.Name}");
-    }
-
-    internal static string GetDataReadExpression(this ITypeSymbol type, string readerName, string columnName)
+    public static string GetDataReadExpression(this ITypeSymbol type, string readerName, string columnName)
     {
         var unwrapType = UnwrapNullableType(type);
         var method = GetDataReaderMethod(type);

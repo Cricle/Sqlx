@@ -24,7 +24,9 @@ namespace Sqlx.SqlGen
                 ElementSymbol = symbol.Type;
             }
 
-            Properties = ((INamedTypeSymbol)ElementSymbol).GetMembers().OfType<IPropertySymbol>().ToList();
+            Properties = ElementSymbol is INamedTypeSymbol namedTypeSymbol
+                ? namedTypeSymbol.GetMembers().OfType<IPropertySymbol>().ToList()
+                : new List<IPropertySymbol>();
         }
 
         public IParameterSymbol Symbol { get; }

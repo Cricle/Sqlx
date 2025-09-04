@@ -139,8 +139,16 @@ using Microsoft.EntityFrameworkCore;
         var finalCompilationErrors = finalDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
         if (finalCompilationErrors.Any())
         {
+            // Debug: Show generated code when there are compilation errors
+            var debugGeneratedFiles = outputCompilation.SyntaxTrees.Skip(1).ToList();
+            var debugOutput = "Generated code:\n";
+            foreach (var file in debugGeneratedFiles)
+            {
+                debugOutput += $"=== Generated File ===\n{file.ToString()}\n=== End File ===\n";
+            }
+            
             var errorMessages = string.Join("\n", finalCompilationErrors.Select(d => d.GetMessage()));
-            Assert.Fail($"Final compilation failed with errors:\n{errorMessages}");
+            Assert.Fail($"Final compilation failed with errors:\n{errorMessages}\n\n{debugOutput}");
         }
 
         // Get the generated code
@@ -228,13 +236,13 @@ public class TestClass
         var driver = CSharpGeneratorDriver.Create(generator);
 
         // Act
-        driver = driver.RunGenerators(compilation);
+        driver = (CSharpGeneratorDriver)driver.RunGenerators(compilation);
 
         // Assert
         var runResult = driver.GetRunResult();
-        var generatedSources = runResult.GeneratedSources;
+        var generatedTrees = runResult.GeneratedTrees;
         
-        Assert.IsTrue(generatedSources.Count > 0, "Should generate source code");
+        Assert.IsTrue(generatedTrees.Length > 0, "Should generate source code");
     }
 
     /// <summary>
@@ -255,7 +263,7 @@ public class TestClass
         var driver = CSharpGeneratorDriver.Create(generator);
 
         // Act
-        driver = driver.RunGenerators(compilation);
+        driver = (CSharpGeneratorDriver)driver.RunGenerators(compilation);
 
         // Assert
         var runResult = driver.GetRunResult();
@@ -283,7 +291,7 @@ public class TestClass
         var driver = CSharpGeneratorDriver.Create(generator);
 
         // Act
-        driver = driver.RunGenerators(compilation);
+        driver = (CSharpGeneratorDriver)driver.RunGenerators(compilation);
 
         // Assert
         var runResult = driver.GetRunResult();
@@ -310,7 +318,7 @@ public class TestClass
         var driver = CSharpGeneratorDriver.Create(generator);
 
         // Act
-        driver = driver.RunGenerators(compilation);
+        driver = (CSharpGeneratorDriver)driver.RunGenerators(compilation);
 
         // Assert
         var runResult = driver.GetRunResult();
@@ -344,12 +352,47 @@ public class TestClass2
         var driver = CSharpGeneratorDriver.Create(generator);
 
         // Act
-        driver = driver.RunGenerators(compilation);
+        driver = (CSharpGeneratorDriver)driver.RunGenerators(compilation);
 
         // Assert
         var runResult = driver.GetRunResult();
-        var generatedSources = runResult.GeneratedSources;
+        var generatedTrees = runResult.GeneratedTrees;
         
-        Assert.IsTrue(generatedSources.Count > 0, "Should generate code for multiple classes");
+        Assert.IsTrue(generatedTrees.Length > 0, "Should generate code for multiple classes");
+    }
+
+    /// <summary>
+    /// Creates a compilation from source code for testing.
+    /// </summary>
+    /// <param name="source">The source code to compile.</param>
+    /// <returns>A compilation object.</returns>
+    private static CSharpCompilation CreateCompilation(string source)
+    {
+        var syntaxTree = CSharpSyntaxTree.ParseText(source);
+
+        var references = new List<MetadataReference>
+        {
+            MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(System.Linq.Enumerable).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(System.Collections.Generic.List<>).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(System.Threading.Tasks.Task).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(System.Threading.CancellationToken).Assembly.Location),
+        };
+
+        // Add safe assembly references
+        SafeAddAssemblyReference(references, "System.Runtime");
+        SafeAddAssemblyReference(references, "System.Collections");
+        SafeAddAssemblyReference(references, "System.Data.Common");
+        SafeAddAssemblyReference(references, "System.Linq.Expressions");
+
+        // Add reference to the Sqlx assembly
+        references.Add(MetadataReference.CreateFromFile(typeof(CSharpGenerator).Assembly.Location));
+
+        return CSharpCompilation.Create(
+            "TestAssembly",
+            new SyntaxTree[] { syntaxTree },
+            references,
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+                .WithNullableContextOptions(NullableContextOptions.Enable));
     }
 }

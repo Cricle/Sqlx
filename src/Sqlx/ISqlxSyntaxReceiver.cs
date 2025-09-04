@@ -18,4 +18,10 @@ internal interface ISqlxSyntaxReceiver : ISyntaxContextReceiver
     /// Gets list of collected methods.
     /// </summary>
     List<IMethodSymbol> Methods { get; }
+
+    /// <summary>
+    /// Called for every syntax node in the compilation.
+    /// </summary>
+    /// <param name="syntaxNode">The syntax node to visit.</param>
+    void OnVisitSyntaxNode(SyntaxNode syntaxNode);
 }

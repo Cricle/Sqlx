@@ -6,8 +6,32 @@
 
 namespace Sqlx;
 
-internal sealed record SqlDefine(string ColumnLeft, string ColumnRight, string StringLeft, string StringRight, string ParamterPrefx)
+internal readonly record struct SqlDefine
 {
+    public string ColumnLeft { get; }
+    public string ColumnRight { get; }
+    public string StringLeft { get; }
+    public string StringRight { get; }
+    public string ParamterPrefx { get; }
+
+    public SqlDefine(string columnLeft, string columnRight, string stringLeft, string stringRight, string paramterPrefx)
+    {
+        ColumnLeft = columnLeft;
+        ColumnRight = columnRight;
+        StringLeft = stringLeft;
+        StringRight = stringRight;
+        ParamterPrefx = paramterPrefx;
+    }
+
+    public void Deconstruct(out string columnLeft, out string columnRight, out string stringLeft, out string stringRight, out string paramterPrefx)
+    {
+        columnLeft = ColumnLeft;
+        columnRight = ColumnRight;
+        stringLeft = StringLeft;
+        stringRight = StringRight;
+        paramterPrefx = ParamterPrefx;
+    }
+
     public static readonly SqlDefine MySql = new SqlDefine("`", "`", "'", "'", "@");
     public static readonly SqlDefine SqlServer = new SqlDefine("[", "]", "'", "'", "@");
     public static readonly SqlDefine PgSql = new SqlDefine("\"", "\"", "'", "'", "@");

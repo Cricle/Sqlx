@@ -270,14 +270,14 @@ public class TestClass
         var driver = CSharpGeneratorDriver.Create(generator);
 
         // Act
-        driver = driver.RunGenerators(compilation);
+        driver = (CSharpGeneratorDriver)driver.RunGenerators(compilation);
 
         // Assert
         var runResult = driver.GetRunResult();
-        var generatedSources = runResult.GeneratedSources;
+        var generatedSources = runResult.GeneratedTrees;
         
         // Should generate some code even with missing attributes
-        Assert.IsTrue(generatedSources.Count > 0, "Should generate some code");
+        Assert.IsTrue(generatedSources.Length > 0, "Should generate some code");
     }
 
     /// <summary>
@@ -299,7 +299,7 @@ public class TestClass
         var driver = CSharpGeneratorDriver.Create(generator);
 
         // Act
-        driver = driver.RunGenerators(compilation);
+        driver = (CSharpGeneratorDriver)driver.RunGenerators(compilation);
 
         // Assert - should not throw exception
         var runResult = driver.GetRunResult();
@@ -326,7 +326,7 @@ public class TestClass
         var driver = CSharpGeneratorDriver.Create(generator);
 
         // Act
-        driver = driver.RunGenerators(compilation);
+        driver = (CSharpGeneratorDriver)driver.RunGenerators(compilation);
 
         // Assert - should not throw exception
         var runResult = driver.GetRunResult();
@@ -354,11 +354,11 @@ public class TestClass
         var driver = CSharpGeneratorDriver.Create(generator);
 
         // Act
-        driver = driver.RunGenerators(compilation);
+        driver = (CSharpGeneratorDriver)driver.RunGenerators(compilation);
 
         // Assert
         var runResult = driver.GetRunResult();
-        var generatedSources = runResult.GeneratedSources;
+        var generatedSources = runResult.GeneratedTrees;
         
         // Should handle missing SqlxAttribute gracefully
         Assert.IsNotNull(runResult);
@@ -385,11 +385,11 @@ public class TestClass
         var driver = CSharpGeneratorDriver.Create(generator);
 
         // Act
-        driver = driver.RunGenerators(compilation);
+        driver = (CSharpGeneratorDriver)driver.RunGenerators(compilation);
 
         // Assert
         var runResult = driver.GetRunResult();
-        var generatedSources = runResult.GeneratedSources;
+        var generatedSources = runResult.GeneratedTrees;
         
         // Should handle missing RawSqlAttribute gracefully
         Assert.IsNotNull(runResult);
@@ -416,11 +416,11 @@ public class TestClass
         var driver = CSharpGeneratorDriver.Create(generator);
 
         // Act
-        driver = driver.RunGenerators(compilation);
+        driver = (CSharpGeneratorDriver)driver.RunGenerators(compilation);
 
         // Assert
         var runResult = driver.GetRunResult();
-        var generatedSources = runResult.GeneratedSources;
+        var generatedSources = runResult.GeneratedTrees;
         
         // Should handle missing ExpressionToSqlAttribute gracefully
         Assert.IsNotNull(runResult);
@@ -447,11 +447,11 @@ public class TestClass
         var driver = CSharpGeneratorDriver.Create(generator);
 
         // Act
-        driver = driver.RunGenerators(compilation);
+        driver = (CSharpGeneratorDriver)driver.RunGenerators(compilation);
 
         // Assert
         var runResult = driver.GetRunResult();
-        var generatedSources = runResult.GeneratedSources;
+        var generatedSources = runResult.GeneratedTrees;
         
         // Should handle nullable context options correctly
         Assert.IsNotNull(runResult);
@@ -484,13 +484,13 @@ public class TestClass2
         var driver = CSharpGeneratorDriver.Create(generator);
 
         // Act
-        driver = driver.RunGenerators(compilation);
+        driver = (CSharpGeneratorDriver)driver.RunGenerators(compilation);
 
         // Assert
         var runResult = driver.GetRunResult();
-        var generatedSources = runResult.GeneratedSources;
+        var generatedSources = runResult.GeneratedTrees;
         
-        Assert.IsTrue(generatedSources.Count > 0, "Should generate code for multiple classes");
+        Assert.IsTrue(generatedSources.Length > 0, "Should generate code for multiple classes");
     }
 
     /// <summary>
@@ -514,7 +514,7 @@ public class TestClass
         var driver = CSharpGeneratorDriver.Create(generator);
 
         // Act
-        driver = driver.RunGenerators(compilation);
+        driver = (CSharpGeneratorDriver)driver.RunGenerators(compilation);
 
         // Assert
         var runResult = driver.GetRunResult();
@@ -545,7 +545,7 @@ public class TestClass
         var driver = CSharpGeneratorDriver.Create(generator);
 
         // Act
-        driver = driver.RunGenerators(compilation);
+        driver = (CSharpGeneratorDriver)driver.RunGenerators(compilation);
 
         // Assert
         var runResult = driver.GetRunResult();
@@ -576,7 +576,7 @@ public class TestClass
         var driver = CSharpGeneratorDriver.Create(generator);
 
         // Act
-        driver = driver.RunGenerators(compilation);
+        driver = (CSharpGeneratorDriver)driver.RunGenerators(compilation);
 
         // Assert
         var runResult = driver.GetRunResult();
@@ -607,7 +607,7 @@ public class TestClass
         var driver = CSharpGeneratorDriver.Create(generator);
 
         // Act
-        driver = driver.RunGenerators(compilation);
+        driver = (CSharpGeneratorDriver)driver.RunGenerators(compilation);
 
         // Assert
         var runResult = driver.GetRunResult();
@@ -636,7 +636,7 @@ public class TestClass
         var driver = CSharpGeneratorDriver.Create(generator);
 
         // Act
-        driver = driver.RunGenerators(compilation);
+        driver = (CSharpGeneratorDriver)driver.RunGenerators(compilation);
 
         // Assert
         var runResult = driver.GetRunResult();
@@ -663,7 +663,7 @@ public class TestClass
         var driver = CSharpGeneratorDriver.Create(generator);
 
         // Act
-        driver = driver.RunGenerators(compilation);
+        driver = (CSharpGeneratorDriver)driver.RunGenerators(compilation);
 
         // Assert
         var runResult = driver.GetRunResult();
@@ -727,5 +727,23 @@ public class TestClass
         }
 
         return references;
+    }
+
+    /// <summary>
+    /// Creates a compilation from source code for testing.
+    /// </summary>
+    /// <param name="source">The source code to compile.</param>
+    /// <returns>A compilation object.</returns>
+    private static CSharpCompilation CreateCompilation(string source)
+    {
+        var syntaxTree = CSharpSyntaxTree.ParseText(source);
+        var references = GetBasicReferences();
+
+        return CSharpCompilation.Create(
+            "TestAssembly",
+            new SyntaxTree[] { syntaxTree },
+            references,
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+                .WithNullableContextOptions(NullableContextOptions.Enable));
     }
 }

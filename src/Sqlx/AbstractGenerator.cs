@@ -31,8 +31,9 @@ public abstract class AbstractGenerator : ISourceGenerator
         INamedTypeSymbol? sqlxAttributeSymbol = context.Compilation.GetTypeByMetadataName("Sqlx.Annotations.SqlxAttribute");
         INamedTypeSymbol? rawSqlAttributeSymbol = context.Compilation.GetTypeByMetadataName("Sqlx.Annotations.RawSqlAttribute");
         INamedTypeSymbol? expressionToSqlAttributeSymbol = context.Compilation.GetTypeByMetadataName("Sqlx.Annotations.ExpressionToSqlAttribute");
+        INamedTypeSymbol? sqlExecuteTypeAttributeSymbol = context.Compilation.GetTypeByMetadataName("Sqlx.Annotations.SqlExecuteTypeAttribute");
 
-        if (sqlxAttributeSymbol == null || rawSqlAttributeSymbol == null || expressionToSqlAttributeSymbol == null)
+        if (sqlxAttributeSymbol == null || rawSqlAttributeSymbol == null || expressionToSqlAttributeSymbol == null || sqlExecuteTypeAttributeSymbol == null)
         {
             context.ReportDiagnostic(Diagnostic.Create(Messages.SP0001, null));
             return;
@@ -44,7 +45,8 @@ public abstract class AbstractGenerator : ISourceGenerator
         foreach (IGrouping<ISymbol?, IMethodSymbol> group in receiver.Methods.GroupBy(f => f.ContainingType, SymbolEqualityComparer.Default))
         {
             var key = (INamedTypeSymbol)group.Key!;
-            var ctx = new ClassGenerationContext(key, group.ToList(), sqlxAttributeSymbol, context);
+            var ctx = new ClassGenerationContext(key, group.ToList(), sqlxAttributeSymbol);
+            ctx.SetExecutionContext(context);
             var sb = new IndentedStringBuilder(string.Empty);
 
             if (ctx.CreateSource(sb)) context.AddSource($"{key.ToDisplayString().Replace(".", "_")}.Sql.g.cs", SourceText.From(sb.ToString().Trim(), Encoding.UTF8));

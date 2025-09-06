@@ -232,47 +232,60 @@ internal class MethodGenerationContext : GenerationContextBase
         }
         else if (!string.IsNullOrEmpty(sql))
         {
-            // Static SQL case (from SqlExecuteType, RawSql, or stored procedure)
-            sb.AppendLine($"{CmdName}.CommandText = {sql};");
-            
-            // If we have ExpressionToSql parameter and this is a SqlExecuteType operation, 
-            // append dynamic WHERE clause for SELECT/DELETE or handle UPDATE specially
-            if (ExpressionToSqlParameter != null)
+            // Check if this is a batch INSERT operation with placeholder
+            if (sql!.Contains("{{VALUES_PLACEHOLDER}}"))
             {
-                var sqlExecuteType = MethodSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlExecuteTypeAttribute");
-                if (sqlExecuteType != null)
+                GenerateBatchInsertSql(sb, sql);
+            }
+            else
+            {
+                // Static SQL case (from SqlExecuteType, RawSql, or stored procedure)
+                sb.AppendLine($"{CmdName}.CommandText = {sql};");
+                
+                // If we have ExpressionToSql parameter and this is a SqlExecuteType operation, 
+                // append dynamic WHERE clause for SELECT/DELETE or handle UPDATE specially
+                if (ExpressionToSqlParameter != null)
                 {
-                    var type = (SqlExecuteTypes)Enum.Parse(typeof(SqlExecuteTypes), sqlExecuteType.ConstructorArguments[0].Value?.ToString() ?? "0");
-                    GenerateExpressionToSqlEnhancement(sb, type);
+                    var sqlExecuteType = MethodSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlExecuteTypeAttribute");
+                    if (sqlExecuteType != null)
+                    {
+                        var type = (SqlExecuteTypes)Enum.Parse(typeof(SqlExecuteTypes), sqlExecuteType.ConstructorArguments[0].Value?.ToString() ?? "0");
+                        GenerateExpressionToSqlEnhancement(sb, type);
+                    }
                 }
             }
         }
 
         sb.AppendLine();
 
-        // Paramters
+        // Paramters - skip for batch INSERT operations as they're handled in GenerateBatchInsertSql
         var columnDefines = new List<ColumnDefine>();
-        foreach (var item in SqlParameters)
+        var isBatchInsert = !string.IsNullOrEmpty(sql) && sql!.Contains("{{VALUES_PLACEHOLDER}}");
+        
+        if (!isBatchInsert)
         {
-            var isScalarType = item.Type.IsScalarType();
-            if (isScalarType)
+            foreach (var item in SqlParameters)
             {
-                HandlerColumn(item, item.Type, string.Empty);
-            }
-            else
-            {
-                foreach (var deepMember in item.Type.GetMembers().OfType<IPropertySymbol>())
+                var isScalarType = item.Type.IsScalarType();
+                if (isScalarType)
                 {
-                    HandlerColumn(deepMember, deepMember.Type, $"{item.Name}");
+                    HandlerColumn(item, item.Type, string.Empty);
                 }
-            }
+                else
+                {
+                    foreach (var deepMember in item.Type.GetMembers().OfType<IPropertySymbol>())
+                    {
+                        HandlerColumn(deepMember, deepMember.Type, $"{item.Name}");
+                    }
+                }
 
-            void HandlerColumn(ISymbol par, ITypeSymbol parType, string prefx)
-            {
-                var parName = DeclareParamter(sb, par, parType, prefx);
-                sb.AppendLine($"{CmdName}.Parameters.Add({parName.ParameterName});");
-                sb.AppendLine();
-                columnDefines.Add(parName);
+                void HandlerColumn(ISymbol par, ITypeSymbol parType, string prefx)
+                {
+                    var parName = DeclareParamter(sb, par, parType, prefx);
+                    sb.AppendLine($"{CmdName}.Parameters.Add({parName.ParameterName});");
+                    sb.AppendLine();
+                    columnDefines.Add(parName);
+                }
             }
         }
 
@@ -848,6 +861,9 @@ internal class MethodGenerationContext : GenerationContextBase
             var type = (SqlExecuteTypes)Enum.Parse(typeof(SqlExecuteTypes), sqlExecuteType.ConstructorArguments[0].Value?.ToString() ?? "0");
             var tableName = sqlExecuteType.ConstructorArguments[1].Value?.ToString() ?? string.Empty;
             
+            // Override table name with TableName attribute if present
+            tableName = GetEffectiveTableName(tableName);
+            
             // Handle different CRUD operations with their specific parameter patterns
             return type switch
             {
@@ -867,6 +883,35 @@ internal class MethodGenerationContext : GenerationContextBase
         }
 
         return string.Empty;
+    }
+
+    private string GetEffectiveTableName(string defaultTableName)
+    {
+        // Check for TableName attribute on method
+        var methodTableNameAttr = MethodSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "TableNameAttribute");
+        if (methodTableNameAttr != null && methodTableNameAttr.ConstructorArguments.Length > 0)
+        {
+            return methodTableNameAttr.ConstructorArguments[0].Value?.ToString() ?? defaultTableName;
+        }
+
+        // Check for TableName attribute on class
+        var classTableNameAttr = ClassGenerationContext.ClassSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "TableNameAttribute");
+        if (classTableNameAttr != null && classTableNameAttr.ConstructorArguments.Length > 0)
+        {
+            return classTableNameAttr.ConstructorArguments[0].Value?.ToString() ?? defaultTableName;
+        }
+
+        // Check for TableName attribute on parameters
+        foreach (var param in SqlParameters)
+        {
+            var paramTableNameAttr = param.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "TableNameAttribute");
+            if (paramTableNameAttr != null && paramTableNameAttr.ConstructorArguments.Length > 0)
+            {
+                return paramTableNameAttr.ConstructorArguments[0].Value?.ToString() ?? defaultTableName;
+            }
+        }
+
+        return defaultTableName;
     }
 
     private string? HandleSelectOperation(string tableName)
@@ -994,6 +1039,86 @@ internal class MethodGenerationContext : GenerationContextBase
         // Fallback: treat as static SQL (remove quotes if present)
         var cleanSql = sqlTemplate.Trim('"');
         sb.AppendLine($"{CmdName}.CommandText = \"{cleanSql}\";");
+    }
+
+    private void GenerateBatchInsertSql(IndentedStringBuilder sb, string sqlTemplate)
+    {
+        // Find the collection parameter (should be IEnumerable<T>)
+        var collectionParameter = SqlParameters.FirstOrDefault(p => !p.Type.IsScalarType());
+        if (collectionParameter == null)
+        {
+            // Fallback to regular SQL with user-friendly error handling
+            sb.AppendLine($"// Warning: No collection parameter found for batch INSERT");
+            sb.AppendLine($"{CmdName}.CommandText = {sqlTemplate.Replace("{{VALUES_PLACEHOLDER}}", "")};");
+            return;
+        }
+
+        // Add null check for user safety
+        sb.AppendLine($"if ({collectionParameter.Name} == null)");
+        sb.AppendLine($"    throw new global::System.ArgumentNullException(nameof({collectionParameter.Name}), \"Collection parameter cannot be null for batch INSERT\");");
+        sb.AppendLine();
+
+        var objectMap = new ObjectMap(collectionParameter);
+        var baseSql = sqlTemplate.Replace("{{VALUES_PLACEHOLDER}}", "");
+        var properties = objectMap.Properties.ToList();
+        
+        // Generate optimized batch INSERT logic with StringBuilder for better performance
+        sb.AppendLine($"var baseSql = \"{baseSql.Trim('"')}\";");
+        sb.AppendLine($"var sqlBuilder = new global::System.Text.StringBuilder(baseSql);");
+        sb.AppendLine($"var paramIndex = 0;");
+        sb.AppendLine($"var isFirst = true;");
+        sb.AppendLine();
+        
+        // Check for empty collection to avoid generating invalid SQL
+        sb.AppendLine($"if (!{collectionParameter.Name}.Any())");
+        sb.AppendLine($"    throw new global::System.InvalidOperationException(\"Cannot perform batch INSERT with empty collection\");");
+        sb.AppendLine();
+        
+        // Generate optimized loop with minimal allocations
+        sb.AppendLine($"foreach (var item in {collectionParameter.Name})");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        
+        // Add comma separator for subsequent VALUES clauses
+        sb.AppendLine("if (!isFirst) sqlBuilder.Append(\", \");");
+        sb.AppendLine("else isFirst = false;");
+        sb.AppendLine();
+        sb.AppendLine("sqlBuilder.Append(\"(\");");
+        
+        // Generate parameter creation with cleaner variable names
+        for (int i = 0; i < properties.Count; i++)
+        {
+            var property = properties[i];
+            var paramName = $"param_{property.Name}";
+            
+            sb.AppendLine($"var {paramName} = {CmdName}.CreateParameter();");
+            sb.AppendLine($"{paramName}.ParameterName = $\"{SqlDef.ParamterPrefx}{property.GetParameterName(string.Empty)}_{{paramIndex}}\";");
+            sb.AppendLine($"{paramName}.DbType = {property.Type.GetDbType()};");
+            sb.AppendLine($"{paramName}.Value = (object?)item.{property.Name} ?? global::System.DBNull.Value;");
+            sb.AppendLine($"{CmdName}.Parameters.Add({paramName});");
+            
+            // Add parameter to VALUES clause
+            if (i > 0)
+            {
+                sb.AppendLine($"sqlBuilder.Append(\", \").Append({paramName}.ParameterName);");
+            }
+            else
+            {
+                sb.AppendLine($"sqlBuilder.Append({paramName}.ParameterName);");
+            }
+            
+            if (i < properties.Count - 1) sb.AppendLine();
+        }
+        
+        sb.AppendLine("sqlBuilder.Append(\")\");");
+        sb.AppendLine("paramIndex++;");
+        
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+        
+        // Set the final optimized SQL
+        sb.AppendLine($"{CmdName}.CommandText = sqlBuilder.ToString();");
     }
 
     private void GenerateExpressionToSqlEnhancement(IndentedStringBuilder sb, SqlExecuteTypes operationType)

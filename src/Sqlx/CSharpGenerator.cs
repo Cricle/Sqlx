@@ -26,7 +26,6 @@ public class CSharpGenerator : AbstractGenerator
 // regenerated.
 // </auto-generated>
 #nullable enable
-
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -36,7 +35,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
-
 namespace Sqlx.Annotations
 {
     [global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = true)]
@@ -44,29 +42,62 @@ namespace Sqlx.Annotations
     {
         public SqlxAttribute()
             => StoredProcedureName = string.Empty;
-
         public SqlxAttribute(string name)
             => StoredProcedureName = name;
-
         public string StoredProcedureName { get; }
     }
 
-    [global::System.AttributeUsage(global::System.AttributeTargets.Parameter| global::System.AttributeTargets.Method, AllowMultiple = false)]
+    /// <summary>
+    /// Specifies that a class should act as a repository for the specified service type.
+    /// The service type can be an interface or abstract class.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
+    sealed class RepositoryForAttribute : Attribute
+    {
+        /// <summary>
+        /// Initializes a new instance of the <see cref=""RepositoryForAttribute""/> class.
+        /// </summary>
+        /// <param name=""serviceType"">The service type this repository implements.</param>
+        public RepositoryForAttribute(Type serviceType) => ServiceType = serviceType;
+    
+        /// <summary>
+        /// Gets the service type this repository implements.
+        /// </summary>
+        public Type ServiceType { get; }
+    }
+
+    /// <summary>
+    /// Specifies the table name for database operations.
+    /// Can be applied to parameters, methods, or types.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.Method | AttributeTargets.Class | AttributeTargets.Interface, AllowMultiple = false)]
+    sealed class TableNameAttribute : Attribute
+    {
+        /// <summary>
+        /// Initializes a new instance of the <see cref=""TableNameAttribute""/> class.
+        /// </summary>
+        /// <param name=""tableName"">The table name to use for database operations.</param>
+        public TableNameAttribute(string tableName) => TableName = tableName;
+    
+        /// <summary>
+        /// Gets the table name to use for database operations.
+        /// </summary>
+        public string TableName { get; }
+    }
+
+    [global::System.AttributeUsage(global::System.AttributeTargets.Parameter | global::System.AttributeTargets.Method, AllowMultiple = false)]
     sealed class RawSqlAttribute : global::System.Attribute
     {
         public RawSqlAttribute() { }
         public RawSqlAttribute(global::System.String sql) { }
     }
-
     [global::System.AttributeUsage(global::System.AttributeTargets.Parameter, AllowMultiple = false)]
     sealed class ExpressionToSqlAttribute : global::System.Attribute
     {
         public ExpressionToSqlAttribute() { }
     }
-
     [global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = false)]
     sealed class ExecuteNoQueryAttribute : global::System.Attribute { }
-
     [global::System.AttributeUsage(global::System.AttributeTargets.Method
         | global::System.AttributeTargets.Class
         | global::System.AttributeTargets.Field
@@ -76,71 +107,52 @@ namespace Sqlx.Annotations
     sealed class TimeoutAttribute : global::System.Attribute
     {
         public TimeoutAttribute() { }
-
         public TimeoutAttribute(int timeout) => Timeout = timeout;
-
         public int Timeout { get; }
     }
-
-
     [global::System.AttributeUsage(global::System.AttributeTargets.Parameter, AllowMultiple = false)]
     sealed class DbColumnAttribute : global::System.Attribute
     {
         public DbColumnAttribute() { }
-
         public DbColumnAttribute(string? name) => Name = name;
-
         public string? Name { get; }
-
         public byte Precision { get; }
         public byte Scale { get; }
         public byte Size { get; }
         public global::System.Data.ParameterDirection Direction { get; }
     }
-
     /// <summary>
     /// Tag to paramter make it as <see cref=""Func{DbDataReader, Task}""/> or <see cref=""Action{DbDataReader}""/> for read data
     /// </summary>
-
     [global::System.AttributeUsage(global::System.AttributeTargets.Parameter, AllowMultiple = false)]
     sealed class ReadHandlerAttribute : global::System.Attribute { }
-
-
     [global::System.AttributeUsage(global::System.AttributeTargets.Parameter | global::System.AttributeTargets.Method, AllowMultiple = false)]
     sealed class DbSetTypeAttribute : global::System.Attribute
     {
         public DbSetTypeAttribute(global::System.Type type) => Type = type;
-
         public global::System.Type Type { get; }
     }
-
-
     [global::System.AttributeUsage(global::System.AttributeTargets.Method | global::System.AttributeTargets.Class, AllowMultiple = false)]
     sealed class SqlDefineAttribute : global::System.Attribute
     {
         public SqlDefineAttribute(SqlDefineTypes type) { }
-
         public SqlDefineAttribute(global::System.String columnLeft,
                                   global::System.String columnRight,
                                   global::System.String stringLeft,
                                   global::System.String stringRight,
                                   global::System.String ParamterPrefx) { }
     }
-
     enum SqlDefineTypes
     {
         MySql = 0,
         SqlServer = 1,
         Postgresql = 2,
     }
-
-
     [global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = false)]
     sealed class SqlExecuteTypeAttribute : global::System.Attribute
     {
         public SqlExecuteTypeAttribute(SqlExecuteTypes Type, string TableName) { }
     }
-
     internal enum SqlExecuteTypes
     {
         Select = 0,
@@ -148,7 +160,6 @@ namespace Sqlx.Annotations
         Insert = 2,
         Delete = 3,
     }
-
     /// <summary>
     /// Represents a SQL template with parameters for efficient query execution.
     /// This class is designed for high performance and security by pre-parsing SQL and parameters.
@@ -160,13 +171,11 @@ namespace Sqlx.Annotations
         /// Parameters are validated to prevent SQL injection attacks.
         /// </summary>
         public SqlTemplate(string sql, params DbParameter[] parameters) : this(sql, (IReadOnlyList<DbParameter>)parameters) { }
-        
         /// <summary>
         /// Creates a SQL template with no parameters.
         /// </summary>
         public SqlTemplate(string sql) : this(sql, Array.Empty<DbParameter>()) { }
     }
-
     /// <summary>
     /// Provides predefined SQL dialects for different database systems.
     /// Each dialect includes proper column wrapping and parameter prefixes for security.
@@ -176,22 +185,16 @@ namespace Sqlx.Annotations
         /// <summary>
         /// MySQL dialect configuration with backtick column wrapping and @ parameter prefix.
         /// </summary>
-        public static readonly (string ColumnLeft, string ColumnRight, string StringLeft, string StringRight, string ParameterPrefix) 
-            MySql = (""`"", ""`"", ""'"", ""'"", ""@"");
-
+        public static readonly (string ColumnLeft, string ColumnRight, string StringLeft, string StringRight, string ParameterPrefix) MySql = (""`"", ""`"", ""'"", ""'"", ""@"");
         /// <summary>
         /// SQL Server dialect configuration with bracket column wrapping and @ parameter prefix.
         /// </summary>
-        public static readonly (string ColumnLeft, string ColumnRight, string StringLeft, string StringRight, string ParameterPrefix) 
-            SqlServer = (""["", ""]"", ""'"", ""'"", ""@"");
-
+        public static readonly (string ColumnLeft, string ColumnRight, string StringLeft, string StringRight, string ParameterPrefix) SqlServer = (""["", ""]"", ""'"", ""'"", ""@"");
         /// <summary>
         /// PostgreSQL dialect configuration with double quote column wrapping and $ parameter prefix.
         /// </summary>
-        public static readonly (string ColumnLeft, string ColumnRight, string StringLeft, string StringRight, string ParameterPrefix) 
-            PgSql = (""\"""", ""\"""", ""'"", ""'"", ""$"");
+        public static readonly (string ColumnLeft, string ColumnRight, string StringLeft, string StringRight, string ParameterPrefix) PgSql = (""\"""", ""\"""", ""'"", ""'"", ""$"");
     }
-
     /// <summary>
     /// High-performance LINQ expression to SQL converter with type safety and caching.
     /// Provides both direct SQL composition and parameterized query generation.
@@ -206,7 +209,6 @@ namespace Sqlx.Annotations
         private SqlTemplate? _cachedTemplate;
         private int? _take;
         private int? _skip;
-
         /// <summary>
         /// Initializes a new instance with the specified SQL dialect.
         /// </summary>
@@ -214,37 +216,31 @@ namespace Sqlx.Annotations
         {
             _dialect = dialect;
         }
-
         /// <summary>
         /// Creates an ExpressionToSql builder for SQL Server dialect.
         /// </summary>
         public static ExpressionToSql<T> ForSqlServer()
             => new ExpressionToSql<T>(SqlDefine.SqlServer);
-
         /// <summary>
         /// Creates an ExpressionToSql builder for MySQL dialect.
         /// </summary>
         public static ExpressionToSql<T> ForMySql()
             => new ExpressionToSql<T>(SqlDefine.MySql);
-
         /// <summary>
         /// Creates an ExpressionToSql builder for PostgreSQL dialect.
         /// </summary>
         public static ExpressionToSql<T> ForPostgreSQL()
             => new ExpressionToSql<T>(SqlDefine.PgSql);
-
         /// <summary>
         /// Creates an ExpressionToSql builder for SQLite dialect.
         /// </summary>
         public static ExpressionToSql<T> ForSqlite()
             => new ExpressionToSql<T>(SqlDefine.MySql);
-
         /// <summary>
         /// Creates an ExpressionToSql builder with default (SQL Server) dialect.
         /// </summary>
         public static ExpressionToSql<T> Create()
             => new ExpressionToSql<T>(SqlDefine.SqlServer);
-
         /// <summary>
         /// Adds a WHERE condition to the query.
         /// </summary>
@@ -254,7 +250,6 @@ namespace Sqlx.Annotations
                 _whereConditions.Add(predicate);
             return this;
         }
-
         /// <summary>
         /// Adds an ORDER BY clause to the query.
         /// </summary>
@@ -264,7 +259,6 @@ namespace Sqlx.Annotations
                 _orderByExpressions.Add((keySelector, false));
             return this;
         }
-
         /// <summary>
         /// Adds an ORDER BY DESC clause to the query.
         /// </summary>
@@ -274,7 +268,6 @@ namespace Sqlx.Annotations
                 _orderByExpressions.Add((keySelector, true));
             return this;
         }
-
         /// <summary>
         /// Limits the number of returned rows.
         /// </summary>
@@ -283,7 +276,6 @@ namespace Sqlx.Annotations
             _take = count;
             return this;
         }
-
         /// <summary>
         /// Skips the specified number of rows.
         /// </summary>
@@ -292,7 +284,6 @@ namespace Sqlx.Annotations
             _skip = count;
             return this;
         }
-
         /// <summary>
         /// Adds an AND condition to the query.
         /// </summary>
@@ -300,7 +291,6 @@ namespace Sqlx.Annotations
         {
             return Where(predicate);
         }
-
         /// <summary>
         /// Sets a value for an UPDATE operation. Supports patterns like a=1.
         /// </summary>
@@ -311,7 +301,6 @@ namespace Sqlx.Annotations
             _setClausesConstant.Add((columnName, valueStr));
             return this;
         }
-
         /// <summary>
         /// Sets a value using an expression for an UPDATE operation. Supports patterns like a=a+1.
         /// </summary>
@@ -322,25 +311,20 @@ namespace Sqlx.Annotations
             _setClausesExpression.Add((columnName, expressionSql));
             return this;
         }
-
         /// <summary>
         /// Specifies columns for an INSERT operation.
         /// </summary>
         public ExpressionToSql<T> Insert(Expression<Func<T, object>> selector)
         {
-            // For INSERT operations
             return this;
         }
-
         /// <summary>
         /// Specifies values for an INSERT operation.
         /// </summary>
         public ExpressionToSql<T> Values(params object[] values)
         {
-            // For INSERT operations
             return this;
         }
-
         /// <summary>
         /// Converts the built query to a parameterized SQL template.
         /// Results are cached for performance on repeated calls.
@@ -349,12 +333,10 @@ namespace Sqlx.Annotations
         {
             if (_cachedTemplate != null)
                 return _cachedTemplate;
-
             var sql = BuildSql();
             _cachedTemplate = new SqlTemplate(sql, Array.Empty<DbParameter>());
             return _cachedTemplate;
         }
-
         /// <summary>
         /// Converts the built query to a SQL string.
         /// </summary>
@@ -362,7 +344,6 @@ namespace Sqlx.Annotations
         {
             return BuildSql();
         }
-
         /// <summary>
         /// Generates the WHERE clause portion of the query.
         /// </summary>
@@ -370,7 +351,6 @@ namespace Sqlx.Annotations
         {
             if (_whereConditions.Count == 0)
                 return string.Empty;
-
             var conditions = new List<string>();
             foreach (var condition in _whereConditions)
             {
@@ -379,14 +359,12 @@ namespace Sqlx.Annotations
             }
             return string.Join("" AND "", conditions);
         }
-
         /// <summary>
         /// Generates additional clauses for the query.
         /// </summary>
         public string ToAdditionalClause()
         {
             var clauses = new List<string>();
-            
             if (_orderByExpressions.Count > 0)
             {
                 var orderClauses = new List<string>();
@@ -398,20 +376,16 @@ namespace Sqlx.Annotations
                 }
                 clauses.Add(""ORDER BY "" + string.Join("", "", orderClauses));
             }
-
             if (_skip.HasValue)
             {
                 clauses.Add($""OFFSET {_skip.Value}"");
             }
-
             if (_take.HasValue)
             {
                 clauses.Add($""LIMIT {_take.Value}"");
             }
-
             return string.Join("" "", clauses);
         }
-
         /// <summary>
         /// Releases resources used by this instance.
         /// </summary>
@@ -423,41 +397,30 @@ namespace Sqlx.Annotations
             _setClausesExpression.Clear();
             _cachedTemplate = null;
         }
-
         private string BuildSql()
         {
             var sql = new StringBuilder();
-            
-            // Check if this is an UPDATE operation (has SET clauses)
             if (_setClausesConstant.Count > 0 || _setClausesExpression.Count > 0)
             {
                 sql.Append(""UPDATE "");
                 sql.Append(_dialect.ColumnLeft + typeof(T).Name + _dialect.ColumnRight);
                 sql.Append("" SET "");
-                
                 var setClauses = new List<string>();
-                
-                // Add constant SET clauses (a = 1)
                 foreach (var (column, value) in _setClausesConstant)
                 {
                     setClauses.Add($""{column} = {value}"");
                 }
-                
-                // Add expression SET clauses (a = a + 1)
                 foreach (var (column, expression) in _setClausesExpression)
                 {
                     setClauses.Add($""{column} = {expression}"");
                 }
-                
                 sql.Append(string.Join("", "", setClauses));
             }
             else
             {
-                // Default to SELECT operation
                 sql.Append(""SELECT * FROM "");
                 sql.Append(_dialect.ColumnLeft + typeof(T).Name + _dialect.ColumnRight);
             }
-
             if (_whereConditions.Count > 0)
             {
                 sql.Append("" WHERE "");
@@ -469,8 +432,6 @@ namespace Sqlx.Annotations
                 }
                 sql.Append(string.Join("" AND "", conditions));
             }
-
-            // ORDER BY, OFFSET, LIMIT only apply to SELECT statements
             if (_setClausesConstant.Count == 0 && _setClausesExpression.Count == 0)
             {
                 if (_orderByExpressions.Count > 0)
@@ -485,21 +446,17 @@ namespace Sqlx.Annotations
                     }
                     sql.Append(string.Join("", "", orderClauses));
                 }
-
                 if (_skip.HasValue)
                 {
                     sql.Append($"" OFFSET {_skip.Value}"");
                 }
-
                 if (_take.HasValue)
                 {
                     sql.Append($"" LIMIT {_take.Value}"");
                 }
             }
-
             return sql.ToString();
         }
-
         private string ParseExpression(Expression expression)
         {
             switch (expression)
@@ -513,15 +470,13 @@ namespace Sqlx.Annotations
                 case UnaryExpression unary when unary.NodeType == ExpressionType.Not:
                     return $""NOT ({ParseExpression(unary.Operand)})"";
                 default:
-                    return ""1=1""; // Fallback for unsupported expressions
+                    return ""1=1"";
             }
         }
-
         private string ParseBinaryExpression(BinaryExpression binary)
         {
             var left = ParseExpression(binary.Left);
             var right = ParseExpression(binary.Right);
-            
             return binary.NodeType switch
             {
                 ExpressionType.Equal => $""{left} = {right}"",
@@ -532,10 +487,9 @@ namespace Sqlx.Annotations
                 ExpressionType.LessThanOrEqual => $""{left} <= {right}"",
                 ExpressionType.AndAlso => $""({left}) AND ({right})"",
                 ExpressionType.OrElse => $""({left}) OR ({right})"",
-                _ => $""{left} = {right}"" // Fallback
+                _ => $""{left} = {right}""
             };
         }
-
         private string GetColumnName(Expression expression)
         {
             if (expression is MemberExpression member)
@@ -548,91 +502,162 @@ namespace Sqlx.Annotations
             }
             return ""UnknownColumn"";
         }
-
         private string GetConstantValue(ConstantExpression constant)
         {
             if (constant.Value == null)
                 return ""NULL"";
-            
             if (constant.Type == typeof(string))
                 return _dialect.StringLeft + constant.Value?.ToString() + _dialect.StringRight;
-            
-            if (constant.Type == typeof(int) || constant.Type == typeof(long) || 
+            if (constant.Type == typeof(int) || constant.Type == typeof(long) ||
                 constant.Type == typeof(double) || constant.Type == typeof(decimal))
                 return constant.Value?.ToString() ?? ""0"";
-            
             if (constant.Type == typeof(bool))
                 return (bool)constant.Value! ? ""1"" : ""0"";
-            
             return _dialect.StringLeft + (constant.Value?.ToString() ?? """") + _dialect.StringRight;
         }
-
         private string FormatConstantValue<TValue>(TValue value)
         {
             if (value == null)
                 return ""NULL"";
-            
             if (value is string stringValue)
                 return _dialect.StringLeft + stringValue + _dialect.StringRight;
-            
             if (value is int || value is long || value is double || value is decimal)
                 return value.ToString() ?? ""0"";
-            
             if (value is bool boolValue)
                 return boolValue ? ""1"" : ""0"";
-            
             return _dialect.StringLeft + value.ToString() + _dialect.StringRight;
         }
     }
-}
-";
+}";
 
-    /// <inheritdoc/>
-    public override void Initialize(GeneratorInitializationContext context)
+    /// <summary>
+    /// Initializes a new instance of the <see cref="CSharpGenerator"/> class.
+    /// </summary>
+    public CSharpGenerator()
     {
-        context.RegisterForPostInitialization((pi) =>
-        {
-            pi.AddSource("SqlxAttribute.g.cs", SourceText.From(CSharpAttributeSource, Encoding.UTF8));
-        });
-        context.RegisterForSyntaxNotifications(() => new SyntaxReceiver());
     }
 
-    internal class SyntaxReceiver : ISqlxSyntaxReceiver
+    /// <summary>
+    /// C# specific syntax receiver for collecting method symbols and repository classes.
+    /// </summary>
+    private class CSharpSyntaxReceiver : ISqlxSyntaxReceiver
     {
         public List<IMethodSymbol> Methods { get; } = new List<IMethodSymbol>();
-
-        public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
-        {
-            // This method is required by ISqlxSyntaxReceiver for test compatibility
-            // The actual implementation uses OnVisitSyntaxNode(GeneratorSyntaxContext)
-        }
+        public List<INamedTypeSymbol> RepositoryClasses { get; } = new List<INamedTypeSymbol>();
 
         public void OnVisitSyntaxNode(GeneratorSyntaxContext context)
         {
-            // Check method declarations for Sqlx attributes
-            if (context.Node is MethodDeclarationSyntax methodDeclarationSyntax)
+            if (context.Node is MethodDeclarationSyntax methodDeclaration)
             {
-                // Get the symbol being declared by the method, and keep it if its annotated
-                if (context.SemanticModel.GetDeclaredSymbol(context.Node) is not IMethodSymbol methodSymbol) return;
-
-                // Check for method-level attributes
-                var hasMethodAttribute = methodSymbol.GetAttributes().Any(ad =>
-                    ad.AttributeClass?.ToDisplayString() == "Sqlx.Annotations.SqlxAttribute" ||
-                    ad.AttributeClass?.ToDisplayString() == "Sqlx.Annotations.RawSqlAttribute" ||
-                    ad.AttributeClass?.ToDisplayString() == "Sqlx.Annotations.SqlExecuteTypeAttribute");
-
-                // Check for parameter-level attributes that require code generation
-                var hasParameterAttribute = methodSymbol.Parameters.Any(param =>
-                    param.GetAttributes().Any(ad =>
-                        ad.AttributeClass?.ToDisplayString() == "Sqlx.Annotations.ExpressionToSqlAttribute" ||
-                        ad.AttributeClass?.ToDisplayString() == "Sqlx.Annotations.RawSqlAttribute" ||
-                        ad.AttributeClass?.ToDisplayString() == "Sqlx.Annotations.DbSetTypeAttribute"));
-
-                if (hasMethodAttribute || hasParameterAttribute)
+                var methodSymbol = context.SemanticModel.GetDeclaredSymbol(methodDeclaration);
+                if (methodSymbol != null && HasSqlxAttribute(methodSymbol))
                 {
                     Methods.Add(methodSymbol);
                 }
             }
+            else if (context.Node is ClassDeclarationSyntax classDeclaration)
+            {
+                var classSymbol = context.SemanticModel.GetDeclaredSymbol(classDeclaration);
+                if (classSymbol != null)
+                {
+                    // Debug: log all classes we encounter
+                    System.Diagnostics.Debug.WriteLine($"Found class: {classSymbol.Name}");
+                    if (HasRepositoryForAttribute(classSymbol))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Adding repository class: {classSymbol.Name}");
+                        RepositoryClasses.Add(classSymbol);
+                    }
+                }
+            }
+        }
+
+        public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
+        {
+            // Legacy method - not used in modern Roslyn
+        }
+
+        private static bool HasSqlxAttribute(IMethodSymbol method)
+        {
+            return method.GetAttributes().Any(attr =>
+                attr.AttributeClass?.Name == "SqlxAttribute" ||
+                attr.AttributeClass?.Name == "RawSqlAttribute" ||
+                attr.AttributeClass?.Name == "SqlExecuteTypeAttribute");
+        }
+
+        private static bool HasRepositoryForAttribute(INamedTypeSymbol type)
+        {
+            var attributes = type.GetAttributes();
+            System.Diagnostics.Debug.WriteLine($"Class {type.Name} has {attributes.Length} attributes:");
+            foreach (var attr in attributes)
+            {
+                System.Diagnostics.Debug.WriteLine($"  - {attr.AttributeClass?.Name} ({attr.AttributeClass?.ToDisplayString()})");
+            }
+            
+            var hasAttr = attributes.Any(attr => attr.AttributeClass?.Name == "RepositoryForAttribute");
+            // Debug output - this will show in the compiler output
+            if (hasAttr)
+            {
+                System.Diagnostics.Debug.WriteLine($"Found RepositoryFor attribute on {type.Name}");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"No RepositoryFor attribute found on {type.Name}");
+            }
+            return hasAttr;
         }
     }
+
+    /// <summary>
+    /// Called to initialize the generator and register for the various <see cref="SyntaxNode"/>
+    /// callbacks.
+    /// </summary>
+    /// <param name="context">The generator context.</param>
+    public override void Initialize(GeneratorInitializationContext context)
+    {
+        System.Diagnostics.Debug.WriteLine("CSharpGenerator.Initialize called");
+        context.RegisterForSyntaxNotifications(() => new CSharpSyntaxReceiver());
+        context.RegisterForPostInitialization(ctx => {
+            // Generate the required attributes at compile time
+            ctx.AddSource("SqlxAttributes.g.cs", CSharpAttributeSource);
+        });
+    }
+
+    private static string FilterOutRepositoryAttributes(string source)
+    {
+        // Remove RepositoryForAttribute and TableNameAttribute definitions
+        // since they are now defined in Attributes.cs
+        var lines = source.Split('\n');
+        var result = new System.Text.StringBuilder();
+        bool skipAttribute = false;
+        int braceCount = 0;
+
+        foreach (var line in lines)
+        {
+            if (line.Contains("sealed class RepositoryForAttribute") || 
+                line.Contains("sealed class TableNameAttribute"))
+            {
+                skipAttribute = true;
+                braceCount = 0;
+                continue;
+            }
+
+            if (skipAttribute)
+            {
+                // Count braces to know when the attribute class ends
+                braceCount += line.Count(c => c == '{');
+                braceCount -= line.Count(c => c == '}');
+                
+                if (braceCount <= 0)
+                {
+                    skipAttribute = false;
+                }
+                continue;
+            }
+
+            result.AppendLine(line);
+        }
+
+        return result.ToString();
+    }
 }
+

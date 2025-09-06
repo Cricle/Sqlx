@@ -1,102 +1,71 @@
-﻿// ExpressionToSql独立功能测试
+﻿// 测试 RepositoryFor 源生成功能
 using System;
 using System.Linq;
-using Sqlx;
-
-// 测试实体
-class TestUser
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = "";
-    public int Age { get; set; }
-    public bool IsActive { get; set; }
-}
+using Microsoft.Data.Sqlite;
 
 class Program
 {
     static void Main()
     {
-        Console.WriteLine("=== ExpressionToSql 独立功能测试 ===\n");
+        Console.WriteLine("=== RepositoryFor 源生成功能测试 ===\n");
         
-        // 1. 基本查询测试
-        Console.WriteLine("1. 基本WHERE查询:");
-        var basicQuery = ExpressionToSql<TestUser>.ForSqlite()
-            .Where(u => u.Age > 18);
-        Console.WriteLine($"   SQL: {basicQuery.ToSql()}");
-        var template = basicQuery.ToTemplate();
-        Console.WriteLine($"   参数: {string.Join(", ", template.Parameters.Select(p => $"{p.Key}={p.Value}"))}");
-        basicQuery.Dispose();
-        
-        // 2. 复杂条件测试
-        Console.WriteLine("\n2. 复杂条件查询:");
-        var complexQuery = ExpressionToSql<TestUser>.ForSqlite()
-            .Where(u => u.Age >= 18 && u.Age <= 65)
-            .Where(u => u.IsActive)
-            .Where(u => u.Name.Contains("John"));
-        Console.WriteLine($"   SQL: {complexQuery.ToSql()}");
-        var complexTemplate = complexQuery.ToTemplate();
-        Console.WriteLine($"   参数: {string.Join(", ", complexTemplate.Parameters.Select(p => $"{p.Key}={p.Value}"))}");
-        complexQuery.Dispose();
-        
-        // 3. 排序和分页测试
-        Console.WriteLine("\n3. 排序和分页:");
-        var pagedQuery = ExpressionToSql<TestUser>.ForSqlite()
-            .Where(u => u.IsActive)
-            .OrderBy(u => u.Name)
-            .OrderByDescending(u => u.Age)
-            .Skip(10)
-            .Take(5);
-        Console.WriteLine($"   SQL: {pagedQuery.ToSql()}");
-        pagedQuery.Dispose();
-        
-        // 4. 不同数据库方言测试
-        Console.WriteLine("\n4. 不同数据库方言:");
-        TestDialects();
-        
-        // 5. 字符串操作测试
-        Console.WriteLine("\n5. 字符串操作:");
-        var stringQuery = ExpressionToSql<TestUser>.ForSqlite()
-            .Where(u => u.Name.StartsWith("A"))
-            .Where(u => u.Name.EndsWith("son"))
-            .Where(u => u.Name.ToUpper() == "JOHN");
-        Console.WriteLine($"   SQL: {stringQuery.ToSql()}");
-        stringQuery.Dispose();
-        
-        // 6. IN查询测试
-        Console.WriteLine("\n6. IN查询:");
-        var ids = new[] { 1, 2, 3, 4, 5 };
-        var inQuery = ExpressionToSql<TestUser>.ForSqlite()
-            .Where(u => ids.Contains(u.Id));
-        Console.WriteLine($"   SQL: {inQuery.ToSql()}");
-        var inTemplate = inQuery.ToTemplate();
-        Console.WriteLine($"   参数: {string.Join(", ", inTemplate.Parameters.Select(p => $"{p.Key}={p.Value}"))}");
-        inQuery.Dispose();
-        
-        Console.WriteLine("\n✅ ExpressionToSql独立功能测试完成!");
-    }
-    
-    static void TestDialects()
-    {
-        // MySQL
-        var mysqlQuery = ExpressionToSql<TestUser>.ForMySql()
-            .Where(u => u.Age > 25)
-            .Take(10);
-        Console.WriteLine($"   MySQL:      {mysqlQuery.ToSql()}");
-        mysqlQuery.Dispose();
-        
-        // SQL Server
-        var sqlServerQuery = ExpressionToSql<TestUser>.ForSqlServer()
-            .Where(u => u.Age > 25)
-            .Skip(5)
-            .Take(10);
-        Console.WriteLine($"   SQL Server: {sqlServerQuery.ToSql()}");
-        sqlServerQuery.Dispose();
-        
-        // PostgreSQL
-        var pgQuery = ExpressionToSql<TestUser>.ForPostgreSQL()
-            .Where(u => u.Age > 25)
-            .Take(10);
-        Console.WriteLine($"   PostgreSQL: {pgQuery.ToSql()}");
-        pgQuery.Dispose();
+        try
+        {
+            // 创建内存数据库连接用于测试
+            using var connection = new SqliteConnection("Data Source=:memory:");
+            
+            // 测试我们生成的仓储是否存在和工作
+            var repo = new Sqlx.BasicExample.SimpleTestRepository(connection);
+            Console.WriteLine("✅ SimpleTestRepository 类生成成功");
+            
+            // 检查是否实现了接口
+            if (repo is Sqlx.BasicExample.ITestService testService)
+            {
+                Console.WriteLine("✅ 正确实现了 ITestService 接口");
+                
+                // 测试方法是否存在（通过接口调用）
+                try
+                {
+                    var results = testService.GetAll();
+                    Console.WriteLine($"✅ GetAll() 方法可调用，返回类型: {results?.GetType().Name ?? "null"}");
+                }
+                catch (NotImplementedException)
+                {
+                    Console.WriteLine("⚠️ GetAll() 方法存在但尚未实现（抛出 NotImplementedException）");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ GetAll() 方法调用失败: {ex.Message}");
+                }
+                
+                try
+                {
+                    var entity = new Sqlx.BasicExample.TestEntity { Id = 1, Name = "Test" };
+                    var result = testService.Create(entity);
+                    Console.WriteLine($"✅ Create() 方法可调用，返回值: {result}");
+                }
+                catch (NotImplementedException)
+                {
+                    Console.WriteLine("⚠️ Create() 方法存在但尚未实现（抛出 NotImplementedException）");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ Create() 方法调用失败: {ex.Message}");
+                }
+            }
+            else
+            {
+                Console.WriteLine("❌ 未实现 ITestService 接口");
+                Console.WriteLine($"实际类型: {repo.GetType().FullName}");
+                Console.WriteLine($"基类型: {repo.GetType().BaseType?.FullName}");
+                Console.WriteLine($"实现的接口: {string.Join(", ", repo.GetType().GetInterfaces().Select(i => i.Name))}");
+            }
+            
+            Console.WriteLine("\n测试完成");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ 错误: {ex.Message}");
+        }
     }
 }

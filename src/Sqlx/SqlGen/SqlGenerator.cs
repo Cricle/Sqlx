@@ -8,6 +8,7 @@ namespace Sqlx.SqlGen
 {
     using System;
     using System.Collections.Generic;
+    using System.Text;
     using Microsoft.CodeAnalysis;
 
     internal sealed class SqlGenerator
@@ -28,7 +29,19 @@ namespace Sqlx.SqlGen
             => $"SELECT {ctx.GetColumnNames()} FROM {def.WrapColumn(ctx.TableName)}";
 
         private string GenerateInsert(SqlDefine def, InsertGenerateContext ctx)
-            => $"INSERT INTO {def.WrapColumn(ctx.TableName)}({ctx.GetColumnNames()}) VALUES ({ctx.GetParamterNames(def.ParamterPrefx)})";
+        {
+            var tableName = def.WrapColumn(ctx.TableName);
+            var columns = ctx.GetColumnNames();
+            
+            // Single INSERT: generate complete SQL with parameter placeholders
+            if (!ctx.Entry.IsList)
+            {
+                return $"INSERT INTO {tableName}({columns}) VALUES ({ctx.GetParamterNames(def.ParamterPrefx)})";
+            }
+
+            // Batch INSERT: generate template for dynamic VALUES clause generation
+            return $"INSERT INTO {tableName}({columns}) VALUES {{{{VALUES_PLACEHOLDER}}}}";
+        }
 
         private string GenerateUpdate(SqlDefine def, UpdateGenerateContext ctx)
             => $"UPDATE {def.WrapColumn(ctx.TableName)} SET {ctx.GetUpdateSet(def.ParamterPrefx)} WHERE {{0}}";

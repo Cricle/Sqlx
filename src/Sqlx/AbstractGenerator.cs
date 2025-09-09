@@ -913,7 +913,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine();
             
             // Generate partial class that implements the service interface
-            sb.AppendLine($"partial class {repositoryClass.Name} : {serviceInterface.ToDisplayString()}");
+            sb.AppendLine($"{repositoryClass.DeclaredAccessibility.GetAccessibility()} partial class {repositoryClass.Name} : {serviceInterface.ToDisplayString()}");
             sb.AppendLine("{");
             sb.PushIndent();
             
@@ -1872,8 +1872,8 @@ public abstract class AbstractGenerator : ISourceGenerator
                 var properties = entityType.GetMembers().OfType<IPropertySymbol>()
                     .Where(p => p.Name != "Id") // Exclude Id for SET clause
                     .ToList();
-                var setClause = string.Join(", ", properties.Select(p => $"{p.Name} = @{p.Name.ToLowerInvariant()}"));
-                return $"\"UPDATE {tableName} SET {setClause} WHERE Id = @id\"";
+                var setClause = string.Join(", ", properties.Select(p => $"{p.GetSqlName()} = @{p.GetSqlName()}"));
+                return $"\"UPDATE {tableName} SET {setClause} WHERE id = @id\"";
             }
             return $"\"UPDATE {tableName} SET Name = @name, Email = @email WHERE Id = @id\"";
         }
@@ -2269,7 +2269,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         sb.PushIndent();
         sb.AppendLine("__exception__ = ex;");
         sb.AppendLine("var __elapsed__ = System.Diagnostics.Stopwatch.GetTimestamp() - __startTime__;");
-        sb.AppendLine($"OnExecuteFail(\"{methodName}\", __cmd__ ?? connection.CreateCommand(), ex, __elapsed__);");
+        sb.AppendLine($"OnExecuteFail(\"{methodName}\", __cmd__, ex, __elapsed__);");
         sb.AppendLine("throw;");
         sb.PopIndent();
         sb.AppendLine("}");
@@ -2280,7 +2280,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         sb.AppendLine("{");
         sb.PushIndent();
         sb.AppendLine("var __elapsed__ = System.Diagnostics.Stopwatch.GetTimestamp() - __startTime__;");
-        sb.AppendLine($"OnExecuted(\"{methodName}\", __cmd__ ?? connection.CreateCommand(), __result__, __elapsed__);");
+        sb.AppendLine($"OnExecuted(\"{methodName}\", __cmd__, __result__, __elapsed__);");
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine("__cmd__?.Dispose();");
@@ -2329,8 +2329,8 @@ public abstract class AbstractGenerator : ISourceGenerator
         
         sb.AppendLine("using var cmd = connection.CreateCommand();");
         
-        var columns = string.Join(", ", properties.Select(p => $"[{p.Name}]"));
-        var parameters = string.Join(", ", properties.Select(p => $"@{p.Name}"));
+        var columns = string.Join(", ", properties.Select(p => $"[{p.GetSqlName()}]"));
+        var parameters = string.Join(", ", properties.Select(p => $"@{p.GetSqlName()}"));
         
         sb.AppendLine($"cmd.CommandText = \"INSERT INTO [{tableName}] ({columns}) VALUES ({parameters})\";");
         sb.AppendLine();
@@ -2338,8 +2338,9 @@ public abstract class AbstractGenerator : ISourceGenerator
         // Add parameters with proper types and null handling
         foreach (var prop in properties)
         {
+            var sqlName = prop.GetSqlName();
             sb.AppendLine($"var param{prop.Name} = cmd.CreateParameter();");
-            sb.AppendLine($"param{prop.Name}.ParameterName = \"@{prop.Name}\";");
+            sb.AppendLine($"param{prop.Name}.ParameterName = \"@{sqlName}\";");
             sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
             
             // Improved null handling
@@ -2407,15 +2408,16 @@ public abstract class AbstractGenerator : ISourceGenerator
         
         sb.AppendLine("using var cmd = connection.CreateCommand();");
         
-        var setClauses = string.Join(", ", properties.Select(p => $"[{p.Name}] = @{p.Name}"));
-        sb.AppendLine($"cmd.CommandText = \"UPDATE [{tableName}] SET {setClauses} WHERE [Id] = @Id\";");
+        var setClauses = string.Join(", ", properties.Select(p => $"[{p.GetSqlName()}] = @{p.GetSqlName()}"));
+        sb.AppendLine($"cmd.CommandText = \"UPDATE [{tableName}] SET {setClauses} WHERE [id] = @id\";");
         sb.AppendLine();
         
         // Add SET clause parameters
         foreach (var prop in properties)
         {
+            var sqlName = prop.GetSqlName();
             sb.AppendLine($"var param{prop.Name} = cmd.CreateParameter();");
-            sb.AppendLine($"param{prop.Name}.ParameterName = \"@{prop.Name}\";");
+            sb.AppendLine($"param{prop.Name}.ParameterName = \"@{sqlName}\";");
             sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
             
             // Improved null handling
@@ -2433,7 +2435,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         
         // Add ID parameter for WHERE clause
         sb.AppendLine("var paramId = cmd.CreateParameter();");
-        sb.AppendLine("paramId.ParameterName = \"@Id\";");
+        sb.AppendLine("paramId.ParameterName = \"@id\";");
         sb.AppendLine("paramId.DbType = global::System.Data.DbType.Int32;");
         sb.AppendLine($"paramId.Value = {entityParam.Name}.Id;");
         sb.AppendLine("cmd.Parameters.Add(paramId);");
@@ -2752,6 +2754,20 @@ public abstract class AbstractGenerator : ISourceGenerator
             .Where(p => p.CanBeReferencedByName && p.SetMethod != null)
             .ToList();
         
+        if (!properties.Any())
+        {
+            sb.AppendLine("// No properties found for entity mapping");
+            sb.AppendLine($"var entity = new {entityType.ToDisplayString()}();");
+            return;
+        }
+
+        // Generate GetOrdinal caching for performance optimization - avoids repeated string lookups
+        foreach (var prop in properties)
+        {
+            var columnName = prop.GetSqlName();
+            sb.AppendLine($"int __ordinal_{columnName} = reader.GetOrdinal(\"{columnName}\");");
+        }
+        
         sb.AppendLine($"var entity = new {entityType.ToDisplayString()}");
         sb.AppendLine("{");
         sb.PushIndent();
@@ -2760,68 +2776,13 @@ public abstract class AbstractGenerator : ISourceGenerator
         {
             var prop = properties[i];
             var comma = i < properties.Count - 1 ? "," : "";
-            
-            // Generate safe, high-performance column access using indexer (not Get methods with string names)
-            if (prop.Type.SpecialType == SpecialType.System_Int32)
-            {
-                if (IsNullableValueType(prop.Type))
-                {
-                    sb.AppendLine($"{prop.Name} = reader[\"{prop.Name}\"] is global::System.DBNull ? null : global::System.Convert.ToInt32(reader[\"{prop.Name}\"]){comma}");
-                }
-                else
-                {
-                    sb.AppendLine($"{prop.Name} = reader[\"{prop.Name}\"] is global::System.DBNull ? 0 : global::System.Convert.ToInt32(reader[\"{prop.Name}\"]){comma}");
-                }
-            }
-            else if (prop.Type.SpecialType == SpecialType.System_String)
-            {
-                sb.AppendLine($"{prop.Name} = reader[\"{prop.Name}\"] is global::System.DBNull ? {(prop.Type.CanBeReferencedByName ? "null" : "string.Empty")} : reader[\"{prop.Name}\"].ToString(){comma}");
-            }
-            else if (prop.Type.SpecialType == SpecialType.System_DateTime)
-            {
-                if (IsNullableValueType(prop.Type))
-                {
-                    sb.AppendLine($"{prop.Name} = reader[\"{prop.Name}\"] is global::System.DBNull ? null : global::System.Convert.ToDateTime(reader[\"{prop.Name}\"]){comma}");
-                }
-                else
-                {
-                    sb.AppendLine($"{prop.Name} = reader[\"{prop.Name}\"] is global::System.DBNull ? default(global::System.DateTime) : global::System.Convert.ToDateTime(reader[\"{prop.Name}\"]){comma}");
-                }
-            }
-            else if (prop.Type.SpecialType == SpecialType.System_Boolean)
-            {
-                if (IsNullableValueType(prop.Type))
-                {
-                    sb.AppendLine($"{prop.Name} = reader[\"{prop.Name}\"] is global::System.DBNull ? null : global::System.Convert.ToBoolean(reader[\"{prop.Name}\"]){comma}");
-                }
-                else
-                {
-                    sb.AppendLine($"{prop.Name} = reader[\"{prop.Name}\"] is global::System.DBNull ? false : global::System.Convert.ToBoolean(reader[\"{prop.Name}\"]){comma}");
-                }
-            }
-            else if (prop.Type.SpecialType == SpecialType.System_Decimal)
-            {
-                if (IsNullableValueType(prop.Type))
-                {
-                    sb.AppendLine($"{prop.Name} = reader[\"{prop.Name}\"] is global::System.DBNull ? null : global::System.Convert.ToDecimal(reader[\"{prop.Name}\"]){comma}");
-                }
-                else
-                {
-                    sb.AppendLine($"{prop.Name} = reader[\"{prop.Name}\"] is global::System.DBNull ? 0m : global::System.Convert.ToDecimal(reader[\"{prop.Name}\"]){comma}");
-                }
-            }
-            else
-            {
-                // Generic property access with proper null handling
-                if (prop.Type.IsReferenceType || IsNullableValueType(prop.Type))
-                {
-                    sb.AppendLine($"{prop.Name} = reader[\"{prop.Name}\"] is global::System.DBNull ? null : ({prop.Type.ToDisplayString()})reader[\"{prop.Name}\"]{comma}");
-                }
-                else
-                {
-                    sb.AppendLine($"{prop.Name} = reader[\"{prop.Name}\"] is global::System.DBNull ? default({prop.Type.ToDisplayString()}) : ({prop.Type.ToDisplayString()})reader[\"{prop.Name}\"]{comma}");
-                }
-            }
+            var columnName = prop.GetSqlName();
+            var ordinalVar = $"__ordinal_{columnName}";
+
+            // Use optimized strongly-typed data reader methods with cached ordinals
+            // This avoids boxing/unboxing and improves performance significantly
+            var dataReadExpression = prop.Type.GetDataReadExpressionWithCachedOrdinal("reader", columnName, ordinalVar);
+            sb.AppendLine($"{prop.Name} = {dataReadExpression}{comma}");
         }
         
         sb.PopIndent();
@@ -3159,16 +3120,17 @@ public abstract class AbstractGenerator : ISourceGenerator
         // Create command
         sb.AppendLine("__cmd__ = connection.CreateCommand();");
         
-        var columns = string.Join(", ", properties.Select(p => $"[{p.Name}]"));
-        var parameters = string.Join(", ", properties.Select(p => $"@{p.Name}"));
+        var columns = string.Join(", ", properties.Select(p => $"[{p.GetSqlName()}]"));
+        var parameters = string.Join(", ", properties.Select(p => $"@{p.GetSqlName()}"));
         sb.AppendLine($"__cmd__.CommandText = \"INSERT INTO [{tableName}] ({columns}) VALUES ({parameters})\";");
         sb.AppendLine();
         
         // Add parameters
         foreach (var prop in properties)
         {
+            var sqlName = prop.GetSqlName();
             sb.AppendLine($"var param{prop.Name} = __cmd__.CreateParameter();");
-            sb.AppendLine($"param{prop.Name}.ParameterName = \"@{prop.Name}\";");
+            sb.AppendLine($"param{prop.Name}.ParameterName = \"@{sqlName}\";");
             sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
             
             if (prop.Type.IsReferenceType || IsNullableValueType(prop.Type))
@@ -3263,15 +3225,16 @@ public abstract class AbstractGenerator : ISourceGenerator
         // Create command
         sb.AppendLine("__cmd__ = connection.CreateCommand();");
         
-        var setClauses = string.Join(", ", properties.Select(p => $"[{p.Name}] = @{p.Name}"));
-        sb.AppendLine($"__cmd__.CommandText = \"UPDATE [{tableName}] SET {setClauses} WHERE [Id] = @Id\";");
+        var setClauses = string.Join(", ", properties.Select(p => $"[{p.GetSqlName()}] = @{p.GetSqlName()}"));
+        sb.AppendLine($"__cmd__.CommandText = \"UPDATE [{tableName}] SET {setClauses} WHERE [id] = @id\";");
         sb.AppendLine();
         
         // Add SET clause parameters
         foreach (var prop in properties)
         {
+            var sqlName = prop.GetSqlName();
             sb.AppendLine($"var param{prop.Name} = __cmd__.CreateParameter();");
-            sb.AppendLine($"param{prop.Name}.ParameterName = \"@{prop.Name}\";");
+            sb.AppendLine($"param{prop.Name}.ParameterName = \"@{sqlName}\";");
             sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
             
             if (prop.Type.IsReferenceType || IsNullableValueType(prop.Type))
@@ -3291,7 +3254,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         if (idProperty != null)
         {
             sb.AppendLine("var paramId = __cmd__.CreateParameter();");
-            sb.AppendLine("paramId.ParameterName = \"@Id\";");
+            sb.AppendLine("paramId.ParameterName = \"@id\";");
             sb.AppendLine($"paramId.DbType = {GetDbTypeForProperty(idProperty)};");
             sb.AppendLine($"paramId.Value = {entityParam.Name}.{idProperty.Name};");
             sb.AppendLine("__cmd__.Parameters.Add(paramId);");

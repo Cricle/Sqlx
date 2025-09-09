@@ -200,13 +200,13 @@ public static class SQLiteTest
 
         const string createTableSql = @"
             CREATE TABLE users (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                Name TEXT NOT NULL,
-                Email TEXT NOT NULL,
-                CreatedAt TEXT NOT NULL
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                email TEXT NOT NULL,
+                created_at TEXT NOT NULL
             );
             
-            CREATE INDEX idx_users_email ON users(Email);
+            CREATE INDEX idx_users_email ON users(email);
         ";
 
         using var command = connection.CreateCommand();

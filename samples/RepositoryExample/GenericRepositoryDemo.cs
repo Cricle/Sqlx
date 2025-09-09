@@ -50,17 +50,17 @@ public static class GenericRepositoryDemo
         using var cmd = connection.CreateCommand();
         cmd.CommandText = @"
             CREATE TABLE Users (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                Name TEXT NOT NULL,
-                Email TEXT NOT NULL,
-                CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                email TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )";
         await cmd.ExecuteNonQueryAsync();
         
         // Insert test data
         for (int i = 1; i <= 1000; i++)
         {
-            cmd.CommandText = "INSERT INTO Users (Name, Email) VALUES (@name, @email)";
+            cmd.CommandText = "INSERT INTO Users (name, email) VALUES (@name, @email)";
             cmd.Parameters.Clear();
             cmd.Parameters.AddWithValue("@name", $"GenericUser{i}");
             cmd.Parameters.AddWithValue("@email", $"generic{i}@example.com");
@@ -183,7 +183,7 @@ public static class GenericRepositoryDemo
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         
         using var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT Id, Name, Email, CreatedAt FROM Users";
+        cmd.CommandText = "SELECT id, name, email, created_at FROM Users";
         
         using var reader = await cmd.ExecuteReaderAsync();
         var users = new List<User>();
@@ -193,10 +193,10 @@ public static class GenericRepositoryDemo
             // Simulate traditional approach - GetOrdinal called every row
             var user = new User
             {
-                Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                Name = reader.GetString(reader.GetOrdinal("Name")),
-                Email = reader.GetString(reader.GetOrdinal("Email")),
-                CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt"))
+                Id = reader.GetInt32(reader.GetOrdinal("id")),
+                Name = reader.GetString(reader.GetOrdinal("name")),
+                Email = reader.GetString(reader.GetOrdinal("email")),
+                CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at"))
             };
             users.Add(user);
         }
@@ -210,16 +210,16 @@ public static class GenericRepositoryDemo
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         
         using var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT Id, Name, Email, CreatedAt FROM Users";
+        cmd.CommandText = "SELECT id, name, email, created_at FROM Users";
         
         using var reader = await cmd.ExecuteReaderAsync();
         var users = new List<User>();
         
         // Simulate Sqlx approach - GetOrdinal cached once
-        int ordinalId = reader.GetOrdinal("Id");
-        int ordinalName = reader.GetOrdinal("Name");
-        int ordinalEmail = reader.GetOrdinal("Email");
-        int ordinalCreatedAt = reader.GetOrdinal("CreatedAt");
+        int ordinalId = reader.GetOrdinal("id");
+        int ordinalName = reader.GetOrdinal("name");
+        int ordinalEmail = reader.GetOrdinal("email");
+        int ordinalCreatedAt = reader.GetOrdinal("created_at");
         
         while (await reader.ReadAsync())
         {

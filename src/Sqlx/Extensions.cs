@@ -8,119 +8,137 @@ namespace Sqlx;
 
 using Microsoft.CodeAnalysis;
 using System;
+using System.Collections.Concurrent;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 internal static class Extensions
 {
+    // Cache for frequently accessed type information to improve performance
+    private static readonly ConcurrentDictionary<string, bool> _dbConnectionTypeCache = new();
+    private static readonly ConcurrentDictionary<string, bool> _dbTransactionTypeCache = new();
+    private static readonly ConcurrentDictionary<string, bool> _dbContextTypeCache = new();
+    private static readonly ConcurrentDictionary<string, string?> _dataReaderMethodCache = new();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool CanHaveNullValue(this ITypeSymbol typeSymbol)
     {
-        if (typeSymbol.NullableAnnotation == NullableAnnotation.Annotated)
-        {
-            return true;
-        }
-
-        // Reference types can have null values unless they're non-nullable in a nullable context
-        return !typeSymbol.IsValueType || typeSymbol.NullableAnnotation == NullableAnnotation.Annotated;
+        return typeSymbol.NullableAnnotation == NullableAnnotation.Annotated ||
+               (!typeSymbol.IsValueType && typeSymbol.NullableAnnotation != NullableAnnotation.NotAnnotated);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsNullableType(this ITypeSymbol type)
     {
         return type.NullableAnnotation == NullableAnnotation.Annotated ||
-               (type is INamedTypeSymbol namedType && namedType.IsGenericType &&
+               (type is INamedTypeSymbol { IsGenericType: true } namedType &&
                 namedType.ConstructedFrom.SpecialType == SpecialType.System_Nullable_T);
     }
 
     internal static bool IsDbConnection(this ISymbol typeSymbol)
     {
-        return IsTypes(typeSymbol, x =>
-        {
-            var type = x;
-            while (type != null)
-            {
-                if (type.Name == "DbConnection")
-                    return true;
-                type = type.BaseType;
-            }
-
-            return false;
-        });
+        return IsTypes(typeSymbol, x => IsTypeInHierarchy(x, "DbConnection", _dbConnectionTypeCache));
     }
 
     internal static bool IsDbTransaction(this ISymbol typeSymbol)
     {
-        return IsTypes(typeSymbol, x =>
-        {
-            var type = x;
-            while (type != null)
-            {
-                if (type.Name == "DbTransaction")
-                    return true;
-                type = type.BaseType;
-            }
-
-            return false;
-        });
-    }
-
-    internal static bool IsTypes(ISymbol typeSymbol, Func<ITypeSymbol, bool> check)
-    {
-        if (typeSymbol is IParameterSymbol parSymbol && check(parSymbol.Type)) return true;
-        if (typeSymbol is IFieldSymbol fieldSymbol && check(fieldSymbol.Type)) return true;
-        if (typeSymbol is IPropertySymbol propertySymbol && check(propertySymbol.Type)) return true;
-        if (typeSymbol is INamedTypeSymbol ntSymbol && check(ntSymbol)) return true;
-        return false;
+        return IsTypes(typeSymbol, x => IsTypeInHierarchy(x, "DbTransaction", _dbTransactionTypeCache));
     }
 
     internal static bool IsDbContext(this ISymbol typeSymbol)
     {
-        return IsTypes(typeSymbol, x =>
-        {
-            var type = x;
-            while (type != null)
-            {
-                if (type.Name == "DbContext")
-                    return true;
-                type = type.BaseType;
-            }
-
-            return false;
-        });
+        return IsTypes(typeSymbol, x => IsTypeInHierarchy(x, "DbContext", _dbContextTypeCache));
     }
 
-    internal static bool IsCancellationToken(this ISymbol typeSymbol) => typeSymbol.Name == "CancellationToken";
+    /// <summary>
+    /// Optimized type hierarchy checking with caching to avoid repeated traversals
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool IsTypeInHierarchy(ITypeSymbol type, string targetTypeName, ConcurrentDictionary<string, bool> cache)
+    {
+        var typeKey = type.ToDisplayString();
+        if (cache.TryGetValue(typeKey, out var cachedResult))
+        {
+            return cachedResult;
+        }
 
+        var result = CheckTypeHierarchy(type, targetTypeName);
+        cache.TryAdd(typeKey, result);
+        return result;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool CheckTypeHierarchy(ITypeSymbol? type, string targetTypeName)
+    {
+        while (type != null)
+        {
+            if (string.Equals(type.Name, targetTypeName, StringComparison.Ordinal))
+                return true;
+            type = type.BaseType;
+        }
+        return false;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static bool IsTypes(ISymbol typeSymbol, Func<ITypeSymbol, bool> check)
+    {
+        return typeSymbol switch
+        {
+            IParameterSymbol parameterSymbol => check(parameterSymbol.Type),
+            IFieldSymbol fieldSymbol => check(fieldSymbol.Type),
+            IPropertySymbol propertySymbol => check(propertySymbol.Type),
+            INamedTypeSymbol namedTypeSymbol => check(namedTypeSymbol),
+            _ => false
+        };
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static bool IsCancellationToken(this ISymbol typeSymbol) => 
+        string.Equals(typeSymbol.Name, "CancellationToken", StringComparison.Ordinal);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static ITypeSymbol UnwrapTaskType(this ITypeSymbol type) => UnwrapType(type, "Task");
 
-    internal static ITypeSymbol UnwrapListType(this ITypeSymbol type) => UnwrapType(type, "List", "IList", "ICollection", "IReadonlyList", "IEnumerable", "IAsyncEnumerable");
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static ITypeSymbol UnwrapListType(this ITypeSymbol type) => 
+        UnwrapType(type, "List", "IList", "ICollection", "IReadonlyList", "IEnumerable", "IAsyncEnumerable");
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static ITypeSymbol UnwrapNullableType(this ITypeSymbol type)
         => type is INamedTypeSymbol namedTypeSymbol ? UnwrapNullableType(namedTypeSymbol) : type;
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static INamedTypeSymbol UnwrapNullableType(INamedTypeSymbol namedTypeSymbol)
-        => namedTypeSymbol.Name == "Nullable" ? (INamedTypeSymbol)namedTypeSymbol.TypeArguments[0] : namedTypeSymbol;
+        => string.Equals(namedTypeSymbol.Name, "Nullable", StringComparison.Ordinal) 
+            ? (INamedTypeSymbol)namedTypeSymbol.TypeArguments[0] 
+            : namedTypeSymbol;
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static bool IsScalarType(this ITypeSymbol returnType)
     {
         return UnwrapNullableType(UnwrapTaskType(returnType)).SpecialType switch
         {
-            SpecialType.System_String => true,
-            SpecialType.System_Boolean => true,
-            SpecialType.System_Char => true,
-            SpecialType.System_Byte => true,
-            SpecialType.System_Int16 => true,
-            SpecialType.System_Int32 => true,
-            SpecialType.System_Int64 => true,
-            SpecialType.System_UInt16 => true,
-            SpecialType.System_UInt32 => true,
-            SpecialType.System_UInt64 => true,
-            SpecialType.System_DateTime => true,
-            SpecialType.System_Decimal => true,
+            SpecialType.System_String or
+            SpecialType.System_Boolean or
+            SpecialType.System_Char or
+            SpecialType.System_Byte or
+            SpecialType.System_Int16 or
+            SpecialType.System_Int32 or
+            SpecialType.System_Int64 or
+            SpecialType.System_UInt16 or
+            SpecialType.System_UInt32 or
+            SpecialType.System_UInt64 or
+            SpecialType.System_DateTime or
+            SpecialType.System_Decimal or
             SpecialType.System_Double => true,
             _ => false,
         };
     }
 
-    internal static bool IsTuple(ITypeSymbol returnType) => returnType.Name == "Tuple" || returnType.Name == "ValueTuple";
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static bool IsTuple(ITypeSymbol returnType) => 
+        string.Equals(returnType.Name, "Tuple", StringComparison.Ordinal) || 
+        string.Equals(returnType.Name, "ValueTuple", StringComparison.Ordinal);
 
     internal static IPropertySymbol? FindMember(this ITypeSymbol returnType, string parameterName)
     {
@@ -186,8 +204,27 @@ internal static class Extensions
 
     internal static string? GetDataReaderMethod(this ITypeSymbol type)
     {
+        var typeKey = type.ToDisplayString();
+        if (_dataReaderMethodCache.TryGetValue(typeKey, out var cachedMethod))
+        {
+            return cachedMethod;
+        }
+
+        var method = GetDataReaderMethodCore(type);
+        _dataReaderMethodCache.TryAdd(typeKey, method);
+        return method;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static string? GetDataReaderMethodCore(ITypeSymbol type)
+    {
         var unwrapType = UnwrapNullableType(type);
-        var method = unwrapType.SpecialType switch
+        
+        // Handle Guid specially first
+        if (string.Equals(type.Name, "Guid", StringComparison.Ordinal))
+            return "GetGuid";
+
+        return unwrapType.SpecialType switch
         {
             SpecialType.System_Boolean => "GetBoolean",
             SpecialType.System_Char => "GetChar",
@@ -207,8 +244,6 @@ internal static class Extensions
             SpecialType.System_Object => "GetValue",
             _ => null,
         };
-        if (type.Name == "Guid") method = "GetGuid";
-        return method;
     }
 
     internal static string GetDataReadIndexExpression(this ITypeSymbol type, string readerName, int index)
@@ -221,56 +256,52 @@ internal static class Extensions
 
     public static string GetDataReadExpression(this ITypeSymbol type, string readerName, string columnName)
     {
-        var unwrapType = UnwrapNullableType(type);
         var method = GetDataReaderMethod(type);
-        var isNullable = IsNullableType(type);
-        var ordinalExpression = $"{readerName}.GetOrdinal(\"{columnName}\")";
-
-        if (!string.IsNullOrEmpty(method))
+        if (string.IsNullOrEmpty(method))
         {
-            // For nullable types or nullable reference types, check for DBNull
-            if (isNullable || unwrapType.IsValueType || unwrapType.SpecialType == SpecialType.System_String || type.Name == "Guid")
-            {
-                // For nullable value types and strings, return proper null handling
-                if (unwrapType.SpecialType == SpecialType.System_String)
-                {
-                    // String special case: check if nullable annotation is present
-                    if (isNullable)
-                    {
-                        return $"{readerName}.IsDBNull({ordinalExpression}) ? null : {readerName}.{method}({ordinalExpression})";
-                    }
-                    else
-                    {
-                        // Non-nullable string: return empty string or throw
-                        return $"{readerName}.IsDBNull({ordinalExpression}) ? string.Empty : {readerName}.{method}({ordinalExpression})";
-                    }
-                }
-                else if (isNullable && unwrapType.IsValueType)
-                {
-                    // Nullable value types: return null if DBNull
-                    return $"{readerName}.IsDBNull({ordinalExpression}) ? null : {readerName}.{method}({ordinalExpression})";
-                }
-                else if (unwrapType.IsValueType)
-                {
-                    // Non-nullable value types: return default if DBNull
-                    return $"{readerName}.IsDBNull({ordinalExpression}) ? default : {readerName}.{method}({ordinalExpression})";
-                }
-                else
-                {
-                    // Reference types: return null if DBNull
-                    return $"{readerName}.IsDBNull({ordinalExpression}) ? null : {readerName}.{method}({ordinalExpression})";
-                }
-            }
+            throw new NotSupportedException($"No support type {type.Name}");
+        }
 
+        var ordinalExpression = $"{readerName}.GetOrdinal(\"{columnName}\")";
+        var isNullable = IsNullableType(type);
+        var unwrapType = UnwrapNullableType(type);
+
+        // Generate optimized null-safe data reading expression
+        return GenerateNullSafeDataReadExpression(readerName, ordinalExpression, method!, isNullable, unwrapType);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static string GenerateNullSafeDataReadExpression(string readerName, string ordinalExpression, string method, bool isNullable, ITypeSymbol unwrapType)
+    {
+        // For non-nullable value types that don't need null checking
+        if (!isNullable && unwrapType.IsValueType && unwrapType.SpecialType != SpecialType.System_String)
+        {
             return $"{readerName}.{method}({ordinalExpression})";
         }
 
-        throw new NotSupportedException($"No support type {type.Name}");
+        // Generate null-safe expression based on type characteristics
+        var nullValue = GetNullValueForType(isNullable, unwrapType);
+        return $"{readerName}.IsDBNull({ordinalExpression}) ? {nullValue} : {readerName}.{method}({ordinalExpression})";
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static string GetNullValueForType(bool isNullable, ITypeSymbol unwrapType)
+    {
+        return (isNullable, unwrapType.SpecialType) switch
+        {
+            (true, SpecialType.System_String) => "null",
+            (false, SpecialType.System_String) => "string.Empty",
+            (true, _) when unwrapType.IsValueType => "null",
+            (false, _) when unwrapType.IsValueType => "default",
+            _ => "null"
+        };
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static ITypeSymbol UnwrapType(this ITypeSymbol type, params string[] names)
     {
-        if (type is INamedTypeSymbol namedTypeSymbol && names.Contains(type.Name) && namedTypeSymbol.IsGenericType)
+        if (type is INamedTypeSymbol { IsGenericType: true } namedTypeSymbol && 
+            names.Any(name => string.Equals(type.Name, name, StringComparison.Ordinal)))
         {
             return namedTypeSymbol.TypeArguments[0];
         }

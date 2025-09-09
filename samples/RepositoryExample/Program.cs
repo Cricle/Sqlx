@@ -108,6 +108,10 @@ internal class Program
         Console.WriteLine("\n🎭 Running Generic Repository Demo...");
         await GenericRepositoryDemo.RunDemoAsync();
         
+        // Run Performance Comparison Demo
+        Console.WriteLine("\n⚡ Running Performance Comparison Demo...");
+        await PerformanceComparisonDemo.RunComparisonAsync();
+        
         PrintTestResult("SQLite", testsPassed);
     }
 

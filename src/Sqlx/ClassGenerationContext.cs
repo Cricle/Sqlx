@@ -144,13 +144,18 @@ internal class ClassGenerationContext : GenerationContextBase
     {
         var staticKeyword = ClassSymbol.IsStatic ? "static " : string.Empty;
 
-        sb.AppendLine($"{staticKeyword}partial void {MethodGenerationContext.MethodExecuting}(global::System.String methodName, global::System.Data.Common.DbCommand command);");
+        sb.AppendLine($"{staticKeyword}partial void {MethodGenerationContext.MethodExecuting}(global::System.String methodName, ");
+        sb.AppendLine($"    global::System.Data.Common.DbCommand command);");
         sb.AppendLine();
 
-        sb.AppendLine($"{staticKeyword}partial void {MethodGenerationContext.MethodExecuted}(global::System.String methodName, global::System.Data.Common.DbCommand command, global::System.Object? result, global::System.Int64 elpased);");
+        sb.AppendLine($"{staticKeyword}partial void {MethodGenerationContext.MethodExecuted}(global::System.String methodName, ");
+        sb.AppendLine($"    global::System.Data.Common.DbCommand command, global::System.Object? result, ");
+        sb.AppendLine($"    global::System.Int64 elpased);");
         sb.AppendLine();
 
-        sb.AppendLine($"{staticKeyword}partial void {MethodGenerationContext.MethodExecuteFail}(global::System.String methodName, global::System.Data.Common.DbCommand command, global::System.Exception exception, global::System.Int64 elpased);");
+        sb.AppendLine($"{staticKeyword}partial void {MethodGenerationContext.MethodExecuteFail}(global::System.String methodName, ");
+        sb.AppendLine($"    global::System.Data.Common.DbCommand command, global::System.Exception exception, ");
+        sb.AppendLine($"    global::System.Int64 elpased);");
         sb.AppendLine();
     }
 }

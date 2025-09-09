@@ -183,7 +183,8 @@ internal class MethodGenerationContext : GenerationContextBase
 
         var dbConnectionExpression = dbConnection == null ? $"global::Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.GetDbConnection({DbContext!.Name}.Database)" : dbConnection.Name;
 
-        sb.AppendLine($"global::System.Data.Common.DbConnection {DbConnectionName} = {dbConnectionExpression} ?? throw new global::System.ArgumentNullException(\"{dbConnectionExpression}\");");
+        sb.AppendLine($"global::System.Data.Common.DbConnection {DbConnectionName} = {dbConnectionExpression} ?? ");
+        sb.AppendLine($"    throw new global::System.ArgumentNullException(\"{dbConnectionExpression}\");");
         sb.AppendLine($"if({DbConnectionName}.State != global::System.Data.ConnectionState.Open)");
         sb.AppendLine("{");
         sb.PushIndent();
@@ -289,7 +290,8 @@ internal class MethodGenerationContext : GenerationContextBase
             }
         }
 
-        sb.AppendLine($"global::System.Int64 {StartTimeName} = {GetTimestampMethod};");
+        sb.AppendLine($"global::System.Int64 {StartTimeName} = ");
+        sb.AppendLine($"    {GetTimestampMethod};");
         if (!ReturnIsEnumerable)
         {
             sb.AppendLine("try");
@@ -321,7 +323,8 @@ internal class MethodGenerationContext : GenerationContextBase
             sb.AppendLine("{");
             sb.PushIndent();
 
-            sb.AppendLine($"{MethodExecuteFail}({MethodNameString}, {CmdName}, ex, {GetTimestampMethod} - {StartTimeName});");
+            sb.AppendLine($"{MethodExecuteFail}({MethodNameString}, {CmdName}, ex, ");
+            sb.AppendLine($"    {GetTimestampMethod} - {StartTimeName});");
             sb.AppendLine("throw;");
 
             sb.PopIndent();
@@ -372,7 +375,8 @@ internal class MethodGenerationContext : GenerationContextBase
     {
         if (!ReturnIsEnumerable)
         {
-            sb.AppendLine($"{MethodExecuted}({MethodNameString}, {CmdName}, {resultName}, {GetTimestampMethod} - {StartTimeName});");
+            sb.AppendLine($"{MethodExecuted}({MethodNameString}, {CmdName}, {resultName}, ");
+            sb.AppendLine($"    {GetTimestampMethod} - {StartTimeName});");
         }
     }
 
@@ -421,10 +425,12 @@ internal class MethodGenerationContext : GenerationContextBase
             }
             else
             {
-                sb.AppendLine($"if({ResultName} == null) throw new global::System.InvalidOperationException(\"Sequence contains no elements\");");
+                sb.AppendLine($"if({ResultName} == null) throw new global::System.InvalidOperationException(");
+                sb.AppendLine($"    \"Sequence contains no elements\");");
             }
 
-            sb.AppendLine($"return ({ReturnType.ToDisplayString()})global::System.Convert.ChangeType({ResultName}, typeof({ReturnType.UnwrapNullableType().ToDisplayString(NullableFlowState.NotNull)}));");
+            sb.AppendLine($"return ({ReturnType.ToDisplayString()})global::System.Convert.ChangeType({ResultName}, ");
+            sb.AppendLine($"    typeof({ReturnType.UnwrapNullableType().ToDisplayString(NullableFlowState.NotNull)}));");
         }
     }
 
@@ -516,7 +522,8 @@ internal class MethodGenerationContext : GenerationContextBase
                 }
                 else
                 {
-                    sb.AppendLine($"if(!{AwaitKey}{DbReaderName}.{readMethod}) throw new global::System.InvalidOperationException(\"Sequence contains no elements\");");
+                    sb.AppendLine($"if(!{AwaitKey}{DbReaderName}.{readMethod}) throw new global::System.InvalidOperationException(");
+                    sb.AppendLine($"        \"Sequence contains no elements\");");
                 }
 
                 sb.AppendLine();
@@ -618,7 +625,8 @@ internal class MethodGenerationContext : GenerationContextBase
 
                 if (!canReturnNull)
                 {
-                    sb.AppendLine($"return {ResultName} ?? throw new global::System.InvalidOperationException(\"Sequence contains no elements\");");
+                    sb.AppendLine($"return {ResultName} ?? throw new global::System.InvalidOperationException(");
+                    sb.AppendLine($"        \"Sequence contains no elements\");");
                 }
                 else
                 {
@@ -688,12 +696,33 @@ internal class MethodGenerationContext : GenerationContextBase
         var newExp = IsTuple(symbol) ? string.Empty : "new ";
         var expCall = IsTuple(symbol) ? string.Empty : " ()";
 
-        // Declare class same as "xx data = new xx()".
-        sb.AppendLine($"{symbol.ToDisplayString()} {DataName} = {newExp} {symbol.ToDisplayString(NullableFlowState.None)}{expCall};");
-
-        foreach (var item in properties)
+        // Check if the type is abstract or cannot be instantiated
+        if (symbol.IsAbstract || symbol.TypeKind == TypeKind.Interface || symbol.Name == "DbDataReader")
         {
-            sb.AppendLine($"{DataName}.{item.Name} = {item.Type.GetDataReadExpression(DbReaderName, item.GetSqlName())};");
+            // For abstract types like DbDataReader, we can't instantiate them directly
+            // Return the reader itself or handle specially
+            if (symbol.Name == "DbDataReader")
+            {
+                sb.AppendLine($"{symbol.ToDisplayString()} {DataName} = {DbReaderName};");
+            }
+            else
+            {
+                sb.AppendLine($"{symbol.ToDisplayString()} {DataName} = default({symbol.ToDisplayString(NullableFlowState.None)});");
+            }
+        }
+        else
+        {
+            // Declare class same as "xx data = new xx()".
+            sb.AppendLine($"{symbol.ToDisplayString()} {DataName} = {newExp} {symbol.ToDisplayString(NullableFlowState.None)}{expCall};");
+        }
+
+        // Only set properties for non-abstract types that can be instantiated
+        if (!symbol.IsAbstract && symbol.TypeKind != TypeKind.Interface && symbol.Name != "DbDataReader")
+        {
+            foreach (var item in properties)
+            {
+                sb.AppendLine($"{DataName}.{item.Name} = {item.Type.GetDataReadExpression(DbReaderName, item.GetSqlName())};");
+            }
         }
 
         if (!string.IsNullOrEmpty(listName))
@@ -741,7 +770,7 @@ internal class MethodGenerationContext : GenerationContextBase
         {
             if (item.Symbol is IParameterSymbol parSymbol && (parSymbol.RefKind == RefKind.Ref || parSymbol.RefKind == RefKind.Out))
             {
-                sb.AppendLine($"{item.Symbol.Name} = ({parSymbol.Type.ToDisplayString()}){item.ParameterName};");
+                sb.AppendLine($"{item.Symbol.Name} = ({parSymbol.Type.ToDisplayString()}){item.ParameterName}.Value;");
             }
         }
     }

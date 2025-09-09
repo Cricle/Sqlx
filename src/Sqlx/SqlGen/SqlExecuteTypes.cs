@@ -12,4 +12,7 @@ internal enum SqlExecuteTypes
     Update = 1,
     Insert = 2,
     Delete = 3,
+    BatchInsert = 4,
+    BatchUpdate = 5,
+    BatchDelete = 6,
 }

@@ -114,9 +114,18 @@ public abstract class AbstractGenerator : ISourceGenerator
             {
                 serviceInterface = firstArg.Value as INamedTypeSymbol;
                 System.Diagnostics.Debug.WriteLine($"Got type from TypedConstantKind.Type: {serviceInterface?.Name}");
+                System.Diagnostics.Debug.WriteLine($"IsGenericType: {serviceInterface?.IsGenericType}");
+                System.Diagnostics.Debug.WriteLine($"TypeArguments.Length: {serviceInterface?.TypeArguments.Length}");
+                System.Diagnostics.Debug.WriteLine($"TypeParameters.Length: {serviceInterface?.TypeParameters.Length}");
                 
-                // If it's a generic interface, we need to handle type parameters
-                if (serviceInterface?.IsGenericType == true)
+                // Check if we already have a constructed generic type (with type arguments)
+                if (serviceInterface?.IsGenericType == true && serviceInterface.TypeArguments.Length > 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Already have constructed generic type: {serviceInterface.ToDisplayString()}");
+                    // This is already a constructed generic type like IRepository<User>, use it as-is
+                }
+                // If it's an unbound generic type (only type parameters), we need to construct it
+                else if (serviceInterface?.IsGenericType == true && serviceInterface.TypeParameters.Length > 0)
                 {
                     System.Diagnostics.Debug.WriteLine($"Found generic interface: {serviceInterface.Name} with {serviceInterface.TypeParameters.Length} type parameters");
                     // For generic interfaces, we'll construct the interface with the actual type arguments from the repository class
@@ -711,7 +720,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                 {
                     var taskReturnType = taskType.TypeArguments[0];
                     var defaultValue = GetDefaultValueForType(taskReturnType);
-                    sb.AppendLine($"return global::System.Threading.Tasks.Task.FromResult({defaultValue});");
+                    sb.AppendLine($"return global::System.Threading.Tasks.Task.FromResult<{taskReturnType.ToDisplayString()}>({defaultValue});");
                 }
                 else
                 {
@@ -916,6 +925,10 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine($"{repositoryClass.DeclaredAccessibility.GetAccessibility()} partial class {repositoryClass.Name} : {serviceInterface.ToDisplayString()}");
             sb.AppendLine("{");
             sb.PushIndent();
+            
+            // Generate DbConnection field if needed
+            var connectionFieldName = GetDbConnectionFieldName(repositoryClass);
+            GenerateDbConnectionFieldIfNeeded(sb, repositoryClass, connectionFieldName);
             
             // Generate interceptor partial methods
             WriteRepositoryInterceptMethods(sb, repositoryClass);
@@ -1151,17 +1164,79 @@ public abstract class AbstractGenerator : ISourceGenerator
 
     private void GenerateOrCopyAttributes(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName)
     {
-        // Check if method already has Sqlx attributes
-        var existingAttributes = method.GetAttributes()
+        // Check if method already has SQL attributes
+        var existingSqlAttributes = method.GetAttributes()
             .Where(attr => attr.AttributeClass?.Name == "SqlxAttribute" || 
                           attr.AttributeClass?.Name == "RawSqlAttribute" || 
                           attr.AttributeClass?.Name == "SqlExecuteTypeAttribute")
             .ToArray();
         
-        // Always generate attributes based on method name patterns for now
-        // TODO: Fix attribute copying later
-        var generatedAttribute = GenerateSqlxAttributeFromMethodName(method, tableName);
-        sb.AppendLine(generatedAttribute);
+        if (existingSqlAttributes.Any())
+        {
+            // Copy existing attributes as-is - let the old generator handle them
+            foreach (var attr in existingSqlAttributes)
+            {
+                sb.AppendLine(GenerateSqlxAttribute(attr));
+            }
+        }
+        else
+        {
+            // Generate new Sqlx attribute for methods without existing SQL attributes
+            var generatedAttribute = GenerateSqlxAttributeFromMethodName(method, tableName);
+            sb.AppendLine(generatedAttribute);
+        }
+    }
+
+    private string GenerateSqlxAttribute(AttributeData attribute)
+    {
+        var attrName = attribute.AttributeClass?.Name ?? "Unknown";
+        
+        // Remove "Attribute" suffix if present
+        if (attrName.EndsWith("Attribute"))
+        {
+            attrName = attrName.Substring(0, attrName.Length - "Attribute".Length);
+        }
+        
+        var args = new List<string>();
+        
+        // Handle constructor arguments
+        foreach (var arg in attribute.ConstructorArguments)
+        {
+            if (arg.Kind == TypedConstantKind.Primitive && arg.Value is string stringValue)
+            {
+                args.Add($"\"{stringValue}\"");
+            }
+            else if (arg.Kind == TypedConstantKind.Enum)
+            {
+                var enumTypeName = arg.Type?.Name ?? "Unknown";
+                if (enumTypeName == "SqlExecuteTypes")
+                {
+                    var enumValueInt = Convert.ToInt32(arg.Value ?? 0);
+                    var enumName = enumValueInt switch
+                    {
+                        0 => "Select",
+                        1 => "Update", 
+                        2 => "Insert",
+                        3 => "Delete",
+                        4 => "BatchInsert",
+                        5 => "BatchUpdate",
+                        6 => "BatchDelete",
+                        _ => arg.Value?.ToString() ?? "Unknown"
+                    };
+                    args.Add($"SqlExecuteTypes.{enumName}");
+                }
+                else
+                {
+                    args.Add(arg.Value?.ToString() ?? "null");
+                }
+            }
+            else if (arg.Value != null)
+            {
+                args.Add(arg.Value.ToString() ?? "");
+            }
+        }
+        
+        return $"[{attrName}({string.Join(", ", args)})]";
     }
 
     private string GenerateSqlxAttributeFromMethodName(IMethodSymbol method, string tableName)
@@ -1180,15 +1255,15 @@ public abstract class AbstractGenerator : ISourceGenerator
         }
         else if (methodName.Contains("create") || methodName.Contains("insert") || methodName.Contains("add"))
         {
-            return $"[SqlExecuteType(SqlExecuteTypes.Insert, \"{tableName}\")]";
+            return $"[Sqlx(\"INSERT INTO {tableName} (name, email) VALUES (@name, @email)\")]";
         }
         else if (methodName.Contains("update") || methodName.Contains("modify"))
         {
-            return $"[SqlExecuteType(SqlExecuteTypes.Update, \"{tableName}\")]";
+            return $"[Sqlx(\"UPDATE {tableName} SET name = @name, email = @email WHERE id = @id\")]";
         }
         else if (methodName.Contains("delete") || methodName.Contains("remove"))
         {
-            return $"[SqlExecuteType(SqlExecuteTypes.Delete, \"{tableName}\")]";
+            return $"[Sqlx(\"DELETE FROM {tableName} WHERE id = @id\")]";
         }
         else if (methodName.Contains("count"))
         {
@@ -1822,8 +1897,8 @@ public abstract class AbstractGenerator : ISourceGenerator
             // Create and configure command
             sb.AppendLine("using var command = connection.CreateCommand();");
             
-            // Set SQL based on method type
-            var sql = GenerateSqlForMethodType(methodName, tableName, entityType);
+            // Set SQL based on method attributes and type
+            var sql = GenerateSqlCommand(method, tableName);
             sb.AppendLine($"command.CommandText = {sql};");
             sb.AppendLine();
             
@@ -3854,31 +3929,70 @@ public abstract class AbstractGenerator : ISourceGenerator
         return idProperty;
     }
 
-    private void GenerateScalarOperationWithInterceptors(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, bool isAsync, string methodName)
+    private void GenerateInsertSqlForScalar(IndentedStringBuilder sb, INamedTypeSymbol entityType, string tableName, string paramName)
     {
-        var methodNameLower = methodName.ToLowerInvariant();
-        
-        // Connection setup
-        sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        if (isAsync)
+        var properties = entityType.GetMembers().OfType<IPropertySymbol>()
+            .Where(p => p.SetMethod != null && p.DeclaredAccessibility == Accessibility.Public 
+                     && !p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+            
+        if (properties.Any())
         {
-            var cancellationToken = GetCancellationTokenParameter(method);
-            sb.AppendLine($"await connection.OpenAsync({cancellationToken});");
+            var columns = string.Join(", ", properties.Select(p => $"[{p.Name}]"));
+            var values = string.Join(", ", properties.Select(p => $"@{p.Name}"));
+            sb.AppendLine($"__cmd__.CommandText = \"INSERT INTO [{tableName}] ({columns}) VALUES ({values})\";");
+            
+            foreach (var prop in properties)
+            {
+                sb.AppendLine($"var param{prop.Name} = __cmd__.CreateParameter();");
+                sb.AppendLine($"param{prop.Name}.ParameterName = \"@{prop.Name}\";");
+                sb.AppendLine($"param{prop.Name}.Value = {paramName}.{prop.Name} ?? (object)DBNull.Value;");
+                sb.AppendLine($"__cmd__.Parameters.Add(param{prop.Name});");
+            }
         }
         else
         {
-            sb.AppendLine("connection.Open();");
+            sb.AppendLine($"__cmd__.CommandText = \"INSERT INTO [{tableName}] DEFAULT VALUES\";");
         }
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.AppendLine();
+    }
+
+    private void GenerateUpdateSqlForScalar(IndentedStringBuilder sb, INamedTypeSymbol entityType, string tableName, string paramName)
+    {
+        var properties = entityType.GetMembers().OfType<IPropertySymbol>()
+            .Where(p => p.SetMethod != null && p.DeclaredAccessibility == Accessibility.Public 
+                     && !p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+            
+        var idProperty = GetIdProperty(entityType);
         
-        // Create command
-        sb.AppendLine("__cmd__ = connection.CreateCommand();");
-        
-        // Generate SQL based on method name
+        if (properties.Any() && idProperty != null)
+        {
+            var setClause = string.Join(", ", properties.Select(p => $"[{p.Name}] = @{p.Name}"));
+            sb.AppendLine($"__cmd__.CommandText = \"UPDATE [{tableName}] SET {setClause} WHERE [{idProperty.Name}] = @{idProperty.Name}\";");
+            
+            // Add parameters for SET clause
+            foreach (var prop in properties)
+            {
+                sb.AppendLine($"var param{prop.Name} = __cmd__.CreateParameter();");
+                sb.AppendLine($"param{prop.Name}.ParameterName = \"@{prop.Name}\";");
+                sb.AppendLine($"param{prop.Name}.Value = {paramName}.{prop.Name} ?? (object)DBNull.Value;");
+                sb.AppendLine($"__cmd__.Parameters.Add(param{prop.Name});");
+            }
+            
+            // Add parameter for WHERE clause
+            sb.AppendLine($"var param{idProperty.Name} = __cmd__.CreateParameter();");
+            sb.AppendLine($"param{idProperty.Name}.ParameterName = \"@{idProperty.Name}\";");
+            sb.AppendLine($"param{idProperty.Name}.Value = {paramName}.{idProperty.Name};");
+            sb.AppendLine($"__cmd__.Parameters.Add(param{idProperty.Name});");
+        }
+        else
+        {
+            sb.AppendLine($"__cmd__.CommandText = \"UPDATE [{tableName}] SET Id = Id\";");
+        }
+    }
+
+    private void GenerateSelectSqlForScalar(IndentedStringBuilder sb, string methodNameLower, string tableName, IMethodSymbol method)
+    {
         if (methodNameLower.Contains("count"))
         {
             sb.AppendLine($"__cmd__.CommandText = \"SELECT COUNT(*) FROM [{tableName}]\";");
@@ -3915,6 +4029,116 @@ public abstract class AbstractGenerator : ISourceGenerator
         {
             // Default scalar query
             sb.AppendLine($"__cmd__.CommandText = \"SELECT COUNT(*) FROM [{tableName}]\";");
+        }
+    }
+
+    private void GenerateScalarOperationWithInterceptors(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, bool isAsync, string methodName)
+    {
+        var methodNameLower = methodName.ToLowerInvariant();
+        
+        // Connection setup
+        sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        if (isAsync)
+        {
+            var cancellationToken = GetCancellationTokenParameter(method);
+            sb.AppendLine($"await connection.OpenAsync({cancellationToken});");
+        }
+        else
+        {
+            sb.AppendLine("connection.Open();");
+        }
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+        
+        // Create command
+        sb.AppendLine("__cmd__ = connection.CreateCommand();");
+        
+        // Check for SqlExecuteType attribute first
+        var sqlExecuteTypeAttr = method.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlExecuteTypeAttribute");
+        if (sqlExecuteTypeAttr != null && sqlExecuteTypeAttr.ConstructorArguments.Length > 0)
+        {
+            var enumValueObj = sqlExecuteTypeAttr.ConstructorArguments[0].Value;
+            var sqlExecuteType = enumValueObj switch 
+            {
+                int intValue => intValue,
+                string strValue when int.TryParse(strValue, out var intVal) => intVal,
+                _ => 0 // Select
+            };
+            
+            // Handle specific SqlExecuteTypes for scalar operations
+            switch (sqlExecuteType)
+            {
+                case 2: // Insert
+                    // For INSERT operations returning scalar (affected rows), generate appropriate INSERT SQL
+                    if (entityType != null)
+                    {
+                        var entityParam = method.Parameters.FirstOrDefault(p => SymbolEqualityComparer.Default.Equals(p.Type, entityType));
+                        if (entityParam != null)
+                        {
+                            GenerateInsertSqlForScalar(sb, entityType, tableName, entityParam.Name);
+                        }
+                        else
+                        {
+                            sb.AppendLine($"__cmd__.CommandText = \"INSERT INTO [{tableName}] DEFAULT VALUES\";");
+                        }
+                    }
+                    else
+                    {
+                        sb.AppendLine($"__cmd__.CommandText = \"INSERT INTO [{tableName}] DEFAULT VALUES\";");
+                    }
+                    break;
+                    
+                case 1: // Update
+                    // For UPDATE operations returning scalar (affected rows), generate appropriate UPDATE SQL
+                    if (entityType != null)
+                    {
+                        var entityParam = method.Parameters.FirstOrDefault(p => SymbolEqualityComparer.Default.Equals(p.Type, entityType));
+                        if (entityParam != null)
+                        {
+                            GenerateUpdateSqlForScalar(sb, entityType, tableName, entityParam.Name);
+                        }
+                        else
+                        {
+                            sb.AppendLine($"__cmd__.CommandText = \"UPDATE [{tableName}] SET Id = Id\";");
+                        }
+                    }
+                    else
+                    {
+                        sb.AppendLine($"__cmd__.CommandText = \"UPDATE [{tableName}] SET Id = Id\";");
+                    }
+                    break;
+                    
+                case 3: // Delete
+                    // For DELETE operations returning scalar (affected rows), generate appropriate DELETE SQL
+                    var idParam = method.Parameters.FirstOrDefault(p => 
+                        p.Name.Equals("id", StringComparison.OrdinalIgnoreCase) ||
+                        p.Name.EndsWith("id", StringComparison.OrdinalIgnoreCase));
+                    if (idParam != null)
+                    {
+                        sb.AppendLine($"__cmd__.CommandText = \"DELETE FROM [{tableName}] WHERE [Id] = @{idParam.Name}\";");
+                        sb.AppendLine($"var param{idParam.Name} = __cmd__.CreateParameter();");
+                        sb.AppendLine($"param{idParam.Name}.ParameterName = \"@{idParam.Name}\";");
+                        sb.AppendLine($"param{idParam.Name}.Value = {idParam.Name};");
+                        sb.AppendLine($"__cmd__.Parameters.Add(param{idParam.Name});");
+                    }
+                    else
+                    {
+                        sb.AppendLine($"__cmd__.CommandText = \"DELETE FROM [{tableName}]\";");
+                    }
+                    break;
+                    
+                default: // Select or other
+                    GenerateSelectSqlForScalar(sb, methodNameLower, tableName, method);
+                    break;
+            }
+        }
+        else
+        {
+            // Fallback to method name based inference
+            GenerateSelectSqlForScalar(sb, methodNameLower, tableName, method);
         }
         
         sb.AppendLine();
@@ -4065,7 +4289,68 @@ public abstract class AbstractGenerator : ISourceGenerator
         }
         return null;
     }
+
+    private string GetDbConnectionFieldName(INamedTypeSymbol repositoryClass)
+    {
+        // Find the first DbConnection field or property
+        var dbConnectionMember = repositoryClass.GetMembers()
+            .OfType<IFieldSymbol>()
+            .FirstOrDefault(x => x.IsDbConnection()) ??
+            repositoryClass.GetMembers()
+            .OfType<IPropertySymbol>()
+            .FirstOrDefault(x => x.IsDbConnection()) as ISymbol;
+
+        // If not found in the class, check base class
+        if (dbConnectionMember == null && repositoryClass.BaseType != null)
+        {
+            return GetDbConnectionFieldName(repositoryClass.BaseType);
+        }
+
+        return dbConnectionMember?.Name ?? "connection"; // Fallback to "connection" if not found
+    }
+
+    private void GenerateDbConnectionFieldIfNeeded(IndentedStringBuilder sb, INamedTypeSymbol repositoryClass, string connectionFieldName)
+    {
+        var hasDbConnection = HasDbConnectionField(repositoryClass);
+        if (!hasDbConnection)
+        {
+            // Only generate the field if it doesn't exist
+            sb.AppendLine("// Auto-generated DbConnection field for repository operations");
+            sb.AppendLine("// This field is available to both RepositoryFor and Sqlx generators");
+            sb.AppendLine($"protected readonly global::System.Data.Common.DbConnection {connectionFieldName};");
+            sb.AppendLine();
+            System.Diagnostics.Debug.WriteLine($"Generated DbConnection field: {connectionFieldName}");
+        }
+        else
+        {
+            System.Diagnostics.Debug.WriteLine($"DbConnection field already exists: {connectionFieldName}");
+        }
+    }
+
+    private bool HasDbConnectionField(INamedTypeSymbol repositoryClass)
+    {
+        // Check if the class or any of its base classes have a DbConnection field or property
+        var current = repositoryClass;
+        while (current != null)
+        {
+            // Check for fields
+            var hasField = current.GetMembers()
+                .OfType<IFieldSymbol>()
+                .Any(x => x.IsDbConnection());
+
+            // Check for properties  
+            var hasProperty = current.GetMembers()
+                .OfType<IPropertySymbol>()
+                .Any(x => x.IsDbConnection());
+
+            if (hasField || hasProperty)
+            {
+                return true;
+            }
+
+            current = current.BaseType;
+        }
+
+        return false;
+    }
 }
-
-
-

@@ -7,6 +7,7 @@
 namespace Sqlx;
 
 using System;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 internal sealed class IndentedStringBuilder
@@ -14,6 +15,8 @@ internal sealed class IndentedStringBuilder
     private const byte IndentSize = 4;
     private readonly StringBuilder builder;
     private byte depthLevel;
+    private bool needsIndent = true;
+    private string? cachedIndent;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="IndentedStringBuilder"/> class.
@@ -24,70 +27,100 @@ internal sealed class IndentedStringBuilder
         builder = new StringBuilder(content ?? string.Empty);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public IndentedStringBuilder Append(string? value)
     {
-        // Apply indentation for null strings, but not for empty or whitespace-only strings
-        if (value is null || !string.IsNullOrWhiteSpace(value))
+        if (needsIndent)
         {
-            WriteIndent();
+            // Add indent for null strings or non-whitespace strings
+            if (value == null || (value.Length > 0 && !string.IsNullOrWhiteSpace(value)))
+            {
+                WriteIndent();
+            }
+            // Don't set needsIndent = false here anymore
         }
-        builder.Append(value ?? string.Empty);
+        
+        if (!string.IsNullOrEmpty(value))
+        {
+            builder.Append(value);
+        }
         return this;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public IndentedStringBuilder Append(char value)
     {
-        WriteIndent();
+        if (needsIndent)
+        {
+            WriteIndent();
+            // Don't set needsIndent = false here anymore
+        }
         builder.Append(value);
         return this;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public IndentedStringBuilder AppendLine()
     {
         builder.AppendLine();
+        needsIndent = true;
         return this;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public IndentedStringBuilder AppendLineIf(bool condition, string? trueValue, string? falseValue)
     {
         AppendLine(condition ? trueValue : falseValue);
         return this;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public IndentedStringBuilder AppendLine(string? value)
     {
-        // Apply indentation for null strings, but not for empty or whitespace-only strings
-        if (value is null || (!string.IsNullOrEmpty(value) && !string.IsNullOrWhiteSpace(value)))
+        if (needsIndent)
         {
-            WriteIndent();
+            // Add indent for null strings or non-whitespace strings
+            if (value == null || (value.Length > 0 && !string.IsNullOrWhiteSpace(value)))
+            {
+                WriteIndent();
+            }
         }
         builder.AppendLine(value ?? string.Empty);
+        needsIndent = true;
         return this;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public IndentedStringBuilder PushIndent()
     {
         depthLevel++;
+        cachedIndent = null; // Invalidate cache
+        needsIndent = true; // Next append should be indented
         return this;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public IndentedStringBuilder PopIndent()
     {
         if (depthLevel == 0)
             throw new InvalidOperationException("Cannot pop at depthlevel 0");
 
         depthLevel--;
+        cachedIndent = null; // Invalidate cache
+        needsIndent = true; // Next append should be indented
         return this;
     }
 
     /// <inheritdoc/>
     public override string ToString() => builder.ToString();
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void WriteIndent()
     {
         if (depthLevel > 0)
         {
-            builder.Append(' ', depthLevel * IndentSize);
+            cachedIndent ??= new string(' ', depthLevel * IndentSize);
+            builder.Append(cachedIndent);
         }
     }
 }

@@ -14,11 +14,14 @@ using System.Runtime.CompilerServices;
 
 internal static class Extensions
 {
-    // Cache for frequently accessed type information to improve performance
-    private static readonly ConcurrentDictionary<string, bool> _dbConnectionTypeCache = new();
-    private static readonly ConcurrentDictionary<string, bool> _dbTransactionTypeCache = new();
-    private static readonly ConcurrentDictionary<string, bool> _dbContextTypeCache = new();
-    private static readonly ConcurrentDictionary<string, string?> _dataReaderMethodCache = new();
+    // Optimized caches with better key strategies
+    private static readonly ConcurrentDictionary<ITypeSymbol, bool> _dbConnectionTypeCache = new(SymbolEqualityComparer.Default);
+    private static readonly ConcurrentDictionary<ITypeSymbol, bool> _dbTransactionTypeCache = new(SymbolEqualityComparer.Default);
+    private static readonly ConcurrentDictionary<ITypeSymbol, bool> _dbContextTypeCache = new(SymbolEqualityComparer.Default);
+    private static readonly ConcurrentDictionary<ITypeSymbol, string?> _dataReaderMethodCache = new(SymbolEqualityComparer.Default);
+    private static readonly ConcurrentDictionary<ISymbol, string> _sqlNameCache = new(SymbolEqualityComparer.Default);
+    private static readonly ConcurrentDictionary<ITypeSymbol, string> _dbTypeCache = new(SymbolEqualityComparer.Default);
+    private static readonly ConcurrentDictionary<(ITypeSymbol type, string name), string> _dataReadExpressionCache = new();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool CanHaveNullValue(this ITypeSymbol typeSymbol)
@@ -35,36 +38,31 @@ internal static class Extensions
                 namedType.ConstructedFrom.SpecialType == SpecialType.System_Nullable_T);
     }
 
-    internal static bool IsDbConnection(this ISymbol typeSymbol)
-    {
-        return IsTypes(typeSymbol, x => IsTypeInHierarchy(x, "DbConnection", _dbConnectionTypeCache));
-    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static bool IsDbConnection(this ISymbol typeSymbol) => 
+        IsTypeInHierarchy(typeSymbol, "DbConnection", _dbConnectionTypeCache);
 
-    internal static bool IsDbTransaction(this ISymbol typeSymbol)
-    {
-        return IsTypes(typeSymbol, x => IsTypeInHierarchy(x, "DbTransaction", _dbTransactionTypeCache));
-    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static bool IsDbTransaction(this ISymbol typeSymbol) => 
+        IsTypeInHierarchy(typeSymbol, "DbTransaction", _dbTransactionTypeCache);
 
-    internal static bool IsDbContext(this ISymbol typeSymbol)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static bool IsDbContext(this ISymbol typeSymbol) => 
+        IsTypeInHierarchy(typeSymbol, "DbContext", _dbContextTypeCache);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool IsTypeInHierarchy(ISymbol symbol, string targetTypeName, ConcurrentDictionary<ITypeSymbol, bool> cache)
     {
-        return IsTypes(typeSymbol, x => IsTypeInHierarchy(x, "DbContext", _dbContextTypeCache));
+        return IsTypes(symbol, type => CheckTypeInHierarchy(type, targetTypeName, cache));
     }
 
     /// <summary>
     /// Optimized type hierarchy checking with caching to avoid repeated traversals
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static bool IsTypeInHierarchy(ITypeSymbol type, string targetTypeName, ConcurrentDictionary<string, bool> cache)
+    private static bool CheckTypeInHierarchy(ITypeSymbol type, string targetTypeName, ConcurrentDictionary<ITypeSymbol, bool> cache)
     {
-        var typeKey = type.ToDisplayString();
-        if (cache.TryGetValue(typeKey, out var cachedResult))
-        {
-            return cachedResult;
-        }
-
-        var result = CheckTypeHierarchy(type, targetTypeName);
-        cache.TryAdd(typeKey, result);
-        return result;
+        return cache.GetOrAdd(type, t => CheckTypeHierarchy(t, targetTypeName));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -101,7 +99,7 @@ internal static class Extensions
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static ITypeSymbol UnwrapListType(this ITypeSymbol type) => 
-        UnwrapType(type, "List", "IList", "ICollection", "IReadonlyList", "IEnumerable", "IAsyncEnumerable");
+        UnwrapType(type, "List", "IList", "ICollection", "IReadOnlyList", "IEnumerable", "IAsyncEnumerable");
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static ITypeSymbol UnwrapNullableType(this ITypeSymbol type)
@@ -140,21 +138,22 @@ internal static class Extensions
         string.Equals(returnType.Name, "Tuple", StringComparison.Ordinal) || 
         string.Equals(returnType.Name, "ValueTuple", StringComparison.Ordinal);
 
-    internal static IPropertySymbol? FindMember(this ITypeSymbol returnType, string parameterName)
-    {
-        return returnType.GetMembers().OfType<IPropertySymbol>()
-            .FirstOrDefault(propertySymbol => string.Equals(propertySymbol.Name, parameterName, StringComparison.InvariantCultureIgnoreCase));
-    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static IPropertySymbol? FindMember(this ITypeSymbol returnType, string parameterName) =>
+        returnType.GetMembers().OfType<IPropertySymbol>()
+            .FirstOrDefault(prop => string.Equals(prop.Name, parameterName, StringComparison.OrdinalIgnoreCase));
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static string GetSqlName(this ISymbol propertySymbol)
     {
-        var attribute = propertySymbol.GetAttributes().FirstOrDefault(attribute => attribute.AttributeClass?.Name == "DbColumnAttribute");
-        if (attribute != null && attribute.ConstructorArguments.FirstOrDefault().Value is string name)
+        return _sqlNameCache.GetOrAdd(propertySymbol, static prop =>
         {
-            return name;
-        }
-
-        return NameMapper.MapName(propertySymbol.Name);
+            var attribute = prop.GetAttributes()
+                .FirstOrDefault(attr => attr.AttributeClass?.Name == "DbColumnAttribute");
+            
+            return attribute?.ConstructorArguments.FirstOrDefault().Value as string 
+                   ?? NameMapper.MapName(prop.Name);
+        });
     }
 
     internal static string GetParameterName(this ISymbol propertySymbol, string parameterPrefx)
@@ -181,38 +180,33 @@ internal static class Extensions
 
     internal static string GetDbType(this ITypeSymbol type)
     {
-        return UnwrapNullableType(type).SpecialType switch
+        return _dbTypeCache.GetOrAdd(type, static t =>
         {
-            SpecialType.System_Boolean => "global::System.Data.DbType.Boolean",
-            SpecialType.System_String => "global::System.Data.DbType.String",
-            SpecialType.System_Char => "global::System.Data.DbType.Char",
-            SpecialType.System_Byte => "global::System.Data.DbType.Byte",
-            SpecialType.System_SByte => "global::System.Data.DbType.SByte",
-            SpecialType.System_Int16 => "global::System.Data.DbType.Int16",
-            SpecialType.System_Int32 => "global::System.Data.DbType.Int32",
-            SpecialType.System_Int64 => "global::System.Data.DbType.Int64",
-            SpecialType.System_UInt16 => "global::System.Data.DbType.UInt16",
-            SpecialType.System_UInt32 => "global::System.Data.DbType.UInt32",
-            SpecialType.System_UInt64 => "global::System.Data.DbType.UInt64",
-            SpecialType.System_Single => "global::System.Data.DbType.Single",
-            SpecialType.System_Double => "global::System.Data.DbType.Double",
-            SpecialType.System_Decimal => "global::System.Data.DbType.Decimal",
-            SpecialType.System_DateTime => "global::System.Data.DbType.DateTime2",
-            _ => throw new NotImplementedException(),
-        };
+            return UnwrapNullableType(t).SpecialType switch
+            {
+                SpecialType.System_Boolean => "global::System.Data.DbType.Boolean",
+                SpecialType.System_String => "global::System.Data.DbType.String",
+                SpecialType.System_Char => "global::System.Data.DbType.Char",
+                SpecialType.System_Byte => "global::System.Data.DbType.Byte",
+                SpecialType.System_SByte => "global::System.Data.DbType.SByte",
+                SpecialType.System_Int16 => "global::System.Data.DbType.Int16",
+                SpecialType.System_Int32 => "global::System.Data.DbType.Int32",
+                SpecialType.System_Int64 => "global::System.Data.DbType.Int64",
+                SpecialType.System_UInt16 => "global::System.Data.DbType.UInt16",
+                SpecialType.System_UInt32 => "global::System.Data.DbType.UInt32",
+                SpecialType.System_UInt64 => "global::System.Data.DbType.UInt64",
+                SpecialType.System_Single => "global::System.Data.DbType.Single",
+                SpecialType.System_Double => "global::System.Data.DbType.Double",
+                SpecialType.System_Decimal => "global::System.Data.DbType.Decimal",
+                SpecialType.System_DateTime => "global::System.Data.DbType.DateTime2",
+                _ => throw new NotImplementedException($"Unsupported type: {t.ToDisplayString()}"),
+            };
+        });
     }
 
     internal static string? GetDataReaderMethod(this ITypeSymbol type)
     {
-        var typeKey = type.ToDisplayString();
-        if (_dataReaderMethodCache.TryGetValue(typeKey, out var cachedMethod))
-        {
-            return cachedMethod;
-        }
-
-        var method = GetDataReaderMethodCore(type);
-        _dataReaderMethodCache.TryAdd(typeKey, method);
-        return method;
+        return _dataReaderMethodCache.GetOrAdd(type, static t => GetDataReaderMethodCore(t));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -249,25 +243,33 @@ internal static class Extensions
     internal static string GetDataReadIndexExpression(this ITypeSymbol type, string readerName, int index)
     {
         var method = GetDataReaderMethod(type);
-        return UnwrapNullableType(type) != type
-            ? $"{readerName}.IsDBNull(reader.GetOrdinal(0)) ? default : {readerName}.{method}({index})"
+        var isNullable = UnwrapNullableType(type) != type;
+        
+        // Optimized null check with proper ordinal usage
+        return isNullable
+            ? $"{readerName}.IsDBNull({index}) ? default : {readerName}.{method}({index})"
             : $"{readerName}.{method}({index})";
     }
 
     public static string GetDataReadExpression(this ITypeSymbol type, string readerName, string columnName)
     {
-        var method = GetDataReaderMethod(type);
-        if (string.IsNullOrEmpty(method))
+        var cacheKey = (type, columnName);
+        return _dataReadExpressionCache.GetOrAdd(cacheKey, key =>
         {
-            throw new NotSupportedException($"No support type {type.Name}");
-        }
+            var (t, colName) = key;
+            var method = GetDataReaderMethod(t);
+            if (string.IsNullOrEmpty(method))
+            {
+                throw new NotSupportedException($"No support type {t.Name}");
+            }
 
-        var ordinalExpression = $"{readerName}.GetOrdinal(\"{columnName}\")";
-        var isNullable = IsNullableType(type);
-        var unwrapType = UnwrapNullableType(type);
+            var ordinalExpression = $"{readerName}.GetOrdinal(\"{colName}\")";
+            var isNullable = IsNullableType(t);
+            var unwrapType = UnwrapNullableType(t);
 
-        // Generate optimized null-safe data reading expression
-        return GenerateNullSafeDataReadExpression(readerName, ordinalExpression, method!, isNullable, unwrapType);
+            // Generate optimized null-safe data reading expression
+            return GenerateNullSafeDataReadExpression(readerName, ordinalExpression, method!, isNullable, unwrapType);
+        });
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

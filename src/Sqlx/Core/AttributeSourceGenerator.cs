@@ -241,7 +241,13 @@ internal static class AttributeSourceGenerator
         sb.AppendLine("        /// <summary>INSERT operation.</summary>");
         sb.AppendLine("        Insert = 2,");
         sb.AppendLine("        /// <summary>DELETE operation.</summary>");
-        sb.AppendLine("        Delete = 3");
+        sb.AppendLine("        Delete = 3,");
+        sb.AppendLine("        /// <summary>Batch INSERT operation.</summary>");
+        sb.AppendLine("        BatchInsert = 4,");
+        sb.AppendLine("        /// <summary>Batch UPDATE operation.</summary>");
+        sb.AppendLine("        BatchUpdate = 5,");
+        sb.AppendLine("        /// <summary>Batch DELETE operation.</summary>");
+        sb.AppendLine("        BatchDelete = 6");
         sb.AppendLine("    }");
         sb.AppendLine();
         
@@ -255,7 +261,13 @@ internal static class AttributeSourceGenerator
         sb.AppendLine("        /// <summary>SQL Server dialect with square bracket column wrapping.</summary>");
         sb.AppendLine("        SqlServer = 1,");
         sb.AppendLine("        /// <summary>PostgreSQL dialect with double quote column wrapping.</summary>");
-        sb.AppendLine("        Postgresql = 2");
+        sb.AppendLine("        Postgresql = 2,");
+        sb.AppendLine("        /// <summary>Oracle dialect with double quote column wrapping and colon parameters.</summary>");
+        sb.AppendLine("        Oracle = 3,");
+        sb.AppendLine("        /// <summary>DB2 dialect with double quote column wrapping and question mark parameters.</summary>");
+        sb.AppendLine("        DB2 = 4,");
+        sb.AppendLine("        /// <summary>SQLite dialect with square bracket column wrapping.</summary>");
+        sb.AppendLine("        SQLite = 5");
         sb.AppendLine("    }");
         sb.AppendLine();
     }
@@ -284,6 +296,18 @@ internal static class AttributeSourceGenerator
         sb.AppendLine("        /// </summary>");
         sb.AppendLine("        public static readonly (string ColumnLeft, string ColumnRight, string StringLeft,");
         sb.AppendLine("            string StringRight, string ParameterPrefix) PgSql = (\"\\\"\", \"\\\"\", \"'\", \"'\", \"$\");");
+        sb.AppendLine();
+        sb.AppendLine("        /// <summary>");
+        sb.AppendLine("        /// Oracle dialect configuration with double quote column wrapping and : parameter prefix.");
+        sb.AppendLine("        /// </summary>");
+        sb.AppendLine("        public static readonly (string ColumnLeft, string ColumnRight, string StringLeft,");
+        sb.AppendLine("            string StringRight, string ParameterPrefix) Oracle = (\"\\\"\", \"\\\"\", \"'\", \"'\", \":\");");
+        sb.AppendLine();
+        sb.AppendLine("        /// <summary>");
+        sb.AppendLine("        /// DB2 dialect configuration with double quote column wrapping and ? parameter prefix.");
+        sb.AppendLine("        /// </summary>");
+        sb.AppendLine("        public static readonly (string ColumnLeft, string ColumnRight, string StringLeft,");
+        sb.AppendLine("            string StringRight, string ParameterPrefix) DB2 = (\"\\\"\", \"\\\"\", \"'\", \"'\", \"?\");");
         sb.AppendLine();
         sb.AppendLine("        /// <summary>");
         sb.AppendLine("        /// SQLite dialect configuration with square bracket column wrapping and @ parameter prefix.");
@@ -342,6 +366,18 @@ internal static class AttributeSourceGenerator
         sb.AppendLine("        /// </summary>");
         sb.AppendLine("        public static ExpressionToSql<T> ForPostgreSQL()");
         sb.AppendLine("            => new ExpressionToSql<T>(SqlDefine.PgSql);");
+        sb.AppendLine();
+        sb.AppendLine("        /// <summary>");
+        sb.AppendLine("        /// Creates an ExpressionToSql builder for Oracle dialect.");
+        sb.AppendLine("        /// </summary>");
+        sb.AppendLine("        public static ExpressionToSql<T> ForOracle()");
+        sb.AppendLine("            => new ExpressionToSql<T>(SqlDefine.Oracle);");
+        sb.AppendLine();
+        sb.AppendLine("        /// <summary>");
+        sb.AppendLine("        /// Creates an ExpressionToSql builder for DB2 dialect.");
+        sb.AppendLine("        /// </summary>");
+        sb.AppendLine("        public static ExpressionToSql<T> ForDB2()");
+        sb.AppendLine("            => new ExpressionToSql<T>(SqlDefine.DB2);");
         sb.AppendLine();
         sb.AppendLine("        /// <summary>");
         sb.AppendLine("        /// Creates an ExpressionToSql builder for SQLite dialect.");

@@ -108,9 +108,9 @@ internal static partial class ImprovedCrudDemo
 
     /// <summary>
     /// DELETE 操作 - 危险的全表删除 (通常不推荐)。
-    /// 生成: DELETE FROM person
+    /// 明确使用 Sqlx 属性以表达删除全表的意图
     /// </summary>
-    [SqlExecuteType(SqlExecuteTypes.Delete, "person")]
+    [Sqlx("DELETE FROM person")]
     public static partial int DeleteAll(
         this DbConnection connection);
 

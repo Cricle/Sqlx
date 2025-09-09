@@ -35,6 +35,9 @@ internal readonly record struct SqlDefine
     public static readonly SqlDefine MySql = new SqlDefine("`", "`", "'", "'", "@");
     public static readonly SqlDefine SqlServer = new SqlDefine("[", "]", "'", "'", "@");
     public static readonly SqlDefine PgSql = new SqlDefine("\"", "\"", "'", "'", "@");
+    public static readonly SqlDefine Oracle = new SqlDefine("\"", "\"", "'", "'", ":");
+    public static readonly SqlDefine DB2 = new SqlDefine("\"", "\"", "'", "'", "?");
+    public static readonly SqlDefine SQLite = new SqlDefine("[", "]", "'", "'", "@");
 
     public string WrapString(string input) => $"{StringLeft}{input}{StringRight}";
 

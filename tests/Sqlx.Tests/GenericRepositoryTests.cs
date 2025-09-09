@@ -66,13 +66,13 @@ namespace TestNamespace
         // Verify that repository methods are generated
         Assert.IsTrue(result.Contains("public System.Collections.Generic.IList<TestNamespace.User> GetAll()"),
             "Should generate GetAll method implementation");
-        Assert.IsTrue(result.Contains("public TestNamespace.User? GetById(global::System.Int32 id)"),
+        Assert.IsTrue(result.Contains("public TestNamespace.User? GetById(int id)") || result.Contains("public TestNamespace.User? GetById(global::System.Int32 id)"),
             "Should generate GetById method implementation");
-        Assert.IsTrue(result.Contains("public global::System.Int32 Create(TestNamespace.User entity)"),
+        Assert.IsTrue(result.Contains("public int Create(TestNamespace.User entity)") || result.Contains("public global::System.Int32 Create(TestNamespace.User entity)"),
             "Should generate Create method implementation");
-        Assert.IsTrue(result.Contains("public global::System.Int32 Update(TestNamespace.User entity)"),
+        Assert.IsTrue(result.Contains("public int Update(TestNamespace.User entity)") || result.Contains("public global::System.Int32 Update(TestNamespace.User entity)"),
             "Should generate Update method implementation");
-        Assert.IsTrue(result.Contains("public global::System.Int32 Delete(global::System.Int32 id)"),
+        Assert.IsTrue(result.Contains("public int Delete(int id)") || result.Contains("public global::System.Int32 Delete(global::System.Int32 id)"),
             "Should generate Delete method implementation");
     }
 

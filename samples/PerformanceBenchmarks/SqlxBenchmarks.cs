@@ -49,7 +49,7 @@ public class SqlxBenchmarks
         await BenchmarkTypeAnalyzerCacheAsync();
 
         // Generate report
-        var report = new BenchmarkReport(_results, MemoryMonitor.GetMemoryStatistics());
+        var report = new BenchmarkReport(_results, new object()); // 临时修复
         
         Console.WriteLine("\n📊 Benchmark Results Summary:");
         Console.WriteLine($"Total benchmarks: {_results.Count}");
@@ -399,7 +399,7 @@ public record BenchmarkResult(
 /// </summary>
 public record BenchmarkReport(
     IReadOnlyList<BenchmarkResult> Results,
-    MemoryStatistics MemoryStats
+    object MemoryStats // 临时使用 object 类型
 )
 {
     public BenchmarkResult FastestOperation => Results.OrderBy(r => r.ExecutionTimeMs).First();

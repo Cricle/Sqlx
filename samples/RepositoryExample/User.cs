@@ -34,5 +34,10 @@ public class User
     /// Gets or sets the date and time when the user was created.
     /// </summary>
     public DateTime CreatedAt { get; set; }
+    
+    /// <summary>
+    /// Gets or sets a value indicating whether the user is active.
+    /// </summary>
+    public bool IsActive { get; set; } = true;
 }
 

@@ -36,8 +36,17 @@ internal class Program
 
     private static void PrintWelcomeMessage()
     {
-        Console.WriteLine("🎯 Sqlx Repository Pattern Example!");
-        Console.WriteLine("=====================================\n");
+        Console.WriteLine("🚀 Sqlx Repository Pattern 最佳实践演示");
+        Console.WriteLine("=".PadRight(60, '='));
+        Console.WriteLine();
+        
+        Console.WriteLine("本示例展示了 Sqlx 最新功能：");
+        Console.WriteLine("✨ Repository Pattern 自动生成");
+        Console.WriteLine("🔥 智能 SQL 推断");
+        Console.WriteLine("💡 编译时类型安全");
+        Console.WriteLine("⚡ 高性能代码生成");
+        Console.WriteLine("🎯 零反射运行时");
+        Console.WriteLine();
     }
 
     private static TestMode ParseArguments(string[] args)

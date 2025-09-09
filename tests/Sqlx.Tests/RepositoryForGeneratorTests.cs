@@ -88,8 +88,8 @@ namespace TestNamespace
         Assert.IsTrue(generatedCode.Contains("[Sqlx(\"SELECT * FROM User WHERE Id = @id\")]") || 
                      generatedCode.Contains("[Sqlx(\"SELECT * FROM Users WHERE Id = @id\")]"), 
             "Generated code should contain Sqlx attributes for GetById");
-        Assert.IsTrue(generatedCode.Contains("[SqlExecuteType(SqlExecuteTypes.Insert"), 
-            "Generated code should contain SqlExecuteType attributes for Create");
+        Assert.IsTrue(generatedCode.Contains("[Sqlx(\"INSERT INTO") || generatedCode.Contains("[SqlExecuteType(SqlExecuteTypes.Insert"), 
+            "Generated code should contain INSERT operation attributes for Create");
     }
 
     /// <summary>
@@ -346,12 +346,12 @@ namespace TestNamespace
         Assert.IsTrue(generatedCode.Contains("WHERE") && generatedCode.Contains("@name"), 
             "FindByName should generate WHERE name queries");
         
-        // Check operation types
-        Assert.IsTrue(generatedCode.Contains("SqlExecuteTypes.Insert"), 
+        // Check operation types - either new Sqlx attributes or legacy SqlExecuteType
+        Assert.IsTrue(generatedCode.Contains("INSERT INTO") || generatedCode.Contains("SqlExecuteTypes.Insert"), 
             "Create methods should generate INSERT operations");
-        Assert.IsTrue(generatedCode.Contains("SqlExecuteTypes.Update"), 
+        Assert.IsTrue(generatedCode.Contains("UPDATE") && generatedCode.Contains("SET") || generatedCode.Contains("SqlExecuteTypes.Update"), 
             "Update methods should generate UPDATE operations");
-        Assert.IsTrue(generatedCode.Contains("SqlExecuteTypes.Delete"), 
+        Assert.IsTrue(generatedCode.Contains("DELETE FROM") || generatedCode.Contains("SqlExecuteTypes.Delete"), 
             "Delete methods should generate DELETE operations");
         
         // Check COUNT operations

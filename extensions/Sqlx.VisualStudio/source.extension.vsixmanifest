@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
+  <Metadata>
+    <Identity Id="Sqlx.VisualStudio.a8b1c2d3-e4f5-6789-a0b1-c2d3e4f56789" Version="1.0.0" Language="en-US" Publisher="Cricle" />
+    <DisplayName>Sqlx IntelliSense Extension</DisplayName>
+    <Description xml:space="preserve">🚀 Enhanced Visual Studio IntelliSense support for Sqlx - High-performance .NET ORM with source generators.
+
+Features:
+• 🔍 SQL syntax highlighting in [Sqlx] attributes
+• 💡 IntelliSense for table names and column names
+• ⚡ Real-time SQL validation and error detection
+• 🎯 Smart code completion for database operations
+• 🛡️ Type-safe parameter suggestions
+• 📊 Multi-database dialect support (MySQL, SQL Server, PostgreSQL, Oracle, DB2, SQLite)
+• 🔧 Repository pattern scaffolding
+• 📈 Performance hints and optimization suggestions
+
+Transform your data access experience with intelligent SQL assistance!</Description>
+    <MoreInfo>https://github.com/Cricle/Sqlx</MoreInfo>
+    <License>License.txt</License>
+    <GettingStartedGuide>https://github.com/Cricle/Sqlx/blob/main/docs/getting-started.md</GettingStartedGuide>
+    <ReleaseNotes>https://github.com/Cricle/Sqlx/releases</ReleaseNotes>
+    <Icon>Resources\SqlxIcon.png</Icon>
+    <PreviewImage>Resources\SqlxPreview.png</PreviewImage>
+    <Tags>Sqlx, ORM, SQL, IntelliSense, Database, Source Generator, Performance, .NET, C#</Tags>
+  </Metadata>
+  <Installation>
+    <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.0, 18.0)" />
+    <InstallationTarget Id="Microsoft.VisualStudio.Professional" Version="[17.0, 18.0)" />
+    <InstallationTarget Id="Microsoft.VisualStudio.Enterprise" Version="[17.0, 18.0)" />
+  </Installation>
+  <Dependencies>
+    <Dependency Id="Microsoft.Framework.NDP" DisplayName="Microsoft .NET Framework" d:Source="Manual" Version="[4.7.2,)" />
+    <Dependency Id="Microsoft.VisualStudio.MPF.17.0" DisplayName="Visual Studio MPF 17.0" d:Source="Installed" Version="[17.0]" />
+  </Dependencies>
+  <Prerequisites>
+    <Prerequisite Id="Microsoft.VisualStudio.Component.CoreEditor" Version="[17.0,18.0)" DisplayName="Visual Studio core editor" />
+    <Prerequisite Id="Microsoft.VisualStudio.Component.Roslyn.Compiler" Version="[17.0,18.0)" DisplayName="C# and Visual Basic Roslyn compilers" />
+    <Prerequisite Id="Microsoft.VisualStudio.Component.Roslyn.LanguageServices" Version="[17.0,18.0)" DisplayName="C# and Visual Basic language services" />
+  </Prerequisites>
+  <Assets>
+    <Asset Type="Microsoft.VisualStudio.VsPackage" d:Source="Project" d:ProjectName="%CurrentProject%" Path="|%CurrentProject%;PkgdefProjectOutputGroup|" />
+    <Asset Type="Microsoft.VisualStudio.MefComponent" d:Source="Project" d:ProjectName="%CurrentProject%" Path="|%CurrentProject%|" />
+  </Assets>
+</PackageManifest>
+

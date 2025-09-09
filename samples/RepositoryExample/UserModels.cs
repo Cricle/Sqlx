@@ -94,7 +94,7 @@ public class UserWithMetadata : User
     /// <summary>
     /// Gets or sets whether the user is active.
     /// </summary>
-    public bool IsActive { get; set; } = true;
+    public new bool IsActive { get; set; } = true;
     
     /// <summary>
     /// Gets or sets the user's role.

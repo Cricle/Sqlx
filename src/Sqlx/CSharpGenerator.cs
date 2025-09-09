@@ -189,6 +189,9 @@ namespace Sqlx.Annotations
         MySql = 0,
         SqlServer = 1,
         Postgresql = 2,
+        Oracle = 3,
+        DB2 = 4,
+        SQLite = 5,
     }
     /// <summary>
     /// Specifies the SQL execution type and target table for a method.
@@ -224,6 +227,18 @@ namespace Sqlx.Annotations
         /// Represents a DELETE operation for removing data.
         /// </summary>
         Delete = 3,
+        /// <summary>
+        /// Represents a batch INSERT operation for adding multiple records efficiently.
+        /// </summary>
+        BatchInsert = 4,
+        /// <summary>
+        /// Represents a batch UPDATE operation for modifying multiple records efficiently.
+        /// </summary>
+        BatchUpdate = 5,
+        /// <summary>
+        /// Represents a batch DELETE operation for removing multiple records efficiently.
+        /// </summary>
+        BatchDelete = 6,
     }
     /// <summary>
     /// Represents a SQL template with parameters for efficient query execution.

@@ -7,6 +7,7 @@
 		<WarningsAsErrors />
 		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 		<WarningsNotAsErrors>CS8618;CS8625;CS8629;CS8604;CS8601;CS8602;CS8603;CS8765</WarningsNotAsErrors>
+		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
 		<!-- Do not include the generator as a lib dependency -->
 		<IncludeBuildOutput>false</IncludeBuildOutput>
 		<SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>

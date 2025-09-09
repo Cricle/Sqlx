@@ -79,8 +79,8 @@ public static class GenericRepositoryDemo
         var simpleRepo = new TestGenericRepository(connection);
         
         // Test GetAll method
-        using (var monitor = PerformanceMonitor.StartMonitoring("GenericRepository.GetAll"))
         {
+            PerformanceMonitor.RecordOperation();
             var allUsers = simpleRepo.GetAll();
             Console.WriteLine($"📊 Retrieved {allUsers.Count} users using generic repository");
             Console.WriteLine($"   First user: {allUsers[0].Name} ({allUsers[0].Email})");
@@ -95,8 +95,8 @@ public static class GenericRepositoryDemo
             CreatedAt = DateTime.Now
         };
         
-        using (var monitor = PerformanceMonitor.StartMonitoring("GenericRepository.Create"))
         {
+            PerformanceMonitor.RecordOperation();
             int rowsAffected = simpleRepo.Create(newUser);
             Console.WriteLine($"✅ Created new user: {rowsAffected} rows affected");
         }
@@ -106,8 +106,8 @@ public static class GenericRepositoryDemo
         
         // Test GetById
         User? user = null;
-        using (var monitor = PerformanceMonitor.StartMonitoring("GenericRepository.GetById"))
         {
+            PerformanceMonitor.RecordOperation();
             user = advancedRepo.GetById(1);
             Console.WriteLine($"🔍 Retrieved user by ID: {user?.Name ?? "Not found"}");
         }
@@ -115,17 +115,15 @@ public static class GenericRepositoryDemo
         // Test Update method
         if (user != null)
         {
-            using (var monitor = PerformanceMonitor.StartMonitoring("GenericRepository.Update"))
-            {
-                user.Name = "Updated " + user.Name;
-                int updateResult = advancedRepo.Update(user);
-                Console.WriteLine($"✏️ Updated user: {updateResult} rows affected");
-            }
+            PerformanceMonitor.RecordOperation();
+            user.Name = "Updated " + user.Name;
+            int updateResult = advancedRepo.Update(user);
+            Console.WriteLine($"✏️ Updated user: {updateResult} rows affected");
         }
         
         // Test Delete method
-        using (var monitor = PerformanceMonitor.StartMonitoring("GenericRepository.Delete"))
         {
+            PerformanceMonitor.RecordOperation();
             int deleteResult = advancedRepo.Delete(999); // Delete a high ID user
             Console.WriteLine($"🗑️ Deleted user: {deleteResult} rows affected");
         }
@@ -138,18 +136,12 @@ public static class GenericRepositoryDemo
         Console.WriteLine("\n📊 Performance Monitoring Results");
         Console.WriteLine("=================================");
         
-        var stats = PerformanceMonitor.GetStatistics();
+        var totalOps = PerformanceMonitor.TotalOperations;
         
-        Console.WriteLine($"Total operations monitored: {stats.TotalOperations}");
-        Console.WriteLine($"Average execution time: {stats.AverageExecutionTimeMs:F2}ms");
+        Console.WriteLine($"Total operations monitored: {totalOps}");
+        // Performance details simplified
         
-        foreach (var methodStat in stats.MethodStatistics)
-        {
-            Console.WriteLine($"  📈 {methodStat.Key}:");
-            Console.WriteLine($"     Executions: {methodStat.Value.TotalExecutions}");
-            Console.WriteLine($"     Avg time: {methodStat.Value.AverageExecutionTimeMs:F2}ms");
-            Console.WriteLine($"     Success rate: {methodStat.Value.SuccessRate:P2}");
-        }
+        // Method statistics removed for simplicity
     }
     
     private static async Task DemoGetOrdinalCachingAsync(SqliteConnection connection)

@@ -7,6 +7,8 @@
 using Microsoft.CodeAnalysis;
 using System;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace Sqlx.Core;
 
@@ -18,6 +20,7 @@ internal static class CodeGenerator
     /// <summary>
     /// Generates method signature with proper formatting.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void GenerateMethodSignature(IndentedStringBuilder sb, IMethodSymbol method, bool includeBody = true)
     {
         var isAsync = TypeAnalyzer.IsAsyncType(method.ReturnType);
@@ -41,6 +44,7 @@ internal static class CodeGenerator
     /// <summary>
     /// Generates connection setup code.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void GenerateConnectionSetup(IndentedStringBuilder sb, bool isAsync)
     {
         sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
@@ -64,6 +68,7 @@ internal static class CodeGenerator
     /// <summary>
     /// Generates command creation and SQL assignment.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void GenerateCommandSetup(IndentedStringBuilder sb, string sql)
     {
         sb.AppendLine("using var command = connection.CreateCommand();");
@@ -74,6 +79,7 @@ internal static class CodeGenerator
     /// <summary>
     /// Generates parameter assignment for entity properties.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void GenerateParameterAssignment(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType)
     {
         foreach (var parameter in method.Parameters)
@@ -98,32 +104,39 @@ internal static class CodeGenerator
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void GenerateEntityParameterMapping(IndentedStringBuilder sb, IParameterSymbol parameter, INamedTypeSymbol? entityType)
     {
         if (entityType == null) return;
 
         var properties = entityType.GetMembers()
             .OfType<IPropertySymbol>()
-            .Where(p => !p.IsReadOnly && p.Name != "Id")
+            .Where(p => p.SetMethod != null && p.SetMethod.DeclaredAccessibility == Accessibility.Public && p.Name != "Id")
             .ToArray();
 
         foreach (var property in properties)
         {
-            var paramName = property.Name.ToLowerInvariant();
-            sb.AppendLine($"var {paramName}Param = command.CreateParameter();");
-            sb.AppendLine($"{paramName}Param.ParameterName = \"@{paramName}\";");
-            sb.AppendLine($"{paramName}Param.Value = {parameter.Name}.{property.Name} ?? (object)DBNull.Value;");
-            sb.AppendLine($"command.Parameters.Add({paramName}Param);");
-            sb.AppendLine();
+            GenerateParameterCode(sb, parameter.Name, property.Name, property.Name.ToLowerInvariant());
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void GenerateSimpleParameter(IndentedStringBuilder sb, IParameterSymbol parameter)
     {
         var paramName = parameter.Name.ToLowerInvariant();
+        GenerateParameterCode(sb, parameter.Name, parameter.Name, paramName);
+    }
+    
+    /// <summary>
+    /// Generates optimized parameter assignment code.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void GenerateParameterCode(IndentedStringBuilder sb, string sourceValue, string propertyName, string paramName)
+    {
+        var valueExpression = sourceValue == propertyName ? sourceValue : $"{sourceValue}.{propertyName}";
         sb.AppendLine($"var {paramName}Param = command.CreateParameter();");
         sb.AppendLine($"{paramName}Param.ParameterName = \"@{paramName}\";");
-        sb.AppendLine($"{paramName}Param.Value = {parameter.Name} ?? (object)DBNull.Value;");
+        sb.AppendLine($"{paramName}Param.Value = {valueExpression} ?? (object)DBNull.Value;");
         sb.AppendLine($"command.Parameters.Add({paramName}Param);");
         sb.AppendLine();
     }
@@ -131,6 +144,7 @@ internal static class CodeGenerator
     /// <summary>
     /// Generates execution and return logic based on operation type.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void GenerateExecutionAndReturn(IndentedStringBuilder sb, IMethodSymbol method, SqlOperationType operation, INamedTypeSymbol? entityType, bool isAsync)
     {
         var returnType = method.ReturnType;
@@ -164,9 +178,7 @@ internal static class CodeGenerator
 
     private static void GenerateCollectionReturn(IndentedStringBuilder sb, INamedTypeSymbol? entityType, bool isAsync, string cancellationToken)
     {
-        var executeMethod = isAsync ? $"ExecuteReaderAsync({cancellationToken})" : "ExecuteReader()";
-        var readMethod = isAsync ? $"ReadAsync({cancellationToken})" : "Read()";
-        var awaitKeyword = isAsync ? "await " : "";
+        var (executeMethod, readMethod, awaitKeyword) = GetAsyncPatterns(isAsync, cancellationToken, "ExecuteReader");
 
         sb.AppendLine($"using var reader = {awaitKeyword}command.{executeMethod};");
         sb.AppendLine($"var results = new global::System.Collections.Generic.List<{entityType?.ToDisplayString() ?? "object"}>();");
@@ -189,9 +201,7 @@ internal static class CodeGenerator
 
     private static void GenerateSingleEntityReturn(IndentedStringBuilder sb, INamedTypeSymbol? entityType, bool isAsync, string cancellationToken)
     {
-        var executeMethod = isAsync ? $"ExecuteReaderAsync({cancellationToken})" : "ExecuteReader()";
-        var readMethod = isAsync ? $"ReadAsync({cancellationToken})" : "Read()";
-        var awaitKeyword = isAsync ? "await " : "";
+        var (executeMethod, readMethod, awaitKeyword) = GetAsyncPatterns(isAsync, cancellationToken, "ExecuteReader");
 
         sb.AppendLine($"using var reader = {awaitKeyword}command.{executeMethod};");
         sb.AppendLine($"if ({awaitKeyword}reader.{readMethod})");
@@ -216,8 +226,7 @@ internal static class CodeGenerator
 
     private static void GenerateNonQueryReturn(IndentedStringBuilder sb, bool isAsync, string cancellationToken)
     {
-        var executeMethod = isAsync ? $"ExecuteNonQueryAsync({cancellationToken})" : "ExecuteNonQuery()";
-        var awaitKeyword = isAsync ? "await " : "";
+        var (executeMethod, _, awaitKeyword) = GetAsyncPatterns(isAsync, cancellationToken, "ExecuteNonQuery");
 
         sb.AppendLine($"var result = {awaitKeyword}command.{executeMethod};");
         sb.AppendLine("return result;");
@@ -225,29 +234,58 @@ internal static class CodeGenerator
 
     private static void GenerateScalarReturn(IndentedStringBuilder sb, ITypeSymbol returnType, bool isAsync, string cancellationToken)
     {
-        var executeMethod = isAsync ? $"ExecuteScalarAsync({cancellationToken})" : "ExecuteScalar()";
-        var awaitKeyword = isAsync ? "await " : "";
+        var (executeMethod, _, awaitKeyword) = GetAsyncPatterns(isAsync, cancellationToken, "ExecuteScalar");
 
         sb.AppendLine($"var result = {awaitKeyword}command.{executeMethod};");
         sb.AppendLine($"return ({returnType.ToDisplayString()})(result ?? default({returnType.ToDisplayString()}));");
     }
 
+    /// <summary>
+    /// Gets consistent async/sync patterns for database operations.
+    /// </summary>
+    /// <param name="isAsync">Whether the operation is async</param>
+    /// <param name="cancellationToken">Cancellation token parameter</param>
+    /// <param name="baseMethod">Base method name (e.g., "ExecuteReader", "ExecuteNonQuery")</param>
+    /// <returns>Tuple of (executeMethod, readMethod, awaitKeyword)</returns>
+    private static (string executeMethod, string readMethod, string awaitKeyword) GetAsyncPatterns(bool isAsync, string cancellationToken, string baseMethod)
+    {
+        if (isAsync)
+        {
+            var executeMethod = baseMethod == "ExecuteReader" ? $"ExecuteReaderAsync({cancellationToken})" :
+                               baseMethod == "ExecuteNonQuery" ? $"ExecuteNonQueryAsync({cancellationToken})" :
+                               baseMethod == "ExecuteScalar" ? $"ExecuteScalarAsync({cancellationToken})" :
+                               $"{baseMethod}Async({cancellationToken})";
+            
+            var readMethod = $"ReadAsync({cancellationToken})";
+            return (executeMethod, readMethod, "await ");
+        }
+        else
+        {
+            var executeMethod = $"{baseMethod}()";
+            var readMethod = "Read()";
+            return (executeMethod, readMethod, "");
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void GenerateEntityMapping(IndentedStringBuilder sb, INamedTypeSymbol entityType)
     {
         sb.AppendLine($"var entity = new {entityType.ToDisplayString()}();");
 
         var properties = entityType.GetMembers()
             .OfType<IPropertySymbol>()
-            .Where(p => !p.IsReadOnly)
+            .Where(p => p.SetMethod != null && p.SetMethod.DeclaredAccessibility == Accessibility.Public)
             .ToArray();
 
         foreach (var property in properties)
         {
             var columnName = property.Name;
-            sb.AppendLine($"entity.{property.Name} = reader.IsDBNull(\"{columnName}\") ? default : reader.GetFieldValue<{property.Type.ToDisplayString()}>(\"{columnName}\");");
+            var typeName = property.Type.ToDisplayString();
+            sb.AppendLine($"entity.{property.Name} = reader.IsDBNull(\"{columnName}\") ? default({typeName}) : reader.GetFieldValue<{typeName}>(\"{columnName}\");");
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static string GetCancellationTokenParameter(IMethodSymbol method)
     {
         var cancellationTokenParam = method.Parameters.FirstOrDefault(p => p.Type.Name == "CancellationToken");

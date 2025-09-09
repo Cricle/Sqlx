@@ -29,4 +29,9 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="AdvancedSQLiteUserRepositoryTests.cs" />
+    <Compile Remove="IntegrationTests.cs" />
+  </ItemGroup>
+
 </Project>

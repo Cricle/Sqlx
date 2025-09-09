@@ -139,7 +139,10 @@ internal partial class ExpressionDemoManager
     /// <summary>
     /// 使用ExpressionToSql作为参数的方法 - SQL从表达式参数生成.
     /// </summary>
-    public partial IList<PersonInformation> GetPersonsWithExpression([ExpressionToSql] ExpressionToSql<PersonInformation> query);
+    public IList<PersonInformation> GetPersonsWithExpression([ExpressionToSql] ExpressionToSql<PersonInformation> query)
+    {
+        throw new NotImplementedException("ExpressionToSql feature is not yet implemented in the source generator.");
+    }
 
     /// <summary>
     /// 传统的RawSql方法，作为对比.
@@ -156,7 +159,10 @@ internal static partial class ExpressionExtensions
     /// <summary>
     /// 为DbConnection添加ExpressionToSql支持 - SQL从表达式参数生成.
     /// </summary>
-    public static partial IList<PersonInformation> QueryWithExpression(
+    public static IList<PersonInformation> QueryWithExpression(
         this DbConnection connection,
-        [ExpressionToSql] ExpressionToSql<PersonInformation> query);
+        [ExpressionToSql] ExpressionToSql<PersonInformation> query)
+    {
+        throw new NotImplementedException("ExpressionToSql feature is not yet implemented in the source generator.");
+    }
 }

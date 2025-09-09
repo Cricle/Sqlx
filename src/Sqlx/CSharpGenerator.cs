@@ -37,13 +37,26 @@ using System.Linq.Expressions;
 using System.Text;
 namespace Sqlx.Annotations
 {
+    /// <summary>
+    /// Specifies SQL command text for a method.
+    /// </summary>
     [global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = true)]
-    sealed class SqlxAttribute : global::System.Attribute
+    public sealed class SqlxAttribute : global::System.Attribute
     {
+        /// <summary>
+        /// Initializes a new instance of the SqlxAttribute class.
+        /// </summary>
         public SqlxAttribute()
             => StoredProcedureName = string.Empty;
+        /// <summary>
+        /// Initializes a new instance of the SqlxAttribute class with the specified SQL command.
+        /// </summary>
+        /// <param name=""name"">The SQL command text.</param>
         public SqlxAttribute(string name)
             => StoredProcedureName = name;
+        /// <summary>
+        /// Gets the SQL command text or stored procedure name.
+        /// </summary>
         public string StoredProcedureName { get; }
     }
 
@@ -52,7 +65,7 @@ namespace Sqlx.Annotations
     /// The service type can be an interface or abstract class.
     /// </summary>
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
-    sealed class RepositoryForAttribute : Attribute
+    public sealed class RepositoryForAttribute : Attribute
     {
         /// <summary>
         /// Initializes a new instance of the <see cref=""RepositoryForAttribute""/> class.
@@ -71,7 +84,7 @@ namespace Sqlx.Annotations
     /// Can be applied to parameters, methods, or types.
     /// </summary>
     [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.Method | AttributeTargets.Class | AttributeTargets.Interface, AllowMultiple = false)]
-    sealed class TableNameAttribute : Attribute
+    public sealed class TableNameAttribute : Attribute
     {
         /// <summary>
         /// Initializes a new instance of the <see cref=""TableNameAttribute""/> class.
@@ -85,15 +98,31 @@ namespace Sqlx.Annotations
         public string TableName { get; }
     }
 
+    /// <summary>
+    /// Specifies raw SQL command text for a method or parameter.
+    /// </summary>
     [global::System.AttributeUsage(global::System.AttributeTargets.Parameter | global::System.AttributeTargets.Method, AllowMultiple = false)]
-    sealed class RawSqlAttribute : global::System.Attribute
+    public sealed class RawSqlAttribute : global::System.Attribute
     {
+        /// <summary>
+        /// Initializes a new instance of the RawSqlAttribute class.
+        /// </summary>
         public RawSqlAttribute() { }
+        /// <summary>
+        /// Initializes a new instance of the RawSqlAttribute class with the specified SQL.
+        /// </summary>
+        /// <param name=""sql"">The raw SQL command text.</param>
         public RawSqlAttribute(global::System.String sql) { }
     }
+    /// <summary>
+    /// Specifies that a parameter should be converted from an expression to SQL.
+    /// </summary>
     [global::System.AttributeUsage(global::System.AttributeTargets.Parameter, AllowMultiple = false)]
-    sealed class ExpressionToSqlAttribute : global::System.Attribute
+    public sealed class ExpressionToSqlAttribute : global::System.Attribute
     {
+        /// <summary>
+        /// Initializes a new instance of the ExpressionToSqlAttribute class.
+        /// </summary>
         public ExpressionToSqlAttribute() { }
     }
     [global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = false)]
@@ -148,16 +177,39 @@ namespace Sqlx.Annotations
         SqlServer = 1,
         Postgresql = 2,
     }
+    /// <summary>
+    /// Specifies the SQL execution type and target table for a method.
+    /// </summary>
     [global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = false)]
-    sealed class SqlExecuteTypeAttribute : global::System.Attribute
+    public sealed class SqlExecuteTypeAttribute : global::System.Attribute
     {
+        /// <summary>
+        /// Initializes a new instance of the SqlExecuteTypeAttribute class.
+        /// </summary>
+        /// <param name=""Type"">The type of SQL operation to perform.</param>
+        /// <param name=""TableName"">The name of the target database table.</param>
         public SqlExecuteTypeAttribute(SqlExecuteTypes Type, string TableName) { }
     }
-    internal enum SqlExecuteTypes
+    /// <summary>
+    /// Defines the types of SQL operations that can be performed.
+    /// </summary>
+    public enum SqlExecuteTypes
     {
+        /// <summary>
+        /// Represents a SELECT operation for reading data.
+        /// </summary>
         Select = 0,
+        /// <summary>
+        /// Represents an UPDATE operation for modifying existing data.
+        /// </summary>
         Update = 1,
+        /// <summary>
+        /// Represents an INSERT operation for adding new data.
+        /// </summary>
         Insert = 2,
+        /// <summary>
+        /// Represents a DELETE operation for removing data.
+        /// </summary>
         Delete = 3,
     }
     /// <summary>

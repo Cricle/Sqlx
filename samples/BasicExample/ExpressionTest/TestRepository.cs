@@ -28,28 +28,20 @@ public class TestUser
 /// </summary>
 public interface ITestUserService
 {
-    [Sqlx("SELECT * FROM test_users")]
     IList<TestUser> GetAllUsers();
     
-    [Sqlx("SELECT * FROM test_users")]
     Task<IList<TestUser>> GetAllUsersAsync(CancellationToken cancellationToken = default);
     
-    [Sqlx("SELECT * FROM test_users WHERE Id = @id")]
     TestUser? GetUserById(int id);
     
-    [Sqlx("SELECT * FROM test_users WHERE Id = @id")]
     Task<TestUser?> GetUserByIdAsync(int id, CancellationToken cancellationToken = default);
     
-    [SqlExecuteType(SqlExecuteTypes.Insert, "test_users")]
     int CreateUser(TestUser user);
     
-    [SqlExecuteType(SqlExecuteTypes.Insert, "test_users")]
     Task<int> CreateUserAsync(TestUser user, CancellationToken cancellationToken = default);
     
-    [SqlExecuteType(SqlExecuteTypes.Update, "test_users")]
     int UpdateUser(TestUser user);
     
-    [SqlExecuteType(SqlExecuteTypes.Delete, "test_users")]
     int DeleteUser(int id);
 }
 
@@ -58,7 +50,7 @@ public interface ITestUserService
 /// This class should only have the RepositoryFor attribute - no manual implementation
 /// </summary>
 [RepositoryFor(typeof(ITestUserService))]
-public partial class TestUserRepository
+public partial class TestUserRepository : ITestUserService
 {
     private readonly System.Data.Common.DbConnection connection;
 
@@ -67,6 +59,5 @@ public partial class TestUserRepository
         this.connection = connection ?? throw new ArgumentNullException(nameof(connection));
     }
     
-    // 不需要手动实现 - Sqlx 会自动生成所有方法
-    // No implementation needed - Sqlx will generate all methods automatically
+    // 所有方法由 RepositoryFor 源生成器自动实现
 }

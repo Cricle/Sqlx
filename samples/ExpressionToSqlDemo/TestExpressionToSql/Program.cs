@@ -54,9 +54,18 @@ catch (Exception ex)
     Console.WriteLine(ex.StackTrace);
 }
 
-// 简单测试 ExpressionToSql 功能
+/// <summary>
+/// 简单测试 ExpressionToSql 功能的人员类
+/// </summary>
 public class PersonTest
 {
+    /// <summary>
+    /// 人员ID
+    /// </summary>
     public int PersonId { get; set; }
+    
+    /// <summary>
+    /// 人员姓名
+    /// </summary>
     public string? PersonName { get; set; }
 }

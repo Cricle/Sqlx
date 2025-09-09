@@ -128,8 +128,11 @@ internal partial class CrudOperationsManager
     /// </summary>
     /// <param name="dynamicQuery">动态构建的查询表达式</param>
     /// <returns>查询结果</returns>
-    public partial IList<PersonInformation> GetPersonsWithDynamicQuery(
-        [ExpressionToSql] ExpressionToSql<PersonInformation> dynamicQuery);
+    public IList<PersonInformation> GetPersonsWithDynamicQuery(
+        [ExpressionToSql] ExpressionToSql<PersonInformation> dynamicQuery)
+    {
+        throw new NotImplementedException("ExpressionToSql feature is not yet implemented in the source generator.");
+    }
 
     /// <summary>
     /// 传统方式对比 - 使用RawSql手动编写SQL。
@@ -180,7 +183,10 @@ internal static partial class CrudExtensions
     /// <summary>
     /// 组合使用示例 - ExpressionToSql + SqlExecuteType的最佳实践。
     /// </summary>
-    public static partial IList<PersonInformation> QueryWithExpressionAndType(
+    public static IList<PersonInformation> QueryWithExpressionAndType(
         this DbConnection connection,
-        [ExpressionToSql] ExpressionToSql<PersonInformation> query);
+        [ExpressionToSql] ExpressionToSql<PersonInformation> query)
+    {
+        throw new NotImplementedException("ExpressionToSql feature is not yet implemented in the source generator.");
+    }
 }

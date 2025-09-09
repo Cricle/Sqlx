@@ -7,8 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Enable RepositoryFor source generator -->
-    <ProjectReference Include="../../src/Sqlx/Sqlx.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <!-- Enable RepositoryFor source generator and reference Sqlx attributes -->
+    <ProjectReference Include="../../src/Sqlx/Sqlx.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="true" />
     <PackageReference Include="Microsoft.Data.SqlClient" />
     <PackageReference Include="Microsoft.Data.Sqlite" />
   </ItemGroup>

@@ -12,18 +12,15 @@ public class TestEntity
 
 public interface ITestService
 {
-    [Sqlx("SELECT * FROM TestEntity")]
     IList<TestEntity> GetAll();
     
-    [Sqlx("SELECT * FROM TestEntity WHERE Id = @id")]
     TestEntity? GetById(int id);
     
-    [SqlExecuteType(SqlExecuteTypes.Insert, "TestEntity")]
     int Create(TestEntity entity);
 }
 
 [RepositoryFor(typeof(ITestService))]
-public partial class SimpleTestRepository
+public partial class SimpleTestRepository : ITestService
 {
     private readonly System.Data.Common.DbConnection connection;
 
@@ -32,6 +29,6 @@ public partial class SimpleTestRepository
         this.connection = connection ?? throw new ArgumentNullException(nameof(connection));
     }
     
-    // 此类的方法将被源生成器自动实现
+    // 所有方法由 RepositoryFor 源生成器自动实现
 }
 

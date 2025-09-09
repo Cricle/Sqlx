@@ -22,14 +22,14 @@ using Xunit;
 /// </summary>
 public class AdvancedSQLiteUserRepositoryTests : TestBase
 {
-    private AdvancedSQLiteUserRepository _repository;
+    private SQLiteUserRepository _repository;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AdvancedSQLiteUserRepositoryTests"/> class.
     /// </summary>
     public AdvancedSQLiteUserRepositoryTests()
     {
-        _repository = new AdvancedSQLiteUserRepository(Connection);
+        _repository = new SQLiteUserRepository(Connection);
     }
 
     protected override void Dispose(bool disposing)

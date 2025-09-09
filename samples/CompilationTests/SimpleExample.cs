@@ -8,6 +8,7 @@ namespace Sqlx.CompilationTests;
 
 using Sqlx;
 using Sqlx.Annotations;
+using System;
 using System.Collections.Generic;
 using System.Data.Common;
 
@@ -32,5 +33,8 @@ internal partial class SimpleExample
     public partial PersonInformation? GetPersonById(int personId);
 
     // ExpressionToSql example - SQL generated from expression parameter
-    public partial IList<PersonInformation> QueryPersons([ExpressionToSql] ExpressionToSql<PersonInformation> query);
+    public IList<PersonInformation> QueryPersons([ExpressionToSql] ExpressionToSql<PersonInformation> query)
+    {
+        throw new NotImplementedException("ExpressionToSql feature is not yet implemented in the source generator.");
+    }
 }

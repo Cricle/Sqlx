@@ -923,9 +923,14 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine("#pragma warning disable CS8618, CS8625, CS8629, CS8601, CS8600, CS8603, CS8669");
             sb.AppendLine();
             
-            // Generate namespace
-            sb.AppendLine($"namespace {repositoryClass.ContainingNamespace.ToDisplayString()};");
-            sb.AppendLine();
+            // Generate namespace (using traditional block syntax for compatibility)
+            var namespaceName = repositoryClass.ContainingNamespace.ToDisplayString();
+            if (!string.IsNullOrEmpty(namespaceName) && namespaceName != "<global namespace>")
+            {
+                sb.AppendLine($"namespace {namespaceName}");
+                sb.AppendLine("{");
+                sb.PushIndent();
+            }
             
             // Generate using statements
             sb.AppendLine("using System;");
@@ -957,6 +962,13 @@ public abstract class AbstractGenerator : ISourceGenerator
             
             sb.PopIndent();
             sb.AppendLine("}");
+            
+            // Close namespace if we opened it
+            if (!string.IsNullOrEmpty(namespaceName) && namespaceName != "<global namespace>")
+            {
+                sb.PopIndent();
+                sb.AppendLine("}");
+            }
         }
         catch (Exception ex)
         {
@@ -1447,22 +1459,55 @@ public abstract class AbstractGenerator : ISourceGenerator
         }
         else if (methodName.Contains("count") || methodName.Contains("exists") || 
                  returnType.SpecialType == SpecialType.System_Int32 ||
-                 returnType.SpecialType == SpecialType.System_Int64)
+                 returnType.SpecialType == SpecialType.System_Int64 ||
+                 methodName.Contains("create") || methodName.Contains("insert") ||
+                 methodName.Contains("update") || methodName.Contains("delete") ||
+                 methodName.Contains("remove") ||
+                 method.GetAttributes().Any(attr => attr.AttributeClass?.Name == "SqlExecuteTypeAttribute"))
         {
-            // Scalar return
+            // Determine if this is a CUD operation or a scalar query
+            bool isCudOperation = methodName.Contains("create") || methodName.Contains("insert") ||
+                                  methodName.Contains("update") || methodName.Contains("delete") ||
+                                  methodName.Contains("remove") ||
+                                  method.GetAttributes().Any(attr => attr.AttributeClass?.Name == "SqlExecuteTypeAttribute");
+            
+            if (isCudOperation)
+            {
+                // CUD operations - use ExecuteNonQuery
+                if (isAsync)
+                {
+                    var cancellationTokenParam = method.Parameters.FirstOrDefault(p => p.Type.Name == "CancellationToken");
+                    var cancellationTokenName = cancellationTokenParam?.Name ?? "default";
+                    sb.AppendLine($"var result = await __cmd__.ExecuteNonQueryAsync({cancellationTokenName});");
+                    sb.AppendLine($"__result__ = result;");
+                    sb.AppendLine($"return result;");
+                }
+                else
+                {
+                    sb.AppendLine("var result = __cmd__.ExecuteNonQuery();");
+                    sb.AppendLine("__result__ = result;");
+                    sb.AppendLine("return result;");
+                }
+            }
+            else
+            {
+                // Scalar queries - use ExecuteScalar
             if (isAsync)
             {
                 var cancellationTokenParam = method.Parameters.FirstOrDefault(p => p.Type.Name == "CancellationToken");
                 var cancellationTokenName = cancellationTokenParam?.Name ?? "default";
                 sb.AppendLine($"var scalarResult = await __cmd__.ExecuteScalarAsync({cancellationTokenName});");
-                sb.AppendLine($"__result__ = System.Convert.ToInt32(scalarResult ?? 0);");
-                sb.AppendLine($"return (__result__ as int?) ?? 0;");
+                    sb.AppendLine($"var intResult = System.Convert.ToInt32(scalarResult ?? (object)0);");
+                    sb.AppendLine($"__result__ = intResult;");
+                    sb.AppendLine($"return intResult;");
             }
             else
             {
                 sb.AppendLine("var scalarResult = __cmd__.ExecuteScalar();");
-                sb.AppendLine("__result__ = System.Convert.ToInt32(scalarResult ?? 0);");
-                sb.AppendLine("return (__result__ as int?) ?? 0;");
+                    sb.AppendLine("var intResult = System.Convert.ToInt32(scalarResult ?? (object)0);");
+                    sb.AppendLine("__result__ = intResult;");
+                    sb.AppendLine("return intResult;");
+                }
             }
         }
         else if (IsCollectionType(returnType))
@@ -1497,8 +1542,8 @@ public abstract class AbstractGenerator : ISourceGenerator
         sb.AppendLine($"var item = new {entityType?.Name ?? "object"}");
         sb.AppendLine("{");
         sb.PushIndent();
-        sb.AppendLine("Id = __reader__[\"Id\"] is System.DBNull ? 0 : (int)__reader__[\"Id\"],");
-        sb.AppendLine("Name = __reader__[\"Name\"] as string ?? string.Empty");
+        sb.AppendLine("Id = Convert.ToInt32(__reader__[\"Id\"]),");
+        sb.AppendLine("Name = Convert.ToString(__reader__[\"Name\"]) ?? string.Empty");
         sb.PopIndent();
         sb.AppendLine("};");
         sb.AppendLine("results.Add(item);");
@@ -1527,16 +1572,28 @@ public abstract class AbstractGenerator : ISourceGenerator
         sb.AppendLine($"var result = new {entityType?.Name ?? "object"}");
         sb.AppendLine("{");
         sb.PushIndent();
-        sb.AppendLine("Id = __reader__[\"Id\"] is System.DBNull ? 0 : (int)__reader__[\"Id\"],");
-        sb.AppendLine("Name = __reader__[\"Name\"] as string ?? string.Empty");
+        sb.AppendLine("Id = Convert.ToInt32(__reader__[\"Id\"]),");
+        sb.AppendLine("Name = Convert.ToString(__reader__[\"Name\"]) ?? string.Empty");
         sb.PopIndent();
         sb.AppendLine("};");
         sb.AppendLine("__result__ = result;");
         sb.AppendLine("return result;");
         sb.PopIndent();
         sb.AppendLine("}");
+        // Handle null return based on return type nullability
+        var returnType = method.ReturnType;
+        if (returnType.CanBeReferencedByName && returnType.NullableAnnotation == NullableAnnotation.NotAnnotated && !returnType.IsReferenceType)
+        {
+            // Non-nullable value type - return default
+            sb.AppendLine($"__result__ = default({entityType?.Name ?? "object"});");
+            sb.AppendLine($"return default({entityType?.Name ?? "object"});");
+        }
+        else
+        {
+            // Nullable type - return null
         sb.AppendLine("__result__ = null;");
         sb.AppendLine("return null;");
+        }
     }
 
     private bool IsCollectionType(ITypeSymbol type)
@@ -1558,6 +1615,23 @@ public abstract class AbstractGenerator : ISourceGenerator
         }
         
         return false;
+    }
+
+    private bool IsScalarReturnType(ITypeSymbol type, bool isAsync)
+    {
+        // Handle async methods first - unwrap Task<T>
+        if (isAsync && type is INamedTypeSymbol namedType && namedType.Name == "Task" && namedType.TypeArguments.Length == 1)
+        {
+            type = namedType.TypeArguments[0];
+        }
+        
+        // Check for scalar types that should use ExecuteScalar
+        return type.SpecialType == SpecialType.System_Int32 ||
+               type.SpecialType == SpecialType.System_Int64 ||
+               type.SpecialType == SpecialType.System_Boolean ||
+               type.SpecialType == SpecialType.System_Decimal ||
+               type.SpecialType == SpecialType.System_Double ||
+               type.SpecialType == SpecialType.System_Single;
     }
 
     private void GenerateRepositoryMethod(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName)
@@ -1612,19 +1686,15 @@ public abstract class AbstractGenerator : ISourceGenerator
             // Generate or copy Sqlx attributes
             GenerateOrCopyAttributes(sb, method, entityType, tableName);
             
-            // Generate simple method implementation that throws NotImplementedException
-            // The actual implementation will be provided by the main Sqlx generator
+            // Generate complete method implementation with actual database access
             var isAsync = method.ReturnType.Name == "Task" || (method.ReturnType is INamedTypeSymbol taskType && taskType.Name == "Task");
             var asyncModifier = isAsync ? "async " : "";
             sb.AppendLine($"public {asyncModifier}{returnType} {methodName}({parameters})");
             sb.AppendLine("{");
             sb.PushIndent();
             
-            if (isAsync)
-            {
-                sb.AppendLine("await Task.CompletedTask;");
-            }
-            sb.AppendLine("throw new System.NotImplementedException(\"Generated by RepositoryFor - implementation provided by Sqlx generator\");");
+            // Generate high-performance, secure database operations
+            GenerateOptimizedRepositoryMethodBody(sb, method, entityType, tableName, isAsync);
             
             sb.PopIndent();
             sb.AppendLine("}");
@@ -1839,7 +1909,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                     // Handle nullable value types and reference types correctly
                     if (prop.Type.IsValueType && prop.Type.NullableAnnotation != NullableAnnotation.Annotated)
                     {
-                        sb.AppendLine($"param{prop.Name}.Value = (object)({param.Name}?.{prop.Name} ?? default({prop.Type.ToDisplayString()}));");
+                        sb.AppendLine($"param{prop.Name}.Value = (object)({param.Name}?.{prop.Name} ?? (object)default({prop.Type.ToDisplayString()}));");
             }
             else
             {
@@ -1925,7 +1995,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             {
                 sb.AppendLine("var result = command.ExecuteScalar();");
             }
-            sb.AppendLine($"return ({actualTypeString})(result ?? default({actualTypeString}));");
+            sb.AppendLine($"return result is {actualTypeString} value ? value : default({actualTypeString});");
         }
     }
 
@@ -1963,19 +2033,23 @@ public abstract class AbstractGenerator : ISourceGenerator
                 var comma = i < properties.Count - 1 ? "," : "";
                 var propType = prop.Type.ToDisplayString();
                 
-                // Handle value types and reference types properly
-                if (prop.Type.IsValueType)
+                // Handle different property types with safe conversion
+                if (prop.Type.SpecialType == SpecialType.System_Int32)
                 {
-                    if (prop.Type.NullableAnnotation == NullableAnnotation.Annotated || propType.EndsWith("?"))
+                    sb.AppendLine($"{prop.Name} = Convert.ToInt32(reader[\"{prop.Name}\"]){comma}");
+                }
+                else if (prop.Type.SpecialType == SpecialType.System_String)
                     {
-                        // Nullable value type
-                        sb.AppendLine($"{prop.Name} = reader[\"{prop.Name}\"] is DBNull ? null : ({propType})reader[\"{prop.Name}\"]{comma}");
+                    sb.AppendLine($"{prop.Name} = Convert.ToString(reader[\"{prop.Name}\"]) ?? string.Empty{comma}");
                     }
-                    else
+                else if (prop.Type.SpecialType == SpecialType.System_DateTime)
                     {
-                        // Non-nullable value type
-                        sb.AppendLine($"{prop.Name} = ({propType})reader[\"{prop.Name}\"]{comma}");
+                    sb.AppendLine($"{prop.Name} = Convert.ToDateTime(reader[\"{prop.Name}\"]){comma}");
                     }
+                else if (prop.Type.IsValueType)
+                {
+                    // Other value types
+                    sb.AppendLine($"{prop.Name} = ({propType})Convert.ChangeType(reader[\"{prop.Name}\"], typeof({propType})){comma}");
                 }
                 else
                 {
@@ -2029,19 +2103,23 @@ public abstract class AbstractGenerator : ISourceGenerator
             var comma = i < properties.Count - 1 ? "," : "";
             var propType = prop.Type.ToDisplayString();
             
-            // Handle value types and reference types properly
-            if (prop.Type.IsValueType)
+            // Handle different property types with safe conversion
+            if (prop.Type.SpecialType == SpecialType.System_Int32)
             {
-                if (prop.Type.NullableAnnotation == NullableAnnotation.Annotated || propType.EndsWith("?"))
+                sb.AppendLine($"{prop.Name} = Convert.ToInt32(reader[\"{prop.Name}\"]){comma}");
+            }
+            else if (prop.Type.SpecialType == SpecialType.System_String)
                 {
-                    // Nullable value type
-                    sb.AppendLine($"{prop.Name} = reader[\"{prop.Name}\"] is DBNull ? null : ({propType})reader[\"{prop.Name}\"]{comma}");
+                sb.AppendLine($"{prop.Name} = Convert.ToString(reader[\"{prop.Name}\"]) ?? string.Empty{comma}");
                 }
-                else
+            else if (prop.Type.SpecialType == SpecialType.System_DateTime)
                 {
-                    // Non-nullable value type
-                    sb.AppendLine($"{prop.Name} = ({propType})reader[\"{prop.Name}\"]{comma}");
+                sb.AppendLine($"{prop.Name} = Convert.ToDateTime(reader[\"{prop.Name}\"]){comma}");
                 }
+            else if (prop.Type.IsValueType)
+            {
+                // Other value types
+                sb.AppendLine($"{prop.Name} = ({propType})Convert.ChangeType(reader[\"{prop.Name}\"], typeof({propType})){comma}");
             }
             else
             {
@@ -2057,6 +2135,797 @@ public abstract class AbstractGenerator : ISourceGenerator
         sb.AppendLine("}");
         
         sb.AppendLine("return null;");
+    }
+
+    private void GenerateOptimizedRepositoryMethodBody(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, bool isAsync)
+    {
+        var methodName = method.Name;
+        
+        // Setup execution context with interceptors
+        sb.AppendLine("var __startTime__ = System.Diagnostics.Stopwatch.GetTimestamp();");
+        sb.AppendLine("System.Data.Common.DbCommand? __cmd__ = null;");
+        sb.AppendLine("object? __result__ = null;");
+        sb.AppendLine("System.Exception? __exception__ = null;");
+        sb.AppendLine();
+        
+        sb.AppendLine("try");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        
+        // Check for SqlExecuteType attribute
+        var executeTypeAttr = method.GetAttributes().FirstOrDefault(attr => attr.AttributeClass?.Name == "SqlExecuteTypeAttribute");
+        if (executeTypeAttr != null && executeTypeAttr.ConstructorArguments.Length >= 2)
+        {
+            var executeType = executeTypeAttr.ConstructorArguments[0].Value?.ToString();
+            var table = executeTypeAttr.ConstructorArguments[1].Value?.ToString() ?? tableName;
+            
+            switch (executeType)
+            {
+                case "Insert":
+                    GenerateInsertOperationWithInterceptors(sb, method, entityType, table, isAsync, methodName);
+                    break;
+                case "Update":
+                    GenerateUpdateOperationWithInterceptors(sb, method, entityType, table, isAsync, methodName);
+                    break;
+                case "Delete":
+                    GenerateDeleteOperationWithInterceptors(sb, method, entityType, table, isAsync, methodName);
+                    break;
+                case "Select":
+                    // For SqlExecuteType.Select, determine if it's collection or single based on return type
+                    if (IsCollectionType(method.ReturnType) || (isAsync && IsAsyncCollectionReturnType(method.ReturnType)))
+                    {
+                        GenerateSelectOperationWithInterceptors(sb, method, entityType, table, isAsync, methodName);
+                    }
+                    else if (IsScalarReturnType(method.ReturnType, isAsync))
+                    {
+                        GenerateScalarOperationWithInterceptors(sb, method, entityType, table, isAsync, methodName);
+                    }
+                    else
+                    {
+                        GenerateSelectSingleOperationWithInterceptors(sb, method, entityType, table, isAsync, methodName);
+                    }
+                    break;
+                default:
+                    if (IsCollectionType(method.ReturnType) || (isAsync && IsAsyncCollectionReturnType(method.ReturnType)))
+                    {
+                        GenerateSelectOperationWithInterceptors(sb, method, entityType, table, isAsync, methodName);
+                    }
+                    else if (IsScalarReturnType(method.ReturnType, isAsync))
+                    {
+                        GenerateScalarOperationWithInterceptors(sb, method, entityType, table, isAsync, methodName);
+                    }
+                    else
+                    {
+                        GenerateSelectSingleOperationWithInterceptors(sb, method, entityType, table, isAsync, methodName);
+                    }
+                    break;
+            }
+        }
+        else
+        {
+            // Check for Sqlx attribute
+            var sqlxAttr = method.GetAttributes().FirstOrDefault(attr => attr.AttributeClass?.Name == "SqlxAttribute");
+            if (sqlxAttr != null)
+            {
+                GenerateCustomSqlOperationWithInterceptors(sb, method, entityType, sqlxAttr, isAsync, methodName);
+            }
+            else
+            {
+                // Fallback based on method name patterns
+                var methodNameLower = methodName.ToLowerInvariant();
+                if (methodNameLower.Contains("create") || methodNameLower.Contains("insert"))
+                {
+                    GenerateInsertOperationWithInterceptors(sb, method, entityType, tableName, isAsync, methodName);
+                }
+                else if (methodNameLower.Contains("update") || methodNameLower.Contains("modify"))
+                {
+                    GenerateUpdateOperationWithInterceptors(sb, method, entityType, tableName, isAsync, methodName);
+                }
+                else if (methodNameLower.Contains("delete") || methodNameLower.Contains("remove"))
+                {
+                    GenerateDeleteOperationWithInterceptors(sb, method, entityType, tableName, isAsync, methodName);
+                }
+                else if (methodNameLower.Contains("count") || methodNameLower.Contains("exists") || 
+                         IsScalarReturnType(method.ReturnType, isAsync))
+                {
+                    GenerateScalarOperationWithInterceptors(sb, method, entityType, tableName, isAsync, methodName);
+                }
+                else if (IsCollectionType(method.ReturnType) || (isAsync && IsAsyncCollectionReturnType(method.ReturnType)))
+                {
+                    GenerateSelectOperationWithInterceptors(sb, method, entityType, tableName, isAsync, methodName);
+                }
+                else
+                {
+                    GenerateSelectSingleOperationWithInterceptors(sb, method, entityType, tableName, isAsync, methodName);
+                }
+            }
+        }
+        
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine("catch (System.Exception ex)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("__exception__ = ex;");
+        sb.AppendLine("var __elapsed__ = System.Diagnostics.Stopwatch.GetTimestamp() - __startTime__;");
+        sb.AppendLine($"OnExecuteFail(\"{methodName}\", __cmd__ ?? connection.CreateCommand(), ex, __elapsed__);");
+        sb.AppendLine("throw;");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine("finally");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("if (__exception__ == null)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("var __elapsed__ = System.Diagnostics.Stopwatch.GetTimestamp() - __startTime__;");
+        sb.AppendLine($"OnExecuted(\"{methodName}\", __cmd__ ?? connection.CreateCommand(), __result__, __elapsed__);");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine("__cmd__?.Dispose();");
+        sb.PopIndent();
+        sb.AppendLine("}");
+    }
+
+    private void GenerateInsertOperation(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, bool isAsync)
+    {
+        var entityParam = method.Parameters.FirstOrDefault(p => p.Type.TypeKind == TypeKind.Class && p.Type.Name != "String" && p.Type.Name != "CancellationToken");
+        
+        if (entityParam == null || entityType == null)
+        {
+            // Fallback: generate basic insert
+            sb.AppendLine("// Error: Unable to generate INSERT without entity parameter");
+            sb.AppendLine("throw new global::System.InvalidOperationException(\"INSERT operation requires an entity parameter\");");
+            return;
+        }
+        
+        // Entity-based insert with improved error handling
+        sb.AppendLine("// Optimized INSERT operation with proper parameter binding");
+        sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        if (isAsync)
+        {
+            var cancellationToken = GetCancellationTokenParameter(method);
+            sb.AppendLine($"await connection.OpenAsync({cancellationToken});");
+        }
+        else
+        {
+            sb.AppendLine("connection.Open();");
+        }
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+        
+        // Get insertable properties (exclude Id and read-only properties)
+        var properties = GetInsertableProperties(entityType);
+        if (!properties.Any())
+        {
+            sb.AppendLine("// Error: No insertable properties found");
+            sb.AppendLine("throw new global::System.InvalidOperationException(\"No insertable properties found in entity\");");
+            return;
+        }
+        
+        sb.AppendLine("using var cmd = connection.CreateCommand();");
+        
+        var columns = string.Join(", ", properties.Select(p => $"[{p.Name}]"));
+        var parameters = string.Join(", ", properties.Select(p => $"@{p.Name}"));
+        
+        sb.AppendLine($"cmd.CommandText = \"INSERT INTO [{tableName}] ({columns}) VALUES ({parameters})\";");
+        sb.AppendLine();
+        
+        // Add parameters with proper types and null handling
+        foreach (var prop in properties)
+        {
+            sb.AppendLine($"var param{prop.Name} = cmd.CreateParameter();");
+            sb.AppendLine($"param{prop.Name}.ParameterName = \"@{prop.Name}\";");
+            sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
+            
+            // Improved null handling
+            if (prop.Type.IsReferenceType || IsNullableValueType(prop.Type))
+            {
+                sb.AppendLine($"param{prop.Name}.Value = {entityParam.Name}.{prop.Name} ?? (object)global::System.DBNull.Value;");
+            }
+            else
+            {
+                sb.AppendLine($"param{prop.Name}.Value = {entityParam.Name}.{prop.Name};");
+            }
+            sb.AppendLine($"cmd.Parameters.Add(param{prop.Name});");
+            sb.AppendLine();
+        }
+        
+        // Execute and return
+        if (isAsync)
+        {
+            var cancellationToken = GetCancellationTokenParameter(method);
+            sb.AppendLine($"var result = await cmd.ExecuteNonQueryAsync({cancellationToken});");
+        }
+        else
+        {
+            sb.AppendLine("var result = cmd.ExecuteNonQuery();");
+        }
+        sb.AppendLine("return result;");
+    }
+
+    private void GenerateUpdateOperation(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, bool isAsync)
+    {
+        var entityParam = method.Parameters.FirstOrDefault(p => p.Type.TypeKind == TypeKind.Class && p.Type.Name != "String" && p.Type.Name != "CancellationToken");
+        
+        if (entityParam == null || entityType == null)
+        {
+            sb.AppendLine("// Error: Unable to generate UPDATE without entity parameter");
+            sb.AppendLine("throw new global::System.InvalidOperationException(\"UPDATE operation requires an entity parameter\");");
+            return;
+        }
+        
+        sb.AppendLine("// Optimized UPDATE operation with proper parameter binding");
+        sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        if (isAsync)
+        {
+            var cancellationToken = GetCancellationTokenParameter(method);
+            sb.AppendLine($"await connection.OpenAsync({cancellationToken});");
+        }
+        else
+        {
+            sb.AppendLine("connection.Open();");
+        }
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+        
+        // Get updatable properties (exclude Id for SET clause)
+        var properties = GetUpdatableProperties(entityType);
+        if (!properties.Any())
+        {
+            sb.AppendLine("// Error: No updatable properties found");
+            sb.AppendLine("throw new global::System.InvalidOperationException(\"No updatable properties found in entity\");");
+            return;
+        }
+        
+        sb.AppendLine("using var cmd = connection.CreateCommand();");
+        
+        var setClauses = string.Join(", ", properties.Select(p => $"[{p.Name}] = @{p.Name}"));
+        sb.AppendLine($"cmd.CommandText = \"UPDATE [{tableName}] SET {setClauses} WHERE [Id] = @Id\";");
+        sb.AppendLine();
+        
+        // Add SET clause parameters
+        foreach (var prop in properties)
+        {
+            sb.AppendLine($"var param{prop.Name} = cmd.CreateParameter();");
+            sb.AppendLine($"param{prop.Name}.ParameterName = \"@{prop.Name}\";");
+            sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
+            
+            // Improved null handling
+            if (prop.Type.IsReferenceType || IsNullableValueType(prop.Type))
+            {
+                sb.AppendLine($"param{prop.Name}.Value = {entityParam.Name}.{prop.Name} ?? (object)global::System.DBNull.Value;");
+            }
+            else
+            {
+                sb.AppendLine($"param{prop.Name}.Value = {entityParam.Name}.{prop.Name};");
+            }
+            sb.AppendLine($"cmd.Parameters.Add(param{prop.Name});");
+            sb.AppendLine();
+        }
+        
+        // Add ID parameter for WHERE clause
+        sb.AppendLine("var paramId = cmd.CreateParameter();");
+        sb.AppendLine("paramId.ParameterName = \"@Id\";");
+        sb.AppendLine("paramId.DbType = global::System.Data.DbType.Int32;");
+        sb.AppendLine($"paramId.Value = {entityParam.Name}.Id;");
+        sb.AppendLine("cmd.Parameters.Add(paramId);");
+        sb.AppendLine();
+        
+        // Execute and return
+        if (isAsync)
+        {
+            var cancellationToken = GetCancellationTokenParameter(method);
+            sb.AppendLine($"var result = await cmd.ExecuteNonQueryAsync({cancellationToken});");
+        }
+        else
+        {
+            sb.AppendLine("var result = cmd.ExecuteNonQuery();");
+        }
+        sb.AppendLine("return result;");
+    }
+
+    private void GenerateDeleteOperation(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, bool isAsync)
+    {
+        var idParam = method.Parameters.FirstOrDefault(p => p.Type.SpecialType == SpecialType.System_Int32);
+        
+        if (idParam == null)
+        {
+            sb.AppendLine("// Error: Unable to generate DELETE without integer ID parameter");
+            sb.AppendLine("throw new global::System.InvalidOperationException(\"DELETE operation requires an integer ID parameter\");");
+            return;
+        }
+        
+        sb.AppendLine("// Optimized DELETE operation with proper parameter binding");
+        sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        if (isAsync)
+        {
+            var cancellationToken = GetCancellationTokenParameter(method);
+            sb.AppendLine($"await connection.OpenAsync({cancellationToken});");
+        }
+        else
+        {
+            sb.AppendLine("connection.Open();");
+        }
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+        
+        sb.AppendLine("using var cmd = connection.CreateCommand();");
+        sb.AppendLine($"cmd.CommandText = \"DELETE FROM [{tableName}] WHERE [Id] = @Id\";");
+        sb.AppendLine();
+        
+        sb.AppendLine("var paramId = cmd.CreateParameter();");
+        sb.AppendLine("paramId.ParameterName = \"@Id\";");
+        sb.AppendLine("paramId.DbType = global::System.Data.DbType.Int32;");
+        sb.AppendLine($"paramId.Value = {idParam.Name};");
+        sb.AppendLine("cmd.Parameters.Add(paramId);");
+        sb.AppendLine();
+        
+        // Execute and return
+        if (isAsync)
+        {
+            var cancellationToken = GetCancellationTokenParameter(method);
+            sb.AppendLine($"var result = await cmd.ExecuteNonQueryAsync({cancellationToken});");
+        }
+        else
+        {
+            sb.AppendLine("var result = cmd.ExecuteNonQuery();");
+        }
+        sb.AppendLine("return result;");
+    }
+
+    private void GenerateSelectOperation(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, bool isAsync)
+    {
+        if (entityType == null)
+        {
+            sb.AppendLine("// Error: Unable to generate SELECT without entity type");
+            sb.AppendLine("throw new global::System.InvalidOperationException(\"SELECT operation requires a valid entity type\");");
+            return;
+        }
+        
+        sb.AppendLine("// Optimized SELECT operation with high-performance object mapping");
+        sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        if (isAsync)
+        {
+            var cancellationToken = GetCancellationTokenParameter(method);
+            sb.AppendLine($"await connection.OpenAsync({cancellationToken});");
+        }
+        else
+        {
+            sb.AppendLine("connection.Open();");
+        }
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+        
+        sb.AppendLine("using var cmd = connection.CreateCommand();");
+        sb.AppendLine($"cmd.CommandText = \"SELECT * FROM [{tableName}]\";");
+        sb.AppendLine();
+        
+        if (isAsync)
+        {
+            var cancellationToken = GetCancellationTokenParameter(method);
+            sb.AppendLine($"using var reader = await cmd.ExecuteReaderAsync({cancellationToken});");
+        }
+        else
+        {
+            sb.AppendLine("using var reader = cmd.ExecuteReader();");
+        }
+        
+        sb.AppendLine($"var results = new global::System.Collections.Generic.List<{entityType.Name}>();");
+        
+        if (isAsync)
+        {
+            var cancellationToken = GetCancellationTokenParameter(method);
+            sb.AppendLine($"while (await reader.ReadAsync({cancellationToken}))");
+        }
+        else
+        {
+            sb.AppendLine("while (reader.Read())");
+        }
+        
+        sb.AppendLine("{");
+        sb.PushIndent();
+        
+        GenerateOptimizedEntityMapping(sb, entityType);
+        sb.AppendLine("results.Add(entity);");
+        
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine("return results;");
+    }
+
+    private void GenerateSelectSingleOperation(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, bool isAsync)
+    {
+        var idParam = method.Parameters.FirstOrDefault(p => p.Type.SpecialType == SpecialType.System_Int32);
+        
+        sb.AppendLine("// High-performance single entity SELECT");
+        sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        if (isAsync)
+        {
+            var cancellationToken = GetCancellationTokenParameter(method);
+            sb.AppendLine($"await connection.OpenAsync({cancellationToken});");
+        }
+        else
+        {
+            sb.AppendLine("connection.Open();");
+        }
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+        
+        sb.AppendLine("using var cmd = connection.CreateCommand();");
+        
+        if (idParam != null)
+        {
+            sb.AppendLine($"cmd.CommandText = \"SELECT * FROM [{tableName}] WHERE [Id] = @id\";");
+            sb.AppendLine();
+            sb.AppendLine("var param = cmd.CreateParameter();");
+            sb.AppendLine("param.ParameterName = \"@id\";");
+            sb.AppendLine("param.DbType = global::System.Data.DbType.Int32;");
+            sb.AppendLine($"param.Value = {idParam.Name};");
+            sb.AppendLine("cmd.Parameters.Add(param);");
+        }
+        else
+        {
+            sb.AppendLine($"cmd.CommandText = \"SELECT TOP 1 * FROM [{tableName}]\";");
+        }
+        
+        sb.AppendLine();
+        
+        if (isAsync)
+        {
+            var cancellationToken = GetCancellationTokenParameter(method);
+            sb.AppendLine($"using var reader = await cmd.ExecuteReaderAsync({cancellationToken});");
+            sb.AppendLine($"if (await reader.ReadAsync({cancellationToken}))");
+        }
+        else
+        {
+            sb.AppendLine("using var reader = cmd.ExecuteReader();");
+            sb.AppendLine("if (reader.Read())");
+        }
+        
+        sb.AppendLine("{");
+        sb.PushIndent();
+        
+        if (entityType != null)
+        {
+            GenerateOptimizedEntityMapping(sb, entityType);
+            sb.AppendLine("return entity;");
+        }
+        else
+        {
+            sb.AppendLine("// Unable to map to unknown entity type");
+            sb.AppendLine("return default;");
+        }
+        
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine("return default;");
+    }
+
+    private void GenerateCustomSqlOperation(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, AttributeData sqlxAttr, bool isAsync)
+    {
+        var sql = sqlxAttr.ConstructorArguments.FirstOrDefault().Value?.ToString() ?? "SELECT 1";
+        
+        sb.AppendLine("// Custom SQL execution");
+        sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        if (isAsync)
+        {
+            var cancellationToken = GetCancellationTokenParameter(method);
+            sb.AppendLine($"await connection.OpenAsync({cancellationToken});");
+        }
+        else
+        {
+            sb.AppendLine("connection.Open();");
+        }
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+        
+        sb.AppendLine("using var cmd = connection.CreateCommand();");
+        sb.AppendLine($"cmd.CommandText = \"{sql}\";");
+        sb.AppendLine();
+        
+        // Add parameters for method parameters
+        GenerateMethodParameters(sb, method);
+        
+        // Execute based on return type
+        if (IsCollectionType(method.ReturnType) || (isAsync && IsAsyncCollectionReturnType(method.ReturnType)))
+        {
+            // Collection return
+            if (isAsync)
+            {
+                var cancellationToken = GetCancellationTokenParameter(method);
+                sb.AppendLine($"using var reader = await cmd.ExecuteReaderAsync({cancellationToken});");
+            }
+            else
+            {
+                sb.AppendLine("using var reader = cmd.ExecuteReader();");
+            }
+            
+            sb.AppendLine($"var results = new global::System.Collections.Generic.List<{entityType?.Name ?? "object"}>();");
+            
+            if (isAsync)
+            {
+                var cancellationToken = GetCancellationTokenParameter(method);
+                sb.AppendLine($"while (await reader.ReadAsync({cancellationToken}))");
+            }
+            else
+            {
+                sb.AppendLine("while (reader.Read())");
+            }
+            
+            sb.AppendLine("{");
+            sb.PushIndent();
+            if (entityType != null)
+            {
+                GenerateOptimizedEntityMapping(sb, entityType);
+                sb.AppendLine("results.Add(entity);");
+            }
+            sb.PopIndent();
+            sb.AppendLine("}");
+            sb.AppendLine("return results;");
+        }
+        else if (method.ReturnType.SpecialType == SpecialType.System_Int32 || 
+                 (isAsync && IsAsyncReturnType(method.ReturnType, SpecialType.System_Int32)))
+        {
+            // Scalar return
+            if (isAsync)
+            {
+                var cancellationToken = GetCancellationTokenParameter(method);
+                sb.AppendLine($"var result = await cmd.ExecuteNonQueryAsync({cancellationToken});");
+            }
+            else
+            {
+                sb.AppendLine("var result = cmd.ExecuteNonQuery();");
+            }
+            sb.AppendLine("return result;");
+        }
+        else
+        {
+            // Single entity return
+            if (isAsync)
+            {
+                var cancellationToken = GetCancellationTokenParameter(method);
+                sb.AppendLine($"using var reader = await cmd.ExecuteReaderAsync({cancellationToken});");
+                sb.AppendLine($"if (await reader.ReadAsync({cancellationToken}))");
+            }
+            else
+            {
+                sb.AppendLine("using var reader = cmd.ExecuteReader();");
+                sb.AppendLine("if (reader.Read())");
+            }
+            
+            sb.AppendLine("{");
+            sb.PushIndent();
+            if (entityType != null)
+            {
+                GenerateOptimizedEntityMapping(sb, entityType);
+                sb.AppendLine("return entity;");
+            }
+            sb.PopIndent();
+            sb.AppendLine("}");
+            sb.AppendLine("return default;");
+        }
+    }
+
+    private void GenerateOptimizedEntityMapping(IndentedStringBuilder sb, INamedTypeSymbol entityType)
+    {
+        var properties = entityType.GetMembers().OfType<IPropertySymbol>()
+            .Where(p => p.CanBeReferencedByName && p.SetMethod != null)
+            .ToList();
+        
+        sb.AppendLine($"var entity = new {entityType.ToDisplayString()}");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        
+        for (int i = 0; i < properties.Count; i++)
+        {
+            var prop = properties[i];
+            var comma = i < properties.Count - 1 ? "," : "";
+            
+            // Generate safe, high-performance column access using indexer (not Get methods with string names)
+            if (prop.Type.SpecialType == SpecialType.System_Int32)
+            {
+                if (IsNullableValueType(prop.Type))
+                {
+                    sb.AppendLine($"{prop.Name} = reader[\"{prop.Name}\"] is global::System.DBNull ? null : global::System.Convert.ToInt32(reader[\"{prop.Name}\"]){comma}");
+                }
+                else
+                {
+                    sb.AppendLine($"{prop.Name} = reader[\"{prop.Name}\"] is global::System.DBNull ? 0 : global::System.Convert.ToInt32(reader[\"{prop.Name}\"]){comma}");
+                }
+            }
+            else if (prop.Type.SpecialType == SpecialType.System_String)
+            {
+                sb.AppendLine($"{prop.Name} = reader[\"{prop.Name}\"] is global::System.DBNull ? {(prop.Type.CanBeReferencedByName ? "null" : "string.Empty")} : reader[\"{prop.Name}\"].ToString(){comma}");
+            }
+            else if (prop.Type.SpecialType == SpecialType.System_DateTime)
+            {
+                if (IsNullableValueType(prop.Type))
+                {
+                    sb.AppendLine($"{prop.Name} = reader[\"{prop.Name}\"] is global::System.DBNull ? null : global::System.Convert.ToDateTime(reader[\"{prop.Name}\"]){comma}");
+                }
+                else
+                {
+                    sb.AppendLine($"{prop.Name} = reader[\"{prop.Name}\"] is global::System.DBNull ? default(global::System.DateTime) : global::System.Convert.ToDateTime(reader[\"{prop.Name}\"]){comma}");
+                }
+            }
+            else if (prop.Type.SpecialType == SpecialType.System_Boolean)
+            {
+                if (IsNullableValueType(prop.Type))
+                {
+                    sb.AppendLine($"{prop.Name} = reader[\"{prop.Name}\"] is global::System.DBNull ? null : global::System.Convert.ToBoolean(reader[\"{prop.Name}\"]){comma}");
+                }
+                else
+                {
+                    sb.AppendLine($"{prop.Name} = reader[\"{prop.Name}\"] is global::System.DBNull ? false : global::System.Convert.ToBoolean(reader[\"{prop.Name}\"]){comma}");
+                }
+            }
+            else if (prop.Type.SpecialType == SpecialType.System_Decimal)
+            {
+                if (IsNullableValueType(prop.Type))
+                {
+                    sb.AppendLine($"{prop.Name} = reader[\"{prop.Name}\"] is global::System.DBNull ? null : global::System.Convert.ToDecimal(reader[\"{prop.Name}\"]){comma}");
+                }
+                else
+                {
+                    sb.AppendLine($"{prop.Name} = reader[\"{prop.Name}\"] is global::System.DBNull ? 0m : global::System.Convert.ToDecimal(reader[\"{prop.Name}\"]){comma}");
+                }
+            }
+            else
+            {
+                // Generic property access with proper null handling
+                if (prop.Type.IsReferenceType || IsNullableValueType(prop.Type))
+                {
+                    sb.AppendLine($"{prop.Name} = reader[\"{prop.Name}\"] is global::System.DBNull ? null : ({prop.Type.ToDisplayString()})reader[\"{prop.Name}\"]{comma}");
+                }
+                else
+                {
+                    sb.AppendLine($"{prop.Name} = reader[\"{prop.Name}\"] is global::System.DBNull ? default({prop.Type.ToDisplayString()}) : ({prop.Type.ToDisplayString()})reader[\"{prop.Name}\"]{comma}");
+                }
+            }
+        }
+        
+        sb.PopIndent();
+        sb.AppendLine("};");
+        
+        // Note: Caller is responsible for handling the generated entity
+    }
+
+    private void GenerateMethodParameters(IndentedStringBuilder sb, IMethodSymbol method)
+    {
+        foreach (var param in method.Parameters.Where(p => p.Type.Name != "CancellationToken"))
+        {
+            sb.AppendLine($"var param{param.Name} = cmd.CreateParameter();");
+            sb.AppendLine($"param{param.Name}.ParameterName = \"@{param.Name.ToLowerInvariant()}\";");
+            sb.AppendLine($"param{param.Name}.DbType = {GetDbTypeForParameterType(param.Type)};");
+            
+            if (param.Type.IsReferenceType || IsNullableValueType(param.Type))
+            {
+                sb.AppendLine($"param{param.Name}.Value = {param.Name} ?? (object)global::System.DBNull.Value;");
+            }
+            else
+            {
+                sb.AppendLine($"param{param.Name}.Value = {param.Name};");
+            }
+            sb.AppendLine($"cmd.Parameters.Add(param{param.Name});");
+            sb.AppendLine();
+        }
+    }
+
+    private void GenerateSimpleInsert(IndentedStringBuilder sb, IMethodSymbol method, string tableName, bool isAsync)
+    {
+        sb.AppendLine("// Simple INSERT operation");
+        sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        if (isAsync)
+        {
+            var cancellationToken = GetCancellationTokenParameter(method);
+            sb.AppendLine($"await connection.OpenAsync({cancellationToken});");
+        }
+        else
+        {
+            sb.AppendLine("connection.Open();");
+        }
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+        
+        sb.AppendLine("using var cmd = connection.CreateCommand();");
+        sb.AppendLine($"cmd.CommandText = \"INSERT INTO [{tableName}] DEFAULT VALUES\";");
+        
+        if (isAsync)
+        {
+            var cancellationToken = GetCancellationTokenParameter(method);
+            sb.AppendLine($"var result = await cmd.ExecuteNonQueryAsync({cancellationToken});");
+        }
+        else
+        {
+            sb.AppendLine("var result = cmd.ExecuteNonQuery();");
+        }
+        sb.AppendLine("return result;");
+    }
+
+    private string GetCancellationTokenParameter(IMethodSymbol method)
+    {
+        var cancellationToken = method.Parameters.FirstOrDefault(p => p.Type.Name == "CancellationToken");
+        return cancellationToken?.Name ?? "default";
+    }
+
+    private List<IPropertySymbol> GetInsertableProperties(INamedTypeSymbol entityType)
+    {
+        return entityType.GetMembers().OfType<IPropertySymbol>()
+            .Where(p => p.CanBeReferencedByName && p.GetMethod != null && p.Name != "Id") // Exclude Id for INSERT
+            .ToList();
+    }
+
+    private List<IPropertySymbol> GetUpdatableProperties(INamedTypeSymbol entityType)
+    {
+        return entityType.GetMembers().OfType<IPropertySymbol>()
+            .Where(p => p.CanBeReferencedByName && p.GetMethod != null && p.Name != "Id") // Exclude Id for UPDATE SET clause
+            .ToList();
+    }
+
+    private string GetDbTypeForProperty(IPropertySymbol property)
+    {
+        return GetDbTypeForParameterType(property.Type);
+    }
+
+    private string GetDbTypeForParameterType(ITypeSymbol type)
+    {
+        return type.SpecialType switch
+        {
+            SpecialType.System_Int32 => "global::System.Data.DbType.Int32",
+            SpecialType.System_Int64 => "global::System.Data.DbType.Int64",
+            SpecialType.System_String => "global::System.Data.DbType.String",
+            SpecialType.System_DateTime => "global::System.Data.DbType.DateTime",
+            SpecialType.System_Boolean => "global::System.Data.DbType.Boolean",
+            SpecialType.System_Decimal => "global::System.Data.DbType.Decimal",
+            SpecialType.System_Double => "global::System.Data.DbType.Double",
+            SpecialType.System_Single => "global::System.Data.DbType.Single",
+            _ => "global::System.Data.DbType.Object"
+        };
+    }
+
+    private bool IsNullableValueType(ITypeSymbol type)
+    {
+        return type.IsValueType && type.NullableAnnotation == NullableAnnotation.Annotated;
+    }
+
+    private bool IsAsyncCollectionReturnType(ITypeSymbol returnType)
+    {
+        if (returnType is INamedTypeSymbol namedType && namedType.Name == "Task" && namedType.TypeArguments.Length == 1)
+        {
+            return IsCollectionType(namedType.TypeArguments[0]);
+        }
+        return false;
+    }
+
+    private bool IsAsyncReturnType(ITypeSymbol returnType, SpecialType innerType)
+    {
+        if (returnType is INamedTypeSymbol namedType && namedType.Name == "Task" && namedType.TypeArguments.Length == 1)
+        {
+            return namedType.TypeArguments[0].SpecialType == innerType;
+        }
+        return false;
     }
 
     private string GetDefaultValueForReturnType(ITypeSymbol returnType)
@@ -2223,6 +3092,890 @@ public abstract class AbstractGenerator : ISourceGenerator
         
         System.Diagnostics.Debug.WriteLine($"Generated table name: {tableName}");
         return tableName;
+    }
+
+    // ===================================================================
+    // CRUD Operations with Interceptors Support
+    // ===================================================================
+
+    private void GenerateInsertOperationWithInterceptors(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, bool isAsync, string methodName)
+    {
+        var entityParam = method.Parameters.FirstOrDefault(p => p.Type.TypeKind == TypeKind.Class && p.Type.Name != "String" && p.Type.Name != "CancellationToken");
+        
+        if (entityParam == null || entityType == null)
+        {
+            sb.AppendLine("// Error: Unable to generate INSERT without entity parameter");
+            sb.AppendLine("throw new global::System.InvalidOperationException(\"INSERT operation requires an entity parameter\");");
+            return;
+        }
+        
+        // Connection setup
+        sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        if (isAsync)
+        {
+            var cancellationToken = GetCancellationTokenParameter(method);
+            sb.AppendLine($"await connection.OpenAsync({cancellationToken});");
+        }
+        else
+        {
+            sb.AppendLine("connection.Open();");
+        }
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+        
+        // Get insertable properties
+        var properties = GetInsertableProperties(entityType);
+        if (!properties.Any())
+        {
+            sb.AppendLine("// Error: No insertable properties found");
+            sb.AppendLine("throw new global::System.InvalidOperationException(\"No insertable properties found in entity\");");
+            return;
+        }
+        
+        // Create command
+        sb.AppendLine("__cmd__ = connection.CreateCommand();");
+        
+        var columns = string.Join(", ", properties.Select(p => $"[{p.Name}]"));
+        var parameters = string.Join(", ", properties.Select(p => $"@{p.Name}"));
+        sb.AppendLine($"__cmd__.CommandText = \"INSERT INTO [{tableName}] ({columns}) VALUES ({parameters})\";");
+        sb.AppendLine();
+        
+        // Add parameters
+        foreach (var prop in properties)
+        {
+            sb.AppendLine($"var param{prop.Name} = __cmd__.CreateParameter();");
+            sb.AppendLine($"param{prop.Name}.ParameterName = \"@{prop.Name}\";");
+            sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
+            
+            if (prop.Type.IsReferenceType || IsNullableValueType(prop.Type))
+            {
+                sb.AppendLine($"param{prop.Name}.Value = {entityParam.Name}.{prop.Name} ?? (object)global::System.DBNull.Value;");
+            }
+            else
+            {
+                sb.AppendLine($"param{prop.Name}.Value = {entityParam.Name}.{prop.Name};");
+            }
+            sb.AppendLine($"__cmd__.Parameters.Add(param{prop.Name});");
+            sb.AppendLine();
+        }
+        
+        // Call OnExecuting interceptor
+        sb.AppendLine($"OnExecuting(\"{methodName}\", __cmd__);");
+        sb.AppendLine();
+        
+        // Execute and return
+        if (isAsync)
+        {
+            var cancellationToken = GetCancellationTokenParameter(method);
+            sb.AppendLine($"__result__ = await __cmd__.ExecuteNonQueryAsync({cancellationToken});");
+        }
+        else
+        {
+            sb.AppendLine("__result__ = __cmd__.ExecuteNonQuery();");
+        }
+        
+        // Determine return type and cast accordingly
+        var returnType = method.ReturnType;
+        if (isAsync && returnType is INamedTypeSymbol namedReturnType && namedReturnType.Name == "Task" && namedReturnType.TypeArguments.Length == 1)
+        {
+            returnType = namedReturnType.TypeArguments[0];
+        }
+        
+        if (returnType.SpecialType == SpecialType.System_Void || (returnType is INamedTypeSymbol nt && nt.Name == "Task" && nt.TypeArguments.Length == 0))
+        {
+            // void or Task (no return value)
+        }
+        else if (returnType.SpecialType == SpecialType.System_Int32)
+        {
+            sb.AppendLine("return (int)__result__;");
+        }
+        else if (returnType.SpecialType == SpecialType.System_Boolean)
+        {
+            sb.AppendLine("return ((int)__result__) > 0;");
+        }
+        else
+        {
+            sb.AppendLine("return __result__;");
+        }
+    }
+
+    private void GenerateUpdateOperationWithInterceptors(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, bool isAsync, string methodName)
+    {
+        var entityParam = method.Parameters.FirstOrDefault(p => p.Type.TypeKind == TypeKind.Class && p.Type.Name != "String" && p.Type.Name != "CancellationToken");
+        
+        if (entityParam == null || entityType == null)
+        {
+            sb.AppendLine("// Error: Unable to generate UPDATE without entity parameter");
+            sb.AppendLine("throw new global::System.InvalidOperationException(\"UPDATE operation requires an entity parameter\");");
+            return;
+        }
+        
+        // Connection setup
+        sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        if (isAsync)
+        {
+            var cancellationToken = GetCancellationTokenParameter(method);
+            sb.AppendLine($"await connection.OpenAsync({cancellationToken});");
+        }
+        else
+        {
+            sb.AppendLine("connection.Open();");
+        }
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+        
+        // Get updatable properties
+        var properties = GetUpdatableProperties(entityType);
+        if (!properties.Any())
+        {
+            sb.AppendLine("// Error: No updatable properties found");
+            sb.AppendLine("throw new global::System.InvalidOperationException(\"No updatable properties found in entity\");");
+            return;
+        }
+        
+        // Create command
+        sb.AppendLine("__cmd__ = connection.CreateCommand();");
+        
+        var setClauses = string.Join(", ", properties.Select(p => $"[{p.Name}] = @{p.Name}"));
+        sb.AppendLine($"__cmd__.CommandText = \"UPDATE [{tableName}] SET {setClauses} WHERE [Id] = @Id\";");
+        sb.AppendLine();
+        
+        // Add SET clause parameters
+        foreach (var prop in properties)
+        {
+            sb.AppendLine($"var param{prop.Name} = __cmd__.CreateParameter();");
+            sb.AppendLine($"param{prop.Name}.ParameterName = \"@{prop.Name}\";");
+            sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
+            
+            if (prop.Type.IsReferenceType || IsNullableValueType(prop.Type))
+            {
+                sb.AppendLine($"param{prop.Name}.Value = {entityParam.Name}.{prop.Name} ?? (object)global::System.DBNull.Value;");
+            }
+            else
+            {
+                sb.AppendLine($"param{prop.Name}.Value = {entityParam.Name}.{prop.Name};");
+            }
+            sb.AppendLine($"__cmd__.Parameters.Add(param{prop.Name});");
+            sb.AppendLine();
+        }
+        
+        // Add WHERE clause parameter (Id)
+        var idProperty = GetIdProperty(entityType);
+        if (idProperty != null)
+        {
+            sb.AppendLine("var paramId = __cmd__.CreateParameter();");
+            sb.AppendLine("paramId.ParameterName = \"@Id\";");
+            sb.AppendLine($"paramId.DbType = {GetDbTypeForProperty(idProperty)};");
+            sb.AppendLine($"paramId.Value = {entityParam.Name}.{idProperty.Name};");
+            sb.AppendLine("__cmd__.Parameters.Add(paramId);");
+            sb.AppendLine();
+        }
+        
+        // Call OnExecuting interceptor
+        sb.AppendLine($"OnExecuting(\"{methodName}\", __cmd__);");
+        sb.AppendLine();
+        
+        // Execute and return
+        if (isAsync)
+        {
+            var cancellationToken = GetCancellationTokenParameter(method);
+            sb.AppendLine($"__result__ = await __cmd__.ExecuteNonQueryAsync({cancellationToken});");
+        }
+        else
+        {
+            sb.AppendLine("__result__ = __cmd__.ExecuteNonQuery();");
+        }
+        
+        // Determine return type and cast accordingly
+        var returnType = method.ReturnType;
+        if (isAsync && returnType is INamedTypeSymbol namedReturnType && namedReturnType.Name == "Task" && namedReturnType.TypeArguments.Length == 1)
+        {
+            returnType = namedReturnType.TypeArguments[0];
+        }
+        
+        if (returnType.SpecialType == SpecialType.System_Void || (returnType is INamedTypeSymbol nt && nt.Name == "Task" && nt.TypeArguments.Length == 0))
+        {
+            // void or Task (no return value)
+        }
+        else if (returnType.SpecialType == SpecialType.System_Int32)
+        {
+            sb.AppendLine("return (int)__result__;");
+        }
+        else if (returnType.SpecialType == SpecialType.System_Boolean)
+        {
+            sb.AppendLine("return ((int)__result__) > 0;");
+        }
+        else
+        {
+            sb.AppendLine("return __result__;");
+        }
+    }
+
+    private void GenerateDeleteOperationWithInterceptors(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, bool isAsync, string methodName)
+    {
+        // Connection setup
+        sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        if (isAsync)
+        {
+            var cancellationToken = GetCancellationTokenParameter(method);
+            sb.AppendLine($"await connection.OpenAsync({cancellationToken});");
+        }
+        else
+        {
+            sb.AppendLine("connection.Open();");
+        }
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+        
+        // Create command
+        sb.AppendLine("__cmd__ = connection.CreateCommand();");
+        
+        // Check if we have an ID parameter or entity parameter
+        var idParam = method.Parameters.FirstOrDefault(p => p.Name.Equals("id", StringComparison.OrdinalIgnoreCase) || 
+                                                            p.Type.SpecialType == SpecialType.System_Int32 ||
+                                                            p.Type.SpecialType == SpecialType.System_String);
+        var entityParam = method.Parameters.FirstOrDefault(p => p.Type.TypeKind == TypeKind.Class && p.Type.Name != "String" && p.Type.Name != "CancellationToken");
+        
+        if (idParam != null)
+        {
+            // Delete by ID
+            sb.AppendLine($"__cmd__.CommandText = \"DELETE FROM [{tableName}] WHERE [Id] = @Id\";");
+            sb.AppendLine("var paramId = __cmd__.CreateParameter();");
+            sb.AppendLine("paramId.ParameterName = \"@Id\";");
+            sb.AppendLine($"paramId.Value = {idParam.Name};");
+            sb.AppendLine("__cmd__.Parameters.Add(paramId);");
+        }
+        else if (entityParam != null && entityType != null)
+        {
+            // Delete by entity (using its Id property)
+            var idProperty = GetIdProperty(entityType);
+            if (idProperty != null)
+            {
+                sb.AppendLine($"__cmd__.CommandText = \"DELETE FROM [{tableName}] WHERE [Id] = @Id\";");
+                sb.AppendLine("var paramId = __cmd__.CreateParameter();");
+                sb.AppendLine("paramId.ParameterName = \"@Id\";");
+                sb.AppendLine($"paramId.Value = {entityParam.Name}.{idProperty.Name};");
+                sb.AppendLine("__cmd__.Parameters.Add(paramId);");
+            }
+            else
+            {
+                sb.AppendLine("// Error: Unable to find Id property for DELETE operation");
+                sb.AppendLine("throw new global::System.InvalidOperationException(\"Entity must have an Id property for DELETE operation\");");
+                return;
+            }
+        }
+        else
+        {
+            sb.AppendLine("// Error: DELETE operation requires an ID parameter or entity with Id property");
+            sb.AppendLine("throw new global::System.InvalidOperationException(\"DELETE operation requires an ID parameter or entity with Id property\");");
+            return;
+        }
+        
+        sb.AppendLine();
+        
+        // Call OnExecuting interceptor
+        sb.AppendLine($"OnExecuting(\"{methodName}\", __cmd__);");
+        sb.AppendLine();
+        
+        // Execute and return
+        if (isAsync)
+        {
+            var cancellationToken = GetCancellationTokenParameter(method);
+            sb.AppendLine($"__result__ = await __cmd__.ExecuteNonQueryAsync({cancellationToken});");
+        }
+        else
+        {
+            sb.AppendLine("__result__ = __cmd__.ExecuteNonQuery();");
+        }
+        
+        // Determine return type and cast accordingly
+        var returnType = method.ReturnType;
+        if (isAsync && returnType is INamedTypeSymbol namedReturnType && namedReturnType.Name == "Task" && namedReturnType.TypeArguments.Length == 1)
+        {
+            returnType = namedReturnType.TypeArguments[0];
+        }
+        
+        if (returnType.SpecialType == SpecialType.System_Void || (returnType is INamedTypeSymbol nt && nt.Name == "Task" && nt.TypeArguments.Length == 0))
+        {
+            // void or Task (no return value)
+        }
+        else if (returnType.SpecialType == SpecialType.System_Int32)
+        {
+            sb.AppendLine("return (int)__result__;");
+        }
+        else if (returnType.SpecialType == SpecialType.System_Boolean)
+        {
+            sb.AppendLine("return ((int)__result__) > 0;");
+        }
+        else
+        {
+            sb.AppendLine("return __result__;");
+        }
+    }
+
+    private void GenerateSelectOperationWithInterceptors(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, bool isAsync, string methodName)
+    {
+        // Connection setup
+        sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        if (isAsync)
+        {
+            var cancellationToken = GetCancellationTokenParameter(method);
+            sb.AppendLine($"await connection.OpenAsync({cancellationToken});");
+        }
+        else
+        {
+            sb.AppendLine("connection.Open();");
+        }
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+        
+        // Create command
+        sb.AppendLine("__cmd__ = connection.CreateCommand();");
+        
+        // Check if we have parameters for WHERE clause
+        var whereParams = method.Parameters.Where(p => p.Type.Name != "CancellationToken").ToList();
+        
+        if (whereParams.Any())
+        {
+            var firstParam = whereParams.First();
+            if (firstParam.Name.Equals("id", StringComparison.OrdinalIgnoreCase))
+            {
+                sb.AppendLine($"__cmd__.CommandText = \"SELECT * FROM [{tableName}] WHERE [Id] = @Id\";");
+                sb.AppendLine("var paramId = __cmd__.CreateParameter();");
+                sb.AppendLine("paramId.ParameterName = \"@Id\";");
+                sb.AppendLine($"paramId.Value = {firstParam.Name};");
+                sb.AppendLine("__cmd__.Parameters.Add(paramId);");
+            }
+            else
+            {
+                // Generic parameter handling
+                sb.AppendLine($"__cmd__.CommandText = \"SELECT * FROM [{tableName}] WHERE [{firstParam.Name}] = @{firstParam.Name}\";");
+                sb.AppendLine($"var param{firstParam.Name} = __cmd__.CreateParameter();");
+                sb.AppendLine($"param{firstParam.Name}.ParameterName = \"@{firstParam.Name}\";");
+                sb.AppendLine($"param{firstParam.Name}.Value = {firstParam.Name};");
+                sb.AppendLine($"__cmd__.Parameters.Add(param{firstParam.Name});");
+            }
+        }
+        else
+        {
+            sb.AppendLine($"__cmd__.CommandText = \"SELECT * FROM [{tableName}]\";");
+        }
+        
+        sb.AppendLine();
+        
+        // Call OnExecuting interceptor
+        sb.AppendLine($"OnExecuting(\"{methodName}\", __cmd__);");
+        sb.AppendLine();
+        
+        // Execute and process results
+        if (isAsync)
+        {
+            var cancellationToken = GetCancellationTokenParameter(method);
+            sb.AppendLine($"using var reader = await __cmd__.ExecuteReaderAsync({cancellationToken});");
+        }
+        else
+        {
+            sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
+        }
+        
+        // Generate result collection and mapping
+        var entityTypeName = entityType?.ToDisplayString() ?? "object";
+        sb.AppendLine($"var results = new global::System.Collections.Generic.List<{entityTypeName}>();");
+        sb.AppendLine();
+        
+        if (isAsync)
+        {
+            var cancellationToken = GetCancellationTokenParameter(method);
+            sb.AppendLine($"while (await reader.ReadAsync({cancellationToken}))");
+        }
+        else
+        {
+            sb.AppendLine("while (reader.Read())");
+        }
+        
+        sb.AppendLine("{");
+        sb.PushIndent();
+        
+        if (entityType != null)
+        {
+            GenerateOptimizedEntityMapping(sb, entityType);
+            sb.AppendLine("results.Add(entity);");
+        }
+        else
+        {
+            sb.AppendLine("// Generic object mapping when entity type is unknown");
+            sb.AppendLine("var row = new global::System.Dynamic.ExpandoObject();");
+            sb.AppendLine("var dict = (global::System.Collections.Generic.IDictionary<string, object>)row;");
+            sb.AppendLine("for (int i = 0; i < reader.FieldCount; i++)");
+            sb.AppendLine("{");
+            sb.PushIndent();
+            sb.AppendLine("dict[reader.GetName(i)] = reader.IsDBNull(i) ? null : reader.GetValue(i);");
+            sb.PopIndent();
+            sb.AppendLine("}");
+            sb.AppendLine("results.Add((object)row);");
+        }
+        
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+        
+        sb.AppendLine("__result__ = results;");
+        
+        // Cast to correct return type based on method signature
+        var methodReturnType = method.ReturnType;
+        if (isAsync && methodReturnType is INamedTypeSymbol namedReturnType && namedReturnType.Name == "Task" && namedReturnType.TypeArguments.Length == 1)
+        {
+            methodReturnType = namedReturnType.TypeArguments[0];
+        }
+        
+        var returnTypeName = methodReturnType.ToDisplayString();
+        if (returnTypeName.Contains("IList") || returnTypeName.Contains("IEnumerable") || returnTypeName.Contains("ICollection"))
+        {
+            sb.AppendLine($"return ({returnTypeName})results;");
+        }
+        else
+        {
+            sb.AppendLine("return results;");
+        }
+    }
+
+    private void GenerateSelectSingleOperationWithInterceptors(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, bool isAsync, string methodName)
+    {
+        // Connection setup
+        sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        if (isAsync)
+        {
+            var cancellationToken = GetCancellationTokenParameter(method);
+            sb.AppendLine($"await connection.OpenAsync({cancellationToken});");
+        }
+        else
+        {
+            sb.AppendLine("connection.Open();");
+        }
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+        
+        // Create command
+        sb.AppendLine("__cmd__ = connection.CreateCommand();");
+        
+        // Check if we have parameters for WHERE clause
+        var whereParams = method.Parameters.Where(p => p.Type.Name != "CancellationToken").ToList();
+        
+        if (whereParams.Any())
+        {
+            var firstParam = whereParams.First();
+            if (firstParam.Name.Equals("id", StringComparison.OrdinalIgnoreCase))
+            {
+                sb.AppendLine($"__cmd__.CommandText = \"SELECT * FROM [{tableName}] WHERE [Id] = @Id LIMIT 1\";");
+                sb.AppendLine("var paramId = __cmd__.CreateParameter();");
+                sb.AppendLine("paramId.ParameterName = \"@Id\";");
+                sb.AppendLine($"paramId.Value = {firstParam.Name};");
+                sb.AppendLine("__cmd__.Parameters.Add(paramId);");
+            }
+            else
+            {
+                sb.AppendLine($"__cmd__.CommandText = \"SELECT * FROM [{tableName}] WHERE [{firstParam.Name}] = @{firstParam.Name} LIMIT 1\";");
+                sb.AppendLine($"var param{firstParam.Name} = __cmd__.CreateParameter();");
+                sb.AppendLine($"param{firstParam.Name}.ParameterName = \"@{firstParam.Name}\";");
+                sb.AppendLine($"param{firstParam.Name}.Value = {firstParam.Name};");
+                sb.AppendLine($"__cmd__.Parameters.Add(param{firstParam.Name});");
+            }
+        }
+        else
+        {
+            sb.AppendLine($"__cmd__.CommandText = \"SELECT * FROM [{tableName}] LIMIT 1\";");
+        }
+        
+        sb.AppendLine();
+        
+        // Call OnExecuting interceptor
+        sb.AppendLine($"OnExecuting(\"{methodName}\", __cmd__);");
+        sb.AppendLine();
+        
+        // Execute and process single result
+        if (isAsync)
+        {
+            var cancellationToken = GetCancellationTokenParameter(method);
+            sb.AppendLine($"using var reader = await __cmd__.ExecuteReaderAsync({cancellationToken});");
+            sb.AppendLine($"if (await reader.ReadAsync({cancellationToken}))");
+        }
+        else
+        {
+            sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
+            sb.AppendLine("if (reader.Read())");
+        }
+        
+        sb.AppendLine("{");
+        sb.PushIndent();
+        
+        if (entityType != null)
+        {
+            GenerateOptimizedEntityMapping(sb, entityType);
+            sb.AppendLine("__result__ = entity;");
+            sb.AppendLine("return entity;");
+        }
+        else
+        {
+            sb.AppendLine("// Generic object mapping when entity type is unknown");
+            sb.AppendLine("var result = new global::System.Dynamic.ExpandoObject();");
+            sb.AppendLine("var dict = (global::System.Collections.Generic.IDictionary<string, object>)result;");
+            sb.AppendLine("for (int i = 0; i < reader.FieldCount; i++)");
+            sb.AppendLine("{");
+            sb.PushIndent();
+            sb.AppendLine("dict[reader.GetName(i)] = reader.IsDBNull(i) ? null : reader.GetValue(i);");
+            sb.PopIndent();
+            sb.AppendLine("}");
+            sb.AppendLine("__result__ = result;");
+            sb.AppendLine("return result;");
+        }
+        
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+        
+        sb.AppendLine("__result__ = null;");
+        sb.AppendLine("return null;");
+    }
+
+    private void GenerateCustomSqlOperationWithInterceptors(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, AttributeData sqlxAttr, bool isAsync, string methodName)
+    {
+        // Connection setup
+        sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        if (isAsync)
+        {
+            var cancellationToken = GetCancellationTokenParameter(method);
+            sb.AppendLine($"await connection.OpenAsync({cancellationToken});");
+        }
+        else
+        {
+            sb.AppendLine("connection.Open();");
+        }
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+        
+        // Create command
+        sb.AppendLine("__cmd__ = connection.CreateCommand();");
+        
+        // Get SQL from attribute
+        var sql = sqlxAttr.ConstructorArguments.FirstOrDefault().Value?.ToString() ?? "SELECT 1";
+        sb.AppendLine($"__cmd__.CommandText = \"{sql.Replace("\"", "\\\"")}\";");
+        sb.AppendLine();
+        
+        // Add parameters
+        foreach (var param in method.Parameters.Where(p => p.Type.Name != "CancellationToken"))
+        {
+            sb.AppendLine($"var param{param.Name} = __cmd__.CreateParameter();");
+            sb.AppendLine($"param{param.Name}.ParameterName = \"@{param.Name}\";");
+            sb.AppendLine($"param{param.Name}.Value = {param.Name};");
+            sb.AppendLine($"__cmd__.Parameters.Add(param{param.Name});");
+            sb.AppendLine();
+        }
+        
+        // Call OnExecuting interceptor
+        sb.AppendLine($"OnExecuting(\"{methodName}\", __cmd__);");
+        sb.AppendLine();
+        
+        // Execute based on expected return type
+        var returnType = method.ReturnType;
+        var isCollection = IsCollectionType(returnType) || (isAsync && IsAsyncCollectionReturnType(returnType));
+        
+        if (isCollection)
+        {
+            // Multiple results
+            if (isAsync)
+            {
+                var cancellationToken = GetCancellationTokenParameter(method);
+                sb.AppendLine($"using var reader = await __cmd__.ExecuteReaderAsync({cancellationToken});");
+            }
+            else
+            {
+                sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
+            }
+            
+            var entityTypeName = entityType?.ToDisplayString() ?? "object";
+            sb.AppendLine($"var results = new global::System.Collections.Generic.List<{entityTypeName}>();");
+            sb.AppendLine();
+            
+            if (isAsync)
+            {
+                var cancellationToken = GetCancellationTokenParameter(method);
+                sb.AppendLine($"while (await reader.ReadAsync({cancellationToken}))");
+            }
+            else
+            {
+                sb.AppendLine("while (reader.Read())");
+            }
+            
+            sb.AppendLine("{");
+            sb.PushIndent();
+            
+            if (entityType != null)
+            {
+                GenerateOptimizedEntityMapping(sb, entityType);
+                sb.AppendLine("results.Add(entity);");
+            }
+            else
+            {
+                sb.AppendLine("// Generic object mapping when entity type is unknown");
+                sb.AppendLine("var row = new global::System.Dynamic.ExpandoObject();");
+                sb.AppendLine("var dict = (global::System.Collections.Generic.IDictionary<string, object>)row;");
+                sb.AppendLine("for (int i = 0; i < reader.FieldCount; i++)");
+                sb.AppendLine("{");
+                sb.PushIndent();
+                sb.AppendLine("dict[reader.GetName(i)] = reader.IsDBNull(i) ? null : reader.GetValue(i);");
+                sb.PopIndent();
+                sb.AppendLine("}");
+                sb.AppendLine("results.Add((object)row);");
+            }
+            
+            sb.PopIndent();
+            sb.AppendLine("}");
+            sb.AppendLine();
+            
+            sb.AppendLine("__result__ = results;");
+            
+            // Cast to correct return type based on method signature
+            var methodReturnType2 = method.ReturnType;
+            if (isAsync && methodReturnType2 is INamedTypeSymbol namedReturnType2 && namedReturnType2.Name == "Task" && namedReturnType2.TypeArguments.Length == 1)
+            {
+                methodReturnType2 = namedReturnType2.TypeArguments[0];
+            }
+            
+            var returnTypeName = methodReturnType2.ToDisplayString();
+            if (returnTypeName.Contains("IList") || returnTypeName.Contains("IEnumerable") || returnTypeName.Contains("ICollection"))
+            {
+                sb.AppendLine($"return ({returnTypeName})results;");
+            }
+            else
+            {
+                sb.AppendLine("return results;");
+            }
+        }
+        else
+        {
+            // Single result - check if it's a scalar or entity
+            if (IsScalarReturnType(returnType, isAsync))
+            {
+                // True scalar result (int, string, etc.)
+                if (isAsync)
+                {
+                    var cancellationToken = GetCancellationTokenParameter(method);
+                    sb.AppendLine($"var scalarResult = await __cmd__.ExecuteScalarAsync({cancellationToken});");
+                }
+                else
+                {
+                    sb.AppendLine("var scalarResult = __cmd__.ExecuteScalar();");
+                }
+                
+                sb.AppendLine("__result__ = scalarResult;");
+                sb.AppendLine("return scalarResult;");
+            }
+            else
+            {
+                // Single entity result
+                if (isAsync)
+                {
+                    var cancellationToken = GetCancellationTokenParameter(method);
+                    sb.AppendLine($"using var reader = await __cmd__.ExecuteReaderAsync({cancellationToken});");
+                    sb.AppendLine($"if (await reader.ReadAsync({cancellationToken}))");
+                }
+                else
+                {
+                    sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
+                    sb.AppendLine("if (reader.Read())");
+                }
+                
+                sb.AppendLine("{");
+                sb.PushIndent();
+                
+                if (entityType != null)
+                {
+                    GenerateOptimizedEntityMapping(sb, entityType);
+                    sb.AppendLine("__result__ = entity;");
+                    sb.AppendLine("return entity;");
+                }
+                else
+                {
+                    sb.AppendLine("// Generic object mapping when entity type is unknown");
+                    sb.AppendLine("var result = new global::System.Dynamic.ExpandoObject();");
+                    sb.AppendLine("var dict = (global::System.Collections.Generic.IDictionary<string, object>)result;");
+                    sb.AppendLine("for (int i = 0; i < reader.FieldCount; i++)");
+                    sb.AppendLine("{");
+                    sb.PushIndent();
+                    sb.AppendLine("dict[reader.GetName(i)] = reader.IsDBNull(i) ? null : reader.GetValue(i);");
+                    sb.PopIndent();
+                    sb.AppendLine("}");
+                    sb.AppendLine("__result__ = result;");
+                    sb.AppendLine("return result;");
+                }
+                
+                sb.PopIndent();
+                sb.AppendLine("}");
+                sb.AppendLine();
+                
+                sb.AppendLine("__result__ = null;");
+                sb.AppendLine("return null;");
+            }
+        }
+    }
+
+    private IPropertySymbol? GetIdProperty(INamedTypeSymbol entityType)
+    {
+        // Look for property named "Id" first
+        var idProperty = entityType.GetMembers().OfType<IPropertySymbol>()
+            .FirstOrDefault(p => p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase));
+        
+        if (idProperty != null)
+        {
+            return idProperty;
+        }
+        
+        // Look for property with name ending in "Id" (e.g., UserId, PersonId)
+        idProperty = entityType.GetMembers().OfType<IPropertySymbol>()
+            .FirstOrDefault(p => p.Name.EndsWith("Id", StringComparison.OrdinalIgnoreCase));
+        
+        if (idProperty != null)
+        {
+            return idProperty;
+        }
+        
+        // Look for property with Key attribute
+        idProperty = entityType.GetMembers().OfType<IPropertySymbol>()
+            .FirstOrDefault(p => p.GetAttributes().Any(attr => 
+                attr.AttributeClass?.Name == "KeyAttribute" || 
+                attr.AttributeClass?.Name == "Key"));
+        
+        return idProperty;
+    }
+
+    private void GenerateScalarOperationWithInterceptors(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, bool isAsync, string methodName)
+    {
+        var methodNameLower = methodName.ToLowerInvariant();
+        
+        // Connection setup
+        sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        if (isAsync)
+        {
+            var cancellationToken = GetCancellationTokenParameter(method);
+            sb.AppendLine($"await connection.OpenAsync({cancellationToken});");
+        }
+        else
+        {
+            sb.AppendLine("connection.Open();");
+        }
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+        
+        // Create command
+        sb.AppendLine("__cmd__ = connection.CreateCommand();");
+        
+        // Generate SQL based on method name
+        if (methodNameLower.Contains("count"))
+        {
+            sb.AppendLine($"__cmd__.CommandText = \"SELECT COUNT(*) FROM [{tableName}]\";");
+        }
+        else if (methodNameLower.Contains("exists"))
+        {
+            var whereParams = method.Parameters.Where(p => p.Type.Name != "CancellationToken").ToList();
+            if (whereParams.Any())
+            {
+                var firstParam = whereParams.First();
+                if (firstParam.Name.Equals("id", StringComparison.OrdinalIgnoreCase))
+                {
+                    sb.AppendLine($"__cmd__.CommandText = \"SELECT COUNT(*) FROM [{tableName}] WHERE [Id] = @Id\";");
+                    sb.AppendLine("var paramId = __cmd__.CreateParameter();");
+                    sb.AppendLine("paramId.ParameterName = \"@Id\";");
+                    sb.AppendLine($"paramId.Value = {firstParam.Name};");
+                    sb.AppendLine("__cmd__.Parameters.Add(paramId);");
+                }
+                else
+                {
+                    sb.AppendLine($"__cmd__.CommandText = \"SELECT COUNT(*) FROM [{tableName}] WHERE [{firstParam.Name}] = @{firstParam.Name}\";");
+                    sb.AppendLine($"var param{firstParam.Name} = __cmd__.CreateParameter();");
+                    sb.AppendLine($"param{firstParam.Name}.ParameterName = \"@{firstParam.Name}\";");
+                    sb.AppendLine($"param{firstParam.Name}.Value = {firstParam.Name};");
+                    sb.AppendLine($"__cmd__.Parameters.Add(param{firstParam.Name});");
+                }
+            }
+            else
+            {
+                sb.AppendLine($"__cmd__.CommandText = \"SELECT COUNT(*) FROM [{tableName}]\";");
+            }
+        }
+        else
+        {
+            // Default scalar query
+            sb.AppendLine($"__cmd__.CommandText = \"SELECT COUNT(*) FROM [{tableName}]\";");
+        }
+        
+        sb.AppendLine();
+        
+        // Call OnExecuting interceptor
+        sb.AppendLine($"OnExecuting(\"{methodName}\", __cmd__);");
+        sb.AppendLine();
+        
+        // Execute scalar operation
+        if (isAsync)
+        {
+            var cancellationToken = GetCancellationTokenParameter(method);
+            sb.AppendLine($"var scalarResult = await __cmd__.ExecuteScalarAsync({cancellationToken});");
+        }
+        else
+        {
+            sb.AppendLine("var scalarResult = __cmd__.ExecuteScalar();");
+        }
+        
+        // Convert result based on return type
+        var returnType = method.ReturnType;
+        if (isAsync && returnType is INamedTypeSymbol namedReturnType && namedReturnType.Name == "Task" && namedReturnType.TypeArguments.Length == 1)
+        {
+            returnType = namedReturnType.TypeArguments[0];
+        }
+        
+        if (returnType.SpecialType == SpecialType.System_Int32)
+        {
+            sb.AppendLine("var intResult = System.Convert.ToInt32(scalarResult ?? (object)0);");
+            sb.AppendLine("__result__ = intResult;");
+            sb.AppendLine("return intResult;");
+        }
+        else if (returnType.SpecialType == SpecialType.System_Int64)
+        {
+            sb.AppendLine("var longResult = System.Convert.ToInt64(scalarResult ?? (object)0L);");
+            sb.AppendLine("__result__ = longResult;");
+            sb.AppendLine("return longResult;");
+        }
+        else if (returnType.SpecialType == SpecialType.System_Boolean)
+        {
+            sb.AppendLine("var boolResult = System.Convert.ToInt32(scalarResult ?? (object)0) > 0;");
+            sb.AppendLine("__result__ = boolResult;");
+            sb.AppendLine("return boolResult;");
+        }
+        else
+        {
+            sb.AppendLine("__result__ = scalarResult;");
+            sb.AppendLine("return scalarResult;");
+        }
     }
 
 }

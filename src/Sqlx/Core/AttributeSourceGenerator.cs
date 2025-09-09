@@ -57,6 +57,7 @@ internal static class AttributeSourceGenerator
         GenerateRepositoryForAttribute(sb);
         GenerateTableNameAttribute(sb);
         GenerateDbSetTypeAttribute(sb);
+        GenerateSqlDefineAttribute(sb);
     }
 
     private static void GenerateSqlxAttribute(StringBuilder sb)
@@ -241,6 +242,20 @@ internal static class AttributeSourceGenerator
         sb.AppendLine("        Insert = 2,");
         sb.AppendLine("        /// <summary>DELETE operation.</summary>");
         sb.AppendLine("        Delete = 3");
+        sb.AppendLine("    }");
+        sb.AppendLine();
+        
+        sb.AppendLine("    /// <summary>");
+        sb.AppendLine("    /// Defines database dialect types for SQL generation.");
+        sb.AppendLine("    /// </summary>");
+        sb.AppendLine("    public enum SqlDefineTypes");
+        sb.AppendLine("    {");
+        sb.AppendLine("        /// <summary>MySQL dialect with backtick column wrapping.</summary>");
+        sb.AppendLine("        MySql = 0,");
+        sb.AppendLine("        /// <summary>SQL Server dialect with square bracket column wrapping.</summary>");
+        sb.AppendLine("        SqlServer = 1,");
+        sb.AppendLine("        /// <summary>PostgreSQL dialect with double quote column wrapping.</summary>");
+        sb.AppendLine("        Postgresql = 2");
         sb.AppendLine("    }");
         sb.AppendLine();
     }
@@ -712,6 +727,74 @@ internal static class AttributeSourceGenerator
         sb.AppendLine("                _ => value.ToString() ?? \"NULL\"");
         sb.AppendLine("            };");
         sb.AppendLine("        }");
+    }
+
+    private static void GenerateSqlDefineAttribute(StringBuilder sb)
+    {
+        sb.AppendLine("    /// <summary>");
+        sb.AppendLine("    /// Specifies the database dialect for SQL generation.");
+        sb.AppendLine("    /// </summary>");
+        sb.AppendLine("    [global::System.AttributeUsage(global::System.AttributeTargets.Method |");
+        sb.AppendLine("        global::System.AttributeTargets.Class, AllowMultiple = false, Inherited = false)]");
+        sb.AppendLine("    public sealed class SqlDefineAttribute : global::System.Attribute");
+        sb.AppendLine("    {");
+        sb.AppendLine("        /// <summary>");
+        sb.AppendLine("        /// Initializes a new instance of the <see cref=\"SqlDefineAttribute\"/> class with a predefined dialect.");
+        sb.AppendLine("        /// </summary>");
+        sb.AppendLine("        /// <param name=\"dialectType\">The database dialect type.</param>");
+        sb.AppendLine("        public SqlDefineAttribute(SqlDefineTypes dialectType)");
+        sb.AppendLine("        {");
+        sb.AppendLine("            DialectType = dialectType;");
+        sb.AppendLine("        }");
+        sb.AppendLine();
+        sb.AppendLine("        /// <summary>");
+        sb.AppendLine("        /// Initializes a new instance of the <see cref=\"SqlDefineAttribute\"/> class with custom dialect settings.");
+        sb.AppendLine("        /// </summary>");
+        sb.AppendLine("        /// <param name=\"columnLeft\">Left column delimiter.</param>");
+        sb.AppendLine("        /// <param name=\"columnRight\">Right column delimiter.</param>");
+        sb.AppendLine("        /// <param name=\"stringLeft\">Left string delimiter.</param>");
+        sb.AppendLine("        /// <param name=\"stringRight\">Right string delimiter.</param>");
+        sb.AppendLine("        /// <param name=\"parameterPrefix\">Parameter prefix.</param>");
+        sb.AppendLine("        public SqlDefineAttribute(string columnLeft, string columnRight, string stringLeft, string stringRight, string parameterPrefix)");
+        sb.AppendLine("        {");
+        sb.AppendLine("            ColumnLeft = columnLeft ?? throw new global::System.ArgumentNullException(nameof(columnLeft));");
+        sb.AppendLine("            ColumnRight = columnRight ?? throw new global::System.ArgumentNullException(nameof(columnRight));");
+        sb.AppendLine("            StringLeft = stringLeft ?? throw new global::System.ArgumentNullException(nameof(stringLeft));");
+        sb.AppendLine("            StringRight = stringRight ?? throw new global::System.ArgumentNullException(nameof(stringRight));");
+        sb.AppendLine("            ParameterPrefix = parameterPrefix ?? throw new global::System.ArgumentNullException(nameof(parameterPrefix));");
+        sb.AppendLine("        }");
+        sb.AppendLine();
+        sb.AppendLine("        /// <summary>");
+        sb.AppendLine("        /// Gets the database dialect type.");
+        sb.AppendLine("        /// </summary>");
+        sb.AppendLine("        public SqlDefineTypes? DialectType { get; }");
+        sb.AppendLine();
+        sb.AppendLine("        /// <summary>");
+        sb.AppendLine("        /// Gets the left column delimiter.");
+        sb.AppendLine("        /// </summary>");
+        sb.AppendLine("        public string? ColumnLeft { get; }");
+        sb.AppendLine();
+        sb.AppendLine("        /// <summary>");
+        sb.AppendLine("        /// Gets the right column delimiter.");
+        sb.AppendLine("        /// </summary>");
+        sb.AppendLine("        public string? ColumnRight { get; }");
+        sb.AppendLine();
+        sb.AppendLine("        /// <summary>");
+        sb.AppendLine("        /// Gets the left string delimiter.");
+        sb.AppendLine("        /// </summary>");
+        sb.AppendLine("        public string? StringLeft { get; }");
+        sb.AppendLine();
+        sb.AppendLine("        /// <summary>");
+        sb.AppendLine("        /// Gets the right string delimiter.");
+        sb.AppendLine("        /// </summary>");
+        sb.AppendLine("        public string? StringRight { get; }");
+        sb.AppendLine();
+        sb.AppendLine("        /// <summary>");
+        sb.AppendLine("        /// Gets the parameter prefix.");
+        sb.AppendLine("        /// </summary>");
+        sb.AppendLine("        public string? ParameterPrefix { get; }");
+        sb.AppendLine("    }");
+        sb.AppendLine();
     }
 
     private static void GenerateNamespaceEnd(StringBuilder sb)

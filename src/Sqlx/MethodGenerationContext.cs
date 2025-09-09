@@ -805,7 +805,7 @@ internal class MethodGenerationContext : GenerationContextBase
     {
         var methodDef = MethodSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlDefineAttribute") ??
             ClassGenerationContext.ClassSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlDefineAttribute");
-        if (methodDef == null) return SqlDefine.MySql;
+        if (methodDef == null) return SqlDefine.SqlServer;
 
         if (methodDef.ConstructorArguments.Length == 1)
         {

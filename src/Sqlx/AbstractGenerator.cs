@@ -1375,12 +1375,12 @@ public abstract class AbstractGenerator : ISourceGenerator
         // Fallback to pattern-based generation
         if (methodName.Contains("getall") || methodName.Contains("list"))
         {
-            return $"\"SELECT * FROM {wrappedTableName}\"";
+            return $"\"SELECT * FROM {wrappedTableName.Replace("\"", "\\\"")}\"";
         }
         else if (methodName.Contains("getby") || methodName.Contains("find"))
         {
             var paramName = method.Parameters.FirstOrDefault()?.Name ?? "id";
-            return $"\"SELECT * FROM {wrappedTableName} WHERE Id = {sqlDefine.ParamterPrefx}{paramName}\"";
+            return $"\"SELECT * FROM {wrappedTableName.Replace("\"", "\\\"")} WHERE Id = {sqlDefine.ParamterPrefx}{paramName}\"";
         }
         else if (methodName.Contains("create") || methodName.Contains("insert"))
         {
@@ -2329,10 +2329,11 @@ public abstract class AbstractGenerator : ISourceGenerator
         
         sb.AppendLine("using var cmd = connection.CreateCommand();");
         
-        var columns = string.Join(", ", properties.Select(p => $"[{p.GetSqlName()}]"));
-        var parameters = string.Join(", ", properties.Select(p => $"@{p.GetSqlName()}"));
+        var sqlDefine = GetSqlDefineForRepository(method);
+        var columns = string.Join(", ", properties.Select(p => sqlDefine.WrapColumn(p.GetSqlName()).Replace("\"", "\\\"")));
+        var parameters = string.Join(", ", properties.Select(p => $"{sqlDefine.ParamterPrefx}{p.GetSqlName()}"));
         
-        sb.AppendLine($"cmd.CommandText = \"INSERT INTO [{tableName}] ({columns}) VALUES ({parameters})\";");
+        sb.AppendLine($"cmd.CommandText = \"INSERT INTO {sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"")} ({columns}) VALUES ({parameters})\";");
         sb.AppendLine();
         
         // Add parameters with proper types and null handling
@@ -2340,7 +2341,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         {
             var sqlName = prop.GetSqlName();
             sb.AppendLine($"var param{prop.Name} = cmd.CreateParameter();");
-            sb.AppendLine($"param{prop.Name}.ParameterName = \"@{sqlName}\";");
+            sb.AppendLine($"param{prop.Name}.ParameterName = \"{sqlDefine.ParamterPrefx}{sqlName}\";");
             sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
             
             // Improved null handling
@@ -2408,8 +2409,9 @@ public abstract class AbstractGenerator : ISourceGenerator
         
         sb.AppendLine("using var cmd = connection.CreateCommand();");
         
-        var setClauses = string.Join(", ", properties.Select(p => $"[{p.GetSqlName()}] = @{p.GetSqlName()}"));
-        sb.AppendLine($"cmd.CommandText = \"UPDATE [{tableName}] SET {setClauses} WHERE [id] = @id\";");
+        var sqlDefine = GetSqlDefineForRepository(method);
+        var setClauses = string.Join(", ", properties.Select(p => $"{sqlDefine.WrapColumn(p.GetSqlName()).Replace("\"", "\\\"")} = {sqlDefine.ParamterPrefx}{p.GetSqlName()}"));
+        sb.AppendLine($"cmd.CommandText = \"UPDATE {sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"")} SET {setClauses} WHERE {sqlDefine.WrapColumn("id").Replace("\"", "\\\"")} = {sqlDefine.ParamterPrefx}id\";");
         sb.AppendLine();
         
         // Add SET clause parameters
@@ -2417,7 +2419,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         {
             var sqlName = prop.GetSqlName();
             sb.AppendLine($"var param{prop.Name} = cmd.CreateParameter();");
-            sb.AppendLine($"param{prop.Name}.ParameterName = \"@{sqlName}\";");
+            sb.AppendLine($"param{prop.Name}.ParameterName = \"{sqlDefine.ParamterPrefx}{sqlName}\";");
             sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
             
             // Improved null handling
@@ -2435,7 +2437,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         
         // Add ID parameter for WHERE clause
         sb.AppendLine("var paramId = cmd.CreateParameter();");
-        sb.AppendLine("paramId.ParameterName = \"@id\";");
+        sb.AppendLine($"paramId.ParameterName = \"{sqlDefine.ParamterPrefx}id\";");
         sb.AppendLine("paramId.DbType = global::System.Data.DbType.Int32;");
         sb.AppendLine($"paramId.Value = {entityParam.Name}.Id;");
         sb.AppendLine("cmd.Parameters.Add(paramId);");
@@ -3120,9 +3122,10 @@ public abstract class AbstractGenerator : ISourceGenerator
         // Create command
         sb.AppendLine("__cmd__ = connection.CreateCommand();");
         
-        var columns = string.Join(", ", properties.Select(p => $"[{p.GetSqlName()}]"));
-        var parameters = string.Join(", ", properties.Select(p => $"@{p.GetSqlName()}"));
-        sb.AppendLine($"__cmd__.CommandText = \"INSERT INTO [{tableName}] ({columns}) VALUES ({parameters})\";");
+        var sqlDefine = GetSqlDefineForRepository(method);
+        var columns = string.Join(", ", properties.Select(p => sqlDefine.WrapColumn(p.GetSqlName()).Replace("\"", "\\\"")));
+        var parameters = string.Join(", ", properties.Select(p => $"{sqlDefine.ParamterPrefx}{p.GetSqlName()}"));
+        sb.AppendLine($"__cmd__.CommandText = \"INSERT INTO {sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"")} ({columns}) VALUES ({parameters})\";");
         sb.AppendLine();
         
         // Add parameters
@@ -3130,7 +3133,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         {
             var sqlName = prop.GetSqlName();
             sb.AppendLine($"var param{prop.Name} = __cmd__.CreateParameter();");
-            sb.AppendLine($"param{prop.Name}.ParameterName = \"@{sqlName}\";");
+            sb.AppendLine($"param{prop.Name}.ParameterName = \"{sqlDefine.ParamterPrefx}{sqlName}\";");
             sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
             
             if (prop.Type.IsReferenceType || IsNullableValueType(prop.Type))
@@ -3225,8 +3228,9 @@ public abstract class AbstractGenerator : ISourceGenerator
         // Create command
         sb.AppendLine("__cmd__ = connection.CreateCommand();");
         
-        var setClauses = string.Join(", ", properties.Select(p => $"[{p.GetSqlName()}] = @{p.GetSqlName()}"));
-        sb.AppendLine($"__cmd__.CommandText = \"UPDATE [{tableName}] SET {setClauses} WHERE [id] = @id\";");
+        var sqlDefine = GetSqlDefineForRepository(method);
+        var setClauses = string.Join(", ", properties.Select(p => $"{sqlDefine.WrapColumn(p.GetSqlName()).Replace("\"", "\\\"")} = {sqlDefine.ParamterPrefx}{p.GetSqlName()}"));
+        sb.AppendLine($"__cmd__.CommandText = \"UPDATE {sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"")} SET {setClauses} WHERE {sqlDefine.WrapColumn("id").Replace("\"", "\\\"")} = {sqlDefine.ParamterPrefx}id\";");
         sb.AppendLine();
         
         // Add SET clause parameters
@@ -3234,7 +3238,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         {
             var sqlName = prop.GetSqlName();
             sb.AppendLine($"var param{prop.Name} = __cmd__.CreateParameter();");
-            sb.AppendLine($"param{prop.Name}.ParameterName = \"@{sqlName}\";");
+            sb.AppendLine($"param{prop.Name}.ParameterName = \"{sqlDefine.ParamterPrefx}{sqlName}\";");
             sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
             
             if (prop.Type.IsReferenceType || IsNullableValueType(prop.Type))
@@ -3254,7 +3258,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         if (idProperty != null)
         {
             sb.AppendLine("var paramId = __cmd__.CreateParameter();");
-            sb.AppendLine("paramId.ParameterName = \"@id\";");
+            sb.AppendLine($"paramId.ParameterName = \"{sqlDefine.ParamterPrefx}id\";");
             sb.AppendLine($"paramId.DbType = {GetDbTypeForProperty(idProperty)};");
             sb.AppendLine($"paramId.Value = {entityParam.Name}.{idProperty.Name};");
             sb.AppendLine("__cmd__.Parameters.Add(paramId);");

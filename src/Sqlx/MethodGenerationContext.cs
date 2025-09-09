@@ -459,14 +459,35 @@ internal class MethodGenerationContext : GenerationContextBase
                 var isList = DeclareReturnType == ReturnTypes.List;
                 if (isList) WriteDeclareReturnList(sb);
 
+                // Cache column ordinals for performance
+                var columnNames = GetColumnNames(returnType);
+                WriteCachedOrdinals(sb, columnNames);
+                
                 WriteBeginReader(sb);
+                
                 if (returnType.IsScalarType())
                 {
-                    sb.AppendLineIf(isList, $"{ResultName}.Add({returnType.GetDataReadIndexExpression(DbReaderName, 0)});", $"yield return {returnType.GetDataReadIndexExpression(DbReaderName, 0)};");
+                    sb.AppendLineIf(isList, $"{ResultName}.Add({returnType.GetDataReadExpressionWithCachedOrdinal(DbReaderName, "Column0", "__ordinal_Column0")});", $"yield return {returnType.GetDataReadExpressionWithCachedOrdinal(DbReaderName, "Column0", "__ordinal_Column0")};");
                 }
                 else if (isTuple)
                 {
-                    var tupleJoins = string.Join(", ", ((INamedTypeSymbol)returnType.UnwrapTaskType()).TypeArguments.Select((x, index) => x.GetDataReadIndexExpression(DbReaderName, index)));
+                    var tupleType = (INamedTypeSymbol)returnType.UnwrapTaskType();
+                    var tupleArgs = tupleType.TypeArguments;
+                    
+                    // For tuples, try to get field names from tuple type
+                    string[] fieldNames;
+                    if (tupleType.TupleElements != null && tupleType.TupleElements.Length > 0)
+                    {
+                        fieldNames = tupleType.TupleElements.Select(e => e.Name).ToArray();
+                    }
+                    else
+                    {
+                        // Fallback to default column names
+                        fieldNames = tupleArgs.Select((_, index) => $"Column{index}").ToArray();
+                    }
+                    
+                    var tupleJoins = string.Join(", ", tupleArgs.Select((x, index) => 
+                        x.GetDataReadExpressionWithCachedOrdinal(DbReaderName, fieldNames[index], $"__ordinal_{fieldNames[index]}")));
                     sb.AppendLineIf(isList, $"{ResultName}.Add(({tupleJoins}));", $"yield return ({tupleJoins});");
                 }
                 else
@@ -509,6 +530,10 @@ internal class MethodGenerationContext : GenerationContextBase
 
                 var isList = DeclareReturnType == ReturnTypes.List;
                 if (isList) WriteDeclareReturnList(sb);
+
+                // Cache column ordinals for performance
+                var columnNames = GetColumnNames(returnType);
+                WriteCachedOrdinals(sb, columnNames);
 
                 var readMethod = IsAsync ? $"ReadAsync({CancellationTokenKey})" : "Read()";
 
@@ -721,7 +746,8 @@ internal class MethodGenerationContext : GenerationContextBase
         {
             foreach (var item in properties)
             {
-                sb.AppendLine($"{DataName}.{item.Name} = {item.Type.GetDataReadExpression(DbReaderName, item.GetSqlName())};");
+                var columnName = item.GetSqlName();
+                sb.AppendLine($"{DataName}.{item.Name} = {item.Type.GetDataReadExpressionWithCachedOrdinal(DbReaderName, columnName, $"__ordinal_{columnName}")};");
             }
         }
 
@@ -798,6 +824,46 @@ internal class MethodGenerationContext : GenerationContextBase
             methodDef.ConstructorArguments[2].ToString()!,
             methodDef.ConstructorArguments[3].ToString()!,
             methodDef.ConstructorArguments[4].ToString()!);
+    }
+
+    private List<string> GetColumnNames(ITypeSymbol returnType)
+    {
+        var columnNames = new List<string>();
+        
+        if (returnType.IsScalarType())
+        {
+            columnNames.Add("Column0");
+        }
+        else if (IsTuple(returnType))
+        {
+            var tupleType = (INamedTypeSymbol)returnType.UnwrapTaskType();
+            
+            if (tupleType.TupleElements != null && tupleType.TupleElements.Length > 0)
+            {
+                columnNames.AddRange(tupleType.TupleElements.Select(e => e.Name));
+            }
+            else
+            {
+                var tupleArgs = tupleType.TypeArguments;
+                columnNames.AddRange(tupleArgs.Select((_, index) => $"Column{index}"));
+            }
+        }
+        else
+        {
+            // For object types, get property names
+            var properties = GetPropertySymbols(returnType);
+            columnNames.AddRange(properties.Select(p => p.GetSqlName()));
+        }
+        
+        return columnNames;
+    }
+
+    private void WriteCachedOrdinals(IndentedStringBuilder sb, List<string> columnNames)
+    {
+        foreach (var columnName in columnNames)
+        {
+            sb.AppendLine($"int __ordinal_{columnName} = {DbReaderName}.GetOrdinal(\"{columnName}\");");
+        }
     }
 
     private ColumnDefine DeclareParamter(IndentedStringBuilder sb, ISymbol par, ITypeSymbol parType, string prefx)
@@ -1248,4 +1314,55 @@ internal enum SqlTypes
     MySql = 0,
     SqlServer = 1,
     Postgresql = 2,
+}
+
+internal static class ExtensionsWithCache
+{
+    internal static string GetDataReadExpressionWithCachedOrdinal(this ITypeSymbol type, string readerName, string columnName, string ordinalVariableName)
+    {
+        var unwrapType = type.UnwrapNullableType();
+        var method = type.GetDataReaderMethod();
+        var isNullable = type.IsNullableType();
+
+        if (!string.IsNullOrEmpty(method))
+        {
+            // For nullable types or nullable reference types, check for DBNull
+            if (isNullable || unwrapType.IsValueType || unwrapType.SpecialType == SpecialType.System_String || type.Name == "Guid")
+            {
+                // For nullable value types and strings, return proper null handling
+                if (unwrapType.SpecialType == SpecialType.System_String)
+                {
+                    // String special case: check if nullable annotation is present
+                    if (isNullable)
+                    {
+                        return $"{readerName}.IsDBNull({ordinalVariableName}) ? null : {readerName}.{method}({ordinalVariableName})";
+                    }
+                    else
+                    {
+                        // Non-nullable string: return empty string or throw
+                        return $"{readerName}.IsDBNull({ordinalVariableName}) ? string.Empty : {readerName}.{method}({ordinalVariableName})";
+                    }
+                }
+                else if (isNullable && unwrapType.IsValueType)
+                {
+                    // Nullable value types: return null if DBNull
+                    return $"{readerName}.IsDBNull({ordinalVariableName}) ? null : {readerName}.{method}({ordinalVariableName})";
+                }
+                else if (unwrapType.IsValueType)
+                {
+                    // Non-nullable value types: return default if DBNull
+                    return $"{readerName}.IsDBNull({ordinalVariableName}) ? default : {readerName}.{method}({ordinalVariableName})";
+                }
+                else
+                {
+                    // Reference types: return null if DBNull
+                    return $"{readerName}.IsDBNull({ordinalVariableName}) ? null : {readerName}.{method}({ordinalVariableName})";
+                }
+            }
+
+            return $"{readerName}.{method}({ordinalVariableName})";
+        }
+
+        throw new NotSupportedException($"No support type {type.Name}");
+    }
 }

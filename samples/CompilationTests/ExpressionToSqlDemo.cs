@@ -35,7 +35,7 @@ internal static class ExpressionToSqlDemo
 
         var template = query.ToTemplate();
         WriteLine($"   SQL: {template.Sql}");
-        WriteLine($"   参数: {string.Join(", ", template.Parameters)}");
+        WriteLine($"   参数: {string.Join(", ", (IEnumerable<object>)template.Parameters)}");
 
         query.Dispose(); // 释放资源
 
@@ -50,7 +50,7 @@ internal static class ExpressionToSqlDemo
 
         var complexTemplate = complexQuery.ToTemplate();
         WriteLine($"   SQL: {complexTemplate.Sql}");
-        WriteLine($"   参数: {string.Join(", ", complexTemplate.Parameters)}");
+        WriteLine($"   参数: {string.Join(", ", (IEnumerable<object>)complexTemplate.Parameters)}");
 
         complexQuery.Dispose();
 

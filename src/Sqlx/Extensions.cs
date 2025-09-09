@@ -234,8 +234,16 @@ internal static class Extensions
                 // For nullable value types and strings, return proper null handling
                 if (unwrapType.SpecialType == SpecialType.System_String)
                 {
-                    // String special case: can be null or empty string
-                    return $"{readerName}.IsDBNull({ordinalExpression}) ? null : {readerName}.{method}({ordinalExpression})";
+                    // String special case: check if nullable annotation is present
+                    if (isNullable)
+                    {
+                        return $"{readerName}.IsDBNull({ordinalExpression}) ? null : {readerName}.{method}({ordinalExpression})";
+                    }
+                    else
+                    {
+                        // Non-nullable string: return empty string or throw
+                        return $"{readerName}.IsDBNull({ordinalExpression}) ? string.Empty : {readerName}.{method}({ordinalExpression})";
+                    }
                 }
                 else if (isNullable && unwrapType.IsValueType)
                 {

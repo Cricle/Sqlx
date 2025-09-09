@@ -71,8 +71,8 @@ internal class Program
         {
             var person = new PersonInformation()
             {
-                PersonId = reader.GetInt32(0),
-                PersonName = reader.GetString(1),
+                PersonId = reader.GetInt32(reader.GetOrdinal("PersonId")),
+                PersonName = reader.GetString(reader.GetOrdinal("PersonName")),
             };
             WritePerson(person);
             i++;

@@ -8,6 +8,7 @@ namespace Sqlx;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
+using Sqlx.Core;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -113,6 +114,14 @@ public abstract class AbstractGenerator : ISourceGenerator
             {
                 serviceInterface = firstArg.Value as INamedTypeSymbol;
                 System.Diagnostics.Debug.WriteLine($"Got type from TypedConstantKind.Type: {serviceInterface?.Name}");
+                
+                // If it's a generic interface, we need to handle type parameters
+                if (serviceInterface?.IsGenericType == true)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Found generic interface: {serviceInterface.Name} with {serviceInterface.TypeParameters.Length} type parameters");
+                    // For generic interfaces, we'll construct the interface with the actual type arguments from the repository class
+                    serviceInterface = ResolveGenericServiceInterface(serviceInterface, repositoryClass);
+                }
             }
             else if (firstArg.Kind == TypedConstantKind.Primitive && firstArg.Value is string typeName)
             {
@@ -404,8 +413,28 @@ public abstract class AbstractGenerator : ISourceGenerator
     {
         try
         {
-            // Look for methods that return or accept entity types
-            // Common patterns: GetAll() -> IList<Entity>, GetById(int) -> Entity, Create(Entity) -> int
+            System.Diagnostics.Debug.WriteLine($"=== InferEntityTypeFromServiceInterface START ===");
+            System.Diagnostics.Debug.WriteLine($"Service interface: {serviceInterface.Name}");
+            System.Diagnostics.Debug.WriteLine($"Is generic: {serviceInterface.IsGenericType}");
+            
+            // For generic interfaces, check if we have type arguments (already constructed)
+            if (serviceInterface.IsGenericType && serviceInterface.TypeArguments.Length > 0)
+            {
+                System.Diagnostics.Debug.WriteLine($"Found {serviceInterface.TypeArguments.Length} type arguments");
+                for (int i = 0; i < serviceInterface.TypeArguments.Length; i++)
+                {
+                    var typeArg = serviceInterface.TypeArguments[i];
+                    System.Diagnostics.Debug.WriteLine($"Type argument {i}: {typeArg.Name} ({typeArg.ToDisplayString()})");
+                    
+                    // Assume the first type argument is the entity type for repositories
+                    if (i == 0 && TypeAnalyzer.IsLikelyEntityType(typeArg))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Using first type argument as entity type: {typeArg.Name}");
+                        return typeArg as INamedTypeSymbol;
+                    }
+                }
+            }
+            
             var methods = serviceInterface.GetMembers().OfType<IMethodSymbol>().ToArray();
             System.Diagnostics.Debug.WriteLine($"Found {methods.Length} methods in interface {serviceInterface.Name}");
 
@@ -413,39 +442,58 @@ public abstract class AbstractGenerator : ISourceGenerator
 
             foreach (var method in methods)
             {
-                System.Diagnostics.Debug.WriteLine($"Analyzing method: {method.Name} - Return: {method.ReturnType}, Params: {method.Parameters.Length}");
-                
-                // Check return type for generic collections like IList<T>, Task<IList<T>>
-                var entityType = ExtractEntityTypeFromType(method.ReturnType);
-                if (entityType != null && IsLikelyEntityType(entityType))
-                {
-                    System.Diagnostics.Debug.WriteLine($"Found entity type from return type: {entityType.Name}");
-                    candidateTypes[entityType] = (candidateTypes.TryGetValue(entityType, out var existingCount) ? existingCount : 0) + 2; // Higher weight for return types
-                }
-
-                // Check parameters for entity types
-                foreach (var parameter in method.Parameters)
-                {
-                    entityType = ExtractEntityTypeFromType(parameter.Type);
-                    if (entityType != null && IsLikelyEntityType(entityType))
-                    {
-                        System.Diagnostics.Debug.WriteLine($"Found entity type from parameter: {entityType.Name}");
-                        candidateTypes[entityType] = (candidateTypes.TryGetValue(entityType, out var existingCount2) ? existingCount2 : 0) + 1;
-                    }
-                }
+                AnalyzeMethodForEntityTypes(method, candidateTypes);
             }
 
-            // Return the most frequently referenced entity type
-            if (candidateTypes.Count > 0)
+            return SelectBestEntityCandidate(candidateTypes) ?? InferFromInterfaceName(serviceInterface);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Exception in InferEntityTypeFromServiceInterface: {ex.Message}");
+            return null;
+        }
+    }
+
+    private void AnalyzeMethodForEntityTypes(IMethodSymbol method, Dictionary<INamedTypeSymbol, int> candidateTypes)
+    {
+        System.Diagnostics.Debug.WriteLine($"Analyzing method: {method.Name}");
+        
+        // Check return type (higher weight)
+        var returnEntityType = TypeAnalyzer.ExtractEntityType(method.ReturnType);
+        if (returnEntityType != null && TypeAnalyzer.IsLikelyEntityType(returnEntityType))
+        {
+            candidateTypes[returnEntityType] = (candidateTypes.TryGetValue(returnEntityType, out var existingCount) ? existingCount : 0) + 2;
+        }
+
+        // Check parameters (lower weight)
+        foreach (var parameter in method.Parameters)
+        {
+            var paramEntityType = TypeAnalyzer.ExtractEntityType(parameter.Type);
+            if (paramEntityType != null && TypeAnalyzer.IsLikelyEntityType(paramEntityType))
             {
-                var mostLikelyEntity = candidateTypes.OrderByDescending(kvp => kvp.Value).First().Key;
-                System.Diagnostics.Debug.WriteLine($"Selected entity type: {mostLikelyEntity.Name} (score: {candidateTypes[mostLikelyEntity]})");
-                return mostLikelyEntity;
+                candidateTypes[paramEntityType] = (candidateTypes.TryGetValue(paramEntityType, out var existingCount2) ? existingCount2 : 0) + 1;
             }
+        }
+    }
 
-            // Fallback: try to infer from interface name
-            // E.g., IUserService -> User
-            var interfaceName = serviceInterface.Name;
+    private INamedTypeSymbol? SelectBestEntityCandidate(Dictionary<INamedTypeSymbol, int> candidateTypes)
+    {
+        if (candidateTypes.Count == 0)
+        {
+            System.Diagnostics.Debug.WriteLine("No candidate entity types found");
+            return null;
+        }
+
+        var bestCandidate = candidateTypes.OrderByDescending(kvp => kvp.Value).First();
+        System.Diagnostics.Debug.WriteLine($"Selected entity type: {bestCandidate.Key.Name} with score {bestCandidate.Value}");
+        return bestCandidate.Key;
+    }
+
+    private INamedTypeSymbol? InferFromInterfaceName(INamedTypeSymbol serviceInterface)
+    {
+        // Fallback: try to infer from interface name
+        // E.g., IUserService -> User
+        var interfaceName = serviceInterface.Name;
             if (interfaceName.StartsWith("I") && interfaceName.EndsWith("Service"))
             {
                 var entityName = interfaceName.Substring(1, interfaceName.Length - 8); // Remove 'I' prefix and 'Service' suffix
@@ -460,14 +508,8 @@ public abstract class AbstractGenerator : ISourceGenerator
                 }
             }
 
-            System.Diagnostics.Debug.WriteLine($"No entity type found in interface {serviceInterface.Name}");
-            return null;
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Exception in InferEntityTypeFromServiceInterface: {ex.Message}");
-            return null;
-        }
+        System.Diagnostics.Debug.WriteLine($"No entity type found in interface {serviceInterface.Name}");
+        return null;
     }
 
     private INamedTypeSymbol? FindTypeByName(INamedTypeSymbol serviceInterface, string entityName)
@@ -482,7 +524,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             var typesInNamespace = currentNamespace.GetTypeMembers();
             foreach (var type in typesInNamespace)
             {
-                if (type.Name == entityName && IsLikelyEntityType(type))
+                if (type.Name == entityName && TypeAnalyzer.IsLikelyEntityType(type))
                 {
                     System.Diagnostics.Debug.WriteLine($"Found entity type '{entityName}' in same namespace");
                     return type;
@@ -496,7 +538,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                 var parentTypes = parentNamespace.GetTypeMembers();
                 foreach (var type in parentTypes)
                 {
-                    if (type.Name == entityName && IsLikelyEntityType(type))
+                    if (type.Name == entityName && TypeAnalyzer.IsLikelyEntityType(type))
                     {
                         System.Diagnostics.Debug.WriteLine($"Found entity type '{entityName}' in parent namespace");
                         return type;
@@ -514,79 +556,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         }
     }
 
-    private INamedTypeSymbol? ExtractEntityTypeFromType(ITypeSymbol type)
-    {
-        try
-        {
-            if (type == null) return null;
-
-            // Handle Task<T>
-            if (type is INamedTypeSymbol namedType && namedType.Name == "Task" && namedType.TypeArguments.Length == 1)
-            {
-                return ExtractEntityTypeFromType(namedType.TypeArguments[0]);
-            }
-
-            // Handle IList<T>, IEnumerable<T>, List<T>, etc.
-            if (type is INamedTypeSymbol collectionType && collectionType.TypeArguments.Length == 1)
-            {
-                var elementType = collectionType.TypeArguments[0];
-                if (elementType is INamedTypeSymbol entityType && IsLikelyEntityType(entityType))
-                {
-                    return entityType;
-                }
-            }
-
-            // Handle direct entity type
-            if (type is INamedTypeSymbol directType && IsLikelyEntityType(directType))
-            {
-                return directType;
-            }
-
-            return null;
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Exception in ExtractEntityTypeFromType: {ex.Message}");
-            return null;
-        }
-    }
-
-    private bool IsLikelyEntityType(INamedTypeSymbol type)
-    {
-        try
-        {
-            if (type == null) return false;
-
-            // Skip primitive types and system types
-            if (type.SpecialType != SpecialType.None)
-            {
-                return false;
-            }
-
-            // Skip system namespace types
-            var namespaceName = type.ContainingNamespace?.ToDisplayString() ?? "";
-            if (namespaceName.StartsWith("System"))
-            {
-                return false;
-            }
-
-            // Must be a class
-            if (type.TypeKind != TypeKind.Class)
-            {
-                return false;
-            }
-
-            // Should have properties (typical of entities)
-            var hasProperties = type.GetMembers().OfType<IPropertySymbol>().Any();
-            System.Diagnostics.Debug.WriteLine($"Type {type.Name}: hasProperties={hasProperties}");
-            return hasProperties;
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Exception in IsLikelyEntityType: {ex.Message}");
-            return false;
-        }
-    }
+    // These methods are now provided by TypeAnalyzer.ExtractEntityType and TypeAnalyzer.IsLikelyEntityType
 
     private void GenerateRepositorySource(IndentedStringBuilder sb, INamedTypeSymbol repositoryClass, INamedTypeSymbol serviceInterface, INamedTypeSymbol entityType, string tableName)
     {
@@ -1066,7 +1036,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         sb.AppendLine("//     // e.g., result caching, metrics, logging");
         sb.AppendLine("// }");
         sb.AppendLine("//");
-        sb.AppendLine("// partial void OnExecuteFail(string methodName, DbCommand command, Exception exception, long elapsed)");
+        sb.AppendLine("// partial void OnExecuteFail(string methodName, DbCommand? command, Exception exception, long elapsed)");
         sb.AppendLine("// {");
         sb.AppendLine("//     // Add logic when execution fails");
         sb.AppendLine("//     // e.g., error logging, retry logic, fallback handling");
@@ -1080,7 +1050,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         sb.AppendLine($"{staticKeyword}partial void OnExecuted(string methodName, DbCommand command, object? result, long elapsed);");
         sb.AppendLine();
         
-        sb.AppendLine($"{staticKeyword}partial void OnExecuteFail(string methodName, DbCommand command, Exception exception, long elapsed);");
+        sb.AppendLine($"{staticKeyword}partial void OnExecuteFail(string methodName, DbCommand? command, Exception exception, long elapsed);");
         sb.AppendLine();
     }
 
@@ -1294,7 +1264,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.PushIndent();
             sb.AppendLine("__exception__ = ex;");
             sb.AppendLine("var __elapsed__ = System.Diagnostics.Stopwatch.GetTimestamp() - __startTime__;");
-            sb.AppendLine($"OnExecuteFail(\"{methodName}\", __cmd__ ?? connection.CreateCommand(), ex, __elapsed__);");
+            sb.AppendLine($"OnExecuteFail(\"{methodName}\", __cmd__, ex, __elapsed__);");
             sb.AppendLine("throw;");
             sb.PopIndent();
             sb.AppendLine("}");
@@ -1305,7 +1275,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine("{");
             sb.PushIndent();
             sb.AppendLine("var __elapsed__ = System.Diagnostics.Stopwatch.GetTimestamp() - __startTime__;");
-            sb.AppendLine($"OnExecuted(\"{methodName}\", __cmd__ ?? connection.CreateCommand(), __result__, __elapsed__);");
+            sb.AppendLine($"OnExecuted(\"{methodName}\", __cmd__, __result__, __elapsed__);");
             sb.PopIndent();
             sb.AppendLine("}");
             sb.AppendLine("__cmd__?.Dispose();");
@@ -1319,9 +1289,56 @@ public abstract class AbstractGenerator : ISourceGenerator
         }
     }
 
+    private SqlDefine GetSqlDefineForRepository(IMethodSymbol method)
+    {
+        // Check for SqlDefine attribute on method first
+        var methodSqlDefineAttr = method.GetAttributes().FirstOrDefault(attr => attr.AttributeClass?.Name == "SqlDefineAttribute");
+        if (methodSqlDefineAttr != null)
+        {
+            return ParseSqlDefineAttribute(methodSqlDefineAttr);
+        }
+
+        // Check for SqlDefine attribute on containing class
+        var classSqlDefineAttr = method.ContainingType.GetAttributes().FirstOrDefault(attr => attr.AttributeClass?.Name == "SqlDefineAttribute");
+        if (classSqlDefineAttr != null)
+        {
+            return ParseSqlDefineAttribute(classSqlDefineAttr);
+        }
+
+        // Default to SqlServer
+        return SqlDefine.SqlServer;
+    }
+
+    private SqlDefine ParseSqlDefineAttribute(AttributeData attribute)
+    {
+        if (attribute.ConstructorArguments.Length == 1)
+        {
+            var defineType = (int)attribute.ConstructorArguments[0].Value!;
+            return defineType switch
+            {
+                1 => SqlDefine.SqlServer,
+                2 => SqlDefine.PgSql,
+                _ => SqlDefine.MySql,
+            };
+        }
+        else if (attribute.ConstructorArguments.Length == 5)
+        {
+            return new SqlDefine(
+                attribute.ConstructorArguments[0].Value?.ToString() ?? "[",
+                attribute.ConstructorArguments[1].Value?.ToString() ?? "]",
+                attribute.ConstructorArguments[2].Value?.ToString() ?? "'",
+                attribute.ConstructorArguments[3].Value?.ToString() ?? "'",
+                attribute.ConstructorArguments[4].Value?.ToString() ?? "@");
+        }
+
+        return SqlDefine.SqlServer;
+    }
+
     private string GenerateSqlCommand(IMethodSymbol method, string tableName)
     {
         var methodName = method.Name.ToLowerInvariant();
+        var sqlDefine = GetSqlDefineForRepository(method);
+        var wrappedTableName = sqlDefine.WrapColumn(tableName);
         
         // Check for Sqlx attribute first
         var sqlxAttr = method.GetAttributes().FirstOrDefault(attr => attr.AttributeClass?.Name == "SqlxAttribute");
@@ -1340,65 +1357,69 @@ public abstract class AbstractGenerator : ISourceGenerator
         {
             var executeType = executeTypeAttr.ConstructorArguments[0].Value?.ToString();
             var table = executeTypeAttr.ConstructorArguments[1].Value?.ToString() ?? tableName;
+            var wrappedTable = sqlDefine.WrapColumn(table);
             
             switch (executeType)
             {
                 case "Insert":
-                    return GenerateInsertSql(method, table);
+                    return GenerateInsertSql(method, table, sqlDefine);
                 case "Update":
-                    return GenerateUpdateSql(method, table);
+                    return GenerateUpdateSql(method, table, sqlDefine);
                 case "Delete":
-                    return GenerateDeleteSql(method, table);
+                    return GenerateDeleteSql(method, table, sqlDefine);
                 default:
-                    return $"\"SELECT * FROM {table}\"";
+                    return $"\"SELECT * FROM {wrappedTable}\"";
             }
         }
         
         // Fallback to pattern-based generation
         if (methodName.Contains("getall") || methodName.Contains("list"))
         {
-            return $"\"SELECT * FROM {tableName}\"";
+            return $"\"SELECT * FROM {wrappedTableName}\"";
         }
         else if (methodName.Contains("getby") || methodName.Contains("find"))
         {
             var paramName = method.Parameters.FirstOrDefault()?.Name ?? "id";
-            return $"\"SELECT * FROM {tableName} WHERE Id = @{paramName}\"";
+            return $"\"SELECT * FROM {wrappedTableName} WHERE Id = {sqlDefine.ParamterPrefx}{paramName}\"";
         }
         else if (methodName.Contains("create") || methodName.Contains("insert"))
         {
-            return GenerateInsertSql(method, tableName);
+            return GenerateInsertSql(method, tableName, sqlDefine);
         }
         else if (methodName.Contains("update"))
         {
-            return GenerateUpdateSql(method, tableName);
+            return GenerateUpdateSql(method, tableName, sqlDefine);
         }
         else if (methodName.Contains("delete") || methodName.Contains("remove"))
         {
-            return GenerateDeleteSql(method, tableName);
+            return GenerateDeleteSql(method, tableName, sqlDefine);
         }
         
-        return $"\"SELECT * FROM {tableName}\"";
+        return $"\"SELECT * FROM {wrappedTableName}\"";
     }
 
-    private string GenerateInsertSql(IMethodSymbol method, string tableName)
+    private string GenerateInsertSql(IMethodSymbol method, string tableName, SqlDefine sqlDefine)
     {
+        var wrappedTableName = sqlDefine.WrapColumn(tableName);
         var entityParam = method.Parameters.FirstOrDefault(p => p.Type.TypeKind == TypeKind.Class && p.Type.Name != "String");
         if (entityParam != null)
         {
-            return $"\"INSERT INTO {tableName} (Name) VALUES (@Name)\""; // Simplified
+            return $"\"INSERT INTO {wrappedTableName} (Name) VALUES ({sqlDefine.ParamterPrefx}Name)\""; // Simplified
         }
-        return $"\"INSERT INTO {tableName} DEFAULT VALUES\"";
+        return $"\"INSERT INTO {wrappedTableName} DEFAULT VALUES\"";
     }
 
-    private string GenerateUpdateSql(IMethodSymbol method, string tableName)
+    private string GenerateUpdateSql(IMethodSymbol method, string tableName, SqlDefine sqlDefine)
     {
-        return $"\"UPDATE {tableName} SET Name = @Name WHERE Id = @Id\""; // Simplified
+        var wrappedTableName = sqlDefine.WrapColumn(tableName);
+        return $"\"UPDATE {wrappedTableName} SET Name = {sqlDefine.ParamterPrefx}Name WHERE Id = {sqlDefine.ParamterPrefx}Id\""; // Simplified
     }
 
-    private string GenerateDeleteSql(IMethodSymbol method, string tableName)
+    private string GenerateDeleteSql(IMethodSymbol method, string tableName, SqlDefine sqlDefine)
     {
+        var wrappedTableName = sqlDefine.WrapColumn(tableName);
         var paramName = method.Parameters.FirstOrDefault()?.Name ?? "id";
-        return $"\"DELETE FROM {tableName} WHERE Id = @{paramName}\"";
+        return $"\"DELETE FROM {wrappedTableName} WHERE Id = {sqlDefine.ParamterPrefx}{paramName}\"";
     }
 
     private void GenerateRepositoryParameterAssignments(IndentedStringBuilder sb, IMethodSymbol method)
@@ -3978,6 +3999,105 @@ public abstract class AbstractGenerator : ISourceGenerator
         }
     }
 
+    
+    /// <summary>
+    /// Resolves generic service interface with actual type arguments from repository class.
+    /// </summary>
+    private static INamedTypeSymbol? ResolveGenericServiceInterface(INamedTypeSymbol genericInterface, INamedTypeSymbol repositoryClass)
+    {
+        System.Diagnostics.Debug.WriteLine($"=== ResolveGenericServiceInterface START ===");
+        System.Diagnostics.Debug.WriteLine($"Generic interface: {genericInterface.Name}");
+        System.Diagnostics.Debug.WriteLine($"Repository class: {repositoryClass.Name}");
+        
+        // Look for type arguments in repository class name or base types
+        // Example: UserRepository<User> should resolve IRepository<T> to IRepository<User>
+        
+        if (repositoryClass.IsGenericType && repositoryClass.TypeArguments.Length > 0)
+        {
+            System.Diagnostics.Debug.WriteLine($"Repository class is generic with {repositoryClass.TypeArguments.Length} type arguments");
+            
+            // Try to construct the generic interface with repository's type arguments
+            if (genericInterface.TypeParameters.Length == repositoryClass.TypeArguments.Length)
+            {
+                var constructedInterface = genericInterface.ConstructedFrom.Construct(repositoryClass.TypeArguments.ToArray());
+                System.Diagnostics.Debug.WriteLine($"Constructed interface: {constructedInterface.ToDisplayString()}");
+                return constructedInterface;
+            }
+        }
+        
+        // If repository class itself doesn't have type arguments, look for hints in the class name
+        // Example: UserRepository -> try to infer User type
+        var className = repositoryClass.Name;
+        if (className.EndsWith("Repository"))
+        {
+            var entityName = className.Substring(0, className.Length - "Repository".Length);
+            System.Diagnostics.Debug.WriteLine($"Inferred entity name: {entityName}");
+            
+            // Try to find the entity type in the same namespace or related namespaces
+            var entityType = FindEntityTypeByName(repositoryClass.ContainingNamespace, entityName);
+            if (entityType != null && genericInterface.TypeParameters.Length == 1)
+            {
+                System.Diagnostics.Debug.WriteLine($"Found entity type: {entityType.ToDisplayString()}");
+                var constructedInterface = genericInterface.ConstructedFrom.Construct(entityType);
+                System.Diagnostics.Debug.WriteLine($"Constructed interface: {constructedInterface.ToDisplayString()}");
+                return constructedInterface;
+            }
+        }
+        
+        System.Diagnostics.Debug.WriteLine("Could not resolve generic interface, returning original");
+        return genericInterface;
+    }
+    
+    /// <summary>
+    /// Finds entity type by name in the repository's context.
+    /// </summary>
+    private static INamedTypeSymbol? FindEntityTypeByName(INamespaceSymbol startingNamespace, string entityName)
+    {
+        // Search in the same namespace first
+        var currentNamespace = startingNamespace;
+        var entityType = FindTypeInNamespace(currentNamespace, entityName);
+        if (entityType != null)
+        {
+            return entityType;
+        }
+        
+        // Search in parent namespaces
+        var parentNamespace = currentNamespace.ContainingNamespace;
+        while (parentNamespace != null && !parentNamespace.IsGlobalNamespace)
+        {
+            entityType = FindTypeInNamespace(parentNamespace, entityName);
+            if (entityType != null)
+            {
+                return entityType;
+            }
+            parentNamespace = parentNamespace.ContainingNamespace;
+        }
+        
+        return null;
+    }
+    
+    /// <summary>
+    /// Finds a type by name within a specific namespace.
+    /// </summary>
+    private static INamedTypeSymbol? FindTypeInNamespace(INamespaceSymbol namespaceSymbol, string typeName)
+    {
+        foreach (var member in namespaceSymbol.GetMembers())
+        {
+            if (member is INamedTypeSymbol namedType && namedType.Name == typeName)
+            {
+                return namedType;
+            }
+            else if (member is INamespaceSymbol childNamespace)
+            {
+                var result = FindTypeInNamespace(childNamespace, typeName);
+                if (result != null)
+                {
+                    return result;
+                }
+            }
+        }
+        return null;
+    }
 }
 
 

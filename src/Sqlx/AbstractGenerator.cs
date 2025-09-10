@@ -25,16 +25,22 @@ public abstract class AbstractGenerator : ISourceGenerator
     /// <inheritdoc/>
     public void Execute(GeneratorExecutionContext context)
     {
+        #if DEBUG
         System.Diagnostics.Debug.WriteLine("AbstractGenerator.Execute called");
+        #endif
 
         // Retrieve the populated receiver
         if (context.SyntaxContextReceiver is not ISqlxSyntaxReceiver receiver)
         {
+            #if DEBUG
             System.Diagnostics.Debug.WriteLine("No ISqlxSyntaxReceiver found");
+            #endif
             return;
         }
 
+        #if DEBUG
         System.Diagnostics.Debug.WriteLine($"Found {receiver.Methods.Count} methods and {receiver.RepositoryClasses.Count} repository classes");
+        #endif
 
         INamedTypeSymbol? sqlxAttributeSymbol = context.Compilation.GetTypeByMetadataName("Sqlx.Annotations.SqlxAttribute");
         INamedTypeSymbol? rawSqlAttributeSymbol = context.Compilation.GetTypeByMetadataName("Sqlx.Annotations.RawSqlAttribute");

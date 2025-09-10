@@ -21,7 +21,7 @@ using System.Text;
 /// Stored procedures generator for C#.
 /// </summary>
 [Generator(LanguageNames.CSharp)]
-public class CSharpGenerator : AbstractGenerator
+public partial class CSharpGenerator : AbstractGenerator
 {
     /// <summary>
     /// Gets the C# attribute source using the optimized generator.
@@ -630,91 +630,12 @@ namespace Sqlx.Annotations
     public CSharpGenerator()
     {
         // Initialize performance monitoring for source generation
+        #if DEBUG
         Debug.WriteLine("🚀 Sqlx CSharpGenerator initialized with advanced optimizations");
+        #endif
     }
 
-
-
-
-
-
-
-
-
-    /// <summary>
-    /// C# specific syntax receiver for collecting method symbols and repository classes.
-    /// </summary>
-    private class CSharpSyntaxReceiver : ISqlxSyntaxReceiver
-    {
-        public List<IMethodSymbol> Methods { get; } = new List<IMethodSymbol>();
-        public List<INamedTypeSymbol> RepositoryClasses { get; } = new List<INamedTypeSymbol>();
-
-        public void OnVisitSyntaxNode(GeneratorSyntaxContext context)
-        {
-            if (context.Node is MethodDeclarationSyntax methodDeclaration)
-            {
-                var methodSymbol = context.SemanticModel.GetDeclaredSymbol(methodDeclaration);
-                if (methodSymbol != null && HasSqlxAttribute(methodSymbol))
-                {
-                    Methods.Add(methodSymbol);
-                }
-            }
-            else if (context.Node is ClassDeclarationSyntax classDeclaration)
-            {
-                var classSymbol = context.SemanticModel.GetDeclaredSymbol(classDeclaration);
-                if (classSymbol != null)
-                {
-                    // Debug: log all classes we encounter
-                    System.Diagnostics.Debug.WriteLine($"Found class: {classSymbol.Name}");
-                    if (HasRepositoryForAttribute(classSymbol))
-                    {
-                        System.Diagnostics.Debug.WriteLine(
-                            $"Adding repository class: {classSymbol.Name}");
-                        RepositoryClasses.Add(classSymbol);
-                    }
-                }
-            }
-        }
-
-        public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
-        {
-            // Legacy method - not used in modern Roslyn
-        }
-
-        private static bool HasSqlxAttribute(IMethodSymbol method)
-        {
-            return method.GetAttributes().Any(attr =>
-                attr.AttributeClass?.Name == "SqlxAttribute" ||
-                attr.AttributeClass?.Name == "RawSqlAttribute" ||
-                attr.AttributeClass?.Name == "SqlExecuteTypeAttribute");
-        }
-
-        private static bool HasRepositoryForAttribute(INamedTypeSymbol type)
-        {
-            var attributes = type.GetAttributes();
-            System.Diagnostics.Debug.WriteLine(
-                $"Class {type.Name} has {attributes.Length} attributes:");
-            foreach (var attr in attributes)
-            {
-                System.Diagnostics.Debug.WriteLine(
-                    $"  - {attr.AttributeClass?.Name} ({attr.AttributeClass?.ToDisplayString()})");
-            }
-
-            var hasAttr = attributes.Any(attr => attr.AttributeClass?.Name == "RepositoryForAttribute" || attr.AttributeClass?.Name == "RepositoryFor");
-            // Debug output - this will show in the compiler output
-            if (hasAttr)
-            {
-                System.Diagnostics.Debug.WriteLine(
-                    $"Found RepositoryFor attribute on {type.Name}");
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine(
-                    $"No RepositoryFor attribute found on {type.Name}");
-            }
-            return hasAttr;
-        }
-    }
+    // Syntax receiver moved to partial file: CSharpGenerator.SyntaxReceiver.cs
 
     /// <summary>
     /// Called to initialize the generator and register for the various 
@@ -724,7 +645,9 @@ namespace Sqlx.Annotations
     /// <param name="context">The generator context.</param>
     public override void Initialize(GeneratorInitializationContext context)
     {
+        #if DEBUG
         System.Diagnostics.Debug.WriteLine("CSharpGenerator.Initialize called");
+        #endif
         context.RegisterForSyntaxNotifications(() => new CSharpSyntaxReceiver());
         context.RegisterForPostInitialization(ctx =>
         {

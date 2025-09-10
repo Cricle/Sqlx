@@ -507,7 +507,9 @@ internal static class BatchOperationGenerator
         sb.AppendLine("localTransaction?.Dispose();");
         sb.AppendLine("var operationEndTime = System.Diagnostics.Stopwatch.GetTimestamp();");
         sb.AppendLine("var elapsedMs = (double)(operationEndTime - operationStartTime) / System.Diagnostics.Stopwatch.Frequency * 1000;");
-        sb.AppendLine("System.Diagnostics.Debug.WriteLine($\"Batch {operationType} completed: {{totalAffected}} rows in {{elapsedMs:F2}}ms\");");
+        sb.AppendLine("#if DEBUG");
+        sb.AppendLine("System.Diagnostics.Debug.WriteLine(\"Batch operation completed\");");
+        sb.AppendLine("#endif");
         sb.PopIndent();
         sb.AppendLine("}");
     }

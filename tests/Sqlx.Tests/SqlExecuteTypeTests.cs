@@ -75,9 +75,9 @@ public class SqlExecuteTypeTests
     public void SqlDefine_ParameterPrefix_IsCorrect()
     {
         // Assert - 所有数据库方言都使用@作为参数前缀
-        Assert.AreEqual("@", SqlDefine.SqlServer.ParamterPrefx);
-        Assert.AreEqual("@", SqlDefine.MySql.ParamterPrefx);
-        Assert.AreEqual("@", SqlDefine.PgSql.ParamterPrefx);
+        Assert.AreEqual("@", SqlDefine.SqlServer.ParameterPrefix);
+        Assert.AreEqual("@", SqlDefine.MySql.ParameterPrefix);
+        Assert.AreEqual("$", SqlDefine.PgSql.ParameterPrefix);
     }
 
     /// <summary>

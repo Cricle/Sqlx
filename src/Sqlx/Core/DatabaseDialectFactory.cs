@@ -39,11 +39,16 @@ internal static class DatabaseDialectFactory
         var dialectType = sqlDefine switch
         {
             var d when d.Equals(SqlDefine.MySql) => SqlDefineTypes.MySql,
-            var d when d.Equals(SqlDefine.SqlServer) => SqlDefineTypes.SqlServer,
             var d when d.Equals(SqlDefine.PgSql) => SqlDefineTypes.Postgresql,
-            var d when d.Equals(SqlDefine.SQLite) => SqlDefineTypes.SQLite,
             var d when d.Equals(SqlDefine.Oracle) => SqlDefineTypes.Oracle, // Will throw exception
             var d when d.Equals(SqlDefine.DB2) => SqlDefineTypes.DB2, // Will throw exception
+            // SQLite has unique identifier (@sqlite) to distinguish from SqlServer
+            var d when d.Equals(SqlDefine.SQLite) => SqlDefineTypes.SQLite,
+            // SqlServer uses standard @ prefix
+            var d when d.Equals(SqlDefine.SqlServer) => SqlDefineTypes.SqlServer,
+            // For custom SqlDefine instances, check specific characteristics
+            var d when d.ColumnLeft == "[" && d.ColumnRight == "]" && d.ParameterPrefix == "@sqlite" => SqlDefineTypes.SQLite,
+            var d when d.ColumnLeft == "[" && d.ColumnRight == "]" && d.ParameterPrefix == "@" => SqlDefineTypes.SqlServer,
             _ => SqlDefineTypes.SqlServer // Default fallback
         };
 

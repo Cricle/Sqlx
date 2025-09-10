@@ -1345,7 +1345,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         else if (methodName.Contains("getby") || methodName.Contains("find"))
         {
             var paramName = method.Parameters.FirstOrDefault()?.Name ?? "id";
-            return $"\"SELECT * FROM {wrappedTableName.Replace("\"", "\\\"")} WHERE Id = {sqlDefine.ParamterPrefx}{paramName}\"";
+            return $"\"SELECT * FROM {wrappedTableName.Replace("\"", "\\\"")} WHERE Id = {sqlDefine.ParameterPrefix}{paramName}\"";
         }
         else if (methodName.Contains("create") || methodName.Contains("insert"))
         {
@@ -1369,7 +1369,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         var entityParam = method.Parameters.FirstOrDefault(p => p.Type.TypeKind == TypeKind.Class && p.Type.Name != "String");
         if (entityParam != null)
         {
-            return $"\"INSERT INTO {wrappedTableName} (Name) VALUES ({sqlDefine.ParamterPrefx}Name)\""; // Simplified
+            return $"\"INSERT INTO {wrappedTableName} (Name) VALUES ({sqlDefine.ParameterPrefix}Name)\""; // Simplified
         }
         return $"\"INSERT INTO {wrappedTableName} DEFAULT VALUES\"";
     }
@@ -1377,14 +1377,14 @@ public abstract partial class AbstractGenerator : ISourceGenerator
     private string GenerateUpdateSql(IMethodSymbol method, string tableName, SqlDefine sqlDefine)
     {
         var wrappedTableName = sqlDefine.WrapColumn(tableName);
-        return $"\"UPDATE {wrappedTableName} SET Name = {sqlDefine.ParamterPrefx}Name WHERE Id = {sqlDefine.ParamterPrefx}Id\""; // Simplified
+        return $"\"UPDATE {wrappedTableName} SET Name = {sqlDefine.ParameterPrefix}Name WHERE Id = {sqlDefine.ParameterPrefix}Id\""; // Simplified
     }
 
     private string GenerateDeleteSql(IMethodSymbol method, string tableName, SqlDefine sqlDefine)
     {
         var wrappedTableName = sqlDefine.WrapColumn(tableName);
         var paramName = method.Parameters.FirstOrDefault()?.Name ?? "id";
-        return $"\"DELETE FROM {wrappedTableName} WHERE Id = {sqlDefine.ParamterPrefx}{paramName}\"";
+        return $"\"DELETE FROM {wrappedTableName} WHERE Id = {sqlDefine.ParameterPrefix}{paramName}\"";
     }
 
     private void GenerateRepositoryParameterAssignments(IndentedStringBuilder sb, IMethodSymbol method)
@@ -2296,7 +2296,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
 
         var sqlDefine = GetSqlDefineForRepository(method);
         var columns = string.Join(", ", properties.Select(p => sqlDefine.WrapColumn(p.GetSqlName()).Replace("\"", "\\\"")));
-        var parameters = string.Join(", ", properties.Select(p => $"{sqlDefine.ParamterPrefx}{p.GetSqlName()}"));
+        var parameters = string.Join(", ", properties.Select(p => $"{sqlDefine.ParameterPrefix}{p.GetSqlName()}"));
 
         sb.AppendLine($"cmd.CommandText = \"INSERT INTO {sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"")} ({columns}) VALUES ({parameters})\";");
         sb.AppendLine();
@@ -2306,7 +2306,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         {
             var sqlName = prop.GetSqlName();
             sb.AppendLine($"var param{prop.Name} = cmd.CreateParameter();");
-            sb.AppendLine($"param{prop.Name}.ParameterName = \"{sqlDefine.ParamterPrefx}{sqlName}\";");
+            sb.AppendLine($"param{prop.Name}.ParameterName = \"{sqlDefine.ParameterPrefix}{sqlName}\";");
             sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
 
             // Improved null handling
@@ -2375,8 +2375,8 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         sb.AppendLine("using var cmd = connection.CreateCommand();");
 
         var sqlDefine = GetSqlDefineForRepository(method);
-        var setClauses = string.Join(", ", properties.Select(p => $"{sqlDefine.WrapColumn(p.GetSqlName()).Replace("\"", "\\\"")} = {sqlDefine.ParamterPrefx}{p.GetSqlName()}"));
-        sb.AppendLine($"cmd.CommandText = \"UPDATE {sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"")} SET {setClauses} WHERE {sqlDefine.WrapColumn("id").Replace("\"", "\\\"")} = {sqlDefine.ParamterPrefx}id\";");
+        var setClauses = string.Join(", ", properties.Select(p => $"{sqlDefine.WrapColumn(p.GetSqlName()).Replace("\"", "\\\"")} = {sqlDefine.ParameterPrefix}{p.GetSqlName()}"));
+        sb.AppendLine($"cmd.CommandText = \"UPDATE {sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"")} SET {setClauses} WHERE {sqlDefine.WrapColumn("id").Replace("\"", "\\\"")} = {sqlDefine.ParameterPrefix}id\";");
         sb.AppendLine();
 
         // Add SET clause parameters
@@ -2384,7 +2384,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         {
             var sqlName = prop.GetSqlName();
             sb.AppendLine($"var param{prop.Name} = cmd.CreateParameter();");
-            sb.AppendLine($"param{prop.Name}.ParameterName = \"{sqlDefine.ParamterPrefx}{sqlName}\";");
+            sb.AppendLine($"param{prop.Name}.ParameterName = \"{sqlDefine.ParameterPrefix}{sqlName}\";");
             sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
 
             // Improved null handling
@@ -2402,7 +2402,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
 
         // Add ID parameter for WHERE clause
         sb.AppendLine("var paramId = cmd.CreateParameter();");
-        sb.AppendLine($"paramId.ParameterName = \"{sqlDefine.ParamterPrefx}id\";");
+        sb.AppendLine($"paramId.ParameterName = \"{sqlDefine.ParameterPrefix}id\";");
         sb.AppendLine("paramId.DbType = global::System.Data.DbType.Int32;");
         sb.AppendLine($"paramId.Value = {entityParam.Name}.Id;");
         sb.AppendLine("cmd.Parameters.Add(paramId);");
@@ -3089,7 +3089,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
 
         var sqlDefine = GetSqlDefineForRepository(method);
         var columns = string.Join(", ", properties.Select(p => sqlDefine.WrapColumn(p.GetSqlName()).Replace("\"", "\\\"")));
-        var parameters = string.Join(", ", properties.Select(p => $"{sqlDefine.ParamterPrefx}{p.GetSqlName()}"));
+        var parameters = string.Join(", ", properties.Select(p => $"{sqlDefine.ParameterPrefix}{p.GetSqlName()}"));
         sb.AppendLine($"__cmd__.CommandText = \"INSERT INTO {sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"")} ({columns}) VALUES ({parameters})\";");
         sb.AppendLine();
 
@@ -3098,7 +3098,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         {
             var sqlName = prop.GetSqlName();
             sb.AppendLine($"var param{prop.Name} = __cmd__.CreateParameter();");
-            sb.AppendLine($"param{prop.Name}.ParameterName = \"{sqlDefine.ParamterPrefx}{sqlName}\";");
+            sb.AppendLine($"param{prop.Name}.ParameterName = \"{sqlDefine.ParameterPrefix}{sqlName}\";");
             sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
 
             if (prop.Type.IsReferenceType || IsNullableValueType(prop.Type))
@@ -3194,8 +3194,8 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         sb.AppendLine("__cmd__ = connection.CreateCommand();");
 
         var sqlDefine = GetSqlDefineForRepository(method);
-        var setClauses = string.Join(", ", properties.Select(p => $"{sqlDefine.WrapColumn(p.GetSqlName()).Replace("\"", "\\\"")} = {sqlDefine.ParamterPrefx}{p.GetSqlName()}"));
-        sb.AppendLine($"__cmd__.CommandText = \"UPDATE {sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"")} SET {setClauses} WHERE {sqlDefine.WrapColumn("id").Replace("\"", "\\\"")} = {sqlDefine.ParamterPrefx}id\";");
+        var setClauses = string.Join(", ", properties.Select(p => $"{sqlDefine.WrapColumn(p.GetSqlName()).Replace("\"", "\\\"")} = {sqlDefine.ParameterPrefix}{p.GetSqlName()}"));
+        sb.AppendLine($"__cmd__.CommandText = \"UPDATE {sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"")} SET {setClauses} WHERE {sqlDefine.WrapColumn("id").Replace("\"", "\\\"")} = {sqlDefine.ParameterPrefix}id\";");
         sb.AppendLine();
 
         // Add SET clause parameters
@@ -3203,7 +3203,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         {
             var sqlName = prop.GetSqlName();
             sb.AppendLine($"var param{prop.Name} = __cmd__.CreateParameter();");
-            sb.AppendLine($"param{prop.Name}.ParameterName = \"{sqlDefine.ParamterPrefx}{sqlName}\";");
+            sb.AppendLine($"param{prop.Name}.ParameterName = \"{sqlDefine.ParameterPrefix}{sqlName}\";");
             sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
 
             if (prop.Type.IsReferenceType || IsNullableValueType(prop.Type))
@@ -3223,7 +3223,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         if (idProperty != null)
         {
             sb.AppendLine("var paramId = __cmd__.CreateParameter();");
-            sb.AppendLine($"paramId.ParameterName = \"{sqlDefine.ParamterPrefx}id\";");
+            sb.AppendLine($"paramId.ParameterName = \"{sqlDefine.ParameterPrefix}id\";");
             sb.AppendLine($"paramId.DbType = {GetDbTypeForProperty(idProperty)};");
             sb.AppendLine($"paramId.Value = {entityParam.Name}.{idProperty.Name};");
             sb.AppendLine("__cmd__.Parameters.Add(paramId);");

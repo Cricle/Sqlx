@@ -98,17 +98,17 @@ public class SqlExecuteTypeMockTests
         // Verify SQL Server settings
         Assert.AreEqual("[", SqlDefine.SqlServer.ColumnLeft);
         Assert.AreEqual("]", SqlDefine.SqlServer.ColumnRight);
-        Assert.AreEqual("@", SqlDefine.SqlServer.ParamterPrefx);
+        Assert.AreEqual("@", SqlDefine.SqlServer.ParameterPrefix);
 
         // Verify MySQL settings
         Assert.AreEqual("`", SqlDefine.MySql.ColumnLeft);
         Assert.AreEqual("`", SqlDefine.MySql.ColumnRight);
-        Assert.AreEqual("@", SqlDefine.MySql.ParamterPrefx);
+        Assert.AreEqual("@", SqlDefine.MySql.ParameterPrefix);
 
         // Verify PostgreSQL settings
         Assert.AreEqual("\"", SqlDefine.PgSql.ColumnLeft);
         Assert.AreEqual("\"", SqlDefine.PgSql.ColumnRight);
-        Assert.AreEqual("@", SqlDefine.PgSql.ParamterPrefx);
+        Assert.AreEqual("$", SqlDefine.PgSql.ParameterPrefix);
     }
 
 

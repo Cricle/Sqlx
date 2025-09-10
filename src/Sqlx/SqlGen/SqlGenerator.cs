@@ -36,7 +36,7 @@ namespace Sqlx.SqlGen
             // Single INSERT: generate complete SQL with parameter placeholders
             if (!ctx.Entry.IsList)
             {
-                return $"INSERT INTO {tableName}({columns}) VALUES ({ctx.GetParamterNames(def.ParamterPrefx)})";
+                return $"INSERT INTO {tableName}({columns}) VALUES ({ctx.GetParamterNames(def.ParameterPrefix)})";
             }
 
             // Batch INSERT: generate template for dynamic VALUES clause generation
@@ -44,7 +44,7 @@ namespace Sqlx.SqlGen
         }
 
         private string GenerateUpdate(SqlDefine def, UpdateGenerateContext ctx)
-            => $"UPDATE {def.WrapColumn(ctx.TableName)} SET {ctx.GetUpdateSet(def.ParamterPrefx)} WHERE {{0}}";
+            => $"UPDATE {def.WrapColumn(ctx.TableName)} SET {ctx.GetUpdateSet(def.ParameterPrefix)} WHERE {{0}}";
 
         private string GenerateDelete(SqlDefine def, DeleteGenerateContext ctx)
             => $"DELETE FROM {def.WrapColumn(ctx.TableName)} WHERE {{0}}";

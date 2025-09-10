@@ -238,7 +238,7 @@ internal class MethodGenerationContext : GenerationContextBase
 
         // Check for batch operations - for now, just use regular SQL generation
         // TODO: Implement full batch operation support in future versions
-        if (!string.IsNullOrEmpty(sql) && sql.Contains("BATCH"))
+        if (!string.IsNullOrEmpty(sql) && sql?.Contains("BATCH") == true)
         {
             // For now, generate a comment indicating batch operation is detected
             sb.AppendLine($"// Batch operation detected: {sql}");
@@ -906,11 +906,11 @@ internal class MethodGenerationContext : GenerationContextBase
         var parNamePrefx = string.IsNullOrEmpty(prefx) ? string.Empty : prefx.Replace(".", "_");
 
         // Generate C# variable name (remove @ prefix and make it a valid identifier)
-        var sqlParamName = par.GetParameterName(SqlDef.ParamterPrefx + parNamePrefx);
+        var sqlParamName = par.GetParameterName(SqlDef.ParameterPrefix + parNamePrefx);
         var parName = Regex.Replace(sqlParamName.TrimStart('@'), "[^a-zA-Z0-9_]", "_") + "_p";
 
         // Generate SQL parameter name
-        var name = par.GetParameterName(SqlDef.ParamterPrefx);
+        var name = par.GetParameterName(SqlDef.ParameterPrefix);
         var dbType = parType.GetDbType();
 
         sb.AppendLine($"global::System.Data.Common.DbParameter {parName} = {CmdName}.CreateParameter();");
@@ -1139,7 +1139,7 @@ internal class MethodGenerationContext : GenerationContextBase
         {
             // Generate simple DELETE with WHERE Id = @param
             var paramName = idParameter.Name.ToLowerInvariant();
-            return $"\"DELETE FROM {SqlDef.WrapColumn(tableName)} WHERE {SqlDef.WrapColumn("Id")} = {SqlDef.ParamterPrefx}{paramName}\"";
+            return $"\"DELETE FROM {SqlDef.WrapColumn(tableName)} WHERE {SqlDef.WrapColumn("Id")} = {SqlDef.ParameterPrefix}{paramName}\"";
         }
 
         // Check for entity parameter that might have an Id property
@@ -1262,7 +1262,7 @@ internal class MethodGenerationContext : GenerationContextBase
             var paramName = $"param_{property.Name}";
 
             sb.AppendLine($"var {paramName} = {CmdName}.CreateParameter();");
-            sb.AppendLine($"{paramName}.ParameterName = $\"{SqlDef.ParamterPrefx}{property.GetParameterName(string.Empty)}_{{paramIndex}}\";");
+            sb.AppendLine($"{paramName}.ParameterName = $\"{SqlDef.ParameterPrefix}{property.GetParameterName(string.Empty)}_{{paramIndex}}\";");
             sb.AppendLine($"{paramName}.DbType = {property.Type.GetDbType()};");
             sb.AppendLine($"{paramName}.Value = (object?)item.{property.Name} ?? global::System.DBNull.Value;");
             sb.AppendLine($"{CmdName}.Parameters.Add({paramName});");

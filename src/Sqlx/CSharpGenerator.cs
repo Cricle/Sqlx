@@ -182,7 +182,7 @@ namespace Sqlx.Annotations
                                   global::System.String columnRight,
                                   global::System.String stringLeft,
                                   global::System.String stringRight,
-                                  global::System.String ParamterPrefx) { }
+                                  global::System.String ParameterPrefix) { }
     }
     enum SqlDefineTypes
     {

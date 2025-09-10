@@ -283,19 +283,19 @@ namespace TestNamespace
         Assert.AreEqual("`", mysql.ColumnRight);
         Assert.AreEqual("'", mysql.StringLeft);
         Assert.AreEqual("'", mysql.StringRight);
-        Assert.AreEqual("@", mysql.ParamterPrefx);
+        Assert.AreEqual("@", mysql.ParameterPrefix);
 
         Assert.AreEqual("[", sqlServer.ColumnLeft);
         Assert.AreEqual("]", sqlServer.ColumnRight);
         Assert.AreEqual("'", sqlServer.StringLeft);
         Assert.AreEqual("'", sqlServer.StringRight);
-        Assert.AreEqual("@", sqlServer.ParamterPrefx);
+        Assert.AreEqual("@", sqlServer.ParameterPrefix);
 
         Assert.AreEqual("\"", pgSql.ColumnLeft);
         Assert.AreEqual("\"", pgSql.ColumnRight);
         Assert.AreEqual("'", pgSql.StringLeft);
         Assert.AreEqual("'", pgSql.StringRight);
-        Assert.AreEqual("@", pgSql.ParamterPrefx);
+        Assert.AreEqual("$", pgSql.ParameterPrefix);
     }
 
     /// <summary>
@@ -375,7 +375,7 @@ namespace TestNamespace
         Assert.AreEqual("\"", pgSqlRight);
         Assert.AreEqual("'", pgSqlStrLeft);
         Assert.AreEqual("'", pgSqlStrRight);
-        Assert.AreEqual("@", pgSqlPrefix);
+        Assert.AreEqual("$", pgSqlPrefix);
     }
 
     /// <summary>

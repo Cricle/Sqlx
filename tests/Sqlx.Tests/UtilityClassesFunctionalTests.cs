@@ -1063,7 +1063,7 @@ public class UtilityClassesFunctionalTests
         Assert.IsTrue(properties.Length > 0, "SqlDefine should have properties");
 
         // Test specific properties
-        var expectedProperties = new[] { "ColumnLeft", "ColumnRight", "StringLeft", "StringRight", "ParamterPrefx" };
+        var expectedProperties = new[] { "ColumnLeft", "ColumnRight", "StringLeft", "StringRight", "ParameterPrefix" };
         foreach (var propertyName in expectedProperties)
         {
             var property = properties.FirstOrDefault(p => p.Name == propertyName);

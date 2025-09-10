@@ -58,6 +58,9 @@ internal static class SqlOperationInferrer
     /// </summary>
     public static SqlOperationType InferOperation(IMethodSymbol method)
     {
+        if (method == null)
+            return SqlOperationType.Select; // Default operation for null method
+            
         // First check for explicit attributes
         var sqlExecuteTypeAttr = method.GetAttributes()
             .FirstOrDefault(attr => attr.AttributeClass?.Name == "SqlExecuteTypeAttribute");

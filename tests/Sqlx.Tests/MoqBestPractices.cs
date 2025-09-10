@@ -59,7 +59,7 @@ public class MoqBestPractices
         // 测试 SqlDefine 的各种方言
         Assert.AreEqual("[", SqlDefine.SqlServer.ColumnLeft);
         Assert.AreEqual("]", SqlDefine.SqlServer.ColumnRight);
-        Assert.AreEqual("@", SqlDefine.SqlServer.ParamterPrefx);
+        Assert.AreEqual("@", SqlDefine.SqlServer.ParameterPrefix);
 
         Assert.AreEqual("`", SqlDefine.MySql.ColumnLeft);
         Assert.AreEqual("`", SqlDefine.MySql.ColumnRight);

@@ -16,7 +16,7 @@ namespace Sqlx.Core;
 internal class SQLiteDialectProvider : IDatabaseDialectProvider
 {
     /// <inheritdoc />
-    public SqlDefine SqlDefine => SqlDefine.SQLite;
+    public SqlDefine SqlDefine => new SqlDefine("[", "]", "'", "'", "@"); // Use @ for actual parameter generation
 
     /// <inheritdoc />
     public SqlDefineTypes DialectType => SqlDefineTypes.SQLite;

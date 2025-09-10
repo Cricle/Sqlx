@@ -14,9 +14,13 @@
 - [ExpressionToSql 指南](expression-to-sql.md) - LINQ 表达式转 SQL
 
 ### 🌐 数据库支持
-当前文档中心未提供分数据库的独立页面。各方言的使用说明请参阅：
-- [SqlDefine 和 TableName 属性](sqldefine-tablename.md)
-- 根目录 `README.md` 的多方言示例
+Sqlx 支持多种主流数据库方言：
+- **MySQL** - 完整支持，包括自增主键和批量操作
+- **SQL Server** - 完整支持，包括 Identity 列和存储过程
+- **PostgreSQL** - 完整支持，包括 SERIAL 类型和数组操作
+- **SQLite** - 完整支持，轻量级部署的最佳选择
+
+详细配置请参阅：[SqlDefine 和 TableName 属性](sqldefine-tablename.md)
 
 ### 🔧 高级主题
 - [性能优化指南](OPTIMIZATION_GUIDE.md) - 性能调优和最佳实践

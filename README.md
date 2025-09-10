@@ -578,432 +578,33 @@ public IList<User> GetUsersByAge(int age); // ❌ 参数不匹配警告
 [Sqlx("SELECT \"FirstName\" FROM \"Users\" WHERE \"Age\" > ?")]
 ```
 
-## 🔄 迁移工具 - 平滑迁移助手 (🆕 新功能)
+## 🔄 从其他框架迁移
 
-Sqlx 提供了强大的迁移工具，帮助开发者从 Dapper 和 Entity Framework Core 平滑迁移到 Sqlx！
+Sqlx 可以很容易地从其他 ORM 框架迁移过来：
 
-### 🎯 核心功能
-
-#### 🔍 智能代码分析
-- **框架检测**: 自动识别 Dapper 和 EF Core 使用情况
-- **复杂度评估**: 评估迁移复杂度和所需工作量
-- **性能影响**: 预估迁移后的性能提升
-- **详细报告**: 生成 JSON、HTML 等多种格式的分析报告
-
-#### 🤖 自动化迁移
-- **智能转换**: 自动将 Dapper 查询转换为 Sqlx 属性
-- **Repository 生成**: 将 EF Core DbContext 转换为 Sqlx Repository
-- **批量处理**: 处理多个文件和项目
-- **安全备份**: 自动创建原始文件备份
-
-#### 🛡️ 代码验证
-- **语法检查**: 验证迁移后的 SQL 语法
-- **最佳实践**: 确保代码遵循 Sqlx 最佳实践
-- **安全分析**: 检测潜在的 SQL 注入漏洞
-- **性能优化**: 建议性能优化方案
-
-#### 🏗️ 代码生成
-- **Repository 脚手架**: 生成完整的 Repository 接口和实现
-- **实体类**: 创建带有正确属性的实体类
-- **使用示例**: 生成演示代码和集成指南
-- **多数据库**: 支持 6 种主流数据库方言
-
-### 🚀 安装和使用
-
-#### 全局工具安装
-```bash
-# 安装全局工具
-dotnet tool install --global Sqlx.Migration.Tool
-
-# 验证安装
-sqlx-migrate --version
-```
-
-#### 分析现有项目
-```bash
-# 分析单个项目
-sqlx-migrate analyze MyProject.csproj
-
-# 分析整个解决方案
-sqlx-migrate analyze MySolution.sln
-
-# 生成详细报告
-sqlx-migrate analyze MyProject.csproj --output analysis.json --format json
-```
-
-#### 执行迁移
-```bash
-# 自动检测并迁移
-sqlx-migrate migrate MyProject.csproj
-
-# 指定源框架
-sqlx-migrate migrate MyProject.csproj --source Dapper
-
-# 预览更改（不实际修改文件）
-sqlx-migrate migrate MyProject.csproj --dry-run
-```
-
-#### 生成新 Repository
-```bash
-# 为 User 实体生成 Repository
-sqlx-migrate generate MyProject.csproj --entity User --dialect SqlServer
-
-# 指定自定义表名
-sqlx-migrate generate MyProject.csproj --entity Product --table products --dialect MySql
-```
-
-#### 验证迁移结果
-```bash
-# 基本验证
-sqlx-migrate validate MyProject.csproj
-
-# 严格模式验证
-sqlx-migrate validate MyProject.csproj --strict
-```
-
-### 📊 迁移示例
-
-#### Before: Dapper 代码
+### 从 Dapper 迁移
 ```csharp
-public class UserRepository
-{
-    private readonly IDbConnection _connection;
+// Dapper 方式
+var users = connection.Query<User>("SELECT * FROM Users WHERE Age > @age", new { age = 18 });
 
-    public async Task<User> GetByIdAsync(int id)
-    {
-        return await _connection.QueryFirstOrDefaultAsync<User>(
-            "SELECT * FROM Users WHERE Id = @id", new { id });
-    }
-
-    public async Task<int> CreateAsync(User user)
-    {
-        return await _connection.ExecuteAsync(
-            "INSERT INTO Users (Name, Email) VALUES (@Name, @Email)", user);
-    }
-}
+// Sqlx 方式
+[Sqlx("SELECT * FROM Users WHERE Age > @age")]
+public partial List<User> GetUsersByAge(int age);
 ```
 
-#### After: Sqlx 代码
+### 从 Entity Framework 迁移
 ```csharp
-public interface IUserRepository
-{
-    [Sqlx("SELECT * FROM Users WHERE Id = @id")]
-    Task<User?> GetByIdAsync(int id);
+// EF Core 方式
+var users = context.Users.Where(u => u.Age > 18).ToList();
 
-    [SqlExecuteType(SqlExecuteTypes.Insert, "Users")]
-    Task<int> CreateAsync(User user);
-}
+// Sqlx 方式
+[ExpressionToSql]
+public partial List<User> GetUsers(Expression<Func<User, bool>> predicate);
 
-[RepositoryFor(typeof(IUserRepository))]
-[SqlDefine(SqlDefineTypes.SqlServer)]
-public partial class UserRepository : IUserRepository
-{
-    private readonly DbConnection connection;
-    // 方法由 Sqlx 自动实现
-}
-```
 
-#### Before: Entity Framework 代码
-```csharp
-public class ApplicationDbContext : DbContext
-{
-    public DbSet<User> Users { get; set; }
+## 🎯 性能对比
 
-    // 使用
-    var users = await context.Users.Where(u => u.IsActive).ToListAsync();
-}
-```
-
-#### After: Sqlx 代码
-```csharp
-public interface IUserRepository
-{
-    [Sqlx("SELECT * FROM Users WHERE IsActive = @isActive")]
-    Task<IList<User>> GetActiveUsersAsync(bool isActive = true);
-}
-
-[RepositoryFor(typeof(IUserRepository))]
-[SqlDefine(SqlDefineTypes.SqlServer)]
-public partial class UserRepository : IUserRepository
-{
-    private readonly DbConnection connection;
-}
-```
-
-### 🎯 迁移策略
-
-#### 1. 渐进式迁移
-```bash
-# 分析项目
-sqlx-migrate analyze MyProject.csproj
-
-# 逐步迁移特定组件
-sqlx-migrate migrate MyProject.csproj --dry-run
-
-# 应用迁移并创建备份
-sqlx-migrate migrate MyProject.csproj --backup true
-
-# 验证结果
-sqlx-migrate validate MyProject.csproj --strict
-```
-
-#### 2. 并行开发
-```bash
-# 在独立目录生成新的 Repository
-sqlx-migrate generate MyProject.csproj --entity User --target ./NewRepositories
-
-# 逐步替换旧实现
-```
-
-#### 3. 完整迁移
-```bash
-# 完整解决方案分析
-sqlx-migrate analyze MySolution.sln --output full-analysis.json
-
-# 迁移整个解决方案
-sqlx-migrate migrate MySolution.sln --source Both --backup true
-
-# 全面验证
-sqlx-migrate validate MySolution.sln --strict
-```
-
-### 📈 性能对比
-
-| 操作 | Dapper | EF Core | Sqlx | 改进 |
-|------|--------|---------|------|------|
-| **简单查询** | 1.2ms | 2.8ms | 0.8ms | **33% 更快** |
-| **复杂联接** | 4.5ms | 8.2ms | 3.1ms | **31% 更快** |
-| **批量插入** | 15.3ms | 45.2ms | 8.7ms | **43% 更快** |
-| **内存使用** | 12MB | 28MB | 8MB | **33% 更少** |
-
-### 🛠️ 故障排除
-
-#### 常见问题和解决方案
-
-**迁移失败并出现编译错误**
-```bash
-# 首先检查语法错误
-sqlx-migrate validate MyProject.csproj
-
-# 使用预览模式查看更改
-sqlx-migrate migrate MyProject.csproj --dry-run
-```
-
-**复杂 LINQ 查询无法迁移**
-- EF Core LINQ 查询需要手动转换为 SQL
-- 工具会添加 TODO 注释指导手动转换
-
-**连接字符串问题**
-- 更新依赖注入配置
-- 从 DbContext 切换到 DbConnection
-
-## 🔬 性能分析器 - 实时监控与优化 (🆕 新功能)
-
-Sqlx 提供了专业级的性能分析和监控工具，帮助开发者深入了解和优化数据库查询性能！
-
-### 🎯 核心功能
-
-#### 📊 实时性能分析
-- **查询分析**: 实时捕获和分析 SQL 查询执行情况
-- **性能指标**: 执行时间、吞吐量、错误率、资源使用情况
-- **统计分析**: P50/P95/P99 百分位数、标准差、趋势分析
-- **智能分组**: 自动按 SQL 模式分组分析
-
-#### 🔍 深度性能洞察
-- **慢查询识别**: 自动识别和标记慢查询
-- **性能评级**: Excellent/Good/Fair/Poor/Critical 五级评分
-- **瓶颈分析**: 定位 CPU、内存、I/O 瓶颈
-- **优化建议**: AI 驱动的 SQL 优化建议
-
-#### 📈 持续监控
-- **实时监控**: 7x24 小时连续性能监控
-- **智能告警**: 可配置的性能阈值告警
-- **趋势分析**: 长期性能趋势和变化分析
-- **自动报告**: 定期生成性能报告
-
-#### 🏁 基准测试
-- **查询基准**: 单个查询的详细性能基准测试
-- **并发测试**: 多线程并发性能测试
-- **压力测试**: 高负载场景下的性能验证
-- **回归测试**: 版本间性能对比分析
-
-### 🚀 安装和使用
-
-#### 全局工具安装
-```bash
-# 安装性能分析器
-dotnet tool install --global Sqlx.Performance.Analyzer
-
-# 验证安装
-sqlx-perf --version
-```
-
-#### 实时性能分析
-```bash
-# 对数据库进行 30 秒性能分析
-sqlx-perf profile --connection "Server=localhost;Database=MyApp;..." --duration 30
-
-# 指定采样间隔和输出文件
-sqlx-perf profile --connection "..." --duration 60 --sampling 50 --output profile.json
-
-# 过滤特定查询模式
-sqlx-perf profile --connection "..." --duration 30 --filter "SELECT.*Users"
-```
-
-#### 分析性能数据
-```bash
-# 分析分析数据并生成报告
-sqlx-perf analyze --input profile.json --output report.html --format html
-
-# 设置慢查询阈值
-sqlx-perf analyze --input profile.json --threshold 500 --format console
-
-# 生成多种格式报告
-sqlx-perf analyze --input profile.json --output report.csv --format csv
-```
-
-#### 持续监控
-```bash
-# 启动持续监控（每5秒检查一次）
-sqlx-perf monitor --connection "..." --interval 5 --alert-threshold 1000
-
-# 保存监控数据到目录
-sqlx-perf monitor --connection "..." --interval 10 --output ./monitoring-data
-```
-
-#### 基准测试
-```bash
-# 基准测试特定查询
-sqlx-perf benchmark --connection "..." --query "SELECT * FROM Users WHERE Id = @id" --iterations 1000
-
-# 并发基准测试
-sqlx-perf benchmark --connection "..." --query "..." --iterations 5000 --concurrency 10
-
-# 保存基准测试结果
-sqlx-perf benchmark --connection "..." --query "..." --output benchmark.json
-```
-
-#### 生成综合报告
-```bash
-# 从监控数据生成综合报告
-sqlx-perf report --input ./monitoring-data --output comprehensive-report.html --format html
-
-# 指定时间段
-sqlx-perf report --input ./monitoring-data --period LastWeek --format json
-```
-
-### 📊 实际使用示例
-
-#### 1. 发现性能问题
-```bash
-# 运行性能分析
-sqlx-perf profile --connection "Server=prod-db;Database=ecommerce;..." --duration 120 --output prod-analysis.json
-
-# 分析结果
-sqlx-perf analyze --input prod-analysis.json --threshold 200 --format console
-```
-
-**输出示例：**
-```
-📊 PERFORMANCE ANALYSIS REPORT
-==============================
-Generated: 2025-01-09 20:30:00
-Period: 2025-01-09 20:28:00 - 2025-01-09 20:30:00
-
-📈 SUMMARY
-----------
-Total Queries: 15,847
-Unique Queries: 23
-Average Execution Time: 89.50ms
-Slow Queries: 3
-Error Rate: 0.12%
-Performance Score: 78.5/100
-Overall Rating: Good
-
-🐌 SLOWEST QUERIES
-------------------
-• 1,245.67ms avg (156 executions) - SELECT o.*, u.Name FROM Orders o JOIN...
-• 856.23ms avg (89 executions) - SELECT * FROM Products WHERE CategoryId IN...
-• 523.45ms avg (234 executions) - UPDATE Inventory SET Quantity = Quantity - 1...
-
-🚨 PROBLEMATIC QUERIES
-----------------------
-• Rating: Poor, Avg: 1245.67ms, Errors: 2.1%
-  SQL: SELECT o.*, u.Name, p.Title FROM Orders o JOIN Users u ON...
-
-💡 OPTIMIZATION SUGGESTIONS
----------------------------
-• Add index on (OrderDate, Status) columns (High impact)
-  Consider adding indexes on columns used in WHERE clauses
-• Avoid SELECT * statements (Medium impact)
-  Specify only the columns you need to reduce data transfer
-```
-
-#### 2. 基准测试对比
-```bash
-# 优化前基准测试
-sqlx-perf benchmark --connection "..." --query "SELECT * FROM Users WHERE Email = @email" --iterations 1000 --output before.json
-
-# 优化后基准测试（添加索引后）
-sqlx-perf benchmark --connection "..." --query "SELECT * FROM Users WHERE Email = @email" --iterations 1000 --output after.json
-```
-
-**基准测试结果：**
-```
-🏁 BENCHMARK RESULTS
-===================
-Query: SELECT * FROM Users WHERE Email = @email
-Iterations: 1,000
-Concurrency: 1
-Total Time: 12,456.78ms
-
-⏱️ TIMING STATISTICS
---------------------
-Average:    12.46ms
-Median:     11.23ms
-Min:        8.95ms
-Max:        45.67ms
-P95:        18.34ms
-P99:        28.91ms
-Std Dev:    3.45ms
-
-📊 PERFORMANCE METRICS
-----------------------
-Throughput:     80.28 queries/sec
-Success Rate:   100.0%
-Successful:     1,000
-Failed:         0
-
-🟢 OVERALL RATING: Good
-```
-
-#### 3. 持续监控设置
-```bash
-# 启动生产环境监控
-sqlx-perf monitor --connection "Server=prod-db;..." --interval 30 --alert-threshold 1000 --output ./prod-monitoring
-
-# 监控输出示例
-📊 Status: CPU 45.2%, Memory 67.8%, Avg Query 156.7ms, Alerts 0
-⚠️ Alert #1: Slow Query Detected - Query 'ProductSearch' averaging 1,234.56ms
-🚨 Alert #2: High Error Rate - Query 'UserLogin' has 12.3% error rate
-```
-
-### 🎯 性能优化工作流
-
-#### 第1步：建立基线
-```bash
-# 建立性能基线
-sqlx-perf profile --connection "..." --duration 300 --output baseline.json
-sqlx-perf analyze --input baseline.json --output baseline-report.html --format html
-```
-
-#### 第2步：识别问题
-```bash
-# 深度分析找出瓶颈
-sqlx-perf analyze --input baseline.json --threshold 100 --format console | grep "PROBLEMATIC"
-```
-
-#### 第3步：优化验证
+### 基准测试结果
 ```bash
 # 优化前后对比
 sqlx-perf benchmark --connection "..." --query "..." --iterations 500 --output before-opt.json
@@ -1066,14 +667,13 @@ sqlx-perf monitor --connection "..." --interval 60 --alert-threshold 200 --outpu
 #### 集成 CI/CD
 ```yaml
 # GitHub Actions 示例
-- name: Performance Regression Test
+- name: Performance Test
   run: |
-    dotnet tool install --global Sqlx.Performance.Analyzer
-    sqlx-perf benchmark --connection "${{ secrets.DB_CONNECTION }}" --query "..." --iterations 100 --output current.json
-    # 与基线对比，确保性能不倒退
+    dotnet test tests/Sqlx.Tests/Sqlx.Tests.csproj --configuration Release --logger "console;verbosity=detailed"
+    # 运行性能基准测试确保性能不倒退
 ```
 
-Sqlx 性能分析器让数据库性能优化变得**可视化、数据驱动、持续改进**！🚀
+Sqlx 让数据库操作变得**高性能、类型安全、开发高效**！🚀
 
 ## 🔧 高级特性
 
@@ -1310,17 +910,12 @@ var users = connection.QueryUsers(
 
 ```
 Sqlx/
-├── src/Sqlx/                   # 🔧 核心库
+├── src/Sqlx/                   # 🔧 核心库 - 高性能源代码生成器
 ├── samples/                    # 📚 示例项目
-│   ├── RepositoryExample/      # Repository 模式完整示例
-│   ├── ComprehensiveDemo/      # 综合功能演示
-│   ├── PerformanceBenchmark/   # 性能基准测试
-│   └── CompilationTests/       # 编译验证测试
-├── tests/                      # 🧪 单元测试和集成测试
-├── tools/                      # 🛠️ 开发工具
-│   ├── SqlxMigration/         # 迁移工具
-│   └── SqlxPerformanceAnalyzer/ # 性能分析工具
-├── extensions/                 # 🎨 IDE扩展
+│   └── RepositoryExample/      # Repository 模式完整示例
+├── tests/                      # 🧪 核心功能测试
+│   ├── Sqlx.Tests/            # 单元测试
+│   └── Sqlx.IntegrationTests/ # 集成测试
 └── docs/                       # 📖 完整文档
 ```
 
@@ -1423,21 +1018,17 @@ dotnet run --project samples/RepositoryExample/RepositoryExample.csproj -- --sql
 
 ```
 Sqlx/
-├── src/Sqlx/                    # 核心库
+├── src/Sqlx/                    # 🔧 核心库
 │   ├── AbstractGenerator.cs    # Repository 生成器
 │   ├── CSharpGenerator.cs      # C# 代码生成器
 │   ├── Core/                   # 核心功能模块
 │   └── Annotations/            # 特性标注
-├── samples/                    # 示例项目
-│   ├── RepositoryExample/      # Repository 模式演示
-│   ├── CompilationTests/       # 编译测试
-│   └── BasicExample/           # 基础用法示例
-├── tests/                      # 单元测试
-│   └── Sqlx.Tests/            # 核心测试套件
-├── tools/                      # 开发工具
-│   ├── SqlxMigration/         # 数据库迁移工具
-│   └── SqlxPerformanceAnalyzer/ # 性能分析工具
-└── docs/                       # 文档
+├── samples/                    # 📚 示例项目
+│   └── RepositoryExample/      # Repository 模式演示
+├── tests/                      # 🧪 单元测试和集成测试
+│   ├── Sqlx.Tests/            # 核心功能测试
+│   └── Sqlx.IntegrationTests/ # 集成测试
+└── docs/                       # 📖 完整文档
 ```
 
 ## 🤝 贡献指南
@@ -1495,10 +1086,10 @@ dotnet run --project samples/RepositoryExample
 - [x] **抽象类型支持**: 正确处理 DbDataReader 等抽象类型
 - [x] **Repository 模式优化**: 完善自动实现生成
 - [x] **Batch 操作**: 批量插入/更新支持 (🆕 2025年1月新增)
-- [x] **更多数据库**: Oracle、DB2 支持 (🆕 2025年1月新增)
-- [x] **Visual Studio 扩展**: IntelliSense 支持 (🆕 2025年1月新增)
-- [x] **迁移工具**: 从 Dapper/EF Core 迁移助手 (🆕 2025年1月新增)
-- [x] **性能分析器**: SQL 查询性能监控 (🆕 2025年1月新增)
+- [x] **多数据库支持**: MySQL、SQL Server、PostgreSQL、SQLite (✅ 2025年1月)
+- [x] **Repository 模式**: 完整的泛型 Repository 支持 (✅ 2025年1月)
+- [x] **NativeAOT**: 完美支持原生编译优化 (✅ 2025年1月)
+- [x] **性能优化**: GetOrdinal 缓存和智能优化 (✅ 2025年1月)
 
 ---
 

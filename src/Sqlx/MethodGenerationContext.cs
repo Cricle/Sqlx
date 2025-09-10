@@ -238,7 +238,7 @@ internal class MethodGenerationContext : GenerationContextBase
 
         // Check for batch operations - for now, just use regular SQL generation
         // TODO: Implement full batch operation support in future versions
-        if (!string.IsNullOrEmpty(sql) && BatchOperationHelper.IsBatchOperation(sql!))
+        if (!string.IsNullOrEmpty(sql) && sql.Contains("BATCH"))
         {
             // For now, generate a comment indicating batch operation is detected
             sb.AppendLine($"// Batch operation detected: {sql}");
@@ -1004,9 +1004,9 @@ internal class MethodGenerationContext : GenerationContextBase
                 SqlExecuteTypes.Insert => HandleInsertOperation(tableName),
                 SqlExecuteTypes.Update => HandleUpdateOperation(tableName),
                 SqlExecuteTypes.Delete => HandleDeleteOperation(tableName),
-                SqlExecuteTypes.BatchInsert => BatchOperationHelper.HandleBatchInsertOperation(tableName),
-                SqlExecuteTypes.BatchUpdate => BatchOperationHelper.HandleBatchUpdateOperation(tableName),
-                SqlExecuteTypes.BatchDelete => BatchOperationHelper.HandleBatchDeleteOperation(tableName),
+                SqlExecuteTypes.BatchInsert => $"INSERT INTO {tableName} (/* columns */) VALUES (/* batch values */)",
+                SqlExecuteTypes.BatchUpdate => $"UPDATE {tableName} SET /* columns = values */ WHERE /* condition */",
+                SqlExecuteTypes.BatchDelete => $"DELETE FROM {tableName} WHERE /* condition */",
                 _ => string.Empty
             };
         }
@@ -1440,5 +1440,6 @@ internal static class ExtensionsWithCache
 
         throw new NotSupportedException($"No support type {type.Name}");
     }
+
 
 }

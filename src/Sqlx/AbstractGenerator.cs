@@ -17,7 +17,7 @@ using System.Text;
 /// <summary>
 /// Stored procedures generator.
 /// </summary>
-public abstract class AbstractGenerator : ISourceGenerator
+public abstract partial class AbstractGenerator : ISourceGenerator
 {
     /// <inheritdoc/>
     public abstract void Initialize(GeneratorInitializationContext context);
@@ -1073,125 +1073,9 @@ public abstract class AbstractGenerator : ISourceGenerator
         sb.AppendLine();
     }
 
-    private bool HasSqlxAttribute(IMethodSymbol method)
-    {
-        // Check if method has any Sqlx-related attributes
-        var attributes = method.GetAttributes();
-        foreach (var attr in attributes)
-        {
-            var attrName = attr.AttributeClass?.Name;
-            if (attrName == "SqlxAttribute" ||
-                attrName == "RawSqlAttribute" ||
-                attrName == "SqlExecuteTypeAttribute")
-            {
-                System.Diagnostics.Debug.WriteLine($"Method {method.Name} has Sqlx attribute: {attrName}");
-                return true;
-            }
-        }
 
-        System.Diagnostics.Debug.WriteLine($"Method {method.Name} does not have Sqlx attributes");
-        return false;
-    }
 
-    private string GetParameterDescription(IParameterSymbol parameter)
-    {
-        if (parameter.Type.Name == "CancellationToken")
-        {
-            return "A cancellation token that can be used to cancel the operation.";
-        }
 
-        if (parameter.Type.TypeKind == TypeKind.Class && parameter.Type.Name != "String")
-        {
-            return $"The {parameter.Type.Name} entity to process.";
-        }
-
-        return $"The {parameter.Name} parameter.";
-    }
-
-    private string GetReturnDescription(IMethodSymbol method)
-    {
-        var returnType = method.ReturnType;
-        var methodName = method.Name.ToLowerInvariant();
-
-        if (returnType.Name == "Task")
-        {
-            if (returnType is INamedTypeSymbol taskType && taskType.TypeArguments.Length == 0)
-            {
-                return "A task representing the asynchronous operation.";
-            }
-            else if (returnType is INamedTypeSymbol genericTask && genericTask.TypeArguments.Length == 1)
-            {
-                var innerType = genericTask.TypeArguments[0];
-                if (IsCollectionType(innerType))
-                {
-                    return $"A task containing the collection of {GetEntityTypeName(innerType)} entities.";
-                }
-                else if (innerType.SpecialType == SpecialType.System_Int32)
-                {
-                    return "A task containing the number of affected rows.";
-                }
-                else
-                {
-                    return $"A task containing the {innerType.Name} result.";
-                }
-            }
-        }
-
-        if (IsCollectionType(returnType))
-        {
-            return $"A collection of {GetEntityTypeName(returnType)} entities.";
-        }
-
-        if (returnType.SpecialType == SpecialType.System_Int32)
-        {
-            if (methodName.Contains("create") || methodName.Contains("insert") ||
-                methodName.Contains("update") || methodName.Contains("delete"))
-            {
-                return "The number of affected rows.";
-            }
-            return "The result value.";
-        }
-
-        return $"The {returnType.Name} result.";
-    }
-
-    private string GetEntityTypeName(ITypeSymbol type)
-    {
-        if (type is INamedTypeSymbol namedType)
-        {
-            if (namedType.TypeArguments.Length > 0)
-            {
-                return namedType.TypeArguments[0].Name;
-            }
-        }
-
-        return type.Name;
-    }
-
-    private void GenerateOrCopyAttributes(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName)
-    {
-        // Check if method already has SQL attributes
-        var existingSqlAttributes = method.GetAttributes()
-            .Where(attr => attr.AttributeClass?.Name == "SqlxAttribute" ||
-                          attr.AttributeClass?.Name == "RawSqlAttribute" ||
-                          attr.AttributeClass?.Name == "SqlExecuteTypeAttribute")
-            .ToArray();
-
-        if (existingSqlAttributes.Any())
-        {
-            // Copy existing attributes as-is - let the old generator handle them
-            foreach (var attr in existingSqlAttributes)
-            {
-                sb.AppendLine(GenerateSqlxAttribute(attr));
-            }
-        }
-        else
-        {
-            // Generate new Sqlx attribute for methods without existing SQL attributes
-            var generatedAttribute = GenerateSqlxAttributeFromMethodName(method, tableName);
-            sb.AppendLine(generatedAttribute);
-        }
-    }
 
     private string GenerateSqlxAttribute(AttributeData attribute)
     {

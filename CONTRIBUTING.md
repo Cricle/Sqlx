@@ -1,293 +1,390 @@
 # 贡献指南
 
-感谢您对 Sqlx 项目的关注！我们欢迎各种形式的贡献，包括但不限于代码、文档、测试、问题报告和功能建议。
+感谢您对 Sqlx 项目的关注！我们欢迎各种形式的贡献，无论是错误报告、功能建议、文档改进还是代码贡献。
 
-## 🚀 快速开始
+## 📋 目录
 
-### 开发环境要求
+- [开始之前](#开始之前)
+- [如何贡献](#如何贡献)
+- [开发环境设置](#开发环境设置)
+- [代码规范](#代码规范)
+- [测试指南](#测试指南)
+- [提交代码](#提交代码)
+- [问题报告](#问题报告)
+- [功能建议](#功能建议)
 
-- **.NET SDK 6.0 或 8.0+**
-- **Visual Studio 2022** 或 **Visual Studio Code**
-- **Git**
+## 🚀 开始之前
 
-### 项目设置
+在开始贡献之前，请：
 
-1. **Fork 项目**
-   ```bash
-   git clone https://github.com/your-username/Sqlx.git
-   cd Sqlx
-   ```
+1. ⭐ **Star** 这个项目，表示您的支持
+2. 🍴 **Fork** 这个仓库到您的 GitHub 账户
+3. 📖 阅读本贡献指南和项目文档
+4. 💬 在相关 Issue 中讨论您的想法（如果适用）
 
-2. **安装依赖**
-   ```bash
-   dotnet restore
-   ```
+## 🤝 如何贡献
 
-3. **构建项目**
-   ```bash
-   dotnet build
-   ```
+### 代码贡献
+- 修复 bug
+- 添加新功能
+- 性能优化
+- 代码重构
 
-4. **运行测试**
-   ```bash
-   dotnet test
-   ```
+### 文档贡献
+- 改进文档说明
+- 添加示例代码
+- 翻译文档
+- 修正拼写错误
 
-## 🧪 测试要求
+### 其他贡献
+- 报告 bug
+- 提出功能建议
+- 参与讨论
+- 测试和反馈
 
-在提交任何代码更改之前，请确保：
+## 🛠️ 开发环境设置
 
-### 必须通过的测试
+### 系统要求
+
+- **.NET 6.0 SDK** 或更高版本
+- **Visual Studio 2022** 或 **VS Code** （推荐）
+- **Git** 版本控制工具
+
+### 克隆项目
+
 ```bash
-# 核心单元测试
-dotnet test tests/Sqlx.Tests --filter "TestCategory!=Integration"
+# 克隆您 fork 的仓库
+git clone https://github.com/[YourUsername]/Sqlx.git
+cd Sqlx
 
-# 集成测试
-dotnet test tests/Sqlx.IntegrationTests
-
-# 性能测试
-dotnet test tests/Sqlx.PerformanceTests
-
-# 示例测试
-dotnet test samples/RepositoryExample.Tests
+# 添加上游仓库
+git remote add upstream https://github.com/Cricle/Sqlx.git
 ```
 
-### 测试覆盖率要求
-- 新增代码应该有 **80%+ 的测试覆盖率**
-- 核心功能必须有 **100% 的测试覆盖率**
-- 所有公共 API 必须有对应的测试
+### 本地构建
+
+```bash
+# 还原 NuGet 包
+dotnet restore
+
+# 构建项目
+dotnet build
+
+# 运行测试
+dotnet test
+
+# 运行示例项目
+dotnet run --project samples/RepositoryExample/RepositoryExample.csproj
+```
+
+### IDE 配置
+
+#### Visual Studio 2022
+1. 打开 `Sqlx.sln` 解决方案文件
+2. 确保已安装最新的 .NET SDK
+3. 启用源生成器支持（默认已启用）
+
+#### VS Code
+1. 安装 C# 扩展
+2. 安装 .NET 扩展包
+3. 确保 OmniSharp 服务正常运行
 
 ## 📝 代码规范
 
 ### C# 编码标准
 
-1. **命名规范**
-   - 类名: `PascalCase`
-   - 方法名: `PascalCase`
-   - 属性名: `PascalCase`
-   - 字段名: `_camelCase` (私有字段使用下划线前缀)
-   - 参数名: `camelCase`
+我们遵循 [Microsoft C# 编码约定](https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/inside-a-program/coding-conventions)：
 
-2. **代码格式**
-   - 使用 4 个空格缩进
-   - 每行最大 120 字符
-   - 大括号独占一行
-
-3. **注释要求**
-   ```csharp
-   /// <summary>
-   /// 简要描述方法的功能
-   /// </summary>
-   /// <param name="parameter">参数描述</param>
-   /// <returns>返回值描述</returns>
-   public string ExampleMethod(string parameter)
-   {
-       // 实现逻辑
-   }
-   ```
-
-### 测试代码规范
-
-1. **测试命名**
-   ```csharp
-   [TestMethod]
-   public void MethodName_Condition_ExpectedResult()
-   {
-       // 测试实现
-   }
-   ```
-
-2. **测试结构 (AAA模式)**
-   ```csharp
-   [TestMethod]
-   public void ExampleTest()
-   {
-       // Arrange - 准备测试数据
-       var input = CreateTestData();
-       
-       // Act - 执行被测试方法
-       var result = SystemUnderTest.Method(input);
-       
-       // Assert - 验证结果
-       Assert.AreEqual(expected, result);
-   }
-   ```
-
-## 🔄 贡献流程
-
-### 1. 创建 Issue
-
-在开始编码之前，请先创建一个 Issue 来描述：
-- 🐛 **Bug 报告**: 包含重现步骤、期望行为、实际行为
-- ✨ **功能请求**: 详细描述新功能的用途和实现思路
-- 📚 **文档改进**: 说明需要改进的文档内容
-
-### 2. 创建分支
-
-```bash
-# 从 main 分支创建新分支
-git checkout -b feature/your-feature-name
-
-# 或者修复 bug
-git checkout -b fix/issue-description
+```csharp
+// ✅ 正确的命名和格式
+public class UserRepository : IUserService
+{
+    private readonly DbConnection _connection;
+    
+    public UserRepository(DbConnection connection)
+    {
+        _connection = connection ?? throw new ArgumentNullException(nameof(connection));
+    }
+    
+    public async Task<User?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        // 实现逻辑
+    }
+}
 ```
 
-### 3. 开发和测试
+### 代码风格
 
-1. **编写代码**
-   - 遵循项目的编码规范
-   - 添加必要的注释和文档
+- 使用 4 个空格缩进（不使用 Tab）
+- 每行最大长度 120 字符
+- 使用 PascalCase 命名公共成员
+- 使用 camelCase 命名私有字段（带 `_` 前缀）
+- 使用 var 当类型明显时
+- 始终使用大括号，即使是单行语句
 
-2. **编写测试**
-   - 为新功能添加单元测试
-   - 为复杂功能添加集成测试
-   - 确保所有测试通过
+### EditorConfig
 
-3. **运行完整测试套件**
-   ```bash
-   dotnet test
-   ```
+项目包含 `.editorconfig` 文件，确保代码格式一致：
 
-### 4. 提交代码
+```ini
+root = true
 
-1. **提交信息规范**
-   ```bash
-   # 功能添加
-   git commit -m "feat: add new feature description"
-   
-   # Bug 修复
-   git commit -m "fix: resolve issue with specific problem"
-   
-   # 测试添加
-   git commit -m "test: add tests for component functionality"
-   
-   # 文档更新
-   git commit -m "docs: update API documentation"
-   ```
+[*.cs]
+indent_style = space
+indent_size = 4
+end_of_line = crlf
+insert_final_newline = true
+trim_trailing_whitespace = true
+```
 
-2. **推送分支**
-   ```bash
-   git push origin feature/your-feature-name
-   ```
+## 🧪 测试指南
 
-### 5. 创建 Pull Request
+### 测试类型
 
-1. **PR 标题**: 简洁明了地描述更改
-2. **PR 描述**: 包含以下内容
-   - 更改的详细说明
-   - 相关 Issue 链接
-   - 测试覆盖情况
-   - 破坏性更改说明（如有）
+1. **单元测试** (`tests/Sqlx.Tests/`)
+   - 测试源代码生成逻辑
+   - 测试 SQL 方言处理
+   - 测试类型分析功能
 
-3. **PR 检查清单**
-   - [ ] 所有测试通过
-   - [ ] 代码遵循项目规范
-   - [ ] 添加了必要的测试
-   - [ ] 更新了相关文档
-   - [ ] 没有破坏现有功能
+2. **集成测试** (`tests/Sqlx.IntegrationTests/`)
+   - 测试与真实数据库的交互
+   - 测试多数据库方言的兼容性
+   - 测试性能基准
 
-## 🎯 贡献类型
+### 编写测试
 
-### 代码贡献
+```csharp
+[TestClass]
+public class UserRepositoryTests
+{
+    [TestMethod]
+    public async Task GetByIdAsync_ValidId_ReturnsUser()
+    {
+        // Arrange
+        var expectedUser = new User { Id = 1, Name = "Test User" };
+        
+        // Act
+        var result = await repository.GetByIdAsync(1);
+        
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.AreEqual(expectedUser.Name, result.Name);
+    }
+}
+```
 
-1. **核心功能开发**
-   - 新的 SQL 方言支持
-   - 性能优化改进
-   - 新的工具类和辅助方法
+### 运行测试
 
-2. **测试改进**
-   - 增加测试覆盖率
-   - 性能基准测试
-   - 集成测试场景
+```bash
+# 运行所有测试
+dotnet test
 
-3. **Bug 修复**
-   - 修复已知问题
-   - 改进错误处理
-   - 提升稳定性
+# 运行特定测试项目
+dotnet test tests/Sqlx.Tests/
 
-### 文档贡献
+# 运行测试并生成覆盖率报告
+dotnet test --collect:"XPlat Code Coverage"
+```
 
-1. **API 文档**
-   - 方法和类的详细说明
-   - 使用示例和最佳实践
+### 测试要求
 
-2. **教程和指南**
-   - 入门教程
-   - 高级用法指南
-   - 故障排除文档
+- 新功能必须包含相应的测试
+- 测试覆盖率应保持在 80% 以上
+- 集成测试应支持所有支持的数据库方言
+- 性能测试应验证性能不倒退
 
-3. **示例代码**
-   - 实际应用场景示例
-   - 性能优化示例
+## 📤 提交代码
 
-## 🔍 代码审查
+### Git 工作流
 
-### 审查标准
+我们使用 **GitHub Flow** 工作流：
 
-1. **功能性**
-   - 代码是否正确实现了预期功能
-   - 是否处理了边界条件和异常情况
+```bash
+# 1. 同步最新代码
+git checkout main
+git pull upstream main
 
-2. **性能**
-   - 是否存在性能瓶颈
-   - 内存使用是否合理
+# 2. 创建功能分支
+git checkout -b feature/your-feature-name
 
-3. **可维护性**
-   - 代码是否易于理解和维护
-   - 是否遵循了项目的架构模式
+# 3. 进行开发
+# ... 编码、测试 ...
 
-4. **测试**
-   - 测试覆盖率是否充分
-   - 测试是否有效验证了功能
+# 4. 提交变更
+git add .
+git commit -m "feat: add new feature description"
 
-### 审查流程
+# 5. 推送到您的 fork
+git push origin feature/your-feature-name
 
-1. **自动检查**: CI 流程会自动运行测试和代码分析
-2. **人工审查**: 项目维护者会审查代码质量和设计
-3. **反馈和改进**: 根据审查意见进行必要的修改
-4. **合并**: 审查通过后合并到主分支
+# 6. 创建 Pull Request
+```
 
-## 🏷️ 版本发布
+### 提交信息规范
 
-### 语义化版本
+我们使用 [Conventional Commits](https://www.conventionalcommits.org/) 规范：
 
-项目遵循 [语义化版本](https://semver.org/) 规范：
-- **MAJOR**: 不兼容的 API 更改
-- **MINOR**: 向后兼容的功能添加
-- **PATCH**: 向后兼容的问题修复
+```
+<type>[optional scope]: <description>
 
-### 发布流程
+[optional body]
 
-1. **功能冻结**: 确定发布范围
-2. **测试验证**: 全面测试新功能和回归测试
-3. **文档更新**: 更新 CHANGELOG 和相关文档
-4. **版本标记**: 创建版本标签和发布说明
+[optional footer(s)]
+```
 
-## 🤝 社区准则
+**类型说明：**
+- `feat`: 新功能
+- `fix`: 错误修复
+- `docs`: 文档更新
+- `style`: 代码格式调整
+- `refactor`: 代码重构
+- `test`: 测试相关
+- `chore`: 构建过程或工具变更
 
-### 行为准则
+**示例：**
+```
+feat(generator): add PostgreSQL dialect support
 
-1. **尊重他人**: 保持友善和专业的交流
-2. **建设性反馈**: 提供有建设性的意见和建议
-3. **协作精神**: 愿意帮助他人和接受帮助
-4. **质量优先**: 优先考虑代码质量和用户体验
+Add support for PostgreSQL-specific SQL generation including:
+- Double-quoted column names
+- Dollar-sign parameter prefixes
+- SERIAL type handling
 
-### 沟通渠道
+Closes #123
+```
 
-- **GitHub Issues**: 问题报告和功能请求
-- **Pull Requests**: 代码审查和讨论
-- **Discussions**: 一般性讨论和问答
+### Pull Request 指南
 
-## 📚 有用资源
+创建 PR 时，请确保：
 
-- [测试指南](docs/TESTING_GUIDE.md) - 详细的测试编写指南
-- [性能指南](docs/PERFORMANCE_GUIDE.md) - 性能优化最佳实践
-- [API 文档](docs/api/) - 详细的 API 参考文档
+1. **标题清晰明确**，描述所做的更改
+2. **详细描述**变更内容和原因
+3. **链接相关 Issue**（如果有）
+4. **确保所有测试通过**
+5. **更新相关文档**
+6. **保持小而专注**的变更范围
 
-## 🙏 致谢
+**PR 模板：**
+```markdown
+## 变更描述
+简要描述这个 PR 的目的和实现方式。
 
-感谢所有为 Sqlx 项目做出贡献的开发者！您的贡献使这个项目变得更好。
+## 变更类型
+- [ ] Bug 修复
+- [ ] 新功能
+- [ ] 性能优化
+- [ ] 文档更新
+- [ ] 代码重构
+
+## 测试清单
+- [ ] 添加了新的测试
+- [ ] 所有现有测试通过
+- [ ] 手动测试通过
+
+## 相关 Issue
+Closes #[issue number]
+
+## 其他说明
+如有必要，添加其他相关信息。
+```
+
+## 🐛 问题报告
+
+发现 bug？请创建详细的问题报告：
+
+### 报告模板
+
+```markdown
+## Bug 描述
+清晰简洁地描述 bug 的现象。
+
+## 重现步骤
+1. 进入 '...'
+2. 点击 '....'
+3. 滚动到 '....'
+4. 看到错误
+
+## 预期行为
+描述您期望发生的情况。
+
+## 实际行为
+描述实际发生的情况。
+
+## 环境信息
+- OS: [例如 Windows 10]
+- .NET 版本: [例如 .NET 6.0]
+- Sqlx 版本: [例如 1.0.0]
+- 数据库: [例如 SQL Server 2019]
+
+## 其他信息
+添加任何其他有用的信息，如错误截图、日志等。
+```
+
+### 错误分类
+
+- **Critical**: 导致应用崩溃或数据损坏
+- **High**: 核心功能无法使用
+- **Medium**: 功能受限但有变通方案
+- **Low**: 轻微问题或改进建议
+
+## 💡 功能建议
+
+有新想法？我们很乐意听到您的建议！
+
+### 建议模板
+
+```markdown
+## 功能描述
+简要描述您想要的功能。
+
+## 问题背景
+解释这个功能要解决的问题。
+
+## 建议的解决方案
+描述您希望的实现方式。
+
+## 替代方案
+描述您考虑过的其他解决方案。
+
+## 其他信息
+添加任何其他相关信息或截图。
+```
+
+### 功能评估标准
+
+我们会根据以下标准评估功能建议：
+
+- **价值**: 对用户的价值和影响范围
+- **复杂度**: 实现的技术复杂度
+- **兼容性**: 与现有功能的兼容性
+- **维护成本**: 长期维护的成本
+
+## 🏆 认可贡献者
+
+我们重视每一个贡献者！贡献者将会：
+
+- 在项目 README 中被列出
+- 获得项目的 Contributor 徽章
+- 参与项目的重要决策讨论
+- 获得社区的认可和感谢
+
+## 📞 联系我们
+
+有问题或需要帮助？
+
+- 📧 **GitHub Issues**: [提交问题](https://github.com/Cricle/Sqlx/issues)
+- 💬 **Discussions**: [参与讨论](https://github.com/Cricle/Sqlx/discussions)
+- 📖 **Wiki**: [查看文档](https://github.com/Cricle/Sqlx/wiki)
+
+## 📜 行为准则
+
+参与此项目即表示您同意遵守我们的行为准则：
+
+- 尊重所有参与者
+- 保持建设性和友好的讨论
+- 接受不同的观点和经验水平
+- 专注于对社区最有益的事情
 
 ---
 
-如果您有任何问题或建议，请随时通过 GitHub Issues 联系我们。我们期待您的贡献！
+再次感谢您的贡献！您的参与让 Sqlx 变得更好。 🚀

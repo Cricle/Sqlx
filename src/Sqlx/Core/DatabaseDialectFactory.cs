@@ -41,9 +41,9 @@ internal static class DatabaseDialectFactory
             var d when d.Equals(SqlDefine.MySql) => SqlDefineTypes.MySql,
             var d when d.Equals(SqlDefine.SqlServer) => SqlDefineTypes.SqlServer,
             var d when d.Equals(SqlDefine.PgSql) => SqlDefineTypes.Postgresql,
-            var d when d.Equals(SqlDefine.Oracle) => SqlDefineTypes.Oracle,
-            var d when d.Equals(SqlDefine.DB2) => SqlDefineTypes.DB2,
             var d when d.Equals(SqlDefine.SQLite) => SqlDefineTypes.SQLite,
+            var d when d.Equals(SqlDefine.Oracle) => SqlDefineTypes.Oracle, // Will throw exception
+            var d when d.Equals(SqlDefine.DB2) => SqlDefineTypes.DB2, // Will throw exception
             _ => SqlDefineTypes.SqlServer // Default fallback
         };
 
@@ -62,9 +62,9 @@ internal static class DatabaseDialectFactory
             SqlDefineTypes.MySql => new MySqlDialectProvider(),
             SqlDefineTypes.SqlServer => new SqlServerDialectProvider(),
             SqlDefineTypes.Postgresql => new PostgreSqlDialectProvider(),
-            SqlDefineTypes.Oracle => new OracleDialectProvider(),
-            SqlDefineTypes.DB2 => new DB2DialectProvider(),
             SqlDefineTypes.SQLite => new SQLiteDialectProvider(),
+            SqlDefineTypes.Oracle => throw new NotSupportedException("Oracle dialect support has been removed to reduce complexity. Use PostgreSQL or SQL Server instead."),
+            SqlDefineTypes.DB2 => throw new NotSupportedException("DB2 dialect support has been removed to reduce complexity. Use PostgreSQL or SQL Server instead."),
             _ => throw new NotSupportedException($"Database dialect {dialectType} is not supported.")
         };
     }

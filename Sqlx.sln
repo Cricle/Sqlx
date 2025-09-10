@@ -33,8 +33,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentat
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RepositoryExample", "samples\RepositoryExample\RepositoryExample.csproj", "{C30917AC-9A9E-795E-CC33-69665239CD3E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SqlxMigration", "tools\SqlxMigration\SqlxMigration.csproj", "{B7E5D3A2-9F4C-4E8B-A5C6-1F2E3D4F5A7B}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sqlx.IntegrationTests", "tests\Sqlx.IntegrationTests\Sqlx.IntegrationTests.csproj", "{94EEA99D-65B9-4CE9-8EC6-1ECCFED48DFD}"
 EndProject
 Global
@@ -83,18 +81,6 @@ Global
 		{C30917AC-9A9E-795E-CC33-69665239CD3E}.Release|x64.Build.0 = Release|Any CPU
 		{C30917AC-9A9E-795E-CC33-69665239CD3E}.Release|x86.ActiveCfg = Release|Any CPU
 		{C30917AC-9A9E-795E-CC33-69665239CD3E}.Release|x86.Build.0 = Release|Any CPU
-		{B7E5D3A2-9F4C-4E8B-A5C6-1F2E3D4F5A7B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B7E5D3A2-9F4C-4E8B-A5C6-1F2E3D4F5A7B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B7E5D3A2-9F4C-4E8B-A5C6-1F2E3D4F5A7B}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{B7E5D3A2-9F4C-4E8B-A5C6-1F2E3D4F5A7B}.Debug|x64.Build.0 = Debug|Any CPU
-		{B7E5D3A2-9F4C-4E8B-A5C6-1F2E3D4F5A7B}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{B7E5D3A2-9F4C-4E8B-A5C6-1F2E3D4F5A7B}.Debug|x86.Build.0 = Debug|Any CPU
-		{B7E5D3A2-9F4C-4E8B-A5C6-1F2E3D4F5A7B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B7E5D3A2-9F4C-4E8B-A5C6-1F2E3D4F5A7B}.Release|Any CPU.Build.0 = Release|Any CPU
-		{B7E5D3A2-9F4C-4E8B-A5C6-1F2E3D4F5A7B}.Release|x64.ActiveCfg = Release|Any CPU
-		{B7E5D3A2-9F4C-4E8B-A5C6-1F2E3D4F5A7B}.Release|x64.Build.0 = Release|Any CPU
-		{B7E5D3A2-9F4C-4E8B-A5C6-1F2E3D4F5A7B}.Release|x86.ActiveCfg = Release|Any CPU
-		{B7E5D3A2-9F4C-4E8B-A5C6-1F2E3D4F5A7B}.Release|x86.Build.0 = Release|Any CPU
 		{94EEA99D-65B9-4CE9-8EC6-1ECCFED48DFD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{94EEA99D-65B9-4CE9-8EC6-1ECCFED48DFD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{94EEA99D-65B9-4CE9-8EC6-1ECCFED48DFD}.Debug|x64.ActiveCfg = Debug|Any CPU
@@ -114,7 +100,6 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{64973327-8AE6-4F9E-867E-BA391274A852} = {B8F42F0A-4D1C-4B5E-9C4E-5F7B8A6E9C4D}
 		{C30917AC-9A9E-795E-CC33-69665239CD3E} = {C9E4D7B2-6F3A-4B5E-8C7D-5F8E9A1B2C4D}
-		{B7E5D3A2-9F4C-4E8B-A5C6-1F2E3D4F5A7B} = {91441283-7573-4C48-AA67-F79CA62A36F5}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {E18E939C-FD52-4D7F-8232-5E7BE9DF8EBF}

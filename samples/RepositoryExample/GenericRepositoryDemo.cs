@@ -53,17 +53,19 @@ public static class GenericRepositoryDemo
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 email TEXT NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                is_active INTEGER NOT NULL DEFAULT 1
             )";
         await cmd.ExecuteNonQueryAsync();
         
         // Insert test data
         for (int i = 1; i <= 1000; i++)
         {
-            cmd.CommandText = "INSERT INTO Users (name, email) VALUES (@name, @email)";
+            cmd.CommandText = "INSERT INTO Users (name, email, is_active) VALUES (@name, @email, @is_active)";
             cmd.Parameters.Clear();
             cmd.Parameters.AddWithValue("@name", $"GenericUser{i}");
             cmd.Parameters.AddWithValue("@email", $"generic{i}@example.com");
+            cmd.Parameters.AddWithValue("@is_active", 1);
             await cmd.ExecuteNonQueryAsync();
         }
         

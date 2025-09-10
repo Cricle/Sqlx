@@ -4,7 +4,7 @@
 
 [![NuGet](https://img.shields.io/nuget/v/Sqlx.svg)](https://www.nuget.org/packages/Sqlx/)
 [![Downloads](https://img.shields.io/nuget/dt/Sqlx.svg)](https://www.nuget.org/packages/Sqlx/)
-[![License](https://img.shields.io/github/license/Cricle/Sqlx)](LICENSE)
+[![License](https://img.shields.io/github/license/Cricle/Sqlx)](License.txt)
 [![.NET](https://img.shields.io/badge/.NET-6.0%2B-blueviolet)](https://dotnet.microsoft.com/)
 [![C#](https://img.shields.io/badge/C%23-10.0%2B-239120)](https://docs.microsoft.com/en-us/dotnet/csharp/)
 [![AOT Ready](https://img.shields.io/badge/AOT%20Ready-✓-green)](https://docs.microsoft.com/en-us/dotnet/core/deploying/native-aot/)
@@ -1293,9 +1293,9 @@ var users = connection.QueryUsers(
 - ✅ **拦截函数优化**: 修复拦截函数中错误创建 command 的问题，提升性能
 
 **📊 测试结果对比:**
-- 失败测试: **54个 → 6个** (89%修复率)
-- 成功测试: **776个** (保持稳定)
-- 核心功能: **100%正常工作**
+- 最新测试摘要: 总计 **1644**，失败 **0**，成功 **1546**，跳过 **98**
+- 核心功能: **0 失败**（跳过用例不计入通过率）
+- 示例修复: 修复 SQLite 示例缺少 `is_active` 列导致失败的问题
 
 **🚀 验证的功能:**
 - ✅ Repository 模式自动生成
@@ -1474,14 +1474,14 @@ dotnet run --project samples/RepositoryExample
 
 ## 📊 项目统计
 
-- ✅ **838+ 测试成功** - 高质量代码保障
-- 🚀 **89% 测试成功率** - 持续改进中
+- ✅ **1546 个测试通过**（共 1644，用例，98 跳过）
+- 🚀 **0 失败** - 主体功能用例全部通过
 - 📦 **零运行时依赖** - 纯源代码生成
 - 🎯 **NativeAOT 兼容** - 现代 .NET 最佳实践
 
 ## 📄 许可证
 
-本项目采用 [MIT 许可证](LICENSE) - 详见 LICENSE 文件
+本项目采用 [MIT 许可证](License.txt) - 详见 License.txt
 
 ## 💡 获取帮助
 

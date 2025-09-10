@@ -5,11 +5,6 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Sqlx.SqlGen;
-using System.Collections.Generic;
-using System.Data.Common;
-using System.Threading.Tasks;
-using System.Linq;
 
 namespace Sqlx.Tests;
 
@@ -24,7 +19,7 @@ public class BatchCommandTests : CodeGenerationTestBase
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Threading.Tasks;
-using Sqlx.SqlGen;
+using Sqlx.Annotations;
 
 namespace TestNamespace
 {
@@ -66,7 +61,7 @@ namespace TestNamespace
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Threading.Tasks;
-using Sqlx.SqlGen;
+using Sqlx.Annotations;
 
 namespace TestNamespace
 {
@@ -106,7 +101,7 @@ namespace TestNamespace
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Threading.Tasks;
-using Sqlx.SqlGen;
+using Sqlx.Annotations;
 
 namespace TestNamespace
 {
@@ -140,7 +135,7 @@ namespace TestNamespace
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Threading.Tasks;
-using Sqlx.SqlGen;
+using Sqlx.Annotations;
 
 namespace TestNamespace
 {
@@ -184,7 +179,7 @@ using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Threading.Tasks;
-using Sqlx.SqlGen;
+using Sqlx.Annotations;
 
 namespace TestNamespace
 {
@@ -233,7 +228,7 @@ namespace TestNamespace
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Threading.Tasks;
-using Sqlx.SqlGen;
+using Sqlx.Annotations;
 
 namespace TestNamespace
 {
@@ -272,7 +267,7 @@ namespace TestNamespace
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Threading.Tasks;
-using Sqlx.SqlGen;
+using Sqlx.Annotations;
 
 namespace TestNamespace
 {

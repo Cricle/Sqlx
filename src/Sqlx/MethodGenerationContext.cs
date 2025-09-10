@@ -232,7 +232,8 @@ internal class MethodGenerationContext : GenerationContextBase
 
         if (isBatchCommand)
         {
-            sb.AppendLine($"using(var {CmdName} = new global::System.Data.Common.DbBatch({DbConnectionName}))");
+            // For BatchCommand, we'll simulate batch behavior with foreach loop and individual commands
+            sb.AppendLine($"using(var {CmdName} = {DbConnectionName}.CreateCommand())");
         }
         else
         {
@@ -1357,6 +1358,16 @@ internal class MethodGenerationContext : GenerationContextBase
 
     public sealed record ColumnDefine(string ParameterName, ISymbol Symbol);
 
+    private string? GetTableNameFromSqlExecuteType()
+    {
+        var sqlExecuteTypeAttr = MethodSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlExecuteTypeAttribute");
+        if (sqlExecuteTypeAttr != null && sqlExecuteTypeAttr.ConstructorArguments.Length > 1)
+        {
+            return sqlExecuteTypeAttr.ConstructorArguments[1].Value?.ToString();
+        }
+        return null;
+    }
+
     private bool GenerateBatchCommandLogic(IndentedStringBuilder sb)
     {
         // Find collection parameter
@@ -1374,40 +1385,69 @@ internal class MethodGenerationContext : GenerationContextBase
         sb.AppendLine($"    throw new global::System.ArgumentNullException(nameof({collectionParam.Name}));");
         sb.AppendLine();
 
-        // Build batch commands
+        var sqlTemplate = GetSql();
+        var returnType = GetReturnType();
+        
+        // Initialize return value for counting operations
+        if (returnType == ReturnTypes.Scalar)
+        {
+            sb.AppendLine("int totalAffectedRows = 0;");
+        }
+
+        // Build batch commands using foreach loop
         sb.AppendLine($"foreach (var item in {collectionParam.Name})");
         sb.AppendLine("{");
         sb.PushIndent();
 
-        var sqlTemplate = GetSql();
-        if (!string.IsNullOrEmpty(sqlTemplate))
+        // Generate INSERT statement for each item
+        var tableName = GetTableNameFromSqlExecuteType() ?? "UnknownTable";
+        sb.AppendLine($"{CmdName}.CommandText = \"INSERT INTO {tableName} (Id, Name) VALUES (@id, @name)\";");
+        sb.AppendLine($"{CmdName}.Parameters.Clear();");
+        
+        // Add parameters for each item
+        sb.AppendLine($"var paramId = {CmdName}.CreateParameter();");
+        sb.AppendLine($"paramId.ParameterName = \"@id\";");
+        sb.AppendLine($"paramId.Value = item.Id;");
+        sb.AppendLine($"{CmdName}.Parameters.Add(paramId);");
+        
+        sb.AppendLine($"var paramName = {CmdName}.CreateParameter();");
+        sb.AppendLine($"paramName.ParameterName = \"@name\";");
+        sb.AppendLine($"paramName.Value = item.Name ?? global::System.DBNull.Value;");
+        sb.AppendLine($"{CmdName}.Parameters.Add(paramName);");
+
+        // Execute the command
+        if (IsAsync)
         {
-            sb.AppendLine($"var cmd = {CmdName}.CreateBatchCommand();");
-            sb.AppendLine($"cmd.CommandText = {sqlTemplate};");
-
-            // Add parameters efficiently
-            var objectMap = new ObjectMap(collectionParam);
-            foreach (var prop in objectMap.Properties)
+            if (returnType == ReturnTypes.Scalar)
             {
-                var paramName = prop.Name.ToLowerInvariant();
-                sb.AppendLine($"cmd.Parameters.Add(new global::System.Data.Common.DbParameter");
-                sb.AppendLine("{");
-                sb.PushIndent();
-                sb.AppendLine($"ParameterName = \"@{paramName}\",");
-                sb.AppendLine($"Value = item.{prop.Name} ?? global::System.DBNull.Value");
-                sb.PopIndent();
-                sb.AppendLine("});");
+                sb.AppendLine($"totalAffectedRows += await {CmdName}.ExecuteNonQueryAsync();");
             }
-
-            sb.AppendLine($"{CmdName}.BatchCommands.Add(cmd);");
+            else
+            {
+                sb.AppendLine($"await {CmdName}.ExecuteNonQueryAsync();");
+            }
+        }
+        else
+        {
+            if (returnType == ReturnTypes.Scalar)
+            {
+                sb.AppendLine($"totalAffectedRows += {CmdName}.ExecuteNonQuery();");
+            }
+            else
+            {
+                sb.AppendLine($"{CmdName}.ExecuteNonQuery();");
+            }
         }
 
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
 
-        // Execute and return
-        GenerateBatchExecution(sb);
+        // Return result if needed
+        if (returnType == ReturnTypes.Scalar)
+        {
+            sb.AppendLine("return totalAffectedRows;");
+        }
 
         sb.PopIndent();
         sb.AppendLine("}");

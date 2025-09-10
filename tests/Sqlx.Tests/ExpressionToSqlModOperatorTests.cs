@@ -23,7 +23,6 @@ using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq.Expressions;
 using Sqlx.Annotations;
-using Sqlx.Annotations;
 
 namespace TestNamespace
 {
@@ -67,7 +66,6 @@ using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq.Expressions;
-using Sqlx.Annotations;
 using Sqlx.Annotations;
 
 namespace TestNamespace
@@ -120,7 +118,6 @@ using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq.Expressions;
 using Sqlx.Annotations;
-using Sqlx.Annotations;
 
 namespace TestNamespace
 {
@@ -167,7 +164,6 @@ using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq.Expressions;
-using Sqlx.Annotations;
 using Sqlx.Annotations;
 
 namespace TestNamespace
@@ -226,7 +222,6 @@ using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq.Expressions;
 using Sqlx.Annotations;
-using Sqlx.Annotations;
 
 namespace TestNamespace
 {
@@ -273,7 +268,6 @@ using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq.Expressions;
 using Sqlx.Annotations;
-using Sqlx.Annotations;
 
 namespace TestNamespace
 {
@@ -318,7 +312,6 @@ using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq.Expressions;
-using Sqlx.Annotations;
 using Sqlx.Annotations;
 
 namespace TestNamespace

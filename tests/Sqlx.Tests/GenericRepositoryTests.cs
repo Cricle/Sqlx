@@ -111,9 +111,9 @@ namespace TestNamespace
     [RepositoryFor(typeof(IAdvancedRepository<User, int>))]
     public partial class AdvancedUserRepository : IAdvancedRepository<User, int>
     {
-        private readonly DbConnection connection;
+        private readonly System.Data.Common.DbConnection connection;
         
-        public AdvancedUserRepository(DbConnection connection)
+        public AdvancedUserRepository(System.Data.Common.DbConnection connection)
         {
             this.connection = connection;
         }
@@ -172,9 +172,9 @@ namespace TestNamespace
     [RepositoryFor(typeof(IUserService))]
     public partial class UserService : IUserService
     {
-        private readonly DbConnection connection;
+        private readonly System.Data.Common.DbConnection connection;
         
-        public UserService(DbConnection connection)
+        public UserService(System.Data.Common.DbConnection connection)
         {
             this.connection = connection;
         }

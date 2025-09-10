@@ -1310,15 +1310,21 @@ var users = connection.QueryUsers(
 
 ```
 Sqlx/
-├── src/Sqlx/                   # 核心库
-├── samples/                    # 示例项目
-│   ├── RepositoryExample/      # Repository 模式示例
-│   ├── BasicExample/           # 基础用法示例
-│   ├── ExpressionToSqlDemo/    # ExpressionToSql 示例
-│   └── CompilationTests/       # 编译测试
-├── tests/                      # 单元测试
-└── tools/                      # 发布工具
+├── src/Sqlx/                   # 🔧 核心库
+├── samples/                    # 📚 示例项目
+│   ├── RepositoryExample/      # Repository 模式完整示例
+│   ├── ComprehensiveDemo/      # 综合功能演示
+│   ├── PerformanceBenchmark/   # 性能基准测试
+│   └── CompilationTests/       # 编译验证测试
+├── tests/                      # 🧪 单元测试和集成测试
+├── tools/                      # 🛠️ 开发工具
+│   ├── SqlxMigration/         # 迁移工具
+│   └── SqlxPerformanceAnalyzer/ # 性能分析工具
+├── extensions/                 # 🎨 IDE扩展
+└── docs/                       # 📖 完整文档
 ```
+
+> 📋 详细项目结构说明请参阅 [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)
 
 ## 🔧 支持的特性
 

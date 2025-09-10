@@ -13,7 +13,6 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 public class SqlConnectionTests : CodeGenerationTestBase
 {
     [TestMethod]
-    [Ignore("Temporarily disabled due to source generator string literal formatting issues")]
     public void ScalarResult()
     {
         string source = @"
@@ -24,7 +23,7 @@ namespace Foo
 {
     partial class C
     {
-        private DbConnection connection;
+        private System.Data.Common.DbConnection connection;
 
         [Sqlx(""sp_TestSP"")]
         public partial int M(int clientId, string? personId);
@@ -93,7 +92,7 @@ namespace Foo
 {
     partial class C
     {
-        private DbConnection connection;
+        private System.Data.Common.DbConnection connection;
 
         [Sqlx(""sp_TestSP"")]
         public partial int M(int clientId, out int personId);
@@ -164,7 +163,7 @@ namespace Foo
 {
     partial class C
     {
-        private DbConnection connection;
+        private System.Data.Common.DbConnection connection;
 
         [Sqlx(""sp_TestSP"")]
         public partial int M(int clientId, out int personId);
@@ -242,7 +241,7 @@ namespace Foo
 
     partial class C
     {
-        private DbConnection connection;
+        private System.Data.Common.DbConnection connection;
 
         [Sqlx(""sp_TestSP"")]
         public partial IList<Item> M();
@@ -288,7 +287,7 @@ namespace Foo
 
     partial class C
     {
-        private DbConnection connection;
+        private System.Data.Common.DbConnection connection;
 
         [Sqlx(""sp_TestSP"")]
         public partial void M(out IList<Item> result);
@@ -364,7 +363,7 @@ namespace Foo
 
     partial class C
     {
-        private DbConnection connection;
+        private System.Data.Common.DbConnection connection;
 
         [Sqlx(""sp_TestSP"")]
         public partial void M(ref IList<Item> result);
@@ -438,7 +437,7 @@ namespace Foo
 
     partial class C
     {
-        private DbConnection connection;
+        private System.Data.Common.DbConnection connection;
 
         [Sqlx(""sp_TestSP"")]
         public partial Item M();
@@ -481,7 +480,7 @@ namespace Foo
 
     partial class C
     {
-        private DbConnection connection;
+        private System.Data.Common.DbConnection connection;
 
         [Sqlx(""sp_TestSP"")]
         public partial Item? M();
@@ -524,7 +523,7 @@ namespace Foo
 
     partial class C
     {
-        private DbConnection connection;
+        private System.Data.Common.DbConnection connection;
 
         [Sqlx(""sp_TestSP"")]
         public partial Item M();
@@ -568,7 +567,7 @@ namespace Foo
 
     partial class C
     {
-        private DbConnection connection;
+        private System.Data.Common.DbConnection connection;
 
         [Sqlx(""sp_TestSP"")]
         public partial IList<Item> M();
@@ -762,7 +761,7 @@ namespace Foo
 {
     partial class C
     {
-        private DbConnection connection;
+        private System.Data.Common.DbConnection connection;
 
         [Sqlx(""sp_TestSP"")]
         public partial IList<string> M();
@@ -796,7 +795,7 @@ namespace Foo
 {
     partial class C
     {
-        private DbConnection connection;
+        private System.Data.Common.DbConnection connection;
 
         [Sqlx(""sp_TestSP"")]
         public partial IList<(string,int)> M();

@@ -7,6 +7,7 @@
     <AssemblyName>Sqlx.ComprehensiveDemo</AssemblyName>
     <RootNamespace>Sqlx.ComprehensiveDemo</RootNamespace>
     <Description>Comprehensive demo showcasing all Sqlx advanced features</Description>
+    <NoWarn>CS1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

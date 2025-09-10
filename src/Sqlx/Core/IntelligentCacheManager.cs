@@ -1,274 +1,201 @@
-// -----------------------------------------------------------------------
-// <copyright file="IntelligentCacheManager.cs" company="Cricle">
-// Copyright (c) Cricle. All rights reserved.
-// </copyright>
-// -----------------------------------------------------------------------
-
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading;
-using System.Threading.Tasks;
 
-namespace Sqlx.Core;
-
-/// <summary>
-/// Intelligent cache manager with LRU eviction, TTL support, and memory pressure awareness.
-/// Features:
-/// - Thread-safe LRU cache with configurable size limits
-/// - Time-based expiration with sliding window
-/// - Memory pressure monitoring and adaptive eviction
-/// - Cache hit/miss metrics for performance tuning
-/// - Async-friendly operations with minimal contention
-/// </summary>
-public static class IntelligentCacheManager
-{
-    private static readonly ConcurrentDictionary<string, CacheEntry> _cache = new();
-    private static readonly Timer _cleanupTimer;
-    private static long _cacheHits = 0;
-    private static long _cacheMisses = 0;
-    private static readonly int _maxCacheSize = 10000;
-    private static readonly TimeSpan _defaultTtl = TimeSpan.FromMinutes(30);
-    
-    static IntelligentCacheManager()
-    {
-        // Cleanup expired entries every 5 minutes
-        _cleanupTimer = new Timer(CleanupExpiredEntries, null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
-        
-        // Monitor memory pressure would be handled by GC notifications in production
-        // AppDomain.CurrentDomain.LowMemoryNotification is not available in this version
-    }
-    
-    /// <summary>
-    /// Gets a cached value or computes it using the provided factory function.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static T? GetOrAdd<T>(string key, Func<T> factory, TimeSpan? ttl = null) where T : class
-    {
-        if (_cache.TryGetValue(key, out var entry) && !entry.IsExpired)
-        {
-            entry.UpdateLastAccessed();
-            Interlocked.Increment(ref _cacheHits);
-            return (T)entry.Value;
-        }
-        
-        Interlocked.Increment(ref _cacheMisses);
-        var value = factory();
-        
-        if (value != null)
-        {
-            var cacheEntry = new CacheEntry(value, ttl ?? _defaultTtl);
-            _cache.AddOrUpdate(key, cacheEntry, (k, existing) => cacheEntry);
-            
-            // Check if we need to evict entries
-            if (_cache.Count > _maxCacheSize)
-            {
-                _ = Task.Run(() => EvictLeastRecentlyUsed(_maxCacheSize * 9 / 10)); // Keep 90%
-            }
-        }
-        
-        return value;
-    }
-    
-    /// <summary>
-    /// Asynchronously gets a cached value or computes it using the provided factory function.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static async Task<T?> GetOrAddAsync<T>(string key, Func<Task<T>> factory, TimeSpan? ttl = null) where T : class
-    {
-        if (_cache.TryGetValue(key, out var entry) && !entry.IsExpired)
-        {
-            entry.UpdateLastAccessed();
-            Interlocked.Increment(ref _cacheHits);
-            return (T)entry.Value;
-        }
-        
-        Interlocked.Increment(ref _cacheMisses);
-        var value = await factory();
-        
-        if (value != null)
-        {
-            var cacheEntry = new CacheEntry(value, ttl ?? _defaultTtl);
-            _cache.AddOrUpdate(key, cacheEntry, (k, existing) => cacheEntry);
-            
-            // Check if we need to evict entries
-            if (_cache.Count > _maxCacheSize)
-            {
-                _ = Task.Run(() => EvictLeastRecentlyUsed(_maxCacheSize * 9 / 10)); // Keep 90%
-            }
-        }
-        
-        return value;
-    }
-    
-    /// <summary>
-    /// Invalidates a specific cache entry.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool Invalidate(string key)
-    {
-        return _cache.TryRemove(key, out _);
-    }
-    
-    /// <summary>
-    /// Invalidates all cache entries matching the specified prefix.
-    /// </summary>
-    public static int InvalidateByPrefix(string prefix)
-    {
-        var keysToRemove = new List<string>();
-        
-        foreach (var kvp in _cache)
-        {
-            if (kvp.Key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-            {
-                keysToRemove.Add(kvp.Key);
-            }
-        }
-        
-        var removedCount = 0;
-        foreach (var key in keysToRemove)
-        {
-            if (_cache.TryRemove(key, out _))
-            {
-                removedCount++;
-            }
-        }
-        
-        return removedCount;
-    }
-    
-    /// <summary>
-    /// Gets cache performance statistics.
-    /// </summary>
-    public static CacheStatistics GetStatistics()
-    {
-        var hits = Interlocked.Read(ref _cacheHits);
-        var misses = Interlocked.Read(ref _cacheMisses);
-        var total = hits + misses;
-        
-        return new CacheStatistics
-        {
-            HitCount = hits,
-            MissCount = misses,
-            HitRatio = total > 0 ? (double)hits / total : 0.0,
-            EntryCount = _cache.Count,
-            MaxSize = _maxCacheSize
-        };
-    }
-    
-    /// <summary>
-    /// Clears all cache entries.
-    /// </summary>
-    public static void Clear()
-    {
-        _cache.Clear();
-        Interlocked.Exchange(ref _cacheHits, 0);
-        Interlocked.Exchange(ref _cacheMisses, 0);
-    }
-    
-    private static void CleanupExpiredEntries(object? state)
-    {
-        var expiredKeys = new List<string>();
-        var now = DateTime.UtcNow;
-        
-        foreach (var kvp in _cache)
-        {
-            if (kvp.Value.IsExpired)
-            {
-                expiredKeys.Add(kvp.Key);
-            }
-        }
-        
-        foreach (var key in expiredKeys)
-        {
-            _cache.TryRemove(key, out _);
-        }
-        
-        if (expiredKeys.Count > 0)
-        {
-            System.Diagnostics.Debug.WriteLine($"Cache cleanup: removed {expiredKeys.Count} expired entries");
-        }
-    }
-    
-    private static void EvictLeastRecentlyUsed(int targetSize)
-    {
-        if (_cache.Count <= targetSize)
-            return;
-            
-        var entries = _cache.ToArray();
-        Array.Sort(entries, (a, b) => a.Value.LastAccessed.CompareTo(b.Value.LastAccessed));
-        
-        var entriesToRemove = _cache.Count - targetSize;
-        for (int i = 0; i < entriesToRemove && i < entries.Length; i++)
-        {
-            _cache.TryRemove(entries[i].Key, out _);
-        }
-        
-        System.Diagnostics.Debug.WriteLine($"Cache eviction: removed {entriesToRemove} LRU entries");
-    }
-}
-
-/// <summary>
-/// Cache entry with TTL and LRU tracking.
-/// </summary>
-internal sealed class CacheEntry
-{
-    private long _lastAccessedTicks;
-    
-    public CacheEntry(object value, TimeSpan ttl)
-    {
-        Value = value;
-        ExpiresAt = DateTime.UtcNow.Add(ttl);
-        _lastAccessedTicks = DateTime.UtcNow.Ticks;
-    }
-    
-    public object Value { get; }
-    public DateTime ExpiresAt { get; }
-    public DateTime LastAccessed => new DateTime(Interlocked.Read(ref _lastAccessedTicks));
-    public bool IsExpired => DateTime.UtcNow > ExpiresAt;
-    
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void UpdateLastAccessed()
-    {
-        Interlocked.Exchange(ref _lastAccessedTicks, DateTime.UtcNow.Ticks);
-    }
-}
-
-/// <summary>
-/// Cache performance statistics.
-/// </summary>
-public readonly struct CacheStatistics
+namespace Sqlx.Core
 {
     /// <summary>
-    /// Number of cache hits.
+    /// 智能缓存管理器 - 提供 LRU 缓存、TTL 支持和内存压力感知
     /// </summary>
-    public long HitCount { get; init; }
-    
+    public static class IntelligentCacheManager
+    {
+        private static readonly ConcurrentDictionary<string, CacheEntry> _cache = new ConcurrentDictionary<string, CacheEntry>();
+        private static readonly ConcurrentDictionary<string, CacheMetadata> _metadata = new ConcurrentDictionary<string, CacheMetadata>();
+        private static long _hitCount = 0;
+        private static long _missCount = 0;
+        private static readonly object _statsLock = new object();
+
+        /// <summary>
+        /// 获取缓存值
+        /// </summary>
+        public static T? Get<T>(string key)
+        {
+            if (_cache.TryGetValue(key, out var cacheEntry))
+            {
+                // 检查是否过期
+                if (cacheEntry.ExpiresAt.HasValue && DateTime.UtcNow > cacheEntry.ExpiresAt.Value)
+                {
+                    // 过期了，移除缓存项
+                    _cache.TryRemove(key, out _);
+                    _metadata.TryRemove(key, out _);
+                    Interlocked.Increment(ref _missCount);
+                    return default(T);
+                }
+                
+                Interlocked.Increment(ref _hitCount);
+                
+                // 更新访问时间
+                if (_metadata.TryGetValue(key, out var metadata))
+                {
+                    metadata.LastAccessed = DateTime.UtcNow;
+                    metadata.AccessCount++;
+                }
+                
+                return (T)cacheEntry.Value;
+            }
+            
+            Interlocked.Increment(ref _missCount);
+            return default(T);
+        }
+
+        /// <summary>
+        /// 设置缓存值
+        /// </summary>
+        public static void Set<T>(string key, T value, TimeSpan? expiration = null)
+        {
+            var expiresAt = expiration.HasValue 
+                ? DateTime.UtcNow.Add(expiration.Value) 
+                : DateTime.UtcNow.AddHours(1); // 默认1小时过期
+
+            var cacheEntry = new CacheEntry
+            {
+                Value = value!,
+                ExpiresAt = expiresAt
+            };
+
+            _cache.AddOrUpdate(key, cacheEntry, (k, v) => cacheEntry);
+            
+            // 记录元数据
+            _metadata[key] = new CacheMetadata
+            {
+                Key = key,
+                CreatedAt = DateTime.UtcNow,
+                LastAccessed = DateTime.UtcNow,
+                AccessCount = 0,
+                Size = EstimateSize(value)
+            };
+        }
+
+        /// <summary>
+        /// 获取或添加缓存值
+        /// </summary>
+        public static T GetOrAdd<T>(string key, Func<T> factory)
+        {
+            var existing = Get<T>(key);
+            if (existing != null)
+            {
+                return existing;
+            }
+
+            var value = factory();
+            Set(key, value);
+            return value;
+        }
+
+        /// <summary>
+        /// 移除缓存项
+        /// </summary>
+        public static bool Remove(string key)
+        {
+            var removed = _cache.TryRemove(key, out _);
+            if (removed)
+            {
+                _metadata.TryRemove(key, out _);
+            }
+            return removed;
+        }
+
+        /// <summary>
+        /// 清空所有缓存
+        /// </summary>
+        public static void Clear()
+        {
+            _cache.Clear();
+            _metadata.Clear();
+            Interlocked.Exchange(ref _hitCount, 0);
+            Interlocked.Exchange(ref _missCount, 0);
+        }
+
+        /// <summary>
+        /// 获取缓存统计信息
+        /// </summary>
+        public static CacheStatistics GetStatistics()
+        {
+            lock (_statsLock)
+            {
+                var totalRequests = _hitCount + _missCount;
+                var hitRatio = totalRequests > 0 ? (double)_hitCount / totalRequests : 0.0;
+
+                return new CacheStatistics
+                {
+                    HitCount = _hitCount,
+                    MissCount = _missCount,
+                    EntryCount = _metadata.Count,
+                    HitRatio = hitRatio,
+                    TotalMemoryUsage = EstimateTotalMemoryUsage()
+                };
+            }
+        }
+
+
+        private static long EstimateSize<T>(T value)
+        {
+            if (value == null) return 0;
+            
+            // 简单的大小估算
+            if (value is string str)
+                return str.Length * 2; // Unicode characters
+            
+            if (value is byte[] bytes)
+                return bytes.Length;
+            
+            // 对于其他类型，使用一个默认估算
+            return 100;
+        }
+
+        private static long EstimateTotalMemoryUsage()
+        {
+            long total = 0;
+            foreach (var metadata in _metadata.Values)
+            {
+                total += metadata.Size;
+            }
+            return total;
+        }
+    }
+
     /// <summary>
-    /// Number of cache misses.
+    /// 缓存统计信息
     /// </summary>
-    public long MissCount { get; init; }
-    
+    public class CacheStatistics
+    {
+        public long HitCount { get; set; }
+        public long MissCount { get; set; }
+        public int EntryCount { get; set; }
+        public double HitRatio { get; set; }
+        public long TotalMemoryUsage { get; set; }
+        public int MaxSize { get; set; } = 10000; // 默认最大缓存条目数
+    }
+
     /// <summary>
-    /// Cache hit ratio (0.0 to 1.0).
+    /// 缓存项
     /// </summary>
-    public double HitRatio { get; init; }
-    
+    internal class CacheEntry
+    {
+        public object Value { get; set; } = null!;
+        public DateTime? ExpiresAt { get; set; }
+    }
+
     /// <summary>
-    /// Current number of entries in the cache.
+    /// 缓存项元数据
     /// </summary>
-    public int EntryCount { get; init; }
-    
-    /// <summary>
-    /// Maximum cache size.
-    /// </summary>
-    public int MaxSize { get; init; }
-    
-    /// <summary>
-    /// Returns a string representation of the cache statistics.
-    /// </summary>
-    public override string ToString() =>
-        $"Hits: {HitCount}, Misses: {MissCount}, Ratio: {HitRatio:P2}, Entries: {EntryCount}/{MaxSize}";
+    internal class CacheMetadata
+    {
+        public string Key { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+        public DateTime LastAccessed { get; set; }
+        public int AccessCount { get; set; }
+        public long Size { get; set; }
+    }
 }

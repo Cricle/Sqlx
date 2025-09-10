@@ -21,6 +21,7 @@
     </PackageReference>
     <PackageReference Include="Verify.MSTest" />
     <PackageReference Include="Moq" />
+    <PackageReference Include="System.Data.SQLite" />
   </ItemGroup>
 
   <ItemGroup>

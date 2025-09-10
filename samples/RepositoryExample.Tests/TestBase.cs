@@ -45,7 +45,8 @@ public abstract class TestBase : IDisposable
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 Name TEXT NOT NULL,
                 Email TEXT NOT NULL,
-                CreatedAt TEXT NOT NULL
+                CreatedAt TEXT NOT NULL,
+                IsActive INTEGER NOT NULL DEFAULT 1
             );
             
             CREATE INDEX idx_users_email ON users(Email);
@@ -65,10 +66,10 @@ public abstract class TestBase : IDisposable
     protected async Task SeedTestDataAsync()
     {
         const string seedSql = @"
-            INSERT INTO users (Name, Email, CreatedAt) VALUES 
-            ('Test User 1', 'test1@example.com', datetime('now', '-30 days')),
-            ('Test User 2', 'test2@example.com', datetime('now', '-15 days')),
-            ('Test User 3', 'test3@example.com', datetime('now', '-5 days'));
+            INSERT INTO users (Name, Email, CreatedAt, IsActive) VALUES 
+            ('Test User 1', 'test1@example.com', datetime('now', '-30 days'), 1),
+            ('Test User 2', 'test2@example.com', datetime('now', '-15 days'), 1),
+            ('Test User 3', 'test3@example.com', datetime('now', '-5 days'), 1);
         ";
 
         using var command = Connection.CreateCommand();

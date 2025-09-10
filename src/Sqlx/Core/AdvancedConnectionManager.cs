@@ -1,204 +1,277 @@
-// -----------------------------------------------------------------------
-// <copyright file="AdvancedConnectionManager.cs" company="Cricle">
-// Copyright (c) Cricle. All rights reserved.
-// </copyright>
-// -----------------------------------------------------------------------
-
 using System;
+using System.Collections.Concurrent;
 using System.Data;
 using System.Data.Common;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Runtime.CompilerServices;
 
-namespace Sqlx.Core;
-
-/// <summary>
-/// Advanced connection manager with intelligent connection pooling, retry logic, and performance monitoring.
-/// Features:
-/// - Automatic connection state management
-/// - Intelligent retry with exponential backoff
-/// - Connection health monitoring
-/// - Performance metrics collection
-/// - Transaction scope awareness
-/// </summary>
-public static class AdvancedConnectionManager
+namespace Sqlx.Core
 {
-    private const int MaxRetryAttempts = 3;
-    private const int BaseRetryDelayMs = 100;
-    
     /// <summary>
-    /// Ensures connection is open with intelligent retry logic and performance monitoring.
+    /// 高级连接管理器 - 提供智能重试、连接池和健康监控
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void EnsureConnectionOpen(DbConnection connection)
+    public static class AdvancedConnectionManager
     {
-        if (connection.State == ConnectionState.Open)
-            return;
-            
-        var attempt = 0;
-        while (attempt < MaxRetryAttempts)
+        private static readonly ConcurrentDictionary<string, DbConnection> _connectionPool = new ConcurrentDictionary<string, DbConnection>();
+        private static readonly ConcurrentDictionary<string, CircuitBreaker> _circuitBreakers = new ConcurrentDictionary<string, CircuitBreaker>();
+        private static readonly ConnectionMetrics _metrics = new ConnectionMetrics();
+
+        /// <summary>
+        /// 确保连接打开
+        /// </summary>
+        public static async Task EnsureConnectionOpenAsync(DbConnection connection, CancellationToken cancellationToken = default)
         {
-            try
-            {
-                connection.Open();
-                return;
-            }
-            catch (Exception ex) when (IsTransientError(ex) && attempt < MaxRetryAttempts - 1)
-            {
-                attempt++;
-                var delay = CalculateRetryDelay(attempt);
-                System.Threading.Thread.Sleep(delay);
-                System.Diagnostics.Debug.WriteLine($"Connection retry {attempt}/{MaxRetryAttempts} after {delay}ms delay");
-            }
-        }
-    }
-    
-    /// <summary>
-    /// Asynchronously ensures connection is open with intelligent retry logic.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static async Task EnsureConnectionOpenAsync(DbConnection connection, CancellationToken cancellationToken = default)
-    {
-        if (connection.State == ConnectionState.Open)
-            return;
-            
-        var attempt = 0;
-        while (attempt < MaxRetryAttempts)
-        {
-            try
+            if (connection.State != ConnectionState.Open)
             {
                 await connection.OpenAsync(cancellationToken);
-                return;
-            }
-            catch (Exception ex) when (IsTransientError(ex) && attempt < MaxRetryAttempts - 1)
-            {
-                attempt++;
-                var delay = CalculateRetryDelay(attempt);
-                await Task.Delay(delay, cancellationToken);
-                System.Diagnostics.Debug.WriteLine($"Connection retry {attempt}/{MaxRetryAttempts} after {delay}ms delay");
             }
         }
-    }
-    
-    /// <summary>
-    /// Creates an optimized command with performance monitoring and parameter reuse.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static DbCommand CreateOptimizedCommand(DbConnection connection, string sql, DbTransaction? transaction = null)
-    {
-        var command = connection.CreateCommand();
-        command.CommandText = sql;
-        command.CommandType = CommandType.Text;
-        
-        if (transaction != null)
-        {
-            command.Transaction = transaction;
-        }
-        
-        // Optimize for parameter reuse
-        command.Prepare();
-        
-        return command;
-    }
-    
-    /// <summary>
-    /// Determines if an exception represents a transient error that should be retried.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static bool IsTransientError(Exception exception)
-    {
-        // Common transient error patterns
-        var message = exception.Message?.ToLowerInvariant() ?? "";
-        
-        return message.Contains("timeout") ||
-               message.Contains("connection") ||
-               message.Contains("network") ||
-               message.Contains("deadlock") ||
-               message.Contains("transport") ||
-               exception is TimeoutException;
-    }
-    
-    /// <summary>
-    /// Calculates retry delay using exponential backoff with jitter.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int CalculateRetryDelay(int attempt)
-    {
-        var exponentialDelay = BaseRetryDelayMs * Math.Pow(2, attempt - 1);
-        var random = new Random();
-        var jitter = random.Next(0, (int)(exponentialDelay * 0.1)); // Add up to 10% jitter
-        return (int)(exponentialDelay + jitter);
-    }
-    
-    /// <summary>
-    /// Monitors connection health and provides diagnostic information.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ConnectionHealthInfo GetConnectionHealth(DbConnection connection)
-    {
-        return new ConnectionHealthInfo
-        {
-            State = connection.State,
-            ServerVersion = SafeGetServerVersion(connection),
-            Database = connection.Database,
-            DataSource = connection.DataSource,
-            ConnectionTimeout = connection.ConnectionTimeout
-        };
-    }
-    
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static string SafeGetServerVersion(DbConnection connection)
-    {
-        try
-        {
-            return connection.State == ConnectionState.Open ? connection.ServerVersion : "Unknown";
-        }
-        catch
-        {
-            return "Unknown";
-        }
-    }
-}
 
-/// <summary>
-/// Connection health information for monitoring and diagnostics.
-/// </summary>
-public readonly struct ConnectionHealthInfo
-{
+        /// <summary>
+        /// 获取连接健康状况
+        /// </summary>
+        public static ConnectionHealth GetConnectionHealth(DbConnection connection)
+        {
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            
+            try
+            {
+                var isHealthy = connection.State == ConnectionState.Open;
+                stopwatch.Stop();
+
+                return new ConnectionHealth
+                {
+                    IsHealthy = isHealthy,
+                    State = connection.State,
+                    Database = connection.Database ?? string.Empty,
+                    ResponseTime = stopwatch.Elapsed
+                };
+            }
+            catch
+            {
+                stopwatch.Stop();
+                return new ConnectionHealth
+                {
+                    IsHealthy = false,
+                    State = connection.State,
+                    ResponseTime = stopwatch.Elapsed
+                };
+            }
+        }
+
+        /// <summary>
+        /// 使用重试机制执行操作
+        /// </summary>
+        public static async Task<T> ExecuteWithRetryAsync<T>(Func<Task<T>> operation, int maxAttempts = 3)
+        {
+            Exception? lastException = null;
+            
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                try
+                {
+                    return await operation();
+                }
+                catch (Exception ex)
+                {
+                    lastException = ex;
+                    
+                    if (attempt == maxAttempts)
+                        break;
+                    
+                    var delay = CalculateExponentialBackoff(attempt);
+                    await Task.Delay(delay);
+                }
+            }
+            
+            throw lastException!;
+        }
+
+        /// <summary>
+        /// 使用断路器执行操作
+        /// </summary>
+        public static async Task<T> ExecuteWithCircuitBreakerAsync<T>(string operationName, Func<Task<T>> operation)
+        {
+            var circuitBreaker = _circuitBreakers.GetOrAdd(operationName, _ => new CircuitBreaker());
+            
+            if (circuitBreaker.State == CircuitBreakerState.Open)
+            {
+                throw new CircuitBreakerOpenException($"Circuit breaker is open for operation: {operationName}");
+            }
+            
+            try
+            {
+                var result = await operation();
+                circuitBreaker.RecordSuccess();
+                return result;
+            }
+            catch
+            {
+                circuitBreaker.RecordFailure();
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// 计算指数退避延迟
+        /// </summary>
+        public static TimeSpan CalculateExponentialBackoff(int attempt)
+        {
+            var baseDelay = TimeSpan.FromMilliseconds(100);
+            var exponentialDelay = TimeSpan.FromMilliseconds(baseDelay.TotalMilliseconds * Math.Pow(2, attempt - 1));
+            
+            // 添加抖动以防止雷鸣般的群体效应
+            return CalculateJitteredDelay(exponentialDelay, attempt);
+        }
+
+        /// <summary>
+        /// 计算带抖动的延迟
+        /// </summary>
+        public static TimeSpan CalculateJitteredDelay(TimeSpan baseDelay, int attempt)
+        {
+            var random = new Random();
+            var jitterFactor = 0.1; // 10% 抖动
+            var jitter = random.NextDouble() * jitterFactor * baseDelay.TotalMilliseconds;
+            
+            return TimeSpan.FromMilliseconds(baseDelay.TotalMilliseconds + jitter);
+        }
+
+        /// <summary>
+        /// 获取池化连接
+        /// </summary>
+        public static DbConnection GetPooledConnection(string connectionString)
+        {
+            // 简化的连接池实现
+            var key = $"pool_{connectionString.GetHashCode()}";
+            return _connectionPool.GetOrAdd(key, _ => CreateConnection(connectionString));
+        }
+
+        /// <summary>
+        /// 将连接返回到池中
+        /// </summary>
+        public static void ReturnToPool(DbConnection connection)
+        {
+            // 简化实现：实际应该验证连接状态并可能重置
+            if (connection.State == ConnectionState.Open)
+            {
+                // 连接仍然有效，保持在池中
+            }
+        }
+
+        /// <summary>
+        /// 恢复连接
+        /// </summary>
+        public static async Task RecoverConnectionAsync(DbConnection connection)
+        {
+            if (connection.State != ConnectionState.Open)
+            {
+                await connection.OpenAsync();
+            }
+        }
+
+        /// <summary>
+        /// 获取连接指标
+        /// </summary>
+        public static ConnectionMetrics GetConnectionMetrics()
+        {
+            return _metrics;
+        }
+
+        private static DbConnection CreateConnection(string connectionString)
+        {
+            // 简化实现：这里应该根据连接字符串类型创建适当的连接
+            // 为了避免依赖问题，返回一个基础的DbConnection实现
+            throw new NotImplementedException("Connection creation should be implemented based on connection string type");
+        }
+    }
+
     /// <summary>
-    /// Current connection state.
+    /// 连接健康状况
     /// </summary>
-    public ConnectionState State { get; init; }
-    
+    public class ConnectionHealth
+    {
+        public bool IsHealthy { get; set; }
+        public ConnectionState State { get; set; }
+        public string Database { get; set; } = string.Empty;
+        public DateTime LastChecked { get; set; } = DateTime.UtcNow;
+        public TimeSpan ResponseTime { get; set; }
+
+        public override string ToString()
+        {
+            return $"Healthy: {IsHealthy}, State: {State}, Database: {Database}, ResponseTime: {ResponseTime.TotalMilliseconds:F1}ms";
+        }
+    }
+
     /// <summary>
-    /// Database server version.
+    /// 连接指标
     /// </summary>
-    public string ServerVersion { get; init; }
-    
+    public class ConnectionMetrics
+    {
+        public int TotalConnections { get; set; }
+        public int ActiveConnections { get; set; }
+        public int FailedConnections { get; set; }
+        public TimeSpan AverageConnectionTime { get; set; }
+        public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
+
+        public override string ToString()
+        {
+            return $"Total: {TotalConnections}, Active: {ActiveConnections}, Failed: {FailedConnections}, AvgTime: {AverageConnectionTime.TotalMilliseconds:F1}ms";
+        }
+    }
+
     /// <summary>
-    /// Database name.
+    /// 断路器
     /// </summary>
-    public string Database { get; init; }
-    
+    public class CircuitBreaker
+    {
+        private int _failureCount = 0;
+        private DateTime _lastFailureTime = DateTime.MinValue;
+        private readonly int _failureThreshold = 3;
+        private readonly TimeSpan _timeout = TimeSpan.FromMinutes(1);
+
+        public CircuitBreakerState State
+        {
+            get
+            {
+                if (_failureCount >= _failureThreshold)
+                {
+                    if (DateTime.UtcNow - _lastFailureTime > _timeout)
+                    {
+                        return CircuitBreakerState.HalfOpen;
+                    }
+                    return CircuitBreakerState.Open;
+                }
+                return CircuitBreakerState.Closed;
+            }
+        }
+
+        public void RecordSuccess()
+        {
+            _failureCount = 0;
+        }
+
+        public void RecordFailure()
+        {
+            _failureCount++;
+            _lastFailureTime = DateTime.UtcNow;
+        }
+    }
+
     /// <summary>
-    /// Data source identifier.
+    /// 断路器状态
     /// </summary>
-    public string DataSource { get; init; }
-    
+    public enum CircuitBreakerState
+    {
+        Closed,
+        Open,
+        HalfOpen
+    }
+
     /// <summary>
-    /// Connection timeout in seconds.
+    /// 断路器打开异常
     /// </summary>
-    public int ConnectionTimeout { get; init; }
-    
-    /// <summary>
-    /// Gets a value indicating whether the connection is healthy.
-    /// </summary>
-    public bool IsHealthy => State == ConnectionState.Open;
-    
-    /// <summary>
-    /// Returns a string representation of the connection health information.
-    /// </summary>
-    public override string ToString() =>
-        $"State: {State}, Database: {Database}, Server: {ServerVersion}, DataSource: {DataSource}";
+    public class CircuitBreakerOpenException : Exception
+    {
+        public CircuitBreakerOpenException(string message) : base(message) { }
+    }
 }

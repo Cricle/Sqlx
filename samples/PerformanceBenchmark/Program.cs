@@ -120,22 +120,27 @@ public class BenchmarkRunner
         
         // 第一次查询（缓存未命中）
         var sw = Stopwatch.StartNew();
-        var results1 = IntelligentCacheManager.GetOrAdd(cacheKey, () =>
+        var cached = IntelligentCacheManager.Get<string>(cacheKey);
+        if (cached == null)
         {
             using var cmd = _connection.CreateCommand();
             cmd.CommandText = "SELECT COUNT(*) FROM users";
-            return cmd.ExecuteScalar()?.ToString() ?? "0";
-        });
+            var result = cmd.ExecuteScalar()?.ToString() ?? "0";
+            IntelligentCacheManager.Set(cacheKey, result);
+            cached = result;
+        }
         var firstTime = sw.ElapsedMilliseconds;
         
         // 第二次查询（缓存命中）
         sw.Restart();
-        var results2 = IntelligentCacheManager.GetOrAdd(cacheKey, () =>
+        var cachedResult = IntelligentCacheManager.Get<string>(cacheKey);
+        if (cachedResult == null)
         {
             using var cmd = _connection.CreateCommand();
             cmd.CommandText = "SELECT COUNT(*) FROM users";
-            return cmd.ExecuteScalar()?.ToString() ?? "0";
-        });
+            cachedResult = cmd.ExecuteScalar()?.ToString() ?? "0";
+            IntelligentCacheManager.Set(cacheKey, cachedResult);
+        }
         var secondTime = sw.ElapsedMilliseconds;
         
         var speedup = firstTime > 0 ? (double)firstTime / Math.Max(secondTime, 1) : 1;
@@ -243,8 +248,12 @@ public class BenchmarkRunner
         Console.WriteLine("📊 缓存统计信息:");
         Console.WriteLine($"   命中次数: {stats.HitCount:N0}");
         Console.WriteLine($"   未命中次数: {stats.MissCount:N0}");
-        Console.WriteLine($"   命中率: {stats.HitRatio:P2}");
-        Console.WriteLine($"   缓存条目: {stats.EntryCount:N0}/{stats.MaxSize:N0}");
+        if (stats.HitCount + stats.MissCount > 0)
+        {
+            var hitRatio = (double)stats.HitCount / (stats.HitCount + stats.MissCount);
+            Console.WriteLine($"   命中率: {hitRatio:P2}");
+        }
+        Console.WriteLine($"   缓存条目数: {stats.EntryCount:N0}");
     }
 }
 

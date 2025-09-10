@@ -142,25 +142,21 @@ public class AttributeTests
     }
 
     [Fact]
-    public void RepositoryForAttribute_WithNullServiceType_ShouldStillWork()
+    public void RepositoryForAttribute_WithNullServiceType_ShouldThrowArgumentNullException()
     {
-        // Note: The constructor doesn't validate null, so this tests actual behavior
-        // Arrange & Act
-        var attribute = new RepositoryForAttribute(null!);
-
-        // Assert
-        attribute.ServiceType.Should().BeNull();
+        // The constructor validates null parameters and throws ArgumentNullException
+        // Arrange & Act & Assert
+        var act = () => new RepositoryForAttribute(null!);
+        act.Should().Throw<ArgumentNullException>().WithParameterName("serviceType");
     }
 
     [Fact]
-    public void TableNameAttribute_WithNullTableName_ShouldStillWork()
+    public void TableNameAttribute_WithNullTableName_ShouldThrowArgumentNullException()
     {
-        // Note: The constructor doesn't validate null, so this tests actual behavior
-        // Arrange & Act
-        var attribute = new TableNameAttribute(null!);
-
-        // Assert
-        attribute.TableName.Should().BeNull();
+        // The constructor validates null parameters and throws ArgumentNullException
+        // Arrange & Act & Assert
+        var act = () => new TableNameAttribute(null!);
+        act.Should().Throw<ArgumentNullException>().WithParameterName("tableName");
     }
 
     [Fact]

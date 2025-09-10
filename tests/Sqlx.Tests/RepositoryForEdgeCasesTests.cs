@@ -39,14 +39,14 @@ namespace TestNamespace
 }";
 
         var (compilation, diagnostics) = CompileWithSourceGenerator(sourceCode);
-        
+
         // Generator should not crash
         Assert.IsNotNull(compilation, "Generator should handle invalid input without crashing");
-        
+
         var generatedSources = GetGeneratedSources(compilation);
         // Should not generate repository implementation for invalid attribute
         var generatedCode = string.Join("\n", generatedSources);
-        Assert.IsFalse(generatedCode.Contains("partial class InvalidRepository :"), 
+        Assert.IsFalse(generatedCode.Contains("partial class InvalidRepository :"),
             "Should not generate implementation for invalid RepositoryFor usage");
     }
 
@@ -74,13 +74,13 @@ namespace TestNamespace
 }";
 
         var (compilation, diagnostics) = CompileWithSourceGenerator(sourceCode);
-        
+
         // Generator should handle null service type gracefully
         var generatedSources = GetGeneratedSources(compilation);
         var generatedCode = string.Join("\n", generatedSources);
-        
+
         // Should not generate implementation for null service type
-        Assert.IsFalse(generatedCode.Contains("partial class NullServiceRepository :"), 
+        Assert.IsFalse(generatedCode.Contains("partial class NullServiceRepository :"),
             "Should not generate implementation for null service type");
     }
 
@@ -107,12 +107,12 @@ namespace TestNamespace
 }";
 
         var (compilation, diagnostics) = CompileWithSourceGenerator(sourceCode);
-        
+
         var generatedSources = GetGeneratedSources(compilation);
         var generatedCode = string.Join("\n", generatedSources);
-        
+
         // Should not generate implementation for abstract class (only interfaces)
-        Assert.IsFalse(generatedCode.Contains("partial class AbstractServiceRepository : TestNamespace.AbstractService"), 
+        Assert.IsFalse(generatedCode.Contains("partial class AbstractServiceRepository : TestNamespace.AbstractService"),
             "Should not generate implementation for abstract class service types");
     }
 
@@ -139,12 +139,12 @@ namespace TestNamespace
 }";
 
         var (compilation, diagnostics) = CompileWithSourceGenerator(sourceCode);
-        
+
         var generatedSources = GetGeneratedSources(compilation);
         var generatedCode = string.Join("\n", generatedSources);
-        
+
         // Should not generate implementation for concrete class
-        Assert.IsFalse(generatedCode.Contains("partial class ConcreteServiceRepository : TestNamespace.ConcreteService"), 
+        Assert.IsFalse(generatedCode.Contains("partial class ConcreteServiceRepository : TestNamespace.ConcreteService"),
             "Should not generate implementation for concrete class service types");
     }
 
@@ -180,19 +180,19 @@ namespace TestNamespace
 }";
 
         var (compilation, diagnostics) = CompileWithSourceGenerator(sourceCode);
-        
+
         var errors = diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
         Assert.IsFalse(errors.Any(), $"Should handle generic interfaces: {string.Join(", ", errors.Select(e => e.GetMessage()))}");
-        
+
         var generatedSources = GetGeneratedSources(compilation);
         var generatedCode = string.Join("\n", generatedSources);
-        
+
         // Should generate implementation for generic interface
-        Assert.IsTrue(generatedCode.Contains("partial class GenericUserRepository : TestNamespace.IGenericService<TestNamespace.User>"), 
+        Assert.IsTrue(generatedCode.Contains("partial class GenericUserRepository : TestNamespace.IGenericService<TestNamespace.User>"),
             "Should generate implementation for generic interface");
-        
+
         // Should handle generic type parameters correctly
-        Assert.IsTrue(generatedCode.Contains("IList<TestNamespace.User> GetAll()"), 
+        Assert.IsTrue(generatedCode.Contains("IList<TestNamespace.User> GetAll()"),
             "Should handle generic type parameters in method signatures");
     }
 
@@ -222,22 +222,22 @@ namespace TestNamespace
 }";
 
         var (compilation, diagnostics) = CompileWithSourceGenerator(sourceCode);
-        
+
         var errors = diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
         Assert.IsFalse(errors.Any(), $"Should handle non-entity interfaces: {string.Join(", ", errors.Select(e => e.GetMessage()))}");
-        
+
         var generatedSources = GetGeneratedSources(compilation);
         var generatedCode = string.Join("\n", generatedSources);
-        
+
         // Should still generate implementation even without clear entity types
-        Assert.IsTrue(generatedCode.Contains("partial class UtilityRepository : TestNamespace.IUtilityService"), 
+        Assert.IsTrue(generatedCode.Contains("partial class UtilityRepository : TestNamespace.IUtilityService"),
             "Should generate implementation for non-entity interfaces");
-        
+
         // Should generate all methods
         var methods = new[] { "GenerateId", "LogMessage", "CalculateHash", "ValidateInput" };
         foreach (var method in methods)
         {
-            Assert.IsTrue(generatedCode.Contains(method), 
+            Assert.IsTrue(generatedCode.Contains(method),
                 $"Should generate method {method}");
         }
     }
@@ -280,22 +280,22 @@ namespace TestNamespace
 }";
 
         var (compilation, diagnostics) = CompileWithSourceGenerator(sourceCode);
-        
+
         var errors = diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
         Assert.IsFalse(errors.Any(), $"Should handle inherited interfaces: {string.Join(", ", errors.Select(e => e.GetMessage()))}");
-        
+
         var generatedSources = GetGeneratedSources(compilation);
         var generatedCode = string.Join("\n", generatedSources);
-        
+
         // Should generate implementation for the main interface
-        Assert.IsTrue(generatedCode.Contains("partial class DocumentRepository : TestNamespace.IDocumentService"), 
+        Assert.IsTrue(generatedCode.Contains("partial class DocumentRepository : TestNamespace.IDocumentService"),
             "Should generate implementation for inherited interface");
-        
+
         // Should include methods from both base and derived interfaces
         var allMethods = new[] { "GetAll", "GetById", "Create", "Update", "Delete" };
         foreach (var method in allMethods)
         {
-            Assert.IsTrue(generatedCode.Contains(method), 
+            Assert.IsTrue(generatedCode.Contains(method),
                 $"Should generate method {method} from inheritance hierarchy");
         }
     }
@@ -342,23 +342,23 @@ namespace TestNamespace
 }";
 
         var (compilation, diagnostics) = CompileWithSourceGenerator(sourceCode);
-        
+
         var errors = diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
         Assert.IsFalse(errors.Any(), $"Should handle long names: {string.Join(", ", errors.Select(e => e.GetMessage()))}");
-        
+
         var generatedSources = GetGeneratedSources(compilation);
         var generatedCode = string.Join("\n", generatedSources);
-        
+
         // Should generate implementation despite long names
-        Assert.IsTrue(generatedCode.Contains("partial class VeryLongRepositoryNameForTestingPurposes : TestNamespace.IVeryLongInterfaceNameForTestingPurposes"), 
+        Assert.IsTrue(generatedCode.Contains("partial class VeryLongRepositoryNameForTestingPurposes : TestNamespace.IVeryLongInterfaceNameForTestingPurposes"),
             "Should handle very long class and interface names");
-        
+
         // Should handle long method names
-        Assert.IsTrue(generatedCode.Contains("GetAllLongNamedEntitiesWithVerySpecificFilteringCriteria"), 
+        Assert.IsTrue(generatedCode.Contains("GetAllLongNamedEntitiesWithVerySpecificFilteringCriteria"),
             "Should handle very long method names");
-        
+
         // Should handle complex parameter lists
-        Assert.IsTrue(generatedCode.Contains("FindLongNamedEntityByIdAndNameAndStatusWithComplexLogic"), 
+        Assert.IsTrue(generatedCode.Contains("FindLongNamedEntityByIdAndNameAndStatusWithComplexLogic"),
             "Should handle methods with many parameters");
     }
 
@@ -394,22 +394,22 @@ namespace TestNamespace
 }";
 
         var (compilation, diagnostics) = CompileWithSourceGenerator(sourceCode);
-        
+
         var errors = diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
         Assert.IsFalse(errors.Any(), $"Should handle underscores in names: {string.Join(", ", errors.Select(e => e.GetMessage()))}");
-        
+
         var generatedSources = GetGeneratedSources(compilation);
         var generatedCode = string.Join("\n", generatedSources);
-        
+
         // Should handle names with underscores
-        Assert.IsTrue(generatedCode.Contains("partial class Repository_With_Underscores : TestNamespace.IService_With_Underscores"), 
+        Assert.IsTrue(generatedCode.Contains("partial class Repository_With_Underscores : TestNamespace.IService_With_Underscores"),
             "Should handle names with underscores");
-        
+
         // Should handle method names with underscores
         var methodsWithUnderscores = new[] { "Get_All_Entities", "Get_Entity_By_Id", "Create_New_Entity" };
         foreach (var method in methodsWithUnderscores)
         {
-            Assert.IsTrue(generatedCode.Contains(method), 
+            Assert.IsTrue(generatedCode.Contains(method),
                 $"Should handle method name with underscores: {method}");
         }
     }
@@ -442,15 +442,15 @@ public partial class GlobalRepository
 }";
 
         var (compilation, diagnostics) = CompileWithSourceGenerator(sourceCode);
-        
+
         var errors = diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
         Assert.IsFalse(errors.Any(), $"Should handle global namespace: {string.Join(", ", errors.Select(e => e.GetMessage()))}");
-        
+
         var generatedSources = GetGeneratedSources(compilation);
         var generatedCode = string.Join("\n", generatedSources);
-        
+
         // Should handle global namespace (no namespace declaration)
-        Assert.IsTrue(generatedCode.Contains("partial class GlobalRepository : IGlobalService"), 
+        Assert.IsTrue(generatedCode.Contains("partial class GlobalRepository : IGlobalService"),
             "Should handle types in global namespace");
     }
 
@@ -497,14 +497,14 @@ namespace TestNamespace
 }";
 
         var (compilation, diagnostics) = CompileWithSourceGenerator(sourceCode);
-        
+
         // Should handle multiple attributes gracefully (use first one)
         var generatedSources = GetGeneratedSources(compilation);
         var generatedCode = string.Join("\n", generatedSources);
-        
+
         // Should generate implementation (probably for the first service)
-        Assert.IsTrue(generatedCode.Contains("partial class MultiAttributeRepository : TestNamespace.IService1") || 
-                     generatedCode.Contains("partial class MultiAttributeRepository : TestNamespace.IService2"), 
+        Assert.IsTrue(generatedCode.Contains("partial class MultiAttributeRepository : TestNamespace.IService1") ||
+                     generatedCode.Contains("partial class MultiAttributeRepository : TestNamespace.IService2"),
             "Should handle multiple RepositoryFor attributes by using one of them");
     }
 
@@ -548,15 +548,15 @@ namespace TestNamespace
 }";
 
         var (compilation, diagnostics) = CompileWithSourceGenerator(sourceCode);
-        
+
         var errors = diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
         Assert.IsFalse(errors.Any(), $"Should handle circular references: {string.Join(", ", errors.Select(e => e.GetMessage()))}");
-        
+
         var generatedSources = GetGeneratedSources(compilation);
         var generatedCode = string.Join("\n", generatedSources);
-        
+
         // Should handle circular references without infinite loops
-        Assert.IsTrue(generatedCode.Contains("partial class ParentRepository : TestNamespace.IParentService"), 
+        Assert.IsTrue(generatedCode.Contains("partial class ParentRepository : TestNamespace.IParentService"),
             "Should handle circular references in entity types");
     }
 

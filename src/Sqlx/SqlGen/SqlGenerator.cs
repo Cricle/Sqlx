@@ -32,7 +32,7 @@ namespace Sqlx.SqlGen
         {
             var tableName = def.WrapColumn(ctx.TableName);
             var columns = ctx.GetColumnNames();
-            
+
             // Single INSERT: generate complete SQL with parameter placeholders
             if (!ctx.Entry.IsList)
             {

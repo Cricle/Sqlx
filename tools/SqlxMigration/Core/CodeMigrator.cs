@@ -44,7 +44,7 @@ public class CodeMigrator
     {
         _logger.LogInformation("🔄 Starting migration from {Source}", source);
         _logger.LogInformation("📁 Project: {Path}", projectPath);
-        
+
         if (dryRun)
         {
             _logger.LogInformation("🧪 Dry run mode - no files will be modified");
@@ -63,7 +63,7 @@ public class CodeMigrator
             await Task.WhenAll(migrationTasks);
 
             await GenerateMigrationReportAsync(projectPath);
-            
+
             _logger.LogInformation("✅ Migration completed successfully");
             PrintMigrationSummary();
         }
@@ -108,7 +108,7 @@ public class CodeMigrator
                     await CreateBackupAsync(filePath);
                 }
 
-                var outputPath = targetPath != null ? 
+                var outputPath = targetPath != null ?
                     Path.Combine(targetPath, Path.GetFileName(filePath)) : filePath;
 
                 await File.WriteAllTextAsync(outputPath, newContent);
@@ -183,7 +183,7 @@ public class CodeMigrator
     private async Task CreateBackupAsync(string filePath)
     {
         var backupPath = filePath + ".backup";
-                await Task.Run(() => File.Copy(filePath, backupPath));
+        await Task.Run(() => File.Copy(filePath, backupPath));
         _logger.LogInformation("💾 Backup created: {Backup}", Path.GetFileName(backupPath));
     }
 
@@ -263,7 +263,7 @@ public class CodeMigrator
     {
         _logger.LogInformation("📊 Migration Summary:");
         _logger.LogInformation("   Files processed: {Count}", _migrationLog.Count);
-        
+
         if (_migrationLog.Any())
         {
             _logger.LogInformation("   See SqlxMigrationReport.md for detailed changes");
@@ -307,7 +307,7 @@ public class DapperToSqlxRewriter : MigrationRewriter
         if (node.Expression is MemberAccessExpressionSyntax memberAccess)
         {
             var methodName = memberAccess.Name.Identifier.ValueText;
-            
+
             if (IsDapperMethod(methodName))
             {
                 return ConvertDapperMethodToSqlx(node, methodName);
@@ -328,10 +328,10 @@ public class DapperToSqlxRewriter : MigrationRewriter
         // This is a simplified conversion - in a real implementation,
         // you'd need more sophisticated analysis of the method parameters
         LogChange($"Converted Dapper.{methodName} to Sqlx repository method");
-        
+
         // For now, add a comment indicating manual conversion needed
         var comment = SyntaxFactory.Comment($"// TODO: Convert Dapper.{methodName} to Sqlx repository method");
-        
+
         return node.WithLeadingTrivia(node.GetLeadingTrivia().Add(SyntaxFactory.EndOfLine("\n")).Add(comment));
     }
 }
@@ -344,7 +344,7 @@ public class EFCoreToSqlxRewriter : MigrationRewriter
     public override SyntaxNode? VisitUsingDirective(UsingDirectiveSyntax node)
     {
         var nameString = node.Name?.ToString();
-        if (nameString?.Contains("EntityFramework") == true || 
+        if (nameString?.Contains("EntityFramework") == true ||
             nameString?.Contains("Microsoft.EntityFrameworkCore") == true)
         {
             LogChange($"Removed EF Core using: {node}");
@@ -399,10 +399,10 @@ public class CombinedRewriter : MigrationRewriter
     public override SyntaxNode? VisitUsingDirective(UsingDirectiveSyntax node)
     {
         var result = _dapperRewriter.VisitUsingDirective(node) ?? _efRewriter.VisitUsingDirective(node);
-        
+
         _changes.AddRange(_dapperRewriter.GetChanges());
         _changes.AddRange(_efRewriter.GetChanges());
-        
+
         return result ?? base.VisitUsingDirective(node);
     }
 
@@ -410,7 +410,7 @@ public class CombinedRewriter : MigrationRewriter
     {
         var result = _dapperRewriter.VisitInvocationExpression(node);
         _changes.AddRange(_dapperRewriter.GetChanges());
-        
+
         return result ?? base.VisitInvocationExpression(node);
     }
 
@@ -418,7 +418,7 @@ public class CombinedRewriter : MigrationRewriter
     {
         var result = _efRewriter.VisitClassDeclaration(node);
         _changes.AddRange(_efRewriter.GetChanges());
-        
+
         return result ?? base.VisitClassDeclaration(node);
     }
 }

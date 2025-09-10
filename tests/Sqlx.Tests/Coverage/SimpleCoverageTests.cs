@@ -59,10 +59,10 @@ namespace Sqlx.Tests.Coverage
 
             // Act
             IntelligentCacheManager.Set(key, value, expiration);
-            
+
             // Wait for expiration
             System.Threading.Thread.Sleep(150);
-            
+
             var result = IntelligentCacheManager.Get<string>(key);
 
             // Assert
@@ -180,7 +180,7 @@ namespace Sqlx.Tests.Coverage
             IntelligentCacheManager.Clear();
             IntelligentCacheManager.Set("stats_key1", "value1");
             IntelligentCacheManager.Set("stats_key2", "value2");
-            
+
             // Generate some hits and misses
             IntelligentCacheManager.Get<string>("stats_key1"); // Hit
             IntelligentCacheManager.Get<string>("non_existent"); // Miss
@@ -203,7 +203,7 @@ namespace Sqlx.Tests.Coverage
         public void IntelligentCacheManager_MultipleTypes_StoresCorrectly()
         {
             // Arrange & Act & Assert
-            
+
             // String
             IntelligentCacheManager.Set("string_key", "string_value");
             Assert.AreEqual("string_value", IntelligentCacheManager.Get<string>("string_key"));
@@ -291,10 +291,10 @@ namespace Sqlx.Tests.Coverage
                         {
                             var key = $"concurrent_{taskId}_{j}";
                             var value = $"value_{taskId}_{j}";
-                            
+
                             IntelligentCacheManager.Set(key, value);
                             var retrieved = IntelligentCacheManager.Get<string>(key);
-                            
+
                             if (retrieved != value && retrieved != null)
                             {
                                 throw new InvalidOperationException($"Value mismatch: expected {value}, got {retrieved}");
@@ -390,7 +390,7 @@ namespace Sqlx.Tests.Coverage
                     attemptCount++;
                     throw new InvalidOperationException(expectedMessage);
                 }, maxAttempts: 3);
-                
+
                 Assert.Fail("Should have thrown exception");
             }
             catch (InvalidOperationException ex)

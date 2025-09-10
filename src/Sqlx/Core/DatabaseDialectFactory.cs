@@ -15,7 +15,7 @@ namespace Sqlx.Core;
 /// </summary>
 internal static class DatabaseDialectFactory
 {
-    private static readonly ConcurrentDictionary<SqlDefineTypes, IDatabaseDialectProvider> _dialectCache 
+    private static readonly ConcurrentDictionary<SqlDefineTypes, IDatabaseDialectProvider> _dialectCache
         = new ConcurrentDictionary<SqlDefineTypes, IDatabaseDialectProvider>();
 
     /// <summary>

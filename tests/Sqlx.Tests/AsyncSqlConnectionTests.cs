@@ -34,7 +34,7 @@ namespace Foo
         string output = GetCSharpGeneratedOutput(source, NullableContextOptions.Disable);
 
         Assert.IsNotNull(output);
-        
+
         // Validate that code generation succeeded and contains expected elements
         Assert.IsTrue(output.Contains("namespace Foo"), "Generated code should contain Foo namespace");
         Assert.IsTrue(output.Contains("partial class C"), "Generated code should contain partial class C");

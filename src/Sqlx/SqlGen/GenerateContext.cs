@@ -16,18 +16,18 @@ namespace Sqlx.SqlGen
         {
             if (string.IsNullOrEmpty(name))
                 return name;
-                
+
             // Handle different patterns:
             // "UPPER_CASE" -> "upper_case" (already has underscores)
             // "PascalCase" -> "pascal_case" (PascalCase)
             // "camelCase" -> "camel_case" (camelCase)
-            
+
             // If already contains underscores and is all caps, just convert to lowercase
             if (name.Contains("_") && name.All(c => char.IsUpper(c) || c == '_' || char.IsDigit(c)))
             {
                 return name.ToLower();
             }
-            
+
             // Otherwise use the existing camelCase/PascalCase conversion
             return Regex.Replace(name, "[A-Z]", x => $"_{x.Value.ToLower()}").TrimStart('_');
         }
@@ -50,13 +50,13 @@ namespace Sqlx.SqlGen
 
     internal sealed record SelectGenerateContext(MethodGenerationContext Context, string TableName, ObjectMap Entry) : GenerateContext(Context, TableName)
     {
-        public string GetColumnNames() => string.Join(", ", Entry.Properties.Select(property => 
+        public string GetColumnNames() => string.Join(", ", Entry.Properties.Select(property =>
             $"{GetColumnName(property)} AS {property.Name}"));
     }
 
     internal sealed record UpdateGenerateContext(MethodGenerationContext Context, string TableName, ObjectMap Entry) : GenerateContext(Context, TableName)
     {
-        public string GetUpdateSet(string prefx) => string.Join(", ", Entry.Properties.Select(property => 
+        public string GetUpdateSet(string prefx) => string.Join(", ", Entry.Properties.Select(property =>
             $"{GetColumnName(property)} = {GetParamterName(prefx, property.Name)}"));
     }
 

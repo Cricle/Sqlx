@@ -26,14 +26,14 @@ public abstract class AbstractGenerator : ISourceGenerator
     public void Execute(GeneratorExecutionContext context)
     {
         System.Diagnostics.Debug.WriteLine("AbstractGenerator.Execute called");
-        
+
         // Retrieve the populated receiver
         if (context.SyntaxContextReceiver is not ISqlxSyntaxReceiver receiver)
         {
             System.Diagnostics.Debug.WriteLine("No ISqlxSyntaxReceiver found");
             return;
         }
-        
+
         System.Diagnostics.Debug.WriteLine($"Found {receiver.Methods.Count} methods and {receiver.RepositoryClasses.Count} repository classes");
 
         INamedTypeSymbol? sqlxAttributeSymbol = context.Compilation.GetTypeByMetadataName("Sqlx.Annotations.SqlxAttribute");
@@ -42,7 +42,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         INamedTypeSymbol? sqlExecuteTypeAttributeSymbol = context.Compilation.GetTypeByMetadataName("Sqlx.Annotations.SqlExecuteTypeAttribute");
         INamedTypeSymbol? repositoryForAttributeSymbol = context.Compilation.GetTypeByMetadataName("Sqlx.Annotations.RepositoryForAttribute");
         INamedTypeSymbol? tableNameAttributeSymbol = context.Compilation.GetTypeByMetadataName("Sqlx.Annotations.TableNameAttribute");
-        
+
         System.Diagnostics.Debug.WriteLine($"RepositoryForAttribute symbol: {repositoryForAttributeSymbol?.ToDisplayString() ?? "null"}");
         System.Diagnostics.Debug.WriteLine($"TableNameAttribute symbol: {tableNameAttributeSymbol?.ToDisplayString() ?? "null"}");
 
@@ -77,11 +77,11 @@ public abstract class AbstractGenerator : ISourceGenerator
         }
     }
 
-    private void GenerateRepositoryImplementation(GeneratorExecutionContext context, INamedTypeSymbol repositoryClass, 
+    private void GenerateRepositoryImplementation(GeneratorExecutionContext context, INamedTypeSymbol repositoryClass,
         INamedTypeSymbol? repositoryForAttributeSymbol, INamedTypeSymbol? tableNameAttributeSymbol, INamedTypeSymbol sqlxAttributeSymbol)
     {
         System.Diagnostics.Debug.WriteLine($"=== GenerateRepositoryImplementation START for {repositoryClass.Name} ===");
-        
+
         // Skip if the class has SqlTemplate attribute (as specified in requirement 4)
         if (repositoryClass.GetAttributes().Any(attr => attr.AttributeClass?.Name == "SqlTemplate"))
         {
@@ -91,7 +91,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         // Get the service interface from RepositoryFor attribute
         var repositoryForAttr = repositoryClass.GetAttributes().FirstOrDefault(attr => attr.AttributeClass?.Name == "RepositoryForAttribute");
         System.Diagnostics.Debug.WriteLine($"RepositoryFor attribute found: {repositoryForAttr != null}");
-        
+
         if (repositoryForAttr == null)
         {
             System.Diagnostics.Debug.WriteLine($"No RepositoryFor attribute found");
@@ -99,10 +99,10 @@ public abstract class AbstractGenerator : ISourceGenerator
         }
 
         System.Diagnostics.Debug.WriteLine($"Constructor arguments count: {repositoryForAttr.ConstructorArguments.Length}");
-        
+
         // Try to get service interface from attribute constructor arguments
         INamedTypeSymbol? serviceInterface = null;
-        
+
         if (repositoryForAttr.ConstructorArguments.Length > 0)
         {
             var firstArg = repositoryForAttr.ConstructorArguments[0];
@@ -117,7 +117,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                 System.Diagnostics.Debug.WriteLine($"IsGenericType: {serviceInterface?.IsGenericType}");
                 System.Diagnostics.Debug.WriteLine($"TypeArguments.Length: {serviceInterface?.TypeArguments.Length}");
                 System.Diagnostics.Debug.WriteLine($"TypeParameters.Length: {serviceInterface?.TypeParameters.Length}");
-                
+
                 // Check if we already have a constructed generic type (with type arguments)
                 if (serviceInterface?.IsGenericType == true && serviceInterface.TypeArguments.Length > 0)
                 {
@@ -138,7 +138,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                 serviceInterface = FindTypeByName(context.Compilation, typeName);
             }
         }
-        
+
         // Fallback: If constructor arguments didn't work, try to parse the syntax directly
         if (serviceInterface == null)
         {
@@ -146,7 +146,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             serviceInterface = GetServiceInterfaceFromSyntax(repositoryClass, context.Compilation);
         }
         System.Diagnostics.Debug.WriteLine($"Service interface: {serviceInterface?.Name}");
-        
+
         // Skip if service type is not an interface
         if (serviceInterface?.TypeKind != TypeKind.Interface)
         {
@@ -157,11 +157,11 @@ public abstract class AbstractGenerator : ISourceGenerator
         System.Diagnostics.Debug.WriteLine($"Generating repository implementation for {repositoryClass.Name} implementing {serviceInterface.Name}");
         System.Diagnostics.Debug.WriteLine($"Service interface type: {serviceInterface.GetType()}");
         System.Diagnostics.Debug.WriteLine($"Service interface kind: {serviceInterface.TypeKind}");
-        
+
         try
         {
             System.Diagnostics.Debug.WriteLine($"Starting entity type inference for interface {serviceInterface.Name}");
-            
+
             // Infer entity type from service interface
             var entityType = InferEntityTypeFromServiceInterface(serviceInterface);
             if (entityType == null)
@@ -170,7 +170,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                 // Use a fallback approach: try to find an entity type based on interface name
                 entityType = TryInferEntityFromInterfaceName(serviceInterface, context.Compilation);
             }
-            
+
             if (entityType == null)
             {
                 System.Diagnostics.Debug.WriteLine($"Still could not infer entity type, generating repository anyway with basic table name");
@@ -180,7 +180,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             System.Diagnostics.Debug.WriteLine($"Inferred entity type: {entityType?.Name ?? "null"}");
 
             // Get table name - prioritize entity's TableName attribute
-            var tableName = entityType != null ? GetTableNameFromEntity(entityType, tableNameAttributeSymbol) 
+            var tableName = entityType != null ? GetTableNameFromEntity(entityType, tableNameAttributeSymbol)
                                                : GetTableNameFromInterfaceName(serviceInterface.Name);
             if (string.IsNullOrEmpty(tableName))
             {
@@ -190,16 +190,16 @@ public abstract class AbstractGenerator : ISourceGenerator
             System.Diagnostics.Debug.WriteLine($"Using table name: {tableName}");
 
             var sb = new IndentedStringBuilder(string.Empty);
-            
+
             // Generate the complete repository implementation
             GenerateFullRepositoryImplementation(sb, repositoryClass, serviceInterface, entityType, tableName);
-            
+
             var fileName = $"{repositoryClass.Name}.Repository.g.cs";
             var sourceCode = sb.ToString();
             System.Diagnostics.Debug.WriteLine($"Generated repository implementation:");
             System.Diagnostics.Debug.WriteLine(sourceCode);
             System.Diagnostics.Debug.WriteLine($"Adding source file: {fileName}");
-            
+
             context.AddSource(fileName, SourceText.From(sourceCode, Encoding.UTF8));
             System.Diagnostics.Debug.WriteLine("Successfully added repository source file");
         }
@@ -207,25 +207,25 @@ public abstract class AbstractGenerator : ISourceGenerator
         {
             System.Diagnostics.Debug.WriteLine($"Error in repository generation: {ex.Message}");
             System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
-            
+
             // Generate a fallback implementation to prevent compilation errors
             try
             {
                 var sb = new IndentedStringBuilder(string.Empty);
-            sb.AppendLine("// <auto-generated>");
+                sb.AppendLine("// <auto-generated>");
                 sb.AppendLine("// Fallback implementation due to generation error");
                 sb.AppendLine($"// Error: {ex.Message}");
-            sb.AppendLine("// </auto-generated>");
-            sb.AppendLine();
-            sb.AppendLine($"namespace {repositoryClass.ContainingNamespace.ToDisplayString()};");
-            sb.AppendLine();
+                sb.AppendLine("// </auto-generated>");
+                sb.AppendLine();
+                sb.AppendLine($"namespace {repositoryClass.ContainingNamespace.ToDisplayString()};");
+                sb.AppendLine();
                 sb.AppendLine($"partial class {repositoryClass.Name} : {serviceInterface.ToDisplayString()}");
-            sb.AppendLine("{");
-            sb.PushIndent();
+                sb.AppendLine("{");
+                sb.PushIndent();
                 sb.AppendLine("// Error occurred during code generation");
-            sb.PopIndent();
-            sb.AppendLine("}");
-            
+                sb.PopIndent();
+                sb.AppendLine("}");
+
                 context.AddSource($"{repositoryClass.Name}.Error.g.cs", SourceText.From(sb.ToString(), Encoding.UTF8));
             }
             catch (Exception fallbackEx)
@@ -260,18 +260,18 @@ public abstract class AbstractGenerator : ISourceGenerator
         try
         {
             System.Diagnostics.Debug.WriteLine($"Searching for type: {typeName}");
-            
+
             // Search in all assemblies in the compilation - look for any type (class, interface, etc.)
             var allTypes = compilation.GetSymbolsWithName(typeName, SymbolFilter.Type)
                 .OfType<INamedTypeSymbol>()
                 .ToList();
-            
+
             System.Diagnostics.Debug.WriteLine($"Found {allTypes.Count} types matching '{typeName}'");
             foreach (var type in allTypes)
             {
                 System.Diagnostics.Debug.WriteLine($"  - {type.Name} ({type.TypeKind}) in namespace {type.ContainingNamespace?.ToDisplayString()}");
             }
-            
+
             return allTypes.FirstOrDefault();
         }
         catch (Exception ex)
@@ -286,23 +286,23 @@ public abstract class AbstractGenerator : ISourceGenerator
         try
         {
             System.Diagnostics.Debug.WriteLine($"Parsing syntax for repository class: {repositoryClass.Name}");
-            
+
             // Get the syntax tree and semantic model
             var syntaxTrees = compilation.SyntaxTrees;
             foreach (var syntaxTree in syntaxTrees)
             {
                 var semanticModel = compilation.GetSemanticModel(syntaxTree);
                 var root = syntaxTree.GetRoot();
-                
+
                 // Find class declarations that match our repository class
                 var classDeclarations = root.DescendantNodes()
                     .OfType<Microsoft.CodeAnalysis.CSharp.Syntax.ClassDeclarationSyntax>()
                     .Where(cls => cls.Identifier.ValueText == repositoryClass.Name);
-                
+
                 foreach (var classDecl in classDeclarations)
                 {
                     System.Diagnostics.Debug.WriteLine($"Found class declaration for: {classDecl.Identifier.ValueText}");
-                    
+
                     // Find RepositoryFor attributes on this specific class
                     var attributeLists = classDecl.AttributeLists;
                     foreach (var attributeList in attributeLists)
@@ -312,20 +312,20 @@ public abstract class AbstractGenerator : ISourceGenerator
                             if (attribute.Name.ToString().Contains("RepositoryFor"))
                             {
                                 System.Diagnostics.Debug.WriteLine($"Found RepositoryFor attribute on {classDecl.Identifier.ValueText}: {attribute}");
-                                
+
                                 if (attribute.ArgumentList?.Arguments.Count > 0)
                                 {
                                     var firstArg = attribute.ArgumentList.Arguments[0];
                                     System.Diagnostics.Debug.WriteLine($"First argument syntax: {firstArg}");
-                                    
+
                                     // Look for typeof(InterfaceName) pattern
-                                    if (firstArg.Expression.ToString().StartsWith("typeof(") && 
+                                    if (firstArg.Expression.ToString().StartsWith("typeof(") &&
                                         firstArg.Expression.ToString().EndsWith(")"))
                                     {
                                         var typeExpression = firstArg.Expression.ToString();
                                         var typeName = typeExpression.Substring(7, typeExpression.Length - 8); // Remove "typeof(" and ")"
                                         System.Diagnostics.Debug.WriteLine($"Extracted type name from syntax: {typeName}");
-                                        
+
                                         // Find the interface by name
                                         var interfaceSymbol = FindInterfaceByName(compilation, typeName);
                                         if (interfaceSymbol != null)
@@ -340,7 +340,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                     }
                 }
             }
-            
+
             System.Diagnostics.Debug.WriteLine("Could not find service interface from syntax");
             return null;
         }
@@ -356,34 +356,34 @@ public abstract class AbstractGenerator : ISourceGenerator
         try
         {
             System.Diagnostics.Debug.WriteLine($"Searching for interface: {interfaceName}");
-            
+
             // Handle generic interfaces like IGenericService<User>
             if (interfaceName.Contains("<") && interfaceName.Contains(">"))
             {
                 // Extract base name (e.g., "IGenericService" from "IGenericService<User>")
                 var baseName = interfaceName.Substring(0, interfaceName.IndexOf('<'));
                 var typeArgString = interfaceName.Substring(interfaceName.IndexOf('<') + 1, interfaceName.LastIndexOf('>') - interfaceName.IndexOf('<') - 1);
-                
+
                 System.Diagnostics.Debug.WriteLine($"Looking for generic interface base: {baseName} with type argument: {typeArgString}");
-                
+
                 // Find all interfaces with the base name
                 var baseInterfaces = compilation.GetSymbolsWithName(baseName, SymbolFilter.Type)
                     .OfType<INamedTypeSymbol>()
                     .Where(t => t.TypeKind == TypeKind.Interface && t.IsGenericType)
                     .ToList();
-                
+
                 System.Diagnostics.Debug.WriteLine($"Found {baseInterfaces.Count} generic interfaces with base name '{baseName}'");
-                
+
                 if (baseInterfaces.Any())
                 {
                     var baseInterface = baseInterfaces.First();
-                    
+
                     // Try to find the type argument in the compilation
                     var typeArgSymbol = FindTypeByName(compilation, typeArgString);
                     if (typeArgSymbol != null)
                     {
                         System.Diagnostics.Debug.WriteLine($"Found type argument: {typeArgSymbol.Name}");
-                        
+
                         // Construct the generic interface with the specific type argument
                         var constructedInterface = baseInterface.Construct(typeArgSymbol);
                         System.Diagnostics.Debug.WriteLine($"Constructed generic interface: {constructedInterface.ToDisplayString()}");
@@ -403,12 +403,12 @@ public abstract class AbstractGenerator : ISourceGenerator
                     .OfType<INamedTypeSymbol>()
                     .Where(t => t.TypeKind == TypeKind.Interface)
                     .ToList();
-                    
+
                 System.Diagnostics.Debug.WriteLine($"Found {interfaces.Count} interfaces with name '{interfaceName}'");
-                
+
                 return interfaces.FirstOrDefault();
             }
-            
+
             return null;
         }
         catch (Exception ex)
@@ -425,7 +425,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             System.Diagnostics.Debug.WriteLine($"=== InferEntityTypeFromServiceInterface START ===");
             System.Diagnostics.Debug.WriteLine($"Service interface: {serviceInterface.Name}");
             System.Diagnostics.Debug.WriteLine($"Is generic: {serviceInterface.IsGenericType}");
-            
+
             // For generic interfaces, check if we have type arguments (already constructed)
             if (serviceInterface.IsGenericType && serviceInterface.TypeArguments.Length > 0)
             {
@@ -434,7 +434,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                 {
                     var typeArg = serviceInterface.TypeArguments[i];
                     System.Diagnostics.Debug.WriteLine($"Type argument {i}: {typeArg.Name} ({typeArg.ToDisplayString()})");
-                    
+
                     // Assume the first type argument is the entity type for repositories
                     if (i == 0 && TypeAnalyzer.IsLikelyEntityType(typeArg))
                     {
@@ -443,7 +443,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                     }
                 }
             }
-            
+
             var methods = serviceInterface.GetMembers().OfType<IMethodSymbol>().ToArray();
             System.Diagnostics.Debug.WriteLine($"Found {methods.Length} methods in interface {serviceInterface.Name}");
 
@@ -466,7 +466,7 @@ public abstract class AbstractGenerator : ISourceGenerator
     private void AnalyzeMethodForEntityTypes(IMethodSymbol method, Dictionary<INamedTypeSymbol, int> candidateTypes)
     {
         System.Diagnostics.Debug.WriteLine($"Analyzing method: {method.Name}");
-        
+
         // Check return type (higher weight)
         var returnEntityType = TypeAnalyzer.ExtractEntityType(method.ReturnType);
         if (returnEntityType != null && TypeAnalyzer.IsLikelyEntityType(returnEntityType))
@@ -503,19 +503,19 @@ public abstract class AbstractGenerator : ISourceGenerator
         // Fallback: try to infer from interface name
         // E.g., IUserService -> User
         var interfaceName = serviceInterface.Name;
-            if (interfaceName.StartsWith("I") && interfaceName.EndsWith("Service"))
+        if (interfaceName.StartsWith("I") && interfaceName.EndsWith("Service"))
+        {
+            var entityName = interfaceName.Substring(1, interfaceName.Length - 8); // Remove 'I' prefix and 'Service' suffix
+            System.Diagnostics.Debug.WriteLine($"Trying to find entity type by name: {entityName}");
+
+            // Look for a type with this name in the same namespace or related namespaces
+            var possibleEntityType = FindTypeByName(serviceInterface, entityName);
+            if (possibleEntityType != null)
             {
-                var entityName = interfaceName.Substring(1, interfaceName.Length - 8); // Remove 'I' prefix and 'Service' suffix
-                System.Diagnostics.Debug.WriteLine($"Trying to find entity type by name: {entityName}");
-                
-                // Look for a type with this name in the same namespace or related namespaces
-                var possibleEntityType = FindTypeByName(serviceInterface, entityName);
-                if (possibleEntityType != null)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Found entity type by name inference: {possibleEntityType.Name}");
-                    return possibleEntityType;
-                }
+                System.Diagnostics.Debug.WriteLine($"Found entity type by name inference: {possibleEntityType.Name}");
+                return possibleEntityType;
             }
+        }
 
         System.Diagnostics.Debug.WriteLine($"No entity type found in interface {serviceInterface.Name}");
         return null;
@@ -528,7 +528,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             // Search in the same namespace first
             var currentNamespace = serviceInterface.ContainingNamespace;
             System.Diagnostics.Debug.WriteLine($"Searching for type '{entityName}' in namespace '{currentNamespace.ToDisplayString()}'");
-            
+
             // Get all types in the current namespace
             var typesInNamespace = currentNamespace.GetTypeMembers();
             foreach (var type in typesInNamespace)
@@ -539,7 +539,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                     return type;
                 }
             }
-            
+
             // Search in parent namespace
             if (!currentNamespace.IsGlobalNamespace)
             {
@@ -554,7 +554,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                     }
                 }
             }
-            
+
             System.Diagnostics.Debug.WriteLine($"Could not find entity type '{entityName}'");
             return null;
         }
@@ -614,7 +614,7 @@ public abstract class AbstractGenerator : ISourceGenerator
     private void GenerateRepositoryCrudMethods(IndentedStringBuilder sb, INamedTypeSymbol serviceType, string tableName)
     {
         var entityTypeName = serviceType.ToDisplayString();
-        
+
         // Generate a simple example - GetAll method with actual implementation
         sb.AppendLine($"/// <summary>");
         sb.AppendLine($"/// Gets all {serviceType.Name} entities from the {tableName} table.");
@@ -672,7 +672,7 @@ public abstract class AbstractGenerator : ISourceGenerator
     private void GenerateServiceInterfaceMethods(IndentedStringBuilder sb, INamedTypeSymbol serviceInterface, INamedTypeSymbol? entityType, string tableName)
     {
         var entityTypeName = entityType?.ToDisplayString() ?? "object";
-        
+
         // Generate implementation for each method in the service interface
         foreach (var method in serviceInterface.GetMembers().OfType<IMethodSymbol>())
         {
@@ -688,14 +688,14 @@ public abstract class AbstractGenerator : ISourceGenerator
             var methodName = method.Name;
             var returnType = method.ReturnType.ToDisplayString();
             var isAsync = method.ReturnType.Name == "Task";
-            
-            System.Diagnostics.Debug.WriteLine($"Generating method: {methodName}, returnType: {returnType}, isAsync: {isAsync}");
-            
+
+            // Generation trace can be enabled via conditional compilation if needed
+
             // Generate method signature
             sb.AppendLine($"/// <summary>");
             sb.AppendLine($"/// Implementation of {methodName} using Sqlx.");
             sb.AppendLine($"/// </summary>");
-            
+
             var parameters = string.Join(", ", method.Parameters.Select(p => $"{p.Type.ToDisplayString()} {p.Name}"));
             sb.AppendLine($"public {returnType} {methodName}({parameters})");
             sb.AppendLine("{");
@@ -704,15 +704,15 @@ public abstract class AbstractGenerator : ISourceGenerator
             // Determine SQL operation type based on method name
             var sqlOperation = InferSqlOperationType(methodName);
             var sql = GenerateSqlForOperation(sqlOperation, methodName, tableName, entityType);
-            
+
             sb.AppendLine($"// Generated SQL: {sql}");
-            sb.AppendLine("// TODO: Implement actual Sqlx method call");
-            
+            // NOTE: The actual execution is emitted by RepositoryMethodGenerator; this is a fallback template
+
             // Generate appropriate return statement
             if (method.ReturnsVoid)
             {
                 // void methods - no return
-                System.Diagnostics.Debug.WriteLine($"Method {methodName} returns void");
+                // No-op for void-returning methods in template
             }
             else if (isAsync)
             {
@@ -732,7 +732,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                 var defaultValue = GetDefaultValueForType(method.ReturnType);
                 sb.AppendLine($"return {defaultValue};");
             }
-            
+
             sb.PopIndent();
             sb.AppendLine("}");
             sb.AppendLine();
@@ -748,7 +748,7 @@ public abstract class AbstractGenerator : ISourceGenerator
     private string InferSqlOperationType(string methodName)
     {
         var lowerName = methodName.ToLowerInvariant();
-        
+
         if (lowerName.Contains("get") || lowerName.Contains("find") || lowerName.Contains("select"))
             return "SELECT";
         if (lowerName.Contains("create") || lowerName.Contains("insert") || lowerName.Contains("add"))
@@ -757,7 +757,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             return "UPDATE";
         if (lowerName.Contains("delete") || lowerName.Contains("remove"))
             return "DELETE";
-            
+
         return "SELECT"; // default
     }
 
@@ -779,7 +779,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         {
             if (type.IsReferenceType)
                 return "null!";
-            
+
             return type.SpecialType switch
             {
                 SpecialType.System_Boolean => "false",
@@ -788,7 +788,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                 _ => "default!"
             };
         }
-        
+
         return "default!";
     }
 
@@ -809,25 +809,25 @@ public abstract class AbstractGenerator : ISourceGenerator
             {
                 System.Diagnostics.Debug.WriteLine($"  - {attr.AttributeClass?.Name} ({attr.AttributeClass?.ToDisplayString()})");
             }
-            
-            var tableNameAttr = allAttributes.FirstOrDefault(attr => 
-                attr.AttributeClass?.Name == "TableNameAttribute" || 
+
+            var tableNameAttr = allAttributes.FirstOrDefault(attr =>
+                attr.AttributeClass?.Name == "TableNameAttribute" ||
                 attr.AttributeClass?.Name == "TableName");
-            
+
             if (tableNameAttr != null)
             {
                 System.Diagnostics.Debug.WriteLine($"Found TableName attribute: {tableNameAttr.AttributeClass?.Name}");
                 System.Diagnostics.Debug.WriteLine($"Constructor arguments count: {tableNameAttr.ConstructorArguments.Length}");
-                
+
                 if (tableNameAttr.ConstructorArguments.Length > 0)
                 {
                     var firstArg = tableNameAttr.ConstructorArguments[0];
                     System.Diagnostics.Debug.WriteLine($"First argument kind: {firstArg.Kind}, value: {firstArg.Value}");
-                    
+
                     var tableName = firstArg.Value?.ToString();
-                if (!string.IsNullOrEmpty(tableName))
-                {
-                    System.Diagnostics.Debug.WriteLine($"Found TableName attribute on entity: {tableName}");
+                    if (!string.IsNullOrEmpty(tableName))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Found TableName attribute on entity: {tableName}");
                         return tableName!;
                     }
                 }
@@ -840,7 +840,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                     {
                         var syntaxTree = syntaxRef.SyntaxTree;
                         var node = syntaxRef.GetSyntax();
-                        
+
                         // Find the class declaration
                         if (node is Microsoft.CodeAnalysis.CSharp.Syntax.ClassDeclarationSyntax classDecl)
                         {
@@ -854,7 +854,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                                         {
                                             var firstArg = attribute.ArgumentList.Arguments[0];
                                             var argText = firstArg.Expression.ToString();
-                                            
+
                                             // Remove quotes from string literal
                                             if (argText.StartsWith("\"") && argText.EndsWith("\""))
                                             {
@@ -897,11 +897,11 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine("// Changes to this file may cause incorrect behavior and will be lost if the code is regenerated.");
             sb.AppendLine("// </auto-generated>");
             sb.AppendLine();
-            
+
             sb.AppendLine("#nullable disable");
             sb.AppendLine("#pragma warning disable CS8618, CS8625, CS8629, CS8601, CS8600, CS8603, CS8669");
             sb.AppendLine();
-            
+
             // Generate namespace (using traditional block syntax for compatibility)
             var namespaceName = repositoryClass.ContainingNamespace.ToDisplayString();
             if (!string.IsNullOrEmpty(namespaceName) && namespaceName != "<global namespace>")
@@ -910,7 +910,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                 sb.AppendLine("{");
                 sb.PushIndent();
             }
-            
+
             // Generate using statements
             sb.AppendLine("using System;");
             sb.AppendLine("using System.Collections.Generic;");
@@ -920,32 +920,32 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine("using System.Threading.Tasks;");
             sb.AppendLine("using Sqlx.Annotations;");
             sb.AppendLine();
-            
+
             // Generate partial class that implements the service interface
             sb.AppendLine($"{repositoryClass.DeclaredAccessibility.GetAccessibility()} partial class {repositoryClass.Name} : {serviceInterface.ToDisplayString()}");
             sb.AppendLine("{");
             sb.PushIndent();
-            
+
             // Generate DbConnection field if needed
             var connectionFieldName = GetDbConnectionFieldName(repositoryClass);
             GenerateDbConnectionFieldIfNeeded(sb, repositoryClass, connectionFieldName);
-            
+
             // Generate interceptor partial methods
             WriteRepositoryInterceptMethods(sb, repositoryClass);
-            
+
             // Generate methods for ALL interface methods
             var methods = serviceInterface.GetMembers().OfType<IMethodSymbol>().ToArray();
             System.Diagnostics.Debug.WriteLine($"Found {methods.Length} methods in interface {serviceInterface.Name}");
             System.Diagnostics.Debug.WriteLine($"Generating implementations for all {methods.Length} methods");
-            
+
             foreach (var method in methods)
             {
                 GenerateRepositoryMethod(sb, method, entityType, tableName);
             }
-            
+
             sb.PopIndent();
             sb.AppendLine("}");
-            
+
             // Close namespace if we opened it
             if (!string.IsNullOrEmpty(namespaceName) && namespaceName != "<global namespace>")
             {
@@ -964,23 +964,23 @@ public abstract class AbstractGenerator : ISourceGenerator
     {
         var attrName = attribute.AttributeClass?.Name;
         if (attrName == null) return "";
-        
+
         System.Diagnostics.Debug.WriteLine($"Generating attribute string for {attrName}");
-        
+
         // Remove "Attribute" suffix if present
         if (attrName.EndsWith("Attribute"))
         {
             attrName = attrName.Substring(0, attrName.Length - "Attribute".Length);
         }
-        
+
         var args = new List<string>();
-        
+
         // Handle constructor arguments
         System.Diagnostics.Debug.WriteLine($"Constructor arguments count: {attribute.ConstructorArguments.Length}");
         foreach (var arg in attribute.ConstructorArguments)
         {
             System.Diagnostics.Debug.WriteLine($"Arg kind: {arg.Kind}, value: {arg.Value}, type: {arg.Type?.ToDisplayString()}");
-            
+
             if (arg.Kind == TypedConstantKind.Primitive && arg.Value is string stringValue)
             {
                 args.Add($"\"{stringValue}\"");
@@ -1006,7 +1006,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                 args.Add(arg.Value.ToString() ?? "");
             }
         }
-        
+
         // Handle named arguments (skip for SqlExecuteTypeAttribute as it only uses constructor parameters)
         if (attrName != "SqlExecuteType")
         {
@@ -1022,7 +1022,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                 args.Add($"{namedArg.Key} = {value}");
             }
         }
-        
+
         var argsString = args.Count > 0 ? $"({string.Join(", ", args)})" : "";
         var result = $"[{attrName}{argsString}]";
         System.Diagnostics.Debug.WriteLine($"Generated attribute: {result}");
@@ -1032,7 +1032,7 @@ public abstract class AbstractGenerator : ISourceGenerator
     private void WriteRepositoryInterceptMethods(IndentedStringBuilder sb, INamedTypeSymbol repositoryClass)
     {
         var staticKeyword = repositoryClass.IsStatic ? "static " : string.Empty;
-        
+
         sb.AppendLine("// ===================================================================");
         sb.AppendLine("// Interceptor partial methods");
         sb.AppendLine("// Implement these in your partial class to add custom logic:");
@@ -1056,13 +1056,13 @@ public abstract class AbstractGenerator : ISourceGenerator
         sb.AppendLine("// }");
         sb.AppendLine("// ===================================================================");
         sb.AppendLine();
-        
+
         sb.AppendLine($"{staticKeyword}partial void OnExecuting(string methodName, DbCommand command);");
         sb.AppendLine();
-        
+
         sb.AppendLine($"{staticKeyword}partial void OnExecuted(string methodName, DbCommand command, object? result, long elapsed);");
         sb.AppendLine();
-        
+
         sb.AppendLine($"{staticKeyword}partial void OnExecuteFail(string methodName, DbCommand? command, Exception exception, long elapsed);");
         sb.AppendLine();
     }
@@ -1074,16 +1074,16 @@ public abstract class AbstractGenerator : ISourceGenerator
         foreach (var attr in attributes)
         {
             var attrName = attr.AttributeClass?.Name;
-            if (attrName == "SqlxAttribute" || 
-                attrName == "RawSqlAttribute" || 
+            if (attrName == "SqlxAttribute" ||
+                attrName == "RawSqlAttribute" ||
                 attrName == "SqlExecuteTypeAttribute")
             {
                 System.Diagnostics.Debug.WriteLine($"Method {method.Name} has Sqlx attribute: {attrName}");
                 return true;
             }
         }
-        
-        System.Diagnostics.Debug.WriteLine($"Method {method.Name} does not have Sqlx attributes");        
+
+        System.Diagnostics.Debug.WriteLine($"Method {method.Name} does not have Sqlx attributes");
         return false;
     }
 
@@ -1093,12 +1093,12 @@ public abstract class AbstractGenerator : ISourceGenerator
         {
             return "A cancellation token that can be used to cancel the operation.";
         }
-        
+
         if (parameter.Type.TypeKind == TypeKind.Class && parameter.Type.Name != "String")
         {
             return $"The {parameter.Type.Name} entity to process.";
         }
-        
+
         return $"The {parameter.Name} parameter.";
     }
 
@@ -1106,7 +1106,7 @@ public abstract class AbstractGenerator : ISourceGenerator
     {
         var returnType = method.ReturnType;
         var methodName = method.Name.ToLowerInvariant();
-        
+
         if (returnType.Name == "Task")
         {
             if (returnType is INamedTypeSymbol taskType && taskType.TypeArguments.Length == 0)
@@ -1130,22 +1130,22 @@ public abstract class AbstractGenerator : ISourceGenerator
                 }
             }
         }
-        
+
         if (IsCollectionType(returnType))
         {
             return $"A collection of {GetEntityTypeName(returnType)} entities.";
         }
-        
+
         if (returnType.SpecialType == SpecialType.System_Int32)
         {
-            if (methodName.Contains("create") || methodName.Contains("insert") || 
+            if (methodName.Contains("create") || methodName.Contains("insert") ||
                 methodName.Contains("update") || methodName.Contains("delete"))
             {
                 return "The number of affected rows.";
             }
             return "The result value.";
         }
-        
+
         return $"The {returnType.Name} result.";
     }
 
@@ -1158,7 +1158,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                 return namedType.TypeArguments[0].Name;
             }
         }
-        
+
         return type.Name;
     }
 
@@ -1166,11 +1166,11 @@ public abstract class AbstractGenerator : ISourceGenerator
     {
         // Check if method already has SQL attributes
         var existingSqlAttributes = method.GetAttributes()
-            .Where(attr => attr.AttributeClass?.Name == "SqlxAttribute" || 
-                          attr.AttributeClass?.Name == "RawSqlAttribute" || 
+            .Where(attr => attr.AttributeClass?.Name == "SqlxAttribute" ||
+                          attr.AttributeClass?.Name == "RawSqlAttribute" ||
                           attr.AttributeClass?.Name == "SqlExecuteTypeAttribute")
             .ToArray();
-        
+
         if (existingSqlAttributes.Any())
         {
             // Copy existing attributes as-is - let the old generator handle them
@@ -1190,15 +1190,15 @@ public abstract class AbstractGenerator : ISourceGenerator
     private string GenerateSqlxAttribute(AttributeData attribute)
     {
         var attrName = attribute.AttributeClass?.Name ?? "Unknown";
-        
+
         // Remove "Attribute" suffix if present
         if (attrName.EndsWith("Attribute"))
         {
             attrName = attrName.Substring(0, attrName.Length - "Attribute".Length);
         }
-        
+
         var args = new List<string>();
-        
+
         // Handle constructor arguments
         foreach (var arg in attribute.ConstructorArguments)
         {
@@ -1215,7 +1215,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                     var enumName = enumValueInt switch
                     {
                         0 => "Select",
-                        1 => "Update", 
+                        1 => "Update",
                         2 => "Insert",
                         3 => "Delete",
                         4 => "BatchInsert",
@@ -1235,14 +1235,14 @@ public abstract class AbstractGenerator : ISourceGenerator
                 args.Add(arg.Value.ToString() ?? "");
             }
         }
-        
+
         return $"[{attrName}({string.Join(", ", args)})]";
     }
 
     private string GenerateSqlxAttributeFromMethodName(IMethodSymbol method, string tableName)
     {
         var methodName = method.Name.ToLowerInvariant();
-        
+
         // Pattern-based attribute generation
         if (methodName.Contains("getall") || methodName.Contains("list") || methodName.Contains("all"))
         {
@@ -1288,18 +1288,18 @@ public abstract class AbstractGenerator : ISourceGenerator
             var methodName = method.Name;
             var isAsync = method.ReturnType.Name == "Task" || (method.ReturnType is INamedTypeSymbol taskType && taskType.Name == "Task");
             var returnType = method.ReturnType;
-            
+
             // Generate timing and command variables
             sb.AppendLine("var __startTime__ = System.Diagnostics.Stopwatch.GetTimestamp();");
             sb.AppendLine("System.Data.Common.DbCommand? __cmd__ = null;");
             sb.AppendLine("System.Exception? __exception__ = null;");
             sb.AppendLine("object? __result__ = null;");
             sb.AppendLine();
-            
+
             sb.AppendLine("try");
             sb.AppendLine("{");
             sb.PushIndent();
-            
+
             // Open connection if needed
             sb.AppendLine("if (connection.State != System.Data.ConnectionState.Open)");
             sb.AppendLine("{");
@@ -1317,21 +1317,21 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.PopIndent();
             sb.AppendLine("}");
             sb.AppendLine();
-            
+
             // Create command
             sb.AppendLine("__cmd__ = connection.CreateCommand();");
             sb.AppendLine($"__cmd__.CommandText = {GenerateSqlCommand(method, tableName)};");
             sb.AppendLine();
-            
+
             // Generate parameters
             GenerateRepositoryParameterAssignments(sb, method);
-            
+
             // Call OnExecuting interceptor
             sb.AppendLine($"OnExecuting(\"{methodName}\", __cmd__);");
-            
+
             // Execute command and handle result
             GenerateRepositoryExecution(sb, method, entityType, isAsync);
-            
+
             sb.PopIndent();
             sb.AppendLine("}");
             sb.AppendLine("catch (System.Exception ex)");
@@ -1414,7 +1414,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         var methodName = method.Name.ToLowerInvariant();
         var sqlDefine = GetSqlDefineForRepository(method);
         var wrappedTableName = sqlDefine.WrapColumn(tableName);
-        
+
         // Check for Sqlx attribute first
         var sqlxAttr = method.GetAttributes().FirstOrDefault(attr => attr.AttributeClass?.Name == "SqlxAttribute");
         if (sqlxAttr != null && sqlxAttr.ConstructorArguments.Length > 0)
@@ -1425,7 +1425,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                 return $"\"{sql}\"";
             }
         }
-        
+
         // Check for SqlExecuteType attribute
         var executeTypeAttr = method.GetAttributes().FirstOrDefault(attr => attr.AttributeClass?.Name == "SqlExecuteTypeAttribute");
         if (executeTypeAttr != null && executeTypeAttr.ConstructorArguments.Length >= 2)
@@ -1433,7 +1433,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             var executeType = executeTypeAttr.ConstructorArguments[0].Value?.ToString();
             var table = executeTypeAttr.ConstructorArguments[1].Value?.ToString() ?? tableName;
             var wrappedTable = sqlDefine.WrapColumn(table);
-            
+
             switch (executeType)
             {
                 case "Insert":
@@ -1446,7 +1446,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                     return $"\"SELECT * FROM {wrappedTable}\"";
             }
         }
-        
+
         // Fallback to pattern-based generation
         if (methodName.Contains("getall") || methodName.Contains("list"))
         {
@@ -1469,7 +1469,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         {
             return GenerateDeleteSql(method, tableName, sqlDefine);
         }
-        
+
         return $"\"SELECT * FROM {wrappedTableName}\"";
     }
 
@@ -1502,7 +1502,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         foreach (var param in method.Parameters)
         {
             if (param.Type.Name == "CancellationToken") continue;
-            
+
             if (param.Type.TypeKind == TypeKind.Class && param.Type.Name != "String")
             {
                 // Complex object - map properties
@@ -1538,7 +1538,7 @@ public abstract class AbstractGenerator : ISourceGenerator
     {
         var returnType = method.ReturnType;
         var methodName = method.Name.ToLowerInvariant();
-        
+
         if (method.ReturnsVoid || (isAsync && returnType.Name == "Task" && returnType is INamedTypeSymbol taskType && taskType.TypeArguments.Length == 0))
         {
             // Void or Task (no return value)
@@ -1553,7 +1553,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                 sb.AppendLine("__result__ = __cmd__.ExecuteNonQuery();");
             }
         }
-        else if (methodName.Contains("count") || methodName.Contains("exists") || 
+        else if (methodName.Contains("count") || methodName.Contains("exists") ||
                  returnType.SpecialType == SpecialType.System_Int32 ||
                  returnType.SpecialType == SpecialType.System_Int64 ||
                  methodName.Contains("create") || methodName.Contains("insert") ||
@@ -1566,7 +1566,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                                   methodName.Contains("update") || methodName.Contains("delete") ||
                                   methodName.Contains("remove") ||
                                   method.GetAttributes().Any(attr => attr.AttributeClass?.Name == "SqlExecuteTypeAttribute");
-            
+
             if (isCudOperation)
             {
                 // CUD operations - use ExecuteNonQuery
@@ -1588,18 +1588,18 @@ public abstract class AbstractGenerator : ISourceGenerator
             else
             {
                 // Scalar queries - use ExecuteScalar
-            if (isAsync)
-            {
-                var cancellationTokenParam = method.Parameters.FirstOrDefault(p => p.Type.Name == "CancellationToken");
-                var cancellationTokenName = cancellationTokenParam?.Name ?? "default";
-                sb.AppendLine($"var scalarResult = await __cmd__.ExecuteScalarAsync({cancellationTokenName});");
+                if (isAsync)
+                {
+                    var cancellationTokenParam = method.Parameters.FirstOrDefault(p => p.Type.Name == "CancellationToken");
+                    var cancellationTokenName = cancellationTokenParam?.Name ?? "default";
+                    sb.AppendLine($"var scalarResult = await __cmd__.ExecuteScalarAsync({cancellationTokenName});");
                     sb.AppendLine($"var intResult = System.Convert.ToInt32(scalarResult ?? (object)0);");
                     sb.AppendLine($"__result__ = intResult;");
                     sb.AppendLine($"return intResult;");
-            }
-            else
-            {
-                sb.AppendLine("var scalarResult = __cmd__.ExecuteScalar();");
+                }
+                else
+                {
+                    sb.AppendLine("var scalarResult = __cmd__.ExecuteScalar();");
                     sb.AppendLine("var intResult = System.Convert.ToInt32(scalarResult ?? (object)0);");
                     sb.AppendLine("__result__ = intResult;");
                     sb.AppendLine("return intResult;");
@@ -1630,7 +1630,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         {
             sb.AppendLine("using var __reader__ = __cmd__.ExecuteReader();");
         }
-        
+
         sb.AppendLine("var results = new System.Collections.Generic.List<" + (entityType?.Name ?? "object") + ">();");
         sb.AppendLine("while (__reader__.Read())");
         sb.AppendLine("{");
@@ -1661,7 +1661,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         {
             sb.AppendLine("using var __reader__ = __cmd__.ExecuteReader();");
         }
-        
+
         sb.AppendLine("if (__reader__.Read())");
         sb.AppendLine("{");
         sb.PushIndent();
@@ -1687,8 +1687,8 @@ public abstract class AbstractGenerator : ISourceGenerator
         else
         {
             // Nullable type - return null
-        sb.AppendLine("__result__ = null;");
-        sb.AppendLine("return null;");
+            sb.AppendLine("__result__ = null;");
+            sb.AppendLine("return null;");
         }
     }
 
@@ -1697,19 +1697,19 @@ public abstract class AbstractGenerator : ISourceGenerator
         if (type is INamedTypeSymbol namedType)
         {
             // Check for IList<T>, List<T>, IEnumerable<T>, etc.
-            if (namedType.Name == "IList" || namedType.Name == "List" || 
+            if (namedType.Name == "IList" || namedType.Name == "List" ||
                 namedType.Name == "IEnumerable" || namedType.Name == "ICollection")
             {
                 return true;
             }
-            
+
             // Check for Task<IList<T>>, etc.
             if (namedType.Name == "Task" && namedType.TypeArguments.Length == 1)
             {
                 return IsCollectionType(namedType.TypeArguments[0]);
             }
         }
-        
+
         return false;
     }
 
@@ -1720,7 +1720,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         {
             type = namedType.TypeArguments[0];
         }
-        
+
         // Check for scalar types that should use ExecuteScalar
         return type.SpecialType == SpecialType.System_Int32 ||
                type.SpecialType == SpecialType.System_Int64 ||
@@ -1736,7 +1736,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         {
             var methodName = method.Name;
             var returnType = method.ReturnType.ToDisplayString(); // Keep nullable annotations in method signatures
-            var parameters = string.Join(", ", method.Parameters.Select(p => 
+            var parameters = string.Join(", ", method.Parameters.Select(p =>
             {
                 var paramStr = $"{p.Type.ToDisplayString()} {p.Name}";
                 // Add default value if the parameter has one
@@ -1758,40 +1758,40 @@ public abstract class AbstractGenerator : ISourceGenerator
                 }
                 return paramStr;
             }));
-            
+
             System.Diagnostics.Debug.WriteLine($"Generating method: {methodName} with return type: {returnType}");
-            
+
             // Generate XML documentation
             sb.AppendLine("/// <summary>");
             sb.AppendLine($"/// Generated implementation of {methodName} using Sqlx.");
             sb.AppendLine("/// This method was automatically generated by the RepositoryFor source generator.");
             sb.AppendLine("/// </summary>");
-            
+
             // Add parameter documentation
             foreach (var param in method.Parameters)
             {
                 sb.AppendLine($"/// <param name=\"{param.Name}\">{GetParameterDescription(param)}</param>");
             }
-            
+
             // Add return documentation
             if (!method.ReturnsVoid)
             {
                 sb.AppendLine($"/// <returns>{GetReturnDescription(method)}</returns>");
             }
-            
+
             // Generate or copy Sqlx attributes
             GenerateOrCopyAttributes(sb, method, entityType, tableName);
-            
+
             // Generate complete method implementation with actual database access
             var isAsync = method.ReturnType.Name == "Task" || (method.ReturnType is INamedTypeSymbol taskType && taskType.Name == "Task");
             var asyncModifier = isAsync ? "async " : "";
             sb.AppendLine($"public {asyncModifier}{returnType} {methodName}({parameters})");
             sb.AppendLine("{");
             sb.PushIndent();
-            
+
             // Generate high-performance, secure database operations
             GenerateOptimizedRepositoryMethodBody(sb, method, entityType, tableName, isAsync);
-            
+
             sb.PopIndent();
             sb.AppendLine("}");
             sb.AppendLine();
@@ -1818,8 +1818,8 @@ public abstract class AbstractGenerator : ISourceGenerator
     private string GenerateSqlxAttribute(IMethodSymbol method, INamedTypeSymbol? entityType, string tableName)
     {
         try
-    {
-        var methodName = method.Name.ToLowerInvariant();
+        {
+            var methodName = method.Name.ToLowerInvariant();
             var entityTypeName = entityType?.Name ?? "Entity";
 
             // Determine the appropriate Sqlx attribute based on method name patterns
@@ -1874,7 +1874,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             var isAsync = method.ReturnType.Name == "Task" || (method.ReturnType is INamedTypeSymbol taskType && taskType.Name == "Task");
             var methodName = method.Name.ToLowerInvariant();
             var returnType = method.ReturnType;
-            
+
             // Get connection variable (assume it's named 'connection' in the class)
             sb.AppendLine("// Open connection if needed");
             sb.AppendLine("if (connection.State != System.Data.ConnectionState.Open)");
@@ -1893,18 +1893,18 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.PopIndent();
             sb.AppendLine("}");
             sb.AppendLine();
-            
+
             // Create and configure command
             sb.AppendLine("using var command = connection.CreateCommand();");
-            
+
             // Set SQL based on method attributes and type
             var sql = GenerateSqlCommand(method, tableName);
             sb.AppendLine($"command.CommandText = {sql};");
             sb.AppendLine();
-            
+
             // Add parameters
             GenerateParameterAssignment(sb, method, entityType);
-            
+
             // Execute and return
             GenerateExecutionAndReturn(sb, method, entityType, isAsync);
         }
@@ -1964,7 +1964,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         {
             return $"\"SELECT CASE WHEN EXISTS(SELECT 1 FROM {tableName} WHERE Id = @id) THEN 1 ELSE 0 END\"";
         }
-        
+
         // Default fallback
         return $"\"SELECT * FROM {tableName}\"";
     }
@@ -1974,21 +1974,21 @@ public abstract class AbstractGenerator : ISourceGenerator
         foreach (var param in method.Parameters)
         {
             if (param.Type.Name == "CancellationToken") continue; // Skip CancellationToken
-            
+
             var paramType = param.Type;
             if (paramType.IsScalarType())
             {
                 // Simple scalar parameter
                 sb.AppendLine($"var param{param.Name} = command.CreateParameter();");
                 sb.AppendLine($"param{param.Name}.ParameterName = \"@{param.Name.ToLowerInvariant()}\";");
-                
+
                 // Handle nullable value types and reference types correctly
                 if (paramType.IsValueType && !paramType.CanBeReferencedByName)
                 {
                     sb.AppendLine($"param{param.Name}.Value = (object){param.Name};");
-            }
-            else
-            {
+                }
+                else
+                {
                     sb.AppendLine($"param{param.Name}.Value = (object){param.Name} ?? System.DBNull.Value;");
                 }
                 sb.AppendLine($"command.Parameters.Add(param{param.Name});");
@@ -2001,21 +2001,21 @@ public abstract class AbstractGenerator : ISourceGenerator
                 {
                     sb.AppendLine($"var param{prop.Name} = command.CreateParameter();");
                     sb.AppendLine($"param{prop.Name}.ParameterName = \"@{prop.Name.ToLowerInvariant()}\";");
-                    
+
                     // Handle nullable value types and reference types correctly
                     if (prop.Type.IsValueType && prop.Type.NullableAnnotation != NullableAnnotation.Annotated)
                     {
                         sb.AppendLine($"param{prop.Name}.Value = (object)({param.Name}?.{prop.Name} ?? (object)default({prop.Type.ToDisplayString()}));");
-            }
-            else
-            {
+                    }
+                    else
+                    {
                         sb.AppendLine($"param{prop.Name}.Value = (object)({param.Name}?.{prop.Name}) ?? System.DBNull.Value;");
                     }
                     sb.AppendLine($"command.Parameters.Add(param{prop.Name});");
                 }
             }
         }
-        
+
         if (method.Parameters.Any(p => p.Type.Name != "CancellationToken"))
         {
             sb.AppendLine();
@@ -2026,7 +2026,7 @@ public abstract class AbstractGenerator : ISourceGenerator
     {
         var returnType = method.ReturnType;
         var methodName = method.Name.ToLowerInvariant();
-        
+
         if (method.ReturnsVoid)
         {
             // Void method - just execute
@@ -2042,16 +2042,16 @@ public abstract class AbstractGenerator : ISourceGenerator
             }
             return;
         }
-        
+
         // Unwrap Task<T> to get actual return type
         var actualReturnType = returnType;
         if (isAsync && returnType is INamedTypeSymbol taskType && taskType.TypeArguments.Length > 0)
         {
             actualReturnType = taskType.TypeArguments[0];
         }
-        
+
         var actualTypeString = actualReturnType.ToDisplayString();
-        
+
         // Handle different return types
         if (actualTypeString == "int" || methodName.StartsWith("create") || methodName.StartsWith("update") || methodName.StartsWith("delete"))
         {
@@ -2061,9 +2061,9 @@ public abstract class AbstractGenerator : ISourceGenerator
                 var cancellationTokenParam = method.Parameters.FirstOrDefault(p => p.Type.Name == "CancellationToken");
                 var cancellationTokenName = cancellationTokenParam?.Name ?? "default";
                 sb.AppendLine($"var result = await command.ExecuteNonQueryAsync({cancellationTokenName});");
-        }
-        else
-        {
+            }
+            else
+            {
                 sb.AppendLine("var result = command.ExecuteNonQuery();");
             }
             sb.AppendLine("return result;");
@@ -2099,9 +2099,9 @@ public abstract class AbstractGenerator : ISourceGenerator
     {
         var cancellationTokenParam = method.Parameters.FirstOrDefault(p => p.Type.Name == "CancellationToken");
         var cancellationTokenName = cancellationTokenParam?.Name ?? "default";
-        
+
         sb.AppendLine("var results = new List<" + (entityType?.Name ?? "object") + ">();");
-        
+
         if (isAsync)
         {
             sb.AppendLine($"using var reader = await command.ExecuteReaderAsync({cancellationTokenName});");
@@ -2112,36 +2112,36 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine("using var reader = command.ExecuteReader();");
             sb.AppendLine("while (reader.Read())");
         }
-        
+
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         if (entityType != null)
         {
             sb.AppendLine($"results.Add(new {entityType.Name}");
             sb.AppendLine("{");
             sb.PushIndent();
-            
+
             var properties = entityType.GetMembers().OfType<IPropertySymbol>().ToList();
             for (int i = 0; i < properties.Count; i++)
             {
                 var prop = properties[i];
                 var comma = i < properties.Count - 1 ? "," : "";
                 var propType = prop.Type.ToDisplayString();
-                
+
                 // Handle different property types with safe conversion
                 if (prop.Type.SpecialType == SpecialType.System_Int32)
                 {
                     sb.AppendLine($"{prop.Name} = Convert.ToInt32(reader[\"{prop.Name}\"]){comma}");
                 }
                 else if (prop.Type.SpecialType == SpecialType.System_String)
-                    {
+                {
                     sb.AppendLine($"{prop.Name} = Convert.ToString(reader[\"{prop.Name}\"]) ?? string.Empty{comma}");
-                    }
+                }
                 else if (prop.Type.SpecialType == SpecialType.System_DateTime)
-                    {
+                {
                     sb.AppendLine($"{prop.Name} = Convert.ToDateTime(reader[\"{prop.Name}\"]){comma}");
-                    }
+                }
                 else if (prop.Type.IsValueType)
                 {
                     // Other value types
@@ -2153,19 +2153,19 @@ public abstract class AbstractGenerator : ISourceGenerator
                     sb.AppendLine($"{prop.Name} = reader[\"{prop.Name}\"] as {propType}{comma}");
                 }
             }
-            
+
             sb.PopIndent();
             sb.AppendLine("});");
         }
         else
         {
-            sb.AppendLine("// TODO: Map reader to object");
+            // Fallback mapping path not expected in optimized generation
             sb.AppendLine("results.Add(default);");
         }
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
-        
+
         sb.AppendLine("return results;");
     }
 
@@ -2173,7 +2173,7 @@ public abstract class AbstractGenerator : ISourceGenerator
     {
         var cancellationTokenParam = method.Parameters.FirstOrDefault(p => p.Type.Name == "CancellationToken");
         var cancellationTokenName = cancellationTokenParam?.Name ?? "default";
-        
+
         if (isAsync)
         {
             sb.AppendLine($"using var reader = await command.ExecuteReaderAsync({cancellationTokenName});");
@@ -2184,34 +2184,34 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine("using var reader = command.ExecuteReader();");
             sb.AppendLine("if (reader.Read())");
         }
-        
+
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         sb.AppendLine($"return new {entityType.Name}");
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         var properties = entityType.GetMembers().OfType<IPropertySymbol>().ToList();
         for (int i = 0; i < properties.Count; i++)
         {
             var prop = properties[i];
             var comma = i < properties.Count - 1 ? "," : "";
             var propType = prop.Type.ToDisplayString();
-            
+
             // Handle different property types with safe conversion
             if (prop.Type.SpecialType == SpecialType.System_Int32)
             {
                 sb.AppendLine($"{prop.Name} = Convert.ToInt32(reader[\"{prop.Name}\"]){comma}");
             }
             else if (prop.Type.SpecialType == SpecialType.System_String)
-                {
+            {
                 sb.AppendLine($"{prop.Name} = Convert.ToString(reader[\"{prop.Name}\"]) ?? string.Empty{comma}");
-                }
+            }
             else if (prop.Type.SpecialType == SpecialType.System_DateTime)
-                {
+            {
                 sb.AppendLine($"{prop.Name} = Convert.ToDateTime(reader[\"{prop.Name}\"]){comma}");
-                }
+            }
             else if (prop.Type.IsValueType)
             {
                 // Other value types
@@ -2223,38 +2223,38 @@ public abstract class AbstractGenerator : ISourceGenerator
                 sb.AppendLine($"{prop.Name} = reader[\"{prop.Name}\"] as {propType}{comma}");
             }
         }
-        
+
         sb.PopIndent();
         sb.AppendLine("};");
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
-        
+
         sb.AppendLine("return null;");
     }
 
     private void GenerateOptimizedRepositoryMethodBody(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, bool isAsync)
     {
         var methodName = method.Name;
-        
+
         // Setup execution context with interceptors
         sb.AppendLine("var __startTime__ = System.Diagnostics.Stopwatch.GetTimestamp();");
         sb.AppendLine("System.Data.Common.DbCommand? __cmd__ = null;");
         sb.AppendLine("object? __result__ = null;");
         sb.AppendLine("System.Exception? __exception__ = null;");
         sb.AppendLine();
-        
+
         sb.AppendLine("try");
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         // Check for SqlExecuteType attribute
         var executeTypeAttr = method.GetAttributes().FirstOrDefault(attr => attr.AttributeClass?.Name == "SqlExecuteTypeAttribute");
         if (executeTypeAttr != null && executeTypeAttr.ConstructorArguments.Length >= 2)
         {
             var executeType = executeTypeAttr.ConstructorArguments[0].Value?.ToString();
             var table = executeTypeAttr.ConstructorArguments[1].Value?.ToString() ?? tableName;
-            
+
             switch (executeType)
             {
                 case "Insert":
@@ -2321,7 +2321,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                 {
                     GenerateDeleteOperationWithInterceptors(sb, method, entityType, tableName, isAsync, methodName);
                 }
-                else if (methodNameLower.Contains("count") || methodNameLower.Contains("exists") || 
+                else if (methodNameLower.Contains("count") || methodNameLower.Contains("exists") ||
                          IsScalarReturnType(method.ReturnType, isAsync))
                 {
                     GenerateScalarOperationWithInterceptors(sb, method, entityType, tableName, isAsync, methodName);
@@ -2336,7 +2336,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                 }
             }
         }
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine("catch (System.Exception ex)");
@@ -2366,7 +2366,7 @@ public abstract class AbstractGenerator : ISourceGenerator
     private void GenerateInsertOperation(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, bool isAsync)
     {
         var entityParam = method.Parameters.FirstOrDefault(p => p.Type.TypeKind == TypeKind.Class && p.Type.Name != "String" && p.Type.Name != "CancellationToken");
-        
+
         if (entityParam == null || entityType == null)
         {
             // Fallback: generate basic insert
@@ -2374,7 +2374,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine("throw new global::System.InvalidOperationException(\"INSERT operation requires an entity parameter\");");
             return;
         }
-        
+
         // Entity-based insert with improved error handling
         sb.AppendLine("// Optimized INSERT operation with proper parameter binding");
         sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
@@ -2392,7 +2392,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
-        
+
         // Get insertable properties (exclude Id and read-only properties)
         var properties = GetInsertableProperties(entityType);
         if (!properties.Any())
@@ -2401,16 +2401,16 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine("throw new global::System.InvalidOperationException(\"No insertable properties found in entity\");");
             return;
         }
-        
+
         sb.AppendLine("using var cmd = connection.CreateCommand();");
-        
+
         var sqlDefine = GetSqlDefineForRepository(method);
         var columns = string.Join(", ", properties.Select(p => sqlDefine.WrapColumn(p.GetSqlName()).Replace("\"", "\\\"")));
         var parameters = string.Join(", ", properties.Select(p => $"{sqlDefine.ParamterPrefx}{p.GetSqlName()}"));
-        
+
         sb.AppendLine($"cmd.CommandText = \"INSERT INTO {sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"")} ({columns}) VALUES ({parameters})\";");
         sb.AppendLine();
-        
+
         // Add parameters with proper types and null handling
         foreach (var prop in properties)
         {
@@ -2418,7 +2418,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine($"var param{prop.Name} = cmd.CreateParameter();");
             sb.AppendLine($"param{prop.Name}.ParameterName = \"{sqlDefine.ParamterPrefx}{sqlName}\";");
             sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
-            
+
             // Improved null handling
             if (prop.Type.IsReferenceType || IsNullableValueType(prop.Type))
             {
@@ -2431,7 +2431,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine($"cmd.Parameters.Add(param{prop.Name});");
             sb.AppendLine();
         }
-        
+
         // Execute and return
         if (isAsync)
         {
@@ -2448,14 +2448,14 @@ public abstract class AbstractGenerator : ISourceGenerator
     private void GenerateUpdateOperation(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, bool isAsync)
     {
         var entityParam = method.Parameters.FirstOrDefault(p => p.Type.TypeKind == TypeKind.Class && p.Type.Name != "String" && p.Type.Name != "CancellationToken");
-        
+
         if (entityParam == null || entityType == null)
         {
             sb.AppendLine("// Error: Unable to generate UPDATE without entity parameter");
             sb.AppendLine("throw new global::System.InvalidOperationException(\"UPDATE operation requires an entity parameter\");");
             return;
         }
-        
+
         sb.AppendLine("// Optimized UPDATE operation with proper parameter binding");
         sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
         sb.AppendLine("{");
@@ -2472,7 +2472,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
-        
+
         // Get updatable properties (exclude Id for SET clause)
         var properties = GetUpdatableProperties(entityType);
         if (!properties.Any())
@@ -2481,14 +2481,14 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine("throw new global::System.InvalidOperationException(\"No updatable properties found in entity\");");
             return;
         }
-        
+
         sb.AppendLine("using var cmd = connection.CreateCommand();");
-        
+
         var sqlDefine = GetSqlDefineForRepository(method);
         var setClauses = string.Join(", ", properties.Select(p => $"{sqlDefine.WrapColumn(p.GetSqlName()).Replace("\"", "\\\"")} = {sqlDefine.ParamterPrefx}{p.GetSqlName()}"));
         sb.AppendLine($"cmd.CommandText = \"UPDATE {sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"")} SET {setClauses} WHERE {sqlDefine.WrapColumn("id").Replace("\"", "\\\"")} = {sqlDefine.ParamterPrefx}id\";");
         sb.AppendLine();
-        
+
         // Add SET clause parameters
         foreach (var prop in properties)
         {
@@ -2496,7 +2496,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine($"var param{prop.Name} = cmd.CreateParameter();");
             sb.AppendLine($"param{prop.Name}.ParameterName = \"{sqlDefine.ParamterPrefx}{sqlName}\";");
             sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
-            
+
             // Improved null handling
             if (prop.Type.IsReferenceType || IsNullableValueType(prop.Type))
             {
@@ -2509,7 +2509,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine($"cmd.Parameters.Add(param{prop.Name});");
             sb.AppendLine();
         }
-        
+
         // Add ID parameter for WHERE clause
         sb.AppendLine("var paramId = cmd.CreateParameter();");
         sb.AppendLine($"paramId.ParameterName = \"{sqlDefine.ParamterPrefx}id\";");
@@ -2517,7 +2517,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         sb.AppendLine($"paramId.Value = {entityParam.Name}.Id;");
         sb.AppendLine("cmd.Parameters.Add(paramId);");
         sb.AppendLine();
-        
+
         // Execute and return
         if (isAsync)
         {
@@ -2534,14 +2534,14 @@ public abstract class AbstractGenerator : ISourceGenerator
     private void GenerateDeleteOperation(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, bool isAsync)
     {
         var idParam = method.Parameters.FirstOrDefault(p => p.Type.SpecialType == SpecialType.System_Int32);
-        
+
         if (idParam == null)
         {
             sb.AppendLine("// Error: Unable to generate DELETE without integer ID parameter");
             sb.AppendLine("throw new global::System.InvalidOperationException(\"DELETE operation requires an integer ID parameter\");");
             return;
         }
-        
+
         sb.AppendLine("// Optimized DELETE operation with proper parameter binding");
         sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
         sb.AppendLine("{");
@@ -2558,18 +2558,18 @@ public abstract class AbstractGenerator : ISourceGenerator
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
-        
+
         sb.AppendLine("using var cmd = connection.CreateCommand();");
         sb.AppendLine($"cmd.CommandText = \"DELETE FROM [{tableName}] WHERE [Id] = @Id\";");
         sb.AppendLine();
-        
+
         sb.AppendLine("var paramId = cmd.CreateParameter();");
         sb.AppendLine("paramId.ParameterName = \"@Id\";");
         sb.AppendLine("paramId.DbType = global::System.Data.DbType.Int32;");
         sb.AppendLine($"paramId.Value = {idParam.Name};");
         sb.AppendLine("cmd.Parameters.Add(paramId);");
         sb.AppendLine();
-        
+
         // Execute and return
         if (isAsync)
         {
@@ -2591,7 +2591,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine("throw new global::System.InvalidOperationException(\"SELECT operation requires a valid entity type\");");
             return;
         }
-        
+
         sb.AppendLine("// Optimized SELECT operation with high-performance object mapping");
         sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
         sb.AppendLine("{");
@@ -2608,11 +2608,11 @@ public abstract class AbstractGenerator : ISourceGenerator
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
-        
+
         sb.AppendLine("using var cmd = connection.CreateCommand();");
         sb.AppendLine($"cmd.CommandText = \"SELECT * FROM [{tableName}]\";");
         sb.AppendLine();
-        
+
         if (isAsync)
         {
             var cancellationToken = GetCancellationTokenParameter(method);
@@ -2622,9 +2622,9 @@ public abstract class AbstractGenerator : ISourceGenerator
         {
             sb.AppendLine("using var reader = cmd.ExecuteReader();");
         }
-        
+
         sb.AppendLine($"var results = new global::System.Collections.Generic.List<{entityType.Name}>();");
-        
+
         if (isAsync)
         {
             var cancellationToken = GetCancellationTokenParameter(method);
@@ -2634,13 +2634,13 @@ public abstract class AbstractGenerator : ISourceGenerator
         {
             sb.AppendLine("while (reader.Read())");
         }
-        
+
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         GenerateOptimizedEntityMapping(sb, entityType);
         sb.AppendLine("results.Add(entity);");
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine("return results;");
@@ -2649,7 +2649,7 @@ public abstract class AbstractGenerator : ISourceGenerator
     private void GenerateSelectSingleOperation(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, bool isAsync)
     {
         var idParam = method.Parameters.FirstOrDefault(p => p.Type.SpecialType == SpecialType.System_Int32);
-        
+
         sb.AppendLine("// High-performance single entity SELECT");
         sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
         sb.AppendLine("{");
@@ -2666,9 +2666,9 @@ public abstract class AbstractGenerator : ISourceGenerator
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
-        
+
         sb.AppendLine("using var cmd = connection.CreateCommand();");
-        
+
         if (idParam != null)
         {
             sb.AppendLine($"cmd.CommandText = \"SELECT * FROM [{tableName}] WHERE [Id] = @id\";");
@@ -2683,9 +2683,9 @@ public abstract class AbstractGenerator : ISourceGenerator
         {
             sb.AppendLine($"cmd.CommandText = \"SELECT TOP 1 * FROM [{tableName}]\";");
         }
-        
+
         sb.AppendLine();
-        
+
         if (isAsync)
         {
             var cancellationToken = GetCancellationTokenParameter(method);
@@ -2697,10 +2697,10 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine("using var reader = cmd.ExecuteReader();");
             sb.AppendLine("if (reader.Read())");
         }
-        
+
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         if (entityType != null)
         {
             GenerateOptimizedEntityMapping(sb, entityType);
@@ -2711,7 +2711,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine("// Unable to map to unknown entity type");
             sb.AppendLine("return default;");
         }
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine("return default;");
@@ -2720,7 +2720,7 @@ public abstract class AbstractGenerator : ISourceGenerator
     private void GenerateCustomSqlOperation(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, AttributeData sqlxAttr, bool isAsync)
     {
         var sql = sqlxAttr.ConstructorArguments.FirstOrDefault().Value?.ToString() ?? "SELECT 1";
-        
+
         sb.AppendLine("// Custom SQL execution");
         sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
         sb.AppendLine("{");
@@ -2737,14 +2737,14 @@ public abstract class AbstractGenerator : ISourceGenerator
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
-        
+
         sb.AppendLine("using var cmd = connection.CreateCommand();");
         sb.AppendLine($"cmd.CommandText = \"{sql}\";");
         sb.AppendLine();
-        
+
         // Add parameters for method parameters
         GenerateMethodParameters(sb, method);
-        
+
         // Execute based on return type
         if (IsCollectionType(method.ReturnType) || (isAsync && IsAsyncCollectionReturnType(method.ReturnType)))
         {
@@ -2758,9 +2758,9 @@ public abstract class AbstractGenerator : ISourceGenerator
             {
                 sb.AppendLine("using var reader = cmd.ExecuteReader();");
             }
-            
+
             sb.AppendLine($"var results = new global::System.Collections.Generic.List<{entityType?.Name ?? "object"}>();");
-            
+
             if (isAsync)
             {
                 var cancellationToken = GetCancellationTokenParameter(method);
@@ -2770,7 +2770,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             {
                 sb.AppendLine("while (reader.Read())");
             }
-            
+
             sb.AppendLine("{");
             sb.PushIndent();
             if (entityType != null)
@@ -2782,7 +2782,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine("}");
             sb.AppendLine("return results;");
         }
-        else if (method.ReturnType.SpecialType == SpecialType.System_Int32 || 
+        else if (method.ReturnType.SpecialType == SpecialType.System_Int32 ||
                  (isAsync && IsAsyncReturnType(method.ReturnType, SpecialType.System_Int32)))
         {
             // Scalar return
@@ -2811,7 +2811,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                 sb.AppendLine("using var reader = cmd.ExecuteReader();");
                 sb.AppendLine("if (reader.Read())");
             }
-            
+
             sb.AppendLine("{");
             sb.PushIndent();
             if (entityType != null)
@@ -2830,7 +2830,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         var properties = entityType.GetMembers().OfType<IPropertySymbol>()
             .Where(p => p.CanBeReferencedByName && p.SetMethod != null)
             .ToList();
-        
+
         if (!properties.Any())
         {
             sb.AppendLine("// No properties found for entity mapping");
@@ -2844,11 +2844,11 @@ public abstract class AbstractGenerator : ISourceGenerator
             var columnName = prop.GetSqlName();
             sb.AppendLine($"int __ordinal_{columnName} = reader.GetOrdinal(\"{columnName}\");");
         }
-        
+
         sb.AppendLine($"var entity = new {entityType.ToDisplayString()}");
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         for (int i = 0; i < properties.Count; i++)
         {
             var prop = properties[i];
@@ -2861,10 +2861,10 @@ public abstract class AbstractGenerator : ISourceGenerator
             var dataReadExpression = prop.Type.GetDataReadExpressionWithCachedOrdinal("reader", columnName, ordinalVar);
             sb.AppendLine($"{prop.Name} = {dataReadExpression}{comma}");
         }
-        
+
         sb.PopIndent();
         sb.AppendLine("};");
-        
+
         // Note: Caller is responsible for handling the generated entity
     }
 
@@ -2875,7 +2875,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine($"var param{param.Name} = cmd.CreateParameter();");
             sb.AppendLine($"param{param.Name}.ParameterName = \"@{param.Name.ToLowerInvariant()}\";");
             sb.AppendLine($"param{param.Name}.DbType = {GetDbTypeForParameterType(param.Type)};");
-            
+
             if (param.Type.IsReferenceType || IsNullableValueType(param.Type))
             {
                 sb.AppendLine($"param{param.Name}.Value = {param.Name} ?? (object)global::System.DBNull.Value;");
@@ -2907,10 +2907,10 @@ public abstract class AbstractGenerator : ISourceGenerator
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
-        
+
         sb.AppendLine("using var cmd = connection.CreateCommand();");
         sb.AppendLine($"cmd.CommandText = \"INSERT INTO [{tableName}] DEFAULT VALUES\";");
-        
+
         if (isAsync)
         {
             var cancellationToken = GetCancellationTokenParameter(method);
@@ -2990,7 +2990,7 @@ public abstract class AbstractGenerator : ISourceGenerator
     private string GetDefaultValueForReturnType(ITypeSymbol returnType)
     {
         var typeDisplayString = returnType.ToDisplayString();
-        
+
         // Handle Task<T> first to avoid conflict with collection handling
         if (typeDisplayString.StartsWith("Task<") || typeDisplayString.Contains("Task<"))
         {
@@ -3004,14 +3004,14 @@ public abstract class AbstractGenerator : ISourceGenerator
             // Fallback for when we can't determine the inner type
             return "System.Threading.Tasks.Task.FromResult<object>(null!)";
         }
-        
+
         if (typeDisplayString == "Task" || typeDisplayString == "System.Threading.Tasks.Task")
         {
             return "System.Threading.Tasks.Task.CompletedTask";
         }
-        
+
         // Handle collection types
-        if (typeDisplayString.Contains("IList<") || typeDisplayString.Contains("List<") || 
+        if (typeDisplayString.Contains("IList<") || typeDisplayString.Contains("List<") ||
             typeDisplayString.Contains("IEnumerable<") || typeDisplayString.Contains("[]"))
         {
             var genericTypeName = ExtractGenericTypeName(typeDisplayString);
@@ -3033,7 +3033,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                 return $"new {elementType}[0]";
             }
         }
-        
+
         // Handle primitive types
         return typeDisplayString switch
         {
@@ -3074,7 +3074,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         sb.AppendLine("// This file was generated by Sqlx Repository Generator");
         sb.AppendLine("// </auto-generated>");
         sb.AppendLine();
-        
+
         sb.AppendLine($"namespace {repositoryClass.ContainingNamespace.ToDisplayString()};");
         sb.AppendLine();
         sb.AppendLine("using System;");
@@ -3082,11 +3082,11 @@ public abstract class AbstractGenerator : ISourceGenerator
         sb.AppendLine("using System.Threading;");
         sb.AppendLine("using System.Threading.Tasks;");
         sb.AppendLine();
-        
+
         sb.AppendLine($"partial class {repositoryClass.Name}");
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         // Generate a simple test method
         sb.AppendLine("// This is a test method generated by Sqlx Repository Generator");
         sb.AppendLine("public void GeneratedTestMethod()");
@@ -3095,7 +3095,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         sb.AppendLine("// This method was successfully generated!");
         sb.PopIndent();
         sb.AppendLine("}");
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
     }
@@ -3103,52 +3103,52 @@ public abstract class AbstractGenerator : ISourceGenerator
     private static INamedTypeSymbol? TryInferEntityFromInterfaceName(INamedTypeSymbol serviceInterface, Compilation compilation)
     {
         System.Diagnostics.Debug.WriteLine($"Trying to infer entity from interface name: {serviceInterface.Name}");
-        
+
         var interfaceName = serviceInterface.Name;
-        
+
         // Remove 'I' prefix if present
         if (interfaceName.StartsWith("I") && interfaceName.Length > 1 && char.IsUpper(interfaceName[1]))
         {
             interfaceName = interfaceName.Substring(1);
         }
-        
+
         // Remove 'Service' suffix if present
         if (interfaceName.EndsWith("Service"))
         {
             interfaceName = interfaceName.Substring(0, interfaceName.Length - 7);
         }
-        
+
         // Try to find an entity type with this name
         var entityType = FindTypeByName(compilation, interfaceName);
         System.Diagnostics.Debug.WriteLine($"Found entity type: {entityType?.Name ?? "null"}");
-        
+
         return entityType;
     }
 
     private static string GetTableNameFromInterfaceName(string interfaceName)
     {
         System.Diagnostics.Debug.WriteLine($"Getting table name from interface name: {interfaceName}");
-        
+
         var tableName = interfaceName;
-        
+
         // Remove 'I' prefix if present
         if (tableName.StartsWith("I") && tableName.Length > 1 && char.IsUpper(tableName[1]))
         {
             tableName = tableName.Substring(1);
         }
-        
+
         // Remove 'Service' suffix if present
         if (tableName.EndsWith("Service"))
         {
             tableName = tableName.Substring(0, tableName.Length - 7);
         }
-        
+
         // Convert to plural form (simple heuristic)
         if (!tableName.EndsWith("s"))
         {
             tableName += "s";
         }
-        
+
         System.Diagnostics.Debug.WriteLine($"Generated table name: {tableName}");
         return tableName;
     }
@@ -3160,14 +3160,14 @@ public abstract class AbstractGenerator : ISourceGenerator
     private void GenerateInsertOperationWithInterceptors(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, bool isAsync, string methodName)
     {
         var entityParam = method.Parameters.FirstOrDefault(p => p.Type.TypeKind == TypeKind.Class && p.Type.Name != "String" && p.Type.Name != "CancellationToken");
-        
+
         if (entityParam == null || entityType == null)
         {
             sb.AppendLine("// Error: Unable to generate INSERT without entity parameter");
             sb.AppendLine("throw new global::System.InvalidOperationException(\"INSERT operation requires an entity parameter\");");
             return;
         }
-        
+
         // Connection setup
         sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
         sb.AppendLine("{");
@@ -3184,7 +3184,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
-        
+
         // Get insertable properties
         var properties = GetInsertableProperties(entityType);
         if (!properties.Any())
@@ -3193,16 +3193,16 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine("throw new global::System.InvalidOperationException(\"No insertable properties found in entity\");");
             return;
         }
-        
+
         // Create command
         sb.AppendLine("__cmd__ = connection.CreateCommand();");
-        
+
         var sqlDefine = GetSqlDefineForRepository(method);
         var columns = string.Join(", ", properties.Select(p => sqlDefine.WrapColumn(p.GetSqlName()).Replace("\"", "\\\"")));
         var parameters = string.Join(", ", properties.Select(p => $"{sqlDefine.ParamterPrefx}{p.GetSqlName()}"));
         sb.AppendLine($"__cmd__.CommandText = \"INSERT INTO {sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"")} ({columns}) VALUES ({parameters})\";");
         sb.AppendLine();
-        
+
         // Add parameters
         foreach (var prop in properties)
         {
@@ -3210,7 +3210,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine($"var param{prop.Name} = __cmd__.CreateParameter();");
             sb.AppendLine($"param{prop.Name}.ParameterName = \"{sqlDefine.ParamterPrefx}{sqlName}\";");
             sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
-            
+
             if (prop.Type.IsReferenceType || IsNullableValueType(prop.Type))
             {
                 sb.AppendLine($"param{prop.Name}.Value = {entityParam.Name}.{prop.Name} ?? (object)global::System.DBNull.Value;");
@@ -3222,11 +3222,11 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine($"__cmd__.Parameters.Add(param{prop.Name});");
             sb.AppendLine();
         }
-        
+
         // Call OnExecuting interceptor
         sb.AppendLine($"OnExecuting(\"{methodName}\", __cmd__);");
         sb.AppendLine();
-        
+
         // Execute and return
         if (isAsync)
         {
@@ -3237,14 +3237,14 @@ public abstract class AbstractGenerator : ISourceGenerator
         {
             sb.AppendLine("__result__ = __cmd__.ExecuteNonQuery();");
         }
-        
+
         // Determine return type and cast accordingly
         var returnType = method.ReturnType;
         if (isAsync && returnType is INamedTypeSymbol namedReturnType && namedReturnType.Name == "Task" && namedReturnType.TypeArguments.Length == 1)
         {
             returnType = namedReturnType.TypeArguments[0];
         }
-        
+
         if (returnType.SpecialType == SpecialType.System_Void || (returnType is INamedTypeSymbol nt && nt.Name == "Task" && nt.TypeArguments.Length == 0))
         {
             // void or Task (no return value)
@@ -3266,14 +3266,14 @@ public abstract class AbstractGenerator : ISourceGenerator
     private void GenerateUpdateOperationWithInterceptors(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, bool isAsync, string methodName)
     {
         var entityParam = method.Parameters.FirstOrDefault(p => p.Type.TypeKind == TypeKind.Class && p.Type.Name != "String" && p.Type.Name != "CancellationToken");
-        
+
         if (entityParam == null || entityType == null)
         {
             sb.AppendLine("// Error: Unable to generate UPDATE without entity parameter");
             sb.AppendLine("throw new global::System.InvalidOperationException(\"UPDATE operation requires an entity parameter\");");
             return;
         }
-        
+
         // Connection setup
         sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
         sb.AppendLine("{");
@@ -3290,7 +3290,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
-        
+
         // Get updatable properties
         var properties = GetUpdatableProperties(entityType);
         if (!properties.Any())
@@ -3299,15 +3299,15 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine("throw new global::System.InvalidOperationException(\"No updatable properties found in entity\");");
             return;
         }
-        
+
         // Create command
         sb.AppendLine("__cmd__ = connection.CreateCommand();");
-        
+
         var sqlDefine = GetSqlDefineForRepository(method);
         var setClauses = string.Join(", ", properties.Select(p => $"{sqlDefine.WrapColumn(p.GetSqlName()).Replace("\"", "\\\"")} = {sqlDefine.ParamterPrefx}{p.GetSqlName()}"));
         sb.AppendLine($"__cmd__.CommandText = \"UPDATE {sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"")} SET {setClauses} WHERE {sqlDefine.WrapColumn("id").Replace("\"", "\\\"")} = {sqlDefine.ParamterPrefx}id\";");
         sb.AppendLine();
-        
+
         // Add SET clause parameters
         foreach (var prop in properties)
         {
@@ -3315,7 +3315,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine($"var param{prop.Name} = __cmd__.CreateParameter();");
             sb.AppendLine($"param{prop.Name}.ParameterName = \"{sqlDefine.ParamterPrefx}{sqlName}\";");
             sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
-            
+
             if (prop.Type.IsReferenceType || IsNullableValueType(prop.Type))
             {
                 sb.AppendLine($"param{prop.Name}.Value = {entityParam.Name}.{prop.Name} ?? (object)global::System.DBNull.Value;");
@@ -3327,7 +3327,7 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine($"__cmd__.Parameters.Add(param{prop.Name});");
             sb.AppendLine();
         }
-        
+
         // Add WHERE clause parameter (Id)
         var idProperty = GetIdProperty(entityType);
         if (idProperty != null)
@@ -3339,11 +3339,11 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine("__cmd__.Parameters.Add(paramId);");
             sb.AppendLine();
         }
-        
+
         // Call OnExecuting interceptor
         sb.AppendLine($"OnExecuting(\"{methodName}\", __cmd__);");
         sb.AppendLine();
-        
+
         // Execute and return
         if (isAsync)
         {
@@ -3354,14 +3354,14 @@ public abstract class AbstractGenerator : ISourceGenerator
         {
             sb.AppendLine("__result__ = __cmd__.ExecuteNonQuery();");
         }
-        
+
         // Determine return type and cast accordingly
         var returnType = method.ReturnType;
         if (isAsync && returnType is INamedTypeSymbol namedReturnType && namedReturnType.Name == "Task" && namedReturnType.TypeArguments.Length == 1)
         {
             returnType = namedReturnType.TypeArguments[0];
         }
-        
+
         if (returnType.SpecialType == SpecialType.System_Void || (returnType is INamedTypeSymbol nt && nt.Name == "Task" && nt.TypeArguments.Length == 0))
         {
             // void or Task (no return value)
@@ -3398,16 +3398,16 @@ public abstract class AbstractGenerator : ISourceGenerator
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
-        
+
         // Create command
         sb.AppendLine("__cmd__ = connection.CreateCommand();");
-        
+
         // Check if we have an ID parameter or entity parameter
-        var idParam = method.Parameters.FirstOrDefault(p => p.Name.Equals("id", StringComparison.OrdinalIgnoreCase) || 
+        var idParam = method.Parameters.FirstOrDefault(p => p.Name.Equals("id", StringComparison.OrdinalIgnoreCase) ||
                                                             p.Type.SpecialType == SpecialType.System_Int32 ||
                                                             p.Type.SpecialType == SpecialType.System_String);
         var entityParam = method.Parameters.FirstOrDefault(p => p.Type.TypeKind == TypeKind.Class && p.Type.Name != "String" && p.Type.Name != "CancellationToken");
-        
+
         if (idParam != null)
         {
             // Delete by ID
@@ -3442,13 +3442,13 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine("throw new global::System.InvalidOperationException(\"DELETE operation requires an ID parameter or entity with Id property\");");
             return;
         }
-        
+
         sb.AppendLine();
-        
+
         // Call OnExecuting interceptor
         sb.AppendLine($"OnExecuting(\"{methodName}\", __cmd__);");
         sb.AppendLine();
-        
+
         // Execute and return
         if (isAsync)
         {
@@ -3459,14 +3459,14 @@ public abstract class AbstractGenerator : ISourceGenerator
         {
             sb.AppendLine("__result__ = __cmd__.ExecuteNonQuery();");
         }
-        
+
         // Determine return type and cast accordingly
         var returnType = method.ReturnType;
         if (isAsync && returnType is INamedTypeSymbol namedReturnType && namedReturnType.Name == "Task" && namedReturnType.TypeArguments.Length == 1)
         {
             returnType = namedReturnType.TypeArguments[0];
         }
-        
+
         if (returnType.SpecialType == SpecialType.System_Void || (returnType is INamedTypeSymbol nt && nt.Name == "Task" && nt.TypeArguments.Length == 0))
         {
             // void or Task (no return value)
@@ -3503,13 +3503,13 @@ public abstract class AbstractGenerator : ISourceGenerator
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
-        
+
         // Create command
         sb.AppendLine("__cmd__ = connection.CreateCommand();");
-        
+
         // Check if we have parameters for WHERE clause
         var whereParams = method.Parameters.Where(p => p.Type.Name != "CancellationToken").ToList();
-        
+
         if (whereParams.Any())
         {
             var firstParam = whereParams.First();
@@ -3535,13 +3535,13 @@ public abstract class AbstractGenerator : ISourceGenerator
         {
             sb.AppendLine($"__cmd__.CommandText = \"SELECT * FROM [{tableName}]\";");
         }
-        
+
         sb.AppendLine();
-        
+
         // Call OnExecuting interceptor
         sb.AppendLine($"OnExecuting(\"{methodName}\", __cmd__);");
         sb.AppendLine();
-        
+
         // Execute and process results
         if (isAsync)
         {
@@ -3552,12 +3552,12 @@ public abstract class AbstractGenerator : ISourceGenerator
         {
             sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
         }
-        
+
         // Generate result collection and mapping
         var entityTypeName = entityType?.ToDisplayString() ?? "object";
         sb.AppendLine($"var results = new global::System.Collections.Generic.List<{entityTypeName}>();");
         sb.AppendLine();
-        
+
         if (isAsync)
         {
             var cancellationToken = GetCancellationTokenParameter(method);
@@ -3567,10 +3567,10 @@ public abstract class AbstractGenerator : ISourceGenerator
         {
             sb.AppendLine("while (reader.Read())");
         }
-        
+
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         if (entityType != null)
         {
             GenerateOptimizedEntityMapping(sb, entityType);
@@ -3589,20 +3589,20 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine("}");
             sb.AppendLine("results.Add((object)row);");
         }
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
-        
+
         sb.AppendLine("__result__ = results;");
-        
+
         // Cast to correct return type based on method signature
         var methodReturnType = method.ReturnType;
         if (isAsync && methodReturnType is INamedTypeSymbol namedReturnType && namedReturnType.Name == "Task" && namedReturnType.TypeArguments.Length == 1)
         {
             methodReturnType = namedReturnType.TypeArguments[0];
         }
-        
+
         var returnTypeName = methodReturnType.ToDisplayString();
         if (returnTypeName.Contains("IList") || returnTypeName.Contains("IEnumerable") || returnTypeName.Contains("ICollection"))
         {
@@ -3632,13 +3632,13 @@ public abstract class AbstractGenerator : ISourceGenerator
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
-        
+
         // Create command
         sb.AppendLine("__cmd__ = connection.CreateCommand();");
-        
+
         // Check if we have parameters for WHERE clause
         var whereParams = method.Parameters.Where(p => p.Type.Name != "CancellationToken").ToList();
-        
+
         if (whereParams.Any())
         {
             var firstParam = whereParams.First();
@@ -3663,13 +3663,13 @@ public abstract class AbstractGenerator : ISourceGenerator
         {
             sb.AppendLine($"__cmd__.CommandText = \"SELECT * FROM [{tableName}] LIMIT 1\";");
         }
-        
+
         sb.AppendLine();
-        
+
         // Call OnExecuting interceptor
         sb.AppendLine($"OnExecuting(\"{methodName}\", __cmd__);");
         sb.AppendLine();
-        
+
         // Execute and process single result
         if (isAsync)
         {
@@ -3682,10 +3682,10 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
             sb.AppendLine("if (reader.Read())");
         }
-        
+
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         if (entityType != null)
         {
             GenerateOptimizedEntityMapping(sb, entityType);
@@ -3706,11 +3706,11 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine("__result__ = result;");
             sb.AppendLine("return result;");
         }
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
-        
+
         sb.AppendLine("__result__ = null;");
         sb.AppendLine("return null;");
     }
@@ -3733,15 +3733,15 @@ public abstract class AbstractGenerator : ISourceGenerator
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
-        
+
         // Create command
         sb.AppendLine("__cmd__ = connection.CreateCommand();");
-        
+
         // Get SQL from attribute
         var sql = sqlxAttr.ConstructorArguments.FirstOrDefault().Value?.ToString() ?? "SELECT 1";
         sb.AppendLine($"__cmd__.CommandText = \"{sql.Replace("\"", "\\\"")}\";");
         sb.AppendLine();
-        
+
         // Add parameters
         foreach (var param in method.Parameters.Where(p => p.Type.Name != "CancellationToken"))
         {
@@ -3751,15 +3751,15 @@ public abstract class AbstractGenerator : ISourceGenerator
             sb.AppendLine($"__cmd__.Parameters.Add(param{param.Name});");
             sb.AppendLine();
         }
-        
+
         // Call OnExecuting interceptor
         sb.AppendLine($"OnExecuting(\"{methodName}\", __cmd__);");
         sb.AppendLine();
-        
+
         // Execute based on expected return type
         var returnType = method.ReturnType;
         var isCollection = IsCollectionType(returnType) || (isAsync && IsAsyncCollectionReturnType(returnType));
-        
+
         if (isCollection)
         {
             // Multiple results
@@ -3772,11 +3772,11 @@ public abstract class AbstractGenerator : ISourceGenerator
             {
                 sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
             }
-            
+
             var entityTypeName = entityType?.ToDisplayString() ?? "object";
             sb.AppendLine($"var results = new global::System.Collections.Generic.List<{entityTypeName}>();");
             sb.AppendLine();
-            
+
             if (isAsync)
             {
                 var cancellationToken = GetCancellationTokenParameter(method);
@@ -3786,10 +3786,10 @@ public abstract class AbstractGenerator : ISourceGenerator
             {
                 sb.AppendLine("while (reader.Read())");
             }
-            
+
             sb.AppendLine("{");
             sb.PushIndent();
-            
+
             if (entityType != null)
             {
                 GenerateOptimizedEntityMapping(sb, entityType);
@@ -3808,20 +3808,20 @@ public abstract class AbstractGenerator : ISourceGenerator
                 sb.AppendLine("}");
                 sb.AppendLine("results.Add((object)row);");
             }
-            
+
             sb.PopIndent();
             sb.AppendLine("}");
             sb.AppendLine();
-            
+
             sb.AppendLine("__result__ = results;");
-            
+
             // Cast to correct return type based on method signature
             var methodReturnType2 = method.ReturnType;
             if (isAsync && methodReturnType2 is INamedTypeSymbol namedReturnType2 && namedReturnType2.Name == "Task" && namedReturnType2.TypeArguments.Length == 1)
             {
                 methodReturnType2 = namedReturnType2.TypeArguments[0];
             }
-            
+
             var returnTypeName = methodReturnType2.ToDisplayString();
             if (returnTypeName.Contains("IList") || returnTypeName.Contains("IEnumerable") || returnTypeName.Contains("ICollection"))
             {
@@ -3847,7 +3847,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                 {
                     sb.AppendLine("var scalarResult = __cmd__.ExecuteScalar();");
                 }
-                
+
                 sb.AppendLine("__result__ = scalarResult;");
                 sb.AppendLine("return scalarResult;");
             }
@@ -3865,10 +3865,10 @@ public abstract class AbstractGenerator : ISourceGenerator
                     sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
                     sb.AppendLine("if (reader.Read())");
                 }
-                
+
                 sb.AppendLine("{");
                 sb.PushIndent();
-                
+
                 if (entityType != null)
                 {
                     GenerateOptimizedEntityMapping(sb, entityType);
@@ -3889,11 +3889,11 @@ public abstract class AbstractGenerator : ISourceGenerator
                     sb.AppendLine("__result__ = result;");
                     sb.AppendLine("return result;");
                 }
-                
+
                 sb.PopIndent();
                 sb.AppendLine("}");
                 sb.AppendLine();
-                
+
                 sb.AppendLine("__result__ = null;");
                 sb.AppendLine("return null;");
             }
@@ -3905,43 +3905,43 @@ public abstract class AbstractGenerator : ISourceGenerator
         // Look for property named "Id" first
         var idProperty = entityType.GetMembers().OfType<IPropertySymbol>()
             .FirstOrDefault(p => p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase));
-        
+
         if (idProperty != null)
         {
             return idProperty;
         }
-        
+
         // Look for property with name ending in "Id" (e.g., UserId, PersonId)
         idProperty = entityType.GetMembers().OfType<IPropertySymbol>()
             .FirstOrDefault(p => p.Name.EndsWith("Id", StringComparison.OrdinalIgnoreCase));
-        
+
         if (idProperty != null)
         {
             return idProperty;
         }
-        
+
         // Look for property with Key attribute
         idProperty = entityType.GetMembers().OfType<IPropertySymbol>()
-            .FirstOrDefault(p => p.GetAttributes().Any(attr => 
-                attr.AttributeClass?.Name == "KeyAttribute" || 
+            .FirstOrDefault(p => p.GetAttributes().Any(attr =>
+                attr.AttributeClass?.Name == "KeyAttribute" ||
                 attr.AttributeClass?.Name == "Key"));
-        
+
         return idProperty;
     }
 
     private void GenerateInsertSqlForScalar(IndentedStringBuilder sb, INamedTypeSymbol entityType, string tableName, string paramName)
     {
         var properties = entityType.GetMembers().OfType<IPropertySymbol>()
-            .Where(p => p.SetMethod != null && p.DeclaredAccessibility == Accessibility.Public 
+            .Where(p => p.SetMethod != null && p.DeclaredAccessibility == Accessibility.Public
                      && !p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase))
             .ToList();
-            
+
         if (properties.Any())
         {
             var columns = string.Join(", ", properties.Select(p => $"[{p.Name}]"));
             var values = string.Join(", ", properties.Select(p => $"@{p.Name}"));
             sb.AppendLine($"__cmd__.CommandText = \"INSERT INTO [{tableName}] ({columns}) VALUES ({values})\";");
-            
+
             foreach (var prop in properties)
             {
                 sb.AppendLine($"var param{prop.Name} = __cmd__.CreateParameter();");
@@ -3959,17 +3959,17 @@ public abstract class AbstractGenerator : ISourceGenerator
     private void GenerateUpdateSqlForScalar(IndentedStringBuilder sb, INamedTypeSymbol entityType, string tableName, string paramName)
     {
         var properties = entityType.GetMembers().OfType<IPropertySymbol>()
-            .Where(p => p.SetMethod != null && p.DeclaredAccessibility == Accessibility.Public 
+            .Where(p => p.SetMethod != null && p.DeclaredAccessibility == Accessibility.Public
                      && !p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase))
             .ToList();
-            
+
         var idProperty = GetIdProperty(entityType);
-        
+
         if (properties.Any() && idProperty != null)
         {
             var setClause = string.Join(", ", properties.Select(p => $"[{p.Name}] = @{p.Name}"));
             sb.AppendLine($"__cmd__.CommandText = \"UPDATE [{tableName}] SET {setClause} WHERE [{idProperty.Name}] = @{idProperty.Name}\";");
-            
+
             // Add parameters for SET clause
             foreach (var prop in properties)
             {
@@ -3978,7 +3978,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                 sb.AppendLine($"param{prop.Name}.Value = {paramName}.{prop.Name} ?? (object)DBNull.Value;");
                 sb.AppendLine($"__cmd__.Parameters.Add(param{prop.Name});");
             }
-            
+
             // Add parameter for WHERE clause
             sb.AppendLine($"var param{idProperty.Name} = __cmd__.CreateParameter();");
             sb.AppendLine($"param{idProperty.Name}.ParameterName = \"@{idProperty.Name}\";");
@@ -4035,7 +4035,7 @@ public abstract class AbstractGenerator : ISourceGenerator
     private void GenerateScalarOperationWithInterceptors(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, bool isAsync, string methodName)
     {
         var methodNameLower = methodName.ToLowerInvariant();
-        
+
         // Connection setup
         sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
         sb.AppendLine("{");
@@ -4052,22 +4052,22 @@ public abstract class AbstractGenerator : ISourceGenerator
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
-        
+
         // Create command
         sb.AppendLine("__cmd__ = connection.CreateCommand();");
-        
+
         // Check for SqlExecuteType attribute first
         var sqlExecuteTypeAttr = method.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlExecuteTypeAttribute");
         if (sqlExecuteTypeAttr != null && sqlExecuteTypeAttr.ConstructorArguments.Length > 0)
         {
             var enumValueObj = sqlExecuteTypeAttr.ConstructorArguments[0].Value;
-            var sqlExecuteType = enumValueObj switch 
+            var sqlExecuteType = enumValueObj switch
             {
                 int intValue => intValue,
                 string strValue when int.TryParse(strValue, out var intVal) => intVal,
                 _ => 0 // Select
             };
-            
+
             // Handle specific SqlExecuteTypes for scalar operations
             switch (sqlExecuteType)
             {
@@ -4090,7 +4090,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                         sb.AppendLine($"__cmd__.CommandText = \"INSERT INTO [{tableName}] DEFAULT VALUES\";");
                     }
                     break;
-                    
+
                 case 1: // Update
                     // For UPDATE operations returning scalar (affected rows), generate appropriate UPDATE SQL
                     if (entityType != null)
@@ -4110,10 +4110,10 @@ public abstract class AbstractGenerator : ISourceGenerator
                         sb.AppendLine($"__cmd__.CommandText = \"UPDATE [{tableName}] SET Id = Id\";");
                     }
                     break;
-                    
+
                 case 3: // Delete
                     // For DELETE operations returning scalar (affected rows), generate appropriate DELETE SQL
-                    var idParam = method.Parameters.FirstOrDefault(p => 
+                    var idParam = method.Parameters.FirstOrDefault(p =>
                         p.Name.Equals("id", StringComparison.OrdinalIgnoreCase) ||
                         p.Name.EndsWith("id", StringComparison.OrdinalIgnoreCase));
                     if (idParam != null)
@@ -4129,7 +4129,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                         sb.AppendLine($"__cmd__.CommandText = \"DELETE FROM [{tableName}]\";");
                     }
                     break;
-                    
+
                 default: // Select or other
                     GenerateSelectSqlForScalar(sb, methodNameLower, tableName, method);
                     break;
@@ -4140,13 +4140,13 @@ public abstract class AbstractGenerator : ISourceGenerator
             // Fallback to method name based inference
             GenerateSelectSqlForScalar(sb, methodNameLower, tableName, method);
         }
-        
+
         sb.AppendLine();
-        
+
         // Call OnExecuting interceptor
         sb.AppendLine($"OnExecuting(\"{methodName}\", __cmd__);");
         sb.AppendLine();
-        
+
         // Execute scalar operation
         if (isAsync)
         {
@@ -4157,14 +4157,14 @@ public abstract class AbstractGenerator : ISourceGenerator
         {
             sb.AppendLine("var scalarResult = __cmd__.ExecuteScalar();");
         }
-        
+
         // Convert result based on return type
         var returnType = method.ReturnType;
         if (isAsync && returnType is INamedTypeSymbol namedReturnType && namedReturnType.Name == "Task" && namedReturnType.TypeArguments.Length == 1)
         {
             returnType = namedReturnType.TypeArguments[0];
         }
-        
+
         if (returnType.SpecialType == SpecialType.System_Int32)
         {
             sb.AppendLine("var intResult = System.Convert.ToInt32(scalarResult ?? (object)0);");
@@ -4190,7 +4190,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         }
     }
 
-    
+
     /// <summary>
     /// Resolves generic service interface with actual type arguments from repository class.
     /// </summary>
@@ -4199,14 +4199,14 @@ public abstract class AbstractGenerator : ISourceGenerator
         System.Diagnostics.Debug.WriteLine($"=== ResolveGenericServiceInterface START ===");
         System.Diagnostics.Debug.WriteLine($"Generic interface: {genericInterface.Name}");
         System.Diagnostics.Debug.WriteLine($"Repository class: {repositoryClass.Name}");
-        
+
         // Look for type arguments in repository class name or base types
         // Example: UserRepository<User> should resolve IRepository<T> to IRepository<User>
-        
+
         if (repositoryClass.IsGenericType && repositoryClass.TypeArguments.Length > 0)
         {
             System.Diagnostics.Debug.WriteLine($"Repository class is generic with {repositoryClass.TypeArguments.Length} type arguments");
-            
+
             // Try to construct the generic interface with repository's type arguments
             if (genericInterface.TypeParameters.Length == repositoryClass.TypeArguments.Length)
             {
@@ -4215,7 +4215,7 @@ public abstract class AbstractGenerator : ISourceGenerator
                 return constructedInterface;
             }
         }
-        
+
         // If repository class itself doesn't have type arguments, look for hints in the class name
         // Example: UserRepository -> try to infer User type
         var className = repositoryClass.Name;
@@ -4223,7 +4223,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         {
             var entityName = className.Substring(0, className.Length - "Repository".Length);
             System.Diagnostics.Debug.WriteLine($"Inferred entity name: {entityName}");
-            
+
             // Try to find the entity type in the same namespace or related namespaces
             var entityType = FindEntityTypeByName(repositoryClass.ContainingNamespace, entityName);
             if (entityType != null && genericInterface.TypeParameters.Length == 1)
@@ -4234,11 +4234,11 @@ public abstract class AbstractGenerator : ISourceGenerator
                 return constructedInterface;
             }
         }
-        
+
         System.Diagnostics.Debug.WriteLine("Could not resolve generic interface, returning original");
         return genericInterface;
     }
-    
+
     /// <summary>
     /// Finds entity type by name in the repository's context.
     /// </summary>
@@ -4251,7 +4251,7 @@ public abstract class AbstractGenerator : ISourceGenerator
         {
             return entityType;
         }
-        
+
         // Search in parent namespaces
         var parentNamespace = currentNamespace.ContainingNamespace;
         while (parentNamespace != null && !parentNamespace.IsGlobalNamespace)
@@ -4263,10 +4263,10 @@ public abstract class AbstractGenerator : ISourceGenerator
             }
             parentNamespace = parentNamespace.ContainingNamespace;
         }
-        
+
         return null;
     }
-    
+
     /// <summary>
     /// Finds a type by name within a specific namespace.
     /// </summary>

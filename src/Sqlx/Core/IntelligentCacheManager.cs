@@ -32,19 +32,19 @@ namespace Sqlx.Core
                     Interlocked.Increment(ref _missCount);
                     return default(T);
                 }
-                
+
                 Interlocked.Increment(ref _hitCount);
-                
+
                 // 更新访问时间
                 if (_metadata.TryGetValue(key, out var metadata))
                 {
                     metadata.LastAccessed = DateTime.UtcNow;
                     metadata.AccessCount++;
                 }
-                
+
                 return (T)cacheEntry.Value;
             }
-            
+
             Interlocked.Increment(ref _missCount);
             return default(T);
         }
@@ -54,8 +54,8 @@ namespace Sqlx.Core
         /// </summary>
         public static void Set<T>(string key, T value, TimeSpan? expiration = null)
         {
-            var expiresAt = expiration.HasValue 
-                ? DateTime.UtcNow.Add(expiration.Value) 
+            var expiresAt = expiration.HasValue
+                ? DateTime.UtcNow.Add(expiration.Value)
                 : DateTime.UtcNow.AddHours(1); // 默认1小时过期
 
             var cacheEntry = new CacheEntry
@@ -65,7 +65,7 @@ namespace Sqlx.Core
             };
 
             _cache.AddOrUpdate(key, cacheEntry, (k, v) => cacheEntry);
-            
+
             // 记录元数据
             _metadata[key] = new CacheMetadata
             {
@@ -142,14 +142,14 @@ namespace Sqlx.Core
         private static long EstimateSize<T>(T value)
         {
             if (value == null) return 0;
-            
+
             // 简单的大小估算
             if (value is string str)
                 return str.Length * 2; // Unicode characters
-            
+
             if (value is byte[] bytes)
                 return bytes.Length;
-            
+
             // 对于其他类型，使用一个默认估算
             return 100;
         }

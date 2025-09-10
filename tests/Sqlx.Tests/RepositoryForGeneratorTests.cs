@@ -68,27 +68,27 @@ namespace TestNamespace
         Assert.IsTrue(generatedSources.Any(), "Source generator should produce generated code");
 
         var generatedCode = string.Join("\n", generatedSources);
-        
+
         // Check that the class implements the interface
-        Assert.IsTrue(generatedCode.Contains("partial class UserRepository : TestNamespace.IUserService"), 
+        Assert.IsTrue(generatedCode.Contains("partial class UserRepository : TestNamespace.IUserService"),
             "Generated code should implement the service interface");
-        
+
         // Check that methods are generated
-        Assert.IsTrue(generatedCode.Contains("public System.Collections.Generic.IList<TestNamespace.User> GetAll()"), 
+        Assert.IsTrue(generatedCode.Contains("public System.Collections.Generic.IList<TestNamespace.User> GetAll()"),
             "Generated code should contain GetAll method");
-        Assert.IsTrue(generatedCode.Contains("public TestNamespace.User? GetById(int id)"), 
+        Assert.IsTrue(generatedCode.Contains("public TestNamespace.User? GetById(int id)"),
             "Generated code should contain GetById method");
-        Assert.IsTrue(generatedCode.Contains("public int Create(TestNamespace.User user)"), 
+        Assert.IsTrue(generatedCode.Contains("public int Create(TestNamespace.User user)"),
             "Generated code should contain Create method");
-        
+
         // Check that Sqlx attributes are generated
-        Assert.IsTrue(generatedCode.Contains("[Sqlx(\"SELECT * FROM User\")]") || 
-                     generatedCode.Contains("[Sqlx(\"SELECT * FROM Users\")]"), 
+        Assert.IsTrue(generatedCode.Contains("[Sqlx(\"SELECT * FROM User\")]") ||
+                     generatedCode.Contains("[Sqlx(\"SELECT * FROM Users\")]"),
             "Generated code should contain Sqlx attributes for GetAll");
-        Assert.IsTrue(generatedCode.Contains("[Sqlx(\"SELECT * FROM User WHERE Id = @id\")]") || 
-                     generatedCode.Contains("[Sqlx(\"SELECT * FROM Users WHERE Id = @id\")]"), 
+        Assert.IsTrue(generatedCode.Contains("[Sqlx(\"SELECT * FROM User WHERE Id = @id\")]") ||
+                     generatedCode.Contains("[Sqlx(\"SELECT * FROM Users WHERE Id = @id\")]"),
             "Generated code should contain Sqlx attributes for GetById");
-        Assert.IsTrue(generatedCode.Contains("[Sqlx(\"INSERT INTO") || generatedCode.Contains("[SqlExecuteType(SqlExecuteTypes.Insert"), 
+        Assert.IsTrue(generatedCode.Contains("[Sqlx(\"INSERT INTO") || generatedCode.Contains("[SqlExecuteType(SqlExecuteTypes.Insert"),
             "Generated code should contain INSERT operation attributes for Create");
     }
 
@@ -134,13 +134,13 @@ namespace TestNamespace
         var generatedCode = string.Join("\n", generatedSources);
 
         // Verify Product entity was correctly inferred
-        Assert.IsTrue(generatedCode.Contains("partial class ProductRepository : TestNamespace.IProductService"), 
+        Assert.IsTrue(generatedCode.Contains("partial class ProductRepository : TestNamespace.IProductService"),
             "Generated code should implement IProductService");
-        Assert.IsTrue(generatedCode.Contains("GetAllProducts()"), 
+        Assert.IsTrue(generatedCode.Contains("GetAllProducts()"),
             "Generated code should contain GetAllProducts method");
-        Assert.IsTrue(generatedCode.Contains("FindProductByIdAsync(int id)"), 
+        Assert.IsTrue(generatedCode.Contains("FindProductByIdAsync(int id)"),
             "Generated code should contain FindProductByIdAsync method");
-        Assert.IsTrue(generatedCode.Contains("AddProduct(TestNamespace.Product product)"), 
+        Assert.IsTrue(generatedCode.Contains("AddProduct(TestNamespace.Product product)"),
             "Generated code should contain AddProduct method with Product parameter");
     }
 
@@ -184,11 +184,11 @@ namespace TestNamespace
         var generatedCode = string.Join("\n", generatedSources);
 
         // Should still generate the implementation even without explicit entity references
-        Assert.IsTrue(generatedCode.Contains("partial class CustomerRepository : TestNamespace.ICustomerService"), 
+        Assert.IsTrue(generatedCode.Contains("partial class CustomerRepository : TestNamespace.ICustomerService"),
             "Generated code should implement ICustomerService");
-        Assert.IsTrue(generatedCode.Contains("DoSomething()"), 
+        Assert.IsTrue(generatedCode.Contains("DoSomething()"),
             "Generated code should contain DoSomething method");
-        Assert.IsTrue(generatedCode.Contains("Count()"), 
+        Assert.IsTrue(generatedCode.Contains("Count()"),
             "Generated code should contain Count method");
     }
 
@@ -232,10 +232,10 @@ namespace TestNamespace
         var generatedCode = string.Join("\n", generatedSources);
 
         // Should use the custom table name from TableName attribute
-        Assert.IsTrue(generatedCode.Contains("custom_orders"), 
+        Assert.IsTrue(generatedCode.Contains("custom_orders"),
             "Generated code should use custom table name from TableName attribute");
-        Assert.IsTrue(generatedCode.Contains("SELECT * FROM custom_orders") || 
-                     generatedCode.Contains("SqlExecuteTypes.Insert, \"custom_orders\""), 
+        Assert.IsTrue(generatedCode.Contains("SELECT * FROM custom_orders") ||
+                     generatedCode.Contains("SqlExecuteTypes.Insert, \"custom_orders\""),
             "Generated SQL should reference the custom table name");
     }
 
@@ -281,15 +281,15 @@ namespace TestNamespace
         var generatedCode = string.Join("\n", generatedSources);
 
         // Check async method signatures
-        Assert.IsTrue(generatedCode.Contains("Task<System.Collections.Generic.IList<TestNamespace.Item>> GetAllAsync"), 
+        Assert.IsTrue(generatedCode.Contains("Task<System.Collections.Generic.IList<TestNamespace.Item>> GetAllAsync"),
             "Generated code should contain async GetAllAsync method");
-        Assert.IsTrue(generatedCode.Contains("Task<TestNamespace.Item?> GetByIdAsync"), 
+        Assert.IsTrue(generatedCode.Contains("Task<TestNamespace.Item?> GetByIdAsync"),
             "Generated code should contain async GetByIdAsync method");
-        Assert.IsTrue(generatedCode.Contains("Task<int> CreateAsync"), 
+        Assert.IsTrue(generatedCode.Contains("Task<int> CreateAsync"),
             "Generated code should contain async CreateAsync method");
-        
+
         // Check CancellationToken parameters
-        Assert.IsTrue(generatedCode.Contains("CancellationToken cancellationToken"), 
+        Assert.IsTrue(generatedCode.Contains("CancellationToken cancellationToken"),
             "Generated code should include CancellationToken parameters");
     }
 
@@ -338,24 +338,24 @@ namespace TestNamespace
         var generatedCode = string.Join("\n", generatedSources);
 
         // Check SELECT operations
-        Assert.IsTrue(generatedCode.Contains("SELECT * FROM Employee") || 
-                     generatedCode.Contains("SELECT * FROM Employees"), 
+        Assert.IsTrue(generatedCode.Contains("SELECT * FROM Employee") ||
+                     generatedCode.Contains("SELECT * FROM Employees"),
             "GetAll methods should generate SELECT * queries");
-        Assert.IsTrue(generatedCode.Contains("WHERE Id = @id"), 
+        Assert.IsTrue(generatedCode.Contains("WHERE Id = @id"),
             "GetById methods should generate WHERE Id queries");
-        Assert.IsTrue(generatedCode.Contains("WHERE") && generatedCode.Contains("@name"), 
+        Assert.IsTrue(generatedCode.Contains("WHERE") && generatedCode.Contains("@name"),
             "FindByName should generate WHERE name queries");
-        
+
         // Check operation types - either new Sqlx attributes or legacy SqlExecuteType
-        Assert.IsTrue(generatedCode.Contains("INSERT INTO") || generatedCode.Contains("SqlExecuteTypes.Insert"), 
+        Assert.IsTrue(generatedCode.Contains("INSERT INTO") || generatedCode.Contains("SqlExecuteTypes.Insert"),
             "Create methods should generate INSERT operations");
-        Assert.IsTrue(generatedCode.Contains("UPDATE") && generatedCode.Contains("SET") || generatedCode.Contains("SqlExecuteTypes.Update"), 
+        Assert.IsTrue(generatedCode.Contains("UPDATE") && generatedCode.Contains("SET") || generatedCode.Contains("SqlExecuteTypes.Update"),
             "Update methods should generate UPDATE operations");
-        Assert.IsTrue(generatedCode.Contains("DELETE FROM") || generatedCode.Contains("SqlExecuteTypes.Delete"), 
+        Assert.IsTrue(generatedCode.Contains("DELETE FROM") || generatedCode.Contains("SqlExecuteTypes.Delete"),
             "Delete methods should generate DELETE operations");
-        
+
         // Check COUNT operations
-        Assert.IsTrue(generatedCode.Contains("COUNT(*)"), 
+        Assert.IsTrue(generatedCode.Contains("COUNT(*)"),
             "Count and Exists methods should generate COUNT queries");
     }
 
@@ -388,7 +388,7 @@ namespace TestNamespace
         var generatedCode = string.Join("\n", generatedSources);
 
         // Should not contain repository implementation for non-interface
-        Assert.IsFalse(generatedCode.Contains("partial class TestRepository : TestNamespace.BaseService"), 
+        Assert.IsFalse(generatedCode.Contains("partial class TestRepository : TestNamespace.BaseService"),
             "Should not generate implementation for non-interface service types");
     }
 
@@ -432,7 +432,7 @@ namespace TestNamespace
         var generatedCode = string.Join("\n", generatedSources);
 
         // Normal repository should be generated
-        Assert.IsTrue(generatedCode.Contains("partial class UserRepository : TestNamespace.IUserService"), 
+        Assert.IsTrue(generatedCode.Contains("partial class UserRepository : TestNamespace.IUserService"),
             "Normal repositories should be generated");
     }
 
@@ -471,7 +471,7 @@ namespace TestNamespace
         var generatedCode = string.Join("\n", generatedSources);
 
         // Should not generate repository implementation without RepositoryFor attribute
-        Assert.IsFalse(generatedCode.Contains("partial class UserRepository : TestNamespace.IUserService"), 
+        Assert.IsFalse(generatedCode.Contains("partial class UserRepository : TestNamespace.IUserService"),
             "Should not generate implementation without RepositoryFor attribute");
     }
 
@@ -542,14 +542,14 @@ namespace TestNamespace
         var generatedCode = string.Join("\n", generatedSources);
 
         // Should handle different generic collection types
-        Assert.IsTrue(generatedCode.Contains("IEnumerable<TestNamespace.Document>") || 
-                     generatedCode.Contains("GetDocumentsAsync"), 
+        Assert.IsTrue(generatedCode.Contains("IEnumerable<TestNamespace.Document>") ||
+                     generatedCode.Contains("GetDocumentsAsync"),
             "Should handle IEnumerable<T> return types");
-        Assert.IsTrue(generatedCode.Contains("List<TestNamespace.Document>") || 
-                     generatedCode.Contains("SearchDocumentsAsync"), 
+        Assert.IsTrue(generatedCode.Contains("List<TestNamespace.Document>") ||
+                     generatedCode.Contains("SearchDocumentsAsync"),
             "Should handle List<T> return types");
-        Assert.IsTrue(generatedCode.Contains("TestNamespace.Document[]") || 
-                     generatedCode.Contains("GetRecentDocumentsAsync"), 
+        Assert.IsTrue(generatedCode.Contains("TestNamespace.Document[]") ||
+                     generatedCode.Contains("GetRecentDocumentsAsync"),
             "Should handle array return types");
     }
 
@@ -596,9 +596,9 @@ namespace TestNamespace
         var generatedCode = string.Join("\n", generatedSources);
 
         // Should handle nullable reference types correctly
-        Assert.IsTrue(generatedCode.Contains("Account?") || generatedCode.Contains("GetById"), 
+        Assert.IsTrue(generatedCode.Contains("Account?") || generatedCode.Contains("GetById"),
             "Should handle nullable return types");
-        Assert.IsTrue(generatedCode.Contains("string?") || generatedCode.Contains("FindByEmail"), 
+        Assert.IsTrue(generatedCode.Contains("string?") || generatedCode.Contains("FindByEmail"),
             "Should handle nullable parameter types");
     }
 
@@ -656,9 +656,9 @@ namespace TestNamespace
         var generatedCode = string.Join("\n", generatedSources);
 
         // Should generate both repositories
-        Assert.IsTrue(generatedCode.Contains("partial class UserRepository : TestNamespace.IUserService"), 
+        Assert.IsTrue(generatedCode.Contains("partial class UserRepository : TestNamespace.IUserService"),
             "Should generate UserRepository implementation");
-        Assert.IsTrue(generatedCode.Contains("partial class ProductRepository : TestNamespace.IProductService"), 
+        Assert.IsTrue(generatedCode.Contains("partial class ProductRepository : TestNamespace.IProductService"),
             "Should generate ProductRepository implementation");
     }
 

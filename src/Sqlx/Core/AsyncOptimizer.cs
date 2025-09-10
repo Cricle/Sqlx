@@ -79,10 +79,10 @@ internal static class AsyncCodeGenerator
     public static void GenerateOptimizedAsyncSignature(IndentedStringBuilder sb, string returnType, string methodName, string parameters)
     {
         // Use ValueTask for better performance when result is often synchronous
-        var optimizedReturnType = returnType.StartsWith("Task<") 
+        var optimizedReturnType = returnType.StartsWith("Task<")
             ? returnType.Replace("Task<", "ValueTask<")
-            : returnType == "Task" 
-                ? "ValueTask" 
+            : returnType == "Task"
+                ? "ValueTask"
                 : returnType;
 
         sb.AppendLine($"public async {optimizedReturnType} {methodName}({parameters})");
@@ -108,7 +108,7 @@ internal static class AsyncCodeGenerator
         var optimizedCode = operationCode.Replace(".ConfigureAwait(false)", "")
                                        .Replace("await ", "await ")
                                        .Replace(");", ").ConfigureAwaitOptimized();");
-        
+
         sb.AppendLine(optimizedCode);
 
         sb.PopIndent();
@@ -180,7 +180,7 @@ internal static class TaskOptimizer
     /// </summary>
     public static Task ContinueWithOptimized<T>(this Task<T> task, Action<Task<T>> continuation)
     {
-        return task.ContinueWith(continuation, 
+        return task.ContinueWith(continuation,
             CancellationToken.None,
             TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnRanToCompletion,
             TaskScheduler.Default);

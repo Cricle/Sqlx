@@ -53,7 +53,7 @@ public class FileAnalysis
     public bool HasMigrationOpportunities => TotalOpportunities > 0;
 
     [JsonIgnore]
-    public int TotalOpportunities => DapperUsages.Count + EntityFrameworkUsages.Count + 
+    public int TotalOpportunities => DapperUsages.Count + EntityFrameworkUsages.Count +
                                    SqlStrings.Count + RepositoryPatterns.Count;
 }
 
@@ -154,13 +154,13 @@ public enum MigrationComplexity
 {
     /// <summary>Simple migration, mostly automated.</summary>
     Low,
-    
+
     /// <summary>Moderate migration, some manual work required.</summary>
     Medium,
-    
+
     /// <summary>Complex migration, significant manual work required.</summary>
     High,
-    
+
     /// <summary>Very complex, may require redesign.</summary>
     VeryHigh
 }

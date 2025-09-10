@@ -15,10 +15,10 @@ namespace Sqlx.Tests.Core
         {
             Assert.IsNotNull(generatedCode, "Generated code should not be null");
             Assert.IsTrue(generatedCode.Length > 0, "Generated code should not be empty");
-            
+
             foreach (var pattern in expectedPatterns)
             {
-                Assert.IsTrue(generatedCode.Contains(pattern), 
+                Assert.IsTrue(generatedCode.Contains(pattern),
                     $"Generated code should contain pattern: {pattern}\n\nActual generated code:\n{generatedCode}");
             }
         }
@@ -29,12 +29,12 @@ namespace Sqlx.Tests.Core
         public static void VerifyMethodSignature(string generatedCode, string methodName, string returnType, params string[] parameters)
         {
             var signaturePattern = $"public partial {returnType} {methodName}(";
-            Assert.IsTrue(generatedCode.Contains(signaturePattern), 
+            Assert.IsTrue(generatedCode.Contains(signaturePattern),
                 $"Generated code should contain method signature: {signaturePattern}");
-            
+
             foreach (var param in parameters)
             {
-                Assert.IsTrue(generatedCode.Contains(param), 
+                Assert.IsTrue(generatedCode.Contains(param),
                     $"Generated code should contain parameter: {param}");
             }
         }
@@ -45,21 +45,21 @@ namespace Sqlx.Tests.Core
         public static void VerifySqlExecution(string generatedCode, string commandText, params string[] parameterNames)
         {
             // Check for connection handling
-            Assert.IsTrue(generatedCode.Contains("global::System.Data.Common.DbConnection"), 
+            Assert.IsTrue(generatedCode.Contains("global::System.Data.Common.DbConnection"),
                 "Generated code should contain DbConnection usage");
-            
+
             // Check for command creation
-            Assert.IsTrue(generatedCode.Contains("CreateCommand()"), 
+            Assert.IsTrue(generatedCode.Contains("CreateCommand()"),
                 "Generated code should contain CreateCommand call");
-            
+
             // Check for command text setting
-            Assert.IsTrue(generatedCode.Contains($"CommandText = \"{commandText}\""), 
+            Assert.IsTrue(generatedCode.Contains($"CommandText = \"{commandText}\""),
                 $"Generated code should set CommandText to: {commandText}");
-            
+
             // Check for parameter creation
             foreach (var paramName in parameterNames)
             {
-                Assert.IsTrue(generatedCode.Contains($"ParameterName = \"@{paramName}\""), 
+                Assert.IsTrue(generatedCode.Contains($"ParameterName = \"@{paramName}\""),
                     $"Generated code should contain parameter: @{paramName}");
             }
         }

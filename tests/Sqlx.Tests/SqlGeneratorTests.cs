@@ -42,10 +42,10 @@ public class SqlGeneratorTests
     {
         // Test MySQL column wrapping
         Assert.AreEqual("`test_table`", SqlDefine.MySql.WrapColumn("test_table"));
-        
+
         // Test SQL Server column wrapping
         Assert.AreEqual("[test_table]", SqlDefine.SqlServer.WrapColumn("test_table"));
-        
+
         // Test PostgreSQL column wrapping
         Assert.AreEqual("\"test_table\"", SqlDefine.PgSql.WrapColumn("test_table"));
     }
@@ -210,7 +210,7 @@ public class SqlGeneratorTests
     {
         // This test would require creating a mock IPropertySymbol with DbColumnAttribute
         // For now, we'll test that the method exists and can be called
-        Assert.IsNotNull(typeof(GenerateContext).GetMethod("GetColumnName", 
+        Assert.IsNotNull(typeof(GenerateContext).GetMethod("GetColumnName",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static));
     }
 
@@ -222,7 +222,7 @@ public class SqlGeneratorTests
     {
         // This test would require creating a mock ObjectMap with properties
         // For now, we'll test that the method exists and can be called
-        Assert.IsNotNull(typeof(InsertGenerateContext).GetMethod("GetParamterNames", 
+        Assert.IsNotNull(typeof(InsertGenerateContext).GetMethod("GetParamterNames",
             System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance));
     }
 
@@ -234,7 +234,7 @@ public class SqlGeneratorTests
     {
         // This test would require creating a mock ObjectMap with properties
         // For now, we'll test that the method exists and can be called
-        Assert.IsNotNull(typeof(InsertGenerateContext).GetMethod("GetColumnNames", 
+        Assert.IsNotNull(typeof(InsertGenerateContext).GetMethod("GetColumnNames",
             System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance));
     }
 
@@ -302,7 +302,7 @@ public class SqlGeneratorTests
         var sqlGeneratorType = typeof(SqlGenerator);
 
         // Act
-        var generateMethod = sqlGeneratorType.GetMethod("Generate", 
+        var generateMethod = sqlGeneratorType.GetMethod("Generate",
             System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
 
         // Assert
@@ -321,7 +321,7 @@ public class SqlGeneratorTests
         var sqlGeneratorType = typeof(SqlGenerator);
 
         // Act
-        var generateMethod = sqlGeneratorType.GetMethod("Generate", 
+        var generateMethod = sqlGeneratorType.GetMethod("Generate",
             System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
 
         // Assert
@@ -329,11 +329,11 @@ public class SqlGeneratorTests
 
         var parameters = generateMethod.GetParameters();
         Assert.AreEqual(3, parameters.Length, "Generate method should have 3 parameters");
-        Assert.AreEqual("SqlDefine", parameters[0].ParameterType.Name, 
+        Assert.AreEqual("SqlDefine", parameters[0].ParameterType.Name,
             "Generate method first parameter should be SqlDefine");
-        Assert.AreEqual("SqlExecuteTypes", parameters[1].ParameterType.Name, 
+        Assert.AreEqual("SqlExecuteTypes", parameters[1].ParameterType.Name,
             "Generate method second parameter should be SqlExecuteTypes");
-        Assert.AreEqual("GenerateContext", parameters[2].ParameterType.Name, 
+        Assert.AreEqual("GenerateContext", parameters[2].ParameterType.Name,
             "Generate method third parameter should be GenerateContext");
     }
 
@@ -347,7 +347,7 @@ public class SqlGeneratorTests
         var sqlGeneratorType = typeof(SqlGenerator);
 
         // Act
-        var generateInsertMethod = sqlGeneratorType.GetMethod("GenerateInsert", 
+        var generateInsertMethod = sqlGeneratorType.GetMethod("GenerateInsert",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
         // Assert
@@ -366,7 +366,7 @@ public class SqlGeneratorTests
         var sqlGeneratorType = typeof(SqlGenerator);
 
         // Act
-        var generateInsertMethod = sqlGeneratorType.GetMethod("GenerateInsert", 
+        var generateInsertMethod = sqlGeneratorType.GetMethod("GenerateInsert",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
         // Assert
@@ -374,9 +374,9 @@ public class SqlGeneratorTests
 
         var parameters = generateInsertMethod.GetParameters();
         Assert.AreEqual(2, parameters.Length, "GenerateInsert method should have 2 parameters");
-        Assert.AreEqual("SqlDefine", parameters[0].ParameterType.Name, 
+        Assert.AreEqual("SqlDefine", parameters[0].ParameterType.Name,
             "GenerateInsert method first parameter should be SqlDefine");
-        Assert.AreEqual("InsertGenerateContext", parameters[1].ParameterType.Name, 
+        Assert.AreEqual("InsertGenerateContext", parameters[1].ParameterType.Name,
             "GenerateInsert method second parameter should be InsertGenerateContext");
     }
 
@@ -404,18 +404,18 @@ public class SqlGeneratorTests
         var sqlGeneratorType = typeof(SqlGenerator);
 
         // Act
-        var generateMethod = sqlGeneratorType.GetMethod("Generate", 
+        var generateMethod = sqlGeneratorType.GetMethod("Generate",
             System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-        var generateInsertMethod = sqlGeneratorType.GetMethod("GenerateInsert", 
+        var generateInsertMethod = sqlGeneratorType.GetMethod("GenerateInsert",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
         // Assert
         Assert.IsNotNull(generateMethod, "Generate method should exist");
         Assert.IsNotNull(generateInsertMethod, "GenerateInsert method should exist");
 
-        Assert.AreEqual(typeof(string), generateMethod.ReturnType, 
+        Assert.AreEqual(typeof(string), generateMethod.ReturnType,
             "Generate method should return string");
-        Assert.AreEqual(typeof(string), generateInsertMethod.ReturnType, 
+        Assert.AreEqual(typeof(string), generateInsertMethod.ReturnType,
             "GenerateInsert method should return string");
     }
 
@@ -444,7 +444,7 @@ public class SqlGeneratorTests
         var sqlGeneratorType = typeof(SqlGenerator);
 
         // Act & Assert
-        Assert.AreEqual(typeof(object), sqlGeneratorType.BaseType, 
+        Assert.AreEqual(typeof(object), sqlGeneratorType.BaseType,
             "SqlGenerator should inherit from object");
         Assert.IsFalse(sqlGeneratorType.IsAbstract, "SqlGenerator should not be abstract");
         Assert.IsTrue(sqlGeneratorType.IsSealed, "SqlGenerator should be sealed");
@@ -503,12 +503,12 @@ public class SqlGeneratorTests
         // Assert
         var contextProperty = properties.FirstOrDefault(p => p.Name == "Context");
         Assert.IsNotNull(contextProperty, "Context property should exist");
-        Assert.AreEqual("MethodGenerationContext", contextProperty.PropertyType.Name, 
+        Assert.AreEqual("MethodGenerationContext", contextProperty.PropertyType.Name,
             "Context property should be of type MethodGenerationContext");
 
         var tableNameProperty = properties.FirstOrDefault(p => p.Name == "TableName");
         Assert.IsNotNull(tableNameProperty, "TableName property should exist");
-        Assert.AreEqual("String", tableNameProperty.PropertyType.Name, 
+        Assert.AreEqual("String", tableNameProperty.PropertyType.Name,
             "TableName property should be of type String");
     }
 
@@ -522,9 +522,9 @@ public class SqlGeneratorTests
         var generateContextType = typeof(GenerateContext);
 
         // Act
-        var getColumnNameMethod = generateContextType.GetMethod("GetColumnName", 
+        var getColumnNameMethod = generateContextType.GetMethod("GetColumnName",
             System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-        var getParamterNameMethod = generateContextType.GetMethod("GetParamterName", 
+        var getParamterNameMethod = generateContextType.GetMethod("GetParamterName",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 
         // Assert
@@ -533,14 +533,14 @@ public class SqlGeneratorTests
 
         var getColumnNameParams = getColumnNameMethod.GetParameters();
         Assert.AreEqual(1, getColumnNameParams.Length, "GetColumnName method should have 1 parameter");
-        Assert.AreEqual("String", getColumnNameParams[0].ParameterType.Name, 
+        Assert.AreEqual("String", getColumnNameParams[0].ParameterType.Name,
             "GetColumnName method parameter should be String");
 
         var getParamterNameParams = getParamterNameMethod.GetParameters();
         Assert.AreEqual(2, getParamterNameParams.Length, "GetParamterName method should have 2 parameters");
-        Assert.AreEqual("String", getParamterNameParams[0].ParameterType.Name, 
+        Assert.AreEqual("String", getParamterNameParams[0].ParameterType.Name,
             "GetParamterName method first parameter should be String");
-        Assert.AreEqual("String", getParamterNameParams[1].ParameterType.Name, 
+        Assert.AreEqual("String", getParamterNameParams[1].ParameterType.Name,
             "GetParamterName method second parameter should be String");
     }
 
@@ -554,18 +554,18 @@ public class SqlGeneratorTests
         var generateContextType = typeof(GenerateContext);
 
         // Act
-        var getColumnNameMethod = generateContextType.GetMethod("GetColumnName", 
+        var getColumnNameMethod = generateContextType.GetMethod("GetColumnName",
             System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-        var getParamterNameMethod = generateContextType.GetMethod("GetParamterName", 
+        var getParamterNameMethod = generateContextType.GetMethod("GetParamterName",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 
         // Assert
         Assert.IsNotNull(getColumnNameMethod, "GetColumnName method should exist");
         Assert.IsNotNull(getParamterNameMethod, "GetParamterName method should exist");
 
-        Assert.AreEqual(typeof(string), getColumnNameMethod.ReturnType, 
+        Assert.AreEqual(typeof(string), getColumnNameMethod.ReturnType,
             "GetColumnName method should return string");
-        Assert.AreEqual(typeof(string), getParamterNameMethod.ReturnType, 
+        Assert.AreEqual(typeof(string), getParamterNameMethod.ReturnType,
             "GetParamterName method should return string");
     }
 
@@ -594,7 +594,7 @@ public class SqlGeneratorTests
         var generateContextType = typeof(GenerateContext);
 
         // Act & Assert
-        Assert.AreEqual(typeof(object), generateContextType.BaseType, 
+        Assert.AreEqual(typeof(object), generateContextType.BaseType,
             "GenerateContext should inherit from object");
         Assert.IsTrue(generateContextType.IsAbstract, "GenerateContext should be abstract");
         Assert.IsFalse(generateContextType.IsSealed, "GenerateContext should not be sealed");
@@ -657,17 +657,17 @@ public class SqlGeneratorTests
         // Assert
         var contextProperty = properties.FirstOrDefault(p => p.Name == "Context");
         Assert.IsNotNull(contextProperty, "Context property should exist");
-        Assert.AreEqual("MethodGenerationContext", contextProperty.PropertyType.Name, 
+        Assert.AreEqual("MethodGenerationContext", contextProperty.PropertyType.Name,
             "Context property should be of type MethodGenerationContext");
 
         var tableNameProperty = properties.FirstOrDefault(p => p.Name == "TableName");
         Assert.IsNotNull(tableNameProperty, "TableName property should exist");
-        Assert.AreEqual("String", tableNameProperty.PropertyType.Name, 
+        Assert.AreEqual("String", tableNameProperty.PropertyType.Name,
             "TableName property should be of type String");
 
         var entryProperty = properties.FirstOrDefault(p => p.Name == "Entry");
         Assert.IsNotNull(entryProperty, "Entry property should exist");
-        Assert.AreEqual("ObjectMap", entryProperty.PropertyType.Name, 
+        Assert.AreEqual("ObjectMap", entryProperty.PropertyType.Name,
             "Entry property should be of type ObjectMap");
     }
 
@@ -681,9 +681,9 @@ public class SqlGeneratorTests
         var insertGenerateContextType = typeof(InsertGenerateContext);
 
         // Act
-        var getParamterNamesMethod = insertGenerateContextType.GetMethod("GetParamterNames", 
+        var getParamterNamesMethod = insertGenerateContextType.GetMethod("GetParamterNames",
             System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-        var getColumnNamesMethod = insertGenerateContextType.GetMethod("GetColumnNames", 
+        var getColumnNamesMethod = insertGenerateContextType.GetMethod("GetColumnNames",
             System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
 
         // Assert
@@ -692,7 +692,7 @@ public class SqlGeneratorTests
 
         var getParamterNamesParams = getParamterNamesMethod.GetParameters();
         Assert.AreEqual(1, getParamterNamesParams.Length, "GetParamterNames method should have 1 parameter");
-        Assert.AreEqual("String", getParamterNamesParams[0].ParameterType.Name, 
+        Assert.AreEqual("String", getParamterNamesParams[0].ParameterType.Name,
             "GetParamterNames method parameter should be String");
 
         var getColumnNamesParams = getColumnNamesMethod.GetParameters();
@@ -709,18 +709,18 @@ public class SqlGeneratorTests
         var insertGenerateContextType = typeof(InsertGenerateContext);
 
         // Act
-        var getParamterNamesMethod = insertGenerateContextType.GetMethod("GetParamterNames", 
+        var getParamterNamesMethod = insertGenerateContextType.GetMethod("GetParamterNames",
             System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-        var getColumnNamesMethod = insertGenerateContextType.GetMethod("GetColumnNames", 
+        var getColumnNamesMethod = insertGenerateContextType.GetMethod("GetColumnNames",
             System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
 
         // Assert
         Assert.IsNotNull(getParamterNamesMethod, "GetParamterNames method should exist");
         Assert.IsNotNull(getColumnNamesMethod, "GetColumnNames method should exist");
 
-        Assert.AreEqual(typeof(string), getParamterNamesMethod.ReturnType, 
+        Assert.AreEqual(typeof(string), getParamterNamesMethod.ReturnType,
             "GetParamterNames method should return string");
-        Assert.AreEqual(typeof(string), getColumnNamesMethod.ReturnType, 
+        Assert.AreEqual(typeof(string), getColumnNamesMethod.ReturnType,
             "GetColumnNames method should return string");
     }
 
@@ -750,7 +750,7 @@ public class SqlGeneratorTests
         var generateContextType = typeof(GenerateContext);
 
         // Act & Assert
-        Assert.AreEqual(generateContextType, insertGenerateContextType.BaseType, 
+        Assert.AreEqual(generateContextType, insertGenerateContextType.BaseType,
             "InsertGenerateContext should inherit from GenerateContext");
         Assert.IsFalse(insertGenerateContextType.IsAbstract, "InsertGenerateContext should not be abstract");
         Assert.IsTrue(insertGenerateContextType.IsSealed, "InsertGenerateContext should be sealed");
@@ -825,22 +825,22 @@ public class SqlGeneratorTests
         // Assert
         var symbolProperty = properties.FirstOrDefault(p => p.Name == "Symbol");
         Assert.IsNotNull(symbolProperty, "Symbol property should exist");
-        Assert.AreEqual("IParameterSymbol", symbolProperty.PropertyType.Name, 
+        Assert.AreEqual("IParameterSymbol", symbolProperty.PropertyType.Name,
             "Symbol property should be of type IParameterSymbol");
 
         var elementSymbolProperty = properties.FirstOrDefault(p => p.Name == "ElementSymbol");
         Assert.IsNotNull(elementSymbolProperty, "ElementSymbol property should exist");
-        Assert.AreEqual("ISymbol", elementSymbolProperty.PropertyType.Name, 
+        Assert.AreEqual("ISymbol", elementSymbolProperty.PropertyType.Name,
             "ElementSymbol property should be of type ISymbol");
 
         var isListProperty = properties.FirstOrDefault(p => p.Name == "IsList");
         Assert.IsNotNull(isListProperty, "IsList property should exist");
-        Assert.AreEqual("Boolean", isListProperty.PropertyType.Name, 
+        Assert.AreEqual("Boolean", isListProperty.PropertyType.Name,
             "IsList property should be of type Boolean");
 
         var propertiesProperty = properties.FirstOrDefault(p => p.Name == "Properties");
         Assert.IsNotNull(propertiesProperty, "Properties property should exist");
-        Assert.AreEqual("List`1", propertiesProperty.PropertyType.Name, 
+        Assert.AreEqual("List`1", propertiesProperty.PropertyType.Name,
             "Properties property should be of type List<T>");
     }
 
@@ -881,11 +881,11 @@ public class SqlGeneratorTests
     public void SqlExecuteTypes_Enum_ValuesAreUnique()
     {
         // Arrange
-        var values = new[] { 
-            (int)SqlExecuteTypes.Select, 
-            (int)SqlExecuteTypes.Update, 
-            (int)SqlExecuteTypes.Insert, 
-            (int)SqlExecuteTypes.Delete 
+        var values = new[] {
+            (int)SqlExecuteTypes.Select,
+            (int)SqlExecuteTypes.Update,
+            (int)SqlExecuteTypes.Insert,
+            (int)SqlExecuteTypes.Delete
         };
 
         // Act

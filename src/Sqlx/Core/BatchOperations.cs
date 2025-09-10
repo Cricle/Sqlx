@@ -17,9 +17,9 @@ namespace Sqlx.Core
         /// 批量插入数据
         /// </summary>
         public static async Task<BatchOperationResult> InsertBatchAsync<T>(
-            DbConnection connection, 
-            string tableName, 
-            IEnumerable<T> items, 
+            DbConnection connection,
+            string tableName,
+            IEnumerable<T> items,
             int batchSize = 1000,
             bool autoOptimizeBatchSize = false,
             bool continueOnError = false,
@@ -27,7 +27,7 @@ namespace Sqlx.Core
         {
             var result = new BatchOperationResult();
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-            
+
             try
             {
                 var itemList = items.ToList();
@@ -335,7 +335,7 @@ namespace Sqlx.Core
                     var prop = properties[j];
                     var paramName = $"@{prop.Name}_{i}";
                     var value = prop.GetValue(item) ?? DBNull.Value;
-                    
+
                     var param = cmd.CreateParameter();
                     param.ParameterName = paramName;
                     param.Value = value;

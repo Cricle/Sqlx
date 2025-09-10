@@ -44,7 +44,7 @@ internal static class TypeAnalyzer
             if (IsSystemNamespace(namespaceName)) return false;
 
             // Must be a class with properties
-            return t.TypeKind == TypeKind.Class && 
+            return t.TypeKind == TypeKind.Class &&
                    t.GetMembers().OfType<IPropertySymbol>().Any();
         });
     }
@@ -61,7 +61,7 @@ internal static class TypeAnalyzer
 
             var typeName = namedType.Name;
             return typeName is "IList" or "List" or "IEnumerable" or "ICollection" or "IReadOnlyList" ||
-                   (namedType.IsGenericType && 
+                   (namedType.IsGenericType &&
                     (typeName is "IList" or "List" or "IEnumerable" or "ICollection" or "IReadOnlyList"));
         });
     }
@@ -122,8 +122,8 @@ internal static class TypeAnalyzer
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ITypeSymbol GetInnerType(ITypeSymbol type)
     {
-        if (type is INamedTypeSymbol namedType && 
-            namedType.Name == "Task" && 
+        if (type is INamedTypeSymbol namedType &&
+            namedType.Name == "Task" &&
             namedType.TypeArguments.Length == 1)
         {
             return namedType.TypeArguments[0];
@@ -138,13 +138,13 @@ internal static class TypeAnalyzer
     public static bool IsScalarReturnType(ITypeSymbol returnType, bool isAsync)
     {
         var actualType = isAsync ? GetInnerType(returnType) : returnType;
-        
+
         return _isScalarTypeCache.GetOrAdd(actualType, static t =>
         {
             return t.SpecialType switch
             {
-                SpecialType.System_Int32 or SpecialType.System_Int64 or SpecialType.System_Boolean 
-                or SpecialType.System_String or SpecialType.System_Decimal or SpecialType.System_Double 
+                SpecialType.System_Int32 or SpecialType.System_Int64 or SpecialType.System_Boolean
+                or SpecialType.System_String or SpecialType.System_Decimal or SpecialType.System_Double
                 or SpecialType.System_Single or SpecialType.System_Byte or SpecialType.System_Int16 => true,
                 _ => false
             };
@@ -193,7 +193,7 @@ internal static class TypeAnalyzer
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool IsSystemNamespace(string namespaceName)
     {
-        return _namespaceCache.GetOrAdd(namespaceName, static ns => 
+        return _namespaceCache.GetOrAdd(namespaceName, static ns =>
             ns.StartsWith("System", StringComparison.Ordinal) ||
             ns.StartsWith("Microsoft", StringComparison.Ordinal));
     }

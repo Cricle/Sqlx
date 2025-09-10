@@ -27,12 +27,12 @@ public abstract class PerformanceTestBase
     protected static long MeasureOperation(Action operation, int iterations = 1)
     {
         var stopwatch = Stopwatch.StartNew();
-        
+
         for (int i = 0; i < iterations; i++)
         {
             operation();
         }
-        
+
         stopwatch.Stop();
         return stopwatch.ElapsedMilliseconds;
     }
@@ -46,12 +46,12 @@ public abstract class PerformanceTestBase
     protected static async Task<long> MeasureOperationAsync(Func<Task> operation, int iterations = 1)
     {
         var stopwatch = Stopwatch.StartNew();
-        
+
         for (int i = 0; i < iterations; i++)
         {
             await operation();
         }
-        
+
         stopwatch.Stop();
         return stopwatch.ElapsedMilliseconds;
     }
@@ -66,7 +66,7 @@ public abstract class PerformanceTestBase
     protected static long MeasureConcurrentOperations(Action operation, int concurrentTasks, int operationsPerTask)
     {
         var stopwatch = Stopwatch.StartNew();
-        
+
         var tasks = Enumerable.Range(0, concurrentTasks).Select(_ => Task.Run(() =>
         {
             for (int i = 0; i < operationsPerTask; i++)
@@ -74,10 +74,10 @@ public abstract class PerformanceTestBase
                 operation();
             }
         })).ToArray();
-        
+
         Task.WaitAll(tasks);
         stopwatch.Stop();
-        
+
         return stopwatch.ElapsedMilliseconds;
     }
 
@@ -94,7 +94,7 @@ public abstract class PerformanceTestBase
     {
         var results = new ConcurrentBag<T>();
         var stopwatch = Stopwatch.StartNew();
-        
+
         var tasks = Enumerable.Range(0, concurrentTasks).Select(_ => Task.Run(() =>
         {
             for (int i = 0; i < operationsPerTask; i++)
@@ -110,10 +110,10 @@ public abstract class PerformanceTestBase
                 }
             }
         })).ToArray();
-        
+
         Task.WaitAll(tasks);
         stopwatch.Stop();
-        
+
         return (results, stopwatch.ElapsedMilliseconds);
     }
 
@@ -128,11 +128,11 @@ public abstract class PerformanceTestBase
         GC.Collect();
         GC.WaitForPendingFinalizers();
         GC.Collect();
-        
+
         var initialMemory = GC.GetTotalMemory(false);
-        
+
         operation();
-        
+
         var finalMemory = GC.GetTotalMemory(false);
         return finalMemory - initialMemory;
     }
@@ -146,7 +146,7 @@ public abstract class PerformanceTestBase
     protected static void AssertPerformance(Action operation, double maxTimeMs, string operationName = "Operation")
     {
         var elapsedMs = MeasureOperation(operation);
-        Assert.IsTrue(elapsedMs <= maxTimeMs, 
+        Assert.IsTrue(elapsedMs <= maxTimeMs,
             $"{operationName} should complete within {maxTimeMs}ms, but took {elapsedMs}ms");
     }
 
@@ -159,7 +159,7 @@ public abstract class PerformanceTestBase
     protected static async Task AssertPerformanceAsync(Func<Task> operation, double maxTimeMs, string operationName = "Operation")
     {
         var elapsedMs = await MeasureOperationAsync(operation);
-        Assert.IsTrue(elapsedMs <= maxTimeMs, 
+        Assert.IsTrue(elapsedMs <= maxTimeMs,
             $"{operationName} should complete within {maxTimeMs}ms, but took {elapsedMs}ms");
     }
 
@@ -173,8 +173,8 @@ public abstract class PerformanceTestBase
     {
         var memoryIncrease = MeasureMemoryUsage(operation);
         var memoryMB = memoryIncrease / 1024.0 / 1024.0;
-        
-        Assert.IsTrue(memoryMB <= maxMemoryMB, 
+
+        Assert.IsTrue(memoryMB <= maxMemoryMB,
             $"{operationName} should use less than {maxMemoryMB}MB, but used {memoryMB:F2}MB");
     }
 

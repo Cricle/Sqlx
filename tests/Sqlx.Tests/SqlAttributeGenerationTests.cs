@@ -57,15 +57,15 @@ namespace TestNamespace
         var generatedCode = GetGeneratedCode(sourceCode);
 
         // All GetAll patterns should generate SELECT * queries
-        Assert.IsTrue(generatedCode.Contains("[Sqlx(\"SELECT * FROM Item\")]") || 
-                     generatedCode.Contains("[Sqlx(\"SELECT * FROM Items\")]"), 
+        Assert.IsTrue(generatedCode.Contains("[Sqlx(\"SELECT * FROM Item\")]") ||
+                     generatedCode.Contains("[Sqlx(\"SELECT * FROM Items\")]"),
             "GetAll methods should generate SELECT * queries");
-        
+
         // Check multiple variations
         var selectPatterns = new[] { "GetAll", "GetAllItems", "FindAll", "FindAllItems" };
         foreach (var pattern in selectPatterns)
         {
-            Assert.IsTrue(generatedCode.Contains(pattern), 
+            Assert.IsTrue(generatedCode.Contains(pattern),
                 $"Generated code should contain method {pattern}");
         }
     }
@@ -106,17 +106,17 @@ namespace TestNamespace
         var generatedCode = GetGeneratedCode(sourceCode);
 
         // GetById patterns should generate WHERE Id queries
-        Assert.IsTrue(generatedCode.Contains("WHERE Id = @id") || 
-                     generatedCode.Contains("WHERE Id = @productId") || 
-                     generatedCode.Contains("WHERE Id = @key"), 
+        Assert.IsTrue(generatedCode.Contains("WHERE Id = @id") ||
+                     generatedCode.Contains("WHERE Id = @productId") ||
+                     generatedCode.Contains("WHERE Id = @key"),
             "GetById methods should generate WHERE Id queries");
-        
+
         // Check parameter mapping
-        Assert.IsTrue(generatedCode.Contains("GetById(int id)"), 
+        Assert.IsTrue(generatedCode.Contains("GetById(int id)"),
             "Should preserve parameter names in generated methods");
-        Assert.IsTrue(generatedCode.Contains("FindProductById(int productId)"), 
+        Assert.IsTrue(generatedCode.Contains("FindProductById(int productId)"),
             "Should preserve parameter names in generated methods");
-        Assert.IsTrue(generatedCode.Contains("GetByKey(int key)"), 
+        Assert.IsTrue(generatedCode.Contains("GetByKey(int key)"),
             "Should preserve parameter names in generated methods");
     }
 
@@ -158,18 +158,18 @@ namespace TestNamespace
         var generatedCode = GetGeneratedCode(sourceCode);
 
         // Create patterns should generate SqlExecuteType Insert
-        Assert.IsTrue(generatedCode.Contains("SqlExecuteTypes.Insert"), 
+        Assert.IsTrue(generatedCode.Contains("SqlExecuteTypes.Insert"),
             "Create methods should generate SqlExecuteType Insert");
-        
+
         // Should use table name from TableName attribute
-        Assert.IsTrue(generatedCode.Contains("\"custom_orders\""), 
+        Assert.IsTrue(generatedCode.Contains("\"custom_orders\""),
             "Should use table name from TableName attribute");
-        
+
         // Check multiple create patterns
         var createPatterns = new[] { "Create", "CreateOrder", "Insert", "InsertOrder", "Add", "AddOrder" };
         foreach (var pattern in createPatterns)
         {
-            Assert.IsTrue(generatedCode.Contains(pattern), 
+            Assert.IsTrue(generatedCode.Contains(pattern),
                 $"Generated code should contain method {pattern}");
         }
     }
@@ -209,18 +209,18 @@ namespace TestNamespace
         var generatedCode = GetGeneratedCode(sourceCode);
 
         // Update patterns should generate SqlExecuteType Update
-        Assert.IsTrue(generatedCode.Contains("SqlExecuteTypes.Update"), 
+        Assert.IsTrue(generatedCode.Contains("SqlExecuteTypes.Update"),
             "Update methods should generate SqlExecuteType Update");
-        
+
         // Should use entity name as table name by default
-        Assert.IsTrue(generatedCode.Contains("\"Customer\""), 
+        Assert.IsTrue(generatedCode.Contains("\"Customer\""),
             "Should use entity name as table name by default");
-        
+
         // Check multiple update patterns
         var updatePatterns = new[] { "Update", "UpdateCustomer", "Modify", "ModifyCustomer" };
         foreach (var pattern in updatePatterns)
         {
-            Assert.IsTrue(generatedCode.Contains(pattern), 
+            Assert.IsTrue(generatedCode.Contains(pattern),
                 $"Generated code should contain method {pattern}");
         }
     }
@@ -261,18 +261,18 @@ namespace TestNamespace
         var generatedCode = GetGeneratedCode(sourceCode);
 
         // Delete patterns should generate SqlExecuteType Delete
-        Assert.IsTrue(generatedCode.Contains("SqlExecuteTypes.Delete"), 
+        Assert.IsTrue(generatedCode.Contains("SqlExecuteTypes.Delete"),
             "Delete methods should generate SqlExecuteType Delete");
-        
+
         // Should use entity name as table name
-        Assert.IsTrue(generatedCode.Contains("\"Account\""), 
+        Assert.IsTrue(generatedCode.Contains("\"Account\""),
             "Should use entity name as table name");
-        
+
         // Check multiple delete patterns
         var deletePatterns = new[] { "Delete", "DeleteAccount", "Remove", "RemoveAccount", "DeleteById" };
         foreach (var pattern in deletePatterns)
         {
-            Assert.IsTrue(generatedCode.Contains(pattern), 
+            Assert.IsTrue(generatedCode.Contains(pattern),
                 $"Generated code should contain method {pattern}");
         }
     }
@@ -313,18 +313,18 @@ namespace TestNamespace
         var generatedCode = GetGeneratedCode(sourceCode);
 
         // Count methods should generate COUNT(*) queries
-        Assert.IsTrue(generatedCode.Contains("COUNT(*)"), 
+        Assert.IsTrue(generatedCode.Contains("COUNT(*)"),
             "Count methods should generate COUNT(*) queries");
-        
+
         // Should use entity name as table name
-        Assert.IsTrue(generatedCode.Contains("SELECT COUNT(*) FROM Post"), 
+        Assert.IsTrue(generatedCode.Contains("SELECT COUNT(*) FROM Post"),
             "Count queries should reference the correct table");
-        
+
         // Check multiple count patterns
         var countPatterns = new[] { "Count()", "CountPosts()", "CountAll()", "GetCount()", "GetPostCount()" };
         foreach (var pattern in countPatterns)
         {
-            Assert.IsTrue(generatedCode.Contains(pattern), 
+            Assert.IsTrue(generatedCode.Contains(pattern),
                 $"Generated code should contain method {pattern}");
         }
     }
@@ -364,18 +364,18 @@ namespace TestNamespace
         var generatedCode = GetGeneratedCode(sourceCode);
 
         // Exists methods should generate COUNT(*) queries with WHERE
-        Assert.IsTrue(generatedCode.Contains("COUNT(*)") && generatedCode.Contains("WHERE"), 
+        Assert.IsTrue(generatedCode.Contains("COUNT(*)") && generatedCode.Contains("WHERE"),
             "Exists methods should generate COUNT(*) queries with WHERE clauses");
-        
+
         // Should include parameter references
-        Assert.IsTrue(generatedCode.Contains("@id") || generatedCode.Contains("@userId"), 
+        Assert.IsTrue(generatedCode.Contains("@id") || generatedCode.Contains("@userId"),
             "Exists queries should include parameter references");
-        
+
         // Check multiple exists patterns
         var existsPatterns = new[] { "Exists", "ExistsUser", "UserExists", "ExistsById" };
         foreach (var pattern in existsPatterns)
         {
-            Assert.IsTrue(generatedCode.Contains(pattern), 
+            Assert.IsTrue(generatedCode.Contains(pattern),
                 $"Generated code should contain method {pattern}");
         }
     }
@@ -415,14 +415,14 @@ namespace TestNamespace
         var generatedCode = GetGeneratedCode(sourceCode);
 
         // Unknown patterns should default to SELECT
-        Assert.IsTrue(generatedCode.Contains("SELECT * FROM Document"), 
+        Assert.IsTrue(generatedCode.Contains("SELECT * FROM Document"),
             "Unknown method patterns should default to SELECT queries");
-        
+
         // Check that all methods are generated
         var methodPatterns = new[] { "ProcessDocuments", "ValidateDocument", "CalculateStats", "GenerateReport" };
         foreach (var pattern in methodPatterns)
         {
-            Assert.IsTrue(generatedCode.Contains(pattern), 
+            Assert.IsTrue(generatedCode.Contains(pattern),
                 $"Generated code should contain method {pattern}");
         }
     }
@@ -478,16 +478,16 @@ namespace TestNamespace
         var generatedCode = GetGeneratedCode(sourceCode);
 
         // Should use TableName attribute when available
-        Assert.IsTrue(generatedCode.Contains("special_items"), 
+        Assert.IsTrue(generatedCode.Contains("special_items"),
             "Should use table name from TableName attribute");
-        
+
         // Should use entity class name when no TableName attribute
-        Assert.IsTrue(generatedCode.Contains("RegularItem"), 
+        Assert.IsTrue(generatedCode.Contains("RegularItem"),
             "Should use entity class name when no TableName attribute");
-        
+
         // Verify both SELECT and INSERT operations use correct table names
-        Assert.IsTrue(generatedCode.Contains("SELECT * FROM special_items") || 
-                     generatedCode.Contains("SqlExecuteTypes.Insert, \"special_items\""), 
+        Assert.IsTrue(generatedCode.Contains("SELECT * FROM special_items") ||
+                     generatedCode.Contains("SqlExecuteTypes.Insert, \"special_items\""),
             "Should use custom table name in all operations");
     }
 
@@ -526,19 +526,19 @@ namespace TestNamespace
         var generatedCode = GetGeneratedCode(sourceCode);
 
         // Method bodies should include NotImplementedException for now
-        Assert.IsTrue(generatedCode.Contains("NotImplementedException"), 
+        Assert.IsTrue(generatedCode.Contains("NotImplementedException"),
             "Method bodies should include NotImplementedException");
-        
+
         // Should include explanatory comments
-        Assert.IsTrue(generatedCode.Contains("This method will be implemented by Sqlx source generator") || 
-                     generatedCode.Contains("generated by Sqlx"), 
+        Assert.IsTrue(generatedCode.Contains("This method will be implemented by Sqlx source generator") ||
+                     generatedCode.Contains("generated by Sqlx"),
             "Should include explanatory comments about implementation");
     }
 
     private static string GetGeneratedCode(string sourceCode)
     {
         var (compilation, diagnostics) = CompileWithSourceGenerator(sourceCode);
-        
+
         var errors = diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
         if (errors.Any())
         {

@@ -37,7 +37,7 @@ namespace Sqlx.Tests.Core
         {
             // Act
             var sqlDefine = _provider.SqlDefine;
-            
+
             // Assert
             Assert.IsNotNull(sqlDefine, "SqlDefine should not be null");
             Assert.AreEqual(SqlDefine.SqlServer, sqlDefine, "Should return SQL Server define");
@@ -48,7 +48,7 @@ namespace Sqlx.Tests.Core
         {
             // Act
             var dialectType = _provider.DialectType;
-            
+
             // Assert
             Assert.AreEqual(SqlDefineTypes.SqlServer, dialectType, "Should return SQL Server dialect type");
         }
@@ -59,10 +59,10 @@ namespace Sqlx.Tests.Core
             // Arrange
             var limit = 10;
             var offset = 20;
-            
+
             // Act
             var result = _provider.GenerateLimitClause(limit, offset);
-            
+
             // Assert
             Assert.IsNotNull(result, "Result should not be null");
             Assert.IsTrue(result.Contains("OFFSET 20 ROWS"), "Should contain offset clause");
@@ -75,10 +75,10 @@ namespace Sqlx.Tests.Core
             // Arrange
             var limit = 15;
             int? offset = null;
-            
+
             // Act
             var result = _provider.GenerateLimitClause(limit, offset);
-            
+
             // Assert
             Assert.IsNotNull(result, "Result should not be null");
             Assert.IsTrue(result.Contains("OFFSET 0 ROWS"), "Should contain zero offset");
@@ -91,10 +91,10 @@ namespace Sqlx.Tests.Core
             // Arrange
             int? limit = null;
             var offset = 25;
-            
+
             // Act
             var result = _provider.GenerateLimitClause(limit, offset);
-            
+
             // Assert
             Assert.IsNotNull(result, "Result should not be null");
             Assert.IsTrue(result.Contains("OFFSET 25 ROWS"), "Should contain offset clause");
@@ -107,10 +107,10 @@ namespace Sqlx.Tests.Core
             // Arrange
             int? limit = null;
             int? offset = null;
-            
+
             // Act
             var result = _provider.GenerateLimitClause(limit, offset);
-            
+
             // Assert
             Assert.AreEqual(string.Empty, result, "Should return empty string for null values");
         }
@@ -121,10 +121,10 @@ namespace Sqlx.Tests.Core
             // Arrange
             var tableName = "Users";
             var columns = new[] { "Name", "Email", "Age" };
-            
+
             // Act
             var result = _provider.GenerateInsertWithReturning(tableName, columns);
-            
+
             // Assert
             Assert.IsNotNull(result, "Result should not be null");
             Assert.IsTrue(result.Contains("INSERT INTO"), "Should contain INSERT INTO");
@@ -139,10 +139,10 @@ namespace Sqlx.Tests.Core
             // Arrange
             var tableName = "Categories";
             var columns = new[] { "Name" };
-            
+
             // Act
             var result = _provider.GenerateInsertWithReturning(tableName, columns);
-            
+
             // Assert
             Assert.IsNotNull(result, "Result should not be null");
             Assert.IsTrue(result.Contains("[Categories]"), "Should contain wrapped table name");
@@ -157,10 +157,10 @@ namespace Sqlx.Tests.Core
             var tableName = "Users";
             var columns = new[] { "Name", "Email" };
             var batchSize = 3;
-            
+
             // Act
             var result = _provider.GenerateBatchInsert(tableName, columns, batchSize);
-            
+
             // Assert
             Assert.IsNotNull(result, "Result should not be null");
             Assert.IsTrue(result.Contains("INSERT INTO"), "Should contain INSERT INTO");
@@ -176,10 +176,10 @@ namespace Sqlx.Tests.Core
             var tableName = "Products";
             var columns = new[] { "Name", "Price" };
             var batchSize = 1;
-            
+
             // Act
             var result = _provider.GenerateBatchInsert(tableName, columns, batchSize);
-            
+
             // Assert
             Assert.IsNotNull(result, "Result should not be null");
             Assert.IsTrue(result.Contains("@name0"), "Should contain batch 0 parameters");
@@ -193,10 +193,10 @@ namespace Sqlx.Tests.Core
             var tableName = "Users";
             var columns = new[] { "Id", "Name", "Email" };
             var keyColumns = new[] { "Id" };
-            
+
             // Act
             var result = _provider.GenerateUpsert(tableName, columns, keyColumns);
-            
+
             // Assert
             Assert.IsNotNull(result, "Result should not be null");
             Assert.IsTrue(result.Contains("MERGE"), "Should contain MERGE statement");
@@ -213,13 +213,13 @@ namespace Sqlx.Tests.Core
             var tableName = "UserProfiles";
             var columns = new[] { "UserId", "ProfileId", "Name", "Value" };
             var keyColumns = new[] { "UserId", "ProfileId" };
-            
+
             // Act
             var result = _provider.GenerateUpsert(tableName, columns, keyColumns);
-            
+
             // Assert
             Assert.IsNotNull(result, "Result should not be null");
-            Assert.IsTrue(result.Contains("target.[UserId] = source.[UserId] AND target.[ProfileId] = source.[ProfileId]"), 
+            Assert.IsTrue(result.Contains("target.[UserId] = source.[UserId] AND target.[ProfileId] = source.[ProfileId]"),
                 "Should contain compound key condition");
         }
 
@@ -228,7 +228,7 @@ namespace Sqlx.Tests.Core
         {
             // Act
             var result = _provider.GetDatabaseTypeName(typeof(int));
-            
+
             // Assert
             Assert.AreEqual("INT", result, "Int32 should map to INT");
         }
@@ -238,7 +238,7 @@ namespace Sqlx.Tests.Core
         {
             // Act
             var result = _provider.GetDatabaseTypeName(typeof(long));
-            
+
             // Assert
             Assert.AreEqual("BIGINT", result, "Int64 should map to BIGINT");
         }
@@ -248,7 +248,7 @@ namespace Sqlx.Tests.Core
         {
             // Act
             var result = _provider.GetDatabaseTypeName(typeof(decimal));
-            
+
             // Assert
             Assert.AreEqual("DECIMAL(18,2)", result, "Decimal should map to DECIMAL(18,2)");
         }
@@ -258,7 +258,7 @@ namespace Sqlx.Tests.Core
         {
             // Act
             var result = _provider.GetDatabaseTypeName(typeof(double));
-            
+
             // Assert
             Assert.AreEqual("FLOAT", result, "Double should map to FLOAT");
         }
@@ -268,7 +268,7 @@ namespace Sqlx.Tests.Core
         {
             // Act
             var result = _provider.GetDatabaseTypeName(typeof(float));
-            
+
             // Assert
             Assert.AreEqual("REAL", result, "Single should map to REAL");
         }
@@ -278,7 +278,7 @@ namespace Sqlx.Tests.Core
         {
             // Act
             var result = _provider.GetDatabaseTypeName(typeof(string));
-            
+
             // Assert
             Assert.AreEqual("NVARCHAR(4000)", result, "String should map to NVARCHAR(4000)");
         }
@@ -288,7 +288,7 @@ namespace Sqlx.Tests.Core
         {
             // Act
             var result = _provider.GetDatabaseTypeName(typeof(DateTime));
-            
+
             // Assert
             Assert.AreEqual("DATETIME2", result, "DateTime should map to DATETIME2");
         }
@@ -298,7 +298,7 @@ namespace Sqlx.Tests.Core
         {
             // Act
             var result = _provider.GetDatabaseTypeName(typeof(bool));
-            
+
             // Assert
             Assert.AreEqual("BIT", result, "Boolean should map to BIT");
         }
@@ -308,7 +308,7 @@ namespace Sqlx.Tests.Core
         {
             // Act
             var result = _provider.GetDatabaseTypeName(typeof(byte));
-            
+
             // Assert
             Assert.AreEqual("TINYINT", result, "Byte should map to TINYINT");
         }
@@ -318,7 +318,7 @@ namespace Sqlx.Tests.Core
         {
             // Act
             var result = _provider.GetDatabaseTypeName(typeof(Guid));
-            
+
             // Assert
             Assert.AreEqual("UNIQUEIDENTIFIER", result, "Guid should map to UNIQUEIDENTIFIER");
         }
@@ -328,7 +328,7 @@ namespace Sqlx.Tests.Core
         {
             // Act
             var result = _provider.GetDatabaseTypeName(typeof(object));
-            
+
             // Assert
             Assert.AreEqual("NVARCHAR(4000)", result, "Unknown type should map to NVARCHAR(4000)");
         }
@@ -338,10 +338,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             var dateTime = new DateTime(2023, 12, 25, 15, 30, 45, 123);
-            
+
             // Act
             var result = _provider.FormatDateTime(dateTime);
-            
+
             // Assert
             Assert.IsNotNull(result, "Result should not be null");
             Assert.IsTrue(result.Contains("2023-12-25"), "Should contain date part");
@@ -355,10 +355,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             var dateTime = DateTime.MinValue;
-            
+
             // Act
             var result = _provider.FormatDateTime(dateTime);
-            
+
             // Assert
             Assert.IsNotNull(result, "Result should not be null");
             Assert.IsTrue(result.StartsWith("'") && result.EndsWith("'"), "Should be wrapped in quotes");
@@ -369,7 +369,7 @@ namespace Sqlx.Tests.Core
         {
             // Act
             var result = _provider.GetCurrentDateTimeSyntax();
-            
+
             // Assert
             Assert.AreEqual("GETDATE()", result, "Should return GETDATE() function");
         }
@@ -379,10 +379,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             var expressions = new[] { "FirstName", "' '", "LastName" };
-            
+
             // Act
             var result = _provider.GetConcatenationSyntax(expressions);
-            
+
             // Assert
             Assert.IsNotNull(result, "Result should not be null");
             Assert.AreEqual("FirstName + ' ' + LastName", result, "Should use + operator for concatenation");
@@ -393,10 +393,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             var expressions = new[] { "Name", "Suffix" };
-            
+
             // Act
             var result = _provider.GetConcatenationSyntax(expressions);
-            
+
             // Assert
             Assert.AreEqual("Name + Suffix", result, "Should concatenate two expressions with +");
         }
@@ -406,10 +406,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             var expressions = new[] { "SingleValue" };
-            
+
             // Act
             var result = _provider.GetConcatenationSyntax(expressions);
-            
+
             // Assert
             Assert.AreEqual("SingleValue", result, "Should return single expression as-is");
         }
@@ -419,10 +419,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             var expressions = new string[0];
-            
+
             // Act
             var result = _provider.GetConcatenationSyntax(expressions);
-            
+
             // Assert
             Assert.AreEqual(string.Empty, result, "Should return empty string for empty array");
         }
@@ -432,7 +432,7 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             string[]? expressions = null;
-            
+
             // Act & Assert
             Assert.ThrowsException<NullReferenceException>(() =>
             {

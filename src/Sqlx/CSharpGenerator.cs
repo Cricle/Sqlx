@@ -699,7 +699,7 @@ namespace Sqlx.Annotations
                 System.Diagnostics.Debug.WriteLine(
                     $"  - {attr.AttributeClass?.Name} ({attr.AttributeClass?.ToDisplayString()})");
             }
-            
+
             var hasAttr = attributes.Any(attr => attr.AttributeClass?.Name == "RepositoryForAttribute" || attr.AttributeClass?.Name == "RepositoryFor");
             // Debug output - this will show in the compiler output
             if (hasAttr)
@@ -726,7 +726,8 @@ namespace Sqlx.Annotations
     {
         System.Diagnostics.Debug.WriteLine("CSharpGenerator.Initialize called");
         context.RegisterForSyntaxNotifications(() => new CSharpSyntaxReceiver());
-        context.RegisterForPostInitialization(ctx => {
+        context.RegisterForPostInitialization(ctx =>
+        {
             // Generate the required attributes at compile time
             ctx.AddSource("SqlxAttributes.g.cs", CSharpAttributeSource);
         });
@@ -743,7 +744,7 @@ namespace Sqlx.Annotations
 
         foreach (var line in lines)
         {
-            if (line.Contains("sealed class RepositoryForAttribute") || 
+            if (line.Contains("sealed class RepositoryForAttribute") ||
                 line.Contains("sealed class TableNameAttribute"))
             {
                 skipAttribute = true;
@@ -756,7 +757,7 @@ namespace Sqlx.Annotations
                 // Count braces to know when the attribute class ends
                 braceCount += line.Count(c => c == '{');
                 braceCount -= line.Count(c => c == '}');
-                
+
                 if (braceCount <= 0)
                 {
                     skipAttribute = false;

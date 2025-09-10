@@ -238,7 +238,7 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             var executed = false;
-            var taskFactory = new Func<Task>(() => 
+            var taskFactory = new Func<Task>(() =>
             {
                 executed = true;
                 return Task.CompletedTask;
@@ -258,7 +258,7 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             var executed = false;
-            var taskFactory = new Func<Task>(() => 
+            var taskFactory = new Func<Task>(() =>
             {
                 executed = true;
                 return Task.CompletedTask;
@@ -314,7 +314,7 @@ namespace Sqlx.Tests.Core
             var task = Task.FromResult(initialResult);
 
             // Act
-            var continuationTask = task.ContinueWithOptimized(t => 
+            var continuationTask = task.ContinueWithOptimized(t =>
             {
                 continuationExecuted = true;
                 Assert.AreEqual(initialResult, t.Result);
@@ -335,7 +335,7 @@ namespace Sqlx.Tests.Core
             var faultedTask = Task.FromException<int>(new InvalidOperationException("Test exception"));
 
             // Act
-            var continuationTask = faultedTask.ContinueWithOptimized(t => 
+            var continuationTask = faultedTask.ContinueWithOptimized(t =>
             {
                 continuationExecuted = true;
             });

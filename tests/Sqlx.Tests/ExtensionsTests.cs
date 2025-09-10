@@ -107,7 +107,7 @@ public class ExtensionsTests : CodeGenerationTestBase
         // Act & Assert
         // Note: These tests would require more complex mocking setup
         // For now, we'll test that the methods exist and can be called
-        Assert.IsNotNull(typeof(Extensions).GetMethod("IsDbConnection", 
+        Assert.IsNotNull(typeof(Extensions).GetMethod("IsDbConnection",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static));
     }
 
@@ -124,7 +124,7 @@ public class ExtensionsTests : CodeGenerationTestBase
         // Act & Assert
         // Note: These tests would require more complex mocking setup
         // For now, we'll test that the methods exist and can be called
-        Assert.IsNotNull(typeof(Extensions).GetMethod("IsDbTransaction", 
+        Assert.IsNotNull(typeof(Extensions).GetMethod("IsDbTransaction",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static));
     }
 
@@ -141,7 +141,7 @@ public class ExtensionsTests : CodeGenerationTestBase
         // Act & Assert
         // Note: These tests would require more complex mocking setup
         // For now, we'll test that the methods exist and can be called
-        Assert.IsNotNull(typeof(Extensions).GetMethod("IsDbContext", 
+        Assert.IsNotNull(typeof(Extensions).GetMethod("IsDbContext",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static));
     }
 
@@ -158,7 +158,7 @@ public class ExtensionsTests : CodeGenerationTestBase
         // Act & Assert
         // Note: These tests would require more complex mocking setup
         // For now, we'll test that the methods exist and can be called
-        Assert.IsNotNull(typeof(Extensions).GetMethod("IsCancellationToken", 
+        Assert.IsNotNull(typeof(Extensions).GetMethod("IsCancellationToken",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static));
     }
 
@@ -175,7 +175,7 @@ public class ExtensionsTests : CodeGenerationTestBase
         // Act & Assert
         // Note: These tests would require more complex mocking setup
         // For now, we'll test that the methods exist and can be called
-        Assert.IsNotNull(typeof(Extensions).GetMethod("UnwrapTaskType", 
+        Assert.IsNotNull(typeof(Extensions).GetMethod("UnwrapTaskType",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static));
     }
 
@@ -192,7 +192,7 @@ public class ExtensionsTests : CodeGenerationTestBase
         // Act & Assert
         // Note: These tests would require more complex mocking setup
         // For now, we'll test that the methods exist and can be called
-        Assert.IsNotNull(typeof(Extensions).GetMethod("UnwrapListType", 
+        Assert.IsNotNull(typeof(Extensions).GetMethod("UnwrapListType",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static));
     }
 
@@ -209,7 +209,7 @@ public class ExtensionsTests : CodeGenerationTestBase
         // Act & Assert
         // Note: These tests would require more complex mocking setup
         // For now, we'll test that the methods exist and can be called
-        var unwrapMethod = typeof(Extensions).GetMethod("UnwrapNullableType", 
+        var unwrapMethod = typeof(Extensions).GetMethod("UnwrapNullableType",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
             null,
             new[] { typeof(Microsoft.CodeAnalysis.ITypeSymbol) },
@@ -231,7 +231,7 @@ public class ExtensionsTests : CodeGenerationTestBase
         // Act & Assert
         // Note: These tests would require more complex mocking setup
         // For now, we'll test that the methods exist and can be called
-        Assert.IsNotNull(typeof(Extensions).GetMethod("IsScalarType", 
+        Assert.IsNotNull(typeof(Extensions).GetMethod("IsScalarType",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static));
     }
 
@@ -249,7 +249,7 @@ public class ExtensionsTests : CodeGenerationTestBase
         // Act & Assert
         // Note: These tests would require more complex mocking setup
         // For now, we'll test that the methods exist and can be called
-        Assert.IsNotNull(typeof(Extensions).GetMethod("IsTuple", 
+        Assert.IsNotNull(typeof(Extensions).GetMethod("IsTuple",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static));
     }
 
@@ -265,7 +265,7 @@ public class ExtensionsTests : CodeGenerationTestBase
         // Act & Assert
         // Note: These tests would require more complex mocking setup
         // For now, we'll test that the methods exist and can be called
-        Assert.IsNotNull(typeof(Extensions).GetMethod("FindMember", 
+        Assert.IsNotNull(typeof(Extensions).GetMethod("FindMember",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static));
     }
 
@@ -281,7 +281,7 @@ public class ExtensionsTests : CodeGenerationTestBase
         // Act & Assert
         // Note: These tests would require more complex mocking setup
         // For now, we'll test that the methods exist and can be called
-        Assert.IsNotNull(typeof(Extensions).GetMethod("IsTypes", 
+        Assert.IsNotNull(typeof(Extensions).GetMethod("IsTypes",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static));
     }
 
@@ -298,7 +298,7 @@ public class ExtensionsTests : CodeGenerationTestBase
         // Act & Assert
         // Note: These tests would require more complex mocking setup
         // For now, we'll test that the methods exist and can be called
-        Assert.IsNotNull(typeof(Extensions).GetMethod("CanHaveNullValue", 
+        Assert.IsNotNull(typeof(Extensions).GetMethod("CanHaveNullValue",
             System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static));
     }
 
@@ -315,7 +315,7 @@ public class ExtensionsTests : CodeGenerationTestBase
         // Act & Assert
         // Note: These tests would require more complex mocking setup
         // For now, we'll test that the methods exist and can be called
-        var isNullableMethod = typeof(Extensions).GetMethod("IsNullableType", 
+        var isNullableMethod = typeof(Extensions).GetMethod("IsNullableType",
             System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static,
             null,
             new[] { typeof(Microsoft.CodeAnalysis.ITypeSymbol) },
@@ -337,7 +337,7 @@ public class ExtensionsTests : CodeGenerationTestBase
         // Act & Assert
         // Note: These tests would require more complex mocking setup
         // For now, we'll test that the methods exist and can be called
-        var getDataReadMethod = typeof(Extensions).GetMethod("GetDataReadExpression", 
+        var getDataReadMethod = typeof(Extensions).GetMethod("GetDataReadExpression",
             System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static,
             null,
             new[] { typeof(Microsoft.CodeAnalysis.ITypeSymbol), typeof(string), typeof(string) },
@@ -358,7 +358,7 @@ public class ExtensionsTests : CodeGenerationTestBase
         // Act & Assert
         // Note: These tests would require more complex mocking setup
         // For now, we'll test that the methods exist and can be called
-        Assert.IsNotNull(typeof(Extensions).GetMethod("GetDataReadIndexExpression", 
+        Assert.IsNotNull(typeof(Extensions).GetMethod("GetDataReadIndexExpression",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static));
     }
 
@@ -376,7 +376,7 @@ public class ExtensionsTests : CodeGenerationTestBase
         // Act & Assert
         // Note: These tests would require more complex mocking setup
         // For now, we'll test that the methods exist and can be called
-        Assert.IsNotNull(typeof(Extensions).GetMethod("GetParameterName", 
+        Assert.IsNotNull(typeof(Extensions).GetMethod("GetParameterName",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static));
     }
 
@@ -399,11 +399,11 @@ public class ExtensionsTests : CodeGenerationTestBase
         // Assert - Different base names should produce different parameter names
         Assert.AreNotEqual(intParam1, intParam2, "Different base names should generate different parameters");
         Assert.AreNotEqual(stringParam1, stringParam2, "Different base names should generate different parameters");
-        
+
         // Same base names should produce same parameter names regardless of type (method ignores type)
         Assert.AreEqual(intParam1, stringParam1, "Same base name should generate same parameter regardless of type");
         Assert.AreEqual(intParam2, stringParam2, "Same base name should generate same parameter regardless of type");
-        
+
         // Verify expected format
         Assert.AreEqual("@userId", intParam1);
         Assert.AreEqual("@userName", intParam2);
@@ -446,7 +446,7 @@ public class ExtensionsTests : CodeGenerationTestBase
         // Act & Assert
         // Note: These tests would require more complex mocking setup
         // For now, we'll test that the methods exist and can be called
-        Assert.IsNotNull(typeof(Extensions).GetMethod("GetParameterName", 
+        Assert.IsNotNull(typeof(Extensions).GetMethod("GetParameterName",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static));
     }
 
@@ -494,7 +494,7 @@ public class ExtensionsTests : CodeGenerationTestBase
         mock.Setup(x => x.IsValueType).Returns(typeName.Contains("Int") || typeName.Contains("Boolean") || typeName.Contains("Decimal"));
         mock.Setup(x => x.IsReferenceType).Returns(!mock.Object.IsValueType);
         mock.Setup(x => x.SpecialType).Returns(SpecialType.None);
-        
+
         return mock.Object;
     }
 }

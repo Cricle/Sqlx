@@ -72,12 +72,12 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             var circuitBreaker = new CircuitBreaker();
-            
+
             // Force circuit to open
             circuitBreaker.RecordFailure();
             circuitBreaker.RecordFailure();
             circuitBreaker.RecordFailure();
-            
+
             Assert.AreEqual(CircuitBreakerState.Open, circuitBreaker.State);
 
             // Act - Wait for timeout (simulate by waiting a bit more than 1 minute)

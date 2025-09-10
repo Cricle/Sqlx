@@ -26,24 +26,24 @@ internal static class SqlOperationInferrer
         ["search"] = SqlOperationType.Select,
         ["list"] = SqlOperationType.Select,
         ["fetch"] = SqlOperationType.Select,
-        
+
         // INSERT patterns
         ["create"] = SqlOperationType.Insert,
         ["insert"] = SqlOperationType.Insert,
         ["add"] = SqlOperationType.Insert,
         ["save"] = SqlOperationType.Insert,
-        
+
         // UPDATE patterns
         ["update"] = SqlOperationType.Update,
         ["modify"] = SqlOperationType.Update,
         ["edit"] = SqlOperationType.Update,
         ["change"] = SqlOperationType.Update,
-        
+
         // DELETE patterns
         ["delete"] = SqlOperationType.Delete,
         ["remove"] = SqlOperationType.Delete,
         ["destroy"] = SqlOperationType.Delete,
-        
+
         // SCALAR patterns
         ["count"] = SqlOperationType.Scalar,
         ["exists"] = SqlOperationType.Scalar,
@@ -61,7 +61,7 @@ internal static class SqlOperationInferrer
         // First check for explicit attributes
         var sqlExecuteTypeAttr = method.GetAttributes()
             .FirstOrDefault(attr => attr.AttributeClass?.Name == "SqlExecuteTypeAttribute");
-        
+
         if (sqlExecuteTypeAttr?.ConstructorArguments.Length > 0)
         {
             var operationType = sqlExecuteTypeAttr.ConstructorArguments[0].Value;
@@ -109,7 +109,7 @@ internal static class SqlOperationInferrer
         var hasEntityParameter = method.Parameters.Any(p => TypeAnalyzer.IsLikelyEntityType(p.Type));
         if (hasEntityParameter)
         {
-            return actualReturnType.SpecialType == SpecialType.System_Int32 ? 
+            return actualReturnType.SpecialType == SpecialType.System_Int32 ?
                 SqlOperationType.Insert : SqlOperationType.Update;
         }
 
@@ -152,7 +152,7 @@ internal static class SqlOperationInferrer
 
         var columns = string.Join(", ", properties.Select(p => $"[{p.Name}]"));
         var parameters = string.Join(", ", properties.Select(p => $"@{p.Name.ToLowerInvariant()}"));
-        
+
         return $"INSERT INTO [{tableName}] ({columns}) VALUES ({parameters})";
     }
 

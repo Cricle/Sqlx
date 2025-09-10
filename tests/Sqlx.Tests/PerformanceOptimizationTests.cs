@@ -48,7 +48,7 @@ namespace TestNamespace
 }";
 
         var result = GetCSharpGeneratedOutput(source);
-        
+
         // Check if performance monitoring is included in generated code
         Assert.IsTrue(result.Contains("__startTime__") || result.Contains("Stopwatch"),
             "Should include performance monitoring when enabled");
@@ -81,11 +81,11 @@ namespace TestNamespace
 }";
 
         var result = GetCSharpGeneratedOutput(source);
-        
+
         // Check for optimized patterns in generated code
         Assert.IsTrue(result.Contains("global::") || !string.IsNullOrEmpty(result),
             "Should use fully qualified type names for better performance");
-        
+
         // Check that unnecessary allocations are avoided
         Assert.IsFalse(result.Contains("new string[]") && result.Contains("string.Format"),
             "Should avoid unnecessary string allocations");
@@ -120,11 +120,11 @@ namespace TestNamespace
 }";
 
         var result = GetCSharpGeneratedOutput(source);
-        
+
         // Verify that bulk operations use efficient patterns
         Assert.IsTrue(result.Contains("List<") || !string.IsNullOrEmpty(result),
             "Should use List<T> for efficient bulk operations");
-        
+
         // Check that object reuse patterns are used where appropriate
         Assert.IsTrue(result.Contains("new TestNamespace.User") || !string.IsNullOrEmpty(result),
             "Should create objects efficiently in loops");
@@ -159,11 +159,11 @@ namespace TestNamespace
 }";
 
         var result = GetCSharpGeneratedOutput(source);
-        
+
         // Check for async optimization patterns
         Assert.IsTrue(result.Contains("async") || result.Contains("Task"),
             "Should generate proper async method signatures");
-        
+
         if (result.Contains("async"))
         {
             Assert.IsTrue(result.Contains("await") || result.Contains("ConfigureAwait"),
@@ -180,12 +180,12 @@ namespace TestNamespace
         // Test efficient string concatenation
         var result = MemoryOptimizer.ConcatenateEfficiently("SELECT", " * ", "FROM", " Users");
         Assert.AreEqual("SELECT * FROM Users", result);
-        
+
         // Test optimized StringBuilder creation
         var sb = MemoryOptimizer.CreateOptimizedStringBuilder(1024);
         Assert.IsNotNull(sb);
         Assert.IsTrue(sb.Capacity >= 256, "Should have minimum capacity");
-        
+
         // Test efficient string building
         var builtString = MemoryOptimizer.BuildString(builder =>
         {
@@ -204,10 +204,10 @@ namespace TestNamespace
     {
         // Clear caches first
         TypeAnalyzer.ClearCaches();
-        
+
         // Note: TypeAnalyzer methods require ITypeSymbol, not System.Type
         // This is a placeholder test that documents the intended functionality
-        
+
         Assert.IsTrue(true, "TypeAnalyzer caching functionality would be tested with proper ITypeSymbol instances");
     }
 
@@ -219,16 +219,16 @@ namespace TestNamespace
     {
         // Reset monitoring state
         PerformanceMonitor.Clear();
-        
+
         // Record some operations
         for (int i = 0; i < 5; i++)
         {
             PerformanceMonitor.RecordOperation();
         }
-        
+
         // Get total operations
         var totalOps = PerformanceMonitor.TotalOperations;
-        
+
         Assert.AreEqual(5, totalOps, "Should record five operations");
     }
 
@@ -263,10 +263,10 @@ namespace TestNamespace
 }";
 
         var result = GetCSharpGeneratedOutput(source);
-        
+
         // Check for hot path optimizations in frequently called methods
         Assert.IsTrue(!string.IsNullOrEmpty(result), "Should generate code successfully");
-        
+
         // Single-result methods should be optimized for fast execution
         if (result.Contains("GetUserById"))
         {

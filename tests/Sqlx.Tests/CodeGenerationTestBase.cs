@@ -146,7 +146,7 @@ using Microsoft.EntityFrameworkCore;
             {
                 debugOutput += $"=== Generated File ===\n{file.ToString()}\n=== End File ===\n";
             }
-            
+
             var errorMessages = string.Join("\n", finalCompilationErrors.Select(d => d.GetMessage()));
             Assert.Fail($"Final compilation failed with errors:\n{errorMessages}\n\n{debugOutput}");
         }
@@ -241,7 +241,7 @@ public class TestClass
         // Assert
         var runResult = driver.GetRunResult();
         var generatedTrees = runResult.GeneratedTrees;
-        
+
         Assert.IsTrue(generatedTrees.Length > 0, "Should generate source code");
     }
 
@@ -357,7 +357,7 @@ public class TestClass2
         // Assert
         var runResult = driver.GetRunResult();
         var generatedTrees = runResult.GeneratedTrees;
-        
+
         Assert.IsTrue(generatedTrees.Length > 0, "Should generate code for multiple classes");
     }
 

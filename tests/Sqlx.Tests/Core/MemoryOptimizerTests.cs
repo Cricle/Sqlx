@@ -35,10 +35,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             var estimatedSize = 1024;
-            
+
             // Act
             var result = MemoryOptimizer.CreateOptimizedStringBuilder(estimatedSize);
-            
+
             // Assert
             Assert.IsNotNull(result, "Should return a valid StringBuilder");
             Assert.IsTrue(result.Capacity >= estimatedSize, "Capacity should be at least the estimated size");
@@ -49,10 +49,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             var estimatedSize = 0;
-            
+
             // Act
             var result = MemoryOptimizer.CreateOptimizedStringBuilder(estimatedSize);
-            
+
             // Assert
             Assert.IsNotNull(result, "Should return a valid StringBuilder even with zero size");
             Assert.IsTrue(result.Capacity >= 256, "Should have minimum capacity");
@@ -63,10 +63,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             var strings = new[] { "Hello", " ", "World", "!" };
-            
+
             // Act
             var result = MemoryOptimizer.ConcatenateEfficiently(strings);
-            
+
             // Assert
             Assert.AreEqual("Hello World!", result, "Should concatenate strings correctly");
         }
@@ -76,10 +76,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             var strings = new string[0];
-            
+
             // Act
             var result = MemoryOptimizer.ConcatenateEfficiently(strings);
-            
+
             // Assert
             Assert.AreEqual(string.Empty, result, "Empty array should return empty string");
         }
@@ -89,10 +89,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             var strings = new[] { "Hello World" };
-            
+
             // Act
             var result = MemoryOptimizer.ConcatenateEfficiently(strings);
-            
+
             // Assert
             Assert.AreEqual("Hello World", result, "Single string should be returned as-is");
         }
@@ -102,10 +102,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             var strings = new string?[] { "Hello", null, "World" };
-            
+
             // Act
             var result = MemoryOptimizer.ConcatenateEfficiently(strings!);
-            
+
             // Assert
             Assert.AreEqual("HelloWorld", result, "Should handle null strings gracefully");
         }
@@ -115,10 +115,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             var expectedResult = "Test String Builder";
-            
+
             // Act
             var result = MemoryOptimizer.BuildString(sb => sb.Append(expectedResult));
-            
+
             // Assert
             Assert.AreEqual(expectedResult, result, "Should build string correctly");
         }
@@ -128,7 +128,7 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             var expectedResult = "Line1" + Environment.NewLine + "Line2" + Environment.NewLine + "Line3";
-            
+
             // Act
             var result = MemoryOptimizer.BuildString(sb =>
             {
@@ -136,7 +136,7 @@ namespace Sqlx.Tests.Core
                 sb.AppendLine("Line2");
                 sb.Append("Line3");
             });
-            
+
             // Assert
             Assert.AreEqual(expectedResult, result, "Should handle complex string building");
         }

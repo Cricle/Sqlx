@@ -19,7 +19,7 @@ internal static class AttributeSourceGenerator
     public static string GenerateAttributeSource()
     {
         var sb = new StringBuilder();
-        
+
         GenerateHeader(sb);
         GenerateNamespaceStart(sb);
         GenerateAttributes(sb);
@@ -27,7 +27,7 @@ internal static class AttributeSourceGenerator
         GenerateSqlDefineClass(sb);
         GenerateExpressionToSqlClass(sb);
         GenerateNamespaceEnd(sb);
-        
+
         return sb.ToString();
     }
 
@@ -250,7 +250,7 @@ internal static class AttributeSourceGenerator
         sb.AppendLine("        BatchDelete = 6");
         sb.AppendLine("    }");
         sb.AppendLine();
-        
+
         sb.AppendLine("    /// <summary>");
         sb.AppendLine("    /// Defines database dialect types for SQL generation.");
         sb.AppendLine("    /// </summary>");
@@ -486,10 +486,10 @@ internal static class AttributeSourceGenerator
         sb.AppendLine("            return this;");
         sb.AppendLine("        }");
         sb.AppendLine();
-        
+
         // Add the core functionality methods
         GenerateExpressionToSqlCoreMethods(sb);
-        
+
         sb.AppendLine("    }");
         sb.AppendLine();
         sb.AppendLine("    /// <summary>");
@@ -623,7 +623,7 @@ internal static class AttributeSourceGenerator
         sb.AppendLine("            _cachedTemplate = null;");
         sb.AppendLine("        }");
         sb.AppendLine();
-        
+
         // Add helper methods
         GenerateExpressionToSqlHelperMethods(sb);
     }
@@ -691,7 +691,7 @@ internal static class AttributeSourceGenerator
         sb.AppendLine("            return sql.ToString();");
         sb.AppendLine("        }");
         sb.AppendLine();
-        
+
         // Expression parsing methods
         sb.AppendLine("        private string ParseExpression(global::System.Linq.Expressions.Expression expression)");
         sb.AppendLine("        {");
@@ -710,7 +710,7 @@ internal static class AttributeSourceGenerator
         sb.AppendLine("            }");
         sb.AppendLine("        }");
         sb.AppendLine();
-        
+
         sb.AppendLine("        private string ParseBinaryExpression(global::System.Linq.Expressions.BinaryExpression binary)");
         sb.AppendLine("        {");
         sb.AppendLine("            var left = ParseExpression(binary.Left);");
@@ -733,7 +733,7 @@ internal static class AttributeSourceGenerator
         sb.AppendLine("            };");
         sb.AppendLine("        }");
         sb.AppendLine();
-        
+
         sb.AppendLine("        private string GetColumnName(global::System.Linq.Expressions.Expression expression)");
         sb.AppendLine("        {");
         sb.AppendLine("            if (expression is global::System.Linq.Expressions.MemberExpression member)");
@@ -744,13 +744,13 @@ internal static class AttributeSourceGenerator
         sb.AppendLine("            return \"Column\";");
         sb.AppendLine("        }");
         sb.AppendLine();
-        
+
         sb.AppendLine("        private string GetConstantValue(global::System.Linq.Expressions.ConstantExpression constant)");
         sb.AppendLine("        {");
         sb.AppendLine("            return FormatConstantValue(constant.Value);");
         sb.AppendLine("        }");
         sb.AppendLine();
-        
+
         sb.AppendLine("        private string FormatConstantValue(object? value)");
         sb.AppendLine("        {");
         sb.AppendLine("            if (value == null)");

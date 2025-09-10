@@ -56,7 +56,7 @@ namespace Test
 
         // Act & Assert - 应该成功生成代码
         var output = GetCSharpGeneratedOutput(source);
-        
+
         Assert.IsNotNull(output);
         StringAssert.Contains(output, "SelectWithCondition");
         // 生成的代码应该包含动态 WHERE 子句组装
@@ -92,7 +92,7 @@ namespace Test
 }";
 
         var output = GetCSharpGeneratedOutput(source);
-        
+
         Assert.IsNotNull(output);
         StringAssert.Contains(output, "SelectAll");
         // 应该生成简单的 SELECT * FROM table
@@ -127,7 +127,7 @@ namespace Test
 }";
 
         var output = GetCSharpGeneratedOutput(source);
-        
+
         Assert.IsNotNull(output);
         StringAssert.Contains(output, "InsertPerson");
         // 应该生成传统的 INSERT 语句
@@ -174,7 +174,7 @@ namespace Test
 }";
 
         var output = GetCSharpGeneratedOutput(source);
-        
+
         Assert.IsNotNull(output);
         StringAssert.Contains(output, "UpdateWithExpression");
         // 应该使用 ExpressionToSql 的完整 SQL
@@ -215,7 +215,7 @@ namespace Test
 }";
 
         var output = GetCSharpGeneratedOutput(source);
-        
+
         Assert.IsNotNull(output);
         StringAssert.Contains(output, "DeleteWithCondition");
         // 应该生成动态 WHERE 子句
@@ -258,7 +258,7 @@ namespace Test
 }";
 
         var output = GetCSharpGeneratedOutput(source);
-        
+
         Assert.IsNotNull(output);
         StringAssert.Contains(output, "SelectWithParameters");
         // 应该正确处理 ExpressionToSql 参数，忽略系统参数
@@ -281,20 +281,20 @@ public class ParameterRecognitionTests
     {
         // 这个测试验证了 IsSystemParameter 方法的逻辑
         // 由于它是 private 方法，我们通过集成测试来验证行为
-        
+
         var systemParameterTypes = new[]
         {
             "CancellationToken",
-            "DbTransaction", 
+            "DbTransaction",
             "DbConnection"
         };
 
         foreach (var paramType in systemParameterTypes)
         {
-            Assert.IsTrue(IsSystemParameterType(paramType), 
+            Assert.IsTrue(IsSystemParameterType(paramType),
                 $"{paramType} should be recognized as a system parameter");
         }
-        
+
         // 非系统参数
         Assert.IsFalse(IsSystemParameterType("PersonInformation"));
         Assert.IsFalse(IsSystemParameterType("String"));
@@ -304,7 +304,7 @@ public class ParameterRecognitionTests
     private static bool IsSystemParameterType(string typeName)
     {
         // 模拟 IsSystemParameter 的逻辑
-        return typeName == "CancellationToken" || 
+        return typeName == "CancellationToken" ||
                typeName == "DbTransaction" ||
                typeName == "DbConnection";
     }

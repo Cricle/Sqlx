@@ -27,7 +27,7 @@ internal static class BatchOperationGenerator
     private const int MaxBatchSize = 10000;
     private const int MinBatchSize = 100;
     private const int OptimalParameterCount = 2000; // SQL Server parameter limit consideration
-    
+
     /// <summary>
     /// Generates optimized batch INSERT operation.
     /// </summary>
@@ -51,9 +51,9 @@ internal static class BatchOperationGenerator
         sb.AppendLine($"/// <summary>");
         sb.AppendLine($"/// Batch insert up to {batchSize} entities efficiently.");
         sb.AppendLine($"/// </summary>");
-        
+
         CodeGenerator.GenerateMethodSignature(sb, method);
-        
+
         // Validate input
         var entitiesParam = method.Parameters.FirstOrDefault(p => IsCollectionOfEntity(p.Type, entityType));
         if (entitiesParam == null)
@@ -76,7 +76,7 @@ internal static class BatchOperationGenerator
         // Connection setup
         sb.AppendLine("var connection = _connection ?? throw new global::System.ArgumentNullException(nameof(_connection));");
         CodeGenerator.GenerateConnectionSetup(sb, isAsync);
-        
+
         sb.AppendLine($"int totalAffected = 0;");
         sb.AppendLine($"int batchSize = {batchSize};");
         sb.AppendLine();
@@ -85,19 +85,19 @@ internal static class BatchOperationGenerator
         sb.AppendLine("for (int i = 0; i < entityList.Count; i += batchSize)");
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         sb.AppendLine("int currentBatchSize = global::System.Math.Min(batchSize, entityList.Count - i);");
         sb.AppendLine("var batch = entityList.Skip(i).Take(currentBatchSize).ToList();");
         sb.AppendLine();
 
         // Generate dynamic SQL for current batch
         GenerateDynamicBatchSql(sb, properties, tableName, isAsync, cancellationToken);
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
         sb.AppendLine("return totalAffected;");
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
@@ -119,7 +119,7 @@ internal static class BatchOperationGenerator
         sb.AppendLine($"/// <summary>");
         sb.AppendLine($"/// Batch update up to {batchSize} entities efficiently.");
         sb.AppendLine($"/// </summary>");
-        
+
         CodeGenerator.GenerateMethodSignature(sb, method);
 
         var entitiesParam = method.Parameters.FirstOrDefault(p => IsCollectionOfEntity(p.Type, entityType));
@@ -142,7 +142,7 @@ internal static class BatchOperationGenerator
         // Connection setup
         sb.AppendLine("var connection = _connection ?? throw new global::System.ArgumentNullException(nameof(_connection));");
         CodeGenerator.GenerateConnectionSetup(sb, isAsync);
-        
+
         sb.AppendLine($"int totalAffected = 0;");
         sb.AppendLine();
 
@@ -158,13 +158,13 @@ internal static class BatchOperationGenerator
 
         // Generate individual UPDATE for each entity
         GenerateIndividualUpdate(sb, properties, tableName, isAsync, cancellationToken);
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
 
         sb.AppendLine($"{(isAsync ? "await " : "")}transaction.Commit{(isAsync ? "Async" : "")}({(isAsync ? cancellationToken : "")});");
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine("catch");
@@ -176,7 +176,7 @@ internal static class BatchOperationGenerator
         sb.AppendLine("}");
         sb.AppendLine();
         sb.AppendLine("return totalAffected;");
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
@@ -197,7 +197,7 @@ internal static class BatchOperationGenerator
         sb.AppendLine($"/// <summary>");
         sb.AppendLine($"/// Batch delete up to {batchSize} entities efficiently.");
         sb.AppendLine($"/// </summary>");
-        
+
         CodeGenerator.GenerateMethodSignature(sb, method);
 
         var idsParam = method.Parameters.FirstOrDefault(p => IsCollectionOfIds(p.Type));
@@ -220,7 +220,7 @@ internal static class BatchOperationGenerator
         // Connection setup
         sb.AppendLine("var connection = _connection ?? throw new global::System.ArgumentNullException(nameof(_connection));");
         CodeGenerator.GenerateConnectionSetup(sb, isAsync);
-        
+
         sb.AppendLine($"int totalAffected = 0;");
         sb.AppendLine($"int batchSize = {batchSize};");
         sb.AppendLine();
@@ -229,18 +229,18 @@ internal static class BatchOperationGenerator
         sb.AppendLine("for (int i = 0; i < idList.Count; i += batchSize)");
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         sb.AppendLine("int currentBatchSize = global::System.Math.Min(batchSize, idList.Count - i);");
         sb.AppendLine("var batch = idList.Skip(i).Take(currentBatchSize).ToList();");
         sb.AppendLine();
 
         GenerateBatchDeleteSql(sb, tableName, isAsync, cancellationToken);
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
         sb.AppendLine("return totalAffected;");
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
@@ -262,7 +262,7 @@ internal static class BatchOperationGenerator
         sb.AppendLine("// Build dynamic INSERT statement for current batch");
         sb.AppendLine("var sql = new global::System.Text.StringBuilder();");
         sb.AppendLine($"sql.Append(\"INSERT INTO [{tableName}] (\");");
-        
+
         // Add columns
         for (int i = 0; i < properties.Length; i++)
         {
@@ -270,7 +270,7 @@ internal static class BatchOperationGenerator
             if (i > 0) sb.AppendLine("sql.Append(\", \");");
             sb.AppendLine($"sql.Append(\"[{prop.Name}]\");");
         }
-        
+
         sb.AppendLine("sql.Append(\") VALUES \");");
         sb.AppendLine();
 
@@ -280,13 +280,13 @@ internal static class BatchOperationGenerator
         sb.PushIndent();
         sb.AppendLine("if (j > 0) sql.Append(\", \");");
         sb.AppendLine("sql.Append(\"(\");");
-        
+
         for (int i = 0; i < properties.Length; i++)
         {
             if (i > 0) sb.AppendLine("sql.Append(\", \");");
             sb.AppendLine($"sql.Append($\"@{properties[i].Name.ToLowerInvariant()}{{j}}\");");
         }
-        
+
         sb.AppendLine("sql.Append(\")\");");
         sb.PopIndent();
         sb.AppendLine("}");
@@ -302,7 +302,7 @@ internal static class BatchOperationGenerator
         sb.AppendLine("{");
         sb.PushIndent();
         sb.AppendLine("var entity = batch[j];");
-        
+
         foreach (var prop in properties)
         {
             var paramName = prop.Name.ToLowerInvariant();
@@ -311,7 +311,7 @@ internal static class BatchOperationGenerator
             sb.AppendLine($"{paramName}Param.Value = entity.{prop.Name} ?? (object)global::System.DBNull.Value;");
             sb.AppendLine($"command.Parameters.Add({paramName}Param);");
         }
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
@@ -327,7 +327,7 @@ internal static class BatchOperationGenerator
     {
         sb.AppendLine($"using var command = connection.CreateCommand();");
         sb.AppendLine($"command.CommandText = \"UPDATE [{tableName}] SET ");
-        
+
         var setClauses = properties.Where(p => p.Name != "Id").Select(p => $"[{p.Name}] = @{p.Name.ToLowerInvariant()}").ToArray();
         sb.AppendLine($"    \"{string.Join(", ", setClauses)} WHERE [Id] = @id\";");
         sb.AppendLine();
@@ -386,7 +386,7 @@ internal static class BatchOperationGenerator
     {
         return entityType.GetMembers()
             .OfType<IPropertySymbol>()
-            .Where(p => p.SetMethod != null && 
+            .Where(p => p.SetMethod != null &&
                        p.SetMethod.DeclaredAccessibility == Accessibility.Public &&
                        p.Name != "Id" && // Assume Id is auto-generated
                        !p.GetAttributes().Any(a => a.AttributeClass?.Name.Contains("Identity") == true))
@@ -398,7 +398,7 @@ internal static class BatchOperationGenerator
     {
         return entityType.GetMembers()
             .OfType<IPropertySymbol>()
-            .Where(p => p.SetMethod != null && 
+            .Where(p => p.SetMethod != null &&
                        p.SetMethod.DeclaredAccessibility == Accessibility.Public &&
                        !p.GetAttributes().Any(a => a.AttributeClass?.Name.Contains("Key") == true))
             .ToArray();
@@ -408,14 +408,14 @@ internal static class BatchOperationGenerator
     private static bool IsCollectionOfEntity(ITypeSymbol type, INamedTypeSymbol entityType)
     {
         if (type is not INamedTypeSymbol namedType) return false;
-        
+
         // Check for IEnumerable<Entity>, IList<Entity>, List<Entity>, etc.
         if (namedType.IsGenericType && namedType.TypeArguments.Length == 1)
         {
             var elementType = namedType.TypeArguments[0];
             return SymbolEqualityComparer.Default.Equals(elementType, entityType);
         }
-        
+
         return false;
     }
 
@@ -423,7 +423,7 @@ internal static class BatchOperationGenerator
     private static bool IsCollectionOfIds(ITypeSymbol type)
     {
         if (type is not INamedTypeSymbol namedType) return false;
-        
+
         // Check for IEnumerable<int>, IList<int>, List<int>, etc.
         if (namedType.IsGenericType && namedType.TypeArguments.Length == 1)
         {
@@ -431,7 +431,7 @@ internal static class BatchOperationGenerator
             return elementType.SpecialType == SpecialType.System_Int32 ||
                    elementType.SpecialType == SpecialType.System_Int64;
         }
-        
+
         return false;
     }
 
@@ -450,18 +450,18 @@ internal static class BatchOperationGenerator
     {
         var properties = GetInsertableProperties(entityType);
         var parametersPerEntity = properties.Length;
-        
+
         if (parametersPerEntity == 0)
             return Math.Min(requestedBatchSize, DefaultBatchSize);
-        
+
         // Calculate max entities that fit within SQL parameter limit
         var maxEntitiesFromParameterLimit = OptimalParameterCount / parametersPerEntity;
-        
+
         // Apply safety margin and constraints
         var optimalSize = Math.Min(maxEntitiesFromParameterLimit * 3 / 4, requestedBatchSize);
         optimalSize = Math.Max(MinBatchSize, optimalSize);
         optimalSize = Math.Min(MaxBatchSize, optimalSize);
-        
+
         return optimalSize;
     }
 
@@ -473,16 +473,16 @@ internal static class BatchOperationGenerator
         sb.AppendLine("// Advanced batch operation with transaction awareness");
         sb.AppendLine("var operationStartTime = System.Diagnostics.Stopwatch.GetTimestamp();");
         sb.AppendLine();
-        
+
         sb.AppendLine("// Check if we're in an ambient transaction");
         sb.AppendLine("var hasAmbientTransaction = System.Transactions.Transaction.Current != null;");
         sb.AppendLine("global::System.Data.Common.DbTransaction? localTransaction = null;");
         sb.AppendLine();
-        
+
         sb.AppendLine("try");
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         // Transaction management
         sb.AppendLine("if (!hasAmbientTransaction && entityList.Count > 100)");
         sb.AppendLine("{");
@@ -498,7 +498,7 @@ internal static class BatchOperationGenerator
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine("finally");

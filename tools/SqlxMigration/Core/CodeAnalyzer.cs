@@ -60,7 +60,7 @@ public class CodeAnalyzer
             }
 
             await OutputResultAsync(analysisResult, outputPath, format);
-            
+
             PrintSummary(analysisResult);
         }
         catch (Exception ex)
@@ -73,7 +73,7 @@ public class CodeAnalyzer
     private async Task AnalyzeSolutionAsync(string solutionPath, AnalysisResult result)
     {
         _logger.LogInformation("📁 Analyzing solution: {Path}", solutionPath);
-        
+
         // For now, analyze each project individually
         // In a real implementation, you'd use MSBuild APIs to parse the solution
         var solutionDir = Path.GetDirectoryName(solutionPath)!;
@@ -235,7 +235,7 @@ public class CodeAnalyzer
         foreach (Match match in matches)
         {
             var lineNumber = sourceCode.Take(match.Index).Count(c => c == '\n') + 1;
-            
+
             fileAnalysis.SqlStrings.Add(new SqlStringUsage
             {
                 SqlCode = match.Groups[1].Value,
@@ -248,13 +248,13 @@ public class CodeAnalyzer
     private void AnalyzeRepositoryPatterns(SyntaxNode root, FileAnalysis fileAnalysis)
     {
         var interfaces = root.DescendantNodes().OfType<InterfaceDeclarationSyntax>()
-            .Where(i => i.Identifier.ValueText.EndsWith("Repository") || 
+            .Where(i => i.Identifier.ValueText.EndsWith("Repository") ||
                        i.Identifier.ValueText.EndsWith("Service"));
 
         foreach (var interfaceDecl in interfaces)
         {
             var methods = interfaceDecl.Members.OfType<MethodDeclarationSyntax>().ToArray();
-            
+
             if (methods.Any())
             {
                 fileAnalysis.RepositoryPatterns.Add(new RepositoryPattern
@@ -270,7 +270,7 @@ public class CodeAnalyzer
 
     private static bool IsDapperMethod(string methodName)
     {
-        return methodName is "Query" or "QueryAsync" or "QueryFirst" or "QueryFirstAsync" or 
+        return methodName is "Query" or "QueryAsync" or "QueryFirst" or "QueryFirstAsync" or
                "QuerySingle" or "QuerySingleAsync" or "Execute" or "ExecuteAsync" or
                "QueryMultiple" or "QueryMultipleAsync";
     }
@@ -332,7 +332,7 @@ public class CodeAnalyzer
     private string FormatConsoleOutput(AnalysisResult result)
     {
         var output = new System.Text.StringBuilder();
-        
+
         output.AppendLine("📊 MIGRATION ANALYSIS REPORT");
         output.AppendLine("============================");
         output.AppendLine($"Project: {result.ProjectPath}");
@@ -343,7 +343,7 @@ public class CodeAnalyzer
         {
             output.AppendLine($"📁 Project: {project.ProjectName}");
             output.AppendLine($"   Files with migration opportunities: {project.Files.Count}");
-            
+
             var totalDapper = project.Files.Sum(f => f.DapperUsages.Count);
             var totalEF = project.Files.Sum(f => f.EntityFrameworkUsages.Count);
             var totalSql = project.Files.Sum(f => f.SqlStrings.Count);
@@ -366,7 +366,7 @@ public class CodeAnalyzer
         var totalEF = result.Projects.SelectMany(p => p.Files).Sum(f => f.EntityFrameworkUsages.Count);
 
         _logger.LogInformation("✅ Analysis completed");
-        _logger.LogInformation("📊 Summary: {Files} files, {Dapper} Dapper usages, {EF} EF usages", 
+        _logger.LogInformation("📊 Summary: {Files} files, {Dapper} Dapper usages, {EF} EF usages",
             totalFiles, totalDapper, totalEF);
 
         if (totalDapper > 0 || totalEF > 0)

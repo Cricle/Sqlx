@@ -276,7 +276,7 @@ public class TestClass
         // Assert
         var runResult = driver.GetRunResult();
         var generatedSources = runResult.GeneratedTrees;
-        
+
         // Should generate some code even with missing attributes
         Assert.IsTrue(generatedSources.Length > 0, "Should generate some code");
     }
@@ -360,7 +360,7 @@ public class TestClass
         // Assert
         var runResult = driver.GetRunResult();
         var generatedSources = runResult.GeneratedTrees;
-        
+
         // Should handle missing SqlxAttribute gracefully
         Assert.IsNotNull(runResult);
     }
@@ -391,7 +391,7 @@ public class TestClass
         // Assert
         var runResult = driver.GetRunResult();
         var generatedSources = runResult.GeneratedTrees;
-        
+
         // Should handle missing RawSqlAttribute gracefully
         Assert.IsNotNull(runResult);
     }
@@ -422,7 +422,7 @@ public class TestClass
         // Assert
         var runResult = driver.GetRunResult();
         var generatedSources = runResult.GeneratedTrees;
-        
+
         // Should handle missing ExpressionToSqlAttribute gracefully
         Assert.IsNotNull(runResult);
     }
@@ -453,7 +453,7 @@ public class TestClass
         // Assert
         var runResult = driver.GetRunResult();
         var generatedSources = runResult.GeneratedTrees;
-        
+
         // Should handle nullable context options correctly
         Assert.IsNotNull(runResult);
     }
@@ -490,7 +490,7 @@ public class TestClass2
         // Assert
         var runResult = driver.GetRunResult();
         var generatedSources = runResult.GeneratedTrees;
-        
+
         Assert.IsTrue(generatedSources.Length > 0, "Should generate code for multiple classes");
     }
 
@@ -520,7 +520,7 @@ public class TestClass
         // Assert
         var runResult = driver.GetRunResult();
         Assert.IsNotNull(runResult);
-        
+
         // The generator should handle missing SqlxAttribute gracefully
         // and potentially report diagnostics
     }
@@ -551,7 +551,7 @@ public class TestClass
         // Assert
         var runResult = driver.GetRunResult();
         Assert.IsNotNull(runResult);
-        
+
         // The generator should handle missing RawSqlAttribute gracefully
         // and potentially report diagnostics
     }
@@ -582,7 +582,7 @@ public class TestClass
         // Assert
         var runResult = driver.GetRunResult();
         Assert.IsNotNull(runResult);
-        
+
         // The generator should handle missing ExpressionToSqlAttribute gracefully
         // and potentially report diagnostics
     }
@@ -613,7 +613,7 @@ public class TestClass
         // Assert
         var runResult = driver.GetRunResult();
         Assert.IsNotNull(runResult);
-        
+
         // The generator should handle nullable context options correctly
     }
 
@@ -642,7 +642,7 @@ public class TestClass
         // Assert
         var runResult = driver.GetRunResult();
         Assert.IsNotNull(runResult);
-        
+
         // The generator should handle empty method lists gracefully
     }
 
@@ -669,7 +669,7 @@ public class TestClass
         // Assert
         var runResult = driver.GetRunResult();
         Assert.IsNotNull(runResult);
-        
+
         // The generator should handle null syntax receiver gracefully
     }
 

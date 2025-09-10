@@ -20,7 +20,7 @@ namespace Sqlx.Tests.Core
         {
             _connection = new SQLiteConnection("Data Source=:memory:");
             _connection.Open();
-            
+
             // 创建测试表
             using var cmd = _connection.CreateCommand();
             cmd.CommandText = $@"
@@ -87,17 +87,17 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             var items = Enumerable.Range(1, 150)
-                .Select(i => new TestUser 
-                { 
-                    Name = $"User{i}", 
-                    Email = $"user{i}@test.com", 
-                    Age = 20 + (i % 40), 
-                    Department = "Test" 
+                .Select(i => new TestUser
+                {
+                    Name = $"User{i}",
+                    Email = $"user{i}@test.com",
+                    Age = 20 + (i % 40),
+                    Department = "Test"
                 })
                 .ToList();
 
             // Act
-            var result = await BatchOperations.InsertBatchAsync(_connection, TestTableName, items, 
+            var result = await BatchOperations.InsertBatchAsync(_connection, TestTableName, items,
                 batchSize: 1000, autoOptimizeBatchSize: true);
 
             // Assert
@@ -147,7 +147,7 @@ namespace Sqlx.Tests.Core
             items.Add(new TestUser { Name = "Another User", Email = "another@test.com", Age = 25, Department = "HR" });
 
             // Act with continueOnError = true
-            var result = await BatchOperations.InsertBatchAsync(_connection, TestTableName, items, 
+            var result = await BatchOperations.InsertBatchAsync(_connection, TestTableName, items,
                 continueOnError: true);
 
             // Assert - should continue despite errors
@@ -174,7 +174,7 @@ namespace Sqlx.Tests.Core
             insertedUser.Age = 35;
 
             // Act
-            var result = await BatchOperations.UpdateBatchAsync(_connection, TestTableName, 
+            var result = await BatchOperations.UpdateBatchAsync(_connection, TestTableName,
                 new List<TestUser> { insertedUser }, "Id");
 
             // Assert
@@ -293,7 +293,7 @@ namespace Sqlx.Tests.Core
             await BatchOperations.InsertBatchAsync(_connection, TestTableName, items);
 
             // Act - Delete all IT department users
-            var result = await BatchOperations.DeleteBatchAsync(_connection, TestTableName, 
+            var result = await BatchOperations.DeleteBatchAsync(_connection, TestTableName,
                 "Department = @dept", new { dept = "IT" });
 
             // Assert
@@ -350,7 +350,7 @@ namespace Sqlx.Tests.Core
         public async Task DeleteBatchAsync_WithInvalidWhereClause_ShouldReturnError()
         {
             // Arrange & Act
-            var result = await BatchOperations.DeleteBatchAsync(_connection, TestTableName, 
+            var result = await BatchOperations.DeleteBatchAsync(_connection, TestTableName,
                 "InvalidColumn = @value", new { value = "test" });
 
             // Assert
@@ -374,7 +374,7 @@ namespace Sqlx.Tests.Core
             using var cmd = _connection.CreateCommand();
             cmd.CommandText = $"SELECT * FROM {TestTableName} LIMIT 1";
             using var reader = cmd.ExecuteReader();
-            
+
             if (reader.Read())
             {
                 return new TestUser
@@ -386,7 +386,7 @@ namespace Sqlx.Tests.Core
                     Department = reader.GetString("Department")
                 };
             }
-            
+
             return null!;
         }
 
@@ -396,7 +396,7 @@ namespace Sqlx.Tests.Core
             using var cmd = _connection.CreateCommand();
             cmd.CommandText = $"SELECT * FROM {TestTableName}";
             using var reader = cmd.ExecuteReader();
-            
+
             while (reader.Read())
             {
                 users.Add(new TestUser
@@ -408,7 +408,7 @@ namespace Sqlx.Tests.Core
                     Department = reader.GetString("Department")
                 });
             }
-            
+
             return users;
         }
 

@@ -26,7 +26,7 @@ public class MoqBestPractices
         // 测试 NameMapper - 静态方法，不需要依赖
         Assert.AreEqual("person_id", NameMapper.MapName("PersonId"));
         Assert.AreEqual("user_name", NameMapper.MapName("UserName"));
-        
+
         // 测试 GenerateContext 的实用方法
         Assert.AreEqual("first_name", GenerateContext.GetColumnName("FirstName"));
         Assert.AreEqual("@user_id", GenerateContext.GetParamterName("@", "UserId"));
@@ -81,13 +81,13 @@ public class MoqBestPractices
     {
         // 简单的 Mock 可以用于验证基本的调用模式
         var mockLogger = new Mock<Action<string>>();
-        
+
         // 模拟一个简单的日志记录场景
         mockLogger.Setup(log => log(It.IsAny<string>()));
-        
+
         // 调用
         mockLogger.Object("Test message");
-        
+
         // 验证调用
         mockLogger.Verify(log => log("Test message"), Times.Once);
     }
@@ -102,12 +102,12 @@ public class MoqBestPractices
         // 1. Roslyn API 非常复杂，有很多内部依赖
         // 2. Mock 对象无法完全模拟真实的符号语义
         // 3. 测试变得脆弱且难以维护
-        
+
         // 替代方案：
         // - 使用集成测试
         // - 测试更高层的逻辑
         // - 创建简单的测试数据而不是 Mock
-        
+
         Assert.IsTrue(true, "This is just an explanation, not a real test");
     }
 
@@ -119,12 +119,12 @@ public class MoqBestPractices
     {
         // 直接测试 SqlGenerator 的简单案例
         var generator = new SqlGenerator();
-        
+
         // 测试无效输入的处理
         var invalidType = (SqlExecuteTypes)999;
         var result = generator.Generate(SqlDefine.SqlServer, invalidType, null!);
         Assert.AreEqual(string.Empty, result);
-        
+
         // 对于复杂的测试，应该使用集成测试而不是单元测试
         // 参见 samples/CompilationTests 中的实际使用示例
     }
@@ -185,7 +185,7 @@ public class PracticalTestSimplification
         foreach (var testCase in testCases)
         {
             var result = NameMapper.MapName(testCase.Input);
-            Assert.AreEqual(testCase.Expected, result, 
+            Assert.AreEqual(testCase.Expected, result,
                 $"NameMapper.MapName('{testCase.Input}') should return '{testCase.Expected}'");
         }
     }
@@ -212,13 +212,13 @@ public class PracticalTestSimplification
     {
         // Helper 方法比复杂的 Mock 设置更清晰
         var sqlDefines = GetAllSqlDefines();
-        
+
         foreach (var define in sqlDefines)
         {
             var wrapped = define.SqlDefine.WrapColumn("test_table");
-            Assert.IsTrue(wrapped.StartsWith(define.ExpectedLeft), 
+            Assert.IsTrue(wrapped.StartsWith(define.ExpectedLeft),
                 $"{define.Name} should start with {define.ExpectedLeft}");
-            Assert.IsTrue(wrapped.EndsWith(define.ExpectedRight), 
+            Assert.IsTrue(wrapped.EndsWith(define.ExpectedRight),
                 $"{define.Name} should end with {define.ExpectedRight}");
         }
     }

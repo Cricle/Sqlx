@@ -62,7 +62,7 @@ namespace TestNamespace
 }";
 
         var result = GetCSharpGeneratedOutput(source);
-        
+
         // Verify that repository methods are generated
         Assert.IsTrue(result.Contains("public System.Collections.Generic.IList<TestNamespace.User> GetAll()"),
             "Should generate GetAll method implementation");
@@ -122,7 +122,7 @@ namespace TestNamespace
 }";
 
         var result = GetCSharpGeneratedOutput(source);
-        
+
         // Verify that advanced repository methods are generated with correct type parameters
         Assert.IsTrue(result.Contains("public TestNamespace.User? GetById(global::System.Int32 id)"),
             "Should generate GetById method with correct key type");
@@ -177,11 +177,11 @@ namespace TestNamespace
 }";
 
         var result = GetCSharpGeneratedOutput(source);
-        
+
         // Verify repository generation succeeded
         Assert.IsTrue(!string.IsNullOrEmpty(result),
             "Should generate repository implementation successfully");
-        
+
         // Check that the repository implementation was generated with the expected methods
         Assert.IsTrue(result.Contains("public partial class UserService"),
             "Should generate UserService repository class");
@@ -193,7 +193,7 @@ namespace TestNamespace
             "Should generate UpdateUser method implementation");
         Assert.IsTrue(result.Contains("DeleteUser"),
             "Should generate DeleteUser method implementation");
-            
+
         // Verify SQL generation for different operation types
         Assert.IsTrue(result.Contains("SELECT") && result.Contains("FROM"),
             "Should generate SELECT SQL for GetAllUsers");
@@ -242,7 +242,7 @@ namespace TestNamespace
 }";
 
         var result = GetCSharpGeneratedOutput(source);
-        
+
         // Repository generation currently only implements direct interface methods
         // Interface inheritance is not fully supported yet
         Assert.IsTrue(!string.IsNullOrEmpty(result),
@@ -294,11 +294,11 @@ namespace TestNamespace
 }";
 
         var result = GetCSharpGeneratedOutput(source);
-        
+
         // Verify that complex generic constraints are handled
         Assert.IsTrue(!string.IsNullOrEmpty(result),
             "Should successfully generate code for repositories with complex generic constraints");
-        
+
         if (!string.IsNullOrEmpty(result))
         {
             Assert.IsTrue(result.Contains("TestNamespace.User"),
@@ -347,11 +347,11 @@ namespace TestNamespace
 }";
 
         var result = GetCSharpGeneratedOutput(source);
-        
+
         // Verify that nullable reference types are handled properly in generated code
         Assert.IsTrue(!string.IsNullOrEmpty(result),
             "Should successfully generate code with nullable reference types enabled");
-        
+
         if (!string.IsNullOrEmpty(result))
         {
             // Check that nullable properties are handled correctly
@@ -401,11 +401,11 @@ namespace TestNamespace
 }";
 
         var result = GetCSharpGeneratedOutput(source);
-        
+
         // Verify that async methods are generated correctly
         Assert.IsTrue(!string.IsNullOrEmpty(result),
             "Should successfully generate async repository methods");
-        
+
         if (!string.IsNullOrEmpty(result))
         {
             Assert.IsTrue(result.Contains("async") || result.Contains("Task"),

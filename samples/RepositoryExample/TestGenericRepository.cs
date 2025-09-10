@@ -13,7 +13,7 @@ public interface ISimpleRepository<T> where T : class
     /// 获取所有实体
     /// </summary>
     IList<T> GetAll();
-    
+
     /// <summary>
     /// 创建实体
     /// </summary>
@@ -27,7 +27,7 @@ public interface ISimpleRepository<T> where T : class
 public partial class TestGenericRepository : ISimpleRepository<User>
 {
     private readonly DbConnection connection;
-    
+
     /// <summary>
     /// 构造函数
     /// </summary>

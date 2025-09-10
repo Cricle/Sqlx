@@ -41,10 +41,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             Assert.AreEqual(ConnectionState.Closed, _connection.State, "Connection should start closed");
-            
+
             // Act
             await AdvancedConnectionManager.EnsureConnectionOpenAsync(_connection);
-            
+
             // Assert
             Assert.AreEqual(ConnectionState.Open, _connection.State, "Connection should be opened");
         }
@@ -55,10 +55,10 @@ namespace Sqlx.Tests.Core
             // Arrange
             await _connection.OpenAsync();
             Assert.AreEqual(ConnectionState.Open, _connection.State, "Connection should start open");
-            
+
             // Act
             await AdvancedConnectionManager.EnsureConnectionOpenAsync(_connection);
-            
+
             // Assert
             Assert.AreEqual(ConnectionState.Open, _connection.State, "Connection should remain open");
         }
@@ -69,7 +69,7 @@ namespace Sqlx.Tests.Core
             // Arrange
             using var cts = new CancellationTokenSource();
             cts.Cancel(); // Cancel immediately
-            
+
             // Act & Assert
             try
             {
@@ -93,10 +93,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             Assert.AreEqual(ConnectionState.Closed, _connection.State, "Connection should start closed");
-            
+
             // Act
             var health = AdvancedConnectionManager.GetConnectionHealth(_connection);
-            
+
             // Assert
             Assert.IsNotNull(health, "Health result should not be null");
             Assert.IsFalse(health.IsHealthy, "Closed connection should be unhealthy");
@@ -108,10 +108,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             await _connection.OpenAsync();
-            
+
             // Act
             var health = AdvancedConnectionManager.GetConnectionHealth(_connection);
-            
+
             // Assert
             Assert.IsNotNull(health, "Health result should not be null");
             Assert.IsTrue(health.IsHealthy, "Open connection should be healthy");
@@ -124,7 +124,7 @@ namespace Sqlx.Tests.Core
         {
             // Act
             var health = AdvancedConnectionManager.GetConnectionHealth(_connection);
-            
+
             // Assert
             Assert.IsNotNull(health, "Health result should not be null");
             Assert.IsTrue(health.ResponseTime.TotalMilliseconds >= 0, "Response time should be measured");
@@ -136,14 +136,14 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             var connectionWithDb = new SQLiteConnection("Data Source=test.db");
-            
+
             // Act
             var health = AdvancedConnectionManager.GetConnectionHealth(connectionWithDb);
-            
+
             // Assert
             Assert.IsNotNull(health, "Health result should not be null");
             Assert.IsNotNull(health.Database, "Database should be set");
-            
+
             // Cleanup
             connectionWithDb.Dispose();
         }
@@ -153,10 +153,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             _connection.Open();
-            
+
             // Act & Assert - Should not throw
             AdvancedConnectionManager.ReturnToPool(_connection);
-            
+
             // The method is a simplified implementation that doesn't do much,
             // but we verify it executes without error
             Assert.IsTrue(true, "Method should execute without throwing");
@@ -167,10 +167,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             Assert.AreEqual(ConnectionState.Closed, _connection.State, "Connection should start closed");
-            
+
             // Act & Assert - Should not throw
             AdvancedConnectionManager.ReturnToPool(_connection);
-            
+
             Assert.IsTrue(true, "Method should execute without throwing");
         }
 
@@ -179,10 +179,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             Assert.AreEqual(ConnectionState.Closed, _connection.State, "Connection should start closed");
-            
+
             // Act
             await AdvancedConnectionManager.RecoverConnectionAsync(_connection);
-            
+
             // Assert
             Assert.AreEqual(ConnectionState.Open, _connection.State, "Connection should be opened after recovery");
         }
@@ -193,10 +193,10 @@ namespace Sqlx.Tests.Core
             // Arrange
             await _connection.OpenAsync();
             Assert.AreEqual(ConnectionState.Open, _connection.State, "Connection should start open");
-            
+
             // Act
             await AdvancedConnectionManager.RecoverConnectionAsync(_connection);
-            
+
             // Assert
             Assert.AreEqual(ConnectionState.Open, _connection.State, "Connection should remain open");
         }
@@ -206,7 +206,7 @@ namespace Sqlx.Tests.Core
         {
             // Act
             var metrics = AdvancedConnectionManager.GetConnectionMetrics();
-            
+
             // Assert
             Assert.IsNotNull(metrics, "Metrics should not be null");
             // The metrics object should be valid even if it's a simple implementation
@@ -218,7 +218,7 @@ namespace Sqlx.Tests.Core
             // Act
             var metrics1 = AdvancedConnectionManager.GetConnectionMetrics();
             var metrics2 = AdvancedConnectionManager.GetConnectionMetrics();
-            
+
             // Assert
             Assert.AreSame(metrics1, metrics2, "Should return the same metrics instance");
         }
@@ -228,11 +228,11 @@ namespace Sqlx.Tests.Core
         {
             // This test verifies that the expected public methods are accessible
             // without actually calling non-existent methods
-            
+
             // Arrange & Act & Assert
             var type = typeof(AdvancedConnectionManager);
             var methods = type.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-            
+
             // Verify key methods exist
             var methodNames = methods.Select(m => m.Name).ToArray();
             Assert.IsTrue(methodNames.Contains("EnsureConnectionOpenAsync"), "Should have EnsureConnectionOpenAsync method");
@@ -246,19 +246,19 @@ namespace Sqlx.Tests.Core
         public async Task AdvancedConnectionManager_MultipleOperations_WorkCorrectly()
         {
             // Test multiple operations to ensure thread safety and proper state management
-            
+
             // Act
             await AdvancedConnectionManager.EnsureConnectionOpenAsync(_connection);
             var health1 = AdvancedConnectionManager.GetConnectionHealth(_connection);
-            
+
             _connection.Close();
-            
+
             await AdvancedConnectionManager.RecoverConnectionAsync(_connection);
             var health2 = AdvancedConnectionManager.GetConnectionHealth(_connection);
-            
+
             AdvancedConnectionManager.ReturnToPool(_connection);
             var metrics = AdvancedConnectionManager.GetConnectionMetrics();
-            
+
             // Assert
             Assert.IsTrue(health1.IsHealthy, "First health check should be healthy");
             Assert.IsTrue(health2.IsHealthy, "Second health check should be healthy after recovery");
@@ -277,10 +277,10 @@ namespace Sqlx.Tests.Core
                 ResponseTime = TimeSpan.FromMilliseconds(50),
                 LastChecked = DateTime.UtcNow
             };
-            
+
             // Act
             var result = health.ToString();
-            
+
             // Assert
             Assert.IsNotNull(result, "ToString should not return null");
             Assert.IsTrue(result.Contains("Healthy: True"), "Should contain health status");
@@ -300,10 +300,10 @@ namespace Sqlx.Tests.Core
                 Database = "",
                 ResponseTime = TimeSpan.Zero
             };
-            
+
             // Act
             var result = health.ToString();
-            
+
             // Assert
             Assert.IsNotNull(result, "ToString should not return null");
             Assert.IsTrue(result.Contains("Healthy: False"), "Should contain unhealthy status");
@@ -315,10 +315,10 @@ namespace Sqlx.Tests.Core
         {
             // Act
             var metrics = AdvancedConnectionManager.GetConnectionMetrics();
-            
+
             // Assert
             Assert.IsNotNull(metrics, "Metrics should not be null");
-            
+
             // Test that we can access properties without exceptions
             // The actual ConnectionMetrics class might have various properties
             try

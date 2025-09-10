@@ -59,7 +59,7 @@ namespace Sqlx.Tests.Coverage
                     var value = $"value_for_{key}";
                     IntelligentCacheManager.Set(key, value);
                     var retrieved = IntelligentCacheManager.Get<string>(key);
-                    
+
                     Assert.AreEqual(value, retrieved, $"Failed for key: {key}");
                 }
                 catch (Exception ex)
@@ -101,7 +101,7 @@ namespace Sqlx.Tests.Coverage
                 {
                     IntelligentCacheManager.Set(testCase.Key, testCase.Value);
                     var retrieved = IntelligentCacheManager.Get<object>(testCase.Key);
-                    
+
                     if (testCase.Value == null)
                     {
                         Assert.IsNull(retrieved, $"Failed for key: {testCase.Key}");
@@ -177,7 +177,7 @@ namespace Sqlx.Tests.Coverage
                         IntelligentCacheManager.Set(key, value);
                         activeKeys.Add(key);
                         break;
-                        
+
                     case 1: // Get
                         var retrieved = IntelligentCacheManager.Get<string>(key);
                         if (activeKeys.Contains(key))
@@ -185,7 +185,7 @@ namespace Sqlx.Tests.Coverage
                             Assert.IsNotNull(retrieved);
                         }
                         break;
-                        
+
                     case 2: // Remove
                         var removed = IntelligentCacheManager.Remove(key);
                         if (removed)
@@ -193,7 +193,7 @@ namespace Sqlx.Tests.Coverage
                             activeKeys.Remove(key);
                         }
                         break;
-                        
+
                     case 3: // GetOrAdd
                         var getOrAddResult = IntelligentCacheManager.GetOrAdd(key, () => value);
                         activeKeys.Add(key);
@@ -234,7 +234,7 @@ namespace Sqlx.Tests.Coverage
                 {
                     IntelligentCacheManager.Set(key, value, expiration);
                     var retrieved = IntelligentCacheManager.Get<string>(key);
-                    
+
                     if (expiration.TotalMilliseconds < 50) // 很短的过期时间可能已经过期
                     {
                         // 可能已经过期，这是正常的
@@ -272,12 +272,12 @@ namespace Sqlx.Tests.Coverage
                     {
                         await Task.Delay(10);
                         attemptCount++;
-                        
+
                         if (attemptCount < maxAttempts)
                         {
                             throw new InvalidOperationException($"Attempt {attemptCount} failed");
                         }
-                        
+
                         return $"Success on attempt {attemptCount}";
                     }, maxAttempts);
 
@@ -319,7 +319,7 @@ namespace Sqlx.Tests.Coverage
                         await Task.Delay(10);
                         throw (Exception)Activator.CreateInstance(exceptionType, $"Test {exceptionType.Name}")!;
                     }, maxAttempts: 2);
-                    
+
                     Assert.Fail($"Should have thrown {exceptionType.Name}");
                 }
                 catch (Exception ex)
@@ -342,22 +342,22 @@ namespace Sqlx.Tests.Coverage
                 tasks.Add(Task.Run(async () =>
                 {
                     var attemptCount = 0;
-                    
+
                     try
                     {
                         var result = await AdvancedConnectionManager.ExecuteWithRetryAsync<string>(async () =>
                         {
                             await Task.Delay(50);
                             attemptCount++;
-                            
+
                             if (attemptCount < 2)
                             {
                                 throw new InvalidOperationException($"Task {taskId} attempt {attemptCount} failed");
                             }
-                            
+
                             return $"Task {taskId} succeeded";
                         });
-                        
+
                         Assert.IsNotNull(result);
                         Assert.IsTrue(result.Contains($"Task {taskId}"));
                     }
@@ -390,13 +390,13 @@ namespace Sqlx.Tests.Coverage
                     var key = $"pressure_key_{i}";
                     var value = new string('X', itemSize);
                     IntelligentCacheManager.Set(key, value);
-                    
+
                     // 每1000个项目检查一次内存使用
                     if (i % 1000 == 0)
                     {
                         var currentMemory = GC.GetTotalMemory(false);
                         var memoryIncrease = currentMemory - initialMemory;
-                        
+
                         // 内存增长不应该超过合理范围
                         Assert.IsTrue(memoryIncrease < 50 * 1024 * 1024, // 50MB limit
                             $"Memory usage too high: {memoryIncrease / 1024 / 1024}MB at item {i}");
@@ -430,7 +430,7 @@ namespace Sqlx.Tests.Coverage
             for (int batch = 0; batch < batchCount; batch++)
             {
                 var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-                
+
                 // 批量设置
                 for (int i = 0; i < batchSize; i++)
                 {
@@ -438,17 +438,17 @@ namespace Sqlx.Tests.Coverage
                     var value = $"value_{batch}_{i}";
                     IntelligentCacheManager.Set(key, value);
                 }
-                
+
                 // 批量获取
                 for (int i = 0; i < batchSize; i++)
                 {
                     var key = $"perf_batch_{batch}_item_{i}";
                     IntelligentCacheManager.Get<string>(key);
                 }
-                
+
                 stopwatch.Stop();
                 batchTimes.Add(stopwatch.ElapsedMilliseconds);
-                
+
                 Console.WriteLine($"Batch {batch}: {stopwatch.ElapsedMilliseconds}ms for {batchSize * 2} operations");
             }
 
@@ -486,16 +486,16 @@ namespace Sqlx.Tests.Coverage
                             var result = await AdvancedConnectionManager.ExecuteWithRetryAsync<string>(async () =>
                             {
                                 await Task.Delay(10);
-                                
+
                                 // 模拟偶尔失败
                                 if (new Random().Next(0, 10) < 2) // 20% 失败率
                                 {
                                     throw new InvalidOperationException("Random failure");
                                 }
-                                
+
                                 return $"Task_{taskId}_Op_{j}_Success";
                             });
-                            
+
                             lock (lockObject)
                             {
                                 successCount++;
@@ -516,7 +516,7 @@ namespace Sqlx.Tests.Coverage
 
             var totalOperations = taskCount * operationsPerTask;
             Console.WriteLine($"High concurrency test: {successCount} successes, {failureCount} failures out of {totalOperations} operations");
-            
+
             // 至少应该有一些成功的操作
             Assert.IsTrue(successCount > 0);
             Assert.AreEqual(totalOperations, successCount + failureCount);
@@ -543,14 +543,14 @@ namespace Sqlx.Tests.Coverage
             foreach (var exceptionType in exceptionTypes)
             {
                 var key = $"exception_test_{exceptionType.Name}";
-                
+
                 try
                 {
                     IntelligentCacheManager.GetOrAdd<string>(key, () =>
                     {
                         throw (Exception)Activator.CreateInstance(exceptionType, $"Test {exceptionType.Name}")!;
                     });
-                    
+
                     Assert.Fail($"Should have thrown {exceptionType.Name}");
                 }
                 catch (Exception ex)
@@ -580,7 +580,7 @@ namespace Sqlx.Tests.Coverage
 
             // 清理
             IntelligentCacheManager.Clear();
-            
+
             var clearedStats = IntelligentCacheManager.GetStatistics();
             Assert.AreEqual(0, clearedStats.EntryCount);
 

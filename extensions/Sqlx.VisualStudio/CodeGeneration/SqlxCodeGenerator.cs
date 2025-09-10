@@ -24,7 +24,7 @@ namespace Sqlx.VisualStudio.CodeGeneration
         /// <param name="tableName">The database table name.</param>
         /// <param name="dialectType">The SQL dialect type.</param>
         /// <returns>The generated interface code.</returns>
-        public static string GenerateRepositoryInterface(string entityName, EntityProperty[] properties, 
+        public static string GenerateRepositoryInterface(string entityName, EntityProperty[] properties,
             string tableName, string dialectType = "SqlServer")
         {
             var sb = new StringBuilder();

@@ -27,7 +27,7 @@ namespace Sqlx.VisualStudio.Highlighting
 
         public IClassifier GetClassifier(ITextBuffer textBuffer)
         {
-            return textBuffer.Properties.GetOrCreateSingletonProperty(() => 
+            return textBuffer.Properties.GetOrCreateSingletonProperty(() =>
                 new SqlxClassifier(ClassificationTypeRegistry));
         }
     }
@@ -151,7 +151,7 @@ namespace Sqlx.VisualStudio.Highlighting
         private readonly IClassificationType _sqlColumnType;
 
         private static readonly Regex SqlxAttributeRegex = new Regex(
-            @"\[Sqlx\(\s*""([^""]*)""\s*\)", 
+            @"\[Sqlx\(\s*""([^""]*)""\s*\)",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         private static readonly Regex SqlKeywordRegex = new Regex(
@@ -166,12 +166,12 @@ namespace Sqlx.VisualStudio.Highlighting
             @"'([^']|'')*'",
             RegexOptions.Compiled);
 
-        private static readonly string[] KnownTables = 
+        private static readonly string[] KnownTables =
         {
             "Users", "Orders", "Products", "Categories", "OrderItems", "Employees"
         };
 
-        private static readonly string[] KnownColumns = 
+        private static readonly string[] KnownColumns =
         {
             "Id", "FirstName", "LastName", "Email", "Age", "IsActive", "CreatedDate",
             "UserId", "OrderDate", "TotalAmount", "Status", "ShippingAddress",

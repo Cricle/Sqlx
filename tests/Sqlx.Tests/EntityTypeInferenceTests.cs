@@ -59,11 +59,11 @@ namespace TestNamespace
         var generatedCode = string.Join("\n", generatedSources);
 
         // Should infer Book as entity type
-        Assert.IsTrue(generatedCode.Contains("partial class BookRepository : TestNamespace.IBookService"), 
+        Assert.IsTrue(generatedCode.Contains("partial class BookRepository : TestNamespace.IBookService"),
             "Should generate repository implementing IBookService");
-        Assert.IsTrue(generatedCode.Contains("TestNamespace.Book GetBook()"), 
+        Assert.IsTrue(generatedCode.Contains("TestNamespace.Book GetBook()"),
             "Should handle Book return type");
-        Assert.IsTrue(generatedCode.Contains("System.Collections.Generic.IList<TestNamespace.Book> GetBooks()"), 
+        Assert.IsTrue(generatedCode.Contains("System.Collections.Generic.IList<TestNamespace.Book> GetBooks()"),
             "Should handle IList<Book> return type");
     }
 
@@ -109,16 +109,16 @@ namespace TestNamespace
         var generatedCode = string.Join("\n", generatedSources);
 
         // Should infer Movie as entity type from all collection types
-        Assert.IsTrue(generatedCode.Contains("partial class MovieRepository : TestNamespace.IMovieService"), 
+        Assert.IsTrue(generatedCode.Contains("partial class MovieRepository : TestNamespace.IMovieService"),
             "Should generate repository implementing IMovieService");
-        Assert.IsTrue(generatedCode.Contains("IEnumerable<TestNamespace.Movie>") || 
-                     generatedCode.Contains("GetMovies"), 
+        Assert.IsTrue(generatedCode.Contains("IEnumerable<TestNamespace.Movie>") ||
+                     generatedCode.Contains("GetMovies"),
             "Should handle IEnumerable<Movie>");
-        Assert.IsTrue(generatedCode.Contains("List<TestNamespace.Movie>") || 
-                     generatedCode.Contains("SearchMovies"), 
+        Assert.IsTrue(generatedCode.Contains("List<TestNamespace.Movie>") ||
+                     generatedCode.Contains("SearchMovies"),
             "Should handle List<Movie>");
-        Assert.IsTrue(generatedCode.Contains("TestNamespace.Movie[]") || 
-                     generatedCode.Contains("GetTopMovies"), 
+        Assert.IsTrue(generatedCode.Contains("TestNamespace.Movie[]") ||
+                     generatedCode.Contains("GetTopMovies"),
             "Should handle Movie[]");
     }
 
@@ -164,13 +164,13 @@ namespace TestNamespace
         var generatedCode = string.Join("\n", generatedSources);
 
         // Should infer Song as entity type from async return types
-        Assert.IsTrue(generatedCode.Contains("partial class SongRepository : TestNamespace.ISongService"), 
+        Assert.IsTrue(generatedCode.Contains("partial class SongRepository : TestNamespace.ISongService"),
             "Should generate repository implementing ISongService");
-        Assert.IsTrue(generatedCode.Contains("Task<TestNamespace.Song>") || 
-                     generatedCode.Contains("GetSongAsync"), 
+        Assert.IsTrue(generatedCode.Contains("Task<TestNamespace.Song>") ||
+                     generatedCode.Contains("GetSongAsync"),
             "Should handle Task<Song>");
-        Assert.IsTrue(generatedCode.Contains("Task<System.Collections.Generic.IList<TestNamespace.Song>>") || 
-                     generatedCode.Contains("GetSongsAsync"), 
+        Assert.IsTrue(generatedCode.Contains("Task<System.Collections.Generic.IList<TestNamespace.Song>>") ||
+                     generatedCode.Contains("GetSongsAsync"),
             "Should handle Task<IList<Song>>");
     }
 
@@ -214,11 +214,11 @@ namespace TestNamespace
         var generatedCode = string.Join("\n", generatedSources);
 
         // Should infer Category as entity type from parameters
-        Assert.IsTrue(generatedCode.Contains("partial class CategoryRepository : TestNamespace.ICategoryService"), 
+        Assert.IsTrue(generatedCode.Contains("partial class CategoryRepository : TestNamespace.ICategoryService"),
             "Should generate repository implementing ICategoryService");
-        Assert.IsTrue(generatedCode.Contains("CreateCategory(TestNamespace.Category category)"), 
+        Assert.IsTrue(generatedCode.Contains("CreateCategory(TestNamespace.Category category)"),
             "Should handle Category parameter in CreateCategory");
-        Assert.IsTrue(generatedCode.Contains("UpdateCategory(TestNamespace.Category category)"), 
+        Assert.IsTrue(generatedCode.Contains("UpdateCategory(TestNamespace.Category category)"),
             "Should handle Category parameter in UpdateCategory");
     }
 
@@ -261,13 +261,13 @@ namespace TestNamespace
         var generatedCode = string.Join("\n", generatedSources);
 
         // Should still generate implementation using interface name fallback
-        Assert.IsTrue(generatedCode.Contains("partial class AuthorRepository : TestNamespace.IAuthorService"), 
+        Assert.IsTrue(generatedCode.Contains("partial class AuthorRepository : TestNamespace.IAuthorService"),
             "Should generate repository implementing IAuthorService");
-        Assert.IsTrue(generatedCode.Contains("DoWork()"), 
+        Assert.IsTrue(generatedCode.Contains("DoWork()"),
             "Should generate DoWork method");
-        Assert.IsTrue(generatedCode.Contains("GetCount()"), 
+        Assert.IsTrue(generatedCode.Contains("GetCount()"),
             "Should generate GetCount method");
-        Assert.IsTrue(generatedCode.Contains("GetStatus()"), 
+        Assert.IsTrue(generatedCode.Contains("GetStatus()"),
             "Should generate GetStatus method");
     }
 
@@ -315,13 +315,13 @@ namespace TestNamespace
         var generatedCode = string.Join("\n", generatedSources);
 
         // Should infer Report as entity type (not string, DateTime, etc.)
-        Assert.IsTrue(generatedCode.Contains("partial class ReportRepository : TestNamespace.IReportService"), 
+        Assert.IsTrue(generatedCode.Contains("partial class ReportRepository : TestNamespace.IReportService"),
             "Should generate repository implementing IReportService");
-        Assert.IsTrue(generatedCode.Contains("TestNamespace.Report GetReport"), 
+        Assert.IsTrue(generatedCode.Contains("TestNamespace.Report GetReport"),
             "Should handle Report return type");
-        Assert.IsTrue(generatedCode.Contains("System.Collections.Generic.IList<TestNamespace.Report> GetAllReports"), 
+        Assert.IsTrue(generatedCode.Contains("System.Collections.Generic.IList<TestNamespace.Report> GetAllReports"),
             "Should handle IList<Report> return type");
-        Assert.IsTrue(generatedCode.Contains("IsReportValid(TestNamespace.Report report)"), 
+        Assert.IsTrue(generatedCode.Contains("IsReportValid(TestNamespace.Report report)"),
             "Should handle Report parameter type");
     }
 
@@ -375,12 +375,12 @@ namespace TestNamespace
         var generatedCode = string.Join("\n", generatedSources);
 
         // Should infer Student as primary entity type (appears more frequently)
-        Assert.IsTrue(generatedCode.Contains("partial class StudentRepository : TestNamespace.IStudentService"), 
+        Assert.IsTrue(generatedCode.Contains("partial class StudentRepository : TestNamespace.IStudentService"),
             "Should generate repository implementing IStudentService");
         // Most methods should work with Student type
-        Assert.IsTrue(generatedCode.Contains("GetStudents()"), 
+        Assert.IsTrue(generatedCode.Contains("GetStudents()"),
             "Should generate GetStudents method");
-        Assert.IsTrue(generatedCode.Contains("GetStudent(int id)"), 
+        Assert.IsTrue(generatedCode.Contains("GetStudent(int id)"),
             "Should generate GetStudent method");
     }
 
@@ -424,9 +424,9 @@ namespace TestNamespace
         var generatedCode = string.Join("\n", generatedSources);
 
         // Should infer Comment from nested generic types
-        Assert.IsTrue(generatedCode.Contains("partial class CommentRepository : TestNamespace.ICommentService"), 
+        Assert.IsTrue(generatedCode.Contains("partial class CommentRepository : TestNamespace.ICommentService"),
             "Should generate repository implementing ICommentService");
-        Assert.IsTrue(generatedCode.Contains("GetCommentsAsync()"), 
+        Assert.IsTrue(generatedCode.Contains("GetCommentsAsync()"),
             "Should generate GetCommentsAsync method");
     }
 
@@ -466,7 +466,7 @@ namespace TestNamespace
         var generatedCode = string.Join("\n", generatedSources);
 
         // Should still generate basic repository structure
-        Assert.IsTrue(generatedCode.Contains("partial class TagRepository : TestNamespace.ITagService"), 
+        Assert.IsTrue(generatedCode.Contains("partial class TagRepository : TestNamespace.ITagService"),
             "Should generate repository implementing ITagService even for empty interface");
     }
 

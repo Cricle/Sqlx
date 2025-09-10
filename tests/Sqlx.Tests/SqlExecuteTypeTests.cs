@@ -33,12 +33,12 @@ public class SqlExecuteTypeTests
     public void SqlGenerator_SupportsAllOperationTypes()
     {
         // Arrange - 验证枚举定义正确
-        var expectedTypes = new[] 
-        { 
-            SqlExecuteTypes.Select, 
-            SqlExecuteTypes.Insert, 
-            SqlExecuteTypes.Update, 
-            SqlExecuteTypes.Delete 
+        var expectedTypes = new[]
+        {
+            SqlExecuteTypes.Select,
+            SqlExecuteTypes.Insert,
+            SqlExecuteTypes.Update,
+            SqlExecuteTypes.Delete
         };
 
         // Act & Assert - 验证所有操作类型都有定义

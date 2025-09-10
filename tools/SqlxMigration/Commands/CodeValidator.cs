@@ -83,14 +83,14 @@ public class CodeValidator
 
         var hasSqlxAttributes = root.DescendantNodes()
             .OfType<AttributeSyntax>()
-            .Any(a => a.Name.ToString().Contains("Sqlx") || 
+            .Any(a => a.Name.ToString().Contains("Sqlx") ||
                      a.Name.ToString().Contains("SqlExecuteType") ||
                      a.Name.ToString().Contains("RepositoryFor"));
 
         if (hasSqlxAttributes && !hasNecessaryUsings)
         {
-            AddIssue(ValidationSeverity.Error, filePath, 1, 
-                "Missing 'using Sqlx.Annotations;' statement", 
+            AddIssue(ValidationSeverity.Error, filePath, 1,
+                "Missing 'using Sqlx.Annotations;' statement",
                 "Add 'using Sqlx.Annotations;' to the top of the file");
         }
 
@@ -106,12 +106,12 @@ public class CodeValidator
                 .Any(c => c.AttributeLists
                     .SelectMany(al => al.Attributes)
                     .Any(a => a.Name.ToString().Contains("RepositoryFor") &&
-                             a.ArgumentList?.Arguments.Any(arg => 
+                             a.ArgumentList?.Arguments.Any(arg =>
                                  arg.Expression.ToString().Contains(repoInterface.Identifier.ValueText)) == true));
 
             if (!hasRepositoryForAttribute)
             {
-                AddIssue(ValidationSeverity.Warning, filePath, 
+                AddIssue(ValidationSeverity.Warning, filePath,
                     repoInterface.GetLocation().GetLineSpan().StartLinePosition.Line + 1,
                     $"Repository interface {repoInterface.Identifier.ValueText} has no implementation",
                     $"Create a class with [RepositoryFor(typeof({repoInterface.Identifier.ValueText}))] attribute");
@@ -132,7 +132,7 @@ public class CodeValidator
             // Check for proper connection field
             var hasConnectionField = repoClass.Members
                 .OfType<FieldDeclarationSyntax>()
-                .Any(f => f.Declaration.Variables.Any(v => 
+                .Any(f => f.Declaration.Variables.Any(v =>
                     v.Identifier.ValueText.Contains("connection") &&
                     f.Declaration.Type.ToString().Contains("DbConnection")));
 
@@ -179,7 +179,7 @@ public class CodeValidator
             var sqlString = ExtractSqlFromAttribute(attribute);
             if (!string.IsNullOrEmpty(sqlString))
             {
-                ValidateSqlString(sqlString, filePath, 
+                ValidateSqlString(sqlString, filePath,
                     attribute.GetLocation().GetLineSpan().StartLinePosition.Line + 1, strict);
             }
         }
@@ -375,7 +375,7 @@ public class CodeValidator
             _logger.LogInformation("\n❌ ERRORS:");
             foreach (var error in errors)
             {
-                _logger.LogError("   📄 {File}:{Line} - {Message}", 
+                _logger.LogError("   📄 {File}:{Line} - {Message}",
                     Path.GetFileName(error.FilePath), error.LineNumber, error.Message);
                 _logger.LogInformation("      💡 {Suggestion}", error.Suggestion);
             }
@@ -386,7 +386,7 @@ public class CodeValidator
             _logger.LogInformation("\n⚠️ WARNINGS:");
             foreach (var warning in warnings.Take(10)) // Show first 10 warnings
             {
-                _logger.LogWarning("   📄 {File}:{Line} - {Message}", 
+                _logger.LogWarning("   📄 {File}:{Line} - {Message}",
                     Path.GetFileName(warning.FilePath), warning.LineNumber, warning.Message);
             }
             if (warnings.Length > 10)

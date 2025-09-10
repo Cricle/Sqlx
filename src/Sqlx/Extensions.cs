@@ -39,15 +39,15 @@ internal static class Extensions
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static bool IsDbConnection(this ISymbol typeSymbol) => 
+    internal static bool IsDbConnection(this ISymbol typeSymbol) =>
         IsTypeInHierarchy(typeSymbol, "DbConnection", _dbConnectionTypeCache);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static bool IsDbTransaction(this ISymbol typeSymbol) => 
+    internal static bool IsDbTransaction(this ISymbol typeSymbol) =>
         IsTypeInHierarchy(typeSymbol, "DbTransaction", _dbTransactionTypeCache);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static bool IsDbContext(this ISymbol typeSymbol) => 
+    internal static bool IsDbContext(this ISymbol typeSymbol) =>
         IsTypeInHierarchy(typeSymbol, "DbContext", _dbContextTypeCache);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -91,14 +91,14 @@ internal static class Extensions
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static bool IsCancellationToken(this ISymbol typeSymbol) => 
+    internal static bool IsCancellationToken(this ISymbol typeSymbol) =>
         string.Equals(typeSymbol.Name, "CancellationToken", StringComparison.Ordinal);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static ITypeSymbol UnwrapTaskType(this ITypeSymbol type) => UnwrapType(type, "Task");
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static ITypeSymbol UnwrapListType(this ITypeSymbol type) => 
+    internal static ITypeSymbol UnwrapListType(this ITypeSymbol type) =>
         UnwrapType(type, "List", "IList", "ICollection", "IReadOnlyList", "IEnumerable", "IAsyncEnumerable");
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -107,8 +107,8 @@ internal static class Extensions
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static INamedTypeSymbol UnwrapNullableType(INamedTypeSymbol namedTypeSymbol)
-        => string.Equals(namedTypeSymbol.Name, "Nullable", StringComparison.Ordinal) 
-            ? (INamedTypeSymbol)namedTypeSymbol.TypeArguments[0] 
+        => string.Equals(namedTypeSymbol.Name, "Nullable", StringComparison.Ordinal)
+            ? (INamedTypeSymbol)namedTypeSymbol.TypeArguments[0]
             : namedTypeSymbol;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -134,8 +134,8 @@ internal static class Extensions
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static bool IsTuple(ITypeSymbol returnType) => 
-        string.Equals(returnType.Name, "Tuple", StringComparison.Ordinal) || 
+    internal static bool IsTuple(ITypeSymbol returnType) =>
+        string.Equals(returnType.Name, "Tuple", StringComparison.Ordinal) ||
         string.Equals(returnType.Name, "ValueTuple", StringComparison.Ordinal);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -150,8 +150,8 @@ internal static class Extensions
         {
             var attribute = prop.GetAttributes()
                 .FirstOrDefault(attr => attr.AttributeClass?.Name == "DbColumnAttribute");
-            
-            return attribute?.ConstructorArguments.FirstOrDefault().Value as string 
+
+            return attribute?.ConstructorArguments.FirstOrDefault().Value as string
                    ?? NameMapper.MapName(prop.Name);
         });
     }
@@ -173,7 +173,7 @@ internal static class Extensions
             Accessibility.Friend => "internal",
             Accessibility.Private => "private",
             Accessibility.ProtectedAndInternal => "protected internal",
-            Accessibility.Protected =>"protected",
+            Accessibility.Protected => "protected",
             _ => string.Empty,
         };
     }
@@ -213,7 +213,7 @@ internal static class Extensions
     private static string? GetDataReaderMethodCore(ITypeSymbol type)
     {
         var unwrapType = UnwrapNullableType(type);
-        
+
         // Handle Guid specially first
         if (string.Equals(type.Name, "Guid", StringComparison.Ordinal))
             return "GetGuid";
@@ -244,7 +244,7 @@ internal static class Extensions
     {
         var method = GetDataReaderMethod(type);
         var isNullable = UnwrapNullableType(type) != type;
-        
+
         // Optimized null check with proper ordinal usage
         return isNullable
             ? $"{readerName}.IsDBNull({index}) ? default : {readerName}.{method}({index})"
@@ -302,7 +302,7 @@ internal static class Extensions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static ITypeSymbol UnwrapType(this ITypeSymbol type, params string[] names)
     {
-        if (type is INamedTypeSymbol { IsGenericType: true } namedTypeSymbol && 
+        if (type is INamedTypeSymbol { IsGenericType: true } namedTypeSymbol &&
             names.Any(name => string.Equals(type.Name, name, StringComparison.Ordinal)))
         {
             return namedTypeSymbol.TypeArguments[0];

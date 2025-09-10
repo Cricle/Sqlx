@@ -311,7 +311,7 @@ namespace TestNamespace
 
         // Test that the constants are read-only (immutable)
         Assert.IsTrue(mysql.GetType().IsValueType, "SqlDefine should be a value type (record)");
-        
+
         // Test that the properties are read-only
         var properties = mysql.GetType().GetProperties();
         foreach (var property in properties)

@@ -56,7 +56,7 @@ public class SqlExecuteTypeMockTests
         foreach (var testCase in testCases)
         {
             var result = GenerateContext.GetColumnName(testCase.Input);
-            Assert.AreEqual(testCase.Expected, result, 
+            Assert.AreEqual(testCase.Expected, result,
                 $"GetColumnName('{testCase.Input}') should return '{testCase.Expected}'");
         }
     }
@@ -163,8 +163,8 @@ public class SqlExecuteTypesEnumTests
         {
             var stringValue = value.ToString();
             var parsedValue = System.Enum.Parse<SqlExecuteTypes>(stringValue);
-            
-            Assert.AreEqual(value, parsedValue, 
+
+            Assert.AreEqual(value, parsedValue,
                 $"Round-trip conversion should work for {value}");
         }
     }

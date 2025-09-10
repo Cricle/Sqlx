@@ -33,7 +33,7 @@ namespace Sqlx.Core
         public static ConnectionHealth GetConnectionHealth(DbConnection connection)
         {
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-            
+
             try
             {
                 var isHealthy = connection.State == ConnectionState.Open;
@@ -65,7 +65,7 @@ namespace Sqlx.Core
         public static async Task<T> ExecuteWithRetryAsync<T>(Func<Task<T>> operation, int maxAttempts = 3)
         {
             Exception? lastException = null;
-            
+
             for (int attempt = 1; attempt <= maxAttempts; attempt++)
             {
                 try
@@ -75,15 +75,15 @@ namespace Sqlx.Core
                 catch (Exception ex)
                 {
                     lastException = ex;
-                    
+
                     if (attempt == maxAttempts)
                         break;
-                    
+
                     var delay = CalculateExponentialBackoff(attempt);
                     await Task.Delay(delay);
                 }
             }
-            
+
             throw lastException!;
         }
 
@@ -93,12 +93,12 @@ namespace Sqlx.Core
         public static async Task<T> ExecuteWithCircuitBreakerAsync<T>(string operationName, Func<Task<T>> operation)
         {
             var circuitBreaker = _circuitBreakers.GetOrAdd(operationName, _ => new CircuitBreaker());
-            
+
             if (circuitBreaker.State == CircuitBreakerState.Open)
             {
                 throw new CircuitBreakerOpenException($"Circuit breaker is open for operation: {operationName}");
             }
-            
+
             try
             {
                 var result = await operation();
@@ -119,7 +119,7 @@ namespace Sqlx.Core
         {
             var baseDelay = TimeSpan.FromMilliseconds(100);
             var exponentialDelay = TimeSpan.FromMilliseconds(baseDelay.TotalMilliseconds * Math.Pow(2, attempt - 1));
-            
+
             // 添加抖动以防止雷鸣般的群体效应
             return CalculateJitteredDelay(exponentialDelay, attempt);
         }
@@ -132,7 +132,7 @@ namespace Sqlx.Core
             var random = new Random();
             var jitterFactor = 0.1; // 10% 抖动
             var jitter = random.NextDouble() * jitterFactor * baseDelay.TotalMilliseconds;
-            
+
             return TimeSpan.FromMilliseconds(baseDelay.TotalMilliseconds + jitter);
         }
 

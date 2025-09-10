@@ -37,10 +37,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             var initialCount = PerformanceMonitor.TotalOperations;
-            
+
             // Act
             PerformanceMonitor.RecordOperation();
-            
+
             // Assert
             Assert.AreEqual(initialCount + 1, PerformanceMonitor.TotalOperations, "Operation count should increment");
         }
@@ -50,13 +50,13 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             PerformanceMonitor.Clear();
-            
+
             // Act
             var initialCount = PerformanceMonitor.TotalOperations;
             PerformanceMonitor.RecordOperation();
             PerformanceMonitor.RecordOperation();
             var finalCount = PerformanceMonitor.TotalOperations;
-            
+
             // Assert
             Assert.AreEqual(0, initialCount, "Initial count should be zero after clear");
             Assert.AreEqual(2, finalCount, "Final count should be 2 after two operations");
@@ -69,11 +69,11 @@ namespace Sqlx.Tests.Core
             PerformanceMonitor.RecordOperation();
             PerformanceMonitor.RecordOperation();
             var countBeforeClear = PerformanceMonitor.TotalOperations;
-            
+
             // Act
             PerformanceMonitor.Clear();
             var countAfterClear = PerformanceMonitor.TotalOperations;
-            
+
             // Assert
             Assert.IsTrue(countBeforeClear >= 2, "Should have operations before clear");
             Assert.AreEqual(0, countAfterClear, "Count should be zero after clear");
@@ -85,15 +85,15 @@ namespace Sqlx.Tests.Core
             // Arrange
             PerformanceMonitor.Clear();
             var operationCount = 10;
-            
+
             // Act
             for (int i = 0; i < operationCount; i++)
             {
                 PerformanceMonitor.RecordOperation();
             }
-            
+
             // Assert
-            Assert.AreEqual(operationCount, PerformanceMonitor.TotalOperations, 
+            Assert.AreEqual(operationCount, PerformanceMonitor.TotalOperations,
                 $"Should record {operationCount} operations");
         }
 
@@ -105,7 +105,7 @@ namespace Sqlx.Tests.Core
             var threadCount = 10;
             var operationsPerThread = 100;
             var tasks = new Task[threadCount];
-            
+
             // Act
             for (int i = 0; i < threadCount; i++)
             {
@@ -117,9 +117,9 @@ namespace Sqlx.Tests.Core
                     }
                 });
             }
-            
+
             Task.WaitAll(tasks);
-            
+
             // Assert
             Assert.AreEqual(threadCount * operationsPerThread, PerformanceMonitor.TotalOperations,
                 "Thread-safe operation counting should be accurate");

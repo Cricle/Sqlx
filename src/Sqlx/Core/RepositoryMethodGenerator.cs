@@ -98,11 +98,11 @@ internal static class RepositoryMethodGenerator
         sb.AppendLine("catch (System.Exception ex)");
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         sb.AppendLine("var __elapsed__ = System.Diagnostics.Stopwatch.GetTimestamp() - __startTime__;");
         sb.AppendLine($"OnExecuteFail(\"{method.Name}\", __cmd__, ex, __elapsed__);");
         sb.AppendLine("throw;");
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
     }
@@ -112,9 +112,9 @@ internal static class RepositoryMethodGenerator
         sb.AppendLine("finally");
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         sb.AppendLine("__cmd__?.Dispose();");
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
     }

@@ -96,7 +96,7 @@ namespace Sqlx.VisualStudio.Diagnostics
         private static void AnalyzeMethod(SyntaxNodeAnalysisContext context)
         {
             var methodDeclaration = (MethodDeclarationSyntax)context.Node;
-            
+
             // Find Sqlx attributes
             foreach (var attributeList in methodDeclaration.AttributeLists)
             {
@@ -113,7 +113,7 @@ namespace Sqlx.VisualStudio.Diagnostics
         private static void AnalyzeInterface(SyntaxNodeAnalysisContext context)
         {
             var interfaceDeclaration = (InterfaceDeclarationSyntax)context.Node;
-            
+
             // Check if interface has RepositoryFor attribute
             foreach (var attributeList in interfaceDeclaration.AttributeLists)
             {
@@ -130,7 +130,7 @@ namespace Sqlx.VisualStudio.Diagnostics
         private static bool IsSqlxAttribute(AttributeSyntax attribute)
         {
             var name = attribute.Name.ToString();
-            return name == "Sqlx" || name == "SqlxAttribute" || 
+            return name == "Sqlx" || name == "SqlxAttribute" ||
                    name == "SqlExecuteType" || name == "SqlExecuteTypeAttribute";
         }
 
@@ -212,7 +212,7 @@ namespace Sqlx.VisualStudio.Diagnostics
             }
         }
 
-        private static void AnalyzeParameterUsage(SyntaxNodeAnalysisContext context, MethodDeclarationSyntax method, 
+        private static void AnalyzeParameterUsage(SyntaxNodeAnalysisContext context, MethodDeclarationSyntax method,
             AttributeSyntax attribute, string sqlText, string[] methodParameters)
         {
             // Find SQL parameters
@@ -238,7 +238,7 @@ namespace Sqlx.VisualStudio.Diagnostics
                 {
                     var parameterSyntax = method.ParameterList.Parameters
                         .FirstOrDefault(p => p.Identifier.ValueText == methodParam);
-                    
+
                     if (parameterSyntax != null)
                     {
                         var diagnostic = Diagnostic.Create(
@@ -317,7 +317,7 @@ namespace Sqlx.VisualStudio.Diagnostics
         private static string[] ExtractSqlParameters(string sql)
         {
             var parameters = new List<string>();
-            
+
             // Match @parameter, :parameter, $1, $2, etc., and ? patterns
             var paramRegex = new Regex(@"[@:$]\w+|\$\d+|\?", RegexOptions.IgnoreCase);
             var matches = paramRegex.Matches(sql);

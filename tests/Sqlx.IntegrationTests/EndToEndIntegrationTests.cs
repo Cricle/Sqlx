@@ -27,7 +27,7 @@ namespace Sqlx.IntegrationTests
         {
             _connection = new SQLiteConnection($"Data Source={TestDatabasePath}");
             await _connection.OpenAsync();
-            
+
             // Create test tables
             await CreateTestTablesAsync();
         }
@@ -80,7 +80,7 @@ namespace Sqlx.IntegrationTests
                 insertCmd.Parameters.AddWithValue("@name", "John Doe");
                 insertCmd.Parameters.AddWithValue("@email", "john@example.com");
                 insertCmd.Parameters.AddWithValue("@age", 30);
-                
+
                 var insertResult = await insertCmd.ExecuteNonQueryAsync();
                 Assert.AreEqual(1, insertResult, "Should insert one row");
             }
@@ -90,7 +90,7 @@ namespace Sqlx.IntegrationTests
             using (var selectCmd = new SQLiteCommand(selectSql, _connection))
             {
                 selectCmd.Parameters.AddWithValue("@email", "john@example.com");
-                
+
                 using var reader = await selectCmd.ExecuteReaderAsync();
                 Assert.IsTrue(await reader.ReadAsync(), "Should find the inserted user");
                 Assert.AreEqual("John Doe", reader.GetString(1)); // name column
@@ -104,7 +104,7 @@ namespace Sqlx.IntegrationTests
             {
                 updateCmd.Parameters.AddWithValue("@age", 31);
                 updateCmd.Parameters.AddWithValue("@email", "john@example.com");
-                
+
                 var updateResult = await updateCmd.ExecuteNonQueryAsync();
                 Assert.AreEqual(1, updateResult, "Should update one row");
             }
@@ -122,7 +122,7 @@ namespace Sqlx.IntegrationTests
             using (var deleteCmd = new SQLiteCommand(deleteSql, _connection))
             {
                 deleteCmd.Parameters.AddWithValue("@email", "john@example.com");
-                
+
                 var deleteResult = await deleteCmd.ExecuteNonQueryAsync();
                 Assert.AreEqual(1, deleteResult, "Should delete one row");
             }
@@ -161,7 +161,7 @@ namespace Sqlx.IntegrationTests
                     batchCmd.Parameters.AddWithValue($"@email{i}", users[i].Email);
                     batchCmd.Parameters.AddWithValue($"@age{i}", users[i].Age);
                 }
-                
+
                 var result = await batchCmd.ExecuteNonQueryAsync();
                 Assert.AreEqual(3, result, "Should insert three rows");
             }
@@ -187,7 +187,7 @@ namespace Sqlx.IntegrationTests
                         Age = reader.GetInt32(2) // age column
                     });
                 }
-                
+
                 Assert.AreEqual(3, retrievedUsers.Count, "Should retrieve all users");
             }
         }
@@ -210,7 +210,7 @@ namespace Sqlx.IntegrationTests
 
             using var cmd = new SQLiteCommand(complexSql, _connection);
             using var reader = await cmd.ExecuteReaderAsync();
-            
+
             var results = new List<object>();
             while (await reader.ReadAsync())
             {
@@ -221,7 +221,7 @@ namespace Sqlx.IntegrationTests
                     ProductCount = reader.GetInt64(2) // product_count column
                 });
             }
-            
+
             Assert.IsTrue(results.Count > 0, "Should return results from complex query");
         }
 
@@ -229,7 +229,7 @@ namespace Sqlx.IntegrationTests
         public async Task EndToEndIntegration_TransactionSupport_WorksCorrectly()
         {
             using var transaction = _connection.BeginTransaction();
-            
+
             try
             {
                 // Insert user within transaction
@@ -239,7 +239,7 @@ namespace Sqlx.IntegrationTests
                     userCmd.Parameters.AddWithValue("@name", "Transaction User");
                     userCmd.Parameters.AddWithValue("@email", "transaction@example.com");
                     userCmd.Parameters.AddWithValue("@age", 25);
-                    
+
                     await userCmd.ExecuteNonQueryAsync();
                 }
 
@@ -250,7 +250,7 @@ namespace Sqlx.IntegrationTests
                     productCmd.Parameters.AddWithValue("@name", "Transaction Product");
                     productCmd.Parameters.AddWithValue("@price", 99.99);
                     productCmd.Parameters.AddWithValue("@category_id", 1);
-                    
+
                     await productCmd.ExecuteNonQueryAsync();
                 }
 
@@ -282,14 +282,14 @@ namespace Sqlx.IntegrationTests
         {
             // Test constraint violation (duplicate email)
             var insertSql = "INSERT INTO users (name, email, age) VALUES (@name, @email, @age)";
-            
+
             // Insert first user
             using (var cmd1 = new SQLiteCommand(insertSql, _connection))
             {
                 cmd1.Parameters.AddWithValue("@name", "User 1");
                 cmd1.Parameters.AddWithValue("@email", "duplicate@example.com");
                 cmd1.Parameters.AddWithValue("@age", 25);
-                
+
                 await cmd1.ExecuteNonQueryAsync();
             }
 
@@ -299,7 +299,7 @@ namespace Sqlx.IntegrationTests
                 cmd2.Parameters.AddWithValue("@name", "User 2");
                 cmd2.Parameters.AddWithValue("@email", "duplicate@example.com");
                 cmd2.Parameters.AddWithValue("@age", 30);
-                
+
                 await Assert.ThrowsExceptionAsync<SQLiteException>(async () =>
                 {
                     await cmd2.ExecuteNonQueryAsync();
@@ -317,18 +317,18 @@ namespace Sqlx.IntegrationTests
                 insertCmd.Parameters.AddWithValue("@name", "Test User");
                 insertCmd.Parameters.AddWithValue("@email", "test@example.com");
                 insertCmd.Parameters.AddWithValue("@age", 25);
-                
+
                 await insertCmd.ExecuteNonQueryAsync();
             }
 
             // Test that parameterized queries prevent SQL injection
             var maliciousEmail = "test@example.com'; DROP TABLE users; --";
             var selectSql = "SELECT COUNT(*) FROM users WHERE email = @email";
-            
+
             using (var selectCmd = new SQLiteCommand(selectSql, _connection))
             {
                 selectCmd.Parameters.AddWithValue("@email", maliciousEmail);
-                
+
                 var count = await selectCmd.ExecuteScalarAsync();
                 Assert.AreEqual(0L, count, "Should not find user with malicious email");
             }

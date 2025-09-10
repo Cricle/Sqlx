@@ -52,7 +52,7 @@ internal static class RepositoryGenerator
             sb.AppendLine("{");
             sb.PushIndent();
         }
-        
+
         sb.AppendLine("using System;");
         sb.AppendLine("using System.Collections.Generic;");
         sb.AppendLine("using System.Data;");
@@ -75,10 +75,10 @@ internal static class RepositoryGenerator
     private static void GenerateRepositoryMethods(IndentedStringBuilder sb, INamedTypeSymbol serviceInterface, INamedTypeSymbol? entityType, string tableName, INamedTypeSymbol repositoryClass)
     {
         var connectionFieldName = GetDbConnectionFieldName(repositoryClass);
-        
+
         // Generate standard CRUD methods
         var methods = serviceInterface.GetMembers().OfType<IMethodSymbol>().ToArray();
-        
+
         foreach (var method in methods)
         {
             GenerateRepositoryMethod(sb, method, entityType, tableName, connectionFieldName);
@@ -91,22 +91,22 @@ internal static class RepositoryGenerator
         var methodName = method.Name;
         var isAsync = TypeAnalyzer.IsAsyncType(method.ReturnType);
         var sql = GenerateSqlForMethod(methodName, tableName, entityType);
-        
+
         sb.AppendLine($"/// <summary>");
         sb.AppendLine($"/// Generated implementation of {methodName}.");
         sb.AppendLine($"/// </summary>");
-        
+
         CodeGenerator.GenerateMethodSignature(sb, method);
-        
+
         sb.AppendLine($"var connection = {connectionFieldName} ?? throw new ArgumentNullException(nameof({connectionFieldName}));");
-        
+
         CodeGenerator.GenerateConnectionSetup(sb, isAsync);
         CodeGenerator.GenerateCommandSetup(sb, sql);
         CodeGenerator.GenerateParameterAssignment(sb, method, entityType);
-        
+
         var operation = GetOperationType(methodName);
         CodeGenerator.GenerateExecutionAndReturn(sb, method, operation, entityType, isAsync);
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
@@ -117,7 +117,7 @@ internal static class RepositoryGenerator
     {
         sb.PopIndent();
         sb.AppendLine("}");
-        
+
         var namespaceName = repositoryClass.ContainingNamespace.ToDisplayString();
         if (!string.IsNullOrEmpty(namespaceName) && namespaceName != "<global namespace>")
         {
@@ -132,7 +132,7 @@ internal static class RepositoryGenerator
         var connectionField = repositoryClass.GetMembers()
             .OfType<IFieldSymbol>()
             .FirstOrDefault(f => f.Type.ToDisplayString().Contains("DbConnection"));
-            
+
         return connectionField?.Name ?? "_connection";
     }
 
@@ -141,13 +141,13 @@ internal static class RepositoryGenerator
     {
         return methodName.ToLowerInvariant() switch
         {
-            var name when name.StartsWith("get") || name.StartsWith("find") || name.StartsWith("select") 
+            var name when name.StartsWith("get") || name.StartsWith("find") || name.StartsWith("select")
                 => $"\"SELECT * FROM {tableName}\"",
-            var name when name.StartsWith("add") || name.StartsWith("create") || name.StartsWith("insert") 
+            var name when name.StartsWith("add") || name.StartsWith("create") || name.StartsWith("insert")
                 => GenerateInsertSql(tableName, entityType),
-            var name when name.StartsWith("update") || name.StartsWith("modify") 
+            var name when name.StartsWith("update") || name.StartsWith("modify")
                 => GenerateUpdateSql(tableName, entityType),
-            var name when name.StartsWith("delete") || name.StartsWith("remove") 
+            var name when name.StartsWith("delete") || name.StartsWith("remove")
                 => $"\"DELETE FROM {tableName} WHERE Id = @id\"",
             _ => $"\"SELECT * FROM {tableName}\""
         };
@@ -157,17 +157,17 @@ internal static class RepositoryGenerator
     private static string GenerateInsertSql(string tableName, INamedTypeSymbol? entityType)
     {
         if (entityType == null) return $"\"INSERT INTO {tableName} DEFAULT VALUES\"";
-        
+
         var properties = entityType.GetMembers()
             .OfType<IPropertySymbol>()
             .Where(p => p.SetMethod != null && p.SetMethod.DeclaredAccessibility == Accessibility.Public && p.Name != "Id")
             .ToArray();
-            
+
         if (properties.Length == 0) return $"\"INSERT INTO {tableName} DEFAULT VALUES\"";
-        
+
         var columns = string.Join(", ", properties.Select(p => p.Name));
         var parameters = string.Join(", ", properties.Select(p => "@" + p.Name.ToLowerInvariant()));
-        
+
         return $"\"INSERT INTO {tableName} ({columns}) VALUES ({parameters})\"";
     }
 
@@ -175,16 +175,16 @@ internal static class RepositoryGenerator
     private static string GenerateUpdateSql(string tableName, INamedTypeSymbol? entityType)
     {
         if (entityType == null) return $"\"UPDATE {tableName} SET UpdatedAt = GETDATE() WHERE Id = @id\"";
-        
+
         var properties = entityType.GetMembers()
             .OfType<IPropertySymbol>()
             .Where(p => p.SetMethod != null && p.SetMethod.DeclaredAccessibility == Accessibility.Public && p.Name != "Id")
             .ToArray();
-            
+
         if (properties.Length == 0) return $"\"UPDATE {tableName} SET UpdatedAt = GETDATE() WHERE Id = @id\"";
-        
+
         var setClause = string.Join(", ", properties.Select(p => $"{p.Name} = @{p.Name.ToLowerInvariant()}"));
-        
+
         return $"\"UPDATE {tableName} SET {setClause} WHERE Id = @id\"";
     }
 
@@ -192,7 +192,7 @@ internal static class RepositoryGenerator
     private static SqlOperationType GetOperationType(string methodName)
     {
         var name = methodName.ToLowerInvariant();
-        
+
         if (name.StartsWith("get") || name.StartsWith("find") || name.StartsWith("select"))
             return SqlOperationType.Select;
         if (name.StartsWith("add") || name.StartsWith("create") || name.StartsWith("insert"))
@@ -203,7 +203,7 @@ internal static class RepositoryGenerator
             return SqlOperationType.Delete;
         if (name.StartsWith("count") || name.StartsWith("exists"))
             return SqlOperationType.Scalar;
-            
+
         return SqlOperationType.Select;
     }
 }

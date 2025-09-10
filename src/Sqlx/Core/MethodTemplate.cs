@@ -86,15 +86,15 @@ internal static class MethodTemplate
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void GenerateParameterBinding(IndentedStringBuilder sb, IMethodSymbol method)
     {
-        var parameters = method.Parameters.Where(p => 
-            p.Type.Name != "CancellationToken" && 
+        var parameters = method.Parameters.Where(p =>
+            p.Type.Name != "CancellationToken" &&
             !p.GetAttributes().Any(a => a.AttributeClass?.Name == "ExpressionToSqlAttribute")).ToArray();
 
         foreach (var param in parameters)
         {
             GenerateParameterCode(sb, param);
         }
-        
+
         if (parameters.Any())
             sb.AppendLine();
     }
@@ -107,12 +107,12 @@ internal static class MethodTemplate
         sb.AppendLine($"param{param.Name}.Value = {param.Name} ?? DBNull.Value;");
         sb.AppendLine($"cmd.Parameters.Add(param{param.Name});");
     }
-    
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void GenerateExecution(IndentedStringBuilder sb, IMethodSymbol method, bool isAsync, string awaitKeyword, string cancellationToken)
     {
         var returnType = method.ReturnType;
-        
+
         if (method.ReturnsVoid || (isAsync && returnType.Name == "Task"))
         {
             // Non-query operation
@@ -142,7 +142,7 @@ internal static class MethodTemplate
         var elementType = GetElementType(returnType);
         var awaitKeyword = isAsync ? "await " : "";
         var asyncSuffix = isAsync ? "Async" : "";
-        
+
         sb.AppendLine($"using var reader = {awaitKeyword}cmd.ExecuteReader{asyncSuffix}({cancellationToken});");
         sb.AppendLine($"var results = new List<{elementType.ToDisplayString()}>();");
         sb.AppendLine();
@@ -162,7 +162,7 @@ internal static class MethodTemplate
     {
         var awaitKeyword = isAsync ? "await " : "";
         var asyncSuffix = isAsync ? "Async" : "";
-        
+
         sb.AppendLine($"using var reader = {awaitKeyword}cmd.ExecuteReader{asyncSuffix}({cancellationToken});");
         sb.AppendLine($"if ({awaitKeyword}reader.Read{asyncSuffix}({cancellationToken}))");
         sb.AppendLine("{");
@@ -178,7 +178,7 @@ internal static class MethodTemplate
     private static void GenerateEntityMapping(IndentedStringBuilder sb, ITypeSymbol entityType)
     {
         sb.AppendLine($"var entity = new {entityType.ToDisplayString()}();");
-        
+
         if (entityType is INamedTypeSymbol namedType)
         {
             var properties = namedType.GetMembers().OfType<IPropertySymbol>()
@@ -233,7 +233,7 @@ internal static class MethodTemplate
         if (type.Name == "Task" && type is INamedTypeSymbol taskType && taskType.TypeArguments.Length == 1)
             type = taskType.TypeArguments[0];
 
-        return type.Name.StartsWith("IList") || type.Name.StartsWith("List") || 
+        return type.Name.StartsWith("IList") || type.Name.StartsWith("List") ||
                type.Name.StartsWith("IEnumerable") || type.Name.StartsWith("ICollection");
     }
 
@@ -242,7 +242,7 @@ internal static class MethodTemplate
     {
         if (type is INamedTypeSymbol namedType && namedType.TypeArguments.Length > 0)
             return namedType.TypeArguments[0];
-        
+
         return type;
     }
 }

@@ -27,7 +27,7 @@ internal class Program
     private static async Task Main(string[] args)
     {
         PrintWelcomeMessage();
-        
+
         var testMode = ParseArguments(args);
         await RunSelectedTest(testMode);
     }
@@ -37,7 +37,7 @@ internal class Program
         Console.WriteLine("🚀 Sqlx Repository Pattern 最佳实践演示");
         Console.WriteLine("=".PadRight(60, '='));
         Console.WriteLine();
-        
+
         Console.WriteLine("本示例展示了 Sqlx 最新功能：");
         Console.WriteLine("✨ Repository Pattern 自动生成");
         Console.WriteLine("🔥 智能 SQL 推断");
@@ -69,9 +69,9 @@ internal class Program
     {
         Console.WriteLine("🗄️ SQLite Code Generation Verification Mode");
         Console.WriteLine("============================================");
-        
+
         ShowSQLiteCapabilities();
-        
+
         bool testsPassed = await SQLiteTest.RunSQLiteTests();
         PrintTestResult("SQLite", testsPassed);
     }
@@ -82,7 +82,7 @@ internal class Program
         var capabilities = new[]
         {
             "✅ Real Database Operations",
-            "✅ Complete CRUD Support", 
+            "✅ Complete CRUD Support",
             "✅ Type-safe Mapping",
             "✅ Parameterized Queries",
             "✅ Async/Sync Dual Support",

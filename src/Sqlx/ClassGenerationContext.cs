@@ -41,7 +41,7 @@ internal class ClassGenerationContext : GenerationContextBase
     public List<MethodGenerationContext> Methods { get; }
 
     public INamedTypeSymbol AttributeSymbol { get; }
-    
+
     /// <summary>
     /// Alias for AttributeSymbol for test compatibility
     /// </summary>

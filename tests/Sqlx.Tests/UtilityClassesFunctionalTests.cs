@@ -47,13 +47,13 @@ public class UtilityClassesFunctionalTests
         Assert.IsTrue(constructors.Length > 0, "IndentedStringBuilder should have at least one constructor");
 
         // Test methods - get the parameterless AppendLine method specifically
-        var appendLineMethod = classType.GetMethod("AppendLine", 
+        var appendLineMethod = classType.GetMethod("AppendLine",
             BindingFlags.Public | BindingFlags.Instance, null, Type.EmptyTypes, null);
-        var pushIndentMethod = classType.GetMethod("PushIndent", 
+        var pushIndentMethod = classType.GetMethod("PushIndent",
             BindingFlags.Public | BindingFlags.Instance);
-        var popIndentMethod = classType.GetMethod("PopIndent", 
+        var popIndentMethod = classType.GetMethod("PopIndent",
             BindingFlags.Public | BindingFlags.Instance);
-        var toStringMethod = classType.GetMethod("ToString", 
+        var toStringMethod = classType.GetMethod("ToString",
             BindingFlags.Public | BindingFlags.Instance);
 
         Assert.IsNotNull(appendLineMethod, "IndentedStringBuilder should have AppendLine method");
@@ -155,9 +155,9 @@ public class UtilityClassesFunctionalTests
         Assert.IsTrue(interfaces.Contains(iSourceGeneratorType), "CSharpGenerator should implement ISourceGenerator");
 
         // Test methods
-        var initializeMethod = classType.GetMethod("Initialize", 
+        var initializeMethod = classType.GetMethod("Initialize",
             BindingFlags.Public | BindingFlags.Instance);
-        var executeMethod = classType.GetMethod("Execute", 
+        var executeMethod = classType.GetMethod("Execute",
             BindingFlags.Public | BindingFlags.Instance);
 
         Assert.IsNotNull(initializeMethod, "CSharpGenerator should have Initialize method");
@@ -206,9 +206,9 @@ public class UtilityClassesFunctionalTests
         Assert.IsTrue(interfaces.Contains(iSourceGeneratorType), "AbstractGenerator should implement ISourceGenerator");
 
         // Test methods
-        var initializeMethod = classType.GetMethod("Initialize", 
+        var initializeMethod = classType.GetMethod("Initialize",
             BindingFlags.Public | BindingFlags.Instance);
-        var executeMethod = classType.GetMethod("Execute", 
+        var executeMethod = classType.GetMethod("Execute",
             BindingFlags.Public | BindingFlags.Instance);
 
         Assert.IsNotNull(initializeMethod, "AbstractGenerator should have Initialize method");
@@ -259,7 +259,7 @@ public class UtilityClassesFunctionalTests
         {
             Assert.IsTrue(property.CanRead, $"Property {property.Name} should be readable");
             Assert.IsFalse(property.CanWrite, $"Property {property.Name} should not be writable");
-            
+
             var value = property.GetValue(null);
             Assert.IsNotNull(value, $"Property {property.Name} should have a non-null value");
             Assert.IsTrue(value is DiagnosticDescriptor, $"Property {property.Name} should return DiagnosticDescriptor");
@@ -325,11 +325,11 @@ public class UtilityClassesFunctionalTests
         {
             var diagnosticDescriptor = property.GetValue(null) as DiagnosticDescriptor;
             Assert.IsNotNull(diagnosticDescriptor, $"Property {property.Name} should return a DiagnosticDescriptor");
-            
+
             // Test severity
-            Assert.AreEqual(DiagnosticSeverity.Error, diagnosticDescriptor.DefaultSeverity, 
+            Assert.AreEqual(DiagnosticSeverity.Error, diagnosticDescriptor.DefaultSeverity,
                 $"Diagnostic {property.Name} should have Error as default severity");
-            
+
             // Test other properties
             Assert.IsTrue(diagnosticDescriptor.IsEnabledByDefault, $"Diagnostic {property.Name} should be enabled by default");
             Assert.IsFalse(string.IsNullOrEmpty(diagnosticDescriptor.Title.ToString()), $"Diagnostic {property.Name} should have a non-empty title");
@@ -382,7 +382,7 @@ public class UtilityClassesFunctionalTests
         // Test specific constants
         var iAsyncEnumerableField = constsType.GetField("IAsyncEnumerable");
         Assert.IsNotNull(iAsyncEnumerableField, "Consts should contain IAsyncEnumerable constant");
-        
+
         var constantValue = iAsyncEnumerableField.GetValue(null);
         Assert.AreEqual("IAsyncEnumerable", constantValue);
 
@@ -393,11 +393,11 @@ public class UtilityClassesFunctionalTests
             Assert.IsTrue(field.IsStatic, $"Field {field.Name} should be static");
             Assert.IsTrue(field.IsLiteral, $"Field {field.Name} should be literal (const)");
             Assert.AreEqual(typeof(string), field.FieldType, $"Field {field.Name} should be of type string");
-            
+
             var value = field.GetValue(null);
             Assert.IsNotNull(value, $"Field {field.Name} should have a non-null value");
             Assert.IsTrue(value is string, $"Field {field.Name} should be a string");
-            
+
             var stringValue = (string)value;
             Assert.IsTrue(stringValue.Length > 0, $"Field {field.Name} should have a non-empty string value");
         }
@@ -429,11 +429,11 @@ public class UtilityClassesFunctionalTests
             Assert.IsTrue(field.IsStatic, $"Field {field.Name} should be static");
             Assert.IsTrue(field.IsLiteral, $"Field {field.Name} should be literal (const)");
             Assert.AreEqual(typeof(string), field.FieldType, $"Field {field.Name} should be of type string");
-            
+
             var value = field.GetValue(null);
             Assert.IsNotNull(value, $"Field {field.Name} should have a non-null value");
             Assert.IsTrue(value is string, $"Field {field.Name} should be a string");
-            
+
             var stringValue = (string)value;
             Assert.IsTrue(stringValue.Length > 0, $"Field {field.Name} should have a non-empty string value");
         }
@@ -557,13 +557,13 @@ public class UtilityClassesFunctionalTests
         Assert.IsTrue(methods.Length > 0, "Extensions should have public static methods");
 
         // Test specific methods
-        var getParameterNameMethod = classType.GetMethod("GetParameterName", 
+        var getParameterNameMethod = classType.GetMethod("GetParameterName",
             BindingFlags.Public | BindingFlags.Static);
-        var getDataReadExpressionMethod = classType.GetMethod("GetDataReadExpression", 
+        var getDataReadExpressionMethod = classType.GetMethod("GetDataReadExpression",
             BindingFlags.Public | BindingFlags.Static);
-        var isNullableTypeMethod = classType.GetMethod("IsNullableType", 
+        var isNullableTypeMethod = classType.GetMethod("IsNullableType",
             BindingFlags.Public | BindingFlags.Static);
-        var canHaveNullValueMethod = classType.GetMethod("CanHaveNullValue", 
+        var canHaveNullValueMethod = classType.GetMethod("CanHaveNullValue",
             BindingFlags.Public | BindingFlags.Static);
 
         Assert.IsNotNull(getParameterNameMethod, "Extensions should have GetParameterName method");
@@ -690,11 +690,11 @@ public class UtilityClassesFunctionalTests
         Assert.AreEqual("INamedTypeSymbol", parameters[2].ParameterType.Name, "Third parameter should be INamedTypeSymbol");
 
         // Test methods
-        var createSourceMethod = classType.GetMethod("CreateSource", 
+        var createSourceMethod = classType.GetMethod("CreateSource",
             BindingFlags.Public | BindingFlags.Instance);
-        var getFieldOrPropertyMethod = classType.GetMethod("GetFieldOrProperty", 
+        var getFieldOrPropertyMethod = classType.GetMethod("GetFieldOrProperty",
             BindingFlags.Public | BindingFlags.Instance);
-        var getAttributeMethod = classType.GetMethod("GetAttribute", 
+        var getAttributeMethod = classType.GetMethod("GetAttribute",
             BindingFlags.Public | BindingFlags.Instance);
 
         Assert.IsNotNull(createSourceMethod, "CreateSource method should exist");
@@ -727,7 +727,7 @@ public class UtilityClassesFunctionalTests
         // Test properties
         var properties = classType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
         var expectedProperties = new[] { "ClassSymbol", "Methods", "SqlxAttributeSymbol", "GeneratorExecutionContext" };
-        
+
         foreach (var propertyName in expectedProperties)
         {
             var property = properties.FirstOrDefault(p => p.Name == propertyName);
@@ -772,13 +772,13 @@ public class UtilityClassesFunctionalTests
         Assert.AreEqual(typeof(GenerationContextBase), classType.BaseType, "MethodGenerationContext should inherit from GenerationContextBase");
 
         // Test public methods
-        var declareCommandMethod = classType.GetMethod("DeclareCommand", 
+        var declareCommandMethod = classType.GetMethod("DeclareCommand",
             BindingFlags.Public | BindingFlags.Instance);
-        var writeExecuteNoQueryMethod = classType.GetMethod("WriteExecuteNoQuery", 
+        var writeExecuteNoQueryMethod = classType.GetMethod("WriteExecuteNoQuery",
             BindingFlags.Public | BindingFlags.Instance);
-        var writeScalarMethod = classType.GetMethod("WriteScalar", 
+        var writeScalarMethod = classType.GetMethod("WriteScalar",
             BindingFlags.Public | BindingFlags.Instance);
-        var writeReturnMethod = classType.GetMethod("WriteReturn", 
+        var writeReturnMethod = classType.GetMethod("WriteReturn",
             BindingFlags.Public | BindingFlags.Instance);
 
         Assert.IsNotNull(declareCommandMethod, "DeclareCommand method should exist");
@@ -821,7 +821,7 @@ public class UtilityClassesFunctionalTests
         // Test properties
         var properties = classType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
         var expectedProperties = new[] { "MethodSymbol", "ClassGenerationContext", "ReturnType", "IsAsync", "ReturnIsEnumerable", "ReturnIsList", "ReturnIsTuple", "ReturnIsScalar" };
-        
+
         foreach (var propertyName in expectedProperties)
         {
             var property = properties.FirstOrDefault(p => p.Name == propertyName);
@@ -844,13 +844,13 @@ public class UtilityClassesFunctionalTests
         Assert.AreEqual("Boolean", isAsyncProperty!.PropertyType.Name, "IsAsync property should be of type Boolean");
 
         // Test private methods
-        var writeMethodExecutedMethod = classType.GetMethod("WriteMethodExecuted", 
+        var writeMethodExecutedMethod = classType.GetMethod("WriteMethodExecuted",
             BindingFlags.NonPublic | BindingFlags.Instance);
-        var writeDeclareReturnListMethod = classType.GetMethod("WriteDeclareReturnList", 
+        var writeDeclareReturnListMethod = classType.GetMethod("WriteDeclareReturnList",
             BindingFlags.NonPublic | BindingFlags.Instance);
-        var writeBeginReaderMethod = classType.GetMethod("WriteBeginReader", 
+        var writeBeginReaderMethod = classType.GetMethod("WriteBeginReader",
             BindingFlags.NonPublic | BindingFlags.Instance);
-        var writeEndReaderMethod = classType.GetMethod("WriteEndReader", 
+        var writeEndReaderMethod = classType.GetMethod("WriteEndReader",
             BindingFlags.NonPublic | BindingFlags.Instance);
 
         Assert.IsNotNull(writeMethodExecutedMethod, "MethodGenerationContext should have WriteMethodExecuted method");
@@ -877,10 +877,10 @@ public class UtilityClassesFunctionalTests
         Assert.IsTrue(interfaceType.IsInterface, "ISqlxSyntaxReceiver should be an interface");
         Assert.IsTrue(interfaceType.IsNotPublic, "ISqlxSyntaxReceiver should be internal");
         Assert.AreEqual("Sqlx", interfaceType.Namespace, "ISqlxSyntaxReceiver should be in Sqlx namespace");
-        
+
         // Check that it inherits from ISyntaxContextReceiver
         var baseInterfaces = interfaceType.GetInterfaces();
-        Assert.IsTrue(baseInterfaces.Any(i => i.Name == "ISyntaxContextReceiver"), 
+        Assert.IsTrue(baseInterfaces.Any(i => i.Name == "ISyntaxContextReceiver"),
             "ISqlxSyntaxReceiver should inherit from ISyntaxContextReceiver");
 
         // Test Methods property
@@ -888,11 +888,11 @@ public class UtilityClassesFunctionalTests
         Assert.IsNotNull(methodsProperty, "ISqlxSyntaxReceiver should have a Methods property");
         Assert.IsTrue(methodsProperty.CanRead, "Methods property should be readable");
         Assert.IsFalse(methodsProperty.CanWrite, "Methods property should not be writable");
-        
+
         var propertyType = methodsProperty.PropertyType;
         Assert.IsTrue(propertyType.IsGenericType, "Methods property should be generic");
         Assert.AreEqual("List`1", propertyType.Name, "Methods property should be List<T>");
-        
+
         var genericArguments = propertyType.GetGenericArguments();
         Assert.AreEqual(1, genericArguments.Length, "Methods property should have one generic argument");
         Assert.AreEqual("IMethodSymbol", genericArguments[0].Name, "Generic argument should be IMethodSymbol");
@@ -901,7 +901,7 @@ public class UtilityClassesFunctionalTests
         var onVisitSyntaxNodeMethod = interfaceType.GetMethod("OnVisitSyntaxNode");
         Assert.IsNotNull(onVisitSyntaxNodeMethod, "ISqlxSyntaxReceiver should have OnVisitSyntaxNode method");
         Assert.AreEqual(typeof(void), onVisitSyntaxNodeMethod.ReturnType, "OnVisitSyntaxNode method should return void");
-        
+
         var methodParams = onVisitSyntaxNodeMethod.GetParameters();
         Assert.AreEqual(1, methodParams.Length, "OnVisitSyntaxNode method should have 1 parameter");
         Assert.AreEqual("SyntaxNode", methodParams[0].ParameterType.Name, "OnVisitSyntaxNode method parameter should be SyntaxNode");
@@ -927,7 +927,7 @@ public class UtilityClassesFunctionalTests
         // Test abstract properties
         var properties = baseType.GetProperties(BindingFlags.NonPublic | BindingFlags.Instance);
         var expectedProperties = new[] { "DbConnection", "TransactionParameter", "DbContext" };
-        
+
         foreach (var propertyName in expectedProperties)
         {
             var property = properties.FirstOrDefault(p => p.Name == propertyName);
@@ -939,12 +939,12 @@ public class UtilityClassesFunctionalTests
         }
 
         // Test GetSymbol method
-        var getSymbolMethod = baseType.GetMethod("GetSymbol", 
+        var getSymbolMethod = baseType.GetMethod("GetSymbol",
             BindingFlags.NonPublic | BindingFlags.Static);
         Assert.IsNotNull(getSymbolMethod, "GenerationContextBase should have GetSymbol method");
         Assert.IsTrue(getSymbolMethod!.IsStatic, "GetSymbol method should be static");
         Assert.IsTrue(getSymbolMethod!.IsPrivate || getSymbolMethod!.IsFamily, "GetSymbol method should be private or protected");
-        
+
         var parameters = getSymbolMethod!.GetParameters();
         Assert.AreEqual(2, parameters.Length, "GetSymbol method should have 2 parameters");
         Assert.AreEqual("ISymbol", parameters[0].ParameterType.Name, "GetSymbol method first parameter should be ISymbol");

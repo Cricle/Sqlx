@@ -39,7 +39,7 @@ internal sealed class IndentedStringBuilder
             }
             // Don't set needsIndent = false here anymore
         }
-        
+
         if (!string.IsNullOrEmpty(value))
         {
             builder.Append(value);

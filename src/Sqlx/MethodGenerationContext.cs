@@ -176,13 +176,13 @@ internal class MethodGenerationContext : GenerationContextBase
 
         var dbContext = DbContext;
         var dbConnection = DbConnection;
-        
+
         // Check if this class has RepositoryFor attribute
         var hasRepositoryForAttribute = ClassGenerationContext.ClassSymbol.GetAttributes()
             .Any(attr => attr.AttributeClass?.Name == "RepositoryForAttribute" || attr.AttributeClass?.Name == "RepositoryFor");
-        
+
         string dbConnectionExpression;
-        
+
         if (hasRepositoryForAttribute)
         {
             // For RepositoryFor classes, always use "connection" field
@@ -197,7 +197,7 @@ internal class MethodGenerationContext : GenerationContextBase
                 ClassGenerationContext.GeneratorExecutionContext.ReportDiagnostic(Diagnostic.Create(Messages.SP0006, MethodSymbol.Locations[0]));
                 return false;
             }
-            
+
             dbConnectionExpression = dbConnection == null ? $"global::Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.GetDbConnection({DbContext!.Name}.Database)" : dbConnection.Name;
         }
 
@@ -273,7 +273,7 @@ internal class MethodGenerationContext : GenerationContextBase
             {
                 // Static SQL case (from SqlExecuteType, RawSql, or stored procedure)
                 sb.AppendLine($"{CmdName}.CommandText = {sql};");
-                
+
                 // If we have ExpressionToSql parameter and this is a SqlExecuteType operation, 
                 // append dynamic WHERE clause for SELECT/DELETE or handle UPDATE specially
                 if (ExpressionToSqlParameter != null)
@@ -293,7 +293,7 @@ internal class MethodGenerationContext : GenerationContextBase
         // Paramters - skip for batch INSERT operations as they're handled in GenerateBatchInsertSql
         var columnDefines = new List<ColumnDefine>();
         var isBatchInsert = !string.IsNullOrEmpty(sql) && sql!.Contains("{{VALUES_PLACEHOLDER}}");
-        
+
         if (!isBatchInsert)
         {
             foreach (var item in SqlParameters)
@@ -493,9 +493,9 @@ internal class MethodGenerationContext : GenerationContextBase
                 // Cache column ordinals for performance
                 var columnNames = GetColumnNames(returnType);
                 WriteCachedOrdinals(sb, columnNames);
-                
+
                 WriteBeginReader(sb);
-                
+
                 if (returnType.IsScalarType())
                 {
                     sb.AppendLineIf(isList, $"{ResultName}.Add({returnType.GetDataReadExpressionWithCachedOrdinal(DbReaderName, "Column0", "__ordinal_Column0")});", $"yield return {returnType.GetDataReadExpressionWithCachedOrdinal(DbReaderName, "Column0", "__ordinal_Column0")};");
@@ -504,7 +504,7 @@ internal class MethodGenerationContext : GenerationContextBase
                 {
                     var tupleType = (INamedTypeSymbol)returnType.UnwrapTaskType();
                     var tupleArgs = tupleType.TypeArguments;
-                    
+
                     // For tuples, try to get field names from tuple type
                     string[] fieldNames;
                     if (tupleType.TupleElements != null && tupleType.TupleElements.Length > 0)
@@ -516,8 +516,8 @@ internal class MethodGenerationContext : GenerationContextBase
                         // Fallback to default column names
                         fieldNames = tupleArgs.Select((_, index) => $"Column{index}").ToArray();
                     }
-                    
-                    var tupleJoins = string.Join(", ", tupleArgs.Select((x, index) => 
+
+                    var tupleJoins = string.Join(", ", tupleArgs.Select((x, index) =>
                         x.GetDataReadExpressionWithCachedOrdinal(DbReaderName, fieldNames[index], $"__ordinal_{fieldNames[index]}")));
                     sb.AppendLineIf(isList, $"{ResultName}.Add(({tupleJoins}));", $"yield return ({tupleJoins});");
                 }
@@ -860,7 +860,7 @@ internal class MethodGenerationContext : GenerationContextBase
     private List<string> GetColumnNames(ITypeSymbol returnType)
     {
         var columnNames = new List<string>();
-        
+
         if (returnType.IsScalarType())
         {
             columnNames.Add("Column0");
@@ -868,7 +868,7 @@ internal class MethodGenerationContext : GenerationContextBase
         else if (IsTuple(returnType))
         {
             var tupleType = (INamedTypeSymbol)returnType.UnwrapTaskType();
-            
+
             if (tupleType.TupleElements != null && tupleType.TupleElements.Length > 0)
             {
                 columnNames.AddRange(tupleType.TupleElements.Select(e => e.Name));
@@ -885,7 +885,7 @@ internal class MethodGenerationContext : GenerationContextBase
             var properties = GetPropertySymbols(returnType);
             columnNames.AddRange(properties.Select(p => p.GetSqlName()));
         }
-        
+
         return columnNames;
     }
 
@@ -904,11 +904,11 @@ internal class MethodGenerationContext : GenerationContextBase
         var visitPath = string.IsNullOrEmpty(prefx) ? string.Empty : prefx + ".";
         visitPath = visitPath.Replace(".", "?.");
         var parNamePrefx = string.IsNullOrEmpty(prefx) ? string.Empty : prefx.Replace(".", "_");
-        
+
         // Generate C# variable name (remove @ prefix and make it a valid identifier)
         var sqlParamName = par.GetParameterName(SqlDef.ParamterPrefx + parNamePrefx);
         var parName = Regex.Replace(sqlParamName.TrimStart('@'), "[^a-zA-Z0-9_]", "_") + "_p";
-        
+
         // Generate SQL parameter name
         var name = par.GetParameterName(SqlDef.ParamterPrefx);
         var dbType = parType.GetDbType();
@@ -986,17 +986,17 @@ internal class MethodGenerationContext : GenerationContextBase
         {
             // Parse enum value more robustly
             var enumValueObj = sqlExecuteType.ConstructorArguments[0].Value;
-            var type = enumValueObj switch 
+            var type = enumValueObj switch
             {
                 int intValue => (SqlExecuteTypes)intValue,
                 string strValue when int.TryParse(strValue, out var intVal) => (SqlExecuteTypes)intVal,
                 _ => SqlExecuteTypes.Select
             };
             var tableName = sqlExecuteType.ConstructorArguments[1].Value?.ToString() ?? string.Empty;
-            
+
             // Override table name with TableName attribute if present
             tableName = GetEffectiveTableName(tableName);
-            
+
             // Handle different CRUD operations with their specific parameter patterns
             return type switch
             {
@@ -1063,32 +1063,32 @@ internal class MethodGenerationContext : GenerationContextBase
         // 1. ExpressionToSql + Entity parameter (single insert)
         // 2. ExpressionToSql + IEnumerable<Entity> (batch insert)
         // 3. Just Entity parameter (simple insert)
-        
-        var entityParameter = MethodSymbol.Parameters.FirstOrDefault(p => 
+
+        var entityParameter = MethodSymbol.Parameters.FirstOrDefault(p =>
             !p.GetAttributes().Any(a => a.AttributeClass?.Name == "ExpressionToSqlAttribute") &&
             !IsSystemParameter(p));
-            
+
         if (entityParameter != null)
         {
             var objectMap = new ObjectMap(entityParameter);
             var context = new InsertGenerateContext(this, tableName, objectMap);
             var baseSql = new SqlGenerator().Generate(SqlDef, SqlExecuteTypes.Insert, context);
-            
+
             if (ExpressionToSqlParameter != null)
             {
                 // Insert with additional conditions from expression
                 return $"$\"{baseSql} \" + {ExpressionToSqlParameter.Name}.ToAdditionalClause()";
             }
-            
+
             return $"\"{baseSql}\"";
         }
-        
+
         // Fallback to expression-only insert
         if (ExpressionToSqlParameter != null)
         {
             return $"\"INSERT INTO {tableName} VALUES (...)\"";
         }
-        
+
         return string.Empty;
     }
 
@@ -1098,17 +1098,17 @@ internal class MethodGenerationContext : GenerationContextBase
         // 1. ExpressionToSql for WHERE clause
         // 2. Entity parameter or explicit SET values
         // Simple approach: Use ExpressionToSql for both SET and WHERE
-        
+
         if (ExpressionToSqlParameter != null)
         {
             // Let ExpressionToSql handle the entire UPDATE statement
             return $"\"UPDATE {tableName} SET field = value\"";
         }
-        
+
         // Fallback: find entity parameter for simple update
-        var entityParameter = MethodSymbol.Parameters.FirstOrDefault(p => 
+        var entityParameter = MethodSymbol.Parameters.FirstOrDefault(p =>
             !IsSystemParameter(p));
-            
+
         if (entityParameter != null)
         {
             var objectMap = new ObjectMap(entityParameter);
@@ -1116,36 +1116,36 @@ internal class MethodGenerationContext : GenerationContextBase
             var baseSql = new SqlGenerator().Generate(SqlDef, SqlExecuteTypes.Update, context);
             return $"\"{baseSql}\"";
         }
-        
+
         return string.Empty;
     }
 
     private string? HandleDeleteOperation(string tableName)
     {
         // DELETE operation needs a WHERE clause for safety
-        
+
         // If we have ExpressionToSql parameter, let it handle the WHERE clause
         if (ExpressionToSqlParameter != null)
         {
             return $"\"DELETE FROM {tableName}\"";
         }
-        
+
         // For simple DELETE by ID, look for an ID parameter
-        var idParameter = MethodSymbol.Parameters.FirstOrDefault(p => 
-            !IsSystemParameter(p) && 
+        var idParameter = MethodSymbol.Parameters.FirstOrDefault(p =>
+            !IsSystemParameter(p) &&
             (p.Name.ToLowerInvariant() == "id" || p.Name.ToLowerInvariant().EndsWith("id")));
-            
+
         if (idParameter != null)
         {
             // Generate simple DELETE with WHERE Id = @param
             var paramName = idParameter.Name.ToLowerInvariant();
             return $"\"DELETE FROM {SqlDef.WrapColumn(tableName)} WHERE {SqlDef.WrapColumn("Id")} = {SqlDef.ParamterPrefx}{paramName}\"";
         }
-        
+
         // Check for entity parameter that might have an Id property
-        var entityParameter = MethodSymbol.Parameters.FirstOrDefault(p => 
+        var entityParameter = MethodSymbol.Parameters.FirstOrDefault(p =>
             !IsSystemParameter(p) && p.Type.TypeKind == TypeKind.Class);
-            
+
         if (entityParameter != null)
         {
             // Assume entity has an Id property for DELETE WHERE clause
@@ -1154,7 +1154,7 @@ internal class MethodGenerationContext : GenerationContextBase
             var baseSql = new SqlGenerator().Generate(SqlDef, SqlExecuteTypes.Delete, context);
             return $"\"{baseSql.Replace("{0}", "Id = @Id")}\"";
         }
-        
+
         // Fallback: require ExpressionToSql for safety - don't generate DELETE without WHERE
         throw new InvalidOperationException($"DELETE operation for method {MethodSymbol.Name} requires either an 'id' parameter, entity parameter with Id property, or ExpressionToSql parameter for WHERE clause safety");
     }
@@ -1163,10 +1163,10 @@ internal class MethodGenerationContext : GenerationContextBase
     {
         // Check if parameter is a system parameter (CancellationToken, etc.)
         var typeName = parameter.Type.Name;
-        return typeName == "CancellationToken" || 
+        return typeName == "CancellationToken" ||
                typeName == "DbTransaction" ||
                typeName == "DbConnection" ||
-               parameter.GetAttributes().Any(a => 
+               parameter.GetAttributes().Any(a =>
                    a.AttributeClass?.Name == "TimeoutAttribute" ||
                    a.AttributeClass?.Name == "ExpressionToSqlAttribute");
     }
@@ -1182,10 +1182,10 @@ internal class MethodGenerationContext : GenerationContextBase
             {
                 var baseSql = parts[0].Trim();  // $"SELECT * FROM table WHERE "
                 var dynamicPart = parts[1].Trim();  // parameter.ToWhereClause()
-                
+
                 // Remove the $" prefix and " suffix from base SQL
                 baseSql = baseSql.Substring(2, baseSql.Length - 3);
-                
+
                 sb.AppendLine($"var __baseQuery__ = \"{baseSql}\";");
                 sb.AppendLine($"var __whereClause__ = {dynamicPart};");
                 sb.AppendLine($"{CmdName}.CommandText = __baseQuery__ + __whereClause__;");
@@ -1205,7 +1205,7 @@ internal class MethodGenerationContext : GenerationContextBase
             sb.AppendLine("}");
             return;
         }
-        
+
         // Fallback: treat as static SQL (remove quotes if present)
         var cleanSql = sqlTemplate.Trim('"');
         sb.AppendLine($"{CmdName}.CommandText = \"{cleanSql}\";");
@@ -1231,42 +1231,42 @@ internal class MethodGenerationContext : GenerationContextBase
         var objectMap = new ObjectMap(collectionParameter);
         var baseSql = sqlTemplate.Replace("{{VALUES_PLACEHOLDER}}", "");
         var properties = objectMap.Properties.ToList();
-        
+
         // Generate optimized batch INSERT logic with StringBuilder for better performance
         sb.AppendLine($"var baseSql = \"{baseSql.Trim('"')}\";");
         sb.AppendLine($"var sqlBuilder = new global::System.Text.StringBuilder(baseSql);");
         sb.AppendLine($"var paramIndex = 0;");
         sb.AppendLine($"var isFirst = true;");
         sb.AppendLine();
-        
+
         // Check for empty collection to avoid generating invalid SQL
         sb.AppendLine($"if (!{collectionParameter.Name}.Any())");
         sb.AppendLine($"    throw new global::System.InvalidOperationException(\"Cannot perform batch INSERT with empty collection\");");
         sb.AppendLine();
-        
+
         // Generate optimized loop with minimal allocations
         sb.AppendLine($"foreach (var item in {collectionParameter.Name})");
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         // Add comma separator for subsequent VALUES clauses
         sb.AppendLine("if (!isFirst) sqlBuilder.Append(\", \");");
         sb.AppendLine("else isFirst = false;");
         sb.AppendLine();
         sb.AppendLine("sqlBuilder.Append(\"(\");");
-        
+
         // Generate parameter creation with cleaner variable names
         for (int i = 0; i < properties.Count; i++)
         {
             var property = properties[i];
             var paramName = $"param_{property.Name}";
-            
+
             sb.AppendLine($"var {paramName} = {CmdName}.CreateParameter();");
             sb.AppendLine($"{paramName}.ParameterName = $\"{SqlDef.ParamterPrefx}{property.GetParameterName(string.Empty)}_{{paramIndex}}\";");
             sb.AppendLine($"{paramName}.DbType = {property.Type.GetDbType()};");
             sb.AppendLine($"{paramName}.Value = (object?)item.{property.Name} ?? global::System.DBNull.Value;");
             sb.AppendLine($"{CmdName}.Parameters.Add({paramName});");
-            
+
             // Add parameter to VALUES clause
             if (i > 0)
             {
@@ -1276,17 +1276,17 @@ internal class MethodGenerationContext : GenerationContextBase
             {
                 sb.AppendLine($"sqlBuilder.Append({paramName}.ParameterName);");
             }
-            
+
             if (i < properties.Count - 1) sb.AppendLine();
         }
-        
+
         sb.AppendLine("sqlBuilder.Append(\")\");");
         sb.AppendLine("paramIndex++;");
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
-        
+
         // Set the final optimized SQL
         sb.AppendLine($"{CmdName}.CommandText = sqlBuilder.ToString();");
     }
@@ -1307,7 +1307,7 @@ internal class MethodGenerationContext : GenerationContextBase
                 sb.PopIndent();
                 sb.AppendLine("}");
                 break;
-                
+
             case SqlExecuteTypes.Update:
                 // For UPDATE, let ExpressionToSql handle the entire statement
                 sb.AppendLine($"var __template__ = {ExpressionToSqlParameter!.Name}.ToTemplate();");
@@ -1319,7 +1319,7 @@ internal class MethodGenerationContext : GenerationContextBase
                 sb.PopIndent();
                 sb.AppendLine("}");
                 break;
-                
+
             case SqlExecuteTypes.Insert:
                 // For INSERT, ExpressionToSql might provide additional INSERT clauses
                 sb.AppendLine($"var __insertAddition__ = {ExpressionToSqlParameter!.Name}.ToAdditionalClause();");

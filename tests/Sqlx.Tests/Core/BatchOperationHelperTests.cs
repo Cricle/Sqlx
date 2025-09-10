@@ -36,10 +36,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             var tableName = "Users";
-            
+
             // Act
             var result = BatchOperationHelper.HandleBatchInsertOperation(tableName);
-            
+
             // Assert
             Assert.IsNotNull(result, "Result should not be null");
             Assert.IsTrue(result.Contains("BATCH_INSERT"), "Result should contain BATCH_INSERT");
@@ -51,10 +51,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             var tableName = "Users";
-            
+
             // Act
             var result = BatchOperationHelper.HandleBatchUpdateOperation(tableName);
-            
+
             // Assert
             Assert.IsNotNull(result, "Result should not be null");
             Assert.IsTrue(result.Contains("BATCH_UPDATE"), "Result should contain BATCH_UPDATE");
@@ -66,10 +66,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             var tableName = "Users";
-            
+
             // Act
             var result = BatchOperationHelper.HandleBatchDeleteOperation(tableName);
-            
+
             // Assert
             Assert.IsNotNull(result, "Result should not be null");
             Assert.IsTrue(result.Contains("BATCH_DELETE"), "Result should contain BATCH_DELETE");
@@ -81,10 +81,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             var batchSql = "BATCH_INSERT:Users";
-            
+
             // Act
             var result = BatchOperationHelper.IsBatchOperation(batchSql);
-            
+
             // Assert
             Assert.IsTrue(result, "Should recognize batch operation SQL");
         }
@@ -94,10 +94,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             var normalSql = "SELECT * FROM Users";
-            
+
             // Act
             var result = BatchOperationHelper.IsBatchOperation(normalSql);
-            
+
             // Assert
             Assert.IsFalse(result, "Should not recognize normal SQL as batch operation");
         }
@@ -107,10 +107,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             string? nullSql = null;
-            
+
             // Act
             var result = BatchOperationHelper.IsBatchOperation(nullSql!);
-            
+
             // Assert
             Assert.IsFalse(result, "Should handle null SQL gracefully");
         }
@@ -120,10 +120,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             var tableName = "Users";
-            
+
             // Act
             var result = BatchOperationHelper.GetBatchSql(SqlExecuteTypes.BatchInsert, tableName);
-            
+
             // Assert
             Assert.IsNotNull(result, "Result should not be null");
             Assert.IsTrue(result.Contains("BATCH_INSERT"), "Result should contain BATCH_INSERT");
@@ -134,10 +134,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             var tableName = "Users";
-            
+
             // Act
             var result = BatchOperationHelper.GetBatchSql(SqlExecuteTypes.BatchUpdate, tableName);
-            
+
             // Assert
             Assert.IsNotNull(result, "Result should not be null");
             Assert.IsTrue(result.Contains("BATCH_UPDATE"), "Result should contain BATCH_UPDATE");
@@ -148,10 +148,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             var tableName = "Users";
-            
+
             // Act
             var result = BatchOperationHelper.GetBatchSql(SqlExecuteTypes.BatchDelete, tableName);
-            
+
             // Assert
             Assert.IsNotNull(result, "Result should not be null");
             Assert.IsTrue(result.Contains("BATCH_DELETE"), "Result should contain BATCH_DELETE");
@@ -162,10 +162,10 @@ namespace Sqlx.Tests.Core
         {
             // Arrange
             var tableName = "Users";
-            
+
             // Act
             var result = BatchOperationHelper.GetBatchSql(SqlExecuteTypes.Select, tableName);
-            
+
             // Assert
             Assert.AreEqual(string.Empty, result, "Non-batch type should return empty string");
         }

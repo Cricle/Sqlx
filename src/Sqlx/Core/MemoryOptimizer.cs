@@ -93,7 +93,7 @@ internal static class MemoryOptimizer
     private static int RoundUpToPowerOf2(int value)
     {
         if (value <= 0) return 1;
-        
+
         value--;
         value |= value >> 1;
         value |= value >> 2;

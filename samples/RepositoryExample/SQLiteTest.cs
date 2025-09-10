@@ -37,7 +37,7 @@ public static class SQLiteTest
 
             using var connection = new SqliteConnection(ConnectionString);
             await connection.OpenAsync();
-            
+
             Console.WriteLine("✅ SQLite 数据库连接成功 SQLite database connection successful");
 
             var repository = new SQLiteUserRepository(connection);
@@ -49,20 +49,20 @@ public static class SQLiteTest
 
             // Test 2: Create users (INSERT operations)
             Console.WriteLine("\n2. 测试 CreateUser() - 实际 INSERT 操作");
-            var user1 = new User 
-            { 
-                Name = "SQLite User 1", 
-                Email = "sqlite1@example.com", 
-                CreatedAt = DateTime.Now 
+            var user1 = new User
+            {
+                Name = "SQLite User 1",
+                Email = "sqlite1@example.com",
+                CreatedAt = DateTime.Now
             };
             var createResult1 = repository.CreateUser(user1);
             Console.WriteLine($"   ➕ 创建用户1结果 Created user 1 result: {createResult1} 行受影响");
 
-            var user2 = new User 
-            { 
-                Name = "SQLite User 2", 
-                Email = "sqlite2@example.com", 
-                CreatedAt = DateTime.Now.AddMinutes(-30) 
+            var user2 = new User
+            {
+                Name = "SQLite User 2",
+                Email = "sqlite2@example.com",
+                CreatedAt = DateTime.Now.AddMinutes(-30)
             };
             var createResult2 = await repository.CreateUserAsync(user2);
             Console.WriteLine($"   ➕ 异步创建用户2结果 Async created user 2 result: {createResult2} 行受影响");
@@ -83,7 +83,7 @@ public static class SQLiteTest
                 var firstUser = allUsers[0];
                 var userById = repository.GetUserById(firstUser.Id);
                 Console.WriteLine($"   🔍 查询用户 ID {firstUser.Id}: {userById?.Name ?? "未找到"}");
-                
+
                 var userByIdAsync = await repository.GetUserByIdAsync(firstUser.Id);
                 Console.WriteLine($"   🔍 异步查询用户 ID {firstUser.Id}: {userByIdAsync?.Name ?? "未找到"}");
             }
@@ -96,10 +96,10 @@ public static class SQLiteTest
                 var originalName = userToUpdate.Name;
                 userToUpdate.Name = "Updated " + originalName;
                 userToUpdate.Email = "updated_" + userToUpdate.Email;
-                
+
                 var updateResult = repository.UpdateUser(userToUpdate);
                 Console.WriteLine($"   ✏️ 更新用户结果 Update user result: {updateResult} 行受影响");
-                
+
                 // Verify update
                 var updatedUser = repository.GetUserById(userToUpdate.Id);
                 Console.WriteLine($"   🔍 验证更新 Verify update: '{updatedUser?.Name}' (原名 original: '{originalName}')");
@@ -112,7 +112,7 @@ public static class SQLiteTest
                 var userToDelete = allUsers[allUsers.Count - 1];
                 var deleteResult = repository.DeleteUser(userToDelete.Id);
                 Console.WriteLine($"   🗑️ 删除用户结果 Delete user result: {deleteResult} 行受影响");
-                
+
                 // Verify deletion
                 var deletedUser = repository.GetUserById(userToDelete.Id);
                 Console.WriteLine($"   🔍 验证删除 Verify deletion: {(deletedUser == null ? "✅ 用户已删除 User deleted" : "❌ 删除失败 Deletion failed")}");

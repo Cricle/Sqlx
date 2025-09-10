@@ -26,14 +26,14 @@ internal static class CodeGenerator
         var isAsync = TypeAnalyzer.IsAsyncType(method.ReturnType);
         var asyncModifier = isAsync ? "async " : "";
         var returnType = method.ReturnType.ToDisplayString();
-        var parameters = string.Join(", ", method.Parameters.Select(p => 
+        var parameters = string.Join(", ", method.Parameters.Select(p =>
             $"{p.Type.ToDisplayString()} {p.Name}"));
 
         sb.AppendLine($"/// <summary>");
         sb.AppendLine($"/// Generated implementation of {method.Name}.");
         sb.AppendLine($"/// </summary>");
         sb.AppendLine($"public {asyncModifier}{returnType} {method.Name}({parameters})");
-        
+
         if (includeBody)
         {
             sb.AppendLine("{");
@@ -50,7 +50,7 @@ internal static class CodeGenerator
         sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         if (isAsync)
         {
             sb.AppendLine("await connection.OpenAsync(cancellationToken).ConfigureAwait(false);");
@@ -59,7 +59,7 @@ internal static class CodeGenerator
         {
             sb.AppendLine("connection.Open();");
         }
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
@@ -97,7 +97,7 @@ internal static class CodeGenerator
                 GenerateSimpleParameter(sb, parameter);
             }
         }
-        
+
         if (method.Parameters.Length > 0 && !method.Parameters.All(p => p.Type.Name == "CancellationToken"))
         {
             sb.AppendLine();
@@ -126,7 +126,7 @@ internal static class CodeGenerator
         var paramName = parameter.Name.ToLowerInvariant();
         GenerateParameterCode(sb, parameter.Name, parameter.Name, paramName);
     }
-    
+
     /// <summary>
     /// Generates optimized parameter assignment code.
     /// </summary>
@@ -255,7 +255,7 @@ internal static class CodeGenerator
                                baseMethod == "ExecuteNonQuery" ? $"ExecuteNonQueryAsync({cancellationToken})" :
                                baseMethod == "ExecuteScalar" ? $"ExecuteScalarAsync({cancellationToken})" :
                                $"{baseMethod}Async({cancellationToken})";
-            
+
             var readMethod = $"ReadAsync({cancellationToken})";
             return (executeMethod, readMethod, "await ");
         }

@@ -14,9 +14,7 @@ using System.Threading.Tasks;
 /// </summary>
 internal enum TestMode
 {
-    RealDatabase,
-    SQLite,
-    AdvancedSQLite
+    SQLite
 }
 
 /// <summary>
@@ -52,55 +50,18 @@ internal class Program
     private static TestMode ParseArguments(string[] args)
     {
         if (args.Length == 0) return TestMode.SQLite;
-        
-        return args[0].ToLower() switch
-        {
-            "--real-db" => TestMode.RealDatabase,
-            "--sqlite" => TestMode.SQLite,
-            "--advanced" => TestMode.AdvancedSQLite,
-            _ => TestMode.SQLite
-        };
+        return TestMode.SQLite;
     }
 
     private static async Task RunSelectedTest(TestMode mode)
     {
         try
         {
-            switch (mode)
-            {
-                case TestMode.RealDatabase:
-                    await RunRealDatabaseTest();
-                    break;
-                case TestMode.SQLite:
-                    await RunSQLiteTest();
-                    break;
-                case TestMode.AdvancedSQLite:
-                    await RunAdvancedSQLiteTest();
-                    break;
-            }
+            await RunSQLiteTest();
         }
         catch (Exception ex)
         {
             Console.WriteLine($"❌ Test execution failed: {ex.Message}");
-        }
-    }
-
-    private static async Task RunRealDatabaseTest()
-    {
-        Console.WriteLine("🗄️ Real Database Mode (SQL Server)");
-        Console.WriteLine("===================================");
-        
-        bool connectionSuccessful = await RealDatabaseTest.TestDatabaseConnection();
-        
-        if (connectionSuccessful)
-        {
-            bool testsPassed = await RealDatabaseTest.RunRealDatabaseTests();
-            PrintTestResult("Real Database", testsPassed);
-        }
-        else
-        {
-            Console.WriteLine("\n⚠️ Cannot connect to database, showing setup instructions...");
-            RealDatabaseTest.ShowDatabaseSetupInstructions();
         }
     }
 
@@ -112,15 +73,6 @@ internal class Program
         ShowSQLiteCapabilities();
         
         bool testsPassed = await SQLiteTest.RunSQLiteTests();
-        
-        // Run the new generic repository demo
-        Console.WriteLine("\n🎭 Running Generic Repository Demo...");
-        await GenericRepositoryDemo.RunDemoAsync();
-        
-        // Run Performance Comparison Demo
-        Console.WriteLine("\n⚡ Running Performance Comparison Demo...");
-        await PerformanceComparisonDemo.RunComparisonAsync();
-        
         PrintTestResult("SQLite", testsPassed);
     }
 
@@ -149,16 +101,7 @@ internal class Program
         Console.WriteLine("=== SQLite Real Code Generation Verification ===\n");
     }
 
-    private static async Task RunAdvancedSQLiteTest()
-    {
-        Console.WriteLine("🚀 Advanced SQLite Enterprise Features Mode");
-        Console.WriteLine("==========================================");
-        Console.WriteLine("⚠️  Advanced features demo temporarily unavailable - Source generator doesn't support interface inheritance yet");
-        Console.WriteLine("🔄 Switching to basic mode...\n");
-        
-        bool testsPassed = await SQLiteTest.RunSQLiteTests();
-        PrintTestResult("Advanced SQLite", testsPassed);
-    }
+    // Advanced and Real DB modes removed to simplify the sample
 
     private static void PrintTestResult(string testName, bool success)
     {

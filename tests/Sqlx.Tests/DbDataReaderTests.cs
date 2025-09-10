@@ -13,7 +13,6 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 public class DbDataReaderTests : CodeGenerationTestBase
 {
     [TestMethod]
-    [Ignore("Temporarily disabled due to source generator string literal formatting issues")]
     public void DbDataReaderResult()
     {
         string source = @"

@@ -8,7 +8,6 @@ namespace Sqlx;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Sqlx.Core;
 using Sqlx.SqlGen;
 using System;
 using System.Collections.Generic;
@@ -152,9 +151,6 @@ internal class MethodGenerationContext : GenerationContextBase
     /// Public properties for tests
     /// </summary>
     public bool ReturnIsEnumerable => ReturnType.Name == "IEnumerable" || ReturnType.Name == Consts.IAsyncEnumerable;
-    public bool ReturnIsList => ReturnType.Name == "List" || ReturnType.Name == "IList";
-    public bool ReturnIsTuple => Extensions.IsTuple(ReturnType);
-    public bool ReturnIsScalar => ReturnType.IsScalarType();
 
     private SqlDefine SqlDef { get; }
 
@@ -219,7 +215,29 @@ internal class MethodGenerationContext : GenerationContextBase
         sb.PopIndent();
         sb.AppendLine("}");
 
-        sb.AppendLine($"using(global::System.Data.Common.DbCommand {CmdName} = {DbConnectionName}.CreateCommand())");
+        // Check if this is a BatchCommand operation
+        var sqlExecuteTypeAttr = MethodSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlExecuteTypeAttribute");
+        var isBatchCommand = false;
+        if (sqlExecuteTypeAttr != null)
+        {
+            var enumValueObj = sqlExecuteTypeAttr.ConstructorArguments[0].Value;
+            var type = enumValueObj switch
+            {
+                int intValue => (SqlExecuteTypes)intValue,
+                string strValue when int.TryParse(strValue, out var intVal) => (SqlExecuteTypes)intVal,
+                _ => SqlExecuteTypes.Select
+            };
+            isBatchCommand = type == SqlExecuteTypes.BatchCommand;
+        }
+
+        if (isBatchCommand)
+        {
+            sb.AppendLine($"using(var {CmdName} = new global::System.Data.Common.DbBatch({DbConnectionName}))");
+        }
+        else
+        {
+            sb.AppendLine($"using(global::System.Data.Common.DbCommand {CmdName} = {DbConnectionName}.CreateCommand())");
+        }
         sb.AppendLine("{");
         sb.PushIndent();
 
@@ -234,6 +252,12 @@ internal class MethodGenerationContext : GenerationContextBase
         {
             ClassGenerationContext.GeneratorExecutionContext.ReportDiagnostic(Diagnostic.Create(Messages.SP0007, MethodSymbol.Locations[0]));
             return false;
+        }
+
+        // Handle BatchCommand operations
+        if (isBatchCommand)
+        {
+            return GenerateBatchCommandLogic(sb);
         }
 
         // Check for batch operations - for now, just use regular SQL generation
@@ -265,7 +289,7 @@ internal class MethodGenerationContext : GenerationContextBase
         else if (!string.IsNullOrEmpty(sql))
         {
             // Check if this is a batch INSERT operation with placeholder
-            if (sql!.Contains("{{VALUES_PLACEHOLDER}}"))
+            if (sql?.Contains("{{VALUES_PLACEHOLDER}}") == true)
             {
                 GenerateBatchInsertSql(sb, sql);
             }
@@ -292,7 +316,7 @@ internal class MethodGenerationContext : GenerationContextBase
 
         // Paramters - skip for batch INSERT operations as they're handled in GenerateBatchInsertSql
         var columnDefines = new List<ColumnDefine>();
-        var isBatchInsert = !string.IsNullOrEmpty(sql) && sql!.Contains("{{VALUES_PLACEHOLDER}}");
+        var isBatchInsert = !string.IsNullOrEmpty(sql) && sql?.Contains("{{VALUES_PLACEHOLDER}}") == true;
 
         if (!isBatchInsert)
         {
@@ -394,7 +418,7 @@ internal class MethodGenerationContext : GenerationContextBase
             return false;
         }
 
-        sb.AppendLineIf(IsAsync, $"var {ResultName} = {CmdName}.ExecuteNonQuery();", $"var {ResultName} = await {CmdName}.ExecuteNonQueryAsync({CancellationTokenKey});");
+        sb.AppendLineIf(IsAsync, $"var {ResultName} = await {CmdName}.ExecuteNonQueryAsync();", $"var {ResultName} = {CmdName}.ExecuteNonQuery();");
 
         WriteOutput(sb, columnDefines);
         WriteMethodExecuted(sb, ResultName);
@@ -415,7 +439,7 @@ internal class MethodGenerationContext : GenerationContextBase
     {
         var cancellationTokenName = CancellationTokenParameter?.Name ?? string.Empty;
 
-        sb.AppendLineIf(IsAsync, $"var {ResultName} = await {CmdName}.ExecuteScalarAsync({cancellationTokenName});", $"var {ResultName} = {CmdName}.ExecuteScalar();");
+        sb.AppendLineIf(IsAsync, $"var {ResultName} = await {CmdName}.ExecuteScalarAsync();", $"var {ResultName} = {CmdName}.ExecuteScalar();");
 
         WriteOutput(sb, columnDefines);
         if (!ReturnIsEnumerable)
@@ -477,7 +501,7 @@ internal class MethodGenerationContext : GenerationContextBase
 
         if (hasHandler || dbConnection != null)
         {
-            var executeMethod = IsAsync ? $"await {CmdName}.ExecuteReaderAsync({CancellationTokenKey})" : $"{CmdName}.ExecuteReader()";
+            var executeMethod = IsAsync ? $"await {CmdName}.ExecuteReaderAsync()" : $"{CmdName}.ExecuteReader()";
             sb.AppendLine($"using(global::System.Data.Common.DbDataReader {DbReaderName} = {executeMethod})");
             sb.AppendLine("{");
             sb.PushIndent();
@@ -722,7 +746,7 @@ internal class MethodGenerationContext : GenerationContextBase
 
     private void WriteDeclareReturnList(IndentedStringBuilder sb)
     {
-        sb.AppendLine($"global::System.Collections.Generic.List<{ElementType.ToDisplayString()}> {ResultName} = new global::System.Collections.Generic.List<{ElementType.ToDisplayString(NullableFlowState.None)}>();");
+        sb.AppendLine($"global::System.Collections.Generic.List<{ElementType.ToDisplayString()}> {ResultName} = new global::System.Collections.Generic.List<{ElementType.ToDisplayString()}>();");
     }
 
     private void WriteBeginReader(IndentedStringBuilder sb)
@@ -1007,6 +1031,7 @@ internal class MethodGenerationContext : GenerationContextBase
                 SqlExecuteTypes.BatchInsert => $"INSERT INTO {tableName} (/* columns */) VALUES (/* batch values */)",
                 SqlExecuteTypes.BatchUpdate => $"UPDATE {tableName} SET /* columns = values */ WHERE /* condition */",
                 SqlExecuteTypes.BatchDelete => $"DELETE FROM {tableName} WHERE /* condition */",
+                SqlExecuteTypes.BatchCommand => "/* ADO.NET BatchCommand will be used */",
                 _ => string.Empty
             };
         }
@@ -1170,47 +1195,6 @@ internal class MethodGenerationContext : GenerationContextBase
                    a.AttributeClass?.Name == "TimeoutAttribute" ||
                    a.AttributeClass?.Name == "ExpressionToSqlAttribute");
     }
-
-    private void GenerateDynamicSqlComposition(IndentedStringBuilder sb, string sqlTemplate)
-    {
-        // Parse the dynamic SQL template and generate appropriate code
-        if (sqlTemplate.StartsWith("$\"") && sqlTemplate.Contains("WHERE \" + "))
-        {
-            // Handle patterns like: $"SELECT * FROM table WHERE " + parameter.ToWhereClause()
-            var parts = sqlTemplate.Split(new string[] { " + " }, StringSplitOptions.None);
-            if (parts.Length == 2)
-            {
-                var baseSql = parts[0].Trim();  // $"SELECT * FROM table WHERE "
-                var dynamicPart = parts[1].Trim();  // parameter.ToWhereClause()
-
-                // Remove the $" prefix and " suffix from base SQL
-                baseSql = baseSql.Substring(2, baseSql.Length - 3);
-
-                sb.AppendLine($"var __baseQuery__ = \"{baseSql}\";");
-                sb.AppendLine($"var __whereClause__ = {dynamicPart};");
-                sb.AppendLine($"{CmdName}.CommandText = __baseQuery__ + __whereClause__;");
-                return;
-            }
-        }
-        else if (ExpressionToSqlParameter != null)
-        {
-            // Handle ExpressionToSql parameter dynamically
-            sb.AppendLine($"{CmdName}.CommandText = {sqlTemplate};");
-            sb.AppendLine($"var __whereClause__ = {ExpressionToSqlParameter.Name}.ToWhereClause();");
-            sb.AppendLine($"if (!string.IsNullOrEmpty(__whereClause__))");
-            sb.AppendLine("{");
-            sb.PushIndent();
-            sb.AppendLine($"{CmdName}.CommandText += \" WHERE \" + __whereClause__;");
-            sb.PopIndent();
-            sb.AppendLine("}");
-            return;
-        }
-
-        // Fallback: treat as static SQL (remove quotes if present)
-        var cleanSql = sqlTemplate.Trim('"');
-        sb.AppendLine($"{CmdName}.CommandText = \"{cleanSql}\";");
-    }
-
     private void GenerateBatchInsertSql(IndentedStringBuilder sb, string sqlTemplate)
     {
         // Find the collection parameter (should be IEnumerable<T>)
@@ -1372,6 +1356,92 @@ internal class MethodGenerationContext : GenerationContextBase
     }
 
     public sealed record ColumnDefine(string ParameterName, ISymbol Symbol);
+
+    private bool GenerateBatchCommandLogic(IndentedStringBuilder sb)
+    {
+        // Find collection parameter
+        var collectionParam = SqlParameters.FirstOrDefault(p => !p.Type.IsScalarType());
+        if (collectionParam == null)
+        {
+            sb.AppendLine("throw new global::System.ArgumentException(\"BatchCommand requires a collection parameter\");");
+            sb.PopIndent();
+            sb.AppendLine("}");
+            return true;
+        }
+
+        // Null check and validation
+        sb.AppendLine($"if ({collectionParam.Name} == null)");
+        sb.AppendLine($"    throw new global::System.ArgumentNullException(nameof({collectionParam.Name}));");
+        sb.AppendLine();
+
+        // Build batch commands
+        sb.AppendLine($"foreach (var item in {collectionParam.Name})");
+        sb.AppendLine("{");
+        sb.PushIndent();
+
+        var sqlTemplate = GetSql();
+        if (!string.IsNullOrEmpty(sqlTemplate))
+        {
+            sb.AppendLine($"var cmd = {CmdName}.CreateBatchCommand();");
+            sb.AppendLine($"cmd.CommandText = {sqlTemplate};");
+
+            // Add parameters efficiently
+            var objectMap = new ObjectMap(collectionParam);
+            foreach (var prop in objectMap.Properties)
+            {
+                var paramName = prop.Name.ToLowerInvariant();
+                sb.AppendLine($"cmd.Parameters.Add(new global::System.Data.Common.DbParameter");
+                sb.AppendLine("{");
+                sb.PushIndent();
+                sb.AppendLine($"ParameterName = \"@{paramName}\",");
+                sb.AppendLine($"Value = item.{prop.Name} ?? global::System.DBNull.Value");
+                sb.PopIndent();
+                sb.AppendLine("});");
+            }
+
+            sb.AppendLine($"{CmdName}.BatchCommands.Add(cmd);");
+        }
+
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+
+        // Execute and return
+        GenerateBatchExecution(sb);
+
+        sb.PopIndent();
+        sb.AppendLine("}");
+        return true;
+    }
+
+
+    private void GenerateBatchExecution(IndentedStringBuilder sb)
+    {
+        var returnType = GetReturnType();
+
+        if (IsAsync)
+        {
+            if (returnType != ReturnTypes.Void)
+            {
+                sb.AppendLine($"return await {CmdName}.ExecuteNonQueryAsync();");
+            }
+            else
+            {
+                sb.AppendLine($"await {CmdName}.ExecuteNonQueryAsync();");
+            }
+        }
+        else
+        {
+            if (returnType != ReturnTypes.Void)
+            {
+                sb.AppendLine($"return {CmdName}.ExecuteNonQuery();");
+            }
+            else
+            {
+                sb.AppendLine($"{CmdName}.ExecuteNonQuery();");
+            }
+        }
+    }
 }
 
 internal enum ReturnTypes

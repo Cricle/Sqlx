@@ -10,26 +10,6 @@ using System.Linq;
 
 public abstract partial class AbstractGenerator
 {
-    private bool HasSqlxAttribute(IMethodSymbol method)
-    {
-        // Check if method has any Sqlx-related attributes
-        var attributes = method.GetAttributes();
-        foreach (var attr in attributes)
-        {
-            var attrName = attr.AttributeClass?.Name;
-            if (attrName == "SqlxAttribute" ||
-                attrName == "RawSqlAttribute" ||
-                attrName == "SqlExecuteTypeAttribute")
-            {
-                System.Diagnostics.Debug.WriteLine($"Method {method.Name} has Sqlx attribute: {attrName}");
-                return true;
-            }
-        }
-
-        System.Diagnostics.Debug.WriteLine($"Method {method.Name} does not have Sqlx attributes");
-        return false;
-    }
-
     private void GenerateOrCopyAttributes(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName)
     {
         // Check if method already has SQL attributes

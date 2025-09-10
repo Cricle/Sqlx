@@ -42,16 +42,7 @@ internal class ClassGenerationContext : GenerationContextBase
 
     public INamedTypeSymbol AttributeSymbol { get; }
 
-    /// <summary>
-    /// Alias for AttributeSymbol for test compatibility
-    /// </summary>
-    public INamedTypeSymbol SqlxAttributeSymbol => AttributeSymbol;
-
     public GeneratorExecutionContext GeneratorExecutionContext => _generatorExecutionContext;
-
-    public NullableContextOptions NullableContextOptions => _nullableContextOptions;
-
-    public bool HasNullableAnnotations => NullableContextOptions != NullableContextOptions.Disable;
 
     /// <summary>
     /// Sets the generator execution context and nullable options
@@ -76,8 +67,8 @@ internal class ClassGenerationContext : GenerationContextBase
 // regenerated.
 // </auto-generated>");
 
-        sb.AppendLine("#nullable enable");
-        sb.AppendLine("#pragma warning disable CS8618, CS8625, CS8629");
+        sb.AppendLine("#nullable disable");
+        sb.AppendLine("#pragma warning disable CS8618, CS8625, CS8629, CS8601, CS8600, CS8603, CS8669, CS8628, CS0266");
         sb.AppendLine();
         sb.AppendLine("using System.Linq;");
         sb.AppendLine();

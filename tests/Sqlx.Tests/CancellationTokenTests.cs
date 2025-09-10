@@ -14,7 +14,6 @@ using System.Threading.Tasks;
 public class CancellationTokenTests : CodeGenerationTestBase
 {
     [TestMethod]
-    [Ignore("Temporarily disabled due to source generator issues with async Task<T> methods")]
     public void ScalarResult()
     {
         string source = @"
@@ -37,7 +36,6 @@ namespace Foo
     }
 
     [TestMethod]
-    [Ignore("Temporarily disabled due to source generator issues with async Task methods")]
     public void NoResults()
     {
         string source = @"
@@ -60,7 +58,6 @@ namespace Foo
     }
 
     [TestMethod]
-    [Ignore("Temporarily disabled due to source generator issues with async Task<T> methods")]
     public void MapResultSetToProcedure()
     {
         string source = @"

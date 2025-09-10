@@ -247,7 +247,9 @@ internal static class AttributeSourceGenerator
         sb.AppendLine("        /// <summary>Batch UPDATE operation.</summary>");
         sb.AppendLine("        BatchUpdate = 5,");
         sb.AppendLine("        /// <summary>Batch DELETE operation.</summary>");
-        sb.AppendLine("        BatchDelete = 6");
+        sb.AppendLine("        BatchDelete = 6,");
+        sb.AppendLine("        /// <summary>ADO.NET BatchCommand operation.</summary>");
+        sb.AppendLine("        BatchCommand = 7");
         sb.AppendLine("    }");
         sb.AppendLine();
 
@@ -717,18 +719,22 @@ internal static class AttributeSourceGenerator
         sb.AppendLine("            var right = ParseExpression(binary.Right);");
         sb.AppendLine("            return binary.NodeType switch");
         sb.AppendLine("            {");
+        // Comparison operators
         sb.AppendLine("                global::System.Linq.Expressions.ExpressionType.Equal => $\"{left} = {right}\",");
         sb.AppendLine("                global::System.Linq.Expressions.ExpressionType.NotEqual => $\"{left} <> {right}\",");
         sb.AppendLine("                global::System.Linq.Expressions.ExpressionType.GreaterThan => $\"{left} > {right}\",");
         sb.AppendLine("                global::System.Linq.Expressions.ExpressionType.GreaterThanOrEqual => $\"{left} >= {right}\",");
         sb.AppendLine("                global::System.Linq.Expressions.ExpressionType.LessThan => $\"{left} < {right}\",");
         sb.AppendLine("                global::System.Linq.Expressions.ExpressionType.LessThanOrEqual => $\"{left} <= {right}\",");
+        // Logical operators
         sb.AppendLine("                global::System.Linq.Expressions.ExpressionType.AndAlso => $\"({left} AND {right})\",");
         sb.AppendLine("                global::System.Linq.Expressions.ExpressionType.OrElse => $\"({left} OR {right})\",");
+        // Arithmetic operators - simplified and grouped
         sb.AppendLine("                global::System.Linq.Expressions.ExpressionType.Add => $\"{left} + {right}\",");
         sb.AppendLine("                global::System.Linq.Expressions.ExpressionType.Subtract => $\"{left} - {right}\",");
         sb.AppendLine("                global::System.Linq.Expressions.ExpressionType.Multiply => $\"{left} * {right}\",");
         sb.AppendLine("                global::System.Linq.Expressions.ExpressionType.Divide => $\"{left} / {right}\",");
+        sb.AppendLine("                global::System.Linq.Expressions.ExpressionType.Modulo => $\"{left} % {right}\",");
         sb.AppendLine("                _ => $\"{left} = {right}\"");
         sb.AppendLine("            };");
         sb.AppendLine("        }");

@@ -1,56 +1,65 @@
-# Sqlx 文档中心
+# 📚 Sqlx 文档
 
-欢迎来到 Sqlx 文档中心！这里包含了 Sqlx 的完整使用指南和参考文档。
+## 🚀 快速开始
 
-## 📚 文档导航
+| 文档 | 描述 |
+|------|------|
+| [主要文档](../README.md) | 项目介绍和快速上手 |
+| [新功能快速入门](NEW_FEATURES_QUICK_START.md) | BatchCommand 和 mod 运算 |
+| [ExpressionToSql 指南](expression-to-sql.md) | LINQ 表达式转 SQL |
 
-### 🚀 快速开始
-- [快速入门指南](getting-started.md) - 3分钟上手 Sqlx
-- [安装指南](installation.md) - 详细的安装和配置说明
+## 📋 项目信息
 
-### 🏗️ 核心功能
-- [Repository 模式指南](repository-pattern.md) - 自动代码生成的 Repository 模式
-- [SqlDefine 和 TableName 属性](sqldefine-tablename.md) - 多数据库方言和表名配置
-- [ExpressionToSql 指南](expression-to-sql.md) - LINQ 表达式转 SQL
+| 文档 | 描述 |
+|------|------|
+| [更新日志](../CHANGELOG.md) | 版本更新记录 |
+| [贡献指南](../CONTRIBUTING.md) | 参与开发指南 |
+| [项目结构](../PROJECT_STRUCTURE.md) | 代码结构说明 |
 
-### 🌐 数据库支持
-Sqlx 支持多种主流数据库方言：
-- **MySQL** - 完整支持，包括自增主键和批量操作
-- **SQL Server** - 完整支持，包括 Identity 列和存储过程
-- **PostgreSQL** - 完整支持，包括 SERIAL 类型和数组操作
-- **SQLite** - 完整支持，轻量级部署的最佳选择
+## 🔧 开发者文档
 
-详细配置请参阅：[SqlDefine 和 TableName 属性](sqldefine-tablename.md)
+| 文档 | 描述 |
+|------|------|
+| [优化总结](OPTIMIZATION_SUMMARY.md) | 性能优化详情 |
+| [CI/CD 说明](../.github/workflows/README.md) | 构建和发布流程 |
 
-### 🔧 高级主题
-- [性能优化指南](OPTIMIZATION_GUIDE.md) - 性能调优和最佳实践
-- [性能最佳实践](BEST_PRACTICES.md) - 代码与架构建议
-- [性能与基准参考](PERFORMANCE_GUIDE.md) - 性能指标与基准
-- [测试指南](TESTING_GUIDE.md) - 测试规范和实践
+## 💡 最佳实践
 
-### 📖 API 参考
-- [属性参考](api/attributes.md) - 所有可用属性的详细说明
+### BatchCommand
+```csharp
+// ✅ 推荐：大批量操作
+[SqlExecuteType(SqlExecuteTypes.BatchCommand, "products")]
+Task<int> BatchInsertAsync(IEnumerable<Product> products);
+```
 
-### 💡 示例和教程
-- [基础示例](examples/basic-examples.md) - 基本用法示例
+### ExpressionToSql
+```csharp
+// ✅ 推荐：结合条件使用
+.Where(u => u.IsActive && u.Id % 2 == 0)
+```
 
-### 🔍 故障排除
-- [常见问题 FAQ](troubleshooting/faq.md) - 常见问题解答
+### 连接池配置
+```csharp
+// ADO.NET 内置连接池（推荐）
+var connectionString = "Server=...;Pooling=true;Min Pool Size=5;Max Pool Size=100;";
+```
 
-### 🤝 贡献指南
-- [贡献指南（根目录）](../CONTRIBUTING.md)
+## 🎯 常见问题
 
-## 🔗 快速链接
+**Q: 如何发布新版本？**
+```bash
+git tag v1.0.0
+git push origin v1.0.0  # 自动发布到 NuGet
+```
 
-- [GitHub 仓库](https://github.com/Cricle/Sqlx)
-- [NuGet 包](https://www.nuget.org/packages/Sqlx/)
-- [问题报告](https://github.com/Cricle/Sqlx/issues)
-- [讨论区](https://github.com/Cricle/Sqlx/discussions)
+**Q: 支持哪些数据库？**
+- SQL Server、MySQL、PostgreSQL、SQLite
 
-## 📄 许可证
+**Q: 如何配置连接池？**
+- 使用 ADO.NET 内置连接池，通过连接字符串配置
 
-本项目采用 [MIT 许可证](../License.txt) 开源。
+## 📞 获取帮助
 
----
-
-**需要帮助？** 如果您在文档中找不到答案，请在 [GitHub Issues](https://github.com/Cricle/Sqlx/issues) 中提问。
+- 🐛 [提交 Issue](https://github.com/Cricle/Sqlx/issues)
+- 💬 [讨论区](https://github.com/Cricle/Sqlx/discussions)
+- 📧 联系维护者

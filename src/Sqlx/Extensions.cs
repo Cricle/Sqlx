@@ -14,7 +14,7 @@ using System.Runtime.CompilerServices;
 
 internal static class Extensions
 {
-    // Optimized caches with better key strategies
+    // Simple type checking - minimal internal caches to avoid recomputation
     private static readonly ConcurrentDictionary<ITypeSymbol, bool> _dbConnectionTypeCache = new(SymbolEqualityComparer.Default);
     private static readonly ConcurrentDictionary<ITypeSymbol, bool> _dbTransactionTypeCache = new(SymbolEqualityComparer.Default);
     private static readonly ConcurrentDictionary<ITypeSymbol, bool> _dbContextTypeCache = new(SymbolEqualityComparer.Default);
@@ -139,11 +139,6 @@ internal static class Extensions
         string.Equals(returnType.Name, "ValueTuple", StringComparison.Ordinal);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static IPropertySymbol? FindMember(this ITypeSymbol returnType, string parameterName) =>
-        returnType.GetMembers().OfType<IPropertySymbol>()
-            .FirstOrDefault(prop => string.Equals(prop.Name, parameterName, StringComparison.OrdinalIgnoreCase));
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static string GetSqlName(this ISymbol propertySymbol)
     {
         return _sqlNameCache.GetOrAdd(propertySymbol, static prop =>
@@ -238,17 +233,6 @@ internal static class Extensions
             SpecialType.System_Object => "GetValue",
             _ => null,
         };
-    }
-
-    internal static string GetDataReadIndexExpression(this ITypeSymbol type, string readerName, int index)
-    {
-        var method = GetDataReaderMethod(type);
-        var isNullable = UnwrapNullableType(type) != type;
-
-        // Optimized null check with proper ordinal usage
-        return isNullable
-            ? $"{readerName}.IsDBNull({index}) ? default : {readerName}.{method}({index})"
-            : $"{readerName}.{method}({index})";
     }
 
     public static string GetDataReadExpression(this ITypeSymbol type, string readerName, string columnName)

@@ -112,20 +112,20 @@ public class DatabaseDialectFactoryTests
     public void GetDialectProvider_WithOracleDefineTypes_ThrowsNotSupportedException()
     {
         // Act & Assert
-        var exception = Assert.ThrowsException<NotSupportedException>(() =>
+        var exception = Assert.ThrowsException<UnsupportedDialectException>(() =>
             DatabaseDialectFactory.GetDialectProvider(SqlDefineTypes.Oracle));
             
-        Assert.IsTrue(exception.Message.Contains("Oracle dialect support has been removed"));
+        Assert.IsTrue(exception.Message.Contains("Oracle"));
     }
 
     [TestMethod]
     public void GetDialectProvider_WithDB2DefineTypes_ThrowsNotSupportedException()
     {
         // Act & Assert
-        var exception = Assert.ThrowsException<NotSupportedException>(() =>
+        var exception = Assert.ThrowsException<UnsupportedDialectException>(() =>
             DatabaseDialectFactory.GetDialectProvider(SqlDefineTypes.DB2));
             
-        Assert.IsTrue(exception.Message.Contains("DB2 dialect support has been removed"));
+        Assert.IsTrue(exception.Message.Contains("DB2"));
     }
 
     [TestMethod]
@@ -135,10 +135,10 @@ public class DatabaseDialectFactoryTests
         var sqlDefine = SqlDefine.Oracle;
 
         // Act & Assert
-        var exception = Assert.ThrowsException<NotSupportedException>(() =>
+        var exception = Assert.ThrowsException<UnsupportedDialectException>(() =>
             DatabaseDialectFactory.GetDialectProvider(sqlDefine));
             
-        Assert.IsTrue(exception.Message.Contains("Oracle dialect support has been removed"));
+        Assert.IsTrue(exception.Message.Contains("Oracle"));
     }
 
     [TestMethod]
@@ -148,10 +148,10 @@ public class DatabaseDialectFactoryTests
         var sqlDefine = SqlDefine.DB2;
 
         // Act & Assert
-        var exception = Assert.ThrowsException<NotSupportedException>(() =>
+        var exception = Assert.ThrowsException<UnsupportedDialectException>(() =>
             DatabaseDialectFactory.GetDialectProvider(sqlDefine));
             
-        Assert.IsTrue(exception.Message.Contains("DB2 dialect support has been removed"));
+        Assert.IsTrue(exception.Message.Contains("DB2"));
     }
 
     [TestMethod]

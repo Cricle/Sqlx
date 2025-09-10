@@ -6,193 +6,192 @@
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
-using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace Sqlx.Tests;
 
 /// <summary>
-/// Base class for performance tests, providing common utilities and patterns.
+/// Base class for performance tests with benchmarking utilities.
 /// </summary>
-public abstract class PerformanceTestBase
+[TestClass]
+[TestCategory("Performance")]
+public abstract class PerformanceTestBase : TestBase
 {
     /// <summary>
-    /// Measures the execution time of an operation.
+    /// Default number of warmup iterations.
     /// </summary>
-    /// <param name="operation">The operation to measure</param>
-    /// <param name="iterations">Number of iterations to run</param>
-    /// <returns>Elapsed milliseconds</returns>
-    protected static long MeasureOperation(Action operation, int iterations = 1)
-    {
-        var stopwatch = Stopwatch.StartNew();
+    protected const int DefaultWarmupIterations = 100;
 
-        for (int i = 0; i < iterations; i++)
+    /// <summary>
+    /// Default number of measurement iterations.
+    /// </summary>
+    protected const int DefaultMeasurementIterations = 1000;
+
+    /// <summary>
+    /// Measures the performance of an action with warmup and multiple iterations.
+    /// </summary>
+    /// <param name="action">The action to measure.</param>
+    /// <param name="warmupIterations">Number of warmup iterations.</param>
+    /// <param name="measurementIterations">Number of measurement iterations.</param>
+    /// <returns>Performance measurement results.</returns>
+    protected PerformanceMeasurement MeasurePerformance(
+        Action action, 
+        int warmupIterations = DefaultWarmupIterations,
+        int measurementIterations = DefaultMeasurementIterations)
+    {
+        // Warmup phase
+        for (int i = 0; i < warmupIterations; i++)
         {
-            operation();
+            action();
         }
 
-        stopwatch.Stop();
-        return stopwatch.ElapsedMilliseconds;
-    }
-
-    /// <summary>
-    /// Measures the execution time of an async operation.
-    /// </summary>
-    /// <param name="operation">The async operation to measure</param>
-    /// <param name="iterations">Number of iterations to run</param>
-    /// <returns>Elapsed milliseconds</returns>
-    protected static async Task<long> MeasureOperationAsync(Func<Task> operation, int iterations = 1)
-    {
-        var stopwatch = Stopwatch.StartNew();
-
-        for (int i = 0; i < iterations; i++)
-        {
-            await operation();
-        }
-
-        stopwatch.Stop();
-        return stopwatch.ElapsedMilliseconds;
-    }
-
-    /// <summary>
-    /// Runs concurrent operations and measures their execution time.
-    /// </summary>
-    /// <param name="operation">The operation to run concurrently</param>
-    /// <param name="concurrentTasks">Number of concurrent tasks</param>
-    /// <param name="operationsPerTask">Number of operations per task</param>
-    /// <returns>Total elapsed milliseconds</returns>
-    protected static long MeasureConcurrentOperations(Action operation, int concurrentTasks, int operationsPerTask)
-    {
-        var stopwatch = Stopwatch.StartNew();
-
-        var tasks = Enumerable.Range(0, concurrentTasks).Select(_ => Task.Run(() =>
-        {
-            for (int i = 0; i < operationsPerTask; i++)
-            {
-                operation();
-            }
-        })).ToArray();
-
-        Task.WaitAll(tasks);
-        stopwatch.Stop();
-
-        return stopwatch.ElapsedMilliseconds;
-    }
-
-    /// <summary>
-    /// Runs concurrent operations and collects results.
-    /// </summary>
-    /// <typeparam name="T">Result type</typeparam>
-    /// <param name="operation">The operation to run concurrently</param>
-    /// <param name="concurrentTasks">Number of concurrent tasks</param>
-    /// <param name="operationsPerTask">Number of operations per task</param>
-    /// <returns>Collection of results and elapsed time</returns>
-    protected static (ConcurrentBag<T> results, long elapsedMs) RunConcurrentOperations<T>(
-        Func<T> operation, int concurrentTasks, int operationsPerTask)
-    {
-        var results = new ConcurrentBag<T>();
-        var stopwatch = Stopwatch.StartNew();
-
-        var tasks = Enumerable.Range(0, concurrentTasks).Select(_ => Task.Run(() =>
-        {
-            for (int i = 0; i < operationsPerTask; i++)
-            {
-                try
-                {
-                    var result = operation();
-                    results.Add(result);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Operation failed: {ex.Message}");
-                }
-            }
-        })).ToArray();
-
-        Task.WaitAll(tasks);
-        stopwatch.Stop();
-
-        return (results, stopwatch.ElapsedMilliseconds);
-    }
-
-    /// <summary>
-    /// Measures memory usage before and after an operation.
-    /// </summary>
-    /// <param name="operation">The operation to measure</param>
-    /// <returns>Memory increase in bytes</returns>
-    protected static long MeasureMemoryUsage(Action operation)
-    {
-        // Force garbage collection to get accurate baseline
+        // Force garbage collection before measurement
         GC.Collect();
         GC.WaitForPendingFinalizers();
         GC.Collect();
 
-        var initialMemory = GC.GetTotalMemory(false);
+        // Measurement phase
+        var measurements = new List<long>(measurementIterations);
+        var stopwatch = new Stopwatch();
 
-        operation();
-
-        var finalMemory = GC.GetTotalMemory(false);
-        return finalMemory - initialMemory;
-    }
-
-    /// <summary>
-    /// Asserts that an operation completes within the specified time limit.
-    /// </summary>
-    /// <param name="operation">The operation to test</param>
-    /// <param name="maxTimeMs">Maximum allowed time in milliseconds</param>
-    /// <param name="operationName">Name of the operation for error messages</param>
-    protected static void AssertPerformance(Action operation, double maxTimeMs, string operationName = "Operation")
-    {
-        var elapsedMs = MeasureOperation(operation);
-        Assert.IsTrue(elapsedMs <= maxTimeMs,
-            $"{operationName} should complete within {maxTimeMs}ms, but took {elapsedMs}ms");
-    }
-
-    /// <summary>
-    /// Asserts that an async operation completes within the specified time limit.
-    /// </summary>
-    /// <param name="operation">The async operation to test</param>
-    /// <param name="maxTimeMs">Maximum allowed time in milliseconds</param>
-    /// <param name="operationName">Name of the operation for error messages</param>
-    protected static async Task AssertPerformanceAsync(Func<Task> operation, double maxTimeMs, string operationName = "Operation")
-    {
-        var elapsedMs = await MeasureOperationAsync(operation);
-        Assert.IsTrue(elapsedMs <= maxTimeMs,
-            $"{operationName} should complete within {maxTimeMs}ms, but took {elapsedMs}ms");
-    }
-
-    /// <summary>
-    /// Asserts that memory usage is within acceptable limits.
-    /// </summary>
-    /// <param name="operation">The operation to test</param>
-    /// <param name="maxMemoryMB">Maximum allowed memory increase in MB</param>
-    /// <param name="operationName">Name of the operation for error messages</param>
-    protected static void AssertMemoryUsage(Action operation, double maxMemoryMB, string operationName = "Operation")
-    {
-        var memoryIncrease = MeasureMemoryUsage(operation);
-        var memoryMB = memoryIncrease / 1024.0 / 1024.0;
-
-        Assert.IsTrue(memoryMB <= maxMemoryMB,
-            $"{operationName} should use less than {maxMemoryMB}MB, but used {memoryMB:F2}MB");
-    }
-
-    /// <summary>
-    /// Logs performance results to the console.
-    /// </summary>
-    /// <param name="testName">Name of the test</param>
-    /// <param name="elapsedMs">Elapsed time in milliseconds</param>
-    /// <param name="iterations">Number of iterations</param>
-    protected static void LogPerformanceResults(string testName, long elapsedMs, int iterations = 1)
-    {
-        var avgTime = iterations > 1 ? (double)elapsedMs / iterations : elapsedMs;
-        Console.WriteLine($"🚀 {testName}:");
-        Console.WriteLine($"   Total time: {elapsedMs}ms");
-        if (iterations > 1)
+        for (int i = 0; i < measurementIterations; i++)
         {
-            Console.WriteLine($"   Iterations: {iterations}");
-            Console.WriteLine($"   Average time: {avgTime:F2}ms per operation");
+            stopwatch.Restart();
+            action();
+            stopwatch.Stop();
+            measurements.Add(stopwatch.ElapsedTicks);
         }
+
+        return new PerformanceMeasurement(measurements);
+    }
+
+    /// <summary>
+    /// Asserts that a performance measurement meets the specified criteria.
+    /// </summary>
+    /// <param name="measurement">The performance measurement.</param>
+    /// <param name="maxAverageMs">Maximum allowed average time in milliseconds.</param>
+    /// <param name="maxP95Ms">Maximum allowed P95 time in milliseconds.</param>
+    protected void AssertPerformance(PerformanceMeasurement measurement, double maxAverageMs, double? maxP95Ms = null)
+    {
+        WriteTestOutput($"Performance Results:");
+        WriteTestOutput($"  Average: {measurement.AverageMs:F2}ms");
+        WriteTestOutput($"  Median:  {measurement.MedianMs:F2}ms");
+        WriteTestOutput($"  P95:     {measurement.P95Ms:F2}ms");
+        WriteTestOutput($"  P99:     {measurement.P99Ms:F2}ms");
+        WriteTestOutput($"  Min:     {measurement.MinMs:F2}ms");
+        WriteTestOutput($"  Max:     {measurement.MaxMs:F2}ms");
+
+        Assert.IsTrue(measurement.AverageMs <= maxAverageMs,
+            $"Average time {measurement.AverageMs:F2}ms exceeds maximum {maxAverageMs}ms");
+
+        if (maxP95Ms.HasValue)
+        {
+            Assert.IsTrue(measurement.P95Ms <= maxP95Ms.Value,
+                $"P95 time {measurement.P95Ms:F2}ms exceeds maximum {maxP95Ms.Value}ms");
+        }
+    }
+
+    /// <summary>
+    /// Compares the performance of two actions.
+    /// </summary>
+    /// <param name="baselineAction">The baseline action.</param>
+    /// <param name="optimizedAction">The optimized action.</param>
+    /// <param name="expectedImprovementFactor">Expected improvement factor (e.g., 2.0 for 2x faster).</param>
+    /// <param name="iterations">Number of iterations for each action.</param>
+    protected void ComparePerformance(
+        Action baselineAction,
+        Action optimizedAction,
+        double expectedImprovementFactor,
+        int iterations = DefaultMeasurementIterations)
+    {
+        var baselineMeasurement = MeasurePerformance(baselineAction, iterations / 10, iterations);
+        var optimizedMeasurement = MeasurePerformance(optimizedAction, iterations / 10, iterations);
+
+        var actualImprovementFactor = baselineMeasurement.AverageMs / optimizedMeasurement.AverageMs;
+
+        WriteTestOutput($"Performance Comparison:");
+        WriteTestOutput($"  Baseline:  {baselineMeasurement.AverageMs:F2}ms");
+        WriteTestOutput($"  Optimized: {optimizedMeasurement.AverageMs:F2}ms");
+        WriteTestOutput($"  Improvement: {actualImprovementFactor:F2}x (expected: {expectedImprovementFactor:F2}x)");
+
+        Assert.IsTrue(actualImprovementFactor >= expectedImprovementFactor,
+            $"Performance improvement {actualImprovementFactor:F2}x is less than expected {expectedImprovementFactor:F2}x");
+    }
+}
+
+/// <summary>
+/// Represents the results of a performance measurement.
+/// </summary>
+public class PerformanceMeasurement
+{
+    private readonly List<long> measurements;
+    private readonly double ticksToMs = 1000.0 / Stopwatch.Frequency;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="PerformanceMeasurement"/> class.
+    /// </summary>
+    /// <param name="measurements">The measurement data in ticks.</param>
+    public PerformanceMeasurement(List<long> measurements)
+    {
+        this.measurements = measurements.OrderBy(x => x).ToList();
+    }
+
+    /// <summary>
+    /// Gets the average time in milliseconds.
+    /// </summary>
+    public double AverageMs => measurements.Average() * ticksToMs;
+
+    /// <summary>
+    /// Gets the median time in milliseconds.
+    /// </summary>
+    public double MedianMs => GetPercentile(50) * ticksToMs;
+
+    /// <summary>
+    /// Gets the 95th percentile time in milliseconds.
+    /// </summary>
+    public double P95Ms => GetPercentile(95) * ticksToMs;
+
+    /// <summary>
+    /// Gets the 99th percentile time in milliseconds.
+    /// </summary>
+    public double P99Ms => GetPercentile(99) * ticksToMs;
+
+    /// <summary>
+    /// Gets the minimum time in milliseconds.
+    /// </summary>
+    public double MinMs => measurements.Min() * ticksToMs;
+
+    /// <summary>
+    /// Gets the maximum time in milliseconds.
+    /// </summary>
+    public double MaxMs => measurements.Max() * ticksToMs;
+
+    /// <summary>
+    /// Gets the standard deviation in milliseconds.
+    /// </summary>
+    public double StandardDeviationMs
+    {
+        get
+        {
+            var average = measurements.Average();
+            var sumOfSquares = measurements.Sum(x => Math.Pow(x - average, 2));
+            return Math.Sqrt(sumOfSquares / measurements.Count) * ticksToMs;
+        }
+    }
+
+    private double GetPercentile(double percentile)
+    {
+        if (measurements.Count == 0) return 0;
+        
+        var index = (percentile / 100.0) * (measurements.Count - 1);
+        var lower = (int)Math.Floor(index);
+        var upper = (int)Math.Ceiling(index);
+        
+        if (lower == upper) return measurements[lower];
+        
+        var weight = index - lower;
+        return measurements[lower] * (1 - weight) + measurements[upper] * weight;
     }
 }

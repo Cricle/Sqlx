@@ -1,1098 +1,121 @@
-# Sqlx - 高性能 .NET 数据库访问库
+# Sqlx - C# SQL 代码生成器
 
-> 🚀 为现代 .NET 应用设计的类型安全、高性能微型ORM，完美支持 NativeAOT
+> 🚀 零反射、编译时优化、类型安全的 SQL 操作库
 
 [![NuGet](https://img.shields.io/nuget/v/Sqlx.svg)](https://www.nuget.org/packages/Sqlx/)
-[![Downloads](https://img.shields.io/nuget/dt/Sqlx.svg)](https://www.nuget.org/packages/Sqlx/)
 [![License](https://img.shields.io/github/license/Cricle/Sqlx)](License.txt)
 [![.NET](https://img.shields.io/badge/.NET-6.0%2B-blueviolet)](https://dotnet.microsoft.com/)
-[![C#](https://img.shields.io/badge/C%23-10.0%2B-239120)](https://docs.microsoft.com/en-us/dotnet/csharp/)
-[![AOT Ready](https://img.shields.io/badge/AOT%20Ready-✓-green)](https://docs.microsoft.com/en-us/dotnet/core/deploying/native-aot/)
 
-## ✨ 为什么选择 Sqlx？
+## ✨ 特性
 
-**传统 ORM 的痛点：**
-- 🐌 运行时反射导致性能损失
-- 💾 高内存占用和 GC 压力  
-- 🚫 不支持 NativeAOT 编译
-- 🔍 缺少编译时 SQL 验证
-
-**Sqlx 的优势：**
-- ⚡ **零反射** - 源代码生成，编译时确定所有类型
-- 🔥 **极致性能** - 接近手写 ADO.NET 的速度
-- 🎯 **类型安全** - 编译时检查，告别运行时错误
-- 🌐 **NativeAOT 友好** - 完美支持原生编译
-- 💡 **简单易用** - 特性驱动，学习成本低
-- 🏗️ **Repository 模式** - 自动实现接口，无需手写代码
+- ⚡ **零反射** - 源代码生成，编译时确定类型
+- 🛡️ **类型安全** - 编译时检查，避免 SQL 错误  
+- 🌐 **多数据库** - SQL Server、MySQL、PostgreSQL、SQLite
+- 🎯 **简单易用** - 特性驱动，学习成本低
+- 🚀 **高性能** - 接近手写 ADO.NET 的速度
 
 ## 🚀 快速开始
 
 ### 安装
-
 ```bash
 dotnet add package Sqlx
 ```
 
-### 3分钟上手 - Repository 模式
+### 基本用法
 
-**1. 定义数据模型**
+**1. 定义模型**
 ```csharp
-[TableName("users")]
 public class User
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
-    public DateTime CreatedAt { get; set; }
 }
 ```
 
-**2. 定义服务接口**
+**2. 定义接口**
 ```csharp
 public interface IUserService
 {
-    // 基础 CRUD 操作 - 自动推断 SQL
-    Task<IList<User>> GetAllUsersAsync();
-    Task<User?> GetUserByIdAsync(int id);
-    Task<int> CreateUserAsync(User user);
-    Task<int> UpdateUserAsync(User user);
-    Task<int> DeleteUserAsync(int id);
-    
-    // 或者使用属性显式指定 SQL 操作类型
     [SqlExecuteType(SqlExecuteTypes.Select, "users")]
     IList<User> GetAllUsers();
     
     [SqlExecuteType(SqlExecuteTypes.Insert, "users")]
     int CreateUser(User user);
     
-    // 自定义 SQL 查询
-    [Sqlx("SELECT * FROM users WHERE email = @email")]
-    Task<User?> GetUserByEmailAsync(string email);
+    [SqlExecuteType(SqlExecuteTypes.Update, "users")]
+    int UpdateUser(User user);
 }
 ```
 
-**3. 创建 Repository 实现**
+**3. 实现 Repository**
 ```csharp
 [RepositoryFor(typeof(IUserService))]
-public partial class UserRepository
+public partial class UserRepository : IUserService
 {
     private readonly DbConnection connection;
-    
-    public UserRepository(DbConnection connection)
-    {
-        this.connection = connection;
-    }
-    
-    // 🎉 所有接口方法会自动实现！无需手写代码
-    // ✨ 生成器会自动创建高性能的实现代码
-    // 🔥 包含连接管理、参数绑定、错误处理等
+    public UserRepository(DbConnection connection) => this.connection = connection;
 }
 ```
 
-**4. 使用（就这么简单！）**
+**4. 使用**
 ```csharp
-using var connection = new SqliteConnection("Data Source=app.db");
-var userService = new UserRepository(connection);
-
-// 🚀 自动推断的 CRUD 操作，零配置！
-var users = await userService.GetAllUsersAsync();
-var user = await userService.GetUserByIdAsync(1);
-
-// 🚀 自动生成的新增/更新操作
-var newUser = new User { Name = "John", Email = "john@example.com", CreatedAt = DateTime.Now };
-int rowsAffected = await userService.CreateUserAsync(newUser);
-
-// 🚀 混合使用：自动推断 + 自定义 SQL
-var userByEmail = await userService.GetUserByEmailAsync("john@example.com");
-
-// 🚀 所有操作都是高性能的，编译时生成的代码！
-Console.WriteLine($"找到 {users.Count} 个用户");
+var userRepo = new UserRepository(connection);
+var users = userRepo.GetAllUsers();
+var newUser = new User { Name = "张三", Email = "zhang@example.com" };
+userRepo.CreateUser(newUser);
 ```
 
-## 🆕 最新功能更新 (v2.0+)
+## 🆕 新功能
 
-### 🚀 Repository Pattern 自动生成
-
-全新的 `[RepositoryFor]` 特性支持自动生成完整的 Repository 实现：
-
-- ✨ **智能方法推断** - 根据方法名自动生成对应的 SQL 操作
-- 🔥 **混合使用支持** - 可同时使用自动推断和手动指定的 SQL
-- 💪 **完整 CRUD 支持** - GetAll, GetById, Create, Update, Delete 等
-- 🎯 **异步优先** - 完整的 async/await 支持
-- 🔒 **类型安全** - 编译时检查，零运行时错误
-
-### 🚀 企业级高级功能 (v2.1+)
-
-#### 🧠 智能缓存系统
-内置 LRU 缓存，支持 TTL 和内存压力感知：
-
+### BatchCommand 批量操作
 ```csharp
-// 自动缓存查询结果，提升 10x+ 性能
-var users = await userRepo.GetAllAsync(); // 首次查询
-var cached = await userRepo.GetAllAsync(); // 缓存命中，极速返回
-
-// 获取缓存统计
-var stats = IntelligentCacheManager.GetStatistics();
-Console.WriteLine($"命中率: {stats.HitRatio:P2}");
-```
-
-#### 🔌 高级连接管理
-智能重试机制和连接池优化：
-
-```csharp
-// 自动重试，指数退避，连接健康监控
-var health = AdvancedConnectionManager.GetConnectionHealth(connection);
-await AdvancedConnectionManager.EnsureConnectionOpenAsync(connection);
-```
-
-#### 📦 高性能批量操作
-支持大规模数据处理，智能批次分割：
-
-```csharp
-// 极速批量操作，自动优化批次大小
-var users = GenerateUsers(10000);
-var affected = await userRepo.CreateBatchAsync(users); // 智能分批处理
-```
-
-#### ⚡ 性能基准测试结果
-```
-🏁 Sqlx Performance Benchmarks
-================================
-📝 Single CREATE: 2ms
-👁️ Single READ: 1ms  
-✏️ Single UPDATE: 1ms
-🗑️ Single DELETE: 1ms
-📦 Batch CREATE (1000): 45ms
-⚡ Cache speedup: 15.2x
-🎯 成功率: 90.8% (936个测试)
-```
-
-### 📊 项目优化成果
-
-🎉 **重大突破！我们已经成功解决了核心SQL生成问题！**
-
-- ✅ **测试稳定性提升** - 成功测试从 478 增加到 850+ (90.8% 成功率)
-- ✅ **错误减少** - 失败测试从 41+ 减少到 10 个
-- 🔧 **SQL生成修复** - 完全解决了INSERT/UPDATE/DELETE操作的SQL生成错误
-- ✅ **代码生成器改进** - 提升两套生成器系统的兼容性
-- ✅ **性能优化** - 智能缓存、连接管理、批量操作全面提升
-- ✅ **企业级功能** - 事务支持、重试机制、性能监控
-
-### 🚀 关键修复亮点
-- **INSERT操作**: 现在正确生成 `INSERT INTO [table] ([columns]) VALUES (@params)`
-- **UPDATE操作**: 现在正确生成 `UPDATE [table] SET [column] = @param WHERE [Id] = @id`  
-- **DELETE操作**: 现在正确生成 `DELETE FROM [table] WHERE [Id] = @id`
-- **不再出现错误的**: ~~`SELECT COUNT(*) FROM [table]`~~
-
-## 🌟 核心功能
-
-### 🏗️ Repository 模式 - 革命性的代码生成
-
-使用 `[RepositoryFor]` 特性，Sqlx 自动为您生成完整的 Repository 实现：
-
-```csharp
-[RepositoryFor(typeof(IProductService))]
-public partial class ProductRepository
-{
-    private readonly DbConnection connection;
-    
-    // 构造函数是您需要写的唯一代码！
-    public ProductRepository(DbConnection connection) => this.connection = connection;
-}
-
-// 接口定义
-public interface IProductService  
-{
-    [SqlExecuteType(SqlExecuteTypes.Select, "products")]
-    IList<Product> GetAllProducts();
-    
-    [SqlExecuteType(SqlExecuteTypes.Insert, "products")]
-    int CreateProduct(Product product);
-    
-    [Sqlx("SELECT * FROM products WHERE CategoryId = @categoryId AND Price > @minPrice")]
-    IList<Product> SearchProducts(int categoryId, decimal minPrice);
-}
-```
-
-**生成的代码特点：**
-- ✅ **高性能**: 使用 `GetInt32()`, `GetString()` 等强类型读取器
-- ✅ **GetOrdinal 缓存**: 自动缓存列序号，避免重复查找，显著提升性能
-- ✅ **泛型支持**: 完整支持泛型 Repository 和泛型接口，类型安全
-- ✅ **安全**: 完全参数化查询，防止 SQL 注入
-- ✅ **智能**: 自动处理 NULL 值和类型转换
-- ✅ **简洁**: 自动连接管理和资源释放
-
-### 🎯 SqlExecuteType - CRUD 操作自动化
-
-Sqlx 智能分析您的实体类，自动生成优化的 CRUD 操作：
-
-```csharp
-public interface IOrderService
-{
-    // ✅ INSERT - 自动排除 Id 字段，生成参数化插入
-    [SqlExecuteType(SqlExecuteTypes.Insert, "orders")]
-    int CreateOrder(Order order);
-    
-    // ✅ UPDATE - 自动生成 SET 子句，WHERE Id = @id
-    [SqlExecuteType(SqlExecuteTypes.Update, "orders")]  
-    int UpdateOrder(Order order);
-    
-    // ✅ DELETE - 简洁的删除操作
-    [SqlExecuteType(SqlExecuteTypes.Delete, "orders")]
-    int DeleteOrder(int id);
-    
-    // ✅ SELECT - 完整的对象映射
-    [SqlExecuteType(SqlExecuteTypes.Select, "orders")]
-    IList<Order> GetAllOrders();
-}
-```
-
-**生成的 SQL 示例：**
-```sql
--- CreateOrder(Order order)
-INSERT INTO [orders] ([CustomerId], [OrderDate], [TotalAmount]) 
-VALUES (@customerid, @orderdate, @totalamount)
-
--- UpdateOrder(Order order) 
-UPDATE [orders] SET [CustomerId] = @customerid, [OrderDate] = @orderdate, [TotalAmount] = @totalamount 
-WHERE [Id] = @id
-
--- DeleteOrder(int id)
-DELETE FROM [orders] WHERE [Id] = @id
-```
-
-### 🚀 Batch 操作 - 高性能批量操作 (🆕 新功能)
-
-Sqlx 现在支持高性能的批量操作，适用于大量数据的插入、更新和删除：
-
-```csharp
-public interface IProductService
-{
-    // 🚀 批量插入 - 一次插入数千条记录
-    [SqlExecuteType(SqlExecuteTypes.BatchInsert, "products")]
-    int BatchInsertProducts(IEnumerable<Product> products);
-    
-    // 🚀 批量更新 - 事务安全的批量更新
-    [SqlExecuteType(SqlExecuteTypes.BatchUpdate, "products")]
-    Task<int> BatchUpdateProductsAsync(IEnumerable<Product> products);
-    
-    // 🚀 批量删除 - 使用 IN 子句的高效删除
-    [SqlExecuteType(SqlExecuteTypes.BatchDelete, "products")]
-    int BatchDeleteProducts(IEnumerable<int> productIds);
-}
-
-// 使用示例
-var products = GenerateTestData(10000); // 10,000 条测试数据
-
-// 传统方式：10,000 次 SQL 调用 ❌
-foreach(var product in products) 
-{
-    productService.InsertProduct(product); // 慢！
-}
-
-// Sqlx 批量操作：1 次优化的 SQL 调用 ✅
-var result = productService.BatchInsertProducts(products); // 快！
-Console.WriteLine($"插入了 {result} 条记录，性能提升 100x+");
-```
-
-**批量操作特性：**
-- ✅ **极致性能**: 比传统循环快 10-100 倍
-- ✅ **自动分批**: 大数据集自动分割为可管理的批次
-- ✅ **事务安全**: 批量更新自动使用事务保证一致性
-- ✅ **参数化查询**: 完全防止 SQL 注入
-- ✅ **异步支持**: 支持 `async/await` 和 `CancellationToken`
-- ✅ **智能 SQL**: 根据数据库类型生成优化的批量 SQL
-
-### 🎭 ExpressionToSql - LINQ 表达式转 SQL
-
-构建动态查询，类型安全，零字符串拼接：
-
-```csharp
-// 🎯 独立使用 - 灵活构建查询
-var query = ExpressionToSql<User>.ForSqlite()
-    .Where(u => u.Age >= 18)
-    .Where(u => u.Name.Contains("John"))
-    .OrderBy(u => u.CreatedAt)
-    .Take(10);
-
-string sql = query.ToSql();
-// 生成: SELECT * FROM User WHERE Age >= @p0 AND Name LIKE @p1 ORDER BY CreatedAt ASC LIMIT 10
-
-var parameters = query.ToTemplate().Parameters;
-// 自动生成参数: { "p0": 18, "p1": "%John%" }
-```
-
-```csharp
-// 🎯 作为方法参数 - 强大的动态查询
-public interface IUserService
-{
-    [Sqlx]  // 让Sqlx处理ExpressionToSql参数
-    IList<User> SearchUsers([ExpressionToSql] ExpressionToSql<User> filter);
-}
+[SqlExecuteType(SqlExecuteTypes.BatchCommand, "users")]
+Task<int> BatchInsertAsync(IEnumerable<User> users);
 
 // 使用
-var users = userService.SearchUsers(
-    ExpressionToSql<User>.ForSqlite()
-        .Where(u => u.IsActive && u.Department == "Engineering")
+var count = await userRepo.BatchInsertAsync(users);
+```
+
+### ExpressionToSql 动态查询
+```csharp
+[Sqlx]
+IList<User> GetUsers([ExpressionToSql] ExpressionToSql<User> filter);
+
+// 使用 - 支持模运算
+var evenUsers = userRepo.GetUsers(
+    ExpressionToSql<User>.ForSqlServer()
+        .Where(u => u.Id % 2 == 0)  // 偶数ID
+        .Where(u => u.Name.Contains("张"))
         .OrderBy(u => u.Name)
-        .Take(50)
 );
 ```
 
-### 🌐 多数据库支持与 SqlDefine 属性
+## 📚 文档
 
-Sqlx 现在完全支持 `SqlDefine` 和 `TableName` 属性在 `RepositoryFor` 中的使用，让您轻松切换不同数据库方言：
+- 📖 [新功能快速入门](docs/NEW_FEATURES_QUICK_START.md)
+- 🔧 [ExpressionToSql 详细指南](docs/expression-to-sql.md)
+- 📋 [更新日志](CHANGELOG.md)
 
-#### 🎯 RepositoryFor 中使用 SqlDefine 属性
+## 🎯 数据库支持
 
-```csharp
-// MySQL Repository - 使用反引号包装列名
-[RepositoryFor(typeof(IUserService))]
-[SqlDefine(0)]  // 0 = MySql 方言
-public partial class MySqlUserRepository : IUserService
-{
-    private readonly DbConnection connection;
-    public MySqlUserRepository(DbConnection connection) => this.connection = connection;
-    
-    // 生成的 SQL: SELECT * FROM `users` WHERE `Id` = @id
-    // 生成的 SQL: INSERT INTO `users` (`Name`, `Email`) VALUES (@Name, @Email)
-}
+| 数据库 | 支持状态 | 连接池 |
+|--------|----------|--------|
+| SQL Server | ✅ | ADO.NET 内置 |
+| MySQL | ✅ | ADO.NET 内置 |
+| PostgreSQL | ✅ | ADO.NET 内置 |
+| SQLite | ✅ | ADO.NET 内置 |
 
-// PostgreSQL Repository - 使用双引号包装列名
-[RepositoryFor(typeof(IUserService))]
-[SqlDefine(2)]  // 2 = PostgreSQL 方言
-public partial class PgUserRepository : IUserService
-{
-    private readonly DbConnection connection;
-    public PgUserRepository(DbConnection connection) => this.connection = connection;
-    
-    // 生成的 SQL: SELECT * FROM "users" WHERE "Id" = $id
-    // 生成的 SQL: INSERT INTO "users" ("Name", "Email") VALUES ($Name, $Email)
-}
+## 📦 安装要求
 
-// SQL Server Repository - 使用方括号包装列名（默认）
-[RepositoryFor(typeof(IUserService))]
-[SqlDefine(1)]  // 1 = SqlServer 方言（或省略，默认为 SqlServer）
-public partial class SqlServerUserRepository : IUserService
-{
-    private readonly DbConnection connection;
-    public SqlServerUserRepository(DbConnection connection) => this.connection = connection;
-    
-    // 生成的 SQL: SELECT * FROM [users] WHERE [Id] = @id
-    // 生成的 SQL: INSERT INTO [users] ([Name], [Email]) VALUES (@Name, @Email)
-}
-```
+- .NET 6.0+
+- C# 10.0+
+- 支持 NativeAOT
 
-#### 🎯 自定义数据库方言
+## 🤝 贡献
 
-```csharp
-// 完全自定义的 SQL 方言
-[RepositoryFor(typeof(IUserService))]
-[SqlDefine("`", "`", "'", "'", ":")]  // 自定义：列左右包装符、字符串左右包装符、参数前缀
-public partial class CustomUserRepository : IUserService
-{
-    private readonly DbConnection connection;
-    public CustomUserRepository(DbConnection connection) => this.connection = connection;
-    
-    // 生成的 SQL: SELECT * FROM `users` WHERE `Id` = :id
-    // 生成的 SQL: INSERT INTO `users` (`Name`, `Email`) VALUES (:Name, :Email)
-}
-```
-
-#### 🎯 TableName 属性支持
-
-```csharp
-// 实体类定义表名
-[TableName("custom_users")]
-public class User
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-}
-
-// Repository 级别覆盖表名
-[RepositoryFor(typeof(IUserService))]
-[SqlDefine(0)]  // MySQL 方言
-[TableName("mysql_users")]  // 覆盖实体的表名
-public partial class MySqlUserRepository : IUserService
-{
-    private readonly DbConnection connection;
-    public MySqlUserRepository(DbConnection connection) => this.connection = connection;
-    
-    // 生成的 SQL: SELECT * FROM `mysql_users` WHERE `Id` = @id
-    // 使用 Repository 级别的表名，而不是实体的 custom_users
-}
-```
-
-#### 🎯 方法级别属性覆盖
-
-```csharp
-public interface IAdvancedUserService
-{
-    // 使用类级别的默认方言
-    IList<User> GetAllUsers();
-    
-    // 方法级别覆盖为 MySQL 方言
-    [SqlDefine(0)]
-    IList<User> GetMySqlUsers();
-    
-    // 方法级别覆盖为 PostgreSQL 方言
-    [SqlDefine(2)]
-    IList<User> GetPostgreSqlUsers();
-}
-
-[RepositoryFor(typeof(IAdvancedUserService))]
-[SqlDefine(1)]  // 类级别默认：SQL Server
-public partial class AdvancedUserRepository : IAdvancedUserService
-{
-    private readonly DbConnection connection;
-    public AdvancedUserRepository(DbConnection connection) => this.connection = connection;
-    
-    // GetAllUsers() 生成: SELECT * FROM [users]
-    // GetMySqlUsers() 生成: SELECT * FROM `users`  
-    // GetPostgreSqlUsers() 生成: SELECT * FROM "users"
-}
-```
-
-#### 🎯 ExpressionToSql 多数据库支持
-
-```csharp
-// MySQL
-var mysqlQuery = ExpressionToSql<User>.ForMySql()
-    .Where(u => u.Age > 25)
-    .Take(10);
-// 生成: SELECT * FROM `User` WHERE `Age` > @p0 LIMIT 10
-
-// SQL Server  
-var sqlServerQuery = ExpressionToSql<User>.ForSqlServer()
-    .Where(u => u.Age > 25)
-    .Take(10);
-// 生成: SELECT * FROM [User] WHERE [Age] > @p0 OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY
-
-// PostgreSQL
-var pgQuery = ExpressionToSql<User>.ForPostgreSQL()
-    .Where(u => u.Age > 25)
-    .Take(10);
-// 生成: SELECT * FROM "User" WHERE "Age" > $1 LIMIT 10
-
-// Oracle (🆕 新增)
-var oracleQuery = ExpressionToSql<User>.ForOracle()
-    .Where(u => u.Age > 25)
-    .Take(10);
-// 生成: SELECT * FROM "User" WHERE "Age" > :p0 FETCH FIRST 10 ROWS ONLY
-
-// DB2 (🆕 新增)
-var db2Query = ExpressionToSql<User>.ForDB2()
-    .Where(u => u.Age > 25)
-    .Take(10);
-// 生成: SELECT * FROM "User" WHERE "Age" > ? LIMIT 10
-```
-
-#### 🎯 数据库方言对照表
-
-| 数据库 | SqlDefine 值 | 列包装符 | 参数前缀 | 支持状态 |
-|--------|--------------|----------|----------|----------|
-| **MySQL** | `0` | \`column\` | `@` | ✅ 完整支持 |
-| **SQL Server** | `1` (默认) | [column] | `@` | ✅ 完整支持 |
-| **PostgreSQL** | `2` | "column" | `$` | ✅ 完整支持 |
-| **Oracle** | `3` | "column" | `:` | 🆕 新增支持 |
-| **DB2** | `4` | "column" | `?` | 🆕 新增支持 |
-| **SQLite** | `5` | [column] | `@` | ✅ 完整支持 |
-| **自定义** | 5个参数构造函数 | 自定义 | 自定义 | ✅ 完整支持 |
-
-## 🔌 Visual Studio 扩展 (🆕 新功能)
-
-Sqlx 现在提供了功能强大的 Visual Studio 扩展，为开发者带来了顶级的 IntelliSense 和开发体验！
-
-### 🎯 核心功能
-
-#### 🔍 智能 SQL IntelliSense
-- **关键字补全**: 自动完成 SQL 关键字（SELECT, FROM, WHERE 等）
-- **表名建议**: 智能识别项目中的表名并提供补全
-- **列名补全**: 基于上下文提供准确的列名建议
-- **参数验证**: 实时检查 SQL 参数与方法参数的匹配性
-
-#### 🎨 语法高亮
-- **SQL 关键字**: 蓝色粗体显示
-- **字符串字面量**: 深红色显示
-- **参数标识**: 深紫色粗体显示
-- **表名**: 深绿色粗体显示
-- **列名**: 深青色显示
-
-#### 🛡️ 高级诊断
-- **SQLX001**: SQL 语法错误检测
-- **SQLX002**: 参数不匹配警告
-- **SQLX003**: 未使用参数检测
-- **SQLX004**: 性能优化建议
-- **SQLX005**: 安全漏洞警告（SQL 注入防护）
-- **SQLX006**: 数据库方言兼容性检查
-
-#### 🔧 代码生成工具
-- **Repository 脚手架**: 交互式向导生成完整的 Repository 接口和实现
-- **实体类生成**: 从数据库架构自动生成实体类
-- **SQL 代码片段**: 快速插入常用 SQL 模式
-- **批量操作支持**: 生成高性能批量操作方法
-
-### 🚀 使用示例
-
-```csharp
-// 智能补全演示
-[Sqlx("SE|")] // 输入 'SE' 获得 'SELECT' 补全
-public IList<User> GetUsers();
-
-// 表名和列名建议
-[Sqlx("SELECT FirstN| FROM U|")] // 获得 'FirstName' 和 'Users' 建议
-public IList<User> GetUsersByName();
-
-// 参数验证
-[Sqlx("SELECT * FROM Users WHERE Age > @age")]
-public IList<User> GetUsersByAge(int age); // ✅ 正确
-
-[Sqlx("SELECT * FROM Users WHERE Age > @wrongParam")]
-public IList<User> GetUsersByAge(int age); // ❌ 参数不匹配警告
-```
-
-### 📦 安装方式
-
-1. 从 [Releases](https://github.com/Cricle/Sqlx/releases) 页面下载 `.vsix` 文件
-2. 双击 `.vsix` 文件安装，或使用 Visual Studio 扩展管理器
-3. 重启 Visual Studio
-4. 享受增强的 Sqlx 开发体验！
-
-### 🎯 多数据库方言支持
-
-扩展完全感知不同的 SQL 方言：
-
-```csharp
-// MySQL - 反引号列分隔符
-[SqlDefine(SqlDefineTypes.MySql)]
-[Sqlx("SELECT `FirstName` FROM `Users`")]
-
-// Oracle - 双引号和冒号参数
-[SqlDefine(SqlDefineTypes.Oracle)]
-[Sqlx("SELECT \"FirstName\" FROM \"Users\" WHERE \"Age\" > :age")]
-
-// DB2 - 双引号和问号参数
-[SqlDefine(SqlDefineTypes.DB2)]
-[Sqlx("SELECT \"FirstName\" FROM \"Users\" WHERE \"Age\" > ?")]
-```
-
-## 🔄 从其他框架迁移
-
-Sqlx 可以很容易地从其他 ORM 框架迁移过来：
-
-### 从 Dapper 迁移
-```csharp
-// Dapper 方式
-var users = connection.Query<User>("SELECT * FROM Users WHERE Age > @age", new { age = 18 });
-
-// Sqlx 方式
-[Sqlx("SELECT * FROM Users WHERE Age > @age")]
-public partial List<User> GetUsersByAge(int age);
-```
-
-### 从 Entity Framework 迁移
-```csharp
-// EF Core 方式
-var users = context.Users.Where(u => u.Age > 18).ToList();
-
-// Sqlx 方式
-[ExpressionToSql]
-public partial List<User> GetUsers(Expression<Func<User, bool>> predicate);
-
-
-## 🎯 性能对比
-
-### 基准测试结果
-```bash
-# 优化前后对比
-sqlx-perf benchmark --connection "..." --query "..." --iterations 500 --output before-opt.json
-# [进行优化：添加索引、重写查询等]
-sqlx-perf benchmark --connection "..." --query "..." --iterations 500 --output after-opt.json
-```
-
-#### 第4步：持续监控
-```bash
-# 部署后持续监控
-sqlx-perf monitor --connection "..." --interval 60 --alert-threshold 200 --output ./post-optimization
-```
-
-### 📈 性能提升案例
-
-#### 案例 1：查询优化
-**优化前**：
-- 平均响应时间：1,245ms
-- P95 响应时间：2,100ms
-- 吞吐量：8.5 QPS
-
-**优化后**：
-- 平均响应时间：87ms (**92% 改善**)
-- P95 响应时间：145ms (**93% 改善**)
-- 吞吐量：145 QPS (**1,606% 提升**)
-
-#### 案例 2：批量操作优化
-**优化前**：单个 INSERT
-- 1000 条记录：15.3 秒
-- CPU 使用率：85%
-
-**优化后**：Sqlx 批量操作
-- 1000 条记录：2.1 秒 (**86% 改善**)
-- CPU 使用率：32% (**62% 减少**)
-
-### 🔧 高级配置
-
-#### 自定义监控配置
-```json
-{
-  "monitoring": {
-    "thresholds": {
-      "slowQuery": 500,
-      "errorRate": 5.0,
-      "cpuUsage": 80.0,
-      "memoryUsage": 85.0
-    },
-    "sampling": {
-      "interval": 1000,
-      "queryFilter": "SELECT|INSERT|UPDATE|DELETE"
-    },
-    "alerts": {
-      "enabled": true,
-      "channels": ["console", "file", "webhook"]
-    }
-  }
-}
-```
-
-#### 集成 CI/CD
-```yaml
-# GitHub Actions 示例
-- name: Performance Test
-  run: |
-    dotnet test tests/Sqlx.Tests/Sqlx.Tests.csproj --configuration Release --logger "console;verbosity=detailed"
-    # 运行性能基准测试确保性能不倒退
-```
-
-Sqlx 让数据库操作变得**高性能、类型安全、开发高效**！🚀
-
-## 🔧 高级特性
-
-### ⚡ GetOrdinal 缓存优化
-
-Sqlx 采用智能的 GetOrdinal 缓存策略，显著提升数据读取性能：
-
-```csharp
-// 🎯 传统方式 - 每次都查找列序号
-while (reader.Read())
-{
-    var id = reader.GetInt32(reader.GetOrdinal("Id"));       // 每次都查找
-    var name = reader.GetString(reader.GetOrdinal("Name"));   // 每次都查找
-    var email = reader.GetString(reader.GetOrdinal("Email")); // 每次都查找
-}
-
-// 🚀 Sqlx 生成的优化代码 - 缓存列序号
-int __ordinal_Id = __reader__.GetOrdinal("Id");
-int __ordinal_Name = __reader__.GetOrdinal("Name");
-int __ordinal_Email = __reader__.GetOrdinal("Email");
-
-while (__reader__.Read())
-{
-    var id = __reader__.GetInt32(__ordinal_Id);       // 直接使用缓存的序号
-    var name = __reader__.GetString(__ordinal_Name);   // 直接使用缓存的序号
-    var email = __reader__.GetString(__ordinal_Email); // 直接使用缓存的序号
-}
-```
-
-**性能提升效果：**
-- 🚀 **查询性能**: 减少 50-80% 的列查找开销
-- 💾 **内存效率**: 避免重复字符串比较和哈希查找
-- ⚡ **批量查询**: 在大结果集中效果尤其明显
-
-### 🎭 泛型 Repository 支持
-
-Sqlx 现在完全支持泛型 Repository 模式，提供类型安全的数据访问：
-
-```csharp
-// 🎯 定义泛型接口
-public interface IRepository<T> where T : class
-{
-    IList<T> GetAll();
-    T? GetById(int id);
-    int Create(T entity);
-    int Update(T entity);
-    int Delete(int id);
-}
-
-// 🎯 泛型 Repository 实现
-[RepositoryFor(typeof(IRepository<User>))]
-public partial class UserRepository : IRepository<User>
-{
-    private readonly DbConnection connection;
-    
-    public UserRepository(DbConnection connection)
-    {
-        this.connection = connection;
-    }
-    
-    // 🎯 所有方法自动生成，完全类型安全！
-}
-
-// 🎯 支持复杂泛型约束
-public interface IAdvancedRepository<TEntity, TKey>
-    where TEntity : class
-    where TKey : struct
-{
-    TEntity? GetById(TKey id);
-    Task<TEntity?> GetByIdAsync(TKey id, CancellationToken cancellationToken = default);
-    int Create(TEntity entity);
-    Task<int> UpdateAsync(TEntity entity, CancellationToken cancellationToken = default);
-}
-
-[RepositoryFor(typeof(IAdvancedRepository<Product, int>))]
-public partial class ProductRepository : IAdvancedRepository<Product, int>
-{
-    private readonly DbConnection connection;
-    
-    public ProductRepository(DbConnection connection) => this.connection = connection;
-    
-    // 🚀 泛型约束完全支持，编译时类型检查
-}
-```
-
-**泛型支持特点：**
-- ✅ **完整的泛型约束**: 支持 `where T : class`, `where T : struct` 等
-- ✅ **多类型参数**: 支持 `Repository<TEntity, TKey>` 等复杂泛型
-- ✅ **类型推断**: 自动推断实体类型和主键类型
-- ✅ **编译时安全**: 所有类型在编译时验证，零运行时错误
-
-### 🎯 原生 SQL 查询
-
-```csharp
-public partial class UserService
-{
-    private readonly DbConnection connection;
-    
-    // 🎯 原生SQL查询 - 编译时验证
-    [Sqlx("SELECT Id, Name, Email, CreatedAt FROM Users WHERE Id = @id")]
-    public partial User? GetUserById(int id);
-    
-    // 🎯 复杂查询
-    [Sqlx("SELECT u.*, p.ProfileData FROM Users u LEFT JOIN Profiles p ON u.Id = p.UserId WHERE u.CreatedAt > @since")]
-    public partial IList<UserWithProfile> GetUsersWithProfiles(DateTime since);
-    
-    // 🎯 执行命令
-    [Sqlx("DELETE FROM Users WHERE LastLoginDate < @cutoffDate")]
-    public partial int DeleteInactiveUsers(DateTime cutoffDate);
-}
-```
-
-### 🔧 DbContext 集成
-
-Sqlx 也能和 Entity Framework Core 完美配合：
-
-```csharp
-[RepositoryFor(typeof(IUserRepository))]
-public partial class UserRepository
-{
-    private readonly MyDbContext context;
-    
-    public UserRepository(MyDbContext context)
-    {
-        this.context = context;
-    }
-    
-    // 🎯 利用DbContext的连接，执行自定义查询
-    [Sqlx("SELECT * FROM Users WHERE CustomField = @value")]
-    IList<User> GetUsersByCustomField(string value);
-    
-    // 🎯 支持事务
-    [Sqlx("UPDATE Users SET LastLogin = @time WHERE Id = @id")]
-    int UpdateLastLogin(int id, DateTime time, DbTransaction transaction);
-}
-```
-
-### 自定义列映射
-
-```csharp
-[TableName("user_accounts")]  // 自定义表名
-public class User
-{
-    [DbColumn("user_id")]     // 自定义列名
-    public int Id { get; set; }
-    
-    [DbColumn("user_name")]
-    public string Name { get; set; }
-}
-```
-
-### 扩展方法
-
-```csharp
-public static partial class DatabaseExtensions
-{
-    // 🎯 为DbConnection添加扩展方法
-    [Sqlx("SELECT COUNT(*) FROM Users")]
-    public static partial int GetUserCount(this DbConnection connection);
-    
-    // 🎯 支持ExpressionToSql的扩展方法
-    [Sqlx]
-    public static partial IList<User> QueryUsers(
-        this DbConnection connection, 
-        [ExpressionToSql] ExpressionToSql<User> query);
-}
-
-// 使用
-using var connection = new SqliteConnection(connectionString);
-int count = connection.GetUserCount();
-var users = connection.QueryUsers(
-    ExpressionToSql<User>.ForSqlite().Where(u => u.IsActive)
-);
-```
-
-## 🎯 性能对比
-
-### 基准测试结果
-
-| 操作 | Sqlx (优化后) | Sqlx (优化前) | Dapper | EF Core | 性能提升 |
-|------|--------------|--------------|--------|---------|----------|
-| 简单查询 | **0.6ms** | 0.8ms | 1.2ms | 2.1ms | **65%+** |
-| 批量查询 (1000行) | **35ms** | 58ms | 85ms | 180ms | **80%+** |
-| GetOrdinal 缓存 | **0.1μs** | 2.5μs | 2.3μs | N/A | **95%+** |
-| 内存分配 | **480B** | 512B | 1.2KB | 3.1KB | **65%+** |
-| 冷启动 | **4ms** | 5ms | 15ms | 45ms | **85%+** |
-| 泛型支持 | **0.6ms** | N/A | 1.3ms | 2.2ms | **70%+** |
-
-> 🔬 测试环境：.NET 8, SQLite, 10000次查询的平均值
-> 📊 GetOrdinal 缓存在大结果集查询中效果显著
-
-### 真实场景测试
-
-我们的 SQLite 测试显示了惊人的性能：
-
-```
-✅ 50次查询耗时: 11ms (平均 0.22ms/查询)
-✅ 并发查询: 5个任务同时执行，性能稳定
-✅ 实际数据库操作: 创建、查询、更新、删除全部测试通过
-✅ Repository 模式: 自动生成高性能实现
-✅ ExpressionToSql: LINQ 表达式完美转换为 SQL
-```
-
-## ✅ 项目状态
-
-### 🎯 最新修复成果 (2025年1月)
-
-我们最近完成了一次全面的代码质量提升，修复了多个关键问题：
-
-**🔧 核心修复项目:**
-- ✅ **DbParameter 类型转换**: 修复 `out` 参数赋值时的类型转换问题
-- ✅ **抽象类型处理**: 正确处理 `DbDataReader` 等抽象类型的实例化
-- ✅ **Repository 模式**: 完善 `RepositoryFor` 属性的使用模式
-- ✅ **字符串字面量**: 修复源生成器中的双引号转义和长行分割
-- ✅ **示例项目**: 重新整理所有示例项目，确保正常工作
-- ✅ **SqlDefine & TableName**: 修复 RepositoryFor 中 SqlDefine 和 TableName 属性不生效的问题
-- ✅ **拦截函数优化**: 修复拦截函数中错误创建 command 的问题，提升性能
-
-**📊 测试结果对比:**
-- 最新测试摘要: 总计 **1644**，失败 **0**，成功 **1546**，跳过 **98**
-- 核心功能: **0 失败**（跳过用例不计入通过率）
-- 示例修复: 修复 SQLite 示例缺少 `is_active` 列导致失败的问题
-
-**🚀 验证的功能:**
-- ✅ Repository 模式自动生成
-- ✅ CRUD 操作完全正确
-- ✅ ExpressionToSql 表达式转换
-- ✅ 多数据库方言支持 (SqlDefine 属性)
-- ✅ 自定义表名支持 (TableName 属性)
-- ✅ 异步/同步双重支持
-- ✅ 高性能拦截函数
-
-## 📦 项目结构
-
-```
-Sqlx/
-├── src/Sqlx/                   # 🔧 核心库 - 高性能源代码生成器
-├── samples/                    # 📚 示例项目
-│   └── RepositoryExample/      # Repository 模式完整示例
-├── tests/                      # 🧪 核心功能测试
-│   ├── Sqlx.Tests/            # 单元测试
-│   └── Sqlx.IntegrationTests/ # 集成测试
-└── docs/                       # 📖 完整文档
-```
-
-> 📋 详细项目结构说明请参阅 [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)
-
-## 🔧 支持的特性
-
-### 完整特性列表
-
-| 特性 | 状态 | 描述 |
-|------|------|------|
-| **Repository 模式** | ✅ | 自动实现接口，零样板代码 |
-| **SqlExecuteType** | ✅ | INSERT/UPDATE/DELETE/SELECT 自动生成 |
-| **ExpressionToSql** | ✅ | LINQ 表达式转 SQL |
-| **GetOrdinal 缓存** | ✅ | 智能缓存列序号，显著提升性能 |
-| **泛型 Repository** | ✅ | 完整泛型约束支持，类型安全 |
-| **异步支持** | ✅ | Task/async 完整支持 |
-| **参数化查询** | ✅ | 防止 SQL 注入 |
-| **多数据库** | ✅ | SQLite/MySQL/SQL Server/PostgreSQL |
-| **DbContext 集成** | ✅ | EF Core 兼容 |
-| **扩展方法** | ✅ | 静态扩展方法支持 |
-| **事务支持** | ✅ | DbTransaction 参数 |
-| **CancellationToken** | ✅ | 异步取消支持 |
-| **NativeAOT** | ✅ | 完美支持原生编译 |
-| **类型安全** | ✅ | 编译时类型检查 |
-| **抽象类型处理** | ✅ | 正确处理 DbDataReader 等抽象类型 |
-| **性能监控** | ✅ | 内置性能分析和内存优化 |
-
-### 类型映射支持
-
-| .NET 类型 | SQL 类型 | 支持状态 |
-|-----------|----------|----------|
-| `int`, `long` | INTEGER | ✅ 完整支持 |
-| `string` | VARCHAR/TEXT | ✅ 完整支持 |
-| `DateTime` | DATETIME | ✅ 完整支持 |
-| `bool` | BOOLEAN/BIT | ✅ 完整支持 |
-| `decimal`, `double` | DECIMAL/FLOAT | ✅ 完整支持 |
-| `byte[]` | BLOB/VARBINARY | ✅ 完整支持 |
-| `Nullable<T>` | NULL values | ✅ 完整支持 |
-
-## 📦 NuGet 包发布
-
-项目包含自动化脚本来发布 NuGet 包：
-
-### Windows (PowerShell)
-```powershell
-# 基本发布
-.\tools\push-nuget.ps1 -Version "1.0.0" -ApiKey "your-api-key"
-
-# 模拟运行（不实际发布）
-.\tools\push-nuget.ps1 -Version "1.0.0" -DryRun
-
-# 跳过测试快速发布
-.\tools\push-nuget.ps1 -Version "1.0.0" -ApiKey "your-api-key" -SkipTests
-```
-
-### Linux/macOS (Bash)
-```bash
-# 基本发布
-./tools/push-nuget.sh -v "1.0.0" -k "your-api-key"
-
-# 模拟运行
-./tools/push-nuget.sh -v "1.0.0" --dry-run
-
-# 跳过测试
-./tools/push-nuget.sh -v "1.0.0" -k "your-api-key" --skip-tests
-```
-
-## 🤝 贡献指南
-
-我们欢迎社区贡献！
-
-1. **Fork** 本仓库
-2. **创建** 特性分支 (`git checkout -b feature/amazing-feature`)
-3. **提交** 你的改动 (`git commit -m 'Add amazing feature'`)
-4. **推送** 到分支 (`git push origin feature/amazing-feature`)
-5. **打开** Pull Request
-
-### 开发环境设置
-
-```bash
-# 克隆仓库
-git clone https://github.com/Cricle/Sqlx.git
-cd Sqlx
-
-# 还原依赖
-dotnet restore
-
-# 构建项目
-dotnet build
-
-# 运行测试
-dotnet test
-
-# 运行示例
-dotnet run --project samples/RepositoryExample/RepositoryExample.csproj -- --sqlite
-```
-
-## 🏗️ 项目架构
-
-```
-Sqlx/
-├── src/Sqlx/                    # 🔧 核心库
-│   ├── AbstractGenerator.cs    # Repository 生成器
-│   ├── CSharpGenerator.cs      # C# 代码生成器
-│   ├── Core/                   # 核心功能模块
-│   └── Annotations/            # 特性标注
-├── samples/                    # 📚 示例项目
-│   └── RepositoryExample/      # Repository 模式演示
-├── tests/                      # 🧪 单元测试和集成测试
-│   ├── Sqlx.Tests/            # 核心功能测试
-│   └── Sqlx.IntegrationTests/ # 集成测试
-└── docs/                       # 📖 完整文档
-```
-
-## 🤝 贡献指南
-
-我们欢迎社区贡献！在参与之前，请：
-
-1. ⭐ **Star** 这个项目
-2. 🍴 **Fork** 仓库
-3. 🔧 创建功能分支 (`git checkout -b feature/amazing-feature`)
-4. ✅ 确保测试通过 (`dotnet test`)
-5. 📝 提交更改 (`git commit -m 'Add amazing feature'`)
-6. 🚀 推送分支 (`git push origin feature/amazing-feature`)
-7. 📋 开启 Pull Request
-
-### 开发环境设置
-
-```bash
-# 克隆项目
-git clone https://github.com/Cricle/Sqlx.git
-cd Sqlx
-
-# 还原依赖
-dotnet restore
-
-# 构建项目
-dotnet build
-
-# 运行测试
-dotnet test
-
-# 运行示例
-dotnet run --project samples/RepositoryExample
-```
-
-## 📊 项目统计
-
-- ✅ **1546 个测试通过**（共 1644，用例，98 跳过）
-- 🚀 **0 失败** - 主体功能用例全部通过
-- 📦 **零运行时依赖** - 纯源代码生成
-- 🎯 **NativeAOT 兼容** - 现代 .NET 最佳实践
+欢迎提交 Issues 和 Pull Requests！
 
 ## 📄 许可证
 
-本项目采用 [MIT 许可证](License.txt) - 详见 License.txt
-
-## 💡 获取帮助
-
-- 📖 [Wiki 文档](https://github.com/Cricle/Sqlx/wiki)
-- 🐛 [问题报告](https://github.com/Cricle/Sqlx/issues)
-- 💬 [讨论区](https://github.com/Cricle/Sqlx/discussions)
-
-## 🔮 路线图
-
-- [x] **源生成器稳定性**: 修复编译错误和类型安全问题
-- [x] **抽象类型支持**: 正确处理 DbDataReader 等抽象类型
-- [x] **Repository 模式优化**: 完善自动实现生成
-- [x] **Batch 操作**: 批量插入/更新支持 (🆕 2025年1月新增)
-- [x] **多数据库支持**: MySQL、SQL Server、PostgreSQL、SQLite (✅ 2025年1月)
-- [x] **Repository 模式**: 完整的泛型 Repository 支持 (✅ 2025年1月)
-- [x] **NativeAOT**: 完美支持原生编译优化 (✅ 2025年1月)
-- [x] **性能优化**: GetOrdinal 缓存和智能优化 (✅ 2025年1月)
-
----
-
-**Sqlx** - 让数据库访问变得简单而高效！ ⚡
-
-> 🎉 从繁重的 ORM 配置中解脱，用 Sqlx 拥抱简单高效的数据库开发！
+MIT License - 详见 [LICENSE](License.txt)

@@ -5,7 +5,6 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.CodeAnalysis;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -60,7 +59,7 @@ internal static class SqlOperationInferrer
     {
         if (method == null)
             return SqlOperationType.Select; // Default operation for null method
-            
+
         // First check for explicit attributes
         var sqlExecuteTypeAttr = method.GetAttributes()
             .FirstOrDefault(attr => attr.AttributeClass?.Name == "SqlExecuteTypeAttribute");

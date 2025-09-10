@@ -19,42 +19,46 @@ public partial class CSharpGenerator
         public List<IMethodSymbol> Methods { get; } = new List<IMethodSymbol>();
         public List<INamedTypeSymbol> RepositoryClasses { get; } = new List<INamedTypeSymbol>();
 
-        public void OnVisitSyntaxNode(GeneratorSyntaxContext context)
-        {
-            if (context.Node is MethodDeclarationSyntax methodDeclaration)
-            {
-                var methodSymbol = context.SemanticModel.GetDeclaredSymbol(methodDeclaration) as IMethodSymbol;
-                if (methodSymbol != null && HasSqlxAttribute(methodSymbol))
-                {
-                    Methods.Add(methodSymbol);
-                }
-            }
-            else if (context.Node is ClassDeclarationSyntax classDeclaration)
-            {
-                var classSymbol = context.SemanticModel.GetDeclaredSymbol(classDeclaration) as INamedTypeSymbol;
-                if (classSymbol != null)
-                {
-                    #if DEBUG
-                    System.Diagnostics.Debug.WriteLine($"Found class: {classSymbol.Name}");
-                    #endif
-                    if (HasRepositoryForAttribute(classSymbol))
-                    {
-                        #if DEBUG
-                        System.Diagnostics.Debug.WriteLine($"Adding repository class: {classSymbol.Name}");
-                        #endif
-                        RepositoryClasses.Add(classSymbol);
-                    }
-                }
-            }
-        }
-
         public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
         {
             // Legacy method - not used in modern Roslyn
         }
 
+        public void OnVisitSyntaxNode(GeneratorSyntaxContext context)
+        {
+            // Collect methods with Sqlx attributes
+            if (context.Node is MethodDeclarationSyntax methodDeclaration)
+            {
+                if (context.SemanticModel.GetDeclaredSymbol(methodDeclaration) is IMethodSymbol method)
+                {
+                    if (HasSqlxAttribute(method))
+                    {
+                        Methods.Add(method);
+                    }
+                }
+            }
+
+            // Collect repository classes
+            if (context.Node is ClassDeclarationSyntax classDeclaration)
+            {
+                if (context.SemanticModel.GetDeclaredSymbol(classDeclaration) is INamedTypeSymbol type)
+                {
+                    if (HasRepositoryForAttribute(type))
+                    {
+                        RepositoryClasses.Add(type);
+                    }
+                }
+            }
+        }
+
         private static bool HasSqlxAttribute(IMethodSymbol method)
         {
+            // Only collect methods declared in classes to avoid generating implementations for interfaces
+            if (method.ContainingType == null || method.ContainingType.TypeKind != TypeKind.Class)
+            {
+                return false;
+            }
+
             return method.GetAttributes().Any(attr =>
                 attr.AttributeClass?.Name == "SqlxAttribute" ||
                 attr.AttributeClass?.Name == "RawSqlAttribute" ||

@@ -1,0 +1,117 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  # 🧪 测试和构建
+  test:
+    name: 🧪 Test & Build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: 🔧 Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        
+    - name: 📦 Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.props') }}
+        restore-keys: ${{ runner.os }}-nuget-
+        
+    - name: 📦 Restore dependencies
+      run: dotnet restore
+      
+    - name: 🏗️ Build
+      run: dotnet build --configuration Release --no-restore
+      
+    - name: 🧪 Run tests
+      run: dotnet test --configuration Release --no-build --collect:"XPlat Code Coverage" --logger "console;verbosity=minimal"
+      
+    - name: 📊 Upload coverage
+      uses: codecov/codecov-action@v4
+      if: always()
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: false
+        
+    - name: 📦 Pack packages
+      if: github.event_name == 'push'
+      run: dotnet pack --configuration Release --no-build --output ./artifacts
+      
+    - name: 📤 Upload artifacts
+      if: github.event_name == 'push'
+      uses: actions/upload-artifact@v4
+      with:
+        name: nuget-packages
+        path: ./artifacts/*.nupkg
+        retention-days: 7
+
+  # 🚀 发布到 NuGet (仅在创建 v* tag 时)
+  publish:
+    name: 🚀 Publish to NuGet
+    runs-on: ubuntu-latest
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    environment: production
+    
+    steps:
+    - name: 📥 Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: nuget-packages
+        path: ./artifacts
+        
+    - name: 🏷️ Extract version from tag
+      id: get_version
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        echo "📦 Publishing version: $VERSION"
+        
+    - name: 🚀 Push to NuGet
+      run: |
+        dotnet nuget push "./artifacts/*.nupkg" \
+          --source https://api.nuget.org/v3/index.json \
+          --api-key ${{ secrets.NUGET_API_KEY }} \
+          --skip-duplicate
+          
+    - name: 🎉 Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        name: Release ${{ steps.get_version.outputs.VERSION }}
+        draft: false
+        prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+        generate_release_notes: true
+        files: ./artifacts/*.nupkg
+        body: |
+          ## 🚀 Sqlx ${{ steps.get_version.outputs.VERSION }}
+          
+          ### 📦 Installation
+          ```bash
+          dotnet add package Sqlx --version ${{ steps.get_version.outputs.VERSION }}
+          ```
+          
+          ### 🔗 Links
+          - 📦 [NuGet Package](https://www.nuget.org/packages/Sqlx/${{ steps.get_version.outputs.VERSION }})
+          - 📚 [Documentation](https://github.com/${{ github.repository }}/blob/main/README.md)
+          - 🆕 [New Features Quick Start](https://github.com/${{ github.repository }}/blob/main/docs/NEW_FEATURES_QUICK_START.md)
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

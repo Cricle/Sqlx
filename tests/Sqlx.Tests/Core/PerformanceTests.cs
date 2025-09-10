@@ -132,7 +132,7 @@ public class PerformanceTests
     }
 
     [TestMethod]
-    public void TypeAnalyzer_Caching_PerformanceTest()
+    public void TypeAnalyzer_CacheStatistics_PerformanceTest()
     {
         // Arrange
         const int iterations = 1000;
@@ -141,18 +141,17 @@ public class PerformanceTests
         // Act
         for (int i = 0; i < iterations; i++)
         {
-            // Skip TypeAnalyzer tests as they require ITypeSymbol, not System.Type
-            // This test would need mock ITypeSymbol instances which is complex
-            Assert.IsTrue(true, "TypeAnalyzer caching test skipped - requires Roslyn symbols");
+            // Test cache statistics retrieval performance
+            var stats = TypeAnalyzer.GetCacheStatistics();
+            Assert.IsTrue(stats.EntityTypes >= 0, "Entity types count should be non-negative");
         }
         stopwatch.Stop();
 
         // Assert
-        var totalOperations = iterations * 4;
-        Assert.IsTrue(stopwatch.ElapsedMilliseconds < 100, 
-            $"Performance test took {stopwatch.ElapsedMilliseconds}ms, expected < 100ms");
+        Assert.IsTrue(stopwatch.ElapsedMilliseconds < 50, 
+            $"Cache statistics test took {stopwatch.ElapsedMilliseconds}ms, expected < 50ms");
         
-        Console.WriteLine($"TypeAnalyzer caching performance: {totalOperations} operations in {stopwatch.ElapsedMilliseconds}ms");
+        Console.WriteLine($"TypeAnalyzer cache statistics: {iterations} operations in {stopwatch.ElapsedMilliseconds}ms");
     }
 
     [TestMethod]

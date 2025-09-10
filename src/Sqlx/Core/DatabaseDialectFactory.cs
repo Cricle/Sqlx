@@ -5,19 +5,15 @@
 // -----------------------------------------------------------------------
 
 using Sqlx.SqlGen;
-using System;
-using System.Collections.Concurrent;
 
 namespace Sqlx.Core;
 
 /// <summary>
-/// Factory for creating database dialect providers.
+/// Simple factory for creating database dialect providers.
+/// No caching needed - these are lightweight objects.
 /// </summary>
 internal static class DatabaseDialectFactory
 {
-    private static readonly ConcurrentDictionary<SqlDefineTypes, IDatabaseDialectProvider> _dialectCache
-        = new ConcurrentDictionary<SqlDefineTypes, IDatabaseDialectProvider>();
-
     /// <summary>
     /// Gets the dialect provider for the specified database type.
     /// </summary>
@@ -25,8 +21,9 @@ internal static class DatabaseDialectFactory
     /// <returns>The appropriate dialect provider.</returns>
     public static IDatabaseDialectProvider GetDialectProvider(SqlDefineTypes dialectType)
     {
-        return _dialectCache.GetOrAdd(dialectType, CreateDialectProvider);
+        return CreateDialectProvider(dialectType);
     }
+
 
     /// <summary>
     /// Gets the dialect provider for the specified SQL definition.
@@ -35,24 +32,36 @@ internal static class DatabaseDialectFactory
     /// <returns>The appropriate dialect provider.</returns>
     public static IDatabaseDialectProvider GetDialectProvider(SqlDefine sqlDefine)
     {
-        // Try to match the SqlDefine to a known dialect type
-        var dialectType = sqlDefine switch
+        // Direct equality checks for known static instances
+        if (sqlDefine.Equals(SqlDefine.MySql)) return GetDialectProvider(SqlDefineTypes.MySql);
+        if (sqlDefine.Equals(SqlDefine.SqlServer)) return GetDialectProvider(SqlDefineTypes.SqlServer);
+        if (sqlDefine.Equals(SqlDefine.PgSql)) return GetDialectProvider(SqlDefineTypes.Postgresql);
+        if (sqlDefine.Equals(SqlDefine.SQLite)) return GetDialectProvider(SqlDefineTypes.SQLite);
+        if (sqlDefine.Equals(SqlDefine.Oracle)) return GetDialectProvider(SqlDefineTypes.Oracle);
+        if (sqlDefine.Equals(SqlDefine.DB2)) return GetDialectProvider(SqlDefineTypes.DB2);
+
+        // For custom SqlDefine instances, infer from characteristics
+        var dialectType = InferDialectFromCharacteristics(sqlDefine);
+        return GetDialectProvider(dialectType);
+    }
+
+    /// <summary>
+    /// Infers the dialect type from SqlDefine characteristics.
+    /// </summary>
+    /// <param name="sqlDefine">The SQL definition.</param>
+    /// <returns>The inferred dialect type.</returns>
+    private static SqlDefineTypes InferDialectFromCharacteristics(SqlDefine sqlDefine)
+    {
+        return (sqlDefine.ColumnLeft, sqlDefine.ColumnRight, sqlDefine.ParameterPrefix) switch
         {
-            var d when d.Equals(SqlDefine.MySql) => SqlDefineTypes.MySql,
-            var d when d.Equals(SqlDefine.PgSql) => SqlDefineTypes.Postgresql,
-            var d when d.Equals(SqlDefine.Oracle) => SqlDefineTypes.Oracle, // Will throw exception
-            var d when d.Equals(SqlDefine.DB2) => SqlDefineTypes.DB2, // Will throw exception
-            // SQLite has unique identifier (@sqlite) to distinguish from SqlServer
-            var d when d.Equals(SqlDefine.SQLite) => SqlDefineTypes.SQLite,
-            // SqlServer uses standard @ prefix
-            var d when d.Equals(SqlDefine.SqlServer) => SqlDefineTypes.SqlServer,
-            // For custom SqlDefine instances, check specific characteristics
-            var d when d.ColumnLeft == "[" && d.ColumnRight == "]" && d.ParameterPrefix == "@sqlite" => SqlDefineTypes.SQLite,
-            var d when d.ColumnLeft == "[" && d.ColumnRight == "]" && d.ParameterPrefix == "@" => SqlDefineTypes.SqlServer,
+            ("`", "`", "@") => SqlDefineTypes.MySql,
+            ("\"", "\"", "$") => SqlDefineTypes.Postgresql,
+            ("\"", "\"", ":") => SqlDefineTypes.Oracle,
+            ("\"", "\"", "?") => SqlDefineTypes.DB2,
+            ("[", "]", "@sqlite") => SqlDefineTypes.SQLite,
+            ("[", "]", "@") => SqlDefineTypes.SqlServer,
             _ => SqlDefineTypes.SqlServer // Default fallback
         };
-
-        return GetDialectProvider(dialectType);
     }
 
     /// <summary>
@@ -68,28 +77,18 @@ internal static class DatabaseDialectFactory
             SqlDefineTypes.SqlServer => new SqlServerDialectProvider(),
             SqlDefineTypes.Postgresql => new PostgreSqlDialectProvider(),
             SqlDefineTypes.SQLite => new SQLiteDialectProvider(),
-            SqlDefineTypes.Oracle => throw new NotSupportedException("Oracle dialect support has been removed to reduce complexity. Use PostgreSQL or SQL Server instead."),
-            SqlDefineTypes.DB2 => throw new NotSupportedException("DB2 dialect support has been removed to reduce complexity. Use PostgreSQL or SQL Server instead."),
-            _ => throw new NotSupportedException($"Database dialect {dialectType} is not supported.")
+            SqlDefineTypes.Oracle => throw new UnsupportedDialectException("Oracle (support removed to reduce complexity - use PostgreSQL instead)"),
+            SqlDefineTypes.DB2 => throw new UnsupportedDialectException("DB2 (support removed to reduce complexity - use PostgreSQL instead)"),
+            _ => throw new UnsupportedDialectException(dialectType.ToString())
         };
     }
 
     /// <summary>
-    /// Registers a custom dialect provider.
-    /// </summary>
-    /// <param name="dialectType">The dialect type.</param>
-    /// <param name="provider">The dialect provider.</param>
-    public static void RegisterDialectProvider(SqlDefineTypes dialectType, IDatabaseDialectProvider provider)
-    {
-        _dialectCache.AddOrUpdate(dialectType, provider, (key, oldValue) => provider);
-    }
-
-    /// <summary>
-    /// Clears all cached dialect providers.
+    /// Clears all cached dialect providers (no-op for compatibility).
     /// </summary>
     public static void ClearCache()
     {
-        _dialectCache.Clear();
+        // No-op: this factory doesn't cache
     }
 }
 

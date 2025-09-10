@@ -5,10 +5,8 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.CodeAnalysis;
-using System;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
 
 namespace Sqlx.Core;
 
@@ -72,6 +70,7 @@ internal static class CodeGenerator
     public static void GenerateCommandSetup(IndentedStringBuilder sb, string sql)
     {
         sb.AppendLine("using var command = connection.CreateCommand();");
+        sb.AppendLine("command.CommandType = global::System.Data.CommandType.Text;");
         sb.AppendLine($"command.CommandText = \"{sql.Replace("\"", "\\\"")}\";");
         sb.AppendLine();
     }
@@ -181,7 +180,8 @@ internal static class CodeGenerator
         var (executeMethod, readMethod, awaitKeyword) = GetAsyncPatterns(isAsync, cancellationToken, "ExecuteReader");
 
         sb.AppendLine($"using var reader = {awaitKeyword}command.{executeMethod};");
-        sb.AppendLine($"var results = new global::System.Collections.Generic.List<{entityType?.ToDisplayString() ?? "object"}>();");
+        var entityTypeName = entityType?.ToDisplayString() ?? "object";
+        sb.AppendLine($"var results = new global::System.Collections.Generic.List<{entityTypeName}>();");
         sb.AppendLine();
         sb.AppendLine($"while ({awaitKeyword}reader.{readMethod})");
         sb.AppendLine("{");
@@ -237,7 +237,7 @@ internal static class CodeGenerator
         var (executeMethod, _, awaitKeyword) = GetAsyncPatterns(isAsync, cancellationToken, "ExecuteScalar");
 
         sb.AppendLine($"var result = {awaitKeyword}command.{executeMethod};");
-        sb.AppendLine($"return ({returnType.ToDisplayString()})(result ?? default({returnType.ToDisplayString()}));");
+        sb.AppendLine($"return ({returnType.ToDisplayString()})(result ?? default({returnType.ToDisplayString()}))!;");
     }
 
     /// <summary>
@@ -251,12 +251,12 @@ internal static class CodeGenerator
     {
         if (isAsync)
         {
-            var executeMethod = baseMethod == "ExecuteReader" ? $"ExecuteReaderAsync({cancellationToken})" :
-                               baseMethod == "ExecuteNonQuery" ? $"ExecuteNonQueryAsync({cancellationToken})" :
-                               baseMethod == "ExecuteScalar" ? $"ExecuteScalarAsync({cancellationToken})" :
-                               $"{baseMethod}Async({cancellationToken})";
+            var executeMethod = baseMethod == "ExecuteReader" ? $"ExecuteReaderAsync()" :
+                               baseMethod == "ExecuteNonQuery" ? $"ExecuteNonQueryAsync()" :
+                               baseMethod == "ExecuteScalar" ? $"ExecuteScalarAsync()" :
+                               $"{baseMethod}Async()";
 
-            var readMethod = $"ReadAsync({cancellationToken})";
+            var readMethod = $"ReadAsync()";
             return (executeMethod, readMethod, "await ");
         }
         else
@@ -281,7 +281,18 @@ internal static class CodeGenerator
         {
             var columnName = property.Name;
             var typeName = property.Type.ToDisplayString();
-            sb.AppendLine($"entity.{property.Name} = reader.IsDBNull(\"{columnName}\") ? default({typeName}) : reader.GetFieldValue<{typeName}>(\"{columnName}\");");
+            if (property.Type.CanBeReferencedByName && property.Type.IsValueType)
+            {
+                sb.AppendLine($"entity.{property.Name} = reader.IsDBNull(\"{columnName}\") ? default({typeName}) : reader.GetFieldValue<{typeName}>(\"{columnName}\");");
+            }
+            else if (property.Type.Name == "Int32")
+            {
+                sb.AppendLine($"entity.{property.Name} = reader.IsDBNull(\"{columnName}\") ? 0 : Convert.ToInt32(reader[\"{columnName}\"]);");
+            }
+            else
+            {
+                sb.AppendLine($"entity.{property.Name} = reader.IsDBNull(\"{columnName}\") ? default({typeName})! : reader.GetFieldValue<{typeName}>(\"{columnName}\");");
+            }
         }
     }
 

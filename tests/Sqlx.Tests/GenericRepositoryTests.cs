@@ -80,7 +80,6 @@ namespace TestNamespace
     /// Tests generic repository with multiple type parameters.
     /// </summary>
     [TestMethod]
-    [Ignore("Temporarily disabled due to source generator issues with multiple generic type parameters")]
     public void GenericRepository_MultipleTypeParameters_GeneratesImplementation()
     {
         var source = @"
@@ -138,7 +137,6 @@ namespace TestNamespace
     /// Tests generic repository with SqlExecuteType attributes.
     /// </summary>
     [TestMethod]
-    [Ignore("Temporarily disabled due to compilation context issues with generated repository code")]
     public void GenericRepository_SqlExecuteTypeAttributes_GeneratesCorrectSql()
     {
         var source = @"

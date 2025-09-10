@@ -6,11 +6,6 @@
 
 namespace Sqlx.SqlGen
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Text;
-    using Microsoft.CodeAnalysis;
-
     internal sealed class SqlGenerator
     {
         public string Generate(SqlDefine def, SqlExecuteTypes type, GenerateContext ctx)

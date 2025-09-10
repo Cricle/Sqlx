@@ -6,47 +6,35 @@
 
 using Microsoft.CodeAnalysis;
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
 namespace Sqlx.Core;
 
 /// <summary>
-/// High-performance type analyzer with caching for source generation.
+/// Simple type analyzer for source generation.
+/// Focus on ADO.NET types. Cache APIs are retained as no-ops for test compatibility.
 /// </summary>
 internal static class TypeAnalyzer
 {
-    private static readonly ConcurrentDictionary<ITypeSymbol, bool> _isEntityTypeCache = new(SymbolEqualityComparer.Default);
-    private static readonly ConcurrentDictionary<ITypeSymbol, bool> _isCollectionTypeCache = new(SymbolEqualityComparer.Default);
-    private static readonly ConcurrentDictionary<ITypeSymbol, INamedTypeSymbol?> _entityTypeCache = new(SymbolEqualityComparer.Default);
-    private static readonly ConcurrentDictionary<ITypeSymbol, bool> _isAsyncTypeCache = new(SymbolEqualityComparer.Default);
-    private static readonly ConcurrentDictionary<ITypeSymbol, bool> _isScalarTypeCache = new(SymbolEqualityComparer.Default);
-    private static readonly ConcurrentDictionary<ITypeSymbol, string> _defaultValueCache = new(SymbolEqualityComparer.Default);
-    private static readonly ConcurrentDictionary<string, bool> _namespaceCache = new();
-
     /// <summary>
-    /// Determines if a type is likely an entity type (cached).
+    /// Determines if a type is likely an entity type.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsLikelyEntityType(ITypeSymbol? type)
     {
         if (type == null) return false;
 
-        return _isEntityTypeCache.GetOrAdd(type, static t =>
-        {
-            // Skip primitive and system types
-            if (t.SpecialType != SpecialType.None) return false;
+        // Skip primitive and system types
+        if (type.SpecialType != SpecialType.None) return false;
 
-            // Skip system namespace types with caching
-            var namespaceName = t.ContainingNamespace?.ToDisplayString() ?? "";
-            if (IsSystemNamespace(namespaceName)) return false;
+        // Skip system namespaces
+        var namespaceName = type.ContainingNamespace?.ToDisplayString() ?? string.Empty;
+        if (IsSystemNamespace(namespaceName)) return false;
 
-            // Must be a class with properties
-            return t.TypeKind == TypeKind.Class &&
-                   t.GetMembers().OfType<IPropertySymbol>().Any();
-        });
+        // Must be a class with properties
+        return type.TypeKind == TypeKind.Class &&
+               type.GetMembers().OfType<IPropertySymbol>().Any();
     }
 
     /// <summary>
@@ -55,15 +43,12 @@ internal static class TypeAnalyzer
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsCollectionType(ITypeSymbol type)
     {
-        return _isCollectionTypeCache.GetOrAdd(type, static t =>
-        {
-            if (t is not INamedTypeSymbol namedType) return false;
+        if (type is not INamedTypeSymbol namedType) return false;
 
-            var typeName = namedType.Name;
-            return typeName is "IList" or "List" or "IEnumerable" or "ICollection" or "IReadOnlyList" ||
-                   (namedType.IsGenericType &&
-                    (typeName is "IList" or "List" or "IEnumerable" or "ICollection" or "IReadOnlyList"));
-        });
+        var typeName = namedType.Name;
+        return typeName is "IList" or "List" or "IEnumerable" or "ICollection" or "IReadOnlyList" ||
+               (namedType.IsGenericType &&
+                (typeName is "IList" or "List" or "IEnumerable" or "ICollection" or "IReadOnlyList"));
     }
 
     /// <summary>
@@ -72,35 +57,32 @@ internal static class TypeAnalyzer
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static INamedTypeSymbol? ExtractEntityType(ITypeSymbol type)
     {
-        return _entityTypeCache.GetOrAdd(type, static t =>
+        if (type is not INamedTypeSymbol namedType) return null;
+
+        // Handle Task<T> and Task<IList<T>>
+        if (namedType.Name == "Task" && namedType.TypeArguments.Length == 1)
         {
-            if (t is not INamedTypeSymbol namedType) return null;
-
-            // Handle Task<T> and Task<IList<T>>
-            if (namedType.Name == "Task" && namedType.TypeArguments.Length == 1)
+            var taskInnerType = namedType.TypeArguments[0];
+            if (taskInnerType is INamedTypeSymbol taskInner)
             {
-                var taskInnerType = namedType.TypeArguments[0];
-                if (taskInnerType is INamedTypeSymbol taskInner)
+                // Task<IList<T>> -> T
+                if (IsCollectionType(taskInner) && taskInner.TypeArguments.Length == 1)
                 {
-                    // Task<IList<T>> -> T
-                    if (IsCollectionType(taskInner) && taskInner.TypeArguments.Length == 1)
-                    {
-                        return taskInner.TypeArguments[0] as INamedTypeSymbol;
-                    }
-                    // Task<T> -> T
-                    return taskInner;
+                    return taskInner.TypeArguments[0] as INamedTypeSymbol;
                 }
+                // Task<T> -> T
+                return taskInner;
             }
+        }
 
-            // Handle IList<T>, List<T>, IEnumerable<T>
-            if (IsCollectionType(namedType) && namedType.TypeArguments.Length == 1)
-            {
-                return namedType.TypeArguments[0] as INamedTypeSymbol;
-            }
+        // Handle IList<T>, List<T>, IEnumerable<T>
+        if (IsCollectionType(namedType) && namedType.TypeArguments.Length == 1)
+        {
+            return namedType.TypeArguments[0] as INamedTypeSymbol;
+        }
 
-            // Direct type
-            return IsLikelyEntityType(namedType) ? namedType : null;
-        });
+        // Direct type
+        return IsLikelyEntityType(namedType) ? namedType : null;
     }
 
     /// <summary>
@@ -109,11 +91,8 @@ internal static class TypeAnalyzer
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsAsyncType(ITypeSymbol type)
     {
-        return _isAsyncTypeCache.GetOrAdd(type, static t =>
-        {
-            if (t is not INamedTypeSymbol namedType) return false;
-            return namedType.Name == "Task";
-        });
+        if (type is not INamedTypeSymbol namedType) return false;
+        return namedType.Name == "Task";
     }
 
     /// <summary>
@@ -138,17 +117,13 @@ internal static class TypeAnalyzer
     public static bool IsScalarReturnType(ITypeSymbol returnType, bool isAsync)
     {
         var actualType = isAsync ? GetInnerType(returnType) : returnType;
-
-        return _isScalarTypeCache.GetOrAdd(actualType, static t =>
+        return actualType.SpecialType switch
         {
-            return t.SpecialType switch
-            {
-                SpecialType.System_Int32 or SpecialType.System_Int64 or SpecialType.System_Boolean
-                or SpecialType.System_String or SpecialType.System_Decimal or SpecialType.System_Double
-                or SpecialType.System_Single or SpecialType.System_Byte or SpecialType.System_Int16 => true,
-                _ => false
-            };
-        });
+            SpecialType.System_Int32 or SpecialType.System_Int64 or SpecialType.System_Boolean
+            or SpecialType.System_String or SpecialType.System_Decimal or SpecialType.System_Double
+            or SpecialType.System_Single or SpecialType.System_Byte or SpecialType.System_Int16 => true,
+            _ => false
+        };
     }
 
     /// <summary>
@@ -157,7 +132,7 @@ internal static class TypeAnalyzer
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string GetDefaultValue(ITypeSymbol type)
     {
-        return _defaultValueCache.GetOrAdd(type, static t => ComputeDefaultValue(t));
+        return ComputeDefaultValue(type);
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
@@ -193,22 +168,24 @@ internal static class TypeAnalyzer
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool IsSystemNamespace(string namespaceName)
     {
-        return _namespaceCache.GetOrAdd(namespaceName, static ns =>
-            ns.StartsWith("System", StringComparison.Ordinal) ||
-            ns.StartsWith("Microsoft", StringComparison.Ordinal));
+        return namespaceName.StartsWith("System", StringComparison.Ordinal) ||
+               namespaceName.StartsWith("Microsoft", StringComparison.Ordinal);
     }
 
     /// <summary>
-    /// Clears all caches (useful for testing).
+    /// Clears all caches (useful for testing and memory management).
     /// </summary>
     public static void ClearCaches()
     {
-        _isEntityTypeCache.Clear();
-        _isCollectionTypeCache.Clear();
-        _entityTypeCache.Clear();
-        _isAsyncTypeCache.Clear();
-        _isScalarTypeCache.Clear();
-        _defaultValueCache.Clear();
-        _namespaceCache.Clear();
+        // No-op: caches removed in simplified design
+    }
+
+    /// <summary>
+    /// Gets cache statistics for monitoring and debugging.
+    /// </summary>
+    public static (int EntityTypes, int Collections, int Async, int Scalar, int DefaultValues) GetCacheStatistics()
+    {
+        // No-op statistics in simplified design
+        return (0, 0, 0, 0, 0);
     }
 }

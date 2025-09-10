@@ -23,15 +23,6 @@ internal readonly record struct SqlDefine
         ParameterPrefix = parameterPrefix;
     }
 
-    public void Deconstruct(out string columnLeft, out string columnRight, out string stringLeft, out string stringRight, out string parameterPrefix)
-    {
-        columnLeft = ColumnLeft;
-        columnRight = ColumnRight;
-        stringLeft = StringLeft;
-        stringRight = StringRight;
-        parameterPrefix = ParameterPrefix;
-    }
-
     public static readonly SqlDefine MySql = new SqlDefine("`", "`", "'", "'", "@");
     public static readonly SqlDefine SqlServer = new SqlDefine("[", "]", "'", "'", "@");
     public static readonly SqlDefine PgSql = new SqlDefine("\"", "\"", "'", "'", "$");
@@ -42,4 +33,13 @@ internal readonly record struct SqlDefine
     public string WrapString(string input) => $"{StringLeft}{input}{StringRight}";
 
     public string WrapColumn(string input) => $"{ColumnLeft}{input}{ColumnRight}";
+
+    public void Deconstruct(out string columnLeft, out string columnRight, out string stringLeft, out string stringRight, out string parameterPrefix)
+    {
+        columnLeft = ColumnLeft;
+        columnRight = ColumnRight;
+        stringLeft = StringLeft;
+        stringRight = StringRight;
+        parameterPrefix = ParameterPrefix;
+    }
 }

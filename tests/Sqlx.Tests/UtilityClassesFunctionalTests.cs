@@ -726,7 +726,7 @@ public class UtilityClassesFunctionalTests
 
         // Test properties
         var properties = classType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
-        var expectedProperties = new[] { "ClassSymbol", "Methods", "SqlxAttributeSymbol", "GeneratorExecutionContext" };
+        var expectedProperties = new[] { "ClassSymbol", "Methods", "AttributeSymbol", "GeneratorExecutionContext" };
 
         foreach (var propertyName in expectedProperties)
         {
@@ -743,8 +743,8 @@ public class UtilityClassesFunctionalTests
         var methodsProperty = properties.FirstOrDefault(p => p.Name == "Methods");
         Assert.AreEqual("List`1", methodsProperty!.PropertyType.Name, "Methods property should be of type List<MethodGenerationContext>");
 
-        var sqlxAttributeSymbolProperty = properties.FirstOrDefault(p => p.Name == "SqlxAttributeSymbol");
-        Assert.AreEqual("INamedTypeSymbol", sqlxAttributeSymbolProperty!.PropertyType.Name, "SqlxAttributeSymbol property should be of type INamedTypeSymbol");
+        var attributeSymbolProperty = properties.FirstOrDefault(p => p.Name == "AttributeSymbol");
+        Assert.AreEqual("INamedTypeSymbol", attributeSymbolProperty!.PropertyType.Name, "AttributeSymbol property should be of type INamedTypeSymbol");
 
         var generatorExecutionContextProperty = properties.FirstOrDefault(p => p.Name == "GeneratorExecutionContext");
         Assert.AreEqual("GeneratorExecutionContext", generatorExecutionContextProperty!.PropertyType.Name, "GeneratorExecutionContext property should be of type GeneratorExecutionContext");
@@ -820,7 +820,7 @@ public class UtilityClassesFunctionalTests
 
         // Test properties
         var properties = classType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
-        var expectedProperties = new[] { "MethodSymbol", "ClassGenerationContext", "ReturnType", "IsAsync", "ReturnIsEnumerable", "ReturnIsList", "ReturnIsTuple", "ReturnIsScalar" };
+        var expectedProperties = new[] { "MethodSymbol", "ClassGenerationContext", "ReturnType", "IsAsync", "ReturnIsEnumerable" };
 
         foreach (var propertyName in expectedProperties)
         {

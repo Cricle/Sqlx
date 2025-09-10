@@ -6,9 +6,9 @@
 
 namespace Sqlx.SqlGen
 {
+    using Microsoft.CodeAnalysis;
     using System.Linq;
     using System.Text.RegularExpressions;
-    using Microsoft.CodeAnalysis;
 
     internal abstract record GenerateContext(MethodGenerationContext Context, string TableName)
     {

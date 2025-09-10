@@ -10,7 +10,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 [TestClass]
-[Ignore("Temporarily disabled due to source generator issues in edge cases")]
 public class AsyncSqlConnectionTests : CodeGenerationTestBase
 {
     [TestMethod]

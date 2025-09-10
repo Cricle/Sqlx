@@ -63,11 +63,9 @@ internal static class SqlDefineExtensions
     public static string CreateParameter(this SqlDefine sqlDefine, string parameterName)
     {
         if (string.IsNullOrEmpty(parameterName))
-            return sqlDefine.ParameterPrefix;
+            return sqlDefine.GetEffectiveParameterPrefix();
 
-        // Handle special case for SQLite's unique identifier
-        var prefix = sqlDefine.ParameterPrefix == "@sqlite" ? "@" : sqlDefine.ParameterPrefix;
-        return $"{prefix}{parameterName}";
+        return $"{sqlDefine.GetEffectiveParameterPrefix()}{parameterName}";
     }
 
     /// <summary>
@@ -120,9 +118,9 @@ internal static class SqlDefineExtensions
         if (columnNames == null || columnNames.Length == 0)
             return string.Empty;
 
-        var setClauses = columnNames.Select(col => 
+        var setClauses = columnNames.Select(col =>
             $"{sqlDefine.WrapColumn(col)} = {sqlDefine.CreateParameter(col)}");
-        
+
         return string.Join(", ", setClauses);
     }
 
@@ -137,9 +135,9 @@ internal static class SqlDefineExtensions
         if (columnNames == null)
             return string.Empty;
 
-        var setClauses = columnNames.Select(col => 
+        var setClauses = columnNames.Select(col =>
             $"{sqlDefine.WrapColumn(col)} = {sqlDefine.CreateParameter(col)}");
-        
+
         return string.Join(", ", setClauses);
     }
 
@@ -154,9 +152,9 @@ internal static class SqlDefineExtensions
         if (columnNames == null || columnNames.Length == 0)
             return string.Empty;
 
-        var conditions = columnNames.Select(col => 
+        var conditions = columnNames.Select(col =>
             $"{sqlDefine.WrapColumn(col)} = {sqlDefine.CreateParameter(col)}");
-        
+
         return string.Join(" AND ", conditions);
     }
 
@@ -171,9 +169,9 @@ internal static class SqlDefineExtensions
         if (columnNames == null)
             return string.Empty;
 
-        var conditions = columnNames.Select(col => 
+        var conditions = columnNames.Select(col =>
             $"{sqlDefine.WrapColumn(col)} = {sqlDefine.CreateParameter(col)}");
-        
+
         return string.Join(" AND ", conditions);
     }
 

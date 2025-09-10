@@ -5,7 +5,6 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.CodeAnalysis;
-using System;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
@@ -38,7 +37,7 @@ internal static class RepositoryGenerator
         sb.AppendLine("// </auto-generated>");
         sb.AppendLine();
         sb.AppendLine("#nullable disable");
-        sb.AppendLine("#pragma warning disable CS8618, CS8625, CS8629, CS8601, CS8600, CS8603, CS8669");
+        sb.AppendLine("#pragma warning disable CS8618, CS8625, CS8629, CS8601, CS8600, CS8603, CS8669, CS8628, CS0266");
         sb.AppendLine();
     }
 
@@ -99,6 +98,7 @@ internal static class RepositoryGenerator
         CodeGenerator.GenerateMethodSignature(sb, method);
 
         sb.AppendLine($"var connection = {connectionFieldName} ?? throw new ArgumentNullException(nameof({connectionFieldName}));");
+        sb.AppendLine("var cancellationToken = cancellationToken;");
 
         CodeGenerator.GenerateConnectionSetup(sb, isAsync);
         CodeGenerator.GenerateCommandSetup(sb, sql);

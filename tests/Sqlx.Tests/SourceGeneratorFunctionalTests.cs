@@ -76,7 +76,6 @@ namespace TestNamespace
     /// Tests that the source generator generates correct SQL dialect constants.
     /// </summary>
     [TestMethod]
-    [Ignore("Temporarily disabled due to source generator string literal formatting issues")]
     public void SourceGenerator_GeneratesSqlDefineConstants()
     {
         string sourceCode = @"
@@ -110,7 +109,7 @@ namespace TestNamespace
         // Verify SQL dialect constants are generated correctly
         Assert.IsTrue(generatedCode.Contains("MySql = (\"`\", \"`\", \"'\", \"'\", \"@\")"), "MySQL dialect should use backticks and @ prefix");
         Assert.IsTrue(generatedCode.Contains("SqlServer = (\"[\", \"]\", \"'\", \"'\", \"@\")"), "SQL Server dialect should use brackets and @ prefix");
-        Assert.IsTrue(generatedCode.Contains("PgSql = (\"\\u0022\", \"\\u0022\", \"'\", \"'\", \"$\")"), "PostgreSQL dialect should use quotes and $ prefix");
+        Assert.IsTrue(generatedCode.Contains("PgSql = (\"\\\"\", \"\\\"\", \"'\", \"'\", \"$\")"), "PostgreSQL dialect should use quotes and $ prefix");
     }
 
     /// <summary>

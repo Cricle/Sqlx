@@ -32,11 +32,6 @@ public static class NameMapper
 
         var firstname = Regex.Match(parameterName, "[^A-Z]*").Value;
         var matches = Regex.Matches(parameterName, "[A-Z][^A-Z]*").Cast<Match>().Select(_ => _.Value.ToLower());
-        if (string.IsNullOrEmpty(firstname))
-        {
-            return string.Join("_", matches);
-        }
-
-        return string.Join("_", new string[] { firstname }.Union(matches));
+        return string.IsNullOrEmpty(firstname) ? string.Join("_", matches) : string.Join("_", new string[] { firstname }.Union(matches));
     }
 }

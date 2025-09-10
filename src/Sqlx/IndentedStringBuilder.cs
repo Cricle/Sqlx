@@ -18,6 +18,20 @@ internal sealed class IndentedStringBuilder
     private bool needsIndent = true;
     private string? cachedIndent;
 
+    // Pre-allocated indent strings for common depths (performance optimization)
+    private static readonly string[] PrecomputedIndents =
+    {
+        "",                    // 0
+        "    ",                // 1
+        "        ",            // 2  
+        "            ",        // 3
+        "                ",    // 4
+        "                    ", // 5
+        "                        ", // 6
+        "                            ", // 7
+        "                                " // 8
+    };
+
     /// <summary>
     /// Initializes a new instance of the <see cref="IndentedStringBuilder"/> class.
     /// </summary>
@@ -119,8 +133,17 @@ internal sealed class IndentedStringBuilder
     {
         if (depthLevel > 0)
         {
-            cachedIndent ??= new string(' ', depthLevel * IndentSize);
-            builder.Append(cachedIndent);
+            // Use precomputed indents for common depths to avoid allocations
+            if (depthLevel < PrecomputedIndents.Length)
+            {
+                builder.Append(PrecomputedIndents[depthLevel]);
+            }
+            else
+            {
+                // Fallback for deep nesting (rare case)
+                cachedIndent ??= new string(' ', depthLevel * IndentSize);
+                builder.Append(cachedIndent);
+            }
         }
     }
 }

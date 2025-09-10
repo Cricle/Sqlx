@@ -15,4 +15,5 @@ internal enum SqlExecuteTypes
     BatchInsert = 4,
     BatchUpdate = 5,
     BatchDelete = 6,
+    BatchCommand = 7,
 }

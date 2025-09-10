@@ -19,7 +19,6 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 /// Tests cover various method patterns and their corresponding SQL attribute generation.
 /// </summary>
 [TestClass]
-[Ignore("Temporarily disabled due to test framework compilation issues")]
 public class SqlAttributeGenerationTests : CodeGenerationTestBase
 {
     /// <summary>
@@ -525,9 +524,9 @@ namespace TestNamespace
 
         var generatedCode = GetGeneratedCode(sourceCode);
 
-        // Method bodies should include NotImplementedException for now
-        Assert.IsTrue(generatedCode.Contains("NotImplementedException"),
-            "Method bodies should include NotImplementedException");
+        // Method bodies should include actual implementation, not NotImplementedException
+        Assert.IsFalse(generatedCode.Contains("NotImplementedException"),
+            "Method bodies should contain actual implementation, not NotImplementedException");
 
         // Should include explanatory comments
         Assert.IsTrue(generatedCode.Contains("This method will be implemented by Sqlx source generator") ||

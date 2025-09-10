@@ -254,10 +254,10 @@ public class ExtensionsTests : CodeGenerationTestBase
     }
 
     /// <summary>
-    /// Tests Extensions.FindMember with various type symbols.
+    /// Tests Extensions.GetSqlName with various type symbols.
     /// </summary>
     [TestMethod]
-    public void Extensions_FindMember_VariousTypes_WorksCorrectly()
+    public void Extensions_GetSqlName_VariousTypes_WorksCorrectly()
     {
         // Arrange
         var objectType = CreateMockTypeSymbol("System.Object");
@@ -265,7 +265,7 @@ public class ExtensionsTests : CodeGenerationTestBase
         // Act & Assert
         // Note: These tests would require more complex mocking setup
         // For now, we'll test that the methods exist and can be called
-        Assert.IsNotNull(typeof(Extensions).GetMethod("FindMember",
+        Assert.IsNotNull(typeof(Extensions).GetMethod("GetSqlName",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static));
     }
 
@@ -346,10 +346,10 @@ public class ExtensionsTests : CodeGenerationTestBase
     }
 
     /// <summary>
-    /// Tests that Extensions.GetDataReadIndexExpression works correctly with various types.
+    /// Tests that Extensions.GetDataReaderMethod works correctly with various types.
     /// </summary>
     [TestMethod]
-    public void Extensions_GetDataReadIndexExpression_VariousTypes_WorksCorrectly()
+    public void Extensions_GetDataReaderMethod_VariousTypes_WorksCorrectly()
     {
         // Arrange
         var intType = CreateMockTypeSymbol("System.Int32");
@@ -358,7 +358,7 @@ public class ExtensionsTests : CodeGenerationTestBase
         // Act & Assert
         // Note: These tests would require more complex mocking setup
         // For now, we'll test that the methods exist and can be called
-        Assert.IsNotNull(typeof(Extensions).GetMethod("GetDataReadIndexExpression",
+        Assert.IsNotNull(typeof(Extensions).GetMethod("GetDataReaderMethod",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static));
     }
 

@@ -70,7 +70,11 @@ internal class ClassGenerationContext : GenerationContextBase
         sb.AppendLine("#nullable disable");
         sb.AppendLine("#pragma warning disable CS8618, CS8625, CS8629, CS8601, CS8600, CS8603, CS8669, CS8628, CS0266");
         sb.AppendLine();
+        sb.AppendLine("using System;");
+        sb.AppendLine("using System.Collections.Generic;");
         sb.AppendLine("using System.Linq;");
+        sb.AppendLine("using System.Data;");
+        sb.AppendLine("using System.Data.Common;");
         sb.AppendLine();
         var hasNamespace = !ClassSymbol.ContainingNamespace.IsGlobalNamespace;
         if (hasNamespace)
@@ -141,12 +145,12 @@ internal class ClassGenerationContext : GenerationContextBase
 
         sb.AppendLine($"{staticKeyword}partial void {MethodGenerationContext.MethodExecuted}(global::System.String methodName, ");
         sb.AppendLine($"    global::System.Data.Common.DbCommand command, global::System.Object? result, ");
-        sb.AppendLine($"    global::System.Int64 elpased);");
+        sb.AppendLine($"    global::System.Int64 elapsed);");
         sb.AppendLine();
 
         sb.AppendLine($"{staticKeyword}partial void {MethodGenerationContext.MethodExecuteFail}(global::System.String methodName, ");
-        sb.AppendLine($"    global::System.Data.Common.DbCommand command, global::System.Exception exception, ");
-        sb.AppendLine($"    global::System.Int64 elpased);");
+        sb.AppendLine($"    global::System.Data.Common.DbCommand? command, global::System.Exception exception, ");
+        sb.AppendLine($"    global::System.Int64 elapsed);");
         sb.AppendLine();
     }
 }

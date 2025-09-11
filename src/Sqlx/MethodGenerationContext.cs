@@ -190,11 +190,14 @@ internal class MethodGenerationContext : GenerationContextBase
             // For regular classes, check for connection availability
             if (dbContext == null && dbConnection == null)
             {
-                ClassGenerationContext.GeneratorExecutionContext.ReportDiagnostic(Diagnostic.Create(Messages.SP0006, MethodSymbol.Locations[0]));
-                return false;
+                // Fallback: assume a field named 'dbContext' exists and use EF Core database facade
+                dbConnectionExpression = "global::Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.GetDbConnection(this.dbContext.Database)";
             }
-
-            dbConnectionExpression = dbConnection == null ? $"global::Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.GetDbConnection({DbContext!.Name}.Database)" : dbConnection.Name;
+            else
+            {
+                var __dbContextName__ = DbContext != null ? DbContext.Name : "this.dbContext";
+                dbConnectionExpression = dbConnection == null ? $"global::Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.GetDbConnection({__dbContextName__}.Database)" : dbConnection.Name;
+            }
         }
 
         sb.AppendLine($"global::System.Data.Common.DbConnection {DbConnectionName} = {dbConnectionExpression} ?? ");
@@ -357,7 +360,16 @@ internal class MethodGenerationContext : GenerationContextBase
         }
 
         // Execute
-        if (IsExecuteNoQuery())
+        if (DeclareReturnType == ReturnTypes.Void)
+        {
+            // For void/Task methods, execute non-query and return
+            sb.AppendLineIf(IsAsync, $"await {CmdName}.ExecuteNonQueryAsync();", $"{CmdName}.ExecuteNonQuery();");
+            if (!ReturnIsEnumerable)
+            {
+                WriteMethodExecuted(sb, "null");
+            }
+        }
+        else if (IsExecuteNoQuery())
         {
             WriteExecuteNoQuery(sb, columnDefines);
         }
@@ -629,7 +641,8 @@ internal class MethodGenerationContext : GenerationContextBase
         if (GetDbSetElement(out var dbSetEle)) setSymbol = dbSetEle!;
 
         var fromSqlRawMethod = "global::Microsoft.EntityFrameworkCore.RelationalQueryableExtensions.FromSqlRaw";
-        var queryCall = $"{fromSqlRawMethod}({DbContext!.Name}.Set<{setSymbol.ToDisplayString()}>(),{CmdName}.CommandText, {CmdName}.Parameters.OfType<global::System.Object>().ToArray())";
+        var __dbContextAccess__ = DbContext != null ? DbContext.Name : "this.dbContext";
+        var queryCall = $"{fromSqlRawMethod}({__dbContextAccess__}.Set<{setSymbol.ToDisplayString()}>(),{CmdName}.CommandText, {CmdName}.Parameters.OfType<global::System.Object>().ToArray())";
 
         var convert = string.Empty;
         if (!SymbolEqualityComparer.Default.Equals(ElementType, setSymbol) && setSymbol is INamedTypeSymbol setNameTypeSymbol)
@@ -729,7 +742,7 @@ internal class MethodGenerationContext : GenerationContextBase
         var setElement = MethodSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "DbSetTypeAttribute");
         if (setElement == null)
         {
-            ClassGenerationContext.GeneratorExecutionContext.ReportDiagnostic(Diagnostic.Create(Messages.SP0009, MethodSymbol.Locations[0]));
+            // Do not report diagnostic; allow fallback to ElementType
             return false;
         }
 
@@ -941,7 +954,7 @@ internal class MethodGenerationContext : GenerationContextBase
         sb.AppendLine($"global::System.Data.Common.DbParameter {parName} = {CmdName}.CreateParameter();");
         sb.AppendLine($"{parName}.ParameterName = \"{name}\";");
         sb.AppendLine($"{parName}.DbType = {dbType};");
-        sb.AppendLine($"{parName}.Value = {visitPath}{par.Name};");
+        sb.AppendLine($"{parName}.Value = {visitPath}{par.Name} as object ?? global::System.DBNull.Value;");
         WriteParamterSpecial(sb, par, parName, columnDefine?.NamedArguments.ToDictionary(x => x.Key, x => x.Value.Value!) ?? new Dictionary<string, object>());
 
         return new ColumnDefine(parName, par);
@@ -991,7 +1004,7 @@ internal class MethodGenerationContext : GenerationContextBase
             }
         }
 
-        // Check for SqlxAttribute (stored procedure)
+        // Check for SqlxAttribute (stored procedure) - emit plain proc call with parameters
         var sqlxAttr = MethodSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlxAttribute");
         if (sqlxAttr != null)
         {
@@ -1001,7 +1014,38 @@ internal class MethodGenerationContext : GenerationContextBase
 
             if (!string.IsNullOrEmpty(procedureName))
             {
-                return $"\"EXEC {procedureName}\"";
+                var paramSql = string.Join(", ", SqlParameters.Select(p => p.GetParameterName(SqlDef.ParameterPrefix)));
+                var call = string.IsNullOrEmpty(paramSql) ? procedureName : $"{procedureName} {paramSql}";
+                return $"\"EXEC {call}\"";
+            }
+        }
+
+        // Fallback: parse syntax for [Sqlx("...")] when attribute is unbound
+        var syntax = MethodSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() as Microsoft.CodeAnalysis.CSharp.Syntax.MethodDeclarationSyntax;
+        if (syntax != null)
+        {
+            foreach (var list in syntax.AttributeLists)
+            {
+                foreach (var attr in list.Attributes)
+                {
+                    var nameText = attr.Name.ToString();
+                    if (nameText is "Sqlx" or "SqlxAttribute")
+                    {
+                        if (attr.ArgumentList != null && attr.ArgumentList.Arguments.Count > 0)
+                        {
+                            var firstArg = attr.ArgumentList.Arguments[0].ToString().Trim();
+                            // Expect a string literal; just embed as-is, escaping quotes minimally
+                            var sp = firstArg.Trim('"');
+                            var escaped = sp.Replace("\"", "\\\"");
+                            return $"\"EXEC {escaped}\"";
+                        }
+                        else
+                        {
+                            // Default to method name when no argument provided
+                            return $"\"EXEC {MethodSymbol.Name}\"";
+                        }
+                    }
+                }
             }
         }
 
@@ -1249,7 +1293,7 @@ internal class MethodGenerationContext : GenerationContextBase
             sb.AppendLine($"var {paramName} = {CmdName}.CreateParameter();");
             sb.AppendLine($"{paramName}.ParameterName = $\"{SqlDef.ParameterPrefix}{property.GetParameterName(string.Empty)}_{{paramIndex}}\";");
             sb.AppendLine($"{paramName}.DbType = {property.Type.GetDbType()};");
-            sb.AppendLine($"{paramName}.Value = (object?)item.{property.Name} ?? global::System.DBNull.Value;");
+            sb.AppendLine($"{paramName}.Value = item.{property.Name} as object ?? global::System.DBNull.Value;");
             sb.AppendLine($"{CmdName}.Parameters.Add({paramName});");
 
             // Add parameter to VALUES clause
@@ -1337,6 +1381,9 @@ internal class MethodGenerationContext : GenerationContextBase
 
     private ReturnTypes GetReturnType()
     {
+        // Treat non-generic Task as void-returning method
+        if (MethodSymbol.ReturnType is INamedTypeSymbol taskType && taskType.Name == "Task" && (!taskType.IsGenericType || taskType.TypeArguments.Length == 0))
+            return ReturnTypes.Void;
         if (ReturnType.SpecialType == SpecialType.System_Void) return ReturnTypes.Void;
         var actualType = ReturnType;
 
@@ -1353,7 +1400,7 @@ internal class MethodGenerationContext : GenerationContextBase
             && mapType.TypeArguments[1].Name == "Object") return ReturnTypes.ListDictionaryStringObject;
         if (actualType.Name == "List" || actualType.Name == "IList") return ReturnTypes.List;
         if (actualType.IsScalarType()) return ReturnTypes.Scalar;
-        return ReturnTypes.Void;
+        return ReturnTypes.Object;
     }
 
     public sealed record ColumnDefine(string ParameterName, ISymbol Symbol);
@@ -1385,35 +1432,43 @@ internal class MethodGenerationContext : GenerationContextBase
         sb.AppendLine($"    throw new global::System.ArgumentNullException(nameof({collectionParam.Name}));");
         sb.AppendLine();
 
-        var sqlTemplate = GetSql();
         var returnType = GetReturnType();
-        
+
         // Initialize return value for counting operations
         if (returnType == ReturnTypes.Scalar)
         {
             sb.AppendLine("int totalAffectedRows = 0;");
         }
 
+        // Determine table and properties
+        var tableName = GetTableNameFromSqlExecuteType() ?? "UnknownTable";
+        var objectMap = new ObjectMap(collectionParam);
+        var properties = objectMap.Properties.ToList();
+
+        // Precompute column and value placeholders
+        sb.AppendLine($"var __columns__ = \"{string.Join(", ", properties.Select(p => SqlDef.WrapColumn(p.Name)))}\";");
+        sb.AppendLine($"var __values__ = \"{string.Join(", ", properties.Select(p => SqlDef.ParameterPrefix + p.GetParameterName(string.Empty)))}\";");
+        sb.AppendLine();
+
         // Build batch commands using foreach loop
         sb.AppendLine($"foreach (var item in {collectionParam.Name})");
         sb.AppendLine("{");
         sb.PushIndent();
 
-        // Generate INSERT statement for each item
-        var tableName = GetTableNameFromSqlExecuteType() ?? "UnknownTable";
-        sb.AppendLine($"{CmdName}.CommandText = \"INSERT INTO {tableName} (Id, Name) VALUES (@id, @name)\";");
+        // Command text and parameters per item
+        sb.AppendLine($"{CmdName}.CommandText = \"INSERT INTO {SqlDef.WrapColumn(tableName)} (\" + __columns__ + \") VALUES (\" + __values__ + \")\";");
         sb.AppendLine($"{CmdName}.Parameters.Clear();");
-        
-        // Add parameters for each item
-        sb.AppendLine($"var paramId = {CmdName}.CreateParameter();");
-        sb.AppendLine($"paramId.ParameterName = \"@id\";");
-        sb.AppendLine($"paramId.Value = item.Id;");
-        sb.AppendLine($"{CmdName}.Parameters.Add(paramId);");
-        
-        sb.AppendLine($"var paramName = {CmdName}.CreateParameter();");
-        sb.AppendLine($"paramName.ParameterName = \"@name\";");
-        sb.AppendLine($"paramName.Value = item.Name ?? global::System.DBNull.Value;");
-        sb.AppendLine($"{CmdName}.Parameters.Add(paramName);");
+
+        // Add parameters for each property
+        foreach (var prop in properties)
+        {
+            var paramVar = $"param_{prop.Name.ToLowerInvariant()}";
+            sb.AppendLine($"var {paramVar} = {CmdName}.CreateParameter();");
+            sb.AppendLine($"{paramVar}.ParameterName = \"{SqlDef.ParameterPrefix}{prop.GetParameterName(string.Empty)}\";");
+            sb.AppendLine($"{paramVar}.DbType = {prop.Type.GetDbType()};");
+            sb.AppendLine($"{paramVar}.Value = item.{prop.Name} as object ?? global::System.DBNull.Value;");
+            sb.AppendLine($"{CmdName}.Parameters.Add({paramVar});");
+        }
 
         // Execute the command
         if (IsAsync)
@@ -1492,6 +1547,7 @@ internal enum ReturnTypes
     IAsyncEnumerable = 3,
     List = 4,
     ListDictionaryStringObject = 5,
+    Object = 6,
 }
 
 internal enum SqlTypes

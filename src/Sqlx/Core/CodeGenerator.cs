@@ -135,7 +135,7 @@ internal static class CodeGenerator
         var valueExpression = sourceValue == propertyName ? sourceValue : $"{sourceValue}.{propertyName}";
         sb.AppendLine($"var {paramName}Param = command.CreateParameter();");
         sb.AppendLine($"{paramName}Param.ParameterName = \"@{paramName}\";");
-        sb.AppendLine($"{paramName}Param.Value = {valueExpression} ?? (object)DBNull.Value;");
+        sb.AppendLine($"{paramName}Param.Value = (object?){valueExpression} ?? global::System.DBNull.Value;");
         sb.AppendLine($"command.Parameters.Add({paramName}Param);");
         sb.AppendLine();
     }

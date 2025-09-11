@@ -59,10 +59,33 @@ public partial class CSharpGenerator
                 return false;
             }
 
-            return method.GetAttributes().Any(attr =>
+            // Prefer semantic attribute check when available
+            if (method.GetAttributes().Any(attr =>
                 attr.AttributeClass?.Name == "SqlxAttribute" ||
                 attr.AttributeClass?.Name == "RawSqlAttribute" ||
-                attr.AttributeClass?.Name == "SqlExecuteTypeAttribute");
+                attr.AttributeClass?.Name == "SqlExecuteTypeAttribute"))
+            {
+                return true;
+            }
+
+            // Fallback: syntax-based detection so tests without using directives still work
+            var syntax = method.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() as Microsoft.CodeAnalysis.CSharp.Syntax.MethodDeclarationSyntax;
+            if (syntax != null)
+            {
+                foreach (var attrList in syntax.AttributeLists)
+                {
+                    foreach (var attr in attrList.Attributes)
+                    {
+                        var nameText = attr.Name.ToString();
+                        if (nameText is "Sqlx" or "SqlxAttribute" or "RawSql" or "RawSqlAttribute" or "SqlExecuteType" or "SqlExecuteTypeAttribute")
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
         }
 
         private static bool HasRepositoryForAttribute(INamedTypeSymbol type)

@@ -811,6 +811,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                         4 => "BatchInsert",
                         5 => "BatchUpdate",
                         6 => "BatchDelete",
+                        7 => "BatchCommand",
                         _ => arg.Value?.ToString() ?? "Unknown"
                     };
                     args.Add($"SqlExecuteTypes.{enumName}");
@@ -1483,7 +1484,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
 
             if (prop.Type.IsReferenceType || IsNullableValueType(prop.Type))
             {
-                sb.AppendLine($"param{prop.Name}.Value = {entityParam.Name}.{prop.Name} ?? (object)global::System.DBNull.Value;");
+                sb.AppendLine($"param{prop.Name}.Value = {entityParam.Name}.{prop.Name} ?? global::System.DBNull.Value;");
             }
             else
             {
@@ -1588,7 +1589,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
 
             if (prop.Type.IsReferenceType || IsNullableValueType(prop.Type))
             {
-                sb.AppendLine($"param{prop.Name}.Value = {entityParam.Name}.{prop.Name} ?? (object)global::System.DBNull.Value;");
+                sb.AppendLine($"param{prop.Name}.Value = {entityParam.Name}.{prop.Name} ?? global::System.DBNull.Value;");
             }
             else
             {
@@ -2395,7 +2396,13 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         sb.AppendLine();
 
         // Initialize return value for counting operations
-        if (method.ReturnType.SpecialType == SpecialType.System_Int32)
+        var actualReturnType = method.ReturnType;
+        if (isAsync && actualReturnType is INamedTypeSymbol namedType && namedType.Name == "Task" && namedType.TypeArguments.Length == 1)
+        {
+            actualReturnType = namedType.TypeArguments[0];
+        }
+        
+        if (actualReturnType.SpecialType == SpecialType.System_Int32)
         {
             sb.AppendLine("int totalAffectedRows = 0;");
             sb.AppendLine();
@@ -2411,19 +2418,44 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         {
             case 4: // BatchInsert
             case 7: // BatchCommand (assume insert for now)
-                sb.AppendLine($"__cmd__.CommandText = \"INSERT INTO [{tableName}] (Id, Name) VALUES (@id, @name)\";");
-                sb.AppendLine("__cmd__.Parameters.Clear();");
-                
-                // Add parameters for each item
-                sb.AppendLine("var paramId = __cmd__.CreateParameter();");
-                sb.AppendLine("paramId.ParameterName = \"@id\";");
-                sb.AppendLine("paramId.Value = item.Id;");
-                sb.AppendLine("__cmd__.Parameters.Add(paramId);");
-                
-                sb.AppendLine("var paramName = __cmd__.CreateParameter();");
-                sb.AppendLine("paramName.ParameterName = \"@name\";");
-                sb.AppendLine("paramName.Value = item.Name ?? global::System.DBNull.Value;");
-                sb.AppendLine("__cmd__.Parameters.Add(paramName);");
+                {
+                    // Build columns and parameters from entity properties
+                    var sqlDefine = GetSqlDefineForRepository(method);
+                    INamedTypeSymbol? elementType = null;
+                    if (collectionParam.Type is INamedTypeSymbol nt && nt.TypeArguments.Length > 0)
+                    {
+                        elementType = nt.TypeArguments[0] as INamedTypeSymbol;
+                    }
+                    elementType ??= entityType;
+
+                    var props = elementType == null
+                        ? new List<IPropertySymbol>()
+                        : elementType.GetMembers().OfType<IPropertySymbol>().Where(p => p.CanBeReferencedByName && p.GetMethod != null).ToList();
+
+                    var wrappedTable = sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"");
+                    var columns = string.Join(", ", props.Select(p => sqlDefine.WrapColumn(p.GetSqlName()).Replace("\"", "\\\"")));
+                    var parameters = string.Join(", ", props.Select(p => $"{sqlDefine.ParameterPrefix}{p.GetSqlName()}"));
+
+                    sb.AppendLine($"__cmd__.CommandText = \"INSERT INTO {wrappedTable} ({columns}) VALUES ({parameters})\";");
+                    sb.AppendLine("__cmd__.Parameters.Clear();");
+
+                    foreach (var prop in props)
+                    {
+                        var sqlName = prop.GetSqlName();
+                        sb.AppendLine($"var param{prop.Name} = __cmd__.CreateParameter();");
+                        sb.AppendLine($"param{prop.Name}.ParameterName = \"{sqlDefine.ParameterPrefix}{sqlName}\";");
+                        sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
+                        if (prop.Type.IsReferenceType || IsNullableValueType(prop.Type))
+                        {
+                            sb.AppendLine($"param{prop.Name}.Value = (object?)item.{prop.Name} ?? global::System.DBNull.Value;");
+                        }
+                        else
+                        {
+                            sb.AppendLine($"param{prop.Name}.Value = item.{prop.Name};");
+                        }
+                        sb.AppendLine($"__cmd__.Parameters.Add(param{prop.Name});");
+                    }
+                }
                 break;
                 
             case 5: // BatchUpdate
@@ -2437,7 +2469,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                 
                 sb.AppendLine("var paramName = __cmd__.CreateParameter();");
                 sb.AppendLine("paramName.ParameterName = \"@name\";");
-                sb.AppendLine("paramName.Value = item.Name ?? global::System.DBNull.Value;");
+                sb.AppendLine("paramName.Value = (object?)item.Name ?? global::System.DBNull.Value;");
                 sb.AppendLine("__cmd__.Parameters.Add(paramName);");
                 break;
                 
@@ -2466,7 +2498,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
             sb.AppendLine("var rowsAffected = __cmd__.ExecuteNonQuery();");
         }
         
-        if (method.ReturnType.SpecialType == SpecialType.System_Int32)
+        if (actualReturnType.SpecialType == SpecialType.System_Int32)
         {
             sb.AppendLine("totalAffectedRows += rowsAffected;");
         }
@@ -2476,13 +2508,13 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         sb.AppendLine();
 
         // Set result
-        if (method.ReturnType.SpecialType == SpecialType.System_Int32)
+        if (actualReturnType.SpecialType == SpecialType.System_Int32)
         {
             sb.AppendLine("__result__ = totalAffectedRows;");
         }
 
         // Return statement
-        if (method.ReturnType.SpecialType == SpecialType.System_Int32)
+        if (actualReturnType.SpecialType == SpecialType.System_Int32)
         {
             sb.AppendLine("return totalAffectedRows;");
         }

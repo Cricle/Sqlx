@@ -15,11 +15,25 @@ using System.Text.RegularExpressions;
 public static class NameMapper
 {
     /// <summary>
-    /// Maps parameter name to the stored procedure name.
+    /// Maps parameter name to the database column name.
+    /// Converts parameter names from Pascal/camelCase to snake_case for database compatibility.
     /// </summary>
     /// <param name="parameterName">Name of the parameter to map.</param>
-    /// <returns>Corresponding stored procedure parameter name.</returns>
+    /// <returns>Corresponding database column name in snake_case.</returns>
     public static string MapName(string parameterName)
+    {
+        if (parameterName == null)
+            throw new System.ArgumentNullException(nameof(parameterName));
+
+        return MapNameToSnakeCase(parameterName);
+    }
+    
+    /// <summary>
+    /// Maps parameter name to snake_case for legacy database compatibility.
+    /// </summary>
+    /// <param name="parameterName">Name of the parameter to map.</param>
+    /// <returns>Corresponding snake_case database column name.</returns>
+    public static string MapNameToSnakeCase(string parameterName)
     {
         if (parameterName == null)
             throw new System.ArgumentNullException(nameof(parameterName));

@@ -898,25 +898,95 @@ internal class MethodGenerationContext : GenerationContextBase
     {
         var methodDef = MethodSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlDefineAttribute") ??
             ClassGenerationContext.ClassSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlDefineAttribute");
-        if (methodDef == null) return SqlDefine.SqlServer;
-
-        if (methodDef.ConstructorArguments.Length == 1)
+        
+        if (methodDef != null)
         {
-            var define = (int)methodDef.ConstructorArguments[0].Value!;
-            return define switch
+            if (methodDef.ConstructorArguments.Length == 1)
             {
-                1 => SqlDefine.SqlServer,
-                2 => SqlDefine.PgSql,
-                _ => SqlDefine.MySql,
-            };
+                var define = (int)methodDef.ConstructorArguments[0].Value!;
+                return define switch
+                {
+                    1 => SqlDefine.SqlServer,
+                    2 => SqlDefine.PgSql,
+                    _ => SqlDefine.MySql,
+                };
+            }
+
+            return new SqlDefine(
+                methodDef.ConstructorArguments[0].ToString()!,
+                methodDef.ConstructorArguments[1].ToString()!,
+                methodDef.ConstructorArguments[2].ToString()!,
+                methodDef.ConstructorArguments[3].ToString()!,
+                methodDef.ConstructorArguments[4].ToString()!);
         }
 
-        return new SqlDefine(
-            methodDef.ConstructorArguments[0].ToString()!,
-            methodDef.ConstructorArguments[1].ToString()!,
-            methodDef.ConstructorArguments[2].ToString()!,
-            methodDef.ConstructorArguments[3].ToString()!,
-            methodDef.ConstructorArguments[4].ToString()!);
+        // Try to infer database dialect from the connection type
+        var inferredDialect = InferDialectFromConnectionType(ClassGenerationContext.ClassSymbol);
+        if (inferredDialect.HasValue)
+        {
+            return inferredDialect.Value;
+        }
+
+        // Default to SqlServer as fallback
+        return SqlDefine.SqlServer;
+    }
+
+    private SqlDefine? InferDialectFromConnectionType(INamedTypeSymbol repositoryClass)
+    {
+        // Find DbConnection field or property in the repository class
+        var connectionField = repositoryClass.GetMembers()
+            .OfType<IFieldSymbol>()
+            .FirstOrDefault(x => x.IsDbConnection());
+            
+        if (connectionField != null)
+        {
+            var connectionTypeName = connectionField.Type.ToDisplayString();
+            return InferDialectFromConnectionTypeName(connectionTypeName);
+        }
+
+        var connectionProperty = repositoryClass.GetMembers()
+            .OfType<IPropertySymbol>()
+            .FirstOrDefault(x => x.IsDbConnection());
+            
+        if (connectionProperty != null)
+        {
+            var connectionTypeName = connectionProperty.Type.ToDisplayString();
+            return InferDialectFromConnectionTypeName(connectionTypeName);
+        }
+
+        // Look for constructor parameter with connection type
+        var constructor = repositoryClass.InstanceConstructors.FirstOrDefault();
+        if (constructor != null)
+        {
+            var connectionParam = constructor.Parameters.FirstOrDefault(p => p.Type.IsDbConnection());
+            if (connectionParam != null)
+            {
+                var connectionTypeName = connectionParam.Type.ToDisplayString();
+                return InferDialectFromConnectionTypeName(connectionTypeName);
+            }
+        }
+
+        // Check base classes
+        if (repositoryClass.BaseType != null && repositoryClass.BaseType.SpecialType != SpecialType.System_Object)
+        {
+            return InferDialectFromConnectionType(repositoryClass.BaseType);
+        }
+
+        return null;
+    }
+
+    private SqlDefine? InferDialectFromConnectionTypeName(string connectionTypeName)
+    {
+        return connectionTypeName.ToLowerInvariant() switch
+        {
+            var name when name.Contains("sqlite") => SqlDefine.SQLite,
+            var name when name.Contains("mysql") || name.Contains("mariadb") => SqlDefine.MySql,
+            var name when name.Contains("postgres") || name.Contains("npgsql") => SqlDefine.PgSql,
+            var name when name.Contains("oracle") => SqlDefine.Oracle,
+            var name when name.Contains("db2") => SqlDefine.DB2,
+            var name when name.Contains("sqlserver") || name.Contains("sqlconnection") => SqlDefine.SqlServer,
+            _ => null
+        };
     }
 
     private List<string> GetColumnNames(ITypeSymbol returnType)

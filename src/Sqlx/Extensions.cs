@@ -214,6 +214,17 @@ internal static class Extensions
             return "GetGuid";
         if (string.Equals(unwrapType.Name, "DateTime", StringComparison.Ordinal))
             return "GetDateTime";
+        if (string.Equals(unwrapType.Name, "DateTimeOffset", StringComparison.Ordinal))
+            return "GetDateTimeOffset";
+        if (string.Equals(unwrapType.Name, "TimeSpan", StringComparison.Ordinal))
+            return "GetTimeSpan";
+
+        // Handle enum types - they should be read as their underlying type
+        if (unwrapType.TypeKind == TypeKind.Enum)
+        {
+            var underlyingType = ((INamedTypeSymbol)unwrapType).EnumUnderlyingType;
+            return underlyingType != null ? GetDataReaderMethodCore(underlyingType) : null;
+        }
 
         return unwrapType.SpecialType switch
         {
@@ -232,7 +243,7 @@ internal static class Extensions
             SpecialType.System_Double => "GetDouble",
             SpecialType.System_Decimal => "GetDecimal",
             SpecialType.System_DateTime => "GetDateTime",
-            SpecialType.System_Object => "GetValue",
+            // Remove System_Object fallback to GetValue - we want explicit type handling
             _ => null,
         };
     }

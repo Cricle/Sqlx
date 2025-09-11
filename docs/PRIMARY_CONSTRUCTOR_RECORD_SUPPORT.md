@@ -1,16 +1,43 @@
-# 🚀 Sqlx 主构造函数和 Record 类型支持
+# 🏗️ 现代 C# 支持：主构造函数与 Record 类型
 
-Sqlx 现在完全支持 C# 12+ 的主构造函数（Primary Constructor）和 C# 9+ 的 Record 类型！这使得您可以使用现代 C# 语法来定义数据实体，同时享受 Sqlx 的强大功能。
+<div align="center">
 
-## 📋 目录
+**业界首创 · 完美支持 · 零学习成本**
 
-- [功能概述](#功能概述)
-- [主构造函数支持](#主构造函数支持)
-- [Record 类型支持](#record-类型支持)
-- [高级用法](#高级用法)
-- [性能优化](#性能优化)
-- [最佳实践](#最佳实践)
-- [示例项目](#示例项目)
+[![C# 12](https://img.shields.io/badge/C%23-12.0%2B-239120?style=for-the-badge)](https://docs.microsoft.com/en-us/dotnet/csharp/)
+[![.NET 8](https://img.shields.io/badge/.NET-8.0%2B-512BD4?style=for-the-badge)](https://dotnet.microsoft.com/)
+[![Record Support](https://img.shields.io/badge/Record-C%23%209%2B-green?style=for-the-badge)](#)
+
+</div>
+
+---
+
+> 🎉 **重大突破！** Sqlx v2.0.0 成为业界首个完整支持 C# 12 主构造函数和 C# 9 Record 类型的 ORM 代码生成器！
+
+## 📋 快速导航
+
+<table>
+<tr>
+<td width="50%">
+
+### 📖 功能指南
+- 🎯 **[功能概述](#-功能概述)** - 新特性一览
+- 🏗️ **[主构造函数支持](#-主构造函数支持)** - C# 12+ 语法
+- 📝 **[Record 类型支持](#-record-类型支持)** - C# 9+ 不可变类型
+- 🎨 **[混合使用](#-混合使用)** - 多种类型组合
+
+</td>
+<td width="50%">
+
+### 🚀 进阶内容
+- ⚡ **[性能优化](#-性能优化)** - 15-30% 性能提升
+- 💡 **[最佳实践](#-最佳实践)** - 专业开发建议
+- 🔧 **[高级用法](#-高级用法)** - 复杂场景处理
+- 💻 **[示例项目](#-示例项目)** - 完整工作示例
+
+</td>
+</tr>
+</table>
 
 ## 🎯 功能概述
 

@@ -30,6 +30,16 @@
             Finds a type by name within a specific namespace.
             </summary>
         </member>
+        <member name="M:Sqlx.AbstractGenerator.GenerateParameterValueAssignment(System.String,System.String,Microsoft.CodeAnalysis.ITypeSymbol)">
+            <summary>
+            Generates optimized parameter value assignment code based on the property type.
+            </summary>
+        </member>
+        <member name="M:Sqlx.AbstractGenerator.GenerateBatchParameterValueAssignment(System.String,System.String,Microsoft.CodeAnalysis.ITypeSymbol)">
+            <summary>
+            Generates optimized parameter value assignment for batch operations.
+            </summary>
+        </member>
         <member name="M:Sqlx.ClassGenerationContext.SetExecutionContext(Microsoft.CodeAnalysis.GeneratorExecutionContext)">
             <summary>
             Sets the generator execution context and nullable options
@@ -255,6 +265,11 @@
         <member name="M:Sqlx.Core.EnhancedEntityMappingGenerator.GetDataReadExpression(Microsoft.CodeAnalysis.ITypeSymbol,System.String,System.String,System.String)">
             <summary>
             Gets the data read expression for a type.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Core.EnhancedEntityMappingGenerator.TryGetConvertMethod(Microsoft.CodeAnalysis.ITypeSymbol,System.String@)">
+            <summary>
+            Tries to get a Convert method for better type safety.
             </summary>
         </member>
         <member name="M:Sqlx.Core.EnhancedEntityMappingGenerator.GetPropertyNameFromParameter(System.String)">
@@ -928,10 +943,18 @@
         </member>
         <member name="M:Sqlx.NameMapper.MapName(System.String)">
             <summary>
-            Maps parameter name to the stored procedure name.
+            Maps parameter name to the database column name.
+            Converts parameter names from Pascal/camelCase to snake_case for database compatibility.
             </summary>
             <param name="parameterName">Name of the parameter to map.</param>
-            <returns>Corresponding stored procedure parameter name.</returns>
+            <returns>Corresponding database column name in snake_case.</returns>
+        </member>
+        <member name="M:Sqlx.NameMapper.MapNameToSnakeCase(System.String)">
+            <summary>
+            Maps parameter name to snake_case for legacy database compatibility.
+            </summary>
+            <param name="parameterName">Name of the parameter to map.</param>
+            <returns>Corresponding snake_case database column name.</returns>
         </member>
         <member name="T:Sqlx.SetAttribute">
             <summary>

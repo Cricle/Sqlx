@@ -29,7 +29,9 @@ namespace PrimaryConstructorExample
         public string CustomerName { get; } = customerName;
         public DateTime OrderDate { get; set; } = DateTime.Now;
         public decimal TotalAmount { get; set; }
-        public List<OrderItem> Items { get; set; } = new();
+        
+        // 注意：复杂类型属性（如集合）不应映射到简单的数据库表
+        // 在实际应用中，OrderItems 通常需要单独的表和关联
     }
 
     // 主构造函数 Record (C# 12+)
@@ -138,23 +140,23 @@ namespace PrimaryConstructorExample
             var commands = new[]
             {
                 @"CREATE TABLE Categories (
-                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    Name TEXT NOT NULL,
-                    Description TEXT
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    description TEXT
                 )",
                 @"CREATE TABLE Products (
-                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    Name TEXT NOT NULL,
-                    Price DECIMAL NOT NULL,
-                    CategoryId INTEGER NOT NULL,
-                    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    IsActive BOOLEAN DEFAULT 1
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    price DECIMAL NOT NULL,
+                    category_id INTEGER NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    is_active BOOLEAN DEFAULT 1
                 )",
                 @"CREATE TABLE Orders (
-                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    CustomerName TEXT NOT NULL,
-                    OrderDate DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    TotalAmount DECIMAL DEFAULT 0
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    customer_name TEXT NOT NULL,
+                    order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    total_amount DECIMAL DEFAULT 0
                 )"
             };
 
@@ -221,6 +223,12 @@ namespace PrimaryConstructorExample
             };
 
             Console.WriteLine($"添加订单: 客户 {order.CustomerName}, 金额 ${order.TotalAmount}");
+            Console.WriteLine($"调试信息:");
+            Console.WriteLine($"  - Id: {order.Id}");
+            Console.WriteLine($"  - CustomerName: '{order.CustomerName}'");
+            Console.WriteLine($"  - CustomerName is null: {order.CustomerName == null}");
+            Console.WriteLine($"  - CustomerName length: {order.CustomerName?.Length ?? -1}");
+            
             var orderId = orderRepo.AddOrder(order);
             Console.WriteLine($"订单ID: {orderId}");
 

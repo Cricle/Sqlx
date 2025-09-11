@@ -95,21 +95,27 @@ internal static class PrimaryConstructorAnalyzer
             members.Add(new PropertyMemberInfo(prop));
         }
 
-        // For records or types with primary constructors, add primary constructor parameters
-        // that don't have corresponding properties
+        // For records or types with primary constructors, ensure all primary constructor parameters
+        // are included, either as properties or as parameters
         if (IsRecord(type) || HasPrimaryConstructor(type))
         {
             var primaryConstructorParams = GetPrimaryConstructorParameters(type);
-            var existingPropertyNames = new HashSet<string>(properties.Select(p => p.Name));
+            var existingPropertyNames = new HashSet<string>(properties.Select(p => p.Name), System.StringComparer.OrdinalIgnoreCase);
 
             foreach (var param in primaryConstructorParams)
             {
-                // Add parameter if no corresponding property exists
                 var propertyName = GetPropertyNameFromParameter(param.Name);
-                if (!existingPropertyNames.Contains(propertyName))
+                
+                // Check if there's already a property with this name
+                var existingProperty = properties.FirstOrDefault(p => 
+                    string.Equals(p.Name, propertyName, System.StringComparison.OrdinalIgnoreCase));
+                
+                if (existingProperty == null)
                 {
+                    // Add parameter as a member if no corresponding property exists
                     members.Add(new PrimaryConstructorParameterMemberInfo(param, propertyName));
                 }
+                // If property exists, it's already added above, so we're good
             }
         }
 

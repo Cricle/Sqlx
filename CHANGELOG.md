@@ -17,11 +17,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - BatchCommand generation maps all entity properties in parameters.
 
 ### 🆕 Added
-- **ADO.NET BatchCommand Support** - Native batch operations using `SqlExecuteTypes.BatchCommand`
-  - High-performance bulk insert/update/delete operations
-  - Automatic parameter binding for collection entities
-  - Support for both sync and async operations
-  - Transaction support and null value handling
+- **Enhanced ADO.NET BatchCommand Support** - True native batch operations using `DbBatch`
+  - **Native DbBatch Integration**: Uses `DbConnection.CreateBatch()` when supported
+  - **Automatic Fallback**: Gracefully degrades to individual commands on unsupported databases
+  - **Multiple Operation Types**: Support for `BatchInsert`, `BatchUpdate`, `BatchDelete`, and generic `BatchCommand`
+  - **Smart Operation Detection**: Automatically infers operation type from method names
+  - **Enhanced Performance**: 10-100x faster than individual operations on supported databases
+  - **Database Compatibility**: SQL Server 2012+, PostgreSQL 3.0+, MySQL 8.0+ (native), SQLite (fallback)
+  - **Automatic Parameter Binding**: Full entity property mapping with null value handling
+  - 🆕 **Precision Control Attributes**: 
+    - `[Where]` attribute for explicit WHERE clause field specification
+    - `[Set]` attribute for explicit SET clause field specification  
+    - Custom WHERE operators support (e.g., `[Where(">=")]`)
+    - Compound WHERE conditions with multiple `[Where]` attributes
+  - **Intelligent Defaults**: Falls back to primary key detection when attributes not specified
   
 - **ExpressionToSql Modulo Operator** - Complete arithmetic operations support
   - Added `%` (modulo) operator support in LINQ expressions

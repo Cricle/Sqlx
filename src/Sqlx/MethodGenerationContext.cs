@@ -230,12 +230,15 @@ internal class MethodGenerationContext : GenerationContextBase
                 string strValue when int.TryParse(strValue, out var intVal) => (SqlExecuteTypes)intVal,
                 _ => SqlExecuteTypes.Select
             };
-            isBatchCommand = type == SqlExecuteTypes.BatchCommand;
+            isBatchCommand = type == SqlExecuteTypes.BatchCommand || 
+                           type == SqlExecuteTypes.BatchInsert || 
+                           type == SqlExecuteTypes.BatchUpdate || 
+                           type == SqlExecuteTypes.BatchDelete;
         }
 
         if (isBatchCommand)
         {
-            // For BatchCommand, we'll simulate batch behavior with foreach loop and individual commands
+            // For BatchCommand, use native DbBatch if supported, otherwise fallback to individual commands
             sb.AppendLine($"using(var {CmdName} = {DbConnectionName}.CreateCommand())");
         }
         else
@@ -1434,30 +1437,198 @@ internal class MethodGenerationContext : GenerationContextBase
 
         var returnType = GetReturnType();
 
+        // Check if DbBatch is supported
+        sb.AppendLine("// Try to use native DbBatch if supported, otherwise fallback to individual commands");
+        sb.AppendLine($"if ({DbConnectionName} is global::System.Data.Common.DbConnection dbConn && dbConn.CanCreateBatch)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        
+        // Generate native DbBatch implementation
+        GenerateNativeDbBatchLogic(sb, collectionParam, returnType);
+        
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine("else");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        
+        // Generate fallback implementation
+        GenerateFallbackBatchLogic(sb, collectionParam, returnType);
+        
+        sb.PopIndent();
+        sb.AppendLine("}");
+
+        sb.PopIndent();
+        sb.AppendLine("}");
+        return true;
+    }
+
+    private void GenerateNativeDbBatchLogic(IndentedStringBuilder sb, IParameterSymbol collectionParam, ReturnTypes returnType)
+    {
+        // Determine table, operation and properties
+        var tableName = GetTableNameFromSqlExecuteType() ?? "UnknownTable";
+        var objectMap = new ObjectMap(collectionParam);
+        var properties = objectMap.Properties.ToList();
+        var operationType = GetBatchOperationType();
+
         // Initialize return value for counting operations
         if (returnType == ReturnTypes.Scalar)
         {
             sb.AppendLine("int totalAffectedRows = 0;");
         }
 
+        sb.AppendLine("using var batch = dbConn.CreateBatch();");
+        if (TransactionParameter != null)
+            sb.AppendLine($"batch.Transaction = {TransactionParameter.Name};");
+        sb.AppendLine();
+
+        // Build batch commands
+        sb.AppendLine($"foreach (var item in {collectionParam.Name})");
+        sb.AppendLine("{");
+        sb.PushIndent();
+
+        sb.AppendLine("var batchCommand = batch.CreateBatchCommand();");
+        
+        // Generate SQL based on operation type
+        switch (operationType)
+        {
+            case "INSERT":
+                GenerateBatchInsertSql(sb, tableName, properties);
+                break;
+            case "UPDATE":
+                GenerateBatchUpdateSql(sb, tableName, properties);
+                break;
+            case "DELETE":
+                GenerateBatchDeleteSql(sb, tableName, properties);
+                break;
+            default:
+                GenerateBatchInsertSql(sb, tableName, properties); // Default to INSERT
+                break;
+        }
+
+        // Add parameters for each property
+        foreach (var prop in properties)
+        {
+            var paramVar = $"param_{prop.Name.ToLowerInvariant()}";
+            sb.AppendLine($"var {paramVar} = batchCommand.CreateParameter();");
+            sb.AppendLine($"{paramVar}.ParameterName = \"{SqlDef.ParameterPrefix}{prop.GetParameterName(string.Empty)}\";");
+            sb.AppendLine($"{paramVar}.DbType = {prop.Type.GetDbType()};");
+            sb.AppendLine($"{paramVar}.Value = item.{prop.Name} as object ?? global::System.DBNull.Value;");
+            sb.AppendLine($"batchCommand.Parameters.Add({paramVar});");
+        }
+
+        sb.AppendLine("batch.BatchCommands.Add(batchCommand);");
+
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+
+        // Execute the batch
+        if (IsAsync)
+        {
+            if (returnType == ReturnTypes.Scalar)
+            {
+                sb.AppendLine("totalAffectedRows = await batch.ExecuteNonQueryAsync();");
+            }
+            else
+            {
+                sb.AppendLine("await batch.ExecuteNonQueryAsync();");
+            }
+        }
+        else
+        {
+            if (returnType == ReturnTypes.Scalar)
+            {
+                sb.AppendLine("totalAffectedRows = batch.ExecuteNonQuery();");
+            }
+            else
+            {
+                sb.AppendLine("batch.ExecuteNonQuery();");
+            }
+        }
+
+        // Return result if needed
+        if (returnType == ReturnTypes.Scalar)
+        {
+            sb.AppendLine("return totalAffectedRows;");
+        }
+    }
+
+    private void GenerateFallbackBatchLogic(IndentedStringBuilder sb, IParameterSymbol collectionParam, ReturnTypes returnType)
+    {
         // Determine table and properties
         var tableName = GetTableNameFromSqlExecuteType() ?? "UnknownTable";
         var objectMap = new ObjectMap(collectionParam);
         var properties = objectMap.Properties.ToList();
+        var operationType = GetBatchOperationType();
+
+        // Initialize return value for counting operations
+        if (returnType == ReturnTypes.Scalar)
+        {
+            sb.AppendLine("int totalAffectedRows = 0;");
+        }
 
         // Precompute column and value placeholders
         sb.AppendLine($"var __columns__ = \"{string.Join(", ", properties.Select(p => SqlDef.WrapColumn(p.Name)))}\";");
         sb.AppendLine($"var __values__ = \"{string.Join(", ", properties.Select(p => SqlDef.ParameterPrefix + p.GetParameterName(string.Empty)))}\";");
         sb.AppendLine();
 
-        // Build batch commands using foreach loop
+        // Build individual commands using foreach loop
         sb.AppendLine($"foreach (var item in {collectionParam.Name})");
         sb.AppendLine("{");
         sb.PushIndent();
 
-        // Command text and parameters per item
-        sb.AppendLine($"{CmdName}.CommandText = \"INSERT INTO {SqlDef.WrapColumn(tableName)} (\" + __columns__ + \") VALUES (\" + __values__ + \")\";");
+        // Generate command text based on operation type
+        switch (operationType)
+        {
+            case "INSERT":
+                sb.AppendLine($"{CmdName}.CommandText = \"INSERT INTO {SqlDef.WrapColumn(tableName)} (\" + __columns__ + \") VALUES (\" + __values__ + \")\";");
+                break;
+            case "UPDATE":
+                var setProperties = GetSetProperties(properties);
+                var whereProperties = GetWhereProperties(properties);
+                
+                if (!setProperties.Any())
+                {
+                    sb.AppendLine("throw new global::System.InvalidOperationException(\"No properties marked with [Set] attribute or eligible for SET clause in batch update\");");
+                    break;
+                }
+                
+                if (!whereProperties.Any())
+                {
+                    sb.AppendLine("throw new global::System.InvalidOperationException(\"No properties marked with [Where] attribute or eligible for WHERE clause in batch update\");");
+                    break;
+                }
+                
+                var setClause = string.Join(", ", setProperties.Select(p => $"{SqlDef.WrapColumn(p.Name)} = {SqlDef.ParameterPrefix}{p.GetParameterName(string.Empty)}"));
+                var whereClause = string.Join(" AND ", whereProperties.Select(p => GenerateWhereCondition(p)));
+                sb.AppendLine($"{CmdName}.CommandText = \"UPDATE {SqlDef.WrapColumn(tableName)} SET {setClause} WHERE {whereClause}\";");
+                break;
+            case "DELETE":
+                var deleteWhereProperties = GetWhereProperties(properties);
+                
+                if (!deleteWhereProperties.Any())
+                {
+                    sb.AppendLine("throw new global::System.InvalidOperationException(\"No properties marked with [Where] attribute or eligible for WHERE clause in batch delete\");");
+                    break;
+                }
+                
+                var deleteWhereClause = string.Join(" AND ", deleteWhereProperties.Select(p => GenerateWhereCondition(p)));
+                sb.AppendLine($"{CmdName}.CommandText = \"DELETE FROM {SqlDef.WrapColumn(tableName)} WHERE {deleteWhereClause}\";");
+                break;
+            default:
+                sb.AppendLine($"{CmdName}.CommandText = \"INSERT INTO {SqlDef.WrapColumn(tableName)} (\" + __columns__ + \") VALUES (\" + __values__ + \")\";");
+                break;
+        }
+
         sb.AppendLine($"{CmdName}.Parameters.Clear();");
+        
+        // Set transaction and timeout if specified
+        if (TransactionParameter != null)
+            sb.AppendLine($"{CmdName}.Transaction = {TransactionParameter.Name};");
+        var timeoutExpression = GetTimeoutExpression();
+        if (!string.IsNullOrWhiteSpace(timeoutExpression))
+            sb.AppendLine($"{CmdName}.CommandTimeout = {timeoutExpression};");
 
         // Add parameters for each property
         foreach (var prop in properties)
@@ -1503,10 +1674,163 @@ internal class MethodGenerationContext : GenerationContextBase
         {
             sb.AppendLine("return totalAffectedRows;");
         }
+    }
 
-        sb.PopIndent();
-        sb.AppendLine("}");
-        return true;
+    private void GenerateBatchInsertSql(IndentedStringBuilder sb, string tableName, List<IPropertySymbol> properties)
+    {
+        var columns = string.Join(", ", properties.Select(p => SqlDef.WrapColumn(p.Name)));
+        var values = string.Join(", ", properties.Select(p => SqlDef.ParameterPrefix + p.GetParameterName(string.Empty)));
+        sb.AppendLine($"batchCommand.CommandText = \"INSERT INTO {SqlDef.WrapColumn(tableName)} ({columns}) VALUES ({values})\";");
+    }
+
+    private void GenerateBatchUpdateSql(IndentedStringBuilder sb, string tableName, List<IPropertySymbol> properties)
+    {
+        var setProperties = GetSetProperties(properties);
+        var whereProperties = GetWhereProperties(properties);
+        
+        if (!setProperties.Any())
+        {
+            sb.AppendLine("throw new global::System.InvalidOperationException(\"No properties marked with [Set] attribute or eligible for SET clause in batch update\");");
+            return;
+        }
+        
+        if (!whereProperties.Any())
+        {
+            sb.AppendLine("throw new global::System.InvalidOperationException(\"No properties marked with [Where] attribute or eligible for WHERE clause in batch update\");");
+            return;
+        }
+        
+        var setClause = string.Join(", ", setProperties.Select(p => $"{SqlDef.WrapColumn(p.Name)} = {SqlDef.ParameterPrefix}{p.GetParameterName(string.Empty)}"));
+        var whereClause = string.Join(" AND ", whereProperties.Select(p => GenerateWhereCondition(p)));
+        
+        sb.AppendLine($"batchCommand.CommandText = \"UPDATE {SqlDef.WrapColumn(tableName)} SET {setClause} WHERE {whereClause}\";");
+    }
+
+    private void GenerateBatchDeleteSql(IndentedStringBuilder sb, string tableName, List<IPropertySymbol> properties)
+    {
+        var whereProperties = GetWhereProperties(properties);
+        
+        if (!whereProperties.Any())
+        {
+            sb.AppendLine("throw new global::System.InvalidOperationException(\"No properties marked with [Where] attribute or eligible for WHERE clause in batch delete\");");
+            return;
+        }
+        
+        var whereClause = string.Join(" AND ", whereProperties.Select(p => GenerateWhereCondition(p)));
+        sb.AppendLine($"batchCommand.CommandText = \"DELETE FROM {SqlDef.WrapColumn(tableName)} WHERE {whereClause}\";");
+    }
+
+    private string GetBatchOperationType()
+    {
+        // First check SqlExecuteType attribute for specific batch operation types
+        var sqlExecuteTypeAttr = MethodSymbol.GetAttributes()
+            .FirstOrDefault(a => a.AttributeClass?.Name == "SqlExecuteTypeAttribute");
+
+        if (sqlExecuteTypeAttr != null && sqlExecuteTypeAttr.ConstructorArguments.Length > 0)
+        {
+            var enumValueObj = sqlExecuteTypeAttr.ConstructorArguments[0].Value;
+            var type = enumValueObj switch
+            {
+                int intValue => (SqlExecuteTypes)intValue,
+                string strValue when int.TryParse(strValue, out var intVal) => (SqlExecuteTypes)intVal,
+                _ => SqlExecuteTypes.Select
+            };
+
+            return type switch
+            {
+                SqlExecuteTypes.BatchInsert => "INSERT",
+                SqlExecuteTypes.BatchUpdate => "UPDATE", 
+                SqlExecuteTypes.BatchDelete => "DELETE",
+                SqlExecuteTypes.BatchCommand => GetOperationFromMethodName(), // Fallback to method name inference
+                _ => "INSERT"
+            };
+        }
+
+        // Fallback to method name inference
+        return GetOperationFromMethodName();
+    }
+
+    private string GetOperationFromMethodName()
+    {
+        // Try to infer operation type from method name
+        var methodName = MethodSymbol.Name.ToUpperInvariant();
+        
+        if (methodName.Contains("INSERT") || methodName.Contains("ADD") || methodName.Contains("CREATE"))
+            return "INSERT";
+        if (methodName.Contains("UPDATE") || methodName.Contains("MODIFY") || methodName.Contains("CHANGE"))
+            return "UPDATE";
+        if (methodName.Contains("DELETE") || methodName.Contains("REMOVE"))
+            return "DELETE";
+        
+        // Default to INSERT for backward compatibility
+        return "INSERT";
+    }
+
+    private bool IsKeyProperty(IPropertySymbol property)
+    {
+        var name = property.Name.ToUpperInvariant();
+        return name == "ID" || name.EndsWith("ID") || name == "KEY" || name.EndsWith("KEY");
+    }
+
+    private List<IPropertySymbol> GetSetProperties(List<IPropertySymbol> properties)
+    {
+        // 首先查找标记了 [Set] 特性的属性
+        var explicitSetProperties = properties.Where(p => HasSetAttribute(p)).ToList();
+        
+        if (explicitSetProperties.Any())
+        {
+            return explicitSetProperties;
+        }
+        
+        // 如果没有显式标记，则使用所有非 Where 属性（排除主键）
+        var whereProperties = GetWhereProperties(properties);
+        return properties.Where(p => !whereProperties.Contains(p) && !IsKeyProperty(p)).ToList();
+    }
+
+    private List<IPropertySymbol> GetWhereProperties(List<IPropertySymbol> properties)
+    {
+        // 首先查找标记了 [Where] 特性的属性
+        var explicitWhereProperties = properties.Where(p => HasWhereAttribute(p)).ToList();
+        
+        if (explicitWhereProperties.Any())
+        {
+            return explicitWhereProperties;
+        }
+        
+        // 如果没有显式标记，则使用主键属性作为默认 WHERE 条件
+        return properties.Where(p => IsKeyProperty(p)).ToList();
+    }
+
+    private bool HasSetAttribute(IPropertySymbol property)
+    {
+        return property.GetAttributes().Any(a => a.AttributeClass?.Name == "SetAttribute");
+    }
+
+    private bool HasWhereAttribute(IPropertySymbol property)
+    {
+        return property.GetAttributes().Any(a => a.AttributeClass?.Name == "WhereAttribute");
+    }
+
+    private string GenerateWhereCondition(IPropertySymbol property)
+    {
+        var whereAttr = property.GetAttributes().FirstOrDefault(a => a.AttributeClass?.Name == "WhereAttribute");
+        var operatorStr = "="; // 默认操作符
+        
+        if (whereAttr != null && whereAttr.ConstructorArguments.Length > 0)
+        {
+            operatorStr = whereAttr.ConstructorArguments[0].Value?.ToString() ?? "=";
+        }
+        else if (whereAttr != null)
+        {
+            // 检查 Operator 属性
+            var operatorProp = whereAttr.NamedArguments.FirstOrDefault(na => na.Key == "Operator");
+            if (!operatorProp.Equals(default(KeyValuePair<string, Microsoft.CodeAnalysis.TypedConstant>)))
+            {
+                operatorStr = operatorProp.Value.Value?.ToString() ?? "=";
+            }
+        }
+        
+        return $"{SqlDef.WrapColumn(property.Name)} {operatorStr} {SqlDef.ParameterPrefix}{property.GetParameterName(string.Empty)}";
     }
 
 

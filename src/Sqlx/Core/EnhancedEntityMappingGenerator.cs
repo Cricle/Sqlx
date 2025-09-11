@@ -31,7 +31,7 @@ internal static class EnhancedEntityMappingGenerator
             return;
         }
 
-        // Generate GetOrdinal caching for performance optimization
+        // Generate GetOrdinal caching for performance optimization - ENHANCED MAPPING GENERATOR
         foreach (var member in members)
         {
             var columnName = GetColumnName(member);
@@ -77,7 +77,7 @@ internal static class EnhancedEntityMappingGenerator
                 var columnName = GetColumnName(member ?? new PrimaryConstructorParameterMemberInfo(param, propertyName));
                 var ordinalVar = $"__ordinal_{columnName}";
                 
-                var dataReadExpression = GetDataReadExpression(param.Type, "reader", columnName, ordinalVar);
+                var dataReadExpression = Extensions.GetDataReadExpression(param.Type, "reader", columnName);
                 sb.AppendLine($"{dataReadExpression}{comma}");
             }
 
@@ -115,7 +115,7 @@ internal static class EnhancedEntityMappingGenerator
                 var columnName = GetColumnName(member ?? new PrimaryConstructorParameterMemberInfo(param, propertyName));
                 var ordinalVar = $"__ordinal_{columnName}";
                 
-                var dataReadExpression = GetDataReadExpression(param.Type, "reader", columnName, ordinalVar);
+                var dataReadExpression = Extensions.GetDataReadExpression(param.Type, "reader", columnName);
                 sb.AppendLine($"{dataReadExpression}{comma}");
             }
 
@@ -132,7 +132,7 @@ internal static class EnhancedEntityMappingGenerator
             {
                 var columnName = GetColumnName(member);
                 var ordinalVar = $"__ordinal_{columnName}";
-                var dataReadExpression = GetDataReadExpression(member.Type, "reader", columnName, ordinalVar);
+                var dataReadExpression = Extensions.GetDataReadExpression(member.Type, "reader", columnName);
                 sb.AppendLine($"entity.{member.Name} = {dataReadExpression};");
             }
         }
@@ -171,7 +171,7 @@ internal static class EnhancedEntityMappingGenerator
                 var columnName = GetColumnName(member);
                 var ordinalVar = $"__ordinal_{columnName}";
 
-                var dataReadExpression = GetDataReadExpression(member.Type, "reader", columnName, ordinalVar);
+                var dataReadExpression = Extensions.GetDataReadExpression(member.Type, "reader", columnName);
                 sb.AppendLine($"{member.Name} = {dataReadExpression}{comma}");
             }
 
@@ -258,13 +258,14 @@ internal static class EnhancedEntityMappingGenerator
                 
                 if (!string.IsNullOrEmpty(underlyingMethod))
                 {
+                    var unwrappedTypeName = unwrapType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
                     if (isNullable)
                     {
-                        return $"{readerName}.IsDBNull({ordinalVar}) ? null : ({typeName}){readerName}.{underlyingMethod}({ordinalVar})";
+                        return $"{readerName}.IsDBNull({ordinalVar}) ? null : ({unwrappedTypeName}){readerName}.{underlyingMethod}({ordinalVar})";
                     }
                     else
                     {
-                        return $"({typeName}){readerName}.{underlyingMethod}({ordinalVar})";
+                        return $"{readerName}.IsDBNull({ordinalVar}) ? default({unwrappedTypeName}) : ({unwrappedTypeName}){readerName}.{underlyingMethod}({ordinalVar})";
                     }
                 }
             }
@@ -289,7 +290,7 @@ internal static class EnhancedEntityMappingGenerator
             }
             else
             {
-                return $"({typeName}){readerName}.GetValue({ordinalVar})";
+                return $"{readerName}.IsDBNull({ordinalVar}) ? default({typeName}) : ({typeName}){readerName}.GetValue({ordinalVar})";
             }
         }
     }

@@ -72,3 +72,102 @@ public partial class ModernSyntaxService : IModernSyntaxService
         this.connection = connection ?? throw new ArgumentNullException(nameof(connection));
     }
 }
+
+/// <summary>
+/// 客户服务实现 - Primary Constructor 演示
+/// </summary>
+[RepositoryFor(typeof(ICustomerService))]
+public partial class CustomerService : ICustomerService
+{
+    private readonly DbConnection connection;
+    
+    public CustomerService(DbConnection connection)
+    {
+        this.connection = connection ?? throw new ArgumentNullException(nameof(connection));
+    }
+}
+
+/// <summary>
+/// 分类服务实现
+/// </summary>
+[RepositoryFor(typeof(ICategoryService))]
+public partial class CategoryService : ICategoryService
+{
+    private readonly DbConnection connection;
+    
+    public CategoryService(DbConnection connection)
+    {
+        this.connection = connection ?? throw new ArgumentNullException(nameof(connection));
+    }
+}
+
+/// <summary>
+/// 库存服务实现 - Record 演示
+/// </summary>
+[RepositoryFor(typeof(IInventoryService))]
+public partial class InventoryService : IInventoryService
+{
+    private readonly DbConnection connection;
+    
+    public InventoryService(DbConnection connection)
+    {
+        this.connection = connection ?? throw new ArgumentNullException(nameof(connection));
+    }
+}
+
+/// <summary>
+/// 审计日志服务实现 - Primary Constructor + Record 演示
+/// </summary>
+[RepositoryFor(typeof(IAuditLogService))]
+public partial class AuditLogService : IAuditLogService
+{
+    private readonly DbConnection connection;
+    
+    public AuditLogService(DbConnection connection)
+    {
+        this.connection = connection ?? throw new ArgumentNullException(nameof(connection));
+    }
+}
+
+
+/// <summary>
+/// Expression to SQL 服务实现 - 动态查询演示
+/// </summary>
+[RepositoryFor(typeof(IExpressionToSqlService))]
+public partial class ExpressionToSqlService : IExpressionToSqlService
+{
+    private readonly DbConnection connection;
+    
+    public ExpressionToSqlService(DbConnection connection)
+    {
+        this.connection = connection ?? throw new ArgumentNullException(nameof(connection));
+    }
+}
+
+/// <summary>
+/// 批量操作服务实现 - DbBatch 演示
+/// </summary>
+[RepositoryFor(typeof(IBatchOperationService))]
+public partial class BatchOperationService : IBatchOperationService
+{
+    private readonly DbConnection connection;
+    
+    public BatchOperationService(DbConnection connection)
+    {
+        this.connection = connection ?? throw new ArgumentNullException(nameof(connection));
+    }
+}
+
+/// <summary>
+/// 多数据库服务实现
+/// </summary>
+[RepositoryFor(typeof(IMultiDatabaseService))]
+public partial class MultiDatabaseService : IMultiDatabaseService
+{
+    private readonly DbConnection connection;
+    
+    public MultiDatabaseService(DbConnection connection)
+    {
+        this.connection = connection ?? throw new ArgumentNullException(nameof(connection));
+    }
+}

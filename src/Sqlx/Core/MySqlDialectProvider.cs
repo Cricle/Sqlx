@@ -103,7 +103,7 @@ internal class MySqlDialectProvider : IDatabaseDialectProvider
     }
 
     /// <inheritdoc />
-    public string FormatDateTime(DateTime dateTime)
+    public string FormatDateTime(System.DateTime dateTime)
     {
         return $"'{dateTime:yyyy-MM-dd HH:mm:ss}'";
     }

@@ -194,7 +194,7 @@ internal static class Extensions
                 SpecialType.System_Double => "global::System.Data.DbType.Double",
                 SpecialType.System_Decimal => "global::System.Data.DbType.Decimal",
                 SpecialType.System_DateTime => "global::System.Data.DbType.DateTime2",
-                _ => throw new NotImplementedException($"Unsupported type: {t.ToDisplayString()}"),
+                _ => throw new NotSupportedException($"Type conversion not supported for: {t.ToDisplayString()}. Please ensure your entity properties use supported data types."),
             };
         });
     }
@@ -272,8 +272,23 @@ internal static class Extensions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static string GenerateNullSafeDataReadExpression(string readerName, string ordinalExpression, string method, bool isNullable, ITypeSymbol unwrapType)
     {
+        // Special handling for enum types - need explicit casting
+        if (unwrapType.TypeKind == TypeKind.Enum)
+        {
+            var typeName = unwrapType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            var enumNullValue = GetNullValueForType(isNullable, unwrapType);
+            
+            return $"{readerName}.IsDBNull({ordinalExpression}) ? {enumNullValue} : ({typeName}){readerName}.{method}({ordinalExpression})";
+        }
+        
         // For non-nullable value types that don't need null checking
         if (!isNullable && unwrapType.IsValueType && unwrapType.SpecialType != SpecialType.System_String)
+        {
+            return $"{readerName}.{method}({ordinalExpression})";
+        }
+
+        // Special handling for non-nullable DateTime
+        if (!isNullable && string.Equals(unwrapType.Name, "DateTime", StringComparison.Ordinal))
         {
             return $"{readerName}.{method}({ordinalExpression})";
         }
@@ -286,6 +301,13 @@ internal static class Extensions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static string GetNullValueForType(bool isNullable, ITypeSymbol unwrapType)
     {
+        // Special handling for enum types
+        if (unwrapType.TypeKind == TypeKind.Enum)
+        {
+            var typeName = unwrapType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            return isNullable ? "null" : $"default({typeName})";
+        }
+        
         return (isNullable, unwrapType.SpecialType) switch
         {
             (true, SpecialType.System_String) => "null",

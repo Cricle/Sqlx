@@ -150,3 +150,124 @@ public interface IModernSyntaxService
     [Sqlx("SELECT id AS Id, customer_name AS CustomerName, order_date AS OrderDate, total_amount AS TotalAmount FROM orders WHERE customer_name LIKE @pattern")]
     Task<IList<Order>> GetOrdersByCustomerAsync(string pattern);
 }
+
+/// <summary>
+/// 客户服务接口 - Primary Constructor 演示
+/// </summary>
+public interface ICustomerService
+{
+    /// <summary>
+    /// 获取所有客户 (Primary Constructor 演示)
+    /// </summary>
+    [Sqlx("SELECT id AS Id, name AS Name, email AS Email, birth_date AS BirthDate, status AS Status, total_spent AS TotalSpent, referred_by AS ReferredBy, address AS Address, phone AS Phone, created_at AS CreatedAt, last_login_at AS LastLoginAt, is_vip AS IsVip FROM customers ORDER BY id")]
+    Task<IList<Customer>> GetAllCustomersAsync();
+
+    /// <summary>
+    /// 创建客户 (Primary Constructor 自动推断为 INSERT)
+    /// </summary>
+    Task<int> CreateCustomerAsync(Customer customer);
+
+    /// <summary>
+    /// 根据ID获取客户
+    /// </summary>
+    [Sqlx("SELECT id AS Id, name AS Name, email AS Email, birth_date AS BirthDate, status AS Status, total_spent AS TotalSpent, referred_by AS ReferredBy, address AS Address, phone AS Phone, created_at AS CreatedAt, last_login_at AS LastLoginAt, is_vip AS IsVip FROM customers WHERE id = @id")]
+    Task<Customer> GetCustomerByIdAsync(int id);
+
+    /// <summary>
+    /// 更新客户信息 (Primary Constructor 自动推断为 UPDATE)
+    /// </summary>
+    Task<int> UpdateCustomerAsync(Customer customer);
+
+    /// <summary>
+    /// 获取VIP客户
+    /// </summary>
+    [Sqlx("SELECT id AS Id, name AS Name, email AS Email, birth_date AS BirthDate, status AS Status, total_spent AS TotalSpent, referred_by AS ReferredBy, address AS Address, phone AS Phone, created_at AS CreatedAt, last_login_at AS LastLoginAt, is_vip AS IsVip FROM customers WHERE is_vip = 1 ORDER BY total_spent DESC")]
+    Task<IList<Customer>> GetVipCustomersAsync();
+
+    /// <summary>
+    /// 按状态获取客户数量
+    /// </summary>
+    [Sqlx("SELECT COUNT(*) FROM customers WHERE status = @status")]
+    Task<int> CountCustomersByStatusAsync(CustomerStatus status);
+}
+
+/// <summary>
+/// 分类管理服务接口
+/// </summary>
+public interface ICategoryService
+{
+    /// <summary>
+    /// 获取所有分类
+    /// </summary>
+    [Sqlx("SELECT id AS Id, name AS Name, description AS Description, parent_id AS ParentId, sort_order AS SortOrder, is_active AS IsActive, created_at AS CreatedAt FROM categories ORDER BY sort_order, id")]
+    Task<IList<Category>> GetAllCategoriesAsync();
+
+    /// <summary>
+    /// 创建分类
+    /// </summary>
+    Task<int> CreateCategoryAsync(Category category);
+
+    /// <summary>
+    /// 获取子分类
+    /// </summary>
+    [Sqlx("SELECT id AS Id, name AS Name, description AS Description, parent_id AS ParentId, sort_order AS SortOrder, is_active AS IsActive, created_at AS CreatedAt FROM categories WHERE parent_id = @parentId ORDER BY sort_order")]
+    Task<IList<Category>> GetSubCategoriesAsync(int parentId);
+
+    /// <summary>
+    /// 获取顶级分类
+    /// </summary>
+    [Sqlx("SELECT id AS Id, name AS Name, description AS Description, parent_id AS ParentId, sort_order AS SortOrder, is_active AS IsActive, created_at AS CreatedAt FROM categories WHERE parent_id IS NULL ORDER BY sort_order")]
+    Task<IList<Category>> GetTopLevelCategoriesAsync();
+}
+
+/// <summary>
+/// 库存管理服务接口 - Record 演示
+/// </summary>
+public interface IInventoryService
+{
+    /// <summary>
+    /// 获取所有库存项 (Record 类型)
+    /// </summary>
+    [Sqlx("SELECT id AS Id, product_id AS ProductId, quantity AS Quantity, reorder_level AS ReorderLevel, last_updated AS LastUpdated, warehouse_location AS WarehouseLocation, reserved_quantity AS ReservedQuantity FROM inventory ORDER BY id")]
+    Task<IList<InventoryItem>> GetAllInventoryAsync();
+
+    /// <summary>
+    /// 创建库存项 (Record 自动推断为 INSERT)
+    /// </summary>
+    Task<int> CreateInventoryItemAsync(InventoryItem item);
+
+    /// <summary>
+    /// 更新库存数量
+    /// </summary>
+    [Sqlx("UPDATE inventory SET quantity = @quantity, last_updated = @lastUpdated WHERE product_id = @productId")]
+    Task<int> UpdateInventoryQuantityAsync(int productId, int quantity, DateTime lastUpdated);
+
+    /// <summary>
+    /// 获取低库存商品
+    /// </summary>
+    [Sqlx("SELECT id AS Id, product_id AS ProductId, quantity AS Quantity, reorder_level AS ReorderLevel, last_updated AS LastUpdated, warehouse_location AS WarehouseLocation, reserved_quantity AS ReservedQuantity FROM inventory WHERE quantity <= reorder_level")]
+    Task<IList<InventoryItem>> GetLowStockItemsAsync();
+}
+
+/// <summary>
+/// 审计日志服务接口 - Primary Constructor + Record 演示
+/// </summary>
+public interface IAuditLogService
+{
+    /// <summary>
+    /// 创建审计日志 (Primary Constructor + Record 自动推断为 INSERT)
+    /// </summary>
+    Task<int> CreateAuditLogAsync(AuditLog log);
+
+    /// <summary>
+    /// 获取用户操作日志
+    /// </summary>
+    [Sqlx("SELECT id AS Id, action AS Action, entity_type AS EntityType, entity_id AS EntityId, user_id AS UserId, created_at AS CreatedAt, old_values AS OldValues, new_values AS NewValues, ip_address AS IpAddress, user_agent AS UserAgent FROM audit_logs WHERE user_id = @userId ORDER BY created_at DESC")]
+    Task<IList<AuditLog>> GetUserAuditLogsAsync(string userId);
+
+    /// <summary>
+    /// 获取实体操作历史
+    /// </summary>
+    [Sqlx("SELECT id AS Id, action AS Action, entity_type AS EntityType, entity_id AS EntityId, user_id AS UserId, created_at AS CreatedAt, old_values AS OldValues, new_values AS NewValues, ip_address AS IpAddress, user_agent AS UserAgent FROM audit_logs WHERE entity_type = @entityType AND entity_id = @entityId ORDER BY created_at DESC")]
+    Task<IList<AuditLog>> GetEntityAuditHistoryAsync(string entityType, string entityId);
+}

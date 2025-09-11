@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
 using Sqlx;
@@ -14,6 +15,7 @@ using Sqlx.Annotations;
 using ComprehensiveExample.Models;
 using ComprehensiveExample.Services;
 using ComprehensiveExample.Data;
+using ComprehensiveExample.Demonstrations;
 
 namespace ComprehensiveExample;
 
@@ -46,25 +48,17 @@ class Program
         
         try
         {
-            // 🎯 创建 Repository (自动生成实现)
+            // 🎯 创建所有服务实例 (自动生成实现)
             var userService = new UserService(connection);
             var departmentService = new DepartmentService(connection);
             var modernService = new ModernSyntaxService(connection);
+            var customerService = new CustomerService(connection);
+            var categoryService = new CategoryService(connection);
+            var inventoryService = new InventoryService(connection);
+            var auditLogService = new AuditLogService(connection);
             
-            // ✨ 演示基础 CRUD 操作
-            await DemonstrateCrudOperations(userService);
-            
-            // 🧪 演示高级功能
-            await DemonstrateAdvancedFeatures(userService);
-            
-            // 🏢 演示部门管理
-            await DemonstrateDepartmentFeatures(departmentService, userService);
-            
-            // 🏗️ 演示现代 C# 语法支持
-            await DemonstrateModernSyntaxSupport(modernService);
-            
-            // 🚀 性能测试
-            await PerformanceTest.RunPerformanceTestAsync();
+            // 显示演示菜单
+            await ShowDemoMenu(connection);
             
             Console.WriteLine("\n🎉 所有演示完成！按任意键退出...");
         }
@@ -75,6 +69,166 @@ class Program
         }
         
         Console.ReadKey();
+    }
+    
+    /// <summary>
+    /// 显示演示菜单
+    /// </summary>
+    static async Task ShowDemoMenu(DbConnection connection)
+    {
+        Console.WriteLine("\n🎯 Sqlx 全面功能演示菜单");
+        Console.WriteLine("=".PadRight(60, '='));
+        Console.WriteLine("1️⃣  基础 CRUD 操作演示");
+        Console.WriteLine("2️⃣  🆕 智能 UPDATE 操作演示 (优化体验)");
+        Console.WriteLine("3️⃣  Expression to SQL 动态查询演示");
+        Console.WriteLine("4️⃣  DbBatch 批量操作演示");
+        Console.WriteLine("5️⃣  多数据库方言支持演示");
+        Console.WriteLine("6️⃣  现代 C# 语法支持演示");
+        Console.WriteLine("7️⃣  复杂查询和分析演示");
+        Console.WriteLine("8️⃣  性能基准测试对比");
+        Console.WriteLine("9️⃣  全部演示 (推荐)");
+        Console.WriteLine("0️⃣  退出演示");
+        Console.WriteLine("=".PadRight(60, '='));
+        
+        while (true)
+        {
+            Console.Write("\n请选择演示项目 (0-9): ");
+            var input = Console.ReadLine();
+            
+            switch (input)
+            {
+                case "1":
+                    await DemonstrateCrudOperations(new UserService(connection));
+                    break;
+                case "2":
+                    await SmartUpdateDemo.RunDemonstrationAsync(connection);
+                    break;
+                case "3":
+                    await ExpressionToSqlDemo.RunDemonstrationAsync(connection);
+                    break;
+                case "4":
+                    await BatchOperationDemo.RunDemonstrationAsync(connection);
+                    break;
+                case "5":
+                    await MultiDatabaseDemo.RunDemonstrationAsync(connection);
+                    break;
+                case "6":
+                    await DemonstrateModernSyntaxSupport(new ModernSyntaxService(connection));
+                    break;
+                case "7":
+                    await DemonstrateComplexQueries(connection);
+                    break;
+                case "8":
+                    await PerformanceTest.RunPerformanceTestAsync();
+                    break;
+                case "9":
+                    await RunAllDemonstrations(connection);
+                    break;
+                case "0":
+                    Console.WriteLine("👋 感谢使用 Sqlx 演示程序！");
+                    return;
+                default:
+                    Console.WriteLine("❌ 无效选择，请输入 0-9 之间的数字");
+                    continue;
+            }
+            
+            Console.WriteLine("\n按任意键继续...");
+            Console.ReadKey();
+        }
+    }
+    
+    /// <summary>
+    /// 运行所有演示
+    /// </summary>
+    static async Task RunAllDemonstrations(DbConnection connection)
+    {
+        Console.WriteLine("\n🚀 开始全面演示 Sqlx 所有功能");
+        Console.WriteLine("=".PadRight(60, '='));
+        
+        var userService = new UserService(connection);
+        var departmentService = new DepartmentService(connection);
+        var modernService = new ModernSyntaxService(connection);
+        
+        // 1. 基础 CRUD 操作
+        await DemonstrateCrudOperations(userService);
+        
+        // 2. 高级功能
+        await DemonstrateAdvancedFeatures(userService);
+        
+        // 3. 部门管理
+        await DemonstrateDepartmentFeatures(departmentService, userService);
+        
+        // 4. 现代 C# 语法支持
+        await DemonstrateModernSyntaxSupport(modernService);
+        
+        // 5. 智能 UPDATE 演示 (🆕 新功能)
+        await SmartUpdateDemo.RunDemonstrationAsync(connection);
+        
+        // 6. Expression to SQL 动态查询
+        await ExpressionToSqlDemo.RunDemonstrationAsync(connection);
+        
+        // 7. 批量操作演示
+        await BatchOperationDemo.RunDemonstrationAsync(connection);
+        
+        // 8. 多数据库方言支持
+        await MultiDatabaseDemo.RunDemonstrationAsync(connection);
+        
+        // 9. 复杂查询
+        await DemonstrateComplexQueries(connection);
+        
+        // 10. 性能测试
+        await PerformanceTest.RunPerformanceTestAsync();
+        
+        Console.WriteLine("\n🎉 全面演示完成！");
+    }
+    
+    /// <summary>
+    /// 演示复杂查询和分析功能
+    /// </summary>
+    static async Task DemonstrateComplexQueries(DbConnection connection)
+    {
+        Console.WriteLine("\n🔍 复杂查询和分析演示");
+        Console.WriteLine("=".PadRight(60, '='));
+        
+        var customerService = new CustomerService(connection);
+        var categoryService = new CategoryService(connection);
+        var auditLogService = new AuditLogService(connection);
+        
+        try
+        {
+            
+            // VIP 客户统计
+            var vipCustomers = await customerService.GetVipCustomersAsync();
+            Console.WriteLine($"⭐ VIP 客户总数: {vipCustomers.Count}");
+            
+            // 分类层次结构
+            var topCategories = await categoryService.GetTopLevelCategoriesAsync();
+            Console.WriteLine($"📂 顶级分类: {topCategories.Count} 个");
+            
+            foreach (var category in topCategories)
+            {
+                var subCategories = await categoryService.GetSubCategoriesAsync(category.Id);
+                Console.WriteLine($"   - {category.Name}: {subCategories.Count} 个子分类");
+            }
+            
+            // 审计日志演示
+            var auditLog = new AuditLog("DEMO", "System", "ComplexQuery", "admin")
+            {
+                IpAddress = "127.0.0.1",
+                UserAgent = "Sqlx Demo Application"
+            };
+            
+            await auditLogService.CreateAuditLogAsync(auditLog);
+            Console.WriteLine("📝 创建了演示审计日志");
+            
+            // 查询系统操作历史
+            var systemLogs = await auditLogService.GetEntityAuditHistoryAsync("System", "ComplexQuery");
+            Console.WriteLine($"📋 系统操作历史: {systemLogs.Count} 条记录");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️ 复杂查询演示中的某些功能可能需要更多数据: {ex.Message}");
+        }
     }
     
     /// <summary>

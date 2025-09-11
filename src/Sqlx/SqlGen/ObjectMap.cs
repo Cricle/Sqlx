@@ -27,7 +27,9 @@ namespace Sqlx.SqlGen
             }
 
             Properties = ElementSymbol is INamedTypeSymbol namedTypeSymbol
-                ? namedTypeSymbol.GetMembers().OfType<IPropertySymbol>().ToList()
+                ? namedTypeSymbol.GetMembers().OfType<IPropertySymbol>()
+                    .Where(p => p.CanBeReferencedByName && p.Name != "EqualityContract")
+                    .ToList()
                 : new List<IPropertySymbol>();
         }
 

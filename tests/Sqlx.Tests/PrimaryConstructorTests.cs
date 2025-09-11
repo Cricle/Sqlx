@@ -194,7 +194,7 @@ namespace TestNamespace
     {
         public int OrderId { get; } = orderId;
         public string CustomerName { get; } = customerName;
-        public DateTime OrderDate { get; set; } = DateTime.Now;
+        public System.DateTime OrderDate { get; set; } = System.DateTime.Now;
         public decimal TotalAmount { get; set; }
     }
 
@@ -251,7 +251,7 @@ namespace TestNamespace
     {
         public int Id { get; } = id;
         public string CustomerName { get; } = customerName;
-        public DateTime OrderDate { get; set; } = DateTime.Now;
+        public System.DateTime OrderDate { get; set; } = System.DateTime.Now;
     }
 
     public interface IMixedService

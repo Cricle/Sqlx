@@ -18,12 +18,12 @@ using static Sqlx.Extensions;
 
 internal class MethodGenerationContext : GenerationContextBase
 {
-    internal const string DbConnectionName = "__conn__";
-    internal const string CmdName = "__cmd__";
-    internal const string DbReaderName = "__reader__";
-    internal const string ResultName = "__result__";
-    internal const string DataName = "__data__";
-    internal const string StartTimeName = "__startTime__";
+    internal const string DbConnectionName = Constants.GeneratedVariables.Connection;
+    internal const string CmdName = Constants.GeneratedVariables.Command;
+    internal const string DbReaderName = Constants.GeneratedVariables.Reader;
+    internal const string ResultName = Constants.GeneratedVariables.Result;
+    internal const string DataName = Constants.GeneratedVariables.Data;
+    internal const string StartTimeName = Constants.GeneratedVariables.StartTime;
 
     internal const string MethodExecuting = "OnExecuting";
     internal const string MethodExecuted = "OnExecuted";
@@ -267,14 +267,13 @@ internal class MethodGenerationContext : GenerationContextBase
             return GenerateBatchCommandLogic(sb);
         }
 
-        // Check for batch operations - for now, just use regular SQL generation
-        // TODO: Implement full batch operation support in future versions
+        // Legacy batch operations detection - redirect to proper BatchCommand
         if (!string.IsNullOrEmpty(sql) && sql?.Contains("BATCH") == true)
         {
-            // For now, generate a comment indicating batch operation is detected
-            sb.AppendLine($"// Batch operation detected: {sql}");
-            sb.AppendLine("// Full batch operation support coming soon");
-            sb.AppendLine("throw new global::System.NotImplementedException(\"Batch operations are not yet fully implemented\");");
+            // Generate proper error message for better developer experience
+            sb.AppendLine($"// Legacy batch operation detected: {sql}");
+            sb.AppendLine("// Use SqlExecuteTypes.BatchCommand for proper batch operations");
+            sb.AppendLine("throw new global::System.ArgumentException(\"Legacy BATCH SQL syntax detected. Please use SqlExecuteTypes.BatchCommand for proper batch operations.\");");
             sb.PopIndent();
             sb.AppendLine("}");
             return true;
@@ -693,7 +692,7 @@ internal class MethodGenerationContext : GenerationContextBase
                 var construct = ((INamedTypeSymbol)ElementType).Constructors.FirstOrDefault(x => x.Parameters.All(HasProperty));
                 if (construct == null)
                 {
-                    // TODO: report
+                    // No suitable constructor found for entity mapping
                     return false;
                 }
 
@@ -2038,6 +2037,13 @@ internal static class ExtensionsWithCache
                 }
                 else if (unwrapType.IsValueType)
                 {
+                    // Special handling for enum types - need explicit casting
+                    if (unwrapType.TypeKind == TypeKind.Enum)
+                    {
+                        var enumTypeName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                        return $"{readerName}.IsDBNull({ordinalVariableName}) ? default({enumTypeName}) : ({enumTypeName}){readerName}.{method}({ordinalVariableName})";
+                    }
+                    
                     // Non-nullable value types: return default if DBNull
                     return $"{readerName}.IsDBNull({ordinalVariableName}) ? default : {readerName}.{method}({ordinalVariableName})";
                 }
@@ -2051,7 +2057,37 @@ internal static class ExtensionsWithCache
             return $"{readerName}.{method}({ordinalVariableName})";
         }
 
-        throw new NotSupportedException($"No support type {type.Name}");
+        // Enhanced fallback handling for unsupported types
+        var typeName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        
+        // Special handling for enum types
+        if (unwrapType.TypeKind == TypeKind.Enum)
+        {
+            var underlyingType = ((INamedTypeSymbol)unwrapType).EnumUnderlyingType;
+            var underlyingMethod = underlyingType?.GetDataReaderMethod();
+            
+            if (!string.IsNullOrEmpty(underlyingMethod))
+            {
+                if (isNullable)
+                {
+                    return $"{readerName}.IsDBNull({ordinalVariableName}) ? null : ({typeName}){readerName}.{underlyingMethod}({ordinalVariableName})";
+                }
+                else
+                {
+                    return $"{readerName}.IsDBNull({ordinalVariableName}) ? default({typeName}) : ({typeName}){readerName}.{underlyingMethod}({ordinalVariableName})";
+                }
+            }
+        }
+        
+        // Final fallback to GetValue with casting (less preferred)
+        if (isNullable || type.IsReferenceType)
+        {
+            return $"{readerName}.IsDBNull({ordinalVariableName}) ? null : ({typeName}){readerName}.GetValue({ordinalVariableName})";
+        }
+        else
+        {
+            return $"{readerName}.IsDBNull({ordinalVariableName}) ? default({typeName}) : ({typeName}){readerName}.GetValue({ordinalVariableName})";
+        }
     }
 
 

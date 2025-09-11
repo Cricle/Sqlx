@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🧪 Fixed
+- All unit tests green (1296 total). Stabilized Async EF path assertions and generation.
+
+### 🚀 Improved
+- Generator now emits `EXEC <proc> <@params>` for `[Sqlx]` stored procedure calls.
+- Added EF fallbacks when `DbContext` symbol is not bound (uses `this.dbContext`).
+- Correct Task/void handling and object result mapping; consistent interceptor invocation.
+- BatchCommand generation maps all entity properties in parameters.
+
 ### 🆕 Added
 - **ADO.NET BatchCommand Support** - Native batch operations using `SqlExecuteTypes.BatchCommand`
   - High-performance bulk insert/update/delete operations

@@ -255,7 +255,7 @@ internal class MethodGenerationContext : GenerationContextBase
             return false;
         }
 
-        // Handle BatchCommand operations
+        // Handle BatchCommand operations first
         if (isBatchCommand)
         {
             return GenerateBatchCommandLogic(sb);

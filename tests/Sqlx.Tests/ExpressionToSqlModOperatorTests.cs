@@ -254,7 +254,7 @@ namespace TestNamespace
         // Assert
         Assert.IsTrue(result.Contains("ExpressionType.Modulo"), 
             "Should support modulo with different numeric types");
-        Assert.IsTrue(result.Contains("% {right}"), 
+        Assert.IsTrue(result.Contains("% {right}") || result.Contains("% {right}\","), 
             "Should generate % operator for all numeric types");
     }
 

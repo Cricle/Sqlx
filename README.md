@@ -4,7 +4,7 @@
 
 **零反射 · 编译时优化 · 类型安全 · 现代 C# 支持**
 
-[![NuGet](https://img.shields.io/nuget/v/Sqlx.svg?style=for-the-badge)](https://www.nuget.org/packages/Sqlx/)
+[![NuGet](https://img.shields.io/badge/NuGet-v2.0.1-blue?style=for-the-badge)](https://www.nuget.org/packages/Sqlx/)
 [![License](https://img.shields.io/github/license/Cricle/Sqlx?style=for-the-badge)](License.txt)
 [![.NET](https://img.shields.io/badge/.NET-6.0%2B-blueviolet?style=for-the-badge)](https://dotnet.microsoft.com/)
 [![C#](https://img.shields.io/badge/C%23-12.0%2B-239120?style=for-the-badge)](https://docs.microsoft.com/en-us/dotnet/csharp/)
@@ -24,7 +24,7 @@
 ### 🚀 性能优势
 - ⚡ **零反射** - 源代码生成，编译时确定类型
 - 🚀 **高性能** - 接近手写 ADO.NET 的速度  
-- 🔥 **原生 DbBatch** - 批处理性能提升 10-100 倍
+- 🔥 **原生 DbBatch** - 批处理性能提升 10-100 倍 ⭐ **v2.0.1 修复**
 - 📊 **智能优化** - 自动选择最优数据读取方法
 
 ### 🛡️ 安全保障
@@ -43,7 +43,7 @@
 - 🎨 **混合使用** - 传统类、Record、主构造函数随意组合
 
 ### 🌐 生态支持  
-- 🗄️ **多数据库** - SQL Server、MySQL、PostgreSQL、SQLite
+- 🗄️ **多数据库** - SQL Server、MySQL、PostgreSQL、SQLite、Oracle、DB2 ⭐ **v2.0.1 增强**
 - 📚 **完整文档** - 16个专业文档，从入门到高级
 - 💻 **丰富示例** - 4个完整示例项目
 - 🔄 **CI/CD 就绪** - 完整的自动化流程

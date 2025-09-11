@@ -504,6 +504,54 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         return bestCandidate.Key;
     }
 
+    private INamedTypeSymbol? InferEntityTypeFromMethod(IMethodSymbol method)
+    {
+        System.Diagnostics.Debug.WriteLine($"Inferring entity type for method: {method.Name}");
+        
+        // Extract entity type from return type
+        var returnEntityType = TypeAnalyzer.ExtractEntityType(method.ReturnType);
+        if (returnEntityType != null && TypeAnalyzer.IsLikelyEntityType(returnEntityType))
+        {
+            System.Diagnostics.Debug.WriteLine($"Found entity type from return type: {returnEntityType.Name}");
+            return returnEntityType;
+        }
+
+        // Check parameters for entity types
+        foreach (var parameter in method.Parameters)
+        {
+            var paramEntityType = TypeAnalyzer.ExtractEntityType(parameter.Type);
+            if (paramEntityType != null && TypeAnalyzer.IsLikelyEntityType(paramEntityType))
+            {
+                System.Diagnostics.Debug.WriteLine($"Found entity type from parameter {parameter.Name}: {paramEntityType.Name}");
+                return paramEntityType;
+            }
+        }
+
+        System.Diagnostics.Debug.WriteLine($"No specific entity type found for method: {method.Name}");
+        return null;
+    }
+
+    private string? GetTableNameForEntityType(INamedTypeSymbol? entityType)
+    {
+        if (entityType == null) return null;
+
+        // Check for TableName attribute
+        var tableNameAttr = entityType.GetAttributes().FirstOrDefault(attr => attr.AttributeClass?.Name == "TableNameAttribute");
+        if (tableNameAttr != null && tableNameAttr.ConstructorArguments.Length > 0)
+        {
+            var tableName = tableNameAttr.ConstructorArguments[0].Value?.ToString();
+            if (!string.IsNullOrEmpty(tableName))
+            {
+                System.Diagnostics.Debug.WriteLine($"Found TableName attribute on {entityType.Name}: {tableName}");
+                return tableName;
+            }
+        }
+
+        // Use entity type name as default table name
+        System.Diagnostics.Debug.WriteLine($"Using default table name for {entityType.Name}: {entityType.Name}");
+        return entityType.Name;
+    }
+
     private INamedTypeSymbol? InferFromInterfaceName(INamedTypeSymbol serviceInterface)
     {
         // Fallback: try to infer from interface name
@@ -719,7 +767,10 @@ public abstract partial class AbstractGenerator : ISourceGenerator
 
             foreach (var method in methods)
             {
-                GenerateRepositoryMethod(sb, method, entityType, tableName);
+                // Infer entity type for each method individually based on its return type
+                var methodEntityType = InferEntityTypeFromMethod(method) ?? entityType;
+                var methodTableName = GetTableNameForEntityType(methodEntityType) ?? tableName;
+                GenerateRepositoryMethod(sb, method, methodEntityType, methodTableName);
             }
 
             sb.PopIndent();
@@ -1204,45 +1255,8 @@ public abstract partial class AbstractGenerator : ISourceGenerator
 
     private void GenerateOptimizedEntityMapping(IndentedStringBuilder sb, INamedTypeSymbol entityType)
     {
-        var properties = entityType.GetMembers().OfType<IPropertySymbol>()
-            .Where(p => p.CanBeReferencedByName && p.SetMethod != null)
-            .ToList();
-
-        if (!properties.Any())
-        {
-            sb.AppendLine("// No properties found for entity mapping");
-            sb.AppendLine($"var entity = new {entityType.ToDisplayString()}();");
-            return;
-        }
-
-        // Generate GetOrdinal caching for performance optimization - avoids repeated string lookups
-        foreach (var prop in properties)
-        {
-            var columnName = prop.GetSqlName();
-            sb.AppendLine($"int __ordinal_{columnName} = reader.GetOrdinal(\"{columnName}\");");
-        }
-
-        sb.AppendLine($"var entity = new {entityType.ToDisplayString()}");
-        sb.AppendLine("{");
-        sb.PushIndent();
-
-        for (int i = 0; i < properties.Count; i++)
-        {
-            var prop = properties[i];
-            var comma = i < properties.Count - 1 ? "," : "";
-            var columnName = prop.GetSqlName();
-            var ordinalVar = $"__ordinal_{columnName}";
-
-            // Use optimized strongly-typed data reader methods with cached ordinals
-            // This avoids boxing/unboxing and improves performance significantly
-            var dataReadExpression = prop.Type.GetDataReadExpressionWithCachedOrdinal("reader", columnName, ordinalVar);
-            sb.AppendLine($"{prop.Name} = {dataReadExpression}{comma}");
-        }
-
-        sb.PopIndent();
-        sb.AppendLine("};");
-
-        // Note: Caller is responsible for handling the generated entity
+        // Use the enhanced entity mapping generator that supports primary constructors and records
+        Core.EnhancedEntityMappingGenerator.GenerateEntityMapping(sb, entityType);
     }
 
     private string GetCancellationTokenParameter(IMethodSymbol method)
@@ -1251,8 +1265,26 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         return cancellationToken?.Name ?? "default";
     }
 
+    private bool IsAutoGeneratedProperty(IPropertySymbol property)
+    {
+        // Check if this is an auto-generated property (like Id with auto-increment)
+        // For now, we'll exclude properties named "Id" from INSERT operations
+        return property.Name == "Id";
+    }
+
     private List<IPropertySymbol> GetInsertableProperties(INamedTypeSymbol entityType)
     {
+        // For records and primary constructors, we need to handle members differently
+        if (Core.PrimaryConstructorAnalyzer.IsRecord(entityType) || Core.PrimaryConstructorAnalyzer.HasPrimaryConstructor(entityType))
+        {
+            var members = Core.PrimaryConstructorAnalyzer.GetAccessibleMembers(entityType);
+            return members.Where(m => m is Core.PropertyMemberInfo)
+                         .Cast<Core.PropertyMemberInfo>()
+                         .Select(m => m.Property)
+                         .Where(p => p.CanBeReferencedByName && !IsAutoGeneratedProperty(p))
+                         .ToList();
+        }
+        
         return entityType.GetMembers().OfType<IPropertySymbol>()
             .Where(p => p.CanBeReferencedByName && p.GetMethod != null && p.Name != "Id") // Exclude Id for INSERT
             .ToList();
@@ -1484,7 +1516,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
 
             if (prop.Type.IsReferenceType || IsNullableValueType(prop.Type))
             {
-                sb.AppendLine($"param{prop.Name}.Value = {entityParam.Name}.{prop.Name} ?? global::System.DBNull.Value;");
+                sb.AppendLine($"param{prop.Name}.Value = (object?){entityParam.Name}.{prop.Name} ?? global::System.DBNull.Value;");
             }
             else
             {
@@ -1522,11 +1554,11 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         }
         else if (returnType.SpecialType == SpecialType.System_Int32)
         {
-            sb.AppendLine("return (int)__result__;");
+            sb.AppendLine("return System.Convert.ToInt32(__result__);");
         }
         else if (returnType.SpecialType == SpecialType.System_Boolean)
         {
-            sb.AppendLine("return ((int)__result__) > 0;");
+            sb.AppendLine("return System.Convert.ToInt32(__result__) > 0;");
         }
         else
         {
@@ -1589,7 +1621,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
 
             if (prop.Type.IsReferenceType || IsNullableValueType(prop.Type))
             {
-                sb.AppendLine($"param{prop.Name}.Value = {entityParam.Name}.{prop.Name} ?? global::System.DBNull.Value;");
+                sb.AppendLine($"param{prop.Name}.Value = (object?){entityParam.Name}.{prop.Name} ?? global::System.DBNull.Value;");
             }
             else
             {
@@ -1639,11 +1671,11 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         }
         else if (returnType.SpecialType == SpecialType.System_Int32)
         {
-            sb.AppendLine("return (int)__result__;");
+            sb.AppendLine("return System.Convert.ToInt32(__result__);");
         }
         else if (returnType.SpecialType == SpecialType.System_Boolean)
         {
-            sb.AppendLine("return ((int)__result__) > 0;");
+            sb.AppendLine("return System.Convert.ToInt32(__result__) > 0;");
         }
         else
         {
@@ -1744,11 +1776,11 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         }
         else if (returnType.SpecialType == SpecialType.System_Int32)
         {
-            sb.AppendLine("return (int)__result__;");
+            sb.AppendLine("return System.Convert.ToInt32(__result__);");
         }
         else if (returnType.SpecialType == SpecialType.System_Boolean)
         {
-            sb.AppendLine("return ((int)__result__) > 0;");
+            sb.AppendLine("return System.Convert.ToInt32(__result__) > 0;");
         }
         else
         {

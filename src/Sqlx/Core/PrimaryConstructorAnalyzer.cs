@@ -1,0 +1,232 @@
+// -----------------------------------------------------------------------
+// <copyright file="PrimaryConstructorAnalyzer.cs" company="Cricle">
+// Copyright (c) Cricle. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
+
+using Microsoft.CodeAnalysis;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.CompilerServices;
+
+namespace Sqlx.Core;
+
+/// <summary>
+/// Analyzer for primary constructors and record types in C# 12+.
+/// </summary>
+internal static class PrimaryConstructorAnalyzer
+{
+    /// <summary>
+    /// Determines if a type is a record type.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool IsRecord(INamedTypeSymbol type)
+    {
+        return type.TypeKind == TypeKind.Class && type.IsRecord;
+    }
+
+    /// <summary>
+    /// Determines if a type has a primary constructor.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool HasPrimaryConstructor(INamedTypeSymbol type)
+    {
+        // Check if the type has any constructor that could be a primary constructor
+        var constructors = type.Constructors;
+        
+        // Primary constructors are typically the first constructor and have parameters
+        // that correspond to properties or fields
+        foreach (var constructor in constructors)
+        {
+            if (constructor.Parameters.Length > 0 && IsPrimaryConstructor(constructor, type))
+            {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    /// <summary>
+    /// Gets the primary constructor of a type, if it exists.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static IMethodSymbol? GetPrimaryConstructor(INamedTypeSymbol type)
+    {
+        var constructors = type.Constructors;
+        
+        foreach (var constructor in constructors)
+        {
+            if (constructor.Parameters.Length > 0 && IsPrimaryConstructor(constructor, type))
+            {
+                return constructor;
+            }
+        }
+        
+        return null;
+    }
+
+    /// <summary>
+    /// Gets the parameters of the primary constructor.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static IEnumerable<IParameterSymbol> GetPrimaryConstructorParameters(INamedTypeSymbol type)
+    {
+        var primaryConstructor = GetPrimaryConstructor(type);
+        return primaryConstructor?.Parameters ?? Enumerable.Empty<IParameterSymbol>();
+    }
+
+    /// <summary>
+    /// Gets all accessible members (properties from primary constructor + regular properties).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static IEnumerable<IMemberInfo> GetAccessibleMembers(INamedTypeSymbol type)
+    {
+        var members = new List<IMemberInfo>();
+
+        // Add regular properties
+        var properties = type.GetMembers().OfType<IPropertySymbol>()
+            .Where(p => p.CanBeReferencedByName && 
+                       (p.SetMethod != null || IsRecord(type)) &&
+                       p.Name != "EqualityContract"); // Exclude Record's EqualityContract
+
+        foreach (var prop in properties)
+        {
+            members.Add(new PropertyMemberInfo(prop));
+        }
+
+        // For records or types with primary constructors, add primary constructor parameters
+        // that don't have corresponding properties
+        if (IsRecord(type) || HasPrimaryConstructor(type))
+        {
+            var primaryConstructorParams = GetPrimaryConstructorParameters(type);
+            var existingPropertyNames = new HashSet<string>(properties.Select(p => p.Name));
+
+            foreach (var param in primaryConstructorParams)
+            {
+                // Add parameter if no corresponding property exists
+                var propertyName = GetPropertyNameFromParameter(param.Name);
+                if (!existingPropertyNames.Contains(propertyName))
+                {
+                    members.Add(new PrimaryConstructorParameterMemberInfo(param, propertyName));
+                }
+            }
+        }
+
+        return members;
+    }
+
+    /// <summary>
+    /// Determines if a constructor is likely a primary constructor.
+    /// </summary>
+    private static bool IsPrimaryConstructor(IMethodSymbol constructor, INamedTypeSymbol containingType)
+    {
+        // For records, the synthesized constructor with all properties is the primary constructor
+        if (IsRecord(containingType))
+        {
+            return constructor.Parameters.Length > 0;
+        }
+
+        // For regular classes, check if constructor parameters match properties
+        var properties = containingType.GetMembers().OfType<IPropertySymbol>()
+            .Where(p => p.CanBeReferencedByName)
+            .ToList();
+
+        if (constructor.Parameters.Length == 0)
+            return false;
+
+        // Check if constructor parameters correspond to properties
+        var matchingParams = 0;
+        foreach (var param in constructor.Parameters)
+        {
+            var propertyName = GetPropertyNameFromParameter(param.Name);
+            var correspondingProperty = properties.FirstOrDefault(p => 
+                string.Equals(p.Name, propertyName, System.StringComparison.OrdinalIgnoreCase));
+            
+            if (correspondingProperty != null && 
+                SymbolEqualityComparer.Default.Equals(param.Type, correspondingProperty.Type))
+            {
+                matchingParams++;
+            }
+        }
+
+        // Consider it a primary constructor if most parameters have corresponding properties
+        return matchingParams >= constructor.Parameters.Length * 0.7; // 70% threshold
+    }
+
+    /// <summary>
+    /// Converts a parameter name to the corresponding property name (PascalCase).
+    /// </summary>
+    private static string GetPropertyNameFromParameter(string parameterName)
+    {
+        if (string.IsNullOrEmpty(parameterName))
+            return parameterName;
+
+        // Convert camelCase to PascalCase
+        return char.ToUpper(parameterName[0]) + parameterName.Substring(1);
+    }
+}
+
+/// <summary>
+/// Represents information about a member (property or primary constructor parameter).
+/// </summary>
+internal abstract class IMemberInfo
+{
+    public abstract string Name { get; }
+    public abstract ITypeSymbol Type { get; }
+    public abstract bool CanWrite { get; }
+    public abstract bool IsFromPrimaryConstructor { get; }
+    public abstract string GetAccessExpression(string instanceName);
+}
+
+/// <summary>
+/// Member info for regular properties.
+/// </summary>
+internal class PropertyMemberInfo : IMemberInfo
+{
+    private readonly IPropertySymbol _property;
+
+    public PropertyMemberInfo(IPropertySymbol property)
+    {
+        _property = property;
+    }
+
+    public override string Name => _property.Name;
+    public override ITypeSymbol Type => _property.Type;
+    public override bool CanWrite => _property.SetMethod != null;
+    public override bool IsFromPrimaryConstructor => false;
+
+    public override string GetAccessExpression(string instanceName)
+    {
+        return $"{instanceName}.{Name}";
+    }
+
+    public IPropertySymbol Property => _property;
+}
+
+/// <summary>
+/// Member info for primary constructor parameters.
+/// </summary>
+internal class PrimaryConstructorParameterMemberInfo : IMemberInfo
+{
+    private readonly IParameterSymbol _parameter;
+    private readonly string _propertyName;
+
+    public PrimaryConstructorParameterMemberInfo(IParameterSymbol parameter, string propertyName)
+    {
+        _parameter = parameter;
+        _propertyName = propertyName;
+    }
+
+    public override string Name => _propertyName;
+    public override ITypeSymbol Type => _parameter.Type;
+    public override bool CanWrite => true; // Primary constructor parameters are typically writable
+    public override bool IsFromPrimaryConstructor => true;
+
+    public override string GetAccessExpression(string instanceName)
+    {
+        return $"{instanceName}.{Name}";
+    }
+
+    public IParameterSymbol Parameter => _parameter;
+}

@@ -209,9 +209,11 @@ internal static class Extensions
     {
         var unwrapType = UnwrapNullableType(type);
 
-        // Handle Guid specially first
-        if (string.Equals(type.Name, "Guid", StringComparison.Ordinal))
+        // Handle special types that might not have correct SpecialType
+        if (string.Equals(unwrapType.Name, "Guid", StringComparison.Ordinal))
             return "GetGuid";
+        if (string.Equals(unwrapType.Name, "DateTime", StringComparison.Ordinal))
+            return "GetDateTime";
 
         return unwrapType.SpecialType switch
         {

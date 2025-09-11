@@ -108,14 +108,14 @@ internal static class CodeGenerator
     {
         if (entityType == null) return;
 
-        var properties = entityType.GetMembers()
-            .OfType<IPropertySymbol>()
-            .Where(p => p.SetMethod != null && p.SetMethod.DeclaredAccessibility == Accessibility.Public && p.Name != "Id")
+        // Use enhanced member analysis that supports primary constructors and records
+        var members = PrimaryConstructorAnalyzer.GetAccessibleMembers(entityType)
+            .Where(m => m.Name != "Id") // Exclude Id property
             .ToArray();
 
-        foreach (var property in properties)
+        foreach (var member in members)
         {
-            GenerateParameterCode(sb, parameter.Name, property.Name, property.Name.ToLowerInvariant());
+            GenerateParameterCode(sb, parameter.Name, member.Name, member.Name.ToLowerInvariant());
         }
     }
 
@@ -270,30 +270,8 @@ internal static class CodeGenerator
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void GenerateEntityMapping(IndentedStringBuilder sb, INamedTypeSymbol entityType)
     {
-        sb.AppendLine($"var entity = new {entityType.ToDisplayString()}();");
-
-        var properties = entityType.GetMembers()
-            .OfType<IPropertySymbol>()
-            .Where(p => p.SetMethod != null && p.SetMethod.DeclaredAccessibility == Accessibility.Public)
-            .ToArray();
-
-        foreach (var property in properties)
-        {
-            var columnName = property.Name;
-            var typeName = property.Type.ToDisplayString();
-            if (property.Type.CanBeReferencedByName && property.Type.IsValueType)
-            {
-                sb.AppendLine($"entity.{property.Name} = reader.IsDBNull(\"{columnName}\") ? default({typeName}) : reader.GetFieldValue<{typeName}>(\"{columnName}\");");
-            }
-            else if (property.Type.Name == "Int32")
-            {
-                sb.AppendLine($"entity.{property.Name} = reader.IsDBNull(\"{columnName}\") ? 0 : Convert.ToInt32(reader[\"{columnName}\"]);");
-            }
-            else
-            {
-                sb.AppendLine($"entity.{property.Name} = reader.IsDBNull(\"{columnName}\") ? default({typeName})! : reader.GetFieldValue<{typeName}>(\"{columnName}\");");
-            }
-        }
+        // Use the enhanced entity mapping generator that supports primary constructors and records
+        EnhancedEntityMappingGenerator.GenerateEntityMapping(sb, entityType);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

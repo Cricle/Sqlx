@@ -807,10 +807,31 @@ internal class MethodGenerationContext : GenerationContextBase
                 sb.AppendLine($"{symbol.ToDisplayString()} {DataName} = default({symbol.ToDisplayString(NullableFlowState.None)});");
             }
         }
+        else if (symbol is INamedTypeSymbol namedType)
+        {
+            // Check if this is a record or has a primary constructor
+            if (Core.PrimaryConstructorAnalyzer.IsRecord(namedType) || Core.PrimaryConstructorAnalyzer.HasPrimaryConstructor(namedType))
+            {
+                // Use enhanced entity mapping for records and primary constructors
+                sb.AppendLine($"// Enhanced entity mapping for {(Core.PrimaryConstructorAnalyzer.IsRecord(namedType) ? "record" : "primary constructor")} type");
+                Core.EnhancedEntityMappingGenerator.GenerateEntityMapping(sb, namedType);
+                // Rename the generated entity variable to match expected DataName
+                if (DataName != "entity")
+                {
+                    sb.AppendLine($"var {DataName} = entity;");
+                }
+                return; // Early return since enhanced mapping handles everything
+            }
+            else
+            {
+                // Traditional class instantiation
+                sb.AppendLine($"{symbol.ToDisplayString()} {DataName} = {newExp}{symbol.ToDisplayString(NullableFlowState.None)}{expCall};");
+            }
+        }
         else
         {
-            // Declare class same as "xx data = new xx()".
-            sb.AppendLine($"{symbol.ToDisplayString()} {DataName} = {newExp} {symbol.ToDisplayString(NullableFlowState.None)}{expCall};");
+            // Fallback for non-named types
+            sb.AppendLine($"{symbol.ToDisplayString()} {DataName} = {newExp}{symbol.ToDisplayString(NullableFlowState.None)}{expCall};");
         }
 
         // Only set properties for non-abstract types that can be instantiated
@@ -957,7 +978,7 @@ internal class MethodGenerationContext : GenerationContextBase
         sb.AppendLine($"global::System.Data.Common.DbParameter {parName} = {CmdName}.CreateParameter();");
         sb.AppendLine($"{parName}.ParameterName = \"{name}\";");
         sb.AppendLine($"{parName}.DbType = {dbType};");
-        sb.AppendLine($"{parName}.Value = {visitPath}{par.Name} as object ?? global::System.DBNull.Value;");
+        sb.AppendLine($"{parName}.Value = (object?){visitPath}{par.Name} ?? global::System.DBNull.Value;");
         WriteParamterSpecial(sb, par, parName, columnDefine?.NamedArguments.ToDictionary(x => x.Key, x => x.Value.Value!) ?? new Dictionary<string, object>());
 
         return new ColumnDefine(parName, par);
@@ -1296,7 +1317,7 @@ internal class MethodGenerationContext : GenerationContextBase
             sb.AppendLine($"var {paramName} = {CmdName}.CreateParameter();");
             sb.AppendLine($"{paramName}.ParameterName = $\"{SqlDef.ParameterPrefix}{property.GetParameterName(string.Empty)}_{{paramIndex}}\";");
             sb.AppendLine($"{paramName}.DbType = {property.Type.GetDbType()};");
-            sb.AppendLine($"{paramName}.Value = item.{property.Name} as object ?? global::System.DBNull.Value;");
+            sb.AppendLine($"{paramName}.Value = (object?)item.{property.Name} ?? global::System.DBNull.Value;");
             sb.AppendLine($"{CmdName}.Parameters.Add({paramName});");
 
             // Add parameter to VALUES clause
@@ -1513,7 +1534,7 @@ internal class MethodGenerationContext : GenerationContextBase
             sb.AppendLine($"var {paramVar} = batchCommand.CreateParameter();");
             sb.AppendLine($"{paramVar}.ParameterName = \"{SqlDef.ParameterPrefix}{prop.GetParameterName(string.Empty)}\";");
             sb.AppendLine($"{paramVar}.DbType = {prop.Type.GetDbType()};");
-            sb.AppendLine($"{paramVar}.Value = item.{prop.Name} as object ?? global::System.DBNull.Value;");
+            sb.AppendLine($"{paramVar}.Value = (object?)item.{prop.Name} ?? global::System.DBNull.Value;");
             sb.AppendLine($"batchCommand.Parameters.Add({paramVar});");
         }
 
@@ -1637,7 +1658,7 @@ internal class MethodGenerationContext : GenerationContextBase
             sb.AppendLine($"var {paramVar} = {CmdName}.CreateParameter();");
             sb.AppendLine($"{paramVar}.ParameterName = \"{SqlDef.ParameterPrefix}{prop.GetParameterName(string.Empty)}\";");
             sb.AppendLine($"{paramVar}.DbType = {prop.Type.GetDbType()};");
-            sb.AppendLine($"{paramVar}.Value = item.{prop.Name} as object ?? global::System.DBNull.Value;");
+            sb.AppendLine($"{paramVar}.Value = (object?)item.{prop.Name} ?? global::System.DBNull.Value;");
             sb.AppendLine($"{CmdName}.Parameters.Add({paramVar});");
         }
 

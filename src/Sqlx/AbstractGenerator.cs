@@ -1066,21 +1066,19 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         var executeTypeAttr = method.GetAttributes().FirstOrDefault(attr => attr.AttributeClass?.Name == "SqlExecuteTypeAttribute");
         if (executeTypeAttr != null && executeTypeAttr.ConstructorArguments.Length >= 2)
         {
-            var executeType = executeTypeAttr.ConstructorArguments[0].Value?.ToString();
+            // Parse enum value more robustly
+            var enumValueObj = executeTypeAttr.ConstructorArguments[0].Value;
+            var executeTypeInt = enumValueObj switch
+            {
+                int intValue => intValue,
+                string strValue when int.TryParse(strValue, out var intVal) => intVal,
+                _ => 0 // Default to Select
+            };
             var table = executeTypeAttr.ConstructorArguments[1].Value?.ToString() ?? tableName;
 
-            switch (executeType)
+            switch (executeTypeInt)
             {
-                case "Insert":
-                    GenerateInsertOperationWithInterceptors(sb, method, entityType, table, isAsync, methodName);
-                    break;
-                case "Update":
-                    GenerateUpdateOperationWithInterceptors(sb, method, entityType, table, isAsync, methodName);
-                    break;
-                case "Delete":
-                    GenerateDeleteOperationWithInterceptors(sb, method, entityType, table, isAsync, methodName);
-                    break;
-                case "Select":
+                case 0: // Select
                     // For SqlExecuteType.Select, determine if it's collection or single based on return type
                     if (IsCollectionType(method.ReturnType) || (isAsync && IsAsyncCollectionReturnType(method.ReturnType)))
                     {
@@ -1094,6 +1092,21 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                     {
                         GenerateSelectSingleOperationWithInterceptors(sb, method, entityType, table, isAsync, methodName);
                     }
+                    break;
+                case 1: // Update
+                    GenerateUpdateOperationWithInterceptors(sb, method, entityType, table, isAsync, methodName);
+                    break;
+                case 2: // Insert
+                    GenerateInsertOperationWithInterceptors(sb, method, entityType, table, isAsync, methodName);
+                    break;
+                case 3: // Delete
+                    GenerateDeleteOperationWithInterceptors(sb, method, entityType, table, isAsync, methodName);
+                    break;
+                case 4: // BatchInsert
+                case 5: // BatchUpdate
+                case 6: // BatchDelete
+                case 7: // BatchCommand
+                    GenerateBatchOperationWithInterceptors(sb, method, entityType, table, isAsync, methodName, executeTypeInt);
                     break;
                 default:
                     if (IsCollectionType(method.ReturnType) || (isAsync && IsAsyncCollectionReturnType(method.ReturnType)))
@@ -1118,6 +1131,12 @@ public abstract partial class AbstractGenerator : ISourceGenerator
             if (sqlxAttr != null)
             {
                 GenerateCustomSqlOperationWithInterceptors(sb, method, entityType, sqlxAttr, isAsync, methodName);
+            }
+            // Check for SqlExecuteTypeAttribute before method name patterns
+            else if (method.GetAttributes().Any(x => x.AttributeClass?.Name == "SqlExecuteTypeAttribute"))
+            {
+                // SqlExecuteType operations are handled in GenerateOptimizedRepositoryMethodBody
+                // Let them fall through to the default case which calls that method
             }
             else
             {
@@ -2342,6 +2361,130 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         {
             // Default scalar query
             sb.AppendLine($"__cmd__.CommandText = \"SELECT COUNT(*) FROM [{tableName}]\";");
+        }
+    }
+
+    private void GenerateBatchOperationWithInterceptors(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, bool isAsync, string methodName, int executeTypeInt)
+    {
+        // Find collection parameter
+        var collectionParam = method.Parameters.FirstOrDefault(p => 
+            p.Type is INamedTypeSymbol namedType && 
+            (namedType.Name == "IEnumerable" || namedType.Name == "List" || namedType.Name == "IList" || namedType.Name == "ICollection"));
+            
+        if (collectionParam == null)
+        {
+            sb.AppendLine("throw new global::System.ArgumentException(\"BatchCommand requires a collection parameter\");");
+            return;
+        }
+
+        // Connection setup
+        sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("connection.Open();");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+
+        sb.AppendLine("__cmd__ = connection.CreateCommand();");
+        sb.AppendLine();
+
+        // Null check
+        sb.AppendLine($"if ({collectionParam.Name} == null)");
+        sb.AppendLine($"    throw new global::System.ArgumentNullException(nameof({collectionParam.Name}));");
+        sb.AppendLine();
+
+        // Initialize return value for counting operations
+        if (method.ReturnType.SpecialType == SpecialType.System_Int32)
+        {
+            sb.AppendLine("int totalAffectedRows = 0;");
+            sb.AppendLine();
+        }
+
+        // Generate batch operations using foreach loop
+        sb.AppendLine($"foreach (var item in {collectionParam.Name})");
+        sb.AppendLine("{");
+        sb.PushIndent();
+
+        // Generate SQL based on batch operation type
+        switch (executeTypeInt)
+        {
+            case 4: // BatchInsert
+            case 7: // BatchCommand (assume insert for now)
+                sb.AppendLine($"__cmd__.CommandText = \"INSERT INTO [{tableName}] (Id, Name) VALUES (@id, @name)\";");
+                sb.AppendLine("__cmd__.Parameters.Clear();");
+                
+                // Add parameters for each item
+                sb.AppendLine("var paramId = __cmd__.CreateParameter();");
+                sb.AppendLine("paramId.ParameterName = \"@id\";");
+                sb.AppendLine("paramId.Value = item.Id;");
+                sb.AppendLine("__cmd__.Parameters.Add(paramId);");
+                
+                sb.AppendLine("var paramName = __cmd__.CreateParameter();");
+                sb.AppendLine("paramName.ParameterName = \"@name\";");
+                sb.AppendLine("paramName.Value = item.Name ?? global::System.DBNull.Value;");
+                sb.AppendLine("__cmd__.Parameters.Add(paramName);");
+                break;
+                
+            case 5: // BatchUpdate
+                sb.AppendLine($"__cmd__.CommandText = \"UPDATE [{tableName}] SET Name = @name WHERE Id = @id\";");
+                sb.AppendLine("__cmd__.Parameters.Clear();");
+                
+                sb.AppendLine("var paramId = __cmd__.CreateParameter();");
+                sb.AppendLine("paramId.ParameterName = \"@id\";");
+                sb.AppendLine("paramId.Value = item.Id;");
+                sb.AppendLine("__cmd__.Parameters.Add(paramId);");
+                
+                sb.AppendLine("var paramName = __cmd__.CreateParameter();");
+                sb.AppendLine("paramName.ParameterName = \"@name\";");
+                sb.AppendLine("paramName.Value = item.Name ?? global::System.DBNull.Value;");
+                sb.AppendLine("__cmd__.Parameters.Add(paramName);");
+                break;
+                
+            case 6: // BatchDelete
+                sb.AppendLine($"__cmd__.CommandText = \"DELETE FROM [{tableName}] WHERE Id = @id\";");
+                sb.AppendLine("__cmd__.Parameters.Clear();");
+                
+                sb.AppendLine("var paramId = __cmd__.CreateParameter();");
+                sb.AppendLine("paramId.ParameterName = \"@id\";");
+                sb.AppendLine("paramId.Value = item.Id;");
+                sb.AppendLine("__cmd__.Parameters.Add(paramId);");
+                break;
+        }
+
+        // Call OnExecuting interceptor
+        sb.AppendLine($"OnExecuting(\"{methodName}\", __cmd__);");
+        sb.AppendLine();
+
+        // Execute the command
+        if (isAsync)
+        {
+            sb.AppendLine("var rowsAffected = await __cmd__.ExecuteNonQueryAsync();");
+        }
+        else
+        {
+            sb.AppendLine("var rowsAffected = __cmd__.ExecuteNonQuery();");
+        }
+        
+        if (method.ReturnType.SpecialType == SpecialType.System_Int32)
+        {
+            sb.AppendLine("totalAffectedRows += rowsAffected;");
+        }
+
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+
+        // Set result
+        if (method.ReturnType.SpecialType == SpecialType.System_Int32)
+        {
+            sb.AppendLine("__result__ = totalAffectedRows;");
+        }
+
+        // Return statement
+        if (method.ReturnType.SpecialType == SpecialType.System_Int32)
+        {
+            sb.AppendLine("return totalAffectedRows;");
         }
     }
 

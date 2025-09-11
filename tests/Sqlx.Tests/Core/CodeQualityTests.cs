@@ -103,21 +103,18 @@ public class CodeQualityTests
     }
 
     [TestMethod]
-    public void TypeAnalyzer_CachingMethods_AreThreadSafe()
+    public void TypeAnalyzer_SimplifiedDesign_NoCache()
     {
-        // Arrange
-        var methods = typeof(TypeAnalyzer).GetMethods(BindingFlags.Public | BindingFlags.Static)
-            .Where(m => m.Name.Contains("Cache") || m.GetCustomAttribute<System.Runtime.CompilerServices.MethodImplAttribute>() != null);
+        // Arrange & Act
+        var cacheMethods = typeof(TypeAnalyzer).GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .Where(m => m.Name.Contains("Cache"));
 
-        // Act & Assert
-        Assert.IsTrue(methods.Any(), "TypeAnalyzer should have caching methods");
+        // Assert - No cache methods in simplified design
+        Assert.IsFalse(cacheMethods.Any(), "TypeAnalyzer uses simplified design without caching");
         
-        // This test primarily documents that caching methods should be thread-safe
-        // The actual thread-safety is ensured by using ConcurrentDictionary
-        foreach (var method in methods)
-        {
-            Assert.IsNotNull(method, "Caching methods should exist and be accessible");
-        }
+        // Verify the main methods still exist
+        var isLikelyEntityMethod = typeof(TypeAnalyzer).GetMethod("IsLikelyEntityType", BindingFlags.Public | BindingFlags.Static);
+        Assert.IsNotNull(isLikelyEntityMethod, "IsLikelyEntityType method should exist");
     }
 
     [TestMethod]
@@ -212,7 +209,7 @@ public class CodeQualityTests
         var provider1 = DatabaseDialectFactory.GetDialectProvider(SqlDefineTypes.MySql);
         
         // Act
-        DatabaseDialectFactory.ClearCache();
+            // Cache clearing removed
         var provider2 = DatabaseDialectFactory.GetDialectProvider(SqlDefineTypes.MySql);
 
         // Assert

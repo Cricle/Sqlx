@@ -1,5 +1,4 @@
-﻿
-Microsoft Visual Studio Solution File, Format Version 12.00
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.2.32414.248
 MinimumVisualStudioVersion = 15.0.26124.0
@@ -68,12 +67,17 @@ Global
 		{64973327-8AE6-4F9E-867E-BA391274A852}.Release|x86.ActiveCfg = Release|Any CPU
 		{64973327-8AE6-4F9E-867E-BA391274A852}.Release|x86.Build.0 = Release|Any CPU
 		{C30917AC-9A9E-795E-CC33-69665239CD3E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C30917AC-9A9E-795E-CC33-69665239CD3E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C30917AC-9A9E-795E-CC33-69665239CD3E}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{C30917AC-9A9E-795E-CC33-69665239CD3E}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C30917AC-9A9E-795E-CC33-69665239CD3E}.Debug|x64.Build.0 = Debug|Any CPU
 		{C30917AC-9A9E-795E-CC33-69665239CD3E}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C30917AC-9A9E-795E-CC33-69665239CD3E}.Debug|x86.Build.0 = Debug|Any CPU
 		{C30917AC-9A9E-795E-CC33-69665239CD3E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C30917AC-9A9E-795E-CC33-69665239CD3E}.Release|Any CPU.Build.0 = Release|Any CPU
 		{C30917AC-9A9E-795E-CC33-69665239CD3E}.Release|x64.ActiveCfg = Release|Any CPU
+		{C30917AC-9A9E-795E-CC33-69665239CD3E}.Release|x64.Build.0 = Release|Any CPU
 		{C30917AC-9A9E-795E-CC33-69665239CD3E}.Release|x86.ActiveCfg = Release|Any CPU
+		{C30917AC-9A9E-795E-CC33-69665239CD3E}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

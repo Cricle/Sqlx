@@ -500,8 +500,40 @@ internal class MethodGenerationContext : GenerationContextBase
                 sb.AppendLine($"    \"Sequence contains no elements\");");
             }
 
-            sb.AppendLine($"return ({ReturnType.ToDisplayString()})global::System.Convert.ChangeType({ResultName}, ");
-            sb.AppendLine($"    typeof({ReturnType.UnwrapNullableType().ToDisplayString(NullableFlowState.NotNull)}));");
+            // Direct assignment and return without extra conversion for performance
+            if (ReturnType.SpecialType == SpecialType.System_Int32)
+            {
+                sb.AppendLine($"return global::System.Convert.ToInt32({ResultName});");
+            }
+            else if (ReturnType.SpecialType == SpecialType.System_Int64)
+            {
+                sb.AppendLine($"return global::System.Convert.ToInt64({ResultName});");
+            }
+            else if (ReturnType.SpecialType == SpecialType.System_Boolean)
+            {
+                sb.AppendLine($"return global::System.Convert.ToBoolean({ResultName});");
+            }
+            else if (ReturnType.SpecialType == SpecialType.System_Decimal)
+            {
+                sb.AppendLine($"return global::System.Convert.ToDecimal({ResultName});");
+            }
+            else if (ReturnType.SpecialType == SpecialType.System_Double)
+            {
+                sb.AppendLine($"return global::System.Convert.ToDouble({ResultName});");
+            }
+            else if (ReturnType.SpecialType == SpecialType.System_Single)
+            {
+                sb.AppendLine($"return global::System.Convert.ToSingle({ResultName});");
+            }
+            else if (ReturnType.SpecialType == SpecialType.System_String)
+            {
+                sb.AppendLine($"return {ResultName}?.ToString() ?? string.Empty;");
+            }
+            else
+            {
+                sb.AppendLine($"return ({ReturnType.ToDisplayString()})global::System.Convert.ChangeType({ResultName}, ");
+                sb.AppendLine($"    typeof({ReturnType.UnwrapNullableType().ToDisplayString(NullableFlowState.NotNull)}));");
+            }
         }
     }
 

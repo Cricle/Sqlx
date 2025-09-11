@@ -1171,7 +1171,11 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         // Setup execution context with interceptors
         sb.AppendLine("var __startTime__ = System.Diagnostics.Stopwatch.GetTimestamp();");
         sb.AppendLine("System.Data.Common.DbCommand? __cmd__ = null;");
-        sb.AppendLine("object? __result__ = null;");
+        
+        // Declare __result__ with correct type to avoid boxing
+        var resultType = GetResultVariableType(method);
+        sb.AppendLine($"{resultType} __result__ = default;");
+        
         sb.AppendLine("System.Exception? __exception__ = null;");
         sb.AppendLine();
 
@@ -2291,8 +2295,54 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                     sb.AppendLine("var scalarResult = __cmd__.ExecuteScalar();");
                 }
 
-                sb.AppendLine("__result__ = scalarResult;");
-                sb.AppendLine("return scalarResult;");
+                // Convert scalar result to proper return type
+                var unwrappedReturnType = returnType;
+                if (isAsync && returnType is INamedTypeSymbol asyncReturnType && asyncReturnType.Name == "Task" && asyncReturnType.TypeArguments.Length == 1)
+                {
+                    unwrappedReturnType = asyncReturnType.TypeArguments[0];
+                }
+                
+                // Direct conversion without intermediate variables for better performance
+                if (unwrappedReturnType.SpecialType == SpecialType.System_Int32)
+                {
+                    sb.AppendLine("__result__ = scalarResult == null ? 0 : global::System.Convert.ToInt32(scalarResult);");
+                    sb.AppendLine("return __result__;");
+                }
+                else if (unwrappedReturnType.SpecialType == SpecialType.System_Int64)
+                {
+                    sb.AppendLine("__result__ = scalarResult == null ? 0L : global::System.Convert.ToInt64(scalarResult);");
+                    sb.AppendLine("return __result__;");
+                }
+                else if (unwrappedReturnType.SpecialType == SpecialType.System_Boolean)
+                {
+                    sb.AppendLine("__result__ = scalarResult == null ? false : global::System.Convert.ToBoolean(scalarResult);");
+                    sb.AppendLine("return __result__;");
+                }
+                else if (unwrappedReturnType.SpecialType == SpecialType.System_Decimal)
+                {
+                    sb.AppendLine("__result__ = scalarResult == null ? 0m : global::System.Convert.ToDecimal(scalarResult);");
+                    sb.AppendLine("return __result__;");
+                }
+                else if (unwrappedReturnType.SpecialType == SpecialType.System_Double)
+                {
+                    sb.AppendLine("__result__ = scalarResult == null ? 0.0 : global::System.Convert.ToDouble(scalarResult);");
+                    sb.AppendLine("return __result__;");
+                }
+                else if (unwrappedReturnType.SpecialType == SpecialType.System_Single)
+                {
+                    sb.AppendLine("__result__ = scalarResult == null ? 0f : global::System.Convert.ToSingle(scalarResult);");
+                    sb.AppendLine("return __result__;");
+                }
+                else if (unwrappedReturnType.SpecialType == SpecialType.System_String)
+                {
+                    sb.AppendLine("__result__ = scalarResult?.ToString() ?? string.Empty;");
+                    sb.AppendLine("return __result__;");
+                }
+                else
+                {
+                    sb.AppendLine("__result__ = scalarResult;");
+                    sb.AppendLine("return __result__;");
+                }
             }
             else
             {
@@ -2868,6 +2918,45 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         }
     }
 
+
+    /// <summary>
+    /// Gets the proper type declaration for the __result__ variable to avoid boxing.
+    /// </summary>
+    private string GetResultVariableType(IMethodSymbol method)
+    {
+        var returnType = method.ReturnType;
+        
+        // Handle async methods - unwrap Task<T> to T
+        if (returnType is INamedTypeSymbol namedReturnType && 
+            namedReturnType.Name == "Task" && 
+            namedReturnType.TypeArguments.Length == 1)
+        {
+            returnType = namedReturnType.TypeArguments[0];
+        }
+        
+        // For nullable reference types, use the full type with nullability
+        if (returnType.CanBeReferencedByName)
+        {
+            var typeName = returnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            
+            // Handle nullable types properly
+            if (returnType.NullableAnnotation == NullableAnnotation.Annotated)
+            {
+                return typeName; // Already includes '?'
+            }
+            else if (!returnType.IsValueType && returnType.SpecialType != SpecialType.System_String)
+            {
+                return $"{typeName}?"; // Add nullable annotation for reference types
+            }
+            else
+            {
+                return typeName;
+            }
+        }
+        
+        // Fallback to object for unknown types
+        return "object?";
+    }
 
     /// <summary>
     /// Resolves generic service interface with actual type arguments from repository class.

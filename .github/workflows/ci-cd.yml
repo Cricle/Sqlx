@@ -45,6 +45,9 @@ jobs:
     - name: 🧪 Run tests
       run: dotnet test --configuration Release --no-build --collect:"XPlat Code Coverage" --logger "console;verbosity=minimal"
       
+    - name: 🚀 Run comprehensive example
+      run: dotnet run --project samples/ComprehensiveExample --configuration Release --no-build
+      
     - name: 📊 Upload coverage
       uses: codecov/codecov-action@v4
       if: always()
@@ -104,14 +107,22 @@ jobs:
         body: |
           ## 🚀 Sqlx ${{ steps.get_version.outputs.VERSION }}
           
+          ✨ **性能优化版本** - 解决装箱问题，显著提升性能
+          
           ### 📦 Installation
           ```bash
           dotnet add package Sqlx --version ${{ steps.get_version.outputs.VERSION }}
           ```
           
+          ### 🚀 Key Improvements
+          - ⚡ 解决了值类型装箱问题，大幅提升性能
+          - 🗑️ 减少垃圾回收压力
+          - 📦 简化项目结构和示例
+          - 🔧 改进批量操作实现 (CreateBatchCommand)
+          
           ### 🔗 Links
           - 📦 [NuGet Package](https://www.nuget.org/packages/Sqlx/${{ steps.get_version.outputs.VERSION }})
           - 📚 [Documentation](https://github.com/${{ github.repository }}/blob/main/README.md)
-          - 🆕 [New Features Quick Start](https://github.com/${{ github.repository }}/blob/main/docs/NEW_FEATURES_QUICK_START.md)
+          - 🎯 [Comprehensive Example](https://github.com/${{ github.repository }}/tree/main/samples/ComprehensiveExample)
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

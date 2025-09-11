@@ -15,6 +15,11 @@
         <member name="M:Sqlx.AbstractGenerator.Execute(Microsoft.CodeAnalysis.GeneratorExecutionContext)">
             <inheritdoc/>
         </member>
+        <member name="M:Sqlx.AbstractGenerator.GetResultVariableType(Microsoft.CodeAnalysis.IMethodSymbol)">
+            <summary>
+            Gets the proper type declaration for the __result__ variable to avoid boxing.
+            </summary>
+        </member>
         <member name="M:Sqlx.AbstractGenerator.ResolveGenericServiceInterface(Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol)">
             <summary>
             Resolves generic service interface with actual type arguments from repository class.
@@ -132,11 +137,6 @@
             </summary>
             <param name="dialectType">The dialect type.</param>
             <returns>The created dialect provider.</returns>
-        </member>
-        <member name="M:Sqlx.Core.DatabaseDialectFactory.ClearCache">
-            <summary>
-            Clears all cached dialect providers (no-op for compatibility).
-            </summary>
         </member>
         <member name="T:Sqlx.Core.DatabaseDialectProviderExtensions">
             <summary>
@@ -808,16 +808,6 @@
             Checks if a namespace is a system namespace (cached).
             </summary>
         </member>
-        <member name="M:Sqlx.Core.TypeAnalyzer.ClearCaches">
-            <summary>
-            Clears all caches (useful for testing and memory management).
-            </summary>
-        </member>
-        <member name="M:Sqlx.Core.TypeAnalyzer.GetCacheStatistics">
-            <summary>
-            Gets cache statistics for monitoring and debugging.
-            </summary>
-        </member>
         <member name="T:Sqlx.CSharpGenerator">
             <summary>
             Stored procedures generator for C#.
@@ -956,34 +946,6 @@
             <param name="parameterName">Name of the parameter to map.</param>
             <returns>Corresponding snake_case database column name.</returns>
         </member>
-        <member name="T:Sqlx.SetAttribute">
-            <summary>
-            标记属性用于 SET 子句
-            用于批量更新操作中指定要更新的字段
-            </summary>
-        </member>
-        <member name="M:Sqlx.SetAttribute.#ctor">
-            <summary>
-            初始化 SetAttribute 实例
-            </summary>
-        </member>
-        <member name="M:Sqlx.SetAttribute.#ctor(System.Boolean)">
-            <summary>
-            初始化 SetAttribute 实例并指定是否忽略空值
-            </summary>
-            <param name="ignoreIfNull">当值为空时是否忽略此字段</param>
-        </member>
-        <member name="P:Sqlx.SetAttribute.IgnoreIfNull">
-            <summary>
-            当值为空时是否忽略此字段
-            </summary>
-        </member>
-        <member name="P:Sqlx.SetAttribute.CustomExpression">
-            <summary>
-            自定义 SET 表达式，如 "Price = Price * 1.1"
-            如果指定了此属性，将使用自定义表达式而不是简单的赋值
-            </summary>
-        </member>
         <member name="T:Sqlx.SqlGen.SqlDefineTypes">
             <summary>
             Defines database dialect types for SQL generation.
@@ -1006,33 +968,6 @@
         </member>
         <member name="F:Sqlx.SqlGen.SqlDefineTypes.SQLite">
             <summary>SQLite dialect with square bracket column wrapping.</summary>
-        </member>
-        <member name="T:Sqlx.WhereAttribute">
-            <summary>
-            标记属性用于 WHERE 条件
-            用于批量更新和删除操作中指定查询条件字段
-            </summary>
-        </member>
-        <member name="M:Sqlx.WhereAttribute.#ctor">
-            <summary>
-            初始化 WhereAttribute 实例
-            </summary>
-        </member>
-        <member name="M:Sqlx.WhereAttribute.#ctor(System.String)">
-            <summary>
-            初始化 WhereAttribute 实例并指定操作符
-            </summary>
-            <param name="operator">WHERE 条件操作符，默认为 "="</param>
-        </member>
-        <member name="P:Sqlx.WhereAttribute.Operator">
-            <summary>
-            WHERE 条件操作符，默认为 "="
-            </summary>
-        </member>
-        <member name="P:Sqlx.WhereAttribute.IgnoreIfNull">
-            <summary>
-            是否在条件为空时忽略此字段
-            </summary>
         </member>
     </members>
 </doc>

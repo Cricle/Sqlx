@@ -83,12 +83,5 @@ internal static class DatabaseDialectFactory
         };
     }
 
-    /// <summary>
-    /// Clears all cached dialect providers (no-op for compatibility).
-    /// </summary>
-    public static void ClearCache()
-    {
-        // No-op: this factory doesn't cache
-    }
 }
 

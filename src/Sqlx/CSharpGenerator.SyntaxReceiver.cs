@@ -21,7 +21,7 @@ public partial class CSharpGenerator
 
         public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
         {
-            // Legacy method - not used in modern Roslyn
+            // Legacy interface requirement - not used
         }
 
         public void OnVisitSyntaxNode(GeneratorSyntaxContext context)

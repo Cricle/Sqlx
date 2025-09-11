@@ -172,20 +172,4 @@ internal static class TypeAnalyzer
                namespaceName.StartsWith("Microsoft", StringComparison.Ordinal);
     }
 
-    /// <summary>
-    /// Clears all caches (useful for testing and memory management).
-    /// </summary>
-    public static void ClearCaches()
-    {
-        // No-op: caches removed in simplified design
-    }
-
-    /// <summary>
-    /// Gets cache statistics for monitoring and debugging.
-    /// </summary>
-    public static (int EntityTypes, int Collections, int Async, int Scalar, int DefaultValues) GetCacheStatistics()
-    {
-        // No-op statistics in simplified design
-        return (0, 0, 0, 0, 0);
-    }
 }

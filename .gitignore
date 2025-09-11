@@ -1,8 +1,36 @@
+# IDE
 .idea/
 .vs/
+.vscode/
+
+# Build outputs
 bin/
 obj/
 *.user
+
+# Test results
 BenchmarkDotNet.Artifacts/
+TestResults/
 /tests/Sqlx.Tests/TestResults
+
+# Databases
 *.db
+*.sqlite
+
+# Build artifacts
+artifacts/packages/
+artifacts/logs/
+
+# NuGet packages
+*.nupkg
+*.snupkg
+packages/
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# OS files
+.DS_Store
+Thumbs.db

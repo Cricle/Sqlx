@@ -28,9 +28,7 @@ public abstract class TestBase
     [TestInitialize]
     public virtual void Setup()
     {
-        // Clear caches before each test to ensure clean state
-        TypeAnalyzer.ClearCaches();
-        DatabaseDialectFactory.ClearCache();
+        // Cache clearing removed - no longer needed
     }
 
     /// <summary>
@@ -39,12 +37,7 @@ public abstract class TestBase
     [TestCleanup]
     public virtual void Cleanup()
     {
-        // Optionally clear caches after tests to free memory
-        if (TestContext.TestName?.Contains("Performance") != true)
-        {
-            TypeAnalyzer.ClearCaches();
-            DatabaseDialectFactory.ClearCache();
-        }
+        // Cleanup logic removed - cache clearing no longer needed
     }
 
     /// <summary>

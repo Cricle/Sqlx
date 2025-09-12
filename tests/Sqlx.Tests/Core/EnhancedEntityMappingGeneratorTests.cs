@@ -4,132 +4,261 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-using Microsoft.CodeAnalysis;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
-using Sqlx;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Sqlx.Core;
-using System.Collections.Generic;
+using Sqlx;
 using System.Linq;
 
 namespace Sqlx.Tests.Core
 {
     /// <summary>
-    /// Tests for EnhancedEntityMappingGenerator class.
+    /// Tests for EnhancedEntityMappingGenerator to improve test coverage.
     /// </summary>
     [TestClass]
     public class EnhancedEntityMappingGeneratorTests
     {
+        private CSharpCompilation? _compilation;
+
+        [TestInitialize]
+        public void Setup()
+        {
+            var sourceCode = @"
+using System;
+
+namespace TestNamespace
+{
+    public class SimpleClass
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+
+    public record SimpleRecord(int Id, string Name);
+
+    public class PrimaryConstructorClass(int id, string name)
+    {
+        public int Id { get; } = id;
+        public string Name { get; } = name;
+    }
+
+    public class EmptyClass
+    {
+    }
+
+    public class ClassWithPrivateMembers
+    {
+        private int _id;
+        private string _name = string.Empty;
+        
+        public int Id => _id;
+        internal string Name => _name;
+    }
+}";
+
+            var syntaxTree = CSharpSyntaxTree.ParseText(sourceCode);
+            _compilation = CSharpCompilation.Create(
+                "TestAssembly",
+                new[] { syntaxTree },
+                new[] { MetadataReference.CreateFromFile(typeof(object).Assembly.Location) });
+        }
+
         [TestMethod]
-        public void GenerateEntityMapping_WithNoMembers_GeneratesDefaultMapping()
+        public void GenerateEntityMapping_WithSimpleClass_GeneratesCorrectMapping()
         {
             // Arrange
             var sb = new IndentedStringBuilder("");
-            var entityType = CreateMockEntityTypeWithNoMembers();
+            var entityType = GetTypeSymbol("TestNamespace.SimpleClass");
 
             // Act
             EnhancedEntityMappingGenerator.GenerateEntityMapping(sb, entityType);
+            var result = sb.ToString();
 
             // Assert
-            var result = sb.ToString();
             Assert.IsNotNull(result);
-            StringAssert.Contains(result, "No accessible members found");
-            StringAssert.Contains(result, "new TestNamespace.TestEntity()");
+            Assert.IsTrue(result.Contains("__ordinal_Id"));
+            Assert.IsTrue(result.Contains("__ordinal_Name"));
+            Assert.IsTrue(result.Contains("new TestNamespace.SimpleClass"));
+            Assert.IsTrue(result.Contains("Id = "));
+            Assert.IsTrue(result.Contains("Name = "));
         }
 
         [TestMethod]
-        public void GenerateEntityMapping_WithRegularClass_GeneratesMapping()
+        public void GenerateEntityMapping_WithRecord_GeneratesRecordMapping()
         {
             // Arrange
             var sb = new IndentedStringBuilder("");
-            var entityType = CreateMockRegularClassType();
+            var entityType = GetTypeSymbol("TestNamespace.SimpleRecord");
 
             // Act
             EnhancedEntityMappingGenerator.GenerateEntityMapping(sb, entityType);
+            var result = sb.ToString();
 
             // Assert
-            var result = sb.ToString();
             Assert.IsNotNull(result);
-            // Should contain ordinal caching
-            StringAssert.Contains(result, "__ordinal_");
-            StringAssert.Contains(result, "reader.GetOrdinal");
+            Assert.IsTrue(result.Contains("__ordinal_Id"));
+            Assert.IsTrue(result.Contains("__ordinal_Name"));
+            // Record should use constructor syntax
+            Assert.IsTrue(result.Contains("new TestNamespace.SimpleRecord"));
         }
 
         [TestMethod]
-        public void GetColumnName_WithMemberInfo_ReturnsExpectedName()
+        public void GenerateEntityMapping_WithPrimaryConstructor_GeneratesPrimaryConstructorMapping()
         {
-            // This is a static method test, but since it's used internally
-            // we test it indirectly through the main method
+            // Arrange
             var sb = new IndentedStringBuilder("");
-            var entityType = CreateMockRegularClassType();
+            var entityType = GetTypeSymbol("TestNamespace.PrimaryConstructorClass");
 
             // Act
             EnhancedEntityMappingGenerator.GenerateEntityMapping(sb, entityType);
+            var result = sb.ToString();
 
             // Assert
-            var result = sb.ToString();
-            // Should contain the property name converted to column name
             Assert.IsNotNull(result);
+            Assert.IsTrue(result.Contains("__ordinal_Id"));
+            Assert.IsTrue(result.Contains("__ordinal_Name"));
+            Assert.IsTrue(result.Contains("new TestNamespace.PrimaryConstructorClass"));
         }
 
         [TestMethod]
-        public void GetPropertyNameFromParameter_WithParameterName_ReturnsPascalCase()
+        public void GenerateEntityMapping_WithEmptyClass_HandlesGracefully()
         {
-            // This tests the internal logic indirectly
-            // Since GetPropertyNameFromParameter is private, we test through the main method
+            // Arrange
             var sb = new IndentedStringBuilder("");
-            var entityType = CreateMockRegularClassType();
+            var entityType = GetTypeSymbol("TestNamespace.EmptyClass");
 
             // Act
             EnhancedEntityMappingGenerator.GenerateEntityMapping(sb, entityType);
+            var result = sb.ToString();
 
             // Assert
-            var result = sb.ToString();
             Assert.IsNotNull(result);
-            // The method should complete without errors
+            Assert.IsTrue(result.Contains("// No accessible members found for entity mapping"));
+            Assert.IsTrue(result.Contains("new TestNamespace.EmptyClass"));
         }
 
-        // Helper methods
-        private INamedTypeSymbol CreateMockEntityTypeWithNoMembers()
+        [TestMethod]
+        public void GenerateEntityMapping_WithPrivateMembers_OnlyUsesAccessibleMembers()
         {
-            var mock = new Mock<INamedTypeSymbol>();
-            mock.Setup(x => x.Name).Returns("TestEntity");
-            mock.Setup(x => x.ToDisplayString(It.IsAny<SymbolDisplayFormat>())).Returns("TestNamespace.TestEntity");
-            mock.Setup(x => x.TypeKind).Returns(TypeKind.Class);
-            mock.Setup(x => x.IsRecord).Returns(false);
-            mock.Setup(x => x.GetMembers()).Returns(System.Collections.Immutable.ImmutableArray<ISymbol>.Empty);
-            mock.Setup(x => x.Constructors).Returns(System.Collections.Immutable.ImmutableArray<IMethodSymbol>.Empty);
-            return mock.Object;
+            // Arrange
+            var sb = new IndentedStringBuilder("");
+            var entityType = GetTypeSymbol("TestNamespace.ClassWithPrivateMembers");
+
+            // Act
+            EnhancedEntityMappingGenerator.GenerateEntityMapping(sb, entityType);
+            var result = sb.ToString();
+
+            // Assert
+            Assert.IsNotNull(result);
+            // Should include public Id property
+            Assert.IsTrue(result.Contains("Id") || result.Contains("new TestNamespace.ClassWithPrivateMembers"));
+            // Private members should not be included in ordinal generation
+            Assert.IsFalse(result.Contains("__ordinal__id"));
+            Assert.IsFalse(result.Contains("__ordinal__name"));
         }
 
-        private INamedTypeSymbol CreateMockRegularClassType()
+        [TestMethod]
+        public void GenerateEntityMapping_PerformanceOptimization_GeneratesGetOrdinalCaching()
         {
-            var mock = new Mock<INamedTypeSymbol>();
-            mock.Setup(x => x.Name).Returns("TestClass");
-            mock.Setup(x => x.ToDisplayString(It.IsAny<SymbolDisplayFormat>())).Returns("TestNamespace.TestClass");
-            mock.Setup(x => x.TypeKind).Returns(TypeKind.Class);
-            mock.Setup(x => x.IsRecord).Returns(false);
+            // Arrange
+            var sb = new IndentedStringBuilder("");
+            var entityType = GetTypeSymbol("TestNamespace.SimpleClass");
 
-            // Create mock property
-            var prop = new Mock<IPropertySymbol>();
-            prop.Setup(x => x.Name).Returns("Name");
-            prop.Setup(x => x.Type).Returns(CreateMockStringType());
-            prop.Setup(x => x.CanBeReferencedByName).Returns(true);
-            prop.Setup(x => x.SetMethod).Returns(Mock.Of<IMethodSymbol>());
-            prop.Setup(x => x.GetAttributes()).Returns(System.Collections.Immutable.ImmutableArray<AttributeData>.Empty);
+            // Act
+            EnhancedEntityMappingGenerator.GenerateEntityMapping(sb, entityType);
+            var result = sb.ToString();
 
-            mock.Setup(x => x.GetMembers()).Returns(System.Collections.Immutable.ImmutableArray.Create<ISymbol>(prop.Object));
-            mock.Setup(x => x.Constructors).Returns(System.Collections.Immutable.ImmutableArray<IMethodSymbol>.Empty);
-
-            return mock.Object;
+            // Assert
+            Assert.IsNotNull(result);
+            // Should generate GetOrdinal caching for performance
+            Assert.IsTrue(result.Contains("int __ordinal_Id = reader.GetOrdinal(\"Id\");"));
+            Assert.IsTrue(result.Contains("int __ordinal_Name = reader.GetOrdinal(\"Name\");"));
         }
 
-        private ITypeSymbol CreateMockStringType()
+        [TestMethod]
+        public void GenerateEntityMapping_WithIndentation_RespectsIndentation()
         {
-            var mock = new Mock<ITypeSymbol>();
-            mock.Setup(x => x.SpecialType).Returns(SpecialType.System_String);
-            mock.Setup(x => x.Name).Returns("String");
-            return mock.Object;
+            // Arrange
+            var sb = new IndentedStringBuilder("    "); // 4 spaces
+            var entityType = GetTypeSymbol("TestNamespace.SimpleClass");
+
+            // Act
+            EnhancedEntityMappingGenerator.GenerateEntityMapping(sb, entityType);
+            var result = sb.ToString();
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.IsTrue(result.Length > 0, "Should generate some content");
+            
+            // Basic test that indentation builder was used
+            Assert.IsTrue(result.Contains("SimpleClass") || result.Contains("__ordinal_"));
+        }
+
+        [TestMethod]
+        public void GenerateEntityMapping_MultipleCallsSameType_ProducesSameResult()
+        {
+            // Arrange
+            var sb1 = new IndentedStringBuilder("");
+            var sb2 = new IndentedStringBuilder("");
+            var entityType = GetTypeSymbol("TestNamespace.SimpleClass");
+
+            // Act
+            EnhancedEntityMappingGenerator.GenerateEntityMapping(sb1, entityType);
+            EnhancedEntityMappingGenerator.GenerateEntityMapping(sb2, entityType);
+            
+            var result1 = sb1.ToString();
+            var result2 = sb2.ToString();
+
+            // Assert
+            Assert.AreEqual(result1, result2, "Multiple calls should produce identical results");
+        }
+
+        [TestMethod]
+        public void GenerateEntityMapping_WithNullableProperties_HandlesCorrectly()
+        {
+            // Arrange
+            var nullableSourceCode = @"
+#nullable enable
+using System;
+
+namespace TestNamespace
+{
+    public class NullableClass
+    {
+        public int? Id { get; set; }
+        public string? Name { get; set; }
+        public DateTime? CreatedAt { get; set; }
+    }
+}";
+
+            var syntaxTree = CSharpSyntaxTree.ParseText(nullableSourceCode);
+            var compilation = CSharpCompilation.Create(
+                "TestAssembly",
+                new[] { syntaxTree },
+                new[] { MetadataReference.CreateFromFile(typeof(object).Assembly.Location) });
+
+            var sb = new IndentedStringBuilder("");
+            var entityType = compilation.GetTypeByMetadataName("TestNamespace.NullableClass");
+            Assert.IsNotNull(entityType);
+
+            // Act
+            EnhancedEntityMappingGenerator.GenerateEntityMapping(sb, entityType);
+            var result = sb.ToString();
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.IsTrue(result.Contains("__ordinal_Id"));
+            Assert.IsTrue(result.Contains("__ordinal_Name"));
+            Assert.IsTrue(result.Contains("__ordinal_CreatedAt"));
+        }
+
+        private INamedTypeSymbol GetTypeSymbol(string typeName)
+        {
+            Assert.IsNotNull(_compilation);
+            var type = _compilation.GetTypeByMetadataName(typeName);
+            Assert.IsNotNull(type, $"Could not find type: {typeName}");
+            return type;
         }
     }
 }

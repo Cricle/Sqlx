@@ -4,15 +4,13 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
+using ComprehensiveExample.Data;
+using ComprehensiveExample.Models;
+using ComprehensiveExample.Services;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Data.Sqlite;
-using ComprehensiveExample.Services;
-using ComprehensiveExample.Data;
-using ComprehensiveExample.Models;
 
 namespace ComprehensiveExample;
 

@@ -4,19 +4,14 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-using System;
-using System.Collections.Generic;
-using System.Data.Common;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.Data.Sqlite;
-using Sqlx;
-using Sqlx.Annotations;
-using ComprehensiveExample.Models;
-using ComprehensiveExample.Services;
 using ComprehensiveExample.Data;
 using ComprehensiveExample.Demonstrations;
 using ComprehensiveExample.Interactive;
+using ComprehensiveExample.Models;
+using ComprehensiveExample.Services;
+using System;
+using System.Data.Common;
+using System.Threading.Tasks;
 
 namespace ComprehensiveExample;
 

@@ -206,6 +206,10 @@ internal class MethodGenerationContext : GenerationContextBase
 
         sb.AppendLine($"global::System.Data.Common.DbConnection {DbConnectionName} = {dbConnectionExpression} ?? ");
         sb.AppendLine($"    throw new global::System.ArgumentNullException(\"{dbConnectionExpression}\");");
+        
+        // Generate parameter null checks first (fail fast)
+        GenerateParameterNullChecks(sb);
+        
         sb.AppendLine($"if({DbConnectionName}.State != global::System.Data.ConnectionState.Open)");
         sb.AppendLine("{");
         sb.PushIndent();
@@ -948,18 +952,22 @@ internal class MethodGenerationContext : GenerationContextBase
                 var define = (int)methodDef.ConstructorArguments[0].Value!;
                 return define switch
                 {
+                    0 => SqlDefine.MySql,
                     1 => SqlDefine.SqlServer,
                     2 => SqlDefine.PgSql,
-                    _ => SqlDefine.MySql,
+                    3 => SqlDefine.Oracle,
+                    4 => SqlDefine.DB2,
+                    5 => SqlDefine.SQLite,
+                    _ => SqlDefine.SqlServer, // Default fallback
                 };
             }
 
             return new SqlDefine(
-                methodDef.ConstructorArguments[0].ToString()!,
-                methodDef.ConstructorArguments[1].ToString()!,
-                methodDef.ConstructorArguments[2].ToString()!,
-                methodDef.ConstructorArguments[3].ToString()!,
-                methodDef.ConstructorArguments[4].ToString()!);
+                methodDef.ConstructorArguments[0].Value?.ToString() ?? "[",
+                methodDef.ConstructorArguments[1].Value?.ToString() ?? "]",
+                methodDef.ConstructorArguments[2].Value?.ToString() ?? "'",
+                methodDef.ConstructorArguments[3].Value?.ToString() ?? "'",
+                methodDef.ConstructorArguments[4].Value?.ToString() ?? "@");
         }
 
         // Try to infer database dialect from the connection type
@@ -1212,9 +1220,9 @@ internal class MethodGenerationContext : GenerationContextBase
                 Constants.SqlExecuteTypeValues.Insert => HandleInsertOperation(tableName),
                 Constants.SqlExecuteTypeValues.Update => HandleUpdateOperation(tableName),
                 Constants.SqlExecuteTypeValues.Delete => HandleDeleteOperation(tableName),
-                Constants.SqlExecuteTypeValues.BatchInsert => $"INSERT INTO {tableName} (/* columns */) VALUES (/* batch values */)",
-                Constants.SqlExecuteTypeValues.BatchUpdate => $"UPDATE {tableName} SET /* columns = values */ WHERE /* condition */",
-                Constants.SqlExecuteTypeValues.BatchDelete => $"DELETE FROM {tableName} WHERE /* condition */",
+                Constants.SqlExecuteTypeValues.BatchInsert => HandleBatchOperation("INSERT", tableName),
+                Constants.SqlExecuteTypeValues.BatchUpdate => HandleBatchOperation("UPDATE", tableName),
+                Constants.SqlExecuteTypeValues.BatchDelete => HandleBatchOperation("DELETE", tableName),
                 Constants.SqlExecuteTypeValues.BatchCommand => "/* ADO.NET BatchCommand will be used */",
                 _ => string.Empty
             };
@@ -1260,9 +1268,32 @@ internal class MethodGenerationContext : GenerationContextBase
         return defaultTableName;
     }
 
+    private string? HandleBatchOperation(string operation, string tableName)
+    {
+        // Batch operations can work without a predefined table name
+        // The table name can be determined at runtime from the entity type or custom SQL
+        if (string.IsNullOrEmpty(tableName))
+        {
+            return $"/* {operation} operation - table name will be determined at runtime */";
+        }
+        
+        return operation switch
+        {
+            "INSERT" => $"INSERT INTO {tableName} (/* columns */) VALUES (/* batch values */)",
+            "UPDATE" => $"UPDATE {tableName} SET /* columns = values */ WHERE /* condition */",
+            "DELETE" => $"DELETE FROM {tableName} WHERE /* condition */",
+            _ => $"/* {operation} operation on {tableName} */"
+        };
+    }
+
     private string? HandleSelectOperation(string tableName)
     {
         // SELECT operation - always return base SQL, dynamic parts handled in code generation
+        if (string.IsNullOrEmpty(tableName))
+        {
+            // If no table name specified, assume it will be provided dynamically or via custom SQL
+            return "\"SELECT * FROM /* table name will be determined at runtime */\"";
+        }
         return $"\"SELECT * FROM {SqlDef.WrapColumn(tableName)}\"";
     }
 
@@ -1272,6 +1303,16 @@ internal class MethodGenerationContext : GenerationContextBase
         // 1. ExpressionToSql + Entity parameter (single insert)
         // 2. ExpressionToSql + IEnumerable<Entity> (batch insert)
         // 3. Just Entity parameter (simple insert)
+
+        // Handle case where table name is not provided
+        if (string.IsNullOrEmpty(tableName))
+        {
+            if (ExpressionToSqlParameter != null)
+            {
+                return "/* INSERT statement will be generated from expression */";
+            }
+            tableName = "/* table name will be inferred from entity type */";
+        }
 
         var entityParameter = MethodSymbol.Parameters.FirstOrDefault(p =>
             !p.GetAttributes().Any(a => a.AttributeClass?.Name == "ExpressionToSqlAttribute") &&
@@ -1308,6 +1349,16 @@ internal class MethodGenerationContext : GenerationContextBase
         // 2. Entity parameter or explicit SET values
         // Simple approach: Use ExpressionToSql for both SET and WHERE
 
+        // Handle case where table name is not provided
+        if (string.IsNullOrEmpty(tableName))
+        {
+            if (ExpressionToSqlParameter != null)
+            {
+                return "/* UPDATE statement will be generated from expression */";
+            }
+            tableName = "/* table name will be inferred from entity type */";
+        }
+
         if (ExpressionToSqlParameter != null)
         {
             // Let ExpressionToSql handle the entire UPDATE statement
@@ -1332,6 +1383,16 @@ internal class MethodGenerationContext : GenerationContextBase
     private string? HandleDeleteOperation(string tableName)
     {
         // DELETE operation needs a WHERE clause for safety
+
+        // Handle case where table name is not provided
+        if (string.IsNullOrEmpty(tableName))
+        {
+            if (ExpressionToSqlParameter != null)
+            {
+                return "/* DELETE statement will be generated from expression */";
+            }
+            tableName = "/* table name will be inferred from entity type */";
+        }
 
         // If we have ExpressionToSql parameter, let it handle the WHERE clause
         if (ExpressionToSqlParameter != null)
@@ -1602,7 +1663,15 @@ internal class MethodGenerationContext : GenerationContextBase
     private void GenerateNativeDbBatchLogic(IndentedStringBuilder sb, IParameterSymbol collectionParam, ReturnTypes returnType)
     {
         // Determine table, operation and properties
-        var tableName = GetTableNameFromSqlExecuteType() ?? "UnknownTable";
+        var tableName = GetTableNameFromSqlExecuteType();
+        if (string.IsNullOrEmpty(tableName))
+        {
+            // Infer table name from entity type
+            var tempObjectMap = new ObjectMap(collectionParam);
+            var entityType = tempObjectMap.ElementSymbol as INamedTypeSymbol;
+            tableName = entityType?.Name ?? "UnknownTable";
+        }
+        
         var objectMap = new ObjectMap(collectionParam);
         var properties = objectMap.Properties.ToList();
         var operationType = GetBatchOperationType();
@@ -1646,8 +1715,8 @@ internal class MethodGenerationContext : GenerationContextBase
         foreach (var prop in properties)
         {
             var paramVar = $"param_{prop.Name.ToLowerInvariant()}";
-            sb.AppendLine($"var {paramVar} = batchCommand.CreateParameter();");
-            sb.AppendLine($"{paramVar}.ParameterName = \"{SqlDef.ParameterPrefix}{prop.GetParameterName(string.Empty)}\";");
+            sb.AppendLine($"var {paramVar} = {DbConnectionName}.CreateParameter();");
+            sb.AppendLine($"{paramVar}.ParameterName = \"{SqlDef.ParameterPrefix}{prop.GetSqlName()}\";");
             sb.AppendLine($"{paramVar}.DbType = {prop.Type.GetDbType()};");
             sb.AppendLine($"{paramVar}.Value = (object?)item.{prop.Name} ?? global::System.DBNull.Value;");
             sb.AppendLine($"batchCommand.Parameters.Add({paramVar});");
@@ -1693,7 +1762,15 @@ internal class MethodGenerationContext : GenerationContextBase
     private void GenerateFallbackBatchLogic(IndentedStringBuilder sb, IParameterSymbol collectionParam, ReturnTypes returnType)
     {
         // Determine table and properties
-        var tableName = GetTableNameFromSqlExecuteType() ?? "UnknownTable";
+        var tableName = GetTableNameFromSqlExecuteType();
+        if (string.IsNullOrEmpty(tableName))
+        {
+            // Infer table name from entity type
+            var tempObjectMap = new ObjectMap(collectionParam);
+            var entityType = tempObjectMap.ElementSymbol as INamedTypeSymbol;
+            tableName = entityType?.Name ?? "UnknownTable";
+        }
+        
         var objectMap = new ObjectMap(collectionParam);
         var properties = objectMap.Properties.ToList();
         var operationType = GetBatchOperationType();
@@ -1814,9 +1891,10 @@ internal class MethodGenerationContext : GenerationContextBase
 
     private void GenerateBatchInsertSql(IndentedStringBuilder sb, string tableName, List<IPropertySymbol> properties)
     {
-        var columns = string.Join(", ", properties.Select(p => SqlDef.WrapColumn(p.Name)));
-        var values = string.Join(", ", properties.Select(p => SqlDef.ParameterPrefix + p.GetParameterName(string.Empty)));
-        sb.AppendLine($"batchCommand.CommandText = \"INSERT INTO {SqlDef.WrapColumn(tableName)} ({columns}) VALUES ({values})\";");
+        var columns = string.Join(", ", properties.Select(p => SqlDef.WrapColumn(p.GetSqlName()).Replace("\"", "\\\"")));
+        var values = string.Join(", ", properties.Select(p => SqlDef.ParameterPrefix + p.GetSqlName()));
+        var wrappedTable = SqlDef.WrapColumn(tableName).Replace("\"", "\\\"");
+        sb.AppendLine($"batchCommand.CommandText = \"INSERT INTO {wrappedTable} ({columns}) VALUES ({values})\";");
     }
 
     private void GenerateBatchUpdateSql(IndentedStringBuilder sb, string tableName, List<IPropertySymbol> properties)
@@ -1836,10 +1914,11 @@ internal class MethodGenerationContext : GenerationContextBase
             return;
         }
 
-        var setClause = string.Join(", ", setProperties.Select(p => $"{SqlDef.WrapColumn(p.Name)} = {SqlDef.ParameterPrefix}{p.GetParameterName(string.Empty)}"));
+        var setClause = string.Join(", ", setProperties.Select(p => $"{SqlDef.WrapColumn(p.GetSqlName()).Replace("\"", "\\\"")} = {SqlDef.ParameterPrefix}{p.GetSqlName()}"));
         var whereClause = string.Join(" AND ", whereProperties.Select(p => GenerateWhereCondition(p)));
+        var wrappedTable = SqlDef.WrapColumn(tableName).Replace("\"", "\\\"");
 
-        sb.AppendLine($"batchCommand.CommandText = \"UPDATE {SqlDef.WrapColumn(tableName)} SET {setClause} WHERE {whereClause}\";");
+        sb.AppendLine($"batchCommand.CommandText = \"UPDATE {wrappedTable} SET {setClause} WHERE {whereClause}\";");
     }
 
     private void GenerateBatchDeleteSql(IndentedStringBuilder sb, string tableName, List<IPropertySymbol> properties)
@@ -1853,7 +1932,8 @@ internal class MethodGenerationContext : GenerationContextBase
         }
 
         var whereClause = string.Join(" AND ", whereProperties.Select(p => GenerateWhereCondition(p)));
-        sb.AppendLine($"batchCommand.CommandText = \"DELETE FROM {SqlDef.WrapColumn(tableName)} WHERE {whereClause}\";");
+        var wrappedTable = SqlDef.WrapColumn(tableName).Replace("\"", "\\\"");
+        sb.AppendLine($"batchCommand.CommandText = \"DELETE FROM {wrappedTable} WHERE {whereClause}\";");
     }
 
     private string GetBatchOperationType()
@@ -1966,7 +2046,7 @@ internal class MethodGenerationContext : GenerationContextBase
             }
         }
 
-        return $"{SqlDef.WrapColumn(property.Name)} {operatorStr} {SqlDef.ParameterPrefix}{property.GetParameterName(string.Empty)}";
+        return $"{SqlDef.WrapColumn(property.GetSqlName()).Replace("\"", "\\\"")} {operatorStr} {SqlDef.ParameterPrefix}{property.GetSqlName()}";
     }
 
 
@@ -2041,6 +2121,79 @@ internal class MethodGenerationContext : GenerationContextBase
         }
 
         return dbConnectionMember?.Name ?? "connection"; // Fallback to "connection" if not found
+    }
+
+    private void GenerateParameterNullChecks(IndentedStringBuilder sb)
+    {
+        // Generate null checks for non-nullable reference type parameters
+        // This implements fail-fast principle by checking parameters before opening connection
+        var parametersToCheck = SqlParameters.Where(p => ShouldGenerateNullCheck(p)).ToList();
+
+        if (parametersToCheck.Any())
+        {
+            sb.AppendLine("// Parameter null checks (fail fast)");
+            foreach (var param in parametersToCheck)
+            {
+                sb.AppendLine($"if ({param.Name} == null)");
+                sb.AppendLine($"    throw new global::System.ArgumentNullException(nameof({param.Name}));");
+            }
+            sb.AppendLine();
+        }
+    }
+
+    private bool ShouldGenerateNullCheck(IParameterSymbol parameter)
+    {
+        // Skip system parameters
+        var typeName = parameter.Type.ToDisplayString();
+        if (typeName == "CancellationToken" ||
+            typeName.Contains("DbTransaction") ||
+            typeName.Contains("IDbTransaction") ||
+            typeName.Contains("DbConnection") ||
+            typeName.Contains("IDbConnection"))
+        {
+            return false;
+        }
+
+        // Skip parameters with special attributes
+        if (parameter.GetAttributes().Any(a =>
+            a.AttributeClass?.Name == "TimeoutAttribute" ||
+            a.AttributeClass?.Name == "ExpressionToSqlAttribute"))
+        {
+            return false;
+        }
+
+        // Check if parameter is a reference type that could be null
+        if (parameter.Type.IsReferenceType)
+        {
+            // For strings, let individual operations handle nullability
+            if (parameter.Type.SpecialType == SpecialType.System_String)
+            {
+                return false;
+            }
+
+            // Check for collection types that should not be null
+            if (parameter.Type is INamedTypeSymbol namedType)
+            {
+                var baseTypeName = namedType.Name;
+                if (baseTypeName == "IEnumerable" || 
+                    baseTypeName == "List" || 
+                    baseTypeName == "IList" || 
+                    baseTypeName == "ICollection" ||
+                    (namedType.IsGenericType && namedType.TypeArguments.Length > 0))
+                {
+                    return true; // Collections should not be null
+                }
+            }
+
+            // Check for entity types (custom classes)
+            if (parameter.Type.TypeKind == TypeKind.Class && 
+                !parameter.Type.ToDisplayString().StartsWith("System."))
+            {
+                return true; // Custom entity types should not be null
+            }
+        }
+
+        return false;
     }
 }
 
@@ -2148,6 +2301,4 @@ internal static class ExtensionsWithCache
             return $"{readerName}.IsDBNull({ordinalVariableName}) ? default({typeName}) : ({typeName}){readerName}.GetValue({ordinalVariableName})";
         }
     }
-
-
 }

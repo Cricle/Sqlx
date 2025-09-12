@@ -900,9 +900,13 @@ public abstract partial class AbstractGenerator : ISourceGenerator
             var defineType = (int)attribute.ConstructorArguments[0].Value!;
             return defineType switch
             {
+                0 => SqlDefine.MySql,
                 1 => SqlDefine.SqlServer,
                 2 => SqlDefine.PgSql,
-                _ => SqlDefine.MySql,
+                3 => SqlDefine.Oracle,
+                4 => SqlDefine.DB2,
+                5 => SqlDefine.SQLite,
+                _ => SqlDefine.SqlServer, // Default fallback
             };
         }
         else if (attribute.ConstructorArguments.Length == 5)
@@ -1548,6 +1552,9 @@ public abstract partial class AbstractGenerator : ISourceGenerator
             return;
         }
 
+        // Generate parameter null checks first (fail fast)
+        GenerateParameterNullChecks(sb, method);
+
         // Connection setup
         sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
         sb.AppendLine("{");
@@ -1627,9 +1634,10 @@ public abstract partial class AbstractGenerator : ISourceGenerator
 
         if (returnType.SpecialType == SpecialType.System_Void || (returnType is INamedTypeSymbol nt && nt.Name == "Task" && nt.TypeArguments.Length == 0))
         {
-            // void or Task (no return value)
+            return;
         }
-        else if (returnType.SpecialType == SpecialType.System_Int32)
+        
+        if (returnType.SpecialType == SpecialType.System_Int32)
         {
             sb.AppendLine("return System.Convert.ToInt32(__result__);");
         }
@@ -1660,6 +1668,9 @@ public abstract partial class AbstractGenerator : ISourceGenerator
             sb.AppendLine("throw new global::System.InvalidOperationException(\"UPDATE operation requires an entity parameter\");");
             return;
         }
+
+        // Generate parameter null checks first (fail fast)
+        GenerateParameterNullChecks(sb, method);
 
         // Connection setup
         sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
@@ -1769,6 +1780,9 @@ public abstract partial class AbstractGenerator : ISourceGenerator
 
     private void GenerateDeleteOperationWithInterceptors(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, bool isAsync, string methodName)
     {
+        // Generate parameter null checks first (fail fast)
+        GenerateParameterNullChecks(sb, method);
+
         // Connection setup
         sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
         sb.AppendLine("{");
@@ -1913,6 +1927,9 @@ public abstract partial class AbstractGenerator : ISourceGenerator
 
     private void GenerateSelectOperationWithInterceptors(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, bool isAsync, string methodName)
     {
+        // Generate parameter null checks first (fail fast)
+        GenerateParameterNullChecks(sb, method);
+
         // Connection setup
         sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
         sb.AppendLine("{");
@@ -2043,6 +2060,9 @@ public abstract partial class AbstractGenerator : ISourceGenerator
 
     private void GenerateSelectSingleOperationWithInterceptors(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, bool isAsync, string methodName)
     {
+        // Generate parameter null checks first (fail fast)
+        GenerateParameterNullChecks(sb, method);
+
         // Connection setup
         sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
         sb.AppendLine("{");
@@ -2145,6 +2165,9 @@ public abstract partial class AbstractGenerator : ISourceGenerator
 
     private void GenerateVoidOperationWithInterceptors(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, bool isAsync, string methodName)
     {
+        // Generate parameter null checks first (fail fast)
+        GenerateParameterNullChecks(sb, method);
+
         // Connection setup
         sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
         sb.AppendLine("{");
@@ -2198,6 +2221,9 @@ public abstract partial class AbstractGenerator : ISourceGenerator
 
     private void GenerateCustomSqlOperationWithInterceptors(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, AttributeData sqlxAttr, bool isAsync, string methodName)
     {
+        // Generate parameter null checks first (fail fast)
+        GenerateParameterNullChecks(sb, method);
+
         // Connection setup
         sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
         sb.AppendLine("{");
@@ -3238,6 +3264,11 @@ public abstract partial class AbstractGenerator : ISourceGenerator
             return;
         }
 
+        // Null check - fail fast before opening connection
+        sb.AppendLine($"if ({collectionParam.Name} == null)");
+        sb.AppendLine($"    throw new global::System.ArgumentNullException(nameof({collectionParam.Name}));");
+        sb.AppendLine();
+
         // Connection setup
         sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
         sb.AppendLine("{");
@@ -3245,11 +3276,6 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         sb.AppendLine("connection.Open();");
         sb.PopIndent();
         sb.AppendLine("}");
-        sb.AppendLine();
-
-        // Null check
-        sb.AppendLine($"if ({collectionParam.Name} == null)");
-        sb.AppendLine($"    throw new global::System.ArgumentNullException(nameof({collectionParam.Name}));");
         sb.AppendLine();
 
         // Initialize return value for counting operations
@@ -3265,8 +3291,11 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         }
         sb.AppendLine();
 
-        // Create DbBatch for proper batch processing
-        sb.AppendLine("using var batch = connection.CreateBatch();");
+        // Check if DbBatch is supported, otherwise fallback to individual commands
+        sb.AppendLine("if (connection is global::System.Data.Common.DbConnection dbConn && dbConn.CanCreateBatch)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("using var batch = dbConn.CreateBatch();");
         var transactionParam = method.Parameters.FirstOrDefault(p => p.Type.Name == "DbTransaction" || p.Type.Name == "IDbTransaction");
         if (transactionParam != null)
         {
@@ -3309,7 +3338,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                     foreach (var prop in props)
                     {
                         var sqlName = prop.GetSqlName();
-                        sb.AppendLine($"var param{prop.Name} = batchCommand.CreateParameter();");
+                        sb.AppendLine($"var param{prop.Name} = dbConn.CreateParameter();");
                         sb.AppendLine($"param{prop.Name}.ParameterName = \"{sqlDefine.ParameterPrefix}{sqlName}\";");
                         sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
                         if (prop.Type.IsReferenceType || IsNullableValueType(prop.Type))
@@ -3346,7 +3375,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                     sb.AppendLine($"batchCommand.CommandText = \"UPDATE {wrappedTable} SET {setClause} WHERE Id = {sqlDefine.ParameterPrefix}Id\";");
 
                     // Add Id parameter
-                    sb.AppendLine("var paramId = batchCommand.CreateParameter();");
+                    sb.AppendLine("var paramId = dbConn.CreateParameter();");
                     sb.AppendLine($"paramId.ParameterName = \"{sqlDefine.ParameterPrefix}Id\";");
                     sb.AppendLine("paramId.DbType = global::System.Data.DbType.Int32;");
                     sb.AppendLine("paramId.Value = item.Id;");
@@ -3356,7 +3385,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                     foreach (var prop in props)
                     {
                         var sqlName = prop.GetSqlName();
-                        sb.AppendLine($"var param{prop.Name} = batchCommand.CreateParameter();");
+                        sb.AppendLine($"var param{prop.Name} = dbConn.CreateParameter();");
                         sb.AppendLine($"param{prop.Name}.ParameterName = \"{sqlDefine.ParameterPrefix}{sqlName}\";");
                         sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
                         if (prop.Type.IsReferenceType || IsNullableValueType(prop.Type))
@@ -3379,7 +3408,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
 
                     sb.AppendLine($"batchCommand.CommandText = \"DELETE FROM {wrappedTable} WHERE Id = {sqlDefine.ParameterPrefix}Id\";");
 
-                    sb.AppendLine("var paramId = batchCommand.CreateParameter();");
+                    sb.AppendLine("var paramId = dbConn.CreateParameter();");
                     sb.AppendLine($"paramId.ParameterName = \"{sqlDefine.ParameterPrefix}Id\";");
                     sb.AppendLine("paramId.DbType = global::System.Data.DbType.Int32;");
 
@@ -3462,6 +3491,269 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         {
             sb.AppendLine("return totalAffectedRows;");
         }
+        
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine("else");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        
+        // Fallback: Execute individual commands when batch is not supported
+        sb.AppendLine("// Fallback to individual command execution when DbBatch is not supported");
+        GenerateFallbackBatchExecution(sb, method, entityType, tableName, isAsync, methodName, executeTypeInt, collectionParam, actualReturnType);
+        
+        sb.PopIndent();
+        sb.AppendLine("}");
+    }
+
+    private void GenerateFallbackBatchExecution(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, 
+        string tableName, bool isAsync, string methodName, int executeTypeInt, IParameterSymbol collectionParam, ITypeSymbol actualReturnType)
+    {
+        var sqlDefine = GetSqlDefineForRepository(method);
+        var transactionParam = method.Parameters.FirstOrDefault(p => p.Type.Name == "DbTransaction" || p.Type.Name == "IDbTransaction");
+        
+        // Initialize command
+        sb.AppendLine("using var cmd = connection.CreateCommand();");
+        if (transactionParam != null)
+        {
+            sb.AppendLine($"cmd.Transaction = {transactionParam.Name};");
+        }
+        sb.AppendLine();
+
+        // Execute individual commands in a loop
+        sb.AppendLine($"foreach (var item in {collectionParam.Name})");
+        sb.AppendLine("{");
+        sb.PushIndent();
+
+        // Clear parameters for each iteration
+        sb.AppendLine("cmd.Parameters.Clear();");
+        
+        // Generate SQL and parameters based on operation type
+        switch (executeTypeInt)
+        {
+            case 4: // BatchInsert
+                GenerateFallbackInsertCommand(sb, entityType, tableName, sqlDefine);
+                break;
+            case 5: // BatchUpdate  
+                GenerateFallbackUpdateCommand(sb, entityType, tableName, sqlDefine);
+                break;
+            case 6: // BatchDelete
+                GenerateFallbackDeleteCommand(sb, collectionParam, tableName, sqlDefine);
+                break;
+        }
+
+        // Execute command
+        if (isAsync)
+        {
+            if (actualReturnType.SpecialType == SpecialType.System_Int32)
+            {
+                sb.AppendLine("totalAffectedRows += await cmd.ExecuteNonQueryAsync();");
+            }
+            else
+            {
+                sb.AppendLine("await cmd.ExecuteNonQueryAsync();");
+            }
+        }
+        else
+        {
+            if (actualReturnType.SpecialType == SpecialType.System_Int32)
+            {
+                sb.AppendLine("totalAffectedRows += cmd.ExecuteNonQuery();");
+            }
+            else
+            {
+                sb.AppendLine("cmd.ExecuteNonQuery();");
+            }
+        }
+
+        sb.PopIndent();
+        sb.AppendLine("}");
+        
+        // Return result
+        if (actualReturnType.SpecialType == SpecialType.System_Int32)
+        {
+            sb.AppendLine("return totalAffectedRows;");
+        }
+    }
+
+    private void GenerateFallbackInsertCommand(IndentedStringBuilder sb, INamedTypeSymbol? entityType, string tableName, SqlDefine sqlDefine)
+    {
+        if (entityType == null) return;
+        
+        var props = entityType.GetMembers()
+            .OfType<IPropertySymbol>()
+            .Where(p => p.DeclaredAccessibility == Accessibility.Public && 
+                       p.GetMethod != null && p.SetMethod != null &&
+                       !p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        var wrappedTable = sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"");
+        var columns = string.Join(", ", props.Select(p => sqlDefine.WrapColumn(p.GetSqlName()).Replace("\"", "\\\"")));
+        var values = string.Join(", ", props.Select(p => $"{sqlDefine.ParameterPrefix}{p.GetSqlName()}"));
+
+        sb.AppendLine($"cmd.CommandText = \"INSERT INTO {wrappedTable} ({columns}) VALUES ({values})\";");
+
+        foreach (var prop in props)
+        {
+            var sqlName = prop.GetSqlName();
+            sb.AppendLine($"var param{prop.Name} = cmd.CreateParameter();");
+            sb.AppendLine($"param{prop.Name}.ParameterName = \"{sqlDefine.ParameterPrefix}{sqlName}\";");
+            sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
+            if (prop.Type.IsReferenceType || IsNullableValueType(prop.Type))
+            {
+                sb.AppendLine($"param{prop.Name}.Value = (object?)item.{prop.Name} ?? global::System.DBNull.Value;");
+            }
+            else
+            {
+                sb.AppendLine($"param{prop.Name}.Value = item.{prop.Name};");
+            }
+            sb.AppendLine($"cmd.Parameters.Add(param{prop.Name});");
+        }
+    }
+
+    private void GenerateFallbackUpdateCommand(IndentedStringBuilder sb, INamedTypeSymbol? entityType, string tableName, SqlDefine sqlDefine)
+    {
+        if (entityType == null) return;
+        
+        var props = entityType.GetMembers()
+            .OfType<IPropertySymbol>()
+            .Where(p => p.DeclaredAccessibility == Accessibility.Public && 
+                       p.GetMethod != null && p.SetMethod != null &&
+                       !p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        var wrappedTable = sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"");
+        var setClause = string.Join(", ", props.Select(p => $"{sqlDefine.WrapColumn(p.GetSqlName()).Replace("\"", "\\\"")} = {sqlDefine.ParameterPrefix}{p.GetSqlName()}"));
+
+        sb.AppendLine($"cmd.CommandText = \"UPDATE {wrappedTable} SET {setClause} WHERE Id = {sqlDefine.ParameterPrefix}Id\";");
+
+        // Add Id parameter
+        sb.AppendLine("var paramId = cmd.CreateParameter();");
+        sb.AppendLine($"paramId.ParameterName = \"{sqlDefine.ParameterPrefix}Id\";");
+        sb.AppendLine("paramId.DbType = global::System.Data.DbType.Int32;");
+        sb.AppendLine("paramId.Value = item.Id;");
+        sb.AppendLine("cmd.Parameters.Add(paramId);");
+
+        // Add other properties
+        foreach (var prop in props)
+        {
+            var sqlName = prop.GetSqlName();
+            sb.AppendLine($"var param{prop.Name} = cmd.CreateParameter();");
+            sb.AppendLine($"param{prop.Name}.ParameterName = \"{sqlDefine.ParameterPrefix}{sqlName}\";");
+            sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
+            if (prop.Type.IsReferenceType || IsNullableValueType(prop.Type))
+            {
+                sb.AppendLine($"param{prop.Name}.Value = (object?)item.{prop.Name} ?? global::System.DBNull.Value;");
+            }
+            else
+            {
+                sb.AppendLine($"param{prop.Name}.Value = item.{prop.Name};");
+            }
+            sb.AppendLine($"cmd.Parameters.Add(param{prop.Name});");
+        }
+    }
+
+    private void GenerateFallbackDeleteCommand(IndentedStringBuilder sb, IParameterSymbol collectionParam, string tableName, SqlDefine sqlDefine)
+    {
+        var wrappedTable = sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"");
+        sb.AppendLine($"cmd.CommandText = \"DELETE FROM {wrappedTable} WHERE Id = {sqlDefine.ParameterPrefix}Id\";");
+
+        sb.AppendLine("var paramId = cmd.CreateParameter();");
+        sb.AppendLine($"paramId.ParameterName = \"{sqlDefine.ParameterPrefix}Id\";");
+        sb.AppendLine("paramId.DbType = global::System.Data.DbType.Int32;");
+
+        // Check if item is a primitive type (like int) or an entity with Id property
+        if (collectionParam.Type is INamedTypeSymbol collectionNamedType && collectionNamedType.TypeArguments.Length > 0)
+        {
+            var elementType = collectionNamedType.TypeArguments[0];
+            if (elementType.SpecialType == SpecialType.System_Int32 ||
+                elementType.SpecialType == SpecialType.System_Int64 ||
+                elementType.SpecialType == SpecialType.System_String)
+            {
+                // For primitive types, the item itself is the ID
+                sb.AppendLine("paramId.Value = item;");
+            }
+            else
+            {
+                // For entity types, use the Id property
+                sb.AppendLine("paramId.Value = item.Id;");
+            }
+        }
+        else
+        {
+            // Fallback: assume it's an ID value
+            sb.AppendLine("paramId.Value = item;");
+        }
+
+        sb.AppendLine("cmd.Parameters.Add(paramId);");
+    }
+
+    private void GenerateParameterNullChecks(IndentedStringBuilder sb, IMethodSymbol method)
+    {
+        // Generate null checks for non-nullable reference type parameters
+        // This implements fail-fast principle by checking parameters before opening connection
+        var parametersToCheck = method.Parameters.Where(p => 
+            ShouldGenerateNullCheck(p)).ToList();
+
+        if (parametersToCheck.Any())
+        {
+            sb.AppendLine("// Parameter null checks (fail fast)");
+            foreach (var param in parametersToCheck)
+            {
+                sb.AppendLine($"if ({param.Name} == null)");
+                sb.AppendLine($"    throw new global::System.ArgumentNullException(nameof({param.Name}));");
+            }
+            sb.AppendLine();
+        }
+    }
+
+    private bool ShouldGenerateNullCheck(IParameterSymbol parameter)
+    {
+        // Skip system parameters
+        var typeName = parameter.Type.ToDisplayString();
+        if (typeName == "CancellationToken" ||
+            typeName == "DbTransaction" ||
+            typeName == "IDbTransaction" ||
+            typeName == "DbConnection" ||
+            typeName == "IDbConnection")
+        {
+            return false;
+        }
+
+        // Check if parameter is a reference type that could be null
+        if (parameter.Type.IsReferenceType)
+        {
+            // For nullable reference types in C# 8+, we might want to be more selective
+            // but for now, check all reference type parameters except strings
+            // (strings are often allowed to be null and handled specially)
+            if (parameter.Type.SpecialType == SpecialType.System_String)
+            {
+                return false; // Let individual operations handle string nullability
+            }
+
+            // Check for collection types that should not be null
+            if (parameter.Type is INamedTypeSymbol namedType)
+            {
+                var baseTypeName = namedType.Name;
+                if (baseTypeName == "IEnumerable" || 
+                    baseTypeName == "List" || 
+                    baseTypeName == "IList" || 
+                    baseTypeName == "ICollection" ||
+                    namedType.IsGenericType && namedType.TypeArguments.Length > 0)
+                {
+                    return true; // Collections should not be null
+                }
+            }
+
+            // Check for entity types (custom classes)
+            if (parameter.Type.TypeKind == TypeKind.Class && 
+                !parameter.Type.ToDisplayString().StartsWith("System."))
+            {
+                return true; // Custom entity types should not be null
+            }
+        }
+
+        return false;
     }
 
     private string GetBatchOperationName(int executeTypeInt) => executeTypeInt switch
@@ -3476,6 +3768,9 @@ public abstract partial class AbstractGenerator : ISourceGenerator
     private void GenerateScalarOperationWithInterceptors(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, bool isAsync, string methodName)
     {
         var methodNameLower = methodName.ToLowerInvariant();
+
+        // Generate parameter null checks first (fail fast)
+        GenerateParameterNullChecks(sb, method);
 
         // Connection setup
         sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");

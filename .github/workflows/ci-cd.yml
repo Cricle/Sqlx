@@ -8,7 +8,7 @@ on:
     branches: [ main ]
 
 env:
-  DOTNET_VERSION: '8.0.x'
+  DOTNET_VERSION: '9.0.x'
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
 
@@ -43,13 +43,28 @@ jobs:
       run: dotnet build --configuration Release --no-restore
 
     - name: 🧪 Run tests
-      run: dotnet test --configuration Release --no-build --collect:"XPlat Code Coverage" --logger "console;verbosity=minimal" --framework net8.0
+      run: |
+        dotnet test --configuration Release --no-build \
+                    --collect:"XPlat Code Coverage" \
+                    --logger "console;verbosity=minimal" \
+                    --framework net9.0 \
+                    --settings tests/coverlet.runsettings \
+                    --results-directory ./TestResults
 
-    - name: 📊 Upload coverage
+    - name: 📊 Generate coverage report
+      run: |
+        # 避免重复安装工具
+        dotnet tool install -g dotnet-reportgenerator-globaltool --version 5.2.0
+        reportgenerator -reports:"**/TestResults/**/coverage.cobertura.xml" \
+                        -targetdir:"coverage-report" \
+                        -reporttypes:"Html;Cobertura;JsonSummary"
+
+    - name: 📊 Upload coverage to Codecov
       uses: codecov/codecov-action@v4
       if: always()
       with:
-        token: ${{ secrets.CODECOV_TOKEN }}
+        token: ${{ secrets.CODACY_PROJECT_TOKEN }}
+        directory: coverage-report/
         fail_ci_if_error: false
 
     - name: 📦 Pack packages

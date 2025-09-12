@@ -43,7 +43,7 @@ jobs:
       run: dotnet build --configuration Release --no-restore
       
     - name: 🧪 Run tests
-      run: dotnet test --configuration Release --no-build --collect:"XPlat Code Coverage" --logger "console;verbosity=minimal"
+      run: dotnet test --configuration Release --no-build --collect:"XPlat Code Coverage" --logger "console;verbosity=minimal" --framework net8.0
       
     - name: 🚀 Run comprehensive example
       run: dotnet run --project samples/ComprehensiveExample --configuration Release --no-build

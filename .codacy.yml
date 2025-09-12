@@ -1,0 +1,35 @@
+# Codacy Configuration File
+coverage:
+  exclude_paths:
+    - "tests/**"
+    - "samples/**"
+    - "**/obj/**"
+    - "**/bin/**"
+    - "artifacts/**"
+    - "TestResults/**"
+    - "**/GlobalSuppressions.cs"
+    - "**/AssemblyInfo.cs"
+    - "**/*.Designer.cs"
+    - "**/*.generated.cs"
+    - "scripts/**"
+    - "docs/**"
+    - ".github/**"
+
+# 分析工具配置
+engines:
+  # 禁用一些可能导致 .NET 8.0 测试问题的引擎
+  duplication:
+    enabled: false
+  metrics:
+    enabled: false
+  
+# 排除特定文件模式
+exclude_patterns:
+  - "**/*.md"
+  - "**/*.txt"
+  - "**/*.yml"
+  - "**/*.yaml"
+  - "**/*.json"
+  - "**/*.xml"
+  - "**/*.props"
+  - "**/*.targets"

@@ -59,10 +59,13 @@ internal class MethodGenerationContext : GenerationContextBase
             RawSqlParameter = rawSqlParam;
 
             // Check if RawSql has a constructor argument (pre-defined SQL)
-            var attr = rawSqlParam.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "RawSqlAttribute");
+            var attributes = rawSqlParam.GetAttributes();
+            var attr = attributes.IsDefaultOrEmpty 
+                ? null 
+                : attributes.FirstOrDefault(x => x.AttributeClass?.Name == "RawSqlAttribute");
             rawSqlShouldRemoveFromParams = attr?.ConstructorArguments.Length > 0;
         }
-        else if (MethodSymbol.GetAttributes().Any(x => x.AttributeClass?.Name == "RawSqlAttribute"))
+        else if (!MethodSymbol.GetAttributes().IsDefaultOrEmpty && MethodSymbol.GetAttributes().Any(x => x.AttributeClass?.Name == "RawSqlAttribute"))
         {
             rawSqlIsInParamter = false;
             RawSqlParameter = methodSymbol;
@@ -227,14 +230,14 @@ internal class MethodGenerationContext : GenerationContextBase
             var enumValueObj = sqlExecuteTypeAttr.ConstructorArguments[0].Value;
             var type = enumValueObj switch
             {
-                int intValue => (SqlExecuteTypes)intValue,
-                string strValue when int.TryParse(strValue, out var intVal) => (SqlExecuteTypes)intVal,
-                _ => SqlExecuteTypes.Select
+                int intValue => intValue,
+                string strValue when int.TryParse(strValue, out var intVal) => intVal,
+                _ => Constants.SqlExecuteTypeValues.Select
             };
-            isBatchCommand = type == SqlExecuteTypes.BatchCommand ||
-                           type == SqlExecuteTypes.BatchInsert ||
-                           type == SqlExecuteTypes.BatchUpdate ||
-                           type == SqlExecuteTypes.BatchDelete;
+            isBatchCommand = type == Constants.SqlExecuteTypeValues.BatchCommand ||
+                           type == Constants.SqlExecuteTypeValues.BatchInsert ||
+                           type == Constants.SqlExecuteTypeValues.BatchUpdate ||
+                           type == Constants.SqlExecuteTypeValues.BatchDelete;
         }
 
         if (isBatchCommand)
@@ -273,8 +276,8 @@ internal class MethodGenerationContext : GenerationContextBase
         {
             // Generate proper error message for better developer experience
             sb.AppendLine($"// Legacy batch operation detected: {sql}");
-            sb.AppendLine("// Use SqlExecuteTypes.BatchCommand for proper batch operations");
-            sb.AppendLine("throw new global::System.ArgumentException(\"Legacy BATCH SQL syntax detected. Please use SqlExecuteTypes.BatchCommand for proper batch operations.\");");
+            sb.AppendLine("// Use Constants.SqlExecuteTypeValues.BatchCommand for proper batch operations");
+            sb.AppendLine("throw new global::System.ArgumentException(\"Legacy BATCH SQL syntax detected. Please use Constants.SqlExecuteTypeValues.BatchCommand for proper batch operations.\");");
             sb.PopIndent();
             sb.AppendLine("}");
             return true;
@@ -312,7 +315,7 @@ internal class MethodGenerationContext : GenerationContextBase
                     var sqlExecuteType = MethodSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlExecuteTypeAttribute");
                     if (sqlExecuteType != null)
                     {
-                        var type = (SqlExecuteTypes)Enum.Parse(typeof(SqlExecuteTypes), sqlExecuteType.ConstructorArguments[0].Value?.ToString() ?? "0");
+                        var type = (int)Enum.Parse(typeof(int), sqlExecuteType.ConstructorArguments[0].Value?.ToString() ?? "0");
                         GenerateExpressionToSqlEnhancement(sb, type);
                     }
                 }
@@ -928,8 +931,15 @@ internal class MethodGenerationContext : GenerationContextBase
 
     private SqlDefine GetSqlDefine()
     {
-        var methodDef = MethodSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlDefineAttribute") ??
-            ClassGenerationContext.ClassSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlDefineAttribute");
+        var methodAttributes = MethodSymbol.GetAttributes();
+        var classAttributes = ClassGenerationContext.ClassSymbol.GetAttributes();
+        
+        var methodDef = (!methodAttributes.IsDefaultOrEmpty 
+                ? methodAttributes.FirstOrDefault(x => x.AttributeClass?.Name == "SqlDefineAttribute") 
+                : null) ??
+            (!classAttributes.IsDefaultOrEmpty 
+                ? classAttributes.FirstOrDefault(x => x.AttributeClass?.Name == "SqlDefineAttribute") 
+                : null);
 
         if (methodDef != null)
         {
@@ -987,14 +997,17 @@ internal class MethodGenerationContext : GenerationContextBase
         }
 
         // Look for constructor parameter with connection type
-        var constructor = repositoryClass.InstanceConstructors.FirstOrDefault();
-        if (constructor != null)
+        if (!repositoryClass.InstanceConstructors.IsDefaultOrEmpty)
         {
-            var connectionParam = constructor.Parameters.FirstOrDefault(p => p.Type.IsDbConnection());
-            if (connectionParam != null)
+            var constructor = repositoryClass.InstanceConstructors.FirstOrDefault();
+            if (constructor != null)
             {
-                var connectionTypeName = connectionParam.Type.ToDisplayString();
-                return InferDialectFromConnectionTypeName(connectionTypeName);
+                var connectionParam = constructor.Parameters.FirstOrDefault(p => p.Type.IsDbConnection());
+                if (connectionParam != null)
+                {
+                    var connectionTypeName = connectionParam.Type.ToDisplayString();
+                    return InferDialectFromConnectionTypeName(connectionTypeName);
+                }
             }
         }
 
@@ -1183,9 +1196,9 @@ internal class MethodGenerationContext : GenerationContextBase
             var enumValueObj = sqlExecuteType.ConstructorArguments[0].Value;
             var type = enumValueObj switch
             {
-                int intValue => (SqlExecuteTypes)intValue,
-                string strValue when int.TryParse(strValue, out var intVal) => (SqlExecuteTypes)intVal,
-                _ => SqlExecuteTypes.Select
+                int intValue => intValue,
+                string strValue when int.TryParse(strValue, out var intVal) => intVal,
+                _ => Constants.SqlExecuteTypeValues.Select
             };
             var tableName = sqlExecuteType.ConstructorArguments[1].Value?.ToString() ?? string.Empty;
 
@@ -1195,14 +1208,14 @@ internal class MethodGenerationContext : GenerationContextBase
             // Handle different CRUD operations with their specific parameter patterns
             return type switch
             {
-                SqlExecuteTypes.Select => HandleSelectOperation(tableName),
-                SqlExecuteTypes.Insert => HandleInsertOperation(tableName),
-                SqlExecuteTypes.Update => HandleUpdateOperation(tableName),
-                SqlExecuteTypes.Delete => HandleDeleteOperation(tableName),
-                SqlExecuteTypes.BatchInsert => $"INSERT INTO {tableName} (/* columns */) VALUES (/* batch values */)",
-                SqlExecuteTypes.BatchUpdate => $"UPDATE {tableName} SET /* columns = values */ WHERE /* condition */",
-                SqlExecuteTypes.BatchDelete => $"DELETE FROM {tableName} WHERE /* condition */",
-                SqlExecuteTypes.BatchCommand => "/* ADO.NET BatchCommand will be used */",
+                Constants.SqlExecuteTypeValues.Select => HandleSelectOperation(tableName),
+                Constants.SqlExecuteTypeValues.Insert => HandleInsertOperation(tableName),
+                Constants.SqlExecuteTypeValues.Update => HandleUpdateOperation(tableName),
+                Constants.SqlExecuteTypeValues.Delete => HandleDeleteOperation(tableName),
+                Constants.SqlExecuteTypeValues.BatchInsert => $"INSERT INTO {tableName} (/* columns */) VALUES (/* batch values */)",
+                Constants.SqlExecuteTypeValues.BatchUpdate => $"UPDATE {tableName} SET /* columns = values */ WHERE /* condition */",
+                Constants.SqlExecuteTypeValues.BatchDelete => $"DELETE FROM {tableName} WHERE /* condition */",
+                Constants.SqlExecuteTypeValues.BatchCommand => "/* ADO.NET BatchCommand will be used */",
                 _ => string.Empty
             };
         }
@@ -1268,7 +1281,7 @@ internal class MethodGenerationContext : GenerationContextBase
         {
             var objectMap = new ObjectMap(entityParameter);
             var context = new InsertGenerateContext(this, tableName, objectMap);
-            var baseSql = new SqlGenerator().Generate(SqlDef, SqlExecuteTypes.Insert, context);
+            var baseSql = new SqlGenerator().Generate(SqlDef, Constants.SqlExecuteTypeValues.Insert, context);
 
             if (ExpressionToSqlParameter != null)
             {
@@ -1309,7 +1322,7 @@ internal class MethodGenerationContext : GenerationContextBase
         {
             var objectMap = new ObjectMap(entityParameter);
             var context = new UpdateGenerateContext(this, tableName, objectMap);
-            var baseSql = new SqlGenerator().Generate(SqlDef, SqlExecuteTypes.Update, context);
+            var baseSql = new SqlGenerator().Generate(SqlDef, Constants.SqlExecuteTypeValues.Update, context);
             return $"\"{baseSql}\"";
         }
 
@@ -1347,7 +1360,7 @@ internal class MethodGenerationContext : GenerationContextBase
             // Assume entity has an Id property for DELETE WHERE clause
             var objectMap = new ObjectMap(entityParameter);
             var context = new DeleteGenerateContext(this, tableName, objectMap);
-            var baseSql = new SqlGenerator().Generate(SqlDef, SqlExecuteTypes.Delete, context);
+            var baseSql = new SqlGenerator().Generate(SqlDef, Constants.SqlExecuteTypeValues.Delete, context);
             return $"\"{baseSql.Replace("{0}", "Id = @Id")}\"";
         }
 
@@ -1446,13 +1459,13 @@ internal class MethodGenerationContext : GenerationContextBase
         sb.AppendLine($"{CmdName}.CommandText = sqlBuilder.ToString();");
     }
 
-    private void GenerateExpressionToSqlEnhancement(IndentedStringBuilder sb, SqlExecuteTypes operationType)
+    private void GenerateExpressionToSqlEnhancement(IndentedStringBuilder sb, int operationType)
     {
         // Generate code to enhance the base SQL with ExpressionToSql functionality
         switch (operationType)
         {
-            case SqlExecuteTypes.Select:
-            case SqlExecuteTypes.Delete:
+            case Constants.SqlExecuteTypeValues.Select:
+            case Constants.SqlExecuteTypeValues.Delete:
                 // For SELECT and DELETE, append WHERE clause
                 sb.AppendLine($"var __whereClause__ = {ExpressionToSqlParameter!.Name}.ToWhereClause();");
                 sb.AppendLine($"if (!string.IsNullOrEmpty(__whereClause__))");
@@ -1463,7 +1476,7 @@ internal class MethodGenerationContext : GenerationContextBase
                 sb.AppendLine("}");
                 break;
 
-            case SqlExecuteTypes.Update:
+            case Constants.SqlExecuteTypeValues.Update:
                 // For UPDATE, let ExpressionToSql handle the entire statement
                 sb.AppendLine($"var __template__ = {ExpressionToSqlParameter!.Name}.ToTemplate();");
                 sb.AppendLine($"{CmdName}.CommandText = __template__.Sql;");
@@ -1475,7 +1488,7 @@ internal class MethodGenerationContext : GenerationContextBase
                 sb.AppendLine("}");
                 break;
 
-            case SqlExecuteTypes.Insert:
+            case Constants.SqlExecuteTypeValues.Insert:
                 // For INSERT, ExpressionToSql might provide additional INSERT clauses
                 sb.AppendLine($"var __insertAddition__ = {ExpressionToSqlParameter!.Name}.ToAdditionalClause();");
                 sb.AppendLine($"if (!string.IsNullOrEmpty(__insertAddition__))");
@@ -1854,17 +1867,17 @@ internal class MethodGenerationContext : GenerationContextBase
             var enumValueObj = sqlExecuteTypeAttr.ConstructorArguments[0].Value;
             var type = enumValueObj switch
             {
-                int intValue => (SqlExecuteTypes)intValue,
-                string strValue when int.TryParse(strValue, out var intVal) => (SqlExecuteTypes)intVal,
-                _ => SqlExecuteTypes.Select
+                int intValue => intValue,
+                string strValue when int.TryParse(strValue, out var intVal) => intVal,
+                _ => Constants.SqlExecuteTypeValues.Select
             };
 
             return type switch
             {
-                SqlExecuteTypes.BatchInsert => "INSERT",
-                SqlExecuteTypes.BatchUpdate => "UPDATE",
-                SqlExecuteTypes.BatchDelete => "DELETE",
-                SqlExecuteTypes.BatchCommand => GetOperationFromMethodName(), // Fallback to method name inference
+                Constants.SqlExecuteTypeValues.BatchInsert => "INSERT",
+                Constants.SqlExecuteTypeValues.BatchUpdate => "UPDATE",
+                Constants.SqlExecuteTypeValues.BatchDelete => "DELETE",
+                Constants.SqlExecuteTypeValues.BatchCommand => GetOperationFromMethodName(), // Fallback to method name inference
                 _ => "INSERT"
             };
         }

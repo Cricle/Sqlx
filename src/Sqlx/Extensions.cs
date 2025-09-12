@@ -143,8 +143,10 @@ internal static class Extensions
     {
         return _sqlNameCache.GetOrAdd(propertySymbol, static prop =>
         {
-            var attribute = prop.GetAttributes()
-                .FirstOrDefault(attr => attr.AttributeClass?.Name == "DbColumnAttribute");
+            var attributes = prop.GetAttributes();
+            var attribute = attributes.IsDefaultOrEmpty 
+                ? null 
+                : attributes.FirstOrDefault(attr => attr.AttributeClass?.Name == "DbColumnAttribute");
 
             return attribute?.ConstructorArguments.FirstOrDefault().Value as string
                    ?? NameMapper.MapName(prop.Name);

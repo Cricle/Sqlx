@@ -121,7 +121,7 @@ public class MoqBestPractices
         var generator = new SqlGenerator();
 
         // 测试无效输入的处理
-        var invalidType = (SqlExecuteTypes)999;
+        var invalidType = (int)999;
         var result = generator.Generate(SqlDefine.SqlServer, invalidType, null!);
         Assert.AreEqual(string.Empty, result);
 

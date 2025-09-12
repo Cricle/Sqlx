@@ -8,14 +8,14 @@ namespace Sqlx.SqlGen
 {
     internal sealed class SqlGenerator
     {
-        public string Generate(SqlDefine def, SqlExecuteTypes type, GenerateContext ctx)
+        public string Generate(SqlDefine def, int type, GenerateContext ctx)
         {
             return type switch
             {
-                SqlExecuteTypes.Select => GenerateSelect(def, (SelectGenerateContext)ctx),
-                SqlExecuteTypes.Insert => GenerateInsert(def, (InsertGenerateContext)ctx),
-                SqlExecuteTypes.Update => GenerateUpdate(def, (UpdateGenerateContext)ctx),
-                SqlExecuteTypes.Delete => GenerateDelete(def, (DeleteGenerateContext)ctx),
+                Constants.SqlExecuteTypeValues.Select => GenerateSelect(def, (SelectGenerateContext)ctx),
+                Constants.SqlExecuteTypeValues.Insert => GenerateInsert(def, (InsertGenerateContext)ctx),
+                Constants.SqlExecuteTypeValues.Update => GenerateUpdate(def, (UpdateGenerateContext)ctx),
+                Constants.SqlExecuteTypeValues.Delete => GenerateDelete(def, (DeleteGenerateContext)ctx),
                 _ => string.Empty
             };
         }

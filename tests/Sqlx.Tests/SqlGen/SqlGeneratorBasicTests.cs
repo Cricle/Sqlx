@@ -23,7 +23,7 @@ namespace Sqlx.Tests.SqlGen
             var sqlDefine = new SqlDefine("`", "@", "'", "(", ")");
 
             // Act
-            var result = generator.Generate(sqlDefine, (SqlExecuteTypes)999, null!);
+            var result = generator.Generate(sqlDefine, (int)999, null!);
 
             // Assert
             Assert.AreEqual(string.Empty, result);
@@ -39,7 +39,7 @@ namespace Sqlx.Tests.SqlGen
             // Act & Assert - Should not throw, though behavior depends on implementation
             try
             {
-                var result = generator.Generate(sqlDefine, SqlExecuteTypes.Select, null!);
+                var result = generator.Generate(sqlDefine, Constants.SqlExecuteTypeValues.Select, null!);
                 // Test passes if no exception is thrown
             }
             catch (System.NullReferenceException)
@@ -58,7 +58,7 @@ namespace Sqlx.Tests.SqlGen
             // Act & Assert - Should not throw unexpected exceptions
             try
             {
-                var result = generator.Generate(sqlDefine, SqlExecuteTypes.Insert, null!);
+                var result = generator.Generate(sqlDefine, Constants.SqlExecuteTypeValues.Insert, null!);
                 // Test passes if no unexpected exception is thrown
             }
             catch (System.NullReferenceException)
@@ -77,7 +77,7 @@ namespace Sqlx.Tests.SqlGen
             // Act & Assert - Should not throw unexpected exceptions
             try
             {
-                var result = generator.Generate(sqlDefine, SqlExecuteTypes.Update, null!);
+                var result = generator.Generate(sqlDefine, Constants.SqlExecuteTypeValues.Update, null!);
                 // Test passes if no unexpected exception is thrown
             }
             catch (System.NullReferenceException)
@@ -96,7 +96,7 @@ namespace Sqlx.Tests.SqlGen
             // Act & Assert - Should not throw unexpected exceptions
             try
             {
-                var result = generator.Generate(sqlDefine, SqlExecuteTypes.Delete, null!);
+                var result = generator.Generate(sqlDefine, Constants.SqlExecuteTypeValues.Delete, null!);
                 // Test passes if no unexpected exception is thrown
             }
             catch (System.NullReferenceException)
@@ -123,7 +123,13 @@ namespace Sqlx.Tests.SqlGen
             var sqlDefine = new SqlDefine("`", "@", "'", "(", ")");
 
             // Act & Assert - Test all supported enum values
-            foreach (SqlExecuteTypes type in System.Enum.GetValues<SqlExecuteTypes>())
+            var types = new int[] { 
+                Constants.SqlExecuteTypeValues.Select,
+                Constants.SqlExecuteTypeValues.Insert,
+                Constants.SqlExecuteTypeValues.Update,
+                Constants.SqlExecuteTypeValues.Delete
+            };
+            foreach (int type in types)
             {
                 try
                 {

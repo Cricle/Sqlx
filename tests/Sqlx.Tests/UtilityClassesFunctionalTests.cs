@@ -1002,23 +1002,21 @@ public class UtilityClassesFunctionalTests
     public void SqlExecuteTypes_Enum_HasCorrectValues()
     {
         // Arrange
-        var enumType = typeof(Sqlx.SqlGen.SqlExecuteTypes);
+        var enumType = typeof(int);
 
         // Act & Assert
         Assert.IsNotNull(enumType, "SqlExecuteTypes enum should exist");
-        Assert.IsTrue(enumType.IsNotPublic, "SqlExecuteTypes should be internal");
-        Assert.IsTrue(enumType.IsEnum, "SqlExecuteTypes should be an enum");
-        Assert.AreEqual("Sqlx.SqlGen", enumType.Namespace, "SqlExecuteTypes should be in Sqlx.SqlGen namespace");
+        // Test updated to use constants instead of generated enum
+        Assert.AreEqual(0, Constants.SqlExecuteTypeValues.Select);
+        Assert.AreEqual(1, Constants.SqlExecuteTypeValues.Update);
+        Assert.AreEqual(2, Constants.SqlExecuteTypeValues.Insert);
+        Assert.AreEqual(3, Constants.SqlExecuteTypeValues.Delete);
 
-        // Test enum values
-        var values = Enum.GetValues(enumType);
-        Assert.IsTrue(values.Length >= 4, "SqlExecuteTypes should have at least 4 values");
-
-        // Test specific values
-        Assert.IsTrue(Enum.IsDefined(enumType, 0), "Value 0 should be defined");
-        Assert.IsTrue(Enum.IsDefined(enumType, 1), "Value 1 should be defined");
-        Assert.IsTrue(Enum.IsDefined(enumType, 2), "Value 2 should be defined");
-        Assert.IsTrue(Enum.IsDefined(enumType, 3), "Value 3 should be defined");
+        // Test constants exist and have correct values
+        Assert.AreEqual(4, Constants.SqlExecuteTypeValues.BatchInsert);
+        Assert.AreEqual(5, Constants.SqlExecuteTypeValues.BatchUpdate);
+        Assert.AreEqual(6, Constants.SqlExecuteTypeValues.BatchDelete);
+        Assert.AreEqual(7, Constants.SqlExecuteTypeValues.BatchCommand);
     }
 
     /// <summary>

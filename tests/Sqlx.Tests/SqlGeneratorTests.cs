@@ -21,16 +21,16 @@ using Microsoft.CodeAnalysis;
 public class SqlGeneratorTests
 {
     /// <summary>
-    /// Tests that the SQL execute types enum has all expected values defined.
+    /// Tests that SqlExecuteType constants have expected values.
     /// </summary>
     [TestMethod]
-    public void SqlExecuteTypes_EnumValues_Defined()
+    public void SqlExecuteTypeValues_Constants_Defined()
     {
-        // Test that the SQL execute types enum has the expected values
-        Assert.IsTrue(System.Enum.IsDefined(typeof(Sqlx.SqlGen.SqlExecuteTypes), 0)); // Select
-        Assert.IsTrue(System.Enum.IsDefined(typeof(Sqlx.SqlGen.SqlExecuteTypes), 1)); // Update
-        Assert.IsTrue(System.Enum.IsDefined(typeof(Sqlx.SqlGen.SqlExecuteTypes), 2)); // Insert
-        Assert.IsTrue(System.Enum.IsDefined(typeof(Sqlx.SqlGen.SqlExecuteTypes), 3)); // Delete
+        // Test that the SQL execute type constants have the expected values
+        Assert.AreEqual(0, Constants.SqlExecuteTypeValues.Select);
+        Assert.AreEqual(1, Constants.SqlExecuteTypeValues.Update);
+        Assert.AreEqual(2, Constants.SqlExecuteTypeValues.Insert);
+        Assert.AreEqual(3, Constants.SqlExecuteTypeValues.Delete);
     }
 
     /// <summary>
@@ -83,7 +83,7 @@ public class SqlGeneratorTests
         var generator = new SqlGenerator();
 
         // Act & Assert - Test with invalid enum value
-        var invalidResult = generator.Generate(SqlDefine.MySql, (SqlExecuteTypes)999, null!);
+        var invalidResult = generator.Generate(SqlDefine.MySql, (int)999, null!);
         Assert.AreEqual(string.Empty, invalidResult);
     }
 
@@ -99,7 +99,7 @@ public class SqlGeneratorTests
         // This test has been simplified to test core functionality directly
 
         // Act & Assert - Test with invalid enum value
-        var invalidResult = generator.Generate(SqlDefine.MySql, (SqlExecuteTypes)999, null!);
+        var invalidResult = generator.Generate(SqlDefine.MySql, (int)999, null!);
         Assert.AreEqual(string.Empty, invalidResult);
     }
 
@@ -115,7 +115,7 @@ public class SqlGeneratorTests
         // This test has been simplified to test core functionality directly
 
         // Act & Assert - Test with invalid enum value
-        var invalidResult = generator.Generate(SqlDefine.MySql, (SqlExecuteTypes)999, null!);
+        var invalidResult = generator.Generate(SqlDefine.MySql, (int)999, null!);
         Assert.AreEqual(string.Empty, invalidResult);
     }
 
@@ -131,21 +131,21 @@ public class SqlGeneratorTests
         // This test has been simplified to test core functionality directly
 
         // Act & Assert - Test with invalid enum value
-        var invalidResult = generator.Generate(SqlDefine.MySql, (SqlExecuteTypes)999, null!);
+        var invalidResult = generator.Generate(SqlDefine.MySql, (int)999, null!);
         Assert.AreEqual(string.Empty, invalidResult);
     }
 
     /// <summary>
-    /// Tests that SqlExecuteTypes enum has correct values.
+    /// Tests that int enum has correct values.
     /// </summary>
     [TestMethod]
-    public void SqlExecuteTypes_EnumValues_AreCorrect()
+    public void int_EnumValues_AreCorrect()
     {
         // Act & Assert
-        Assert.AreEqual(0, (int)SqlExecuteTypes.Select);
-        Assert.AreEqual(1, (int)SqlExecuteTypes.Update);
-        Assert.AreEqual(2, (int)SqlExecuteTypes.Insert);
-        Assert.AreEqual(3, (int)SqlExecuteTypes.Delete);
+        Assert.AreEqual(0, (int)Constants.SqlExecuteTypeValues.Select);
+        Assert.AreEqual(1, (int)Constants.SqlExecuteTypeValues.Update);
+        Assert.AreEqual(2, (int)Constants.SqlExecuteTypeValues.Insert);
+        Assert.AreEqual(3, (int)Constants.SqlExecuteTypeValues.Delete);
     }
 
     /// <summary>
@@ -331,8 +331,8 @@ public class SqlGeneratorTests
         Assert.AreEqual(3, parameters.Length, "Generate method should have 3 parameters");
         Assert.AreEqual("SqlDefine", parameters[0].ParameterType.Name,
             "Generate method first parameter should be SqlDefine");
-        Assert.AreEqual("SqlExecuteTypes", parameters[1].ParameterType.Name,
-            "Generate method second parameter should be SqlExecuteTypes");
+        Assert.AreEqual("Int32", parameters[1].ParameterType.Name,
+            "Generate method second parameter should be Int32");
         Assert.AreEqual("GenerateContext", parameters[2].ParameterType.Name,
             "Generate method third parameter should be GenerateContext");
     }
@@ -844,48 +844,32 @@ public class SqlGeneratorTests
             "Properties property should be of type List<T>");
     }
 
+
     /// <summary>
-    /// Tests that SqlExecuteTypes enum has correct structure.
+    /// Tests that int enum has correct values.
     /// </summary>
     [TestMethod]
-    public void SqlExecuteTypes_Enum_HasCorrectStructure()
+    public void int_Enum_HasCorrectValues()
     {
-        // Arrange
-        var enumType = typeof(SqlExecuteTypes);
-
         // Act & Assert
-        Assert.IsNotNull(enumType, "SqlExecuteTypes enum should exist");
-        Assert.IsTrue(enumType.IsNotPublic, "SqlExecuteTypes should be internal");
-        Assert.IsTrue(enumType.IsEnum, "SqlExecuteTypes should be an enum");
-        Assert.IsFalse(enumType.IsAbstract, "SqlExecuteTypes should not be abstract");
-        Assert.IsTrue(enumType.IsSealed, "SqlExecuteTypes should be sealed (enums are sealed by default in .NET)");
+        Assert.AreEqual(0, (int)Constants.SqlExecuteTypeValues.Select);
+        Assert.AreEqual(1, (int)Constants.SqlExecuteTypeValues.Update);
+        Assert.AreEqual(2, (int)Constants.SqlExecuteTypeValues.Insert);
+        Assert.AreEqual(3, (int)Constants.SqlExecuteTypeValues.Delete);
     }
 
     /// <summary>
-    /// Tests that SqlExecuteTypes enum has correct values.
+    /// Tests that int enum values are unique.
     /// </summary>
     [TestMethod]
-    public void SqlExecuteTypes_Enum_HasCorrectValues()
-    {
-        // Act & Assert
-        Assert.AreEqual(0, (int)SqlExecuteTypes.Select);
-        Assert.AreEqual(1, (int)SqlExecuteTypes.Update);
-        Assert.AreEqual(2, (int)SqlExecuteTypes.Insert);
-        Assert.AreEqual(3, (int)SqlExecuteTypes.Delete);
-    }
-
-    /// <summary>
-    /// Tests that SqlExecuteTypes enum values are unique.
-    /// </summary>
-    [TestMethod]
-    public void SqlExecuteTypes_Enum_ValuesAreUnique()
+    public void int_Enum_ValuesAreUnique()
     {
         // Arrange
         var values = new[] {
-            (int)SqlExecuteTypes.Select,
-            (int)SqlExecuteTypes.Update,
-            (int)SqlExecuteTypes.Insert,
-            (int)SqlExecuteTypes.Delete
+            (int)Constants.SqlExecuteTypeValues.Select,
+            (int)Constants.SqlExecuteTypeValues.Update,
+            (int)Constants.SqlExecuteTypeValues.Insert,
+            (int)Constants.SqlExecuteTypeValues.Delete
         };
 
         // Act
@@ -896,29 +880,29 @@ public class SqlGeneratorTests
     }
 
     /// <summary>
-    /// Tests that SqlExecuteTypes enum values are sequential.
+    /// Tests that int enum values are sequential.
     /// </summary>
     [TestMethod]
-    public void SqlExecuteTypes_Enum_ValuesAreSequential()
+    public void int_Enum_ValuesAreSequential()
     {
         // Act & Assert
-        Assert.AreEqual(0, (int)SqlExecuteTypes.Select, "Select should have value 0");
-        Assert.AreEqual(1, (int)SqlExecuteTypes.Update, "Update should have value 1");
-        Assert.AreEqual(2, (int)SqlExecuteTypes.Insert, "Insert should have value 2");
-        Assert.AreEqual(3, (int)SqlExecuteTypes.Delete, "Delete should have value 3");
+        Assert.AreEqual(0, (int)Constants.SqlExecuteTypeValues.Select, "Select should have value 0");
+        Assert.AreEqual(1, (int)Constants.SqlExecuteTypeValues.Update, "Update should have value 1");
+        Assert.AreEqual(2, (int)Constants.SqlExecuteTypeValues.Insert, "Insert should have value 2");
+        Assert.AreEqual(3, (int)Constants.SqlExecuteTypeValues.Delete, "Delete should have value 3");
     }
 
     /// <summary>
-    /// Tests that SqlExecuteTypes enum values can be cast to int.
+    /// Tests that int enum values can be cast to int.
     /// </summary>
     [TestMethod]
-    public void SqlExecuteTypes_Enum_ValuesCanBeCastToInt()
+    public void int_Enum_ValuesCanBeCastToInt()
     {
         // Act & Assert
-        int selectValue = (int)SqlExecuteTypes.Select;
-        int updateValue = (int)SqlExecuteTypes.Update;
-        int insertValue = (int)SqlExecuteTypes.Insert;
-        int deleteValue = (int)SqlExecuteTypes.Delete;
+        int selectValue = (int)Constants.SqlExecuteTypeValues.Select;
+        int updateValue = (int)Constants.SqlExecuteTypeValues.Update;
+        int insertValue = (int)Constants.SqlExecuteTypeValues.Insert;
+        int deleteValue = (int)Constants.SqlExecuteTypeValues.Delete;
 
         Assert.AreEqual(0, selectValue);
         Assert.AreEqual(1, updateValue);
@@ -927,52 +911,52 @@ public class SqlGeneratorTests
     }
 
     /// <summary>
-    /// Tests that SqlExecuteTypes enum values can be cast from int.
+    /// Tests that int enum values can be cast from int.
     /// </summary>
     [TestMethod]
-    public void SqlExecuteTypes_Enum_ValuesCanBeCastFromInt()
+    public void int_Enum_ValuesCanBeCastFromInt()
     {
         // Act & Assert
-        SqlExecuteTypes selectType = (SqlExecuteTypes)0;
-        SqlExecuteTypes updateType = (SqlExecuteTypes)1;
-        SqlExecuteTypes insertType = (SqlExecuteTypes)2;
-        SqlExecuteTypes deleteType = (SqlExecuteTypes)3;
+        int selectType = (int)0;
+        int updateType = (int)1;
+        int insertType = (int)2;
+        int deleteType = (int)3;
 
-        Assert.AreEqual(SqlExecuteTypes.Select, selectType);
-        Assert.AreEqual(SqlExecuteTypes.Update, updateType);
-        Assert.AreEqual(SqlExecuteTypes.Insert, insertType);
-        Assert.AreEqual(SqlExecuteTypes.Delete, deleteType);
+        Assert.AreEqual(Constants.SqlExecuteTypeValues.Select, selectType);
+        Assert.AreEqual(Constants.SqlExecuteTypeValues.Update, updateType);
+        Assert.AreEqual(Constants.SqlExecuteTypeValues.Insert, insertType);
+        Assert.AreEqual(Constants.SqlExecuteTypeValues.Delete, deleteType);
     }
 
     /// <summary>
-    /// Tests that SqlExecuteTypes enum values can be compared.
+    /// Tests that int enum values can be compared.
     /// </summary>
     [TestMethod]
-    public void SqlExecuteTypes_Enum_ValuesCanBeCompared()
+    public void int_Enum_ValuesCanBeCompared()
     {
         // Act & Assert
-        Assert.IsTrue(SqlExecuteTypes.Select < SqlExecuteTypes.Update);
-        Assert.IsTrue(SqlExecuteTypes.Update < SqlExecuteTypes.Insert);
-        Assert.IsTrue(SqlExecuteTypes.Insert < SqlExecuteTypes.Delete);
+        Assert.IsTrue(Constants.SqlExecuteTypeValues.Select < Constants.SqlExecuteTypeValues.Update);
+        Assert.IsTrue(Constants.SqlExecuteTypeValues.Update < Constants.SqlExecuteTypeValues.Insert);
+        Assert.IsTrue(Constants.SqlExecuteTypeValues.Insert < Constants.SqlExecuteTypeValues.Delete);
 
-        Assert.IsTrue(SqlExecuteTypes.Delete > SqlExecuteTypes.Insert);
-        Assert.IsTrue(SqlExecuteTypes.Insert > SqlExecuteTypes.Update);
-        Assert.IsTrue(SqlExecuteTypes.Update > SqlExecuteTypes.Select);
+        Assert.IsTrue(Constants.SqlExecuteTypeValues.Delete > Constants.SqlExecuteTypeValues.Insert);
+        Assert.IsTrue(Constants.SqlExecuteTypeValues.Insert > Constants.SqlExecuteTypeValues.Update);
+        Assert.IsTrue(Constants.SqlExecuteTypeValues.Update > Constants.SqlExecuteTypeValues.Select);
     }
 
     /// <summary>
-    /// Tests that SqlExecuteTypes enum values can be used in switch statements.
+    /// Tests that int enum values can be used in switch statements.
     /// </summary>
     [TestMethod]
-    public void SqlExecuteTypes_Enum_ValuesCanBeUsedInSwitchStatements()
+    public void int_Enum_ValuesCanBeUsedInSwitchStatements()
     {
         // Arrange
         var testCases = new[]
         {
-            (SqlExecuteTypes.Select, "Select"),
-            (SqlExecuteTypes.Update, "Update"),
-            (SqlExecuteTypes.Insert, "Insert"),
-            (SqlExecuteTypes.Delete, "Delete")
+            (Constants.SqlExecuteTypeValues.Select, "Select"),
+            (Constants.SqlExecuteTypeValues.Update, "Update"),
+            (Constants.SqlExecuteTypeValues.Insert, "Insert"),
+            (Constants.SqlExecuteTypeValues.Delete, "Delete")
         };
 
         // Act & Assert
@@ -980,10 +964,10 @@ public class SqlGeneratorTests
         {
             string result = enumValue switch
             {
-                SqlExecuteTypes.Select => "Select",
-                SqlExecuteTypes.Update => "Update",
-                SqlExecuteTypes.Insert => "Insert",
-                SqlExecuteTypes.Delete => "Delete",
+                Constants.SqlExecuteTypeValues.Select => "Select",
+                Constants.SqlExecuteTypeValues.Update => "Update",
+                Constants.SqlExecuteTypeValues.Insert => "Insert",
+                Constants.SqlExecuteTypeValues.Delete => "Delete",
                 _ => "Unknown"
             };
 
@@ -992,45 +976,45 @@ public class SqlGeneratorTests
     }
 
     /// <summary>
-    /// Tests that SqlExecuteTypes enum values can be used in pattern matching.
+    /// Tests that int enum values can be used in pattern matching.
     /// </summary>
     [TestMethod]
-    public void SqlExecuteTypes_Enum_ValuesCanBeUsedInPatternMatching()
+    public void int_Enum_ValuesCanBeUsedInPatternMatching()
     {
         // Act & Assert
-        var selectResult = SqlExecuteTypes.Select switch
+        var selectResult = Constants.SqlExecuteTypeValues.Select switch
         {
-            SqlExecuteTypes.Select => "Select",
-            SqlExecuteTypes.Update => "Update",
-            SqlExecuteTypes.Insert => "Insert",
-            SqlExecuteTypes.Delete => "Delete",
+            Constants.SqlExecuteTypeValues.Select => "Select",
+            Constants.SqlExecuteTypeValues.Update => "Update",
+            Constants.SqlExecuteTypeValues.Insert => "Insert",
+            Constants.SqlExecuteTypeValues.Delete => "Delete",
             _ => "Unknown"
         };
 
-        var updateResult = SqlExecuteTypes.Update switch
+        var updateResult = Constants.SqlExecuteTypeValues.Update switch
         {
-            SqlExecuteTypes.Select => "Select",
-            SqlExecuteTypes.Update => "Update",
-            SqlExecuteTypes.Insert => "Insert",
-            SqlExecuteTypes.Delete => "Delete",
+            Constants.SqlExecuteTypeValues.Select => "Select",
+            Constants.SqlExecuteTypeValues.Update => "Update",
+            Constants.SqlExecuteTypeValues.Insert => "Insert",
+            Constants.SqlExecuteTypeValues.Delete => "Delete",
             _ => "Unknown"
         };
 
-        var insertResult = SqlExecuteTypes.Insert switch
+        var insertResult = Constants.SqlExecuteTypeValues.Insert switch
         {
-            SqlExecuteTypes.Select => "Select",
-            SqlExecuteTypes.Update => "Update",
-            SqlExecuteTypes.Insert => "Insert",
-            SqlExecuteTypes.Delete => "Delete",
+            Constants.SqlExecuteTypeValues.Select => "Select",
+            Constants.SqlExecuteTypeValues.Update => "Update",
+            Constants.SqlExecuteTypeValues.Insert => "Insert",
+            Constants.SqlExecuteTypeValues.Delete => "Delete",
             _ => "Unknown"
         };
 
-        var deleteResult = SqlExecuteTypes.Delete switch
+        var deleteResult = Constants.SqlExecuteTypeValues.Delete switch
         {
-            SqlExecuteTypes.Select => "Select",
-            SqlExecuteTypes.Update => "Update",
-            SqlExecuteTypes.Insert => "Insert",
-            SqlExecuteTypes.Delete => "Delete",
+            Constants.SqlExecuteTypeValues.Select => "Select",
+            Constants.SqlExecuteTypeValues.Update => "Update",
+            Constants.SqlExecuteTypeValues.Insert => "Insert",
+            Constants.SqlExecuteTypeValues.Delete => "Delete",
             _ => "Unknown"
         };
 

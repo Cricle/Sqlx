@@ -11,7 +11,7 @@
 [![Tests](https://img.shields.io/badge/Tests-1286%2B%20Passing-brightgreen?style=for-the-badge)]()
 [![Coverage](https://img.shields.io/badge/Coverage-99.1%25-brightgreen?style=for-the-badge)]()
 
-**[🚀 快速开始](#-快速开始) · [📚 文档](#-文档) · [🎯 完整示例](#-完整示例演示) · [📋 更新日志](CHANGELOG.md)**
+**[🚀 快速开始](#-快速开始) · [📚 文档](#-文档) · [🎯 完整示例](#-完整示例演示) · [🌐 多语言](docs/) · [📋 更新日志](CHANGELOG.md)**
 
 </div>
 

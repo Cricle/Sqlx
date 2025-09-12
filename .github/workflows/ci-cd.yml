@@ -45,6 +45,13 @@ jobs:
     - name: 🧪 Run tests
       run: dotnet test --configuration Release --no-build --collect:"XPlat Code Coverage" --logger "console;verbosity=minimal" --framework net8.0
 
+    - name: 📊 Upload coverage
+      uses: codecov/codecov-action@v4
+      if: always()
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: false
+
     - name: 📦 Pack packages
       if: github.event_name == 'push'
       run: dotnet pack --configuration Release --no-build --output ./artifacts

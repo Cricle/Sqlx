@@ -60,7 +60,7 @@ public abstract class TestBase
         {
             if (expectedMessage != null)
             {
-                Assert.IsTrue(ex.Message.Contains(expectedMessage), 
+                Assert.IsTrue(ex.Message.Contains(expectedMessage),
                     $"Expected exception message to contain '{expectedMessage}', but was '{ex.Message}'");
             }
             return ex;
@@ -78,15 +78,15 @@ public abstract class TestBase
     /// <typeparam name="T">The element type.</typeparam>
     /// <param name="expected">The expected collection.</param>
     /// <param name="actual">The actual collection.</param>
-    protected static void AssertCollectionsEqual<T>(System.Collections.Generic.IEnumerable<T> expected, 
+    protected static void AssertCollectionsEqual<T>(System.Collections.Generic.IEnumerable<T> expected,
         System.Collections.Generic.IEnumerable<T> actual)
     {
         var expectedList = expected.ToList();
         var actualList = actual.ToList();
-        
-        Assert.AreEqual(expectedList.Count, actualList.Count, 
+
+        Assert.AreEqual(expectedList.Count, actualList.Count,
             $"Collections have different counts. Expected: {expectedList.Count}, Actual: {actualList.Count}");
-        
+
         foreach (var item in expectedList)
         {
             Assert.IsTrue(actualList.Contains(item), $"Expected item '{item}' not found in actual collection");

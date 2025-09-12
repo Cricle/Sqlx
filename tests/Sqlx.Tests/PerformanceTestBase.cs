@@ -37,7 +37,7 @@ public abstract class PerformanceTestBase : TestBase
     /// <param name="measurementIterations">Number of measurement iterations.</param>
     /// <returns>Performance measurement results.</returns>
     protected PerformanceMeasurement MeasurePerformance(
-        Action action, 
+        Action action,
         int warmupIterations = DefaultWarmupIterations,
         int measurementIterations = DefaultMeasurementIterations)
     {
@@ -184,13 +184,13 @@ public class PerformanceMeasurement
     private double GetPercentile(double percentile)
     {
         if (measurements.Count == 0) return 0;
-        
+
         var index = (percentile / 100.0) * (measurements.Count - 1);
         var lower = (int)Math.Floor(index);
         var upper = (int)Math.Ceiling(index);
-        
+
         if (lower == upper) return measurements[lower];
-        
+
         var weight = index - lower;
         return measurements[lower] * (1 - weight) + measurements[upper] * weight;
     }

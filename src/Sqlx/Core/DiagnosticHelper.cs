@@ -39,8 +39,8 @@ namespace Sqlx.Core
         /// 创建 Primary Constructor 相关的诊断信息
         /// </summary>
         public static Diagnostic CreatePrimaryConstructorDiagnostic(
-            string issue, 
-            INamedTypeSymbol type, 
+            string issue,
+            INamedTypeSymbol type,
             Location? location = null)
         {
             return CreateDiagnostic(
@@ -56,8 +56,8 @@ namespace Sqlx.Core
         /// 创建 Record 类型相关的诊断信息
         /// </summary>
         public static Diagnostic CreateRecordTypeDiagnostic(
-            string issue, 
-            INamedTypeSymbol type, 
+            string issue,
+            INamedTypeSymbol type,
             Location? location = null)
         {
             return CreateDiagnostic(
@@ -73,8 +73,8 @@ namespace Sqlx.Core
         /// 创建实体类型推断相关的诊断信息
         /// </summary>
         public static Diagnostic CreateEntityInferenceDiagnostic(
-            string issue, 
-            string methodName, 
+            string issue,
+            string methodName,
             Location? location = null)
         {
             return CreateDiagnostic(
@@ -90,8 +90,8 @@ namespace Sqlx.Core
         /// 创建性能优化建议诊断信息
         /// </summary>
         public static Diagnostic CreatePerformanceSuggestion(
-            string suggestion, 
-            string context, 
+            string suggestion,
+            string context,
             Location? location = null)
         {
             return CreateDiagnostic(
@@ -114,7 +114,7 @@ namespace Sqlx.Core
             report.AppendLine($"类型种类: {type.TypeKind}");
             report.AppendLine($"是否为 Record: {PrimaryConstructorAnalyzer.IsRecord(type)}");
             report.AppendLine($"是否有主构造函数: {PrimaryConstructorAnalyzer.HasPrimaryConstructor(type)}");
-            
+
             // 构造函数信息
             var constructors = type.Constructors.Where(c => !c.IsImplicitlyDeclared).ToList();
             report.AppendLine($"构造函数数量: {constructors.Count}");
@@ -173,7 +173,7 @@ namespace Sqlx.Core
             {
                 var primaryConstructor = entityType.Constructors
                     .FirstOrDefault(c => c.Parameters.Length > 0);
-                
+
                 if (primaryConstructor == null)
                 {
                     issues.Add("Record 类型应该有主构造函数");
@@ -195,7 +195,7 @@ namespace Sqlx.Core
             {
                 var properties = PrimaryConstructorAnalyzer.GetAccessibleMembers(entityType).ToList();
                 var readOnlyProperties = properties.Count(p => !p.CanWrite);
-                
+
                 if (readOnlyProperties > properties.Count * 0.7) // 70% 以上只读属性
                 {
                     suggestions.Add("考虑使用 Record 类型以获得更好的不可变性和性能");
@@ -203,13 +203,13 @@ namespace Sqlx.Core
             }
 
             // 检查是否应该使用主构造函数
-            if (!PrimaryConstructorAnalyzer.HasPrimaryConstructor(entityType) && 
+            if (!PrimaryConstructorAnalyzer.HasPrimaryConstructor(entityType) &&
                 !PrimaryConstructorAnalyzer.IsRecord(entityType))
             {
                 var constructors = entityType.Constructors
                     .Where(c => !c.IsImplicitlyDeclared)
                     .ToList();
-                
+
                 if (constructors.Count == 1 && constructors[0].Parameters.Length > 2)
                 {
                     suggestions.Add("考虑使用主构造函数语法简化代码");
@@ -220,7 +220,7 @@ namespace Sqlx.Core
             var memberProperties = PrimaryConstructorAnalyzer.GetAccessibleMembers(entityType).ToList();
             foreach (var prop in memberProperties)
             {
-                if (prop.Type.SpecialType == SpecialType.System_String && 
+                if (prop.Type.SpecialType == SpecialType.System_String &&
                     prop is IPropertySymbol propSymbol && propSymbol.SetMethod != null)
                 {
                     suggestions.Add($"属性 {prop.Name}: 考虑添加非空约束以提高性能");
@@ -234,8 +234,8 @@ namespace Sqlx.Core
         /// 创建代码生成上下文诊断
         /// </summary>
         public static void LogCodeGenerationContext(
-            string context, 
-            INamedTypeSymbol entityType, 
+            string context,
+            INamedTypeSymbol entityType,
             string methodName)
         {
             System.Diagnostics.Debug.WriteLine($"[Sqlx CodeGen] {context}");

@@ -20,7 +20,7 @@ public static class NameMapper
     /// </summary>
     /// <param name="parameterName">Name of the parameter to map.</param>
     /// <returns>Corresponding database column name in snake_case.</returns>
-    public static string MapName(string parameterName) 
+    public static string MapName(string parameterName)
         => parameterName == null ? throw new System.ArgumentNullException(nameof(parameterName)) : MapNameToSnakeCase(parameterName);
 
     /// <summary>

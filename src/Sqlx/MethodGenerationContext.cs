@@ -181,9 +181,10 @@ internal class MethodGenerationContext : GenerationContextBase
 
         if (hasRepositoryForAttribute)
         {
-            // For RepositoryFor classes, always use "connection" field
+            // For RepositoryFor classes, use the actual DbConnection field name
             // Skip connection validation as the RepositoryFor generator handles this
-            dbConnectionExpression = "connection";
+            var connectionFieldName = GetDbConnectionFieldName(ClassGenerationContext.ClassSymbol);
+            dbConnectionExpression = connectionFieldName;
         }
         else
         {
@@ -230,9 +231,9 @@ internal class MethodGenerationContext : GenerationContextBase
                 string strValue when int.TryParse(strValue, out var intVal) => (SqlExecuteTypes)intVal,
                 _ => SqlExecuteTypes.Select
             };
-            isBatchCommand = type == SqlExecuteTypes.BatchCommand || 
-                           type == SqlExecuteTypes.BatchInsert || 
-                           type == SqlExecuteTypes.BatchUpdate || 
+            isBatchCommand = type == SqlExecuteTypes.BatchCommand ||
+                           type == SqlExecuteTypes.BatchInsert ||
+                           type == SqlExecuteTypes.BatchUpdate ||
                            type == SqlExecuteTypes.BatchDelete;
         }
 
@@ -929,7 +930,7 @@ internal class MethodGenerationContext : GenerationContextBase
     {
         var methodDef = MethodSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlDefineAttribute") ??
             ClassGenerationContext.ClassSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlDefineAttribute");
-        
+
         if (methodDef != null)
         {
             if (methodDef.ConstructorArguments.Length == 1)
@@ -968,7 +969,7 @@ internal class MethodGenerationContext : GenerationContextBase
         var connectionField = repositoryClass.GetMembers()
             .OfType<IFieldSymbol>()
             .FirstOrDefault(x => x.IsDbConnection());
-            
+
         if (connectionField != null)
         {
             var connectionTypeName = connectionField.Type.ToDisplayString();
@@ -978,7 +979,7 @@ internal class MethodGenerationContext : GenerationContextBase
         var connectionProperty = repositoryClass.GetMembers()
             .OfType<IPropertySymbol>()
             .FirstOrDefault(x => x.IsDbConnection());
-            
+
         if (connectionProperty != null)
         {
             var connectionTypeName = connectionProperty.Type.ToDisplayString();
@@ -1564,19 +1565,19 @@ internal class MethodGenerationContext : GenerationContextBase
         sb.AppendLine($"if ({DbConnectionName} is global::System.Data.Common.DbConnection dbConn && dbConn.CanCreateBatch)");
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         // Generate native DbBatch implementation
         GenerateNativeDbBatchLogic(sb, collectionParam, returnType);
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine("else");
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         // Generate fallback implementation
         GenerateFallbackBatchLogic(sb, collectionParam, returnType);
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
 
@@ -1610,7 +1611,7 @@ internal class MethodGenerationContext : GenerationContextBase
         sb.PushIndent();
 
         sb.AppendLine("var batchCommand = batch.CreateBatchCommand();");
-        
+
         // Generate SQL based on operation type
         switch (operationType)
         {
@@ -1709,32 +1710,32 @@ internal class MethodGenerationContext : GenerationContextBase
             case "UPDATE":
                 var setProperties = GetSetProperties(properties);
                 var whereProperties = GetWhereProperties(properties);
-                
+
                 if (!setProperties.Any())
                 {
                     sb.AppendLine("throw new global::System.InvalidOperationException(\"No properties marked with [Set] attribute or eligible for SET clause in batch update\");");
                     break;
                 }
-                
+
                 if (!whereProperties.Any())
                 {
                     sb.AppendLine("throw new global::System.InvalidOperationException(\"No properties marked with [Where] attribute or eligible for WHERE clause in batch update\");");
                     break;
                 }
-                
+
                 var setClause = string.Join(", ", setProperties.Select(p => $"{SqlDef.WrapColumn(p.Name)} = {SqlDef.ParameterPrefix}{p.GetParameterName(string.Empty)}"));
                 var whereClause = string.Join(" AND ", whereProperties.Select(p => GenerateWhereCondition(p)));
                 sb.AppendLine($"{CmdName}.CommandText = \"UPDATE {SqlDef.WrapColumn(tableName)} SET {setClause} WHERE {whereClause}\";");
                 break;
             case "DELETE":
                 var deleteWhereProperties = GetWhereProperties(properties);
-                
+
                 if (!deleteWhereProperties.Any())
                 {
                     sb.AppendLine("throw new global::System.InvalidOperationException(\"No properties marked with [Where] attribute or eligible for WHERE clause in batch delete\");");
                     break;
                 }
-                
+
                 var deleteWhereClause = string.Join(" AND ", deleteWhereProperties.Select(p => GenerateWhereCondition(p)));
                 sb.AppendLine($"{CmdName}.CommandText = \"DELETE FROM {SqlDef.WrapColumn(tableName)} WHERE {deleteWhereClause}\";");
                 break;
@@ -1744,7 +1745,7 @@ internal class MethodGenerationContext : GenerationContextBase
         }
 
         sb.AppendLine($"{CmdName}.Parameters.Clear();");
-        
+
         // Set transaction and timeout if specified
         if (TransactionParameter != null)
             sb.AppendLine($"{CmdName}.Transaction = {TransactionParameter.Name};");
@@ -1809,35 +1810,35 @@ internal class MethodGenerationContext : GenerationContextBase
     {
         var setProperties = GetSetProperties(properties);
         var whereProperties = GetWhereProperties(properties);
-        
+
         if (!setProperties.Any())
         {
             sb.AppendLine("throw new global::System.InvalidOperationException(\"No properties marked with [Set] attribute or eligible for SET clause in batch update\");");
             return;
         }
-        
+
         if (!whereProperties.Any())
         {
             sb.AppendLine("throw new global::System.InvalidOperationException(\"No properties marked with [Where] attribute or eligible for WHERE clause in batch update\");");
             return;
         }
-        
+
         var setClause = string.Join(", ", setProperties.Select(p => $"{SqlDef.WrapColumn(p.Name)} = {SqlDef.ParameterPrefix}{p.GetParameterName(string.Empty)}"));
         var whereClause = string.Join(" AND ", whereProperties.Select(p => GenerateWhereCondition(p)));
-        
+
         sb.AppendLine($"batchCommand.CommandText = \"UPDATE {SqlDef.WrapColumn(tableName)} SET {setClause} WHERE {whereClause}\";");
     }
 
     private void GenerateBatchDeleteSql(IndentedStringBuilder sb, string tableName, List<IPropertySymbol> properties)
     {
         var whereProperties = GetWhereProperties(properties);
-        
+
         if (!whereProperties.Any())
         {
             sb.AppendLine("throw new global::System.InvalidOperationException(\"No properties marked with [Where] attribute or eligible for WHERE clause in batch delete\");");
             return;
         }
-        
+
         var whereClause = string.Join(" AND ", whereProperties.Select(p => GenerateWhereCondition(p)));
         sb.AppendLine($"batchCommand.CommandText = \"DELETE FROM {SqlDef.WrapColumn(tableName)} WHERE {whereClause}\";");
     }
@@ -1861,7 +1862,7 @@ internal class MethodGenerationContext : GenerationContextBase
             return type switch
             {
                 SqlExecuteTypes.BatchInsert => "INSERT",
-                SqlExecuteTypes.BatchUpdate => "UPDATE", 
+                SqlExecuteTypes.BatchUpdate => "UPDATE",
                 SqlExecuteTypes.BatchDelete => "DELETE",
                 SqlExecuteTypes.BatchCommand => GetOperationFromMethodName(), // Fallback to method name inference
                 _ => "INSERT"
@@ -1876,14 +1877,14 @@ internal class MethodGenerationContext : GenerationContextBase
     {
         // Try to infer operation type from method name
         var methodName = MethodSymbol.Name.ToUpperInvariant();
-        
+
         if (methodName.Contains("INSERT") || methodName.Contains("ADD") || methodName.Contains("CREATE"))
             return "INSERT";
         if (methodName.Contains("UPDATE") || methodName.Contains("MODIFY") || methodName.Contains("CHANGE"))
             return "UPDATE";
         if (methodName.Contains("DELETE") || methodName.Contains("REMOVE"))
             return "DELETE";
-        
+
         // Default to INSERT for backward compatibility
         return "INSERT";
     }
@@ -1898,12 +1899,12 @@ internal class MethodGenerationContext : GenerationContextBase
     {
         // 首先查找标记了 [Set] 特性的属性
         var explicitSetProperties = properties.Where(p => HasSetAttribute(p)).ToList();
-        
+
         if (explicitSetProperties.Any())
         {
             return explicitSetProperties;
         }
-        
+
         // 如果没有显式标记，则使用所有非 Where 属性（排除主键）
         var whereProperties = GetWhereProperties(properties);
         return properties.Where(p => !whereProperties.Contains(p) && !IsKeyProperty(p)).ToList();
@@ -1913,12 +1914,12 @@ internal class MethodGenerationContext : GenerationContextBase
     {
         // 首先查找标记了 [Where] 特性的属性
         var explicitWhereProperties = properties.Where(p => HasWhereAttribute(p)).ToList();
-        
+
         if (explicitWhereProperties.Any())
         {
             return explicitWhereProperties;
         }
-        
+
         // 如果没有显式标记，则使用主键属性作为默认 WHERE 条件
         return properties.Where(p => IsKeyProperty(p)).ToList();
     }
@@ -1937,7 +1938,7 @@ internal class MethodGenerationContext : GenerationContextBase
     {
         var whereAttr = property.GetAttributes().FirstOrDefault(a => a.AttributeClass?.Name == "WhereAttribute");
         var operatorStr = "="; // 默认操作符
-        
+
         if (whereAttr != null && whereAttr.ConstructorArguments.Length > 0)
         {
             operatorStr = whereAttr.ConstructorArguments[0].Value?.ToString() ?? "=";
@@ -1951,7 +1952,7 @@ internal class MethodGenerationContext : GenerationContextBase
                 operatorStr = operatorProp.Value.Value?.ToString() ?? "=";
             }
         }
-        
+
         return $"{SqlDef.WrapColumn(property.Name)} {operatorStr} {SqlDef.ParameterPrefix}{property.GetParameterName(string.Empty)}";
     }
 
@@ -1982,6 +1983,51 @@ internal class MethodGenerationContext : GenerationContextBase
                 sb.AppendLine($"{CmdName}.ExecuteNonQuery();");
             }
         }
+    }
+
+    private string GetDbConnectionFieldName(INamedTypeSymbol repositoryClass)
+    {
+        // Find the first DbConnection field or property
+        var dbConnectionMember = repositoryClass.GetMembers()
+            .OfType<IFieldSymbol>()
+            .FirstOrDefault(x => x.IsDbConnection()) ??
+            repositoryClass.GetMembers()
+            .OfType<IPropertySymbol>()
+            .FirstOrDefault(x => x.IsDbConnection()) as ISymbol;
+
+        // If not found, check for primary constructor parameter with DbConnection
+        if (dbConnectionMember == null)
+        {
+            var primaryConstructor = Core.PrimaryConstructorAnalyzer.GetPrimaryConstructor(repositoryClass);
+            if (primaryConstructor != null)
+            {
+                var connectionParam = primaryConstructor.Parameters.FirstOrDefault(p => p.Type.IsDbConnection());
+                if (connectionParam != null)
+                {
+                    // For primary constructor parameters, use the parameter name as field name
+                    return connectionParam.Name;
+                }
+            }
+
+            // Also check regular constructors for backward compatibility
+            var constructor = repositoryClass.InstanceConstructors.FirstOrDefault();
+            if (constructor != null)
+            {
+                var connectionParam = constructor.Parameters.FirstOrDefault(p => p.Type.IsDbConnection());
+                if (connectionParam != null)
+                {
+                    return connectionParam.Name;
+                }
+            }
+        }
+
+        // If not found in the class, check base class
+        if (dbConnectionMember == null && repositoryClass.BaseType != null)
+        {
+            return GetDbConnectionFieldName(repositoryClass.BaseType);
+        }
+
+        return dbConnectionMember?.Name ?? "connection"; // Fallback to "connection" if not found
     }
 }
 
@@ -2043,7 +2089,7 @@ internal static class ExtensionsWithCache
                         var enumTypeName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
                         return $"{readerName}.IsDBNull({ordinalVariableName}) ? default({enumTypeName}) : ({enumTypeName}){readerName}.{method}({ordinalVariableName})";
                     }
-                    
+
                     // Non-nullable value types: return default if DBNull
                     return $"{readerName}.IsDBNull({ordinalVariableName}) ? default : {readerName}.{method}({ordinalVariableName})";
                 }
@@ -2059,13 +2105,13 @@ internal static class ExtensionsWithCache
 
         // Enhanced fallback handling for unsupported types
         var typeName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-        
+
         // Special handling for enum types
         if (unwrapType.TypeKind == TypeKind.Enum)
         {
             var underlyingType = ((INamedTypeSymbol)unwrapType).EnumUnderlyingType;
             var underlyingMethod = underlyingType?.GetDataReaderMethod();
-            
+
             if (!string.IsNullOrEmpty(underlyingMethod))
             {
                 if (isNullable)
@@ -2078,7 +2124,7 @@ internal static class ExtensionsWithCache
                 }
             }
         }
-        
+
         // Final fallback to GetValue with casting (less preferred)
         if (isNullable || type.IsReferenceType)
         {

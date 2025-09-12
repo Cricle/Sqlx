@@ -91,20 +91,20 @@ public partial class CSharpGenerator
         private static bool HasRepositoryForAttribute(INamedTypeSymbol type)
         {
             var attributes = type.GetAttributes();
-            #if DEBUG
+#if DEBUG
             System.Diagnostics.Debug.WriteLine($"Class {type.Name} has {attributes.Length} attributes:");
             foreach (var attr in attributes)
             {
                 System.Diagnostics.Debug.WriteLine($"  - {attr.AttributeClass?.Name} ({attr.AttributeClass?.ToDisplayString()})");
             }
-            #endif
+#endif
 
             var hasAttr = attributes.Any(attr => attr.AttributeClass?.Name == "RepositoryForAttribute" || attr.AttributeClass?.Name == "RepositoryFor");
-            #if DEBUG
+#if DEBUG
             System.Diagnostics.Debug.WriteLine(hasAttr
                 ? $"Found RepositoryFor attribute on {type.Name}"
                 : $"No RepositoryFor attribute found on {type.Name}");
-            #endif
+#endif
             return hasAttr;
         }
     }

@@ -277,10 +277,10 @@ internal static class Extensions
         {
             var typeName = unwrapType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             var enumNullValue = GetNullValueForType(isNullable, unwrapType);
-            
+
             return $"{readerName}.IsDBNull({ordinalExpression}) ? {enumNullValue} : ({typeName}){readerName}.{method}({ordinalExpression})";
         }
-        
+
         // For non-nullable value types that don't need null checking
         if (!isNullable && unwrapType.IsValueType && unwrapType.SpecialType != SpecialType.System_String)
         {
@@ -307,7 +307,7 @@ internal static class Extensions
             var typeName = unwrapType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             return isNullable ? "null" : $"default({typeName})";
         }
-        
+
         return (isNullable, unwrapType.SpecialType) switch
         {
             (true, SpecialType.System_String) => "null",

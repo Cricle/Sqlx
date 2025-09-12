@@ -100,7 +100,7 @@ public class IndentedStringBuilderExtendedTests
         // Assert
         var result = builder.ToString();
         var lines = result.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
-        
+
         Assert.IsTrue(lines[0].StartsWith("        ")); // 8 spaces for level 2
         Assert.IsTrue(lines[1].StartsWith("    ")); // 4 spaces for level 1
     }
@@ -135,7 +135,7 @@ public class IndentedStringBuilderExtendedTests
         // Assert
         var result = builder.ToString();
         var lines = result.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
-        
+
         Assert.AreEqual("Level 0", lines[0]);
         Assert.AreEqual("    Level 1", lines[1]);
         Assert.AreEqual("        Level 2", lines[2]);
@@ -189,7 +189,7 @@ public class IndentedStringBuilderExtendedTests
         // Assert
         var result = builder.ToString();
         var lines = result.Split(Environment.NewLine, StringSplitOptions.None);
-        
+
         Assert.AreEqual("First", lines[0]);
         Assert.AreEqual(string.Empty, lines[1]);
         Assert.AreEqual("Second", lines[2]);
@@ -264,28 +264,28 @@ public class IndentedStringBuilderExtendedTests
         builder.AppendLine("public void TestMethod()");
         builder.AppendLine("{");
         builder.PushIndent();
-        
+
         builder.AppendLine("if (condition)");
         builder.AppendLine("{");
         builder.PushIndent();
         builder.AppendLine("DoSomething();");
         builder.PopIndent();
         builder.AppendLine("}");
-        
+
         builder.AppendLine("else");
         builder.AppendLine("{");
         builder.PushIndent();
         builder.AppendLine("DoSomethingElse();");
         builder.PopIndent();
         builder.AppendLine("}");
-        
+
         builder.PopIndent();
         builder.AppendLine("}");
 
         // Assert
         var result = builder.ToString();
         var lines = result.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
-        
+
         Assert.AreEqual("public void TestMethod()", lines[0]);
         Assert.AreEqual("{", lines[1]);
         Assert.AreEqual("    if (condition)", lines[2]);

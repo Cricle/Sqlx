@@ -39,12 +39,12 @@ namespace TestNamespace
         var compilation = CSharpCompilation.Create(
             "TestAssembly",
             new[] { syntaxTree },
-            new[] { 
+            new[] {
                 MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(System.Collections.Generic.List<>).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(System.Threading.Tasks.Task).Assembly.Location)
             });
-            
+
         _compilation = compilation;
     }
 
@@ -295,10 +295,10 @@ namespace TestNamespace
     {
         var genericType = _compilation.GetTypeByMetadataName(genericTypeName + "`1");
         var typeArgument = GetTypeSymbol(typeArgumentName);
-        
+
         Assert.IsNotNull(genericType, $"Could not find generic type: {genericTypeName}");
         Assert.IsNotNull(typeArgument, $"Could not find type argument: {typeArgumentName}");
-        
+
         return genericType.Construct(typeArgument);
     }
 

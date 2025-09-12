@@ -42,7 +42,7 @@ namespace Foo
             "Should contain parameter names");
         Assert.IsTrue(output.Contains("ExecuteReader"),
             "Should call ExecuteReader method");
-        
+
         // Verify modern code generation features are present
         Assert.IsTrue(output.Contains("OnExecuting") && output.Contains("OnExecuted"),
             "Should include interceptor methods");

@@ -107,9 +107,9 @@ using Sqlx.Annotations;
         SafeAddAssemblyReference(references, "System.Data");
         SafeAddAssemblyReference(references, "System.Linq.Expressions");
         SafeAddAssemblyReference(references, "System.ComponentModel.Primitives");
-        
+
         // Add explicit DbConnection reference
-        try 
+        try
         {
             references.Add(MetadataReference.CreateFromFile(typeof(System.Data.Common.DbConnection).Assembly.Location));
         }
@@ -156,7 +156,7 @@ using Sqlx.Annotations;
             string output = string.Join("\n\n", generatedFiles.Select(tree => tree.ToString()));
             Console.WriteLine("Generated code:");
             Console.WriteLine(output);
-            
+
             // If there are compilation errors, still return the generated code for inspection
             // but log the errors for debugging
             if (finalCompilationErrors.Any())
@@ -165,10 +165,10 @@ using Sqlx.Annotations;
                 Console.WriteLine($"Warning: Compilation errors detected but code was generated:\n{errorMessages}");
                 // Don't fail immediately - return the generated code for test inspection
             }
-            
+
             return output;
         }
-        
+
         // Only fail if no code was generated at all AND there are errors
         if (finalCompilationErrors.Any())
         {
@@ -400,9 +400,9 @@ public class TestClass2
         SafeAddAssemblyReference(references, "System.Data.Common");
         SafeAddAssemblyReference(references, "System.Data");
         SafeAddAssemblyReference(references, "System.Linq.Expressions");
-        
+
         // Add explicit DbConnection reference
-        try 
+        try
         {
             references.Add(MetadataReference.CreateFromFile(typeof(System.Data.Common.DbConnection).Assembly.Location));
         }

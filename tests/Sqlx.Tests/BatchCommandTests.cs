@@ -125,7 +125,7 @@ namespace TestNamespace
         // Assert
         // The test should pass if code is generated (even with compilation warnings)
         // BatchCommand without collection parameter should still generate some code
-        Assert.IsTrue(result.Contains("BatchInsertEntities") || result.Contains("partial class TestRepository"), 
+        Assert.IsTrue(result.Contains("BatchInsertEntities") || result.Contains("partial class TestRepository"),
             "Should generate some implementation code even if not ideal");
     }
 
@@ -309,7 +309,7 @@ namespace TestNamespace
         // Check for different return handling based on method signatures
         var voidMethods = result.Split("ExecuteNonQuery").Length - 1;
         var asyncMethods = result.Split("ExecuteNonQueryAsync").Length - 1;
-        
+
         Assert.IsTrue(voidMethods > 0, "Should generate ExecuteNonQuery for sync methods");
         Assert.IsTrue(asyncMethods > 0, "Should generate ExecuteNonQueryAsync for async methods");
         Assert.IsTrue(result.Contains("return totalAffectedRows") || result.Contains("return result"), "Should return result for int methods");

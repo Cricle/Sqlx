@@ -33,7 +33,7 @@ internal static class PrimaryConstructorAnalyzer
     {
         // Check if the type has any constructor that could be a primary constructor
         var constructors = type.Constructors;
-        
+
         // Primary constructors are typically the first constructor and have parameters
         // that correspond to properties or fields
         foreach (var constructor in constructors)
@@ -43,7 +43,7 @@ internal static class PrimaryConstructorAnalyzer
                 return true;
             }
         }
-        
+
         return false;
     }
 
@@ -54,7 +54,7 @@ internal static class PrimaryConstructorAnalyzer
     public static IMethodSymbol? GetPrimaryConstructor(INamedTypeSymbol type)
     {
         var constructors = type.Constructors;
-        
+
         foreach (var constructor in constructors)
         {
             if (constructor.Parameters.Length > 0 && IsPrimaryConstructor(constructor, type))
@@ -62,7 +62,7 @@ internal static class PrimaryConstructorAnalyzer
                 return constructor;
             }
         }
-        
+
         return null;
     }
 
@@ -86,7 +86,7 @@ internal static class PrimaryConstructorAnalyzer
 
         // Add regular properties
         var properties = type.GetMembers().OfType<IPropertySymbol>()
-            .Where(p => p.CanBeReferencedByName && 
+            .Where(p => p.CanBeReferencedByName &&
                        (p.SetMethod != null || IsRecord(type)) &&
                        p.Name != "EqualityContract"); // Exclude Record's EqualityContract
 
@@ -105,11 +105,11 @@ internal static class PrimaryConstructorAnalyzer
             foreach (var param in primaryConstructorParams)
             {
                 var propertyName = GetPropertyNameFromParameter(param.Name);
-                
+
                 // Check if there's already a property with this name
-                var existingProperty = properties.FirstOrDefault(p => 
+                var existingProperty = properties.FirstOrDefault(p =>
                     string.Equals(p.Name, propertyName, System.StringComparison.OrdinalIgnoreCase));
-                
+
                 if (existingProperty == null)
                 {
                     // Add parameter as a member if no corresponding property exists
@@ -133,23 +133,40 @@ internal static class PrimaryConstructorAnalyzer
             return constructor.Parameters.Length > 0;
         }
 
-        // For regular classes, check if constructor parameters match properties
+        if (constructor.Parameters.Length == 0)
+            return false;
+
+        // In C# 12+, primary constructors are marked with specific attributes or characteristics
+        // Check if this is a compiler-generated primary constructor
+        if (constructor.IsImplicitlyDeclared)
+        {
+            return true;
+        }
+
+        // Check if the constructor is declared in the class declaration syntax (primary constructor)
+        // This is a heuristic: primary constructors typically appear first and have no body in source
+        var allConstructors = containingType.Constructors.Where(c => !c.IsStatic).ToArray();
+        if (allConstructors.Length > 0 && ReferenceEquals(constructor, allConstructors[0]))
+        {
+            // If this is the first constructor and it's not explicitly defined with a body,
+            // it's likely a primary constructor
+            return true;
+        }
+
+        // Fallback: check if constructor parameters match properties (old logic)
         var properties = containingType.GetMembers().OfType<IPropertySymbol>()
             .Where(p => p.CanBeReferencedByName)
             .ToList();
-
-        if (constructor.Parameters.Length == 0)
-            return false;
 
         // Check if constructor parameters correspond to properties
         var matchingParams = 0;
         foreach (var param in constructor.Parameters)
         {
             var propertyName = GetPropertyNameFromParameter(param.Name);
-            var correspondingProperty = properties.FirstOrDefault(p => 
+            var correspondingProperty = properties.FirstOrDefault(p =>
                 string.Equals(p.Name, propertyName, System.StringComparison.OrdinalIgnoreCase));
-            
-            if (correspondingProperty != null && 
+
+            if (correspondingProperty != null &&
                 SymbolEqualityComparer.Default.Equals(param.Type, correspondingProperty.Type))
             {
                 matchingParams++;
@@ -157,6 +174,12 @@ internal static class PrimaryConstructorAnalyzer
         }
 
         // Consider it a primary constructor if most parameters have corresponding properties
+        // OR if no properties exist but we have parameters (common for primary constructors)
+        if (properties.Count == 0 && constructor.Parameters.Length > 0)
+        {
+            return true; // Likely a primary constructor with no corresponding properties
+        }
+        
         return matchingParams >= constructor.Parameters.Length * 0.7; // 70% threshold
     }
 

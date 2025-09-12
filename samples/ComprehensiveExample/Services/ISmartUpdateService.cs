@@ -22,7 +22,7 @@ namespace ComprehensiveExample.Services;
 public interface ISmartUpdateService
 {
     // ==================== 🎯 部分更新 - 只更新指定字段 ====================
-    
+
     /// <summary>
     /// 🎯 智能部分更新 - 只更新指定字段 (性能优化)
     /// 适用场景：只需要更新实体的少数几个字段时
@@ -39,15 +39,15 @@ public interface ISmartUpdateService
     /// </example>
     [SqlExecuteType(SqlExecuteTypes.Update, "users")]
     Task<int> UpdateUserPartialAsync(User user, params Expression<Func<User, object>>[] fields);
-    
+
     /// <summary>
     /// 🎯 部分更新客户信息 - Primary Constructor 支持
     /// </summary>
     [SqlExecuteType(SqlExecuteTypes.Update, "customers")]
     Task<int> UpdateCustomerPartialAsync(Customer customer, params Expression<Func<Customer, object>>[] fields);
-    
+
     // ==================== 📦 批量条件更新 - 根据条件批量更新 ====================
-    
+
     /// <summary>
     /// 📦 智能批量更新 - 根据条件批量更新字段
     /// 适用场景：需要根据条件批量更新多条记录的相同字段
@@ -67,15 +67,15 @@ public interface ISmartUpdateService
     /// </example>
     [SqlExecuteType(SqlExecuteTypes.Update, "users")]
     Task<int> UpdateUsersBatchAsync(Dictionary<string, object> setValues, string whereClause = null);
-    
+
     /// <summary>
     /// 📦 批量更新客户状态
     /// </summary>
     [SqlExecuteType(SqlExecuteTypes.Update, "customers")]
     Task<int> UpdateCustomersBatchAsync(Dictionary<string, object> setValues, string whereClause = null);
-    
+
     // ==================== ➕➖ 增量更新 - 数值字段增减 ====================
-    
+
     /// <summary>
     /// ➕➖ 智能增量更新 - 数值字段增减操作
     /// 适用场景：计数器、金额、库存等数值字段的增减操作
@@ -95,15 +95,15 @@ public interface ISmartUpdateService
     /// </example>
     [SqlExecuteType(SqlExecuteTypes.Update, "customers")]
     Task<int> UpdateCustomerIncrementAsync(int customerId, Dictionary<string, decimal> increments);
-    
+
     /// <summary>
     /// ➕➖ 库存增量更新 - 原子操作
     /// </summary>
     [SqlExecuteType(SqlExecuteTypes.Update, "inventory")]
     Task<int> UpdateInventoryIncrementAsync(int productId, Dictionary<string, decimal> increments);
-    
+
     // ==================== 🔒 乐观锁更新 - 并发安全 ====================
-    
+
     /// <summary>
     /// 🔒 乐观锁更新用户 - 并发安全的更新操作
     /// 适用场景：多用户并发修改同一条记录时，避免数据覆盖
@@ -122,9 +122,9 @@ public interface ISmartUpdateService
     /// </example>
     [SqlExecuteType(SqlExecuteTypes.Update, "users")]
     Task<bool> UpdateUserOptimisticAsync(User user);
-    
+
     // ==================== ⚡ 高性能批量字段更新 ====================
-    
+
     /// <summary>
     /// ⚡ 高性能批量字段更新 - 不同记录更新不同字段
     /// 适用场景：需要批量更新多条记录，每条记录更新的字段可能不同
@@ -144,15 +144,15 @@ public interface ISmartUpdateService
     /// </example>
     [SqlExecuteType(SqlExecuteTypes.Update, "users")]
     Task<int> UpdateUsersBulkFieldsAsync(Dictionary<int, Dictionary<string, object>> updates);
-    
+
     /// <summary>
     /// ⚡ 批量更新客户字段 - 高性能模式
     /// </summary>
     [SqlExecuteType(SqlExecuteTypes.Update, "customers")]
     Task<int> UpdateCustomersBulkFieldsAsync(Dictionary<int, Dictionary<string, object>> updates);
-    
+
     // ==================== 🎨 智能条件更新 - 类型安全 ====================
-    
+
     /// <summary>
     /// 🎨 智能条件更新 - 类型安全的条件构建
     /// 结合 ExpressionToSql 实现类型安全的条件更新
@@ -178,12 +178,12 @@ public interface ISmartUpdateService
 public partial class SmartUpdateService : ISmartUpdateService
 {
     private readonly System.Data.Common.DbConnection connection;
-    
+
     public SmartUpdateService(System.Data.Common.DbConnection connection)
     {
         this.connection = connection ?? throw new ArgumentNullException(nameof(connection));
     }
-    
+
     // 🎉 所有智能更新方法都会被自动生成！
     // ✨ 包括：
     // - 部分字段更新 (性能优化)

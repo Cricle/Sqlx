@@ -23,7 +23,7 @@ internal static class EnhancedEntityMappingGenerator
     public static void GenerateEntityMapping(IndentedStringBuilder sb, INamedTypeSymbol entityType)
     {
         var members = PrimaryConstructorAnalyzer.GetAccessibleMembers(entityType).ToList();
-        
+
         if (!members.Any())
         {
             sb.AppendLine("// No accessible members found for entity mapping");
@@ -59,7 +59,7 @@ internal static class EnhancedEntityMappingGenerator
     private static void GenerateRecordMapping(IndentedStringBuilder sb, INamedTypeSymbol entityType, List<IMemberInfo> members)
     {
         var primaryConstructor = PrimaryConstructorAnalyzer.GetPrimaryConstructor(entityType);
-        
+
         if (primaryConstructor != null && primaryConstructor.Parameters.Length > 0)
         {
             // Use primary constructor for records
@@ -72,11 +72,11 @@ internal static class EnhancedEntityMappingGenerator
                 var param = parameters[i];
                 var propertyName = GetPropertyNameFromParameter(param.Name);
                 var member = members.FirstOrDefault(m => m.Name == propertyName);
-                
+
                 var comma = i < parameters.Length - 1 ? "," : "";
                 var columnName = GetColumnName(member ?? new PrimaryConstructorParameterMemberInfo(param, propertyName));
                 var ordinalVar = $"__ordinal_{columnName}";
-                
+
                 var dataReadExpression = Extensions.GetDataReadExpression(param.Type, "reader", columnName);
                 sb.AppendLine($"{dataReadExpression}{comma}");
             }
@@ -97,7 +97,7 @@ internal static class EnhancedEntityMappingGenerator
     private static void GeneratePrimaryConstructorMapping(IndentedStringBuilder sb, INamedTypeSymbol entityType, List<IMemberInfo> members)
     {
         var primaryConstructor = PrimaryConstructorAnalyzer.GetPrimaryConstructor(entityType);
-        
+
         if (primaryConstructor != null && primaryConstructor.Parameters.Length > 0)
         {
             // Use primary constructor
@@ -110,11 +110,11 @@ internal static class EnhancedEntityMappingGenerator
                 var param = parameters[i];
                 var propertyName = GetPropertyNameFromParameter(param.Name);
                 var member = members.FirstOrDefault(m => m.Name == propertyName);
-                
+
                 var comma = i < parameters.Length - 1 ? "," : "";
                 var columnName = GetColumnName(member ?? new PrimaryConstructorParameterMemberInfo(param, propertyName));
                 var ordinalVar = $"__ordinal_{columnName}";
-                
+
                 var dataReadExpression = Extensions.GetDataReadExpression(param.Type, "reader", columnName);
                 sb.AppendLine($"{dataReadExpression}{comma}");
             }
@@ -124,8 +124,8 @@ internal static class EnhancedEntityMappingGenerator
 
             // Set additional properties that are not covered by primary constructor
             var primaryConstructorParamNames = new HashSet<string>(parameters.Select(p => GetPropertyNameFromParameter(p.Name)));
-            var additionalMembers = members.Where(m => !primaryConstructorParamNames.Contains(m.Name) && 
-                                                      m.CanWrite && 
+            var additionalMembers = members.Where(m => !primaryConstructorParamNames.Contains(m.Name) &&
+                                                      m.CanWrite &&
                                                       !m.IsFromPrimaryConstructor).ToList();
 
             foreach (var member in additionalMembers)
@@ -157,7 +157,7 @@ internal static class EnhancedEntityMappingGenerator
     private static void GenerateObjectInitializerMapping(IndentedStringBuilder sb, INamedTypeSymbol entityType, List<IMemberInfo> members)
     {
         var writableMembers = members.Where(m => m.CanWrite && !m.IsFromPrimaryConstructor).ToList();
-        
+
         if (writableMembers.Any())
         {
             sb.AppendLine($"var entity = new {entityType.ToDisplayString()}");
@@ -202,7 +202,7 @@ internal static class EnhancedEntityMappingGenerator
         var unwrapType = type.UnwrapNullableType();
         var method = type.GetDataReaderMethod();
         var isNullable = type.IsNullableType();
-        
+
 
         if (!string.IsNullOrEmpty(method))
         {
@@ -249,13 +249,13 @@ internal static class EnhancedEntityMappingGenerator
         {
             // Enhanced fallback handling for unsupported types
             var typeName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            
+
             // Special handling for enum types
             if (unwrapType.TypeKind == TypeKind.Enum)
             {
                 var underlyingType = ((INamedTypeSymbol)unwrapType).EnumUnderlyingType;
                 var underlyingMethod = underlyingType?.GetDataReaderMethod();
-                
+
                 if (!string.IsNullOrEmpty(underlyingMethod))
                 {
                     var unwrappedTypeName = unwrapType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
@@ -269,7 +269,7 @@ internal static class EnhancedEntityMappingGenerator
                     }
                 }
             }
-            
+
             // Try to use Convert methods for better type safety
             if (TryGetConvertMethod(unwrapType, out var convertMethod))
             {
@@ -282,7 +282,7 @@ internal static class EnhancedEntityMappingGenerator
                     return $"{convertMethod}({readerName}.GetValue({ordinalVar}))";
                 }
             }
-            
+
             // Final fallback to GetValue with casting (less preferred)
             if (isNullable || type.IsReferenceType)
             {
@@ -318,7 +318,7 @@ internal static class EnhancedEntityMappingGenerator
             SpecialType.System_String => "global::System.Convert.ToString",
             _ => string.Empty
         };
-        
+
         // Handle special types by name
         if (string.IsNullOrEmpty(convertMethod))
         {
@@ -330,7 +330,7 @@ internal static class EnhancedEntityMappingGenerator
                 _ => string.Empty
             };
         }
-        
+
         return !string.IsNullOrEmpty(convertMethod);
     }
 

@@ -51,9 +51,9 @@ namespace TestNamespace
         var result = GetCSharpGeneratedOutput(source);
 
         // Assert - Check that the generated ExpressionToSql class supports modulo
-        Assert.IsTrue(result.Contains("ExpressionType.Modulo"), 
+        Assert.IsTrue(result.Contains("ExpressionType.Modulo"),
             "Generated ExpressionToSql should support Modulo operator");
-        Assert.IsTrue(result.Contains("% {right}") || result.Contains("{left} % {right}"), 
+        Assert.IsTrue(result.Contains("% {right}") || result.Contains("{left} % {right}"),
             "Generated code should produce modulo SQL syntax");
     }
 
@@ -148,9 +148,9 @@ namespace TestNamespace
 
         // Assert - Test complex expressions with mod
         Assert.IsTrue(result.Contains("ExpressionType.Modulo"), "Should support Modulo in complex expressions");
-        
+
         // Test that mod can be combined with other operators
-        Assert.IsTrue(result.Contains("{left} % {right}") || result.Contains("% {right}"), 
+        Assert.IsTrue(result.Contains("{left} % {right}") || result.Contains("% {right}"),
             "Should generate correct mod operator pattern");
     }
 
@@ -204,9 +204,9 @@ namespace TestNamespace
 
         foreach (var (opName, sqlPattern) in expectedOperators)
         {
-            Assert.IsTrue(result.Contains($"ExpressionType.{opName}"), 
+            Assert.IsTrue(result.Contains($"ExpressionType.{opName}"),
                 $"Should contain {opName} operator");
-            Assert.IsTrue(result.Contains(sqlPattern) || result.Contains($"{{left}} {sqlPattern.Replace(" {right}", "")} {{right}}"), 
+            Assert.IsTrue(result.Contains(sqlPattern) || result.Contains($"{{left}} {sqlPattern.Replace(" {right}", "")} {{right}}"),
                 $"Should generate correct SQL pattern for {opName}: {sqlPattern}");
         }
     }
@@ -251,9 +251,9 @@ namespace TestNamespace
         var result = GetCSharpGeneratedOutput(source);
 
         // Assert
-        Assert.IsTrue(result.Contains("ExpressionType.Modulo"), 
+        Assert.IsTrue(result.Contains("ExpressionType.Modulo"),
             "Should support modulo with different numeric types");
-        Assert.IsTrue(result.Contains("% {right}") || result.Contains("{left} % {right}"), 
+        Assert.IsTrue(result.Contains("% {right}") || result.Contains("{left} % {right}"),
             "Should generate % operator for all numeric types");
     }
 
@@ -296,7 +296,7 @@ namespace TestNamespace
 
         // Assert
         Assert.IsTrue(result.Contains("ExpressionType.Modulo"), "Should support mod in expressions");
-        
+
         // Verify the generated ExpressionToSql class can handle mod in different contexts
         Assert.IsTrue(result.Contains("ParseBinaryExpression"), "Should have binary expression parsing");
         Assert.IsTrue(result.Contains("% {right}") || result.Contains("{left} % {right}"), "Should generate modulo SQL syntax");

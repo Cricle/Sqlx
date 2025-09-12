@@ -308,7 +308,7 @@ public class UtilityClassesFunctionalTests
         Assert.IsFalse(string.IsNullOrEmpty(diagnosticDescriptor.Title.ToString()), $"Diagnostic {errorCode} should have a title");
         Assert.IsFalse(string.IsNullOrEmpty(diagnosticDescriptor.MessageFormat.ToString()), $"Diagnostic {errorCode} should have a message format");
         Assert.IsFalse(string.IsNullOrEmpty(diagnosticDescriptor.Category), $"Diagnostic {errorCode} should have a category");
-        
+
         // Additional validation for diagnostic properties
         Assert.IsTrue(diagnosticDescriptor.IsEnabledByDefault, $"Diagnostic {errorCode} should be enabled by default");
         Assert.AreEqual(DiagnosticSeverity.Error, diagnosticDescriptor.DefaultSeverity, $"Diagnostic {errorCode} should have Error severity");
@@ -1002,7 +1002,7 @@ public class UtilityClassesFunctionalTests
     public void SqlExecuteTypes_Enum_HasCorrectValues()
     {
         // Arrange
-        var enumType = typeof(SqlGen.SqlExecuteTypes);
+        var enumType = typeof(Sqlx.SqlGen.SqlExecuteTypes);
 
         // Act & Assert
         Assert.IsNotNull(enumType, "SqlExecuteTypes enum should exist");
@@ -1028,7 +1028,7 @@ public class UtilityClassesFunctionalTests
     public void ObjectMap_Class_HasCorrectStructure()
     {
         // Arrange
-        var classType = typeof(SqlGen.ObjectMap);
+        var classType = typeof(Sqlx.SqlGen.ObjectMap);
 
         // Act & Assert
         Assert.IsNotNull(classType, "ObjectMap class should exist");

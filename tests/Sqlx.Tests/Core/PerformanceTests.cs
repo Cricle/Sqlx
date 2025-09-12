@@ -41,9 +41,9 @@ public class PerformanceTests
         // Assert
         Assert.IsNotNull(result);
         Assert.IsTrue(result.Length > 0);
-        Assert.IsTrue(stopwatch.ElapsedMilliseconds < 1000, 
+        Assert.IsTrue(stopwatch.ElapsedMilliseconds < 1000,
             $"Performance test took {stopwatch.ElapsedMilliseconds}ms, expected < 1000ms");
-        
+
         Console.WriteLine($"IndentedStringBuilder performance: {iterations} operations in {stopwatch.ElapsedMilliseconds}ms");
     }
 
@@ -72,9 +72,9 @@ public class PerformanceTests
 
         // Assert
         var totalOperations = iterations * testNames.Length;
-        Assert.IsTrue(stopwatch.ElapsedMilliseconds < 500, 
+        Assert.IsTrue(stopwatch.ElapsedMilliseconds < 500,
             $"Performance test took {stopwatch.ElapsedMilliseconds}ms, expected < 500ms");
-        
+
         Console.WriteLine($"NameMapper performance: {totalOperations} operations in {stopwatch.ElapsedMilliseconds}ms");
     }
 
@@ -95,9 +95,9 @@ public class PerformanceTests
         stopwatch.Stop();
 
         // Assert
-        Assert.IsTrue(stopwatch.ElapsedMilliseconds < 100, 
+        Assert.IsTrue(stopwatch.ElapsedMilliseconds < 100,
             $"Performance test took {stopwatch.ElapsedMilliseconds}ms, expected < 100ms");
-        
+
         Console.WriteLine($"SqlDefine performance: {iterations} operations in {stopwatch.ElapsedMilliseconds}ms");
     }
 
@@ -115,7 +115,7 @@ public class PerformanceTests
             var provider2 = DatabaseDialectFactory.GetDialectProvider(SqlDefineTypes.SqlServer);
             var provider3 = DatabaseDialectFactory.GetDialectProvider(SqlDefineTypes.Postgresql);
             var provider4 = DatabaseDialectFactory.GetDialectProvider(SqlDefineTypes.SQLite);
-            
+
             Assert.IsNotNull(provider1);
             Assert.IsNotNull(provider2);
             Assert.IsNotNull(provider3);
@@ -125,9 +125,9 @@ public class PerformanceTests
 
         // Assert
         var totalOperations = iterations * 4;
-        Assert.IsTrue(stopwatch.ElapsedMilliseconds < 50, 
+        Assert.IsTrue(stopwatch.ElapsedMilliseconds < 50,
             $"Performance test took {stopwatch.ElapsedMilliseconds}ms, expected < 50ms");
-        
+
         Console.WriteLine($"DatabaseDialectFactory caching performance: {totalOperations} operations in {stopwatch.ElapsedMilliseconds}ms");
     }
 
@@ -147,9 +147,9 @@ public class PerformanceTests
         stopwatch.Stop();
 
         // Assert
-        Assert.IsTrue(stopwatch.ElapsedMilliseconds < 50, 
+        Assert.IsTrue(stopwatch.ElapsedMilliseconds < 50,
             $"Cache statistics test took {stopwatch.ElapsedMilliseconds}ms, expected < 50ms");
-        
+
         Console.WriteLine($"TypeAnalyzer cache statistics: {iterations} operations in {stopwatch.ElapsedMilliseconds}ms");
     }
 
@@ -170,9 +170,9 @@ public class PerformanceTests
         stopwatch.Stop();
 
         // Assert
-        Assert.IsTrue(stopwatch.ElapsedMilliseconds < 10, 
+        Assert.IsTrue(stopwatch.ElapsedMilliseconds < 10,
             $"Performance test took {stopwatch.ElapsedMilliseconds}ms, expected < 10ms");
-        
+
         Console.WriteLine($"SqlOperationInferrer null handling performance: {iterations} operations in {stopwatch.ElapsedMilliseconds}ms");
     }
 
@@ -191,7 +191,7 @@ public class PerformanceTests
             var sqlserver = SqlDefine.SqlServer;
             var pgsql = SqlDefine.PgSql;
             var sqlite = SqlDefine.SQLite;
-            
+
             // Use them to prevent optimization
             Assert.IsNotNull(mysql.ColumnLeft);
             Assert.IsNotNull(sqlserver.ColumnLeft);
@@ -202,9 +202,9 @@ public class PerformanceTests
 
         // Assert
         var totalOperations = iterations * 4;
-        Assert.IsTrue(stopwatch.ElapsedMilliseconds < 50, 
+        Assert.IsTrue(stopwatch.ElapsedMilliseconds < 50,
             $"Performance test took {stopwatch.ElapsedMilliseconds}ms, expected < 50ms");
-        
+
         Console.WriteLine($"SqlDefine static instances performance: {totalOperations} operations in {stopwatch.ElapsedMilliseconds}ms");
     }
 
@@ -212,6 +212,6 @@ public class PerformanceTests
     public void Cleanup()
     {
         // Clear caches to ensure clean state for next test
-            // Cache clearing removed - no longer needed
+        // Cache clearing removed - no longer needed
     }
 }

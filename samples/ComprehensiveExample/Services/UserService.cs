@@ -22,7 +22,7 @@ namespace ComprehensiveExample.Services;
 public partial class UserService : IUserService
 {
     private readonly DbConnection connection;
-    
+
     /// <summary>
     /// 构造函数 - 这是您需要写的唯一代码！
     /// </summary>
@@ -31,7 +31,7 @@ public partial class UserService : IUserService
     {
         this.connection = connection ?? throw new ArgumentNullException(nameof(connection));
     }
-    
+
     // 🎉 所有 IUserService 接口方法都会被自动生成！
     // ✨ 包括：
     // - SQL 语句生成 (基于方法名推断或自定义 SQL)
@@ -51,7 +51,7 @@ public partial class UserService : IUserService
 public partial class DepartmentService : IDepartmentService
 {
     private readonly DbConnection connection;
-    
+
     public DepartmentService(DbConnection connection)
     {
         this.connection = connection ?? throw new ArgumentNullException(nameof(connection));
@@ -61,16 +61,14 @@ public partial class DepartmentService : IDepartmentService
 /// <summary>
 /// 现代语法服务实现
 /// 演示 Primary Constructor 和 Record 类型的完美支持
+/// 🎯 使用 C# 12 Primary Constructor 语法，零样板代码！
 /// </summary>
 [RepositoryFor(typeof(IModernSyntaxService))]
-public partial class ModernSyntaxService : IModernSyntaxService
+public partial class ModernSyntaxService(DbConnection connection) : IModernSyntaxService
 {
-    private readonly DbConnection connection;
-    
-    public ModernSyntaxService(DbConnection connection)
-    {
-        this.connection = connection ?? throw new ArgumentNullException(nameof(connection));
-    }
+    // ✨ Primary Constructor 自动创建 connection 字段
+    // 🚀 RepositoryFor 生成器会自动检测并使用它
+    // 💡 无需手动编写构造函数和字段声明！
 }
 
 /// <summary>
@@ -80,7 +78,7 @@ public partial class ModernSyntaxService : IModernSyntaxService
 public partial class CustomerService : ICustomerService
 {
     private readonly DbConnection connection;
-    
+
     public CustomerService(DbConnection connection)
     {
         this.connection = connection ?? throw new ArgumentNullException(nameof(connection));
@@ -94,7 +92,7 @@ public partial class CustomerService : ICustomerService
 public partial class CategoryService : ICategoryService
 {
     private readonly DbConnection connection;
-    
+
     public CategoryService(DbConnection connection)
     {
         this.connection = connection ?? throw new ArgumentNullException(nameof(connection));
@@ -108,7 +106,7 @@ public partial class CategoryService : ICategoryService
 public partial class InventoryService : IInventoryService
 {
     private readonly DbConnection connection;
-    
+
     public InventoryService(DbConnection connection)
     {
         this.connection = connection ?? throw new ArgumentNullException(nameof(connection));
@@ -122,7 +120,7 @@ public partial class InventoryService : IInventoryService
 public partial class AuditLogService : IAuditLogService
 {
     private readonly DbConnection connection;
-    
+
     public AuditLogService(DbConnection connection)
     {
         this.connection = connection ?? throw new ArgumentNullException(nameof(connection));
@@ -137,7 +135,7 @@ public partial class AuditLogService : IAuditLogService
 public partial class ExpressionToSqlService : IExpressionToSqlService
 {
     private readonly DbConnection connection;
-    
+
     public ExpressionToSqlService(DbConnection connection)
     {
         this.connection = connection ?? throw new ArgumentNullException(nameof(connection));
@@ -151,7 +149,7 @@ public partial class ExpressionToSqlService : IExpressionToSqlService
 public partial class BatchOperationService : IBatchOperationService
 {
     private readonly DbConnection connection;
-    
+
     public BatchOperationService(DbConnection connection)
     {
         this.connection = connection ?? throw new ArgumentNullException(nameof(connection));
@@ -165,7 +163,7 @@ public partial class BatchOperationService : IBatchOperationService
 public partial class MultiDatabaseService : IMultiDatabaseService
 {
     private readonly DbConnection connection;
-    
+
     public MultiDatabaseService(DbConnection connection)
     {
         this.connection = connection ?? throw new ArgumentNullException(nameof(connection));

@@ -48,13 +48,6 @@ jobs:
     - name: 🚀 Run comprehensive example
       run: dotnet run --project samples/ComprehensiveExample --configuration Release --no-build
       
-    - name: 📊 Upload coverage
-      uses: codecov/codecov-action@v4
-      if: always()
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        fail_ci_if_error: false
-        
     - name: 📦 Pack packages
       if: github.event_name == 'push'
       run: dotnet pack --configuration Release --no-build --output ./artifacts

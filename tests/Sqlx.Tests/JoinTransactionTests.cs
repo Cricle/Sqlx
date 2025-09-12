@@ -34,11 +34,11 @@ namespace Foo
         Assert.IsNotNull(output);
 
         // 验证生成的代码包含关键元素而不是精确匹配
-        Assert.IsTrue(output.Contains("public partial int M(System.Data.Common.DbTransaction transaction, int clientId, string? personId)"), 
+        Assert.IsTrue(output.Contains("public partial int M(System.Data.Common.DbTransaction transaction, int clientId, string? personId)"),
             "Generated method signature should match expected signature");
-        Assert.IsTrue(output.Contains("command.Transaction = transaction;") || output.Contains("__cmd__.Transaction = transaction;"), 
+        Assert.IsTrue(output.Contains("command.Transaction = transaction;") || output.Contains("__cmd__.Transaction = transaction;"),
             "Generated code should set transaction on command");
-        Assert.IsTrue(output.Contains("sp_TestSP"), 
+        Assert.IsTrue(output.Contains("sp_TestSP"),
             "Generated code should contain stored procedure call");
     }
 
@@ -72,15 +72,15 @@ namespace Foo
         Assert.IsNotNull(output);
 
         // 验证生成的代码包含关键元素而不是精确匹配
-        Assert.IsTrue(output.Contains("public partial System.Collections.Generic.IList<Foo.Item> M(System.Data.Common.DbTransaction transaction)"), 
+        Assert.IsTrue(output.Contains("public partial System.Collections.Generic.IList<Foo.Item> M(System.Data.Common.DbTransaction transaction)"),
             "Generated method signature should match expected signature");
-        Assert.IsTrue(output.Contains("__cmd__.Transaction = transaction;"), 
+        Assert.IsTrue(output.Contains("__cmd__.Transaction = transaction;"),
             "Generated code should set transaction on command");
-        Assert.IsTrue(output.Contains("EXEC sp_TestSP") || output.Contains("sp_TestSP"), 
+        Assert.IsTrue(output.Contains("EXEC sp_TestSP") || output.Contains("sp_TestSP"),
             "Generated code should contain stored procedure call");
-        Assert.IsTrue(output.Contains("OnExecuting(\"M\", __cmd__);"), 
+        Assert.IsTrue(output.Contains("OnExecuting(\"M\", __cmd__);"),
             "Generated code should include OnExecuting callback");
-        Assert.IsTrue(output.Contains("OnExecuted(\"M\", __cmd__, __result__"), 
+        Assert.IsTrue(output.Contains("OnExecuted(\"M\", __cmd__, __result__"),
             "Generated code should include OnExecuted callback");
     }
 }

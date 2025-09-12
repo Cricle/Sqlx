@@ -31,7 +31,7 @@ public class CodeQualityTests
         Assert.IsNotNull(sqlServerField);
         Assert.IsNotNull(pgSqlField);
         Assert.IsNotNull(sqliteField);
-        
+
         Assert.IsTrue(mysqlField.IsInitOnly, "MySql field should be readonly");
         Assert.IsTrue(sqlServerField.IsInitOnly, "SqlServer field should be readonly");
         Assert.IsTrue(pgSqlField.IsInitOnly, "PgSql field should be readonly");
@@ -69,11 +69,11 @@ public class CodeQualityTests
         {
             Assert.IsTrue(typeof(IDatabaseDialectProvider).IsAssignableFrom(providerType),
                 $"{providerType.Name} should implement IDatabaseDialectProvider");
-            
+
             // Ensure providers have parameterless constructors
             var constructor = providerType.GetConstructor(Type.EmptyTypes);
             Assert.IsNotNull(constructor, $"{providerType.Name} should have a parameterless constructor");
-            Assert.IsTrue(constructor.IsPublic || constructor.IsAssembly, 
+            Assert.IsTrue(constructor.IsPublic || constructor.IsAssembly,
                 $"{providerType.Name} constructor should be public or internal");
         }
     }
@@ -95,7 +95,7 @@ public class CodeQualityTests
         {
             Assert.IsTrue(providerType.Name.EndsWith("DialectProvider"),
                 $"{providerType.Name} should end with 'DialectProvider'");
-            
+
             // Note: Provider classes are internal and not sealed by design for testability
             // This is acceptable for internal classes in a source generator context
             Assert.IsTrue(true, $"{providerType.Name} class design is acceptable");
@@ -111,7 +111,7 @@ public class CodeQualityTests
 
         // Assert - No cache methods in simplified design
         Assert.IsFalse(cacheMethods.Any(), "TypeAnalyzer uses simplified design without caching");
-        
+
         // Verify the main methods still exist
         var isLikelyEntityMethod = typeof(TypeAnalyzer).GetMethod("IsLikelyEntityType", BindingFlags.Public | BindingFlags.Static);
         Assert.IsNotNull(isLikelyEntityMethod, "IsLikelyEntityType method should exist");
@@ -154,10 +154,10 @@ public class CodeQualityTests
         // Act & Assert
         Assert.AreEqual(define1, define2, "SqlDefine with same values should be equal");
         Assert.AreNotEqual(define1, define3, "SqlDefine with different values should not be equal");
-        
-        Assert.AreEqual(define1.GetHashCode(), define2.GetHashCode(), 
+
+        Assert.AreEqual(define1.GetHashCode(), define2.GetHashCode(),
             "SqlDefine with same values should have same hash code");
-        Assert.AreNotEqual(define1.GetHashCode(), define3.GetHashCode(), 
+        Assert.AreNotEqual(define1.GetHashCode(), define3.GetHashCode(),
             "SqlDefine with different values should have different hash codes");
     }
 
@@ -207,9 +207,9 @@ public class CodeQualityTests
     {
         // Arrange
         var provider1 = DatabaseDialectFactory.GetDialectProvider(SqlDefineTypes.MySql);
-        
+
         // Act
-            // Cache clearing removed
+        // Cache clearing removed
         var provider2 = DatabaseDialectFactory.GetDialectProvider(SqlDefineTypes.MySql);
 
         // Assert
@@ -224,11 +224,11 @@ public class CodeQualityTests
     {
         // This test documents that method name pattern matching should be case-insensitive
         // The actual implementation uses ToLowerInvariant() for this purpose
-        
+
         // Test that the method name patterns exist and are defined
         var inferrerType = typeof(SqlOperationInferrer);
         Assert.IsNotNull(inferrerType, "SqlOperationInferrer should exist");
-        
+
         // The patterns are private, but we can test the behavior through the public method
         // This is tested in SqlOperationInferrerTests, but we document it here for quality assurance
         Assert.IsTrue(true, "Method pattern matching behavior is tested in dedicated test class");

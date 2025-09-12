@@ -114,7 +114,7 @@ public class DatabaseDialectFactoryTests
         // Act & Assert
         var exception = Assert.ThrowsException<UnsupportedDialectException>(() =>
             DatabaseDialectFactory.GetDialectProvider(SqlDefineTypes.Oracle));
-            
+
         Assert.IsTrue(exception.Message.Contains("Oracle"));
     }
 
@@ -124,7 +124,7 @@ public class DatabaseDialectFactoryTests
         // Act & Assert
         var exception = Assert.ThrowsException<UnsupportedDialectException>(() =>
             DatabaseDialectFactory.GetDialectProvider(SqlDefineTypes.DB2));
-            
+
         Assert.IsTrue(exception.Message.Contains("DB2"));
     }
 
@@ -137,7 +137,7 @@ public class DatabaseDialectFactoryTests
         // Act & Assert
         var exception = Assert.ThrowsException<UnsupportedDialectException>(() =>
             DatabaseDialectFactory.GetDialectProvider(sqlDefine));
-            
+
         Assert.IsTrue(exception.Message.Contains("Oracle"));
     }
 
@@ -150,7 +150,7 @@ public class DatabaseDialectFactoryTests
         // Act & Assert
         var exception = Assert.ThrowsException<UnsupportedDialectException>(() =>
             DatabaseDialectFactory.GetDialectProvider(sqlDefine));
-            
+
         Assert.IsTrue(exception.Message.Contains("DB2"));
     }
 
@@ -275,11 +275,11 @@ public class DatabaseDialectFactoryTests
             Assert.IsNotNull(provider.WrapColumn("test"));
             Assert.IsNotNull(provider.WrapString("test"));
             Assert.IsNotNull(provider.GetParameterPrefix());
-            
+
             // Ensure wrapped results are not empty and contain the original text
             var wrappedColumn = provider.WrapColumn("test");
             var wrappedString = provider.WrapString("test");
-            
+
             Assert.IsTrue(wrappedColumn.Contains("test"));
             Assert.IsTrue(wrappedString.Contains("test"));
             Assert.IsTrue(wrappedColumn.Length > "test".Length);
@@ -304,7 +304,7 @@ public class DatabaseDialectFactoryTests
         {
             var wrappedColumn = provider.WrapColumn("");
             var wrappedString = provider.WrapString("");
-            
+
             Assert.IsNotNull(wrappedColumn);
             Assert.IsNotNull(wrappedString);
             Assert.IsTrue(wrappedColumn.Length >= 2); // Should have at least opening and closing characters
@@ -323,7 +323,7 @@ public class DatabaseDialectFactoryTests
             new PostgreSqlDialectProvider(),
             new SQLiteDialectProvider()
         };
-        
+
         var testString = "test'with\"quotes";
 
         // Act & Assert
@@ -331,7 +331,7 @@ public class DatabaseDialectFactoryTests
         {
             var wrappedColumn = provider.WrapColumn(testString);
             var wrappedString = provider.WrapString(testString);
-            
+
             Assert.IsNotNull(wrappedColumn);
             Assert.IsNotNull(wrappedString);
             // Should handle special characters gracefully

@@ -92,7 +92,7 @@ public class Customer(int id, string name, string email, DateTime birthDate)
 /// Primary Constructor + Record 组合演示：审计日志 (C# 12+)
 /// </summary>
 [TableName("audit_logs")]
-public record AuditLog(string Action, string EntityType, string EntityId, string UserId) 
+public record AuditLog(string Action, string EntityType, string EntityId, string UserId)
 {
     public int Id { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.Now;

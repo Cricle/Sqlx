@@ -24,7 +24,7 @@ public static class DatabaseSetup
         var connectionString = "Data Source=:memory:";
         return new SqliteConnection(connectionString);
     }
-    
+
     /// <summary>
     /// 初始化数据库表结构和示例数据
     /// </summary>
@@ -34,18 +34,18 @@ public static class DatabaseSetup
         {
             await connection.OpenAsync();
         }
-        
+
         Console.WriteLine("📋 初始化数据库表结构...");
-        
+
         // 创建表结构
         await CreateTablesAsync(connection);
-        
+
         // 插入示例数据
         await InsertSampleDataAsync(connection);
-        
+
         Console.WriteLine("✅ 数据库初始化完成");
     }
-    
+
     /// <summary>
     /// 创建所有表结构
     /// </summary>
@@ -170,7 +170,7 @@ public static class DatabaseSetup
                 LEFT JOIN orders o ON c.id = o.customer_id
                 GROUP BY c.id, c.name"
         };
-        
+
         foreach (var sql in tables)
         {
             using var command = connection.CreateCommand();
@@ -178,7 +178,7 @@ public static class DatabaseSetup
             await command.ExecuteNonQueryAsync();
         }
     }
-    
+
     /// <summary>
     /// 插入示例数据
     /// </summary>
@@ -258,7 +258,7 @@ public static class DatabaseSetup
             "('UPDATE', 'Inventory', '1', 'warehouse', '{\"quantity\":55}', '{\"quantity\":50}', '192.168.1.102', 'Warehouse System'), " +
             "('DELETE', 'User', '999', 'admin', '{\"name\":\"Test User\",\"email\":\"test@example.com\"}', '', '192.168.1.100', 'Admin Panel')",
         };
-        
+
         foreach (var sql in sampleData)
         {
             try
@@ -273,7 +273,7 @@ public static class DatabaseSetup
                 Console.WriteLine($"⚠️ 数据插入警告: {ex.Message}");
             }
         }
-        
+
         Console.WriteLine("📊 示例数据插入完成：");
         Console.WriteLine("   - 5 个部门");
         Console.WriteLine("   - 8 个客户 (Primary Constructor)");

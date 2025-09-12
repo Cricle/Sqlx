@@ -23,7 +23,7 @@ public static class InteractiveUI
     public static void ShowWelcomeScreen()
     {
         Console.Clear();
-        
+
         // 显示 ASCII Art Logo
         Console.ForegroundColor = ConsoleColor.Cyan;
         Console.WriteLine(@"
@@ -35,18 +35,18 @@ public static class InteractiveUI
 ╚═════╝   ╚══▀▀═╝ ╚══════╝╚═╝  ╚═╝
                                    ");
         Console.ResetColor();
-        
+
         Console.ForegroundColor = ConsoleColor.Yellow;
         Console.WriteLine("🚀 Sqlx 全面功能演示程序");
         Console.ResetColor();
-        
+
         Console.ForegroundColor = ConsoleColor.Green;
         Console.WriteLine("✨ 现代 .NET 数据访问层的完美解决方案");
         Console.ResetColor();
-        
+
         Console.WriteLine();
         Console.WriteLine("=".PadRight(80, '='));
-        
+
         // 显示核心特性
         var features = new[]
         {
@@ -59,28 +59,28 @@ public static class InteractiveUI
             "🌐 多数据库方言 - SQL Server、MySQL、PostgreSQL、SQLite",
             "✨ 零学习成本 - 无需额外配置"
         };
-        
+
         Console.ForegroundColor = ConsoleColor.White;
         Console.WriteLine("🎯 核心特性:");
         Console.ResetColor();
-        
+
         foreach (var feature in features)
         {
             Console.WriteLine($"  {feature}");
             System.Threading.Thread.Sleep(100); // 逐行显示效果
         }
-        
+
         Console.WriteLine("=".PadRight(80, '='));
         Console.WriteLine();
-        
+
         Console.ForegroundColor = ConsoleColor.Magenta;
         Console.WriteLine("💡 提示: 选择 '9' 可体验完整功能综合演示 (推荐)");
         Console.ResetColor();
-        
+
         Console.WriteLine("按任意键继续...");
         Console.ReadKey();
     }
-    
+
     /// <summary>
     /// 显示进度条
     /// </summary>
@@ -89,9 +89,9 @@ public static class InteractiveUI
         const int barWidth = 50;
         var progress = (double)current / total;
         var filledWidth = (int)(barWidth * progress);
-        
+
         Console.Write($"\r{operation}: [");
-        
+
         // 绘制进度条
         for (int i = 0; i < barWidth; i++)
         {
@@ -106,16 +106,16 @@ public static class InteractiveUI
                 Console.Write("░");
             }
         }
-        
+
         Console.ResetColor();
         Console.Write($"] {progress:P0} ({current}/{total})");
-        
+
         if (current == total)
         {
             Console.WriteLine(" ✅");
         }
     }
-    
+
     /// <summary>
     /// 显示加载动画
     /// </summary>
@@ -124,10 +124,10 @@ public static class InteractiveUI
         var spinnerChars = new[] { '|', '/', '-', '\\' };
         var spinnerIndex = 0;
         var isCompleted = false;
-        
+
         // 启动操作
         var operationTask = operation().ContinueWith(_ => isCompleted = true);
-        
+
         // 显示加载动画
         Console.Write($"{message} ");
         while (!isCompleted)
@@ -136,13 +136,13 @@ public static class InteractiveUI
             spinnerIndex = (spinnerIndex + 1) % spinnerChars.Length;
             await Task.Delay(100);
         }
-        
+
         Console.Write($"\r{message} ✅");
         Console.WriteLine();
-        
+
         await operationTask;
     }
-    
+
     /// <summary>
     /// 显示彩色标题
     /// </summary>
@@ -154,7 +154,7 @@ public static class InteractiveUI
         Console.WriteLine("=".PadRight(title.Length, '='));
         Console.ResetColor();
     }
-    
+
     /// <summary>
     /// 显示成功消息
     /// </summary>
@@ -164,7 +164,7 @@ public static class InteractiveUI
         Console.WriteLine($"✅ {message}");
         Console.ResetColor();
     }
-    
+
     /// <summary>
     /// 显示警告消息
     /// </summary>
@@ -174,7 +174,7 @@ public static class InteractiveUI
         Console.WriteLine($"⚠️ {message}");
         Console.ResetColor();
     }
-    
+
     /// <summary>
     /// 显示错误消息
     /// </summary>
@@ -184,7 +184,7 @@ public static class InteractiveUI
         Console.WriteLine($"❌ {message}");
         Console.ResetColor();
     }
-    
+
     /// <summary>
     /// 显示信息消息
     /// </summary>
@@ -194,7 +194,7 @@ public static class InteractiveUI
         Console.WriteLine($"ℹ️ {message}");
         Console.ResetColor();
     }
-    
+
     /// <summary>
     /// 显示数据表格
     /// </summary>
@@ -205,15 +205,15 @@ public static class InteractiveUI
             ShowWarning("没有数据显示");
             return;
         }
-        
+
         // 计算列宽
         var columnWidths = new int[columns.Length];
         for (int i = 0; i < columns.Length; i++)
         {
-            columnWidths[i] = Math.Max(columns[i].Header.Length, 
+            columnWidths[i] = Math.Max(columns[i].Header.Length,
                 data.Max(item => columns[i].ValueSelector(item).Length));
         }
-        
+
         // 显示表头
         Console.ForegroundColor = ConsoleColor.Yellow;
         for (int i = 0; i < columns.Length; i++)
@@ -222,14 +222,14 @@ public static class InteractiveUI
         }
         Console.WriteLine("|");
         Console.ResetColor();
-        
+
         // 显示分隔线
         for (int i = 0; i < columns.Length; i++)
         {
             Console.Write($"|{new string('-', columnWidths[i] + 2)}");
         }
         Console.WriteLine("|");
-        
+
         // 显示数据行
         foreach (var item in data)
         {
@@ -241,7 +241,7 @@ public static class InteractiveUI
             Console.WriteLine("|");
         }
     }
-    
+
     /// <summary>
     /// 显示性能指标
     /// </summary>
@@ -249,17 +249,17 @@ public static class InteractiveUI
     {
         var avgMs = (double)elapsedMs / iterations;
         var opsPerSec = iterations * 1000.0 / elapsedMs;
-        
+
         Console.WriteLine();
         Console.ForegroundColor = ConsoleColor.Magenta;
         Console.WriteLine($"📊 {operation} 性能指标:");
         Console.ResetColor();
-        
+
         Console.WriteLine($"   ⏱️  总耗时: {elapsedMs:N0} ms");
         Console.WriteLine($"   🔄 迭代次数: {iterations:N0}");
         Console.WriteLine($"   ⚡ 平均耗时: {avgMs:F3} ms/次");
         Console.WriteLine($"   🚀 吞吐量: {opsPerSec:F0} ops/sec");
-        
+
         // 性能等级评估
         var performanceLevel = opsPerSec switch
         {
@@ -269,12 +269,12 @@ public static class InteractiveUI
             > 500 => ("📊 一般", ConsoleColor.Blue),
             _ => ("⚠️ 较低", ConsoleColor.DarkYellow)
         };
-        
+
         Console.ForegroundColor = performanceLevel.Item2;
         Console.WriteLine($"   📈 性能等级: {performanceLevel.Item1}");
         Console.ResetColor();
     }
-    
+
     /// <summary>
     /// 确认对话框
     /// </summary>
@@ -282,9 +282,9 @@ public static class InteractiveUI
     {
         var prompt = defaultValue ? "[Y/n]" : "[y/N]";
         Console.Write($"{message} {prompt}: ");
-        
+
         var input = Console.ReadLine()?.Trim().ToLower();
-        
+
         return input switch
         {
             "y" or "yes" => true,
@@ -293,32 +293,32 @@ public static class InteractiveUI
             _ => defaultValue
         };
     }
-    
+
     /// <summary>
     /// 选择菜单
     /// </summary>
     public static int ShowMenu(string title, params string[] options)
     {
         ShowColoredTitle(title);
-        
+
         for (int i = 0; i < options.Length; i++)
         {
             Console.WriteLine($"{i + 1}. {options[i]}");
         }
-        
+
         while (true)
         {
             Console.Write($"\n请选择 (1-{options.Length}): ");
-            if (int.TryParse(Console.ReadLine(), out var choice) && 
+            if (int.TryParse(Console.ReadLine(), out var choice) &&
                 choice >= 1 && choice <= options.Length)
             {
                 return choice - 1;
             }
-            
+
             ShowError("无效选择，请重新输入");
         }
     }
-    
+
     /// <summary>
     /// 暂停并等待用户按键
     /// </summary>

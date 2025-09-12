@@ -43,11 +43,4 @@ namespace Foo
         Assert.IsTrue(output.Contains("OnExecuted"), "Generated code should contain OnExecuted method");
         Assert.IsTrue(output.Contains("OnExecuteFail"), "Generated code should contain OnExecuteFail method");
     }
-
-    [TestMethod]
-    public void ScalarResultDbContext()
-    {
-        // Skip this test since EntityFrameworkCore is not available in test environment
-        Assert.Inconclusive("EntityFrameworkCore types not available in test environment");
-    }
 }

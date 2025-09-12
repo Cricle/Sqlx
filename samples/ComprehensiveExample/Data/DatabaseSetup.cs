@@ -200,19 +200,63 @@ public static class DatabaseSetup
             "INSERT INTO categories (name, description, sort_order) VALUES ('图书', '各类图书和电子书', 4)",
             "INSERT INTO categories (name, description, parent_id, sort_order) VALUES ('手机', '智能手机产品', 1, 1)",
             "INSERT INTO categories (name, description, parent_id, sort_order) VALUES ('电脑', '台式机和笔记本电脑', 1, 2)",
+            "INSERT INTO categories (name, description, parent_id, sort_order) VALUES ('平板', '平板电脑产品', 1, 3)",
+            "INSERT INTO categories (name, description, parent_id, sort_order) VALUES ('智能家电', '智能家用电器', 2, 1)",
             
             // 插入客户数据 (Primary Constructor 演示)
-            "INSERT INTO customers (name, email, birth_date, status, address, phone, is_vip) VALUES " +
-            "('张三', 'zhangsan@example.com', '1990-05-15', 1, '北京市朝阳区', '13800138001', 1), " +
-            "('李四', 'lisi@example.com', '1985-08-20', 1, '上海市浦东新区', '13800138002', 0), " +
-            "('王五', 'wangwu@example.com', '1992-12-10', 1, '广州市天河区', '13800138003', 1), " +
-            "('赵六', 'zhaoliu@example.com', '1988-03-25', 2, '深圳市南山区', '13800138004', 0), " +
-            "('钱七', 'qianqi@example.com', '1995-07-08', 1, '杭州市西湖区', '13800138005', 0)",
+            "INSERT INTO customers (name, email, birth_date, status, total_spent, address, phone, is_vip) VALUES " +
+            "('张三', 'zhangsan@example.com', '1990-05-15', 1, 15000.00, '北京市朝阳区', '13800138001', 1), " +
+            "('李四', 'lisi@example.com', '1985-08-20', 1, 5200.50, '上海市浦东新区', '13800138002', 0), " +
+            "('王五', 'wangwu@example.com', '1992-12-10', 1, 12800.75, '广州市天河区', '13800138003', 1), " +
+            "('赵六', 'zhaoliu@example.com', '1988-03-25', 2, 800.00, '深圳市南山区', '13800138004', 0), " +
+            "('钱七', 'qianqi@example.com', '1995-07-08', 1, 3200.25, '杭州市西湖区', '13800138005', 0), " +
+            "('孙八', 'sunba@example.com', '1993-11-30', 1, 18500.00, '成都市高新区', '13800138006', 1), " +
+            "('周九', 'zhoujiu@example.com', '1987-02-14', 1, 6700.80, '武汉市洪山区', '13800138007', 0), " +
+            "('吴十', 'wushi@example.com', '1991-09-22', 1, 9900.90, '西安市雁塔区', '13800138008', 0)",
             
-            // 更新产品数据，关联分类
-            "UPDATE products SET category_id = 5 WHERE name LIKE '%iPhone%' OR name LIKE '%手机%'",
-            "UPDATE products SET category_id = 6 WHERE name LIKE '%MacBook%' OR name LIKE '%电脑%'",
-            "UPDATE products SET category_id = 1 WHERE name LIKE '%iPad%'",
+            // 插入产品数据 (Record 类型演示)
+            "INSERT INTO products (name, price, category_id) VALUES " +
+            "('iPhone 15 Pro', 9999.00, 5), " +
+            "('iPhone 15', 6999.00, 5), " +
+            "('MacBook Pro 16\"', 19999.00, 6), " +
+            "('MacBook Air 13\"', 8999.00, 6), " +
+            "('iPad Pro 12.9\"', 8799.00, 7), " +
+            "('iPad Air', 4399.00, 7), " +
+            "('小米智能电视55\"', 2999.00, 8), " +
+            "('华为MateBook X Pro', 9999.00, 6), " +
+            "('三星Galaxy S24', 5999.00, 5), " +
+            "('戴尔XPS 13', 7999.00, 6)",
+            
+            // 插入订单数据
+            "INSERT INTO orders (customer_name, total_amount, order_date) VALUES " +
+            "('张三', 9999.00, '2024-01-15 10:30:00'), " +
+            "('李四', 2999.00, '2024-01-20 14:20:00'), " +
+            "('王五', 8999.00, '2024-02-01 09:15:00'), " +
+            "('张三', 4399.00, '2024-02-10 16:45:00'), " +
+            "('孙八', 19999.00, '2024-02-15 11:00:00'), " +
+            "('周九', 5999.00, '2024-03-01 13:30:00'), " +
+            "('王五', 7999.00, '2024-03-05 10:20:00')",
+            
+            // 插入库存数据 (Record 类型演示)
+            "INSERT INTO inventory (product_id, quantity, reorder_level, warehouse_location) VALUES " +
+            "(1, 50, 10, 'A区-01'), " +
+            "(2, 120, 20, 'A区-02'), " +
+            "(3, 25, 5, 'B区-01'), " +
+            "(4, 80, 15, 'B区-02'), " +
+            "(5, 40, 8, 'C区-01'), " +
+            "(6, 90, 18, 'C区-02'), " +
+            "(7, 15, 5, 'D区-01'), " +
+            "(8, 30, 6, 'B区-03'), " +
+            "(9, 60, 12, 'A区-03'), " +
+            "(10, 35, 7, 'B区-04')",
+            
+            // 插入审计日志示例数据
+            "INSERT INTO audit_logs (action, entity_type, entity_id, user_id, old_values, new_values, ip_address, user_agent) VALUES " +
+            "('CREATE', 'Product', '1', 'admin', '', '{\"name\":\"iPhone 15 Pro\",\"price\":9999.00}', '192.168.1.100', 'Sqlx Demo App'), " +
+            "('UPDATE', 'Customer', '1', 'system', '{\"total_spent\":14000.00}', '{\"total_spent\":15000.00}', '127.0.0.1', 'System Process'), " +
+            "('CREATE', 'Order', '1', 'user_001', '', '{\"customer_name\":\"张三\",\"total_amount\":9999.00}', '192.168.1.101', 'Mobile App'), " +
+            "('UPDATE', 'Inventory', '1', 'warehouse', '{\"quantity\":55}', '{\"quantity\":50}', '192.168.1.102', 'Warehouse System'), " +
+            "('DELETE', 'User', '999', 'admin', '{\"name\":\"Test User\",\"email\":\"test@example.com\"}', '', '192.168.1.100', 'Admin Panel')",
         };
         
         foreach (var sql in sampleData)
@@ -226,8 +270,17 @@ public static class DatabaseSetup
             catch (Exception ex)
             {
                 // 忽略已存在的数据错误，继续执行
-                Console.WriteLine($"Warning: {ex.Message}");
+                Console.WriteLine($"⚠️ 数据插入警告: {ex.Message}");
             }
         }
+        
+        Console.WriteLine("📊 示例数据插入完成：");
+        Console.WriteLine("   - 5 个部门");
+        Console.WriteLine("   - 8 个客户 (Primary Constructor)");
+        Console.WriteLine("   - 10 个产品 (Record 类型)");
+        Console.WriteLine("   - 8 个产品分类 (层次结构)");
+        Console.WriteLine("   - 7 个订单");
+        Console.WriteLine("   - 10 个库存项 (Record 类型)");
+        Console.WriteLine("   - 5 条审计日志 (Primary Constructor + Record)");
     }
 }

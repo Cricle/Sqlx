@@ -16,6 +16,7 @@ using ComprehensiveExample.Models;
 using ComprehensiveExample.Services;
 using ComprehensiveExample.Data;
 using ComprehensiveExample.Demonstrations;
+using ComprehensiveExample.Interactive;
 
 namespace ComprehensiveExample;
 
@@ -37,14 +38,17 @@ class Program
 {
     static async Task Main(string[] args)
     {
-        Console.WriteLine("🚀 Sqlx 全面功能演示");
-        Console.WriteLine("=".PadRight(60, '='));
+        // 显示欢迎界面
+        InteractiveUI.ShowWelcomeScreen();
+        
+        InteractiveUI.ShowColoredTitle("🚀 Sqlx 全面功能演示", ConsoleColor.Cyan);
         
         // 🔧 设置 SQLite 数据库
         using var connection = DatabaseSetup.CreateConnection();
         
         // 📋 创建表结构
-        await DatabaseSetup.InitializeDatabaseAsync(connection);
+        await InteractiveUI.ShowLoadingAsync("正在初始化数据库", 
+            async () => await DatabaseSetup.InitializeDatabaseAsync(connection));
         
         try
         {
@@ -86,14 +90,15 @@ class Program
         Console.WriteLine("6️⃣  现代 C# 语法支持演示");
         Console.WriteLine("7️⃣  复杂查询和分析演示");
         Console.WriteLine("8️⃣  性能基准测试对比");
-        Console.WriteLine("9️⃣  全部演示 (推荐)");
+        Console.WriteLine("9️⃣  🚀 完整功能综合演示 (推荐)");
+        Console.WriteLine("A️⃣  全部单项演示 (详细版)");
         Console.WriteLine("0️⃣  退出演示");
         Console.WriteLine("=".PadRight(60, '='));
         
         while (true)
         {
-            Console.Write("\n请选择演示项目 (0-9): ");
-            var input = Console.ReadLine();
+            Console.Write("\n请选择演示项目 (0-9, A): ");
+            var input = Console.ReadLine()?.ToUpper();
             
             switch (input)
             {
@@ -122,13 +127,18 @@ class Program
                     await PerformanceTest.RunPerformanceTestAsync();
                     break;
                 case "9":
+                    Console.WriteLine("\n🚀 开始完整功能综合演示...");
+                    await ComprehensiveDemo.RunFullDemonstrationAsync(connection);
+                    ComprehensiveDemo.ShowFeatureSummary();
+                    break;
+                case "A":
                     await RunAllDemonstrations(connection);
                     break;
                 case "0":
                     Console.WriteLine("👋 感谢使用 Sqlx 演示程序！");
                     return;
                 default:
-                    Console.WriteLine("❌ 无效选择，请输入 0-9 之间的数字");
+                    Console.WriteLine("❌ 无效选择，请输入 0-9 或 A");
                     continue;
             }
             

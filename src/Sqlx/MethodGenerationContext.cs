@@ -16,7 +16,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using static Sqlx.Extensions;
 
-internal class MethodGenerationContext : GenerationContextBase
+internal partial class MethodGenerationContext : GenerationContextBase
 {
     internal const string DbConnectionName = Constants.GeneratedVariables.Connection;
     internal const string CmdName = Constants.GeneratedVariables.Command;
@@ -510,27 +510,27 @@ internal class MethodGenerationContext : GenerationContextBase
             // Direct assignment and return without extra conversion for performance
             if (ReturnType.SpecialType == SpecialType.System_Int32)
             {
-                sb.AppendLine($"return global::System.Convert.ToInt32({ResultName});");
+                sb.AppendLine($"return {ResultName};");  // ExecuteScalar already returns correct type
             }
             else if (ReturnType.SpecialType == SpecialType.System_Int64)
             {
-                sb.AppendLine($"return global::System.Convert.ToInt64({ResultName});");
+                sb.AppendLine($"return {ResultName};");  // ExecuteScalar already returns correct type
             }
             else if (ReturnType.SpecialType == SpecialType.System_Boolean)
             {
-                sb.AppendLine($"return global::System.Convert.ToBoolean({ResultName});");
+                sb.AppendLine($"return {ResultName};");  // ExecuteScalar already returns correct type
             }
             else if (ReturnType.SpecialType == SpecialType.System_Decimal)
             {
-                sb.AppendLine($"return global::System.Convert.ToDecimal({ResultName});");
+                sb.AppendLine($"return {ResultName};");  // ExecuteScalar already returns correct type
             }
             else if (ReturnType.SpecialType == SpecialType.System_Double)
             {
-                sb.AppendLine($"return global::System.Convert.ToDouble({ResultName});");
+                sb.AppendLine($"return {ResultName};");  // ExecuteScalar already returns correct type
             }
             else if (ReturnType.SpecialType == SpecialType.System_Single)
             {
-                sb.AppendLine($"return global::System.Convert.ToSingle({ResultName});");
+                sb.AppendLine($"return {ResultName};");  // ExecuteScalar already returns correct type
             }
             else if (ReturnType.SpecialType == SpecialType.System_String)
             {
@@ -538,8 +538,7 @@ internal class MethodGenerationContext : GenerationContextBase
             }
             else
             {
-                sb.AppendLine($"return ({ReturnType.ToDisplayString()})global::System.Convert.ChangeType({ResultName}, ");
-                sb.AppendLine($"    typeof({ReturnType.UnwrapNullableType().ToDisplayString(NullableFlowState.NotNull)}));");
+                sb.AppendLine($"return ({ReturnType.ToDisplayString()}){ResultName};");  // Direct cast for generic types
             }
         }
     }

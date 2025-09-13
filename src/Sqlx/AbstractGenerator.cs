@@ -848,7 +848,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                 var enumTypeName = arg.Type?.Name ?? "Unknown";
                 if (enumTypeName == "SqlExecuteTypes")
                 {
-                    var enumValueInt = Convert.ToInt32(arg.Value ?? 0);
+                    var enumValueInt = (int)(arg.Value ?? 0);  // Direct cast instead of Convert
                     var enumName = GetSqlExecuteTypeName(enumValueInt, arg.Value);
                     args.Add($"SqlExecuteTypes.{enumName}");
                 }
@@ -1639,11 +1639,11 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         
         if (returnType.SpecialType == SpecialType.System_Int32)
         {
-            sb.AppendLine("return System.Convert.ToInt32(__result__);");
+            sb.AppendLine("return __result__;");  // __result__ is already int from ExecuteNonQuery
         }
         else if (returnType.SpecialType == SpecialType.System_Boolean)
         {
-            sb.AppendLine("return System.Convert.ToInt32(__result__) > 0;");
+            sb.AppendLine("return __result__ > 0;");  // Direct comparison, no conversion needed
         }
         else
         {
@@ -1766,11 +1766,11 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         }
         else if (returnType.SpecialType == SpecialType.System_Int32)
         {
-            sb.AppendLine("return System.Convert.ToInt32(__result__);");
+            sb.AppendLine("return __result__;");  // __result__ is already int from ExecuteNonQuery
         }
         else if (returnType.SpecialType == SpecialType.System_Boolean)
         {
-            sb.AppendLine("return System.Convert.ToInt32(__result__) > 0;");
+            sb.AppendLine("return __result__ > 0;");  // Direct comparison, no conversion needed
         }
         else
         {
@@ -1913,11 +1913,11 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         }
         else if (returnType.SpecialType == SpecialType.System_Int32)
         {
-            sb.AppendLine("return System.Convert.ToInt32(__result__);");
+            sb.AppendLine("return __result__;");  // __result__ is already int from ExecuteNonQuery
         }
         else if (returnType.SpecialType == SpecialType.System_Boolean)
         {
-            sb.AppendLine("return System.Convert.ToInt32(__result__) > 0;");
+            sb.AppendLine("return __result__ > 0;");  // Direct comparison, no conversion needed
         }
         else
         {
@@ -2365,32 +2365,32 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                 // Direct conversion without intermediate variables for better performance
                 if (unwrappedReturnType.SpecialType == SpecialType.System_Int32)
                 {
-                    sb.AppendLine("__result__ = scalarResult == null ? 0 : global::System.Convert.ToInt32(scalarResult);");
+                    sb.AppendLine("__result__ = scalarResult == null ? 0 : (int)scalarResult;");  // Direct cast
                     sb.AppendLine("return __result__;");
                 }
                 else if (unwrappedReturnType.SpecialType == SpecialType.System_Int64)
                 {
-                    sb.AppendLine("__result__ = scalarResult == null ? 0L : global::System.Convert.ToInt64(scalarResult);");
+                    sb.AppendLine("__result__ = scalarResult == null ? 0L : (long)scalarResult;");  // Direct cast
                     sb.AppendLine("return __result__;");
                 }
                 else if (unwrappedReturnType.SpecialType == SpecialType.System_Boolean)
                 {
-                    sb.AppendLine("__result__ = scalarResult == null ? false : global::System.Convert.ToBoolean(scalarResult);");
+                    sb.AppendLine("__result__ = scalarResult == null ? false : (bool)scalarResult;");  // Direct cast
                     sb.AppendLine("return __result__;");
                 }
                 else if (unwrappedReturnType.SpecialType == SpecialType.System_Decimal)
                 {
-                    sb.AppendLine("__result__ = scalarResult == null ? 0m : global::System.Convert.ToDecimal(scalarResult);");
+                    sb.AppendLine("__result__ = scalarResult == null ? 0m : (decimal)scalarResult;");  // Direct cast
                     sb.AppendLine("return __result__;");
                 }
                 else if (unwrappedReturnType.SpecialType == SpecialType.System_Double)
                 {
-                    sb.AppendLine("__result__ = scalarResult == null ? 0.0 : global::System.Convert.ToDouble(scalarResult);");
+                    sb.AppendLine("__result__ = scalarResult == null ? 0.0 : (double)scalarResult;");  // Direct cast
                     sb.AppendLine("return __result__;");
                 }
                 else if (unwrappedReturnType.SpecialType == SpecialType.System_Single)
                 {
-                    sb.AppendLine("__result__ = scalarResult == null ? 0f : global::System.Convert.ToSingle(scalarResult);");
+                    sb.AppendLine("__result__ = scalarResult == null ? 0f : (float)scalarResult;");  // Direct cast
                     sb.AppendLine("return __result__;");
                 }
                 else if (unwrappedReturnType.SpecialType == SpecialType.System_String)
@@ -3909,19 +3909,19 @@ public abstract partial class AbstractGenerator : ISourceGenerator
 
         if (returnType.SpecialType == SpecialType.System_Int32)
         {
-            sb.AppendLine("var intResult = scalarResult == null ? 0 : System.Convert.ToInt32(scalarResult);");
+            sb.AppendLine("var intResult = scalarResult == null ? 0 : (int)scalarResult;");  // Direct cast
             sb.AppendLine("__result__ = intResult;");
             sb.AppendLine("return intResult;");
         }
         else if (returnType.SpecialType == SpecialType.System_Int64)
         {
-            sb.AppendLine("var longResult = scalarResult == null ? 0L : System.Convert.ToInt64(scalarResult);");
+            sb.AppendLine("var longResult = scalarResult == null ? 0L : (long)scalarResult;");  // Direct cast
             sb.AppendLine("__result__ = longResult;");
             sb.AppendLine("return longResult;");
         }
         else if (returnType.SpecialType == SpecialType.System_Boolean)
         {
-            sb.AppendLine("var boolResult = scalarResult == null ? false : System.Convert.ToInt32(scalarResult) > 0;");
+            sb.AppendLine("var boolResult = scalarResult == null ? false : (int)scalarResult > 0;");  // Direct cast
             sb.AppendLine("__result__ = boolResult;");
             sb.AppendLine("return boolResult;");
         }

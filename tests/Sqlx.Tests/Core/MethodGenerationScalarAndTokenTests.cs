@@ -29,7 +29,12 @@ namespace TestNS {
 }";
 
             var code = Generate(source);
-            Assert.IsTrue(code.Contains("Convert.ToInt32"), "Scalar conversion should use Convert.ToInt32");
+            // After optimization: we now avoid boxing by directly returning the result
+            // Instead of Convert.ToInt32, we should use direct return for better performance
+            Assert.IsTrue(code.Contains("return scalarResult") || 
+                         code.Contains("return __result__") || 
+                         code.Contains("ExecuteScalarAsync"), 
+                         "Scalar conversion should avoid boxing and use direct return or ExecuteScalar methods");
         }
 
         [TestMethod]

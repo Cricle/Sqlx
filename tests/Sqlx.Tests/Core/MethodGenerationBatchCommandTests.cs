@@ -50,6 +50,51 @@ namespace N {
             StringAssert.Contains(code, "BatchCommands.Add");
         }
 
+        [TestMethod]
+        public void BatchCommand_Insert_Generates_Dialect_Correct_CommandText_And_Parameters()
+        {
+            var source = @"using Sqlx.Annotations; using System.Data.Common; using System.Threading.Tasks; using System.Collections.Generic; 
+namespace N { 
+  public class User { public int Id {get;set;} public string Name {get;set;} = string.Empty; public string Email {get;set;} = string.Empty; }
+  [RepositoryFor(typeof(IRepo))]
+  public partial class Repo : IRepo { private readonly DbConnection connection; public Repo(DbConnection c){connection=c;} }
+  public interface IRepo {
+    [SqlExecuteType(SqlExecuteTypes.BatchCommand, ""Users"")] Task<int> InsertUsersAsync(IList<User> users);
+  }
+}";
+
+            var code = string.Join("\n", Generate(source));
+
+            // Basic indicators
+            StringAssert.Contains(code, "INSERT INTO");
+            StringAssert.Contains(code, "Users");
+
+            // Parameters should be prefixed and named (lowercase per generator)
+            StringAssert.Contains(code, "ParameterName = \"@name\"");
+            StringAssert.Contains(code, "ParameterName = \"@email\"");
+        }
+
+        [TestMethod]
+        public void BatchCommand_Update_Generates_Set_Clauses_And_Where()
+        {
+            var source = @"using Sqlx.Annotations; using System.Data.Common; using System.Threading.Tasks; using System.Collections.Generic; 
+namespace N { 
+  public class User { public int Id {get;set;} public string Name {get;set;} = string.Empty; public string Email {get;set;} = string.Empty; }
+  [RepositoryFor(typeof(IRepo))]
+  public partial class Repo : IRepo { private readonly DbConnection connection; public Repo(DbConnection c){connection=c;} }
+  public interface IRepo {
+    [SqlExecuteType(SqlExecuteTypes.BatchCommand, ""Users"")] Task<int> UpdateUsersAsync(IList<User> users);
+  }
+}";
+
+            var code = string.Join("\n", Generate(source));
+            StringAssert.Contains(code, "UPDATE ");
+            StringAssert.Contains(code, " SET ");
+            // We expect update of Name/Email and a WHERE Id clause in per-item batch commands
+            StringAssert.Contains(code, "Name");
+            StringAssert.Contains(code, "Email");
+        }
+
         private static List<string> Generate(string source)
         {
             var syntaxTree = CSharpSyntaxTree.ParseText(source);

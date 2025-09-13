@@ -270,16 +270,17 @@ internal static class EnhancedEntityMappingGenerator
                 }
             }
 
-            // Try to use Convert methods for better type safety
-            if (TryGetConvertMethod(unwrapType, out var convertMethod))
+            // Use strong-typed DataReader methods to avoid boxing (previous Convert approach caused boxing)
+            var directMethod = unwrapType.GetDataReaderMethod();
+            if (!string.IsNullOrEmpty(directMethod))
             {
                 if (isNullable || type.IsReferenceType)
                 {
-                    return $"{readerName}.IsDBNull({ordinalVar}) ? null : {convertMethod}({readerName}.GetValue({ordinalVar}))";
+                    return $"{readerName}.IsDBNull({ordinalVar}) ? null : {readerName}.{directMethod}({ordinalVar})";
                 }
                 else
                 {
-                    return $"{convertMethod}({readerName}.GetValue({ordinalVar}))";
+                    return $"{readerName}.{directMethod}({ordinalVar})";
                 }
             }
 
@@ -295,44 +296,6 @@ internal static class EnhancedEntityMappingGenerator
         }
     }
 
-    /// <summary>
-    /// Tries to get a Convert method for better type safety.
-    /// </summary>
-    private static bool TryGetConvertMethod(ITypeSymbol type, out string convertMethod)
-    {
-        convertMethod = type.SpecialType switch
-        {
-            SpecialType.System_Boolean => "global::System.Convert.ToBoolean",
-            SpecialType.System_Byte => "global::System.Convert.ToByte",
-            SpecialType.System_SByte => "global::System.Convert.ToSByte",
-            SpecialType.System_Int16 => "global::System.Convert.ToInt16",
-            SpecialType.System_Int32 => "global::System.Convert.ToInt32",
-            SpecialType.System_Int64 => "global::System.Convert.ToInt64",
-            SpecialType.System_UInt16 => "global::System.Convert.ToUInt16",
-            SpecialType.System_UInt32 => "global::System.Convert.ToUInt32",
-            SpecialType.System_UInt64 => "global::System.Convert.ToUInt64",
-            SpecialType.System_Single => "global::System.Convert.ToSingle",
-            SpecialType.System_Double => "global::System.Convert.ToDouble",
-            SpecialType.System_Decimal => "global::System.Convert.ToDecimal",
-            SpecialType.System_DateTime => "global::System.Convert.ToDateTime",
-            SpecialType.System_String => "global::System.Convert.ToString",
-            _ => string.Empty
-        };
-
-        // Handle special types by name
-        if (string.IsNullOrEmpty(convertMethod))
-        {
-            convertMethod = type.Name switch
-            {
-                "Guid" => "global::System.Guid.Parse",
-                "DateTimeOffset" => "global::System.DateTimeOffset.Parse",
-                "TimeSpan" => "global::System.TimeSpan.Parse",
-                _ => string.Empty
-            };
-        }
-
-        return !string.IsNullOrEmpty(convertMethod);
-    }
 
     /// <summary>
     /// Converts a parameter name to the corresponding property name (PascalCase).

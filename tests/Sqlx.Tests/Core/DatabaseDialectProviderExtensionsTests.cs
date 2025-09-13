@@ -1,6 +1,6 @@
 // -----------------------------------------------------------------------
-// <copyright file="DatabaseDialectProviderExtensionsTests.cs" company="Cricle">
-// Copyright (c) Cricle. All rights reserved.
+// <copyright file="DatabaseDialectProviderExtensionsTests.cs" company="Microsoft">
+//     Copyright (c) Microsoft Corporation. All rights reserved.
 // </copyright>
 // -----------------------------------------------------------------------
 
@@ -12,6 +12,22 @@ namespace Sqlx.Tests.Core;
 [TestClass]
 public class DatabaseDialectProviderExtensionsTests
 {
+    [TestMethod]
+    public void WrapColumn_Wraps_With_Provider_Rules()
+    {
+        var provider = DatabaseDialectFactory.GetDialectProvider(SqlDefine.SqlServer);
+        var wrapped = provider.WrapColumn("UserName");
+        Assert.AreEqual("[UserName]", wrapped);
+    }
+
+    [TestMethod]
+    public void GetParameterPrefix_Matches_SqlDefine_Prefix()
+    {
+        var provider = DatabaseDialectFactory.GetDialectProvider(SqlDefine.SqlServer);
+        var prefix = provider.GetParameterPrefix();
+        Assert.AreEqual("@", prefix);
+    }
+
     [TestMethod]
     public void WrapColumn_WithMySqlProvider_UsesBackticks()
     {

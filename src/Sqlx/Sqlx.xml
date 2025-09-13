@@ -288,11 +288,6 @@
             Gets the data read expression for a type.
             </summary>
         </member>
-        <member name="M:Sqlx.Core.EnhancedEntityMappingGenerator.TryGetConvertMethod(Microsoft.CodeAnalysis.ITypeSymbol,System.String@)">
-            <summary>
-            Tries to get a Convert method for better type safety.
-            </summary>
-        </member>
         <member name="M:Sqlx.Core.EnhancedEntityMappingGenerator.GetPropertyNameFromParameter(System.String)">
             <summary>
             Converts a parameter name to the corresponding property name (PascalCase).

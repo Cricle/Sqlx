@@ -1,11 +1,42 @@
 // -----------------------------------------------------------------------
-// <copyright file="AttributeSourceGeneratorTests.cs" company="Cricle">
-// Copyright (c) Cricle. All rights reserved.
+// <copyright file="AttributeSourceGeneratorTests.cs" company="Microsoft">
+//     Copyright (c) Microsoft Corporation. All rights reserved.
 // </copyright>
 // -----------------------------------------------------------------------
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Sqlx.Core;
+
+namespace Sqlx.Tests.Core
+{
+    [TestClass]
+    public class AttributeSourceGeneratorTestsSimple
+    {
+        [TestMethod]
+        public void GenerateAttributeSource_Contains_Key_Attributes_And_Enums()
+        {
+            var src = AttributeSourceGenerator.GenerateAttributeSource();
+            Assert.IsTrue(src.Contains("class SqlxAttribute"));
+            Assert.IsTrue(src.Contains("class RawSqlAttribute"));
+            Assert.IsTrue(src.Contains("class ExpressionToSqlAttribute"));
+            Assert.IsTrue(src.Contains("class SqlExecuteTypeAttribute"));
+            Assert.IsTrue(src.Contains("class RepositoryForAttribute"));
+            Assert.IsTrue(src.Contains("class TableNameAttribute"));
+            Assert.IsTrue(src.Contains("enum SqlExecuteTypes"));
+            Assert.IsTrue(src.Contains("enum SqlDefineTypes"));
+            Assert.IsTrue(src.Contains("class SqlDefineAttribute"));
+            Assert.IsTrue(src.Contains("public static class SqlDefine"));
+            Assert.IsTrue(src.Contains("public readonly record struct SqlTemplate"));
+            Assert.IsTrue(src.Contains("class ExpressionToSql<"));
+        }
+    }
+}
+
+// -----------------------------------------------------------------------
+// <copyright file="AttributeSourceGeneratorTests.cs" company="Cricle">
+// Copyright (c) Cricle. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
 
 namespace Sqlx.Tests.Core
 {

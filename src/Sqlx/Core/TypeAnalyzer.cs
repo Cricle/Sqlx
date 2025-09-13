@@ -55,7 +55,7 @@ internal static class TypeAnalyzer
     /// Extracts entity type from generic collections or Task types (cached).
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static INamedTypeSymbol? ExtractEntityType(ITypeSymbol type)
+    public static INamedTypeSymbol? ExtractEntityType(ITypeSymbol? type)
     {
         if (type is not INamedTypeSymbol namedType) return null;
 

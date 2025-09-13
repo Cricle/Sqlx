@@ -1572,7 +1572,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         }
 
         // Create command when needed
-        sb.AppendLine("var __repoCmd__ = connection.CreateCommand();");
+        sb.AppendLine("__repoCmd__ = connection.CreateCommand();");
 
         var sqlDefine = GetSqlDefineForRepository(method);
         var columns = string.Join(", ", properties.Select(p => sqlDefine.WrapColumn(p.GetSqlName()).Replace("\"", "\\\"")));
@@ -2231,7 +2231,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         sb.AppendLine("}");
         sb.AppendLine();
 
-        // Create command
+        // Use existing command variable (already declared in parent scope)
         sb.AppendLine("__repoCmd__ = connection.CreateCommand();");
 
         // Get SQL from attribute

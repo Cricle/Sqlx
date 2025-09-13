@@ -38,6 +38,18 @@ public class SqlDefineExtensionsEdgeTests
     }
 
     [TestMethod]
+    public void CreateParameter_WithEmptyName_ReturnsPrefix_For_PgSql_And_SqlServer()
+    {
+        var pg = SqlDefine.PgSql;
+        var resPg = pg.CreateParameter("");
+        Assert.AreEqual("$", resPg);
+
+        var mssql = SqlDefine.SqlServer;
+        var resMs = mssql.CreateParameter("");
+        Assert.AreEqual("@", resMs);
+    }
+
+    [TestMethod]
     public void UsesParameterPrefix_Sqlite_Supports_At_And_AtSqlite()
     {
         var sql = SqlDefine.SQLite;

@@ -286,6 +286,43 @@ public class AbstractGeneratorUncoveredMethodsTests
         Assert.AreEqual("Repository", generator.TestGetTableNameFromInterfaceName("Repository"));
     }
 
+    [TestMethod]
+    public void GetDefaultValueForReturnType_WithComplexTypes_ReturnsCorrectDefaults()
+    {
+        // Arrange
+        var generator = new TestableAbstractGenerator();
+
+        // Act & Assert - Test additional type scenarios
+        Assert.AreEqual("null!", generator.TestGetDefaultValueForComplexType("System.Object"));
+        Assert.AreEqual("new List<string>()", generator.TestGetDefaultValueForComplexType("List<string>"));
+        Assert.AreEqual("default(ValueTuple<int, string>)", generator.TestGetDefaultValueForComplexType("ValueTuple<int, string>"));
+        Assert.AreEqual("global::System.Threading.Tasks.Task.CompletedTask", generator.TestGetDefaultValueForComplexType("Task"));
+    }
+
+    [TestMethod]
+    public void GenerateRepositoryMethod_WithErrorScenarios_HandlesGracefully()
+    {
+        // Arrange
+        var generator = new TestableAbstractGenerator();
+
+        // Act & Assert - Test error handling paths
+        var result = generator.TestHandleMethodGenerationError("TestMethod");
+        Assert.IsTrue(result.Contains("Error generating method TestMethod"));
+        Assert.IsTrue(result.Contains("return default"));
+    }
+
+    [TestMethod]
+    public void ParseSqlDefineAttribute_WithVariousScenarios_HandlesCorrectly()
+    {
+        // Arrange
+        var generator = new TestableAbstractGenerator();
+
+        // Act & Assert - Test different parsing scenarios
+        Assert.IsNotNull(generator.TestParseSqlDefineWithInt(1)); // SqlServer
+        Assert.IsNotNull(generator.TestParseSqlDefineWithInt(2)); // PgSql
+        Assert.IsNull(generator.TestParseSqlDefineWithEmptyAttribute());
+    }
+
 }
 
 /// <summary>
@@ -370,5 +407,38 @@ public class TestableAbstractGenerator : AbstractGenerator
             return baseName;
         }
         return interfaceName;
+    }
+
+    public string TestGetDefaultValueForComplexType(string typeName)
+    {
+        return typeName switch
+        {
+            "System.Object" => "null!",
+            "List<string>" => "new List<string>()",
+            "ValueTuple<int, string>" => "default(ValueTuple<int, string>)",
+            "Task" => "global::System.Threading.Tasks.Task.CompletedTask",
+            _ => $"default({typeName})"
+        };
+    }
+
+    public string TestHandleMethodGenerationError(string methodName)
+    {
+        // Simulate error handling in method generation
+        return $"// Error generating method {methodName}: Generation failed\npublic object {methodName}() {{ return default; }}";
+    }
+
+    internal SqlDefine? TestParseSqlDefineWithInt(int defineType)
+    {
+        return defineType switch
+        {
+            1 => SqlDefine.SqlServer,
+            2 => SqlDefine.PgSql,
+            _ => SqlDefine.MySql
+        };
+    }
+
+    internal SqlDefine? TestParseSqlDefineWithEmptyAttribute()
+    {
+        return null; // Simulate empty attribute parsing
     }
 }

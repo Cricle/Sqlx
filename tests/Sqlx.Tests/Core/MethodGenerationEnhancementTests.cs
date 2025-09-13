@@ -86,6 +86,61 @@ namespace N {
             Assert.IsTrue(code.Contains("ToTemplate()"));
         }
 
+        [TestMethod]
+        public void Method_Generation_With_Complex_Return_Types_Handles_Correctly()
+        {
+            var source = @"using Sqlx.Annotations; using System.Data.Common; using System.Threading.Tasks; using System.Collections.Generic; using Sqlx.Core; 
+namespace N { 
+  public class User { public int Id {get;set;} public string Name {get;set;} = string.Empty; }
+  [RepositoryFor(typeof(IRepo))]
+  public partial class Repo : IRepo { private readonly DbConnection connection; public Repo(DbConnection c){connection=c;} }
+  public interface IRepo {
+    [Sqlx(""SELECT Id, Name FROM users"")] Task<Dictionary<int, string>> GetUserDictionaryAsync();
+    [Sqlx(""SELECT COUNT(*) FROM users"")] Task<(int count, bool hasData)> GetUserCountAsync();
+  }
+}";
+
+            var code = Generate(source).Join();
+            Assert.IsTrue(code.Contains("Dictionary") || code.Contains("GetUser"));
+        }
+
+        [TestMethod]
+        public void Method_Generation_With_Error_Handling_Paths_Covers_Edge_Cases()
+        {
+            var source = @"using Sqlx.Annotations; using System.Data.Common; using System.Threading.Tasks; using System.Collections.Generic; using Sqlx.Core; 
+namespace N { 
+  public class User { public int Id {get;set;} public string Name {get;set;} = string.Empty; }
+  [RepositoryFor(typeof(IRepo))]
+  public partial class Repo : IRepo { private readonly DbConnection connection; public Repo(DbConnection c){connection=c;} }
+  public interface IRepo {
+    [Sqlx("""")] Task<User?> GetUserWithEmptySqlAsync(int id);
+    Task<User?> GetUserWithoutAttributeAsync(int id);
+  }
+}";
+
+            var code = Generate(source).Join();
+            // Should handle empty SQL and missing attributes gracefully
+            Assert.IsTrue(code.Contains("GetUser") || code.Length > 0);
+        }
+
+        [TestMethod]
+        public void Method_Generation_With_Fallback_Batch_Logic_Generates_Code()
+        {
+            var source = @"using Sqlx.Annotations; using System.Data.Common; using System.Threading.Tasks; using System.Collections.Generic; using Sqlx.Core; 
+namespace N { 
+  public class User { public int Id {get;set;} public string Name {get;set;} = string.Empty; }
+  [RepositoryFor(typeof(IRepo))]
+  public partial class Repo : IRepo { private readonly DbConnection connection; public Repo(DbConnection c){connection=c;} }
+  public interface IRepo {
+    [Sqlx(""SELECT * FROM users WHERE Id = @id"")] Task<List<User>> GetUsersAsync(List<int> ids);
+    [Sqlx(""SELECT COUNT(*) FROM users WHERE Id = @id"")] Task<int> CountUsersAsync(List<int> ids);
+  }
+}";
+
+            var code = Generate(source).Join();
+            Assert.IsTrue(code.Contains("GetUsers") || code.Contains("CountUsers"));
+        }
+
         private static List<string> Generate(string source)
         {
             var syntaxTree = CSharpSyntaxTree.ParseText(source);

@@ -41,6 +41,20 @@ public class SqlOperationInferrerMoreTests
         Assert.IsTrue(updateWithProps.Contains("[Name] = @name"));
     }
 
+    [TestMethod]
+    public void GenerateSqlTemplate_Delete_And_Scalar_Basic()
+    {
+        var comp = CreateCompilation(@"namespace N { public class U { } }");
+        var t = (INamedTypeSymbol)comp.GetTypeByMetadataName("N.U")!;
+
+        var del = SqlOperationInferrer.GenerateSqlTemplate(SqlOperationType.Delete, "users", t);
+        Assert.IsTrue(del.Contains("DELETE FROM [users]"));
+        Assert.IsTrue(del.Contains("WHERE [Id] = @id"));
+
+        var scalar = SqlOperationInferrer.GenerateSqlTemplate(SqlOperationType.Scalar, "users", t);
+        Assert.IsTrue(scalar.Contains("SELECT COUNT(*) FROM [users]"));
+    }
+
     private static CSharpCompilation CreateCompilation(string src)
     {
         var tree = CSharpSyntaxTree.ParseText(src);

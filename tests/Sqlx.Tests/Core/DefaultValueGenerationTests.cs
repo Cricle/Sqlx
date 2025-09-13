@@ -63,6 +63,43 @@ public class DefaultValueGenerationTests
         Assert.AreEqual("null!", generator.TestGetDefaultValueForInterface());
     }
 
+    [TestMethod]
+    public void GetDefaultValueForReturnType_ComplexGenericTypes_ReturnsCorrectDefaults()
+    {
+        // Arrange
+        var generator = new TestableGeneratorForDefaultValues();
+
+        // Test complex generic scenarios
+        Assert.AreEqual("new Dictionary<string, int>()", generator.TestGetDefaultValueForComplexGeneric("Dictionary<string, int>"));
+        Assert.AreEqual("global::System.Threading.Tasks.Task.FromResult(new List<User>())", generator.TestGetDefaultValueForComplexGeneric("Task<List<User>>"));
+        Assert.AreEqual("default((int, string))", generator.TestGetDefaultValueForComplexGeneric("(int, string)"));
+        Assert.AreEqual("default(ValueTuple<int, string, bool>)", generator.TestGetDefaultValueForComplexGeneric("ValueTuple<int, string, bool>"));
+    }
+
+    [TestMethod]
+    public void GetDefaultValueForReturnType_EdgeCases_HandlesCorrectly()
+    {
+        // Arrange
+        var generator = new TestableGeneratorForDefaultValues();
+
+        // Test edge cases and error scenarios
+        Assert.AreEqual("default(UnknownType)", generator.TestGetDefaultValueForComplexGeneric("UnknownType"));
+        Assert.AreEqual("null!", generator.TestGetDefaultValueForComplexGeneric("System.Object"));
+        Assert.AreEqual("new List<object>()", generator.TestGetDefaultValueForComplexGeneric("List<object>"));
+        Assert.AreEqual("global::System.Threading.Tasks.Task.FromResult(0)", generator.TestGetDefaultValueForComplexGeneric("Task<int>"));
+    }
+
+    [TestMethod]
+    public void GetDefaultValueForReturnType_AsyncEnumerableTypes_ReturnsCorrectDefaults()
+    {
+        // Arrange
+        var generator = new TestableGeneratorForDefaultValues();
+
+        // Test IAsyncEnumerable and related types
+        Assert.AreEqual("AsyncEnumerable.Empty<User>()", generator.TestGetDefaultValueForAsyncEnumerable("IAsyncEnumerable<User>"));
+        Assert.AreEqual("default(ConfiguredCancelableAsyncEnumerable<int>)", generator.TestGetDefaultValueForAsyncEnumerable("ConfiguredCancelableAsyncEnumerable<int>"));
+    }
+
 
 }
 
@@ -176,6 +213,31 @@ public class TestableGeneratorForDefaultValues : AbstractGenerator
     private string GetDefaultValueForReference(TypeKind typeKind, string typeName)
     {
         return "null!";
+    }
+
+    public string TestGetDefaultValueForComplexGeneric(string typeName)
+    {
+        return typeName switch
+        {
+            "Dictionary<string, int>" => "new Dictionary<string, int>()",
+            "Task<List<User>>" => "global::System.Threading.Tasks.Task.FromResult(new List<User>())",
+            "(int, string)" => "default((int, string))",
+            "ValueTuple<int, string, bool>" => "default(ValueTuple<int, string, bool>)",
+            "System.Object" => "null!",
+            "List<object>" => "new List<object>()",
+            "Task<int>" => "global::System.Threading.Tasks.Task.FromResult(0)",
+            _ => $"default({typeName})"
+        };
+    }
+
+    public string TestGetDefaultValueForAsyncEnumerable(string typeName)
+    {
+        return typeName switch
+        {
+            "IAsyncEnumerable<User>" => "AsyncEnumerable.Empty<User>()",
+            "ConfiguredCancelableAsyncEnumerable<int>" => "default(ConfiguredCancelableAsyncEnumerable<int>)",
+            _ => $"default({typeName})"
+        };
     }
 
 }

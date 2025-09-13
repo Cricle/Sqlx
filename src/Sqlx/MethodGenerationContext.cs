@@ -19,11 +19,11 @@ using static Sqlx.Extensions;
 internal partial class MethodGenerationContext : GenerationContextBase
 {
     internal const string DbConnectionName = Constants.GeneratedVariables.Connection;
-    internal const string CmdName = Constants.GeneratedVariables.Command;
-    internal const string DbReaderName = Constants.GeneratedVariables.Reader;
-    internal const string ResultName = Constants.GeneratedVariables.Result;
-    internal const string DataName = Constants.GeneratedVariables.Data;
-    internal const string StartTimeName = Constants.GeneratedVariables.StartTime;
+    internal const string CmdName = "__methodCmd__";  // Use different name to avoid conflicts with AbstractGenerator
+    internal const string DbReaderName = "__methodReader__";
+    internal const string ResultName = "__methodResult__";
+    internal const string DataName = "__methodData__";
+    internal const string StartTimeName = "__methodStartTime__";
 
     internal const string MethodExecuting = "OnExecuting";
     internal const string MethodExecuted = "OnExecuted";
@@ -180,6 +180,9 @@ internal partial class MethodGenerationContext : GenerationContextBase
         var hasRepositoryForAttribute = ClassGenerationContext.ClassSymbol.GetAttributes()
             .Any(attr => attr.AttributeClass?.Name == "RepositoryForAttribute" || attr.AttributeClass?.Name == "RepositoryFor");
 
+        // Always declare variables in this scope to avoid conflicts with AbstractGenerator
+        // Use different variable names to prevent conflicts
+
         string dbConnectionExpression;
 
         if (hasRepositoryForAttribute)
@@ -244,17 +247,13 @@ internal partial class MethodGenerationContext : GenerationContextBase
                            type == Constants.SqlExecuteTypeValues.BatchDelete;
         }
 
-        if (isBatchCommand)
-        {
-            // For BatchCommand, use native DbBatch if supported, otherwise fallback to individual commands
-            sb.AppendLine($"using(var {CmdName} = {DbConnectionName}.CreateCommand())");
-        }
-        else
-        {
-            sb.AppendLine($"using(global::System.Data.Common.DbCommand {CmdName} = {DbConnectionName}.CreateCommand())");
-        }
+        // Always declare the variable with a unique name to avoid conflicts
+        sb.AppendLine($"using (var {CmdName} = {DbConnectionName}.CreateCommand())");
         sb.AppendLine("{");
         sb.PushIndent();
+
+        // Don't declare variables here as they will be declared by specific generation methods
+        // This avoids duplicate declarations
 
         if (TransactionParameter != null)
             sb.AppendLine($"{CmdName}.Transaction = {TransactionParameter.Name};");
@@ -431,11 +430,36 @@ internal partial class MethodGenerationContext : GenerationContextBase
     private static IParameterSymbol? GetAttributeParamter(IMethodSymbol methodSymbol, string attributeName)
         => methodSymbol.Parameters.FirstOrDefault(x => x.GetAttributes().Any(y => y.AttributeClass?.Name == attributeName));
 
-    private bool IsExecuteNoQuery() => MethodSymbol.GetAttributes().Any(x => x.AttributeClass?.Name == "ExecuteNoQueryAttribute");
+    private bool IsExecuteNoQuery() 
+    {
+        // Check for explicit ExecuteNoQueryAttribute
+        if (MethodSymbol.GetAttributes().Any(x => x.AttributeClass?.Name == "ExecuteNoQueryAttribute"))
+            return true;
+            
+        // Check for SqlExecuteTypeAttribute with INSERT/UPDATE/DELETE operations
+        var sqlExecuteTypeAttr = MethodSymbol.GetAttributes()
+            .FirstOrDefault(x => x.AttributeClass?.Name == "SqlExecuteTypeAttribute");
+        if (sqlExecuteTypeAttr != null && sqlExecuteTypeAttr.ConstructorArguments.Length > 0)
+        {
+            var enumValueObj = sqlExecuteTypeAttr.ConstructorArguments[0].Value;
+            var sqlExecuteType = enumValueObj switch
+            {
+                int intValue => intValue,
+                string strValue when int.TryParse(strValue, out var intVal) => intVal,
+                _ => 0 // Select
+            };
+            
+            // INSERT (2), UPDATE (1), DELETE (3) should use ExecuteNonQuery
+            return sqlExecuteType == 1 || sqlExecuteType == 2 || sqlExecuteType == 3;
+        }
+        
+        return false;
+    }
 
     public bool WriteExecuteNoQuery(IndentedStringBuilder sb, List<ColumnDefine> columnDefines)
     {
-        if (!(ReturnType.SpecialType == SpecialType.System_Int32))
+        // Support int and bool return types for ExecuteNonQuery operations
+        if (!(ReturnType.SpecialType == SpecialType.System_Int32 || ReturnType.SpecialType == SpecialType.System_Boolean))
         {
             ClassGenerationContext.GeneratorExecutionContext.ReportDiagnostic(Diagnostic.Create(Messages.SP0008, MethodSymbol.Locations.FirstOrDefault()));
             return false;
@@ -445,7 +469,16 @@ internal partial class MethodGenerationContext : GenerationContextBase
 
         WriteOutput(sb, columnDefines);
         WriteMethodExecuted(sb, ResultName);
-        sb.AppendLine($"return {ResultName};");
+        
+        // Generate appropriate return statement based on return type
+        if (ReturnType.SpecialType == SpecialType.System_Boolean)
+        {
+            sb.AppendLine($"return {ResultName} > 0;");
+        }
+        else
+        {
+            sb.AppendLine($"return {ResultName};");
+        }
         return true;
     }
 

@@ -1158,14 +1158,12 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         var methodName = method.Name;
 
         // Setup execution context with interceptors
-        sb.AppendLine("var __startTime__ = System.Diagnostics.Stopwatch.GetTimestamp();");
-        sb.AppendLine("System.Data.Common.DbCommand? __cmd__ = null;");
-
-        // Declare __result__ with correct type to avoid boxing
+        sb.AppendLine("var __repoStartTime__ = System.Diagnostics.Stopwatch.GetTimestamp();");
+        sb.AppendLine("System.Data.Common.DbCommand? __repoCmd__ = null;");
+        
+        // Declare __repoResult__ with correct type to avoid boxing
         var resultType = GetResultVariableType(method);
-        sb.AppendLine($"{resultType} __result__ = default;");
-
-        sb.AppendLine("System.Exception? __exception__ = null;");
+        sb.AppendLine($"{resultType} __repoResult__ = default;");
         sb.AppendLine();
 
         sb.AppendLine("try");
@@ -1290,23 +1288,15 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         sb.AppendLine("catch (System.Exception ex)");
         sb.AppendLine("{");
         sb.PushIndent();
-        sb.AppendLine("__exception__ = ex;");
-        sb.AppendLine("var __elapsed__ = System.Diagnostics.Stopwatch.GetTimestamp() - __startTime__;");
-        sb.AppendLine($"OnExecuteFail(\"{methodName}\", __cmd__, ex, __elapsed__);");
+        sb.AppendLine("var __elapsed__ = System.Diagnostics.Stopwatch.GetTimestamp() - __repoStartTime__;");
+        sb.AppendLine($"OnExecuteFail(\"{methodName}\", __repoCmd__, ex, __elapsed__);");
         sb.AppendLine("throw;");
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine("finally");
         sb.AppendLine("{");
         sb.PushIndent();
-        sb.AppendLine("if (__exception__ == null)");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        sb.AppendLine("var __elapsed__ = System.Diagnostics.Stopwatch.GetTimestamp() - __startTime__;");
-        sb.AppendLine($"OnExecuted(\"{methodName}\", __cmd__, __result__, __elapsed__);");
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.AppendLine("__cmd__?.Dispose();");
+        sb.AppendLine("__repoCmd__?.Dispose();");
         sb.PopIndent();
         sb.AppendLine("}");
     }
@@ -1581,20 +1571,20 @@ public abstract partial class AbstractGenerator : ISourceGenerator
             return;
         }
 
-        // Create command
-        sb.AppendLine("__cmd__ = connection.CreateCommand();");
+        // Create command when needed
+        sb.AppendLine("var __repoCmd__ = connection.CreateCommand();");
 
         var sqlDefine = GetSqlDefineForRepository(method);
         var columns = string.Join(", ", properties.Select(p => sqlDefine.WrapColumn(p.GetSqlName()).Replace("\"", "\\\"")));
         var parameters = string.Join(", ", properties.Select(p => $"{sqlDefine.ParameterPrefix}{p.GetSqlName()}"));
-        sb.AppendLine($"__cmd__.CommandText = \"INSERT INTO {sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"")} ({columns}) VALUES ({parameters})\";");
+        sb.AppendLine($"__repoCmd__.CommandText = \"INSERT INTO {sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"")} ({columns}) VALUES ({parameters})\";");
         sb.AppendLine();
 
         // Add parameters
         foreach (var prop in properties)
         {
             var sqlName = prop.GetSqlName();
-            sb.AppendLine($"var param{prop.Name} = __cmd__.CreateParameter();");
+            sb.AppendLine($"var param{prop.Name} = __repoCmd__.CreateParameter();");
             sb.AppendLine($"param{prop.Name}.ParameterName = \"{sqlDefine.ParameterPrefix}{sqlName}\";");
             sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
 
@@ -1606,23 +1596,23 @@ public abstract partial class AbstractGenerator : ISourceGenerator
             {
                 sb.AppendLine($"param{prop.Name}.Value = {entityParam.Name}.{prop.Name};");
             }
-            sb.AppendLine($"__cmd__.Parameters.Add(param{prop.Name});");
+            sb.AppendLine($"__repoCmd__.Parameters.Add(param{prop.Name});");
             sb.AppendLine();
         }
 
         // Call OnExecuting interceptor
-        sb.AppendLine($"OnExecuting(\"{methodName}\", __cmd__);");
+        sb.AppendLine($"OnExecuting(\"{methodName}\", __repoCmd__);");
         sb.AppendLine();
 
         // Execute and return
         if (isAsync)
         {
             var cancellationToken = GetCancellationTokenParameter(method);
-            sb.AppendLine($"__result__ = await __cmd__.ExecuteNonQueryAsync({cancellationToken});");
+            sb.AppendLine($"__repoResult__ = await __repoCmd__.ExecuteNonQueryAsync({cancellationToken});");
         }
         else
         {
-            sb.AppendLine("__result__ = __cmd__.ExecuteNonQuery();");
+            sb.AppendLine("__repoResult__ = __repoCmd__.ExecuteNonQuery();");
         }
 
         // Determine return type and cast accordingly
@@ -1639,15 +1629,15 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         
         if (returnType.SpecialType == SpecialType.System_Int32)
         {
-            sb.AppendLine("return __result__;");  // __result__ is already int from ExecuteNonQuery
+            sb.AppendLine("return __repoResult__;");  // __repoResult__ is already int from ExecuteNonQuery
         }
         else if (returnType.SpecialType == SpecialType.System_Boolean)
         {
-            sb.AppendLine("return __result__ > 0;");  // Direct comparison, no conversion needed
+            sb.AppendLine("return __repoResult__ > 0;");  // Direct comparison, no conversion needed
         }
         else
         {
-            sb.AppendLine("return __result__;");
+            sb.AppendLine("return __repoResult__;");
         }
     }
 
@@ -1699,18 +1689,18 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         }
 
         // Create command
-        sb.AppendLine("__cmd__ = connection.CreateCommand();");
+        sb.AppendLine("__repoCmd__ = connection.CreateCommand();");
 
         var sqlDefine = GetSqlDefineForRepository(method);
         var setClauses = string.Join(", ", properties.Select(p => $"{sqlDefine.WrapColumn(p.GetSqlName()).Replace("\"", "\\\"")} = {sqlDefine.ParameterPrefix}{p.GetSqlName()}"));
-        sb.AppendLine($"__cmd__.CommandText = \"UPDATE {sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"")} SET {setClauses} WHERE {sqlDefine.WrapColumn("id").Replace("\"", "\\\"")} = {sqlDefine.ParameterPrefix}id\";");
+        sb.AppendLine($"__repoCmd__.CommandText = \"UPDATE {sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"")} SET {setClauses} WHERE {sqlDefine.WrapColumn("id").Replace("\"", "\\\"")} = {sqlDefine.ParameterPrefix}id\";");
         sb.AppendLine();
 
         // Add SET clause parameters
         foreach (var prop in properties)
         {
             var sqlName = prop.GetSqlName();
-            sb.AppendLine($"var param{prop.Name} = __cmd__.CreateParameter();");
+            sb.AppendLine($"var param{prop.Name} = __repoCmd__.CreateParameter();");
             sb.AppendLine($"param{prop.Name}.ParameterName = \"{sqlDefine.ParameterPrefix}{sqlName}\";");
             sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
 
@@ -1722,7 +1712,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
             {
                 sb.AppendLine($"param{prop.Name}.Value = {entityParam.Name}.{prop.Name};");
             }
-            sb.AppendLine($"__cmd__.Parameters.Add(param{prop.Name});");
+            sb.AppendLine($"__repoCmd__.Parameters.Add(param{prop.Name});");
             sb.AppendLine();
         }
 
@@ -1730,27 +1720,27 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         var idProperty = GetIdProperty(entityType);
         if (idProperty != null)
         {
-            sb.AppendLine("var paramId = __cmd__.CreateParameter();");
+            sb.AppendLine("var paramId = __repoCmd__.CreateParameter();");
             sb.AppendLine($"paramId.ParameterName = \"{sqlDefine.ParameterPrefix}id\";");
             sb.AppendLine($"paramId.DbType = {GetDbTypeForProperty(idProperty)};");
             sb.AppendLine($"paramId.Value = {entityParam.Name}.{idProperty.Name};");
-            sb.AppendLine("__cmd__.Parameters.Add(paramId);");
+            sb.AppendLine("__repoCmd__.Parameters.Add(paramId);");
             sb.AppendLine();
         }
 
         // Call OnExecuting interceptor
-        sb.AppendLine($"OnExecuting(\"{methodName}\", __cmd__);");
+        sb.AppendLine($"OnExecuting(\"{methodName}\", __repoCmd__);");
         sb.AppendLine();
 
         // Execute and return
         if (isAsync)
         {
             var cancellationToken = GetCancellationTokenParameter(method);
-            sb.AppendLine($"__result__ = await __cmd__.ExecuteNonQueryAsync({cancellationToken});");
+            sb.AppendLine($"__repoResult__ = await __repoCmd__.ExecuteNonQueryAsync({cancellationToken});");
         }
         else
         {
-            sb.AppendLine("__result__ = __cmd__.ExecuteNonQuery();");
+            sb.AppendLine("__repoResult__ = __repoCmd__.ExecuteNonQuery();");
         }
 
         // Determine return type and cast accordingly
@@ -1766,15 +1756,15 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         }
         else if (returnType.SpecialType == SpecialType.System_Int32)
         {
-            sb.AppendLine("return __result__;");  // __result__ is already int from ExecuteNonQuery
+            sb.AppendLine("return __repoResult__;");  // __repoResult__ is already int from ExecuteNonQuery
         }
         else if (returnType.SpecialType == SpecialType.System_Boolean)
         {
-            sb.AppendLine("return __result__ > 0;");  // Direct comparison, no conversion needed
+            sb.AppendLine("return __repoResult__ > 0;");  // Direct comparison, no conversion needed
         }
         else
         {
-            sb.AppendLine("return __result__;");
+            sb.AppendLine("return __repoResult__;");
         }
     }
 
@@ -1801,7 +1791,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         sb.AppendLine();
 
         // Create command
-        sb.AppendLine("__cmd__ = connection.CreateCommand();");
+        sb.AppendLine("__repoCmd__ = connection.CreateCommand();");
 
         // 🚀 智能删除 - 支持多种删除方式
         sb.AppendLine("// 🚀 智能删除操作 - 支持ID、实体、任意字段删除");
@@ -1818,11 +1808,11 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         {
             // 优先方案：通过ID删除
             sb.AppendLine("// 方案1: 通过ID删除");
-            sb.AppendLine($"__cmd__.CommandText = \"DELETE FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight} WHERE {sqlDefine.ColumnLeft}Id{sqlDefine.ColumnRight} = {sqlDefine.ParameterPrefix}Id\";");
-            sb.AppendLine("var paramId = __cmd__.CreateParameter();");
+            sb.AppendLine($"__repoCmd__.CommandText = \"DELETE FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight} WHERE {sqlDefine.ColumnLeft}Id{sqlDefine.ColumnRight} = {sqlDefine.ParameterPrefix}Id\";");
+            sb.AppendLine("var paramId = __repoCmd__.CreateParameter();");
             sb.AppendLine($"paramId.ParameterName = \"{sqlDefine.ParameterPrefix}Id\";");
             sb.AppendLine($"paramId.Value = {idParam.Name};");
-            sb.AppendLine("__cmd__.Parameters.Add(paramId);");
+            sb.AppendLine("__repoCmd__.Parameters.Add(paramId);");
         }
         else if (entityParam != null && entityType != null)
         {
@@ -1832,14 +1822,14 @@ public abstract partial class AbstractGenerator : ISourceGenerator
             if (properties.Any())
             {
                 var whereConditions = properties.Select(p => $"{sqlDefine.ColumnLeft}{p.Name}{sqlDefine.ColumnRight} = {sqlDefine.ParameterPrefix}{p.Name}");
-                sb.AppendLine($"__cmd__.CommandText = \"DELETE FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight} WHERE {string.Join(" AND ", whereConditions)}\";");
+                sb.AppendLine($"__repoCmd__.CommandText = \"DELETE FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight} WHERE {string.Join(" AND ", whereConditions)}\";");
 
                 foreach (var prop in properties)
                 {
-                    sb.AppendLine($"var param{prop.Name} = __cmd__.CreateParameter();");
+                    sb.AppendLine($"var param{prop.Name} = __repoCmd__.CreateParameter();");
                     sb.AppendLine($"param{prop.Name}.ParameterName = \"{sqlDefine.ParameterPrefix}{prop.Name}\";");
                     sb.AppendLine($"param{prop.Name}.Value = {entityParam.Name}.{prop.Name} ?? (object)global::System.DBNull.Value;");
-                    sb.AppendLine($"__cmd__.Parameters.Add(param{prop.Name});");
+                    sb.AppendLine($"__repoCmd__.Parameters.Add(param{prop.Name});");
                 }
             }
             else
@@ -1848,11 +1838,11 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                 var idProperty = GetIdProperty(entityType);
                 if (idProperty != null)
                 {
-                    sb.AppendLine($"__cmd__.CommandText = \"DELETE FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight} WHERE {sqlDefine.ColumnLeft}Id{sqlDefine.ColumnRight} = {sqlDefine.ParameterPrefix}Id\";");
-                    sb.AppendLine("var paramId = __cmd__.CreateParameter();");
+                    sb.AppendLine($"__repoCmd__.CommandText = \"DELETE FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight} WHERE {sqlDefine.ColumnLeft}Id{sqlDefine.ColumnRight} = {sqlDefine.ParameterPrefix}Id\";");
+                    sb.AppendLine("var paramId = __repoCmd__.CreateParameter();");
                     sb.AppendLine($"paramId.ParameterName = \"{sqlDefine.ParameterPrefix}Id\";");
                     sb.AppendLine($"paramId.Value = {entityParam.Name}.{idProperty.Name};");
-                    sb.AppendLine("__cmd__.Parameters.Add(paramId);");
+                    sb.AppendLine("__repoCmd__.Parameters.Add(paramId);");
                 }
                 else
                 {
@@ -1866,14 +1856,14 @@ public abstract partial class AbstractGenerator : ISourceGenerator
             // 方案3：通过任意字段删除 - 🚀 新增功能！
             sb.AppendLine("// 方案3: 通过任意字段删除 - 支持非ID字段条件");
             var whereConditions = conditionParams.Select(p => $"{sqlDefine.ColumnLeft}{p.Name}{sqlDefine.ColumnRight} = {sqlDefine.ParameterPrefix}{p.Name}");
-            sb.AppendLine($"__cmd__.CommandText = \"DELETE FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight} WHERE {string.Join(" AND ", whereConditions)}\";");
+            sb.AppendLine($"__repoCmd__.CommandText = \"DELETE FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight} WHERE {string.Join(" AND ", whereConditions)}\";");
 
             foreach (var param in conditionParams)
             {
-                sb.AppendLine($"var param{param.Name} = __cmd__.CreateParameter();");
+                sb.AppendLine($"var param{param.Name} = __repoCmd__.CreateParameter();");
                 sb.AppendLine($"param{param.Name}.ParameterName = \"{sqlDefine.ParameterPrefix}{param.Name}\";");
                 sb.AppendLine($"param{param.Name}.Value = {param.Name};");
-                sb.AppendLine($"__cmd__.Parameters.Add(param{param.Name});");
+                sb.AppendLine($"__repoCmd__.Parameters.Add(param{param.Name});");
             }
         }
         else
@@ -1886,18 +1876,18 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         sb.AppendLine();
 
         // Call OnExecuting interceptor
-        sb.AppendLine($"OnExecuting(\"{methodName}\", __cmd__);");
+        sb.AppendLine($"OnExecuting(\"{methodName}\", __repoCmd__);");
         sb.AppendLine();
 
         // Execute and return
         if (isAsync)
         {
             var cancellationToken = GetCancellationTokenParameter(method);
-            sb.AppendLine($"__result__ = await __cmd__.ExecuteNonQueryAsync({cancellationToken});");
+            sb.AppendLine($"__repoResult__ = await __repoCmd__.ExecuteNonQueryAsync({cancellationToken});");
         }
         else
         {
-            sb.AppendLine("__result__ = __cmd__.ExecuteNonQuery();");
+            sb.AppendLine("__repoResult__ = __repoCmd__.ExecuteNonQuery();");
         }
 
         // Determine return type and cast accordingly
@@ -1913,15 +1903,15 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         }
         else if (returnType.SpecialType == SpecialType.System_Int32)
         {
-            sb.AppendLine("return __result__;");  // __result__ is already int from ExecuteNonQuery
+            sb.AppendLine("return __repoResult__;");  // __repoResult__ is already int from ExecuteNonQuery
         }
         else if (returnType.SpecialType == SpecialType.System_Boolean)
         {
-            sb.AppendLine("return __result__ > 0;");  // Direct comparison, no conversion needed
+            sb.AppendLine("return __repoResult__ > 0;");  // Direct comparison, no conversion needed
         }
         else
         {
-            sb.AppendLine("return __result__;");
+            sb.AppendLine("return __repoResult__;");
         }
     }
 
@@ -1948,7 +1938,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         sb.AppendLine();
 
         // Create command
-        sb.AppendLine("__cmd__ = connection.CreateCommand();");
+        sb.AppendLine("__repoCmd__ = connection.CreateCommand();");
 
         // Check if we have parameters for WHERE clause
         var whereParams = method.Parameters.Where(p => p.Type.Name != "CancellationToken").ToList();
@@ -1959,42 +1949,42 @@ public abstract partial class AbstractGenerator : ISourceGenerator
             var firstParam = whereParams.First();
             if (firstParam.Name.Equals("id", StringComparison.OrdinalIgnoreCase))
             {
-                sb.AppendLine($"__cmd__.CommandText = \"SELECT * FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight} WHERE {sqlDefine.ColumnLeft}Id{sqlDefine.ColumnRight} = {sqlDefine.ParameterPrefix}Id\";");
-                sb.AppendLine("var paramId = __cmd__.CreateParameter();");
+                sb.AppendLine($"__repoCmd__.CommandText = \"SELECT * FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight} WHERE {sqlDefine.ColumnLeft}Id{sqlDefine.ColumnRight} = {sqlDefine.ParameterPrefix}Id\";");
+                sb.AppendLine("var paramId = __repoCmd__.CreateParameter();");
                 sb.AppendLine($"paramId.ParameterName = \"{sqlDefine.ParameterPrefix}Id\";");
                 sb.AppendLine($"paramId.Value = {firstParam.Name};");
-                sb.AppendLine("__cmd__.Parameters.Add(paramId);");
+                sb.AppendLine("__repoCmd__.Parameters.Add(paramId);");
             }
             else
             {
                 // Generic parameter handling
-                sb.AppendLine($"__cmd__.CommandText = \"SELECT * FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight} WHERE {sqlDefine.ColumnLeft}{firstParam.Name}{sqlDefine.ColumnRight} = {sqlDefine.ParameterPrefix}{firstParam.Name}\";");
-                sb.AppendLine($"var param{firstParam.Name} = __cmd__.CreateParameter();");
+                sb.AppendLine($"__repoCmd__.CommandText = \"SELECT * FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight} WHERE {sqlDefine.ColumnLeft}{firstParam.Name}{sqlDefine.ColumnRight} = {sqlDefine.ParameterPrefix}{firstParam.Name}\";");
+                sb.AppendLine($"var param{firstParam.Name} = __repoCmd__.CreateParameter();");
                 sb.AppendLine($"param{firstParam.Name}.ParameterName = \"{sqlDefine.ParameterPrefix}{firstParam.Name}\";");
                 sb.AppendLine($"param{firstParam.Name}.Value = {firstParam.Name};");
-                sb.AppendLine($"__cmd__.Parameters.Add(param{firstParam.Name});");
+                sb.AppendLine($"__repoCmd__.Parameters.Add(param{firstParam.Name});");
             }
         }
         else
         {
-            sb.AppendLine($"__cmd__.CommandText = \"SELECT * FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight}\";");
+            sb.AppendLine($"__repoCmd__.CommandText = \"SELECT * FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight}\";");
         }
 
         sb.AppendLine();
 
         // Call OnExecuting interceptor
-        sb.AppendLine($"OnExecuting(\"{methodName}\", __cmd__);");
+        sb.AppendLine($"OnExecuting(\"{methodName}\", __repoCmd__);");
         sb.AppendLine();
 
         // Execute and process results
         if (isAsync)
         {
             var cancellationToken = GetCancellationTokenParameter(method);
-            sb.AppendLine($"using var reader = await __cmd__.ExecuteReaderAsync();");
+            sb.AppendLine($"using var reader = await __repoCmd__.ExecuteReaderAsync();");
         }
         else
         {
-            sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
+            sb.AppendLine("using var reader = __repoCmd__.ExecuteReader();");
         }
 
         // Generate result collection and mapping
@@ -2038,7 +2028,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         sb.AppendLine("}");
         sb.AppendLine();
 
-        sb.AppendLine("__result__ = results;");
+        sb.AppendLine("__repoResult__ = results;");
 
         // Cast to correct return type based on method signature
         var methodReturnType = method.ReturnType;
@@ -2081,7 +2071,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         sb.AppendLine();
 
         // Create command
-        sb.AppendLine("__cmd__ = connection.CreateCommand();");
+        sb.AppendLine("__repoCmd__ = connection.CreateCommand();");
 
         // Check if we have parameters for WHERE clause
         var whereParams = method.Parameters.Where(p => p.Type.Name != "CancellationToken").ToList();
@@ -2092,42 +2082,42 @@ public abstract partial class AbstractGenerator : ISourceGenerator
             var firstParam = whereParams.First();
             if (firstParam.Name.Equals("id", StringComparison.OrdinalIgnoreCase))
             {
-                sb.AppendLine($"__cmd__.CommandText = \"SELECT * FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight} WHERE {sqlDefine.ColumnLeft}Id{sqlDefine.ColumnRight} = {sqlDefine.ParameterPrefix}Id LIMIT 1\";");
-                sb.AppendLine("var paramId = __cmd__.CreateParameter();");
+                sb.AppendLine($"__repoCmd__.CommandText = \"SELECT * FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight} WHERE {sqlDefine.ColumnLeft}Id{sqlDefine.ColumnRight} = {sqlDefine.ParameterPrefix}Id LIMIT 1\";");
+                sb.AppendLine("var paramId = __repoCmd__.CreateParameter();");
                 sb.AppendLine($"paramId.ParameterName = \"{sqlDefine.ParameterPrefix}Id\";");
                 sb.AppendLine($"paramId.Value = {firstParam.Name};");
-                sb.AppendLine("__cmd__.Parameters.Add(paramId);");
+                sb.AppendLine("__repoCmd__.Parameters.Add(paramId);");
             }
             else
             {
-                sb.AppendLine($"__cmd__.CommandText = \"SELECT * FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight} WHERE {sqlDefine.ColumnLeft}{firstParam.Name}{sqlDefine.ColumnRight} = {sqlDefine.ParameterPrefix}{firstParam.Name} LIMIT 1\";");
-                sb.AppendLine($"var param{firstParam.Name} = __cmd__.CreateParameter();");
+                sb.AppendLine($"__repoCmd__.CommandText = \"SELECT * FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight} WHERE {sqlDefine.ColumnLeft}{firstParam.Name}{sqlDefine.ColumnRight} = {sqlDefine.ParameterPrefix}{firstParam.Name} LIMIT 1\";");
+                sb.AppendLine($"var param{firstParam.Name} = __repoCmd__.CreateParameter();");
                 sb.AppendLine($"param{firstParam.Name}.ParameterName = \"{sqlDefine.ParameterPrefix}{firstParam.Name}\";");
                 sb.AppendLine($"param{firstParam.Name}.Value = {firstParam.Name};");
-                sb.AppendLine($"__cmd__.Parameters.Add(param{firstParam.Name});");
+                sb.AppendLine($"__repoCmd__.Parameters.Add(param{firstParam.Name});");
             }
         }
         else
         {
-            sb.AppendLine($"__cmd__.CommandText = \"SELECT * FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight} LIMIT 1\";");
+            sb.AppendLine($"__repoCmd__.CommandText = \"SELECT * FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight} LIMIT 1\";");
         }
 
         sb.AppendLine();
 
         // Call OnExecuting interceptor
-        sb.AppendLine($"OnExecuting(\"{methodName}\", __cmd__);");
+        sb.AppendLine($"OnExecuting(\"{methodName}\", __repoCmd__);");
         sb.AppendLine();
 
         // Execute and process single result
         if (isAsync)
         {
             var cancellationToken = GetCancellationTokenParameter(method);
-            sb.AppendLine($"using var reader = await __cmd__.ExecuteReaderAsync();");
+            sb.AppendLine($"using var reader = await __repoCmd__.ExecuteReaderAsync();");
             sb.AppendLine($"if (await reader.ReadAsync({cancellationToken}))");
         }
         else
         {
-            sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
+            sb.AppendLine("using var reader = __repoCmd__.ExecuteReader();");
             sb.AppendLine("if (reader.Read())");
         }
 
@@ -2137,7 +2127,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         if (entityType != null)
         {
             GenerateOptimizedEntityMapping(sb, entityType);
-            sb.AppendLine("__result__ = entity;");
+            sb.AppendLine("__repoResult__ = entity;");
             sb.AppendLine("return entity;");
         }
         else
@@ -2151,7 +2141,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
             sb.AppendLine("dict[reader.GetName(i)] = reader.IsDBNull(i) ? null : reader.GetValue(i);");
             sb.PopIndent();
             sb.AppendLine("}");
-            sb.AppendLine("__result__ = result;");
+            sb.AppendLine("__repoResult__ = result;");
             sb.AppendLine("return result;");
         }
 
@@ -2159,7 +2149,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         sb.AppendLine("}");
         sb.AppendLine();
 
-        sb.AppendLine("__result__ = null;");
+        sb.AppendLine("__repoResult__ = null;");
         sb.AppendLine("return null;");
     }
 
@@ -2186,25 +2176,25 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         sb.AppendLine();
 
         // Create command
-        sb.AppendLine("__cmd__ = connection.CreateCommand();");
+        sb.AppendLine("__repoCmd__ = connection.CreateCommand();");
         var sqlDefine = GetSqlDefineForRepository(method);
-        sb.AppendLine($"__cmd__.CommandText = \"SELECT * FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight} LIMIT 1\";");
+        sb.AppendLine($"__repoCmd__.CommandText = \"SELECT * FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight} LIMIT 1\";");
         sb.AppendLine();
 
         // Call OnExecuting interceptor
-        sb.AppendLine($"OnExecuting(\"{methodName}\", __cmd__);");
+        sb.AppendLine($"OnExecuting(\"{methodName}\", __repoCmd__);");
         sb.AppendLine();
 
         // Execute without processing result for void methods
         if (isAsync)
         {
             var cancellationToken = GetCancellationTokenParameter(method);
-            sb.AppendLine($"using var reader = await __cmd__.ExecuteReaderAsync();");
+            sb.AppendLine($"using var reader = await __repoCmd__.ExecuteReaderAsync();");
             sb.AppendLine($"if (await reader.ReadAsync({cancellationToken}))");
         }
         else
         {
-            sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
+            sb.AppendLine("using var reader = __repoCmd__.ExecuteReader();");
             sb.AppendLine("if (reader.Read())");
         }
 
@@ -2215,7 +2205,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         sb.AppendLine("}");
         sb.AppendLine();
 
-        sb.AppendLine("__result__ = null;");
+        sb.AppendLine("__repoResult__ = null;");
         // No return statement for void methods
     }
 
@@ -2242,25 +2232,25 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         sb.AppendLine();
 
         // Create command
-        sb.AppendLine("__cmd__ = connection.CreateCommand();");
+        sb.AppendLine("__repoCmd__ = connection.CreateCommand();");
 
         // Get SQL from attribute
         var sql = sqlxAttr.ConstructorArguments.FirstOrDefault().Value?.ToString() ?? "SELECT 1";
-        sb.AppendLine($"__cmd__.CommandText = \"{sql.Replace("\"", "\\\"")}\";");
+        sb.AppendLine($"__repoCmd__.CommandText = \"{sql.Replace("\"", "\\\"")}\";");
         sb.AppendLine();
 
         // Add parameters
         foreach (var param in method.Parameters.Where(p => p.Type.Name != "CancellationToken"))
         {
-            sb.AppendLine($"var param{param.Name} = __cmd__.CreateParameter();");
+            sb.AppendLine($"var param{param.Name} = __repoCmd__.CreateParameter();");
             sb.AppendLine($"param{param.Name}.ParameterName = \"@{param.Name}\";");
             sb.AppendLine($"param{param.Name}.Value = {param.Name};");
-            sb.AppendLine($"__cmd__.Parameters.Add(param{param.Name});");
+            sb.AppendLine($"__repoCmd__.Parameters.Add(param{param.Name});");
             sb.AppendLine();
         }
 
         // Call OnExecuting interceptor
-        sb.AppendLine($"OnExecuting(\"{methodName}\", __cmd__);");
+        sb.AppendLine($"OnExecuting(\"{methodName}\", __repoCmd__);");
         sb.AppendLine();
 
         // Execute based on expected return type
@@ -2273,11 +2263,11 @@ public abstract partial class AbstractGenerator : ISourceGenerator
             if (isAsync)
             {
                 var cancellationToken = GetCancellationTokenParameter(method);
-                sb.AppendLine($"using var reader = await __cmd__.ExecuteReaderAsync();");
+                sb.AppendLine($"using var reader = await __repoCmd__.ExecuteReaderAsync();");
             }
             else
             {
-                sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
+                sb.AppendLine("using var reader = __repoCmd__.ExecuteReader();");
             }
 
             var entityTypeName = entityType?.ToDisplayString() ?? "object";
@@ -2320,7 +2310,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
             sb.AppendLine("}");
             sb.AppendLine();
 
-            sb.AppendLine("__result__ = results;");
+            sb.AppendLine("__repoResult__ = results;");
 
             // Cast to correct return type based on method signature
             var methodReturnType2 = method.ReturnType;
@@ -2348,11 +2338,11 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                 if (isAsync)
                 {
                     var cancellationToken = GetCancellationTokenParameter(method);
-                    sb.AppendLine($"var scalarResult = await __cmd__.ExecuteScalarAsync({cancellationToken});");
+                    sb.AppendLine($"var scalarResult = await __repoCmd__.ExecuteScalarAsync({cancellationToken});");
                 }
                 else
                 {
-                    sb.AppendLine("var scalarResult = __cmd__.ExecuteScalar();");
+                    sb.AppendLine("var scalarResult = __repoCmd__.ExecuteScalar();");
                 }
 
                 // Convert scalar result to proper return type
@@ -2365,43 +2355,43 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                 // Direct conversion without intermediate variables for better performance
                 if (unwrappedReturnType.SpecialType == SpecialType.System_Int32)
                 {
-                    sb.AppendLine("__result__ = scalarResult == null ? 0 : (int)scalarResult;");  // Direct cast
-                    sb.AppendLine("return __result__;");
+                    sb.AppendLine("__repoResult__ = scalarResult == null ? 0 : (int)scalarResult;");  // Direct cast
+                    sb.AppendLine("return __repoResult__;");
                 }
                 else if (unwrappedReturnType.SpecialType == SpecialType.System_Int64)
                 {
-                    sb.AppendLine("__result__ = scalarResult == null ? 0L : (long)scalarResult;");  // Direct cast
-                    sb.AppendLine("return __result__;");
+                    sb.AppendLine("__repoResult__ = scalarResult == null ? 0L : (long)scalarResult;");  // Direct cast
+                    sb.AppendLine("return __repoResult__;");
                 }
                 else if (unwrappedReturnType.SpecialType == SpecialType.System_Boolean)
                 {
-                    sb.AppendLine("__result__ = scalarResult == null ? false : (bool)scalarResult;");  // Direct cast
-                    sb.AppendLine("return __result__;");
+                    sb.AppendLine("__repoResult__ = scalarResult == null ? false : (bool)scalarResult;");  // Direct cast
+                    sb.AppendLine("return __repoResult__;");
                 }
                 else if (unwrappedReturnType.SpecialType == SpecialType.System_Decimal)
                 {
-                    sb.AppendLine("__result__ = scalarResult == null ? 0m : (decimal)scalarResult;");  // Direct cast
-                    sb.AppendLine("return __result__;");
+                    sb.AppendLine("__repoResult__ = scalarResult == null ? 0m : (decimal)scalarResult;");  // Direct cast
+                    sb.AppendLine("return __repoResult__;");
                 }
                 else if (unwrappedReturnType.SpecialType == SpecialType.System_Double)
                 {
-                    sb.AppendLine("__result__ = scalarResult == null ? 0.0 : (double)scalarResult;");  // Direct cast
-                    sb.AppendLine("return __result__;");
+                    sb.AppendLine("__repoResult__ = scalarResult == null ? 0.0 : (double)scalarResult;");  // Direct cast
+                    sb.AppendLine("return __repoResult__;");
                 }
                 else if (unwrappedReturnType.SpecialType == SpecialType.System_Single)
                 {
-                    sb.AppendLine("__result__ = scalarResult == null ? 0f : (float)scalarResult;");  // Direct cast
-                    sb.AppendLine("return __result__;");
+                    sb.AppendLine("__repoResult__ = scalarResult == null ? 0f : (float)scalarResult;");  // Direct cast
+                    sb.AppendLine("return __repoResult__;");
                 }
                 else if (unwrappedReturnType.SpecialType == SpecialType.System_String)
                 {
-                    sb.AppendLine("__result__ = scalarResult?.ToString() ?? string.Empty;");
-                    sb.AppendLine("return __result__;");
+                    sb.AppendLine("__repoResult__ = scalarResult?.ToString() ?? string.Empty;");
+                    sb.AppendLine("return __repoResult__;");
                 }
                 else
                 {
-                    sb.AppendLine("__result__ = scalarResult;");
-                    sb.AppendLine("return __result__;");
+                    sb.AppendLine("__repoResult__ = scalarResult;");
+                    sb.AppendLine("return __repoResult__;");
                 }
             }
             else
@@ -2410,12 +2400,12 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                 if (isAsync)
                 {
                     var cancellationToken = GetCancellationTokenParameter(method);
-                    sb.AppendLine($"using var reader = await __cmd__.ExecuteReaderAsync();");
+                    sb.AppendLine($"using var reader = await __repoCmd__.ExecuteReaderAsync();");
                     sb.AppendLine($"if (await reader.ReadAsync({cancellationToken}))");
                 }
                 else
                 {
-                    sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
+                    sb.AppendLine("using var reader = __repoCmd__.ExecuteReader();");
                     sb.AppendLine("if (reader.Read())");
                 }
 
@@ -2425,7 +2415,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                 if (entityType != null)
                 {
                     GenerateOptimizedEntityMapping(sb, entityType);
-                    sb.AppendLine("__result__ = entity;");
+                    sb.AppendLine("__repoResult__ = entity;");
                     sb.AppendLine("return entity;");
                 }
                 else
@@ -2439,7 +2429,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                     sb.AppendLine("dict[reader.GetName(i)] = reader.IsDBNull(i) ? null : reader.GetValue(i);");
                     sb.PopIndent();
                     sb.AppendLine("}");
-                    sb.AppendLine("__result__ = result;");
+                    sb.AppendLine("__repoResult__ = result;");
                     sb.AppendLine("return result;");
                 }
 
@@ -2447,7 +2437,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                 sb.AppendLine("}");
                 sb.AppendLine();
 
-                sb.AppendLine("__result__ = null;");
+                sb.AppendLine("__repoResult__ = null;");
 
                 // Check if this is a Task return type (void async)
                 var methodReturnType = method.ReturnType;
@@ -2914,6 +2904,8 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         }
 
         sb.AppendLine($"// 智能批量字段更新 - 高性能批量更新指定字段");
+        sb.AppendLine("int totalAffected = 0;");
+        sb.AppendLine();
         sb.AppendLine($"if ({updatesParam.Name} == null || {updatesParam.Name}.Count == 0)");
         sb.AppendLine("{");
         sb.PushIndent();
@@ -2932,9 +2924,6 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         sb.AppendLine();
 
         GenerateConnectionSetup(sb, method, isAsync);
-        sb.AppendLine();
-
-        sb.AppendLine("int totalAffected = 0;");
         sb.AppendLine();
 
         sb.AppendLine("// 检查是否支持 DbBatch (高性能模式)");
@@ -2993,6 +2982,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         sb.AppendLine("{");
         sb.PushIndent();
         sb.AppendLine("// 降级到逐个更新模式");
+        sb.AppendLine("totalAffected = 0;");
         sb.AppendLine($"foreach (var update in {updatesParam.Name})");
         sb.AppendLine("{");
         sb.PushIndent();
@@ -3154,20 +3144,20 @@ public abstract partial class AbstractGenerator : ISourceGenerator
             var sqlDefine = GetSqlDefineForRepository(method);
             var columns = string.Join(", ", properties.Select(p => sqlDefine.WrapColumn(p.Name).Replace("\"", "\\\"")));
             var values = string.Join(", ", properties.Select(p => $"{sqlDefine.ParameterPrefix}{p.Name}"));
-            sb.AppendLine($"__cmd__.CommandText = \"INSERT INTO {sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"")} ({columns}) VALUES ({values})\";");
+            sb.AppendLine($"__repoCmd__.CommandText = \"INSERT INTO {sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"")} ({columns}) VALUES ({values})\";");
 
             foreach (var prop in properties)
             {
-                sb.AppendLine($"var param{prop.Name} = __cmd__.CreateParameter();");
+                sb.AppendLine($"var param{prop.Name} = __repoCmd__.CreateParameter();");
                 sb.AppendLine($"param{prop.Name}.ParameterName = \"@{prop.Name}\";");
                 sb.AppendLine($"param{prop.Name}.Value = {paramName}.{prop.Name} ?? (object)DBNull.Value;");
-                sb.AppendLine($"__cmd__.Parameters.Add(param{prop.Name});");
+                sb.AppendLine($"__repoCmd__.Parameters.Add(param{prop.Name});");
             }
         }
         else
         {
             var sqlDefine = GetSqlDefineForRepository(method);
-            sb.AppendLine($"__cmd__.CommandText = \"INSERT INTO {sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"")} DEFAULT VALUES\";");
+            sb.AppendLine($"__repoCmd__.CommandText = \"INSERT INTO {sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"")} DEFAULT VALUES\";");
         }
     }
 
@@ -3185,27 +3175,27 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         {
             var sqlDefine = GetSqlDefineForRepository(method);
             var setClause = string.Join(", ", properties.Select(p => $"{sqlDefine.WrapColumn(p.Name).Replace("\"", "\\\"")} = {sqlDefine.ParameterPrefix}{p.Name}"));
-            sb.AppendLine($"__cmd__.CommandText = \"UPDATE {sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"")} SET {setClause} WHERE {sqlDefine.WrapColumn(idProperty.Name).Replace("\"", "\\\"")} = {sqlDefine.ParameterPrefix}{idProperty.Name}\";");
+            sb.AppendLine($"__repoCmd__.CommandText = \"UPDATE {sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"")} SET {setClause} WHERE {sqlDefine.WrapColumn(idProperty.Name).Replace("\"", "\\\"")} = {sqlDefine.ParameterPrefix}{idProperty.Name}\";");
 
             // Add parameters for SET clause
             foreach (var prop in properties)
             {
-                sb.AppendLine($"var param{prop.Name} = __cmd__.CreateParameter();");
+                sb.AppendLine($"var param{prop.Name} = __repoCmd__.CreateParameter();");
                 sb.AppendLine($"param{prop.Name}.ParameterName = \"@{prop.Name}\";");
                 sb.AppendLine($"param{prop.Name}.Value = {paramName}.{prop.Name} ?? (object)DBNull.Value;");
-                sb.AppendLine($"__cmd__.Parameters.Add(param{prop.Name});");
+                sb.AppendLine($"__repoCmd__.Parameters.Add(param{prop.Name});");
             }
 
             // Add parameter for WHERE clause
-            sb.AppendLine($"var param{idProperty.Name} = __cmd__.CreateParameter();");
+            sb.AppendLine($"var param{idProperty.Name} = __repoCmd__.CreateParameter();");
             sb.AppendLine($"param{idProperty.Name}.ParameterName = \"@{idProperty.Name}\";");
             sb.AppendLine($"param{idProperty.Name}.Value = {paramName}.{idProperty.Name};");
-            sb.AppendLine($"__cmd__.Parameters.Add(param{idProperty.Name});");
+            sb.AppendLine($"__repoCmd__.Parameters.Add(param{idProperty.Name});");
         }
         else
         {
             var sqlDefine = GetSqlDefineForRepository(method);
-            sb.AppendLine($"__cmd__.CommandText = \"UPDATE {sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"")} SET {sqlDefine.WrapColumn("Id").Replace("\"", "\\\"")} = {sqlDefine.WrapColumn("Id").Replace("\"", "\\\"")}\";");
+            sb.AppendLine($"__repoCmd__.CommandText = \"UPDATE {sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"")} SET {sqlDefine.WrapColumn("Id").Replace("\"", "\\\"")} = {sqlDefine.WrapColumn("Id").Replace("\"", "\\\"")}\";");
         }
     }
 
@@ -3214,7 +3204,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         var sqlDefine = GetSqlDefineForRepository(method);
         if (methodNameLower.Contains("count"))
         {
-            sb.AppendLine($"__cmd__.CommandText = \"SELECT COUNT(*) FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight}\";");
+            sb.AppendLine($"__repoCmd__.CommandText = \"SELECT COUNT(*) FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight}\";");
         }
         else if (methodNameLower.Contains("exists"))
         {
@@ -3224,30 +3214,30 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                 var firstParam = whereParams.First();
                 if (firstParam.Name.Equals("id", StringComparison.OrdinalIgnoreCase))
                 {
-                    sb.AppendLine($"__cmd__.CommandText = \"SELECT COUNT(*) FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight} WHERE {sqlDefine.ColumnLeft}Id{sqlDefine.ColumnRight} = {sqlDefine.ParameterPrefix}Id\";");
-                    sb.AppendLine("var paramId = __cmd__.CreateParameter();");
+                    sb.AppendLine($"__repoCmd__.CommandText = \"SELECT COUNT(*) FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight} WHERE {sqlDefine.ColumnLeft}Id{sqlDefine.ColumnRight} = {sqlDefine.ParameterPrefix}Id\";");
+                    sb.AppendLine("var paramId = __repoCmd__.CreateParameter();");
                     sb.AppendLine($"paramId.ParameterName = \"{sqlDefine.ParameterPrefix}Id\";");
                     sb.AppendLine($"paramId.Value = {firstParam.Name};");
-                    sb.AppendLine("__cmd__.Parameters.Add(paramId);");
+                    sb.AppendLine("__repoCmd__.Parameters.Add(paramId);");
                 }
                 else
                 {
-                    sb.AppendLine($"__cmd__.CommandText = \"SELECT COUNT(*) FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight} WHERE {sqlDefine.ColumnLeft}{firstParam.Name}{sqlDefine.ColumnRight} = {sqlDefine.ParameterPrefix}{firstParam.Name}\";");
-                    sb.AppendLine($"var param{firstParam.Name} = __cmd__.CreateParameter();");
+                    sb.AppendLine($"__repoCmd__.CommandText = \"SELECT COUNT(*) FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight} WHERE {sqlDefine.ColumnLeft}{firstParam.Name}{sqlDefine.ColumnRight} = {sqlDefine.ParameterPrefix}{firstParam.Name}\";");
+                    sb.AppendLine($"var param{firstParam.Name} = __repoCmd__.CreateParameter();");
                     sb.AppendLine($"param{firstParam.Name}.ParameterName = \"{sqlDefine.ParameterPrefix}{firstParam.Name}\";");
                     sb.AppendLine($"param{firstParam.Name}.Value = {firstParam.Name};");
-                    sb.AppendLine($"__cmd__.Parameters.Add(param{firstParam.Name});");
+                    sb.AppendLine($"__repoCmd__.Parameters.Add(param{firstParam.Name});");
                 }
             }
             else
             {
-                sb.AppendLine($"__cmd__.CommandText = \"SELECT COUNT(*) FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight}\";");
+                sb.AppendLine($"__repoCmd__.CommandText = \"SELECT COUNT(*) FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight}\";");
             }
         }
         else
         {
             // Default scalar query
-            sb.AppendLine($"__cmd__.CommandText = \"SELECT COUNT(*) FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight}\";");
+            sb.AppendLine($"__repoCmd__.CommandText = \"SELECT COUNT(*) FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight}\";");
         }
     }
 
@@ -3284,12 +3274,6 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         {
             actualReturnType = namedType.TypeArguments[0];
         }
-
-        if (actualReturnType.SpecialType == SpecialType.System_Int32)
-        {
-            sb.AppendLine("int totalAffectedRows = 0;");
-        }
-        sb.AppendLine();
 
         // Check if DbBatch is supported, otherwise fallback to individual commands
         sb.AppendLine("if (connection is global::System.Data.Common.DbConnection dbConn && dbConn.CanCreateBatch)");
@@ -3448,12 +3432,12 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         sb.AppendLine();
 
         // Create a temporary command for interceptors (batch doesn't have a single command)
-        sb.AppendLine("__cmd__ = connection.CreateCommand();");
-        sb.AppendLine($"__cmd__.CommandText = \"Batch {GetBatchOperationName(executeTypeInt)} with {{{collectionParam.Name}.Count()}} items\";");
+        sb.AppendLine("__repoCmd__ = connection.CreateCommand();");
+        sb.AppendLine($"__repoCmd__.CommandText = \"Batch {GetBatchOperationName(executeTypeInt)} with {{{collectionParam.Name}.Count()}} items\";");
         sb.AppendLine();
 
         // Call OnExecuting interceptor
-        sb.AppendLine($"OnExecuting(\"{methodName}\", __cmd__);");
+        sb.AppendLine($"OnExecuting(\"{methodName}\", __repoCmd__);");
         sb.AppendLine();
 
         // Execute the batch
@@ -3461,7 +3445,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         {
             if (actualReturnType.SpecialType == SpecialType.System_Int32)
             {
-                sb.AppendLine("totalAffectedRows = await batch.ExecuteNonQueryAsync();");
+                sb.AppendLine("var totalAffectedRows = await batch.ExecuteNonQueryAsync();");
             }
             else
             {
@@ -3472,7 +3456,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         {
             if (actualReturnType.SpecialType == SpecialType.System_Int32)
             {
-                sb.AppendLine("totalAffectedRows = batch.ExecuteNonQuery();");
+                sb.AppendLine("var totalAffectedRows = batch.ExecuteNonQuery();");
             }
             else
             {
@@ -3483,7 +3467,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         // Set result
         if (actualReturnType.SpecialType == SpecialType.System_Int32)
         {
-            sb.AppendLine("__result__ = totalAffectedRows;");
+            sb.AppendLine("__repoResult__ = totalAffectedRows;");
         }
 
         // Return statement
@@ -3519,6 +3503,12 @@ public abstract partial class AbstractGenerator : ISourceGenerator
             sb.AppendLine($"cmd.Transaction = {transactionParam.Name};");
         }
         sb.AppendLine();
+
+        // Initialize counter if needed
+        if (actualReturnType.SpecialType == SpecialType.System_Int32)
+        {
+            sb.AppendLine("var totalAffectedRows = 0;");
+        }
 
         // Execute individual commands in a loop
         sb.AppendLine($"foreach (var item in {collectionParam.Name})");
@@ -3769,6 +3759,8 @@ public abstract partial class AbstractGenerator : ISourceGenerator
     {
         var methodNameLower = methodName.ToLowerInvariant();
 
+        // Variables are already declared in the parent method
+
         // Generate parameter null checks first (fail fast)
         GenerateParameterNullChecks(sb, method);
 
@@ -3790,7 +3782,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         sb.AppendLine();
 
         // Create command
-        sb.AppendLine("__cmd__ = connection.CreateCommand();");
+        sb.AppendLine("__repoCmd__ = connection.CreateCommand();");
 
         // Check for SqlExecuteType attribute first
         var sqlExecuteTypeAttr = method.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlExecuteTypeAttribute");
@@ -3804,100 +3796,72 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                 _ => 0 // Select
             };
 
-            // Handle specific SqlExecuteTypes for scalar operations
+            // Handle specific SqlExecuteTypes - INSERT/UPDATE/DELETE should use ExecuteNonQuery
             switch (sqlExecuteType)
             {
                 case 2: // Insert
-                    // For INSERT operations returning scalar (affected rows), generate appropriate INSERT SQL
-                    if (entityType != null)
-                    {
-                        var entityParam = method.Parameters.FirstOrDefault(p => SymbolEqualityComparer.Default.Equals(p.Type, entityType));
-                        if (entityParam != null)
-                        {
-                            GenerateInsertSqlForScalar(sb, entityType, tableName, entityParam.Name, method);
-                        }
-                        else
-                        {
-                            var sqlDefine = GetSqlDefineForRepository(method);
-                            sb.AppendLine($"__cmd__.CommandText = \"INSERT INTO {sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"")} DEFAULT VALUES\";");
-                        }
-                    }
-                    else
-                    {
-                        var sqlDefine = GetSqlDefineForRepository(method);
-                        sb.AppendLine($"__cmd__.CommandText = \"INSERT INTO {sqlDefine.WrapColumn(tableName).Replace("\"", "\\\"")} DEFAULT VALUES\";");
-                    }
-                    break;
-
-                case 1: // Update
-                    // For UPDATE operations returning scalar (affected rows), generate appropriate UPDATE SQL
-                    if (entityType != null)
-                    {
-                        var entityParam = method.Parameters.FirstOrDefault(p => SymbolEqualityComparer.Default.Equals(p.Type, entityType));
-                        if (entityParam != null)
-                        {
-                            GenerateUpdateSqlForScalar(sb, entityType, tableName, entityParam.Name, method);
-                        }
-                        else
-                        {
-                            var sqlDefine = GetSqlDefineForRepository(method);
-                            sb.AppendLine($"__cmd__.CommandText = \"UPDATE {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight} SET {sqlDefine.ColumnLeft}Id{sqlDefine.ColumnRight} = {sqlDefine.ColumnLeft}Id{sqlDefine.ColumnRight}\";");
-                        }
-                    }
-                    else
-                    {
-                        var sqlDefine = GetSqlDefineForRepository(method);
-                        sb.AppendLine($"__cmd__.CommandText = \"UPDATE {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight} SET {sqlDefine.ColumnLeft}Id{sqlDefine.ColumnRight} = {sqlDefine.ColumnLeft}Id{sqlDefine.ColumnRight}\";");
-                    }
-                    break;
-
+                case 1: // Update  
                 case 3: // Delete
-                    // For DELETE operations returning scalar (affected rows), generate appropriate DELETE SQL
-                    var idParam = method.Parameters.FirstOrDefault(p =>
-                        p.Name.Equals("id", StringComparison.OrdinalIgnoreCase) ||
-                        p.Name.EndsWith("id", StringComparison.OrdinalIgnoreCase));
-                    if (idParam != null)
+                    // For INSERT/UPDATE/DELETE operations, delegate to proper ExecuteNonQuery handlers
+                    switch (sqlExecuteType)
                     {
-                        var sqlDefine = GetSqlDefineForRepository(method);
-                        sb.AppendLine($"__cmd__.CommandText = \"DELETE FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight} WHERE {sqlDefine.ColumnLeft}Id{sqlDefine.ColumnRight} = {sqlDefine.ParameterPrefix}{idParam.Name}\";");
-                        sb.AppendLine($"var param{idParam.Name} = __cmd__.CreateParameter();");
-                        sb.AppendLine($"param{idParam.Name}.ParameterName = \"{sqlDefine.ParameterPrefix}{idParam.Name}\";");
-                        sb.AppendLine($"param{idParam.Name}.Value = {idParam.Name};");
-                        sb.AppendLine($"__cmd__.Parameters.Add(param{idParam.Name});");
-                    }
-                    else
-                    {
-                        var sqlDefine = GetSqlDefineForRepository(method);
-                        sb.AppendLine($"__cmd__.CommandText = \"DELETE FROM {sqlDefine.ColumnLeft}{tableName}{sqlDefine.ColumnRight}\";");
+                        case 2: // Insert
+                            GenerateInsertOperationWithInterceptors(sb, method, entityType, tableName, isAsync, methodName);
+                            return;
+                        case 1: // Update
+                            GenerateUpdateOperationWithInterceptors(sb, method, entityType, tableName, isAsync, methodName);
+                            return;
+                        case 3: // Delete
+                            GenerateDeleteOperationWithInterceptors(sb, method, entityType, tableName, isAsync, methodName);
+                            return;
                     }
                     break;
 
                 default: // Select or other
                     GenerateSelectSqlForScalar(sb, methodNameLower, tableName, method);
                     break;
+                        }
+                    }
+                    else
+                    {
+            // Fallback to method name based inference
+            if (methodNameLower.Contains("insert") || methodNameLower.Contains("add") || methodNameLower.Contains("create"))
+            {
+                GenerateInsertOperationWithInterceptors(sb, method, entityType, tableName, isAsync, methodName);
+                return;
             }
+            else if (methodNameLower.Contains("update") || methodNameLower.Contains("modify") || methodNameLower.Contains("change"))
+            {
+                GenerateUpdateOperationWithInterceptors(sb, method, entityType, tableName, isAsync, methodName);
+                return;
+            }
+            else if (methodNameLower.Contains("delete") || methodNameLower.Contains("remove"))
+            {
+                GenerateDeleteOperationWithInterceptors(sb, method, entityType, tableName, isAsync, methodName);
+                return;
         }
         else
         {
-            // Fallback to method name based inference
+                // True scalar operations like Count, Exists, GetTotal, etc.
             GenerateSelectSqlForScalar(sb, methodNameLower, tableName, method);
+            }
         }
 
         sb.AppendLine();
 
         // Call OnExecuting interceptor
-        sb.AppendLine($"OnExecuting(\"{methodName}\", __cmd__);");
+        sb.AppendLine($"OnExecuting(\"{methodName}\", __repoCmd__);");
         sb.AppendLine();
 
         // Execute scalar operation
         if (isAsync)
         {
             var cancellationToken = GetCancellationTokenParameter(method);
-            sb.AppendLine($"var scalarResult = await __cmd__.ExecuteScalarAsync({cancellationToken});");
+            sb.AppendLine($"var scalarResult = await __repoCmd__.ExecuteScalarAsync({cancellationToken});");
         }
         else
         {
-            sb.AppendLine("var scalarResult = __cmd__.ExecuteScalar();");
+            sb.AppendLine("var scalarResult = __repoCmd__.ExecuteScalar();");
         }
 
         // Convert result based on return type
@@ -3910,31 +3874,31 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         if (returnType.SpecialType == SpecialType.System_Int32)
         {
             sb.AppendLine("var intResult = scalarResult == null ? 0 : (int)scalarResult;");  // Direct cast
-            sb.AppendLine("__result__ = intResult;");
+            sb.AppendLine("__repoResult__ = intResult;");
             sb.AppendLine("return intResult;");
         }
         else if (returnType.SpecialType == SpecialType.System_Int64)
         {
             sb.AppendLine("var longResult = scalarResult == null ? 0L : (long)scalarResult;");  // Direct cast
-            sb.AppendLine("__result__ = longResult;");
+            sb.AppendLine("__repoResult__ = longResult;");
             sb.AppendLine("return longResult;");
         }
         else if (returnType.SpecialType == SpecialType.System_Boolean)
         {
             sb.AppendLine("var boolResult = scalarResult == null ? false : (int)scalarResult > 0;");  // Direct cast
-            sb.AppendLine("__result__ = boolResult;");
+            sb.AppendLine("__repoResult__ = boolResult;");
             sb.AppendLine("return boolResult;");
         }
         else
         {
-            sb.AppendLine("__result__ = scalarResult;");
+            sb.AppendLine("__repoResult__ = scalarResult;");
             sb.AppendLine("return scalarResult;");
         }
     }
 
 
     /// <summary>
-    /// Gets the proper type declaration for the __result__ variable to avoid boxing.
+    /// Gets the proper type declaration for the __repoResult__ variable to avoid boxing.
     /// </summary>
     private string GetResultVariableType(IMethodSymbol method)
     {

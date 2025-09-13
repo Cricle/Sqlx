@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 // <copyright file="AbstractGenerator.cs" company="Cricle">
 // Copyright (c) Cricle. All rights reserved.
 // </copyright>
@@ -3338,7 +3338,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                     foreach (var prop in props)
                     {
                         var sqlName = prop.GetSqlName();
-                        sb.AppendLine($"var param{prop.Name} = dbConn.CreateParameter();");
+                        sb.AppendLine($"var param{prop.Name} = batchCommand.CreateParameter();");
                         sb.AppendLine($"param{prop.Name}.ParameterName = \"{sqlDefine.ParameterPrefix}{sqlName}\";");
                         sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
                         if (prop.Type.IsReferenceType || IsNullableValueType(prop.Type))
@@ -3375,7 +3375,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                     sb.AppendLine($"batchCommand.CommandText = \"UPDATE {wrappedTable} SET {setClause} WHERE Id = {sqlDefine.ParameterPrefix}Id\";");
 
                     // Add Id parameter
-                    sb.AppendLine("var paramId = dbConn.CreateParameter();");
+                    sb.AppendLine("var paramId = batchCommand.CreateParameter();");
                     sb.AppendLine($"paramId.ParameterName = \"{sqlDefine.ParameterPrefix}Id\";");
                     sb.AppendLine("paramId.DbType = global::System.Data.DbType.Int32;");
                     sb.AppendLine("paramId.Value = item.Id;");
@@ -3385,7 +3385,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                     foreach (var prop in props)
                     {
                         var sqlName = prop.GetSqlName();
-                        sb.AppendLine($"var param{prop.Name} = dbConn.CreateParameter();");
+                        sb.AppendLine($"var param{prop.Name} = batchCommand.CreateParameter();");
                         sb.AppendLine($"param{prop.Name}.ParameterName = \"{sqlDefine.ParameterPrefix}{sqlName}\";");
                         sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
                         if (prop.Type.IsReferenceType || IsNullableValueType(prop.Type))
@@ -3408,7 +3408,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
 
                     sb.AppendLine($"batchCommand.CommandText = \"DELETE FROM {wrappedTable} WHERE Id = {sqlDefine.ParameterPrefix}Id\";");
 
-                    sb.AppendLine("var paramId = dbConn.CreateParameter();");
+                    sb.AppendLine("var paramId = batchCommand.CreateParameter();");
                     sb.AppendLine($"paramId.ParameterName = \"{sqlDefine.ParameterPrefix}Id\";");
                     sb.AppendLine("paramId.DbType = global::System.Data.DbType.Int32;");
 

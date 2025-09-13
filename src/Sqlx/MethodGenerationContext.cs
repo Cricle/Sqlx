@@ -1715,7 +1715,7 @@ internal class MethodGenerationContext : GenerationContextBase
         foreach (var prop in properties)
         {
             var paramVar = $"param_{prop.Name.ToLowerInvariant()}";
-            sb.AppendLine($"var {paramVar} = {DbConnectionName}.CreateParameter();");
+            sb.AppendLine($"var {paramVar} = batchCommand.CreateParameter();");
             sb.AppendLine($"{paramVar}.ParameterName = \"{SqlDef.ParameterPrefix}{prop.GetSqlName()}\";");
             sb.AppendLine($"{paramVar}.DbType = {prop.Type.GetDbType()};");
             sb.AppendLine($"{paramVar}.Value = (object?)item.{prop.Name} ?? global::System.DBNull.Value;");

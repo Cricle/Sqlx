@@ -4,7 +4,7 @@
 
 **零反射 · 编译时优化 · 类型安全 · 现代 C# 支持**
 
-[![NuGet](https://img.shields.io/badge/NuGet-v2.0.1-blue?style=for-the-badge)](https://www.nuget.org/packages/Sqlx/)
+[![NuGet](https://img.shields.io/badge/NuGet-v2.0.2-blue?style=for-the-badge)](https://www.nuget.org/packages/Sqlx/)
 [![License](https://img.shields.io/github/license/Cricle/Sqlx?style=for-the-badge)](License.txt)
 [![.NET](https://img.shields.io/badge/.NET-8.0%2B-blueviolet?style=for-the-badge)](https://dotnet.microsoft.com/)
 [![C#](https://img.shields.io/badge/C%23-12.0%2B-239120?style=for-the-badge)](https://docs.microsoft.com/en-us/dotnet/csharp/)
@@ -62,13 +62,13 @@
 
 ```bash
 # .NET CLI
-dotnet add package Sqlx --version 2.0.1
+dotnet add package Sqlx --version 2.0.2
 
 # Package Manager Console  
-Install-Package Sqlx -Version 2.0.1
+Install-Package Sqlx -Version 2.0.2
 
 # PackageReference
-<PackageReference Include="Sqlx" Version="2.0.1" />
+<PackageReference Include="Sqlx" Version="2.0.2" />
 ```
 
 ### ⚙️ 环境要求
@@ -815,7 +815,7 @@ dotnet run
 
 ---
 
-### 🚀 Sqlx v2.0.1 - 现代 C# 数据访问的新标准
+### 🚀 Sqlx v2.0.2 - 现代 C# 数据访问的新标准
 
 **让数据访问变得简单、安全、高效！**
 

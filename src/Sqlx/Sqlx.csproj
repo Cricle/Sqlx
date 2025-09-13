@@ -13,7 +13,7 @@
 		<SuppressDependenciesWhenPacking>false</SuppressDependenciesWhenPacking>
 		<DevelopmentDependency>false</DevelopmentDependency>
 		<!-- Package Metadata -->
-        <Version>2.0.1</Version>
+        <Version>2.0.2</Version>
 		<Authors>Sqlx Team</Authors>
 		<Company>Sqlx</Company>
 		<Product>Sqlx</Product>
@@ -48,7 +48,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.Workspaces" />
-		<PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All" />
+		<!-- <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All" /> -->
 		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

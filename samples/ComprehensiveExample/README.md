@@ -5,7 +5,7 @@
 <div align="center">
 
 [![.NET](https://img.shields.io/badge/.NET-8.0+-512BD4?style=for-the-badge)](https://dotnet.microsoft.com/)
-[![Sqlx](https://img.shields.io/badge/Sqlx-v2.0.1+-007ACC?style=for-the-badge)](../../)
+[![Sqlx](https://img.shields.io/badge/Sqlx-v2.0.2+-007ACC?style=for-the-badge)](../../)
 [![Demo](https://img.shields.io/badge/Status-Ready-green?style=for-the-badge)]()
 
 **交互式演示 · 实时性能测试 · 全特性覆盖**

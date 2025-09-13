@@ -2,7 +2,7 @@
   <PropertyGroup>
     <LangVersion>12.0</LangVersion>
     <Nullable>enable</Nullable>
-    <VersionPrefix>2.0.1</VersionPrefix>
+    <VersionPrefix>2.0.2</VersionPrefix>
     <VersionSuffix>dev</VersionSuffix>
     <TreatWarningsAsErrors>False</TreatWarningsAsErrors>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>

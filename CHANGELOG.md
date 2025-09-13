@@ -6,6 +6,15 @@
 并且本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
 ---
+## [2.0.2] - 2025-09-13
+
+### 🔧 修复
+- 批处理生成代码：在生成的 Batch 命令路径中，参数应从 `batchCommand.CreateParameter()` 创建，而非 `DbConnection.CreateParameter()`，以确保与 DbBatch API 正确对接。
+
+### 🧩 其他
+- 文档与版本号同步到 2.0.2。
+
+---
 
 ## [2.0.0] - 2025-09-11
 

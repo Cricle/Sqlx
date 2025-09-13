@@ -96,7 +96,7 @@ docs/
 ### artifacts/ 目录
 - **用途**: 存放所有构建产物
 - **内容**: 
-  - NuGet包 (.nupkg, .snupkg) - 版本2.0.1
+  - NuGet包 (.nupkg, .snupkg) - 版本2.0.2
   - 测试结果和覆盖率报告
   - 性能基准测试数据
   - 临时数据库文件 (SQLite)

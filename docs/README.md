@@ -5,7 +5,7 @@
 **完整的开发者指南 · 从入门到精通 · 现代C# ORM解决方案**
 
 [![文档](https://img.shields.io/badge/文档-16个完整指南-green?style=for-the-badge)]()
-[![版本](https://img.shields.io/badge/版本-v2.0.1-blue?style=for-the-badge)]()
+[![版本](https://img.shields.io/badge/版本-v2.0.2-blue?style=for-the-badge)]()
 [![状态](https://img.shields.io/badge/状态-生产就绪-brightgreen?style=for-the-badge)]()
 [![测试](https://img.shields.io/badge/测试-99.2%25通过-brightgreen?style=for-the-badge)]()
 
@@ -22,7 +22,7 @@
 | 文档 | 描述 | 推荐度 | 更新状态 |
 |------|------|--------|----------|
 | [📖 项目主页](../README.md) | 完整项目介绍和30秒快速体验 | ⭐⭐⭐⭐⭐ | 🆕 最新 |
-| [🆕 新功能快速入门](NEW_FEATURES_QUICK_START.md) | v2.0.1智能UPDATE和模运算支持 | ⭐⭐⭐⭐ | 🆕 最新 |
+| [🆕 新功能快速入门](NEW_FEATURES_QUICK_START.md) | v2.0.2 智能UPDATE和模运算支持 | ⭐⭐⭐⭐ | 🆕 最新 |
 | [🎨 ExpressionToSql 指南](expression-to-sql.md) | 类型安全的动态查询构建 | ⭐⭐⭐ | ✅ 完整 |
 
 ### 🏗️ 高级特性文档
@@ -91,7 +91,7 @@ var users = GenerateUsers(1000);
 var count = await userService.BatchCreateUsersAsync(users);
 ```
 
-### 🆕 智能UPDATE操作 (v2.0.1新功能)
+### 🆕 智能UPDATE操作 (v2.0.2 新功能)
 ```csharp
 // 🎯 部分更新 - 只更新指定字段
 await smartUpdateService.UpdateUserPartialAsync(user, 
@@ -227,7 +227,7 @@ var count = await userService.BatchCreateUsersAsync(users);
 
 ```bash
 # 安装Sqlx
-dotnet add package Sqlx --version 2.0.1
+dotnet add package Sqlx --version 2.0.2
 
 # 逐步替换现有ORM调用
 # 无需大规模重构，平滑过渡

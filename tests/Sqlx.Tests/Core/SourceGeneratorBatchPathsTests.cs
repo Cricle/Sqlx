@@ -35,6 +35,7 @@ namespace TestNS {
             Assert.IsTrue(code.Contains("CreateBatchCommand"), "Should create batch command");
             Assert.IsTrue(code.Contains("BatchCommands.Add"), "Should add to BatchCommands");
             Assert.IsTrue(code.Contains("Parameters.Add"), "Should add parameters to batchCommand");
+            Assert.IsFalse(code.Contains("dbConn.CreateParameter"), "Should not use dbConn.CreateParameter in batch path");
         }
 
         [TestMethod]

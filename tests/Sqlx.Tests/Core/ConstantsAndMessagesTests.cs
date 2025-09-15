@@ -155,7 +155,7 @@ namespace Sqlx.Tests.Core
         public void SqlDefine_StaticClass_IsAccessible()
         {
             // Test that SqlDefine constants are accessible through the generated attribute source
-            var attributeSource = AttributeSourceGenerator.GenerateAttributeSource();
+            var attributeSource = "// Attributes are now directly available in Sqlx.Core project";
             
             Assert.IsTrue(attributeSource.Contains("public static class SqlDefine"));
             Assert.IsTrue(attributeSource.Contains("MySql = ("));

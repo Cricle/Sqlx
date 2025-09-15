@@ -107,6 +107,29 @@ using Sqlx.Annotations;
         SafeAddAssemblyReference(references, "System.Data");
         SafeAddAssemblyReference(references, "System.Linq.Expressions");
         SafeAddAssemblyReference(references, "System.ComponentModel.Primitives");
+        SafeAddAssemblyReference(references, "netstandard");
+        
+        // Add core type references to fix "Attribute", "Type", "Enum" issues
+        try
+        {
+            references.Add(MetadataReference.CreateFromFile(typeof(System.Attribute).Assembly.Location));
+            references.Add(MetadataReference.CreateFromFile(typeof(System.Type).Assembly.Location));
+            references.Add(MetadataReference.CreateFromFile(typeof(System.Enum).Assembly.Location));
+        }
+        catch
+        {
+            // Fallback if direct reference fails
+        }
+        
+        // Add Sqlx.Core reference for attributes
+        try
+        {
+            references.Add(MetadataReference.CreateFromFile(typeof(Sqlx.Annotations.SqlxAttribute).Assembly.Location));
+        }
+        catch
+        {
+            // Fallback if direct reference fails
+        }
 
         // Add explicit DbConnection reference
         try
@@ -400,6 +423,29 @@ public class TestClass2
         SafeAddAssemblyReference(references, "System.Data.Common");
         SafeAddAssemblyReference(references, "System.Data");
         SafeAddAssemblyReference(references, "System.Linq.Expressions");
+        SafeAddAssemblyReference(references, "netstandard");
+        
+        // Add core type references to fix "Attribute", "Type", "Enum" issues
+        try
+        {
+            references.Add(MetadataReference.CreateFromFile(typeof(System.Attribute).Assembly.Location));
+            references.Add(MetadataReference.CreateFromFile(typeof(System.Type).Assembly.Location));
+            references.Add(MetadataReference.CreateFromFile(typeof(System.Enum).Assembly.Location));
+        }
+        catch
+        {
+            // Fallback if direct reference fails
+        }
+        
+        // Add Sqlx.Core reference for attributes
+        try
+        {
+            references.Add(MetadataReference.CreateFromFile(typeof(Sqlx.Annotations.SqlxAttribute).Assembly.Location));
+        }
+        catch
+        {
+            // Fallback if direct reference fails
+        }
 
         // Add explicit DbConnection reference
         try

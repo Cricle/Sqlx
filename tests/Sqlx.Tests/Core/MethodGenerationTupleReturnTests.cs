@@ -43,7 +43,8 @@ namespace TNS {
         {
             MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(System.Data.Common.DbConnection).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(System.Threading.Tasks.Task).Assembly.Location)
+            MetadataReference.CreateFromFile(typeof(System.Threading.Tasks.Task).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(Sqlx.Annotations.SqlxAttribute).Assembly.Location)
         };
 
         var compilation = CSharpCompilation.Create(

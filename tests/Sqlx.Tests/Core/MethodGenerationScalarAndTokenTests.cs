@@ -32,7 +32,7 @@ namespace TestNS {
             // After optimization: we now avoid boxing by directly returning the result
             // Instead of Convert.ToInt32, we should use direct return for better performance
             Assert.IsTrue(code.Contains("return scalarResult") || 
-                         code.Contains("return __result__") || 
+                         code.Contains("return __methodResult__") || code.Contains("return __result__") || 
                          code.Contains("ExecuteScalarAsync"), 
                          "Scalar conversion should avoid boxing and use direct return or ExecuteScalar methods");
         }

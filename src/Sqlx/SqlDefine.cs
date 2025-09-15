@@ -4,42 +4,49 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-namespace Sqlx;
+#nullable enable
 
-internal readonly record struct SqlDefine
+namespace Sqlx.Annotations
 {
-    public string ColumnLeft { get; }
-    public string ColumnRight { get; }
-    public string StringLeft { get; }
-    public string StringRight { get; }
-    public string ParameterPrefix { get; }
-
-    public SqlDefine(string columnLeft, string columnRight, string stringLeft, string stringRight, string parameterPrefix)
+    /// <summary>
+    /// Provides database dialect-specific SQL formatting definitions.
+    /// </summary>
+    public static class SqlDefine
     {
-        ColumnLeft = columnLeft;
-        ColumnRight = columnRight;
-        StringLeft = stringLeft;
-        StringRight = stringRight;
-        ParameterPrefix = parameterPrefix;
-    }
+        /// <summary>
+        /// MySQL dialect configuration with backtick column wrapping and @ parameter prefix.
+        /// </summary>
+        public static readonly (string ColumnLeft, string ColumnRight, string StringLeft,
+            string StringRight, string ParameterPrefix) MySql = ("`", "`", "'", "'", "@");
 
-    public static readonly SqlDefine MySql = new SqlDefine("`", "`", "'", "'", "@");
-    public static readonly SqlDefine SqlServer = new SqlDefine("[", "]", "'", "'", "@");
-    public static readonly SqlDefine PgSql = new SqlDefine("\"", "\"", "'", "'", "$");
-    public static readonly SqlDefine Oracle = new SqlDefine("\"", "\"", "'", "'", ":");
-    public static readonly SqlDefine DB2 = new SqlDefine("\"", "\"", "'", "'", "?");
-    public static readonly SqlDefine SQLite = new SqlDefine("[", "]", "'", "'", "@sqlite");
+        /// <summary>
+        /// SQL Server dialect configuration with square bracket column wrapping and @ parameter prefix.
+        /// </summary>
+        public static readonly (string ColumnLeft, string ColumnRight, string StringLeft,
+            string StringRight, string ParameterPrefix) SqlServer = ("[", "]", "'", "'", "@");
 
-    public string WrapString(string input) => $"{StringLeft}{input}{StringRight}";
+        /// <summary>
+        /// PostgreSQL dialect configuration with double quote column wrapping and $ parameter prefix.
+        /// </summary>
+        public static readonly (string ColumnLeft, string ColumnRight, string StringLeft,
+            string StringRight, string ParameterPrefix) PgSql = ("\"", "\"", "'", "'", "$");
 
-    public string WrapColumn(string input) => $"{ColumnLeft}{input}{ColumnRight}";
+        /// <summary>
+        /// Oracle dialect configuration with double quote column wrapping and : parameter prefix.
+        /// </summary>
+        public static readonly (string ColumnLeft, string ColumnRight, string StringLeft,
+            string StringRight, string ParameterPrefix) Oracle = ("\"", "\"", "'", "'", ":");
 
-    public void Deconstruct(out string columnLeft, out string columnRight, out string stringLeft, out string stringRight, out string parameterPrefix)
-    {
-        columnLeft = ColumnLeft;
-        columnRight = ColumnRight;
-        stringLeft = StringLeft;
-        stringRight = StringRight;
-        parameterPrefix = ParameterPrefix;
+        /// <summary>
+        /// DB2 dialect configuration with double quote column wrapping and ? parameter prefix.
+        /// </summary>
+        public static readonly (string ColumnLeft, string ColumnRight, string StringLeft,
+            string StringRight, string ParameterPrefix) DB2 = ("\"", "\"", "'", "'", "?");
+
+        /// <summary>
+        /// SQLite dialect configuration with square bracket column wrapping and @ parameter prefix.
+        /// </summary>
+        public static readonly (string ColumnLeft, string ColumnRight, string StringLeft,
+            string StringRight, string ParameterPrefix) Sqlite = ("[", "]", "'", "'", "@");
     }
 }

@@ -23,6 +23,7 @@ namespace Sqlx.Tests.Core
             var generatedCodeSamples = new[]
             {
                 "return scalarResult;", // 优化后
+                "return __methodResult__;",   // 优化后
                 "return __result__;",   // 优化后
                 "return (int)scalarResult;", // 优化后
                 "return (long)scalarResult;", // 优化后
@@ -166,9 +167,11 @@ namespace Sqlx.Tests.Core
             // Arrange
             var efficientScalarPatterns = new[]
             {
+                "return __methodResult__;",
                 "return __result__;",
                 "return scalarResult;",
                 "return (int)scalarResult;",
+                "return __methodResult__ > 0;",
                 "return __result__ > 0;",
                 "return (int)scalarResult > 0;",
             };

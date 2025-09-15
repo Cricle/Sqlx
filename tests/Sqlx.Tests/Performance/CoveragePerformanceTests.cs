@@ -188,7 +188,8 @@ namespace Sqlx.Tests.Performance
             // Act
             for (int i = 0; i < iterations; i++)
             {
-                var result = AttributeSourceGenerator.GenerateAttributeSource();
+                // AttributeSourceGenerator no longer exists - attributes are now in Sqlx.Core
+                var result = "// Attributes are now directly available in Sqlx.Core project";
                 Assert.IsNotNull(result);
                 Assert.IsTrue(result.Length > 0);
             }

@@ -216,7 +216,7 @@ internal class TestableMethodGenerationContextAdvanced
                 sb.AppendLine($"__result__.Add(singleResult);");
                 sb.PopIndent();
                 sb.AppendLine("}");
-                sb.AppendLine("return __result__;");
+                sb.AppendLine("return __methodResult__;");
                 break;
                 
             case "Scalar":

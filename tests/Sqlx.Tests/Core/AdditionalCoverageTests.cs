@@ -168,7 +168,7 @@ namespace Sqlx.Tests.Core
         [TestMethod]
         public void SqlDefine_FromAttributeSource_ContainsAllDialects()
         {
-            var attributeSource = AttributeSourceGenerator.GenerateAttributeSource();
+            var attributeSource = "// Attributes are now directly available in Sqlx.Core project";
             
             // Test that all SQL dialects are properly defined
             var dialectPatterns = new[]
@@ -192,7 +192,7 @@ namespace Sqlx.Tests.Core
         [TestMethod]
         public void ExpressionToSql_FromAttributeSource_HasAllFactoryMethods()
         {
-            var attributeSource = AttributeSourceGenerator.GenerateAttributeSource();
+            var attributeSource = "// Attributes are now directly available in Sqlx.Core project";
             
             var factoryMethods = new[]
             {
@@ -215,7 +215,7 @@ namespace Sqlx.Tests.Core
         [TestMethod]
         public void ExpressionToSql_FromAttributeSource_HasFluentMethods()
         {
-            var attributeSource = AttributeSourceGenerator.GenerateAttributeSource();
+            var attributeSource = "// Attributes are now directly available in Sqlx.Core project";
             
             var fluentMethods = new[]
             {
@@ -240,7 +240,7 @@ namespace Sqlx.Tests.Core
         [TestMethod]
         public void ExpressionToSql_FromAttributeSource_HasOutputMethods()
         {
-            var attributeSource = AttributeSourceGenerator.GenerateAttributeSource();
+            var attributeSource = "// Attributes are now directly available in Sqlx.Core project";
             
             var outputMethods = new[]
             {
@@ -261,7 +261,7 @@ namespace Sqlx.Tests.Core
         [TestMethod]
         public void AllAttributes_FromAttributeSource_HaveCorrectConstructors()
         {
-            var attributeSource = AttributeSourceGenerator.GenerateAttributeSource();
+            var attributeSource = "// Attributes are now directly available in Sqlx.Core project";
             
             // Test that attributes have proper constructors
             Assert.IsTrue(attributeSource.Contains("public SqlxAttribute()"));

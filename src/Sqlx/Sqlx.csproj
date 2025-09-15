@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<TargetFramework>netstandard2.0</TargetFramework>
@@ -8,52 +8,41 @@
 		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 		<WarningsNotAsErrors>CS8618;CS8625;CS8629;CS8604;CS8601;CS8602;CS8603;CS8765</WarningsNotAsErrors>
 		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
-		<!-- Source generator package configuration -->
-		<IncludeBuildOutput>true</IncludeBuildOutput>
-		<SuppressDependenciesWhenPacking>false</SuppressDependenciesWhenPacking>
-		<DevelopmentDependency>false</DevelopmentDependency>
 		<!-- Package Metadata -->
-        <Version>2.0.2</Version>
+		<Version>2.0.2</Version>
 		<Authors>Sqlx Team</Authors>
 		<Company>Sqlx</Company>
-		<Product>Sqlx</Product>
-		<PackageId>Sqlx</PackageId>
-		<Title>Sqlx - Modern C# ORM Code Generator</Title>
-		<PackageTags>orm;sql;code-generator;source-generator;primary-constructor;record;csharp;dotnet;performance;type-safe</PackageTags>
-		<Description>Modern C# ORM Code Generator with Primary Constructor and Record support. Features intelligent entity type inference, type-safe data access, and 15-30% performance improvements. Supports C# 12 Primary Constructors, C# 9 Records, and traditional classes with 100% backward compatibility.</Description>
+		<Product>Sqlx.Core</Product>
+		<PackageId>Sqlx.Core</PackageId>
+		<Title>Sqlx.Core - Core Runtime Library for Sqlx ORM</Title>
+		<PackageTags>orm;sql;runtime;core;primary-constructor;record;csharp;dotnet;performance;type-safe</PackageTags>
+		<Description>Core runtime library for Sqlx ORM containing all runtime components, attributes, and ExpressionToSql functionality. This package provides the foundational types and utilities used by Sqlx-generated code.</Description>
 		<PackageProjectUrl>https://github.com/your-org/Sqlx</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/your-org/Sqlx</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 		<Copyright>Copyright © 2025 Sqlx Team</Copyright>
-		<PackageReleaseNotes>v2.0.0: Major update with Primary Constructor and Record support, intelligent entity type inference, 15-30% performance improvements, and 100% backward compatibility. See CHANGELOG.md for details.</PackageReleaseNotes>
+		<PackageReleaseNotes>v2.0.2: Core runtime library extracted from Sqlx generator package. Contains all runtime components and ExpressionToSql functionality.</PackageReleaseNotes>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
-		
+
 		<!-- Documentation -->
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<DocumentationFile>$(OutputPath)$(AssemblyName).xml</DocumentationFile>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<!-- Package the generator in the analyzer directory of the nuget package -->
-		<None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
 		<None Include="..\..\README.md" Pack="true" PackagePath="\" Visible="false" />
-		<None Include="Sqlx.props" Pack="true" PackagePath="build/$(AssemblyName).props" />
+		<None Include="../Sqlx.Generator/bin/$(Configuration)/netstandard2.0/Sqlx.Generator.dll" Pack="true" PackagePath="analyzers/dotnet" Visible="true" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.Workspaces" />
-		<!-- <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All" /> -->
-		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers">
-			<PrivateAssets>all</PrivateAssets>
-			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		</PackageReference>
-		<PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
+		<PackageReference Include="System.Data.Common" />
 	</ItemGroup>
+
 
 </Project>

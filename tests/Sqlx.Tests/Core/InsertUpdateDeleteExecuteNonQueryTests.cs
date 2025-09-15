@@ -54,7 +54,7 @@ public class User
         // Assert - Should use ExecuteNonQuery, not ExecuteScalar
         Assert.IsTrue(result.Contains("ExecuteNonQuery"));
         Assert.IsFalse(result.Contains("ExecuteScalar"));
-        Assert.IsTrue(result.Contains("return __result__"));
+        Assert.IsTrue(result.Contains("return __methodResult__") || result.Contains("return __result__"));
     }
 
     [TestMethod]
@@ -130,7 +130,7 @@ public class User
         // Assert - Should use ExecuteNonQuery and convert to bool
         Assert.IsTrue(result.Contains("ExecuteNonQuery"));
         Assert.IsFalse(result.Contains("ExecuteScalar"));
-        Assert.IsTrue(result.Contains("return __result__ > 0")); // Boolean conversion from affected rows
+        Assert.IsTrue(result.Contains("return __methodResult__ > 0") || result.Contains("return __result__ > 0")); // Boolean conversion from affected rows
     }
 
     [TestMethod]
@@ -169,7 +169,7 @@ public class User
         // Assert
         Assert.IsTrue(result.Contains("ExecuteNonQuery"));
         Assert.IsFalse(result.Contains("ExecuteScalar"));
-        Assert.IsTrue(result.Contains("return __result__"));
+        Assert.IsTrue(result.Contains("return __methodResult__") || result.Contains("return __result__"));
     }
 
     [TestMethod]
@@ -208,7 +208,7 @@ public class User
         // Assert
         Assert.IsTrue(result.Contains("ExecuteNonQuery"));
         Assert.IsFalse(result.Contains("ExecuteScalar"));
-        Assert.IsTrue(result.Contains("return __result__"));
+        Assert.IsTrue(result.Contains("return __methodResult__") || result.Contains("return __result__"));
     }
 
     [TestMethod]

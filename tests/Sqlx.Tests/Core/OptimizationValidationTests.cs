@@ -24,8 +24,10 @@ namespace Sqlx.Tests.Core
             var optimizedCodeSamples = new[]
             {
                 "return scalarResult;",
-                "return __result__;", 
+                "return __methodResult__;", 
+                "return __result__;",
                 "return (int)scalarResult;",
+                "return __methodResult__ > 0;",
                 "return __result__ > 0;"
             };
 

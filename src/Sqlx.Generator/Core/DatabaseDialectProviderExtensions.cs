@@ -4,7 +4,7 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-namespace Sqlx.Core;
+namespace Sqlx.Generator.Core;
 
 /// <summary>
 /// Extension methods for IDatabaseDialectProvider.

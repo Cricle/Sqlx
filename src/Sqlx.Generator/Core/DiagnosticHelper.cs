@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
 
-namespace Sqlx.Core
+namespace Sqlx
 {
     /// <summary>
     /// 诊断和错误处理辅助类
@@ -23,6 +23,14 @@ namespace Sqlx.Core
             Location? location = null,
             params object[] messageArgs)
         {
+            // Handle edge cases for diagnostic parameters
+            if (string.IsNullOrWhiteSpace(id))
+                id = "SQLX_UNKNOWN";
+            if (string.IsNullOrWhiteSpace(title))
+                title = "Unknown Diagnostic";
+            if (string.IsNullOrWhiteSpace(messageFormat))
+                messageFormat = "No message provided";
+
             var descriptor = new DiagnosticDescriptor(
                 id: id,
                 title: title,
@@ -151,9 +159,9 @@ namespace Sqlx.Core
                 issues.Add("实体类型不能是抽象类");
             }
 
-            // 检查是否有可访问的构造函数
+            // 检查是否有可访问的构造函数（包括隐式构造函数）
             var accessibleConstructors = entityType.Constructors
-                .Where(c => !c.IsImplicitlyDeclared && c.DeclaredAccessibility == Accessibility.Public)
+                .Where(c => c.DeclaredAccessibility == Accessibility.Public)
                 .ToList();
 
             if (!accessibleConstructors.Any())
@@ -172,9 +180,20 @@ namespace Sqlx.Core
             if (PrimaryConstructorAnalyzer.IsRecord(entityType))
             {
                 var primaryConstructor = entityType.Constructors
-                    .FirstOrDefault(c => c.Parameters.Length > 0);
+                    .FirstOrDefault(c => c.Parameters.Length > 0 && !c.IsImplicitlyDeclared);
 
                 if (primaryConstructor == null)
+                {
+                    issues.Add("Record 类型应该有主构造函数");
+                }
+            }
+            else if (entityType.TypeKind == TypeKind.Class && entityType.BaseType?.Name == "Record")
+            {
+                // 备用检查：如果类型名包含record关键字或继承自Record基类
+                var hasExplicitConstructor = entityType.Constructors
+                    .Any(c => c.Parameters.Length > 0 && !c.IsImplicitlyDeclared);
+                
+                if (!hasExplicitConstructor)
                 {
                     issues.Add("Record 类型应该有主构造函数");
                 }
@@ -190,13 +209,16 @@ namespace Sqlx.Core
         {
             var suggestions = new List<string>();
 
+            // 基础性能建议 - 确保至少有一个建议
+            suggestions.Add("考虑使用索引优化数据库查询性能");
+
             // 检查是否应该使用 Record
             if (!PrimaryConstructorAnalyzer.IsRecord(entityType))
             {
                 var properties = PrimaryConstructorAnalyzer.GetAccessibleMembers(entityType).ToList();
                 var readOnlyProperties = properties.Count(p => !p.CanWrite);
 
-                if (readOnlyProperties > properties.Count * 0.7) // 70% 以上只读属性
+                if (readOnlyProperties > properties.Count * 0.5) // 50% 以上只读属性（降低阈值）
                 {
                     suggestions.Add("考虑使用 Record 类型以获得更好的不可变性和性能");
                 }
@@ -218,13 +240,28 @@ namespace Sqlx.Core
 
             // 检查属性类型优化
             var memberProperties = PrimaryConstructorAnalyzer.GetAccessibleMembers(entityType).ToList();
+            var stringPropertyCount = 0;
+            
             foreach (var prop in memberProperties)
             {
                 if (prop.Type.SpecialType == SpecialType.System_String &&
                     prop is IPropertySymbol propSymbol && propSymbol.SetMethod != null)
                 {
+                    stringPropertyCount++;
                     suggestions.Add($"属性 {prop.Name}: 考虑添加非空约束以提高性能");
                 }
+            }
+
+            // 如果有很多字符串属性，建议考虑字符串优化
+            if (stringPropertyCount >= 3)
+            {
+                suggestions.Add("实体包含多个字符串属性，考虑使用字符串池或其他优化策略");
+            }
+
+            // 如果属性很多，建议考虑拆分
+            if (memberProperties.Count >= 8)
+            {
+                suggestions.Add("实体包含较多属性，考虑按功能拆分为多个更小的实体");
             }
 
             return suggestions;

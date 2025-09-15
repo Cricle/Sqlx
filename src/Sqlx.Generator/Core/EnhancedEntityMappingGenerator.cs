@@ -9,7 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
-namespace Sqlx.Core;
+namespace Sqlx;
 
 /// <summary>
 /// Enhanced entity mapping generator that supports primary constructors and records.
@@ -27,7 +27,7 @@ internal static class EnhancedEntityMappingGenerator
         if (!members.Any())
         {
             sb.AppendLine("// No accessible members found for entity mapping");
-            sb.AppendLine($"var entity = new {entityType.ToDisplayString()}();");
+            sb.AppendLine($"var entity = new {entityType.ToDisplayString(NullableFlowState.None)}();");
             return;
         }
 
@@ -63,7 +63,7 @@ internal static class EnhancedEntityMappingGenerator
         if (primaryConstructor != null && primaryConstructor.Parameters.Length > 0)
         {
             // Use primary constructor for records
-            sb.AppendLine($"var entity = new {entityType.ToDisplayString()}(");
+            sb.AppendLine($"var entity = new {entityType.ToDisplayString(NullableFlowState.None)}(");
             sb.PushIndent();
 
             var parameters = primaryConstructor.Parameters;
@@ -101,7 +101,7 @@ internal static class EnhancedEntityMappingGenerator
         if (primaryConstructor != null && primaryConstructor.Parameters.Length > 0)
         {
             // Use primary constructor
-            sb.AppendLine($"var entity = new {entityType.ToDisplayString()}(");
+            sb.AppendLine($"var entity = new {entityType.ToDisplayString(NullableFlowState.None)}(");
             sb.PushIndent();
 
             var parameters = primaryConstructor.Parameters;
@@ -160,7 +160,7 @@ internal static class EnhancedEntityMappingGenerator
 
         if (writableMembers.Any())
         {
-            sb.AppendLine($"var entity = new {entityType.ToDisplayString()}");
+            sb.AppendLine($"var entity = new {entityType.ToDisplayString(NullableFlowState.None)}");
             sb.AppendLine("{");
             sb.PushIndent();
 
@@ -180,7 +180,7 @@ internal static class EnhancedEntityMappingGenerator
         }
         else
         {
-            sb.AppendLine($"var entity = new {entityType.ToDisplayString()}();");
+            sb.AppendLine($"var entity = new {entityType.ToDisplayString(NullableFlowState.None)}();");
         }
     }
 

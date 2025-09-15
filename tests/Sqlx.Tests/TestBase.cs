@@ -5,7 +5,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Sqlx.Core;
+using Sqlx;
 using System;
 using System.Linq;
 
@@ -131,7 +131,7 @@ public abstract class TestBase
     /// Skips the current test with a reason.
     /// </summary>
     /// <param name="reason">The reason for skipping.</param>
-    protected void SkipTest(string reason)
+    protected static void SkipTest(string reason)
     {
         Assert.Inconclusive($"Test skipped: {reason}");
     }

@@ -38,9 +38,12 @@
     <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="4.8.0" />
     <PackageVersion Include="System.Data.Common" Version="4.3.0" />
     <PackageVersion Include="System.Diagnostics.PerformanceCounter" Version="8.0.0" />
+    <PackageVersion Include="System.Memory" Version="4.5.5" />
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+    <PackageVersion Include="MySqlConnector" Version="2.4.0" />
+    <PackageVersion Include="Npgsql" Version="8.0.6" />
   </ItemGroup>
 </Project>

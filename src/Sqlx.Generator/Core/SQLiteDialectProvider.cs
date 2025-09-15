@@ -8,7 +8,7 @@ using Sqlx.SqlGen;
 using System;
 using System.Linq;
 
-namespace Sqlx.Core;
+namespace Sqlx.Generator.Core;
 
 /// <summary>
 /// SQLite database dialect provider with SQLite-specific SQL syntax.

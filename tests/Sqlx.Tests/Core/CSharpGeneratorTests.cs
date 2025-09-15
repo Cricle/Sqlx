@@ -28,11 +28,11 @@ public class CSharpGeneratorTests : CodeGenerationTestBase
     public void CSharpGenerator_Initialize_DoesNotThrow()
     {
         var generator = new CSharpGenerator();
-        
+
         // Test that initialization doesn't throw - actual initialization context testing is complex
         // and would require more elaborate mocking infrastructure
         Assert.IsNotNull(generator, "Generator should be created successfully");
-        
+
         // The generator's Initialize method sets up syntax receivers, but testing this
         // requires a full GeneratorInitializationContext which is difficult to mock
         // In practice, this is tested by the integration tests that actually run the generator
@@ -65,10 +65,10 @@ namespace TestNamespace
 
         var (compilation, diagnostics) = CompileWithSourceGenerator(sourceCode);
         var generatedCode = GetCSharpGeneratedOutput(sourceCode);
-        
+
         // Should generate some implementation code
         Assert.IsNotNull(generatedCode, "Should generate implementation code");
-        Assert.IsTrue(generatedCode.Contains("TestService") || generatedCode.Length > 0, 
+        Assert.IsTrue(generatedCode.Contains("TestService") || generatedCode.Length > 0,
             "Should generate code for TestService");
     }
 
@@ -115,10 +115,10 @@ namespace TestNamespace
 }";
 
         var (compilation, diagnostics) = CompileWithSourceGenerator(sourceCode);
-        
+
         // Should compile without major errors
         var errors = diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
-        if (errors.Any())
+        if (errors.Count != 0)
         {
             var errorMessages = string.Join("\n", errors.Select(e => e.GetMessage()));
             Assert.Fail($"Should collect methods without compilation errors. Errors:\n{errorMessages}");
@@ -126,13 +126,13 @@ namespace TestNamespace
 
         var generatedCode = GetCSharpGeneratedOutput(sourceCode);
         Assert.IsNotNull(generatedCode);
-        
+
         // Should generate implementations for methods with Sqlx attributes
-        Assert.IsTrue(generatedCode.Contains("GetAllUsers") || generatedCode.Contains("SELECT * FROM Users"), 
+        Assert.IsTrue(generatedCode.Contains("GetAllUsers") || generatedCode.Contains("SELECT * FROM Users"),
             "Should generate implementation for GetAllUsers");
-        Assert.IsTrue(generatedCode.Contains("GetUserById") || generatedCode.Contains("@id"), 
+        Assert.IsTrue(generatedCode.Contains("GetUserById") || generatedCode.Contains("@id"),
             "Should generate implementation for GetUserById");
-        Assert.IsTrue(generatedCode.Contains("CreateUser") || generatedCode.Contains("INSERT"), 
+        Assert.IsTrue(generatedCode.Contains("CreateUser") || generatedCode.Contains("INSERT"),
             "Should generate implementation for CreateUser");
     }
 
@@ -198,10 +198,10 @@ namespace TestNamespace
 }";
 
         var (compilation, diagnostics) = CompileWithSourceGenerator(sourceCode);
-        
+
         // Should handle multiple repository classes
         var errors = diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
-        if (errors.Any())
+        if (errors.Count != 0)
         {
             var errorMessages = string.Join("\n", errors.Select(e => e.GetMessage()));
             Assert.Fail($"Should handle multiple repository classes without errors. Errors:\n{errorMessages}");
@@ -209,13 +209,13 @@ namespace TestNamespace
 
         var generatedCode = GetCSharpGeneratedOutput(sourceCode);
         Assert.IsNotNull(generatedCode);
-        
+
         // Should generate implementations for both repository classes
-        Assert.IsTrue(generatedCode.Contains("ProductService") && generatedCode.Contains("OrderService"), 
+        Assert.IsTrue(generatedCode.Contains("ProductService") && generatedCode.Contains("OrderService"),
             "Should generate implementations for both repository classes");
-        Assert.IsTrue(generatedCode.Contains("GetAllProducts") || generatedCode.Contains("Product"), 
+        Assert.IsTrue(generatedCode.Contains("GetAllProducts") || generatedCode.Contains("Product"),
             "Should generate Product-related methods");
-        Assert.IsTrue(generatedCode.Contains("GetAllOrders") || generatedCode.Contains("Order"), 
+        Assert.IsTrue(generatedCode.Contains("GetAllOrders") || generatedCode.Contains("Order"),
             "Should generate Order-related methods");
     }
 
@@ -261,10 +261,10 @@ namespace TestNamespace
 }";
 
         var (compilation, diagnostics) = CompileWithSourceGenerator(sourceCode);
-        
+
         // Should handle async methods correctly
         var errors = diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
-        if (errors.Any())
+        if (errors.Count != 0)
         {
             var errorMessages = string.Join("\n", errors.Select(e => e.GetMessage()));
             Assert.Fail($"Should handle async methods without errors. Errors:\n{errorMessages}");
@@ -272,13 +272,13 @@ namespace TestNamespace
 
         var generatedCode = GetCSharpGeneratedOutput(sourceCode);
         Assert.IsNotNull(generatedCode);
-        
+
         // Should generate async implementations
-        Assert.IsTrue(generatedCode.Contains("async") && generatedCode.Contains("await"), 
+        Assert.IsTrue(generatedCode.Contains("async") && generatedCode.Contains("await"),
             "Should generate async/await patterns");
-        Assert.IsTrue(generatedCode.Contains("CancellationToken") || generatedCode.Contains("cancellationToken"), 
+        Assert.IsTrue(generatedCode.Contains("CancellationToken") || generatedCode.Contains("cancellationToken"),
             "Should handle CancellationToken parameters");
-        Assert.IsTrue(generatedCode.Contains("Task"), 
+        Assert.IsTrue(generatedCode.Contains("Task"),
             "Should handle Task return types");
     }
 
@@ -324,10 +324,10 @@ namespace TestNamespace
 }";
 
         var (compilation, diagnostics) = CompileWithSourceGenerator(sourceCode);
-        
+
         // Should handle generic methods (may have some warnings but should work)
         var errors = diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
-        if (errors.Any())
+        if (errors.Count != 0)
         {
             var errorMessages = string.Join("\n", errors.Select(e => e.GetMessage()));
             // Generics might not be fully supported but should not crash
@@ -336,9 +336,9 @@ namespace TestNamespace
 
         var generatedCode = GetCSharpGeneratedOutput(sourceCode);
         Assert.IsNotNull(generatedCode);
-        
+
         // Should attempt to handle generic types
-        Assert.IsTrue(generatedCode.Contains("GenericEntity") || generatedCode.Contains("Generic"), 
+        Assert.IsTrue(generatedCode.Contains("GenericEntity") || generatedCode.Contains("Generic"),
             "Should reference generic entity types");
     }
 
@@ -374,14 +374,14 @@ namespace TestNamespace
 }";
 
         var (compilation, diagnostics) = CompileWithSourceGenerator(sourceCode);
-        
+
         // Should handle invalid code gracefully
         var errors = diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
-        
+
         // Invalid types might not always cause compilation errors in the generator context
         // The main test is that the generator doesn't crash
         Console.WriteLine($"Found {errors.Count} compilation errors (expected for invalid types)");
-        
+
         // Generator should still produce some output even with errors
         var generatedCode = GetCSharpGeneratedOutput(sourceCode);
         Assert.IsNotNull(generatedCode, "Should still generate some code even with errors");
@@ -394,7 +394,7 @@ namespace TestNamespace
     public void CSharpGenerator_WithLargeInterface_PerformsWell()
     {
         var methodsBuilder = new System.Text.StringBuilder();
-        
+
         // Generate a large interface with many methods
         for (int i = 0; i < 50; i++)
         {
@@ -440,18 +440,18 @@ namespace TestNamespace
 }}";
 
         var startTime = DateTime.UtcNow;
-        
+
         var (compilation, diagnostics) = CompileWithSourceGenerator(sourceCode);
-        
+
         var endTime = DateTime.UtcNow;
         var generationTime = endTime - startTime;
 
         // Should handle large interfaces in reasonable time
-        Assert.IsTrue(generationTime.TotalSeconds < 30, 
+        Assert.IsTrue(generationTime.TotalSeconds < 30,
             $"Large interface generation should complete in reasonable time. Took: {generationTime.TotalSeconds} seconds");
 
         var errors = diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
-        if (errors.Any())
+        if (errors.Count != 0)
         {
             var errorMessages = string.Join("\n", errors.Select(e => e.GetMessage()));
             Assert.Fail($"Large interface should compile without errors. Errors:\n{errorMessages}");
@@ -459,11 +459,11 @@ namespace TestNamespace
 
         var generatedCode = GetCSharpGeneratedOutput(sourceCode);
         Assert.IsNotNull(generatedCode);
-        
+
         // Should generate substantial code for large interface
-        Assert.IsTrue(generatedCode.Length > 5000, 
+        Assert.IsTrue(generatedCode.Length > 5000,
             "Should generate substantial code for large interface");
-        Assert.IsTrue(generatedCode.Contains("Entity0") && generatedCode.Contains("Entity49"), 
+        Assert.IsTrue(generatedCode.Contains("Entity0") && generatedCode.Contains("Entity49"),
             "Should handle all entities in large interface");
     }
 
@@ -512,6 +512,22 @@ namespace TestNamespace
 
         // Add reference to the Sqlx assembly
         references.Add(MetadataReference.CreateFromFile(typeof(CSharpGenerator).Assembly.Location));
+
+        // Add reference to the Sqlx.Annotations assembly
+        try
+        {
+            references.Add(MetadataReference.CreateFromFile(typeof(Sqlx.Annotations.SqlxAttribute).Assembly.Location));
+        }
+        catch
+        {
+            // Fallback: try to load Sqlx.dll from build output
+            var currentDirectory = System.IO.Directory.GetCurrentDirectory();
+            var sqlxPath = System.IO.Path.Combine(currentDirectory, "..", "..", "..", "..", "src", "Sqlx", "bin", "Debug", "netstandard2.0", "Sqlx.dll");
+            if (System.IO.File.Exists(sqlxPath))
+            {
+                references.Add(MetadataReference.CreateFromFile(sqlxPath));
+            }
+        }
 
         return references;
     }

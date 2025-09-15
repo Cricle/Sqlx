@@ -10,7 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Sqlx.Core;
+using Sqlx;
 
 /// <summary>
 /// Tests for Sqlx Core utilities including SqlxException, SqlOperationInferrer and other utility classes.
@@ -31,7 +31,7 @@ public class SqlxCoreUtilitiesTests
 
         // Act - Test message constructor
         var exception1 = new SqlGenerationException(message);
-        
+
         // Act - Test message + inner exception constructor
         var exception2 = new SqlGenerationException(message, innerException);
 
@@ -59,14 +59,14 @@ public class SqlxCoreUtilitiesTests
         var dialectException = new UnsupportedDialectException("Oracle");
 
         // Assert
-        Assert.IsInstanceOfType(sqlException, typeof(Exception), "SqlGenerationException should inherit from Exception");
-        Assert.IsInstanceOfType(sqlException, typeof(SqlxException), "Should be of SqlxException type");
+        Assert.IsInstanceOfType<Exception>(sqlException, "SqlGenerationException should inherit from Exception");
+        Assert.IsInstanceOfType<SqlxException>(sqlException, "Should be of SqlxException type");
 
-        Assert.IsInstanceOfType(methodException, typeof(Exception), "InvalidMethodSignatureException should inherit from Exception");
+        Assert.IsInstanceOfType<Exception>(methodException, "InvalidMethodSignatureException should inherit from Exception");
         Assert.AreEqual("TestMethod", methodException.MethodName, "Should preserve method name");
         Assert.AreEqual("SQLX002", methodException.ErrorCode, "Should have correct error code");
 
-        Assert.IsInstanceOfType(dialectException, typeof(Exception), "UnsupportedDialectException should inherit from Exception");
+        Assert.IsInstanceOfType<Exception>(dialectException, "UnsupportedDialectException should inherit from Exception");
         Assert.AreEqual("Oracle", dialectException.DialectName, "Should preserve dialect name");
         Assert.AreEqual("SQLX003", dialectException.ErrorCode, "Should have correct error code");
 
@@ -77,7 +77,7 @@ public class SqlxCoreUtilitiesTests
         }
         catch (Exception caught)
         {
-            Assert.IsInstanceOfType(caught, typeof(SqlGenerationException), "Should be caught as SqlGenerationException");
+            Assert.IsInstanceOfType<SqlGenerationException>(caught, "Should be caught as SqlGenerationException");
             Assert.AreEqual("Test SQL error", caught.Message, "Message should be preserved");
         }
 
@@ -92,7 +92,7 @@ public class SqlxCoreUtilitiesTests
     {
         // Test basic SQL operation inference
         // Note: This tests the concept - actual implementation may vary
-        
+
         // Arrange
         var selectSql = "SELECT * FROM Users";
         var insertSql = "INSERT INTO Users (Name) VALUES (@name)";
@@ -102,11 +102,11 @@ public class SqlxCoreUtilitiesTests
         // Act & Assert
         // Since SqlOperationInferrer is internal, we test through the public API
         // that would use it indirectly through source generation
-        
-        Assert.IsTrue(selectSql.ToUpper().Contains("SELECT"), "Should recognize SELECT operation");
-        Assert.IsTrue(insertSql.ToUpper().Contains("INSERT"), "Should recognize INSERT operation");
-        Assert.IsTrue(updateSql.ToUpper().Contains("UPDATE"), "Should recognize UPDATE operation");
-        Assert.IsTrue(deleteSql.ToUpper().Contains("DELETE"), "Should recognize DELETE operation");
+
+        Assert.IsTrue(selectSql.Contains("SELECT", StringComparison.CurrentCultureIgnoreCase), "Should recognize SELECT operation");
+        Assert.IsTrue(insertSql.Contains("INSERT", StringComparison.CurrentCultureIgnoreCase), "Should recognize INSERT operation");
+        Assert.IsTrue(updateSql.Contains("UPDATE", StringComparison.CurrentCultureIgnoreCase), "Should recognize UPDATE operation");
+        Assert.IsTrue(deleteSql.Contains("DELETE", StringComparison.CurrentCultureIgnoreCase), "Should recognize DELETE operation");
 
         Console.WriteLine("SqlOperationInferrer basic operation tests passed");
     }
@@ -139,15 +139,15 @@ public class SqlxCoreUtilitiesTests
             WHERE Id = @userId AND Active = 1";
 
         // Act & Assert
-        Assert.IsTrue(complexSelect.ToUpper().Contains("SELECT"), "Should recognize complex SELECT");
-        Assert.IsTrue(complexSelect.ToUpper().Contains("FROM"), "Complex SELECT should have FROM clause");
-        Assert.IsTrue(complexSelect.ToUpper().Contains("JOIN"), "Complex SELECT should handle JOINs");
+        Assert.IsTrue(complexSelect.Contains("SELECT", StringComparison.CurrentCultureIgnoreCase), "Should recognize complex SELECT");
+        Assert.IsTrue(complexSelect.Contains("FROM", StringComparison.CurrentCultureIgnoreCase), "Complex SELECT should have FROM clause");
+        Assert.IsTrue(complexSelect.Contains("JOIN", StringComparison.CurrentCultureIgnoreCase), "Complex SELECT should handle JOINs");
 
-        Assert.IsTrue(complexInsert.ToUpper().Contains("INSERT"), "Should recognize complex INSERT");
-        Assert.IsTrue(complexInsert.ToUpper().Contains("SELECT"), "Complex INSERT can contain SELECT");
+        Assert.IsTrue(complexInsert.Contains("INSERT", StringComparison.CurrentCultureIgnoreCase), "Should recognize complex INSERT");
+        Assert.IsTrue(complexInsert.Contains("SELECT", StringComparison.CurrentCultureIgnoreCase), "Complex INSERT can contain SELECT");
 
-        Assert.IsTrue(complexUpdate.ToUpper().Contains("UPDATE"), "Should recognize complex UPDATE");
-        Assert.IsTrue(complexUpdate.ToUpper().Contains("SET"), "Complex UPDATE should have SET clause");
+        Assert.IsTrue(complexUpdate.Contains("UPDATE", StringComparison.CurrentCultureIgnoreCase), "Should recognize complex UPDATE");
+        Assert.IsTrue(complexUpdate.Contains("SET", StringComparison.CurrentCultureIgnoreCase), "Complex UPDATE should have SET clause");
 
         Console.WriteLine("Complex SQL operation tests passed");
     }
@@ -169,7 +169,7 @@ public class SqlxCoreUtilitiesTests
         Assert.IsTrue(sqlWithParams.Contains("@minAge"), "Should detect @minAge parameter");
         Assert.IsTrue(sqlWithParams.Contains("@isActive"), "Should detect @isActive parameter");
 
-        Assert.IsFalse(sqlWithoutParams.Contains("@"), "Should not detect parameters when none exist");
+        Assert.IsFalse(sqlWithoutParams.Contains('@'), "Should not detect parameters when none exist");
 
         var parameterCount = sqlWithMultipleParams.Split('@').Length - 1;
         Assert.AreEqual(3, parameterCount, "Should detect all 3 parameters in INSERT statement");
@@ -191,18 +191,18 @@ public class SqlxCoreUtilitiesTests
 
         // Act & Assert
         Assert.IsTrue(!string.IsNullOrEmpty(validSql), "Valid SQL should not be null or empty");
-        Assert.IsTrue(validSql.ToUpper().Contains("SELECT") || 
-                     validSql.ToUpper().Contains("INSERT") || 
-                     validSql.ToUpper().Contains("UPDATE") || 
-                     validSql.ToUpper().Contains("DELETE"), "Valid SQL should contain SQL keywords");
+        Assert.IsTrue(validSql.Contains("SELECT", StringComparison.CurrentCultureIgnoreCase) ||
+                     validSql.Contains("INSERT", StringComparison.CurrentCultureIgnoreCase) ||
+                     validSql.Contains("UPDATE", StringComparison.CurrentCultureIgnoreCase) ||
+                     validSql.Contains("DELETE", StringComparison.CurrentCultureIgnoreCase), "Valid SQL should contain SQL keywords");
 
         Assert.IsTrue(string.IsNullOrEmpty(emptySql), "Empty SQL should be detected");
         Assert.IsTrue(string.IsNullOrEmpty(nullSql), "Null SQL should be detected");
 
-        Assert.IsFalse(invalidSql.ToUpper().Contains("SELECT") || 
-                      invalidSql.ToUpper().Contains("INSERT") || 
-                      invalidSql.ToUpper().Contains("UPDATE") || 
-                      invalidSql.ToUpper().Contains("DELETE"), "Invalid SQL should not contain valid keywords");
+        Assert.IsFalse(invalidSql.Contains("SELECT", StringComparison.CurrentCultureIgnoreCase) ||
+                      invalidSql.Contains("INSERT", StringComparison.CurrentCultureIgnoreCase) ||
+                      invalidSql.Contains("UPDATE", StringComparison.CurrentCultureIgnoreCase) ||
+                      invalidSql.Contains("DELETE", StringComparison.CurrentCultureIgnoreCase), "Invalid SQL should not contain valid keywords");
 
         Console.WriteLine("SQL validation tests passed");
     }
@@ -230,7 +230,7 @@ public class SqlxCoreUtilitiesTests
         {
             var sql = query.Key;
             var expectedCategory = query.Value;
-            
+
             var isRead = sql.ToUpper().Trim().StartsWith("SELECT");
             var isCreate = sql.ToUpper().Trim().StartsWith("INSERT");
             var isUpdate = sql.ToUpper().Trim().StartsWith("UPDATE");
@@ -269,12 +269,12 @@ public class SqlxCoreUtilitiesTests
         var regularQuery = "SELECT * FROM Users";
 
         // Act & Assert
-        Assert.IsTrue(storedProcCall.ToUpper().Contains("EXEC"), "Should detect EXEC stored procedure call");
-        Assert.IsTrue(executeCall.ToUpper().Contains("EXECUTE"), "Should detect EXECUTE stored procedure call");
-        Assert.IsTrue(functionCall.ToUpper().Contains("DBO."), "Should detect function calls");
-        
-        Assert.IsFalse(regularQuery.ToUpper().Contains("EXEC") || 
-                      regularQuery.ToUpper().Contains("EXECUTE"), "Regular queries should not be detected as stored procedures");
+        Assert.IsTrue(storedProcCall.Contains("EXEC", StringComparison.CurrentCultureIgnoreCase), "Should detect EXEC stored procedure call");
+        Assert.IsTrue(executeCall.Contains("EXECUTE", StringComparison.CurrentCultureIgnoreCase), "Should detect EXECUTE stored procedure call");
+        Assert.IsTrue(functionCall.Contains("DBO.", StringComparison.CurrentCultureIgnoreCase), "Should detect function calls");
+
+        Assert.IsFalse(regularQuery.Contains("EXEC", StringComparison.CurrentCultureIgnoreCase) ||
+                      regularQuery.Contains("EXECUTE", StringComparison.CurrentCultureIgnoreCase), "Regular queries should not be detected as stored procedures");
 
         Console.WriteLine("Stored procedure detection tests passed");
     }
@@ -292,16 +292,16 @@ public class SqlxCoreUtilitiesTests
         var oracleSyntax = "SELECT * FROM users WHERE ROWNUM <= 10";
 
         // Act & Assert
-        Assert.IsTrue(sqlServerSyntax.Contains("TOP") && sqlServerSyntax.Contains("WITH"), 
+        Assert.IsTrue(sqlServerSyntax.Contains("TOP") && sqlServerSyntax.Contains("WITH"),
             "Should recognize SQL Server specific syntax");
-        
-        Assert.IsTrue(mySqlSyntax.Contains("`") && mySqlSyntax.Contains("LIMIT"), 
+
+        Assert.IsTrue(mySqlSyntax.Contains('`') && mySqlSyntax.Contains("LIMIT"),
             "Should recognize MySQL specific syntax");
-        
-        Assert.IsTrue(postgreSqlSyntax.Contains("\"") && postgreSqlSyntax.Contains("OFFSET"), 
+
+        Assert.IsTrue(postgreSqlSyntax.Contains('"') && postgreSqlSyntax.Contains("OFFSET"),
             "Should recognize PostgreSQL specific syntax");
-        
-        Assert.IsTrue(oracleSyntax.Contains("ROWNUM"), 
+
+        Assert.IsTrue(oracleSyntax.Contains("ROWNUM"),
             "Should recognize Oracle specific syntax");
 
         Console.WriteLine("SQL dialect detection tests passed");
@@ -330,11 +330,11 @@ public class SqlxCoreUtilitiesTests
             try
             {
                 // Basic validation that would catch obvious issues
-                var hasBasicKeywords = malformedSql.ToUpper().Contains("SELECT") ||
-                                      malformedSql.ToUpper().Contains("INSERT") ||
-                                      malformedSql.ToUpper().Contains("UPDATE") ||
-                                      malformedSql.ToUpper().Contains("DELETE");
-                
+                var hasBasicKeywords = malformedSql.Contains("SELECT", StringComparison.CurrentCultureIgnoreCase) ||
+                                      malformedSql.Contains("INSERT", StringComparison.CurrentCultureIgnoreCase) ||
+                                      malformedSql.Contains("UPDATE", StringComparison.CurrentCultureIgnoreCase) ||
+                                      malformedSql.Contains("DELETE", StringComparison.CurrentCultureIgnoreCase);
+
                 if (hasBasicKeywords)
                 {
                     // Additional validation could be added here
@@ -368,12 +368,12 @@ public class SqlxCoreUtilitiesTests
 
         // Act
         var startTime = DateTime.UtcNow;
-        
+
         // Basic operations that would be performed on large SQL
         var isSelect = largeSql.ToUpper().Trim().StartsWith("SELECT");
         var parameterCount = largeSql.Split('@').Length - 1;
-        var hasWhere = largeSql.ToUpper().Contains("WHERE");
-        
+        var hasWhere = largeSql.Contains("WHERE", StringComparison.CurrentCultureIgnoreCase);
+
         var endTime = DateTime.UtcNow;
         var elapsed = endTime - startTime;
 

@@ -9,7 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
-namespace Sqlx.Core;
+namespace Sqlx;
 
 /// <summary>
 /// Analyzer for primary constructors and record types in C# 12+.
@@ -179,7 +179,7 @@ internal static class PrimaryConstructorAnalyzer
         {
             return true; // Likely a primary constructor with no corresponding properties
         }
-        
+
         return matchingParams >= constructor.Parameters.Length * 0.7; // 70% threshold
     }
 

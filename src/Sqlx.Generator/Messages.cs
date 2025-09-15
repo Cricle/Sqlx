@@ -22,7 +22,7 @@ namespace Sqlx
 
         public static DiagnosticDescriptor SP0006 { get; } = new DiagnosticDescriptor("SP0006", "Async method missing CancellationToken", "Async method should accept CancellationToken parameter.", "Sqlx", DiagnosticSeverity.Error, true, "Async methods should include a CancellationToken parameter for proper cancellation support.");
 
-        public static DiagnosticDescriptor SP0007 { get; } = new DiagnosticDescriptor("SP0007", "No RawSqlAttribute or SqlxAttribute tag", "No command text", "Sqlx", DiagnosticSeverity.Error, true, "The method must have either a RawSqlAttribute or SqlxAttribute to specify the SQL command.");
+        public static DiagnosticDescriptor SP0007 { get; } = new DiagnosticDescriptor("SP0007", "No SqlxAttribute tag", "No command text", "Sqlx", DiagnosticSeverity.Error, true, "The method must have a SqlxAttribute to specify the SQL command (RawSqlAttribute has been merged into SqlxAttribute).");
 
         public static DiagnosticDescriptor SP0008 { get; } = new DiagnosticDescriptor("SP0008", "Execute no query return must be int or Task<int>", "Return type error", "Sqlx", DiagnosticSeverity.Error, true, "Methods with ExecuteNoQueryAttribute must return int or Task<int> to represent the number of affected rows.");
 

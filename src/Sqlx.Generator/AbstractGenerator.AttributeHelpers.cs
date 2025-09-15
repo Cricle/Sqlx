@@ -15,7 +15,7 @@ public abstract partial class AbstractGenerator
         // Check if method already has SQL attributes
         var existingSqlAttributes = method.GetAttributes()
             .Where(attr => attr.AttributeClass?.Name == "SqlxAttribute" ||
-                          attr.AttributeClass?.Name == "RawSqlAttribute" ||
+                          // RawSqlAttribute merged into SqlxAttribute
                           attr.AttributeClass?.Name == "SqlExecuteTypeAttribute")
             .ToArray();
 

@@ -8,7 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Sqlx.Core;
+namespace Sqlx.Generator.Core;
 
 /// <summary>
 /// Extension methods for SqlDefine to provide additional functionality.

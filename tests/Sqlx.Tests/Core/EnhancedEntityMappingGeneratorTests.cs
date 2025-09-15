@@ -12,7 +12,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Sqlx.Core;
+using Sqlx;
 
 /// <summary>
 /// Tests for EnhancedEntityMappingGenerator.
@@ -50,19 +50,19 @@ namespace TestNamespace
         Assert.IsNotNull(generatedCode, "Should generate entity mapping code");
 
         // Should generate GetOrdinal caching for performance
-        Assert.IsTrue(generatedCode.Contains("GetOrdinal"), 
+        Assert.IsTrue(generatedCode.Contains("GetOrdinal"),
             "Should generate GetOrdinal calls for column mapping");
-        Assert.IsTrue(generatedCode.Contains("__ordinal_"), 
+        Assert.IsTrue(generatedCode.Contains("__ordinal_"),
             "Should generate ordinal variable caching");
 
         // Should handle traditional class instantiation
-        Assert.IsTrue(generatedCode.Contains("new ") || generatedCode.Contains("TraditionalEntity"), 
+        Assert.IsTrue(generatedCode.Contains("new ") || generatedCode.Contains("TraditionalEntity"),
             "Should generate entity instantiation code");
 
         // Should map all properties
-        Assert.IsTrue(generatedCode.Contains("Id") && generatedCode.Contains("Name") && 
-                     generatedCode.Contains("Email") && generatedCode.Contains("CreatedDate") && 
-                     generatedCode.Contains("IsActive"), 
+        Assert.IsTrue(generatedCode.Contains("Id") && generatedCode.Contains("Name") &&
+                     generatedCode.Contains("Email") && generatedCode.Contains("CreatedDate") &&
+                     generatedCode.Contains("IsActive"),
             "Should map all entity properties");
     }
 
@@ -92,18 +92,18 @@ namespace TestNamespace
         Assert.IsNotNull(generatedCode, "Should generate record mapping code");
 
         // Should generate GetOrdinal caching
-        Assert.IsTrue(generatedCode.Contains("GetOrdinal"), 
+        Assert.IsTrue(generatedCode.Contains("GetOrdinal"),
             "Should generate GetOrdinal calls for record mapping");
-        Assert.IsTrue(generatedCode.Contains("__ordinal_"), 
+        Assert.IsTrue(generatedCode.Contains("__ordinal_"),
             "Should generate ordinal variable caching");
 
         // Should handle record-specific mapping
-        Assert.IsTrue(generatedCode.Contains("UserRecord") || generatedCode.Contains("new "), 
+        Assert.IsTrue(generatedCode.Contains("UserRecord") || generatedCode.Contains("new "),
             "Should generate record instantiation code");
 
         // Should map all record members (primary constructor parameters + additional properties)
-        Assert.IsTrue(generatedCode.Contains("Id") && generatedCode.Contains("Name") && 
-                     generatedCode.Contains("Email"), 
+        Assert.IsTrue(generatedCode.Contains("Id") && generatedCode.Contains("Name") &&
+                     generatedCode.Contains("Email"),
             "Should map primary constructor parameters");
     }
 
@@ -136,26 +136,26 @@ namespace TestNamespace
         Assert.IsNotNull(generatedCode, "Should generate primary constructor mapping code");
 
         // Should generate GetOrdinal caching
-        Assert.IsTrue(generatedCode.Contains("GetOrdinal"), 
+        Assert.IsTrue(generatedCode.Contains("GetOrdinal"),
             "Should generate GetOrdinal calls for primary constructor mapping");
-        Assert.IsTrue(generatedCode.Contains("__ordinal_"), 
+        Assert.IsTrue(generatedCode.Contains("__ordinal_"),
             "Should generate ordinal variable caching");
 
         // Should handle primary constructor instantiation
-        Assert.IsTrue(generatedCode.Contains("PrimaryConstructorEntity") || generatedCode.Contains("new "), 
+        Assert.IsTrue(generatedCode.Contains("PrimaryConstructorEntity") || generatedCode.Contains("new "),
             "Should generate primary constructor instantiation code");
 
         // Should map all accessible members
-        Assert.IsTrue(generatedCode.Contains("Id") && generatedCode.Contains("Name") && 
-                     generatedCode.Contains("Email") && generatedCode.Contains("CreatedDate") && 
-                     generatedCode.Contains("IsActive"), 
+        Assert.IsTrue(generatedCode.Contains("Id") && generatedCode.Contains("Name") &&
+                     generatedCode.Contains("Email") && generatedCode.Contains("CreatedDate") &&
+                     generatedCode.Contains("IsActive"),
             "Should map all accessible members");
     }
 
     /// <summary>
     /// Tests entity mapping with empty class (no accessible members).
     /// </summary>
-        [TestMethod]
+    [TestMethod]
     public void EnhancedEntityMappingGenerator_WithEmptyClass_HandlesEmptyClassGracefully()
     {
         string sourceCode = @"
@@ -172,14 +172,14 @@ namespace TestNamespace
         Assert.IsNotNull(entityType, "Should find EmptyEntity type");
 
         var sb = new IndentedStringBuilder(null);
-            EnhancedEntityMappingGenerator.GenerateEntityMapping(sb, entityType);
+        EnhancedEntityMappingGenerator.GenerateEntityMapping(sb, entityType);
 
         var generatedCode = sb.ToString();
         Assert.IsNotNull(generatedCode, "Should generate code even for empty entity");
 
         // Should handle empty entity gracefully
-        Assert.IsTrue(generatedCode.Contains("No accessible members") || 
-                     generatedCode.Contains("new EmptyEntity"), 
+        Assert.IsTrue(generatedCode.Contains("No accessible members") ||
+                     generatedCode.Contains("new EmptyEntity"),
             "Should handle empty entity gracefully with appropriate comment or instantiation");
     }
 
@@ -218,17 +218,17 @@ namespace TestNamespace
             Assert.IsNotNull(generatedCode, "Should generate complex entity mapping code");
 
             // Should handle basic property types
-            var expectedProperties = new[] { "Id", "Name", "Description", "Price", "CreatedDate", 
+            var expectedProperties = new[] { "Id", "Name", "Description", "Price", "CreatedDate",
                                            "ModifiedDate", "IsActive" };
-            
+
             foreach (var property in expectedProperties)
             {
-                Assert.IsTrue(generatedCode.Contains(property), 
+                Assert.IsTrue(generatedCode.Contains(property),
                     $"Should handle {property} property mapping");
             }
 
             // Should generate GetOrdinal for all properties
-            Assert.IsTrue(generatedCode.Contains("GetOrdinal"), 
+            Assert.IsTrue(generatedCode.Contains("GetOrdinal"),
                 "Should generate GetOrdinal calls for all properties");
         }
         catch (System.NotSupportedException ex)
@@ -242,7 +242,7 @@ namespace TestNamespace
     /// <summary>
     /// Tests performance with large entities (many properties).
     /// </summary>
-        [TestMethod]
+    [TestMethod]
     public void EnhancedEntityMappingGenerator_WithLargeEntity_PerformsWell()
     {
         var propertiesBuilder = new System.Text.StringBuilder();
@@ -265,31 +265,31 @@ namespace TestNamespace
         Assert.IsNotNull(entityType, "Should find LargeEntity type");
 
         var startTime = DateTime.UtcNow;
-        
+
         var sb = new IndentedStringBuilder(null);
-            EnhancedEntityMappingGenerator.GenerateEntityMapping(sb, entityType);
-        
+        EnhancedEntityMappingGenerator.GenerateEntityMapping(sb, entityType);
+
         var endTime = DateTime.UtcNow;
         var generationTime = endTime - startTime;
 
         // Should handle large entities efficiently
-        Assert.IsTrue(generationTime.TotalSeconds < 5, 
+        Assert.IsTrue(generationTime.TotalSeconds < 5,
             $"Large entity mapping should be efficient. Took: {generationTime.TotalSeconds} seconds");
 
         var generatedCode = sb.ToString();
         Assert.IsNotNull(generatedCode, "Should generate large entity mapping code");
 
         // Should generate substantial code for large entity
-        Assert.IsTrue(generatedCode.Length > 1000, 
+        Assert.IsTrue(generatedCode.Length > 1000,
             "Should generate substantial code for large entity");
-        Assert.IsTrue(generatedCode.Contains("Property0") && generatedCode.Contains("Property99"), 
+        Assert.IsTrue(generatedCode.Contains("Property0") && generatedCode.Contains("Property99"),
             "Should handle all properties in large entity");
     }
 
     /// <summary>
     /// Tests column name generation for different property naming conventions.
     /// </summary>
-        [TestMethod]
+    [TestMethod]
     public void EnhancedEntityMappingGenerator_WithVariousNamingConventions_GeneratesCorrectColumnNames()
     {
         string sourceCode = @"
@@ -317,12 +317,12 @@ namespace TestNamespace
         Assert.IsNotNull(generatedCode, "Should generate naming convention entity mapping code");
 
         // Should handle various naming conventions
-        var expectedProperties = new[] { "Id", "FirstName", "last_name", "EmailAddress", 
+        var expectedProperties = new[] { "Id", "FirstName", "last_name", "EmailAddress",
                                        "user_id", "created_at", "UpdatedAt" };
-        
+
         foreach (var property in expectedProperties)
         {
-            Assert.IsTrue(generatedCode.Contains(property), 
+            Assert.IsTrue(generatedCode.Contains(property),
                 $"Should handle {property} property with its naming convention");
         }
     }
@@ -365,11 +365,11 @@ namespace TestNamespace
         // Should handle both base and derived properties
         var baseProperties = new[] { "Id", "CreatedDate", "CreatedBy" };
         var derivedProperties = new[] { "Name", "Description", "IsActive" };
-        
+
         // Check for some basic properties that should be handled
         var someProperties = new[] { "Id", "Name", "IsActive" };
         var handledCount = someProperties.Count(prop => generatedCode.Contains(prop));
-        Assert.IsTrue(handledCount > 0, 
+        Assert.IsTrue(handledCount > 0,
             $"Should handle at least some properties from inheritance hierarchy. Generated: {generatedCode}");
     }
 
@@ -395,7 +395,7 @@ namespace TestNamespace
 
         foreach (var classDecl in classDeclarations)
         {
-            if (semanticModel.GetDeclaredSymbol(classDecl) is INamedTypeSymbol typeSymbol && 
+            if (semanticModel.GetDeclaredSymbol(classDecl) is INamedTypeSymbol typeSymbol &&
                 typeSymbol.Name == typeName)
             {
                 return typeSymbol;
@@ -403,10 +403,10 @@ namespace TestNamespace
         }
 
         var recordDeclarations = root.DescendantNodes().OfType<Microsoft.CodeAnalysis.CSharp.Syntax.RecordDeclarationSyntax>();
-        
+
         foreach (var recordDecl in recordDeclarations)
         {
-            if (semanticModel.GetDeclaredSymbol(recordDecl) is INamedTypeSymbol typeSymbol && 
+            if (semanticModel.GetDeclaredSymbol(recordDecl) is INamedTypeSymbol typeSymbol &&
                 typeSymbol.Name == typeName)
             {
                 return typeSymbol;

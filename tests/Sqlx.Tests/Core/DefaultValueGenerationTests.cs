@@ -23,14 +23,14 @@ public class DefaultValueGenerationTests
 
         // Test void type
         Assert.AreEqual("", generator.TestGetDefaultValueForVoid());
-        
+
         // Test basic numeric types
         Assert.AreEqual("0", generator.TestGetDefaultValueForInt());
         Assert.AreEqual("0L", generator.TestGetDefaultValueForLong());
         Assert.AreEqual("0.0", generator.TestGetDefaultValueForDouble());
         Assert.AreEqual("0.0f", generator.TestGetDefaultValueForFloat());
         Assert.AreEqual("0m", generator.TestGetDefaultValueForDecimal());
-        
+
         // Test other basic types
         Assert.AreEqual("false", generator.TestGetDefaultValueForBool());
         Assert.AreEqual("null!", generator.TestGetDefaultValueForString());
@@ -45,18 +45,18 @@ public class DefaultValueGenerationTests
         // Test special types
         Assert.AreEqual("default(global::System.DateTime)", generator.TestGetDefaultValueForDateTime());
         Assert.AreEqual("'\\0'", generator.TestGetDefaultValueForChar());
-        
+
         // Test type name based defaults
         Assert.AreEqual("global::System.Guid.Empty", generator.TestGetDefaultValueForGuid());
         Assert.AreEqual("global::System.Threading.Tasks.Task.CompletedTask", generator.TestGetDefaultValueForTask());
         Assert.AreEqual("global::System.Threading.Tasks.Task.FromResult(default(string)!)", generator.TestGetDefaultValueForGenericTask());
         Assert.AreEqual("default(System.Threading.Tasks.ValueTask)", generator.TestGetDefaultValueForValueTask());
-        
+
         // Test collection defaults
         Assert.AreEqual("new string[0]", generator.TestGetDefaultValueForArray());
         Assert.AreEqual("new string[0]", generator.TestGetDefaultValueForIEnumerable());
         Assert.AreEqual("new System.Collections.Generic.List<User>()", generator.TestGetDefaultValueForList());
-        
+
         // Test nullable and reference types
         Assert.AreEqual("null", generator.TestGetDefaultValueForNullable());
         Assert.AreEqual("null!", generator.TestGetDefaultValueForClass());
@@ -70,10 +70,10 @@ public class DefaultValueGenerationTests
         var generator = new TestableGeneratorForDefaultValues();
 
         // Test complex generic scenarios
-        Assert.AreEqual("new Dictionary<string, int>()", generator.TestGetDefaultValueForComplexGeneric("Dictionary<string, int>"));
-        Assert.AreEqual("global::System.Threading.Tasks.Task.FromResult(new List<User>())", generator.TestGetDefaultValueForComplexGeneric("Task<List<User>>"));
-        Assert.AreEqual("default((int, string))", generator.TestGetDefaultValueForComplexGeneric("(int, string)"));
-        Assert.AreEqual("default(ValueTuple<int, string, bool>)", generator.TestGetDefaultValueForComplexGeneric("ValueTuple<int, string, bool>"));
+        Assert.AreEqual("new Dictionary<string, int>()", TestableGeneratorForDefaultValues.TestGetDefaultValueForComplexGeneric("Dictionary<string, int>"));
+        Assert.AreEqual("global::System.Threading.Tasks.Task.FromResult(new List<User>())", TestableGeneratorForDefaultValues.TestGetDefaultValueForComplexGeneric("Task<List<User>>"));
+        Assert.AreEqual("default((int, string))", TestableGeneratorForDefaultValues.TestGetDefaultValueForComplexGeneric("(int, string)"));
+        Assert.AreEqual("default(ValueTuple<int, string, bool>)", TestableGeneratorForDefaultValues.TestGetDefaultValueForComplexGeneric("ValueTuple<int, string, bool>"));
     }
 
     [TestMethod]
@@ -83,10 +83,10 @@ public class DefaultValueGenerationTests
         var generator = new TestableGeneratorForDefaultValues();
 
         // Test edge cases and error scenarios
-        Assert.AreEqual("default(UnknownType)", generator.TestGetDefaultValueForComplexGeneric("UnknownType"));
-        Assert.AreEqual("null!", generator.TestGetDefaultValueForComplexGeneric("System.Object"));
-        Assert.AreEqual("new List<object>()", generator.TestGetDefaultValueForComplexGeneric("List<object>"));
-        Assert.AreEqual("global::System.Threading.Tasks.Task.FromResult(0)", generator.TestGetDefaultValueForComplexGeneric("Task<int>"));
+        Assert.AreEqual("default(UnknownType)", TestableGeneratorForDefaultValues.TestGetDefaultValueForComplexGeneric("UnknownType"));
+        Assert.AreEqual("null!", TestableGeneratorForDefaultValues.TestGetDefaultValueForComplexGeneric("System.Object"));
+        Assert.AreEqual("new List<object>()", TestableGeneratorForDefaultValues.TestGetDefaultValueForComplexGeneric("List<object>"));
+        Assert.AreEqual("global::System.Threading.Tasks.Task.FromResult(0)", TestableGeneratorForDefaultValues.TestGetDefaultValueForComplexGeneric("Task<int>"));
     }
 
     [TestMethod]
@@ -96,8 +96,8 @@ public class DefaultValueGenerationTests
         var generator = new TestableGeneratorForDefaultValues();
 
         // Test IAsyncEnumerable and related types
-        Assert.AreEqual("AsyncEnumerable.Empty<User>()", generator.TestGetDefaultValueForAsyncEnumerable("IAsyncEnumerable<User>"));
-        Assert.AreEqual("default(ConfiguredCancelableAsyncEnumerable<int>)", generator.TestGetDefaultValueForAsyncEnumerable("ConfiguredCancelableAsyncEnumerable<int>"));
+        Assert.AreEqual("AsyncEnumerable.Empty<User>()", TestableGeneratorForDefaultValues.TestGetDefaultValueForAsyncEnumerable("IAsyncEnumerable<User>"));
+        Assert.AreEqual("default(ConfiguredCancelableAsyncEnumerable<int>)", TestableGeneratorForDefaultValues.TestGetDefaultValueForAsyncEnumerable("ConfiguredCancelableAsyncEnumerable<int>"));
     }
 
 
@@ -163,13 +163,13 @@ public class TestableGeneratorForDefaultValues : AbstractGenerator
     }
 
     // 简化的默认值生成方法，基于SpecialType
-    private string GetDefaultValueBasedOnSpecialType(SpecialType specialType, string typeName)
+    private static string GetDefaultValueBasedOnSpecialType(SpecialType specialType, string typeName)
     {
         return specialType switch
         {
             SpecialType.System_Void => "",
             SpecialType.System_String => "null!",
-            SpecialType.System_Int32 or SpecialType.System_Byte or SpecialType.System_SByte or 
+            SpecialType.System_Int32 or SpecialType.System_Byte or SpecialType.System_SByte or
             SpecialType.System_Int16 or SpecialType.System_UInt16 or SpecialType.System_UInt32 => "0",
             SpecialType.System_Int64 or SpecialType.System_UInt64 => "0L",
             SpecialType.System_Double => "0.0",
@@ -183,7 +183,7 @@ public class TestableGeneratorForDefaultValues : AbstractGenerator
     }
 
     // 基于类型名称的默认值生成
-    private string GetDefaultValueBasedOnTypeName(string typeName)
+    private static string GetDefaultValueBasedOnTypeName(string typeName)
     {
         return typeName switch
         {
@@ -198,24 +198,24 @@ public class TestableGeneratorForDefaultValues : AbstractGenerator
     }
 
     // 数组类型的默认值
-    private string GetDefaultValueForArray(string elementType)
+    private static string GetDefaultValueForArray(string elementType)
     {
         return $"new {elementType}[0]";
     }
 
     // 可空类型的默认值
-    private string GetDefaultValueForNullable()
+    private static string GetDefaultValueForNullable()
     {
         return "null";
     }
 
     // 引用类型的默认值
-    private string GetDefaultValueForReference(TypeKind typeKind, string typeName)
+    private static string GetDefaultValueForReference(TypeKind typeKind, string typeName)
     {
         return "null!";
     }
 
-    public string TestGetDefaultValueForComplexGeneric(string typeName)
+    public static string TestGetDefaultValueForComplexGeneric(string typeName)
     {
         return typeName switch
         {
@@ -230,7 +230,7 @@ public class TestableGeneratorForDefaultValues : AbstractGenerator
         };
     }
 
-    public string TestGetDefaultValueForAsyncEnumerable(string typeName)
+    public static string TestGetDefaultValueForAsyncEnumerable(string typeName)
     {
         return typeName switch
         {

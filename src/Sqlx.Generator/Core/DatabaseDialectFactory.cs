@@ -4,9 +4,10 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
+using Sqlx.Generator.Core;
 using Sqlx.SqlGen;
 
-namespace Sqlx.Core;
+namespace Sqlx.Generator;
 
 /// <summary>
 /// Simple factory for creating database dialect providers.

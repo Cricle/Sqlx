@@ -32,7 +32,7 @@ namespace Sqlx.Tests
             var generator = new CSharpGenerator();
 
             // Assert
-            Assert.IsInstanceOfType(generator, typeof(AbstractGenerator));
+            Assert.IsInstanceOfType<AbstractGenerator>(generator);
         }
 
         [TestMethod]
@@ -42,7 +42,7 @@ namespace Sqlx.Tests
             var generator = new CSharpGenerator();
 
             // Assert
-            Assert.IsInstanceOfType(generator, typeof(Microsoft.CodeAnalysis.ISourceGenerator));
+            Assert.IsInstanceOfType<Microsoft.CodeAnalysis.ISourceGenerator>(generator);
         }
     }
 }

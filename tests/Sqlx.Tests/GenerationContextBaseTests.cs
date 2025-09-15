@@ -34,7 +34,7 @@ namespace Sqlx.Tests
         {
             // Arrange
             var methodSymbol = CreateMockMethodSymbol();
-            
+
             // Act
             var result = TestableGenerationContextBase.TestGetSymbol(methodSymbol, x => x.Name == "param1");
 
@@ -48,7 +48,7 @@ namespace Sqlx.Tests
         {
             // Arrange
             var methodSymbol = CreateMockMethodSymbol();
-            
+
             // Act
             var result = TestableGenerationContextBase.TestGetSymbol(methodSymbol, x => x.Name == "nonexistent");
 
@@ -61,7 +61,7 @@ namespace Sqlx.Tests
         {
             // Arrange
             var namedTypeSymbol = CreateMockNamedTypeSymbolWithField();
-            
+
             // Act
             var result = TestableGenerationContextBase.TestGetSymbol(namedTypeSymbol, x => x.Name == "testField");
 
@@ -75,7 +75,7 @@ namespace Sqlx.Tests
         {
             // Arrange
             var namedTypeSymbol = CreateMockNamedTypeSymbolWithProperty();
-            
+
             // Act
             var result = TestableGenerationContextBase.TestGetSymbol(namedTypeSymbol, x => x.Name == "testProperty");
 
@@ -90,7 +90,7 @@ namespace Sqlx.Tests
             // Arrange
             var baseType = CreateMockNamedTypeSymbolWithField();
             var namedTypeSymbol = CreateMockNamedTypeSymbolWithBaseType(baseType);
-            
+
             // Act
             var result = TestableGenerationContextBase.TestGetSymbol(namedTypeSymbol, x => x.Name == "testField");
 
@@ -104,7 +104,7 @@ namespace Sqlx.Tests
         {
             // Arrange
             var namedTypeSymbol = CreateMockNamedTypeSymbolEmpty();
-            
+
             // Act
             var result = TestableGenerationContextBase.TestGetSymbol(namedTypeSymbol, x => x.Name == "nonexistent");
 
@@ -113,7 +113,7 @@ namespace Sqlx.Tests
         }
 
         // Helper methods
-        private IMethodSymbol CreateMockMethodSymbol()
+        private static IMethodSymbol CreateMockMethodSymbol()
         {
             var param1 = new Mock<IParameterSymbol>();
             param1.Setup(x => x.Name).Returns("param1");
@@ -125,11 +125,11 @@ namespace Sqlx.Tests
 
             var mock = new Mock<IMethodSymbol>();
             mock.Setup(x => x.Parameters).Returns(ImmutableArray.Create(param1.Object, param2.Object));
-            
+
             return mock.Object;
         }
 
-        private INamedTypeSymbol CreateMockNamedTypeSymbolWithField()
+        private static INamedTypeSymbol CreateMockNamedTypeSymbolWithField()
         {
             var field = new Mock<IFieldSymbol>();
             field.Setup(x => x.Name).Returns("testField");
@@ -138,11 +138,11 @@ namespace Sqlx.Tests
             var mock = new Mock<INamedTypeSymbol>();
             mock.Setup(x => x.GetMembers()).Returns(ImmutableArray.Create<ISymbol>(field.Object));
             mock.Setup(x => x.BaseType).Returns((INamedTypeSymbol?)null);
-            
+
             return mock.Object;
         }
 
-        private INamedTypeSymbol CreateMockNamedTypeSymbolWithProperty()
+        private static INamedTypeSymbol CreateMockNamedTypeSymbolWithProperty()
         {
             var property = new Mock<IPropertySymbol>();
             property.Setup(x => x.Name).Returns("testProperty");
@@ -151,25 +151,25 @@ namespace Sqlx.Tests
             var mock = new Mock<INamedTypeSymbol>();
             mock.Setup(x => x.GetMembers()).Returns(ImmutableArray.Create<ISymbol>(property.Object));
             mock.Setup(x => x.BaseType).Returns((INamedTypeSymbol?)null);
-            
+
             return mock.Object;
         }
 
-        private INamedTypeSymbol CreateMockNamedTypeSymbolWithBaseType(INamedTypeSymbol baseType)
+        private static INamedTypeSymbol CreateMockNamedTypeSymbolWithBaseType(INamedTypeSymbol baseType)
         {
             var mock = new Mock<INamedTypeSymbol>();
             mock.Setup(x => x.GetMembers()).Returns(ImmutableArray<ISymbol>.Empty);
             mock.Setup(x => x.BaseType).Returns(baseType);
-            
+
             return mock.Object;
         }
 
-        private INamedTypeSymbol CreateMockNamedTypeSymbolEmpty()
+        private static INamedTypeSymbol CreateMockNamedTypeSymbolEmpty()
         {
             var mock = new Mock<INamedTypeSymbol>();
             mock.Setup(x => x.GetMembers()).Returns(ImmutableArray<ISymbol>.Empty);
             mock.Setup(x => x.BaseType).Returns((INamedTypeSymbol?)null);
-            
+
             return mock.Object;
         }
 

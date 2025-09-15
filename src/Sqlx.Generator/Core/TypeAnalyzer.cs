@@ -9,7 +9,7 @@ using System;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
-namespace Sqlx.Core;
+namespace Sqlx;
 
 /// <summary>
 /// Simple type analyzer for source generation.

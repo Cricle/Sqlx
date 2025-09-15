@@ -12,7 +12,6 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Sqlx.Core;
 
 /// <summary>
 /// Tests for TypeAnalyzer utility class.
@@ -74,13 +73,13 @@ namespace TestNamespace
         Assert.IsNotNull(emptyClassType, "Should find EmptyClass type");
 
         // Test entity type detection
-        Assert.IsTrue(TypeAnalyzer.IsLikelyEntityType(userType), 
+        Assert.IsTrue(TypeAnalyzer.IsLikelyEntityType(userType),
             "User class with properties should be detected as entity type");
-        Assert.IsTrue(TypeAnalyzer.IsLikelyEntityType(productType), 
+        Assert.IsTrue(TypeAnalyzer.IsLikelyEntityType(productType),
             "Product class with properties should be detected as entity type");
-        Assert.IsFalse(TypeAnalyzer.IsLikelyEntityType(emptyClassType), 
+        Assert.IsFalse(TypeAnalyzer.IsLikelyEntityType(emptyClassType),
             "Class without properties should not be detected as entity type");
-        Assert.IsFalse(TypeAnalyzer.IsLikelyEntityType(null), 
+        Assert.IsFalse(TypeAnalyzer.IsLikelyEntityType(null),
             "Null type should not be detected as entity type");
     }
 
@@ -143,22 +142,22 @@ namespace TestNamespace
         var userProperty = properties.FirstOrDefault(p => p.Name == "UserProperty");
 
         // Test collection type detection
-        Assert.IsTrue(TypeAnalyzer.IsCollectionType(listProperty?.Type!), 
+        Assert.IsTrue(TypeAnalyzer.IsCollectionType(listProperty?.Type!),
             "IList<T> should be detected as collection type");
-        Assert.IsTrue(TypeAnalyzer.IsCollectionType(concreteListProperty?.Type!), 
+        Assert.IsTrue(TypeAnalyzer.IsCollectionType(concreteListProperty?.Type!),
             "List<T> should be detected as collection type");
-        Assert.IsTrue(TypeAnalyzer.IsCollectionType(enumerableProperty?.Type!), 
+        Assert.IsTrue(TypeAnalyzer.IsCollectionType(enumerableProperty?.Type!),
             "IEnumerable<T> should be detected as collection type");
-        Assert.IsTrue(TypeAnalyzer.IsCollectionType(collectionProperty?.Type!), 
+        Assert.IsTrue(TypeAnalyzer.IsCollectionType(collectionProperty?.Type!),
             "ICollection<T> should be detected as collection type");
-        Assert.IsTrue(TypeAnalyzer.IsCollectionType(readOnlyListProperty?.Type!), 
+        Assert.IsTrue(TypeAnalyzer.IsCollectionType(readOnlyListProperty?.Type!),
             "IReadOnlyList<T> should be detected as collection type");
 
-        Assert.IsFalse(TypeAnalyzer.IsCollectionType(stringProperty?.Type!), 
+        Assert.IsFalse(TypeAnalyzer.IsCollectionType(stringProperty?.Type!),
             "String should not be detected as collection type");
-        Assert.IsFalse(TypeAnalyzer.IsCollectionType(intProperty?.Type!), 
+        Assert.IsFalse(TypeAnalyzer.IsCollectionType(intProperty?.Type!),
             "Int should not be detected as collection type");
-        Assert.IsFalse(TypeAnalyzer.IsCollectionType(userProperty?.Type!), 
+        Assert.IsFalse(TypeAnalyzer.IsCollectionType(userProperty?.Type!),
             "Custom entity type should not be detected as collection type");
     }
 
@@ -223,15 +222,15 @@ namespace TestNamespace
         var orderFromListTask = TypeAnalyzer.ExtractEntityType(orderListTaskProperty?.Type!);
         var userFromSingle = TypeAnalyzer.ExtractEntityType(singleUserProperty?.Type!);
 
-        Assert.AreEqual("User", userFromList?.Name, 
+        Assert.AreEqual("User", userFromList?.Name,
             "Should extract User type from IList<User>");
-        Assert.AreEqual("Product", productFromList?.Name, 
+        Assert.AreEqual("Product", productFromList?.Name,
             "Should extract Product type from List<Product>");
-        Assert.AreEqual("User", userFromTask?.Name, 
+        Assert.AreEqual("User", userFromTask?.Name,
             "Should extract User type from Task<User>");
-        Assert.AreEqual("Order", orderFromListTask?.Name, 
+        Assert.AreEqual("Order", orderFromListTask?.Name,
             "Should extract Order type from Task<IList<Order>>");
-        Assert.AreEqual("User", userFromSingle?.Name, 
+        Assert.AreEqual("User", userFromSingle?.Name,
             "Should return User type for non-generic User");
     }
 
@@ -285,26 +284,26 @@ namespace TestNamespace
         var userTaskProperty = properties.FirstOrDefault(p => p.Name == "UserTask");
 
         // Test scalar type detection
-        Assert.IsTrue(TypeAnalyzer.IsScalarReturnType(intProperty?.Type!, false), 
+        Assert.IsTrue(TypeAnalyzer.IsScalarReturnType(intProperty?.Type!, false),
             "Int should be detected as scalar type");
-        Assert.IsTrue(TypeAnalyzer.IsScalarReturnType(stringProperty?.Type!, false), 
+        Assert.IsTrue(TypeAnalyzer.IsScalarReturnType(stringProperty?.Type!, false),
             "String should be detected as scalar type");
-        Assert.IsTrue(TypeAnalyzer.IsScalarReturnType(boolProperty?.Type!, false), 
+        Assert.IsTrue(TypeAnalyzer.IsScalarReturnType(boolProperty?.Type!, false),
             "Bool should be detected as scalar type");
-        Assert.IsTrue(TypeAnalyzer.IsScalarReturnType(decimalProperty?.Type!, false), 
+        Assert.IsTrue(TypeAnalyzer.IsScalarReturnType(decimalProperty?.Type!, false),
             "Decimal should be detected as scalar type");
         // DateTime detection may vary by implementation - check if it's handled as scalar or entity
         var isDateTimeScalar = TypeAnalyzer.IsScalarReturnType(dateTimeProperty?.Type!, false);
         Console.WriteLine($"DateTime scalar detection: {isDateTimeScalar}");
         // DateTime might be considered a complex type in some implementations
 
-        Assert.IsFalse(TypeAnalyzer.IsScalarReturnType(userProperty?.Type!, false), 
+        Assert.IsFalse(TypeAnalyzer.IsScalarReturnType(userProperty?.Type!, false),
             "Custom entity type should not be detected as scalar type");
-        Assert.IsFalse(TypeAnalyzer.IsScalarReturnType(userListProperty?.Type!, false), 
+        Assert.IsFalse(TypeAnalyzer.IsScalarReturnType(userListProperty?.Type!, false),
             "Collection type should not be detected as scalar type");
-        Assert.IsTrue(TypeAnalyzer.IsScalarReturnType(intTaskProperty?.Type!, true), 
+        Assert.IsTrue(TypeAnalyzer.IsScalarReturnType(intTaskProperty?.Type!, true),
             "Task<int> should be detected as scalar type when async is true");
-        Assert.IsFalse(TypeAnalyzer.IsScalarReturnType(userTaskProperty?.Type!, true), 
+        Assert.IsFalse(TypeAnalyzer.IsScalarReturnType(userTaskProperty?.Type!, true),
             "Task<User> should not be detected as scalar type even when async is true");
     }
 
@@ -362,17 +361,17 @@ namespace TestNamespace
         var userListDefault = TypeAnalyzer.GetDefaultValue(userListProperty?.Type!);
 
         Assert.AreEqual("0", intDefault, "Int default should be 0");
-        Assert.IsTrue(stringDefault == "null" || stringDefault.Contains("string.Empty"), 
+        Assert.IsTrue(stringDefault == "null" || stringDefault.Contains("string.Empty"),
             "String default should be null or string.Empty");
         Assert.AreEqual("false", boolDefault, "Bool default should be false");
         // Decimal default might be 'default' or '0m' depending on implementation
-        Assert.IsTrue(decimalDefault == "0m" || decimalDefault == "default", 
+        Assert.IsTrue(decimalDefault == "0m" || decimalDefault == "default",
             $"Decimal default should be '0m' or 'default', got: {decimalDefault}");
-        Assert.IsTrue(dateTimeDefault.Contains("DateTime") || dateTimeDefault == "default", 
+        Assert.IsTrue(dateTimeDefault.Contains("DateTime") || dateTimeDefault == "default",
             "DateTime default should reference DateTime or be default");
-        Assert.IsTrue(nullableUserDefault == "null" || nullableUserDefault == "null!", 
+        Assert.IsTrue(nullableUserDefault == "null" || nullableUserDefault == "null!",
             $"Nullable reference type default should be null or null!, got: {nullableUserDefault}");
-        Assert.IsTrue(userListDefault == "null" || userListDefault == "null!" || userListDefault.Contains("new") || userListDefault == "default", 
+        Assert.IsTrue(userListDefault == "null" || userListDefault == "null!" || userListDefault.Contains("new") || userListDefault == "default",
             $"Collection default should be null, null!, new instance, or default, got: {userListDefault}");
     }
 
@@ -426,7 +425,7 @@ namespace MyApp.Models
 }";
 
         var (compilation, symbols) = GetTypeSymbols(sourceCode);
-        
+
         var customEntity = symbols.FirstOrDefault(s => s.Name == "CustomEntity");
         var userModel = symbols.FirstOrDefault(s => s.Name == "UserModel");
 
@@ -434,9 +433,9 @@ namespace MyApp.Models
         Assert.IsNotNull(userModel, "Should find UserModel type");
 
         // Custom namespace types should be detected as likely entity types
-        Assert.IsTrue(TypeAnalyzer.IsLikelyEntityType(customEntity), 
+        Assert.IsTrue(TypeAnalyzer.IsLikelyEntityType(customEntity),
             "Type in custom namespace should be detected as entity type");
-        Assert.IsTrue(TypeAnalyzer.IsLikelyEntityType(userModel), 
+        Assert.IsTrue(TypeAnalyzer.IsLikelyEntityType(userModel),
             "Type in custom namespace should be detected as entity type");
     }
 

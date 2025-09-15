@@ -8,7 +8,7 @@ using Sqlx.SqlGen;
 using System;
 using System.Linq;
 
-namespace Sqlx.Core;
+namespace Sqlx.Generator.Core;
 
 /// <summary>
 /// PostgreSQL database dialect provider with PostgreSQL-specific SQL syntax.

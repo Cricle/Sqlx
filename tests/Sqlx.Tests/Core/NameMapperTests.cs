@@ -24,31 +24,31 @@ public class NameMapperTests
     public void NameMapper_MapName_ConvertsPascalCaseToSnakeCase()
     {
         // Test basic PascalCase conversion
-        Assert.AreEqual("user_id", NameMapper.MapName("UserId"), 
+        Assert.AreEqual("user_id", NameMapper.MapName("UserId"),
             "Should convert PascalCase to snake_case");
-        Assert.AreEqual("first_name", NameMapper.MapName("FirstName"), 
+        Assert.AreEqual("first_name", NameMapper.MapName("FirstName"),
             "Should convert FirstName to snake_case");
-        Assert.AreEqual("email_address", NameMapper.MapName("EmailAddress"), 
+        Assert.AreEqual("email_address", NameMapper.MapName("EmailAddress"),
             "Should convert EmailAddress to snake_case");
-        Assert.AreEqual("created_date_time", NameMapper.MapName("CreatedDateTime"), 
+        Assert.AreEqual("created_date_time", NameMapper.MapName("CreatedDateTime"),
             "Should convert CreatedDateTime to snake_case");
 
         // Test camelCase conversion
-        Assert.AreEqual("user_id", NameMapper.MapName("userId"), 
+        Assert.AreEqual("user_id", NameMapper.MapName("userId"),
             "Should convert camelCase to snake_case");
-        Assert.AreEqual("first_name", NameMapper.MapName("firstName"), 
+        Assert.AreEqual("first_name", NameMapper.MapName("firstName"),
             "Should convert firstName to snake_case");
-        Assert.AreEqual("email_address", NameMapper.MapName("emailAddress"), 
+        Assert.AreEqual("email_address", NameMapper.MapName("emailAddress"),
             "Should convert emailAddress to snake_case");
 
         // Test single words
-        Assert.AreEqual("name", NameMapper.MapName("Name"), 
+        Assert.AreEqual("name", NameMapper.MapName("Name"),
             "Should convert single PascalCase word");
-        Assert.AreEqual("name", NameMapper.MapName("name"), 
+        Assert.AreEqual("name", NameMapper.MapName("name"),
             "Should handle single camelCase word");
-        Assert.AreEqual("id", NameMapper.MapName("Id"), 
+        Assert.AreEqual("id", NameMapper.MapName("Id"),
             "Should convert Id to lowercase");
-        Assert.AreEqual("i_d", NameMapper.MapName("ID"), 
+        Assert.AreEqual("i_d", NameMapper.MapName("ID"),
             "Should convert ID to i_d");
     }
 
@@ -59,25 +59,25 @@ public class NameMapperTests
     public void NameMapper_MapName_HandlesSpecialCharacters()
     {
         // Test with database parameter prefixes
-        Assert.AreEqual("@userid", NameMapper.MapName("@UserId"), 
+        Assert.AreEqual("@userid", NameMapper.MapName("@UserId"),
             "Should convert parameter with @ prefix to lowercase");
-        Assert.AreEqual("#tempvalue", NameMapper.MapName("#TempValue"), 
+        Assert.AreEqual("#tempvalue", NameMapper.MapName("#TempValue"),
             "Should convert parameter with # prefix to lowercase");
-        Assert.AreEqual("$paramname", NameMapper.MapName("$ParamName"), 
+        Assert.AreEqual("$paramname", NameMapper.MapName("$ParamName"),
             "Should convert parameter with $ prefix to lowercase");
 
         // Test with underscores already present
-        Assert.AreEqual("user__id__value", NameMapper.MapName("User_Id_Value"), 
+        Assert.AreEqual("user__id__value", NameMapper.MapName("User_Id_Value"),
             "Should handle existing underscores");
-        Assert.AreEqual("__private_field", NameMapper.MapName("_PrivateField"), 
+        Assert.AreEqual("__private_field", NameMapper.MapName("_PrivateField"),
             "Should handle leading underscore");
 
         // Test with numbers
-        Assert.AreEqual("user2_name", NameMapper.MapName("User2Name"), 
+        Assert.AreEqual("user2_name", NameMapper.MapName("User2Name"),
             "Should handle numbers in name");
-        Assert.AreEqual("address1", NameMapper.MapName("Address1"), 
+        Assert.AreEqual("address1", NameMapper.MapName("Address1"),
             "Should handle trailing numbers");
-        Assert.AreEqual("item_id2", NameMapper.MapName("ItemId2"), 
+        Assert.AreEqual("item_id2", NameMapper.MapName("ItemId2"),
             "Should handle numbers at end");
     }
 
@@ -88,27 +88,27 @@ public class NameMapperTests
     public void NameMapper_MapNameToSnakeCase_ConvertsCorrectly()
     {
         // Test comprehensive snake_case conversion
-        Assert.AreEqual("simple", NameMapper.MapNameToSnakeCase("Simple"), 
+        Assert.AreEqual("simple", NameMapper.MapNameToSnakeCase("Simple"),
             "Should convert simple word");
-        Assert.AreEqual("user_name", NameMapper.MapNameToSnakeCase("UserName"), 
+        Assert.AreEqual("user_name", NameMapper.MapNameToSnakeCase("UserName"),
             "Should convert two words");
-        Assert.AreEqual("user_profile_image", NameMapper.MapNameToSnakeCase("UserProfileImage"), 
+        Assert.AreEqual("user_profile_image", NameMapper.MapNameToSnakeCase("UserProfileImage"),
             "Should convert multiple words");
-        Assert.AreEqual("x_m_l_http_request", NameMapper.MapNameToSnakeCase("XMLHttpRequest"), 
+        Assert.AreEqual("x_m_l_http_request", NameMapper.MapNameToSnakeCase("XMLHttpRequest"),
             "Should handle acronyms");
 
         // Test with existing lowercase
-        Assert.AreEqual("already_lowercase", NameMapper.MapNameToSnakeCase("already_lowercase"), 
+        Assert.AreEqual("already_lowercase", NameMapper.MapNameToSnakeCase("already_lowercase"),
             "Should handle already snake_case");
-        Assert.AreEqual("mixed_case_string", NameMapper.MapNameToSnakeCase("mixedCaseString"), 
+        Assert.AreEqual("mixed_case_string", NameMapper.MapNameToSnakeCase("mixedCaseString"),
             "Should convert mixed case");
 
         // Test edge cases
-        Assert.AreEqual("a", NameMapper.MapNameToSnakeCase("A"), 
+        Assert.AreEqual("a", NameMapper.MapNameToSnakeCase("A"),
             "Should convert single letter");
-        Assert.AreEqual("a_b", NameMapper.MapNameToSnakeCase("AB"), 
+        Assert.AreEqual("a_b", NameMapper.MapNameToSnakeCase("AB"),
             "Should convert two letters");
-        Assert.AreEqual("a_b_c", NameMapper.MapNameToSnakeCase("ABC"), 
+        Assert.AreEqual("a_b_c", NameMapper.MapNameToSnakeCase("ABC"),
             "Should convert three letters");
     }
 
@@ -140,7 +140,7 @@ public class NameMapperTests
         foreach (var (input, expected) in testCases)
         {
             var result = NameMapper.MapName(input);
-            Assert.AreEqual(expected, result, 
+            Assert.AreEqual(expected, result,
                 $"Database field mapping for '{input}' should follow conventions");
         }
     }
@@ -152,27 +152,27 @@ public class NameMapperTests
     public void NameMapper_ComplexScenarios_HandledCorrectly()
     {
         // Test API and HTTP related terms
-        Assert.AreEqual("a_p_i_key", NameMapper.MapName("APIKey"), 
+        Assert.AreEqual("a_p_i_key", NameMapper.MapName("APIKey"),
             "Should handle API acronym");
-        Assert.AreEqual("h_t_t_p_response", NameMapper.MapName("HTTPResponse"), 
+        Assert.AreEqual("h_t_t_p_response", NameMapper.MapName("HTTPResponse"),
             "Should handle HTTP acronym");
-        Assert.AreEqual("u_r_l_path", NameMapper.MapName("URLPath"), 
+        Assert.AreEqual("u_r_l_path", NameMapper.MapName("URLPath"),
             "Should handle URL acronym");
-        Assert.AreEqual("j_s_o_n_data", NameMapper.MapName("JSONData"), 
+        Assert.AreEqual("j_s_o_n_data", NameMapper.MapName("JSONData"),
             "Should handle JSON acronym");
 
         // Test business domain terms
-        Assert.AreEqual("customer_billing_address", NameMapper.MapName("CustomerBillingAddress"), 
+        Assert.AreEqual("customer_billing_address", NameMapper.MapName("CustomerBillingAddress"),
             "Should handle long compound names");
-        Assert.AreEqual("product_category_name", NameMapper.MapName("ProductCategoryName"), 
+        Assert.AreEqual("product_category_name", NameMapper.MapName("ProductCategoryName"),
             "Should handle business terms");
-        Assert.AreEqual("order_line_item_quantity", NameMapper.MapName("OrderLineItemQuantity"), 
+        Assert.AreEqual("order_line_item_quantity", NameMapper.MapName("OrderLineItemQuantity"),
             "Should handle very long names");
 
         // Test technical terms
-        Assert.AreEqual("database_connection_string", NameMapper.MapName("DatabaseConnectionString"), 
+        Assert.AreEqual("database_connection_string", NameMapper.MapName("DatabaseConnectionString"),
             "Should handle technical terms");
-        Assert.AreEqual("encryption_algorithm_type", NameMapper.MapName("EncryptionAlgorithmType"), 
+        Assert.AreEqual("encryption_algorithm_type", NameMapper.MapName("EncryptionAlgorithmType"),
             "Should handle algorithm names");
     }
 
@@ -183,21 +183,21 @@ public class NameMapperTests
     public void NameMapper_NullAndEmpty_ThrowsAppropriateExceptions()
     {
         // Test null parameter
-        Assert.ThrowsException<ArgumentNullException>(() => NameMapper.MapName(null!), 
+        Assert.ThrowsException<ArgumentNullException>(() => NameMapper.MapName(null!),
             "Should throw ArgumentNullException for null parameter");
-        Assert.ThrowsException<ArgumentNullException>(() => NameMapper.MapNameToSnakeCase(null!), 
+        Assert.ThrowsException<ArgumentNullException>(() => NameMapper.MapNameToSnakeCase(null!),
             "Should throw ArgumentNullException for null parameter in MapNameToSnakeCase");
 
         // Test empty string
-        Assert.AreEqual("", NameMapper.MapName(""), 
+        Assert.AreEqual("", NameMapper.MapName(""),
             "Should handle empty string gracefully");
-        Assert.AreEqual("", NameMapper.MapNameToSnakeCase(""), 
+        Assert.AreEqual("", NameMapper.MapNameToSnakeCase(""),
             "Should handle empty string in MapNameToSnakeCase");
 
         // Test whitespace
-        Assert.AreEqual(" ", NameMapper.MapName(" "), 
+        Assert.AreEqual(" ", NameMapper.MapName(" "),
             "Should handle whitespace");
-        Assert.AreEqual("  ", NameMapper.MapName("  "), 
+        Assert.AreEqual("  ", NameMapper.MapName("  "),
             "Should handle multiple spaces");
     }
 
@@ -223,7 +223,7 @@ public class NameMapperTests
             {
                 var mapped = NameMapper.MapName(name);
                 var snakeCase = NameMapper.MapNameToSnakeCase(name);
-                
+
                 // Use results to ensure calls aren't optimized away
                 Assert.IsNotNull(mapped, "Mapped name should not be null");
                 Assert.IsNotNull(snakeCase, "Snake case name should not be null");
@@ -233,7 +233,7 @@ public class NameMapperTests
         var endTime = DateTime.UtcNow;
         var elapsed = endTime - startTime;
 
-        Assert.IsTrue(elapsed.TotalSeconds < 5, 
+        Assert.IsTrue(elapsed.TotalSeconds < 5,
             $"Many name mappings should complete quickly. Took: {elapsed.TotalSeconds} seconds");
     }
 
@@ -254,7 +254,7 @@ public class NameMapperTests
             var mapNameResult = NameMapper.MapName(name);
             var mapNameToSnakeCaseResult = NameMapper.MapNameToSnakeCase(name);
 
-            Assert.AreEqual(mapNameToSnakeCaseResult, mapNameResult, 
+            Assert.AreEqual(mapNameToSnakeCaseResult, mapNameResult,
                 $"MapName and MapNameToSnakeCase should return same result for '{name}'");
         }
     }
@@ -279,23 +279,23 @@ public class NameMapperTests
         foreach (var (input, expectedOutput) in patterns)
         {
             var result = NameMapper.MapName(input);
-            Assert.AreEqual(expectedOutput, result, 
+            Assert.AreEqual(expectedOutput, result,
                 $"Pattern '{input}' should consistently map to '{expectedOutput}'");
         }
 
         // Test that adding prefixes to the same base produces consistent patterns
         var baseWord = "User";
         var userResult = NameMapper.MapName(baseWord);
-        
+
         var userId = NameMapper.MapName(baseWord + "Id");
         var userName = NameMapper.MapName(baseWord + "Name");
         var userEmail = NameMapper.MapName(baseWord + "Email");
 
-        Assert.IsTrue(userId.StartsWith(userResult), 
+        Assert.IsTrue(userId.StartsWith(userResult),
             "UserId should start with the mapped base word");
-        Assert.IsTrue(userName.StartsWith(userResult), 
+        Assert.IsTrue(userName.StartsWith(userResult),
             "UserName should start with the mapped base word");
-        Assert.IsTrue(userEmail.StartsWith(userResult), 
+        Assert.IsTrue(userEmail.StartsWith(userResult),
             "UserEmail should start with the mapped base word");
     }
 
@@ -318,7 +318,7 @@ public class NameMapperTests
         foreach (var snakeCaseName in snakeCaseNames)
         {
             var result = NameMapper.MapName(snakeCaseName);
-            Assert.AreEqual(snakeCaseName, result, 
+            Assert.AreEqual(snakeCaseName, result,
                 $"Already snake_case name '{snakeCaseName}' should be preserved");
         }
     }
@@ -342,7 +342,7 @@ public class NameMapperTests
         foreach (var (input, expected) in parameterCases)
         {
             var result = NameMapper.MapName(input);
-            Assert.AreEqual(expected, result, 
+            Assert.AreEqual(expected, result,
                 $"SQL parameter '{input}' should be mapped to '{expected}'");
         }
     }

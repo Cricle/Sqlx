@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Sqlx.Core;
+namespace Sqlx;
 
 /// <summary>
 /// Infers SQL operations from method signatures and attributes.
@@ -37,6 +37,9 @@ internal static class SqlOperationInferrer
         ["modify"] = SqlOperationType.Update,
         ["edit"] = SqlOperationType.Update,
         ["change"] = SqlOperationType.Update,
+        ["increment"] = SqlOperationType.Update,
+        ["decrement"] = SqlOperationType.Update,
+        ["adjust"] = SqlOperationType.Update,
 
         // DELETE patterns
         ["delete"] = SqlOperationType.Delete,

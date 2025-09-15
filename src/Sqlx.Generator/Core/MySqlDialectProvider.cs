@@ -8,7 +8,7 @@ using Sqlx.SqlGen;
 using System;
 using System.Linq;
 
-namespace Sqlx.Core;
+namespace Sqlx.Generator.Core;
 
 /// <summary>
 /// MySQL database dialect provider with MySQL-specific SQL syntax.

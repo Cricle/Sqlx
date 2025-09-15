@@ -9,6 +9,7 @@ namespace Sqlx;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sqlx.SqlGen;
+using Sqlx.Generator.Core;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -53,19 +54,20 @@ internal partial class MethodGenerationContext : GenerationContextBase
 
         var rawSqlIsInParamter = true;
         var rawSqlShouldRemoveFromParams = false;
-        var rawSqlParam = GetAttributeParamter(methodSymbol, "RawSqlAttribute");
+        // RawSqlAttribute functionality has been merged into SqlxAttribute
+        var rawSqlParam = GetAttributeParamter(methodSymbol, "SqlxAttribute");
         if (rawSqlParam != null)
         {
             RawSqlParameter = rawSqlParam;
 
             // Check if RawSql has a constructor argument (pre-defined SQL)
             var attributes = rawSqlParam.GetAttributes();
-            var attr = attributes.IsDefaultOrEmpty 
-                ? null 
-                : attributes.FirstOrDefault(x => x.AttributeClass?.Name == "RawSqlAttribute");
+            var attr = attributes.IsDefaultOrEmpty
+                ? null
+                : attributes.FirstOrDefault(x => x.AttributeClass?.Name == "SqlxAttribute");
             rawSqlShouldRemoveFromParams = attr?.ConstructorArguments.Length > 0;
         }
-        else if (!MethodSymbol.GetAttributes().IsDefaultOrEmpty && MethodSymbol.GetAttributes().Any(x => x.AttributeClass?.Name == "RawSqlAttribute"))
+        else if (!MethodSymbol.GetAttributes().IsDefaultOrEmpty && MethodSymbol.GetAttributes().Any(x => x.AttributeClass?.Name == "SqlxAttribute"))
         {
             rawSqlIsInParamter = false;
             RawSqlParameter = methodSymbol;
@@ -209,10 +211,10 @@ internal partial class MethodGenerationContext : GenerationContextBase
 
         sb.AppendLine($"global::System.Data.Common.DbConnection {DbConnectionName} = {dbConnectionExpression} ?? ");
         sb.AppendLine($"    throw new global::System.ArgumentNullException(\"{dbConnectionExpression}\");");
-        
+
         // Generate parameter null checks first (fail fast)
         GenerateParameterNullChecks(sb);
-        
+
         sb.AppendLine($"if({DbConnectionName}.State != global::System.Data.ConnectionState.Open)");
         sb.AppendLine("{");
         sb.PushIndent();
@@ -428,14 +430,16 @@ internal partial class MethodGenerationContext : GenerationContextBase
         => methodSymbol.Parameters.FirstOrDefault(check);
 
     private static IParameterSymbol? GetAttributeParamter(IMethodSymbol methodSymbol, string attributeName)
-        => methodSymbol.Parameters.FirstOrDefault(x => x.GetAttributes().Any(y => y.AttributeClass?.Name == attributeName));
+        => methodSymbol.Parameters.FirstOrDefault(x => x.GetAttributes().Any(y => 
+            y.AttributeClass?.Name == attributeName || 
+            y.AttributeClass?.Name == attributeName.Replace("Attribute", "")));
 
-    private bool IsExecuteNoQuery() 
+    private bool IsExecuteNoQuery()
     {
         // Check for explicit ExecuteNoQueryAttribute
         if (MethodSymbol.GetAttributes().Any(x => x.AttributeClass?.Name == "ExecuteNoQueryAttribute"))
             return true;
-            
+
         // Check for SqlExecuteTypeAttribute with INSERT/UPDATE/DELETE operations
         var sqlExecuteTypeAttr = MethodSymbol.GetAttributes()
             .FirstOrDefault(x => x.AttributeClass?.Name == "SqlExecuteTypeAttribute");
@@ -448,11 +452,11 @@ internal partial class MethodGenerationContext : GenerationContextBase
                 string strValue when int.TryParse(strValue, out var intVal) => intVal,
                 _ => 0 // Select
             };
-            
+
             // INSERT (2), UPDATE (1), DELETE (3) should use ExecuteNonQuery
             return sqlExecuteType == 1 || sqlExecuteType == 2 || sqlExecuteType == 3;
         }
-        
+
         return false;
     }
 
@@ -469,7 +473,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
 
         WriteOutput(sb, columnDefines);
         WriteMethodExecuted(sb, ResultName);
-        
+
         // Generate appropriate return statement based on return type
         if (ReturnType.SpecialType == SpecialType.System_Boolean)
         {
@@ -881,11 +885,11 @@ internal partial class MethodGenerationContext : GenerationContextBase
         else if (symbol is INamedTypeSymbol namedType)
         {
             // Check if this is a record or has a primary constructor
-            if (Core.PrimaryConstructorAnalyzer.IsRecord(namedType) || Core.PrimaryConstructorAnalyzer.HasPrimaryConstructor(namedType))
+            if (PrimaryConstructorAnalyzer.IsRecord(namedType) || PrimaryConstructorAnalyzer.HasPrimaryConstructor(namedType))
             {
                 // Use enhanced entity mapping for records and primary constructors
-                sb.AppendLine($"// Enhanced entity mapping for {(Core.PrimaryConstructorAnalyzer.IsRecord(namedType) ? "record" : "primary constructor")} type");
-                Core.EnhancedEntityMappingGenerator.GenerateEntityMapping(sb, namedType);
+                sb.AppendLine($"// Enhanced entity mapping for {(PrimaryConstructorAnalyzer.IsRecord(namedType) ? "record" : "primary constructor")} type");
+                EnhancedEntityMappingGenerator.GenerateEntityMapping(sb, namedType);
                 // Rename the generated entity variable to match expected DataName
                 if (DataName != "entity")
                 {
@@ -896,13 +900,13 @@ internal partial class MethodGenerationContext : GenerationContextBase
             else
             {
                 // Traditional class instantiation
-                sb.AppendLine($"{symbol.ToDisplayString()} {DataName} = {newExp}{symbol.ToDisplayString(NullableFlowState.None)}{expCall};");
+                sb.AppendLine($"{symbol.ToDisplayString(NullableFlowState.None)} {DataName} = {newExp}{symbol.ToDisplayString(NullableFlowState.None)}{expCall};");
             }
         }
         else
         {
             // Fallback for non-named types
-            sb.AppendLine($"{symbol.ToDisplayString()} {DataName} = {newExp}{symbol.ToDisplayString(NullableFlowState.None)}{expCall};");
+            sb.AppendLine($"{symbol.ToDisplayString(NullableFlowState.None)} {DataName} = {newExp}{symbol.ToDisplayString(NullableFlowState.None)}{expCall};");
         }
 
         // Only set properties for non-abstract types that can be instantiated
@@ -969,12 +973,12 @@ internal partial class MethodGenerationContext : GenerationContextBase
     {
         var methodAttributes = MethodSymbol.GetAttributes();
         var classAttributes = ClassGenerationContext.ClassSymbol.GetAttributes();
-        
-        var methodDef = (!methodAttributes.IsDefaultOrEmpty 
-                ? methodAttributes.FirstOrDefault(x => x.AttributeClass?.Name == "SqlDefineAttribute") 
+
+        var methodDef = (!methodAttributes.IsDefaultOrEmpty
+                ? methodAttributes.FirstOrDefault(x => x.AttributeClass?.Name == "SqlDefineAttribute")
                 : null) ??
-            (!classAttributes.IsDefaultOrEmpty 
-                ? classAttributes.FirstOrDefault(x => x.AttributeClass?.Name == "SqlDefineAttribute") 
+            (!classAttributes.IsDefaultOrEmpty
+                ? classAttributes.FirstOrDefault(x => x.AttributeClass?.Name == "SqlDefineAttribute")
                 : null);
 
         if (methodDef != null)
@@ -1168,7 +1172,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
     {
         if (RawSqlParameter != null)
         {
-            var attr = RawSqlParameter.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "RawSqlAttribute");
+            var attr = RawSqlParameter.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlxAttribute");
             if (attr != null)
             {
                 if (attr.ConstructorArguments.Length == 0)
@@ -1308,7 +1312,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
         {
             return $"/* {operation} operation - table name will be determined at runtime */";
         }
-        
+
         return operation switch
         {
             "INSERT" => $"INSERT INTO {tableName} (/* columns */) VALUES (/* batch values */)",
@@ -1347,7 +1351,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
         }
 
         var entityParameter = MethodSymbol.Parameters.FirstOrDefault(p =>
-            !p.GetAttributes().Any(a => a.AttributeClass?.Name == "ExpressionToSqlAttribute") &&
+            !p.GetAttributes().Any(a => a.AttributeClass?.Name == "ExpressionToSqlAttribute" || a.AttributeClass?.Name == "ExpressionToSql") &&
             !IsSystemParameter(p));
 
         if (entityParameter != null)
@@ -1470,7 +1474,8 @@ internal partial class MethodGenerationContext : GenerationContextBase
                typeName == "DbConnection" ||
                parameter.GetAttributes().Any(a =>
                    a.AttributeClass?.Name == "TimeoutAttribute" ||
-                   a.AttributeClass?.Name == "ExpressionToSqlAttribute");
+                   a.AttributeClass?.Name == "ExpressionToSqlAttribute" ||
+                   a.AttributeClass?.Name == "ExpressionToSql");
     }
     private void GenerateBatchInsertSql(IndentedStringBuilder sb, string sqlTemplate)
     {
@@ -1703,7 +1708,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
             var entityType = tempObjectMap.ElementSymbol as INamedTypeSymbol;
             tableName = entityType?.Name ?? "UnknownTable";
         }
-        
+
         var objectMap = new ObjectMap(collectionParam);
         var properties = objectMap.Properties.ToList();
         var operationType = GetBatchOperationType();
@@ -1802,7 +1807,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
             var entityType = tempObjectMap.ElementSymbol as INamedTypeSymbol;
             tableName = entityType?.Name ?? "UnknownTable";
         }
-        
+
         var objectMap = new ObjectMap(collectionParam);
         var properties = objectMap.Properties.ToList();
         var operationType = GetBatchOperationType();
@@ -2123,7 +2128,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
         // If not found, check for primary constructor parameter with DbConnection
         if (dbConnectionMember == null)
         {
-            var primaryConstructor = Core.PrimaryConstructorAnalyzer.GetPrimaryConstructor(repositoryClass);
+            var primaryConstructor = PrimaryConstructorAnalyzer.GetPrimaryConstructor(repositoryClass);
             if (primaryConstructor != null)
             {
                 var connectionParam = primaryConstructor.Parameters.FirstOrDefault(p => p.Type.IsDbConnection());
@@ -2189,7 +2194,8 @@ internal partial class MethodGenerationContext : GenerationContextBase
         // Skip parameters with special attributes
         if (parameter.GetAttributes().Any(a =>
             a.AttributeClass?.Name == "TimeoutAttribute" ||
-            a.AttributeClass?.Name == "ExpressionToSqlAttribute"))
+            a.AttributeClass?.Name == "ExpressionToSqlAttribute" ||
+            a.AttributeClass?.Name == "ExpressionToSql"))
         {
             return false;
         }
@@ -2207,9 +2213,9 @@ internal partial class MethodGenerationContext : GenerationContextBase
             if (parameter.Type is INamedTypeSymbol namedType)
             {
                 var baseTypeName = namedType.Name;
-                if (baseTypeName == "IEnumerable" || 
-                    baseTypeName == "List" || 
-                    baseTypeName == "IList" || 
+                if (baseTypeName == "IEnumerable" ||
+                    baseTypeName == "List" ||
+                    baseTypeName == "IList" ||
                     baseTypeName == "ICollection" ||
                     (namedType.IsGenericType && namedType.TypeArguments.Length > 0))
                 {
@@ -2218,7 +2224,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
             }
 
             // Check for entity types (custom classes)
-            if (parameter.Type.TypeKind == TypeKind.Class && 
+            if (parameter.Type.TypeKind == TypeKind.Class &&
                 !parameter.Type.ToDisplayString().StartsWith("System."))
             {
                 return true; // Custom entity types should not be null

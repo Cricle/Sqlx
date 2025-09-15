@@ -64,24 +64,24 @@ public class MessagesExtendedTests
         {
             var diagnostic = property.GetValue(null) as DiagnosticDescriptor;
             Assert.IsNotNull(diagnostic, $"Property {property.Name} should return a valid DiagnosticDescriptor");
-            
+
             // Check ID format
             Assert.IsTrue(diagnostic.Id.StartsWith("SP"), $"Diagnostic ID {diagnostic.Id} should start with 'SP'");
-            Assert.IsTrue(diagnostic.Id.Length == 6, $"Diagnostic ID {diagnostic.Id} should be 6 characters long");
-            
+            Assert.AreEqual(6, diagnostic.Id.Length, $"Diagnostic ID {diagnostic.Id} should be 6 characters long");
+
             // Check that title and message are not empty
-            Assert.IsFalse(string.IsNullOrWhiteSpace(diagnostic.Title.ToString()), 
+            Assert.IsFalse(string.IsNullOrWhiteSpace(diagnostic.Title.ToString()),
                 $"Diagnostic {diagnostic.Id} should have a non-empty title");
-            Assert.IsFalse(string.IsNullOrWhiteSpace(diagnostic.MessageFormat.ToString()), 
+            Assert.IsFalse(string.IsNullOrWhiteSpace(diagnostic.MessageFormat.ToString()),
                 $"Diagnostic {diagnostic.Id} should have a non-empty message format");
-            
+
             // Check category
-            Assert.IsFalse(string.IsNullOrWhiteSpace(diagnostic.Category), 
+            Assert.IsFalse(string.IsNullOrWhiteSpace(diagnostic.Category),
                 $"Diagnostic {diagnostic.Id} should have a category");
-            
+
             // Check severity
-            Assert.IsTrue(diagnostic.DefaultSeverity != DiagnosticSeverity.Hidden, 
-                $"Diagnostic {diagnostic.Id} should have a meaningful severity level");
+            Assert.AreNotEqual(DiagnosticSeverity.Hidden,
+diagnostic.DefaultSeverity, $"Diagnostic {diagnostic.Id} should have a meaningful severity level");
         }
     }
 
@@ -143,7 +143,7 @@ public class MessagesExtendedTests
 
         // Assert
         Assert.IsTrue(categories.Count <= 3, "Should have a reasonable number of categories");
-        Assert.IsTrue(categories.Contains("Sqlx") || categories.Contains("Internal"), 
+        Assert.IsTrue(categories.Contains("Sqlx") || categories.Contains("Internal"),
             "Should contain expected categories");
     }
 
@@ -156,11 +156,11 @@ public class MessagesExtendedTests
         var sp0005 = Messages.SP0005; // Cannot map entity '{0}' to database table
 
         // Assert
-        Assert.IsTrue(sp0002.MessageFormat.ToString().Contains("{0}"), 
+        Assert.IsTrue(sp0002.MessageFormat.ToString().Contains("{0}"),
             "SP0002 should have a parameter placeholder");
-        Assert.IsTrue(sp0004.MessageFormat.ToString().Contains("{0}"), 
+        Assert.IsTrue(sp0004.MessageFormat.ToString().Contains("{0}"),
             "SP0004 should have a parameter placeholder");
-        Assert.IsTrue(sp0005.MessageFormat.ToString().Contains("{0}"), 
+        Assert.IsTrue(sp0005.MessageFormat.ToString().Contains("{0}"),
             "SP0005 should have a parameter placeholder");
     }
 
@@ -178,11 +178,11 @@ public class MessagesExtendedTests
         {
             var diagnostic = property.GetValue(null) as DiagnosticDescriptor;
             Assert.IsNotNull(diagnostic);
-            
+
             var description = diagnostic.Description.ToString();
             if (!string.IsNullOrEmpty(description))
             {
-                Assert.IsTrue(description.Length > 10, 
+                Assert.IsTrue(description.Length > 10,
                     $"Description for {diagnostic.Id} should be informative (current: '{description}')");
             }
         }
@@ -202,7 +202,7 @@ public class MessagesExtendedTests
         {
             var diagnostic = property.GetValue(null) as DiagnosticDescriptor;
             Assert.IsNotNull(diagnostic);
-            Assert.IsTrue(diagnostic.IsEnabledByDefault, 
+            Assert.IsTrue(diagnostic.IsEnabledByDefault,
                 $"Diagnostic {diagnostic.Id} should be enabled by default");
         }
     }
@@ -231,9 +231,9 @@ public class MessagesExtendedTests
         // Act & Assert
         foreach (var property in diagnosticProperties)
         {
-            Assert.IsTrue(property.GetGetMethod()?.IsStatic == true, 
-                $"Property {property.Name} should be static");
-            Assert.IsNull(property.GetSetMethod(), 
+            Assert.AreEqual(true,
+property.GetGetMethod()?.IsStatic, $"Property {property.Name} should be static");
+            Assert.IsNull(property.GetSetMethod(),
                 $"Property {property.Name} should be readonly");
         }
     }

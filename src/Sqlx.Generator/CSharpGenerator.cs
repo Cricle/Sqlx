@@ -7,7 +7,7 @@
 namespace Sqlx;
 
 using Microsoft.CodeAnalysis;
-using Sqlx.Core;
+using Sqlx;
 using System.Diagnostics;
 
 /// <summary>
@@ -16,7 +16,7 @@ using System.Diagnostics;
 [Generator(LanguageNames.CSharp)]
 public partial class CSharpGenerator : AbstractGenerator
 {
-    // Attributes are now provided by Sqlx.Core project - no need to generate them
+    // Attributes are now provided by Sqlx project - no need to generate them
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CSharpGenerator"/> class.
@@ -43,7 +43,7 @@ public partial class CSharpGenerator : AbstractGenerator
         System.Diagnostics.Debug.WriteLine("CSharpGenerator.Initialize called");
 #endif
         context.RegisterForSyntaxNotifications(() => new CSharpSyntaxReceiver());
-        // Attributes are now provided by Sqlx.Core project - no need to generate them
+        // Attributes are now provided by Sqlx project - no need to generate them
         // context.RegisterForPostInitialization removed
     }
 }

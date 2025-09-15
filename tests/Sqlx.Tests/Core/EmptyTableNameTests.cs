@@ -20,11 +20,11 @@ public class EmptyTableNameTests
         // 1. BatchCommand operations that don't need predefined table names
         // 2. Custom SQL with stored procedures
         // 3. Expression-based SQL generation
-        
+
         // Test that empty table name doesn't cause exceptions
         var emptyTableName = string.Empty;
         var nullTableName = (string?)null;
-        
+
         Assert.IsTrue(string.IsNullOrEmpty(emptyTableName), "Empty table name should be handled");
         Assert.IsTrue(string.IsNullOrEmpty(nullTableName), "Null table name should be handled");
     }
@@ -34,7 +34,7 @@ public class EmptyTableNameTests
     {
         // This test documents the expected behavior for BatchCommand operations
         // When table name is not provided, it should be inferred from the entity type
-        
+
         var expectedBehavior = @"
         // When SqlExecuteType is BatchCommand with empty table name:
         [SqlExecuteType(SqlExecuteTypes.BatchCommand, """")]
@@ -43,7 +43,7 @@ public class EmptyTableNameTests
         // The generated code should infer table name from User entity type:
         // tableName = entityType?.Name ?? ""UnknownTable""
         ";
-        
+
         Assert.IsNotNull(expectedBehavior, "Batch commands should infer table names from entity types");
     }
 
@@ -59,11 +59,11 @@ public class EmptyTableNameTests
             "SELECT GETDATE()", // Function call without table
             "SELECT @param AS result" // Parameter-only query
         };
-        
+
         foreach (var scenario in customSqlScenarios)
         {
             Assert.IsNotNull(scenario, $"Custom SQL scenario should be valid: {scenario}");
-            Assert.IsFalse(scenario.Contains("INSERT INTO "), 
+            Assert.IsFalse(scenario.Contains("INSERT INTO "),
                 $"Custom SQL scenario doesn't require table name: {scenario}");
         }
     }
@@ -78,11 +78,11 @@ public class EmptyTableNameTests
             "Expression<Func<User, object>> selector", // SELECT clause generation
             "Expression<Func<User, User>> updater", // SET clause generation
         };
-        
+
         foreach (var scenario in expressionScenarios)
         {
             Assert.IsNotNull(scenario, $"Expression scenario should be valid: {scenario}");
-            Assert.IsTrue(scenario.Contains("Expression"), 
+            Assert.IsTrue(scenario.Contains("Expression"),
                 $"Expression scenario uses Expression<T>: {scenario}");
         }
     }
@@ -92,7 +92,7 @@ public class EmptyTableNameTests
     {
         // Test that all SqlExecuteTypes enum values are valid
         // This ensures the enum is properly defined for use with empty table names
-        
+
         var enumValues = new[]
         {
             0, // Select
@@ -104,15 +104,15 @@ public class EmptyTableNameTests
             6, // BatchDelete
             7  // BatchCommand
         };
-        
+
         // Verify enum values are sequential and start from 0
         for (int i = 0; i < enumValues.Length; i++)
         {
             Assert.AreEqual(i, enumValues[i], $"SqlExecuteTypes enum value at index {i} should be {i}");
         }
-        
+
         // Verify BatchCommand is the last value (allows empty table names)
-        Assert.AreEqual(7, enumValues[7], 
+        Assert.AreEqual(7, enumValues[7],
             "BatchCommand should be enum value 7");
     }
 
@@ -121,18 +121,18 @@ public class EmptyTableNameTests
     {
         // This test documents how table names are inferred from entity types
         // when not explicitly provided in SqlExecuteType attribute
-        
+
         var entityTypeToTableNameMappings = new[]
         {
             ("User", "User"),
-            ("UserProfile", "UserProfile"), 
+            ("UserProfile", "UserProfile"),
             ("OrderItem", "OrderItem"),
             ("ProductCategory", "ProductCategory")
         };
-        
+
         foreach (var (entityType, expectedTableName) in entityTypeToTableNameMappings)
         {
-            Assert.AreEqual(expectedTableName, entityType, 
+            Assert.AreEqual(expectedTableName, entityType,
                 $"Entity type {entityType} should map to table name {expectedTableName}");
         }
     }
@@ -142,10 +142,10 @@ public class EmptyTableNameTests
     {
         // Test that SqlDefine.WrapColumn handles empty table names gracefully
         var sqlDefine = Sqlx.SqlDefine.SqlServer;
-        
+
         var result1 = sqlDefine.WrapColumn("");
         var result2 = sqlDefine.WrapColumn(null!);
-        
+
         // Should not throw exceptions
         Assert.IsTrue(result1 == null || result1.Length >= 0, "Empty string should be handled gracefully");
         Assert.IsTrue(result2 == null || result2.Length >= 0, "Null should be handled gracefully");
@@ -162,7 +162,7 @@ public class EmptyTableNameTests
             "Entity type has no properties for column mapping",
             "Collection parameter is null or empty"
         };
-        
+
         foreach (var scenario in errorScenarios)
         {
             Assert.IsNotNull(scenario, $"Error scenario should provide useful message: {scenario}");
@@ -175,7 +175,7 @@ public class EmptyTableNameTests
     {
         // Verify that Constants.SqlExecuteTypeValues have valid values
         // This ensures consistency in the system
-        
+
         // Test that constants exist and have reasonable values
         Assert.IsTrue(Sqlx.Constants.SqlExecuteTypeValues.Select >= 0);
         Assert.IsTrue(Sqlx.Constants.SqlExecuteTypeValues.Insert >= 0);
@@ -185,7 +185,7 @@ public class EmptyTableNameTests
         Assert.IsTrue(Sqlx.Constants.SqlExecuteTypeValues.BatchUpdate >= 0);
         Assert.IsTrue(Sqlx.Constants.SqlExecuteTypeValues.BatchDelete >= 0);
         Assert.IsTrue(Sqlx.Constants.SqlExecuteTypeValues.BatchCommand >= 0);
-        
+
         // Verify they are not all the same value
         var values = new[]
         {
@@ -198,7 +198,7 @@ public class EmptyTableNameTests
             Sqlx.Constants.SqlExecuteTypeValues.BatchDelete,
             Sqlx.Constants.SqlExecuteTypeValues.BatchCommand
         };
-        
+
         var distinctValues = values.Distinct().ToArray();
         Assert.IsTrue(distinctValues.Length > 1, "Constants should have different values for different operations");
     }
@@ -218,15 +218,15 @@ public class EmptyTableNameTests
             "Temporary table operations",
             "System function queries (SELECT GETDATE())"
         };
-        
+
         foreach (var useCase in validEmptyTableNameUseCases)
         {
             Assert.IsNotNull(useCase, $"Use case should be documented: {useCase}");
             Assert.IsTrue(useCase.Length > 5, $"Use case should be descriptive: {useCase}");
         }
-        
+
         // Verify we have a reasonable number of use cases
-        Assert.IsTrue(validEmptyTableNameUseCases.Length >= 5, 
+        Assert.IsTrue(validEmptyTableNameUseCases.Length >= 5,
             "Should have multiple valid use cases for empty table names");
     }
 
@@ -235,7 +235,7 @@ public class EmptyTableNameTests
     {
         // This test ensures that empty table names are not automatically rejected
         // The validation should be context-dependent
-        
+
         var tableNameValidationResults = new[]
         {
             (tableName: "", isValidForBatchCommand: true, isValidForBasicCrud: false),
@@ -243,20 +243,20 @@ public class EmptyTableNameTests
             (tableName: "Users", isValidForBatchCommand: true, isValidForBasicCrud: true),
             (tableName: "  ", isValidForBatchCommand: false, isValidForBasicCrud: false), // whitespace only
         };
-        
+
         foreach (var (tableName, isValidForBatchCommand, isValidForBasicCrud) in tableNameValidationResults)
         {
             // For BatchCommand operations, empty table names should be acceptable
             if (isValidForBatchCommand)
             {
-                Assert.IsTrue(string.IsNullOrEmpty(tableName) || !string.IsNullOrWhiteSpace(tableName), 
+                Assert.IsTrue(string.IsNullOrEmpty(tableName) || !string.IsNullOrWhiteSpace(tableName),
                     $"Table name '{tableName}' should be valid for BatchCommand");
             }
-            
+
             // For basic CRUD operations, non-empty table names are preferred
             if (isValidForBasicCrud)
             {
-                Assert.IsFalse(string.IsNullOrEmpty(tableName), 
+                Assert.IsFalse(string.IsNullOrEmpty(tableName),
                     $"Table name '{tableName}' should not be empty for basic CRUD");
             }
         }

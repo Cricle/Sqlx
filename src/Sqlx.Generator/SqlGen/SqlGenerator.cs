@@ -4,6 +4,8 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
+using Sqlx.Generator.Core;
+
 namespace Sqlx.SqlGen
 {
     internal sealed class SqlGenerator

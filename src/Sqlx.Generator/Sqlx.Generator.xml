@@ -115,46 +115,46 @@
             生成的代码中的变量名
             </summary>
         </member>
-        <member name="T:Sqlx.Core.DatabaseDialectFactory">
+        <member name="T:Sqlx.DatabaseDialectFactory">
             <summary>
             Simple factory for creating database dialect providers.
             No caching needed - these are lightweight objects.
             </summary>
         </member>
-        <member name="M:Sqlx.Core.DatabaseDialectFactory.GetDialectProvider(Sqlx.SqlGen.SqlDefineTypes)">
+        <member name="M:Sqlx.DatabaseDialectFactory.GetDialectProvider(Sqlx.SqlGen.SqlDefineTypes)">
             <summary>
             Gets the dialect provider for the specified database type.
             </summary>
             <param name="dialectType">The database dialect type.</param>
             <returns>The appropriate dialect provider.</returns>
         </member>
-        <member name="M:Sqlx.Core.DatabaseDialectFactory.GetDialectProvider(Sqlx.SqlDefine)">
+        <member name="M:Sqlx.DatabaseDialectFactory.GetDialectProvider(Sqlx.SqlDefine)">
             <summary>
             Gets the dialect provider for the specified SQL definition.
             </summary>
             <param name="sqlDefine">The SQL definition.</param>
             <returns>The appropriate dialect provider.</returns>
         </member>
-        <member name="M:Sqlx.Core.DatabaseDialectFactory.InferDialectFromCharacteristics(Sqlx.SqlDefine)">
+        <member name="M:Sqlx.DatabaseDialectFactory.InferDialectFromCharacteristics(Sqlx.SqlDefine)">
             <summary>
             Infers the dialect type from SqlDefine characteristics.
             </summary>
             <param name="sqlDefine">The SQL definition.</param>
             <returns>The inferred dialect type.</returns>
         </member>
-        <member name="M:Sqlx.Core.DatabaseDialectFactory.CreateDialectProvider(Sqlx.SqlGen.SqlDefineTypes)">
+        <member name="M:Sqlx.DatabaseDialectFactory.CreateDialectProvider(Sqlx.SqlGen.SqlDefineTypes)">
             <summary>
             Creates a dialect provider for the specified type.
             </summary>
             <param name="dialectType">The dialect type.</param>
             <returns>The created dialect provider.</returns>
         </member>
-        <member name="T:Sqlx.Core.DatabaseDialectProviderExtensions">
+        <member name="T:Sqlx.DatabaseDialectProviderExtensions">
             <summary>
             Extension methods for IDatabaseDialectProvider.
             </summary>
         </member>
-        <member name="M:Sqlx.Core.DatabaseDialectProviderExtensions.WrapColumn(Sqlx.Core.IDatabaseDialectProvider,System.String)">
+        <member name="M:Sqlx.DatabaseDialectProviderExtensions.WrapColumn(Sqlx.IDatabaseDialectProvider,System.String)">
             <summary>
             Wraps a column name with the appropriate database-specific delimiters.
             </summary>
@@ -162,7 +162,7 @@
             <param name="columnName">The column name to wrap.</param>
             <returns>The wrapped column name.</returns>
         </member>
-        <member name="M:Sqlx.Core.DatabaseDialectProviderExtensions.WrapString(Sqlx.Core.IDatabaseDialectProvider,System.String)">
+        <member name="M:Sqlx.DatabaseDialectProviderExtensions.WrapString(Sqlx.IDatabaseDialectProvider,System.String)">
             <summary>
             Wraps a string value with the appropriate database-specific delimiters.
             </summary>
@@ -170,135 +170,135 @@
             <param name="value">The string value to wrap.</param>
             <returns>The wrapped string value.</returns>
         </member>
-        <member name="M:Sqlx.Core.DatabaseDialectProviderExtensions.GetParameterPrefix(Sqlx.Core.IDatabaseDialectProvider)">
+        <member name="M:Sqlx.DatabaseDialectProviderExtensions.GetParameterPrefix(Sqlx.IDatabaseDialectProvider)">
             <summary>
             Gets the parameter prefix for the database dialect.
             </summary>
             <param name="provider">The dialect provider.</param>
             <returns>The parameter prefix (e.g., "@", "$", ":"). </returns>
         </member>
-        <member name="T:Sqlx.Core.DiagnosticHelper">
+        <member name="T:Sqlx.DiagnosticHelper">
             <summary>
             诊断和错误处理辅助类
             提供详细的错误信息和调试支持
             </summary>
         </member>
-        <member name="M:Sqlx.Core.DiagnosticHelper.CreateDiagnostic(System.String,System.String,System.String,Microsoft.CodeAnalysis.DiagnosticSeverity,Microsoft.CodeAnalysis.Location,System.Object[])">
+        <member name="M:Sqlx.DiagnosticHelper.CreateDiagnostic(System.String,System.String,System.String,Microsoft.CodeAnalysis.DiagnosticSeverity,Microsoft.CodeAnalysis.Location,System.Object[])">
             <summary>
             创建详细的编译诊断信息
             </summary>
         </member>
-        <member name="M:Sqlx.Core.DiagnosticHelper.CreatePrimaryConstructorDiagnostic(System.String,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.Location)">
+        <member name="M:Sqlx.DiagnosticHelper.CreatePrimaryConstructorDiagnostic(System.String,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.Location)">
             <summary>
             创建 Primary Constructor 相关的诊断信息
             </summary>
         </member>
-        <member name="M:Sqlx.Core.DiagnosticHelper.CreateRecordTypeDiagnostic(System.String,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.Location)">
+        <member name="M:Sqlx.DiagnosticHelper.CreateRecordTypeDiagnostic(System.String,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.Location)">
             <summary>
             创建 Record 类型相关的诊断信息
             </summary>
         </member>
-        <member name="M:Sqlx.Core.DiagnosticHelper.CreateEntityInferenceDiagnostic(System.String,System.String,Microsoft.CodeAnalysis.Location)">
+        <member name="M:Sqlx.DiagnosticHelper.CreateEntityInferenceDiagnostic(System.String,System.String,Microsoft.CodeAnalysis.Location)">
             <summary>
             创建实体类型推断相关的诊断信息
             </summary>
         </member>
-        <member name="M:Sqlx.Core.DiagnosticHelper.CreatePerformanceSuggestion(System.String,System.String,Microsoft.CodeAnalysis.Location)">
+        <member name="M:Sqlx.DiagnosticHelper.CreatePerformanceSuggestion(System.String,System.String,Microsoft.CodeAnalysis.Location)">
             <summary>
             创建性能优化建议诊断信息
             </summary>
         </member>
-        <member name="M:Sqlx.Core.DiagnosticHelper.GenerateTypeAnalysisReport(Microsoft.CodeAnalysis.INamedTypeSymbol)">
+        <member name="M:Sqlx.DiagnosticHelper.GenerateTypeAnalysisReport(Microsoft.CodeAnalysis.INamedTypeSymbol)">
             <summary>
             生成详细的类型分析报告
             </summary>
         </member>
-        <member name="M:Sqlx.Core.DiagnosticHelper.ValidateEntityType(Microsoft.CodeAnalysis.INamedTypeSymbol)">
+        <member name="M:Sqlx.DiagnosticHelper.ValidateEntityType(Microsoft.CodeAnalysis.INamedTypeSymbol)">
             <summary>
             验证实体类型的完整性
             </summary>
         </member>
-        <member name="M:Sqlx.Core.DiagnosticHelper.GeneratePerformanceSuggestions(Microsoft.CodeAnalysis.INamedTypeSymbol)">
+        <member name="M:Sqlx.DiagnosticHelper.GeneratePerformanceSuggestions(Microsoft.CodeAnalysis.INamedTypeSymbol)">
             <summary>
             生成性能优化建议
             </summary>
         </member>
-        <member name="M:Sqlx.Core.DiagnosticHelper.LogCodeGenerationContext(System.String,Microsoft.CodeAnalysis.INamedTypeSymbol,System.String)">
+        <member name="M:Sqlx.DiagnosticHelper.LogCodeGenerationContext(System.String,Microsoft.CodeAnalysis.INamedTypeSymbol,System.String)">
             <summary>
             创建代码生成上下文诊断
             </summary>
         </member>
-        <member name="M:Sqlx.Core.DiagnosticHelper.ValidateGeneratedCode(System.String,Microsoft.CodeAnalysis.INamedTypeSymbol)">
+        <member name="M:Sqlx.DiagnosticHelper.ValidateGeneratedCode(System.String,Microsoft.CodeAnalysis.INamedTypeSymbol)">
             <summary>
             验证生成的代码质量
             </summary>
         </member>
-        <member name="T:Sqlx.Core.DiagnosticIds">
+        <member name="T:Sqlx.DiagnosticIds">
             <summary>
             诊断 ID 常量定义
             </summary>
         </member>
-        <member name="T:Sqlx.Core.EnhancedEntityMappingGenerator">
+        <member name="T:Sqlx.EnhancedEntityMappingGenerator">
             <summary>
             Enhanced entity mapping generator that supports primary constructors and records.
             </summary>
         </member>
-        <member name="M:Sqlx.Core.EnhancedEntityMappingGenerator.GenerateEntityMapping(Sqlx.IndentedStringBuilder,Microsoft.CodeAnalysis.INamedTypeSymbol)">
+        <member name="M:Sqlx.EnhancedEntityMappingGenerator.GenerateEntityMapping(Sqlx.IndentedStringBuilder,Microsoft.CodeAnalysis.INamedTypeSymbol)">
             <summary>
             Generates optimized entity mapping code with support for primary constructors and records.
             </summary>
         </member>
-        <member name="M:Sqlx.Core.EnhancedEntityMappingGenerator.GenerateRecordMapping(Sqlx.IndentedStringBuilder,Microsoft.CodeAnalysis.INamedTypeSymbol,System.Collections.Generic.List{Sqlx.Core.IMemberInfo})">
+        <member name="M:Sqlx.EnhancedEntityMappingGenerator.GenerateRecordMapping(Sqlx.IndentedStringBuilder,Microsoft.CodeAnalysis.INamedTypeSymbol,System.Collections.Generic.List{Sqlx.IMemberInfo})">
             <summary>
             Generates mapping for record types.
             </summary>
         </member>
-        <member name="M:Sqlx.Core.EnhancedEntityMappingGenerator.GeneratePrimaryConstructorMapping(Sqlx.IndentedStringBuilder,Microsoft.CodeAnalysis.INamedTypeSymbol,System.Collections.Generic.List{Sqlx.Core.IMemberInfo})">
+        <member name="M:Sqlx.EnhancedEntityMappingGenerator.GeneratePrimaryConstructorMapping(Sqlx.IndentedStringBuilder,Microsoft.CodeAnalysis.INamedTypeSymbol,System.Collections.Generic.List{Sqlx.IMemberInfo})">
             <summary>
             Generates mapping for classes with primary constructors.
             </summary>
         </member>
-        <member name="M:Sqlx.Core.EnhancedEntityMappingGenerator.GenerateTraditionalMapping(Sqlx.IndentedStringBuilder,Microsoft.CodeAnalysis.INamedTypeSymbol,System.Collections.Generic.List{Sqlx.Core.IMemberInfo})">
+        <member name="M:Sqlx.EnhancedEntityMappingGenerator.GenerateTraditionalMapping(Sqlx.IndentedStringBuilder,Microsoft.CodeAnalysis.INamedTypeSymbol,System.Collections.Generic.List{Sqlx.IMemberInfo})">
             <summary>
             Generates traditional mapping using object initializer.
             </summary>
         </member>
-        <member name="M:Sqlx.Core.EnhancedEntityMappingGenerator.GenerateObjectInitializerMapping(Sqlx.IndentedStringBuilder,Microsoft.CodeAnalysis.INamedTypeSymbol,System.Collections.Generic.List{Sqlx.Core.IMemberInfo})">
+        <member name="M:Sqlx.EnhancedEntityMappingGenerator.GenerateObjectInitializerMapping(Sqlx.IndentedStringBuilder,Microsoft.CodeAnalysis.INamedTypeSymbol,System.Collections.Generic.List{Sqlx.IMemberInfo})">
             <summary>
             Generates mapping using object initializer syntax.
             </summary>
         </member>
-        <member name="M:Sqlx.Core.EnhancedEntityMappingGenerator.GetColumnName(Sqlx.Core.IMemberInfo)">
+        <member name="M:Sqlx.EnhancedEntityMappingGenerator.GetColumnName(Sqlx.IMemberInfo)">
             <summary>
             Gets the column name for a member.
             </summary>
         </member>
-        <member name="M:Sqlx.Core.EnhancedEntityMappingGenerator.GetDataReadExpression(Microsoft.CodeAnalysis.ITypeSymbol,System.String,System.String,System.String)">
+        <member name="M:Sqlx.EnhancedEntityMappingGenerator.GetDataReadExpression(Microsoft.CodeAnalysis.ITypeSymbol,System.String,System.String,System.String)">
             <summary>
             Gets the data read expression for a type.
             </summary>
         </member>
-        <member name="M:Sqlx.Core.EnhancedEntityMappingGenerator.GetPropertyNameFromParameter(System.String)">
+        <member name="M:Sqlx.EnhancedEntityMappingGenerator.GetPropertyNameFromParameter(System.String)">
             <summary>
             Converts a parameter name to the corresponding property name (PascalCase).
             </summary>
         </member>
-        <member name="T:Sqlx.Core.IDatabaseDialectProvider">
+        <member name="T:Sqlx.IDatabaseDialectProvider">
             <summary>
             Provides database-specific SQL generation and syntax handling.
             </summary>
         </member>
-        <member name="P:Sqlx.Core.IDatabaseDialectProvider.SqlDefine">
+        <member name="P:Sqlx.IDatabaseDialectProvider.SqlDefine">
             <summary>
             Gets the SQL definition for this dialect.
             </summary>
         </member>
-        <member name="P:Sqlx.Core.IDatabaseDialectProvider.DialectType">
+        <member name="P:Sqlx.IDatabaseDialectProvider.DialectType">
             <summary>
             Gets the dialect type.
             </summary>
         </member>
-        <member name="M:Sqlx.Core.IDatabaseDialectProvider.GenerateLimitClause(System.Nullable{System.Int32},System.Nullable{System.Int32})">
+        <member name="M:Sqlx.IDatabaseDialectProvider.GenerateLimitClause(System.Nullable{System.Int32},System.Nullable{System.Int32})">
             <summary>
             Generates a LIMIT clause for pagination.
             </summary>
@@ -306,7 +306,7 @@
             <param name="offset">The number of rows to skip.</param>
             <returns>The SQL LIMIT clause.</returns>
         </member>
-        <member name="M:Sqlx.Core.IDatabaseDialectProvider.GenerateInsertWithReturning(System.String,System.String[])">
+        <member name="M:Sqlx.IDatabaseDialectProvider.GenerateInsertWithReturning(System.String,System.String[])">
             <summary>
             Generates an INSERT statement with RETURNING clause for getting the inserted ID.
             </summary>
@@ -314,7 +314,7 @@
             <param name="columns">The column names.</param>
             <returns>The SQL INSERT statement with RETURNING clause.</returns>
         </member>
-        <member name="M:Sqlx.Core.IDatabaseDialectProvider.GenerateBatchInsert(System.String,System.String[],System.Int32)">
+        <member name="M:Sqlx.IDatabaseDialectProvider.GenerateBatchInsert(System.String,System.String[],System.Int32)">
             <summary>
             Generates a batch INSERT statement optimized for the specific database.
             </summary>
@@ -323,7 +323,7 @@
             <param name="batchSize">The batch size.</param>
             <returns>The SQL batch INSERT statement.</returns>
         </member>
-        <member name="M:Sqlx.Core.IDatabaseDialectProvider.GenerateUpsert(System.String,System.String[],System.String[])">
+        <member name="M:Sqlx.IDatabaseDialectProvider.GenerateUpsert(System.String,System.String[],System.String[])">
             <summary>
             Generates an UPSERT (INSERT ... ON CONFLICT UPDATE) statement.
             </summary>
@@ -332,164 +332,164 @@
             <param name="keyColumns">The key columns for conflict detection.</param>
             <returns>The SQL UPSERT statement.</returns>
         </member>
-        <member name="M:Sqlx.Core.IDatabaseDialectProvider.GetDatabaseTypeName(System.Type)">
+        <member name="M:Sqlx.IDatabaseDialectProvider.GetDatabaseTypeName(System.Type)">
             <summary>
             Converts a .NET type to the appropriate database type name.
             </summary>
             <param name="dotNetType">The .NET type.</param>
             <returns>The database-specific type name.</returns>
         </member>
-        <member name="M:Sqlx.Core.IDatabaseDialectProvider.FormatDateTime(System.DateTime)">
+        <member name="M:Sqlx.IDatabaseDialectProvider.FormatDateTime(System.DateTime)">
             <summary>
             Formats a date/time value for the specific database.
             </summary>
             <param name="dateTime">The date/time value.</param>
             <returns>The formatted date/time string.</returns>
         </member>
-        <member name="M:Sqlx.Core.IDatabaseDialectProvider.GetCurrentDateTimeSyntax">
+        <member name="M:Sqlx.IDatabaseDialectProvider.GetCurrentDateTimeSyntax">
             <summary>
             Gets the syntax for getting the current date/time.
             </summary>
             <returns>The SQL expression for current date/time.</returns>
         </member>
-        <member name="M:Sqlx.Core.IDatabaseDialectProvider.GetConcatenationSyntax(System.String[])">
+        <member name="M:Sqlx.IDatabaseDialectProvider.GetConcatenationSyntax(System.String[])">
             <summary>
             Gets the syntax for string concatenation.
             </summary>
             <param name="expressions">The expressions to concatenate.</param>
             <returns>The SQL string concatenation expression.</returns>
         </member>
-        <member name="T:Sqlx.Core.MySqlDialectProvider">
+        <member name="T:Sqlx.MySqlDialectProvider">
             <summary>
             MySQL database dialect provider with MySQL-specific SQL syntax.
             </summary>
         </member>
-        <member name="P:Sqlx.Core.MySqlDialectProvider.SqlDefine">
+        <member name="P:Sqlx.MySqlDialectProvider.SqlDefine">
             <inheritdoc />
         </member>
-        <member name="P:Sqlx.Core.MySqlDialectProvider.DialectType">
+        <member name="P:Sqlx.MySqlDialectProvider.DialectType">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.MySqlDialectProvider.GenerateLimitClause(System.Nullable{System.Int32},System.Nullable{System.Int32})">
+        <member name="M:Sqlx.MySqlDialectProvider.GenerateLimitClause(System.Nullable{System.Int32},System.Nullable{System.Int32})">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.MySqlDialectProvider.GenerateInsertWithReturning(System.String,System.String[])">
+        <member name="M:Sqlx.MySqlDialectProvider.GenerateInsertWithReturning(System.String,System.String[])">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.MySqlDialectProvider.GenerateBatchInsert(System.String,System.String[],System.Int32)">
+        <member name="M:Sqlx.MySqlDialectProvider.GenerateBatchInsert(System.String,System.String[],System.Int32)">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.MySqlDialectProvider.GenerateUpsert(System.String,System.String[],System.String[])">
+        <member name="M:Sqlx.MySqlDialectProvider.GenerateUpsert(System.String,System.String[],System.String[])">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.MySqlDialectProvider.GetDatabaseTypeName(System.Type)">
+        <member name="M:Sqlx.MySqlDialectProvider.GetDatabaseTypeName(System.Type)">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.MySqlDialectProvider.FormatDateTime(System.DateTime)">
+        <member name="M:Sqlx.MySqlDialectProvider.FormatDateTime(System.DateTime)">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.MySqlDialectProvider.GetCurrentDateTimeSyntax">
+        <member name="M:Sqlx.MySqlDialectProvider.GetCurrentDateTimeSyntax">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.MySqlDialectProvider.GetConcatenationSyntax(System.String[])">
+        <member name="M:Sqlx.MySqlDialectProvider.GetConcatenationSyntax(System.String[])">
             <inheritdoc />
         </member>
-        <member name="T:Sqlx.Core.PostgreSqlDialectProvider">
+        <member name="T:Sqlx.PostgreSqlDialectProvider">
             <summary>
             PostgreSQL database dialect provider with PostgreSQL-specific SQL syntax.
             </summary>
         </member>
-        <member name="P:Sqlx.Core.PostgreSqlDialectProvider.SqlDefine">
+        <member name="P:Sqlx.PostgreSqlDialectProvider.SqlDefine">
             <inheritdoc />
         </member>
-        <member name="P:Sqlx.Core.PostgreSqlDialectProvider.DialectType">
+        <member name="P:Sqlx.PostgreSqlDialectProvider.DialectType">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.PostgreSqlDialectProvider.GenerateLimitClause(System.Nullable{System.Int32},System.Nullable{System.Int32})">
+        <member name="M:Sqlx.PostgreSqlDialectProvider.GenerateLimitClause(System.Nullable{System.Int32},System.Nullable{System.Int32})">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.PostgreSqlDialectProvider.GenerateInsertWithReturning(System.String,System.String[])">
+        <member name="M:Sqlx.PostgreSqlDialectProvider.GenerateInsertWithReturning(System.String,System.String[])">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.PostgreSqlDialectProvider.GenerateBatchInsert(System.String,System.String[],System.Int32)">
+        <member name="M:Sqlx.PostgreSqlDialectProvider.GenerateBatchInsert(System.String,System.String[],System.Int32)">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.PostgreSqlDialectProvider.GenerateUpsert(System.String,System.String[],System.String[])">
+        <member name="M:Sqlx.PostgreSqlDialectProvider.GenerateUpsert(System.String,System.String[],System.String[])">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.PostgreSqlDialectProvider.GetDatabaseTypeName(System.Type)">
+        <member name="M:Sqlx.PostgreSqlDialectProvider.GetDatabaseTypeName(System.Type)">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.PostgreSqlDialectProvider.FormatDateTime(System.DateTime)">
+        <member name="M:Sqlx.PostgreSqlDialectProvider.FormatDateTime(System.DateTime)">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.PostgreSqlDialectProvider.GetCurrentDateTimeSyntax">
+        <member name="M:Sqlx.PostgreSqlDialectProvider.GetCurrentDateTimeSyntax">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.PostgreSqlDialectProvider.GetConcatenationSyntax(System.String[])">
+        <member name="M:Sqlx.PostgreSqlDialectProvider.GetConcatenationSyntax(System.String[])">
             <inheritdoc />
         </member>
-        <member name="T:Sqlx.Core.PrimaryConstructorAnalyzer">
+        <member name="T:Sqlx.PrimaryConstructorAnalyzer">
             <summary>
             Analyzer for primary constructors and record types in C# 12+.
             </summary>
         </member>
-        <member name="M:Sqlx.Core.PrimaryConstructorAnalyzer.IsRecord(Microsoft.CodeAnalysis.INamedTypeSymbol)">
+        <member name="M:Sqlx.PrimaryConstructorAnalyzer.IsRecord(Microsoft.CodeAnalysis.INamedTypeSymbol)">
             <summary>
             Determines if a type is a record type.
             </summary>
         </member>
-        <member name="M:Sqlx.Core.PrimaryConstructorAnalyzer.HasPrimaryConstructor(Microsoft.CodeAnalysis.INamedTypeSymbol)">
+        <member name="M:Sqlx.PrimaryConstructorAnalyzer.HasPrimaryConstructor(Microsoft.CodeAnalysis.INamedTypeSymbol)">
             <summary>
             Determines if a type has a primary constructor.
             </summary>
         </member>
-        <member name="M:Sqlx.Core.PrimaryConstructorAnalyzer.GetPrimaryConstructor(Microsoft.CodeAnalysis.INamedTypeSymbol)">
+        <member name="M:Sqlx.PrimaryConstructorAnalyzer.GetPrimaryConstructor(Microsoft.CodeAnalysis.INamedTypeSymbol)">
             <summary>
             Gets the primary constructor of a type, if it exists.
             </summary>
         </member>
-        <member name="M:Sqlx.Core.PrimaryConstructorAnalyzer.GetPrimaryConstructorParameters(Microsoft.CodeAnalysis.INamedTypeSymbol)">
+        <member name="M:Sqlx.PrimaryConstructorAnalyzer.GetPrimaryConstructorParameters(Microsoft.CodeAnalysis.INamedTypeSymbol)">
             <summary>
             Gets the parameters of the primary constructor.
             </summary>
         </member>
-        <member name="M:Sqlx.Core.PrimaryConstructorAnalyzer.GetAccessibleMembers(Microsoft.CodeAnalysis.INamedTypeSymbol)">
+        <member name="M:Sqlx.PrimaryConstructorAnalyzer.GetAccessibleMembers(Microsoft.CodeAnalysis.INamedTypeSymbol)">
             <summary>
             Gets all accessible members (properties from primary constructor + regular properties).
             </summary>
         </member>
-        <member name="M:Sqlx.Core.PrimaryConstructorAnalyzer.IsPrimaryConstructor(Microsoft.CodeAnalysis.IMethodSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol)">
+        <member name="M:Sqlx.PrimaryConstructorAnalyzer.IsPrimaryConstructor(Microsoft.CodeAnalysis.IMethodSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol)">
             <summary>
             Determines if a constructor is likely a primary constructor.
             </summary>
         </member>
-        <member name="M:Sqlx.Core.PrimaryConstructorAnalyzer.GetPropertyNameFromParameter(System.String)">
+        <member name="M:Sqlx.PrimaryConstructorAnalyzer.GetPropertyNameFromParameter(System.String)">
             <summary>
             Converts a parameter name to the corresponding property name (PascalCase).
             </summary>
         </member>
-        <member name="T:Sqlx.Core.IMemberInfo">
+        <member name="T:Sqlx.IMemberInfo">
             <summary>
             Represents information about a member (property or primary constructor parameter).
             </summary>
         </member>
-        <member name="T:Sqlx.Core.PropertyMemberInfo">
+        <member name="T:Sqlx.PropertyMemberInfo">
             <summary>
             Member info for regular properties.
             </summary>
         </member>
-        <member name="T:Sqlx.Core.PrimaryConstructorParameterMemberInfo">
+        <member name="T:Sqlx.PrimaryConstructorParameterMemberInfo">
             <summary>
             Member info for primary constructor parameters.
             </summary>
         </member>
-        <member name="T:Sqlx.Core.SqlDefineExtensions">
+        <member name="T:Sqlx.SqlDefineExtensions">
             <summary>
             Extension methods for SqlDefine to provide additional functionality.
             </summary>
         </member>
-        <member name="M:Sqlx.Core.SqlDefineExtensions.WrapColumns(Sqlx.SqlDefine,System.String[])">
+        <member name="M:Sqlx.SqlDefineExtensions.WrapColumns(Sqlx.SqlDefine,System.String[])">
             <summary>
             Wraps multiple column names with the appropriate database-specific delimiters.
             </summary>
@@ -497,7 +497,7 @@
             <param name="columnNames">The column names to wrap.</param>
             <returns>An array of wrapped column names.</returns>
         </member>
-        <member name="M:Sqlx.Core.SqlDefineExtensions.WrapAndJoinColumns(Sqlx.SqlDefine,System.String[])">
+        <member name="M:Sqlx.SqlDefineExtensions.WrapAndJoinColumns(Sqlx.SqlDefine,System.String[])">
             <summary>
             Creates a comma-separated list of wrapped column names.
             </summary>
@@ -505,7 +505,7 @@
             <param name="columnNames">The column names to wrap and join.</param>
             <returns>A comma-separated string of wrapped column names.</returns>
         </member>
-        <member name="M:Sqlx.Core.SqlDefineExtensions.WrapAndJoinColumns(Sqlx.SqlDefine,System.Collections.Generic.IEnumerable{System.String})">
+        <member name="M:Sqlx.SqlDefineExtensions.WrapAndJoinColumns(Sqlx.SqlDefine,System.Collections.Generic.IEnumerable{System.String})">
             <summary>
             Creates a comma-separated list of wrapped column names from a collection.
             </summary>
@@ -513,7 +513,7 @@
             <param name="columnNames">The collection of column names to wrap and join.</param>
             <returns>A comma-separated string of wrapped column names.</returns>
         </member>
-        <member name="M:Sqlx.Core.SqlDefineExtensions.CreateParameter(Sqlx.SqlDefine,System.String)">
+        <member name="M:Sqlx.SqlDefineExtensions.CreateParameter(Sqlx.SqlDefine,System.String)">
             <summary>
             Creates a parameter placeholder with the appropriate prefix.
             </summary>
@@ -521,7 +521,7 @@
             <param name="parameterName">The parameter name (without prefix).</param>
             <returns>The parameter placeholder with prefix.</returns>
         </member>
-        <member name="M:Sqlx.Core.SqlDefineExtensions.CreateParameters(Sqlx.SqlDefine,System.String[])">
+        <member name="M:Sqlx.SqlDefineExtensions.CreateParameters(Sqlx.SqlDefine,System.String[])">
             <summary>
             Creates multiple parameter placeholders with the appropriate prefix.
             </summary>
@@ -529,7 +529,7 @@
             <param name="parameterNames">The parameter names (without prefix).</param>
             <returns>An array of parameter placeholders with prefix.</returns>
         </member>
-        <member name="M:Sqlx.Core.SqlDefineExtensions.CreateAndJoinParameters(Sqlx.SqlDefine,System.String[])">
+        <member name="M:Sqlx.SqlDefineExtensions.CreateAndJoinParameters(Sqlx.SqlDefine,System.String[])">
             <summary>
             Creates a comma-separated list of parameter placeholders.
             </summary>
@@ -537,7 +537,7 @@
             <param name="parameterNames">The parameter names to create placeholders for.</param>
             <returns>A comma-separated string of parameter placeholders.</returns>
         </member>
-        <member name="M:Sqlx.Core.SqlDefineExtensions.CreateAndJoinParameters(Sqlx.SqlDefine,System.Collections.Generic.IEnumerable{System.String})">
+        <member name="M:Sqlx.SqlDefineExtensions.CreateAndJoinParameters(Sqlx.SqlDefine,System.Collections.Generic.IEnumerable{System.String})">
             <summary>
             Creates a comma-separated list of parameter placeholders from a collection.
             </summary>
@@ -545,7 +545,7 @@
             <param name="parameterNames">The collection of parameter names to create placeholders for.</param>
             <returns>A comma-separated string of parameter placeholders.</returns>
         </member>
-        <member name="M:Sqlx.Core.SqlDefineExtensions.CreateSetClauses(Sqlx.SqlDefine,System.String[])">
+        <member name="M:Sqlx.SqlDefineExtensions.CreateSetClauses(Sqlx.SqlDefine,System.String[])">
             <summary>
             Creates SET clauses for UPDATE statements.
             </summary>
@@ -553,7 +553,7 @@
             <param name="columnNames">The column names to create SET clauses for.</param>
             <returns>A comma-separated string of SET clauses.</returns>
         </member>
-        <member name="M:Sqlx.Core.SqlDefineExtensions.CreateSetClauses(Sqlx.SqlDefine,System.Collections.Generic.IEnumerable{System.String})">
+        <member name="M:Sqlx.SqlDefineExtensions.CreateSetClauses(Sqlx.SqlDefine,System.Collections.Generic.IEnumerable{System.String})">
             <summary>
             Creates SET clauses for UPDATE statements from a collection.
             </summary>
@@ -561,7 +561,7 @@
             <param name="columnNames">The collection of column names to create SET clauses for.</param>
             <returns>A comma-separated string of SET clauses.</returns>
         </member>
-        <member name="M:Sqlx.Core.SqlDefineExtensions.CreateWhereConditions(Sqlx.SqlDefine,System.String[])">
+        <member name="M:Sqlx.SqlDefineExtensions.CreateWhereConditions(Sqlx.SqlDefine,System.String[])">
             <summary>
             Creates WHERE conditions for SQL statements.
             </summary>
@@ -569,7 +569,7 @@
             <param name="columnNames">The column names to create WHERE conditions for.</param>
             <returns>A string of WHERE conditions joined with AND.</returns>
         </member>
-        <member name="M:Sqlx.Core.SqlDefineExtensions.CreateWhereConditions(Sqlx.SqlDefine,System.Collections.Generic.IEnumerable{System.String})">
+        <member name="M:Sqlx.SqlDefineExtensions.CreateWhereConditions(Sqlx.SqlDefine,System.Collections.Generic.IEnumerable{System.String})">
             <summary>
             Creates WHERE conditions for SQL statements from a collection.
             </summary>
@@ -577,7 +577,7 @@
             <param name="columnNames">The collection of column names to create WHERE conditions for.</param>
             <returns>A string of WHERE conditions joined with AND.</returns>
         </member>
-        <member name="M:Sqlx.Core.SqlDefineExtensions.UsesParameterPrefix(Sqlx.SqlDefine,System.String)">
+        <member name="M:Sqlx.SqlDefineExtensions.UsesParameterPrefix(Sqlx.SqlDefine,System.String)">
             <summary>
             Determines if this SQL definition uses a specific parameter prefix.
             </summary>
@@ -585,221 +585,221 @@
             <param name="prefix">The prefix to check for.</param>
             <returns>True if the definition uses the specified prefix.</returns>
         </member>
-        <member name="M:Sqlx.Core.SqlDefineExtensions.GetEffectiveParameterPrefix(Sqlx.SqlDefine)">
+        <member name="M:Sqlx.SqlDefineExtensions.GetEffectiveParameterPrefix(Sqlx.SqlDefine)">
             <summary>
             Gets the effective parameter prefix (handles SQLite special case).
             </summary>
             <param name="sqlDefine">The SQL definition.</param>
             <returns>The effective parameter prefix for SQL generation.</returns>
         </member>
-        <member name="T:Sqlx.Core.SQLiteDialectProvider">
+        <member name="T:Sqlx.SQLiteDialectProvider">
             <summary>
             SQLite database dialect provider with SQLite-specific SQL syntax.
             </summary>
         </member>
-        <member name="P:Sqlx.Core.SQLiteDialectProvider.SqlDefine">
+        <member name="P:Sqlx.SQLiteDialectProvider.SqlDefine">
             <inheritdoc />
         </member>
-        <member name="P:Sqlx.Core.SQLiteDialectProvider.DialectType">
+        <member name="P:Sqlx.SQLiteDialectProvider.DialectType">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.SQLiteDialectProvider.GenerateLimitClause(System.Nullable{System.Int32},System.Nullable{System.Int32})">
+        <member name="M:Sqlx.SQLiteDialectProvider.GenerateLimitClause(System.Nullable{System.Int32},System.Nullable{System.Int32})">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.SQLiteDialectProvider.GenerateInsertWithReturning(System.String,System.String[])">
+        <member name="M:Sqlx.SQLiteDialectProvider.GenerateInsertWithReturning(System.String,System.String[])">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.SQLiteDialectProvider.GenerateBatchInsert(System.String,System.String[],System.Int32)">
+        <member name="M:Sqlx.SQLiteDialectProvider.GenerateBatchInsert(System.String,System.String[],System.Int32)">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.SQLiteDialectProvider.GenerateUpsert(System.String,System.String[],System.String[])">
+        <member name="M:Sqlx.SQLiteDialectProvider.GenerateUpsert(System.String,System.String[],System.String[])">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.SQLiteDialectProvider.GetDatabaseTypeName(System.Type)">
+        <member name="M:Sqlx.SQLiteDialectProvider.GetDatabaseTypeName(System.Type)">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.SQLiteDialectProvider.FormatDateTime(System.DateTime)">
+        <member name="M:Sqlx.SQLiteDialectProvider.FormatDateTime(System.DateTime)">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.SQLiteDialectProvider.GetCurrentDateTimeSyntax">
+        <member name="M:Sqlx.SQLiteDialectProvider.GetCurrentDateTimeSyntax">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.SQLiteDialectProvider.GetConcatenationSyntax(System.String[])">
+        <member name="M:Sqlx.SQLiteDialectProvider.GetConcatenationSyntax(System.String[])">
             <inheritdoc />
         </member>
-        <member name="T:Sqlx.Core.SqlOperationInferrer">
+        <member name="T:Sqlx.SqlOperationInferrer">
             <summary>
             Infers SQL operations from method signatures and attributes.
             </summary>
         </member>
-        <member name="M:Sqlx.Core.SqlOperationInferrer.InferOperation(Microsoft.CodeAnalysis.IMethodSymbol)">
+        <member name="M:Sqlx.SqlOperationInferrer.InferOperation(Microsoft.CodeAnalysis.IMethodSymbol)">
             <summary>
             Infers the SQL operation type from method signature.
             </summary>
         </member>
-        <member name="M:Sqlx.Core.SqlOperationInferrer.GenerateSqlTemplate(Sqlx.Core.SqlOperationType,System.String,Microsoft.CodeAnalysis.INamedTypeSymbol)">
+        <member name="M:Sqlx.SqlOperationInferrer.GenerateSqlTemplate(Sqlx.SqlOperationType,System.String,Microsoft.CodeAnalysis.INamedTypeSymbol)">
             <summary>
             Generates SQL template for the operation.
             </summary>
         </member>
-        <member name="T:Sqlx.Core.SqlOperationType">
+        <member name="T:Sqlx.SqlOperationType">
             <summary>
             SQL operation types.
             </summary>
         </member>
-        <member name="T:Sqlx.Core.SqlServerDialectProvider">
+        <member name="T:Sqlx.SqlServerDialectProvider">
             <summary>
             SQL Server database dialect provider with SQL Server-specific SQL syntax.
             </summary>
         </member>
-        <member name="P:Sqlx.Core.SqlServerDialectProvider.SqlDefine">
+        <member name="P:Sqlx.SqlServerDialectProvider.SqlDefine">
             <inheritdoc />
         </member>
-        <member name="P:Sqlx.Core.SqlServerDialectProvider.DialectType">
+        <member name="P:Sqlx.SqlServerDialectProvider.DialectType">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.SqlServerDialectProvider.GenerateLimitClause(System.Nullable{System.Int32},System.Nullable{System.Int32})">
+        <member name="M:Sqlx.SqlServerDialectProvider.GenerateLimitClause(System.Nullable{System.Int32},System.Nullable{System.Int32})">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.SqlServerDialectProvider.GenerateInsertWithReturning(System.String,System.String[])">
+        <member name="M:Sqlx.SqlServerDialectProvider.GenerateInsertWithReturning(System.String,System.String[])">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.SqlServerDialectProvider.GenerateBatchInsert(System.String,System.String[],System.Int32)">
+        <member name="M:Sqlx.SqlServerDialectProvider.GenerateBatchInsert(System.String,System.String[],System.Int32)">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.SqlServerDialectProvider.GenerateUpsert(System.String,System.String[],System.String[])">
+        <member name="M:Sqlx.SqlServerDialectProvider.GenerateUpsert(System.String,System.String[],System.String[])">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.SqlServerDialectProvider.GetDatabaseTypeName(System.Type)">
+        <member name="M:Sqlx.SqlServerDialectProvider.GetDatabaseTypeName(System.Type)">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.SqlServerDialectProvider.FormatDateTime(System.DateTime)">
+        <member name="M:Sqlx.SqlServerDialectProvider.FormatDateTime(System.DateTime)">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.SqlServerDialectProvider.GetCurrentDateTimeSyntax">
+        <member name="M:Sqlx.SqlServerDialectProvider.GetCurrentDateTimeSyntax">
             <inheritdoc />
         </member>
-        <member name="M:Sqlx.Core.SqlServerDialectProvider.GetConcatenationSyntax(System.String[])">
+        <member name="M:Sqlx.SqlServerDialectProvider.GetConcatenationSyntax(System.String[])">
             <inheritdoc />
         </member>
-        <member name="T:Sqlx.Core.SqlxException">
+        <member name="T:Sqlx.SqlxException">
             <summary>
             Base exception class for all Sqlx-related exceptions.
             </summary>
         </member>
-        <member name="P:Sqlx.Core.SqlxException.ErrorCode">
+        <member name="P:Sqlx.SqlxException.ErrorCode">
             <summary>
             Gets the error code associated with this exception.
             </summary>
         </member>
-        <member name="M:Sqlx.Core.SqlxException.#ctor(System.String,System.String)">
+        <member name="M:Sqlx.SqlxException.#ctor(System.String,System.String)">
             <summary>
-            Initializes a new instance of the <see cref="T:Sqlx.Core.SqlxException"/> class.
+            Initializes a new instance of the <see cref="T:Sqlx.SqlxException"/> class.
             </summary>
             <param name="errorCode">The error code.</param>
             <param name="message">The error message.</param>
         </member>
-        <member name="M:Sqlx.Core.SqlxException.#ctor(System.String,System.String,System.Exception)">
+        <member name="M:Sqlx.SqlxException.#ctor(System.String,System.String,System.Exception)">
             <summary>
-            Initializes a new instance of the <see cref="T:Sqlx.Core.SqlxException"/> class.
+            Initializes a new instance of the <see cref="T:Sqlx.SqlxException"/> class.
             </summary>
             <param name="errorCode">The error code.</param>
             <param name="message">The error message.</param>
             <param name="innerException">The inner exception.</param>
         </member>
-        <member name="T:Sqlx.Core.SqlGenerationException">
+        <member name="T:Sqlx.SqlGenerationException">
             <summary>
             Exception thrown when SQL generation fails.
             </summary>
         </member>
-        <member name="M:Sqlx.Core.SqlGenerationException.#ctor(System.String)">
+        <member name="M:Sqlx.SqlGenerationException.#ctor(System.String)">
             <summary>
-            Initializes a new instance of the <see cref="T:Sqlx.Core.SqlGenerationException"/> class.
+            Initializes a new instance of the <see cref="T:Sqlx.SqlGenerationException"/> class.
             </summary>
             <param name="message">The error message.</param>
         </member>
-        <member name="M:Sqlx.Core.SqlGenerationException.#ctor(System.String,System.Exception)">
+        <member name="M:Sqlx.SqlGenerationException.#ctor(System.String,System.Exception)">
             <summary>
-            Initializes a new instance of the <see cref="T:Sqlx.Core.SqlGenerationException"/> class.
+            Initializes a new instance of the <see cref="T:Sqlx.SqlGenerationException"/> class.
             </summary>
             <param name="message">The error message.</param>
             <param name="innerException">The inner exception.</param>
         </member>
-        <member name="T:Sqlx.Core.InvalidMethodSignatureException">
+        <member name="T:Sqlx.InvalidMethodSignatureException">
             <summary>
             Exception thrown when method signature is invalid for SQL generation.
             </summary>
         </member>
-        <member name="P:Sqlx.Core.InvalidMethodSignatureException.MethodName">
+        <member name="P:Sqlx.InvalidMethodSignatureException.MethodName">
             <summary>
             Gets the method name that caused the exception.
             </summary>
         </member>
-        <member name="M:Sqlx.Core.InvalidMethodSignatureException.#ctor(System.String,System.String)">
+        <member name="M:Sqlx.InvalidMethodSignatureException.#ctor(System.String,System.String)">
             <summary>
-            Initializes a new instance of the <see cref="T:Sqlx.Core.InvalidMethodSignatureException"/> class.
+            Initializes a new instance of the <see cref="T:Sqlx.InvalidMethodSignatureException"/> class.
             </summary>
             <param name="methodName">The method name.</param>
             <param name="message">The error message.</param>
         </member>
-        <member name="T:Sqlx.Core.UnsupportedDialectException">
+        <member name="T:Sqlx.UnsupportedDialectException">
             <summary>
             Exception thrown when database dialect is not supported.
             </summary>
         </member>
-        <member name="P:Sqlx.Core.UnsupportedDialectException.DialectName">
+        <member name="P:Sqlx.UnsupportedDialectException.DialectName">
             <summary>
             Gets the dialect name that is not supported.
             </summary>
         </member>
-        <member name="M:Sqlx.Core.UnsupportedDialectException.#ctor(System.String)">
+        <member name="M:Sqlx.UnsupportedDialectException.#ctor(System.String)">
             <summary>
-            Initializes a new instance of the <see cref="T:Sqlx.Core.UnsupportedDialectException"/> class.
+            Initializes a new instance of the <see cref="T:Sqlx.UnsupportedDialectException"/> class.
             </summary>
             <param name="dialectName">The unsupported dialect name.</param>
         </member>
-        <member name="T:Sqlx.Core.TypeAnalyzer">
+        <member name="T:Sqlx.TypeAnalyzer">
             <summary>
             Simple type analyzer for source generation.
             Focus on ADO.NET types. Cache APIs are retained as no-ops for test compatibility.
             </summary>
         </member>
-        <member name="M:Sqlx.Core.TypeAnalyzer.IsLikelyEntityType(Microsoft.CodeAnalysis.ITypeSymbol)">
+        <member name="M:Sqlx.TypeAnalyzer.IsLikelyEntityType(Microsoft.CodeAnalysis.ITypeSymbol)">
             <summary>
             Determines if a type is likely an entity type.
             </summary>
         </member>
-        <member name="M:Sqlx.Core.TypeAnalyzer.IsCollectionType(Microsoft.CodeAnalysis.ITypeSymbol)">
+        <member name="M:Sqlx.TypeAnalyzer.IsCollectionType(Microsoft.CodeAnalysis.ITypeSymbol)">
             <summary>
             Determines if a type is a collection type (cached).
             </summary>
         </member>
-        <member name="M:Sqlx.Core.TypeAnalyzer.ExtractEntityType(Microsoft.CodeAnalysis.ITypeSymbol)">
+        <member name="M:Sqlx.TypeAnalyzer.ExtractEntityType(Microsoft.CodeAnalysis.ITypeSymbol)">
             <summary>
             Extracts entity type from generic collections or Task types (cached).
             </summary>
         </member>
-        <member name="M:Sqlx.Core.TypeAnalyzer.IsAsyncType(Microsoft.CodeAnalysis.ITypeSymbol)">
+        <member name="M:Sqlx.TypeAnalyzer.IsAsyncType(Microsoft.CodeAnalysis.ITypeSymbol)">
             <summary>
             Determines if a type is async (Task or Task&lt;T&gt;) (cached).
             </summary>
         </member>
-        <member name="M:Sqlx.Core.TypeAnalyzer.GetInnerType(Microsoft.CodeAnalysis.ITypeSymbol)">
+        <member name="M:Sqlx.TypeAnalyzer.GetInnerType(Microsoft.CodeAnalysis.ITypeSymbol)">
             <summary>
             Gets the inner type of Task&lt;T&gt; or returns the original type.
             </summary>
         </member>
-        <member name="M:Sqlx.Core.TypeAnalyzer.IsScalarReturnType(Microsoft.CodeAnalysis.ITypeSymbol,System.Boolean)">
+        <member name="M:Sqlx.TypeAnalyzer.IsScalarReturnType(Microsoft.CodeAnalysis.ITypeSymbol,System.Boolean)">
             <summary>
             Determines if a method returns a scalar value (cached).
             </summary>
         </member>
-        <member name="M:Sqlx.Core.TypeAnalyzer.GetDefaultValue(Microsoft.CodeAnalysis.ITypeSymbol)">
+        <member name="M:Sqlx.TypeAnalyzer.GetDefaultValue(Microsoft.CodeAnalysis.ITypeSymbol)">
             <summary>
             Gets a default value expression for a type (cached).
             </summary>
         </member>
-        <member name="M:Sqlx.Core.TypeAnalyzer.IsSystemNamespace(System.String)">
+        <member name="M:Sqlx.TypeAnalyzer.IsSystemNamespace(System.String)">
             <summary>
             Checks if a namespace is a system namespace (cached).
             </summary>

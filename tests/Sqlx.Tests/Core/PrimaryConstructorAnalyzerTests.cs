@@ -12,7 +12,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Sqlx.Core;
+using Sqlx;
 
 /// <summary>
 /// Tests for PrimaryConstructorAnalyzer functionality.
@@ -21,6 +21,8 @@ using Sqlx.Core;
 [TestClass]
 public class PrimaryConstructorAnalyzerTests : CodeGenerationTestBase
 {
+    private static readonly string[] stringArray = new[] { "UserRecord", "UserRecordStruct", "RegularClass", "RegularStruct", "IUser" };
+
     /// <summary>
     /// Tests IsRecord method for different type scenarios.
     /// </summary>
@@ -51,7 +53,7 @@ namespace TestNamespace
     }
 }";
 
-        var types = GetTypeSymbols(sourceCode, new[] { "UserRecord", "UserRecordStruct", "RegularClass", "RegularStruct", "IUser" });
+        var types = GetTypeSymbols(sourceCode, stringArray);
 
         var userRecord = types["UserRecord"];
         var userRecordStruct = types["UserRecordStruct"];
@@ -60,22 +62,26 @@ namespace TestNamespace
         var userInterface = types["IUser"];
 
         // Test record detection
-        Assert.IsTrue(PrimaryConstructorAnalyzer.IsRecord(userRecord), 
+        Assert.IsTrue(PrimaryConstructorAnalyzer.IsRecord(userRecord),
             "Should detect UserRecord as a record type");
-        
+
         // Record struct is not a class record
-        Assert.IsFalse(PrimaryConstructorAnalyzer.IsRecord(userRecordStruct), 
+        Assert.IsFalse(PrimaryConstructorAnalyzer.IsRecord(userRecordStruct),
             "Should not detect record struct as class record");
-        
-        Assert.IsFalse(PrimaryConstructorAnalyzer.IsRecord(regularClass), 
+
+        Assert.IsFalse(PrimaryConstructorAnalyzer.IsRecord(regularClass),
             "Should not detect regular class as record");
-        
-        Assert.IsFalse(PrimaryConstructorAnalyzer.IsRecord(regularStruct), 
+
+        Assert.IsFalse(PrimaryConstructorAnalyzer.IsRecord(regularStruct),
             "Should not detect struct as record");
-        
-        Assert.IsFalse(PrimaryConstructorAnalyzer.IsRecord(userInterface), 
+
+        Assert.IsFalse(PrimaryConstructorAnalyzer.IsRecord(userInterface),
             "Should not detect interface as record");
     }
+    private static readonly string[] stringArray2 = new[] {
+            "UserRecord", "ClassWithPrimaryConstructor", "ClassWithRegularConstructor",
+            "ClassWithDefaultConstructor", "ClassWithMultipleConstructors"
+        };
 
     /// <summary>
     /// Tests HasPrimaryConstructor method for various scenarios.
@@ -121,10 +127,7 @@ namespace TestNamespace
     }
 }";
 
-        var types = GetTypeSymbols(sourceCode, new[] { 
-            "UserRecord", "ClassWithPrimaryConstructor", "ClassWithRegularConstructor", 
-            "ClassWithDefaultConstructor", "ClassWithMultipleConstructors" 
-        });
+        var types = GetTypeSymbols(sourceCode, stringArray2);
 
         var userRecord = types["UserRecord"];
         var classWithPrimaryConstructor = types["ClassWithPrimaryConstructor"];
@@ -133,26 +136,27 @@ namespace TestNamespace
         var classWithMultipleConstructors = types["ClassWithMultipleConstructors"];
 
         // Test primary constructor detection
-        Assert.IsTrue(PrimaryConstructorAnalyzer.HasPrimaryConstructor(userRecord), 
+        Assert.IsTrue(PrimaryConstructorAnalyzer.HasPrimaryConstructor(userRecord),
             "Record should have primary constructor");
-        
+
         // The analyzer should detect primary constructors or constructors that match properties
         var hasPrimaryConstructor1 = PrimaryConstructorAnalyzer.HasPrimaryConstructor(classWithPrimaryConstructor);
         var hasPrimaryConstructor2 = PrimaryConstructorAnalyzer.HasPrimaryConstructor(classWithRegularConstructor);
         var hasPrimaryConstructor3 = PrimaryConstructorAnalyzer.HasPrimaryConstructor(classWithDefaultConstructor);
         var hasPrimaryConstructor4 = PrimaryConstructorAnalyzer.HasPrimaryConstructor(classWithMultipleConstructors);
-        
+
         // Note: The actual behavior depends on the implementation details
         // These tests verify the method doesn't throw and returns boolean values
-        Assert.IsTrue(hasPrimaryConstructor1 || !hasPrimaryConstructor1, 
+        Assert.IsTrue(hasPrimaryConstructor1 || !hasPrimaryConstructor1,
             "Should return valid boolean for class with primary constructor");
-        Assert.IsTrue(hasPrimaryConstructor2 || !hasPrimaryConstructor2, 
+        Assert.IsTrue(hasPrimaryConstructor2 || !hasPrimaryConstructor2,
             "Should return valid boolean for class with regular constructor");
-        Assert.IsTrue(hasPrimaryConstructor3 || !hasPrimaryConstructor3, 
+        Assert.IsTrue(hasPrimaryConstructor3 || !hasPrimaryConstructor3,
             "Should return valid boolean for class with default constructor");
-        Assert.IsTrue(hasPrimaryConstructor4 || !hasPrimaryConstructor4, 
+        Assert.IsTrue(hasPrimaryConstructor4 || !hasPrimaryConstructor4,
             "Should return valid boolean for class with multiple constructors");
     }
+    private static readonly string[] stringArray3 = new[] { "UserRecord", "PersonClass", "EmptyClass" };
 
     /// <summary>
     /// Tests GetPrimaryConstructor method.
@@ -182,7 +186,7 @@ namespace TestNamespace
     }
 }";
 
-        var types = GetTypeSymbols(sourceCode, new[] { "UserRecord", "PersonClass", "EmptyClass" });
+        var types = GetTypeSymbols(sourceCode, stringArray3);
 
         var userRecord = types["UserRecord"];
         var personClass = types["PersonClass"];
@@ -197,17 +201,18 @@ namespace TestNamespace
         Assert.IsNotNull(recordConstructor, "Record should have primary constructor");
         if (recordConstructor != null)
         {
-            Assert.AreEqual(3, recordConstructor.Parameters.Length, 
+            Assert.AreEqual(3, recordConstructor.Parameters.Length,
                 "Record constructor should have 3 parameters");
         }
 
         // Regular class may or may not be detected as having primary constructor
-        Assert.IsTrue(classConstructor != null || classConstructor == null, 
+        Assert.IsTrue(classConstructor != null || classConstructor == null,
             "Class constructor detection should return valid result");
 
         // Empty class should not have primary constructor
         Assert.IsNull(emptyConstructor, "Empty class should not have primary constructor");
     }
+    private static readonly string[] stringArray4 = new[] { "ProductRecord", "CustomerClass" };
 
     /// <summary>
     /// Tests GetPrimaryConstructorParameters method.
@@ -233,7 +238,7 @@ namespace TestNamespace
     }
 }";
 
-        var types = GetTypeSymbols(sourceCode, new[] { "ProductRecord", "CustomerClass" });
+        var types = GetTypeSymbols(sourceCode, stringArray4);
 
         var productRecord = types["ProductRecord"];
         var customerClass = types["CustomerClass"];
@@ -247,7 +252,7 @@ namespace TestNamespace
         if (recordParams.Count > 0)
         {
             Assert.AreEqual(4, recordParams.Count, "Record should have 4 parameters");
-            
+
             var paramNames = recordParams.Select(p => p.Name).ToArray();
             Assert.IsTrue(paramNames.Contains("Id"), "Should have Id parameter");
             Assert.IsTrue(paramNames.Contains("Name"), "Should have Name parameter");
@@ -258,6 +263,7 @@ namespace TestNamespace
         // Class parameters depend on primary constructor detection
         Assert.IsTrue(classParams.Count >= 0, "Class parameters should be non-negative count");
     }
+    private static readonly string[] stringArray5 = new[] { "UserRecord", "PersonClass" };
 
     /// <summary>
     /// Tests GetAccessibleMembers method for different type scenarios.
@@ -286,7 +292,7 @@ namespace TestNamespace
     }
 }";
 
-        var types = GetTypeSymbols(sourceCode, new[] { "UserRecord", "PersonClass" });
+        var types = GetTypeSymbols(sourceCode, stringArray5);
 
         var userRecord = types["UserRecord"];
         var personClass = types["PersonClass"];
@@ -297,7 +303,7 @@ namespace TestNamespace
 
         // Record should have members from primary constructor + additional properties
         Assert.IsTrue(recordMembers.Count > 0, "Record should have accessible members");
-        
+
         var recordMemberNames = recordMembers.Select(m => m.Name).ToArray();
         Assert.IsTrue(recordMemberNames.Contains("Id"), "Should include Id from primary constructor");
         Assert.IsTrue(recordMemberNames.Contains("Name"), "Should include Name from primary constructor");
@@ -306,16 +312,19 @@ namespace TestNamespace
 
         // Class should have settable properties
         Assert.IsTrue(classMembers.Count > 0, "Class should have accessible members");
-        
+
         var classMemberNames = classMembers.Select(m => m.Name).ToArray();
         Assert.IsTrue(classMemberNames.Contains("Id"), "Should include Id property");
         Assert.IsTrue(classMemberNames.Contains("FirstName"), "Should include FirstName property");
         Assert.IsTrue(classMemberNames.Contains("LastName"), "Should include LastName property");
-        
+
         // FullName is read-only, might or might not be included depending on implementation
         // _secret is private field, should not be included
         Assert.IsFalse(classMemberNames.Contains("_secret"), "Should not include private fields");
     }
+    private static readonly string[] stringArray6 = new[] {
+            "AbstractClass", "StaticClass", "IEmpty", "EmptyRecord", "ClassWithOnlyPrivateConstructor"
+        };
 
     /// <summary>
     /// Tests edge cases and error handling.
@@ -349,9 +358,7 @@ namespace TestNamespace
     }
 }";
 
-        var types = GetTypeSymbols(sourceCode, new[] { 
-            "AbstractClass", "StaticClass", "IEmpty", "EmptyRecord", "ClassWithOnlyPrivateConstructor" 
-        });
+        var types = GetTypeSymbols(sourceCode, stringArray6);
 
         // Test edge cases don't throw exceptions
         foreach (var (typeName, type) in types)
@@ -366,7 +373,7 @@ namespace TestNamespace
 
                 // Verify methods return reasonable results
                 Assert.IsTrue(isRecord || !isRecord, $"IsRecord should return boolean for {typeName}");
-                Assert.IsTrue(hasPrimaryConstructor || !hasPrimaryConstructor, 
+                Assert.IsTrue(hasPrimaryConstructor || !hasPrimaryConstructor,
                     $"HasPrimaryConstructor should return boolean for {typeName}");
                 Assert.IsTrue(parameters.Count >= 0, $"Parameters count should be non-negative for {typeName}");
                 Assert.IsTrue(members.Count >= 0, $"Members count should be non-negative for {typeName}");
@@ -377,6 +384,9 @@ namespace TestNamespace
             }
         }
     }
+    private static readonly string[] stringArray7 = new[] {
+            "BaseEntity", "User", "AdminUser", "UserRecord", "AdminRecord"
+        };
 
     /// <summary>
     /// Tests performance with complex inheritance hierarchies.
@@ -410,9 +420,7 @@ namespace TestNamespace
     public record AdminRecord(int Id, string Name, string Email, string Role) : UserRecord(Id, Name, Email);
 }";
 
-        var types = GetTypeSymbols(sourceCode, new[] { 
-            "BaseEntity", "User", "AdminUser", "UserRecord", "AdminRecord" 
-        });
+        var types = GetTypeSymbols(sourceCode, stringArray7);
 
         var startTime = DateTime.UtcNow;
 
@@ -424,7 +432,7 @@ namespace TestNamespace
                 var isRecord = PrimaryConstructorAnalyzer.IsRecord(type);
                 var hasPrimaryConstructor = PrimaryConstructorAnalyzer.HasPrimaryConstructor(type);
                 var members = PrimaryConstructorAnalyzer.GetAccessibleMembers(type).ToList();
-                
+
                 // Use results to ensure calls aren't optimized away
                 Assert.IsTrue(isRecord || !isRecord, "Should return valid boolean");
                 Assert.IsTrue(hasPrimaryConstructor || !hasPrimaryConstructor, "Should return valid boolean");
@@ -435,9 +443,10 @@ namespace TestNamespace
         var endTime = DateTime.UtcNow;
         var elapsed = endTime - startTime;
 
-        Assert.IsTrue(elapsed.TotalSeconds < 5, 
+        Assert.IsTrue(elapsed.TotalSeconds < 5,
             $"Complex hierarchy analysis should be efficient. Took: {elapsed.TotalSeconds} seconds");
     }
+    private static readonly string[] stringArray8 = new[] { "UserRecord", "ModernClass", "ValueRecord" };
 
     /// <summary>
     /// Tests analyzer with modern C# features.
@@ -469,7 +478,7 @@ namespace TestNamespace
     }
 }";
 
-        var types = GetTypeSymbols(sourceCode, new[] { "UserRecord", "ModernClass", "ValueRecord" });
+        var types = GetTypeSymbols(sourceCode, stringArray8);
 
         var userRecord = types["UserRecord"];
         var modernClass = types["ModernClass"];

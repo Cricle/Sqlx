@@ -36,7 +36,7 @@ public abstract class PerformanceTestBase : TestBase
     /// <param name="warmupIterations">Number of warmup iterations.</param>
     /// <param name="measurementIterations">Number of measurement iterations.</param>
     /// <returns>Performance measurement results.</returns>
-    protected PerformanceMeasurement MeasurePerformance(
+    protected static PerformanceMeasurement MeasurePerformance(
         Action action,
         int warmupIterations = DefaultWarmupIterations,
         int measurementIterations = DefaultMeasurementIterations)

@@ -7,123 +7,95 @@
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
 using Sqlx.Annotations;
 
-namespace Sqlx.Annotations
+namespace Sqlx
 {
     /// <summary>
-    /// Provides LINQ expression to SQL conversion functionality.
+    /// 简单高效的 LINQ Expression 到 SQL 转换器，AOT 友好，无锁设计。
     /// </summary>
-    /// <typeparam name="T">The entity type for expressions.</typeparam>
-    public class ExpressionToSql<T> : IDisposable
+    /// <typeparam name="T">实体类型</typeparam>
+    public partial class ExpressionToSql<T> : ExpressionToSqlBase
     {
-        private readonly List<Expression<Func<T, bool>>> _whereConditions =
-            new List<Expression<Func<T, bool>>>();
-        private readonly List<(LambdaExpression Expression, bool Descending)> _orderByExpressions =
-            new List<(LambdaExpression, bool)>();
-        private readonly List<(string Column, string Value)> _setClausesConstant =
-            new List<(string, string)>();
-        private readonly List<(string Column, string Expression)> _setClausesExpression =
-            new List<(string, string)>();
-        private readonly (string ColumnLeft, string ColumnRight, string StringLeft,
-            string StringRight, string ParameterPrefix) _dialect;
-        private SqlTemplate? _cachedTemplate;
-        private int? _take;
-        private int? _skip;
+        private readonly List<string> _setClausesConstant = new();
+        private readonly List<string> _setClausesExpression = new();
+        private readonly List<string> _insertColumns = new(); // INSERT列名
+        private readonly List<List<string>> _insertValues = new(); // INSERT值（支持多行）
+        private string? _insertSelectSql; // INSERT SELECT的SQL
 
         /// <summary>
-        /// Initializes a new instance with the specified SQL dialect.
+        /// 使用指定的 SQL 方言初始化新实例。
         /// </summary>
-        private ExpressionToSql((string ColumnLeft, string ColumnRight, string StringLeft,
-            string StringRight, string ParameterPrefix) dialect)
+        private ExpressionToSql(SqlDialect dialect) : base(dialect, typeof(T))
         {
-            _dialect = dialect;
         }
 
         /// <summary>
-        /// Creates an ExpressionToSql builder for SQL Server dialect.
+        /// 设置自定义的SELECT列。
         /// </summary>
-        public static ExpressionToSql<T> ForSqlServer()
-            => new ExpressionToSql<T>(SqlDefine.SqlServer);
+        public ExpressionToSql<T> Select(params string[] columns)
+        {
+            _customSelectClause = columns?.ToList() ?? new List<string>();
+            return this;
+        }
 
         /// <summary>
-        /// Creates an ExpressionToSql builder for MySQL dialect.
-        /// </summary>
-        public static ExpressionToSql<T> ForMySql()
-            => new ExpressionToSql<T>(SqlDefine.MySql);
-
-        /// <summary>
-        /// Creates an ExpressionToSql builder for PostgreSQL dialect.
-        /// </summary>
-        public static ExpressionToSql<T> ForPostgreSQL()
-            => new ExpressionToSql<T>(SqlDefine.PgSql);
-
-        /// <summary>
-        /// Creates an ExpressionToSql builder for Oracle dialect.
-        /// </summary>
-        public static ExpressionToSql<T> ForOracle()
-            => new ExpressionToSql<T>(SqlDefine.Oracle);
-
-        /// <summary>
-        /// Creates an ExpressionToSql builder for DB2 dialect.
-        /// </summary>
-        public static ExpressionToSql<T> ForDB2()
-            => new ExpressionToSql<T>(SqlDefine.DB2);
-
-        /// <summary>
-        /// Creates an ExpressionToSql builder for SQLite dialect.
-        /// </summary>
-        public static ExpressionToSql<T> ForSqlite()
-            => new ExpressionToSql<T>(SqlDefine.Sqlite);
-
-        /// <summary>
-        /// Creates an ExpressionToSql builder with default (SQL Server) dialect.
-        /// </summary>
-        public static ExpressionToSql<T> Create()
-            => new ExpressionToSql<T>(SqlDefine.SqlServer);
-
-        /// <summary>
-        /// Adds a WHERE condition to the query.
+        /// 添加 WHERE 条件到查询。
         /// </summary>
         public ExpressionToSql<T> Where(Expression<Func<T, bool>> predicate)
         {
             if (predicate != null)
-                _whereConditions.Add(predicate);
+            {
+                var conditionSql = ParseExpression(predicate.Body);
+                // 根据表达式复杂度决定是否添加括号
+                if (NeedsParentheses(predicate.Body))
+                {
+                    _whereConditions.Add($"({conditionSql})");
+                }
+                else
+                {
+                    _whereConditions.Add(conditionSql);
+                }
+            }
             return this;
         }
 
         /// <summary>
-        /// Adds an AND condition to the query.
+        /// 添加 AND 条件到查询（等同于 Where）。
         /// </summary>
-        public ExpressionToSql<T> And(Expression<Func<T, bool>> predicate)
-        {
-            return Where(predicate);
-        }
+        public ExpressionToSql<T> And(Expression<Func<T, bool>> predicate) => Where(predicate);
 
         /// <summary>
-        /// Adds an ORDER BY clause to the query.
+        /// 添加 ORDER BY 子句。
         /// </summary>
         public ExpressionToSql<T> OrderBy<TKey>(Expression<Func<T, TKey>> keySelector)
         {
             if (keySelector != null)
-                _orderByExpressions.Add((keySelector, false));
+            {
+                var columnName = GetColumnName(keySelector.Body);
+                _orderByExpressions.Add(columnName + " ASC");
+            }
             return this;
         }
 
         /// <summary>
-        /// Adds an ORDER BY DESC clause to the query.
+        /// 添加 ORDER BY DESC 子句。
         /// </summary>
         public ExpressionToSql<T> OrderByDescending<TKey>(Expression<Func<T, TKey>> keySelector)
         {
             if (keySelector != null)
-                _orderByExpressions.Add((keySelector, true));
+            {
+                var columnName = GetColumnName(keySelector.Body);
+                _orderByExpressions.Add(columnName + " DESC");
+            }
             return this;
         }
 
         /// <summary>
-        /// Limits the number of returned rows.
+        /// 限制返回行数。
         /// </summary>
         public ExpressionToSql<T> Take(int count)
         {
@@ -132,7 +104,7 @@ namespace Sqlx.Annotations
         }
 
         /// <summary>
-        /// Skips the specified number of rows.
+        /// 跳过指定行数。
         /// </summary>
         public ExpressionToSql<T> Skip(int count)
         {
@@ -141,262 +113,692 @@ namespace Sqlx.Annotations
         }
 
         /// <summary>
-        /// Sets a value for an UPDATE operation. Supports patterns like a=1.
+        /// 设置 UPDATE 操作的值。支持模式如 a=1。
         /// </summary>
         public ExpressionToSql<T> Set<TValue>(Expression<Func<T, TValue>> selector, TValue value)
         {
-            var columnName = GetColumnName(selector.Body);
-            var valueStr = FormatConstantValue(value);
-            _setClausesConstant.Add((columnName, valueStr));
+            if (selector != null)
+            {
+                var columnName = GetColumnName(selector.Body);
+                var valueStr = FormatConstantValue(value);
+                _setClausesConstant.Add($"{columnName} = {valueStr}");
+            }
             return this;
         }
 
         /// <summary>
-        /// Sets a value using an expression for an UPDATE operation. Supports patterns like a=a+1.
+        /// 使用表达式设置 UPDATE 操作的值。支持模式如 a=a+1。
         /// </summary>
         public ExpressionToSql<T> Set<TValue>(Expression<Func<T, TValue>> selector,
             Expression<Func<T, TValue>> valueExpression)
         {
-            var columnName = GetColumnName(selector.Body);
-            var expressionSql = ParseExpression(valueExpression.Body);
-            _setClausesExpression.Add((columnName, expressionSql));
+            if (selector != null && valueExpression != null)
+            {
+                var columnName = GetColumnName(selector.Body);
+                var expressionSql = ParseExpression(valueExpression.Body);
+                _setClausesExpression.Add($"{columnName} = {expressionSql}");
+            }
             return this;
         }
 
         /// <summary>
-        /// Specifies columns for an INSERT operation.
+        /// 指定 INSERT 操作的列。
         /// </summary>
         public ExpressionToSql<T> Insert(Expression<Func<T, object>> selector)
         {
+            if (selector != null)
+            {
+                _insertColumns.Clear();
+                // 解析列名
+                var columns = ExtractColumns(selector.Body);
+                _insertColumns.AddRange(columns);
+            }
             return this;
         }
 
         /// <summary>
-        /// Specifies values for an INSERT operation.
+        /// 指定 INSERT 操作的值。
         /// </summary>
         public ExpressionToSql<T> Values(params object[] values)
         {
+            if (values != null && values.Length > 0)
+            {
+                var valueStrings = new List<string>();
+                foreach (var value in values)
+                {
+                    valueStrings.Add(FormatConstantValue(value));
+                }
+                _insertValues.Add(valueStrings);
+            }
             return this;
         }
 
+        /// <summary>
+        /// 添加多行INSERT值。
+        /// </summary>
+        public ExpressionToSql<T> AddValues(params object[] values)
+        {
+            return Values(values);
+        }
+
+        /// <summary>
+        /// 指定INSERT INTO操作，自动推断所有列。
+        /// </summary>
+        public ExpressionToSql<T> InsertInto()
+        {
+            // 清除之前的列配置，准备插入所有列
+            _insertColumns.Clear();
+            
+            // 获取类型的所有公共属性作为列
+            var properties = typeof(T).GetProperties();
+            foreach (var prop in properties)
+            {
+                var columnName = _dialect.WrapColumn(prop.Name);
+                _insertColumns.Add(columnName);
+            }
+            return this;
+        }
+
+        /// <summary>
+        /// 指定INSERT INTO操作，手动指定列。
+        /// </summary>
+        public ExpressionToSql<T> InsertInto(Expression<Func<T, object>> selector)
+        {
+            return Insert(selector);
+        }
+
+        /// <summary>
+        /// 使用SELECT子查询进行INSERT操作。
+        /// </summary>
+        public ExpressionToSql<T> InsertSelect(string selectSql)
+        {
+            _insertSelectSql = selectSql;
+            return this;
+        }
+
+        /// <summary>
+        /// 使用另一个ExpressionToSql的查询进行INSERT操作。
+        /// </summary>
+        public ExpressionToSql<T> InsertSelect<TSource>(ExpressionToSql<TSource> selectQuery)
+        {
+            if (selectQuery != null)
+            {
+                _insertSelectSql = selectQuery.ToSql();
+            }
+            return this;
+        }
+
+        /// <summary>
+        /// 添加 GROUP BY 子句，返回分组查询对象。
+        /// </summary>
+        public GroupedExpressionToSql<T, TKey> GroupBy<TKey>(Expression<Func<T, TKey>> keySelector)
+        {
+            if (keySelector != null)
+            {
+                var columnName = GetColumnName(keySelector.Body);
+                _groupByExpressions.Add(columnName);
+            }
+            return new GroupedExpressionToSql<T, TKey>(this, keySelector);
+        }
+
+        /// <summary>
+        /// 添加 GROUP BY 子句，返回正确的类型以支持链式调用。
+        /// </summary>
+        public new ExpressionToSql<T> AddGroupBy(string columnName)
+        {
+            base.AddGroupBy(columnName);
+            return this;
+        }
+
+        /// <summary>
+        /// 添加 HAVING 条件。
+        /// </summary>
+        public ExpressionToSql<T> Having(Expression<Func<T, bool>> predicate)
+        {
+            if (predicate != null)
+            {
+                var conditionSql = ParseExpression(predicate.Body);
+                _havingConditions.Add($"({conditionSql})"); // HAVING总是加括号保持一致性
+            }
+            return this;
+        }
+
+        /// <summary>
+        /// 设置自定义 SELECT 子句（内部使用）。
+        /// </summary>
+        internal List<string>? _customSelectClause;
+
+        internal void SetCustomSelectClause(List<string> selectClause)
+        {
+            _customSelectClause = selectClause;
+        }
+
+
+        /// <summary>
+        /// 构建 SQL 语句，简单直接无缓存。
+        /// </summary>
         private string BuildSql()
         {
+            // 优先级：INSERT > UPDATE > SELECT
+            if (_insertColumns.Count > 0 || !string.IsNullOrEmpty(_insertSelectSql))
+            {
+                return BuildInsertSql();
+            }
+            // 根据 SET 子句的存在判断是 UPDATE 还是 SELECT
             if (_setClausesConstant.Count > 0 || _setClausesExpression.Count > 0)
             {
-                var sql = new StringBuilder();
-                sql.Append("UPDATE ");
-                sql.Append(_dialect.ColumnLeft + typeof(T).Name + _dialect.ColumnRight);
-                sql.Append(" SET ");
-                var setClauses = new List<string>();
-                foreach (var (column, value) in _setClausesConstant)
-                {
-                    setClauses.Add($"{column} = {value}");
-                }
-                foreach (var (column, expression) in _setClausesExpression)
-                {
-                    setClauses.Add($"{column} = {expression}");
-                }
-                sql.Append(string.Join(", ", setClauses));
-
-                if (_whereConditions.Count > 0)
-                {
-                    sql.Append(" WHERE ");
-                    var conditions = new List<string>();
-                    foreach (var condition in _whereConditions)
-                    {
-                        var conditionSql = ParseExpression(condition.Body);
-                        conditions.Add($"({conditionSql})");
-                    }
-                    sql.Append(string.Join(" AND ", conditions));
-                }
-                return sql.ToString();
+                return BuildUpdateSql();
             }
+            return BuildSelectSql();
+        }
 
-            var selectSql = new StringBuilder();
-            selectSql.Append("SELECT * FROM ");
-            selectSql.Append(_dialect.ColumnLeft + typeof(T).Name + _dialect.ColumnRight);
+        private string BuildSelectSql()
+        {
+            using var sql = new ValueStringBuilder(512);
+            
+            // SELECT 子句
+            sql.Append(_customSelectClause?.Count > 0 
+                ? $"SELECT {string.Join(", ", _customSelectClause)} FROM " 
+                : "SELECT * FROM ");
+            
+            // FROM 表名
+            sql.Append(_dialect.WrapColumn(_tableName!));
 
+            // 添加通用 SQL 子句 (内联以避免ref struct传递问题)
+            // WHERE子句
             if (_whereConditions.Count > 0)
             {
-                selectSql.Append(" WHERE ");
-                var conditions = new List<string>();
-                foreach (var condition in _whereConditions)
-                {
-                    var conditionSql = ParseExpression(condition.Body);
-                    conditions.Add($"({conditionSql})");
-                }
-                selectSql.Append(string.Join(" AND ", conditions));
+                sql.Append(" WHERE ");
+                var processedWhere = _whereConditions.Select(RemoveOuterParentheses);
+                sql.Append(string.Join(" AND ", processedWhere));
             }
 
+            // GROUP BY子句
+            if (_groupByExpressions.Count > 0)
+            {
+                sql.Append(" GROUP BY ");
+                sql.Append(string.Join(", ", _groupByExpressions));
+            }
+
+            // HAVING子句
+            if (_havingConditions.Count > 0)
+            {
+                sql.Append(" HAVING ");
+                sql.Append(string.Join(" AND ", _havingConditions));
+            }
+
+            // ORDER BY子句
             if (_orderByExpressions.Count > 0)
             {
-                selectSql.Append(" ORDER BY ");
-                var orderClauses = new List<string>();
-                foreach (var (expression, descending) in _orderByExpressions)
+                sql.Append(" ORDER BY ");
+                sql.Append(string.Join(", ", _orderByExpressions));
+            }
+
+            // 分页子句
+            if (_skip.HasValue || _take.HasValue)
+            {
+                // SQL Server和Oracle使用OFFSET/FETCH语法 - 其他数据库都使用LIMIT/OFFSET
+                var dbType = DatabaseType;
+                var useOffsetFetchSyntax = dbType == "SqlServer" || dbType == "Oracle";
+
+                if (useOffsetFetchSyntax) // SQL Server 或 Oracle
                 {
-                    var columnName = GetColumnName(expression.Body);
-                    var direction = descending ? " DESC" : " ASC";
-                    orderClauses.Add(columnName + direction);
+                    if (_skip.HasValue) sql.Append($" OFFSET {_skip.Value} ROWS");
+                    if (_take.HasValue) sql.Append($" FETCH NEXT {_take.Value} ROWS ONLY");
                 }
-                selectSql.Append(string.Join(", ", orderClauses));
+                else // MySQL, PostgreSQL, SQLite 等
+                {
+                    if (_take.HasValue) sql.Append($" LIMIT {_take.Value}");
+                    if (_skip.HasValue) sql.Append($" OFFSET {_skip.Value}");
+                }
             }
+            
+            return sql.ToString();
+        }
 
-            if (_skip.HasValue)
+
+        private string BuildInsertSql()
+        {
+            using var sql = new ValueStringBuilder(512);
+            sql.Append($"INSERT INTO {_dialect.WrapColumn(_tableName!)}");
+
+            // 添加列名
+            if (_insertColumns.Count > 0)
             {
-                selectSql.Append($" OFFSET {_skip.Value}");
+                sql.Append($" ({string.Join(", ", _insertColumns)})");
             }
 
-            if (_take.HasValue)
+            // 添加数据源
+            if (!string.IsNullOrEmpty(_insertSelectSql))
             {
-                selectSql.Append($" LIMIT {_take.Value}");
+                sql.Append($" {_insertSelectSql}");
+            }
+            else if (_insertValues.Count > 0)
+            {
+                sql.Append(" VALUES ");
+                sql.Append(string.Join(", ", _insertValues.Select(values => $"({string.Join(", ", values)})")));
             }
 
-            return selectSql.ToString();
+            return sql.ToString();
+        }
+
+        private string BuildUpdateSql()
+        {
+            using var sql = new ValueStringBuilder(256);
+            sql.Append($"UPDATE {_dialect.WrapColumn(_tableName!)} SET ");
+
+            // 合并所有 SET 子句
+            var allSetClauses = _setClausesConstant.Concat(_setClausesExpression);
+            sql.Append(string.Join(", ", allSetClauses));
+
+            // 添加 WHERE 子句
+            if (_whereConditions.Count > 0)
+            {
+                sql.Append(" WHERE ");
+                // UPDATE语句保留括号以确保正确的逻辑分组
+                if (_whereConditions.Count == 1)
+                {
+                    var condition = RemoveOuterParentheses(_whereConditions[0]);
+                    sql.Append($"({condition})");
+                }
+                else
+                {
+                    var processedWhere = _whereConditions.Select(RemoveOuterParentheses);
+                    sql.Append("(");
+                    sql.Append(string.Join(" AND ", processedWhere));
+                    sql.Append(")");
+                }
+            }
+
+            return sql.ToString();
         }
 
         /// <summary>
-        /// Converts the built query to a parameterized SQL template.
-        /// Results are cached for performance on repeated calls.
+        /// 转换为 SQL 模板（简化版，无缓存）。
         /// </summary>
-        public SqlTemplate ToTemplate()
+        public override SqlTemplate ToTemplate()
         {
-            if (_cachedTemplate.HasValue)
-                return _cachedTemplate.Value;
             var sql = BuildSql();
-            _cachedTemplate = new SqlTemplate(sql, new DbParameter[0]);
-            return _cachedTemplate.Value;
+            return new SqlTemplate(sql, _parameters.ToArray());
         }
 
         /// <summary>
-        /// Converts the built query to a SQL string.
+        /// 转换为 SQL 字符串。
         /// </summary>
-        public string ToSql()
-        {
-            return BuildSql();
-        }
+        public override string ToSql() => BuildSql();
 
         /// <summary>
-        /// Generates the WHERE clause portion of the query.
+        /// 生成 WHERE 子句部分。
         /// </summary>
-        public string ToWhereClause()
-        {
-            if (_whereConditions.Count == 0)
-                return string.Empty;
-            var conditions = new List<string>();
-            foreach (var condition in _whereConditions)
-            {
-                var conditionSql = ParseExpression(condition.Body);
-                conditions.Add($"({conditionSql})");
-            }
-            return string.Join(" AND ", conditions);
-        }
+        public string ToWhereClause() => _whereConditions.Count == 0 ? string.Empty : string.Join(" AND ", _whereConditions);
 
         /// <summary>
-        /// Generates additional clauses for the query.
+        /// 生成额外的子句（GROUP BY, HAVING, ORDER BY, LIMIT, OFFSET）。
         /// </summary>
         public string ToAdditionalClause()
         {
-            var clauses = new List<string>();
+            using var sql = new ValueStringBuilder(256);
+            
+            // GROUP BY子句
+            if (_groupByExpressions.Count > 0)
+            {
+                sql.Append(" GROUP BY ");
+                sql.Append(string.Join(", ", _groupByExpressions));
+            }
+            
+            // HAVING子句
+            if (_havingConditions.Count > 0)
+            {
+                sql.Append(" HAVING ");
+                sql.Append(string.Join(" AND ", _havingConditions));
+            }
+            
+            // ORDER BY子句
             if (_orderByExpressions.Count > 0)
             {
-                var orderClauses = new List<string>();
-                foreach (var (expression, descending) in _orderByExpressions)
+                sql.Append(" ORDER BY ");
+                sql.Append(string.Join(", ", _orderByExpressions));
+            }
+            
+            // 分页子句
+            if (_skip.HasValue || _take.HasValue)
+            {
+                var dbType = DatabaseType;
+                var useOffsetFetchSyntax = dbType == "SqlServer" || dbType == "Oracle";
+
+                if (useOffsetFetchSyntax) // SQL Server 或 Oracle
                 {
-                    var columnName = GetColumnName(expression.Body);
-                    var direction = descending ? " DESC" : " ASC";
-                    orderClauses.Add(columnName + direction);
+                    if (_skip.HasValue) sql.Append($" OFFSET {_skip.Value} ROWS");
+                    if (_take.HasValue) sql.Append($" FETCH NEXT {_take.Value} ROWS ONLY");
                 }
-                clauses.Add("ORDER BY " + string.Join(", ", orderClauses));
+                else // MySQL, PostgreSQL, SQLite 等
+                {
+                    if (_take.HasValue) sql.Append($" LIMIT {_take.Value}");
+                    if (_skip.HasValue) sql.Append($" OFFSET {_skip.Value}");
+                }
             }
-            if (_skip.HasValue)
-            {
-                clauses.Add($"OFFSET {_skip.Value}");
-            }
-            if (_take.HasValue)
-            {
-                clauses.Add($"LIMIT {_take.Value}");
-            }
-            return string.Join(" ", clauses);
+            
+            return sql.ToString().TrimStart(); // 移除开头的空格
+        }
+
+
+        /// <summary>
+        /// 释放资源（简化版）。
+        /// </summary>
+        public override void Dispose()
+        {
+            base.Dispose();
+            _setClausesConstant.Clear();
+            _setClausesExpression.Clear();
+            _insertColumns.Clear();
+            _insertValues.Clear();
+            _insertSelectSql = null;
+        }
+    }
+
+    /// <summary>
+    /// 表示分组后的查询对象，支持聚合操作。
+    /// </summary>
+    public class GroupedExpressionToSql<T, TKey> : ExpressionToSqlBase
+    {
+        private readonly ExpressionToSql<T> _baseQuery;
+        private readonly string _keyColumnName;
+
+        internal GroupedExpressionToSql(ExpressionToSql<T> baseQuery, Expression<Func<T, TKey>> keySelector)
+            : base(baseQuery._dialect, typeof(T))
+        {
+            _baseQuery = baseQuery;
+            _keyColumnName = keySelector != null ? ExtractColumnName(keySelector.Body) : string.Empty;
         }
 
         /// <summary>
-        /// Releases resources used by this instance.
+        /// 选择分组结果的投影。
         /// </summary>
-        public void Dispose()
+        public ExpressionToSql<TResult> Select<TResult>(Expression<Func<IGrouping<TKey, T>, TResult>> selector)
         {
-            _whereConditions.Clear();
-            _orderByExpressions.Clear();
-            _setClausesConstant.Clear();
-            _setClausesExpression.Clear();
-            _cachedTemplate = null;
+            // 创建新的查询对象，使用相同的方言
+            var resultQuery = _baseQuery._dialect.DatabaseType switch
+            {
+                "SqlServer" => ExpressionToSql<TResult>.ForSqlServer(),
+                "MySQL" => ExpressionToSql<TResult>.ForMySql(),
+                "PostgreSql" => ExpressionToSql<TResult>.ForPostgreSQL(),
+                "Oracle" => ExpressionToSql<TResult>.ForOracle(),
+                "DB2" => ExpressionToSql<TResult>.ForDB2(),
+                "SQLite" => ExpressionToSql<TResult>.ForSqlite(),
+                _ => ExpressionToSql<TResult>.ForSqlServer()
+            };
+            
+            // 构建 SELECT 子句
+            var selectClause = BuildSelectClause(selector.Body);
+            resultQuery.SetCustomSelectClause(selectClause);
+            
+            // 复制基础查询的信息
+            CopyBaseQueryInfo(resultQuery);
+            
+            return resultQuery;
         }
 
-        private string ParseExpression(Expression expression)
+        /// <summary>
+        /// 添加 HAVING 条件。
+        /// </summary>
+        public GroupedExpressionToSql<T, TKey> Having(Expression<Func<IGrouping<TKey, T>, bool>> predicate)
+        {
+            // 解析 HAVING 条件中的聚合函数
+            var havingClause = ParseHavingExpression(predicate.Body);
+            _baseQuery.AddHavingCondition(havingClause);
+            return this;
+        }
+
+        private List<string> BuildSelectClause(Expression expression)
+        {
+            var selectClause = new List<string>();
+            
+            switch (expression)
+            {
+                case NewExpression newExpr:
+                    // 处理 new { Key = g.Key, Count = g.Count() } 形式
+                    for (int i = 0; i < newExpr.Arguments.Count; i++)
+                    {
+                        var arg = newExpr.Arguments[i];
+                        var memberName = newExpr.Members?[i]?.Name ?? $"Column{i}";
+                        var selectExpression = ParseSelectExpression(arg);
+                        selectClause.Add($"{selectExpression} AS {memberName}");
+                    }
+                    break;
+                    
+                case MemberInitExpression memberInit:
+                    // 处理 new TestUserResult { Id = g.Key, Count = g.Count() } 形式
+                    foreach (var binding in memberInit.Bindings)
+                    {
+                        if (binding is MemberAssignment assignment)
+                        {
+                            var memberName = assignment.Member.Name;
+                            var selectExpression = ParseSelectExpression(assignment.Expression);
+                            selectClause.Add($"{selectExpression} AS {memberName}");
+                        }
+                    }
+                    break;
+                    
+                default:
+                    // 单个表达式
+                    var expr = ParseSelectExpression(expression);
+                    selectClause.Add(expr);
+                    break;
+            }
+            
+            return selectClause;
+        }
+
+        private string ParseSelectExpression(Expression expression)
         {
             switch (expression)
             {
+                case MethodCallExpression methodCall:
+                    return ParseAggregateFunction(methodCall);
+                    
+                case MemberExpression member when member.Expression is ParameterExpression param && param.Name == "g":
+                    // g.Key 访问
+                    if (member.Member.Name == "Key")
+                    {
+                        return _keyColumnName;
+                    }
+                    return "NULL";
+                    
                 case BinaryExpression binary:
-                    return ParseBinaryExpression(binary);
-                case MemberExpression member:
-                    return GetColumnName(member);
+                    // 处理二元表达式，例如 g.Key ?? 0
+                    var left = ParseSelectExpression(binary.Left);
+                    var right = ParseSelectExpression(binary.Right);
+                    var op = binary.NodeType switch
+                    {
+                        ExpressionType.Coalesce => "COALESCE",
+                        _ => binary.NodeType.ToString()
+                    };
+                    return binary.NodeType == ExpressionType.Coalesce 
+                        ? $"COALESCE({left}, {right})" 
+                        : $"{left} {op} {right}";
+                        
                 case ConstantExpression constant:
-                    return GetConstantValue(constant);
-                case UnaryExpression unary when unary.NodeType == ExpressionType.Not:
-                    return $"NOT ({ParseExpression(unary.Operand)})";
+                    return FormatConstantValue(constant.Value);
+                    
                 default:
-                    return "1=1";
+                    // 对于无法处理的表达式，尝试作为普通表达式解析
+                    try
+                    {
+                        return ParseExpressionRaw(expression);
+                    }
+                    catch
+                    {
+                        return "NULL";
+                    }
             }
         }
 
-        private string ParseBinaryExpression(BinaryExpression binary)
+        private string ParseAggregateFunction(MethodCallExpression methodCall)
         {
-            var left = ParseExpression(binary.Left);
-            var right = ParseExpression(binary.Right);
-            return binary.NodeType switch
+            var methodName = methodCall.Method.Name;
+            
+            return methodName switch
             {
-                ExpressionType.Equal => $"{left} = {right}",
-                ExpressionType.NotEqual => $"{left} <> {right}",
-                ExpressionType.GreaterThan => $"{left} > {right}",
-                ExpressionType.GreaterThanOrEqual => $"{left} >= {right}",
-                ExpressionType.LessThan => $"{left} < {right}",
-                ExpressionType.LessThanOrEqual => $"{left} <= {right}",
-                ExpressionType.AndAlso => $"({left} AND {right})",
-                ExpressionType.OrElse => $"({left} OR {right})",
-                ExpressionType.Add => $"{left} + {right}",
-                ExpressionType.Subtract => $"{left} - {right}",
-                ExpressionType.Multiply => $"{left} * {right}",
-                ExpressionType.Divide => $"{left} / {right}",
-                ExpressionType.Modulo => $"{left} % {right}",
-                _ => $"{left} = {right}"
+                "Count" => "COUNT(*)",
+                "Sum" when methodCall.Arguments.Count > 1 => $"SUM({ExtractColumnNameFromLambda(methodCall.Arguments[1])})",
+                "Average" or "Avg" when methodCall.Arguments.Count > 1 => $"AVG({ExtractColumnNameFromLambda(methodCall.Arguments[1])})",
+                "Max" when methodCall.Arguments.Count > 1 => $"MAX({ExtractColumnNameFromLambda(methodCall.Arguments[1])})",
+                "Min" when methodCall.Arguments.Count > 1 => $"MIN({ExtractColumnNameFromLambda(methodCall.Arguments[1])})",
+                _ => throw new NotSupportedException($"聚合函数 {methodName} 不受支持")
             };
         }
 
-        private string GetColumnName(Expression expression)
+        private string ExtractColumnNameFromLambda(Expression expression)
         {
+            // 处理 lambda 表达式，如 x => x.Salary
+            if (expression is LambdaExpression lambda)
+            {
+                return ExtractColumnName(lambda.Body);
+            }
+            
+            // 处理包装在 UnaryExpression 中的 lambda 表达式
+            if (expression is UnaryExpression unary && unary.NodeType == ExpressionType.Quote)
+            {
+                if (unary.Operand is LambdaExpression quotedLambda)
+                {
+                    return ExtractColumnName(quotedLambda.Body);
+                }
+            }
+            
+            return ExtractColumnName(expression);
+        }
+
+        private string ExtractColumnName(Expression expression)
+        {
+            // 使用正确的数据库方言格式
             if (expression is MemberExpression member)
             {
-                var columnName = member.Member.Name;
-                return _dialect.ColumnLeft + columnName + _dialect.ColumnRight;
+                return _dialect.WrapColumn(member.Member.Name);
             }
-            return "Column";
-        }
-
-        private string GetConstantValue(ConstantExpression constant)
-        {
-            return FormatConstantValue(constant.Value);
-        }
-
-        private string FormatConstantValue(object? value)
-        {
-            if (value == null)
-                return "NULL";
-            return value switch
+            if (expression is UnaryExpression unary && unary.NodeType == ExpressionType.Convert)
             {
-                string s => _dialect.StringLeft + s.Replace("'", "''") + _dialect.StringRight,
-                bool b => b ? "1" : "0",
-                DateTime dt => _dialect.StringLeft + dt.ToString("yyyy-MM-dd HH:mm:ss") + _dialect.StringRight,
-                _ => value.ToString() ?? "NULL"
-            };
+                return ExtractColumnName(unary.Operand);
+            }
+            return expression.ToString();
+        }
+
+        private string ParseHavingExpression(Expression expression)
+        {
+            // 解析 HAVING 子句中的条件表达式，支持聚合函数
+            switch (expression)
+            {
+                case BinaryExpression binary:
+                    return ParseHavingBinaryExpression(binary);
+                case MethodCallExpression methodCall:
+                    return ParseAggregateFunction(methodCall);
+                default:
+                    return expression.ToString();
+            }
+        }
+
+        private string ParseHavingBinaryExpression(BinaryExpression binary)
+        {
+            var left = ParseHavingExpressionPart(binary.Left);
+            var right = ParseHavingExpressionPart(binary.Right);
+            var op = GetBinaryOperator(binary.NodeType);
+            return $"{left} {op} {right}";
+        }
+
+        private string ParseHavingExpressionPart(Expression expression)
+        {
+            switch (expression)
+            {
+                case MethodCallExpression methodCall:
+                    return ParseAggregateFunction(methodCall);
+                case ConstantExpression constant:
+                    return constant.Value?.ToString() ?? "NULL";
+                case MemberExpression member when member.Expression is ParameterExpression param && param.Name == "g":
+                    if (member.Member.Name == "Key")
+                    {
+                        return _keyColumnName;
+                    }
+                    break;
+            }
+            
+            return expression.ToString();
+        }
+
+        private void CopyBaseQueryInfo<TResult>(ExpressionToSql<TResult> resultQuery)
+        {
+            // 复制表名 - 使用原始表名而不是结果类型名
+            resultQuery.SetTableName(typeof(T).Name);
+            
+            // 复制 WHERE 条件
+            resultQuery.CopyWhereConditions(_baseQuery.GetWhereConditions());
+            
+            // 确保包含 GROUP BY 子句
+            if (!string.IsNullOrEmpty(_keyColumnName))
+            {
+                ((ExpressionToSqlBase)resultQuery).AddGroupByColumn(_keyColumnName);
+            }
+            
+            // 复制 HAVING 条件
+            resultQuery.CopyHavingConditions(_baseQuery.GetHavingConditions());
+        }
+
+        public override string ToSql()
+        {
+            return _baseQuery.ToSql();
+        }
+
+        public override SqlTemplate ToTemplate()
+        {
+            return _baseQuery.ToTemplate();
+        }
+
+        public override void Dispose()
+        {
+            base.Dispose();
+            _baseQuery?.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// 表示分组的接口，类似于 LINQ 的 IGrouping。
+    /// </summary>
+    public interface IGrouping<out TKey, out TElement>
+    {
+        TKey Key { get; }
+    }
+
+    /// <summary>
+    /// 为 IGrouping 提供聚合扩展方法。
+    /// </summary>
+    public static class GroupingExtensions
+    {
+        public static int Count<TKey, TElement>(this IGrouping<TKey, TElement> grouping)
+        {
+            throw new NotImplementedException("此方法仅用于表达式树解析，不应被直接调用");
+        }
+
+        public static TResult Sum<TKey, TElement, TResult>(this IGrouping<TKey, TElement> grouping, Expression<Func<TElement, TResult>> selector)
+        {
+            throw new NotImplementedException("此方法仅用于表达式树解析，不应被直接调用");
+        }
+
+        public static double Average<TKey, TElement>(this IGrouping<TKey, TElement> grouping, Expression<Func<TElement, double>> selector)
+        {
+            throw new NotImplementedException("此方法仅用于表达式树解析，不应被直接调用");
+        }
+
+        public static double Average<TKey, TElement>(this IGrouping<TKey, TElement> grouping, Expression<Func<TElement, decimal>> selector)
+        {
+            throw new NotImplementedException("此方法仅用于表达式树解析，不应被直接调用");
+        }
+
+        public static TResult Max<TKey, TElement, TResult>(this IGrouping<TKey, TElement> grouping, Expression<Func<TElement, TResult>> selector)
+        {
+            throw new NotImplementedException("此方法仅用于表达式树解析，不应被直接调用");
+        }
+
+        public static TResult Min<TKey, TElement, TResult>(this IGrouping<TKey, TElement> grouping, Expression<Func<TElement, TResult>> selector)
+        {
+            throw new NotImplementedException("此方法仅用于表达式树解析，不应被直接调用");
         }
     }
 }

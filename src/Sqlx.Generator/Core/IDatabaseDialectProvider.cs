@@ -6,7 +6,7 @@
 
 using Sqlx.SqlGen;
 
-namespace Sqlx.Core;
+namespace Sqlx.Generator.Core;
 
 /// <summary>
 /// Provides database-specific SQL generation and syntax handling.

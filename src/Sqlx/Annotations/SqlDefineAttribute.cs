@@ -18,10 +18,10 @@ namespace Sqlx.Annotations
         /// <summary>
         /// Initializes a new instance of the <see cref="SqlDefineAttribute"/> class with a predefined dialect.
         /// </summary>
-        /// <param name="dialectType">The database dialect type.</param>
-        public SqlDefineAttribute(SqlDefineTypes dialectType)
+        /// <param name="dialectName">The database dialect name (MySql, SqlServer, PostgreSql, Oracle, DB2, SQLite).</param>
+        public SqlDefineAttribute(string dialectName)
         {
-            DialectType = dialectType;
+            DialectName = dialectName ?? throw new System.ArgumentNullException(nameof(dialectName));
         }
 
         /// <summary>
@@ -42,9 +42,9 @@ namespace Sqlx.Annotations
         }
 
         /// <summary>
-        /// Gets the database dialect type.
+        /// Gets the database dialect name.
         /// </summary>
-        public SqlDefineTypes? DialectType { get; }
+        public string? DialectName { get; }
 
         /// <summary>
         /// Gets the left column delimiter.

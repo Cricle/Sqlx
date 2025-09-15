@@ -49,31 +49,31 @@ namespace TestNamespace
         // Test string types
         var nonNullableString = typeSymbols["NonNullableString"];
         var nullableString = typeSymbols["NullableString"];
-        
+
         // Note: The actual behavior may vary based on nullable context
         // These tests verify the method works rather than specific nullability rules
         var nonNullableStringCanBeNull = nonNullableString.CanHaveNullValue();
         var nullableStringCanBeNull = nullableString.CanHaveNullValue();
-        
+
         Assert.IsNotNull(nonNullableString, "Should find non-nullable string type");
         Assert.IsNotNull(nullableString, "Should find nullable string type");
-        
+
         // Test value types
         var nonNullableInt = typeSymbols["NonNullableInt"];
         var nullableInt = typeSymbols["NullableInt"];
-        
-        Assert.IsFalse(nonNullableInt.CanHaveNullValue(), 
+
+        Assert.IsFalse(nonNullableInt.CanHaveNullValue(),
             "Non-nullable value type should not allow null");
-        Assert.IsTrue(nullableInt.CanHaveNullValue(), 
+        Assert.IsTrue(nullableInt.CanHaveNullValue(),
             "Nullable value type should allow null");
 
         // Test DateTime types
         var nonNullableDateTime = typeSymbols["NonNullableDateTime"];
         var nullableDateTime = typeSymbols["NullableDateTime"];
-        
-        Assert.IsFalse(nonNullableDateTime.CanHaveNullValue(), 
+
+        Assert.IsFalse(nonNullableDateTime.CanHaveNullValue(),
             "Non-nullable DateTime should not allow null");
-        Assert.IsTrue(nullableDateTime.CanHaveNullValue(), 
+        Assert.IsTrue(nullableDateTime.CanHaveNullValue(),
             "Nullable DateTime should allow null");
     }
 
@@ -113,16 +113,16 @@ namespace TestNamespace
         Assert.IsNotNull(genericConnection, "Should find DbConnection type");
         Assert.IsNotNull(sqlServerConnection, "Should find SqlConnection type");
         Assert.IsNotNull(sqliteConnection, "Should find SqliteConnection type");
-        
+
         // Note: The actual type checking methods in Extensions might be internal
         // These tests verify we can access the type symbols for testing
-        Assert.IsTrue(genericConnection.Name.Contains("Connection") || 
-                     genericConnection.BaseType?.Name.Contains("Connection") == true, 
+        Assert.IsTrue(genericConnection.Name.Contains("Connection") ||
+                     genericConnection.BaseType?.Name.Contains("Connection") == true,
                      "DbConnection should be identifiable as connection type");
-        
-        Assert.IsFalse(nonConnectionString.Name.Contains("Connection"), 
+
+        Assert.IsFalse(nonConnectionString.Name.Contains("Connection"),
                      "String should not be identified as connection type");
-        Assert.IsFalse(nonConnectionInt.Name.Contains("Connection"), 
+        Assert.IsFalse(nonConnectionInt.Name.Contains("Connection"),
                      "Int should not be identified as connection type");
     }
 
@@ -167,13 +167,13 @@ namespace TestNamespace
         Assert.IsNotNull(regularString, "Should find string type");
 
         // Test type identification patterns
-        Assert.IsTrue(transaction.Name.Contains("Transaction"), 
+        Assert.IsTrue(transaction.Name.Contains("Transaction"),
                      "Transaction type should be identifiable");
-        Assert.IsTrue(command.Name.Contains("Command"), 
+        Assert.IsTrue(command.Name.Contains("Command"),
                      "Command type should be identifiable");
-        Assert.IsTrue(reader.Name.Contains("Reader"), 
+        Assert.IsTrue(reader.Name.Contains("Reader"),
                      "Reader type should be identifiable");
-        Assert.IsFalse(regularString.Name.Contains("Db") || regularString.Name.Contains("Data"), 
+        Assert.IsFalse(regularString.Name.Contains("Db") || regularString.Name.Contains("Data"),
                       "Regular string should not appear to be database type");
     }
 
@@ -302,11 +302,11 @@ namespace TestNamespace
         Assert.AreEqual(TypeKind.Enum, enumProperty.TypeKind, "Should identify enum correctly");
         Assert.AreEqual(TypeKind.Struct, structProperty.TypeKind, "Should identify struct correctly");
         Assert.AreEqual(TypeKind.Class, objectProperty.TypeKind, "Should identify class correctly");
-        
+
         // Test nullability for different type kinds
         Assert.IsFalse(enumProperty.CanHaveNullValue(), "Enum should not be nullable by default");
         Assert.IsFalse(structProperty.CanHaveNullValue(), "Struct should not be nullable by default");
-        Assert.IsTrue(objectProperty.CanHaveNullValue() || !objectProperty.CanHaveNullValue(), 
+        Assert.IsTrue(objectProperty.CanHaveNullValue() || !objectProperty.CanHaveNullValue(),
                      "Object nullability depends on context - method should not throw");
     }
 
@@ -339,13 +339,13 @@ namespace TestNamespace
         var tupleProperty = typeSymbols["TupleProperty"];
 
         // Test that unusual types don't crash extension methods
-        Assert_DoesNotThrow(() => actionProperty.CanHaveNullValue(), 
+        Assert_DoesNotThrow(() => actionProperty.CanHaveNullValue(),
                            "CanHaveNullValue should not crash on Action type");
-        Assert_DoesNotThrow(() => funcProperty.CanHaveNullValue(), 
+        Assert_DoesNotThrow(() => funcProperty.CanHaveNullValue(),
                            "CanHaveNullValue should not crash on Func type");
-        Assert_DoesNotThrow(() => complexGenericProperty.CanHaveNullValue(), 
+        Assert_DoesNotThrow(() => complexGenericProperty.CanHaveNullValue(),
                            "CanHaveNullValue should not crash on complex generic type");
-        Assert_DoesNotThrow(() => tupleProperty.CanHaveNullValue(), 
+        Assert_DoesNotThrow(() => tupleProperty.CanHaveNullValue(),
                            "CanHaveNullValue should not crash on Tuple type");
 
         // Verify types are found
@@ -401,7 +401,7 @@ namespace TestNamespace
         var endTime = DateTime.UtcNow;
         var elapsed = endTime - startTime;
 
-        Assert.IsTrue(elapsed.TotalSeconds < 5, 
+        Assert.IsTrue(elapsed.TotalSeconds < 5,
             $"Many type checks should complete quickly. Took: {elapsed.TotalSeconds} seconds");
     }
 

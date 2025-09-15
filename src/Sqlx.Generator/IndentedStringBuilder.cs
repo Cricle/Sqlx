@@ -50,8 +50,8 @@ internal sealed class IndentedStringBuilder
             if (value == null || (value.Length > 0 && !string.IsNullOrWhiteSpace(value)))
             {
                 WriteIndent();
+                needsIndent = false;
             }
-            // Don't set needsIndent = false here anymore
         }
 
         if (!string.IsNullOrEmpty(value))
@@ -67,7 +67,7 @@ internal sealed class IndentedStringBuilder
         if (needsIndent)
         {
             WriteIndent();
-            // Don't set needsIndent = false here anymore
+            needsIndent = false;
         }
         builder.Append(value);
         return this;

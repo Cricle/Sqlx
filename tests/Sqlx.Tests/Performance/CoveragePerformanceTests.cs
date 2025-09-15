@@ -7,7 +7,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Sqlx.Core;
 using Sqlx;
 using System;
 using System.Collections.Generic;
@@ -28,7 +27,7 @@ namespace Sqlx.Tests.Performance
             // Arrange
             var compilation = CreateLargeCompilation();
             var types = GetAllTypes(compilation).ToList();
-            
+
             var stopwatch = Stopwatch.StartNew();
             var entityTypeCount = 0;
 
@@ -55,7 +54,7 @@ namespace Sqlx.Tests.Performance
             // Arrange
             var compilation = CreateLargeCompilation();
             var types = GetAllTypes(compilation).ToList();
-            
+
             var stopwatch = Stopwatch.StartNew();
             var collectionTypeCount = 0;
 
@@ -81,7 +80,7 @@ namespace Sqlx.Tests.Performance
             // Arrange
             var compilation = CreateLargeCompilation();
             var types = GetAllTypes(compilation).ToList();
-            
+
             var stopwatch = Stopwatch.StartNew();
             var extractedCount = 0;
 
@@ -108,7 +107,7 @@ namespace Sqlx.Tests.Performance
             // Arrange
             var compilation = CreateLargeCompilation();
             var namedTypes = GetAllTypes(compilation).OfType<INamedTypeSymbol>().ToList();
-            
+
             var stopwatch = Stopwatch.StartNew();
             var recordCount = 0;
 
@@ -134,7 +133,7 @@ namespace Sqlx.Tests.Performance
             // Arrange
             var compilation = CreateLargeCompilation();
             var namedTypes = GetAllTypes(compilation).OfType<INamedTypeSymbol>().ToList();
-            
+
             var stopwatch = Stopwatch.StartNew();
             var primaryConstructorCount = 0;
 
@@ -160,7 +159,7 @@ namespace Sqlx.Tests.Performance
             // Arrange
             var compilation = CreateLargeCompilation();
             var namedTypes = GetAllTypes(compilation).OfType<INamedTypeSymbol>().ToList();
-            
+
             var stopwatch = Stopwatch.StartNew();
             var totalMemberCount = 0;
 
@@ -217,7 +216,7 @@ namespace Sqlx.Tests.Performance
                     DiagnosticSeverity.Warning,
                     null,
                     $"parameter{i}");
-                
+
                 Assert.IsNotNull(diagnostic);
             }
 
@@ -233,7 +232,7 @@ namespace Sqlx.Tests.Performance
             // Arrange
             var compilation = CreateLargeCompilation();
             var namedTypes = GetAllTypes(compilation).OfType<INamedTypeSymbol>().Take(10).ToList();
-            
+
             var stopwatch = Stopwatch.StartNew();
 
             // Act
@@ -256,7 +255,7 @@ namespace Sqlx.Tests.Performance
             // Arrange
             var compilation = CreateLargeCompilation();
             var namedTypes = GetAllTypes(compilation).OfType<INamedTypeSymbol>().Take(20).ToList();
-            
+
             var stopwatch = Stopwatch.StartNew();
             var totalIssues = 0;
 
@@ -315,10 +314,10 @@ namespace Sqlx.Tests.Performance
             {
                 var generator = new CSharpGenerator();
                 Assert.IsNotNull(generator);
-                
+
                 // Test that it implements the expected interfaces
-                Assert.IsInstanceOfType(generator, typeof(ISourceGenerator));
-                Assert.IsInstanceOfType(generator, typeof(AbstractGenerator));
+                Assert.IsInstanceOfType<ISourceGenerator>(generator);
+                Assert.IsInstanceOfType<AbstractGenerator>(generator);
             }
 
             stopwatch.Stop();
@@ -327,7 +326,7 @@ namespace Sqlx.Tests.Performance
             Assert.IsTrue(stopwatch.ElapsedMilliseconds < 1000, $"Performance test took too long: {stopwatch.ElapsedMilliseconds}ms for {iterations} iterations");
         }
 
-        private CSharpCompilation CreateLargeCompilation()
+        private static CSharpCompilation CreateLargeCompilation()
         {
             var sourceCode = @"
 using System;
@@ -459,7 +458,7 @@ namespace Microsoft.Extensions.Logging
             return CSharpCompilation.Create(
                 "TestAssembly",
                 new[] { syntaxTree },
-                new[] { 
+                new[] {
                     MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
                     MetadataReference.CreateFromFile(typeof(System.Collections.Generic.List<>).Assembly.Location),
                     MetadataReference.CreateFromFile(typeof(System.Threading.Tasks.Task).Assembly.Location),
@@ -467,10 +466,10 @@ namespace Microsoft.Extensions.Logging
                 });
         }
 
-        private IEnumerable<ITypeSymbol> GetAllTypes(CSharpCompilation compilation)
+        private static IEnumerable<ITypeSymbol> GetAllTypes(CSharpCompilation compilation)
         {
             var types = new List<ITypeSymbol>();
-            
+
             void VisitNamespace(INamespaceSymbol ns)
             {
                 foreach (var type in ns.GetTypeMembers())

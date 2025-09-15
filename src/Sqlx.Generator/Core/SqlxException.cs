@@ -6,7 +6,7 @@
 
 using System;
 
-namespace Sqlx.Core;
+namespace Sqlx;
 
 /// <summary>
 /// Base exception class for all Sqlx-related exceptions.

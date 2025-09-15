@@ -108,19 +108,24 @@ using Sqlx.Annotations;
         SafeAddAssemblyReference(references, "System.Linq.Expressions");
         SafeAddAssemblyReference(references, "System.ComponentModel.Primitives");
         SafeAddAssemblyReference(references, "netstandard");
-        
-        // Add core type references to fix "Attribute", "Type", "Enum" issues
+
+        // Add core type references to fix "Attribute", "Type", "Enum", "DateTime" issues
         try
         {
             references.Add(MetadataReference.CreateFromFile(typeof(System.Attribute).Assembly.Location));
             references.Add(MetadataReference.CreateFromFile(typeof(System.Type).Assembly.Location));
             references.Add(MetadataReference.CreateFromFile(typeof(System.Enum).Assembly.Location));
+            references.Add(MetadataReference.CreateFromFile(typeof(DateTime).Assembly.Location));
+            
+            // Try to add System.Runtime explicitly for DateTime support
+            var systemRuntimeAssembly = System.Reflection.Assembly.Load("System.Runtime");
+            references.Add(MetadataReference.CreateFromFile(systemRuntimeAssembly.Location));
         }
         catch
         {
             // Fallback if direct reference fails
         }
-        
+
         // Add Sqlx.Core reference for attributes
         try
         {
@@ -128,7 +133,13 @@ using Sqlx.Annotations;
         }
         catch
         {
-            // Fallback if direct reference fails
+            // Fallback: try to load Sqlx.dll from build output
+            var currentDirectory = System.IO.Directory.GetCurrentDirectory();
+            var sqlxPath = System.IO.Path.Combine(currentDirectory, "..", "..", "..", "..", "src", "Sqlx", "bin", "Debug", "netstandard2.0", "Sqlx.dll");
+            if (System.IO.File.Exists(sqlxPath))
+            {
+                references.Add(MetadataReference.CreateFromFile(sqlxPath));
+            }
         }
 
         // Add explicit DbConnection reference
@@ -163,7 +174,7 @@ using Sqlx.Annotations;
 
         // Check for generator errors first
         var generatorErrors = generateDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
-        if (generatorErrors.Any())
+        if (generatorErrors.Count != 0)
         {
             var errorMessages = string.Join("\n", generatorErrors.Select(d => d.GetMessage()));
             Assert.Fail($"Code generation failed with errors:\n{errorMessages}");
@@ -174,7 +185,7 @@ using Sqlx.Annotations;
         var finalCompilationErrors = finalDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
         // Get the generated code even if there are compilation errors
         var generatedFiles = outputCompilation.SyntaxTrees.Skip(1).ToList(); // Skip the original source
-        if (generatedFiles.Any())
+        if (generatedFiles.Count != 0)
         {
             string output = string.Join("\n\n", generatedFiles.Select(tree => tree.ToString()));
             Console.WriteLine("Generated code:");
@@ -182,7 +193,7 @@ using Sqlx.Annotations;
 
             // If there are compilation errors, still return the generated code for inspection
             // but log the errors for debugging
-            if (finalCompilationErrors.Any())
+            if (finalCompilationErrors.Count != 0)
             {
                 var errorMessages = string.Join("\n", finalCompilationErrors.Select(d => d.GetMessage()));
                 Console.WriteLine($"Warning: Compilation errors detected but code was generated:\n{errorMessages}");
@@ -193,7 +204,7 @@ using Sqlx.Annotations;
         }
 
         // Only fail if no code was generated at all AND there are errors
-        if (finalCompilationErrors.Any())
+        if (finalCompilationErrors.Count != 0)
         {
             var errorMessages = string.Join("\n", finalCompilationErrors.Select(d => d.GetMessage()));
             Assert.Fail($"Final compilation failed with errors and no code was generated:\n{errorMessages}");
@@ -424,19 +435,24 @@ public class TestClass2
         SafeAddAssemblyReference(references, "System.Data");
         SafeAddAssemblyReference(references, "System.Linq.Expressions");
         SafeAddAssemblyReference(references, "netstandard");
-        
-        // Add core type references to fix "Attribute", "Type", "Enum" issues
+
+        // Add core type references to fix "Attribute", "Type", "Enum", "DateTime" issues
         try
         {
             references.Add(MetadataReference.CreateFromFile(typeof(System.Attribute).Assembly.Location));
             references.Add(MetadataReference.CreateFromFile(typeof(System.Type).Assembly.Location));
             references.Add(MetadataReference.CreateFromFile(typeof(System.Enum).Assembly.Location));
+            references.Add(MetadataReference.CreateFromFile(typeof(DateTime).Assembly.Location));
+            
+            // Try to add System.Runtime explicitly for DateTime support
+            var systemRuntimeAssembly = System.Reflection.Assembly.Load("System.Runtime");
+            references.Add(MetadataReference.CreateFromFile(systemRuntimeAssembly.Location));
         }
         catch
         {
             // Fallback if direct reference fails
         }
-        
+
         // Add Sqlx.Core reference for attributes
         try
         {
@@ -444,7 +460,13 @@ public class TestClass2
         }
         catch
         {
-            // Fallback if direct reference fails
+            // Fallback: try to load Sqlx.dll from build output
+            var currentDirectory = System.IO.Directory.GetCurrentDirectory();
+            var sqlxPath = System.IO.Path.Combine(currentDirectory, "..", "..", "..", "..", "src", "Sqlx", "bin", "Debug", "netstandard2.0", "Sqlx.dll");
+            if (System.IO.File.Exists(sqlxPath))
+            {
+                references.Add(MetadataReference.CreateFromFile(sqlxPath));
+            }
         }
 
         // Add explicit DbConnection reference

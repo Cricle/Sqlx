@@ -18,18 +18,18 @@ namespace Sqlx.Annotations
         /// <summary>
         /// Initializes a new instance of the <see cref="SqlExecuteTypeAttribute"/> class.
         /// </summary>
-        /// <param name="executeType">The SQL operation type.</param>
+        /// <param name="executeType">The SQL operation type (Select, Insert, Update, Delete, etc.).</param>
         /// <param name="tableName">The target table name.</param>
-        public SqlExecuteTypeAttribute(SqlExecuteTypes executeType, string tableName)
+        public SqlExecuteTypeAttribute(string executeType, string tableName)
         {
-            ExecuteType = executeType;
+            ExecuteType = executeType ?? throw new System.ArgumentNullException(nameof(executeType));
             TableName = tableName ?? throw new System.ArgumentNullException(nameof(tableName));
         }
 
         /// <summary>
         /// Gets the SQL operation type.
         /// </summary>
-        public SqlExecuteTypes ExecuteType { get; }
+        public string ExecuteType { get; }
 
         /// <summary>
         /// Gets the target table name.

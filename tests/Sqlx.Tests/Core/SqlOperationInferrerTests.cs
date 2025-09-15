@@ -1,7 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Sqlx.Core;
+using Sqlx;
 using System.Linq;
 
 namespace Sqlx.Tests.Core;
@@ -382,7 +382,7 @@ namespace TestNamespace
             foreach (var method in methods)
             {
                 var operation = SqlOperationInferrer.InferOperation(method);
-                Assert.IsTrue(operation != SqlOperationType.Select || method.Name.ToLowerInvariant().Contains("get"));
+                Assert.IsTrue(operation != SqlOperationType.Select || method.Name.Contains("get", System.StringComparison.InvariantCultureIgnoreCase));
             }
         }
     }

@@ -5,7 +5,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Sqlx.Core;
+using Sqlx;
 using System;
 
 namespace Sqlx.Tests.Core
@@ -56,8 +56,8 @@ namespace Sqlx.Tests.Core
             var exception = new SqlGenerationException("test");
 
             // Assert
-            Assert.IsInstanceOfType(exception, typeof(SqlxException));
-            Assert.IsInstanceOfType(exception, typeof(Exception));
+            Assert.IsInstanceOfType<SqlxException>(exception);
+            Assert.IsInstanceOfType<Exception>(exception);
         }
 
         [TestMethod]
@@ -85,8 +85,8 @@ namespace Sqlx.Tests.Core
             var exception = new InvalidMethodSignatureException("TestMethod", "test message");
 
             // Assert
-            Assert.IsInstanceOfType(exception, typeof(SqlxException));
-            Assert.IsInstanceOfType(exception, typeof(Exception));
+            Assert.IsInstanceOfType<SqlxException>(exception);
+            Assert.IsInstanceOfType<Exception>(exception);
         }
 
         [TestMethod]
@@ -117,8 +117,8 @@ namespace Sqlx.Tests.Core
             var exception = new UnsupportedDialectException("Oracle");
 
             // Assert
-            Assert.IsInstanceOfType(exception, typeof(SqlxException));
-            Assert.IsInstanceOfType(exception, typeof(Exception));
+            Assert.IsInstanceOfType<SqlxException>(exception);
+            Assert.IsInstanceOfType<Exception>(exception);
         }
 
         [TestMethod]

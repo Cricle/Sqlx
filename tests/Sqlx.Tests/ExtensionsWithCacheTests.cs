@@ -168,7 +168,7 @@ namespace Sqlx.Tests
         }
 
         // Helper methods
-        private ITypeSymbol CreateMockNullableStringType()
+        private static ITypeSymbol CreateMockNullableStringType()
         {
             var mock = new Mock<ITypeSymbol>();
             mock.Setup(x => x.SpecialType).Returns(SpecialType.System_String);
@@ -178,7 +178,7 @@ namespace Sqlx.Tests
             return mock.Object;
         }
 
-        private ITypeSymbol CreateMockNonNullableStringType()
+        private static ITypeSymbol CreateMockNonNullableStringType()
         {
             var mock = new Mock<ITypeSymbol>();
             mock.Setup(x => x.SpecialType).Returns(SpecialType.System_String);
@@ -188,7 +188,7 @@ namespace Sqlx.Tests
             return mock.Object;
         }
 
-        private ITypeSymbol CreateMockNullableIntType()
+        private static ITypeSymbol CreateMockNullableIntType()
         {
             var mock = new Mock<ITypeSymbol>();
             mock.Setup(x => x.SpecialType).Returns(SpecialType.System_Int32);
@@ -198,7 +198,7 @@ namespace Sqlx.Tests
             return mock.Object;
         }
 
-        private ITypeSymbol CreateMockNonNullableIntType()
+        private static ITypeSymbol CreateMockNonNullableIntType()
         {
             var mock = new Mock<ITypeSymbol>();
             mock.Setup(x => x.SpecialType).Returns(SpecialType.System_Int32);
@@ -208,7 +208,7 @@ namespace Sqlx.Tests
             return mock.Object;
         }
 
-        private ITypeSymbol CreateMockBoolType()
+        private static ITypeSymbol CreateMockBoolType()
         {
             var mock = new Mock<ITypeSymbol>();
             mock.Setup(x => x.SpecialType).Returns(SpecialType.System_Boolean);
@@ -218,7 +218,7 @@ namespace Sqlx.Tests
             return mock.Object;
         }
 
-        private ITypeSymbol CreateMockDateTimeType()
+        private static ITypeSymbol CreateMockDateTimeType()
         {
             var mock = new Mock<ITypeSymbol>();
             mock.Setup(x => x.SpecialType).Returns(SpecialType.System_DateTime);
@@ -228,7 +228,7 @@ namespace Sqlx.Tests
             return mock.Object;
         }
 
-        private ITypeSymbol CreateMockGuidType()
+        private static ITypeSymbol CreateMockGuidType()
         {
             var mock = new Mock<ITypeSymbol>();
             mock.Setup(x => x.SpecialType).Returns(SpecialType.None);
@@ -238,7 +238,7 @@ namespace Sqlx.Tests
             return mock.Object;
         }
 
-        private ITypeSymbol CreateMockDecimalType()
+        private static ITypeSymbol CreateMockDecimalType()
         {
             var mock = new Mock<ITypeSymbol>();
             mock.Setup(x => x.SpecialType).Returns(SpecialType.System_Decimal);

@@ -19,15 +19,15 @@ public class CodeGenerationHelperTests
         var generator = new TestableCodeGenerator();
 
         // Test smart update operation logic
-        var result1 = generator.TestGenerateSmartUpdate("User", "Users", true);
+        var result1 = TestableCodeGenerator.TestGenerateSmartUpdate("User", "Users", true);
         Assert.IsTrue(result1.Contains("Smart update"));
 
         // Test partial update operation logic  
-        var result2 = generator.TestGeneratePartialUpdate("Product", "Products", false);
+        var result2 = TestableCodeGenerator.TestGeneratePartialUpdate("Product", "Products", false);
         Assert.IsTrue(result2.Contains("Partial update"));
 
         // Test batch update operation logic
-        var result3 = generator.TestGenerateBatchUpdate("Order", "Orders", true);
+        var result3 = TestableCodeGenerator.TestGenerateBatchUpdate("Order", "Orders", true);
         Assert.IsTrue(result3.Contains("Batch update"));
     }
 
@@ -38,7 +38,7 @@ public class CodeGenerationHelperTests
         var generator = new TestableCodeGenerator();
 
         // Test increment update logic
-        var result = generator.TestGenerateIncrementUpdate("Counter", "Counters", false);
+        var result = TestableCodeGenerator.TestGenerateIncrementUpdate("Counter", "Counters", false);
         Assert.IsTrue(result.Contains("Increment update"));
         Assert.IsTrue(result.Contains("Counters"));
         Assert.IsTrue(result.Contains("Counter"));
@@ -51,7 +51,7 @@ public class CodeGenerationHelperTests
         var generator = new TestableCodeGenerator();
 
         // Test optimistic update logic
-        var result = generator.TestGenerateOptimisticUpdate("User", "Users", true);
+        var result = TestableCodeGenerator.TestGenerateOptimisticUpdate("User", "Users", true);
         Assert.IsTrue(result.Contains("Optimistic update"));
         Assert.IsTrue(result.Contains("Users"));
         Assert.IsTrue(result.Contains("User"));
@@ -64,7 +64,7 @@ public class CodeGenerationHelperTests
         var generator = new TestableCodeGenerator();
 
         // Test bulk update logic
-        var result = generator.TestGenerateBulkUpdate("Product", "Products", false);
+        var result = TestableCodeGenerator.TestGenerateBulkUpdate("Product", "Products", false);
         Assert.IsTrue(result.Contains("Bulk update"));
         Assert.IsTrue(result.Contains("Products"));
         Assert.IsTrue(result.Contains("Product"));
@@ -77,7 +77,7 @@ public class CodeGenerationHelperTests
         var generator = new TestableCodeGenerator();
 
         // Test traditional update logic
-        var result = generator.TestGenerateTraditionalUpdate("Order", "Orders", true, "UpdateOrder");
+        var result = TestableCodeGenerator.TestGenerateTraditionalUpdate("Order", "Orders", true, "UpdateOrder");
         Assert.IsTrue(result.Contains("Traditional update"));
         Assert.IsTrue(result.Contains("UpdateOrder"));
     }
@@ -89,12 +89,12 @@ public class CodeGenerationHelperTests
         var generator = new TestableCodeGenerator();
 
         // Test connection setup logic
-        var result1 = generator.TestGenerateConnectionSetup("GetUsers", true);
+        var result1 = TestableCodeGenerator.TestGenerateConnectionSetup("GetUsers", true);
         Assert.IsTrue(result1.Contains("Connection setup"));
         Assert.IsTrue(result1.Contains("GetUsers"));
         Assert.IsTrue(result1.Contains("async"));
 
-        var result2 = generator.TestGenerateConnectionSetup("SaveUser", false);
+        var result2 = TestableCodeGenerator.TestGenerateConnectionSetup("SaveUser", false);
         Assert.IsTrue(result2.Contains("Connection setup"));
         Assert.IsTrue(result2.Contains("SaveUser"));
         Assert.IsTrue(result2.Contains("sync"));
@@ -107,7 +107,7 @@ public class CodeGenerationHelperTests
         var generator = new TestableCodeGenerator();
 
         // Test custom SQL operation logic
-        var result = generator.TestGenerateCustomSqlOperation("ExecuteCustomQuery", "User", true, "SqlServer");
+        var result = TestableCodeGenerator.TestGenerateCustomSqlOperation("ExecuteCustomQuery", "User", true, "SqlServer");
         Assert.IsTrue(result.Contains("Custom SQL operation"));
         Assert.IsTrue(result.Contains("ExecuteCustomQuery"));
         Assert.IsTrue(result.Contains("User"));
@@ -121,15 +121,15 @@ public class CodeGenerationHelperTests
         var generator = new TestableCodeGenerator();
 
         // Test entity type inference from method names
-        Assert.AreEqual("User", generator.TestInferEntityFromMethodName("GetUser"));
-        Assert.AreEqual("Product", generator.TestInferEntityFromMethodName("SaveProduct"));
-        Assert.AreEqual("Order", generator.TestInferEntityFromMethodName("DeleteOrder"));
-        Assert.AreEqual("Customer", generator.TestInferEntityFromMethodName("UpdateCustomer"));
-        
+        Assert.AreEqual("User", TestableCodeGenerator.TestInferEntityFromMethodName("GetUser"));
+        Assert.AreEqual("Product", TestableCodeGenerator.TestInferEntityFromMethodName("SaveProduct"));
+        Assert.AreEqual("Order", TestableCodeGenerator.TestInferEntityFromMethodName("DeleteOrder"));
+        Assert.AreEqual("Customer", TestableCodeGenerator.TestInferEntityFromMethodName("UpdateCustomer"));
+
         // Test interface name inference
-        Assert.AreEqual("User", generator.TestInferEntityFromInterfaceName("IUserService"));
-        Assert.AreEqual("Product", generator.TestInferEntityFromInterfaceName("IProductRepository"));
-        Assert.AreEqual("Order", generator.TestInferEntityFromInterfaceName("IOrderManager"));
+        Assert.AreEqual("User", TestableCodeGenerator.TestInferEntityFromInterfaceName("IUserService"));
+        Assert.AreEqual("Product", TestableCodeGenerator.TestInferEntityFromInterfaceName("IProductRepository"));
+        Assert.AreEqual("Order", TestableCodeGenerator.TestInferEntityFromInterfaceName("IOrderManager"));
     }
 
     [TestMethod]
@@ -139,17 +139,17 @@ public class CodeGenerationHelperTests
         var generator = new TestableCodeGenerator();
 
         // Test parameter analysis
-        Assert.IsTrue(generator.TestIsEntityParameter("User"));
-        Assert.IsTrue(generator.TestIsEntityParameter("Product"));
-        Assert.IsFalse(generator.TestIsEntityParameter("string"));
-        Assert.IsFalse(generator.TestIsEntityParameter("int"));
-        Assert.IsFalse(generator.TestIsEntityParameter("CancellationToken"));
+        Assert.IsTrue(TestableCodeGenerator.TestIsEntityParameter("User"));
+        Assert.IsTrue(TestableCodeGenerator.TestIsEntityParameter("Product"));
+        Assert.IsFalse(TestableCodeGenerator.TestIsEntityParameter("string"));
+        Assert.IsFalse(TestableCodeGenerator.TestIsEntityParameter("int"));
+        Assert.IsFalse(TestableCodeGenerator.TestIsEntityParameter("CancellationToken"));
 
         // Test collection parameter analysis
-        Assert.IsTrue(generator.TestIsCollectionParameter("List<User>"));
-        Assert.IsTrue(generator.TestIsCollectionParameter("IEnumerable<Product>"));
-        Assert.IsFalse(generator.TestIsCollectionParameter("User"));
-        Assert.IsFalse(generator.TestIsCollectionParameter("string"));
+        Assert.IsTrue(TestableCodeGenerator.TestIsCollectionParameter("List<User>"));
+        Assert.IsTrue(TestableCodeGenerator.TestIsCollectionParameter("IEnumerable<Product>"));
+        Assert.IsFalse(TestableCodeGenerator.TestIsCollectionParameter("User"));
+        Assert.IsFalse(TestableCodeGenerator.TestIsCollectionParameter("string"));
     }
 
     [TestMethod]
@@ -159,19 +159,19 @@ public class CodeGenerationHelperTests
         var generator = new TestableCodeGenerator();
 
         // Test SQL template generation
-        var selectSql = generator.TestGenerateSqlTemplate("SELECT", "Users", "User");
+        var selectSql = TestableCodeGenerator.TestGenerateSqlTemplate("SELECT", "Users", "User");
         Assert.IsTrue(selectSql.Contains("SELECT"));
         Assert.IsTrue(selectSql.Contains("Users"));
 
-        var insertSql = generator.TestGenerateSqlTemplate("INSERT", "Products", "Product");
+        var insertSql = TestableCodeGenerator.TestGenerateSqlTemplate("INSERT", "Products", "Product");
         Assert.IsTrue(insertSql.Contains("INSERT"));
         Assert.IsTrue(insertSql.Contains("Products"));
 
-        var updateSql = generator.TestGenerateSqlTemplate("UPDATE", "Orders", "Order");
+        var updateSql = TestableCodeGenerator.TestGenerateSqlTemplate("UPDATE", "Orders", "Order");
         Assert.IsTrue(updateSql.Contains("UPDATE"));
         Assert.IsTrue(updateSql.Contains("Orders"));
 
-        var deleteSql = generator.TestGenerateSqlTemplate("DELETE", "Customers", "Customer");
+        var deleteSql = TestableCodeGenerator.TestGenerateSqlTemplate("DELETE", "Customers", "Customer");
         Assert.IsTrue(deleteSql.Contains("DELETE"));
         Assert.IsTrue(deleteSql.Contains("Customers"));
     }
@@ -187,53 +187,53 @@ public class TestableCodeGenerator : AbstractGenerator
         // 空实现，仅用于测试
     }
 
-    public string TestGenerateSmartUpdate(string entityName, string tableName, bool isAsync)
+    public static string TestGenerateSmartUpdate(string entityName, string tableName, bool isAsync)
     {
         return $"// Smart update operation for {entityName} on table {tableName}, Async: {isAsync}";
     }
 
-    public string TestGeneratePartialUpdate(string entityName, string tableName, bool isAsync)
+    public static string TestGeneratePartialUpdate(string entityName, string tableName, bool isAsync)
     {
         return $"// Partial update operation for {entityName} on table {tableName}, Async: {isAsync}";
     }
 
-    public string TestGenerateBatchUpdate(string entityName, string tableName, bool isAsync)
+    public static string TestGenerateBatchUpdate(string entityName, string tableName, bool isAsync)
     {
         return $"// Batch update operation for {entityName} on table {tableName}, Async: {isAsync}";
     }
 
-    public string TestGenerateIncrementUpdate(string entityName, string tableName, bool isAsync)
+    public static string TestGenerateIncrementUpdate(string entityName, string tableName, bool isAsync)
     {
         return $"// Increment update operation for {entityName} on table {tableName}, Async: {isAsync}";
     }
 
-    public string TestGenerateOptimisticUpdate(string entityName, string tableName, bool isAsync)
+    public static string TestGenerateOptimisticUpdate(string entityName, string tableName, bool isAsync)
     {
         return $"// Optimistic update operation for {entityName} on table {tableName}, Async: {isAsync}";
     }
 
-    public string TestGenerateBulkUpdate(string entityName, string tableName, bool isAsync)
+    public static string TestGenerateBulkUpdate(string entityName, string tableName, bool isAsync)
     {
         return $"// Bulk update operation for {entityName} on table {tableName}, Async: {isAsync}";
     }
 
-    public string TestGenerateTraditionalUpdate(string entityName, string tableName, bool isAsync, string methodName)
+    public static string TestGenerateTraditionalUpdate(string entityName, string tableName, bool isAsync, string methodName)
     {
         return $"// Traditional update operation for {entityName} on table {tableName}, Method: {methodName}, Async: {isAsync}";
     }
 
-    public string TestGenerateConnectionSetup(string methodName, bool isAsync)
+    public static string TestGenerateConnectionSetup(string methodName, bool isAsync)
     {
         var asyncText = isAsync ? "async" : "sync";
         return $"// Connection setup for method {methodName}, {asyncText}";
     }
 
-    public string TestGenerateCustomSqlOperation(string methodName, string entityName, bool isAsync, string dialect)
+    public static string TestGenerateCustomSqlOperation(string methodName, string entityName, bool isAsync, string dialect)
     {
         return $"// Custom SQL operation for {methodName}, Entity: {entityName}, Async: {isAsync}, Dialect: {dialect}";
     }
 
-    public string TestInferEntityFromMethodName(string methodName)
+    public static string TestInferEntityFromMethodName(string methodName)
     {
         // 简化的实体类型推断逻辑
         if (methodName.StartsWith("Get") && methodName.Length > 3)
@@ -247,7 +247,7 @@ public class TestableCodeGenerator : AbstractGenerator
         return methodName;
     }
 
-    public string TestInferEntityFromInterfaceName(string interfaceName)
+    public static string TestInferEntityFromInterfaceName(string interfaceName)
     {
         // 简化的接口名称推断逻辑
         if (interfaceName.StartsWith("I") && interfaceName.Length > 1)
@@ -264,25 +264,25 @@ public class TestableCodeGenerator : AbstractGenerator
         return interfaceName;
     }
 
-    public bool TestIsEntityParameter(string parameterType)
+    public static bool TestIsEntityParameter(string parameterType)
     {
         // 简化的实体参数判断逻辑
         var systemTypes = new[] { "string", "int", "bool", "DateTime", "Guid", "CancellationToken", "object" };
-        return !systemTypes.Contains(parameterType) && 
-               !parameterType.StartsWith("System.") && 
+        return !systemTypes.Contains(parameterType) &&
+               !parameterType.StartsWith("System.") &&
                char.IsUpper(parameterType[0]);
     }
 
-    public bool TestIsCollectionParameter(string parameterType)
+    public static bool TestIsCollectionParameter(string parameterType)
     {
         // 简化的集合参数判断逻辑
-        return parameterType.Contains("List<") || 
-               parameterType.Contains("IEnumerable<") || 
+        return parameterType.Contains("List<") ||
+               parameterType.Contains("IEnumerable<") ||
                parameterType.Contains("Collection<") ||
                parameterType.Contains("Array<");
     }
 
-    public string TestGenerateSqlTemplate(string operation, string tableName, string entityName)
+    public static string TestGenerateSqlTemplate(string operation, string tableName, string entityName)
     {
         // 简化的SQL模板生成逻辑
         return operation.ToUpper() switch

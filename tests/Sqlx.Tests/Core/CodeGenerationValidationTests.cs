@@ -14,7 +14,7 @@ namespace Sqlx.Tests.Core
     /// 代码生成验证测试 - 验证生成的代码符合优化要求
     /// </summary>
     [TestClass]
-    public class CodeGenerationValidationTests
+    public partial class CodeGenerationValidationTests
     {
         [TestMethod]
         public void Generated_Code_Should_Not_Use_Convert_Methods()
@@ -39,14 +39,14 @@ namespace Sqlx.Tests.Core
             // Act & Assert - 好的代码样例
             foreach (var goodCode in generatedCodeSamples)
             {
-                Assert.IsFalse(ContainsConvertMethod(goodCode), 
+                Assert.IsFalse(ContainsConvertMethod(goodCode),
                     $"Good code should not use Convert methods: {goodCode}");
             }
 
             // Act & Assert - 坏的代码样例
             foreach (var badCode in badCodeSamples)
             {
-                Assert.IsTrue(ContainsConvertMethod(badCode), 
+                Assert.IsTrue(ContainsConvertMethod(badCode),
                     $"Bad code should be detected: {badCode}");
             }
         }
@@ -75,16 +75,16 @@ namespace Sqlx.Tests.Core
             // Act & Assert - 好的代码样例
             foreach (var goodCode in goodCodeSamples)
             {
-                Assert.IsTrue(UsesStrongTypedMethod(goodCode), 
+                Assert.IsTrue(UsesStrongTypedMethod(goodCode),
                     $"Should use strong-typed methods: {goodCode}");
-                Assert.IsFalse(UsesGetValue(goodCode), 
+                Assert.IsFalse(UsesGetValue(goodCode),
                     $"Should not use GetValue: {goodCode}");
             }
 
             // Act & Assert - 坏的代码样例
             foreach (var badCode in badCodeSamples)
             {
-                Assert.IsTrue(UsesGetValue(badCode), 
+                Assert.IsTrue(UsesGetValue(badCode),
                     $"Bad code uses GetValue (boxing): {badCode}");
             }
         }
@@ -110,14 +110,14 @@ namespace Sqlx.Tests.Core
             // Act & Assert - 好的null处理
             foreach (var goodCode in goodNullHandlingSamples)
             {
-                Assert.IsTrue(HasProperNullHandling(goodCode), 
+                Assert.IsTrue(HasProperNullHandling(goodCode),
                     $"Should have proper null handling: {goodCode}");
             }
 
             // Act & Assert - 坏的null处理
             foreach (var badCode in badNullHandlingSamples)
             {
-                Assert.IsFalse(HasProperNullHandling(badCode) && !UsesGetValue(badCode), 
+                Assert.IsFalse(HasProperNullHandling(badCode) && !UsesGetValue(badCode),
                     $"Should avoid boxing in null handling: {badCode}");
             }
         }
@@ -136,7 +136,7 @@ namespace Sqlx.Tests.Core
             // Act & Assert
             foreach (var code in goodFailFastSamples)
             {
-                Assert.IsTrue(HasFailFastCheck(code), 
+                Assert.IsTrue(HasFailFastCheck(code),
                     $"Should include fail-fast checks: {code}");
             }
         }
@@ -156,7 +156,7 @@ namespace Sqlx.Tests.Core
             // Act & Assert
             foreach (var code in codeWithComments)
             {
-                Assert.IsTrue(HasPerformanceComment(code), 
+                Assert.IsTrue(HasPerformanceComment(code),
                     $"Should include performance-related comments: {code}");
             }
         }
@@ -186,14 +186,14 @@ namespace Sqlx.Tests.Core
             // Act & Assert - 高效模式
             foreach (var pattern in efficientScalarPatterns)
             {
-                Assert.IsFalse(ContainsConvertMethod(pattern), 
+                Assert.IsFalse(ContainsConvertMethod(pattern),
                     $"Efficient pattern should not use Convert: {pattern}");
             }
 
             // Act & Assert - 低效模式
             foreach (var pattern in inefficientScalarPatterns)
             {
-                Assert.IsTrue(ContainsConvertMethod(pattern), 
+                Assert.IsTrue(ContainsConvertMethod(pattern),
                     $"Inefficient pattern should be detected: {pattern}");
             }
         }
@@ -217,7 +217,7 @@ namespace Sqlx.Tests.Core
             // 这个测试更多是概念性的，实际应用中需要分析生成的代码
             foreach (var pattern in optimizedPatterns)
             {
-                Assert.IsTrue(UsesVariableForDisplayString(pattern), 
+                Assert.IsTrue(UsesVariableForDisplayString(pattern),
                     $"Should cache ToDisplayString results: {pattern}");
             }
         }
@@ -242,65 +242,71 @@ namespace Sqlx.Tests.Core
             // Act & Assert
             foreach (var goodCode in goodCastingSamples)
             {
-                Assert.IsFalse(HasUnnecessaryCast(goodCode), 
+                Assert.IsFalse(HasUnnecessaryCast(goodCode),
                     $"Should not have unnecessary casts: {goodCode}");
             }
         }
 
         // Helper methods for pattern detection
-        private bool ContainsConvertMethod(string code)
+        private static bool ContainsConvertMethod(string code)
         {
-            return Regex.IsMatch(code, @"(System\.)?Convert\.To\w+", RegexOptions.IgnoreCase);
+            return CodeGenValidationRegex().IsMatch(code);
         }
 
-        private bool UsesStrongTypedMethod(string code)
+        private static bool UsesStrongTypedMethod(string code)
         {
             return Regex.IsMatch(code, @"reader\.Get(Int32|String|Boolean|Decimal|DateTime|Guid)\(", RegexOptions.IgnoreCase);
         }
 
-        private bool UsesGetValue(string code)
+        private static bool UsesGetValue(string code)
         {
             return Regex.IsMatch(code, @"reader\.GetValue\(", RegexOptions.IgnoreCase);
         }
 
-        private bool HasProperNullHandling(string code)
+        private static bool HasProperNullHandling(string code)
         {
             return code.Contains("IsDBNull") || code.Contains("?? DBNull.Value") || code.Contains("?? global::System.DBNull.Value");
         }
 
-        private bool HasFailFastCheck(string code)
+        private static bool HasFailFastCheck(string code)
         {
             return code.Contains("ArgumentNullException") || code.Contains("fail fast");
         }
 
-        private bool HasPerformanceComment(string code)
+        private static bool HasPerformanceComment(string code)
         {
             return code.Contains("//") && (
-                code.Contains("boxing") || 
-                code.Contains("Boxing") || 
-                code.Contains("fail fast") || 
+                code.Contains("boxing") ||
+                code.Contains("Boxing") ||
+                code.Contains("fail fast") ||
                 code.Contains("Optimized") ||
                 code.Contains("Zero-boxing"));
         }
 
-        private bool UsesVariableForDisplayString(string code)
+        private static bool UsesVariableForDisplayString(string code)
         {
-            return Regex.IsMatch(code, @"var \w+.*=.*\.ToDisplayString\(\)", RegexOptions.IgnoreCase);
+            return DisplayStringRegex().IsMatch(code);
         }
 
-        private bool HasUnnecessaryCast(string code)
+        private static bool HasUnnecessaryCast(string code)
         {
             // 检测可能不必要的显式转换
             return Regex.IsMatch(code, @"\(object\)\w+(?!\s*\?\?)", RegexOptions.IgnoreCase) &&
                    !code.Contains("// Cast to object is implicit");
         }
+
+        [GeneratedRegex(@"var \w+.*=.*\.ToDisplayString\(\)", RegexOptions.IgnoreCase, "zh-CN")]
+        private static partial Regex DisplayStringRegex();
+
+        [GeneratedRegex(@"(System\.)?Convert\.To\w+", RegexOptions.IgnoreCase, "zh-CN")]
+        private static partial Regex CodeGenValidationRegex();
     }
 
     /// <summary>
     /// 代码质量验证测试
     /// </summary>
     [TestClass]
-    public class CodeQualityValidationTests
+    public partial class CodeQualityValidationTests
     {
         [TestMethod]
         public void Generated_Code_Should_Follow_Naming_Conventions()
@@ -318,7 +324,7 @@ namespace Sqlx.Tests.Core
             // Act & Assert
             foreach (var name in goodNamingExamples)
             {
-                Assert.IsTrue(FollowsNamingConvention(name), 
+                Assert.IsTrue(FollowsNamingConvention(name),
                     $"Should follow naming convention: {name}");
             }
         }
@@ -340,7 +346,7 @@ namespace Sqlx.Tests.Core
             // 实际测试中需要检查生成的文件内容
             foreach (var usingStatement in requiredUsings)
             {
-                Assert.IsTrue(IsValidUsingStatement(usingStatement), 
+                Assert.IsTrue(IsValidUsingStatement(usingStatement),
                     $"Should be valid using statement: {usingStatement}");
             }
         }
@@ -359,28 +365,31 @@ namespace Sqlx.Tests.Core
             // Act & Assert
             foreach (var caseHandling in edgeCaseHandling)
             {
-                Assert.IsTrue(HandlesEdgeCase(caseHandling), 
+                Assert.IsTrue(HandlesEdgeCase(caseHandling),
                     $"Should handle edge case: {caseHandling}");
             }
         }
 
         // Helper methods
-        private bool FollowsNamingConvention(string name)
+        private static bool FollowsNamingConvention(string name)
         {
             // 生成的变量应该使用双下划线或特定模式
-            return name.StartsWith("__") && name.EndsWith("__") || 
-                   name.Contains("_") || 
-                   Regex.IsMatch(name, @"^[a-z][a-zA-Z0-9]*$");
+            return name.StartsWith("__") && name.EndsWith("__") ||
+                   name.Contains('_') ||
+                   VariableNameRegex().IsMatch(name);
         }
 
-        private bool IsValidUsingStatement(string usingStatement)
+        private static bool IsValidUsingStatement(string usingStatement)
         {
             return usingStatement.StartsWith("using ") && usingStatement.EndsWith(";");
         }
 
-        private bool HandlesEdgeCase(string code)
+        private static bool HandlesEdgeCase(string code)
         {
             return code.Contains("if (") || code.Contains("try") || code.Contains("catch");
         }
+
+        [GeneratedRegex(@"^[a-z][a-zA-Z0-9]*$")]
+        private static partial Regex VariableNameRegex();
     }
 }

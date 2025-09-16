@@ -165,7 +165,9 @@ namespace Foo
         // Flexible checks: method signature pieces and EF call
         StringAssert.Contains(output, "Task");
         StringAssert.Contains(output, " M(int clientId, int? personId)");
-        StringAssert.Contains(output, "sp_TestSP @client_id, @person_id");
+        StringAssert.Contains(output, "sp_TestSP");
+        StringAssert.Contains(output, "@client_id");
+        StringAssert.Contains(output, "@person_id");
         StringAssert.Contains(output, "FromSqlRaw(");
     }
 

@@ -52,8 +52,10 @@ internal partial class MethodGenerationContext : GenerationContextBase
 
         CancellationTokenParameter = GetParameter(methodSymbol, x => x.Type.IsCancellationToken());
 
+#pragma warning disable CS0219 // Variable assigned but never used
         var rawSqlIsInParamter = true;
         var rawSqlShouldRemoveFromParams = false;
+#pragma warning restore CS0219
         // RawSqlAttribute functionality has been merged into SqlxAttribute
         var rawSqlParam = GetAttributeParamter(methodSymbol, "SqlxAttribute");
         if (rawSqlParam != null)
@@ -204,8 +206,8 @@ internal partial class MethodGenerationContext : GenerationContextBase
             }
             else
             {
-                var __dbContextName__ = DbContext != null ? DbContext.Name : "this.dbContext";
-                dbConnectionExpression = dbConnection == null ? $"global::Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.GetDbConnection({__dbContextName__}.Database)" : dbConnection.Name;
+                var dbContextName = GetDbContextFieldName(ClassGenerationContext.ClassSymbol);
+                dbConnectionExpression = dbConnection == null ? $"global::Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.GetDbConnection({dbContextName}.Database)" : dbConnection.Name;
             }
         }
 
@@ -544,30 +546,30 @@ internal partial class MethodGenerationContext : GenerationContextBase
                 sb.AppendLine($"    \"Sequence contains no elements\");");
             }
 
-            // Direct assignment and return without extra conversion for performance
+            // Direct assignment and return with proper conversion since ExecuteScalar returns object
             if (ReturnType.SpecialType == SpecialType.System_Int32)
             {
-                sb.AppendLine($"return {ResultName};");  // ExecuteScalar already returns correct type
+                sb.AppendLine($"return global::System.Convert.ToInt32({ResultName});");  // Handle SQLite Int64->Int32 conversion
             }
             else if (ReturnType.SpecialType == SpecialType.System_Int64)
             {
-                sb.AppendLine($"return {ResultName};");  // ExecuteScalar already returns correct type
+                sb.AppendLine($"return global::System.Convert.ToInt64({ResultName});");  // Convert to long
             }
             else if (ReturnType.SpecialType == SpecialType.System_Boolean)
             {
-                sb.AppendLine($"return {ResultName};");  // ExecuteScalar already returns correct type
+                sb.AppendLine($"return global::System.Convert.ToBoolean({ResultName});");  // Convert to bool
             }
             else if (ReturnType.SpecialType == SpecialType.System_Decimal)
             {
-                sb.AppendLine($"return {ResultName};");  // ExecuteScalar already returns correct type
+                sb.AppendLine($"return global::System.Convert.ToDecimal({ResultName});");  // Handle Double->Decimal conversion
             }
             else if (ReturnType.SpecialType == SpecialType.System_Double)
             {
-                sb.AppendLine($"return {ResultName};");  // ExecuteScalar already returns correct type
+                sb.AppendLine($"return global::System.Convert.ToDouble({ResultName});");  // Convert to double
             }
             else if (ReturnType.SpecialType == SpecialType.System_Single)
             {
-                sb.AppendLine($"return {ResultName};");  // ExecuteScalar already returns correct type
+                sb.AppendLine($"return global::System.Convert.ToSingle({ResultName});");  // Convert to float
             }
             else if (ReturnType.SpecialType == SpecialType.System_String)
             {
@@ -890,8 +892,8 @@ internal partial class MethodGenerationContext : GenerationContextBase
                 // Use enhanced entity mapping for records and primary constructors
                 sb.AppendLine($"// Enhanced entity mapping for {(PrimaryConstructorAnalyzer.IsRecord(namedType) ? "record" : "primary constructor")} type");
                 EnhancedEntityMappingGenerator.GenerateEntityMapping(sb, namedType);
-                // Rename the generated entity variable to match expected DataName
-                if (DataName != "entity")
+                // Rename the generated entity variable to match expected DataName if it will be used
+                if (DataName != "entity" && !string.IsNullOrEmpty(listName))
                 {
                     sb.AppendLine($"var {DataName} = entity;");
                 }
@@ -1735,16 +1737,16 @@ internal partial class MethodGenerationContext : GenerationContextBase
         switch (operationType)
         {
             case "INSERT":
-                GenerateBatchInsertSql(sb, tableName, properties);
+                GenerateBatchInsertSql(sb, tableName!, properties);
                 break;
             case "UPDATE":
-                GenerateBatchUpdateSql(sb, tableName, properties);
+                GenerateBatchUpdateSql(sb, tableName!, properties);
                 break;
             case "DELETE":
-                GenerateBatchDeleteSql(sb, tableName, properties);
+                GenerateBatchDeleteSql(sb, tableName!, properties);
                 break;
             default:
-                GenerateBatchInsertSql(sb, tableName, properties); // Default to INSERT
+                GenerateBatchInsertSql(sb, tableName!, properties); // Default to INSERT
                 break;
         }
 
@@ -1832,7 +1834,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
         switch (operationType)
         {
             case "INSERT":
-                sb.AppendLine($"{CmdName}.CommandText = \"INSERT INTO {SqlDef.WrapColumn(tableName)} (\" + __columns__ + \") VALUES (\" + __values__ + \")\";");
+                sb.AppendLine($"{CmdName}.CommandText = \"INSERT INTO {SqlDef.WrapColumn(tableName!)} (\" + __columns__ + \") VALUES (\" + __values__ + \")\";");
                 break;
             case "UPDATE":
                 var setProperties = GetSetProperties(properties);
@@ -1852,7 +1854,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
 
                 var setClause = string.Join(", ", setProperties.Select(p => $"{SqlDef.WrapColumn(p.Name)} = {SqlDef.ParameterPrefix}{p.GetParameterName(string.Empty)}"));
                 var whereClause = string.Join(" AND ", whereProperties.Select(p => GenerateWhereCondition(p)));
-                sb.AppendLine($"{CmdName}.CommandText = \"UPDATE {SqlDef.WrapColumn(tableName)} SET {setClause} WHERE {whereClause}\";");
+                sb.AppendLine($"{CmdName}.CommandText = \"UPDATE {SqlDef.WrapColumn(tableName!)} SET {setClause} WHERE {whereClause}\";");
                 break;
             case "DELETE":
                 var deleteWhereProperties = GetWhereProperties(properties);
@@ -1864,10 +1866,10 @@ internal partial class MethodGenerationContext : GenerationContextBase
                 }
 
                 var deleteWhereClause = string.Join(" AND ", deleteWhereProperties.Select(p => GenerateWhereCondition(p)));
-                sb.AppendLine($"{CmdName}.CommandText = \"DELETE FROM {SqlDef.WrapColumn(tableName)} WHERE {deleteWhereClause}\";");
+                sb.AppendLine($"{CmdName}.CommandText = \"DELETE FROM {SqlDef.WrapColumn(tableName!)} WHERE {deleteWhereClause}\";");
                 break;
             default:
-                sb.AppendLine($"{CmdName}.CommandText = \"INSERT INTO {SqlDef.WrapColumn(tableName)} (\" + __columns__ + \") VALUES (\" + __values__ + \")\";");
+                sb.AppendLine($"{CmdName}.CommandText = \"INSERT INTO {SqlDef.WrapColumn(tableName!)} (\" + __columns__ + \") VALUES (\" + __values__ + \")\";");
                 break;
         }
 
@@ -2158,6 +2160,51 @@ internal partial class MethodGenerationContext : GenerationContextBase
         }
 
         return dbConnectionMember?.Name ?? "connection"; // Fallback to "connection" if not found
+    }
+
+    private string GetDbContextFieldName(INamedTypeSymbol repositoryClass)
+    {
+        // Find the first DbContext field or property
+        var dbContextMember = repositoryClass.GetMembers()
+            .OfType<IFieldSymbol>()
+            .FirstOrDefault(x => x.IsDbContext()) ??
+            repositoryClass.GetMembers()
+            .OfType<IPropertySymbol>()
+            .FirstOrDefault(x => x.IsDbContext()) as ISymbol;
+
+        // If not found, check for primary constructor parameter with DbContext
+        if (dbContextMember == null)
+        {
+            var primaryConstructor = PrimaryConstructorAnalyzer.GetPrimaryConstructor(repositoryClass);
+            if (primaryConstructor != null)
+            {
+                var contextParam = primaryConstructor.Parameters.FirstOrDefault(p => p.Type.IsDbContext());
+                if (contextParam != null)
+                {
+                    // For primary constructor parameters, use the parameter name as field name
+                    return contextParam.Name;
+                }
+            }
+
+            // Also check regular constructors for backward compatibility
+            var constructor = repositoryClass.InstanceConstructors.FirstOrDefault();
+            if (constructor != null)
+            {
+                var contextParam = constructor.Parameters.FirstOrDefault(p => p.Type.IsDbContext());
+                if (contextParam != null)
+                {
+                    return contextParam.Name;
+                }
+            }
+        }
+
+        // If not found in the class, check base class
+        if (dbContextMember == null && repositoryClass.BaseType != null)
+        {
+            return GetDbContextFieldName(repositoryClass.BaseType);
+        }
+
+        return dbContextMember?.Name ?? "this.dbContext"; // Fallback to "this.dbContext" if not found
     }
 
     private void GenerateParameterNullChecks(IndentedStringBuilder sb)

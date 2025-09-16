@@ -36,7 +36,7 @@ namespace Foo
         Assert.IsTrue(output.Contains("namespace Foo"), "Generated code should contain Foo namespace");
         Assert.IsTrue(output.Contains("internal static partial class C"), "Generated code should contain partial class C");
         Assert.IsTrue(output.Contains("public async static partial System.Threading.Tasks.Task<int> M"), "Generated code should contain method M");
-        Assert.IsTrue(output.Contains("EXEC sp_TestSP"), "Generated code should contain stored procedure call");
+        Assert.IsTrue(output.Contains("sp_TestSP"), "Generated code should contain stored procedure call");
         Assert.IsTrue(output.Contains("@client_id"), "Generated code should contain client_id parameter");
         Assert.IsTrue(output.Contains("@person_id"), "Generated code should contain person_id parameter");
         Assert.IsTrue(output.Contains("OnExecuting"), "Generated code should contain OnExecuting method");

@@ -5,6 +5,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.CodeAnalysis;
+using Sqlx.Generator.Core;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -77,7 +78,7 @@ internal static class EnhancedEntityMappingGenerator
                 var columnName = GetColumnName(member ?? new PrimaryConstructorParameterMemberInfo(param, propertyName));
                 var ordinalVar = $"__ordinal_{columnName}";
 
-                var dataReadExpression = Extensions.GetDataReadExpression(param.Type, "reader", columnName);
+                var dataReadExpression = GetDataReadExpression(param.Type, "reader", columnName, ordinalVar);
                 sb.AppendLine($"{dataReadExpression}{comma}");
             }
 
@@ -115,7 +116,7 @@ internal static class EnhancedEntityMappingGenerator
                 var columnName = GetColumnName(member ?? new PrimaryConstructorParameterMemberInfo(param, propertyName));
                 var ordinalVar = $"__ordinal_{columnName}";
 
-                var dataReadExpression = Extensions.GetDataReadExpression(param.Type, "reader", columnName);
+                var dataReadExpression = GetDataReadExpression(param.Type, "reader", columnName, ordinalVar);
                 sb.AppendLine($"{dataReadExpression}{comma}");
             }
 
@@ -132,7 +133,7 @@ internal static class EnhancedEntityMappingGenerator
             {
                 var columnName = GetColumnName(member);
                 var ordinalVar = $"__ordinal_{columnName}";
-                var dataReadExpression = Extensions.GetDataReadExpression(member.Type, "reader", columnName);
+                var dataReadExpression = GetDataReadExpression(member.Type, "reader", columnName, ordinalVar);
                 sb.AppendLine($"entity.{member.Name} = {dataReadExpression};");
             }
         }
@@ -171,7 +172,7 @@ internal static class EnhancedEntityMappingGenerator
                 var columnName = GetColumnName(member);
                 var ordinalVar = $"__ordinal_{columnName}";
 
-                var dataReadExpression = Extensions.GetDataReadExpression(member.Type, "reader", columnName);
+                var dataReadExpression = GetDataReadExpression(member.Type, "reader", columnName, ordinalVar);
                 sb.AppendLine($"{member.Name} = {dataReadExpression}{comma}");
             }
 

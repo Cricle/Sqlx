@@ -10,8 +10,16 @@ namespace Sqlx.SqlGen
     using System.Linq;
     using System.Text.RegularExpressions;
 
-    internal abstract record GenerateContext(MethodGenerationContext Context, string TableName)
+    internal abstract class GenerateContext
     {
+        protected GenerateContext(MethodGenerationContext context, string tableName)
+        {
+            Context = context;
+            TableName = tableName;
+        }
+
+        public MethodGenerationContext Context { get; }
+        public string TableName { get; }
         public static string GetColumnName(string name)
         {
             if (string.IsNullOrEmpty(name))
@@ -41,27 +49,55 @@ namespace Sqlx.SqlGen
         }
     }
 
-    internal sealed record InsertGenerateContext(MethodGenerationContext Context, string TableName, ObjectMap Entry) : GenerateContext(Context, TableName)
+    internal sealed class InsertGenerateContext : GenerateContext
     {
+        public InsertGenerateContext(MethodGenerationContext context, string tableName, ObjectMap entry) : base(context, tableName)
+        {
+            Entry = entry;
+        }
+
+        public ObjectMap Entry { get; }
+
         public string GetParamterNames(string prefx) => string.Join(", ", Entry.Properties.Select(x => GetParamterName(prefx, x.Name)));
 
         public string GetColumnNames() => string.Join(", ", Entry.Properties.Select(GetColumnName));
     }
 
-    internal sealed record SelectGenerateContext(MethodGenerationContext Context, string TableName, ObjectMap Entry) : GenerateContext(Context, TableName)
+    internal sealed class SelectGenerateContext : GenerateContext
     {
+        public SelectGenerateContext(MethodGenerationContext context, string tableName, ObjectMap entry) : base(context, tableName)
+        {
+            Entry = entry;
+        }
+
+        public ObjectMap Entry { get; }
+
         public string GetColumnNames() => string.Join(", ", Entry.Properties.Select(property =>
             $"{GetColumnName(property)} AS {property.Name}"));
     }
 
-    internal sealed record UpdateGenerateContext(MethodGenerationContext Context, string TableName, ObjectMap Entry) : GenerateContext(Context, TableName)
+    internal sealed class UpdateGenerateContext : GenerateContext
     {
+        public UpdateGenerateContext(MethodGenerationContext context, string tableName, ObjectMap entry) : base(context, tableName)
+        {
+            Entry = entry;
+        }
+
+        public ObjectMap Entry { get; }
+
         public string GetUpdateSet(string prefx) => string.Join(", ", Entry.Properties.Select(property =>
             $"{GetColumnName(property)} = {GetParamterName(prefx, property.Name)}"));
     }
 
-    internal sealed record DeleteGenerateContext(MethodGenerationContext Context, string TableName, ObjectMap Entry) : GenerateContext(Context, TableName)
+    internal sealed class DeleteGenerateContext : GenerateContext
     {
+        public DeleteGenerateContext(MethodGenerationContext context, string tableName, ObjectMap entry) : base(context, tableName)
+        {
+            Entry = entry;
+        }
+
+        public ObjectMap Entry { get; }
+
         // DELETE operations typically don't need specific context, just table name
     }
 }

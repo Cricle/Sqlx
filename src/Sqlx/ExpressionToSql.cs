@@ -15,17 +15,6 @@ using Sqlx.Annotations;
 namespace Sqlx
 {
     /// <summary>
-    /// CRUD操作类型枚举。
-    /// </summary>
-    internal enum CrudOperationType
-    {
-        Select,
-        Insert, 
-        Update,
-        Delete
-    }
-
-    /// <summary>
     /// 简单高效的 LINQ Expression 到 SQL 转换器，AOT 友好，无锁设计。
     /// </summary>
     /// <typeparam name="T">实体类型</typeparam>
@@ -36,7 +25,7 @@ namespace Sqlx
         private readonly List<string> _insertColumns = new(); // INSERT列名
         private readonly List<List<string>> _insertValues = new(); // INSERT值（支持多行）
         private string? _insertSelectSql; // INSERT SELECT的SQL
-        private CrudOperationType _operationType = CrudOperationType.Select; // 默认为SELECT操作
+        private SqlOperation _operationType = SqlOperation.Select; // 默认为SELECT操作
 
         /// <summary>
         /// 使用指定的 SQL 方言初始化新实例。
@@ -59,7 +48,7 @@ namespace Sqlx
         /// </summary>
         public ExpressionToSql<T> Select<TResult>(Expression<Func<T, TResult>> selector)
         {
-            _customSelectClause = selector != null ? ExtractColumns(selector.Body) : new List<string>();
+            _customSelectClause = ExtractColumnsFromSelector(selector);
             return this;
         }
 
@@ -68,10 +57,26 @@ namespace Sqlx
         /// </summary>
         public ExpressionToSql<T> Select(params Expression<Func<T, object>>[] selectors)
         {
-            _customSelectClause = selectors?.Where(s => s != null)
+            _customSelectClause = ExtractColumnsFromSelectors(selectors);
+            return this;
+        }
+
+        /// <summary>
+        /// 统一的列提取逻辑，避免重复代码
+        /// </summary>
+        private List<string> ExtractColumnsFromSelector<TResult>(Expression<Func<T, TResult>>? selector)
+        {
+            return selector != null ? ExtractColumns(selector.Body) : new List<string>();
+        }
+
+        /// <summary>
+        /// 统一的多选择器列提取逻辑
+        /// </summary>
+        private List<string> ExtractColumnsFromSelectors(Expression<Func<T, object>>[]? selectors)
+        {
+            return selectors?.Where(s => s != null)
                 .SelectMany(s => ExtractColumns(s.Body))
                 .ToList() ?? new List<string>();
-            return this;
         }
 
         /// <summary>
@@ -167,9 +172,13 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// 确保当前操作类型为UPDATE。
+        /// 统一的操作类型设置，避免重复代码
         /// </summary>
-        private void EnsureUpdateMode() => _operationType = CrudOperationType.Update;
+        private void SetOperationType(SqlOperation operationType) => _operationType = operationType;
+        
+        private void EnsureUpdateMode() => SetOperationType(SqlOperation.Update);
+        private void EnsureInsertMode() => SetOperationType(SqlOperation.Insert);
+        private void EnsureDeleteMode() => SetOperationType(SqlOperation.Delete);
 
         /// <summary>
         /// 指定 INSERT 操作的列。
@@ -177,12 +186,20 @@ namespace Sqlx
         public ExpressionToSql<T> Insert(Expression<Func<T, object>> selector)
         {
             EnsureInsertMode();
+            SetInsertColumns(selector);
+            return this;
+        }
+
+        /// <summary>
+        /// 统一的INSERT列设置逻辑
+        /// </summary>
+        private void SetInsertColumns(Expression<Func<T, object>>? selector)
+        {
+            _insertColumns.Clear();
             if (selector != null)
             {
-                _insertColumns.Clear();
                 _insertColumns.AddRange(ExtractColumns(selector.Body));
             }
-            return this;
         }
 
         /// <summary>
@@ -190,11 +207,7 @@ namespace Sqlx
         /// </summary>
         public ExpressionToSql<T> Values(params object[] values)
         {
-            if (values?.Length > 0)
-            {
-                var valueStrings = values.Select(FormatConstantValue).ToList();
-                _insertValues.Add(valueStrings);
-            }
+            AddFormattedValues(values);
             return this;
         }
 
@@ -204,9 +217,16 @@ namespace Sqlx
         public ExpressionToSql<T> AddValues(params object[] values) => Values(values);
 
         /// <summary>
-        /// 确保当前操作类型为INSERT。
+        /// 统一的值格式化和添加逻辑
         /// </summary>
-        private void EnsureInsertMode() => _operationType = CrudOperationType.Insert;
+        private void AddFormattedValues(object[]? values)
+        {
+            if (values?.Length > 0)
+            {
+                var valueStrings = values.Select(FormatConstantValue).ToList();
+                _insertValues.Add(valueStrings);
+            }
+        }
 
         /// <summary>
         /// 指定INSERT INTO操作，自动推断所有列。
@@ -255,7 +275,7 @@ namespace Sqlx
                 var columnName = GetColumnName(keySelector.Body);
                 _groupByExpressions.Add(columnName);
             }
-            return new GroupedExpressionToSql<T, TKey>(this, keySelector);
+            return new GroupedExpressionToSql<T, TKey>(this, keySelector!);
         }
 
         /// <summary>
@@ -308,11 +328,6 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// 确保当前操作类型为DELETE。
-        /// </summary>
-        private void EnsureDeleteMode() => _operationType = CrudOperationType.Delete;
-
-        /// <summary>
         /// 设置自定义 SELECT 子句（内部使用）。
         /// </summary>
         internal List<string>? _customSelectClause;
@@ -330,10 +345,10 @@ namespace Sqlx
         {
             return _operationType switch
             {
-                CrudOperationType.Insert => BuildInsertSql(),
-                CrudOperationType.Update => BuildUpdateSql(),
-                CrudOperationType.Delete => BuildDeleteSql(),
-                CrudOperationType.Select => BuildSelectSql(),
+                SqlOperation.Insert => BuildInsertSql(),
+                SqlOperation.Update => BuildUpdateSql(),
+                SqlOperation.Delete => BuildDeleteSql(),
+                SqlOperation.Select => BuildSelectSql(),
                 _ => BuildSelectSql()
             };
         }
@@ -677,20 +692,41 @@ namespace Sqlx
                     return "NULL";
                     
                 case BinaryExpression binary:
-                    // 处理二元表达式，例如 g.Key ?? 0
+                    // 处理二元表达式，例如 g.Key ?? 0 或复杂的算术表达式
                     var left = ParseSelectExpression(binary.Left);
                     var right = ParseSelectExpression(binary.Right);
                     var op = binary.NodeType switch
                     {
                         ExpressionType.Coalesce => "COALESCE",
+                        ExpressionType.Add => "+",
+                        ExpressionType.Subtract => "-",
+                        ExpressionType.Multiply => "*",
+                        ExpressionType.Divide => "/",
+                        ExpressionType.Equal => "=",
+                        ExpressionType.NotEqual => "<>",
+                        ExpressionType.GreaterThan => ">",
+                        ExpressionType.GreaterThanOrEqual => ">=",
+                        ExpressionType.LessThan => "<",
+                        ExpressionType.LessThanOrEqual => "<=",
                         _ => binary.NodeType.ToString()
                     };
                     return binary.NodeType == ExpressionType.Coalesce 
                         ? $"COALESCE({left}, {right})" 
-                        : $"{left} {op} {right}";
+                        : $"({left} {op} {right})";
                         
                 case ConstantExpression constant:
                     return FormatConstantValue(constant.Value);
+                    
+                case ConditionalExpression conditional:
+                    // 处理三元运算符 condition ? ifTrue : ifFalse
+                    var test = ParseSelectExpression(conditional.Test);
+                    var ifTrue = ParseSelectExpression(conditional.IfTrue);
+                    var ifFalse = ParseSelectExpression(conditional.IfFalse);
+                    return $"CASE WHEN {test} THEN {ifTrue} ELSE {ifFalse} END";
+                    
+                case UnaryExpression unary when unary.NodeType == ExpressionType.Convert:
+                    // 处理类型转换
+                    return ParseSelectExpression(unary.Operand);
                     
                 default:
                     // 对于无法处理的表达式，尝试作为普通表达式解析
@@ -712,32 +748,155 @@ namespace Sqlx
             return methodName switch
             {
                 "Count" => "COUNT(*)",
-                "Sum" when methodCall.Arguments.Count > 1 => $"SUM({ExtractColumnNameFromLambda(methodCall.Arguments[1])})",
-                "Average" or "Avg" when methodCall.Arguments.Count > 1 => $"AVG({ExtractColumnNameFromLambda(methodCall.Arguments[1])})",
-                "Max" when methodCall.Arguments.Count > 1 => $"MAX({ExtractColumnNameFromLambda(methodCall.Arguments[1])})",
-                "Min" when methodCall.Arguments.Count > 1 => $"MIN({ExtractColumnNameFromLambda(methodCall.Arguments[1])})",
+                "Sum" when methodCall.Arguments.Count > 1 => $"SUM({ParseLambdaExpressionEnhanced(methodCall.Arguments[1])})",
+                "Average" or "Avg" when methodCall.Arguments.Count > 1 => $"AVG({ParseLambdaExpressionEnhanced(methodCall.Arguments[1])})",
+                "Max" when methodCall.Arguments.Count > 1 => $"MAX({ParseLambdaExpressionEnhanced(methodCall.Arguments[1])})",
+                "Min" when methodCall.Arguments.Count > 1 => $"MIN({ParseLambdaExpressionEnhanced(methodCall.Arguments[1])})",
                 _ => throw new NotSupportedException($"聚合函数 {methodName} 不受支持")
             };
         }
 
+        /// <summary>
+        /// 增强的Lambda表达式解析，支持复杂的嵌套函数和表达式
+        /// </summary>
+        private string ParseLambdaExpressionEnhanced(Expression expression)
+        {
+            switch (expression)
+            {
+                case LambdaExpression lambda:
+                    return ParseLambdaBody(lambda.Body);
+                    
+                case UnaryExpression { NodeType: ExpressionType.Quote } unary when unary.Operand is LambdaExpression quotedLambda:
+                    return ParseLambdaBody(quotedLambda.Body);
+                    
+                default:
+                    return ParseLambdaBody(expression);
+            }
+        }
+
+        /// <summary>
+        /// 解析Lambda表达式的Body部分，支持嵌套函数
+        /// </summary>
+        private string ParseLambdaBody(Expression body)
+        {
+            switch (body)
+            {
+                case MemberExpression member:
+                    // Handle special properties like string.Length
+                    if (member.Member.Name == "Length" && member.Member.DeclaringType == typeof(string))
+                    {
+                        var obj = ParseLambdaBody(member.Expression!);
+                        return GetDialectFunction("LENGTH", new[] { obj }, DialectMappings["Length"]);
+                    }
+                    return ExtractColumnName(member);
+                    
+                case BinaryExpression binary:
+                    // 支持算术表达式和空值合并，如 x.Salary * 1.2, x.Bonus ?? 0
+                    var left = ParseLambdaBody(binary.Left);
+                    var right = ParseLambdaBody(binary.Right);
+                    var op = binary.NodeType switch
+                    {
+                        ExpressionType.Add => "+",
+                        ExpressionType.Subtract => "-",
+                        ExpressionType.Multiply => "*",
+                        ExpressionType.Divide => "/",
+                        ExpressionType.Modulo => "%",
+                        ExpressionType.Coalesce => "COALESCE",
+                        ExpressionType.GreaterThan => ">",
+                        ExpressionType.GreaterThanOrEqual => ">=",
+                        ExpressionType.LessThan => "<",
+                        ExpressionType.LessThanOrEqual => "<=",
+                        ExpressionType.Equal => "=",
+                        ExpressionType.NotEqual => "!=",
+                        _ => "+"
+                    };
+                    return binary.NodeType == ExpressionType.Coalesce 
+                        ? $"COALESCE({left}, {right})"
+                        : $"({left} {op} {right})";
+                    
+                case MethodCallExpression methodCall:
+                    // 支持嵌套函数调用，如 Math.Round(x.Salary, 2)
+                    return ParseMethodCallInAggregate(methodCall);
+                    
+                case ConstantExpression constant:
+                    return FormatConstantValue(constant.Value);
+                    
+                case ConditionalExpression conditional:
+                    // 支持条件表达式，如 x.IsActive ? x.Salary : 0
+                    var test = ParseLambdaBody(conditional.Test);
+                    var ifTrue = ParseLambdaBody(conditional.IfTrue);
+                    var ifFalse = ParseLambdaBody(conditional.IfFalse);
+                    return $"CASE WHEN {test} THEN {ifTrue} ELSE {ifFalse} END";
+                    
+                case UnaryExpression unary when unary.NodeType == ExpressionType.Convert:
+                    return ParseLambdaBody(unary.Operand);
+                    
+                default:
+                    // 回退到简单的列名提取
+                    try
+                    {
+                        return ExtractColumnName(body);
+                    }
+                    catch
+                    {
+                        return "NULL";
+                    }
+            }
+        }
+
+        /// <summary>
+        /// 在聚合函数上下文中解析方法调用
+        /// </summary>
+        private string ParseMethodCallInAggregate(MethodCallExpression methodCall)
+        {
+            var methodName = methodCall.Method.Name;
+            var declaringType = methodCall.Method.DeclaringType;
+
+            // 数学函数
+            if (declaringType == typeof(Math))
+            {
+                var args = methodCall.Arguments.Select(ParseLambdaBody).ToArray();
+                return (methodName, args.Length) switch
+                {
+                    ("Abs", 1) => $"ABS({args[0]})",
+                    ("Round", 1) => $"ROUND({args[0]})",
+                    ("Round", 2) => $"ROUND({args[0]}, {args[1]})",
+                    ("Floor", 1) => $"FLOOR({args[0]})",
+                    ("Ceiling", 1) => GetDialectFunction("CEILING", args, DialectMappings["Ceiling"]),
+                    ("Min", 2) => GetDialectFunction("MIN", args, DialectMappings["Min"]),
+                    ("Max", 2) => GetDialectFunction("MAX", args, DialectMappings["Max"]),
+                    ("Pow", 2) => GetDialectFunction("POWER", args, DialectMappings["Power"]),
+                    ("Sqrt", 1) => $"SQRT({args[0]})",
+                    _ => args.Length > 0 ? args[0] : "NULL"
+                };
+            }
+
+            // 字符串函数
+            if (declaringType == typeof(string) && methodCall.Object != null)
+            {
+                var obj = ParseLambdaBody(methodCall.Object);
+                var args = methodCall.Arguments.Select(ParseLambdaBody).ToArray();
+                return (methodName, args.Length) switch
+                {
+                    ("Length", 0) => GetDialectFunction("LENGTH", new[] { obj }, DialectMappings["Length"]),
+                    ("ToUpper", 0) => $"UPPER({obj})",
+                    ("ToLower", 0) => $"LOWER({obj})",
+                    ("Trim", 0) => $"TRIM({obj})",
+                    ("Substring", 1) => GetDialectFunction("SUBSTRING", new[] { obj, args[0] }, DialectMappings["Substring1"]),
+                    ("Substring", 2) => GetDialectFunction("SUBSTRING", new[] { obj, args[0], args[1] }, DialectMappings["Substring2"]),
+                    ("Replace", 2) => $"REPLACE({obj}, {args[0]}, {args[1]})",
+                    _ => obj
+                };
+            }
+
+            // 其他情况，回退到基础解析
+            return methodCall.Object != null ? ParseLambdaBody(methodCall.Object) : "NULL";
+        }
+
+        [Obsolete("Use ParseLambdaExpressionEnhanced for better functionality")]
         private string ExtractColumnNameFromLambda(Expression expression)
         {
-            // 处理 lambda 表达式，如 x => x.Salary
-            if (expression is LambdaExpression lambda)
-            {
-                return ExtractColumnName(lambda.Body);
-            }
-            
-            // 处理包装在 UnaryExpression 中的 lambda 表达式
-            if (expression is UnaryExpression unary && unary.NodeType == ExpressionType.Quote)
-            {
-                if (unary.Operand is LambdaExpression quotedLambda)
-                {
-                    return ExtractColumnName(quotedLambda.Body);
-                }
-            }
-            
-            return ExtractColumnName(expression);
+            return ParseLambdaExpressionEnhanced(expression);
         }
 
         private string ExtractColumnName(Expression expression)

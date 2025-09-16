@@ -149,12 +149,12 @@ namespace Sqlx.Tests.Core
             var descriptor = Messages.SP0007;
             
             Assert.AreEqual("SP0007", descriptor.Id);
-            Assert.AreEqual("No RawSqlAttribute or SqlxAttribute tag", descriptor.Title.ToString());
+            Assert.AreEqual("No SqlxAttribute tag", descriptor.Title.ToString());
             Assert.AreEqual("No command text", descriptor.MessageFormat.ToString());
             Assert.AreEqual("Sqlx", descriptor.Category);
             Assert.AreEqual(DiagnosticSeverity.Error, descriptor.DefaultSeverity);
             Assert.IsTrue(descriptor.IsEnabledByDefault);
-            Assert.AreEqual("The method must have either a RawSqlAttribute or SqlxAttribute to specify the SQL command.", descriptor.Description.ToString());
+            Assert.AreEqual("The method must have a SqlxAttribute to specify the SQL command (RawSqlAttribute has been merged into SqlxAttribute).", descriptor.Description.ToString());
         }
 
         [TestMethod]

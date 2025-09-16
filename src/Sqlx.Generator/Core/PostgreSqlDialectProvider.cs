@@ -19,7 +19,7 @@ internal class PostgreSqlDialectProvider : IDatabaseDialectProvider
     public SqlDefine SqlDefine => SqlDefine.PgSql;
 
     /// <inheritdoc />
-    public SqlDefineTypes DialectType => SqlDefineTypes.Postgresql;
+    public SqlDefineTypes DialectType => SqlDefineTypes.PostgreSql;
 
     /// <inheritdoc />
     public string GenerateLimitClause(int? limit, int? offset)

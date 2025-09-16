@@ -9,7 +9,7 @@ namespace Sqlx.Generator.Core
     /// <summary>
     /// Internal SQL dialect definition for code generation.
     /// </summary>
-    internal readonly struct SqlDefine
+    public readonly struct SqlDefine
     {
         public string ColumnLeft { get; }
         public string ColumnRight { get; }
@@ -53,7 +53,7 @@ namespace Sqlx.Generator.Core
     {
         MySql = 0,
         SqlServer = 1,
-        Postgresql = 2,
+        PostgreSql = 2,
         Oracle = 3,
         DB2 = 4,
         SQLite = 5,

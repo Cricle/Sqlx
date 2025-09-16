@@ -126,16 +126,21 @@
             Gets the parameter prefix.
             </summary>
         </member>
+        <member name="T:Sqlx.Annotations.SqlOperation">
+            <summary>
+            SQL操作类型枚举。
+            </summary>
+        </member>
         <member name="T:Sqlx.Annotations.SqlExecuteTypeAttribute">
             <summary>
             Specifies CRUD operation types and target table names.
             </summary>
         </member>
-        <member name="M:Sqlx.Annotations.SqlExecuteTypeAttribute.#ctor(System.String,System.String)">
+        <member name="M:Sqlx.Annotations.SqlExecuteTypeAttribute.#ctor(Sqlx.Annotations.SqlOperation,System.String)">
             <summary>
             Initializes a new instance of the <see cref="T:Sqlx.Annotations.SqlExecuteTypeAttribute"/> class.
             </summary>
-            <param name="executeType">The SQL operation type (Select, Insert, Update, Delete, etc.).</param>
+            <param name="executeType">The SQL operation type.</param>
             <param name="tableName">The target table name.</param>
         </member>
         <member name="P:Sqlx.Annotations.SqlExecuteTypeAttribute.ExecuteType">
@@ -267,6 +272,16 @@
             使用多个表达式设置SELECT列。
             </summary>
         </member>
+        <member name="M:Sqlx.ExpressionToSql`1.ExtractColumnsFromSelector``1(System.Linq.Expressions.Expression{System.Func{`0,``0}})">
+            <summary>
+            统一的列提取逻辑，避免重复代码
+            </summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.ExtractColumnsFromSelectors(System.Linq.Expressions.Expression{System.Func{`0,System.Object}}[])">
+            <summary>
+            统一的多选择器列提取逻辑
+            </summary>
+        </member>
         <member name="M:Sqlx.ExpressionToSql`1.Where(System.Linq.Expressions.Expression{System.Func{`0,System.Boolean}})">
             <summary>
             添加 WHERE 条件到查询。
@@ -312,14 +327,19 @@
             使用表达式设置 UPDATE 操作的值。支持模式如 a=a+1。
             </summary>
         </member>
-        <member name="M:Sqlx.ExpressionToSql`1.EnsureUpdateMode">
+        <member name="M:Sqlx.ExpressionToSql`1.SetOperationType(Sqlx.Annotations.SqlOperation)">
             <summary>
-            确保当前操作类型为UPDATE。
+            统一的操作类型设置，避免重复代码
             </summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.Insert(System.Linq.Expressions.Expression{System.Func{`0,System.Object}})">
             <summary>
             指定 INSERT 操作的列。
+            </summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.SetInsertColumns(System.Linq.Expressions.Expression{System.Func{`0,System.Object}})">
+            <summary>
+            统一的INSERT列设置逻辑
             </summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.Values(System.Object[])">
@@ -332,9 +352,9 @@
             添加多行INSERT值。
             </summary>
         </member>
-        <member name="M:Sqlx.ExpressionToSql`1.EnsureInsertMode">
+        <member name="M:Sqlx.ExpressionToSql`1.AddFormattedValues(System.Object[])">
             <summary>
-            确保当前操作类型为INSERT。
+            统一的值格式化和添加逻辑
             </summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.InsertInto">
@@ -387,11 +407,6 @@
             创建UPDATE语句。
             </summary>
         </member>
-        <member name="M:Sqlx.ExpressionToSql`1.EnsureDeleteMode">
-            <summary>
-            确保当前操作类型为DELETE。
-            </summary>
-        </member>
         <member name="F:Sqlx.ExpressionToSql`1._customSelectClause">
             <summary>
             设置自定义 SELECT 子句（内部使用）。
@@ -432,11 +447,6 @@
             释放资源（简化版）。
             </summary>
         </member>
-        <member name="T:Sqlx.CrudOperationType">
-            <summary>
-            CRUD操作类型枚举。
-            </summary>
-        </member>
         <member name="T:Sqlx.GroupedExpressionToSql`2">
             <summary>
             表示分组后的查询对象，支持聚合操作。
@@ -450,6 +460,21 @@
         <member name="M:Sqlx.GroupedExpressionToSql`2.Having(System.Linq.Expressions.Expression{System.Func{Sqlx.IGrouping{`1,`0},System.Boolean}})">
             <summary>
             添加 HAVING 条件。
+            </summary>
+        </member>
+        <member name="M:Sqlx.GroupedExpressionToSql`2.ParseLambdaExpressionEnhanced(System.Linq.Expressions.Expression)">
+            <summary>
+            增强的Lambda表达式解析，支持复杂的嵌套函数和表达式
+            </summary>
+        </member>
+        <member name="M:Sqlx.GroupedExpressionToSql`2.ParseLambdaBody(System.Linq.Expressions.Expression)">
+            <summary>
+            解析Lambda表达式的Body部分，支持嵌套函数
+            </summary>
+        </member>
+        <member name="M:Sqlx.GroupedExpressionToSql`2.ParseMethodCallInAggregate(System.Linq.Expressions.MethodCallExpression)">
+            <summary>
+            在聚合函数上下文中解析方法调用
             </summary>
         </member>
         <member name="T:Sqlx.IGrouping`2">
@@ -514,7 +539,7 @@
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.ParseExpression(System.Linq.Expressions.Expression,System.Boolean)">
             <summary>
-            简化的表达式解析，支持数学函数、字符串函数，调试友好。
+            增强的表达式解析，支持数学函数、字符串函数和嵌套表达式，性能优化。
             </summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.ParseExpressionRaw(System.Linq.Expressions.Expression)">
@@ -522,9 +547,29 @@
             解析表达式但不对布尔成员进行特殊处理（用于二元表达式内部）
             </summary>
         </member>
+        <member name="M:Sqlx.ExpressionToSqlBase.ParseConditionalExpression(System.Linq.Expressions.ConditionalExpression)">
+            <summary>
+            解析条件表达式（三元运算符）
+            </summary>
+        </member>
         <member name="M:Sqlx.ExpressionToSqlBase.ParseMethodCallExpression(System.Linq.Expressions.MethodCallExpression)">
             <summary>
-            解析方法调用表达式，支持数学函数和字符串函数。
+            增强的方法调用表达式解析，支持更多嵌套场景。
+            </summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSqlBase.IsAggregateContext(System.Linq.Expressions.MethodCallExpression)">
+            <summary>
+            检查是否在聚合函数上下文中
+            </summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSqlBase.ParseAggregateMethodCall(System.Linq.Expressions.MethodCallExpression)">
+            <summary>
+            解析聚合函数中的方法调用，支持嵌套函数
+            </summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSqlBase.ParseLambdaExpression(System.Linq.Expressions.Expression)">
+            <summary>
+            增强的Lambda表达式解析，支持复杂的嵌套函数
             </summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.TryParseBooleanComparison(System.Linq.Expressions.BinaryExpression)">
@@ -537,9 +582,29 @@
             检查成员表达式是否是实体属性（而不是闭包变量）
             </summary>
         </member>
+        <member name="M:Sqlx.ExpressionToSqlBase.GetMemberValueOptimized(System.Linq.Expressions.MemberExpression)">
+            <summary>
+            优化的成员值获取，统一缓存策略，遵循DRY原则
+            </summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSqlBase.CompileAndCacheMemberAccess(System.Linq.Expressions.MemberExpression,System.String)">
+            <summary>
+            统一的编译和缓存逻辑
+            </summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSqlBase.TryGetMemberValueFast(System.Linq.Expressions.MemberExpression,System.Object@)">
+            <summary>
+            快速路径：尝试通过反射直接获取成员值，优化性能
+            </summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSqlBase.GetMemberValue(System.Reflection.MemberInfo,System.Object)">
+            <summary>
+            统一的成员值获取逻辑，消除重复代码
+            </summary>
+        </member>
         <member name="M:Sqlx.ExpressionToSqlBase.GetMemberValue(System.Linq.Expressions.MemberExpression)">
             <summary>
-            获取成员表达式的值（用于闭包变量）
+            获取成员表达式的值（用于闭包变量，已废弃，使用 GetMemberValueOptimized）
             </summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.NeedsParentheses(System.Linq.Expressions.Expression)">
@@ -613,6 +678,11 @@
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.Dispose">
             <summary>释放资源。</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSqlBase.ClearGlobalCache">
+            <summary>
+            清理全局缓存（静态方法，谨慎使用）
+            </summary>
         </member>
         <member name="T:Sqlx.SqlDefine">
             <summary>

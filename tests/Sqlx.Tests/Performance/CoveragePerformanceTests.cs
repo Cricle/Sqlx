@@ -8,6 +8,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Sqlx;
+using Sqlx.Generator.Core;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;

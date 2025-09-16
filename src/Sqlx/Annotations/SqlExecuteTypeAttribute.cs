@@ -9,6 +9,17 @@
 namespace Sqlx.Annotations
 {
     /// <summary>
+    /// SQL操作类型枚举。
+    /// </summary>
+    public enum SqlOperation
+    {
+        Select,
+        Insert, 
+        Update,
+        Delete
+    }
+
+    /// <summary>
     /// Specifies CRUD operation types and target table names.
     /// </summary>
     [System.AttributeUsage(System.AttributeTargets.Method,
@@ -18,18 +29,18 @@ namespace Sqlx.Annotations
         /// <summary>
         /// Initializes a new instance of the <see cref="SqlExecuteTypeAttribute"/> class.
         /// </summary>
-        /// <param name="executeType">The SQL operation type (Select, Insert, Update, Delete, etc.).</param>
+        /// <param name="executeType">The SQL operation type.</param>
         /// <param name="tableName">The target table name.</param>
-        public SqlExecuteTypeAttribute(string executeType, string tableName)
+        public SqlExecuteTypeAttribute(SqlOperation executeType, string tableName)
         {
-            ExecuteType = executeType ?? throw new System.ArgumentNullException(nameof(executeType));
+            ExecuteType = executeType;
             TableName = tableName ?? throw new System.ArgumentNullException(nameof(tableName));
         }
 
         /// <summary>
         /// Gets the SQL operation type.
         /// </summary>
-        public string ExecuteType { get; }
+        public SqlOperation ExecuteType { get; }
 
         /// <summary>
         /// Gets the target table name.

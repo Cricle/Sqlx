@@ -4,6 +4,8 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
+#pragma warning disable CS8765, CS8625, CS8604, CS8603, CS8602, CS8629 // Null-related warnings in test code
+
 namespace Sqlx.Tests.Core;
 
 using System.Data;

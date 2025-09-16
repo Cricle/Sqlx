@@ -6,6 +6,7 @@
 namespace Sqlx;
 
 using Microsoft.CodeAnalysis;
+using Sqlx.Generator.Core;
 using System.Linq;
 
 public abstract partial class AbstractGenerator

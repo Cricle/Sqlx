@@ -4,6 +4,8 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
+#pragma warning disable CS8625, CS8604, CS8603, CS8602, CS8629 // Null-related warnings in test code
+
 using System;
 using System.Linq.Expressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;

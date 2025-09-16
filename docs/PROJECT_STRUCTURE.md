@@ -7,16 +7,16 @@
 ```
 Sqlx/
 ├── 📂 src/                          # 源代码
-│   └── Sqlx/                        # 核心库 - 源代码生成器和核心功能
+│   ├── Sqlx/                        # 核心库 - 运行时组件
+│   └── Sqlx.Generator/              # 源代码生成器
 ├── 📂 samples/                      # 示例项目
-│   └── ComprehensiveExample/        # 综合功能演示 ✅ - 一站式完整演示
+│   └── SqlxDemo/                    # 统一演示项目 ✅ - 完整功能演示
 ├── 📂 tests/                       # 测试项目
-│   └── Sqlx.Tests/                 # 单元测试 ✅ - 99.2% 测试覆盖率
+│   └── Sqlx.Tests/                 # 单元测试 ✅ - 99.1% 测试覆盖率
 ├── 📂 docs/                        # 文档中心
 │   ├── databases/                  # 数据库相关文档
 │   └── contributing/               # 贡献指南
 ├── 📂 scripts/                     # 构建和自动化脚本
-├── 📂 artifacts/                   # 构建产物和NuGet包
 └── 📄 配置文件                     # 项目配置文件
 ```
 

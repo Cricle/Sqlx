@@ -7,6 +7,7 @@
 namespace Sqlx;
 
 using Microsoft.CodeAnalysis;
+using Sqlx.Generator.Core;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -53,11 +54,11 @@ internal class ClassGenerationContext : GenerationContextBase
         _nullableContextOptions = context.Compilation.Options.NullableContextOptions;
     }
 
-    internal override ISymbol? DbConnection => GetSymbol(ClassSymbol, x => x.IsDbConnection());
+    internal override ISymbol? DbConnection => GetSymbolWithPrimaryConstructor(ClassSymbol, x => x.IsDbConnection());
 
-    internal override ISymbol? TransactionParameter => GetSymbol(ClassSymbol, x => x.IsDbTransaction());
+    internal override ISymbol? TransactionParameter => GetSymbolWithPrimaryConstructor(ClassSymbol, x => x.IsDbTransaction());
 
-    internal override ISymbol? DbContext => GetSymbol(ClassSymbol, x => x.IsDbContext());
+    internal override ISymbol? DbContext => GetSymbolWithPrimaryConstructor(ClassSymbol, x => x.IsDbContext());
 
     public bool CreateSource(IndentedStringBuilder sb)
     {
@@ -68,13 +69,14 @@ internal class ClassGenerationContext : GenerationContextBase
 // </auto-generated>");
 
         sb.AppendLine("#nullable disable");
-        sb.AppendLine("#pragma warning disable CS8618, CS8625, CS8629, CS8601, CS8600, CS8603, CS8669, CS8628, CS0266");
+        sb.AppendLine("#pragma warning disable CS8618, CS8625, CS8629, CS8601, CS8600, CS8603, CS8669, CS8628, CS0266, CS0219");
         sb.AppendLine();
         sb.AppendLine("using System;");
         sb.AppendLine("using System.Collections.Generic;");
         sb.AppendLine("using System.Linq;");
         sb.AppendLine("using System.Data;");
         sb.AppendLine("using System.Data.Common;");
+        sb.AppendLine("using Sqlx.Annotations;");
         sb.AppendLine();
         var hasNamespace = !ClassSymbol.ContainingNamespace.IsGlobalNamespace;
         if (hasNamespace)
@@ -133,6 +135,45 @@ internal class ClassGenerationContext : GenerationContextBase
         if (symbol == null) return null;
 
         return symbol.GetAttributes().FirstOrDefault(check);
+    }
+
+    /// <summary>
+    /// Gets a symbol (field, property, or primary constructor parameter) that matches the check condition
+    /// </summary>
+    private ISymbol? GetSymbolWithPrimaryConstructor(INamedTypeSymbol? symbol, Func<ISymbol, bool> check)
+    {
+        if (symbol == null) return null;
+
+        // Check fields
+        var field = symbol.GetMembers().OfType<IFieldSymbol>().FirstOrDefault(check);
+        if (field != null) return field;
+
+        // Check properties
+        var property = symbol.GetMembers().OfType<IPropertySymbol>().FirstOrDefault(check);
+        if (property != null) return property;
+
+        // Check primary constructor parameters
+        var primaryConstructor = PrimaryConstructorAnalyzer.GetPrimaryConstructor(symbol);
+        if (primaryConstructor != null)
+        {
+            var primaryParam = primaryConstructor.Parameters.FirstOrDefault(p => check(p));
+            if (primaryParam != null) return primaryParam;
+        }
+
+        // Check regular constructor parameters for backward compatibility
+        foreach (var constructor in symbol.InstanceConstructors)
+        {
+            var constructorParam = constructor.Parameters.FirstOrDefault(p => check(p));
+            if (constructorParam != null) return constructorParam;
+        }
+
+        // Check base class
+        if (symbol.BaseType != null)
+        {
+            return GetSymbolWithPrimaryConstructor(symbol.BaseType, check);
+        }
+
+        return null;
     }
 
     private void WriteInterceptMethods(IndentedStringBuilder sb)

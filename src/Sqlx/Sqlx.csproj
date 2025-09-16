@@ -3,7 +3,7 @@
 	<PropertyGroup>
 		<TargetFramework>netstandard2.0</TargetFramework>
 		<NoWarn>$(NoWarn);RS1024;CS1591</NoWarn>
-		<Nullable>enable</Nullable>
+		<LangVersion>10.0</LangVersion><Nullable>enable</Nullable>
 		<WarningsAsErrors />
 		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 		<WarningsNotAsErrors>CS8618;CS8625;CS8629;CS8604;CS8601;CS8602;CS8603;CS8765</WarningsNotAsErrors>

@@ -4,13 +4,13 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-namespace Sqlx;
+namespace Sqlx.Generator.Core;
 
 using System;
 using System.Runtime.CompilerServices;
 using System.Text;
 
-internal sealed class IndentedStringBuilder
+public sealed class IndentedStringBuilder
 {
     private const byte IndentSize = 4;
     private readonly StringBuilder builder;

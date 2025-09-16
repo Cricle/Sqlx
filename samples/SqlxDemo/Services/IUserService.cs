@@ -29,7 +29,7 @@ public interface IUserService
     /// <summary>
     /// 根据部门获取用户数量
     /// </summary>
-    [Sqlx("SELECT COUNT(*) FROM [User] WHERE [DepartmentId] = @deptId")]
+    [Sqlx("SELECT COUNT(*) FROM [User] WHERE [department_id] = @dept_id")]
     Task<int> GetUserCountByDepartmentAsync(int deptId);
 }
 

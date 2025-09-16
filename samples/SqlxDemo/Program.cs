@@ -59,35 +59,35 @@ class Program
         // 创建表
         await connection.ExecuteNonQueryAsync(@"
             CREATE TABLE [User] (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                Name TEXT NOT NULL,
-                Email TEXT NOT NULL,
-                Age INTEGER,
-                Salary DECIMAL,
-                DepartmentId INTEGER,
-                IsActive INTEGER DEFAULT 1,
-                HireDate TEXT,
-                Bonus DECIMAL,
-                PerformanceRating REAL
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                email TEXT NOT NULL,
+                age INTEGER,
+                salary DECIMAL,
+                department_id INTEGER,
+                is_active INTEGER DEFAULT 1,
+                hire_date TEXT,
+                bonus DECIMAL,
+                performance_rating REAL
             )");
 
         await connection.ExecuteNonQueryAsync(@"
             CREATE TABLE [Department] (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                Name TEXT NOT NULL,
-                Budget DECIMAL,
-                ManagerId INTEGER
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                budget DECIMAL,
+                manager_id INTEGER
             )");
 
         // 插入测试数据
         await connection.ExecuteNonQueryAsync(@"
-            INSERT INTO [Department] (Name, Budget, ManagerId) VALUES 
+            INSERT INTO [Department] (name, budget, manager_id) VALUES 
             ('技术部', 100000, NULL),
             ('市场部', 75000, NULL),
             ('财务部', 60000, NULL)");
 
         await connection.ExecuteNonQueryAsync(@"
-            INSERT INTO [User] (Name, Email, Age, Salary, DepartmentId, IsActive, HireDate, Bonus, PerformanceRating) VALUES 
+            INSERT INTO [User] (name, email, age, salary, department_id, is_active, hire_date, bonus, performance_rating) VALUES 
             ('张三', 'zhangsan@example.com', 28, 8500, 1, 1, '2023-01-15', 1000, 4.2),
             ('李四', 'lisi@example.com', 32, 12000, 1, 1, '2022-03-20', 1500, 4.5),
             ('王五', 'wangwu@example.com', 26, 7000, 2, 1, '2024-01-10', 800, 3.8),

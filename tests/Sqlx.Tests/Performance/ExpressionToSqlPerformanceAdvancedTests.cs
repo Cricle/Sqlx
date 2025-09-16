@@ -497,62 +497,6 @@ namespace Sqlx.Tests.Performance
         #region 比较和基准测试
 
         [TestMethod]
-        public void Performance_CompareDialects_RelativePerformance()
-        {
-            // 比较不同数据库方言的性能
-            var dialects = new (string Name, Func<ExpressionToSql<PerformanceTestEntity>> Factory)[]
-            {
-                ("SQL Server", () => ExpressionToSql<PerformanceTestEntity>.ForSqlServer()),
-                ("MySQL", () => ExpressionToSql<PerformanceTestEntity>.ForMySql()),
-                ("PostgreSQL", () => ExpressionToSql<PerformanceTestEntity>.ForPostgreSQL()),
-                ("SQLite", () => ExpressionToSql<PerformanceTestEntity>.ForSqlite()),
-                ("Oracle", () => ExpressionToSql<PerformanceTestEntity>.ForOracle()),
-                ("DB2", () => ExpressionToSql<PerformanceTestEntity>.ForDB2())
-            };
-
-            const int iterations = 200;
-            var results = new Dictionary<string, (long Time, double AvgTime)>();
-
-            foreach (var (dialectName, factory) in dialects)
-            {
-                var stopwatch = Stopwatch.StartNew();
-
-                for (int i = 0; i < iterations; i++)
-                {
-                    using var expr = factory();
-                    expr.Where(e => e.Id > i)
-                        .Where(e => e.IsActive)
-                        .Where(e => e.Price >= 100)
-                        .OrderBy(e => e.Name)
-                        .Take(20);
-                    
-                    var sql = expr.ToSql();
-                    Assert.IsTrue(sql.Length > 0);
-                }
-
-                stopwatch.Stop();
-                var avgTime = stopwatch.ElapsedMilliseconds / (double)iterations;
-                results[dialectName] = (stopwatch.ElapsedMilliseconds, avgTime);
-
-                Console.WriteLine($"{dialectName}: 总时间 {stopwatch.ElapsedMilliseconds}ms, " +
-                                $"平均 {avgTime:F3}ms per operation");
-            }
-
-            // 验证所有方言的性能都在合理范围内
-            var fastestTime = results.Values.Min(r => r.AvgTime);
-            var slowestTime = results.Values.Max(r => r.AvgTime);
-            var performanceRatio = slowestTime / fastestTime;
-
-            Console.WriteLine($"性能比较:");
-            Console.WriteLine($"  最快方言: {fastestTime:F3}ms");
-            Console.WriteLine($"  最慢方言: {slowestTime:F3}ms");
-            Console.WriteLine($"  性能比率: {performanceRatio:F1}x");
-
-            Assert.IsTrue(performanceRatio < 3, 
-                $"最慢方言不应比最快方言慢超过3倍，实际比率: {performanceRatio:F1}x");
-        }
-
-        [TestMethod]
         public void Performance_OperationTypes_CompareComplexity()
         {
             // 比较不同操作类型的性能

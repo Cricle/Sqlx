@@ -62,8 +62,10 @@ public partial class CSharpGenerator
             // Prefer semantic attribute check when available
             if (method.GetAttributes().Any(attr =>
                 attr.AttributeClass?.Name == "SqlxAttribute" ||
+                attr.AttributeClass?.Name == "Sqlx" ||
                 // RawSqlAttribute merged into SqlxAttribute
-                attr.AttributeClass?.Name == "SqlExecuteTypeAttribute"))
+                attr.AttributeClass?.Name == "SqlExecuteTypeAttribute" ||
+                attr.AttributeClass?.Name == "SqlExecuteType"))
             {
                 return true;
             }

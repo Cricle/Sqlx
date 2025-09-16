@@ -172,8 +172,13 @@ internal partial class MethodGenerationContext : GenerationContextBase
             if (paramterSyntax!.Modifiers.Count != 0) prefx += " ";
             return prefx + x.Type.ToDisplayString() + " " + x.Name;
         }));
+        
         var staticKeyword = MethodSymbol.IsStatic ? "static " : string.Empty;
+        
+        // Always generate partial methods for source generation - the source generator should generate implementations
+        // for methods that have [Sqlx] attributes, whether they are declared as partial or not
         sb.AppendLine($"{MethodSymbol.DeclaredAccessibility.GetAccessibility()} {AsyncKey}{staticKeyword}partial {MethodSymbol.ReturnType.ToDisplayString()} {MethodSymbol.Name}({args})");
+        
         sb.AppendLine("{");
         sb.PushIndent();
 

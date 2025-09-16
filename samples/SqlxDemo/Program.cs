@@ -103,7 +103,7 @@ class Program
         Console.WriteLine("====================");
 
         // 创建服务实例
-        var userService = new UserService(connection);
+        var userService = new TestUserService(connection);
 
         // 1. 基本源生成功能
         Console.WriteLine("\n1️⃣ 源生成Repository模式:");

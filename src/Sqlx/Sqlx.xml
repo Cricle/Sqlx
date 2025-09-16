@@ -41,10 +41,39 @@
             Gets the service interface type.
             </summary>
         </member>
+        <member name="T:Sqlx.Annotations.SqlDefineTypes">
+            <summary>
+            SQL dialect types enumeration.
+            </summary>
+        </member>
+        <member name="F:Sqlx.Annotations.SqlDefineTypes.MySql">
+            <summary>MySQL database</summary>
+        </member>
+        <member name="F:Sqlx.Annotations.SqlDefineTypes.SqlServer">
+            <summary>SQL Server database</summary>
+        </member>
+        <member name="F:Sqlx.Annotations.SqlDefineTypes.PostgreSql">
+            <summary>PostgreSQL database</summary>
+        </member>
+        <member name="F:Sqlx.Annotations.SqlDefineTypes.Oracle">
+            <summary>Oracle database</summary>
+        </member>
+        <member name="F:Sqlx.Annotations.SqlDefineTypes.DB2">
+            <summary>DB2 database</summary>
+        </member>
+        <member name="F:Sqlx.Annotations.SqlDefineTypes.SQLite">
+            <summary>SQLite database</summary>
+        </member>
         <member name="T:Sqlx.Annotations.SqlDefineAttribute">
             <summary>
             Specifies the database dialect for SQL generation.
             </summary>
+        </member>
+        <member name="M:Sqlx.Annotations.SqlDefineAttribute.#ctor(Sqlx.Annotations.SqlDefineTypes)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Sqlx.Annotations.SqlDefineAttribute"/> class with a predefined dialect enum.
+            </summary>
+            <param name="dialectType">The database dialect type.</param>
         </member>
         <member name="M:Sqlx.Annotations.SqlDefineAttribute.#ctor(System.String)">
             <summary>
@@ -61,6 +90,11 @@
             <param name="stringLeft">Left string delimiter.</param>
             <param name="stringRight">Right string delimiter.</param>
             <param name="parameterPrefix">Parameter prefix.</param>
+        </member>
+        <member name="P:Sqlx.Annotations.SqlDefineAttribute.DialectType">
+            <summary>
+            Gets the database dialect type.
+            </summary>
         </member>
         <member name="P:Sqlx.Annotations.SqlDefineAttribute.DialectName">
             <summary>
@@ -223,6 +257,16 @@
             设置自定义的SELECT列。
             </summary>
         </member>
+        <member name="M:Sqlx.ExpressionToSql`1.Select``1(System.Linq.Expressions.Expression{System.Func{`0,``0}})">
+            <summary>
+            使用表达式设置SELECT列。
+            </summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.Select(System.Linq.Expressions.Expression{System.Func{`0,System.Object}}[])">
+            <summary>
+            使用多个表达式设置SELECT列。
+            </summary>
+        </member>
         <member name="M:Sqlx.ExpressionToSql`1.Where(System.Linq.Expressions.Expression{System.Func{`0,System.Boolean}})">
             <summary>
             添加 WHERE 条件到查询。
@@ -241,6 +285,11 @@
         <member name="M:Sqlx.ExpressionToSql`1.OrderByDescending``1(System.Linq.Expressions.Expression{System.Func{`0,``0}})">
             <summary>
             添加 ORDER BY DESC 子句。
+            </summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.AddOrderBy``1(System.Linq.Expressions.Expression{System.Func{`0,``0}},System.String)">
+            <summary>
+            添加排序表达式的通用方法。
             </summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.Take(System.Int32)">
@@ -263,6 +312,11 @@
             使用表达式设置 UPDATE 操作的值。支持模式如 a=a+1。
             </summary>
         </member>
+        <member name="M:Sqlx.ExpressionToSql`1.EnsureUpdateMode">
+            <summary>
+            确保当前操作类型为UPDATE。
+            </summary>
+        </member>
         <member name="M:Sqlx.ExpressionToSql`1.Insert(System.Linq.Expressions.Expression{System.Func{`0,System.Object}})">
             <summary>
             指定 INSERT 操作的列。
@@ -276,6 +330,11 @@
         <member name="M:Sqlx.ExpressionToSql`1.AddValues(System.Object[])">
             <summary>
             添加多行INSERT值。
+            </summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.EnsureInsertMode">
+            <summary>
+            确保当前操作类型为INSERT。
             </summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.InsertInto">
@@ -313,6 +372,26 @@
             添加 HAVING 条件。
             </summary>
         </member>
+        <member name="M:Sqlx.ExpressionToSql`1.Delete">
+            <summary>
+            创建DELETE语句。必须配合WHERE使用以确保安全。
+            </summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.Delete(System.Linq.Expressions.Expression{System.Func{`0,System.Boolean}})">
+            <summary>
+            创建DELETE语句并添加WHERE条件。
+            </summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.Update">
+            <summary>
+            创建UPDATE语句。
+            </summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.EnsureDeleteMode">
+            <summary>
+            确保当前操作类型为DELETE。
+            </summary>
+        </member>
         <member name="F:Sqlx.ExpressionToSql`1._customSelectClause">
             <summary>
             设置自定义 SELECT 子句（内部使用）。
@@ -321,6 +400,11 @@
         <member name="M:Sqlx.ExpressionToSql`1.BuildSql">
             <summary>
             构建 SQL 语句，简单直接无缓存。
+            </summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.BuildDeleteSql">
+            <summary>
+            构建DELETE SQL语句。
             </summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.ToTemplate">
@@ -346,6 +430,11 @@
         <member name="M:Sqlx.ExpressionToSql`1.Dispose">
             <summary>
             释放资源（简化版）。
+            </summary>
+        </member>
+        <member name="T:Sqlx.CrudOperationType">
+            <summary>
+            CRUD操作类型枚举。
             </summary>
         </member>
         <member name="T:Sqlx.GroupedExpressionToSql`2">

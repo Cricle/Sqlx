@@ -9,6 +9,24 @@
 namespace Sqlx.Annotations
 {
     /// <summary>
+    /// SQL dialect types enumeration.
+    /// </summary>
+    public enum SqlDefineTypes
+    {
+        /// <summary>MySQL database</summary>
+        MySql = 0,
+        /// <summary>SQL Server database</summary>
+        SqlServer = 1,
+        /// <summary>PostgreSQL database</summary>
+        PostgreSql = 2,
+        /// <summary>Oracle database</summary>
+        Oracle = 3,
+        /// <summary>DB2 database</summary>
+        DB2 = 4,
+        /// <summary>SQLite database</summary>
+        SQLite = 5,
+    }
+    /// <summary>
     /// Specifies the database dialect for SQL generation.
     /// </summary>
     [System.AttributeUsage(System.AttributeTargets.Method |
@@ -16,12 +34,27 @@ namespace Sqlx.Annotations
     public sealed class SqlDefineAttribute : System.Attribute
     {
         /// <summary>
+        /// Initializes a new instance of the <see cref="SqlDefineAttribute"/> class with a predefined dialect enum.
+        /// </summary>
+        /// <param name="dialectType">The database dialect type.</param>
+        public SqlDefineAttribute(SqlDefineTypes dialectType)
+        {
+            DialectType = dialectType;
+            DialectName = dialectType.ToString();
+        }
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="SqlDefineAttribute"/> class with a predefined dialect.
         /// </summary>
         /// <param name="dialectName">The database dialect name (MySql, SqlServer, PostgreSql, Oracle, DB2, SQLite).</param>
         public SqlDefineAttribute(string dialectName)
         {
             DialectName = dialectName ?? throw new System.ArgumentNullException(nameof(dialectName));
+            // Try to parse the string to enum for backwards compatibility
+            if (System.Enum.TryParse<SqlDefineTypes>(dialectName, true, out var parsedType))
+            {
+                DialectType = parsedType;
+            }
         }
 
         /// <summary>
@@ -40,6 +73,11 @@ namespace Sqlx.Annotations
             StringRight = stringRight ?? throw new System.ArgumentNullException(nameof(stringRight));
             ParameterPrefix = parameterPrefix ?? throw new System.ArgumentNullException(nameof(parameterPrefix));
         }
+
+        /// <summary>
+        /// Gets the database dialect type.
+        /// </summary>
+        public SqlDefineTypes? DialectType { get; }
 
         /// <summary>
         /// Gets the database dialect name.

@@ -15,6 +15,17 @@ using Sqlx.Annotations;
 namespace Sqlx
 {
     /// <summary>
+    /// CRUD操作类型枚举。
+    /// </summary>
+    internal enum CrudOperationType
+    {
+        Select,
+        Insert, 
+        Update,
+        Delete
+    }
+
+    /// <summary>
     /// 简单高效的 LINQ Expression 到 SQL 转换器，AOT 友好，无锁设计。
     /// </summary>
     /// <typeparam name="T">实体类型</typeparam>
@@ -25,6 +36,7 @@ namespace Sqlx
         private readonly List<string> _insertColumns = new(); // INSERT列名
         private readonly List<List<string>> _insertValues = new(); // INSERT值（支持多行）
         private string? _insertSelectSql; // INSERT SELECT的SQL
+        private CrudOperationType _operationType = CrudOperationType.Select; // 默认为SELECT操作
 
         /// <summary>
         /// 使用指定的 SQL 方言初始化新实例。
@@ -43,6 +55,26 @@ namespace Sqlx
         }
 
         /// <summary>
+        /// 使用表达式设置SELECT列。
+        /// </summary>
+        public ExpressionToSql<T> Select<TResult>(Expression<Func<T, TResult>> selector)
+        {
+            _customSelectClause = selector != null ? ExtractColumns(selector.Body) : new List<string>();
+            return this;
+        }
+
+        /// <summary>
+        /// 使用多个表达式设置SELECT列。
+        /// </summary>
+        public ExpressionToSql<T> Select(params Expression<Func<T, object>>[] selectors)
+        {
+            _customSelectClause = selectors?.Where(s => s != null)
+                .SelectMany(s => ExtractColumns(s.Body))
+                .ToList() ?? new List<string>();
+            return this;
+        }
+
+        /// <summary>
         /// 添加 WHERE 条件到查询。
         /// </summary>
         public ExpressionToSql<T> Where(Expression<Func<T, bool>> predicate)
@@ -50,15 +82,7 @@ namespace Sqlx
             if (predicate != null)
             {
                 var conditionSql = ParseExpression(predicate.Body);
-                // 根据表达式复杂度决定是否添加括号
-                if (NeedsParentheses(predicate.Body))
-                {
-                    _whereConditions.Add($"({conditionSql})");
-                }
-                else
-                {
-                    _whereConditions.Add(conditionSql);
-                }
+                _whereConditions.Add(NeedsParentheses(predicate.Body) ? $"({conditionSql})" : conditionSql);
             }
             return this;
         }
@@ -71,25 +95,24 @@ namespace Sqlx
         /// <summary>
         /// 添加 ORDER BY 子句。
         /// </summary>
-        public ExpressionToSql<T> OrderBy<TKey>(Expression<Func<T, TKey>> keySelector)
-        {
-            if (keySelector != null)
-            {
-                var columnName = GetColumnName(keySelector.Body);
-                _orderByExpressions.Add(columnName + " ASC");
-            }
-            return this;
-        }
+        public ExpressionToSql<T> OrderBy<TKey>(Expression<Func<T, TKey>> keySelector) => 
+            AddOrderBy(keySelector, "ASC");
 
         /// <summary>
         /// 添加 ORDER BY DESC 子句。
         /// </summary>
-        public ExpressionToSql<T> OrderByDescending<TKey>(Expression<Func<T, TKey>> keySelector)
+        public ExpressionToSql<T> OrderByDescending<TKey>(Expression<Func<T, TKey>> keySelector) => 
+            AddOrderBy(keySelector, "DESC");
+
+        /// <summary>
+        /// 添加排序表达式的通用方法。
+        /// </summary>
+        private ExpressionToSql<T> AddOrderBy<TKey>(Expression<Func<T, TKey>>? keySelector, string direction)
         {
             if (keySelector != null)
             {
                 var columnName = GetColumnName(keySelector.Body);
-                _orderByExpressions.Add(columnName + " DESC");
+                _orderByExpressions.Add($"{columnName} {direction}");
             }
             return this;
         }
@@ -117,6 +140,7 @@ namespace Sqlx
         /// </summary>
         public ExpressionToSql<T> Set<TValue>(Expression<Func<T, TValue>> selector, TValue value)
         {
+            EnsureUpdateMode();
             if (selector != null)
             {
                 var columnName = GetColumnName(selector.Body);
@@ -132,6 +156,7 @@ namespace Sqlx
         public ExpressionToSql<T> Set<TValue>(Expression<Func<T, TValue>> selector,
             Expression<Func<T, TValue>> valueExpression)
         {
+            EnsureUpdateMode();
             if (selector != null && valueExpression != null)
             {
                 var columnName = GetColumnName(selector.Body);
@@ -142,16 +167,20 @@ namespace Sqlx
         }
 
         /// <summary>
+        /// 确保当前操作类型为UPDATE。
+        /// </summary>
+        private void EnsureUpdateMode() => _operationType = CrudOperationType.Update;
+
+        /// <summary>
         /// 指定 INSERT 操作的列。
         /// </summary>
         public ExpressionToSql<T> Insert(Expression<Func<T, object>> selector)
         {
+            EnsureInsertMode();
             if (selector != null)
             {
                 _insertColumns.Clear();
-                // 解析列名
-                var columns = ExtractColumns(selector.Body);
-                _insertColumns.AddRange(columns);
+                _insertColumns.AddRange(ExtractColumns(selector.Body));
             }
             return this;
         }
@@ -161,13 +190,9 @@ namespace Sqlx
         /// </summary>
         public ExpressionToSql<T> Values(params object[] values)
         {
-            if (values != null && values.Length > 0)
+            if (values?.Length > 0)
             {
-                var valueStrings = new List<string>();
-                foreach (var value in values)
-                {
-                    valueStrings.Add(FormatConstantValue(value));
-                }
+                var valueStrings = values.Select(FormatConstantValue).ToList();
                 _insertValues.Add(valueStrings);
             }
             return this;
@@ -176,36 +201,28 @@ namespace Sqlx
         /// <summary>
         /// 添加多行INSERT值。
         /// </summary>
-        public ExpressionToSql<T> AddValues(params object[] values)
-        {
-            return Values(values);
-        }
+        public ExpressionToSql<T> AddValues(params object[] values) => Values(values);
+
+        /// <summary>
+        /// 确保当前操作类型为INSERT。
+        /// </summary>
+        private void EnsureInsertMode() => _operationType = CrudOperationType.Insert;
 
         /// <summary>
         /// 指定INSERT INTO操作，自动推断所有列。
         /// </summary>
         public ExpressionToSql<T> InsertInto()
         {
-            // 清除之前的列配置，准备插入所有列
+            EnsureInsertMode();
             _insertColumns.Clear();
-            
-            // 获取类型的所有公共属性作为列
-            var properties = typeof(T).GetProperties();
-            foreach (var prop in properties)
-            {
-                var columnName = _dialect.WrapColumn(prop.Name);
-                _insertColumns.Add(columnName);
-            }
+            _insertColumns.AddRange(typeof(T).GetProperties().Select(prop => _dialect.WrapColumn(prop.Name)));
             return this;
         }
 
         /// <summary>
         /// 指定INSERT INTO操作，手动指定列。
         /// </summary>
-        public ExpressionToSql<T> InsertInto(Expression<Func<T, object>> selector)
-        {
-            return Insert(selector);
-        }
+        public ExpressionToSql<T> InsertInto(Expression<Func<T, object>> selector) => Insert(selector);
 
         /// <summary>
         /// 使用SELECT子查询进行INSERT操作。
@@ -264,6 +281,38 @@ namespace Sqlx
         }
 
         /// <summary>
+        /// 创建DELETE语句。必须配合WHERE使用以确保安全。
+        /// </summary>
+        public ExpressionToSql<T> Delete()
+        {
+            EnsureDeleteMode();
+            return this;
+        }
+
+        /// <summary>
+        /// 创建DELETE语句并添加WHERE条件。
+        /// </summary>
+        public ExpressionToSql<T> Delete(Expression<Func<T, bool>> predicate)
+        {
+            EnsureDeleteMode();
+            return Where(predicate);
+        }
+
+        /// <summary>
+        /// 创建UPDATE语句。
+        /// </summary>
+        public ExpressionToSql<T> Update()
+        {
+            EnsureUpdateMode();
+            return this;
+        }
+
+        /// <summary>
+        /// 确保当前操作类型为DELETE。
+        /// </summary>
+        private void EnsureDeleteMode() => _operationType = CrudOperationType.Delete;
+
+        /// <summary>
         /// 设置自定义 SELECT 子句（内部使用）。
         /// </summary>
         internal List<string>? _customSelectClause;
@@ -279,17 +328,14 @@ namespace Sqlx
         /// </summary>
         private string BuildSql()
         {
-            // 优先级：INSERT > UPDATE > SELECT
-            if (_insertColumns.Count > 0 || !string.IsNullOrEmpty(_insertSelectSql))
+            return _operationType switch
             {
-                return BuildInsertSql();
-            }
-            // 根据 SET 子句的存在判断是 UPDATE 还是 SELECT
-            if (_setClausesConstant.Count > 0 || _setClausesExpression.Count > 0)
-            {
-                return BuildUpdateSql();
-            }
-            return BuildSelectSql();
+                CrudOperationType.Insert => BuildInsertSql(),
+                CrudOperationType.Update => BuildUpdateSql(),
+                CrudOperationType.Delete => BuildDeleteSql(),
+                CrudOperationType.Select => BuildSelectSql(),
+                _ => BuildSelectSql()
+            };
         }
 
         private string BuildSelectSql()
@@ -410,6 +456,32 @@ namespace Sqlx
                 }
             }
 
+            return sql.ToString();
+        }
+
+        /// <summary>
+        /// 构建DELETE SQL语句。
+        /// </summary>
+        private string BuildDeleteSql()
+        {
+            using var sql = new ValueStringBuilder(256);
+            
+            // DELETE FROM 表名
+            sql.Append("DELETE FROM ");
+            sql.Append(_dialect.WrapColumn(_tableName!));
+            
+            // WHERE子句 - DELETE必须有WHERE条件以确保安全
+            if (_whereConditions.Count > 0)
+            {
+                sql.Append(" WHERE ");
+                var processedWhere = _whereConditions.Select(RemoveOuterParentheses);
+                sql.Append(string.Join(" AND ", processedWhere));
+            }
+            else
+            {
+                throw new InvalidOperationException("DELETE operation requires WHERE clause for safety. Use Delete(predicate) or call Where() before Delete().");
+            }
+            
             return sql.ToString();
         }
 

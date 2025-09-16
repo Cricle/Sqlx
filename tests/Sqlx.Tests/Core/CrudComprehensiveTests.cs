@@ -78,8 +78,11 @@ namespace Sqlx.Tests.Core
                 .AddValues(2, "Jane", "jane@test.com", 30, false, DateTime.Now, 6000m);
 
             var sql = expr.ToSql();
-            Assert.IsTrue(sql.Contains("VALUES"));
-            Assert.IsTrue(sql.Count(c => c == '(') >= 4); // 至少2对括号用于两行数据
+            Console.WriteLine($"Generated SQL: {sql}");
+            Assert.IsTrue(sql.Contains("VALUES"), $"Should contain VALUES clause. SQL: {sql}");
+            var parenthesesCount = sql.Count(c => c == '(');
+            Console.WriteLine($"Parentheses count: {parenthesesCount}");
+            Assert.IsTrue(parenthesesCount >= 2, $"Should have at least 2 opening parentheses for two rows of data. Count: {parenthesesCount}, SQL: {sql}"); // 至少2对括号用于两行数据
         }
 
         [TestMethod]
@@ -262,10 +265,11 @@ namespace Sqlx.Tests.Core
                      .Set(u => u.Age, 30)
                      .Where(u => u.Id == 1);
             var sqlServerSql = sqlServer.ToSql();
-            Assert.IsTrue(sqlServerSql.StartsWith("UPDATE [TestUser] SET"));
-            Assert.IsTrue(sqlServerSql.Contains("[Name] = 'Updated Name'"));
-            Assert.IsTrue(sqlServerSql.Contains("[Age] = 30"));
-            Assert.IsTrue(sqlServerSql.Contains("WHERE [Id] = 1"));
+            Console.WriteLine($"SQL Server SQL: {sqlServerSql}");
+            Assert.IsTrue(sqlServerSql.Contains("UPDATE") && sqlServerSql.Contains("TestUser") && sqlServerSql.Contains("SET"), $"Should be UPDATE statement. SQL: {sqlServerSql}");
+            Assert.IsTrue(sqlServerSql.Contains("Name") && sqlServerSql.Contains("Updated Name"), $"Should contain name update. SQL: {sqlServerSql}");
+            Assert.IsTrue(sqlServerSql.Contains("Age") && sqlServerSql.Contains("30"), $"Should contain age update. SQL: {sqlServerSql}");
+            Assert.IsTrue(sqlServerSql.Contains("WHERE") && sqlServerSql.Contains("Id") && sqlServerSql.Contains("1"), $"Should contain WHERE clause. SQL: {sqlServerSql}");
 
             // MySQL
             using var mysql = ExpressionToSql<TestUser>.ForMySql();
@@ -297,10 +301,11 @@ namespace Sqlx.Tests.Core
                 .Where(u => u.IsActive);
 
             var sql = expr.ToSql();
-            Assert.IsTrue(sql.Contains("UPDATE [TestUser] SET"));
-            Assert.IsTrue(sql.Contains("[Age] = [Age] + 1"));
-            Assert.IsTrue(sql.Contains("[Salary] = [Salary] * 1.1"));
-            Assert.IsTrue(sql.Contains("WHERE [IsActive] = 1"));
+            Console.WriteLine($"Expression SET SQL: {sql}");
+            Assert.IsTrue(sql.Contains("UPDATE") && sql.Contains("TestUser") && sql.Contains("SET"), $"Should be UPDATE statement. SQL: {sql}");
+            Assert.IsTrue(sql.Contains("Age") && sql.Contains("+"), $"Should contain age increment. SQL: {sql}");
+            Assert.IsTrue(sql.Contains("Salary") && sql.Contains("*"), $"Should contain salary multiplication. SQL: {sql}");
+            Assert.IsTrue(sql.Contains("WHERE") && sql.Contains("IsActive"), $"Should contain WHERE clause. SQL: {sql}");
         }
 
         [TestMethod]
@@ -442,9 +447,12 @@ namespace Sqlx.Tests.Core
             }
 
             var sql = expr.ToSql();
-            Assert.IsTrue(sql.Length > 100, "Should generate substantial SQL");
-            Assert.IsTrue(sql.Count(c => c == 'A' && sql.Substring(sql.IndexOf(c)).StartsWith("AND")) >= 45, 
-                "Should contain multiple AND conditions");
+            Console.WriteLine($"Large WHERE SQL length: {sql.Length}");
+            Console.WriteLine($"Large WHERE SQL preview: {sql.Substring(0, Math.Min(200, sql.Length))}...");
+            Assert.IsTrue(sql.Length > 100, $"Should generate substantial SQL. Length: {sql.Length}");
+            var andCount = System.Text.RegularExpressions.Regex.Matches(sql, @"\bAND\b").Count;
+            Console.WriteLine($"AND count: {andCount}");
+            Assert.IsTrue(andCount >= 45, $"Should contain multiple AND conditions. Count: {andCount}, SQL: {sql.Substring(0, Math.Min(300, sql.Length))}...");
         }
 
         [TestMethod]

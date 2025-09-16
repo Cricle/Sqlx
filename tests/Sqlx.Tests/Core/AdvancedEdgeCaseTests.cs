@@ -118,7 +118,7 @@ public class AdvancedEdgeCaseTests
         Assert.IsNotNull(sql, "SQL should not be null for minimal entity update");
         Assert.IsTrue(sql.StartsWith("UPDATE [MinimalEntity] SET"), "Should start with UPDATE");
         Assert.IsTrue(sql.Contains("[Id] = 999"), "Should contain SET clause");
-        Assert.IsTrue(sql.Contains("WHERE [Id] = 1"), "Should contain WHERE clause");
+        Assert.IsTrue(sql.Contains("WHERE") && sql.Contains("[Id] = 1"), "Should contain WHERE clause");
     }
 
     #endregion

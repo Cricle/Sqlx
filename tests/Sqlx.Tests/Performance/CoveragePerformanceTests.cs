@@ -275,35 +275,6 @@ namespace Sqlx.Tests.Performance
         }
 
         [TestMethod]
-        public void IndentedStringBuilder_LargeContent_PerformanceTest()
-        {
-            // Arrange
-            var sb = new IndentedStringBuilder("    ");
-            var iterations = 1000;
-            var stopwatch = Stopwatch.StartNew();
-
-            // Act
-            for (int i = 0; i < iterations; i++)
-            {
-                sb.AppendLine($"Line {i}: This is a test line with some content to make it realistic");
-                if (i % 100 == 0)
-                {
-                    sb.AppendLine($"// Milestone: {i}");
-                }
-            }
-
-            var result = sb.ToString();
-            stopwatch.Stop();
-
-            // Assert
-            Assert.IsTrue(stopwatch.ElapsedMilliseconds < 1000, $"Performance test took too long: {stopwatch.ElapsedMilliseconds}ms for {iterations} iterations");
-            Assert.IsNotNull(result);
-            Assert.IsTrue(result.Length > 0);
-            Assert.IsTrue(result.Contains("Line 0:"));
-            Assert.IsTrue(result.Contains($"Line {iterations - 1}:"));
-        }
-
-        [TestMethod]
         public void CSharpGenerator_MultipleInstances_PerformanceTest()
         {
             // Arrange

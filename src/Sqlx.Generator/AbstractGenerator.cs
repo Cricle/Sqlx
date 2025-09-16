@@ -10,6 +10,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 using Sqlx.Generator.Core;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
@@ -58,11 +59,21 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                 return;
             }
 
+            // 创建诊断指导服务
+            var diagnosticService = new DiagnosticGuidanceService(context);
+
             // Process existing methods (class-based generation)
-            ProcessExistingMethods(context, receiver, symbolReferences);
+            ProcessExistingMethods(context, receiver, symbolReferences, diagnosticService);
 
             // Process repository classes (interface-based generation)
-            ProcessRepositoryClasses(context, receiver, symbolReferences);
+            ProcessRepositoryClasses(context, receiver, symbolReferences, diagnosticService);
+
+            // 生成诊断摘要
+            var allMethods = GetAllAnalyzedMethods(receiver);
+            if (allMethods.Any())
+            {
+                diagnosticService.GenerateDiagnosticSummary(allMethods);
+            }
         }
         catch (Exception ex)
         {
@@ -96,13 +107,29 @@ public abstract partial class AbstractGenerator : ISourceGenerator
             tableNameAttributeSymbol: context.Compilation.GetTypeByMetadataName("Sqlx.Annotations.TableNameAttribute"));
     }
 
-    private void ProcessExistingMethods(GeneratorExecutionContext context, ISqlxSyntaxReceiver receiver, SymbolReferences symbols)
+    private void ProcessExistingMethods(GeneratorExecutionContext context, ISqlxSyntaxReceiver receiver, SymbolReferences symbols, DiagnosticGuidanceService diagnosticService)
     {
         // Group methods by containing class and generate code
         foreach (var group in receiver.Methods.GroupBy(f => f.ContainingType, SymbolEqualityComparer.Default))
         {
             var containingType = (INamedTypeSymbol)group.Key!;
             var methods = group.ToList();
+            
+            // 对每个方法执行诊断分析
+            foreach (var method in methods)
+            {
+                var sqlxAttr = method.GetAttributes()
+                    .FirstOrDefault(a => a.AttributeClass?.Name?.Contains("Sqlx") == true);
+                
+                if (sqlxAttr?.ConstructorArguments.FirstOrDefault().Value is string sql)
+                {
+                    // 获取实体类型用于分析
+                    var entityType = _typeInferenceService.InferEntityTypeFromMethod(method);
+                    
+                    // 执行全面的诊断分析
+                    diagnosticService.PerformComprehensiveAnalysis(method, sql, entityType);
+                }
+            }
             
             var ctx = new ClassGenerationContext(containingType, methods, symbols.SqlxAttributeSymbol!);
             ctx.SetExecutionContext(context);
@@ -118,10 +145,35 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         }
     }
 
-    private void ProcessRepositoryClasses(GeneratorExecutionContext context, ISqlxSyntaxReceiver receiver, SymbolReferences symbols)
+    private void ProcessRepositoryClasses(GeneratorExecutionContext context, ISqlxSyntaxReceiver receiver, SymbolReferences symbols, DiagnosticGuidanceService diagnosticService)
     {
         foreach (var repositoryClass in receiver.RepositoryClasses)
         {
+            // 分析仓储类中的接口方法
+            var repositoryForAttr = repositoryClass.GetAttributes()
+                .FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, symbols.RepositoryForAttributeSymbol));
+            
+            if (repositoryForAttr?.ConstructorArguments.FirstOrDefault().Value is INamedTypeSymbol interfaceType)
+            {
+                var interfaceMethods = interfaceType.GetMembers().OfType<IMethodSymbol>().ToList();
+                
+                // 对接口中的每个方法执行诊断分析
+                foreach (var method in interfaceMethods)
+                {
+                    var sqlxAttr = method.GetAttributes()
+                        .FirstOrDefault(a => a.AttributeClass?.Name?.Contains("Sqlx") == true);
+                    
+                    if (sqlxAttr?.ConstructorArguments.FirstOrDefault().Value is string sql)
+                    {
+                        // 获取实体类型用于分析
+                        var entityType = _typeInferenceService.InferEntityTypeFromMethod(method);
+                        
+                        // 执行全面的诊断分析
+                        diagnosticService.PerformComprehensiveAnalysis(method, sql, entityType);
+                    }
+                }
+            }
+
             var generationContext = new RepositoryGenerationContext(
                 context,
                 repositoryClass,
@@ -223,5 +275,40 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         public bool IsValid => SqlxAttributeSymbol != null && 
                               ExpressionToSqlAttributeSymbol != null && 
                               SqlExecuteTypeAttributeSymbol != null;
+    }
+
+    /// <summary>
+    /// 获取所有已分析的方法用于诊断摘要
+    /// </summary>
+    private IReadOnlyList<IMethodSymbol> GetAllAnalyzedMethods(ISqlxSyntaxReceiver receiver)
+    {
+        var methods = new List<IMethodSymbol>();
+
+        // 收集所有直接带有Sqlx特性的方法
+        methods.AddRange(receiver.Methods.Where(m => 
+            m.GetAttributes().Any(a => 
+                a.AttributeClass?.Name?.Contains("Sqlx") == true ||
+                a.AttributeClass?.Name?.Contains("ExpressionToSql") == true)));
+
+        // 收集仓储类中的接口方法
+        foreach (var repositoryClass in receiver.RepositoryClasses)
+        {
+            var repositoryForAttr = repositoryClass.GetAttributes()
+                .FirstOrDefault(a => a.AttributeClass?.Name == "RepositoryForAttribute");
+            
+            if (repositoryForAttr?.ConstructorArguments.FirstOrDefault().Value is INamedTypeSymbol interfaceType)
+            {
+                var interfaceMethods = interfaceType.GetMembers()
+                    .OfType<IMethodSymbol>()
+                    .Where(m => m.GetAttributes().Any(a => 
+                        a.AttributeClass?.Name?.Contains("Sqlx") == true ||
+                        a.AttributeClass?.Name?.Contains("ExpressionToSql") == true))
+                    .ToList();
+
+                methods.AddRange(interfaceMethods);
+            }
+        }
+
+        return methods;
     }
 }

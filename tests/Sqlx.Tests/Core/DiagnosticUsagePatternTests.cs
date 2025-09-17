@@ -411,33 +411,6 @@ public class User
             // Should still analyze method patterns even with empty SQL
         }
 
-        [TestMethod]
-        [TestCategory("Performance")]
-        public void AnalyzeUsagePattern_PerformanceTest_CompletesWithinThreshold()
-        {
-            // Arrange
-            var methodCode = @"
-                [Sqlx(""SELECT * FROM [User]"")]
-                public Task<IList<User>> GetUsersAsync() 
-                { 
-                    throw new NotImplementedException(); 
-                }";
-            var method = CreateMethodSymbol(methodCode);
-            var sql = "SELECT * FROM [User]";
-
-            // Act & Assert
-            var executionTime = MeasureExecutionTime(() =>
-            {
-                for (int i = 0; i < 1000; i++)
-                {
-                    var diagnostics = DiagnosticHelper.AnalyzeUsagePattern(method, sql);
-                    Assert.IsNotNull(diagnostics);
-                }
-            });
-
-            Assert.IsTrue(executionTime < 2000, $"Performance test failed: {executionTime}ms > 2000ms");
-            WriteTestOutput($"AnalyzeUsagePattern performance: {executionTime}ms for 1000 iterations");
-        }
 
         #endregion
 

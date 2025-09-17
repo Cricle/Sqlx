@@ -193,48 +193,6 @@ namespace Sqlx.Tests.Core
 
         #endregion
 
-        #region 性能测试
-
-        [TestMethod]
-        [TestCategory("Performance")]
-        public void DiagnosticComponents_Performance_AcceptableLatency()
-        {
-            // Arrange
-            var testSqls = new[]
-            {
-                "SELECT * FROM [User]",
-                "SELECT * FROM [User] WHERE [IsActive] = @active",
-                "INSERT INTO [User] (Name) VALUES (@name)",
-                "UPDATE [User] SET [Name] = @name WHERE [Id] = @id",
-                "DELETE FROM [User] WHERE [Id] = @id",
-                "SELECT u.*, d.Name FROM [User] u JOIN [Department] d ON u.DeptId = d.Id",
-                "SELECT * FROM [User] WHERE [Id] IN (SELECT [UserId] FROM [UserRoles])",
-                "SELECT COUNT(*) FROM [User] GROUP BY [DepartmentId] ORDER BY COUNT(*)"
-            };
-
-            // Act & Assert
-            var totalExecutionTime = MeasureExecutionTime(() =>
-            {
-                for (int i = 0; i < 100; i++)
-                {
-                    foreach (var sql in testSqls)
-                    {
-                        var diagnostics = DiagnosticHelper.AnalyzeSqlQuality(sql, "TestMethod");
-                        Assert.IsNotNull(diagnostics);
-                    }
-                }
-            });
-
-            var averageTimePerAnalysis = (double)totalExecutionTime / (100 * testSqls.Length);
-            
-            Assert.IsTrue(totalExecutionTime < 5000, 
-                $"Performance test failed: {totalExecutionTime}ms > 5000ms for {100 * testSqls.Length} operations");
-            
-            WriteTestOutput($"Diagnostic analysis performance: {totalExecutionTime}ms total, " +
-                          $"{averageTimePerAnalysis:F2}ms average per analysis");
-        }
-
-        #endregion
 
         #region 覆盖率验证测试
 

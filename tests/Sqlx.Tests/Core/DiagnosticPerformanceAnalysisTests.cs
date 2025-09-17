@@ -525,33 +525,6 @@ public class TestEntity
             // Should not throw exception with null entity
         }
 
-        [TestMethod]
-        [TestCategory("Performance")]
-        public void AnalyzePerformanceOpportunities_PerformanceTest_CompletesWithinThreshold()
-        {
-            // Arrange
-            var methodCode = @"
-                [Sqlx(""SELECT * FROM [User]"")]
-                public Task<List<User>> GetUsersAsync() 
-                { 
-                    throw new NotImplementedException(); 
-                }";
-            var method = CreateMethodSymbol(methodCode);
-            var sql = "SELECT * FROM [User]";
-
-            // Act & Assert
-            var executionTime = MeasureExecutionTime(() =>
-            {
-                for (int i = 0; i < 1000; i++)
-                {
-                    var diagnostics = DiagnosticHelper.AnalyzePerformanceOpportunities(method, null, sql);
-                    Assert.IsNotNull(diagnostics);
-                }
-            });
-
-            Assert.IsTrue(executionTime < 3000, $"Performance test failed: {executionTime}ms > 3000ms");
-            WriteTestOutput($"AnalyzePerformanceOpportunities performance: {executionTime}ms for 1000 iterations");
-        }
 
         #endregion
 

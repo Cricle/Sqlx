@@ -72,13 +72,6 @@ This document provides a comprehensive overview of the enhanced unit test suite 
   - Edge cases (interfaces, abstract classes, nested classes)
   - Integration with other analyzers
 
-### Performance Tests (`tests/Sqlx.Tests/Performance/`)
-
-- **ExpressionToSqlPerformanceTests.cs** - Performance and stress testing
-  - **Single-threaded Performance**: Instance creation, complex query generation, template caching
-  - **Memory Usage**: Memory consumption analysis and cleanup verification
-  - **Concurrent Access**: Thread-safety testing for factory methods and disposal
-  - **Stress Testing**: Very long WHERE/ORDER BY clauses, real-world load simulation
 
 ### Integration Tests (`tests/Sqlx.Tests/Integration/`)
 

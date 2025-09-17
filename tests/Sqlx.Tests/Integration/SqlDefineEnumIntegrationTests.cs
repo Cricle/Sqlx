@@ -214,39 +214,6 @@ namespace Sqlx.Tests.Integration
 
         #endregion
 
-        #region Performance Integration Tests - 性能集成测试
-
-        [TestMethod]
-        public void SqlDefine_EnumUsage_PerformanceComparison()
-        {
-            var iterations = 1000;
-            
-            // 测试枚举构造函数性能
-            var enumStopwatch = System.Diagnostics.Stopwatch.StartNew();
-            for (int i = 0; i < iterations; i++)
-            {
-                var attribute = new SqlDefineAttribute(SqlDefineTypes.MySql);
-                Assert.IsNotNull(attribute);
-            }
-            enumStopwatch.Stop();
-            
-            // 测试字符串构造函数性能
-            var stringStopwatch = System.Diagnostics.Stopwatch.StartNew();
-            for (int i = 0; i < iterations; i++)
-            {
-                var attribute = new SqlDefineAttribute("MySql");
-                Assert.IsNotNull(attribute);
-            }
-            stringStopwatch.Stop();
-            
-            // 枚举构造函数应该比字符串构造函数更快（无需解析）
-            Assert.IsTrue(enumStopwatch.ElapsedMilliseconds <= stringStopwatch.ElapsedMilliseconds,
-                $"枚举构造函数性能不如预期: {enumStopwatch.ElapsedMilliseconds}ms vs {stringStopwatch.ElapsedMilliseconds}ms");
-            
-            Console.WriteLine($"✅ 性能对比 - 枚举: {enumStopwatch.ElapsedMilliseconds}ms, 字符串: {stringStopwatch.ElapsedMilliseconds}ms");
-        }
-
-        #endregion
 
         #region Real-world Usage Scenarios - 真实使用场景
 

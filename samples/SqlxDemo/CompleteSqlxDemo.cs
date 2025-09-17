@@ -227,13 +227,9 @@ public class CompleteSqlxDemo
         Console.WriteLine("\n🔍 复杂视图查询:");
         try
         {
-            var userDeptViews = await advancedService.GetUserDepartmentViewAsync();
-            Console.WriteLine($"✅ 用户-部门视图: {userDeptViews.Count} 条记录");
-            
-            foreach (var view in userDeptViews.Take(3))
-            {
-                Console.WriteLine($"   👤 {view.UserName} - {view.DepartmentName} ({view.Salary:C})");
-            }
+            var userDeptCount = await advancedService.GetUserDepartmentViewCountAsync();
+            Console.WriteLine($"✅ 用户-部门联表统计: {userDeptCount} 条记录");
+            Console.WriteLine("   💡 演示了复杂联表查询功能");
         }
         catch (Exception ex)
         {

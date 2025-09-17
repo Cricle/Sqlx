@@ -12,6 +12,9 @@
     <NoWarn>CS1591;CS1998;CS8628;CS8625;CS8618;CS8619</NoWarn>
     <WarningsAsErrors />
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!-- 启用源生成器文件输出（仅用于调试） -->
+    <EmitCompilerGeneratedFiles>false</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
   </PropertyGroup>
 
   <ItemGroup>

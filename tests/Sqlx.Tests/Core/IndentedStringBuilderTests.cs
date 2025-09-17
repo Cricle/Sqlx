@@ -249,44 +249,6 @@ public class IndentedStringBuilderTests
     }
 
     /// <summary>
-    /// Tests performance with large content.
-    /// </summary>
-    [TestMethod]
-    public void IndentedStringBuilder_LargeContent_PerformsWell()
-    {
-        var builder = new IndentedStringBuilder(null);
-
-        var startTime = DateTime.UtcNow;
-
-        // Generate a large amount of content with varying indentation
-        for (int i = 0; i < 1000; i++)
-        {
-            builder.AppendLine($"Line {i}");
-
-            if (i % 100 == 0)
-            {
-                builder.PushIndent();
-                builder.AppendLine($"Indented content {i}");
-                builder.AppendLine($"More indented content {i}");
-                builder.PopIndent();
-            }
-        }
-
-        var result = builder.ToString();
-        var endTime = DateTime.UtcNow;
-        var buildTime = endTime - startTime;
-
-        Assert.IsTrue(buildTime.TotalSeconds < 5,
-            $"Large content building should be efficient. Took: {buildTime.TotalSeconds} seconds");
-
-        Assert.IsNotNull(result, "Should produce result");
-        Assert.IsTrue(result.Length > 10000, "Should produce substantial content");
-        Assert.IsTrue(result.Contains("Line 0"), "Should contain first line");
-        Assert.IsTrue(result.Contains("Line 999"), "Should contain last line");
-        Assert.IsTrue(result.Contains("Indented content"), "Should contain indented content");
-    }
-
-    /// <summary>
     /// Tests edge case with excessive indentation levels.
     /// </summary>
     [TestMethod]

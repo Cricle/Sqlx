@@ -79,7 +79,7 @@ public class InsertOperationGenerator : BaseOperationGenerator
         sb.PushIndent();
         sb.AppendLine("__repoResult__ = 0;");
         sb.AppendLine("OnExecuted(\"BatchInsert\", __repoCmd__, __repoResult__, System.Diagnostics.Stopwatch.GetTimestamp() - __repoStartTime__);");
-        sb.AppendLine("return __repoResult__;");
+        // Note: Return statement is handled by CodeGenerationService
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
@@ -113,9 +113,9 @@ public class InsertOperationGenerator : BaseOperationGenerator
             // Add parameters
             foreach (var prop in properties)
             {
-                sb.AppendLine($"var param{prop.Name} = __repoCmd__.CreateParameter();");
+                sb.AppendLine($"var param{prop.Name} = __repoCmd__.CreateParameter()!;");
                 sb.AppendLine($"param{prop.Name}.ParameterName = \"@{prop.Name}\";");
-                sb.AppendLine($"param{prop.Name}.Value = {entityParam.Name}.{prop.Name} ?? (object)global::System.DBNull.Value;");
+                sb.AppendLine($"param{prop.Name}.Value = (object){entityParam.Name}.{prop.Name} ?? (object)global::System.DBNull.Value;");
                 sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
                 sb.AppendLine($"__repoCmd__.Parameters.Add(param{prop.Name});");
                 sb.AppendLine();
@@ -138,9 +138,9 @@ public class InsertOperationGenerator : BaseOperationGenerator
             
             foreach (var param in insertParams)
             {
-                sb.AppendLine($"var param{param.Name} = __repoCmd__.CreateParameter();");
+                sb.AppendLine($"var param{param.Name} = __repoCmd__.CreateParameter()!;");
                 sb.AppendLine($"param{param.Name}.ParameterName = \"@{param.Name}\";");
-                sb.AppendLine($"param{param.Name}.Value = {param.Name} ?? (object)global::System.DBNull.Value;");
+                sb.AppendLine($"param{param.Name}.Value = (object){param.Name} ?? (object)global::System.DBNull.Value;");
                 sb.AppendLine($"param{param.Name}.DbType = {GetDbTypeForParameter(param)};");
                 sb.AppendLine($"__repoCmd__.Parameters.Add(param{param.Name});");
                 sb.AppendLine();
@@ -159,15 +159,8 @@ public class InsertOperationGenerator : BaseOperationGenerator
 
     private void GenerateCommandExecution(IndentedStringBuilder sb, bool isAsync, IMethodSymbol method)
     {
-        if (isAsync)
-        {
-            var cancellationToken = GetCancellationTokenParameter(method);
-            sb.AppendLine($"__repoResult__ = await __repoCmd__.ExecuteNonQueryAsync({cancellationToken});");
-        }
-        else
-        {
-            sb.AppendLine("__repoResult__ = __repoCmd__.ExecuteNonQuery();");
-        }
+        // For IDbCommand, we don't have async methods, so we execute synchronously
+        sb.AppendLine("__repoResult__ = __repoCmd__.ExecuteNonQuery();");
     }
 
     private void GenerateMethodCompletion(IndentedStringBuilder sb, IMethodSymbol method, string methodName, bool isAsync)
@@ -176,7 +169,7 @@ public class InsertOperationGenerator : BaseOperationGenerator
         
         if (!method.ReturnsVoid)
         {
-            sb.AppendLine("return __repoResult__;");
+            // Note: Return statement is handled by CodeGenerationService
         }
     }
 

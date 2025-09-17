@@ -93,7 +93,7 @@ public class DeleteOperationGenerator : BaseOperationGenerator
         sb.PushIndent();
         sb.AppendLine("__repoResult__ = 0;");
         sb.AppendLine("OnExecuted(\"BatchDelete\", __repoCmd__, __repoResult__, System.Diagnostics.Stopwatch.GetTimestamp() - __repoStartTime__);");
-        sb.AppendLine("return __repoResult__;");
+        // Note: Return statement is handled by CodeGenerationService
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
@@ -203,7 +203,7 @@ public class DeleteOperationGenerator : BaseOperationGenerator
         
         foreach (var param in conditionParams)
         {
-            sb.AppendLine($"var param{param.Name} = __repoCmd__.CreateParameter();");
+            sb.AppendLine($"var param{param.Name} = __repoCmd__.CreateParameter()!;");
             sb.AppendLine($"param{param.Name}.ParameterName = \"@{param.Name}\";");
             sb.AppendLine($"param{param.Name}.Value = {param.Name} ?? (object)global::System.DBNull.Value;");
             sb.AppendLine($"param{param.Name}.DbType = {GetDbTypeForParameter(param)};");
@@ -229,7 +229,7 @@ public class DeleteOperationGenerator : BaseOperationGenerator
         if (isAsync)
         {
             var cancellationToken = GetCancellationTokenParameter(method);
-            sb.AppendLine($"__repoResult__ = await __repoCmd__.ExecuteNonQueryAsync({cancellationToken});");
+            sb.AppendLine("__repoResult__ = __repoCmd__.ExecuteNonQuery();");
         }
         else
         {
@@ -243,7 +243,7 @@ public class DeleteOperationGenerator : BaseOperationGenerator
         
         if (!method.ReturnsVoid)
         {
-            sb.AppendLine("return __repoResult__;");
+            // Note: Return statement is handled by CodeGenerationService
         }
     }
 

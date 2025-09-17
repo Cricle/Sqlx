@@ -185,9 +185,9 @@ public class UpdateOperationGenerator : BaseOperationGenerator
                 
                 foreach (var prop in updatableProps)
                 {
-                    sb.AppendLine($"var param{prop.Name} = __repoCmd__.CreateParameter();");
+                    sb.AppendLine($"var param{prop.Name} = __repoCmd__.CreateParameter()!;");
                     sb.AppendLine($"param{prop.Name}.ParameterName = \"@{prop.Name}\";");
-                    sb.AppendLine($"param{prop.Name}.Value = {entityParam.Name}.{prop.Name} ?? (object)global::System.DBNull.Value;");
+                    sb.AppendLine($"param{prop.Name}.Value = (object){entityParam.Name}.{prop.Name} ?? (object)global::System.DBNull.Value;");
                     sb.AppendLine($"__repoCmd__.Parameters.Add(param{prop.Name});");
                 }
             }
@@ -208,7 +208,7 @@ public class UpdateOperationGenerator : BaseOperationGenerator
             sb.AppendLine("{");
             sb.PushIndent();
             sb.AppendLine("__repoResult__ = 0;");
-            sb.AppendLine("return __repoResult__;");
+            // Note: Return statement is handled by CodeGenerationService
             sb.PopIndent();
             sb.AppendLine("}");
             sb.AppendLine();
@@ -230,7 +230,7 @@ public class UpdateOperationGenerator : BaseOperationGenerator
                     
                     foreach (var prop in updatableProps)
                     {
-                        sb.AppendLine($"var param{prop.Name} = __repoCmd__.CreateParameter();");
+                        sb.AppendLine($"var param{prop.Name} = __repoCmd__.CreateParameter()!;");
                         sb.AppendLine($"param{prop.Name}.ParameterName = \"@{prop.Name}\";");
                         sb.AppendLine($"param{prop.Name}.Value = item.{prop.Name} ?? (object)global::System.DBNull.Value;");
                         sb.AppendLine($"__repoCmd__.Parameters.Add(param{prop.Name});");
@@ -267,9 +267,9 @@ public class UpdateOperationGenerator : BaseOperationGenerator
             // Add parameters for updatable properties
             foreach (var prop in updatableProps)
             {
-                sb.AppendLine($"var param{prop.Name} = __repoCmd__.CreateParameter();");
+                sb.AppendLine($"var param{prop.Name} = __repoCmd__.CreateParameter()!;");
                 sb.AppendLine($"param{prop.Name}.ParameterName = \"@{prop.Name}\";");
-                sb.AppendLine($"param{prop.Name}.Value = {entityParam.Name}.{prop.Name} ?? (object)global::System.DBNull.Value;");
+                sb.AppendLine($"param{prop.Name}.Value = (object){entityParam.Name}.{prop.Name} ?? (object)global::System.DBNull.Value;");
                 sb.AppendLine($"__repoCmd__.Parameters.Add(param{prop.Name});");
             }
             
@@ -278,7 +278,7 @@ public class UpdateOperationGenerator : BaseOperationGenerator
                 .FirstOrDefault(p => p.Name.Equals("Id", System.StringComparison.OrdinalIgnoreCase));
             if (idProp != null)
             {
-                sb.AppendLine("var paramId = __repoCmd__.CreateParameter();");
+                sb.AppendLine("var paramId = __repoCmd__.CreateParameter()!;");
                 sb.AppendLine("paramId.ParameterName = \"@Id\";");
                 sb.AppendLine($"paramId.Value = {entityParam.Name}.Id;");
                 sb.AppendLine("__repoCmd__.Parameters.Add(paramId);");
@@ -315,9 +315,9 @@ public class UpdateOperationGenerator : BaseOperationGenerator
 
     private void GenerateParameterCode(IndentedStringBuilder sb, IParameterSymbol param)
     {
-        sb.AppendLine($"var param{param.Name} = __repoCmd__.CreateParameter();");
+        sb.AppendLine($"var param{param.Name} = __repoCmd__.CreateParameter()!;");
         sb.AppendLine($"param{param.Name}.ParameterName = \"@{param.Name}\";");
-        sb.AppendLine($"param{param.Name}.Value = {param.Name} ?? (object)global::System.DBNull.Value;");
+        sb.AppendLine($"param{param.Name}.Value = (object){param.Name} ?? (object)global::System.DBNull.Value;");
         sb.AppendLine($"__repoCmd__.Parameters.Add(param{param.Name});");
         sb.AppendLine();
     }
@@ -327,7 +327,7 @@ public class UpdateOperationGenerator : BaseOperationGenerator
         if (isAsync)
         {
             var cancellationToken = GetCancellationTokenParameter(method);
-            sb.AppendLine($"__repoResult__ = await __repoCmd__.ExecuteNonQueryAsync({cancellationToken});");
+            sb.AppendLine("__repoResult__ = __repoCmd__.ExecuteNonQuery();");
         }
         else
         {
@@ -341,7 +341,7 @@ public class UpdateOperationGenerator : BaseOperationGenerator
         
         if (!method.ReturnsVoid)
         {
-            sb.AppendLine("return __repoResult__;");
+            // Note: Return statement is handled by CodeGenerationService
         }
     }
 

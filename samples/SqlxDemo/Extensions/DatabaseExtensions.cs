@@ -13,19 +13,19 @@ public static partial class DatabaseExtensions
     /// <summary>
     /// 获取活跃用户数量
     /// </summary>
-    [Sqlx("SELECT COUNT(*) FROM [User] WHERE [is_active] = 1")]
+    [Sqlx("SELECT COUNT(*) FROM [user] WHERE [is_active] = 1")]
     public static partial Task<int> GetActiveUserCountAsync(this SqliteConnection connection);
 
     /// <summary>
     /// 获取平均薪资
     /// </summary>
-    [Sqlx("SELECT AVG([salary]) FROM [User] WHERE [is_active] = 1")]
+    [Sqlx("SELECT AVG([salary]) FROM [user] WHERE [is_active] = 1")]
     public static partial Task<decimal> GetAverageSalaryAsync(this SqliteConnection connection);
 
     /// <summary>
     /// 获取高绩效员工
     /// </summary>
-    [Sqlx("SELECT * FROM [User] WHERE [performance_rating] >= @min_rating AND [is_active] = 1")]
+    [Sqlx("SELECT * FROM [user] WHERE [performance_rating] >= @min_rating AND [is_active] = 1")]
     public static partial Task<IList<User>> GetTopPerformersAsync(this SqliteConnection connection, double minRating);
 
     /// <summary>

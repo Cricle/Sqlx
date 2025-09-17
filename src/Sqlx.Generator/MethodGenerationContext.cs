@@ -907,13 +907,13 @@ internal partial class MethodGenerationContext : GenerationContextBase
             else
             {
                 // Traditional class instantiation
-                sb.AppendLine($"{symbol.ToDisplayString(NullableFlowState.None)} {DataName} = {newExp}{symbol.ToDisplayString(NullableFlowState.None)}{expCall};");
+                sb.AppendLine($"{symbol.ToDisplayString(NullableFlowState.None)} {DataName} = {newExp}{symbol.ToDisplayString(NullableFlowState.None)}{expCall}!;");
             }
         }
         else
         {
             // Fallback for non-named types
-            sb.AppendLine($"{symbol.ToDisplayString(NullableFlowState.None)} {DataName} = {newExp}{symbol.ToDisplayString(NullableFlowState.None)}{expCall};");
+            sb.AppendLine($"{symbol.ToDisplayString(NullableFlowState.None)} {DataName} = {newExp}{symbol.ToDisplayString(NullableFlowState.None)}{expCall}!;");
         }
 
         // Only set properties for non-abstract types that can be instantiated

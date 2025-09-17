@@ -21,17 +21,13 @@ namespace Sqlx.Tests.Core
     {
         public List<Microsoft.CodeAnalysis.IMethodSymbol> Methods { get; } = new List<Microsoft.CodeAnalysis.IMethodSymbol>();
         public List<Microsoft.CodeAnalysis.INamedTypeSymbol> RepositoryClasses { get; } = new List<Microsoft.CodeAnalysis.INamedTypeSymbol>();
+        public List<Microsoft.CodeAnalysis.CSharp.Syntax.MethodDeclarationSyntax> MethodSyntaxNodes { get; } = new List<Microsoft.CodeAnalysis.CSharp.Syntax.MethodDeclarationSyntax>();
+        public List<Microsoft.CodeAnalysis.CSharp.Syntax.ClassDeclarationSyntax> ClassSyntaxNodes { get; } = new List<Microsoft.CodeAnalysis.CSharp.Syntax.ClassDeclarationSyntax>();
 
         public void OnVisitSyntaxNode(Microsoft.CodeAnalysis.SyntaxNode syntaxNode)
         {
             // Mock implementation for testing
             VisitedNodes.Add(syntaxNode);
-        }
-
-        public void OnVisitSyntaxNode(Microsoft.CodeAnalysis.GeneratorSyntaxContext context)
-        {
-            // Implementation required by ISyntaxContextReceiver
-            OnVisitSyntaxNode(context.Node);
         }
 
         public List<Microsoft.CodeAnalysis.SyntaxNode> VisitedNodes { get; } = new List<Microsoft.CodeAnalysis.SyntaxNode>();
@@ -67,14 +63,14 @@ namespace Sqlx.Tests.Core
         }
 
         [TestMethod]
-        public void ISqlxSyntaxReceiver_InheritsFromISyntaxContextReceiver()
+        public void ISqlxSyntaxReceiver_InheritsFromISyntaxReceiver()
         {
-            // Test that ISqlxSyntaxReceiver inherits from ISyntaxContextReceiver
+            // Test that ISqlxSyntaxReceiver inherits from ISyntaxReceiver
             var interfaceType = typeof(ISqlxSyntaxReceiver);
-            var baseInterface = typeof(Microsoft.CodeAnalysis.ISyntaxContextReceiver);
+            var baseInterface = typeof(Microsoft.CodeAnalysis.ISyntaxReceiver);
             
             Assert.IsTrue(baseInterface.IsAssignableFrom(interfaceType),
-                "ISqlxSyntaxReceiver should inherit from ISyntaxContextReceiver");
+                "ISqlxSyntaxReceiver should inherit from ISyntaxReceiver");
         }
 
         [TestMethod]
@@ -167,8 +163,8 @@ namespace Sqlx.Tests.Core
             
             // Verify inheritance
             var interfaces = interfaceType.GetInterfaces();
-            Assert.IsTrue(interfaces.Any(i => i == typeof(Microsoft.CodeAnalysis.ISyntaxContextReceiver)),
-                "ISqlxSyntaxReceiver should inherit from ISyntaxContextReceiver");
+            Assert.IsTrue(interfaces.Any(i => i == typeof(Microsoft.CodeAnalysis.ISyntaxReceiver)),
+                "ISqlxSyntaxReceiver should inherit from ISyntaxReceiver");
         }
 
         [TestMethod]
@@ -223,7 +219,7 @@ namespace Sqlx.Tests.Core
             Assert.IsNotNull(interfaceReceiver.RepositoryClasses);
             
             // Test that it can be cast to base interface
-            Microsoft.CodeAnalysis.ISyntaxContextReceiver baseReceiver = receiver;
+            Microsoft.CodeAnalysis.ISyntaxReceiver baseReceiver = receiver;
             Assert.IsNotNull(baseReceiver);
         }
 

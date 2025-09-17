@@ -60,15 +60,15 @@ public class AttributeHandler : IAttributeHandler
             }
             else if (methodName.Contains("create") || methodName.Contains("insert") || methodName.Contains("add"))
             {
-                return $"[SqlExecuteType(SqlExecuteTypes.Insert, \"{tableName}\")]";
+                return $"[SqlExecuteType(SqlOperation.Insert, \"{tableName}\")]";
             }
             else if (methodName.Contains("update") || methodName.Contains("modify"))
             {
-                return $"[SqlExecuteType(SqlExecuteTypes.Update, \"{tableName}\")]";
+                return $"[SqlExecuteType(SqlOperation.Update, \"{tableName}\")]";
             }
             else if (methodName.Contains("delete") || methodName.Contains("remove"))
             {
-                return $"[SqlExecuteType(SqlExecuteTypes.Delete, \"{tableName}\")]";
+                return $"[SqlExecuteType(SqlOperation.Delete, \"{tableName}\")]";
             }
             else if (methodName.Contains("count"))
             {
@@ -126,7 +126,7 @@ public class AttributeHandler : IAttributeHandler
                 if (attribute.ConstructorArguments.Length > 0)
                 {
                     var executeTypeArg = attribute.ConstructorArguments[0];
-                    sb.Append($"SqlExecuteTypes.{GetSqlExecuteTypeName(executeTypeArg)}");
+                    sb.Append($"SqlOperation.{GetSqlExecuteTypeName(executeTypeArg)}");
                     
                     if (attribute.ConstructorArguments.Length > 1)
                     {

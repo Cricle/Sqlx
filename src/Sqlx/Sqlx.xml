@@ -206,6 +206,26 @@
             Represents a SQL template with parameterized command text and parameters.
             </summary>
         </member>
+        <member name="M:Sqlx.Annotations.SqlTemplate.Equals(Sqlx.Annotations.SqlTemplate)">
+            <summary>
+            Determines whether the specified object is equal to the current SqlTemplate.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Annotations.SqlTemplate.GetHashCode">
+            <summary>
+            Returns the hash code for this SqlTemplate.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Annotations.SqlTemplate.ToString">
+            <summary>
+            Returns a string representation of the SqlTemplate.
+            </summary>
+        </member>
+        <member name="T:Sqlx.Annotations.DbParameterComparer">
+            <summary>
+            Comparer for DbParameter arrays.
+            </summary>
+        </member>
         <member name="T:Sqlx.Annotations.ValueStringBuilder">
             <summary>
             高性能的值类型字符串构建器，使用ArrayPool避免堆分配，无锁设计。

@@ -16,21 +16,6 @@ public sealed class IndentedStringBuilder
     private readonly StringBuilder builder;
     private byte depthLevel;
     private bool needsIndent = true;
-    private string? cachedIndent;
-
-    // Pre-allocated indent strings for common depths (performance optimization)
-    private static readonly string[] PrecomputedIndents =
-    {
-        "",                    // 0
-        "    ",                // 1
-        "        ",            // 2  
-        "            ",        // 3
-        "                ",    // 4
-        "                    ", // 5
-        "                        ", // 6
-        "                            ", // 7
-        "                                " // 8
-    };
 
     /// <summary>
     /// Initializes a new instance of the <see cref="IndentedStringBuilder"/> class.
@@ -108,7 +93,6 @@ public sealed class IndentedStringBuilder
     public IndentedStringBuilder PushIndent()
     {
         depthLevel++;
-        cachedIndent = null; // Invalidate cache
         needsIndent = true; // Next append should be indented
         return this;
     }
@@ -120,7 +104,6 @@ public sealed class IndentedStringBuilder
             throw new InvalidOperationException("Cannot pop at depthlevel 0");
 
         depthLevel--;
-        cachedIndent = null; // Invalidate cache
         needsIndent = true; // Next append should be indented
         return this;
     }
@@ -133,17 +116,7 @@ public sealed class IndentedStringBuilder
     {
         if (depthLevel > 0)
         {
-            // Use precomputed indents for common depths to avoid allocations
-            if (depthLevel < PrecomputedIndents.Length)
-            {
-                builder.Append(PrecomputedIndents[depthLevel]);
-            }
-            else
-            {
-                // Fallback for deep nesting (rare case)
-                cachedIndent ??= new string(' ', depthLevel * IndentSize);
-                builder.Append(cachedIndent);
-            }
+            builder.Append(' ',depthLevel * IndentSize);
         }
     }
 }

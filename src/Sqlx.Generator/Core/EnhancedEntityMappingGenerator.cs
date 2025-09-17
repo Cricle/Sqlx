@@ -28,7 +28,7 @@ internal static class EnhancedEntityMappingGenerator
         if (!members.Any())
         {
             sb.AppendLine("// No accessible members found for entity mapping");
-            sb.AppendLine($"var entity = new {entityType.ToDisplayString(NullableFlowState.None)}();");
+            sb.AppendLine($"var entity = new {entityType.ToDisplayString(NullableFlowState.None)}()!;");
             return;
         }
 
@@ -83,7 +83,7 @@ internal static class EnhancedEntityMappingGenerator
             }
 
             sb.PopIndent();
-            sb.AppendLine(");");
+            sb.AppendLine(")!;");
         }
         else
         {
@@ -102,6 +102,7 @@ internal static class EnhancedEntityMappingGenerator
         if (primaryConstructor != null && primaryConstructor.Parameters.Length > 0)
         {
             // Use primary constructor
+            sb.AppendLine($"#pragma warning disable CS8628");
             sb.AppendLine($"var entity = new {entityType.ToDisplayString(NullableFlowState.None)}(");
             sb.PushIndent();
 
@@ -121,7 +122,7 @@ internal static class EnhancedEntityMappingGenerator
             }
 
             sb.PopIndent();
-            sb.AppendLine(");");
+            sb.AppendLine(")!;");
 
             // Set additional properties that are not covered by primary constructor
             var primaryConstructorParamNames = new HashSet<string>(parameters.Select(p => GetPropertyNameFromParameter(p.Name)));
@@ -177,11 +178,11 @@ internal static class EnhancedEntityMappingGenerator
             }
 
             sb.PopIndent();
-            sb.AppendLine("};");
+            sb.AppendLine("}!;");
         }
         else
         {
-            sb.AppendLine($"var entity = new {entityType.ToDisplayString(NullableFlowState.None)}();");
+            sb.AppendLine($"var entity = new {entityType.ToDisplayString(NullableFlowState.None)}()!;");
         }
     }
 

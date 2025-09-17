@@ -41,20 +41,47 @@ public class CodeGenerationService : ICodeGenerationService
             // Generate or copy Sqlx attributes
             attributeHandler.GenerateOrCopyAttributes(sb, method, entityType, tableName);
 
-            // Generate method signature
-            var asyncModifier = analysis.IsAsync ? "async " : "";
-            sb.AppendLine($"public {asyncModifier}{returnType} {methodName}({parameters})");
+            // Generate method signature (no async modifier for repository methods since we use synchronous IDbConnection)
+            sb.AppendLine($"public {returnType} {methodName}({parameters})");
             sb.AppendLine("{");
             sb.PushIndent();
 
             // Generate method variables
             GenerateMethodVariables(sb, method);
 
-            // Generate operation using the appropriate generator
+            // Generate try block for error handling
+            sb.AppendLine("try");
+            sb.AppendLine("{");
+            sb.PushIndent();
+
+            // Generate operation using the appropriate generator (always use non-async for repository methods)
             var operationContext = new OperationGenerationContext(
-                sb, method, entityType, tableName, analysis.IsAsync, methodName);
+                sb, method, entityType, tableName, false, methodName);
             operationGenerator.GenerateOperation(operationContext);
 
+            // Return result if not void
+            if (!method.ReturnsVoid)
+            {
+                // For repository methods, always wrap in Task.FromResult since they implement async interfaces
+                sb.AppendLine("return global::System.Threading.Tasks.Task.FromResult(__repoResult__);");
+            }
+
+            // Close try block and add catch/finally
+            sb.PopIndent();
+            sb.AppendLine("}");
+            sb.AppendLine("catch (System.Exception)");
+            sb.AppendLine("{");
+            sb.PushIndent();
+            sb.AppendLine("throw;");
+            sb.PopIndent();
+            sb.AppendLine("}");
+            sb.AppendLine("finally");
+            sb.AppendLine("{");
+            sb.PushIndent();
+            sb.AppendLine("__repoCmd__?.Dispose();");
+            sb.PopIndent();
+            sb.AppendLine("}");
+            
             sb.PopIndent();
             sb.AppendLine("}");
             sb.AppendLine();
@@ -71,16 +98,29 @@ public class CodeGenerationService : ICodeGenerationService
     {
         var repositoryClass = context.RepositoryClass;
 
+#if DEBUG
+        System.Diagnostics.Debug.WriteLine($"GenerateRepositoryImplementation: Starting for {repositoryClass.Name}");
+#endif
+
         // Skip if the class has SqlTemplate attribute
         if (repositoryClass.GetAttributes().Any(attr => attr.AttributeClass?.Name == "SqlTemplate"))
         {
+#if DEBUG
+            System.Diagnostics.Debug.WriteLine($"Skipping {repositoryClass.Name} because it has SqlTemplate attribute");
+#endif
             return;
         }
 
         // Get the service interface from RepositoryFor attribute
         var serviceInterface = GetServiceInterface(context);
+#if DEBUG
+        System.Diagnostics.Debug.WriteLine($"GetServiceInterface returned: {serviceInterface?.Name ?? "null"}");
+#endif
         if (serviceInterface == null)
         {
+#if DEBUG
+            System.Diagnostics.Debug.WriteLine($"Returning early because serviceInterface is null");
+#endif
             return;
         }
 
@@ -95,7 +135,15 @@ public class CodeGenerationService : ICodeGenerationService
         // Add source to compilation
         var sourceText = SourceText.From(sb.ToString().Trim(), Encoding.UTF8);
         var fileName = $"{repositoryClass.ToDisplayString().Replace(".", "_")}.Repository.g.cs";
+#if DEBUG
+        System.Diagnostics.Debug.WriteLine($"Adding source file: {fileName}");
+        System.Diagnostics.Debug.WriteLine($"Source text length: {sourceText.Length}");
+        System.Diagnostics.Debug.WriteLine($"Source text preview: {sourceText.ToString().Substring(0, System.Math.Min(200, sourceText.Length))}...");
+#endif
         context.ExecutionContext.AddSource(fileName, sourceText);
+#if DEBUG
+        System.Diagnostics.Debug.WriteLine($"Successfully added source file: {fileName}");
+#endif
     }
 
     /// <inheritdoc/>
@@ -125,33 +173,161 @@ public class CodeGenerationService : ICodeGenerationService
         
         if (!method.ReturnsVoid)
         {
+            // For async methods (Task<T>), declare the inner type T
             var returnType = method.ReturnType.ToDisplayString();
-            sb.AppendLine($"{returnType} __repoResult__ = default({returnType});");
+            var actualReturnType = returnType;
+            
+            // Check if this is a Task<T> type and get the inner type
+            if (method.ReturnType is INamedTypeSymbol namedType && 
+                namedType.Name == "Task" && 
+                namedType.TypeArguments.Length == 1)
+            {
+                actualReturnType = namedType.TypeArguments[0].ToDisplayString();
+            }
+            
+            sb.AppendLine($"{actualReturnType} __repoResult__ = default!;");
         }
         
         sb.AppendLine();
-        sb.AppendLine("try");
-        sb.AppendLine("{");
-        sb.PushIndent();
     }
 
     private INamedTypeSymbol? GetServiceInterface(RepositoryGenerationContext context)
     {
+#if DEBUG
+        System.Diagnostics.Debug.WriteLine($"GetServiceInterface: Looking for RepositoryForAttribute on {context.RepositoryClass.Name}");
+#endif
         var repositoryForAttr = context.RepositoryClass.GetAttributes()
             .FirstOrDefault(attr => attr.AttributeClass?.Name == "RepositoryForAttribute");
+
+#if DEBUG
+        System.Diagnostics.Debug.WriteLine($"RepositoryForAttribute found: {repositoryForAttr != null}");
+        if (repositoryForAttr != null)
+        {
+            System.Diagnostics.Debug.WriteLine($"Constructor arguments count: {repositoryForAttr.ConstructorArguments.Length}");
+            for (int i = 0; i < repositoryForAttr.ConstructorArguments.Length; i++)
+            {
+                System.Diagnostics.Debug.WriteLine($"  Arg {i}: {repositoryForAttr.ConstructorArguments[i].Value} (Type: {repositoryForAttr.ConstructorArguments[i].Type})");
+            }
+        }
+#endif
 
         if (repositoryForAttr?.ConstructorArguments.Length > 0)
         {
             var typeArg = repositoryForAttr.ConstructorArguments[0];
+#if DEBUG
+            System.Diagnostics.Debug.WriteLine($"Type argument value: {typeArg.Value}");
+            System.Diagnostics.Debug.WriteLine($"Type argument is INamedTypeSymbol: {typeArg.Value is INamedTypeSymbol}");
+#endif
             if (typeArg.Value is INamedTypeSymbol serviceType)
             {
+#if DEBUG
+                System.Diagnostics.Debug.WriteLine($"Returning service type: {serviceType.Name}");
+#endif
                 return serviceType;
             }
         }
 
+#if DEBUG
+        System.Diagnostics.Debug.WriteLine($"Falling back to type inference");
+#endif
         // Fallback to type inference
-        return context.TypeInferenceService.GetServiceInterfaceFromSyntax(
+        var result = context.TypeInferenceService.GetServiceInterfaceFromSyntax(
             context.RepositoryClass, context.ExecutionContext.Compilation);
+            
+        if (result == null)
+        {
+#if DEBUG
+            System.Diagnostics.Debug.WriteLine($"Type inference also failed, trying syntax-based parsing");
+#endif
+            // Last resort: parse the syntax directly
+            result = GetServiceInterfaceFromSyntax(context);
+        }
+        
+        return result;
+    }
+
+    private INamedTypeSymbol? GetServiceInterfaceFromSyntax(RepositoryGenerationContext context)
+    {
+        try
+        {
+            var repositoryClass = context.RepositoryClass;
+            var compilation = context.ExecutionContext.Compilation;
+            
+            // Get the syntax node for the repository class
+            var syntaxReferences = repositoryClass.DeclaringSyntaxReferences;
+            if (syntaxReferences.Length == 0) return null;
+            
+            var syntaxNode = syntaxReferences[0].GetSyntax();
+            if (syntaxNode is not Microsoft.CodeAnalysis.CSharp.Syntax.ClassDeclarationSyntax classDeclaration)
+                return null;
+            
+#if DEBUG
+            System.Diagnostics.Debug.WriteLine($"Parsing syntax for class: {classDeclaration.Identifier.Text}");
+#endif
+            
+            // Look for RepositoryFor attribute in the syntax
+            foreach (var attributeList in classDeclaration.AttributeLists)
+            {
+                foreach (var attribute in attributeList.Attributes)
+                {
+                    var attributeName = attribute.Name.ToString();
+#if DEBUG
+                    System.Diagnostics.Debug.WriteLine($"Found attribute: {attributeName}");
+#endif
+                    
+                    if (attributeName == "RepositoryFor" || attributeName == "RepositoryForAttribute")
+                    {
+                        // Look for typeof(InterfaceName) in the arguments
+                        if (attribute.ArgumentList?.Arguments.Count > 0)
+                        {
+                            var firstArg = attribute.ArgumentList.Arguments[0];
+                            var argText = firstArg.ToString();
+#if DEBUG
+                            System.Diagnostics.Debug.WriteLine($"Attribute argument: {argText}");
+#endif
+                            
+                            // Parse typeof(InterfaceName) pattern
+                            if (argText.StartsWith("typeof(") && argText.EndsWith(")"))
+                            {
+                                var interfaceName = argText.Substring(7, argText.Length - 8); // Remove "typeof(" and ")"
+#if DEBUG
+                                System.Diagnostics.Debug.WriteLine($"Extracted interface name: {interfaceName}");
+#endif
+                                
+                                // Try to find the interface type in the compilation
+                                var interfaceType = compilation.GetTypeByMetadataName(interfaceName);
+                                if (interfaceType == null)
+                                {
+                                    // Try with the current namespace
+                                    var currentNamespace = repositoryClass.ContainingNamespace.ToDisplayString();
+                                    interfaceType = compilation.GetTypeByMetadataName($"{currentNamespace}.{interfaceName}");
+                                }
+                                
+                                if (interfaceType != null)
+                                {
+#if DEBUG
+                                    System.Diagnostics.Debug.WriteLine($"Found interface type: {interfaceType.Name}");
+#endif
+                                    return interfaceType;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+#if DEBUG
+            System.Diagnostics.Debug.WriteLine($"No interface found in syntax parsing");
+#endif
+            return null;
+        }
+        catch (System.Exception ex)
+        {
+#if DEBUG
+            System.Diagnostics.Debug.WriteLine($"Error in syntax parsing: {ex.Message}");
+#endif
+            return null;
+        }
     }
 
     private void GenerateRepositoryClass(IndentedStringBuilder sb, RepositoryGenerationContext context, 
@@ -162,7 +338,8 @@ public class CodeGenerationService : ICodeGenerationService
 
         // Generate namespace and usings
         sb.AppendLine("// <auto-generated>");
-        sb.AppendLine("#nullable enable");
+        sb.AppendLine("#nullable disable");
+        sb.AppendLine("#pragma warning disable");
         sb.AppendLine("// </auto-generated>");
         sb.AppendLine();
         sb.AppendLine($"namespace {namespaceName};");
@@ -348,16 +525,39 @@ public class CodeGenerationService : ICodeGenerationService
 
     private string GetDbConnectionFieldName(INamedTypeSymbol repositoryClass)
     {
-        return "connection";
+        // Look for existing connection field/property
+        var connectionField = repositoryClass.GetMembers()
+            .OfType<IFieldSymbol>()
+            .FirstOrDefault(f => f.Type.AllInterfaces.Any(i => i.Name == "IDbConnection") || 
+                                f.Type.Name == "IDbConnection");
+                                
+        if (connectionField != null)
+        {
+            return connectionField.Name;
+        }
+        
+        var connectionProperty = repositoryClass.GetMembers()
+            .OfType<IPropertySymbol>()
+            .FirstOrDefault(p => p.Type.AllInterfaces.Any(i => i.Name == "IDbConnection") || 
+                                p.Type.Name == "IDbConnection");
+                                
+        if (connectionProperty != null)
+        {
+            return connectionProperty.Name;
+        }
+        
+        return "_connection";
     }
 
     private bool HasDbConnectionField(INamedTypeSymbol repositoryClass)
     {
         return repositoryClass.GetMembers()
             .OfType<IFieldSymbol>()
-            .Any(f => f.Type.AllInterfaces.Any(i => i.Name == "IDbConnection")) ||
+            .Any(f => f.Type.AllInterfaces.Any(i => i.Name == "IDbConnection") || 
+                     f.Type.Name == "IDbConnection") ||
                repositoryClass.GetMembers()
             .OfType<IPropertySymbol>()
-            .Any(p => p.Type.AllInterfaces.Any(i => i.Name == "IDbConnection"));
+            .Any(p => p.Type.AllInterfaces.Any(i => i.Name == "IDbConnection") || 
+                     p.Type.Name == "IDbConnection");
     }
 }

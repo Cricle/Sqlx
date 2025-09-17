@@ -29,8 +29,11 @@ public class MethodAnalyzer : IMethodAnalyzer
     /// <inheritdoc/>
     public bool IsAsyncMethod(IMethodSymbol method)
     {
-        return method.ReturnType.Name == "Task" || 
-               (method.ReturnType is INamedTypeSymbol taskType && taskType.Name == "Task");
+        if (method.ReturnType is not INamedTypeSymbol namedType) return false;
+        
+        // Check if it's a Task or Task<T>
+        return namedType.Name == "Task" && 
+               namedType.ContainingNamespace.ToDisplayString() == "System.Threading.Tasks";
     }
 
     /// <inheritdoc/>

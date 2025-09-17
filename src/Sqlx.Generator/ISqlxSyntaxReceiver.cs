@@ -7,12 +7,13 @@
 namespace Sqlx;
 
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Collections.Generic;
 
 /// <summary>
-/// Language specific interface for syntax context receiver which is used to collect information about methods and repository classes.
+/// Language specific interface for syntax receiver which is used to collect information about methods and repository classes.
 /// </summary>
-internal interface ISqlxSyntaxReceiver : ISyntaxContextReceiver
+internal interface ISqlxSyntaxReceiver : ISyntaxReceiver
 {
     /// <summary>
     /// Gets list of collected methods.
@@ -25,8 +26,18 @@ internal interface ISqlxSyntaxReceiver : ISyntaxContextReceiver
     List<INamedTypeSymbol> RepositoryClasses { get; }
 
     /// <summary>
+    /// Gets list of collected method syntax nodes for later processing.
+    /// </summary>
+    List<MethodDeclarationSyntax> MethodSyntaxNodes { get; }
+
+    /// <summary>
+    /// Gets list of collected class syntax nodes for later processing.
+    /// </summary>
+    List<ClassDeclarationSyntax> ClassSyntaxNodes { get; }
+
+    /// <summary>
     /// Called for every syntax node in the compilation.
     /// </summary>
     /// <param name="syntaxNode">The syntax node to visit.</param>
-    void OnVisitSyntaxNode(SyntaxNode syntaxNode);
+    new void OnVisitSyntaxNode(SyntaxNode syntaxNode);
 }

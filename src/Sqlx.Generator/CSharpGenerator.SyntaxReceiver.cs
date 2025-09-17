@@ -18,10 +18,30 @@ public partial class CSharpGenerator
     {
         public List<IMethodSymbol> Methods { get; } = new List<IMethodSymbol>();
         public List<INamedTypeSymbol> RepositoryClasses { get; } = new List<INamedTypeSymbol>();
+        
+        // Collect syntax nodes for later processing
+        public List<MethodDeclarationSyntax> MethodSyntaxNodes { get; } = new List<MethodDeclarationSyntax>();
+        public List<ClassDeclarationSyntax> ClassSyntaxNodes { get; } = new List<ClassDeclarationSyntax>();
 
         public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
         {
-            // Legacy interface requirement - not used
+            // Collect method declarations with potential Sqlx attributes
+            if (syntaxNode is MethodDeclarationSyntax methodDeclaration)
+            {
+                if (HasSqlxAttributeSyntax(methodDeclaration))
+                {
+                    MethodSyntaxNodes.Add(methodDeclaration);
+                }
+            }
+
+            // Collect class declarations with potential RepositoryFor attributes
+            if (syntaxNode is ClassDeclarationSyntax classDeclaration)
+            {
+                if (HasRepositoryForAttributeSyntax(classDeclaration))
+                {
+                    ClassSyntaxNodes.Add(classDeclaration);
+                }
+            }
         }
 
         public void OnVisitSyntaxNode(GeneratorSyntaxContext context)
@@ -87,6 +107,38 @@ public partial class CSharpGenerator
                 }
             }
 
+            return false;
+        }
+
+        private static bool HasSqlxAttributeSyntax(MethodDeclarationSyntax methodDeclaration)
+        {
+            foreach (var attrList in methodDeclaration.AttributeLists)
+            {
+                foreach (var attr in attrList.Attributes)
+                {
+                    var nameText = attr.Name.ToString();
+                    if (nameText is "Sqlx" or "SqlxAttribute" or "SqlExecuteType" or "SqlExecuteTypeAttribute")
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        private static bool HasRepositoryForAttributeSyntax(ClassDeclarationSyntax classDeclaration)
+        {
+            foreach (var attrList in classDeclaration.AttributeLists)
+            {
+                foreach (var attr in attrList.Attributes)
+                {
+                    var nameText = attr.Name.ToString();
+                    if (nameText is "RepositoryFor" or "RepositoryForAttribute")
+                    {
+                        return true;
+                    }
+                }
+            }
             return false;
         }
 

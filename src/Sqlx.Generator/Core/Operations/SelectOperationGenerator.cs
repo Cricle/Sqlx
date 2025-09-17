@@ -231,9 +231,9 @@ public class SelectOperationGenerator : BaseOperationGenerator
             
             foreach (var param in whereParams)
             {
-                sb.AppendLine($"var param{param.Name} = __repoCmd__.CreateParameter();");
+                sb.AppendLine($"var param{param.Name} = __repoCmd__.CreateParameter()!;");
                 sb.AppendLine($"param{param.Name}.ParameterName = \"@{param.Name}\";");
-                sb.AppendLine($"param{param.Name}.Value = {param.Name} ?? (object)global::System.DBNull.Value;");
+                sb.AppendLine($"param{param.Name}.Value = (object){param.Name} ?? (object)global::System.DBNull.Value;");
                 sb.AppendLine($"param{param.Name}.DbType = {GetDbTypeForParameter(param)};");
                 sb.AppendLine($"__repoCmd__.Parameters.Add(param{param.Name});");
             }
@@ -246,7 +246,7 @@ public class SelectOperationGenerator : BaseOperationGenerator
         if (isAsync)
         {
             var cancellationToken = GetCancellationTokenParameter(method);
-            sb.AppendLine($"var scalarResult = await __repoCmd__.ExecuteScalarAsync({cancellationToken});");
+            sb.AppendLine("var scalarResult = __repoCmd__.ExecuteScalar();");
         }
         else
         {
@@ -265,15 +265,7 @@ public class SelectOperationGenerator : BaseOperationGenerator
 
     private void GenerateSingleEntityExecution(IndentedStringBuilder sb, bool isAsync, IMethodSymbol method, INamedTypeSymbol? entityType)
     {
-        if (isAsync)
-        {
-            var cancellationToken = GetCancellationTokenParameter(method);
-            sb.AppendLine($"using var reader = await __repoCmd__.ExecuteReaderAsync({cancellationToken});");
-        }
-        else
-        {
-            sb.AppendLine("using var reader = __repoCmd__.ExecuteReader();");
-        }
+        sb.AppendLine("using var reader = __repoCmd__.ExecuteReader();");
         
         sb.AppendLine("if (reader.Read())");
         sb.AppendLine("{");
@@ -301,15 +293,7 @@ public class SelectOperationGenerator : BaseOperationGenerator
 
     private void GenerateCollectionExecution(IndentedStringBuilder sb, bool isAsync, IMethodSymbol method, INamedTypeSymbol? entityType)
     {
-        if (isAsync)
-        {
-            var cancellationToken = GetCancellationTokenParameter(method);
-            sb.AppendLine($"using var reader = await __repoCmd__.ExecuteReaderAsync({cancellationToken});");
-        }
-        else
-        {
-            sb.AppendLine("using var reader = __repoCmd__.ExecuteReader();");
-        }
+        sb.AppendLine("using var reader = __repoCmd__.ExecuteReader();");
         
         sb.AppendLine("var results = new global::System.Collections.Generic.List<" + (entityType?.Name ?? "object") + ">();");
         sb.AppendLine("while (reader.Read())");
@@ -333,7 +317,7 @@ public class SelectOperationGenerator : BaseOperationGenerator
 
     private void GenerateEntityMapping(IndentedStringBuilder sb, INamedTypeSymbol entityType, string variableName)
     {
-        sb.AppendLine($"var {variableName} = new {entityType.ToDisplayString()}();");
+        sb.AppendLine($"var {variableName} = new {entityType.ToDisplayString()}()!;");
         
         var properties = entityType.GetMembers().OfType<IPropertySymbol>()
             .Where(p => p.CanBeReferencedByName && p.SetMethod != null)
@@ -386,11 +370,7 @@ public class SelectOperationGenerator : BaseOperationGenerator
     private void GenerateMethodCompletion(IndentedStringBuilder sb, IMethodSymbol method, string methodName, bool isAsync)
     {
         sb.AppendLine($"OnExecuted(\"{methodName}\", __repoCmd__, __repoResult__, System.Diagnostics.Stopwatch.GetTimestamp() - __repoStartTime__);");
-        
-        if (!method.ReturnsVoid)
-        {
-            sb.AppendLine("return __repoResult__;");
-        }
+        // Note: Return statement is handled by CodeGenerationService
     }
 
     private string InferColumnFromMethodName(string methodName, string operation)

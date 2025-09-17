@@ -111,6 +111,9 @@ public class TypeInferenceService : ITypeInferenceService
     /// <inheritdoc/>
     public INamedTypeSymbol? GetServiceInterfaceFromSyntax(INamedTypeSymbol repositoryClass, Compilation compilation)
     {
+#if DEBUG
+        System.Diagnostics.Debug.WriteLine($"GetServiceInterfaceFromSyntax: Processing {repositoryClass.Name}");
+#endif
         // First, check for generic base classes or interfaces
         foreach (var baseInterface in repositoryClass.AllInterfaces)
         {
@@ -119,6 +122,9 @@ public class TypeInferenceService : ITypeInferenceService
                 var interfaceName = baseInterface.ConstructedFrom.Name;
                 if (interfaceName.Contains("Repository") || interfaceName.Contains("Service"))
                 {
+#if DEBUG
+                    System.Diagnostics.Debug.WriteLine($"Found generic base interface: {interfaceName}");
+#endif
                     return baseInterface;
                 }
             }
@@ -128,11 +134,26 @@ public class TypeInferenceService : ITypeInferenceService
         var repositoryForAttr = repositoryClass.GetAttributes()
             .FirstOrDefault(attr => attr.AttributeClass?.Name == "RepositoryForAttribute");
 
+#if DEBUG
+        System.Diagnostics.Debug.WriteLine($"RepositoryForAttribute found in GetServiceInterfaceFromSyntax: {repositoryForAttr != null}");
+        if (repositoryForAttr != null)
+        {
+            System.Diagnostics.Debug.WriteLine($"Constructor arguments count: {repositoryForAttr.ConstructorArguments.Length}");
+        }
+#endif
+
         if (repositoryForAttr != null && repositoryForAttr.ConstructorArguments.Length > 0)
         {
             var typeArg = repositoryForAttr.ConstructorArguments[0];
+#if DEBUG
+            System.Diagnostics.Debug.WriteLine($"Type argument value: {typeArg.Value}");
+            System.Diagnostics.Debug.WriteLine($"Type argument type: {typeArg.Type?.Name}");
+#endif
             if (typeArg.Value is INamedTypeSymbol serviceType)
             {
+#if DEBUG
+                System.Diagnostics.Debug.WriteLine($"Found service type from argument: {serviceType.Name}");
+#endif
                 return serviceType;
             }
 
@@ -140,6 +161,9 @@ public class TypeInferenceService : ITypeInferenceService
             if (typeArg.Type?.Name == "Type" && typeArg.Value != null)
             {
                 var typeName = typeArg.Value.ToString();
+#if DEBUG
+                System.Diagnostics.Debug.WriteLine($"Trying to find interface by name: {typeName}");
+#endif
                 return FindInterfaceByName(compilation, typeName);
             }
         }

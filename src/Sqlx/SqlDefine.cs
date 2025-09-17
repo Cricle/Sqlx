@@ -43,7 +43,7 @@ namespace Sqlx
         string ParameterPrefix)
     {
         /// <summary>Wraps a column name with dialect-specific delimiters.</summary>
-        public string WrapColumn(string columnName) => $"{ColumnLeft}{columnName}{ColumnRight}";
+        public string WrapColumn(string columnName) => columnName == null ? "" : $"{ColumnLeft}{columnName}{ColumnRight}";
 
         /// <summary>Wraps a string value with dialect-specific delimiters.</summary>
         public string WrapString(string value) => value == null ? "NULL" : $"{StringLeft}{value}{StringRight}";

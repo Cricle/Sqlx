@@ -53,24 +53,27 @@ public abstract class BaseOperationGenerator : IOperationGenerator
     /// <param name="isAsync">Whether the operation is async.</param>
     protected virtual void GenerateConnectionSetup(IndentedStringBuilder sb, IMethodSymbol method, bool isAsync)
     {
-        sb.AppendLine("if (connection.State != global::System.Data.ConnectionState.Open)");
+        var connectionFieldName = GetConnectionFieldName(method.ContainingType);
+        
+        sb.AppendLine($"if ({connectionFieldName}.State != global::System.Data.ConnectionState.Open)");
         sb.AppendLine("{");
         sb.PushIndent();
         if (isAsync)
         {
             var cancellationToken = GetCancellationTokenParameter(method);
-            sb.AppendLine($"await connection.OpenAsync({cancellationToken});");
+            // For IDbConnection, we don't have OpenAsync, so we open synchronously
+            sb.AppendLine($"{connectionFieldName}.Open();");
         }
         else
         {
-            sb.AppendLine("connection.Open();");
+            sb.AppendLine($"{connectionFieldName}.Open();");
         }
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
 
         // Create command
-        sb.AppendLine("__repoCmd__ = connection.CreateCommand();");
+        sb.AppendLine($"__repoCmd__ = {connectionFieldName}.CreateCommand();");
     }
 
     /// <summary>
@@ -83,6 +86,37 @@ public abstract class BaseOperationGenerator : IOperationGenerator
         var cancellationTokenParam = method.Parameters
             .FirstOrDefault(p => p.Type.Name == "CancellationToken");
         return cancellationTokenParam?.Name ?? "global::System.Threading.CancellationToken.None";
+    }
+
+    /// <summary>
+    /// Gets the connection field name from the repository class.
+    /// </summary>
+    /// <param name="repositoryClass">The repository class.</param>
+    /// <returns>The connection field name.</returns>
+    protected virtual string GetConnectionFieldName(INamedTypeSymbol repositoryClass)
+    {
+        // Look for existing connection field/property
+        var connectionField = repositoryClass.GetMembers()
+            .OfType<IFieldSymbol>()
+            .FirstOrDefault(f => f.Type.AllInterfaces.Any(i => i.Name == "IDbConnection") || 
+                                f.Type.Name == "IDbConnection");
+                                
+        if (connectionField != null)
+        {
+            return connectionField.Name;
+        }
+        
+        var connectionProperty = repositoryClass.GetMembers()
+            .OfType<IPropertySymbol>()
+            .FirstOrDefault(p => p.Type.AllInterfaces.Any(i => i.Name == "IDbConnection") || 
+                                p.Type.Name == "IDbConnection");
+                                
+        if (connectionProperty != null)
+        {
+            return connectionProperty.Name;
+        }
+        
+        return "_connection";
     }
 
     /// <summary>

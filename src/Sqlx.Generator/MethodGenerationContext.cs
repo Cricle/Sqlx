@@ -609,7 +609,8 @@ internal partial class MethodGenerationContext : GenerationContextBase
             }
             else if (DeclareReturnType == ReturnTypes.List || DeclareReturnType == ReturnTypes.IEnumerable || DeclareReturnType == ReturnTypes.IAsyncEnumerable)
             {
-                var isList = DeclareReturnType == ReturnTypes.List;
+                // For async methods, treat IEnumerable as List to avoid yield syntax issues
+                var isList = DeclareReturnType == ReturnTypes.List || (IsAsync && DeclareReturnType == ReturnTypes.IEnumerable);
                 if (isList) WriteDeclareReturnList(sb);
 
                 // Cache column ordinals for performance
@@ -762,7 +763,8 @@ internal partial class MethodGenerationContext : GenerationContextBase
             convert = $".Select(x => {constructExpress})";
         }
 
-        if (DeclareReturnType == ReturnTypes.IEnumerable || DeclareReturnType == ReturnTypes.IAsyncEnumerable)
+        // Use yield only for non-async IEnumerable methods, not for Task<IEnumerable<T>>
+        if ((DeclareReturnType == ReturnTypes.IEnumerable || DeclareReturnType == ReturnTypes.IAsyncEnumerable) && !IsAsync)
         {
             sb.AppendLine($"{AwaitKey}foreach (var item in {queryCall}{convert})");
             sb.AppendLine("{");
@@ -770,6 +772,15 @@ internal partial class MethodGenerationContext : GenerationContextBase
             sb.AppendLine("yield return item;");
             sb.PopIndent();
             sb.AppendLine("}");
+            WriteOutput(sb, columnDefines);
+        }
+        // For async methods returning Task<IEnumerable<T>>, collect to list and return
+        else if (DeclareReturnType == ReturnTypes.IEnumerable && IsAsync)
+        {
+            queryCall += convert;
+            // Treat async IEnumerable as List for proper collection handling
+            queryCall = $"global::Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync({queryCall}, {CancellationTokenKey})";
+            sb.AppendLine($"var {ResultName} = {AwaitKey}{queryCall};");
             WriteOutput(sb, columnDefines);
         }
         else

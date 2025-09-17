@@ -2,7 +2,7 @@ using Sqlx.Annotations;
 
 namespace SqlxDemo.Models;
 
-[TableName("User")]
+[TableName("user")]
 public class User
 {
     public int Id { get; set; }
@@ -13,6 +13,7 @@ public class User
     public int DepartmentId { get; set; }
     public bool IsActive { get; set; }
     public DateTime HireDate { get; set; }
+    public DateTime CreatedAt { get; set; }
     public decimal? Bonus { get; set; }
     public double PerformanceRating { get; set; }
 }

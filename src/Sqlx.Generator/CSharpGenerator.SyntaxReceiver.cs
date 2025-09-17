@@ -14,7 +14,7 @@ public partial class CSharpGenerator
     /// <summary>
     /// C# specific syntax receiver for collecting method symbols and repository classes.
     /// </summary>
-    private class CSharpSyntaxReceiver : ISqlxSyntaxReceiver
+    private class CSharpSyntaxReceiver : ISqlxSyntaxReceiver, ISyntaxReceiver
     {
         public List<IMethodSymbol> Methods { get; } = new List<IMethodSymbol>();
         public List<INamedTypeSymbol> RepositoryClasses { get; } = new List<INamedTypeSymbol>();

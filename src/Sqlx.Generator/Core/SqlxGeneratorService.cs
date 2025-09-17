@@ -131,6 +131,7 @@ public class SqlxGeneratorService : ISqlxGeneratorService
             return;
         }
 
+        // Re-enabled repository generation after fixing yield issue
         // Get the service interface from RepositoryFor attribute
         var serviceInterface = GetServiceInterface(context.RepositoryClass, context.Compilation);
         if (serviceInterface == null)

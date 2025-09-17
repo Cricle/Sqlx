@@ -13,7 +13,7 @@ using System.Diagnostics;
 /// <summary>
 /// Stored procedures generator for C#.
 /// </summary>
-//[Generator(LanguageNames.CSharp)]
+[Generator(LanguageNames.CSharp)]
 public partial class CSharpGenerator : AbstractGenerator
 {
     // Attributes are now provided by Sqlx project - no need to generate them
@@ -43,7 +43,8 @@ public partial class CSharpGenerator : AbstractGenerator
         System.Diagnostics.Debug.WriteLine("CSharpGenerator.Initialize called");
         System.Console.WriteLine("🚀 CSharpGenerator.Initialize called");
 #endif
-        context.RegisterForSyntaxNotifications(() => new CSharpSyntaxReceiver());
+        // Register as SyntaxReceiver to ensure context.SyntaxReceiver works
+        context.RegisterForSyntaxNotifications((SyntaxReceiverCreator)(() => new CSharpSyntaxReceiver()));
         
         // Add a simple test source to verify the generator is working
         context.RegisterForPostInitialization(ctx =>

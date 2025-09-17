@@ -43,12 +43,32 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         {
 #if DEBUG
             System.Console.WriteLine($"📡 SyntaxReceiver type: {context.SyntaxReceiver?.GetType()?.Name ?? "null"}");
+            System.Console.WriteLine($"📡 SyntaxContextReceiver type: {context.SyntaxContextReceiver?.GetType()?.Name ?? "null"}");
 #endif
-            // Retrieve the populated receiver
-            if (context.SyntaxReceiver is not ISqlxSyntaxReceiver receiver)
+            // Try to get the receiver from either source
+            ISqlxSyntaxReceiver? receiver = null;
+            
+            // First try the regular syntax receiver
+            if (context.SyntaxReceiver is ISqlxSyntaxReceiver syntaxReceiver)
+            {
+                receiver = syntaxReceiver;
+#if DEBUG
+                System.Console.WriteLine("✅ Using SyntaxReceiver!");
+#endif
+            }
+            // Then try the syntax context receiver
+            else if (context.SyntaxContextReceiver is ISqlxSyntaxReceiver contextReceiver)
+            {
+                receiver = contextReceiver;
+#if DEBUG
+                System.Console.WriteLine("✅ Using SyntaxContextReceiver!");
+#endif
+            }
+            
+            if (receiver == null)
             {
 #if DEBUG
-                System.Console.WriteLine("❌ SyntaxReceiver is not ISqlxSyntaxReceiver!");
+                System.Console.WriteLine("❌ No ISqlxSyntaxReceiver found in either SyntaxReceiver or SyntaxContextReceiver!");
 #endif
                 return;
             }
@@ -112,13 +132,8 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                     var containingType = (INamedTypeSymbol)group.Key!;
                     var methods = group.ToList();
             
-                    // Skip classes that have RepositoryFor attribute - they are handled by ProcessRepositoryClasses
-                    if (containingType.GetAttributes().Any(attr => attr.AttributeClass?.Name == "RepositoryForAttribute"))
-                        return;
-                    
-                    // Also skip methods from repository classes that might have been collected
-                    if (receiver.RepositoryClasses.Contains(containingType, SymbolEqualityComparer.Default))
-                        return;
+            // Note: Classes with RepositoryFor attribute can still have individual [Sqlx] methods
+            // that need to be processed. Process them normally.
                     
                     // Skip all interface methods - they should only be processed through repository classes
                     if (containingType.TypeKind == TypeKind.Interface)

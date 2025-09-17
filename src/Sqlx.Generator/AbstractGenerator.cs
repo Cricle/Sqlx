@@ -41,40 +41,14 @@ public abstract partial class AbstractGenerator : ISourceGenerator
 #endif
         ErrorHandler.ExecuteSafely(context, () =>
         {
-#if DEBUG
-            System.Console.WriteLine($"📡 SyntaxReceiver type: {context.SyntaxReceiver?.GetType()?.Name ?? "null"}");
-            System.Console.WriteLine($"📡 SyntaxContextReceiver type: {context.SyntaxContextReceiver?.GetType()?.Name ?? "null"}");
-#endif
-            // Try to get the receiver from either source
-            ISqlxSyntaxReceiver? receiver = null;
-            
-            // First try the regular syntax receiver
-            if (context.SyntaxReceiver is ISqlxSyntaxReceiver syntaxReceiver)
-            {
-                receiver = syntaxReceiver;
-#if DEBUG
-                System.Console.WriteLine("✅ Using SyntaxReceiver!");
-#endif
-            }
-            // Then try the syntax context receiver
-            else if (context.SyntaxContextReceiver is ISqlxSyntaxReceiver contextReceiver)
-            {
-                receiver = contextReceiver;
-#if DEBUG
-                System.Console.WriteLine("✅ Using SyntaxContextReceiver!");
-#endif
-            }
+            // Get the syntax receiver efficiently
+            ISqlxSyntaxReceiver? receiver = context.SyntaxReceiver as ISqlxSyntaxReceiver ??
+                                           context.SyntaxContextReceiver as ISqlxSyntaxReceiver;
             
             if (receiver == null)
             {
-#if DEBUG
-                System.Console.WriteLine("❌ No ISqlxSyntaxReceiver found in either SyntaxReceiver or SyntaxContextReceiver!");
-#endif
                 return;
             }
-#if DEBUG
-            System.Console.WriteLine("✅ SyntaxReceiver cast successful!");
-#endif
 
             // Process collected syntax nodes to populate symbol lists
             ProcessCollectedSyntaxNodes(context, receiver);

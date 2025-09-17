@@ -33,7 +33,6 @@ public class InsertOperationGenerator : BaseOperationGenerator
         var method = context.Method;
         var entityType = context.EntityType;
         var tableName = context.TableName;
-        var isAsync = context.IsAsync;
         var methodName = context.MethodName;
 
         // Generate parameter null checks first (fail fast)

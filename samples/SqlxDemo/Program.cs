@@ -21,11 +21,25 @@ class Program
         
         try
         {
-            // 演示1: 完整功能演示 (推荐)
-            await RunCompleteFeatureDemo();
+            // 显示演示选项菜单
+            var choice = ShowDemoMenu();
             
-            // 演示2: 原有演示 (保留兼容性)
-            // await RunLegacyDemo();
+            switch (choice)
+            {
+                case "1":
+                    await RunCompleteFeatureDemo();
+                    break;
+                case "2":
+                    await RunInterceptorDemo();
+                    break;
+                case "3":
+                    await RunCompleteFeatureDemo();
+                    await RunInterceptorDemo();
+                    break;
+                default:
+                    await RunCompleteFeatureDemo();
+                    break;
+            }
             
             ShowSummary();
         }
@@ -37,7 +51,15 @@ class Program
         
         Console.WriteLine("\n🎉 Sqlx 完整功能演示结束！");
         Console.WriteLine("按任意键退出...");
-       
+        try 
+        {
+            Console.ReadKey();
+        }
+        catch (InvalidOperationException)
+        {
+            // 在重定向输入时使用Console.Read()
+            Console.Read();
+        }
     }
 
     /// <summary>
@@ -75,6 +97,49 @@ class Program
         Console.WriteLine("演示源生成器、多数据库方言、扩展方法和高性能数据访问");
         Console.ResetColor();
         Console.WriteLine();
+    }
+
+    /// <summary>
+    /// 显示演示选项菜单
+    /// </summary>
+    static string ShowDemoMenu()
+    {
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine("📋 请选择演示模式:");
+        Console.WriteLine("==================");
+        Console.ResetColor();
+        
+        Console.WriteLine("1️⃣ 完整功能演示 (推荐) - 展示所有4大核心特性");
+        Console.WriteLine("2️⃣ 拦截器功能演示 (新增) - 展示SQL执行拦截和性能监控");
+        Console.WriteLine("3️⃣ 完整演示 (全部) - 运行所有演示内容");
+        Console.WriteLine();
+        
+        Console.Write("请输入选择 (1-3, 默认1): ");
+        var input = Console.ReadLine()?.Trim();
+        Console.WriteLine();
+        
+        return string.IsNullOrEmpty(input) ? "1" : input;
+    }
+
+    /// <summary>
+    /// 运行拦截器功能演示
+    /// </summary>
+    static async Task RunInterceptorDemo()
+    {
+        Console.ForegroundColor = ConsoleColor.Magenta;
+        Console.WriteLine("🎭 启动拦截器功能演示");
+        Console.WriteLine("=====================");
+        Console.ResetColor();
+        
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+        
+        // 初始化数据库
+        await InitializeDatabaseAsync(connection);
+        
+        // 运行拦截器演示
+        var interceptorDemo = new InterceptorDemo(connection);
+        await interceptorDemo.RunCompleteInterceptorDemoAsync();
     }
 
     static async Task InitializeDatabaseAsync(SqliteConnection connection)

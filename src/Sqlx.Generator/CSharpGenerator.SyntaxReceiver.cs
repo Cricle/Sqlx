@@ -25,11 +25,20 @@ public partial class CSharpGenerator
 
         public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
         {
+#if DEBUG
+            if (syntaxNode is ClassDeclarationSyntax cls)
+            {
+                System.Console.WriteLine($"🔍 [ISyntaxReceiver] Found class: {cls.Identifier.Text}");
+            }
+#endif
             // Collect method declarations with potential Sqlx attributes
             if (syntaxNode is MethodDeclarationSyntax methodDeclaration)
             {
                 if (HasSqlxAttributeSyntax(methodDeclaration))
                 {
+#if DEBUG
+                    System.Console.WriteLine($"✅ [ISyntaxReceiver] Found Sqlx method: {methodDeclaration.Identifier.Text}");
+#endif
                     MethodSyntaxNodes.Add(methodDeclaration);
                 }
             }
@@ -39,6 +48,9 @@ public partial class CSharpGenerator
             {
                 if (HasRepositoryForAttributeSyntax(classDeclaration))
                 {
+#if DEBUG
+                    System.Console.WriteLine($"✅ [ISyntaxReceiver] Found RepositoryFor class: {classDeclaration.Identifier.Text}");
+#endif
                     ClassSyntaxNodes.Add(classDeclaration);
                 }
             }
@@ -53,6 +65,9 @@ public partial class CSharpGenerator
                 {
                     if (HasSqlxAttribute(method))
                     {
+#if DEBUG
+                        System.Diagnostics.Debug.WriteLine($"✅ Found Sqlx method: {method.Name} in {method.ContainingType.Name}");
+#endif
                         Methods.Add(method);
                     }
                 }
@@ -61,13 +76,35 @@ public partial class CSharpGenerator
             // Collect repository classes
             if (context.Node is ClassDeclarationSyntax classDeclaration)
             {
+#if DEBUG
+                System.Console.WriteLine($"🔍 Examining class: {classDeclaration.Identifier.Text}");
+                System.Diagnostics.Debug.WriteLine($"🔍 Examining class: {classDeclaration.Identifier.Text}");
+#endif
                 if (context.SemanticModel.GetDeclaredSymbol(classDeclaration) is INamedTypeSymbol type)
                 {
+#if DEBUG
+                    System.Diagnostics.Debug.WriteLine($"📋 Type symbol found for: {type.Name}");
+#endif
                     if (HasRepositoryForAttribute(type))
                     {
+#if DEBUG
+                        System.Diagnostics.Debug.WriteLine($"✅ Found RepositoryFor class: {type.Name}");
+#endif
                         RepositoryClasses.Add(type);
                     }
+#if DEBUG
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"❌ Class {type.Name} does not have RepositoryFor attribute");
+                    }
+#endif
                 }
+#if DEBUG
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"❌ No type symbol found for class: {classDeclaration.Identifier.Text}");
+                }
+#endif
             }
         }
 

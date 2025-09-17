@@ -35,11 +35,26 @@ public abstract partial class AbstractGenerator : ISourceGenerator
     /// <inheritdoc/>
     public void Execute(GeneratorExecutionContext context)
     {
+#if DEBUG
+        System.Console.WriteLine("🚀 AbstractGenerator.Execute called!");
+        System.Diagnostics.Debug.WriteLine("🚀 AbstractGenerator.Execute called!");
+#endif
         ErrorHandler.ExecuteSafely(context, () =>
         {
+#if DEBUG
+            System.Console.WriteLine($"📡 SyntaxReceiver type: {context.SyntaxReceiver?.GetType()?.Name ?? "null"}");
+#endif
             // Retrieve the populated receiver
             if (context.SyntaxReceiver is not ISqlxSyntaxReceiver receiver)
+            {
+#if DEBUG
+                System.Console.WriteLine("❌ SyntaxReceiver is not ISqlxSyntaxReceiver!");
+#endif
                 return;
+            }
+#if DEBUG
+            System.Console.WriteLine("✅ SyntaxReceiver cast successful!");
+#endif
 
             // Process collected syntax nodes to populate symbol lists
             ProcessCollectedSyntaxNodes(context, receiver);
@@ -167,10 +182,16 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                 }
 
                 var generationContext = new GenerationContext(context, repositoryClass, _generatorService);
+#if DEBUG
+                System.Diagnostics.Debug.WriteLine($"🏗️ Calling GenerateRepositoryImplementation for {repositoryClass.Name}");
+#endif
                 _generatorService.GenerateRepositoryImplementation(generationContext);
             }
             catch (Exception ex)
             {
+#if DEBUG
+                System.Diagnostics.Debug.WriteLine($"❌ Error processing repository class {repositoryClass?.Name}: {ex.Message}");
+#endif
                 ErrorHandler.ReportError(context, ex, "SQLX9997", "Repository class processing error", 
                     "Error processing repository class {0}: {1}", repositoryClass.Name);
             }

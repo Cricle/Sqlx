@@ -30,6 +30,12 @@ namespace Sqlx.Tests.Core
             VisitedNodes.Add(syntaxNode);
         }
 
+        public void OnVisitSyntaxNode(Microsoft.CodeAnalysis.GeneratorSyntaxContext context)
+        {
+            // Mock implementation for ISyntaxContextReceiver compatibility
+            VisitedNodes.Add(context.Node);
+        }
+
         public List<Microsoft.CodeAnalysis.SyntaxNode> VisitedNodes { get; } = new List<Microsoft.CodeAnalysis.SyntaxNode>();
     }
 
@@ -63,14 +69,14 @@ namespace Sqlx.Tests.Core
         }
 
         [TestMethod]
-        public void ISqlxSyntaxReceiver_InheritsFromISyntaxReceiver()
+        public void ISqlxSyntaxReceiver_InheritsFromISyntaxContextReceiver()
         {
-            // Test that ISqlxSyntaxReceiver inherits from ISyntaxReceiver
+            // Test that ISqlxSyntaxReceiver inherits from ISyntaxContextReceiver
             var interfaceType = typeof(ISqlxSyntaxReceiver);
-            var baseInterface = typeof(Microsoft.CodeAnalysis.ISyntaxReceiver);
+            var baseInterface = typeof(Microsoft.CodeAnalysis.ISyntaxContextReceiver);
             
             Assert.IsTrue(baseInterface.IsAssignableFrom(interfaceType),
-                "ISqlxSyntaxReceiver should inherit from ISyntaxReceiver");
+                "ISqlxSyntaxReceiver should inherit from ISyntaxContextReceiver");
         }
 
         [TestMethod]
@@ -163,8 +169,8 @@ namespace Sqlx.Tests.Core
             
             // Verify inheritance
             var interfaces = interfaceType.GetInterfaces();
-            Assert.IsTrue(interfaces.Any(i => i == typeof(Microsoft.CodeAnalysis.ISyntaxReceiver)),
-                "ISqlxSyntaxReceiver should inherit from ISyntaxReceiver");
+            Assert.IsTrue(interfaces.Any(i => i == typeof(Microsoft.CodeAnalysis.ISyntaxContextReceiver)),
+                "ISqlxSyntaxReceiver should inherit from ISyntaxContextReceiver");
         }
 
         [TestMethod]
@@ -219,7 +225,7 @@ namespace Sqlx.Tests.Core
             Assert.IsNotNull(interfaceReceiver.RepositoryClasses);
             
             // Test that it can be cast to base interface
-            Microsoft.CodeAnalysis.ISyntaxReceiver baseReceiver = receiver;
+            Microsoft.CodeAnalysis.ISyntaxContextReceiver baseReceiver = receiver;
             Assert.IsNotNull(baseReceiver);
         }
 

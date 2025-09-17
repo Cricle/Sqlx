@@ -13,7 +13,7 @@ using System.Collections.Generic;
 /// <summary>
 /// Language specific interface for syntax receiver which is used to collect information about methods and repository classes.
 /// </summary>
-internal interface ISqlxSyntaxReceiver : ISyntaxReceiver
+internal interface ISqlxSyntaxReceiver : ISyntaxContextReceiver
 {
     /// <summary>
     /// Gets list of collected methods.
@@ -39,5 +39,5 @@ internal interface ISqlxSyntaxReceiver : ISyntaxReceiver
     /// Called for every syntax node in the compilation.
     /// </summary>
     /// <param name="syntaxNode">The syntax node to visit.</param>
-    new void OnVisitSyntaxNode(SyntaxNode syntaxNode);
+    void OnVisitSyntaxNode(SyntaxNode syntaxNode);
 }

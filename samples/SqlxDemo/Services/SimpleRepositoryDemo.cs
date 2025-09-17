@@ -33,8 +33,13 @@ public partial class SimpleUserRepository(DbConnection connection);
 /// </summary>
 public interface ISimpleProductRepository
 {
+    [Sqlx("SELECT * FROM [product] WHERE [id] = @id")]
     Task<Product> GetProductByIdAsync(int id);
+
+    [Sqlx("SELECT * FROM [product] WHERE [is_active] = 1 ORDER BY [name]")]
     Task<List<Product>> GetActiveProductsAsync();
+
+    [Sqlx("SELECT COUNT(*) FROM [product] WHERE [is_active] = 1")]
     Task<int> GetProductCountAsync();
 }
 

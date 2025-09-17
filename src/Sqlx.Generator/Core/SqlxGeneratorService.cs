@@ -145,19 +145,20 @@ public class SqlxGeneratorService : ISqlxGeneratorService
         var methodName = method.Name;
         var parameters = string.Join(", ", method.Parameters.Select(p => $"{p.Type.ToDisplayString()} {p.Name}"));
 
-        sb.AppendLine($"public {(isAsync ? "async " : "")}{returnType} {methodName}({parameters})");
+        sb.AppendLine($"public {returnType} {methodName}({parameters})");
         sb.AppendLine("{");
         sb.PushIndent();
 
         if (isAsync)
         {
-            if (returnType == "Task")
+            if (returnType == "Task" || returnType == "System.Threading.Tasks.Task")
             {
-                sb.AppendLine("await Task.CompletedTask;");
+                sb.AppendLine("return Task.CompletedTask;");
             }
             else
             {
-                sb.AppendLine($"return await Task.FromResult(default({returnType.Replace("Task<", "").Replace(">", "")}));");
+                var innerType = ExtractInnerTypeFromTask(returnType);
+                sb.AppendLine($"return Task.FromResult(default({innerType}));");
             }
         }
         else
@@ -225,11 +226,12 @@ public class SqlxGeneratorService : ISqlxGeneratorService
         var parameters = string.Join(", ", method.Parameters.Select(p => $"{p.Type.ToDisplayString()} {p.Name}"));
         var isAsync = returnType.Contains("Task");
 
-        sb.AppendLine($"public {(isAsync ? "async " : "")}{returnType} {methodName}({parameters})");
+        sb.AppendLine($"public {returnType} {methodName}({parameters})");
         sb.AppendLine("{");
         sb.PushIndent();
 
-        // For repository methods, always generate simple fallback to match test expectations
+        // For now, always generate simple fallback implementation
+        // TODO: Implement proper operation generation for RepositoryFor
         GenerateSimpleFallback(sb, returnType, isAsync);
 
         sb.PopIndent();

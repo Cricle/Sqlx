@@ -392,9 +392,30 @@ class Program
         Console.WriteLine("\n1️⃣4️⃣ RepositoryFor 属性演示:");
         try
         {
-            var techDeptCount = await repositoryService.GetUserCountAsync(1);
-            var techDeptAvgSalary = await repositoryService.GetAverageSalaryAsync(1);
-            Console.WriteLine($"✅ 技术部统计: {techDeptCount}人, 平均薪资{techDeptAvgSalary:C}");
+            // 使用 RepositoryFor 自动生成的仓储实现
+            var userRepository = new UserRepositoryImpl(connection);
+            
+            // 测试自动生成的方法
+            var activeUsers = await userRepository.GetActiveUsersAsync(CancellationToken.None);
+            Console.WriteLine($"✅ RepositoryFor 生成的方法: 查询到 {activeUsers.Count} 个活跃用户");
+            
+            if (activeUsers.Any())
+            {
+                var firstUser = await userRepository.GetUserByIdAsync(activeUsers[0].Id, CancellationToken.None);
+                Console.WriteLine($"✅ 按ID查询用户: {firstUser?.Name}");
+            }
+            
+            // 创建新用户测试
+            var newUser = new User 
+            { 
+                Name = "RepositoryFor测试用户", 
+                Email = "repo@test.com", 
+                Age = 25, 
+                DepartmentId = 1, 
+                IsActive = true 
+            };
+            var createResult = await userRepository.CreateUserAsync(newUser, CancellationToken.None);
+            Console.WriteLine($"✅ 创建用户结果: {createResult}");
         }
         catch (Exception ex)
         {

@@ -41,7 +41,7 @@ namespace Sqlx.Tests.Core
         {
             using var expr = ExpressionToSql<Product>.ForSqlServer();
             expr.InsertInto();
-            
+
             var sql = expr.ToSql();
             Assert.IsTrue(sql.StartsWith("INSERT INTO [Product]"));
             Assert.IsTrue(sql.Contains("([Id], [Name], [Description], [Price], [CategoryId], [CreatedAt], [UpdatedAt], [IsDeleted], [StockQuantity], [Tags])"));
@@ -58,7 +58,7 @@ namespace Sqlx.Tests.Core
 
             var sql = expr.ToSql();
             Assert.IsTrue(sql.Contains("VALUES"));
-            
+
             // 应该包含3组值
             var valueCount = sql.Split("VALUES")[1].Count(c => c == '(');
             Assert.AreEqual(3, valueCount, "Should contain 3 value sets");
@@ -69,7 +69,7 @@ namespace Sqlx.Tests.Core
         {
             using var selectExpr = ExpressionToSql<Product>.ForSqlServer();
             selectExpr.Where(p => p.CategoryId == 1);
-            
+
             using var insertExpr = ExpressionToSql<Product>.ForSqlServer();
             insertExpr.InsertInto().InsertSelect(selectExpr);
 
@@ -153,14 +153,14 @@ namespace Sqlx.Tests.Core
 
                     var sql = expr.ToSql();
                     System.Console.WriteLine($"{dialectName} SQL: {sql}");
-                    
+
                     Assert.IsTrue(sql.Contains("ABS"), $"{dialectName}: Should contain ABS function. SQL: {sql}");
                     Assert.IsTrue(sql.Contains("ROUND"), $"{dialectName}: Should contain ROUND function. SQL: {sql}");
-                    
+
                     if (dialectName == "Oracle")
                     {
                         // Oracle可能使用GREATEST或MAX，都是可接受的
-                        Assert.IsTrue(sql.Contains("GREATEST") || sql.Contains("MAX"), 
+                        Assert.IsTrue(sql.Contains("GREATEST") || sql.Contains("MAX"),
                             $"{dialectName}: Should use GREATEST or MAX for Math.Max. SQL: {sql}");
                     }
                     else
@@ -193,12 +193,12 @@ namespace Sqlx.Tests.Core
 
                     var sql = expr.ToSql();
                     System.Console.WriteLine($"{dialectName} String SQL: {sql}");
-                    
+
                     Assert.IsTrue(sql.Contains("LIKE"), $"{dialectName}: Should use LIKE for Contains. SQL: {sql}");
                     // 字符串连接可能不需要在这个查询中出现，所以放宽检查
                     // Assert.IsTrue(sql.Contains(expectedConcatSyntax), $"{dialectName}: Should use {expectedConcatSyntax} for string concatenation. SQL: {sql}");
                     Assert.IsTrue(sql.Contains("LOWER"), $"{dialectName}: Should contain LOWER function. SQL: {sql}");
-                    
+
                     if (dialectName == "SQL Server")
                     {
                         Assert.IsTrue(sql.Contains("LEN"), $"{dialectName}: Should use LEN for Length");
@@ -267,16 +267,16 @@ namespace Sqlx.Tests.Core
 
             var sql = expr.ToSql();
             Console.WriteLine($"Generated SQL: {sql}");
-            
+
             Assert.IsTrue(sql.Contains("SET"), $"Should contain SET. SQL: {sql}");
             Assert.IsTrue(sql.Contains("WHERE") && sql.Contains("[Id] = 1"), $"Should contain WHERE clause. SQL: {sql}");
-            
+
             // 检查是否是UPDATE语句
             if (!sql.Contains("UPDATE"))
             {
                 Assert.Inconclusive($"Generated SQL is not an UPDATE statement: {sql}");
             }
-            
+
             // 更灵活的断言
             Assert.IsTrue(sql.Contains("Price") && sql.Contains("1.1"), $"Should contain Price update. SQL: {sql}");
             Assert.IsTrue(sql.Contains("StockQuantity") && sql.Contains("- 1"), $"Should contain StockQuantity update. SQL: {sql}");
@@ -294,13 +294,13 @@ namespace Sqlx.Tests.Core
 
             var sql = expr.ToSql();
             Console.WriteLine($"Mixed Set Types SQL: {sql}");
-            
+
             // 更灵活的断言
             Assert.IsTrue(sql.Contains("Name") && sql.Contains("Updated Product"), $"Should contain Name update. SQL: {sql}");
             Assert.IsTrue(sql.Contains("Price") && sql.Contains("+ 10"), $"Should contain Price update. SQL: {sql}");
             Assert.IsTrue(sql.Contains("IsDeleted") && (sql.Contains("0") || sql.Contains("False")), $"Should contain IsDeleted update. SQL: {sql}");
             Assert.IsTrue(sql.Contains("WHERE") && sql.Contains("CategoryId") && sql.Contains("2"), $"Should contain WHERE clause. SQL: {sql}");
-            
+
             // 确保有多个SET子句
             var setCount = sql.Split(",").Length;
             Assert.IsTrue(setCount >= 4, "Should have multiple SET clauses separated by commas");
@@ -395,7 +395,7 @@ namespace Sqlx.Tests.Core
             var sql = expr.ToSql();
             Assert.IsTrue(sql.Contains("[IsDeleted] = 1"));
             Assert.IsTrue(sql.Contains("[IsDeleted] = 0"));
-            
+
             // 应该有4个AND连接的条件
             var andCount = sql.Split("AND").Length - 1;
             Assert.AreEqual(3, andCount);
@@ -409,7 +409,7 @@ namespace Sqlx.Tests.Core
         public void Performance_LargeNumberOfConditions_HandlesEfficiently()
         {
             using var expr = ExpressionToSql<Product>.ForSqlServer();
-            
+
             // 添加大量WHERE条件
             for (int i = 1; i <= 100; i++)
             {
@@ -419,7 +419,7 @@ namespace Sqlx.Tests.Core
             var sql = expr.ToSql();
             Assert.IsTrue(sql.Length > 1000);
             Assert.IsTrue(sql.Contains("WHERE"));
-            
+
             // 应该有99个AND操作符（100个条件之间）
             var andCount = sql.Split("AND").Length - 1;
             Assert.AreEqual(99, andCount);
@@ -444,20 +444,20 @@ namespace Sqlx.Tests.Core
         {
             using var expr = ExpressionToSql<Product>.ForSqlServer();
             expr.InsertInto();
-            
+
             // 添加大量插入行
             for (int i = 1; i <= 50; i++)
             {
-                expr.AddValues(i, $"Product {i}", $"Description {i}", i * 10.5m, 
+                expr.AddValues(i, $"Product {i}", $"Description {i}", i * 10.5m,
                     i % 5 + 1, DateTime.Now, (DateTime?)null, false, i * 10, $"tag{i}");
             }
 
             var sql = expr.ToSql();
             Console.WriteLine($"Generated SQL length: {sql.Length}");
             Console.WriteLine($"Generated SQL preview: {sql.Substring(0, Math.Min(200, sql.Length))}...");
-            
+
             Assert.IsTrue(sql.Contains("VALUES"), $"Should contain VALUES clause. SQL: {sql.Substring(0, Math.Min(100, sql.Length))}...");
-            
+
             // 应该包含50组值
             if (sql.Contains("VALUES"))
             {
@@ -466,7 +466,7 @@ namespace Sqlx.Tests.Core
                 Console.WriteLine($"Value count: {valueCount}");
                 Assert.AreEqual(50, valueCount, $"Should have 50 value sets. SQL: {sql.Substring(0, Math.Min(300, sql.Length))}...");
             }
-            
+
             // SQL应该相当长但仍然可管理
             Assert.IsTrue(sql.Length > 500, $"SQL should be longer than 500 characters. Actual length: {sql.Length}");
             Assert.IsTrue(sql.Length < 50000, $"SQL should be shorter than 50000 characters. Actual length: {sql.Length}");
@@ -545,7 +545,7 @@ namespace Sqlx.Tests.Core
                 {
                     expr.OrderBy(p => p.Id).Take(10);
                     var sql = expr.ToSql();
-                    
+
                     if (dialectName == "SQL Server")
                     {
                         Assert.IsTrue(sql.Contains("FETCH NEXT 10 ROWS ONLY"));
@@ -576,7 +576,7 @@ namespace Sqlx.Tests.Core
                 {
                     expr.OrderBy(p => p.Id).Skip(10);
                     var sql = expr.ToSql();
-                    
+
                     if (dialectName == "SQL Server")
                     {
                         Assert.IsTrue(sql.Contains("OFFSET 10 ROWS"));
@@ -599,7 +599,7 @@ namespace Sqlx.Tests.Core
         public void FluentInterface_ChainedOperations_ReturnsCorrectType()
         {
             using var expr = ExpressionToSql<Product>.ForSqlServer();
-            
+
             var result = expr
                 .Where(p => p.Price > 0)
                 .OrderBy(p => p.Name)
@@ -614,7 +614,7 @@ namespace Sqlx.Tests.Core
         public void FluentInterface_UpdateChain_ReturnsCorrectType()
         {
             using var expr = ExpressionToSql<Product>.ForSqlServer();
-            
+
             var result = expr
                 .Set(p => p.Price, 100m)
                 .Set(p => p.UpdatedAt, DateTime.Now)
@@ -628,7 +628,7 @@ namespace Sqlx.Tests.Core
         public void FluentInterface_InsertChain_ReturnsCorrectType()
         {
             using var expr = ExpressionToSql<Product>.ForSqlServer();
-            
+
             var result = expr
                 .InsertInto()
                 .Values(1, "Test", (string?)null, 10m, 1, DateTime.Now, (DateTime?)null, false, 100, (string?)null)

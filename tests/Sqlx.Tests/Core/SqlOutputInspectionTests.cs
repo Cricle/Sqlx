@@ -274,7 +274,7 @@ public class SqlOutputInspectionTests
         Console.WriteLine($"SQL: {sql}");
         Console.WriteLine($"WHERE Clause: {whereClause}");
         Console.WriteLine($"SQL Length: {sql.Length}");
-        
+
         // Count AND occurrences
         var andCount = sql.Split(" AND ").Length - 1;
         Console.WriteLine($"AND Count: {andCount}");

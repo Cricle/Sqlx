@@ -60,7 +60,7 @@ public class User
 
             var testServiceType = compilation.GetTypeByMetadataName("TestService");
             var method = testServiceType?.GetMembers().OfType<IMethodSymbol>().FirstOrDefault();
-            
+
             Assert.IsNotNull(method, "Could not find test method");
             return method!;
         }
@@ -325,10 +325,10 @@ public class User
             {
                 WriteTestOutput($"  - {d.GetMessage()}");
             }
-            
+
             var returnTypeWarning = diagnostics
                 .FirstOrDefault(d => d.GetMessage().Contains("SELECT 查询应该有返回值"));
-            Assert.IsNotNull(returnTypeWarning, 
+            Assert.IsNotNull(returnTypeWarning,
                 $"Expected to find return type warning for Task return type, but diagnostics were: {string.Join("; ", diagnostics.Select(d => d.GetMessage()))}");
         }
 
@@ -470,10 +470,10 @@ public class User
             // Assert
             Assert.IsNotNull(diagnostics);
             // Should have minimal or no issues
-            var majorIssues = diagnostics.Where(d => 
-                d.Severity == DiagnosticSeverity.Warning || 
+            var majorIssues = diagnostics.Where(d =>
+                d.Severity == DiagnosticSeverity.Warning ||
                 d.Severity == DiagnosticSeverity.Error);
-            Assert.IsTrue(majorIssues.Count() <= 1, 
+            Assert.IsTrue(majorIssues.Count() <= 1,
                 $"Well-designed method should have minimal issues, but found: {string.Join(", ", majorIssues.Select(d => d.GetMessage()))}");
         }
 

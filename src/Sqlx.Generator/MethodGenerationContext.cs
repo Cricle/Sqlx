@@ -172,13 +172,13 @@ internal partial class MethodGenerationContext : GenerationContextBase
             if (paramterSyntax!.Modifiers.Count != 0) prefx += " ";
             return prefx + x.Type.ToDisplayString() + " " + x.Name;
         }));
-        
+
         var staticKeyword = MethodSymbol.IsStatic ? "static " : string.Empty;
-        
+
         // Always generate partial methods for source generation - the source generator should generate implementations
         // for methods that have [Sqlx] attributes, whether they are declared as partial or not
         sb.AppendLine($"{MethodSymbol.DeclaredAccessibility.GetAccessibility()} {AsyncKey}{staticKeyword}partial {MethodSymbol.ReturnType.ToDisplayString()} {MethodSymbol.Name}({args})");
-        
+
         sb.AppendLine("{");
         sb.PushIndent();
 
@@ -437,8 +437,8 @@ internal partial class MethodGenerationContext : GenerationContextBase
         => methodSymbol.Parameters.FirstOrDefault(check);
 
     private static IParameterSymbol? GetAttributeParamter(IMethodSymbol methodSymbol, string attributeName)
-        => methodSymbol.Parameters.FirstOrDefault(x => x.GetAttributes().Any(y => 
-            y.AttributeClass?.Name == attributeName || 
+        => methodSymbol.Parameters.FirstOrDefault(x => x.GetAttributes().Any(y =>
+            y.AttributeClass?.Name == attributeName ||
             y.AttributeClass?.Name == attributeName.Replace("Attribute", "")));
 
     private bool IsExecuteNoQuery()

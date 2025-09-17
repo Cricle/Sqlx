@@ -30,9 +30,9 @@ public class MethodAnalyzer : IMethodAnalyzer
     public bool IsAsyncMethod(IMethodSymbol method)
     {
         if (method.ReturnType is not INamedTypeSymbol namedType) return false;
-        
+
         // Check if it's a Task or Task<T>
-        return namedType.Name == "Task" && 
+        return namedType.Name == "Task" &&
                namedType.ContainingNamespace.ToDisplayString() == "System.Threading.Tasks";
     }
 
@@ -50,14 +50,14 @@ public class MethodAnalyzer : IMethodAnalyzer
     private MethodOperationType DetermineOperationType(IMethodSymbol method)
     {
         // Check for explicit SQL attributes first
-        var sqlxAttr = method.GetAttributes().FirstOrDefault(attr => 
+        var sqlxAttr = method.GetAttributes().FirstOrDefault(attr =>
             attr.AttributeClass?.Name == "SqlxAttribute");
         if (sqlxAttr != null)
         {
             return MethodOperationType.Custom;
         }
 
-        var sqlExecuteTypeAttr = method.GetAttributes().FirstOrDefault(attr => 
+        var sqlExecuteTypeAttr = method.GetAttributes().FirstOrDefault(attr =>
             attr.AttributeClass?.Name == "SqlExecuteTypeAttribute");
         if (sqlExecuteTypeAttr != null)
         {
@@ -68,30 +68,30 @@ public class MethodAnalyzer : IMethodAnalyzer
         var methodName = method.Name.ToLowerInvariant();
 
         // Insert operations
-        if (methodName.Contains("create") || 
-            methodName.Contains("insert") || 
+        if (methodName.Contains("create") ||
+            methodName.Contains("insert") ||
             methodName.Contains("add"))
         {
             return MethodOperationType.Insert;
         }
 
         // Update operations
-        if (methodName.Contains("update") || 
-            methodName.Contains("modify") || 
+        if (methodName.Contains("update") ||
+            methodName.Contains("modify") ||
             methodName.Contains("change"))
         {
             return MethodOperationType.Update;
         }
 
         // Delete operations
-        if (methodName.Contains("delete") || 
+        if (methodName.Contains("delete") ||
             methodName.Contains("remove"))
         {
             return MethodOperationType.Delete;
         }
 
         // Scalar operations
-        if (methodName.Contains("count") || 
+        if (methodName.Contains("count") ||
             methodName.Contains("exists") ||
             methodName.Contains("sum") ||
             methodName.Contains("max") ||
@@ -103,8 +103,8 @@ public class MethodAnalyzer : IMethodAnalyzer
         }
 
         // Select operations (default for query-like methods)
-        if (methodName.Contains("get") || 
-            methodName.Contains("find") || 
+        if (methodName.Contains("get") ||
+            methodName.Contains("find") ||
             methodName.Contains("select") ||
             methodName.Contains("query") ||
             methodName.Contains("list") ||

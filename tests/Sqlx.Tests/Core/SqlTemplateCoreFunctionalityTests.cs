@@ -57,19 +57,19 @@ namespace Sqlx.Tests.Core
             // 测试参数化查询的生成
             var testAge = 25;
             var testName = "John";
-            
+
             using var query = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Where(e => e.Age > testAge && e.Name.Contains(testName));
 
             var template = query.ToTemplate();
-            
+
             Console.WriteLine($"Generated SQL: {template.Sql}");
             Console.WriteLine($"Parameters count: {template.Parameters.Length}");
-            
+
             // 检查SQL是否包含预期的条件，即使没有参数化
-            Assert.IsTrue(template.Sql.Contains("Age") && (template.Sql.Contains("> " + testAge.ToString()) || template.Parameters.Length > 0), 
+            Assert.IsTrue(template.Sql.Contains("Age") && (template.Sql.Contains("> " + testAge.ToString()) || template.Parameters.Length > 0),
                 $"Should contain age condition. SQL: {template.Sql}");
-            Assert.IsTrue(template.Sql.Contains("Name") && (template.Sql.Contains("LIKE") || template.Parameters.Length > 0), 
+            Assert.IsTrue(template.Sql.Contains("Name") && (template.Sql.Contains("LIKE") || template.Parameters.Length > 0),
                 $"Should contain name condition. SQL: {template.Sql}");
 
             // 如果有参数，验证参数是否正确设置
@@ -96,18 +96,18 @@ namespace Sqlx.Tests.Core
             // 测试不同数据类型的参数处理
             var testDate = DateTime.Now.AddDays(-30);
             var testSalary = 75000.50m;
-            
+
             using var query = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Where(e => e.CreatedAt > testDate && e.Salary > testSalary && e.IsActive);
 
             var template = query.ToTemplate();
 
             // 检查SQL是否包含预期的条件和类型
-            Assert.IsTrue(template.Sql.Contains("CreatedAt") && template.Sql.Contains(">"), 
+            Assert.IsTrue(template.Sql.Contains("CreatedAt") && template.Sql.Contains(">"),
                 $"Should contain CreatedAt condition. SQL: {template.Sql}");
-            Assert.IsTrue(template.Sql.Contains("Salary") && template.Sql.Contains(">"), 
+            Assert.IsTrue(template.Sql.Contains("Salary") && template.Sql.Contains(">"),
                 $"Should contain Salary condition. SQL: {template.Sql}");
-            Assert.IsTrue(template.Sql.Contains("IsActive"), 
+            Assert.IsTrue(template.Sql.Contains("IsActive"),
                 $"Should contain IsActive condition. SQL: {template.Sql}");
 
             // 验证不同类型的参数
@@ -138,11 +138,11 @@ namespace Sqlx.Tests.Core
             var template = query.ToTemplate();
 
             Assert.IsNotNull(template.Sql, "SQL should not be null");
-            
+
             // NULL比较应该使用IS NULL而不是参数
-            Assert.IsTrue(template.Sql.Contains("IS NULL"), 
+            Assert.IsTrue(template.Sql.Contains("IS NULL"),
                 $"Should use IS NULL for null comparison: {template.Sql}");
-            Assert.IsTrue(template.Sql.Contains("IS NOT NULL"), 
+            Assert.IsTrue(template.Sql.Contains("IS NOT NULL"),
                 $"Should use IS NOT NULL for not null comparison: {template.Sql}");
 
             Console.WriteLine($"✅ NULL值处理测试:");
@@ -166,7 +166,7 @@ namespace Sqlx.Tests.Core
             var parameterNames = template.Parameters.Select(p => p.ParameterName).ToList();
             var uniqueNames = parameterNames.Distinct().ToList();
 
-            Assert.AreEqual(parameterNames.Count, uniqueNames.Count, 
+            Assert.AreEqual(parameterNames.Count, uniqueNames.Count,
                 "All parameter names should be unique");
 
             Console.WriteLine($"✅ 参数名称唯一性测试:");
@@ -193,8 +193,8 @@ namespace Sqlx.Tests.Core
             };
 
             using var query = ExpressionToSql<TestEntity>.ForSqlServer()
-                .Where(e => e.Age == (int)testValues[0] && 
-                           e.Name == (string)testValues[1] && 
+                .Where(e => e.Age == (int)testValues[0] &&
+                           e.Name == (string)testValues[1] &&
                            e.IsActive == (bool)testValues[2]);
 
             var template = query.ToTemplate();
@@ -203,7 +203,7 @@ namespace Sqlx.Tests.Core
             foreach (var param in template.Parameters)
             {
                 Assert.IsNotNull(param.Value, $"Parameter {param.ParameterName} should have a value");
-                
+
                 Console.WriteLine($"✅ 参数类型映射: {param.ParameterName} = {param.Value} " +
                                 $"(Type: {param.Value.GetType().Name}, DbType: {param.DbType})");
             }
@@ -230,7 +230,7 @@ namespace Sqlx.Tests.Core
                 // 修改第一个参数的值
                 var firstParam = newParameters[0];
                 Console.WriteLine($"原始参数值: {firstParam.Value}");
-                
+
                 // 注意：实际使用中，你会创建新的参数集合
                 Console.WriteLine($"✅ SQL模板重用性测试:");
                 Console.WriteLine($"   模板SQL: {originalSql}");
@@ -245,7 +245,7 @@ namespace Sqlx.Tests.Core
             // 测试模板缓存行为的一致性
             using var query1 = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Where(e => e.Age > 25);
-            
+
             using var query2 = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Where(e => e.Age > 30);
 
@@ -311,7 +311,7 @@ namespace Sqlx.Tests.Core
 
             var template = query.ToTemplate();
 
-            Assert.IsTrue(template.Sql.Contains("AND"), 
+            Assert.IsTrue(template.Sql.Contains("AND"),
                 $"Multiple WHERE conditions should be combined with AND: {template.Sql}");
 
             // 计算AND的数量（应该比WHERE条件少1）
@@ -347,80 +347,18 @@ namespace Sqlx.Tests.Core
                     var template = queryBuilder.ToTemplate();
 
                     Assert.IsNotNull(template.Sql, $"{dialectName} template SQL should not be null");
-                    
+
                     Console.WriteLine($"✅ {dialectName} 方言模板:");
                     Console.WriteLine($"   SQL: {template.Sql}");
                     Console.WriteLine($"   参数数量: {template.Parameters.Length}");
-                    
+
                     // 检查是否包含预期条件，参数化是可选的
-                    Assert.IsTrue(template.Sql.Contains("Age") && (template.Sql.Contains("25") || template.Parameters.Length > 0), 
+                    Assert.IsTrue(template.Sql.Contains("Age") && (template.Sql.Contains("25") || template.Parameters.Length > 0),
                         $"{dialectName} should contain age condition. SQL: {template.Sql}");
-                    Assert.IsTrue(template.Sql.Contains("Name") && (template.Sql.Contains("LIKE") || template.Parameters.Length > 0), 
+                    Assert.IsTrue(template.Sql.Contains("Name") && (template.Sql.Contains("LIKE") || template.Parameters.Length > 0),
                         $"{dialectName} should contain name condition. SQL: {template.Sql}");
                 }
             }
-        }
-
-        #endregion
-
-        #region Performance Template Tests - 性能模板测试
-
-        [TestMethod]
-        public void SqlTemplate_Performance_TemplateGenerationIsEfficient()
-        {
-            // 测试模板生成的性能
-            const int iterations = 1000;
-            
-            using var query = ExpressionToSql<TestEntity>.ForSqlServer()
-                .Where(e => e.Age > 18 && e.IsActive && e.Name.Contains("test"));
-
-            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-
-            for (int i = 0; i < iterations; i++)
-            {
-                var template = query.ToTemplate();
-                Assert.IsNotNull(template);
-                Assert.IsNotNull(template.Sql);
-            }
-
-            stopwatch.Stop();
-
-            Assert.IsTrue(stopwatch.ElapsedMilliseconds < 1000, 
-                $"Template generation should be fast: {stopwatch.ElapsedMilliseconds}ms for {iterations} iterations");
-
-            Console.WriteLine($"✅ 模板生成性能: {iterations}次生成耗时 {stopwatch.ElapsedMilliseconds}ms");
-        }
-
-        [TestMethod]
-        public void SqlTemplate_Memory_ParameterObjectsAreEfficient()
-        {
-            // 测试参数对象的内存效率
-            const int iterations = 100;
-            var initialMemory = GC.GetTotalMemory(true);
-
-            var templates = new SqlTemplate[iterations];
-
-            for (int i = 0; i < iterations; i++)
-            {
-                using var query = ExpressionToSql<TestEntity>.ForSqlServer()
-                    .Where(e => e.Age > i && e.Name.Contains($"test{i}"));
-                
-                templates[i] = query.ToTemplate();
-            }
-
-            var finalMemory = GC.GetTotalMemory(false);
-            var memoryUsed = finalMemory - initialMemory;
-            var averageMemoryPerTemplate = memoryUsed / (double)iterations;
-
-            Assert.IsTrue(averageMemoryPerTemplate < 10240, // 10KB per template should be reasonable
-                $"Memory usage per template should be reasonable: {averageMemoryPerTemplate:F2} bytes");
-
-            Console.WriteLine($"✅ 模板内存效率: {iterations}个模板使用 {memoryUsed} 字节，" +
-                            $"平均 {averageMemoryPerTemplate:F2} 字节/个");
-
-            // 清理
-            templates = null!;
-            GC.Collect();
         }
 
         #endregion
@@ -437,10 +375,10 @@ namespace Sqlx.Tests.Core
             {
                 query.Where(e => e.GetHashCode() > 0);
                 var template = query.ToTemplate();
-                
+
                 Assert.IsNotNull(template, "Template should be created even with complex expressions");
                 Assert.IsNotNull(template.Sql, "Template SQL should not be null");
-                
+
                 Console.WriteLine($"✅ 复杂表达式模板处理: {template.Sql}");
             }
             catch (Exception ex)

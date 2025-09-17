@@ -54,7 +54,7 @@ namespace Sqlx.Tests.Core
         {
             // Arrange & Act
             using var expr = ExpressionToSql<SqlBoundaryEntity>.ForSqlServer();
-            
+
             // 生成超长WHERE子句
             for (int i = 0; i < 1000; i++)
             {
@@ -64,12 +64,12 @@ namespace Sqlx.Tests.Core
             try
             {
                 var sql = expr.ToSql();
-                
+
                 // Assert
                 Assert.IsNotNull(sql);
                 Assert.IsTrue(sql.Length > 10000, "超长WHERE子句应生成很长的SQL");
                 Assert.IsTrue(sql.Contains("WHERE"), "应包含WHERE关键字");
-                
+
                 Console.WriteLine($"✅ 超长WHERE子句测试通过，SQL长度: {sql.Length}");
             }
             catch (Exception ex)
@@ -83,7 +83,7 @@ namespace Sqlx.Tests.Core
         {
             // Arrange & Act
             using var expr = ExpressionToSql<SqlBoundaryEntity>.ForSqlServer();
-            
+
             // 生成超长ORDER BY子句
             for (int i = 0; i < 100; i++)
             {
@@ -96,11 +96,11 @@ namespace Sqlx.Tests.Core
             try
             {
                 var sql = expr.ToSql();
-                
+
                 // Assert
                 Assert.IsNotNull(sql);
                 Assert.IsTrue(sql.Contains("ORDER BY"), "应包含ORDER BY关键字");
-                
+
                 Console.WriteLine($"✅ 超长ORDER BY子句测试通过，SQL长度: {sql.Length}");
             }
             catch (Exception ex)
@@ -114,20 +114,20 @@ namespace Sqlx.Tests.Core
         {
             // Arrange & Act
             using var expr = ExpressionToSql<SqlBoundaryEntity>.ForSqlServer();
-            
+
             try
             {
                 // 创建极深的嵌套条件 (((((condition)))))
-                expr.Where(e => 
-                    (e.Id > 1 && 
-                        (e.Name != null && 
-                            (e.Description != null && 
-                                (e.IsActive == true && 
-                                    (e.Price > 0 && 
+                expr.Where(e =>
+                    (e.Id > 1 &&
+                        (e.Name != null &&
+                            (e.Description != null &&
+                                (e.IsActive == true &&
+                                    (e.Price > 0 &&
                                         (e.CreatedAt > DateTime.MinValue)))))));
 
                 var sql = expr.ToSql();
-                
+
                 // Assert
                 Assert.IsNotNull(sql);
                 Console.WriteLine($"✅ 深度嵌套测试通过: {sql}");
@@ -147,7 +147,7 @@ namespace Sqlx.Tests.Core
         {
             // Arrange & Act
             using var expr = ExpressionToSql<EntityWithReservedWords>.ForSqlServer();
-            
+
             expr.Where(e => e.Select > 1)
                 .Where(e => e.From == "test")
                 .Where(e => e.Where != null)
@@ -162,9 +162,9 @@ namespace Sqlx.Tests.Core
 
             // Assert
             Assert.IsNotNull(sql);
-            Assert.IsTrue(sql.Contains("[") || sql.Contains("`") || sql.Contains("\""), 
+            Assert.IsTrue(sql.Contains("[") || sql.Contains("`") || sql.Contains("\""),
                 "SQL关键字列名应被正确转义");
-            
+
             Console.WriteLine($"✅ SQL关键字冲突测试通过: {sql}");
         }
 
@@ -189,7 +189,7 @@ namespace Sqlx.Tests.Core
                     using var expr = ExpressionToSql<SqlBoundaryEntity>.ForSqlServer();
                     expr.Where(e => e.Id > 0);
                     var sql = expr.ToSql();
-                    
+
                     Assert.IsNotNull(sql);
                     Console.WriteLine($"✅ {description} 测试通过");
                 }
@@ -215,9 +215,9 @@ namespace Sqlx.Tests.Core
             {
                 using var expr = ExpressionToSql<SqlBoundaryEntity>.ForSqlServer();
                 expr.Where(e => values.Contains(e.Id));
-                
+
                 var sql = expr.ToSql();
-                
+
                 // Assert
                 Assert.IsNotNull(sql);
                 Console.WriteLine($"✅ 大量参数测试通过，参数数量: {values.Count}");
@@ -239,7 +239,7 @@ namespace Sqlx.Tests.Core
 
             // Act
             using var expr = ExpressionToSql<SqlBoundaryEntity>.ForSqlServer();
-            
+
             expr.Where(e => stringValues.Contains(e.Name))
                 .Where(e => intValues.Contains(e.Id))
                 .Where(e => dateValues.Contains(e.CreatedAt));
@@ -273,7 +273,7 @@ namespace Sqlx.Tests.Core
                 try
                 {
                     using var expr = factory();
-                    
+
                     // 构建复杂查询
                     expr.Where(e => e.Id > 1)
                         .Where(e => e.Name!.Contains("test"))
@@ -286,10 +286,10 @@ namespace Sqlx.Tests.Core
                         .Skip(10);
 
                     var sql = expr.ToSql();
-                    
+
                     Assert.IsNotNull(sql);
                     Assert.IsTrue(sql.Length > 0);
-                    
+
                     Console.WriteLine($"✅ {dialectName} 复杂查询测试通过");
                     Console.WriteLine($"SQL: {sql.Substring(0, Math.Min(100, sql.Length))}...");
                 }
@@ -318,7 +318,7 @@ namespace Sqlx.Tests.Core
                 try
                 {
                     using var expr = factory();
-                    
+
                     // 测试边界值
                     expr.Where(e => e.Id == int.MaxValue)
                         .Where(e => e.Name == "'SQL注入测试'")
@@ -326,7 +326,7 @@ namespace Sqlx.Tests.Core
                         .Where(e => e.CreatedAt == DateTime.MinValue);
 
                     var sql = expr.ToSql();
-                    
+
                     Assert.IsNotNull(sql);
                     Console.WriteLine($"✅ {dialectName} 边界值测试通过");
                 }
@@ -353,7 +353,7 @@ namespace Sqlx.Tests.Core
             Assert.IsTrue(sql.StartsWith("SELECT"), "应以SELECT开始");
             Assert.IsTrue(sql.Contains("FROM"), "应包含FROM");
             Assert.IsFalse(sql.Contains("WHERE"), "不应包含WHERE");
-            
+
             Console.WriteLine($"✅ 无条件查询测试通过: {sql}");
         }
 
@@ -364,14 +364,14 @@ namespace Sqlx.Tests.Core
             using var expr = ExpressionToSql<SqlBoundaryEntity>.ForSqlServer();
             expr.OrderBy(e => e.Id)
                 .OrderByDescending(e => e.CreatedAt);
-            
+
             var sql = expr.ToSql();
 
             // Assert
             Assert.IsNotNull(sql);
             Assert.IsTrue(sql.Contains("ORDER BY"), "应包含ORDER BY");
             Assert.IsFalse(sql.Contains("WHERE"), "不应包含WHERE");
-            
+
             Console.WriteLine($"✅ 仅排序查询测试通过: {sql}");
         }
 
@@ -381,14 +381,14 @@ namespace Sqlx.Tests.Core
             // Act
             using var expr = ExpressionToSql<SqlBoundaryEntity>.ForSqlServer();
             expr.Take(10).Skip(5);
-            
+
             var sql = expr.ToSql();
 
             // Assert
             Assert.IsNotNull(sql);
-            Assert.IsTrue(sql.Contains("OFFSET") || sql.Contains("LIMIT") || sql.Contains("TOP"), 
+            Assert.IsTrue(sql.Contains("OFFSET") || sql.Contains("LIMIT") || sql.Contains("TOP"),
                 "应包含分页关键字");
-            
+
             Console.WriteLine($"✅ 仅分页查询测试通过: {sql}");
         }
 
@@ -398,7 +398,7 @@ namespace Sqlx.Tests.Core
             // Act
             using var expr = ExpressionToSql<SqlBoundaryEntity>.ForSqlServer();
             expr.Take(0).Skip(0);
-            
+
             var sql = expr.ToSql();
 
             // Assert
@@ -412,7 +412,7 @@ namespace Sqlx.Tests.Core
             // Act
             using var expr = ExpressionToSql<SqlBoundaryEntity>.ForSqlServer();
             expr.Take(int.MaxValue).Skip(int.MaxValue - 1000);
-            
+
             try
             {
                 var sql = expr.ToSql();
@@ -434,10 +434,10 @@ namespace Sqlx.Tests.Core
         {
             // Act
             using var expr = ExpressionToSql<SqlBoundaryEntity>.ForSqlServer();
-            
-            expr.Where(e => 
-                (e.Id > 1 && e.Id < 100) || 
-                (e.Name != null && e.Name.Length > 5) || 
+
+            expr.Where(e =>
+                (e.Id > 1 && e.Id < 100) ||
+                (e.Name != null && e.Name.Length > 5) ||
                 (e.Price.HasValue && e.Price.Value > 0 && e.Price.Value < 1000) ||
                 (e.IsActive == true && e.CreatedAt > DateTime.Now.AddYears(-1)));
 
@@ -446,7 +446,7 @@ namespace Sqlx.Tests.Core
             // Assert
             Assert.IsNotNull(sql);
             Assert.IsTrue(sql.Contains("AND") || sql.Contains("OR"), "应包含逻辑运算符");
-            
+
             Console.WriteLine($"✅ 复杂布尔逻辑测试通过: {sql}");
         }
 
@@ -455,18 +455,18 @@ namespace Sqlx.Tests.Core
         {
             // Act
             using var expr = ExpressionToSql<SqlBoundaryEntity>.ForSqlServer();
-            
+
             try
             {
-                expr.Where(e => 
-                    e.Id > 0 && 
-                    (e.Name == "test" || 
-                        (e.Description != null && 
-                            (e.Price > 0 || 
+                expr.Where(e =>
+                    e.Id > 0 &&
+                    (e.Name == "test" ||
+                        (e.Description != null &&
+                            (e.Price > 0 ||
                                 (e.IsActive && e.CreatedAt > DateTime.MinValue)))));
 
                 var sql = expr.ToSql();
-                
+
                 Assert.IsNotNull(sql);
                 Console.WriteLine($"✅ 深度嵌套测试通过: {sql}");
             }

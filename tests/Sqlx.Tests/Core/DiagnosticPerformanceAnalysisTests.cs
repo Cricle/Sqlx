@@ -64,7 +64,7 @@ public class User
 
             var testServiceType = compilation.GetTypeByMetadataName("TestService");
             var method = testServiceType?.GetMembers().OfType<IMethodSymbol>().FirstOrDefault();
-            
+
             Assert.IsNotNull(method, "Could not find test method");
             return method!;
         }
@@ -92,7 +92,7 @@ using System;
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
             var entityType = compilation.GetTypeByMetadataName("TestEntity");
-            
+
             Assert.IsNotNull(entityType, "Could not find entity type");
             return entityType!;
         }
@@ -354,7 +354,7 @@ public class TestEntity
     public string Property16 { get; set; } // 16+ properties
 }";
             var entity = CreateEntitySymbol(entityCode);
-            
+
             var methodCode = @"
                 [Sqlx(""SELECT * FROM [TestEntity]"")]
                 public Task<List<TestEntity>> GetEntitiesAsync() 
@@ -392,7 +392,7 @@ public class TestEntity
     public string String6 { get; set; } // 6+ string properties
 }";
             var entity = CreateEntitySymbol(entityCode);
-            
+
             var methodCode = @"
                 [Sqlx(""SELECT * FROM [TestEntity]"")]
                 public Task<List<TestEntity>> GetEntitiesAsync() 
@@ -426,7 +426,7 @@ public class TestEntity
     public string Email { get; set; }
 }";
             var entity = CreateEntitySymbol(entityCode);
-            
+
             var methodCode = @"
                 [Sqlx(""SELECT * FROM [TestEntity]"")]
                 public Task<TestEntity> GetEntityAsync() 
@@ -557,7 +557,7 @@ public class TestEntity
     public string Property10 { get; set; } // Large entity with many strings
 }";
             var entity = CreateEntitySymbol(entityCode);
-            
+
             var methodCode = @"
                 [Sqlx(""SELECT * FROM [TestEntity]"")]
                 public List<TestEntity> GetEntities() // Sync method, no paging, returns collection

@@ -23,10 +23,10 @@ public class SqlTemplateTests : TestBase
         // Arrange
         string sql = "SELECT * FROM Users WHERE Id = @id";
         var parameters = new DbParameter[] { CreateMockParameter("@id", 1) };
-        
+
         // Act
         var template = new SqlTemplate(sql, parameters);
-        
+
         // Assert
         Assert.AreEqual(sql, template.Sql);
         Assert.AreEqual(1, template.Parameters.Length);
@@ -39,10 +39,10 @@ public class SqlTemplateTests : TestBase
         // Arrange
         string? sql = null;
         var parameters = new DbParameter[0];
-        
+
         // Act
         var template = new SqlTemplate(sql!, parameters);
-        
+
         // Assert
         Assert.IsNull(template.Sql);
         Assert.AreEqual(0, template.Parameters.Length);
@@ -54,10 +54,10 @@ public class SqlTemplateTests : TestBase
         // Arrange
         string sql = "SELECT 1";
         DbParameter[]? parameters = null;
-        
+
         // Act
         var template = new SqlTemplate(sql, parameters!);
-        
+
         // Assert
         Assert.AreEqual(sql, template.Sql);
         Assert.IsNull(template.Parameters);
@@ -69,10 +69,10 @@ public class SqlTemplateTests : TestBase
         // Arrange
         string sql = "SELECT 1";
         var parameters = new DbParameter[0];
-        
+
         // Act
         var template = new SqlTemplate(sql, parameters);
-        
+
         // Assert
         Assert.AreEqual(sql, template.Sql);
         Assert.AreEqual(0, template.Parameters.Length);
@@ -85,10 +85,10 @@ public class SqlTemplateTests : TestBase
         string sql = "SELECT * FROM Users";
         var parameters1 = new DbParameter[] { CreateMockParameter("@id", 1) };
         var parameters2 = new DbParameter[] { CreateMockParameter("@id", 1) };
-        
+
         var template1 = new SqlTemplate(sql, parameters1);
         var template2 = new SqlTemplate(sql, parameters2);
-        
+
         // Act & Assert
         Assert.AreEqual(template1, template2);
         Assert.IsTrue(template1.Equals(template2));
@@ -101,10 +101,10 @@ public class SqlTemplateTests : TestBase
     {
         // Arrange
         var parameters = new DbParameter[] { CreateMockParameter("@id", 1) };
-        
+
         var template1 = new SqlTemplate("SELECT * FROM Users", parameters);
         var template2 = new SqlTemplate("SELECT * FROM Products", parameters);
-        
+
         // Act & Assert
         Assert.AreNotEqual(template1, template2);
         Assert.IsFalse(template1.Equals(template2));
@@ -118,14 +118,14 @@ public class SqlTemplateTests : TestBase
         // Arrange
         string sql = "SELECT * FROM Users";
         var parameters1 = new DbParameter[] { CreateMockParameter("@id", 1) };
-        var parameters2 = new DbParameter[] { 
-            CreateMockParameter("@id", 1), 
-            CreateMockParameter("@name", "test") 
+        var parameters2 = new DbParameter[] {
+            CreateMockParameter("@id", 1),
+            CreateMockParameter("@name", "test")
         };
-        
+
         var template1 = new SqlTemplate(sql, parameters1);
         var template2 = new SqlTemplate(sql, parameters2);
-        
+
         // Act & Assert
         Assert.AreNotEqual(template1, template2);
         Assert.IsFalse(template1.Equals(template2));
@@ -138,14 +138,14 @@ public class SqlTemplateTests : TestBase
         string sql = "SELECT * FROM Users";
         var parameters1 = new DbParameter[] { CreateMockParameter("@id", 1) };
         var parameters2 = new DbParameter[] { CreateMockParameter("@id", 1) };
-        
+
         var template1 = new SqlTemplate(sql, parameters1);
         var template2 = new SqlTemplate(sql, parameters2);
-        
+
         // Act
         int hash1 = template1.GetHashCode();
         int hash2 = template2.GetHashCode();
-        
+
         // Assert
         Assert.AreEqual(hash1, hash2);
     }
@@ -155,14 +155,14 @@ public class SqlTemplateTests : TestBase
     {
         // Arrange
         var parameters = new DbParameter[] { CreateMockParameter("@id", 1) };
-        
+
         var template1 = new SqlTemplate("SELECT * FROM Users", parameters);
         var template2 = new SqlTemplate("SELECT * FROM Products", parameters);
-        
+
         // Act
         int hash1 = template1.GetHashCode();
         int hash2 = template2.GetHashCode();
-        
+
         // Assert
         Assert.AreNotEqual(hash1, hash2);
     }
@@ -173,10 +173,10 @@ public class SqlTemplateTests : TestBase
         // Arrange
         var original = new SqlTemplate("SELECT * FROM Users", new DbParameter[0]);
         string newSql = "SELECT * FROM Products";
-        
+
         // Act
         var updated = original with { Sql = newSql };
-        
+
         // Assert
         Assert.AreEqual(newSql, updated.Sql);
         Assert.AreEqual(original.Parameters, updated.Parameters);
@@ -189,10 +189,10 @@ public class SqlTemplateTests : TestBase
         // Arrange
         var original = new SqlTemplate("SELECT * FROM Users", new DbParameter[0]);
         var newParameters = new DbParameter[] { CreateMockParameter("@id", 1) };
-        
+
         // Act
         var updated = original with { Parameters = newParameters };
-        
+
         // Assert
         Assert.AreEqual(original.Sql, updated.Sql);
         Assert.AreEqual(newParameters, updated.Parameters);
@@ -206,10 +206,10 @@ public class SqlTemplateTests : TestBase
         var original = new SqlTemplate("SELECT * FROM Users", new DbParameter[0]);
         string newSql = "SELECT * FROM Products";
         var newParameters = new DbParameter[] { CreateMockParameter("@id", 1) };
-        
+
         // Act
         var updated = original with { Sql = newSql, Parameters = newParameters };
-        
+
         // Assert
         Assert.AreEqual(newSql, updated.Sql);
         Assert.AreEqual(newParameters, updated.Parameters);
@@ -223,10 +223,10 @@ public class SqlTemplateTests : TestBase
         string sql = "SELECT * FROM Users WHERE Id = @id";
         var parameters = new DbParameter[] { CreateMockParameter("@id", 1) };
         var template = new SqlTemplate(sql, parameters);
-        
+
         // Act
         string result = template.ToString();
-        
+
         // Assert
         Assert.IsTrue(result.Contains(sql));
         Assert.IsTrue(result.Contains("1")); // Parameter count or content
@@ -239,10 +239,10 @@ public class SqlTemplateTests : TestBase
         string sql = "SELECT 1";
         var parameters = new DbParameter[0];
         var template = new SqlTemplate(sql, parameters);
-        
+
         // Act
         string result = template.ToString();
-        
+
         // Assert
         Assert.IsTrue(result.Contains(sql));
     }
@@ -254,10 +254,10 @@ public class SqlTemplateTests : TestBase
         string originalSql = "SELECT * FROM Users";
         var originalParameters = new DbParameter[] { CreateMockParameter("@id", 1) };
         var original = new SqlTemplate(originalSql, originalParameters);
-        
+
         // Act
         var updated = original with { Sql = "SELECT * FROM Products" };
-        
+
         // Assert
         Assert.AreEqual(originalSql, original.Sql);
         Assert.AreEqual(originalParameters, original.Parameters);
@@ -269,15 +269,15 @@ public class SqlTemplateTests : TestBase
     {
         // Arrange
         string sql = "SELECT * FROM Users WHERE Id = @id AND Name = @name AND Age > @age";
-        var parameters = new DbParameter[] { 
+        var parameters = new DbParameter[] {
             CreateMockParameter("@id", 1),
             CreateMockParameter("@name", "John"),
             CreateMockParameter("@age", 25)
         };
-        
+
         // Act
         var template = new SqlTemplate(sql, parameters);
-        
+
         // Assert
         Assert.AreEqual(sql, template.Sql);
         Assert.AreEqual(3, template.Parameters.Length);
@@ -290,13 +290,13 @@ public class SqlTemplateTests : TestBase
     public void LongSql_HandledCorrectly()
     {
         // Arrange
-        var longSql = string.Join(" UNION ALL ", 
+        var longSql = string.Join(" UNION ALL ",
             System.Linq.Enumerable.Repeat("SELECT 1 as col", 100));
         var parameters = new DbParameter[0];
-        
+
         // Act
         var template = new SqlTemplate(longSql, parameters);
-        
+
         // Assert
         Assert.AreEqual(longSql, template.Sql);
         Assert.AreEqual(0, template.Parameters.Length);
@@ -309,10 +309,10 @@ public class SqlTemplateTests : TestBase
         // Arrange
         string sql = "SELECT * FROM Users WHERE Name = @name";
         var parameters = new DbParameter[] { CreateMockParameter("@name", null) };
-        
+
         // Act
         var template = new SqlTemplate(sql, parameters);
-        
+
         // Assert
         Assert.AreEqual(sql, template.Sql);
         Assert.AreEqual(1, template.Parameters.Length);
@@ -325,10 +325,10 @@ public class SqlTemplateTests : TestBase
         // Arrange
         var template1 = new SqlTemplate("SELECT 1", new DbParameter[0]);
         var template2 = template1; // Value copy
-        
+
         // Act
         var template3 = template2 with { Sql = "SELECT 2" };
-        
+
         // Assert
         Assert.AreEqual(template1, template2); // Same value
         Assert.AreNotEqual(template1, template3); // Different value

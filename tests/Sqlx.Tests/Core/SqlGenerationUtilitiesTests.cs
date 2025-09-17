@@ -275,7 +275,7 @@ namespace Sqlx.Tests.Core
         {
             // Test parameter placeholder generation
             var parameterNames = new[] { "id", "name", "email", "created_at" };
-            
+
             // Different parameter styles
             var atParameters = parameterNames.Select(p => $"@{p}");
             var dollarParameters = parameterNames.Select(p => $"${p}");
@@ -306,14 +306,14 @@ namespace Sqlx.Tests.Core
             // Batch INSERT template
             var batchInsertTemplate = $"INSERT INTO {tableName} ({string.Join(", ", columns)}) VALUES ";
             var valueTemplate = $"({string.Join(", ", columns.Select(c => $"@{c}"))})";
-            
+
             Assert.AreEqual("INSERT INTO users (name, email) VALUES ", batchInsertTemplate);
             Assert.AreEqual("(@name, @email)", valueTemplate);
 
             // Multiple value sets for batch
             var multipleSets = new[] { "(@name1, @email1)", "(@name2, @email2)", "(@name3, @email3)" };
             var batchInsertSql = batchInsertTemplate + string.Join(", ", multipleSets);
-            
+
             Assert.AreEqual("INSERT INTO users (name, email) VALUES (@name1, @email1), (@name2, @email2), (@name3, @email3)", batchInsertSql);
 
             // Batch UPDATE (using CASE statements)

@@ -34,20 +34,20 @@ public static class SqlExecutionLogger
                 StartTime = DateTime.Now,
                 StartTicks = Stopwatch.GetTimestamp()
             };
-            
+
             _executionLogs.Add(log);
-            
+
             // 输出开始执行信息
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine($"🚀 [SQL执行开始] {operationName}");
             Console.ForegroundColor = ConsoleColor.DarkCyan;
             Console.WriteLine($"   📝 SQL: {FormatSql(command.CommandText)}");
-            
+
             if (log.Parameters.Any())
             {
                 Console.WriteLine($"   🔧 参数: {string.Join(", ", log.Parameters.Select(p => $"{p.Key}={p.Value}"))}");
             }
-            
+
             Console.WriteLine($"   ⏰ 开始时间: {log.StartTime:HH:mm:ss.fff}");
             Console.ResetColor();
         }
@@ -70,17 +70,17 @@ public static class SqlExecutionLogger
                 log.Result = result;
                 log.IsCompleted = true;
             }
-            
+
             // 输出执行完成信息
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine($"✅ [SQL执行完成] {operationName}");
             Console.ForegroundColor = ConsoleColor.DarkGreen;
-            
+
             if (log != null)
             {
                 Console.WriteLine($"   ⚡ 执行时间: {log.ElapsedMilliseconds:F2}ms");
                 Console.WriteLine($"   📊 结果类型: {result?.GetType().Name ?? "void"}");
-                
+
                 // 分析结果
                 if (result != null)
                 {
@@ -91,7 +91,7 @@ public static class SqlExecutionLogger
                     }
                 }
             }
-            
+
             Console.ResetColor();
             Console.WriteLine(); // 空行分隔
         }
@@ -105,7 +105,7 @@ public static class SqlExecutionLogger
         lock (_lock)
         {
             var completedLogs = _executionLogs.Where(l => l.IsCompleted).ToList();
-            
+
             return new SqlExecutionStatistics
             {
                 TotalExecutions = completedLogs.Count,
@@ -136,18 +136,18 @@ public static class SqlExecutionLogger
     public static void PrintStatisticsReport()
     {
         var stats = GetStatistics();
-        
+
         Console.ForegroundColor = ConsoleColor.Yellow;
         Console.WriteLine("\n📊 SQL执行统计报告");
         Console.WriteLine("==================");
         Console.ForegroundColor = ConsoleColor.White;
-        
+
         Console.WriteLine($"🔢 总执行次数: {stats.TotalExecutions}");
         Console.WriteLine($"⏱️  总执行时间: {stats.TotalExecutionTime:F2}ms");
         Console.WriteLine($"📈 平均执行时间: {stats.AverageExecutionTime:F2}ms");
         Console.WriteLine($"🚀 最快执行: {stats.FastestExecution:F2}ms");
         Console.WriteLine($"🐌 最慢执行: {stats.SlowestExecution:F2}ms");
-        
+
         if (stats.OperationCounts.Any())
         {
             Console.WriteLine("\n📋 操作统计:");
@@ -156,19 +156,19 @@ public static class SqlExecutionLogger
                 Console.WriteLine($"   • {operation.Key}: {operation.Value} 次");
             }
         }
-        
+
         Console.ResetColor();
     }
 
     private static Dictionary<string, object?> ExtractParameters(IDbCommand command)
     {
         var parameters = new Dictionary<string, object?>();
-        
+
         foreach (IDbDataParameter param in command.Parameters)
         {
             parameters[param.ParameterName] = param.Value;
         }
-        
+
         return parameters;
     }
 

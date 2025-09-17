@@ -131,7 +131,7 @@ namespace Sqlx.Tests.Core
             // Assert
             Console.WriteLine($"Nullable types SQL: {sql}");
             Assert.IsTrue(sql.Contains("Salary") || sql.Contains("UpdatedAt"), "应处理可空字段");
-            Assert.IsTrue(sql.Contains("IS NULL") || sql.Contains("IS NOT NULL") || sql.Contains("NULL"), 
+            Assert.IsTrue(sql.Contains("IS NULL") || sql.Contains("IS NOT NULL") || sql.Contains("NULL"),
                 "应包含NULL相关的比较");
         }
 
@@ -167,7 +167,7 @@ namespace Sqlx.Tests.Core
 
             // Assert
             Console.WriteLine($"Numeric operations SQL: {sql}");
-            Assert.IsTrue(sql.Contains("Age") && sql.Contains("Salary") && sql.Contains("Score"), 
+            Assert.IsTrue(sql.Contains("Age") && sql.Contains("Salary") && sql.Contains("Score"),
                 "应包含数值字段");
         }
 
@@ -193,9 +193,9 @@ namespace Sqlx.Tests.Core
             // Assert
             Console.WriteLine($"Template SQL: {template.Sql}");
             Console.WriteLine($"Parameters count: {template.Parameters.Length}");
-            
+
             Assert.IsNotNull(template.Sql, "模板SQL不应为空");
-            Assert.IsTrue(template.Sql.Contains("Age") && template.Sql.Contains("Name"), 
+            Assert.IsTrue(template.Sql.Contains("Age") && template.Sql.Contains("Name"),
                 "SQL应包含字段名");
         }
 
@@ -208,23 +208,23 @@ namespace Sqlx.Tests.Core
         {
             // Arrange & Act
             using var expr = ExpressionToSql<AdvancedTestEntity>.ForSqlServer();
-            
+
             var startTime = DateTime.Now;
-            
+
             // 添加多个WHERE条件
             for (int i = 0; i < 100; i++)
             {
                 expr.Where(e => e.Age > i);
             }
-            
+
             var sql = expr.ToSql();
             var endTime = DateTime.Now;
-            
+
             // Assert
             var duration = endTime - startTime;
             Console.WriteLine($"Generated SQL with 100 conditions in {duration.TotalMilliseconds}ms");
             Console.WriteLine($"SQL length: {sql.Length}");
-            
+
             Assert.IsTrue(duration.TotalMilliseconds < 1000, "生成100个条件应在1秒内完成");
             Assert.IsTrue(sql.Contains("WHERE"), "应包含WHERE子句");
             Assert.IsTrue(sql.Length > 500, "应生成相当长的SQL");
@@ -277,12 +277,12 @@ namespace Sqlx.Tests.Core
                            .Take(10);
 
                     var sql = builder.ToSql();
-                    
+
                     Console.WriteLine($"{dialectName} SQL: {sql}");
-                    
+
                     Assert.IsNotNull(sql, $"{dialectName} 应生成SQL");
                     Assert.IsTrue(sql.Length > 20, $"{dialectName} 应生成合理长度的SQL");
-                    Assert.IsTrue(sql.Contains("Age") && sql.Contains("IsActive") && sql.Contains("Name"), 
+                    Assert.IsTrue(sql.Contains("Age") && sql.Contains("IsActive") && sql.Contains("Name"),
                         $"{dialectName} 应包含所有查询字段");
                 }
             }

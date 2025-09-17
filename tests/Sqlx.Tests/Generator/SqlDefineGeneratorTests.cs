@@ -37,7 +37,7 @@ namespace Sqlx.Tests.Generator
             foreach (var (enumValue, expectedInt, expectedSqlDefine) in testCases)
             {
                 // 验证枚举的整数值
-                Assert.AreEqual(expectedInt, (int)enumValue, 
+                Assert.AreEqual(expectedInt, (int)enumValue,
                     $"枚举 {enumValue} 的整数值应该是 {expectedInt}");
 
                 // 验证映射到内部SqlDefine
@@ -120,9 +120,9 @@ namespace Sqlx.Tests.Generator
                 var wrappedColumn = sqlDefine.WrapColumn(testColumn);
                 var wrappedString = sqlDefine.WrapString(testString);
 
-                Assert.AreEqual(expectedColumn, wrappedColumn, 
+                Assert.AreEqual(expectedColumn, wrappedColumn,
                     $"列包装错误: {sqlDefine.GetType().Name}");
-                Assert.AreEqual(expectedString, wrappedString, 
+                Assert.AreEqual(expectedString, wrappedString,
                     $"字符串包装错误: {sqlDefine.GetType().Name}");
 
                 Console.WriteLine($"✅ 包装测试: {wrappedColumn}, {wrappedString}");
@@ -152,20 +152,20 @@ namespace Sqlx.Tests.Generator
             {
                 // 模拟特性创建
                 var attribute = new SqlDefineAttribute(enumValue);
-                
+
                 // 模拟生成器读取特性
                 var parsedDialectType = attribute.DialectType;
                 var parsedDialectName = attribute.DialectName;
-                
+
                 // 模拟生成器转换为内部SqlDefine
                 var sqlDefine = MapEnumToSqlDefine((int)parsedDialectType!);
-                
+
                 // 验证结果
                 Assert.AreEqual(enumValue, parsedDialectType);
                 Assert.AreEqual(dialectName, parsedDialectName);
                 Assert.AreEqual(expectedLeft, sqlDefine.ColumnLeft);
                 Assert.AreEqual(expectedRight, sqlDefine.ColumnRight);
-                
+
                 Console.WriteLine($"✅ 生成器集成模拟: {enumValue} -> {sqlDefine.ColumnLeft}column{sqlDefine.ColumnRight}");
             }
         }
@@ -175,16 +175,16 @@ namespace Sqlx.Tests.Generator
         {
             // 测试生成器对未知枚举值的回退处理
             var unknownValues = new[] { -1, 999, int.MaxValue, int.MinValue };
-            
+
             foreach (var unknownValue in unknownValues)
             {
                 var fallbackSqlDefine = MapEnumToSqlDefine(unknownValue);
-                
+
                 // 应该回退到 SqlServer 默认值
                 Assert.AreEqual(Sqlx.Generator.Core.SqlDefine.SqlServer.ColumnLeft, fallbackSqlDefine.ColumnLeft);
                 Assert.AreEqual(Sqlx.Generator.Core.SqlDefine.SqlServer.ColumnRight, fallbackSqlDefine.ColumnRight);
                 Assert.AreEqual(Sqlx.Generator.Core.SqlDefine.SqlServer.ParameterPrefix, fallbackSqlDefine.ParameterPrefix);
-                
+
                 Console.WriteLine($"✅ 未知值回退: {unknownValue} -> SQL Server 默认配置");
             }
         }
@@ -219,7 +219,7 @@ namespace Sqlx.Tests.Generator
 
                 Assert.AreEqual(expectedTable, wrappedTable);
                 Assert.AreEqual(expectedColumn, wrappedColumn);
-                
+
                 if (sqlDefine.ParameterPrefix != "?")
                 {
                     Assert.AreEqual(expectedParam, formattedParam);
@@ -227,7 +227,7 @@ namespace Sqlx.Tests.Generator
 
                 // 模拟生成完整的SELECT语句
                 var selectSql = $"SELECT {wrappedColumn} FROM {wrappedTable} WHERE {wrappedColumn} = {formattedParam}";
-                
+
                 Console.WriteLine($"✅ SQL生成: {selectSql}");
             }
         }
@@ -241,25 +241,25 @@ namespace Sqlx.Tests.Generator
         {
             // 测试枚举映射的性能
             const int iterations = 100000;
-            
+
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-            
+
             for (int i = 0; i < iterations; i++)
             {
                 var enumValue = i % 6; // 循环使用0-5
                 var sqlDefine = MapEnumToSqlDefine(enumValue);
-                
+
                 // 执行一些基本操作来模拟实际使用
                 _ = sqlDefine.WrapColumn("TestColumn");
                 _ = sqlDefine.WrapString("TestString");
             }
-            
+
             stopwatch.Stop();
-            
+
             // 应该在合理时间内完成（比如100ms内）
-            Assert.IsTrue(stopwatch.ElapsedMilliseconds < 100, 
+            Assert.IsTrue(stopwatch.ElapsedMilliseconds < 100,
                 $"枚举映射性能不佳: {iterations}次操作耗时 {stopwatch.ElapsedMilliseconds}ms");
-            
+
             Console.WriteLine($"✅ 生成器性能: {iterations}次枚举映射耗时 {stopwatch.ElapsedMilliseconds}ms");
         }
 
@@ -289,7 +289,7 @@ namespace Sqlx.Tests.Generator
                 {
                     if (input == null)
                     {
-                        Assert.ThrowsException<ArgumentNullException>(() => 
+                        Assert.ThrowsException<ArgumentNullException>(() =>
                             new SqlDefineAttribute(input!));
                         Console.WriteLine("✅ NULL输入正确抛出异常");
                         continue;
@@ -307,10 +307,10 @@ namespace Sqlx.Tests.Generator
 
                     var attribute = new SqlDefineAttribute(input);
                     var hasDialectType = attribute.DialectType.HasValue;
-                    
-                    Assert.AreEqual(shouldParse, hasDialectType, 
+
+                    Assert.AreEqual(shouldParse, hasDialectType,
                         $"解析结果不符合预期: '{input}' 应该 {(shouldParse ? "能" : "不能")} 解析");
-                    
+
                     Console.WriteLine($"✅ 错误处理: '{input}' -> {(hasDialectType ? "成功解析" : "解析失败")}");
                 }
                 catch (ArgumentNullException) when (input == null || input == "")

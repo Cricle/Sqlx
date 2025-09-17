@@ -25,7 +25,7 @@ public static class OptimizedSqlBuilder
     public static string BuildSelect(string tableName, IEnumerable<string>? columns = null, IEnumerable<string>? whereColumns = null, int? limit = null)
     {
         var cacheKey = $"SELECT_{tableName}_{string.Join(",", columns ?? Enumerable.Empty<string>())}_{string.Join(",", whereColumns ?? Enumerable.Empty<string>())}_{limit}";
-        
+
         if (_sqlCache.TryGetValue(cacheKey, out var cachedSql))
             return cachedSql;
 
@@ -33,7 +33,7 @@ public static class OptimizedSqlBuilder
         {
             _sharedBuilder.Clear();
             _sharedBuilder.Append("SELECT ");
-            
+
             if (columns?.Any() == true)
             {
                 _sharedBuilder.Append(string.Join(", ", columns));
@@ -42,15 +42,15 @@ public static class OptimizedSqlBuilder
             {
                 _sharedBuilder.Append("*");
             }
-            
+
             _sharedBuilder.Append(" FROM ").Append(tableName);
-            
+
             if (whereColumns?.Any() == true)
             {
                 _sharedBuilder.Append(" WHERE ");
                 _sharedBuilder.Append(string.Join(" AND ", whereColumns.Select(col => $"{col} = @{col}")));
             }
-            
+
             if (limit.HasValue)
             {
                 _sharedBuilder.Append(" LIMIT ").Append(limit.Value);
@@ -69,7 +69,7 @@ public static class OptimizedSqlBuilder
     {
         var columnList = columns.ToList();
         var cacheKey = $"INSERT_{tableName}_{string.Join(",", columnList)}";
-        
+
         if (_sqlCache.TryGetValue(cacheKey, out var cachedSql))
             return cachedSql;
 
@@ -96,7 +96,7 @@ public static class OptimizedSqlBuilder
         var setList = setColumns.ToList();
         var whereList = whereColumns?.ToList() ?? new List<string> { "id" };
         var cacheKey = $"UPDATE_{tableName}_{string.Join(",", setList)}_{string.Join(",", whereList)}";
-        
+
         if (_sqlCache.TryGetValue(cacheKey, out var cachedSql))
             return cachedSql;
 
@@ -121,7 +121,7 @@ public static class OptimizedSqlBuilder
     {
         var whereList = whereColumns?.ToList() ?? new List<string> { "id" };
         var cacheKey = $"DELETE_{tableName}_{string.Join(",", whereList)}";
-        
+
         if (_sqlCache.TryGetValue(cacheKey, out var cachedSql))
             return cachedSql;
 
@@ -172,8 +172,8 @@ public static class OptimizedSqlBuilder
         // Check for TableName attribute
         var tableNameAttr = entityType.GetAttributes()
             .FirstOrDefault(a => a.AttributeClass?.Name == "TableNameAttribute" || a.AttributeClass?.Name == "TableAttribute");
-        
-        if (tableNameAttr?.ConstructorArguments.Length > 0 && 
+
+        if (tableNameAttr?.ConstructorArguments.Length > 0 &&
             tableNameAttr.ConstructorArguments[0].Value is string tableName)
         {
             return tableName;

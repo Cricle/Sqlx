@@ -60,18 +60,18 @@ namespace TestNamespace
 
         // Act
         var compilation = CreateCompilation(sourceCode);
-        
+
         // Assert
         var diagnostics = compilation.GetDiagnostics();
         var errors = diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToArray();
-        
+
         // Should compile without critical errors (ignore reference and nullable warnings)
         Assert.IsTrue(errors.Length <= 8, $"Expected at most 8 errors (netstandard references), but got {errors.Length}: {string.Join(", ", errors.Select(e => e.GetMessage()))}");
-        
+
         // Verify that the generator ran and produced code
         var syntaxTrees = compilation.SyntaxTrees.ToArray();
         Assert.IsTrue(syntaxTrees.Length > 1, "Expected generated syntax trees");
-        
+
         // Check if any generated tree contains the expected method signature
         var generatedCode = string.Join("\n", syntaxTrees.Skip(1).Select(tree => tree.ToString()));
         Assert.IsTrue(generatedCode.Contains("CreateUserAsync"), "Generated code should contain CreateUserAsync method");
@@ -103,7 +103,7 @@ namespace TestNamespace
     private static Compilation CreateCompilation(string source)
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(source);
-        
+
         var references = new[]
         {
             MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
@@ -136,7 +136,7 @@ namespace TestNamespace
         {
             System.Diagnostics.Debug.WriteLine($"Generated tree: {tree.FilePath}");
         }
-        
+
         if (diagnostics.Any())
         {
             System.Diagnostics.Debug.WriteLine($"Diagnostics: {diagnostics.Length}");

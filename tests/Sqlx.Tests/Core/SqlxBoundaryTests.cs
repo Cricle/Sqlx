@@ -56,7 +56,7 @@ namespace Sqlx.Tests.Core
         {
             // Arrange & Act
             using var expr = ExpressionToSql<BoundaryTestEntity>.ForSqlServer();
-            
+
             expr.Where(e => e.Id == int.MaxValue)
                 .Where(e => e.Id == int.MinValue)
                 .Where(e => e.Id == 0)
@@ -68,11 +68,11 @@ namespace Sqlx.Tests.Core
             // Assert
             Assert.IsNotNull(sql);
             Assert.IsTrue(sql.Contains("Id"), "应包含 Id 列");
-            Assert.IsTrue(sql.Contains(int.MaxValue.ToString()) || sql.Contains("@"), 
+            Assert.IsTrue(sql.Contains(int.MaxValue.ToString()) || sql.Contains("@"),
                 "应处理 int.MaxValue");
-            Assert.IsTrue(sql.Contains(int.MinValue.ToString()) || sql.Contains("@"), 
+            Assert.IsTrue(sql.Contains(int.MinValue.ToString()) || sql.Contains("@"),
                 "应处理 int.MinValue");
-            
+
             Console.WriteLine($"✅ 整数边界测试: {sql}");
         }
 
@@ -81,7 +81,7 @@ namespace Sqlx.Tests.Core
         {
             // Arrange & Act
             using var expr = ExpressionToSql<BoundaryTestEntity>.ForSqlServer();
-            
+
             expr.Where(e => e.BigNumber == long.MaxValue)
                 .Where(e => e.BigNumber == long.MinValue)
                 .Where(e => e.BigNumber == 0L);
@@ -91,7 +91,7 @@ namespace Sqlx.Tests.Core
             // Assert
             Assert.IsNotNull(sql);
             Assert.IsTrue(sql.Contains("BigNumber"), "应包含 BigNumber 列");
-            
+
             Console.WriteLine($"✅ Long 边界测试: {sql}");
         }
 
@@ -106,7 +106,7 @@ namespace Sqlx.Tests.Core
 
             // Act
             using var expr = ExpressionToSql<BoundaryTestEntity>.ForSqlServer();
-            
+
             expr.Where(e => e.Price == maxDecimal)
                 .Where(e => e.Price == minDecimal)
                 .Where(e => e.Price == preciseDecimal)
@@ -117,7 +117,7 @@ namespace Sqlx.Tests.Core
             // Assert
             Assert.IsNotNull(sql);
             Assert.IsTrue(sql.Contains("Price"), "应包含 Price 列");
-            
+
             Console.WriteLine($"✅ Decimal 精度边界测试: {sql}");
         }
 
@@ -126,7 +126,7 @@ namespace Sqlx.Tests.Core
         {
             // Arrange & Act
             using var expr = ExpressionToSql<BoundaryTestEntity>.ForSqlServer();
-            
+
             expr.Where(e => e.DoubleValue == double.MaxValue)
                 .Where(e => e.DoubleValue == double.MinValue)
                 .Where(e => e.DoubleValue == double.Epsilon)
@@ -138,9 +138,9 @@ namespace Sqlx.Tests.Core
 
             // Assert
             Assert.IsNotNull(sql);
-            Assert.IsTrue(sql.Contains("DoubleValue") || sql.Contains("FloatValue"), 
+            Assert.IsTrue(sql.Contains("DoubleValue") || sql.Contains("FloatValue"),
                 "应包含浮点数列");
-            
+
             Console.WriteLine($"✅ 浮点数边界测试: {sql}");
         }
 
@@ -149,7 +149,7 @@ namespace Sqlx.Tests.Core
         {
             // Arrange & Act
             using var expr = ExpressionToSql<BoundaryTestEntity>.ForSqlServer();
-            
+
             try
             {
                 expr.Where(e => e.DoubleValue == double.NaN)
@@ -176,7 +176,7 @@ namespace Sqlx.Tests.Core
         {
             // Arrange & Act
             using var expr = ExpressionToSql<BoundaryTestEntity>.ForSqlServer();
-            
+
             expr.Where(e => e.Name == "")
                 .Where(e => e.Name == null)
                 .Where(e => e.Name == " ")
@@ -190,7 +190,7 @@ namespace Sqlx.Tests.Core
             Assert.IsNotNull(sql);
             Assert.IsTrue(sql.Contains("Name"), "应包含 Name 列");
             Assert.IsTrue(sql.Contains("NULL") || sql.Contains("@"), "应处理空字符串和NULL");
-            
+
             Console.WriteLine($"✅ 空字符串边界测试: {sql}");
         }
 
@@ -205,7 +205,7 @@ namespace Sqlx.Tests.Core
 
             // Act
             using var expr = ExpressionToSql<BoundaryTestEntity>.ForSqlServer();
-            
+
             expr.Where(e => e.Name == shortString)
                 .Where(e => e.Name == mediumString)
                 .Where(e => e.Name == longString);
@@ -215,14 +215,14 @@ namespace Sqlx.Tests.Core
             // Assert
             Assert.IsNotNull(sql);
             Assert.IsTrue(sql.Contains("Name"), "应包含 Name 列");
-            
+
             // 测试超长字符串
             try
             {
                 using var expr2 = ExpressionToSql<BoundaryTestEntity>.ForSqlServer();
                 expr2.Where(e => e.Name == veryLongString);
                 var sql2 = expr2.ToSql();
-                
+
                 Console.WriteLine($"✅ 超长字符串测试通过，长度: {veryLongString.Length}");
             }
             catch (Exception ex)
@@ -253,7 +253,7 @@ namespace Sqlx.Tests.Core
 
             // Act & Assert
             using var expr = ExpressionToSql<BoundaryTestEntity>.ForSqlServer();
-            
+
             foreach (var testString in strings)
             {
                 try
@@ -261,7 +261,7 @@ namespace Sqlx.Tests.Core
                     using var testExpr = ExpressionToSql<BoundaryTestEntity>.ForSqlServer();
                     testExpr.Where(e => e.Name == testString);
                     var sql = testExpr.ToSql();
-                    
+
                     Assert.IsNotNull(sql);
                     Console.WriteLine($"✅ 特殊字符测试通过: '{testString.Substring(0, Math.Min(20, testString.Length))}...'");
                 }
@@ -281,7 +281,7 @@ namespace Sqlx.Tests.Core
         {
             // Arrange & Act
             using var expr = ExpressionToSql<BoundaryTestEntity>.ForSqlServer();
-            
+
             expr.Where(e => e.CreatedAt == DateTime.MinValue)
                 .Where(e => e.CreatedAt == DateTime.MaxValue)
                 .Where(e => e.CreatedAt == DateTime.UnixEpoch)
@@ -295,7 +295,7 @@ namespace Sqlx.Tests.Core
             // Assert
             Assert.IsNotNull(sql);
             Assert.IsTrue(sql.Contains("CreatedAt"), "应包含 CreatedAt 列");
-            
+
             Console.WriteLine($"✅ DateTime 边界测试: {sql}");
         }
 
@@ -307,7 +307,7 @@ namespace Sqlx.Tests.Core
 
             // Act
             using var expr = ExpressionToSql<BoundaryTestEntity>.ForSqlServer();
-            
+
             expr.Where(e => e.CreatedAt > baseDate.AddYears(100))
                 .Where(e => e.CreatedAt < baseDate.AddYears(-100))
                 .Where(e => e.CreatedAt >= baseDate.AddDays(int.MaxValue / 1000))  // 避免溢出
@@ -333,12 +333,12 @@ namespace Sqlx.Tests.Core
 
             // Act & Assert
             using var expr = ExpressionToSql<BoundaryTestEntity>.ForSqlServer();
-            
+
             try
             {
                 expr.Where(e => emptyIntList.Contains(e.Id));
                 var sql = expr.ToSql();
-                
+
                 Assert.IsNotNull(sql);
                 Console.WriteLine($"✅ 空集合测试通过: {sql}");
             }
@@ -352,7 +352,7 @@ namespace Sqlx.Tests.Core
                 using var expr2 = ExpressionToSql<BoundaryTestEntity>.ForSqlServer();
                 expr2.Where(e => emptyStringList.Contains(e.Name!));
                 var sql2 = expr2.ToSql();
-                
+
                 Console.WriteLine($"✅ 空字符串集合测试通过: {sql2}");
             }
             catch (Exception ex)
@@ -377,10 +377,10 @@ namespace Sqlx.Tests.Core
                     using var expr = ExpressionToSql<BoundaryTestEntity>.ForSqlServer();
                     expr.Where(e => list.Contains(e.Id));
                     var sql = expr.ToSql();
-                    
+
                     Assert.IsNotNull(sql);
                     Console.WriteLine($"✅ {size} 集合测试通过，大小: {list.Count}");
-                    
+
                     // 检查SQL长度是否合理
                     if (sql.Length > 1000000) // 1MB
                     {
@@ -409,7 +409,7 @@ namespace Sqlx.Tests.Core
             try
             {
                 using var expr = ExpressionToSql<BoundaryTestEntity>.ForSqlServer();
-                
+
                 // 构建复杂的查询
                 for (int i = 0; i < 100; i++)
                 {
@@ -433,9 +433,9 @@ namespace Sqlx.Tests.Core
 
                 // Assert
                 Assert.IsNotNull(sql);
-                Assert.IsTrue(duration < maxDuration, 
+                Assert.IsTrue(duration < maxDuration,
                     $"复杂表达式处理时间 {duration.TotalSeconds:F2}s 应小于 {maxDuration.TotalSeconds}s");
-                
+
                 Console.WriteLine($"✅ 复杂表达式性能测试通过，耗时: {duration.TotalMilliseconds:F2}ms");
                 Console.WriteLine($"生成的SQL长度: {sql.Length} 字符");
             }
@@ -460,18 +460,18 @@ namespace Sqlx.Tests.Core
                 expr.Where(e => e.Id == i)
                     .Where(e => e.Name == $"test{i}")
                     .OrderBy(e => e.CreatedAt);
-                
+
                 var sql = expr.ToSql();
-                
+
                 // 每100次迭代检查一次内存
                 if (i % 100 == 0)
                 {
                     GC.Collect();
                     var currentMemory = GC.GetTotalMemory(false);
                     var memoryIncrease = currentMemory - initialMemory;
-                    
+
                     Console.WriteLine($"迭代 {i}: 内存增长 {memoryIncrease / 1024}KB");
-                    
+
                     // 检查内存增长是否过大 (超过10MB认为可能有内存泄漏)
                     if (memoryIncrease > 10 * 1024 * 1024)
                     {
@@ -484,11 +484,11 @@ namespace Sqlx.Tests.Core
             GC.Collect();
             var finalMemory = GC.GetTotalMemory(true);
             var totalIncrease = finalMemory - initialMemory;
-            
+
             Console.WriteLine($"✅ 内存压力测试完成，总内存增长: {totalIncrease / 1024}KB");
-            
+
             // 内存增长不应超过5MB
-            Assert.IsTrue(totalIncrease < 5 * 1024 * 1024, 
+            Assert.IsTrue(totalIncrease < 5 * 1024 * 1024,
                 $"内存增长 {totalIncrease / 1024 / 1024}MB 应小于 5MB");
         }
 
@@ -518,7 +518,7 @@ namespace Sqlx.Tests.Core
                             expr.Where(e => e.Id == taskId * 100 + j)
                                 .Where(e => e.Name == $"task{taskId}_item{j}")
                                 .OrderBy(e => e.CreatedAt);
-                            
+
                             var sql = expr.ToSql();
                             Assert.IsNotNull(sql);
                         }
@@ -531,7 +531,7 @@ namespace Sqlx.Tests.Core
                         }
                     }
                 });
-                
+
                 tasks.Add(task);
             }
 
@@ -539,9 +539,9 @@ namespace Sqlx.Tests.Core
             System.Threading.Tasks.Task.WaitAll(tasks.ToArray(), TimeSpan.FromSeconds(30));
 
             // Assert
-            Assert.AreEqual(0, exceptions.Count, 
+            Assert.AreEqual(0, exceptions.Count,
                 $"并发访问不应产生异常，但发现 {exceptions.Count} 个异常");
-            
+
             Console.WriteLine($"✅ 并发访问测试通过，执行了 {tasks.Count * 100} 次操作");
         }
 

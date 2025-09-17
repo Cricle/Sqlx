@@ -15,34 +15,34 @@ public interface IAdvancedFeatureService
     /// 使用 ExpressionToSql 进行动态查询 - 演示表达式转SQL
     /// </summary>
     Task<IList<User>> GetUsersByExpressionAsync(Expression<Func<User, bool>> whereCondition);
-    
+
     /// <summary>
     /// 使用 ExpressionToSql 的复杂查询
     /// </summary>
     Task<IList<User>> GetActiveUsersByExpressionAsync(
         Expression<Func<User, bool>> whereCondition,
         Expression<Func<User, object>> orderBy);
-    
+
     /// <summary>
     /// 使用 SqlExecuteType 进行插入操作 - 演示操作类型标注
     /// </summary>
     Task<int> CreateUserAsync(string name, string email, int age, decimal salary, int departmentId);
-    
+
     /// <summary>
     /// 使用 SqlExecuteType 进行更新操作
     /// </summary>
     Task<int> UpdateUserSalaryAsync(int userId, decimal salary, decimal rating);
-    
+
     /// <summary>
     /// 使用 SqlExecuteType 进行删除操作
     /// </summary>
     Task<int> DeleteInactiveUserAsync(int userId);
-    
+
     /// <summary>
     /// 复杂视图查询统计 - 演示联表查询
     /// </summary>
     Task<int> GetUserDepartmentViewCountAsync();
-    
+
     /// <summary>
     /// 批量操作演示
     /// </summary>
@@ -67,33 +67,33 @@ public partial class AdvancedFeatureService : IAdvancedFeatureService
     // 暂时使用固定SQL查询替代ExpressionToSql功能，直到确认正确的语法
     [Sqlx("SELECT * FROM [user] WHERE [age] > 30 ORDER BY [name]")]
     public partial Task<IList<User>> GetUsersByExpressionAsync([ExpressionToSql] Expression<Func<User, bool>> whereCondition);
-    
+
     [Sqlx("SELECT * FROM [user] WHERE [salary] >= 80000 AND [age] <= 40 AND [is_active] = 1 ORDER BY [salary]")]
     public partial Task<IList<User>> GetActiveUsersByExpressionAsync(
         [ExpressionToSql] Expression<Func<User, bool>> whereCondition,
         [ExpressionToSql] Expression<Func<User, object>> orderBy);
-    
+
     [SqlExecuteType(SqlOperation.Insert, "user")]
     [Sqlx("INSERT INTO [user] ([name], [email], [age], [salary], [department_id], [is_active]) VALUES (@name, @email, @age, @salary, @departmentId, 1)")]
     public partial Task<int> CreateUserAsync(string name, string email, int age, decimal salary, int departmentId);
-    
+
     [SqlExecuteType(SqlOperation.Update, "user")]
     [Sqlx("UPDATE [user] SET [salary] = @salary, [performance_rating] = @rating WHERE [id] = @user_id")]
     public partial Task<int> UpdateUserSalaryAsync(int userId, decimal salary, decimal rating);
-    
+
     [SqlExecuteType(SqlOperation.Delete, "user")]
     [Sqlx("DELETE FROM [user] WHERE [id] = @user_id AND [is_active] = 0")]
     public partial Task<int> DeleteInactiveUserAsync(int userId);
-    
+
     // 暂时使用简化版本避免列名映射问题
     [Sqlx("SELECT COUNT(*) FROM [user] u INNER JOIN [department] d ON u.[department_id] = d.[id] WHERE u.[is_active] = 1")]
     public partial Task<int> GetUserDepartmentViewCountAsync();
-    
+
     // 原方法暂时注释 - 列名映射问题待解决
     // [Sqlx("SELECT u.[name] as 'UserName', d.[name] as 'DepartmentName', u.[salary] as 'Salary' FROM [user] u INNER JOIN [department] d ON u.[department_id] = d.[id] WHERE u.[is_active] = 1 ORDER BY u.[salary] DESC")]
     // [DbSetType(typeof(UserDepartmentView))]
     // public partial Task<IList<UserDepartmentView>> GetUserDepartmentViewAsync();
-    
+
     [Sqlx(@"INSERT INTO [user] ([name], [email], [age], [salary], [department_id], [is_active], [hire_date]) 
             VALUES (@name1, @email1, @age1, @salary1, @dept_id1, 1, @hire_date1),
                    (@name2, @email2, @age2, @salary2, @dept_id2, 1, @hire_date2),
@@ -138,7 +138,7 @@ public partial class RepositoryDemoService : IRepositoryDemoService
 
     [Sqlx("SELECT COUNT(*) FROM [user] WHERE [department_id] = @dept_id")]
     public partial Task<int> GetUserCountAsync(int deptId);
-    
+
     [Sqlx("SELECT AVG([salary]) FROM [user] WHERE [department_id] = @dept_id AND [is_active] = 1")]
     public partial Task<decimal> GetAverageSalaryAsync(int deptId);
 }

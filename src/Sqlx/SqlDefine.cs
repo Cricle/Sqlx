@@ -4,8 +4,6 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-#nullable enable
-
 namespace Sqlx
 {
     /// <summary>
@@ -36,10 +34,10 @@ namespace Sqlx
     /// Represents a SQL dialect configuration.
     /// </summary>
     public readonly record struct SqlDialect(
-        string ColumnLeft, 
-        string ColumnRight, 
-        string StringLeft, 
-        string StringRight, 
+        string ColumnLeft,
+        string ColumnRight,
+        string StringLeft,
+        string StringRight,
         string ParameterPrefix)
     {
         /// <summary>Wraps a column name with dialect-specific delimiters.</summary>
@@ -50,7 +48,7 @@ namespace Sqlx
 
         /// <summary>Creates a parameter with dialect-specific prefix.</summary>
         public string CreateParameter(string name) => $"{ParameterPrefix}{name}";
-        
+
         /// <summary>Gets the database type based on dialect characteristics.</summary>
         public string DatabaseType => (ColumnLeft, ColumnRight, ParameterPrefix) switch
         {

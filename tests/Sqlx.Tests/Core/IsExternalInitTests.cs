@@ -21,11 +21,11 @@ public class IsExternalInitTests : TestBase
     {
         // Arrange
         var sqlxAssembly = typeof(Sqlx.ExpressionToSql<>).Assembly;
-        
+
         // Act
         var isExternalInitType = sqlxAssembly.GetTypes()
             .FirstOrDefault(t => t.Name == "IsExternalInit");
-        
+
         // Assert
         Assert.IsNotNull(isExternalInitType, "IsExternalInit class should exist in Sqlx assembly");
         Assert.IsTrue(isExternalInitType.IsClass, "IsExternalInit should be a class");
@@ -36,11 +36,11 @@ public class IsExternalInitTests : TestBase
     {
         // Arrange
         var sqlxAssembly = typeof(Sqlx.ExpressionToSql<>).Assembly;
-        
+
         // Act
         var isExternalInitType = sqlxAssembly.GetTypes()
             .FirstOrDefault(t => t.Name == "IsExternalInit");
-        
+
         // Assert
         Assert.IsNotNull(isExternalInitType);
         Assert.IsFalse(isExternalInitType.IsPublic, "IsExternalInit should be internal");
@@ -51,11 +51,11 @@ public class IsExternalInitTests : TestBase
     {
         // Arrange
         var sqlxAssembly = typeof(Sqlx.ExpressionToSql<>).Assembly;
-        
+
         // Act
         var isExternalInitType = sqlxAssembly.GetTypes()
             .FirstOrDefault(t => t.Name == "IsExternalInit");
-        
+
         // Assert
         Assert.IsNotNull(isExternalInitType);
         Assert.AreEqual("System.Runtime.CompilerServices", isExternalInitType.Namespace);
@@ -66,13 +66,13 @@ public class IsExternalInitTests : TestBase
     {
         // This test verifies that init-only properties work with record types
         // We'll test this using the SqlTemplate record which uses init-only properties
-        
+
         // Arrange & Act
         var template = new Sqlx.Annotations.SqlTemplate("SELECT 1", new System.Data.Common.DbParameter[0]);
-        
+
         // This should compile because SqlTemplate uses init-only properties
         var newTemplate = template with { Sql = "SELECT 2" };
-        
+
         // Assert
         Assert.AreEqual("SELECT 1", template.Sql);
         Assert.AreEqual("SELECT 2", newTemplate.Sql);
@@ -83,13 +83,13 @@ public class IsExternalInitTests : TestBase
     {
         // Test that record types in the project work correctly
         // This is an indirect test of IsExternalInit functionality
-        
+
         // Arrange
         var original = new Sqlx.Annotations.SqlTemplate("SELECT * FROM Users", null!);
-        
+
         // Act
         var modified = original with { Sql = "SELECT * FROM Products" };
-        
+
         // Assert
         Assert.AreNotEqual(original, modified);
         Assert.AreEqual("SELECT * FROM Users", original.Sql);

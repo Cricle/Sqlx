@@ -14,7 +14,7 @@ namespace Sqlx.Annotations
     public enum SqlOperation
     {
         Select,
-        Insert, 
+        Insert,
         Update,
         Delete
     }

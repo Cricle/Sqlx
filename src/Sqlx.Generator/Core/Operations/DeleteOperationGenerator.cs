@@ -21,7 +21,7 @@ public class DeleteOperationGenerator : BaseOperationGenerator
     public override bool CanHandle(IMethodSymbol method)
     {
         var methodName = method.Name.ToLowerInvariant();
-        return methodName.Contains("delete") || 
+        return methodName.Contains("delete") ||
                methodName.Contains("remove");
     }
 
@@ -45,14 +45,14 @@ public class DeleteOperationGenerator : BaseOperationGenerator
         sb.AppendLine("// 🚀 智能删除操作 - 支持ID、实体、任意字段删除");
 
         // Check parameters in priority order
-        var idParam = method.Parameters.FirstOrDefault(p => 
+        var idParam = method.Parameters.FirstOrDefault(p =>
             p.Name.Equals("id", System.StringComparison.OrdinalIgnoreCase));
-        var entityParam = method.Parameters.FirstOrDefault(p => 
-            p.Type.TypeKind == TypeKind.Class && 
-            p.Type.Name != "String" && 
+        var entityParam = method.Parameters.FirstOrDefault(p =>
+            p.Type.TypeKind == TypeKind.Class &&
+            p.Type.Name != "String" &&
             p.Type.Name != "CancellationToken");
         var collectionParam = method.Parameters.FirstOrDefault(p => TypeAnalyzer.IsCollectionType(p.Type));
-        var conditionParams = method.Parameters.Where(p => 
+        var conditionParams = method.Parameters.Where(p =>
             p.Type.SpecialType != SpecialType.None &&
             p.Name != "id" &&
             p.Type.Name != "CancellationToken").ToList();
@@ -84,7 +84,7 @@ public class DeleteOperationGenerator : BaseOperationGenerator
         GenerateMethodCompletion(sb, method, methodName);
     }
 
-    private void GenerateBatchDelete(IndentedStringBuilder sb, IParameterSymbol collectionParam, 
+    private void GenerateBatchDelete(IndentedStringBuilder sb, IParameterSymbol collectionParam,
         string tableName, SqlDefine sqlDefine, bool isAsync, IMethodSymbol method)
     {
         sb.AppendLine($"// Batch delete for {collectionParam.Name}");
@@ -103,7 +103,7 @@ public class DeleteOperationGenerator : BaseOperationGenerator
         sb.AppendLine($"foreach (var item in {collectionParam.Name})");
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         // Check if item is a value type (likely ID) or entity
         if (IsValueTypeCollection(collectionParam.Type))
         {
@@ -123,7 +123,7 @@ public class DeleteOperationGenerator : BaseOperationGenerator
             sb.AppendLine("paramId.Value = item.Id;");
             sb.AppendLine("__repoCmd__.Parameters.Add(paramId);");
         }
-        
+
         GenerateCommandExecution(sb, isAsync, method);
         sb.AppendLine("totalAffected += __repoResult__;");
         sb.PopIndent();
@@ -131,31 +131,31 @@ public class DeleteOperationGenerator : BaseOperationGenerator
         sb.AppendLine("__repoResult__ = totalAffected;");
     }
 
-    private void GenerateDeleteById(IndentedStringBuilder sb, IParameterSymbol idParam, 
+    private void GenerateDeleteById(IndentedStringBuilder sb, IParameterSymbol idParam,
         string tableName, SqlDefine sqlDefine, bool isAsync, IMethodSymbol method)
     {
         sb.AppendLine($"// Delete by ID: {idParam.Name}");
         sb.AppendLine($"__repoCmd__.CommandText = \"DELETE FROM {tableName} WHERE Id = @id\";");
-        
+
         sb.AppendLine("var paramId = __repoCmd__.CreateParameter();");
         sb.AppendLine("paramId.ParameterName = \"@id\";");
         sb.AppendLine($"paramId.Value = {idParam.Name};");
         sb.AppendLine($"paramId.DbType = {GetDbTypeForParameter(idParam)};");
         sb.AppendLine("__repoCmd__.Parameters.Add(paramId);");
         sb.AppendLine();
-        
+
         GenerateCommandExecution(sb, isAsync, method);
     }
 
-    private void GenerateDeleteByEntity(IndentedStringBuilder sb, IParameterSymbol entityParam, 
+    private void GenerateDeleteByEntity(IndentedStringBuilder sb, IParameterSymbol entityParam,
         INamedTypeSymbol? entityType, string tableName, SqlDefine sqlDefine, bool isAsync, IMethodSymbol method)
     {
         sb.AppendLine($"// Delete by entity: {entityParam.Name}");
-        
+
         // Try to use ID property first
         var idProperty = entityType?.GetMembers().OfType<IPropertySymbol>()
             .FirstOrDefault(p => p.Name.Equals("Id", System.StringComparison.OrdinalIgnoreCase));
-        
+
         if (idProperty != null)
         {
             sb.AppendLine($"__repoCmd__.CommandText = \"DELETE FROM {tableName} WHERE Id = @id\";");
@@ -172,12 +172,12 @@ public class DeleteOperationGenerator : BaseOperationGenerator
                 .Where(p => p.CanBeReferencedByName && p.GetMethod != null)
                 .Take(3) // Limit to first 3 properties to avoid overly complex WHERE
                 .ToList();
-            
+
             if (properties?.Any() == true)
             {
                 var whereClause = string.Join(" AND ", properties.Select(p => $"{p.Name} = @{p.Name}"));
                 sb.AppendLine($"__repoCmd__.CommandText = \"DELETE FROM {tableName} WHERE {whereClause}\";");
-                
+
                 foreach (var prop in properties)
                 {
                     sb.AppendLine($"var param{prop.Name} = __repoCmd__.CreateParameter();");
@@ -188,19 +188,19 @@ public class DeleteOperationGenerator : BaseOperationGenerator
                 }
             }
         }
-        
+
         sb.AppendLine();
         GenerateCommandExecution(sb, isAsync, method);
     }
 
-    private void GenerateDeleteByConditions(IndentedStringBuilder sb, 
-        System.Collections.Generic.List<IParameterSymbol> conditionParams, 
+    private void GenerateDeleteByConditions(IndentedStringBuilder sb,
+        System.Collections.Generic.List<IParameterSymbol> conditionParams,
         string tableName, SqlDefine sqlDefine, bool isAsync, IMethodSymbol method)
     {
         sb.AppendLine("// Delete by conditions");
         var whereClause = string.Join(" AND ", conditionParams.Select(p => $"{InferColumnNameFromParameter(p.Name)} = @{p.Name}"));
         sb.AppendLine($"__repoCmd__.CommandText = \"DELETE FROM {tableName} WHERE {whereClause}\";");
-        
+
         foreach (var param in conditionParams)
         {
             sb.AppendLine($"var param{param.Name} = __repoCmd__.CreateParameter()!;");
@@ -209,18 +209,18 @@ public class DeleteOperationGenerator : BaseOperationGenerator
             sb.AppendLine($"param{param.Name}.DbType = {GetDbTypeForParameter(param)};");
             sb.AppendLine($"__repoCmd__.Parameters.Add(param{param.Name});");
         }
-        
+
         sb.AppendLine();
         GenerateCommandExecution(sb, isAsync, method);
     }
 
-    private void GenerateDeleteAll(IndentedStringBuilder sb, string tableName, 
+    private void GenerateDeleteAll(IndentedStringBuilder sb, string tableName,
         SqlDefine sqlDefine, bool isAsync, IMethodSymbol method)
     {
         sb.AppendLine("// Delete all (use with caution!)");
         sb.AppendLine($"__repoCmd__.CommandText = \"DELETE FROM {tableName}\";");
         sb.AppendLine();
-        
+
         GenerateCommandExecution(sb, isAsync, method);
     }
 
@@ -240,7 +240,7 @@ public class DeleteOperationGenerator : BaseOperationGenerator
     private void GenerateMethodCompletion(IndentedStringBuilder sb, IMethodSymbol method, string methodName)
     {
         sb.AppendLine($"OnExecuted(\"{methodName}\", __repoCmd__, __repoResult__, System.Diagnostics.Stopwatch.GetTimestamp() - __repoStartTime__);");
-        
+
         if (!method.ReturnsVoid)
         {
             // Note: Return statement is handled by CodeGenerationService
@@ -263,7 +263,7 @@ public class DeleteOperationGenerator : BaseOperationGenerator
         // Convert camelCase to PascalCase for column names
         if (string.IsNullOrEmpty(parameterName))
             return parameterName;
-        
+
         return char.ToUpperInvariant(parameterName[0]) + parameterName.Substring(1);
     }
 

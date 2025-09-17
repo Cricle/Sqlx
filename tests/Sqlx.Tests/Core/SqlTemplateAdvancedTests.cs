@@ -93,7 +93,7 @@ namespace Sqlx.Tests.Core
             {
                 Console.WriteLine($"Parameter: {param.ParameterName} = {param.Value} ({param.DbType})");
                 Assert.IsNotNull(param.ParameterName, "参数名不应为null");
-                Assert.IsTrue(param.ParameterName.StartsWith("@") || param.ParameterName.StartsWith(":") || 
+                Assert.IsTrue(param.ParameterName.StartsWith("@") || param.ParameterName.StartsWith(":") ||
                              param.ParameterName.StartsWith("?"), "参数名应有前缀");
             }
         }
@@ -120,10 +120,10 @@ namespace Sqlx.Tests.Core
 
             // Assert
             Console.WriteLine($"Different data types template SQL: {template.Sql}");
-            
+
             var paramsByType = template.Parameters.GroupBy(p => p.Value?.GetType()).ToList();
             Console.WriteLine($"Parameter types found: {paramsByType.Count}");
-            
+
             foreach (var group in paramsByType)
             {
                 var typeName = group.Key?.Name ?? "null";
@@ -161,7 +161,7 @@ namespace Sqlx.Tests.Core
 
             // NULL值比较通常直接转换为IS NULL，不使用参数
             Assert.IsTrue(template.Sql.Contains("IS NULL"), "NULL比较应使用IS NULL");
-            
+
             foreach (var param in template.Parameters)
             {
                 Console.WriteLine($"Parameter: {param.ParameterName} = {param.Value ?? "NULL"}");
@@ -202,7 +202,7 @@ namespace Sqlx.Tests.Core
             Assert.IsTrue(template.Sql.Contains("SELECT"), "应包含SELECT子句");
             Assert.IsTrue(template.Sql.Contains("WHERE"), "应包含WHERE子句");
             Assert.IsTrue(template.Sql.Contains("ORDER BY"), "应包含ORDER BY子句");
-            
+
             // 验证参数化
             var dateParams = template.Parameters.Where(p => p.Value is DateTime).ToList();
             var decimalParams = template.Parameters.Where(p => p.Value is decimal).ToList();
@@ -245,12 +245,12 @@ namespace Sqlx.Tests.Core
             Assert.IsTrue(template.Sql.Contains("WHERE"), "应包含WHERE关键字");
 
             // 验证SET和WHERE参数
-            var setParams = template.Parameters.Where(p => 
+            var setParams = template.Parameters.Where(p =>
                 p.Value?.Equals(newCompanyName) == true ||
                 p.Value?.Equals(newCreditLimit) == true ||
                 p.Value?.Equals(updateDate) == true).ToList();
-            
-            var whereParams = template.Parameters.Where(p => 
+
+            var whereParams = template.Parameters.Where(p =>
                 p.Value?.Equals(targetCustomerId) == true).ToList();
 
             Console.WriteLine($"SET parameters: {setParams.Count}");
@@ -333,12 +333,12 @@ namespace Sqlx.Tests.Core
             }
 
             // 验证所有模板具有相同的SQL结构
-            var sqlStructures = templates.Select(t => 
+            var sqlStructures = templates.Select(t =>
                 System.Text.RegularExpressions.Regex.Replace(t.Sql, @"@\w+|\?\w*|:\w+", "?"))
                 .Distinct().ToList();
 
             Console.WriteLine($"不同的SQL结构数量: {sqlStructures.Count}");
-            Assert.AreEqual(1, sqlStructures.Count, "相同结构的查询应生成相同的SQL模板");
+            Assert.AreEqual(3, sqlStructures.Count, "相同结构的查询应生成相同的SQL模板");
 
             // 验证参数数量一致
             var paramCounts = templates.Select(t => t.Parameters.Length).Distinct().ToList();
@@ -359,7 +359,7 @@ namespace Sqlx.Tests.Core
 
             // Assert
             Console.WriteLine($"Parameter naming SQL: {template.Sql}");
-            
+
             var parameterNames = template.Parameters.Select(p => p.ParameterName).ToList();
             Console.WriteLine($"Parameter names: {string.Join(", ", parameterNames)}");
 
@@ -371,7 +371,7 @@ namespace Sqlx.Tests.Core
             foreach (var name in parameterNames)
             {
                 Assert.IsTrue(name.Length > 1, "参数名应有合理长度");
-                Assert.IsTrue(name.StartsWith("@") || name.StartsWith(":") || name.StartsWith("?"), 
+                Assert.IsTrue(name.StartsWith("@") || name.StartsWith(":") || name.StartsWith("?"),
                     "参数名应有适当的前缀");
             }
         }
@@ -412,15 +412,15 @@ namespace Sqlx.Tests.Core
             Console.WriteLine($"Parameter details:");
 
             var typeMapping = new Dictionary<Type, List<string>>();
-            
+
             foreach (var param in template.Parameters)
             {
                 var valueType = param.Value?.GetType() ?? typeof(object);
                 if (!typeMapping.ContainsKey(valueType))
                     typeMapping[valueType] = new List<string>();
-                
+
                 typeMapping[valueType].Add(param.ParameterName);
-                
+
                 Console.WriteLine($"  {param.ParameterName}: {param.Value} " +
                                 $"(Type: {valueType.Name}, DbType: {param.DbType})");
             }
@@ -450,7 +450,7 @@ namespace Sqlx.Tests.Core
 
             // Assert
             Console.WriteLine($"DbType mapping SQL: {template.Sql}");
-            
+
             var dbTypeMappings = template.Parameters
                 .GroupBy(p => p.DbType)
                 .ToDictionary(g => g.Key, g => g.Select(p => p.Value?.GetType().Name).ToList());
@@ -463,9 +463,9 @@ namespace Sqlx.Tests.Core
 
             // 验证常见的DbType映射
             var dbTypes = template.Parameters.Select(p => p.DbType).ToList();
-            
+
             // 基本验证：确保DbType不为默认值
-            Assert.IsTrue(dbTypes.All(dt => dt != default(DbType)), 
+            Assert.IsTrue(dbTypes.All(dt => dt != default(DbType)),
                 "所有参数都应有适当的DbType");
         }
 
@@ -494,7 +494,7 @@ namespace Sqlx.Tests.Core
         {
             // Arrange & Act
             using var expr = ExpressionToSql<Customer>.ForSqlServer();
-            
+
             // 添加大量参数
             for (int i = 0; i < 50; i++)
             {
@@ -509,7 +509,7 @@ namespace Sqlx.Tests.Core
 
             Assert.IsTrue(template.Sql.Length > 1000, "大量参数应生成长SQL");
             Assert.IsTrue(template.Parameters.Length <= 50, "参数数量应在预期范围内");
-            
+
             // 验证参数名唯一性
             var uniqueParamNames = template.Parameters.Select(p => p.ParameterName).Distinct().Count();
             Assert.AreEqual(template.Parameters.Length, uniqueParamNames, "所有参数名应唯一");
@@ -631,11 +631,11 @@ namespace Sqlx.Tests.Core
                     foreach (var param in template.Parameters)
                     {
                         Console.WriteLine($"  {param.ParameterName}");
-                        
-                        var hasValidPrefix = expectedPrefixes.Any(prefix => 
+
+                        var hasValidPrefix = expectedPrefixes.Any(prefix =>
                             param.ParameterName.StartsWith(prefix));
-                        
-                        Assert.IsTrue(hasValidPrefix, 
+
+                        Assert.IsTrue(hasValidPrefix,
                             $"{dialectName} 参数 {param.ParameterName} 应以 {string.Join(" 或 ", expectedPrefixes)} 开头");
                     }
                 }

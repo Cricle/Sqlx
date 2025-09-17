@@ -21,13 +21,13 @@ namespace Sqlx.Annotations
         /// </summary>
         public bool Equals(SqlTemplate other)
         {
-            return Sql == other.Sql && 
+            return Sql == other.Sql &&
                    (Parameters?.Length ?? 0) == (other.Parameters?.Length ?? 0) &&
-                   (Parameters == null && other.Parameters == null || 
-                    Parameters != null && other.Parameters != null && 
+                   (Parameters == null && other.Parameters == null ||
+                    Parameters != null && other.Parameters != null &&
                     Parameters.SequenceEqual(other.Parameters, DbParameterComparer.Instance));
         }
-        
+
         /// <summary>
         /// Returns the hash code for this SqlTemplate.
         /// </summary>
@@ -47,7 +47,7 @@ namespace Sqlx.Annotations
                 return hashCode;
             }
         }
-        
+
         /// <summary>
         /// Returns a string representation of the SqlTemplate.
         /// </summary>
@@ -56,28 +56,28 @@ namespace Sqlx.Annotations
             return $"SqlTemplate {{ Sql = {Sql}, Parameters = {(Parameters != null ? $"System.Data.Common.DbParameter[{Parameters.Length}]" : "null")} }}";
         }
     }
-    
+
     /// <summary>
     /// Comparer for DbParameter arrays.
     /// </summary>
     internal class DbParameterComparer : System.Collections.Generic.IEqualityComparer<DbParameter>
     {
         internal static readonly DbParameterComparer Instance = new();
-        
+
         public bool Equals(DbParameter? x, DbParameter? y)
         {
             if (ReferenceEquals(x, y)) return true;
             if (x == null || y == null) return false;
-            
+
             return x.ParameterName == y.ParameterName &&
                    Equals(x.Value, y.Value) &&
                    x.DbType == y.DbType;
         }
-        
+
         public int GetHashCode(DbParameter obj)
         {
             if (obj == null) return 0;
-            
+
             return (obj.ParameterName?.GetHashCode() ?? 0) ^
                    (obj.Value?.GetHashCode() ?? 0) ^
                    obj.DbType.GetHashCode();

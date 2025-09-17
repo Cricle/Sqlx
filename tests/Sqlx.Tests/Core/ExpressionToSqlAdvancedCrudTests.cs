@@ -39,7 +39,7 @@ namespace Sqlx.Tests.Core
             using var query = ExpressionToSql<User>.ForSqlServer()
                 .Select(u => new { u.Id, u.Name, u.Email })
                 .Where(u => u.IsActive);
-            
+
             var sql = query.ToSql();
 
             // Assert
@@ -47,7 +47,7 @@ namespace Sqlx.Tests.Core
             Assert.IsTrue(sql.Contains("SELECT [Id], [Name], [Email]"));
             Assert.IsTrue(sql.Contains("FROM [User]"));
             Assert.IsTrue(sql.Contains("WHERE [IsActive] = 1"));
-            
+
             Console.WriteLine($"✅ SELECT 匿名对象: {sql}");
         }
 
@@ -58,14 +58,14 @@ namespace Sqlx.Tests.Core
             using var query = ExpressionToSql<User>.ForSqlServer()
                 .Select(u => u.Name)
                 .Where(u => u.Age > 18);
-            
+
             var sql = query.ToSql();
 
             // Assert
             Assert.IsNotNull(sql);
             Assert.IsTrue(sql.Contains("SELECT [Name]"));
             Assert.IsTrue(sql.Contains("WHERE [Age] > 18"));
-            
+
             Console.WriteLine($"✅ SELECT 单属性: {sql}");
         }
 
@@ -76,14 +76,14 @@ namespace Sqlx.Tests.Core
             using var query = ExpressionToSql<User>.ForSqlServer()
                 .Select(u => u.Id, u => u.Name, u => u.Email)
                 .OrderBy(u => u.Name);
-            
+
             var sql = query.ToSql();
 
             // Assert
             Assert.IsNotNull(sql);
             Assert.IsTrue(sql.Contains("SELECT [Id], [Name], [Email]"));
             Assert.IsTrue(sql.Contains("ORDER BY [Name] ASC"));
-            
+
             Console.WriteLine($"✅ SELECT 多表达式: {sql}");
         }
 
@@ -94,13 +94,13 @@ namespace Sqlx.Tests.Core
             using var query = ExpressionToSql<User>.ForSqlServer();
             Expression<Func<User, object>>? nullExpression = null;
             query.Select(nullExpression!);
-            
+
             var sql = query.ToSql();
 
             // Assert - 应该生成默认的SELECT *
             Assert.IsNotNull(sql);
             Assert.IsTrue(sql.StartsWith("SELECT"));
-            
+
             Console.WriteLine($"✅ SELECT NULL表达式处理: {sql}");
         }
 
@@ -119,7 +119,7 @@ namespace Sqlx.Tests.Core
             var exception = Assert.ThrowsException<InvalidOperationException>(() => query.ToSql());
             Assert.IsTrue(exception.Message.Contains("DELETE"));
             Assert.IsTrue(exception.Message.Contains("WHERE"));
-            
+
             Console.WriteLine($"✅ DELETE 安全检查: {exception.Message}");
         }
 
@@ -130,14 +130,14 @@ namespace Sqlx.Tests.Core
             using var query = ExpressionToSql<User>.ForSqlServer()
                 .Delete()
                 .Where(u => u.Id == 1);
-            
+
             var sql = query.ToSql();
 
             // Assert
             Assert.IsNotNull(sql);
             Assert.IsTrue(sql.StartsWith("DELETE FROM [User]"));
             Assert.IsTrue(sql.Contains("WHERE [Id] = 1"));
-            
+
             Console.WriteLine($"✅ DELETE 带条件: {sql}");
         }
 
@@ -147,7 +147,7 @@ namespace Sqlx.Tests.Core
             // Arrange & Act
             using var query = ExpressionToSql<User>.ForSqlServer()
                 .Delete(u => u.Age < 18 && !u.IsActive);
-            
+
             var sql = query.ToSql();
 
             // Assert
@@ -156,7 +156,7 @@ namespace Sqlx.Tests.Core
             Assert.IsTrue(sql.Contains("WHERE"));
             Assert.IsTrue(sql.Contains("[Age] < 18"));
             Assert.IsTrue(sql.Contains("[IsActive] = 0"));
-            
+
             Console.WriteLine($"✅ DELETE 直接条件: {sql}");
         }
 
@@ -167,7 +167,7 @@ namespace Sqlx.Tests.Core
             using var query = ExpressionToSql<User>.ForSqlServer()
                 .Delete()
                 .Where(u => u.Department == "IT" && u.Salary > 50000);
-            
+
             var sql = query.ToSql();
 
             // Assert
@@ -176,7 +176,7 @@ namespace Sqlx.Tests.Core
             Assert.IsTrue(sql.Contains("WHERE"));
             Assert.IsTrue(sql.Contains("[Department] = 'IT'"));
             Assert.IsTrue(sql.Contains("[Salary] > 50000"));
-            
+
             Console.WriteLine($"✅ DELETE 复杂条件: {sql}");
         }
 
@@ -191,7 +191,7 @@ namespace Sqlx.Tests.Core
             using var query = ExpressionToSql<User>.ForSqlServer()
                 .Set(u => u.Name, "新名字")
                 .Where(u => u.Id == 1);
-            
+
             var sql = query.ToSql();
 
             // Assert
@@ -199,7 +199,7 @@ namespace Sqlx.Tests.Core
             Assert.IsTrue(sql.Contains("UPDATE [User] SET"), $"Expected UPDATE statement, got: {sql}");
             Assert.IsTrue(sql.Contains("[Name] = '新名字'"), $"Expected Name assignment, got: {sql}");
             Assert.IsTrue(sql.Contains("WHERE"), $"Expected WHERE clause, got: {sql}");
-            
+
             Console.WriteLine($"✅ UPDATE 自动模式切换: {sql}");
         }
 
@@ -210,7 +210,7 @@ namespace Sqlx.Tests.Core
             using var query = ExpressionToSql<User>.ForSqlServer()
                 .Set(u => u.Age, u => u.Age + 1)
                 .Where(u => u.Id == 1);
-            
+
             var sql = query.ToSql();
 
             // Assert
@@ -218,7 +218,7 @@ namespace Sqlx.Tests.Core
             Assert.IsTrue(sql.Contains("UPDATE [User] SET"), $"Expected UPDATE statement, got: {sql}");
             Assert.IsTrue(sql.Contains("[Age] = [Age] + 1"), $"Expected Age expression, got: {sql}");
             Assert.IsTrue(sql.Contains("WHERE"), $"Expected WHERE clause, got: {sql}");
-            
+
             Console.WriteLine($"✅ UPDATE 表达式SET: {sql}");
         }
 
@@ -231,7 +231,7 @@ namespace Sqlx.Tests.Core
                 .Set(u => u.Age, u => u.Age + 1)
                 .Set(u => u.IsActive, true)
                 .Where(u => u.Department == "HR");
-            
+
             var sql = query.ToSql();
 
             // Assert
@@ -241,7 +241,7 @@ namespace Sqlx.Tests.Core
             Assert.IsTrue(sql.Contains("[Age] = [Age] + 1"), $"Expected Age expression, got: {sql}");
             Assert.IsTrue(sql.Contains("[IsActive] = 1"), $"Expected IsActive assignment, got: {sql}");
             Assert.IsTrue(sql.Contains("WHERE"), $"Expected WHERE clause, got: {sql}");
-            
+
             Console.WriteLine($"✅ UPDATE 多SET子句: {sql}");
         }
 
@@ -253,14 +253,14 @@ namespace Sqlx.Tests.Core
                 .Update()
                 .Set(u => u.Email, "new@example.com")
                 .Where(u => u.Id == 5);
-            
+
             var sql = query.ToSql();
 
             // Assert
             Assert.IsNotNull(sql);
             Assert.IsTrue(sql.StartsWith("UPDATE [User] SET"));
             Assert.IsTrue(sql.Contains("[Email] = 'new@example.com'"));
-            
+
             Console.WriteLine($"✅ UPDATE 显式调用: {sql}");
         }
 
@@ -275,7 +275,7 @@ namespace Sqlx.Tests.Core
             using var query = ExpressionToSql<User>.ForSqlServer()
                 .Insert(u => new { u.Name, u.Email, u.Age })
                 .Values("张三", "zhang@example.com", 25);
-            
+
             var sql = query.ToSql();
 
             // Assert
@@ -283,7 +283,7 @@ namespace Sqlx.Tests.Core
             Assert.IsTrue(sql.StartsWith("INSERT INTO [User]"));
             Assert.IsTrue(sql.Contains("([Name], [Email], [Age])"));
             Assert.IsTrue(sql.Contains("VALUES ('张三', 'zhang@example.com', 25)"));
-            
+
             Console.WriteLine($"✅ INSERT 指定列: {sql}");
         }
 
@@ -294,14 +294,14 @@ namespace Sqlx.Tests.Core
             using var query = ExpressionToSql<User>.ForSqlServer()
                 .InsertInto()
                 .Values(1, "李四", "li@example.com", 30, true, DateTime.Now, 60000m, "IT");
-            
+
             var sql = query.ToSql();
 
             // Assert
             Assert.IsNotNull(sql);
             Assert.IsTrue(sql.StartsWith("INSERT INTO [User]"));
             Assert.IsTrue(sql.Contains("VALUES"));
-            
+
             Console.WriteLine($"✅ INSERT INTO 所有列: {sql}");
         }
 
@@ -313,7 +313,7 @@ namespace Sqlx.Tests.Core
                 .Insert(u => new { u.Name, u.Age })
                 .Values("用户1", 25)
                 .Values("用户2", 30);
-            
+
             var sql = query.ToSql();
 
             // Assert
@@ -321,7 +321,7 @@ namespace Sqlx.Tests.Core
             Assert.IsTrue(sql.Contains("INSERT INTO [User]"));
             Assert.IsTrue(sql.Contains("([Name], [Age])"));
             Assert.IsTrue(sql.Contains("VALUES ('用户1', 25), ('用户2', 30)"));
-            
+
             Console.WriteLine($"✅ INSERT 多行数据: {sql}");
         }
 
@@ -348,7 +348,7 @@ namespace Sqlx.Tests.Core
             using var delete = ExpressionToSql<User>.ForSqlServer()
                 .Delete(u => u.Id == 1);
             Assert.IsTrue(delete.ToSql().Contains("DELETE FROM [User]"));
-            
+
             Console.WriteLine("✅ SQL Server 方言测试通过");
         }
 
@@ -400,13 +400,13 @@ namespace Sqlx.Tests.Core
             using var query = ExpressionToSql<User>.ForSqlServer()
                 .Set(u => u.Department, (string?)null)
                 .Where(u => u.Id == 1);
-            
+
             var sql = query.ToSql();
 
             // Assert
             Assert.IsNotNull(sql);
             Assert.IsTrue(sql.Contains("[Department] = NULL"));
-            
+
             Console.WriteLine($"✅ NULL值处理: {sql}");
         }
 
@@ -417,14 +417,14 @@ namespace Sqlx.Tests.Core
             using var query = ExpressionToSql<User>.ForSqlServer()
                 .Set(u => u.IsActive, false)
                 .Where(u => u.IsActive == true);
-            
+
             var sql = query.ToSql();
 
             // Assert
             Assert.IsNotNull(sql);
             Assert.IsTrue(sql.Contains("[IsActive] = 0"));
             Assert.IsTrue(sql.Contains("[IsActive] = 1"));
-            
+
             Console.WriteLine($"✅ 布尔值转换: {sql}");
         }
 
@@ -436,13 +436,13 @@ namespace Sqlx.Tests.Core
             using var query = ExpressionToSql<User>.ForSqlServer()
                 .Set(u => u.CreatedAt, testDate)
                 .Where(u => u.Id == 1);
-            
+
             var sql = query.ToSql();
 
             // Assert
             Assert.IsNotNull(sql);
             Assert.IsTrue(sql.Contains("2024"));
-            
+
             Console.WriteLine($"✅ 日期时间格式化: {sql}");
         }
 
@@ -453,13 +453,13 @@ namespace Sqlx.Tests.Core
             using var query = ExpressionToSql<User>.ForSqlServer()
                 .Set(u => u.Salary, 12345.67m)
                 .Where(u => u.Id == 1);
-            
+
             var sql = query.ToSql();
 
             // Assert
             Assert.IsNotNull(sql);
             Assert.IsTrue(sql.Contains("12345.67"));
-            
+
             Console.WriteLine($"✅ 小数格式化: {sql}");
         }
 
@@ -470,13 +470,13 @@ namespace Sqlx.Tests.Core
             using var query = ExpressionToSql<User>.ForSqlServer()
                 .Set(u => u.Name, "O'Connor")
                 .Where(u => u.Id == 1);
-            
+
             var sql = query.ToSql();
 
             // Assert
             Assert.IsNotNull(sql);
             Assert.IsTrue(sql.Contains("'O''Connor'") || sql.Contains("'O\\'Connor'"));
-            
+
             Console.WriteLine($"✅ 字符串转义: {sql}");
         }
 
@@ -488,7 +488,7 @@ namespace Sqlx.Tests.Core
         public void Performance_ComplexQuery_ExecutesQuickly()
         {
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-            
+
             // Arrange & Act
             for (int i = 0; i < 1000; i++)
             {
@@ -498,17 +498,17 @@ namespace Sqlx.Tests.Core
                     .OrderBy(u => u.Name)
                     .Skip(i * 10)
                     .Take(10);
-                
+
                 var sql = query.ToSql();
                 Assert.IsNotNull(sql);
             }
-            
+
             stopwatch.Stop();
-            
+
             // Assert - 1000次查询应该在1秒内完成
-            Assert.IsTrue(stopwatch.ElapsedMilliseconds < 1000, 
+            Assert.IsTrue(stopwatch.ElapsedMilliseconds < 1000,
                 $"性能测试失败: {stopwatch.ElapsedMilliseconds}ms > 1000ms");
-            
+
             Console.WriteLine($"✅ 性能测试: 1000次复杂查询耗时 {stopwatch.ElapsedMilliseconds}ms");
         }
 
@@ -521,12 +521,12 @@ namespace Sqlx.Tests.Core
             {
                 Assert.IsNotNull(query.ToSql());
             }
-            
+
             // 验证手动Dispose正常工作
             var query2 = ExpressionToSql<User>.ForSqlServer().Select(u => u.Name);
             Assert.IsNotNull(query2.ToSql());
             query2.Dispose();
-            
+
             Console.WriteLine("✅ 内存管理测试通过");
         }
 

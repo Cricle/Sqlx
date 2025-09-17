@@ -21,8 +21,8 @@ public class SelectOperationGenerator : BaseOperationGenerator
     public override bool CanHandle(IMethodSymbol method)
     {
         var methodName = method.Name.ToLowerInvariant();
-        return methodName.Contains("get") || 
-               methodName.Contains("find") || 
+        return methodName.Contains("get") ||
+               methodName.Contains("find") ||
                methodName.Contains("select") ||
                methodName.Contains("query") ||
                methodName.Contains("list") ||
@@ -66,7 +66,7 @@ public class SelectOperationGenerator : BaseOperationGenerator
     private bool IsScalarMethod(IMethodSymbol method)
     {
         var methodName = method.Name.ToLowerInvariant();
-        return methodName.Contains("count") || 
+        return methodName.Contains("count") ||
                methodName.Contains("exists") ||
                methodName.Contains("sum") ||
                methodName.Contains("max") ||
@@ -86,15 +86,15 @@ public class SelectOperationGenerator : BaseOperationGenerator
 
     private bool IsAsyncMethod(IMethodSymbol method)
     {
-        return method.ReturnType.Name == "Task" || 
+        return method.ReturnType.Name == "Task" ||
                (method.ReturnType is INamedTypeSymbol taskType && taskType.Name == "Task");
     }
 
-    private void GenerateScalarSelect(IndentedStringBuilder sb, IMethodSymbol method, 
+    private void GenerateScalarSelect(IndentedStringBuilder sb, IMethodSymbol method,
         string tableName, bool isAsync)
     {
         sb.AppendLine("// 🚀 智能标量查询 - Count, Exists, Sum, etc.");
-        
+
         var methodNameLower = method.Name.ToLowerInvariant();
         var whereParams = method.Parameters.Where(p => p.Type.Name != "CancellationToken").ToList();
 
@@ -132,49 +132,49 @@ public class SelectOperationGenerator : BaseOperationGenerator
         GenerateScalarExecution(sb, isAsync, method);
     }
 
-    private void GenerateSingleSelect(IndentedStringBuilder sb, IMethodSymbol method, 
+    private void GenerateSingleSelect(IndentedStringBuilder sb, IMethodSymbol method,
         INamedTypeSymbol? entityType, string tableName, bool isAsync)
     {
         sb.AppendLine("// 🚀 智能单实体查询");
-        
+
         var whereParams = method.Parameters.Where(p => p.Type.Name != "CancellationToken").ToList();
-        
+
         sb.AppendLine($"__repoCmd__.CommandText = \"SELECT * FROM {tableName}\";");
-        
+
         if (whereParams.Any())
         {
             GenerateWhereClause(sb, whereParams);
         }
-        
+
         sb.AppendLine("__repoCmd__.CommandText += \" LIMIT 1\";");
-        
+
         GenerateSingleEntityExecution(sb, isAsync, method, entityType);
     }
 
-    private void GenerateCollectionSelect(IndentedStringBuilder sb, IMethodSymbol method, 
+    private void GenerateCollectionSelect(IndentedStringBuilder sb, IMethodSymbol method,
         INamedTypeSymbol? entityType, string tableName, bool isAsync)
     {
         sb.AppendLine("// 🚀 智能集合查询");
-        
+
         var whereParams = method.Parameters.Where(p => p.Type.Name != "CancellationToken").ToList();
-        
+
         sb.AppendLine($"__repoCmd__.CommandText = \"SELECT * FROM {tableName}\";");
-        
+
         if (whereParams.Any())
         {
             GenerateWhereClause(sb, whereParams);
         }
-        
+
         GenerateCollectionExecution(sb, isAsync, method, entityType);
     }
 
-    private void GenerateCountQuery(IndentedStringBuilder sb, string tableName, 
+    private void GenerateCountQuery(IndentedStringBuilder sb, string tableName,
         System.Collections.Generic.List<IParameterSymbol> whereParams)
     {
         sb.AppendLine($"__repoCmd__.CommandText = \"SELECT COUNT(*) FROM {tableName}\";");
     }
 
-    private void GenerateExistsQuery(IndentedStringBuilder sb, string tableName, 
+    private void GenerateExistsQuery(IndentedStringBuilder sb, string tableName,
         System.Collections.Generic.List<IParameterSymbol> whereParams)
     {
         sb.AppendLine($"__repoCmd__.CommandText = \"SELECT CASE WHEN EXISTS(SELECT 1 FROM {tableName}\";");
@@ -186,41 +186,41 @@ public class SelectOperationGenerator : BaseOperationGenerator
         sb.AppendLine("__repoCmd__.CommandText += \") THEN 1 ELSE 0 END\";");
     }
 
-    private void GenerateSumQuery(IndentedStringBuilder sb, string tableName, 
+    private void GenerateSumQuery(IndentedStringBuilder sb, string tableName,
         System.Collections.Generic.List<IParameterSymbol> whereParams, IMethodSymbol method)
     {
         var column = InferColumnFromMethodName(method.Name, "sum");
         sb.AppendLine($"__repoCmd__.CommandText = \"SELECT SUM({column}) FROM {tableName}\";");
     }
 
-    private void GenerateMaxQuery(IndentedStringBuilder sb, string tableName, 
+    private void GenerateMaxQuery(IndentedStringBuilder sb, string tableName,
         System.Collections.Generic.List<IParameterSymbol> whereParams, IMethodSymbol method)
     {
         var column = InferColumnFromMethodName(method.Name, "max");
         sb.AppendLine($"__repoCmd__.CommandText = \"SELECT MAX({column}) FROM {tableName}\";");
     }
 
-    private void GenerateMinQuery(IndentedStringBuilder sb, string tableName, 
+    private void GenerateMinQuery(IndentedStringBuilder sb, string tableName,
         System.Collections.Generic.List<IParameterSymbol> whereParams, IMethodSymbol method)
     {
         var column = InferColumnFromMethodName(method.Name, "min");
         sb.AppendLine($"__repoCmd__.CommandText = \"SELECT MIN({column}) FROM {tableName}\";");
     }
 
-    private void GenerateAverageQuery(IndentedStringBuilder sb, string tableName, 
+    private void GenerateAverageQuery(IndentedStringBuilder sb, string tableName,
         System.Collections.Generic.List<IParameterSymbol> whereParams, IMethodSymbol method)
     {
         var column = InferColumnFromMethodName(method.Name, "average");
         sb.AppendLine($"__repoCmd__.CommandText = \"SELECT AVG({column}) FROM {tableName}\";");
     }
 
-    private void GenerateGenericScalarQuery(IndentedStringBuilder sb, string tableName, 
+    private void GenerateGenericScalarQuery(IndentedStringBuilder sb, string tableName,
         System.Collections.Generic.List<IParameterSymbol> whereParams, IMethodSymbol method)
     {
         sb.AppendLine($"__repoCmd__.CommandText = \"SELECT * FROM {tableName}\";");
     }
 
-    private void GenerateWhereClause(IndentedStringBuilder sb, 
+    private void GenerateWhereClause(IndentedStringBuilder sb,
         System.Collections.Generic.List<IParameterSymbol> whereParams)
     {
         if (whereParams.Any())
@@ -228,7 +228,7 @@ public class SelectOperationGenerator : BaseOperationGenerator
             var conditions = whereParams.Select(p => $"{InferColumnNameFromParameter(p.Name)} = @{p.Name}");
             var whereClause = string.Join(" AND ", conditions);
             sb.AppendLine($"__repoCmd__.CommandText += \" WHERE {whereClause}\";");
-            
+
             foreach (var param in whereParams)
             {
                 sb.AppendLine($"var param{param.Name} = __repoCmd__.CreateParameter()!;");
@@ -252,25 +252,25 @@ public class SelectOperationGenerator : BaseOperationGenerator
         {
             sb.AppendLine("var scalarResult = __repoCmd__.ExecuteScalar();");
         }
-        
+
         // Convert result based on return type
         var returnType = method.ReturnType;
         if (IsAsyncMethod(method) && returnType is INamedTypeSymbol taskType && taskType.TypeArguments.Length > 0)
         {
             returnType = taskType.TypeArguments[0];
         }
-        
+
         GenerateScalarConversion(sb, returnType);
     }
 
     private void GenerateSingleEntityExecution(IndentedStringBuilder sb, bool isAsync, IMethodSymbol method, INamedTypeSymbol? entityType)
     {
         sb.AppendLine("using var reader = __repoCmd__.ExecuteReader();");
-        
+
         sb.AppendLine("if (reader.Read())");
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         if (entityType != null)
         {
             GenerateEntityMapping(sb, entityType, "result");
@@ -280,7 +280,7 @@ public class SelectOperationGenerator : BaseOperationGenerator
             sb.AppendLine("// Entity mapping would go here");
             sb.AppendLine("__repoResult__ = default;");
         }
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine("else");
@@ -294,12 +294,12 @@ public class SelectOperationGenerator : BaseOperationGenerator
     private void GenerateCollectionExecution(IndentedStringBuilder sb, bool isAsync, IMethodSymbol method, INamedTypeSymbol? entityType)
     {
         sb.AppendLine("using var reader = __repoCmd__.ExecuteReader();");
-        
+
         sb.AppendLine("var results = new global::System.Collections.Generic.List<" + (entityType?.Name ?? "object") + ">();");
         sb.AppendLine("while (reader.Read())");
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         if (entityType != null)
         {
             GenerateEntityMapping(sb, entityType, "item");
@@ -309,7 +309,7 @@ public class SelectOperationGenerator : BaseOperationGenerator
         {
             sb.AppendLine("// Entity mapping would go here");
         }
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine("__repoResult__ = results;");
@@ -318,11 +318,11 @@ public class SelectOperationGenerator : BaseOperationGenerator
     private void GenerateEntityMapping(IndentedStringBuilder sb, INamedTypeSymbol entityType, string variableName)
     {
         sb.AppendLine($"var {variableName} = new {entityType.ToDisplayString()}()!;");
-        
+
         var properties = entityType.GetMembers().OfType<IPropertySymbol>()
             .Where(p => p.CanBeReferencedByName && p.SetMethod != null)
             .ToList();
-        
+
         foreach (var prop in properties)
         {
             sb.AppendLine($"if (reader[\"{prop.Name}\"] != global::System.DBNull.Value)");
@@ -339,7 +339,7 @@ public class SelectOperationGenerator : BaseOperationGenerator
         sb.AppendLine("if (scalarResult != null && scalarResult != global::System.DBNull.Value)");
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         if (returnType.SpecialType == SpecialType.System_Int32)
         {
             sb.AppendLine("__repoResult__ = global::System.Convert.ToInt32(scalarResult);");
@@ -356,7 +356,7 @@ public class SelectOperationGenerator : BaseOperationGenerator
         {
             sb.AppendLine($"__repoResult__ = ({returnType.ToDisplayString()})scalarResult;");
         }
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine("else");
@@ -391,7 +391,7 @@ public class SelectOperationGenerator : BaseOperationGenerator
     {
         if (string.IsNullOrEmpty(parameterName))
             return parameterName;
-        
+
         return char.ToUpperInvariant(parameterName[0]) + parameterName.Substring(1);
     }
 
@@ -401,7 +401,7 @@ public class SelectOperationGenerator : BaseOperationGenerator
         {
             type = taskType.TypeArguments[0];
         }
-        
+
         return type.SpecialType == SpecialType.System_Int32 ||
                type.SpecialType == SpecialType.System_Boolean ||
                type.SpecialType == SpecialType.System_Int64 ||
@@ -413,9 +413,9 @@ public class SelectOperationGenerator : BaseOperationGenerator
     {
         if (type is INamedTypeSymbol namedType)
         {
-            return namedType.AllInterfaces.Any(i => 
-                i.Name == "IEnumerable" || 
-                i.Name == "ICollection" || 
+            return namedType.AllInterfaces.Any(i =>
+                i.Name == "IEnumerable" ||
+                i.Name == "ICollection" ||
                 i.Name == "IList");
         }
         return false;

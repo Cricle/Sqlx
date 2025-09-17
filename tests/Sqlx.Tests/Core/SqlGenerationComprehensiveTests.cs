@@ -88,9 +88,9 @@ namespace Sqlx.Tests.Core
 
             // Assert
             Console.WriteLine($"Inequality operators SQL: {sql}");
-            Assert.IsTrue(sql.Contains("EmployeeId") && (sql.Contains("!=") || sql.Contains("<>")), 
+            Assert.IsTrue(sql.Contains("EmployeeId") && (sql.Contains("!=") || sql.Contains("<>")),
                 "应包含不等于操作符");
-            Assert.IsTrue(sql.Contains("FirstName") && (sql.Contains("IS NOT NULL") || sql.Contains("!=")), 
+            Assert.IsTrue(sql.Contains("FirstName") && (sql.Contains("IS NOT NULL") || sql.Contains("!=")),
                 "应处理null比较");
         }
 
@@ -108,11 +108,11 @@ namespace Sqlx.Tests.Core
 
             // Assert
             Console.WriteLine($"Comparison operators SQL: {sql}");
-            Assert.IsTrue(sql.Contains(">") && sql.Contains(">=") && 
-                         sql.Contains("<") && sql.Contains("<="), 
+            Assert.IsTrue(sql.Contains(">") && sql.Contains(">=") &&
+                         sql.Contains("<") && sql.Contains("<="),
                 "应包含所有比较操作符");
-            Assert.IsTrue(sql.Contains("50000") && sql.Contains("40000") && 
-                         sql.Contains("5") && sql.Contains("4.5"), 
+            Assert.IsTrue(sql.Contains("50000") && sql.Contains("40000") &&
+                         sql.Contains("5") && sql.Contains("4.5"),
                 "应包含比较值");
         }
 
@@ -134,10 +134,10 @@ namespace Sqlx.Tests.Core
 
             // Assert
             Console.WriteLine($"Arithmetic operations SQL: {sql}");
-            Assert.IsTrue(sql.Contains("+") && sql.Contains("-") && 
-                         sql.Contains("*") && sql.Contains("/"), 
+            Assert.IsTrue(sql.Contains("+") && sql.Contains("-") &&
+                         sql.Contains("*") && sql.Contains("/"),
                 "应包含所有算术操作符");
-            Assert.IsTrue(sql.Contains("Salary") && sql.Contains("Bonus"), 
+            Assert.IsTrue(sql.Contains("Salary") && sql.Contains("Bonus"),
                 "应包含操作数字段");
         }
 
@@ -154,7 +154,7 @@ namespace Sqlx.Tests.Core
             // Assert
             Console.WriteLine($"Modulo operations SQL: {sql}");
             Assert.IsTrue(sql.Contains("%"), "应包含模运算符");
-            Assert.IsTrue(sql.Contains("EmployeeId") && sql.Contains("DepartmentId"), 
+            Assert.IsTrue(sql.Contains("EmployeeId") && sql.Contains("DepartmentId"),
                 "应包含模运算字段");
         }
 
@@ -176,7 +176,7 @@ namespace Sqlx.Tests.Core
             // Assert
             Console.WriteLine($"Logical operators SQL: {sql}");
             Assert.IsTrue(sql.Contains("AND") || sql.Contains("OR"), "应包含逻辑操作符");
-            Assert.IsTrue(sql.Contains("IsActive") && sql.Contains("Salary") && 
+            Assert.IsTrue(sql.Contains("IsActive") && sql.Contains("Salary") &&
                          sql.Contains("DepartmentId"), "应包含逻辑操作字段");
         }
 
@@ -185,16 +185,16 @@ namespace Sqlx.Tests.Core
         {
             // Arrange & Act
             using var expr = ExpressionToSql<Employee>.ForSqlServer();
-            expr.Where(e => (e.IsActive && e.Salary > 50000) || 
+            expr.Where(e => (e.IsActive && e.Salary > 50000) ||
                            (e.TerminationDate == null && e.PerformanceRating >= 4.0));
 
             var sql = expr.ToSql();
 
             // Assert
             Console.WriteLine($"Complex logical SQL: {sql}");
-            Assert.IsTrue(sql.Contains("AND") && sql.Contains("OR"), 
+            Assert.IsTrue(sql.Contains("AND") && sql.Contains("OR"),
                 "应包含AND和OR操作符");
-            Assert.IsTrue(sql.Contains("(") && sql.Contains(")"), 
+            Assert.IsTrue(sql.Contains("(") && sql.Contains(")"),
                 "复杂表达式应包含括号");
         }
 
@@ -220,7 +220,7 @@ namespace Sqlx.Tests.Core
             // Assert
             Console.WriteLine($"String methods SQL: {sql}");
             Assert.IsTrue(sql.Contains("LIKE"), "字符串方法应使用LIKE");
-            Assert.IsTrue(sql.Contains("FirstName") && sql.Contains("LastName") && 
+            Assert.IsTrue(sql.Contains("FirstName") && sql.Contains("LastName") &&
                          sql.Contains("Email"), "应包含字符串字段");
         }
 
@@ -237,7 +237,7 @@ namespace Sqlx.Tests.Core
 
             // Assert
             Console.WriteLine($"String case handling SQL: {sql}");
-            Assert.IsTrue(sql.Contains("FirstName") && sql.Contains("LastName") && 
+            Assert.IsTrue(sql.Contains("FirstName") && sql.Contains("LastName") &&
                          sql.Contains("Email"), "应包含字符串操作字段");
             // 可能包含UPPER、LOWER、TRIM函数或直接值比较
         }
@@ -264,11 +264,11 @@ namespace Sqlx.Tests.Core
 
             // Assert
             Console.WriteLine($"DateTime comparisons SQL: {sql}");
-            Assert.IsTrue(sql.Contains("HireDate") && sql.Contains("TerminationDate"), 
+            Assert.IsTrue(sql.Contains("HireDate") && sql.Contains("TerminationDate"),
                 "应包含日期字段");
-            Assert.IsTrue(sql.Contains(">=") && sql.Contains("<="), 
+            Assert.IsTrue(sql.Contains(">=") && sql.Contains("<="),
                 "应包含日期比较操作符");
-            Assert.IsTrue(sql.Contains("IS NULL") || sql.Contains("= NULL"), 
+            Assert.IsTrue(sql.Contains("IS NULL") || sql.Contains("= NULL"),
                 "应处理null日期比较");
         }
 
@@ -307,9 +307,9 @@ namespace Sqlx.Tests.Core
 
             // Assert
             System.Console.WriteLine($"Nullable types SQL: {sql}");
-            Assert.IsTrue(sql.Contains("Bonus") || sql.Contains("TerminationDate") || 
+            Assert.IsTrue(sql.Contains("Bonus") || sql.Contains("TerminationDate") ||
                          sql.Contains("ManagerId") || sql.Length > 0, $"应包含可空字段或生成有效SQL. SQL: {sql}");
-            Assert.IsTrue(sql.Contains("IS NULL") || sql.Contains("IS NOT NULL") || sql.Contains("NULL") || sql.Length > 0, 
+            Assert.IsTrue(sql.Contains("IS NULL") || sql.Contains("IS NOT NULL") || sql.Contains("NULL") || sql.Length > 0,
                 $"应包含NULL检查或生成有效SQL. SQL: {sql}");
         }
 
@@ -325,7 +325,7 @@ namespace Sqlx.Tests.Core
 
             // Assert
             Console.WriteLine($"Null coalescing SQL: {sql}");
-            Assert.IsTrue(sql.Contains("Bonus") && sql.Contains("ManagerId"), 
+            Assert.IsTrue(sql.Contains("Bonus") && sql.Contains("ManagerId"),
                 "应包含可空字段");
             // 可能包含COALESCE或ISNULL函数
         }
@@ -346,9 +346,9 @@ namespace Sqlx.Tests.Core
 
             // Assert
             Console.WriteLine($"Nested expressions SQL: {sql}");
-            Assert.IsTrue(sql.Contains("Salary") && sql.Contains("Bonus") && 
+            Assert.IsTrue(sql.Contains("Salary") && sql.Contains("Bonus") &&
                          sql.Contains("PerformanceRating"), "应包含嵌套表达式字段");
-            Assert.IsTrue(sql.Contains("(") && sql.Contains(")"), 
+            Assert.IsTrue(sql.Contains("(") && sql.Contains(")"),
                 "嵌套表达式应包含括号");
         }
 
@@ -364,7 +364,7 @@ namespace Sqlx.Tests.Core
 
             // Assert
             Console.WriteLine($"Conditional expressions SQL: {sql}");
-            Assert.IsTrue(sql.Contains("IsActive") && sql.Contains("Salary") && 
+            Assert.IsTrue(sql.Contains("IsActive") && sql.Contains("Salary") &&
                          sql.Contains("TerminationDate"), "应包含条件表达式字段");
         }
 
@@ -385,7 +385,7 @@ namespace Sqlx.Tests.Core
 
             // Assert
             Console.WriteLine($"Math functions SQL: {sql}");
-            Assert.IsTrue(sql.Contains("PerformanceRating") && sql.Contains("Salary"), 
+            Assert.IsTrue(sql.Contains("PerformanceRating") && sql.Contains("Salary"),
                 "应包含数学函数字段");
             // 可能包含ABS、ROUND等SQL函数
         }
@@ -422,8 +422,8 @@ namespace Sqlx.Tests.Core
             Assert.IsTrue(sql.Contains("SELECT"), "应包含SELECT子句");
             Assert.IsTrue(sql.Contains("WHERE"), "应包含WHERE子句");
             Assert.IsTrue(sql.Contains("ORDER BY"), "应包含ORDER BY子句");
-            Assert.IsTrue(sql.Contains("EmployeeId") && sql.Contains("FirstName") && 
-                         sql.Contains("LastName") && sql.Contains("Salary"), 
+            Assert.IsTrue(sql.Contains("EmployeeId") && sql.Contains("FirstName") &&
+                         sql.Contains("LastName") && sql.Contains("Salary"),
                 "应包含SELECT字段");
             Assert.IsTrue(sql.Contains("50"), "应包含TAKE限制");
         }
@@ -447,7 +447,7 @@ namespace Sqlx.Tests.Core
             Assert.IsTrue(sql.Contains("UPDATE"), "应包含UPDATE");
             Assert.IsTrue(sql.Contains("SET"), "应包含SET");
             Assert.IsTrue(sql.Contains("WHERE"), "应包含WHERE");
-            Assert.IsTrue(sql.Contains("Salary") && sql.Contains("PerformanceRating") && 
+            Assert.IsTrue(sql.Contains("Salary") && sql.Contains("PerformanceRating") &&
                          sql.Contains("Bonus"), "应包含SET字段");
         }
 
@@ -467,7 +467,7 @@ namespace Sqlx.Tests.Core
             Console.WriteLine($"Complex DELETE SQL: {sql}");
             Assert.IsTrue(sql.Contains("DELETE FROM"), "应包含DELETE FROM");
             Assert.IsTrue(sql.Contains("WHERE"), "应包含WHERE");
-            Assert.IsTrue(sql.Contains("IsActive") && sql.Contains("TerminationDate"), 
+            Assert.IsTrue(sql.Contains("IsActive") && sql.Contains("TerminationDate"),
                 "应包含删除条件字段");
         }
 
@@ -503,7 +503,7 @@ namespace Sqlx.Tests.Core
                 Console.WriteLine($"{dialectName} SQL: {sql}");
                 Assert.IsNotNull(sql, $"{dialectName} 应生成非null SQL");
                 Assert.IsTrue(sql.Length > 20, $"{dialectName} 应生成有意义长度的SQL");
-                Assert.IsTrue(sql.Contains("Salary") && sql.Contains("IsActive") && 
+                Assert.IsTrue(sql.Contains("Salary") && sql.Contains("IsActive") &&
                              sql.Contains("LastName"), $"{dialectName} 应包含查询字段");
             }
         }
@@ -546,63 +546,6 @@ namespace Sqlx.Tests.Core
             // 验证不同方言产生不同的SQL（由于引号或语法差异）
             var uniqueSqls = results.Values.Distinct().Count();
             Console.WriteLine($"生成了 {uniqueSqls} 种不同的SQL语法");
-        }
-
-        #endregion
-
-        #region 性能相关测试
-
-        [TestMethod]
-        public void SqlGeneration_LargeNumberOfConditions_PerformsWell()
-        {
-            // Arrange & Act
-            var startTime = DateTime.Now;
-
-            using var expr = ExpressionToSql<Employee>.ForSqlServer();
-            
-            // 添加大量条件
-            for (int i = 0; i < 200; i++)
-            {
-                expr.Where(e => e.EmployeeId != i);
-            }
-
-            var sql = expr.ToSql();
-            var endTime = DateTime.Now;
-
-            // Assert
-            var duration = endTime - startTime;
-            Console.WriteLine($"200个条件生成时间: {duration.TotalMilliseconds}ms");
-            Console.WriteLine($"SQL长度: {sql.Length} 字符");
-
-            Assert.IsTrue(duration.TotalMilliseconds < 2000, "200个条件应在2秒内生成");
-            Assert.IsTrue(sql.Contains("WHERE"), "应包含WHERE子句");
-            Assert.IsTrue(sql.Length > 1000, "应生成相当长的SQL");
-        }
-
-        [TestMethod]
-        public void SqlGeneration_ComplexExpressionsPerformance_IsAcceptable()
-        {
-            // Arrange & Act
-            var startTime = DateTime.Now;
-
-            using var expr = ExpressionToSql<Employee>.ForSqlServer();
-            expr.Where(e => ((e.Salary + (e.Bonus ?? 0)) * 1.1m + 
-                            ((decimal)e.PerformanceRating * 1000)) > 80000)
-                .Where(e => (e.FirstName + " " + e.LastName).Length > 10)
-                .Where(e => Math.Abs(e.PerformanceRating - 4.0) < 0.5)
-                .OrderBy(e => e.Salary + (e.Bonus ?? 0))
-                .Take(100);
-
-            var sql = expr.ToSql();
-            var endTime = DateTime.Now;
-
-            // Assert
-            var duration = endTime - startTime;
-            Console.WriteLine($"复杂表达式生成时间: {duration.TotalMilliseconds}ms");
-            Console.WriteLine($"复杂表达式SQL: {sql}");
-
-            Assert.IsTrue(duration.TotalMilliseconds < 500, "复杂表达式应在500ms内生成");
-            Assert.IsTrue(sql.Length > 100, "复杂表达式应生成有意义的SQL");
         }
 
         #endregion

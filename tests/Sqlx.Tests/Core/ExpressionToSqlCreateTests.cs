@@ -20,7 +20,7 @@ public class ExpressionToSqlCreateTests : TestBase
     {
         // Act
         var expr = ExpressionToSql<TestEntity>.ForSqlServer();
-        
+
         // Assert
         Assert.IsNotNull(expr);
         Assert.IsInstanceOfType(expr, typeof(ExpressionToSql<TestEntity>));
@@ -31,7 +31,7 @@ public class ExpressionToSqlCreateTests : TestBase
     {
         // Act
         var expr = ExpressionToSql<TestEntity>.ForMySql();
-        
+
         // Assert
         Assert.IsNotNull(expr);
         Assert.IsInstanceOfType(expr, typeof(ExpressionToSql<TestEntity>));
@@ -42,7 +42,7 @@ public class ExpressionToSqlCreateTests : TestBase
     {
         // Act
         var expr = ExpressionToSql<TestEntity>.ForPostgreSQL();
-        
+
         // Assert
         Assert.IsNotNull(expr);
         Assert.IsInstanceOfType(expr, typeof(ExpressionToSql<TestEntity>));
@@ -53,7 +53,7 @@ public class ExpressionToSqlCreateTests : TestBase
     {
         // Act
         var expr = ExpressionToSql<TestEntity>.ForOracle();
-        
+
         // Assert
         Assert.IsNotNull(expr);
         Assert.IsInstanceOfType(expr, typeof(ExpressionToSql<TestEntity>));
@@ -64,7 +64,7 @@ public class ExpressionToSqlCreateTests : TestBase
     {
         // Act
         var expr = ExpressionToSql<TestEntity>.ForDB2();
-        
+
         // Assert
         Assert.IsNotNull(expr);
         Assert.IsInstanceOfType(expr, typeof(ExpressionToSql<TestEntity>));
@@ -75,7 +75,7 @@ public class ExpressionToSqlCreateTests : TestBase
     {
         // Act
         var expr = ExpressionToSql<TestEntity>.ForSqlite();
-        
+
         // Assert
         Assert.IsNotNull(expr);
         Assert.IsInstanceOfType(expr, typeof(ExpressionToSql<TestEntity>));
@@ -86,7 +86,7 @@ public class ExpressionToSqlCreateTests : TestBase
     {
         // Act
         var expr = ExpressionToSql<TestEntity>.Create();
-        
+
         // Assert
         Assert.IsNotNull(expr);
         Assert.IsInstanceOfType(expr, typeof(ExpressionToSql<TestEntity>));
@@ -97,10 +97,10 @@ public class ExpressionToSqlCreateTests : TestBase
     {
         // Arrange
         var expr = ExpressionToSql<TestEntity>.ForSqlServer();
-        
+
         // Act
         var sql = expr.Where(x => x.Id == 1).ToSql();
-        
+
         // Assert
         Assert.IsNotNull(sql);
         Assert.IsTrue(sql.Contains("WHERE"));
@@ -112,10 +112,10 @@ public class ExpressionToSqlCreateTests : TestBase
     {
         // Arrange
         var expr = ExpressionToSql<TestEntity>.ForSqlServer();
-        
+
         // Act
         var sql = expr.OrderBy(x => x.Name).ToSql();
-        
+
         // Assert
         Assert.IsNotNull(sql);
         Assert.IsTrue(sql.Contains("ORDER BY"));
@@ -126,10 +126,10 @@ public class ExpressionToSqlCreateTests : TestBase
     {
         // Arrange
         var expr = ExpressionToSql<TestEntity>.ForSqlServer();
-        
+
         // Act
         var sql = expr.Select(x => x.Name).ToSql();
-        
+
         // Assert
         Assert.IsNotNull(sql);
         Assert.IsTrue(sql.Contains("SELECT"));
@@ -140,10 +140,10 @@ public class ExpressionToSqlCreateTests : TestBase
     {
         // Arrange
         var expr = ExpressionToSql<TestEntity>.ForSqlServer();
-        
+
         // Act
         var sql = expr.Take(10).ToSql();
-        
+
         // Assert
         Assert.IsNotNull(sql);
         Assert.IsTrue(sql.Length > 0);
@@ -154,10 +154,10 @@ public class ExpressionToSqlCreateTests : TestBase
     {
         // Arrange
         var expr = ExpressionToSql<TestEntity>.ForSqlServer();
-        
+
         // Act
         var sql = expr.Skip(5).ToSql();
-        
+
         // Assert
         Assert.IsNotNull(sql);
         Assert.IsTrue(sql.Length > 0);
@@ -168,10 +168,10 @@ public class ExpressionToSqlCreateTests : TestBase
     {
         // Arrange
         var expr = ExpressionToSql<TestEntity>.ForSqlServer();
-        
+
         // Act
         var result = expr.Where(x => x.Id > 0).OrderBy(x => x.Name);
-        
+
         // Assert
         Assert.AreSame(expr, result);
     }
@@ -181,13 +181,13 @@ public class ExpressionToSqlCreateTests : TestBase
     {
         // Arrange
         var expr = ExpressionToSql<TestEntity>.ForSqlServer();
-        
+
         // Act
         var sql = expr
             .Where(x => x.Id > 0)
             .Where(x => x.Name != null)
             .ToSql();
-        
+
         // Assert
         Assert.IsNotNull(sql);
         Assert.IsTrue(sql.Contains("WHERE"));
@@ -198,7 +198,7 @@ public class ExpressionToSqlCreateTests : TestBase
     {
         // Arrange
         var expr = ExpressionToSql<TestEntity>.ForSqlServer();
-        
+
         // Act & Assert - Should not throw
         expr.Dispose();
         Assert.IsTrue(true);

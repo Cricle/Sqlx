@@ -124,7 +124,7 @@ namespace Sqlx.Tests.Core
             // Test collection type identification
             foreach (var type in collectionTypes)
             {
-                var isCollection = type.IsArray || 
+                var isCollection = type.IsArray ||
                     (type.IsGenericType && (
                         type.Name.StartsWith("List") ||
                         type.Name.StartsWith("IList") ||
@@ -203,12 +203,12 @@ namespace Sqlx.Tests.Core
             foreach (var (containerType, expectedElementType) in genericTypes)
             {
                 Assert.IsTrue(containerType.IsGenericType, $"Type {containerType.Name} should be generic");
-                
+
                 var genericArguments = containerType.GetGenericArguments();
                 Assert.IsTrue(genericArguments.Length > 0, $"Type {containerType.Name} should have generic arguments");
-                
+
                 var actualElementType = genericArguments[0];
-                Assert.AreEqual(expectedElementType, actualElementType, 
+                Assert.AreEqual(expectedElementType, actualElementType,
                     $"Element type should be {expectedElementType.Name} for {containerType.Name}");
             }
         }
@@ -228,18 +228,18 @@ namespace Sqlx.Tests.Core
             foreach (var enumType in enumTypes)
             {
                 Assert.IsTrue(enumType.IsEnum, $"Type {enumType.Name} should be enum");
-                
+
                 var underlyingType = Enum.GetUnderlyingType(enumType);
                 Assert.IsNotNull(underlyingType, $"Enum {enumType.Name} should have underlying type");
                 Assert.IsTrue(underlyingType.IsPrimitive, $"Underlying type of {enumType.Name} should be primitive");
-                
+
                 // Test enum value conversion
                 var values = Enum.GetValues(enumType);
                 Assert.IsTrue(values.Length > 0, $"Enum {enumType.Name} should have values");
-                
+
                 var firstValue = values.GetValue(0);
                 Assert.IsNotNull(firstValue, $"First value of {enumType.Name} should not be null");
-                
+
                 // Test conversion to underlying type
                 var intValue = Convert.ToInt32(firstValue);
                 var backToEnum = Enum.ToObject(enumType, intValue);
@@ -265,11 +265,11 @@ namespace Sqlx.Tests.Core
                 // SQL Server style
                 var sqlServerResult = $"[{identifier}]";
                 Assert.AreEqual(sqlServer, sqlServerResult, $"SQL Server wrapping failed for: {identifier}");
-                
+
                 // MySQL style
                 var mysqlResult = $"`{identifier}`";
                 Assert.AreEqual(mysql, mysqlResult, $"MySQL wrapping failed for: {identifier}");
-                
+
                 // PostgreSQL style
                 var postgresResult = $"\"{identifier}\"";
                 Assert.AreEqual(postgres, postgresResult, $"PostgreSQL wrapping failed for: {identifier}");
@@ -293,10 +293,10 @@ namespace Sqlx.Tests.Core
             {
                 var parameterName = "userId";
                 var fullParameter = $"{expectedPrefix}{parameterName}";
-                
-                Assert.IsTrue(fullParameter.StartsWith(expectedPrefix), 
+
+                Assert.IsTrue(fullParameter.StartsWith(expectedPrefix),
                     $"Parameter should start with {expectedPrefix} for {dialect}");
-                Assert.IsTrue(fullParameter.EndsWith(parameterName), 
+                Assert.IsTrue(fullParameter.EndsWith(parameterName),
                     $"Parameter should end with {parameterName} for {dialect}");
                 Assert.AreEqual($"{expectedPrefix}{parameterName}", fullParameter,
                     $"Full parameter format incorrect for {dialect}");
@@ -371,17 +371,17 @@ namespace Sqlx.Tests.Core
             foreach (var collection in collections)
             {
                 var type = collection.GetType();
-                
+
                 // Check if it's a collection
-                var isCollection = type.IsArray || 
-                    type.GetInterfaces().Any(i => 
-                        i.IsGenericType && 
+                var isCollection = type.IsArray ||
+                    type.GetInterfaces().Any(i =>
+                        i.IsGenericType &&
                         (i.GetGenericTypeDefinition() == typeof(IEnumerable<>) ||
                          i.GetGenericTypeDefinition() == typeof(ICollection<>) ||
                          i.GetGenericTypeDefinition() == typeof(IList<>)));
-                
+
                 Assert.IsTrue(isCollection, $"Type {type.Name} should be identified as collection");
-                
+
                 // Check element type extraction
                 Type? elementType = null;
                 if (type.IsArray)
@@ -392,7 +392,7 @@ namespace Sqlx.Tests.Core
                 {
                     elementType = type.GetGenericArguments()[0];
                 }
-                
+
                 Assert.IsNotNull(elementType, $"Element type should be extractable from {type.Name}");
             }
         }

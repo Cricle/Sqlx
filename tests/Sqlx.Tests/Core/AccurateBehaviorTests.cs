@@ -272,14 +272,14 @@ public class AccurateBehaviorTests
 
         // Assert - Based on actual observed output
         Assert.IsNotNull(sql);
-        
+
         // WHERE clause assertions
         Assert.IsTrue(whereClause.Contains("([Id] > 0)"), "Should wrap conditions in parentheses");
         Assert.IsTrue(whereClause.Contains(" AND "), "Should join conditions with AND");
         Assert.IsTrue(whereClause.Contains("[Name] IS NOT NULL"), "Should use IS NOT NULL");
         Assert.IsTrue(whereClause.Contains("[IsActive] = 1"), "Should convert boolean");
         Assert.IsTrue(whereClause.Contains("[Price] >= 10"), "Should handle decimal comparison");
-        
+
         // Additional clause assertions
         Assert.IsTrue(additionalClause.Contains("ORDER BY"), "Should contain ORDER BY");
         Assert.IsTrue(additionalClause.Contains("[Name] ASC"), "Should default to ASC");
@@ -312,7 +312,7 @@ public class AccurateBehaviorTests
         Assert.IsTrue(sql.Contains("[IsActive] = 1"), "Should convert true to 1");
         Assert.IsTrue(sql.Contains("[Category] = 'Updated Category'"), "Should set category");
         Assert.IsTrue(sql.Contains("WHERE ([Id] = 1)"), "Should include WHERE with parentheses");
-        
+
         // Count SET clauses by counting commas + 1
         var setCount = sql.Substring(sql.IndexOf("SET") + 3, sql.IndexOf("WHERE") - sql.IndexOf("SET") - 3)
             .Split(',').Length;
@@ -343,10 +343,10 @@ public class AccurateBehaviorTests
         // Assert - Based on actual observed output
         Assert.IsNotNull(template.Sql);
         Assert.IsNotNull(template.Parameters);
-        
+
         // Template SQL should be same as regular SQL for constant values
         Assert.AreEqual(sql, template.Sql, "Template SQL should match regular SQL for constants");
-        
+
         // No parameters expected for constant values
         Assert.AreEqual(0, template.Parameters.Length, "Should have no parameters for constant values");
     }
@@ -381,9 +381,9 @@ public class AccurateBehaviorTests
         var duration = DateTime.Now - startTime;
 
         // Assert - Realistic performance expectations
-        Assert.IsTrue(duration.TotalMilliseconds < 5000, 
+        Assert.IsTrue(duration.TotalMilliseconds < 5000,
             $"Performance test took {duration.TotalMilliseconds}ms, expected < 5000ms");
-        
+
         Console.WriteLine($"Generated {iterations} SQL queries in {duration.TotalMilliseconds}ms");
         Console.WriteLine($"Average: {duration.TotalMilliseconds / iterations:F2}ms per query");
     }
@@ -410,7 +410,7 @@ public class AccurateBehaviorTests
 
             var sql = expression.ToSql();
             Assert.IsNotNull(sql, $"SQL should not be null for instance {i}");
-            
+
             // Dispose is called automatically by using statement
         }
 

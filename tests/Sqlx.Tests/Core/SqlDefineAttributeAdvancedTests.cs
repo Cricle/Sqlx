@@ -84,11 +84,11 @@ namespace Sqlx.Tests.Core
             foreach (var testCase in testCases)
             {
                 var attribute = new SqlDefineAttribute(testCase);
-                
+
                 // 字符串应该保持原样，但枚举解析应该忽略空格
                 Assert.AreEqual(testCase, attribute.DialectName);
                 Assert.IsNotNull(attribute.DialectType, $"Failed to parse: '{testCase}'");
-                
+
                 Console.WriteLine($"✅ 空格处理: '{testCase}' -> {attribute.DialectType}");
             }
         }
@@ -120,10 +120,10 @@ namespace Sqlx.Tests.Core
             foreach (var (input, expected) in testCases)
             {
                 var attribute = new SqlDefineAttribute(input);
-                
+
                 Assert.AreEqual(expected, attribute.DialectType, $"Failed for input: {input}");
                 Assert.AreEqual(input, attribute.DialectName);
-                
+
                 Console.WriteLine($"✅ 大小写测试: '{input}' -> {expected}");
             }
         }
@@ -145,11 +145,11 @@ namespace Sqlx.Tests.Core
             foreach (var testCase in testCases)
             {
                 var attribute = new SqlDefineAttribute(testCase);
-                
+
                 // 这些应该无法解析为枚举，但字符串应该保持原样
                 Assert.IsNull(attribute.DialectType, $"Should not parse: {testCase}");
                 Assert.AreEqual(testCase, attribute.DialectName);
-                
+
                 Console.WriteLine($"✅ 特殊字符处理: '{testCase}' -> NULL枚举");
             }
         }
@@ -288,11 +288,11 @@ namespace Sqlx.Tests.Core
 
             // 引用相等性
             Assert.AreNotSame(attr1, attr2);
-            
+
             // 特性对象的相等性比较 - 测试实际的相等性行为
             var areEqual = attr1.Equals(attr2);
             var areDifferent = attr1.Equals(attr3);
-            
+
             // 记录实际行为而不是假设
             Console.WriteLine($"相同参数的特性对象相等性: {areEqual}");
             Console.WriteLine($"不同参数的特性对象相等性: {areDifferent}");
@@ -336,7 +336,7 @@ namespace Sqlx.Tests.Core
             var exceptions = new System.Collections.Concurrent.ConcurrentBag<Exception>();
             var attributes = new System.Collections.Concurrent.ConcurrentBag<SqlDefineAttribute>();
 
-            var tasks = Enumerable.Range(0, threadCount).Select(i => 
+            var tasks = Enumerable.Range(0, threadCount).Select(i =>
                 System.Threading.Tasks.Task.Run(() =>
                 {
                     try
@@ -385,7 +385,7 @@ namespace Sqlx.Tests.Core
             var averageMemoryPerAttribute = memoryUsed / (double)iterations;
 
             // 每个特性的内存使用应该合理（小于1KB）
-            Assert.IsTrue(averageMemoryPerAttribute < 1024, 
+            Assert.IsTrue(averageMemoryPerAttribute < 1024,
                 $"内存使用过多: 平均每个特性 {averageMemoryPerAttribute:F2} 字节");
 
             Console.WriteLine($"✅ 内存测试: {iterations}个特性使用 {memoryUsed} 字节，平均 {averageMemoryPerAttribute:F2} 字节/个");

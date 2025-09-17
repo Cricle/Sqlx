@@ -23,7 +23,7 @@ public class TypeInferenceService : ITypeInferenceService
         if (serviceInterface.IsGenericType && serviceInterface.TypeArguments.Length > 0)
         {
             var firstTypeArg = serviceInterface.TypeArguments[0];
-            if (firstTypeArg is INamedTypeSymbol entityType && 
+            if (firstTypeArg is INamedTypeSymbol entityType &&
                 entityType.TypeKind == TypeKind.Class)
             {
                 return entityType;
@@ -32,7 +32,7 @@ public class TypeInferenceService : ITypeInferenceService
 
         // Try to infer from interface methods
         var candidateTypes = new Dictionary<INamedTypeSymbol, int>();
-        
+
         foreach (var method in serviceInterface.GetMembers().OfType<IMethodSymbol>())
         {
             AnalyzeMethodForEntityTypes(method, candidateTypes);
@@ -54,8 +54,8 @@ public class TypeInferenceService : ITypeInferenceService
         // Check parameters for entity types
         foreach (var param in method.Parameters)
         {
-            if (param.Type.TypeKind == TypeKind.Class && 
-                param.Type.Name != "String" && 
+            if (param.Type.TypeKind == TypeKind.Class &&
+                param.Type.Name != "String" &&
                 param.Type.Name != "CancellationToken" &&
                 !IsSystemType(param.Type))
             {
@@ -63,12 +63,12 @@ public class TypeInferenceService : ITypeInferenceService
             }
 
             // Check for collection of entities
-        if (TypeAnalyzer.IsCollectionType(param.Type) && 
-            param.Type is INamedTypeSymbol collectionType && 
-            collectionType.TypeArguments.Length > 0)
+            if (TypeAnalyzer.IsCollectionType(param.Type) &&
+                param.Type is INamedTypeSymbol collectionType &&
+                collectionType.TypeArguments.Length > 0)
             {
                 var elementType = collectionType.TypeArguments[0];
-                if (elementType.TypeKind == TypeKind.Class && 
+                if (elementType.TypeKind == TypeKind.Class &&
                     elementType.Name != "String" &&
                     !IsSystemType(elementType))
                 {
@@ -84,12 +84,12 @@ public class TypeInferenceService : ITypeInferenceService
             returnType = taskType.TypeArguments[0];
         }
 
-        if (TypeAnalyzer.IsCollectionType(returnType) && 
+        if (TypeAnalyzer.IsCollectionType(returnType) &&
             returnType is INamedTypeSymbol collectionReturnType &&
             collectionReturnType.TypeArguments.Length > 0)
         {
             var elementType = collectionReturnType.TypeArguments[0];
-            if (elementType.TypeKind == TypeKind.Class && 
+            if (elementType.TypeKind == TypeKind.Class &&
                 elementType.Name != "String" &&
                 !IsSystemType(elementType))
             {
@@ -97,7 +97,7 @@ public class TypeInferenceService : ITypeInferenceService
             }
         }
 
-        if (returnType.TypeKind == TypeKind.Class && 
+        if (returnType.TypeKind == TypeKind.Class &&
             returnType.Name != "String" &&
             !IsSystemType(returnType) &&
             !TypeAnalyzer.IsCollectionType(returnType))
@@ -142,7 +142,7 @@ public class TypeInferenceService : ITypeInferenceService
 
         // Try to resolve from generic service interface pattern
         var genericServiceInterface = repositoryClass.AllInterfaces
-            .FirstOrDefault(i => i.IsGenericType && 
+            .FirstOrDefault(i => i.IsGenericType &&
                                (i.Name.Contains("Repository") || i.Name.Contains("Service")));
 
         if (genericServiceInterface != null)
@@ -236,8 +236,8 @@ public class TypeInferenceService : ITypeInferenceService
         }
 
         // Check if it's a valid entity type
-        if (type.TypeKind == TypeKind.Class && 
-            type.Name != "String" && 
+        if (type.TypeKind == TypeKind.Class &&
+            type.Name != "String" &&
             !IsSystemType(type))
         {
             return type as INamedTypeSymbol;
@@ -252,7 +252,7 @@ public class TypeInferenceService : ITypeInferenceService
     private INamedTypeSymbol? InferFromInterfaceName(INamedTypeSymbol serviceInterface)
     {
         var interfaceName = serviceInterface.Name;
-        
+
         // Remove 'I' prefix and common suffixes
         if (interfaceName.StartsWith("I") && interfaceName.Length > 1)
         {

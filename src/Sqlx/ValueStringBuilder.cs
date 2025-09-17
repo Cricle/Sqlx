@@ -68,7 +68,7 @@ namespace Sqlx.Annotations
             int newCapacity = Math.Max(_buffer.Length * 2, _pos + additionalLength);
             var newBuffer = ArrayPool<char>.Shared.Rent(newCapacity);
             Array.Copy(_buffer, 0, newBuffer, 0, _pos);
-            
+
             // 归还旧的buffer
             ArrayPool<char>.Shared.Return(_buffer);
             _buffer = newBuffer;

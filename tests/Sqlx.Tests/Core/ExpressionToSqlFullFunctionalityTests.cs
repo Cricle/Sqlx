@@ -150,7 +150,7 @@ namespace Sqlx.Tests.Core
             var updateExprSql = updateExprQuery.ToSql();
             System.Console.WriteLine($"Update Expression SQL: {updateExprSql}");
             Assert.IsTrue(updateExprSql.Contains("UPDATE [TestUser] SET"), $"Should contain UPDATE statement. SQL: {updateExprSql}");
-            Assert.IsTrue(updateExprSql.Contains("[Salary] = ([Salary] * 1.1)") || updateExprSql.Contains("SET [Salary]"), 
+            Assert.IsTrue(updateExprSql.Contains("[Salary] = ([Salary] * 1.1)") || updateExprSql.Contains("SET [Salary]"),
                 $"Should contain salary update expression. SQL: {updateExprSql}");
         }
 
@@ -161,7 +161,7 @@ namespace Sqlx.Tests.Core
                 .Where(u => u.Age >= 18 && u.Age <= 65)
                 .Where(u => u.Name.Contains("张") || u.Email.EndsWith("@test.com"))
                 .Where(u => u.Salary > 30000m && u.DepartmentId != null);
-            
+
             var sql = query.ToSql();
             Assert.IsTrue(sql.Contains("AND"));
             Assert.IsTrue(sql.Contains("OR"));
@@ -178,7 +178,7 @@ namespace Sqlx.Tests.Core
                 .OrderBy(u => u.DepartmentId)
                 .OrderByDescending(u => u.Salary)
                 .OrderBy(u => u.Name);
-            
+
             var sql = query.ToSql();
             Assert.IsTrue(sql.Contains("ORDER BY"));
             Assert.IsTrue(sql.Contains("ASC"));
@@ -214,7 +214,7 @@ namespace Sqlx.Tests.Core
                 .Select("Id", "Name", "Email")
                 .Where(u => u.IsActive)
                 .OrderBy(u => u.Name);
-            
+
             var sql = query.ToSql();
             Assert.IsTrue(sql.Contains("SELECT Id, Name, Email"));
             Assert.IsFalse(sql.Contains("SELECT *"));
@@ -362,7 +362,7 @@ namespace Sqlx.Tests.Core
         public void DateTimeOperations_AllDialects()
         {
             var testDate = new DateTime(2023, 1, 1);
-            
+
             // SQL Server 日期函数
             var sqlServerQuery = ExpressionToSql<TestUser>.ForSqlServer()
                 .Where(u => u.CreatedAt >= testDate);
@@ -433,17 +433,17 @@ namespace Sqlx.Tests.Core
         public void LargeQueryBuilder_HandlesCorrectly()
         {
             var query = ExpressionToSql<TestUser>.ForSqlServer();
-            
+
             // 添加多个复杂条件
             for (int i = 0; i < 10; i++)
             {
                 query.Where(u => u.Age > i * 5);
             }
-            
+
             // 添加多个排序
             query.OrderBy(u => u.Name)
                  .OrderByDescending(u => u.Salary);
-            
+
             var sql = query.ToSql();
             Assert.IsTrue(sql.Length > 100);
             Assert.IsTrue(sql.Contains("WHERE"));
@@ -460,7 +460,7 @@ namespace Sqlx.Tests.Core
             var query = ExpressionToSql<TestUser>.ForSqlServer()
                 .Where(u => u.Age > 25 && u.Name.Contains("test"))
                 .OrderBy(u => u.Name);
-            
+
             var template = query.ToTemplate();
             Assert.IsNotNull(template);
             Assert.IsTrue(template.Sql.Contains("SELECT"));
@@ -478,22 +478,22 @@ namespace Sqlx.Tests.Core
             // 测试所有工厂方法
             var sqlServer = ExpressionToSql<TestUser>.ForSqlServer();
             Assert.IsNotNull(sqlServer);
-            
+
             var mySql = ExpressionToSql<TestUser>.ForMySql();
             Assert.IsNotNull(mySql);
-            
+
             var postgreSql = ExpressionToSql<TestUser>.ForPostgreSQL();
             Assert.IsNotNull(postgreSql);
-            
+
             var oracle = ExpressionToSql<TestUser>.ForOracle();
             Assert.IsNotNull(oracle);
-            
+
             var db2 = ExpressionToSql<TestUser>.ForDB2();
             Assert.IsNotNull(db2);
-            
+
             var sqlite = ExpressionToSql<TestUser>.ForSqlite();
             Assert.IsNotNull(sqlite);
-            
+
             var defaultQuery = ExpressionToSql<TestUser>.Create();
             Assert.IsNotNull(defaultQuery);
         }
@@ -509,7 +509,7 @@ namespace Sqlx.Tests.Core
                 .Where(u => u.IsActive)
                 .OrderBy(u => u.Name)
                 .Take(10);
-            
+
             var additionalClause = query.ToAdditionalClause();
             Assert.IsTrue(additionalClause.Contains("ORDER BY") || additionalClause.Contains("FETCH"));
         }
@@ -520,7 +520,7 @@ namespace Sqlx.Tests.Core
             var query = ExpressionToSql<TestUser>.ForSqlServer()
                 .Where(u => u.IsActive)
                 .Where(u => u.Age > 25);
-            
+
             var whereClause = query.ToWhereClause();
             Assert.IsTrue(whereClause.Contains("IsActive"));
             Assert.IsTrue(whereClause.Contains("Age"));

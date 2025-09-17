@@ -37,15 +37,15 @@ namespace Sqlx.Tests.Core
                 {
                     // Map property name to column name
                     var columnName = NameMapper.MapName(propertyName);
-                    
+
                     // Wrap column name with dialect-specific identifiers
                     var wrappedColumn = dialect.WrapColumn(columnName);
-                    
+
                     // Verify the complete transformation
                     Assert.IsNotNull(wrappedColumn, $"Wrapped column should not be null for {dialectName}");
-                    Assert.IsTrue(wrappedColumn.Length > columnName.Length, 
+                    Assert.IsTrue(wrappedColumn.Length > columnName.Length,
                         $"Wrapped column should be longer than original for {dialectName}");
-                    Assert.IsTrue(wrappedColumn.Contains(columnName), 
+                    Assert.IsTrue(wrappedColumn.Contains(columnName),
                         $"Wrapped column should contain original column name for {dialectName}");
                 }
             }
@@ -64,20 +64,20 @@ namespace Sqlx.Tests.Core
                 ("Oracle", SqlDefine.Oracle),
                 ("DB2", SqlDefine.DB2)
             };
-            
+
             Assert.IsTrue(dialects.Length > 0, "Should have SQL dialects");
-            
+
             // Test that each dialect can handle basic SQL operations
             foreach (var (dialectName, dialect) in dialects)
             {
                 Assert.IsNotNull(dialect, $"Should have valid SqlDefine for {dialectName}");
                 Assert.IsNotNull(dialect.ParameterPrefix, $"Should have parameter prefix for {dialectName}");
-                
+
                 // Test column wrapping
                 var wrappedColumn = dialect.WrapColumn("test_column");
                 Assert.IsNotNull(wrappedColumn, $"Should wrap column for {dialectName}");
                 Assert.IsTrue(wrappedColumn.Contains("test_column"), $"Should contain column name for {dialectName}");
-                
+
                 // Test parameter generation
                 var parameter = $"{dialect.ParameterPrefix}test_param";
                 Assert.IsNotNull(parameter, $"Should generate parameter for {dialectName}");
@@ -105,21 +105,21 @@ namespace Sqlx.Tests.Core
             {
                 // Map property name to database column
                 var columnName = NameMapper.MapName(propertyName);
-                
+
                 // Verify the mapping makes sense
                 Assert.IsNotNull(columnName, $"Column name should not be null for {propertyName}");
                 Assert.IsTrue(columnName.Length > 0, $"Column name should not be empty for {propertyName}");
                 Assert.IsTrue(columnName.ToLower() == columnName, $"Column name should be lowercase for {propertyName}");
                 Assert.IsTrue(columnName.Contains("_"), $"Complex property should contain underscores for {propertyName}");
-                
+
                 // Test that the column name can be used with different SQL dialects
                 var dialects = new[] { SqlDefine.SqlServer, SqlDefine.MySql, SqlDefine.PgSql };
-                
+
                 foreach (var dialect in dialects)
                 {
                     var wrappedColumn = dialect.WrapColumn(columnName);
                     var parameter = $"{dialect.ParameterPrefix}{columnName.Replace("_", "")}";
-                    
+
                     Assert.IsNotNull(wrappedColumn, $"Wrapped column should not be null for {propertyName} in {dialect.ParameterPrefix} dialect");
                     Assert.IsNotNull(parameter, $"Parameter should not be null for {propertyName} in {dialect.ParameterPrefix} dialect");
                 }
@@ -144,7 +144,7 @@ namespace Sqlx.Tests.Core
 
             foreach (var (dialectName, dialect, expectedPrefix) in dialects)
             {
-                Assert.AreEqual(expectedPrefix, dialect.ParameterPrefix, 
+                Assert.AreEqual(expectedPrefix, dialect.ParameterPrefix,
                     $"Parameter prefix should be {expectedPrefix} for {dialectName}");
 
                 foreach (var paramName in parameterNames)
@@ -153,7 +153,7 @@ namespace Sqlx.Tests.Core
                     var wrappedColumn = dialect.WrapColumn(paramName);
                     Assert.IsNotNull(wrappedColumn, $"Wrapped column should not be null for {dialectName}");
                     Assert.IsTrue(wrappedColumn.Contains(paramName), $"Wrapped column should contain original name for {dialectName}");
-                    
+
                     // Test parameter generation
                     var parameter = $"{dialect.ParameterPrefix}{paramName}";
                     Assert.IsTrue(parameter.StartsWith(expectedPrefix), $"Parameter should start with {expectedPrefix} for {dialectName}");
@@ -169,57 +169,57 @@ namespace Sqlx.Tests.Core
             var entityName = "User";
             var properties = new[] { "Id", "FirstName", "LastName", "Email", "CreatedAt", "IsActive" };
             var dialect = SqlDefine.SqlServer;
-            
+
             // Step 1: Map entity to table
             var tableName = NameMapper.MapName(entityName);
             Assert.AreEqual("user", tableName);
-            
+
             // Step 2: Map properties to columns
             var columnMappings = properties.ToDictionary(
                 prop => prop,
                 prop => NameMapper.MapName(prop)
             );
-            
+
             Assert.AreEqual(properties.Length, columnMappings.Count);
             Assert.AreEqual("id", columnMappings["Id"]);
             Assert.AreEqual("first_name", columnMappings["FirstName"]);
             Assert.AreEqual("is_active", columnMappings["IsActive"]);
-            
+
             // Step 3: Generate SQL for different operations
             var wrappedTable = dialect.WrapColumn(tableName);
             var wrappedColumns = columnMappings.Values.Select(dialect.WrapColumn).ToArray();
             var parameters = columnMappings.Values.Select(col => $"{dialect.ParameterPrefix}{col}").ToArray();
-            
+
             // Generate SELECT query
             var selectColumns = string.Join(", ", wrappedColumns);
             var selectSql = $"SELECT {selectColumns} FROM {wrappedTable}";
-            
+
             Assert.IsTrue(selectSql.StartsWith("SELECT"), "Should be valid SELECT query");
             Assert.IsTrue(selectSql.Contains("[user]"), "Should contain wrapped table name");
             Assert.IsTrue(selectSql.Contains("[first_name]"), "Should contain wrapped column names");
-            
+
             // Generate INSERT query
             var insertColumns = string.Join(", ", wrappedColumns.Skip(1)); // Skip Id for INSERT
             var insertParameters = string.Join(", ", parameters.Skip(1));
             var insertSql = $"INSERT INTO {wrappedTable} ({insertColumns}) VALUES ({insertParameters})";
-            
+
             Assert.IsTrue(insertSql.StartsWith("INSERT INTO"), "Should be valid INSERT query");
             Assert.IsTrue(insertSql.Contains("VALUES"), "Should contain VALUES clause");
             Assert.IsTrue(insertSql.Contains("@first_name"), "Should contain parameters");
-            
+
             // Generate UPDATE query
-            var updateSets = columnMappings.Skip(1).Select(kvp => 
+            var updateSets = columnMappings.Skip(1).Select(kvp =>
                 $"{dialect.WrapColumn(kvp.Value)} = {dialect.ParameterPrefix}{kvp.Value}");
             var updateSetClause = string.Join(", ", updateSets);
             var updateSql = $"UPDATE {wrappedTable} SET {updateSetClause} WHERE {dialect.WrapColumn("id")} = {dialect.ParameterPrefix}id";
-            
+
             Assert.IsTrue(updateSql.StartsWith("UPDATE"), "Should be valid UPDATE query");
             Assert.IsTrue(updateSql.Contains("SET"), "Should contain SET clause");
             Assert.IsTrue(updateSql.Contains("WHERE"), "Should contain WHERE clause");
-            
+
             // Generate DELETE query
             var deleteSql = $"DELETE FROM {wrappedTable} WHERE {dialect.WrapColumn("id")} = {dialect.ParameterPrefix}id";
-            
+
             Assert.IsTrue(deleteSql.StartsWith("DELETE FROM"), "Should be valid DELETE query");
             Assert.IsTrue(deleteSql.Contains("WHERE"), "Should contain WHERE clause");
         }

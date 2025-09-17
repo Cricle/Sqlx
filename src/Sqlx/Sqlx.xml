@@ -462,11 +462,6 @@
             生成额外的子句（GROUP BY, HAVING, ORDER BY, LIMIT, OFFSET）。
             </summary>
         </member>
-        <member name="M:Sqlx.ExpressionToSql`1.Dispose">
-            <summary>
-            释放资源（简化版）。
-            </summary>
-        </member>
         <member name="T:Sqlx.GroupedExpressionToSql`2">
             <summary>
             表示分组后的查询对象，支持聚合操作。
@@ -554,7 +549,7 @@
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.SetTableName(System.String)">
             <summary>
-            设置表名（内部使用）。
+            设置表名
             </summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.ParseExpression(System.Linq.Expressions.Expression,System.Boolean)">
@@ -605,26 +600,6 @@
         <member name="M:Sqlx.ExpressionToSqlBase.GetMemberValueOptimized(System.Linq.Expressions.MemberExpression)">
             <summary>
             优化的成员值获取，统一缓存策略，遵循DRY原则
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.CompileAndCacheMemberAccess(System.Linq.Expressions.MemberExpression,System.String)">
-            <summary>
-            统一的编译和缓存逻辑
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.TryGetMemberValueFast(System.Linq.Expressions.MemberExpression,System.Object@)">
-            <summary>
-            快速路径：尝试通过反射直接获取成员值，优化性能
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.GetMemberValue(System.Reflection.MemberInfo,System.Object)">
-            <summary>
-            统一的成员值获取逻辑，消除重复代码
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.GetMemberValue(System.Linq.Expressions.MemberExpression)">
-            <summary>
-            获取成员表达式的值（用于闭包变量，已废弃，使用 GetMemberValueOptimized）
             </summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.NeedsParentheses(System.Linq.Expressions.Expression)">

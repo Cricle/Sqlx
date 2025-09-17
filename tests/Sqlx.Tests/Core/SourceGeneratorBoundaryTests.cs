@@ -99,12 +99,12 @@ namespace Test
             {
                 var compilation = CreateCompilation(source);
                 var driver = CreateDriver();
-                
+
                 var result = driver.RunGenerators(compilation);
-                
+
                 Assert.IsNotNull(result);
                 Console.WriteLine($"✅ 超大类测试通过，方法数量: {methods.Count}");
-                
+
                 // 检查是否有生成的代码
                 // 简化结果检查，因为 GeneratorDriver API 可能因版本而异
                 Console.WriteLine("源生成完成");
@@ -120,7 +120,7 @@ namespace Test
         {
             // Arrange - 超长方法名
             var longMethodName = "Get" + new string('X', 1000) + "User";
-            
+
             var source = $@"
 using System.Threading.Tasks;
 using Sqlx.Annotations;
@@ -146,9 +146,9 @@ namespace Test
             {
                 var compilation = CreateCompilation(source);
                 var driver = CreateDriver();
-                
+
                 var result = driver.RunGenerators(compilation);
-                
+
                 Assert.IsNotNull(result);
                 Console.WriteLine($"✅ 超长方法名测试通过，长度: {longMethodName.Length}");
             }
@@ -162,9 +162,9 @@ namespace Test
         public void SourceGenerator_VeryLongSqlQuery_HandlesCorrectly()
         {
             // Arrange - 超长SQL查询
-            var longSql = "SELECT * FROM Users WHERE " + 
+            var longSql = "SELECT * FROM Users WHERE " +
                 string.Join(" AND ", Enumerable.Range(1, 1000).Select(i => $"Column{i} = @param{i}"));
-            
+
             var source = $@"
 using System.Threading.Tasks;
 using Sqlx.Annotations;
@@ -190,9 +190,9 @@ namespace Test
             {
                 var compilation = CreateCompilation(source);
                 var driver = CreateDriver();
-                
+
                 var result = driver.RunGenerators(compilation);
-                
+
                 Assert.IsNotNull(result);
                 Console.WriteLine($"✅ 超长SQL查询测试通过，SQL长度: {longSql.Length}");
             }
@@ -272,9 +272,9 @@ namespace Test
                 {
                     var compilation = CreateCompilation(source);
                     var driver = CreateDriver();
-                    
+
                     var result = driver.RunGenerators(compilation);
-                    
+
                     Console.WriteLine($"✅ 无效语法测试 {index + 1} 完成，可能有编译错误但生成器应该不崩溃");
                 }
                 catch (Exception ex)
@@ -303,9 +303,9 @@ namespace Test
                 {
                     var compilation = CreateCompilation(source);
                     var driver = CreateDriver();
-                    
+
                     var result = driver.RunGenerators(compilation);
-                    
+
                     Assert.IsNotNull(result);
                     Console.WriteLine($"✅ {description} 测试通过");
                 }
@@ -377,9 +377,9 @@ namespace Test
                 {
                     var compilation = CreateCompilation(fullSource);
                     var driver = CreateDriver();
-                    
+
                     var result = driver.RunGenerators(compilation);
-                    
+
                     Console.WriteLine($"✅ 无效属性参数测试 {index + 1} 完成");
                 }
                 catch (Exception ex)
@@ -425,9 +425,9 @@ namespace Test
             {
                 var compilation = CreateCompilation(source);
                 var driver = CreateDriver();
-                
+
                 var result = driver.RunGenerators(compilation);
-                
+
                 Assert.IsNotNull(result);
                 Console.WriteLine("✅ 缺少必需属性测试通过");
             }
@@ -478,9 +478,9 @@ namespace Test
             {
                 var compilation = CreateCompilation(source);
                 var driver = CreateDriver();
-                
+
                 var result = driver.RunGenerators(compilation);
-                
+
                 Assert.IsNotNull(result);
                 Console.WriteLine("✅ 复杂泛型类型测试通过");
             }
@@ -517,9 +517,9 @@ namespace Test
             {
                 var compilation = CreateCompilation(source);
                 var driver = CreateDriver();
-                
+
                 var result = driver.RunGenerators(compilation);
-                
+
                 Console.WriteLine("✅ 未知类型测试完成");
             }
             catch (Exception ex)
@@ -537,7 +537,7 @@ namespace Test
         {
             // Arrange - 超深命名空间
             var deepNamespace = string.Join(".", Enumerable.Range(1, 50).Select(i => $"Level{i}"));
-            
+
             var source = $@"
 using System.Threading.Tasks;
 using Sqlx.Annotations;
@@ -563,9 +563,9 @@ namespace {deepNamespace}
             {
                 var compilation = CreateCompilation(source);
                 var driver = CreateDriver();
-                
+
                 var result = driver.RunGenerators(compilation);
-                
+
                 Assert.IsNotNull(result);
                 Console.WriteLine($"✅ 超深命名空间测试通过，深度: {deepNamespace.Split('.').Length}");
             }
@@ -601,9 +601,9 @@ public partial interface IUserService
             {
                 var compilation = CreateCompilation(source);
                 var driver = CreateDriver();
-                
+
                 var result = driver.RunGenerators(compilation);
-                
+
                 Assert.IsNotNull(result);
                 Console.WriteLine("✅ 全局命名空间测试通过");
             }
@@ -651,7 +651,7 @@ namespace Test{i}
                 {
                     var compilation = CreateCompilation(source);
                     var driver = CreateDriver();
-                    
+
                     var result = driver.RunGenerators(compilation);
                 }
                 catch (Exception ex)
@@ -665,7 +665,7 @@ namespace Test{i}
                     GC.Collect();
                     var currentMemory = GC.GetTotalMemory(false);
                     var memoryIncrease = currentMemory - initialMemory;
-                    
+
                     Console.WriteLine($"迭代 {i}: 内存增长 {memoryIncrease / 1024}KB");
                 }
             }
@@ -674,11 +674,11 @@ namespace Test{i}
             GC.Collect();
             var finalMemory = GC.GetTotalMemory(true);
             var totalIncrease = finalMemory - initialMemory;
-            
+
             Console.WriteLine($"✅ 源生成器内存压力测试完成，总内存增长: {totalIncrease / 1024}KB");
-            
+
             // 内存增长不应超过20MB (源生成器相对复杂)
-            Assert.IsTrue(totalIncrease < 20 * 1024 * 1024, 
+            Assert.IsTrue(totalIncrease < 20 * 1024 * 1024,
                 $"内存增长 {totalIncrease / 1024 / 1024}MB 应小于 20MB");
         }
 

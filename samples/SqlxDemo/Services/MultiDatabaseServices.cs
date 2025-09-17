@@ -19,7 +19,7 @@ public partial class MySqlUserService(SqliteConnection connection) : IUserServic
 
     [Sqlx("SELECT * FROM `user` WHERE `age` BETWEEN @min_age AND @max_age")]
     public partial Task<IList<User>> GetUsersByAgeRangeAsync(int minAge, int maxAge);
-    
+
     [Sqlx("SELECT COUNT(*) FROM `user` WHERE `department_id` = @dept_id")]
     public partial Task<int> GetUserCountByDepartmentAsync(int deptId);
 }
@@ -33,13 +33,13 @@ public partial class SqlServerUserService(SqliteConnection connection) : IUserSe
     // 演示中使用SQLite连接，但生成SQL Server语法：使用 [column] 和 @param
     [Sqlx("SELECT * FROM [user] WHERE [is_active] = 1")]
     public partial Task<IList<User>> GetActiveUsersAsync();
-    
+
     [Sqlx("SELECT * FROM [user] WHERE [id] = @id")]
     public partial Task<User?> GetUserByIdAsync(int id);
-    
+
     [Sqlx("SELECT * FROM [user] WHERE [age] BETWEEN @min_age AND @max_age")]
     public partial Task<IList<User>> GetUsersByAgeRangeAsync(int minAge, int maxAge);
-    
+
     [Sqlx("SELECT COUNT(*) FROM [user] WHERE [department_id] = @dept_id")]
     public partial Task<int> GetUserCountByDepartmentAsync(int deptId);
 }
@@ -53,13 +53,13 @@ public partial class PostgreSqlUserService(SqliteConnection connection) : IUserS
     // 演示中使用SQLite连接，但生成PostgreSQL语法：使用 "column" 和 $param
     [Sqlx("SELECT * FROM \"user\" WHERE \"is_active\" = 1")]
     public partial Task<IList<User>> GetActiveUsersAsync();
-    
+
     [Sqlx("SELECT * FROM \"user\" WHERE \"id\" = $1")]
     public partial Task<User?> GetUserByIdAsync(int id);
-    
+
     [Sqlx("SELECT * FROM \"user\" WHERE \"age\" BETWEEN $1 AND $2")]
     public partial Task<IList<User>> GetUsersByAgeRangeAsync(int minAge, int maxAge);
-    
+
     [Sqlx("SELECT COUNT(*) FROM \"user\" WHERE \"department_id\" = $1")]
     public partial Task<int> GetUserCountByDepartmentAsync(int deptId);
 }

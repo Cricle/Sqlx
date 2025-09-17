@@ -331,11 +331,11 @@ namespace Sqlx.Tests.Core
         {
             // Test performance with large inputs
             var largeInput = string.Join("", Enumerable.Range(0, 1000).Select(i => $"Property{i}"));
-            
+
             var startTime = DateTime.UtcNow;
             var result = NameMapper.MapName(largeInput);
             var duration = DateTime.UtcNow - startTime;
-            
+
             Assert.IsNotNull(result);
             Assert.IsTrue(result.Length > 0);
             Assert.IsTrue(duration.TotalMilliseconds < 1000, "Performance test failed - took too long");
@@ -402,13 +402,13 @@ namespace Sqlx.Tests.Core
         {
             // Test that the same input always produces the same output
             var testInputs = new[] { "UserId", "firstName", "XMLParser", "user_id", "ID", "@param" };
-            
+
             foreach (var input in testInputs)
             {
                 var result1 = NameMapper.MapName(input);
                 var result2 = NameMapper.MapName(input);
                 var result3 = NameMapper.MapNameToSnakeCase(input);
-                
+
                 Assert.AreEqual(result1, result2, $"Inconsistent results for '{input}'");
                 Assert.AreEqual(result1, result3, $"MapName and MapNameToSnakeCase differ for '{input}'");
             }

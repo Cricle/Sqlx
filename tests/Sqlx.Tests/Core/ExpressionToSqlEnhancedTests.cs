@@ -88,11 +88,11 @@ namespace Sqlx.Tests.Core
 
             // Assert
             Console.WriteLine($"条件表达式SQL: {sql}");
-            Assert.IsTrue(sql.Contains("SUM(CASE WHEN [IsActive] THEN [Salary] ELSE 0 END)"), 
+            Assert.IsTrue(sql.Contains("SUM(CASE WHEN [IsActive] THEN [Salary] ELSE 0 END)"),
                 "应包含条件表达式的CASE WHEN语句");
-            Assert.IsTrue(sql.Contains("AVG(COALESCE([Bonus], 0))"), 
+            Assert.IsTrue(sql.Contains("AVG(COALESCE([Bonus], 0))"),
                 "应包含空值合并的COALESCE函数");
-            Assert.IsTrue(sql.Contains("CASE WHEN ([PerformanceRating] > 4.0) THEN ([Salary] * 1.2) ELSE [Salary] END"), 
+            Assert.IsTrue(sql.Contains("CASE WHEN ([PerformanceRating] > 4.0) THEN ([Salary] * 1.2) ELSE [Salary] END"),
                 "应包含复杂条件表达式");
         }
 
@@ -116,11 +116,11 @@ namespace Sqlx.Tests.Core
             // Assert
             Console.WriteLine($"复杂算术表达式SQL: {sql}");
             Assert.IsTrue(sql.Contains("SUM((([Salary] + COALESCE([Bonus], 0)) * 1.1))") ||
-                         sql.Contains("SUM(((COALESCE([Bonus], 0) + [Salary]) * 1.1))"), 
+                         sql.Contains("SUM(((COALESCE([Bonus], 0) + [Salary]) * 1.1))"),
                 "应包含复杂的算术表达式和空值合并");
-            Assert.IsTrue(sql.Contains("AVG(([Salary] / 12))"), 
+            Assert.IsTrue(sql.Contains("AVG(([Salary] / 12))"),
                 "应包含除法运算");
-            Assert.IsTrue(sql.Contains("MAX(([Salary] - ([Salary] * 0.1)))"), 
+            Assert.IsTrue(sql.Contains("MAX(([Salary] - ([Salary] * 0.1)))"),
                 "应包含减法和乘法组合");
         }
 
@@ -142,9 +142,9 @@ namespace Sqlx.Tests.Core
 
             // Assert
             Console.WriteLine($"字符串函数SQL: {sql}");
-            Assert.IsTrue(sql.Contains("SUM(LEN([Name]))") || sql.Contains("SUM(LENGTH([Name]))"), 
+            Assert.IsTrue(sql.Contains("SUM(LEN([Name]))") || sql.Contains("SUM(LENGTH([Name]))"),
                 "应包含字符串长度函数");
-            Assert.IsTrue(sql.Contains("SUM(LEN(UPPER([Name])))") || sql.Contains("SUM(LENGTH(UPPER([Name])))"), 
+            Assert.IsTrue(sql.Contains("SUM(LEN(UPPER([Name])))") || sql.Contains("SUM(LENGTH(UPPER([Name])))"),
                 "应包含嵌套的字符串函数");
         }
 
@@ -166,7 +166,7 @@ namespace Sqlx.Tests.Core
                     .Where(e => e.Salary > 50000)
                     .Where(e => e.IsActive && e.Name.Contains("test"))
                     .OrderBy(e => e.HireDate);
-                
+
                 var sql = query.ToSql();
                 Assert.IsNotNull(sql);
             }
@@ -175,7 +175,7 @@ namespace Sqlx.Tests.Core
 
             // Assert
             Console.WriteLine($"缓存优化性能测试: {iterations}次解析耗时 {stopwatch.ElapsedMilliseconds}ms");
-            Assert.IsTrue(stopwatch.ElapsedMilliseconds < 500, 
+            Assert.IsTrue(stopwatch.ElapsedMilliseconds < 500,
                 $"缓存优化后的表达式解析应该很快: {stopwatch.ElapsedMilliseconds}ms for {iterations} iterations");
         }
 
@@ -210,7 +210,7 @@ namespace Sqlx.Tests.Core
 
             // Assert
             Console.WriteLine($"复杂GroupBy表达式性能测试: {iterations}次解析耗时 {stopwatch.ElapsedMilliseconds}ms");
-            Assert.IsTrue(stopwatch.ElapsedMilliseconds < 1000, 
+            Assert.IsTrue(stopwatch.ElapsedMilliseconds < 1000,
                 $"复杂GroupBy表达式解析应该保持高效: {stopwatch.ElapsedMilliseconds}ms for {iterations} iterations");
         }
 
@@ -236,9 +236,9 @@ namespace Sqlx.Tests.Core
 
                 var sql = resultQuery.ToSql();
                 Console.WriteLine($"复杂嵌套函数SQL: {sql}");
-                
+
                 // 应该能够处理，即使是复杂的嵌套
-                Assert.IsTrue(sql.Contains("POWER") || sql.Contains("POW"), 
+                Assert.IsTrue(sql.Contains("POWER") || sql.Contains("POW"),
                     "应该能处理数学幂函数");
             }
             catch (Exception ex)
@@ -267,9 +267,9 @@ namespace Sqlx.Tests.Core
 
             // Assert
             Console.WriteLine($"NULL处理SQL: {sql}");
-            Assert.IsTrue(sql.Contains("COALESCE([Bonus], 0)"), 
+            Assert.IsTrue(sql.Contains("COALESCE([Bonus], 0)"),
                 "应包含简单的NULL合并");
-            Assert.IsTrue(sql.Contains("COALESCE([Bonus], [Salary])"), 
+            Assert.IsTrue(sql.Contains("COALESCE([Bonus], [Salary])"),
                 "应包含复杂的NULL合并");
         }
 
@@ -302,12 +302,12 @@ namespace Sqlx.Tests.Core
 
                     var sql = resultQuery.ToSql();
                     Console.WriteLine($"{dialectName} 嵌套函数SQL: {sql}");
-                    
-                    Assert.IsTrue(sql.Contains("ROUND") && sql.Contains("ABS"), 
+
+                    Assert.IsTrue(sql.Contains("ROUND") && sql.Contains("ABS"),
                         $"{dialectName}: 应包含ROUND和ABS函数");
-                    Assert.IsTrue(sql.Contains("SUM") && sql.Contains("AVG"), 
+                    Assert.IsTrue(sql.Contains("SUM") && sql.Contains("AVG"),
                         $"{dialectName}: 应包含SUM和AVG聚合函数");
-                    
+
                     resultQuery.Dispose();
                 }
             }
@@ -335,7 +335,7 @@ namespace Sqlx.Tests.Core
             using var testQuery = ExpressionToSql<TestEmployee>.ForSqlServer()
                 .Where(e => e.IsActive);
             var sql = testQuery.ToSql();
-            
+
             Assert.IsNotNull(sql);
             Assert.IsTrue(sql.Contains("IsActive"));
             Console.WriteLine("✅ 缓存清理功能正常工作");

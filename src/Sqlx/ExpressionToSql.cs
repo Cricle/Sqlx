@@ -74,9 +74,9 @@ namespace Sqlx
         /// </summary>
         private List<string> ExtractColumnsFromSelectors(Expression<Func<T, object>>[]? selectors)
         {
-            return selectors?.Where(s => s != null)
-                .SelectMany(s => ExtractColumns(s.Body))
-                .ToList() ?? new List<string>();
+            if (selectors == null || selectors.Length == 0) return new List<string>(0);
+
+            return selectors.Where(s => s != null).SelectMany(s => ExtractColumns(s.Body)).ToList();
         }
 
         /// <summary>
@@ -100,14 +100,12 @@ namespace Sqlx
         /// <summary>
         /// 添加 ORDER BY 子句。
         /// </summary>
-        public ExpressionToSql<T> OrderBy<TKey>(Expression<Func<T, TKey>> keySelector) => 
-            AddOrderBy(keySelector, "ASC");
+        public ExpressionToSql<T> OrderBy<TKey>(Expression<Func<T, TKey>> keySelector) => AddOrderBy(keySelector, "ASC");
 
         /// <summary>
         /// 添加 ORDER BY DESC 子句。
         /// </summary>
-        public ExpressionToSql<T> OrderByDescending<TKey>(Expression<Func<T, TKey>> keySelector) => 
-            AddOrderBy(keySelector, "DESC");
+        public ExpressionToSql<T> OrderByDescending<TKey>(Expression<Func<T, TKey>> keySelector) => AddOrderBy(keySelector, "DESC");
 
         /// <summary>
         /// 添加排序表达式的通用方法。
@@ -175,7 +173,7 @@ namespace Sqlx
         /// 统一的操作类型设置，避免重复代码
         /// </summary>
         private void SetOperationType(SqlOperation operationType) => _operationType = operationType;
-        
+
         private void EnsureUpdateMode() => SetOperationType(SqlOperation.Update);
         private void EnsureInsertMode() => SetOperationType(SqlOperation.Insert);
         private void EnsureDeleteMode() => SetOperationType(SqlOperation.Delete);
@@ -356,12 +354,12 @@ namespace Sqlx
         private string BuildSelectSql()
         {
             using var sql = new ValueStringBuilder(512);
-            
+
             // SELECT 子句
-            sql.Append(_customSelectClause?.Count > 0 
-                ? $"SELECT {string.Join(", ", _customSelectClause)} FROM " 
+            sql.Append(_customSelectClause?.Count > 0
+                ? $"SELECT {string.Join(", ", _customSelectClause)} FROM "
                 : "SELECT * FROM ");
-            
+
             // FROM 表名
             sql.Append(_dialect.WrapColumn(_tableName!));
 
@@ -413,7 +411,7 @@ namespace Sqlx
                     if (_skip.HasValue) sql.Append($" OFFSET {_skip.Value}");
                 }
             }
-            
+
             return sql.ToString();
         }
 
@@ -480,11 +478,11 @@ namespace Sqlx
         private string BuildDeleteSql()
         {
             using var sql = new ValueStringBuilder(256);
-            
+
             // DELETE FROM 表名
             sql.Append("DELETE FROM ");
             sql.Append(_dialect.WrapColumn(_tableName!));
-            
+
             // WHERE子句 - DELETE必须有WHERE条件以确保安全
             if (_whereConditions.Count > 0)
             {
@@ -496,7 +494,7 @@ namespace Sqlx
             {
                 throw new InvalidOperationException("DELETE operation requires WHERE clause for safety. Use Delete(predicate) or call Where() before Delete().");
             }
-            
+
             return sql.ToString();
         }
 
@@ -525,28 +523,28 @@ namespace Sqlx
         public string ToAdditionalClause()
         {
             using var sql = new ValueStringBuilder(256);
-            
+
             // GROUP BY子句
             if (_groupByExpressions.Count > 0)
             {
                 sql.Append(" GROUP BY ");
                 sql.Append(string.Join(", ", _groupByExpressions));
             }
-            
+
             // HAVING子句
             if (_havingConditions.Count > 0)
             {
                 sql.Append(" HAVING ");
                 sql.Append(string.Join(" AND ", _havingConditions));
             }
-            
+
             // ORDER BY子句
             if (_orderByExpressions.Count > 0)
             {
                 sql.Append(" ORDER BY ");
                 sql.Append(string.Join(", ", _orderByExpressions));
             }
-            
+
             // 分页子句
             if (_skip.HasValue || _take.HasValue)
             {
@@ -564,22 +562,8 @@ namespace Sqlx
                     if (_skip.HasValue) sql.Append($" OFFSET {_skip.Value}");
                 }
             }
-            
+
             return sql.ToString().TrimStart(); // 移除开头的空格
-        }
-
-
-        /// <summary>
-        /// 释放资源（简化版）。
-        /// </summary>
-        public override void Dispose()
-        {
-            base.Dispose();
-            _setClausesConstant.Clear();
-            _setClausesExpression.Clear();
-            _insertColumns.Clear();
-            _insertValues.Clear();
-            _insertSelectSql = null;
         }
     }
 
@@ -614,14 +598,14 @@ namespace Sqlx
                 "SQLite" => ExpressionToSql<TResult>.ForSqlite(),
                 _ => ExpressionToSql<TResult>.ForSqlServer()
             };
-            
+
             // 构建 SELECT 子句
             var selectClause = BuildSelectClause(selector.Body);
             resultQuery.SetCustomSelectClause(selectClause);
-            
+
             // 复制基础查询的信息
             CopyBaseQueryInfo(resultQuery);
-            
+
             return resultQuery;
         }
 
@@ -639,7 +623,7 @@ namespace Sqlx
         private List<string> BuildSelectClause(Expression expression)
         {
             var selectClause = new List<string>();
-            
+
             switch (expression)
             {
                 case NewExpression newExpr:
@@ -652,7 +636,7 @@ namespace Sqlx
                         selectClause.Add($"{selectExpression} AS {memberName}");
                     }
                     break;
-                    
+
                 case MemberInitExpression memberInit:
                     // 处理 new TestUserResult { Id = g.Key, Count = g.Count() } 形式
                     foreach (var binding in memberInit.Bindings)
@@ -665,14 +649,14 @@ namespace Sqlx
                         }
                     }
                     break;
-                    
+
                 default:
                     // 单个表达式
                     var expr = ParseSelectExpression(expression);
                     selectClause.Add(expr);
                     break;
             }
-            
+
             return selectClause;
         }
 
@@ -682,7 +666,7 @@ namespace Sqlx
             {
                 case MethodCallExpression methodCall:
                     return ParseAggregateFunction(methodCall);
-                    
+
                 case MemberExpression member when member.Expression is ParameterExpression param && param.Name == "g":
                     // g.Key 访问
                     if (member.Member.Name == "Key")
@@ -690,7 +674,7 @@ namespace Sqlx
                         return _keyColumnName;
                     }
                     return "NULL";
-                    
+
                 case BinaryExpression binary:
                     // 处理二元表达式，例如 g.Key ?? 0 或复杂的算术表达式
                     var left = ParseSelectExpression(binary.Left);
@@ -710,24 +694,24 @@ namespace Sqlx
                         ExpressionType.LessThanOrEqual => "<=",
                         _ => binary.NodeType.ToString()
                     };
-                    return binary.NodeType == ExpressionType.Coalesce 
-                        ? $"COALESCE({left}, {right})" 
+                    return binary.NodeType == ExpressionType.Coalesce
+                        ? $"COALESCE({left}, {right})"
                         : $"({left} {op} {right})";
-                        
+
                 case ConstantExpression constant:
                     return FormatConstantValue(constant.Value);
-                    
+
                 case ConditionalExpression conditional:
                     // 处理三元运算符 condition ? ifTrue : ifFalse
                     var test = ParseSelectExpression(conditional.Test);
                     var ifTrue = ParseSelectExpression(conditional.IfTrue);
                     var ifFalse = ParseSelectExpression(conditional.IfFalse);
                     return $"CASE WHEN {test} THEN {ifTrue} ELSE {ifFalse} END";
-                    
+
                 case UnaryExpression unary when unary.NodeType == ExpressionType.Convert:
                     // 处理类型转换
                     return ParseSelectExpression(unary.Operand);
-                    
+
                 default:
                     // 对于无法处理的表达式，尝试作为普通表达式解析
                     try
@@ -744,7 +728,7 @@ namespace Sqlx
         private string ParseAggregateFunction(MethodCallExpression methodCall)
         {
             var methodName = methodCall.Method.Name;
-            
+
             return methodName switch
             {
                 "Count" => "COUNT(*)",
@@ -759,20 +743,12 @@ namespace Sqlx
         /// <summary>
         /// 增强的Lambda表达式解析，支持复杂的嵌套函数和表达式
         /// </summary>
-        private string ParseLambdaExpressionEnhanced(Expression expression)
+        private string ParseLambdaExpressionEnhanced(Expression expression) => expression switch
         {
-            switch (expression)
-            {
-                case LambdaExpression lambda:
-                    return ParseLambdaBody(lambda.Body);
-                    
-                case UnaryExpression { NodeType: ExpressionType.Quote } unary when unary.Operand is LambdaExpression quotedLambda:
-                    return ParseLambdaBody(quotedLambda.Body);
-                    
-                default:
-                    return ParseLambdaBody(expression);
-            }
-        }
+            LambdaExpression lambda => ParseLambdaBody(lambda.Body),
+            UnaryExpression { NodeType: ExpressionType.Quote } unary when unary.Operand is LambdaExpression quotedLambda => ParseLambdaBody(quotedLambda.Body),
+            _ => ParseLambdaBody(expression),
+        };
 
         /// <summary>
         /// 解析Lambda表达式的Body部分，支持嵌套函数
@@ -789,7 +765,7 @@ namespace Sqlx
                         return GetDialectFunction("LENGTH", new[] { obj }, DialectMappings["Length"]);
                     }
                     return ExtractColumnName(member);
-                    
+
                 case BinaryExpression binary:
                     // 支持算术表达式和空值合并，如 x.Salary * 1.2, x.Bonus ?? 0
                     var left = ParseLambdaBody(binary.Left);
@@ -810,27 +786,27 @@ namespace Sqlx
                         ExpressionType.NotEqual => "!=",
                         _ => "+"
                     };
-                    return binary.NodeType == ExpressionType.Coalesce 
+                    return binary.NodeType == ExpressionType.Coalesce
                         ? $"COALESCE({left}, {right})"
                         : $"({left} {op} {right})";
-                    
+
                 case MethodCallExpression methodCall:
                     // 支持嵌套函数调用，如 Math.Round(x.Salary, 2)
                     return ParseMethodCallInAggregate(methodCall);
-                    
+
                 case ConstantExpression constant:
                     return FormatConstantValue(constant.Value);
-                    
+
                 case ConditionalExpression conditional:
                     // 支持条件表达式，如 x.IsActive ? x.Salary : 0
                     var test = ParseLambdaBody(conditional.Test);
                     var ifTrue = ParseLambdaBody(conditional.IfTrue);
                     var ifFalse = ParseLambdaBody(conditional.IfFalse);
                     return $"CASE WHEN {test} THEN {ifTrue} ELSE {ifFalse} END";
-                    
+
                 case UnaryExpression unary when unary.NodeType == ExpressionType.Convert:
                     return ParseLambdaBody(unary.Operand);
-                    
+
                 default:
                     // 回退到简单的列名提取
                     try
@@ -892,13 +868,6 @@ namespace Sqlx
             // 其他情况，回退到基础解析
             return methodCall.Object != null ? ParseLambdaBody(methodCall.Object) : "NULL";
         }
-
-        [Obsolete("Use ParseLambdaExpressionEnhanced for better functionality")]
-        private string ExtractColumnNameFromLambda(Expression expression)
-        {
-            return ParseLambdaExpressionEnhanced(expression);
-        }
-
         private string ExtractColumnName(Expression expression)
         {
             // 使用正确的数据库方言格式
@@ -950,7 +919,7 @@ namespace Sqlx
                     }
                     break;
             }
-            
+
             return expression.ToString();
         }
 
@@ -958,16 +927,16 @@ namespace Sqlx
         {
             // 复制表名 - 使用原始表名而不是结果类型名
             resultQuery.SetTableName(typeof(T).Name);
-            
+
             // 复制 WHERE 条件
             resultQuery.CopyWhereConditions(_baseQuery.GetWhereConditions());
-            
+
             // 确保包含 GROUP BY 子句
             if (!string.IsNullOrEmpty(_keyColumnName))
             {
-                ((ExpressionToSqlBase)resultQuery).AddGroupByColumn(_keyColumnName);
+                resultQuery.AddGroupByColumn(_keyColumnName);
             }
-            
+
             // 复制 HAVING 条件
             resultQuery.CopyHavingConditions(_baseQuery.GetHavingConditions());
         }

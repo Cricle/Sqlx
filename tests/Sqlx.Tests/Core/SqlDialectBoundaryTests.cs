@@ -81,30 +81,30 @@ namespace Sqlx.Tests.Core
             foreach (var (dialectName, dialect) in dialects)
             {
                 Console.WriteLine($"\n=== 测试 {dialectName} 方言 ===");
-                
+
                 foreach (var columnName in testColumns)
                 {
                     try
                     {
                         var wrappedColumn = dialect.WrapColumn(columnName);
-                        
+
                         // 基本验证
                         Assert.IsNotNull(wrappedColumn);
-                        Assert.IsTrue(wrappedColumn.Length >= columnName.Length, 
+                        Assert.IsTrue(wrappedColumn.Length >= columnName.Length,
                             $"{dialectName}: 包装后的列名长度不应小于原始长度");
-                        
+
                         // 检查是否包含适当的包装字符
                         var expectedLeft = dialect.ColumnLeft;
                         var expectedRight = dialect.ColumnRight;
-                        
+
                         if (!string.IsNullOrEmpty(columnName))
                         {
-                            Assert.IsTrue(wrappedColumn.StartsWith(expectedLeft), 
+                            Assert.IsTrue(wrappedColumn.StartsWith(expectedLeft),
                                 $"{dialectName}: 列名应以 '{expectedLeft}' 开始");
-                            Assert.IsTrue(wrappedColumn.EndsWith(expectedRight), 
+                            Assert.IsTrue(wrappedColumn.EndsWith(expectedRight),
                                 $"{dialectName}: 列名应以 '{expectedRight}' 结束");
                         }
-                        
+
                         Console.WriteLine($"✅ {dialectName}: '{columnName}' -> '{wrappedColumn}'");
                     }
                     catch (Exception ex)
@@ -163,25 +163,25 @@ namespace Sqlx.Tests.Core
             foreach (var (dialectName, dialect) in dialects)
             {
                 Console.WriteLine($"\n=== 测试 {dialectName} 字符串包装 ===");
-                
+
                 foreach (var testString in testStrings)
                 {
                     try
                     {
                         var wrappedString = dialect.WrapString(testString);
-                        
+
                         // 基本验证
                         Assert.IsNotNull(wrappedString);
-                        
+
                         // 检查是否包含适当的包装字符
                         var expectedLeft = dialect.StringLeft;
                         var expectedRight = dialect.StringRight;
-                        
-                        Assert.IsTrue(wrappedString.StartsWith(expectedLeft) || wrappedString == "NULL", 
+
+                        Assert.IsTrue(wrappedString.StartsWith(expectedLeft) || wrappedString == "NULL",
                             $"{dialectName}: 字符串应以 '{expectedLeft}' 开始或为 'NULL'");
-                        Assert.IsTrue(wrappedString.EndsWith(expectedRight) || wrappedString == "NULL", 
+                        Assert.IsTrue(wrappedString.EndsWith(expectedRight) || wrappedString == "NULL",
                             $"{dialectName}: 字符串应以 '{expectedRight}' 结束或为 'NULL'");
-                        
+
                         Console.WriteLine($"✅ {dialectName}: '{testString.Substring(0, Math.Min(20, testString.Length))}...' -> '{wrappedString.Substring(0, Math.Min(50, wrappedString.Length))}...'");
                     }
                     catch (Exception ex)
@@ -230,28 +230,28 @@ namespace Sqlx.Tests.Core
             foreach (var (dialectName, dialect, expectedPrefix) in dialects)
             {
                 Console.WriteLine($"\n=== 测试 {dialectName} 参数前缀 ===");
-                
+
                 // 验证参数前缀配置
-                Assert.AreEqual(expectedPrefix, dialect.ParameterPrefix, 
+                Assert.AreEqual(expectedPrefix, dialect.ParameterPrefix,
                     $"{dialectName} 参数前缀应为 '{expectedPrefix}'");
-                
+
                 foreach (var paramName in testParameterNames)
                 {
                     try
                     {
                         var parameter = dialect.CreateParameter(paramName);
-                        
+
                         // 基本验证
                         Assert.IsNotNull(parameter);
-                        
+
                         if (!string.IsNullOrEmpty(paramName))
                         {
-                            Assert.IsTrue(parameter.StartsWith(expectedPrefix), 
+                            Assert.IsTrue(parameter.StartsWith(expectedPrefix),
                                 $"{dialectName}: 参数应以 '{expectedPrefix}' 开始");
-                            Assert.IsTrue(parameter.Contains(paramName), 
+                            Assert.IsTrue(parameter.Contains(paramName),
                                 $"{dialectName}: 参数应包含原始参数名");
                         }
-                        
+
                         Console.WriteLine($"✅ {dialectName}: '{paramName}' -> '{parameter}'");
                     }
                     catch (Exception ex)
@@ -294,31 +294,31 @@ namespace Sqlx.Tests.Core
             foreach (var (dialectName, factory) in dialects)
             {
                 Console.WriteLine($"\n=== 测试 {dialectName} 分页语法 ===");
-                
+
                 foreach (var (take, skip, description) in testCases)
                 {
                     try
                     {
                         using var expr = factory();
                         expr.Where(e => e.Id > 0);
-                        
+
                         if (take > 0) expr.Take(take);
                         if (skip > 0) expr.Skip(skip);
-                        
+
                         var sql = expr.ToSql();
-                        
+
                         Assert.IsNotNull(sql);
                         Console.WriteLine($"✅ {dialectName} {description}: {sql.Substring(0, Math.Min(100, sql.Length))}...");
-                        
+
                         // 验证基本分页关键字存在
                         if (take > 0 || skip > 0)
                         {
-                            var hasLimitKeywords = sql.ToUpperInvariant().Contains("LIMIT") || 
-                                                 sql.ToUpperInvariant().Contains("OFFSET") || 
+                            var hasLimitKeywords = sql.ToUpperInvariant().Contains("LIMIT") ||
+                                                 sql.ToUpperInvariant().Contains("OFFSET") ||
                                                  sql.ToUpperInvariant().Contains("FETCH") ||
                                                  sql.ToUpperInvariant().Contains("TOP") ||
                                                  sql.ToUpperInvariant().Contains("ROWNUM");
-                            
+
                             if (!hasLimitKeywords)
                             {
                                 Console.WriteLine($"⚠️ {dialectName}: 可能缺少分页关键字");
@@ -363,19 +363,19 @@ namespace Sqlx.Tests.Core
             foreach (var (dialectName, factory) in dialects)
             {
                 Console.WriteLine($"\n=== 测试 {dialectName} 日期时间格式 ===");
-                
+
                 foreach (var testDate in testDates)
                 {
                     try
                     {
                         using var expr = factory();
                         expr.Where(e => e.CreatedAt == testDate);
-                        
+
                         var sql = expr.ToSql();
-                        
+
                         Assert.IsNotNull(sql);
                         Assert.IsTrue(sql.Contains("CreatedAt"), "应包含日期列名");
-                        
+
                         Console.WriteLine($"✅ {dialectName}: {testDate:yyyy-MM-dd HH:mm:ss} 处理成功");
                     }
                     catch (Exception ex)
@@ -404,7 +404,7 @@ namespace Sqlx.Tests.Core
             foreach (var (dialectName, factory) in dialects)
             {
                 Console.WriteLine($"\n=== 测试 {dialectName} 布尔值处理 ===");
-                
+
                 try
                 {
                     using var expr = factory();
@@ -412,12 +412,12 @@ namespace Sqlx.Tests.Core
                         .Where(e => e.IsActive == false)
                         .Where(e => e.IsActive)
                         .Where(e => !e.IsActive);
-                    
+
                     var sql = expr.ToSql();
-                    
+
                     Assert.IsNotNull(sql);
                     Assert.IsTrue(sql.Contains("IsActive"), "应包含布尔列名");
-                    
+
                     Console.WriteLine($"✅ {dialectName}: 布尔值处理成功");
                     Console.WriteLine($"SQL: {sql.Substring(0, Math.Min(150, sql.Length))}...");
                 }
@@ -457,10 +457,10 @@ namespace Sqlx.Tests.Core
                 {
                     var dialect = new SqlDialect(left, right, "'", "'", prefix);
                     var detectedType = dialect.DatabaseType;
-                    
-                    Assert.AreEqual(expectedType, detectedType, 
+
+                    Assert.AreEqual(expectedType, detectedType,
                         $"方言配置 ({left}, {right}, {prefix}) 应检测为 {expectedType}");
-                    
+
                     Console.WriteLine($"✅ 方言检测: ({left}, {right}, {prefix}) -> {detectedType}");
                 }
                 catch (Exception ex)
@@ -500,7 +500,7 @@ namespace Sqlx.Tests.Core
             foreach (var (dialectName, dialect) in dialects)
             {
                 Console.WriteLine($"\n=== 测试 {dialectName} 空值输入处理 ===");
-                
+
                 foreach (var (input, description) in testInputs)
                 {
                     try
@@ -511,18 +511,18 @@ namespace Sqlx.Tests.Core
                             var wrappedColumn = dialect.WrapColumn(input);
                             Assert.IsNotNull(wrappedColumn);
                         }
-                        
+
                         // 测试字符串包装
                         var wrappedString = dialect.WrapString(input);
                         Assert.IsNotNull(wrappedString);
-                        
+
                         // 测试参数创建
                         if (input != null)
                         {
                             var parameter = dialect.CreateParameter(input);
                             Assert.IsNotNull(parameter);
                         }
-                        
+
                         Console.WriteLine($"✅ {dialectName}: {description} 处理成功");
                     }
                     catch (Exception ex)

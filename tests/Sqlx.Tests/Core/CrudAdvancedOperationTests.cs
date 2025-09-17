@@ -65,9 +65,9 @@ namespace Sqlx.Tests.Core
             // Assert
             Console.WriteLine($"Custom SELECT SQL: {sql}");
             Assert.IsTrue(sql.Contains("SELECT"), "应包含SELECT关键字");
-            Assert.IsTrue(sql.Contains("Id") && sql.Contains("Name") && sql.Contains("Price"), 
+            Assert.IsTrue(sql.Contains("Id") && sql.Contains("Name") && sql.Contains("Price"),
                 "应包含指定的列");
-            Assert.IsTrue(sql.Contains("WHERE") && sql.Contains("IsActive"), 
+            Assert.IsTrue(sql.Contains("WHERE") && sql.Contains("IsActive"),
                 "应包含WHERE条件");
         }
 
@@ -84,7 +84,7 @@ namespace Sqlx.Tests.Core
             // Assert
             Console.WriteLine($"Multiple selectors SQL: {sql}");
             Assert.IsTrue(sql.Contains("SELECT"), "应包含SELECT关键字");
-            Assert.IsTrue(sql.Contains("Id") && sql.Contains("Name") && sql.Contains("Price"), 
+            Assert.IsTrue(sql.Contains("Id") && sql.Contains("Name") && sql.Contains("Price"),
                 "应包含所有指定的列");
         }
 
@@ -112,8 +112,8 @@ namespace Sqlx.Tests.Core
             Assert.IsTrue(sql.Contains("SELECT"), "应包含SELECT");
             Assert.IsTrue(sql.Contains("WHERE"), "应包含WHERE");
             Assert.IsTrue(sql.Contains("ORDER BY"), "应包含ORDER BY");
-            Assert.IsTrue(sql.Contains("Price") && sql.Contains("CategoryId") && 
-                         sql.Contains("IsActive") && sql.Contains("StockQuantity"), 
+            Assert.IsTrue(sql.Contains("Price") && sql.Contains("CategoryId") &&
+                         sql.Contains("IsActive") && sql.Contains("StockQuantity"),
                 "应包含所有查询条件字段");
         }
 
@@ -127,7 +127,7 @@ namespace Sqlx.Tests.Core
             // Arrange & Act
             using var expr = ExpressionToSql<Product>.ForSqlServer();
             expr.InsertInto()
-                .Values(1, "Test Product", "Test Description", 99.99m, 
+                .Values(1, "Test Product", "Test Description", 99.99m,
                        1, DateTime.Now, null, true, 10, "tag1,tag2");
 
             var sql = expr.ToSql();
@@ -155,7 +155,7 @@ namespace Sqlx.Tests.Core
             Console.WriteLine($"Multiple INSERT SQL: {sql}");
             Assert.IsTrue(sql.Contains("INSERT INTO"), "应包含INSERT INTO");
             Assert.IsTrue(sql.Contains("VALUES"), "应包含VALUES");
-            
+
             // 计算VALUES子句的数量
             var valuesCount = sql.Split('(').Length - 1;
             Assert.IsTrue(valuesCount >= 3, $"应包含至少3个VALUES子句，实际: {valuesCount}");
@@ -169,11 +169,11 @@ namespace Sqlx.Tests.Core
             expr.InsertInto();
 
             var startTime = DateTime.Now;
-            
+
             // 插入大量数据
             for (int i = 1; i <= 1000; i++)
             {
-                expr.AddValues(i, $"Product {i}", $"Description {i}", i * 10.99m, 
+                expr.AddValues(i, $"Product {i}", $"Description {i}", i * 10.99m,
                               i % 10 + 1, DateTime.Now, null, i % 2 == 0, i * 5, $"tag{i}");
             }
 
@@ -184,7 +184,7 @@ namespace Sqlx.Tests.Core
             var duration = endTime - startTime;
             Console.WriteLine($"Generated 1000-row INSERT in {duration.TotalMilliseconds}ms");
             Console.WriteLine($"SQL length: {sql.Length} characters");
-            
+
             Assert.IsTrue(duration.TotalMilliseconds < 5000, "生成1000行INSERT应在5秒内完成");
             Assert.IsTrue(sql.Contains("INSERT INTO"), "应包含INSERT INTO");
             Assert.IsTrue(sql.Length > 50000, "应生成相当长的SQL");
@@ -201,7 +201,7 @@ namespace Sqlx.Tests.Core
 
             using var insertExpr = ExpressionToSql<Product>.ForSqlServer();
             insertExpr.InsertInto()
-                     .Values(1, "Test Product", "Test Description", 99.99m, 
+                     .Values(1, "Test Product", "Test Description", 99.99m,
                             1, DateTime.Now, null, true, 10, "tag1");
 
             var insertSql = insertExpr.ToSql();
@@ -235,7 +235,7 @@ namespace Sqlx.Tests.Core
             Assert.IsTrue(sql.Contains("UPDATE"), "应包含UPDATE");
             Assert.IsTrue(sql.Contains("SET"), "应包含SET");
             Assert.IsTrue(sql.Contains("WHERE"), "应包含WHERE");
-            Assert.IsTrue(sql.Contains("Name") && sql.Contains("Price") && sql.Contains("UpdatedAt"), 
+            Assert.IsTrue(sql.Contains("Name") && sql.Contains("Price") && sql.Contains("UpdatedAt"),
                 "应包含所有更新字段");
         }
 
@@ -256,7 +256,7 @@ namespace Sqlx.Tests.Core
             Assert.IsTrue(sql.Contains("UPDATE"), "应包含UPDATE");
             Assert.IsTrue(sql.Contains("SET"), "应包含SET");
             Assert.IsTrue(sql.Contains("*") && sql.Contains("-"), "应包含数学运算");
-            Assert.IsTrue(sql.Contains("Price") && sql.Contains("StockQuantity"), 
+            Assert.IsTrue(sql.Contains("Price") && sql.Contains("StockQuantity"),
                 "应包含表达式更新字段");
         }
 
@@ -275,9 +275,9 @@ namespace Sqlx.Tests.Core
             // Assert
             Console.WriteLine($"Conditional UPDATE SQL: {sql}");
             Assert.IsTrue(sql.Contains("UPDATE"), "应包含UPDATE");
-            Assert.IsTrue(sql.Contains("IsActive") && sql.Contains("UpdatedAt"), 
+            Assert.IsTrue(sql.Contains("IsActive") && sql.Contains("UpdatedAt"),
                 "应包含更新字段");
-            Assert.IsTrue(sql.Contains("StockQuantity") && sql.Contains("CreatedAt"), 
+            Assert.IsTrue(sql.Contains("StockQuantity") && sql.Contains("CreatedAt"),
                 "应包含条件字段");
         }
 
@@ -300,8 +300,8 @@ namespace Sqlx.Tests.Core
             // Assert
             Console.WriteLine($"Mixed SET types UPDATE SQL: {sql}");
             Assert.IsTrue(sql.Contains("UPDATE"), "应包含UPDATE");
-            Assert.IsTrue(sql.Contains("Name") && sql.Contains("Description") && 
-                         sql.Contains("Price") && sql.Contains("UpdatedAt"), 
+            Assert.IsTrue(sql.Contains("Name") && sql.Contains("Description") &&
+                         sql.Contains("Price") && sql.Contains("UpdatedAt"),
                 "应包含所有SET字段");
         }
 
@@ -339,7 +339,7 @@ namespace Sqlx.Tests.Core
             Console.WriteLine($"Conditional DELETE SQL: {sql}");
             Assert.IsTrue(sql.Contains("DELETE FROM"), "应包含DELETE FROM");
             Assert.IsTrue(sql.Contains("WHERE"), "应包含WHERE子句");
-            Assert.IsTrue(sql.Contains("IsActive") && sql.Contains("StockQuantity"), 
+            Assert.IsTrue(sql.Contains("IsActive") && sql.Contains("StockQuantity"),
                 "应包含删除条件");
         }
 
@@ -362,7 +362,7 @@ namespace Sqlx.Tests.Core
             Console.WriteLine($"Multiple conditions DELETE SQL: {sql}");
             Assert.IsTrue(sql.Contains("DELETE FROM"), "应包含DELETE FROM");
             Assert.IsTrue(sql.Contains("WHERE"), "应包含WHERE子句");
-            Assert.IsTrue(sql.Contains("IsActive") && sql.Contains("StockQuantity") && 
+            Assert.IsTrue(sql.Contains("IsActive") && sql.Contains("StockQuantity") &&
                          sql.Contains("CreatedAt"), "应包含所有删除条件");
         }
 
@@ -403,7 +403,7 @@ namespace Sqlx.Tests.Core
                          .Where(p => p.IsActive && p.Price > 10)
                          .OrderBy(p => p.Name)
                          .Take(10);
-                
+
                 testResults.Add($"SELECT: {selectExpr.ToSql()}");
             }
 
@@ -412,7 +412,7 @@ namespace Sqlx.Tests.Core
             {
                 insertExpr.InsertInto()
                          .Values(1, "Test", "Desc", 99.99m, 1, DateTime.Now, null, true, 10, "tags");
-                
+
                 testResults.Add($"INSERT: {insertExpr.ToSql()}");
             }
 
@@ -422,7 +422,7 @@ namespace Sqlx.Tests.Core
                 updateExpr.Set(p => p.Price, 199.99m)
                          .Set(p => p.UpdatedAt, DateTime.Now)
                          .Where(p => p.Id == 1);
-                
+
                 testResults.Add($"UPDATE: {updateExpr.ToSql()}");
             }
 
@@ -431,7 +431,7 @@ namespace Sqlx.Tests.Core
             {
                 deleteExpr.Delete()
                          .Where(p => p.Id == 1);
-                
+
                 testResults.Add($"DELETE: {deleteExpr.ToSql()}");
             }
 
@@ -456,7 +456,7 @@ namespace Sqlx.Tests.Core
             {
                 checkStock.Select(p => new { p.Id, p.StockQuantity })
                          .Where(p => p.Id == 1 && p.StockQuantity > 0);
-                
+
                 operations.Add($"Check Stock: {checkStock.ToSql()}");
             }
 
@@ -465,7 +465,7 @@ namespace Sqlx.Tests.Core
             {
                 createOrder.InsertInto()
                           .Values(1, 100, DateTime.Now, 99.99m, "Pending", "123 Main St");
-                
+
                 operations.Add($"Create Order: {createOrder.ToSql()}");
             }
 
@@ -475,7 +475,7 @@ namespace Sqlx.Tests.Core
                 updateStock.Set(p => p.StockQuantity, p => p.StockQuantity - 1)
                           .Set(p => p.UpdatedAt, DateTime.Now)
                           .Where(p => p.Id == 1);
-                
+
                 operations.Add($"Update Stock: {updateStock.ToSql()}");
             }
 
@@ -498,7 +498,7 @@ namespace Sqlx.Tests.Core
         {
             // 测试大量CRUD操作的内存使用情况
             var initialMemory = GC.GetTotalMemory(true);
-            
+
             // 执行多个CRUD操作
             for (int i = 0; i < 100; i++)
             {
@@ -506,7 +506,7 @@ namespace Sqlx.Tests.Core
                 expr.Where(p => p.Id == i)
                     .OrderBy(p => p.Name)
                     .Take(10);
-                
+
                 var sql = expr.ToSql();
                 // 确保SQL被生成
                 Assert.IsTrue(sql.Length > 0);
@@ -514,7 +514,7 @@ namespace Sqlx.Tests.Core
 
             var finalMemory = GC.GetTotalMemory(true);
             var memoryUsed = finalMemory - initialMemory;
-            
+
             Console.WriteLine($"Memory used for 100 CRUD operations: {memoryUsed} bytes");
             Assert.IsTrue(memoryUsed < 1024 * 1024, "100个CRUD操作应使用少于1MB内存");
         }
@@ -524,24 +524,24 @@ namespace Sqlx.Tests.Core
         {
             // 测试表达式重用的性能影响
             var reusableExpression = ExpressionToSql<Product>.ForSqlServer();
-            
+
             var startTime = DateTime.Now;
-            
+
             // 多次使用同一个表达式构建器
             for (int i = 0; i < 50; i++)
             {
                 reusableExpression.Where(p => p.CategoryId == i);
             }
-            
+
             var sql = reusableExpression.ToSql();
             var endTime = DateTime.Now;
-            
+
             reusableExpression.Dispose();
-            
+
             var duration = endTime - startTime;
             Console.WriteLine($"50 WHERE conditions added in {duration.TotalMilliseconds}ms");
             Console.WriteLine($"Final SQL length: {sql.Length}");
-            
+
             Assert.IsTrue(duration.TotalMilliseconds < 100, "50个条件应在100ms内添加完成");
             Assert.IsTrue(sql.Contains("WHERE"), "应包含WHERE子句");
         }

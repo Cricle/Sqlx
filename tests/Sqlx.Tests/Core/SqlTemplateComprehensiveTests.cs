@@ -21,25 +21,25 @@ public class MockDbParameter : DbParameter
 {
     private DbType _dbType;
     private ParameterDirection _direction;
-    
+
     public MockDbParameter(string parameterName, object? value)
     {
         ParameterName = parameterName;
         Value = value;
     }
 
-    public override DbType DbType 
-    { 
-        get => _dbType; 
-        set => _dbType = value; 
+    public override DbType DbType
+    {
+        get => _dbType;
+        set => _dbType = value;
     }
-    
-    public override ParameterDirection Direction 
-    { 
-        get => _direction; 
-        set => _direction = value; 
+
+    public override ParameterDirection Direction
+    {
+        get => _direction;
+        set => _direction = value;
     }
-    
+
     public override bool IsNullable { get; set; }
     public override string ParameterName { get; set; }
     public override int Size { get; set; }
@@ -349,7 +349,7 @@ public class SqlTemplateComprehensiveTests
         // Properties should be readonly - this is enforced at compile time
         Assert.AreEqual(sql, template.Sql);
         Assert.AreSame(parameters, template.Parameters);
-        
+
         // Verify the record struct nature
         Assert.IsTrue(template.GetType().IsValueType);
     }
@@ -379,13 +379,13 @@ public class SqlTemplateComprehensiveTests
         // Assert
         Assert.AreEqual(newSql, modifiedSql.Sql);
         Assert.AreSame(originalParameters, modifiedSql.Parameters);
-        
+
         Assert.AreEqual(originalSql, modifiedParameters.Sql);
         Assert.AreSame(newParameters, modifiedParameters.Parameters);
-        
+
         Assert.AreEqual(newSql, modifiedBoth.Sql);
         Assert.AreSame(newParameters, modifiedBoth.Parameters);
-        
+
         // Original should be unchanged
         Assert.AreEqual(originalSql, original.Sql);
         Assert.AreSame(originalParameters, original.Parameters);

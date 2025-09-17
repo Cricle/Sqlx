@@ -2,12 +2,17 @@
 
 <div align="center">
 
-**完整的开发者指南 · 从入门到精通 · 现代C# ORM解决方案**
+**现代 .NET ORM 完整开发指南**
+
+**零反射 · 编译时生成 · 类型安全 · 现代C#**
 
 [![文档](https://img.shields.io/badge/文档-16个完整指南-green?style=for-the-badge)]()
 [![版本](https://img.shields.io/badge/版本-v2.0.2-blue?style=for-the-badge)]()
 [![状态](https://img.shields.io/badge/状态-生产就绪-brightgreen?style=for-the-badge)]()
 [![测试](https://img.shields.io/badge/测试-99.2%25通过-brightgreen?style=for-the-badge)]()
+[![性能](https://img.shields.io/badge/性能提升-10--100x-red?style=for-the-badge)]()
+
+**业界首创完整支持 Primary Constructor 和 Record 类型的 ORM**
 
 **[🚀 快速开始](#-快速开始指南) · [🏗️ 高级特性](#️-高级特性文档) · [💻 完整示例](#-示例项目) · [🔧 开发资源](#-开发者资源)**
 
@@ -21,17 +26,17 @@
 
 | 文档 | 描述 | 推荐度 | 更新状态 |
 |------|------|--------|----------|
-| [📖 项目主页](../README.md) | 完整项目介绍和30秒快速体验 | ⭐⭐⭐⭐⭐ | 🆕 最新 |
-| [🆕 新功能快速入门](NEW_FEATURES_QUICK_START.md) | v2.0.2 智能UPDATE和模运算支持 | ⭐⭐⭐⭐ | 🆕 最新 |
-| [🎨 ExpressionToSql 指南](expression-to-sql.md) | 类型安全的动态查询构建 | ⭐⭐⭐ | ✅ 完整 |
+| [📖 项目主页](../README.md) | 30秒快速开始，现代C#语法演示 | ⭐⭐⭐⭐⭐ | 🆕 全新重写 |
+| [🆕 新功能快速入门](NEW_FEATURES_QUICK_START.md) | v2.0.2 DbBatch批处理和智能UPDATE | ⭐⭐⭐⭐⭐ | 🆕 最新 |
+| [🎨 ExpressionToSql 指南](expression-to-sql.md) | 类型安全的动态查询构建 | ⭐⭐⭐⭐ | ✅ 完整 |
 
 ### 🏗️ 高级特性文档
 
 | 文档 | 描述 | 技术难度 | 价值 |
 |------|------|----------|------|
-| [🚀 高级特性指南](ADVANCED_FEATURES_GUIDE.md) | DbBatch批处理、性能优化详解 | ⭐⭐⭐ | 🔥 核心 |
-| [🏗️ 现代C#支持详解](PRIMARY_CONSTRUCTOR_RECORD_SUPPORT.md) | 业界首创Primary Constructor完整支持 | ⭐⭐⭐⭐ | 🆕 独家 |
-| [🔄 版本升级指南](MIGRATION_GUIDE.md) | 从v1.x平滑升级到v2.0+ | ⭐⭐ | 📈 实用 |
+| [🚀 高级特性指南](ADVANCED_FEATURES_GUIDE.md) | DbBatch批处理、现代C#支持、性能优化 | ⭐⭐⭐ | 🔥 核心必读 |
+| [🏗️ 现代C#支持详解](PRIMARY_CONSTRUCTOR_RECORD_SUPPORT.md) | 业界首创Primary Constructor和Record完整支持 | ⭐⭐⭐⭐ | 🆕 独家特性 |
+| [🔄 版本升级指南](MIGRATION_GUIDE.md) | 从其他ORM平滑迁移到Sqlx | ⭐⭐ | 📈 实用工具 |
 
 ### 📋 项目管理文档
 
@@ -55,102 +60,136 @@
 
 ## 💻 示例项目
 
-### 🎯 一站式综合演示
+### 🎯 完整功能演示
 
 | 特性 | 描述 | 体验价值 | 技术亮点 |
 |------|------|----------|----------|
-| [📦 完整功能演示](../samples/ComprehensiveExample/) | 5000+行高质量示例代码 | ⭐⭐⭐⭐⭐ 必体验 | 🎯 全功能覆盖 |
-| 🎮 **交互式演示菜单** | 9个专业演示模块，完整功能之旅 | 🎨 用户友好 | 🆕 创新设计 |
-| 🆕 **智能UPDATE演示** | 6种高性能更新模式实战 | 🔥 核心功能 | 🚀 性能优化 |
-| 📊 **性能基准测试** | 实测数据对比，验证性能提升 | 📈 数据驱动 | ⚡ 量化分析 |
+| [📦 完整功能演示](../samples/SqlxDemo/) | 高质量示例代码，9个专业演示模块 | ⭐⭐⭐⭐⭐ 必体验 | 🎯 全功能覆盖 |
+| 🎮 **交互式演示菜单** | 现代C#语法、批量操作、智能UPDATE | 🎨 用户友好 | 🆕 创新设计 |
+| 🚀 **DbBatch 批处理演示** | 10-100x性能提升实战展示 | 🔥 核心功能 | 🚀 性能优化 |
+| 📊 **性能基准测试** | 实时性能对比，验证性能提升 | 📈 数据驱动 | ⚡ 量化分析 |
 | 🏗️ **现代C#语法展示** | Record + Primary Constructor完整支持 | 🆕 前沿技术 | 🔧 语法创新 |
+| 🎯 **RepositoryFor演示** | 零代码自动实现接口方法 | 💡 开发效率 | ✨ 智能生成 |
 
 ### 🚀 快速体验
 ```bash
-# 克隆项目并运行综合演示
-git clone https://github.com/Cricle/Sqlx.git
-cd Sqlx/samples/ComprehensiveExample
+# 克隆项目并运行完整演示
+git clone https://github.com/your-org/Sqlx.git
+cd Sqlx/samples/SqlxDemo
 dotnet run
 
-# 推荐选择: 9️⃣ 完整功能综合演示 (5-8分钟体验)
+# 推荐选择: 9️⃣ 综合功能演示 (完整体验所有特性)
 ```
 
 ---
 
 ## 💡 核心技术亮点
 
-### 🚀 性能优势 (实测数据)
+### 🚀 DbBatch 高性能批处理 (10-100x 性能提升)
 ```csharp
-// 🔥 DbBatch批处理 - 10-100x性能提升
-[SqlExecuteType(SqlExecuteTypes.BatchInsert, "users")]
-Task<int> BatchCreateUsersAsync(IList<User> users);
+// 🔥 原生 DbBatch 批处理支持
+public interface IProductService
+{
+    [SqlExecuteType(SqlExecuteTypes.BatchInsert, "products")]
+    Task<int> BatchCreateProductsAsync(IList<Product> products);
+    
+    [SqlExecuteType(SqlExecuteTypes.BatchUpdate, "products")]
+    Task<int> BatchUpdateProductsAsync(IList<Product> products);
+}
 
-// 性能对比 (1000条记录):
-// 传统方式: 2.5s → DbBatch: 0.08s (31x提升!)
-var users = GenerateUsers(1000);
-var count = await userService.BatchCreateUsersAsync(users);
+// 性能对比实测数据 (1000条记录):
+// 传统单条操作: 2.5s → DbBatch批处理: 0.08s (31x提升!)
+var products = GenerateProducts(1000);
+var count = await productService.BatchCreateProductsAsync(products);
 ```
 
-### 🆕 智能UPDATE操作 (v2.0.2 新功能)
+### 🏗️ 现代 C# 语法支持 (业界首创)
 ```csharp
-// 🎯 部分更新 - 只更新指定字段
+// ✅ Record 类型完美支持
+public record User(int Id, string Name, string Email)
+{
+    public bool IsActive { get; set; } = true;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}
+
+// ✅ Primary Constructor 支持 (C# 12+)
+public class Product(int id, string name, decimal price)
+{
+    public int Id { get; } = id;
+    public string Name { get; } = name;
+    public decimal Price { get; } = price;
+    public int Stock { get; set; }
+}
+
+// 🎯 RepositoryFor 零代码实现
+[RepositoryFor(typeof(IUserService))]
+public partial class UserService : IUserService
+{
+    // 所有接口方法自动生成，零手动代码！
+}
+```
+
+### 🎯 智能 UPDATE 操作 (v2.0.2 新功能)
+```csharp
+// 🔧 部分更新 - 只更新指定字段
 await smartUpdateService.UpdateUserPartialAsync(user, 
-    u => u.Email, u => u.IsActive);
+    u => u.Email, u => u.LastLoginAt);
 
 // ⚡ 增量更新 - 原子性数值操作  
 var increments = new Dictionary<string, decimal>
 {
-    ["TotalSpent"] = 199.99m,    // 增加消费
-    ["Points"] = -100m           // 减少积分
+    ["Points"] = 100m,     // 增加积分
+    ["Balance"] = -50m     // 减少余额
 };
-await smartUpdateService.UpdateCustomerIncrementAsync(customerId, increments);
+await smartUpdateService.UpdateUserIncrementAsync(userId, increments);
+
+// 🔐 乐观锁更新
+await smartUpdateService.UpdateUserWithVersionAsync(user, expectedVersion);
 ```
 
-### 🏗️ 现代C#语法支持 (业界首创)
+### 🎨 ExpressionToSql - 类型安全动态查询
 ```csharp
-// ✅ Record类型完美支持
-public record User(int Id, string Name, string Email)
-{
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
-}
-
-// ✅ Primary Constructor支持 (C# 12+)
-public class Customer(int id, string name, string email)
-{
-    public int Id { get; } = id;
-    public string Name { get; } = name;
-    public CustomerStatus Status { get; set; } = CustomerStatus.Active;
-}
-```
-
-### 🎨 类型安全动态查询
-```csharp
-// ✅ Expression to SQL - 编译时验证
+// ✅ Expression to SQL - 编译时验证，运行时安全
 var query = ExpressionToSql<User>.ForSqlServer()
-    .Where(u => u.IsActive && u.Id % 2 == 0)  // 🆕 模运算支持
-    .Where(u => u.Name.Contains("张"))
+    .Where(u => u.IsActive && u.Age > 18)
+    .Where(u => u.Id % 2 == 0)  // 🆕 模运算支持
+    .Where(u => u.Name.Contains("张") || u.Email.EndsWith("@company.com"))
     .OrderBy(u => u.CreatedAt)
     .Take(100);
 
-var users = await userService.QueryUsersAsync(query.ToWhereClause());
+// 在服务中使用
+public interface IAdvancedUserService
+{
+    [Sqlx] Task<IList<User>> QueryUsersAsync([ExpressionToSql] ExpressionToSql<User> filter);
+}
+
+var users = await userService.QueryUsersAsync(query);
 ```
 
 ---
 
 ## 🎯 技术规格和兼容性
 
-### 📦 支持的数据库
-| 数据库 | 支持状态 | DbBatch | 特殊特性 |
-|--------|----------|---------|----------|
-| **SQL Server** | ✅ 完全支持 | ✅ 原生 | OFFSET/FETCH, MERGE |
-| **MySQL** | ✅ 完全支持 | ✅ 原生 | JSON类型, 全文索引 |
-| **PostgreSQL** | ✅ 完全支持 | ✅ 原生 | 数组类型, JSONB |
-| **SQLite** | ✅ 完全支持 | ⚠️ 兼容 | 内嵌式, 跨平台 |
+### 📦 数据库支持矩阵
+| 数据库 | 支持状态 | DbBatch | 特殊特性 | 版本要求 |
+|--------|----------|---------|----------|----------|
+| **SQL Server** | ✅ 完全支持 | ✅ 原生 | MERGE, OFFSET/FETCH | 2012+ |
+| **MySQL** | ✅ 完全支持 | ✅ 原生 | JSON类型, 全文索引 | 8.0+ |
+| **PostgreSQL** | ✅ 完全支持 | ✅ 原生 | 数组类型, JSONB, RETURNING | 12.0+ |
+| **SQLite** | ✅ 完全支持 | ⚠️ 兼容 | 内嵌式, 跨平台 | 3.x |
+| **Oracle** | 🔄 开发中 | 🔄 计划中 | 企业级特性 | 19c+ |
 
 ### 🔧 环境要求
-- **.NET 8.0+** (推荐最新LTS)
-- **C# 12.0+** (获得完整现代特性)
-- **Visual Studio 2022 17.8+** 或 **VS Code**
+
+#### 📋 基础要求
+- **.NET 8.0+** (推荐最新 LTS 版本)
+- **C# 12.0+** (获得完整现代语法支持)
+- **Visual Studio 2022 17.8+** 或 **VS Code + C# 扩展**
+
+#### 🌟 推荐配置
+- **C# 12.0+** - 完整支持 Primary Constructor
+- **.NET 8.0+** - 获得最佳性能和最新特性
+- **SQL Server 2022** / **MySQL 8.0+** / **PostgreSQL 15+** - 原生 DbBatch 支持
 
 ---
 
@@ -260,16 +299,25 @@ dotnet add package Sqlx --version 2.0.2
 
 ## 🎉 开始使用 Sqlx
 
-**现代C# ORM的新标准 · 零反射 · 编译时优化 · 类型安全**
+**现代 .NET 数据访问的新标准**
+
+**零反射 · 编译时优化 · 类型安全 · 现代C#**
 
 ```bash
 # 🎯 立即开始30秒快速体验
-dotnet add package Sqlx --version 2.0.1
+dotnet add package Sqlx --version 2.0.2
 ```
 
-**[🚀 30秒快速开始](../README.md#-快速开始) · [💻 完整演示](../samples/ComprehensiveExample/) · [📚 详细文档](#-文档导航总览)**
+**[🚀 30秒快速开始](../README.md#-30秒快速开始) · [💻 完整演示](../samples/SqlxDemo/) · [📚 详细文档](#-文档导航总览)**
 
 ---
+
+### 📊 项目亮点
+
+- **📊 测试覆盖率**: 99.2% (1306/1318 通过)
+- **📋 文档完整度**: 16个专业文档
+- **🚀 性能提升**: 10-100x批处理性能
+- **🌟 创新特性**: 业界首创现代C#完整支持
 
 **📚 探索完整文档体系，掌握现代.NET数据访问技术**
 

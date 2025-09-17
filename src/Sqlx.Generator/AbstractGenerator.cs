@@ -35,16 +35,12 @@ public abstract partial class AbstractGenerator : ISourceGenerator
     /// <inheritdoc/>
     public void Execute(GeneratorExecutionContext context)
     {
-#if DEBUG
-        System.Console.WriteLine("🚀 AbstractGenerator.Execute called!");
-        System.Diagnostics.Debug.WriteLine("🚀 AbstractGenerator.Execute called!");
-#endif
         ErrorHandler.ExecuteSafely(context, () =>
         {
             // Get the syntax receiver efficiently
             ISqlxSyntaxReceiver? receiver = context.SyntaxReceiver as ISqlxSyntaxReceiver ??
                                            context.SyntaxContextReceiver as ISqlxSyntaxReceiver;
-            
+
             if (receiver == null)
             {
                 return;
@@ -105,32 +101,32 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                 {
                     var containingType = (INamedTypeSymbol)group.Key!;
                     var methods = group.ToList();
-            
-            // Note: Classes with RepositoryFor attribute can still have individual [Sqlx] methods
-            // that need to be processed. Process them normally.
-                    
+
+                    // Note: Classes with RepositoryFor attribute can still have individual [Sqlx] methods
+                    // that need to be processed. Process them normally.
+
                     // Skip all interface methods - they should only be processed through repository classes
                     if (containingType.TypeKind == TypeKind.Interface)
                         return;
-                    
+
                     // Perform diagnostic analysis for each method
                     foreach (var method in methods)
                     {
                         var sqlxAttr = method.GetAttributes()
                             .FirstOrDefault(a => a.AttributeClass?.Name?.Contains("Sqlx") == true);
-                        
+
                         if (sqlxAttr?.ConstructorArguments.FirstOrDefault().Value is string sql)
                         {
                             var entityType = _generatorService.InferEntityTypeFromMethod(method);
                             diagnosticService.PerformComprehensiveAnalysis(method, sql, entityType);
                         }
                     }
-                    
+
                     var ctx = new ClassGenerationContext(containingType, methods, symbols.SqlxAttributeSymbol!);
                     ctx.SetExecutionContext(context);
-                    
+
                     var sb = new IndentedStringBuilder(string.Empty);
-                    
+
                     if (ctx.CreateSource(sb))
                     {
                         var fileName = $"{containingType.ToDisplayString().Replace(".", "_")}.Sql.g.cs";
@@ -151,17 +147,17 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                 // Analyze interface methods in repository class
                 var repositoryForAttr = repositoryClass.GetAttributes()
                     .FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, symbols.RepositoryForAttributeSymbol));
-                
+
                 if (repositoryForAttr?.ConstructorArguments.FirstOrDefault().Value is INamedTypeSymbol interfaceType)
                 {
                     var interfaceMethods = interfaceType.GetMembers().OfType<IMethodSymbol>().ToList();
-                    
+
                     // Perform diagnostic analysis for each method in the interface
                     foreach (var method in interfaceMethods)
                     {
                         var sqlxAttr = method.GetAttributes()
                             .FirstOrDefault(a => a.AttributeClass?.Name?.Contains("Sqlx") == true);
-                        
+
                         if (sqlxAttr?.ConstructorArguments.FirstOrDefault().Value is string sql)
                         {
                             var entityType = _generatorService.InferEntityTypeFromMethod(method);
@@ -171,17 +167,11 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                 }
 
                 var generationContext = new GenerationContext(context, repositoryClass, _generatorService);
-#if DEBUG
-                System.Diagnostics.Debug.WriteLine($"🏗️ Calling GenerateRepositoryImplementation for {repositoryClass.Name}");
-#endif
                 _generatorService.GenerateRepositoryImplementation(generationContext);
             }
             catch (Exception ex)
             {
-#if DEBUG
-                System.Diagnostics.Debug.WriteLine($"❌ Error processing repository class {repositoryClass?.Name}: {ex.Message}");
-#endif
-                ErrorHandler.ReportError(context, ex, "SQLX9997", "Repository class processing error", 
+                ErrorHandler.ReportError(context, ex, "SQLX9997", "Repository class processing error",
                     "Error processing repository class {0}: {1}", repositoryClass.Name);
             }
         }
@@ -272,8 +262,8 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         /// <summary>
         /// Gets a value indicating whether the essential symbols are available.
         /// </summary>
-        public bool IsValid => SqlxAttributeSymbol != null && 
-                              ExpressionToSqlAttributeSymbol != null && 
+        public bool IsValid => SqlxAttributeSymbol != null &&
+                              ExpressionToSqlAttributeSymbol != null &&
                               SqlExecuteTypeAttributeSymbol != null;
     }
 
@@ -285,8 +275,8 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         var methods = new List<IMethodSymbol>();
 
         // 收集所有直接带有Sqlx特性的方法
-        methods.AddRange(receiver.Methods.Where(m => 
-            m.GetAttributes().Any(a => 
+        methods.AddRange(receiver.Methods.Where(m =>
+            m.GetAttributes().Any(a =>
                 a.AttributeClass?.Name?.Contains("Sqlx") == true ||
                 a.AttributeClass?.Name?.Contains("ExpressionToSql") == true)));
 
@@ -295,12 +285,12 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         {
             var repositoryForAttr = repositoryClass.GetAttributes()
                 .FirstOrDefault(a => a.AttributeClass?.Name == "RepositoryForAttribute");
-            
+
             if (repositoryForAttr?.ConstructorArguments.FirstOrDefault().Value is INamedTypeSymbol interfaceType)
             {
                 var interfaceMethods = interfaceType.GetMembers()
                     .OfType<IMethodSymbol>()
-                    .Where(m => m.GetAttributes().Any(a => 
+                    .Where(m => m.GetAttributes().Any(a =>
                         a.AttributeClass?.Name?.Contains("Sqlx") == true ||
                         a.AttributeClass?.Name?.Contains("ExpressionToSql") == true))
                     .ToList();
@@ -374,8 +364,8 @@ public abstract partial class AbstractGenerator : ISourceGenerator
     /// </summary>
     private static bool HasRepositoryForAttribute(INamedTypeSymbol type)
     {
-        return type.GetAttributes().Any(attr => 
-            attr.AttributeClass?.Name == "RepositoryForAttribute" || 
+        return type.GetAttributes().Any(attr =>
+            attr.AttributeClass?.Name == "RepositoryForAttribute" ||
             attr.AttributeClass?.Name == "RepositoryFor");
     }
 }

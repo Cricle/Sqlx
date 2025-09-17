@@ -68,7 +68,7 @@ namespace Sqlx.Tests.Core
 
             // Assert
             Assert.AreEqual(allIds.Length, uniqueIds.Length, "All diagnostic IDs should be unique");
-            
+
             foreach (var id in allIds)
             {
                 Assert.IsTrue(id.StartsWith("SQLX"), $"Diagnostic ID {id} should start with 'SQLX'");
@@ -158,7 +158,7 @@ namespace Sqlx.Tests.Core
             {
                 var diagnostics = DiagnosticHelper.AnalyzeSqlQuality(sql, methodName);
                 Assert.IsNotNull(diagnostics, $"Failed to analyze {category} scenario");
-                
+
                 WriteTestOutput($"{category}: {sql} -> {diagnostics.Count} diagnostics");
             }
         }
@@ -172,7 +172,7 @@ namespace Sqlx.Tests.Core
         public void DiagnosticComponents_InvalidInputs_HandleGracefully()
         {
             // Arrange & Act & Assert
-            
+
             // 空SQL
             var emptyDiagnostics = DiagnosticHelper.AnalyzeSqlQuality("", "TestMethod");
             Assert.IsNotNull(emptyDiagnostics);
@@ -203,7 +203,7 @@ namespace Sqlx.Tests.Core
             // Arrange
             var sqlTypes = new Dictionary<string, string[]>
             {
-                ["SELECT"] = new[] 
+                ["SELECT"] = new[]
                 {
                     "SELECT * FROM [User]",
                     "SELECT [Id], [Name] FROM [User]",
@@ -231,12 +231,12 @@ namespace Sqlx.Tests.Core
             foreach (var sqlType in sqlTypes)
             {
                 WriteTestOutput($"Testing {sqlType.Key} operations:");
-                
+
                 foreach (var sql in sqlType.Value)
                 {
                     var diagnostics = DiagnosticHelper.AnalyzeSqlQuality(sql, "TestMethod");
                     Assert.IsNotNull(diagnostics, $"Failed to analyze: {sql}");
-                    
+
                     WriteTestOutput($"  {sql} -> {diagnostics.Count} diagnostics");
                 }
             }

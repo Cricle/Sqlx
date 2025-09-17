@@ -4,6 +4,7 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
+using Sqlx.Annotations;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -11,8 +12,6 @@ using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Text;
-using Sqlx.Annotations;
 
 namespace Sqlx
 {
@@ -31,9 +30,7 @@ namespace Sqlx
         internal int? _skip;
         internal string? _tableName;
 
-        // 统一的表达式缓存系统，避免重复编译
-        private static readonly ConcurrentDictionary<string, object?> _expressionValueCache = new();
-        private static readonly ConcurrentDictionary<string, Func<object?>> _compiledFunctionCache = new();
+        private static readonly ConcurrentDictionary<MemberInfo, Func<object?, object?>> _compiledFunctionCache = new();
 
         /// <summary>
         /// 使用指定的 SQL 方言初始化新实例。
@@ -70,50 +67,32 @@ namespace Sqlx
         /// <summary>
         /// 获取 WHERE 条件（内部使用）。
         /// </summary>
-        internal List<string> GetWhereConditions()
-        {
-            return new List<string>(_whereConditions);
-        }
+        internal List<string> GetWhereConditions() => new List<string>(_whereConditions);
 
         /// <summary>
         /// 复制 WHERE 条件（内部使用）。
         /// </summary>
-        internal void CopyWhereConditions(List<string> conditions)
-        {
-            _whereConditions.AddRange(conditions);
-        }
+        internal void CopyWhereConditions(List<string> conditions) => _whereConditions.AddRange(conditions);
 
         /// <summary>
         /// 获取 HAVING 条件（内部使用）。
         /// </summary>
-        internal List<string> GetHavingConditions()
-        {
-            return new List<string>(_havingConditions);
-        }
+        internal List<string> GetHavingConditions() => new List<string>(_havingConditions);
 
         /// <summary>
         /// 复制 HAVING 条件（内部使用）。
         /// </summary>
-        internal void CopyHavingConditions(List<string> conditions)
-        {
-            _havingConditions.AddRange(conditions);
-        }
+        internal void CopyHavingConditions(List<string> conditions) => _havingConditions.AddRange(conditions);
 
         /// <summary>
         /// 添加 HAVING 条件（内部使用）。
         /// </summary>
-        internal void AddHavingCondition(string condition)
-        {
-            _havingConditions.Add(condition);
-        }
+        internal void AddHavingCondition(string condition) => _havingConditions.Add(condition);
 
         /// <summary>
-        /// 设置表名（内部使用）。
+        /// 设置表名
         /// </summary>
-        internal void SetTableName(string tableName)
-        {
-            _tableName = tableName;
-        }
+        public void SetTableName(string tableName) => _tableName = tableName;
 
         #endregion
 
@@ -122,24 +101,21 @@ namespace Sqlx
         /// <summary>
         /// 增强的表达式解析，支持数学函数、字符串函数和嵌套表达式，性能优化。
         /// </summary>
-        protected string ParseExpression(Expression expression, bool treatBoolAsComparison = true)
+        protected string ParseExpression(Expression expression, bool treatBoolAsComparison = true) => expression switch
         {
-            return expression switch
-            {
-                BinaryExpression binary => ParseBinaryExpression(binary),
-                MemberExpression member when treatBoolAsComparison && member.Type == typeof(bool) => $"{GetColumnName(member)} = 1",
-                MemberExpression member when IsStringPropertyAccess(member) => ParseStringProperty(member),
-                MemberExpression member when IsEntityProperty(member) => GetColumnName(member),
-                MemberExpression member when member.Expression is MemberExpression baseMember && IsEntityProperty(baseMember) => GetColumnName(member),
-                MemberExpression member => treatBoolAsComparison ? GetColumnName(member) : FormatConstantValue(GetMemberValueOptimized(member)),
-                ConstantExpression constant => GetConstantValue(constant),
-                UnaryExpression unary when unary.NodeType == ExpressionType.Not => ParseNotExpression(unary.Operand),
-                UnaryExpression unary when unary.NodeType == ExpressionType.Convert => ParseExpression(unary.Operand, treatBoolAsComparison),
-                MethodCallExpression method => ParseMethodCallExpression(method),
-                ConditionalExpression conditional => ParseConditionalExpression(conditional),
-                _ => "1=1",
-            };
-        }
+            BinaryExpression binary => ParseBinaryExpression(binary),
+            MemberExpression member when treatBoolAsComparison && member.Type == typeof(bool) => $"{GetColumnName(member)} = 1",
+            MemberExpression member when IsStringPropertyAccess(member) => ParseStringProperty(member),
+            MemberExpression member when IsEntityProperty(member) => GetColumnName(member),
+            MemberExpression member when member.Expression is MemberExpression baseMember && IsEntityProperty(baseMember) => GetColumnName(member),
+            MemberExpression member => treatBoolAsComparison ? GetColumnName(member) : FormatConstantValue(GetMemberValueOptimized(member)),
+            ConstantExpression constant => GetConstantValue(constant),
+            UnaryExpression unary when unary.NodeType == ExpressionType.Not => ParseNotExpression(unary.Operand),
+            UnaryExpression unary when unary.NodeType == ExpressionType.Convert => ParseExpression(unary.Operand, treatBoolAsComparison),
+            MethodCallExpression method => ParseMethodCallExpression(method),
+            ConditionalExpression conditional => ParseConditionalExpression(conditional),
+            _ => "1=1",
+        };
 
         /// <summary>
         /// 解析表达式但不对布尔成员进行特殊处理（用于二元表达式内部）
@@ -154,7 +130,7 @@ namespace Sqlx
             var test = ParseExpression(conditional.Test);
             var ifTrue = ParseExpression(conditional.IfTrue);
             var ifFalse = ParseExpression(conditional.IfFalse);
-            
+
             return DatabaseType switch
             {
                 "SqlServer" => $"CASE WHEN {test} THEN {ifTrue} ELSE {ifFalse} END",
@@ -169,10 +145,7 @@ namespace Sqlx
         protected string ParseMethodCallExpression(MethodCallExpression method)
         {
             // 处理聚合函数中的嵌套方法调用
-            if (IsAggregateContext(method))
-            {
-                return ParseAggregateMethodCall(method);
-            }
+            if (IsAggregateContext(method)) return ParseAggregateMethodCall(method);
 
             return method.Method.DeclaringType switch
             {
@@ -186,58 +159,30 @@ namespace Sqlx
         /// <summary>
         /// 检查是否在聚合函数上下文中
         /// </summary>
-        private bool IsAggregateContext(MethodCallExpression method)
-        {
-            var methodName = method.Method.Name;
-            return methodName is "Count" or "Sum" or "Average" or "Avg" or "Max" or "Min";
-        }
+        private bool IsAggregateContext(MethodCallExpression method) => method.Method.Name is "Count" or "Sum" or "Average" or "Avg" or "Max" or "Min";
 
         /// <summary>
         /// 解析聚合函数中的方法调用，支持嵌套函数
         /// </summary>
-        protected string ParseAggregateMethodCall(MethodCallExpression method)
+        protected string ParseAggregateMethodCall(MethodCallExpression method) => method.Method.Name switch
         {
-            var methodName = method.Method.Name;
-            
-            switch (methodName)
-            {
-                case "Count":
-                    return "COUNT(*)";
-                    
-                case "Sum" when method.Arguments.Count > 1:
-                    return $"SUM({ParseLambdaExpression(method.Arguments[1])})";
-                    
-                case "Average" or "Avg" when method.Arguments.Count > 1:
-                    return $"AVG({ParseLambdaExpression(method.Arguments[1])})";
-                    
-                case "Max" when method.Arguments.Count > 1:
-                    return $"MAX({ParseLambdaExpression(method.Arguments[1])})";
-                    
-                case "Min" when method.Arguments.Count > 1:
-                    return $"MIN({ParseLambdaExpression(method.Arguments[1])})";
-                    
-                default:
-                    throw new NotSupportedException($"聚合函数 {methodName} 不受支持");
-            }
-        }
+            "Count" => "COUNT(*)",
+            "Sum" when method.Arguments.Count > 1 => $"SUM({ParseLambdaExpression(method.Arguments[1])})",
+            "Average" or "Avg" when method.Arguments.Count > 1 => $"AVG({ParseLambdaExpression(method.Arguments[1])})",
+            "Max" when method.Arguments.Count > 1 => $"MAX({ParseLambdaExpression(method.Arguments[1])})",
+            "Min" when method.Arguments.Count > 1 => $"MIN({ParseLambdaExpression(method.Arguments[1])})",
+            _ => throw new NotSupportedException($"聚合函数 {method.Method.Name} 不受支持"),
+        };
 
         /// <summary>
         /// 增强的Lambda表达式解析，支持复杂的嵌套函数
         /// </summary>
-        protected string ParseLambdaExpression(Expression expression)
+        protected string ParseLambdaExpression(Expression expression) => expression switch
         {
-            switch (expression)
-            {
-                case LambdaExpression lambda:
-                    return ParseExpression(lambda.Body, false);
-                    
-                case UnaryExpression { NodeType: ExpressionType.Quote } unary when unary.Operand is LambdaExpression quotedLambda:
-                    return ParseExpression(quotedLambda.Body, false);
-                    
-                default:
-                    return ParseExpression(expression, false);
-            }
-        }
+            LambdaExpression lambda => ParseExpression(lambda.Body, false),
+            UnaryExpression { NodeType: ExpressionType.Quote } unary when unary.Operand is LambdaExpression quotedLambda => ParseExpression(quotedLambda.Body, false),
+            _ => ParseExpression(expression, false),
+        };
 
         /// <summary>
         /// 尝试解析布尔比较，返回 null 如果不是布尔比较
@@ -263,20 +208,20 @@ namespace Sqlx
         protected string ParseBinaryExpression(BinaryExpression binary)
         {
             // 先处理特殊情况，再解析表达式
-            
+
             // 处理布尔类型与常量的比较
             var boolResult = TryParseBooleanComparison(binary);
             if (boolResult != null) return boolResult;
-            
+
             var left = ParseExpressionRaw(binary.Left);
             var right = ParseExpressionRaw(binary.Right);
-            
+
             // 特殊处理：如果右侧是布尔成员且尚未正确转换，强制添加 = 1
             if (binary.Right is MemberExpression rightMember && rightMember.Type == typeof(bool) && right == GetColumnName(rightMember))
             {
                 right = $"{right} = 1";
             }
-            
+
             // 处理 NULL 比较
             if (binary.NodeType == ExpressionType.Equal && (left == "NULL" || right == "NULL"))
             {
@@ -286,7 +231,7 @@ namespace Sqlx
             {
                 return left == "NULL" ? $"{right} IS NOT NULL" : $"{left} IS NOT NULL";
             }
-            
+
             return binary.NodeType switch
             {
                 // 比较运算符 - 只在复杂逻辑时添加括号
@@ -296,28 +241,31 @@ namespace Sqlx
                 ExpressionType.GreaterThanOrEqual => $"{left} >= {right}",
                 ExpressionType.LessThan => $"{left} < {right}",
                 ExpressionType.LessThanOrEqual => $"{left} <= {right}",
-                
+
                 // 逻辑运算符 - 需要括号确保优先级
                 ExpressionType.AndAlso => FormatLogicalExpression("AND", left, right, binary),
                 ExpressionType.OrElse => FormatLogicalExpression("OR", left, right, binary),
-                
+
                 // 算术运算符 - 简单表达式不加括号，复杂时在外层加
                 ExpressionType.Add => IsStringConcatenation(binary) ? GetConcatSyntax(left, right) : $"{left} + {right}",
                 ExpressionType.Subtract => $"{left} - {right}",
                 ExpressionType.Multiply => $"{left} * {right}",
                 ExpressionType.Divide => $"{left} / {right}",
                 ExpressionType.Modulo => GetOperatorFunction("%", left, right),
-                ExpressionType.Power => GetDialectFunction("POWER", new[] { left, right }, new() { 
-                    ["MySQL"] = "POW({0}, {1})", ["SQLite"] = "POW({0}, {1})" }),
-                
+                ExpressionType.Power => GetDialectFunction("POWER", new[] { left, right }, new()
+                {
+                    ["MySQL"] = "POW({0}, {1})",
+                    ["SQLite"] = "POW({0}, {1})"
+                }),
+
                 // 位运算符
                 ExpressionType.And => $"({left} & {right})",
                 ExpressionType.Or => $"({left} | {right})",
                 ExpressionType.ExclusiveOr => GetOperatorFunction("^", left, right),
-                
+
                 // 空值合并
                 ExpressionType.Coalesce => GetOperatorFunction("??", left, right),
-                
+
                 _ => $"{left} = {right}"
             };
         }
@@ -329,7 +277,7 @@ namespace Sqlx
             {
                 expression = unary.Operand;
             }
-            
+
             // For complex expressions, try to parse them as SQL expressions
             if (expression is not MemberExpression)
             {
@@ -342,7 +290,7 @@ namespace Sqlx
                     throw new ArgumentException($"{expression} is not member expression and cannot be parsed as complex expression");
                 }
             }
-            
+
             var member = (MemberExpression)expression;
             return _dialect.WrapColumn(member.Member.Name);
         }
@@ -364,112 +312,26 @@ namespace Sqlx
         /// </summary>
         protected object? GetMemberValueOptimized(MemberExpression member)
         {
-            var key = member.ToString();
-            
-            // 第一级缓存：直接值缓存
-            if (_expressionValueCache.TryGetValue(key, out var cachedValue))
-                return cachedValue;
-            
-            // 第二级缓存：编译函数缓存
-            if (_compiledFunctionCache.TryGetValue(key, out var compiledFunc))
-            {
-                try
-                {
-                    var result = compiledFunc();
-                    _expressionValueCache.TryAdd(key, result); // 提升到值缓存
-                    return result;
-                }
-                catch
-                {
-                    _compiledFunctionCache.TryRemove(key, out _);
-                }
-            }
+            var expressionSimple = member.Expression == null || member.Expression is ConstantExpression;
+            if (expressionSimple || member.Member is not FieldInfo or PropertyInfo) return Expression.Lambda(member).Compile().DynamicInvoke();
 
-            // 快速路径：反射访问
-            if (TryGetMemberValueFast(member, out var fastValue))
-            {
-                _expressionValueCache.TryAdd(key, fastValue);
-                return fastValue;
-            }
-
-            // 最后手段：编译访问
-            return CompileAndCacheMemberAccess(member, key);
+            return GetExpressionFunc(member)((member.Expression as ConstantExpression)?.Value);
         }
 
-        /// <summary>
-        /// 统一的编译和缓存逻辑
-        /// </summary>
-        private object? CompileAndCacheMemberAccess(MemberExpression member, string key)
+        private Func<object?, object?> GetExpressionFunc(MemberExpression expression)
         {
-            try
+            return _compiledFunctionCache.GetOrAdd(expression.Member, x =>
             {
-                var lambda = Expression.Lambda<Func<object?>>(Expression.Convert(member, typeof(object)));
-                var compiled = lambda.Compile();
-                
-                _compiledFunctionCache.TryAdd(key, compiled);
-                var result = compiled();
-                _expressionValueCache.TryAdd(key, result);
-                
-                return result;
-            }
-            catch
-            {
-                return member.ToString();
-            }
-        }
-
-        /// <summary>
-        /// 快速路径：尝试通过反射直接获取成员值，优化性能
-        /// </summary>
-        private bool TryGetMemberValueFast(MemberExpression member, out object? value)
-        {
-            value = null;
-            try
-            {
-                // 处理简单的常量访问
-                if (member.Expression is ConstantExpression constant)
+                var par = Expression.Parameter(typeof(object));
+                var conv = expression.Expression == null ? null : Expression.Convert(par, x.DeclaringType);
+                var exp = x switch
                 {
-                    value = GetMemberValue(member.Member, constant.Value);
-                    return true;
-                }
-
-                // 处理嵌套的成员访问
-                if (member.Expression is MemberExpression parentMember && 
-                    TryGetMemberValueFast(parentMember, out var parentValue) && 
-                    parentValue != null)
-                {
-                    value = GetMemberValue(member.Member, parentValue);
-                    return true;
-                }
-            }
-            catch
-            {
-                // 快速路径失败
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// 统一的成员值获取逻辑，消除重复代码
-        /// </summary>
-        private static object? GetMemberValue(MemberInfo memberInfo, object? target)
-        {
-            return memberInfo switch
-            {
-                FieldInfo field => field.GetValue(target),
-                PropertyInfo property => property.GetValue(target),
-                _ => null
-            };
-        }
-
-        /// <summary>
-        /// 获取成员表达式的值（用于闭包变量，已废弃，使用 GetMemberValueOptimized）
-        /// </summary>
-        [Obsolete("Use GetMemberValueOptimized for better performance")]
-        protected object? GetMemberValue(MemberExpression member)
-        {
-            return GetMemberValueOptimized(member);
+                    FieldInfo field => Expression.Field(conv, field),
+                    PropertyInfo property => Expression.Property(conv, property),
+                    _ => null
+                };
+                return Expression.Lambda<Func<object?, object?>>(Expression.Convert(exp, typeof(object)), par).Compile();
+            });
         }
 
         protected string FormatConstantValue(object? value)
@@ -497,20 +359,20 @@ namespace Sqlx
 
         /// <summary>移除字符串外层的括号</summary>
         protected static string RemoveOuterParentheses(string condition) =>
-            condition.StartsWith("(") && condition.EndsWith(")") 
-                ? condition.Substring(1, condition.Length - 2) 
+            condition.StartsWith("(") && condition.EndsWith(")")
+                ? condition.Substring(1, condition.Length - 2)
                 : condition;
 
         /// <summary>检查表达式是否是布尔成员</summary>
-        protected static bool IsBooleanMember(Expression expression) => 
+        protected static bool IsBooleanMember(Expression expression) =>
             expression is MemberExpression member && member.Type == typeof(bool);
 
         /// <summary>检查表达式是否是常量 true</summary>
-        protected static bool IsConstantTrue(Expression expression) => 
+        protected static bool IsConstantTrue(Expression expression) =>
             expression is ConstantExpression { Value: true };
 
         /// <summary>检查表达式是否是常量 false</summary>
-        protected static bool IsConstantFalse(Expression expression) => 
+        protected static bool IsConstantFalse(Expression expression) =>
             expression is ConstantExpression { Value: false };
 
         /// <summary>检查是否是字符串属性访问</summary>
@@ -518,15 +380,15 @@ namespace Sqlx
         {
             // 检查是否是 .Length 属性
             if (member.Member.Name != "Length") return false;
-            
+
             // 检查父表达式是否是字符串类型的实体属性
-            if (member.Expression is MemberExpression stringMember && 
-                stringMember.Type == typeof(string) && 
+            if (member.Expression is MemberExpression stringMember &&
+                stringMember.Type == typeof(string) &&
                 IsEntityProperty(stringMember))
             {
                 return true;
             }
-            
+
             return false;
         }
 
@@ -556,7 +418,7 @@ namespace Sqlx
                 var columnName = GetColumnName(member);
                 return $"{columnName} = 0";
             }
-            
+
             // 其他情况使用标准解析
             return $"NOT ({ParseExpression(operand)})";
         }
@@ -577,7 +439,7 @@ namespace Sqlx
                     right = $"{right} = 1";
                 }
             }
-            
+
             // 检查左侧是否也是布尔成员（虽然不太常见，但为了完整性）
             if (binary.Left is MemberExpression leftMember && leftMember.Type == typeof(bool))
             {
@@ -587,7 +449,7 @@ namespace Sqlx
                     left = $"{left} = 1";
                 }
             }
-            
+
             return $"({left} {logicalOperator} {right})";
         }
 
@@ -597,7 +459,7 @@ namespace Sqlx
         protected List<string> ExtractColumns(Expression expression)
         {
             var columns = new List<string>();
-            
+
             switch (expression)
             {
                 case NewExpression newExpr:
@@ -610,16 +472,16 @@ namespace Sqlx
                         }
                     }
                     break;
-                    
+
                 case MemberExpression member:
                     // 处理单个属性
                     columns.Add(GetColumnName(member));
                     break;
-                    
+
                 case UnaryExpression { NodeType: ExpressionType.Convert } unary:
                     // 处理类型转换
                     return ExtractColumns(unary.Operand);
-                    
+
                 default:
                     // 对于其他表达式类型，尝试作为单个成员处理
                     try
@@ -632,7 +494,7 @@ namespace Sqlx
                     }
                     break;
             }
-            
+
             return columns;
         }
 
@@ -666,7 +528,7 @@ namespace Sqlx
         /// 通用的数据库方言函数适配器
         /// </summary>
         protected string GetDialectFunction(string defaultFunction, string[] args, Dictionary<string, string>? overrides = null) =>
-            overrides?.TryGetValue(DatabaseType, out var custom) == true 
+            overrides?.TryGetValue(DatabaseType, out var custom) == true
                 ? string.Format(custom, args.Cast<object>().ToArray())
                 : $"{defaultFunction}({string.Join(", ", args)})";
 
@@ -685,7 +547,7 @@ namespace Sqlx
         protected string ParseMathFunction(MethodCallExpression method, string methodName)
         {
             var args = method.Arguments.Select(ParseExpressionRaw).ToArray();
-            
+
             return (methodName, args.Length) switch
             {
                 ("Abs", 1) => $"ABS({args[0]})",
@@ -726,7 +588,7 @@ namespace Sqlx
         {
             var obj = method.Object != null ? ParseExpressionRaw(method.Object) : "";
             var args = method.Arguments.Select(ParseExpressionRaw).ToArray();
-            
+
             return (methodName, args.Length) switch
             {
                 ("AddDays", 1) => GetDialectFunction("DATEADD", new[] { "DAY", args[0], obj }, DialectMappings["AddDays"]),
@@ -795,9 +657,6 @@ namespace Sqlx
         /// <summary>释放资源。</summary>
         public virtual void Dispose()
         {
-            foreach (var list in new[] { _whereConditions, _orderByExpressions, _groupByExpressions, _havingConditions })
-                list.Clear();
-            _parameters.Clear();
         }
 
         /// <summary>
@@ -805,7 +664,6 @@ namespace Sqlx
         /// </summary>
         public static void ClearGlobalCache()
         {
-            _expressionValueCache.Clear();
             _compiledFunctionCache.Clear();
         }
 

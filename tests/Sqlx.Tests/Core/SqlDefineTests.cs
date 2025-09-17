@@ -20,7 +20,7 @@ public class SqlDefineTests : TestBase
     {
         // Act
         var dialect = SqlDefine.MySql;
-        
+
         // Assert
         Assert.AreEqual("`", dialect.ColumnLeft);
         Assert.AreEqual("`", dialect.ColumnRight);
@@ -108,10 +108,10 @@ public class SqlDefineTests : TestBase
         string stringLeft = "\"";
         string stringRight = "\"";
         string parameterPrefix = "#";
-        
+
         // Act
         var dialect = new SqlDialect(columnLeft, columnRight, stringLeft, stringRight, parameterPrefix);
-        
+
         // Assert
         Assert.AreEqual(columnLeft, dialect.ColumnLeft);
         Assert.AreEqual(columnRight, dialect.ColumnRight);
@@ -126,10 +126,10 @@ public class SqlDefineTests : TestBase
         // Arrange
         var dialect = SqlDefine.SqlServer;
         string columnName = "UserName";
-        
+
         // Act
         string result = dialect.WrapColumn(columnName);
-        
+
         // Assert
         Assert.AreEqual("[UserName]", result);
     }
@@ -140,10 +140,10 @@ public class SqlDefineTests : TestBase
         // Arrange
         var dialect = SqlDefine.MySql;
         string columnName = "UserName";
-        
+
         // Act
         string result = dialect.WrapColumn(columnName);
-        
+
         // Assert
         Assert.AreEqual("`UserName`", result);
     }
@@ -154,10 +154,10 @@ public class SqlDefineTests : TestBase
         // Arrange
         var dialect = SqlDefine.PgSql;
         string columnName = "UserName";
-        
+
         // Act
         string result = dialect.WrapColumn(columnName);
-        
+
         // Assert
         Assert.AreEqual("\"UserName\"", result);
     }
@@ -167,10 +167,10 @@ public class SqlDefineTests : TestBase
     {
         // Arrange
         var dialect = SqlDefine.SqlServer;
-        
+
         // Act
         string result = dialect.WrapColumn(null!);
-        
+
         // Assert
         Assert.AreEqual("", result);
     }
@@ -180,10 +180,10 @@ public class SqlDefineTests : TestBase
     {
         // Arrange
         var dialect = SqlDefine.SqlServer;
-        
+
         // Act
         string result = dialect.WrapColumn("");
-        
+
         // Assert
         Assert.AreEqual("[]", result);
     }
@@ -193,10 +193,10 @@ public class SqlDefineTests : TestBase
     {
         // Arrange
         var dialect = SqlDefine.SqlServer;
-        
+
         // Act
         string result = dialect.WrapColumn("  ");
-        
+
         // Assert
         Assert.AreEqual("[  ]", result);
     }
@@ -207,10 +207,10 @@ public class SqlDefineTests : TestBase
         // Arrange
         var dialect = SqlDefine.SqlServer;
         string value = "test value";
-        
+
         // Act
         string result = dialect.WrapString(value);
-        
+
         // Assert
         Assert.AreEqual("'test value'", result);
     }
@@ -220,10 +220,10 @@ public class SqlDefineTests : TestBase
     {
         // Arrange
         var dialect = SqlDefine.SqlServer;
-        
+
         // Act
         string result = dialect.WrapString(null!);
-        
+
         // Assert
         Assert.AreEqual("NULL", result);
     }
@@ -233,10 +233,10 @@ public class SqlDefineTests : TestBase
     {
         // Arrange
         var dialect = SqlDefine.SqlServer;
-        
+
         // Act
         string result = dialect.WrapString("");
-        
+
         // Assert
         Assert.AreEqual("''", result);
     }
@@ -247,10 +247,10 @@ public class SqlDefineTests : TestBase
         // Arrange
         var dialect = SqlDefine.SqlServer;
         string value = "test'with\"quotes";
-        
+
         // Act
         string result = dialect.WrapString(value);
-        
+
         // Assert
         Assert.AreEqual("'test'with\"quotes'", result);
     }
@@ -261,7 +261,7 @@ public class SqlDefineTests : TestBase
         // Arrange
         var dialect1 = new SqlDialect("[", "]", "'", "'", "@");
         var dialect2 = new SqlDialect("[", "]", "'", "'", "@");
-        
+
         // Act & Assert
         Assert.AreEqual(dialect1, dialect2);
         Assert.IsTrue(dialect1.Equals(dialect2));
@@ -275,7 +275,7 @@ public class SqlDefineTests : TestBase
         // Arrange
         var dialect1 = SqlDefine.SqlServer;
         var dialect2 = SqlDefine.MySql;
-        
+
         // Act & Assert
         Assert.AreNotEqual(dialect1, dialect2);
         Assert.IsFalse(dialect1.Equals(dialect2));
@@ -289,11 +289,11 @@ public class SqlDefineTests : TestBase
         // Arrange
         var dialect1 = new SqlDialect("[", "]", "'", "'", "@");
         var dialect2 = new SqlDialect("[", "]", "'", "'", "@");
-        
+
         // Act
         int hash1 = dialect1.GetHashCode();
         int hash2 = dialect2.GetHashCode();
-        
+
         // Assert
         Assert.AreEqual(hash1, hash2);
     }
@@ -304,11 +304,11 @@ public class SqlDefineTests : TestBase
         // Arrange
         var dialect1 = SqlDefine.SqlServer;
         var dialect2 = SqlDefine.MySql;
-        
+
         // Act
         int hash1 = dialect1.GetHashCode();
         int hash2 = dialect2.GetHashCode();
-        
+
         // Assert
         Assert.AreNotEqual(hash1, hash2);
     }
@@ -318,10 +318,10 @@ public class SqlDefineTests : TestBase
     {
         // Arrange
         var dialect = SqlDefine.SqlServer;
-        
+
         // Act
         string result = dialect.ToString();
-        
+
         // Assert
         Assert.IsNotNull(result);
         Assert.IsTrue(result.Contains("["));
@@ -334,10 +334,10 @@ public class SqlDefineTests : TestBase
     {
         // Arrange
         var original = SqlDefine.SqlServer;
-        
+
         // Act
         var updated = original with { ColumnLeft = "<" };
-        
+
         // Assert
         Assert.AreEqual("<", updated.ColumnLeft);
         Assert.AreEqual("]", updated.ColumnRight);
@@ -350,10 +350,10 @@ public class SqlDefineTests : TestBase
     {
         // Arrange
         var original = SqlDefine.SqlServer;
-        
+
         // Act
         var updated = original with { ColumnLeft = "<", ColumnRight = ">", ParameterPrefix = "#" };
-        
+
         // Assert
         Assert.AreEqual("<", updated.ColumnLeft);
         Assert.AreEqual(">", updated.ColumnRight);
@@ -368,10 +368,10 @@ public class SqlDefineTests : TestBase
     {
         // Arrange
         var original = SqlDefine.SqlServer;
-        
+
         // Act
         var updated = original with { ParameterPrefix = "#" };
-        
+
         // Assert
         Assert.AreEqual("@", original.ParameterPrefix);
         Assert.AreEqual("#", updated.ParameterPrefix);
@@ -396,7 +396,7 @@ public class SqlDefineTests : TestBase
         {
             for (int j = i + 1; j < dialects.Length; j++)
             {
-                Assert.AreNotEqual(dialects[i], dialects[j], 
+                Assert.AreNotEqual(dialects[i], dialects[j],
                     $"Dialect {i} should not equal dialect {j}");
             }
         }
@@ -415,13 +415,13 @@ public class SqlDefineTests : TestBase
             SqlDefine.DB2,
             SqlDefine.Sqlite
         };
-        
+
         // Act & Assert
         foreach (var dialect in dialects)
         {
-            Assert.IsFalse(string.IsNullOrEmpty(dialect.ParameterPrefix), 
+            Assert.IsFalse(string.IsNullOrEmpty(dialect.ParameterPrefix),
                 "Parameter prefix should not be null or empty");
-            Assert.AreEqual(1, dialect.ParameterPrefix.Length, 
+            Assert.AreEqual(1, dialect.ParameterPrefix.Length,
                 "Parameter prefix should be a single character");
         }
     }
@@ -445,9 +445,9 @@ public class SqlDefineTests : TestBase
         {
             Assert.IsNotNull(dialect.ColumnLeft, "ColumnLeft should not be null");
             Assert.IsNotNull(dialect.ColumnRight, "ColumnRight should not be null");
-            Assert.IsFalse(string.IsNullOrEmpty(dialect.ColumnLeft), 
+            Assert.IsFalse(string.IsNullOrEmpty(dialect.ColumnLeft),
                 "ColumnLeft should not be empty");
-            Assert.IsFalse(string.IsNullOrEmpty(dialect.ColumnRight), 
+            Assert.IsFalse(string.IsNullOrEmpty(dialect.ColumnRight),
                 "ColumnRight should not be empty");
         }
     }

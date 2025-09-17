@@ -159,7 +159,7 @@ namespace {namespaceName}
     {
         // Generate a comprehensive set of repository methods based on the interface type
         var methods = new List<string>();
-        
+
         // For LargeService test, we need to generate 50 entities × 5 methods each = 250 methods
         if (interfaceType.Contains("ILargeService"))
         {
@@ -197,7 +197,7 @@ namespace {namespaceName}
             methods.Add(@"        // Repository implementation methods would be generated here
         // Based on the interface: " + interfaceType);
         }
-        
+
         return string.Join("\n\n", methods);
     }
 
@@ -205,9 +205,9 @@ namespace {namespaceName}
     {
         var returnType = method.ReturnType.ToString();
         var methodName = method.Identifier.ValueText;
-        
+
         // Handle extension methods by preserving the 'this' keyword on the first parameter
-        var parameters = method.ParameterList.Parameters.Select((p, index) => 
+        var parameters = method.ParameterList.Parameters.Select((p, index) =>
         {
             var paramStr = $"{p.Type} {p.Identifier}";
             if (index == 0 && p.Modifiers.Any(m => m.ValueText == "this"))
@@ -217,14 +217,14 @@ namespace {namespaceName}
             return paramStr;
         });
         var parameterString = string.Join(", ", parameters);
-        
+
         // Extract access modifiers from the original method
         var modifiers = string.Join(" ", method.Modifiers.Where(m => !m.ValueText.Equals("partial")).Select(m => m.ValueText));
-        
+
         // Check if this method has Sqlx attribute and generate appropriate implementation
         var sqlAttribute = GetSqlxAttribute(method);
         var executeTypeAttribute = GetSqlExecuteTypeAttribute(method);
-        
+
         string body;
         if (!string.IsNullOrEmpty(sqlAttribute))
         {
@@ -288,7 +288,7 @@ namespace {namespaceName}
     {
         var methodName = method.Identifier.ValueText;
         var hasParameters = method.ParameterList.Parameters.Count > 1; // First parameter is usually CancellationToken
-        
+
         // Generate appropriate implementation based on the method signature and return type
         if (returnType.Contains("Task<IEnumerable<"))
         {
@@ -380,16 +380,16 @@ namespace {namespaceName}
     private string GenerateParameterCode(MethodDeclarationSyntax method)
     {
         var paramCode = new List<string>();
-        
+
         foreach (var param in method.ParameterList.Parameters)
         {
             var paramName = param.Identifier.ValueText;
             var paramType = param.Type?.ToString();
-            
+
             // Skip CancellationToken parameter
             if (paramType?.Contains("CancellationToken") == true)
                 continue;
-                
+
             if (paramType == "User" || paramType?.EndsWith(".User") == true)
             {
                 // Handle User object parameter - expand its properties
@@ -407,7 +407,7 @@ namespace {namespaceName}
                 paramCode.Add($"cmd.Parameters.AddWithValue(\"@{paramName}\", {paramName});");
             }
         }
-        
+
         return string.Join("\n            ", paramCode);
     }
 
@@ -417,7 +417,7 @@ namespace {namespaceName}
         if (returnType.StartsWith("Task<"))
         {
             var innerType = returnType.Substring(5, returnType.Length - 6);
-            
+
             if (methodName.StartsWith("Get") && methodName.EndsWith("ById"))
             {
                 // GetXById methods - just return empty collections for now
@@ -454,7 +454,7 @@ namespace {namespaceName}
                 return "{ return false; }";
             }
         }
-        
+
         // Fallback to simple implementation
         return GenerateSimpleFallbackBody(returnType);
     }
@@ -480,7 +480,7 @@ namespace {namespaceName}
         else if (returnType.StartsWith("Task<"))
         {
             var innerType = returnType.Substring(5, returnType.Length - 6);
-            
+
             // For async methods, return the actual value, not Task.FromResult
             // The async keyword will automatically wrap the return value in a Task
             if (innerType.Contains("IEnumerable<User>"))
@@ -578,7 +578,7 @@ public class SimpleSyntaxReceiver : ISyntaxReceiver
                 }
             }
         }
-        
+
         // Also collect classes with RepositoryFor attribute for repository pattern
         if (syntaxNode is ClassDeclarationSyntax classDecl)
         {
@@ -591,13 +591,13 @@ public class SimpleSyntaxReceiver : ISyntaxReceiver
                     {
                         // Collect the repository class for interface implementation generation
                         RepositoryClasses.Add(classDecl);
-                        
+
                         // Also collect all public methods in this class for repository implementation
                         // This includes methods that need to be implemented from the interface
                         var publicMethods = classDecl.Members
                             .OfType<MethodDeclarationSyntax>()
                             .Where(m => m.Modifiers.Any(mod => mod.ValueText == "public"));
-                        
+
                         foreach (var publicMethod in publicMethods)
                         {
                             Methods.Add(publicMethod);

@@ -112,22 +112,12 @@ public class SqlxGeneratorService : ISqlxGeneratorService
     {
         if (context.RepositoryClass == null)
         {
-#if DEBUG
-            System.Diagnostics.Debug.WriteLine("❌ GenerateRepositoryImplementation: context.RepositoryClass is null");
-#endif
             return;
         }
-
-#if DEBUG
-        System.Diagnostics.Debug.WriteLine($"🔧 GenerateRepositoryImplementation called for class: {context.RepositoryClass.Name}");
-#endif
 
         // Skip if the class has SqlTemplate attribute
         if (context.RepositoryClass.GetAttributes().Any(attr => attr.AttributeClass?.Name == "SqlTemplate"))
         {
-#if DEBUG
-            System.Diagnostics.Debug.WriteLine($"⏩ Skipping {context.RepositoryClass.Name} - has SqlTemplate attribute");
-#endif
             return;
         }
 
@@ -136,45 +126,22 @@ public class SqlxGeneratorService : ISqlxGeneratorService
         var serviceInterface = GetServiceInterface(context.RepositoryClass, context.Compilation);
         if (serviceInterface == null)
         {
-#if DEBUG
-            System.Diagnostics.Debug.WriteLine($"❌ No service interface found for {context.RepositoryClass.Name}");
-#endif
             return;
         }
 
-#if DEBUG
-        System.Diagnostics.Debug.WriteLine($"✅ Service interface found: {serviceInterface.Name}");
-#endif
-
         var entityType = InferEntityTypeFromInterface(serviceInterface);
         var tableName = GetTableName(entityType, null);
-
-#if DEBUG
-        System.Diagnostics.Debug.WriteLine($"📋 Entity type: {entityType?.Name ?? "null"}, Table name: {tableName}");
-#endif
 
         // Generate the repository implementation
         GenerateRepositoryClass(context, serviceInterface, entityType, tableName);
 
         var generatedCode = context.StringBuilder.ToString().Trim();
-#if DEBUG
-        System.Diagnostics.Debug.WriteLine($"📝 Generated code ({generatedCode.Length} chars):");
-        System.Diagnostics.Debug.WriteLine(generatedCode);
-#endif
 
         // Add source to compilation
         var sourceText = SourceText.From(generatedCode, Encoding.UTF8);
         var fileName = $"{context.RepositoryClass.ToDisplayString().Replace(".", "_")}.Repository.g.cs";
-        
-#if DEBUG
-        System.Diagnostics.Debug.WriteLine($"📁 Adding source file: {fileName}");
-#endif
-        
-        context.ExecutionContext.AddSource(fileName, sourceText);
 
-#if DEBUG
-        System.Diagnostics.Debug.WriteLine($"✅ Repository implementation generated successfully for {context.RepositoryClass.Name}");
-#endif
+        context.ExecutionContext.AddSource(fileName, sourceText);
     }
 
     /// <inheritdoc/>
@@ -226,7 +193,7 @@ public class SqlxGeneratorService : ISqlxGeneratorService
         sb.AppendLine("#pragma warning disable");
         sb.AppendLine("#nullable disable");
         sb.AppendLine();
-        
+
         // Generate usings
         sb.AppendLine("using System;");
         sb.AppendLine("using System.Collections.Generic;");
@@ -317,7 +284,7 @@ public class SqlxGeneratorService : ISqlxGeneratorService
         {
             return taskType.Substring(28, taskType.Length - 29);
         }
-        
+
         // Fallback for complex generic types
         var startIndex = taskType.IndexOf('<');
         var endIndex = taskType.LastIndexOf('>');
@@ -325,7 +292,7 @@ public class SqlxGeneratorService : ISqlxGeneratorService
         {
             return taskType.Substring(startIndex + 1, endIndex - startIndex - 1);
         }
-        
+
         return "object"; // Safe fallback
     }
 }

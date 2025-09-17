@@ -21,8 +21,8 @@ public class InsertOperationGenerator : BaseOperationGenerator
     public override bool CanHandle(IMethodSymbol method)
     {
         var methodName = method.Name.ToLowerInvariant();
-        return methodName.Contains("create") || 
-               methodName.Contains("insert") || 
+        return methodName.Contains("create") ||
+               methodName.Contains("insert") ||
                methodName.Contains("add");
     }
 
@@ -45,9 +45,9 @@ public class InsertOperationGenerator : BaseOperationGenerator
         // 🚀 智能插入 - 支持单实体、批量、部分字段插入
         sb.AppendLine("// 🚀 智能插入操作 - 支持单实体、批量、部分字段插入");
 
-        var entityParam = method.Parameters.FirstOrDefault(p => 
-            p.Type.TypeKind == TypeKind.Class && 
-            p.Type.Name != "String" && 
+        var entityParam = method.Parameters.FirstOrDefault(p =>
+            p.Type.TypeKind == TypeKind.Class &&
+            p.Type.Name != "String" &&
             p.Type.Name != "CancellationToken");
 
         var collectionParam = method.Parameters.FirstOrDefault(p => TypeAnalyzer.IsCollectionType(p.Type));
@@ -70,7 +70,7 @@ public class InsertOperationGenerator : BaseOperationGenerator
         GenerateMethodCompletion(sb, method, methodName, isAsync);
     }
 
-    private void GenerateBatchInsert(IndentedStringBuilder sb, IParameterSymbol collectionParam, 
+    private void GenerateBatchInsert(IndentedStringBuilder sb, IParameterSymbol collectionParam,
         string tableName, SqlDefine sqlDefine, bool isAsync, IMethodSymbol method)
     {
         sb.AppendLine($"// Batch insert for {collectionParam.Name}");
@@ -89,10 +89,10 @@ public class InsertOperationGenerator : BaseOperationGenerator
         sb.AppendLine($"foreach (var item in {collectionParam.Name})");
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         // Generate INSERT command for each item
         GenerateInsertCommand(sb, tableName, sqlDefine, true);
-        
+
         sb.AppendLine("totalAffected += affectedRows;");
         sb.PopIndent();
         sb.AppendLine("}");
@@ -100,16 +100,16 @@ public class InsertOperationGenerator : BaseOperationGenerator
         sb.AppendLine("__repoResult__ = totalAffected;");
     }
 
-    private void GenerateSingleEntityInsert(IndentedStringBuilder sb, IParameterSymbol entityParam, 
+    private void GenerateSingleEntityInsert(IndentedStringBuilder sb, IParameterSymbol entityParam,
         INamedTypeSymbol entityType, string tableName, SqlDefine sqlDefine, bool isAsync, IMethodSymbol method)
     {
         sb.AppendLine($"// Single entity insert for {entityParam.Name}");
-        
+
         var properties = GetInsertableProperties(entityType);
         if (properties.Any())
         {
             GenerateInsertCommand(sb, tableName, sqlDefine, false);
-            
+
             // Add parameters
             foreach (var prop in properties)
             {
@@ -121,21 +121,21 @@ public class InsertOperationGenerator : BaseOperationGenerator
                 sb.AppendLine();
             }
         }
-        
+
         // Execute command
         GenerateCommandExecution(sb, isAsync, method);
     }
 
-    private void GenerateParameterBasedInsert(IndentedStringBuilder sb, IMethodSymbol method, 
+    private void GenerateParameterBasedInsert(IndentedStringBuilder sb, IMethodSymbol method,
         string tableName, SqlDefine sqlDefine, bool isAsync)
     {
         sb.AppendLine("// Parameter-based insert");
         var insertParams = method.Parameters.Where(p => p.Type.Name != "CancellationToken").ToList();
-        
+
         if (insertParams.Any())
         {
             GenerateInsertCommand(sb, tableName, sqlDefine, false);
-            
+
             foreach (var param in insertParams)
             {
                 sb.AppendLine($"var param{param.Name} = __repoCmd__.CreateParameter()!;");
@@ -146,7 +146,7 @@ public class InsertOperationGenerator : BaseOperationGenerator
                 sb.AppendLine();
             }
         }
-        
+
         GenerateCommandExecution(sb, isAsync, method);
     }
 
@@ -166,7 +166,7 @@ public class InsertOperationGenerator : BaseOperationGenerator
     private void GenerateMethodCompletion(IndentedStringBuilder sb, IMethodSymbol method, string methodName, bool isAsync)
     {
         sb.AppendLine($"OnExecuted(\"{methodName}\", __repoCmd__, __repoResult__, System.Diagnostics.Stopwatch.GetTimestamp() - __repoStartTime__);");
-        
+
         if (!method.ReturnsVoid)
         {
             // Note: Return statement is handled by CodeGenerationService
@@ -177,9 +177,9 @@ public class InsertOperationGenerator : BaseOperationGenerator
     private System.Collections.Generic.List<IPropertySymbol> GetInsertableProperties(INamedTypeSymbol entityType)
     {
         return entityType.GetMembers().OfType<IPropertySymbol>()
-            .Where(p => p.CanBeReferencedByName && 
-                       p.GetMethod != null && 
-                       p.Name != "Id" && 
+            .Where(p => p.CanBeReferencedByName &&
+                       p.GetMethod != null &&
+                       p.Name != "Id" &&
                        p.Name != "EqualityContract")
             .ToList();
     }

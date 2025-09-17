@@ -96,7 +96,7 @@ public class AdvancedEdgeCaseTests
         Assert.IsTrue(sql.Contains("[Id] > 0"), "Should contain WHERE clause");
         Assert.IsTrue(sql.Contains("ORDER BY [Id] ASC"), "Should contain ORDER BY clause");
         Assert.IsTrue(sql.Contains("FETCH NEXT 1 ROWS ONLY"), "Should contain FETCH NEXT clause for SQL Server");
-        
+
         Assert.IsNotNull(template.Sql, "Template SQL should not be null");
         Assert.IsNotNull(template.Parameters, "Template parameters should not be null");
     }
@@ -156,11 +156,11 @@ public class AdvancedEdgeCaseTests
         Assert.IsTrue(sql.Contains("[Property01] IS NOT NULL"), "Should handle null checks");
         Assert.IsTrue(sql.Contains("[Value01] >= 100"), "Should handle decimal comparisons");
         Assert.IsTrue(sql.Contains("[Flag01] = 1"), "Should handle boolean comparisons");
-        
+
         // Should complete quickly even with large entity
-        Assert.IsTrue(duration.TotalMilliseconds < 100, 
+        Assert.IsTrue(duration.TotalMilliseconds < 100,
             $"Large entity query took {duration.TotalMilliseconds}ms, should be < 100ms");
-        
+
         Assert.IsNotNull(template.Sql, "Template SQL should not be null");
         Assert.IsNotNull(template.Parameters, "Template parameters should not be null");
     }
@@ -196,13 +196,13 @@ public class AdvancedEdgeCaseTests
         Assert.IsTrue(sql.Contains("[Property01] = 'Value1'"), "Should contain string SET clause");
         Assert.IsTrue(sql.Contains("[Value01] = 100.5"), "Should contain decimal SET clause");
         Assert.IsTrue(sql.Contains("[Flag01] = 1"), "Should contain boolean SET clause");
-        
+
         // Count SET clauses
         var setCount = sql.Split(" = ").Length - 1;
         Assert.IsTrue(setCount >= 8, "Should have at least 8 SET clauses");
-        
+
         // Should complete quickly
-        Assert.IsTrue(duration.TotalMilliseconds < 100, 
+        Assert.IsTrue(duration.TotalMilliseconds < 100,
             $"Large entity update took {duration.TotalMilliseconds}ms, should be < 100ms");
     }
 
@@ -322,14 +322,14 @@ public class AdvancedEdgeCaseTests
         using var expression1 = ExpressionToSql<EdgeCaseTestEntity>.ForSqlServer()
             .Where(e => e.UniqueId == emptyGuid);
         var sql1 = expression1.ToSql();
-        Assert.IsTrue(sql1.Contains("00000000-0000-0000-0000-000000000000"), 
+        Assert.IsTrue(sql1.Contains("00000000-0000-0000-0000-000000000000"),
             "Should format empty GUID correctly");
 
         // Test specific GUID
         using var expression2 = ExpressionToSql<EdgeCaseTestEntity>.ForSqlServer()
             .Where(e => e.UniqueId == specificGuid);
         var sql2 = expression2.ToSql();
-        Assert.IsTrue(sql2.Contains("12345678-1234-5678-9012-123456789012"), 
+        Assert.IsTrue(sql2.Contains("12345678-1234-5678-9012-123456789012"),
             "Should format specific GUID correctly");
 
         // Test GUID in UPDATE
@@ -417,8 +417,8 @@ public class AdvancedEdgeCaseTests
         // Add many complex conditions
         for (int i = 0; i < 10; i++)
         {
-            expression.Where(e => 
-                (e.Id > i && e.Name != null) || 
+            expression.Where(e =>
+                (e.Id > i && e.Name != null) ||
                 (e.NullableDecimal >= i * 10 && e.NullableBool == true) ||
                 (e.NullableDateTime >= DateTime.Now.AddDays(-i) && e.ByteValue < i * 5));
         }
@@ -446,11 +446,11 @@ public class AdvancedEdgeCaseTests
         Assert.IsTrue(sql.Contains("AND"), "Should contain AND operators");
         Assert.IsTrue(sql.Contains("OR"), "Should contain OR operators");
         Assert.IsTrue(sql.Contains("ORDER BY"), "Should contain ORDER BY");
-        
+
         // Should still complete in reasonable time
-        Assert.IsTrue(duration.TotalMilliseconds < 1000, 
+        Assert.IsTrue(duration.TotalMilliseconds < 1000,
             $"Extremely complex query took {duration.TotalMilliseconds}ms, should be < 1000ms");
-        
+
         Assert.IsNotNull(template.Sql, "Template SQL should not be null");
         Assert.IsNotNull(template.Parameters, "Template parameters should not be null");
     }
@@ -479,7 +479,7 @@ public class AdvancedEdgeCaseTests
         Assert.IsNotNull(sql, "SQL should not be null with many parameters");
         Assert.IsNotNull(template.Sql, "Template SQL should not be null");
         Assert.IsNotNull(template.Parameters, "Template parameters should not be null");
-        
+
         // Should handle many conditions
         var conditionCount = sql.Split(" AND ").Length - 1;
         Assert.IsTrue(conditionCount >= 199, "Should have many AND conditions");
@@ -538,9 +538,9 @@ public class AdvancedEdgeCaseTests
         var duration = DateTime.Now - startTime;
 
         // Assert
-        Assert.IsTrue(duration.TotalMilliseconds < 5000, 
+        Assert.IsTrue(duration.TotalMilliseconds < 5000,
             $"Rapid create/dispose took {duration.TotalMilliseconds}ms, should be < 5000ms");
-        
+
         System.Console.WriteLine($"Completed {rapidIterations} rapid create/dispose cycles in {duration.TotalMilliseconds}ms");
     }
 

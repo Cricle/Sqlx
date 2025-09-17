@@ -31,7 +31,7 @@ public class OperationGeneratorSimpleTests : TestBase
         // Arrange & Act
         var factory = new OperationGeneratorFactory();
         var generators = factory.GetAllGenerators();
-        
+
         // Assert
         Assert.IsNotNull(factory);
         Assert.IsNotNull(generators);
@@ -43,7 +43,7 @@ public class OperationGeneratorSimpleTests : TestBase
     {
         // Act
         var generators = _factory.GetAllGenerators();
-        
+
         // Assert
         Assert.IsNotNull(generators);
         Assert.AreEqual(4, generators.Count());
@@ -55,11 +55,11 @@ public class OperationGeneratorSimpleTests : TestBase
         // Arrange
         var customGenerator = new MockOperationGenerator();
         var initialCount = _factory.GetAllGenerators().Count();
-        
+
         // Act
         _factory.RegisterGenerator(customGenerator);
         var newCount = _factory.GetAllGenerators().Count();
-        
+
         // Assert
         Assert.AreEqual(initialCount + 1, newCount);
     }
@@ -69,11 +69,11 @@ public class OperationGeneratorSimpleTests : TestBase
     {
         // Arrange
         var initialCount = _factory.GetAllGenerators().Count();
-        
+
         // Act
         _factory.RegisterGenerator(null!);
         var newCount = _factory.GetAllGenerators().Count();
-        
+
         // Assert
         Assert.AreEqual(initialCount, newCount);
     }
@@ -85,12 +85,12 @@ public class OperationGeneratorSimpleTests : TestBase
         var customGenerator1 = new MockOperationGenerator();
         var customGenerator2 = new MockOperationGenerator();
         var initialCount = _factory.GetAllGenerators().Count();
-        
+
         // Act
         _factory.RegisterGenerator(customGenerator1);
         _factory.RegisterGenerator(customGenerator2);
         var newCount = _factory.GetAllGenerators().Count();
-        
+
         // Assert
         Assert.AreEqual(initialCount + 1, newCount); // Only one should be added
     }

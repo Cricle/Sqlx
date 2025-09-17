@@ -32,7 +32,7 @@ public class CodeGenerationService : ICodeGenerationService
             var analysis = methodAnalyzer.AnalyzeMethod(method);
             var methodName = method.Name;
             var returnType = method.ReturnType.ToDisplayString();
-            var parameters = string.Join(", ", method.Parameters.Select(p => 
+            var parameters = string.Join(", ", method.Parameters.Select(p =>
                 $"{p.Type.ToDisplayString()} {p.Name}"));
 
             // Generate method documentation
@@ -81,7 +81,7 @@ public class CodeGenerationService : ICodeGenerationService
             sb.AppendLine("__repoCmd__?.Dispose();");
             sb.PopIndent();
             sb.AppendLine("}");
-            
+
             sb.PopIndent();
             sb.AppendLine("}");
             sb.AppendLine();
@@ -145,24 +145,24 @@ public class CodeGenerationService : ICodeGenerationService
         // Generate common variables used in repository methods
         sb.AppendLine("long __repoStartTime__ = System.Diagnostics.Stopwatch.GetTimestamp();");
         sb.AppendLine("global::System.Data.IDbCommand? __repoCmd__ = null;");
-        
+
         if (!method.ReturnsVoid)
         {
             // For async methods (Task<T>), declare the inner type T
             var returnType = method.ReturnType.ToDisplayString();
             var actualReturnType = returnType;
-            
+
             // Check if this is a Task<T> type and get the inner type
-            if (method.ReturnType is INamedTypeSymbol namedType && 
-                namedType.Name == "Task" && 
+            if (method.ReturnType is INamedTypeSymbol namedType &&
+                namedType.Name == "Task" &&
                 namedType.TypeArguments.Length == 1)
             {
                 actualReturnType = namedType.TypeArguments[0].ToDisplayString();
             }
-            
+
             sb.AppendLine($"{actualReturnType} __repoResult__ = default!;");
         }
-        
+
         sb.AppendLine();
     }
 
@@ -181,7 +181,7 @@ public class CodeGenerationService : ICodeGenerationService
         // Fallback to type inference
         var result = context.TypeInferenceService.GetServiceInterfaceFromSyntax(
             context.RepositoryClass, context.ExecutionContext.Compilation);
-            
+
         // Last resort: parse the syntax directly
         return result ?? GetServiceInterfaceFromSyntax(context);
     }
@@ -192,38 +192,38 @@ public class CodeGenerationService : ICodeGenerationService
         {
             var repositoryClass = context.RepositoryClass;
             var compilation = context.ExecutionContext.Compilation;
-            
+
             // Get the syntax node for the repository class
             var syntaxReferences = repositoryClass.DeclaringSyntaxReferences;
-            if (syntaxReferences.Length == 0) 
+            if (syntaxReferences.Length == 0)
                 return null;
-            
+
             if (syntaxReferences[0].GetSyntax() is not Microsoft.CodeAnalysis.CSharp.Syntax.ClassDeclarationSyntax classDeclaration)
                 return null;
-            
+
             // Look for RepositoryFor attribute in the syntax
             foreach (var attributeList in classDeclaration.AttributeLists)
             {
                 foreach (var attribute in attributeList.Attributes)
                 {
                     var attributeName = attribute.Name.ToString();
-                    
+
                     if (attributeName == "RepositoryFor" || attributeName == "RepositoryForAttribute")
                     {
                         // Look for typeof(InterfaceName) in the arguments
                         if (attribute.ArgumentList?.Arguments.Count > 0)
                         {
                             var argText = attribute.ArgumentList.Arguments[0].ToString();
-                            
+
                             // Parse typeof(InterfaceName) pattern
                             if (argText.StartsWith("typeof(") && argText.EndsWith(")"))
                             {
                                 var interfaceName = argText.Substring(7, argText.Length - 8);
-                                
+
                                 // Try to find the interface type in the compilation
                                 var interfaceType = compilation.GetTypeByMetadataName(interfaceName) ??
                                     compilation.GetTypeByMetadataName($"{repositoryClass.ContainingNamespace.ToDisplayString()}.{interfaceName}");
-                                
+
                                 if (interfaceType != null)
                                     return interfaceType;
                             }
@@ -231,7 +231,7 @@ public class CodeGenerationService : ICodeGenerationService
                     }
                 }
             }
-            
+
             return null;
         }
         catch
@@ -240,7 +240,7 @@ public class CodeGenerationService : ICodeGenerationService
         }
     }
 
-    private void GenerateRepositoryClass(IndentedStringBuilder sb, RepositoryGenerationContext context, 
+    private void GenerateRepositoryClass(IndentedStringBuilder sb, RepositoryGenerationContext context,
         INamedTypeSymbol serviceInterface, INamedTypeSymbol? entityType, string tableName)
     {
         var repositoryClass = context.RepositoryClass;
@@ -309,7 +309,7 @@ public class CodeGenerationService : ICodeGenerationService
         sb.AppendLine("/// </summary>");
         sb.AppendLine("partial void OnExecuting(string operationName, global::System.Data.IDbCommand command);");
         sb.AppendLine();
-        
+
         sb.AppendLine("/// <summary>");
         sb.AppendLine("/// Called after executing a repository operation.");
         sb.AppendLine("/// </summary>");
@@ -321,18 +321,18 @@ public class CodeGenerationService : ICodeGenerationService
     {
         sb.AppendLine($"// Error generating method {method.Name}: Generation failed");
         var returnType = method.ReturnType.ToDisplayString();
-        var parameters = string.Join(", ", method.Parameters.Select(p => 
+        var parameters = string.Join(", ", method.Parameters.Select(p =>
             $"{p.Type.ToDisplayString()} {p.Name}"));
-        
+
         sb.AppendLine($"public {returnType} {method.Name}({parameters})");
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         if (!method.ReturnsVoid)
         {
             sb.AppendLine($"return default({returnType});");
         }
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
@@ -341,7 +341,7 @@ public class CodeGenerationService : ICodeGenerationService
     private string GetMethodDescription(IMethodSymbol method)
     {
         var methodName = method.Name.ToLowerInvariant();
-        
+
         if (methodName.Contains("create") || methodName.Contains("insert") || methodName.Contains("add"))
         {
             return "Creates a new entity in the database.";
@@ -366,7 +366,7 @@ public class CodeGenerationService : ICodeGenerationService
         {
             return "Checks if an entity exists in the database.";
         }
-        
+
         return "Executes a database operation.";
     }
 
@@ -438,24 +438,24 @@ public class CodeGenerationService : ICodeGenerationService
         // Look for existing connection field/property
         var connectionField = repositoryClass.GetMembers()
             .OfType<IFieldSymbol>()
-            .FirstOrDefault(f => f.Type.AllInterfaces.Any(i => i.Name == "IDbConnection") || 
+            .FirstOrDefault(f => f.Type.AllInterfaces.Any(i => i.Name == "IDbConnection") ||
                                 f.Type.Name == "IDbConnection");
-                                
+
         if (connectionField != null)
         {
             return connectionField.Name;
         }
-        
+
         var connectionProperty = repositoryClass.GetMembers()
             .OfType<IPropertySymbol>()
-            .FirstOrDefault(p => p.Type.AllInterfaces.Any(i => i.Name == "IDbConnection") || 
+            .FirstOrDefault(p => p.Type.AllInterfaces.Any(i => i.Name == "IDbConnection") ||
                                 p.Type.Name == "IDbConnection");
-                                
+
         if (connectionProperty != null)
         {
             return connectionProperty.Name;
         }
-        
+
         return "_connection";
     }
 
@@ -463,11 +463,11 @@ public class CodeGenerationService : ICodeGenerationService
     {
         return repositoryClass.GetMembers()
             .OfType<IFieldSymbol>()
-            .Any(f => f.Type.AllInterfaces.Any(i => i.Name == "IDbConnection") || 
+            .Any(f => f.Type.AllInterfaces.Any(i => i.Name == "IDbConnection") ||
                      f.Type.Name == "IDbConnection") ||
                repositoryClass.GetMembers()
             .OfType<IPropertySymbol>()
-            .Any(p => p.Type.AllInterfaces.Any(i => i.Name == "IDbConnection") || 
+            .Any(p => p.Type.AllInterfaces.Any(i => i.Name == "IDbConnection") ||
                      p.Type.Name == "IDbConnection");
     }
 }

@@ -116,7 +116,7 @@ using Sqlx.Annotations;
             references.Add(MetadataReference.CreateFromFile(typeof(System.Type).Assembly.Location));
             references.Add(MetadataReference.CreateFromFile(typeof(System.Enum).Assembly.Location));
             references.Add(MetadataReference.CreateFromFile(typeof(DateTime).Assembly.Location));
-            
+
             // Try to add System.Runtime explicitly for DateTime support
             var systemRuntimeAssembly = System.Reflection.Assembly.Load("System.Runtime");
             references.Add(MetadataReference.CreateFromFile(systemRuntimeAssembly.Location));
@@ -443,7 +443,7 @@ public class TestClass2
             references.Add(MetadataReference.CreateFromFile(typeof(System.Type).Assembly.Location));
             references.Add(MetadataReference.CreateFromFile(typeof(System.Enum).Assembly.Location));
             references.Add(MetadataReference.CreateFromFile(typeof(DateTime).Assembly.Location));
-            
+
             // Try to add System.Runtime explicitly for DateTime support
             var systemRuntimeAssembly = System.Reflection.Assembly.Load("System.Runtime");
             references.Add(MetadataReference.CreateFromFile(systemRuntimeAssembly.Location));

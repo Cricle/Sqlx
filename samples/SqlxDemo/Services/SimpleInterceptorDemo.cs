@@ -35,22 +35,22 @@ public class SimpleInterceptorDemo
         Console.WriteLine("======================");
         Console.WriteLine("通过包装现有服务实现SQL执行监控");
         Console.ResetColor();
-        
+
         // 清除之前的日志
         SqlExecutionLogger.ClearLogs();
 
         try
         {
             Console.WriteLine("\n1️⃣ 监控SELECT操作:");
-            await ExecuteWithMonitoring("GetActiveUsersAsync", 
+            await ExecuteWithMonitoring("GetActiveUsersAsync",
                 () => _userService.GetActiveUsersAsync());
 
             Console.WriteLine("\n2️⃣ 监控参数化查询:");
-            await ExecuteWithMonitoring("GetUserByIdAsync", 
+            await ExecuteWithMonitoring("GetUserByIdAsync",
                 () => _userService.GetUserByIdAsync(1));
 
             Console.WriteLine("\n3️⃣ 监控范围查询:");
-            await ExecuteWithMonitoring("GetUsersByAgeRangeAsync", 
+            await ExecuteWithMonitoring("GetUsersByAgeRangeAsync",
                 () => _userService.GetUsersByAgeRangeAsync(25, 40));
 
             // 显示统计报告
@@ -70,21 +70,21 @@ public class SimpleInterceptorDemo
     private async Task<T> ExecuteWithMonitoring<T>(string operationName, Func<Task<T>> operation)
     {
         var stopwatch = Stopwatch.StartNew();
-        
+
         // 模拟拦截器 - 执行前
         var command = CreateMockCommand(operationName);
         LogExecutionStart(operationName, command);
-        
+
         try
         {
             // 执行实际操作
             var result = await operation();
-            
+
             stopwatch.Stop();
-            
+
             // 模拟拦截器 - 执行后
             LogExecutionEnd(operationName, command, result, stopwatch.ElapsedTicks);
-            
+
             return result;
         }
         catch (Exception ex)
@@ -101,7 +101,7 @@ public class SimpleInterceptorDemo
     private IDbCommand CreateMockCommand(string operationName)
     {
         var command = _connection.CreateCommand();
-        
+
         // 根据操作名称设置相应的SQL
         command.CommandText = operationName switch
         {
@@ -110,7 +110,7 @@ public class SimpleInterceptorDemo
             "GetUsersByAgeRangeAsync" => "SELECT * FROM [user] WHERE [age] BETWEEN @min_age AND @max_age",
             _ => $"-- Mock SQL for {operationName}"
         };
-        
+
         return command;
     }
 
@@ -120,7 +120,7 @@ public class SimpleInterceptorDemo
     private void LogExecutionStart(string operationName, IDbCommand command)
     {
         SqlExecutionLogger.LogExecutionStart(operationName, command);
-        
+
         // 输出额外的调试信息
         Console.ForegroundColor = ConsoleColor.Magenta;
         Console.WriteLine($"🎯 [自定义拦截器] 操作 {operationName} 即将执行");
@@ -136,17 +136,17 @@ public class SimpleInterceptorDemo
     private void LogExecutionEnd(string operationName, IDbCommand command, object? result, long elapsedTicks)
     {
         SqlExecutionLogger.LogExecutionEnd(operationName, command, result, elapsedTicks);
-        
+
         // 计算执行时间
         var elapsedMs = (double)elapsedTicks / Stopwatch.Frequency * 1000;
-        
+
         // 输出性能分析信息
         Console.ForegroundColor = ConsoleColor.DarkYellow;
         Console.WriteLine($"📊 [性能分析] {operationName}");
         Console.WriteLine($"   ⚡ 执行时间: {elapsedMs:F3}ms");
         Console.WriteLine($"   🎯 性能等级: {GetPerformanceRating(elapsedMs)}");
         Console.WriteLine($"   💾 结果类型: {result?.GetType().Name ?? "null"}");
-        
+
         // 分析结果
         if (result != null)
         {
@@ -156,7 +156,7 @@ public class SimpleInterceptorDemo
                 Console.WriteLine($"   📈 结果详情: {resultInfo}");
             }
         }
-        
+
         Console.ResetColor();
         Console.WriteLine(); // 空行分隔
     }
@@ -166,7 +166,7 @@ public class SimpleInterceptorDemo
         return elapsedMs switch
         {
             < 1 => "🚀 极快 (<1ms)",
-            < 10 => "⚡ 很快 (<10ms)", 
+            < 10 => "⚡ 很快 (<10ms)",
             < 50 => "✅ 良好 (<50ms)",
             < 100 => "⚠️ 一般 (<100ms)",
             < 500 => "🐌 较慢 (<500ms)",

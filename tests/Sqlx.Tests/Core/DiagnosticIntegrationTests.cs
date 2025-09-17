@@ -109,10 +109,10 @@ namespace TestNamespace
 
             // Assert
             Assert.IsNotNull(result);
-            
+
             // 检查是否有诊断信息
             var diagnostics = outputDiagnostics.ToList();
-            
+
             // 由于我们的测试生成器是简化版本，这里主要测试结构
             // 在实际环境中，我们会看到具体的诊断ID
             WriteTestOutput($"Generated {diagnostics.Count} diagnostics");
@@ -158,7 +158,7 @@ namespace TestNamespace
 
             // Assert
             Assert.IsNotNull(result);
-            
+
             var diagnostics = outputDiagnostics.ToList();
             WriteTestOutput($"Generated {diagnostics.Count} diagnostics for good practices");
         }
@@ -248,7 +248,7 @@ namespace TestNamespace
         public void DiagnosticAnalysis_InvalidInputs_HandlesGracefully()
         {
             // Arrange & Act & Assert
-            
+
             // Null/empty SQL
             var emptyDiagnostics = DiagnosticHelper.AnalyzeSqlQuality("", "TestMethod");
             Assert.IsNotNull(emptyDiagnostics);
@@ -276,7 +276,7 @@ namespace TestNamespace
         public void DiagnosticCreation_EdgeCases_HandlesCorrectly()
         {
             // Arrange & Act & Assert
-            
+
             // Empty ID and title
             var diagnostic1 = DiagnosticHelper.CreateDiagnostic("", "", "", DiagnosticSeverity.Info);
             Assert.IsNotNull(diagnostic1);
@@ -322,7 +322,7 @@ namespace TestNamespace
             {
                 var diagnostics = DiagnosticHelper.AnalyzeSqlQuality(sql, "TestMethod");
                 Assert.IsNotNull(diagnostics, $"Failed to analyze SQL: {sql}");
-                
+
                 WriteTestOutput($"SQL: {sql} -> {diagnostics.Count} diagnostics");
             }
         }
@@ -350,7 +350,7 @@ namespace TestNamespace
                 Assert.IsNotNull(diagnostic);
                 Assert.IsFalse(string.IsNullOrEmpty(diagnostic.Id));
                 Assert.IsNotNull(diagnostic.Descriptor);
-                
+
                 WriteTestOutput($"Created diagnostic: {diagnostic.Id} - {diagnostic.Severity}");
             }
 

@@ -148,7 +148,7 @@ public class SqlDefineComprehensiveTests
             Assert.IsNotNull(dialect.StringLeft, "StringLeft should not be null");
             Assert.IsNotNull(dialect.StringRight, "StringRight should not be null");
             Assert.IsNotNull(dialect.ParameterPrefix, "ParameterPrefix should not be null");
-            
+
             Assert.IsTrue(dialect.ColumnLeft.Length > 0, "ColumnLeft should not be empty");
             Assert.IsTrue(dialect.ColumnRight.Length > 0, "ColumnRight should not be empty");
             Assert.IsTrue(dialect.StringLeft.Length > 0, "StringLeft should not be empty");
@@ -203,7 +203,7 @@ public class SqlDefineComprehensiveTests
         {
             Assert.AreEqual("$", dialect.ParameterPrefix);
         }
-        
+
         // Unique prefixes
         Assert.AreEqual(":", SqlDefine.Oracle.ParameterPrefix);
         Assert.AreEqual("?", SqlDefine.DB2.ParameterPrefix);
@@ -261,7 +261,7 @@ public class SqlDefineComprehensiveTests
             var formattedColumn = testCase.Dialect.ColumnLeft + "TestColumn" + testCase.Dialect.ColumnRight;
 
             // Assert
-            Assert.AreEqual(testCase.Expected, formattedColumn, 
+            Assert.AreEqual(testCase.Expected, formattedColumn,
                 $"{testCase.Name} should format columns as {testCase.Expected}");
         }
     }
@@ -290,7 +290,7 @@ public class SqlDefineComprehensiveTests
             var formattedString = dialect.StringLeft + testString + dialect.StringRight;
 
             // Assert
-            Assert.AreEqual("'Hello World'", formattedString, 
+            Assert.AreEqual("'Hello World'", formattedString,
                 "All dialects should format strings with single quotes");
         }
     }
@@ -318,7 +318,7 @@ public class SqlDefineComprehensiveTests
             var formattedParameter = testCase.Dialect.ParameterPrefix + "param1";
 
             // Assert
-            Assert.AreEqual(testCase.Expected, formattedParameter, 
+            Assert.AreEqual(testCase.Expected, formattedParameter,
                 $"{testCase.Name} should format parameters as {testCase.Expected}");
         }
     }
@@ -382,7 +382,7 @@ public class SqlDefineComprehensiveTests
             var formattedColumn = testCase.Dialect.ColumnLeft + specialColumnName + testCase.Dialect.ColumnRight;
 
             // Assert
-            Assert.AreEqual(testCase.Expected, formattedColumn, 
+            Assert.AreEqual(testCase.Expected, formattedColumn,
                 $"{testCase.Name} should handle special characters in column names");
         }
     }
@@ -413,12 +413,12 @@ public class SqlDefineComprehensiveTests
                 var formattedColumn = dialect.Config.ColumnLeft + keyword + dialect.Config.ColumnRight;
 
                 // Assert
-                var expectedWrapper = dialect.Name == "MySQL" ? "`" : 
+                var expectedWrapper = dialect.Name == "MySQL" ? "`" :
                                     dialect.Name == "SQL Server" || dialect.Name == "SQLite" ? "[" : "\"";
-                var rightWrapper = dialect.Name == "SQL Server" || dialect.Name == "SQLite" ? "]" : 
+                var rightWrapper = dialect.Name == "SQL Server" || dialect.Name == "SQLite" ? "]" :
                                  dialect.Name == "MySQL" ? "`" : "\"";
-                
-                Assert.AreEqual(expectedWrapper + keyword + rightWrapper, formattedColumn, 
+
+                Assert.AreEqual(expectedWrapper + keyword + rightWrapper, formattedColumn,
                     $"{dialect.Name} should wrap reserved keyword {keyword} correctly");
             }
         }
@@ -486,7 +486,7 @@ public class SqlDefineComprehensiveTests
 
         // Act & Assert
         Assert.IsTrue(fields.Length >= 6, "Should have at least 6 dialect fields");
-        
+
         foreach (var field in fields)
         {
             Assert.IsTrue(field.IsStatic, $"Field {field.Name} should be static");

@@ -105,7 +105,7 @@ namespace Sqlx.Tests.Core
             var sql = expr.ToSql();
 
             // Assert
-            Assert.IsTrue(sql.Contains("FETCH NEXT 10 ROWS ONLY") || sql.Contains("TOP 10"), 
+            Assert.IsTrue(sql.Contains("FETCH NEXT 10 ROWS ONLY") || sql.Contains("TOP 10"),
                 "Should contain SQL Server pagination syntax");
         }
 
@@ -160,7 +160,7 @@ namespace Sqlx.Tests.Core
             // Arrange & Act
             using var expr = ExpressionToSql<TestUser>.ForSqlServer();
             var insertExpr = expr.InsertInto();
-            
+
             // Assert
             Assert.IsNotNull(insertExpr, "Should return insert expression");
             // Note: Full INSERT SQL generation testing would require values

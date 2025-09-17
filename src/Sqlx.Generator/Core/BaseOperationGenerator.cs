@@ -54,7 +54,7 @@ public abstract class BaseOperationGenerator : IOperationGenerator
     protected virtual void GenerateConnectionSetup(IndentedStringBuilder sb, IMethodSymbol method, bool isAsync)
     {
         var connectionFieldName = GetConnectionFieldName(method.ContainingType);
-        
+
         sb.AppendLine($"if ({connectionFieldName}.State != global::System.Data.ConnectionState.Open)");
         sb.AppendLine("{");
         sb.PushIndent();
@@ -98,24 +98,24 @@ public abstract class BaseOperationGenerator : IOperationGenerator
         // Look for existing connection field/property
         var connectionField = repositoryClass.GetMembers()
             .OfType<IFieldSymbol>()
-            .FirstOrDefault(f => f.Type.AllInterfaces.Any(i => i.Name == "IDbConnection") || 
+            .FirstOrDefault(f => f.Type.AllInterfaces.Any(i => i.Name == "IDbConnection") ||
                                 f.Type.Name == "IDbConnection");
-                                
+
         if (connectionField != null)
         {
             return connectionField.Name;
         }
-        
+
         var connectionProperty = repositoryClass.GetMembers()
             .OfType<IPropertySymbol>()
-            .FirstOrDefault(p => p.Type.AllInterfaces.Any(i => i.Name == "IDbConnection") || 
+            .FirstOrDefault(p => p.Type.AllInterfaces.Any(i => i.Name == "IDbConnection") ||
                                 p.Type.Name == "IDbConnection");
-                                
+
         if (connectionProperty != null)
         {
             return connectionProperty.Name;
         }
-        
+
         return "_connection";
     }
 

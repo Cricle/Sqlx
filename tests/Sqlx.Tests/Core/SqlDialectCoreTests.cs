@@ -25,13 +25,13 @@ namespace Sqlx.Tests.Core
         {
             // 测试SqlDialect的创建
             var dialect = new SqlDialect("[", "]", "'", "'", "@");
-            
+
             Assert.AreEqual("[", dialect.ColumnLeft);
             Assert.AreEqual("]", dialect.ColumnRight);
             Assert.AreEqual("'", dialect.StringLeft);
             Assert.AreEqual("'", dialect.StringRight);
             Assert.AreEqual("@", dialect.ParameterPrefix);
-            
+
             Console.WriteLine($"✅ SqlDialect创建测试通过");
         }
 
@@ -52,9 +52,9 @@ namespace Sqlx.Tests.Core
             foreach (var (dialect, columnName, expected) in testCases)
             {
                 var wrapped = dialect.WrapColumn(columnName);
-                Assert.AreEqual(expected, wrapped, 
+                Assert.AreEqual(expected, wrapped,
                     $"Column wrapping failed for {dialect}: expected '{expected}', got '{wrapped}'");
-                
+
                 Console.WriteLine($"✅ {GetDialectName(dialect)} 列包装: {columnName} -> {wrapped}");
             }
         }
@@ -64,7 +64,7 @@ namespace Sqlx.Tests.Core
         {
             // 测试字符串值包装功能
             var testValue = "test value";
-            
+
             var testCases = new[]
             {
                 (SqlDefine.SqlServer, "'test value'"),
@@ -78,9 +78,9 @@ namespace Sqlx.Tests.Core
             foreach (var (dialect, expected) in testCases)
             {
                 var wrapped = dialect.WrapString(testValue);
-                Assert.AreEqual(expected, wrapped, 
+                Assert.AreEqual(expected, wrapped,
                     $"String wrapping failed for {dialect}: expected '{expected}', got '{wrapped}'");
-                
+
                 Console.WriteLine($"✅ {GetDialectName(dialect)} 字符串包装: {testValue} -> {wrapped}");
             }
         }
@@ -101,9 +101,9 @@ namespace Sqlx.Tests.Core
 
             foreach (var (dialect, expectedPrefix) in testCases)
             {
-                Assert.AreEqual(expectedPrefix, dialect.ParameterPrefix, 
+                Assert.AreEqual(expectedPrefix, dialect.ParameterPrefix,
                     $"Parameter prefix incorrect for {dialect}");
-                
+
                 Console.WriteLine($"✅ {GetDialectName(dialect)} 参数前缀: {dialect.ParameterPrefix}");
             }
         }
@@ -133,7 +133,7 @@ namespace Sqlx.Tests.Core
                 Assert.IsNotNull(dialect.StringLeft, $"{name} StringLeft should not be null");
                 Assert.IsNotNull(dialect.StringRight, $"{name} StringRight should not be null");
                 Assert.IsNotNull(dialect.ParameterPrefix, $"{name} ParameterPrefix should not be null");
-                
+
                 Console.WriteLine($"✅ {name} 方言初始化验证通过");
             }
         }
@@ -174,17 +174,17 @@ namespace Sqlx.Tests.Core
         {
             // 测试MySQL方言的特定行为
             var mysql = SqlDefine.MySql;
-            
+
             Assert.AreEqual("`", mysql.ColumnLeft);
             Assert.AreEqual("`", mysql.ColumnRight);
             Assert.AreEqual("@", mysql.ParameterPrefix);
-            
+
             var columnName = mysql.WrapColumn("user_name");
             var stringValue = mysql.WrapString("John's Data");
-            
+
             Assert.AreEqual("`user_name`", columnName);
             Assert.AreEqual("'John's Data'", stringValue);
-            
+
             Console.WriteLine($"✅ MySQL方言行为验证:");
             Console.WriteLine($"   列名: {columnName}");
             Console.WriteLine($"   字符串: {stringValue}");
@@ -195,17 +195,17 @@ namespace Sqlx.Tests.Core
         {
             // 测试SQL Server方言的特定行为
             var sqlServer = SqlDefine.SqlServer;
-            
+
             Assert.AreEqual("[", sqlServer.ColumnLeft);
             Assert.AreEqual("]", sqlServer.ColumnRight);
             Assert.AreEqual("@", sqlServer.ParameterPrefix);
-            
+
             var columnName = sqlServer.WrapColumn("UserName");
             var stringValue = sqlServer.WrapString("Test Data");
-            
+
             Assert.AreEqual("[UserName]", columnName);
             Assert.AreEqual("'Test Data'", stringValue);
-            
+
             Console.WriteLine($"✅ SQL Server方言行为验证:");
             Console.WriteLine($"   列名: {columnName}");
             Console.WriteLine($"   字符串: {stringValue}");
@@ -216,17 +216,17 @@ namespace Sqlx.Tests.Core
         {
             // 测试PostgreSQL方言的特定行为
             var pgSql = SqlDefine.PgSql;
-            
+
             Assert.AreEqual("\"", pgSql.ColumnLeft);
             Assert.AreEqual("\"", pgSql.ColumnRight);
             Assert.AreEqual("$", pgSql.ParameterPrefix);
-            
+
             var columnName = pgSql.WrapColumn("user_name");
             var stringValue = pgSql.WrapString("Test Data");
-            
+
             Assert.AreEqual("\"user_name\"", columnName);
             Assert.AreEqual("'Test Data'", stringValue);
-            
+
             Console.WriteLine($"✅ PostgreSQL方言行为验证:");
             Console.WriteLine($"   列名: {columnName}");
             Console.WriteLine($"   字符串: {stringValue}");
@@ -262,11 +262,11 @@ namespace Sqlx.Tests.Core
                 {
                     queryBuilder.Where(e => e.Name == "test" && e.IsActive);
                     var sql = queryBuilder.ToSql();
-                    
+
                     Assert.IsTrue(sql.Contains("WHERE"), $"{dialectName} should generate WHERE clause");
                     Assert.IsTrue(sql.Contains("Name"), $"{dialectName} should contain Name column");
                     Assert.IsTrue(sql.Contains("IsActive"), $"{dialectName} should contain IsActive column");
-                    
+
                     Console.WriteLine($"✅ {dialectName} 集成测试: {sql}");
                 }
             }
@@ -278,7 +278,7 @@ namespace Sqlx.Tests.Core
             // 测试参数生成的集成
             var testValue = "test value";
             var testId = 25;
-            
+
             var testCases = new[]
             {
                 ("SQL Server", ExpressionToSql<TestEntity>.ForSqlServer()),
@@ -293,22 +293,22 @@ namespace Sqlx.Tests.Core
                 {
                     queryBuilder.Where(e => e.Name.Contains(testValue) && e.Id > testId);
                     var template = queryBuilder.ToTemplate();
-                    
+
                     Assert.IsNotNull(template.Sql, $"{dialectName} should generate SQL");
-                    
+
                     // 检查是否有参数（可能某些表达式会被内联而不生成参数）
                     if (template.Parameters.Length > 0)
                     {
                         // 验证参数值
-                        var hasTestValue = template.Parameters.Any(p => 
+                        var hasTestValue = template.Parameters.Any(p =>
                             p.Value?.ToString()?.Contains(testValue) == true);
-                        var hasTestId = template.Parameters.Any(p => 
+                        var hasTestId = template.Parameters.Any(p =>
                             p.Value?.Equals(testId) == true);
-                        
+
                         Console.WriteLine($"✅ {dialectName} 参数生成集成:");
                         Console.WriteLine($"   SQL: {template.Sql}");
                         Console.WriteLine($"   参数数量: {template.Parameters.Length}");
-                        
+
                         if (hasTestValue)
                             Console.WriteLine($"   ✓ 包含字符串参数");
                         if (hasTestId)
@@ -318,11 +318,11 @@ namespace Sqlx.Tests.Core
                     {
                         Console.WriteLine($"✅ {dialectName} SQL生成（无参数）:");
                         Console.WriteLine($"   SQL: {template.Sql}");
-                        
+
                         // 验证SQL包含预期的值
-                        Assert.IsTrue(template.Sql.Contains("LIKE") || template.Sql.Contains("Contains"), 
+                        Assert.IsTrue(template.Sql.Contains("LIKE") || template.Sql.Contains("Contains"),
                             $"{dialectName} should handle string contains");
-                        Assert.IsTrue(template.Sql.Contains(">") || template.Sql.Contains(testId.ToString()), 
+                        Assert.IsTrue(template.Sql.Contains(">") || template.Sql.Contains(testId.ToString()),
                             $"{dialectName} should handle ID comparison");
                     }
                 }
@@ -353,14 +353,14 @@ namespace Sqlx.Tests.Core
                 var sqlServer = SqlDefine.SqlServer.WrapColumn(columnName);
                 var mysql = SqlDefine.MySql.WrapColumn(columnName);
                 var pgSql = SqlDefine.PgSql.WrapColumn(columnName);
-                
-                Assert.IsTrue(sqlServer.StartsWith("[") && sqlServer.EndsWith("]"), 
+
+                Assert.IsTrue(sqlServer.StartsWith("[") && sqlServer.EndsWith("]"),
                     $"SQL Server should wrap '{columnName}' with brackets");
-                Assert.IsTrue(mysql.StartsWith("`") && mysql.EndsWith("`"), 
+                Assert.IsTrue(mysql.StartsWith("`") && mysql.EndsWith("`"),
                     $"MySQL should wrap '{columnName}' with backticks");
-                Assert.IsTrue(pgSql.StartsWith("\"") && pgSql.EndsWith("\""), 
+                Assert.IsTrue(pgSql.StartsWith("\"") && pgSql.EndsWith("\""),
                     $"PostgreSQL should wrap '{columnName}' with quotes");
-                
+
                 Console.WriteLine($"✅ 特殊字符测试 '{columnName}':");
                 Console.WriteLine($"   SQL Server: {sqlServer}");
                 Console.WriteLine($"   MySQL: {mysql}");
@@ -385,10 +385,10 @@ namespace Sqlx.Tests.Core
             foreach (var testString in testStrings)
             {
                 var wrapped = SqlDefine.SqlServer.WrapString(testString);
-                
-                Assert.IsTrue(wrapped.StartsWith("'") && wrapped.EndsWith("'"), 
+
+                Assert.IsTrue(wrapped.StartsWith("'") && wrapped.EndsWith("'"),
                     $"String should be wrapped with single quotes: {wrapped}");
-                
+
                 Console.WriteLine($"✅ 字符串转义测试: '{testString}' -> {wrapped}");
             }
         }
@@ -404,23 +404,23 @@ namespace Sqlx.Tests.Core
             const int iterations = 10000;
             var columnName = "TestColumn";
             var stringValue = "Test String Value";
-            
+
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-            
+
             for (int i = 0; i < iterations; i++)
             {
                 var wrappedColumn = SqlDefine.SqlServer.WrapColumn(columnName);
                 var wrappedString = SqlDefine.SqlServer.WrapString(stringValue);
-                
+
                 Assert.IsNotNull(wrappedColumn);
                 Assert.IsNotNull(wrappedString);
             }
-            
+
             stopwatch.Stop();
-            
-            Assert.IsTrue(stopwatch.ElapsedMilliseconds < 100, 
+
+            Assert.IsTrue(stopwatch.ElapsedMilliseconds < 100,
                 $"Wrap operations should be fast: {stopwatch.ElapsedMilliseconds}ms for {iterations} operations");
-            
+
             Console.WriteLine($"✅ 包装操作性能: {iterations}次操作耗时 {stopwatch.ElapsedMilliseconds}ms");
         }
 

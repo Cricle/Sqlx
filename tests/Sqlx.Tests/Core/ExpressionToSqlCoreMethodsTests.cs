@@ -82,7 +82,7 @@ namespace Sqlx.Tests.Core
             Console.WriteLine($"Multiple WHERE SQL: {sql}");
             Assert.IsTrue(sql.Contains("WHERE"), "应包含WHERE关键字");
             Assert.IsTrue(sql.Contains("AND"), "多个WHERE应使用AND连接");
-            Assert.IsTrue(sql.Contains("Id") && sql.Contains("Name") && sql.Contains("IsActive"), 
+            Assert.IsTrue(sql.Contains("Id") && sql.Contains("Name") && sql.Contains("IsActive"),
                 "应包含所有条件字段");
         }
 
@@ -113,7 +113,7 @@ namespace Sqlx.Tests.Core
 
             // Assert
             Console.WriteLine($"Complex boolean SQL: {sql}");
-            Assert.IsTrue(sql.Contains("Age") && sql.Contains("IsActive") && sql.Contains("Salary"), 
+            Assert.IsTrue(sql.Contains("Age") && sql.Contains("IsActive") && sql.Contains("Salary"),
                 "应包含所有条件字段");
             Assert.IsTrue(sql.Contains("AND") || sql.Contains("OR"), "应包含逻辑操作符");
         }
@@ -190,15 +190,15 @@ namespace Sqlx.Tests.Core
             // Assert
             Console.WriteLine($"Multiple ORDER BY SQL: {sql}");
             Assert.IsTrue(sql.Contains("ORDER BY"), "应包含ORDER BY关键字");
-            Assert.IsTrue(sql.Contains("Name") && sql.Contains("CreatedAt") && sql.Contains("Age"), 
+            Assert.IsTrue(sql.Contains("Name") && sql.Contains("CreatedAt") && sql.Contains("Age"),
                 "应包含所有排序字段");
-            
+
             // 验证顺序 - Name应出现在CreatedAt之前，CreatedAt应出现在Age之前
             var nameIndex = sql.IndexOf("Name");
             var createdAtIndex = sql.IndexOf("CreatedAt");
             var ageIndex = sql.IndexOf("Age");
-            
-            Assert.IsTrue(nameIndex < createdAtIndex && createdAtIndex < ageIndex, 
+
+            Assert.IsTrue(nameIndex < createdAtIndex && createdAtIndex < ageIndex,
                 "字段应按添加顺序排列");
         }
 
@@ -214,7 +214,7 @@ namespace Sqlx.Tests.Core
 
             // Assert
             Console.WriteLine($"OrderBy with valid selector SQL: {sql}");
-            Assert.IsTrue(sql.Contains("ORDER BY") && sql.Contains("Name"), 
+            Assert.IsTrue(sql.Contains("ORDER BY") && sql.Contains("Name"),
                 "有效的排序表达式应正常工作");
         }
 
@@ -235,7 +235,7 @@ namespace Sqlx.Tests.Core
             Console.WriteLine($"TAKE SQL: {sql}");
             Assert.IsTrue(sql.Contains("50"), "应包含限制数量");
             // SQL Server可能使用FETCH NEXT或TOP语法
-            Assert.IsTrue(sql.Contains("FETCH") || sql.Contains("TOP") || sql.Contains("LIMIT"), 
+            Assert.IsTrue(sql.Contains("FETCH") || sql.Contains("TOP") || sql.Contains("LIMIT"),
                 "应包含限制语法");
         }
 
@@ -288,7 +288,7 @@ namespace Sqlx.Tests.Core
             // Assert
             Console.WriteLine($"Take(0) SQL: {sql1}");
             Console.WriteLine($"Take(-1) SQL: {sql2}");
-            
+
             // 应该能处理边界情况而不抛出异常
             Assert.IsNotNull(sql1, "Take(0)应产生有效SQL");
             Assert.IsNotNull(sql2, "Take(-1)应产生有效SQL");
@@ -352,7 +352,7 @@ namespace Sqlx.Tests.Core
             // Assert
             Console.WriteLine($"Multiple SET SQL: {sql}");
             Assert.IsTrue(sql.Contains("UPDATE"), "应包含UPDATE关键字");
-            Assert.IsTrue(sql.Contains("Name") && sql.Contains("IsActive") && sql.Contains("UpdatedAt"), 
+            Assert.IsTrue(sql.Contains("Name") && sql.Contains("IsActive") && sql.Contains("UpdatedAt"),
                 "应包含所有SET字段");
             var setCount = sql.Split(',').Length;
             Assert.IsTrue(setCount >= 3, "应包含多个SET子句");
@@ -374,7 +374,7 @@ namespace Sqlx.Tests.Core
             // Assert
             Console.WriteLine($"SELECT columns SQL: {sql}");
             Assert.IsTrue(sql.Contains("SELECT"), "应包含SELECT关键字");
-            Assert.IsTrue(sql.Contains("Id") && sql.Contains("Name") && sql.Contains("Email"), 
+            Assert.IsTrue(sql.Contains("Id") && sql.Contains("Name") && sql.Contains("Email"),
                 "应包含指定的列");
             Assert.IsFalse(sql.Contains("*"), "不应包含通配符");
         }
@@ -408,7 +408,7 @@ namespace Sqlx.Tests.Core
             // Assert
             Console.WriteLine($"Multiple SELECT expressions SQL: {sql}");
             Assert.IsTrue(sql.Contains("SELECT"), "应包含SELECT关键字");
-            Assert.IsTrue(sql.Contains("Id") && sql.Contains("Name") && sql.Contains("Email"), 
+            Assert.IsTrue(sql.Contains("Id") && sql.Contains("Name") && sql.Contains("Email"),
                 "应包含所有表达式的列");
         }
 
@@ -450,7 +450,7 @@ namespace Sqlx.Tests.Core
             Assert.IsTrue(sql.Contains("INSERT INTO"), "应包含INSERT INTO关键字");
             Assert.IsTrue(sql.Contains("VALUES"), "应包含VALUES关键字");
             Assert.IsTrue(sql.Contains("First") && sql.Contains("Second"), "应包含两行数据");
-            
+
             var valuesSets = sql.Split('(').Length - 1; // 计算VALUES子句数量
             Assert.IsTrue(valuesSets >= 2, "应包含多个VALUES子句");
         }
@@ -549,11 +549,11 @@ namespace Sqlx.Tests.Core
             // Assert
             Console.WriteLine($"Template SQL: {template.Sql}");
             Console.WriteLine($"Parameters count: {template.Parameters.Length}");
-            
+
             Assert.IsNotNull(template.Sql, "模板SQL不应为null");
             Assert.IsNotNull(template.Parameters, "模板参数不应为null");
             Assert.IsTrue(template.Sql.Length > 0, "模板SQL不应为空");
-            
+
             if (template.Parameters.Length > 0)
             {
                 foreach (var param in template.Parameters)
@@ -588,7 +588,7 @@ namespace Sqlx.Tests.Core
             Assert.IsTrue(sql.Contains("SELECT"), "应包含SELECT");
             Assert.IsTrue(sql.Contains("WHERE"), "应包含WHERE");
             Assert.IsTrue(sql.Contains("ORDER BY"), "应包含ORDER BY");
-            Assert.IsTrue(sql.Contains("Id") && sql.Contains("Name") && sql.Contains("Email"), 
+            Assert.IsTrue(sql.Contains("Id") && sql.Contains("Name") && sql.Contains("Email"),
                 "应包含SELECT列");
             Assert.IsTrue(sql.Contains("Age") && sql.Contains("IsActive"), "应包含WHERE条件");
             Assert.IsTrue(sql.Contains("10") && sql.Contains("20"), "应包含分页参数");
@@ -612,7 +612,7 @@ namespace Sqlx.Tests.Core
             Assert.IsTrue(sql.Contains("UPDATE"), "应包含UPDATE");
             Assert.IsTrue(sql.Contains("SET"), "应包含SET");
             Assert.IsTrue(sql.Contains("WHERE"), "应包含WHERE");
-            Assert.IsTrue(sql.Contains("Name") && sql.Contains("Age") && sql.Contains("UpdatedAt"), 
+            Assert.IsTrue(sql.Contains("Name") && sql.Contains("Age") && sql.Contains("UpdatedAt"),
                 "应包含所有SET字段");
         }
 

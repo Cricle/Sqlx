@@ -52,7 +52,7 @@ public class AttributeHandler : IAttributeHandler
             {
                 return $"[Sqlx(\"SELECT * FROM {tableName}\")]";
             }
-            else if (methodName.Contains("getby") || methodName.Contains("findby") || 
+            else if (methodName.Contains("getby") || methodName.Contains("findby") ||
                     (methodName.StartsWith("get") && method.Parameters.Length > 0))
             {
                 var paramName = method.Parameters.FirstOrDefault()?.Name ?? "id";
@@ -105,7 +105,7 @@ public class AttributeHandler : IAttributeHandler
 
             var sb = new StringBuilder();
             sb.Append('[');
-            
+
             // Handle different attribute types
             if (attributeClass.Name == "SqlxAttribute")
             {
@@ -127,7 +127,7 @@ public class AttributeHandler : IAttributeHandler
                 {
                     var executeTypeArg = attribute.ConstructorArguments[0];
                     sb.Append($"SqlOperation.{GetSqlExecuteTypeName(executeTypeArg)}");
-                    
+
                     if (attribute.ConstructorArguments.Length > 1)
                     {
                         var tableNameArg = attribute.ConstructorArguments[1];
@@ -149,7 +149,7 @@ public class AttributeHandler : IAttributeHandler
                     for (int i = 0; i < attribute.ConstructorArguments.Length; i++)
                     {
                         if (i > 0) sb.Append(", ");
-                        
+
                         var arg = attribute.ConstructorArguments[i];
                         if (arg.Value is string stringValue)
                         {
@@ -163,7 +163,7 @@ public class AttributeHandler : IAttributeHandler
                     sb.Append(')');
                 }
             }
-            
+
             sb.Append(']');
             return sb.ToString();
         }
@@ -188,7 +188,7 @@ public class AttributeHandler : IAttributeHandler
                 _ => intValue.ToString()
             };
         }
-        
+
         return executeTypeArg.Value?.ToString() ?? "None";
     }
 }

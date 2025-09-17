@@ -91,13 +91,13 @@ namespace Sqlx.Tests.Core
             {
                 // Test that extreme values are handled correctly
                 Assert.IsTrue(min < max);
-                
+
                 // Test string conversion
                 var minStr = min.ToString();
                 var maxStr = max.ToString();
                 Assert.IsTrue(minStr.Length > 0);
                 Assert.IsTrue(maxStr.Length > 0);
-                
+
                 // Test that they can be converted back
                 var parsedMin = Convert.ChangeType(minStr, min.GetType());
                 var parsedMax = Convert.ChangeType(maxStr, max.GetType());
@@ -157,18 +157,18 @@ namespace Sqlx.Tests.Core
                 // Test that strings are handled correctly
                 Assert.IsNotNull(str);
                 Assert.IsTrue(str.Length > 0);
-                
+
                 // Test escaping for SQL (conceptual)
                 var escaped = str.Replace("'", "''");
                 if (str.Contains("'"))
                 {
                     Assert.IsTrue(escaped.Contains("''"));
                 }
-                
+
                 // Test trimming
                 var trimmed = str.Trim();
                 Assert.IsTrue(trimmed.Length <= str.Length);
-                
+
                 // Test encoding safety
                 var bytes = System.Text.Encoding.UTF8.GetBytes(str);
                 var decoded = System.Text.Encoding.UTF8.GetString(bytes);
@@ -308,16 +308,16 @@ namespace Sqlx.Tests.Core
             {
                 // Test state validation
                 Assert.IsTrue(Enum.IsDefined(typeof(ConnectionState), state));
-                
+
                 // Test state name
                 var stateName = state.ToString();
                 Assert.IsTrue(stateName.Length > 0);
-                
+
                 // Test state conversion
                 var stateValue = (int)state;
                 var backToState = (ConnectionState)stateValue;
                 Assert.AreEqual(state, backToState);
-                
+
                 // Test state logic
                 switch (state)
                 {
@@ -369,7 +369,7 @@ namespace Sqlx.Tests.Core
                     Assert.IsNotNull(ex);
                     Assert.IsNotNull(ex.Message);
                     Assert.IsTrue(ex.Message.Length > 0);
-                    
+
                     // Test exception properties
                     Assert.IsNotNull(ex.GetType());
                     Assert.IsTrue(ex.GetType().IsSubclassOf(typeof(Exception)) || ex.GetType() == typeof(Exception));
@@ -401,29 +401,29 @@ namespace Sqlx.Tests.Core
         {
             // Test resource management with disposable objects
             var disposableCalled = false;
-            
+
             using (var disposable = new TestDisposable(() => disposableCalled = true))
             {
                 Assert.IsNotNull(disposable);
                 Assert.IsFalse(disposableCalled);
             }
-            
+
             Assert.IsTrue(disposableCalled);
 
             // Test multiple disposal
             var multipleDisposalCounter = 0;
             var multipleDisposable = new TestDisposable(() => multipleDisposalCounter++);
-            
+
             multipleDisposable.Dispose();
             multipleDisposable.Dispose();
             multipleDisposable.Dispose();
-            
+
             // Should handle multiple disposal gracefully
             Assert.IsTrue(multipleDisposalCounter >= 1);
 
             // Test disposal with exceptions
             var exceptionDisposable = new TestDisposable(() => throw new InvalidOperationException("Disposal error"));
-            
+
             Assert.ThrowsException<InvalidOperationException>(() =>
             {
                 exceptionDisposable.Dispose();
@@ -455,40 +455,40 @@ namespace Sqlx.Tests.Core
         {
             // Test performance under high load scenarios
             var startTime = DateTime.UtcNow;
-            
+
             // Simulate high-frequency operations
             var operations = 10000;
             var results = new List<int>(operations);
-            
+
             for (int i = 0; i < operations; i++)
             {
                 // Simulate some work
                 var result = i * 2 + 1;
                 results.Add(result);
             }
-            
+
             var endTime = DateTime.UtcNow;
             var duration = endTime - startTime;
-            
+
             Assert.AreEqual(operations, results.Count);
             Assert.IsTrue(duration.TotalMilliseconds < 5000); // Should complete within 5 seconds
-            
+
             // Test memory usage doesn't grow excessively
             var initialMemory = GC.GetTotalMemory(false);
-            
+
             // Create and dispose many objects
             for (int i = 0; i < 1000; i++)
             {
                 var temp = new List<int>(Enumerable.Range(0, 100));
                 temp.Clear();
             }
-            
+
             GC.Collect();
             GC.WaitForPendingFinalizers();
             GC.Collect();
-            
+
             var finalMemory = GC.GetTotalMemory(false);
-            
+
             // Memory should not grow significantly after GC
             Assert.IsTrue(finalMemory - initialMemory < 1024 * 1024); // Less than 1MB growth
         }

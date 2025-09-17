@@ -38,10 +38,10 @@ namespace Sqlx.Tests.Integration
             var sql = query.ToSql();
 
             // MySQL 应该使用反引号包装列名
-            Assert.IsTrue(sql.Contains("`Id`, `Name`") || sql.Contains("Id, Name"), 
+            Assert.IsTrue(sql.Contains("`Id`, `Name`") || sql.Contains("Id, Name"),
                 $"MySQL 语法错误: {sql}");
             Assert.IsTrue(sql.Contains("FROM"), $"缺少 FROM 子句: {sql}");
-            
+
             Console.WriteLine($"✅ MySQL 枚举集成测试: {sql}");
         }
 
@@ -58,7 +58,7 @@ namespace Sqlx.Tests.Integration
             // SQL Server 应该使用方括号包装列名
             Assert.IsTrue(sql.Contains("[Id], [Name]"), $"SQL Server 语法错误: {sql}");
             Assert.IsTrue(sql.Contains("FROM [TestEntity]"), $"表名包装错误: {sql}");
-            
+
             Console.WriteLine($"✅ SQL Server 枚举集成测试: {sql}");
         }
 
@@ -75,7 +75,7 @@ namespace Sqlx.Tests.Integration
             // PostgreSQL 应该使用双引号或无引号
             Assert.IsTrue(sql.Contains("SELECT"), $"缺少 SELECT: {sql}");
             Assert.IsTrue(sql.Contains("FROM"), $"缺少 FROM: {sql}");
-            
+
             Console.WriteLine($"✅ PostgreSQL 枚举集成测试: {sql}");
         }
 
@@ -92,7 +92,7 @@ namespace Sqlx.Tests.Integration
             // SQLite 应该使用方括号或无引号
             Assert.IsTrue(sql.Contains("SELECT"), $"缺少 SELECT: {sql}");
             Assert.IsTrue(sql.Contains("FROM"), $"缺少 FROM: {sql}");
-            
+
             Console.WriteLine($"✅ SQLite 枚举集成测试: {sql}");
         }
 
@@ -117,10 +117,10 @@ namespace Sqlx.Tests.Integration
             foreach (var (enumValue, expectedName) in testCases)
             {
                 var attribute = new SqlDefineAttribute(enumValue);
-                
+
                 Assert.AreEqual(enumValue, attribute.DialectType);
                 Assert.AreEqual(expectedName, attribute.DialectName);
-                
+
                 Console.WriteLine($"✅ 枚举映射验证: {enumValue} -> {expectedName}");
             }
         }
@@ -135,7 +135,7 @@ namespace Sqlx.Tests.Integration
             Assert.AreEqual(3, (int)SqlDefineTypes.Oracle);
             Assert.AreEqual(4, (int)SqlDefineTypes.DB2);
             Assert.AreEqual(5, (int)SqlDefineTypes.SQLite);
-            
+
             Console.WriteLine("✅ 所有枚举整数值与生成器映射一致");
         }
 
@@ -151,7 +151,7 @@ namespace Sqlx.Tests.Integration
             var enumAttribute = new SqlDefineAttribute(SqlDefineTypes.MySql);
 
             Assert.AreEqual(enumAttribute.DialectType, stringAttribute.DialectType);
-            
+
             Console.WriteLine($"✅ 向后兼容性: 字符串和枚举构造函数结果一致");
         }
 
@@ -172,10 +172,10 @@ namespace Sqlx.Tests.Integration
             foreach (var (dialectString, expectedEnum) in dialectMappings)
             {
                 var attribute = new SqlDefineAttribute(dialectString);
-                
+
                 Assert.AreEqual(expectedEnum, attribute.DialectType);
                 Assert.AreEqual(dialectString, attribute.DialectName);
-                
+
                 Console.WriteLine($"✅ 字符串解析: {dialectString} -> {expectedEnum}");
             }
         }
@@ -189,13 +189,13 @@ namespace Sqlx.Tests.Integration
         {
             // 测试无效枚举值的处理（虽然在编译时不太可能发生）
             var invalidEnumValue = (SqlDefineTypes)999;
-            
+
             // 这应该不会抛出异常，而是使用枚举的字符串表示
             var attribute = new SqlDefineAttribute(invalidEnumValue);
-            
+
             Assert.AreEqual(invalidEnumValue, attribute.DialectType);
             Assert.AreEqual("999", attribute.DialectName);
-            
+
             Console.WriteLine($"✅ 无效枚举值处理: {invalidEnumValue} -> {attribute.DialectName}");
         }
 
@@ -205,10 +205,10 @@ namespace Sqlx.Tests.Integration
             // 测试不支持的字符串方言的处理
             var unsupportedDialect = "UnsupportedDatabase";
             var attribute = new SqlDefineAttribute(unsupportedDialect);
-            
+
             Assert.IsNull(attribute.DialectType);
             Assert.AreEqual(unsupportedDialect, attribute.DialectName);
-            
+
             Console.WriteLine($"✅ 不支持的字符串方言处理: {unsupportedDialect}");
         }
 
@@ -222,7 +222,7 @@ namespace Sqlx.Tests.Integration
         public class MySqlUserRepository
         {
             public void GetActiveUsers() { }
-            
+
             [SqlDefine(SqlDefineTypes.SqlServer)]
             public void GetArchivedUsers() { }
         }
@@ -240,17 +240,17 @@ namespace Sqlx.Tests.Integration
             // 验证类级别和方法级别的 SqlDefine 特性都能正确工作
             var repositoryType = typeof(MySqlUserRepository);
             var method = repositoryType.GetMethod(nameof(MySqlUserRepository.GetArchivedUsers))!;
-            
+
             // 类级别特性
             var classAttributes = repositoryType.GetCustomAttributes(typeof(SqlDefineAttribute), false);
             var classAttribute = (SqlDefineAttribute)classAttributes[0];
             Assert.AreEqual(SqlDefineTypes.MySql, classAttribute.DialectType);
-            
+
             // 方法级别特性
             var methodAttributes = method.GetCustomAttributes(typeof(SqlDefineAttribute), false);
             var methodAttribute = (SqlDefineAttribute)methodAttributes[0];
             Assert.AreEqual(SqlDefineTypes.SqlServer, methodAttribute.DialectType);
-            
+
             Console.WriteLine($"✅ 真实场景: 类({classAttribute.DialectType}) + 方法({methodAttribute.DialectType})");
         }
 
@@ -260,19 +260,19 @@ namespace Sqlx.Tests.Integration
             // 验证混合使用字符串和枚举的真实场景
             var repositoryType = typeof(PostgreSqlUserRepository);
             var method = repositoryType.GetMethod(nameof(PostgreSqlUserRepository.GetUsersByRole))!;
-            
+
             // 类级别使用字符串
             var classAttributes = repositoryType.GetCustomAttributes(typeof(SqlDefineAttribute), false);
             var classAttribute = (SqlDefineAttribute)classAttributes[0];
             Assert.AreEqual("PostgreSql", classAttribute.DialectName);
             Assert.AreEqual(SqlDefineTypes.PostgreSql, classAttribute.DialectType);
-            
+
             // 方法级别使用枚举
             var methodAttributes = method.GetCustomAttributes(typeof(SqlDefineAttribute), false);
             var methodAttribute = (SqlDefineAttribute)methodAttributes[0];
             Assert.AreEqual(SqlDefineTypes.Oracle, methodAttribute.DialectType);
             Assert.AreEqual("Oracle", methodAttribute.DialectName);
-            
+
             Console.WriteLine($"✅ 混合场景: 字符串({classAttribute.DialectName}) + 枚举({methodAttribute.DialectType})");
         }
 

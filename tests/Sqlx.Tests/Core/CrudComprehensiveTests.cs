@@ -136,7 +136,7 @@ namespace Sqlx.Tests.Core
         public void Read_WhereConditions_AllDataTypes_GeneratesCorrectSql()
         {
             using var expr = ExpressionToSql<TestUser>.ForSqlServer();
-            
+
             // 整数条件
             expr.Where(u => u.Id == 1);
             var sql1 = expr.ToSql();
@@ -381,7 +381,7 @@ namespace Sqlx.Tests.Core
         public void DataTypes_NullValues_HandledCorrectly()
         {
             using var expr = ExpressionToSql<TestUser>.ForSqlServer();
-            
+
             // 测试NULL值比较
             expr.Where(u => u.Name == null);
             var sql = expr.ToSql();
@@ -404,7 +404,7 @@ namespace Sqlx.Tests.Core
 
             var sql = expr.ToSql();
             // 检查单引号是否被正确转义
-            Assert.IsTrue(sql.Contains("'O''Connor'") || sql.Contains("'O\\'Connor'"), 
+            Assert.IsTrue(sql.Contains("'O''Connor'") || sql.Contains("'O\\'Connor'"),
                 "Single quotes should be escaped");
         }
 
@@ -439,7 +439,7 @@ namespace Sqlx.Tests.Core
         public void Performance_LargeWhereConditions_HandledEfficiently()
         {
             using var expr = ExpressionToSql<TestUser>.ForSqlServer();
-            
+
             // 添加多个WHERE条件
             for (int i = 0; i < 50; i++)
             {

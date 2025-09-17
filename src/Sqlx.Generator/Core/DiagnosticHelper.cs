@@ -260,7 +260,7 @@ namespace Sqlx
                 // 备用检查：如果类型名包含record关键字或继承自Record基类
                 var hasExplicitConstructor = entityType.Constructors
                     .Any(c => c.Parameters.Length > 0 && !c.IsImplicitlyDeclared);
-                
+
                 if (!hasExplicitConstructor)
                 {
                     issues.Add("Record 类型应该有主构造函数");
@@ -309,7 +309,7 @@ namespace Sqlx
             // 检查属性类型优化
             var memberProperties = PrimaryConstructorAnalyzer.GetAccessibleMembers(entityType).ToList();
             var stringPropertyCount = 0;
-            
+
             foreach (var prop in memberProperties)
             {
                 if (prop.Type.SpecialType == SpecialType.System_String &&
@@ -343,11 +343,7 @@ namespace Sqlx
             INamedTypeSymbol entityType,
             string methodName)
         {
-            System.Diagnostics.Debug.WriteLine($"[Sqlx CodeGen] {context}");
-            System.Diagnostics.Debug.WriteLine($"  实体类型: {entityType.ToDisplayString()}");
-            System.Diagnostics.Debug.WriteLine($"  方法名称: {methodName}");
-            System.Diagnostics.Debug.WriteLine($"  是否为 Record: {PrimaryConstructorAnalyzer.IsRecord(entityType)}");
-            System.Diagnostics.Debug.WriteLine($"  是否有主构造函数: {PrimaryConstructorAnalyzer.HasPrimaryConstructor(entityType)}");
+            // Debug logging removed for production
         }
 
         /// <summary>
@@ -449,7 +445,7 @@ namespace Sqlx
 
             // 检查子查询 - 修复逻辑，检查是否有嵌套的SELECT
             var originalSqlLower = sql.ToLowerInvariant(); // 使用原始SQL检查子查询
-            if (originalSqlLower.Contains("select") && originalSqlLower.Count(c => c == '(') >= 1 && 
+            if (originalSqlLower.Contains("select") && originalSqlLower.Count(c => c == '(') >= 1 &&
                 originalSqlLower.IndexOf("select", originalSqlLower.IndexOf("select") + 1) > 0)
             {
                 diagnostics.Add(CreatePerformanceSuggestion(

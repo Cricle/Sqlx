@@ -21,7 +21,7 @@ public class SimpleAnnotationTests : TestBase
     {
         // Act
         var attr = new SqlxAttribute();
-        
+
         // Assert
         Assert.IsNotNull(attr);
         Assert.AreEqual(string.Empty, attr.StoredProcedureName);
@@ -33,10 +33,10 @@ public class SimpleAnnotationTests : TestBase
     {
         // Arrange
         string spName = "sp_GetUsers";
-        
+
         // Act
         var attr = new SqlxAttribute(spName);
-        
+
         // Assert
         Assert.AreEqual(spName, attr.StoredProcedureName);
     }
@@ -47,10 +47,10 @@ public class SimpleAnnotationTests : TestBase
         // Arrange
         var operation = SqlOperation.Select;
         string tableName = "Users";
-        
+
         // Act
         var attr = new SqlExecuteTypeAttribute(operation, tableName);
-        
+
         // Assert
         Assert.AreEqual(operation, attr.ExecuteType);
         Assert.AreEqual(tableName, attr.TableName);
@@ -61,10 +61,10 @@ public class SimpleAnnotationTests : TestBase
     {
         // Arrange
         string tableName = "CustomUsers";
-        
+
         // Act
         var attr = new TableNameAttribute(tableName);
-        
+
         // Assert
         Assert.AreEqual(tableName, attr.TableName);
     }
@@ -74,10 +74,10 @@ public class SimpleAnnotationTests : TestBase
     {
         // Arrange
         var serviceType = typeof(ITestService);
-        
+
         // Act
         var attr = new RepositoryForAttribute(serviceType);
-        
+
         // Assert
         Assert.AreEqual(serviceType, attr.ServiceType);
     }
@@ -87,10 +87,10 @@ public class SimpleAnnotationTests : TestBase
     {
         // Arrange
         var entityType = typeof(TestEntity);
-        
+
         // Act
         var attr = new DbSetTypeAttribute(entityType);
-        
+
         // Assert
         Assert.AreEqual(entityType, attr.Type);
     }
@@ -100,7 +100,7 @@ public class SimpleAnnotationTests : TestBase
     {
         // Act
         var attr = new SqlDefineAttribute(SqlDefineTypes.MySql);
-        
+
         // Assert
         Assert.AreEqual(SqlDefineTypes.MySql, attr.DialectType);
         Assert.AreEqual("MySql", attr.DialectName);
@@ -111,7 +111,7 @@ public class SimpleAnnotationTests : TestBase
     {
         // Act
         var attr = new SqlDefineAttribute("\"", "\"", "'", "'", "$");
-        
+
         // Assert
         Assert.AreEqual("\"", attr.ColumnLeft);
         Assert.AreEqual("\"", attr.ColumnRight);
@@ -125,7 +125,7 @@ public class SimpleAnnotationTests : TestBase
     {
         // Act
         var attr = new ExpressionToSqlAttribute();
-        
+
         // Assert
         Assert.IsNotNull(attr);
     }
@@ -145,7 +145,7 @@ public class SimpleAnnotationTests : TestBase
     {
         // Act
         var values = Enum.GetValues<SqlDefineTypes>();
-        
+
         // Assert
         Assert.AreEqual(6, values.Length);
         Assert.IsTrue(Array.Exists(values, v => v == SqlDefineTypes.MySql));
@@ -158,7 +158,7 @@ public class SimpleAnnotationTests : TestBase
 
     // Test interfaces and classes
     private interface ITestService { }
-    
+
     private class TestEntity
     {
         public int Id { get; set; }

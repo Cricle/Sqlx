@@ -16,14 +16,14 @@ class Program
     static async Task Main(string[] args)
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
-        
+
         ShowWelcome();
-        
+
         try
         {
             // 显示演示选项菜单
             var choice = ShowDemoMenu();
-            
+
             switch (choice)
             {
                 case "1":
@@ -40,7 +40,7 @@ class Program
                     await RunCompleteFeatureDemo();
                     break;
             }
-            
+
             ShowSummary();
         }
         catch (Exception ex)
@@ -48,10 +48,10 @@ class Program
             Console.WriteLine($"\n❌ 演示过程中发生错误: {ex.Message}");
             Console.WriteLine($"详细信息: {ex}");
         }
-        
+
         Console.WriteLine("\n🎉 Sqlx 完整功能演示结束！");
         Console.WriteLine("按任意键退出...");
-        try 
+        try
         {
             Console.ReadKey();
         }
@@ -68,7 +68,7 @@ class Program
     static async Task RunCompleteFeatureDemo()
     {
         Console.WriteLine("🎯 运行完整Sqlx功能演示 (所有代码由源生成器自动生成)");
-        
+
         var demo = new CompleteSqlxDemo();
         await demo.RunCompleteDemo();
     }
@@ -108,16 +108,16 @@ class Program
         Console.WriteLine("📋 请选择演示模式:");
         Console.WriteLine("==================");
         Console.ResetColor();
-        
+
         Console.WriteLine("1️⃣ 完整功能演示 (推荐) - 展示所有4大核心特性");
         Console.WriteLine("2️⃣ 拦截器功能演示 (新增) - 展示SQL执行拦截和性能监控");
         Console.WriteLine("3️⃣ 完整演示 (全部) - 运行所有演示内容");
         Console.WriteLine();
-        
+
         Console.Write("请输入选择 (1-3, 默认1): ");
         var input = Console.ReadLine()?.Trim();
         Console.WriteLine();
-        
+
         return string.IsNullOrEmpty(input) ? "1" : input;
     }
 
@@ -130,13 +130,13 @@ class Program
         Console.WriteLine("🎭 启动拦截器功能演示");
         Console.WriteLine("=====================");
         Console.ResetColor();
-        
+
         using var connection = new SqliteConnection("Data Source=:memory:");
         connection.Open();
-        
+
         // 初始化数据库
         await InitializeDatabaseAsync(connection);
-        
+
         // 运行拦截器演示
         var interceptorDemo = new InterceptorDemo(connection);
         await interceptorDemo.RunCompleteInterceptorDemoAsync();
@@ -274,10 +274,10 @@ class Program
         Console.WriteLine("\n1️⃣ 基础源生成Repository模式:");
         var users = await userService.GetActiveUsersAsync();
         Console.WriteLine($"✅ 活跃用户: {users.Count} 个");
-        
+
         var user = await userService.GetUserByIdAsync(1);
         Console.WriteLine($"✅ 用户查询: {user?.Name}");
-        
+
         var count = await userService.GetUserCountByDepartmentAsync(1);
         Console.WriteLine($"✅ 部门人数: {count}");
 
@@ -285,7 +285,7 @@ class Program
         Console.WriteLine("\n2️⃣ 产品管理功能:");
         var products = await productService.GetActiveProductsAsync();
         Console.WriteLine($"✅ 活跃产品: {products.Count} 个");
-        
+
         try
         {
             var expensiveProducts = await productService.GetProductsByPriceRangeAsync(5000, 15000);
@@ -295,19 +295,19 @@ class Program
         {
             Console.WriteLine($"⚠️ 价格范围查询跳过: {ex.Message}");
         }
-        
+
         var productCount = await productService.GetActiveProductCountAsync();
         Console.WriteLine($"✅ 产品总数: {productCount}");
 
         // 3. CRUD操作演示
         Console.WriteLine("\n3️⃣ CRUD操作演示:");
-        
+
         try
         {
             // READ - 查询产品
             var iphone = await productService.GetProductByIdAsync(1);
             Console.WriteLine($"✅ 查询产品: {iphone?.name} - {iphone?.price:C}");
-            
+
             // 简化的库存测试 - 跳过UPDATE操作暂时
             Console.WriteLine($"✅ 当前库存: {iphone?.stock_quantity}");
             Console.WriteLine($"✅ CRUD操作演示完成 (暂时跳过UPDATE)");
@@ -322,11 +322,11 @@ class Program
         var mysqlService = new MySqlUserService(connection);
         var mysqlUsers = await mysqlService.GetActiveUsersAsync();
         Console.WriteLine($"✅ MySQL方言: {mysqlUsers.Count} 个用户 (使用 `column` 和 @param)");
-        
+
         var sqlServerService = new SqlServerUserService(connection);
         var sqlServerUsers = await sqlServerService.GetActiveUsersAsync();
         Console.WriteLine($"✅ SQL Server方言: {sqlServerUsers.Count} 个用户 (使用 [column] 和 @param)");
-        
+
         var postgresService = new PostgreSqlUserService(connection);
         var postgresUsers = await postgresService.GetActiveUsersAsync();
         Console.WriteLine($"✅ PostgreSQL方言: {postgresUsers.Count} 个用户 (使用 \"column\" 和 $param)");
@@ -335,7 +335,7 @@ class Program
         Console.WriteLine("\n5️⃣ 扩展方法功能:");
         var activeCount = await connection.GetActiveUserCountAsync();
         Console.WriteLine($"✅ 扩展方法统计: {activeCount} 个活跃用户");
-        
+
         var avgSalary = await connection.GetAverageSalaryAsync();
         Console.WriteLine($"✅ 平均薪资: {avgSalary:C}");
 
@@ -343,10 +343,10 @@ class Program
         Console.WriteLine("\n6️⃣ 订单管理功能:");
         var totalOrders = await orderService.GetTotalOrderCountAsync();
         Console.WriteLine($"✅ 订单总数: {totalOrders}");
-        
+
         var totalSales = await orderService.GetTotalSalesAsync();
         Console.WriteLine($"✅ 销售总额: {totalSales:C}");
-        
+
         try
         {
             var userOrders = await orderService.GetUserOrdersAsync(1, 5, 0);
@@ -363,7 +363,7 @@ class Program
         {
             var searchResults = await productService.SearchProductsAsync("%手机%", 10, 0);
             Console.WriteLine($"✅ 搜索'手机': {searchResults.Count} 个结果");
-            
+
             foreach (var product in searchResults.Take(3))
             {
                 Console.WriteLine($"  - {product.name} ({product.price:C})");
@@ -399,7 +399,7 @@ class Program
         }
         stopwatch.Stop();
         Console.WriteLine($"✅ 基础查询: 100次调用耗时 {stopwatch.ElapsedMilliseconds}ms");
-        
+
         stopwatch.Restart();
         try
         {
@@ -427,7 +427,7 @@ class Program
         {
             Console.WriteLine($"⚠️ 分类统计跳过: {ex.Message}");
         }
-        
+
         Console.WriteLine($"✅ 数据库包含: {users.Count}个用户, {products.Count}个产品, {totalOrders}个订单");
 
         // 11. ExpressionToSql 演示
@@ -485,7 +485,7 @@ class Program
             Console.WriteLine("✅ RepositoryFor 功能已被简化源生成器替代，源生成器现在可以正常工作！");
             // 注意：UserRepositoryImpl 已被删除，因为源生成器现在可以正常工作
             Console.WriteLine("✅ 源生成器成功生成了所有 partial 方法的实现");
-            
+
             // 注意：原来的 UserRepositoryImpl 演示代码已被移除
             // 因为简化的源生成器现在为所有 partial 方法提供了基本的实现
         }
@@ -528,35 +528,35 @@ class Program
         Console.WriteLine("================================");
         Console.WriteLine("✨ Sqlx 4大核心特性演示总结:");
         Console.WriteLine();
-        
+
         Console.WriteLine("1️⃣ RawSql/Sqlx 特性 - 手写SQL和存储过程");
         Console.WriteLine("   • 支持手写原生SQL查询");
         Console.WriteLine("   • 参数化查询防SQL注入");
         Console.WriteLine("   • 支持同步/异步调用");
         Console.WriteLine("   • 存储过程风格调用");
         Console.WriteLine();
-        
+
         Console.WriteLine("2️⃣ SqlExecuteType 特性 - CRUD操作类型标注");
         Console.WriteLine("   • [SqlExecuteType(SqlOperation.Insert/Update/Delete/Select)]");
         Console.WriteLine("   • 明确的操作类型标注");
         Console.WriteLine("   • 支持批量操作 (BatchInsert/BatchUpdate/BatchDelete)");
         Console.WriteLine("   • 编译时操作验证");
         Console.WriteLine();
-        
+
         Console.WriteLine("3️⃣ RepositoryFor 特性 - 自动仓储模式生成");
         Console.WriteLine("   • [RepositoryFor(typeof(IInterface))] 自动实现接口");
         Console.WriteLine("   • 完整的仓储模式支持");
         Console.WriteLine("   • 自动生成CRUD操作");
         Console.WriteLine("   • 类型安全的数据访问");
         Console.WriteLine();
-        
+
         Console.WriteLine("4️⃣ ExpressionToSql 特性 - LINQ表达式转SQL");
         Console.WriteLine("   • [ExpressionToSql] 参数标注");
         Console.WriteLine("   • 自动转换 Expression<Func<T, bool>> 为 WHERE 子句");
         Console.WriteLine("   • 支持复杂条件和排序表达式");
         Console.WriteLine("   • 编译时类型安全验证");
         Console.WriteLine();
-        
+
         Console.WriteLine("🎯 核心优势:");
         Console.WriteLine("• 🚀 编译时代码生成，零反射开销");
         Console.WriteLine("• 🛡️ 类型安全，编译时验证");
@@ -565,7 +565,7 @@ class Program
         Console.WriteLine("• 🔧 零配置，开箱即用");
         Console.WriteLine("• 📝 所有代码由源生成器自动生成");
         Console.WriteLine();
-        
+
         Console.WriteLine("💡 Sqlx 让数据访问变得更简单、更安全、更高效！");
         Console.WriteLine("🎖️ 所有演示代码均由Sqlx源生成器自动实现，无手动编码！");
     }

@@ -57,13 +57,13 @@ namespace Sqlx.Tests.Core
         {
             // Arrange & Act
             using var expr = ExpressionToSql<TestEntity>.ForSqlServer();
-            
+
             try
             {
                 // 测试null表达式 - 应该被忽略或处理
                 expr.Where(null!);
                 var sql = expr.ToSql();
-                
+
                 Console.WriteLine($"Null expression SQL: {sql}");
                 Assert.IsNotNull(sql, "即使传入null表达式也应返回SQL");
             }
@@ -89,7 +89,7 @@ namespace Sqlx.Tests.Core
             // Assert
             Console.WriteLine($"Nullable comparisons SQL: {sql}");
             Assert.IsTrue(sql.Contains("NullableId"), "应包含可空字段");
-            Assert.IsTrue(sql.Contains("IS NULL") || sql.Contains("IS NOT NULL"), 
+            Assert.IsTrue(sql.Contains("IS NULL") || sql.Contains("IS NOT NULL"),
                 "应使用正确的NULL比较语法");
         }
 
@@ -107,7 +107,7 @@ namespace Sqlx.Tests.Core
 
             // Assert
             Console.WriteLine($"Empty string SQL: {sql}");
-            Assert.IsTrue(sql.Contains("Name") && sql.Contains("Description"), 
+            Assert.IsTrue(sql.Contains("Name") && sql.Contains("Description"),
                 "应处理空字符串比较");
         }
 
@@ -129,7 +129,7 @@ namespace Sqlx.Tests.Core
 
             // Assert
             Console.WriteLine($"Whitespace strings SQL: {sql}");
-            Assert.IsTrue(sql.Contains("Name") && sql.Contains("Description"), 
+            Assert.IsTrue(sql.Contains("Name") && sql.Contains("Description"),
                 "应处理包含空白字符的字符串");
         }
 
@@ -155,7 +155,7 @@ namespace Sqlx.Tests.Core
 
             // Assert
             Console.WriteLine($"Special characters SQL: {sql}");
-            Assert.IsTrue(sql.Contains("SpecialChars") && sql.Contains("NameWithSpaces") && 
+            Assert.IsTrue(sql.Contains("SpecialChars") && sql.Contains("NameWithSpaces") &&
                          sql.Contains("Name123"), "应处理特殊字符字段");
         }
 
@@ -177,12 +177,12 @@ namespace Sqlx.Tests.Core
 
             // Assert
             Console.WriteLine($"SQL injection attempts SQL: {sql}");
-            Assert.IsTrue(sql.Contains("Name") && sql.Contains("Description"), 
+            Assert.IsTrue(sql.Contains("Name") && sql.Contains("Description"),
                 "应处理包含SQL关键字的输入");
-            
+
             // 检查是否有适当的转义或参数化
-            Assert.IsFalse(sql.Contains("DROP TABLE") && sql.Contains("TestEntity") && 
-                          sql.IndexOf("DROP") < sql.IndexOf("TestEntity"), 
+            Assert.IsFalse(sql.Contains("DROP TABLE") && sql.Contains("TestEntity") &&
+                          sql.IndexOf("DROP") < sql.IndexOf("TestEntity"),
                 "不应包含未转义的危险SQL语句");
         }
 
@@ -201,10 +201,10 @@ namespace Sqlx.Tests.Core
             try
             {
                 var sql = expr.ToSql();
-                
+
                 Console.WriteLine($"Long string SQL length: {sql.Length}");
                 Assert.IsTrue(sql.Length > veryLongString.Length, "SQL应包含长字符串");
-                Assert.IsTrue(sql.Contains("Name") && sql.Contains("Description"), 
+                Assert.IsTrue(sql.Contains("Name") && sql.Contains("Description"),
                     "应处理长字符串字段");
             }
             catch (OutOfMemoryException)
@@ -232,10 +232,10 @@ namespace Sqlx.Tests.Core
 
             // Assert
             Console.WriteLine($"Numeric boundaries SQL: {sql}");
-            Assert.IsTrue(sql.Contains("Id") && sql.Contains("Price"), 
+            Assert.IsTrue(sql.Contains("Id") && sql.Contains("Price"),
                 "应处理数值边界值");
-            Assert.IsTrue(sql.Contains(int.MaxValue.ToString()) || 
-                         sql.Contains(int.MinValue.ToString()), 
+            Assert.IsTrue(sql.Contains(int.MaxValue.ToString()) ||
+                         sql.Contains(int.MinValue.ToString()),
                 "应包含边界数值");
         }
 
@@ -263,12 +263,12 @@ namespace Sqlx.Tests.Core
         {
             // Arrange & Act
             using var expr = ExpressionToSql<TestEntity>.ForSqlServer();
-            
+
             try
             {
                 expr.Where(e => e.Id / 0 > 0);
                 var sql = expr.ToSql();
-                
+
                 Console.WriteLine($"Division by zero SQL: {sql}");
                 // 如果没有抛出异常，检查生成的SQL
                 Assert.IsTrue(sql.Contains("Id"), "应包含除法操作");
@@ -329,12 +329,12 @@ namespace Sqlx.Tests.Core
         {
             // Arrange & Act
             using var expr = ExpressionToSql<TestEntity>.ForSqlServer();
-            
+
             try
             {
                 expr.Where(e => ((e.Id > 0 ? e.Name : e.Description) ?? "default").Length > 0);
                 var sql = expr.ToSql();
-                
+
                 Console.WriteLine($"Complex nested expression SQL: {sql}");
                 Assert.IsNotNull(sql, "应处理复杂嵌套表达式");
             }
@@ -350,14 +350,14 @@ namespace Sqlx.Tests.Core
         {
             // Arrange & Act
             using var expr = ExpressionToSql<TestEntity>.ForSqlServer();
-            
+
             try
             {
                 // 尝试使用可能不被支持的方法
                 expr.Where(e => e.Name!.GetHashCode() > 0)
                     .Where(e => e.CreatedAt.GetType() == typeof(DateTime))
                     .Where(e => object.ReferenceEquals(e.Name, "test"));
-                
+
                 var sql = expr.ToSql();
                 Console.WriteLine($"Unsupported methods SQL: {sql}");
             }
@@ -384,7 +384,7 @@ namespace Sqlx.Tests.Core
 
             // Act & Assert
             expr.Dispose();
-            
+
             try
             {
                 expr.Dispose(); // 第二次释放
@@ -415,7 +415,7 @@ namespace Sqlx.Tests.Core
         {
             // Arrange - 模拟高内存压力
             var expressions = new List<ExpressionToSql<TestEntity>>();
-            
+
             try
             {
                 // 创建大量表达式对象
@@ -427,7 +427,7 @@ namespace Sqlx.Tests.Core
                 }
 
                 Console.WriteLine($"创建了 {expressions.Count} 个表达式对象");
-                
+
                 // 尝试生成SQL
                 foreach (var expr in expressions.Take(10))
                 {
@@ -455,9 +455,9 @@ namespace Sqlx.Tests.Core
         {
             // Arrange & Act
             using var expr = ExpressionToSql<TestEntity>.ForSqlServer();
-            
+
             var startTime = DateTime.Now;
-            
+
             // 创建非常长的表达式链
             for (int i = 0; i < 500; i++)
             {
@@ -471,7 +471,7 @@ namespace Sqlx.Tests.Core
             var duration = endTime - startTime;
             Console.WriteLine($"500个WHERE条件处理时间: {duration.TotalMilliseconds}ms");
             Console.WriteLine($"生成的SQL长度: {sql.Length}");
-            
+
             Assert.IsTrue(duration.TotalMilliseconds < 5000, "500个条件应在5秒内处理完成");
             Assert.IsTrue(sql.Contains("WHERE"), "应包含WHERE子句");
             Assert.IsTrue(sql.Length > 1000, "应生成相当长的SQL");
@@ -491,7 +491,7 @@ namespace Sqlx.Tests.Core
 
             // Act - 模拟并发访问
             var tasks = new List<System.Threading.Tasks.Task>();
-            
+
             for (int i = 0; i < 10; i++)
             {
                 int taskId = i;
@@ -502,7 +502,7 @@ namespace Sqlx.Tests.Core
                         using var expr = ExpressionToSql<TestEntity>.ForSqlServer();
                         expr.Where(e => e.Id == taskId);
                         var sql = expr.ToSql();
-                        
+
                         lock (lockObject)
                         {
                             results.Add($"Task {taskId}: {sql}");
@@ -516,7 +516,7 @@ namespace Sqlx.Tests.Core
                         }
                     }
                 });
-                
+
                 tasks.Add(task);
             }
 
@@ -526,12 +526,12 @@ namespace Sqlx.Tests.Core
             // Assert
             Console.WriteLine($"并发任务完成数: {results.Count}");
             Console.WriteLine($"并发异常数: {exceptions.Count}");
-            
+
             foreach (var result in results)
             {
                 Console.WriteLine(result);
             }
-            
+
             foreach (var ex in exceptions)
             {
                 Console.WriteLine($"并发异常: {ex.GetType().Name}: {ex.Message}");
@@ -552,7 +552,7 @@ namespace Sqlx.Tests.Core
             {
                 using var expr = ExpressionToSql<EmptyEntity>.ForSqlServer();
                 var sql = expr.ToSql();
-                
+
                 Console.WriteLine($"Empty entity SQL: {sql}");
                 Assert.IsNotNull(sql, "即使是空实体也应生成基本SQL");
             }
@@ -567,20 +567,20 @@ namespace Sqlx.Tests.Core
         public void EdgeCase_GenericTypeParameters_HandlesCorrectly()
         {
             // 这个测试确保泛型类型参数被正确处理
-            
+
             // Act & Assert
             using var expr1 = ExpressionToSql<TestEntity>.ForSqlServer();
             using var expr2 = ExpressionToSql<EntityWithSpecialCharacters>.ForSqlServer();
-            
+
             expr1.Where(e => e.Id > 0);
             expr2.Where(e => e.Id > 0);
-            
+
             var sql1 = expr1.ToSql();
             var sql2 = expr2.ToSql();
-            
+
             Console.WriteLine($"TestEntity SQL: {sql1}");
             Console.WriteLine($"EntityWithSpecialCharacters SQL: {sql2}");
-            
+
             Assert.IsTrue(sql1.Contains("TestEntity"), "应包含正确的表名");
             Assert.IsTrue(sql2.Contains("EntityWithSpecialCharacters"), "应包含正确的表名");
             Assert.AreNotEqual(sql1, sql2, "不同实体类型应生成不同的SQL");

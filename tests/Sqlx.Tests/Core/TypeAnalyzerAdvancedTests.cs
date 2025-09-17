@@ -131,7 +131,7 @@ namespace System.Custom
         var customSystemType = compilation.GetTypeByMetadataName("System.Custom.CustomSystemClass");
 
         // Act & Assert
-        Assert.IsFalse(TypeAnalyzer.IsLikelyEntityType(customSystemType), 
+        Assert.IsFalse(TypeAnalyzer.IsLikelyEntityType(customSystemType),
             "Types in System namespace should not be entity types");
     }
 
@@ -189,7 +189,7 @@ namespace System.Custom
         var compilation = CreateTestCompilation();
         var userType = compilation.GetTypeByMetadataName("TestNamespace.User");
         var taskType = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1");
-        
+
         if (taskType != null && userType != null)
         {
             var taskOfUserType = taskType.Construct(userType);
@@ -236,7 +236,7 @@ namespace System.Custom
         var userType = compilation.GetTypeByMetadataName("TestNamespace.User");
         var listType = compilation.GetTypeByMetadataName("System.Collections.Generic.List`1");
         var taskType = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1");
-        
+
         if (listType != null && taskType != null && userType != null)
         {
             // Create Task<List<User>>
@@ -288,7 +288,7 @@ namespace System.Custom
         var duration = endTime - startTime;
 
         // Assert - Should complete reasonably quickly (less than 1 second for 6000 operations)
-        Assert.IsTrue(duration.TotalSeconds < 1.0, 
+        Assert.IsTrue(duration.TotalSeconds < 1.0,
             $"TypeAnalyzer operations took too long: {duration.TotalMilliseconds}ms");
     }
 
@@ -323,9 +323,9 @@ namespace TestNamespace
         var repositoryInterface = compilation.GetTypeByMetadataName("TestNamespace.IRepository");
 
         // Act & Assert
-        Assert.IsFalse(TypeAnalyzer.IsLikelyEntityType(entityInterface), 
+        Assert.IsFalse(TypeAnalyzer.IsLikelyEntityType(entityInterface),
             "Interfaces should not be considered entity types");
-        Assert.IsFalse(TypeAnalyzer.IsLikelyEntityType(repositoryInterface), 
+        Assert.IsFalse(TypeAnalyzer.IsLikelyEntityType(repositoryInterface),
             "Repository interfaces should not be considered entity types");
     }
 
@@ -354,7 +354,7 @@ namespace TestNamespace
         var baseEntityType = compilation.GetTypeByMetadataName("TestNamespace.BaseEntity");
 
         // Act & Assert
-        Assert.IsTrue(TypeAnalyzer.IsLikelyEntityType(baseEntityType), 
+        Assert.IsTrue(TypeAnalyzer.IsLikelyEntityType(baseEntityType),
             "Abstract classes with properties should be considered entity types");
     }
 
@@ -382,7 +382,7 @@ namespace TestNamespace
         var utilitiesType = compilation.GetTypeByMetadataName("TestNamespace.Utilities");
 
         // Act & Assert
-        Assert.IsFalse(TypeAnalyzer.IsLikelyEntityType(utilitiesType), 
+        Assert.IsFalse(TypeAnalyzer.IsLikelyEntityType(utilitiesType),
             "Static classes should not be considered entity types");
     }
 
@@ -434,7 +434,7 @@ namespace {namespaceName}
             var expectedEntityType = !expectedIsSystem; // Non-system types should be entity types
 
             System.Console.WriteLine($"Namespace: '{namespaceName}', Expected: {expectedEntityType}, Actual: {isEntityType}");
-            
+
             // 放宽检查，允许类型分析器的逻辑变化
             if (namespaceName == "")
             {
@@ -443,7 +443,7 @@ namespace {namespaceName}
             }
             else
             {
-                Assert.AreEqual(expectedEntityType, isEntityType, 
+                Assert.AreEqual(expectedEntityType, isEntityType,
                     $"Type in namespace '{namespaceName}' should {(expectedEntityType ? "" : "not ")}be entity type");
             }
         }

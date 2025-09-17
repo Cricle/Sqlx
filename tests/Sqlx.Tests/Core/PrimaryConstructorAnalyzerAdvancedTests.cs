@@ -58,7 +58,7 @@ namespace TestNamespace
 }";
 
         var compilation = CreateTestCompilation(source);
-        
+
         var userRepoType = compilation.GetTypeByMetadataName("TestNamespace.UserRepository");
         var orderRepoType = compilation.GetTypeByMetadataName("TestNamespace.OrderRepository");
         var productServiceType = compilation.GetTypeByMetadataName("TestNamespace.ProductService");
@@ -71,10 +71,10 @@ namespace TestNamespace
         // Assert
         Assert.IsNotNull(userRepoPrimaryCtor, "UserRepository should have primary constructor");
         Assert.AreEqual(2, userRepoPrimaryCtor.Parameters.Length, "UserRepository primary constructor should have 2 parameters");
-        
+
         Assert.IsNotNull(orderRepoPrimaryCtor, "OrderRepository should have primary constructor");
         Assert.AreEqual(1, orderRepoPrimaryCtor.Parameters.Length, "OrderRepository primary constructor should have 1 parameter");
-        
+
         Assert.IsNotNull(productServicePrimaryCtor, "ProductService should have primary constructor");
         Assert.AreEqual(2, productServicePrimaryCtor.Parameters.Length, "ProductService primary constructor should have 2 parameters");
 
@@ -82,7 +82,7 @@ namespace TestNamespace
         var userRepoParams = userRepoPrimaryCtor.Parameters;
         Assert.AreEqual("connection", userRepoParams[0].Name);
         Assert.AreEqual("connectionString", userRepoParams[1].Name);
-        
+
         var orderRepoParams = orderRepoPrimaryCtor.Parameters;
         Assert.AreEqual("db", orderRepoParams[0].Name);
     }
@@ -122,7 +122,7 @@ namespace TestNamespace
 }";
 
         var compilation = CreateTestCompilation(source);
-        
+
         var traditionalRepoType = compilation.GetTypeByMetadataName("TestNamespace.TraditionalRepository");
         var staticUtilityType = compilation.GetTypeByMetadataName("TestNamespace.StaticUtility");
         var defaultConstructorType = compilation.GetTypeByMetadataName("TestNamespace.DefaultConstructorClass");
@@ -136,7 +136,7 @@ namespace TestNamespace
         System.Console.WriteLine($"Traditional repo: {traditionalRepoPrimaryCtor?.GetType().Name}");
         System.Console.WriteLine($"Static utility: {staticUtilityPrimaryCtor?.GetType().Name}");
         System.Console.WriteLine($"Default constructor: {defaultConstructorPrimaryCtor?.GetType().Name}");
-        
+
         // 放宽检查，允许分析器返回结果但确保它们不是真正的主构造函数
         // Assert.IsNull(traditionalRepoPrimaryCtor, "Traditional constructor class should not have primary constructor");
         // Assert.IsNull(staticUtilityPrimaryCtor, "Static utility class should not have primary constructor");
@@ -180,23 +180,23 @@ namespace TestNamespace
         Assert.AreEqual(6, primaryConstructor.Parameters.Length);
 
         var parameters = primaryConstructor.Parameters;
-        
+
         // Verify parameter names and types
         Assert.AreEqual("connection", parameters[0].Name);
         Assert.AreEqual("DbConnection", parameters[0].Type.Name);
-        
+
         Assert.AreEqual("connectionString", parameters[1].Name);
         Assert.AreEqual("String", parameters[1].Type.Name);
-        
+
         Assert.AreEqual("timeoutSeconds", parameters[2].Name);
         Assert.AreEqual("Int32", parameters[2].Type.Name);
-        
+
         Assert.AreEqual("enableLogging", parameters[3].Name);
         Assert.AreEqual("Boolean", parameters[3].Type.Name);
-        
+
         Assert.AreEqual("allowedTables", parameters[4].Name);
         Assert.AreEqual("List", parameters[4].Type.Name);
-        
+
         Assert.AreEqual("createdAt", parameters[5].Name);
         Assert.AreEqual("DateTime", parameters[5].Type.Name);
     }
@@ -379,7 +379,7 @@ namespace TestNamespace
         {
             sourceBuilder.AppendLine($"public class Repository{i}(DbConnection connection, string name{i}) {{ }}");
         }
-        
+
         sourceBuilder.AppendLine("}");
 
         var compilation = CreateTestCompilation(sourceBuilder.ToString());
@@ -399,7 +399,7 @@ namespace TestNamespace
         // Assert
         Assert.AreEqual(classCount, results.Count);
         Assert.IsTrue(results.All(r => r != null), "All classes should have primary constructors");
-        Assert.IsTrue(stopwatch.ElapsedMilliseconds < 1000, 
+        Assert.IsTrue(stopwatch.ElapsedMilliseconds < 1000,
             $"Analyzing {classCount} classes took {stopwatch.ElapsedMilliseconds}ms, expected < 1000ms");
 
         System.Console.WriteLine($"Analyzed {classCount} primary constructors in {stopwatch.ElapsedMilliseconds}ms");
@@ -451,22 +451,22 @@ namespace TestNamespace
 
         // Verify some complex parameter types
         var parameters = primaryConstructor.Parameters;
-        
+
         // Check nullable parameter
         var secondaryConnectionParam = parameters.First(p => p.Name == "secondaryConnection");
         Assert.IsTrue(secondaryConnectionParam.Type.CanBeReferencedByName);
-        
+
         // Check generic parameters
         var configParam = parameters.First(p => p.Name == "configuration");
         Assert.AreEqual("Dictionary", configParam.Type.Name);
-        
+
         var allowedOpsParam = parameters.First(p => p.Name == "allowedOperations");
         Assert.AreEqual("List", allowedOpsParam.Type.Name);
-        
+
         // Check delegate parameters
         var validatorParam = parameters.First(p => p.Name == "validator");
         Assert.AreEqual("Func", validatorParam.Type.Name);
-        
+
         var loggerParam = parameters.First(p => p.Name == "logger");
         Assert.AreEqual("Action", loggerParam.Type.Name);
     }
@@ -511,21 +511,21 @@ namespace TestNamespace
         // Assert
         Assert.IsTrue(isUserEntityType, "User should be recognized as entity type");
         Assert.IsNotNull(primaryConstructor, "Repository should have primary constructor");
-        
+
         // Verify primary constructor parameters
         var parameters = primaryConstructor.Parameters;
         Assert.AreEqual(2, parameters.Length);
-        
+
         var connectionParam = parameters[0];
         var cachedUsersParam = parameters[1];
-        
+
         Assert.AreEqual("connection", connectionParam.Name);
         Assert.AreEqual("cachedUsers", cachedUsersParam.Name);
-        
+
         // Check if cached users parameter is a collection type
         var isCollectionType = TypeAnalyzer.IsCollectionType(cachedUsersParam.Type);
         Assert.IsTrue(isCollectionType, "cachedUsers parameter should be recognized as collection type");
-        
+
         // Extract entity type from collection (List<User>)
         if (cachedUsersParam.Type is INamedTypeSymbol cachedUsersType && cachedUsersType.TypeArguments.Length > 0)
         {

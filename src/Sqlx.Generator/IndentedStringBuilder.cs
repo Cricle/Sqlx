@@ -116,7 +116,7 @@ public sealed class IndentedStringBuilder
     {
         if (depthLevel > 0)
         {
-            builder.Append(' ',depthLevel * IndentSize);
+            builder.Append(' ', depthLevel * IndentSize);
         }
     }
 }

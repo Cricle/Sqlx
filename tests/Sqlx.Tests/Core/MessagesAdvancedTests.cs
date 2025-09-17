@@ -32,7 +32,7 @@ namespace Sqlx.Tests.Core
             foreach (var property in diagnosticProperties)
             {
                 var descriptor = (DiagnosticDescriptor)property.GetValue(null)!;
-                
+
                 // Validate basic properties
                 Assert.IsNotNull(descriptor, $"Descriptor {property.Name} is null");
                 Assert.IsNotNull(descriptor.Id, $"Descriptor {property.Name} has null Id");
@@ -41,11 +41,11 @@ namespace Sqlx.Tests.Core
                 Assert.IsNotNull(descriptor.MessageFormat, $"Descriptor {property.Name} has null MessageFormat");
                 Assert.IsNotNull(descriptor.Category, $"Descriptor {property.Name} has null Category");
                 Assert.IsNotNull(descriptor.Description, $"Descriptor {property.Name} has null Description");
-                
+
                 // Validate Id format (should be SP followed by digits)
                 Assert.IsTrue(descriptor.Id.StartsWith("SP"), $"Descriptor {property.Name} Id should start with 'SP'");
                 Assert.IsTrue(descriptor.Id.Length >= 5, $"Descriptor {property.Name} Id should be at least 5 characters");
-                
+
                 // Validate severity
                 Assert.IsTrue(Enum.IsDefined(typeof(DiagnosticSeverity), descriptor.DefaultSeverity),
                     $"Descriptor {property.Name} has invalid severity");
@@ -57,7 +57,7 @@ namespace Sqlx.Tests.Core
         {
             // Test SP0001 - Internal analyzer error
             var descriptor = Messages.SP0001;
-            
+
             Assert.AreEqual("SP0001", descriptor.Id);
             Assert.AreEqual("No stored procedure attribute", descriptor.Title.ToString());
             Assert.AreEqual("Internal analyzer error.", descriptor.MessageFormat.ToString());
@@ -72,7 +72,7 @@ namespace Sqlx.Tests.Core
         {
             // Test SP0002 - Invalid parameter type
             var descriptor = Messages.SP0002;
-            
+
             Assert.AreEqual("SP0002", descriptor.Id);
             Assert.AreEqual("Invalid parameter type", descriptor.Title.ToString());
             Assert.AreEqual("Parameter type '{0}' is not supported.", descriptor.MessageFormat.ToString());
@@ -87,7 +87,7 @@ namespace Sqlx.Tests.Core
         {
             // Test SP0003 - Missing return type
             var descriptor = Messages.SP0003;
-            
+
             Assert.AreEqual("SP0003", descriptor.Id);
             Assert.AreEqual("Missing return type", descriptor.Title.ToString());
             Assert.AreEqual("Method must have a valid return type.", descriptor.MessageFormat.ToString());
@@ -102,7 +102,7 @@ namespace Sqlx.Tests.Core
         {
             // Test SP0004 - Invalid SQL syntax
             var descriptor = Messages.SP0004;
-            
+
             Assert.AreEqual("SP0004", descriptor.Id);
             Assert.AreEqual("Invalid SQL syntax", descriptor.Title.ToString());
             Assert.AreEqual("SQL command contains invalid syntax: '{0}'.", descriptor.MessageFormat.ToString());
@@ -117,7 +117,7 @@ namespace Sqlx.Tests.Core
         {
             // Test SP0005 - Entity mapping error
             var descriptor = Messages.SP0005;
-            
+
             Assert.AreEqual("SP0005", descriptor.Id);
             Assert.AreEqual("Entity mapping error", descriptor.Title.ToString());
             Assert.AreEqual("Cannot map entity '{0}' to database table.", descriptor.MessageFormat.ToString());
@@ -132,7 +132,7 @@ namespace Sqlx.Tests.Core
         {
             // Test SP0006 - Async method missing CancellationToken
             var descriptor = Messages.SP0006;
-            
+
             Assert.AreEqual("SP0006", descriptor.Id);
             Assert.AreEqual("Async method missing CancellationToken", descriptor.Title.ToString());
             Assert.AreEqual("Async method should accept CancellationToken parameter.", descriptor.MessageFormat.ToString());
@@ -147,7 +147,7 @@ namespace Sqlx.Tests.Core
         {
             // Test SP0007 - No RawSqlAttribute or SqlxAttribute tag
             var descriptor = Messages.SP0007;
-            
+
             Assert.AreEqual("SP0007", descriptor.Id);
             Assert.AreEqual("No SqlxAttribute tag", descriptor.Title.ToString());
             Assert.AreEqual("No command text", descriptor.MessageFormat.ToString());
@@ -162,7 +162,7 @@ namespace Sqlx.Tests.Core
         {
             // Test SP0008 - Execute no query return must be int or Task<int>
             var descriptor = Messages.SP0008;
-            
+
             Assert.AreEqual("SP0008", descriptor.Id);
             Assert.AreEqual("Execute no query return must be int or Task<int>", descriptor.Title.ToString());
             Assert.AreEqual("Return type error", descriptor.MessageFormat.ToString());
@@ -177,7 +177,7 @@ namespace Sqlx.Tests.Core
         {
             // Test SP0009 - Repository interface not found
             var descriptor = Messages.SP0009;
-            
+
             Assert.AreEqual("SP0009", descriptor.Id);
             Assert.AreEqual("Repository interface not found", descriptor.Title.ToString());
             Assert.AreEqual("Repository interface '{0}' could not be found.", descriptor.MessageFormat.ToString());
@@ -192,7 +192,7 @@ namespace Sqlx.Tests.Core
         {
             // Test SP0010 - Table name not specified
             var descriptor = Messages.SP0010;
-            
+
             Assert.AreEqual("SP0010", descriptor.Id);
             Assert.AreEqual("Table name not specified", descriptor.Title.ToString());
             Assert.AreEqual("Table name must be specified for entity '{0}'.", descriptor.MessageFormat.ToString());
@@ -207,7 +207,7 @@ namespace Sqlx.Tests.Core
         {
             // Test SP0011 - Primary key not found
             var descriptor = Messages.SP0011;
-            
+
             Assert.AreEqual("SP0011", descriptor.Id);
             Assert.AreEqual("Primary key not found", descriptor.Title.ToString());
             Assert.AreEqual("Entity '{0}' does not have a primary key property.", descriptor.MessageFormat.ToString());
@@ -222,7 +222,7 @@ namespace Sqlx.Tests.Core
         {
             // Test SP0012 - Duplicate method name
             var descriptor = Messages.SP0012;
-            
+
             Assert.AreEqual("SP0012", descriptor.Id);
             Assert.AreEqual("Duplicate method name", descriptor.Title.ToString());
             Assert.AreEqual("Method name '{0}' is already defined in this repository.", descriptor.MessageFormat.ToString());
@@ -237,7 +237,7 @@ namespace Sqlx.Tests.Core
         {
             // Test SP0013 - Invalid connection type
             var descriptor = Messages.SP0013;
-            
+
             Assert.AreEqual("SP0013", descriptor.Id);
             Assert.AreEqual("Invalid connection type", descriptor.Title.ToString());
             Assert.AreEqual("Connection type '{0}' is not supported.", descriptor.MessageFormat.ToString());
@@ -252,7 +252,7 @@ namespace Sqlx.Tests.Core
         {
             // Test SP0014 - SqlDefine configuration error
             var descriptor = Messages.SP0014;
-            
+
             Assert.AreEqual("SP0014", descriptor.Id);
             Assert.AreEqual("SqlDefine configuration error", descriptor.Title.ToString());
             Assert.AreEqual("SqlDefine configuration is invalid: '{0}'.", descriptor.MessageFormat.ToString());
@@ -267,7 +267,7 @@ namespace Sqlx.Tests.Core
         {
             // Test SP0015 - Code generation failed
             var descriptor = Messages.SP0015;
-            
+
             Assert.AreEqual("SP0015", descriptor.Id);
             Assert.AreEqual("Code generation failed", descriptor.Title.ToString());
             Assert.AreEqual("Code generation failed for method '{0}': {1}.", descriptor.MessageFormat.ToString());
@@ -295,7 +295,7 @@ namespace Sqlx.Tests.Core
                 .Select(g => g.Key)
                 .ToList();
 
-            Assert.AreEqual(0, duplicates.Count, 
+            Assert.AreEqual(0, duplicates.Count,
                 $"Duplicate diagnostic IDs found: {string.Join(", ", duplicates)}");
         }
 
@@ -311,15 +311,15 @@ namespace Sqlx.Tests.Core
             foreach (var property in diagnosticProperties)
             {
                 var descriptor = (DiagnosticDescriptor)property.GetValue(null)!;
-                
-                Assert.IsTrue(descriptor.Id.StartsWith("SP"), 
+
+                Assert.IsTrue(descriptor.Id.StartsWith("SP"),
                     $"Diagnostic ID {descriptor.Id} should start with 'SP'");
-                
-                Assert.IsTrue(descriptor.Id.Length >= 5, 
+
+                Assert.IsTrue(descriptor.Id.Length >= 5,
                     $"Diagnostic ID {descriptor.Id} should be at least 5 characters");
-                
-                Assert.IsTrue(char.IsDigit(descriptor.Id[2]) && 
-                             char.IsDigit(descriptor.Id[3]) && 
+
+                Assert.IsTrue(char.IsDigit(descriptor.Id[2]) &&
+                             char.IsDigit(descriptor.Id[3]) &&
                              char.IsDigit(descriptor.Id[4]),
                     $"Diagnostic ID {descriptor.Id} should have 4 digits after 'SP'");
             }
@@ -338,7 +338,7 @@ namespace Sqlx.Tests.Core
             foreach (var property in diagnosticProperties)
             {
                 var descriptor = (DiagnosticDescriptor)property.GetValue(null)!;
-                
+
                 Assert.IsTrue(validCategories.Contains(descriptor.Category),
                     $"Diagnostic {descriptor.Id} has invalid category '{descriptor.Category}'. Valid categories: {string.Join(", ", validCategories)}");
             }
@@ -369,7 +369,7 @@ namespace Sqlx.Tests.Core
                     var formattedMessage = string.Format(descriptor.MessageFormat.ToString(), args);
                     Assert.IsNotNull(formattedMessage);
                     Assert.IsTrue(formattedMessage.Length > 0);
-                    
+
                     // Verify that placeholders were replaced
                     foreach (var arg in args)
                     {

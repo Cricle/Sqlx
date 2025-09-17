@@ -43,7 +43,7 @@ public class InterceptorDemo
 
             // 演示简化的拦截器功能
             await _simpleDemo.DemonstrateInterceptionAsync();
-            
+
             // 演示高级拦截器概念
             await DemonstrateInterceptorConceptsAsync();
 
@@ -81,19 +81,19 @@ public class InterceptorDemo
         Console.WriteLine("📚 拦截器技术原理:");
         Console.WriteLine("==================");
         Console.ResetColor();
-        
+
         Console.WriteLine("1️⃣ 源生成器模式:");
         Console.WriteLine("   • Sqlx在编译时生成方法实现");
         Console.WriteLine("   • 生成的代码包含拦截器调用点");
         Console.WriteLine("   • OnExecuting() 在SQL执行前调用");
         Console.WriteLine("   • OnExecuted() 在SQL执行后调用");
-        
+
         Console.WriteLine("\n2️⃣ Partial方法机制:");
         Console.WriteLine("   • 使用C# partial方法实现拦截器");
         Console.WriteLine("   • 源生成器生成partial方法声明");
         Console.WriteLine("   • 开发者可选择性实现拦截器逻辑");
         Console.WriteLine("   • 未实现的partial方法会被编译器忽略");
-        
+
         Console.WriteLine("\n3️⃣ 性能优势:");
         Console.WriteLine("   • 编译时代码生成，零反射开销");
         Console.WriteLine("   • 直接方法调用，无动态代理");
@@ -104,7 +104,7 @@ public class InterceptorDemo
         Console.WriteLine("\n🔧 实现示例 (概念演示):");
         Console.WriteLine("======================");
         Console.ResetColor();
-        
+
         Console.WriteLine("// 源生成器生成的代码类似于:");
         Console.WriteLine("partial class MyService");
         Console.WriteLine("{");
@@ -130,7 +130,7 @@ public class InterceptorDemo
         Console.WriteLine("\n✨ 拦截器应用场景:");
         Console.WriteLine("==================");
         Console.ResetColor();
-        
+
         Console.WriteLine("🔍 性能监控: 测量SQL执行时间和资源消耗");
         Console.WriteLine("📝 日志记录: 记录SQL语句、参数和执行结果");
         Console.WriteLine("🛡️ 安全审计: 监控数据访问和权限验证");
@@ -140,7 +140,7 @@ public class InterceptorDemo
 
         // 等待用户继续
         Console.WriteLine("\n按任意键继续查看统计报告...");
-        try 
+        try
         {
             Console.ReadKey();
         }
@@ -165,7 +165,7 @@ public class InterceptorDemo
         SqlExecutionLogger.PrintStatisticsReport();
 
         var stats = SqlExecutionLogger.GetStatistics();
-        
+
         Console.ForegroundColor = ConsoleColor.Cyan;
         Console.WriteLine("\n🎯 演示成果总结:");
         Console.WriteLine($"  ✅ 成功演示了 {stats.TotalExecutions} 个SQL操作的完整拦截");
@@ -173,7 +173,7 @@ public class InterceptorDemo
         Console.WriteLine($"  📊 平均响应时间: {stats.AverageExecutionTime:F2}ms");
         Console.WriteLine($"  🚀 最佳性能: {stats.FastestExecution:F2}ms");
         Console.WriteLine($"  🔍 涵盖操作类型: {stats.OperationCounts.Count} 种");
-        
+
         Console.WriteLine("\n🎭 拦截器功能验证:");
         Console.WriteLine("  ✅ OnExecuting 拦截器正常工作");
         Console.WriteLine("  ✅ OnExecuted 拦截器正常工作");
@@ -181,7 +181,7 @@ public class InterceptorDemo
         Console.WriteLine("  ✅ 性能数据精确测量");
         Console.WriteLine("  ✅ 错误处理机制有效");
         Console.WriteLine("  ✅ 统计分析功能完善");
-        
+
         Console.ResetColor();
     }
 
@@ -191,7 +191,7 @@ public class InterceptorDemo
     private async Task InitializeDatabaseAsync()
     {
         Console.WriteLine("🔧 初始化演示数据库...");
-        
+
         if (_connection.State != ConnectionState.Open)
         {
             _connection.Open();

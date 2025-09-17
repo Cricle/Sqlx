@@ -36,7 +36,7 @@ namespace Sqlx.Tests.Core
             // Arrange & Act
             using var query = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Select(e => new { e.Id, e.Name, e.Email });
-            
+
             var sql = query.ToSql();
 
             // Assert
@@ -51,7 +51,7 @@ namespace Sqlx.Tests.Core
             using var query = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Select(e => e.Id, e => e.Name)
                 .Where(e => e.IsActive);
-            
+
             var sql = query.ToSql();
 
             // Assert
@@ -67,7 +67,7 @@ namespace Sqlx.Tests.Core
             using var query = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Select("Id", "Name", "Email")
                 .Where(e => e.Age > 18);
-            
+
             var sql = query.ToSql();
 
             // Assert
@@ -87,7 +87,7 @@ namespace Sqlx.Tests.Core
             using var query = ExpressionToSql<TestEntity>.ForSqlServer()
                 .InsertInto()
                 .Values(1, "张三", "zhang@test.com", 25, true, DateTime.Now, 5000m);
-            
+
             var sql = query.ToSql();
 
             // Assert
@@ -104,7 +104,7 @@ namespace Sqlx.Tests.Core
             using var query = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Insert(e => new { e.Name, e.Email, e.Age })
                 .Values("李四", "li@test.com", 30);
-            
+
             var sql = query.ToSql();
 
             // Assert
@@ -122,7 +122,7 @@ namespace Sqlx.Tests.Core
                 .InsertInto()
                 .Values(1, "用户1", "user1@test.com", 25, true, DateTime.Now, 5000m)
                 .AddValues(2, "用户2", "user2@test.com", 30, false, DateTime.Now, 6000m);
-            
+
             var sql = query.ToSql();
 
             // Assert
@@ -146,7 +146,7 @@ namespace Sqlx.Tests.Core
                 .Set(e => e.Name, "新名称")
                 .Set(e => e.Age, 35)
                 .Where(e => e.Id == 1);
-            
+
             var sql = query.ToSql();
 
             // Assert
@@ -164,7 +164,7 @@ namespace Sqlx.Tests.Core
             using var query = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Set(e => e.Age, e => e.Age + 1)
                 .Where(e => e.IsActive);
-            
+
             var sql = query.ToSql();
 
             // Assert
@@ -182,7 +182,7 @@ namespace Sqlx.Tests.Core
                 .Update()
                 .Set(e => e.Name, "更新名称")
                 .Where(e => e.Id == 5);
-            
+
             var sql = query.ToSql();
 
             // Assert
@@ -202,7 +202,7 @@ namespace Sqlx.Tests.Core
             // Arrange & Act
             using var query = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Delete(e => e.IsActive == false);
-            
+
             var sql = query.ToSql();
 
             // Assert
@@ -218,7 +218,7 @@ namespace Sqlx.Tests.Core
             using var query = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Delete()
                 .Where(e => e.Age < 18);
-            
+
             var sql = query.ToSql();
 
             // Assert
@@ -283,7 +283,7 @@ namespace Sqlx.Tests.Core
             using var query = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Select((Expression<Func<TestEntity, object>>)null!)
                 .Where(e => e.IsActive);
-            
+
             var sql = query.ToSql();
 
             // Assert - Should fall back to SELECT * 
@@ -298,7 +298,7 @@ namespace Sqlx.Tests.Core
             using var query = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Set((Expression<Func<TestEntity, string>>)null!, "test")
                 .Where(e => e.Id == 1);
-            
+
             var sql = query.ToSql();
 
             // Assert - Should generate UPDATE without the null SET clause

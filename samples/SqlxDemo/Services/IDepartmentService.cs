@@ -26,14 +26,14 @@ public interface IDepartmentService
     /// </summary>
     [Sqlx("SELECT * FROM [department]")]
     Task<IList<Department>> GetAllDepartmentsAsync();
-    
+
     /// <summary>
     /// 更新部门预算 - 演示 SqlExecuteType
     /// </summary>
     [SqlExecuteType(SqlOperation.Update, "department")]
     [Sqlx("UPDATE [department] SET [budget] = @budget WHERE [id] = @dept_id")]
     Task<int> UpdateDepartmentBudgetAsync(int dept_id, decimal budget);
-    
+
     /// <summary>
     /// 创建新部门 - 演示 SqlExecuteType Insert
     /// </summary>

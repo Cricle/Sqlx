@@ -434,7 +434,7 @@ public class DatabaseDialectSpecificTests
                 Assert.IsTrue(sql.Contains("SELECT"), $"{name}: Should contain SELECT");
                 Assert.IsTrue(sql.Contains("WHERE"), $"{name}: Should contain WHERE");
                 Assert.IsTrue(sql.Contains("ORDER BY"), $"{name}: Should contain ORDER BY");
-                
+
                 Assert.IsNotNull(template.Sql, $"{name}: Template SQL should not be null");
                 Assert.IsNotNull(template.Parameters, $"{name}: Template parameters should not be null");
 
@@ -484,7 +484,7 @@ public class DatabaseDialectSpecificTests
 
                     Assert.IsNotNull(sql, $"SQL should not be null for string: '{testString}'");
                     Assert.IsTrue(sql.Contains("'"), $"SQL should contain single quotes for string: '{testString}'");
-                    
+
                     // 简化测试 - 只要SQL生成不出错就行，字符串转义在参数化查询中处理
                     if (testString.Contains("'"))
                     {

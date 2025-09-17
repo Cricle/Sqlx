@@ -52,12 +52,12 @@ namespace Sqlx.Tests.Core
             {
                 using var query = ExpressionToSql<TestEntity>.ForSqlServer()
                     .Where(expression);
-                
+
                 var sql = query.ToSql();
-                
+
                 Assert.IsTrue(sql.Contains("[Age]"), $"Should contain Age column: {sql}");
                 Assert.IsTrue(sql.Contains(expectedOperator), $"Should contain operator {expectedOperator}: {sql}");
-                
+
                 Console.WriteLine($"✅ 比较操作符测试: {expression} -> {sql}");
             }
         }
@@ -68,10 +68,10 @@ namespace Sqlx.Tests.Core
             // 测试逻辑操作符的解析
             using var andQuery = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Where(e => e.Age > 18 && e.IsActive);
-            
+
             using var orQuery = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Where(e => e.Age < 18 || e.Age > 65);
-            
+
             using var notQuery = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Where(e => !e.IsActive);
 
@@ -95,13 +95,13 @@ namespace Sqlx.Tests.Core
             // 测试算术操作符的解析
             using var addQuery = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Where(e => e.Age + 10 > 30);
-            
+
             using var subtractQuery = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Where(e => e.Age - 5 < 20);
-            
+
             using var multiplyQuery = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Where(e => e.Age * 2 > 50);
-            
+
             using var divideQuery = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Where(e => e.Age / 2 < 15);
 
@@ -128,10 +128,10 @@ namespace Sqlx.Tests.Core
             // 测试字符串操作的解析
             using var containsQuery = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Where(e => e.Name.Contains("test"));
-            
+
             using var startsWithQuery = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Where(e => e.Name.StartsWith("prefix"));
-            
+
             using var endsWithQuery = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Where(e => e.Name.EndsWith("suffix"));
 
@@ -139,11 +139,11 @@ namespace Sqlx.Tests.Core
             var startsWithSql = startsWithQuery.ToSql();
             var endsWithSql = endsWithQuery.ToSql();
 
-            Assert.IsTrue(containsSql.Contains("LIKE"), 
+            Assert.IsTrue(containsSql.Contains("LIKE"),
                 $"Contains should use LIKE: {containsSql}");
-            Assert.IsTrue(startsWithSql.Contains("LIKE") && startsWithSql.Contains("prefix"), 
+            Assert.IsTrue(startsWithSql.Contains("LIKE") && startsWithSql.Contains("prefix"),
                 $"StartsWith should use LIKE with prefix: {startsWithSql}");
-            Assert.IsTrue(endsWithSql.Contains("LIKE") && endsWithSql.Contains("suffix"), 
+            Assert.IsTrue(endsWithSql.Contains("LIKE") && endsWithSql.Contains("suffix"),
                 $"EndsWith should use LIKE with suffix: {endsWithSql}");
 
             Console.WriteLine($"✅ 字符串操作测试:");
@@ -158,10 +158,10 @@ namespace Sqlx.Tests.Core
             // 测试可空类型的处理
             using var nullCheckQuery = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Where(e => e.Salary == null);
-            
+
             using var hasValueQuery = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Where(e => e.Salary!.HasValue);
-            
+
             using var valueQuery = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Where(e => e.Salary.Value > 50000);
 
@@ -171,9 +171,9 @@ namespace Sqlx.Tests.Core
 
             Assert.IsTrue(nullCheckSql.Contains("IS NULL"), $"Null check should use IS NULL: {nullCheckSql}");
             // HasValue可能被转换为布尔表达式，这是正常的
-            Assert.IsTrue(hasValueSql.Contains("[HasValue] = 1") || hasValueSql.Contains("IS NOT NULL"), 
+            Assert.IsTrue(hasValueSql.Contains("[HasValue] = 1") || hasValueSql.Contains("IS NOT NULL"),
                 $"HasValue should be handled correctly: {hasValueSql}");
-            Assert.IsTrue(valueSql.Contains("[Value] > 50000") || valueSql.Contains("[Salary] > 50000"), 
+            Assert.IsTrue(valueSql.Contains("[Value] > 50000") || valueSql.Contains("[Salary] > 50000"),
                 $"Value access should work: {valueSql}");
 
             Console.WriteLine($"✅ 可空类型测试:");
@@ -195,7 +195,7 @@ namespace Sqlx.Tests.Core
             Assert.IsTrue(sql.Contains("OR"), $"Complex query should contain OR: {sql}");
             Assert.IsTrue(sql.Contains("[Age] > 18"), $"Complex query should contain age condition: {sql}");
             // 复杂查询中的HasValue可能被转换为布尔表达式
-            Assert.IsTrue(sql.Contains("[HasValue] = 1") || sql.Contains("[Salary] IS NOT NULL"), 
+            Assert.IsTrue(sql.Contains("[HasValue] = 1") || sql.Contains("[Salary] IS NOT NULL"),
                 $"Complex query should contain salary check: {sql}");
 
             Console.WriteLine($"✅ 复杂表达式测试: {sql}");
@@ -225,9 +225,9 @@ namespace Sqlx.Tests.Core
                     query.Where(e => e.Name == "test" && e.Age > 18);
                     var sql = query.ToSql();
 
-                    Assert.IsTrue(sql.Contains($"{leftQuote}Name{rightQuote}"), 
+                    Assert.IsTrue(sql.Contains($"{leftQuote}Name{rightQuote}"),
                         $"{dialectName} should quote column names correctly: {sql}");
-                    Assert.IsTrue(sql.Contains($"{leftQuote}Age{rightQuote}"), 
+                    Assert.IsTrue(sql.Contains($"{leftQuote}Age{rightQuote}"),
                         $"{dialectName} should quote all columns: {sql}");
 
                     Console.WriteLine($"✅ {dialectName} 方言测试: {sql}");
@@ -283,11 +283,11 @@ namespace Sqlx.Tests.Core
             {
                 using var query = ExpressionToSql<TestEntity>.ForSqlServer()
                     .Where(expression);
-                
+
                 var sql = query.ToSql();
-                
+
                 Assert.IsTrue(sql.Contains("WHERE"), $"{description} should have WHERE clause: {sql}");
-                
+
                 Console.WriteLine($"✅ WHERE条件测试 - {description}: {sql}");
             }
         }
@@ -302,13 +302,13 @@ namespace Sqlx.Tests.Core
             // 测试基本类型的转换
             using var intQuery = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Where(e => e.Age == 25);
-            
+
             using var stringQuery = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Where(e => e.Name == "test");
-            
+
             using var boolQuery = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Where(e => e.IsActive == true);
-            
+
             using var dateQuery = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Where(e => e.CreatedAt > DateTime.Now.AddDays(-30));
 
@@ -335,7 +335,7 @@ namespace Sqlx.Tests.Core
             // 测试可空类型的转换
             using var nullableIntQuery = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Where(e => e.Salary.HasValue && e.Salary.Value > 50000);
-            
+
             using var nullCheckQuery = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Where(e => e.Score == null);
 
@@ -343,7 +343,7 @@ namespace Sqlx.Tests.Core
             var nullCheckSql = nullCheckQuery.ToSql();
 
             // HasValue可能被转换为布尔表达式
-            Assert.IsTrue(nullableIntSql.Contains("[HasValue] = 1") || nullableIntSql.Contains("IS NOT NULL"), 
+            Assert.IsTrue(nullableIntSql.Contains("[HasValue] = 1") || nullableIntSql.Contains("IS NOT NULL"),
                 $"HasValue should be handled: {nullableIntSql}");
             Assert.IsTrue(nullableIntSql.Contains("> 50000"), $"Value access should work: {nullableIntSql}");
             Assert.IsTrue(nullCheckSql.Contains("IS NULL"), $"Null check should use IS NULL: {nullCheckSql}");
@@ -371,14 +371,14 @@ namespace Sqlx.Tests.Core
                     .OrderBy(e => e.CreatedAt)
                     .Skip(i)
                     .Take(10);
-                
+
                 var sql = query.ToSql();
                 Assert.IsNotNull(sql);
             }
 
             stopwatch.Stop();
 
-            Assert.IsTrue(stopwatch.ElapsedMilliseconds < 1000, 
+            Assert.IsTrue(stopwatch.ElapsedMilliseconds < 1000,
                 $"Expression parsing should be fast: {stopwatch.ElapsedMilliseconds}ms for {iterations} iterations");
 
             Console.WriteLine($"✅ 表达式解析性能: {iterations}次解析耗时 {stopwatch.ElapsedMilliseconds}ms");
@@ -389,7 +389,7 @@ namespace Sqlx.Tests.Core
         {
             // 测试SQL生成的性能
             const int iterations = 1000;
-            
+
             using var query = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Where(e => e.Age > 18 && e.IsActive)
                 .OrderBy(e => e.Name);
@@ -404,7 +404,7 @@ namespace Sqlx.Tests.Core
 
             stopwatch.Stop();
 
-            Assert.IsTrue(stopwatch.ElapsedMilliseconds < 500, 
+            Assert.IsTrue(stopwatch.ElapsedMilliseconds < 500,
                 $"SQL generation should be fast: {stopwatch.ElapsedMilliseconds}ms for {iterations} iterations");
 
             Console.WriteLine($"✅ SQL生成性能: {iterations}次生成耗时 {stopwatch.ElapsedMilliseconds}ms");
@@ -459,7 +459,7 @@ namespace Sqlx.Tests.Core
                 Expression<Func<TestEntity, bool>>? nullExpression = null;
                 query.Where(nullExpression ?? (e => true));
                 var sql = query.ToSql();
-                
+
                 // 应该能处理NULL表达式而不崩溃
                 Assert.IsNotNull(sql);
                 Console.WriteLine($"✅ NULL表达式处理: {sql}");
@@ -479,17 +479,17 @@ namespace Sqlx.Tests.Core
         {
             // 测试资源释放
             ExpressionToSql<TestEntity>? query = null;
-            
+
             try
             {
                 query = ExpressionToSql<TestEntity>.ForSqlServer()
                     .Where(e => e.IsActive);
-                
+
                 var sql = query.ToSql();
                 Assert.IsNotNull(sql);
-                
+
                 query.Dispose();
-                
+
                 // 释放后应该仍然能访问已生成的SQL（如果有缓存）
                 Console.WriteLine($"✅ 资源释放测试通过");
             }
@@ -504,16 +504,16 @@ namespace Sqlx.Tests.Core
         {
             // 测试using语句的正确使用
             string sql;
-            
+
             using (var query = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Where(e => e.Age > 18))
             {
                 sql = query.ToSql();
             }
-            
+
             Assert.IsNotNull(sql);
             Assert.IsTrue(sql.Contains("WHERE"));
-            
+
             Console.WriteLine($"✅ Using语句测试: {sql}");
         }
 

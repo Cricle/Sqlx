@@ -8,7 +8,8 @@ namespace SqlxDemo;
 
 /// <summary>
 /// Sqlx 完整功能演示
-/// 演示源生成器、多数据库方言、扩展方法和 Expression to SQL
+/// 演示所有4个核心特性: RawSql, SqlExecuteType, RepositoryFor, ExpressionToSql
+/// 所有功能都由Sqlx源生成器自动实现，无手动编码
 /// </summary>
 class Program
 {
@@ -20,16 +21,12 @@ class Program
         
         try
         {
-            // 创建内存数据库连接
-            using var connection = new SqliteConnection("Data Source=:memory:");
-            await connection.OpenAsync();
-
-            // 初始化数据库
-            await InitializeDatabaseAsync(connection);
-
-            // 统一演示所有功能
-            await RunComprehensiveDemoAsync(connection);
-
+            // 演示1: 完整功能演示 (推荐)
+            await RunCompleteFeatureDemo();
+            
+            // 演示2: 原有演示 (保留兼容性)
+            // await RunLegacyDemo();
+            
             ShowSummary();
         }
         catch (Exception ex)
@@ -38,8 +35,36 @@ class Program
             Console.WriteLine($"详细信息: {ex}");
         }
         
-        Console.WriteLine("\n🎉 Sqlx 统一功能演示结束！");
+        Console.WriteLine("\n🎉 Sqlx 完整功能演示结束！");
         Console.WriteLine("按任意键退出...");
+       
+    }
+
+    /// <summary>
+    /// 运行完整的Sqlx功能演示
+    /// </summary>
+    static async Task RunCompleteFeatureDemo()
+    {
+        Console.WriteLine("🎯 运行完整Sqlx功能演示 (所有代码由源生成器自动生成)");
+        
+        var demo = new CompleteSqlxDemo();
+        await demo.RunCompleteDemo();
+    }
+
+    /// <summary>
+    /// 运行传统演示 (保留原有功能)
+    /// </summary>
+    static async Task RunLegacyDemo()
+    {
+        // 创建内存数据库连接
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        // 初始化数据库
+        await InitializeDatabaseAsync(connection);
+
+        // 统一演示所有功能
+        await RunComprehensiveDemoAsync(connection);
     }
 
     static void ShowWelcome()
@@ -434,28 +459,49 @@ class Program
 
     static void ShowSummary()
     {
-        Console.WriteLine("\n🎉 完整功能演示完成！");
-        Console.WriteLine("========================");
-        Console.WriteLine("✨ Sqlx 完整功能特性演示总结:");
+        Console.WriteLine("\n🎉 Sqlx 完整功能演示完成！");
+        Console.WriteLine("================================");
+        Console.WriteLine("✨ Sqlx 4大核心特性演示总结:");
+        Console.WriteLine();
+        
+        Console.WriteLine("1️⃣ RawSql/Sqlx 特性 - 手写SQL和存储过程");
+        Console.WriteLine("   • 支持手写原生SQL查询");
+        Console.WriteLine("   • 参数化查询防SQL注入");
+        Console.WriteLine("   • 支持同步/异步调用");
+        Console.WriteLine("   • 存储过程风格调用");
+        Console.WriteLine();
+        
+        Console.WriteLine("2️⃣ SqlExecuteType 特性 - CRUD操作类型标注");
+        Console.WriteLine("   • [SqlExecuteType(SqlOperation.Insert/Update/Delete/Select)]");
+        Console.WriteLine("   • 明确的操作类型标注");
+        Console.WriteLine("   • 支持批量操作 (BatchInsert/BatchUpdate/BatchDelete)");
+        Console.WriteLine("   • 编译时操作验证");
+        Console.WriteLine();
+        
+        Console.WriteLine("3️⃣ RepositoryFor 特性 - 自动仓储模式生成");
+        Console.WriteLine("   • [RepositoryFor(typeof(IInterface))] 自动实现接口");
+        Console.WriteLine("   • 完整的仓储模式支持");
+        Console.WriteLine("   • 自动生成CRUD操作");
+        Console.WriteLine("   • 类型安全的数据访问");
+        Console.WriteLine();
+        
+        Console.WriteLine("4️⃣ ExpressionToSql 特性 - LINQ表达式转SQL");
+        Console.WriteLine("   • [ExpressionToSql] 参数标注");
+        Console.WriteLine("   • 自动转换 Expression<Func<T, bool>> 为 WHERE 子句");
+        Console.WriteLine("   • 支持复杂条件和排序表达式");
+        Console.WriteLine("   • 编译时类型安全验证");
+        Console.WriteLine();
+        
+        Console.WriteLine("🎯 核心优势:");
         Console.WriteLine("• 🚀 编译时代码生成，零反射开销");
-        Console.WriteLine("• 🗄️ 多数据库方言支持 (SQL Server, MySQL, PostgreSQL, Oracle, DB2, SQLite)");
-        Console.WriteLine("• 🏗️ Repository模式自动生成 ([RepositoryFor])");
-        Console.WriteLine("• 📝 部分方法实现 (partial methods)");
-        Console.WriteLine("• 🔧 扩展方法源生成");
-        Console.WriteLine("• 🎯 LINQ表达式转SQL ([ExpressionToSql])");
-        Console.WriteLine("• 🏷️ SQL操作类型标注 ([SqlExecuteType])");
-        Console.WriteLine("• 🎭 自定义SQL方言配置 ([SqlDefine])");
-        Console.WriteLine("• 📋 复杂类型映射 ([DbSetType])");
-        Console.WriteLine("• 🏷️ 表名映射 ([TableName])");
-        Console.WriteLine("• 🛡️ 类型安全的数据访问");
+        Console.WriteLine("• 🛡️ 类型安全，编译时验证");
         Console.WriteLine("• ⚡ 高性能原生SQL执行");
-        Console.WriteLine("• 🔍 完整CRUD操作支持");
-        Console.WriteLine("• 🔗 复杂关系查询和JOIN");
-        Console.WriteLine("• 📊 数据分析和统计查询");
-        Console.WriteLine("• 🚦 事务处理支持");
-        Console.WriteLine("• 📦 批量操作支持");
-        Console.WriteLine("• 🎛️ 诊断指导系统");
-        Console.WriteLine("• 📈 性能监控和基准测试");
-        Console.WriteLine("\n💡 Sqlx 让数据访问变得更简单、更安全、更高效！");
+        Console.WriteLine("• 🎭 多数据库方言支持");
+        Console.WriteLine("• 🔧 零配置，开箱即用");
+        Console.WriteLine("• 📝 所有代码由源生成器自动生成");
+        Console.WriteLine();
+        
+        Console.WriteLine("💡 Sqlx 让数据访问变得更简单、更安全、更高效！");
+        Console.WriteLine("🎖️ 所有演示代码均由Sqlx源生成器自动实现，无手动编码！");
     }
 }

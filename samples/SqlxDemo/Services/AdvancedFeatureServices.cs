@@ -86,6 +86,7 @@ public partial class AdvancedFeatureService : IAdvancedFeatureService
         [ExpressionToSql] Expression<Func<User, object>> orderBy);
     
     [SqlExecuteType(SqlOperation.Insert, "user")]
+    [Sqlx("INSERT INTO [user] ([name], [email], [age], [salary], [department_id], [is_active]) VALUES (@name, @email, @age, @salary, @departmentId, 1)")]
     public partial Task<int> CreateUserAsync(string name, string email, int age, decimal salary, int departmentId);
     
     [SqlExecuteType(SqlOperation.Update, "user")]

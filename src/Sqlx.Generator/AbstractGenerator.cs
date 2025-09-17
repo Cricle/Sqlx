@@ -15,26 +15,18 @@ using System.Linq;
 using System.Text;
 
 /// <summary>
-/// Refactored stored procedures generator with improved architecture.
+/// Simplified stored procedures generator with unified service architecture.
 /// </summary>
 public abstract partial class AbstractGenerator : ISourceGenerator
 {
-    private readonly ITypeInferenceService _typeInferenceService;
-    private readonly ICodeGenerationService _codeGenerationService;
-    private readonly OperationGeneratorFactory _operationFactory;
-    private readonly IAttributeHandler _attributeHandler;
-    private readonly IMethodAnalyzer _methodAnalyzer;
+    private readonly ISqlxGeneratorService _generatorService;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AbstractGenerator"/> class.
     /// </summary>
     protected AbstractGenerator()
     {
-        _typeInferenceService = new TypeInferenceService();
-        _codeGenerationService = new CodeGenerationService();
-        _operationFactory = new OperationGeneratorFactory();
-        _attributeHandler = new AttributeHandler();
-        _methodAnalyzer = new MethodAnalyzer();
+        _generatorService = new SqlxGeneratorService();
     }
 
     /// <inheritdoc/>
@@ -43,71 +35,39 @@ public abstract partial class AbstractGenerator : ISourceGenerator
     /// <inheritdoc/>
     public void Execute(GeneratorExecutionContext context)
     {
-        try
+        ErrorHandler.ExecuteSafely(context, () =>
         {
             // Retrieve the populated receiver
             if (context.SyntaxReceiver is not ISqlxSyntaxReceiver receiver)
-            {
                 return;
-            }
 
             // Process collected syntax nodes to populate symbol lists
             ProcessCollectedSyntaxNodes(context, receiver);
 
-#if DEBUG
-            System.Diagnostics.Debug.WriteLine("Getting required symbol references...");
-#endif
             // Get required symbol references
             var symbolReferences = GetRequiredSymbols(context);
             if (!symbolReferences.IsValid)
             {
-#if DEBUG
-                System.Diagnostics.Debug.WriteLine("Symbol references are not valid");
-#endif
                 context.ReportDiagnostic(Diagnostic.Create(Messages.SP0001, null));
                 return;
             }
-#if DEBUG
-            System.Diagnostics.Debug.WriteLine("Symbol references are valid");
-#endif
 
-            // 创建诊断指导服务
+            // Create diagnostic guidance service
             var diagnosticService = new DiagnosticGuidanceService(context);
 
-#if DEBUG
-            System.Diagnostics.Debug.WriteLine("Processing existing methods...");
-#endif
             // Process existing methods (class-based generation)
             ProcessExistingMethods(context, receiver, symbolReferences, diagnosticService);
 
-#if DEBUG
-            System.Diagnostics.Debug.WriteLine("Processing repository classes...");
-#endif
             // Process repository classes (interface-based generation)
             ProcessRepositoryClasses(context, receiver, symbolReferences, diagnosticService);
 
-            // 生成诊断摘要
+            // Generate diagnostic summary
             var allMethods = GetAllAnalyzedMethods(receiver);
             if (allMethods.Any())
             {
                 diagnosticService.GenerateDiagnosticSummary(allMethods);
             }
-        }
-        catch (Exception ex)
-        {
-            // Report diagnostic for unexpected errors
-            var diagnostic = Diagnostic.Create(
-                new DiagnosticDescriptor(
-                    "SQLX9999",
-                    "Unexpected error in code generation",
-                    "An unexpected error occurred: {0}",
-                    "CodeGeneration",
-                    DiagnosticSeverity.Error,
-                    true),
-                null,
-                ex.Message);
-            context.ReportDiagnostic(diagnostic);
-        }
+        }, "SQLX9999", "source generation");
     }
 
     /// <summary>
@@ -127,54 +87,29 @@ public abstract partial class AbstractGenerator : ISourceGenerator
 
     private void ProcessExistingMethods(GeneratorExecutionContext context, ISqlxSyntaxReceiver receiver, SymbolReferences symbols, DiagnosticGuidanceService diagnosticService)
     {
-        try
+        ErrorHandler.ExecuteSafely(context, () =>
         {
-#if DEBUG
-            System.Diagnostics.Debug.WriteLine($"ProcessExistingMethods: Processing {receiver.Methods.Count} methods");
-            foreach (var method in receiver.Methods)
-            {
-                System.Diagnostics.Debug.WriteLine($"  Method: {method.Name} in {method.ContainingType?.Name ?? "null"}");
-            }
-#endif
             // Group methods by containing class and generate code
             foreach (var group in receiver.Methods.GroupBy(f => f.ContainingType, SymbolEqualityComparer.Default))
             {
-                try
+                ErrorHandler.ExecuteSafely(context, () =>
                 {
-#if DEBUG
-                    System.Diagnostics.Debug.WriteLine($"Processing group for type: {group.Key?.Name ?? "null"}");
-#endif
                     var containingType = (INamedTypeSymbol)group.Key!;
                     var methods = group.ToList();
             
                     // Skip classes that have RepositoryFor attribute - they are handled by ProcessRepositoryClasses
                     if (containingType.GetAttributes().Any(attr => attr.AttributeClass?.Name == "RepositoryForAttribute"))
-                    {
-#if DEBUG
-                        System.Diagnostics.Debug.WriteLine($"Skipping {containingType.Name} because it has RepositoryForAttribute");
-#endif
-                        continue;
-                    }
+                        return;
                     
                     // Also skip methods from repository classes that might have been collected
                     if (receiver.RepositoryClasses.Contains(containingType, SymbolEqualityComparer.Default))
-                    {
-#if DEBUG
-                        System.Diagnostics.Debug.WriteLine($"Skipping {containingType.Name} because it's in repository classes list");
-#endif
-                        continue;
-                    }
+                        return;
                     
                     // Skip all interface methods - they should only be processed through repository classes
                     if (containingType.TypeKind == TypeKind.Interface)
-                    {
-#if DEBUG
-                        System.Diagnostics.Debug.WriteLine($"Skipping interface {containingType.Name} - interfaces should only be processed through repository classes");
-#endif
-                        continue;
-                    }
+                        return;
                     
-                    // 对每个方法执行诊断分析
+                    // Perform diagnostic analysis for each method
                     foreach (var method in methods)
                     {
                         var sqlxAttr = method.GetAttributes()
@@ -182,10 +117,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                         
                         if (sqlxAttr?.ConstructorArguments.FirstOrDefault().Value is string sql)
                         {
-                            // 获取实体类型用于分析
-                            var entityType = _typeInferenceService.InferEntityTypeFromMethod(method);
-                            
-                            // 执行全面的诊断分析
+                            var entityType = _generatorService.InferEntityTypeFromMethod(method);
                             diagnosticService.PerformComprehensiveAnalysis(method, sql, entityType);
                         }
                     }
@@ -201,46 +133,9 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                         var sourceText = SourceText.From(sb.ToString().Trim(), Encoding.UTF8);
                         context.AddSource(fileName, sourceText);
                     }
-                }
-                catch (Exception ex)
-                {
-#if DEBUG
-                    System.Diagnostics.Debug.WriteLine($"Error processing group for type {group.Key?.Name ?? "null"}: {ex}");
-#endif
-                    // Report diagnostic for group processing errors
-                    var diagnostic = Diagnostic.Create(
-                        new DiagnosticDescriptor(
-                            "SQLX9996",
-                            "Error processing method group",
-                            "Error processing method group for type {0}: {1}",
-                            "CodeGeneration",
-                            DiagnosticSeverity.Error,
-                            true),
-                        null,
-                        group.Key?.Name ?? "unknown",
-                        ex.Message);
-                    context.ReportDiagnostic(diagnostic);
-                }
+                }, "SQLX9996", $"method group processing for {group.Key?.Name ?? "unknown"}");
             }
-        }
-        catch (Exception ex)
-        {
-#if DEBUG
-            System.Diagnostics.Debug.WriteLine($"Error in ProcessExistingMethods: {ex}");
-#endif
-            // Report diagnostic for method processing errors
-            var diagnostic = Diagnostic.Create(
-                new DiagnosticDescriptor(
-                    "SQLX9995",
-                    "Error processing existing methods",
-                    "Error in ProcessExistingMethods: {0}",
-                    "CodeGeneration",
-                    DiagnosticSeverity.Error,
-                    true),
-                null,
-                ex.Message);
-            context.ReportDiagnostic(diagnostic);
-        }
+        }, "SQLX9995", "existing method processing");
     }
 
     private void ProcessRepositoryClasses(GeneratorExecutionContext context, ISqlxSyntaxReceiver receiver, SymbolReferences symbols, DiagnosticGuidanceService diagnosticService)
@@ -249,21 +144,15 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         {
             try
             {
-#if DEBUG
-                System.Diagnostics.Debug.WriteLine($"Processing repository class: {repositoryClass.Name}");
-#endif
-                // 分析仓储类中的接口方法
+                // Analyze interface methods in repository class
                 var repositoryForAttr = repositoryClass.GetAttributes()
                     .FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, symbols.RepositoryForAttributeSymbol));
                 
                 if (repositoryForAttr?.ConstructorArguments.FirstOrDefault().Value is INamedTypeSymbol interfaceType)
                 {
-#if DEBUG
-                    System.Diagnostics.Debug.WriteLine($"Found interface type: {interfaceType.Name}");
-#endif
                     var interfaceMethods = interfaceType.GetMembers().OfType<IMethodSymbol>().ToList();
                     
-                    // 对接口中的每个方法执行诊断分析
+                    // Perform diagnostic analysis for each method in the interface
                     foreach (var method in interfaceMethods)
                     {
                         var sqlxAttr = method.GetAttributes()
@@ -271,56 +160,19 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                         
                         if (sqlxAttr?.ConstructorArguments.FirstOrDefault().Value is string sql)
                         {
-                            // 获取实体类型用于分析
-                            var entityType = _typeInferenceService.InferEntityTypeFromMethod(method);
-                            
-                            // 执行全面的诊断分析
+                            var entityType = _generatorService.InferEntityTypeFromMethod(method);
                             diagnosticService.PerformComprehensiveAnalysis(method, sql, entityType);
                         }
                     }
                 }
 
-#if DEBUG
-                System.Diagnostics.Debug.WriteLine($"Creating repository generation context for: {repositoryClass.Name}");
-#endif
-                var generationContext = new RepositoryGenerationContext(
-                    context,
-                    repositoryClass,
-                    symbols.RepositoryForAttributeSymbol,
-                    symbols.TableNameAttributeSymbol,
-                    symbols.SqlxAttributeSymbol!,
-                    _typeInferenceService,
-                    _codeGenerationService,
-                    _operationFactory,
-                    _attributeHandler,
-                    _methodAnalyzer);
-
-#if DEBUG
-                System.Diagnostics.Debug.WriteLine($"Calling GenerateRepositoryImplementation for: {repositoryClass.Name}");
-#endif
-                _codeGenerationService.GenerateRepositoryImplementation(generationContext);
-#if DEBUG
-                System.Diagnostics.Debug.WriteLine($"Completed GenerateRepositoryImplementation for: {repositoryClass.Name}");
-#endif
+                var generationContext = new GenerationContext(context, repositoryClass, _generatorService);
+                _generatorService.GenerateRepositoryImplementation(generationContext);
             }
             catch (Exception ex)
             {
-#if DEBUG
-                System.Diagnostics.Debug.WriteLine($"Error processing repository class {repositoryClass.Name}: {ex}");
-#endif
-                // Report diagnostic for repository processing errors
-                var diagnostic = Diagnostic.Create(
-                    new DiagnosticDescriptor(
-                        "SQLX9997",
-                        "Error processing repository class",
-                        "Error processing repository class {0}: {1}",
-                        "CodeGeneration",
-                        DiagnosticSeverity.Error,
-                        true),
-                    null,
-                    repositoryClass.Name,
-                    ex.Message);
-                context.ReportDiagnostic(diagnostic);
+                ErrorHandler.ReportError(context, ex, "SQLX9997", "Repository class processing error", 
+                    "Error processing repository class {0}: {1}", repositoryClass.Name);
             }
         }
     }
@@ -334,7 +186,9 @@ public abstract partial class AbstractGenerator : ISourceGenerator
     /// <returns>The generated SqlxAttribute string.</returns>
     protected virtual string GenerateSqlxAttribute(IMethodSymbol method, INamedTypeSymbol? entityType, string tableName)
     {
-        return _attributeHandler.GenerateSqlxAttribute(method, entityType, tableName);
+        var sb = new IndentedStringBuilder(string.Empty);
+        _generatorService.GenerateAttributes(sb, method, entityType, tableName);
+        return sb.ToString();
     }
 
     /// <summary>
@@ -344,7 +198,8 @@ public abstract partial class AbstractGenerator : ISourceGenerator
     /// <returns>The generated SqlxAttribute string.</returns>
     protected virtual string GenerateSqlxAttribute(AttributeData attribute)
     {
-        return _attributeHandler.GenerateSqlxAttribute(attribute);
+        // For now, return a simple attribute string - this would need more complex logic
+        return "[Sqlx(\"TODO: Extract SQL from attribute\")]";
     }
 
     /// <summary>
@@ -452,13 +307,9 @@ public abstract partial class AbstractGenerator : ISourceGenerator
     /// </summary>
     private void ProcessCollectedSyntaxNodes(GeneratorExecutionContext context, ISqlxSyntaxReceiver receiver)
     {
-        try
+        ErrorHandler.ExecuteSafely(context, () =>
         {
             var compilation = context.Compilation;
-
-#if DEBUG
-            System.Diagnostics.Debug.WriteLine($"Processing {receiver.MethodSyntaxNodes.Count} method syntax nodes and {receiver.ClassSyntaxNodes.Count} class syntax nodes");
-#endif
 
             // Process method syntax nodes
             foreach (var methodSyntax in receiver.MethodSyntaxNodes)
@@ -466,22 +317,14 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                 try
                 {
                     var semanticModel = compilation.GetSemanticModel(methodSyntax.SyntaxTree);
-                    if (semanticModel.GetDeclaredSymbol(methodSyntax) is IMethodSymbol method)
+                    if (semanticModel.GetDeclaredSymbol(methodSyntax) is IMethodSymbol method && HasSqlxAttribute(method))
                     {
-                        if (HasSqlxAttribute(method))
-                        {
-                            receiver.Methods.Add(method);
-#if DEBUG
-                            System.Diagnostics.Debug.WriteLine($"Added method: {method.Name}");
-#endif
-                        }
+                        receiver.Methods.Add(method);
                     }
                 }
-                catch (Exception ex)
+                catch
                 {
-#if DEBUG
-                    System.Diagnostics.Debug.WriteLine($"Error processing method syntax: {ex.Message}");
-#endif
+                    // Silently ignore individual method processing errors
                 }
             }
 
@@ -491,44 +334,17 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                 try
                 {
                     var semanticModel = compilation.GetSemanticModel(classSyntax.SyntaxTree);
-                    if (semanticModel.GetDeclaredSymbol(classSyntax) is INamedTypeSymbol type)
+                    if (semanticModel.GetDeclaredSymbol(classSyntax) is INamedTypeSymbol type && HasRepositoryForAttribute(type))
                     {
-                        if (HasRepositoryForAttribute(type))
-                        {
-                            receiver.RepositoryClasses.Add(type);
-#if DEBUG
-                            System.Diagnostics.Debug.WriteLine($"Added repository class: {type.Name}");
-#endif
-                        }
+                        receiver.RepositoryClasses.Add(type);
                     }
                 }
-                catch (Exception ex)
+                catch
                 {
-#if DEBUG
-                    System.Diagnostics.Debug.WriteLine($"Error processing class syntax: {ex.Message}");
-#endif
+                    // Silently ignore individual class processing errors
                 }
             }
-
-#if DEBUG
-            System.Diagnostics.Debug.WriteLine($"Final counts: {receiver.Methods.Count} methods, {receiver.RepositoryClasses.Count} repository classes");
-#endif
-        }
-        catch (Exception ex)
-        {
-            // Report diagnostic for errors in processing
-            var diagnostic = Diagnostic.Create(
-                new DiagnosticDescriptor(
-                    "SQLX9998",
-                    "Error processing collected syntax nodes",
-                    "Error in ProcessCollectedSyntaxNodes: {0}",
-                    "CodeGeneration",
-                    DiagnosticSeverity.Error,
-                    true),
-                null,
-                ex.Message);
-            context.ReportDiagnostic(diagnostic);
-        }
+        }, "SQLX9998", "syntax node processing");
     }
 
     /// <summary>

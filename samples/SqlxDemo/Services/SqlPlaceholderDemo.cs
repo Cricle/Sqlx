@@ -450,11 +450,11 @@ public interface IFlexibleUserRepository
 [RepositoryFor(typeof(IFlexibleUserRepository))]
 public partial class FlexibleUserRepository : IFlexibleUserRepository
 {
-    private readonly SqliteConnection _connection;
+    private readonly SqliteConnection connection;
 
-    public FlexibleUserRepository(SqliteConnection connection)
+    public FlexibleUserRepository(SqliteConnection conn)
     {
-        _connection = connection;
+        connection = conn;
     }
 
     // 所有方法实现将由 Sqlx 源生成器自动生成

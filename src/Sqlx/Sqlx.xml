@@ -861,18 +861,9 @@
             空的SqlTemplate，用于表示没有参数的SQL
             </summary>
         </member>
-        <member name="M:Sqlx.SqlTemplate.Create``1(System.String,System.Collections.Generic.Dictionary{System.String,``0})">
-            <summary>
-            创建一个新的SqlTemplate（使用强类型值字典）
-            </summary>
-            <typeparam name="T">值类型</typeparam>
-            <param name="sql">SQL语句</param>
-            <param name="parameters">强类型参数字典</param>
-            <returns>SqlTemplate实例</returns>
-        </member>
         <member name="M:Sqlx.SqlTemplate.Create(System.String,System.Collections.Generic.Dictionary{System.String,System.Object})">
             <summary>
-            创建一个新的SqlTemplate（使用object字典，向后兼容）
+            创建一个新的SqlTemplate
             </summary>
             <param name="sql">SQL语句</param>
             <param name="parameters">参数字典</param>
@@ -880,24 +871,38 @@
         </member>
         <member name="M:Sqlx.SqlTemplate.Create``1(System.String,``0)">
             <summary>
-            创建一个新的SqlTemplate（使用泛型参数对象，AOT友好）
+            创建一个新的SqlTemplate（使用泛型参数）- AOT兼容
             </summary>
-            <typeparam name="T">参数对象类型</typeparam>
+            <typeparam name="T">参数类型</typeparam>
             <param name="sql">SQL语句</param>
             <param name="parameters">参数对象</param>
             <returns>SqlTemplate实例</returns>
         </member>
         <member name="M:Sqlx.SqlTemplate.Create(System.String,System.Object)">
             <summary>
-            创建一个新的SqlTemplate（使用object参数，向后兼容）
+            创建一个新的SqlTemplate（使用匿名对象）- 反射版本
             </summary>
             <param name="sql">SQL语句</param>
             <param name="parameters">参数对象</param>
             <returns>SqlTemplate实例</returns>
         </member>
+        <member name="M:Sqlx.SqlTemplate.CreateFromObject(System.String,System.Object)">
+            <summary>
+            内部方法：从object创建SqlTemplate
+            </summary>
+        </member>
+        <member name="M:Sqlx.SqlTemplate.Create``1(System.String,System.Collections.Generic.Dictionary{System.String,``0})">
+            <summary>
+            创建SqlTemplate（使用泛型参数字典）
+            </summary>
+            <typeparam name="T">参数值类型</typeparam>
+            <param name="sql">SQL语句</param>
+            <param name="parameters">参数字典</param>
+            <returns>SqlTemplate实例</returns>
+        </member>
         <member name="M:Sqlx.SqlTemplate.Create``1(System.String,System.String,``0)">
             <summary>
-            创建一个新的SqlTemplate（使用单个强类型参数）
+            创建SqlTemplate（使用单个参数）
             </summary>
             <typeparam name="T">参数类型</typeparam>
             <param name="sql">SQL语句</param>
@@ -907,7 +912,7 @@
         </member>
         <member name="M:Sqlx.SqlTemplate.Create``2(System.String,System.String,``0,System.String,``1)">
             <summary>
-            创建一个新的SqlTemplate（使用两个强类型参数）
+            创建SqlTemplate（使用两个参数）
             </summary>
             <typeparam name="T1">第一个参数类型</typeparam>
             <typeparam name="T2">第二个参数类型</typeparam>

@@ -7,7 +7,10 @@
 #nullable enable
 
 using System.Collections.Generic;
+using System.Reflection;
+#if NET5_0_OR_GREATER
 using System.Diagnostics.CodeAnalysis;
+#endif
 
 namespace Sqlx
 {
@@ -23,24 +26,7 @@ namespace Sqlx
         public static readonly SqlTemplate Empty = new(string.Empty, new Dictionary<string, object?>());
         
         /// <summary>
-        /// 创建一个新的SqlTemplate（使用强类型值字典）
-        /// </summary>
-        /// <typeparam name="T">值类型</typeparam>
-        /// <param name="sql">SQL语句</param>
-        /// <param name="parameters">强类型参数字典</param>
-        /// <returns>SqlTemplate实例</returns>
-        public static SqlTemplate Create<T>(string sql, Dictionary<string, T> parameters)
-        {
-            var paramDict = new Dictionary<string, object?>();
-            foreach (var kvp in parameters)
-            {
-                paramDict[kvp.Key] = kvp.Value;
-            }
-            return new SqlTemplate(sql, paramDict);
-        }
-
-        /// <summary>
-        /// 创建一个新的SqlTemplate（使用object字典，向后兼容）
+        /// 创建一个新的SqlTemplate
         /// </summary>
         /// <param name="sql">SQL语句</param>
         /// <param name="parameters">参数字典</param>
@@ -51,9 +37,9 @@ namespace Sqlx
         }
         
         /// <summary>
-        /// 创建一个新的SqlTemplate（使用泛型参数对象，AOT友好）
+        /// 创建一个新的SqlTemplate（使用泛型参数）- AOT兼容
         /// </summary>
-        /// <typeparam name="T">参数对象类型</typeparam>
+        /// <typeparam name="T">参数类型</typeparam>
         /// <param name="sql">SQL语句</param>
         /// <param name="parameters">参数对象</param>
         /// <returns>SqlTemplate实例</returns>
@@ -78,39 +64,60 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// 创建一个新的SqlTemplate（使用object参数，向后兼容）
+        /// 创建一个新的SqlTemplate（使用匿名对象）- 反射版本
         /// </summary>
         /// <param name="sql">SQL语句</param>
         /// <param name="parameters">参数对象</param>
         /// <returns>SqlTemplate实例</returns>
 #if NET5_0_OR_GREATER
-        [RequiresUnreferencedCode("Uses reflection for anonymous object parameters. Use generic Create<T> method for AOT compatibility.")]
+        [RequiresUnreferencedCode("This method uses reflection to examine parameter properties. Consider using the generic Create<T> method for AOT compatibility.")]
 #endif
         public static SqlTemplate Create(string sql, object? parameters = null)
         {
-            if (parameters == null)
-                return new SqlTemplate(sql, new Dictionary<string, object?>());
-            
-            // 对于匿名类型等，使用运行时反射
             return CreateFromObject(sql, parameters);
         }
 
+        /// <summary>
+        /// 内部方法：从object创建SqlTemplate
+        /// </summary>
 #if NET5_0_OR_GREATER
-        [RequiresUnreferencedCode("Uses reflection to read object properties for backward compatibility")]
+        [RequiresUnreferencedCode("This method uses reflection to examine parameter properties.")]
 #endif
-        private static SqlTemplate CreateFromObject(string sql, object parameters)
+        private static SqlTemplate CreateFromObject(string sql, object? parameters)
         {
             var paramDict = new Dictionary<string, object?>();
-            var properties = parameters.GetType().GetProperties();
-            foreach (var prop in properties)
+            
+            if (parameters != null)
             {
-                paramDict[prop.Name] = prop.GetValue(parameters);
+                var properties = parameters.GetType().GetProperties();
+                foreach (var prop in properties)
+                {
+                    paramDict[prop.Name] = prop.GetValue(parameters);
+                }
+            }
+            
+            return new SqlTemplate(sql, paramDict);
+        }
+
+        /// <summary>
+        /// 创建SqlTemplate（使用泛型参数字典）
+        /// </summary>
+        /// <typeparam name="T">参数值类型</typeparam>
+        /// <param name="sql">SQL语句</param>
+        /// <param name="parameters">参数字典</param>
+        /// <returns>SqlTemplate实例</returns>
+        public static SqlTemplate Create<T>(string sql, Dictionary<string, T> parameters)
+        {
+            var paramDict = new Dictionary<string, object?>();
+            foreach (var kvp in parameters)
+            {
+                paramDict[kvp.Key] = kvp.Value;
             }
             return new SqlTemplate(sql, paramDict);
         }
 
         /// <summary>
-        /// 创建一个新的SqlTemplate（使用单个强类型参数）
+        /// 创建SqlTemplate（使用单个参数）
         /// </summary>
         /// <typeparam name="T">参数类型</typeparam>
         /// <param name="sql">SQL语句</param>
@@ -124,7 +131,7 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// 创建一个新的SqlTemplate（使用两个强类型参数）
+        /// 创建SqlTemplate（使用两个参数）
         /// </summary>
         /// <typeparam name="T1">第一个参数类型</typeparam>
         /// <typeparam name="T2">第二个参数类型</typeparam>

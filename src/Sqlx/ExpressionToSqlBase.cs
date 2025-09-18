@@ -592,14 +592,14 @@ namespace Sqlx
             return (TDelegate)_compiledFunctionCache.GetOrAdd(expression.Member, x =>
             {
                 var par = Expression.Parameter(typeof(object));
-                var conv = expression.Expression == null ? null : Expression.Convert(par, x.DeclaringType);
+                var conv = expression.Expression == null ? null : Expression.Convert(par, x.DeclaringType!);
                 var exp = x switch
                 {
                     FieldInfo field => Expression.Field(conv, field),
                     PropertyInfo property => Expression.Property(conv, property),
                     _ => null
                 };
-                return Expression.Lambda<Func<object?, object?>>(Expression.Convert(exp, typeof(object)), par).Compile();
+                return Expression.Lambda<Func<object?, object?>>(Expression.Convert(exp!, typeof(object)), par).Compile();
             });
         }
 

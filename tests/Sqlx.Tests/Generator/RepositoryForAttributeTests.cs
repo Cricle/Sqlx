@@ -49,11 +49,11 @@ namespace TestNamespace
     [RepositoryFor(typeof(IUserRepository))]
     public partial class UserRepository
     {
-        private readonly IDbConnection _connection;
+        private readonly IDbConnection connection;
         
-        public UserRepository(IDbConnection connection)
+        public UserRepository(IDbConnection conn)
         {
-            _connection = connection;
+            connection = conn;
         }
     }
 }";

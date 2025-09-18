@@ -72,7 +72,7 @@
         </member>
         <member name="M:Sqlx.AbstractGenerator.GetResultVariableType(Microsoft.CodeAnalysis.IMethodSymbol)">
             <summary>
-            Gets the proper type declaration for the __repoResult__ variable to avoid boxing.
+            Gets the proper type declaration for the __result__ variable to avoid boxing.
             </summary>
         </member>
         <member name="M:Sqlx.AbstractGenerator.GetSqlExecuteTypeName(System.Int32,System.Object)">

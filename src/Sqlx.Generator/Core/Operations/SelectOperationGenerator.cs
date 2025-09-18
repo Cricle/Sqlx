@@ -139,14 +139,14 @@ public class SelectOperationGenerator : BaseOperationGenerator
 
         var whereParams = method.Parameters.Where(p => p.Type.Name != "CancellationToken").ToList();
 
-        sb.AppendLine($"__repoCmd__.CommandText = \"SELECT * FROM {tableName}\";");
+        sb.AppendLine($"__cmd__.CommandText = \"SELECT * FROM {tableName}\";");
 
         if (whereParams.Any())
         {
             GenerateWhereClause(sb, whereParams);
         }
 
-        sb.AppendLine("__repoCmd__.CommandText += \" LIMIT 1\";");
+        sb.AppendLine("__cmd__.CommandText += \" LIMIT 1\";");
 
         GenerateSingleEntityExecution(sb, isAsync, method, entityType);
     }
@@ -158,7 +158,7 @@ public class SelectOperationGenerator : BaseOperationGenerator
 
         var whereParams = method.Parameters.Where(p => p.Type.Name != "CancellationToken").ToList();
 
-        sb.AppendLine($"__repoCmd__.CommandText = \"SELECT * FROM {tableName}\";");
+        sb.AppendLine($"__cmd__.CommandText = \"SELECT * FROM {tableName}\";");
 
         if (whereParams.Any())
         {
@@ -171,53 +171,53 @@ public class SelectOperationGenerator : BaseOperationGenerator
     private void GenerateCountQuery(IndentedStringBuilder sb, string tableName,
         System.Collections.Generic.List<IParameterSymbol> whereParams)
     {
-        sb.AppendLine($"__repoCmd__.CommandText = \"SELECT COUNT(*) FROM {tableName}\";");
+        sb.AppendLine($"__cmd__.CommandText = \"SELECT COUNT(*) FROM {tableName}\";");
     }
 
     private void GenerateExistsQuery(IndentedStringBuilder sb, string tableName,
         System.Collections.Generic.List<IParameterSymbol> whereParams)
     {
-        sb.AppendLine($"__repoCmd__.CommandText = \"SELECT CASE WHEN EXISTS(SELECT 1 FROM {tableName}\";");
+        sb.AppendLine($"__cmd__.CommandText = \"SELECT CASE WHEN EXISTS(SELECT 1 FROM {tableName}\";");
         if (whereParams.Any())
         {
             // WHERE clause will be added by GenerateWhereClause
-            sb.AppendLine("__repoCmd__.CommandText += \"\";");
+            sb.AppendLine("__cmd__.CommandText += \"\";");
         }
-        sb.AppendLine("__repoCmd__.CommandText += \") THEN 1 ELSE 0 END\";");
+        sb.AppendLine("__cmd__.CommandText += \") THEN 1 ELSE 0 END\";");
     }
 
     private void GenerateSumQuery(IndentedStringBuilder sb, string tableName,
         System.Collections.Generic.List<IParameterSymbol> whereParams, IMethodSymbol method)
     {
         var column = InferColumnFromMethodName(method.Name, "sum");
-        sb.AppendLine($"__repoCmd__.CommandText = \"SELECT SUM({column}) FROM {tableName}\";");
+        sb.AppendLine($"__cmd__.CommandText = \"SELECT SUM({column}) FROM {tableName}\";");
     }
 
     private void GenerateMaxQuery(IndentedStringBuilder sb, string tableName,
         System.Collections.Generic.List<IParameterSymbol> whereParams, IMethodSymbol method)
     {
         var column = InferColumnFromMethodName(method.Name, "max");
-        sb.AppendLine($"__repoCmd__.CommandText = \"SELECT MAX({column}) FROM {tableName}\";");
+        sb.AppendLine($"__cmd__.CommandText = \"SELECT MAX({column}) FROM {tableName}\";");
     }
 
     private void GenerateMinQuery(IndentedStringBuilder sb, string tableName,
         System.Collections.Generic.List<IParameterSymbol> whereParams, IMethodSymbol method)
     {
         var column = InferColumnFromMethodName(method.Name, "min");
-        sb.AppendLine($"__repoCmd__.CommandText = \"SELECT MIN({column}) FROM {tableName}\";");
+        sb.AppendLine($"__cmd__.CommandText = \"SELECT MIN({column}) FROM {tableName}\";");
     }
 
     private void GenerateAverageQuery(IndentedStringBuilder sb, string tableName,
         System.Collections.Generic.List<IParameterSymbol> whereParams, IMethodSymbol method)
     {
         var column = InferColumnFromMethodName(method.Name, "average");
-        sb.AppendLine($"__repoCmd__.CommandText = \"SELECT AVG({column}) FROM {tableName}\";");
+        sb.AppendLine($"__cmd__.CommandText = \"SELECT AVG({column}) FROM {tableName}\";");
     }
 
     private void GenerateGenericScalarQuery(IndentedStringBuilder sb, string tableName,
         System.Collections.Generic.List<IParameterSymbol> whereParams, IMethodSymbol method)
     {
-        sb.AppendLine($"__repoCmd__.CommandText = \"SELECT * FROM {tableName}\";");
+        sb.AppendLine($"__cmd__.CommandText = \"SELECT * FROM {tableName}\";");
     }
 
     private void GenerateWhereClause(IndentedStringBuilder sb,
@@ -227,15 +227,15 @@ public class SelectOperationGenerator : BaseOperationGenerator
         {
             var conditions = whereParams.Select(p => $"{InferColumnNameFromParameter(p.Name)} = @{p.Name}");
             var whereClause = string.Join(" AND ", conditions);
-            sb.AppendLine($"__repoCmd__.CommandText += \" WHERE {whereClause}\";");
+            sb.AppendLine($"__cmd__.CommandText += \" WHERE {whereClause}\";");
 
             foreach (var param in whereParams)
             {
-                sb.AppendLine($"var param{param.Name} = __repoCmd__.CreateParameter()!;");
+                sb.AppendLine($"var param{param.Name} = __cmd__.CreateParameter()!;");
                 sb.AppendLine($"param{param.Name}.ParameterName = \"@{param.Name}\";");
                 sb.AppendLine($"param{param.Name}.Value = (object){param.Name} ?? (object)global::System.DBNull.Value;");
                 sb.AppendLine($"param{param.Name}.DbType = {GetDbTypeForParameter(param)};");
-                sb.AppendLine($"__repoCmd__.Parameters.Add(param{param.Name});");
+                sb.AppendLine($"__cmd__.Parameters.Add(param{param.Name});");
             }
             sb.AppendLine();
         }
@@ -246,11 +246,11 @@ public class SelectOperationGenerator : BaseOperationGenerator
         if (isAsync)
         {
             var cancellationToken = GetCancellationTokenParameter(method);
-            sb.AppendLine("var scalarResult = __repoCmd__.ExecuteScalar();");
+            sb.AppendLine("var scalarResult = __cmd__.ExecuteScalar();");
         }
         else
         {
-            sb.AppendLine("var scalarResult = __repoCmd__.ExecuteScalar();");
+            sb.AppendLine("var scalarResult = __cmd__.ExecuteScalar();");
         }
 
         // Convert result based on return type
@@ -265,7 +265,7 @@ public class SelectOperationGenerator : BaseOperationGenerator
 
     private void GenerateSingleEntityExecution(IndentedStringBuilder sb, bool isAsync, IMethodSymbol method, INamedTypeSymbol? entityType)
     {
-        sb.AppendLine("using var reader = __repoCmd__.ExecuteReader();");
+        sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
 
         sb.AppendLine("if (reader.Read())");
         sb.AppendLine("{");
@@ -278,7 +278,7 @@ public class SelectOperationGenerator : BaseOperationGenerator
         else
         {
             sb.AppendLine("// Entity mapping would go here");
-            sb.AppendLine("__repoResult__ = default;");
+            sb.AppendLine("__result__ = default;");
         }
 
         sb.PopIndent();
@@ -286,14 +286,14 @@ public class SelectOperationGenerator : BaseOperationGenerator
         sb.AppendLine("else");
         sb.AppendLine("{");
         sb.PushIndent();
-        sb.AppendLine("__repoResult__ = default;");
+        sb.AppendLine("__result__ = default;");
         sb.PopIndent();
         sb.AppendLine("}");
     }
 
     private void GenerateCollectionExecution(IndentedStringBuilder sb, bool isAsync, IMethodSymbol method, INamedTypeSymbol? entityType)
     {
-        sb.AppendLine("using var reader = __repoCmd__.ExecuteReader();");
+        sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
 
         sb.AppendLine("var results = new global::System.Collections.Generic.List<" + (entityType?.Name ?? "object") + ">();");
         sb.AppendLine("while (reader.Read())");
@@ -312,7 +312,7 @@ public class SelectOperationGenerator : BaseOperationGenerator
 
         sb.PopIndent();
         sb.AppendLine("}");
-        sb.AppendLine("__repoResult__ = results;");
+        sb.AppendLine("__result__ = results;");
     }
 
     private void GenerateEntityMapping(IndentedStringBuilder sb, INamedTypeSymbol entityType, string variableName)
@@ -342,19 +342,19 @@ public class SelectOperationGenerator : BaseOperationGenerator
 
         if (returnType.SpecialType == SpecialType.System_Int32)
         {
-            sb.AppendLine("__repoResult__ = global::System.Convert.ToInt32(scalarResult);");
+            sb.AppendLine("__result__ = global::System.Convert.ToInt32(scalarResult);");
         }
         else if (returnType.SpecialType == SpecialType.System_Boolean)
         {
-            sb.AppendLine("__repoResult__ = global::System.Convert.ToBoolean(scalarResult);");
+            sb.AppendLine("__result__ = global::System.Convert.ToBoolean(scalarResult);");
         }
         else if (returnType.SpecialType == SpecialType.System_Int64)
         {
-            sb.AppendLine("__repoResult__ = global::System.Convert.ToInt64(scalarResult);");
+            sb.AppendLine("__result__ = global::System.Convert.ToInt64(scalarResult);");
         }
         else
         {
-            sb.AppendLine($"__repoResult__ = ({returnType.ToDisplayString()})scalarResult;");
+            sb.AppendLine($"__result__ = ({returnType.ToDisplayString()})scalarResult;");
         }
 
         sb.PopIndent();
@@ -362,14 +362,14 @@ public class SelectOperationGenerator : BaseOperationGenerator
         sb.AppendLine("else");
         sb.AppendLine("{");
         sb.PushIndent();
-        sb.AppendLine("__repoResult__ = default;");
+        sb.AppendLine("__result__ = default;");
         sb.PopIndent();
         sb.AppendLine("}");
     }
 
     private void GenerateMethodCompletion(IndentedStringBuilder sb, IMethodSymbol method, string methodName, bool isAsync)
     {
-        sb.AppendLine($"OnExecuted(\"{methodName}\", __repoCmd__, __repoResult__, System.Diagnostics.Stopwatch.GetTimestamp() - __repoStartTime__);");
+        sb.AppendLine($"OnExecuted(\"{methodName}\", __cmd__, __result__, System.Diagnostics.Stopwatch.GetTimestamp() - __startTime__);");
         // Note: Return statement is handled by CodeGenerationService
     }
 

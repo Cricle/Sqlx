@@ -74,7 +74,7 @@ public abstract class BaseOperationGenerator : IOperationGenerator
         sb.AppendLine();
 
         // Create command
-        sb.AppendLine($"__repoCmd__ = {connectionFieldName}.CreateCommand();");
+        sb.AppendLine($"__cmd__ = {connectionFieldName}.CreateCommand();");
     }
 
     /// <summary>

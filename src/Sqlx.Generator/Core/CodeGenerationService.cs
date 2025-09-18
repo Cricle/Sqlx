@@ -64,7 +64,7 @@ public class CodeGenerationService : ICodeGenerationService
             if (!method.ReturnsVoid)
             {
                 // For repository methods, always wrap in Task.FromResult since they implement async interfaces
-                sb.AppendLine("return global::System.Threading.Tasks.Task.FromResult(__repoResult__);");
+                sb.AppendLine("return global::System.Threading.Tasks.Task.FromResult(__result__);");
             }
 
             // Close try block and add catch/finally
@@ -79,7 +79,7 @@ public class CodeGenerationService : ICodeGenerationService
             sb.AppendLine("finally");
             sb.AppendLine("{");
             sb.PushIndent();
-            sb.AppendLine("__repoCmd__?.Dispose();");
+            sb.AppendLine("__cmd__?.Dispose();");
             sb.PopIndent();
             sb.AppendLine("}");
 
@@ -144,8 +144,8 @@ public class CodeGenerationService : ICodeGenerationService
     public void GenerateMethodVariables(IndentedStringBuilder sb, IMethodSymbol method)
     {
         // Generate common variables used in repository methods
-        sb.AppendLine("long __repoStartTime__ = System.Diagnostics.Stopwatch.GetTimestamp();");
-        sb.AppendLine("global::System.Data.IDbCommand? __repoCmd__ = null;");
+        sb.AppendLine("long __startTime__ = System.Diagnostics.Stopwatch.GetTimestamp();");
+        sb.AppendLine("global::System.Data.IDbCommand? __cmd__ = null;");
 
         if (!method.ReturnsVoid)
         {
@@ -161,7 +161,7 @@ public class CodeGenerationService : ICodeGenerationService
                 actualReturnType = namedType.TypeArguments[0].ToDisplayString();
             }
 
-            sb.AppendLine($"{actualReturnType} __repoResult__ = default!;");
+            sb.AppendLine($"{actualReturnType} __result__ = default!;");
         }
 
         sb.AppendLine();

@@ -77,8 +77,8 @@ public class InsertOperationGenerator : BaseOperationGenerator
         sb.AppendLine($"if ({collectionParam.Name} == null || !{collectionParam.Name}.Any())");
         sb.AppendLine("{");
         sb.PushIndent();
-        sb.AppendLine("__repoResult__ = 0;");
-        sb.AppendLine("OnExecuted(\"BatchInsert\", __repoCmd__, __repoResult__, System.Diagnostics.Stopwatch.GetTimestamp() - __repoStartTime__);");
+        sb.AppendLine("__result__ = 0;");
+        sb.AppendLine("OnExecuted(\"BatchInsert\", __cmd__, __result__, System.Diagnostics.Stopwatch.GetTimestamp() - __startTime__);");
         // Note: Return statement is handled by CodeGenerationService
         sb.PopIndent();
         sb.AppendLine("}");
@@ -97,7 +97,7 @@ public class InsertOperationGenerator : BaseOperationGenerator
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
-        sb.AppendLine("__repoResult__ = totalAffected;");
+        sb.AppendLine("__result__ = totalAffected;");
     }
 
     private void GenerateSingleEntityInsert(IndentedStringBuilder sb, IParameterSymbol entityParam,
@@ -113,11 +113,11 @@ public class InsertOperationGenerator : BaseOperationGenerator
             // Add parameters
             foreach (var prop in properties)
             {
-                sb.AppendLine($"var param{prop.Name} = __repoCmd__.CreateParameter()!;");
+                sb.AppendLine($"var param{prop.Name} = __cmd__.CreateParameter()!;");
                 sb.AppendLine($"param{prop.Name}.ParameterName = \"@{prop.Name}\";");
                 sb.AppendLine($"param{prop.Name}.Value = (object){entityParam.Name}.{prop.Name} ?? (object)global::System.DBNull.Value;");
                 sb.AppendLine($"param{prop.Name}.DbType = {GetDbTypeForProperty(prop)};");
-                sb.AppendLine($"__repoCmd__.Parameters.Add(param{prop.Name});");
+                sb.AppendLine($"__cmd__.Parameters.Add(param{prop.Name});");
                 sb.AppendLine();
             }
         }
@@ -138,11 +138,11 @@ public class InsertOperationGenerator : BaseOperationGenerator
 
             foreach (var param in insertParams)
             {
-                sb.AppendLine($"var param{param.Name} = __repoCmd__.CreateParameter()!;");
+                sb.AppendLine($"var param{param.Name} = __cmd__.CreateParameter()!;");
                 sb.AppendLine($"param{param.Name}.ParameterName = \"@{param.Name}\";");
                 sb.AppendLine($"param{param.Name}.Value = (object){param.Name} ?? (object)global::System.DBNull.Value;");
                 sb.AppendLine($"param{param.Name}.DbType = {GetDbTypeForParameter(param)};");
-                sb.AppendLine($"__repoCmd__.Parameters.Add(param{param.Name});");
+                sb.AppendLine($"__cmd__.Parameters.Add(param{param.Name});");
                 sb.AppendLine();
             }
         }
@@ -154,18 +154,18 @@ public class InsertOperationGenerator : BaseOperationGenerator
     {
         // This would be implemented based on the SQL dialect
         sb.AppendLine($"// Generate INSERT command for {tableName}");
-        sb.AppendLine($"__repoCmd__.CommandText = \"INSERT INTO {tableName} (...) VALUES (...)\";");
+        sb.AppendLine($"__cmd__.CommandText = \"INSERT INTO {tableName} (...) VALUES (...)\";");
     }
 
     private void GenerateCommandExecution(IndentedStringBuilder sb, bool isAsync, IMethodSymbol method)
     {
         // For IDbCommand, we don't have async methods, so we execute synchronously
-        sb.AppendLine("__repoResult__ = __repoCmd__.ExecuteNonQuery();");
+        sb.AppendLine("__result__ = __cmd__.ExecuteNonQuery();");
     }
 
     private void GenerateMethodCompletion(IndentedStringBuilder sb, IMethodSymbol method, string methodName, bool isAsync)
     {
-        sb.AppendLine($"OnExecuted(\"{methodName}\", __repoCmd__, __repoResult__, System.Diagnostics.Stopwatch.GetTimestamp() - __repoStartTime__);");
+        sb.AppendLine($"OnExecuted(\"{methodName}\", __cmd__, __result__, System.Diagnostics.Stopwatch.GetTimestamp() - __startTime__);");
 
         if (!method.ReturnsVoid)
         {

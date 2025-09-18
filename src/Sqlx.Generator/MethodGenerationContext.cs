@@ -20,11 +20,11 @@ using static Sqlx.Extensions;
 internal partial class MethodGenerationContext : GenerationContextBase
 {
     internal const string DbConnectionName = Constants.GeneratedVariables.Connection;
-    internal const string CmdName = "__methodCmd__";  // Use different name to avoid conflicts with AbstractGenerator
-    internal const string DbReaderName = "__methodReader__";
-    internal const string ResultName = "__methodResult__";
-    internal const string DataName = "__methodData__";
-    internal const string StartTimeName = "__methodStartTime__";
+    internal const string CmdName = "__cmd__";  // Use different name to avoid conflicts with AbstractGenerator
+    internal const string DbReaderName = "__reader__";
+    internal const string ResultName = "__result__";
+    internal const string DataName = "__data__";
+    internal const string StartTimeName = "__startTime__";
 
     internal const string MethodExecuting = "OnExecuting";
     internal const string MethodExecuted = "OnExecuted";

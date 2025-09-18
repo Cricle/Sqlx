@@ -5,6 +5,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.CodeAnalysis;
+using System;
 using System.Linq;
 
 namespace Sqlx.Generator.Core;
@@ -95,28 +96,73 @@ public abstract class BaseOperationGenerator : IOperationGenerator
     /// <returns>The connection field name.</returns>
     protected virtual string GetConnectionFieldName(INamedTypeSymbol repositoryClass)
     {
-        // Look for existing connection field/property
+        // Find the first DbConnection field, property, or constructor parameter
+        
+        // 1. Check fields (prioritize type checking, fallback to common names)
         var connectionField = repositoryClass.GetMembers()
             .OfType<IFieldSymbol>()
-            .FirstOrDefault(f => f.Type.AllInterfaces.Any(i => i.Name == "IDbConnection") ||
-                                f.Type.Name == "IDbConnection");
-
+            .FirstOrDefault(f => f.IsDbConnection());
         if (connectionField != null)
         {
             return connectionField.Name;
         }
 
+        // Check by common field names if type checking didn't work
+        connectionField = repositoryClass.GetMembers()
+            .OfType<IFieldSymbol>()
+            .FirstOrDefault(f => IsCommonConnectionFieldName(f.Name));
+        if (connectionField != null)
+        {
+            return connectionField.Name;
+        }
+
+        // 2. Check properties
         var connectionProperty = repositoryClass.GetMembers()
             .OfType<IPropertySymbol>()
-            .FirstOrDefault(p => p.Type.AllInterfaces.Any(i => i.Name == "IDbConnection") ||
-                                p.Type.Name == "IDbConnection");
-
+            .FirstOrDefault(p => p.IsDbConnection() || IsCommonConnectionFieldName(p.Name));
         if (connectionProperty != null)
         {
             return connectionProperty.Name;
         }
 
-        return "_connection";
+        // 3. Check primary constructor parameters
+        var primaryConstructor = PrimaryConstructorAnalyzer.GetPrimaryConstructor(repositoryClass);
+        if (primaryConstructor != null)
+        {
+            var connectionParam = primaryConstructor.Parameters.FirstOrDefault(p => p.Type.IsDbConnection());
+            if (connectionParam != null)
+            {
+                return connectionParam.Name;
+            }
+        }
+
+        // 4. Check regular constructor parameters (fallback)
+        var constructor = repositoryClass.InstanceConstructors.FirstOrDefault();
+        if (constructor != null)
+        {
+            var connectionParam = constructor.Parameters.FirstOrDefault(p => p.Type.IsDbConnection());
+            if (connectionParam != null)
+            {
+                return connectionParam.Name;
+            }
+        }
+
+        // Default fallback - common field names
+        return "connection";
+    }
+
+    /// <summary>
+    /// Checks if the field name matches common connection field naming patterns.
+    /// </summary>
+    /// <param name="fieldName">The field name to check.</param>
+    /// <returns>True if it's a common connection field name.</returns>
+    private static bool IsCommonConnectionFieldName(string fieldName)
+    {
+        return fieldName == "connection" || 
+               fieldName == "_connection" || 
+               fieldName == "Connection" || 
+               fieldName == "_Connection" ||
+               fieldName.EndsWith("Connection", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

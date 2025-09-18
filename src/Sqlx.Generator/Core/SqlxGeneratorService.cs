@@ -224,13 +224,38 @@ public class SqlxGeneratorService : ISqlxGeneratorService
             GenerateRepositoryMethodDirect(sb, method, entityType, tableName);
         }
 
+        // Generate interceptor methods (OnExecuting, OnExecuted)
+        var codeGenerationService = new CodeGenerationService();
+        codeGenerationService.GenerateInterceptorMethods(sb, repositoryClass);
+
         sb.PopIndent();
         sb.AppendLine("}");
     }
 
     private void GenerateRepositoryMethodDirect(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName)
     {
-        // Generate method signature first
+        // Use the proper code generation service for repository methods
+        var operationFactory = new OperationGeneratorFactory();
+        var operationGenerator = operationFactory.GetGenerator(method);
+        
+        if (operationGenerator != null)
+        {
+            var codeGenerationService = new CodeGenerationService();
+            var methodContext = new RepositoryMethodContext(
+                sb, method, entityType, tableName, operationGenerator,
+                new AttributeHandler(), new MethodAnalyzer());
+
+            codeGenerationService.GenerateRepositoryMethod(methodContext);
+        }
+        else
+        {
+            // Generate fallback implementation for methods without proper attributes
+            GenerateFallbackMethodForRepository(sb, method);
+        }
+    }
+
+    private void GenerateFallbackMethodForRepository(IndentedStringBuilder sb, IMethodSymbol method)
+    {
         var returnType = method.ReturnType.ToDisplayString();
         var methodName = method.Name;
         var parameters = string.Join(", ", method.Parameters.Select(p => $"{p.Type.ToDisplayString()} {p.Name}"));
@@ -240,13 +265,84 @@ public class SqlxGeneratorService : ISqlxGeneratorService
         sb.AppendLine("{");
         sb.PushIndent();
 
-        // For now, always generate simple fallback implementation
-        // TODO: Implement proper operation generation for RepositoryFor
-        GenerateSimpleFallback(sb, returnType, isAsync);
+        // Generate appropriate fallback based on method attributes or name
+        if (HasSqlxAttribute(method))
+        {
+            // If method has Sqlx attribute but no appropriate generator, generate a basic implementation
+            GenerateBasicSqlImplementation(sb, method, isAsync);
+        }
+        else
+        {
+            // Generate simple default return for methods without SQL attributes
+            GenerateSimpleFallback(sb, returnType, isAsync);
+        }
 
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
+    }
+
+    private bool HasSqlxAttribute(IMethodSymbol method)
+    {
+        return method.GetAttributes().Any(attr =>
+            attr.AttributeClass?.Name == "SqlxAttribute" ||
+            attr.AttributeClass?.Name == "Sqlx");
+    }
+
+    private void GenerateBasicSqlImplementation(IndentedStringBuilder sb, IMethodSymbol method, bool isAsync)
+    {
+        // Get the SQL from the Sqlx attribute
+        var sqlxAttr = method.GetAttributes()
+            .FirstOrDefault(a => a.AttributeClass?.Name?.Contains("Sqlx") == true);
+        
+        var sql = sqlxAttr?.ConstructorArguments.FirstOrDefault().Value as string ?? "SELECT 1";
+        var returnType = method.ReturnType.ToDisplayString();
+
+        sb.AppendLine("// Generated basic implementation for Sqlx method");
+        sb.AppendLine("using var cmd = connection.CreateCommand();");
+        sb.AppendLine($"cmd.CommandText = @\"{sql}\";");
+        
+        // Add parameters
+        foreach (var param in method.Parameters)
+        {
+            if (param.Name != "cancellationToken")
+            {
+                sb.AppendLine($"var param_{param.Name} = cmd.CreateParameter();");
+                sb.AppendLine($"param_{param.Name}.ParameterName = \"@{param.Name}\";");
+                sb.AppendLine($"param_{param.Name}.Value = {param.Name} ?? (object)DBNull.Value;");
+                sb.AppendLine($"cmd.Parameters.Add(param_{param.Name});");
+            }
+        }
+
+        if (isAsync)
+        {
+            if (returnType.Contains("Task<") && !returnType.Contains("void"))
+            {
+                sb.AppendLine("var result = await cmd.ExecuteScalarAsync();");
+                var innerType = ExtractInnerTypeFromTask(returnType);
+                sb.AppendLine($"return result != null ? ({innerType})result : default({innerType});");
+            }
+            else
+            {
+                sb.AppendLine("await cmd.ExecuteNonQueryAsync();");
+                if (returnType != "Task" && returnType != "System.Threading.Tasks.Task")
+                {
+                    sb.AppendLine("return;");
+                }
+            }
+        }
+        else
+        {
+            if (returnType != "void")
+            {
+                sb.AppendLine("var result = cmd.ExecuteScalar();");
+                sb.AppendLine($"return result != null ? ({returnType})result : default({returnType});");
+            }
+            else
+            {
+                sb.AppendLine("cmd.ExecuteNonQuery();");
+            }
+        }
     }
 
     private void GenerateSimpleFallback(IndentedStringBuilder sb, string returnType, bool isAsync)

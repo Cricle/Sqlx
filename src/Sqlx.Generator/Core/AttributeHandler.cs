@@ -50,45 +50,45 @@ public class AttributeHandler : IAttributeHandler
             // Determine the appropriate Sqlx attribute based on method name patterns
             if (methodName.Contains("getall") || methodName.StartsWith("findall"))
             {
-                return $"[Sqlx(\"SELECT * FROM {tableName}\")]";
+                return $"[global::Sqlx.Annotations.Sqlx(\"SELECT * FROM {tableName}\")]";
             }
             else if (methodName.Contains("getby") || methodName.Contains("findby") ||
                     (methodName.StartsWith("get") && method.Parameters.Length > 0))
             {
                 var paramName = method.Parameters.FirstOrDefault()?.Name ?? "id";
-                return $"[Sqlx(\"SELECT * FROM {tableName} WHERE Id = @{paramName}\")]";
+                return $"[global::Sqlx.Annotations.Sqlx(\"SELECT * FROM {tableName} WHERE Id = @{paramName}\")]";
             }
             else if (methodName.Contains("create") || methodName.Contains("insert") || methodName.Contains("add"))
             {
-                return $"[SqlExecuteType(SqlOperation.Insert, \"{tableName}\")]";
+                return $"[global::Sqlx.Annotations.SqlExecuteType(SqlOperation.Insert, \"{tableName}\")]";
             }
             else if (methodName.Contains("update") || methodName.Contains("modify"))
             {
-                return $"[SqlExecuteType(SqlOperation.Update, \"{tableName}\")]";
+                return $"[global::Sqlx.Annotations.SqlExecuteType(SqlOperation.Update, \"{tableName}\")]";
             }
             else if (methodName.Contains("delete") || methodName.Contains("remove"))
             {
-                return $"[SqlExecuteType(SqlOperation.Delete, \"{tableName}\")]";
+                return $"[global::Sqlx.Annotations.SqlExecuteType(SqlOperation.Delete, \"{tableName}\")]";
             }
             else if (methodName.Contains("count"))
             {
-                return $"[Sqlx(\"SELECT COUNT(*) FROM {tableName}\")]";
+                return $"[global::Sqlx.Annotations.Sqlx(\"SELECT COUNT(*) FROM {tableName}\")]";
             }
             else if (methodName.Contains("exists"))
             {
                 var paramName = method.Parameters.FirstOrDefault()?.Name ?? "id";
-                return $"[Sqlx(\"SELECT COUNT(*) FROM {tableName} WHERE Id = @{paramName}\")]";
+                return $"[global::Sqlx.Annotations.Sqlx(\"SELECT COUNT(*) FROM {tableName} WHERE Id = @{paramName}\")]";
             }
             else
             {
                 // Default to a SELECT query for unknown patterns
-                return $"[Sqlx(\"SELECT * FROM {tableName}\")]";
+                return $"[global::Sqlx.Annotations.Sqlx(\"SELECT * FROM {tableName}\")]";
             }
         }
         catch
         {
             // Fallback on error
-            return $"[Sqlx(\"SELECT * FROM {tableName}\")]";
+            return $"[global::Sqlx.Annotations.Sqlx(\"SELECT * FROM {tableName}\")]";
         }
     }
 
@@ -109,7 +109,7 @@ public class AttributeHandler : IAttributeHandler
             // Handle different attribute types
             if (attributeClass.Name == "SqlxAttribute")
             {
-                sb.Append("Sqlx(");
+                sb.Append("global::Sqlx.Annotations.Sqlx(");
                 if (attribute.ConstructorArguments.Length > 0)
                 {
                     var sqlArg = attribute.ConstructorArguments[0];
@@ -122,7 +122,7 @@ public class AttributeHandler : IAttributeHandler
             }
             else if (attributeClass.Name == "SqlExecuteTypeAttribute")
             {
-                sb.Append("SqlExecuteType(");
+                sb.Append("global::Sqlx.Annotations.SqlExecuteType(");
                 if (attribute.ConstructorArguments.Length > 0)
                 {
                     var executeTypeArg = attribute.ConstructorArguments[0];

@@ -19,12 +19,19 @@ namespace Sqlx.Annotations
         private char[] _buffer;
         private int _pos;
 
+        /// <summary>
+        /// 初始化ValueStringBuilder的新实例。
+        /// </summary>
+        /// <param name="initialCapacity">初始容量，默认为256字符。</param>
         public ValueStringBuilder(int initialCapacity = 256)
         {
             _buffer = ArrayPool<char>.Shared.Rent(initialCapacity);
             _pos = 0;
         }
 
+        /// <summary>
+        /// 获取或设置当前字符串的长度。
+        /// </summary>
         public int Length
         {
             get => _pos;
@@ -36,8 +43,15 @@ namespace Sqlx.Annotations
             }
         }
 
+        /// <summary>
+        /// 获取当前缓冲区的容量。
+        /// </summary>
         public int Capacity => _buffer.Length;
 
+        /// <summary>
+        /// 向字符串构建器追加单个字符。
+        /// </summary>
+        /// <param name="c">要追加的字符。</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Append(char c)
         {
@@ -48,6 +62,10 @@ namespace Sqlx.Annotations
             _buffer[_pos++] = c;
         }
 
+        /// <summary>
+        /// 向字符串构建器追加字符串。
+        /// </summary>
+        /// <param name="s">要追加的字符串。</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Append(string s)
         {
@@ -74,18 +92,28 @@ namespace Sqlx.Annotations
             _buffer = newBuffer;
         }
 
+        /// <summary>
+        /// 清空字符串构建器的内容。
+        /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Clear()
         {
             _pos = 0;
         }
 
+        /// <summary>
+        /// 将当前的字符串构建器转换为字符串。
+        /// </summary>
+        /// <returns>构建的字符串。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override string ToString()
         {
             return new string(_buffer, 0, _pos);
         }
 
+        /// <summary>
+        /// 释放资源，将缓冲区返回到ArrayPool。
+        /// </summary>
         public void Dispose()
         {
             // 归还buffer到ArrayPool

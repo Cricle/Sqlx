@@ -177,8 +177,7 @@ namespace Sqlx.Tests.Core
             // Step 2: Map properties to columns
             var columnMappings = properties.ToDictionary(
                 prop => prop,
-                prop => NameMapper.MapName(prop)
-            );
+                prop => NameMapper.MapName(prop));
 
             Assert.AreEqual(properties.Length, columnMappings.Count);
             Assert.AreEqual("id", columnMappings["Id"]);

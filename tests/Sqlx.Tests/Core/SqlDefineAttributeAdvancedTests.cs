@@ -231,17 +231,23 @@ namespace Sqlx.Tests.Core
         public class BaseRepository
         {
             [SqlDefine(SqlDefineTypes.SqlServer)]
-            public virtual void BaseMethod() { }
+            public virtual void BaseMethod()
+            {
+            }
         }
 
         [SqlDefine(SqlDefineTypes.Oracle)]
         public class DerivedRepository : BaseRepository
         {
             [SqlDefine(SqlDefineTypes.PostgreSql)]
-            public override void BaseMethod() { }
+            public override void BaseMethod()
+            {
+            }
 
             [SqlDefine(SqlDefineTypes.SQLite)]
-            public void DerivedMethod() { }
+            public void DerivedMethod()
+            {
+            }
         }
 
         [TestMethod]
@@ -352,8 +358,7 @@ namespace Sqlx.Tests.Core
                     {
                         exceptions.Add(ex);
                     }
-                })
-            ).ToArray();
+                })).ToArray();
 
             System.Threading.Tasks.Task.WaitAll(tasks);
 
@@ -482,10 +487,14 @@ namespace Sqlx.Tests.Core
         public class UserRepository : IRepository<string>
         {
             [SqlDefine(SqlDefineTypes.PostgreSql)]
-            public void Save(string entity) { }
+            public void Save(string entity)
+            {
+            }
 
             [SqlDefine(SqlDefineTypes.SQLite)]
-            public void Delete(string entity) { }
+            public void Delete(string entity)
+            {
+            }
         }
 
         [TestMethod]

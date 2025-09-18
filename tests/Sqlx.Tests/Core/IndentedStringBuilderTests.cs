@@ -34,7 +34,7 @@ public class IndentedStringBuilderTests
         Assert.IsTrue(result.Contains("Hello"), "Should contain first appended string");
         Assert.IsTrue(result.Contains("World"), "Should contain second appended string");
     }
-    private static readonly char[] separator = new[] { '\n', '\r' };
+    private static readonly char[] Separator = new[] { '\n', '\r' };
 
     /// <summary>
     /// Tests AppendLine functionality.
@@ -56,7 +56,7 @@ public class IndentedStringBuilderTests
         Assert.IsTrue(result.Contains("Second line"), "Should contain second line");
         Assert.IsTrue(result.Contains("Fourth line"), "Should contain fourth line");
 
-        var lines = result.Split(separator, StringSplitOptions.RemoveEmptyEntries);
+        var lines = result.Split(Separator, StringSplitOptions.RemoveEmptyEntries);
         Assert.IsTrue(lines.Length >= 3, "Should have multiple lines");
     }
 

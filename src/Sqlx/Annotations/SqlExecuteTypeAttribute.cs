@@ -13,9 +13,24 @@ namespace Sqlx.Annotations
     /// </summary>
     public enum SqlOperation
     {
+        /// <summary>
+        /// 表示SELECT查询操作。
+        /// </summary>
         Select,
+
+        /// <summary>
+        /// 表示INSERT插入操作。
+        /// </summary>
         Insert,
+
+        /// <summary>
+        /// 表示UPDATE更新操作。
+        /// </summary>
         Update,
+
+        /// <summary>
+        /// 表示DELETE删除操作。
+        /// </summary>
         Delete
     }
 

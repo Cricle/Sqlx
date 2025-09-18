@@ -157,7 +157,9 @@ public class SimpleAnnotationTests : TestBase
     }
 
     // Test interfaces and classes
-    private interface ITestService { }
+    private interface ITestService
+    {
+    }
 
     private class TestEntity
     {

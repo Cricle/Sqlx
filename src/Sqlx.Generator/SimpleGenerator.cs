@@ -19,12 +19,20 @@ namespace Sqlx.Generator;
 //[Generator]  // Disabled - using CSharpGenerator instead
 public class SimpleGenerator : ISourceGenerator
 {
+    /// <summary>
+    /// 初始化源代码生成器，注册语法通知接收器。
+    /// </summary>
+    /// <param name="context">生成器初始化上下文。</param>
     public void Initialize(GeneratorInitializationContext context)
     {
         // Register for syntax notifications
         context.RegisterForSyntaxNotifications(() => new SimpleSyntaxReceiver());
     }
 
+    /// <summary>
+    /// 执行源代码生成，分析语法树并生成相应的代码。
+    /// </summary>
+    /// <param name="context">生成器执行上下文。</param>
     public void Execute(GeneratorExecutionContext context)
     {
         // Add a test file to verify the generator is working
@@ -557,9 +565,19 @@ namespace {namespaceName}
 /// </summary>
 public class SimpleSyntaxReceiver : ISyntaxReceiver
 {
+    /// <summary>
+    /// 获取收集到的带有 Sqlx 属性的方法列表。
+    /// </summary>
     public List<MethodDeclarationSyntax> Methods { get; } = new List<MethodDeclarationSyntax>();
+    /// <summary>
+    /// 获取收集到的仓储类列表。
+    /// </summary>
     public List<ClassDeclarationSyntax> RepositoryClasses { get; } = new List<ClassDeclarationSyntax>();
 
+    /// <summary>
+    /// 访问语法节点，收集相关的方法和类声明。
+    /// </summary>
+    /// <param name="syntaxNode">要访问的语法节点。</param>
     public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
     {
         if (syntaxNode is MethodDeclarationSyntax method && method.Modifiers.Any(m => m.ValueText == "partial"))

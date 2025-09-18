@@ -234,7 +234,9 @@ namespace Sqlx.Tests.Core
                 Assert.IsTrue(underlyingType.IsPrimitive, $"Underlying type of {enumType.Name} should be primitive");
 
                 // Test enum value conversion
+#pragma warning disable IL3050 // Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling
                 var values = Enum.GetValues(enumType);
+#pragma warning restore IL3050
                 Assert.IsTrue(values.Length > 0, $"Enum {enumType.Name} should have values");
 
                 var firstValue = values.GetValue(0);
@@ -373,8 +375,10 @@ namespace Sqlx.Tests.Core
                 var type = collection.GetType();
 
                 // Check if it's a collection
+#pragma warning disable IL2075 // 'this' argument does not satisfy 'DynamicallyAccessedMemberTypes.Interfaces'
                 var isCollection = type.IsArray ||
                     type.GetInterfaces().Any(i =>
+#pragma warning restore IL2075
                         i.IsGenericType &&
                         (i.GetGenericTypeDefinition() == typeof(IEnumerable<>) ||
                          i.GetGenericTypeDefinition() == typeof(ICollection<>) ||

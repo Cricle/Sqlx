@@ -1,31 +1,61 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- 基本项目设置 -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net9.0</TargetFramework>
-    <LangVersion>latest</LangVersion>
-    <Nullable>disable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>SqlxDemo</AssemblyName>
     <RootNamespace>SqlxDemo</RootNamespace>
+    
+    <!-- 示例项目特殊设置 -->
+    <IsPackable>false</IsPackable>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
-    <NoWarn>CS1591;CS1998;CS8628;CS8625;CS8618;CS8619</NoWarn>
-    <WarningsAsErrors />
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <!-- 启用源生成器文件输出（仅用于调试） -->
+    
+    <!-- 警告抑制（示例项目可以宽松一些） -->
+    <NoWarn>$(NoWarn);CS1591;CS1998;CS8628;CS8625;CS8618;CS8619;CS0618</NoWarn>
+    
+    <!-- 源生成器调试设置 -->
     <EmitCompilerGeneratedFiles>false</EmitCompilerGeneratedFiles>
     <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
   </PropertyGroup>
 
-  <ItemGroup>
+  <!-- 应用程序描述 -->
+  <PropertyGroup>
+    <Product>Sqlx Demo Application</Product>
+    <Description>
+      Sqlx ORM 框架的完整功能演示应用程序。
+      展示 SqlTemplate 纯模板设计、ExpressionToSql 类型安全查询、无缝集成功能、
+      Primary Constructor 和 Record 类型支持等核心特性。
+    </Description>
+    <Version>2.0.2</Version>
+  </PropertyGroup>
+
+  <!-- 项目引用 -->
+  <ItemGroup Label="Project References">
     <ProjectReference Include="../../src/Sqlx/Sqlx.csproj" />
-    <ProjectReference Include="../../src/Sqlx.Generator/Sqlx.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../../src/Sqlx.Generator/Sqlx.Generator.csproj" 
+                      OutputItemType="Analyzer" 
+                      ReferenceOutputAssembly="false" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!-- 数据库包 -->
+  <ItemGroup Label="Database">
     <PackageReference Include="Microsoft.Data.Sqlite" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
   </ItemGroup>
 
-</Project>
+  <!-- 示例数据和配置文件 -->
+  <ItemGroup Label="Content Files">
+    <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Data\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="README.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 
+  <!-- 源生成器输出（调试用） -->
+  <ItemGroup Label="Generated Files" Condition="'$(EmitCompilerGeneratedFiles)' == 'true'">
+    <Compile Remove="$(CompilerGeneratedFilesOutputPath)\**\*.cs" />
+    <None Include="$(CompilerGeneratedFilesOutputPath)\**\*.cs" Visible="false" />
+  </ItemGroup>
+
+</Project>

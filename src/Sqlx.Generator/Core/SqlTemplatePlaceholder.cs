@@ -11,6 +11,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
+using Sqlx;
 
 namespace Sqlx.Generator.Core
 {
@@ -26,15 +27,45 @@ namespace Sqlx.Generator.Core
         /// </summary>
         public static class Placeholders
         {
+            /// <summary>
+            /// 列名占位符，用于替换表的列名列表。
+            /// </summary>
             public const string Columns = "columns";
+            /// <summary>
+            /// 表名占位符，用于替换数据库表名。
+            /// </summary>
             public const string Table = "table";
+            /// <summary>
+            /// WHERE 子句占位符，用于替换查询条件。
+            /// </summary>
             public const string Where = "where";
+            /// <summary>
+            /// ORDER BY 子句占位符，用于替换排序条件。
+            /// </summary>
             public const string OrderBy = "orderby";
+            /// <summary>
+            /// INSERT 语句占位符，用于替换插入列名。
+            /// </summary>
             public const string Insert = "insert";
+            /// <summary>
+            /// UPDATE 语句占位符，用于替换更新列名。
+            /// </summary>
             public const string Update = "update";
+            /// <summary>
+            /// VALUES 子句占位符，用于替换插入值。
+            /// </summary>
             public const string Values = "values";
+            /// <summary>
+            /// JOIN 子句占位符，用于替换表连接。
+            /// </summary>
             public const string Joins = "joins";
+            /// <summary>
+            /// SELECT 子句占位符，用于替换查询列名。
+            /// </summary>
             public const string Select = "select";
+            /// <summary>
+            /// COUNT 函数占位符，用于替换计数查询。
+            /// </summary>
             public const string Count = "count";
         }
 
@@ -362,12 +393,31 @@ namespace Sqlx.Generator.Core
     /// </summary>
     public class SqlPlaceholderContext
     {
+        /// <summary>
+        /// 获取或设置实体类型符号。
+        /// </summary>
         public INamedTypeSymbol? EntityType { get; set; }
+        /// <summary>
+        /// 获取或设置数据库表名。
+        /// </summary>
         public string? TableName { get; set; }
+        /// <summary>
+        /// 获取或设置 SQL 方言定义。
+        /// </summary>
         public SqlDefine SqlDefine { get; set; }
+        /// <summary>
+        /// 获取或设置当前处理的方法符号。
+        /// </summary>
         public IMethodSymbol? Method { get; set; }
+        /// <summary>
+        /// 获取或设置额外的上下文数据。
+        /// </summary>
         public Dictionary<string, object?> AdditionalData { get; set; } = new();
 
+        /// <summary>
+        /// 初始化 SqlPlaceholderContext 类的新实例。
+        /// </summary>
+        /// <param name="sqlDefine">SQL 方言定义。</param>
         public SqlPlaceholderContext(SqlDefine sqlDefine)
         {
             SqlDefine = sqlDefine;

@@ -141,6 +141,7 @@ namespace Sqlx.Tests.Core
             Assert.AreEqual(0, originalMethodCount);
 
             // We can't easily create IMethodSymbol instances, but we can test the collection type
+#pragma warning disable IL2075 // 'this' argument does not satisfy 'DynamicallyAccessedMemberTypes.PublicMethods'
             Assert.IsTrue(receiver.Methods.GetType().GetMethod("Add") != null);
             Assert.IsTrue(receiver.Methods.GetType().GetMethod("Remove") != null);
             Assert.IsTrue(receiver.Methods.GetType().GetMethod("Clear") != null);
@@ -152,6 +153,7 @@ namespace Sqlx.Tests.Core
             Assert.IsTrue(receiver.RepositoryClasses.GetType().GetMethod("Add") != null);
             Assert.IsTrue(receiver.RepositoryClasses.GetType().GetMethod("Remove") != null);
             Assert.IsTrue(receiver.RepositoryClasses.GetType().GetMethod("Clear") != null);
+#pragma warning restore IL2075
         }
 
         [TestMethod]

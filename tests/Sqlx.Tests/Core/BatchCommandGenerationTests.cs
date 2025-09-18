@@ -13,7 +13,7 @@ namespace Sqlx.Tests.Core;
 [TestClass]
 public class BatchCommandGenerationTests
 {
-    private static readonly string[] stringArray = new[] { "Name", "Email" };
+    private static readonly string[] StringArray = new[] { "Name", "Email" };
 
     [TestMethod]
     public void BatchCommand_SqlGeneration_ShouldBeCorrect()
@@ -22,13 +22,13 @@ public class BatchCommandGenerationTests
 
         // Test INSERT SQL generation
         var expectedInsertPattern = @"INSERT INTO `Users` (`Name`, `Email`) VALUES (@Name, @Email)";
-        var actualInsert = GenerateInsertSql("Users", stringArray, "`", "@");
+        var actualInsert = GenerateInsertSql("Users", StringArray, "`", "@");
 
         Assert.AreEqual(expectedInsertPattern, actualInsert, "INSERT SQL should be correctly formatted");
 
         // Test UPDATE SQL generation  
         var expectedUpdatePattern = @"UPDATE `Users` SET `Name` = @Name, `Email` = @Email WHERE `Id` = @Id";
-        var actualUpdate = GenerateUpdateSql("Users", stringArray, "Id", "`", "@");
+        var actualUpdate = GenerateUpdateSql("Users", StringArray, "Id", "`", "@");
 
         Assert.AreEqual(expectedUpdatePattern, actualUpdate, "UPDATE SQL should be correctly formatted");
 

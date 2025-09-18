@@ -45,8 +45,7 @@ namespace Sqlx.Tests.Core
             Assert.IsTrue(results.Any(s => s.Contains("collection of User entities")));
             Assert.IsTrue(
                 results.Any(s => s.Contains("The Int32 result") || s.Contains("The result value")) ||
-                results.Any(s => s.Contains("A task containing the String result") || s.Contains("The String result"))
-            );
+                results.Any(s => s.Contains("A task containing the String result") || s.Contains("The String result")));
         }
 
         private static string InvokePrivate(string name, object arg)
@@ -71,7 +70,9 @@ namespace Sqlx.Tests.Core
 
         private sealed class TestGen : AbstractGenerator
         {
-            public override void Initialize(GeneratorInitializationContext context) { }
+            public override void Initialize(GeneratorInitializationContext context)
+            {
+            }
         }
     }
 }

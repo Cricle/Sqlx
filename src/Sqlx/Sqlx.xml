@@ -799,6 +799,55 @@
             清理全局缓存（静态方法，谨慎使用）
             </summary>
         </member>
+        <member name="T:Sqlx.ParameterizedSql">
+            <summary>
+            表示参数化的SQL语句，包含SQL文本和参数值
+            这是执行时的实例，而不是可重用的模板定义
+            </summary>
+        </member>
+        <member name="M:Sqlx.ParameterizedSql.#ctor(System.String,System.Collections.Generic.IReadOnlyDictionary{System.String,System.Object})">
+            <summary>
+            表示参数化的SQL语句，包含SQL文本和参数值
+            这是执行时的实例，而不是可重用的模板定义
+            </summary>
+        </member>
+        <member name="F:Sqlx.ParameterizedSql.Empty">
+            <summary>
+            空的ParameterizedSql实例
+            </summary>
+        </member>
+        <member name="M:Sqlx.ParameterizedSql.CreateWithDictionary(System.String,System.Collections.Generic.Dictionary{System.String,System.Object})">
+            <summary>
+            创建参数化SQL（使用字典）
+            </summary>
+            <param name="sql">SQL语句</param>
+            <param name="parameters">参数字典</param>
+            <returns>ParameterizedSql实例</returns>
+        </member>
+        <member name="M:Sqlx.ParameterizedSql.Create(System.String,System.Object)">
+            <summary>
+            创建参数化SQL（使用匿名对象）
+            </summary>
+            <param name="sql">SQL语句</param>
+            <param name="parameters">参数对象</param>
+            <returns>ParameterizedSql实例</returns>
+        </member>
+        <member name="M:Sqlx.ParameterizedSql.Render">
+            <summary>
+            渲染为最终的SQL字符串（内联参数）
+            </summary>
+            <returns>渲染后的SQL字符串</returns>
+        </member>
+        <member name="M:Sqlx.ParameterizedSql.ToString">
+            <summary>
+            Returns a string representation of the ParameterizedSql.
+            </summary>
+        </member>
+        <member name="T:Sqlx.SqlParameterRenderer">
+            <summary>
+            SQL参数渲染器 - 用于将参数内联到SQL中
+            </summary>
+        </member>
         <member name="T:Sqlx.SqlDefine">
             <summary>
             SQL dialect definitions for different database systems.
@@ -846,14 +895,18 @@
         </member>
         <member name="T:Sqlx.SqlTemplate">
             <summary>
-            表示SQL模板，包含参数化的SQL语句和参数字典
-            类似于EF Core的FromSql，但更轻量级
+            表示SQL模板定义（纯模板，不包含参数值）
+            可重用的模板定义，通过Execute方法绑定参数创建ParameterizedSql执行实例
+            
+            注意：为了向后兼容，还保留了原有的Parameters属性，但推荐使用新的设计模式
             </summary>
         </member>
         <member name="M:Sqlx.SqlTemplate.#ctor(System.String,System.Collections.Generic.IReadOnlyDictionary{System.String,System.Object})">
             <summary>
-            表示SQL模板，包含参数化的SQL语句和参数字典
-            类似于EF Core的FromSql，但更轻量级
+            表示SQL模板定义（纯模板，不包含参数值）
+            可重用的模板定义，通过Execute方法绑定参数创建ParameterizedSql执行实例
+            
+            注意：为了向后兼容，还保留了原有的Parameters属性，但推荐使用新的设计模式
             </summary>
         </member>
         <member name="F:Sqlx.SqlTemplate.Empty">
@@ -861,9 +914,41 @@
             空的SqlTemplate，用于表示没有参数的SQL
             </summary>
         </member>
+        <member name="M:Sqlx.SqlTemplate.Parse(System.String)">
+            <summary>
+            创建纯模板定义（不包含参数值）- 推荐的新设计
+            </summary>
+            <param name="sql">SQL模板字符串</param>
+            <returns>纯模板定义</returns>
+        </member>
+        <member name="M:Sqlx.SqlTemplate.Execute(System.Object)">
+            <summary>
+            执行模板并绑定参数 - 创建ParameterizedSql执行实例
+            </summary>
+            <param name="parameters">参数对象</param>
+            <returns>参数化SQL执行实例</returns>
+        </member>
+        <member name="M:Sqlx.SqlTemplate.Execute(System.Collections.Generic.Dictionary{System.String,System.Object})">
+            <summary>
+            执行模板并绑定字典参数
+            </summary>
+            <param name="parameters">参数字典</param>
+            <returns>参数化SQL执行实例</returns>
+        </member>
+        <member name="M:Sqlx.SqlTemplate.Bind">
+            <summary>
+            创建流式参数绑定器
+            </summary>
+            <returns>参数绑定器</returns>
+        </member>
+        <member name="P:Sqlx.SqlTemplate.IsPureTemplate">
+            <summary>
+            检查是否为纯模板（不包含参数值）
+            </summary>
+        </member>
         <member name="M:Sqlx.SqlTemplate.Create(System.String,System.Collections.Generic.Dictionary{System.String,System.Object})">
             <summary>
-            创建一个新的SqlTemplate
+            创建一个新的SqlTemplate（已过时，推荐使用Parse+Execute模式）
             </summary>
             <param name="sql">SQL语句</param>
             <param name="parameters">参数字典</param>
@@ -871,7 +956,7 @@
         </member>
         <member name="M:Sqlx.SqlTemplate.Create``1(System.String,``0)">
             <summary>
-            创建一个新的SqlTemplate（使用泛型参数）- AOT兼容
+            创建一个新的SqlTemplate（使用泛型参数）- AOT兼容（已过时）
             </summary>
             <typeparam name="T">参数类型</typeparam>
             <param name="sql">SQL语句</param>
@@ -880,7 +965,7 @@
         </member>
         <member name="M:Sqlx.SqlTemplate.Create(System.String,System.Object)">
             <summary>
-            创建一个新的SqlTemplate（使用匿名对象）- 反射版本
+            创建一个新的SqlTemplate（使用匿名对象）- 反射版本（已过时）
             </summary>
             <param name="sql">SQL语句</param>
             <param name="parameters">参数对象</param>
@@ -923,9 +1008,500 @@
             <param name="param2Value">第二个参数值</param>
             <returns>SqlTemplate实例</returns>
         </member>
+        <member name="M:Sqlx.SqlTemplate.Compile(System.String,Sqlx.SqlTemplateOptions)">
+            <summary>
+            使用高级模板语法编译模板
+            支持条件、循环、函数等高级语法
+            </summary>
+            <param name="templateSql">模板SQL字符串</param>
+            <param name="options">编译选项</param>
+            <returns>编译后的模板</returns>
+        </member>
+        <member name="M:Sqlx.SqlTemplate.Render``1(System.String,``0,Sqlx.SqlTemplateOptions)">
+            <summary>
+            使用高级模板语法渲染模板（泛型版本）
+            支持条件、循环、函数等高级语法
+            </summary>
+            <typeparam name="T">参数类型</typeparam>
+            <param name="templateSql">模板SQL字符串</param>
+            <param name="parameters">参数对象</param>
+            <param name="options">编译选项</param>
+            <returns>渲染后的SQL模板</returns>
+        </member>
         <member name="M:Sqlx.SqlTemplate.ToString">
             <summary>
             Returns a string representation of the SqlTemplate.
+            </summary>
+        </member>
+        <member name="T:Sqlx.SqlTemplateBuilder">
+            <summary>
+            流式SQL模板参数绑定器 - 用于构建ParameterizedSql
+            </summary>
+        </member>
+        <member name="M:Sqlx.SqlTemplateBuilder.Param``1(System.String,``0)">
+            <summary>
+            绑定参数
+            </summary>
+            <typeparam name="T">参数类型</typeparam>
+            <param name="name">参数名</param>
+            <param name="value">参数值</param>
+            <returns>构建器实例</returns>
+        </member>
+        <member name="M:Sqlx.SqlTemplateBuilder.Params(System.Object)">
+            <summary>
+            批量绑定参数
+            </summary>
+            <param name="parameters">参数对象</param>
+            <returns>构建器实例</returns>
+        </member>
+        <member name="M:Sqlx.SqlTemplateBuilder.Build">
+            <summary>
+            构建最终的ParameterizedSql
+            </summary>
+            <returns>参数化SQL实例</returns>
+        </member>
+        <member name="T:Sqlx.SqlTemplateAdvanced">
+            <summary>
+            高性能、安全且可扩展的SQL模板增强功能
+            专注于减少代码量、提高性能、确保安全性
+            </summary>
+        </member>
+        <member name="M:Sqlx.SqlTemplateAdvanced.Render``1(System.String,``0,Sqlx.SqlTemplateOptions)">
+            <summary>
+            渲染模板的快速路径，支持条件、循环和内置函数
+            </summary>
+            <param name="template">模板字符串</param>
+            <param name="parameters">参数对象</param>
+            <param name="options">选项</param>
+            <returns>渲染后的SQL模板</returns>
+        </member>
+        <member name="M:Sqlx.SqlTemplateAdvanced.Compile(System.String,Sqlx.SqlTemplateOptions)">
+            <summary>
+            编译模板为可重用的对象
+            </summary>
+            <param name="template">模板字符串</param>
+            <param name="options">选项</param>
+            <returns>编译后的模板</returns>
+        </member>
+        <member name="T:Sqlx.CompiledSqlTemplate">
+            <summary>
+            编译后的SQL模板，支持高性能执行
+            </summary>
+        </member>
+        <member name="M:Sqlx.CompiledSqlTemplate.Execute``1(``0)">
+            <summary>
+            执行模板
+            </summary>
+            <typeparam name="T">参数类型</typeparam>
+            <param name="parameters">参数对象</param>
+            <returns>渲染后的SQL模板</returns>
+        </member>
+        <member name="T:Sqlx.SqlTemplateOptions">
+            <summary>
+            SQL模板选项
+            </summary>
+        </member>
+        <member name="P:Sqlx.SqlTemplateOptions.UseParameterizedQueries">
+            <summary>
+            是否启用参数化查询（默认true）
+            </summary>
+        </member>
+        <member name="P:Sqlx.SqlTemplateOptions.SafeMode">
+            <summary>
+            是否启用安全模式（防止SQL注入，默认true）
+            </summary>
+        </member>
+        <member name="P:Sqlx.SqlTemplateOptions.EnableCaching">
+            <summary>
+            是否启用模板缓存（默认true）
+            </summary>
+        </member>
+        <member name="P:Sqlx.SqlTemplateOptions.Dialect">
+            <summary>
+            SQL方言
+            </summary>
+        </member>
+        <member name="P:Sqlx.SqlTemplateOptions.CustomFunctions">
+            <summary>
+            自定义函数
+            </summary>
+        </member>
+        <member name="T:Sqlx.SqlDialectType">
+            <summary>
+            SQL方言类型
+            </summary>
+        </member>
+        <member name="T:Sqlx.ExecutionContext">
+            <summary>
+            执行上下文
+            </summary>
+        </member>
+        <member name="T:Sqlx.ExecutionResult">
+            <summary>
+            执行结果
+            </summary>
+        </member>
+        <member name="T:Sqlx.TemplateOperation">
+            <summary>
+            模板操作基类
+            </summary>
+        </member>
+        <member name="T:Sqlx.TextOperation">
+            <summary>
+            文本操作
+            </summary>
+        </member>
+        <member name="T:Sqlx.VariableOperation">
+            <summary>
+            变量操作
+            </summary>
+        </member>
+        <member name="T:Sqlx.ConditionalOperation">
+            <summary>
+            条件操作
+            </summary>
+        </member>
+        <member name="T:Sqlx.LoopOperation">
+            <summary>
+            循环操作
+            </summary>
+        </member>
+        <member name="T:Sqlx.FunctionOperation">
+            <summary>
+            函数操作
+            </summary>
+        </member>
+        <member name="T:Sqlx.SqlTemplateExtensions">
+            <summary>
+            SqlTemplate的增强扩展方法 - 与ExpressionToSql无缝集成
+            AOT友好、高性能、零反射
+            </summary>
+        </member>
+        <member name="M:Sqlx.SqlTemplateExtensions.ForEntity``1(Sqlx.SqlTemplate,System.Nullable{Sqlx.SqlDialect})">
+            <summary>
+            创建集成构建器 - 统一入口
+            </summary>
+            <typeparam name="T">实体类型</typeparam>
+            <param name="template">基础模板</param>
+            <param name="dialect">SQL方言</param>
+            <returns>集成构建器</returns>
+        </member>
+        <member name="M:Sqlx.SqlTemplateExtensions.CombineWith``1(Sqlx.SqlTemplate,Sqlx.ExpressionToSql{``0})">
+            <summary>
+            与表达式组合 - 零拷贝性能
+            </summary>
+            <typeparam name="T">实体类型</typeparam>
+            <param name="template">SQL模板</param>
+            <param name="expression">表达式构建器</param>
+            <returns>组合后的模板</returns>
+        </member>
+        <member name="M:Sqlx.SqlTemplateExtensions.WithParameters(Sqlx.SqlTemplate,System.Object)">
+            <summary>
+            智能参数替换 - 高性能内联
+            </summary>
+            <param name="template">SQL模板</param>
+            <param name="additionalParams">额外参数</param>
+            <returns>新的模板</returns>
+        </member>
+        <member name="M:Sqlx.SqlTemplateExtensions.AppendIf(Sqlx.SqlTemplate,System.Boolean,System.String,System.Object)">
+            <summary>
+            条件拼接 - 避免不必要的字符串操作
+            </summary>
+            <param name="template">基础模板</param>
+            <param name="condition">条件</param>
+            <param name="additionalSql">附加SQL</param>
+            <param name="parameters">参数</param>
+            <returns>条件拼接后的模板</returns>
+        </member>
+        <member name="M:Sqlx.SqlTemplateExtensions.Render(Sqlx.SqlTemplate,System.Collections.Generic.Dictionary{System.String,System.Object})">
+            <summary>
+            批量参数替换 - 高效处理大量参数
+            </summary>
+            <param name="template">SQL模板</param>
+            <param name="parameterValues">参数值字典</param>
+            <returns>替换后的SQL字符串</returns>
+        </member>
+        <member name="M:Sqlx.SqlTemplateExtensions.Precompile(Sqlx.SqlTemplate)">
+            <summary>
+            创建预编译模板 - 重复使用优化
+            </summary>
+            <param name="template">SQL模板</param>
+            <returns>预编译模板</returns>
+        </member>
+        <member name="T:Sqlx.PrecompiledSqlTemplate">
+            <summary>
+            预编译SQL模板 - 最大化重用性能
+            </summary>
+        </member>
+        <member name="M:Sqlx.PrecompiledSqlTemplate.Execute(System.Object)">
+            <summary>
+            高性能执行 - 使用缓存优化
+            </summary>
+            <param name="parameters">参数值</param>
+            <returns>渲染后的SQL</returns>
+        </member>
+        <member name="M:Sqlx.PrecompiledSqlTemplate.ExecuteTemplate(System.Object)">
+            <summary>
+            执行并返回模板
+            </summary>
+            <param name="parameters">参数对象</param>
+            <returns>SQL模板</returns>
+        </member>
+        <member name="T:Sqlx.SmartSqlBuilder`1">
+            <summary>
+            智能SQL构建器 - 专门用于复杂场景
+            </summary>
+        </member>
+        <member name="M:Sqlx.SmartSqlBuilder`1.Create(System.Nullable{Sqlx.SqlDialect})">
+            <summary>
+            创建智能构建器
+            </summary>
+            <param name="dialect">SQL方言</param>
+            <returns>智能构建器</returns>
+        </member>
+        <member name="M:Sqlx.SmartSqlBuilder`1.AddIf(System.Boolean,System.String,System.Object)">
+            <summary>
+            添加条件部分
+            </summary>
+            <param name="condition">条件</param>
+            <param name="sqlPart">SQL片段</param>
+            <param name="parameters">参数</param>
+            <returns>构建器</returns>
+        </member>
+        <member name="M:Sqlx.SmartSqlBuilder`1.WhereIf(System.Boolean,System.Linq.Expressions.Expression{System.Func{`0,System.Boolean}})">
+            <summary>
+            添加表达式条件
+            </summary>
+            <param name="condition">条件</param>
+            <param name="expression">表达式</param>
+            <returns>构建器</returns>
+        </member>
+        <member name="M:Sqlx.SmartSqlBuilder`1.Build">
+            <summary>
+            构建最终SQL
+            </summary>
+            <returns>SQL模板</returns>
+        </member>
+        <member name="T:Sqlx.FluentSqlBuilder">
+            <summary>
+            流式SQL构建器 - 用于链式调用优化
+            </summary>
+        </member>
+        <member name="M:Sqlx.FluentSqlBuilder.Query``1(System.Nullable{Sqlx.SqlDialect})">
+            <summary>
+            开始构建查询
+            </summary>
+            <typeparam name="T">实体类型</typeparam>
+            <param name="dialect">SQL方言</param>
+            <returns>集成构建器</returns>
+        </member>
+        <member name="M:Sqlx.FluentSqlBuilder.SmartQuery``1(System.Nullable{Sqlx.SqlDialect})">
+            <summary>
+            开始构建智能查询
+            </summary>
+            <typeparam name="T">实体类型</typeparam>
+            <param name="dialect">SQL方言</param>
+            <returns>智能构建器</returns>
+        </member>
+        <member name="M:Sqlx.FluentSqlBuilder.FromTemplate``1(Sqlx.SqlTemplate,System.Nullable{Sqlx.SqlDialect})">
+            <summary>
+            从模板开始构建
+            </summary>
+            <typeparam name="T">实体类型</typeparam>
+            <param name="template">基础模板</param>
+            <param name="dialect">SQL方言</param>
+            <returns>集成构建器</returns>
+        </member>
+        <member name="M:Sqlx.FluentSqlBuilder.FromExpression``1(Sqlx.ExpressionToSql{``0})">
+            <summary>
+            从表达式开始构建
+            </summary>
+            <typeparam name="T">实体类型</typeparam>
+            <param name="expression">表达式构建器</param>
+            <returns>SQL模板</returns>
+        </member>
+        <member name="T:Sqlx.SqlTemplateMetrics">
+            <summary>
+            性能统计和监控 - 用于生产环境优化
+            </summary>
+        </member>
+        <member name="M:Sqlx.SqlTemplateMetrics.RecordMetric(System.String,System.TimeSpan,System.Int32,System.Int32)">
+            <summary>
+            记录性能指标
+            </summary>
+            <param name="operationName">操作名称</param>
+            <param name="executionTime">执行时间</param>
+            <param name="sqlLength">SQL长度</param>
+            <param name="parameterCount">参数数量</param>
+        </member>
+        <member name="M:Sqlx.SqlTemplateMetrics.GetMetrics">
+            <summary>
+            获取性能报告
+            </summary>
+            <returns>性能指标字典</returns>
+        </member>
+        <member name="M:Sqlx.SqlTemplateMetrics.ClearMetrics">
+            <summary>
+            清除指标
+            </summary>
+        </member>
+        <member name="T:Sqlx.SqlTemplateMetrics.PerformanceMetric">
+            <summary>
+            性能指标结构
+            </summary>
+        </member>
+        <member name="T:Sqlx.SqlTemplateExpressionBridge">
+            <summary>
+            SqlTemplate与ExpressionToSql的无缝集成桥接器
+            AOT友好、高性能、零反射、代码整洁、扩展性强
+            </summary>
+        </member>
+        <member name="M:Sqlx.SqlTemplateExpressionBridge.Create``1(System.Nullable{Sqlx.SqlDialect})">
+            <summary>
+            创建集成的SQL构建器 - 统一入口点
+            </summary>
+            <typeparam name="T">实体类型</typeparam>
+            <param name="dialect">SQL方言</param>
+            <returns>集成构建器</returns>
+        </member>
+        <member name="M:Sqlx.SqlTemplateExpressionBridge.ToTemplate``1(Sqlx.ExpressionToSql{``0})">
+            <summary>
+            从ExpressionToSql创建SqlTemplate - 零拷贝转换
+            </summary>
+            <typeparam name="T">实体类型</typeparam>
+            <param name="expression">表达式构建器</param>
+            <returns>SQL模板</returns>
+        </member>
+        <member name="M:Sqlx.SqlTemplateExpressionBridge.ToExpression``1(Sqlx.SqlTemplate,System.Nullable{Sqlx.SqlDialect})">
+            <summary>
+            从SqlTemplate创建ExpressionToSql - 智能解析
+            </summary>
+            <typeparam name="T">实体类型</typeparam>
+            <param name="template">SQL模板</param>
+            <param name="dialect">SQL方言</param>
+            <returns>表达式构建器</returns>
+        </member>
+        <member name="T:Sqlx.IntegratedSqlBuilder`1">
+            <summary>
+            集成的SQL构建器 - 同时支持表达式和模板语法
+            高性能、AOT友好、零反射
+            </summary>
+        </member>
+        <member name="M:Sqlx.IntegratedSqlBuilder`1.Select``1(System.Linq.Expressions.Expression{System.Func{`0,``0}})">
+            <summary>
+            设置SELECT列 - 表达式方式
+            </summary>
+        </member>
+        <member name="M:Sqlx.IntegratedSqlBuilder`1.Where(System.Linq.Expressions.Expression{System.Func{`0,System.Boolean}})">
+            <summary>
+            添加WHERE条件 - 表达式方式
+            </summary>
+        </member>
+        <member name="M:Sqlx.IntegratedSqlBuilder`1.OrderBy``1(System.Linq.Expressions.Expression{System.Func{`0,``0}})">
+            <summary>
+            添加ORDER BY - 表达式方式
+            </summary>
+        </member>
+        <member name="M:Sqlx.IntegratedSqlBuilder`1.OrderByDescending``1(System.Linq.Expressions.Expression{System.Func{`0,``0}})">
+            <summary>
+            添加ORDER BY DESC - 表达式方式
+            </summary>
+        </member>
+        <member name="M:Sqlx.IntegratedSqlBuilder`1.Take(System.Int32)">
+            <summary>
+            限制返回行数 - 表达式方式
+            </summary>
+        </member>
+        <member name="M:Sqlx.IntegratedSqlBuilder`1.Skip(System.Int32)">
+            <summary>
+            跳过指定行数 - 表达式方式
+            </summary>
+        </member>
+        <member name="M:Sqlx.IntegratedSqlBuilder`1.Template(System.String)">
+            <summary>
+            添加模板片段 - 支持占位符
+            </summary>
+        </member>
+        <member name="M:Sqlx.IntegratedSqlBuilder`1.Template``1(System.String,``0)">
+            <summary>
+            添加带参数的模板片段
+            </summary>
+        </member>
+        <member name="M:Sqlx.IntegratedSqlBuilder`1.TemplateIf(System.Boolean,System.String)">
+            <summary>
+            添加条件模板片段
+            </summary>
+        </member>
+        <member name="M:Sqlx.IntegratedSqlBuilder`1.Parameter``1(System.String,``0)">
+            <summary>
+            添加参数化值
+            </summary>
+        </member>
+        <member name="M:Sqlx.IntegratedSqlBuilder`1.SmartSelect(Sqlx.ColumnSelectionMode)">
+            <summary>
+            智能列选择 - 排除大字段
+            </summary>
+        </member>
+        <member name="M:Sqlx.IntegratedSqlBuilder`1.SelectByPattern(System.String,System.Boolean)">
+            <summary>
+            根据属性模式选择列
+            </summary>
+        </member>
+        <member name="M:Sqlx.IntegratedSqlBuilder`1.ExcludeColumns(System.String[])">
+            <summary>
+            排除指定列
+            </summary>
+        </member>
+        <member name="M:Sqlx.IntegratedSqlBuilder`1.HybridQuery(System.String,System.Linq.Expressions.Expression{System.Func{`0,System.Boolean}},System.String)">
+            <summary>
+            混合查询 - 表达式WHERE + 模板SELECT
+            </summary>
+        </member>
+        <member name="M:Sqlx.IntegratedSqlBuilder`1.DynamicWhere(System.Boolean,System.Linq.Expressions.Expression{System.Func{`0,System.Boolean}},System.String)">
+            <summary>
+            动态WHERE - 根据条件构建
+            </summary>
+        </member>
+        <member name="M:Sqlx.IntegratedSqlBuilder`1.Build">
+            <summary>
+            构建最终的SQL模板 - 零拷贝高性能
+            </summary>
+        </member>
+        <member name="M:Sqlx.IntegratedSqlBuilder`1.BuildSql">
+            <summary>
+            构建SQL字符串（内联参数）
+            </summary>
+        </member>
+        <member name="M:Sqlx.IntegratedSqlBuilder`1.BuildParameterized">
+            <summary>
+            构建参数化SQL
+            </summary>
+        </member>
+        <member name="T:Sqlx.ColumnSelectionMode">
+            <summary>
+            列选择模式枚举
+            </summary>
+        </member>
+        <member name="F:Sqlx.ColumnSelectionMode.All">
+            <summary>所有列</summary>
+        </member>
+        <member name="F:Sqlx.ColumnSelectionMode.OptimizedForQuery">
+            <summary>查询优化模式（排除大字段）</summary>
+        </member>
+        <member name="F:Sqlx.ColumnSelectionMode.BasicFieldsOnly">
+            <summary>仅基础字段</summary>
+        </member>
+        <member name="F:Sqlx.ColumnSelectionMode.IdentityAndKey">
+            <summary>仅标识和键字段</summary>
+        </member>
+        <member name="T:Sqlx.SqlTemplateRenderer">
+            <summary>
+            SQL模板渲染器 - 高性能内联参数
+            </summary>
+        </member>
+        <member name="T:Sqlx.CompiledTemplateBridge">
+            <summary>
+            编译后的模板桥接器 - 用于缓存优化
             </summary>
         </member>
         <member name="T:System.Runtime.CompilerServices.IsExternalInit">

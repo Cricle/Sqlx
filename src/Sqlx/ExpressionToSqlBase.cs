@@ -362,6 +362,11 @@ namespace Sqlx
             };
         }
 
+        /// <summary>
+        /// 解析二元表达式为SQL字符串。
+        /// </summary>
+        /// <param name="binary">二元表达式。</param>
+        /// <returns>SQL字符串。</returns>
         protected string ParseBinaryExpression(BinaryExpression binary)
         {
             // 先处理特殊情况，再解析表达式
@@ -427,6 +432,11 @@ namespace Sqlx
             };
         }
 
+        /// <summary>
+        /// 获取表达式对应的列名。
+        /// </summary>
+        /// <param name="expression">表达式。</param>
+        /// <returns>列名。</returns>
         protected string GetColumnName(Expression expression)
         {
             // 处理类型转换表达式
@@ -452,6 +462,11 @@ namespace Sqlx
             return _dialect.WrapColumn(member.Member.Name);
         }
 
+        /// <summary>
+        /// 获取常量表达式的值。
+        /// </summary>
+        /// <param name="constant">常量表达式。</param>
+        /// <returns>格式化后的常量值。</returns>
         protected string GetConstantValue(ConstantExpression constant) => FormatConstantValue(constant.Value);
 
         /// <summary>
@@ -609,6 +624,12 @@ namespace Sqlx
             return func(instance);
         }
 
+        /// <summary>
+        /// 格式化常量值为SQL字符串（泛型版本）。
+        /// </summary>
+        /// <typeparam name="T">值的类型。</typeparam>
+        /// <param name="value">要格式化的值。</param>
+        /// <returns>格式化后的SQL字符串。</returns>
         protected string FormatConstantValue<T>(T? value)
         {
             // 如果启用参数化查询，创建参数
@@ -621,6 +642,11 @@ namespace Sqlx
             return FormatValueAsLiteral(value);
         }
 
+        /// <summary>
+        /// 格式化常量值为SQL字符串。
+        /// </summary>
+        /// <param name="value">要格式化的值。</param>
+        /// <returns>格式化后的SQL字符串。</returns>
         protected string FormatConstantValue(object? value)
         {
             // 如果启用参数化查询，创建参数
@@ -827,6 +853,9 @@ namespace Sqlx
         protected string DatabaseType => _dialect.DatabaseType;
 
         // 静态方言映射，避免重复创建字典
+        /// <summary>
+        /// 静态方言映射，用于不同数据库方言的函数适配。
+        /// </summary>
         protected static readonly Dictionary<string, Dictionary<string, string>> DialectMappings = new()
         {
             ["Ceiling"] = new() { ["PostgreSql"] = "CEIL({0})", ["Oracle"] = "CEIL({0})", ["MySql"] = "CEILING({0})", ["SQLite"] = "CEIL({0})" },
@@ -863,6 +892,12 @@ namespace Sqlx
         };
 
         // 数学函数适配
+        /// <summary>
+        /// 解析数学函数调用表达式。
+        /// </summary>
+        /// <param name="method">方法调用表达式。</param>
+        /// <param name="methodName">方法名。</param>
+        /// <returns>SQL函数字符串。</returns>
         protected string ParseMathFunction(MethodCallExpression method, string methodName)
         {
             var args = method.Arguments.Select(ParseExpressionRaw).ToArray();
@@ -882,6 +917,12 @@ namespace Sqlx
             };
         }
 
+        /// <summary>
+        /// 解析字符串函数调用表达式。
+        /// </summary>
+        /// <param name="method">方法调用表达式。</param>
+        /// <param name="methodName">方法名。</param>
+        /// <returns>SQL函数字符串。</returns>
         protected string ParseStringFunction(MethodCallExpression method, string methodName)
         {
             var obj = method.Object != null ? ParseExpressionRaw(method.Object) : "";
@@ -903,6 +944,12 @@ namespace Sqlx
             };
         }
 
+        /// <summary>
+        /// 解析日期时间函数调用表达式。
+        /// </summary>
+        /// <param name="method">方法调用表达式。</param>
+        /// <param name="methodName">方法名。</param>
+        /// <returns>SQL函数字符串。</returns>
         protected string ParseDateTimeFunction(MethodCallExpression method, string methodName)
         {
             var obj = method.Object != null ? ParseExpressionRaw(method.Object) : "";
@@ -918,6 +965,13 @@ namespace Sqlx
         }
 
         // 统一的操作符处理函数
+        /// <summary>
+        /// 获取操作符函数的SQL表示。
+        /// </summary>
+        /// <param name="op">操作符。</param>
+        /// <param name="left">左操作数。</param>
+        /// <param name="right">右操作数。</param>
+        /// <returns>SQL操作符表示。</returns>
         protected string GetOperatorFunction(string op, string left, string right) => op switch
         {
             "%" => DatabaseType switch

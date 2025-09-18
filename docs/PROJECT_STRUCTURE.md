@@ -1,155 +1,261 @@
-# Sqlx 项目结构
+# Sqlx 项目结构说明
 
-📁 本文档描述了 Sqlx 项目的完整目录结构和组织方式。
+本文档详细说明了 Sqlx ORM 框架的项目组织结构、各组件职责以及相互关系。
 
-## 🏗️ 整体结构
+## 📁 整体项目结构
 
 ```
 Sqlx/
-├── 📂 src/                          # 源代码
-│   ├── Sqlx/                        # 核心库 - 运行时组件
-│   └── Sqlx.Generator/              # 源代码生成器
-├── 📂 samples/                      # 示例项目
-│   └── SqlxDemo/                    # 统一演示项目 ✅ - 完整功能演示
-├── 📂 tests/                       # 测试项目
-│   └── Sqlx.Tests/                 # 单元测试 ✅ - 99.1% 测试覆盖率
-├── 📂 docs/                        # 文档中心
-│   ├── databases/                  # 数据库相关文档
-│   └── contributing/               # 贡献指南
-├── 📂 scripts/                     # 构建和自动化脚本
-└── 📄 配置文件                     # 项目配置文件
+├── 📂 src/                          # 源代码目录
+│   ├── 📦 Sqlx/                     # 核心运行时库
+│   │   ├── 🔧 Annotations/          # 特性和注解定义
+│   │   ├── 🔄 ExpressionToSql*      # LINQ 表达式转 SQL
+│   │   ├── 📋 SqlTemplate*          # 革新的模板引擎
+│   │   ├── ⚡ ParameterizedSql.cs   # 参数化 SQL 执行实例
+│   │   ├── 🌐 SqlDefine.cs          # 数据库方言定义
+│   │   └── 🛠️ ValueStringBuilder.cs # 高性能字符串构建器
+│   └── 📦 Sqlx.Generator/           # 源生成器
+│       ├── 🧠 Core/                 # 核心生成逻辑
+│       ├── 🏗️ AbstractGenerator/    # 生成器基类和接口
+│       ├── 💻 CSharpGenerator/       # C# 代码生成器
+│       └── 🔍 SqlGen/               # SQL 生成相关工具
+├── 📂 samples/                      # 示例和演示
+│   └── 📝 SqlxDemo/                 # 完整功能演示项目
+├── 📂 tests/                        # 测试套件
+│   └── 🧪 Sqlx.Tests/               # 单元测试和集成测试
+├── 📂 docs/                         # 文档中心
+├── 📂 scripts/                      # 构建和开发脚本
+└── 📋 配置文件                       # 项目配置
+    ├── Directory.Build.props        # 全局构建属性
+    ├── Directory.Packages.props     # 中央包管理
+    ├── Sqlx.sln                     # 解决方案文件
+    └── stylecop.json               # 代码样式规则
 ```
 
-## 📋 项目状态图例
+## 🧩 核心组件详解
 
-- ✅ **完全正常**: 编译成功，功能完整，生产就绪
-- ⚠️ **轻微警告**: 功能正常，有少量非关键警告
-- 📝 **文档完整**: 包含完整的README和使用指南
-- 🚀 **已优化**: 项目结构已标准化，性能优化完成
+### 📦 Sqlx (运行时库)
 
-## 🎯 核心组件详解
+**职责**: 提供运行时所需的所有核心功能和类型定义
 
-### 📦 src/Sqlx/ - 核心库 ✅🚀
-- **状态**: ✅ 编译完全成功，功能完整
-- **描述**: Sqlx 的核心功能实现，零反射设计
-- **包含**: 
-  - 源代码生成器 (CSharpGenerator)
-  - 核心API和扩展方法
-  - 多数据库方言支持
-  - 现代C#语法支持 (Record + Primary Constructor)
-- **技术特色**: 编译时类型安全，高性能批处理
+#### 🔧 Annotations 目录
+```
+Annotations/
+├── SqlExecuteTypeAttribute.cs      # SQL 操作类型特性
+├── SqlxAttribute.cs                # 主要的 Sqlx 标记特性
+├── ExpressionToSqlAttribute.cs     # 表达式转 SQL 特性
+├── RepositoryForAttribute.cs       # Repository 自动生成特性
+├── SqlTemplateAttribute.cs         # SQL 模板特性
+├── AnyPlaceholderAttribute.cs      # 任意占位符特性
+└── RequiredMembersAttribute.cs     # 必需成员特性（兼容性）
+```
 
-### 🎓 samples/ComprehensiveExample - 综合演示 ✅📝🚀
-- **状态**: ⚠️ 功能完整，9个非关键编译警告
-- **功能**: 一站式展示所有核心功能
-- **特色亮点**:
-  - 🎮 **交互式演示菜单** - 9个专业演示模块
-  - 🆕 **智能UPDATE操作** - 6种高性能更新模式
-  - 🎨 **Expression to SQL** - 类型安全的动态查询
-  - 🚀 **DbBatch批处理** - 10-100x性能提升
-  - 🏗️ **现代C#语法** - Record + Primary Constructor完整支持
-  - 📊 **性能基准测试** - 多维度性能验证
-- **文档**: 完整的README和代码注释，5000+行高质量示例代码
+**设计原则**:
+- 纯声明式特性，无复杂逻辑
+- 源生成器驱动的开发模式
+- 编译时验证和代码生成
 
-### 🧪 tests/Sqlx.Tests - 单元测试 ✅📝
-- **状态**: ✅ 99.2% 测试成功率 (1306/1318 通过)
-- **覆盖**: 核心功能的全面测试
-- **支持**: .NET 6.0 和 8.0 双版本支持
-- **测试类型**: 
-  - 核心功能测试 (CRUD操作)
-  - 现代C#语法测试 (Record, Primary Constructor)
-  - 性能测试和边界条件测试
-  - 多数据库方言测试
+#### 🔄 ExpressionToSql 组件
+```
+ExpressionToSql.cs                  # 主要的表达式转换器
+ExpressionToSql.Create.cs           # 创建和配置方法
+ExpressionToSqlBase.cs              # 基础转换逻辑
+```
+
+**核心功能**:
+- LINQ 表达式到 SQL 的类型安全转换
+- 多数据库方言支持
+- 动态查询构建
+- 与 SqlTemplate 的无缝集成
+
+#### 📋 SqlTemplate 组件（革新设计）
+```
+SqlTemplate.cs                      # 纯模板定义核心类
+SqlTemplateAdvanced.cs              # 高级模板功能（条件、循环）
+SqlTemplateEnhanced.cs              # 增强功能和扩展方法
+SqlTemplateExpressionBridge.cs      # 与 ExpressionToSql 集成
+ParameterizedSql.cs                 # 参数化 SQL 执行实例
+```
+
+**设计突破**:
+- **纯模板设计**: 模板定义与参数值完全分离
+- **高性能重用**: 一个模板可多次执行，节省 33% 内存
+- **类型安全**: 编译时检查，AOT 友好
+- **无缝集成**: 与 ExpressionToSql 完美融合
+
+### 📦 Sqlx.Generator (源生成器)
+
+**职责**: 编译时代码生成，将特性标记的方法转换为高性能实现
+
+#### 🧠 Core 目录
+```
+Core/
+├── AbstractGenerator.cs            # 生成器基类
+├── CSharpGenerator.cs              # C# 代码生成器
+├── SqlGeneration/                  # SQL 生成相关
+├── DiagnosticService.cs            # 诊断和错误报告
+└── MethodGenerationContext.cs     # 方法生成上下文
+```
+
+**核心职责**:
+- 解析特性标记的方法
+- 生成高性能、零反射的数据访问代码
+- 编译时错误检查和诊断
+- 支持 Primary Constructor 和 Record 类型
+
+#### 🏗️ 代码生成流程
+```
+特性解析 → AST 分析 → SQL 生成 → C# 代码生成 → 编译集成
+     ↓           ↓          ↓           ↓            ↓
+   语法检查   类型推断   方言适配   代码优化    错误报告
+```
+
+## 📋 配置文件体系
+
+### Directory.Build.props (全局配置)
+```xml
+<!-- 语言和框架设置 -->
+<LangVersion>12.0</LangVersion>
+<Nullable>enable</Nullable>
+
+<!-- AOT 支持 -->
+<IsAotCompatible>true</IsAotCompatible>
+<EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+
+<!-- 包元数据 -->
+<Company>Sqlx Team</Company>
+<PackageLicenseExpression>MIT</PackageLicenseExpression>
+```
+
+### Directory.Packages.props (依赖管理)
+```xml
+<!-- 中央包版本管理 -->
+<ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+
+<!-- 按类别组织的包版本 -->
+<ItemGroup Label="Runtime">
+<ItemGroup Label="Compiler and Analyzers">
+<ItemGroup Label="Testing">
+```
+
+## 🧪 测试体系
+
+### 测试组织结构
+```
+tests/Sqlx.Tests/
+├── 🧪 Core/                        # 核心功能测试
+│   ├── SqlTemplateTests.cs         # 基础模板测试
+│   ├── SqlTemplateNewDesignTests.cs # 新设计专项测试
+│   ├── ExpressionToSqlTests.cs     # 表达式转换测试
+│   └── PerformanceTests.cs         # 性能基准测试
+├── 🔗 Integration/                 # 集成测试
+│   ├── SeamlessIntegrationTests.cs # 无缝集成测试
+│   └── DatabaseTests.cs            # 数据库集成测试
+├── 🛠️ Generator/                   # 源生成器测试
+│   ├── CodeGenerationTests.cs      # 代码生成测试
+│   └── DiagnosticTests.cs          # 诊断功能测试
+└── 📊 TestResults/                 # 测试结果和覆盖率
+```
+
+### 测试覆盖率目标
+- **整体覆盖率**: > 95%
+- **核心功能**: 100%
+- **边界情况**: 完整覆盖
+- **性能回归**: 自动化基准测试
+
+## 📝 示例项目
+
+### SqlxDemo 功能演示
+```
+samples/SqlxDemo/
+├── 📱 Program.cs                   # 主程序入口
+├── 🏗️ Models/                      # 数据模型定义
+│   ├── User.cs                     # Record 类型示例
+│   ├── Department.cs               # Primary Constructor 示例
+│   └── Product.cs                  # 传统类示例
+├── 🔧 Services/                    # 服务层演示
+│   ├── SqlTemplateBestPracticesDemo.cs    # 最佳实践
+│   ├── SeamlessIntegrationDemo.cs         # 无缝集成
+│   ├── SqlTemplateRefactoredDemo.cs       # 重构演示
+│   └── AdvancedFeaturesDemo.cs            # 高级特性
+└── 📋 README.md                    # 示例说明文档
+```
 
 ## 📚 文档结构
 
-### docs/ 目录组织
-
+### 分层文档体系
 ```
 docs/
-├── README.md                       # 文档导航中心 📝
-├── PROJECT_STRUCTURE.md           # 本文档 - 项目结构说明 📋
-├── ADVANCED_FEATURES_GUIDE.md     # 高级特性指南 🚀
-├── NEW_FEATURES_QUICK_START.md    # 新功能快速入门 🆕
-├── PRIMARY_CONSTRUCTOR_RECORD_SUPPORT.md  # 现代C#支持 🏗️
-├── MIGRATION_GUIDE.md             # 版本升级指南 🔄
-├── expression-to-sql.md           # Expression转SQL指南 🎨
-├── databases/                     # 数据库相关文档 🗄️
-└── contributing/                  # 贡献指南 🤝
+├── 🚀 快速开始
+│   ├── README.md                   # 文档导航中心
+│   └── NEW_FEATURES_QUICK_START.md # 快速特性指南
+├── 🏗️ 核心功能
+│   ├── SQL_TEMPLATE_GUIDE.md       # 模板引擎指南
+│   ├── expression-to-sql.md        # ExpressionToSql 指南
+│   └── SEAMLESS_INTEGRATION_GUIDE.md # 无缝集成指南
+├── 🆕 最新特性
+│   ├── SQLTEMPLATE_DESIGN_FIXED.md # 模板设计革新
+│   └── PRIMARY_CONSTRUCTOR_RECORD_SUPPORT.md # 现代 C# 支持
+├── 🔧 高级主题
+│   ├── ADVANCED_FEATURES_GUIDE.md  # 高级特性指南
+│   ├── OPTIMIZATION_ROADMAP.md     # 性能优化指南
+│   └── DiagnosticGuidance.md       # 诊断和指导
+└── 📖 参考手册
+    ├── SQLX_COMPLETE_FEATURE_GUIDE.md # 完整特性参考
+    └── MIGRATION_GUIDE.md          # 迁移指南
 ```
 
-## 🛠️ 配置文件体系
+## 🔄 开发工作流
 
-### 核心配置
-- **Sqlx.sln**: 解决方案文件，包含核心库和测试项目
-- **Directory.Build.props**: 全局构建属性和版本管理
-- **Directory.Packages.props**: 中央包版本管理 (CPM)
-- **nuget.config**: NuGet源和配置
+### 开发环境设置
+```bash
+# 1. 克隆项目
+git clone https://github.com/your-org/Sqlx.git
 
-### 代码质量
-- **stylecop.json**: 代码风格和规范配置
-- **.github/workflows/**: CI/CD自动化流水线
-- **.codacy.yml**: 代码质量检查配置
+# 2. 还原依赖
+dotnet restore
 
-## 🚀 构建和部署体系
+# 3. 构建项目
+dotnet build
 
-### artifacts/ 目录
-- **用途**: 存放所有构建产物
-- **内容**: 
-  - NuGet包 (.nupkg, .snupkg) - 版本2.0.2
-  - 测试结果和覆盖率报告
-  - 性能基准测试数据
-  - 临时数据库文件 (SQLite)
+# 4. 运行测试
+dotnet test
 
-### scripts/ 目录
-- **build.ps1**: 完整构建脚本 (编译+测试+打包)
-- **quick-test.ps1**: 快速单元测试脚本
-- **setup-dev.ps1**: 开发环境初始化脚本
+# 5. 运行示例
+cd samples/SqlxDemo
+dotnet run
+```
 
-## 📈 项目发展历程
+### 构建脚本
+```
+scripts/
+├── build.ps1                       # 完整构建脚本
+├── quick-test.ps1                  # 快速测试脚本
+└── setup-dev.ps1                   # 开发环境设置
+```
 
-### 🎉 重大里程碑 (已完成)
-1. ✅ **项目结构优化** - 简化为单一综合示例，提升用户体验
-2. ✅ **性能优化突破** - 解决装箱问题，显著提升标量查询性能
-3. ✅ **智能UPDATE功能** - 实现6种高性能更新模式
-4. ✅ **现代C#支持** - 业界首创的Primary Constructor和Record完整支持
-5. ✅ **测试质量保证** - 99.2%测试覆盖率，1306+通过测试
-6. ✅ **文档体系完善** - 16个专业文档，完整开发指南
+## 🎯 设计原则
 
-### 🎯 当前状态评估
-- **核心功能**: ✅ 生产就绪，功能完整稳定
-- **性能表现**: ✅ 零反射设计，接近原生ADO.NET性能
-- **开发体验**: ✅ 类型安全，编译时错误检查
-- **生态完善**: ✅ 6种数据库支持，完整CI/CD流程
+### 1. 分离关注点
+- **运行时** (Sqlx): 纯运行时逻辑，无编译时依赖
+- **编译时** (Sqlx.Generator): 源生成和静态分析
+- **示例** (SqlxDemo): 功能演示和最佳实践
 
-## 💡 架构设计原则
+### 2. 性能优先
+- **零反射**: 编译时生成，运行时直接调用
+- **内存效率**: 对象重用，减少分配
+- **AOT 兼容**: 支持原生编译
 
-### 📦 模块化设计
-- **单一职责**: 每个模块专注特定功能领域
-- **松耦合**: 模块间依赖最小化，易于维护和扩展
-- **高内聚**: 相关功能集中在同一模块内
+### 3. 开发体验
+- **类型安全**: 编译时检查，智能提示
+- **错误友好**: 清晰的错误信息和建议
+- **文档完整**: 从快速开始到高级特性
 
-### 🚀 性能优先
-- **零反射**: 编译时代码生成，避免运行时性能损失
-- **零装箱**: 值类型直接处理，减少GC压力
-- **智能缓存**: 查询计划和元数据缓存优化
-
-### 🛡️ 类型安全
-- **编译时检查**: 在构建阶段发现潜在问题
-- **强类型映射**: 自动类型推断和转换
-- **空值安全**: 完整的可空引用类型支持
+### 4. 可扩展性
+- **插件架构**: 支持自定义生成器
+- **多数据库**: 统一接口，特定优化
+- **向前兼容**: 平滑升级路径
 
 ---
 
-## 🎯 总结
-
-**Sqlx项目已达到生产就绪状态**，具备以下核心优势：
-
-- 🚀 **极致性能** - 零反射 + DbBatch批处理
-- 🛡️ **类型安全** - 编译时验证 + 99.2%测试覆盖
-- 🆕 **现代语法** - 业界首创的C# 12完整支持  
-- 🌐 **生态完善** - 6种数据库 + 完整文档体系
-- 📊 **质量保证** - 严格的CI/CD流程和代码规范
-
-项目结构清晰合理，文档完整详细，为.NET开发者提供了现代化、高性能的ORM解决方案。
-
+这个项目结构体现了现代 .NET 开发的最佳实践，通过清晰的职责分离和强大的工具链支持，为开发者提供了高性能、类型安全且易于使用的 ORM 解决方案。

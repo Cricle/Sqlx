@@ -303,6 +303,11 @@ public class CodeGenerationService : ICodeGenerationService
         }
     }
 
+    /// <summary>
+    /// 为指定的仓储类生成拦截器方法，包括执行前后的回调方法。
+    /// </summary>
+    /// <param name="sb">用于构建代码的字符串构建器。</param>
+    /// <param name="repositoryClass">要为其生成拦截器方法的仓储类符号。</param>
     public void GenerateInterceptorMethods(IndentedStringBuilder sb, INamedTypeSymbol repositoryClass)
     {
         sb.AppendLine("/// <summary>");

@@ -221,17 +221,23 @@ namespace Sqlx.Tests.Integration
         [SqlDefine(SqlDefineTypes.MySql)]
         public class MySqlUserRepository
         {
-            public void GetActiveUsers() { }
+            public void GetActiveUsers()
+            {
+            }
 
             [SqlDefine(SqlDefineTypes.SqlServer)]
-            public void GetArchivedUsers() { }
+            public void GetArchivedUsers()
+            {
+            }
         }
 
         [SqlDefine("PostgreSql")]
         public class PostgreSqlUserRepository
         {
             [SqlDefine(SqlDefineTypes.Oracle)]
-            public void GetUsersByRole() { }
+            public void GetUsersByRole()
+            {
+            }
         }
 
         [TestMethod]

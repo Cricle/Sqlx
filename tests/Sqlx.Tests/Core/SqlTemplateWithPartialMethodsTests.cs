@@ -4,6 +4,8 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
+#pragma warning disable CS0618 // Type or member is obsolete - Testing obsolete API for compatibility
+
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -258,7 +260,8 @@ namespace Sqlx.Tests.Core
                 AND u.HireDate >= @hireDate
                 ORDER BY u.Salary DESC";
 
-            var template = SqlTemplate.Create(complexSql, new {
+            var template = SqlTemplate.Create(complexSql, new
+            {
                 highSalaryThreshold = 12000,
                 mediumSalaryThreshold = 8000,
                 isActive = true,
@@ -321,7 +324,8 @@ namespace Sqlx.Tests.Core
             var insertTemplate = SqlTemplate.Create(@"
                 INSERT INTO TestUser (Name, Email, Age, IsActive, DepartmentId, Salary, HireDate)
                 VALUES (@name, @email, @age, @isActive, @deptId, @salary, @hireDate)",
-                new {
+                new
+                {
                     name = "新用户",
                     email = "newuser@example.com",
                     age = 26,

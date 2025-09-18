@@ -219,8 +219,11 @@ namespace TestNamespace
             Assert.IsNotNull(generatedCode, "Should generate complex entity mapping code");
 
             // Should handle basic property types
-            var expectedProperties = new[] { "Id", "Name", "Description", "Price", "CreatedDate",
-                                           "ModifiedDate", "IsActive" };
+            var expectedProperties = new[]
+            {
+                "Id", "Name", "Description", "Price", "CreatedDate",
+                "ModifiedDate", "IsActive"
+            };
 
             foreach (var property in expectedProperties)
             {
@@ -318,8 +321,11 @@ namespace TestNamespace
         Assert.IsNotNull(generatedCode, "Should generate naming convention entity mapping code");
 
         // Should handle various naming conventions
-        var expectedProperties = new[] { "Id", "FirstName", "last_name", "EmailAddress",
-                                       "user_id", "created_at", "UpdatedAt" };
+        var expectedProperties = new[]
+        {
+            "Id", "FirstName", "last_name", "EmailAddress",
+            "user_id", "created_at", "UpdatedAt"
+        };
 
         foreach (var property in expectedProperties)
         {

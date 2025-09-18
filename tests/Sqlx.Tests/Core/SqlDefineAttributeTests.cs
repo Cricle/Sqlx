@@ -230,7 +230,9 @@ namespace Sqlx.Tests.Core
         public void SqlDefineTypes_AllValues_CanBeUsedInAttribute()
         {
             // Test that all enum values can be used in attribute constructor
+#pragma warning disable IL3050 // Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling
             var enumValues = (SqlDefineTypes[])Enum.GetValues(typeof(SqlDefineTypes));
+#pragma warning restore IL3050
 
             foreach (var enumValue in enumValues)
             {
@@ -252,14 +254,18 @@ namespace Sqlx.Tests.Core
         private class MySqlRepository
         {
             [SqlDefine(SqlDefineTypes.SqlServer)]
-            public void MethodWithDifferentDialect() { }
+            public void MethodWithDifferentDialect()
+            {
+            }
         }
 
         [SqlDefine("PostgreSql")]
         private class StringDialectRepository
         {
             [SqlDefine(SqlDefineTypes.Oracle)]
-            public void MethodWithEnumDialect() { }
+            public void MethodWithEnumDialect()
+            {
+            }
         }
 
         [TestMethod]

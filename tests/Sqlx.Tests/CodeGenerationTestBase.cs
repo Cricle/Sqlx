@@ -4,6 +4,8 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
+#pragma warning disable RS1035 // Do not use banned APIs for analyzers - Test infrastructure intentionally uses file IO and assembly loading
+
 namespace Sqlx.Tests;
 
 using System;

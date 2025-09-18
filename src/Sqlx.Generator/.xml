@@ -1,0 +1,2410 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Sqlx.Generator</name>
+    </assembly>
+    <members>
+        <member name="T:Sqlx.AbstractGenerator">
+            <summary>
+            Simplified stored procedures generator with unified service architecture.
+            </summary>
+        </member>
+        <member name="M:Sqlx.AbstractGenerator.#ctor">
+            <summary>
+            Initializes a new instance of the <see cref="T:Sqlx.AbstractGenerator"/> class.
+            </summary>
+        </member>
+        <member name="M:Sqlx.AbstractGenerator.Initialize(Microsoft.CodeAnalysis.GeneratorInitializationContext)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.AbstractGenerator.Execute(Microsoft.CodeAnalysis.GeneratorExecutionContext)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.AbstractGenerator.GetRequiredSymbols(Microsoft.CodeAnalysis.GeneratorExecutionContext)">
+            <summary>
+            Gets the required symbol references for code generation.
+            </summary>
+            <param name="context">The generator execution context.</param>
+            <returns>The symbol references.</returns>
+        </member>
+        <member name="M:Sqlx.AbstractGenerator.GenerateSqlxAttribute(Microsoft.CodeAnalysis.IMethodSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol,System.String)">
+            <summary>
+            Generates or copies attributes for a method.
+            </summary>
+            <param name="method">The method to generate attributes for.</param>
+            <param name="entityType">The entity type.</param>
+            <param name="tableName">The table name.</param>
+            <returns>The generated SqlxAttribute string.</returns>
+        </member>
+        <member name="M:Sqlx.AbstractGenerator.GenerateSqlxAttribute(Microsoft.CodeAnalysis.AttributeData)">
+            <summary>
+            Generates SqlxAttribute from existing attribute data.
+            </summary>
+            <param name="attribute">The attribute data.</param>
+            <returns>The generated SqlxAttribute string.</returns>
+        </member>
+        <member name="M:Sqlx.AbstractGenerator.IsCollectionType(Microsoft.CodeAnalysis.ITypeSymbol)">
+            <summary>
+            Determines if a type is a collection type.
+            </summary>
+            <param name="type">The type to check.</param>
+            <returns>True if the type is a collection type.</returns>
+        </member>
+        <member name="T:Sqlx.AbstractGenerator.SymbolReferences">
+            <summary>
+            Container for symbol references needed during code generation.
+            </summary>
+        </member>
+        <member name="M:Sqlx.AbstractGenerator.SymbolReferences.#ctor(Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Sqlx.AbstractGenerator.SymbolReferences"/> class.
+            </summary>
+        </member>
+        <member name="P:Sqlx.AbstractGenerator.SymbolReferences.SqlxAttributeSymbol">
+            <summary>
+            Gets the Sqlx attribute symbol.
+            </summary>
+        </member>
+        <member name="P:Sqlx.AbstractGenerator.SymbolReferences.ExpressionToSqlAttributeSymbol">
+            <summary>
+            Gets the ExpressionToSql attribute symbol.
+            </summary>
+        </member>
+        <member name="P:Sqlx.AbstractGenerator.SymbolReferences.SqlExecuteTypeAttributeSymbol">
+            <summary>
+            Gets the SqlExecuteType attribute symbol.
+            </summary>
+        </member>
+        <member name="P:Sqlx.AbstractGenerator.SymbolReferences.RepositoryForAttributeSymbol">
+            <summary>
+            Gets the RepositoryFor attribute symbol.
+            </summary>
+        </member>
+        <member name="P:Sqlx.AbstractGenerator.SymbolReferences.TableNameAttributeSymbol">
+            <summary>
+            Gets the TableName attribute symbol.
+            </summary>
+        </member>
+        <member name="P:Sqlx.AbstractGenerator.SymbolReferences.IsValid">
+            <summary>
+            Gets a value indicating whether the essential symbols are available.
+            </summary>
+        </member>
+        <member name="M:Sqlx.AbstractGenerator.GetAllAnalyzedMethods(Sqlx.ISqlxSyntaxReceiver)">
+            <summary>
+            获取所有已分析的方法用于诊断摘要
+            </summary>
+        </member>
+        <member name="M:Sqlx.AbstractGenerator.ProcessCollectedSyntaxNodes(Microsoft.CodeAnalysis.GeneratorExecutionContext,Sqlx.ISqlxSyntaxReceiver)">
+            <summary>
+            Processes collected syntax nodes to populate symbol lists.
+            </summary>
+        </member>
+        <member name="M:Sqlx.AbstractGenerator.HasSqlxAttribute(Microsoft.CodeAnalysis.IMethodSymbol)">
+            <summary>
+            Checks if a method has Sqlx attributes using semantic analysis.
+            </summary>
+        </member>
+        <member name="M:Sqlx.AbstractGenerator.HasRepositoryForAttribute(Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <summary>
+            Checks if a type has RepositoryFor attribute using semantic analysis.
+            </summary>
+        </member>
+        <member name="M:Sqlx.ClassGenerationContext.SetExecutionContext(Microsoft.CodeAnalysis.GeneratorExecutionContext)">
+            <summary>
+            Sets the generator execution context and nullable options
+            </summary>
+        </member>
+        <member name="M:Sqlx.ClassGenerationContext.GetSymbolWithPrimaryConstructor(Microsoft.CodeAnalysis.INamedTypeSymbol,System.Func{Microsoft.CodeAnalysis.ISymbol,System.Boolean})">
+            <summary>
+            Gets a symbol (field, property, or primary constructor parameter) that matches the check condition
+            </summary>
+        </member>
+        <member name="T:Sqlx.Constants">
+            <summary>
+            定义 Sqlx 框架中使用的常量
+            </summary>
+        </member>
+        <member name="T:Sqlx.Constants.SqlExecuteTypeValues">
+            <summary>
+            SQL 操作类型枚举值
+            </summary>
+        </member>
+        <member name="T:Sqlx.Constants.GeneratedVariables">
+            <summary>
+            生成的代码中的变量名
+            </summary>
+        </member>
+        <member name="T:Sqlx.Generator.Core.AttributeHandler">
+            <summary>
+            Default implementation of attribute handler.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.AttributeHandler.GenerateOrCopyAttributes(Sqlx.Generator.Core.IndentedStringBuilder,Microsoft.CodeAnalysis.IMethodSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol,System.String)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.AttributeHandler.GenerateSqlxAttribute(Microsoft.CodeAnalysis.IMethodSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol,System.String)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.AttributeHandler.GenerateSqlxAttribute(Microsoft.CodeAnalysis.AttributeData)">
+            <inheritdoc/>
+        </member>
+        <member name="T:Sqlx.Generator.Core.BaseOperationGenerator">
+            <summary>
+            Base class for operation generators providing common functionality.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.BaseOperationGenerator.OperationName">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.BaseOperationGenerator.GenerateOperation(Sqlx.Generator.Core.OperationGenerationContext)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.BaseOperationGenerator.CanHandle(Microsoft.CodeAnalysis.IMethodSymbol)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.BaseOperationGenerator.GenerateParameterNullChecks(Sqlx.Generator.Core.IndentedStringBuilder,Microsoft.CodeAnalysis.IMethodSymbol)">
+            <summary>
+            Generates parameter null checks for the method.
+            </summary>
+            <param name="sb">The string builder.</param>
+            <param name="method">The method.</param>
+        </member>
+        <member name="M:Sqlx.Generator.Core.BaseOperationGenerator.GenerateConnectionSetup(Sqlx.Generator.Core.IndentedStringBuilder,Microsoft.CodeAnalysis.IMethodSymbol,System.Boolean)">
+            <summary>
+            Generates connection setup code.
+            </summary>
+            <param name="sb">The string builder.</param>
+            <param name="method">The method.</param>
+            <param name="isAsync">Whether the operation is async.</param>
+        </member>
+        <member name="M:Sqlx.Generator.Core.BaseOperationGenerator.GetCancellationTokenParameter(Microsoft.CodeAnalysis.IMethodSymbol)">
+            <summary>
+            Gets the cancellation token parameter name.
+            </summary>
+            <param name="method">The method.</param>
+            <returns>The cancellation token parameter or default.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.BaseOperationGenerator.GetConnectionFieldName(Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <summary>
+            Gets the connection field name from the repository class.
+            </summary>
+            <param name="repositoryClass">The repository class.</param>
+            <returns>The connection field name.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.BaseOperationGenerator.IsCommonConnectionFieldName(System.String)">
+            <summary>
+            Checks if the field name matches common connection field naming patterns.
+            </summary>
+            <param name="fieldName">The field name to check.</param>
+            <returns>True if it's a common connection field name.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.BaseOperationGenerator.ShouldGenerateNullCheck(Microsoft.CodeAnalysis.IParameterSymbol)">
+            <summary>
+            Determines if a null check should be generated for the parameter.
+            </summary>
+            <param name="parameter">The parameter.</param>
+            <returns>True if null check should be generated.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.BaseOperationGenerator.GetSqlDefineForRepository(Microsoft.CodeAnalysis.IMethodSymbol)">
+            <summary>
+            Gets the SQL define for the repository method.
+            </summary>
+            <param name="method">The method.</param>
+            <returns>The SQL define.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.BaseOperationGenerator.ParseSqlDefineAttribute(Microsoft.CodeAnalysis.AttributeData)">
+            <summary>
+            Parses SQL define attribute.
+            </summary>
+            <param name="attribute">The attribute.</param>
+            <returns>The SQL define.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.BaseOperationGenerator.InferDialectFromConnectionType(Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <summary>
+            Infers dialect from connection type.
+            </summary>
+            <param name="repositoryClass">The repository class.</param>
+            <returns>The inferred SQL define.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.BaseOperationGenerator.InferDialectFromConnectionTypeName(System.String)">
+            <summary>
+            Infers dialect from connection type name.
+            </summary>
+            <param name="connectionTypeName">The connection type name.</param>
+            <returns>The inferred SQL define.</returns>
+        </member>
+        <member name="T:Sqlx.Generator.Core.CodeGenerationService">
+            <summary>
+            Default implementation of code generation service.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.CodeGenerationService.GenerateRepositoryMethod(Sqlx.Generator.Core.RepositoryMethodContext)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.CodeGenerationService.GenerateRepositoryImplementation(Sqlx.Generator.Core.RepositoryGenerationContext)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.CodeGenerationService.GenerateMethodDocumentation(Sqlx.Generator.Core.IndentedStringBuilder,Microsoft.CodeAnalysis.IMethodSymbol)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.CodeGenerationService.GenerateMethodVariables(Sqlx.Generator.Core.IndentedStringBuilder,Microsoft.CodeAnalysis.IMethodSymbol)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.CodeGenerationService.GenerateInterceptorMethods(Sqlx.Generator.Core.IndentedStringBuilder,Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <summary>
+            为指定的仓储类生成拦截器方法，包括执行前后的回调方法。
+            </summary>
+            <param name="sb">用于构建代码的字符串构建器。</param>
+            <param name="repositoryClass">要为其生成拦截器方法的仓储类符号。</param>
+        </member>
+        <member name="M:Sqlx.Generator.Core.CodeGenerationService.IsCommonConnectionFieldName(System.String)">
+            <summary>
+            Checks if the field name matches common connection field naming patterns.
+            </summary>
+            <param name="fieldName">The field name to check.</param>
+            <returns>True if it's a common connection field name.</returns>
+        </member>
+        <member name="T:Sqlx.Generator.Core.DatabaseDialectProviderExtensions">
+            <summary>
+            Extension methods for IDatabaseDialectProvider.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.DatabaseDialectProviderExtensions.WrapColumn(Sqlx.Generator.Core.IDatabaseDialectProvider,System.String)">
+            <summary>
+            Wraps a column name with the appropriate database-specific delimiters.
+            </summary>
+            <param name="provider">The dialect provider.</param>
+            <param name="columnName">The column name to wrap.</param>
+            <returns>The wrapped column name.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.DatabaseDialectProviderExtensions.WrapString(Sqlx.Generator.Core.IDatabaseDialectProvider,System.String)">
+            <summary>
+            Wraps a string value with the appropriate database-specific delimiters.
+            </summary>
+            <param name="provider">The dialect provider.</param>
+            <param name="value">The string value to wrap.</param>
+            <returns>The wrapped string value.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.DatabaseDialectProviderExtensions.GetParameterPrefix(Sqlx.Generator.Core.IDatabaseDialectProvider)">
+            <summary>
+            Gets the parameter prefix for the database dialect.
+            </summary>
+            <param name="provider">The dialect provider.</param>
+            <returns>The parameter prefix (e.g., "@", "$", ":"). </returns>
+        </member>
+        <member name="T:Sqlx.Generator.Core.EnhancedDiagnosticService">
+            <summary>
+            增强的诊断服务，专注于列名匹配和用户指导
+            目标：让用户更专注业务逻辑而非SQL细节
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.EnhancedDiagnosticService.AnalyzeColumnMapping(Microsoft.CodeAnalysis.IMethodSymbol,System.String,Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <summary>
+            执行增强的列名匹配分析
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.EnhancedDiagnosticService.AnalyzeColumnNamingPatterns(Microsoft.CodeAnalysis.IMethodSymbol,System.String,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.Location)">
+            <summary>
+            分析列名匹配模式
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.EnhancedDiagnosticService.DetectMappingIssues(Microsoft.CodeAnalysis.IMethodSymbol,System.String,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.Location)">
+            <summary>
+            检测映射问题
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.EnhancedDiagnosticService.SuggestOptimizations(Microsoft.CodeAnalysis.IMethodSymbol,System.String,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.Location)">
+            <summary>
+            提供优化建议
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.EnhancedDiagnosticService.ProvideUserGuidance(Microsoft.CodeAnalysis.IMethodSymbol,System.String,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.Location)">
+            <summary>
+            提供用户友好的指导
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.EnhancedDiagnosticService.GeneratePossibleColumnNames(System.String)">
+            <summary>
+            生成可能的列名
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.EnhancedDiagnosticService.FindBestColumnMatch(System.String,System.Collections.Generic.List{System.String})">
+            <summary>
+            找到最佳列名匹配
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.EnhancedDiagnosticService.CalculateSimilarity(System.String,System.String)">
+            <summary>
+            计算字符串相似度
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.EnhancedDiagnosticService.LevenshteinDistance(System.String,System.String)">
+            <summary>
+            计算编辑距离
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.EnhancedDiagnosticService.ExtractColumnNamesFromSql(System.String)">
+            <summary>
+            从SQL中提取列名
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.EnhancedDiagnosticService.ExtractWhereColumns(System.String)">
+            <summary>
+            提取WHERE子句中的列
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.EnhancedDiagnosticService.GetEntityProperties(Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <summary>
+            获取实体属性
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.EnhancedDiagnosticService.IsLargeTextProperty(Microsoft.CodeAnalysis.IPropertySymbol)">
+            <summary>
+            检查是否为大型文本属性
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.EnhancedDiagnosticService.DetectNamingStrategy(System.String,Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <summary>
+            检测命名策略
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.EnhancedDiagnosticService.DetectBusinessPattern(System.String,System.String)">
+            <summary>
+            检测业务模式
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.EnhancedDiagnosticService.ShouldSuggestSmartTemplate(System.String,Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <summary>
+            检查是否应该建议智能模板
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.EnhancedDiagnosticService.HasSecurityConcerns(System.String)">
+            <summary>
+            检查安全隐患
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.EnhancedDiagnosticService.ConvertToSnakeCase(System.String)">
+            <summary>
+            转换为snake_case
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.EnhancedDiagnosticService.ConvertToKebabCase(System.String)">
+            <summary>
+            转换为kebab-case
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.EnhancedDiagnosticService.ReportDiagnostic(System.String,System.String,Microsoft.CodeAnalysis.Location,Microsoft.CodeAnalysis.DiagnosticSeverity)">
+            <summary>
+            报告诊断
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.EnhancedDiagnosticService.CreateDiagnostics">
+            <summary>
+            创建诊断描述符
+            </summary>
+        </member>
+        <member name="T:Sqlx.Generator.Core.ErrorHandler">
+            <summary>
+            Simplified error handling for source generation.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.ErrorHandler.ReportError(Microsoft.CodeAnalysis.GeneratorExecutionContext,System.Exception,System.String,System.String,System.String,System.Object[])">
+            <summary>
+            Reports a diagnostic for an exception.
+            </summary>
+            <param name="context">The generator execution context.</param>
+            <param name="ex">The exception.</param>
+            <param name="errorCode">The error code.</param>
+            <param name="title">The error title.</param>
+            <param name="messageFormat">The error message format.</param>
+            <param name="args">Additional arguments for the message.</param>
+        </member>
+        <member name="M:Sqlx.Generator.Core.ErrorHandler.ExecuteSafely(Microsoft.CodeAnalysis.GeneratorExecutionContext,System.Action,System.String,System.String)">
+            <summary>
+            Executes an action safely, reporting any errors.
+            </summary>
+            <param name="context">The generator execution context.</param>
+            <param name="action">The action to execute.</param>
+            <param name="errorCode">The error code for any exceptions.</param>
+            <param name="description">Description of what operation failed.</param>
+        </member>
+        <member name="M:Sqlx.Generator.Core.ErrorHandler.ExecuteSafely``1(Microsoft.CodeAnalysis.GeneratorExecutionContext,System.Func{``0},``0,System.String,System.String)">
+            <summary>
+            Executes a function safely, returning a default value on error.
+            </summary>
+            <typeparam name="T">The return type.</typeparam>
+            <param name="context">The generator execution context.</param>
+            <param name="func">The function to execute.</param>
+            <param name="defaultValue">The default value to return on error.</param>
+            <param name="errorCode">The error code for any exceptions.</param>
+            <param name="description">Description of what operation failed.</param>
+            <returns>The function result or default value.</returns>
+        </member>
+        <member name="T:Sqlx.Generator.Core.GenerationContext">
+            <summary>
+            Unified context for code generation containing all necessary information.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.GenerationContext.#ctor(Microsoft.CodeAnalysis.GeneratorExecutionContext,Microsoft.CodeAnalysis.INamedTypeSymbol,Sqlx.Generator.Core.ISqlxGeneratorService)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Sqlx.Generator.Core.GenerationContext"/> class for repository generation.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.GenerationContext.#ctor(Microsoft.CodeAnalysis.GeneratorExecutionContext,Microsoft.CodeAnalysis.IMethodSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol,System.String,Sqlx.Generator.Core.ISqlxGeneratorService,Sqlx.Generator.Core.IndentedStringBuilder)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Sqlx.Generator.Core.GenerationContext"/> class for method generation.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.GenerationContext.ExecutionContext">
+            <summary>
+            Gets the execution context.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.GenerationContext.RepositoryClass">
+            <summary>
+            Gets the repository class (if applicable).
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.GenerationContext.Method">
+            <summary>
+            Gets the method symbol (if applicable).
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.GenerationContext.EntityType">
+            <summary>
+            Gets the entity type symbol.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.GenerationContext.TableName">
+            <summary>
+            Gets the table name.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.GenerationContext.GeneratorService">
+            <summary>
+            Gets the unified generator service.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.GenerationContext.StringBuilder">
+            <summary>
+            Gets the string builder for code generation.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.GenerationContext.IsAsync">
+            <summary>
+            Gets a value indicating whether the operation is async.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.GenerationContext.MethodName">
+            <summary>
+            Gets the method name.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.GenerationContext.Compilation">
+            <summary>
+            Gets the compilation context.
+            </summary>
+        </member>
+        <member name="T:Sqlx.Generator.Core.IAttributeHandler">
+            <summary>
+            Interface for handling method attributes.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.IAttributeHandler.GenerateOrCopyAttributes(Sqlx.Generator.Core.IndentedStringBuilder,Microsoft.CodeAnalysis.IMethodSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol,System.String)">
+            <summary>
+            Generates or copies attributes for a method.
+            </summary>
+            <param name="sb">The string builder.</param>
+            <param name="method">The method.</param>
+            <param name="entityType">The entity type.</param>
+            <param name="tableName">The table name.</param>
+        </member>
+        <member name="M:Sqlx.Generator.Core.IAttributeHandler.GenerateSqlxAttribute(Microsoft.CodeAnalysis.IMethodSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol,System.String)">
+            <summary>
+            Generates a Sqlx attribute for a method.
+            </summary>
+            <param name="method">The method.</param>
+            <param name="entityType">The entity type.</param>
+            <param name="tableName">The table name.</param>
+            <returns>The attribute string.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.IAttributeHandler.GenerateSqlxAttribute(Microsoft.CodeAnalysis.AttributeData)">
+            <summary>
+            Generates an attribute from existing attribute data.
+            </summary>
+            <param name="attribute">The attribute data.</param>
+            <returns>The attribute string.</returns>
+        </member>
+        <member name="T:Sqlx.Generator.Core.ICodeGenerationService">
+            <summary>
+            Interface for code generation services.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.ICodeGenerationService.GenerateRepositoryMethod(Sqlx.Generator.Core.RepositoryMethodContext)">
+            <summary>
+            Generates repository method implementation.
+            </summary>
+            <param name="context">The generation context.</param>
+        </member>
+        <member name="M:Sqlx.Generator.Core.ICodeGenerationService.GenerateRepositoryImplementation(Sqlx.Generator.Core.RepositoryGenerationContext)">
+            <summary>
+            Generates repository implementation.
+            </summary>
+            <param name="context">The repository generation context.</param>
+        </member>
+        <member name="M:Sqlx.Generator.Core.ICodeGenerationService.GenerateMethodDocumentation(Sqlx.Generator.Core.IndentedStringBuilder,Microsoft.CodeAnalysis.IMethodSymbol)">
+            <summary>
+            Generates method documentation.
+            </summary>
+            <param name="sb">The string builder.</param>
+            <param name="method">The method.</param>
+        </member>
+        <member name="M:Sqlx.Generator.Core.ICodeGenerationService.GenerateMethodVariables(Sqlx.Generator.Core.IndentedStringBuilder,Microsoft.CodeAnalysis.IMethodSymbol)">
+            <summary>
+            Generates variable declarations for repository methods.
+            </summary>
+            <param name="sb">The string builder.</param>
+            <param name="method">The method.</param>
+        </member>
+        <member name="T:Sqlx.Generator.Core.IDatabaseDialectProvider">
+            <summary>
+            Provides database-specific SQL generation and syntax handling.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.IDatabaseDialectProvider.SqlDefine">
+            <summary>
+            Gets the SQL definition for this dialect.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.IDatabaseDialectProvider.DialectType">
+            <summary>
+            Gets the dialect type.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.IDatabaseDialectProvider.GenerateLimitClause(System.Nullable{System.Int32},System.Nullable{System.Int32})">
+            <summary>
+            Generates a LIMIT clause for pagination.
+            </summary>
+            <param name="limit">The maximum number of rows to return.</param>
+            <param name="offset">The number of rows to skip.</param>
+            <returns>The SQL LIMIT clause.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.IDatabaseDialectProvider.GenerateInsertWithReturning(System.String,System.String[])">
+            <summary>
+            Generates an INSERT statement with RETURNING clause for getting the inserted ID.
+            </summary>
+            <param name="tableName">The table name.</param>
+            <param name="columns">The column names.</param>
+            <returns>The SQL INSERT statement with RETURNING clause.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.IDatabaseDialectProvider.GenerateBatchInsert(System.String,System.String[],System.Int32)">
+            <summary>
+            Generates a batch INSERT statement optimized for the specific database.
+            </summary>
+            <param name="tableName">The table name.</param>
+            <param name="columns">The column names.</param>
+            <param name="batchSize">The batch size.</param>
+            <returns>The SQL batch INSERT statement.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.IDatabaseDialectProvider.GenerateUpsert(System.String,System.String[],System.String[])">
+            <summary>
+            Generates an UPSERT (INSERT ... ON CONFLICT UPDATE) statement.
+            </summary>
+            <param name="tableName">The table name.</param>
+            <param name="columns">The column names.</param>
+            <param name="keyColumns">The key columns for conflict detection.</param>
+            <returns>The SQL UPSERT statement.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.IDatabaseDialectProvider.GetDatabaseTypeName(System.Type)">
+            <summary>
+            Converts a .NET type to the appropriate database type name.
+            </summary>
+            <param name="dotNetType">The .NET type.</param>
+            <returns>The database-specific type name.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.IDatabaseDialectProvider.FormatDateTime(System.DateTime)">
+            <summary>
+            Formats a date/time value for the specific database.
+            </summary>
+            <param name="dateTime">The date/time value.</param>
+            <returns>The formatted date/time string.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.IDatabaseDialectProvider.GetCurrentDateTimeSyntax">
+            <summary>
+            Gets the syntax for getting the current date/time.
+            </summary>
+            <returns>The SQL expression for current date/time.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.IDatabaseDialectProvider.GetConcatenationSyntax(System.String[])">
+            <summary>
+            Gets the syntax for string concatenation.
+            </summary>
+            <param name="expressions">The expressions to concatenate.</param>
+            <returns>The SQL string concatenation expression.</returns>
+        </member>
+        <member name="T:Sqlx.Generator.Core.IMethodAnalyzer">
+            <summary>
+            Interface for method analysis services.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.IMethodAnalyzer.AnalyzeMethod(Microsoft.CodeAnalysis.IMethodSymbol)">
+            <summary>
+            Analyzes a method to determine its operation type.
+            </summary>
+            <param name="method">The method to analyze.</param>
+            <returns>The method analysis result.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.IMethodAnalyzer.IsAsyncMethod(Microsoft.CodeAnalysis.IMethodSymbol)">
+            <summary>
+            Determines if a method is async.
+            </summary>
+            <param name="method">The method to check.</param>
+            <returns>True if async.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.IMethodAnalyzer.GetActualReturnType(Microsoft.CodeAnalysis.IMethodSymbol)">
+            <summary>
+            Gets the return type for async methods.
+            </summary>
+            <param name="method">The method.</param>
+            <returns>The actual return type.</returns>
+        </member>
+        <member name="T:Sqlx.Generator.Core.MethodAnalysisResult">
+            <summary>
+            Result of method analysis.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.MethodAnalysisResult.#ctor(Sqlx.Generator.Core.MethodOperationType,System.Boolean,Microsoft.CodeAnalysis.ITypeSymbol,System.Boolean,System.Boolean)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Sqlx.Generator.Core.MethodAnalysisResult"/> class.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.MethodAnalysisResult.OperationType">
+            <summary>
+            Gets the operation type.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.MethodAnalysisResult.IsAsync">
+            <summary>
+            Gets a value indicating whether the method is async.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.MethodAnalysisResult.ReturnType">
+            <summary>
+            Gets the return type.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.MethodAnalysisResult.IsCollection">
+            <summary>
+            Gets a value indicating whether the return type is a collection.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.MethodAnalysisResult.IsScalar">
+            <summary>
+            Gets a value indicating whether the return type is scalar.
+            </summary>
+        </member>
+        <member name="T:Sqlx.Generator.Core.MethodOperationType">
+            <summary>
+            Types of method operations.
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.MethodOperationType.Unknown">
+            <summary>
+            Unknown operation.
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.MethodOperationType.Insert">
+            <summary>
+            Insert operation.
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.MethodOperationType.Update">
+            <summary>
+            Update operation.
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.MethodOperationType.Delete">
+            <summary>
+            Delete operation.
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.MethodOperationType.Select">
+            <summary>
+            Select operation.
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.MethodOperationType.Scalar">
+            <summary>
+            Scalar operation (count, exists, etc.).
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.MethodOperationType.Custom">
+            <summary>
+            Custom operation with explicit SQL.
+            </summary>
+        </member>
+        <member name="T:Sqlx.Generator.Core.IOperationGenerator">
+            <summary>
+            Interface for generating database operation code.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.IOperationGenerator.OperationName">
+            <summary>
+            Gets the name of the operation.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.IOperationGenerator.GenerateOperation(Sqlx.Generator.Core.OperationGenerationContext)">
+            <summary>
+            Generates the operation code.
+            </summary>
+            <param name="context">The generation context.</param>
+        </member>
+        <member name="M:Sqlx.Generator.Core.IOperationGenerator.CanHandle(Microsoft.CodeAnalysis.IMethodSymbol)">
+            <summary>
+            Determines if this generator can handle the specified method.
+            </summary>
+            <param name="method">The method to check.</param>
+            <returns>True if this generator can handle the method.</returns>
+        </member>
+        <member name="T:Sqlx.Generator.Core.ISqlxGeneratorService">
+            <summary>
+            Unified service interface for Sqlx code generation.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.ISqlxGeneratorService.InferEntityTypeFromInterface(Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <summary>
+            Infers the entity type from a service interface.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.ISqlxGeneratorService.InferEntityTypeFromMethod(Microsoft.CodeAnalysis.IMethodSymbol)">
+            <summary>
+            Infers the entity type from a method.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.ISqlxGeneratorService.GetServiceInterface(Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.Compilation)">
+            <summary>
+            Gets the service interface from repository class.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.ISqlxGeneratorService.GetTableName(Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <summary>
+            Gets the table name for an entity type.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.ISqlxGeneratorService.AnalyzeMethod(Microsoft.CodeAnalysis.IMethodSymbol)">
+            <summary>
+            Analyzes a method to determine its operation characteristics.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.ISqlxGeneratorService.GenerateRepositoryImplementation(Sqlx.Generator.Core.GenerationContext)">
+            <summary>
+            Generates repository implementation.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.ISqlxGeneratorService.GenerateAttributes(Sqlx.Generator.Core.IndentedStringBuilder,Microsoft.CodeAnalysis.IMethodSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol,System.String)">
+            <summary>
+            Generates or copies attributes for a method.
+            </summary>
+        </member>
+        <member name="T:Sqlx.Generator.Core.ITypeInferenceService">
+            <summary>
+            Interface for type inference services.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.ITypeInferenceService.InferEntityTypeFromServiceInterface(Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <summary>
+            Infers the entity type from a service interface.
+            </summary>
+            <param name="serviceInterface">The service interface.</param>
+            <returns>The inferred entity type.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.ITypeInferenceService.InferEntityTypeFromMethod(Microsoft.CodeAnalysis.IMethodSymbol)">
+            <summary>
+            Infers the entity type from a method.
+            </summary>
+            <param name="method">The method.</param>
+            <returns>The inferred entity type.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.ITypeInferenceService.GetServiceInterfaceFromSyntax(Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.Compilation)">
+            <summary>
+            Gets the service interface from repository class.
+            </summary>
+            <param name="repositoryClass">The repository class.</param>
+            <param name="compilation">The compilation context.</param>
+            <returns>The service interface.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.ITypeInferenceService.GetTableNameFromEntity(Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <summary>
+            Gets the table name for an entity type.
+            </summary>
+            <param name="entityType">The entity type.</param>
+            <param name="tableNameAttributeSymbol">The table name attribute symbol.</param>
+            <returns>The table name.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.ITypeInferenceService.GetTableName(Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <summary>
+            Gets the table name for a repository class and service type.
+            </summary>
+            <param name="repositoryClass">The repository class.</param>
+            <param name="serviceType">The service type.</param>
+            <param name="tableNameAttributeSymbol">The table name attribute symbol.</param>
+            <returns>The table name.</returns>
+        </member>
+        <member name="T:Sqlx.Generator.Core.MethodAnalyzer">
+            <summary>
+            Default implementation of method analyzer.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.MethodAnalyzer.AnalyzeMethod(Microsoft.CodeAnalysis.IMethodSymbol)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.MethodAnalyzer.IsAsyncMethod(Microsoft.CodeAnalysis.IMethodSymbol)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.MethodAnalyzer.GetActualReturnType(Microsoft.CodeAnalysis.IMethodSymbol)">
+            <inheritdoc/>
+        </member>
+        <member name="T:Sqlx.Generator.Core.MySqlDialectProvider">
+            <summary>
+            MySQL database dialect provider with MySQL-specific SQL syntax.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.MySqlDialectProvider.SqlDefine">
+            <inheritdoc />
+        </member>
+        <member name="P:Sqlx.Generator.Core.MySqlDialectProvider.DialectType">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.MySqlDialectProvider.GenerateLimitClause(System.Nullable{System.Int32},System.Nullable{System.Int32})">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.MySqlDialectProvider.GenerateInsertWithReturning(System.String,System.String[])">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.MySqlDialectProvider.GenerateBatchInsert(System.String,System.String[],System.Int32)">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.MySqlDialectProvider.GenerateUpsert(System.String,System.String[],System.String[])">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.MySqlDialectProvider.GetDatabaseTypeName(System.Type)">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.MySqlDialectProvider.FormatDateTime(System.DateTime)">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.MySqlDialectProvider.GetCurrentDateTimeSyntax">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.MySqlDialectProvider.GetConcatenationSyntax(System.String[])">
+            <inheritdoc />
+        </member>
+        <member name="T:Sqlx.Generator.Core.OperationGenerationContext">
+            <summary>
+            Context for operation generation containing all necessary information.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.OperationGenerationContext.#ctor(Sqlx.Generator.Core.IndentedStringBuilder,Microsoft.CodeAnalysis.IMethodSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol,System.String,System.Boolean,System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Sqlx.Generator.Core.OperationGenerationContext"/> class.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.OperationGenerationContext.StringBuilder">
+            <summary>
+            Gets the string builder for code generation.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.OperationGenerationContext.Method">
+            <summary>
+            Gets the method symbol.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.OperationGenerationContext.EntityType">
+            <summary>
+            Gets the entity type symbol.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.OperationGenerationContext.TableName">
+            <summary>
+            Gets the table name.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.OperationGenerationContext.IsAsync">
+            <summary>
+            Gets a value indicating whether the operation is async.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.OperationGenerationContext.MethodName">
+            <summary>
+            Gets the method name.
+            </summary>
+        </member>
+        <member name="T:Sqlx.Generator.Core.OperationGeneratorFactory">
+            <summary>
+            Factory for creating operation generators.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.OperationGeneratorFactory.#ctor">
+            <summary>
+            Initializes a new instance of the <see cref="T:Sqlx.Generator.Core.OperationGeneratorFactory"/> class.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.OperationGeneratorFactory.GetGenerator(Microsoft.CodeAnalysis.IMethodSymbol)">
+            <summary>
+            Gets the appropriate generator for the specified method.
+            </summary>
+            <param name="method">The method to generate code for.</param>
+            <returns>The operation generator or null if none found.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.OperationGeneratorFactory.GetAllGenerators">
+            <summary>
+            Gets all available generators.
+            </summary>
+            <returns>The list of generators.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.OperationGeneratorFactory.RegisterGenerator(Sqlx.Generator.Core.IOperationGenerator)">
+            <summary>
+            Registers a custom operation generator.
+            </summary>
+            <param name="generator">The generator to register.</param>
+        </member>
+        <member name="T:Sqlx.Generator.Core.Operations.DeleteOperationGenerator">
+            <summary>
+            Generator for DELETE operations.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.Operations.DeleteOperationGenerator.OperationName">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.Operations.DeleteOperationGenerator.CanHandle(Microsoft.CodeAnalysis.IMethodSymbol)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.Operations.DeleteOperationGenerator.GenerateOperation(Sqlx.Generator.Core.OperationGenerationContext)">
+            <inheritdoc/>
+        </member>
+        <member name="T:Sqlx.Generator.Core.Operations.InsertOperationGenerator">
+            <summary>
+            Generator for INSERT operations.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.Operations.InsertOperationGenerator.OperationName">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.Operations.InsertOperationGenerator.CanHandle(Microsoft.CodeAnalysis.IMethodSymbol)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.Operations.InsertOperationGenerator.GenerateOperation(Sqlx.Generator.Core.OperationGenerationContext)">
+            <inheritdoc/>
+        </member>
+        <member name="T:Sqlx.Generator.Core.Operations.SelectOperationGenerator">
+            <summary>
+            Generator for SELECT operations.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.Operations.SelectOperationGenerator.OperationName">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.Operations.SelectOperationGenerator.CanHandle(Microsoft.CodeAnalysis.IMethodSymbol)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.Operations.SelectOperationGenerator.GenerateOperation(Sqlx.Generator.Core.OperationGenerationContext)">
+            <inheritdoc/>
+        </member>
+        <member name="T:Sqlx.Generator.Core.Operations.UpdateOperationGenerator">
+            <summary>
+            Generator for UPDATE operations.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.Operations.UpdateOperationGenerator.OperationName">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.Operations.UpdateOperationGenerator.CanHandle(Microsoft.CodeAnalysis.IMethodSymbol)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.Operations.UpdateOperationGenerator.GenerateOperation(Sqlx.Generator.Core.OperationGenerationContext)">
+            <inheritdoc/>
+        </member>
+        <member name="T:Sqlx.Generator.Core.OptimizedSqlBuilder">
+            <summary>
+            Optimized SQL builder that generates efficient SQL statements with minimal allocations.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.OptimizedSqlBuilder.BuildSelect(System.String,System.Collections.Generic.IEnumerable{System.String},System.Collections.Generic.IEnumerable{System.String},System.Nullable{System.Int32})">
+            <summary>
+            Builds a SELECT statement for the given parameters.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.OptimizedSqlBuilder.BuildInsert(System.String,System.Collections.Generic.IEnumerable{System.String})">
+            <summary>
+            Builds an INSERT statement for the given parameters.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.OptimizedSqlBuilder.BuildUpdate(System.String,System.Collections.Generic.IEnumerable{System.String},System.Collections.Generic.IEnumerable{System.String})">
+            <summary>
+            Builds an UPDATE statement for the given parameters.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.OptimizedSqlBuilder.BuildDelete(System.String,System.Collections.Generic.IEnumerable{System.String})">
+            <summary>
+            Builds a DELETE statement for the given parameters.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.OptimizedSqlBuilder.GetEntityColumns(Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <summary>
+            Extracts column names from entity type properties.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.OptimizedSqlBuilder.GetMethodParameters(Microsoft.CodeAnalysis.IMethodSymbol)">
+            <summary>
+            Extracts parameter names from method parameters.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.OptimizedSqlBuilder.GetTableName(Microsoft.CodeAnalysis.INamedTypeSymbol,System.String)">
+            <summary>
+            Gets a table name from entity type (with fallback to type name).
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.OptimizedSqlBuilder.ClearCache">
+            <summary>
+            Clears the SQL cache (useful for testing or memory management).
+            </summary>
+        </member>
+        <member name="T:Sqlx.Generator.Core.PostgreSqlDialectProvider">
+            <summary>
+            PostgreSQL database dialect provider with PostgreSQL-specific SQL syntax.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.PostgreSqlDialectProvider.SqlDefine">
+            <inheritdoc />
+        </member>
+        <member name="P:Sqlx.Generator.Core.PostgreSqlDialectProvider.DialectType">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.PostgreSqlDialectProvider.GenerateLimitClause(System.Nullable{System.Int32},System.Nullable{System.Int32})">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.PostgreSqlDialectProvider.GenerateInsertWithReturning(System.String,System.String[])">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.PostgreSqlDialectProvider.GenerateBatchInsert(System.String,System.String[],System.Int32)">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.PostgreSqlDialectProvider.GenerateUpsert(System.String,System.String[],System.String[])">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.PostgreSqlDialectProvider.GetDatabaseTypeName(System.Type)">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.PostgreSqlDialectProvider.FormatDateTime(System.DateTime)">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.PostgreSqlDialectProvider.GetCurrentDateTimeSyntax">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.PostgreSqlDialectProvider.GetConcatenationSyntax(System.String[])">
+            <inheritdoc />
+        </member>
+        <member name="T:Sqlx.Generator.Core.RepositoryGenerationContext">
+            <summary>
+            Context for repository generation.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.RepositoryGenerationContext.#ctor(Microsoft.CodeAnalysis.GeneratorExecutionContext,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol,Sqlx.Generator.Core.ITypeInferenceService,Sqlx.Generator.Core.ICodeGenerationService,Sqlx.Generator.Core.OperationGeneratorFactory,Sqlx.Generator.Core.IAttributeHandler,Sqlx.Generator.Core.IMethodAnalyzer)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Sqlx.Generator.Core.RepositoryGenerationContext"/> class.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.RepositoryGenerationContext.ExecutionContext">
+            <summary>
+            Gets the execution context.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.RepositoryGenerationContext.RepositoryClass">
+            <summary>
+            Gets the repository class.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.RepositoryGenerationContext.RepositoryForAttributeSymbol">
+            <summary>
+            Gets the repository for attribute symbol.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.RepositoryGenerationContext.TableNameAttributeSymbol">
+            <summary>
+            Gets the table name attribute symbol.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.RepositoryGenerationContext.SqlxAttributeSymbol">
+            <summary>
+            Gets the Sqlx attribute symbol.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.RepositoryGenerationContext.TypeInferenceService">
+            <summary>
+            Gets the type inference service.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.RepositoryGenerationContext.CodeGenerationService">
+            <summary>
+            Gets the code generation service.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.RepositoryGenerationContext.OperationFactory">
+            <summary>
+            Gets the operation factory.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.RepositoryGenerationContext.AttributeHandler">
+            <summary>
+            Gets the attribute handler.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.RepositoryGenerationContext.MethodAnalyzer">
+            <summary>
+            Gets the method analyzer.
+            </summary>
+        </member>
+        <member name="T:Sqlx.Generator.Core.RepositoryMethodContext">
+            <summary>
+            Context for repository method generation.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.RepositoryMethodContext.#ctor(Sqlx.Generator.Core.IndentedStringBuilder,Microsoft.CodeAnalysis.IMethodSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol,System.String,Sqlx.Generator.Core.IOperationGenerator,Sqlx.Generator.Core.IAttributeHandler,Sqlx.Generator.Core.IMethodAnalyzer)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Sqlx.Generator.Core.RepositoryMethodContext"/> class.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.RepositoryMethodContext.StringBuilder">
+            <summary>
+            Gets the string builder.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.RepositoryMethodContext.Method">
+            <summary>
+            Gets the method symbol.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.RepositoryMethodContext.EntityType">
+            <summary>
+            Gets the entity type.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.RepositoryMethodContext.TableName">
+            <summary>
+            Gets the table name.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.RepositoryMethodContext.OperationGenerator">
+            <summary>
+            Gets the operation generator.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.RepositoryMethodContext.AttributeHandler">
+            <summary>
+            Gets the attribute handler.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.RepositoryMethodContext.MethodAnalyzer">
+            <summary>
+            Gets the method analyzer.
+            </summary>
+        </member>
+        <member name="T:Sqlx.Generator.Core.SqlDefine">
+            <summary>
+            Internal SQL dialect definition for code generation.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.SqlDefine.ColumnLeft">
+            <summary>
+            获取列名的左边界符。
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.SqlDefine.ColumnRight">
+            <summary>
+            获取列名的右边界符。
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.SqlDefine.StringLeft">
+            <summary>
+            获取字符串的左边界符。
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.SqlDefine.StringRight">
+            <summary>
+            获取字符串的右边界符。
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.SqlDefine.ParameterPrefix">
+            <summary>
+            获取参数的前缀符。
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlDefine.#ctor(System.String,System.String,System.String,System.String,System.String)">
+            <summary>
+            初始化 SqlDefine 结构的新实例。
+            </summary>
+            <param name="columnLeft">列名的左边界符。</param>
+            <param name="columnRight">列名的右边界符。</param>
+            <param name="stringLeft">字符串的左边界符。</param>
+            <param name="stringRight">字符串的右边界符。</param>
+            <param name="parameterPrefix">参数的前缀符。</param>
+        </member>
+        <member name="F:Sqlx.Generator.Core.SqlDefine.MySql">
+            <summary>
+            获取 MySQL 数据库的 SQL 方言定义。
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.SqlDefine.SqlServer">
+            <summary>
+            获取 SQL Server 数据库的 SQL 方言定义。
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.SqlDefine.PgSql">
+            <summary>
+            获取 PostgreSQL 数据库的 SQL 方言定义。
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.SqlDefine.Oracle">
+            <summary>
+            获取 Oracle 数据库的 SQL 方言定义。
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.SqlDefine.DB2">
+            <summary>
+            获取 DB2 数据库的 SQL 方言定义。
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.SqlDefine.SQLite">
+            <summary>
+            获取 SQLite 数据库的 SQL 方言定义。
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlDefine.WrapString(System.String)">
+            <summary>
+            使用字符串界符包裹指定的字符串。
+            </summary>
+            <param name="input">要包裹的字符串。</param>
+            <returns>包裹后的字符串。</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlDefine.WrapColumn(System.String)">
+            <summary>
+            使用列名界符包裹指定的列名。
+            </summary>
+            <param name="input">要包裹的列名。</param>
+            <returns>包裹后的列名。</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlDefine.Deconstruct(System.String@,System.String@,System.String@,System.String@,System.String@)">
+            <summary>
+            将 SqlDefine 结构解构为各个组成部分。
+            </summary>
+            <param name="columnLeft">列名的左边界符。</param>
+            <param name="columnRight">列名的右边界符。</param>
+            <param name="stringLeft">字符串的左边界符。</param>
+            <param name="stringRight">字符串的右边界符。</param>
+            <param name="parameterPrefix">参数的前缀符。</param>
+        </member>
+        <member name="T:Sqlx.Generator.Core.SqlDefineTypes">
+            <summary>
+            SQL dialect types enumeration for code generation.
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.SqlDefineTypes.MySql">
+            <summary>
+            MySQL 数据库方言类型。
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.SqlDefineTypes.SqlServer">
+            <summary>
+            SQL Server 数据库方言类型。
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.SqlDefineTypes.PostgreSql">
+            <summary>
+            PostgreSQL 数据库方言类型。
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.SqlDefineTypes.Oracle">
+            <summary>
+            Oracle 数据库方言类型。
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.SqlDefineTypes.DB2">
+            <summary>
+            DB2 数据库方言类型。
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.SqlDefineTypes.SQLite">
+            <summary>
+            SQLite 数据库方言类型。
+            </summary>
+        </member>
+        <member name="T:Sqlx.Generator.Core.SqlDefineExtensions">
+            <summary>
+            Extension methods for SqlDefine to provide additional functionality.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlDefineExtensions.WrapColumns(Sqlx.Generator.Core.SqlDefine,System.String[])">
+            <summary>
+            Wraps multiple column names with the appropriate database-specific delimiters.
+            </summary>
+            <param name="sqlDefine">The SQL definition.</param>
+            <param name="columnNames">The column names to wrap.</param>
+            <returns>An array of wrapped column names.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlDefineExtensions.WrapAndJoinColumns(Sqlx.Generator.Core.SqlDefine,System.String[])">
+            <summary>
+            Creates a comma-separated list of wrapped column names.
+            </summary>
+            <param name="sqlDefine">The SQL definition.</param>
+            <param name="columnNames">The column names to wrap and join.</param>
+            <returns>A comma-separated string of wrapped column names.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlDefineExtensions.WrapAndJoinColumns(Sqlx.Generator.Core.SqlDefine,System.Collections.Generic.IEnumerable{System.String})">
+            <summary>
+            Creates a comma-separated list of wrapped column names from a collection.
+            </summary>
+            <param name="sqlDefine">The SQL definition.</param>
+            <param name="columnNames">The collection of column names to wrap and join.</param>
+            <returns>A comma-separated string of wrapped column names.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlDefineExtensions.CreateParameter(Sqlx.Generator.Core.SqlDefine,System.String)">
+            <summary>
+            Creates a parameter placeholder with the appropriate prefix.
+            </summary>
+            <param name="sqlDefine">The SQL definition.</param>
+            <param name="parameterName">The parameter name (without prefix).</param>
+            <returns>The parameter placeholder with prefix.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlDefineExtensions.CreateParameters(Sqlx.Generator.Core.SqlDefine,System.String[])">
+            <summary>
+            Creates multiple parameter placeholders with the appropriate prefix.
+            </summary>
+            <param name="sqlDefine">The SQL definition.</param>
+            <param name="parameterNames">The parameter names (without prefix).</param>
+            <returns>An array of parameter placeholders with prefix.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlDefineExtensions.CreateAndJoinParameters(Sqlx.Generator.Core.SqlDefine,System.String[])">
+            <summary>
+            Creates a comma-separated list of parameter placeholders.
+            </summary>
+            <param name="sqlDefine">The SQL definition.</param>
+            <param name="parameterNames">The parameter names to create placeholders for.</param>
+            <returns>A comma-separated string of parameter placeholders.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlDefineExtensions.CreateAndJoinParameters(Sqlx.Generator.Core.SqlDefine,System.Collections.Generic.IEnumerable{System.String})">
+            <summary>
+            Creates a comma-separated list of parameter placeholders from a collection.
+            </summary>
+            <param name="sqlDefine">The SQL definition.</param>
+            <param name="parameterNames">The collection of parameter names to create placeholders for.</param>
+            <returns>A comma-separated string of parameter placeholders.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlDefineExtensions.CreateSetClauses(Sqlx.Generator.Core.SqlDefine,System.String[])">
+            <summary>
+            Creates SET clauses for UPDATE statements.
+            </summary>
+            <param name="sqlDefine">The SQL definition.</param>
+            <param name="columnNames">The column names to create SET clauses for.</param>
+            <returns>A comma-separated string of SET clauses.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlDefineExtensions.CreateSetClauses(Sqlx.Generator.Core.SqlDefine,System.Collections.Generic.IEnumerable{System.String})">
+            <summary>
+            Creates SET clauses for UPDATE statements from a collection.
+            </summary>
+            <param name="sqlDefine">The SQL definition.</param>
+            <param name="columnNames">The collection of column names to create SET clauses for.</param>
+            <returns>A comma-separated string of SET clauses.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlDefineExtensions.CreateWhereConditions(Sqlx.Generator.Core.SqlDefine,System.String[])">
+            <summary>
+            Creates WHERE conditions for SQL statements.
+            </summary>
+            <param name="sqlDefine">The SQL definition.</param>
+            <param name="columnNames">The column names to create WHERE conditions for.</param>
+            <returns>A string of WHERE conditions joined with AND.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlDefineExtensions.CreateWhereConditions(Sqlx.Generator.Core.SqlDefine,System.Collections.Generic.IEnumerable{System.String})">
+            <summary>
+            Creates WHERE conditions for SQL statements from a collection.
+            </summary>
+            <param name="sqlDefine">The SQL definition.</param>
+            <param name="columnNames">The collection of column names to create WHERE conditions for.</param>
+            <returns>A string of WHERE conditions joined with AND.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlDefineExtensions.UsesParameterPrefix(Sqlx.Generator.Core.SqlDefine,System.String)">
+            <summary>
+            Determines if this SQL definition uses a specific parameter prefix.
+            </summary>
+            <param name="sqlDefine">The SQL definition.</param>
+            <param name="prefix">The prefix to check for.</param>
+            <returns>True if the definition uses the specified prefix.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlDefineExtensions.GetEffectiveParameterPrefix(Sqlx.Generator.Core.SqlDefine)">
+            <summary>
+            Gets the effective parameter prefix (handles SQLite special case).
+            </summary>
+            <param name="sqlDefine">The SQL definition.</param>
+            <returns>The effective parameter prefix for SQL generation.</returns>
+        </member>
+        <member name="T:Sqlx.Generator.Core.SQLiteDialectProvider">
+            <summary>
+            SQLite database dialect provider with SQLite-specific SQL syntax.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.SQLiteDialectProvider.SqlDefine">
+            <inheritdoc />
+        </member>
+        <member name="P:Sqlx.Generator.Core.SQLiteDialectProvider.DialectType">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.SQLiteDialectProvider.GenerateLimitClause(System.Nullable{System.Int32},System.Nullable{System.Int32})">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.SQLiteDialectProvider.GenerateInsertWithReturning(System.String,System.String[])">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.SQLiteDialectProvider.GenerateBatchInsert(System.String,System.String[],System.Int32)">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.SQLiteDialectProvider.GenerateUpsert(System.String,System.String[],System.String[])">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.SQLiteDialectProvider.GetDatabaseTypeName(System.Type)">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.SQLiteDialectProvider.FormatDateTime(System.DateTime)">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.SQLiteDialectProvider.GetCurrentDateTimeSyntax">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.SQLiteDialectProvider.GetConcatenationSyntax(System.String[])">
+            <inheritdoc />
+        </member>
+        <member name="T:Sqlx.Generator.Core.SqlServerDialectProvider">
+            <summary>
+            SQL Server database dialect provider with SQL Server-specific SQL syntax.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.SqlServerDialectProvider.SqlDefine">
+            <inheritdoc />
+        </member>
+        <member name="P:Sqlx.Generator.Core.SqlServerDialectProvider.DialectType">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlServerDialectProvider.GenerateLimitClause(System.Nullable{System.Int32},System.Nullable{System.Int32})">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlServerDialectProvider.GenerateInsertWithReturning(System.String,System.String[])">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlServerDialectProvider.GenerateBatchInsert(System.String,System.String[],System.Int32)">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlServerDialectProvider.GenerateUpsert(System.String,System.String[],System.String[])">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlServerDialectProvider.GetDatabaseTypeName(System.Type)">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlServerDialectProvider.FormatDateTime(System.DateTime)">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlServerDialectProvider.GetCurrentDateTimeSyntax">
+            <inheritdoc />
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlServerDialectProvider.GetConcatenationSyntax(System.String[])">
+            <inheritdoc />
+        </member>
+        <member name="T:Sqlx.Generator.Core.SqlTemplatePlaceholder">
+            <summary>
+            SQL 模板占位符处理器，支持动态替换占位符如 {{columns}}, {{table}}, {{where}} 等
+            </summary>
+        </member>
+        <member name="T:Sqlx.Generator.Core.SqlTemplatePlaceholder.Placeholders">
+            <summary>
+            支持的占位符类型
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.SqlTemplatePlaceholder.Placeholders.Columns">
+            <summary>
+            列名占位符，用于替换表的列名列表。
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.SqlTemplatePlaceholder.Placeholders.Table">
+            <summary>
+            表名占位符，用于替换数据库表名。
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.SqlTemplatePlaceholder.Placeholders.Where">
+            <summary>
+            WHERE 子句占位符，用于替换查询条件。
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.SqlTemplatePlaceholder.Placeholders.OrderBy">
+            <summary>
+            ORDER BY 子句占位符，用于替换排序条件。
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.SqlTemplatePlaceholder.Placeholders.Insert">
+            <summary>
+            INSERT 语句占位符，用于替换插入列名。
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.SqlTemplatePlaceholder.Placeholders.Update">
+            <summary>
+            UPDATE 语句占位符，用于替换更新列名。
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.SqlTemplatePlaceholder.Placeholders.Values">
+            <summary>
+            VALUES 子句占位符，用于替换插入值。
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.SqlTemplatePlaceholder.Placeholders.Joins">
+            <summary>
+            JOIN 子句占位符，用于替换表连接。
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.SqlTemplatePlaceholder.Placeholders.Select">
+            <summary>
+            SELECT 子句占位符，用于替换查询列名。
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.SqlTemplatePlaceholder.Placeholders.Count">
+            <summary>
+            COUNT 函数占位符，用于替换计数查询。
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlTemplatePlaceholder.ProcessTemplate(System.String,Sqlx.Generator.Core.SqlPlaceholderContext)">
+            <summary>
+            处理 SQL 模板中的占位符替换
+            </summary>
+            <param name="sqlTemplate">原始 SQL 模板</param>
+            <param name="context">替换上下文</param>
+            <returns>处理后的 SQL 字符串</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlTemplatePlaceholder.ContainsPlaceholders(System.String)">
+            <summary>
+            检查 SQL 模板是否包含占位符
+            </summary>
+            <param name="sqlTemplate">SQL 模板</param>
+            <returns>是否包含占位符</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlTemplatePlaceholder.GetPlaceholders(System.String)">
+            <summary>
+            获取 SQL 模板中所有的占位符
+            </summary>
+            <param name="sqlTemplate">SQL 模板</param>
+            <returns>占位符列表</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlTemplatePlaceholder.ProcessColumnsPlaceholder(Sqlx.Generator.Core.SqlPlaceholderContext,System.String)">
+            <summary>
+            处理 {{columns}} 占位符
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlTemplatePlaceholder.ProcessTablePlaceholder(Sqlx.Generator.Core.SqlPlaceholderContext,System.String)">
+            <summary>
+            处理 {{table}} 占位符
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlTemplatePlaceholder.ProcessWherePlaceholder(Sqlx.Generator.Core.SqlPlaceholderContext,System.String)">
+            <summary>
+            处理 {{where}} 占位符
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlTemplatePlaceholder.ProcessOrderByPlaceholder(Sqlx.Generator.Core.SqlPlaceholderContext,System.String)">
+            <summary>
+            处理 {{orderby}} 占位符
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlTemplatePlaceholder.ProcessInsertPlaceholder(Sqlx.Generator.Core.SqlPlaceholderContext,System.String)">
+            <summary>
+            处理 {{insert}} 占位符
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlTemplatePlaceholder.ProcessUpdatePlaceholder(Sqlx.Generator.Core.SqlPlaceholderContext,System.String)">
+            <summary>
+            处理 {{update}} 占位符
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlTemplatePlaceholder.ProcessValuesPlaceholder(Sqlx.Generator.Core.SqlPlaceholderContext,System.String)">
+            <summary>
+            处理 {{values}} 占位符
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlTemplatePlaceholder.ProcessJoinsPlaceholder(Sqlx.Generator.Core.SqlPlaceholderContext,System.String)">
+            <summary>
+            处理 {{joins}} 占位符
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlTemplatePlaceholder.ProcessSelectPlaceholder(Sqlx.Generator.Core.SqlPlaceholderContext,System.String)">
+            <summary>
+            处理 {{select}} 占位符
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlTemplatePlaceholder.ProcessCountPlaceholder(Sqlx.Generator.Core.SqlPlaceholderContext,System.String)">
+            <summary>
+            处理 {{count}} 占位符
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlTemplatePlaceholder.GetEntityColumns(Microsoft.CodeAnalysis.INamedTypeSymbol,Sqlx.Generator.Core.SqlDefine,System.Boolean)">
+            <summary>
+            获取实体类型的所有列
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlTemplatePlaceholder.GetPrimaryKeyColumn(Microsoft.CodeAnalysis.INamedTypeSymbol,Sqlx.Generator.Core.SqlDefine)">
+            <summary>
+            获取主键列
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlTemplatePlaceholder.ParseArgs(System.String)">
+            <summary>
+            解析占位符参数
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlTemplatePlaceholder.GetColumnNameWithoutWrapper(System.String)">
+            <summary>
+            获取去除包装器的列名
+            </summary>
+        </member>
+        <member name="T:Sqlx.Generator.Core.SqlPlaceholderContext">
+            <summary>
+            SQL 占位符替换上下文
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.SqlPlaceholderContext.EntityType">
+            <summary>
+            获取或设置实体类型符号。
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.SqlPlaceholderContext.TableName">
+            <summary>
+            获取或设置数据库表名。
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.SqlPlaceholderContext.SqlDefine">
+            <summary>
+            获取或设置 SQL 方言定义。
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.SqlPlaceholderContext.Method">
+            <summary>
+            获取或设置当前处理的方法符号。
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.Core.SqlPlaceholderContext.AdditionalData">
+            <summary>
+            获取或设置额外的上下文数据。
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlPlaceholderContext.#ctor(Sqlx.Generator.Core.SqlDefine)">
+            <summary>
+            初始化 SqlPlaceholderContext 类的新实例。
+            </summary>
+            <param name="sqlDefine">SQL 方言定义。</param>
+        </member>
+        <member name="T:Sqlx.Generator.Core.SqlxGeneratorService">
+            <summary>
+            Unified service implementation for Sqlx code generation.
+            Combines type inference, method analysis, and code generation capabilities.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlxGeneratorService.#ctor">
+            <summary>
+            Initializes a new instance of the <see cref="T:Sqlx.Generator.Core.SqlxGeneratorService"/> class.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlxGeneratorService.InferEntityTypeFromInterface(Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlxGeneratorService.InferEntityTypeFromMethod(Microsoft.CodeAnalysis.IMethodSymbol)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlxGeneratorService.GetServiceInterface(Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.Compilation)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlxGeneratorService.GetTableName(Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlxGeneratorService.GetTableName(Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlxGeneratorService.AnalyzeMethod(Microsoft.CodeAnalysis.IMethodSymbol)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlxGeneratorService.GenerateRepositoryImplementation(Sqlx.Generator.Core.GenerationContext)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.SqlxGeneratorService.GenerateAttributes(Sqlx.Generator.Core.IndentedStringBuilder,Microsoft.CodeAnalysis.IMethodSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol,System.String)">
+            <inheritdoc/>
+        </member>
+        <member name="T:Sqlx.Generator.Core.TypeInferenceService">
+            <summary>
+            Default implementation of type inference service.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.TypeInferenceService.InferEntityTypeFromServiceInterface(Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.TypeInferenceService.InferEntityTypeFromMethod(Microsoft.CodeAnalysis.IMethodSymbol)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.TypeInferenceService.GetServiceInterfaceFromSyntax(Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.Compilation)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.TypeInferenceService.GetTableNameFromEntity(Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sqlx.Generator.Core.TypeInferenceService.GetTableName(Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <inheritdoc/>
+        </member>
+        <member name="T:Sqlx.Generator.Core.IndentedStringBuilder">
+            <summary>
+            提供具有自动缩进功能的字符串构建器，用于生成格式化的代码。
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.IndentedStringBuilder.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Sqlx.Generator.Core.IndentedStringBuilder"/> class.
+            </summary>
+            <param name="content">Initial content for the string builder.</param>
+        </member>
+        <member name="M:Sqlx.Generator.Core.IndentedStringBuilder.Append(System.String)">
+            <summary>
+            向字符串构建器追加指定的字符串，并在需要时添加缩进。
+            </summary>
+            <param name="value">要追加的字符串。</param>
+            <returns>当前 IndentedStringBuilder 实例，以支持链式调用。</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.IndentedStringBuilder.Append(System.Char)">
+            <summary>
+            向字符串构建器追加指定的字符，并在需要时添加缩进。
+            </summary>
+            <param name="value">要追加的字符。</param>
+            <returns>当前 IndentedStringBuilder 实例，以支持链式调用。</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.IndentedStringBuilder.AppendLine">
+            <summary>
+            向字符串构建器追加一个换行符。
+            </summary>
+            <returns>当前 IndentedStringBuilder 实例，以支持链式调用。</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.IndentedStringBuilder.AppendLineIf(System.Boolean,System.String,System.String)">
+            <summary>
+            根据条件向字符串构建器追加一行内容。
+            </summary>
+            <param name="condition">判断条件。</param>
+            <param name="trueValue">条件为 true 时追加的字符串。</param>
+            <param name="falseValue">条件为 false 时追加的字符串（可选）。</param>
+            <returns>当前 IndentedStringBuilder 实例，以支持链式调用。</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.IndentedStringBuilder.AppendLine(System.String)">
+            <summary>
+            向字符串构建器追加指定的字符串并换行。
+            </summary>
+            <param name="value">要追加的字符串。</param>
+            <returns>当前 IndentedStringBuilder 实例，以支持链式调用。</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.IndentedStringBuilder.PushIndent">
+            <summary>
+            增加缩进级别，后续的内容将使用更深的缩进。
+            </summary>
+            <returns>当前 IndentedStringBuilder 实例，以支持链式调用。</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.IndentedStringBuilder.PopIndent">
+            <summary>
+            减少缩进级别，后续的内容将使用更浅的缩进。
+            </summary>
+            <returns>当前 IndentedStringBuilder 实例，以支持链式调用。</returns>
+        </member>
+        <member name="M:Sqlx.Generator.Core.IndentedStringBuilder.ToString">
+            <inheritdoc/>
+        </member>
+        <member name="T:Sqlx.Generator.DatabaseDialectFactory">
+            <summary>
+            Simple factory for creating database dialect providers.
+            No caching needed - these are lightweight objects.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.DatabaseDialectFactory.GetDialectProvider(Sqlx.Generator.Core.SqlDefineTypes)">
+            <summary>
+            Gets the dialect provider for the specified database type.
+            </summary>
+            <param name="dialectType">The database dialect type.</param>
+            <returns>The appropriate dialect provider.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.DatabaseDialectFactory.GetDialectProvider(Sqlx.Generator.Core.SqlDefine)">
+            <summary>
+            Gets the dialect provider for the specified SQL definition.
+            </summary>
+            <param name="sqlDefine">The SQL definition.</param>
+            <returns>The appropriate dialect provider.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.DatabaseDialectFactory.InferDialectFromCharacteristics(Sqlx.Generator.Core.SqlDefine)">
+            <summary>
+            Infers the dialect type from SqlDefine characteristics.
+            </summary>
+            <param name="sqlDefine">The SQL definition.</param>
+            <returns>The inferred dialect type.</returns>
+        </member>
+        <member name="M:Sqlx.Generator.DatabaseDialectFactory.CreateDialectProvider(Sqlx.Generator.Core.SqlDefineTypes)">
+            <summary>
+            Creates a dialect provider for the specified type.
+            </summary>
+            <param name="dialectType">The dialect type.</param>
+            <returns>The created dialect provider.</returns>
+        </member>
+        <member name="T:Sqlx.Generator.SimpleGenerator">
+            <summary>
+            Simple source generator for testing basic functionality.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.SimpleGenerator.Initialize(Microsoft.CodeAnalysis.GeneratorInitializationContext)">
+            <summary>
+            初始化源代码生成器，注册语法通知接收器。
+            </summary>
+            <param name="context">生成器初始化上下文。</param>
+        </member>
+        <member name="M:Sqlx.Generator.SimpleGenerator.Execute(Microsoft.CodeAnalysis.GeneratorExecutionContext)">
+            <summary>
+            执行源代码生成，分析语法树并生成相应的代码。
+            </summary>
+            <param name="context">生成器执行上下文。</param>
+        </member>
+        <member name="T:Sqlx.Generator.SimpleSyntaxReceiver">
+            <summary>
+            Simple syntax receiver that collects methods with Sqlx attributes.
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.SimpleSyntaxReceiver.Methods">
+            <summary>
+            获取收集到的带有 Sqlx 属性的方法列表。
+            </summary>
+        </member>
+        <member name="P:Sqlx.Generator.SimpleSyntaxReceiver.RepositoryClasses">
+            <summary>
+            获取收集到的仓储类列表。
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.SimpleSyntaxReceiver.OnVisitSyntaxNode(Microsoft.CodeAnalysis.SyntaxNode)">
+            <summary>
+            访问语法节点，收集相关的方法和类声明。
+            </summary>
+            <param name="syntaxNode">要访问的语法节点。</param>
+        </member>
+        <member name="T:Sqlx.DiagnosticGuidanceService">
+            <summary>
+            诊断指导服务，为用户提供全面的使用指导、SQL质量检查和性能优化建议
+            </summary>
+        </member>
+        <member name="M:Sqlx.DiagnosticGuidanceService.PerformComprehensiveAnalysis(Microsoft.CodeAnalysis.IMethodSymbol,System.String,Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <summary>
+            执行完整的诊断分析并报告所有发现的问题
+            </summary>
+        </member>
+        <member name="M:Sqlx.DiagnosticGuidanceService.AnalyzeAdditionalGuidance(Microsoft.CodeAnalysis.IMethodSymbol,System.String,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.Location)">
+            <summary>
+            分析额外的使用指导
+            </summary>
+        </member>
+        <member name="M:Sqlx.DiagnosticGuidanceService.CheckDatabaseDialectConfiguration(Microsoft.CodeAnalysis.IMethodSymbol,System.Collections.Generic.List{Microsoft.CodeAnalysis.Diagnostic},Microsoft.CodeAnalysis.Location)">
+            <summary>
+            检查数据库方言配置
+            </summary>
+        </member>
+        <member name="M:Sqlx.DiagnosticGuidanceService.CheckConcurrencyAndTransactionGuidance(Microsoft.CodeAnalysis.IMethodSymbol,System.String,System.Collections.Generic.List{Microsoft.CodeAnalysis.Diagnostic},Microsoft.CodeAnalysis.Location)">
+            <summary>
+            检查并发和事务相关指导
+            </summary>
+        </member>
+        <member name="M:Sqlx.DiagnosticGuidanceService.ReportPositiveFeedback(Microsoft.CodeAnalysis.IMethodSymbol,System.String,Microsoft.CodeAnalysis.Location)">
+            <summary>
+            为良好的实践提供正面反馈
+            </summary>
+        </member>
+        <member name="M:Sqlx.DiagnosticGuidanceService.ProvideQuickStartGuidance(Microsoft.CodeAnalysis.IMethodSymbol,Microsoft.CodeAnalysis.Location)">
+            <summary>
+            为新手用户提供快速入门指导
+            </summary>
+        </member>
+        <member name="M:Sqlx.DiagnosticGuidanceService.GenerateDiagnosticSummary(System.Collections.Generic.IReadOnlyList{Microsoft.CodeAnalysis.IMethodSymbol})">
+            <summary>
+            生成诊断摘要报告
+            </summary>
+        </member>
+        <member name="T:Sqlx.DiagnosticHelper">
+            <summary>
+            诊断和错误处理辅助类
+            提供详细的错误信息和调试支持
+            </summary>
+        </member>
+        <member name="M:Sqlx.DiagnosticHelper.CreateDiagnostic(System.String,System.String,System.String,Microsoft.CodeAnalysis.DiagnosticSeverity,Microsoft.CodeAnalysis.Location,System.Object[])">
+            <summary>
+            创建详细的编译诊断信息
+            </summary>
+        </member>
+        <member name="M:Sqlx.DiagnosticHelper.CreatePrimaryConstructorDiagnostic(System.String,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.Location)">
+            <summary>
+            创建 Primary Constructor 相关的诊断信息
+            </summary>
+        </member>
+        <member name="M:Sqlx.DiagnosticHelper.CreateRecordTypeDiagnostic(System.String,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.Location)">
+            <summary>
+            创建 Record 类型相关的诊断信息
+            </summary>
+        </member>
+        <member name="M:Sqlx.DiagnosticHelper.CreateEntityInferenceDiagnostic(System.String,System.String,Microsoft.CodeAnalysis.Location)">
+            <summary>
+            创建实体类型推断相关的诊断信息
+            </summary>
+        </member>
+        <member name="M:Sqlx.DiagnosticHelper.CreatePerformanceSuggestion(System.String,System.String,Microsoft.CodeAnalysis.Location)">
+            <summary>
+            创建性能优化建议诊断信息
+            </summary>
+        </member>
+        <member name="M:Sqlx.DiagnosticHelper.CreateUsageGuidanceDiagnostic(System.String,System.String,Microsoft.CodeAnalysis.Location)">
+            <summary>
+            创建使用方式指导诊断信息
+            </summary>
+        </member>
+        <member name="M:Sqlx.DiagnosticHelper.CreateSqlQualityDiagnostic(System.String,System.String,Microsoft.CodeAnalysis.Location)">
+            <summary>
+            创建SQL质量检查诊断信息
+            </summary>
+        </member>
+        <member name="M:Sqlx.DiagnosticHelper.CreateSecurityWarningDiagnostic(System.String,System.String,Microsoft.CodeAnalysis.Location)">
+            <summary>
+            创建安全性警告诊断信息
+            </summary>
+        </member>
+        <member name="M:Sqlx.DiagnosticHelper.CreateBestPracticeDiagnostic(System.String,System.String,Microsoft.CodeAnalysis.Location)">
+            <summary>
+            创建最佳实践建议诊断信息
+            </summary>
+        </member>
+        <member name="M:Sqlx.DiagnosticHelper.GenerateTypeAnalysisReport(Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <summary>
+            生成详细的类型分析报告
+            </summary>
+        </member>
+        <member name="M:Sqlx.DiagnosticHelper.ValidateEntityType(Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <summary>
+            验证实体类型的完整性
+            </summary>
+        </member>
+        <member name="M:Sqlx.DiagnosticHelper.GeneratePerformanceSuggestions(Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <summary>
+            生成性能优化建议
+            </summary>
+        </member>
+        <member name="M:Sqlx.DiagnosticHelper.LogCodeGenerationContext(System.String,Microsoft.CodeAnalysis.INamedTypeSymbol,System.String)">
+            <summary>
+            创建代码生成上下文诊断
+            </summary>
+        </member>
+        <member name="M:Sqlx.DiagnosticHelper.ValidateGeneratedCode(System.String,Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <summary>
+            验证生成的代码质量
+            </summary>
+        </member>
+        <member name="M:Sqlx.DiagnosticHelper.AnalyzeSqlQuality(System.String,System.String,Microsoft.CodeAnalysis.Location)">
+            <summary>
+            分析SQL质量并提供改进建议
+            </summary>
+        </member>
+        <member name="M:Sqlx.DiagnosticHelper.AnalyzeUsagePattern(Microsoft.CodeAnalysis.IMethodSymbol,System.String,Microsoft.CodeAnalysis.Location)">
+            <summary>
+            分析方法使用模式并提供指导
+            </summary>
+        </member>
+        <member name="M:Sqlx.DiagnosticHelper.AnalyzePerformanceOpportunities(Microsoft.CodeAnalysis.IMethodSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol,System.String,Microsoft.CodeAnalysis.Location)">
+            <summary>
+            分析性能优化机会
+            </summary>
+        </member>
+        <member name="T:Sqlx.DiagnosticIds">
+            <summary>
+            诊断 ID 常量定义
+            </summary>
+        </member>
+        <member name="T:Sqlx.EnhancedEntityMappingGenerator">
+            <summary>
+            Enhanced entity mapping generator that supports primary constructors and records.
+            </summary>
+        </member>
+        <member name="M:Sqlx.EnhancedEntityMappingGenerator.GenerateEntityMapping(Sqlx.Generator.Core.IndentedStringBuilder,Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <summary>
+            Generates optimized entity mapping code with support for primary constructors and records.
+            </summary>
+        </member>
+        <member name="M:Sqlx.EnhancedEntityMappingGenerator.GenerateRecordMapping(Sqlx.Generator.Core.IndentedStringBuilder,Microsoft.CodeAnalysis.INamedTypeSymbol,System.Collections.Generic.List{Sqlx.IMemberInfo})">
+            <summary>
+            Generates mapping for record types.
+            </summary>
+        </member>
+        <member name="M:Sqlx.EnhancedEntityMappingGenerator.GeneratePrimaryConstructorMapping(Sqlx.Generator.Core.IndentedStringBuilder,Microsoft.CodeAnalysis.INamedTypeSymbol,System.Collections.Generic.List{Sqlx.IMemberInfo})">
+            <summary>
+            Generates mapping for classes with primary constructors.
+            </summary>
+        </member>
+        <member name="M:Sqlx.EnhancedEntityMappingGenerator.GenerateTraditionalMapping(Sqlx.Generator.Core.IndentedStringBuilder,Microsoft.CodeAnalysis.INamedTypeSymbol,System.Collections.Generic.List{Sqlx.IMemberInfo})">
+            <summary>
+            Generates traditional mapping using object initializer.
+            </summary>
+        </member>
+        <member name="M:Sqlx.EnhancedEntityMappingGenerator.GenerateObjectInitializerMapping(Sqlx.Generator.Core.IndentedStringBuilder,Microsoft.CodeAnalysis.INamedTypeSymbol,System.Collections.Generic.List{Sqlx.IMemberInfo})">
+            <summary>
+            Generates mapping using object initializer syntax.
+            </summary>
+        </member>
+        <member name="M:Sqlx.EnhancedEntityMappingGenerator.GetColumnName(Sqlx.IMemberInfo)">
+            <summary>
+            Gets the column name for a member.
+            </summary>
+        </member>
+        <member name="M:Sqlx.EnhancedEntityMappingGenerator.GetDataReadExpression(Microsoft.CodeAnalysis.ITypeSymbol,System.String,System.String,System.String)">
+            <summary>
+            Gets the data read expression for a type.
+            </summary>
+        </member>
+        <member name="M:Sqlx.EnhancedEntityMappingGenerator.GetPropertyNameFromParameter(System.String)">
+            <summary>
+            Converts a parameter name to the corresponding property name (PascalCase).
+            </summary>
+        </member>
+        <member name="T:Sqlx.PrimaryConstructorAnalyzer">
+            <summary>
+            Analyzer for primary constructors and record types in C# 12+.
+            </summary>
+        </member>
+        <member name="M:Sqlx.PrimaryConstructorAnalyzer.IsRecord(Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <summary>
+            Determines if a type is a record type.
+            </summary>
+        </member>
+        <member name="M:Sqlx.PrimaryConstructorAnalyzer.HasPrimaryConstructor(Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <summary>
+            Determines if a type has a primary constructor.
+            </summary>
+        </member>
+        <member name="M:Sqlx.PrimaryConstructorAnalyzer.GetPrimaryConstructor(Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <summary>
+            Gets the primary constructor of a type, if it exists.
+            </summary>
+        </member>
+        <member name="M:Sqlx.PrimaryConstructorAnalyzer.GetPrimaryConstructorParameters(Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <summary>
+            Gets the parameters of the primary constructor.
+            </summary>
+        </member>
+        <member name="M:Sqlx.PrimaryConstructorAnalyzer.GetAccessibleMembers(Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <summary>
+            Gets all accessible members (properties from primary constructor + regular properties).
+            </summary>
+        </member>
+        <member name="M:Sqlx.PrimaryConstructorAnalyzer.IsPrimaryConstructor(Microsoft.CodeAnalysis.IMethodSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <summary>
+            Determines if a constructor is likely a primary constructor.
+            </summary>
+        </member>
+        <member name="M:Sqlx.PrimaryConstructorAnalyzer.GetPropertyNameFromParameter(System.String)">
+            <summary>
+            Converts a parameter name to the corresponding property name (PascalCase).
+            </summary>
+        </member>
+        <member name="T:Sqlx.IMemberInfo">
+            <summary>
+            Represents information about a member (property or primary constructor parameter).
+            </summary>
+        </member>
+        <member name="T:Sqlx.PropertyMemberInfo">
+            <summary>
+            Member info for regular properties.
+            </summary>
+        </member>
+        <member name="T:Sqlx.PrimaryConstructorParameterMemberInfo">
+            <summary>
+            Member info for primary constructor parameters.
+            </summary>
+        </member>
+        <member name="T:Sqlx.SqlOperationInferrer">
+            <summary>
+            Infers SQL operations from method signatures and attributes.
+            </summary>
+        </member>
+        <member name="M:Sqlx.SqlOperationInferrer.InferOperation(Microsoft.CodeAnalysis.IMethodSymbol)">
+            <summary>
+            Infers the SQL operation type from method signature.
+            </summary>
+        </member>
+        <member name="M:Sqlx.SqlOperationInferrer.GenerateSqlTemplate(Sqlx.SqlOperationType,System.String,Microsoft.CodeAnalysis.INamedTypeSymbol)">
+            <summary>
+            Generates SQL template for the operation.
+            </summary>
+        </member>
+        <member name="T:Sqlx.SqlOperationType">
+            <summary>
+            SQL operation types.
+            </summary>
+        </member>
+        <member name="T:Sqlx.SqlxException">
+            <summary>
+            Base exception class for all Sqlx-related exceptions.
+            </summary>
+        </member>
+        <member name="P:Sqlx.SqlxException.ErrorCode">
+            <summary>
+            Gets the error code associated with this exception.
+            </summary>
+        </member>
+        <member name="M:Sqlx.SqlxException.#ctor(System.String,System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Sqlx.SqlxException"/> class.
+            </summary>
+            <param name="errorCode">The error code.</param>
+            <param name="message">The error message.</param>
+        </member>
+        <member name="M:Sqlx.SqlxException.#ctor(System.String,System.String,System.Exception)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Sqlx.SqlxException"/> class.
+            </summary>
+            <param name="errorCode">The error code.</param>
+            <param name="message">The error message.</param>
+            <param name="innerException">The inner exception.</param>
+        </member>
+        <member name="T:Sqlx.SqlGenerationException">
+            <summary>
+            Exception thrown when SQL generation fails.
+            </summary>
+        </member>
+        <member name="M:Sqlx.SqlGenerationException.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Sqlx.SqlGenerationException"/> class.
+            </summary>
+            <param name="message">The error message.</param>
+        </member>
+        <member name="M:Sqlx.SqlGenerationException.#ctor(System.String,System.Exception)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Sqlx.SqlGenerationException"/> class.
+            </summary>
+            <param name="message">The error message.</param>
+            <param name="innerException">The inner exception.</param>
+        </member>
+        <member name="T:Sqlx.InvalidMethodSignatureException">
+            <summary>
+            Exception thrown when method signature is invalid for SQL generation.
+            </summary>
+        </member>
+        <member name="P:Sqlx.InvalidMethodSignatureException.MethodName">
+            <summary>
+            Gets the method name that caused the exception.
+            </summary>
+        </member>
+        <member name="M:Sqlx.InvalidMethodSignatureException.#ctor(System.String,System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Sqlx.InvalidMethodSignatureException"/> class.
+            </summary>
+            <param name="methodName">The method name.</param>
+            <param name="message">The error message.</param>
+        </member>
+        <member name="T:Sqlx.UnsupportedDialectException">
+            <summary>
+            Exception thrown when database dialect is not supported.
+            </summary>
+        </member>
+        <member name="P:Sqlx.UnsupportedDialectException.DialectName">
+            <summary>
+            Gets the dialect name that is not supported.
+            </summary>
+        </member>
+        <member name="M:Sqlx.UnsupportedDialectException.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Sqlx.UnsupportedDialectException"/> class.
+            </summary>
+            <param name="dialectName">The unsupported dialect name.</param>
+        </member>
+        <member name="T:Sqlx.TypeAnalyzer">
+            <summary>
+            Simple type analyzer for source generation.
+            Focus on ADO.NET types. Cache APIs are retained as no-ops for test compatibility.
+            </summary>
+        </member>
+        <member name="M:Sqlx.TypeAnalyzer.IsLikelyEntityType(Microsoft.CodeAnalysis.ITypeSymbol)">
+            <summary>
+            Determines if a type is likely an entity type.
+            </summary>
+        </member>
+        <member name="M:Sqlx.TypeAnalyzer.IsCollectionType(Microsoft.CodeAnalysis.ITypeSymbol)">
+            <summary>
+            Determines if a type is a collection type (cached).
+            </summary>
+        </member>
+        <member name="M:Sqlx.TypeAnalyzer.ExtractEntityType(Microsoft.CodeAnalysis.ITypeSymbol)">
+            <summary>
+            Extracts entity type from generic collections or Task types (cached).
+            </summary>
+        </member>
+        <member name="M:Sqlx.TypeAnalyzer.IsAsyncType(Microsoft.CodeAnalysis.ITypeSymbol)">
+            <summary>
+            Determines if a type is async (Task or Task&lt;T&gt;) (cached).
+            </summary>
+        </member>
+        <member name="M:Sqlx.TypeAnalyzer.GetInnerType(Microsoft.CodeAnalysis.ITypeSymbol)">
+            <summary>
+            Gets the inner type of Task&lt;T&gt; or returns the original type.
+            </summary>
+        </member>
+        <member name="M:Sqlx.TypeAnalyzer.IsScalarReturnType(Microsoft.CodeAnalysis.ITypeSymbol,System.Boolean)">
+            <summary>
+            Determines if a method returns a scalar value (cached).
+            </summary>
+        </member>
+        <member name="M:Sqlx.TypeAnalyzer.GetDefaultValue(Microsoft.CodeAnalysis.ITypeSymbol)">
+            <summary>
+            Gets a default value expression for a type (cached).
+            </summary>
+        </member>
+        <member name="M:Sqlx.TypeAnalyzer.IsSystemNamespace(System.String)">
+            <summary>
+            Checks if a namespace is a system namespace (cached).
+            </summary>
+        </member>
+        <member name="T:Sqlx.CSharpGenerator">
+            <summary>
+            Stored procedures generator for C#.
+            </summary>
+        </member>
+        <member name="M:Sqlx.CSharpGenerator.#ctor">
+            <summary>
+            Initializes a new instance of the <see cref="T:Sqlx.CSharpGenerator"/> class.
+            </summary>
+        </member>
+        <member name="M:Sqlx.CSharpGenerator.Initialize(Microsoft.CodeAnalysis.GeneratorInitializationContext)">
+            <summary>
+            Called to initialize the generator and register for the various 
+            <see cref="T:Microsoft.CodeAnalysis.SyntaxNode"/>
+            callbacks.
+            </summary>
+            <param name="context">The generator context.</param>
+        </member>
+        <member name="T:Sqlx.CSharpGenerator.CSharpSyntaxReceiver">
+            <summary>
+            C# specific syntax receiver for collecting method symbols and repository classes.
+            </summary>
+        </member>
+        <member name="M:Sqlx.Extensions.CheckTypeInHierarchy(Microsoft.CodeAnalysis.ITypeSymbol,System.String,System.Collections.Concurrent.ConcurrentDictionary{Microsoft.CodeAnalysis.ITypeSymbol,System.Boolean})">
+            <summary>
+            Optimized type hierarchy checking with caching to avoid repeated traversals
+            </summary>
+        </member>
+        <member name="M:Sqlx.Extensions.GetParameterName(Microsoft.CodeAnalysis.ITypeSymbol,System.String)">
+            <summary>
+            Public version of GetParameterName for ITypeSymbol - used by tests
+            </summary>
+        </member>
+        <member name="P:Sqlx.GenerationContextBase.DbConnection">
+            <summary>
+            Gets the <see cref="T:System.Data.Common.DbConnection"/> if the method paramters has.
+            </summary>
+        </member>
+        <member name="P:Sqlx.GenerationContextBase.TransactionParameter">
+            <summary>
+             Gets the <see cref="T:System.Data.Common.DbTransaction"/> if the method paramters has.
+            </summary>
+        </member>
+        <member name="P:Sqlx.GenerationContextBase.DbContext">
+            <summary>
+             Gets the DbContext if the method paramters has.
+            </summary>
+        </member>
+        <member name="T:Sqlx.ISqlxSyntaxReceiver">
+            <summary>
+            Language specific interface for syntax receiver which is used to collect information about methods and repository classes.
+            </summary>
+        </member>
+        <member name="P:Sqlx.ISqlxSyntaxReceiver.Methods">
+            <summary>
+            Gets list of collected methods.
+            </summary>
+        </member>
+        <member name="P:Sqlx.ISqlxSyntaxReceiver.RepositoryClasses">
+            <summary>
+            Gets list of collected repository classes.
+            </summary>
+        </member>
+        <member name="P:Sqlx.ISqlxSyntaxReceiver.MethodSyntaxNodes">
+            <summary>
+            Gets list of collected method syntax nodes for later processing.
+            </summary>
+        </member>
+        <member name="P:Sqlx.ISqlxSyntaxReceiver.ClassSyntaxNodes">
+            <summary>
+            Gets list of collected class syntax nodes for later processing.
+            </summary>
+        </member>
+        <member name="M:Sqlx.ISqlxSyntaxReceiver.OnVisitSyntaxNode(Microsoft.CodeAnalysis.SyntaxNode)">
+            <summary>
+            Called for every syntax node in the compilation.
+            </summary>
+            <param name="syntaxNode">The syntax node to visit.</param>
+        </member>
+        <member name="P:Sqlx.MethodGenerationContext.RawSqlParameter">
+            <summary>
+             Gets the SqlAttribute if the method paramters has.
+            </summary>
+        </member>
+        <member name="P:Sqlx.MethodGenerationContext.CancellationTokenParameter">
+            <summary>
+             Gets the <see cref="T:System.Threading.CancellationToken"/> if the method paramters has.
+            </summary>
+        </member>
+        <member name="P:Sqlx.MethodGenerationContext.TimeoutParameter">
+            <summary>
+            Gets the commandtimeout.
+            </summary>
+        </member>
+        <member name="P:Sqlx.MethodGenerationContext.ReaderHandlerParameter">
+            <summary>
+            Gets the DbReaderHandler.
+            </summary>
+        </member>
+        <member name="P:Sqlx.MethodGenerationContext.ExpressionToSqlParameter">
+            <summary>
+            Gets the ExpressionToSql parameter for LINQ expression processing.
+            </summary>
+        </member>
+        <member name="P:Sqlx.MethodGenerationContext.SqlParameters">
+            <summary>
+            Gets the method paramters remove the extars.
+            </summary>
+        </member>
+        <member name="P:Sqlx.MethodGenerationContext.ReturnIsEnumerable">
+            <summary>
+            Public properties for tests
+            </summary>
+        </member>
+        <member name="T:Sqlx.NameMapper">
+            <summary>
+            Provides mapping name support between parameter names in C# to Stored procedures parameter names.
+            </summary>
+        </member>
+        <member name="M:Sqlx.NameMapper.MapName(System.String)">
+            <summary>
+            Maps parameter name to the database column name.
+            Converts parameter names from Pascal/camelCase to snake_case for database compatibility.
+            </summary>
+            <param name="parameterName">Name of the parameter to map.</param>
+            <returns>Corresponding database column name in snake_case.</returns>
+        </member>
+        <member name="M:Sqlx.NameMapper.MapNameToSnakeCase(System.String)">
+            <summary>
+            Maps parameter name to snake_case for legacy database compatibility.
+            </summary>
+            <param name="parameterName">Name of the parameter to map.</param>
+            <returns>Corresponding snake_case database column name.</returns>
+        </member>
+    </members>
+</doc>

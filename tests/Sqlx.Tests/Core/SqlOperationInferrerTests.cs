@@ -53,7 +53,8 @@ namespace TestNamespace
         _compilation = CSharpCompilation.Create(
             "TestAssembly",
             new[] { syntaxTree },
-            new[] {
+            new[]
+            {
                 MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(System.Collections.Generic.List<>).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(System.Threading.Tasks.Task).Assembly.Location)

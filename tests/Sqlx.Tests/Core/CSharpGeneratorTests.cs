@@ -440,12 +440,12 @@ namespace TestNamespace
         }
         catch
         {
-            // Fallback: try to load Sqlx.dll from build output
-            var currentDirectory = System.IO.Directory.GetCurrentDirectory();
-            var sqlxPath = System.IO.Path.Combine(currentDirectory, "..", "..", "..", "..", "src", "Sqlx", "bin", "Debug", "netstandard2.0", "Sqlx.dll");
-            if (System.IO.File.Exists(sqlxPath))
+            // Fallback: try to load Sqlx.dll from current app domain assemblies
+            var sqlxAssembly = AppDomain.CurrentDomain.GetAssemblies()
+                .FirstOrDefault(a => a.GetName().Name == "Sqlx");
+            if (sqlxAssembly != null && !string.IsNullOrEmpty(sqlxAssembly.Location))
             {
-                references.Add(MetadataReference.CreateFromFile(sqlxPath));
+                references.Add(MetadataReference.CreateFromFile(sqlxAssembly.Location));
             }
         }
 

@@ -1,125 +1,258 @@
-# Sqlx 文档中心
+# Sqlx 3.0 文档中心
 
-欢迎来到 Sqlx ORM 框架的文档中心！这里包含了所有您需要了解的信息，从快速开始到高级特性，应有尽有。
+欢迎来到Sqlx 3.0文档中心！这里提供完整的使用指南和参考资料。
 
 ## 📚 文档导航
 
-### 🚀 快速开始
-- [30秒快速开始](../README.md#-30秒快速开始) - 立即上手 Sqlx
-- [项目结构](PROJECT_STRUCTURE.md) - 了解项目组织方式
-- [快速特性指南](NEW_FEATURES_QUICK_START.md) - 核心功能速览
+### 🚀 入门指南
+| 文档 | 描述 | 适合人群 |
+|------|------|----------|
+| [快速开始](QUICK_START_GUIDE.md) | 5分钟掌握核心用法 | 新用户 |
+| [API参考](API_REFERENCE.md) | 完整的API文档 | 所有用户 |
+| [最佳实践](BEST_PRACTICES.md) | 推荐的使用模式 | 进阶用户 |
 
-### 🏗️ 核心功能
-- [SqlTemplate 完全指南](SQL_TEMPLATE_GUIDE.md) - 模板引擎详细说明
-- [ExpressionToSql 指南](expression-to-sql.md) - 类型安全查询构建
-- [SqlTemplate 设计革新](SQLTEMPLATE_DESIGN_FIXED.md) - 纯模板设计原理
-- [无缝集成指南](SEAMLESS_INTEGRATION_GUIDE.md) - ExpressionToSql ↔ SqlTemplate
+### 🔧 深入学习  
+| 文档 | 描述 | 适合人群 |
+|------|------|----------|
+| [高级功能](ADVANCED_FEATURES.md) | AOT优化、性能调优等 | 高级用户 |
+| [迁移指南](MIGRATION_GUIDE.md) | 从旧版本迁移 | 升级用户 |
+| [项目结构](PROJECT_STRUCTURE.md) | 代码组织和架构 | 贡献者 |
 
-### 🆕 现代 C# 支持
-- [Primary Constructor & Record 支持](PRIMARY_CONSTRUCTOR_RECORD_SUPPORT.md) - C# 12+ 特性
-- [高级特性指南](ADVANCED_FEATURES_GUIDE.md) - AOT、性能优化等
+## 🎯 三种核心使用模式
 
-### 📖 完整参考
-- [完整特性指南](SQLX_COMPLETE_FEATURE_GUIDE.md) - 所有功能详细说明
-- [迁移指南](MIGRATION_GUIDE.md) - 从其他 ORM 迁移
-- [优化路线图](OPTIMIZATION_ROADMAP.md) - 性能优化建议
+Sqlx 3.0专注于三种简单而强大的使用模式：
 
-### 🔧 高级主题
-- [诊断和指导](DiagnosticGuidance.md) - 代码质量分析
-- [SQL 占位符指南](SQL_PLACEHOLDER_GUIDE.md) - 占位符功能详解
-- [项目状态](PROJECT_STATUS.md) - 开发状态和计划
-
-## 🎯 按使用场景分类
-
-### 👨‍💻 开发者
-- **新手**: [快速开始](../README.md#-30秒快速开始) → [核心特性](../README.md#-核心特性详解)
-- **进阶**: [SqlTemplate 指南](SQL_TEMPLATE_GUIDE.md) → [ExpressionToSql](expression-to-sql.md)
-- **专家**: [高级特性](ADVANCED_FEATURES_GUIDE.md) → [性能优化](OPTIMIZATION_ROADMAP.md)
-
-### 🏢 架构师
-- **技术选型**: [完整特性指南](SQLX_COMPLETE_FEATURE_GUIDE.md)
-- **性能评估**: [性能对比](../README.md#-性能对比)
-- **迁移计划**: [迁移指南](MIGRATION_GUIDE.md)
-
-### 🚀 DevOps
-- **部署配置**: [AOT 支持](ADVANCED_FEATURES_GUIDE.md#aot-支持)
-- **云原生**: [云原生最佳实践](ADVANCED_FEATURES_GUIDE.md#云原生部署)
-- **监控诊断**: [诊断工具](DiagnosticGuidance.md)
-
-## ✨ 最新特性亮点
-
-### 🔥 SqlTemplate 革新设计
-> **核心理念**: "模板是模板，参数是参数" - 完全分离，性能翻倍
-
+### 1️⃣ 直接执行 - 最简单
 ```csharp
-// ✅ NEW: 纯模板设计
-var template = SqlTemplate.Parse("SELECT * FROM users WHERE id = @id");
-var user1 = template.Execute(new { id = 1 });  // 重用模板
-var user2 = template.Execute(new { id = 2 });  // 高性能
+var sql = ParameterizedSql.Create(
+    "SELECT * FROM Users WHERE Age > @age", 
+    new { age = 18 });
+string result = sql.Render();
 ```
 
-**文档**: [SqlTemplate 设计革新](SQLTEMPLATE_DESIGN_FIXED.md)
-
-### 🔄 无缝集成
-> ExpressionToSql 与 SqlTemplate 的完美融合
-
+### 2️⃣ 静态模板 - 可重用  
 ```csharp
-using var builder = SqlTemplateExpressionBridge.Create<User>();
-var result = builder
-    .Where(u => u.IsActive)           // 表达式
-    .Template("AND age > @minAge")    // 模板
-    .Param("minAge", 18)              // 参数
+var template = SqlTemplate.Parse("SELECT * FROM Users WHERE Age > @age");
+var young = template.Execute(new { age = 18 });
+var senior = template.Execute(new { age = 65 });
+```
+
+### 3️⃣ 动态模板 - 类型安全
+```csharp
+var query = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+    .Where(u => u.Age > 25 && u.IsActive)
+    .Select(u => new { u.Name, u.Email })
+    .OrderBy(u => u.Name)
+    .Take(10);
+string sql = query.ToSql();
+```
+
+## 🏗️ 核心组件
+
+### ParameterizedSql
+参数化SQL执行实例，表示带参数的SQL语句。
+- `Create()` - 创建实例
+- `Render()` - 渲染最终SQL
+
+### SqlTemplate  
+可重用的SQL模板，支持参数绑定。
+- `Parse()` - 解析SQL为模板
+- `Execute()` - 执行并绑定参数
+- `Bind()` - 流式参数绑定
+
+### ExpressionToSql<T>
+类型安全的查询构建器，支持LINQ表达式。
+- `Create()` - 创建构建器
+- `Where()` - 添加条件
+- `Select()` - 选择列
+- `OrderBy()` - 排序
+- `ToSql()` - 生成SQL
+
+### SqlDefine
+预定义的数据库方言。
+- `SqlServer` - SQL Server方言
+- `MySql` - MySQL方言  
+- `PostgreSql` - PostgreSQL方言
+- `SQLite` - SQLite方言
+
+## 🚀 核心特性
+
+### ✅ AOT兼容
+- 零反射调用
+- 编译时代码生成
+- Native AOT支持
+
+### ✅ 类型安全
+- 编译时验证
+- 强类型映射  
+- LINQ表达式支持
+
+### ✅ 高性能
+- 模板重用机制
+- 参数化查询
+- 最小化内存分配
+
+### ✅ 多数据库
+- SQL Server
+- MySQL
+- PostgreSQL  
+- SQLite
+- Oracle (部分支持)
+
+## 📋 快速参考
+
+### 常用操作
+
+#### SELECT查询
+```csharp
+// 简单查询
+var users = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+    .Where(u => u.IsActive)
+    .ToSql();
+
+// 复杂查询
+var query = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+    .Select(u => new { u.Name, u.Email })
+    .Where(u => u.Age > 18)
+    .OrderBy(u => u.Name)
+    .Take(10);
+```
+
+#### INSERT操作
+```csharp
+// 指定列插入（推荐）
+var insert = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+    .InsertInto(u => new { u.Name, u.Email })
+    .Values("John", "john@example.com");
+
+// 批量插入
+var batchInsert = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+    .InsertInto(u => new { u.Name, u.Email })
+    .Values("John", "john@example.com")
+    .AddValues("Jane", "jane@example.com");
+```
+
+#### UPDATE操作
+```csharp
+var update = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+    .Update()
+    .Set(u => u.Name, "New Name")
+    .Set(u => u.Age, u => u.Age + 1)
+    .Where(u => u.Id == 1);
+```
+
+#### DELETE操作
+```csharp
+var delete = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+    .Delete(u => u.IsActive == false);
+```
+
+### 模板使用
+
+#### 基础模板
+```csharp
+var template = SqlTemplate.Parse("SELECT * FROM Users WHERE Id = @id");
+var user = template.Execute(new { id = 1 });
+```
+
+#### 流式绑定
+```csharp
+var result = template.Bind()
+    .Param("id", 1)
+    .Param("active", true)
     .Build();
 ```
 
-**文档**: [无缝集成指南](SEAMLESS_INTEGRATION_GUIDE.md)
-
-### 🏗️ C# 12+ 完整支持
-> Primary Constructor 和 Record 类型的原生支持
-
+#### 模板转换
 ```csharp
-// Record 类型
-public record User(int Id, string Name);
-
-// Primary Constructor
-public class Service(IDbConnection connection) { }
+// 动态查询转模板
+var template = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+    .UseParameterizedQueries()
+    .Where(u => u.Age > 25)
+    .ToTemplate();
 ```
 
-**文档**: [现代 C# 支持](PRIMARY_CONSTRUCTOR_RECORD_SUPPORT.md)
+## 🎯 选择指南
 
-## 🔍 文档搜索指南
+### 何时使用直接执行？
+- 简单的一次性查询
+- 固定的SQL语句
+- 不需要重复使用
 
-### 按关键词查找
-- **模板**: [SqlTemplate 指南](SQL_TEMPLATE_GUIDE.md)
-- **查询**: [ExpressionToSql](expression-to-sql.md)
-- **性能**: [优化指南](OPTIMIZATION_ROADMAP.md)
-- **AOT**: [高级特性](ADVANCED_FEATURES_GUIDE.md)
-- **迁移**: [迁移指南](MIGRATION_GUIDE.md)
+### 何时使用静态模板？
+- 需要重复执行的SQL
+- 参数会变化的查询
+- 复杂的业务SQL
 
-### 按问题类型
-- **如何使用**: [快速开始](../README.md#-30秒快速开始)
-- **性能问题**: [性能优化](OPTIMIZATION_ROADMAP.md)
-- **兼容性**: [迁移指南](MIGRATION_GUIDE.md)
-- **错误排查**: [诊断指南](DiagnosticGuidance.md)
+### 何时使用动态模板？
+- 需要动态构建条件
+- 搜索和筛选功能
+- 类型安全要求高
 
-## 📖 贡献文档
+## 📈 性能提示
 
-我们欢迎社区贡献文档！请参考：
+### ✅ 推荐做法
+```csharp
+// 模板重用
+var template = SqlTemplate.Parse(sql);
+var result1 = template.Execute(params1);
+var result2 = template.Execute(params2);
 
-1. [贡献指南](../CONTRIBUTING.md)
-2. 文档格式规范
-3. 示例代码标准
+// 参数化查询
+var query = ExpressionToSql<T>.Create(dialect)
+    .UseParameterizedQueries()
+    .Where(predicate);
 
-## 🆘 需要帮助？
+// 显式列选择
+.InsertInto(u => new { u.Name, u.Email })  // AOT友好
+```
 
-- **GitHub Issues**: [问题反馈](https://github.com/your-repo/sqlx/issues)
-- **Discussions**: [讨论交流](https://github.com/your-repo/sqlx/discussions)  
-- **商业支持**: business@sqlx.dev
+### ❌ 避免做法
+```csharp
+// 每次创建新实例
+var sql1 = ParameterizedSql.Create(sql, params1);
+var sql2 = ParameterizedSql.Create(sql, params2);
+
+// 在AOT中使用反射
+.InsertIntoAll()  // 使用反射，不推荐AOT
+
+// 字符串拼接
+var sql = $"SELECT * FROM Users WHERE Name = '{name}'";  // SQL注入风险
+```
+
+## 🛡️ 安全提醒
+
+### 始终使用参数化查询
+```csharp
+// ✅ 安全
+var query = ParameterizedSql.Create(
+    "SELECT * FROM Users WHERE Name = @name", 
+    new { name = userInput });
+
+// ❌ 危险
+var query = $"SELECT * FROM Users WHERE Name = '{userInput}'";
+```
+
+### 验证输入
+```csharp
+public static void ValidateId(int id)
+{
+    if (id <= 0)
+        throw new ArgumentException("ID must be positive");
+}
+```
+
+## 🔗 相关链接
+
+- [GitHub 仓库](https://github.com/your-repo/sqlx)
+- [NuGet 包](https://www.nuget.org/packages/Sqlx/)
+- [问题反馈](https://github.com/your-repo/sqlx/issues)
+- [讨论区](https://github.com/your-repo/sqlx/discussions)
+
+## 📝 贡献
+
+欢迎贡献代码和文档！请查看 [贡献指南](../CONTRIBUTING.md)。
 
 ---
 
-<div align="center">
-
-**📚 探索 Sqlx 的强大功能，从这些文档开始您的旅程！**
-
-</div>
+**开始您的Sqlx 3.0之旅，体验极简现代的.NET数据访问！**

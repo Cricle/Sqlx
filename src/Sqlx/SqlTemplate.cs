@@ -86,8 +86,10 @@ namespace Sqlx
 
 
 
+        /// <summary>Executes template with parameters</summary>
         public ParameterizedSql Execute(object? parameters = null) => ParameterizedSql.Create(Sql, parameters);
 
+        /// <summary>Executes template with parameter dictionary</summary>
         public ParameterizedSql Execute(Dictionary<string, object?> parameters) => ParameterizedSql.CreateWithDictionary(Sql, parameters);
 
         /// <summary>
@@ -96,32 +98,18 @@ namespace Sqlx
         /// <returns>Parameter binder</returns>
         public SqlTemplateBuilder Bind() => new(this);
 
-        /// <summary>
-        /// Checks if this is a pure template
-        /// </summary>
+        /// <summary>Checks if this is a pure template</summary>
         public bool IsPureTemplate => Parameters.Count == 0;
 
 
-        /// <summary>
-        /// Renders template with parameters (instance method)
-        /// </summary>
-        public ParameterizedSql Render(object? parameters)
-        {
-            return Execute(parameters);
-        }
+        /// <summary>Renders template with parameters</summary>
+        public ParameterizedSql Render(object? parameters) => Execute(parameters);
 
-        /// <summary>
-        /// Renders template with parameter dictionary (instance method)
-        /// </summary>
-        public ParameterizedSql Render(Dictionary<string, object?> parameters)
-        {
-            return Execute(parameters);
-        }
+        /// <summary>Renders template with parameter dictionary</summary>
+        public ParameterizedSql Render(Dictionary<string, object?> parameters) => Execute(parameters);
 
 
-        /// <summary>
-        /// String representation
-        /// </summary>
+        /// <summary>String representation</summary>
         public override string ToString() => $"SqlTemplate {{ Sql = {Sql}, Parameters = {Parameters.Count} params }}";
     }
 

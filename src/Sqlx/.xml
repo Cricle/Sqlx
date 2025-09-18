@@ -223,115 +223,128 @@
             <typeparam name="T">Entity type</typeparam>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.ForSqlServer">
-            <summary>SQL Server方言</summary>
+            <summary>SQL Server dialect</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.ForMySql">
-            <summary>MySQL方言</summary>
+            <summary>MySQL dialect</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.ForPostgreSQL">
-            <summary>PostgreSQL方言</summary>
+            <summary>PostgreSQL dialect</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.ForSqlite">
-            <summary>SQLite方言</summary>
+            <summary>SQLite dialect</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.ForOracle">
-            <summary>Oracle方言</summary>
+            <summary>Oracle dialect</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.ForDB2">
-            <summary>DB2方言</summary>
+            <summary>DB2 dialect</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.Create">
-            <summary>默认方言(SQL Server)</summary>
+            <summary>Default dialect (SQL Server)</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.#ctor(Sqlx.SqlDialect)">
             <summary>
-            使用指定的 SQL 方言初始化新实例。
+            Initializes with specified SQL dialect
             </summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.Select(System.String[])">
-            <summary>
-            设置自定义的SELECT列。
-            </summary>
+            <summary>Sets custom SELECT columns</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.Select``1(System.Linq.Expressions.Expression{System.Func{`0,``0}})">
-            <summary>
-            使用表达式设置SELECT列。
-            </summary>
+            <summary>Sets SELECT columns using expression</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.Select(System.Linq.Expressions.Expression{System.Func{`0,System.Object}}[])">
-            <summary>
-            使用多个表达式设置SELECT列。
-            </summary>
+            <summary>Sets SELECT columns using multiple expressions</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.ConfigureSelect(System.Collections.Generic.List{System.String})">
+            <summary>Configures SELECT columns</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.GetEntityProperties``1">
+            <summary>Gets entity properties using generics (AOT-friendly)</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.ExtractColumnsFromSelector``1(System.Linq.Expressions.Expression{System.Func{`0,``0}})">
             <summary>
             统一的列提取逻辑，避免重复代码
             </summary>
         </member>
-        <member name="M:Sqlx.ExpressionToSql`1.ExtractColumnsFromSelectors(System.Linq.Expressions.Expression{System.Func{`0,System.Object}}[])">
-            <summary>
-            统一的多选择器列提取逻辑
-            </summary>
-        </member>
         <member name="M:Sqlx.ExpressionToSql`1.Where(System.Linq.Expressions.Expression{System.Func{`0,System.Boolean}})">
-            <summary>
-            添加 WHERE 条件到查询。
-            </summary>
+            <summary>Adds WHERE condition</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.And(System.Linq.Expressions.Expression{System.Func{`0,System.Boolean}})">
-            <summary>
-            添加 AND 条件到查询（等同于 Where）。
-            </summary>
+            <summary>Adds AND condition (alias for Where)</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.OrderBy``1(System.Linq.Expressions.Expression{System.Func{`0,``0}})">
-            <summary>
-            添加 ORDER BY 子句。
-            </summary>
+            <summary>Adds ORDER BY ascending</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.OrderByDescending``1(System.Linq.Expressions.Expression{System.Func{`0,``0}})">
-            <summary>
-            添加 ORDER BY DESC 子句。
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.AddOrderBy``1(System.Linq.Expressions.Expression{System.Func{`0,``0}},System.String)">
-            <summary>
-            添加排序表达式的通用方法。
-            </summary>
+            <summary>Adds ORDER BY descending</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.Take(System.Int32)">
-            <summary>
-            限制返回行数。
-            </summary>
+            <summary>Limits result count</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.Skip(System.Int32)">
-            <summary>
-            跳过指定行数。
-            </summary>
+            <summary>Skips specified number of records</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.ConfigureLimit(System.Nullable{System.Int32},System.Nullable{System.Int32})">
+            <summary>Configures pagination limits</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.Set``1(System.Linq.Expressions.Expression{System.Func{`0,``0}},``0)">
-            <summary>
-            设置 UPDATE 操作的值。支持模式如 a=1。
-            </summary>
+            <summary>Sets column value for UPDATE</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.Set``1(System.Linq.Expressions.Expression{System.Func{`0,``0}},System.Linq.Expressions.Expression{System.Func{`0,``0}})">
-            <summary>
-            使用表达式设置 UPDATE 操作的值。支持模式如 a=a+1。
-            </summary>
+            <summary>Sets column value using expression for UPDATE</summary>
         </member>
-        <member name="M:Sqlx.ExpressionToSql`1.SetOperationType(Sqlx.SqlOperation)">
-            <summary>
-            统一的操作类型设置，避免重复代码
-            </summary>
+        <member name="M:Sqlx.ExpressionToSql`1.ConfigureSet``1(System.Linq.Expressions.Expression{System.Func{`0,``0}},``0,System.Linq.Expressions.Expression{System.Func{`0,``0}})">
+            <summary>Configures UPDATE SET clause</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.AsInsert">
+            <summary>Sets as INSERT operation</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.AsInsert(System.Linq.Expressions.Expression{System.Func{`0,System.Object}})">
+            <summary>Sets as INSERT operation with specific columns</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.AsInsertInto(System.Linq.Expressions.Expression{System.Func{`0,System.Object}})">
+            <summary>Sets as INSERT INTO with explicit columns (AOT-friendly)</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.AsInsertIntoAll">
+            <summary>Sets as INSERT INTO all columns</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.AsInsertSelect(System.String)">
+            <summary>Sets as INSERT using SELECT subquery</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.AsInsertSelect``1(Sqlx.ExpressionToSql{``0})">
+            <summary>Sets as INSERT using another query</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.Insert">
-            <summary>
-            创建 INSERT 操作。
-            </summary>
+            <summary>Creates INSERT operation</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.Insert(System.Linq.Expressions.Expression{System.Func{`0,System.Object}})">
-            <summary>
-            指定 INSERT 操作的列。
-            </summary>
+            <summary>Sets INSERT columns using expression</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.InsertInto(System.Linq.Expressions.Expression{System.Func{`0,System.Object}})">
+            <summary>INSERT INTO with explicit columns (AOT-friendly)</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.InsertIntoAll">
+            <summary>INSERT INTO all columns (uses reflection)</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.InsertSelect(System.String)">
+            <summary>INSERT using SELECT subquery</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.InsertSelect``1(Sqlx.ExpressionToSql{``0})">
+            <summary>INSERT using another query</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.ConfigureInsert(System.Linq.Expressions.Expression{System.Func{`0,System.Object}})">
+            <summary>Configures INSERT operation with optional columns</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.ConfigureInsertAll">
+            <summary>Configures INSERT with all entity columns</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.ConfigureInsertSelect(System.String)">
+            <summary>Configures INSERT using SELECT subquery</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.ConfigureInsertSelect``1(Sqlx.ExpressionToSql{``0})">
+            <summary>Configures INSERT using another query</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.SetInsertColumns(System.Linq.Expressions.Expression{System.Func{`0,System.Object}})">
             <summary>
@@ -339,70 +352,43 @@
             </summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.Values(System.Object[])">
-            <summary>
-            指定 INSERT 操作的值。
-            </summary>
+            <summary>Specifies INSERT values</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.AddValues(System.Object[])">
-            <summary>
-            添加多行INSERT值。
-            </summary>
+            <summary>Adds multiple INSERT values</summary>
         </member>
-        <member name="M:Sqlx.ExpressionToSql`1.AddFormattedValues(System.Object[])">
-            <summary>
-            统一的值格式化和添加逻辑
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.InsertInto(System.Linq.Expressions.Expression{System.Func{`0,System.Object}})">
-            <summary>
-            指定INSERT INTO操作，需要显式指定列（AOT 友好）。
-            </summary>
-            <param name="selector">列选择表达式</param>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.InsertIntoAll">
-            <summary>
-            指定INSERT INTO操作，自动推断所有列（使用反射，不推荐在 AOT 中使用）。
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.InsertSelect(System.String)">
-            <summary>
-            使用SELECT子查询进行INSERT操作。
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.InsertSelect``1(Sqlx.ExpressionToSql{``0})">
-            <summary>
-            使用另一个ExpressionToSql的查询进行INSERT操作。
-            </summary>
+        <member name="M:Sqlx.ExpressionToSql`1.ConfigureValues(System.Object[])">
+            <summary>Configures INSERT values</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.GroupBy``1(System.Linq.Expressions.Expression{System.Func{`0,``0}})">
-            <summary>
-            添加 GROUP BY 子句，返回分组查询对象。
-            </summary>
+            <summary>Adds GROUP BY clause, returns grouped query</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.AddGroupBy(System.String)">
-            <summary>
-            添加 GROUP BY 子句，返回正确的类型以支持链式调用。
-            </summary>
+            <summary>Adds GROUP BY column</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.Having(System.Linq.Expressions.Expression{System.Func{`0,System.Boolean}})">
-            <summary>
-            添加 HAVING 条件。
-            </summary>
+            <summary>Adds HAVING condition</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.ConfigureGroupBy(System.String)">
+            <summary>Configures GROUP BY</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.ConfigureHaving(System.Linq.Expressions.Expression{System.Func{`0,System.Boolean}})">
+            <summary>Configures HAVING condition</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.Delete">
-            <summary>
-            创建DELETE语句。必须配合WHERE使用以确保安全。
-            </summary>
+            <summary>Creates DELETE statement</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.Delete(System.Linq.Expressions.Expression{System.Func{`0,System.Boolean}})">
-            <summary>
-            创建DELETE语句并添加WHERE条件。
-            </summary>
+            <summary>Creates DELETE statement with WHERE condition</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.Update">
-            <summary>
-            创建UPDATE语句。
-            </summary>
+            <summary>Creates UPDATE statement</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.ConfigureDelete(System.Linq.Expressions.Expression{System.Func{`0,System.Boolean}})">
+            <summary>Configures DELETE operation</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.ConfigureUpdate">
+            <summary>Configures UPDATE operation</summary>
         </member>
         <member name="F:Sqlx.ExpressionToSql`1._custom">
             <summary>
@@ -445,12 +431,10 @@
             </summary>
         </member>
         <member name="T:Sqlx.SqlOperation">
-            <summary>
-            SQL operation type enumeration
-            </summary>
+            <summary>SQL operation types</summary>
         </member>
         <member name="F:Sqlx.SqlOperation.Select">
-            <summary>SELECT query</summary>
+            <summary>SELECT operation</summary>
         </member>
         <member name="F:Sqlx.SqlOperation.Insert">
             <summary>INSERT operation</summary>
@@ -462,92 +446,52 @@
             <summary>DELETE operation</summary>
         </member>
         <member name="T:Sqlx.Any">
-            <summary>
-            Any placeholder class for SqlTemplate
-            </summary>
+            <summary>Placeholder values for dynamic SQL generation</summary>
         </member>
         <member name="M:Sqlx.Any.Value``1">
-            <summary>
-            Placeholder for any value type with auto-generated parameter name
-            </summary>
-            <typeparam name="TValue">Placeholder type</typeparam>
-            <returns>Placeholder value</returns>
+            <summary>Generic placeholder value</summary>
         </member>
         <member name="M:Sqlx.Any.Value``1(System.String)">
-            <summary>
-            Placeholder for any value type with custom parameter name
-            </summary>
-            <typeparam name="TValue">Placeholder type</typeparam>
+            <summary>Named generic placeholder value</summary>
         </member>
         <member name="M:Sqlx.Any.String">
-            <summary>
-            String placeholder with auto-generated parameter name
-            </summary>
-            <returns>String placeholder</returns>
+            <summary>String placeholder</summary>
         </member>
         <member name="M:Sqlx.Any.String(System.String)">
-            <summary>
-            String placeholder with custom parameter name
-            </summary>
-            <param name="parameterName">Custom parameter name</param>
-            <returns>String placeholder</returns>
+            <summary>Named string placeholder</summary>
         </member>
         <member name="M:Sqlx.Any.Int">
-            <summary>
-            整数占位符（自动生成参数名）
-            </summary>
-            <returns>整数占位符</returns>
+            <summary>Integer placeholder</summary>
         </member>
         <member name="M:Sqlx.Any.Int(System.String)">
-            <summary>
-            整数占位符（指定参数名）
-            </summary>
-            <returns>整数占位符</returns>
+            <summary>Named integer placeholder</summary>
         </member>
         <member name="M:Sqlx.Any.Bool">
-            <summary>
-            布尔占位符（自动生成参数名）
-            </summary>
-            <returns>布尔占位符</returns>
+            <summary>Boolean placeholder</summary>
         </member>
         <member name="M:Sqlx.Any.Bool(System.String)">
-            <summary>
-            布尔占位符（指定参数名）
-            </summary>
-            <returns>布尔占位符</returns>
+            <summary>Named boolean placeholder</summary>
         </member>
         <member name="M:Sqlx.Any.DateTime">
-            <summary>
-            日期时间占位符（自动生成参数名）
-            </summary>
-            <returns>日期时间占位符</returns>
+            <summary>DateTime placeholder</summary>
         </member>
         <member name="M:Sqlx.Any.DateTime(System.String)">
-            <summary>
-            日期时间占位符（指定参数名）
-            </summary>
-            <returns>日期时间占位符</returns>
+            <summary>Named DateTime placeholder</summary>
         </member>
         <member name="M:Sqlx.Any.Guid">
-            <summary>
-            Guid占位符（自动生成参数名）
-            </summary>
-            <returns>Guid占位符</returns>
+            <summary>Guid placeholder</summary>
         </member>
         <member name="M:Sqlx.Any.Guid(System.String)">
-            <summary>
-            Guid占位符（指定参数名）
-            </summary>
-            <returns>Guid占位符</returns>
+            <summary>Named Guid placeholder</summary>
         </member>
         <member name="T:Sqlx.GroupedExpressionToSql`2">
             <summary>
-            表示分组后的查询对象，支持聚合操作。
+            Grouped query object supporting aggregation operations
             </summary>
         </member>
         <member name="M:Sqlx.GroupedExpressionToSql`2.Select``1(System.Linq.Expressions.Expression{System.Func{Sqlx.IGrouping{`1,`0},``0}})">
             <summary>
-            选择分组结果的投影。
+            Selects grouped result projection
             </summary>
         </member>
         <member name="M:Sqlx.GroupedExpressionToSql`2.Having(System.Linq.Expressions.Expression{System.Func{Sqlx.IGrouping{`1,`0},System.Boolean}})">
@@ -588,14 +532,31 @@
             </summary>
         </member>
         <member name="T:Sqlx.IGrouping`2">
-            <summary>
-            表示分组的接口，类似于 LINQ 的 IGrouping。
-            </summary>
+            <summary>Grouping interface similar to LINQ IGrouping</summary>
         </member>
         <member name="P:Sqlx.IGrouping`2.Key">
-            <summary>
-            获取分组的键值。
-            </summary>
+            <summary>Gets the grouping key</summary>
+        </member>
+        <member name="T:Sqlx.GroupingExtensions">
+            <summary>Extensions for grouping operations (expression tree parsing only)</summary>
+        </member>
+        <member name="M:Sqlx.GroupingExtensions.Count``2(Sqlx.IGrouping{``0,``1})">
+            <summary>Count aggregation</summary>
+        </member>
+        <member name="M:Sqlx.GroupingExtensions.Sum``3(Sqlx.IGrouping{``0,``1},System.Linq.Expressions.Expression{System.Func{``1,``2}})">
+            <summary>Sum aggregation</summary>
+        </member>
+        <member name="M:Sqlx.GroupingExtensions.Average``2(Sqlx.IGrouping{``0,``1},System.Linq.Expressions.Expression{System.Func{``1,System.Double}})">
+            <summary>Average aggregation for double</summary>
+        </member>
+        <member name="M:Sqlx.GroupingExtensions.Average``2(Sqlx.IGrouping{``0,``1},System.Linq.Expressions.Expression{System.Func{``1,System.Decimal}})">
+            <summary>Average aggregation for decimal</summary>
+        </member>
+        <member name="M:Sqlx.GroupingExtensions.Max``3(Sqlx.IGrouping{``0,``1},System.Linq.Expressions.Expression{System.Func{``1,``2}})">
+            <summary>Max aggregation</summary>
+        </member>
+        <member name="M:Sqlx.GroupingExtensions.Min``3(Sqlx.IGrouping{``0,``1},System.Linq.Expressions.Expression{System.Func{``1,``2}})">
+            <summary>Min aggregation</summary>
         </member>
         <member name="T:Sqlx.ExpressionToSqlBase">
             <summary>
@@ -613,98 +574,34 @@
             </summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.#ctor(Sqlx.SqlDialect,System.Type)">
-            <summary>
-            Initializes new instance with specified SQL dialect
-            </summary>
+            <summary>Initializes with SQL dialect and entity type</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.AddGroupBy(System.String)">
-            <summary>
-            Adds GROUP BY clause (internal use)
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.AddGroupByColumn(System.String)">
-            <summary>
-            Adds GROUP BY column name (internal use)
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.GetWhereConditions">
-            <summary>
-            Gets WHERE conditions (internal use)
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.CopyWhereConditions(System.Collections.Generic.List{System.String})">
-            <summary>
-            Copies WHERE conditions (internal use)
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.GetHavingConditions">
-            <summary>
-            Gets HAVING conditions (internal use)
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.CopyHavingConditions(System.Collections.Generic.List{System.String})">
-            <summary>
-            Copies HAVING conditions (internal use)
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.AddHavingCondition(System.String)">
-            <summary>
-            Adds HAVING condition (internal use)
-            </summary>
+            <summary>Adds GROUP BY column</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.SetTableName(System.String)">
-            <summary>
-            Sets table name
-            </summary>
+            <summary>Sets table name</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.ParseExpression(System.Linq.Expressions.Expression,System.Boolean)">
             <summary>
-            Enhanced expression parsing with support for math functions, string functions, and nested expressions (performance optimized)
+            Enhanced expression parsing with support for math functions, string functions, and nested expressions
             </summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.ParseExpressionRaw(System.Linq.Expressions.Expression)">
-            <summary>
-            Parses expression without special boolean member handling (for use within binary expressions)
-            </summary>
+            <summary>Parses expression as raw value</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.ParseConditionalExpression(System.Linq.Expressions.ConditionalExpression)">
-            <summary>
-            Parses conditional expression (ternary operator)
-            </summary>
+            <summary>Parses conditional expression</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.ParseMethodCallExpression(System.Linq.Expressions.MethodCallExpression)">
-            <summary>
-            Enhanced method call expression parsing with support for more nested scenarios
-            </summary>
+            <summary>Parses method call expression</summary>
         </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.IsAggregateContext(System.Linq.Expressions.MethodCallExpression)">
-            <summary>
-            Checks if in aggregate function context
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.IsAnyPlaceholder(System.Linq.Expressions.MethodCallExpression)">
-            <summary>
-            Checks if method call is an Any placeholder
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.CreateParameterForAnyPlaceholder(System.Linq.Expressions.MethodCallExpression)">
-            <summary>
-            Creates parameter for Any placeholder
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.GetDefaultValue(System.Type)">
-            <summary>
-            获取类型的默认值（AOT友好）
-            </summary>
+        <member name="M:Sqlx.ExpressionToSqlBase.ExtractParameterName(System.Linq.Expressions.MethodCallExpression)">
+            <summary>Extracts parameter name from method arguments</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.GetDefaultValueForValueType(System.Type)">
             <summary>
             为值类型获取默认值（AOT友好）
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.CreateDefaultValueSafely(System.Type)">
-            <summary>
-            安全地创建类型的默认值（AOT友好）
             </summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.ParseAggregateMethodCall(System.Linq.Expressions.MethodCallExpression)">
@@ -738,79 +635,57 @@
             </summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.IsEntityProperty(System.Linq.Expressions.MemberExpression)">
-            <summary>
-            检查成员表达式是否是实体属性（而不是闭包变量）
-            </summary>
+            <summary>Checks if member is entity property</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.GetMemberValueOptimized(System.Linq.Expressions.MemberExpression)">
-            <summary>
-            AOT 友好的成员值获取，避免反射
-            </summary>
+            <summary>Gets member value optimized</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.GetSimpleDefaultValue(System.Type)">
             <summary>
             获取简单的默认值（不使用复杂反射）
             </summary>
         </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.GetDefaultValueForMemberType(System.Type)">
-            <summary>
-            获取成员类型的默认值（AOT友好）
-            </summary>
-        </member>
         <member name="M:Sqlx.ExpressionToSqlBase.FormatConstantValue``1(``0)">
-            <summary>
-            格式化常量值为SQL字符串（泛型版本）。
-            </summary>
-            <typeparam name="T">值的类型。</typeparam>
+            <summary>Formats constant value</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.FormatConstantValue(System.Object)">
-            <summary>
-            格式化常量值为SQL字符串。
-            </summary>
+            <summary>Formats constant value</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.CreateParameter``1(``0)">
-            <summary>
-            创建数据库参数并返回参数占位符（泛型版本）
-            </summary>
+            <summary>Creates parameter</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.CreateParameter(System.Object)">
-            <summary>
-            创建数据库参数并返回参数占位符（兼容版本）
-            </summary>
+            <summary>Creates parameter</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.NeedsParentheses(System.Linq.Expressions.Expression)">
-            <summary>判断表达式是否需要括号包围</summary>
+            <summary>Checks if expression needs parentheses</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.RemoveOuterParentheses(System.String)">
-            <summary>移除字符串外层的括号</summary>
+            <summary>Removes outer parentheses from condition</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.IsBooleanMember(System.Linq.Expressions.Expression)">
-            <summary>检查表达式是否是布尔成员</summary>
+            <summary>Checks if expression is boolean member</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.IsConstantTrue(System.Linq.Expressions.Expression)">
-            <summary>检查表达式是否是常量 true</summary>
+            <summary>Checks if expression is constant true</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.IsConstantFalse(System.Linq.Expressions.Expression)">
-            <summary>检查表达式是否是常量 false</summary>
+            <summary>Checks if expression is constant false</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.IsStringPropertyAccess(System.Linq.Expressions.MemberExpression)">
-            <summary>检查是否是字符串属性访问</summary>
+            <summary>Checks if member is string property access</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.IsStringConcatenation(System.Linq.Expressions.BinaryExpression)">
-            <summary>检查是否是字符串连接操作</summary>
+            <summary>Checks if binary is string concatenation</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.ParseStringProperty(System.Linq.Expressions.MemberExpression)">
-            <summary>解析字符串属性访问</summary>
+            <summary>Parses string property</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.ParseNotExpression(System.Linq.Expressions.Expression)">
-            <summary>
-            解析 NOT 表达式，正确处理布尔类型
-            </summary>
+            <summary>Parses NOT expression</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.FormatLogicalExpression(System.String,System.String,System.String,System.Linq.Expressions.BinaryExpression)">
-            <summary>
-            格式化逻辑表达式（AND/OR），确保布尔成员正确处理
-            </summary>
+            <summary>Formats logical expression</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.ExtractColumns(System.Linq.Expressions.Expression)">
             <summary>
@@ -818,69 +693,37 @@
             </summary>
         </member>
         <member name="P:Sqlx.ExpressionToSqlBase.DbType">
-            <summary>
-            Gets database type (type-safe enum version)
-            </summary>
+            <summary>Database type enum</summary>
         </member>
         <member name="P:Sqlx.ExpressionToSqlBase.DatabaseType">
-            <summary>
-            Gets database type (string version for backward compatibility)
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.GetConcatSyntax(System.String[])">
-            <summary>
-            获取字符串连接语法
-            </summary>
+            <summary>Database type string</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.ParseMathFunction(System.Linq.Expressions.MethodCallExpression,System.String)">
-            <summary>
-            解析数学函数调用表达式。
-            </summary>
-            <returns>SQL函数字符串。</returns>
+            <summary>Parses math function</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.ParseStringFunction(System.Linq.Expressions.MethodCallExpression,System.String)">
-            <summary>
-            解析字符串函数调用表达式。
-            </summary>
-            <returns>SQL函数字符串。</returns>
+            <summary>Parses string function</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.ParseDateTimeFunction(System.Linq.Expressions.MethodCallExpression,System.String)">
-            <summary>
-            解析日期时间函数调用表达式（简化版本）
-            </summary>
+            <summary>Parses DateTime function</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.GetOperatorFunction(System.String,System.String,System.String)">
-            <summary>
-            简化的操作符处理
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.GetBinaryOperatorSql(System.Linq.Expressions.ExpressionType,System.String,System.String,System.Linq.Expressions.BinaryExpression)">
-            <summary>
-            获取二元操作的SQL
-            </summary>
+            <summary>Gets operator function</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.GetBinaryOperator(System.Linq.Expressions.ExpressionType)">
-            <summary>
-            获取二元操作的SQL操作符
-            </summary>
+            <summary>Gets binary operator</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.ToSql">
-            <summary>
-            转换为 SQL 字符串。子类必须实现此方法。
-            </summary>
+            <summary>Converts to SQL string</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.ToTemplate">
-            <summary>
-            转换为 SQL 模板。子类必须实现此方法。
-            </summary>
+            <summary>Converts to SQL template</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.Dispose">
-            <summary>释放资源。</summary>
+            <summary>Disposes resources</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.ClearGlobalCache">
-            <summary>
-            清理全局缓存。
-            </summary>
+            <summary>Clears global cache</summary>
         </member>
         <member name="T:Sqlx.ParameterizedSql">
             <summary>
@@ -908,12 +751,7 @@
             <returns>ParameterizedSql instance</returns>
         </member>
         <member name="M:Sqlx.ParameterizedSql.Create(System.String,System.Object)">
-            <summary>
-            Creates parameterized SQL using anonymous object
-            </summary>
-            <param name="sql">SQL statement</param>
-            <param name="parameters">Parameter object</param>
-            <returns>ParameterizedSql instance</returns>
+            <summary>Creates parameterized SQL using object parameters</summary>
         </member>
         <member name="M:Sqlx.ParameterizedSql.Render">
             <summary>
@@ -1062,9 +900,7 @@
             <summary>DB2: "column" with ? parameters</summary>
         </member>
         <member name="M:Sqlx.SqlDefine.GetDialect(Sqlx.DatabaseType)">
-            <summary>
-            Gets database dialect for mainstream databases (type-safe enum version)
-            </summary>
+            <summary>Gets SQL dialect by database type</summary>
         </member>
         <member name="M:Sqlx.SqlDefine.GetDialect(System.String)">
             <summary>
@@ -1072,14 +908,10 @@
             </summary>
         </member>
         <member name="T:Sqlx.SqlDialect">
-            <summary>
-            Represents a SQL dialect configuration with enhanced functionality.
-            </summary>
+            <summary>SQL dialect configuration for database-specific syntax</summary>
         </member>
         <member name="M:Sqlx.SqlDialect.#ctor(System.String,System.String,System.String,System.String,System.String)">
-            <summary>
-            Represents a SQL dialect configuration with enhanced functionality.
-            </summary>
+            <summary>SQL dialect configuration for database-specific syntax</summary>
         </member>
         <member name="M:Sqlx.SqlDialect.WrapColumn(System.String)">
             <summary>Wraps a column name with dialect-specific delimiters.</summary>
@@ -1191,6 +1023,12 @@
             <param name="sql">SQL 字符串</param>
             <returns>模板定义</returns>
         </member>
+        <member name="M:Sqlx.SqlTemplate.Execute(System.Object)">
+            <summary>Executes template with parameters</summary>
+        </member>
+        <member name="M:Sqlx.SqlTemplate.Execute(System.Collections.Generic.Dictionary{System.String,System.Object})">
+            <summary>Executes template with parameter dictionary</summary>
+        </member>
         <member name="M:Sqlx.SqlTemplate.Bind">
             <summary>
             Creates fluent parameter binder
@@ -1198,24 +1036,16 @@
             <returns>Parameter binder</returns>
         </member>
         <member name="P:Sqlx.SqlTemplate.IsPureTemplate">
-            <summary>
-            Checks if this is a pure template
-            </summary>
+            <summary>Checks if this is a pure template</summary>
         </member>
         <member name="M:Sqlx.SqlTemplate.Render(System.Object)">
-            <summary>
-            Renders template with parameters (instance method)
-            </summary>
+            <summary>Renders template with parameters</summary>
         </member>
         <member name="M:Sqlx.SqlTemplate.Render(System.Collections.Generic.Dictionary{System.String,System.Object})">
-            <summary>
-            Renders template with parameter dictionary (instance method)
-            </summary>
+            <summary>Renders template with parameter dictionary</summary>
         </member>
         <member name="M:Sqlx.SqlTemplate.ToString">
-            <summary>
-            String representation
-            </summary>
+            <summary>String representation</summary>
         </member>
         <member name="T:Sqlx.SqlTemplateBuilder">
             <summary>

@@ -26,12 +26,7 @@ namespace Sqlx
             return new ParameterizedSql(sql, parameters);
         }
 
-        /// <summary>
-        /// Creates parameterized SQL using anonymous object
-        /// </summary>
-        /// <param name="sql">SQL statement</param>
-        /// <param name="parameters">Parameter object</param>
-        /// <returns>ParameterizedSql instance</returns>
+        /// <summary>Creates parameterized SQL using object parameters</summary>
         public static ParameterizedSql Create(string sql, object? parameters)
         {
             var paramDict = ExtractParametersSafe(parameters);

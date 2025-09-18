@@ -49,9 +49,7 @@ namespace Sqlx
         /// <summary>DB2: "column" with ? parameters</summary>
         public static readonly SqlDialect DB2 = new("\"", "\"", "'", "'", "?");
 
-        /// <summary>
-        /// Gets database dialect for mainstream databases (type-safe enum version)
-        /// </summary>
+        /// <summary>Gets SQL dialect by database type</summary>
         public static SqlDialect GetDialect(DatabaseType databaseType) => databaseType switch
         {
             DatabaseType.MySql => MySql,
@@ -78,9 +76,7 @@ namespace Sqlx
         };
     }
 
-    /// <summary>
-    /// Represents a SQL dialect configuration with enhanced functionality.
-    /// </summary>
+    /// <summary>SQL dialect configuration for database-specific syntax</summary>
     public readonly record struct SqlDialect(
         string ColumnLeft,
         string ColumnRight,

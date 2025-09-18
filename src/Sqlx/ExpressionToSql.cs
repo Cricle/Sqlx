@@ -6,12 +6,10 @@ using System.Text;
 
 namespace Sqlx
 {
-    /// <summary>
-    /// SQL operation type enumeration
-    /// </summary>
+    /// <summary>SQL operation types</summary>
     public enum SqlOperation
     {
-        /// <summary>SELECT query</summary>
+        /// <summary>SELECT operation</summary>
         Select,
         /// <summary>INSERT operation</summary>
         Insert,
@@ -21,84 +19,33 @@ namespace Sqlx
         Delete
     }
 
-    /// <summary>
-    /// Any placeholder class for SqlTemplate
-    /// </summary>
+    /// <summary>Placeholder values for dynamic SQL generation</summary>
     public static class Any
     {
-        /// <summary>
-        /// Placeholder for any value type with auto-generated parameter name
-        /// </summary>
-        /// <typeparam name="TValue">Placeholder type</typeparam>
-        /// <returns>Placeholder value</returns>
+        /// <summary>Generic placeholder value</summary>
         public static TValue Value<TValue>() => default!;
-
-        /// <summary>
-        /// Placeholder for any value type with custom parameter name
-        /// </summary>
-        /// <typeparam name="TValue">Placeholder type</typeparam>
+        /// <summary>Named generic placeholder value</summary>
         public static TValue Value<TValue>(string parameterName) => default!;
-
-        /// <summary>
-        /// String placeholder with auto-generated parameter name
-        /// </summary>
-        /// <returns>String placeholder</returns>
+        /// <summary>String placeholder</summary>
         public static string String() => default!;
-
-        /// <summary>
-        /// String placeholder with custom parameter name
-        /// </summary>
-        /// <param name="parameterName">Custom parameter name</param>
-        /// <returns>String placeholder</returns>
+        /// <summary>Named string placeholder</summary>
         public static string String(string parameterName) => default!;
-
-        /// <summary>
-        /// 整数占位符（自动生成参数名）
-        /// </summary>
-        /// <returns>整数占位符</returns>
+        /// <summary>Integer placeholder</summary>
         public static int Int() => default;
-
-        /// <summary>
-        /// 整数占位符（指定参数名）
-        /// </summary>
-        /// <returns>整数占位符</returns>
+        /// <summary>Named integer placeholder</summary>
         public static int Int(string parameterName) => default;
-
-        /// <summary>
-        /// 布尔占位符（自动生成参数名）
-        /// </summary>
-        /// <returns>布尔占位符</returns>
-        public static bool Bool() => default(bool);
-
-        /// <summary>
-        /// 布尔占位符（指定参数名）
-        /// </summary>
-        /// <returns>布尔占位符</returns>
-        public static bool Bool(string parameterName) => default(bool);
-
-        /// <summary>
-        /// 日期时间占位符（自动生成参数名）
-        /// </summary>
-        /// <returns>日期时间占位符</returns>
-        public static DateTime DateTime() => default(DateTime);
-
-        /// <summary>
-        /// 日期时间占位符（指定参数名）
-        /// </summary>
-        /// <returns>日期时间占位符</returns>
-        public static DateTime DateTime(string parameterName) => default(DateTime);
-
-        /// <summary>
-        /// Guid占位符（自动生成参数名）
-        /// </summary>
-        /// <returns>Guid占位符</returns>
-        public static Guid Guid() => default(Guid);
-
-        /// <summary>
-        /// Guid占位符（指定参数名）
-        /// </summary>
-        /// <returns>Guid占位符</returns>
-        public static Guid Guid(string parameterName) => default(Guid);
+        /// <summary>Boolean placeholder</summary>
+        public static bool Bool() => default;
+        /// <summary>Named boolean placeholder</summary>
+        public static bool Bool(string parameterName) => default;
+        /// <summary>DateTime placeholder</summary>
+        public static DateTime DateTime() => default;
+        /// <summary>Named DateTime placeholder</summary>
+        public static DateTime DateTime(string parameterName) => default;
+        /// <summary>Guid placeholder</summary>
+        public static Guid Guid() => default;
+        /// <summary>Named Guid placeholder</summary>
+        public static Guid Guid(string parameterName) => default;
     }
 
     /// <summary>
@@ -119,38 +66,37 @@ namespace Sqlx
         private SqlOperation _operation = SqlOperation.Select; // 默认为SELECT操作
 
         /// <summary>
-        /// 使用指定的 SQL 方言初始化新实例。
+        /// Initializes with specified SQL dialect
         /// </summary>
         private ExpressionToSql(SqlDialect dialect) : base(dialect, typeof(T))
         {
         }
 
-        /// <summary>
-        /// 设置自定义的SELECT列。
-        /// </summary>
-        public ExpressionToSql<T> Select(params string[] cols)
+        /// <summary>Sets custom SELECT columns</summary>
+        public ExpressionToSql<T> Select(params string[] cols) => 
+            ConfigureSelect(cols?.ToList() ?? new List<string>());
+
+        /// <summary>Sets SELECT columns using expression</summary>
+        public ExpressionToSql<T> Select<TResult>(Expression<Func<T, TResult>> selector) => 
+            ConfigureSelect(ExtractColumnsFromSelector(selector));
+
+        /// <summary>Sets SELECT columns using multiple expressions</summary>
+        public ExpressionToSql<T> Select(params Expression<Func<T, object>>[] selectors) => 
+            ConfigureSelect(ExtractColumnsFromSelectors(selectors));
+
+        /// <summary>Configures SELECT columns</summary>
+        private ExpressionToSql<T> ConfigureSelect(List<string> columns)
         {
-            _custom = cols?.ToList() ?? new List<string>();
+            _custom = columns;
             return this;
         }
 
-        /// <summary>
-        /// 使用表达式设置SELECT列。
-        /// </summary>
-        public ExpressionToSql<T> Select<TResult>(Expression<Func<T, TResult>> selector)
-        {
-            _custom = ExtractColumnsFromSelector(selector);
-            return this;
-        }
-
-        /// <summary>
-        /// 使用多个表达式设置SELECT列。
-        /// </summary>
-        public ExpressionToSql<T> Select(params Expression<Func<T, object>>[] selectors)
-        {
-            _custom = ExtractColumnsFromSelectors(selectors);
-            return this;
-        }
+        /// <summary>Gets entity properties using generics (AOT-friendly)</summary>
+        private static System.Reflection.PropertyInfo[] GetEntityProperties<
+#if NET5_0_OR_GREATER
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] 
+#endif
+            TEntity>() => typeof(TEntity).GetProperties();
 
         /// <summary>
         /// 统一的列提取逻辑，避免重复代码
@@ -160,19 +106,10 @@ namespace Sqlx
             return selector != null ? ExtractColumns(selector.Body) : new List<string>();
         }
 
-        /// <summary>
-        /// 统一的多选择器列提取逻辑
-        /// </summary>
-        private List<string> ExtractColumnsFromSelectors(Expression<Func<T, object>>[]? selectors)
-        {
-            if (selectors == null || selectors.Length == 0) return new List<string>(0);
+        private List<string> ExtractColumnsFromSelectors(Expression<Func<T, object>>[]? selectors) =>
+            selectors?.Where(s => s != null).SelectMany(s => ExtractColumns(s.Body)).ToList() ?? new List<string>(0);
 
-            return selectors.Where(s => s != null).SelectMany(s => ExtractColumns(s.Body)).ToList();
-        }
-
-        /// <summary>
-        /// 添加 WHERE 条件到查询。
-        /// </summary>
+        /// <summary>Adds WHERE condition</summary>
         public ExpressionToSql<T> Where(Expression<Func<T, bool>> predicate)
         {
             if (predicate != null)
@@ -183,24 +120,14 @@ namespace Sqlx
             return this;
         }
 
-        /// <summary>
-        /// 添加 AND 条件到查询（等同于 Where）。
-        /// </summary>
+        /// <summary>Adds AND condition (alias for Where)</summary>
         public ExpressionToSql<T> And(Expression<Func<T, bool>> predicate) => Where(predicate);
 
-        /// <summary>
-        /// 添加 ORDER BY 子句。
-        /// </summary>
+        /// <summary>Adds ORDER BY ascending</summary>
         public ExpressionToSql<T> OrderBy<TKey>(Expression<Func<T, TKey>> keySelector) => AddOrderBy(keySelector, "ASC");
-
-        /// <summary>
-        /// 添加 ORDER BY DESC 子句。
-        /// </summary>
+        /// <summary>Adds ORDER BY descending</summary>
         public ExpressionToSql<T> OrderByDescending<TKey>(Expression<Func<T, TKey>> keySelector) => AddOrderBy(keySelector, "DESC");
 
-        /// <summary>
-        /// 添加排序表达式的通用方法。
-        /// </summary>
         private ExpressionToSql<T> AddOrderBy<TKey>(Expression<Func<T, TKey>>? keySelector, string direction)
         {
             if (keySelector != null)
@@ -211,82 +138,131 @@ namespace Sqlx
             return this;
         }
 
-        /// <summary>
-        /// 限制返回行数。
-        /// </summary>
-        public ExpressionToSql<T> Take(int count)
+        /// <summary>Limits result count</summary>
+        public ExpressionToSql<T> Take(int count) => ConfigureLimit(count, null);
+        
+        /// <summary>Skips specified number of records</summary>
+        public ExpressionToSql<T> Skip(int count) => ConfigureLimit(null, count);
+
+        /// <summary>Configures pagination limits</summary>
+        private ExpressionToSql<T> ConfigureLimit(int? take, int? skip)
         {
-            _take = count;
+            if (take.HasValue) _take = take.Value;
+            if (skip.HasValue) _skip = skip.Value;
             return this;
         }
 
-        /// <summary>
-        /// 跳过指定行数。
-        /// </summary>
-        public ExpressionToSql<T> Skip(int count)
-        {
-            _skip = count;
-            return this;
-        }
+        /// <summary>Sets column value for UPDATE</summary>
+        public ExpressionToSql<T> Set<TValue>(Expression<Func<T, TValue>> selector, TValue value) => 
+            ConfigureSet(selector, value, null);
 
-        /// <summary>
-        /// 设置 UPDATE 操作的值。支持模式如 a=1。
-        /// </summary>
-        public ExpressionToSql<T> Set<TValue>(Expression<Func<T, TValue>> selector, TValue value)
+        /// <summary>Sets column value using expression for UPDATE</summary>
+        public ExpressionToSql<T> Set<TValue>(Expression<Func<T, TValue>> selector, Expression<Func<T, TValue>> valueExpression) => 
+            ConfigureSet(selector, default, valueExpression);
+
+        /// <summary>Configures UPDATE SET clause</summary>
+        private ExpressionToSql<T> ConfigureSet<TValue>(Expression<Func<T, TValue>>? selector, TValue? value, Expression<Func<T, TValue>>? valueExpression)
         {
             EnsureUpdateMode();
             if (selector != null)
             {
                 var column = GetColumnName(selector.Body);
-                var valueStr = FormatConstantValue(value);
-                _sets.Add($"{column} = {valueStr}");
+                var assignment = valueExpression != null 
+                    ? $"{column} = {ParseExpression(valueExpression.Body)}"
+                    : $"{column} = {FormatConstantValue(value)}";
+                
+                if (valueExpression != null)
+                    _expressions.Add(assignment);
+                else
+                    _sets.Add(assignment);
             }
             return this;
         }
 
-        /// <summary>
-        /// 使用表达式设置 UPDATE 操作的值。支持模式如 a=a+1。
-        /// </summary>
-        public ExpressionToSql<T> Set<TValue>(Expression<Func<T, TValue>> selector,
-            Expression<Func<T, TValue>> valueExpression)
-        {
-            EnsureUpdateMode();
-            if (selector != null && valueExpression != null)
-            {
-                var column = GetColumnName(selector.Body);
-                var sql = ParseExpression(valueExpression.Body);
-                _expressions.Add($"{column} = {sql}");
-            }
-            return this;
-        }
+        private void EnsureUpdateMode() => _operation = SqlOperation.Update;
+        private void EnsureInsertMode() => _operation = SqlOperation.Insert;
+        private void EnsureDeleteMode() => _operation = SqlOperation.Delete;
 
-        /// <summary>
-        /// 统一的操作类型设置，避免重复代码
-        /// </summary>
-        private void SetOperationType(SqlOperation type) => _operation = type;
+        #region As INSERT Methods - Consolidated INSERT operations with 'as' prefix
+        
+        /// <summary>Sets as INSERT operation</summary>
+        public ExpressionToSql<T> AsInsert() => ConfigureInsert();
 
-        private void EnsureUpdateMode() => SetOperationType(SqlOperation.Update);
-        private void EnsureInsertMode() => SetOperationType(SqlOperation.Insert);
-        private void EnsureDeleteMode() => SetOperationType(SqlOperation.Delete);
+        /// <summary>Sets as INSERT operation with specific columns</summary>
+        public ExpressionToSql<T> AsInsert(Expression<Func<T, object>> selector) => ConfigureInsert(selector);
 
-        /// <summary>
-        /// 创建 INSERT 操作。
-        /// </summary>
-        public ExpressionToSql<T> Insert()
+        /// <summary>Sets as INSERT INTO with explicit columns (AOT-friendly)</summary>
+        public ExpressionToSql<T> AsInsertInto(Expression<Func<T, object>> selector) => ConfigureInsert(selector);
+
+        /// <summary>Sets as INSERT INTO all columns</summary>
+        public ExpressionToSql<T> AsInsertIntoAll() => ConfigureInsertAll();
+
+        /// <summary>Sets as INSERT using SELECT subquery</summary>
+        public ExpressionToSql<T> AsInsertSelect(string sql) => ConfigureInsertSelect(sql);
+
+        /// <summary>Sets as INSERT using another query</summary>
+        public ExpressionToSql<T> AsInsertSelect<TSource>(ExpressionToSql<TSource> query) => ConfigureInsertSelect(query);
+
+        #endregion
+
+        #region INSERT Methods - Legacy methods for backward compatibility
+
+        /// <summary>Creates INSERT operation</summary>
+        public ExpressionToSql<T> Insert() => ConfigureInsert();
+
+        /// <summary>Sets INSERT columns using expression</summary>
+        public ExpressionToSql<T> Insert(Expression<Func<T, object>> selector) => ConfigureInsert(selector);
+
+        /// <summary>INSERT INTO with explicit columns (AOT-friendly)</summary>
+        public ExpressionToSql<T> InsertInto(Expression<Func<T, object>> selector) => ConfigureInsert(selector);
+
+        /// <summary>INSERT INTO all columns (uses reflection)</summary>
+        public ExpressionToSql<T> InsertIntoAll() => ConfigureInsertAll();
+
+        /// <summary>INSERT using SELECT subquery</summary>
+        public ExpressionToSql<T> InsertSelect(string sql) => ConfigureInsertSelect(sql);
+
+        /// <summary>INSERT using another query</summary>
+        public ExpressionToSql<T> InsertSelect<TSource>(ExpressionToSql<TSource> query) => ConfigureInsertSelect(query);
+
+        #endregion
+
+        #region Private INSERT Configuration Methods
+
+        /// <summary>Configures INSERT operation with optional columns</summary>
+        private ExpressionToSql<T> ConfigureInsert(Expression<Func<T, object>>? selector = null)
         {
             EnsureInsertMode();
+            if (selector != null) SetInsertColumns(selector);
             return this;
         }
 
-        /// <summary>
-        /// 指定 INSERT 操作的列。
-        /// </summary>
-        public ExpressionToSql<T> Insert(Expression<Func<T, object>> selector)
+        /// <summary>Configures INSERT with all entity columns</summary>
+        private ExpressionToSql<T> ConfigureInsertAll()
         {
             EnsureInsertMode();
-            SetInsertColumns(selector);
+            _columns.Clear();
+            _columns.AddRange(GetEntityProperties<T>().Select(prop => _dialect.WrapColumn(prop.Name)));
             return this;
         }
+
+        /// <summary>Configures INSERT using SELECT subquery</summary>
+        private ExpressionToSql<T> ConfigureInsertSelect(string sql)
+        {
+            EnsureInsertMode();
+            _selectSql = sql;
+            return this;
+        }
+
+        /// <summary>Configures INSERT using another query</summary>
+        private ExpressionToSql<T> ConfigureInsertSelect<TSource>(ExpressionToSql<TSource> query)
+        {
+            EnsureInsertMode();
+            if (query != null) _selectSql = query.ToSql();
+            return this;
+        }
+
+        #endregion
 
         /// <summary>
         /// 统一的INSERT列设置逻辑
@@ -300,79 +276,22 @@ namespace Sqlx
             }
         }
 
-        /// <summary>
-        /// 指定 INSERT 操作的值。
-        /// </summary>
-        public ExpressionToSql<T> Values(params object[] values)
-        {
-            AddFormattedValues(values);
-            return this;
-        }
+        /// <summary>Specifies INSERT values</summary>
+        public ExpressionToSql<T> Values(params object[] values) => ConfigureValues(values);
 
-        /// <summary>
-        /// 添加多行INSERT值。
-        /// </summary>
-        public ExpressionToSql<T> AddValues(params object[] values) => Values(values);
+        /// <summary>Adds multiple INSERT values</summary>
+        public ExpressionToSql<T> AddValues(params object[] values) => ConfigureValues(values);
 
-        /// <summary>
-        /// 统一的值格式化和添加逻辑
-        /// </summary>
-        private void AddFormattedValues(object[]? values)
+        /// <summary>Configures INSERT values</summary>
+        private ExpressionToSql<T> ConfigureValues(object[]? values)
         {
             if (values?.Length > 0)
-            {
-                var strings = values.Select(FormatConstantValue).ToList();
-                _values.Add(strings);
-            }
-        }
-
-        /// <summary>
-        /// 指定INSERT INTO操作，需要显式指定列（AOT 友好）。
-        /// </summary>
-        /// <param name="selector">列选择表达式</param>
-        public ExpressionToSql<T> InsertInto(Expression<Func<T, object>> selector)
-        {
-            EnsureInsertMode();
-            SetInsertColumns(selector);
-            return this;
-        }
-
-        /// <summary>
-        /// 指定INSERT INTO操作，自动推断所有列（使用反射，不推荐在 AOT 中使用）。
-        /// </summary>
-        public ExpressionToSql<T> InsertIntoAll()
-        {
-            EnsureInsertMode();
-            _columns.Clear();
-            _columns.AddRange(typeof(T).GetProperties().Select(prop => _dialect.WrapColumn(prop.Name)));
+                _values.Add(values.Select(FormatConstantValue).ToList());
             return this;
         }
 
 
-        /// <summary>
-        /// 使用SELECT子查询进行INSERT操作。
-        /// </summary>
-        public ExpressionToSql<T> InsertSelect(string sql)
-        {
-            _selectSql = sql;
-            return this;
-        }
-
-        /// <summary>
-        /// 使用另一个ExpressionToSql的查询进行INSERT操作。
-        /// </summary>
-        public ExpressionToSql<T> InsertSelect<TSource>(ExpressionToSql<TSource> query)
-        {
-            if (query != null)
-            {
-                _selectSql = query.ToSql();
-            }
-            return this;
-        }
-
-        /// <summary>
-        /// 添加 GROUP BY 子句，返回分组查询对象。
-        /// </summary>
+        /// <summary>Adds GROUP BY clause, returns grouped query</summary>
         public GroupedExpressionToSql<T, TKey> GroupBy<TKey>(Expression<Func<T, TKey>> keySelector)
         {
             if (keySelector != null)
@@ -383,50 +302,50 @@ namespace Sqlx
             return new GroupedExpressionToSql<T, TKey>(this, keySelector!);
         }
 
-        /// <summary>
-        /// 添加 GROUP BY 子句，返回正确的类型以支持链式调用。
-        /// </summary>
-        public new ExpressionToSql<T> AddGroupBy(string columnName)
+        /// <summary>Adds GROUP BY column</summary>
+        public new ExpressionToSql<T> AddGroupBy(string columnName) => 
+            ConfigureGroupBy(columnName);
+
+        /// <summary>Adds HAVING condition</summary>
+        public ExpressionToSql<T> Having(Expression<Func<T, bool>> predicate) => 
+            ConfigureHaving(predicate);
+
+        /// <summary>Configures GROUP BY</summary>
+        private ExpressionToSql<T> ConfigureGroupBy(string columnName)
         {
             base.AddGroupBy(columnName);
             return this;
         }
 
-        /// <summary>
-        /// 添加 HAVING 条件。
-        /// </summary>
-        public ExpressionToSql<T> Having(Expression<Func<T, bool>> predicate)
+        /// <summary>Configures HAVING condition</summary>
+        private ExpressionToSql<T> ConfigureHaving(Expression<Func<T, bool>>? predicate)
         {
             if (predicate != null)
             {
                 var conditionSql = ParseExpression(predicate.Body);
-                _havingConditions.Add($"({conditionSql})"); // HAVING总是加括号保持一致性
+                _havingConditions.Add($"({conditionSql})");
             }
             return this;
         }
 
-        /// <summary>
-        /// 创建DELETE语句。必须配合WHERE使用以确保安全。
-        /// </summary>
-        public ExpressionToSql<T> Delete()
+        /// <summary>Creates DELETE statement</summary>
+        public ExpressionToSql<T> Delete() => ConfigureDelete();
+
+        /// <summary>Creates DELETE statement with WHERE condition</summary>
+        public ExpressionToSql<T> Delete(Expression<Func<T, bool>> predicate) => ConfigureDelete(predicate);
+
+        /// <summary>Creates UPDATE statement</summary>
+        public ExpressionToSql<T> Update() => ConfigureUpdate();
+
+        /// <summary>Configures DELETE operation</summary>
+        private ExpressionToSql<T> ConfigureDelete(Expression<Func<T, bool>>? predicate = null)
         {
             EnsureDeleteMode();
-            return this;
+            return predicate != null ? Where(predicate) : this;
         }
 
-        /// <summary>
-        /// 创建DELETE语句并添加WHERE条件。
-        /// </summary>
-        public ExpressionToSql<T> Delete(Expression<Func<T, bool>> predicate)
-        {
-            EnsureDeleteMode();
-            return Where(predicate);
-        }
-
-        /// <summary>
-        /// 创建UPDATE语句。
-        /// </summary>
-        public ExpressionToSql<T> Update()
+        /// <summary>Configures UPDATE operation</summary>
+        private ExpressionToSql<T> ConfigureUpdate()
         {
             EnsureUpdateMode();
             return this;
@@ -543,13 +462,10 @@ namespace Sqlx
             var sql = new StringBuilder(512);
             sql.Append($"INSERT INTO {_dialect.WrapColumn(_tableName!)}");
 
-            // 添加列名
             if (_columns.Count > 0)
             {
                 sql.Append($" ({string.Join(", ", _columns)})");
             }
-
-            // 添加数据源
             if (!string.IsNullOrEmpty(_selectSql))
             {
                 sql.Append($" {_selectSql}");
@@ -682,28 +598,24 @@ namespace Sqlx
         {
             var sql = new StringBuilder(256);
 
-            // GROUP BY子句
             if (_groupByExpressions.Count > 0)
             {
                 sql.Append(" GROUP BY ");
                 sql.Append(string.Join(", ", _groupByExpressions));
             }
 
-            // HAVING子句
             if (_havingConditions.Count > 0)
             {
                 sql.Append(" HAVING ");
                 sql.Append(string.Join(" AND ", _havingConditions));
             }
 
-            // ORDER BY子句
             if (_orderByExpressions.Count > 0)
             {
                 sql.Append(" ORDER BY ");
                 sql.Append(string.Join(", ", _orderByExpressions));
             }
 
-            // 分页子句
             if (_skip.HasValue || _take.HasValue)
             {
                 var dbType = DatabaseType;
@@ -726,7 +638,7 @@ namespace Sqlx
     }
 
     /// <summary>
-    /// 表示分组后的查询对象，支持聚合操作。
+    /// Grouped query object supporting aggregation operations
     /// </summary>
     public class GroupedExpressionToSql<
 #if NET5_0_OR_GREATER
@@ -745,7 +657,7 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// 选择分组结果的投影。
+        /// Selects grouped result projection
         /// </summary>
         public ExpressionToSql<TResult> Select<
 #if NET5_0_OR_GREATER
@@ -1135,24 +1047,27 @@ namespace Sqlx
         }
     }
 
-    /// <summary>
-    /// 表示分组的接口，类似于 LINQ 的 IGrouping。
-    /// </summary>
+    /// <summary>Grouping interface similar to LINQ IGrouping</summary>
     public interface IGrouping<out TKey, out TElement>
     {
-        /// <summary>
-        /// 获取分组的键值。
-        /// </summary>
+        /// <summary>Gets the grouping key</summary>
         TKey Key { get; }
     }
 
+    /// <summary>Extensions for grouping operations (expression tree parsing only)</summary>
     public static class GroupingExtensions
     {
-        public static int Count<TKey, TElement>(this IGrouping<TKey, TElement> grouping) => throw new NotImplementedException("此方法仅用于表达式树解析");
-        public static TResult Sum<TKey, TElement, TResult>(this IGrouping<TKey, TElement> grouping, Expression<Func<TElement, TResult>> selector) => throw new NotImplementedException("此方法仅用于表达式树解析");
-        public static double Average<TKey, TElement>(this IGrouping<TKey, TElement> grouping, Expression<Func<TElement, double>> selector) => throw new NotImplementedException("此方法仅用于表达式树解析");
-        public static double Average<TKey, TElement>(this IGrouping<TKey, TElement> grouping, Expression<Func<TElement, decimal>> selector) => throw new NotImplementedException("此方法仅用于表达式树解析");
-        public static TResult Max<TKey, TElement, TResult>(this IGrouping<TKey, TElement> grouping, Expression<Func<TElement, TResult>> selector) => throw new NotImplementedException("此方法仅用于表达式树解析");
-        public static TResult Min<TKey, TElement, TResult>(this IGrouping<TKey, TElement> grouping, Expression<Func<TElement, TResult>> selector) => throw new NotImplementedException("此方法仅用于表达式树解析");
+        /// <summary>Count aggregation</summary>
+        public static int Count<TKey, TElement>(this IGrouping<TKey, TElement> grouping) => default;
+        /// <summary>Sum aggregation</summary>
+        public static TResult Sum<TKey, TElement, TResult>(this IGrouping<TKey, TElement> grouping, Expression<Func<TElement, TResult>> selector) => default!;
+        /// <summary>Average aggregation for double</summary>
+        public static double Average<TKey, TElement>(this IGrouping<TKey, TElement> grouping, Expression<Func<TElement, double>> selector) => default;
+        /// <summary>Average aggregation for decimal</summary>
+        public static double Average<TKey, TElement>(this IGrouping<TKey, TElement> grouping, Expression<Func<TElement, decimal>> selector) => default;
+        /// <summary>Max aggregation</summary>
+        public static TResult Max<TKey, TElement, TResult>(this IGrouping<TKey, TElement> grouping, Expression<Func<TElement, TResult>> selector) => default!;
+        /// <summary>Min aggregation</summary>
+        public static TResult Min<TKey, TElement, TResult>(this IGrouping<TKey, TElement> grouping, Expression<Func<TElement, TResult>> selector) => default!;
     }
 }

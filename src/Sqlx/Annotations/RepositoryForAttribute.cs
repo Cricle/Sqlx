@@ -16,9 +16,8 @@ namespace Sqlx.Annotations
     public sealed class RepositoryForAttribute : System.Attribute
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="RepositoryForAttribute"/> class.
+        /// Initializes a new instance of the <see cref="RepositoryForAttribute"/> class
         /// </summary>
-        /// <param name="serviceType">The service interface type.</param>
         public RepositoryForAttribute(System.Type serviceType)
         {
             ServiceType = serviceType ?? throw new System.ArgumentNullException(nameof(serviceType));

@@ -442,7 +442,7 @@ public class CodeGenerationService : ICodeGenerationService
     private string GetDbConnectionFieldName(INamedTypeSymbol repositoryClass)
     {
         // Find the first DbConnection field, property, or constructor parameter
-        
+
         // 1. Check fields (prioritize type checking, fallback to common names)
         var connectionField = repositoryClass.GetMembers()
             .OfType<IFieldSymbol>()
@@ -503,9 +503,9 @@ public class CodeGenerationService : ICodeGenerationService
     /// <returns>True if it's a common connection field name.</returns>
     private static bool IsCommonConnectionFieldName(string fieldName)
     {
-        return fieldName == "connection" || 
-               fieldName == "_connection" || 
-               fieldName == "Connection" || 
+        return fieldName == "connection" ||
+               fieldName == "_connection" ||
+               fieldName == "Connection" ||
                fieldName == "_Connection" ||
                fieldName.EndsWith("Connection", StringComparison.OrdinalIgnoreCase);
     }

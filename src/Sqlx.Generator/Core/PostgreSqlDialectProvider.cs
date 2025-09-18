@@ -16,7 +16,7 @@ namespace Sqlx.Generator.Core;
 internal class PostgreSqlDialectProvider : IDatabaseDialectProvider
 {
     /// <inheritdoc />
-    public SqlDefine SqlDefine => SqlDefine.PgSql;
+    public SqlDefine SqlDefine => SqlDefine.PostgreSql;
 
     /// <inheritdoc />
     public SqlDefineTypes DialectType => SqlDefineTypes.PostgreSql;

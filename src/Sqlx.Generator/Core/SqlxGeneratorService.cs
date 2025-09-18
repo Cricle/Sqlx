@@ -237,7 +237,7 @@ public class SqlxGeneratorService : ISqlxGeneratorService
         // Use the proper code generation service for repository methods
         var operationFactory = new OperationGeneratorFactory();
         var operationGenerator = operationFactory.GetGenerator(method);
-        
+
         if (operationGenerator != null)
         {
             var codeGenerationService = new CodeGenerationService();
@@ -294,14 +294,14 @@ public class SqlxGeneratorService : ISqlxGeneratorService
         // Get the SQL from the Sqlx attribute
         var sqlxAttr = method.GetAttributes()
             .FirstOrDefault(a => a.AttributeClass?.Name?.Contains("Sqlx") == true);
-        
+
         var sql = sqlxAttr?.ConstructorArguments.FirstOrDefault().Value as string ?? "SELECT 1";
         var returnType = method.ReturnType.ToDisplayString();
 
         sb.AppendLine("// Generated basic implementation for Sqlx method");
         sb.AppendLine("using var cmd = connection.CreateCommand();");
         sb.AppendLine($"cmd.CommandText = @\"{sql}\";");
-        
+
         // Add parameters
         foreach (var param in method.Parameters)
         {

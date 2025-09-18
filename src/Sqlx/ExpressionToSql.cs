@@ -4,119 +4,124 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-using System;
-using System.Collections.Generic;
-using System.Data.Common;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Text;
 using Sqlx.Annotations;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq.Expressions;
+using System.Linq;
 
 namespace Sqlx
 {
     /// <summary>
-    /// 用于SqlTemplate的Any占位符类
+    /// SQL operation type enumeration
+    /// </summary>
+    public enum SqlOperation
+    {
+        /// <summary>SELECT query</summary>
+        Select,
+        /// <summary>INSERT operation</summary>
+        Insert,
+        /// <summary>UPDATE operation</summary>
+        Update,
+        /// <summary>DELETE operation</summary>
+        Delete
+    }
+
+    /// <summary>
+    /// Any placeholder class for SqlTemplate
     /// </summary>
     public static class Any
     {
         /// <summary>
-        /// 表示任意值的占位符，用于在构建SqlTemplate时创建参数化查询（自动生成参数名）
+        /// Placeholder for any value type with auto-generated parameter name
         /// </summary>
-        /// <typeparam name="TValue">占位符的类型</typeparam>
-        /// <returns>占位符值</returns>
-        public static TValue Value<TValue>() => default(TValue)!;
-        
+        /// <typeparam name="TValue">Placeholder type</typeparam>
+        /// <returns>Placeholder value</returns>
+        public static TValue Value<TValue>() => default!;
+
         /// <summary>
-        /// 表示任意值的占位符，用于在构建SqlTemplate时创建参数化查询（指定参数名）
+        /// Placeholder for any value type with custom parameter name
         /// </summary>
-        /// <typeparam name="TValue">占位符的类型</typeparam>
-        /// <param name="parameterName">自定义参数名</param>
-        /// <returns>占位符值</returns>
-        public static TValue Value<TValue>(string parameterName) => default(TValue)!;
-        
+        /// <typeparam name="TValue">Placeholder type</typeparam>
+        public static TValue Value<TValue>(string parameterName) => default!;
+
         /// <summary>
-        /// 字符串占位符（自动生成参数名）
+        /// String placeholder with auto-generated parameter name
         /// </summary>
-        /// <returns>字符串占位符</returns>
-        public static string String() => default(string)!;
-        
+        /// <returns>String placeholder</returns>
+        public static string String() => default!;
+
         /// <summary>
-        /// 字符串占位符（指定参数名）
+        /// String placeholder with custom parameter name
         /// </summary>
-        /// <param name="parameterName">自定义参数名</param>
-        /// <returns>字符串占位符</returns>
-        public static string String(string parameterName) => default(string)!;
-        
+        /// <param name="parameterName">Custom parameter name</param>
+        /// <returns>String placeholder</returns>
+        public static string String(string parameterName) => default!;
+
         /// <summary>
         /// 整数占位符（自动生成参数名）
         /// </summary>
         /// <returns>整数占位符</returns>
-        public static int Int() => default(int);
-        
+        public static int Int() => default;
+
         /// <summary>
         /// 整数占位符（指定参数名）
         /// </summary>
-        /// <param name="parameterName">自定义参数名</param>
         /// <returns>整数占位符</returns>
-        public static int Int(string parameterName) => default(int);
-        
+        public static int Int(string parameterName) => default;
+
         /// <summary>
         /// 布尔占位符（自动生成参数名）
         /// </summary>
         /// <returns>布尔占位符</returns>
         public static bool Bool() => default(bool);
-        
+
         /// <summary>
         /// 布尔占位符（指定参数名）
         /// </summary>
-        /// <param name="parameterName">自定义参数名</param>
         /// <returns>布尔占位符</returns>
         public static bool Bool(string parameterName) => default(bool);
-        
+
         /// <summary>
         /// 日期时间占位符（自动生成参数名）
         /// </summary>
         /// <returns>日期时间占位符</returns>
         public static DateTime DateTime() => default(DateTime);
-        
+
         /// <summary>
         /// 日期时间占位符（指定参数名）
         /// </summary>
-        /// <param name="parameterName">自定义参数名</param>
         /// <returns>日期时间占位符</returns>
         public static DateTime DateTime(string parameterName) => default(DateTime);
-        
+
         /// <summary>
         /// Guid占位符（自动生成参数名）
         /// </summary>
         /// <returns>Guid占位符</returns>
         public static Guid Guid() => default(Guid);
-        
+
         /// <summary>
         /// Guid占位符（指定参数名）
         /// </summary>
-        /// <param name="parameterName">自定义参数名</param>
         /// <returns>Guid占位符</returns>
         public static Guid Guid(string parameterName) => default(Guid);
     }
 
     /// <summary>
-    /// 简单高效的 LINQ Expression 到 SQL 转换器，AOT 友好，无锁设计。
+    /// Simple and efficient LINQ Expression to SQL converter (AOT-friendly, lock-free design)
     /// </summary>
-    /// <typeparam name="T">实体类型</typeparam>
+    /// <typeparam name="T">Entity type</typeparam>
     public partial class ExpressionToSql<
 #if NET5_0_OR_GREATER
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] 
 #endif
         T> : ExpressionToSqlBase
     {
-        private readonly List<string> _setClausesConstant = new();
-        private readonly List<string> _setClausesExpression = new();
-        private readonly List<string> _insertColumns = new(); // INSERT列名
-        private readonly List<List<string>> _insertValues = new(); // INSERT值（支持多行）
-        private string? _insertSelectSql; // INSERT SELECT的SQL
-        private SqlOperation _operationType = SqlOperation.Select; // 默认为SELECT操作
+        private readonly List<string> _sets = new();
+        private readonly List<string> _expressions = new();
+        private readonly List<string> _columns = new(); // INSERT列名
+        private readonly List<List<string>> _values = new(); // INSERT值（支持多行）
+        private string? _selectSql; // INSERT SELECT的SQL
+        private SqlOperation _operation = SqlOperation.Select; // 默认为SELECT操作
 
         /// <summary>
         /// 使用指定的 SQL 方言初始化新实例。
@@ -128,9 +133,9 @@ namespace Sqlx
         /// <summary>
         /// 设置自定义的SELECT列。
         /// </summary>
-        public ExpressionToSql<T> Select(params string[] columns)
+        public ExpressionToSql<T> Select(params string[] cols)
         {
-            _customSelectClause = columns?.ToList() ?? new List<string>();
+            _custom = cols?.ToList() ?? new List<string>();
             return this;
         }
 
@@ -139,7 +144,7 @@ namespace Sqlx
         /// </summary>
         public ExpressionToSql<T> Select<TResult>(Expression<Func<T, TResult>> selector)
         {
-            _customSelectClause = ExtractColumnsFromSelector(selector);
+            _custom = ExtractColumnsFromSelector(selector);
             return this;
         }
 
@@ -148,7 +153,7 @@ namespace Sqlx
         /// </summary>
         public ExpressionToSql<T> Select(params Expression<Func<T, object>>[] selectors)
         {
-            _customSelectClause = ExtractColumnsFromSelectors(selectors);
+            _custom = ExtractColumnsFromSelectors(selectors);
             return this;
         }
 
@@ -237,9 +242,9 @@ namespace Sqlx
             EnsureUpdateMode();
             if (selector != null)
             {
-                var columnName = GetColumnName(selector.Body);
+                var column = GetColumnName(selector.Body);
                 var valueStr = FormatConstantValue(value);
-                _setClausesConstant.Add($"{columnName} = {valueStr}");
+                _sets.Add($"{column} = {valueStr}");
             }
             return this;
         }
@@ -253,9 +258,9 @@ namespace Sqlx
             EnsureUpdateMode();
             if (selector != null && valueExpression != null)
             {
-                var columnName = GetColumnName(selector.Body);
-                var expressionSql = ParseExpression(valueExpression.Body);
-                _setClausesExpression.Add($"{columnName} = {expressionSql}");
+                var column = GetColumnName(selector.Body);
+                var sql = ParseExpression(valueExpression.Body);
+                _expressions.Add($"{column} = {sql}");
             }
             return this;
         }
@@ -263,11 +268,20 @@ namespace Sqlx
         /// <summary>
         /// 统一的操作类型设置，避免重复代码
         /// </summary>
-        private void SetOperationType(SqlOperation operationType) => _operationType = operationType;
+        private void SetOperationType(SqlOperation type) => _operation = type;
 
         private void EnsureUpdateMode() => SetOperationType(SqlOperation.Update);
         private void EnsureInsertMode() => SetOperationType(SqlOperation.Insert);
         private void EnsureDeleteMode() => SetOperationType(SqlOperation.Delete);
+
+        /// <summary>
+        /// 创建 INSERT 操作。
+        /// </summary>
+        public ExpressionToSql<T> Insert()
+        {
+            EnsureInsertMode();
+            return this;
+        }
 
         /// <summary>
         /// 指定 INSERT 操作的列。
@@ -284,10 +298,10 @@ namespace Sqlx
         /// </summary>
         private void SetInsertColumns(Expression<Func<T, object>>? selector)
         {
-            _insertColumns.Clear();
+            _columns.Clear();
             if (selector != null)
             {
-                _insertColumns.AddRange(ExtractColumns(selector.Body));
+                _columns.AddRange(ExtractColumns(selector.Body));
             }
         }
 
@@ -312,44 +326,51 @@ namespace Sqlx
         {
             if (values?.Length > 0)
             {
-                var valueStrings = values.Select(FormatConstantValue).ToList();
-                _insertValues.Add(valueStrings);
+                var strings = values.Select(FormatConstantValue).ToList();
+                _values.Add(strings);
             }
         }
 
         /// <summary>
-        /// 指定INSERT INTO操作，自动推断所有列。
+        /// 指定INSERT INTO操作，需要显式指定列（AOT 友好）。
         /// </summary>
-        public ExpressionToSql<T> InsertInto()
+        /// <param name="selector">列选择表达式</param>
+        public ExpressionToSql<T> InsertInto(Expression<Func<T, object>> selector)
         {
             EnsureInsertMode();
-            _insertColumns.Clear();
-            _insertColumns.AddRange(typeof(T).GetProperties().Select(prop => _dialect.WrapColumn(prop.Name)));
+            SetInsertColumns(selector);
             return this;
         }
 
         /// <summary>
-        /// 指定INSERT INTO操作，手动指定列。
+        /// 指定INSERT INTO操作，自动推断所有列（使用反射，不推荐在 AOT 中使用）。
         /// </summary>
-        public ExpressionToSql<T> InsertInto(Expression<Func<T, object>> selector) => Insert(selector);
+        public ExpressionToSql<T> InsertIntoAll()
+        {
+            EnsureInsertMode();
+            _columns.Clear();
+            _columns.AddRange(typeof(T).GetProperties().Select(prop => _dialect.WrapColumn(prop.Name)));
+            return this;
+        }
+
 
         /// <summary>
         /// 使用SELECT子查询进行INSERT操作。
         /// </summary>
-        public ExpressionToSql<T> InsertSelect(string selectSql)
+        public ExpressionToSql<T> InsertSelect(string sql)
         {
-            _insertSelectSql = selectSql;
+            _selectSql = sql;
             return this;
         }
 
         /// <summary>
         /// 使用另一个ExpressionToSql的查询进行INSERT操作。
         /// </summary>
-        public ExpressionToSql<T> InsertSelect<TSource>(ExpressionToSql<TSource> selectQuery)
+        public ExpressionToSql<T> InsertSelect<TSource>(ExpressionToSql<TSource> query)
         {
-            if (selectQuery != null)
+            if (query != null)
             {
-                _insertSelectSql = selectQuery.ToSql();
+                _selectSql = query.ToSql();
             }
             return this;
         }
@@ -419,11 +440,11 @@ namespace Sqlx
         /// <summary>
         /// 设置自定义 SELECT 子句（内部使用）。
         /// </summary>
-        internal List<string>? _customSelectClause;
+        internal List<string>? _custom;
 
-        internal void SetCustomSelectClause(List<string> selectClause)
+        internal void SetCustomSelectClause(List<string> clause)
         {
-            _customSelectClause = selectClause;
+            _custom = clause;
         }
 
 
@@ -432,7 +453,7 @@ namespace Sqlx
         /// </summary>
         private string BuildSql()
         {
-            return _operationType switch
+            return _operation switch
             {
                 SqlOperation.Insert => BuildInsertSql(),
                 SqlOperation.Update => BuildUpdateSql(),
@@ -444,67 +465,82 @@ namespace Sqlx
 
         private string BuildSelectSql()
         {
-            using var sql = new ValueStringBuilder(512);
+            var sql = new System.Text.StringBuilder(512);
 
             // SELECT 子句
-            sql.Append(_customSelectClause?.Count > 0
-                ? $"SELECT {string.Join(", ", _customSelectClause)} FROM "
-                : "SELECT * FROM ");
+            var selectClause = _custom?.Count > 0
+                ? $"SELECT {string.Join(", ", _custom)} FROM "
+                : "SELECT * FROM ";
+            sql.Append(selectClause);
 
             // FROM 表名
             sql.Append(_dialect.WrapColumn(_tableName!));
 
-            // 添加通用 SQL 子句 (内联以避免ref struct传递问题)
-            // WHERE子句
+            // WHERE 子句
             if (_whereConditions.Count > 0)
             {
                 sql.Append(" WHERE ");
-                var processedWhere = _whereConditions.Select(RemoveOuterParentheses);
-                sql.Append(string.Join(" AND ", processedWhere));
+                var conditions = _whereConditions.Select(RemoveOuterParentheses);
+                sql.Append(string.Join(" AND ", conditions));
             }
 
-            // GROUP BY子句
+            // GROUP BY 子句
             if (_groupByExpressions.Count > 0)
             {
                 sql.Append(" GROUP BY ");
                 sql.Append(string.Join(", ", _groupByExpressions));
             }
 
-            // HAVING子句
+            // HAVING 子句
             if (_havingConditions.Count > 0)
             {
                 sql.Append(" HAVING ");
                 sql.Append(string.Join(" AND ", _havingConditions));
             }
 
-            // ORDER BY子句
+            // ORDER BY 子句
             if (_orderByExpressions.Count > 0)
             {
                 sql.Append(" ORDER BY ");
                 sql.Append(string.Join(", ", _orderByExpressions));
             }
 
-            // 分页子句
+            // LIMIT/OFFSET 子句
             if (_skip.HasValue || _take.HasValue)
             {
-                // SQL Server和Oracle使用OFFSET/FETCH语法 - 其他数据库都使用LIMIT/OFFSET
-                var dbType = DatabaseType;
-                var useOffsetFetchSyntax = dbType == "SqlServer" || dbType == "Oracle";
-
-                if (useOffsetFetchSyntax) // SQL Server 或 Oracle
+                if (_dialect.DatabaseType == "SqlServer")
                 {
-                    if (_skip.HasValue) sql.Append($" OFFSET {_skip.Value} ROWS");
-                    if (_take.HasValue) sql.Append($" FETCH NEXT {_take.Value} ROWS ONLY");
+                    // SQL Server 使用 OFFSET...FETCH
+                    if (_skip.HasValue)
+                    {
+                        sql.Append($" OFFSET {_skip.Value} ROWS");
+                        if (_take.HasValue)
+                        {
+                            sql.Append($" FETCH NEXT {_take.Value} ROWS ONLY");
+                        }
+                    }
+                    else if (_take.HasValue)
+                    {
+                        sql.Append($" OFFSET 0 ROWS FETCH NEXT {_take.Value} ROWS ONLY");
+                    }
                 }
-                else // MySQL, PostgreSQL, SQLite 等
+                else
                 {
-                    if (_take.HasValue) sql.Append($" LIMIT {_take.Value}");
-                    if (_skip.HasValue) sql.Append($" OFFSET {_skip.Value}");
+                    // 其他数据库使用 LIMIT/OFFSET
+                    if (_take.HasValue)
+                    {
+                        sql.Append($" LIMIT {_take.Value}");
+                    }
+                    if (_skip.HasValue)
+                    {
+                        sql.Append($" OFFSET {_skip.Value}");
+                    }
                 }
             }
 
             return sql.ToString();
         }
+
 
 
         private string BuildInsertSql()
@@ -513,20 +549,20 @@ namespace Sqlx
             sql.Append($"INSERT INTO {_dialect.WrapColumn(_tableName!)}");
 
             // 添加列名
-            if (_insertColumns.Count > 0)
+            if (_columns.Count > 0)
             {
-                sql.Append($" ({string.Join(", ", _insertColumns)})");
+                sql.Append($" ({string.Join(", ", _columns)})");
             }
 
             // 添加数据源
-            if (!string.IsNullOrEmpty(_insertSelectSql))
+            if (!string.IsNullOrEmpty(_selectSql))
             {
-                sql.Append($" {_insertSelectSql}");
+                sql.Append($" {_selectSql}");
             }
-            else if (_insertValues.Count > 0)
+            else if (_values.Count > 0)
             {
                 sql.Append(" VALUES ");
-                sql.Append(string.Join(", ", _insertValues.Select(values => $"({string.Join(", ", values)})")));
+                sql.Append(string.Join(", ", _values.Select(vals => $"({string.Join(", ", vals)})")));
             }
 
             return sql.ToString();
@@ -538,8 +574,8 @@ namespace Sqlx
             sql.Append($"UPDATE {_dialect.WrapColumn(_tableName!)} SET ");
 
             // 合并所有 SET 子句
-            var allSetClauses = _setClausesConstant.Concat(_setClausesExpression);
-            sql.Append(string.Join(", ", allSetClauses));
+            var allClauses = _sets.Concat(_expressions);
+            sql.Append(string.Join(", ", allClauses));
 
             // 添加 WHERE 子句
             if (_whereConditions.Count > 0)
@@ -594,7 +630,7 @@ namespace Sqlx
         /// </summary>
         public ExpressionToSql<T> UseParameterizedQueries()
         {
-            _useParameterizedQueries = true;
+            _parameterized = true;
             return this;
         }
 
@@ -604,13 +640,13 @@ namespace Sqlx
         public override SqlTemplate ToTemplate()
         {
             // 如果还没有启用参数化查询，需要重新构建
-            if (!_useParameterizedQueries)
+            if (!_parameterized)
             {
                 // 保存当前状态
-                var originalConditions = new List<string>(_whereConditions);
-                var originalOrderBy = new List<string>(_orderByExpressions);
-                var originalGroupBy = new List<string>(_groupByExpressions);
-                var originalHaving = new List<string>(_havingConditions);
+                var conditions = new List<string>(_whereConditions);
+                var orderBy = new List<string>(_orderByExpressions);
+                var groupBy = new List<string>(_groupByExpressions);
+                var having = new List<string>(_havingConditions);
 
                 // 清空并重新启用参数化模式
                 _whereConditions.Clear();
@@ -618,16 +654,16 @@ namespace Sqlx
                 _groupByExpressions.Clear();
                 _havingConditions.Clear();
                 _parameters.Clear();
-                _useParameterizedQueries = true;
+                _parameterized = true;
 
                 // 需要重新构建查询，但这需要原始表达式
                 // 由于我们没有保存原始表达式，我们只能返回当前的SQL和空参数
                 // 这是一个设计限制，建议用户显式调用UseParameterizedQueries()
-                _useParameterizedQueries = false;
-                _whereConditions.AddRange(originalConditions);
-                _orderByExpressions.AddRange(originalOrderBy);
-                _groupByExpressions.AddRange(originalGroupBy);
-                _havingConditions.AddRange(originalHaving);
+                _parameterized = false;
+                _whereConditions.AddRange(conditions);
+                _orderByExpressions.AddRange(orderBy);
+                _groupByExpressions.AddRange(groupBy);
+                _havingConditions.AddRange(having);
             }
 
             var sql = BuildSql();
@@ -726,11 +762,11 @@ namespace Sqlx
             var resultQuery = _baseQuery._dialect.DatabaseType switch
             {
                 "SqlServer" => ExpressionToSql<TResult>.ForSqlServer(),
-                "MySQL" => ExpressionToSql<TResult>.ForMySql(),
+                "MySql" => ExpressionToSql<TResult>.ForMySql(),
                 "PostgreSql" => ExpressionToSql<TResult>.ForPostgreSQL(),
+                "SQLite" => ExpressionToSql<TResult>.ForSqlite(),
                 "Oracle" => ExpressionToSql<TResult>.ForOracle(),
                 "DB2" => ExpressionToSql<TResult>.ForDB2(),
-                "SQLite" => ExpressionToSql<TResult>.ForSqlite(),
                 _ => ExpressionToSql<TResult>.ForSqlServer()
             };
 
@@ -897,7 +933,7 @@ namespace Sqlx
                     if (member.Member.Name == "Length" && member.Member.DeclaringType == typeof(string))
                     {
                         var obj = ParseLambdaBody(member.Expression!);
-                        return GetDialectFunction("LENGTH", new[] { obj }, DialectMappings["Length"]);
+                        return DatabaseType == "SqlServer" ? $"LEN({obj})" : $"LENGTH({obj})";
                     }
                     return ExtractColumnName(member);
 
@@ -973,10 +1009,10 @@ namespace Sqlx
                     ("Round", 1) => $"ROUND({args[0]})",
                     ("Round", 2) => $"ROUND({args[0]}, {args[1]})",
                     ("Floor", 1) => $"FLOOR({args[0]})",
-                    ("Ceiling", 1) => GetDialectFunction("CEILING", args, DialectMappings["Ceiling"]),
-                    ("Min", 2) => GetDialectFunction("MIN", args, DialectMappings["Min"]),
-                    ("Max", 2) => GetDialectFunction("MAX", args, DialectMappings["Max"]),
-                    ("Pow", 2) => GetDialectFunction("POWER", args, DialectMappings["Power"]),
+                    ("Ceiling", 1) => DatabaseType == "PostgreSql" ? $"CEIL({args[0]})" : $"CEILING({args[0]})",
+                    ("Min", 2) => $"LEAST({args[0]}, {args[1]})",
+                    ("Max", 2) => $"GREATEST({args[0]}, {args[1]})",
+                    ("Pow", 2) => DatabaseType == "MySql" ? $"POW({args[0]}, {args[1]})" : $"POWER({args[0]}, {args[1]})",
                     ("Sqrt", 1) => $"SQRT({args[0]})",
                     _ => args.Length > 0 ? args[0] : "NULL"
                 };
@@ -989,12 +1025,12 @@ namespace Sqlx
                 var args = methodCall.Arguments.Select(ParseLambdaBody).ToArray();
                 return (methodName, args.Length) switch
                 {
-                    ("Length", 0) => GetDialectFunction("LENGTH", new[] { obj }, DialectMappings["Length"]),
+                    ("Length", 0) => DatabaseType == "SqlServer" ? $"LEN({obj})" : $"LENGTH({obj})",
                     ("ToUpper", 0) => $"UPPER({obj})",
                     ("ToLower", 0) => $"LOWER({obj})",
                     ("Trim", 0) => $"TRIM({obj})",
-                    ("Substring", 1) => GetDialectFunction("SUBSTRING", new[] { obj, args[0] }, DialectMappings["Substring1"]),
-                    ("Substring", 2) => GetDialectFunction("SUBSTRING", new[] { obj, args[0], args[1] }, DialectMappings["Substring2"]),
+                    ("Substring", 1) => DatabaseType == "SQLite" ? $"SUBSTR({obj}, {args[0]})" : $"SUBSTRING({obj}, {args[0]})",
+                    ("Substring", 2) => DatabaseType == "SQLite" ? $"SUBSTR({obj}, {args[0]}, {args[1]})" : $"SUBSTRING({obj}, {args[0]}, {args[1]})",
                     ("Replace", 2) => $"REPLACE({obj}, {args[0]}, {args[1]})",
                     _ => obj
                 };

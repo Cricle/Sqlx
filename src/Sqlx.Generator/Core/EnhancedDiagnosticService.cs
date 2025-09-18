@@ -13,8 +13,8 @@ using System.Text.RegularExpressions;
 namespace Sqlx.Generator.Core
 {
     /// <summary>
-    /// 增强的诊断服务，专注于列名匹配和用户指导
-    /// 目标：让用户更专注业务逻辑而非SQL细节
+    /// Enhanced diagnostic service focused on column mapping, user guidance, and SQL best practices
+    /// Goal: Help users focus on business logic rather than SQL details
     /// </summary>
     internal class EnhancedDiagnosticService
     {
@@ -27,25 +27,28 @@ namespace Sqlx.Generator.Core
         }
 
         /// <summary>
-        /// 执行增强的列名匹配分析
+        /// Performs enhanced column mapping analysis and SQL best practice checks
         /// </summary>
         public void AnalyzeColumnMapping(IMethodSymbol method, string sql, INamedTypeSymbol? entityType)
         {
             if (entityType == null) return;
 
             var location = method.Locations.FirstOrDefault();
-            
+
             // 1. 分析列名匹配模式
             AnalyzeColumnNamingPatterns(method, sql, entityType, location);
-            
+
             // 2. 检测潜在的映射问题
             DetectMappingIssues(method, sql, entityType, location);
-            
+
             // 3. 提供智能优化建议
             SuggestOptimizations(method, sql, entityType, location);
-            
+
             // 4. 生成用户友好的指导
             ProvideUserGuidance(method, sql, entityType, location);
+
+            // 5. Check for SQL best practices
+            CheckSqlBestPractices(method, sql, location);
         }
 
         /// <summary>
@@ -55,7 +58,7 @@ namespace Sqlx.Generator.Core
         {
             var properties = GetEntityProperties(entityType);
             var sqlColumns = ExtractColumnNamesFromSql(sql);
-            
+
             var unmatchedProperties = new List<string>();
             var suggestedMappings = new List<(string Property, string SuggestedColumn)>();
 
@@ -63,15 +66,15 @@ namespace Sqlx.Generator.Core
             {
                 var propertyName = property.Name;
                 var possibleColumnNames = GeneratePossibleColumnNames(propertyName);
-                
+
                 // 检查是否有匹配的列
-                var matchedColumn = sqlColumns.FirstOrDefault(col => 
+                var matchedColumn = sqlColumns.FirstOrDefault(col =>
                     possibleColumnNames.Any(possible => string.Equals(col, possible, StringComparison.OrdinalIgnoreCase)));
 
                 if (matchedColumn == null)
                 {
                     unmatchedProperties.Add(propertyName);
-                    
+
                     // 找到最可能的匹配
                     var bestMatch = FindBestColumnMatch(propertyName, sqlColumns);
                     if (bestMatch != null)
@@ -138,7 +141,7 @@ namespace Sqlx.Generator.Core
             }
 
             // 检查分页
-            if (!Regex.IsMatch(sql, @"\b(LIMIT|TOP|OFFSET|FETCH)\b", RegexOptions.IgnoreCase) && 
+            if (!Regex.IsMatch(sql, @"\b(LIMIT|TOP|OFFSET|FETCH)\b", RegexOptions.IgnoreCase) &&
                 method.ReturnType.ToString().Contains("List"))
             {
                 suggestions.Add("列表查询建议添加分页：{{paginate:size=20}}");
@@ -242,16 +245,16 @@ namespace Sqlx.Generator.Core
         private double CalculateSimilarity(string source, string target)
         {
             if (source == target) return 1.0;
-            
+
             var sourceNormalized = source.ToLowerInvariant().Replace("_", "").Replace("-", "");
             var targetNormalized = target.ToLowerInvariant().Replace("_", "").Replace("-", "");
-            
+
             if (sourceNormalized == targetNormalized) return 0.9;
-            
+
             // 简单的编辑距离相似度
             var distance = LevenshteinDistance(sourceNormalized, targetNormalized);
             var maxLength = Math.Max(sourceNormalized.Length, targetNormalized.Length);
-            
+
             return 1.0 - (double)distance / maxLength;
         }
 
@@ -291,7 +294,7 @@ namespace Sqlx.Generator.Core
         private List<string> ExtractColumnNamesFromSql(string sql)
         {
             var columns = new List<string>();
-            
+
             // 简单的SELECT列提取（可以改进为更完善的SQL解析）
             var selectMatch = Regex.Match(sql, @"SELECT\s+(.*?)\s+FROM", RegexOptions.IgnoreCase | RegexOptions.Singleline);
             if (selectMatch.Success)
@@ -313,7 +316,7 @@ namespace Sqlx.Generator.Core
         private List<string> ExtractWhereColumns(string sql)
         {
             var columns = new List<string>();
-            
+
             var whereMatch = Regex.Match(sql, @"WHERE\s+(.*?)(?:\s+ORDER\s+BY|\s+GROUP\s+BY|\s+LIMIT|$)", RegexOptions.IgnoreCase | RegexOptions.Singleline);
             if (whereMatch.Success)
             {
@@ -343,7 +346,7 @@ namespace Sqlx.Generator.Core
         {
             var typeName = property.Type.Name.ToLowerInvariant();
             var propertyName = property.Name.ToLowerInvariant();
-            
+
             return typeName == "string" && (
                 propertyName.Contains("description") ||
                 propertyName.Contains("content") ||
@@ -382,13 +385,13 @@ namespace Sqlx.Generator.Core
 
             if (lowerName.Contains("page") || lowerSql.Contains("limit") || lowerSql.Contains("offset"))
                 return "分页查询";
-            
+
             if (lowerName.Contains("search") || lowerSql.Contains("like"))
                 return "搜索查询";
-            
+
             if (lowerName.Contains("audit") || lowerName.Contains("log"))
                 return "审计日志";
-            
+
             if (lowerName.Contains("report") || lowerSql.Contains("group by"))
                 return "报表统计";
 
@@ -401,7 +404,7 @@ namespace Sqlx.Generator.Core
         private bool ShouldSuggestSmartTemplate(string sql, INamedTypeSymbol entityType)
         {
             // 如果SQL比较简单且没有使用模板语法，建议使用智能模板
-            return !sql.Contains("{{") && 
+            return !sql.Contains("{{") &&
                    Regex.IsMatch(sql, @"SELECT\s+\*\s+FROM\s+\w+", RegexOptions.IgnoreCase) &&
                    !sql.Contains("JOIN");
         }
@@ -504,6 +507,115 @@ namespace Sqlx.Generator.Core
                     true,
                     "提供开发效率提升的实用建议")
             };
+        }
+
+        /// <summary>
+        /// Checks SQL statements for best practices and security issues
+        /// </summary>
+        private void CheckSqlBestPractices(IMethodSymbol method, string sql, Location? location)
+        {
+            if (string.IsNullOrWhiteSpace(sql)) return;
+
+            var normalizedSql = sql.Trim().ToUpperInvariant();
+
+            // Check for SELECT *
+            if (Regex.IsMatch(normalizedSql, @"SELECT\s+\*", RegexOptions.IgnoreCase))
+            {
+                var diagnostic = Diagnostic.Create(Messages.SP0016, location);
+                _context.ReportDiagnostic(diagnostic);
+            }
+
+            // Check for DELETE without WHERE
+            if (Regex.IsMatch(normalizedSql, @"DELETE\s+FROM\s+\w+(?!\s+WHERE)", RegexOptions.IgnoreCase))
+            {
+                var diagnostic = Diagnostic.Create(Messages.SP0020, location);
+                _context.ReportDiagnostic(diagnostic);
+            }
+
+            // Check for UPDATE without WHERE
+            if (Regex.IsMatch(normalizedSql, @"UPDATE\s+\w+\s+SET\s+.+?(?!\s+WHERE)", RegexOptions.IgnoreCase | RegexOptions.Singleline))
+            {
+                var diagnostic = Diagnostic.Create(Messages.SP0021, location);
+                _context.ReportDiagnostic(diagnostic);
+            }
+
+            // Suggest SqlTemplate for complex CRUD operations
+            if (IsComplexCrudOperation(normalizedSql))
+            {
+                var diagnostic = Diagnostic.Create(Messages.SP0018, location);
+                _context.ReportDiagnostic(diagnostic);
+            }
+        }
+
+        /// <summary>
+        /// Checks if method might benefit from SqlTemplate parameter support
+        /// </summary>
+        public void CheckForSqlTemplateOpportunity(IMethodSymbol method, Location? location)
+        {
+            // Check if method has dynamic SQL patterns or complex logic
+            var methodName = method.Name.ToLowerInvariant();
+
+            if (methodName.Contains("search") ||
+                methodName.Contains("filter") ||
+                methodName.Contains("dynamic") ||
+                methodName.Contains("conditional"))
+            {
+                var diagnostic = Diagnostic.Create(Messages.SP0019, location);
+                _context.ReportDiagnostic(diagnostic);
+            }
+        }
+
+        /// <summary>
+        /// Checks for methods that might need [Sqlx] attribute
+        /// </summary>
+        public void CheckForMissingSqlxAttribute(IMethodSymbol method, Location? location)
+        {
+            var methodName = method.Name.ToLowerInvariant();
+
+            // Common database operation patterns
+            var dbOperationPatterns = new[]
+            {
+                "get", "find", "fetch", "load", "select", "query",
+                "insert", "add", "create", "save",
+                "update", "modify", "edit", "change",
+                "delete", "remove", "drop"
+            };
+
+            var isPartialMethod = method.IsPartialDefinition;
+            var returnTypeIndicatesDbOperation =
+                method.ReturnType.Name.Contains("Task") ||
+                method.ReturnType.Name.Contains("IEnumerable") ||
+                method.ReturnType.Name.Contains("List");
+
+            if (isPartialMethod && returnTypeIndicatesDbOperation &&
+                dbOperationPatterns.Any(pattern => methodName.StartsWith(pattern)))
+            {
+                var diagnostic = Diagnostic.Create(Messages.SP0017, location, method.Name);
+                _context.ReportDiagnostic(diagnostic);
+            }
+        }
+
+        /// <summary>
+        /// Determines if SQL represents a complex CRUD operation that would benefit from SqlTemplate
+        /// </summary>
+        private bool IsComplexCrudOperation(string sql)
+        {
+            // Look for patterns that indicate complexity
+            var complexityIndicators = new[]
+            {
+                "JOIN",
+                "UNION",
+                "SUBQUERY",
+                "CASE WHEN",
+                "GROUP BY",
+                "HAVING",
+                "WINDOW",
+                "WITH"
+            };
+
+            return complexityIndicators.Any(indicator =>
+                sql.IndexOf(indicator, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                sql.Length > 200; // Long SQL statements
         }
     }
 }

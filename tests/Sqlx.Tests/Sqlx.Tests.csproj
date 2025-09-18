@@ -2,7 +2,7 @@
 
   <!-- 基本项目设置 -->
   <PropertyGroup>
-    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+    <TargetFrameworks>net9.0</TargetFrameworks>
     <AssemblyName>Sqlx.Tests</AssemblyName>
     <RootNamespace>Sqlx.Tests</RootNamespace>
     

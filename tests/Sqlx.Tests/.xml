@@ -4,11 +4,6 @@
         <name>Sqlx.Tests</name>
     </assembly>
     <members>
-        <member name="T:Sqlx.Tests.Annotations.SimpleAnnotationTests">
-            <summary>
-            Simple tests for annotation classes.
-            </summary>
-        </member>
         <member name="T:Sqlx.Tests.CodeGenerationTestBase">
             <summary>
             Base class for code generation tests using C# source generator.
@@ -99,171 +94,6 @@
         <member name="T:Sqlx.Tests.Core.AbstractGeneratorAdvancedTests">
             <summary>
             Advanced tests for AbstractGenerator class covering architecture and design patterns.
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.AccurateBehaviorTests">
-            <summary>
-            Tests based on actual observed behavior of the Sqlx library.
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.AccurateBehaviorTests.TestEntity">
-            <summary>
-            Test entity for accurate behavior testing.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.AccurateBehaviorTests.SqlServer_SelectQuery_GeneratesAccurateFormat">
-            <summary>
-            Tests SQL Server SELECT with actual expected format.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.AccurateBehaviorTests.SqlServer_UpdateQuery_GeneratesAccurateFormat">
-            <summary>
-            Tests SQL Server UPDATE with actual expected format.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.AccurateBehaviorTests.NullComparison_GeneratesAccurateFormat">
-            <summary>
-            Tests null comparison with actual expected behavior.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.AccurateBehaviorTests.MySQL_SelectQuery_GeneratesAccurateFormat">
-            <summary>
-            Tests MySQL with actual expected format.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.AccurateBehaviorTests.PostgreSQL_SelectQuery_GeneratesAccurateFormat">
-            <summary>
-            Tests PostgreSQL with actual expected format.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.AccurateBehaviorTests.SQLite_SelectQuery_GeneratesAccurateFormat">
-            <summary>
-            Tests SQLite with actual expected format.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.AccurateBehaviorTests.StringValues_HandledAccurately">
-            <summary>
-            Tests string value handling with actual expected format.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.AccurateBehaviorTests.DecimalValues_HandledAccurately">
-            <summary>
-            Tests decimal value handling with actual expected format.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.AccurateBehaviorTests.BooleanValues_HandledAccurately">
-            <summary>
-            Tests boolean value handling with actual expected format.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.AccurateBehaviorTests.ComplexQuery_GeneratesAccurateFormat">
-            <summary>
-            Tests complex query with multiple conditions using actual format.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.AccurateBehaviorTests.ComplexUpdate_GeneratesAccurateFormat">
-            <summary>
-            Tests UPDATE with multiple SET clauses using actual format.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.AccurateBehaviorTests.Template_GeneratesAccurateFormat">
-            <summary>
-            Tests template generation with actual expected behavior.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.AccurateBehaviorTests.Performance_MeetsRealisticExpectations">
-            <summary>
-            Tests performance with realistic expectations.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.AccurateBehaviorTests.ResourceManagement_WorksCorrectly">
-            <summary>
-            Tests resource management with realistic expectations.
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.AdvancedEdgeCaseTests">
-            <summary>
-            Advanced tests for edge cases, boundary conditions, and unusual scenarios.
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.AdvancedEdgeCaseTests.EdgeCaseTestEntity">
-            <summary>
-            Test entity with various property types for edge case testing.
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.AdvancedEdgeCaseTests.MinimalEntity">
-            <summary>
-            Entity with minimal properties.
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.AdvancedEdgeCaseTests.LargeEntity">
-            <summary>
-            Entity with many properties to test large objects.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.AdvancedEdgeCaseTests.ExpressionToSql_MinimalEntity_WorksCorrectly">
-            <summary>
-            Tests ExpressionToSql with minimal entity having only one property.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.AdvancedEdgeCaseTests.ExpressionToSql_MinimalEntityUpdate_WorksCorrectly">
-            <summary>
-            Tests UPDATE operations on minimal entity.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.AdvancedEdgeCaseTests.ExpressionToSql_LargeEntity_HandlesEfficientlyShortTest">
-            <summary>
-            Tests ExpressionToSql with entity having many properties.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.AdvancedEdgeCaseTests.ExpressionToSql_LargeEntityManySetClauses_HandlesEfficiently">
-            <summary>
-            Tests UPDATE with many SET clauses on large entity.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.AdvancedEdgeCaseTests.ExpressionToSql_NumericTypeEdgeCases_HandledCorrectly">
-            <summary>
-            Tests handling of various numeric types and their edge values.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.AdvancedEdgeCaseTests.ExpressionToSql_SpecialFloatingPointValues_HandledGracefully">
-            <summary>
-            Tests handling of special floating point values.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.AdvancedEdgeCaseTests.ExpressionToSql_GuidValues_HandledCorrectly">
-            <summary>
-            Tests handling of GUID values.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.AdvancedEdgeCaseTests.ExpressionToSql_NullableTypeComplexScenarios_HandledCorrectly">
-            <summary>
-            Tests complex scenarios with nullable types.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.AdvancedEdgeCaseTests.ExpressionToSql_NullableTypeSetOperations_HandledCorrectly">
-            <summary>
-            Tests SET operations with nullable types.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.AdvancedEdgeCaseTests.ExpressionToSql_ExtremelyComplexQuery_HandlesGracefully">
-            <summary>
-            Tests extremely complex queries with many nested conditions.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.AdvancedEdgeCaseTests.ExpressionToSql_MaximumParameters_HandlesCorrectly">
-            <summary>
-            Tests query with maximum reasonable number of parameters.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.AdvancedEdgeCaseTests.ExpressionToSql_MixedValidAndEdgeCaseOperations_HandlesGracefully">
-            <summary>
-            Tests behavior when mixing valid and edge case operations.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.AdvancedEdgeCaseTests.ExpressionToSql_RapidCreateAndDispose_HandlesCorrectly">
-            <summary>
-            Tests behavior with rapid creation and disposal of many instances.
             </summary>
         </member>
         <member name="T:Sqlx.Tests.Core.CodeGenerationHelperTests">
@@ -371,21 +201,6 @@
             Simple integration tests that test multiple components working together.
             </summary>
         </member>
-        <member name="T:Sqlx.Tests.Core.CrudAdvancedOperationTests">
-            <summary>
-            CRUD操作的高级功能测试，验证复杂的INSERT、UPDATE、DELETE和SELECT场景。
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.CrudAdvancedUnitTests">
-            <summary>
-            CRUD操作高级单元测试，针对特定功能和边界情况进行详细测试
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.CrudComprehensiveTests">
-            <summary>
-            CRUD操作全面测试，覆盖所有数据库方言
-            </summary>
-        </member>
         <member name="T:Sqlx.Tests.Core.CSharpGeneratorTests">
             <summary>
             Tests for CSharpGenerator implementation.
@@ -435,101 +250,6 @@
         <member name="M:Sqlx.Tests.Core.CSharpGeneratorTests.GetBasicReferences">
             <summary>
             Gets basic references needed for compilation.
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.DatabaseDialectSpecificTests">
-            <summary>
-            Specific tests for each database dialect to ensure proper SQL generation.
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.DatabaseDialectSpecificTests.TestEntity">
-            <summary>
-            Test entity for dialect-specific testing.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.DatabaseDialectSpecificTests.SqlServer_SelectQuery_UsesSquareBrackets">
-            <summary>
-            Tests SQL Server specific SQL generation with square brackets.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.DatabaseDialectSpecificTests.SqlServer_UpdateQuery_UsesSquareBrackets">
-            <summary>
-            Tests SQL Server UPDATE statement generation.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.DatabaseDialectSpecificTests.SqlServer_StringEscaping_EscapesSingleQuotes">
-            <summary>
-            Tests SQL Server string escaping.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.DatabaseDialectSpecificTests.MySQL_SelectQuery_UsesBackticks">
-            <summary>
-            Tests MySQL specific SQL generation with backticks.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.DatabaseDialectSpecificTests.MySQL_BooleanHandling_ConvertsToTinyInt">
-            <summary>
-            Tests MySQL boolean handling.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.DatabaseDialectSpecificTests.MySQL_DateFormatting_UsesCorrectFormat">
-            <summary>
-            Tests MySQL date formatting.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.DatabaseDialectSpecificTests.PostgreSQL_SelectQuery_UsesDoubleQuotes">
-            <summary>
-            Tests PostgreSQL specific SQL generation with double quotes.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.DatabaseDialectSpecificTests.PostgreSQL_CaseSensitivity_PreservesCase">
-            <summary>
-            Tests PostgreSQL case sensitivity.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.DatabaseDialectSpecificTests.Oracle_SelectQuery_UsesDoubleQuotesAndRownum">
-            <summary>
-            Tests Oracle specific SQL generation.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.DatabaseDialectSpecificTests.Oracle_ParameterNaming_UsesColonPrefix">
-            <summary>
-            Tests Oracle parameter naming with colon prefix.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.DatabaseDialectSpecificTests.DB2_SelectQuery_UsesDoubleQuotes">
-            <summary>
-            Tests DB2 specific SQL generation.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.DatabaseDialectSpecificTests.DB2_UpdateQuery_UsesDoubleQuotes">
-            <summary>
-            Tests DB2 UPDATE statement.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.DatabaseDialectSpecificTests.SQLite_SelectQuery_UsesSquareBrackets">
-            <summary>
-            Tests SQLite specific SQL generation.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.DatabaseDialectSpecificTests.SQLite_BooleanHandling_ConvertsToInteger">
-            <summary>
-            Tests SQLite boolean handling.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.DatabaseDialectSpecificTests.SQLite_DateHandling_UsesTextFormat">
-            <summary>
-            Tests SQLite date handling.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.DatabaseDialectSpecificTests.AllDialects_SameLogicalQuery_ProduceValidSQL">
-            <summary>
-            Tests that all dialects produce valid SQL for the same logical query.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.DatabaseDialectSpecificTests.AllDialects_StringValues_FormatConsistently">
-            <summary>
-            Tests that different dialects format the same string values consistently.
             </summary>
         </member>
         <member name="T:Sqlx.Tests.Core.DefaultValueGenerationTests">
@@ -593,11 +313,6 @@
             创建测试用的方法符号
             </summary>
         </member>
-        <member name="T:Sqlx.Tests.Core.EdgeCaseAndErrorHandlingTests">
-            <summary>
-            边界情况和错误处理的专项测试，验证系统在各种异常情况下的行为。
-            </summary>
-        </member>
         <member name="T:Sqlx.Tests.Core.EdgeCaseTests">
             <summary>
             Tests for edge cases and error handling scenarios.
@@ -657,17 +372,6 @@
         <member name="M:Sqlx.Tests.Core.EnhancedEntityMappingGeneratorTests.GetBasicReferences">
             <summary>
             Gets basic references needed for compilation.
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.ExpressionToSqlAdvancedCrudTests">
-            <summary>
-            ExpressionToSql 高级 CRUD 功能单元测试
-            验证所有新增功能的正确性和边界情况
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.ExpressionToSqlAdvancedFunctionalityTests">
-            <summary>
-            ExpressionToSql 高级功能测试集，验证复杂场景和核心功能。
             </summary>
         </member>
         <member name="T:Sqlx.Tests.Core.ExpressionToSqlAdvancedTests">
@@ -785,43 +489,6 @@
             Tests ExpressionToSql complex update query building.
             </summary>
         </member>
-        <member name="T:Sqlx.Tests.Core.ExpressionToSqlBaseCoreTests">
-            <summary>
-            ExpressionToSqlBase 核心功能单元测试
-            验证表达式解析、SQL生成等核心功能
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.ExpressionToSqlCreateTests">
-            <summary>
-            Tests for ExpressionToSql factory methods.
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.ExpressionToSqlCreateTests.TestEntity">
-            <summary>
-            Test entity class.
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.ExpressionToSqlCrudEnhancementTests">
-            <summary>
-            ExpressionToSql CRUD 增强功能单元测试
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.ExpressionToSqlEnhancedSimpleTests">
-            <summary>
-            简化的表达式解析增强功能测试
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.ExpressionToSqlEnhancedTests">
-            <summary>
-            测试增强的表达式解析功能，特别是GroupBy聚合函数中的嵌套函数支持
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.ExpressionToSqlFullFunctionalityTests">
-            <summary>
-            ExpressionToSql 和 GroupedExpressionToSql 的完整功能验证测试
-            验证所有 CRUD 操作、分组、方言、方法的功能正确性
-            </summary>
-        </member>
         <member name="T:Sqlx.Tests.Core.ExtensionsTests">
             <summary>
             Tests for Extensions utility class.
@@ -934,11 +601,6 @@
             Tests for IsExternalInit class that enables init-only properties.
             </summary>
         </member>
-        <member name="T:Sqlx.Tests.Core.MessagesAdvancedTests">
-            <summary>
-            Advanced tests for Messages class covering all diagnostic descriptors and error scenarios.
-            </summary>
-        </member>
         <member name="T:Sqlx.Tests.Core.NameMapperAdvancedTests">
             <summary>
             Advanced tests for NameMapper class covering edge cases and comprehensive scenarios.
@@ -1008,18 +670,6 @@
         <member name="T:Sqlx.Tests.Core.SourceGeneratorBoundaryTests">
             <summary>
             源生成器边界测试 - 测试源代码生成的极限情况和边界条件
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.SqlDefineAttributeAdvancedTests">
-            <summary>
-            SqlDefineAttribute 高级单元测试
-            测试复杂场景、边界情况和异常处理
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.SqlDefineAttributeTests">
-            <summary>
-            SqlDefineAttribute 单元测试
-            验证 SqlDefine 特性支持枚举类型参数
             </summary>
         </member>
         <member name="T:Sqlx.Tests.Core.SqlDefineComprehensiveTests">
@@ -1127,30 +777,9 @@
             Tests that SqlDefine has expected public fields.
             </summary>
         </member>
-        <member name="T:Sqlx.Tests.Core.SqlDefineTests">
-            <summary>
-            Comprehensive tests for SqlDefine class and SqlDialect record struct.
-            </summary>
-        </member>
         <member name="T:Sqlx.Tests.Core.SqlDialectBoundaryTests">
             <summary>
             SQL方言边界测试 - 测试不同数据库方言在极限情况下的行为
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.SqlDialectCoreTests">
-            <summary>
-            SqlDialect 和 SqlDefine 核心功能单元测试
-            验证SQL方言系统的核心功能
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.SqlGenerationBoundaryTests">
-            <summary>
-            SQL生成边界测试 - 专门测试SQL生成的极限情况和边界条件
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.SqlGenerationComprehensiveTests">
-            <summary>
-            SQL生成功能的全面测试，验证各种表达式和条件的SQL输出。
             </summary>
         </member>
         <member name="T:Sqlx.Tests.Core.SqlGenerationUtilitiesTests">
@@ -1236,48 +865,6 @@
         <member name="T:Sqlx.Tests.Core.ITestUserPlaceholderRepository">
             <summary>
             模拟使用 SQL 占位符的仓储接口（仅用于演示，实际实现由源生成器生成）
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.SqlTemplateCustomFunctionTests">
-            <summary>
-            Tests for SQL template custom functions - Currently simplified
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.SqlTemplateAdvancedTests">
-            <summary>
-            Tests for the advanced SQL template engine
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.SqlTemplateIntegrationTests">
-            <summary>
-            Integration tests for SQL template compatibility with existing functionality
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.SqlTemplateNewDesignTests">
-            <summary>
-            测试重构后的SqlTemplate新设计：分离模板定义与参数值
-            验证"模板是模板，参数是参数"的设计原则
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.SqlTemplatePerformanceTests">
-            <summary>
-            Tests for SQL template performance and edge cases
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.SqlTemplateWithPartialMethodsTests">
-            <summary>
-            SqlTemplate 与部分方法结合使用的单元测试
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.SqlTemplateWithPartialMethodsTests.BuildDynamicUserQuery(System.Boolean,System.Nullable{System.Int32},System.Collections.Generic.List{System.Int32})">
-            <summary>
-            动态构建查询模板的辅助方法
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.SqlxBoundaryAdvancedTests">
-            <summary>
-            Sqlx 边界条件和极限情况测试
-            测试系统在各种边界条件下的行为和稳定性
             </summary>
         </member>
         <member name="T:Sqlx.Tests.Core.SqlxCoreUtilitiesTests">
@@ -1578,23 +1165,6 @@
             Mock implementation of IOperationGenerator for testing.
             </summary>
         </member>
-        <member name="T:Sqlx.Tests.Generator.SqlDefineGeneratorTests">
-            <summary>
-            SqlDefine 代码生成器测试
-            验证生成器正确处理 SqlDefine 枚举特性
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Integration.SeamlessIntegrationTests">
-            <summary>
-            SqlTemplate与ExpressionToSql无缝集成测试
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Integration.SqlDefineEnumIntegrationTests">
-            <summary>
-            SqlDefine 枚举集成测试
-            验证 SqlDefine 枚举特性在实际使用场景中的正确性
-            </summary>
-        </member>
         <member name="T:Sqlx.Tests.NullabilityTests">
             <summary>
             Tests for nullable reference type support.
@@ -1834,6 +1404,9 @@
         </member>
         <member name="F:System.Text.RegularExpressions.Generated.Utilities.s_ascii_800080008000800">
             <summary>Supports searching for characters in or not in "CScs".</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.Utilities.s_indexOfString_D9CEFF1E285FBBB2068ACE2A08669DABFFC0D9A9CED44F5A0AE097320B45A236">
+            <summary>Supports searching for the string "var ".</summary>
         </member>
     </members>
 </doc>

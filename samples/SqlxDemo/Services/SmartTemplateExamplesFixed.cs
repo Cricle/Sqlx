@@ -25,31 +25,31 @@ namespace SqlxDemo.Services
         {
             [Key]
             public int Id { get; set; }
-            
+
             [Required]
             [StringLength(100)]
             public string FirstName { get; set; } = "";
-            
+
             [Required]
             [StringLength(100)]
             public string LastName { get; set; } = "";
-            
+
             [Required]
             [StringLength(255)]
             public string Email { get; set; } = "";
-            
+
             public int Age { get; set; }
             public bool IsActive { get; set; }
             public DateTime CreatedAt { get; set; }
             public DateTime? UpdatedAt { get; set; }
-            
+
             // 大型文本字段
             [StringLength(5000)]
             public string? Biography { get; set; }
-            
+
             [StringLength(10000)]
             public string? InternalNotes { get; set; }
-            
+
             // 关联属性
             public int? DepartmentId { get; set; }
             public string? ProfileImageUrl { get; set; }
@@ -88,14 +88,14 @@ namespace SqlxDemo.Services
         /// LIMIT @pageSize OFFSET @offset
         /// </summary>
         public Task<List<User>> GetUsersTraditionalWayAsync(
-            bool isActive, 
-            string? nameFilter, 
+            bool isActive,
+            string? nameFilter,
             string? namePattern,
-            int? minAge, 
-            int? maxAge, 
-            DateTime? createdAfter, 
+            int? minAge,
+            int? maxAge,
+            DateTime? createdAfter,
             DateTime? createdBefore,
-            int pageSize, 
+            int pageSize,
             int offset)
         {
             throw new NotImplementedException("示例方法 - 仅用于展示概念");
@@ -240,7 +240,7 @@ namespace SqlxDemo.Services
         {
             Console.WriteLine("=== 智能模板概念演示 ===");
             Console.WriteLine();
-            
+
             Console.WriteLine("传统方式需要手写的SQL:");
             Console.WriteLine(@"
                 SELECT u.id, u.first_name, u.last_name, u.email, u.age, 
@@ -253,7 +253,7 @@ namespace SqlxDemo.Services
                 ORDER BY u.created_at DESC
                 LIMIT @pageSize OFFSET @offset
             ");
-            
+
             Console.WriteLine();
             Console.WriteLine("智能模板只需要写:");
             Console.WriteLine(@"
@@ -262,7 +262,7 @@ namespace SqlxDemo.Services
                 WHERE {{filter:active,name,age}} 
                 {{sort:created_at,desc}} {{paginate}}
             ");
-            
+
             Console.WriteLine();
             Console.WriteLine("核心优势:");
             Console.WriteLine("✅ 减少80%的SQL代码量");

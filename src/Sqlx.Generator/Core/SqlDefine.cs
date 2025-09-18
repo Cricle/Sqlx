@@ -12,34 +12,34 @@ namespace Sqlx.Generator.Core
     public readonly struct SqlDefine
     {
         /// <summary>
-        /// 获取列名的左边界符。
+        /// Gets column left delimiter
         /// </summary>
         public string ColumnLeft { get; }
         /// <summary>
-        /// 获取列名的右边界符。
+        /// Gets column right delimiter
         /// </summary>
         public string ColumnRight { get; }
         /// <summary>
-        /// 获取字符串的左边界符。
+        /// Gets string left delimiter
         /// </summary>
         public string StringLeft { get; }
         /// <summary>
-        /// 获取字符串的右边界符。
+        /// Gets string right delimiter
         /// </summary>
         public string StringRight { get; }
         /// <summary>
-        /// 获取参数的前缀符。
+        /// Gets parameter prefix
         /// </summary>
         public string ParameterPrefix { get; }
 
         /// <summary>
-        /// 初始化 SqlDefine 结构的新实例。
+        /// Initializes a new instance of the SqlDefine struct
         /// </summary>
-        /// <param name="columnLeft">列名的左边界符。</param>
-        /// <param name="columnRight">列名的右边界符。</param>
-        /// <param name="stringLeft">字符串的左边界符。</param>
-        /// <param name="stringRight">字符串的右边界符。</param>
-        /// <param name="parameterPrefix">参数的前缀符。</param>
+        /// <param name="columnLeft">Column left delimiter</param>
+        /// <param name="columnRight">Column right delimiter</param>
+        /// <param name="stringLeft">String left delimiter</param>
+        /// <param name="stringRight">String right delimiter</param>
+        /// <param name="parameterPrefix">Parameter prefix</param>
         public SqlDefine(string columnLeft, string columnRight, string stringLeft, string stringRight, string parameterPrefix)
         {
             ColumnLeft = columnLeft;
@@ -60,19 +60,26 @@ namespace Sqlx.Generator.Core
         /// <summary>
         /// 获取 PostgreSQL 数据库的 SQL 方言定义。
         /// </summary>
-        public static readonly SqlDefine PgSql = new SqlDefine("\"", "\"", "'", "'", "$");
-        /// <summary>
-        /// 获取 Oracle 数据库的 SQL 方言定义。
-        /// </summary>
-        public static readonly SqlDefine Oracle = new SqlDefine("\"", "\"", "'", "'", ":");
-        /// <summary>
-        /// 获取 DB2 数据库的 SQL 方言定义。
-        /// </summary>
-        public static readonly SqlDefine DB2 = new SqlDefine("\"", "\"", "'", "'", "?");
+        public static readonly SqlDefine PostgreSql = new SqlDefine("\"", "\"", "'", "'", "$");
         /// <summary>
         /// 获取 SQLite 数据库的 SQL 方言定义。
         /// </summary>
         public static readonly SqlDefine SQLite = new SqlDefine("[", "]", "'", "'", "$");
+
+        /// <summary>
+        /// 获取 PostgreSQL 数据库的 SQL 方言定义（别名）。
+        /// </summary>
+        public static readonly SqlDefine PgSql = PostgreSql;
+
+        /// <summary>
+        /// 获取 Oracle 数据库的 SQL 方言定义。
+        /// </summary>
+        public static readonly SqlDefine Oracle = new SqlDefine("\"", "\"", "'", "'", ":");
+
+        /// <summary>
+        /// 获取 DB2 数据库的 SQL 方言定义。
+        /// </summary>
+        public static readonly SqlDefine DB2 = new SqlDefine("\"", "\"", "'", "'", "?");
 
         /// <summary>
         /// 使用字符串界符包裹指定的字符串。

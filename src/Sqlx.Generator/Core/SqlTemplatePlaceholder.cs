@@ -164,7 +164,7 @@ namespace Sqlx.Generator.Core
         private static string ProcessTablePlaceholder(SqlPlaceholderContext context, string? args)
         {
             var tableName = context.TableName ?? context.EntityType?.Name ?? "UnknownTable";
-            
+
             // 支持参数: {{table:alias=u}}
             if (!string.IsNullOrEmpty(args))
             {
@@ -234,7 +234,7 @@ namespace Sqlx.Generator.Core
 
             var columns = GetEntityColumns(context.EntityType, context.SqlDefine, excludeIdentity: true);
             var tableName = context.TableName ?? context.EntityType.Name;
-            
+
             return $"INSERT INTO {context.SqlDefine.WrapColumn(tableName)} ({string.Join(", ", columns)})";
         }
 
@@ -260,7 +260,7 @@ namespace Sqlx.Generator.Core
 
             var columns = GetEntityColumns(context.EntityType, context.SqlDefine, excludeIdentity: true);
             var parameters = columns.Select((_, index) => $"@p{index}").ToList();
-            
+
             return $"VALUES ({string.Join(", ", parameters)})";
         }
 
@@ -280,10 +280,10 @@ namespace Sqlx.Generator.Core
 
                 if (!string.IsNullOrEmpty(joinTable) && !string.IsNullOrEmpty(joinOn))
                 {
-                    var tableWithAlias = string.IsNullOrEmpty(joinAlias) 
+                    var tableWithAlias = string.IsNullOrEmpty(joinAlias)
                         ? context.SqlDefine.WrapColumn(joinTable)
                         : $"{context.SqlDefine.WrapColumn(joinTable)} {joinAlias}";
-                    
+
                     return $"{joinType} JOIN {tableWithAlias} ON {joinOn}";
                 }
             }
@@ -331,7 +331,7 @@ namespace Sqlx.Generator.Core
             if (excludeIdentity)
             {
                 // 排除可能的身份列（Id, 自增列等）
-                properties = properties.Where(p => 
+                properties = properties.Where(p =>
                     !p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) ||
                     p.GetAttributes().Any(attr => attr.AttributeClass?.Name == "KeyAttribute")).ToList();
             }
@@ -358,7 +358,7 @@ namespace Sqlx.Generator.Core
         private static Dictionary<string, string> ParseArgs(string? args)
         {
             var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            
+
             if (string.IsNullOrEmpty(args))
                 return result;
 

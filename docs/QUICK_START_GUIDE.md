@@ -268,7 +268,7 @@ var exec1 = template.Execute(params1);        // 多次执行
 var exec2 = template.Execute(params2);        // 高性能重用
 
 // ❌ 错误：混合设计（已过时）
-var mixed = SqlTemplate.Create(sql, params);  // 混合概念
+var mixed = SqlTemplate.Parse(sql).Execute(params);  // 使用新的 API
 ```
 
 ### 2️⃣ ExpressionToSql 类型安全

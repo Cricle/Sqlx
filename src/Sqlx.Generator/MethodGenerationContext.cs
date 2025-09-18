@@ -1006,12 +1006,10 @@ internal partial class MethodGenerationContext : GenerationContextBase
                 var define = (int)methodDef.ConstructorArguments[0].Value!;
                 return define switch
                 {
-                    0 => SqlDefine.MySql,
-                    1 => SqlDefine.SqlServer,
-                    2 => SqlDefine.PgSql,
-                    3 => SqlDefine.Oracle,
-                    4 => SqlDefine.DB2,
-                    5 => SqlDefine.SQLite,
+                    0 => SqlDefine.SqlServer,
+                    1 => SqlDefine.MySql,
+                    2 => SqlDefine.PostgreSql,
+                    3 => SqlDefine.SQLite,
                     _ => SqlDefine.SqlServer, // Default fallback
                 };
             }
@@ -1088,9 +1086,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
         {
             var name when name.Contains("sqlite") => SqlDefine.SQLite,
             var name when name.Contains("mysql") || name.Contains("mariadb") => SqlDefine.MySql,
-            var name when name.Contains("postgres") || name.Contains("npgsql") => SqlDefine.PgSql,
-            var name when name.Contains("oracle") => SqlDefine.Oracle,
-            var name when name.Contains("db2") => SqlDefine.DB2,
+            var name when name.Contains("postgres") || name.Contains("npgsql") => SqlDefine.PostgreSql,
             var name when name.Contains("sqlserver") || name.Contains("sqlconnection") => SqlDefine.SqlServer,
             _ => null
         };
@@ -1199,7 +1195,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
                 }
 
                 var sqlValue = attr.ConstructorArguments[0].Value?.ToString() ?? "";
-                
+
                 // 处理 SQL 模板占位符
                 if (!string.IsNullOrEmpty(sqlValue) && SqlTemplatePlaceholder.ContainsPlaceholders(sqlValue))
                 {
@@ -1211,7 +1207,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
                     };
                     sqlValue = SqlTemplatePlaceholder.ProcessTemplate(sqlValue, context);
                 }
-                
+
                 // Escape the SQL string properly for C# code generation
                 var escapedSql = sqlValue.Replace("\"", "\\\"").Replace("\r\n", "\\r\\n").Replace("\n", "\\n").Replace("\r", "\\r");
                 return $"\"{escapedSql}\"";
@@ -1239,7 +1235,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
                     };
                     procedureName = SqlTemplatePlaceholder.ProcessTemplate(procedureName!, context);
                 }
-                
+
                 var paramSql = string.Join(", ", SqlParameters.Select(p => p.GetParameterName(SqlDef.ParameterPrefix)));
                 var call = string.IsNullOrEmpty(paramSql) ? procedureName : $"{procedureName} {paramSql}";
                 return $"\"EXEC {call}\"";
@@ -1275,11 +1271,26 @@ internal partial class MethodGenerationContext : GenerationContextBase
             }
         }
 
-        // Check for SqlExecuteTypeAttribute (for structured CRUD operations)
+        // TODO: 未来版本中将添加基于方法名的智能操作推断
+        // 目前优先保持向后兼容性，主要依赖 Sqlx 特性和 SqlExecuteType 特性
+
+        // 向后兼容：检查已弃用的 SqlExecuteTypeAttribute
         var sqlExecuteType = MethodSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlExecuteTypeAttribute");
         if (sqlExecuteType != null)
         {
-            // Parse enum value more robustly
+            // 发出弃用警告
+            ClassGenerationContext.GeneratorExecutionContext.ReportDiagnostic(
+                Diagnostic.Create(
+                    new DiagnosticDescriptor(
+                        "SQLX_DEPRECATED_001",
+                        "SqlExecuteType is deprecated",
+                        "SqlExecuteTypeAttribute is deprecated. Use method naming conventions and ExpressionToSql parameters instead.",
+                        "Usage",
+                        DiagnosticSeverity.Warning,
+                        isEnabledByDefault: true),
+                    MethodSymbol.Locations.FirstOrDefault()));
+
+            // 仍然处理以保持向后兼容
             var enumValueObj = sqlExecuteType.ConstructorArguments[0].Value;
             var type = enumValueObj switch
             {
@@ -1288,11 +1299,8 @@ internal partial class MethodGenerationContext : GenerationContextBase
                 _ => Constants.SqlExecuteTypeValues.Select
             };
             var tableName = sqlExecuteType.ConstructorArguments[1].Value?.ToString() ?? string.Empty;
-
-            // Override table name with TableName attribute if present
             tableName = GetEffectiveTableName(tableName);
 
-            // Handle different CRUD operations with their specific parameter patterns
             return type switch
             {
                 Constants.SqlExecuteTypeValues.Select => HandleSelectOperation(tableName),
@@ -2427,5 +2435,6 @@ internal static class ExtensionsWithCache
             return $"{readerName}.IsDBNull({ordinalVariableName}) ? default({typeName}) : ({typeName}){readerName}.GetValue({ordinalVariableName})";
         }
     }
+
 
 }

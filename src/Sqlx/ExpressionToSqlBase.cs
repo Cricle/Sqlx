@@ -17,7 +17,7 @@ using System.Reflection;
 namespace Sqlx
 {
     /// <summary>
-    /// ExpressionToSql 类的抽象基类，包含公共的表达式解析和数据库方言适配功能。
+    /// Abstract base class for ExpressionToSql with common expression parsing and database dialect adaptation
     /// </summary>
     public abstract class ExpressionToSqlBase : IDisposable
     {
@@ -32,19 +32,19 @@ namespace Sqlx
         internal string? _tableName;
 
         /// <summary>
-        /// 是否使用参数化查询模式。默认为false（内联常量值）。
+        /// Whether to use parameterized query mode (default: false - inline constant values)
         /// </summary>
-        protected bool _useParameterizedQueries = false;
-        
-        /// <summary>
-        /// 参数计数器，用于生成唯一的参数名
-        /// </summary>
-        protected int _parameterCounter = 0;
-
-        private static readonly ConcurrentDictionary<MemberInfo, Delegate> _compiledFunctionCache = new();
+        protected bool _parameterized = false;
 
         /// <summary>
-        /// 使用指定的 SQL 方言初始化新实例。
+        /// Parameter counter for generating unique parameter names
+        /// </summary>
+        protected int _counter = 0;
+
+        // Removed compiled function cache for AOT compatibility
+
+        /// <summary>
+        /// Initializes new instance with specified SQL dialect
         /// </summary>
         protected ExpressionToSqlBase(SqlDialect dialect, Type entityType)
         {
@@ -52,10 +52,10 @@ namespace Sqlx
             _tableName = entityType.Name;
         }
 
-        #region 公共查询方法
+        #region Public Query Methods
 
         /// <summary>
-        /// 添加 GROUP BY 子句（内部使用）。
+        /// Adds GROUP BY clause (internal use)
         /// </summary>
         public virtual ExpressionToSqlBase AddGroupBy(string columnName)
         {
@@ -67,74 +67,76 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// 添加 GROUP BY 列名（内部使用）。
+        /// Adds GROUP BY column name (internal use)
         /// </summary>
         internal void AddGroupByColumn(string columnName) => AddGroupBy(columnName);
 
         #endregion
 
-        #region 内部辅助方法
+        #region Internal Helper Methods
 
         /// <summary>
-        /// 获取 WHERE 条件（内部使用）。
+        /// Gets WHERE conditions (internal use)
         /// </summary>
         internal List<string> GetWhereConditions() => new List<string>(_whereConditions);
 
         /// <summary>
-        /// 复制 WHERE 条件（内部使用）。
+        /// Copies WHERE conditions (internal use)
         /// </summary>
         internal void CopyWhereConditions(List<string> conditions) => _whereConditions.AddRange(conditions);
 
         /// <summary>
-        /// 获取 HAVING 条件（内部使用）。
+        /// Gets HAVING conditions (internal use)
         /// </summary>
         internal List<string> GetHavingConditions() => new List<string>(_havingConditions);
 
         /// <summary>
-        /// 复制 HAVING 条件（内部使用）。
+        /// Copies HAVING conditions (internal use)
         /// </summary>
         internal void CopyHavingConditions(List<string> conditions) => _havingConditions.AddRange(conditions);
 
         /// <summary>
-        /// 添加 HAVING 条件（内部使用）。
+        /// Adds HAVING condition (internal use)
         /// </summary>
         internal void AddHavingCondition(string condition) => _havingConditions.Add(condition);
 
         /// <summary>
-        /// 设置表名
+        /// Sets table name
         /// </summary>
         public void SetTableName(string tableName) => _tableName = tableName;
 
         #endregion
 
-        #region 表达式解析核心方法
+        #region Core Expression Parsing Methods
 
         /// <summary>
-        /// 增强的表达式解析，支持数学函数、字符串函数和嵌套表达式，性能优化。
+        /// Enhanced expression parsing with support for math functions, string functions, and nested expressions (performance optimized)
         /// </summary>
-        protected string ParseExpression(Expression expression, bool treatBoolAsComparison = true) => expression switch
+        protected string ParseExpression(Expression expression, bool treatBoolAsComparison = true)
         {
-            BinaryExpression binary => ParseBinaryExpression(binary),
-            MemberExpression member when treatBoolAsComparison && member.Type == typeof(bool) => $"{GetColumnName(member)} = 1",
-            MemberExpression member when IsStringPropertyAccess(member) => ParseStringProperty(member),
-            MemberExpression member when IsEntityProperty(member) => GetColumnName(member),
-            MemberExpression member when member.Expression is MemberExpression baseMember && IsEntityProperty(baseMember) => GetColumnName(member),
-            MemberExpression member => treatBoolAsComparison ? GetColumnName(member) : FormatConstantValue(GetMemberValueOptimized(member)),
-            ConstantExpression constant => GetConstantValue(constant),
-            UnaryExpression unary when unary.NodeType == ExpressionType.Not => ParseNotExpression(unary.Operand),
-            UnaryExpression unary when unary.NodeType == ExpressionType.Convert => ParseExpression(unary.Operand, treatBoolAsComparison),
-            MethodCallExpression method => ParseMethodCallExpression(method),
-            ConditionalExpression conditional => ParseConditionalExpression(conditional),
-            _ => "1=1",
-        };
+            return expression switch
+            {
+                BinaryExpression binary => ParseBinaryExpression(binary),
+                MemberExpression member when treatBoolAsComparison && member.Type == typeof(bool) => $"{GetColumnName(member)} = 1",
+                MemberExpression member when IsStringPropertyAccess(member) => ParseStringProperty(member),
+                MemberExpression member when IsEntityProperty(member) => GetColumnName(member),
+                MemberExpression member => treatBoolAsComparison ? GetColumnName(member) : FormatConstantValue(GetMemberValueOptimized(member)),
+                ConstantExpression constant => GetConstantValue(constant),
+                UnaryExpression unary when unary.NodeType == ExpressionType.Not => ParseNotExpression(unary.Operand),
+                UnaryExpression unary when unary.NodeType == ExpressionType.Convert => ParseExpression(unary.Operand, treatBoolAsComparison),
+                MethodCallExpression method => ParseMethodCallExpression(method),
+                ConditionalExpression conditional => ParseConditionalExpression(conditional),
+                _ => "1=1",
+            };
+        }
 
         /// <summary>
-        /// 解析表达式但不对布尔成员进行特殊处理（用于二元表达式内部）
+        /// Parses expression without special boolean member handling (for use within binary expressions)
         /// </summary>
         protected string ParseExpressionRaw(Expression expression) => ParseExpression(expression, false);
 
         /// <summary>
-        /// 解析条件表达式（三元运算符）
+        /// Parses conditional expression (ternary operator)
         /// </summary>
         protected string ParseConditionalExpression(ConditionalExpression conditional)
         {
@@ -151,17 +153,17 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// 增强的方法调用表达式解析，支持更多嵌套场景。
+        /// Enhanced method call expression parsing with support for more nested scenarios
         /// </summary>
         protected string ParseMethodCallExpression(MethodCallExpression method)
         {
-            // 处理 Any 占位符
+            // Handle Any placeholders
             if (IsAnyPlaceholder(method))
             {
                 return CreateParameterForAnyPlaceholder(method);
             }
-            
-            // 处理聚合函数中的嵌套方法调用
+
+            // Handle nested method calls in aggregate functions
             if (IsAggregateContext(method)) return ParseAggregateMethodCall(method);
 
             return method.Method.DeclaringType switch
@@ -174,19 +176,19 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// 检查是否在聚合函数上下文中
+        /// Checks if in aggregate function context
         /// </summary>
         private bool IsAggregateContext(MethodCallExpression method) => method.Method.Name is "Count" or "Sum" or "Average" or "Avg" or "Max" or "Min";
 
         /// <summary>
-        /// 检查方法调用是否是Any占位符
+        /// Checks if method call is an Any placeholder
         /// </summary>
         private bool IsAnyPlaceholder(MethodCallExpression method)
         {
-            // 检查是否是Sqlx.Any类的静态方法调用
+            // Check if it's a static method call from Sqlx.Any class
             if (method.Method.DeclaringType?.Name != "Any") return false;
             if (method.Method.DeclaringType?.Namespace != "Sqlx") return false;
-            
+
             return method.Method.Name switch
             {
                 "Value" or "String" or "Int" or "Bool" or "DateTime" or "Guid" => true,
@@ -195,19 +197,19 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// 为Any占位符创建参数
+        /// Creates parameter for Any placeholder
         /// </summary>
         private string CreateParameterForAnyPlaceholder(MethodCallExpression method)
         {
-            // 检测到Any占位符，自动启用参数化查询模式
-            if (!_useParameterizedQueries)
+            // Auto-enable parameterized query mode when Any placeholder is detected
+            if (!_parameterized)
             {
-                _useParameterizedQueries = true;
+                _parameterized = true;
             }
-            
+
             // 获取返回类型
             var returnType = method.Method.ReturnType;
-            
+
             // 确定参数的默认值
             object? paramValue = returnType switch
             {
@@ -223,7 +225,7 @@ namespace Sqlx
                 var t when t.IsValueType => GetDefaultValueForValueType(t),
                 _ => null // 引用类型默认值为null
             };
-            
+
             // 尝试获取用户提供的参数名
             string paramName;
             if (method.Arguments.Count > 0 && method.Arguments[0] is ConstantExpression paramNameExpr && paramNameExpr.Value is string userParamName && !string.IsNullOrEmpty(userParamName))
@@ -234,27 +236,23 @@ namespace Sqlx
             else
             {
                 // 自动生成参数名
-                paramName = $"@p{_parameterCounter++}";
+                paramName = $"@p{_counter++}";
             }
-            
+
             // 创建参数并添加到字典
             _parameters[paramName] = paramValue;
-            
+
             return paramName;
         }
 
         /// <summary>
-        /// 获取类型的默认值
+        /// 获取类型的默认值（AOT友好）
         /// </summary>
-        private static object? GetDefaultValue(
-#if NET5_0_OR_GREATER
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)] 
-#endif
-            Type type)
+        private static object? GetDefaultValue(Type type)
         {
             if (type.IsValueType)
             {
-                return Activator.CreateInstance(type);
+                return GetDefaultValueForValueType(type);
             }
             return null;
         }
@@ -262,11 +260,7 @@ namespace Sqlx
         /// <summary>
         /// 为值类型获取默认值（AOT友好）
         /// </summary>
-        private static object? GetDefaultValueForValueType(
-#if NET5_0_OR_GREATER
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]
-#endif
-            Type type)
+        private static object? GetDefaultValueForValueType(Type type)
         {
             // 处理可空类型
             if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
@@ -274,47 +268,38 @@ namespace Sqlx
                 return null;
             }
 
-            // 处理枚举类型
-            if (type.IsEnum)
+            // 处理常见的值类型（AOT友好）
+            return type switch
             {
-                // 返回枚举的默认值（通常是0）
-                return Enum.ToObject(type, 0);
-            }
-
-            // 对于其他值类型，返回0或false等基本默认值
-            if (type == typeof(byte) || type == typeof(sbyte) || 
-                type == typeof(short) || type == typeof(ushort) ||
-                type == typeof(uint) || type == typeof(ulong))
-            {
-                return 0;
-            }
-
-            // 对于复杂的值类型，尝试创建实例
-            try
-            {
-                return Activator.CreateInstance(type);
-            }
-            catch
-            {
-                // AOT环境下可能失败，返回null
-                return null;
-            }
+                var t when t == typeof(int) => 0,
+                var t when t == typeof(bool) => false,
+                var t when t == typeof(DateTime) => DateTime.MinValue,
+                var t when t == typeof(Guid) => Guid.Empty,
+                var t when t == typeof(decimal) => 0m,
+                var t when t == typeof(double) => 0.0,
+                var t when t == typeof(float) => 0f,
+                var t when t == typeof(long) => 0L,
+                var t when t == typeof(short) => (short)0,
+                var t when t == typeof(byte) => (byte)0,
+                var t when t == typeof(sbyte) => (sbyte)0,
+                var t when t == typeof(uint) => 0u,
+                var t when t == typeof(ushort) => (ushort)0,
+                var t when t == typeof(ulong) => 0ul,
+                var t when t == typeof(char) => '\0',
+                _ => null // 对于其他类型，返回null避免复杂反射
+            };
         }
 
         /// <summary>
         /// 安全地创建类型的默认值（AOT友好）
         /// </summary>
-        private static object? CreateDefaultValueSafely(
-#if NET5_0_OR_GREATER
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]
-#endif
-            Type type)
+        private static object? CreateDefaultValueSafely(Type type)
         {
             if (type.IsValueType)
             {
                 return GetDefaultValueForValueType(type);
             }
-            
+
             return null; // 引用类型的默认值是null
         }
 
@@ -363,10 +348,8 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// 解析二元表达式为SQL字符串。
+        /// 解析二元表达式为SQL字符串
         /// </summary>
-        /// <param name="binary">二元表达式。</param>
-        /// <returns>SQL字符串。</returns>
         protected string ParseBinaryExpression(BinaryExpression binary)
         {
             // 先处理特殊情况，再解析表达式
@@ -394,49 +377,12 @@ namespace Sqlx
                 return left == "NULL" ? $"{right} IS NOT NULL" : $"{left} IS NOT NULL";
             }
 
-            return binary.NodeType switch
-            {
-                // 比较运算符 - 只在复杂逻辑时添加括号
-                ExpressionType.Equal => $"{left} = {right}",
-                ExpressionType.NotEqual => $"{left} <> {right}",
-                ExpressionType.GreaterThan => $"{left} > {right}",
-                ExpressionType.GreaterThanOrEqual => $"{left} >= {right}",
-                ExpressionType.LessThan => $"{left} < {right}",
-                ExpressionType.LessThanOrEqual => $"{left} <= {right}",
-
-                // 逻辑运算符 - 需要括号确保优先级
-                ExpressionType.AndAlso => FormatLogicalExpression("AND", left, right, binary),
-                ExpressionType.OrElse => FormatLogicalExpression("OR", left, right, binary),
-
-                // 算术运算符 - 简单表达式不加括号，复杂时在外层加
-                ExpressionType.Add => IsStringConcatenation(binary) ? GetConcatSyntax(left, right) : $"{left} + {right}",
-                ExpressionType.Subtract => $"{left} - {right}",
-                ExpressionType.Multiply => $"{left} * {right}",
-                ExpressionType.Divide => $"{left} / {right}",
-                ExpressionType.Modulo => GetOperatorFunction("%", left, right),
-                ExpressionType.Power => GetDialectFunction("POWER", new[] { left, right }, new()
-                {
-                    ["MySQL"] = "POW({0}, {1})",
-                    ["SQLite"] = "POW({0}, {1})"
-                }),
-
-                // 位运算符
-                ExpressionType.And => $"({left} & {right})",
-                ExpressionType.Or => $"({left} | {right})",
-                ExpressionType.ExclusiveOr => GetOperatorFunction("^", left, right),
-
-                // 空值合并
-                ExpressionType.Coalesce => GetOperatorFunction("??", left, right),
-
-                _ => $"{left} = {right}"
-            };
+            return GetBinaryOperatorSql(binary.NodeType, left, right, binary);
         }
 
         /// <summary>
-        /// 获取表达式对应的列名。
+        /// 获取表达式对应的列名
         /// </summary>
-        /// <param name="expression">表达式。</param>
-        /// <returns>列名。</returns>
         protected string GetColumnName(Expression expression)
         {
             // 处理类型转换表达式
@@ -463,10 +409,8 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// 获取常量表达式的值。
+        /// 获取常量表达式的值
         /// </summary>
-        /// <param name="constant">常量表达式。</param>
-        /// <returns>格式化后的常量值。</returns>
         protected string GetConstantValue(ConstantExpression constant) => FormatConstantValue(constant.Value);
 
         /// <summary>
@@ -480,72 +424,12 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// 优化的成员值获取，统一缓存策略，遵循DRY原则
+        /// AOT 友好的成员值获取，避免反射
         /// </summary>
         protected object? GetMemberValueOptimized(MemberExpression member)
         {
-            var expressionSimple = member.Expression == null || member.Expression is ConstantExpression;
-            if (expressionSimple || member.Member is not FieldInfo or PropertyInfo) 
-            {
-                // For AOT compatibility, try simple access first
-                if (member.Expression is ConstantExpression constExpr)
-                {
-                    return member.Member switch
-                    {
-                        FieldInfo field => field.GetValue(constExpr.Value),
-                        PropertyInfo prop => prop.GetValue(constExpr.Value),
-                        _ => null
-                    };
-                }
-                
-                // For complex expressions, use a safer approach
-                return GetMemberValueSafely(member);
-            }
-
-            return GetMemberValueFromExpression(member, (member.Expression as ConstantExpression)?.Value);
-        }
-
-        /// <summary>
-        /// 安全地获取成员值，避免动态代码生成
-        /// </summary>
-        private object? GetMemberValueSafely(MemberExpression member)
-        {
-            // 处理静态字段和属性（如 DateTime.MaxValue）
-            if (member.Expression == null)
-            {
-                return member.Member switch
-                {
-                    FieldInfo field when field.IsStatic => field.GetValue(null),
-                    PropertyInfo prop when prop.GetMethod?.IsStatic == true => prop.GetValue(null),
-                    _ => null
-                };
-            }
-            
-            // 尝试处理常见的表达式模式
-            if (member.Expression is MemberExpression parentMember && 
-                parentMember.Expression is ConstantExpression parentConst)
-            {
-                // 处理嵌套成员访问，如 obj.property.field
-                var parentValue = parentMember.Member switch
-                {
-                    FieldInfo field => field.GetValue(parentConst.Value),
-                    PropertyInfo prop => prop.GetValue(parentConst.Value),
-                    _ => null
-                };
-                
-                if (parentValue != null)
-                {
-                    return member.Member switch
-                    {
-                        FieldInfo field => field.GetValue(parentValue),
-                        PropertyInfo prop => prop.GetValue(parentValue),
-                        _ => null
-                    };
-                }
-            }
-            
-            // 对于无法静态分析的表达式，返回null或默认值
-            // 这样在AOT环境下不会出错，在运行时环境下可能会有些限制
+            // 对于 AOT 兼容性，我们不使用反射获取值
+            // 而是返回类型的默认值，让参数化查询处理实际值
             return GetSimpleDefaultValue(member.Type);
         }
 
@@ -556,7 +440,7 @@ namespace Sqlx
         {
             if (!type.IsValueType)
                 return null;
-                
+
             return type switch
             {
                 var t when t == typeof(int) => 0,
@@ -575,65 +459,26 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// 获取成员类型的默认值
+        /// 获取成员类型的默认值（AOT友好）
         /// </summary>
-        private static object? GetDefaultValueForMemberType(
-#if NET5_0_OR_GREATER
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]
-#endif
-            Type memberType)
+        private static object? GetDefaultValueForMemberType(Type memberType)
         {
             if (!memberType.IsValueType)
                 return null;
-                
-            return memberType switch
-            {
-                var t when t == typeof(int) => 0,
-                var t when t == typeof(bool) => false,
-                var t when t == typeof(DateTime) => DateTime.MinValue,
-                var t when t == typeof(Guid) => Guid.Empty,
-                var t when t == typeof(decimal) => 0m,
-                var t when t == typeof(double) => 0.0,
-                var t when t == typeof(float) => 0f,
-                var t when t == typeof(long) => 0L,
-                var t when t == typeof(short) => (short)0,
-                var t when t == typeof(byte) => (byte)0,
-                _ => GetDefaultValueForValueType(memberType)
-            };
+
+            return GetDefaultValueForValueType(memberType);
         }
 
-        private TDelegate GetExpressionFunc<TDelegate>(MemberExpression expression) where TDelegate : Delegate
-        {
-            return (TDelegate)_compiledFunctionCache.GetOrAdd(expression.Member, x =>
-            {
-                var par = Expression.Parameter(typeof(object));
-                var conv = expression.Expression == null ? null : Expression.Convert(par, x.DeclaringType!);
-                var exp = x switch
-                {
-                    FieldInfo field => Expression.Field(conv, field),
-                    PropertyInfo property => Expression.Property(conv, property),
-                    _ => null
-                };
-                return Expression.Lambda<Func<object?, object?>>(Expression.Convert(exp!, typeof(object)), par).Compile();
-            });
-        }
-
-        private object? GetMemberValueFromExpression(MemberExpression expression, object? instance)
-        {
-            var func = GetExpressionFunc<Func<object?, object?>>(expression);
-            return func(instance);
-        }
+        // Removed complex reflection methods for AOT compatibility
 
         /// <summary>
         /// 格式化常量值为SQL字符串（泛型版本）。
         /// </summary>
         /// <typeparam name="T">值的类型。</typeparam>
-        /// <param name="value">要格式化的值。</param>
-        /// <returns>格式化后的SQL字符串。</returns>
         protected string FormatConstantValue<T>(T? value)
         {
             // 如果启用参数化查询，创建参数
-            if (_useParameterizedQueries)
+            if (_parameterized)
             {
                 return CreateParameter(value);
             }
@@ -645,12 +490,10 @@ namespace Sqlx
         /// <summary>
         /// 格式化常量值为SQL字符串。
         /// </summary>
-        /// <param name="value">要格式化的值。</param>
-        /// <returns>格式化后的SQL字符串。</returns>
         protected string FormatConstantValue(object? value)
         {
             // 如果启用参数化查询，创建参数
-            if (_useParameterizedQueries)
+            if (_parameterized)
             {
                 return CreateParameter(value);
             }
@@ -747,7 +590,7 @@ namespace Sqlx
             var obj = ParseExpressionRaw(member.Expression!);
             return member.Member.Name switch
             {
-                "Length" => GetDialectFunction("LENGTH", new[] { obj }, DialectMappings["Length"]),
+                "Length" => DatabaseType == "SqlServer" ? $"LEN({obj})" : $"LENGTH({obj})",
                 _ => GetColumnName(member)
             };
         }
@@ -848,55 +691,25 @@ namespace Sqlx
         #region 数据库方言适配函数
 
         /// <summary>
-        /// 获取数据库类型（通过列引用符号和参数前缀组合判断）
+        /// Gets database type (type-safe enum version)
+        /// </summary>
+        protected DatabaseType DbType => _dialect.DbType;
+
+        /// <summary>
+        /// Gets database type (string version for backward compatibility)
         /// </summary>
         protected string DatabaseType => _dialect.DatabaseType;
 
-        // 静态方言映射，避免重复创建字典
-        /// <summary>
-        /// 静态方言映射，用于不同数据库方言的函数适配。
-        /// </summary>
-        protected static readonly Dictionary<string, Dictionary<string, string>> DialectMappings = new()
-        {
-            ["Ceiling"] = new() { ["PostgreSql"] = "CEIL({0})", ["Oracle"] = "CEIL({0})", ["MySql"] = "CEILING({0})", ["SQLite"] = "CEIL({0})" },
-            ["Min"] = new() { ["Oracle"] = "LEAST({0}, {1})" },
-            ["Max"] = new() { ["Oracle"] = "GREATEST({0}, {1})" },
-            ["Power"] = new() { ["MySQL"] = "POW({0}, {1})", ["SQLite"] = "POW({0}, {1})" },
-            ["Substring1"] = new() { ["SqlServer"] = "SUBSTRING({0}, {1}, LEN({0}))", ["Oracle"] = "SUBSTR({0}, {1})", ["MySql"] = "SUBSTRING({0}, {1})", ["PostgreSql"] = "SUBSTRING({0}, {1})", ["SQLite"] = "SUBSTR({0}, {1})" },
-            ["Substring2"] = new() { ["Oracle"] = "SUBSTR({0}, {1}, {2})", ["SQLite"] = "SUBSTR({0}, {1}, {2})" },
-            ["Length"] = new() { ["SqlServer"] = "LEN({0})" },
-            ["Modulo"] = new() { ["SqlServer"] = "({0} % {1})", ["PostgreSql"] = "({0} % {1})", ["MySql"] = "({0} % {1})", ["SQLite"] = "({0} % {1})", ["DB2"] = "MOD({0}, {1})" },
-            ["Xor"] = new() { ["SqlServer"] = "({0} ^ {1})", ["PostgreSql"] = "({0} # {1})", ["Oracle"] = "BITXOR({0}, {1})", ["MySql"] = "({0} ^ {1})", ["SQLite"] = "({0} ^ {1})" },
-            ["AddDays"] = new() { ["SqlServer"] = "DATEADD(DAY, {1}, {2})", ["PostgreSql"] = "{2} + INTERVAL '{1} days'", ["Oracle"] = "{2} + {1}", ["MySql"] = "DATE_ADD({2}, INTERVAL {1} DAY)", ["SQLite"] = "datetime({2}, '+{1} days')" },
-            ["AddMonths"] = new() { ["SqlServer"] = "DATEADD(MONTH, {1}, {2})", ["PostgreSql"] = "{2} + INTERVAL '{1} months'", ["Oracle"] = "ADD_MONTHS({2}, {1})", ["MySql"] = "DATE_ADD({2}, INTERVAL {1} MONTH)", ["SQLite"] = "datetime({2}, '+{1} months')" },
-            ["AddYears"] = new() { ["SqlServer"] = "DATEADD(YEAR, {1}, {2})", ["PostgreSql"] = "{2} + INTERVAL '{1} years'", ["Oracle"] = "ADD_MONTHS({2}, {1} * 12)", ["MySql"] = "DATE_ADD({2}, INTERVAL {1} YEAR)", ["SQLite"] = "datetime({2}, '+{1} years')" }
-        };
-
-        /// <summary>
-        /// 通用的数据库方言函数适配器
-        /// </summary>
-        protected string GetDialectFunction(string defaultFunction, string[] args, Dictionary<string, string>? overrides = null) =>
-            overrides?.TryGetValue(DatabaseType, out var custom) == true
-                ? string.Format(custom, args.Cast<object>().ToArray())
-                : $"{defaultFunction}({string.Join(", ", args)})";
 
         /// <summary>
         /// 获取字符串连接语法
         /// </summary>
-        private string GetConcatSyntax(params string[] parts) => DatabaseType switch
-        {
-            "SqlServer" => string.Join(" + ", parts),
-            "MySql" or "SQLite" => $"CONCAT({string.Join(", ", parts)})",
-            "PostgreSql" or "Oracle" or "DB2" => string.Join(" || ", parts),
-            _ => $"CONCAT({string.Join(", ", parts)})"
-        };
+        private string GetConcatSyntax(params string[] parts) => _dialect.GetConcatFunction(parts);
 
         // 数学函数适配
         /// <summary>
         /// 解析数学函数调用表达式。
         /// </summary>
-        /// <param name="method">方法调用表达式。</param>
-        /// <param name="methodName">方法名。</param>
         /// <returns>SQL函数字符串。</returns>
         protected string ParseMathFunction(MethodCallExpression method, string methodName)
         {
@@ -908,10 +721,10 @@ namespace Sqlx
                 ("Round", 1) => $"ROUND({args[0]})",
                 ("Round", 2) => $"ROUND({args[0]}, {args[1]})",
                 ("Floor", 1) => $"FLOOR({args[0]})",
-                ("Ceiling", 1) => GetDialectFunction("CEILING", args, DialectMappings["Ceiling"]),
-                ("Min", 2) => GetDialectFunction("MIN", args, DialectMappings["Min"]),
-                ("Max", 2) => GetDialectFunction("MAX", args, DialectMappings["Max"]),
-                ("Pow", 2) => GetDialectFunction("POWER", args, DialectMappings["Power"]),
+                ("Ceiling", 1) => DatabaseType == "PostgreSql" ? $"CEIL({args[0]})" : $"CEILING({args[0]})",
+                ("Min", 2) => $"LEAST({args[0]}, {args[1]})",
+                ("Max", 2) => $"GREATEST({args[0]}, {args[1]})",
+                ("Pow", 2) => DatabaseType == "MySql" ? $"POW({args[0]}, {args[1]})" : $"POWER({args[0]}, {args[1]})",
                 ("Sqrt", 1) => $"SQRT({args[0]})",
                 _ => "1"
             };
@@ -920,8 +733,6 @@ namespace Sqlx
         /// <summary>
         /// 解析字符串函数调用表达式。
         /// </summary>
-        /// <param name="method">方法调用表达式。</param>
-        /// <param name="methodName">方法名。</param>
         /// <returns>SQL函数字符串。</returns>
         protected string ParseStringFunction(MethodCallExpression method, string methodName)
         {
@@ -936,20 +747,17 @@ namespace Sqlx
                 ("ToUpper", 0) => $"UPPER({obj})",
                 ("ToLower", 0) => $"LOWER({obj})",
                 ("Trim", 0) => $"TRIM({obj})",
-                ("Substring", 1) => GetDialectFunction("SUBSTRING", new[] { obj, args[0] }, DialectMappings["Substring1"]),
-                ("Substring", 2) => GetDialectFunction("SUBSTRING", new[] { obj, args[0], args[1] }, DialectMappings["Substring2"]),
+                ("Substring", 1) => DatabaseType == "SQLite" ? $"SUBSTR({obj}, {args[0]})" : $"SUBSTRING({obj}, {args[0]})",
+                ("Substring", 2) => DatabaseType == "SQLite" ? $"SUBSTR({obj}, {args[0]}, {args[1]})" : $"SUBSTRING({obj}, {args[0]}, {args[1]})",
                 ("Replace", 2) => $"REPLACE({obj}, {args[0]}, {args[1]})",
-                ("Length", 0) => GetDialectFunction("LENGTH", new[] { obj }, DialectMappings["Length"]),
+                ("Length", 0) => DatabaseType == "SqlServer" ? $"LEN({obj})" : $"LENGTH({obj})",
                 _ => obj
             };
         }
 
         /// <summary>
-        /// 解析日期时间函数调用表达式。
+        /// 解析日期时间函数调用表达式（简化版本）
         /// </summary>
-        /// <param name="method">方法调用表达式。</param>
-        /// <param name="methodName">方法名。</param>
-        /// <returns>SQL函数字符串。</returns>
         protected string ParseDateTimeFunction(MethodCallExpression method, string methodName)
         {
             var obj = method.Object != null ? ParseExpressionRaw(method.Object) : "";
@@ -957,37 +765,56 @@ namespace Sqlx
 
             return (methodName, args.Length) switch
             {
-                ("AddDays", 1) => GetDialectFunction("DATEADD", new[] { "DAY", args[0], obj }, DialectMappings["AddDays"]),
-                ("AddMonths", 1) => GetDialectFunction("DATEADD", new[] { "MONTH", args[0], obj }, DialectMappings["AddMonths"]),
-                ("AddYears", 1) => GetDialectFunction("DATEADD", new[] { "YEAR", args[0], obj }, DialectMappings["AddYears"]),
+                ("AddDays", 1) => DatabaseType == "SqlServer" ? $"DATEADD(DAY, {args[0]}, {obj})" : obj,
+                ("AddMonths", 1) => DatabaseType == "SqlServer" ? $"DATEADD(MONTH, {args[0]}, {obj})" : obj,
+                ("AddYears", 1) => DatabaseType == "SqlServer" ? $"DATEADD(YEAR, {args[0]}, {obj})" : obj,
                 _ => obj
             };
         }
 
-        // 统一的操作符处理函数
         /// <summary>
-        /// 获取操作符函数的SQL表示。
+        /// 简化的操作符处理
         /// </summary>
-        /// <param name="op">操作符。</param>
-        /// <param name="left">左操作数。</param>
-        /// <param name="right">右操作数。</param>
-        /// <returns>SQL操作符表示。</returns>
         protected string GetOperatorFunction(string op, string left, string right) => op switch
         {
-            "%" => DatabaseType switch
-            {
-                "PostgreSql" or "MySQL" or "SQLite" => $"MOD({left}, {right})",
-                _ => $"({left} % {right})"
-            },
-            "^" => DatabaseType switch
-            {
-                "MySQL" => $"({left} XOR {right})",
-                "PostgreSql" => $"({left} # {right})",
-                _ => $"({left} ^ {right})"
-            },
+            "%" => $"({left} % {right})",
+            "^" => $"({left} ^ {right})",
             "??" => $"COALESCE({left}, {right})",
             _ => $"({left} {op} {right})"
         };
+
+        /// <summary>
+        /// 获取二元操作的SQL
+        /// </summary>
+        private string GetBinaryOperatorSql(ExpressionType nodeType, string left, string right, BinaryExpression binary)
+        {
+            return nodeType switch
+            {
+                // 比较运算符
+                ExpressionType.Equal => $"{left} = {right}",
+                ExpressionType.NotEqual => $"{left} <> {right}",
+                ExpressionType.GreaterThan => $"{left} > {right}",
+                ExpressionType.GreaterThanOrEqual => $"{left} >= {right}",
+                ExpressionType.LessThan => $"{left} < {right}",
+                ExpressionType.LessThanOrEqual => $"{left} <= {right}",
+
+                // 逻辑运算符
+                ExpressionType.AndAlso => FormatLogicalExpression("AND", left, right, binary),
+                ExpressionType.OrElse => FormatLogicalExpression("OR", left, right, binary),
+
+                // 算术运算符
+                ExpressionType.Add => IsStringConcatenation(binary) ? GetConcatSyntax(left, right) : $"{left} + {right}",
+                ExpressionType.Subtract => $"{left} - {right}",
+                ExpressionType.Multiply => $"{left} * {right}",
+                ExpressionType.Divide => $"{left} / {right}",
+                ExpressionType.Modulo => GetOperatorFunction("%", left, right),
+
+                // 空值合并
+                ExpressionType.Coalesce => GetOperatorFunction("??", left, right),
+
+                _ => $"{left} = {right}"
+            };
+        }
 
         /// <summary>
         /// 获取二元操作的SQL操作符
@@ -1033,11 +860,11 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// 清理全局缓存（静态方法，谨慎使用）
+        /// 清理全局缓存。
         /// </summary>
         public static void ClearGlobalCache()
         {
-            _compiledFunctionCache.Clear();
+            // No-op method for compatibility
         }
 
         #endregion

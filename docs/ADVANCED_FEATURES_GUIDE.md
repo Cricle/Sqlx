@@ -73,22 +73,26 @@ public partial class UserService(IDbConnection connection)
 }
 ```
 
-#### 2. **[SqlExecuteType] 特性** - CRUD 操作自动生成
+#### 2. **[ExpressionToSql] 特性** - 类型安全的动态 SQL 生成
 
 ```csharp
 public partial class UserService(IDbConnection connection)
 {
-    // 自动生成 INSERT 语句
-    [SqlExecuteType(SqlOperation.Insert, "users")]
-    public partial Task<int> CreateUserAsync(string name, string email, int age);
+    // 通过方法名自动推断操作类型 + 类型安全的条件
+    [Sqlx("SELECT * FROM users WHERE {whereCondition} ORDER BY {orderBy}")]
+    public partial Task<IList<User>> SearchUsersAsync(
+        [ExpressionToSql] Expression<Func<User, bool>> whereCondition,
+        [ExpressionToSql] Expression<Func<User, object>> orderBy);
     
-    // 生成: INSERT INTO users (name, email, age) VALUES (@name, @email, @age)
+    // 使用示例：
+    // var users = await service.SearchUsersAsync(
+    //     u => u.Age > 18 && u.IsActive,
+    //     u => u.Name);
     
-    // 自动生成 UPDATE 语句
-    [SqlExecuteType(SqlOperation.Update, "users")]
-    public partial Task<int> UpdateUserAsync(int id, string name, string email);
-    
-    // 生成: UPDATE users SET name = @name, email = @email WHERE id = @id
+    // 智能 CRUD 操作（通过方法名推断）
+    public partial Task<int> InsertUserAsync(User user);      // INSERT 操作
+    public partial Task<int> UpdateUserAsync(int id, User user); // UPDATE 操作  
+    public partial Task<int> DeleteUserAsync(int id);         // DELETE 操作
 }
 ```
 

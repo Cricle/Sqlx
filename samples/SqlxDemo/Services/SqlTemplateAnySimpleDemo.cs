@@ -65,7 +65,7 @@ public class SqlTemplateAnySimpleDemo
         var template = query.ToTemplate();
         Console.WriteLine($"   SQL: {template.Sql}");
         Console.WriteLine($"   参数: {template.Parameters.Count} 个");
-        
+
         foreach (var param in template.Parameters)
         {
             Console.WriteLine($"     - {param.Key} = {param.Value} ({param.Value?.GetType().Name ?? "null"})");
@@ -87,15 +87,15 @@ public class SqlTemplateAnySimpleDemo
 
         // 使用自定义参数名
         using var query = ExpressionToSql<User>.ForSqlServer()
-            .Where(u => u.Age > Any.Int("minAge") && 
-                       u.Name.Contains(Any.String("searchName")) && 
+            .Where(u => u.Age > Any.Int("minAge") &&
+                       u.Name != null && u.Name.Contains(Any.String("searchName")) &&
                        u.Salary > Any.Value<decimal>("minSalary"));
 
         var template = query.ToTemplate();
         Console.WriteLine($"✅ 自定义参数名:");
         Console.WriteLine($"   SQL: {template.Sql}");
         Console.WriteLine($"   参数: {template.Parameters.Count} 个");
-        
+
         foreach (var param in template.Parameters)
         {
             Console.WriteLine($"     - {param.Key} = {param.Value} ({param.Value?.GetType().Name ?? "null"})");
@@ -132,7 +132,7 @@ public class SqlTemplateAnySimpleDemo
         Console.WriteLine($"✅ 复杂查询条件:");
         Console.WriteLine($"   SQL: {complexTemplate.Sql}");
         Console.WriteLine($"   参数: {complexTemplate.Parameters.Count} 个");
-        
+
         foreach (var param in complexTemplate.Parameters)
         {
             Console.WriteLine($"     - {param.Key} = {param.Value}");
@@ -170,7 +170,7 @@ public class SqlTemplateAnySimpleDemo
         Console.WriteLine($"✅ 支持的数据类型:");
         Console.WriteLine($"   SQL: {typesTemplate.Sql}");
         Console.WriteLine($"   参数详情:");
-        
+
         foreach (var param in typesTemplate.Parameters)
         {
             var typeName = param.Value?.GetType().Name ?? "null";

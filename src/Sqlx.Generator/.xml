@@ -295,13 +295,13 @@
         </member>
         <member name="T:Sqlx.Generator.Core.EnhancedDiagnosticService">
             <summary>
-            增强的诊断服务，专注于列名匹配和用户指导
-            目标：让用户更专注业务逻辑而非SQL细节
+            Enhanced diagnostic service focused on column mapping, user guidance, and SQL best practices
+            Goal: Help users focus on business logic rather than SQL details
             </summary>
         </member>
         <member name="M:Sqlx.Generator.Core.EnhancedDiagnosticService.AnalyzeColumnMapping(Microsoft.CodeAnalysis.IMethodSymbol,System.String,Microsoft.CodeAnalysis.INamedTypeSymbol)">
             <summary>
-            执行增强的列名匹配分析
+            Performs enhanced column mapping analysis and SQL best practice checks
             </summary>
         </member>
         <member name="M:Sqlx.Generator.Core.EnhancedDiagnosticService.AnalyzeColumnNamingPatterns(Microsoft.CodeAnalysis.IMethodSymbol,System.String,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.Location)">
@@ -402,6 +402,26 @@
         <member name="M:Sqlx.Generator.Core.EnhancedDiagnosticService.CreateDiagnostics">
             <summary>
             创建诊断描述符
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.EnhancedDiagnosticService.CheckSqlBestPractices(Microsoft.CodeAnalysis.IMethodSymbol,System.String,Microsoft.CodeAnalysis.Location)">
+            <summary>
+            Checks SQL statements for best practices and security issues
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.EnhancedDiagnosticService.CheckForSqlTemplateOpportunity(Microsoft.CodeAnalysis.IMethodSymbol,Microsoft.CodeAnalysis.Location)">
+            <summary>
+            Checks if method might benefit from SqlTemplate parameter support
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.EnhancedDiagnosticService.CheckForMissingSqlxAttribute(Microsoft.CodeAnalysis.IMethodSymbol,Microsoft.CodeAnalysis.Location)">
+            <summary>
+            Checks for methods that might need [Sqlx] attribute
+            </summary>
+        </member>
+        <member name="M:Sqlx.Generator.Core.EnhancedDiagnosticService.IsComplexCrudOperation(System.String)">
+            <summary>
+            Determines if SQL represents a complex CRUD operation that would benefit from SqlTemplate
             </summary>
         </member>
         <member name="T:Sqlx.Generator.Core.ErrorHandler">
@@ -1217,38 +1237,38 @@
         </member>
         <member name="P:Sqlx.Generator.Core.SqlDefine.ColumnLeft">
             <summary>
-            获取列名的左边界符。
+            Gets column left delimiter
             </summary>
         </member>
         <member name="P:Sqlx.Generator.Core.SqlDefine.ColumnRight">
             <summary>
-            获取列名的右边界符。
+            Gets column right delimiter
             </summary>
         </member>
         <member name="P:Sqlx.Generator.Core.SqlDefine.StringLeft">
             <summary>
-            获取字符串的左边界符。
+            Gets string left delimiter
             </summary>
         </member>
         <member name="P:Sqlx.Generator.Core.SqlDefine.StringRight">
             <summary>
-            获取字符串的右边界符。
+            Gets string right delimiter
             </summary>
         </member>
         <member name="P:Sqlx.Generator.Core.SqlDefine.ParameterPrefix">
             <summary>
-            获取参数的前缀符。
+            Gets parameter prefix
             </summary>
         </member>
         <member name="M:Sqlx.Generator.Core.SqlDefine.#ctor(System.String,System.String,System.String,System.String,System.String)">
             <summary>
-            初始化 SqlDefine 结构的新实例。
+            Initializes a new instance of the SqlDefine struct
             </summary>
-            <param name="columnLeft">列名的左边界符。</param>
-            <param name="columnRight">列名的右边界符。</param>
-            <param name="stringLeft">字符串的左边界符。</param>
-            <param name="stringRight">字符串的右边界符。</param>
-            <param name="parameterPrefix">参数的前缀符。</param>
+            <param name="columnLeft">Column left delimiter</param>
+            <param name="columnRight">Column right delimiter</param>
+            <param name="stringLeft">String left delimiter</param>
+            <param name="stringRight">String right delimiter</param>
+            <param name="parameterPrefix">Parameter prefix</param>
         </member>
         <member name="F:Sqlx.Generator.Core.SqlDefine.MySql">
             <summary>
@@ -1260,9 +1280,19 @@
             获取 SQL Server 数据库的 SQL 方言定义。
             </summary>
         </member>
-        <member name="F:Sqlx.Generator.Core.SqlDefine.PgSql">
+        <member name="F:Sqlx.Generator.Core.SqlDefine.PostgreSql">
             <summary>
             获取 PostgreSQL 数据库的 SQL 方言定义。
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.SqlDefine.SQLite">
+            <summary>
+            获取 SQLite 数据库的 SQL 方言定义。
+            </summary>
+        </member>
+        <member name="F:Sqlx.Generator.Core.SqlDefine.PgSql">
+            <summary>
+            获取 PostgreSQL 数据库的 SQL 方言定义（别名）。
             </summary>
         </member>
         <member name="F:Sqlx.Generator.Core.SqlDefine.Oracle">
@@ -1273,11 +1303,6 @@
         <member name="F:Sqlx.Generator.Core.SqlDefine.DB2">
             <summary>
             获取 DB2 数据库的 SQL 方言定义。
-            </summary>
-        </member>
-        <member name="F:Sqlx.Generator.Core.SqlDefine.SQLite">
-            <summary>
-            获取 SQLite 数据库的 SQL 方言定义。
             </summary>
         </member>
         <member name="M:Sqlx.Generator.Core.SqlDefine.WrapString(System.String)">

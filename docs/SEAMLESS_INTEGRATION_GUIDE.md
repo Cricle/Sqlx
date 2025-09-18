@@ -59,9 +59,9 @@ var expression = ExpressionToSql<User>.ForSqlServer()
 var template = expression.ToTemplate(); // 零拷贝转换
 
 // 2. 模板到表达式转换
-var baseTemplate = SqlTemplate.Create(
-    "SELECT * FROM Users WHERE IsActive = @isActive", 
-    new { isActive = true });
+var baseTemplate = SqlTemplate.Parse(
+    "SELECT * FROM Users WHERE IsActive = @isActive")
+    .Execute(new { isActive = true });
 
 var enhancedExpression = baseTemplate.ToExpression<User>()
     .OrderBy(u => u.CreatedAt)
@@ -138,9 +138,9 @@ var template = builder
 
 ```csharp
 // 创建预编译模板以获得最佳性能
-var baseTemplate = SqlTemplate.Create(
-    "SELECT @columns FROM Users WHERE Active = @active ORDER BY @orderBy",
-    new { columns = "*", active = true, orderBy = "CreatedAt" });
+var baseTemplate = SqlTemplate.Parse(
+    "SELECT @columns FROM Users WHERE Active = @active ORDER BY @orderBy")
+    .Execute(new { columns = "*", active = true, orderBy = "CreatedAt" });
 
 var compiled = baseTemplate.Precompile();
 
@@ -465,9 +465,9 @@ var template = FluentSqlBuilder.Query<User>()
 
 ```csharp
 // 原来的代码
-var template = SqlTemplate.Create(
-    "SELECT * FROM Users WHERE Active = @active",
-    new { active = true });
+var template = SqlTemplate.Parse(
+    "SELECT * FROM Users WHERE Active = @active")
+    .Execute(new { active = true });
 
 // 迁移后的代码
 var enhanced = template.ForEntity<User>()

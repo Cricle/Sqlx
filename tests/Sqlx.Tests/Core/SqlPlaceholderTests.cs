@@ -384,7 +384,7 @@ public class SqlPlaceholderTests
         StringAssert.Contains(result, "[user] u");
     }
 
-    [TestMethod] 
+    [TestMethod]
     public void ParseArgs_ComplexArgs_HandledCorrectly()
     {
         // 通过复杂的占位符参数来测试参数解析功能
@@ -413,7 +413,7 @@ public class SqlPlaceholderTests
 
         // Act
         var processedSql = SqlTemplatePlaceholder.ProcessTemplate(template, context);
-        
+
         using var command = _connection.CreateCommand();
         command.CommandText = processedSql;
         var result = await command.ExecuteScalarAsync();
@@ -428,7 +428,7 @@ public class SqlPlaceholderTests
     {
         // Arrange - 模拟一个不包含敏感字段的查询
         var simplifiedSql = "SELECT name, age FROM user WHERE is_active = 1 ORDER BY name";
-        
+
         using var command = _connection.CreateCommand();
         command.CommandText = simplifiedSql;
         using var reader = await command.ExecuteReaderAsync();
@@ -439,7 +439,7 @@ public class SqlPlaceholderTests
         {
             // 验证只返回了指定的列
             Assert.AreEqual(2, reader.FieldCount, "Should only return 2 columns (name, age)");
-            
+
             var row = new object[reader.FieldCount];
             reader.GetValues(row);
             results.Add(row);

@@ -38,11 +38,11 @@
 - **混合类型** - 传统类、Record、Primary Constructor 可在同一项目中混用
 - **Nullable 引用类型** - 完整的空值安全支持
 
-### 🌐 **多数据库生态**
-- **数据库支持** - SQL Server、MySQL、PostgreSQL、SQLite、Oracle、DB2
-- **智能方言** - 自动适配不同数据库的语法特性和优化
-- **动态查询** - ExpressionToSql 提供类型安全的 LINQ 查询构建
-- **模板引擎** - 支持条件、循环、函数的高级 SQL 模板
+### 🌐 **四核心模块**
+- **Sqlx** - 手写SQL直接执行，编译时验证
+- **ExpressionToSql** - 类型安全的LINQ表达式转SQL
+- **RepositoryFor** - 零代码仓储模式生成
+- **SqlTemplate** - 高性能SQL模板，专注性能优化
 
 ---
 
@@ -92,15 +92,21 @@ public partial class UserService(IDbConnection connection)
     [Sqlx("SELECT * FROM users WHERE age > @minAge AND is_active = 1")]
     public partial Task<IEnumerable<User>> GetActiveUsersAsync(int minAge);
     
-    // 🔥 CRUD 操作 - 智能 SQL 生成
-    [SqlExecuteType(SqlOperation.Insert, "users")]
-    public partial Task<int> CreateUserAsync(string name, string email);
+    // 🔥 智能 CRUD 操作 - 通过方法名自动推断操作类型
+    [Sqlx] public partial Task<int> InsertUserAsync(User user);  // 自动生成 INSERT
+    [Sqlx] public partial Task<int> UpdateUserAsync(int id, User user);  // 自动生成 UPDATE
+    [Sqlx] public partial Task<int> DeleteUserAsync(int id);  // 自动生成 DELETE
     
     // 🔥 类型安全的动态查询
     [Sqlx("SELECT * FROM users WHERE {whereClause} ORDER BY {orderBy}")]
     public partial Task<IList<User>> SearchUsersAsync(
         [ExpressionToSql] Expression<Func<User, bool>> whereClause,
         [ExpressionToSql] Expression<Func<User, object>> orderBy);
+    
+    // 🔥 高级 ExpressionToSql 用法
+    public partial Task<int> UpdateUserSalaryAsync(
+        [ExpressionToSql] Expression<Func<User, bool>> whereCondition,
+        decimal newSalary);
 }
 ```
 
@@ -156,9 +162,55 @@ var result = SqlTemplate.Render(advancedTemplate.Sql, new {
 
 ---
 
-## 🚀 核心特性详解
+## 🚀 四大核心模块详解
 
-### 1️⃣ **革新的 SqlTemplate 设计**
+### 1️⃣ **Sqlx - 手写SQL直接执行**
+
+```csharp
+public partial class UserService
+{
+    // 复杂业务查询
+    [Sqlx("SELECT u.*, d.Name as DeptName FROM Users u JOIN Departments d ON u.DeptId = d.Id WHERE u.Age > @minAge")]
+    public partial Task<IEnumerable<UserWithDept>> GetUsersWithDepartmentAsync(int minAge);
+    
+    // 智能CRUD - 通过方法名推断操作类型
+    [Sqlx] public partial Task<int> InsertUserAsync(User user);
+    [Sqlx] public partial Task<int> UpdateUserAsync(int id, User user);  
+    [Sqlx] public partial Task<int> DeleteUserAsync(int id);
+}
+```
+
+### 2️⃣ **ExpressionToSql - 类型安全的LINQ转SQL**
+
+```csharp
+// 构建复杂查询
+var query = ExpressionToSql<User>.ForSqlServer()
+    .Where(u => u.Age > 25 && u.IsActive)
+    .Where(u => u.Department.Budget > 100000)
+    .Select(u => new { u.Name, u.Email, u.Salary })
+    .OrderBy(u => u.Salary)
+    .Take(10);
+
+string sql = query.ToSql();
+// 生成: SELECT [Name], [Email], [Salary] FROM [User] WHERE ([Age] > 25 AND [IsActive] = 1) AND ([Department].[Budget] > 100000) ORDER BY [Salary] ASC LIMIT 10
+```
+
+### 3️⃣ **RepositoryFor - 零代码仓储模式**
+
+```csharp
+[RepositoryFor(typeof(User))]
+public partial interface IUserRepository
+{
+    // 自动生成标准CRUD操作
+    Task<User?> GetByIdAsync(int id);
+    Task<IEnumerable<User>> GetAllAsync();
+    Task<int> InsertAsync(User user);
+    Task<int> UpdateAsync(User user);
+    Task<int> DeleteAsync(int id);
+}
+```
+
+### 4️⃣ **SqlTemplate - 高性能SQL模板**
 
 **✅ 新设计优势：**
 - **概念清晰** - 模板是模板，参数是参数

@@ -97,7 +97,7 @@ public abstract class BaseOperationGenerator : IOperationGenerator
     protected virtual string GetConnectionFieldName(INamedTypeSymbol repositoryClass)
     {
         // Find the first DbConnection field, property, or constructor parameter
-        
+
         // 1. Check fields (prioritize type checking, fallback to common names)
         var connectionField = repositoryClass.GetMembers()
             .OfType<IFieldSymbol>()
@@ -158,9 +158,9 @@ public abstract class BaseOperationGenerator : IOperationGenerator
     /// <returns>True if it's a common connection field name.</returns>
     private static bool IsCommonConnectionFieldName(string fieldName)
     {
-        return fieldName == "connection" || 
-               fieldName == "_connection" || 
-               fieldName == "Connection" || 
+        return fieldName == "connection" ||
+               fieldName == "_connection" ||
+               fieldName == "Connection" ||
                fieldName == "_Connection" ||
                fieldName.EndsWith("Connection", StringComparison.OrdinalIgnoreCase);
     }
@@ -204,7 +204,7 @@ public abstract class BaseOperationGenerator : IOperationGenerator
         return attributeName switch
         {
             "MySqlDialectAttribute" => SqlDefine.MySql,
-            "PostgreSqlDialectAttribute" => SqlDefine.PgSql,
+            "PostgreSqlDialectAttribute" => SqlDefine.PostgreSql,
             "SQLiteDialectAttribute" => SqlDefine.SQLite,
             "SqlServerDialectAttribute" => SqlDefine.SqlServer,
             _ => SqlDefine.SqlServer
@@ -251,7 +251,7 @@ public abstract class BaseOperationGenerator : IOperationGenerator
         return connectionTypeName switch
         {
             "MySqlConnection" => SqlDefine.MySql,
-            "NpgsqlConnection" => SqlDefine.PgSql,
+            "NpgsqlConnection" => SqlDefine.PostgreSql,
             "SqliteConnection" or "SQLiteConnection" => SqlDefine.SQLite,
             "SqlConnection" => SqlDefine.SqlServer,
             _ => null

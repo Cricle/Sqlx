@@ -9,7 +9,6 @@ namespace SqlxDemo.Services;
 /// </summary>
 public interface ISimpleUserRepository
 {
-
     // 使用partial方法模式，确保源生成器能正确生成实现
     [Sqlx("SELECT * FROM [user] WHERE [id] = @id")]
     Task<User> GetUserByIdAsync(int id);

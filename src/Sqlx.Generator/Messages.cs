@@ -39,5 +39,18 @@ namespace Sqlx
         public static DiagnosticDescriptor SP0014 { get; } = new DiagnosticDescriptor("SP0014", "SqlDefine configuration error", "SqlDefine configuration is invalid: '{0}'.", "Sqlx", DiagnosticSeverity.Error, true, "The SqlDefine attribute contains invalid database dialect configuration.");
 
         public static DiagnosticDescriptor SP0015 { get; } = new DiagnosticDescriptor("SP0015", "Code generation failed", "Code generation failed for method '{0}': {1}.", "Sqlx", DiagnosticSeverity.Error, true, "An error occurred during code generation for the specified method.");
+
+        // New diagnostic messages for improved user guidance
+        public static DiagnosticDescriptor SP0016 { get; } = new DiagnosticDescriptor("SP0016", "SELECT * detected", "Avoid using SELECT * in SQL. Specify explicit columns for better performance and maintainability.", "Sqlx", DiagnosticSeverity.Warning, true, "Use explicit column names instead of SELECT * for better performance, security, and maintainability.");
+
+        public static DiagnosticDescriptor SP0017 { get; } = new DiagnosticDescriptor("SP0017", "Missing [Sqlx] attribute", "Method appears to be a database operation but lacks [Sqlx] attribute. Add [Sqlx] to generate implementation.", "Sqlx", DiagnosticSeverity.Info, true, "Database operation methods require explicit [Sqlx] attribute. Automatic CRUD inference is disabled by design.");
+
+        public static DiagnosticDescriptor SP0018 { get; } = new DiagnosticDescriptor("SP0018", "Consider using SqlTemplate", "For complex CRUD operations, consider using SqlTemplate.Select(), Insert(), Update(), or Delete() builders.", "Sqlx", DiagnosticSeverity.Info, true, "SqlTemplate provides a fluent API for building type-safe SQL with better maintainability.");
+
+        public static DiagnosticDescriptor SP0019 { get; } = new DiagnosticDescriptor("SP0019", "SqlTemplate parameter available", "This method can accept SqlTemplate as parameter by setting AcceptsSqlTemplate = true in [Sqlx] attribute.", "Sqlx", DiagnosticSeverity.Info, true, "Enable SqlTemplate parameter support for dynamic SQL generation scenarios.");
+
+        public static DiagnosticDescriptor SP0020 { get; } = new DiagnosticDescriptor("SP0020", "DELETE without WHERE", "DELETE statements should always include WHERE conditions for safety.", "Sqlx", DiagnosticSeverity.Warning, true, "DELETE statements without WHERE conditions can accidentally delete all data. Always include proper WHERE conditions.");
+
+        public static DiagnosticDescriptor SP0021 { get; } = new DiagnosticDescriptor("SP0021", "UPDATE without WHERE", "UPDATE statements should include WHERE conditions to avoid unintended data changes.", "Sqlx", DiagnosticSeverity.Warning, true, "UPDATE statements without WHERE conditions will modify all rows. Include WHERE conditions for targeted updates.");
     }
 }

@@ -9,24 +9,25 @@
 namespace Sqlx.Annotations
 {
     /// <summary>
-    /// Specifies the entity type for DbContext methods returning tuples or generic collections.
+    /// Specifies the DbSet type for a property or field.
     /// </summary>
-    [System.AttributeUsage(System.AttributeTargets.Parameter |
-        System.AttributeTargets.Method, AllowMultiple = false, Inherited = false)]
+    [System.AttributeUsage(System.AttributeTargets.Property | System.AttributeTargets.Field,
+        AllowMultiple = false, Inherited = false)]
     public sealed class DbSetTypeAttribute : System.Attribute
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="DbSetTypeAttribute"/> class.
         /// </summary>
-        /// <param name="type">The entity type.</param>
-        public DbSetTypeAttribute(System.Type type)
+        /// <param name="entityType">The entity type.</param>
+        public DbSetTypeAttribute(System.Type entityType)
         {
-            Type = type ?? throw new System.ArgumentNullException(nameof(type));
+            EntityType = entityType ?? throw new System.ArgumentNullException(nameof(entityType));
         }
 
         /// <summary>
         /// Gets the entity type.
         /// </summary>
-        public System.Type Type { get; }
+        public System.Type EntityType { get; }
     }
 }
+

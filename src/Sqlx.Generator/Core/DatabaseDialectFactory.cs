@@ -36,10 +36,8 @@ internal static class DatabaseDialectFactory
         // Direct equality checks for known static instances
         if (sqlDefine.Equals(SqlDefine.MySql)) return GetDialectProvider(SqlDefineTypes.MySql);
         if (sqlDefine.Equals(SqlDefine.SqlServer)) return GetDialectProvider(SqlDefineTypes.SqlServer);
-        if (sqlDefine.Equals(SqlDefine.PgSql)) return GetDialectProvider(SqlDefineTypes.PostgreSql);
+        if (sqlDefine.Equals(SqlDefine.PostgreSql)) return GetDialectProvider(SqlDefineTypes.PostgreSql);
         if (sqlDefine.Equals(SqlDefine.SQLite)) return GetDialectProvider(SqlDefineTypes.SQLite);
-        if (sqlDefine.Equals(SqlDefine.Oracle)) return GetDialectProvider(SqlDefineTypes.Oracle);
-        if (sqlDefine.Equals(SqlDefine.DB2)) return GetDialectProvider(SqlDefineTypes.DB2);
 
         // For custom SqlDefine instances, infer from characteristics
         var dialectType = InferDialectFromCharacteristics(sqlDefine);
@@ -78,8 +76,6 @@ internal static class DatabaseDialectFactory
             SqlDefineTypes.SqlServer => new SqlServerDialectProvider(),
             SqlDefineTypes.PostgreSql => new PostgreSqlDialectProvider(),
             SqlDefineTypes.SQLite => new SQLiteDialectProvider(),
-            SqlDefineTypes.Oracle => throw new UnsupportedDialectException("Oracle (support removed to reduce complexity - use PostgreSQL instead)"),
-            SqlDefineTypes.DB2 => throw new UnsupportedDialectException("DB2 (support removed to reduce complexity - use PostgreSQL instead)"),
             _ => throw new UnsupportedDialectException(dialectType.ToString())
         };
     }

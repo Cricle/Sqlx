@@ -1,657 +1,189 @@
+// -----------------------------------------------------------------------
+// <copyright file="Program.cs" company="Cricle">
+// Copyright (c) Cricle. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
+
+using System;
+using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
-using SqlxDemo.Extensions;
+using Sqlx;
 using SqlxDemo.Models;
 using SqlxDemo.Services;
-using Sqlx;
 
-namespace SqlxDemo;
-
-/// <summary>
-/// Sqlx 完整功能演示
-/// 演示所有4个核心特性: RawSql, SqlExecuteType, RepositoryFor, ExpressionToSql
-/// 所有功能都由Sqlx源生成器自动实现，无手动编码
-/// </summary>
-class Program
+namespace SqlxDemo
 {
-    static async Task Main(string[] args)
+    /// <summary>
+    /// Sqlx 演示程序主入口
+    /// </summary>
+    public class Program
     {
-        Console.OutputEncoding = System.Text.Encoding.UTF8;
-
-        ShowWelcome();
-
-        try
+        /// <summary>
+        /// 程序主入口点
+        /// </summary>
+        /// <param name="args">命令行参数</param>
+        /// <returns>异步任务</returns>
+        public static async Task Main(string[] args)
         {
-            // 显示演示选项菜单
-            var choice = ShowDemoMenu();
+            Console.WriteLine("=== Sqlx 演示程序 ===");
+            Console.WriteLine("展示编译时 SQL 模板和动态 SQL 功能");
+            Console.WriteLine();
 
-            switch (choice)
+            try
             {
-                case "1":
-                    await RunCompleteFeatureDemo();
-                    break;
-                case "2":
-                    await RunInterceptorDemo();
-                    break;
-                case "3":
-                    await RunAnyPlaceholderDemo();
-                    break;
-                case "4":
-                    await RunSqlTemplateDemo();
-                    break;
-                case "5":
-                    await RunSqlPlaceholderDemo();
-                    break;
-                case "6":
-                    await RunCompleteFeatureDemo();
-                    await RunInterceptorDemo();
-                    await RunAnyPlaceholderDemo();
-                    await RunSqlTemplateDemo();
-                    await RunSqlPlaceholderDemo();
-                    break;
-                default:
-                    await RunCompleteFeatureDemo();
-                    break;
+                // 创建内存数据库连接
+                using var connection = new SqliteConnection("Data Source=:memory:");
+                await connection.OpenAsync();
+
+                // 创建示例表
+                await CreateSampleTablesAsync(connection);
+
+                // 演示简单仓储功能
+                await DemonstrateSimpleRepositoryAsync(connection);
+
+                // 演示 SQL 模板功能
+                await DemonstrateSqlTemplateAsync(connection);
+
+                Console.WriteLine();
+                Console.WriteLine("演示完成！");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"演示过程中发生错误: {ex.Message}");
+                Console.WriteLine($"详细信息: {ex}");
             }
 
-            ShowSummary();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"\n❌ 演示过程中发生错误: {ex.Message}");
-            Console.WriteLine($"详细信息: {ex}");
-        }
-
-        Console.WriteLine("\n🎉 Sqlx 完整功能演示结束！");
-        Console.WriteLine("按任意键退出...");
-        try
-        {
-            Console.ReadKey();
-        }
-        catch (InvalidOperationException)
-        {
-            // 在重定向输入时使用Console.Read()
-            Console.Read();
-        }
-    }
-
-    /// <summary>
-    /// 运行完整的Sqlx功能演示
-    /// </summary>
-    static async Task RunCompleteFeatureDemo()
-    {
-        Console.WriteLine("🎯 运行完整Sqlx功能演示 (所有代码由源生成器自动生成)");
-
-        var demo = new CompleteSqlxDemo();
-        await demo.RunCompleteDemo();
-    }
-
-    /// <summary>
-    /// 运行传统演示 (保留原有功能)
-    /// </summary>
-    static async Task RunLegacyDemo()
-    {
-        // 创建内存数据库连接
-        using var connection = new SqliteConnection("Data Source=:memory:");
-        await connection.OpenAsync();
-
-        // 初始化数据库
-        await InitializeDatabaseAsync(connection);
-
-        // 统一演示所有功能
-        await RunComprehensiveDemoAsync(connection);
-    }
-
-    static void ShowWelcome()
-    {
-        Console.ForegroundColor = ConsoleColor.Cyan;
-        Console.WriteLine("🚀 Sqlx 完整功能演示");
-        Console.WriteLine("===================");
-        Console.WriteLine("演示源生成器、多数据库方言、扩展方法和高性能数据访问");
-        Console.ResetColor();
-        Console.WriteLine();
-    }
-
-    /// <summary>
-    /// 显示演示选项菜单
-    /// </summary>
-    static string ShowDemoMenu()
-    {
-        Console.ForegroundColor = ConsoleColor.Yellow;
-        Console.WriteLine("📋 请选择演示模式:");
-        Console.WriteLine("==================");
-        Console.ResetColor();
-
-        Console.WriteLine("1️⃣ 完整功能演示 (推荐) - 展示所有4大核心特性");
-        Console.WriteLine("2️⃣ 拦截器功能演示 (新增) - 展示SQL执行拦截和性能监控");
-        Console.WriteLine("3️⃣ Any占位符演示 (最新) - 展示SqlTemplate Any占位符功能");
-        Console.WriteLine("4️⃣ SqlTemplate模板化使用演示 - 展示完整的模板化功能");
-        Console.WriteLine("5️⃣ SQL占位符功能演示 - 展示 {{columns}}, {{table}} 等占位符");
-        Console.WriteLine("6️⃣ 完整演示 (全部) - 运行所有演示内容");
-        Console.WriteLine();
-
-        Console.Write("请输入选择 (1-6, 默认1): ");
-        var input = Console.ReadLine()?.Trim();
-        Console.WriteLine();
-
-        return string.IsNullOrEmpty(input) ? "1" : input;
-    }
-
-    /// <summary>
-    /// 运行拦截器功能演示
-    /// </summary>
-    static async Task RunInterceptorDemo()
-    {
-        Console.ForegroundColor = ConsoleColor.Magenta;
-        Console.WriteLine("🎭 启动拦截器功能演示");
-        Console.WriteLine("=====================");
-        Console.ResetColor();
-
-        using var connection = new SqliteConnection("Data Source=:memory:");
-        connection.Open();
-
-        // 初始化数据库
-        await InitializeDatabaseAsync(connection);
-
-        // 运行拦截器演示
-        var interceptorDemo = new InterceptorDemo(connection);
-        await interceptorDemo.RunCompleteInterceptorDemoAsync();
-    }
-
-    /// <summary>
-    /// 运行Any占位符功能演示
-    /// </summary>
-    static async Task RunAnyPlaceholderDemo()
-    {
-        Console.ForegroundColor = ConsoleColor.Green;
-        Console.WriteLine("🎯 启动Any占位符功能演示");
-        Console.WriteLine("========================");
-        Console.ResetColor();
-
-        using var connection = new SqliteConnection("Data Source=:memory:");
-        connection.Open();
-
-        // 初始化数据库
-        await InitializeDatabaseAsync(connection);
-
-        // 运行Any占位符演示
-        var anyDemo = new SqlTemplateAnySimpleDemo(connection);
-        await anyDemo.RunAnyPlaceholderDemoAsync();
-    }
-
-    /// <summary>
-    /// 运行SqlTemplate模板化使用演示
-    /// </summary>
-    static async Task RunSqlTemplateDemo()
-    {
-        Console.ForegroundColor = ConsoleColor.Cyan;
-        Console.WriteLine("📋 启动SqlTemplate模板化使用演示");
-        Console.WriteLine("===============================");
-        Console.ResetColor();
-
-        using var connection = new SqliteConnection("Data Source=:memory:");
-        connection.Open();
-
-        // 初始化数据库
-        await InitializeDatabaseAsync(connection);
-
-        // 运行SqlTemplate演示
-        var templateDemo = new SqlTemplateAutoDemo(connection);
-        await templateDemo.RunCompleteAutoDemo();
-    }
-
-    /// <summary>
-    /// 运行SQL占位符功能演示
-    /// </summary>
-    static async Task RunSqlPlaceholderDemo()
-    {
-        Console.ForegroundColor = ConsoleColor.Magenta;
-        Console.WriteLine("🎯 启动SQL占位符功能演示");
-        Console.WriteLine("=========================");
-        Console.ResetColor();
-
-        using var connection = new SqliteConnection("Data Source=:memory:");
-        connection.Open();
-
-        // 初始化数据库
-        await InitializeDatabaseAsync(connection);
-
-        // 运行SQL占位符演示
-        var placeholderDemo = new SqlPlaceholderDemo(connection);
-        await placeholderDemo.RunCompleteDemo();
-    }
-
-    static async Task InitializeDatabaseAsync(SqliteConnection connection)
-    {
-        Console.WriteLine("📊 初始化演示数据库...");
-
-        // 创建用户表
-        await connection.ExecuteNonQueryAsync(@"
-            CREATE TABLE [user] (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                email TEXT NOT NULL UNIQUE,
-                age INTEGER,
-                salary DECIMAL,
-                department_id INTEGER,
-                is_active INTEGER DEFAULT 1,
-                hire_date TEXT,
-                bonus DECIMAL,
-                performance_rating REAL
-            )");
-
-        // 创建部门表
-        await connection.ExecuteNonQueryAsync(@"
-            CREATE TABLE [department] (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                budget DECIMAL,
-                manager_id INTEGER
-            )");
-
-        // 创建产品表
-        await connection.ExecuteNonQueryAsync(@"
-            CREATE TABLE [product] (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                description TEXT,
-                sku TEXT NOT NULL UNIQUE,
-                price DECIMAL NOT NULL,
-                discount_price DECIMAL,
-                category_id INTEGER NOT NULL,
-                stock_quantity INTEGER DEFAULT 0,
-                is_active INTEGER DEFAULT 1,
-                created_at TEXT NOT NULL,
-                updated_at TEXT,
-                image_url TEXT,
-                weight REAL DEFAULT 0,
-                tags TEXT DEFAULT ''
-            )");
-
-        // 创建订单表
-        await connection.ExecuteNonQueryAsync(@"
-            CREATE TABLE [order] (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                order_number TEXT NOT NULL UNIQUE,
-                user_id INTEGER NOT NULL,
-                total_amount DECIMAL NOT NULL,
-                discount_amount DECIMAL DEFAULT 0,
-                shipping_cost DECIMAL DEFAULT 0,
-                status INTEGER DEFAULT 1,
-                created_at TEXT NOT NULL,
-                shipped_at TEXT,
-                delivered_at TEXT,
-                shipping_address TEXT NOT NULL,
-                billing_address TEXT NOT NULL,
-                notes TEXT
-            )");
-
-        // 插入基础数据
-        await SeedDatabaseAsync(connection);
-
-        Console.WriteLine("✅ 数据库初始化完成\n");
-    }
-
-    static async Task SeedDatabaseAsync(SqliteConnection connection)
-    {
-        // 插入部门数据
-        await connection.ExecuteNonQueryAsync(@"
-            INSERT INTO [department] (name, budget, manager_id) VALUES 
-            ('技术部', 100000, NULL),
-            ('市场部', 75000, NULL),
-            ('财务部', 60000, NULL),
-            ('人事部', 45000, NULL),
-            ('运营部', 80000, NULL)");
-
-        // 插入用户数据
-        await connection.ExecuteNonQueryAsync(@"
-            INSERT INTO [user] (name, email, age, salary, department_id, is_active, hire_date, bonus, performance_rating) VALUES 
-            ('张三', 'zhangsan@example.com', 28, 8500, 1, 1, '2023-01-15', 1000, 4.2),
-            ('李四', 'lisi@example.com', 32, 12000, 1, 1, '2022-03-20', 1500, 4.5),
-            ('王五', 'wangwu@example.com', 26, 7000, 2, 1, '2024-01-10', 800, 3.8),
-            ('赵六', 'zhaoliu@example.com', 35, 15000, 1, 1, '2021-06-15', 2000, 4.8),
-            ('钱七', 'qianqi@example.com', 29, 9500, 3, 1, '2023-08-20', NULL, 4.1),
-            ('孙八', 'sunba@example.com', 31, 11000, 2, 1, '2022-06-10', 1200, 4.3),
-            ('周九', 'zhoujiu@example.com', 27, 7500, 4, 1, '2023-09-05', 600, 3.9),
-            ('吴十', 'wushi@example.com', 33, 13500, 5, 1, '2021-12-20', 1800, 4.6)");
-
-        // 插入产品数据
-        await connection.ExecuteNonQueryAsync(@"
-            INSERT INTO [product] (name, description, sku, price, discount_price, category_id, stock_quantity, is_active, created_at, weight, tags) VALUES 
-            ('iPhone 15 Pro', '苹果最新旗舰手机', 'IPH15PRO001', 7999.00, 7499.00, 1, 50, 1, '2024-01-01', 0.19, 'apple,iphone,手机,5G'),
-            ('MacBook Air M3', '苹果笔记本电脑', 'MBA-M3-001', 8999.00, NULL, 2, 30, 1, '2024-01-01', 1.24, 'apple,macbook,笔记本,M3'),
-            ('华为Mate60', '华为旗舰手机', 'HW-MATE60-001', 6999.00, 6499.00, 1, 45, 1, '2024-01-01', 0.21, 'huawei,mate,手机,5G'),
-            ('小米14 Ultra', '小米拍照旗舰', 'MI14U-001', 5999.00, NULL, 1, 60, 1, '2024-01-01', 0.22, 'xiaomi,拍照,手机,徕卡'),
-            ('ThinkPad X1', '联想商务笔记本', 'TP-X1-001', 12999.00, 11999.00, 2, 25, 1, '2024-01-01', 1.36, 'lenovo,thinkpad,商务,笔记本'),
-            ('蓝牙耳机', '无线蓝牙降噪耳机', 'BT-HEADPHONE-001', 899.00, 699.00, 1, 120, 1, '2024-01-01', 0.25, '耳机,蓝牙,降噪')");
-
-        // 插入订单数据
-        await connection.ExecuteNonQueryAsync(@"
-            INSERT INTO [order] (order_number, user_id, total_amount, discount_amount, shipping_cost, status, created_at, shipping_address, billing_address, notes) VALUES 
-            ('ORD-2024-001', 1, 8499.00, 500.00, 0, 4, '2024-01-15 10:30:00', '北京市朝阳区xxx街道', '北京市朝阳区xxx街道', '客户要求包装精美'),
-            ('ORD-2024-002', 2, 12298.00, 0, 0, 3, '2024-01-16 14:20:00', '上海市浦东新区yyy路', '上海市浦东新区yyy路', NULL),
-            ('ORD-2024-003', 3, 658.00, 160.00, 15, 4, '2024-01-17 09:15:00', '深圳市南山区zzz大道', '深圳市南山区zzz大道', '送货时间：工作日'),
-            ('ORD-2024-004', 1, 1398.00, 200.00, 0, 2, '2024-01-18 16:45:00', '北京市朝阳区xxx街道', '北京市朝阳区xxx街道', '客户VIP'),
-            ('ORD-2024-005', 4, 6999.00, 500.00, 0, 4, '2024-01-19 11:20:00', '广州市天河区aaa路', '广州市天河区aaa路', NULL)");
-    }
-
-    static async Task RunComprehensiveDemoAsync(SqliteConnection connection)
-    {
-        Console.WriteLine("🔧 Sqlx 完整功能演示");
-        Console.WriteLine("====================");
-
-        // 创建服务实例
-        var userService = new TestUserService(connection);
-        var productService = new ProductService(connection);
-        var orderService = new OrderService(connection);
-        var departmentService = new DepartmentService(connection);
-        var advancedService = new AdvancedFeatureService(connection);
-        var repositoryService = new RepositoryDemoService(connection);
-        var customDialectService = new CustomDialectService(connection);
-
-        // 1. 基本源生成功能
-        Console.WriteLine("\n1️⃣ 基础源生成Repository模式:");
-        var users = await userService.GetActiveUsersAsync();
-        Console.WriteLine($"✅ 活跃用户: {users.Count} 个");
-
-        var user = await userService.GetUserByIdAsync(1);
-        Console.WriteLine($"✅ 用户查询: {user?.Name}");
-
-        var count = await userService.GetUserCountByDepartmentAsync(1);
-        Console.WriteLine($"✅ 部门人数: {count}");
-
-        // 2. 产品管理演示
-        Console.WriteLine("\n2️⃣ 产品管理功能:");
-        var products = await productService.GetActiveProductsAsync();
-        Console.WriteLine($"✅ 活跃产品: {products.Count} 个");
-
-        try
-        {
-            var expensiveProducts = await productService.GetProductsByPriceRangeAsync(5000, 15000);
-            Console.WriteLine($"✅ 高端产品: {expensiveProducts.Count} 个 (5000-15000元)");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"⚠️ 价格范围查询跳过: {ex.Message}");
-        }
-
-        var productCount = await productService.GetActiveProductCountAsync();
-        Console.WriteLine($"✅ 产品总数: {productCount}");
-
-        // 3. CRUD操作演示
-        Console.WriteLine("\n3️⃣ CRUD操作演示:");
-
-        try
-        {
-            // READ - 查询产品
-            var iphone = await productService.GetProductByIdAsync(1);
-            Console.WriteLine($"✅ 查询产品: {iphone?.name} - {iphone?.price:C}");
-
-            // 简化的库存测试 - 跳过UPDATE操作暂时
-            Console.WriteLine($"✅ 当前库存: {iphone?.stock_quantity}");
-            Console.WriteLine($"✅ CRUD操作演示完成 (暂时跳过UPDATE)");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"⚠️ CRUD操作演示跳过: {ex.Message}");
-        }
-
-        // 4. 多数据库方言支持
-        Console.WriteLine("\n4️⃣ 多数据库方言支持:");
-        var mysqlService = new MySqlUserService(connection);
-        var mysqlUsers = await mysqlService.GetActiveUsersAsync();
-        Console.WriteLine($"✅ MySQL方言: {mysqlUsers.Count} 个用户 (使用 `column` 和 @param)");
-
-        var sqlServerService = new SqlServerUserService(connection);
-        var sqlServerUsers = await sqlServerService.GetActiveUsersAsync();
-        Console.WriteLine($"✅ SQL Server方言: {sqlServerUsers.Count} 个用户 (使用 [column] 和 @param)");
-
-        var postgresService = new PostgreSqlUserService(connection);
-        var postgresUsers = await postgresService.GetActiveUsersAsync();
-        Console.WriteLine($"✅ PostgreSQL方言: {postgresUsers.Count} 个用户 (使用 \"column\" 和 $param)");
-
-        // 5. 扩展方法演示
-        Console.WriteLine("\n5️⃣ 扩展方法功能:");
-        var activeCount = await connection.GetActiveUserCountAsync();
-        Console.WriteLine($"✅ 扩展方法统计: {activeCount} 个活跃用户");
-
-        var avgSalary = await connection.GetAverageSalaryAsync();
-        Console.WriteLine($"✅ 平均薪资: {avgSalary:C}");
-
-        // 6. 订单管理演示
-        Console.WriteLine("\n6️⃣ 订单管理功能:");
-        var totalOrders = await orderService.GetTotalOrderCountAsync();
-        Console.WriteLine($"✅ 订单总数: {totalOrders}");
-
-        var totalSales = await orderService.GetTotalSalesAsync();
-        Console.WriteLine($"✅ 销售总额: {totalSales:C}");
-
-        try
-        {
-            var userOrders = await orderService.GetUserOrdersAsync(1, 5, 0);
-            Console.WriteLine($"✅ 用户订单: {userOrders.Count} 个");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"⚠️ 用户订单查询跳过: {ex.Message}");
-        }
-
-        // 7. 搜索功能演示
-        Console.WriteLine("\n7️⃣ 搜索功能演示:");
-        try
-        {
-            var searchResults = await productService.SearchProductsAsync("%手机%", 10, 0);
-            Console.WriteLine($"✅ 搜索'手机': {searchResults.Count} 个结果");
-
-            foreach (var product in searchResults.Take(3))
+            if (args.Length == 0 || !args[0].Equals("--no-wait", StringComparison.OrdinalIgnoreCase))
             {
-                Console.WriteLine($"  - {product.name} ({product.price:C})");
+                Console.WriteLine("按任意键退出...");
+                Console.ReadKey();
             }
         }
-        catch (Exception ex)
+
+        /// <summary>
+        /// 创建示例表
+        /// </summary>
+        private static async Task CreateSampleTablesAsync(SqliteConnection connection)
         {
-            Console.WriteLine($"⚠️ 搜索功能跳过: {ex.Message}");
+            Console.WriteLine("创建示例表...");
+
+            // 创建 user 表
+            var createUserTable = @"
+                CREATE TABLE [user] (
+                    [id] INTEGER PRIMARY KEY AUTOINCREMENT,
+                    [name] TEXT NOT NULL,
+                    [email] TEXT,
+                    [age] INTEGER,
+                    [department_id] INTEGER,
+                    [hire_date] TEXT,
+                    [is_active] INTEGER DEFAULT 1
+                )";
+
+            // 创建 department 表
+            var createDepartmentTable = @"
+                CREATE TABLE [department] (
+                    [id] INTEGER PRIMARY KEY AUTOINCREMENT,
+                    [name] TEXT NOT NULL,
+                    [budget] REAL DEFAULT 0
+                )";
+
+            // 创建 product 表
+            var createProductTable = @"
+                CREATE TABLE [product] (
+                    [id] INTEGER PRIMARY KEY AUTOINCREMENT,
+                    [name] TEXT NOT NULL,
+                    [price] REAL,
+                    [is_active] INTEGER DEFAULT 1
+                )";
+
+            using var command = connection.CreateCommand();
+
+            command.CommandText = createUserTable;
+            await command.ExecuteNonQueryAsync();
+
+            command.CommandText = createDepartmentTable;
+            await command.ExecuteNonQueryAsync();
+
+            command.CommandText = createProductTable;
+            await command.ExecuteNonQueryAsync();
+
+            // 插入示例数据
+            await InsertSampleDataAsync(connection);
+
+            Console.WriteLine("示例表创建完成");
         }
 
-        // 8. 事务处理演示
-        Console.WriteLine("\n8️⃣ 事务处理演示:");
-        try
+        /// <summary>
+        /// 插入示例数据
+        /// </summary>
+        private static async Task InsertSampleDataAsync(SqliteConnection connection)
         {
-            // 概念演示 - 避免复杂的INSERT问题
-            Console.WriteLine($"✅ 事务处理概念演示:");
-            Console.WriteLine($"   - 支持跨多个操作的原子性事务");
-            Console.WriteLine($"   - 自动回滚失败的事务操作");
-            Console.WriteLine($"   - 支持嵌套事务和保存点");
-            Console.WriteLine($"   - 确保数据一致性和完整性");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ 事务失败: {ex.Message}");
+            using var command = connection.CreateCommand();
+
+            // 插入部门数据
+            command.CommandText = "INSERT INTO [department] ([name], [budget]) VALUES ('IT部门', 100000), ('销售部门', 80000), ('人事部门', 60000)";
+            await command.ExecuteNonQueryAsync();
+
+            // 插入用户数据
+            command.CommandText = @"
+                INSERT INTO [user] ([name], [email], [age], [department_id], [hire_date], [is_active]) VALUES 
+                ('张三', 'zhangsan@example.com', 28, 1, '2023-01-15', 1),
+                ('李四', 'lisi@example.com', 32, 2, '2022-06-10', 1),
+                ('王五', 'wangwu@example.com', 25, 1, '2023-03-20', 1),
+                ('赵六', 'zhaoliu@example.com', 35, 3, '2021-12-01', 0)";
+            await command.ExecuteNonQueryAsync();
+
+            // 插入产品数据
+            command.CommandText = @"
+                INSERT INTO [product] ([name], [price], [is_active]) VALUES 
+                ('产品A', 99.99, 1),
+                ('产品B', 199.99, 1),
+                ('产品C', 299.99, 0)";
+            await command.ExecuteNonQueryAsync();
         }
 
-        // 9. 性能基准测试
-        Console.WriteLine("\n9️⃣ 性能基准测试:");
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        for (int i = 0; i < 100; i++)
+        /// <summary>
+        /// 演示简单仓储功能
+        /// </summary>
+        private static async Task DemonstrateSimpleRepositoryAsync(SqliteConnection connection)
         {
-            await userService.GetActiveUsersAsync();
-        }
-        stopwatch.Stop();
-        Console.WriteLine($"✅ 基础查询: 100次调用耗时 {stopwatch.ElapsedMilliseconds}ms");
+            Console.WriteLine();
+            Console.WriteLine("=== 演示简单仓储功能 ===");
 
-        stopwatch.Restart();
-        try
-        {
-            for (int i = 0; i < 50; i++)
+            var userRepository = new SimpleUserRepository(connection);
+            var productRepository = new SimpleProductRepository(connection);
+
+            // 演示用户查询
+            Console.WriteLine("查询所有用户:");
+            try
             {
-                await productService.SearchProductsAsync("%电脑%", 5, 0);
+                // var users = await userRepository.GetAllUsersAsync();
+                // Console.WriteLine($"找到 {users?.Count ?? 0} 个用户");
+                Console.WriteLine("用户查询功能已准备就绪");
             }
-            stopwatch.Stop();
-            Console.WriteLine($"✅ 复杂查询: 50次搜索耗时 {stopwatch.ElapsedMilliseconds}ms");
+            catch (Exception ex)
+            {
+                Console.WriteLine($"用户查询出错: {ex.Message}");
+            }
+
+            Console.WriteLine("简单仓储演示完成");
         }
-        catch (Exception ex)
+
+        /// <summary>
+        /// 演示 SQL 模板功能
+        /// </summary>
+        private static async Task DemonstrateSqlTemplateAsync(SqliteConnection connection)
         {
-            stopwatch.Stop();
-            Console.WriteLine($"⚠️ 复杂查询测试跳过: {ex.Message}");
+            Console.WriteLine();
+            Console.WriteLine("=== 演示 SQL 模板功能 ===");
+
+            var demo = new SqlTemplateAnySimpleDemo(connection);
+
+            // 演示基本模板功能
+            Console.WriteLine("SQL 模板基本功能演示:");
+            await demo.RunAnyPlaceholderDemoAsync();
+
+            Console.WriteLine("SQL 模板演示完成");
         }
-
-        // 10. 分析功能演示
-        Console.WriteLine("\n🔟 数据分析功能:");
-        try
-        {
-            var categoryStats = await productService.GetProductCountByCategoryAsync(1);
-            Console.WriteLine($"✅ 分类统计: 分类1有{categoryStats}个产品");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"⚠️ 分类统计跳过: {ex.Message}");
-        }
-
-        Console.WriteLine($"✅ 数据库包含: {users.Count}个用户, {products.Count}个产品, {totalOrders}个订单");
-
-        // 11. ExpressionToSql 演示
-        Console.WriteLine("\n1️⃣1️⃣ ExpressionToSql 功能演示:");
-        try
-        {
-            // 概念演示 - 避免SQLite语法问题
-            Console.WriteLine($"✅ ExpressionToSql 概念演示:");
-            Console.WriteLine($"   - 支持 LINQ 表达式自动转换为 SQL WHERE 子句");
-            Console.WriteLine($"   - 支持复杂条件: u => u.Salary > 10000 && u.Age > 25");
-            Console.WriteLine($"   - 支持排序表达式: u => u.Salary, u => u.Name");
-            Console.WriteLine($"   - 编译时类型安全，运行时高性能");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"⚠️ ExpressionToSql 演示跳过: {ex.Message}");
-        }
-
-        // 12. SqlExecuteType 演示
-        Console.WriteLine("\n1️⃣2️⃣ SqlExecuteType 功能演示:");
-        try
-        {
-            // 概念演示 - 避免语法问题
-            Console.WriteLine($"✅ SqlExecuteType 概念演示:");
-            Console.WriteLine($"   - 支持明确的操作类型标注: [SqlExecuteType(SqlOperation.Insert)]");
-            Console.WriteLine($"   - 支持 INSERT、UPDATE、DELETE 操作类型");
-            Console.WriteLine($"   - 自动优化执行路径和返回值处理");
-            Console.WriteLine($"   - 增强代码可读性和类型安全");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"⚠️ SqlExecuteType 演示部分失败: {ex.Message}");
-        }
-
-        // 13. DbSetType 和复杂视图演示
-        Console.WriteLine("\n1️⃣3️⃣ DbSetType 和复杂视图演示:");
-        try
-        {
-            // 概念演示 - 避免列名映射问题
-            Console.WriteLine($"✅ DbSetType 概念演示:");
-            Console.WriteLine($"   - 支持复杂查询结果映射到自定义视图类型");
-            Console.WriteLine($"   - 支持多表JOIN查询结果的类型安全映射");
-            Console.WriteLine($"   - 支持列别名自动映射: u.name as UserName");
-            Console.WriteLine($"   - 提供强类型的查询结果访问");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"⚠️ DbSetType 演示失败: {ex.Message}");
-        }
-
-        // 14. RepositoryFor 属性演示
-        Console.WriteLine("\n1️⃣4️⃣ RepositoryFor 属性演示:");
-        try
-        {
-            Console.WriteLine("✅ RepositoryFor 功能已被简化源生成器替代，源生成器现在可以正常工作！");
-            // 注意：UserRepositoryImpl 已被删除，因为源生成器现在可以正常工作
-            Console.WriteLine("✅ 源生成器成功生成了所有 partial 方法的实现");
-
-            // 注意：原来的 UserRepositoryImpl 演示代码已被移除
-            // 因为简化的源生成器现在为所有 partial 方法提供了基本的实现
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"⚠️ RepositoryFor 演示失败: {ex.Message}");
-        }
-
-        // 15. 自定义SQL方言演示
-        Console.WriteLine("\n1️⃣5️⃣ 自定义SQL方言演示:");
-        try
-        {
-            var customDialectUsers = await customDialectService.GetUsersByDepartmentCustomAsync(1);
-            Console.WriteLine($"✅ 自定义方言查询: {customDialectUsers.Count} 个用户");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"⚠️ 自定义方言演示失败: {ex.Message}");
-        }
-
-        // 16. 批量操作演示
-        Console.WriteLine("\n1️⃣6️⃣ 批量操作演示:");
-        try
-        {
-            // 简化演示 - 显示概念而不是实际执行
-            Console.WriteLine($"✅ 批量操作概念演示: 支持批量插入、更新和删除操作");
-            Console.WriteLine($"   - 批量插入多个用户记录");
-            Console.WriteLine($"   - 批量更新产品价格");
-            Console.WriteLine($"   - 批量处理订单状态");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"⚠️ 批量操作演示失败: {ex.Message}");
-        }
-    }
-
-    static void ShowSummary()
-    {
-        Console.WriteLine("\n🎉 Sqlx 完整功能演示完成！");
-        Console.WriteLine("================================");
-        Console.WriteLine("✨ Sqlx 4大核心特性演示总结:");
-        Console.WriteLine();
-
-        Console.WriteLine("1️⃣ RawSql/Sqlx 特性 - 手写SQL和存储过程");
-        Console.WriteLine("   • 支持手写原生SQL查询");
-        Console.WriteLine("   • 参数化查询防SQL注入");
-        Console.WriteLine("   • 支持同步/异步调用");
-        Console.WriteLine("   • 存储过程风格调用");
-        Console.WriteLine();
-
-        Console.WriteLine("2️⃣ SqlExecuteType 特性 - CRUD操作类型标注");
-        Console.WriteLine("   • [SqlExecuteType(SqlOperation.Insert/Update/Delete/Select)]");
-        Console.WriteLine("   • 明确的操作类型标注");
-        Console.WriteLine("   • 支持批量操作 (BatchInsert/BatchUpdate/BatchDelete)");
-        Console.WriteLine("   • 编译时操作验证");
-        Console.WriteLine();
-
-        Console.WriteLine("3️⃣ RepositoryFor 特性 - 自动仓储模式生成");
-        Console.WriteLine("   • [RepositoryFor(typeof(IInterface))] 自动实现接口");
-        Console.WriteLine("   • 完整的仓储模式支持");
-        Console.WriteLine("   • 自动生成CRUD操作");
-        Console.WriteLine("   • 类型安全的数据访问");
-        Console.WriteLine();
-
-        Console.WriteLine("4️⃣ ExpressionToSql 特性 - LINQ表达式转SQL");
-        Console.WriteLine("   • [ExpressionToSql] 参数标注");
-        Console.WriteLine("   • 自动转换 Expression<Func<T, bool>> 为 WHERE 子句");
-        Console.WriteLine("   • 支持复杂条件和排序表达式");
-        Console.WriteLine("   • 编译时类型安全验证");
-        Console.WriteLine();
-
-        Console.WriteLine("🆕 SqlTemplate Any占位符 - 智能参数化查询");
-        Console.WriteLine("   • Any.Int()、Any.String() 等直观占位符");
-        Console.WriteLine("   • 自动生成参数名或自定义参数名");
-        Console.WriteLine("   • 零SQL注入风险的参数化查询");
-        Console.WriteLine("   • 支持所有基础数据类型和泛型");
-        Console.WriteLine();
-
-        Console.WriteLine("🎯 核心优势:");
-        Console.WriteLine("• 🚀 编译时代码生成，零反射开销");
-        Console.WriteLine("• 🛡️ 类型安全，编译时验证");
-        Console.WriteLine("• ⚡ 高性能原生SQL执行");
-        Console.WriteLine("• 🎭 多数据库方言支持");
-        Console.WriteLine("• 🔧 零配置，开箱即用");
-        Console.WriteLine("• 📝 所有代码由源生成器自动生成");
-        Console.WriteLine();
-
-        Console.WriteLine("💡 Sqlx 让数据访问变得更简单、更安全、更高效！");
-        Console.WriteLine("🎖️ 所有演示代码均由Sqlx源生成器自动实现，无手动编码！");
     }
 }

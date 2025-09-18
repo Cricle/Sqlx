@@ -8,20 +8,26 @@ namespace SqlxDemo.Models;
 [TableName("product")]
 public class Product
 {
-    public int id { get; set; }
-    public string name { get; set; } = "";
-    public string description { get; set; } = "";
-    public string sku { get; set; } = "";
-    public decimal price { get; set; }
-    public decimal? discount_price { get; set; }
-    public int category_id { get; set; }
-    public int stock_quantity { get; set; }
-    public bool is_active { get; set; } = true;
-    public DateTime created_at { get; set; }
-    public DateTime? updated_at { get; set; }
-    public string? image_url { get; set; }
-    public double weight { get; set; }
-    public string tags { get; set; } = "";
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+
+    /// <summary>
+    /// Lowercase alias for Name (for compatibility)
+    /// </summary>
+    public string Name1 { get => Name; set => Name = value; }
+
+    public string Description { get; set; } = "";
+    public string Sku { get; set; } = "";
+    public decimal Price { get; set; }
+    public decimal? Discount_price { get; set; }
+    public int Category_id { get; set; }
+    public int Stock_quantity { get; set; }
+    public bool Is_active { get; set; } = true;
+    public DateTime Created_at { get; set; }
+    public DateTime? Updated_at { get; set; }
+    public string? Image_url { get; set; }
+    public double Weight { get; set; }
+    public string Tags { get; set; } = "";
 }
 
 /// <summary>
@@ -30,18 +36,18 @@ public class Product
 [TableName("order")]
 public class Order
 {
-    public int id { get; set; }
-    public string order_number { get; set; } = "";
-    public int user_id { get; set; }
-    public decimal total_amount { get; set; }
-    public decimal discount_amount { get; set; }
-    public decimal shipping_cost { get; set; }
-    public int status { get; set; }
-    public DateTime created_at { get; set; }
-    public DateTime? shipped_at { get; set; }
-    public DateTime? delivered_at { get; set; }
-    public string shipping_address { get; set; } = "";
-    public string billing_address { get; set; } = "";
-    public string? notes { get; set; }
+    public int Id { get; set; }
+    public string Order_number { get; set; } = "";
+    public int User_id { get; set; }
+    public decimal Total_amount { get; set; }
+    public decimal Discount_amount { get; set; }
+    public decimal Shipping_cost { get; set; }
+    public int Status { get; set; }
+    public DateTime Created_at { get; set; }
+    public DateTime? Shipped_at { get; set; }
+    public DateTime? Delivered_at { get; set; }
+    public string Shipping_address { get; set; } = "";
+    public string Billing_address { get; set; } = "";
+    public string? Notes { get; set; }
 }
 

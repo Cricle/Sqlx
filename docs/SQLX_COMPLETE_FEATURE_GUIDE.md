@@ -69,66 +69,69 @@ public partial class UserService
 }
 ```
 
-### 3. **SqlExecuteType 特性** - CRUD 生成和批量操作
+### 3. **ExpressionToSql 增强特性** - 智能 CRUD 和类型安全查询
 
-**功能说明**: 根据指定的操作类型和表名自动生成标准 CRUD 操作。
+> **重要更新**: `SqlExecuteTypeAttribute` 已被弃用，其功能已完全整合到 `ExpressionToSql` 中，提供更简洁统一的 API。
 
-**支持的操作类型**:
-- `SqlOperation.Select` - 查询操作
-- `SqlOperation.Insert` - 插入操作  
-- `SqlOperation.Update` - 更新操作
-- `SqlOperation.Delete` - 删除操作
+**功能说明**: 通过方法名智能推断操作类型，结合 ExpressionToSql 参数实现类型安全的 CRUD 操作。
 
-**批量操作支持**:
-```csharp
-public static class SqlExecuteTypeValues
-{
-    public const int BatchInsert = 4;
-    public const int BatchUpdate = 5;
-    public const int BatchDelete = 6;
-    public const int BatchCommand = 7;
-}
-```
+**智能推断规则**:
+- 方法名以 `Insert/Create/Add` 开头 → INSERT 操作
+- 方法名以 `Update/Modify/Edit` 开头 → UPDATE 操作  
+- 方法名以 `Delete/Remove` 开头 → DELETE 操作
+- 方法名以 `Get/Find/Query/Search` 开头 → SELECT 操作
 
-**特性语法**:
-```csharp
-[SqlExecuteType(SqlOperation.Select, "users")]
-public partial Task<IEnumerable<User>> SelectUsersAsync();
-
-[SqlExecuteType(SqlOperation.Insert, "users")]
-public partial Task<int> InsertUserAsync(User user);
-```
-
-**核心优势**:
-- ✅ 自动 CRUD 生成
-- ✅ 批量操作支持
-- ✅ 表名自动推断
-- ✅ 实体属性映射
-
-**代码示例**:
+**新的 API 设计**:
 ```csharp
 public partial class UserService
 {
-    // 自动生成查询
-    [SqlExecuteType(SqlOperation.Select, "users")]
-    public partial Task<IEnumerable<User>> GetAllUsersAsync();
-
-    // 自动生成插入
-    [SqlExecuteType(SqlOperation.Insert, "users")]
-    public partial Task<int> CreateUserAsync(User user);
-
-    // 自动生成更新
-    [SqlExecuteType(SqlOperation.Update, "users")]
-    public partial Task<int> UpdateUserAsync(User user);
-
-    // 自动生成删除
-    [SqlExecuteType(SqlOperation.Delete, "users")]
+    // INSERT - 通过方法名自动推断
+    public partial Task<int> InsertUserAsync(User user);
+    public partial Task<int> CreateUserAsync(string name, string email);
+    
+    // UPDATE - 结合 ExpressionToSql 实现类型安全更新
+    public partial Task<int> UpdateUserAsync(int id, User user);
+    public partial Task<int> UpdateUserSalaryAsync(
+        [ExpressionToSql] Expression<Func<User, bool>> whereCondition,
+        decimal newSalary);
+    
+    // DELETE - 支持复杂条件删除
     public partial Task<int> DeleteUserAsync(int id);
-
-    // 批量操作示例
-    [Sqlx("BATCH_INSERT_USERS")]
-    public partial Task<int> BatchInsertUsersAsync(IEnumerable<User> users);
+    public partial Task<int> RemoveUsersAsync(
+        [ExpressionToSql] Expression<Func<User, bool>> whereCondition);
+    
+    // SELECT - 保持原有强大功能
+    public partial Task<User?> GetUserByIdAsync(int id);
+    public partial Task<IList<User>> FindUsersAsync(
+        [ExpressionToSql] Expression<Func<User, bool>> whereCondition);
 }
+```
+
+**核心优势**:
+- ✅ **更简洁的 API** - 无需多重特性标注
+- ✅ **智能操作推断** - 基于方法名自动判断操作类型
+- ✅ **类型安全增强** - ExpressionToSql 提供编译时验证
+- ✅ **统一的设计** - 不再区分不同的特性类型
+- ✅ **向后兼容** - 旧的 SqlExecuteType 仍然工作（但有弃用警告）
+
+**迁移示例**:
+```csharp
+// ❌ 旧方式 (已弃用)
+[SqlExecuteType(SqlOperation.Insert, "users")]
+[Sqlx("INSERT INTO users (name, email) VALUES (@name, @email)")]
+public partial Task<int> CreateUserAsync(string name, string email);
+
+// ✅ 新方式 (推荐)
+public partial Task<int> InsertUserAsync(User user);  // 方法名推断 + 实体映射
+
+// ✅ 或者结合部分 SQL
+[Sqlx("INSERT INTO users")]  // 只需一个特性
+public partial Task<int> CreateUserAsync(User user);
+
+// ✅ 高级用法 - ExpressionToSql 参数
+public partial Task<int> UpdateUsersAsync(
+    [ExpressionToSql] Expression<Func<User, object>> setValues,
+    [ExpressionToSql] Expression<Func<User, bool>> whereCondition);
 ```
 
 ### 4. **RepositoryFor 特性** - 自动仓储模式生成

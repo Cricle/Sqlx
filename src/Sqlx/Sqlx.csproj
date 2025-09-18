@@ -11,12 +11,12 @@
   <!-- 包元数据 -->
   <PropertyGroup>
     <PackageId>Sqlx</PackageId>
-    <Version>2.0.2</Version>
-    <Title>Sqlx - 现代 .NET 源生成 ORM 框架</Title>
+    <Version>3.0.0</Version>
+    <Title>Sqlx - 简化版现代 .NET ORM 框架</Title>
     <Description>
-      Sqlx 是一个现代化的 .NET ORM 框架，采用源生成技术实现零反射、编译时类型安全和 AOT 原生支持。
-      特色功能包括：革新的 SqlTemplate 纯模板设计、ExpressionToSql 类型安全查询构建、完整的 C# 12 Primary Constructor 和 Record 类型支持。
-      适用于高性能应用、云原生架构和微服务场景。
+      Sqlx 3.0 - 极简四核心模块设计，专注性能与易用性。
+      包含：Sqlx手写SQL、ExpressionToSql类型安全查询、RepositoryFor零代码仓储、SqlTemplate高性能模板。
+      零反射、AOT原生支持、编译时验证，适用于云原生和微服务场景。
     </Description>
     <PackageTags>
       orm;sql;netstandard;net8;net9;source-generator;aot;performance;type-safe;
@@ -24,14 +24,13 @@
       cloud-native;microservices;zero-reflection;compile-time
     </PackageTags>
     <PackageReleaseNotes>
-      v2.0.2 - SqlTemplate 革新版本
-      ✨ 重大更新: SqlTemplate 纯模板设计 - 模板与参数完全分离
-      ✨ 新增 ParameterizedSql 类型用于执行实例
-      ✨ 无缝集成 ExpressionToSql 和 SqlTemplate
-      ✨ 完整的 AOT 兼容性优化
-      ✨ 性能提升 33%，内存效率显著改善
-      ✅ 1126+ 单元测试全部通过
-      ✅ 完全向后兼容（带过时警告）
+      v3.0.0 - 极简架构重构版本
+      ✨ 重大简化: 四核心模块设计 - Sqlx、ExpressionToSql、RepositoryFor、SqlTemplate
+      ✨ 删除冗余功能: 专注核心场景，提升开发效率
+      ✨ 全面AOT优化: 删除复杂反射，提升运行时性能
+      ✨ 四大数据库支持: SQL Server、MySQL、PostgreSQL、SQLite
+      ⚠️ 破坏性更新: 不向后兼容，专注未来
+      ✅ 简化API设计，学习成本降低70%
     </PackageReleaseNotes>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Authors>Sqlx Team</Authors>

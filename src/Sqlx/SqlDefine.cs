@@ -1,9 +1,3 @@
-// -----------------------------------------------------------------------
-// <copyright file="SqlDefine.cs" company="Cricle">
-// Copyright (c) Cricle. All rights reserved.
-// </copyright>
-// -----------------------------------------------------------------------
-
 namespace Sqlx
 {
     /// <summary>

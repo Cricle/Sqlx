@@ -1,4 +1,4 @@
-﻿namespace Sqlx
+namespace Sqlx
 {
     public partial class ExpressionToSql<T>
     {

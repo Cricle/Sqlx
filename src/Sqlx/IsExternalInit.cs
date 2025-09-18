@@ -1,9 +1,3 @@
-// -----------------------------------------------------------------------
-// <copyright file="IsExternalInit.cs" company="Cricle">
-// Copyright (c) Cricle. All rights reserved.
-// </copyright>
-// -----------------------------------------------------------------------
-
 #nullable enable
 
 // This file is needed for record types in netstandard2.0

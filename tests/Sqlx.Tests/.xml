@@ -1134,12 +1134,6 @@
             Tests for utility methods and helper functions.
             </summary>
         </member>
-        <member name="T:Sqlx.Tests.Core.ValueStringBuilderCoreTests">
-            <summary>
-            ValueStringBuilder 核心功能单元测试
-            验证高性能字符串构建器的核心功能
-            </summary>
-        </member>
         <member name="T:Sqlx.Tests.CSharpGeneratorBasicTests">
             <summary>
             Basic tests for CSharpGenerator class to improve coverage.

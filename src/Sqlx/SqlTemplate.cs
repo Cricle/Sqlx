@@ -1,9 +1,3 @@
-// -----------------------------------------------------------------------
-// <copyright file="SqlTemplate.cs" company="Cricle">
-// Copyright (c) Cricle. All rights reserved.
-// </copyright>
-// -----------------------------------------------------------------------
-
 #nullable enable
 
 using System;
@@ -82,11 +76,8 @@ namespace Sqlx
         /// <returns>模板定义</returns>
         public static SqlTemplate Parse(string sql)
         {
-            // 编译时验证 SQL 安全性
-            if (!CompileTimeSqlTemplate.ValidateTemplate(sql))
-            {
-                throw new InvalidOperationException($"不安全的 SQL 模板: {sql}");
-            }
+            if (string.IsNullOrWhiteSpace(sql))
+                throw new ArgumentException("SQL template cannot be null or empty", nameof(sql));
             return new(sql, new Dictionary<string, object?>());
         }
 
@@ -95,20 +86,9 @@ namespace Sqlx
 
 
 
-        /// <summary>
-        /// Executes template with bound parameters
-        /// </summary>
-        /// <param name="parameters">Parameter object</param>
-        /// <returns>Parameterized SQL</returns>
         public ParameterizedSql Execute(object? parameters = null) => ParameterizedSql.Create(Sql, parameters);
 
-        /// <summary>
-        /// Executes template with dictionary parameters
-        /// </summary>
-        /// <param name="parameters">Parameter dictionary</param>
-        /// <returns>Parameterized SQL</returns>
-        public ParameterizedSql Execute(Dictionary<string, object?> parameters) =>
-            ParameterizedSql.CreateWithDictionary(Sql, parameters);
+        public ParameterizedSql Execute(Dictionary<string, object?> parameters) => ParameterizedSql.CreateWithDictionary(Sql, parameters);
 
         /// <summary>
         /// Creates fluent parameter binder

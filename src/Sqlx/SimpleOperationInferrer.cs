@@ -1,9 +1,3 @@
-// -----------------------------------------------------------------------
-// <copyright file="SimpleOperationInferrer.cs" company="Cricle">
-// Copyright (c) Cricle. All rights reserved.
-// </copyright>
-// -----------------------------------------------------------------------
-
 #nullable enable
 
 using System;

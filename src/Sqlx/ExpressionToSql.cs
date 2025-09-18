@@ -1,13 +1,8 @@
-// -----------------------------------------------------------------------
-// <copyright file="ExpressionToSql.cs" company="Cricle">
-// Copyright (c) Cricle. All rights reserved.
-// </copyright>
-// -----------------------------------------------------------------------
-
 using Sqlx.Annotations;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Linq;
+using System.Text;
 
 namespace Sqlx
 {
@@ -545,7 +540,7 @@ namespace Sqlx
 
         private string BuildInsertSql()
         {
-            using var sql = new ValueStringBuilder(512);
+            var sql = new StringBuilder(512);
             sql.Append($"INSERT INTO {_dialect.WrapColumn(_tableName!)}");
 
             // 添加列名
@@ -570,7 +565,7 @@ namespace Sqlx
 
         private string BuildUpdateSql()
         {
-            using var sql = new ValueStringBuilder(256);
+            var sql = new StringBuilder(256);
             sql.Append($"UPDATE {_dialect.WrapColumn(_tableName!)} SET ");
 
             // 合并所有 SET 子句
@@ -604,7 +599,7 @@ namespace Sqlx
         /// </summary>
         private string BuildDeleteSql()
         {
-            using var sql = new ValueStringBuilder(256);
+            var sql = new StringBuilder(256);
 
             // DELETE FROM 表名
             sql.Append("DELETE FROM ");
@@ -685,7 +680,7 @@ namespace Sqlx
         /// </summary>
         public string ToAdditionalClause()
         {
-            using var sql = new ValueStringBuilder(256);
+            var sql = new StringBuilder(256);
 
             // GROUP BY子句
             if (_groupByExpressions.Count > 0)
@@ -1151,89 +1146,13 @@ namespace Sqlx
         TKey Key { get; }
     }
 
-    /// <summary>
-    /// 为 IGrouping 提供聚合扩展方法。
-    /// </summary>
     public static class GroupingExtensions
     {
-        /// <summary>
-        /// 计算分组中元素的数量。
-        /// </summary>
-        /// <typeparam name="TKey">分组键的类型。</typeparam>
-        /// <typeparam name="TElement">元素的类型。</typeparam>
-        /// <param name="grouping">分组对象。</param>
-        /// <returns>元素数量。</returns>
-        public static int Count<TKey, TElement>(this IGrouping<TKey, TElement> grouping)
-        {
-            throw new NotImplementedException("此方法仅用于表达式树解析，不应被直接调用");
-        }
-
-        /// <summary>
-        /// 计算分组中元素的总和。
-        /// </summary>
-        /// <typeparam name="TKey">分组键的类型。</typeparam>
-        /// <typeparam name="TElement">元素的类型。</typeparam>
-        /// <typeparam name="TResult">结果的类型。</typeparam>
-        /// <param name="grouping">分组对象。</param>
-        /// <param name="selector">选择器表达式。</param>
-        /// <returns>总和值。</returns>
-        public static TResult Sum<TKey, TElement, TResult>(this IGrouping<TKey, TElement> grouping, Expression<Func<TElement, TResult>> selector)
-        {
-            throw new NotImplementedException("此方法仅用于表达式树解析，不应被直接调用");
-        }
-
-        /// <summary>
-        /// 计算分组中元素的平均值（double类型）。
-        /// </summary>
-        /// <typeparam name="TKey">分组键的类型。</typeparam>
-        /// <typeparam name="TElement">元素的类型。</typeparam>
-        /// <param name="grouping">分组对象。</param>
-        /// <param name="selector">选择器表达式。</param>
-        /// <returns>平均值。</returns>
-        public static double Average<TKey, TElement>(this IGrouping<TKey, TElement> grouping, Expression<Func<TElement, double>> selector)
-        {
-            throw new NotImplementedException("此方法仅用于表达式树解析，不应被直接调用");
-        }
-
-        /// <summary>
-        /// 计算分组中元素的平均值（decimal类型）。
-        /// </summary>
-        /// <typeparam name="TKey">分组键的类型。</typeparam>
-        /// <typeparam name="TElement">元素的类型。</typeparam>
-        /// <param name="grouping">分组对象。</param>
-        /// <param name="selector">选择器表达式。</param>
-        /// <returns>平均值。</returns>
-        public static double Average<TKey, TElement>(this IGrouping<TKey, TElement> grouping, Expression<Func<TElement, decimal>> selector)
-        {
-            throw new NotImplementedException("此方法仅用于表达式树解析，不应被直接调用");
-        }
-
-        /// <summary>
-        /// 获取分组中元素的最大值。
-        /// </summary>
-        /// <typeparam name="TKey">分组键的类型。</typeparam>
-        /// <typeparam name="TElement">元素的类型。</typeparam>
-        /// <typeparam name="TResult">结果的类型。</typeparam>
-        /// <param name="grouping">分组对象。</param>
-        /// <param name="selector">选择器表达式。</param>
-        /// <returns>最大值。</returns>
-        public static TResult Max<TKey, TElement, TResult>(this IGrouping<TKey, TElement> grouping, Expression<Func<TElement, TResult>> selector)
-        {
-            throw new NotImplementedException("此方法仅用于表达式树解析，不应被直接调用");
-        }
-
-        /// <summary>
-        /// 获取分组中元素的最小值。
-        /// </summary>
-        /// <typeparam name="TKey">分组键的类型。</typeparam>
-        /// <typeparam name="TElement">元素的类型。</typeparam>
-        /// <typeparam name="TResult">结果的类型。</typeparam>
-        /// <param name="grouping">分组对象。</param>
-        /// <param name="selector">选择器表达式。</param>
-        /// <returns>最小值。</returns>
-        public static TResult Min<TKey, TElement, TResult>(this IGrouping<TKey, TElement> grouping, Expression<Func<TElement, TResult>> selector)
-        {
-            throw new NotImplementedException("此方法仅用于表达式树解析，不应被直接调用");
-        }
+        public static int Count<TKey, TElement>(this IGrouping<TKey, TElement> grouping) => throw new NotImplementedException("此方法仅用于表达式树解析");
+        public static TResult Sum<TKey, TElement, TResult>(this IGrouping<TKey, TElement> grouping, Expression<Func<TElement, TResult>> selector) => throw new NotImplementedException("此方法仅用于表达式树解析");
+        public static double Average<TKey, TElement>(this IGrouping<TKey, TElement> grouping, Expression<Func<TElement, double>> selector) => throw new NotImplementedException("此方法仅用于表达式树解析");
+        public static double Average<TKey, TElement>(this IGrouping<TKey, TElement> grouping, Expression<Func<TElement, decimal>> selector) => throw new NotImplementedException("此方法仅用于表达式树解析");
+        public static TResult Max<TKey, TElement, TResult>(this IGrouping<TKey, TElement> grouping, Expression<Func<TElement, TResult>> selector) => throw new NotImplementedException("此方法仅用于表达式树解析");
+        public static TResult Min<TKey, TElement, TResult>(this IGrouping<TKey, TElement> grouping, Expression<Func<TElement, TResult>> selector) => throw new NotImplementedException("此方法仅用于表达式树解析");
     }
 }

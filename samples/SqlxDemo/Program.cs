@@ -33,8 +33,20 @@ class Program
                     await RunInterceptorDemo();
                     break;
                 case "3":
+                    await RunAnyPlaceholderDemo();
+                    break;
+                case "4":
+                    await RunSqlTemplateDemo();
+                    break;
+                case "5":
+                    await RunSqlPlaceholderDemo();
+                    break;
+                case "6":
                     await RunCompleteFeatureDemo();
                     await RunInterceptorDemo();
+                    await RunAnyPlaceholderDemo();
+                    await RunSqlTemplateDemo();
+                    await RunSqlPlaceholderDemo();
                     break;
                 default:
                     await RunCompleteFeatureDemo();
@@ -111,10 +123,13 @@ class Program
 
         Console.WriteLine("1️⃣ 完整功能演示 (推荐) - 展示所有4大核心特性");
         Console.WriteLine("2️⃣ 拦截器功能演示 (新增) - 展示SQL执行拦截和性能监控");
-        Console.WriteLine("3️⃣ 完整演示 (全部) - 运行所有演示内容");
+        Console.WriteLine("3️⃣ Any占位符演示 (最新) - 展示SqlTemplate Any占位符功能");
+        Console.WriteLine("4️⃣ SqlTemplate模板化使用演示 - 展示完整的模板化功能");
+        Console.WriteLine("5️⃣ SQL占位符功能演示 - 展示 {{columns}}, {{table}} 等占位符");
+        Console.WriteLine("6️⃣ 完整演示 (全部) - 运行所有演示内容");
         Console.WriteLine();
 
-        Console.Write("请输入选择 (1-3, 默认1): ");
+        Console.Write("请输入选择 (1-6, 默认1): ");
         var input = Console.ReadLine()?.Trim();
         Console.WriteLine();
 
@@ -140,6 +155,69 @@ class Program
         // 运行拦截器演示
         var interceptorDemo = new InterceptorDemo(connection);
         await interceptorDemo.RunCompleteInterceptorDemoAsync();
+    }
+
+    /// <summary>
+    /// 运行Any占位符功能演示
+    /// </summary>
+    static async Task RunAnyPlaceholderDemo()
+    {
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("🎯 启动Any占位符功能演示");
+        Console.WriteLine("========================");
+        Console.ResetColor();
+
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+
+        // 初始化数据库
+        await InitializeDatabaseAsync(connection);
+
+        // 运行Any占位符演示
+        var anyDemo = new SqlTemplateAnySimpleDemo(connection);
+        await anyDemo.RunAnyPlaceholderDemoAsync();
+    }
+
+    /// <summary>
+    /// 运行SqlTemplate模板化使用演示
+    /// </summary>
+    static async Task RunSqlTemplateDemo()
+    {
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.WriteLine("📋 启动SqlTemplate模板化使用演示");
+        Console.WriteLine("===============================");
+        Console.ResetColor();
+
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+
+        // 初始化数据库
+        await InitializeDatabaseAsync(connection);
+
+        // 运行SqlTemplate演示
+        var templateDemo = new SqlTemplateAutoDemo(connection);
+        await templateDemo.RunCompleteAutoDemo();
+    }
+
+    /// <summary>
+    /// 运行SQL占位符功能演示
+    /// </summary>
+    static async Task RunSqlPlaceholderDemo()
+    {
+        Console.ForegroundColor = ConsoleColor.Magenta;
+        Console.WriteLine("🎯 启动SQL占位符功能演示");
+        Console.WriteLine("=========================");
+        Console.ResetColor();
+
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+
+        // 初始化数据库
+        await InitializeDatabaseAsync(connection);
+
+        // 运行SQL占位符演示
+        var placeholderDemo = new SqlPlaceholderDemo(connection);
+        await placeholderDemo.RunCompleteDemo();
     }
 
     static async Task InitializeDatabaseAsync(SqliteConnection connection)
@@ -555,6 +633,13 @@ class Program
         Console.WriteLine("   • 自动转换 Expression<Func<T, bool>> 为 WHERE 子句");
         Console.WriteLine("   • 支持复杂条件和排序表达式");
         Console.WriteLine("   • 编译时类型安全验证");
+        Console.WriteLine();
+
+        Console.WriteLine("🆕 SqlTemplate Any占位符 - 智能参数化查询");
+        Console.WriteLine("   • Any.Int()、Any.String() 等直观占位符");
+        Console.WriteLine("   • 自动生成参数名或自定义参数名");
+        Console.WriteLine("   • 零SQL注入风险的参数化查询");
+        Console.WriteLine("   • 支持所有基础数据类型和泛型");
         Console.WriteLine();
 
         Console.WriteLine("🎯 核心优势:");

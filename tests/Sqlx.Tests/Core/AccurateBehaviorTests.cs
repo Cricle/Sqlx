@@ -348,7 +348,7 @@ public class AccurateBehaviorTests
         Assert.AreEqual(sql, template.Sql, "Template SQL should match regular SQL for constants");
 
         // No parameters expected for constant values
-        Assert.AreEqual(0, template.Parameters.Length, "Should have no parameters for constant values");
+        Assert.AreEqual(0, template.Parameters.Count, "Should have no parameters for constant values");
     }
 
     #endregion

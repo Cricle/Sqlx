@@ -55,7 +55,7 @@ public class SqlOutputInspectionTests
         Console.WriteLine($"Template SQL: {template.Sql}");
         Console.WriteLine($"WHERE Clause: {whereClause}");
         Console.WriteLine($"Additional Clause: {additionalClause}");
-        Console.WriteLine($"Parameters Count: {template.Parameters.Length}");
+        Console.WriteLine($"Parameters Count: {template.Parameters.Count}");
         Console.WriteLine("========================");
 
         // Basic assertions

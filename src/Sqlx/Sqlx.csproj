@@ -1,13 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>netstandard2.0</TargetFramework>
+		<TargetFrameworks>netstandard2.0;net9.0</TargetFrameworks>
 		<NoWarn>$(NoWarn);RS1024;CS1591</NoWarn>
-		<LangVersion>10.0</LangVersion><Nullable>enable</Nullable>
+		<LangVersion>12.0</LangVersion>
+		<Nullable>enable</Nullable>
 		<WarningsAsErrors />
 		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 		<WarningsNotAsErrors>CS8618;CS8625;CS8629;CS8604;CS8601;CS8602;CS8603;CS8765</WarningsNotAsErrors>
 		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+		
+		<!-- AOT Support -->
+		<IsAotCompatible Condition="'$(TargetFramework)' == 'net9.0'">true</IsAotCompatible>
+		<EnableTrimAnalyzer Condition="'$(TargetFramework)' == 'net9.0'">true</EnableTrimAnalyzer>
+		<IsTrimmable Condition="'$(TargetFramework)' == 'net9.0'">true</IsTrimmable>
 		<!-- Package Metadata -->
 		<Version>2.0.2</Version>
 		<Authors>Sqlx Team</Authors>

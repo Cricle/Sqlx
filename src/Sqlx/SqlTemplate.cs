@@ -6,46 +6,142 @@
 
 #nullable enable
 
-using System.Data.Common;
-using System.Linq;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
-namespace Sqlx.Annotations
+namespace Sqlx
 {
     /// <summary>
-    /// Represents a SQL template with parameterized command text and parameters.
+    /// 表示SQL模板，包含参数化的SQL语句和参数字典
+    /// 类似于EF Core的FromSql，但更轻量级
     /// </summary>
-    public readonly record struct SqlTemplate(string Sql, DbParameter[] Parameters)
+    public readonly record struct SqlTemplate(string Sql, IReadOnlyDictionary<string, object?> Parameters)
     {
         /// <summary>
-        /// Determines whether the specified object is equal to the current SqlTemplate.
+        /// 空的SqlTemplate，用于表示没有参数的SQL
         /// </summary>
-        public bool Equals(SqlTemplate other)
+        public static readonly SqlTemplate Empty = new(string.Empty, new Dictionary<string, object?>());
+        
+        /// <summary>
+        /// 创建一个新的SqlTemplate（使用强类型值字典）
+        /// </summary>
+        /// <typeparam name="T">值类型</typeparam>
+        /// <param name="sql">SQL语句</param>
+        /// <param name="parameters">强类型参数字典</param>
+        /// <returns>SqlTemplate实例</returns>
+        public static SqlTemplate Create<T>(string sql, Dictionary<string, T> parameters)
         {
-            return Sql == other.Sql &&
-                   (Parameters?.Length ?? 0) == (other.Parameters?.Length ?? 0) &&
-                   (Parameters == null && other.Parameters == null ||
-                    Parameters != null && other.Parameters != null &&
-                    Parameters.SequenceEqual(other.Parameters, DbParameterComparer.Instance));
+            var paramDict = new Dictionary<string, object?>();
+            foreach (var kvp in parameters)
+            {
+                paramDict[kvp.Key] = kvp.Value;
+            }
+            return new SqlTemplate(sql, paramDict);
         }
 
         /// <summary>
-        /// Returns the hash code for this SqlTemplate.
+        /// 创建一个新的SqlTemplate（使用object字典，向后兼容）
         /// </summary>
-        public override int GetHashCode()
+        /// <param name="sql">SQL语句</param>
+        /// <param name="parameters">参数字典</param>
+        /// <returns>SqlTemplate实例</returns>
+        public static SqlTemplate Create(string sql, Dictionary<string, object?> parameters)
         {
-            unchecked
+            return new SqlTemplate(sql, parameters);
+        }
+        
+        /// <summary>
+        /// 创建一个新的SqlTemplate（使用泛型参数对象，AOT友好）
+        /// </summary>
+        /// <typeparam name="T">参数对象类型</typeparam>
+        /// <param name="sql">SQL语句</param>
+        /// <param name="parameters">参数对象</param>
+        /// <returns>SqlTemplate实例</returns>
+        public static SqlTemplate Create<
+#if NET5_0_OR_GREATER
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
+#endif
+            T>(string sql, T? parameters = default)
+        {
+            var paramDict = new Dictionary<string, object?>();
+            
+            if (parameters != null)
             {
-                var hashCode = (Sql?.GetHashCode() ?? 0) * 397;
-                hashCode ^= (Parameters?.Length ?? 0);
-                if (Parameters != null)
+                var properties = typeof(T).GetProperties();
+                foreach (var prop in properties)
                 {
-                    foreach (var param in Parameters)
-                    {
-                        hashCode = (hashCode * 397) ^ DbParameterComparer.Instance.GetHashCode(param);
-                    }
+                    paramDict[prop.Name] = prop.GetValue(parameters);
                 }
-                return hashCode;
             }
+            
+            return new SqlTemplate(sql, paramDict);
+        }
+
+        /// <summary>
+        /// 创建一个新的SqlTemplate（使用object参数，向后兼容）
+        /// </summary>
+        /// <param name="sql">SQL语句</param>
+        /// <param name="parameters">参数对象</param>
+        /// <returns>SqlTemplate实例</returns>
+#if NET5_0_OR_GREATER
+        [RequiresUnreferencedCode("Uses reflection for anonymous object parameters. Use generic Create<T> method for AOT compatibility.")]
+#endif
+        public static SqlTemplate Create(string sql, object? parameters = null)
+        {
+            if (parameters == null)
+                return new SqlTemplate(sql, new Dictionary<string, object?>());
+            
+            // 对于匿名类型等，使用运行时反射
+            return CreateFromObject(sql, parameters);
+        }
+
+#if NET5_0_OR_GREATER
+        [RequiresUnreferencedCode("Uses reflection to read object properties for backward compatibility")]
+#endif
+        private static SqlTemplate CreateFromObject(string sql, object parameters)
+        {
+            var paramDict = new Dictionary<string, object?>();
+            var properties = parameters.GetType().GetProperties();
+            foreach (var prop in properties)
+            {
+                paramDict[prop.Name] = prop.GetValue(parameters);
+            }
+            return new SqlTemplate(sql, paramDict);
+        }
+
+        /// <summary>
+        /// 创建一个新的SqlTemplate（使用单个强类型参数）
+        /// </summary>
+        /// <typeparam name="T">参数类型</typeparam>
+        /// <param name="sql">SQL语句</param>
+        /// <param name="paramName">参数名</param>
+        /// <param name="paramValue">参数值</param>
+        /// <returns>SqlTemplate实例</returns>
+        public static SqlTemplate Create<T>(string sql, string paramName, T paramValue)
+        {
+            var paramDict = new Dictionary<string, object?> { [paramName] = paramValue };
+            return new SqlTemplate(sql, paramDict);
+        }
+
+        /// <summary>
+        /// 创建一个新的SqlTemplate（使用两个强类型参数）
+        /// </summary>
+        /// <typeparam name="T1">第一个参数类型</typeparam>
+        /// <typeparam name="T2">第二个参数类型</typeparam>
+        /// <param name="sql">SQL语句</param>
+        /// <param name="param1Name">第一个参数名</param>
+        /// <param name="param1Value">第一个参数值</param>
+        /// <param name="param2Name">第二个参数名</param>
+        /// <param name="param2Value">第二个参数值</param>
+        /// <returns>SqlTemplate实例</returns>
+        public static SqlTemplate Create<T1, T2>(string sql, string param1Name, T1 param1Value, string param2Name, T2 param2Value)
+        {
+            var paramDict = new Dictionary<string, object?> 
+            { 
+                [param1Name] = param1Value,
+                [param2Name] = param2Value
+            };
+            return new SqlTemplate(sql, paramDict);
         }
 
         /// <summary>
@@ -53,34 +149,8 @@ namespace Sqlx.Annotations
         /// </summary>
         public override string ToString()
         {
-            return $"SqlTemplate {{ Sql = {Sql}, Parameters = {(Parameters != null ? $"System.Data.Common.DbParameter[{Parameters.Length}]" : "null")} }}";
-        }
-    }
-
-    /// <summary>
-    /// Comparer for DbParameter arrays.
-    /// </summary>
-    internal class DbParameterComparer : System.Collections.Generic.IEqualityComparer<DbParameter>
-    {
-        internal static readonly DbParameterComparer Instance = new();
-
-        public bool Equals(DbParameter? x, DbParameter? y)
-        {
-            if (ReferenceEquals(x, y)) return true;
-            if (x == null || y == null) return false;
-
-            return x.ParameterName == y.ParameterName &&
-                   Equals(x.Value, y.Value) &&
-                   x.DbType == y.DbType;
-        }
-
-        public int GetHashCode(DbParameter obj)
-        {
-            if (obj == null) return 0;
-
-            return (obj.ParameterName?.GetHashCode() ?? 0) ^
-                   (obj.Value?.GetHashCode() ?? 0) ^
-                   obj.DbType.GetHashCode();
+            var paramCount = Parameters?.Count ?? 0;
+            return $"SqlTemplate {{ Sql = {Sql}, Parameters = {paramCount} params }}";
         }
     }
 }

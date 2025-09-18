@@ -3,7 +3,7 @@
         <PropertyGroup>
                 <TargetFramework>netstandard2.0</TargetFramework>
                 <NoWarn>$(NoWarn);RS1024;CS1591</NoWarn>
-                <LangVersion>10.0</LangVersion>
+                <LangVersion>12.0</LangVersion>
                 <Nullable>enable</Nullable>
 		<WarningsAsErrors />
 		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -11,6 +11,9 @@
 		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
 		<IsPackable>false</IsPackable>
 		<IncludeBuildOutput>false</IncludeBuildOutput>
+		
+		<!-- Generate AOT-compatible code -->
+		<GenerateAotCompatibleCode>true</GenerateAotCompatibleCode>
 	</PropertyGroup>
 
 	<ItemGroup>

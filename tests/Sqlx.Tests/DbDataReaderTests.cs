@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 // <copyright file="DbDataReaderTests.cs" company="Cricle">
 // Copyright (c) Cricle. All rights reserved.
 // </copyright>

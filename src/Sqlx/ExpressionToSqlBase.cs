@@ -9,6 +9,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -25,12 +26,22 @@ namespace Sqlx
         internal readonly List<string> _orderByExpressions = new();
         internal readonly List<string> _groupByExpressions = new();
         internal readonly List<string> _havingConditions = new();
-        internal readonly List<DbParameter> _parameters = new();
+        internal readonly Dictionary<string, object?> _parameters = new();
         internal int? _take;
         internal int? _skip;
         internal string? _tableName;
 
-        private static readonly ConcurrentDictionary<MemberInfo, Func<object?, object?>> _compiledFunctionCache = new();
+        /// <summary>
+        /// 是否使用参数化查询模式。默认为false（内联常量值）。
+        /// </summary>
+        protected bool _useParameterizedQueries = false;
+        
+        /// <summary>
+        /// 参数计数器，用于生成唯一的参数名
+        /// </summary>
+        protected int _parameterCounter = 0;
+
+        private static readonly ConcurrentDictionary<MemberInfo, Delegate> _compiledFunctionCache = new();
 
         /// <summary>
         /// 使用指定的 SQL 方言初始化新实例。
@@ -144,6 +155,12 @@ namespace Sqlx
         /// </summary>
         protected string ParseMethodCallExpression(MethodCallExpression method)
         {
+            // 处理 Any 占位符
+            if (IsAnyPlaceholder(method))
+            {
+                return CreateParameterForAnyPlaceholder(method);
+            }
+            
             // 处理聚合函数中的嵌套方法调用
             if (IsAggregateContext(method)) return ParseAggregateMethodCall(method);
 
@@ -160,6 +177,146 @@ namespace Sqlx
         /// 检查是否在聚合函数上下文中
         /// </summary>
         private bool IsAggregateContext(MethodCallExpression method) => method.Method.Name is "Count" or "Sum" or "Average" or "Avg" or "Max" or "Min";
+
+        /// <summary>
+        /// 检查方法调用是否是Any占位符
+        /// </summary>
+        private bool IsAnyPlaceholder(MethodCallExpression method)
+        {
+            // 检查是否是Sqlx.Any类的静态方法调用
+            if (method.Method.DeclaringType?.Name != "Any") return false;
+            if (method.Method.DeclaringType?.Namespace != "Sqlx") return false;
+            
+            return method.Method.Name switch
+            {
+                "Value" or "String" or "Int" or "Bool" or "DateTime" or "Guid" => true,
+                _ => false
+            };
+        }
+
+        /// <summary>
+        /// 为Any占位符创建参数
+        /// </summary>
+        private string CreateParameterForAnyPlaceholder(MethodCallExpression method)
+        {
+            // 检测到Any占位符，自动启用参数化查询模式
+            if (!_useParameterizedQueries)
+            {
+                _useParameterizedQueries = true;
+            }
+            
+            // 获取返回类型
+            var returnType = method.Method.ReturnType;
+            
+            // 确定参数的默认值
+            object? paramValue = returnType switch
+            {
+                var t when t == typeof(string) => null,
+                var t when t == typeof(int) => 0,
+                var t when t == typeof(bool) => false,
+                var t when t == typeof(DateTime) => DateTime.MinValue,
+                var t when t == typeof(Guid) => Guid.Empty,
+                var t when t == typeof(decimal) => 0m,
+                var t when t == typeof(double) => 0.0,
+                var t when t == typeof(float) => 0f,
+                var t when t == typeof(long) => 0L,
+                var t when t.IsValueType => GetDefaultValueForValueType(t),
+                _ => null // 引用类型默认值为null
+            };
+            
+            // 尝试获取用户提供的参数名
+            string paramName;
+            if (method.Arguments.Count > 0 && method.Arguments[0] is ConstantExpression paramNameExpr && paramNameExpr.Value is string userParamName && !string.IsNullOrEmpty(userParamName))
+            {
+                // 使用用户提供的参数名，确保以@开头
+                paramName = userParamName.StartsWith("@") ? userParamName : "@" + userParamName;
+            }
+            else
+            {
+                // 自动生成参数名
+                paramName = $"@p{_parameterCounter++}";
+            }
+            
+            // 创建参数并添加到字典
+            _parameters[paramName] = paramValue;
+            
+            return paramName;
+        }
+
+        /// <summary>
+        /// 获取类型的默认值
+        /// </summary>
+        private static object? GetDefaultValue(
+#if NET5_0_OR_GREATER
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)] 
+#endif
+            Type type)
+        {
+            if (type.IsValueType)
+            {
+                return Activator.CreateInstance(type);
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 为值类型获取默认值（AOT友好）
+        /// </summary>
+        private static object? GetDefaultValueForValueType(
+#if NET5_0_OR_GREATER
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]
+#endif
+            Type type)
+        {
+            // 处理可空类型
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
+            {
+                return null;
+            }
+
+            // 处理枚举类型
+            if (type.IsEnum)
+            {
+                // 返回枚举的默认值（通常是0）
+                return Enum.ToObject(type, 0);
+            }
+
+            // 对于其他值类型，返回0或false等基本默认值
+            if (type == typeof(byte) || type == typeof(sbyte) || 
+                type == typeof(short) || type == typeof(ushort) ||
+                type == typeof(uint) || type == typeof(ulong))
+            {
+                return 0;
+            }
+
+            // 对于复杂的值类型，尝试创建实例
+            try
+            {
+                return Activator.CreateInstance(type);
+            }
+            catch
+            {
+                // AOT环境下可能失败，返回null
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 安全地创建类型的默认值（AOT友好）
+        /// </summary>
+        private static object? CreateDefaultValueSafely(
+#if NET5_0_OR_GREATER
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]
+#endif
+            Type type)
+        {
+            if (type.IsValueType)
+            {
+                return GetDefaultValueForValueType(type);
+            }
+            
+            return null; // 引用类型的默认值是null
+        }
 
         /// <summary>
         /// 解析聚合函数中的方法调用，支持嵌套函数
@@ -313,14 +470,126 @@ namespace Sqlx
         protected object? GetMemberValueOptimized(MemberExpression member)
         {
             var expressionSimple = member.Expression == null || member.Expression is ConstantExpression;
-            if (expressionSimple || member.Member is not FieldInfo or PropertyInfo) return Expression.Lambda(member).Compile().DynamicInvoke();
+            if (expressionSimple || member.Member is not FieldInfo or PropertyInfo) 
+            {
+                // For AOT compatibility, try simple access first
+                if (member.Expression is ConstantExpression constExpr)
+                {
+                    return member.Member switch
+                    {
+                        FieldInfo field => field.GetValue(constExpr.Value),
+                        PropertyInfo prop => prop.GetValue(constExpr.Value),
+                        _ => null
+                    };
+                }
+                
+                // For complex expressions, use a safer approach
+                return GetMemberValueSafely(member);
+            }
 
-            return GetExpressionFunc(member)((member.Expression as ConstantExpression)?.Value);
+            return GetMemberValueFromExpression(member, (member.Expression as ConstantExpression)?.Value);
         }
 
-        private Func<object?, object?> GetExpressionFunc(MemberExpression expression)
+        /// <summary>
+        /// 安全地获取成员值，避免动态代码生成
+        /// </summary>
+        private object? GetMemberValueSafely(MemberExpression member)
         {
-            return _compiledFunctionCache.GetOrAdd(expression.Member, x =>
+            // 处理静态字段和属性（如 DateTime.MaxValue）
+            if (member.Expression == null)
+            {
+                return member.Member switch
+                {
+                    FieldInfo field when field.IsStatic => field.GetValue(null),
+                    PropertyInfo prop when prop.GetMethod?.IsStatic == true => prop.GetValue(null),
+                    _ => null
+                };
+            }
+            
+            // 尝试处理常见的表达式模式
+            if (member.Expression is MemberExpression parentMember && 
+                parentMember.Expression is ConstantExpression parentConst)
+            {
+                // 处理嵌套成员访问，如 obj.property.field
+                var parentValue = parentMember.Member switch
+                {
+                    FieldInfo field => field.GetValue(parentConst.Value),
+                    PropertyInfo prop => prop.GetValue(parentConst.Value),
+                    _ => null
+                };
+                
+                if (parentValue != null)
+                {
+                    return member.Member switch
+                    {
+                        FieldInfo field => field.GetValue(parentValue),
+                        PropertyInfo prop => prop.GetValue(parentValue),
+                        _ => null
+                    };
+                }
+            }
+            
+            // 对于无法静态分析的表达式，返回null或默认值
+            // 这样在AOT环境下不会出错，在运行时环境下可能会有些限制
+            return GetSimpleDefaultValue(member.Type);
+        }
+
+        /// <summary>
+        /// 获取简单的默认值（不使用复杂反射）
+        /// </summary>
+        private static object? GetSimpleDefaultValue(Type type)
+        {
+            if (!type.IsValueType)
+                return null;
+                
+            return type switch
+            {
+                var t when t == typeof(int) => 0,
+                var t when t == typeof(bool) => false,
+                var t when t == typeof(DateTime) => DateTime.MinValue,
+                var t when t == typeof(Guid) => Guid.Empty,
+                var t when t == typeof(decimal) => 0m,
+                var t when t == typeof(double) => 0.0,
+                var t when t == typeof(float) => 0f,
+                var t when t == typeof(long) => 0L,
+                var t when t == typeof(short) => (short)0,
+                var t when t == typeof(byte) => (byte)0,
+                var t when t == typeof(char) => '\0',
+                _ => null // 对于其他类型，返回null避免复杂反射
+            };
+        }
+
+        /// <summary>
+        /// 获取成员类型的默认值
+        /// </summary>
+        private static object? GetDefaultValueForMemberType(
+#if NET5_0_OR_GREATER
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]
+#endif
+            Type memberType)
+        {
+            if (!memberType.IsValueType)
+                return null;
+                
+            return memberType switch
+            {
+                var t when t == typeof(int) => 0,
+                var t when t == typeof(bool) => false,
+                var t when t == typeof(DateTime) => DateTime.MinValue,
+                var t when t == typeof(Guid) => Guid.Empty,
+                var t when t == typeof(decimal) => 0m,
+                var t when t == typeof(double) => 0.0,
+                var t when t == typeof(float) => 0f,
+                var t when t == typeof(long) => 0L,
+                var t when t == typeof(short) => (short)0,
+                var t when t == typeof(byte) => (byte)0,
+                _ => GetDefaultValueForValueType(memberType)
+            };
+        }
+
+        private TDelegate GetExpressionFunc<TDelegate>(MemberExpression expression) where TDelegate : Delegate
+        {
+            return (TDelegate)_compiledFunctionCache.GetOrAdd(expression.Member, x =>
             {
                 var par = Expression.Parameter(typeof(object));
                 var conv = expression.Expression == null ? null : Expression.Convert(par, x.DeclaringType);
@@ -334,7 +603,37 @@ namespace Sqlx
             });
         }
 
+        private object? GetMemberValueFromExpression(MemberExpression expression, object? instance)
+        {
+            var func = GetExpressionFunc<Func<object?, object?>>(expression);
+            return func(instance);
+        }
+
+        protected string FormatConstantValue<T>(T? value)
+        {
+            // 如果启用参数化查询，创建参数
+            if (_useParameterizedQueries)
+            {
+                return CreateParameter(value);
+            }
+
+            // 否则内联常量值
+            return FormatValueAsLiteral(value);
+        }
+
         protected string FormatConstantValue(object? value)
+        {
+            // 如果启用参数化查询，创建参数
+            if (_useParameterizedQueries)
+            {
+                return CreateParameter(value);
+            }
+
+            // 否则内联常量值
+            return FormatValueAsLiteral(value);
+        }
+
+        private string FormatValueAsLiteral<T>(T? value)
         {
             return value switch
             {
@@ -346,8 +645,28 @@ namespace Sqlx
                 decimal d => d.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 double d => d.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 float f => f.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                _ => value.ToString() ?? "NULL"
+                _ => value?.ToString() ?? "NULL"
             };
+        }
+
+        /// <summary>
+        /// 创建数据库参数并返回参数占位符（泛型版本）
+        /// </summary>
+        protected virtual string CreateParameter<T>(T? value)
+        {
+            var paramName = $"{_dialect.ParameterPrefix}p{_parameters.Count}";
+            _parameters[paramName] = value;
+            return paramName;
+        }
+
+        /// <summary>
+        /// 创建数据库参数并返回参数占位符（兼容版本）
+        /// </summary>
+        protected virtual string CreateParameter(object? value)
+        {
+            var paramName = $"{_dialect.ParameterPrefix}p{_parameters.Count}";
+            _parameters[paramName] = value;
+            return paramName;
         }
 
         #endregion

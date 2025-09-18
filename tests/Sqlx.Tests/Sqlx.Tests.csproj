@@ -22,7 +22,8 @@
     </PackageReference>
     <PackageReference Include="Verify.MSTest" />
     <PackageReference Include="Moq" />
-    <PackageReference Include="System.Data.SQLite" />
+    <PackageReference Include="Microsoft.Data.Sqlite" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
   </ItemGroup>
 
   <ItemGroup>

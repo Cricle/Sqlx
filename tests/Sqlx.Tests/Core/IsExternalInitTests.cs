@@ -68,7 +68,7 @@ public class IsExternalInitTests : TestBase
         // We'll test this using the SqlTemplate record which uses init-only properties
 
         // Arrange & Act
-        var template = new Sqlx.Annotations.SqlTemplate("SELECT 1", new System.Data.Common.DbParameter[0]);
+        var template = new Sqlx.SqlTemplate("SELECT 1", new System.Collections.Generic.Dictionary<string, object?>());
 
         // This should compile because SqlTemplate uses init-only properties
         var newTemplate = template with { Sql = "SELECT 2" };
@@ -85,7 +85,7 @@ public class IsExternalInitTests : TestBase
         // This is an indirect test of IsExternalInit functionality
 
         // Arrange
-        var original = new Sqlx.Annotations.SqlTemplate("SELECT * FROM Users", null!);
+        var original = new Sqlx.SqlTemplate("SELECT * FROM Users", new System.Collections.Generic.Dictionary<string, object?>());
 
         // Act
         var modified = original with { Sql = "SELECT * FROM Products" };

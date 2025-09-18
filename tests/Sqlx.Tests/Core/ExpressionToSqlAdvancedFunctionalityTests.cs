@@ -192,7 +192,7 @@ namespace Sqlx.Tests.Core
 
             // Assert
             Console.WriteLine($"Template SQL: {template.Sql}");
-            Console.WriteLine($"Parameters count: {template.Parameters.Length}");
+            Console.WriteLine($"Parameters count: {template.Parameters.Count}");
 
             Assert.IsNotNull(template.Sql, "模板SQL不应为空");
             Assert.IsTrue(template.Sql.Contains("Age") && template.Sql.Contains("Name"),

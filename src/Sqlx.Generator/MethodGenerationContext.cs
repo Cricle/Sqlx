@@ -1199,6 +1199,19 @@ internal partial class MethodGenerationContext : GenerationContextBase
                 }
 
                 var sqlValue = attr.ConstructorArguments[0].Value?.ToString() ?? "";
+                
+                // 处理 SQL 模板占位符
+                if (!string.IsNullOrEmpty(sqlValue) && SqlTemplatePlaceholder.ContainsPlaceholders(sqlValue))
+                {
+                    var context = new SqlPlaceholderContext(SqlDef)
+                    {
+                        Method = MethodSymbol,
+                        TableName = null, // 临时简化
+                        EntityType = null // 临时简化
+                    };
+                    sqlValue = SqlTemplatePlaceholder.ProcessTemplate(sqlValue, context);
+                }
+                
                 // Escape the SQL string properly for C# code generation
                 var escapedSql = sqlValue.Replace("\"", "\\\"").Replace("\r\n", "\\r\\n").Replace("\n", "\\n").Replace("\r", "\\r");
                 return $"\"{escapedSql}\"";
@@ -1215,6 +1228,18 @@ internal partial class MethodGenerationContext : GenerationContextBase
 
             if (!string.IsNullOrEmpty(procedureName))
             {
+                // 处理 SQL 模板占位符
+                if (!string.IsNullOrEmpty(procedureName) && SqlTemplatePlaceholder.ContainsPlaceholders(procedureName!))
+                {
+                    var context = new SqlPlaceholderContext(SqlDef)
+                    {
+                        Method = MethodSymbol,
+                        TableName = null, // 临时简化
+                        EntityType = null // 临时简化
+                    };
+                    procedureName = SqlTemplatePlaceholder.ProcessTemplate(procedureName!, context);
+                }
+                
                 var paramSql = string.Join(", ", SqlParameters.Select(p => p.GetParameterName(SqlDef.ParameterPrefix)));
                 var call = string.IsNullOrEmpty(paramSql) ? procedureName : $"{procedureName} {paramSql}";
                 return $"\"EXEC {call}\"";
@@ -2402,4 +2427,5 @@ internal static class ExtensionsWithCache
             return $"{readerName}.IsDBNull({ordinalVariableName}) ? default({typeName}) : ({typeName}){readerName}.GetValue({ordinalVariableName})";
         }
     }
+
 }

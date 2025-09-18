@@ -354,7 +354,7 @@ public class ExpressionToSqlAdvancedTests
         Assert.IsNotNull(template.Sql);
         Assert.IsNotNull(template.Parameters);
         Assert.IsFalse(string.IsNullOrWhiteSpace(template.Sql));
-        Assert.IsTrue(template.Parameters.Length >= 0);
+        Assert.IsTrue(template.Parameters.Count >= 0);
     }
 
     /// <summary>
@@ -377,6 +377,6 @@ public class ExpressionToSqlAdvancedTests
         Assert.IsNotNull(template.Sql);
         Assert.IsNotNull(template.Parameters);
         Assert.IsFalse(string.IsNullOrWhiteSpace(template.Sql));
-        Assert.IsTrue(template.Parameters.Length >= 0);
+        Assert.IsTrue(template.Parameters.Count >= 0);
     }
 }

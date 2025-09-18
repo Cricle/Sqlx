@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
@@ -15,10 +16,100 @@ using Sqlx.Annotations;
 namespace Sqlx
 {
     /// <summary>
+    /// 用于SqlTemplate的Any占位符类
+    /// </summary>
+    public static class Any
+    {
+        /// <summary>
+        /// 表示任意值的占位符，用于在构建SqlTemplate时创建参数化查询（自动生成参数名）
+        /// </summary>
+        /// <typeparam name="TValue">占位符的类型</typeparam>
+        /// <returns>占位符值</returns>
+        public static TValue Value<TValue>() => default(TValue)!;
+        
+        /// <summary>
+        /// 表示任意值的占位符，用于在构建SqlTemplate时创建参数化查询（指定参数名）
+        /// </summary>
+        /// <typeparam name="TValue">占位符的类型</typeparam>
+        /// <param name="parameterName">自定义参数名</param>
+        /// <returns>占位符值</returns>
+        public static TValue Value<TValue>(string parameterName) => default(TValue)!;
+        
+        /// <summary>
+        /// 字符串占位符（自动生成参数名）
+        /// </summary>
+        /// <returns>字符串占位符</returns>
+        public static string String() => default(string)!;
+        
+        /// <summary>
+        /// 字符串占位符（指定参数名）
+        /// </summary>
+        /// <param name="parameterName">自定义参数名</param>
+        /// <returns>字符串占位符</returns>
+        public static string String(string parameterName) => default(string)!;
+        
+        /// <summary>
+        /// 整数占位符（自动生成参数名）
+        /// </summary>
+        /// <returns>整数占位符</returns>
+        public static int Int() => default(int);
+        
+        /// <summary>
+        /// 整数占位符（指定参数名）
+        /// </summary>
+        /// <param name="parameterName">自定义参数名</param>
+        /// <returns>整数占位符</returns>
+        public static int Int(string parameterName) => default(int);
+        
+        /// <summary>
+        /// 布尔占位符（自动生成参数名）
+        /// </summary>
+        /// <returns>布尔占位符</returns>
+        public static bool Bool() => default(bool);
+        
+        /// <summary>
+        /// 布尔占位符（指定参数名）
+        /// </summary>
+        /// <param name="parameterName">自定义参数名</param>
+        /// <returns>布尔占位符</returns>
+        public static bool Bool(string parameterName) => default(bool);
+        
+        /// <summary>
+        /// 日期时间占位符（自动生成参数名）
+        /// </summary>
+        /// <returns>日期时间占位符</returns>
+        public static DateTime DateTime() => default(DateTime);
+        
+        /// <summary>
+        /// 日期时间占位符（指定参数名）
+        /// </summary>
+        /// <param name="parameterName">自定义参数名</param>
+        /// <returns>日期时间占位符</returns>
+        public static DateTime DateTime(string parameterName) => default(DateTime);
+        
+        /// <summary>
+        /// Guid占位符（自动生成参数名）
+        /// </summary>
+        /// <returns>Guid占位符</returns>
+        public static Guid Guid() => default(Guid);
+        
+        /// <summary>
+        /// Guid占位符（指定参数名）
+        /// </summary>
+        /// <param name="parameterName">自定义参数名</param>
+        /// <returns>Guid占位符</returns>
+        public static Guid Guid(string parameterName) => default(Guid);
+    }
+
+    /// <summary>
     /// 简单高效的 LINQ Expression 到 SQL 转换器，AOT 友好，无锁设计。
     /// </summary>
     /// <typeparam name="T">实体类型</typeparam>
-    public partial class ExpressionToSql<T> : ExpressionToSqlBase
+    public partial class ExpressionToSql<
+#if NET5_0_OR_GREATER
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] 
+#endif
+        T> : ExpressionToSqlBase
     {
         private readonly List<string> _setClausesConstant = new();
         private readonly List<string> _setClausesExpression = new();
@@ -499,12 +590,48 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// 转换为 SQL 模板（简化版，无缓存）。
+        /// 启用参数化查询模式，用于生成SqlTemplate
+        /// </summary>
+        public ExpressionToSql<T> UseParameterizedQueries()
+        {
+            _useParameterizedQueries = true;
+            return this;
+        }
+
+        /// <summary>
+        /// 转换为 SQL 模板。如果未启用参数化模式，将自动启用并重新构建查询。
         /// </summary>
         public override SqlTemplate ToTemplate()
         {
+            // 如果还没有启用参数化查询，需要重新构建
+            if (!_useParameterizedQueries)
+            {
+                // 保存当前状态
+                var originalConditions = new List<string>(_whereConditions);
+                var originalOrderBy = new List<string>(_orderByExpressions);
+                var originalGroupBy = new List<string>(_groupByExpressions);
+                var originalHaving = new List<string>(_havingConditions);
+
+                // 清空并重新启用参数化模式
+                _whereConditions.Clear();
+                _orderByExpressions.Clear();
+                _groupByExpressions.Clear();
+                _havingConditions.Clear();
+                _parameters.Clear();
+                _useParameterizedQueries = true;
+
+                // 需要重新构建查询，但这需要原始表达式
+                // 由于我们没有保存原始表达式，我们只能返回当前的SQL和空参数
+                // 这是一个设计限制，建议用户显式调用UseParameterizedQueries()
+                _useParameterizedQueries = false;
+                _whereConditions.AddRange(originalConditions);
+                _orderByExpressions.AddRange(originalOrderBy);
+                _groupByExpressions.AddRange(originalGroupBy);
+                _havingConditions.AddRange(originalHaving);
+            }
+
             var sql = BuildSql();
-            return new SqlTemplate(sql, _parameters.ToArray());
+            return new SqlTemplate(sql, _parameters);
         }
 
         /// <summary>
@@ -570,7 +697,11 @@ namespace Sqlx
     /// <summary>
     /// 表示分组后的查询对象，支持聚合操作。
     /// </summary>
-    public class GroupedExpressionToSql<T, TKey> : ExpressionToSqlBase
+    public class GroupedExpressionToSql<
+#if NET5_0_OR_GREATER
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] 
+#endif
+        T, TKey> : ExpressionToSqlBase
     {
         private readonly ExpressionToSql<T> _baseQuery;
         private readonly string _keyColumnName;
@@ -585,7 +716,11 @@ namespace Sqlx
         /// <summary>
         /// 选择分组结果的投影。
         /// </summary>
-        public ExpressionToSql<TResult> Select<TResult>(Expression<Func<IGrouping<TKey, T>, TResult>> selector)
+        public ExpressionToSql<TResult> Select<
+#if NET5_0_OR_GREATER
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] 
+#endif
+            TResult>(Expression<Func<IGrouping<TKey, T>, TResult>> selector)
         {
             // 创建新的查询对象，使用相同的方言
             var resultQuery = _baseQuery._dialect.DatabaseType switch

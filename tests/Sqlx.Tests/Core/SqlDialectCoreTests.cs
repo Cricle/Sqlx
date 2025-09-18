@@ -297,7 +297,7 @@ namespace Sqlx.Tests.Core
                     Assert.IsNotNull(template.Sql, $"{dialectName} should generate SQL");
 
                     // 检查是否有参数（可能某些表达式会被内联而不生成参数）
-                    if (template.Parameters.Length > 0)
+                    if (template.Parameters.Count > 0)
                     {
                         // 验证参数值
                         var hasTestValue = template.Parameters.Any(p =>
@@ -307,7 +307,7 @@ namespace Sqlx.Tests.Core
 
                         Console.WriteLine($"✅ {dialectName} 参数生成集成:");
                         Console.WriteLine($"   SQL: {template.Sql}");
-                        Console.WriteLine($"   参数数量: {template.Parameters.Length}");
+                        Console.WriteLine($"   参数数量: {template.Parameters.Count}");
 
                         if (hasTestValue)
                             Console.WriteLine($"   ✓ 包含字符串参数");

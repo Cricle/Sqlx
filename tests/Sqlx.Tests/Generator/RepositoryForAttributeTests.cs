@@ -129,23 +129,6 @@ namespace TestNamespace
         var driver = CSharpGeneratorDriver.Create(generator);
         var runResult = driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);
 
-#if DEBUG
-        // Debug output to see what happened
-        System.Diagnostics.Debug.WriteLine($"Generator run completed. Generated sources count: {outputCompilation.SyntaxTrees.Count()}");
-        foreach (var tree in outputCompilation.SyntaxTrees.Skip(1)) // Skip the original source
-        {
-            System.Diagnostics.Debug.WriteLine($"Generated tree: {tree.FilePath}");
-        }
-
-        if (diagnostics.Any())
-        {
-            System.Diagnostics.Debug.WriteLine($"Diagnostics: {diagnostics.Length}");
-            foreach (var diagnostic in diagnostics)
-            {
-                System.Diagnostics.Debug.WriteLine($"  - {diagnostic}");
-            }
-        }
-#endif
 
         return outputCompilation;
     }

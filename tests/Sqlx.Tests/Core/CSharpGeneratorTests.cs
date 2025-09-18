@@ -331,7 +331,6 @@ namespace TestNamespace
         {
             var errorMessages = string.Join("\n", errors.Select(e => e.GetMessage()));
             // Generics might not be fully supported but should not crash
-            Console.WriteLine($"Generic methods test had some errors (may be expected): {errorMessages}");
         }
 
         var generatedCode = GetCSharpGeneratedOutput(sourceCode);
@@ -380,7 +379,6 @@ namespace TestNamespace
 
         // Invalid types might not always cause compilation errors in the generator context
         // The main test is that the generator doesn't crash
-        Console.WriteLine($"Found {errors.Count} compilation errors (expected for invalid types)");
 
         // Generator should still produce some output even with errors
         var generatedCode = GetCSharpGeneratedOutput(sourceCode);

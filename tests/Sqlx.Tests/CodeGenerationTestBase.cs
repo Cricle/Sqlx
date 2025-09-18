@@ -190,15 +190,10 @@ using Sqlx.Annotations;
         if (generatedFiles.Count != 0)
         {
             string output = string.Join("\n\n", generatedFiles.Select(tree => tree.ToString()));
-            Console.WriteLine("Generated code:");
-            Console.WriteLine(output);
 
             // If there are compilation errors, still return the generated code for inspection
-            // but log the errors for debugging
             if (finalCompilationErrors.Count != 0)
             {
-                var errorMessages = string.Join("\n", finalCompilationErrors.Select(d => d.GetMessage()));
-                Console.WriteLine($"Warning: Compilation errors detected but code was generated:\n{errorMessages}");
                 // Don't fail immediately - return the generated code for test inspection
             }
 
@@ -230,12 +225,10 @@ using Sqlx.Annotations;
         catch (FileNotFoundException)
         {
             // Assembly not available, skip it for testing
-            Console.WriteLine($"Warning: Assembly '{assemblyName}' not found, skipping reference");
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            // Other errors, also skip but log
-            Console.WriteLine($"Warning: Failed to load assembly '{assemblyName}': {ex.Message}");
+            // Other errors, also skip
         }
     }
 

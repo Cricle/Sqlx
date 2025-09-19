@@ -5,6 +5,8 @@
 // -----------------------------------------------------------------------
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
 using Sqlx;
@@ -108,23 +110,87 @@ namespace SqlxDemo
         /// </summary>
         private static async Task DemonstrateAllFeaturesAsync(SqliteConnection connection)
         {
-            // 1. SqlTemplate 静态模板演示
+            // 1. 直接执行 - 最简单的使用方式
+            DemonstrateParameterizedSqlAsync();
+
+            // 2. SqlTemplate 静态模板演示
             await DemonstrateSqlTemplateAsync(connection);
 
-            // 2. ExpressionToSql 动态查询演示  
+            // 3. ExpressionToSql 动态查询演示  
             await DemonstrateExpressionToSqlAsync(connection);
 
-            // 3. INSERT 操作演示
+            // 4. 源代码生成演示
+            DemonstrateSourceGenerationAsync();
+
+            // 5. INSERT 操作演示
             await DemonstrateInsertOperationsAsync(connection);
 
-            // 4. UPDATE 操作演示
+            // 6. UPDATE 操作演示
             await DemonstrateUpdateOperationsAsync(connection);
 
-            // 5. DELETE 操作演示
+            // 7. DELETE 操作演示
             await DemonstrateDeleteOperationsAsync(connection);
 
-            // 6. 复杂查询演示
+            // 8. 复杂查询演示
             await DemonstrateComplexQueriesAsync(connection);
+        }
+
+        /// <summary>
+        /// 演示 ParameterizedSql 直接执行功能
+        /// </summary>
+        private static void DemonstrateParameterizedSqlAsync()
+        {
+            Console.WriteLine("🚀 === ParameterizedSql 直接执行演示 ===");
+
+            // 基本直接执行
+            var sql1 = ParameterizedSql.Create(
+                "SELECT * FROM [user] WHERE [age] > @age AND [is_active] = @active", 
+                new Dictionary<string, object?> { ["age"] = 25, ["active"] = true });
+
+            Console.WriteLine($"📝 基本直接执行:");
+            Console.WriteLine($"   SQL: {sql1.Sql}");
+            Console.WriteLine($"   参数: age={sql1.Parameters.GetValueOrDefault("age")}, active={sql1.Parameters.GetValueOrDefault("active")}");
+
+            // 复杂查询直接执行
+            var sql2 = ParameterizedSql.Create(
+                "SELECT [name], [email], [salary] FROM [user] WHERE [salary] BETWEEN @minSalary AND @maxSalary ORDER BY [salary] DESC",
+                new Dictionary<string, object?> { ["minSalary"] = 5000, ["maxSalary"] = 15000 });
+
+            Console.WriteLine($"💼 薪资范围查询:");
+            Console.WriteLine($"   SQL: {sql2.Sql}");
+            Console.WriteLine($"   参数数量: {sql2.Parameters.Count}");
+
+            // 渲染最终SQL（用于调试）
+            Console.WriteLine($"🔍 渲染后的SQL示例: {sql1.Render()}");
+            Console.WriteLine();
+        }
+
+        /// <summary>
+        /// 演示源代码生成功能
+        /// </summary>
+        private static void DemonstrateSourceGenerationAsync()
+        {
+            Console.WriteLine("⚙️ === 源代码生成演示 ===");
+
+            Console.WriteLine($"🔧 Sqlx 支持基于特性的源代码生成:");
+            Console.WriteLine($"   • [Sqlx] - 标记需要生成实现的方法");
+            Console.WriteLine($"   • [SqlExecuteType] - 指定SQL操作类型");
+            Console.WriteLine($"   • [RepositoryFor] - 自动生成Repository实现");
+            Console.WriteLine($"   • [ExpressionToSql] - 表达式转SQL方法");
+
+            Console.WriteLine($"📋 生成器特性:");
+            Console.WriteLine($"   • 编译时代码生成，零运行时反射");
+            Console.WriteLine($"   • AOT 原生支持，最佳性能");
+            Console.WriteLine($"   • 强类型安全，编译时验证");
+            Console.WriteLine($"   • 智能SQL生成，支持多数据库方言");
+
+            Console.WriteLine($"🎯 示例用法:");
+            Console.WriteLine($"   [RepositoryFor(typeof(IUserService))]");
+            Console.WriteLine($"   public partial class UserService : IUserService");
+            Console.WriteLine($"   {{");
+            Console.WriteLine($"       // 源生成器自动生成实现代码");
+            Console.WriteLine($"   }}");
+            Console.WriteLine();
         }
 
         /// <summary>

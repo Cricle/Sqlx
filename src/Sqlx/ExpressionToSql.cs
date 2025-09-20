@@ -58,10 +58,10 @@ namespace Sqlx
     {
         private readonly List<string> _sets = new();
         private readonly List<string> _expressions = new();
-        private readonly List<string> _columns = new(); // INSERT列名
-        private readonly List<List<string>> _values = new(); // INSERT值（支持多行）
-        private string? _selectSql; // INSERT SELECT的SQL
-        private SqlOperation _operation = SqlOperation.Select; // 默认为SELECT操作
+        private readonly List<string> _columns = new(); // INSERT column names
+        private readonly List<List<string>> _values = new(); // INSERT values (supports multiple rows)
+        private string? _selectSql; // SQL for INSERT SELECT
+        private SqlOperation _operation = SqlOperation.Select; // Default to SELECT operation
 
         /// <summary>
         /// Initializes with specified SQL dialect
@@ -97,7 +97,7 @@ namespace Sqlx
         TEntity>() => typeof(TEntity).GetProperties();
 
         /// <summary>
-        /// 统一的列提取逻辑，避免重复代码
+        /// Unified column extraction logic to avoid code duplication
         /// </summary>
         private List<string> ExtractColumnsFromSelector<TResult>(Expression<Func<T, TResult>>? selector)
         {
@@ -263,7 +263,7 @@ namespace Sqlx
         #endregion
 
         /// <summary>
-        /// 统一的INSERT列设置逻辑
+        /// Unified INSERT column setting logic
         /// </summary>
         private void SetInsertColumns(Expression<Func<T, object>>? selector)
         {
@@ -350,7 +350,7 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// 设置自定义 SELECT 子句（内部使用）。
+        /// Set custom SELECT clause (internal use).
         /// </summary>
         internal List<string>? _custom;
 
@@ -361,7 +361,7 @@ namespace Sqlx
 
 
         /// <summary>
-        /// 构建 SQL 语句，简单直接无缓存。
+        /// Build SQL statement, simple and direct without caching.
         /// </summary>
         private string BuildSql()
         {
@@ -379,16 +379,16 @@ namespace Sqlx
         {
             var sql = new System.Text.StringBuilder(512);
 
-            // SELECT 子句
+            // SELECT clause
             var selectClause = _custom?.Count > 0
                 ? $"SELECT {string.Join(", ", _custom)} FROM "
                 : "SELECT * FROM ";
             sql.Append(selectClause);
 
-            // FROM 表名
+            // FROM table name
             sql.Append(_dialect.WrapColumn(_tableName!));
 
-            // WHERE 子句
+            // WHERE clause
             if (_whereConditions.Count > 0)
             {
                 sql.Append(" WHERE ");
@@ -396,33 +396,33 @@ namespace Sqlx
                 sql.Append(string.Join(" AND ", conditions));
             }
 
-            // GROUP BY 子句
+            // GROUP BY clause
             if (_groupByExpressions.Count > 0)
             {
                 sql.Append(" GROUP BY ");
                 sql.Append(string.Join(", ", _groupByExpressions));
             }
 
-            // HAVING 子句
+            // HAVING clause
             if (_havingConditions.Count > 0)
             {
                 sql.Append(" HAVING ");
                 sql.Append(string.Join(" AND ", _havingConditions));
             }
 
-            // ORDER BY 子句
+            // ORDER BY clause
             if (_orderByExpressions.Count > 0)
             {
                 sql.Append(" ORDER BY ");
                 sql.Append(string.Join(", ", _orderByExpressions));
             }
 
-            // LIMIT/OFFSET 子句
+            // LIMIT/OFFSET clause
             if (_skip.HasValue || _take.HasValue)
             {
                 if (_dialect.DatabaseType == "SqlServer")
                 {
-                    // SQL Server 使用 OFFSET...FETCH
+                    // SQL Server uses OFFSET...FETCH
                     if (_skip.HasValue)
                     {
                         sql.Append($" OFFSET {_skip.Value} ROWS");
@@ -438,7 +438,7 @@ namespace Sqlx
                 }
                 else
                 {
-                    // 其他数据库使用 LIMIT/OFFSET
+                    // Other databases use LIMIT/OFFSET
                     if (_take.HasValue)
                     {
                         sql.Append($" LIMIT {_take.Value}");
@@ -482,15 +482,15 @@ namespace Sqlx
             var sql = new StringBuilder(256);
             sql.Append($"UPDATE {_dialect.WrapColumn(_tableName!)} SET ");
 
-            // 合并所有 SET 子句
+            // Merge all SET clauses
             var allClauses = _sets.Concat(_expressions);
             sql.Append(string.Join(", ", allClauses));
 
-            // 添加 WHERE 子句
+            // Add WHERE clause
             if (_whereConditions.Count > 0)
             {
                 sql.Append(" WHERE ");
-                // UPDATE语句保留括号以确保正确的逻辑分组
+                // UPDATE statements retain parentheses to ensure correct logical grouping
                 if (_whereConditions.Count == 1)
                 {
                     var condition = RemoveOuterParentheses(_whereConditions[0]);
@@ -509,17 +509,17 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// 构建DELETE SQL语句。
+        /// Build DELETE SQL statement.
         /// </summary>
         private string BuildDeleteSql()
         {
             var sql = new StringBuilder(256);
 
-            // DELETE FROM 表名
+            // DELETE FROM table name
             sql.Append("DELETE FROM ");
             sql.Append(_dialect.WrapColumn(_tableName!));
 
-            // WHERE子句 - DELETE必须有WHERE条件以确保安全
+            // WHERE clause - DELETE must have WHERE conditions for safety
             if (_whereConditions.Count > 0)
             {
                 sql.Append(" WHERE ");
@@ -535,7 +535,7 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// 启用参数化查询模式，用于生成SqlTemplate
+        /// Enable parameterized query mode for SqlTemplate generation
         /// </summary>
         public ExpressionToSql<T> UseParameterizedQueries()
         {
@@ -544,20 +544,20 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// 转换为 SQL 模板。如果未启用参数化模式，将自动启用并重新构建查询。
+        /// Convert to SQL template. If parameterized mode is not enabled, it will automatically enable and rebuild the query.
         /// </summary>
         public override SqlTemplate ToTemplate()
         {
-            // 如果还没有启用参数化查询，需要重新构建
+            // If parameterized queries are not yet enabled, need to rebuild
             if (!_parameterized)
             {
-                // 保存当前状态
+                // Save current state
                 var conditions = new List<string>(_whereConditions);
                 var orderBy = new List<string>(_orderByExpressions);
                 var groupBy = new List<string>(_groupByExpressions);
                 var having = new List<string>(_havingConditions);
 
-                // 清空并重新启用参数化模式
+                // Clear and re-enable parameterized mode
                 _whereConditions.Clear();
                 _orderByExpressions.Clear();
                 _groupByExpressions.Clear();
@@ -565,9 +565,9 @@ namespace Sqlx
                 _parameters.Clear();
                 _parameterized = true;
 
-                // 需要重新构建查询，但这需要原始表达式
-                // 由于我们没有保存原始表达式，我们只能返回当前的SQL和空参数
-                // 这是一个设计限制，建议用户显式调用UseParameterizedQueries()
+                // Need to rebuild query, but this requires original expressions
+                // Since we didn't save original expressions, we can only return current SQL and empty parameters
+                // This is a design limitation, users should explicitly call UseParameterizedQueries()
                 _parameterized = false;
                 _whereConditions.AddRange(conditions);
                 _orderByExpressions.AddRange(orderBy);
@@ -580,17 +580,17 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// 转换为 SQL 字符串。
+        /// Convert to SQL string.
         /// </summary>
         public override string ToSql() => BuildSql();
 
         /// <summary>
-        /// 生成 WHERE 子句部分。
+        /// Generate WHERE clause part.
         /// </summary>
         public string ToWhereClause() => _whereConditions.Count == 0 ? string.Empty : string.Join(" AND ", _whereConditions);
 
         /// <summary>
-        /// 生成额外的子句（GROUP BY, HAVING, ORDER BY, LIMIT, OFFSET）。
+        /// Generate additional clauses (GROUP BY, HAVING, ORDER BY, LIMIT, OFFSET).
         /// </summary>
         public string ToAdditionalClause()
         {
@@ -619,19 +619,19 @@ namespace Sqlx
                 var dbType = DatabaseType;
                 var useOffsetFetchSyntax = dbType == "SqlServer" || dbType == "Oracle";
 
-                if (useOffsetFetchSyntax) // SQL Server 或 Oracle
+                if (useOffsetFetchSyntax) // SQL Server or Oracle
                 {
                     if (_skip.HasValue) sql.Append($" OFFSET {_skip.Value} ROWS");
                     if (_take.HasValue) sql.Append($" FETCH NEXT {_take.Value} ROWS ONLY");
                 }
-                else // MySQL, PostgreSQL, SQLite 等
+                else // MySQL, PostgreSQL, SQLite etc
                 {
                     if (_take.HasValue) sql.Append($" LIMIT {_take.Value}");
                     if (_skip.HasValue) sql.Append($" OFFSET {_skip.Value}");
                 }
             }
 
-            return sql.ToString().TrimStart(); // 移除开头的空格
+            return sql.ToString().TrimStart(); // Remove leading spaces
         }
     }
 
@@ -663,7 +663,7 @@ namespace Sqlx
 #endif
         TResult>(Expression<Func<IGrouping<TKey, T>, TResult>> selector)
         {
-            // 创建新的查询对象，使用相同的方言
+            // Create new query object using the same dialect
             var resultQuery = _baseQuery._dialect.DatabaseType switch
             {
                 "SqlServer" => ExpressionToSql<TResult>.ForSqlServer(),
@@ -675,22 +675,22 @@ namespace Sqlx
                 _ => ExpressionToSql<TResult>.ForSqlServer()
             };
 
-            // 构建 SELECT 子句
+            // Build SELECT clause
             var selectClause = BuildSelectClause(selector.Body);
             resultQuery.SetCustomSelectClause(selectClause);
 
-            // 复制基础查询的信息
+            // Copy base query information
             CopyBaseQueryInfo(resultQuery);
 
             return resultQuery;
         }
 
         /// <summary>
-        /// 添加 HAVING 条件。
+        /// Add HAVING conditions.
         /// </summary>
         public GroupedExpressionToSql<T, TKey> Having(Expression<Func<IGrouping<TKey, T>, bool>> predicate)
         {
-            // 解析 HAVING 条件中的聚合函数
+            // Parse aggregate functions in HAVING conditions
             var havingClause = ParseHavingExpression(predicate.Body);
             _baseQuery.AddHavingCondition(havingClause);
             return this;
@@ -703,7 +703,7 @@ namespace Sqlx
             switch (expression)
             {
                 case NewExpression newExpr:
-                    // 处理 new { Key = g.Key, Count = g.Count() } 形式
+                    // Handle new { Key = g.Key, Count = g.Count() } format
                     for (int i = 0; i < newExpr.Arguments.Count; i++)
                     {
                         var arg = newExpr.Arguments[i];
@@ -714,7 +714,7 @@ namespace Sqlx
                     break;
 
                 case MemberInitExpression memberInit:
-                    // 处理 new TestUserResult { Id = g.Key, Count = g.Count() } 形式
+                    // Handle new TestUserResult { Id = g.Key, Count = g.Count() } format
                     foreach (var binding in memberInit.Bindings)
                     {
                         if (binding is MemberAssignment assignment)
@@ -727,7 +727,7 @@ namespace Sqlx
                     break;
 
                 default:
-                    // 单个表达式
+                    // Single expression
                     var expr = ParseSelectExpression(expression);
                     selectClause.Add(expr);
                     break;
@@ -744,7 +744,7 @@ namespace Sqlx
                     return ParseAggregateFunction(methodCall);
 
                 case MemberExpression member when member.Expression is ParameterExpression param && param.Name == "g":
-                    // g.Key 访问
+                    // g.Key access
                     if (member.Member.Name == "Key")
                     {
                         return _keyColumnName;
@@ -752,7 +752,7 @@ namespace Sqlx
                     return "NULL";
 
                 case BinaryExpression binary:
-                    // 处理二元表达式，例如 g.Key ?? 0 或复杂的算术表达式
+                    // Handle binary expressions, e.g. g.Key ?? 0 or complex arithmetic expressions
                     var left = ParseSelectExpression(binary.Left);
                     var right = ParseSelectExpression(binary.Right);
                     var op = binary.NodeType switch
@@ -778,18 +778,18 @@ namespace Sqlx
                     return FormatConstantValue(constant.Value);
 
                 case ConditionalExpression conditional:
-                    // 处理三元运算符 condition ? ifTrue : ifFalse
+                    // Handle ternary operator condition ? ifTrue : ifFalse
                     var test = ParseSelectExpression(conditional.Test);
                     var ifTrue = ParseSelectExpression(conditional.IfTrue);
                     var ifFalse = ParseSelectExpression(conditional.IfFalse);
                     return $"CASE WHEN {test} THEN {ifTrue} ELSE {ifFalse} END";
 
                 case UnaryExpression unary when unary.NodeType == ExpressionType.Convert:
-                    // 处理类型转换
+                    // Handle type conversion
                     return ParseSelectExpression(unary.Operand);
 
                 default:
-                    // 对于无法处理的表达式，尝试作为普通表达式解析
+                    // For expressions that cannot be handled, try parsing as normal expressions
                     try
                     {
                         return ParseExpressionRaw(expression);
@@ -812,12 +812,12 @@ namespace Sqlx
                 "Average" or "Avg" when methodCall.Arguments.Count > 1 => $"AVG({ParseLambdaExpressionEnhanced(methodCall.Arguments[1])})",
                 "Max" when methodCall.Arguments.Count > 1 => $"MAX({ParseLambdaExpressionEnhanced(methodCall.Arguments[1])})",
                 "Min" when methodCall.Arguments.Count > 1 => $"MIN({ParseLambdaExpressionEnhanced(methodCall.Arguments[1])})",
-                _ => throw new NotSupportedException($"聚合函数 {methodName} 不受支持")
+                _ => throw new NotSupportedException($"Aggregate function {methodName} is not supported")
             };
         }
 
         /// <summary>
-        /// 增强的Lambda表达式解析，支持复杂的嵌套函数和表达式
+        /// Enhanced Lambda expression parsing with support for complex nested functions and expressions
         /// </summary>
         private string ParseLambdaExpressionEnhanced(Expression expression) => expression switch
         {
@@ -827,7 +827,7 @@ namespace Sqlx
         };
 
         /// <summary>
-        /// 解析Lambda表达式的Body部分，支持嵌套函数
+        /// Parse Lambda expression Body part with support for nested functions
         /// </summary>
         private string ParseLambdaBody(Expression body)
         {
@@ -843,7 +843,7 @@ namespace Sqlx
                     return ExtractColumnName(member);
 
                 case BinaryExpression binary:
-                    // 支持算术表达式和空值合并，如 x.Salary * 1.2, x.Bonus ?? 0
+                    // Support arithmetic expressions and null coalescing, like x.Salary * 1.2, x.Bonus ?? 0
                     var left = ParseLambdaBody(binary.Left);
                     var right = ParseLambdaBody(binary.Right);
                     var op = binary.NodeType switch
@@ -867,14 +867,14 @@ namespace Sqlx
                         : $"({left} {op} {right})";
 
                 case MethodCallExpression methodCall:
-                    // 支持嵌套函数调用，如 Math.Round(x.Salary, 2)
+                    // Support nested function calls, like Math.Round(x.Salary, 2)
                     return ParseMethodCallInAggregate(methodCall);
 
                 case ConstantExpression constant:
                     return FormatConstantValue(constant.Value);
 
                 case ConditionalExpression conditional:
-                    // 支持条件表达式，如 x.IsActive ? x.Salary : 0
+                    // Support conditional expressions, like x.IsActive ? x.Salary : 0
                     var test = ParseLambdaBody(conditional.Test);
                     var ifTrue = ParseLambdaBody(conditional.IfTrue);
                     var ifFalse = ParseLambdaBody(conditional.IfFalse);
@@ -884,7 +884,7 @@ namespace Sqlx
                     return ParseLambdaBody(unary.Operand);
 
                 default:
-                    // 回退到简单的列名提取
+                    // Fallback to simple column name extraction
                     try
                     {
                         return ExtractColumnName(body);
@@ -897,14 +897,14 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// 在聚合函数上下文中解析方法调用
+        /// Parse method calls in aggregate function context
         /// </summary>
         private string ParseMethodCallInAggregate(MethodCallExpression methodCall)
         {
             var methodName = methodCall.Method.Name;
             var declaringType = methodCall.Method.DeclaringType;
 
-            // 数学函数
+            // Math functions
             if (declaringType == typeof(Math))
             {
                 var args = methodCall.Arguments.Select(ParseLambdaBody).ToArray();
@@ -923,7 +923,7 @@ namespace Sqlx
                 };
             }
 
-            // 字符串函数
+            // String functions
             if (declaringType == typeof(string) && methodCall.Object != null)
             {
                 var obj = ParseLambdaBody(methodCall.Object);
@@ -941,12 +941,12 @@ namespace Sqlx
                 };
             }
 
-            // 其他情况，回退到基础解析
+            // Other cases, fallback to basic parsing
             return methodCall.Object != null ? ParseLambdaBody(methodCall.Object) : "NULL";
         }
         private string ExtractColumnName(Expression expression)
         {
-            // 使用正确的数据库方言格式
+            // Use correct database dialect format
             if (expression is MemberExpression member)
             {
                 return _dialect.WrapColumn(member.Member.Name);
@@ -960,7 +960,7 @@ namespace Sqlx
 
         private string ParseHavingExpression(Expression expression)
         {
-            // 解析 HAVING 子句中的条件表达式，支持聚合函数
+            // Parse conditional expressions in HAVING clause with aggregate function support
             switch (expression)
             {
                 case BinaryExpression binary:
@@ -1001,35 +1001,35 @@ namespace Sqlx
 
         private void CopyBaseQueryInfo<TResult>(ExpressionToSql<TResult> resultQuery)
         {
-            // 复制表名 - 使用原始表名而不是结果类型名
+            // Copy table name - use original table name instead of result type name
             resultQuery.SetTableName(typeof(T).Name);
 
-            // 复制 WHERE 条件
+            // Copy WHERE conditions
             resultQuery.CopyWhereConditions(_baseQuery.GetWhereConditions());
 
-            // 确保包含 GROUP BY 子句
+            // Ensure GROUP BY clause is included
             if (!string.IsNullOrEmpty(_keyColumnName))
             {
                 resultQuery.AddGroupByColumn(_keyColumnName);
             }
 
-            // 复制 HAVING 条件
+            // Copy HAVING conditions
             resultQuery.CopyHavingConditions(_baseQuery.GetHavingConditions());
         }
 
         /// <summary>
-        /// 转换为SQL查询字符串。
+        /// Convert to SQL query string.
         /// </summary>
-        /// <returns>SQL查询字符串。</returns>
+        /// <returns>SQL query string.</returns>
         public override string ToSql()
         {
             return _baseQuery.ToSql();
         }
 
         /// <summary>
-        /// 转换为SQL模板。
+        /// Convert to SQL template.
         /// </summary>
-        /// <returns>SQL模板实例。</returns>
+        /// <returns>SQL template instance.</returns>
         public override SqlTemplate ToTemplate()
         {
             return _baseQuery.ToTemplate();

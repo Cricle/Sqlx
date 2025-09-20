@@ -1,17 +1,15 @@
 <Project>
-  
   <!-- 启用中央包版本管理 -->
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
-  
   <!-- 核心 .NET 运行时包 -->
   <ItemGroup Label="Runtime">
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.9" />
     <PackageVersion Include="System.Memory" Version="4.5.5" />
     <PackageVersion Include="System.Data.Common" Version="4.3.0" />
     <PackageVersion Include="System.Text.Json" Version="8.0.5" />
   </ItemGroup>
-
   <!-- 编译器和分析器 -->
   <ItemGroup Label="Compiler and Analyzers">
     <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" />
@@ -19,7 +17,6 @@
     <PackageVersion Include="StyleCop.Analyzers" Version="1.2.0-beta.556" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
   </ItemGroup>
-
   <!-- 数据库连接器 -->
   <ItemGroup Label="Database Connectors">
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="5.2.2" />
@@ -28,14 +25,12 @@
     <PackageVersion Include="Npgsql" Version="8.0.6" />
     <PackageVersion Include="System.Data.SQLite" Version="1.0.119" />
   </ItemGroup>
-
   <!-- Entity Framework（仅测试使用） -->
   <ItemGroup Label="Entity Framework">
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="9.0.9" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.9" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.9" />
   </ItemGroup>
-
   <!-- 测试框架 -->
   <ItemGroup Label="Testing">
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
@@ -48,13 +43,11 @@
     <PackageVersion Include="Verify.MSTest" Version="28.9.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.3" />
   </ItemGroup>
-
   <!-- 性能和基准测试 -->
   <ItemGroup Label="Performance">
     <PackageVersion Include="BenchmarkDotNet" Version="0.14.0" />
     <PackageVersion Include="System.Diagnostics.PerformanceCounter" Version="8.0.0" />
   </ItemGroup>
-
   <!-- Microsoft Extensions -->
   <ItemGroup Label="Microsoft Extensions">
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
@@ -64,22 +57,23 @@
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="8.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
   </ItemGroup>
-
   <!-- 开发工具 -->
   <ItemGroup Label="Development Tools">
     <PackageVersion Include="Microsoft.Build.Locator" Version="1.5.5" />
     <PackageVersion Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
   </ItemGroup>
-
+  <!-- Visual Studio 扩展开发 -->
+  <ItemGroup Label="Visual Studio Extension">
+    <PackageVersion Include="Microsoft.VisualStudio.SDK" Version="17.0.32112.339" />
+    <PackageVersion Include="Microsoft.VSSDK.BuildTools" Version="17.0.5232" />
+  </ItemGroup>
   <!-- 云和身份验证 -->
   <ItemGroup Label="Cloud and Authentication">
     <PackageVersion Include="Azure.Identity" Version="1.12.0" />
     <PackageVersion Include="Microsoft.Identity.Client" Version="4.63.0" />
   </ItemGroup>
-
   <!-- AOT 编译器（实验性） -->
   <ItemGroup Label="AOT Compiler" Condition="'$(EnableAOT)' == 'true'">
     <PackageVersion Include="Microsoft.DotNet.ILCompiler" Version="9.0.0" />
   </ItemGroup>
-  
 </Project>

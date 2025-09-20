@@ -11,7 +11,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 
 /// <summary>
-/// 提供具有自动缩进功能的字符串构建器，用于生成格式化的代码。
+/// Provides a string builder with automatic indentation functionality for generating formatted code.
 /// </summary>
 public sealed class IndentedStringBuilder
 {
@@ -30,10 +30,10 @@ public sealed class IndentedStringBuilder
     }
 
     /// <summary>
-    /// 向字符串构建器追加指定的字符串，并在需要时添加缩进。
+    /// Append the specified string to the string builder, adding indentation when needed.
     /// </summary>
-    /// <param name="value">要追加的字符串。</param>
-    /// <returns>当前 IndentedStringBuilder 实例，以支持链式调用。</returns>
+    /// <param name="value">The string to append.</param>
+    /// <returns>The current IndentedStringBuilder instance to support method chaining.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public IndentedStringBuilder Append(string? value)
     {
@@ -55,10 +55,10 @@ public sealed class IndentedStringBuilder
     }
 
     /// <summary>
-    /// 向字符串构建器追加指定的字符，并在需要时添加缩进。
+    /// Append the specified character to the string builder, adding indentation when needed.
     /// </summary>
-    /// <param name="value">要追加的字符。</param>
-    /// <returns>当前 IndentedStringBuilder 实例，以支持链式调用。</returns>
+    /// <param name="value">The character to append.</param>
+    /// <returns>The current IndentedStringBuilder instance to support method chaining.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public IndentedStringBuilder Append(char value)
     {
@@ -72,9 +72,9 @@ public sealed class IndentedStringBuilder
     }
 
     /// <summary>
-    /// 向字符串构建器追加一个换行符。
+    /// Append a newline character to the string builder.
     /// </summary>
-    /// <returns>当前 IndentedStringBuilder 实例，以支持链式调用。</returns>
+    /// <returns>The current IndentedStringBuilder instance to support method chaining.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public IndentedStringBuilder AppendLine()
     {
@@ -84,12 +84,12 @@ public sealed class IndentedStringBuilder
     }
 
     /// <summary>
-    /// 根据条件向字符串构建器追加一行内容。
+    /// Conditionally append a line of content to the string builder.
     /// </summary>
-    /// <param name="condition">判断条件。</param>
-    /// <param name="trueValue">条件为 true 时追加的字符串。</param>
-    /// <param name="falseValue">条件为 false 时追加的字符串（可选）。</param>
-    /// <returns>当前 IndentedStringBuilder 实例，以支持链式调用。</returns>
+    /// <param name="condition">The condition to evaluate.</param>
+    /// <param name="trueValue">The string to append when condition is true.</param>
+    /// <param name="falseValue">The string to append when condition is false (optional).</param>
+    /// <returns>The current IndentedStringBuilder instance to support method chaining.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public IndentedStringBuilder AppendLineIf(bool condition, string? trueValue, string? falseValue)
     {
@@ -98,10 +98,10 @@ public sealed class IndentedStringBuilder
     }
 
     /// <summary>
-    /// 向字符串构建器追加指定的字符串并换行。
+    /// Append the specified string to the string builder and add a newline.
     /// </summary>
-    /// <param name="value">要追加的字符串。</param>
-    /// <returns>当前 IndentedStringBuilder 实例，以支持链式调用。</returns>
+    /// <param name="value">The string to append.</param>
+    /// <returns>The current IndentedStringBuilder instance to support method chaining.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public IndentedStringBuilder AppendLine(string? value)
     {
@@ -119,9 +119,9 @@ public sealed class IndentedStringBuilder
     }
 
     /// <summary>
-    /// 增加缩进级别，后续的内容将使用更深的缩进。
+    /// Increase the indentation level, subsequent content will use deeper indentation.
     /// </summary>
-    /// <returns>当前 IndentedStringBuilder 实例，以支持链式调用。</returns>
+    /// <returns>The current IndentedStringBuilder instance to support method chaining.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public IndentedStringBuilder PushIndent()
     {
@@ -131,9 +131,9 @@ public sealed class IndentedStringBuilder
     }
 
     /// <summary>
-    /// 减少缩进级别，后续的内容将使用更浅的缩进。
+    /// Decrease the indentation level, subsequent content will use shallower indentation.
     /// </summary>
-    /// <returns>当前 IndentedStringBuilder 实例，以支持链式调用。</returns>
+    /// <returns>The current IndentedStringBuilder instance to support method chaining.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public IndentedStringBuilder PopIndent()
     {

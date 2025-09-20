@@ -22,26 +22,13 @@ public class SqlTemplateEngine : ISqlTemplateEngine
     /// <inheritdoc/>
     public SqlTemplateResult ProcessTemplate(string templateSql, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName)
     {
-        var result = new SqlTemplateResult();
-        
         if (string.IsNullOrWhiteSpace(templateSql))
-        {
-            result.ProcessedSql = "SELECT 1"; // Safe fallback
-            result.Warnings.Add("Empty SQL template provided");
-            return result;
-        }
+            return new SqlTemplateResult { ProcessedSql = "SELECT 1", Warnings = { "Empty SQL template provided" } };
 
-        var processedSql = templateSql;
-
-        // Step 1: Process template placeholders ({{placeholder:type}})
-        processedSql = ProcessPlaceholders(processedSql, method, entityType, tableName, result);
-
-        // Step 2: Extract and validate parameters (@param, :param, $param)
+        var result = new SqlTemplateResult();
+        var processedSql = ProcessPlaceholders(templateSql, method, entityType, tableName, result);
         ProcessParameters(processedSql, method, result);
-
-        // Step 3: Detect dynamic features
         result.HasDynamicFeatures = HasDynamicFeatures(processedSql);
-
         result.ProcessedSql = processedSql;
         return result;
     }

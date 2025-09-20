@@ -251,7 +251,7 @@ namespace Sqlx.Tests.Core
 
             foreach (var (input, expected) in testCases)
             {
-                var result = NameMapper.MapNameToSnakeCase(input);
+                var result = NameMapper.MapName(input);
                 Assert.AreEqual(expected, result, $"Failed to map '{input}' to '{expected}'");
             }
         }
@@ -260,7 +260,7 @@ namespace Sqlx.Tests.Core
         public void MapNameToSnakeCase_NullInput_ThrowsArgumentNullException()
         {
             // Test null input handling for MapNameToSnakeCase
-            Assert.ThrowsException<ArgumentNullException>(() => NameMapper.MapNameToSnakeCase(null!));
+            Assert.ThrowsException<ArgumentNullException>(() => NameMapper.MapName(null!));
         }
 
         [TestMethod]
@@ -279,7 +279,7 @@ namespace Sqlx.Tests.Core
 
             foreach (var (input, expected) in testCases)
             {
-                var result = NameMapper.MapNameToSnakeCase(input);
+                var result = NameMapper.MapName(input);
                 Assert.AreEqual(expected, result, $"Failed to handle special chars in '{input}'");
             }
         }
@@ -407,7 +407,7 @@ namespace Sqlx.Tests.Core
             {
                 var result1 = NameMapper.MapName(input);
                 var result2 = NameMapper.MapName(input);
-                var result3 = NameMapper.MapNameToSnakeCase(input);
+                var result3 = NameMapper.MapName(input);
 
                 Assert.AreEqual(result1, result2, $"Inconsistent results for '{input}'");
                 Assert.AreEqual(result1, result3, $"MapName and MapNameToSnakeCase differ for '{input}'");

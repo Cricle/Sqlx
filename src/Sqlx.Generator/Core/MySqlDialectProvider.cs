@@ -13,67 +13,35 @@ namespace Sqlx.Generator.Core;
 /// <summary>
 /// MySQL database dialect provider with MySQL-specific SQL syntax.
 /// </summary>
-internal class MySqlDialectProvider : IDatabaseDialectProvider
+internal class MySqlDialectProvider : BaseDialectProvider
 {
     /// <inheritdoc />
-    public SqlDefine SqlDefine => SqlDefine.MySql;
+    public override SqlDefine SqlDefine => SqlDefine.MySql;
 
     /// <inheritdoc />
-    public SqlDefineTypes DialectType => SqlDefineTypes.MySql;
+    public override SqlDefineTypes DialectType => SqlDefineTypes.MySql;
 
     /// <inheritdoc />
-    public string GenerateLimitClause(int? limit, int? offset)
+    public override string GenerateLimitClause(int? limit, int? offset) =>
+        (limit, offset) switch
+        {
+            (not null, not null) => $"LIMIT {offset}, {limit}",
+            (not null, null) => $"LIMIT {limit}",
+            (null, not null) => $"LIMIT {offset}, 18446744073709551615",
+            _ => string.Empty
+        };
+
+    /// <inheritdoc />
+    public override string GenerateInsertWithReturning(string tableName, string[] columns)
     {
-        if (limit.HasValue && offset.HasValue)
-        {
-            return $"LIMIT {offset.Value}, {limit.Value}";
-        }
-        else if (limit.HasValue)
-        {
-            return $"LIMIT {limit.Value}";
-        }
-        else if (offset.HasValue)
-        {
-            return $"LIMIT {offset.Value}, 18446744073709551615"; // MySQL max value for unlimited
-        }
-        return string.Empty;
+        var (wrappedTableName, wrappedColumns, parameters) = GetInsertParts(tableName, columns);
+        return $"INSERT INTO {wrappedTableName} ({string.Join(", ", wrappedColumns)}) VALUES ({string.Join(", ", parameters)}); SELECT LAST_INSERT_ID()";
     }
 
     /// <inheritdoc />
-    public string GenerateInsertWithReturning(string tableName, string[] columns)
+    public override string GenerateUpsert(string tableName, string[] columns, string[] keyColumns)
     {
-        var wrappedTableName = SqlDefine.WrapColumn(tableName);
-        var wrappedColumns = columns.Select(c => SqlDefine.WrapColumn(c)).ToArray();
-        var parameters = columns.Select(c => $"@{c.ToLowerInvariant()}").ToArray();
-
-        return $"INSERT INTO {wrappedTableName} ({string.Join(", ", wrappedColumns)}) " +
-               $"VALUES ({string.Join(", ", parameters)}); SELECT LAST_INSERT_ID()";
-    }
-
-    /// <inheritdoc />
-    public string GenerateBatchInsert(string tableName, string[] columns, int batchSize)
-    {
-        var wrappedTableName = SqlDefine.WrapColumn(tableName);
-        var wrappedColumns = columns.Select(c => SqlDefine.WrapColumn(c)).ToArray();
-
-        var valuesClauses = new string[batchSize];
-        for (int i = 0; i < batchSize; i++)
-        {
-            var parameters = columns.Select(c => $"@{c.ToLowerInvariant()}{i}").ToArray();
-            valuesClauses[i] = $"({string.Join(", ", parameters)})";
-        }
-
-        return $"INSERT INTO {wrappedTableName} ({string.Join(", ", wrappedColumns)}) " +
-               $"VALUES {string.Join(", ", valuesClauses)}";
-    }
-
-    /// <inheritdoc />
-    public string GenerateUpsert(string tableName, string[] columns, string[] keyColumns)
-    {
-        var wrappedTableName = SqlDefine.WrapColumn(tableName);
-        var wrappedColumns = columns.Select(c => SqlDefine.WrapColumn(c)).ToArray();
-        var parameters = columns.Select(c => $"@{c.ToLowerInvariant()}").ToArray();
-
+        var (wrappedTableName, wrappedColumns, parameters) = GetInsertParts(tableName, columns);
         var insertStatement = $"INSERT INTO {wrappedTableName} ({string.Join(", ", wrappedColumns)}) " +
                              $"VALUES ({string.Join(", ", parameters)})";
 
@@ -84,7 +52,7 @@ internal class MySqlDialectProvider : IDatabaseDialectProvider
     }
 
     /// <inheritdoc />
-    public string GetDatabaseTypeName(Type dotNetType)
+    public override string GetDatabaseTypeName(Type dotNetType)
     {
         return dotNetType.Name switch
         {
@@ -103,19 +71,19 @@ internal class MySqlDialectProvider : IDatabaseDialectProvider
     }
 
     /// <inheritdoc />
-    public string FormatDateTime(System.DateTime dateTime)
+    public override string FormatDateTime(DateTime dateTime)
     {
         return $"'{dateTime:yyyy-MM-dd HH:mm:ss}'";
     }
 
     /// <inheritdoc />
-    public string GetCurrentDateTimeSyntax()
+    public override string GetCurrentDateTimeSyntax()
     {
         return "NOW()";
     }
 
     /// <inheritdoc />
-    public string GetConcatenationSyntax(params string[] expressions)
+    public override string GetConcatenationSyntax(params string[] expressions)
     {
         if (expressions.Length <= 1)
             return expressions.FirstOrDefault() ?? string.Empty;

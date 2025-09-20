@@ -76,7 +76,7 @@ internal static class DatabaseDialectFactory
             SqlDefineTypes.SqlServer => new SqlServerDialectProvider(),
             SqlDefineTypes.PostgreSql => new PostgreSqlDialectProvider(),
             SqlDefineTypes.SQLite => new SQLiteDialectProvider(),
-            _ => throw new UnsupportedDialectException(dialectType.ToString())
+            _ => throw new NotSupportedException($"Unsupported dialect: {dialectType}")
         };
     }
 

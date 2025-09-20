@@ -50,58 +50,58 @@ namespace Sqlx.Generator.Core
         }
 
         /// <summary>
-        /// 获取 MySQL 数据库的 SQL 方言定义。
+        /// Get SQL dialect definition for MySQL database.
         /// </summary>
         public static readonly SqlDefine MySql = new SqlDefine("`", "`", "'", "'", "@");
         /// <summary>
-        /// 获取 SQL Server 数据库的 SQL 方言定义。
+        /// Get SQL dialect definition for SQL Server database.
         /// </summary>
         public static readonly SqlDefine SqlServer = new SqlDefine("[", "]", "'", "'", "@");
         /// <summary>
-        /// 获取 PostgreSQL 数据库的 SQL 方言定义。
+        /// Get SQL dialect definition for PostgreSQL database.
         /// </summary>
         public static readonly SqlDefine PostgreSql = new SqlDefine("\"", "\"", "'", "'", "$");
         /// <summary>
-        /// 获取 SQLite 数据库的 SQL 方言定义。
+        /// Get SQL dialect definition for SQLite database.
         /// </summary>
         public static readonly SqlDefine SQLite = new SqlDefine("[", "]", "'", "'", "$");
 
         /// <summary>
-        /// 获取 PostgreSQL 数据库的 SQL 方言定义（别名）。
+        /// Get SQL dialect definition for PostgreSQL database (alias).
         /// </summary>
         public static readonly SqlDefine PgSql = PostgreSql;
 
         /// <summary>
-        /// 获取 Oracle 数据库的 SQL 方言定义。
+        /// Get SQL dialect definition for Oracle database.
         /// </summary>
         public static readonly SqlDefine Oracle = new SqlDefine("\"", "\"", "'", "'", ":");
 
         /// <summary>
-        /// 获取 DB2 数据库的 SQL 方言定义。
+        /// Get SQL dialect definition for DB2 database.
         /// </summary>
         public static readonly SqlDefine DB2 = new SqlDefine("\"", "\"", "'", "'", "?");
 
         /// <summary>
-        /// 使用字符串界符包裹指定的字符串。
+        /// Wrap the specified string using string delimiters.
         /// </summary>
-        /// <param name="input">要包裹的字符串。</param>
-        /// <returns>包裹后的字符串。</returns>
+        /// <param name="input">The string to wrap.</param>
+        /// <returns>The wrapped string.</returns>
         public string WrapString(string input) => $"{StringLeft}{input}{StringRight}";
         /// <summary>
-        /// 使用列名界符包裹指定的列名。
+        /// Wrap the specified column name using column delimiters.
         /// </summary>
-        /// <param name="input">要包裹的列名。</param>
-        /// <returns>包裹后的列名。</returns>
+        /// <param name="input">The column name to wrap.</param>
+        /// <returns>The wrapped column name.</returns>
         public string WrapColumn(string input) => $"{ColumnLeft}{input}{ColumnRight}";
 
         /// <summary>
-        /// 将 SqlDefine 结构解构为各个组成部分。
+        /// Deconstruct the SqlDefine structure into its component parts.
         /// </summary>
-        /// <param name="columnLeft">列名的左边界符。</param>
-        /// <param name="columnRight">列名的右边界符。</param>
-        /// <param name="stringLeft">字符串的左边界符。</param>
-        /// <param name="stringRight">字符串的右边界符。</param>
-        /// <param name="parameterPrefix">参数的前缀符。</param>
+        /// <param name="columnLeft">Left delimiter for column names.</param>
+        /// <param name="columnRight">Right delimiter for column names.</param>
+        /// <param name="stringLeft">Left delimiter for strings.</param>
+        /// <param name="stringRight">Right delimiter for strings.</param>
+        /// <param name="parameterPrefix">Prefix for parameters.</param>
         public void Deconstruct(out string columnLeft, out string columnRight, out string stringLeft, out string stringRight, out string parameterPrefix)
         {
             columnLeft = ColumnLeft;
@@ -118,27 +118,27 @@ namespace Sqlx.Generator.Core
     public enum SqlDefineTypes
     {
         /// <summary>
-        /// MySQL 数据库方言类型。
+        /// MySQL database dialect type.
         /// </summary>
         MySql = 0,
         /// <summary>
-        /// SQL Server 数据库方言类型。
+        /// SQL Server database dialect type.
         /// </summary>
         SqlServer = 1,
         /// <summary>
-        /// PostgreSQL 数据库方言类型。
+        /// PostgreSQL database dialect type.
         /// </summary>
         PostgreSql = 2,
         /// <summary>
-        /// Oracle 数据库方言类型。
+        /// Oracle database dialect type.
         /// </summary>
         Oracle = 3,
         /// <summary>
-        /// DB2 数据库方言类型。
+        /// DB2 database dialect type.
         /// </summary>
         DB2 = 4,
         /// <summary>
-        /// SQLite 数据库方言类型。
+        /// SQLite database dialect type.
         /// </summary>
         SQLite = 5,
     }

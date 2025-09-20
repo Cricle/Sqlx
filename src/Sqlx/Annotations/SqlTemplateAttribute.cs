@@ -9,16 +9,16 @@
 namespace Sqlx.Annotations
 {
     /// <summary>
-    /// 标记方法使用编译时 SQL 模板，提供安全的 SQL 拼接功能
-    /// 与 SqlxAttribute 结合使用，在编译时生成高性能的 SQL 代码
+    /// Mark method to use compile-time SQL template, providing safe SQL concatenation functionality
+    /// Combined with SqlxAttribute, generates high-performance SQL code at compile time
     /// </summary>
     [System.AttributeUsage(System.AttributeTargets.Method, AllowMultiple = false, Inherited = false)]
     public sealed class SqlTemplateAttribute : System.Attribute
     {
         /// <summary>
-        /// 初始化 SqlTemplateAttribute
+        /// Initialize SqlTemplateAttribute
         /// </summary>
-        /// <param name="template">SQL 模板字符串，支持 @{参数名} 占位符</param>
+        /// <param name="template">SQL template string, supports @{parameterName} placeholders</param>
         public SqlTemplateAttribute(string template)
         {
             Template = template ?? throw new System.ArgumentNullException(nameof(template));
@@ -28,34 +28,34 @@ namespace Sqlx.Annotations
         }
 
         /// <summary>
-        /// SQL 模板字符串，使用 @{参数名} 作为占位符
-        /// 例如: "SELECT * FROM Users WHERE Id = @{userId} AND Name = @{userName}"
+        /// SQL template string, uses @{parameterName} as placeholders
+        /// Example: "SELECT * FROM Users WHERE Id = @{userId} AND Name = @{userName}"
         /// </summary>
         public string Template { get; }
 
         /// <summary>
-        /// 数据库方言类型，默认为 SqlServer
+        /// Database dialect type, defaults to SqlServer
         /// </summary>
         public SqlDialectType Dialect { get; set; }
 
         /// <summary>
-        /// 是否启用安全模式，默认为 true
-        /// 安全模式下会进行 SQL 注入检查和参数验证
+        /// Whether to enable safe mode, defaults to true
+        /// Safe mode performs SQL injection checks and parameter validation
         /// </summary>
         public bool SafeMode { get; set; }
 
         /// <summary>
-        /// 是否验证参数，默认为 true
+        /// Whether to validate parameters, defaults to true
         /// </summary>
         public bool ValidateParameters { get; set; }
 
         /// <summary>
-        /// 是否缓存生成的 SQL，默认为 true
+        /// Whether to cache generated SQL, defaults to true
         /// </summary>
         public bool EnableCaching { get; set; } = true;
 
         /// <summary>
-        /// 执行类型，用于优化生成的代码
+        /// Execution type, used to optimize generated code
         /// </summary>
         public SqlOperation Operation { get; set; } = SqlOperation.Select;
     }

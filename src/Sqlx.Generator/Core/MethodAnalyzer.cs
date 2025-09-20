@@ -21,7 +21,7 @@ public class MethodAnalyzer
     {
         var isAsync = IsAsyncMethod(method);
         var returnType = GetActualReturnType(method);
-        var isCollection = TypeAnalyzer.IsCollectionType(returnType);
+        var isCollection = returnType.IsCollectionType();
         var isScalar = IsScalarType(returnType);
         var operationType = DetermineOperationType(method);
 

@@ -1,27 +1,27 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- 基本项目设置 -->
+  <!-- Basic project settings -->
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <AssemblyName>Sqlx.Generator</AssemblyName>
     <RootNamespace>Sqlx.Generator</RootNamespace>
     
-    <!-- 源生成器特殊设置 -->
+    <!-- Source generator specific settings -->
     <IsPackable>true</IsPackable>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <GenerateAotCompatibleCode>true</GenerateAotCompatibleCode>
     <DevelopmentDependency>true</DevelopmentDependency>
   </PropertyGroup>
 
-  <!-- 包元数据 -->
+  <!-- Package metadata -->
   <PropertyGroup>
     <PackageId>Sqlx.Generator</PackageId>
     <Version>2.0.2</Version>
-    <Title>Sqlx.Generator - 源生成器</Title>
+    <Title>Sqlx.Generator - Source Generator</Title>
     <Description>
-      Sqlx ORM 框架的源生成器组件，提供编译时代码生成功能。
-      支持智能 SQL 方法生成、类型安全映射、AOT 兼容代码生成、Primary Constructor 和 Record 类型支持。
-      自动生成高性能、零反射的数据访问代码。
+      Source generator component for Sqlx ORM framework, providing compile-time code generation functionality.
+      Supports intelligent SQL method generation, type-safe mapping, AOT-compatible code generation, Primary Constructor and Record type support.
+      Automatically generates high-performance, zero-reflection data access code.
     </Description>
     <PackageTags>
       source-generator;analyzer;roslyn;codegen;orm;sql;aot;performance;
@@ -29,7 +29,7 @@
       netstandard;csharp;dotnet
     </PackageTags>
     <PackageReleaseNotes>
-      v2.0.2 - 源生成器优化版本
+      v2.0.2 - Source generator optimization version
       Optimized source generator performance and stability
       Enhanced Primary Constructor and Record type support
       Improved AOT compatibility code generation
@@ -40,22 +40,22 @@
     <Authors>Sqlx Team</Authors>
   </PropertyGroup>
 
-  <!-- 依赖包 -->
+  <!-- Dependencies -->
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
   </ItemGroup>
 
-  <!-- 包文件 -->
+  <!-- Package files -->
   <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" Visible="false" />
     <None Include="tools\install.ps1" Pack="true" PackagePath="tools\" Visible="false" />
     <None Include="tools\uninstall.ps1" Pack="true" PackagePath="tools\" Visible="false" />
   </ItemGroup>
 
-  <!-- 源生成器打包 -->
+  <!-- Source generator packaging -->
   <ItemGroup>
-    <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="analyzers\dotnet\$(AssemblyName).dll" Visible="false" />
+    <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers\dotnet\cs\$(AssemblyName).dll" Visible="false" />
   </ItemGroup>
 
 </Project>

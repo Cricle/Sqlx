@@ -61,8 +61,8 @@ namespace Sqlx
         public static SqlTemplateOptions Default => new();
     }
     /// <summary>
-    /// 编译时 SQL 模板 - 提供安全的参数化查询功能
-    /// 动态 SQL 功能已迁移到 ExpressionToSql，此类专注于编译时安全性
+    /// Compile-time SQL template - provides safe parameterized query functionality
+    /// Dynamic SQL features have been migrated to ExpressionToSql, this class focuses on compile-time safety
     /// </summary>
     public readonly record struct SqlTemplate(string Sql, IReadOnlyDictionary<string, object?> Parameters)
     {
@@ -70,10 +70,10 @@ namespace Sqlx
         public static readonly SqlTemplate Empty = new(string.Empty, new Dictionary<string, object?>());
 
         /// <summary>
-        /// 创建编译时安全的 SQL 模板（推荐使用 SqlTemplateAttribute）
+        /// Create compile-time safe SQL template (recommended to use SqlTemplateAttribute)
         /// </summary>
-        /// <param name="sql">SQL 字符串</param>
-        /// <returns>模板定义</returns>
+        /// <param name="sql">SQL string</param>
+        /// <returns>Template definition</returns>
         public static SqlTemplate Parse(string sql)
         {
             if (string.IsNullOrWhiteSpace(sql))

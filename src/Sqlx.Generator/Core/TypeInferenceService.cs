@@ -63,7 +63,7 @@ public class TypeInferenceService : ITypeInferenceService
             }
 
             // Check for collection of entities
-            if (TypeAnalyzer.IsCollectionType(param.Type) &&
+            if (param.Type.IsCollectionType() &&
                 param.Type is INamedTypeSymbol collectionType &&
                 collectionType.TypeArguments.Length > 0)
             {
@@ -84,7 +84,7 @@ public class TypeInferenceService : ITypeInferenceService
             returnType = taskType.TypeArguments[0];
         }
 
-        if (TypeAnalyzer.IsCollectionType(returnType) &&
+        if (returnType.IsCollectionType() &&
             returnType is INamedTypeSymbol collectionReturnType &&
             collectionReturnType.TypeArguments.Length > 0)
         {
@@ -100,7 +100,7 @@ public class TypeInferenceService : ITypeInferenceService
         if (returnType.TypeKind == TypeKind.Class &&
             returnType.Name != "String" &&
             !IsSystemType(returnType) &&
-            !TypeAnalyzer.IsCollectionType(returnType))
+            !returnType.IsCollectionType())
         {
             return returnType as INamedTypeSymbol;
         }
@@ -230,7 +230,7 @@ public class TypeInferenceService : ITypeInferenceService
         }
 
         // Handle collections
-        if (TypeAnalyzer.IsCollectionType(type) && type is INamedTypeSymbol collectionType && collectionType.TypeArguments.Length > 0)
+        if (type.IsCollectionType() && type is INamedTypeSymbol collectionType && collectionType.TypeArguments.Length > 0)
         {
             type = collectionType.TypeArguments[0];
         }

@@ -56,6 +56,16 @@ public class SqlTemplateResult
     /// Gets or sets any processing warnings.
     /// </summary>
     public List<string> Warnings { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets any processing errors.
+    /// </summary>
+    public List<string> Errors { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets additional metadata about the processed template.
+    /// </summary>
+    public Dictionary<string, object?> Metadata { get; set; } = new();
 }
 
 /// <summary>
@@ -82,6 +92,21 @@ public class ParameterMapping
     /// Gets or sets the DB type.
     /// </summary>
     public string DbType { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the default value for the parameter.
+    /// </summary>
+    public string? DefaultValue { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the parameter is optional.
+    /// </summary>
+    public bool IsOptional { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum length for string parameters.
+    /// </summary>
+    public int? MaxLength { get; set; }
 }
 
 /// <summary>
@@ -103,6 +128,16 @@ public class TemplateValidationResult
     /// Gets or sets validation warnings.
     /// </summary>
     public List<string> Warnings { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets validation suggestions.
+    /// </summary>
+    public List<string> Suggestions { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets additional validation metadata.
+    /// </summary>
+    public Dictionary<string, object?> Metadata { get; set; } = new();
 }
 
 

@@ -8,20 +8,12 @@ namespace Sqlx;
 
 using Microsoft.CodeAnalysis;
 using System;
-using System.Collections.Concurrent;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
 internal static class Extensions
 {
-    // Simple type checking - minimal internal caches to avoid recomputation
-    private static readonly ConcurrentDictionary<ITypeSymbol, bool> _dbConnectionTypeCache = new(SymbolEqualityComparer.Default);
-    private static readonly ConcurrentDictionary<ITypeSymbol, bool> _dbTransactionTypeCache = new(SymbolEqualityComparer.Default);
-    private static readonly ConcurrentDictionary<ITypeSymbol, bool> _dbContextTypeCache = new(SymbolEqualityComparer.Default);
-    private static readonly ConcurrentDictionary<ITypeSymbol, string?> _dataReaderMethodCache = new(SymbolEqualityComparer.Default);
-    private static readonly ConcurrentDictionary<ISymbol, string> _sqlNameCache = new(SymbolEqualityComparer.Default);
-    private static readonly ConcurrentDictionary<ITypeSymbol, string> _dbTypeCache = new(SymbolEqualityComparer.Default);
-    private static readonly ConcurrentDictionary<(ITypeSymbol type, string name), string> _dataReadExpressionCache = new();
+    // No caching in source generators to ensure fresh compilation each time
 
     public static bool CanHaveNullValue(this ITypeSymbol typeSymbol)
     {
@@ -38,295 +30,225 @@ internal static class Extensions
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static bool IsDbConnection(this ISymbol typeSymbol) =>
-        IsTypeInHierarchy(typeSymbol, "DbConnection", _dbConnectionTypeCache);
+        IsTypeInHierarchy(typeSymbol, "DbConnection");
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static bool IsDbTransaction(this ISymbol typeSymbol) =>
-        IsTypeInHierarchy(typeSymbol, "DbTransaction", _dbTransactionTypeCache);
+        IsTypeInHierarchy(typeSymbol, "DbTransaction");
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static bool IsDbContext(this ISymbol typeSymbol) =>
-        IsTypeInHierarchy(typeSymbol, "DbContext", _dbContextTypeCache);
+        IsTypeInHierarchy(typeSymbol, "DbContext");
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static bool IsTypeInHierarchy(ISymbol symbol, string targetTypeName, ConcurrentDictionary<ITypeSymbol, bool> cache)
+    private static bool IsTypeInHierarchy(ISymbol symbol, string targetTypeName)
     {
-        return IsTypes(symbol, type => CheckTypeInHierarchy(type, targetTypeName, cache));
-    }
-
-    /// <summary>
-    /// Optimized type hierarchy checking with caching to avoid repeated traversals
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static bool CheckTypeInHierarchy(ITypeSymbol type, string targetTypeName, ConcurrentDictionary<ITypeSymbol, bool> cache)
-    {
-        return cache.GetOrAdd(type, t => CheckTypeHierarchy(t, targetTypeName));
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static bool CheckTypeHierarchy(ITypeSymbol? type, string targetTypeName)
-    {
+        if (symbol is not ITypeSymbol type) return false;
+        
         while (type != null)
         {
-            if (string.Equals(type.Name, targetTypeName, StringComparison.Ordinal))
-                return true;
-            type = type.BaseType;
+            if (type.Name.Contains(targetTypeName)) return true;
+            type = type.BaseType!;
         }
         return false;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static bool IsTypes(ISymbol typeSymbol, Func<ITypeSymbol, bool> check)
+    private static bool IsTaskType(this ITypeSymbol typeSymbol) =>
+        typeSymbol.Name == "Task" && typeSymbol.ContainingNamespace?.ToDisplayString() == "System.Threading.Tasks";
+
+    public static bool IsTask(this ITypeSymbol typeSymbol) => typeSymbol.IsTaskType();
+
+    public static bool IsTaskWithResult(this ITypeSymbol typeSymbol) =>
+        typeSymbol is INamedTypeSymbol { IsGenericType: true } namedType &&
+        namedType.IsTaskType() && namedType.TypeArguments.Length == 1;
+
+    public static ITypeSymbol? GetTaskResultType(this ITypeSymbol typeSymbol) =>
+        typeSymbol is INamedTypeSymbol { IsGenericType: true } namedType &&
+        namedType.IsTaskType() && namedType.TypeArguments.Length == 1
+            ? namedType.TypeArguments[0] : null;
+
+    private static INamedTypeSymbol? FindGenericInterface(this ITypeSymbol typeSymbol, string interfaceName)
     {
-        return typeSymbol switch
+        return typeSymbol.AllInterfaces.FirstOrDefault(i =>
+            i.Name == interfaceName &&
+            i.ContainingNamespace?.ToDisplayString() == "System.Collections.Generic" &&
+            i.TypeArguments.Length == 1);
+    }
+
+    public static bool IsIEnumerable(this ITypeSymbol typeSymbol) => 
+        typeSymbol.FindGenericInterface("IEnumerable") != null;
+
+    public static ITypeSymbol? GetEnumerableElementType(this ITypeSymbol typeSymbol) =>
+        typeSymbol.FindGenericInterface("IEnumerable")?.TypeArguments[0];
+
+    public static bool IsList(this ITypeSymbol typeSymbol) => 
+        typeSymbol.FindGenericInterface("IList") != null;
+
+    public static bool IsArray(this ITypeSymbol typeSymbol) => typeSymbol.TypeKind == TypeKind.Array;
+
+    public static string GetSqlName(this ISymbol propertySymbol)
+    {
+        var columnAttr = propertySymbol.GetAttributes()
+            .FirstOrDefault(a => a.AttributeClass?.Name == "ColumnAttribute");
+
+        if (columnAttr?.ConstructorArguments.FirstOrDefault().Value is string columnName)
         {
-            IParameterSymbol parameterSymbol => check(parameterSymbol.Type),
-            IFieldSymbol fieldSymbol => check(fieldSymbol.Type),
-            IPropertySymbol propertySymbol => check(propertySymbol.Type),
-            INamedTypeSymbol namedTypeSymbol => check(namedTypeSymbol),
-            _ => false
+            return columnName;
+        }
+
+        var tableNameAttr = propertySymbol.GetAttributes()
+            .FirstOrDefault(a => a.AttributeClass?.Name == "TableNameAttribute");
+
+        if (tableNameAttr?.ConstructorArguments.FirstOrDefault().Value is string tableName)
+        {
+            return tableName;
+        }
+
+        return propertySymbol.Name;
+    }
+
+    public static string GetDbType(this ITypeSymbol type) =>
+        type.Name switch
+        {
+            "String" => "global::System.Data.DbType.String",
+            "Int32" => "global::System.Data.DbType.Int32",
+            "Int64" => "global::System.Data.DbType.Int64",
+            "Double" => "global::System.Data.DbType.Double",
+            "Decimal" => "global::System.Data.DbType.Decimal",
+            "Boolean" => "global::System.Data.DbType.Boolean",
+            "DateTime" => "global::System.Data.DbType.DateTime",
+            "Guid" => "global::System.Data.DbType.Guid",
+            "Byte" => "global::System.Data.DbType.Byte",
+            "Int16" => "global::System.Data.DbType.Int16",
+            "Single" => "global::System.Data.DbType.Single",
+            _ => "global::System.Data.DbType.String"
+        };
+
+    public static string? GetDataReaderMethod(this ITypeSymbol type)
+    {
+        return type.Name switch
+        {
+            "String" => "GetString",
+            "Int32" => "GetInt32",
+            "Int64" => "GetInt64",
+            "Double" => "GetDouble",
+            "Decimal" => "GetDecimal",
+            "Boolean" => "GetBoolean",
+            "DateTime" => "GetDateTime",
+            "Guid" => "GetGuid",
+            "Byte" => "GetByte",
+            "SByte" => "GetByte",
+            "Int16" => "GetInt16",
+            "UInt16" => "GetInt16",
+            "UInt32" => "GetInt32",
+            "UInt64" => "GetInt64",
+            "Single" => "GetFloat",
+            "Char" => "GetChar",
+            _ => null
         };
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static bool IsCancellationToken(this ISymbol typeSymbol) =>
-        string.Equals(typeSymbol.Name, "CancellationToken", StringComparison.Ordinal);
+    public static string GetDataReadExpression(this ITypeSymbol type, string readerName, string columnName) =>
+        GetDataReadExpressionCore(type, readerName, $"\"{columnName}\"", $"{readerName}.GetOrdinal(\"{columnName}\")");
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static ITypeSymbol UnwrapTaskType(this ITypeSymbol type) => UnwrapType(type, "Task");
+    public static string GetParameterName(this ISymbol symbol, string prefix = "") => prefix + NameMapper.MapName(symbol.Name);
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static ITypeSymbol UnwrapListType(this ITypeSymbol type) =>
-        UnwrapType(type, "List", "IList", "ICollection", "IReadOnlyList", "IEnumerable", "IAsyncEnumerable");
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static ITypeSymbol UnwrapNullableType(this ITypeSymbol type)
-        => type is INamedTypeSymbol namedTypeSymbol ? UnwrapNullableType(namedTypeSymbol) : type;
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static INamedTypeSymbol UnwrapNullableType(INamedTypeSymbol namedTypeSymbol)
-        => string.Equals(namedTypeSymbol.Name, "Nullable", StringComparison.Ordinal)
-            ? (INamedTypeSymbol)namedTypeSymbol.TypeArguments[0]
-            : namedTypeSymbol;
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static bool IsScalarType(this ITypeSymbol returnType)
+    public static bool IsScalarType(this ITypeSymbol type)
     {
-        return UnwrapNullableType(UnwrapTaskType(returnType)).SpecialType switch
+        return type.SpecialType switch
         {
-            SpecialType.System_String or
             SpecialType.System_Boolean or
-            SpecialType.System_Char or
             SpecialType.System_Byte or
+            SpecialType.System_SByte or
             SpecialType.System_Int16 or
-            SpecialType.System_Int32 or
-            SpecialType.System_Int64 or
             SpecialType.System_UInt16 or
+            SpecialType.System_Int32 or
             SpecialType.System_UInt32 or
+            SpecialType.System_Int64 or
             SpecialType.System_UInt64 or
-            SpecialType.System_DateTime or
+            SpecialType.System_Single or
+            SpecialType.System_Double or
             SpecialType.System_Decimal or
-            SpecialType.System_Double => true,
-            _ => false,
+            SpecialType.System_Char or
+            SpecialType.System_String or
+            SpecialType.System_DateTime => true,
+            _ => type.Name == "Guid" || type.Name == "TimeSpan"
         };
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static bool IsTuple(ITypeSymbol returnType) =>
-        string.Equals(returnType.Name, "Tuple", StringComparison.Ordinal) ||
-        string.Equals(returnType.Name, "ValueTuple", StringComparison.Ordinal);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static string GetSqlName(this ISymbol propertySymbol)
+    public static ITypeSymbol UnwrapNullableType(this ITypeSymbol type)
     {
-        return _sqlNameCache.GetOrAdd(propertySymbol, static prop =>
+        if (type is INamedTypeSymbol namedType &&
+            namedType.IsGenericType &&
+            namedType.ConstructedFrom.SpecialType == SpecialType.System_Nullable_T)
         {
-            var attributes = prop.GetAttributes();
-            var attribute = attributes.IsDefaultOrEmpty
-                ? null
-                : attributes.FirstOrDefault(attr => attr.AttributeClass?.Name == "DbColumnAttribute");
-
-            return attribute?.ConstructorArguments.FirstOrDefault().Value as string
-                   ?? NameMapper.MapName(prop.Name);
-        });
-    }
-
-    internal static string GetParameterName(this ISymbol propertySymbol, string parameterPrefx)
-        => parameterPrefx + GetSqlName(propertySymbol);
-
-    /// <summary>
-    /// Public version of GetParameterName for ITypeSymbol - used by tests
-    /// </summary>
-    public static string GetParameterName(this ITypeSymbol typeSymbol, string baseName)
-        => "@" + baseName.Replace("_", string.Empty);
-
-    internal static string GetAccessibility(this Accessibility a)
-    {
-        return a switch
-        {
-            Accessibility.Public => "public",
-            Accessibility.Friend => "internal",
-            Accessibility.Private => "private",
-            Accessibility.ProtectedAndInternal => "protected internal",
-            Accessibility.Protected => "protected",
-            _ => string.Empty,
-        };
-    }
-
-    internal static string GetDbType(this ITypeSymbol type)
-    {
-        return _dbTypeCache.GetOrAdd(type, static t =>
-        {
-            return UnwrapNullableType(t).SpecialType switch
-            {
-                SpecialType.System_Boolean => "global::System.Data.DbType.Boolean",
-                SpecialType.System_String => "global::System.Data.DbType.String",
-                SpecialType.System_Char => "global::System.Data.DbType.Char",
-                SpecialType.System_Byte => "global::System.Data.DbType.Byte",
-                SpecialType.System_SByte => "global::System.Data.DbType.SByte",
-                SpecialType.System_Int16 => "global::System.Data.DbType.Int16",
-                SpecialType.System_Int32 => "global::System.Data.DbType.Int32",
-                SpecialType.System_Int64 => "global::System.Data.DbType.Int64",
-                SpecialType.System_UInt16 => "global::System.Data.DbType.UInt16",
-                SpecialType.System_UInt32 => "global::System.Data.DbType.UInt32",
-                SpecialType.System_UInt64 => "global::System.Data.DbType.UInt64",
-                SpecialType.System_Single => "global::System.Data.DbType.Single",
-                SpecialType.System_Double => "global::System.Data.DbType.Double",
-                SpecialType.System_Decimal => "global::System.Data.DbType.Decimal",
-                SpecialType.System_DateTime => "global::System.Data.DbType.DateTime2",
-                _ => throw new NotSupportedException($"Type conversion not supported for: {t.ToDisplayString()}. Please ensure your entity properties use supported data types."),
-            };
-        });
-    }
-
-    internal static string? GetDataReaderMethod(this ITypeSymbol type)
-    {
-        return _dataReaderMethodCache.GetOrAdd(type, static t => GetDataReaderMethodCore(t));
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static string? GetDataReaderMethodCore(ITypeSymbol type)
-    {
-        var unwrapType = UnwrapNullableType(type);
-
-        // Handle special types that might not have correct SpecialType
-        if (string.Equals(unwrapType.Name, "Guid", StringComparison.Ordinal))
-            return "GetGuid";
-        if (string.Equals(unwrapType.Name, "DateTime", StringComparison.Ordinal))
-            return "GetDateTime";
-        if (string.Equals(unwrapType.Name, "DateTimeOffset", StringComparison.Ordinal))
-            return "GetDateTimeOffset";
-        if (string.Equals(unwrapType.Name, "TimeSpan", StringComparison.Ordinal))
-            return "GetTimeSpan";
-
-        // Handle enum types - they should be read as their underlying type
-        if (unwrapType.TypeKind == TypeKind.Enum)
-        {
-            var underlyingType = ((INamedTypeSymbol)unwrapType).EnumUnderlyingType;
-            return underlyingType != null ? GetDataReaderMethodCore(underlyingType) : null;
+            return namedType.TypeArguments[0];
         }
-
-        return unwrapType.SpecialType switch
-        {
-            SpecialType.System_Boolean => "GetBoolean",
-            SpecialType.System_Char => "GetChar",
-            SpecialType.System_String => "GetString",
-            SpecialType.System_Byte => "GetByte",
-            SpecialType.System_SByte => "GetSByte",
-            SpecialType.System_Int16 => "GetInt16",
-            SpecialType.System_Int32 => "GetInt32",
-            SpecialType.System_Int64 => "GetInt64",
-            SpecialType.System_UInt16 => "GetUInt16",
-            SpecialType.System_UInt32 => "GetUInt32",
-            SpecialType.System_UInt64 => "GetUInt64",
-            SpecialType.System_Single => "GetFloat",
-            SpecialType.System_Double => "GetDouble",
-            SpecialType.System_Decimal => "GetDecimal",
-            SpecialType.System_DateTime => "GetDateTime",
-            // Remove System_Object fallback to GetValue - we want explicit type handling
-            _ => null,
-        };
-    }
-
-    public static string GetDataReadExpression(this ITypeSymbol type, string readerName, string columnName)
-    {
-        var cacheKey = (type, columnName);
-        return _dataReadExpressionCache.GetOrAdd(cacheKey, key =>
-        {
-            var (t, colName) = key;
-            var method = GetDataReaderMethod(t);
-            if (string.IsNullOrEmpty(method))
-            {
-                throw new NotSupportedException($"No support type {t.Name}");
-            }
-
-            var ordinalExpression = $"{readerName}.GetOrdinal(\"{colName}\")";
-            var isNullable = IsNullableType(t);
-            var unwrapType = UnwrapNullableType(t);
-
-            // Generate optimized null-safe data reading expression
-            return GenerateNullSafeDataReadExpression(readerName, ordinalExpression, method!, isNullable, unwrapType);
-        });
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static string GenerateNullSafeDataReadExpression(string readerName, string ordinalExpression, string method, bool isNullable, ITypeSymbol unwrapType)
-    {
-        // Special handling for enum types - need explicit casting
-        if (unwrapType.TypeKind == TypeKind.Enum)
-        {
-            var typeName = unwrapType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            var enumNullValue = GetNullValueForType(isNullable, unwrapType);
-
-            return $"{readerName}.IsDBNull({ordinalExpression}) ? {enumNullValue} : ({typeName}){readerName}.{method}({ordinalExpression})";
-        }
-
-        // For non-nullable value types that don't need null checking
-        if (!isNullable && unwrapType.IsValueType && unwrapType.SpecialType != SpecialType.System_String)
-        {
-            return $"{readerName}.{method}({ordinalExpression})";
-        }
-
-        // Special handling for non-nullable DateTime
-        if (!isNullable && string.Equals(unwrapType.Name, "DateTime", StringComparison.Ordinal))
-        {
-            return $"{readerName}.{method}({ordinalExpression})";
-        }
-
-        // Generate null-safe expression based on type characteristics
-        var nullValue = GetNullValueForType(isNullable, unwrapType);
-        return $"{readerName}.IsDBNull({ordinalExpression}) ? {nullValue} : {readerName}.{method}({ordinalExpression})";
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static string GetNullValueForType(bool isNullable, ITypeSymbol unwrapType)
-    {
-        // Special handling for enum types
-        if (unwrapType.TypeKind == TypeKind.Enum)
-        {
-            var typeName = unwrapType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            return isNullable ? "null" : $"default({typeName})";
-        }
-
-        return (isNullable, unwrapType.SpecialType) switch
-        {
-            (true, SpecialType.System_String) => "null",
-            (false, SpecialType.System_String) => "string.Empty",
-            (true, _) when unwrapType.IsValueType => "null",
-            (false, _) when unwrapType.IsValueType => "default",
-            _ => "null"
-        };
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static ITypeSymbol UnwrapType(this ITypeSymbol type, params string[] names)
-    {
-        if (type is INamedTypeSymbol { IsGenericType: true } namedTypeSymbol &&
-            names.Any(name => string.Equals(type.Name, name, StringComparison.Ordinal)))
-        {
-            return namedTypeSymbol.TypeArguments[0];
-        }
-
         return type;
     }
+
+    public static ITypeSymbol UnwrapTaskType(this ITypeSymbol type)
+    {
+        return type.GetTaskResultType() ?? type;
+    }
+
+    public static ITypeSymbol UnwrapListType(this ITypeSymbol type) =>
+        type.GetEnumerableElementType() ?? type;
+
+    public static bool IsCancellationToken(this ITypeSymbol type) =>
+        type.Name == "CancellationToken" &&
+        type.ContainingNamespace?.ToDisplayString() == "System.Threading";
+
+    public static string GetAccessibility(this Accessibility accessibility) => accessibility switch
+    {
+        Accessibility.Public => "public",
+        Accessibility.Private => "private",
+        Accessibility.Protected => "protected",
+        Accessibility.Internal => "internal",
+        Accessibility.ProtectedOrInternal => "protected internal",
+        Accessibility.ProtectedAndInternal => "private protected",
+        _ => "private"
+    };
+
+    public static bool IsTuple(this ITypeSymbol type) =>
+        type is INamedTypeSymbol namedType &&
+        (namedType.IsTupleType || 
+         (namedType.Name.StartsWith("ValueTuple") && 
+          namedType.ContainingNamespace?.ToDisplayString() == "System"));
+
+    public static string GetDataReadExpressionWithCachedOrdinal(this ITypeSymbol type, string readerName, string columnName, string ordinalVariableName) =>
+        GetDataReadExpressionCore(type, readerName, ordinalVariableName, ordinalVariableName);
+
+    private static string GetDataReadExpressionCore(ITypeSymbol type, string readerName, string accessor, string ordinalExpr)
+    {
+        var method = type.GetDataReaderMethod();
+        var isNullable = type.IsNullableType();
+        
+        if (method == null)
+        {
+            return $"{readerName}[{accessor}]";
+        }
+
+        if (isNullable)
+        {
+            return $"{readerName}.IsDBNull({ordinalExpr}) ? null : {readerName}.{method}({accessor})";
+        }
+        
+        // For non-nullable string types, return empty string instead of null
+        if (type.SpecialType == SpecialType.System_String && type.NullableAnnotation == NullableAnnotation.NotAnnotated)
+        {
+            return $"{readerName}.IsDBNull({ordinalExpr}) ? string.Empty : {readerName}.{method}({accessor})";
+        }
+        
+        return $"{readerName}.{method}({accessor})";
+    }
+
+    public static T GetValueOrDefault<T>(this Dictionary<string, T> dictionary, string key, T defaultValue = default!) =>
+        dictionary.TryGetValue(key, out var value) ? value : defaultValue;
+
+    /// <summary>
+    /// Determines if a type is a collection type (IEnumerable, List, Array, etc.)
+    /// </summary>
+    public static bool IsCollectionType(this ITypeSymbol type) =>
+        type.IsArray() || type.IsIEnumerable() || type.IsList();
 }

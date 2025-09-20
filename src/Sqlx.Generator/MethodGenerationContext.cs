@@ -883,8 +883,8 @@ internal partial class MethodGenerationContext : GenerationContextBase
 
     private void WriteDeclareObjectExpression(IndentedStringBuilder sb, ITypeSymbol symbol, string? listName, List<IPropertySymbol> properties)
     {
-        var newExp = IsTuple(symbol) ? string.Empty : "new ";
-        var expCall = IsTuple(symbol) ? string.Empty : " ()";
+        var newExp = symbol.IsTuple() ? string.Empty : "new ";
+        var expCall = symbol.IsTuple() ? string.Empty : " ()";
 
         // Check if the type is abstract or cannot be instantiated
         if (symbol.IsAbstract || symbol.TypeKind == TypeKind.Interface || symbol.Name == "DbDataReader")
@@ -907,7 +907,8 @@ internal partial class MethodGenerationContext : GenerationContextBase
             {
                 // Use enhanced entity mapping for records and primary constructors
                 sb.AppendLine($"// Enhanced entity mapping for {(PrimaryConstructorAnalyzer.IsRecord(namedType) ? "record" : "primary constructor")} type");
-                EnhancedEntityMappingGenerator.GenerateEntityMapping(sb, namedType);
+                // Simple entity mapping - removed EnhancedEntityMappingGenerator
+                SharedCodeGenerationUtilities.GenerateEntityMapping(sb, namedType, "entity");
                 // Rename the generated entity variable to match expected DataName if it will be used
                 if (DataName != "entity" && !string.IsNullOrEmpty(listName))
                 {
@@ -1100,7 +1101,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
         {
             columnNames.Add("Column0");
         }
-        else if (IsTuple(returnType))
+        else if (returnType.IsTuple())
         {
             var tupleType = (INamedTypeSymbol)returnType.UnwrapTaskType();
 
@@ -1196,21 +1197,9 @@ internal partial class MethodGenerationContext : GenerationContextBase
 
                 var sqlValue = attr.ConstructorArguments[0].Value?.ToString() ?? "";
 
-                // 处理 SQL 模板占位符
-                if (!string.IsNullOrEmpty(sqlValue) && SqlTemplatePlaceholder.ContainsPlaceholders(sqlValue))
-                {
-                    var context = new SqlPlaceholderContext(SqlDef)
-                    {
-                        Method = MethodSymbol,
-                        TableName = null, // 临时简化
-                        EntityType = null // 临时简化
-                    };
-                    sqlValue = SqlTemplatePlaceholder.ProcessTemplate(sqlValue, context);
-                }
-
-                // Escape the SQL string properly for C# code generation
-                var escapedSql = sqlValue.Replace("\"", "\\\"").Replace("\r\n", "\\r\\n").Replace("\n", "\\n").Replace("\r", "\\r");
-                return $"\"{escapedSql}\"";
+                // Process SQL template placeholders and escape for C# generation
+                sqlValue = ProcessSqlTemplate(sqlValue);
+                return $"@\"{EscapeSqlForCSharp(sqlValue)}\"";
             }
         }
 
@@ -1224,21 +1213,10 @@ internal partial class MethodGenerationContext : GenerationContextBase
 
             if (!string.IsNullOrEmpty(procedureName))
             {
-                // 处理 SQL 模板占位符
-                if (!string.IsNullOrEmpty(procedureName) && SqlTemplatePlaceholder.ContainsPlaceholders(procedureName!))
-                {
-                    var context = new SqlPlaceholderContext(SqlDef)
-                    {
-                        Method = MethodSymbol,
-                        TableName = null, // 临时简化
-                        EntityType = null // 临时简化
-                    };
-                    procedureName = SqlTemplatePlaceholder.ProcessTemplate(procedureName!, context);
-                }
-
+                procedureName = ProcessSqlTemplate(procedureName!);
                 var paramSql = string.Join(", ", SqlParameters.Select(p => p.GetParameterName(SqlDef.ParameterPrefix)));
                 var call = string.IsNullOrEmpty(paramSql) ? procedureName : $"{procedureName} {paramSql}";
-                return $"\"EXEC {call}\"";
+                return $"@\"EXEC {call}\"";
             }
         }
 
@@ -1259,25 +1237,25 @@ internal partial class MethodGenerationContext : GenerationContextBase
                             // Expect a string literal; just embed as-is, escaping quotes minimally
                             var sp = firstArg.Trim('"');
                             var escaped = sp.Replace("\"", "\\\"");
-                            return $"\"EXEC {escaped}\"";
+                            return $"@\"EXEC {escaped}\"";
                         }
                         else
                         {
                             // Default to method name when no argument provided
-                            return $"\"EXEC {MethodSymbol.Name}\"";
+                            return $"@\"EXEC {MethodSymbol.Name}\"";
                         }
                     }
                 }
             }
         }
 
-        // 基于方法名的智能操作推断已实现，保持向后兼容性
+        // Smart operation inference based on method names is implemented, maintaining backward compatibility
 
-        // 向后兼容：检查已弃用的 SqlExecuteTypeAttribute
+        // Backward compatibility: Check deprecated SqlExecuteTypeAttribute
         var sqlExecuteType = MethodSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlExecuteTypeAttribute");
         if (sqlExecuteType != null)
         {
-            // 发出弃用警告
+            // Emit deprecation warning
             ClassGenerationContext.GeneratorExecutionContext.ReportDiagnostic(
                 Diagnostic.Create(
                     new DiagnosticDescriptor(
@@ -1289,7 +1267,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
                         isEnabledByDefault: true),
                     MethodSymbol.Locations.FirstOrDefault()));
 
-            // 仍然处理以保持向后兼容
+            // Still process to maintain backward compatibility
             var enumValueObj = sqlExecuteType.ConstructorArguments[0].Value;
             var type = enumValueObj switch
             {
@@ -2077,7 +2055,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
 
     private List<IPropertySymbol> GetSetProperties(List<IPropertySymbol> properties)
     {
-        // 首先查找标记了 [Set] 特性的属性
+        // First look for properties marked with [Set] attribute
         var explicitSetProperties = properties.Where(p => HasSetAttribute(p)).ToList();
 
         if (explicitSetProperties.Any())
@@ -2085,14 +2063,14 @@ internal partial class MethodGenerationContext : GenerationContextBase
             return explicitSetProperties;
         }
 
-        // 如果没有显式标记，则使用所有非 Where 属性（排除主键）
+        // If no explicit marking, use all non-Where properties (excluding primary keys)
         var whereProperties = GetWhereProperties(properties);
         return properties.Where(p => !whereProperties.Contains(p) && !IsKeyProperty(p)).ToList();
     }
 
     private List<IPropertySymbol> GetWhereProperties(List<IPropertySymbol> properties)
     {
-        // 首先查找标记了 [Where] 特性的属性
+        // First look for properties marked with [Where] attribute
         var explicitWhereProperties = properties.Where(p => HasWhereAttribute(p)).ToList();
 
         if (explicitWhereProperties.Any())
@@ -2100,7 +2078,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
             return explicitWhereProperties;
         }
 
-        // 如果没有显式标记，则使用主键属性作为默认 WHERE 条件
+        // If no explicit marking, use primary key properties as default WHERE conditions
         return properties.Where(p => IsKeyProperty(p)).ToList();
     }
 
@@ -2117,7 +2095,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
     private string GenerateWhereCondition(IPropertySymbol property)
     {
         var whereAttr = property.GetAttributes().FirstOrDefault(a => a.AttributeClass?.Name == "WhereAttribute");
-        var operatorStr = "="; // 默认操作符
+        var operatorStr = "="; // Default operator
 
         if (whereAttr != null && whereAttr.ConstructorArguments.Length > 0)
         {
@@ -2125,7 +2103,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
         }
         else if (whereAttr != null)
         {
-            // 检查 Operator 属性
+            // Check Operator property
             var operatorProp = whereAttr.NamedArguments.FirstOrDefault(na => na.Key == "Operator");
             if (!operatorProp.Equals(default(KeyValuePair<string, Microsoft.CodeAnalysis.TypedConstant>)))
             {
@@ -2273,6 +2251,23 @@ internal partial class MethodGenerationContext : GenerationContextBase
         }
     }
 
+    private string ProcessSqlTemplate(string sql)
+    {
+        if (string.IsNullOrEmpty(sql) || !SqlTemplatePlaceholder.ContainsPlaceholders(sql))
+            return sql;
+
+        var context = new SqlPlaceholderContext(SqlDef)
+        {
+            Method = MethodSymbol,
+            TableName = null, // Simplified
+            EntityType = null // Simplified
+        };
+        return SqlTemplatePlaceholder.ProcessTemplate(sql, context);
+    }
+
+    private static string EscapeSqlForCSharp(string sql) =>
+        sql.Replace("\"", "\\\"").Replace("\r\n", "\\r\\n").Replace("\n", "\\n").Replace("\r", "\\r");
+
     private bool ShouldGenerateNullCheck(IParameterSymbol parameter)
     {
         // Skip system parameters
@@ -2346,94 +2341,4 @@ internal enum SqlTypes
     MySql = 0,
     SqlServer = 1,
     Postgresql = 2,
-}
-
-internal static class ExtensionsWithCache
-{
-    internal static string GetDataReadExpressionWithCachedOrdinal(this ITypeSymbol type, string readerName, string columnName, string ordinalVariableName)
-    {
-        var unwrapType = type.UnwrapNullableType();
-        var method = type.GetDataReaderMethod();
-        var isNullable = type.IsNullableType();
-
-        if (!string.IsNullOrEmpty(method))
-        {
-            // For nullable types or nullable reference types, check for DBNull
-            if (isNullable || unwrapType.IsValueType || unwrapType.SpecialType == SpecialType.System_String || type.Name == "Guid")
-            {
-                // For nullable value types and strings, return proper null handling
-                if (unwrapType.SpecialType == SpecialType.System_String)
-                {
-                    // String special case: check if nullable annotation is present
-                    if (isNullable)
-                    {
-                        return $"{readerName}.IsDBNull({ordinalVariableName}) ? null : {readerName}.{method}({ordinalVariableName})";
-                    }
-                    else
-                    {
-                        // Non-nullable string: return empty string or throw
-                        return $"{readerName}.IsDBNull({ordinalVariableName}) ? string.Empty : {readerName}.{method}({ordinalVariableName})";
-                    }
-                }
-                else if (isNullable && unwrapType.IsValueType)
-                {
-                    // Nullable value types: return null if DBNull
-                    return $"{readerName}.IsDBNull({ordinalVariableName}) ? null : {readerName}.{method}({ordinalVariableName})";
-                }
-                else if (unwrapType.IsValueType)
-                {
-                    // Special handling for enum types - need explicit casting
-                    if (unwrapType.TypeKind == TypeKind.Enum)
-                    {
-                        var enumTypeName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                        return $"{readerName}.IsDBNull({ordinalVariableName}) ? default({enumTypeName}) : ({enumTypeName}){readerName}.{method}({ordinalVariableName})";
-                    }
-
-                    // Non-nullable value types: return default if DBNull
-                    return $"{readerName}.IsDBNull({ordinalVariableName}) ? default : {readerName}.{method}({ordinalVariableName})";
-                }
-                else
-                {
-                    // Reference types: return null if DBNull
-                    return $"{readerName}.IsDBNull({ordinalVariableName}) ? null : {readerName}.{method}({ordinalVariableName})";
-                }
-            }
-
-            return $"{readerName}.{method}({ordinalVariableName})";
-        }
-
-        // Enhanced fallback handling for unsupported types
-        var typeName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-
-        // Special handling for enum types
-        if (unwrapType.TypeKind == TypeKind.Enum)
-        {
-            var underlyingType = ((INamedTypeSymbol)unwrapType).EnumUnderlyingType;
-            var underlyingMethod = underlyingType?.GetDataReaderMethod();
-
-            if (!string.IsNullOrEmpty(underlyingMethod))
-            {
-                if (isNullable)
-                {
-                    return $"{readerName}.IsDBNull({ordinalVariableName}) ? null : ({typeName}){readerName}.{underlyingMethod}({ordinalVariableName})";
-                }
-                else
-                {
-                    return $"{readerName}.IsDBNull({ordinalVariableName}) ? default({typeName}) : ({typeName}){readerName}.{underlyingMethod}({ordinalVariableName})";
-                }
-            }
-        }
-
-        // Final fallback to GetValue with casting (less preferred)
-        if (isNullable || type.IsReferenceType)
-        {
-            return $"{readerName}.IsDBNull({ordinalVariableName}) ? null : ({typeName}){readerName}.GetValue({ordinalVariableName})";
-        }
-        else
-        {
-            return $"{readerName}.IsDBNull({ordinalVariableName}) ? default({typeName}) : ({typeName}){readerName}.GetValue({ordinalVariableName})";
-        }
-    }
-
-
 }

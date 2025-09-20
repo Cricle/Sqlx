@@ -88,27 +88,27 @@ public class NameMapperTests
     public void NameMapper_MapNameToSnakeCase_ConvertsCorrectly()
     {
         // Test comprehensive snake_case conversion
-        Assert.AreEqual("simple", NameMapper.MapNameToSnakeCase("Simple"),
+        Assert.AreEqual("simple", NameMapper.MapName("Simple"),
             "Should convert simple word");
-        Assert.AreEqual("user_name", NameMapper.MapNameToSnakeCase("UserName"),
+        Assert.AreEqual("user_name", NameMapper.MapName("UserName"),
             "Should convert two words");
-        Assert.AreEqual("user_profile_image", NameMapper.MapNameToSnakeCase("UserProfileImage"),
+        Assert.AreEqual("user_profile_image", NameMapper.MapName("UserProfileImage"),
             "Should convert multiple words");
-        Assert.AreEqual("x_m_l_http_request", NameMapper.MapNameToSnakeCase("XMLHttpRequest"),
+        Assert.AreEqual("x_m_l_http_request", NameMapper.MapName("XMLHttpRequest"),
             "Should handle acronyms");
 
         // Test with existing lowercase
-        Assert.AreEqual("already_lowercase", NameMapper.MapNameToSnakeCase("already_lowercase"),
+        Assert.AreEqual("already_lowercase", NameMapper.MapName("already_lowercase"),
             "Should handle already snake_case");
-        Assert.AreEqual("mixed_case_string", NameMapper.MapNameToSnakeCase("mixedCaseString"),
+        Assert.AreEqual("mixed_case_string", NameMapper.MapName("mixedCaseString"),
             "Should convert mixed case");
 
         // Test edge cases
-        Assert.AreEqual("a", NameMapper.MapNameToSnakeCase("A"),
+        Assert.AreEqual("a", NameMapper.MapName("A"),
             "Should convert single letter");
-        Assert.AreEqual("a_b", NameMapper.MapNameToSnakeCase("AB"),
+        Assert.AreEqual("a_b", NameMapper.MapName("AB"),
             "Should convert two letters");
-        Assert.AreEqual("a_b_c", NameMapper.MapNameToSnakeCase("ABC"),
+        Assert.AreEqual("a_b_c", NameMapper.MapName("ABC"),
             "Should convert three letters");
     }
 
@@ -185,13 +185,13 @@ public class NameMapperTests
         // Test null parameter
         Assert.ThrowsException<ArgumentNullException>(() => NameMapper.MapName(null!),
             "Should throw ArgumentNullException for null parameter");
-        Assert.ThrowsException<ArgumentNullException>(() => NameMapper.MapNameToSnakeCase(null!),
+        Assert.ThrowsException<ArgumentNullException>(() => NameMapper.MapName(null!),
             "Should throw ArgumentNullException for null parameter in MapNameToSnakeCase");
 
         // Test empty string
         Assert.AreEqual("", NameMapper.MapName(""),
             "Should handle empty string gracefully");
-        Assert.AreEqual("", NameMapper.MapNameToSnakeCase(""),
+        Assert.AreEqual("", NameMapper.MapName(""),
             "Should handle empty string in MapNameToSnakeCase");
 
         // Test whitespace
@@ -222,7 +222,7 @@ public class NameMapperTests
             foreach (var name in testNames)
             {
                 var mapped = NameMapper.MapName(name);
-                var snakeCase = NameMapper.MapNameToSnakeCase(name);
+                var snakeCase = NameMapper.MapName(name);
 
                 // Use results to ensure calls aren't optimized away
                 Assert.IsNotNull(mapped, "Mapped name should not be null");
@@ -252,7 +252,7 @@ public class NameMapperTests
         foreach (var name in testNames)
         {
             var mapNameResult = NameMapper.MapName(name);
-            var mapNameToSnakeCaseResult = NameMapper.MapNameToSnakeCase(name);
+            var mapNameToSnakeCaseResult = NameMapper.MapName(name);
 
             Assert.AreEqual(mapNameToSnakeCaseResult, mapNameResult,
                 $"MapName and MapNameToSnakeCase should return same result for '{name}'");

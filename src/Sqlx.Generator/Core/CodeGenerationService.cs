@@ -35,16 +35,20 @@ public class CodeGenerationService : ICodeGenerationService
                                     a.AttributeClass?.Name?.Contains("SqlTemplate") == true);
             
             string? resolvedSql = null;
+            SqlTemplateResult? templateResult = null;
+            string? originalTemplate = null;
+            
             if (sqlxAttr?.ConstructorArguments.FirstOrDefault().Value is string sqlTemplate)
             {
-                // Use template engine to process SQL template
+                originalTemplate = sqlTemplate;
+                // Use enhanced template engine to process SQL template
                 var templateEngine = new SqlTemplateEngine();
-                var templateResult = templateEngine.ProcessTemplate(sqlTemplate, method, entityType, context.TableName);
+                templateResult = templateEngine.ProcessTemplate(sqlTemplate, method, entityType, context.TableName);
                 resolvedSql = templateResult.ProcessedSql;
             }
 
-            // Generate method documentation with resolved SQL
-            GenerateMethodDocumentationWithSql(sb, method, resolvedSql);
+            // Generate method documentation with resolved SQL and template metadata
+            GenerateEnhancedMethodDocumentation(sb, method, originalTemplate, templateResult);
 
             // Generate or copy Sqlx attributes
             attributeHandler.GenerateOrCopyAttributes(sb, method, entityType, context.TableName);
@@ -62,12 +66,12 @@ public class CodeGenerationService : ICodeGenerationService
             // Generate operation using template engine approach
             if (sqlxAttr?.ConstructorArguments.FirstOrDefault().Value is string sqlTemplate2)
             {
-                // Use template engine to process SQL template
+                // Use basic template engine to process SQL template
                 var templateEngine = new SqlTemplateEngine();
-                var templateResult = templateEngine.ProcessTemplate(sqlTemplate2, method, entityType, context.TableName);
+                var templateProcessResult = templateEngine.ProcessTemplate(sqlTemplate2, method, entityType, context.TableName);
                 
                 // Generate actual database execution using shared utilities
-                GenerateActualDatabaseExecution(sb, method, templateResult, entityType);
+                GenerateActualDatabaseExecution(sb, method, templateProcessResult, entityType);
             }
             else
             {
@@ -150,18 +154,96 @@ public class CodeGenerationService : ICodeGenerationService
     }
 
     /// <summary>
-    /// 生成包含解析后SQL的方法文档
+    /// Generate method documentation with processed SQL
     /// </summary>
     public void GenerateMethodDocumentationWithSql(IndentedStringBuilder sb, IMethodSymbol method, string? processedSql)
     {
         sb.AppendLine("/// <summary>");
         sb.AppendLine($"/// {GetMethodDescription(method)}");
         
-        // 如果有解析后的SQL，添加到注释中
+        // Add processed SQL to comments if available
         if (!string.IsNullOrEmpty(processedSql))
         {
-            sb.AppendLine("/// <para>Generated SQL:</para>");
+            sb.AppendLine("/// <para>📋 Generated SQL (Template Processed):</para>");
             sb.AppendLine($"/// <code>{System.Security.SecurityElement.Escape(processedSql)}</code>");
+            sb.AppendLine("/// <para>🔧 This SQL was generated from template placeholders at compile-time</para>");
+        }
+        
+        sb.AppendLine("/// </summary>");
+
+        foreach (var parameter in method.Parameters)
+        {
+            sb.AppendLine($"/// <param name=\"{parameter.Name}\">{GetParameterDescription(parameter)}</param>");
+        }
+
+        if (!method.ReturnsVoid)
+        {
+            sb.AppendLine($"/// <returns>{GetReturnDescription(method)}</returns>");
+        }
+    }
+
+    /// <summary>
+    /// Generate enhanced method documentation with detailed template processing information
+    /// </summary>
+    public void GenerateEnhancedMethodDocumentation(IndentedStringBuilder sb, IMethodSymbol method, string? originalTemplate, SqlTemplateResult? templateResult)
+    {
+        sb.AppendLine("/// <summary>");
+        sb.AppendLine($"/// {GetMethodDescription(method)}");
+        
+        // Add detailed information if template processing results are available
+        if (templateResult != null)
+        {
+            // Show original template
+            if (!string.IsNullOrEmpty(originalTemplate))
+            {
+                sb.AppendLine("/// <para>📝 Original Template:</para>");
+                sb.AppendLine($"/// <code>{System.Security.SecurityElement.Escape(originalTemplate)}</code>");
+            }
+
+            // Show processed SQL
+            if (!string.IsNullOrEmpty(templateResult.ProcessedSql))
+            {
+                sb.AppendLine("/// <para>📋 Generated SQL (Template Processed):</para>");
+                sb.AppendLine($"/// <code>{System.Security.SecurityElement.Escape(templateResult.ProcessedSql)}</code>");
+            }
+
+            // Show parameter information
+            if (templateResult.Parameters.Any())
+            {
+                sb.AppendLine("/// <para>🔧 Template Parameters:</para>");
+                foreach (var param in templateResult.Parameters)
+                {
+                    sb.AppendLine($"/// <para>  • @{param.Name} ({param.Type}){(param.IsNullable ? " [Nullable]" : "")}</para>");
+                }
+            }
+
+            // Show dynamic features
+            if (templateResult.HasDynamicFeatures)
+            {
+                sb.AppendLine("/// <para>⚡ Contains dynamic template features (conditions, loops, functions)</para>");
+            }
+
+            // Show warning information
+            if (templateResult.Warnings.Any())
+            {
+                sb.AppendLine("/// <para>⚠️ Template Warnings:</para>");
+                foreach (var warning in templateResult.Warnings)
+                {
+                    sb.AppendLine($"/// <para>  • {System.Security.SecurityElement.Escape(warning)}</para>");
+                }
+            }
+
+            // Show error information
+            if (templateResult.Errors.Any())
+            {
+                sb.AppendLine("/// <para>❌ Template Errors:</para>");
+                foreach (var error in templateResult.Errors)
+                {
+                    sb.AppendLine($"/// <para>  • {System.Security.SecurityElement.Escape(error)}</para>");
+                }
+            }
+
+            sb.AppendLine("/// <para>🚀 This method was generated by Sqlx Advanced Template Engine</para>");
         }
         
         sb.AppendLine("/// </summary>");
@@ -354,10 +436,10 @@ public class CodeGenerationService : ICodeGenerationService
     }
 
     /// <summary>
-    /// 为指定的仓储类生成拦截器方法，包括执行前后的回调方法。
+    /// Generate interceptor methods for the specified repository class, including pre and post execution callbacks.
     /// </summary>
-    /// <param name="sb">用于构建代码的字符串构建器。</param>
-    /// <param name="repositoryClass">要为其生成拦截器方法的仓储类符号。</param>
+    /// <param name="sb">The string builder used to construct code.</param>
+    /// <param name="repositoryClass">The repository class symbol to generate interceptor methods for.</param>
     public void GenerateInterceptorMethods(IndentedStringBuilder sb, INamedTypeSymbol repositoryClass)
     {
         sb.AppendLine("/// <summary>");
@@ -488,7 +570,7 @@ public class CodeGenerationService : ICodeGenerationService
             }
         }
 
-        if (TypeAnalyzer.IsCollectionType(returnType))
+        if (returnType.IsCollectionType())
         {
             return "A collection of entities.";
         }
@@ -616,7 +698,7 @@ public class CodeGenerationService : ICodeGenerationService
         // Generate method variables
         sb.AppendLine($"{resultVariableType} __result__ = default!;");
         sb.AppendLine("global::System.Data.IDbCommand? __cmd__ = null;");
-        sb.AppendLine("var __stopwatch__ = global::System.Diagnostics.Stopwatch.StartNew();");
+        sb.AppendLine("var __startTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
         sb.AppendLine();
 
         // Use shared utilities for database setup
@@ -658,10 +740,10 @@ public class CodeGenerationService : ICodeGenerationService
         }
         
         sb.AppendLine();
-        sb.AppendLine("__stopwatch__.Stop();");
+        sb.AppendLine("var __endTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
         
         // Call OnExecuted interceptor
-        sb.AppendLine($"OnExecuted(\"{operationName}\", __cmd__, __result__, __stopwatch__.ElapsedTicks);");
+        sb.AppendLine($"OnExecuted(\"{operationName}\", __cmd__, __result__, global::System.Diagnostics.Stopwatch.GetElapsedTime(__startTimestamp__, __endTimestamp__).Ticks);");
         
         sb.PopIndent();
         sb.AppendLine("}");
@@ -669,8 +751,8 @@ public class CodeGenerationService : ICodeGenerationService
         sb.AppendLine("{");
         sb.PushIndent();
         
-        sb.AppendLine("__stopwatch__.Stop();");
-        sb.AppendLine($"OnExecuteFail(\"{operationName}\", __cmd__, __ex__, __stopwatch__.ElapsedTicks);");
+        sb.AppendLine("var __failTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
+        sb.AppendLine($"OnExecuteFail(\"{operationName}\", __cmd__, __ex__, global::System.Diagnostics.Stopwatch.GetElapsedTime(__startTimestamp__, __failTimestamp__).Ticks);");
         sb.AppendLine("throw;");
         
         sb.PopIndent();

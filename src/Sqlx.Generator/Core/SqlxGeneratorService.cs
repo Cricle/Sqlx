@@ -444,7 +444,7 @@ public class SqlxGeneratorService : ISqlxGeneratorService
         // Generate method variables
         sb.AppendLine($"{ExtractInnerTypeFromTask(returnType)} __result__ = default!;");
         sb.AppendLine("global::System.Data.IDbCommand? __cmd__ = null;");
-        sb.AppendLine("var __stopwatch__ = global::System.Diagnostics.Stopwatch.StartNew();");
+        sb.AppendLine("var __startTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
         sb.AppendLine();
 
         // Generate connection setup
@@ -516,10 +516,10 @@ public class SqlxGeneratorService : ISqlxGeneratorService
         }
 
         sb.AppendLine();
-        sb.AppendLine("__stopwatch__.Stop();");
+        sb.AppendLine("var __endTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
         
         // Call OnExecuted interceptor
-        sb.AppendLine($"OnExecuted(\"{methodName}\", __cmd__, __result__, __stopwatch__.ElapsedTicks);");
+        sb.AppendLine($"OnExecuted(\"{methodName}\", __cmd__, __result__, global::System.Diagnostics.Stopwatch.GetElapsedTime(__startTimestamp__, __endTimestamp__).Ticks);");
         
         // Return statement
         if (!method.ReturnsVoid)
@@ -540,8 +540,8 @@ public class SqlxGeneratorService : ISqlxGeneratorService
         sb.AppendLine("{");
         sb.PushIndent();
         
-        sb.AppendLine("__stopwatch__.Stop();");
-        sb.AppendLine($"OnExecuteFail(\"{methodName}\", __cmd__, __ex__, __stopwatch__.ElapsedTicks);");
+        sb.AppendLine("var __failTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
+        sb.AppendLine($"OnExecuteFail(\"{methodName}\", __cmd__, __ex__, global::System.Diagnostics.Stopwatch.GetElapsedTime(__startTimestamp__, __failTimestamp__).Ticks);");
         sb.AppendLine("throw;");
         
         sb.PopIndent();

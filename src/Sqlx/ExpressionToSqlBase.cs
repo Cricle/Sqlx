@@ -144,7 +144,7 @@ namespace Sqlx
                 : $"@p{_counter++}";
 
         /// <summary>
-        /// 为值类型获取默认值（AOT友好）
+        /// Get default value for value types (AOT-friendly)
         /// </summary>
         private static object? GetDefaultValueForValueType(Type type)
         {
@@ -173,7 +173,7 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// 解析聚合函数中的方法调用，支持嵌套函数
+        /// Parse method calls in aggregate functions with nested function support
         /// </summary>
         protected string ParseAggregateMethodCall(MethodCallExpression method) => method.Method.Name switch
         {
@@ -182,11 +182,11 @@ namespace Sqlx
             "Average" or "Avg" when method.Arguments.Count > 1 => $"AVG({ParseLambdaExpression(method.Arguments[1])})",
             "Max" when method.Arguments.Count > 1 => $"MAX({ParseLambdaExpression(method.Arguments[1])})",
             "Min" when method.Arguments.Count > 1 => $"MIN({ParseLambdaExpression(method.Arguments[1])})",
-            _ => throw new NotSupportedException($"聚合函数 {method.Method.Name} 不受支持"),
+            _ => throw new NotSupportedException($"Aggregate function {method.Method.Name} is not supported"),
         };
 
         /// <summary>
-        /// 增强的Lambda表达式解析，支持复杂的嵌套函数
+        /// Enhanced Lambda expression parsing with complex nested function support
         /// </summary>
         protected string ParseLambdaExpression(Expression expression) => expression switch
         {
@@ -196,11 +196,11 @@ namespace Sqlx
         };
 
         /// <summary>
-        /// 尝试解析布尔比较，返回 null 如果不是布尔比较
+        /// Try to parse boolean comparison, return null if not a boolean comparison
         /// </summary>
         private string? TryParseBooleanComparison(BinaryExpression binary)
         {
-            // 只处理 Equal 和 NotEqual
+            // Only handle Equal and NotEqual
             if (binary.NodeType != ExpressionType.Equal && binary.NodeType != ExpressionType.NotEqual)
                 return null;
 
@@ -217,26 +217,26 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// 解析二元表达式为SQL字符串
+        /// Parse binary expression to SQL string
         /// </summary>
         protected string ParseBinaryExpression(BinaryExpression binary)
         {
-            // 先处理特殊情况，再解析表达式
+            // Handle special cases first, then parse expressions
 
-            // 处理布尔类型与常量的比较
+            // Handle boolean type comparison with constants
             var boolResult = TryParseBooleanComparison(binary);
             if (boolResult != null) return boolResult;
 
             var left = ParseExpressionRaw(binary.Left);
             var right = ParseExpressionRaw(binary.Right);
 
-            // 特殊处理：如果右侧是布尔成员且尚未正确转换，强制添加 = 1
+            // Special handling: if right side is boolean member and not correctly converted, force add = 1
             if (binary.Right is MemberExpression rightMember && rightMember.Type == typeof(bool) && right == GetColumnName(rightMember))
             {
                 right = $"{right} = 1";
             }
 
-            // 处理 NULL 比较
+            // Handle NULL comparison
             if (binary.NodeType == ExpressionType.Equal && (left == "NULL" || right == "NULL"))
             {
                 return left == "NULL" ? $"{right} IS NULL" : $"{left} IS NULL";
@@ -250,7 +250,7 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// 获取表达式对应的列名
+        /// Get column name corresponding to expression
         /// </summary>
         protected string GetColumnName(Expression expression)
         {
@@ -273,7 +273,7 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// 获取常量表达式的值
+        /// Get value of constant expression
         /// </summary>
         protected string GetConstantValue(ConstantExpression constant) => FormatConstantValue(constant.Value);
 
@@ -286,7 +286,7 @@ namespace Sqlx
             GetSimpleDefaultValue(member.Type);
 
         /// <summary>
-        /// 获取简单的默认值（不使用复杂反射）
+        /// Get simple default value (without complex reflection)
         /// </summary>
         private static object? GetSimpleDefaultValue(Type type) => 
             type.IsValueType ? GetDefaultValueForValueType(type) : null;
@@ -397,7 +397,7 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// 从表达式中提取列名列表
+        /// Extract column name list from expression
         /// </summary>
         protected List<string> ExtractColumns(Expression expression)
         {
@@ -406,7 +406,7 @@ namespace Sqlx
             switch (expression)
             {
                 case NewExpression newExpr:
-                    // 处理 new { Id, Name } 形式
+                    // Handle new { Id, Name } format
                     foreach (var arg in newExpr.Arguments)
                     {
                         if (arg is MemberExpression member)
@@ -417,23 +417,23 @@ namespace Sqlx
                     break;
 
                 case MemberExpression member:
-                    // 处理单个属性
+                    // Handle single property
                     columns.Add(GetColumnName(member));
                     break;
 
                 case UnaryExpression { NodeType: ExpressionType.Convert } unary:
-                    // 处理类型转换
+                    // Handle type conversion
                     return ExtractColumns(unary.Operand);
 
                 default:
-                    // 对于其他表达式类型，尝试作为单个成员处理
+                    // For other expression types, try to handle as single member
                     try
                     {
                         columns.Add(GetColumnName(expression));
                     }
                     catch
                     {
-                        // 如果无法解析，忽略
+                        // If cannot parse, ignore
                     }
                     break;
             }
@@ -515,7 +515,7 @@ namespace Sqlx
         {
             return nodeType switch
             {
-                // 比较运算符
+                // Comparison operators
                 ExpressionType.Equal => $"{left} = {right}",
                 ExpressionType.NotEqual => $"{left} <> {right}",
                 ExpressionType.GreaterThan => $"{left} > {right}",
@@ -523,18 +523,18 @@ namespace Sqlx
                 ExpressionType.LessThan => $"{left} < {right}",
                 ExpressionType.LessThanOrEqual => $"{left} <= {right}",
 
-                // 逻辑运算符
+                // Logical operators
                 ExpressionType.AndAlso => FormatLogicalExpression("AND", left, right, binary),
                 ExpressionType.OrElse => FormatLogicalExpression("OR", left, right, binary),
 
-                // 算术运算符
+                // Arithmetic operators
                 ExpressionType.Add => IsStringConcatenation(binary) ? GetConcatSyntax(left, right) : $"{left} + {right}",
                 ExpressionType.Subtract => $"{left} - {right}",
                 ExpressionType.Multiply => $"{left} * {right}",
                 ExpressionType.Divide => $"{left} / {right}",
                 ExpressionType.Modulo => GetOperatorFunction("%", left, right),
 
-                // 空值合并
+                // Null coalescing
                 ExpressionType.Coalesce => GetOperatorFunction("??", left, right),
 
                 _ => $"{left} = {right}"

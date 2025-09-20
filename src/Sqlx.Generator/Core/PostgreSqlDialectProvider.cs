@@ -13,16 +13,16 @@ namespace Sqlx.Generator.Core;
 /// <summary>
 /// PostgreSQL database dialect provider with PostgreSQL-specific SQL syntax.
 /// </summary>
-internal class PostgreSqlDialectProvider : IDatabaseDialectProvider
+internal class PostgreSqlDialectProvider : BaseDialectProvider
 {
     /// <inheritdoc />
-    public SqlDefine SqlDefine => SqlDefine.PostgreSql;
+    public override SqlDefine SqlDefine => SqlDefine.PostgreSql;
 
     /// <inheritdoc />
-    public SqlDefineTypes DialectType => SqlDefineTypes.PostgreSql;
+    public override SqlDefineTypes DialectType => SqlDefineTypes.PostgreSql;
 
     /// <inheritdoc />
-    public string GenerateLimitClause(int? limit, int? offset)
+    public override string GenerateLimitClause(int? limit, int? offset)
     {
         var clause = string.Empty;
         if (limit.HasValue)
@@ -39,7 +39,7 @@ internal class PostgreSqlDialectProvider : IDatabaseDialectProvider
     }
 
     /// <inheritdoc />
-    public string GenerateInsertWithReturning(string tableName, string[] columns)
+    public override string GenerateInsertWithReturning(string tableName, string[] columns)
     {
         var wrappedTableName = SqlDefine.WrapColumn(tableName);
         var wrappedColumns = columns.Select(c => SqlDefine.WrapColumn(c)).ToArray();
@@ -51,7 +51,7 @@ internal class PostgreSqlDialectProvider : IDatabaseDialectProvider
     }
 
     /// <inheritdoc />
-    public string GenerateBatchInsert(string tableName, string[] columns, int batchSize)
+    public override string GenerateBatchInsert(string tableName, string[] columns, int batchSize)
     {
         var wrappedTableName = SqlDefine.WrapColumn(tableName);
         var wrappedColumns = columns.Select(c => SqlDefine.WrapColumn(c)).ToArray();
@@ -68,7 +68,7 @@ internal class PostgreSqlDialectProvider : IDatabaseDialectProvider
     }
 
     /// <inheritdoc />
-    public string GenerateUpsert(string tableName, string[] columns, string[] keyColumns)
+    public override string GenerateUpsert(string tableName, string[] columns, string[] keyColumns)
     {
         var wrappedTableName = SqlDefine.WrapColumn(tableName);
         var wrappedColumns = columns.Select(c => SqlDefine.WrapColumn(c)).ToArray();
@@ -87,7 +87,7 @@ internal class PostgreSqlDialectProvider : IDatabaseDialectProvider
     }
 
     /// <inheritdoc />
-    public string GetDatabaseTypeName(Type dotNetType)
+    public override string GetDatabaseTypeName(Type dotNetType)
     {
         return dotNetType.Name switch
         {
@@ -106,19 +106,19 @@ internal class PostgreSqlDialectProvider : IDatabaseDialectProvider
     }
 
     /// <inheritdoc />
-    public string FormatDateTime(System.DateTime dateTime)
+    public override string FormatDateTime(DateTime dateTime)
     {
         return $"'{dateTime:yyyy-MM-dd HH:mm:ss.fff}'::timestamp";
     }
 
     /// <inheritdoc />
-    public string GetCurrentDateTimeSyntax()
+    public override string GetCurrentDateTimeSyntax()
     {
         return "CURRENT_TIMESTAMP";
     }
 
     /// <inheritdoc />
-    public string GetConcatenationSyntax(params string[] expressions)
+    public override string GetConcatenationSyntax(params string[] expressions)
     {
         if (expressions.Length <= 1)
             return expressions.FirstOrDefault() ?? string.Empty;

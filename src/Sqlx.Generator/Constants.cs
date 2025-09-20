@@ -7,12 +7,12 @@
 namespace Sqlx;
 
 /// <summary>
-/// 定义 Sqlx 框架中使用的常量
+/// Define constants used in the Sqlx framework
 /// </summary>
 internal static class Constants
 {
     /// <summary>
-    /// SQL 操作类型枚举值
+    /// SQL operation type enumeration values
     /// </summary>
     public static class SqlExecuteTypeValues
     {
@@ -27,7 +27,7 @@ internal static class Constants
     }
 
     /// <summary>
-    /// 生成的代码中的变量名
+    /// Variable names in generated code
     /// </summary>
     public static class GeneratedVariables
     {
@@ -42,7 +42,7 @@ internal static class Constants
     }
 
     /// <summary>
-    /// 类型名称常量
+    /// Type name constants
     /// </summary>
     public static class TypeNames
     {

@@ -8,11 +8,11 @@
   <PropertyGroup>
     <PackageId>Sqlx</PackageId>
     <Version>0.2.0</Version>
-    <Title>Sqlx - 简化版现代 .NET ORM 框架</Title>
+    <Title>Sqlx - Modern .NET ORM Framework</Title>
     <Description>
-      Sqlx 0.2.0 - 极简四核心模块设计，专注性能与易用性。
-      包含：Sqlx手写SQL、ExpressionToSql类型安全查询、RepositoryFor零代码仓储、SqlTemplate高性能模板。
-      零反射、AOT原生支持、编译时验证，适用于云原生和微服务场景。
+      Sqlx 0.2.0 - Minimalist four-core module design focused on performance and usability.
+      Includes: Sqlx raw SQL, ExpressionToSql type-safe queries, RepositoryFor zero-code repositories, SqlTemplate high-performance templates.
+      Zero reflection, native AOT support, compile-time validation, suitable for cloud-native and microservice scenarios.
     </Description>
     <PackageTags>
       orm;sql;netstandard;net8;net9;source-generator;aot;performance;type-safe;
@@ -20,7 +20,7 @@
       cloud-native;microservices;zero-reflection;compile-time
     </PackageTags>
     <PackageReleaseNotes>
-      v3.0.0 - 极简架构重构版本
+      v3.0.0 - Minimalist architecture refactoring
       Major simplification: Four core module design - Sqlx, ExpressionToSql, RepositoryFor, SqlTemplate
       Removed redundant features: Focus on core scenarios, improve development efficiency
       Full AOT optimization: Remove complex reflection, improve runtime performance

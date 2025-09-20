@@ -13,63 +13,33 @@ namespace Sqlx.Generator.Core;
 /// <summary>
 /// SQL Server database dialect provider with SQL Server-specific SQL syntax.
 /// </summary>
-internal class SqlServerDialectProvider : IDatabaseDialectProvider
+internal class SqlServerDialectProvider : BaseDialectProvider
 {
     /// <inheritdoc />
-    public SqlDefine SqlDefine => SqlDefine.SqlServer;
+    public override SqlDefine SqlDefine => SqlDefine.SqlServer;
 
     /// <inheritdoc />
-    public SqlDefineTypes DialectType => SqlDefineTypes.SqlServer;
+    public override SqlDefineTypes DialectType => SqlDefineTypes.SqlServer;
 
     /// <inheritdoc />
-    public string GenerateLimitClause(int? limit, int? offset)
+    public override string GenerateLimitClause(int? limit, int? offset) =>
+        (limit, offset) switch
+        {
+            (not null, not null) => $"OFFSET {offset} ROWS FETCH NEXT {limit} ROWS ONLY",
+            (not null, null) => $"OFFSET 0 ROWS FETCH NEXT {limit} ROWS ONLY",
+            (null, not null) => $"OFFSET {offset} ROWS",
+            _ => string.Empty
+        };
+
+    /// <inheritdoc />
+    public override string GenerateInsertWithReturning(string tableName, string[] columns)
     {
-        if (limit.HasValue && offset.HasValue)
-        {
-            return $"OFFSET {offset.Value} ROWS FETCH NEXT {limit.Value} ROWS ONLY";
-        }
-        else if (limit.HasValue)
-        {
-            return $"OFFSET 0 ROWS FETCH NEXT {limit.Value} ROWS ONLY";
-        }
-        else if (offset.HasValue)
-        {
-            return $"OFFSET {offset.Value} ROWS";
-        }
-        return string.Empty;
+        var (wrappedTableName, wrappedColumns, parameters) = GetInsertParts(tableName, columns);
+        return $"INSERT INTO {wrappedTableName} ({string.Join(", ", wrappedColumns)}) OUTPUT INSERTED.{SqlDefine.WrapColumn("Id")} VALUES ({string.Join(", ", parameters)})";
     }
 
     /// <inheritdoc />
-    public string GenerateInsertWithReturning(string tableName, string[] columns)
-    {
-        var wrappedTableName = SqlDefine.WrapColumn(tableName);
-        var wrappedColumns = columns.Select(c => SqlDefine.WrapColumn(c)).ToArray();
-        var parameters = columns.Select(c => $"@{c.ToLowerInvariant()}").ToArray();
-
-        return $"INSERT INTO {wrappedTableName} ({string.Join(", ", wrappedColumns)}) " +
-               $"OUTPUT INSERTED.{SqlDefine.WrapColumn("Id")} " +
-               $"VALUES ({string.Join(", ", parameters)})";
-    }
-
-    /// <inheritdoc />
-    public string GenerateBatchInsert(string tableName, string[] columns, int batchSize)
-    {
-        var wrappedTableName = SqlDefine.WrapColumn(tableName);
-        var wrappedColumns = columns.Select(c => SqlDefine.WrapColumn(c)).ToArray();
-
-        var valuesClauses = new string[batchSize];
-        for (int i = 0; i < batchSize; i++)
-        {
-            var parameters = columns.Select(c => $"@{c.ToLowerInvariant()}{i}").ToArray();
-            valuesClauses[i] = $"({string.Join(", ", parameters)})";
-        }
-
-        return $"INSERT INTO {wrappedTableName} ({string.Join(", ", wrappedColumns)}) " +
-               $"VALUES {string.Join(", ", valuesClauses)}";
-    }
-
-    /// <inheritdoc />
-    public string GenerateUpsert(string tableName, string[] columns, string[] keyColumns)
+    public override string GenerateUpsert(string tableName, string[] columns, string[] keyColumns)
     {
         var wrappedTableName = SqlDefine.WrapColumn(tableName);
         var wrappedColumns = columns.Select(c => SqlDefine.WrapColumn(c)).ToArray();
@@ -90,7 +60,7 @@ internal class SqlServerDialectProvider : IDatabaseDialectProvider
     }
 
     /// <inheritdoc />
-    public string GetDatabaseTypeName(Type dotNetType)
+    public override string GetDatabaseTypeName(Type dotNetType)
     {
         return dotNetType.Name switch
         {
@@ -109,19 +79,19 @@ internal class SqlServerDialectProvider : IDatabaseDialectProvider
     }
 
     /// <inheritdoc />
-    public string FormatDateTime(System.DateTime dateTime)
+    public override string FormatDateTime(DateTime dateTime)
     {
         return $"'{dateTime:yyyy-MM-dd HH:mm:ss.fff}'";
     }
 
     /// <inheritdoc />
-    public string GetCurrentDateTimeSyntax()
+    public override string GetCurrentDateTimeSyntax()
     {
         return "GETDATE()";
     }
 
     /// <inheritdoc />
-    public string GetConcatenationSyntax(params string[] expressions)
+    public override string GetConcatenationSyntax(params string[] expressions)
     {
         if (expressions.Length <= 1)
             return expressions.FirstOrDefault() ?? string.Empty;

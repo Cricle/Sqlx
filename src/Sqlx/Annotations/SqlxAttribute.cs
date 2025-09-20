@@ -9,8 +9,8 @@
 namespace Sqlx.Annotations
 {
     /// <summary>
-    /// 指定方法的 SQL 命令文本、原始 SQL 或存储过程名称
-    /// 与 SqlTemplateAttribute 配合使用时，提供编译时 SQL 生成功能
+    /// Specify the SQL command text, raw SQL, or stored procedure name for the method
+    /// When used with SqlTemplateAttribute, provides compile-time SQL generation functionality
     /// </summary>
     [System.AttributeUsage(System.AttributeTargets.Method | System.AttributeTargets.Parameter,
         AllowMultiple = true, Inherited = false)]
@@ -57,13 +57,13 @@ namespace Sqlx.Annotations
         public string SqlTemplateParameterName { get; set; } = "template";
 
         /// <summary>
-        /// 指示此方法是否使用编译时 SQL 模板生成
-        /// 当为 true 时，将与 SqlTemplateAttribute 协作生成高性能代码
+        /// Indicates whether this method uses compile-time SQL template generation
+        /// When true, will collaborate with SqlTemplateAttribute to generate high-performance code
         /// </summary>
         public bool UseCompileTimeTemplate { get; set; } = false;
 
         /// <summary>
-        /// 编译时模板的缓存键，用于优化重复查询
+        /// Cache key for compile-time templates, used to optimize repeated queries
         /// </summary>
         public string? TemplateCacheKey { get; set; }
     }

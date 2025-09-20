@@ -16,65 +16,65 @@ using Sqlx;
 namespace Sqlx.Generator.Core
 {
     /// <summary>
-    /// SQL 模板占位符处理器，支持动态替换占位符如 {{columns}}, {{table}}, {{where}} 等
+    /// SQL template placeholder processor, supports dynamic replacement of placeholders like {{columns}}, {{table}}, {{where}} etc
     /// </summary>
     public static class SqlTemplatePlaceholder
     {
         private static readonly Regex PlaceholderRegex = new Regex(@"\{\{(\w+)(?::([^}]+))?\}\}", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         /// <summary>
-        /// 支持的占位符类型
+        /// Supported placeholder types
         /// </summary>
         public static class Placeholders
         {
             /// <summary>
-            /// 列名占位符，用于替换表的列名列表。
+            /// Column name placeholder, used to replace table column name list.
             /// </summary>
             public const string Columns = "columns";
             /// <summary>
-            /// 表名占位符，用于替换数据库表名。
+            /// Table name placeholder, used to replace database table name.
             /// </summary>
             public const string Table = "table";
             /// <summary>
-            /// WHERE 子句占位符，用于替换查询条件。
+            /// WHERE clause placeholder, used to replace query conditions.
             /// </summary>
             public const string Where = "where";
             /// <summary>
-            /// ORDER BY 子句占位符，用于替换排序条件。
+            /// ORDER BY clause placeholder, used to replace sorting conditions.
             /// </summary>
             public const string OrderBy = "orderby";
             /// <summary>
-            /// INSERT 语句占位符，用于替换插入列名。
+            /// INSERT statement placeholder, used to replace insert column names.
             /// </summary>
             public const string Insert = "insert";
             /// <summary>
-            /// UPDATE 语句占位符，用于替换更新列名。
+            /// UPDATE statement placeholder, used to replace update column names.
             /// </summary>
             public const string Update = "update";
             /// <summary>
-            /// VALUES 子句占位符，用于替换插入值。
+            /// VALUES clause placeholder, used to replace insert values.
             /// </summary>
             public const string Values = "values";
             /// <summary>
-            /// JOIN 子句占位符，用于替换表连接。
+            /// JOIN clause placeholder, used to replace table joins.
             /// </summary>
             public const string Joins = "joins";
             /// <summary>
-            /// SELECT 子句占位符，用于替换查询列名。
+            /// SELECT clause placeholder, used to replace query column names.
             /// </summary>
             public const string Select = "select";
             /// <summary>
-            /// COUNT 函数占位符，用于替换计数查询。
+            /// COUNT function placeholder, used to replace count queries.
             /// </summary>
             public const string Count = "count";
         }
 
         /// <summary>
-        /// 处理 SQL 模板中的占位符替换
+        /// Process placeholder replacement in SQL templates
         /// </summary>
-        /// <param name="sqlTemplate">原始 SQL 模板</param>
-        /// <param name="context">替换上下文</param>
-        /// <returns>处理后的 SQL 字符串</returns>
+        /// <param name="sqlTemplate">Original SQL template</param>
+        /// <param name="context">Replacement context</param>
+        /// <returns>Processed SQL string</returns>
         public static string ProcessTemplate(string sqlTemplate, SqlPlaceholderContext context)
         {
             if (string.IsNullOrEmpty(sqlTemplate))
@@ -97,26 +97,26 @@ namespace Sqlx.Generator.Core
                     Placeholders.Joins => ProcessJoinsPlaceholder(context, placeholderArgs),
                     Placeholders.Select => ProcessSelectPlaceholder(context, placeholderArgs),
                     Placeholders.Count => ProcessCountPlaceholder(context, placeholderArgs),
-                    _ => match.Value // 保留未知占位符
+                    _ => match.Value // Keep unknown placeholders
                 };
             });
         }
 
         /// <summary>
-        /// 检查 SQL 模板是否包含占位符
+        /// Check if SQL template contains placeholders
         /// </summary>
-        /// <param name="sqlTemplate">SQL 模板</param>
-        /// <returns>是否包含占位符</returns>
+        /// <param name="sqlTemplate">SQL template</param>
+        /// <returns>Whether it contains placeholders</returns>
         public static bool ContainsPlaceholders(string sqlTemplate)
         {
             return !string.IsNullOrEmpty(sqlTemplate) && PlaceholderRegex.IsMatch(sqlTemplate);
         }
 
         /// <summary>
-        /// 获取 SQL 模板中所有的占位符
+        /// Get all placeholders in SQL template
         /// </summary>
-        /// <param name="sqlTemplate">SQL 模板</param>
-        /// <returns>占位符列表</returns>
+        /// <param name="sqlTemplate">SQL template</param>
+        /// <returns>List of placeholders</returns>
         public static List<string> GetPlaceholders(string sqlTemplate)
         {
             if (string.IsNullOrEmpty(sqlTemplate))
@@ -130,7 +130,7 @@ namespace Sqlx.Generator.Core
         }
 
         /// <summary>
-        /// 处理 {{columns}} 占位符
+        /// Process {{columns}} placeholder
         /// </summary>
         private static string ProcessColumnsPlaceholder(SqlPlaceholderContext context, string? args)
         {
@@ -139,7 +139,7 @@ namespace Sqlx.Generator.Core
 
             var columns = GetEntityColumns(context.EntityType, context.SqlDefine);
 
-            // 支持参数: {{columns:exclude=Id,CreatedAt}}
+            // Support parameters: {{columns:exclude=Id,CreatedAt}}
             if (!string.IsNullOrEmpty(args))
             {
                 var argsDict = ParseArgs(args);
@@ -159,13 +159,13 @@ namespace Sqlx.Generator.Core
         }
 
         /// <summary>
-        /// 处理 {{table}} 占位符
+        /// Process {{table}} placeholder
         /// </summary>
         private static string ProcessTablePlaceholder(SqlPlaceholderContext context, string? args)
         {
             var tableName = context.TableName ?? context.EntityType?.Name ?? "UnknownTable";
 
-            // 支持参数: {{table:alias=u}}
+            // Support parameters: {{table:alias=u}}
             if (!string.IsNullOrEmpty(args))
             {
                 var argsDict = ParseArgs(args);
@@ -179,11 +179,11 @@ namespace Sqlx.Generator.Core
         }
 
         /// <summary>
-        /// 处理 {{where}} 占位符
+        /// Process {{where}} placeholder
         /// </summary>
         private static string ProcessWherePlaceholder(SqlPlaceholderContext context, string? args)
         {
-            // 支持参数: {{where:default=1=1}}
+            // Support parameters: {{where:default=1=1}}
             if (!string.IsNullOrEmpty(args))
             {
                 var argsDict = ParseArgs(args);
@@ -193,15 +193,15 @@ namespace Sqlx.Generator.Core
                 }
             }
 
-            return "1=1"; // 默认的安全 WHERE 条件
+            return "1=1"; // Default safe WHERE condition
         }
 
         /// <summary>
-        /// 处理 {{orderby}} 占位符
+        /// Process {{orderby}} placeholder
         /// </summary>
         private static string ProcessOrderByPlaceholder(SqlPlaceholderContext context, string? args)
         {
-            // 支持参数: {{orderby:default=Id ASC}}
+            // Support parameters: {{orderby:default=Id ASC}}
             if (!string.IsNullOrEmpty(args))
             {
                 var argsDict = ParseArgs(args);
@@ -211,7 +211,7 @@ namespace Sqlx.Generator.Core
                 }
             }
 
-            // 尝试使用主键字段作为默认排序
+            // Try to use primary key field as default sorting
             if (context.EntityType != null)
             {
                 var primaryKey = GetPrimaryKeyColumn(context.EntityType, context.SqlDefine);
@@ -225,7 +225,7 @@ namespace Sqlx.Generator.Core
         }
 
         /// <summary>
-        /// 处理 {{insert}} 占位符
+        /// Process {{insert}} placeholder
         /// </summary>
         private static string ProcessInsertPlaceholder(SqlPlaceholderContext context, string? args)
         {
@@ -239,7 +239,7 @@ namespace Sqlx.Generator.Core
         }
 
         /// <summary>
-        /// 处理 {{update}} 占位符
+        /// Process {{update}} placeholder
         /// </summary>
         private static string ProcessUpdatePlaceholder(SqlPlaceholderContext context, string? args)
         {
@@ -251,7 +251,7 @@ namespace Sqlx.Generator.Core
         }
 
         /// <summary>
-        /// 处理 {{values}} 占位符
+        /// Process {{values}} placeholder
         /// </summary>
         private static string ProcessValuesPlaceholder(SqlPlaceholderContext context, string? args)
         {
@@ -265,11 +265,11 @@ namespace Sqlx.Generator.Core
         }
 
         /// <summary>
-        /// 处理 {{joins}} 占位符
+        /// Process {{joins}} placeholder
         /// </summary>
         private static string ProcessJoinsPlaceholder(SqlPlaceholderContext context, string? args)
         {
-            // 支持参数: {{joins:type=INNER,table=Department,on=u.DepartmentId=d.Id,alias=d}}
+            // Support parameters: {{joins:type=INNER,table=Department,on=u.DepartmentId=d.Id,alias=d}}
             if (!string.IsNullOrEmpty(args))
             {
                 var argsDict = ParseArgs(args);
@@ -292,7 +292,7 @@ namespace Sqlx.Generator.Core
         }
 
         /// <summary>
-        /// 处理 {{select}} 占位符
+        /// Process {{select}} placeholder
         /// </summary>
         private static string ProcessSelectPlaceholder(SqlPlaceholderContext context, string? args)
         {
@@ -301,11 +301,11 @@ namespace Sqlx.Generator.Core
         }
 
         /// <summary>
-        /// 处理 {{count}} 占位符
+        /// Process {{count}} placeholder
         /// </summary>
         private static string ProcessCountPlaceholder(SqlPlaceholderContext context, string? args)
         {
-            // 支持参数: {{count:column=Id}}
+            // Support parameters: {{count:column=Id}}
             if (!string.IsNullOrEmpty(args))
             {
                 var argsDict = ParseArgs(args);
@@ -319,7 +319,7 @@ namespace Sqlx.Generator.Core
         }
 
         /// <summary>
-        /// 获取实体类型的所有列
+        /// Get all columns of the entity type
         /// </summary>
         private static List<string> GetEntityColumns(INamedTypeSymbol entityType, SqlDefine sqlDefine, bool excludeIdentity = false)
         {
@@ -330,7 +330,7 @@ namespace Sqlx.Generator.Core
 
             if (excludeIdentity)
             {
-                // 排除可能的身份列（Id, 自增列等）
+                // Exclude possible identity columns (Id, auto-increment columns, etc.)
                 properties = properties.Where(p =>
                     !p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) ||
                     p.GetAttributes().Any(attr => attr.AttributeClass?.Name == "KeyAttribute")).ToList();
@@ -340,7 +340,7 @@ namespace Sqlx.Generator.Core
         }
 
         /// <summary>
-        /// 获取主键列
+        /// Get primary key columns
         /// </summary>
         private static string? GetPrimaryKeyColumn(INamedTypeSymbol entityType, SqlDefine sqlDefine)
         {
@@ -353,7 +353,7 @@ namespace Sqlx.Generator.Core
         }
 
         /// <summary>
-        /// 解析占位符参数
+        /// Parse placeholder parameters
         /// </summary>
         private static Dictionary<string, string> ParseArgs(string? args)
         {
@@ -376,48 +376,48 @@ namespace Sqlx.Generator.Core
         }
 
         /// <summary>
-        /// 获取去除包装器的列名
+        /// Get column name with wrapper removed
         /// </summary>
         private static string GetColumnNameWithoutWrapper(string wrappedColumn)
         {
             if (string.IsNullOrEmpty(wrappedColumn))
                 return wrappedColumn;
 
-            // 移除各种数据库的列名包装符号
+            // Remove various database column name wrapper symbols
             return wrappedColumn.Trim('[', ']', '`', '"');
         }
     }
 
     /// <summary>
-    /// SQL 占位符替换上下文
+    /// SQL placeholder replacement context
     /// </summary>
     public class SqlPlaceholderContext
     {
         /// <summary>
-        /// 获取或设置实体类型符号。
+        /// Get or set the entity type symbol.
         /// </summary>
         public INamedTypeSymbol? EntityType { get; set; }
         /// <summary>
-        /// 获取或设置数据库表名。
+        /// Get or set the database table name.
         /// </summary>
         public string? TableName { get; set; }
         /// <summary>
-        /// 获取或设置 SQL 方言定义。
+        /// Get or set the SQL dialect definition.
         /// </summary>
         public SqlDefine SqlDefine { get; set; }
         /// <summary>
-        /// 获取或设置当前处理的方法符号。
+        /// Get or set the current method symbol being processed.
         /// </summary>
         public IMethodSymbol? Method { get; set; }
         /// <summary>
-        /// 获取或设置额外的上下文数据。
+        /// Get or set additional context data.
         /// </summary>
         public Dictionary<string, object?> AdditionalData { get; set; } = new();
 
         /// <summary>
-        /// 初始化 SqlPlaceholderContext 类的新实例。
+        /// Initialize a new instance of the SqlPlaceholderContext class.
         /// </summary>
-        /// <param name="sqlDefine">SQL 方言定义。</param>
+        /// <param name="sqlDefine">SQL dialect definition.</param>
         public SqlPlaceholderContext(SqlDefine sqlDefine)
         {
             SqlDefine = sqlDefine;

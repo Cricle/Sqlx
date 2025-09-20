@@ -23,14 +23,12 @@ internal static class Extensions
     private static readonly ConcurrentDictionary<ITypeSymbol, string> _dbTypeCache = new(SymbolEqualityComparer.Default);
     private static readonly ConcurrentDictionary<(ITypeSymbol type, string name), string> _dataReadExpressionCache = new();
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool CanHaveNullValue(this ITypeSymbol typeSymbol)
     {
         return typeSymbol.NullableAnnotation == NullableAnnotation.Annotated ||
                (!typeSymbol.IsValueType && typeSymbol.NullableAnnotation != NullableAnnotation.NotAnnotated);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsNullableType(this ITypeSymbol type)
     {
         return type.NullableAnnotation == NullableAnnotation.Annotated ||

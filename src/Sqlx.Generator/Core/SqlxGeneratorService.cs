@@ -22,9 +22,34 @@ public class SqlxGeneratorService : ISqlxGeneratorService
 {
     private readonly ITypeInferenceService _typeInferenceService;
     private readonly ICodeGenerationService _codeGenerationService;
-    private readonly OperationGeneratorFactory _operationFactory;
-    private readonly IAttributeHandler _attributeHandler;
-    private readonly IMethodAnalyzer _methodAnalyzer;
+    private readonly ISqlTemplateEngine _templateEngine;
+    private readonly AttributeHandler _attributeHandler;
+    private readonly MethodAnalyzer _methodAnalyzer;
+
+    /// <summary>
+    /// Gets the type inference service.
+    /// </summary>
+    public ITypeInferenceService TypeInferenceService => _typeInferenceService;
+
+    /// <summary>
+    /// Gets the code generation service.
+    /// </summary>
+    public ICodeGenerationService CodeGenerationService => _codeGenerationService;
+
+    /// <summary>
+    /// Gets the template engine.
+    /// </summary>
+    public ISqlTemplateEngine TemplateEngine => _templateEngine;
+
+    /// <summary>
+    /// Gets the attribute handler.
+    /// </summary>
+    public AttributeHandler AttributeHandler => _attributeHandler;
+
+    /// <summary>
+    /// Gets the method analyzer.
+    /// </summary>
+    public MethodAnalyzer MethodAnalyzer => _methodAnalyzer;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SqlxGeneratorService"/> class.
@@ -33,7 +58,7 @@ public class SqlxGeneratorService : ISqlxGeneratorService
     {
         _typeInferenceService = new TypeInferenceService();
         _codeGenerationService = new CodeGenerationService();
-        _operationFactory = new OperationGeneratorFactory();
+        _templateEngine = new SqlTemplateEngine();
         _attributeHandler = new AttributeHandler();
         _methodAnalyzer = new MethodAnalyzer();
     }
@@ -234,18 +259,15 @@ public class SqlxGeneratorService : ISqlxGeneratorService
 
     private void GenerateRepositoryMethodDirect(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName)
     {
-        // Use the proper code generation service for repository methods
-        var operationFactory = new OperationGeneratorFactory();
-        var operationGenerator = operationFactory.GetGenerator(method);
-
-        if (operationGenerator != null)
+        // Use unified template engine for SQL generation
+        var sqlxAttr = method.GetAttributes()
+            .FirstOrDefault(a => a.AttributeClass?.Name?.Contains("Sqlx") == true);
+        
+        if (sqlxAttr?.ConstructorArguments.FirstOrDefault().Value is string sql)
         {
-            var codeGenerationService = new CodeGenerationService();
-            var methodContext = new RepositoryMethodContext(
-                sb, method, entityType, tableName, operationGenerator,
-                new AttributeHandler(), new MethodAnalyzer());
-
-            codeGenerationService.GenerateRepositoryMethod(methodContext);
+            // Use template engine to process SQL template
+            var templateResult = _templateEngine.ProcessTemplate(sql, method, entityType, tableName);
+            GenerateMethodFromProcessedTemplate(sb, method, templateResult, entityType);
         }
         else
         {
@@ -390,5 +412,316 @@ public class SqlxGeneratorService : ISqlxGeneratorService
         }
 
         return "object"; // Safe fallback
+    }
+
+    private string GetDbTypeForParameter(IParameterSymbol parameter)
+    {
+        return parameter.Type.SpecialType switch
+        {
+            SpecialType.System_String => "global::System.Data.DbType.String",
+            SpecialType.System_Int32 => "global::System.Data.DbType.Int32",
+            SpecialType.System_Int64 => "global::System.Data.DbType.Int64",
+            SpecialType.System_Boolean => "global::System.Data.DbType.Boolean",
+            SpecialType.System_DateTime => "global::System.Data.DbType.DateTime",
+            SpecialType.System_Decimal => "global::System.Data.DbType.Decimal",
+            SpecialType.System_Double => "global::System.Data.DbType.Double",
+            _ => "global::System.Data.DbType.Object"
+        };
+    }
+
+    private void GenerateMethodFromProcessedTemplate(IndentedStringBuilder sb, IMethodSymbol method, SqlTemplateResult templateResult, INamedTypeSymbol? entityType)
+    {
+        var methodName = method.Name;
+        var returnType = method.ReturnType.ToDisplayString();
+        var parameters = string.Join(", ", method.Parameters.Select(p =>
+            $"{p.Type.ToDisplayString()} {p.Name}"));
+
+        // Generate method signature
+        sb.AppendLine($"public {returnType} {methodName}({parameters})");
+        sb.AppendLine("{");
+        sb.PushIndent();
+
+        // Generate method variables
+        sb.AppendLine($"{ExtractInnerTypeFromTask(returnType)} __result__ = default!;");
+        sb.AppendLine("global::System.Data.IDbCommand? __cmd__ = null;");
+        sb.AppendLine("var __stopwatch__ = global::System.Diagnostics.Stopwatch.StartNew();");
+        sb.AppendLine();
+
+        // Generate connection setup
+        var connectionFieldName = GetConnectionFieldName(method.ContainingType);
+        sb.AppendLine($"if ({connectionFieldName}.State != global::System.Data.ConnectionState.Open)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine($"{connectionFieldName}.Open();");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+
+        sb.AppendLine($"__cmd__ = {connectionFieldName}.CreateCommand();");
+
+        // Set SQL command
+        sb.AppendLine($"__cmd__.CommandText = @\"{templateResult.ProcessedSql}\";");
+
+        // Add parameters
+        foreach (var param in method.Parameters.Where(p => p.Type.Name != "CancellationToken"))
+        {
+            sb.AppendLine($"var param_{param.Name} = __cmd__.CreateParameter();");
+            sb.AppendLine($"param_{param.Name}.ParameterName = \"@{param.Name}\";");
+            
+            // Handle nullable value types properly
+            if (param.Type.IsValueType)
+            {
+                sb.AppendLine($"param_{param.Name}.Value = {param.Name};");
+            }
+            else
+            {
+                sb.AppendLine($"param_{param.Name}.Value = {param.Name} ?? (object)global::System.DBNull.Value;");
+            }
+            
+            sb.AppendLine($"param_{param.Name}.DbType = {GetDbTypeForParameter(param)};");
+            sb.AppendLine($"__cmd__.Parameters.Add(param_{param.Name});");
+            sb.AppendLine();
+        }
+
+        // Add try-catch block with interceptors
+        sb.AppendLine("try");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        
+        // Call OnExecuting interceptor
+        sb.AppendLine($"OnExecuting(\"{methodName}\", __cmd__);");
+        sb.AppendLine();
+
+        // Execute based on return type
+        var operationType = InferOperationType(method.Name);
+        if (operationType == OperationType.Select)
+        {
+            if (IsCollectionReturnType(method.ReturnType))
+            {
+                GenerateCollectionExecution(sb, method, entityType);
+            }
+            else if (IsScalarReturnType(method.ReturnType))
+            {
+                GenerateScalarExecution(sb, method);
+            }
+            else
+            {
+                GenerateSingleEntityExecution(sb, method, entityType);
+            }
+        }
+        else
+        {
+            // Insert, Update, Delete operations
+            sb.AppendLine("__result__ = __cmd__.ExecuteNonQuery();");
+        }
+
+        sb.AppendLine();
+        sb.AppendLine("__stopwatch__.Stop();");
+        
+        // Call OnExecuted interceptor
+        sb.AppendLine($"OnExecuted(\"{methodName}\", __cmd__, __result__, __stopwatch__.ElapsedTicks);");
+        
+        // Return statement
+        if (!method.ReturnsVoid)
+        {
+            if (returnType.Contains("Task"))
+            {
+                sb.AppendLine("return global::System.Threading.Tasks.Task.FromResult(__result__);");
+            }
+            else
+            {
+                sb.AppendLine("return __result__;");
+            }
+        }
+
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine("catch (global::System.Exception __ex__)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        
+        sb.AppendLine("__stopwatch__.Stop();");
+        sb.AppendLine($"OnExecuteFail(\"{methodName}\", __cmd__, __ex__, __stopwatch__.ElapsedTicks);");
+        sb.AppendLine("throw;");
+        
+        sb.PopIndent();
+        sb.AppendLine("}");
+
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+    }
+
+    private string GetConnectionFieldName(INamedTypeSymbol repositoryClass)
+    {
+        // Find connection field/property (simplified version)
+        var connectionField = repositoryClass.GetMembers()
+            .OfType<IFieldSymbol>()
+            .FirstOrDefault(f => f.Type.AllInterfaces.Any(i => i.Name == "IDbConnection"));
+        
+        if (connectionField != null)
+            return connectionField.Name;
+
+        var connectionProperty = repositoryClass.GetMembers()
+            .OfType<IPropertySymbol>()
+            .FirstOrDefault(p => p.Type.AllInterfaces.Any(i => i.Name == "IDbConnection"));
+        
+        if (connectionProperty != null)
+            return connectionProperty.Name;
+
+        return "_connection"; // Fallback to common field name
+    }
+
+    private OperationType InferOperationType(string methodName)
+    {
+        var name = methodName.ToLowerInvariant();
+        if (name.Contains("select") || name.Contains("get") || name.Contains("find") || name.Contains("query"))
+            return OperationType.Select;
+        if (name.Contains("insert") || name.Contains("create") || name.Contains("add"))
+            return OperationType.Insert;
+        if (name.Contains("update") || name.Contains("modify"))
+            return OperationType.Update;
+        if (name.Contains("delete") || name.Contains("remove"))
+            return OperationType.Delete;
+        
+        return OperationType.Select; // Default to select
+    }
+
+    private bool IsCollectionReturnType(ITypeSymbol type)
+    {
+        if (type is INamedTypeSymbol namedType)
+        {
+            return namedType.AllInterfaces.Any(i =>
+                i.Name == "IEnumerable" ||
+                i.Name == "ICollection" ||
+                i.Name == "IList");
+        }
+        return false;
+    }
+
+    private bool IsScalarReturnType(ITypeSymbol type)
+    {
+        // Remove Task wrapper if present
+        if (type is INamedTypeSymbol namedType && namedType.Name == "Task" && namedType.TypeArguments.Length > 0)
+        {
+            type = namedType.TypeArguments[0];
+        }
+
+        return type.SpecialType == SpecialType.System_Int32 ||
+               type.SpecialType == SpecialType.System_Boolean ||
+               type.SpecialType == SpecialType.System_Int64 ||
+               type.SpecialType == SpecialType.System_Decimal ||
+               type.SpecialType == SpecialType.System_Double;
+    }
+
+    private void GenerateCollectionExecution(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType)
+    {
+        sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
+        sb.AppendLine("var results = new global::System.Collections.Generic.List<" + (entityType?.Name ?? "object") + ">();");
+        sb.AppendLine("while (reader.Read())");
+        sb.AppendLine("{");
+        sb.PushIndent();
+
+        if (entityType != null)
+        {
+            GenerateEntityMapping(sb, entityType, "item");
+            sb.AppendLine("results.Add(item);");
+        }
+
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine("__result__ = results;");
+    }
+
+    private void GenerateSingleEntityExecution(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType)
+    {
+        sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
+        sb.AppendLine("if (reader.Read())");
+        sb.AppendLine("{");
+        sb.PushIndent();
+
+        if (entityType != null)
+        {
+            GenerateEntityMapping(sb, entityType, "__result__");
+        }
+        else
+        {
+            sb.AppendLine("__result__ = default;");
+        }
+
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine("else");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("__result__ = default;");
+        sb.PopIndent();
+        sb.AppendLine("}");
+    }
+
+    private void GenerateScalarExecution(IndentedStringBuilder sb, IMethodSymbol method)
+    {
+        sb.AppendLine("var scalarResult = __cmd__.ExecuteScalar();");
+        sb.AppendLine("if (scalarResult != null && scalarResult != global::System.DBNull.Value)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+
+        var returnType = method.ReturnType;
+        // Remove Task wrapper if present
+        if (returnType is INamedTypeSymbol namedType && namedType.Name == "Task" && namedType.TypeArguments.Length > 0)
+        {
+            returnType = namedType.TypeArguments[0];
+        }
+
+        if (returnType.SpecialType == SpecialType.System_Int32)
+        {
+            sb.AppendLine("__result__ = global::System.Convert.ToInt32(scalarResult);");
+        }
+        else if (returnType.SpecialType == SpecialType.System_Boolean)
+        {
+            sb.AppendLine("__result__ = global::System.Convert.ToBoolean(scalarResult);");
+        }
+        else
+        {
+            sb.AppendLine($"__result__ = ({returnType.ToDisplayString()})scalarResult;");
+        }
+
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine("else");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("__result__ = default;");
+        sb.PopIndent();
+        sb.AppendLine("}");
+    }
+
+    private void GenerateEntityMapping(IndentedStringBuilder sb, INamedTypeSymbol entityType, string variableName)
+    {
+        // Use proper type name for creation
+        var typeName = entityType.ToDisplayString();
+        sb.AppendLine($"{variableName} = new {typeName}();");
+
+        var properties = entityType.GetMembers().OfType<IPropertySymbol>()
+            .Where(p => p.CanBeReferencedByName && p.SetMethod != null)
+            .ToList();
+
+        foreach (var prop in properties)
+        {
+            sb.AppendLine($"if (reader[\"{prop.Name}\"] != global::System.DBNull.Value)");
+            sb.AppendLine("{");
+            sb.PushIndent();
+            sb.AppendLine($"{variableName}.{prop.Name} = ({prop.Type.ToDisplayString()})reader[\"{prop.Name}\"];");
+            sb.PopIndent();
+            sb.AppendLine("}");
+        }
+    }
+
+    private enum OperationType
+    {
+        Select,
+        Insert,
+        Update,
+        Delete
     }
 }

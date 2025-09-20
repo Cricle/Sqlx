@@ -1,20 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- 目标框架和语言设置 -->
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;net8.0;net9.0</TargetFrameworks>
     <LangVersion>12.0</LangVersion>
-    <AssemblyName>Sqlx</AssemblyName>
-    <RootNamespace>Sqlx</RootNamespace>
   </PropertyGroup>
 
-  <!-- 包元数据 -->
   <PropertyGroup>
     <PackageId>Sqlx</PackageId>
-    <Version>3.0.0</Version>
+    <Version>0.2.0</Version>
     <Title>Sqlx - 简化版现代 .NET ORM 框架</Title>
     <Description>
-      Sqlx 3.0 - 极简四核心模块设计，专注性能与易用性。
+      Sqlx 0.2.0 - 极简四核心模块设计，专注性能与易用性。
       包含：Sqlx手写SQL、ExpressionToSql类型安全查询、RepositoryFor零代码仓储、SqlTemplate高性能模板。
       零反射、AOT原生支持、编译时验证，适用于云原生和微服务场景。
     </Description>
@@ -25,39 +21,21 @@
     </PackageTags>
     <PackageReleaseNotes>
       v3.0.0 - 极简架构重构版本
-      ✨ 重大简化: 四核心模块设计 - Sqlx、ExpressionToSql、RepositoryFor、SqlTemplate
-      ✨ 删除冗余功能: 专注核心场景，提升开发效率
-      ✨ 全面AOT优化: 删除复杂反射，提升运行时性能
-      ✨ 四大数据库支持: SQL Server、MySQL、PostgreSQL、SQLite
-      ⚠️ 破坏性更新: 不向后兼容，专注未来
-      ✅ 简化API设计，学习成本降低70%
+      Major simplification: Four core module design - Sqlx, ExpressionToSql, RepositoryFor, SqlTemplate
+      Removed redundant features: Focus on core scenarios, improve development efficiency
+      Full AOT optimization: Remove complex reflection, improve runtime performance
+      Four major database support: SQL Server, MySQL, PostgreSQL, SQLite
+      Breaking update: Not backward compatible, focus on the future
+      Simplified API design, learning cost reduced by 70%
     </PackageReleaseNotes>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Authors>Sqlx Team</Authors>
   </PropertyGroup>
 
-  <!-- 包依赖 -->
   <ItemGroup>
-    <PackageReference Include="System.Memory" Condition="'$(TargetFramework)' == 'netstandard2.0'" />
-  </ItemGroup>
-
-  <!-- 包含文件 -->
-  <ItemGroup>
-    <None Include="..\..\README.md" Pack="true" PackagePath="\" Visible="false" />
+	  <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+	  <None Include="..\..\README.md" Pack="true" PackagePath="\" Visible="false" />
     <None Include="..\..\docs\**\*.md" Pack="true" PackagePath="docs\" Visible="false" />
   </ItemGroup>
-
-  <!-- 编译器常量 -->
-  <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-    <DefineConstants>$(DefineConstants);NETSTANDARD2_0</DefineConstants>
-  </PropertyGroup>
-  
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0'">
-    <DefineConstants>$(DefineConstants);NET8_0_OR_GREATER</DefineConstants>
-  </PropertyGroup>
-  
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net9.0'">
-    <DefineConstants>$(DefineConstants);NET9_0_OR_GREATER</DefineConstants>
-  </PropertyGroup>
 
 </Project>

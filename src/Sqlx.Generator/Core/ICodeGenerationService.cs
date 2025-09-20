@@ -33,6 +33,14 @@ public interface ICodeGenerationService
     void GenerateMethodDocumentation(IndentedStringBuilder sb, IMethodSymbol method);
 
     /// <summary>
+    /// Generates method documentation with resolved SQL.
+    /// </summary>
+    /// <param name="sb">The string builder.</param>
+    /// <param name="method">The method.</param>
+    /// <param name="processedSql">The processed SQL statement.</param>
+    void GenerateMethodDocumentationWithSql(IndentedStringBuilder sb, IMethodSymbol method, string? processedSql);
+
+    /// <summary>
     /// Generates variable declarations for repository methods.
     /// </summary>
     /// <param name="sb">The string builder.</param>

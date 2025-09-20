@@ -24,9 +24,9 @@ public class RepositoryGenerationContext
         INamedTypeSymbol sqlxAttributeSymbol,
         ITypeInferenceService typeInferenceService,
         ICodeGenerationService codeGenerationService,
-        OperationGeneratorFactory operationFactory,
-        IAttributeHandler attributeHandler,
-        IMethodAnalyzer methodAnalyzer)
+        ISqlTemplateEngine templateEngine,
+        AttributeHandler attributeHandler,
+        MethodAnalyzer methodAnalyzer)
     {
         ExecutionContext = executionContext;
         RepositoryClass = repositoryClass;
@@ -35,7 +35,7 @@ public class RepositoryGenerationContext
         SqlxAttributeSymbol = sqlxAttributeSymbol;
         TypeInferenceService = typeInferenceService;
         CodeGenerationService = codeGenerationService;
-        OperationFactory = operationFactory;
+        TemplateEngine = templateEngine;
         AttributeHandler = attributeHandler;
         MethodAnalyzer = methodAnalyzer;
     }
@@ -76,17 +76,17 @@ public class RepositoryGenerationContext
     public ICodeGenerationService CodeGenerationService { get; }
 
     /// <summary>
-    /// Gets the operation factory.
+    /// Gets the template engine.
     /// </summary>
-    public OperationGeneratorFactory OperationFactory { get; }
+    public ISqlTemplateEngine TemplateEngine { get; }
 
     /// <summary>
     /// Gets the attribute handler.
     /// </summary>
-    public IAttributeHandler AttributeHandler { get; }
+    public AttributeHandler AttributeHandler { get; }
 
     /// <summary>
     /// Gets the method analyzer.
     /// </summary>
-    public IMethodAnalyzer MethodAnalyzer { get; }
+    public MethodAnalyzer MethodAnalyzer { get; }
 }

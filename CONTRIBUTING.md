@@ -1,179 +1,215 @@
-# 贡献指南
+# Contributing Guide
 
-感谢您对 Sqlx ORM 框架的兴趣！我们欢迎所有形式的贡献，包括但不限于代码贡献、文档改进、问题报告和功能建议。
+Thank you for your interest in the Sqlx ORM framework! We welcome all forms of contributions, including code contributions, documentation improvements, issue reports, and feature suggestions.
 
-## 🤝 如何贡献
+## 🤝 How to Contribute
 
-### 1️⃣ 报告问题
+### 1️⃣ Reporting Issues
 
-如果您发现了 bug 或有功能建议，请通过 GitHub Issues 报告：
+If you've found a bug or have a feature suggestion, please report it through GitHub Issues:
 
-1. **搜索已有问题** - 确保问题尚未被报告
-2. **使用问题模板** - 选择合适的问题模板
-3. **提供详细信息** - 包括重现步骤、环境信息等
-4. **添加标签** - 选择合适的标签（bug、enhancement、question 等）
+1. **Search existing issues** - Make sure the issue hasn't been reported already
+2. **Use issue templates** - Choose the appropriate issue template
+3. **Provide detailed information** - Include reproduction steps, environment info, etc.
+4. **Add labels** - Select appropriate labels (bug, enhancement, question, etc.)
 
-#### 问题报告模板
+#### Issue Report Template
 
 ```markdown
-**问题描述**
-简要描述遇到的问题
+**Issue Description**
+Brief description of the issue encountered
 
-**重现步骤**
-1. 首先...
-2. 然后...
-3. 接着...
-4. 看到错误
+**Reproduction Steps**
+1. First...
+2. Then...
+3. Next...
+4. See error
 
-**期望行为**
-描述您期望的正确行为
+**Expected Behavior**
+Describe the expected correct behavior
 
-**环境信息**
-- OS: [例如：Windows 10]
-- .NET 版本: [例如：.NET 9.0]
-- Sqlx 版本: [例如：2.0.2]
-- 数据库: [例如：SQL Server 2022]
+**Environment Information**
+- OS: [e.g., Windows 10]
+- .NET Version: [e.g., .NET 9.0]
+- Sqlx Version: [e.g., 3.0.0]
+- Database: [e.g., SQL Server 2022]
 
-**附加信息**
-任何其他有助于解决问题的信息
+**Additional Information**
+Any other information that might help resolve the issue
 ```
 
-### 2️⃣ 提交代码
+### 2️⃣ Contributing Code
 
-#### 开发环境设置
+We welcome code contributions! Here's how to get started:
 
+#### Development Setup
+
+1. **Fork the repository**
 ```bash
-# 1. Fork 项目到您的 GitHub 账户
-
-# 2. 克隆您的 fork
 git clone https://github.com/your-username/Sqlx.git
 cd Sqlx
+   ```
 
-# 3. 添加上游仓库
-git remote add upstream https://github.com/original-repo/Sqlx.git
-
-# 4. 安装依赖
+2. **Install dependencies**
+   ```bash
 dotnet restore
+   ```
 
-# 5. 构建项目
+3. **Build the project**
+   ```bash
 dotnet build
+   ```
 
-# 6. 运行测试
+4. **Run tests**
+   ```bash
 dotnet test
 ```
 
-#### 代码贡献流程
+#### Development Environment
 
-1. **创建功能分支**
+- **IDE**: Visual Studio 2022 or VS Code with C# extension
+- **.NET SDK**: .NET 8.0 or later
+- **Database**: SQL Server, MySQL, PostgreSQL, or SQLite for testing
+
+### 3️⃣ Pull Request Process
+
+1. **Create a feature branch**
    ```bash
    git checkout -b feature/your-feature-name
    ```
 
-2. **编写代码**
-   - 遵循项目代码规范
-   - 添加必要的单元测试
-   - 更新相关文档
+2. **Make your changes**
+   - Follow coding standards (see below)
+   - Add tests for new functionality
+   - Update documentation if needed
 
-3. **提交变更**
+3. **Run quality checks**
+   ```bash
+   dotnet build
+   dotnet test
+   dotnet format
+   ```
+
+4. **Commit your changes**
    ```bash
    git add .
-   git commit -m "feat: 添加新功能描述"
+   git commit -m "feat: add new feature description"
    ```
 
-4. **同步上游变更**
-   ```bash
-   git fetch upstream
-   git rebase upstream/main
-   ```
-
-5. **推送分支**
+5. **Push to your fork**
    ```bash
    git push origin feature/your-feature-name
    ```
 
-6. **创建 Pull Request**
-   - 使用清晰的标题和描述
-   - 链接相关的 Issues
-   - 确保所有检查通过
+6. **Create Pull Request**
+   - Use a clear, descriptive title
+   - Fill out the PR template
+   - Link related issues
+   - Request review from maintainers
 
-## 📝 代码规范
+#### Pull Request Template
 
-### C# 编码标准
+```markdown
+**Description**
+Brief description of the changes
 
-#### 命名约定
-```csharp
-// ✅ 类名：PascalCase
-public class SqlTemplate { }
+**Changes Made**
+- [ ] Added new feature X
+- [ ] Fixed bug Y
+- [ ] Updated documentation
+- [ ] Added tests
 
-// ✅ 方法名：PascalCase
-public void ExecuteQuery() { }
+**Related Issues**
+Closes #123
 
-// ✅ 属性名：PascalCase
-public string ConnectionString { get; set; }
+**Testing**
+- [ ] All existing tests pass
+- [ ] New tests added for new functionality
+- [ ] Manual testing completed
 
-// ✅ 字段名：camelCase，私有字段使用 _ 前缀
-private readonly IDbConnection _connection;
-
-// ✅ 参数名：camelCase
-public void Execute(string parameterName) { }
-
-// ✅ 局部变量：camelCase
-var userQuery = "SELECT * FROM users";
-
-// ✅ 常量：PascalCase
-public const string DefaultConnectionString = "...";
+**Checklist**
+- [ ] Code follows project coding standards
+- [ ] Documentation updated (if applicable)
+- [ ] Tests added/updated
+- [ ] CHANGELOG.md updated (if applicable)
 ```
 
-#### 代码结构
-```csharp
-// ✅ 使用 file-scoped namespace（C# 10+）
-namespace Sqlx.Core;
+## 📋 Coding Standards
 
-// ✅ 使用 Primary Constructor（C# 12+）
-public class UserService(IDbConnection connection)
+### Code Style
+
+We use **StyleCop** for code style enforcement. Key guidelines:
+
+```csharp
+// ✅ Good: Proper naming and structure
+public class UserRepository : IUserRepository
 {
-    // ✅ 字段在前
-    private readonly ILogger _logger = LoggerFactory.CreateLogger<UserService>();
+    private readonly IDbConnection _connection;
     
-    // ✅ 属性其次
-    public bool IsConnected => connection.State == ConnectionState.Open;
-    
-    // ✅ 方法最后
-    public async Task<User> GetUserAsync(int id)
+    public UserRepository(IDbConnection connection)
     {
-        // 实现...
+        _connection = connection ?? throw new ArgumentNullException(nameof(connection));
+    }
+    
+    public async Task<User?> GetByIdAsync(int id)
+    {
+        var template = SqlTemplate.Parse("SELECT * FROM Users WHERE Id = @id");
+        var sql = template.Execute(new { id });
+        return await _connection.QueryFirstOrDefaultAsync<User>(sql.Sql, sql.Parameters);
     }
 }
 ```
 
-#### 文档注释
+### Naming Conventions
+
+- **Classes**: PascalCase (`UserService`, `SqlTemplate`)
+- **Methods**: PascalCase (`GetByIdAsync`, `ExecuteAsync`)
+- **Properties**: PascalCase (`ConnectionString`, `IsValid`)
+- **Fields**: camelCase with underscore (`_connection`, `_logger`)
+- **Parameters**: camelCase (`userId`, `connectionString`)
+- **Local variables**: camelCase (`user`, `sqlResult`)
+
+### Documentation
+
+#### XML Documentation
+All public APIs must have XML documentation:
+
 ```csharp
 /// <summary>
-/// 执行 SQL 模板并返回结果
+/// Creates a new SQL template from the specified SQL string.
 /// </summary>
-/// <typeparam name="T">返回类型</typeparam>
-/// <param name="template">SQL 模板</param>
-/// <param name="parameters">参数对象</param>
-/// <returns>查询结果</returns>
-/// <exception cref="ArgumentNullException">当模板为 null 时抛出</exception>
-public async Task<T> ExecuteAsync<T>(SqlTemplate template, object? parameters = null)
+/// <param name="sql">The SQL template string containing parameter placeholders.</param>
+/// <returns>A new SqlTemplate instance.</returns>
+/// <exception cref="ArgumentException">Thrown when sql is null or empty.</exception>
+public static SqlTemplate Parse(string sql)
 {
-    // 实现...
+    // Implementation...
 }
 ```
 
-### 测试规范
+#### Code Comments
+Use comments for complex logic:
 
-#### 测试命名
 ```csharp
-[TestClass]
-public class SqlTemplateTests
-{
+// Convert LINQ expression to SQL WHERE clause
+// Handle both simple comparisons and complex nested expressions
+var whereClause = ExpressionTranslator.Translate(predicate, dialect);
+```
+
+### Testing Guidelines
+
+#### Unit Tests
+- Use **MSTest** framework
+- Follow AAA pattern (Arrange, Act, Assert)
+- Test both positive and negative scenarios
+- Use descriptive test names
+
+```csharp
     [TestMethod]
-    public void Parse_ValidSql_ReturnsTemplate()
+public void SqlTemplate_Parse_WithValidSql_ReturnsTemplate()
     {
         // Arrange
-        var sql = "SELECT * FROM users";
+    var sql = "SELECT * FROM Users WHERE Id = @id";
         
         // Act
         var template = SqlTemplate.Parse(sql);
@@ -184,158 +220,193 @@ public class SqlTemplateTests
     }
     
     [TestMethod]
-    public void Execute_WithParameters_CreatesParameterizedSql()
+public void SqlTemplate_Parse_WithNullSql_ThrowsArgumentException()
+{
+    // Act & Assert
+    Assert.ThrowsException<ArgumentException>(() => SqlTemplate.Parse(null));
+}
+```
+
+#### Integration Tests
+- Test real database scenarios
+- Use test databases (not production)
+- Clean up test data
+- Test multiple database dialects
+
+### Performance Guidelines
+
+#### Memory Efficiency
+```csharp
+// ✅ Good: Use readonly structs for immutable data
+public readonly struct ParameterizedSql
+{
+    public ParameterizedSql(string sql, IReadOnlyDictionary<string, object?> parameters)
     {
-        // 测试实现...
+        Sql = sql;
+        Parameters = parameters;
+    }
+    
+    public string Sql { get; }
+    public IReadOnlyDictionary<string, object?> Parameters { get; }
+}
+```
+
+#### AOT Compatibility
+```csharp
+// ✅ AOT-friendly: Avoid reflection
+public static string GetUserColumns()
+{
+    return "Id, Name, Email, Age";  // Explicit column list
+}
+
+// ❌ Avoid: Reflection-based approaches in AOT scenarios
+public static string GetUserColumns<T>()
+{
+    return string.Join(", ", typeof(T).GetProperties().Select(p => p.Name));
+}
+```
+
+## 🧪 Testing
+
+### Running Tests
+
+```bash
+# Run all tests
+dotnet test
+
+# Run tests with coverage
+dotnet test --collect:"XPlat Code Coverage"
+
+# Run specific test project
+dotnet test tests/Sqlx.Tests/
+
+# Run tests with verbose output
+dotnet test --verbosity normal
+```
+
+### Test Categories
+
+1. **Unit Tests** - Fast, isolated tests
+2. **Integration Tests** - Database interaction tests
+3. **Performance Tests** - Benchmarking and optimization
+4. **AOT Tests** - Native compilation verification
+
+### Writing Good Tests
+
+```csharp
+[TestClass]
+public class ExpressionToSqlTests
+{
+    [TestMethod]
+    public void Where_WithSimpleCondition_GeneratesCorrectSql()
+    {
+        // Arrange
+        var query = ExpressionToSql<User>.Create(SqlDefine.SqlServer);
+        
+        // Act
+        var result = query.Where(u => u.Age > 18).ToSql();
+        
+        // Assert
+        StringAssert.Contains(result, "WHERE ([Age] > 18)");
+    }
+    
+    [TestMethod]
+    [DataRow("SqlServer")]
+    [DataRow("MySql")]
+    [DataRow("PostgreSql")]
+    public void Query_WithDifferentDialects_GeneratesCorrectSyntax(string dialectName)
+    {
+        // Arrange
+        var dialect = GetDialectByName(dialectName);
+        var query = ExpressionToSql<User>.Create(dialect);
+        
+        // Act
+        var result = query.Where(u => u.Name == "John").ToSql();
+        
+        // Assert
+        Assert.IsTrue(result.Contains("John"));
+        // Additional dialect-specific assertions...
     }
 }
 ```
 
-#### 测试结构
-- **Arrange**: 准备测试数据
-- **Act**: 执行被测试的操作
-- **Assert**: 验证结果
+## 📚 Documentation
 
-#### 测试覆盖率
-- 新功能必须有对应的单元测试
-- 目标覆盖率：> 95%
-- 包含正常情况和边界情况测试
+### Documentation Types
 
-## 📚 文档贡献
+1. **API Documentation** - XML docs in code
+2. **User Guide** - docs/ folder
+3. **Examples** - samples/ folder
+4. **README** - Project overview
 
-### 文档类型
+### Writing Documentation
 
-1. **API 文档** - XML 注释生成
-2. **用户指南** - Markdown 格式
-3. **示例代码** - 完整可运行的示例
-4. **架构文档** - 设计决策和架构说明
+- Use clear, concise language
+- Provide practical examples
+- Include both simple and advanced scenarios
+- Keep documentation up-to-date with code changes
 
-### 文档标准
+## 🏆 Recognition
 
-#### Markdown 格式
-```markdown
-# 一级标题
+### Contributors
 
-## 二级标题
+We recognize all contributors in:
+- README.md contributors section
+- Release notes
+- GitHub contributors page
 
-### 三级标题
+### Contribution Types
 
-#### 代码示例
-\`\`\`csharp
-var template = SqlTemplate.Parse("SELECT * FROM users");
-\`\`\`
+We value all types of contributions:
+- **Code** - New features, bug fixes, optimizations
+- **Documentation** - Guides, examples, API docs
+- **Testing** - Unit tests, integration tests, bug reports
+- **Community** - Answering questions, discussions
+- **Design** - UX improvements, architecture suggestions
 
-#### 表格
-| 功能 | 描述 | 状态 |
-|------|------|------|
-| 模板解析 | 解析 SQL 模板 | ✅ |
+## 📞 Communication
 
-#### 注意事项
-> **重要**: 这是一个重要的提示
+### Channels
 
-> **警告**: 这是一个警告信息
-```
+- **GitHub Issues** - Bug reports, feature requests
+- **GitHub Discussions** - Questions, ideas, showcase
+- **Pull Requests** - Code review and collaboration
 
-#### 示例代码
-- 所有示例代码必须能够编译和运行
-- 使用真实的场景，避免过于简化
-- 包含必要的注释说明
+### Getting Help
 
-## 🔄 发布流程
+1. **Check documentation** first
+2. **Search existing issues**
+3. **Ask in discussions** for questions
+4. **Create issue** for bugs/features
 
-### 版本号规则
-- **主版本** (Major): 重大破坏性变更
-- **次版本** (Minor): 新功能，向后兼容
-- **修订版本** (Patch): Bug 修复
+### Code of Conduct
 
-### 发布检查清单
-- [ ] 所有测试通过
-- [ ] 代码覆盖率 > 95%
-- [ ] 文档已更新
-- [ ] CHANGELOG 已更新
-- [ ] 版本号已更新
-- [ ] NuGet 包描述正确
+We are committed to providing a welcoming and inspiring community for all. Please be:
 
-## 🏷️ 提交消息规范
+- **Respectful** - Value diverse opinions and experiences
+- **Collaborative** - Work together towards common goals
+- **Constructive** - Provide helpful feedback and suggestions
+- **Professional** - Maintain high standards of communication
 
-我们使用 [Conventional Commits](https://www.conventionalcommits.org/) 规范：
+## 🎯 Project Goals
 
-```
-<type>[optional scope]: <description>
+### Vision
+Create the most efficient, type-safe, and developer-friendly ORM for modern .NET applications.
 
-[optional body]
+### Principles
+- **Performance First** - Zero reflection, AOT compatible
+- **Type Safety** - Compile-time validation
+- **Simplicity** - Minimal learning curve
+- **Compatibility** - Multi-database support
 
-[optional footer(s)]
-```
+### Roadmap
 
-### 类型说明
-- `feat`: 新功能
-- `fix`: Bug 修复
-- `docs`: 文档更新
-- `style`: 代码格式化（不影响功能）
-- `refactor`: 重构（不是新功能或修复）
-- `perf`: 性能优化
-- `test`: 添加或修改测试
-- `chore`: 构建过程或辅助工具的变动
+See our [roadmap](docs/OPTIMIZATION_ROADMAP.md) for planned features and improvements.
 
-### 示例
-```
-feat(sqltemplate): 添加纯模板设计支持
+## 🙏 Thank You
 
-- 重构 SqlTemplate 为纯模板定义
-- 新增 ParameterizedSql 类型
-- 实现模板重用机制
-
-Closes #123
-```
-
-## 🎯 开发优先级
-
-### 高优先级
-1. **Bug 修复** - 影响核心功能的问题
-2. **性能优化** - 显著的性能改进
-3. **安全修复** - 安全漏洞修复
-
-### 中优先级
-1. **新功能** - 增强现有功能
-2. **文档改进** - 重要文档的完善
-3. **测试完善** - 提高测试覆盖率
-
-### 低优先级
-1. **代码清理** - 代码质量改进
-2. **开发工具** - 开发体验改进
-
-## 📞 联系方式
-
-### 获取帮助
-- **GitHub Discussions**: 技术讨论和问答
-- **GitHub Issues**: Bug 报告和功能请求
-- **邮件**: dev@sqlx.dev
-
-### 贡献者社区
-- **Slack**: [加入我们的 Slack](https://sqlx.slack.com)
-- **微信群**: 联系管理员邀请加入
-
-## 🏆 贡献者认可
-
-我们重视每一个贡献者的努力：
-
-- **代码贡献者**: 在 GitHub 贡献者列表中展示
-- **文档贡献者**: 在文档页面感谢
-- **社区贡献者**: 在社区活动中特别感谢
-
-### 成为核心贡献者
-持续贡献的开发者有机会成为核心团队成员，获得：
-- 代码仓库写权限
-- 参与重要决策
-- 技术路线图制定
+Thank you for contributing to Sqlx! Your contributions help make .NET data access better for everyone.
 
 ---
 
-<div align="center">
-
-**🤝 感谢您对 Sqlx 的贡献！**
-
-**每一个贡献都让 Sqlx 变得更好**
-
-</div>
+**Questions?** Feel free to reach out through GitHub Issues or Discussions. We're here to help!

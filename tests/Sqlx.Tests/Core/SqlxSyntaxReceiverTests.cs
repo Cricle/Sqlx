@@ -57,26 +57,32 @@ namespace Sqlx.Tests.Core
             Assert.AreEqual(typeof(List<Microsoft.CodeAnalysis.INamedTypeSymbol>), repositoryClassesProperty.PropertyType,
                 "RepositoryClasses property should be List<INamedTypeSymbol>");
 
-            // Check OnVisitSyntaxNode method
-            var onVisitMethod = interfaceType.GetMethod("OnVisitSyntaxNode");
-            Assert.IsNotNull(onVisitMethod, "ISqlxSyntaxReceiver should have OnVisitSyntaxNode method");
-            Assert.AreEqual(typeof(void), onVisitMethod.ReturnType, "OnVisitSyntaxNode should return void");
+            // Check MethodSyntaxNodes property
+            var methodSyntaxProperty = interfaceType.GetProperty("MethodSyntaxNodes");
+            Assert.IsNotNull(methodSyntaxProperty, "ISqlxSyntaxReceiver should have MethodSyntaxNodes property");
+            Assert.AreEqual(typeof(List<Microsoft.CodeAnalysis.CSharp.Syntax.MethodDeclarationSyntax>), methodSyntaxProperty.PropertyType,
+                "MethodSyntaxNodes property should be List<MethodDeclarationSyntax>");
 
-            var parameters = onVisitMethod.GetParameters();
-            Assert.AreEqual(1, parameters.Length, "OnVisitSyntaxNode should have one parameter");
-            Assert.AreEqual(typeof(Microsoft.CodeAnalysis.SyntaxNode), parameters[0].ParameterType,
-                "OnVisitSyntaxNode parameter should be SyntaxNode");
+            // Check ClassSyntaxNodes property
+            var classSyntaxProperty = interfaceType.GetProperty("ClassSyntaxNodes");
+            Assert.IsNotNull(classSyntaxProperty, "ISqlxSyntaxReceiver should have ClassSyntaxNodes property");
+            Assert.AreEqual(typeof(List<Microsoft.CodeAnalysis.CSharp.Syntax.ClassDeclarationSyntax>), classSyntaxProperty.PropertyType,
+                "ClassSyntaxNodes property should be List<ClassDeclarationSyntax>");
         }
 
         [TestMethod]
-        public void ISqlxSyntaxReceiver_InheritsFromISyntaxContextReceiver()
+        public void ISqlxSyntaxReceiver_IsSimpleInterface()
         {
-            // Test that ISqlxSyntaxReceiver inherits from ISyntaxContextReceiver
+            // Test that ISqlxSyntaxReceiver is a simple collection interface (not inheriting from ISyntaxContextReceiver)
             var interfaceType = typeof(ISqlxSyntaxReceiver);
             var baseInterface = typeof(Microsoft.CodeAnalysis.ISyntaxContextReceiver);
 
-            Assert.IsTrue(baseInterface.IsAssignableFrom(interfaceType),
-                "ISqlxSyntaxReceiver should inherit from ISyntaxContextReceiver");
+            // ISqlxSyntaxReceiver is now a simple interface for data collection, not a syntax receiver
+            Assert.IsFalse(baseInterface.IsAssignableFrom(interfaceType),
+                "ISqlxSyntaxReceiver should be a simple collection interface");
+            
+            // Verify it has the correct collection properties
+            Assert.IsTrue(interfaceType.IsInterface, "ISqlxSyntaxReceiver should be an interface");
         }
 
         [TestMethod]
@@ -169,10 +175,10 @@ namespace Sqlx.Tests.Core
             Assert.IsFalse(interfaceType.IsPublic, "ISqlxSyntaxReceiver should be internal");
             Assert.IsTrue(interfaceType.IsNotPublic, "ISqlxSyntaxReceiver should be internal");
 
-            // Verify inheritance
+            // Verify it's a simple collection interface (no inheritance from ISyntaxContextReceiver)
             var interfaces = interfaceType.GetInterfaces();
-            Assert.IsTrue(interfaces.Any(i => i == typeof(Microsoft.CodeAnalysis.ISyntaxContextReceiver)),
-                "ISqlxSyntaxReceiver should inherit from ISyntaxContextReceiver");
+            Assert.IsFalse(interfaces.Any(i => i == typeof(Microsoft.CodeAnalysis.ISyntaxContextReceiver)),
+                "ISqlxSyntaxReceiver should be a simple collection interface");
         }
 
         [TestMethod]
@@ -193,42 +199,30 @@ namespace Sqlx.Tests.Core
         }
 
         [TestMethod]
-        public void SyntaxReceiver_OnVisitSyntaxNode_HasCorrectSignature()
+        public void SyntaxReceiver_Properties_HaveCorrectGettersOnly()
         {
-            // Test OnVisitSyntaxNode method signature
+            // Test that all properties are read-only collections
             var interfaceType = typeof(ISqlxSyntaxReceiver);
-            var method = interfaceType.GetMethod("OnVisitSyntaxNode");
+            
+            var methodsProperty = interfaceType.GetProperty("Methods");
+            Assert.IsNotNull(methodsProperty, "Methods property should exist");
+            Assert.IsTrue(methodsProperty.CanRead, "Methods property should be readable");
+            Assert.IsFalse(methodsProperty.CanWrite, "Methods property should be read-only");
 
-            Assert.IsNotNull(method, "OnVisitSyntaxNode method should exist");
-            Assert.AreEqual(typeof(void), method.ReturnType, "OnVisitSyntaxNode should return void");
+            var repositoryClassesProperty = interfaceType.GetProperty("RepositoryClasses");
+            Assert.IsNotNull(repositoryClassesProperty, "RepositoryClasses property should exist");
+            Assert.IsTrue(repositoryClassesProperty.CanRead, "RepositoryClasses property should be readable");
+            Assert.IsFalse(repositoryClassesProperty.CanWrite, "RepositoryClasses property should be read-only");
 
-            var parameters = method.GetParameters();
-            Assert.AreEqual(1, parameters.Length, "OnVisitSyntaxNode should have exactly one parameter");
+            var methodSyntaxProperty = interfaceType.GetProperty("MethodSyntaxNodes");
+            Assert.IsNotNull(methodSyntaxProperty, "MethodSyntaxNodes property should exist");
+            Assert.IsTrue(methodSyntaxProperty.CanRead, "MethodSyntaxNodes property should be readable");
+            Assert.IsFalse(methodSyntaxProperty.CanWrite, "MethodSyntaxNodes property should be read-only");
 
-            var parameter = parameters[0];
-            Assert.AreEqual("syntaxNode", parameter.Name, "Parameter should be named 'syntaxNode'");
-            Assert.AreEqual(typeof(Microsoft.CodeAnalysis.SyntaxNode), parameter.ParameterType,
-                "Parameter should be of type SyntaxNode");
-        }
-
-        [TestMethod]
-        public void SyntaxReceiver_UsagePattern_IsCorrect()
-        {
-            // Test typical usage pattern
-            var receiver = new MockSqlxSyntaxReceiver();
-
-            // Simulate typical usage
-            Assert.AreEqual(0, receiver.Methods.Count, "Should start with empty Methods collection");
-            Assert.AreEqual(0, receiver.RepositoryClasses.Count, "Should start with empty RepositoryClasses collection");
-
-            // Test that interface can be used polymorphically
-            ISqlxSyntaxReceiver interfaceReceiver = receiver;
-            Assert.IsNotNull(interfaceReceiver.Methods);
-            Assert.IsNotNull(interfaceReceiver.RepositoryClasses);
-
-            // Test that it can be cast to base interface
-            Microsoft.CodeAnalysis.ISyntaxContextReceiver baseReceiver = receiver;
-            Assert.IsNotNull(baseReceiver);
+            var classSyntaxProperty = interfaceType.GetProperty("ClassSyntaxNodes");
+            Assert.IsNotNull(classSyntaxProperty, "ClassSyntaxNodes property should exist");
+            Assert.IsTrue(classSyntaxProperty.CanRead, "ClassSyntaxNodes property should be readable");
+            Assert.IsFalse(classSyntaxProperty.CanWrite, "ClassSyntaxNodes property should be read-only");
         }
 
         [TestMethod]

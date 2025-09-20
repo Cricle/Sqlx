@@ -30,12 +30,12 @@
     </PackageTags>
     <PackageReleaseNotes>
       v2.0.2 - 源生成器优化版本
-      ✨ 优化源生成器性能和稳定性
-      ✨ 增强 Primary Constructor 和 Record 类型支持
-      ✨ 改进 AOT 兼容性代码生成
-      ✨ 优化编译时内存使用
-      ✅ 支持 SqlTemplate 纯模板设计
-      ✅ 增强错误诊断和提示
+      Optimized source generator performance and stability
+      Enhanced Primary Constructor and Record type support
+      Improved AOT compatibility code generation
+      Optimized compile-time memory usage
+      Support for SqlTemplate pure template design
+      Enhanced error diagnostics and hints
     </PackageReleaseNotes>
     <Authors>Sqlx Team</Authors>
   </PropertyGroup>

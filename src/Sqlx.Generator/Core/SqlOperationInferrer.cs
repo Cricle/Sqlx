@@ -87,7 +87,7 @@ internal static class SqlOperationInferrer
     {
         var methodName = method.Name.ToLowerInvariant();
         var returnType = method.ReturnType;
-        var isAsync = TypeAnalyzer.IsAsyncType(returnType);
+        var isAsync = returnType.Name == "Task";
         var actualReturnType = TypeAnalyzer.GetInnerType(returnType);
 
         // Check method name patterns

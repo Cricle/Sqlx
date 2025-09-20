@@ -10,7 +10,7 @@ using System;
 namespace Sqlx.Generator.Core;
 
 /// <summary>
-/// Simplified error handling for source generation.
+/// Unified error handling and diagnostic service for source generation.
 /// </summary>
 public static class ErrorHandler
 {
@@ -98,5 +98,35 @@ public static class ErrorHandler
             ReportError(context, ex, errorCode, $"Error during {description}", $"Error during {description}: {{0}}");
             return defaultValue;
         }
+    }
+
+    /// <summary>
+    /// Creates a diagnostic with better error messages.
+    /// </summary>
+    public static Diagnostic CreateDiagnostic(
+        string id,
+        string title,
+        string messageFormat,
+        DiagnosticSeverity severity,
+        Location? location = null,
+        params object[] messageArgs)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+            id = "SQLX_UNKNOWN";
+        if (string.IsNullOrWhiteSpace(title))
+            title = "Unknown Diagnostic";
+        if (string.IsNullOrWhiteSpace(messageFormat))
+            messageFormat = "No message provided";
+
+        var descriptor = new DiagnosticDescriptor(
+            id: id,
+            title: title,
+            messageFormat: messageFormat,
+            category: "Sqlx",
+            defaultSeverity: severity,
+            isEnabledByDefault: true,
+            description: title);
+
+        return Diagnostic.Create(descriptor, location, messageArgs);
     }
 }

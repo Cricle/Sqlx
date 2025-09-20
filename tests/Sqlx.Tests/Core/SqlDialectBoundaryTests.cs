@@ -299,7 +299,7 @@ namespace Sqlx.Tests.Core
                 {
                     try
                     {
-                        using var expr = factory();
+                        var expr = factory();
                         expr.Where(e => e.Id > 0);
 
                         if (take > 0) expr.Take(take);
@@ -368,7 +368,7 @@ namespace Sqlx.Tests.Core
                 {
                     try
                     {
-                        using var expr = factory();
+                        var expr = factory();
                         expr.Where(e => e.CreatedAt == testDate);
 
                         var sql = expr.ToSql();
@@ -407,7 +407,7 @@ namespace Sqlx.Tests.Core
 
                 try
                 {
-                    using var expr = factory();
+                    var expr = factory();
                     expr.Where(e => e.IsActive == true)
                         .Where(e => e.IsActive == false)
                         .Where(e => e.IsActive)

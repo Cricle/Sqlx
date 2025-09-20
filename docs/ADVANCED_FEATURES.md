@@ -1,27 +1,27 @@
-# Sqlx 3.0 高级功能指南
+# Sqlx 3.0 Advanced Features Guide
 
-本指南介绍Sqlx的高级功能和最佳实践。
+This guide covers advanced features and best practices for Sqlx.
 
-## 🚀 AOT (Ahead-Of-Time) 优化
+## 🚀 AOT (Ahead-Of-Time) Optimization
 
-Sqlx 3.0 完全支持.NET的AOT编译，确保最佳性能。
+Sqlx 3.0 fully supports .NET AOT compilation for optimal performance.
 
-### AOT 友好的设计
+### AOT-Friendly Design
 ```csharp
-// ✅ AOT友好：显式指定列
+// ✅ AOT-friendly: Explicit column specification
 var query = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
     .InsertInto(u => new { u.Name, u.Email, u.Age })
     .Values("John", "john@example.com", 30);
 
-// ❌ 避免在AOT中使用：依赖反射
+// ❌ Avoid in AOT: Relies on reflection
 var query = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
-    .InsertIntoAll()  // 使用反射获取所有属性
+    .InsertIntoAll()  // Uses reflection to get all properties
     .Values("John", "john@example.com", 30, true, DateTime.Now);
 ```
 
-### AOT 编译配置
+### AOT Compilation Configuration
 ```xml
-<!-- 在项目文件中启用AOT -->
+<!-- Enable AOT in project file -->
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <PublishAot>true</PublishAot>
@@ -30,498 +30,510 @@ var query = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
 </Project>
 ```
 
-### 泛型约束优化
-```csharp
-// Sqlx内部使用DynamicallyAccessedMembers确保AOT兼容
-public class ExpressionToSql<
-#if NET5_0_OR_GREATER
-    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] 
-#endif
-    T> : ExpressionToSqlBase
-{
-    // AOT优化的实现
-}
-```
+### AOT Performance Benefits
+- **Zero reflection overhead** at runtime
+- **Faster startup times** with pre-compiled code
+- **Smaller deployment size** with trimmed dependencies
+- **Predictable performance** without JIT compilation delays
 
 ---
 
-## 🔧 数据库方言深度定制
+## 🎯 Type-Safe Query Building
 
-### 自定义数据库方言
+### Complex Expression Support
 ```csharp
-// 创建自定义方言
-var customDialect = new SqlDialect(
-    columnPrefix: "[",      // 列名前缀
-    columnSuffix: "]",      // 列名后缀
-    stringPrefix: "'",      // 字符串前缀
-    stringSuffix: "'",      // 字符串后缀
-    parameterPrefix: "@"    // 参数前缀
-);
-
-var query = ExpressionToSql<User>.Create(customDialect)
-    .Where(u => u.Name == "John");
-```
-
-### 方言特性对比
-```csharp
-// SQL Server: [Name] = @name
-SqlDefine.SqlServer.WrapColumn("Name");        // [Name]
-SqlDefine.SqlServer.FormatParameter("name");   // @name
-
-// MySQL: `Name` = @name  
-SqlDefine.MySql.WrapColumn("Name");            // `Name`
-SqlDefine.MySql.FormatParameter("name");       // @name
-
-// PostgreSQL: "Name" = $1
-SqlDefine.PostgreSql.WrapColumn("Name");       // "Name"
-SqlDefine.PostgreSql.FormatParameter("name");  // $name
-
-// SQLite: [Name] = $name
-SqlDefine.SQLite.WrapColumn("Name");           // [Name]
-SqlDefine.SQLite.FormatParameter("name");      // $name
-```
-
----
-
-## 🎯 复杂查询构建
-
-### 多条件动态查询
-```csharp
-var query = ExpressionToSql<User>.Create(SqlDefine.SqlServer);
-
-// 基础条件
-query = query.Where(u => u.IsActive);
-
-// 动态添加条件
-if (!string.IsNullOrEmpty(nameFilter))
+public class User
 {
-    query = query.Where(u => u.Name.Contains(nameFilter));
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public DateTime BirthDate { get; set; }
+    public Department Department { get; set; } = null!;
+    public List<Order> Orders { get; set; } = new();
 }
 
-if (minAge.HasValue)
-{
-    query = query.Where(u => u.Age >= minAge.Value);
-}
-
-if (departmentIds?.Any() == true)
-{
-    query = query.Where(u => departmentIds.Contains(u.DepartmentId));
-}
-
-// 添加排序和分页
-query = query
-    .OrderBy(u => u.Name)
-    .OrderByDescending(u => u.CreatedAt)
-    .Skip(pageSize * pageIndex)
-    .Take(pageSize);
-
-string sql = query.ToSql();
-```
-
-### 复杂JOIN查询
-```csharp
-// 虽然ExpressionToSql主要用于单表，但可以通过原始SQL处理JOIN
-var joinTemplate = SqlTemplate.Parse(@"
-    SELECT u.Name, u.Email, d.DepartmentName
-    FROM Users u
-    INNER JOIN Departments d ON u.DepartmentId = d.Id
-    WHERE u.Age > @minAge
-    AND d.Budget > @minBudget
-    ORDER BY u.Name");
-
-var result = joinTemplate.Execute(new 
-{ 
-    minAge = 25, 
-    minBudget = 100000 
-});
-```
-
-### 子查询支持
-```csharp
-// INSERT SELECT
-var insertSelect = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
-    .InsertInto(u => new { u.Name, u.Email })
-    .InsertSelect(@"
-        SELECT Name, Email 
-        FROM TempUsers 
-        WHERE IsValid = 1 AND CreatedAt > DATEADD(day, -7, GETDATE())");
-
-// 使用另一个查询作为子查询
-var subQuery = ExpressionToSql<TempUser>.Create(SqlDefine.SqlServer)
-    .Select(t => new { t.Name, t.Email })
-    .Where(t => t.IsValid && t.CreatedAt > DateTime.Now.AddDays(-7));
-
-var mainInsert = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
-    .InsertInto(u => new { u.Name, u.Email })
-    .InsertSelect(subQuery);
-```
-
----
-
-## 📊 GROUP BY 和聚合查询
-
-### 基础分组查询
-```csharp
-var groupQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
-    .GroupBy(u => u.DepartmentId)
-    .Select(g => new
-    {
-        DepartmentId = g.Key,
-        UserCount = g.Count(),
-        AvgAge = g.Average(u => u.Age),
-        MaxSalary = g.Max(u => u.Salary),
-        MinSalary = g.Min(u => u.Salary),
-        TotalSalary = g.Sum(u => u.Salary)
-    });
-
-string sql = groupQuery.ToSql();
-```
-
-### 复杂分组和HAVING
-```csharp
-var complexGroup = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
-    .Where(u => u.IsActive)  // WHERE在GROUP BY之前
-    .GroupBy(u => new { u.DepartmentId, u.JobTitle })
-    .Select(g => new
-    {
-        Department = g.Key.DepartmentId,
-        JobTitle = g.Key.JobTitle,
-        Count = g.Count(),
-        AvgSalary = g.Average(u => u.Salary)
+// Complex conditions with type safety
+var advancedQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+    .Where(u => u.BirthDate > DateTime.Now.AddYears(-30))
+    .Where(u => u.Department.Name == "Engineering")
+    .Where(u => u.Orders.Any(o => o.Amount > 1000))
+    .Select(u => new { 
+        u.Id, 
+        u.Name, 
+        Age = DateTime.Now.Year - u.BirthDate.Year,
+        DepartmentName = u.Department.Name
     })
-    .Having(g => g.Count() > 5 && g.Average(u => u.Salary) > 50000);  // HAVING在GROUP BY之后
+    .OrderByDescending(u => u.BirthDate)
+    .Take(50);
+```
 
-string sql = complexGroup.ToSql();
+### Method Call Translation
+```csharp
+// String methods
+var nameQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+    .Where(u => u.Name.StartsWith("John"))
+    .Where(u => u.Email.Contains("@company.com"))
+    .Where(u => u.Name.Length > 5);
+
+// Date methods
+var dateQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+    .Where(u => u.CreatedAt.Year == 2024)
+    .Where(u => u.CreatedAt.Month >= 6)
+    .Where(u => u.UpdatedAt.Date == DateTime.Today);
+
+// Math methods
+var mathQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+    .Where(u => Math.Abs(u.Balance) > 1000)
+    .Where(u => Math.Round(u.Score, 2) >= 85.5);
 ```
 
 ---
 
-## 🔄 模板转换和重用
+## 🔄 Template Conversion and Optimization
 
-### ExpressionToSql 转 SqlTemplate
+### Dynamic to Static Template Conversion
 ```csharp
-// 构建动态查询
-var dynamicQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
-    .UseParameterizedQueries()  // 启用参数化模式
-    .Where(u => u.Age > 25)
-    .Select(u => new { u.Name, u.Email })
-    .OrderBy(u => u.Name);
-
-// 转换为可重用模板
-var template = dynamicQuery.ToTemplate();
-
-// 重复使用模板
-var result1 = template.Execute(new { /* 额外参数 */ });
-var result2 = template.Execute(new { /* 不同参数 */ });
+public class QueryOptimizer
+{
+    // Convert complex dynamic query to reusable template
+    public static SqlTemplate CreateUserSearchTemplate()
+    {
+        var baseQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+            .Select(u => new { u.Id, u.Name, u.Email, u.Department })
+            .Where(u => u.IsActive)
+            .OrderBy(u => u.Name);
+            
+        return baseQuery.ToTemplate();
+    }
+    
+    // Use parameterized queries for better caching
+    public static string CreateOptimizedSearch()
+    {
+        return ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+            .UseParameterizedQueries()
+            .Where(u => u.Department == "IT")
+            .Select(u => new { u.Name, u.Email })
+            .ToSql();
+    }
+}
 ```
 
-### 模板缓存策略
+### Template Caching Strategy
 ```csharp
-// 全局模板缓存
 public static class TemplateCache
 {
     private static readonly ConcurrentDictionary<string, SqlTemplate> _cache = new();
     
-    public static SqlTemplate GetOrCreate(string key, string sql)
+    public static SqlTemplate GetOrCreate(string key, Func<SqlTemplate> factory)
     {
-        return _cache.GetOrAdd(key, _ => SqlTemplate.Parse(sql));
+        return _cache.GetOrAdd(key, _ => factory());
+    }
+    
+    // Usage
+    public static SqlTemplate GetUserSearchTemplate()
+    {
+        return GetOrCreate("user_search", () => 
+            SqlTemplate.Parse(@"SELECT Id, Name, Email FROM Users 
+                               WHERE IsActive = 1 
+                               AND (@department IS NULL OR Department = @department)
+                               ORDER BY Name"));
     }
 }
-
-// 使用缓存
-var template = TemplateCache.GetOrCreate("user_by_age", 
-    "SELECT * FROM Users WHERE Age > @age");
-
-var result = template.Execute(new { age = 18 });
 ```
 
 ---
 
-## ⚡ 性能优化技巧
+## 🌐 Multi-Database Support
 
-### 1. 模板重用
+### Database-Specific Features
 ```csharp
-// ✅ 好：重用模板
-var template = SqlTemplate.Parse("SELECT * FROM Users WHERE Id = @id");
-var user1 = template.Execute(new { id = 1 });
-var user2 = template.Execute(new { id = 2 });
-var user3 = template.Execute(new { id = 3 });
+// SQL Server specific features
+var sqlServerQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+    .Select(u => new { u.Id, u.Name })
+    .Take(10);  // Uses OFFSET/FETCH
 
-// ❌ 差：每次创建新实例
-var user1 = ParameterizedSql.Create("SELECT * FROM Users WHERE Id = @id", new { id = 1 });
-var user2 = ParameterizedSql.Create("SELECT * FROM Users WHERE Id = @id", new { id = 2 });
-var user3 = ParameterizedSql.Create("SELECT * FROM Users WHERE Id = @id", new { id = 3 });
+// MySQL specific features  
+var mysqlQuery = ExpressionToSql<User>.Create(SqlDefine.MySql)
+    .Select(u => new { u.Id, u.Name })
+    .Take(10);  // Uses LIMIT
+
+// PostgreSQL specific features
+var postgresQuery = ExpressionToSql<User>.Create(SqlDefine.PostgreSql)
+    .Select(u => new { u.Id, u.Name })
+    .Take(10);  // Uses LIMIT with proper parameter handling
 ```
 
-### 2. 参数化查询
+### Custom Dialect Creation
 ```csharp
-// ✅ 好：参数化查询，可被数据库缓存
-var query = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
-    .UseParameterizedQueries()
-    .Where(u => u.Status == "Active");
-
-var template = query.ToTemplate();
-
-// ❌ 差：内联值，无法缓存
-var query = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
-    .Where(u => u.Status == "Active");  // 直接内联值
-```
-
-### 3. 批量操作
-```csharp
-// 批量插入
-var batchInsert = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
-    .InsertInto(u => new { u.Name, u.Email })
-    .Values("User1", "user1@example.com")
-    .AddValues("User2", "user2@example.com")
-    .AddValues("User3", "user3@example.com");
-
-string sql = batchInsert.ToSql();
-// 生成: INSERT INTO [User] ([Name], [Email]) VALUES ('User1', 'user1@example.com'), ('User2', 'user2@example.com'), ('User3', 'user3@example.com')
-```
-
-### 4. 查询优化
-```csharp
-// 只选择需要的列
-var optimizedQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
-    .Select(u => new { u.Id, u.Name })  // 只选择需要的列
-    .Where(u => u.IsActive)             // 尽早过滤
-    .OrderBy(u => u.Id)                 // 使用索引列排序
-    .Take(100);                         // 限制结果集大小
-```
-
----
-
-## 🔒 安全最佳实践
-
-### 1. 参数化查询防止SQL注入
-```csharp
-// ✅ 安全：使用参数化查询
-var safeQuery = ParameterizedSql.Create(
-    "SELECT * FROM Users WHERE Name = @name", 
-    new { name = userInput });
-
-// ❌ 危险：字符串拼接
-var dangerousQuery = $"SELECT * FROM Users WHERE Name = '{userInput}'";
-```
-
-### 2. 输入验证
-```csharp
-public static class QueryValidator
+public static class CustomDialects
 {
-    public static void ValidateInput(string input)
+    // Create custom dialect for specific database
+    public static SqlDefine CreateCustomDialect()
     {
-        if (string.IsNullOrWhiteSpace(input))
-            throw new ArgumentException("Input cannot be null or empty");
-            
-        if (input.Length > 255)
-            throw new ArgumentException("Input too long");
-            
-        // 检查恶意字符
-        var dangerousChars = new[] { ";", "--", "/*", "*/", "xp_", "sp_" };
-        if (dangerousChars.Any(input.Contains))
-            throw new ArgumentException("Input contains dangerous characters");
+        return new SqlDefine
+        {
+            ColumnWrapper = "`",      // MySQL-style column wrapping
+            ParameterPrefix = "@",    // SQL Server-style parameters
+            TableWrapper = "`",       // MySQL-style table wrapping
+            StringQuote = "'",        // Standard string quotes
+            // Additional custom configurations...
+        };
+    }
+    
+    // Oracle-optimized queries
+    public static string CreateOracleOptimizedQuery<T>() where T : class
+    {
+        return ExpressionToSql<T>.Create(SqlDefine.Oracle)
+            .Select()  // Oracle-specific SELECT optimization
+            .ToSql();
     }
 }
-
-// 使用验证
-QueryValidator.ValidateInput(userInput);
-var query = ParameterizedSql.Create("SELECT * FROM Users WHERE Name = @name", 
-    new { name = userInput });
-```
-
-### 3. 权限控制
-```csharp
-// 在查询中添加用户权限检查
-var secureQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
-    .Where(u => u.IsActive)
-    .Where(u => u.TenantId == currentUser.TenantId)  // 多租户隔离
-    .Where(u => u.CreatedBy == currentUser.Id || currentUser.IsAdmin)  // 权限检查
-    .Select(u => new { u.Id, u.Name, u.Email });
 ```
 
 ---
 
-## 🧪 测试和调试
+## 📊 Advanced GROUP BY and Aggregations
 
-### 1. SQL 生成测试
+### Complex Aggregation Queries
 ```csharp
-[Test]
-public void Should_Generate_Correct_SQL()
+public class AdvancedReporting
 {
-    var query = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
-        .Where(u => u.Age > 18)
-        .Select(u => u.Name)
-        .OrderBy(u => u.Name);
+    public static string CreateSalesReport()
+    {
+        return ExpressionToSql<Order>.Create(SqlDefine.SqlServer)
+            .GroupBy(o => new { o.CustomerId, Year = o.OrderDate.Year })
+            .Select(g => new 
+            {
+                CustomerId = g.Key.CustomerId,
+                Year = g.Key.Year,
+                TotalOrders = g.Count(),
+                TotalAmount = g.Sum(o => o.Amount),
+                AverageAmount = g.Average(o => o.Amount),
+                MaxAmount = g.Max(o => o.Amount),
+                MinAmount = g.Min(o => o.Amount)
+            })
+            .Having(g => g.Sum(o => o.Amount) > 10000)
+            .OrderByDescending(g => g.Sum(o => o.Amount))
+            .ToSql();
+    }
     
-    var sql = query.ToSql();
-    
-    Assert.That(sql, Is.EqualTo("SELECT [Name] FROM [User] WHERE [Age] > 18 ORDER BY [Name] ASC"));
+    public static string CreateDepartmentStats()
+    {
+        return ExpressionToSql<Employee>.Create(SqlDefine.SqlServer)
+            .GroupBy(e => e.Department)
+            .Select(g => new
+            {
+                Department = g.Key,
+                EmployeeCount = g.Count(),
+                AverageSalary = g.Average(e => e.Salary),
+                TotalSalary = g.Sum(e => e.Salary),
+                SeniorCount = g.Count(e => e.YearsOfService > 5)
+            })
+            .ToSql();
+    }
 }
 ```
 
-### 2. 参数化测试
+### Window Functions (SQL Server/PostgreSQL)
 ```csharp
-[Test]
-public void Should_Create_Parameterized_Query()
+// Advanced window function support
+public static string CreateRankingQuery()
 {
-    var template = SqlTemplate.Parse("SELECT * FROM Users WHERE Age > @age");
-    var result = template.Execute(new { age = 18 });
-    
-    Assert.That(result.Sql, Is.EqualTo("SELECT * FROM Users WHERE Age > @age"));
-    Assert.That(result.Parameters["age"], Is.EqualTo(18));
-    
-    var rendered = result.Render();
-    Assert.That(rendered, Is.EqualTo("SELECT * FROM Users WHERE Age > 18"));
+    return ExpressionToSql<Employee>.Create(SqlDefine.SqlServer)
+        .Select(e => new
+        {
+            e.Name,
+            e.Salary,
+            e.Department,
+            // Window functions can be handled through raw SQL when needed
+            Rank = "ROW_NUMBER() OVER (PARTITION BY Department ORDER BY Salary DESC)",
+            SalaryPercentile = "PERCENT_RANK() OVER (ORDER BY Salary)"
+        })
+        .ToSql();
 }
-```
-
-### 3. 调试辅助
-```csharp
-// 调试时查看生成的SQL
-var query = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
-    .Where(u => u.Age > 18);
-
-string sql = query.ToSql();
-Console.WriteLine($"Generated SQL: {sql}");
-
-// 查看WHERE子句
-string whereClause = query.ToWhereClause();
-Console.WriteLine($"WHERE clause: {whereClause}");
-
-// 查看额外子句
-string additionalClause = query.ToAdditionalClause();
-Console.WriteLine($"Additional clauses: {additionalClause}");
 ```
 
 ---
 
-## 📈 性能监控
+## 🔧 Advanced Parameter Handling
 
-### 1. 查询性能分析
+### Complex Parameter Types
 ```csharp
-public static class QueryProfiler
+public class AdvancedParameterHandling
 {
-    public static void ProfileQuery(string description, Func<string> queryBuilder)
+    // Handle arrays and lists
+    public static string CreateInClauseQuery(List<int> userIds)
+    {
+        var sql = ParameterizedSql.Create(
+            "SELECT * FROM Users WHERE Id IN @userIds",
+            new { userIds });
+        return sql.Render();
+    }
+    
+    // Handle JSON parameters (modern databases)
+    public static string CreateJsonQuery()
+    {
+        var jsonData = new { name = "John", age = 30 };
+        return ParameterizedSql.Create(
+            "SELECT * FROM Users WHERE JsonData = @jsonData",
+            new { jsonData = JsonSerializer.Serialize(jsonData) }).Render();
+    }
+    
+    // Handle complex object parameters
+    public static string CreateComplexParameterQuery()
+    {
+        var criteria = new SearchCriteria
+        {
+            Names = new[] { "John", "Jane" },
+            AgeRange = new { Min = 18, Max = 65 },
+            Departments = new[] { "IT", "Sales" }
+        };
+        
+        var template = SqlTemplate.Parse(@"
+            SELECT * FROM Users 
+            WHERE Name IN @names 
+            AND Age BETWEEN @minAge AND @maxAge 
+            AND Department IN @departments");
+            
+        return template.Execute(new {
+            names = criteria.Names,
+            minAge = criteria.AgeRange.Min,
+            maxAge = criteria.AgeRange.Max,
+            departments = criteria.Departments
+        }).Render();
+    }
+}
+```
+
+---
+
+## 🚄 Performance Optimization Techniques
+
+### Query Plan Optimization
+```csharp
+public class QueryOptimization
+{
+    // Optimize for covering indexes
+    public static string CreateIndexOptimizedQuery()
+    {
+        return ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+            .Select(u => new { u.Id, u.Name, u.Email })  // Only select needed columns
+            .Where(u => u.IsActive && u.Department == "IT")  // Use indexed columns first
+            .OrderBy(u => u.Id)  // Order by clustered index when possible
+            .ToSql();
+    }
+    
+    // Batch operations for better performance
+    public static string CreateBatchInsert(List<User> users)
+    {
+        var values = users.Select((u, i) => 
+            $"(@name{i}, @email{i}, @age{i})").ToArray();
+            
+        var parameters = users.SelectMany((u, i) => new[]
+        {
+            new KeyValuePair<string, object?>($"name{i}", u.Name),
+            new KeyValuePair<string, object?>($"email{i}", u.Email),
+            new KeyValuePair<string, object?>($"age{i}", u.Age)
+        }).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        
+        return ParameterizedSql.CreateWithDictionary(
+            $"INSERT INTO Users (Name, Email, Age) VALUES {string.Join(", ", values)}",
+            parameters).Render();
+    }
+}
+```
+
+### Memory-Efficient Patterns
+```csharp
+public class MemoryOptimization
+{
+    // Use readonly structs for better memory efficiency
+    public readonly struct QueryResult
+    {
+        public QueryResult(string sql, IReadOnlyDictionary<string, object?> parameters)
+        {
+            Sql = sql;
+            Parameters = parameters;
+        }
+        
+        public string Sql { get; }
+        public IReadOnlyDictionary<string, object?> Parameters { get; }
+    }
+    
+    // Optimize string building for large queries
+    public static string CreateLargeQuery(IEnumerable<SearchFilter> filters)
+    {
+        var query = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+            .Select(u => new { u.Id, u.Name, u.Email });
+            
+        foreach (var filter in filters)
+        {
+            switch (filter.Type)
+            {
+                case FilterType.Name:
+                    query = query.Where(u => u.Name.Contains(filter.Value));
+                    break;
+                case FilterType.Age:
+                    query = query.Where(u => u.Age >= int.Parse(filter.Value));
+                    break;
+                case FilterType.Department:
+                    query = query.Where(u => u.Department == filter.Value);
+                    break;
+            }
+        }
+        
+        return query.ToSql();
+    }
+}
+```
+
+---
+
+## 🔒 Security and Validation
+
+### SQL Injection Prevention
+```csharp
+public class SecurityPatterns
+{
+    // Always validate input parameters
+    public static string SafeUserSearch(string searchTerm, int maxResults)
+    {
+        // Input validation
+        if (string.IsNullOrWhiteSpace(searchTerm))
+            throw new ArgumentException("Search term cannot be empty");
+            
+        if (maxResults <= 0 || maxResults > 1000)
+            throw new ArgumentException("Max results must be between 1 and 1000");
+        
+        // Safe parameterized query
+        return ParameterizedSql.Create(
+            "SELECT TOP (@maxResults) * FROM Users WHERE Name LIKE @searchTerm",
+            new { searchTerm = $"%{searchTerm}%", maxResults }).Render();
+    }
+    
+    // Whitelist approach for dynamic sorting
+    public static string SafeDynamicSort(string sortColumn, bool ascending = true)
+    {
+        var allowedColumns = new[] { "Id", "Name", "Email", "CreatedAt" };
+        
+        if (!allowedColumns.Contains(sortColumn))
+            throw new ArgumentException($"Invalid sort column: {sortColumn}");
+            
+        var direction = ascending ? "ASC" : "DESC";
+        
+        return $"SELECT * FROM Users ORDER BY [{sortColumn}] {direction}";
+    }
+}
+```
+
+---
+
+## 📈 Monitoring and Diagnostics
+
+### Query Performance Tracking
+```csharp
+public class QueryDiagnostics
+{
+    public static QueryStats TrackQueryExecution(string queryName, Func<string> queryBuilder)
     {
         var stopwatch = Stopwatch.StartNew();
+        var memoryBefore = GC.GetTotalMemory(false);
         
-        string sql = queryBuilder();
-        
-        stopwatch.Stop();
-        
-        Console.WriteLine($"{description}: {stopwatch.ElapsedMilliseconds}ms");
-        Console.WriteLine($"SQL: {sql}");
-        Console.WriteLine($"SQL Length: {sql.Length} chars");
-    }
-}
-
-// 使用性能分析
-QueryProfiler.ProfileQuery("Complex Query", () =>
-{
-    return ExpressionToSql<User>.Create(SqlDefine.SqlServer)
-        .Where(u => u.Age > 18)
-        .Where(u => u.IsActive)
-        .Select(u => new { u.Name, u.Email })
-        .OrderBy(u => u.Name)
-        .Take(100)
-        .ToSql();
-});
-```
-
-### 2. 内存使用监控
-```csharp
-// 测试模板重用的内存效率
-var template = SqlTemplate.Parse("SELECT * FROM Users WHERE Id = @id");
-
-// 重用模板 vs 每次创建新实例
-var memoryBefore = GC.GetTotalMemory(true);
-
-for (int i = 0; i < 10000; i++)
-{
-    var result = template.Execute(new { id = i });  // 重用模板
-    // vs
-    // var result = ParameterizedSql.Create("SELECT * FROM Users WHERE Id = @id", new { id = i });
-}
-
-var memoryAfter = GC.GetTotalMemory(true);
-Console.WriteLine($"Memory used: {memoryAfter - memoryBefore} bytes");
-```
-
----
-
-## 🎯 生产环境最佳实践
-
-### 1. 连接池配置
-```csharp
-// 配置连接字符串以优化性能
-var connectionString = "Server=localhost;Database=MyApp;" +
-                      "Integrated Security=true;" +
-                      "Pooling=true;" +           // 启用连接池
-                      "Min Pool Size=5;" +        // 最小连接数
-                      "Max Pool Size=100;" +      // 最大连接数
-                      "Connection Timeout=30;";   // 连接超时
-```
-
-### 2. 错误处理
-```csharp
-public static class SafeQueryExecutor
-{
-    public static async Task<T> ExecuteQueryAsync<T>(
-        IDbConnection connection, 
-        ParameterizedSql query, 
-        Func<IDbConnection, ParameterizedSql, Task<T>> executor)
-    {
         try
         {
-            return await executor(connection, query);
-        }
-        catch (SqlException ex) when (ex.Number == 2) // Timeout
-        {
-            // 记录超时错误并重试
-            Console.WriteLine($"Query timeout: {query.Sql}");
-            throw new TimeoutException("Query execution timeout", ex);
-        }
-        catch (SqlException ex) when (ex.Number == 18456) // Login failed
-        {
-            // 记录认证错误
-            Console.WriteLine("Database authentication failed");
-            throw new UnauthorizedAccessException("Database access denied", ex);
+            var sql = queryBuilder();
+            stopwatch.Stop();
+            
+            var memoryAfter = GC.GetTotalMemory(false);
+            
+            return new QueryStats
+            {
+                QueryName = queryName,
+                GenerationTime = stopwatch.Elapsed,
+                MemoryUsed = memoryAfter - memoryBefore,
+                SqlLength = sql.Length,
+                Success = true
+            };
         }
         catch (Exception ex)
         {
-            // 记录一般错误
-            Console.WriteLine($"Query failed: {query.Sql}, Error: {ex.Message}");
-            throw;
+            stopwatch.Stop();
+            return new QueryStats
+            {
+                QueryName = queryName,
+                GenerationTime = stopwatch.Elapsed,
+                Success = false,
+                Error = ex.Message
+            };
         }
     }
 }
-```
 
-### 3. 监控和日志
-```csharp
-public static class QueryLogger
+public class QueryStats
 {
-    public static void LogQuery(ParameterizedSql query, TimeSpan duration)
+    public string QueryName { get; set; } = string.Empty;
+    public TimeSpan GenerationTime { get; set; }
+    public long MemoryUsed { get; set; }
+    public int SqlLength { get; set; }
+    public bool Success { get; set; }
+    public string? Error { get; set; }
+}
+```
+
+---
+
+## 🎯 Integration Patterns
+
+### Entity Framework Core Integration
+```csharp
+public class EfCoreIntegration
+{
+    public static string CreateEfCompatibleQuery<T>(DbContext context) where T : class
     {
-        var logEntry = new
-        {
-            Sql = query.Sql,
-            Parameters = query.Parameters,
-            Duration = duration.TotalMilliseconds,
-            Timestamp = DateTime.UtcNow
-        };
-        
-        // 记录到日志系统
-        Console.WriteLine(JsonSerializer.Serialize(logEntry));
-        
-        // 慢查询警告
-        if (duration.TotalMilliseconds > 1000)
-        {
-            Console.WriteLine($"SLOW QUERY DETECTED: {duration.TotalMilliseconds}ms");
-        }
+        // Use Sqlx for complex query building, then integrate with EF Core
+        var sqlxQuery = ExpressionToSql<T>.Create(SqlDefine.SqlServer)
+            .Where(entity => EF.Property<bool>(entity, "IsActive"))
+            .Select(entity => new { 
+                Id = EF.Property<int>(entity, "Id"),
+                Name = EF.Property<string>(entity, "Name")
+            })
+            .ToSql();
+            
+        return sqlxQuery;
+    }
+    
+    // Execute raw SQL through EF Core
+    public static async Task<List<T>> ExecuteSqlxQuery<T>(DbContext context, string sql) where T : class
+    {
+        return await context.Set<T>().FromSqlRaw(sql).ToListAsync();
     }
 }
 ```
 
-通过这些高级功能和最佳实践，您可以充分发挥Sqlx 3.0的潜力，构建高性能、安全、可维护的数据访问层。
+### Dapper Integration
+```csharp
+public class DapperIntegration
+{
+    private readonly IDbConnection _connection;
+    
+    public DapperIntegration(IDbConnection connection)
+    {
+        _connection = connection;
+    }
+    
+    public async Task<IEnumerable<T>> QueryAsync<T>(SqlTemplate template, object? parameters = null)
+    {
+        var sql = template.Execute(parameters);
+        return await _connection.QueryAsync<T>(sql.Sql, sql.Parameters);
+    }
+    
+    public async Task<T?> QueryFirstOrDefaultAsync<T>(SqlTemplate template, object? parameters = null)
+    {
+        var sql = template.Execute(parameters);
+        return await _connection.QueryFirstOrDefaultAsync<T>(sql.Sql, sql.Parameters);
+    }
+}
+```
+
+---
+
+These advanced features enable you to build sophisticated, high-performance applications with Sqlx 3.0 while maintaining type safety and optimal performance characteristics.

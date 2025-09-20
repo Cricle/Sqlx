@@ -262,57 +262,6 @@
             专门用于测试 GetDefaultValueForReturnType 的 AbstractGenerator 子类
             </summary>
         </member>
-        <member name="T:Sqlx.Tests.Core.DiagnosticGuidanceServiceTests">
-            <summary>
-            诊断指导服务相关组件的测试
-            注意：由于GeneratorExecutionContext是结构体且难以模拟，这里主要测试诊断逻辑组件
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.DiagnosticHelperTests">
-            <summary>
-            诊断辅助类的全面测试
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.DiagnosticIntegrationTests">
-            <summary>
-            诊断功能在源生成器中的集成测试
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.DiagnosticIntegrationTests.TestGenerator">
-            <summary>
-            模拟的源生成器用于测试
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.DiagnosticIntegrationTests.CreateTestCompilation(System.String)">
-            <summary>
-            创建测试用的编译环境
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.DiagnosticPerformanceAnalysisTests">
-            <summary>
-            诊断性能分析的全面测试
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.DiagnosticPerformanceAnalysisTests.CreateMethodSymbol(System.String,System.String)">
-            <summary>
-            创建测试用的方法符号
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.DiagnosticPerformanceAnalysisTests.CreateEntitySymbol(System.String)">
-            <summary>
-            创建测试用的实体类型符号
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Core.DiagnosticUsagePatternTests">
-            <summary>
-            诊断使用模式分析的全面测试
-            </summary>
-        </member>
-        <member name="M:Sqlx.Tests.Core.DiagnosticUsagePatternTests.CreateMethodSymbol(System.String)">
-            <summary>
-            创建测试用的方法符号
-            </summary>
-        </member>
         <member name="T:Sqlx.Tests.Core.EdgeCaseTests">
             <summary>
             Tests for edge cases and error handling scenarios.
@@ -464,11 +413,6 @@
             Tests ExpressionToSql ToDeleteTemplate method.
             </summary>
         </member>
-        <member name="M:Sqlx.Tests.Core.ExpressionToSqlAdvancedTests.ExpressionToSql_Dispose_DoesNotThrow">
-            <summary>
-            Tests ExpressionToSql Dispose method.
-            </summary>
-        </member>
         <member name="M:Sqlx.Tests.Core.ExpressionToSqlAdvancedTests.ExpressionToSql_Where_WithNullExpression_HandlesGracefully">
             <summary>
             Tests ExpressionToSql with null expression is handled gracefully.
@@ -596,6 +540,11 @@
             Tests mixed content and indentation operations.
             </summary>
         </member>
+        <member name="T:Sqlx.Tests.Core.InterceptorGenerationTests">
+            <summary>
+            Tests for interceptor method generation functionality.
+            </summary>
+        </member>
         <member name="T:Sqlx.Tests.Core.IsExternalInitTests">
             <summary>
             Tests for IsExternalInit class that enables init-only properties.
@@ -665,6 +614,11 @@
         <member name="M:Sqlx.Tests.Core.NameMapperTests.NameMapper_SqlParameterPrefixes_HandledCorrectly">
             <summary>
             Tests SQL parameter prefix handling.
+            </summary>
+        </member>
+        <member name="T:Sqlx.Tests.Core.SnakeCaseConversionTests">
+            <summary>
+            Tests for snake_case conversion functionality in shared utilities.
             </summary>
         </member>
         <member name="T:Sqlx.Tests.Core.SourceGeneratorBoundaryTests">
@@ -865,6 +819,16 @@
         <member name="T:Sqlx.Tests.Core.ITestUserPlaceholderRepository">
             <summary>
             模拟使用 SQL 占位符的仓储接口（仅用于演示，实际实现由源生成器生成）
+            </summary>
+        </member>
+        <member name="T:Sqlx.Tests.Core.SqlTemplateAttributeTests">
+            <summary>
+            Tests for SqlTemplateAttribute functionality and generation.
+            </summary>
+        </member>
+        <member name="T:Sqlx.Tests.Core.SqlTemplateEngineTests">
+            <summary>
+            Tests for the SQL template engine functionality.
             </summary>
         </member>
         <member name="T:Sqlx.Tests.Core.SqlxCoreUtilitiesTests">
@@ -1109,11 +1073,6 @@
             Tests scalar return type detection.
             </summary>
         </member>
-        <member name="M:Sqlx.Tests.Core.TypeAnalyzerTests.TypeAnalyzer_GetDefaultValue_GeneratesCorrectDefaults">
-            <summary>
-            Tests default value generation for different types.
-            </summary>
-        </member>
         <member name="M:Sqlx.Tests.Core.TypeAnalyzerTests.TypeAnalyzer_IsSystemNamespace_DetectsSystemNamespaces">
             <summary>
             Tests system namespace detection.
@@ -1151,12 +1110,7 @@
         </member>
         <member name="T:Sqlx.Tests.Generator.OperationGeneratorSimpleTests">
             <summary>
-            Simple tests for OperationGeneratorFactory class.
-            </summary>
-        </member>
-        <member name="T:Sqlx.Tests.Generator.OperationGeneratorSimpleTests.MockOperationGenerator">
-            <summary>
-            Mock implementation of IOperationGenerator for testing.
+            Simple tests for SqlTemplateEngine class.
             </summary>
         </member>
         <member name="T:Sqlx.Tests.NullabilityTests">

@@ -36,7 +36,7 @@ public class ExpressionToSqlAdvancedTests
     public void ExpressionToSql_ForSqlServer_CreatesCorrectInstance()
     {
         // Act
-        using var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer();
+        var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer();
 
         // Assert
         Assert.IsNotNull(expressionToSql);
@@ -49,7 +49,7 @@ public class ExpressionToSqlAdvancedTests
     public void ExpressionToSql_MySql_CreatesCorrectInstance()
     {
         // Act
-        using var expressionToSql = ExpressionToSql<TestUser>.ForMySql();
+        var expressionToSql = ExpressionToSql<TestUser>.ForMySql();
 
         // Assert
         Assert.IsNotNull(expressionToSql);
@@ -62,7 +62,7 @@ public class ExpressionToSqlAdvancedTests
     public void ExpressionToSql_PostgreSql_CreatesCorrectInstance()
     {
         // Act
-        using var expressionToSql = ExpressionToSql<TestUser>.ForPostgreSQL();
+        var expressionToSql = ExpressionToSql<TestUser>.ForPostgreSQL();
 
         // Assert
         Assert.IsNotNull(expressionToSql);
@@ -75,7 +75,7 @@ public class ExpressionToSqlAdvancedTests
     public void ExpressionToSql_SQLite_CreatesCorrectInstance()
     {
         // Act
-        using var expressionToSql = ExpressionToSql<TestUser>.ForSqlite();
+        var expressionToSql = ExpressionToSql<TestUser>.ForSqlite();
 
         // Assert
         Assert.IsNotNull(expressionToSql);
@@ -88,7 +88,7 @@ public class ExpressionToSqlAdvancedTests
     public void ExpressionToSql_Oracle_CreatesCorrectInstance()
     {
         // Act
-        using var expressionToSql = ExpressionToSql<TestUser>.ForOracle();
+        var expressionToSql = ExpressionToSql<TestUser>.ForOracle();
 
         // Assert
         Assert.IsNotNull(expressionToSql);
@@ -101,7 +101,7 @@ public class ExpressionToSqlAdvancedTests
     public void ExpressionToSql_Where_WithSimpleCondition_ReturnsInstance()
     {
         // Arrange
-        using var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer();
+        var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer();
 
         // Act
         var result = expressionToSql.Where(u => u.Id == 1);
@@ -117,7 +117,7 @@ public class ExpressionToSqlAdvancedTests
     public void ExpressionToSql_Where_WithMultipleConditions_ReturnsInstance()
     {
         // Arrange
-        using var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer();
+        var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer();
 
         // Act
         var result = expressionToSql
@@ -135,7 +135,7 @@ public class ExpressionToSqlAdvancedTests
     public void ExpressionToSql_OrderBy_ReturnsInstance()
     {
         // Arrange
-        using var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer();
+        var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer();
 
         // Act
         var result = expressionToSql.OrderBy(u => u.Name);
@@ -151,7 +151,7 @@ public class ExpressionToSqlAdvancedTests
     public void ExpressionToSql_OrderByDescending_ReturnsInstance()
     {
         // Arrange
-        using var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer();
+        var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer();
 
         // Act
         var result = expressionToSql.OrderByDescending(u => u.CreatedDate);
@@ -167,7 +167,7 @@ public class ExpressionToSqlAdvancedTests
     public void ExpressionToSql_Take_ReturnsInstance()
     {
         // Arrange
-        using var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer();
+        var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer();
 
         // Act
         var result = expressionToSql.Take(10);
@@ -183,7 +183,7 @@ public class ExpressionToSqlAdvancedTests
     public void ExpressionToSql_Skip_ReturnsInstance()
     {
         // Arrange
-        using var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer();
+        var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer();
 
         // Act
         var result = expressionToSql.Skip(5);
@@ -199,7 +199,7 @@ public class ExpressionToSqlAdvancedTests
     public void ExpressionToSql_Set_WithConstantValue_ReturnsInstance()
     {
         // Arrange
-        using var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer();
+        var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer();
 
         // Act
         var result = expressionToSql.Set(u => u.Name, "John");
@@ -215,7 +215,7 @@ public class ExpressionToSqlAdvancedTests
     public void ExpressionToSql_Set_WithExpression_ReturnsInstance()
     {
         // Arrange
-        using var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer();
+        var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer();
 
         // Act
         var result = expressionToSql.Set(u => u.Age, u => u.Age + 1);
@@ -231,7 +231,7 @@ public class ExpressionToSqlAdvancedTests
     public void ExpressionToSql_ToSelectTemplate_ReturnsValidTemplate()
     {
         // Arrange
-        using var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer()
+        var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer()
             .Where(u => u.Id == 1)
             .OrderBy(u => u.Name)
             .Take(10);
@@ -252,7 +252,7 @@ public class ExpressionToSqlAdvancedTests
     public void ExpressionToSql_ToUpdateTemplate_ReturnsValidTemplate()
     {
         // Arrange
-        using var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer()
+        var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer()
             .Set(u => u.Name, "John")
             .Where(u => u.Id == 1);
 
@@ -272,7 +272,7 @@ public class ExpressionToSqlAdvancedTests
     public void ExpressionToSql_ToDeleteTemplate_ReturnsValidTemplate()
     {
         // Arrange
-        using var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer()
+        var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer()
             .Where(u => u.Id == 1);
 
         // Act
@@ -285,33 +285,13 @@ public class ExpressionToSqlAdvancedTests
     }
 
     /// <summary>
-    /// Tests ExpressionToSql Dispose method.
-    /// </summary>
-    [TestMethod]
-    public void ExpressionToSql_Dispose_DoesNotThrow()
-    {
-        // Arrange
-        var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer();
-
-        // Act & Assert
-        try
-        {
-            expressionToSql.Dispose();
-        }
-        catch (Exception ex)
-        {
-            Assert.Fail($"Dispose should not throw exception: {ex.Message}");
-        }
-    }
-
-    /// <summary>
     /// Tests ExpressionToSql with null expression is handled gracefully.
     /// </summary>
     [TestMethod]
     public void ExpressionToSql_Where_WithNullExpression_HandlesGracefully()
     {
         // Arrange
-        using var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer();
+        var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer();
 
         // Act & Assert - Should not throw
         var result = expressionToSql.Where(null!);
@@ -325,7 +305,7 @@ public class ExpressionToSqlAdvancedTests
     public void ExpressionToSql_OrderBy_WithNullExpression_HandlesGracefully()
     {
         // Arrange
-        using var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer();
+        var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer();
 
         // Act & Assert - Should not throw
         var result = expressionToSql.OrderBy<object>(null!);
@@ -339,7 +319,7 @@ public class ExpressionToSqlAdvancedTests
     public void ExpressionToSql_ComplexQuery_BuildsCorrectly()
     {
         // Arrange & Act
-        using var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer()
+        var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer()
             .Where(u => u.Id > 0)
             .Where(u => u.IsActive == true)
             .Where(u => u.Name != null)
@@ -364,7 +344,7 @@ public class ExpressionToSqlAdvancedTests
     public void ExpressionToSql_ComplexUpdateQuery_BuildsCorrectly()
     {
         // Arrange & Act
-        using var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer()
+        var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer()
             .Set(u => u.Name, "UpdatedName")
             .Set(u => u.Age, u => u.Age + 1)
             .Set(u => u.IsActive, true)

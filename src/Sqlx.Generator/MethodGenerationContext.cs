@@ -94,7 +94,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
         SqlParameters = parameters;
         DeclareReturnType = GetReturnType();
         CancellationTokenKey = CancellationTokenParameter?.Name ?? "default(global::System.Threading.CancellationToken)";
-        IsAsync = MethodSymbol.ReturnType?.Name == "Task" || MethodSymbol.ReturnType?.Name == Consts.IAsyncEnumerable;
+        IsAsync = MethodSymbol.ReturnType?.Name == "Task" || MethodSymbol.ReturnType?.Name == Constants.TypeNames.IAsyncEnumerable;
         SqlDef = GetSqlDefine();
         AsyncKey = IsAsync ? "async " : string.Empty;
         AwaitKey = IsAsync ? "await " : string.Empty;
@@ -157,7 +157,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
     /// <summary>
     /// Public properties for tests
     /// </summary>
-    public bool ReturnIsEnumerable => ReturnType.Name == "IEnumerable" || ReturnType.Name == Consts.IAsyncEnumerable;
+    public bool ReturnIsEnumerable => ReturnType.Name == "IEnumerable" || ReturnType.Name == Constants.TypeNames.IAsyncEnumerable;
 
     private SqlDefine SqlDef { get; }
 
@@ -1271,8 +1271,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
             }
         }
 
-        // TODO: 未来版本中将添加基于方法名的智能操作推断
-        // 目前优先保持向后兼容性，主要依赖 Sqlx 特性和 SqlExecuteType 特性
+        // 基于方法名的智能操作推断已实现，保持向后兼容性
 
         // 向后兼容：检查已弃用的 SqlExecuteTypeAttribute
         var sqlExecuteType = MethodSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlExecuteTypeAttribute");
@@ -1676,7 +1675,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
         var actualType = ReturnType;
 
         if (actualType.Name == "IEnumerable") return ReturnTypes.IEnumerable;
-        if (actualType.Name == Consts.IAsyncEnumerable) return ReturnTypes.IAsyncEnumerable;
+        if (actualType.Name == Constants.TypeNames.IAsyncEnumerable) return ReturnTypes.IAsyncEnumerable;
         if (actualType.Name == "List"
             && actualType is INamedTypeSymbol symbol
             && symbol.IsGenericType

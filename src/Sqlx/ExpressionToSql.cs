@@ -1,7 +1,5 @@
-using Sqlx.Annotations;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
-using System.Linq;
 using System.Text;
 
 namespace Sqlx
@@ -54,9 +52,9 @@ namespace Sqlx
     /// <typeparam name="T">Entity type</typeparam>
     public partial class ExpressionToSql<
 #if NET5_0_OR_GREATER
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] 
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
 #endif
-        T> : ExpressionToSqlBase
+    T> : ExpressionToSqlBase
     {
         private readonly List<string> _sets = new();
         private readonly List<string> _expressions = new();
@@ -73,15 +71,15 @@ namespace Sqlx
         }
 
         /// <summary>Sets custom SELECT columns</summary>
-        public ExpressionToSql<T> Select(params string[] cols) => 
+        public ExpressionToSql<T> Select(params string[] cols) =>
             ConfigureSelect(cols?.ToList() ?? new List<string>());
 
         /// <summary>Sets SELECT columns using expression</summary>
-        public ExpressionToSql<T> Select<TResult>(Expression<Func<T, TResult>> selector) => 
+        public ExpressionToSql<T> Select<TResult>(Expression<Func<T, TResult>> selector) =>
             ConfigureSelect(ExtractColumnsFromSelector(selector));
 
         /// <summary>Sets SELECT columns using multiple expressions</summary>
-        public ExpressionToSql<T> Select(params Expression<Func<T, object>>[] selectors) => 
+        public ExpressionToSql<T> Select(params Expression<Func<T, object>>[] selectors) =>
             ConfigureSelect(ExtractColumnsFromSelectors(selectors));
 
         /// <summary>Configures SELECT columns</summary>
@@ -94,9 +92,9 @@ namespace Sqlx
         /// <summary>Gets entity properties using generics (AOT-friendly)</summary>
         private static System.Reflection.PropertyInfo[] GetEntityProperties<
 #if NET5_0_OR_GREATER
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] 
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
 #endif
-            TEntity>() => typeof(TEntity).GetProperties();
+        TEntity>() => typeof(TEntity).GetProperties();
 
         /// <summary>
         /// 统一的列提取逻辑，避免重复代码
@@ -139,25 +137,25 @@ namespace Sqlx
         }
 
         /// <summary>Limits result count</summary>
-        public ExpressionToSql<T> Take(int count) => ConfigureLimit(count, null);
-        
-        /// <summary>Skips specified number of records</summary>
-        public ExpressionToSql<T> Skip(int count) => ConfigureLimit(null, count);
-
-        /// <summary>Configures pagination limits</summary>
-        private ExpressionToSql<T> ConfigureLimit(int? take, int? skip)
+        public ExpressionToSql<T> Take(int? take)
         {
-            if (take.HasValue) _take = take.Value;
-            if (skip.HasValue) _skip = skip.Value;
+            _take = take;
+            return this;
+        }
+
+        /// <summary>Skips specified number of records</summary>
+        public ExpressionToSql<T> Skip(int? skip)
+        {
+            _skip = skip;
             return this;
         }
 
         /// <summary>Sets column value for UPDATE</summary>
-        public ExpressionToSql<T> Set<TValue>(Expression<Func<T, TValue>> selector, TValue value) => 
+        public ExpressionToSql<T> Set<TValue>(Expression<Func<T, TValue>> selector, TValue value) =>
             ConfigureSet(selector, value, null);
 
         /// <summary>Sets column value using expression for UPDATE</summary>
-        public ExpressionToSql<T> Set<TValue>(Expression<Func<T, TValue>> selector, Expression<Func<T, TValue>> valueExpression) => 
+        public ExpressionToSql<T> Set<TValue>(Expression<Func<T, TValue>> selector, Expression<Func<T, TValue>> valueExpression) =>
             ConfigureSet(selector, default, valueExpression);
 
         /// <summary>Configures UPDATE SET clause</summary>
@@ -167,10 +165,10 @@ namespace Sqlx
             if (selector != null)
             {
                 var column = GetColumnName(selector.Body);
-                var assignment = valueExpression != null 
+                var assignment = valueExpression != null
                     ? $"{column} = {ParseExpression(valueExpression.Body)}"
                     : $"{column} = {FormatConstantValue(value)}";
-                
+
                 if (valueExpression != null)
                     _expressions.Add(assignment);
                 else
@@ -184,7 +182,7 @@ namespace Sqlx
         private void EnsureDeleteMode() => _operation = SqlOperation.Delete;
 
         #region As INSERT Methods - Consolidated INSERT operations with 'as' prefix
-        
+
         /// <summary>Sets as INSERT operation</summary>
         public ExpressionToSql<T> AsInsert() => ConfigureInsert();
 
@@ -303,11 +301,11 @@ namespace Sqlx
         }
 
         /// <summary>Adds GROUP BY column</summary>
-        public new ExpressionToSql<T> AddGroupBy(string columnName) => 
+        public new ExpressionToSql<T> AddGroupBy(string columnName) =>
             ConfigureGroupBy(columnName);
 
         /// <summary>Adds HAVING condition</summary>
-        public ExpressionToSql<T> Having(Expression<Func<T, bool>> predicate) => 
+        public ExpressionToSql<T> Having(Expression<Func<T, bool>> predicate) =>
             ConfigureHaving(predicate);
 
         /// <summary>Configures GROUP BY</summary>
@@ -642,9 +640,9 @@ namespace Sqlx
     /// </summary>
     public class GroupedExpressionToSql<
 #if NET5_0_OR_GREATER
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] 
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
 #endif
-        T, TKey> : ExpressionToSqlBase
+    T, TKey> : ExpressionToSqlBase
     {
         private readonly ExpressionToSql<T> _baseQuery;
         private readonly string _keyColumnName;
@@ -661,9 +659,9 @@ namespace Sqlx
         /// </summary>
         public ExpressionToSql<TResult> Select<
 #if NET5_0_OR_GREATER
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] 
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
 #endif
-            TResult>(Expression<Func<IGrouping<TKey, T>, TResult>> selector)
+        TResult>(Expression<Func<IGrouping<TKey, T>, TResult>> selector)
         {
             // 创建新的查询对象，使用相同的方言
             var resultQuery = _baseQuery._dialect.DatabaseType switch
@@ -1035,15 +1033,6 @@ namespace Sqlx
         public override SqlTemplate ToTemplate()
         {
             return _baseQuery.ToTemplate();
-        }
-
-        /// <summary>
-        /// 释放资源，清理内部查询对象。
-        /// </summary>
-        public override void Dispose()
-        {
-            base.Dispose();
-            _baseQuery?.Dispose();
         }
     }
 

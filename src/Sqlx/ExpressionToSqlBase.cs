@@ -4,22 +4,14 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-using Sqlx.Annotations;
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Data.Common;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Linq.Expressions;
-using System.Reflection;
 
 namespace Sqlx
 {
     /// <summary>
     /// Abstract base class for ExpressionToSql with common expression parsing and database dialect adaptation
     /// </summary>
-    public abstract class ExpressionToSqlBase : IDisposable
+    public abstract class ExpressionToSqlBase
     {
         internal readonly SqlDialect _dialect;
         internal readonly List<string> _whereConditions = new();
@@ -262,13 +254,8 @@ namespace Sqlx
         /// </summary>
         protected string GetColumnName(Expression expression)
         {
-            // 处理类型转换表达式
-            if (expression is UnaryExpression unary && unary.NodeType == ExpressionType.Convert)
-            {
-                expression = unary.Operand;
-            }
+            if (expression is UnaryExpression unary && unary.NodeType == ExpressionType.Convert) expression = unary.Operand;
 
-            // For complex expressions, try to parse them as SQL expressions
             if (expression is not MemberExpression)
             {
                 try
@@ -295,7 +282,7 @@ namespace Sqlx
             member.Expression is ParameterExpression;
 
         /// <summary>Gets member value optimized</summary>
-        protected object? GetMemberValueOptimized(MemberExpression member) =>
+        protected static object? GetMemberValueOptimized(MemberExpression member) =>
             GetSimpleDefaultValue(member.Type);
 
         /// <summary>
@@ -454,8 +441,6 @@ namespace Sqlx
             return columns;
         }
 
-        /// <summary>Database type enum</summary>
-        protected DatabaseType DbType => _dialect.DbType;
         /// <summary>Database type string</summary>
         protected string DatabaseType => _dialect.DatabaseType;
         private string GetConcatSyntax(params string[] parts) => _dialect.GetConcatFunction(parts);
@@ -578,15 +563,5 @@ namespace Sqlx
         public abstract string ToSql();
         /// <summary>Converts to SQL template</summary>
         public abstract SqlTemplate ToTemplate();
-
-        /// <summary>Disposes resources</summary>
-        public virtual void Dispose()
-        {
-        }
-
-        /// <summary>Clears global cache</summary>
-        public static void ClearGlobalCache()
-        {
-        }
     }
 }

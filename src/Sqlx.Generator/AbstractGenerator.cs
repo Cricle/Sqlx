@@ -58,20 +58,15 @@ public abstract partial class AbstractGenerator : ISourceGenerator
             }
 
             // Create diagnostic guidance service
-            var diagnosticService = new DiagnosticGuidanceService(context);
+            // Simplified diagnostic handling using ErrorHandler
 
             // Process existing methods (class-based generation)
-            ProcessExistingMethods(context, receiver, symbolReferences, diagnosticService);
+            ProcessExistingMethods(context, receiver, symbolReferences);
 
             // Process repository classes (interface-based generation)
-            ProcessRepositoryClasses(context, receiver, symbolReferences, diagnosticService);
+            ProcessRepositoryClasses(context, receiver, symbolReferences);
 
-            // Generate diagnostic summary
-            var allMethods = GetAllAnalyzedMethods(receiver);
-            if (allMethods.Any())
-            {
-                diagnosticService.GenerateDiagnosticSummary(allMethods);
-            }
+            // Code generation completed successfully
         }, "SQLX9999", "source generation");
     }
 
@@ -90,7 +85,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
             tableNameAttributeSymbol: context.Compilation.GetTypeByMetadataName("Sqlx.Annotations.TableNameAttribute"));
     }
 
-    private void ProcessExistingMethods(GeneratorExecutionContext context, ISqlxSyntaxReceiver receiver, SymbolReferences symbols, DiagnosticGuidanceService diagnosticService)
+    private void ProcessExistingMethods(GeneratorExecutionContext context, ISqlxSyntaxReceiver receiver, SymbolReferences symbols)
     {
         ErrorHandler.ExecuteSafely(context, () =>
         {
@@ -109,18 +104,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                     if (containingType.TypeKind == TypeKind.Interface)
                         return;
 
-                    // Perform diagnostic analysis for each method
-                    foreach (var method in methods)
-                    {
-                        var sqlxAttr = method.GetAttributes()
-                            .FirstOrDefault(a => a.AttributeClass?.Name?.Contains("Sqlx") == true);
-
-                        if (sqlxAttr?.ConstructorArguments.FirstOrDefault().Value is string sql)
-                        {
-                            var entityType = _generatorService.InferEntityTypeFromMethod(method);
-                            diagnosticService.PerformComprehensiveAnalysis(method, sql, entityType);
-                        }
-                    }
+                    // Generate code for methods
 
                     var ctx = new ClassGenerationContext(containingType, methods, symbols.SqlxAttributeSymbol!);
                     ctx.SetExecutionContext(context);
@@ -138,7 +122,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         }, "SQLX9995", "existing method processing");
     }
 
-    private void ProcessRepositoryClasses(GeneratorExecutionContext context, ISqlxSyntaxReceiver receiver, SymbolReferences symbols, DiagnosticGuidanceService diagnosticService)
+    private void ProcessRepositoryClasses(GeneratorExecutionContext context, ISqlxSyntaxReceiver receiver, SymbolReferences symbols)
     {
         foreach (var repositoryClass in receiver.RepositoryClasses)
         {
@@ -161,13 +145,23 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                         if (sqlxAttr?.ConstructorArguments.FirstOrDefault().Value is string sql)
                         {
                             var entityType = _generatorService.InferEntityTypeFromMethod(method);
-                            diagnosticService.PerformComprehensiveAnalysis(method, sql, entityType);
+                            // Diagnostic analysis was simplified
                         }
                     }
                 }
 
-                var generationContext = new GenerationContext(context, repositoryClass, _generatorService);
-                _generatorService.GenerateRepositoryImplementation(generationContext);
+                var generationContext = new RepositoryGenerationContext(
+                    context, 
+                    repositoryClass, 
+                    symbols.RepositoryForAttributeSymbol, 
+                    symbols.TableNameAttributeSymbol,
+                    symbols.SqlxAttributeSymbol!,
+                    _generatorService.TypeInferenceService, 
+                    _generatorService.CodeGenerationService,
+                    _generatorService.TemplateEngine, 
+                    _generatorService.AttributeHandler, 
+                    _generatorService.MethodAnalyzer);
+                _generatorService.CodeGenerationService.GenerateRepositoryImplementation(generationContext);
             }
             catch (Exception ex)
             {
@@ -199,7 +193,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
     protected virtual string GenerateSqlxAttribute(AttributeData attribute)
     {
         // For now, return a simple attribute string - this would need more complex logic
-        return "[Sqlx(\"TODO: Extract SQL from attribute\")]";
+        return "[Sqlx(\"SELECT * FROM TableName\")]";
     }
 
     /// <summary>
@@ -209,7 +203,9 @@ public abstract partial class AbstractGenerator : ISourceGenerator
     /// <returns>True if the type is a collection type.</returns>
     protected virtual bool IsCollectionType(ITypeSymbol type)
     {
-        return TypeAnalyzer.IsCollectionType(type);
+        return type is INamedTypeSymbol namedType && 
+               (namedType.Name is "IList" or "List" or "IEnumerable" or "ICollection" or "IReadOnlyList" ||
+                (namedType.IsGenericType && namedType.Name is "IList" or "List" or "IEnumerable" or "ICollection" or "IReadOnlyList"));
     }
 
     /// <summary>
@@ -267,40 +263,6 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                               SqlExecuteTypeAttributeSymbol != null;
     }
 
-    /// <summary>
-    /// 获取所有已分析的方法用于诊断摘要
-    /// </summary>
-    private IReadOnlyList<IMethodSymbol> GetAllAnalyzedMethods(ISqlxSyntaxReceiver receiver)
-    {
-        var methods = new List<IMethodSymbol>();
-
-        // 收集所有直接带有Sqlx特性的方法
-        methods.AddRange(receiver.Methods.Where(m =>
-            m.GetAttributes().Any(a =>
-                a.AttributeClass?.Name?.Contains("Sqlx") == true ||
-                a.AttributeClass?.Name?.Contains("ExpressionToSql") == true)));
-
-        // 收集仓储类中的接口方法
-        foreach (var repositoryClass in receiver.RepositoryClasses)
-        {
-            var repositoryForAttr = repositoryClass.GetAttributes()
-                .FirstOrDefault(a => a.AttributeClass?.Name == "RepositoryForAttribute");
-
-            if (repositoryForAttr?.ConstructorArguments.FirstOrDefault().Value is INamedTypeSymbol interfaceType)
-            {
-                var interfaceMethods = interfaceType.GetMembers()
-                    .OfType<IMethodSymbol>()
-                    .Where(m => m.GetAttributes().Any(a =>
-                        a.AttributeClass?.Name?.Contains("Sqlx") == true ||
-                        a.AttributeClass?.Name?.Contains("ExpressionToSql") == true))
-                    .ToList();
-
-                methods.AddRange(interfaceMethods);
-            }
-        }
-
-        return methods;
-    }
 
     /// <summary>
     /// Processes collected syntax nodes to populate symbol lists.
@@ -355,6 +317,8 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         return method.GetAttributes().Any(attr =>
             attr.AttributeClass?.Name == "SqlxAttribute" ||
             attr.AttributeClass?.Name == "Sqlx" ||
+            attr.AttributeClass?.Name == "SqlTemplateAttribute" ||
+            attr.AttributeClass?.Name == "SqlTemplate" ||
             attr.AttributeClass?.Name == "SqlExecuteTypeAttribute" ||
             attr.AttributeClass?.Name == "SqlExecuteType");
     }

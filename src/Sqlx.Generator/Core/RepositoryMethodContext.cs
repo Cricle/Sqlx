@@ -21,15 +21,15 @@ public class RepositoryMethodContext
         IMethodSymbol method,
         INamedTypeSymbol? entityType,
         string tableName,
-        IOperationGenerator operationGenerator,
-        IAttributeHandler attributeHandler,
-        IMethodAnalyzer methodAnalyzer)
+        string processedSql,
+        AttributeHandler attributeHandler,
+        MethodAnalyzer methodAnalyzer)
     {
         StringBuilder = stringBuilder;
         Method = method;
         EntityType = entityType;
         TableName = tableName;
-        OperationGenerator = operationGenerator;
+        ProcessedSql = processedSql;
         AttributeHandler = attributeHandler;
         MethodAnalyzer = methodAnalyzer;
     }
@@ -55,17 +55,17 @@ public class RepositoryMethodContext
     public string TableName { get; }
 
     /// <summary>
-    /// Gets the operation generator.
+    /// Gets the processed SQL.
     /// </summary>
-    public IOperationGenerator OperationGenerator { get; }
+    public string ProcessedSql { get; }
 
     /// <summary>
     /// Gets the attribute handler.
     /// </summary>
-    public IAttributeHandler AttributeHandler { get; }
+    public AttributeHandler AttributeHandler { get; }
 
     /// <summary>
     /// Gets the method analyzer.
     /// </summary>
-    public IMethodAnalyzer MethodAnalyzer { get; }
+    public MethodAnalyzer MethodAnalyzer { get; }
 }

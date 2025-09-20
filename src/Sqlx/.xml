@@ -240,9 +240,6 @@
         <member name="M:Sqlx.ExpressionToSql`1.ForDB2">
             <summary>DB2 dialect</summary>
         </member>
-        <member name="M:Sqlx.ExpressionToSql`1.Create">
-            <summary>Default dialect (SQL Server)</summary>
-        </member>
         <member name="M:Sqlx.ExpressionToSql`1.#ctor(Sqlx.SqlDialect)">
             <summary>
             Initializes with specified SQL dialect
@@ -280,14 +277,11 @@
         <member name="M:Sqlx.ExpressionToSql`1.OrderByDescending``1(System.Linq.Expressions.Expression{System.Func{`0,``0}})">
             <summary>Adds ORDER BY descending</summary>
         </member>
-        <member name="M:Sqlx.ExpressionToSql`1.Take(System.Int32)">
+        <member name="M:Sqlx.ExpressionToSql`1.Take(System.Nullable{System.Int32})">
             <summary>Limits result count</summary>
         </member>
-        <member name="M:Sqlx.ExpressionToSql`1.Skip(System.Int32)">
+        <member name="M:Sqlx.ExpressionToSql`1.Skip(System.Nullable{System.Int32})">
             <summary>Skips specified number of records</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.ConfigureLimit(System.Nullable{System.Int32},System.Nullable{System.Int32})">
-            <summary>Configures pagination limits</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSql`1.Set``1(System.Linq.Expressions.Expression{System.Func{`0,``0}},``0)">
             <summary>Sets column value for UPDATE</summary>
@@ -526,11 +520,6 @@
             </summary>
             <returns>SQL模板实例。</returns>
         </member>
-        <member name="M:Sqlx.GroupedExpressionToSql`2.Dispose">
-            <summary>
-            释放资源，清理内部查询对象。
-            </summary>
-        </member>
         <member name="T:Sqlx.IGrouping`2">
             <summary>Grouping interface similar to LINQ IGrouping</summary>
         </member>
@@ -692,9 +681,6 @@
             从表达式中提取列名列表
             </summary>
         </member>
-        <member name="P:Sqlx.ExpressionToSqlBase.DbType">
-            <summary>Database type enum</summary>
-        </member>
         <member name="P:Sqlx.ExpressionToSqlBase.DatabaseType">
             <summary>Database type string</summary>
         </member>
@@ -718,12 +704,6 @@
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.ToTemplate">
             <summary>Converts to SQL template</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.Dispose">
-            <summary>Disposes resources</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.ClearGlobalCache">
-            <summary>Clears global cache</summary>
         </member>
         <member name="T:Sqlx.ParameterizedSql">
             <summary>
@@ -750,10 +730,10 @@
             <param name="parameters">Parameter dictionary</param>
             <returns>ParameterizedSql instance</returns>
         </member>
-        <member name="M:Sqlx.ParameterizedSql.Create(System.String,System.Object)">
+        <member name="M:Sqlx.ParameterizedSql.Create(System.String,System.Collections.Generic.Dictionary{System.String,System.Object})">
             <summary>Creates parameterized SQL using object parameters</summary>
         </member>
-        <member name="M:Sqlx.ParameterizedSql.Render">
+        <member name="P:Sqlx.ParameterizedSql.Render">
             <summary>
             Renders to final SQL string with inlined parameters
             </summary>
@@ -801,51 +781,6 @@
             </summary>
             <param name="sql">SQL to analyze</param>
             <returns>True if SQL is complex</returns>
-        </member>
-        <member name="T:Sqlx.ExpressionToSqlCrudExtensions">
-            <summary>
-            CRUD extensions for ExpressionToSql
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlCrudExtensions.ToInsertSql``1(Sqlx.ExpressionToSql{``0})">
-            <summary>
-            Generates INSERT SQL for the entity
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlCrudExtensions.ToUpdateSql``1(Sqlx.ExpressionToSql{``0})">
-            <summary>
-            Generates UPDATE SQL for the entity
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlCrudExtensions.ToDeleteSql``1(Sqlx.ExpressionToSql{``0})">
-            <summary>
-            Generates DELETE SQL for the entity
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlCrudExtensions.ToSelectSql``1(Sqlx.ExpressionToSql{``0})">
-            <summary>
-            Generates SELECT SQL for the entity
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlCrudExtensions.CreateInsertBuilder``1">
-            <summary>
-            Creates an insert builder
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlCrudExtensions.CreateUpdateBuilder``1">
-            <summary>
-            Creates an update builder
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlCrudExtensions.CreateDeleteBuilder``1">
-            <summary>
-            Creates a delete builder
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlCrudExtensions.CreateSelectBuilder``1">
-            <summary>
-            Creates a select builder
-            </summary>
         </member>
         <member name="T:Sqlx.DatabaseType">
             <summary>
@@ -901,11 +836,6 @@
         </member>
         <member name="M:Sqlx.SqlDefine.GetDialect(Sqlx.DatabaseType)">
             <summary>Gets SQL dialect by database type</summary>
-        </member>
-        <member name="M:Sqlx.SqlDefine.GetDialect(System.String)">
-            <summary>
-            Gets database dialect for mainstream databases (string version for backward compatibility)
-            </summary>
         </member>
         <member name="T:Sqlx.SqlDialect">
             <summary>SQL dialect configuration for database-specific syntax</summary>

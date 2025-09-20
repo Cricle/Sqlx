@@ -120,10 +120,10 @@ internal class SQLiteDialectProvider : IDatabaseDialectProvider
     /// <inheritdoc />
     public string GetConcatenationSyntax(params string[] expressions)
     {
-        if (expressions.Length <= 1)
-            return expressions.FirstOrDefault() ?? string.Empty;
-
         // SQLite uses || for concatenation
+        if (expressions.Length <= 1)
+            return expressions.Length == 1 ? expressions[0] : string.Empty;
+
         return string.Join(" || ", expressions);
     }
 }

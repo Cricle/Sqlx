@@ -14,7 +14,5 @@ namespace Sqlx
         public static ExpressionToSql<T> ForOracle() => new(SqlDefine.Oracle);
         /// <summary>DB2 dialect</summary>
         public static ExpressionToSql<T> ForDB2() => new(SqlDefine.DB2);
-        /// <summary>Default dialect (SQL Server)</summary>
-        public static ExpressionToSql<T> Create() => ForSqlServer();
     }
 }

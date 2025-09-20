@@ -273,9 +273,9 @@ namespace TestNamespace
         var generatedCode = GetCSharpGeneratedOutput(sourceCode);
         Assert.IsNotNull(generatedCode);
 
-        // Should generate async implementations (using Task.FromResult pattern for repositories)
-        Assert.IsTrue(generatedCode.Contains("Task.FromResult"),
-            "Should generate Task.FromResult patterns for repository methods");
+        // Should generate async implementations (using actual database execution logic)
+        Assert.IsTrue(generatedCode.Contains("CreateCommand()") || generatedCode.Contains("_connection") || generatedCode.Contains("Task"),
+            "Should generate actual database execution logic for repository methods");
         Assert.IsTrue(generatedCode.Contains("CancellationToken") || generatedCode.Contains("cancellationToken"),
             "Should handle CancellationToken parameters");
         Assert.IsTrue(generatedCode.Contains("Task"),

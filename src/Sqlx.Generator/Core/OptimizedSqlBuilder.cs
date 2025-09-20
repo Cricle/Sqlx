@@ -7,59 +7,33 @@
 using Microsoft.CodeAnalysis;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace Sqlx.Generator.Core;
 
 /// <summary>
-/// Optimized SQL builder that generates efficient SQL statements with minimal allocations.
+/// Simplified SQL builder for code generation.
 /// </summary>
 public static class OptimizedSqlBuilder
 {
-    private static readonly StringBuilder _sharedBuilder = new StringBuilder(1024);
-    private static readonly Dictionary<string, string> _sqlCache = new Dictionary<string, string>();
-
     /// <summary>
     /// Builds a SELECT statement for the given parameters.
     /// </summary>
     public static string BuildSelect(string tableName, IEnumerable<string>? columns = null, IEnumerable<string>? whereColumns = null, int? limit = null)
     {
-        var cacheKey = $"SELECT_{tableName}_{string.Join(",", columns ?? Enumerable.Empty<string>())}_{string.Join(",", whereColumns ?? Enumerable.Empty<string>())}_{limit}";
+        var columnList = columns?.Any() == true ? string.Join(", ", columns) : "*";
+        var sql = $"SELECT {columnList} FROM {tableName}";
 
-        if (_sqlCache.TryGetValue(cacheKey, out var cachedSql))
-            return cachedSql;
-
-        lock (_sharedBuilder)
+        if (whereColumns?.Any() == true)
         {
-            _sharedBuilder.Clear();
-            _sharedBuilder.Append("SELECT ");
-
-            if (columns?.Any() == true)
-            {
-                _sharedBuilder.Append(string.Join(", ", columns));
-            }
-            else
-            {
-                _sharedBuilder.Append("*");
-            }
-
-            _sharedBuilder.Append(" FROM ").Append(tableName);
-
-            if (whereColumns?.Any() == true)
-            {
-                _sharedBuilder.Append(" WHERE ");
-                _sharedBuilder.Append(string.Join(" AND ", whereColumns.Select(col => $"{col} = @{col}")));
-            }
-
-            if (limit.HasValue)
-            {
-                _sharedBuilder.Append(" LIMIT ").Append(limit.Value);
-            }
-
-            var sql = _sharedBuilder.ToString();
-            _sqlCache[cacheKey] = sql;
-            return sql;
+            sql += " WHERE " + string.Join(" AND ", whereColumns.Select(col => $"{col} = @{col}"));
         }
+
+        if (limit.HasValue)
+        {
+            sql += $" LIMIT {limit.Value}";
+        }
+
+        return sql;
     }
 
     /// <summary>
@@ -68,24 +42,9 @@ public static class OptimizedSqlBuilder
     public static string BuildInsert(string tableName, IEnumerable<string> columns)
     {
         var columnList = columns.ToList();
-        var cacheKey = $"INSERT_{tableName}_{string.Join(",", columnList)}";
-
-        if (_sqlCache.TryGetValue(cacheKey, out var cachedSql))
-            return cachedSql;
-
-        lock (_sharedBuilder)
-        {
-            _sharedBuilder.Clear();
-            _sharedBuilder.Append("INSERT INTO ").Append(tableName).Append(" (");
-            _sharedBuilder.Append(string.Join(", ", columnList));
-            _sharedBuilder.Append(") VALUES (");
-            _sharedBuilder.Append(string.Join(", ", columnList.Select(col => $"@{col}")));
-            _sharedBuilder.Append(")");
-
-            var sql = _sharedBuilder.ToString();
-            _sqlCache[cacheKey] = sql;
-            return sql;
-        }
+        var columnNames = string.Join(", ", columnList);
+        var paramNames = string.Join(", ", columnList.Select(col => $"@{col}"));
+        return $"INSERT INTO {tableName} ({columnNames}) VALUES ({paramNames})";
     }
 
     /// <summary>
@@ -95,23 +54,9 @@ public static class OptimizedSqlBuilder
     {
         var setList = setColumns.ToList();
         var whereList = whereColumns?.ToList() ?? new List<string> { "id" };
-        var cacheKey = $"UPDATE_{tableName}_{string.Join(",", setList)}_{string.Join(",", whereList)}";
-
-        if (_sqlCache.TryGetValue(cacheKey, out var cachedSql))
-            return cachedSql;
-
-        lock (_sharedBuilder)
-        {
-            _sharedBuilder.Clear();
-            _sharedBuilder.Append("UPDATE ").Append(tableName).Append(" SET ");
-            _sharedBuilder.Append(string.Join(", ", setList.Select(col => $"{col} = @{col}")));
-            _sharedBuilder.Append(" WHERE ");
-            _sharedBuilder.Append(string.Join(" AND ", whereList.Select(col => $"{col} = @{col}")));
-
-            var sql = _sharedBuilder.ToString();
-            _sqlCache[cacheKey] = sql;
-            return sql;
-        }
+        var setClauses = string.Join(", ", setList.Select(col => $"{col} = @{col}"));
+        var whereClauses = string.Join(" AND ", whereList.Select(col => $"{col} = @{col}"));
+        return $"UPDATE {tableName} SET {setClauses} WHERE {whereClauses}";
     }
 
     /// <summary>
@@ -120,21 +65,8 @@ public static class OptimizedSqlBuilder
     public static string BuildDelete(string tableName, IEnumerable<string>? whereColumns = null)
     {
         var whereList = whereColumns?.ToList() ?? new List<string> { "id" };
-        var cacheKey = $"DELETE_{tableName}_{string.Join(",", whereList)}";
-
-        if (_sqlCache.TryGetValue(cacheKey, out var cachedSql))
-            return cachedSql;
-
-        lock (_sharedBuilder)
-        {
-            _sharedBuilder.Clear();
-            _sharedBuilder.Append("DELETE FROM ").Append(tableName).Append(" WHERE ");
-            _sharedBuilder.Append(string.Join(" AND ", whereList.Select(col => $"{col} = @{col}")));
-
-            var sql = _sharedBuilder.ToString();
-            _sqlCache[cacheKey] = sql;
-            return sql;
-        }
+        var whereClauses = string.Join(" AND ", whereList.Select(col => $"{col} = @{col}"));
+        return $"DELETE FROM {tableName} WHERE {whereClauses}";
     }
 
     /// <summary>
@@ -184,14 +116,4 @@ public static class OptimizedSqlBuilder
         return entityName.EndsWith("s") ? entityName : entityName + "s";
     }
 
-    /// <summary>
-    /// Clears the SQL cache (useful for testing or memory management).
-    /// </summary>
-    public static void ClearCache()
-    {
-        lock (_sqlCache)
-        {
-            _sqlCache.Clear();
-        }
-    }
 }

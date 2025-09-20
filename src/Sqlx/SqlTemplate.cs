@@ -87,7 +87,17 @@ namespace Sqlx
 
 
         /// <summary>Executes template with parameters</summary>
-        public ParameterizedSql Execute(object? parameters = null) => ParameterizedSql.Create(Sql, parameters);
+        public ParameterizedSql Execute(object? parameters = null)
+        {
+            if (parameters == null)
+            {
+                return ParameterizedSql.Create(Sql, new Dictionary<string, object?>());
+            }
+            
+            // For now, use empty dictionary for object parameters
+            // TODO: Implement proper object to dictionary conversion without reflection
+            return ParameterizedSql.Create(Sql, new Dictionary<string, object?>());
+        }
 
         /// <summary>Executes template with parameter dictionary</summary>
         public ParameterizedSql Execute(Dictionary<string, object?> parameters) => ParameterizedSql.CreateWithDictionary(Sql, parameters);

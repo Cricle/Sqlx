@@ -1,501 +1,465 @@
-# Sqlx 3.0 API 参考文档
+# Sqlx 3.0 API Reference
 
-本文档详细介绍Sqlx 3.0的所有公共API。
+This document provides detailed information about all public APIs in Sqlx 3.0.
 
-## 🏗️ 核心架构
+## 🏗️ Core Architecture
 
 ```
 Sqlx 3.0
-├── ParameterizedSql        # 参数化SQL执行实例
-├── SqlTemplate            # 可重用SQL模板  
-├── ExpressionToSql<T>      # 类型安全查询构建器
-├── SqlDefine              # 数据库方言定义
-└── Extensions             # 扩展方法和工具
+├── ParameterizedSql        # Parameterized SQL execution instance
+├── SqlTemplate            # Reusable SQL templates  
+├── ExpressionToSql<T>      # Type-safe query builder
+├── SqlDefine              # Database dialect definitions
+└── Extensions             # Extension methods and utilities
 ```
 
 ## 📋 ParameterizedSql
 
-参数化SQL的执行实例，表示带参数的SQL语句。
+Execution instance for parameterized SQL, representing SQL statements with parameters.
 
-### 构造方法
+### Constructor
 ```csharp
 public readonly record struct ParameterizedSql(string Sql, IReadOnlyDictionary<string, object?> Parameters)
 ```
 
-### 静态方法
+### Static Methods
 ```csharp
-// 使用匿名对象创建
+// Create using anonymous object
 public static ParameterizedSql Create(string sql, object? parameters)
 
-// 使用字典创建  
+// Create using dictionary  
 public static ParameterizedSql CreateWithDictionary(string sql, Dictionary<string, object?> parameters)
 ```
 
-### 实例方法
+### Instance Methods
 ```csharp
-// 渲染最终SQL（内联参数值）
+// Render final SQL (inline parameter values)
 public string Render()
 ```
 
-### 静态属性
+### Static Properties
 ```csharp
-// 空实例
-public static readonly ParameterizedSql Empty
+// Empty instance
+public static ParameterizedSql Empty { get; }
 ```
 
-### 使用示例
+### Usage Examples
 ```csharp
-// 创建参数化SQL
-var sql = ParameterizedSql.Create(
-    "SELECT * FROM Users WHERE Age > @age", 
-    new { age = 18 });
+// Create with anonymous object
+var sql1 = ParameterizedSql.Create(
+    "SELECT * FROM Users WHERE Id = @id AND IsActive = @active",
+    new { id = 123, active = true });
 
-// 渲染最终SQL
-string finalSql = sql.Render();
-// 输出: SELECT * FROM Users WHERE Age > 18
+// Create with dictionary
+var parameters = new Dictionary<string, object?> 
+{
+    ["id"] = 123,
+    ["active"] = true
+};
+var sql2 = ParameterizedSql.CreateWithDictionary(
+    "SELECT * FROM Users WHERE Id = @id AND IsActive = @active", 
+    parameters);
 
-// 使用字典
-var sqlDict = ParameterizedSql.CreateWithDictionary(
-    "SELECT * FROM Users WHERE Name = @name",
-    new Dictionary<string, object?> { ["name"] = "John" });
+// Render SQL
+string finalSql = sql1.Render();
+// Output: SELECT * FROM Users WHERE Id = 123 AND IsActive = 1
 ```
 
 ---
 
-## 📋 SqlTemplate
+## 🎨 SqlTemplate
 
-可重用的SQL模板，支持参数绑定和多次执行。
+Reusable SQL template for executing the same SQL with different parameters.
 
-### 构造方法
+### Constructor
 ```csharp
-public readonly record struct SqlTemplate(string Sql, IReadOnlyDictionary<string, object?> Parameters)
+public readonly record struct SqlTemplate(string Sql)
 ```
 
-### 静态方法
+### Static Methods
 ```csharp
-// 解析SQL字符串为模板
+// Parse SQL template
 public static SqlTemplate Parse(string sql)
 ```
 
-### 静态属性
+### Instance Methods
 ```csharp
-// 空模板
-public static readonly SqlTemplate Empty
-```
-
-### 实例方法
-```csharp
-// 执行模板（使用匿名对象参数）
+// Execute with anonymous object
 public ParameterizedSql Execute(object? parameters = null)
 
-// 执行模板（使用字典参数）
+// Execute with dictionary
 public ParameterizedSql Execute(Dictionary<string, object?> parameters)
 
-// 创建流式参数绑定器
+// Start fluent parameter binding
 public SqlTemplateBuilder Bind()
-
-// 渲染模板（等同于Execute().Render()）
-public ParameterizedSql Render(object? parameters)
-public ParameterizedSql Render(Dictionary<string, object?> parameters)
-
-// 字符串表示
-public override string ToString()
 ```
 
-### 实例属性
+### Properties
 ```csharp
-// 是否为纯模板（无预绑定参数）
+// Check if template has no parameters
 public bool IsPureTemplate { get; }
 ```
 
-### 使用示例
+### Usage Examples
 ```csharp
-// 创建模板
-var template = SqlTemplate.Parse("SELECT * FROM Users WHERE Age > @age AND IsActive = @active");
+// Create template
+var template = SqlTemplate.Parse("SELECT * FROM Users WHERE Age > @age AND Department = @dept");
 
-// 多次执行
-var young = template.Execute(new { age = 18, active = true });
-var senior = template.Execute(new { age = 65, active = true });
+// Execute with different parameters
+var youngEngineers = template.Execute(new { age = 20, dept = "Engineering" });
+var seniorSales = template.Execute(new { age = 35, dept = "Sales" });
 
-// 流式绑定
-var custom = template.Bind()
+// Fluent binding
+var customQuery = template.Bind()
     .Param("age", 25)
-    .Param("active", true)
+    .Param("dept", "Marketing")
     .Build();
+
+// Check if pure template
+bool isPure = SqlTemplate.Parse("SELECT * FROM Users").IsPureTemplate; // true
+bool hasParams = SqlTemplate.Parse("SELECT * FROM Users WHERE Id = @id").IsPureTemplate; // false
 ```
 
 ---
 
-## 📋 SqlTemplateBuilder
+## 🔧 SqlTemplateBuilder
 
-流式SQL模板参数绑定器。
+Fluent interface for building parameterized SQL from templates.
 
-### 实例方法
+### Methods
 ```csharp
-// 绑定单个参数
-public SqlTemplateBuilder Param<T>(string name, T value)
+// Add parameter
+public SqlTemplateBuilder Param(string name, object? value)
 
-// 批量绑定参数
-public SqlTemplateBuilder Params(object? parameters)
-
-// 构建最终的ParameterizedSql
+// Build final parameterized SQL
 public ParameterizedSql Build()
 ```
 
-### 使用示例
+### Usage Example
 ```csharp
-var template = SqlTemplate.Parse("SELECT * FROM Users WHERE Age > @age AND Name = @name");
+var template = SqlTemplate.Parse("SELECT * FROM Users WHERE Age > @age AND Department = @dept");
 
-var result = template.Bind()
-    .Param("age", 18)
-    .Param("name", "John")
+var query = template.Bind()
+    .Param("age", 25)
+    .Param("dept", "IT")
     .Build();
 
-string sql = result.Render();
+string sql = query.Render();
 ```
 
 ---
 
-## 📋 ExpressionToSql<T>
+## 🎯 ExpressionToSql<T>
 
-类型安全的查询构建器，支持LINQ表达式到SQL的转换。
+Type-safe query builder for generating SQL from LINQ expressions.
 
-### 静态工厂方法
+### Static Factory
 ```csharp
-// 创建查询构建器
-public static ExpressionToSql<T> Create(SqlDialect dialect)
-
-// 便捷工厂方法
-public static ExpressionToSql<T> ForSqlServer()
-public static ExpressionToSql<T> ForMySql() 
-public static ExpressionToSql<T> ForPostgreSQL()
-public static ExpressionToSql<T> ForSQLite()
+public static ExpressionToSql<T> Create(SqlDefine sqlDefine)
 ```
 
-### SELECT 相关方法
+### SELECT Methods
 ```csharp
-// 选择指定列
-public ExpressionToSql<T> Select(params string[] cols)
+// Select all columns
+public ExpressionToSql<T> Select()
+
+// Select specific columns by name
+public ExpressionToSql<T> Select(params string[] columns)
+
+// Select using expression
 public ExpressionToSql<T> Select<TResult>(Expression<Func<T, TResult>> selector)
-public ExpressionToSql<T> Select(params Expression<Func<T, object>>[] selectors)
 ```
 
-### WHERE 相关方法
+### WHERE Methods
 ```csharp
-// 添加WHERE条件
+// Add WHERE condition
 public ExpressionToSql<T> Where(Expression<Func<T, bool>> predicate)
 
-// 添加AND条件（等同于Where）
+// Add AND condition (alias for Where)
 public ExpressionToSql<T> And(Expression<Func<T, bool>> predicate)
 ```
 
-### ORDER BY 相关方法
+### ORDER BY Methods
 ```csharp
-// 升序排序
+// Order by ascending
 public ExpressionToSql<T> OrderBy<TKey>(Expression<Func<T, TKey>> keySelector)
 
-// 降序排序  
+// Order by descending
 public ExpressionToSql<T> OrderByDescending<TKey>(Expression<Func<T, TKey>> keySelector)
 ```
 
-### 分页方法
+### PAGINATION Methods
 ```csharp
-// 限制返回行数
+// Limit results
 public ExpressionToSql<T> Take(int count)
 
-// 跳过指定行数
+// Skip results
 public ExpressionToSql<T> Skip(int count)
 ```
 
-### INSERT 相关方法
+### INSERT Methods
 ```csharp
-// 创建INSERT操作
+// Start INSERT
 public ExpressionToSql<T> Insert()
 
-// 指定插入列（AOT友好，推荐）
+// INSERT into specific columns
 public ExpressionToSql<T> InsertInto(Expression<Func<T, object>> selector)
 
-// 自动推断所有列（使用反射，不推荐AOT）
+// INSERT into all columns (uses reflection)
 public ExpressionToSql<T> InsertIntoAll()
 
-// 指定插入值
+// Specify values
 public ExpressionToSql<T> Values(params object[] values)
 
-// 添加多行值
-public ExpressionToSql<T> AddValues(params object[] values)
-
 // INSERT SELECT
-public ExpressionToSql<T> InsertSelect(string sql)
-public ExpressionToSql<T> InsertSelect<TSource>(ExpressionToSql<TSource> query)
+public ExpressionToSql<T> InsertSelect(string selectSql)
 ```
 
-### UPDATE 相关方法
+### UPDATE Methods
 ```csharp
-// 创建UPDATE操作
+// Start UPDATE
 public ExpressionToSql<T> Update()
 
-// 设置列值
+// Set column to value
 public ExpressionToSql<T> Set<TValue>(Expression<Func<T, TValue>> selector, TValue value)
 
-// 使用表达式设置列值
+// Set column using expression
 public ExpressionToSql<T> Set<TValue>(Expression<Func<T, TValue>> selector, Expression<Func<T, TValue>> valueExpression)
 ```
 
-### DELETE 相关方法
+### DELETE Methods
 ```csharp
-// 创建DELETE操作
+// Start DELETE
 public ExpressionToSql<T> Delete()
 
-// 创建DELETE操作并添加WHERE条件
+// DELETE with condition
 public ExpressionToSql<T> Delete(Expression<Func<T, bool>> predicate)
 ```
 
-### GROUP BY 相关方法
+### GROUP BY Methods
 ```csharp
-// 添加GROUP BY子句
+// Group by key
 public GroupedExpressionToSql<T, TKey> GroupBy<TKey>(Expression<Func<T, TKey>> keySelector)
 
-// 添加HAVING条件
+// Add HAVING condition
 public ExpressionToSql<T> Having(Expression<Func<T, bool>> predicate)
 ```
 
-### 输出方法
+### OUTPUT Methods
 ```csharp
-// 转换为SQL字符串
+// Generate SQL string
 public string ToSql()
 
-// 转换为可重用模板
+// Convert to reusable template
 public SqlTemplate ToTemplate()
-
-// 生成WHERE子句部分
-public string ToWhereClause()
-
-// 生成额外子句（GROUP BY, HAVING, ORDER BY, LIMIT, OFFSET）
-public string ToAdditionalClause()
 ```
 
-### 配置方法
+### Usage Examples
 ```csharp
-// 启用参数化查询模式
-public ExpressionToSql<T> UseParameterizedQueries()
-```
+public class User
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public int Age { get; set; }
+    public bool IsActive { get; set; }
+    public string Department { get; set; } = string.Empty;
+}
 
-### 使用示例
-```csharp
-// SELECT查询
+// SELECT example
 var selectQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
-    .Select(u => new { u.Name, u.Email })
-    .Where(u => u.Age > 18)
+    .Select(u => new { u.Id, u.Name, u.Age })
+    .Where(u => u.Age > 18 && u.IsActive)
     .OrderBy(u => u.Name)
     .Take(10);
 
 string selectSql = selectQuery.ToSql();
+// SELECT [Id], [Name], [Age] FROM [User] 
+// WHERE ([Age] > 18 AND [IsActive] = 1) 
+// ORDER BY [Name] ASC 
+// OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY
 
-// INSERT操作
+// INSERT example
 var insertQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
-    .InsertInto(u => new { u.Name, u.Email })
-    .Values("John", "john@example.com");
+    .InsertInto(u => new { u.Name, u.Age, u.Department })
+    .Values("John Doe", 30, "Engineering");
 
 string insertSql = insertQuery.ToSql();
+// INSERT INTO [User] ([Name], [Age], [Department]) VALUES ('John Doe', 30, 'Engineering')
 
-// UPDATE操作
+// UPDATE example
 var updateQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
     .Update()
-    .Set(u => u.Name, "New Name")
+    .Set(u => u.Name, "Updated Name")
+    .Set(u => u.Age, u => u.Age + 1)
     .Where(u => u.Id == 1);
 
 string updateSql = updateQuery.ToSql();
+// UPDATE [User] SET [Name] = 'Updated Name', [Age] = [Age] + 1 WHERE [Id] = 1
 
-// DELETE操作
+// DELETE example
 var deleteQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
     .Delete(u => u.IsActive == false);
 
 string deleteSql = deleteQuery.ToSql();
+// DELETE FROM [User] WHERE [IsActive] = 0
 ```
 
 ---
 
-## 📋 GroupedExpressionToSql<T, TKey>
+## 🌐 SqlDefine
 
-分组查询对象，支持聚合操作。
+Database dialect definitions for multi-database support.
 
-### 实例方法
+### Static Properties
 ```csharp
-// 选择分组结果的投影
-public ExpressionToSql<TResult> Select<TResult>(Expression<Func<IGrouping<TKey, T>, TResult>> selector)
-
-// 添加HAVING条件
-public GroupedExpressionToSql<T, TKey> Having(Expression<Func<IGrouping<TKey, T>, bool>> predicate)
-
-// 输出SQL
-public string ToSql()
-public SqlTemplate ToTemplate()
+public static SqlDefine SqlServer { get; }    // SQL Server: [column] with @param
+public static SqlDefine MySql { get; }        // MySQL: `column` with @param
+public static SqlDefine PostgreSql { get; }   // PostgreSQL: "column" with $param
+public static SqlDefine SQLite { get; }       // SQLite: [column] with $param
+public static SqlDefine Oracle { get; }       // Oracle: "column" with :param
 ```
 
-### 使用示例
+### Properties
+```csharp
+public string ColumnWrapper { get; }          // Column name wrapper
+public string ParameterPrefix { get; }        // Parameter prefix
+public string TableWrapper { get; }           // Table name wrapper
+public string StringQuote { get; }           // String literal quote
+```
+
+### Usage Examples
+```csharp
+// SQL Server
+var sqlServerQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+    .Where(u => u.Name == "John")
+    .ToSql();
+// WHERE [Name] = 'John'
+
+// MySQL
+var mysqlQuery = ExpressionToSql<User>.Create(SqlDefine.MySql)
+    .Where(u => u.Name == "John")
+    .ToSql();
+// WHERE `Name` = 'John'
+
+// PostgreSQL
+var postgresQuery = ExpressionToSql<User>.Create(SqlDefine.PostgreSql)
+    .Where(u => u.Name == "John")
+    .ToSql();
+// WHERE "Name" = 'John'
+```
+
+---
+
+## 🔍 GroupedExpressionToSql<T, TKey>
+
+Specialized query builder for GROUP BY operations.
+
+### Methods
+```csharp
+// Select with grouping
+public ExpressionToSql<TResult> Select<TResult>(Expression<Func<IGrouping<TKey, T>, TResult>> selector)
+
+// Add HAVING condition
+public GroupedExpressionToSql<T, TKey> Having(Expression<Func<IGrouping<TKey, T>, bool>> predicate)
+
+// Convert to regular builder
+public ExpressionToSql<T> AsNonGrouped()
+```
+
+### Usage Example
 ```csharp
 var groupQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
     .GroupBy(u => u.Department)
     .Select(g => new 
-    { 
+    {
         Department = g.Key,
         Count = g.Count(),
-        AvgAge = g.Average(u => u.Age)
+        AvgAge = g.Average(u => u.Age),
+        MaxAge = g.Max(u => u.Age)
     })
     .Having(g => g.Count() > 5);
 
 string sql = groupQuery.ToSql();
+// SELECT [Department], COUNT(*), AVG([Age]), MAX([Age])
+// FROM [User] 
+// GROUP BY [Department] 
+// HAVING COUNT(*) > 5
 ```
 
 ---
 
-## 📋 SqlDefine
+## 🛠️ Extension Methods
 
-数据库方言定义，提供预定义的数据库支持。
+Additional utility methods for enhanced functionality.
 
-### 静态属性
+### String Extensions
 ```csharp
-// SQL Server方言: [column] with @ parameters
-public static readonly SqlDialect SqlServer
+// Safe SQL identifier escaping
+public static string ToSafeIdentifier(this string value)
 
-// MySQL方言: `column` with @ parameters
-public static readonly SqlDialect MySql
-
-// PostgreSQL方言: "column" with $ parameters  
-public static readonly SqlDialect PostgreSql
-public static readonly SqlDialect PgSql  // 别名
-
-// SQLite方言: [column] with $ parameters
-public static readonly SqlDialect SQLite
-public static readonly SqlDialect Sqlite  // 别名
-
-// Oracle方言: "column" with : parameters
-public static readonly SqlDialect Oracle
-
-// DB2方言
-public static readonly SqlDialect DB2
+// Parameter value conversion
+public static string ToSqlValue(this object? value)
 ```
 
-### 使用示例
+### Type Extensions
 ```csharp
-// 使用不同数据库方言
-var sqlServerQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer);
-var mysqlQuery = ExpressionToSql<User>.Create(SqlDefine.MySql);
-var postgresQuery = ExpressionToSql<User>.Create(SqlDefine.PostgreSql);
-var sqliteQuery = ExpressionToSql<User>.Create(SqlDefine.SQLite);
+// Check if type is nullable
+public static bool IsNullableType(this Type type)
+
+// Get underlying type from nullable
+public static Type GetUnderlyingType(this Type type)
 ```
 
 ---
 
-## 📋 SqlDialect
+## 🎯 Best Practices
 
-数据库方言配置，定义SQL语法规则。
-
-### 构造方法
+### 1. Choose the Right API
 ```csharp
-public record SqlDialect(
-    string ColumnPrefix,     // 列名前缀
-    string ColumnSuffix,     // 列名后缀  
-    string StringPrefix,     // 字符串前缀
-    string StringSuffix,     // 字符串后缀
-    string ParameterPrefix   // 参数前缀
-)
+// Simple one-time queries → ParameterizedSql
+var simple = ParameterizedSql.Create("SELECT COUNT(*) FROM Users", null);
+
+// Reusable queries → SqlTemplate
+var template = SqlTemplate.Parse("SELECT * FROM Users WHERE Id = @id");
+
+// Complex type-safe building → ExpressionToSql<T>
+var complex = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+    .Where(u => u.IsActive && u.Age > 18);
 ```
 
-### 实例方法
+### 2. Performance Optimization
 ```csharp
-// 包装列名
-public string WrapColumn(string columnName)
+// ✅ Reuse templates
+var userTemplate = SqlTemplate.Parse("SELECT * FROM Users WHERE Id = @id");
+var user1 = userTemplate.Execute(new { id = 1 });
+var user2 = userTemplate.Execute(new { id = 2 });
 
-// 包装字符串值
-public string WrapString(string value)
-
-// 生成参数名
-public string FormatParameter(string parameterName)
+// ✅ Convert to template for reuse
+var baseQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+    .Where(u => u.IsActive);
+var template = baseQuery.ToTemplate();
 ```
 
----
-
-## 📋 枚举类型
-
-### SqlDialectType
+### 3. AOT Compatibility
 ```csharp
-public enum SqlDialectType
-{
-    SqlServer = 0,
-    MySql = 1, 
-    PostgreSql = 2,
-    SQLite = 3,
-    Oracle = 4,
-    DB2 = 5
-}
-```
-
-### SqlOperation
-```csharp
-public enum SqlOperation
-{
-    Select,
-    Insert, 
-    Update,
-    Delete
-}
-```
-
----
-
-## 📋 扩展方法
-
-### ExpressionToSql 扩展
-```csharp
-// 生成INSERT SQL
-public static string ToInsertSql<T>(this ExpressionToSql<T> expression)
-
-// 生成UPDATE SQL
-public static string ToUpdateSql<T>(this ExpressionToSql<T> expression)
-
-// 生成DELETE SQL  
-public static string ToDeleteSql<T>(this ExpressionToSql<T> expression)
-
-// 生成SELECT SQL
-public static string ToSelectSql<T>(this ExpressionToSql<T> expression)
-
-// 创建各种构建器
-public static ExpressionToSql<T> CreateInsertBuilder<T>()
-public static ExpressionToSql<T> CreateUpdateBuilder<T>()
-public static ExpressionToSql<T> CreateDeleteBuilder<T>()
-public static ExpressionToSql<T> CreateSelectBuilder<T>()
-```
-
----
-
-## 🎯 最佳实践
-
-### 1. 选择合适的API
-- **简单查询**: 使用 `ParameterizedSql.Create`
-- **重复使用**: 使用 `SqlTemplate.Parse`
-- **动态构建**: 使用 `ExpressionToSql<T>.Create`
-
-### 2. AOT 兼容性
-```csharp
-// ✅ 推荐：显式指定列
+// ✅ AOT-friendly: Explicit column specification
 .InsertInto(u => new { u.Name, u.Email })
 
-// ❌ 避免：在AOT场景使用反射
+// ⚠️ Reflection-based: Use only when necessary
 .InsertIntoAll()
 ```
 
-### 3. 性能优化
-```csharp
-// ✅ 模板重用
-var template = SqlTemplate.Parse(sql);
-var result1 = template.Execute(params1);
-var result2 = template.Execute(params2);
+---
 
-// ✅ 参数化查询
-var query = ExpressionToSql<T>.Create(dialect)
-    .UseParameterizedQueries()
-    .Where(predicate);
-```
+## 📊 Type Safety Features
 
-这就是Sqlx 3.0的完整API参考。所有API都经过精心设计，确保类型安全、AOT兼容和高性能。
+Sqlx 3.0 provides compile-time safety through:
+
+1. **Expression Validation**: LINQ expressions are validated at compile time
+2. **Type Checking**: Parameter types are enforced
+3. **SQL Generation**: SQL is generated safely without injection risks
+4. **Null Safety**: Proper handling of nullable types
+
+---
+
+This completes the API reference for Sqlx 3.0. For more examples and usage patterns, see the [Quick Start Guide](QUICK_START_GUIDE.md) and [Best Practices](BEST_PRACTICES.md).

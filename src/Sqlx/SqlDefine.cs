@@ -58,21 +58,7 @@ namespace Sqlx
             DatabaseType.SQLite => SQLite,
             DatabaseType.Oracle => Oracle,
             DatabaseType.DB2 => DB2,
-            _ => SqlServer // Default to SQL Server
-        };
-
-        /// <summary>
-        /// Gets database dialect for mainstream databases (string version for backward compatibility)
-        /// </summary>
-        public static SqlDialect GetDialect(string dialectName) => dialectName?.ToLowerInvariant() switch
-        {
-            "mysql" => MySql,
-            "sqlserver" or "mssql" => SqlServer,
-            "postgresql" or "postgres" or "pgsql" => PostgreSql,
-            "sqlite" => SQLite,
-            "oracle" => Oracle,
-            "db2" => DB2,
-            _ => SqlServer // Default to SQL Server
+            _ => throw new NotSupportedException(databaseType.ToString())
         };
     }
 
@@ -103,13 +89,16 @@ namespace Sqlx
         {
             get
             {
-                if (ColumnLeft == "`" && ColumnRight == "`" && ParameterPrefix == "@") return "MySql";
-                if (ColumnLeft == "[" && ColumnRight == "]" && ParameterPrefix == "@") return "SqlServer";
-                if (ColumnLeft == "\"" && ColumnRight == "\"" && ParameterPrefix == "$") return "PostgreSql";
-                if (ColumnLeft == "[" && ColumnRight == "]" && ParameterPrefix == "$") return "SQLite";
-                if (ColumnLeft == "\"" && ColumnRight == "\"" && ParameterPrefix == ":") return "Oracle";
-                if (ColumnLeft == "\"" && ColumnRight == "\"" && ParameterPrefix == "?") return "DB2";
-                return "SqlServer";
+                return ColumnLeft switch
+                {
+                    "`" when ColumnRight == "`" && ParameterPrefix == "@" => "MySql",
+                    "[" when ColumnRight == "]" && ParameterPrefix == "@" => "SqlServer",
+                    "\"" when ColumnRight == "\"" && ParameterPrefix == "$" => "PostgreSql",
+                    "[" when ColumnRight == "]" && ParameterPrefix == "$" => "SQLite",
+                    "\"" when ColumnRight == "\"" && ParameterPrefix == ":" => "Oracle",
+                    "\"" when ColumnRight == "\"" && ParameterPrefix == "?" => "DB2",
+                    _ => throw new NotSupportedException(ColumnLeft)
+                };
             }
         }
 
@@ -118,14 +107,16 @@ namespace Sqlx
         {
             get
             {
-                var dbType = DatabaseType;
-                if (dbType == "MySql") return Sqlx.DatabaseType.MySql;
-                if (dbType == "SqlServer") return Sqlx.DatabaseType.SqlServer;
-                if (dbType == "PostgreSql") return Sqlx.DatabaseType.PostgreSql;
-                if (dbType == "SQLite") return Sqlx.DatabaseType.SQLite;
-                if (dbType == "Oracle") return Sqlx.DatabaseType.Oracle;
-                if (dbType == "DB2") return Sqlx.DatabaseType.DB2;
-                return Sqlx.DatabaseType.SqlServer;
+                return DatabaseType switch
+                {
+                    "MySql" => Sqlx.DatabaseType.MySql,
+                    "SqlServer" => Sqlx.DatabaseType.SqlServer,
+                    "PostgreSql" => Sqlx.DatabaseType.PostgreSql,
+                    "SQLite" => Sqlx.DatabaseType.SQLite,
+                    "Oracle" => Sqlx.DatabaseType.Oracle,
+                    "DB2" => Sqlx.DatabaseType.DB2,
+                    _ => throw new NotSupportedException(DatabaseType)
+                };
             }
         }
 

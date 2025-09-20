@@ -1,4 +1,4 @@
-# Sqlx 3.0 - 极简现代 .NET ORM 框架
+# Sqlx 3.0 - Modern Minimal .NET ORM Framework
 
 <div align="center">
 
@@ -8,73 +8,73 @@
 [![AOT](https://img.shields.io/badge/AOT-Native_Ready-orange.svg)](#)
 [![Tests](https://img.shields.io/badge/Tests-578%2B-brightgreen.svg)](#)
 
-**零反射 · AOT原生支持 · 类型安全 · 极简设计**
+**Zero Reflection · AOT Native Support · Type Safe · Minimal Design**
 
-**三种核心使用模式：直接执行 · 静态模板 · 动态模板**
+**Three Core Usage Patterns: Direct Execution · Static Templates · Dynamic Templates**
 
 </div>
 
 ---
 
-## ✨ 核心特性
+## ✨ Core Features
 
-### 🚀 **极致性能**
-- **零反射开销** - 完全AOT兼容，运行时原生性能
-- **编译时优化** - SQL语法和类型在编译期验证
-- **内存高效** - 精简对象设计，最小化GC压力
+### 🚀 **Ultimate Performance**
+- **Zero Reflection Overhead** - Fully AOT compatible with native runtime performance
+- **Compile-time Optimization** - SQL syntax and types validated at compile time
+- **Memory Efficient** - Streamlined object design with minimal GC pressure
 
-### 🛡️ **类型安全**
-- **编译时验证** - SQL错误在编译期捕获
-- **强类型映射** - 完整的类型安全保障
-- **表达式支持** - LINQ表达式到SQL的安全转换
+### 🛡️ **Type Safety**
+- **Compile-time Validation** - SQL errors caught at compile time
+- **Strong Type Mapping** - Complete type safety guarantees
+- **Expression Support** - Safe LINQ expression to SQL conversion
 
-### 🏗️ **极简设计**
-- **三种模式** - 直接执行、静态模板、动态模板
-- **零学习成本** - 简单直观的API设计
-- **多数据库支持** - SQL Server、MySQL、PostgreSQL、SQLite
+### 🏗️ **Minimal Design**
+- **Three Patterns** - Direct execution, static templates, dynamic templates
+- **Zero Learning Curve** - Simple and intuitive API design
+- **Multi-Database Support** - SQL Server, MySQL, PostgreSQL, SQLite
 
 ---
 
-## 🏃‍♂️ 快速开始
+## 🏃‍♂️ Quick Start
 
-### 1. 安装包
+### 1. Install Package
 
 ```bash
 dotnet add package Sqlx
 ```
 
-### 2. 三种核心使用模式
+### 2. Three Core Usage Patterns
 
-#### 模式一：直接执行 - 最简单直接
+#### Pattern 1: Direct Execution - Simple and Direct
 ```csharp
-// 创建参数化SQL并执行
+// Create parameterized SQL and execute
 var sql = ParameterizedSql.Create(
     "SELECT * FROM Users WHERE Age > @age AND IsActive = @active", 
     new { age = 18, active = true });
 
 string finalSql = sql.Render();
-// 输出: SELECT * FROM Users WHERE Age > 18 AND IsActive = 1
+// Output: SELECT * FROM Users WHERE Age > 18 AND IsActive = 1
 ```
 
-#### 模式二：静态模板 - 可重用的SQL模板
+#### Pattern 2: Static Templates - Reusable SQL Templates
 ```csharp
-// 定义可重用的模板
+// Define reusable template
 var template = SqlTemplate.Parse("SELECT * FROM Users WHERE Age > @age AND IsActive = @active");
 
-// 多次使用同一模板，绑定不同参数
+// Use same template multiple times with different parameters
 var youngUsers = template.Execute(new { age = 18, active = true });
 var seniorUsers = template.Execute(new { age = 65, active = true });
 
-// 流式参数绑定
+// Fluent parameter binding
 var customQuery = template.Bind()
     .Param("age", 25)
     .Param("active", true)
     .Build();
 ```
 
-#### 模式三：动态模板 - 类型安全的查询构建
+#### Pattern 3: Dynamic Templates - Type-Safe Query Building
 ```csharp
-// 构建类型安全的动态查询
+// Build type-safe dynamic queries
 var query = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
     .Where(u => u.Age > 25 && u.IsActive)
     .Select(u => new { u.Name, u.Email })
@@ -82,50 +82,50 @@ var query = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
     .Take(10);
 
 string sql = query.ToSql();
-// 生成: SELECT [Name], [Email] FROM [User] WHERE ([Age] > 25 AND [IsActive] = 1) ORDER BY [Name] ASC OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY
+// Generated: SELECT [Name], [Email] FROM [User] WHERE ([Age] > 25 AND [IsActive] = 1) ORDER BY [Name] ASC OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY
 
-// 转换为模板供重复使用
+// Convert to template for reuse
 var template = query.ToTemplate();
 ```
 
 ---
 
-## 📚 详细功能指南
+## 📚 Detailed Feature Guide
 
-### 🔧 支持的数据库
+### 🔧 Supported Databases
 
 ```csharp
-// 预定义的数据库方言
-var sqlServer = SqlDefine.SqlServer;  // [column] with @ parameters
-var mysql = SqlDefine.MySql;          // `column` with @ parameters  
+// Predefined database dialects
+var sqlServer = SqlDefine.SqlServer;   // [column] with @ parameters
+var mysql = SqlDefine.MySql;           // `column` with @ parameters  
 var postgresql = SqlDefine.PostgreSql; // "column" with $ parameters
-var sqlite = SqlDefine.SQLite;        // [column] with $ parameters
-var oracle = SqlDefine.Oracle;        // "column" with : parameters
+var sqlite = SqlDefine.SQLite;         // [column] with $ parameters
+var oracle = SqlDefine.Oracle;         // "column" with : parameters
 ```
 
-### 🎯 ExpressionToSql 完整功能
+### 🎯 ExpressionToSql Complete Features
 
-#### SELECT 查询
+#### SELECT Queries
 ```csharp
 var query = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
-    .Select(u => new { u.Name, u.Email })           // 选择特定列
-    .Where(u => u.Age > 18)                         // WHERE 条件
-    .Where(u => u.Department.Name == "IT")          // 链式条件 (AND)
-    .OrderBy(u => u.Name)                           // 排序
-    .OrderByDescending(u => u.CreatedAt)            // 降序排序
-    .Take(10).Skip(20);                             // 分页
+    .Select(u => new { u.Name, u.Email })           // Select specific columns
+    .Where(u => u.Age > 18)                         // WHERE conditions
+    .Where(u => u.Department.Name == "IT")          // Chained conditions (AND)
+    .OrderBy(u => u.Name)                           // Ordering
+    .OrderByDescending(u => u.CreatedAt)            // Descending order
+    .Take(10).Skip(20);                             // Pagination
 
 string sql = query.ToSql();
 ```
 
-#### INSERT 操作
+#### INSERT Operations
 ```csharp
-// 指定插入列（AOT友好，推荐）
+// Specify insert columns (AOT-friendly, recommended)
 var insertQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
     .InsertInto(u => new { u.Name, u.Email, u.Age })
     .Values("John", "john@example.com", 25);
 
-// 自动推断所有列（使用反射，不推荐AOT场景）
+// Auto-infer all columns (uses reflection, not recommended for AOT)
 var autoInsert = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
     .InsertIntoAll()
     .Values("John", "john@example.com", 25, true, DateTime.Now);
@@ -136,30 +136,30 @@ var insertSelect = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
     .InsertSelect("SELECT Name, Email FROM TempUsers WHERE IsValid = 1");
 ```
 
-#### UPDATE 操作
+#### UPDATE Operations
 ```csharp
 var updateQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
     .Update()
-    .Set(u => u.Name, "New Name")                   // 设置值
-    .Set(u => u.Age, u => u.Age + 1)                // 表达式设置
+    .Set(u => u.Name, "New Name")                   // Set value
+    .Set(u => u.Age, u => u.Age + 1)                // Expression setting
     .Where(u => u.Id == 1);
 
 string sql = updateQuery.ToSql();
-// 生成: UPDATE [User] SET [Name] = 'New Name', [Age] = [Age] + 1 WHERE [Id] = 1
+// Generated: UPDATE [User] SET [Name] = 'New Name', [Age] = [Age] + 1 WHERE [Id] = 1
 ```
 
-#### DELETE 操作
+#### DELETE Operations
 ```csharp
 var deleteQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
     .Delete()
     .Where(u => u.IsActive == false);
 
-// 或者一步到位
+// Or one-step delete
 var quickDelete = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
     .Delete(u => u.Age < 18);
 ```
 
-#### GROUP BY 和聚合
+#### GROUP BY and Aggregations
 ```csharp
 var groupQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
     .GroupBy(u => u.Department)
@@ -175,9 +175,9 @@ var groupQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
 string sql = groupQuery.ToSql();
 ```
 
-### 🎨 SqlTemplate 高级功能
+### 🎨 SqlTemplate Advanced Features
 
-#### 模板选项配置
+#### Template Options Configuration
 ```csharp
 var options = new SqlTemplateOptions
 {
@@ -190,58 +190,58 @@ var options = new SqlTemplateOptions
 var template = SqlTemplate.Parse("SELECT * FROM Users WHERE Id = @id");
 ```
 
-#### 参数化查询模式
+#### Parameterized Query Mode
 ```csharp
 var query = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
-    .UseParameterizedQueries()  // 启用参数化模式
+    .UseParameterizedQueries()  // Enable parameterized mode
     .Where(u => u.Age > 25)
     .Select(u => u.Name);
 
-var template = query.ToTemplate();  // 转换为可重用模板
-var execution = template.Execute(new { /* 额外参数 */ });
+var template = query.ToTemplate();  // Convert to reusable template
+var execution = template.Execute(new { /* additional parameters */ });
 ```
 
 ---
 
-## 🏗️ 架构设计
+## 🏗️ Architecture Design
 
-### 核心组件
+### Core Components
 
 ```
-Sqlx 3.0 架构
-├── ParameterizedSql      # 参数化SQL执行实例
-├── SqlTemplate          # 可重用SQL模板
-├── ExpressionToSql<T>   # 类型安全查询构建器
-├── SqlDefine           # 数据库方言定义
-└── Extensions          # 扩展方法和工具
+Sqlx 3.0 Architecture
+├── ParameterizedSql      # Parameterized SQL execution instance
+├── SqlTemplate          # Reusable SQL templates
+├── ExpressionToSql<T>   # Type-safe query builder
+├── SqlDefine           # Database dialect definitions
+└── Extensions          # Extension methods and utilities
 ```
 
-### 设计原则
+### Design Principles
 
-1. **职责分离** - 模板定义与参数执行完全分离
-2. **类型安全** - 编译时验证，运行时零错误
-3. **性能优先** - 零反射，AOT友好
-4. **简单易用** - 最小化学习成本
+1. **Separation of Concerns** - Template definition completely separated from parameter execution
+2. **Type Safety** - Compile-time validation, zero runtime errors
+3. **Performance First** - Zero reflection, AOT friendly
+4. **Simple to Use** - Minimal learning curve
 
 ---
 
-## 🔥 性能特性
+## 🔥 Performance Features
 
-### AOT 兼容性
-- ✅ 零反射调用
-- ✅ 编译时代码生成
-- ✅ Native AOT 支持
-- ✅ 最小化运行时开销
+### AOT Compatibility
+- ✅ Zero reflection calls
+- ✅ Compile-time code generation
+- ✅ Native AOT support
+- ✅ Minimal runtime overhead
 
-### 内存效率
-- ✅ 对象重用设计
-- ✅ 最小化GC压力
-- ✅ 高效字符串构建
-- ✅ 缓存友好架构
+### Memory Efficiency
+- ✅ Object reuse design
+- ✅ Minimal GC pressure
+- ✅ Efficient string building
+- ✅ Cache-friendly architecture
 
 ---
 
-## 📋 API 参考
+## 📋 API Reference
 
 ### ParameterizedSql
 ```csharp
@@ -314,30 +314,30 @@ public partial class ExpressionToSql<T> : ExpressionToSqlBase
 
 ---
 
-## 🎯 最佳实践
+## 🎯 Best Practices
 
-### 1. 选择合适的模式
-- **直接执行**: 简单查询，一次性使用
-- **静态模板**: 需要重复使用的SQL
-- **动态模板**: 复杂的条件查询构建
+### 1. Choose the Right Pattern
+- **Direct Execution**: Simple queries, one-time use
+- **Static Templates**: SQL that needs to be reused
+- **Dynamic Templates**: Complex conditional query building
 
-### 2. AOT 优化建议
+### 2. AOT Optimization Tips
 ```csharp
-// ✅ 推荐：显式指定列（AOT友好）
+// ✅ Recommended: Explicitly specify columns (AOT-friendly)
 .InsertInto(u => new { u.Name, u.Email })
 
-// ❌ 避免：自动推断列（使用反射）
-.InsertIntoAll()  // 仅在非AOT场景使用
+// ❌ Avoid: Auto-infer columns (uses reflection)
+.InsertIntoAll()  // Only use in non-AOT scenarios
 ```
 
-### 3. 性能优化
+### 3. Performance Optimization
 ```csharp
-// ✅ 模板重用
+// ✅ Template reuse
 var template = SqlTemplate.Parse("SELECT * FROM Users WHERE Id = @id");
 var user1 = template.Execute(new { id = 1 });
 var user2 = template.Execute(new { id = 2 });
 
-// ✅ 参数化查询
+// ✅ Parameterized queries
 var query = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
     .UseParameterizedQueries()
     .Where(u => u.Status == "Active");
@@ -345,33 +345,59 @@ var query = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
 
 ---
 
-## 📈 版本信息
+## 🎓 Examples and Samples
 
-### v3.0.0 (当前版本)
-- ✨ **极简重构**: 专注三种核心使用模式
-- ✨ **全面AOT优化**: 移除所有反射调用
-- ✨ **性能提升**: 代码量减少20K+行，性能显著提升
-- ✨ **简化API**: 学习成本降低70%
-- ✅ **578个单元测试**: 全部通过，功能完整
-- ⚠️ **破坏性更新**: 专注未来，不向后兼容
+Explore comprehensive examples in the [`samples/`](samples/) directory:
 
-### 目标框架
+- **[SqlxDemo](samples/SqlxDemo/)** - Complete showcase of all three patterns
+- **[IntegrationShowcase](samples/IntegrationShowcase/)** - Real-world integration examples
+
+---
+
+## 📖 Documentation
+
+Detailed documentation is available in the [`docs/`](docs/) directory:
+
+- [Quick Start Guide](docs/QUICK_START_GUIDE.md) - Get up and running quickly
+- [API Reference](docs/API_REFERENCE.md) - Complete API documentation
+- [Best Practices](docs/BEST_PRACTICES.md) - Recommended usage patterns
+- [Advanced Features](docs/ADVANCED_FEATURES.md) - Deep dive into advanced functionality
+
+---
+
+## 📈 Version Information
+
+### v3.0.0 (Current Version)
+- ✨ **Minimal Refactor**: Focus on three core usage patterns
+- ✨ **Full AOT Optimization**: Removed all reflection calls
+- ✨ **Performance Boost**: 20K+ lines of code reduced, significant performance improvement
+- ✨ **Simplified API**: 70% reduction in learning curve
+- ✅ **578 Unit Tests**: All passing, complete functionality
+- ⚠️ **Breaking Changes**: Future-focused, not backward compatible
+
+### Target Frameworks
 - .NET Standard 2.0
 - .NET 8.0
 - .NET 9.0
 
 ---
 
-## 📝 许可证
+## 🤝 Contributing
 
-本项目基于 [MIT 许可证](License.txt) 开源。
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+---
+
+## 📝 License
+
+This project is licensed under the [MIT License](License.txt).
 
 ---
 
 <div align="center">
 
-**🚀 立即开始使用 Sqlx 3.0，体验极简现代 .NET 数据访问！**
+**🚀 Start using Sqlx 3.0 now and experience modern minimal .NET data access!**
 
-**三种模式，无限可能 - 从简单到复杂，总有一种适合你**
+**Three patterns, infinite possibilities - from simple to complex, there's always one that fits**
 
 </div>

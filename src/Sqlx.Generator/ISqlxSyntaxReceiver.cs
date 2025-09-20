@@ -11,9 +11,9 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Collections.Generic;
 
 /// <summary>
-/// Language specific interface for syntax receiver which is used to collect information about methods and repository classes.
+/// Simple interface for syntax receiver collections.
 /// </summary>
-internal interface ISqlxSyntaxReceiver : ISyntaxContextReceiver
+internal interface ISqlxSyntaxReceiver
 {
     /// <summary>
     /// Gets list of collected methods.
@@ -34,10 +34,4 @@ internal interface ISqlxSyntaxReceiver : ISyntaxContextReceiver
     /// Gets list of collected class syntax nodes for later processing.
     /// </summary>
     List<ClassDeclarationSyntax> ClassSyntaxNodes { get; }
-
-    /// <summary>
-    /// Called for every syntax node in the compilation.
-    /// </summary>
-    /// <param name="syntaxNode">The syntax node to visit.</param>
-    void OnVisitSyntaxNode(SyntaxNode syntaxNode);
 }

@@ -14,6 +14,30 @@ namespace Sqlx.Generator.Core;
 public interface ISqlxGeneratorService
 {
     /// <summary>
+    /// Gets the type inference service.
+    /// </summary>
+    ITypeInferenceService TypeInferenceService { get; }
+
+    /// <summary>
+    /// Gets the code generation service.
+    /// </summary>
+    ICodeGenerationService CodeGenerationService { get; }
+
+    /// <summary>
+    /// Gets the template engine.
+    /// </summary>
+    ISqlTemplateEngine TemplateEngine { get; }
+
+    /// <summary>
+    /// Gets the attribute handler.
+    /// </summary>
+    AttributeHandler AttributeHandler { get; }
+
+    /// <summary>
+    /// Gets the method analyzer.
+    /// </summary>
+    MethodAnalyzer MethodAnalyzer { get; }
+    /// <summary>
     /// Infers the entity type from a service interface.
     /// </summary>
     INamedTypeSymbol? InferEntityTypeFromInterface(INamedTypeSymbol serviceInterface);

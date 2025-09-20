@@ -13,15 +13,18 @@ namespace Sqlx.Generator.Core;
 /// <summary>
 /// Default implementation of attribute handler.
 /// </summary>
-public class AttributeHandler : IAttributeHandler
+public class AttributeHandler
 {
-    /// <inheritdoc/>
+    /// <summary>
+    /// Generates or copies attributes for a method.
+    /// </summary>
     public void GenerateOrCopyAttributes(IndentedStringBuilder sb, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName)
     {
         // Check if method already has SQL attributes
         var existingSqlAttributes = method.GetAttributes()
             .Where(attr => attr.AttributeClass?.Name == "SqlxAttribute" ||
-                          attr.AttributeClass?.Name == "SqlExecuteTypeAttribute")
+                          attr.AttributeClass?.Name == "SqlExecuteTypeAttribute" ||
+                          attr.AttributeClass?.Name == "SqlTemplateAttribute")
             .ToArray();
 
         if (existingSqlAttributes.Any())
@@ -39,7 +42,9 @@ public class AttributeHandler : IAttributeHandler
         }
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Generates a Sqlx attribute for a method.
+    /// </summary>
     public string GenerateSqlxAttribute(IMethodSymbol method, INamedTypeSymbol? entityType, string tableName)
     {
         try
@@ -92,7 +97,9 @@ public class AttributeHandler : IAttributeHandler
         }
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Generates an attribute from existing attribute data.
+    /// </summary>
     public string GenerateSqlxAttribute(AttributeData attribute)
     {
         try
@@ -116,6 +123,68 @@ public class AttributeHandler : IAttributeHandler
                     if (sqlArg.Value != null)
                     {
                         sb.Append($"\"{sqlArg.Value.ToString().Replace("\"", "\\\"")}\"");
+                    }
+                }
+                sb.Append(')');
+            }
+            else if (attributeClass.Name == "SqlTemplateAttribute")
+            {
+                sb.Append("global::Sqlx.Annotations.SqlTemplate(");
+                if (attribute.ConstructorArguments.Length > 0)
+                {
+                    var sqlArg = attribute.ConstructorArguments[0];
+                    if (sqlArg.Value != null)
+                    {
+                        sb.Append($"\"{sqlArg.Value.ToString().Replace("\"", "\\\"")}\"");
+                    }
+                }
+                
+                // Add named arguments if present
+                if (attribute.NamedArguments.Length > 0)
+                {
+                    foreach (var namedArg in attribute.NamedArguments)
+                    {
+                        sb.Append($", {namedArg.Key} = ");
+                        if (namedArg.Value.Value is string stringValue)
+                        {
+                            sb.Append($"\"{stringValue}\"");
+                        }
+                        else if (namedArg.Value.Value is bool boolValue)
+                        {
+                            sb.Append(boolValue ? "true" : "false");
+                        }
+                        else if (namedArg.Key == "Dialect" && namedArg.Value.Value is int dialectValue)
+                        {
+                            // Convert dialect enum value to proper enum name
+                            var dialectName = dialectValue switch
+                            {
+                                0 => "SqlServer",
+                                1 => "MySQL", 
+                                2 => "PostgreSQL",
+                                3 => "SQLite",
+                                4 => "Oracle",
+                                5 => "DB2",
+                                _ => "SQLite"
+                            };
+                            sb.Append($"global::Sqlx.SqlDialectType.{dialectName}");
+                        }
+                        else if (namedArg.Key == "Operation" && namedArg.Value.Value is int operationValue)
+                        {
+                            // Convert operation enum value to proper enum name
+                            var operationName = operationValue switch
+                            {
+                                0 => "Select",
+                                1 => "Insert",
+                                2 => "Update", 
+                                3 => "Delete",
+                                _ => "Select"
+                            };
+                            sb.Append($"global::Sqlx.SqlOperation.{operationName}");
+                        }
+                        else
+                        {
+                            sb.Append(namedArg.Value.Value?.ToString() ?? "null");
+                        }
                     }
                 }
                 sb.Append(')');

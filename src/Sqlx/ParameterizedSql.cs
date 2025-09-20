@@ -1,7 +1,3 @@
-#nullable enable
-
-using System.Collections.Generic;
-
 namespace Sqlx
 {
     /// <summary>
@@ -13,7 +9,7 @@ namespace Sqlx
         /// <summary>
         /// Empty ParameterizedSql instance
         /// </summary>
-        public static readonly ParameterizedSql Empty = new(string.Empty, new Dictionary<string, object?>());
+        public static readonly ParameterizedSql Empty = new(string.Empty, new Dictionary<string, object?>(0));
 
         /// <summary>
         /// Creates parameterized SQL using dictionary
@@ -27,39 +23,16 @@ namespace Sqlx
         }
 
         /// <summary>Creates parameterized SQL using object parameters</summary>
-        public static ParameterizedSql Create(string sql, object? parameters)
+        public static ParameterizedSql Create(string sql, Dictionary<string, object?> parameters)
         {
-            var paramDict = ExtractParametersSafe(parameters);
-            return new ParameterizedSql(sql, paramDict);
+            return new ParameterizedSql(sql, parameters);
         }
 
         /// <summary>
         /// Renders to final SQL string with inlined parameters
         /// </summary>
         /// <returns>Rendered SQL string</returns>
-        public string Render()
-        {
-            return SqlParameterRenderer.RenderToSql(this);
-        }
-
-        #region Private Helper Methods
-
-        private static Dictionary<string, object?> ExtractParametersSafe(object? parameters)
-        {
-            var result = new Dictionary<string, object?>();
-            if (parameters is Dictionary<string, object?> dict)
-            {
-                foreach (var kvp in dict)
-                {
-                    result[kvp.Key] = kvp.Value;
-                }
-            }
-            // For AOT compatibility, we only support Dictionary<string, object?> parameters
-            // Users should use Dictionary<string, object?> directly
-            return result;
-        }
-
-        #endregion
+        public string Render => SqlParameterRenderer.RenderToSql(this);
 
         /// <summary>
         /// Checks if the SQL contains a specific substring
@@ -71,11 +44,7 @@ namespace Sqlx
         /// <summary>
         /// Returns a string representation of the ParameterizedSql.
         /// </summary>
-        public override string ToString()
-        {
-            var paramCount = Parameters?.Count ?? 0;
-            return $"ParameterizedSql {{ Sql = {Sql}, Parameters = {paramCount} params }}";
-        }
+        public override string ToString() => $"ParameterizedSql {{ Sql = {Sql}, Parameters = {Parameters?.Count ?? 0} params }}";
     }
 
     /// <summary>
@@ -85,16 +54,12 @@ namespace Sqlx
     {
         public static string RenderToSql(ParameterizedSql parameterizedSql)
         {
-            if (parameterizedSql.Parameters.Count == 0)
-            {
-                return parameterizedSql.Sql;
-            }
+            if (parameterizedSql.Parameters.Count == 0) return parameterizedSql.Sql;
 
             var sql = parameterizedSql.Sql;
             foreach (var kvp in parameterizedSql.Parameters)
             {
-                var value = FormatParameterValue(kvp.Value);
-                sql = sql.Replace(kvp.Key, value);
+                sql = sql.Replace(kvp.Key, FormatParameterValue(kvp.Value));
             }
 
             return sql;
@@ -107,9 +72,9 @@ namespace Sqlx
                 null => "NULL",
                 string s => $"'{s.Replace("'", "''")}'",
                 bool b => b ? "1" : "0",
-                System.DateTime dt => $"'{dt:yyyy-MM-dd HH:mm:ss}'",
-                System.DateTimeOffset dto => $"'{dto:yyyy-MM-dd HH:mm:ss zzz}'",
-                System.Guid g => $"'{g}'",
+                DateTime dt => $"'{dt:yyyy-MM-dd HH:mm:ss}'",
+                DateTimeOffset dto => $"'{dto:yyyy-MM-dd HH:mm:ss zzz}'",
+                Guid g => $"'{g}'",
                 decimal d => d.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 double d => d.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 float f => f.ToString(System.Globalization.CultureInfo.InvariantCulture),

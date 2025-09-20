@@ -37,7 +37,7 @@ public class SqlOutputInspectionTests
     public void InspectSqlServerOutput()
     {
         // Arrange & Act
-        using var expression = ExpressionToSql<TestEntity>.ForSqlServer()
+        var expression = ExpressionToSql<TestEntity>.ForSqlServer()
             .Where(e => e.Id > 10)
             .Where(e => e.Name == "Test")
             .Where(e => e.IsActive == true)
@@ -70,7 +70,7 @@ public class SqlOutputInspectionTests
     public void InspectMySqlOutput()
     {
         // Arrange & Act
-        using var expression = ExpressionToSql<TestEntity>.ForMySql()
+        var expression = ExpressionToSql<TestEntity>.ForMySql()
             .Where(e => e.Price >= 100.0m)
             .Where(e => e.CreatedDate >= DateTime.Today)
             .OrderByDescending(e => e.CreatedDate)
@@ -97,7 +97,7 @@ public class SqlOutputInspectionTests
     public void InspectUpdateOutput()
     {
         // Arrange & Act
-        using var expression = ExpressionToSql<TestEntity>.ForSqlServer()
+        var expression = ExpressionToSql<TestEntity>.ForSqlServer()
             .Set(e => e.Name, "Updated Name")
             .Set(e => e.Price, 99.99m)
             .Set(e => e.IsActive, false)
@@ -123,7 +123,7 @@ public class SqlOutputInspectionTests
     public void InspectNullHandling()
     {
         // Arrange & Act
-        using var expression = ExpressionToSql<TestEntity>.ForSqlServer()
+        var expression = ExpressionToSql<TestEntity>.ForSqlServer()
             .Where(e => e.Name == null)
             .Where(e => e.Name != null);
 
@@ -144,7 +144,7 @@ public class SqlOutputInspectionTests
     public void InspectBooleanHandling()
     {
         // Arrange & Act
-        using var expression = ExpressionToSql<TestEntity>.ForSqlServer()
+        var expression = ExpressionToSql<TestEntity>.ForSqlServer()
             .Where(e => e.IsActive)
             .Where(e => e.IsActive == true)
             .Where(e => e.IsActive == false)
@@ -177,7 +177,7 @@ public class SqlOutputInspectionTests
 
         foreach (var testString in testStrings)
         {
-            using var expression = ExpressionToSql<TestEntity>.ForSqlServer()
+            var expression = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Where(e => e.Name == testString);
 
             var sql = expression.ToSql();
@@ -208,7 +208,7 @@ public class SqlOutputInspectionTests
 
         foreach (var testDate in testDates)
         {
-            using var expression = ExpressionToSql<TestEntity>.ForSqlServer()
+            var expression = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Where(e => e.CreatedDate == testDate);
 
             var sql = expression.ToSql();
@@ -239,7 +239,7 @@ public class SqlOutputInspectionTests
 
         foreach (var testDecimal in testDecimals)
         {
-            using var expression = ExpressionToSql<TestEntity>.ForSqlServer()
+            var expression = ExpressionToSql<TestEntity>.ForSqlServer()
                 .Where(e => e.Price == testDecimal);
 
             var sql = expression.ToSql();
@@ -259,7 +259,7 @@ public class SqlOutputInspectionTests
     public void InspectComplexConditions()
     {
         // Arrange & Act
-        using var expression = ExpressionToSql<TestEntity>.ForSqlServer();
+        var expression = ExpressionToSql<TestEntity>.ForSqlServer();
 
         // Add multiple conditions
         for (int i = 0; i < 5; i++)
@@ -305,17 +305,14 @@ public class SqlOutputInspectionTests
         // Act & Output
         foreach (var (name, expression) in dialects)
         {
-            using (expression)
-            {
-                expression
-                    .Where(e => e.Id > 0)
-                    .Where(e => e.Name != null)
-                    .OrderBy(e => e.Name)
-                    .Take(10);
+            expression
+                .Where(e => e.Id > 0)
+                .Where(e => e.Name != null)
+                .OrderBy(e => e.Name)
+                .Take(10);
 
-                var sql = expression.ToSql();
-                Console.WriteLine($"{name}: {sql}");
-            }
+            var sql = expression.ToSql();
+            Console.WriteLine($"{name}: {sql}");
         }
 
         Console.WriteLine("===============================");

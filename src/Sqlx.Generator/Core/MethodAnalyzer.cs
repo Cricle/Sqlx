@@ -12,9 +12,11 @@ namespace Sqlx.Generator.Core;
 /// <summary>
 /// Default implementation of method analyzer.
 /// </summary>
-public class MethodAnalyzer : IMethodAnalyzer
+public class MethodAnalyzer
 {
-    /// <inheritdoc/>
+    /// <summary>
+    /// Analyzes a method to determine its characteristics for code generation.
+    /// </summary>
     public MethodAnalysisResult AnalyzeMethod(IMethodSymbol method)
     {
         var isAsync = IsAsyncMethod(method);
@@ -26,7 +28,9 @@ public class MethodAnalyzer : IMethodAnalyzer
         return new MethodAnalysisResult(operationType, isAsync, returnType, isCollection, isScalar);
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Determines if a method is asynchronous.
+    /// </summary>
     public bool IsAsyncMethod(IMethodSymbol method)
     {
         if (method.ReturnType is not INamedTypeSymbol namedType) return false;
@@ -36,7 +40,9 @@ public class MethodAnalyzer : IMethodAnalyzer
                namedType.ContainingNamespace.ToDisplayString() == "System.Threading.Tasks";
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Gets the actual return type from async methods.
+    /// </summary>
     public ITypeSymbol GetActualReturnType(IMethodSymbol method)
     {
         if (IsAsyncMethod(method) && method.ReturnType is INamedTypeSymbol taskType && taskType.TypeArguments.Length > 0)

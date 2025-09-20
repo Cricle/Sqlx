@@ -40,4 +40,12 @@ internal static class Constants
         public const string Exception = "__exception__";
         public const string Elapsed = "__elapsed__";
     }
+
+    /// <summary>
+    /// 类型名称常量
+    /// </summary>
+    public static class TypeNames
+    {
+        public const string IAsyncEnumerable = "IAsyncEnumerable";
+    }
 }

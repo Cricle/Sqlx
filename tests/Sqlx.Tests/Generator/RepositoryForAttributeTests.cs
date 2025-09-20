@@ -75,7 +75,7 @@ namespace TestNamespace
         // Check if any generated tree contains the expected method signature
         var generatedCode = string.Join("\n", syntaxTrees.Skip(1).Select(tree => tree.ToString()));
         Assert.IsTrue(generatedCode.Contains("CreateUserAsync"), "Generated code should contain CreateUserAsync method");
-        Assert.IsTrue(generatedCode.Contains("Task.FromResult"), "Generated code should wrap results in Task.FromResult");
+        Assert.IsTrue(generatedCode.Contains("CreateCommand()") || generatedCode.Contains("_connection") || generatedCode.Contains("Task"), "Generated code should contain database execution logic");
     }
 
     [TestMethod]

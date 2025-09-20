@@ -6,111 +6,66 @@
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Sqlx.Generator.Core;
-using System.Linq;
 
 namespace Sqlx.Tests.Generator;
 
 /// <summary>
-/// Simple tests for OperationGeneratorFactory class.
+/// Simple tests for SqlTemplateEngine class.
 /// </summary>
 [TestClass]
 public class OperationGeneratorSimpleTests : TestBase
 {
-    private OperationGeneratorFactory _factory = null!;
+    private ISqlTemplateEngine _templateEngine = null!;
 
     [TestInitialize]
     public override void Setup()
     {
         base.Setup();
-        _factory = new OperationGeneratorFactory();
+        _templateEngine = new SqlTemplateEngine();
     }
 
     [TestMethod]
-    public void Constructor_CreatesFactory_WithDefaultGenerators()
-    {
-        // Arrange & Act
-        var factory = new OperationGeneratorFactory();
-        var generators = factory.GetAllGenerators();
-
-        // Assert
-        Assert.IsNotNull(factory);
-        Assert.IsNotNull(generators);
-        Assert.AreEqual(4, generators.Count());
-    }
-
-    [TestMethod]
-    public void GetAllGenerators_ReturnsCollection()
-    {
-        // Act
-        var generators = _factory.GetAllGenerators();
-
-        // Assert
-        Assert.IsNotNull(generators);
-        Assert.AreEqual(4, generators.Count());
-    }
-
-    [TestMethod]
-    public void RegisterGenerator_AddsToCollection()
+    public void ValidateTemplate_ValidSql_ReturnsValid()
     {
         // Arrange
-        var customGenerator = new MockOperationGenerator();
-        var initialCount = _factory.GetAllGenerators().Count();
+        var sql = "SELECT * FROM Users WHERE Id = @id";
 
         // Act
-        _factory.RegisterGenerator(customGenerator);
-        var newCount = _factory.GetAllGenerators().Count();
+        var result = _templateEngine.ValidateTemplate(sql);
 
         // Assert
-        Assert.AreEqual(initialCount + 1, newCount);
+        Assert.IsNotNull(result);
+        Assert.IsTrue(result.IsValid);
+        Assert.AreEqual(0, result.Errors.Count);
     }
 
     [TestMethod]
-    public void RegisterGenerator_NullGenerator_DoesNotAdd()
+    public void ValidateTemplate_EmptyTemplate_ReturnsInvalid()
     {
         // Arrange
-        var initialCount = _factory.GetAllGenerators().Count();
+        var sql = "";
 
         // Act
-        _factory.RegisterGenerator(null!);
-        var newCount = _factory.GetAllGenerators().Count();
+        var result = _templateEngine.ValidateTemplate(sql);
 
         // Assert
-        Assert.AreEqual(initialCount, newCount);
+        Assert.IsNotNull(result);
+        Assert.IsFalse(result.IsValid);
+        Assert.IsTrue(result.Errors.Count > 0);
     }
 
     [TestMethod]
-    public void RegisterGenerator_DuplicateType_DoesNotAddDuplicate()
+    public void ValidateTemplate_TemplateWithPlaceholders_ReturnsValid()
     {
         // Arrange
-        var customGenerator1 = new MockOperationGenerator();
-        var customGenerator2 = new MockOperationGenerator();
-        var initialCount = _factory.GetAllGenerators().Count();
+        var sql = "SELECT {{columns:auto}} FROM {{table}} WHERE {{where:id}}";
 
         // Act
-        _factory.RegisterGenerator(customGenerator1);
-        _factory.RegisterGenerator(customGenerator2);
-        var newCount = _factory.GetAllGenerators().Count();
+        var result = _templateEngine.ValidateTemplate(sql);
 
         // Assert
-        Assert.AreEqual(initialCount + 1, newCount); // Only one should be added
-    }
-
-    /// <summary>
-    /// Mock implementation of IOperationGenerator for testing.
-    /// </summary>
-    private class MockOperationGenerator : IOperationGenerator
-    {
-        public string OperationName => "MockOperation";
-
-        public bool CanHandle(Microsoft.CodeAnalysis.IMethodSymbol method)
-        {
-            return method?.Name?.StartsWith("Mock") == true;
-        }
-
-        public void GenerateOperation(OperationGenerationContext context)
-        {
-            // Mock implementation
-        }
+        Assert.IsNotNull(result);
+        Assert.IsTrue(result.IsValid);
     }
 }
 

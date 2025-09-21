@@ -119,7 +119,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                 {
                     context.ReportDiagnostic(Diagnostic.Create(
                         new DiagnosticDescriptor("SQLX9996", "Method group processing error",
-                        $"Error processing method group for {group.Key?.Name ?? "unknown"}: {ex.Message}", 
+                        $"Error processing method group for {group.Key?.Name ?? "unknown"}: {ex.Message}",
                         "Generator", DiagnosticSeverity.Error, true), null));
                 }
             }
@@ -128,7 +128,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         {
             context.ReportDiagnostic(Diagnostic.Create(
                 new DiagnosticDescriptor("SQLX9995", "Existing method processing error",
-                $"Error processing existing methods: {ex.Message}", 
+                $"Error processing existing methods: {ex.Message}",
                 "Generator", DiagnosticSeverity.Error, true), null));
         }
     }
@@ -162,51 +162,24 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                 }
 
                 var generationContext = new RepositoryGenerationContext(
-                    context, 
-                    repositoryClass, 
-                    symbols.RepositoryForAttributeSymbol, 
+                    context,
+                    repositoryClass,
+                    symbols.RepositoryForAttributeSymbol,
                     symbols.TableNameAttributeSymbol,
-                    symbols.SqlxAttributeSymbol!,
-                    _generatorService.TypeInferenceService, 
-                    _generatorService.CodeGenerationService,
-                    _generatorService.TemplateEngine, 
-                    _generatorService.AttributeHandler, 
-                    _generatorService.MethodAnalyzer);
+                    _generatorService.TypeInferenceService,
+                    _generatorService.TemplateEngine,
+                    _generatorService.AttributeHandler);
                 _generatorService.CodeGenerationService.GenerateRepositoryImplementation(generationContext);
             }
             catch (Exception ex)
             {
                 context.ReportDiagnostic(Diagnostic.Create(
                     new DiagnosticDescriptor("SQLX9997", "Repository class processing error",
-                    $"Error processing repository class {repositoryClass.Name}: {ex.Message}", 
+                    $"Error processing repository class {repositoryClass.Name}: {ex.Message}",
                     "Generator", DiagnosticSeverity.Error, true), null));
             }
         }
     }
-
-    /// <summary>
-    /// Generates or copies attributes for a method.
-    /// </summary>
-    protected virtual string GenerateSqlxAttribute(IMethodSymbol method, INamedTypeSymbol? entityType, string tableName)
-    {
-        var sb = new IndentedStringBuilder(string.Empty);
-        _generatorService.GenerateAttributes(sb, method, entityType, tableName);
-        return sb.ToString();
-    }
-
-    /// <summary>
-    /// Generates SqlxAttribute from existing attribute data.
-    /// </summary>
-    protected virtual string GenerateSqlxAttribute(AttributeData attribute) =>
-        "[Sqlx(\"SELECT * FROM TableName\")]"; // Simplified fallback
-
-    /// <summary>
-    /// Determines if a type is a collection type.
-    /// </summary>
-    protected virtual bool IsCollectionType(ITypeSymbol type) =>
-        type is INamedTypeSymbol namedType && 
-        (namedType.Name is "IList" or "List" or "IEnumerable" or "ICollection" or "IReadOnlyList" ||
-         (namedType.IsGenericType && namedType.Name is "IList" or "List" or "IEnumerable" or "ICollection" or "IReadOnlyList"));
 
     /// <summary>
     /// Container for symbol references needed during code generation.
@@ -311,7 +284,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         {
             context.ReportDiagnostic(Diagnostic.Create(
                 new DiagnosticDescriptor("SQLX9998", "Syntax node processing error",
-                $"Error processing syntax nodes: {ex.Message}", 
+                $"Error processing syntax nodes: {ex.Message}",
                 "Generator", DiagnosticSeverity.Error, true), null));
         }
     }

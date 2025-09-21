@@ -4,10 +4,6 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-using Sqlx.SqlGen;
-using System;
-using System.Linq;
-
 namespace Sqlx.Generator.Core;
 
 /// <summary>
@@ -19,7 +15,7 @@ internal class SQLiteDialectProvider : BaseDialectProvider
     public override SqlDefine SqlDefine => new SqlDefine("[", "]", "'", "'", "@"); // Use @ for actual parameter generation
 
     /// <inheritdoc />
-    public override SqlDefineTypes DialectType => SqlDefineTypes.SQLite;
+    public override Generator.SqlDefineTypes DialectType => SqlDefineTypes.SQLite;
 
     /// <inheritdoc />
     public override string GenerateLimitClause(int? limit, int? offset)

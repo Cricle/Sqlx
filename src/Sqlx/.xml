@@ -4,22 +4,6 @@
         <name>Sqlx</name>
     </assembly>
     <members>
-        <member name="T:Sqlx.Annotations.DbSetTypeAttribute">
-            <summary>
-            Specifies the DbSet type for a property or field.
-            </summary>
-        </member>
-        <member name="M:Sqlx.Annotations.DbSetTypeAttribute.#ctor(System.Type)">
-            <summary>
-            Initializes a new instance of the <see cref="T:Sqlx.Annotations.DbSetTypeAttribute"/> class.
-            </summary>
-            <param name="entityType">The entity type.</param>
-        </member>
-        <member name="P:Sqlx.Annotations.DbSetTypeAttribute.EntityType">
-            <summary>
-            Gets the entity type.
-            </summary>
-        </member>
         <member name="T:Sqlx.Annotations.ExpressionToSqlAttribute">
             <summary>
             Indicates that a parameter should be converted from a LINQ expression to SQL.
@@ -216,214 +200,6 @@
             Gets the table name.
             </summary>
         </member>
-        <member name="T:Sqlx.ExpressionToSql`1">
-            <summary>
-            Simple and efficient LINQ Expression to SQL converter (AOT-friendly, lock-free design)
-            </summary>
-            <typeparam name="T">Entity type</typeparam>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.ForSqlServer">
-            <summary>SQL Server dialect</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.ForMySql">
-            <summary>MySQL dialect</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.ForPostgreSQL">
-            <summary>PostgreSQL dialect</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.ForSqlite">
-            <summary>SQLite dialect</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.ForOracle">
-            <summary>Oracle dialect</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.ForDB2">
-            <summary>DB2 dialect</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.#ctor(Sqlx.SqlDialect)">
-            <summary>
-            Initializes with specified SQL dialect
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.Select(System.String[])">
-            <summary>Sets custom SELECT columns</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.Select``1(System.Linq.Expressions.Expression{System.Func{`0,``0}})">
-            <summary>Sets SELECT columns using expression</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.Select(System.Linq.Expressions.Expression{System.Func{`0,System.Object}}[])">
-            <summary>Sets SELECT columns using multiple expressions</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.ConfigureSelect(System.Collections.Generic.List{System.String})">
-            <summary>Configures SELECT columns</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.GetEntityProperties``1">
-            <summary>Gets entity properties using generics (AOT-friendly)</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.ExtractColumnsFromSelector``1(System.Linq.Expressions.Expression{System.Func{`0,``0}})">
-            <summary>
-            Unified column extraction logic to avoid code duplication
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.Where(System.Linq.Expressions.Expression{System.Func{`0,System.Boolean}})">
-            <summary>Adds WHERE condition</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.And(System.Linq.Expressions.Expression{System.Func{`0,System.Boolean}})">
-            <summary>Adds AND condition (alias for Where)</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.OrderBy``1(System.Linq.Expressions.Expression{System.Func{`0,``0}})">
-            <summary>Adds ORDER BY ascending</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.OrderByDescending``1(System.Linq.Expressions.Expression{System.Func{`0,``0}})">
-            <summary>Adds ORDER BY descending</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.Take(System.Nullable{System.Int32})">
-            <summary>Limits result count</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.Skip(System.Nullable{System.Int32})">
-            <summary>Skips specified number of records</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.Set``1(System.Linq.Expressions.Expression{System.Func{`0,``0}},``0)">
-            <summary>Sets column value for UPDATE</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.Set``1(System.Linq.Expressions.Expression{System.Func{`0,``0}},System.Linq.Expressions.Expression{System.Func{`0,``0}})">
-            <summary>Sets column value using expression for UPDATE</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.ConfigureSet``1(System.Linq.Expressions.Expression{System.Func{`0,``0}},``0,System.Linq.Expressions.Expression{System.Func{`0,``0}})">
-            <summary>Configures UPDATE SET clause</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.AsInsert">
-            <summary>Sets as INSERT operation</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.AsInsert(System.Linq.Expressions.Expression{System.Func{`0,System.Object}})">
-            <summary>Sets as INSERT operation with specific columns</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.AsInsertInto(System.Linq.Expressions.Expression{System.Func{`0,System.Object}})">
-            <summary>Sets as INSERT INTO with explicit columns (AOT-friendly)</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.AsInsertIntoAll">
-            <summary>Sets as INSERT INTO all columns</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.AsInsertSelect(System.String)">
-            <summary>Sets as INSERT using SELECT subquery</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.AsInsertSelect``1(Sqlx.ExpressionToSql{``0})">
-            <summary>Sets as INSERT using another query</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.Insert">
-            <summary>Creates INSERT operation</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.Insert(System.Linq.Expressions.Expression{System.Func{`0,System.Object}})">
-            <summary>Sets INSERT columns using expression</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.InsertInto(System.Linq.Expressions.Expression{System.Func{`0,System.Object}})">
-            <summary>INSERT INTO with explicit columns (AOT-friendly)</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.InsertIntoAll">
-            <summary>INSERT INTO all columns (uses reflection)</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.InsertSelect(System.String)">
-            <summary>INSERT using SELECT subquery</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.InsertSelect``1(Sqlx.ExpressionToSql{``0})">
-            <summary>INSERT using another query</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.ConfigureInsert(System.Linq.Expressions.Expression{System.Func{`0,System.Object}})">
-            <summary>Configures INSERT operation with optional columns</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.ConfigureInsertAll">
-            <summary>Configures INSERT with all entity columns</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.ConfigureInsertSelect(System.String)">
-            <summary>Configures INSERT using SELECT subquery</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.ConfigureInsertSelect``1(Sqlx.ExpressionToSql{``0})">
-            <summary>Configures INSERT using another query</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.SetInsertColumns(System.Linq.Expressions.Expression{System.Func{`0,System.Object}})">
-            <summary>
-            Unified INSERT column setting logic
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.Values(System.Object[])">
-            <summary>Specifies INSERT values</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.AddValues(System.Object[])">
-            <summary>Adds multiple INSERT values</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.ConfigureValues(System.Object[])">
-            <summary>Configures INSERT values</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.GroupBy``1(System.Linq.Expressions.Expression{System.Func{`0,``0}})">
-            <summary>Adds GROUP BY clause, returns grouped query</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.AddGroupBy(System.String)">
-            <summary>Adds GROUP BY column</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.Having(System.Linq.Expressions.Expression{System.Func{`0,System.Boolean}})">
-            <summary>Adds HAVING condition</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.ConfigureGroupBy(System.String)">
-            <summary>Configures GROUP BY</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.ConfigureHaving(System.Linq.Expressions.Expression{System.Func{`0,System.Boolean}})">
-            <summary>Configures HAVING condition</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.Delete">
-            <summary>Creates DELETE statement</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.Delete(System.Linq.Expressions.Expression{System.Func{`0,System.Boolean}})">
-            <summary>Creates DELETE statement with WHERE condition</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.Update">
-            <summary>Creates UPDATE statement</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.ConfigureDelete(System.Linq.Expressions.Expression{System.Func{`0,System.Boolean}})">
-            <summary>Configures DELETE operation</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.ConfigureUpdate">
-            <summary>Configures UPDATE operation</summary>
-        </member>
-        <member name="F:Sqlx.ExpressionToSql`1._custom">
-            <summary>
-            Set custom SELECT clause (internal use).
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.BuildSql">
-            <summary>
-            Build SQL statement, simple and direct without caching.
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.BuildDeleteSql">
-            <summary>
-            Build DELETE SQL statement.
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.UseParameterizedQueries">
-            <summary>
-            Enable parameterized query mode for SqlTemplate generation
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.ToTemplate">
-            <summary>
-            Convert to SQL template. If parameterized mode is not enabled, it will automatically enable and rebuild the query.
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.ToSql">
-            <summary>
-            Convert to SQL string.
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.ToWhereClause">
-            <summary>
-            Generate WHERE clause part.
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSql`1.ToAdditionalClause">
-            <summary>
-            Generate additional clauses (GROUP BY, HAVING, ORDER BY, LIMIT, OFFSET).
-            </summary>
-        </member>
         <member name="T:Sqlx.SqlOperation">
             <summary>SQL operation types</summary>
         </member>
@@ -477,6 +253,161 @@
         </member>
         <member name="M:Sqlx.Any.Guid(System.String)">
             <summary>Named Guid placeholder</summary>
+        </member>
+        <member name="T:Sqlx.ExpressionToSql`1">
+            <summary>
+            Simple and efficient LINQ Expression to SQL converter (AOT-friendly, lock-free design)
+            </summary>
+            <typeparam name="T">Entity type</typeparam>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.#ctor(Sqlx.SqlDialect)">
+            <summary>
+            Initializes with specified SQL dialect
+            </summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.Select(System.String[])">
+            <summary>Sets custom SELECT columns</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.Select``1(System.Linq.Expressions.Expression{System.Func{`0,``0}})">
+            <summary>Sets SELECT columns using expression</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.Select(System.Linq.Expressions.Expression{System.Func{`0,System.Object}}[])">
+            <summary>Sets SELECT columns using multiple expressions</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.GetEntityProperties``1">
+            <summary>Gets entity properties using generics (AOT-friendly)</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.ExtractColumnsFromSelector``1(System.Linq.Expressions.Expression{System.Func{`0,``0}})">
+            <summary>Extract columns from selector</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.Where(System.Linq.Expressions.Expression{System.Func{`0,System.Boolean}})">
+            <summary>Adds WHERE condition</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.And(System.Linq.Expressions.Expression{System.Func{`0,System.Boolean}})">
+            <summary>Adds AND condition (alias for Where)</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.OrderBy``1(System.Linq.Expressions.Expression{System.Func{`0,``0}})">
+            <summary>Adds ORDER BY ascending</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.OrderByDescending``1(System.Linq.Expressions.Expression{System.Func{`0,``0}})">
+            <summary>Adds ORDER BY descending</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.Take(System.Nullable{System.Int32})">
+            <summary>Limits result count</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.Skip(System.Nullable{System.Int32})">
+            <summary>Skips specified number of records</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.Set``1(System.Linq.Expressions.Expression{System.Func{`0,``0}},``0)">
+            <summary>Sets column value for UPDATE</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.Set``1(System.Linq.Expressions.Expression{System.Func{`0,``0}},System.Linq.Expressions.Expression{System.Func{`0,``0}})">
+            <summary>Sets column value using expression for UPDATE</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.AsInsert">
+            <summary>Sets as INSERT operation</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.AsInsert(System.Linq.Expressions.Expression{System.Func{`0,System.Object}})">
+            <summary>Sets as INSERT operation with specific columns</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.AsInsertInto(System.Linq.Expressions.Expression{System.Func{`0,System.Object}})">
+            <summary>Sets as INSERT INTO with explicit columns (AOT-friendly)</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.AsInsertIntoAll">
+            <summary>Sets as INSERT INTO all columns</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.AsInsertSelect(System.String)">
+            <summary>Sets as INSERT using SELECT subquery</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.AsInsertSelect``1(Sqlx.ExpressionToSql{``0})">
+            <summary>Sets as INSERT using another query</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.Insert">
+            <summary>Creates INSERT operation</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.Insert(System.Linq.Expressions.Expression{System.Func{`0,System.Object}})">
+            <summary>Sets INSERT columns using expression</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.InsertInto(System.Linq.Expressions.Expression{System.Func{`0,System.Object}})">
+            <summary>INSERT INTO with explicit columns (AOT-friendly)</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.InsertIntoAll">
+            <summary>INSERT INTO all columns (uses reflection)</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.InsertSelect(System.String)">
+            <summary>INSERT using SELECT subquery</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.InsertSelect``1(Sqlx.ExpressionToSql{``0})">
+            <summary>INSERT using another query</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.SetInsertColumns(System.Linq.Expressions.Expression{System.Func{`0,System.Object}})">
+            <summary>Set INSERT columns</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.Values(System.Object[])">
+            <summary>Specifies INSERT values</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.AddValues(System.Object[])">
+            <summary>Adds multiple INSERT values</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.GroupBy``1(System.Linq.Expressions.Expression{System.Func{`0,``0}})">
+            <summary>Adds GROUP BY clause, returns grouped query</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.AddGroupBy(System.String)">
+            <summary>Adds GROUP BY column</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.Having(System.Linq.Expressions.Expression{System.Func{`0,System.Boolean}})">
+            <summary>Adds HAVING condition</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.Delete">
+            <summary>Creates DELETE statement</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.Delete(System.Linq.Expressions.Expression{System.Func{`0,System.Boolean}})">
+            <summary>Creates DELETE statement with WHERE condition</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.Update">
+            <summary>Creates UPDATE statement</summary>
+        </member>
+        <member name="F:Sqlx.ExpressionToSql`1._custom">
+            <summary>Custom SELECT clause (internal use)</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.BuildSql">
+            <summary>Build SQL statement</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.BuildDeleteSql">
+            <summary>Build DELETE SQL statement</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.UseParameterizedQueries">
+            <summary>Enable parameterized query mode for SqlTemplate generation</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.ToTemplate">
+            <summary>Convert to SQL template</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.ToSql">
+            <summary>Convert to SQL string</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.ToWhereClause">
+            <summary>Generate WHERE clause part</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.ToAdditionalClause">
+            <summary>Generate additional clauses (GROUP BY, HAVING, ORDER BY, LIMIT, OFFSET)</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.ForSqlServer">
+            <summary>SQL Server dialect</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.ForMySql">
+            <summary>MySQL dialect</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.ForPostgreSQL">
+            <summary>PostgreSQL dialect</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.ForSqlite">
+            <summary>SQLite dialect</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.ForOracle">
+            <summary>Oracle dialect</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSql`1.ForDB2">
+            <summary>DB2 dialect</summary>
         </member>
         <member name="T:Sqlx.GroupedExpressionToSql`2">
             <summary>
@@ -572,15 +503,10 @@
             <summary>Sets table name</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.ParseExpression(System.Linq.Expressions.Expression,System.Boolean)">
-            <summary>
-            Enhanced expression parsing with support for math functions, string functions, and nested expressions
-            </summary>
+            <summary>Parse expression to SQL</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.ParseExpressionRaw(System.Linq.Expressions.Expression)">
             <summary>Parses expression as raw value</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.ParseConditionalExpression(System.Linq.Expressions.ConditionalExpression)">
-            <summary>Parses conditional expression</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.ParseMethodCallExpression(System.Linq.Expressions.MethodCallExpression)">
             <summary>Parses method call expression</summary>
@@ -589,39 +515,25 @@
             <summary>Extracts parameter name from method arguments</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.GetDefaultValueForValueType(System.Type)">
-            <summary>
-            Get default value for value types (AOT-friendly)
-            </summary>
+            <summary>Get default value for value types (AOT-friendly)</summary>
+        </member>
+        <member name="M:Sqlx.ExpressionToSqlBase.GetValueTypeDefault(System.Type)">
+            <summary>AOT-safe value type default creation</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.ParseAggregateMethodCall(System.Linq.Expressions.MethodCallExpression)">
-            <summary>
-            Parse method calls in aggregate functions with nested function support
-            </summary>
+            <summary>Parse aggregate function calls</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.ParseLambdaExpression(System.Linq.Expressions.Expression)">
-            <summary>
-            Enhanced Lambda expression parsing with complex nested function support
-            </summary>
+            <summary>Parse lambda expression</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.TryParseBooleanComparison(System.Linq.Expressions.BinaryExpression)">
-            <summary>
-            Try to parse boolean comparison, return null if not a boolean comparison
-            </summary>
+            <summary>Try to parse boolean comparison</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.ParseBinaryExpression(System.Linq.Expressions.BinaryExpression)">
-            <summary>
-            Parse binary expression to SQL string
-            </summary>
+            <summary>Parse binary expression to SQL</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.GetColumnName(System.Linq.Expressions.Expression)">
-            <summary>
-            Get column name corresponding to expression
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.GetConstantValue(System.Linq.Expressions.ConstantExpression)">
-            <summary>
-            Get value of constant expression
-            </summary>
+            <summary>Get column name from expression</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.IsEntityProperty(System.Linq.Expressions.MemberExpression)">
             <summary>Checks if member is entity property</summary>
@@ -629,75 +541,44 @@
         <member name="M:Sqlx.ExpressionToSqlBase.GetMemberValueOptimized(System.Linq.Expressions.MemberExpression)">
             <summary>Gets member value optimized</summary>
         </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.GetSimpleDefaultValue(System.Type)">
-            <summary>
-            Get simple default value (without complex reflection)
-            </summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.FormatConstantValue``1(``0)">
-            <summary>Formats constant value</summary>
-        </member>
         <member name="M:Sqlx.ExpressionToSqlBase.FormatConstantValue(System.Object)">
             <summary>Formats constant value</summary>
         </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.CreateParameter``1(``0)">
-            <summary>Creates parameter</summary>
-        </member>
         <member name="M:Sqlx.ExpressionToSqlBase.CreateParameter(System.Object)">
             <summary>Creates parameter</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.NeedsParentheses(System.Linq.Expressions.Expression)">
-            <summary>Checks if expression needs parentheses</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.RemoveOuterParentheses(System.String)">
             <summary>Removes outer parentheses from condition</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.IsBooleanMember(System.Linq.Expressions.Expression)">
-            <summary>Checks if expression is boolean member</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.IsConstantTrue(System.Linq.Expressions.Expression)">
-            <summary>Checks if expression is constant true</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.IsConstantFalse(System.Linq.Expressions.Expression)">
-            <summary>Checks if expression is constant false</summary>
+            <summary>Helper methods for expression checking</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.IsStringPropertyAccess(System.Linq.Expressions.MemberExpression)">
-            <summary>Checks if member is string property access</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.IsStringConcatenation(System.Linq.Expressions.BinaryExpression)">
-            <summary>Checks if binary is string concatenation</summary>
+            <summary>String and entity property checks</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.ParseStringProperty(System.Linq.Expressions.MemberExpression)">
             <summary>Parses string property</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.ParseNotExpression(System.Linq.Expressions.Expression)">
-            <summary>Parses NOT expression</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.FormatLogicalExpression(System.String,System.String,System.String,System.Linq.Expressions.BinaryExpression)">
-            <summary>Formats logical expression</summary>
+            <summary>Expression parsing helpers</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.ExtractColumns(System.Linq.Expressions.Expression)">
-            <summary>
-            Extract column name list from expression
-            </summary>
+            <summary>Extract column names from expression</summary>
         </member>
         <member name="P:Sqlx.ExpressionToSqlBase.DatabaseType">
             <summary>Database type string</summary>
         </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.ParseMathFunction(System.Linq.Expressions.MethodCallExpression,System.String)">
+        <member name="M:Sqlx.ExpressionToSqlBase.ParseMathFunction(System.Linq.Expressions.MethodCallExpression)">
             <summary>Parses math function</summary>
         </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.ParseStringFunction(System.Linq.Expressions.MethodCallExpression,System.String)">
+        <member name="M:Sqlx.ExpressionToSqlBase.ParseStringFunction(System.Linq.Expressions.MethodCallExpression)">
             <summary>Parses string function</summary>
         </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.ParseDateTimeFunction(System.Linq.Expressions.MethodCallExpression,System.String)">
+        <member name="M:Sqlx.ExpressionToSqlBase.ParseDateTimeFunction(System.Linq.Expressions.MethodCallExpression)">
             <summary>Parses DateTime function</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.GetOperatorFunction(System.String,System.String,System.String)">
             <summary>Gets operator function</summary>
-        </member>
-        <member name="M:Sqlx.ExpressionToSqlBase.GetBinaryOperator(System.Linq.Expressions.ExpressionType)">
-            <summary>Gets binary operator</summary>
         </member>
         <member name="M:Sqlx.ExpressionToSqlBase.ToSql">
             <summary>Converts to SQL string</summary>
@@ -706,104 +587,52 @@
             <summary>Converts to SQL template</summary>
         </member>
         <member name="T:Sqlx.ParameterizedSql">
-            <summary>
-            Represents a parameterized SQL statement with SQL text and parameter values
-            This is an execution-time instance, not a reusable template definition
-            </summary>
+            <summary>Parameterized SQL</summary>
         </member>
         <member name="M:Sqlx.ParameterizedSql.#ctor(System.String,System.Collections.Generic.IReadOnlyDictionary{System.String,System.Object})">
+            <summary>Parameterized SQL</summary>
+        </member>
+        <member name="T:Sqlx.SimpleSql">
             <summary>
-            Represents a parameterized SQL statement with SQL text and parameter values
-            This is an execution-time instance, not a reusable template definition
+            极简SQL模板 - 统一实现
             </summary>
         </member>
-        <member name="F:Sqlx.ParameterizedSql.Empty">
+        <member name="M:Sqlx.SimpleSql.Create(System.String)">
+            <summary>创建模板</summary>
+        </member>
+        <member name="M:Sqlx.SimpleSql.Execute(System.String,System.Collections.Generic.Dictionary{System.String,System.Object})">
+            <summary>直接执行</summary>
+        </member>
+        <member name="M:Sqlx.SimpleSql.Execute(System.String)">
+            <summary>无参执行</summary>
+        </member>
+        <member name="M:Sqlx.SimpleSql.Batch(System.String,System.Collections.Generic.IEnumerable{System.Collections.Generic.Dictionary{System.String,System.Object}})">
+            <summary>批量处理</summary>
+        </member>
+        <member name="T:Sqlx.Template">
             <summary>
-            Empty ParameterizedSql instance
+            SQL模板实例
             </summary>
         </member>
-        <member name="M:Sqlx.ParameterizedSql.CreateWithDictionary(System.String,System.Collections.Generic.Dictionary{System.String,System.Object})">
+        <member name="M:Sqlx.Template.With(System.Collections.Generic.Dictionary{System.String,System.Object})">
+            <summary>设置参数</summary>
+        </member>
+        <member name="M:Sqlx.Template.Set(System.String,System.Object)">
+            <summary>设置单个参数</summary>
+        </member>
+        <member name="M:Sqlx.Template.ToSql">
+            <summary>生成SQL</summary>
+        </member>
+        <member name="M:Sqlx.Template.ToParameterized">
+            <summary>转为参数化SQL</summary>
+        </member>
+        <member name="T:Sqlx.Params">
+            <summary>参数构建器</summary>
+        </member>
+        <member name="T:Sqlx.StringSqlExtensions">
             <summary>
-            Creates parameterized SQL using dictionary
+            字符串扩展
             </summary>
-            <param name="sql">SQL statement</param>
-            <param name="parameters">Parameter dictionary</param>
-            <returns>ParameterizedSql instance</returns>
-        </member>
-        <member name="M:Sqlx.ParameterizedSql.Create(System.String,System.Collections.Generic.Dictionary{System.String,System.Object})">
-            <summary>Creates parameterized SQL using object parameters</summary>
-        </member>
-        <member name="P:Sqlx.ParameterizedSql.Render">
-            <summary>
-            Renders to final SQL string with inlined parameters
-            </summary>
-            <returns>Rendered SQL string</returns>
-        </member>
-        <member name="M:Sqlx.ParameterizedSql.Contains(System.String)">
-            <summary>
-            Checks if the SQL contains a specific substring
-            </summary>
-            <param name="value">The substring to search for</param>
-            <returns>True if the SQL contains the substring</returns>
-        </member>
-        <member name="M:Sqlx.ParameterizedSql.ToString">
-            <summary>
-            Returns a string representation of the ParameterizedSql.
-            </summary>
-        </member>
-        <member name="T:Sqlx.SqlParameterRenderer">
-            <summary>
-            SQL parameter renderer for inlining parameters into SQL
-            </summary>
-        </member>
-        <member name="T:Sqlx.SimpleOperationInferrer">
-            <summary>
-            Simple operation inferrer for SQL template analysis
-            </summary>
-        </member>
-        <member name="M:Sqlx.SimpleOperationInferrer.InferFromSql(System.String)">
-            <summary>
-            Infers SQL operation type from SQL text
-            </summary>
-            <param name="sql">SQL text to analyze</param>
-            <returns>Inferred SQL operation type</returns>
-        </member>
-        <member name="M:Sqlx.SimpleOperationInferrer.InferFromMethodName(System.String)">
-            <summary>
-            Infers SQL operation type from method name
-            </summary>
-            <param name="methodName">Method name to analyze</param>
-            <returns>Inferred SQL operation type</returns>
-        </member>
-        <member name="M:Sqlx.SimpleOperationInferrer.IsComplexSql(System.String)">
-            <summary>
-            Analyzes SQL for complexity
-            </summary>
-            <param name="sql">SQL to analyze</param>
-            <returns>True if SQL is complex</returns>
-        </member>
-        <member name="T:Sqlx.DatabaseType">
-            <summary>
-            Database types enumeration for type-safe database selection
-            </summary>
-        </member>
-        <member name="F:Sqlx.DatabaseType.SqlServer">
-            <summary>Microsoft SQL Server</summary>
-        </member>
-        <member name="F:Sqlx.DatabaseType.MySql">
-            <summary>MySQL database</summary>
-        </member>
-        <member name="F:Sqlx.DatabaseType.PostgreSql">
-            <summary>PostgreSQL database</summary>
-        </member>
-        <member name="F:Sqlx.DatabaseType.SQLite">
-            <summary>SQLite database</summary>
-        </member>
-        <member name="F:Sqlx.DatabaseType.Oracle">
-            <summary>Oracle database</summary>
-        </member>
-        <member name="F:Sqlx.DatabaseType.DB2">
-            <summary>DB2 database</summary>
         </member>
         <member name="T:Sqlx.SqlDefine">
             <summary>
@@ -834,7 +663,7 @@
         <member name="F:Sqlx.SqlDefine.DB2">
             <summary>DB2: "column" with ? parameters</summary>
         </member>
-        <member name="M:Sqlx.SqlDefine.GetDialect(Sqlx.DatabaseType)">
+        <member name="M:Sqlx.SqlDefine.GetDialect(Sqlx.Annotations.SqlDefineTypes)">
             <summary>Gets SQL dialect by database type</summary>
         </member>
         <member name="T:Sqlx.SqlDialect">
@@ -867,135 +696,14 @@
         <member name="M:Sqlx.SqlDialect.GetLimitClause(System.Int32,System.Int32)">
             <summary>Gets pagination syntax</summary>
         </member>
-        <member name="T:Sqlx.SqlDialectType">
-            <summary>
-            SQL dialect type enumeration
-            </summary>
-        </member>
-        <member name="F:Sqlx.SqlDialectType.SqlServer">
-            <summary>SQL Server dialect</summary>
-        </member>
-        <member name="F:Sqlx.SqlDialectType.MySql">
-            <summary>MySQL dialect</summary>
-        </member>
-        <member name="F:Sqlx.SqlDialectType.PostgreSql">
-            <summary>PostgreSQL dialect</summary>
-        </member>
-        <member name="F:Sqlx.SqlDialectType.SQLite">
-            <summary>SQLite dialect</summary>
-        </member>
-        <member name="F:Sqlx.SqlDialectType.Oracle">
-            <summary>Oracle dialect</summary>
-        </member>
-        <member name="F:Sqlx.SqlDialectType.DB2">
-            <summary>DB2 dialect</summary>
-        </member>
-        <member name="T:Sqlx.SqlTemplateOptions">
-            <summary>
-            SQL template options for configuration
-            </summary>
-        </member>
-        <member name="P:Sqlx.SqlTemplateOptions.Dialect">
-            <summary>SQL dialect type</summary>
-        </member>
-        <member name="P:Sqlx.SqlTemplateOptions.UseCache">
-            <summary>Whether to use cache</summary>
-        </member>
-        <member name="P:Sqlx.SqlTemplateOptions.ValidateParameters">
-            <summary>Whether to validate parameters</summary>
-        </member>
-        <member name="P:Sqlx.SqlTemplateOptions.UseParameterizedQueries">
-            <summary>Whether to use parameterized queries</summary>
-        </member>
-        <member name="P:Sqlx.SqlTemplateOptions.SafeMode">
-            <summary>Whether to enable safe mode</summary>
-        </member>
-        <member name="P:Sqlx.SqlTemplateOptions.EnableCaching">
-            <summary>Whether to enable caching</summary>
-        </member>
-        <member name="P:Sqlx.SqlTemplateOptions.CustomFunctions">
-            <summary>Custom functions dictionary</summary>
-        </member>
-        <member name="M:Sqlx.SqlTemplateOptions.ForSqlServer">
-            <summary>Creates options for SQL Server</summary>
-        </member>
-        <member name="M:Sqlx.SqlTemplateOptions.ForMySql">
-            <summary>Creates options for MySQL</summary>
-        </member>
-        <member name="M:Sqlx.SqlTemplateOptions.ForPostgreSQL">
-            <summary>Creates options for PostgreSQL</summary>
-        </member>
-        <member name="M:Sqlx.SqlTemplateOptions.ForSQLite">
-            <summary>Creates options for SQLite</summary>
-        </member>
-        <member name="P:Sqlx.SqlTemplateOptions.Default">
-            <summary>Default options</summary>
-        </member>
         <member name="T:Sqlx.SqlTemplate">
-            <summary>
-            Compile-time SQL template - provides safe parameterized query functionality
-            Dynamic SQL features have been migrated to ExpressionToSql, this class focuses on compile-time safety
-            </summary>
+            <summary>SQL template</summary>
         </member>
         <member name="M:Sqlx.SqlTemplate.#ctor(System.String,System.Collections.Generic.IReadOnlyDictionary{System.String,System.Object})">
-            <summary>
-            Compile-time SQL template - provides safe parameterized query functionality
-            Dynamic SQL features have been migrated to ExpressionToSql, this class focuses on compile-time safety
-            </summary>
-        </member>
-        <member name="F:Sqlx.SqlTemplate.Empty">
-            <summary>Empty SQL template</summary>
-        </member>
-        <member name="M:Sqlx.SqlTemplate.Parse(System.String)">
-            <summary>
-            Create compile-time safe SQL template (recommended to use SqlTemplateAttribute)
-            </summary>
-            <param name="sql">SQL string</param>
-            <returns>Template definition</returns>
-        </member>
-        <member name="M:Sqlx.SqlTemplate.Execute(System.Object)">
-            <summary>Executes template with parameters</summary>
-        </member>
-        <member name="M:Sqlx.SqlTemplate.Execute(System.Collections.Generic.Dictionary{System.String,System.Object})">
-            <summary>Executes template with parameter dictionary</summary>
-        </member>
-        <member name="M:Sqlx.SqlTemplate.Bind">
-            <summary>
-            Creates fluent parameter binder
-            </summary>
-            <returns>Parameter binder</returns>
-        </member>
-        <member name="P:Sqlx.SqlTemplate.IsPureTemplate">
-            <summary>Checks if this is a pure template</summary>
-        </member>
-        <member name="M:Sqlx.SqlTemplate.Render(System.Object)">
-            <summary>Renders template with parameters</summary>
-        </member>
-        <member name="M:Sqlx.SqlTemplate.Render(System.Collections.Generic.Dictionary{System.String,System.Object})">
-            <summary>Renders template with parameter dictionary</summary>
-        </member>
-        <member name="M:Sqlx.SqlTemplate.ToString">
-            <summary>String representation</summary>
+            <summary>SQL template</summary>
         </member>
         <member name="T:Sqlx.SqlTemplateBuilder">
-            <summary>
-            Fluent parameter binder
-            </summary>
-        </member>
-        <member name="M:Sqlx.SqlTemplateBuilder.Param``1(System.String,``0)">
-            <summary>
-            Binds parameter
-            </summary>
-        </member>
-        <member name="M:Sqlx.SqlTemplateBuilder.Params(System.Object)">
-            <summary>
-            Batch binds parameters (AOT-friendly)
-            </summary>
-        </member>
-        <member name="M:Sqlx.SqlTemplateBuilder.Build">
-            <summary>
-            Builds final SQL
-            </summary>
+            <summary>Template builder</summary>
         </member>
         <member name="T:System.Runtime.CompilerServices.IsExternalInit">
             <summary>

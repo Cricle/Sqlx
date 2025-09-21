@@ -5,7 +5,6 @@
 // -----------------------------------------------------------------------
 
 using Sqlx.Generator.Core;
-using Sqlx.SqlGen;
 
 namespace Sqlx.Generator;
 

@@ -15,7 +15,6 @@ using System.Linq;
 internal class ClassGenerationContext : GenerationContextBase
 {
     private GeneratorExecutionContext _generatorExecutionContext;
-    private NullableContextOptions _nullableContextOptions;
 
     public ClassGenerationContext(
         INamedTypeSymbol classSymbol,
@@ -25,7 +24,6 @@ internal class ClassGenerationContext : GenerationContextBase
         ClassSymbol = classSymbol;
         Methods = methods.Select(_ => new MethodGenerationContext(this, _)).ToList();
         AttributeSymbol = attributeSymbol;
-        _nullableContextOptions = NullableContextOptions.Disable;
     }
 
     // Parameterless constructor for testing/mocking
@@ -34,7 +32,6 @@ internal class ClassGenerationContext : GenerationContextBase
         ClassSymbol = default!;
         Methods = new List<MethodGenerationContext>();
         AttributeSymbol = default!;
-        _nullableContextOptions = NullableContextOptions.Disable;
     }
 
     public INamedTypeSymbol ClassSymbol { get; }
@@ -51,7 +48,6 @@ internal class ClassGenerationContext : GenerationContextBase
     public void SetExecutionContext(GeneratorExecutionContext context)
     {
         _generatorExecutionContext = context;
-        _nullableContextOptions = context.Compilation.Options.NullableContextOptions;
     }
 
     internal override ISymbol? DbConnection => GetSymbolWithPrimaryConstructor(ClassSymbol, x => x.IsDbConnection());
@@ -144,36 +140,31 @@ internal class ClassGenerationContext : GenerationContextBase
     {
         if (symbol == null) return null;
 
-        // Check fields
+        return FindInMembers(symbol, check) ??
+               FindInConstructors(symbol, check) ??
+               GetSymbolWithPrimaryConstructor(symbol.BaseType, check);
+    }
+
+    private ISymbol? FindInMembers(INamedTypeSymbol symbol, Func<ISymbol, bool> check)
+    {
+        // Check fields and properties
         var field = symbol.GetMembers().OfType<IFieldSymbol>().FirstOrDefault(check);
         if (field != null) return field;
 
-        // Check properties
-        var property = symbol.GetMembers().OfType<IPropertySymbol>().FirstOrDefault(check);
-        if (property != null) return property;
+        return symbol.GetMembers().OfType<IPropertySymbol>().FirstOrDefault(check);
+    }
 
-        // Check primary constructor parameters
+    private ISymbol? FindInConstructors(INamedTypeSymbol symbol, Func<ISymbol, bool> check)
+    {
+        // Check primary constructor parameters first
         var primaryConstructor = PrimaryConstructorAnalyzer.GetPrimaryConstructor(symbol);
-        if (primaryConstructor != null)
-        {
-            var primaryParam = primaryConstructor.Parameters.FirstOrDefault(p => check(p));
-            if (primaryParam != null) return primaryParam;
-        }
+        var primaryParam = primaryConstructor?.Parameters.FirstOrDefault(p => check(p));
+        if (primaryParam != null) return primaryParam;
 
         // Check regular constructor parameters for backward compatibility
-        foreach (var constructor in symbol.InstanceConstructors)
-        {
-            var constructorParam = constructor.Parameters.FirstOrDefault(p => check(p));
-            if (constructorParam != null) return constructorParam;
-        }
-
-        // Check base class
-        if (symbol.BaseType != null)
-        {
-            return GetSymbolWithPrimaryConstructor(symbol.BaseType, check);
-        }
-
-        return null;
+        return symbol.InstanceConstructors
+            .SelectMany(c => c.Parameters)
+            .FirstOrDefault(p => check(p));
     }
 
     private void WriteInterceptMethods(IndentedStringBuilder sb)

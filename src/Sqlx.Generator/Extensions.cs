@@ -44,7 +44,7 @@ internal static class Extensions
     private static bool IsTypeInHierarchy(ISymbol symbol, string targetTypeName)
     {
         if (symbol is not ITypeSymbol type) return false;
-        
+
         while (type != null)
         {
             if (type.Name.Contains(targetTypeName)) return true;
@@ -55,12 +55,6 @@ internal static class Extensions
 
     private static bool IsTaskType(this ITypeSymbol typeSymbol) =>
         typeSymbol.Name == "Task" && typeSymbol.ContainingNamespace?.ToDisplayString() == "System.Threading.Tasks";
-
-    public static bool IsTask(this ITypeSymbol typeSymbol) => typeSymbol.IsTaskType();
-
-    public static bool IsTaskWithResult(this ITypeSymbol typeSymbol) =>
-        typeSymbol is INamedTypeSymbol { IsGenericType: true } namedType &&
-        namedType.IsTaskType() && namedType.TypeArguments.Length == 1;
 
     public static ITypeSymbol? GetTaskResultType(this ITypeSymbol typeSymbol) =>
         typeSymbol is INamedTypeSymbol { IsGenericType: true } namedType &&
@@ -75,13 +69,13 @@ internal static class Extensions
             i.TypeArguments.Length == 1);
     }
 
-    public static bool IsIEnumerable(this ITypeSymbol typeSymbol) => 
+    public static bool IsIEnumerable(this ITypeSymbol typeSymbol) =>
         typeSymbol.FindGenericInterface("IEnumerable") != null;
 
     public static ITypeSymbol? GetEnumerableElementType(this ITypeSymbol typeSymbol) =>
         typeSymbol.FindGenericInterface("IEnumerable")?.TypeArguments[0];
 
-    public static bool IsList(this ITypeSymbol typeSymbol) => 
+    public static bool IsList(this ITypeSymbol typeSymbol) =>
         typeSymbol.FindGenericInterface("IList") != null;
 
     public static bool IsArray(this ITypeSymbol typeSymbol) => typeSymbol.TypeKind == TypeKind.Array;
@@ -148,9 +142,6 @@ internal static class Extensions
         };
     }
 
-    public static string GetDataReadExpression(this ITypeSymbol type, string readerName, string columnName) =>
-        GetDataReadExpressionCore(type, readerName, $"\"{columnName}\"", $"{readerName}.GetOrdinal(\"{columnName}\")");
-
     public static string GetParameterName(this ISymbol symbol, string prefix = "") => prefix + NameMapper.MapName(symbol.Name);
 
     public static bool IsScalarType(this ITypeSymbol type)
@@ -212,8 +203,8 @@ internal static class Extensions
 
     public static bool IsTuple(this ITypeSymbol type) =>
         type is INamedTypeSymbol namedType &&
-        (namedType.IsTupleType || 
-         (namedType.Name.StartsWith("ValueTuple") && 
+        (namedType.IsTupleType ||
+         (namedType.Name.StartsWith("ValueTuple") &&
           namedType.ContainingNamespace?.ToDisplayString() == "System"));
 
     public static string GetDataReadExpressionWithCachedOrdinal(this ITypeSymbol type, string readerName, string columnName, string ordinalVariableName) =>
@@ -223,7 +214,7 @@ internal static class Extensions
     {
         var method = type.GetDataReaderMethod();
         var isNullable = type.IsNullableType();
-        
+
         if (method == null)
         {
             return $"{readerName}[{accessor}]";
@@ -233,18 +224,15 @@ internal static class Extensions
         {
             return $"{readerName}.IsDBNull({ordinalExpr}) ? null : {readerName}.{method}({accessor})";
         }
-        
+
         // For non-nullable string types, return empty string instead of null
         if (type.SpecialType == SpecialType.System_String && type.NullableAnnotation == NullableAnnotation.NotAnnotated)
         {
             return $"{readerName}.IsDBNull({ordinalExpr}) ? string.Empty : {readerName}.{method}({accessor})";
         }
-        
+
         return $"{readerName}.{method}({accessor})";
     }
-
-    public static T GetValueOrDefault<T>(this Dictionary<string, T> dictionary, string key, T defaultValue = default!) =>
-        dictionary.TryGetValue(key, out var value) ? value : defaultValue;
 
     /// <summary>
     /// Determines if a type is a collection type (IEnumerable, List, Array, etc.)

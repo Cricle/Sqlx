@@ -22,7 +22,7 @@ namespace Sqlx.Annotations
         public SqlTemplateAttribute(string template)
         {
             Template = template ?? throw new System.ArgumentNullException(nameof(template));
-            Dialect = SqlDialectType.SqlServer;
+            Dialect = SqlDefineTypes.SqlServer;
             SafeMode = true;
             ValidateParameters = true;
         }
@@ -36,7 +36,7 @@ namespace Sqlx.Annotations
         /// <summary>
         /// Database dialect type, defaults to SqlServer
         /// </summary>
-        public SqlDialectType Dialect { get; set; }
+        public SqlDefineTypes Dialect { get; set; }
 
         /// <summary>
         /// Whether to enable safe mode, defaults to true

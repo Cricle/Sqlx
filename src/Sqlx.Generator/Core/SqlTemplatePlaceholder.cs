@@ -5,13 +5,8 @@
 // -----------------------------------------------------------------------
 
 #nullable enable
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
-using Sqlx;
+using System.Text.RegularExpressions;
 
 namespace Sqlx.Generator.Core
 {
@@ -409,10 +404,6 @@ namespace Sqlx.Generator.Core
         /// Get or set the current method symbol being processed.
         /// </summary>
         public IMethodSymbol? Method { get; set; }
-        /// <summary>
-        /// Get or set additional context data.
-        /// </summary>
-        public Dictionary<string, object?> AdditionalData { get; set; } = new();
 
         /// <summary>
         /// Initialize a new instance of the SqlPlaceholderContext class.

@@ -48,82 +48,48 @@ namespace Sqlx
             return this;
         }
 
-        internal void AddGroupByColumn(string columnName) => AddGroupBy(columnName);
-
-        internal List<string> GetWhereConditions() => new(_whereConditions);
         internal void CopyWhereConditions(List<string> conditions) => _whereConditions.AddRange(conditions);
-        internal List<string> GetHavingConditions() => new(_havingConditions);
         internal void CopyHavingConditions(List<string> conditions) => _havingConditions.AddRange(conditions);
         internal void AddHavingCondition(string condition) => _havingConditions.Add(condition);
         /// <summary>Sets table name</summary>
         public void SetTableName(string tableName) => _tableName = tableName;
 
-        /// <summary>
-        /// Enhanced expression parsing with support for math functions, string functions, and nested expressions
-        /// </summary>
-        protected string ParseExpression(Expression expression, bool treatBoolAsComparison = true)
+        /// <summary>Parse expression to SQL</summary>
+        protected string ParseExpression(Expression expression, bool treatBoolAsComparison = true) => expression switch
         {
-            return expression switch
-            {
-                BinaryExpression binary => ParseBinaryExpression(binary),
-                MemberExpression member when treatBoolAsComparison && member.Type == typeof(bool) => $"{GetColumnName(member)} = 1",
-                MemberExpression member when IsStringPropertyAccess(member) => ParseStringProperty(member),
-                MemberExpression member when IsEntityProperty(member) => GetColumnName(member),
-                MemberExpression member => treatBoolAsComparison ? GetColumnName(member) : FormatConstantValue(GetMemberValueOptimized(member)),
-                ConstantExpression constant => GetConstantValue(constant),
-                UnaryExpression unary when unary.NodeType == ExpressionType.Not => ParseNotExpression(unary.Operand),
-                UnaryExpression unary when unary.NodeType == ExpressionType.Convert => ParseExpression(unary.Operand, treatBoolAsComparison),
-                MethodCallExpression method => ParseMethodCallExpression(method),
-                ConditionalExpression conditional => ParseConditionalExpression(conditional),
-                _ => "1=1",
-            };
-        }
+            BinaryExpression binary => ParseBinaryExpression(binary),
+            MemberExpression member when treatBoolAsComparison && member.Type == typeof(bool) => $"{GetColumnName(member)} = 1",
+            MemberExpression member when IsStringPropertyAccess(member) => ParseStringProperty(member),
+            MemberExpression member when IsEntityProperty(member) => GetColumnName(member),
+            MemberExpression member => treatBoolAsComparison ? GetColumnName(member) : FormatConstantValue(GetMemberValueOptimized(member)),
+            ConstantExpression constant => FormatConstantValue(constant.Value),
+            UnaryExpression { NodeType: ExpressionType.Not } unary => ParseNotExpression(unary.Operand),
+            UnaryExpression { NodeType: ExpressionType.Convert } unary => ParseExpression(unary.Operand, treatBoolAsComparison),
+            MethodCallExpression method => ParseMethodCallExpression(method),
+            ConditionalExpression conditional => $"CASE WHEN {ParseExpression(conditional.Test)} THEN {ParseExpression(conditional.IfTrue)} ELSE {ParseExpression(conditional.IfFalse)} END",
+            _ => "1=1",
+        };
 
         /// <summary>Parses expression as raw value</summary>
         protected string ParseExpressionRaw(Expression expression) => ParseExpression(expression, false);
 
-        /// <summary>Parses conditional expression</summary>
-        protected string ParseConditionalExpression(ConditionalExpression conditional)
-        {
-            var test = ParseExpression(conditional.Test);
-            var ifTrue = ParseExpression(conditional.IfTrue);
-            var ifFalse = ParseExpression(conditional.IfFalse);
-
-            return DatabaseType switch
-            {
-                "SqlServer" => $"CASE WHEN {test} THEN {ifTrue} ELSE {ifFalse} END",
-                "MySQL" or "PostgreSql" or "SQLite" or "Oracle" or "DB2" => $"CASE WHEN {test} THEN {ifTrue} ELSE {ifFalse} END",
-                _ => $"CASE WHEN {test} THEN {ifTrue} ELSE {ifFalse} END"
-            };
-        }
-
         /// <summary>Parses method call expression</summary>
         protected string ParseMethodCallExpression(MethodCallExpression method)
         {
-            // Handle Any placeholders
-            if (IsAnyPlaceholder(method))
-            {
-                return CreateParameterForAnyPlaceholder(method);
-            }
-
-            // Handle nested method calls in aggregate functions
+            if (IsAnyPlaceholder(method)) return CreateParameterForAnyPlaceholder(method);
             if (IsAggregateContext(method)) return ParseAggregateMethodCall(method);
 
             return method.Method.DeclaringType switch
             {
-                var t when t == typeof(Math) => ParseMathFunction(method, method.Method.Name),
-                var t when t == typeof(string) => ParseStringFunction(method, method.Method.Name),
-                var t when t == typeof(DateTime) => ParseDateTimeFunction(method, method.Method.Name),
+                var t when t == typeof(Math) => ParseMathFunction(method),
+                var t when t == typeof(string) => ParseStringFunction(method),
+                var t when t == typeof(DateTime) => ParseDateTimeFunction(method),
                 _ => method.Object != null ? ParseExpressionRaw(method.Object) : "1=1"
             };
         }
 
-        private bool IsAggregateContext(MethodCallExpression method) => method.Method.Name is "Count" or "Sum" or "Average" or "Avg" or "Max" or "Min";
-
-        private bool IsAnyPlaceholder(MethodCallExpression method) =>
-            method.Method.DeclaringType?.Name == "Any" &&
-            method.Method.DeclaringType?.Namespace == "Sqlx" &&
-            method.Method.Name is "Value" or "String" or "Int" or "Bool" or "DateTime" or "Guid";
+        private static bool IsAggregateContext(MethodCallExpression method) => method.Method.Name is "Count" or "Sum" or "Average" or "Avg" or "Max" or "Min";
+        private static bool IsAnyPlaceholder(MethodCallExpression method) => method.Method.DeclaringType?.Name == "Any" && method.Method.DeclaringType?.Namespace == "Sqlx";
 
         private string CreateParameterForAnyPlaceholder(MethodCallExpression method)
         {
@@ -143,38 +109,29 @@ namespace Sqlx
                 ? (userParamName.StartsWith("@") ? userParamName : "@" + userParamName)
                 : $"@p{_counter++}";
 
-        /// <summary>
-        /// Get default value for value types (AOT-friendly)
-        /// </summary>
-        private static object? GetDefaultValueForValueType(Type type)
-        {
-            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
-                return null;
+        /// <summary>Get default value for value types (AOT-friendly)</summary>
+        private static object? GetDefaultValueForValueType(Type type) =>
+            type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>) ? null :
+            type == typeof(int) ? 0 :
+            type == typeof(bool) ? false :
+            type == typeof(DateTime) ? DateTime.MinValue :
+            type == typeof(Guid) ? Guid.Empty :
+            type == typeof(decimal) ? 0m :
+            type == typeof(double) ? 0.0 :
+            type == typeof(float) ? 0f :
+            type == typeof(long) ? 0L :
+            type == typeof(short) ? (short)0 :
+            type == typeof(byte) ? (byte)0 :
+            type.IsValueType ? GetValueTypeDefault(type) : null;
 
-            return type switch
-            {
-                var t when t == typeof(int) => 0,
-                var t when t == typeof(bool) => false,
-                var t when t == typeof(DateTime) => DateTime.MinValue,
-                var t when t == typeof(Guid) => Guid.Empty,
-                var t when t == typeof(decimal) => 0m,
-                var t when t == typeof(double) => 0.0,
-                var t when t == typeof(float) => 0f,
-                var t when t == typeof(long) => 0L,
-                var t when t == typeof(short) => (short)0,
-                var t when t == typeof(byte) => (byte)0,
-                var t when t == typeof(sbyte) => (sbyte)0,
-                var t when t == typeof(uint) => 0u,
-                var t when t == typeof(ushort) => (ushort)0,
-                var t when t == typeof(ulong) => 0ul,
-                var t when t == typeof(char) => '\0',
-                _ => null
-            };
+        /// <summary>AOT-safe value type default creation</summary>
+        private static object? GetValueTypeDefault(Type type)
+        {
+            // For unknown value types, return 0 as a safe default
+            return type.IsGenericType ? null : 0;
         }
 
-        /// <summary>
-        /// Parse method calls in aggregate functions with nested function support
-        /// </summary>
+        /// <summary>Parse aggregate function calls</summary>
         protected string ParseAggregateMethodCall(MethodCallExpression method) => method.Method.Name switch
         {
             "Count" => "COUNT(*)",
@@ -185,9 +142,7 @@ namespace Sqlx
             _ => throw new NotSupportedException($"Aggregate function {method.Method.Name} is not supported"),
         };
 
-        /// <summary>
-        /// Enhanced Lambda expression parsing with complex nested function support
-        /// </summary>
+        /// <summary>Parse lambda expression</summary>
         protected string ParseLambdaExpression(Expression expression) => expression switch
         {
             LambdaExpression lambda => ParseExpression(lambda.Body, false),
@@ -195,133 +150,79 @@ namespace Sqlx
             _ => ParseExpression(expression, false),
         };
 
-        /// <summary>
-        /// Try to parse boolean comparison, return null if not a boolean comparison
-        /// </summary>
+        /// <summary>Try to parse boolean comparison</summary>
         private string? TryParseBooleanComparison(BinaryExpression binary)
         {
-            // Only handle Equal and NotEqual
-            if (binary.NodeType != ExpressionType.Equal && binary.NodeType != ExpressionType.NotEqual)
-                return null;
+            if (binary.NodeType is not (ExpressionType.Equal or ExpressionType.NotEqual)) return null;
 
             var op = binary.NodeType == ExpressionType.Equal ? "=" : "<>";
+            var (leftBool, rightBool, rightTrue, rightFalse, leftTrue, leftFalse) = (
+                IsBooleanMember(binary.Left), IsBooleanMember(binary.Right),
+                IsConstantTrue(binary.Right), IsConstantFalse(binary.Right),
+                IsConstantTrue(binary.Left), IsConstantFalse(binary.Left));
 
-            return (IsBooleanMember(binary.Left), IsBooleanMember(binary.Right), IsConstantTrue(binary.Right), IsConstantFalse(binary.Right), IsConstantTrue(binary.Left), IsConstantFalse(binary.Left)) switch
+            return (leftBool, rightBool, rightTrue || leftTrue, rightFalse || leftFalse) switch
             {
-                (true, false, true, false, false, false) => $"{GetColumnName(binary.Left)} {op} 1",
-                (false, true, false, false, true, false) => $"{GetColumnName(binary.Right)} {op} 1",
-                (true, false, false, true, false, false) => $"{GetColumnName(binary.Left)} {op} 0",
-                (false, true, false, false, false, true) => $"{GetColumnName(binary.Right)} {op} 0",
+                (true, false, true, false) => $"{GetColumnName(binary.Left)} {op} 1",
+                (false, true, true, false) => $"{GetColumnName(binary.Right)} {op} 1",
+                (true, false, false, true) => $"{GetColumnName(binary.Left)} {op} 0",
+                (false, true, false, true) => $"{GetColumnName(binary.Right)} {op} 0",
                 _ => null
             };
         }
 
-        /// <summary>
-        /// Parse binary expression to SQL string
-        /// </summary>
+        /// <summary>Parse binary expression to SQL</summary>
         protected string ParseBinaryExpression(BinaryExpression binary)
         {
-            // Handle special cases first, then parse expressions
-
-            // Handle boolean type comparison with constants
             var boolResult = TryParseBooleanComparison(binary);
             if (boolResult != null) return boolResult;
 
             var left = ParseExpressionRaw(binary.Left);
             var right = ParseExpressionRaw(binary.Right);
 
-            // Special handling: if right side is boolean member and not correctly converted, force add = 1
-            if (binary.Right is MemberExpression rightMember && rightMember.Type == typeof(bool) && right == GetColumnName(rightMember))
-            {
+            // Fix boolean member display
+            if (binary.Right is MemberExpression { Type: var rightType } rightMember && rightType == typeof(bool) && right == GetColumnName(rightMember))
                 right = $"{right} = 1";
-            }
 
             // Handle NULL comparison
-            if (binary.NodeType == ExpressionType.Equal && (left == "NULL" || right == "NULL"))
+            if (left == "NULL" || right == "NULL")
             {
-                return left == "NULL" ? $"{right} IS NULL" : $"{left} IS NULL";
-            }
-            if (binary.NodeType == ExpressionType.NotEqual && (left == "NULL" || right == "NULL"))
-            {
-                return left == "NULL" ? $"{right} IS NOT NULL" : $"{left} IS NOT NULL";
+                var nonNull = left == "NULL" ? right : left;
+                return binary.NodeType == ExpressionType.Equal ? $"{nonNull} IS NULL" :
+                       binary.NodeType == ExpressionType.NotEqual ? $"{nonNull} IS NOT NULL" :
+                       GetBinaryOperatorSql(binary.NodeType, left, right, binary);
             }
 
             return GetBinaryOperatorSql(binary.NodeType, left, right, binary);
         }
 
-        /// <summary>
-        /// Get column name corresponding to expression
-        /// </summary>
-        protected string GetColumnName(Expression expression)
-        {
-            if (expression is UnaryExpression unary && unary.NodeType == ExpressionType.Convert) expression = unary.Operand;
+        /// <summary>Get column name from expression</summary>
+        protected string GetColumnName(Expression expression) =>
+            expression is UnaryExpression { NodeType: ExpressionType.Convert } unary ? GetColumnName(unary.Operand) :
+            expression is MemberExpression member ? _dialect.WrapColumn(member.Member.Name) :
+            ParseExpressionRaw(expression);
 
-            if (expression is not MemberExpression)
-            {
-                try
-                {
-                    return ParseExpressionRaw(expression);
-                }
-                catch
-                {
-                    throw new ArgumentException($"{expression} is not member expression and cannot be parsed as complex expression");
-                }
-            }
-
-            var member = (MemberExpression)expression;
-            return _dialect.WrapColumn(member.Member.Name);
-        }
-
-        /// <summary>
-        /// Get value of constant expression
-        /// </summary>
-        protected string GetConstantValue(ConstantExpression constant) => FormatConstantValue(constant.Value);
 
         /// <summary>Checks if member is entity property</summary>
-        protected bool IsEntityProperty(MemberExpression member) =>
-            member.Expression is ParameterExpression;
-
+        protected static bool IsEntityProperty(MemberExpression member) => member.Expression is ParameterExpression;
         /// <summary>Gets member value optimized</summary>
-        protected static object? GetMemberValueOptimized(MemberExpression member) =>
-            GetSimpleDefaultValue(member.Type);
-
-        /// <summary>
-        /// Get simple default value (without complex reflection)
-        /// </summary>
-        private static object? GetSimpleDefaultValue(Type type) => 
-            type.IsValueType ? GetDefaultValueForValueType(type) : null;
+        protected static object? GetMemberValueOptimized(MemberExpression member) => member.Type.IsValueType ? GetDefaultValueForValueType(member.Type) : null;
 
         /// <summary>Formats constant value</summary>
-        protected string FormatConstantValue<T>(T? value) =>
-            _parameterized ? CreateParameter(value) : FormatValueAsLiteral(value);
+        protected string FormatConstantValue(object? value) => _parameterized ? CreateParameter(value) : FormatValueAsLiteral(value);
 
-        /// <summary>Formats constant value</summary>
-        protected string FormatConstantValue(object? value) =>
-            _parameterized ? CreateParameter(value) : FormatValueAsLiteral(value);
-
-        private string FormatValueAsLiteral<T>(T? value)
+        private string FormatValueAsLiteral(object? value) => value switch
         {
-            return value switch
-            {
-                null => "NULL",
-                string s => _dialect.WrapString(s.Replace("'", "''")),
-                bool b => b ? "1" : "0",
-                DateTime dt => _dialect.WrapString(dt.ToString("yyyy-MM-dd HH:mm:ss")),
-                Guid g => _dialect.WrapString(g.ToString()),
-                decimal d => d.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                double d => d.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                float f => f.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                _ => value?.ToString() ?? "NULL"
-            };
-        }
-
-        /// <summary>Creates parameter</summary>
-        protected virtual string CreateParameter<T>(T? value)
-        {
-            var paramName = $"{_dialect.ParameterPrefix}p{_parameters.Count}";
-            _parameters[paramName] = value;
-            return paramName;
-        }
+            null => "NULL",
+            string s => _dialect.WrapString(s.Replace("'", "''")),
+            bool b => b ? "1" : "0",
+            DateTime dt => _dialect.WrapString(dt.ToString("yyyy-MM-dd HH:mm:ss")),
+            Guid g => _dialect.WrapString(g.ToString()),
+            decimal d => d.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            double d => d.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            float f => f.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            _ => value?.ToString() ?? "NULL"
+        };
 
         /// <summary>Creates parameter</summary>
         protected virtual string CreateParameter(object? value)
@@ -331,126 +232,50 @@ namespace Sqlx
             return paramName;
         }
 
-        /// <summary>Checks if expression needs parentheses</summary>
-        protected static bool NeedsParentheses(Expression expression) => true;
         /// <summary>Removes outer parentheses from condition</summary>
-        protected static string RemoveOuterParentheses(string condition) =>
-            condition.StartsWith("(") && condition.EndsWith(")")
-                ? condition.Substring(1, condition.Length - 2)
-                : condition;
-        /// <summary>Checks if expression is boolean member</summary>
-        protected static bool IsBooleanMember(Expression expression) =>
-            expression is MemberExpression member && member.Type == typeof(bool);
-        /// <summary>Checks if expression is constant true</summary>
-        protected static bool IsConstantTrue(Expression expression) =>
-            expression is ConstantExpression { Value: true };
-        /// <summary>Checks if expression is constant false</summary>
-        protected static bool IsConstantFalse(Expression expression) =>
-            expression is ConstantExpression { Value: false };
+        protected static string RemoveOuterParentheses(string condition) => condition.StartsWith("(") && condition.EndsWith(")") ? condition.Substring(1, condition.Length - 2) : condition;
+        /// <summary>Helper methods for expression checking</summary>
+        protected static bool IsBooleanMember(Expression expression) => expression is MemberExpression { Type: var type } && type == typeof(bool);
+        protected static bool IsConstantTrue(Expression expression) => expression is ConstantExpression { Value: true };
+        protected static bool IsConstantFalse(Expression expression) => expression is ConstantExpression { Value: false };
 
-        /// <summary>Checks if member is string property access</summary>
-        protected bool IsStringPropertyAccess(MemberExpression member) =>
-            member.Member.Name == "Length" &&
-            member.Expression is MemberExpression stringMember &&
-            stringMember.Type == typeof(string) &&
-            IsEntityProperty(stringMember);
-
-        /// <summary>Checks if binary is string concatenation</summary>
-        protected bool IsStringConcatenation(BinaryExpression binary) =>
-            binary.Type == typeof(string) && binary.NodeType == ExpressionType.Add;
+        /// <summary>String and entity property checks</summary>
+        protected static bool IsStringPropertyAccess(MemberExpression member) => member.Member.Name == "Length" && member.Expression is MemberExpression { Type: var type } stringMember && type == typeof(string) && IsEntityProperty(stringMember);
+        protected static bool IsStringConcatenation(BinaryExpression binary) => binary.Type == typeof(string) && binary.NodeType == ExpressionType.Add;
 
         /// <summary>Parses string property</summary>
-        protected string ParseStringProperty(MemberExpression member)
-        {
-            var obj = ParseExpressionRaw(member.Expression!);
-            return member.Member.Name switch
-            {
-                "Length" => DatabaseType == "SqlServer" ? $"LEN({obj})" : $"LENGTH({obj})",
-                _ => GetColumnName(member)
-            };
-        }
+        protected string ParseStringProperty(MemberExpression member) =>
+            member.Member.Name == "Length" ? (DatabaseType == "SqlServer" ? $"LEN({ParseExpressionRaw(member.Expression!)})" : $"LENGTH({ParseExpressionRaw(member.Expression!)})") : GetColumnName(member);
 
-        /// <summary>Parses NOT expression</summary>
-        protected string ParseNotExpression(Expression operand) =>
-            operand is MemberExpression member && member.Type == typeof(bool) && IsEntityProperty(member)
-                ? $"{GetColumnName(member)} = 0"
-                : $"NOT ({ParseExpression(operand)})";
-
-        /// <summary>Formats logical expression</summary>
+        /// <summary>Expression parsing helpers</summary>
+        protected string ParseNotExpression(Expression operand) => operand is MemberExpression { Type: var type } member && type == typeof(bool) && IsEntityProperty(member) ? $"{GetColumnName(member)} = 0" : $"NOT ({ParseExpression(operand)})";
         protected string FormatLogicalExpression(string logicalOperator, string left, string right, BinaryExpression binary)
         {
-            if (binary.Right is MemberExpression rightMember && rightMember.Type == typeof(bool))
-            {
-                var expectedColumnName = GetColumnName(rightMember);
-                if (right == expectedColumnName)
-                    right = $"{right} = 1";
-            }
-
-            if (binary.Left is MemberExpression leftMember && leftMember.Type == typeof(bool))
-            {
-                var expectedColumnName = GetColumnName(leftMember);
-                if (left == expectedColumnName)
-                    left = $"{left} = 1";
-            }
-
+            if (binary.Right is MemberExpression { Type: var rightType } rightMember && rightType == typeof(bool) && right == GetColumnName(rightMember)) right = $"{right} = 1";
+            if (binary.Left is MemberExpression { Type: var leftType } leftMember && leftType == typeof(bool) && left == GetColumnName(leftMember)) left = $"{left} = 1";
             return $"({left} {logicalOperator} {right})";
         }
 
-        /// <summary>
-        /// Extract column name list from expression
-        /// </summary>
-        protected List<string> ExtractColumns(Expression expression)
+        /// <summary>Extract column names from expression</summary>
+        protected List<string> ExtractColumns(Expression expression) => expression switch
         {
-            var columns = new List<string>();
+            NewExpression newExpr => newExpr.Arguments.OfType<MemberExpression>().Select(GetColumnName).ToList(),
+            MemberExpression member => new List<string> { GetColumnName(member) },
+            UnaryExpression { NodeType: ExpressionType.Convert } unary => ExtractColumns(unary.Operand),
+            _ => TryGetColumnName(expression)
+        };
 
-            switch (expression)
-            {
-                case NewExpression newExpr:
-                    // Handle new { Id, Name } format
-                    foreach (var arg in newExpr.Arguments)
-                    {
-                        if (arg is MemberExpression member)
-                        {
-                            columns.Add(GetColumnName(member));
-                        }
-                    }
-                    break;
-
-                case MemberExpression member:
-                    // Handle single property
-                    columns.Add(GetColumnName(member));
-                    break;
-
-                case UnaryExpression { NodeType: ExpressionType.Convert } unary:
-                    // Handle type conversion
-                    return ExtractColumns(unary.Operand);
-
-                default:
-                    // For other expression types, try to handle as single member
-                    try
-                    {
-                        columns.Add(GetColumnName(expression));
-                    }
-                    catch
-                    {
-                        // If cannot parse, ignore
-                    }
-                    break;
-            }
-
-            return columns;
-        }
+        private List<string> TryGetColumnName(Expression expression) => new List<string> { GetColumnName(expression) };
 
         /// <summary>Database type string</summary>
         protected string DatabaseType => _dialect.DatabaseType;
         private string GetConcatSyntax(params string[] parts) => _dialect.GetConcatFunction(parts);
 
         /// <summary>Parses math function</summary>
-        protected string ParseMathFunction(MethodCallExpression method, string methodName)
+        protected string ParseMathFunction(MethodCallExpression method)
         {
             var args = method.Arguments.Select(ParseExpressionRaw).ToArray();
-
-            return (methodName, args.Length) switch
+            return (method.Method.Name, args.Length) switch
             {
                 ("Abs", 1) => $"ABS({args[0]})",
                 ("Round", 1) => $"ROUND({args[0]})",
@@ -466,12 +291,11 @@ namespace Sqlx
         }
 
         /// <summary>Parses string function</summary>
-        protected string ParseStringFunction(MethodCallExpression method, string methodName)
+        protected string ParseStringFunction(MethodCallExpression method)
         {
             var obj = method.Object != null ? ParseExpressionRaw(method.Object) : "";
             var args = method.Arguments.Select(ParseExpressionRaw).ToArray();
-
-            return (methodName, args.Length) switch
+            return (method.Method.Name, args.Length) switch
             {
                 ("Contains", 1) => $"{obj} LIKE {GetConcatSyntax("'%'", args[0], "'%'")}",
                 ("StartsWith", 1) => $"{obj} LIKE {GetConcatSyntax(args[0], "'%'")}",
@@ -479,21 +303,20 @@ namespace Sqlx
                 ("ToUpper", 0) => $"UPPER({obj})",
                 ("ToLower", 0) => $"LOWER({obj})",
                 ("Trim", 0) => $"TRIM({obj})",
+                ("Replace", 2) => $"REPLACE({obj}, {args[0]}, {args[1]})",
                 ("Substring", 1) => DatabaseType == "SQLite" ? $"SUBSTR({obj}, {args[0]})" : $"SUBSTRING({obj}, {args[0]})",
                 ("Substring", 2) => DatabaseType == "SQLite" ? $"SUBSTR({obj}, {args[0]}, {args[1]})" : $"SUBSTRING({obj}, {args[0]}, {args[1]})",
-                ("Replace", 2) => $"REPLACE({obj}, {args[0]}, {args[1]})",
                 ("Length", 0) => DatabaseType == "SqlServer" ? $"LEN({obj})" : $"LENGTH({obj})",
                 _ => obj
             };
         }
 
         /// <summary>Parses DateTime function</summary>
-        protected string ParseDateTimeFunction(MethodCallExpression method, string methodName)
+        protected string ParseDateTimeFunction(MethodCallExpression method)
         {
             var obj = method.Object != null ? ParseExpressionRaw(method.Object) : "";
             var args = method.Arguments.Select(ParseExpressionRaw).ToArray();
-
-            return (methodName, args.Length) switch
+            return (method.Method.Name, args.Length) switch
             {
                 ("AddDays", 1) => DatabaseType == "SqlServer" ? $"DATEADD(DAY, {args[0]}, {obj})" : obj,
                 ("AddMonths", 1) => DatabaseType == "SqlServer" ? $"DATEADD(MONTH, {args[0]}, {obj})" : obj,
@@ -503,7 +326,7 @@ namespace Sqlx
         }
 
         /// <summary>Gets operator function</summary>
-        protected string GetOperatorFunction(string op, string left, string right) => op switch
+        protected static string GetOperatorFunction(string op, string left, string right) => op switch
         {
             "%" => $"({left} % {right})",
             "^" => $"({left} ^ {right})",
@@ -511,52 +334,23 @@ namespace Sqlx
             _ => $"({left} {op} {right})"
         };
 
-        private string GetBinaryOperatorSql(ExpressionType nodeType, string left, string right, BinaryExpression binary)
+        private string GetBinaryOperatorSql(ExpressionType nodeType, string left, string right, BinaryExpression binary) => nodeType switch
         {
-            return nodeType switch
-            {
-                // Comparison operators
-                ExpressionType.Equal => $"{left} = {right}",
-                ExpressionType.NotEqual => $"{left} <> {right}",
-                ExpressionType.GreaterThan => $"{left} > {right}",
-                ExpressionType.GreaterThanOrEqual => $"{left} >= {right}",
-                ExpressionType.LessThan => $"{left} < {right}",
-                ExpressionType.LessThanOrEqual => $"{left} <= {right}",
-
-                // Logical operators
-                ExpressionType.AndAlso => FormatLogicalExpression("AND", left, right, binary),
-                ExpressionType.OrElse => FormatLogicalExpression("OR", left, right, binary),
-
-                // Arithmetic operators
-                ExpressionType.Add => IsStringConcatenation(binary) ? GetConcatSyntax(left, right) : $"{left} + {right}",
-                ExpressionType.Subtract => $"{left} - {right}",
-                ExpressionType.Multiply => $"{left} * {right}",
-                ExpressionType.Divide => $"{left} / {right}",
-                ExpressionType.Modulo => GetOperatorFunction("%", left, right),
-
-                // Null coalescing
-                ExpressionType.Coalesce => GetOperatorFunction("??", left, right),
-
-                _ => $"{left} = {right}"
-            };
-        }
-
-        /// <summary>Gets binary operator</summary>
-        protected static string GetBinaryOperator(ExpressionType nodeType) => nodeType switch
-        {
-            ExpressionType.Equal => "=",
-            ExpressionType.NotEqual => "!=",
-            ExpressionType.GreaterThan => ">",
-            ExpressionType.GreaterThanOrEqual => ">=",
-            ExpressionType.LessThan => "<",
-            ExpressionType.LessThanOrEqual => "<=",
-            ExpressionType.AndAlso => "AND",
-            ExpressionType.OrElse => "OR",
-            ExpressionType.Add => "+",
-            ExpressionType.Subtract => "-",
-            ExpressionType.Multiply => "*",
-            ExpressionType.Divide => "/",
-            _ => nodeType.ToString()
+            ExpressionType.Equal => $"{left} = {right}",
+            ExpressionType.NotEqual => $"{left} <> {right}",
+            ExpressionType.GreaterThan => $"{left} > {right}",
+            ExpressionType.GreaterThanOrEqual => $"{left} >= {right}",
+            ExpressionType.LessThan => $"{left} < {right}",
+            ExpressionType.LessThanOrEqual => $"{left} <= {right}",
+            ExpressionType.AndAlso => FormatLogicalExpression("AND", left, right, binary),
+            ExpressionType.OrElse => FormatLogicalExpression("OR", left, right, binary),
+            ExpressionType.Add => IsStringConcatenation(binary) ? GetConcatSyntax(left, right) : $"{left} + {right}",
+            ExpressionType.Subtract => $"{left} - {right}",
+            ExpressionType.Multiply => $"{left} * {right}",
+            ExpressionType.Divide => $"{left} / {right}",
+            ExpressionType.Modulo => GetOperatorFunction("%", left, right),
+            ExpressionType.Coalesce => GetOperatorFunction("??", left, right),
+            _ => $"{left} = {right}"
         };
 
         /// <summary>Converts to SQL string</summary>

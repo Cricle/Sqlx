@@ -80,7 +80,7 @@ namespace Sqlx.Tests.Core
             // ISqlxSyntaxReceiver is now a simple interface for data collection, not a syntax receiver
             Assert.IsFalse(baseInterface.IsAssignableFrom(interfaceType),
                 "ISqlxSyntaxReceiver should be a simple collection interface");
-            
+
             // Verify it has the correct collection properties
             Assert.IsTrue(interfaceType.IsInterface, "ISqlxSyntaxReceiver should be an interface");
         }
@@ -203,7 +203,7 @@ namespace Sqlx.Tests.Core
         {
             // Test that all properties are read-only collections
             var interfaceType = typeof(ISqlxSyntaxReceiver);
-            
+
             var methodsProperty = interfaceType.GetProperty("Methods");
             Assert.IsNotNull(methodsProperty, "Methods property should exist");
             Assert.IsTrue(methodsProperty.CanRead, "Methods property should be readable");

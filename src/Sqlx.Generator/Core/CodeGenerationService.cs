@@ -6,9 +6,8 @@
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Linq;
 using System.Text;
+using static Sqlx.Generator.Core.SharedCodeGenerationUtilities;
 
 namespace Sqlx.Generator.Core;
 
@@ -25,7 +24,6 @@ public class CodeGenerationService : ICodeGenerationService
         var entityType = context.EntityType;
         var processedSql = context.ProcessedSql;
         var attributeHandler = context.AttributeHandler;
-        var methodAnalyzer = context.MethodAnalyzer;
 
         try
         {
@@ -33,11 +31,11 @@ public class CodeGenerationService : ICodeGenerationService
             var sqlxAttr = method.GetAttributes()
                 .FirstOrDefault(a => a.AttributeClass?.Name?.Contains("Sqlx") == true ||
                                     a.AttributeClass?.Name?.Contains("SqlTemplate") == true);
-            
+
             string? resolvedSql = null;
             SqlTemplateResult? templateResult = null;
             string? originalTemplate = null;
-            
+
             if (sqlxAttr?.ConstructorArguments.FirstOrDefault().Value is string sqlTemplate)
             {
                 originalTemplate = sqlTemplate;
@@ -63,29 +61,19 @@ public class CodeGenerationService : ICodeGenerationService
             sb.AppendLine("{");
             sb.PushIndent();
 
-            // Generate operation using template engine approach
             if (sqlxAttr?.ConstructorArguments.FirstOrDefault().Value is string sqlTemplate2)
             {
-                // Use basic template engine to process SQL template
                 var templateEngine = new SqlTemplateEngine();
                 var templateProcessResult = templateEngine.ProcessTemplate(sqlTemplate2, method, entityType, context.TableName);
-                
-                // Generate actual database execution using shared utilities
-                GenerateActualDatabaseExecution(sb, method, templateProcessResult, entityType);
+                var connectionName = GetDbConnectionFieldName(context.ClassSymbol);
+                GenerateActualDatabaseExecution(sb, method, templateProcessResult, entityType, connectionName);
             }
             else
             {
-                // Check if this method has SqlTemplate attribute - if so, report error instead of fallback
-                var sqlTemplateAttr = method.GetAttributes()
-                    .FirstOrDefault(a => a.AttributeClass?.Name?.Contains("SqlTemplate") == true);
-                    
+                var sqlTemplateAttr = method.GetAttributes().FirstOrDefault(a => a.AttributeClass?.Name?.Contains("SqlTemplate") == true);
                 if (sqlTemplateAttr != null)
-                {
-                    // Report compilation error for SqlTemplate methods that can't be generated
                     throw new InvalidOperationException($"Failed to generate implementation for method '{method.Name}' with SqlTemplateAttribute. Please check the SQL template syntax and parameters.");
-                }
-                
-                // Fallback for methods without proper SQL templates
+
                 GenerateFallbackMethodImplementation(sb, method);
             }
 
@@ -135,53 +123,6 @@ public class CodeGenerationService : ICodeGenerationService
         context.ExecutionContext.AddSource(fileName, sourceText);
     }
 
-    /// <inheritdoc/>
-    public void GenerateMethodDocumentation(IndentedStringBuilder sb, IMethodSymbol method)
-    {
-        sb.AppendLine("/// <summary>");
-        sb.AppendLine($"/// {GetMethodDescription(method)}");
-        sb.AppendLine("/// </summary>");
-
-        foreach (var parameter in method.Parameters)
-        {
-            sb.AppendLine($"/// <param name=\"{parameter.Name}\">{GetParameterDescription(parameter)}</param>");
-        }
-
-        if (!method.ReturnsVoid)
-        {
-            sb.AppendLine($"/// <returns>{GetReturnDescription(method)}</returns>");
-        }
-    }
-
-    /// <summary>
-    /// Generate method documentation with processed SQL
-    /// </summary>
-    public void GenerateMethodDocumentationWithSql(IndentedStringBuilder sb, IMethodSymbol method, string? processedSql)
-    {
-        sb.AppendLine("/// <summary>");
-        sb.AppendLine($"/// {GetMethodDescription(method)}");
-        
-        // Add processed SQL to comments if available
-        if (!string.IsNullOrEmpty(processedSql))
-        {
-            sb.AppendLine("/// <para>📋 Generated SQL (Template Processed):</para>");
-            sb.AppendLine($"/// <code>{System.Security.SecurityElement.Escape(processedSql)}</code>");
-            sb.AppendLine("/// <para>🔧 This SQL was generated from template placeholders at compile-time</para>");
-        }
-        
-        sb.AppendLine("/// </summary>");
-
-        foreach (var parameter in method.Parameters)
-        {
-            sb.AppendLine($"/// <param name=\"{parameter.Name}\">{GetParameterDescription(parameter)}</param>");
-        }
-
-        if (!method.ReturnsVoid)
-        {
-            sb.AppendLine($"/// <returns>{GetReturnDescription(method)}</returns>");
-        }
-    }
-
     /// <summary>
     /// Generate enhanced method documentation with detailed template processing information
     /// </summary>
@@ -189,7 +130,7 @@ public class CodeGenerationService : ICodeGenerationService
     {
         sb.AppendLine("/// <summary>");
         sb.AppendLine($"/// {GetMethodDescription(method)}");
-        
+
         // Add detailed information if template processing results are available
         if (templateResult != null)
         {
@@ -245,7 +186,7 @@ public class CodeGenerationService : ICodeGenerationService
 
             sb.AppendLine("/// <para>🚀 This method was generated by Sqlx Advanced Template Engine</para>");
         }
-        
+
         sb.AppendLine("/// </summary>");
 
         foreach (var parameter in method.Parameters)
@@ -257,33 +198,6 @@ public class CodeGenerationService : ICodeGenerationService
         {
             sb.AppendLine($"/// <returns>{GetReturnDescription(method)}</returns>");
         }
-    }
-
-    /// <inheritdoc/>
-    public void GenerateMethodVariables(IndentedStringBuilder sb, IMethodSymbol method)
-    {
-        // Generate common variables used in repository methods
-        sb.AppendLine("long __startTime__ = System.Diagnostics.Stopwatch.GetTimestamp();");
-        sb.AppendLine("global::System.Data.IDbCommand? __cmd__ = null;");
-
-        if (!method.ReturnsVoid)
-        {
-            // For async methods (Task<T>), declare the inner type T
-            var returnType = method.ReturnType.ToDisplayString();
-            var actualReturnType = returnType;
-
-            // Check if this is a Task<T> type and get the inner type
-            if (method.ReturnType is INamedTypeSymbol namedType &&
-                namedType.Name == "Task" &&
-                namedType.TypeArguments.Length == 1)
-            {
-                actualReturnType = namedType.TypeArguments[0].ToDisplayString();
-            }
-
-            sb.AppendLine($"{actualReturnType} __result__ = default!;");
-        }
-
-        sb.AppendLine();
     }
 
     private INamedTypeSymbol? GetServiceInterface(RepositoryGenerationContext context)
@@ -368,7 +282,7 @@ public class CodeGenerationService : ICodeGenerationService
 
         // Generate namespace and usings
         // Generate namespace and usings using shared utility
-        SharedCodeGenerationUtilities.GenerateFileHeader(sb, namespaceName);
+        GenerateFileHeader(sb, namespaceName);
         sb.AppendLine("using System.Linq;");
         sb.AppendLine("using System.Threading;");
         sb.AppendLine("using Sqlx.Annotations;");
@@ -389,16 +303,16 @@ public class CodeGenerationService : ICodeGenerationService
             var sqlxAttr = method.GetAttributes()
                 .FirstOrDefault(a => a.AttributeClass?.Name?.Contains("Sqlx") == true ||
                                     a.AttributeClass?.Name?.Contains("SqlTemplate") == true);
-            
+
             if (sqlxAttr?.ConstructorArguments.FirstOrDefault().Value is string sql)
             {
                 // Use template engine to process SQL template
                 var templateEngine = context.TemplateEngine;
                 var templateResult = templateEngine.ProcessTemplate(sql, method, entityType, tableName);
-                
+
                 var methodContext = new RepositoryMethodContext(
                     sb, method, entityType, tableName, templateResult.ProcessedSql,
-                    context.AttributeHandler, context.MethodAnalyzer);
+                    context.AttributeHandler, context.RepositoryClass);
 
                 GenerateRepositoryMethod(methodContext);
             }
@@ -407,13 +321,13 @@ public class CodeGenerationService : ICodeGenerationService
                 // Check if this method has SqlTemplate attribute - if so, report error instead of fallback
                 var sqlTemplateAttr = method.GetAttributes()
                     .FirstOrDefault(a => a.AttributeClass?.Name?.Contains("SqlTemplate") == true);
-                    
+
                 if (sqlTemplateAttr != null)
                 {
                     // Report compilation error for SqlTemplate methods that can't be generated
                     throw new InvalidOperationException($"Failed to generate implementation for method '{method.Name}' with SqlTemplateAttribute. Please check the SQL template syntax and parameters.");
                 }
-                
+
                 GenerateFallbackMethod(sb, method);
             }
         }
@@ -423,16 +337,6 @@ public class CodeGenerationService : ICodeGenerationService
 
         sb.PopIndent();
         sb.AppendLine("}");
-    }
-
-    private void GenerateDbConnectionFieldIfNeeded(IndentedStringBuilder sb, INamedTypeSymbol repositoryClass)
-    {
-        if (!HasDbConnectionField(repositoryClass))
-        {
-            var connectionFieldName = GetDbConnectionFieldName(repositoryClass);
-            sb.AppendLine($"private readonly global::System.Data.IDbConnection {connectionFieldName};");
-            sb.AppendLine();
-        }
     }
 
     /// <summary>
@@ -553,7 +457,7 @@ public class CodeGenerationService : ICodeGenerationService
             else if (returnType is INamedTypeSymbol genericTask && genericTask.TypeArguments.Length == 1)
             {
                 var innerType = genericTask.TypeArguments[0];
-                if (innerType is INamedTypeSymbol namedType && 
+                if (innerType is INamedTypeSymbol namedType &&
                     (namedType.Name is "IList" or "List" or "IEnumerable" or "ICollection" or "IReadOnlyList" ||
                      (namedType.IsGenericType && namedType.Name is "IList" or "List" or "IEnumerable" or "ICollection" or "IReadOnlyList")))
                 {
@@ -588,113 +492,13 @@ public class CodeGenerationService : ICodeGenerationService
         return $"The {returnType.Name} result.";
     }
 
-
-    private string GetDbConnectionFieldName(INamedTypeSymbol repositoryClass)
-    {
-        // Find the first DbConnection field, property, or constructor parameter
-
-        // 1. Check fields (prioritize type checking, fallback to common names)
-        var connectionField = repositoryClass.GetMembers()
-            .OfType<IFieldSymbol>()
-            .FirstOrDefault(f => f.IsDbConnection());
-        if (connectionField != null)
-        {
-            return connectionField.Name;
-        }
-
-        // Check by common field names if type checking didn't work
-        connectionField = repositoryClass.GetMembers()
-            .OfType<IFieldSymbol>()
-            .FirstOrDefault(f => f.Name == "connection" ||
-                                f.Name == "_connection" ||
-                                f.Name == "Connection" ||
-                                f.Name == "_Connection" ||
-                                f.Name.EndsWith("Connection", StringComparison.OrdinalIgnoreCase));
-        if (connectionField != null)
-        {
-            return connectionField.Name;
-        }
-
-        // 2. Check properties
-        var connectionProperty = repositoryClass.GetMembers()
-            .OfType<IPropertySymbol>()
-            .FirstOrDefault(p => p.IsDbConnection() || 
-                                p.Name == "connection" ||
-                                p.Name == "_connection" ||
-                                p.Name == "Connection" ||
-                                p.Name == "_Connection" ||
-                                p.Name.EndsWith("Connection", StringComparison.OrdinalIgnoreCase));
-        if (connectionProperty != null)
-        {
-            return connectionProperty.Name;
-        }
-
-        // 3. Check primary constructor parameters
-        var primaryConstructor = PrimaryConstructorAnalyzer.GetPrimaryConstructor(repositoryClass);
-        if (primaryConstructor != null)
-        {
-            var connectionParam = primaryConstructor.Parameters.FirstOrDefault(p => p.Type.IsDbConnection());
-            if (connectionParam != null)
-            {
-                return connectionParam.Name;
-            }
-        }
-
-        // 4. Check regular constructor parameters (fallback)
-        var constructor = repositoryClass.InstanceConstructors.FirstOrDefault();
-        if (constructor != null)
-        {
-            var connectionParam = constructor.Parameters.FirstOrDefault(p => p.Type.IsDbConnection());
-            if (connectionParam != null)
-            {
-                return connectionParam.Name;
-            }
-        }
-
-        // Default fallback - common field names
-        return "connection";
-    }
-
-
-    private bool HasDbConnectionField(INamedTypeSymbol repositoryClass)
-    {
-        // Check for existing fields and properties
-        var hasConnectionMember = repositoryClass.GetMembers()
-            .OfType<IFieldSymbol>()
-            .Any(f => f.IsDbConnection()) ||
-            repositoryClass.GetMembers()
-            .OfType<IPropertySymbol>()
-            .Any(p => p.IsDbConnection());
-
-        if (hasConnectionMember)
-            return true;
-
-        // Check for primary constructor parameter with DbConnection
-        var primaryConstructor = PrimaryConstructorAnalyzer.GetPrimaryConstructor(repositoryClass);
-        if (primaryConstructor != null)
-        {
-            var hasConnectionParam = primaryConstructor.Parameters.Any(p => p.IsDbConnection());
-            if (hasConnectionParam)
-                return true;
-        }
-
-        // Also check regular constructors for backward compatibility
-        var constructor = repositoryClass.InstanceConstructors.FirstOrDefault();
-        if (constructor != null)
-        {
-            return constructor.Parameters.Any(p => p.IsDbConnection());
-        }
-
-        return false;
-    }
-
-    private void GenerateActualDatabaseExecution(IndentedStringBuilder sb, IMethodSymbol method, SqlTemplateResult templateResult, INamedTypeSymbol? entityType)
+    private void GenerateActualDatabaseExecution(IndentedStringBuilder sb, IMethodSymbol method, SqlTemplateResult templateResult, INamedTypeSymbol? entityType, string connectionName)
     {
         var returnType = method.ReturnType;
         var returnTypeString = returnType.ToDisplayString();
         var resultVariableType = ExtractInnerTypeFromTask(returnTypeString);
         var operationName = method.Name;
-        
+
         // Generate method variables
         sb.AppendLine($"{resultVariableType} __result__ = default!;");
         sb.AppendLine("global::System.Data.IDbCommand? __cmd__ = null;");
@@ -702,24 +506,24 @@ public class CodeGenerationService : ICodeGenerationService
         sb.AppendLine();
 
         // Use shared utilities for database setup
-        sb.AppendLine("if (_connection.State != global::System.Data.ConnectionState.Open)");
+        sb.AppendLine($"if ({connectionName}.State != global::System.Data.ConnectionState.Open)");
         sb.AppendLine("{");
         sb.PushIndent();
-        sb.AppendLine("_connection.Open();");
+        sb.AppendLine($"{connectionName}.Open();");
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
-        SharedCodeGenerationUtilities.GenerateCommandSetup(sb, templateResult.ProcessedSql, method);
-        
+        SharedCodeGenerationUtilities.GenerateCommandSetup(sb, templateResult.ProcessedSql, method, connectionName);
+
         // Add try-catch block with interceptors
         sb.AppendLine("try");
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         // Call OnExecuting interceptor
         sb.AppendLine($"OnExecuting(\"{operationName}\", __cmd__);");
         sb.AppendLine();
-        
+
         // Execute query based on return type
         if (IsScalarReturnType(returnTypeString))
         {
@@ -738,23 +542,23 @@ public class CodeGenerationService : ICodeGenerationService
             // Non-query execution (INSERT, UPDATE, DELETE)
             sb.AppendLine("__result__ = __cmd__.ExecuteNonQuery();");
         }
-        
+
         sb.AppendLine();
         sb.AppendLine("var __endTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
-        
+
         // Call OnExecuted interceptor
         sb.AppendLine($"OnExecuted(\"{operationName}\", __cmd__, __result__, global::System.Diagnostics.Stopwatch.GetElapsedTime(__startTimestamp__, __endTimestamp__).Ticks);");
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine("catch (global::System.Exception __ex__)");
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         sb.AppendLine("var __failTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
         sb.AppendLine($"OnExecuteFail(\"{operationName}\", __cmd__, __ex__, global::System.Diagnostics.Stopwatch.GetElapsedTime(__startTimestamp__, __failTimestamp__).Ticks);");
         sb.AppendLine("throw;");
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
     }
@@ -792,13 +596,13 @@ public class CodeGenerationService : ICodeGenerationService
         sb.AppendLine("while (reader.Read())");
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         if (entityType != null)
         {
             GenerateEntityFromReader(sb, entityType, "item");
             sb.AppendLine("__result__.Add(item);");
         }
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
     }
@@ -809,12 +613,12 @@ public class CodeGenerationService : ICodeGenerationService
         sb.AppendLine("if (reader.Read())");
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         if (entityType != null)
         {
             GenerateEntityFromReader(sb, entityType, "__result__");
         }
-        
+
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine("else");
@@ -831,21 +635,15 @@ public class CodeGenerationService : ICodeGenerationService
         SharedCodeGenerationUtilities.GenerateEntityMapping(sb, entityType, variableName);
     }
 
-    private string GetDbTypeForParameter(IParameterSymbol parameter)
-    {
-        // Use shared utility for DbType mapping
-        return SharedCodeGenerationUtilities.GetDbType(parameter.Type);
-    }
-
     private void GenerateFallbackMethodImplementation(IndentedStringBuilder sb, IMethodSymbol method)
     {
         var returnType = method.ReturnType.ToDisplayString();
-        
+
         if (!method.ReturnsVoid)
         {
             if (returnType.Contains("Task"))
             {
-                var innerType = ExtractInnerTypeFromTask(returnType);
+                var innerType = SharedCodeGenerationUtilities.ExtractInnerTypeFromTask(returnType);
                 sb.AppendLine($"__result__ = default({innerType});");
             }
             else
@@ -855,26 +653,70 @@ public class CodeGenerationService : ICodeGenerationService
         }
     }
 
-    private string ExtractInnerTypeFromTask(string taskType)
+
+    internal static string GetDbConnectionFieldName(INamedTypeSymbol repositoryClass)
     {
-        // Handle various Task<T> formats
-        if (taskType.StartsWith("Task<") && taskType.EndsWith(">"))
+        // Find the first DbConnection field, property, or constructor parameter
+
+        // 1. Check fields (prioritize type checking, fallback to common names)
+        var connectionField = repositoryClass.GetMembers()
+            .OfType<IFieldSymbol>()
+            .FirstOrDefault(f => f.IsDbConnection());
+        if (connectionField != null)
         {
-            return taskType.Substring(5, taskType.Length - 6);
-        }
-        if (taskType.StartsWith("System.Threading.Tasks.Task<") && taskType.EndsWith(">"))
-        {
-            return taskType.Substring(28, taskType.Length - 29);
+            return connectionField.Name;
         }
 
-        // Fallback for complex generic types
-        var startIndex = taskType.IndexOf('<');
-        var endIndex = taskType.LastIndexOf('>');
-        if (startIndex >= 0 && endIndex > startIndex)
+        // Check by common field names if type checking didn't work
+        connectionField = repositoryClass.GetMembers()
+            .OfType<IFieldSymbol>()
+            .FirstOrDefault(f => f.Name == "connection" ||
+                                f.Name == "_connection" ||
+                                f.Name == "Connection" ||
+                                f.Name == "_Connection" ||
+                                f.Name.EndsWith("Connection", StringComparison.OrdinalIgnoreCase));
+        if (connectionField != null)
         {
-            return taskType.Substring(startIndex + 1, endIndex - startIndex - 1);
+            return connectionField.Name;
         }
 
-        return "object"; // Safe fallback
+        // 2. Check properties
+        var connectionProperty = repositoryClass.GetMembers()
+            .OfType<IPropertySymbol>()
+            .FirstOrDefault(p => p.IsDbConnection() ||
+                                p.Name == "connection" ||
+                                p.Name == "_connection" ||
+                                p.Name == "Connection" ||
+                                p.Name == "_Connection" ||
+                                p.Name.EndsWith("Connection", StringComparison.OrdinalIgnoreCase));
+        if (connectionProperty != null)
+        {
+            return connectionProperty.Name;
+        }
+
+        // 3. Check primary constructor parameters
+        var primaryConstructor = PrimaryConstructorAnalyzer.GetPrimaryConstructor(repositoryClass);
+        if (primaryConstructor != null)
+        {
+            var connectionParam = primaryConstructor.Parameters.FirstOrDefault(p => p.Type.IsDbConnection());
+            if (connectionParam != null)
+            {
+                return connectionParam.Name;
+            }
+        }
+
+        // 4. Check regular constructor parameters (fallback)
+        var constructor = repositoryClass.InstanceConstructors.FirstOrDefault();
+        if (constructor != null)
+        {
+            var connectionParam = constructor.Parameters.FirstOrDefault(p => p.Type.IsDbConnection());
+            if (connectionParam != null)
+            {
+                return connectionParam.Name;
+            }
+        }
+
+        // Default fallback - common field names
+        return "connection";
     }
 }

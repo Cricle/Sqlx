@@ -16,6 +16,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Text.RegularExpressions;
 using static Sqlx.Extensions;
+using static Sqlx.Generator.Core.SharedCodeGenerationUtilities;
 
 internal partial class MethodGenerationContext : GenerationContextBase
 {
@@ -835,15 +836,8 @@ internal partial class MethodGenerationContext : GenerationContextBase
     private bool GetDbSetElement(out ISymbol? symbol)
     {
         symbol = null;
-        var setElement = MethodSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "DbSetTypeAttribute");
-        if (setElement == null)
-        {
-            // Do not report diagnostic; allow fallback to ElementType
-            return false;
-        }
-
-        symbol = (ISymbol)setElement.ConstructorArguments[0].Value!;
-        return true;
+        // DbSetType support removed to reduce complexity
+        return false;
     }
 
     private List<IPropertySymbol> GetPropertySymbols(ITypeSymbol symbol)
@@ -1183,124 +1177,99 @@ internal partial class MethodGenerationContext : GenerationContextBase
         }
     }
 
-    private string? GetSql()
+    private string? GetSql() =>
+        GetSqlFromRawParameter() ??
+        GetSqlFromSqlxAttribute() ??
+        GetSqlFromSyntax() ??
+        GetSqlFromLegacyAttributes();
+
+    private string? GetSqlFromRawParameter()
     {
-        if (RawSqlParameter != null)
-        {
-            var attr = RawSqlParameter.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlxAttribute");
-            if (attr != null)
-            {
-                if (attr.ConstructorArguments.Length == 0)
-                {
-                    return RawSqlParameter.Name;
-                }
+        if (RawSqlParameter?.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlxAttribute") is not { } attr)
+            return null;
 
-                var sqlValue = attr.ConstructorArguments[0].Value?.ToString() ?? "";
+        if (attr.ConstructorArguments.Length == 0)
+            return RawSqlParameter.Name;
 
-                // Process SQL template placeholders and escape for C# generation
-                sqlValue = ProcessSqlTemplate(sqlValue);
-                return $"@\"{EscapeSqlForCSharp(sqlValue)}\"";
-            }
-        }
+        var sqlValue = ProcessSqlTemplate(attr.ConstructorArguments[0].Value?.ToString() ?? "");
+        return $"@\"{EscapeSqlForCSharp(sqlValue)}\"";
+    }
 
-        // Check for SqlxAttribute (stored procedure) - emit plain proc call with parameters
+    private string? GetSqlFromSqlxAttribute()
+    {
         var sqlxAttr = MethodSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlxAttribute");
-        if (sqlxAttr != null)
-        {
-            var procedureName = sqlxAttr.ConstructorArguments.Length > 0
-                ? sqlxAttr.ConstructorArguments[0].Value?.ToString()
-                : MethodSymbol.Name;
+        if (sqlxAttr == null) return null;
 
-            if (!string.IsNullOrEmpty(procedureName))
-            {
-                procedureName = ProcessSqlTemplate(procedureName!);
-                var paramSql = string.Join(", ", SqlParameters.Select(p => p.GetParameterName(SqlDef.ParameterPrefix)));
-                var call = string.IsNullOrEmpty(paramSql) ? procedureName : $"{procedureName} {paramSql}";
-                return $"@\"EXEC {call}\"";
-            }
-        }
+        var procedureName = sqlxAttr.ConstructorArguments.Length > 0
+            ? sqlxAttr.ConstructorArguments[0].Value?.ToString()
+            : MethodSymbol.Name;
 
-        // Fallback: parse syntax for [Sqlx("...")] when attribute is unbound
+        if (string.IsNullOrEmpty(procedureName)) return null;
+
+        procedureName = ProcessSqlTemplate(procedureName!);
+        var paramSql = string.Join(", ", SqlParameters.Select(p => p.GetParameterName(SqlDef.ParameterPrefix)));
+        var call = string.IsNullOrEmpty(paramSql) ? procedureName : $"{procedureName} {paramSql}";
+        return $"@\"EXEC {call}\"";
+    }
+
+    private string? GetSqlFromSyntax()
+    {
         var syntax = MethodSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() as Microsoft.CodeAnalysis.CSharp.Syntax.MethodDeclarationSyntax;
-        if (syntax != null)
+        if (syntax == null) return null;
+
+        foreach (var attr in syntax.AttributeLists.SelectMany(list => list.Attributes)
+                    .Where(attr => attr.Name.ToString() is "Sqlx" or "SqlxAttribute"))
         {
-            foreach (var list in syntax.AttributeLists)
+            if (attr.ArgumentList?.Arguments.Count > 0)
             {
-                foreach (var attr in list.Attributes)
-                {
-                    var nameText = attr.Name.ToString();
-                    if (nameText is "Sqlx" or "SqlxAttribute")
-                    {
-                        if (attr.ArgumentList != null && attr.ArgumentList.Arguments.Count > 0)
-                        {
-                            var firstArg = attr.ArgumentList.Arguments[0].ToString().Trim();
-                            // Expect a string literal; just embed as-is, escaping quotes minimally
-                            var sp = firstArg.Trim('"');
-                            var escaped = sp.Replace("\"", "\\\"");
-                            return $"@\"EXEC {escaped}\"";
-                        }
-                        else
-                        {
-                            // Default to method name when no argument provided
-                            return $"@\"EXEC {MethodSymbol.Name}\"";
-                        }
-                    }
-                }
+                var firstArg = attr.ArgumentList.Arguments[0].ToString().Trim();
+                var escaped = firstArg.Trim('"').Replace("\"", "\\\"");
+                return $"@\"EXEC {escaped}\"";
             }
+            return $"@\"EXEC {MethodSymbol.Name}\"";
         }
+        return null;
+    }
 
-        // Smart operation inference based on method names is implemented, maintaining backward compatibility
-
-        // Backward compatibility: Check deprecated SqlExecuteTypeAttribute
+    private string? GetSqlFromLegacyAttributes()
+    {
         var sqlExecuteType = MethodSymbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "SqlExecuteTypeAttribute");
-        if (sqlExecuteType != null)
+        if (sqlExecuteType == null) return null;
+
+        // Emit deprecation warning
+        ClassGenerationContext.GeneratorExecutionContext.ReportDiagnostic(
+            Diagnostic.Create(
+                new DiagnosticDescriptor(
+                    "SQLX_DEPRECATED_001",
+                    "SqlExecuteType is deprecated",
+                    "SqlExecuteTypeAttribute is deprecated. Use method naming conventions and ExpressionToSql parameters instead.",
+                    "Usage",
+                    DiagnosticSeverity.Warning,
+                    isEnabledByDefault: true),
+                MethodSymbol.Locations.FirstOrDefault()));
+
+        var enumValueObj = sqlExecuteType.ConstructorArguments[0].Value;
+        var type = enumValueObj switch
         {
-            // Emit deprecation warning
-            ClassGenerationContext.GeneratorExecutionContext.ReportDiagnostic(
-                Diagnostic.Create(
-                    new DiagnosticDescriptor(
-                        "SQLX_DEPRECATED_001",
-                        "SqlExecuteType is deprecated",
-                        "SqlExecuteTypeAttribute is deprecated. Use method naming conventions and ExpressionToSql parameters instead.",
-                        "Usage",
-                        DiagnosticSeverity.Warning,
-                        isEnabledByDefault: true),
-                    MethodSymbol.Locations.FirstOrDefault()));
+            int intValue => intValue,
+            string strValue when int.TryParse(strValue, out var intVal) => intVal,
+            _ => Constants.SqlExecuteTypeValues.Select
+        };
 
-            // Still process to maintain backward compatibility
-            var enumValueObj = sqlExecuteType.ConstructorArguments[0].Value;
-            var type = enumValueObj switch
-            {
-                int intValue => intValue,
-                string strValue when int.TryParse(strValue, out var intVal) => intVal,
-                _ => Constants.SqlExecuteTypeValues.Select
-            };
-            var tableName = sqlExecuteType.ConstructorArguments[1].Value?.ToString() ?? string.Empty;
-            tableName = GetEffectiveTableName(tableName);
+        var tableName = GetEffectiveTableName(sqlExecuteType.ConstructorArguments[1].Value?.ToString() ?? string.Empty);
 
-            return type switch
-            {
-                Constants.SqlExecuteTypeValues.Select => HandleSelectOperation(tableName),
-                Constants.SqlExecuteTypeValues.Insert => HandleInsertOperation(tableName),
-                Constants.SqlExecuteTypeValues.Update => HandleUpdateOperation(tableName),
-                Constants.SqlExecuteTypeValues.Delete => HandleDeleteOperation(tableName),
-                Constants.SqlExecuteTypeValues.BatchInsert => HandleBatchOperation("INSERT", tableName),
-                Constants.SqlExecuteTypeValues.BatchUpdate => HandleBatchOperation("UPDATE", tableName),
-                Constants.SqlExecuteTypeValues.BatchDelete => HandleBatchOperation("DELETE", tableName),
-                Constants.SqlExecuteTypeValues.BatchCommand => "/* ADO.NET BatchCommand will be used */",
-                _ => string.Empty
-            };
-        }
-
-        // If we have ExpressionToSql parameter but no other SQL source, use dynamic SQL
-        if (ExpressionToSqlParameter != null)
+        return type switch
         {
-            // For ExpressionToSql, the SQL is generated from the expression parameter at runtime
-            // Check if ToTemplate method exists, otherwise fall back to simple approach
-            return $"\"SELECT * FROM UnknownTable\"";
-        }
-
-        return string.Empty;
+            Constants.SqlExecuteTypeValues.Select => HandleSelectOperation(tableName),
+            Constants.SqlExecuteTypeValues.Insert => HandleInsertOperation(tableName),
+            Constants.SqlExecuteTypeValues.Update => HandleUpdateOperation(tableName),
+            Constants.SqlExecuteTypeValues.Delete => HandleDeleteOperation(tableName),
+            Constants.SqlExecuteTypeValues.BatchInsert => HandleBatchOperation("INSERT", tableName),
+            Constants.SqlExecuteTypeValues.BatchUpdate => HandleBatchOperation("UPDATE", tableName),
+            Constants.SqlExecuteTypeValues.BatchDelete => HandleBatchOperation("DELETE", tableName),
+            Constants.SqlExecuteTypeValues.BatchCommand => "/* ADO.NET BatchCommand will be used */",
+            _ => string.Empty
+        };
     }
 
     private string GetEffectiveTableName(string defaultTableName)
@@ -2115,34 +2084,6 @@ internal partial class MethodGenerationContext : GenerationContextBase
     }
 
 
-    private void GenerateBatchExecution(IndentedStringBuilder sb)
-    {
-        var returnType = GetReturnType();
-
-        if (IsAsync)
-        {
-            if (returnType != ReturnTypes.Void)
-            {
-                sb.AppendLine($"return await {CmdName}.ExecuteNonQueryAsync();");
-            }
-            else
-            {
-                sb.AppendLine($"await {CmdName}.ExecuteNonQueryAsync();");
-            }
-        }
-        else
-        {
-            if (returnType != ReturnTypes.Void)
-            {
-                sb.AppendLine($"return {CmdName}.ExecuteNonQuery();");
-            }
-            else
-            {
-                sb.AppendLine($"{CmdName}.ExecuteNonQuery();");
-            }
-        }
-    }
-
     private string GetDbConnectionFieldName(INamedTypeSymbol repositoryClass)
     {
         // Find the first DbConnection field or property
@@ -2265,8 +2206,6 @@ internal partial class MethodGenerationContext : GenerationContextBase
         return SqlTemplatePlaceholder.ProcessTemplate(sql, context);
     }
 
-    private static string EscapeSqlForCSharp(string sql) =>
-        sql.Replace("\"", "\\\"").Replace("\r\n", "\\r\\n").Replace("\n", "\\n").Replace("\r", "\\r");
 
     private bool ShouldGenerateNullCheck(IParameterSymbol parameter)
     {
@@ -2334,11 +2273,4 @@ internal enum ReturnTypes
     List = 4,
     ListDictionaryStringObject = 5,
     Object = 6,
-}
-
-internal enum SqlTypes
-{
-    MySql = 0,
-    SqlServer = 1,
-    Postgresql = 2,
 }

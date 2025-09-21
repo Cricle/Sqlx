@@ -27,7 +27,7 @@ public class Program
         {
             await ShowcaseCompileTimeFeatures(logger);
             await ShowcaseRuntimeCapabilities(logger);
-            
+
             Console.WriteLine("🎉 All integration demonstrations completed!");
             Console.WriteLine();
             Console.WriteLine("📊 Summary:");
@@ -50,7 +50,7 @@ public class Program
         Console.WriteLine();
 
         logger.LogInformation("Template engines process SQL templates during compilation");
-        
+
         // Show examples of templates that would be processed at compile-time
         var templateExamples = new[]
         {
@@ -68,7 +68,7 @@ public class Program
             Console.WriteLine($"   ✅ Processed at compile-time by source generators");
             Console.WriteLine();
         }
-        
+
         return Task.CompletedTask;
     }
 

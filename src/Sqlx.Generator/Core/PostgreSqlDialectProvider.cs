@@ -19,7 +19,7 @@ internal class PostgreSqlDialectProvider : BaseDialectProvider
     public override SqlDefine SqlDefine => SqlDefine.PostgreSql;
 
     /// <inheritdoc />
-    public override SqlDefineTypes DialectType => SqlDefineTypes.PostgreSql;
+    public override Generator.SqlDefineTypes DialectType => SqlDefineTypes.PostgreSql;
 
     /// <inheritdoc />
     public override string GenerateLimitClause(int? limit, int? offset)

@@ -143,7 +143,7 @@ namespace SqlxDemo
 
             // 基本直接执行
             var sql1 = ParameterizedSql.Create(
-                "SELECT * FROM [user] WHERE [age] > @age AND [is_active] = @active", 
+                "SELECT * FROM [user] WHERE [age] > @age AND [is_active] = @active",
                 new Dictionary<string, object?> { ["age"] = 25, ["active"] = true });
 
             Console.WriteLine($"📝 基本直接执行:");
@@ -226,21 +226,21 @@ namespace SqlxDemo
                 Console.WriteLine("   原始模板: SELECT {{columns:auto}} FROM {{table}} WHERE {{where:id}}");
                 Console.WriteLine("   处理结果: SELECT Id, Name, Email, Age, Salary, DepartmentId, IsActive, HireDate, Bonus, PerformanceRating FROM User WHERE Id = @id");
                 Console.WriteLine();
-                
+
                 Console.WriteLine("📁 查看实际生成的代码:");
                 Console.WriteLine("   文件位置: samples/SqlxDemo/Generated/Sqlx.Generator/Sqlx.CSharpGenerator/SqlxDemo_Services_DemoUserRepository.Repository.g.cs");
                 Console.WriteLine("   第28行显示了模板处理的结果");
                 Console.WriteLine();
-                
+
                 Console.WriteLine("✅ 模板引擎验证成功:");
                 Console.WriteLine("   • {{columns:auto}} → 自动推断的列名列表");
-                Console.WriteLine("   • {{table}} → 表名推断");  
+                Console.WriteLine("   • {{table}} → 表名推断");
                 Console.WriteLine("   • {{where:id}} → WHERE子句生成");
                 Console.WriteLine("   • 生成的代码包含完整的参数绑定逻辑");
-                
+
                 // 创建演示仓储实例 (现在生成的代码应该工作了)
                 var demoRepo = new DemoUserRepository(connection);
-                
+
                 Console.WriteLine("🔍 实际运行生成的代码:");
                 var user = await demoRepo.GetUserByIdAsync(1);
                 if (user != null)
@@ -260,7 +260,7 @@ namespace SqlxDemo
 
                 // 演示 SqlTemplateAttribute 方法
                 Console.WriteLine("🏷️ 演示 SqlTemplateAttribute 方法:");
-                
+
                 try
                 {
                     var searchResults = await demoRepo.SearchUsersByNameAndAgeAsync("%张%", 25);
@@ -321,11 +321,11 @@ namespace SqlxDemo
 
             // 基本模板
             var template = SqlTemplate.Parse("SELECT * FROM [user] WHERE [age] > @age AND [is_active] = 1");
-            var sql = template.Execute(new { age = 25 });
-            
+            var sql = template.Execute(new Dictionary<string, object?> { ["age"] = 25 });
+
             Console.WriteLine($"🔍 查询年龄大于25的活跃用户:");
             Console.WriteLine($"   SQL: {sql.Sql}");
-            
+
             using var command = connection.CreateCommand();
             command.CommandText = "SELECT COUNT(*) FROM [user] WHERE [age] > 25 AND [is_active] = 1";
             var count = await command.ExecuteScalarAsync();

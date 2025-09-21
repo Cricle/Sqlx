@@ -4,10 +4,6 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-using Sqlx.SqlGen;
-using System;
-using System.Linq;
-
 namespace Sqlx.Generator.Core;
 
 /// <summary>
@@ -19,7 +15,7 @@ internal class MySqlDialectProvider : BaseDialectProvider
     public override SqlDefine SqlDefine => SqlDefine.MySql;
 
     /// <inheritdoc />
-    public override SqlDefineTypes DialectType => SqlDefineTypes.MySql;
+    public override Generator.SqlDefineTypes DialectType => SqlDefineTypes.MySql;
 
     /// <inheritdoc />
     public override string GenerateLimitClause(int? limit, int? offset) =>

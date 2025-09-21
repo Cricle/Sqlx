@@ -81,7 +81,7 @@ internal class Program
 
         var validator = new TemplateValidator();
         var files = Directory.GetFiles(path, "*.cs", SearchOption.AllDirectories);
-        
+
         int validCount = 0;
         int totalCount = 0;
 
@@ -92,7 +92,7 @@ internal class Program
             {
                 totalCount++;
                 Console.WriteLine($"📄 {Path.GetFileName(file)}");
-                
+
                 try
                 {
                     var result = validator.ValidateTemplate("SELECT 1"); // Simplified validation

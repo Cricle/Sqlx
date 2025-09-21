@@ -5,8 +5,6 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.CodeAnalysis;
-using System;
-using System.Linq;
 
 namespace Sqlx.Generator.Core;
 
@@ -15,6 +13,24 @@ namespace Sqlx.Generator.Core;
 /// </summary>
 public static class SharedCodeGenerationUtilities
 {
+    /// <summary>
+    /// Extract inner type from Task&lt;T&gt; type strings
+    /// </summary>
+    public static string ExtractInnerTypeFromTask(string taskType)
+    {
+        if (taskType.StartsWith("Task<") && taskType.EndsWith(">"))
+            return taskType.Substring(5, taskType.Length - 6);
+        if (taskType.StartsWith("System.Threading.Tasks.Task<") && taskType.EndsWith(">"))
+            return taskType.Substring(28, taskType.Length - 29);
+        return "object";
+    }
+
+    /// <summary>
+    /// Escape SQL string for C# string literal
+    /// </summary>
+    public static string EscapeSqlForCSharp(string? sql) =>
+        sql?.Replace("\"", "\\\"").Replace("\r\n", "\\r\\n").Replace("\n", "\\n").Replace("\r", "\\r") ?? "";
+
     /// <summary>
     /// Generate standard file header
     /// </summary>
@@ -34,33 +50,13 @@ public static class SharedCodeGenerationUtilities
         sb.AppendLine();
     }
 
-
-    /// <summary>
-    /// Generate simplified error handling block
-    /// </summary>
-    public static void GenerateErrorHandling(IndentedStringBuilder sb, Action generateContent)
-    {
-        sb.AppendLine("try");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        generateContent();
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.AppendLine("catch (global::System.Exception ex)");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        sb.AppendLine("throw new global::System.InvalidOperationException($\"SQL execution error: {ex.Message}\", ex);");
-        sb.PopIndent();
-        sb.AppendLine("}");
-    }
-
     /// <summary>
     /// Generate command creation and parameter binding
     /// </summary>
-    public static void GenerateCommandSetup(IndentedStringBuilder sb, string sql, IMethodSymbol method)
+    public static void GenerateCommandSetup(IndentedStringBuilder sb, string sql, IMethodSymbol method, string connectionName)
     {
-        sb.AppendLine("__cmd__ = _connection.CreateCommand();");
-        
+        sb.AppendLine($"__cmd__ = {connectionName}.CreateCommand();");
+
         // Properly escape SQL string for C# code generation
         var escapedSql = sql.Replace("\"", "\"\"").Replace("\r\n", "\\r\\n").Replace("\n", "\\n").Replace("\t", "\\t");
         sb.AppendLine($"__cmd__.CommandText = @\"{escapedSql}\";");
@@ -131,20 +127,18 @@ public static class SharedCodeGenerationUtilities
             sb.AppendLine($"if (reader[\"{columnName}\"] != global::System.DBNull.Value)");
             sb.AppendLine("{");
             sb.PushIndent();
-            sb.AppendLine($"{variableName}.{prop.Name} = ({prop.Type.ToDisplayString()})reader[\"{columnName}\"];");
+            var readMethod = prop.Type.UnwrapNullableType().GetDataReaderMethod();
+            if (string.IsNullOrEmpty(readMethod))
+            {
+                sb.AppendLine($"{variableName}.{prop.Name} = ({prop.Type.ToDisplayString()})reader[\"{columnName}\"];");
+            }
+            else
+            {
+                sb.AppendLine($"{variableName}.{prop.Name} = reader.{readMethod}(reader.GetOrdinal(\"{columnName}\"));");
+            }
             sb.PopIndent();
             sb.AppendLine("}");
         }
-    }
-
-    /// <summary>
-    /// Check if type is nullable
-    /// </summary>
-    public static bool IsNullableType(ITypeSymbol type)
-    {
-        return type.CanBeReferencedByName && 
-               (type.IsReferenceType || 
-                (type.IsValueType && type.Name == "Nullable"));
     }
 
     /// <summary>
@@ -172,7 +166,7 @@ public static class SharedCodeGenerationUtilities
         for (int i = 0; i < name.Length; i++)
         {
             char current = name[i];
-            
+
             if (char.IsUpper(current))
             {
                 // Add underscore before uppercase letters (except at the beginning)

@@ -38,22 +38,22 @@ public interface IDemoUserRepository
     /// <summary>
     /// 使用SqlTemplateAttribute演示编译时SQL模板 - 支持@{参数名}占位符语法
     /// </summary>
-    [SqlTemplate("SELECT * FROM [user] WHERE [Name] LIKE @{namePattern} AND [Age] > @{minAge}", 
-                 Dialect = SqlDialectType.SQLite, SafeMode = true)]
+    [SqlTemplate("SELECT * FROM [user] WHERE [Name] LIKE @{namePattern} AND [Age] > @{minAge}",
+                 Dialect = SqlDefineTypes.SQLite, SafeMode = true)]
     Task<List<User>> SearchUsersByNameAndAgeAsync(string namePattern, int minAge);
 
     /// <summary>
     /// 使用SqlTemplateAttribute进行复杂条件查询
     /// </summary>
-    [SqlTemplate("SELECT [Id], [Name], [Email], [Salary] FROM [user] WHERE [DepartmentId] = @{deptId} AND [Salary] >= @{minSalary} ORDER BY [Salary] DESC", 
-                 Dialect = SqlDialectType.SQLite, Operation = SqlOperation.Select)]
+    [SqlTemplate("SELECT [Id], [Name], [Email], [Salary] FROM [user] WHERE [DepartmentId] = @{deptId} AND [Salary] >= @{minSalary} ORDER BY [Salary] DESC",
+                 Dialect = SqlDefineTypes.SQLite, Operation = SqlOperation.Select)]
     Task<List<User>> GetUsersByDepartmentAndSalaryAsync(int deptId, decimal minSalary);
 
     /// <summary>
     /// 使用SqlTemplateAttribute进行更新操作
     /// </summary>
     [SqlTemplate("UPDATE [user] SET [Salary] = @{newSalary}, [Bonus] = @{bonusAmount} WHERE [Id] = @{userId}",
-                 Dialect = SqlDialectType.SQLite, Operation = SqlOperation.Update)]
+                 Dialect = SqlDefineTypes.SQLite, Operation = SqlOperation.Update)]
     Task<int> UpdateUserSalaryAndBonusAsync(int userId, decimal newSalary, decimal bonusAmount);
 }
 
@@ -62,8 +62,9 @@ public interface IDemoUserRepository
 /// 生成器会处理SQL模板并生成对应的方法实现
 /// 使用主构造函数提供依赖注入
 /// </summary>
+[TableName("user")]
 [RepositoryFor(typeof(IDemoUserRepository))]
-public partial class DemoUserRepository(IDbConnection _connection) : IDemoUserRepository
+public partial class DemoUserRepository(IDbConnection connection) : IDemoUserRepository
 {
     // 源代码生成器会在这里生成实际的方法实现
     // 生成的代码会包含处理好的SQL（占位符已替换）
@@ -99,7 +100,7 @@ public partial class DemoUserRepository(IDbConnection _connection) : IDemoUserRe
         Console.WriteLine($"   执行时间: {elapsedMs:F2}ms");
         Console.WriteLine($"   错误信息: {exception.Message}");
         Console.WriteLine($"   错误类型: {exception.GetType().Name}");
-        
+
         // 这里可以添加错误日志记录、监控告警等逻辑
         // 注意：不要在这里处理异常，因为异常会重新抛出
     }

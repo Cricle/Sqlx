@@ -7,7 +7,6 @@
 namespace Sqlx;
 
 using Microsoft.CodeAnalysis;
-using Sqlx;
 
 /// <summary>
 /// Stored procedures generator for C#.
@@ -36,7 +35,7 @@ public partial class CSharpGenerator : AbstractGenerator
     public override void Initialize(GeneratorInitializationContext context)
     {
         // Register as SyntaxReceiver to ensure context.SyntaxReceiver works
-        context.RegisterForSyntaxNotifications((SyntaxReceiverCreator)(() => new CSharpSyntaxReceiver()));
+        context.RegisterForSyntaxNotifications(() => new CSharpSyntaxReceiver());
     }
 }
 

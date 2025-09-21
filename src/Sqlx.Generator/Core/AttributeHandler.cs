@@ -5,7 +5,6 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.CodeAnalysis;
-using System.Linq;
 using System.Text;
 
 namespace Sqlx.Generator.Core;
@@ -138,7 +137,7 @@ public class AttributeHandler
                         sb.Append($"\"{sqlArg.Value.ToString().Replace("\"", "\\\"")}\"");
                     }
                 }
-                
+
                 // Add named arguments if present
                 if (attribute.NamedArguments.Length > 0)
                 {
@@ -158,15 +157,15 @@ public class AttributeHandler
                             // Convert dialect enum value to proper enum name
                             var dialectName = dialectValue switch
                             {
-                                0 => "SqlServer",
-                                1 => "MySQL", 
-                                2 => "PostgreSQL",
-                                3 => "SQLite",
-                                4 => "Oracle",
-                                5 => "DB2",
+                                0 => "MySql",
+                                1 => "SqlServer",
+                                2 => "PostgreSql",
+                                3 => "Oracle",
+                                4 => "DB2",
+                                5 => "SQLite",
                                 _ => "SQLite"
                             };
-                            sb.Append($"global::Sqlx.SqlDialectType.{dialectName}");
+                            sb.Append($"global::Sqlx.Annotations.SqlDefineTypes.{dialectName}");
                         }
                         else if (namedArg.Key == "Operation" && namedArg.Value.Value is int operationValue)
                         {
@@ -175,7 +174,7 @@ public class AttributeHandler
                             {
                                 0 => "Select",
                                 1 => "Insert",
-                                2 => "Update", 
+                                2 => "Update",
                                 3 => "Delete",
                                 _ => "Select"
                             };

@@ -4,5 +4,55 @@
         <name>Sqlx.Generator.Tests</name>
     </assembly>
     <members>
+        <member name="T:Sqlx.Generator.Tests.BasicGeneratorTests">
+            <summary>
+            Basic tests for source generator functionality.
+            </summary>
+        </member>
+        <member name="T:Sqlx.Generator.Tests.EnhancedSqlTemplateEngineTests">
+            <summary>
+            Tests for enhanced SQL template engine functionality.
+            </summary>
+        </member>
+        <member name="T:Sqlx.Generator.Tests.ExpressionToSqlCoreTests">
+            <summary>
+            Tests for core ExpressionToSql functionality.
+            </summary>
+        </member>
+        <member name="T:Sqlx.Generator.Tests.ExpressionToSqlCoreTests.TestUser">
+            <summary>
+            Test entity for ExpressionToSql tests.
+            </summary>
+        </member>
+        <member name="T:Sqlx.Generator.Tests.ParameterizedSqlCoreTests">
+            <summary>
+            Tests for core ParameterizedSql functionality.
+            </summary>
+        </member>
+        <member name="T:Sqlx.Generator.Tests.ParameterizedSqlCoreTests.TestEntity">
+            <summary>
+            Test entity for ParameterizedSql tests.
+            </summary>
+        </member>
+        <member name="T:Sqlx.Generator.Tests.SharedUtilitiesTests">
+            <summary>
+            Tests for SharedCodeGenerationUtilities.
+            </summary>
+        </member>
+        <member name="T:Sqlx.Generator.Tests.SqlTemplateCoreTests">
+            <summary>
+            Tests for core SqlTemplate functionality.
+            </summary>
+        </member>
+        <member name="T:Sqlx.Generator.Tests.SqlTemplateCoreTests.TestEntity">
+            <summary>
+            Test entity for SqlTemplate tests.
+            </summary>
+        </member>
+        <member name="T:Sqlx.Generator.Tests.SqlxGeneratorServiceTests">
+            <summary>
+            Tests for SqlxGeneratorService core functionality.
+            </summary>
+        </member>
     </members>
 </doc>

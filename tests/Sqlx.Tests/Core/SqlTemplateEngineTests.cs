@@ -27,7 +27,7 @@ public class SqlTemplateEngineTests
     public void Initialize()
     {
         _engine = new SqlTemplateEngine();
-        
+
         // Create a test compilation
         var sourceCode = @"
 using System;
@@ -71,7 +71,7 @@ namespace TestNamespace
         // Get test symbols
         var semanticModel = _compilation.GetSemanticModel(syntaxTree);
         var root = syntaxTree.GetRoot();
-        
+
         _userType = _compilation.GetTypeByMetadataName("TestNamespace.User")!;
         var serviceType = _compilation.GetTypeByMetadataName("TestNamespace.IUserService")!;
         _testMethod = serviceType.GetMembers("GetUserByIdAsync").OfType<IMethodSymbol>().First();

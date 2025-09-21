@@ -5,12 +5,12 @@ namespace SqlxDemo.Models;
 [TableName("user")]
 public class User
 {
-    public int Id { get; set; }
+    public long Id { get; set; }
     public string? Name { get; set; }
     public string? Email { get; set; }
-    public int Age { get; set; }
+    public long Age { get; set; }
     public decimal Salary { get; set; }
-    public int DepartmentId { get; set; }
+    public long DepartmentId { get; set; }
     public bool IsActive { get; set; }
     public DateTime HireDate { get; set; }
     public decimal? Bonus { get; set; }

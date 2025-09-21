@@ -21,7 +21,7 @@ internal interface IDatabaseDialectProvider
     /// <summary>
     /// Gets the dialect type.
     /// </summary>
-    SqlDefineTypes DialectType { get; }
+    Generator.SqlDefineTypes DialectType { get; }
 
     /// <summary>
     /// Generates a LIMIT clause for pagination.

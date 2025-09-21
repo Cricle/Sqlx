@@ -26,7 +26,7 @@ public class InterceptorGenerationTests
     public void Initialize()
     {
         _codeGenerationService = new CodeGenerationService();
-        
+
         // Create a test compilation with a repository class
         var sourceCode = @"
 using System;
@@ -92,9 +92,9 @@ namespace TestNamespace
         var result = sb.ToString();
 
         // Assert
-        Assert.IsTrue(result.Contains("partial void OnExecuting(string operationName, global::System.Data.IDbCommand command)"), 
+        Assert.IsTrue(result.Contains("partial void OnExecuting(string operationName, global::System.Data.IDbCommand command)"),
             "Should generate OnExecuting method");
-        Assert.IsTrue(result.Contains("Called before executing a repository operation"), 
+        Assert.IsTrue(result.Contains("Called before executing a repository operation"),
             "Should include documentation for OnExecuting");
     }
 
@@ -109,9 +109,9 @@ namespace TestNamespace
         var result = sb.ToString();
 
         // Assert
-        Assert.IsTrue(result.Contains("partial void OnExecuted(string operationName, global::System.Data.IDbCommand command, object? result, long elapsedTicks)"), 
+        Assert.IsTrue(result.Contains("partial void OnExecuted(string operationName, global::System.Data.IDbCommand command, object? result, long elapsedTicks)"),
             "Should generate OnExecuted method");
-        Assert.IsTrue(result.Contains("Called after successfully executing a repository operation"), 
+        Assert.IsTrue(result.Contains("Called after successfully executing a repository operation"),
             "Should include documentation for OnExecuted");
     }
 
@@ -126,9 +126,9 @@ namespace TestNamespace
         var result = sb.ToString();
 
         // Assert
-        Assert.IsTrue(result.Contains("partial void OnExecuteFail(string operationName, global::System.Data.IDbCommand command, global::System.Exception exception, long elapsedTicks)"), 
+        Assert.IsTrue(result.Contains("partial void OnExecuteFail(string operationName, global::System.Data.IDbCommand command, global::System.Exception exception, long elapsedTicks)"),
             "Should generate OnExecuteFail method");
-        Assert.IsTrue(result.Contains("Called when a repository operation fails with an exception"), 
+        Assert.IsTrue(result.Contains("Called when a repository operation fails with an exception"),
             "Should include documentation for OnExecuteFail");
     }
 
@@ -146,7 +146,7 @@ namespace TestNamespace
         Assert.IsTrue(result.Contains("OnExecuting"), "Should contain OnExecuting");
         Assert.IsTrue(result.Contains("OnExecuted"), "Should contain OnExecuted");
         Assert.IsTrue(result.Contains("OnExecuteFail"), "Should contain OnExecuteFail");
-        
+
         // Verify all are partial void methods
         Assert.IsTrue(result.Contains("partial void OnExecuting"), "OnExecuting should be partial void");
         Assert.IsTrue(result.Contains("partial void OnExecuted"), "OnExecuted should be partial void");
@@ -165,15 +165,15 @@ namespace TestNamespace
 
         // Assert
         // Check parameter documentation for each method
-        Assert.IsTrue(result.Contains("operationName\">The name of the operation"), 
+        Assert.IsTrue(result.Contains("operationName\">The name of the operation"),
             "Should document operationName parameter");
-        Assert.IsTrue(result.Contains("command\">The database command"), 
+        Assert.IsTrue(result.Contains("command\">The database command"),
             "Should document command parameter");
-        Assert.IsTrue(result.Contains("result\">The result of the operation"), 
+        Assert.IsTrue(result.Contains("result\">The result of the operation"),
             "Should document result parameter");
-        Assert.IsTrue(result.Contains("elapsedTicks\">The elapsed time"), 
+        Assert.IsTrue(result.Contains("elapsedTicks\">The elapsed time"),
             "Should document elapsedTicks parameter");
-        Assert.IsTrue(result.Contains("exception\">The exception that occurred"), 
+        Assert.IsTrue(result.Contains("exception\">The exception that occurred"),
             "Should document exception parameter");
     }
 
@@ -188,9 +188,9 @@ namespace TestNamespace
         var result = sb.ToString();
 
         // Assert
-        Assert.IsTrue(result.Contains("global::System.Data.IDbCommand"), 
+        Assert.IsTrue(result.Contains("global::System.Data.IDbCommand"),
             "Should use global namespace for IDbCommand");
-        Assert.IsTrue(result.Contains("global::System.Exception"), 
+        Assert.IsTrue(result.Contains("global::System.Exception"),
             "Should use global namespace for Exception");
     }
 
@@ -217,12 +217,12 @@ namespace Test
 {result}
     }}
 }}";
-        
+
         var syntaxTree = CSharpSyntaxTree.ParseText(wrappedCode);
         var diagnostics = syntaxTree.GetDiagnostics();
         var errors = diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToArray();
-        
-        Assert.IsFalse(errors.Any(), 
+
+        Assert.IsFalse(errors.Any(),
             $"Generated code should be syntactically valid. Errors: {string.Join(", ", errors.Select(e => e.GetMessage()))}");
     }
 
@@ -241,7 +241,7 @@ namespace Test
         Assert.IsFalse(result.Contains("    ;"), "Should not have trailing semicolons with spaces");
         Assert.IsTrue(result.Contains("/// <summary>"), "Should include XML documentation");
         Assert.IsTrue(result.Contains("/// </summary>"), "Should close XML documentation");
-        
+
         // Verify proper method signatures
         Assert.IsTrue(result.Contains("partial void OnExecuting(string operationName, global::System.Data.IDbCommand command);"));
         Assert.IsTrue(result.Contains("partial void OnExecuted(string operationName, global::System.Data.IDbCommand command, object? result, long elapsedTicks);"));

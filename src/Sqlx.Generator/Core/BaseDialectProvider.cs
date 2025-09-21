@@ -4,10 +4,6 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-using Sqlx.SqlGen;
-using System;
-using System.Linq;
-
 namespace Sqlx.Generator.Core;
 
 /// <summary>

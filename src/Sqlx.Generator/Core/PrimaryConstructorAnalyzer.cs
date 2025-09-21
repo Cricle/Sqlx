@@ -5,8 +5,6 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.CodeAnalysis;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
 
 namespace Sqlx;
@@ -64,62 +62,6 @@ internal static class PrimaryConstructorAnalyzer
         }
 
         return null;
-    }
-
-    /// <summary>
-    /// Gets the parameters of the primary constructor.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static IEnumerable<IParameterSymbol> GetPrimaryConstructorParameters(INamedTypeSymbol type)
-    {
-        var primaryConstructor = GetPrimaryConstructor(type);
-        return primaryConstructor?.Parameters ?? Enumerable.Empty<IParameterSymbol>();
-    }
-
-    /// <summary>
-    /// Gets all accessible members (properties from primary constructor + regular properties).
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static IEnumerable<IMemberInfo> GetAccessibleMembers(INamedTypeSymbol type)
-    {
-        var members = new List<IMemberInfo>();
-
-        // Add regular properties
-        var properties = type.GetMembers().OfType<IPropertySymbol>()
-            .Where(p => p.CanBeReferencedByName &&
-                       (p.SetMethod != null || IsRecord(type)) &&
-                       p.Name != "EqualityContract"); // Exclude Record's EqualityContract
-
-        foreach (var prop in properties)
-        {
-            members.Add(new PropertyMemberInfo(prop));
-        }
-
-        // For records or types with primary constructors, ensure all primary constructor parameters
-        // are included, either as properties or as parameters
-        if (IsRecord(type) || HasPrimaryConstructor(type))
-        {
-            var primaryConstructorParams = GetPrimaryConstructorParameters(type);
-            var existingPropertyNames = new HashSet<string>(properties.Select(p => p.Name), System.StringComparer.OrdinalIgnoreCase);
-
-            foreach (var param in primaryConstructorParams)
-            {
-                var propertyName = GetPropertyNameFromParameter(param.Name);
-
-                // Check if there's already a property with this name
-                var existingProperty = properties.FirstOrDefault(p =>
-                    string.Equals(p.Name, propertyName, System.StringComparison.OrdinalIgnoreCase));
-
-                if (existingProperty == null)
-                {
-                    // Add parameter as a member if no corresponding property exists
-                    members.Add(new PrimaryConstructorParameterMemberInfo(param, propertyName));
-                }
-                // If property exists, it's already added above, so we're good
-            }
-        }
-
-        return members;
     }
 
     /// <summary>
@@ -194,68 +136,4 @@ internal static class PrimaryConstructorAnalyzer
         // Convert camelCase to PascalCase
         return char.ToUpper(parameterName[0]) + parameterName.Substring(1);
     }
-}
-
-/// <summary>
-/// Represents information about a member (property or primary constructor parameter).
-/// </summary>
-internal abstract class IMemberInfo
-{
-    public abstract string Name { get; }
-    public abstract ITypeSymbol Type { get; }
-    public abstract bool CanWrite { get; }
-    public abstract bool IsFromPrimaryConstructor { get; }
-    public abstract string GetAccessExpression(string instanceName);
-}
-
-/// <summary>
-/// Member info for regular properties.
-/// </summary>
-internal class PropertyMemberInfo : IMemberInfo
-{
-    private readonly IPropertySymbol _property;
-
-    public PropertyMemberInfo(IPropertySymbol property)
-    {
-        _property = property;
-    }
-
-    public override string Name => _property.Name;
-    public override ITypeSymbol Type => _property.Type;
-    public override bool CanWrite => _property.SetMethod != null;
-    public override bool IsFromPrimaryConstructor => false;
-
-    public override string GetAccessExpression(string instanceName)
-    {
-        return $"{instanceName}.{Name}";
-    }
-
-    public IPropertySymbol Property => _property;
-}
-
-/// <summary>
-/// Member info for primary constructor parameters.
-/// </summary>
-internal class PrimaryConstructorParameterMemberInfo : IMemberInfo
-{
-    private readonly IParameterSymbol _parameter;
-    private readonly string _propertyName;
-
-    public PrimaryConstructorParameterMemberInfo(IParameterSymbol parameter, string propertyName)
-    {
-        _parameter = parameter;
-        _propertyName = propertyName;
-    }
-
-    public override string Name => _propertyName;
-    public override ITypeSymbol Type => _parameter.Type;
-    public override bool CanWrite => true; // Primary constructor parameters are typically writable
-    public override bool IsFromPrimaryConstructor => true;
-
-    public override string GetAccessExpression(string instanceName)
-    {
-        return $"{instanceName}.{Name}";
-    }
-
-    public IParameterSymbol Parameter => _parameter;
 }

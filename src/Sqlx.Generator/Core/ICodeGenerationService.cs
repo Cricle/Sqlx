@@ -4,8 +4,6 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-using Microsoft.CodeAnalysis;
-
 namespace Sqlx.Generator.Core;
 
 /// <summary>
@@ -24,26 +22,4 @@ public interface ICodeGenerationService
     /// </summary>
     /// <param name="context">The repository generation context.</param>
     void GenerateRepositoryImplementation(RepositoryGenerationContext context);
-
-    /// <summary>
-    /// Generates method documentation.
-    /// </summary>
-    /// <param name="sb">The string builder.</param>
-    /// <param name="method">The method.</param>
-    void GenerateMethodDocumentation(IndentedStringBuilder sb, IMethodSymbol method);
-
-    /// <summary>
-    /// Generates method documentation with resolved SQL.
-    /// </summary>
-    /// <param name="sb">The string builder.</param>
-    /// <param name="method">The method.</param>
-    /// <param name="processedSql">The processed SQL statement.</param>
-    void GenerateMethodDocumentationWithSql(IndentedStringBuilder sb, IMethodSymbol method, string? processedSql);
-
-    /// <summary>
-    /// Generates variable declarations for repository methods.
-    /// </summary>
-    /// <param name="sb">The string builder.</param>
-    /// <param name="method">The method.</param>
-    void GenerateMethodVariables(IndentedStringBuilder sb, IMethodSymbol method);
 }

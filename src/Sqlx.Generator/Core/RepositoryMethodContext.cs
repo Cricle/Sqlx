@@ -23,7 +23,7 @@ public class RepositoryMethodContext
         string tableName,
         string processedSql,
         AttributeHandler attributeHandler,
-        MethodAnalyzer methodAnalyzer)
+        INamedTypeSymbol classSymbol)
     {
         StringBuilder = stringBuilder;
         Method = method;
@@ -31,7 +31,7 @@ public class RepositoryMethodContext
         TableName = tableName;
         ProcessedSql = processedSql;
         AttributeHandler = attributeHandler;
-        MethodAnalyzer = methodAnalyzer;
+        ClassSymbol = classSymbol;
     }
 
     /// <summary>
@@ -65,7 +65,7 @@ public class RepositoryMethodContext
     public AttributeHandler AttributeHandler { get; }
 
     /// <summary>
-    /// Gets the method analyzer.
+    /// Gets the class symbol.
     /// </summary>
-    public MethodAnalyzer MethodAnalyzer { get; }
+    public INamedTypeSymbol ClassSymbol { get; }
 }

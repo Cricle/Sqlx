@@ -1,25 +1,6 @@
 namespace Sqlx
 {
     /// <summary>
-    /// Database types enumeration for type-safe database selection
-    /// </summary>
-    public enum DatabaseType
-    {
-        /// <summary>Microsoft SQL Server</summary>
-        SqlServer,
-        /// <summary>MySQL database</summary>
-        MySql,
-        /// <summary>PostgreSQL database</summary>
-        PostgreSql,
-        /// <summary>SQLite database</summary>
-        SQLite,
-        /// <summary>Oracle database</summary>
-        Oracle,
-        /// <summary>DB2 database</summary>
-        DB2
-    }
-
-    /// <summary>
     /// Database dialect definitions for mainstream databases (AOT-friendly)
     /// </summary>
     public static class SqlDefine
@@ -50,14 +31,14 @@ namespace Sqlx
         public static readonly SqlDialect DB2 = new("\"", "\"", "'", "'", "?");
 
         /// <summary>Gets SQL dialect by database type</summary>
-        public static SqlDialect GetDialect(DatabaseType databaseType) => databaseType switch
+        public static SqlDialect GetDialect(Annotations.SqlDefineTypes databaseType) => databaseType switch
         {
-            DatabaseType.MySql => MySql,
-            DatabaseType.SqlServer => SqlServer,
-            DatabaseType.PostgreSql => PostgreSql,
-            DatabaseType.SQLite => SQLite,
-            DatabaseType.Oracle => Oracle,
-            DatabaseType.DB2 => DB2,
+            Annotations.SqlDefineTypes.MySql => MySql,
+            Annotations.SqlDefineTypes.SqlServer => SqlServer,
+            Annotations.SqlDefineTypes.PostgreSql => PostgreSql,
+            Annotations.SqlDefineTypes.SQLite => SQLite,
+            Annotations.SqlDefineTypes.Oracle => Oracle,
+            Annotations.SqlDefineTypes.DB2 => DB2,
             _ => throw new NotSupportedException(databaseType.ToString())
         };
     }
@@ -103,18 +84,18 @@ namespace Sqlx
         }
 
         /// <summary>Gets database type enum (type-safe version)</summary>
-        public DatabaseType DbType
+        public Annotations.SqlDefineTypes DbType
         {
             get
             {
                 return DatabaseType switch
                 {
-                    "MySql" => Sqlx.DatabaseType.MySql,
-                    "SqlServer" => Sqlx.DatabaseType.SqlServer,
-                    "PostgreSql" => Sqlx.DatabaseType.PostgreSql,
-                    "SQLite" => Sqlx.DatabaseType.SQLite,
-                    "Oracle" => Sqlx.DatabaseType.Oracle,
-                    "DB2" => Sqlx.DatabaseType.DB2,
+                    "MySql" => Annotations.SqlDefineTypes.MySql,
+                    "SqlServer" => Annotations.SqlDefineTypes.SqlServer,
+                    "PostgreSql" => Annotations.SqlDefineTypes.PostgreSql,
+                    "SQLite" => Annotations.SqlDefineTypes.SQLite,
+                    "Oracle" => Annotations.SqlDefineTypes.Oracle,
+                    "DB2" => Annotations.SqlDefineTypes.DB2,
                     _ => throw new NotSupportedException(DatabaseType)
                 };
             }

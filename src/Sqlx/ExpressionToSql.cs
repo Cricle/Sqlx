@@ -1,4 +1,6 @@
+#if NET5_0_OR_GREATER
 using System.Diagnostics.CodeAnalysis;
+#endif
 using System.Linq.Expressions;
 using System.Text;
 
@@ -71,21 +73,21 @@ namespace Sqlx
         }
 
         /// <summary>Sets custom SELECT columns</summary>
-        public ExpressionToSql<T> Select(params string[] cols) =>
-            ConfigureSelect(cols?.ToList() ?? new List<string>());
-
-        /// <summary>Sets SELECT columns using expression</summary>
-        public ExpressionToSql<T> Select<TResult>(Expression<Func<T, TResult>> selector) =>
-            ConfigureSelect(ExtractColumnsFromSelector(selector));
-
-        /// <summary>Sets SELECT columns using multiple expressions</summary>
-        public ExpressionToSql<T> Select(params Expression<Func<T, object>>[] selectors) =>
-            ConfigureSelect(ExtractColumnsFromSelectors(selectors));
-
-        /// <summary>Configures SELECT columns</summary>
-        private ExpressionToSql<T> ConfigureSelect(List<string> columns)
+        public ExpressionToSql<T> Select(params string[] cols)
         {
-            _custom = columns;
+            _custom = cols?.ToList() ?? new List<string>();
+            return this;
+        }
+        /// <summary>Sets SELECT columns using expression</summary>
+        public ExpressionToSql<T> Select<TResult>(Expression<Func<T, TResult>> selector)
+        {
+            _custom = ExtractColumnsFromSelector(selector);
+            return this;
+        }
+        /// <summary>Sets SELECT columns using multiple expressions</summary>
+        public ExpressionToSql<T> Select(params Expression<Func<T, object>>[] selectors)
+        {
+            _custom = ExtractColumnsFromSelectors(selectors);
             return this;
         }
 
@@ -96,25 +98,14 @@ namespace Sqlx
 #endif
         TEntity>() => typeof(TEntity).GetProperties();
 
-        /// <summary>
-        /// Unified column extraction logic to avoid code duplication
-        /// </summary>
-        private List<string> ExtractColumnsFromSelector<TResult>(Expression<Func<T, TResult>>? selector)
-        {
-            return selector != null ? ExtractColumns(selector.Body) : new List<string>();
-        }
-
-        private List<string> ExtractColumnsFromSelectors(Expression<Func<T, object>>[]? selectors) =>
-            selectors?.Where(s => s != null).SelectMany(s => ExtractColumns(s.Body)).ToList() ?? new List<string>(0);
+        /// <summary>Extract columns from selector</summary>
+        private List<string> ExtractColumnsFromSelector<TResult>(Expression<Func<T, TResult>>? selector) => selector != null ? ExtractColumns(selector.Body) : new List<string>();
+        private List<string> ExtractColumnsFromSelectors(Expression<Func<T, object>>[]? selectors) => selectors?.Where(s => s != null).SelectMany(s => ExtractColumns(s.Body)).ToList() ?? new List<string>(0);
 
         /// <summary>Adds WHERE condition</summary>
         public ExpressionToSql<T> Where(Expression<Func<T, bool>> predicate)
         {
-            if (predicate != null)
-            {
-                var conditionSql = ParseExpression(predicate.Body);
-                _whereConditions.Add(NeedsParentheses(predicate.Body) ? $"({conditionSql})" : conditionSql);
-            }
+            if (predicate != null) _whereConditions.Add($"({ParseExpression(predicate.Body)})");
             return this;
         }
 
@@ -122,17 +113,17 @@ namespace Sqlx
         public ExpressionToSql<T> And(Expression<Func<T, bool>> predicate) => Where(predicate);
 
         /// <summary>Adds ORDER BY ascending</summary>
-        public ExpressionToSql<T> OrderBy<TKey>(Expression<Func<T, TKey>> keySelector) => AddOrderBy(keySelector, "ASC");
-        /// <summary>Adds ORDER BY descending</summary>
-        public ExpressionToSql<T> OrderByDescending<TKey>(Expression<Func<T, TKey>> keySelector) => AddOrderBy(keySelector, "DESC");
-
-        private ExpressionToSql<T> AddOrderBy<TKey>(Expression<Func<T, TKey>>? keySelector, string direction)
+        public ExpressionToSql<T> OrderBy<TKey>(Expression<Func<T, TKey>> keySelector)
         {
             if (keySelector != null)
-            {
-                var columnName = GetColumnName(keySelector.Body);
-                _orderByExpressions.Add($"{columnName} {direction}");
-            }
+                _orderByExpressions.Add($"{GetColumnName(keySelector.Body)} ASC");
+            return this;
+        }
+        /// <summary>Adds ORDER BY descending</summary>
+        public ExpressionToSql<T> OrderByDescending<TKey>(Expression<Func<T, TKey>> keySelector)
+        {
+            if (keySelector != null)
+                _orderByExpressions.Add($"{GetColumnName(keySelector.Body)} DESC");
             return this;
         }
 
@@ -142,7 +133,6 @@ namespace Sqlx
             _take = take;
             return this;
         }
-
         /// <summary>Skips specified number of records</summary>
         public ExpressionToSql<T> Skip(int? skip)
         {
@@ -151,137 +141,143 @@ namespace Sqlx
         }
 
         /// <summary>Sets column value for UPDATE</summary>
-        public ExpressionToSql<T> Set<TValue>(Expression<Func<T, TValue>> selector, TValue value) =>
-            ConfigureSet(selector, value, null);
-
-        /// <summary>Sets column value using expression for UPDATE</summary>
-        public ExpressionToSql<T> Set<TValue>(Expression<Func<T, TValue>> selector, Expression<Func<T, TValue>> valueExpression) =>
-            ConfigureSet(selector, default, valueExpression);
-
-        /// <summary>Configures UPDATE SET clause</summary>
-        private ExpressionToSql<T> ConfigureSet<TValue>(Expression<Func<T, TValue>>? selector, TValue? value, Expression<Func<T, TValue>>? valueExpression)
+        public ExpressionToSql<T> Set<TValue>(Expression<Func<T, TValue>> selector, TValue value)
         {
-            EnsureUpdateMode();
-            if (selector != null)
-            {
-                var column = GetColumnName(selector.Body);
-                var assignment = valueExpression != null
-                    ? $"{column} = {ParseExpression(valueExpression.Body)}"
-                    : $"{column} = {FormatConstantValue(value)}";
-
-                if (valueExpression != null)
-                    _expressions.Add(assignment);
-                else
-                    _sets.Add(assignment);
-            }
+            _operation = SqlOperation.Update;
+            if (selector != null) _sets.Add($"{GetColumnName(selector.Body)} = {FormatConstantValue(value)}");
+            return this;
+        }
+        /// <summary>Sets column value using expression for UPDATE</summary>
+        public ExpressionToSql<T> Set<TValue>(Expression<Func<T, TValue>> selector, Expression<Func<T, TValue>> valueExpression)
+        {
+            _operation = SqlOperation.Update;
+            if (selector != null && valueExpression != null) _expressions.Add($"{GetColumnName(selector.Body)} = {ParseExpression(valueExpression.Body)}");
             return this;
         }
 
-        private void EnsureUpdateMode() => _operation = SqlOperation.Update;
-        private void EnsureInsertMode() => _operation = SqlOperation.Insert;
-        private void EnsureDeleteMode() => _operation = SqlOperation.Delete;
 
         #region As INSERT Methods - Consolidated INSERT operations with 'as' prefix
 
         /// <summary>Sets as INSERT operation</summary>
-        public ExpressionToSql<T> AsInsert() => ConfigureInsert();
-
+        public ExpressionToSql<T> AsInsert()
+        {
+            _operation = SqlOperation.Insert;
+            return this;
+        }
         /// <summary>Sets as INSERT operation with specific columns</summary>
-        public ExpressionToSql<T> AsInsert(Expression<Func<T, object>> selector) => ConfigureInsert(selector);
-
+        public ExpressionToSql<T> AsInsert(Expression<Func<T, object>> selector)
+        {
+            _operation = SqlOperation.Insert;
+            if (selector != null)
+                SetInsertColumns(selector);
+            return this;
+        }
         /// <summary>Sets as INSERT INTO with explicit columns (AOT-friendly)</summary>
-        public ExpressionToSql<T> AsInsertInto(Expression<Func<T, object>> selector) => ConfigureInsert(selector);
-
+        public ExpressionToSql<T> AsInsertInto(Expression<Func<T, object>> selector)
+        {
+            _operation = SqlOperation.Insert;
+            if (selector != null)
+                SetInsertColumns(selector);
+            return this;
+        }
         /// <summary>Sets as INSERT INTO all columns</summary>
-        public ExpressionToSql<T> AsInsertIntoAll() => ConfigureInsertAll();
-
+        public ExpressionToSql<T> AsInsertIntoAll()
+        {
+            _operation = SqlOperation.Insert;
+            _columns.Clear();
+            _columns.AddRange(GetEntityProperties<T>().Select(prop => _dialect.WrapColumn(prop.Name)));
+            return this;
+        }
         /// <summary>Sets as INSERT using SELECT subquery</summary>
-        public ExpressionToSql<T> AsInsertSelect(string sql) => ConfigureInsertSelect(sql);
-
+        public ExpressionToSql<T> AsInsertSelect(string sql)
+        {
+            _operation = SqlOperation.Insert;
+            _selectSql = sql;
+            return this;
+        }
         /// <summary>Sets as INSERT using another query</summary>
-        public ExpressionToSql<T> AsInsertSelect<TSource>(ExpressionToSql<TSource> query) => ConfigureInsertSelect(query);
+        public ExpressionToSql<T> AsInsertSelect<TSource>(ExpressionToSql<TSource> query)
+        {
+            _operation = SqlOperation.Insert;
+            if (query != null)
+                _selectSql = query.ToSql();
+            return this;
+        }
 
         #endregion
 
         #region INSERT Methods - Legacy methods for backward compatibility
 
         /// <summary>Creates INSERT operation</summary>
-        public ExpressionToSql<T> Insert() => ConfigureInsert();
-
+        public ExpressionToSql<T> Insert()
+        {
+            _operation = SqlOperation.Insert;
+            return this;
+        }
         /// <summary>Sets INSERT columns using expression</summary>
-        public ExpressionToSql<T> Insert(Expression<Func<T, object>> selector) => ConfigureInsert(selector);
-
+        public ExpressionToSql<T> Insert(Expression<Func<T, object>> selector)
+        {
+            _operation = SqlOperation.Insert;
+            if (selector != null)
+                SetInsertColumns(selector);
+            return this;
+        }
         /// <summary>INSERT INTO with explicit columns (AOT-friendly)</summary>
-        public ExpressionToSql<T> InsertInto(Expression<Func<T, object>> selector) => ConfigureInsert(selector);
-
+        public ExpressionToSql<T> InsertInto(Expression<Func<T, object>> selector)
+        {
+            _operation = SqlOperation.Insert;
+            if (selector != null)
+                SetInsertColumns(selector);
+            return this;
+        }
         /// <summary>INSERT INTO all columns (uses reflection)</summary>
-        public ExpressionToSql<T> InsertIntoAll() => ConfigureInsertAll();
-
+        public ExpressionToSql<T> InsertIntoAll()
+        {
+            _operation = SqlOperation.Insert;
+            _columns.Clear();
+            _columns.AddRange(GetEntityProperties<T>().Select(prop => _dialect.WrapColumn(prop.Name)));
+            return this;
+        }
         /// <summary>INSERT using SELECT subquery</summary>
-        public ExpressionToSql<T> InsertSelect(string sql) => ConfigureInsertSelect(sql);
+        public ExpressionToSql<T> InsertSelect(string sql)
+        {
+            _operation = SqlOperation.Insert;
+            _selectSql = sql;
+            return this;
+        }
 
         /// <summary>INSERT using another query</summary>
-        public ExpressionToSql<T> InsertSelect<TSource>(ExpressionToSql<TSource> query) => ConfigureInsertSelect(query);
+        public ExpressionToSql<T> InsertSelect<TSource>(ExpressionToSql<TSource> query)
+        {
+            _operation = SqlOperation.Insert;
+            if (query != null)
+                _selectSql = query.ToSql();
+            return this;
+        }
 
         #endregion
 
         #region Private INSERT Configuration Methods
 
-        /// <summary>Configures INSERT operation with optional columns</summary>
-        private ExpressionToSql<T> ConfigureInsert(Expression<Func<T, object>>? selector = null)
-        {
-            EnsureInsertMode();
-            if (selector != null) SetInsertColumns(selector);
-            return this;
-        }
-
-        /// <summary>Configures INSERT with all entity columns</summary>
-        private ExpressionToSql<T> ConfigureInsertAll()
-        {
-            EnsureInsertMode();
-            _columns.Clear();
-            _columns.AddRange(GetEntityProperties<T>().Select(prop => _dialect.WrapColumn(prop.Name)));
-            return this;
-        }
-
-        /// <summary>Configures INSERT using SELECT subquery</summary>
-        private ExpressionToSql<T> ConfigureInsertSelect(string sql)
-        {
-            EnsureInsertMode();
-            _selectSql = sql;
-            return this;
-        }
-
-        /// <summary>Configures INSERT using another query</summary>
-        private ExpressionToSql<T> ConfigureInsertSelect<TSource>(ExpressionToSql<TSource> query)
-        {
-            EnsureInsertMode();
-            if (query != null) _selectSql = query.ToSql();
-            return this;
-        }
 
         #endregion
 
-        /// <summary>
-        /// Unified INSERT column setting logic
-        /// </summary>
+        /// <summary>Set INSERT columns</summary>
         private void SetInsertColumns(Expression<Func<T, object>>? selector)
         {
             _columns.Clear();
-            if (selector != null)
-            {
-                _columns.AddRange(ExtractColumns(selector.Body));
-            }
+            if (selector != null) _columns.AddRange(ExtractColumns(selector.Body));
         }
 
         /// <summary>Specifies INSERT values</summary>
-        public ExpressionToSql<T> Values(params object[] values) => ConfigureValues(values);
-
+        public ExpressionToSql<T> Values(params object[] values)
+        {
+            if (values?.Length > 0)
+                _values.Add(values.Select(FormatConstantValue).ToList());
+            return this;
+        }
         /// <summary>Adds multiple INSERT values</summary>
-        public ExpressionToSql<T> AddValues(params object[] values) => ConfigureValues(values);
-
-        /// <summary>Configures INSERT values</summary>
-        private ExpressionToSql<T> ConfigureValues(object[]? values)
+        public ExpressionToSql<T> AddValues(params object[] values)
         {
             if (values?.Length > 0)
                 _values.Add(values.Select(FormatConstantValue).ToList());
@@ -301,68 +297,44 @@ namespace Sqlx
         }
 
         /// <summary>Adds GROUP BY column</summary>
-        public new ExpressionToSql<T> AddGroupBy(string columnName) =>
-            ConfigureGroupBy(columnName);
-
-        /// <summary>Adds HAVING condition</summary>
-        public ExpressionToSql<T> Having(Expression<Func<T, bool>> predicate) =>
-            ConfigureHaving(predicate);
-
-        /// <summary>Configures GROUP BY</summary>
-        private ExpressionToSql<T> ConfigureGroupBy(string columnName)
+        public new ExpressionToSql<T> AddGroupBy(string columnName)
         {
             base.AddGroupBy(columnName);
             return this;
         }
-
-        /// <summary>Configures HAVING condition</summary>
-        private ExpressionToSql<T> ConfigureHaving(Expression<Func<T, bool>>? predicate)
+        /// <summary>Adds HAVING condition</summary>
+        public ExpressionToSql<T> Having(Expression<Func<T, bool>> predicate)
         {
             if (predicate != null)
-            {
-                var conditionSql = ParseExpression(predicate.Body);
-                _havingConditions.Add($"({conditionSql})");
-            }
+                _havingConditions.Add($"({ParseExpression(predicate.Body)})");
             return this;
         }
 
         /// <summary>Creates DELETE statement</summary>
-        public ExpressionToSql<T> Delete() => ConfigureDelete();
-
-        /// <summary>Creates DELETE statement with WHERE condition</summary>
-        public ExpressionToSql<T> Delete(Expression<Func<T, bool>> predicate) => ConfigureDelete(predicate);
-
-        /// <summary>Creates UPDATE statement</summary>
-        public ExpressionToSql<T> Update() => ConfigureUpdate();
-
-        /// <summary>Configures DELETE operation</summary>
-        private ExpressionToSql<T> ConfigureDelete(Expression<Func<T, bool>>? predicate = null)
+        public ExpressionToSql<T> Delete()
         {
-            EnsureDeleteMode();
+            _operation = SqlOperation.Delete;
+            return this;
+        }
+        /// <summary>Creates DELETE statement with WHERE condition</summary>
+        public ExpressionToSql<T> Delete(Expression<Func<T, bool>> predicate)
+        {
+            _operation = SqlOperation.Delete;
             return predicate != null ? Where(predicate) : this;
         }
-
-        /// <summary>Configures UPDATE operation</summary>
-        private ExpressionToSql<T> ConfigureUpdate()
+        /// <summary>Creates UPDATE statement</summary>
+        public ExpressionToSql<T> Update()
         {
-            EnsureUpdateMode();
+            _operation = SqlOperation.Update;
             return this;
         }
 
-        /// <summary>
-        /// Set custom SELECT clause (internal use).
-        /// </summary>
+        /// <summary>Custom SELECT clause (internal use)</summary>
         internal List<string>? _custom;
-
-        internal void SetCustomSelectClause(List<string> clause)
-        {
-            _custom = clause;
-        }
+        internal void SetCustomSelectClause(List<string> clause) => _custom = clause;
 
 
-        /// <summary>
-        /// Build SQL statement, simple and direct without caching.
-        /// </summary>
+        /// <summary>Build SQL statement</summary>
         private string BuildSql()
         {
             return _operation switch
@@ -370,7 +342,6 @@ namespace Sqlx
                 SqlOperation.Insert => BuildInsertSql(),
                 SqlOperation.Update => BuildUpdateSql(),
                 SqlOperation.Delete => BuildDeleteSql(),
-                SqlOperation.Select => BuildSelectSql(),
                 _ => BuildSelectSql()
             };
         }
@@ -378,82 +349,56 @@ namespace Sqlx
         private string BuildSelectSql()
         {
             var sql = new System.Text.StringBuilder(512);
-
-            // SELECT clause
-            var selectClause = _custom?.Count > 0
-                ? $"SELECT {string.Join(", ", _custom)} FROM "
-                : "SELECT * FROM ";
-            sql.Append(selectClause);
-
-            // FROM table name
+            sql.Append(_custom?.Count > 0 ? $"SELECT {string.Join(", ", _custom)} FROM " : "SELECT * FROM ");
             sql.Append(_dialect.WrapColumn(_tableName!));
-
-            // WHERE clause
-            if (_whereConditions.Count > 0)
-            {
-                sql.Append(" WHERE ");
-                var conditions = _whereConditions.Select(RemoveOuterParentheses);
-                sql.Append(string.Join(" AND ", conditions));
-            }
-
-            // GROUP BY clause
+            AppendWhereClause(sql, false);
             if (_groupByExpressions.Count > 0)
-            {
-                sql.Append(" GROUP BY ");
-                sql.Append(string.Join(", ", _groupByExpressions));
-            }
-
-            // HAVING clause
+                sql.Append($" GROUP BY {string.Join(", ", _groupByExpressions)}");
             if (_havingConditions.Count > 0)
-            {
-                sql.Append(" HAVING ");
-                sql.Append(string.Join(" AND ", _havingConditions));
-            }
-
-            // ORDER BY clause
+                sql.Append($" HAVING {string.Join(" AND ", _havingConditions)}");
             if (_orderByExpressions.Count > 0)
-            {
-                sql.Append(" ORDER BY ");
-                sql.Append(string.Join(", ", _orderByExpressions));
-            }
-
-            // LIMIT/OFFSET clause
-            if (_skip.HasValue || _take.HasValue)
-            {
-                if (_dialect.DatabaseType == "SqlServer")
-                {
-                    // SQL Server uses OFFSET...FETCH
-                    if (_skip.HasValue)
-                    {
-                        sql.Append($" OFFSET {_skip.Value} ROWS");
-                        if (_take.HasValue)
-                        {
-                            sql.Append($" FETCH NEXT {_take.Value} ROWS ONLY");
-                        }
-                    }
-                    else if (_take.HasValue)
-                    {
-                        sql.Append($" OFFSET 0 ROWS FETCH NEXT {_take.Value} ROWS ONLY");
-                    }
-                }
-                else
-                {
-                    // Other databases use LIMIT/OFFSET
-                    if (_take.HasValue)
-                    {
-                        sql.Append($" LIMIT {_take.Value}");
-                    }
-                    if (_skip.HasValue)
-                    {
-                        sql.Append($" OFFSET {_skip.Value}");
-                    }
-                }
-            }
-
+                sql.Append($" ORDER BY {string.Join(", ", _orderByExpressions)}");
+            AppendPaginationClause(sql);
             return sql.ToString();
         }
 
+        private void AppendPaginationClause(StringBuilder sql)
+        {
+            if (!_skip.HasValue && !_take.HasValue) return;
+            if (_dialect.DatabaseType == "SqlServer")
+            {
+                if (_skip.HasValue)
+                {
+                    sql.Append($" OFFSET {_skip.Value} ROWS");
+                    if (_take.HasValue)
+                        sql.Append($" FETCH NEXT {_take.Value} ROWS ONLY");
+                }
+                else if (_take.HasValue)
+                {
+                    sql.Append($" OFFSET 0 ROWS FETCH NEXT {_take.Value} ROWS ONLY");
+                }
+            }
+            else
+            {
+                if (_take.HasValue)
+                {
+                    sql.Append($" LIMIT {_take.Value}");
+                }
+                if (_skip.HasValue)
+                {
+                    sql.Append($" OFFSET {_skip.Value}");
+                }
+            }
+        }
 
+        private void AppendWhereClause(StringBuilder sql, bool useParentheses)
+        {
+            if (_whereConditions.Count == 0) return;
+            sql.Append(" WHERE ");
+            var conditions = _whereConditions.Select(RemoveOuterParentheses);
+            if (useParentheses) sql.Append($"({string.Join(" AND ", conditions)})");
+            else sql.Append(string.Join(" AND ", conditions));
+        }
 
         private string BuildInsertSql()
         {
@@ -486,153 +431,75 @@ namespace Sqlx
             var allClauses = _sets.Concat(_expressions);
             sql.Append(string.Join(", ", allClauses));
 
-            // Add WHERE clause
-            if (_whereConditions.Count > 0)
-            {
-                sql.Append(" WHERE ");
-                // UPDATE statements retain parentheses to ensure correct logical grouping
-                if (_whereConditions.Count == 1)
-                {
-                    var condition = RemoveOuterParentheses(_whereConditions[0]);
-                    sql.Append($"({condition})");
-                }
-                else
-                {
-                    var processedWhere = _whereConditions.Select(RemoveOuterParentheses);
-                    sql.Append("(");
-                    sql.Append(string.Join(" AND ", processedWhere));
-                    sql.Append(")");
-                }
-            }
+            AppendWhereClause(sql, true);
 
             return sql.ToString();
         }
 
-        /// <summary>
-        /// Build DELETE SQL statement.
-        /// </summary>
+        /// <summary>Build DELETE SQL statement</summary>
         private string BuildDeleteSql()
         {
-            var sql = new StringBuilder(256);
-
-            // DELETE FROM table name
-            sql.Append("DELETE FROM ");
-            sql.Append(_dialect.WrapColumn(_tableName!));
-
-            // WHERE clause - DELETE must have WHERE conditions for safety
-            if (_whereConditions.Count > 0)
-            {
-                sql.Append(" WHERE ");
-                var processedWhere = _whereConditions.Select(RemoveOuterParentheses);
-                sql.Append(string.Join(" AND ", processedWhere));
-            }
-            else
-            {
+            if (_whereConditions.Count == 0)
                 throw new InvalidOperationException("DELETE operation requires WHERE clause for safety. Use Delete(predicate) or call Where() before Delete().");
-            }
 
+            var sql = new StringBuilder(256);
+            sql.Append($"DELETE FROM {_dialect.WrapColumn(_tableName!)}");
+            AppendWhereClause(sql, false);
             return sql.ToString();
         }
 
-        /// <summary>
-        /// Enable parameterized query mode for SqlTemplate generation
-        /// </summary>
+        /// <summary>Enable parameterized query mode for SqlTemplate generation</summary>
         public ExpressionToSql<T> UseParameterizedQueries()
         {
             _parameterized = true;
             return this;
         }
 
-        /// <summary>
-        /// Convert to SQL template. If parameterized mode is not enabled, it will automatically enable and rebuild the query.
-        /// </summary>
-        public override SqlTemplate ToTemplate()
-        {
-            // If parameterized queries are not yet enabled, need to rebuild
-            if (!_parameterized)
-            {
-                // Save current state
-                var conditions = new List<string>(_whereConditions);
-                var orderBy = new List<string>(_orderByExpressions);
-                var groupBy = new List<string>(_groupByExpressions);
-                var having = new List<string>(_havingConditions);
-
-                // Clear and re-enable parameterized mode
-                _whereConditions.Clear();
-                _orderByExpressions.Clear();
-                _groupByExpressions.Clear();
-                _havingConditions.Clear();
-                _parameters.Clear();
-                _parameterized = true;
-
-                // Need to rebuild query, but this requires original expressions
-                // Since we didn't save original expressions, we can only return current SQL and empty parameters
-                // This is a design limitation, users should explicitly call UseParameterizedQueries()
-                _parameterized = false;
-                _whereConditions.AddRange(conditions);
-                _orderByExpressions.AddRange(orderBy);
-                _groupByExpressions.AddRange(groupBy);
-                _havingConditions.AddRange(having);
-            }
-
-            var sql = BuildSql();
-            return new SqlTemplate(sql, _parameters);
-        }
-
-        /// <summary>
-        /// Convert to SQL string.
-        /// </summary>
+        /// <summary>Convert to SQL template</summary>
+        public override SqlTemplate ToTemplate() => new(BuildSql(), _parameters);
+        /// <summary>Convert to SQL string</summary>
         public override string ToSql() => BuildSql();
-
-        /// <summary>
-        /// Generate WHERE clause part.
-        /// </summary>
+        /// <summary>Generate WHERE clause part</summary>
         public string ToWhereClause() => _whereConditions.Count == 0 ? string.Empty : string.Join(" AND ", _whereConditions);
 
-        /// <summary>
-        /// Generate additional clauses (GROUP BY, HAVING, ORDER BY, LIMIT, OFFSET).
-        /// </summary>
+        /// <summary>Generate additional clauses (GROUP BY, HAVING, ORDER BY, LIMIT, OFFSET)</summary>
         public string ToAdditionalClause()
         {
             var sql = new StringBuilder(256);
-
-            if (_groupByExpressions.Count > 0)
-            {
-                sql.Append(" GROUP BY ");
-                sql.Append(string.Join(", ", _groupByExpressions));
-            }
-
-            if (_havingConditions.Count > 0)
-            {
-                sql.Append(" HAVING ");
-                sql.Append(string.Join(" AND ", _havingConditions));
-            }
-
-            if (_orderByExpressions.Count > 0)
-            {
-                sql.Append(" ORDER BY ");
-                sql.Append(string.Join(", ", _orderByExpressions));
-            }
+            if (_groupByExpressions.Count > 0) sql.Append($" GROUP BY {string.Join(", ", _groupByExpressions)}");
+            if (_havingConditions.Count > 0) sql.Append($" HAVING {string.Join(" AND ", _havingConditions)}");
+            if (_orderByExpressions.Count > 0) sql.Append($" ORDER BY {string.Join(", ", _orderByExpressions)}");
 
             if (_skip.HasValue || _take.HasValue)
             {
-                var dbType = DatabaseType;
-                var useOffsetFetchSyntax = dbType == "SqlServer" || dbType == "Oracle";
-
-                if (useOffsetFetchSyntax) // SQL Server or Oracle
+                var useOffsetFetch = DatabaseType is "SqlServer" or "Oracle";
+                if (useOffsetFetch)
                 {
                     if (_skip.HasValue) sql.Append($" OFFSET {_skip.Value} ROWS");
                     if (_take.HasValue) sql.Append($" FETCH NEXT {_take.Value} ROWS ONLY");
                 }
-                else // MySQL, PostgreSQL, SQLite etc
+                else
                 {
                     if (_take.HasValue) sql.Append($" LIMIT {_take.Value}");
                     if (_skip.HasValue) sql.Append($" OFFSET {_skip.Value}");
                 }
             }
-
-            return sql.ToString().TrimStart(); // Remove leading spaces
+            return sql.ToString().TrimStart();
         }
+
+
+        /// <summary>SQL Server dialect</summary>
+        public static ExpressionToSql<T> ForSqlServer() => new(SqlDefine.SqlServer);
+        /// <summary>MySQL dialect</summary>
+        public static ExpressionToSql<T> ForMySql() => new(SqlDefine.MySql);
+        /// <summary>PostgreSQL dialect</summary>
+        public static ExpressionToSql<T> ForPostgreSQL() => new(SqlDefine.PostgreSql);
+        /// <summary>SQLite dialect</summary>
+        public static ExpressionToSql<T> ForSqlite() => new(SqlDefine.SQLite);
+        /// <summary>Oracle dialect</summary>
+        public static ExpressionToSql<T> ForOracle() => new(SqlDefine.Oracle);
+        /// <summary>DB2 dialect</summary>
+        public static ExpressionToSql<T> ForDB2() => new(SqlDefine.DB2);
     }
 
     /// <summary>
@@ -736,70 +603,64 @@ namespace Sqlx
             return selectClause;
         }
 
-        private string ParseSelectExpression(Expression expression)
+        private string ParseSelectExpression(Expression expression) => expression switch
         {
-            switch (expression)
+            MethodCallExpression methodCall => ParseAggregateFunction(methodCall),
+            MemberExpression member when member.Expression is ParameterExpression { Name: "g" } =>
+                member.Member.Name == "Key" ? _keyColumnName : "NULL",
+            BinaryExpression binary => ParseBinarySelectExpression(binary),
+            ConstantExpression constant => FormatConstantValue(constant.Value),
+            ConditionalExpression conditional => ParseConditionalExpression(conditional),
+            UnaryExpression { NodeType: ExpressionType.Convert } unary => ParseSelectExpression(unary.Operand),
+            _ => ParseFallbackExpression(expression)
+        };
+
+        private string ParseBinarySelectExpression(BinaryExpression binary)
+        {
+            var left = ParseSelectExpression(binary.Left);
+            var right = ParseSelectExpression(binary.Right);
+            var op = GetBinaryOperator(binary.NodeType);
+
+            return binary.NodeType == ExpressionType.Coalesce
+                ? $"COALESCE({left}, {right})"
+                : $"({left} {op} {right})";
+        }
+
+        private string ParseConditionalExpression(ConditionalExpression conditional)
+        {
+            var test = ParseSelectExpression(conditional.Test);
+            var ifTrue = ParseSelectExpression(conditional.IfTrue);
+            var ifFalse = ParseSelectExpression(conditional.IfFalse);
+            return $"CASE WHEN {test} THEN {ifTrue} ELSE {ifFalse} END";
+        }
+
+        private string ParseFallbackExpression(Expression expression)
+        {
+            try
             {
-                case MethodCallExpression methodCall:
-                    return ParseAggregateFunction(methodCall);
-
-                case MemberExpression member when member.Expression is ParameterExpression param && param.Name == "g":
-                    // g.Key access
-                    if (member.Member.Name == "Key")
-                    {
-                        return _keyColumnName;
-                    }
-                    return "NULL";
-
-                case BinaryExpression binary:
-                    // Handle binary expressions, e.g. g.Key ?? 0 or complex arithmetic expressions
-                    var left = ParseSelectExpression(binary.Left);
-                    var right = ParseSelectExpression(binary.Right);
-                    var op = binary.NodeType switch
-                    {
-                        ExpressionType.Coalesce => "COALESCE",
-                        ExpressionType.Add => "+",
-                        ExpressionType.Subtract => "-",
-                        ExpressionType.Multiply => "*",
-                        ExpressionType.Divide => "/",
-                        ExpressionType.Equal => "=",
-                        ExpressionType.NotEqual => "<>",
-                        ExpressionType.GreaterThan => ">",
-                        ExpressionType.GreaterThanOrEqual => ">=",
-                        ExpressionType.LessThan => "<",
-                        ExpressionType.LessThanOrEqual => "<=",
-                        _ => binary.NodeType.ToString()
-                    };
-                    return binary.NodeType == ExpressionType.Coalesce
-                        ? $"COALESCE({left}, {right})"
-                        : $"({left} {op} {right})";
-
-                case ConstantExpression constant:
-                    return FormatConstantValue(constant.Value);
-
-                case ConditionalExpression conditional:
-                    // Handle ternary operator condition ? ifTrue : ifFalse
-                    var test = ParseSelectExpression(conditional.Test);
-                    var ifTrue = ParseSelectExpression(conditional.IfTrue);
-                    var ifFalse = ParseSelectExpression(conditional.IfFalse);
-                    return $"CASE WHEN {test} THEN {ifTrue} ELSE {ifFalse} END";
-
-                case UnaryExpression unary when unary.NodeType == ExpressionType.Convert:
-                    // Handle type conversion
-                    return ParseSelectExpression(unary.Operand);
-
-                default:
-                    // For expressions that cannot be handled, try parsing as normal expressions
-                    try
-                    {
-                        return ParseExpressionRaw(expression);
-                    }
-                    catch
-                    {
-                        return "NULL";
-                    }
+                return ParseExpressionRaw(expression);
+            }
+            catch
+            {
+                return "NULL";
             }
         }
+
+        private static string GetBinaryOperator(ExpressionType nodeType) => nodeType switch
+        {
+            ExpressionType.Coalesce => "COALESCE",
+            ExpressionType.Add => "+",
+            ExpressionType.Subtract => "-",
+            ExpressionType.Multiply => "*",
+            ExpressionType.Divide => "/",
+            ExpressionType.Equal => "=",
+            ExpressionType.NotEqual => "<>",
+            ExpressionType.GreaterThan => ">",
+            ExpressionType.GreaterThanOrEqual => ">=",
+            ExpressionType.LessThan => "<",
+            ExpressionType.LessThanOrEqual => "<=",
+            _ => nodeType.ToString()
+        };
 
         private string ParseAggregateFunction(MethodCallExpression methodCall)
         {
@@ -1005,16 +866,16 @@ namespace Sqlx
             resultQuery.SetTableName(typeof(T).Name);
 
             // Copy WHERE conditions
-            resultQuery.CopyWhereConditions(_baseQuery.GetWhereConditions());
+            resultQuery.CopyWhereConditions(new List<string>(_baseQuery._whereConditions));
 
             // Ensure GROUP BY clause is included
             if (!string.IsNullOrEmpty(_keyColumnName))
             {
-                resultQuery.AddGroupByColumn(_keyColumnName);
+                resultQuery.AddGroupBy(_keyColumnName);
             }
 
             // Copy HAVING conditions
-            resultQuery.CopyHavingConditions(_baseQuery.GetHavingConditions());
+            resultQuery.CopyHavingConditions(new List<string>(_baseQuery._havingConditions));
         }
 
         /// <summary>

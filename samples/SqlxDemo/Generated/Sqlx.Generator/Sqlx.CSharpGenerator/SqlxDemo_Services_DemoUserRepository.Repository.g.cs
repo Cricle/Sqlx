@@ -35,12 +35,12 @@ partial class DemoUserRepository
         global::System.Data.IDbCommand? __cmd__ = null;
         var __startTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();
 
-        if (_connection.State != global::System.Data.ConnectionState.Open)
+        if (connection.State != global::System.Data.ConnectionState.Open)
         {
-            _connection.Open();
+            connection.Open();
         }
 
-        __cmd__ = _connection.CreateCommand();
+        __cmd__ = connection.CreateCommand();
         __cmd__.CommandText = @"SELECT id, name, email, age, salary, department_id, is_active, hire_date, bonus, performance_rating FROM user WHERE id = @id";
 
         var param_id = __cmd__.CreateParameter();
@@ -59,43 +59,43 @@ partial class DemoUserRepository
                 __result__ = new SqlxDemo.Models.User();
                 if (reader["id"] != global::System.DBNull.Value)
                 {
-                    __result__.Id = (int)reader["id"];
+                    __result__.Id = reader.GetInt64(reader.GetOrdinal("id"));
                 }
                 if (reader["name"] != global::System.DBNull.Value)
                 {
-                    __result__.Name = (string?)reader["name"];
+                    __result__.Name = reader.GetString(reader.GetOrdinal("name"));
                 }
                 if (reader["email"] != global::System.DBNull.Value)
                 {
-                    __result__.Email = (string?)reader["email"];
+                    __result__.Email = reader.GetString(reader.GetOrdinal("email"));
                 }
                 if (reader["age"] != global::System.DBNull.Value)
                 {
-                    __result__.Age = (int)reader["age"];
+                    __result__.Age = reader.GetInt64(reader.GetOrdinal("age"));
                 }
                 if (reader["salary"] != global::System.DBNull.Value)
                 {
-                    __result__.Salary = (decimal)reader["salary"];
+                    __result__.Salary = reader.GetDecimal(reader.GetOrdinal("salary"));
                 }
                 if (reader["department_id"] != global::System.DBNull.Value)
                 {
-                    __result__.DepartmentId = (int)reader["department_id"];
+                    __result__.DepartmentId = reader.GetInt64(reader.GetOrdinal("department_id"));
                 }
                 if (reader["is_active"] != global::System.DBNull.Value)
                 {
-                    __result__.IsActive = (bool)reader["is_active"];
+                    __result__.IsActive = reader.GetBoolean(reader.GetOrdinal("is_active"));
                 }
                 if (reader["hire_date"] != global::System.DBNull.Value)
                 {
-                    __result__.HireDate = (System.DateTime)reader["hire_date"];
+                    __result__.HireDate = reader.GetDateTime(reader.GetOrdinal("hire_date"));
                 }
                 if (reader["bonus"] != global::System.DBNull.Value)
                 {
-                    __result__.Bonus = (decimal?)reader["bonus"];
+                    __result__.Bonus = reader.GetDecimal(reader.GetOrdinal("bonus"));
                 }
                 if (reader["performance_rating"] != global::System.DBNull.Value)
                 {
-                    __result__.PerformanceRating = (double)reader["performance_rating"];
+                    __result__.PerformanceRating = reader.GetDouble(reader.GetOrdinal("performance_rating"));
                 }
             }
             else
@@ -131,12 +131,12 @@ partial class DemoUserRepository
         global::System.Data.IDbCommand? __cmd__ = null;
         var __startTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();
 
-        if (_connection.State != global::System.Data.ConnectionState.Open)
+        if (connection.State != global::System.Data.ConnectionState.Open)
         {
-            _connection.Open();
+            connection.Open();
         }
 
-        __cmd__ = _connection.CreateCommand();
+        __cmd__ = connection.CreateCommand();
         __cmd__.CommandText = @"SELECT id, name, email, age, salary, department_id, is_active, hire_date, bonus, performance_rating FROM user WHERE [IsActive] = 1";
 
         try
@@ -150,43 +150,43 @@ partial class DemoUserRepository
                 var item = new SqlxDemo.Models.User();
                 if (reader["id"] != global::System.DBNull.Value)
                 {
-                    item.Id = (int)reader["id"];
+                    item.Id = reader.GetInt64(reader.GetOrdinal("id"));
                 }
                 if (reader["name"] != global::System.DBNull.Value)
                 {
-                    item.Name = (string?)reader["name"];
+                    item.Name = reader.GetString(reader.GetOrdinal("name"));
                 }
                 if (reader["email"] != global::System.DBNull.Value)
                 {
-                    item.Email = (string?)reader["email"];
+                    item.Email = reader.GetString(reader.GetOrdinal("email"));
                 }
                 if (reader["age"] != global::System.DBNull.Value)
                 {
-                    item.Age = (int)reader["age"];
+                    item.Age = reader.GetInt64(reader.GetOrdinal("age"));
                 }
                 if (reader["salary"] != global::System.DBNull.Value)
                 {
-                    item.Salary = (decimal)reader["salary"];
+                    item.Salary = reader.GetDecimal(reader.GetOrdinal("salary"));
                 }
                 if (reader["department_id"] != global::System.DBNull.Value)
                 {
-                    item.DepartmentId = (int)reader["department_id"];
+                    item.DepartmentId = reader.GetInt64(reader.GetOrdinal("department_id"));
                 }
                 if (reader["is_active"] != global::System.DBNull.Value)
                 {
-                    item.IsActive = (bool)reader["is_active"];
+                    item.IsActive = reader.GetBoolean(reader.GetOrdinal("is_active"));
                 }
                 if (reader["hire_date"] != global::System.DBNull.Value)
                 {
-                    item.HireDate = (System.DateTime)reader["hire_date"];
+                    item.HireDate = reader.GetDateTime(reader.GetOrdinal("hire_date"));
                 }
                 if (reader["bonus"] != global::System.DBNull.Value)
                 {
-                    item.Bonus = (decimal?)reader["bonus"];
+                    item.Bonus = reader.GetDecimal(reader.GetOrdinal("bonus"));
                 }
                 if (reader["performance_rating"] != global::System.DBNull.Value)
                 {
-                    item.PerformanceRating = (double)reader["performance_rating"];
+                    item.PerformanceRating = reader.GetDouble(reader.GetOrdinal("performance_rating"));
                 }
                 __result__.Add(item);
             }
@@ -208,7 +208,7 @@ partial class DemoUserRepository
     /// <para>📝 Original Template:</para>
     /// <code>SELECT {{columns:auto}} FROM {{table}} WHERE [Age] BETWEEN @minAge AND @maxAge ORDER BY {{orderby:age}}</code>
     /// <para>📋 Generated SQL (Template Processed):</para>
-    /// <code>SELECT id, name, email, age, salary, department_id, is_active, hire_date, bonus, performance_rating FROM user WHERE [Age] BETWEEN @minAge AND @maxAge ORDER BY Id</code>
+    /// <code>SELECT id, name, email, age, salary, department_id, is_active, hire_date, bonus, performance_rating FROM user WHERE [Age] BETWEEN @minAge AND @maxAge ORDER BY Id ASC</code>
     /// <para>🔧 Template Parameters:</para>
     /// <para>  • @minAge (int)</para>
     /// <para>  • @maxAge (int)</para>
@@ -224,13 +224,13 @@ partial class DemoUserRepository
         global::System.Data.IDbCommand? __cmd__ = null;
         var __startTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();
 
-        if (_connection.State != global::System.Data.ConnectionState.Open)
+        if (connection.State != global::System.Data.ConnectionState.Open)
         {
-            _connection.Open();
+            connection.Open();
         }
 
-        __cmd__ = _connection.CreateCommand();
-        __cmd__.CommandText = @"SELECT id, name, email, age, salary, department_id, is_active, hire_date, bonus, performance_rating FROM user WHERE [Age] BETWEEN @minAge AND @maxAge ORDER BY Id";
+        __cmd__ = connection.CreateCommand();
+        __cmd__.CommandText = @"SELECT id, name, email, age, salary, department_id, is_active, hire_date, bonus, performance_rating FROM user WHERE [Age] BETWEEN @minAge AND @maxAge ORDER BY Id ASC";
 
         var param_minAge = __cmd__.CreateParameter();
         param_minAge.ParameterName = "@minAge";
@@ -255,43 +255,43 @@ partial class DemoUserRepository
                 var item = new SqlxDemo.Models.User();
                 if (reader["id"] != global::System.DBNull.Value)
                 {
-                    item.Id = (int)reader["id"];
+                    item.Id = reader.GetInt64(reader.GetOrdinal("id"));
                 }
                 if (reader["name"] != global::System.DBNull.Value)
                 {
-                    item.Name = (string?)reader["name"];
+                    item.Name = reader.GetString(reader.GetOrdinal("name"));
                 }
                 if (reader["email"] != global::System.DBNull.Value)
                 {
-                    item.Email = (string?)reader["email"];
+                    item.Email = reader.GetString(reader.GetOrdinal("email"));
                 }
                 if (reader["age"] != global::System.DBNull.Value)
                 {
-                    item.Age = (int)reader["age"];
+                    item.Age = reader.GetInt64(reader.GetOrdinal("age"));
                 }
                 if (reader["salary"] != global::System.DBNull.Value)
                 {
-                    item.Salary = (decimal)reader["salary"];
+                    item.Salary = reader.GetDecimal(reader.GetOrdinal("salary"));
                 }
                 if (reader["department_id"] != global::System.DBNull.Value)
                 {
-                    item.DepartmentId = (int)reader["department_id"];
+                    item.DepartmentId = reader.GetInt64(reader.GetOrdinal("department_id"));
                 }
                 if (reader["is_active"] != global::System.DBNull.Value)
                 {
-                    item.IsActive = (bool)reader["is_active"];
+                    item.IsActive = reader.GetBoolean(reader.GetOrdinal("is_active"));
                 }
                 if (reader["hire_date"] != global::System.DBNull.Value)
                 {
-                    item.HireDate = (System.DateTime)reader["hire_date"];
+                    item.HireDate = reader.GetDateTime(reader.GetOrdinal("hire_date"));
                 }
                 if (reader["bonus"] != global::System.DBNull.Value)
                 {
-                    item.Bonus = (decimal?)reader["bonus"];
+                    item.Bonus = reader.GetDecimal(reader.GetOrdinal("bonus"));
                 }
                 if (reader["performance_rating"] != global::System.DBNull.Value)
                 {
-                    item.PerformanceRating = (double)reader["performance_rating"];
+                    item.PerformanceRating = reader.GetDouble(reader.GetOrdinal("performance_rating"));
                 }
                 __result__.Add(item);
             }
@@ -319,19 +319,19 @@ partial class DemoUserRepository
     /// <param name="namePattern">The namePattern parameter.</param>
     /// <param name="minAge">The minAge parameter.</param>
     /// <returns>A task containing the collection of entities.</returns>
-    [global::Sqlx.Annotations.SqlTemplate("SELECT * FROM [user] WHERE [Name] LIKE @{namePattern} AND [Age] > @{minAge}", Dialect = global::Sqlx.SqlDialectType.SQLite, SafeMode = true)]
+    [global::Sqlx.Annotations.SqlTemplate("SELECT * FROM [user] WHERE [Name] LIKE @{namePattern} AND [Age] > @{minAge}", Dialect = global::Sqlx.Annotations.SqlDefineTypes.SQLite, SafeMode = true)]
     public System.Threading.Tasks.Task<System.Collections.Generic.List<SqlxDemo.Models.User>> SearchUsersByNameAndAgeAsync(string namePattern, int minAge)
     {
         System.Collections.Generic.List<SqlxDemo.Models.User> __result__ = default!;
         global::System.Data.IDbCommand? __cmd__ = null;
         var __startTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();
 
-        if (_connection.State != global::System.Data.ConnectionState.Open)
+        if (connection.State != global::System.Data.ConnectionState.Open)
         {
-            _connection.Open();
+            connection.Open();
         }
 
-        __cmd__ = _connection.CreateCommand();
+        __cmd__ = connection.CreateCommand();
         __cmd__.CommandText = @"SELECT * FROM [user] WHERE [Name] LIKE @{namePattern} AND [Age] > @{minAge}";
 
         var param_namePattern = __cmd__.CreateParameter();
@@ -357,43 +357,43 @@ partial class DemoUserRepository
                 var item = new SqlxDemo.Models.User();
                 if (reader["id"] != global::System.DBNull.Value)
                 {
-                    item.Id = (int)reader["id"];
+                    item.Id = reader.GetInt64(reader.GetOrdinal("id"));
                 }
                 if (reader["name"] != global::System.DBNull.Value)
                 {
-                    item.Name = (string?)reader["name"];
+                    item.Name = reader.GetString(reader.GetOrdinal("name"));
                 }
                 if (reader["email"] != global::System.DBNull.Value)
                 {
-                    item.Email = (string?)reader["email"];
+                    item.Email = reader.GetString(reader.GetOrdinal("email"));
                 }
                 if (reader["age"] != global::System.DBNull.Value)
                 {
-                    item.Age = (int)reader["age"];
+                    item.Age = reader.GetInt64(reader.GetOrdinal("age"));
                 }
                 if (reader["salary"] != global::System.DBNull.Value)
                 {
-                    item.Salary = (decimal)reader["salary"];
+                    item.Salary = reader.GetDecimal(reader.GetOrdinal("salary"));
                 }
                 if (reader["department_id"] != global::System.DBNull.Value)
                 {
-                    item.DepartmentId = (int)reader["department_id"];
+                    item.DepartmentId = reader.GetInt64(reader.GetOrdinal("department_id"));
                 }
                 if (reader["is_active"] != global::System.DBNull.Value)
                 {
-                    item.IsActive = (bool)reader["is_active"];
+                    item.IsActive = reader.GetBoolean(reader.GetOrdinal("is_active"));
                 }
                 if (reader["hire_date"] != global::System.DBNull.Value)
                 {
-                    item.HireDate = (System.DateTime)reader["hire_date"];
+                    item.HireDate = reader.GetDateTime(reader.GetOrdinal("hire_date"));
                 }
                 if (reader["bonus"] != global::System.DBNull.Value)
                 {
-                    item.Bonus = (decimal?)reader["bonus"];
+                    item.Bonus = reader.GetDecimal(reader.GetOrdinal("bonus"));
                 }
                 if (reader["performance_rating"] != global::System.DBNull.Value)
                 {
-                    item.PerformanceRating = (double)reader["performance_rating"];
+                    item.PerformanceRating = reader.GetDouble(reader.GetOrdinal("performance_rating"));
                 }
                 __result__.Add(item);
             }
@@ -421,19 +421,19 @@ partial class DemoUserRepository
     /// <param name="deptId">The deptId parameter.</param>
     /// <param name="minSalary">The minSalary parameter.</param>
     /// <returns>A task containing the collection of entities.</returns>
-    [global::Sqlx.Annotations.SqlTemplate("SELECT [Id], [Name], [Email], [Salary] FROM [user] WHERE [DepartmentId] = @{deptId} AND [Salary] >= @{minSalary} ORDER BY [Salary] DESC", Dialect = global::Sqlx.SqlDialectType.SQLite, Operation = global::Sqlx.SqlOperation.Select)]
+    [global::Sqlx.Annotations.SqlTemplate("SELECT [Id], [Name], [Email], [Salary] FROM [user] WHERE [DepartmentId] = @{deptId} AND [Salary] >= @{minSalary} ORDER BY [Salary] DESC", Dialect = global::Sqlx.Annotations.SqlDefineTypes.SQLite, Operation = global::Sqlx.SqlOperation.Select)]
     public System.Threading.Tasks.Task<System.Collections.Generic.List<SqlxDemo.Models.User>> GetUsersByDepartmentAndSalaryAsync(int deptId, decimal minSalary)
     {
         System.Collections.Generic.List<SqlxDemo.Models.User> __result__ = default!;
         global::System.Data.IDbCommand? __cmd__ = null;
         var __startTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();
 
-        if (_connection.State != global::System.Data.ConnectionState.Open)
+        if (connection.State != global::System.Data.ConnectionState.Open)
         {
-            _connection.Open();
+            connection.Open();
         }
 
-        __cmd__ = _connection.CreateCommand();
+        __cmd__ = connection.CreateCommand();
         __cmd__.CommandText = @"SELECT [Id], [Name], [Email], [Salary] FROM [user] WHERE [DepartmentId] = @{deptId} AND [Salary] >= @{minSalary} ORDER BY [Salary] DESC";
 
         var param_deptId = __cmd__.CreateParameter();
@@ -459,43 +459,43 @@ partial class DemoUserRepository
                 var item = new SqlxDemo.Models.User();
                 if (reader["id"] != global::System.DBNull.Value)
                 {
-                    item.Id = (int)reader["id"];
+                    item.Id = reader.GetInt64(reader.GetOrdinal("id"));
                 }
                 if (reader["name"] != global::System.DBNull.Value)
                 {
-                    item.Name = (string?)reader["name"];
+                    item.Name = reader.GetString(reader.GetOrdinal("name"));
                 }
                 if (reader["email"] != global::System.DBNull.Value)
                 {
-                    item.Email = (string?)reader["email"];
+                    item.Email = reader.GetString(reader.GetOrdinal("email"));
                 }
                 if (reader["age"] != global::System.DBNull.Value)
                 {
-                    item.Age = (int)reader["age"];
+                    item.Age = reader.GetInt64(reader.GetOrdinal("age"));
                 }
                 if (reader["salary"] != global::System.DBNull.Value)
                 {
-                    item.Salary = (decimal)reader["salary"];
+                    item.Salary = reader.GetDecimal(reader.GetOrdinal("salary"));
                 }
                 if (reader["department_id"] != global::System.DBNull.Value)
                 {
-                    item.DepartmentId = (int)reader["department_id"];
+                    item.DepartmentId = reader.GetInt64(reader.GetOrdinal("department_id"));
                 }
                 if (reader["is_active"] != global::System.DBNull.Value)
                 {
-                    item.IsActive = (bool)reader["is_active"];
+                    item.IsActive = reader.GetBoolean(reader.GetOrdinal("is_active"));
                 }
                 if (reader["hire_date"] != global::System.DBNull.Value)
                 {
-                    item.HireDate = (System.DateTime)reader["hire_date"];
+                    item.HireDate = reader.GetDateTime(reader.GetOrdinal("hire_date"));
                 }
                 if (reader["bonus"] != global::System.DBNull.Value)
                 {
-                    item.Bonus = (decimal?)reader["bonus"];
+                    item.Bonus = reader.GetDecimal(reader.GetOrdinal("bonus"));
                 }
                 if (reader["performance_rating"] != global::System.DBNull.Value)
                 {
-                    item.PerformanceRating = (double)reader["performance_rating"];
+                    item.PerformanceRating = reader.GetDouble(reader.GetOrdinal("performance_rating"));
                 }
                 __result__.Add(item);
             }
@@ -518,25 +518,27 @@ partial class DemoUserRepository
     /// <code>UPDATE [user] SET [Salary] = @{newSalary}, [Bonus] = @{bonusAmount} WHERE [Id] = @{userId}</code>
     /// <para>📋 Generated SQL (Template Processed):</para>
     /// <code>UPDATE [user] SET [Salary] = @{newSalary}, [Bonus] = @{bonusAmount} WHERE [Id] = @{userId}</code>
+    /// <para>⚠️ Template Warnings:</para>
+    /// <para>  • Template contains potentially dangerous keyword: UPDATE</para>
     /// <para>🚀 This method was generated by Sqlx Advanced Template Engine</para>
     /// </summary>
     /// <param name="userId">The userId parameter.</param>
     /// <param name="newSalary">The newSalary parameter.</param>
     /// <param name="bonusAmount">The bonusAmount parameter.</param>
     /// <returns>A task containing the number of affected rows.</returns>
-    [global::Sqlx.Annotations.SqlTemplate("UPDATE [user] SET [Salary] = @{newSalary}, [Bonus] = @{bonusAmount} WHERE [Id] = @{userId}", Dialect = global::Sqlx.SqlDialectType.SQLite, Operation = global::Sqlx.SqlOperation.Update)]
+    [global::Sqlx.Annotations.SqlTemplate("UPDATE [user] SET [Salary] = @{newSalary}, [Bonus] = @{bonusAmount} WHERE [Id] = @{userId}", Dialect = global::Sqlx.Annotations.SqlDefineTypes.SQLite, Operation = global::Sqlx.SqlOperation.Update)]
     public System.Threading.Tasks.Task<int> UpdateUserSalaryAndBonusAsync(int userId, decimal newSalary, decimal bonusAmount)
     {
         int __result__ = default!;
         global::System.Data.IDbCommand? __cmd__ = null;
         var __startTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();
 
-        if (_connection.State != global::System.Data.ConnectionState.Open)
+        if (connection.State != global::System.Data.ConnectionState.Open)
         {
-            _connection.Open();
+            connection.Open();
         }
 
-        __cmd__ = _connection.CreateCommand();
+        __cmd__ = connection.CreateCommand();
         __cmd__.CommandText = @"UPDATE [user] SET [Salary] = @{newSalary}, [Bonus] = @{bonusAmount} WHERE [Id] = @{userId}";
 
         var param_userId = __cmd__.CreateParameter();

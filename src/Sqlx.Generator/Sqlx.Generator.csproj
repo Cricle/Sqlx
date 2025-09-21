@@ -49,8 +49,6 @@
   <!-- Package files -->
   <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" Visible="false" />
-    <None Include="tools\install.ps1" Pack="true" PackagePath="tools\" Visible="false" />
-    <None Include="tools\uninstall.ps1" Pack="true" PackagePath="tools\" Visible="false" />
   </ItemGroup>
 
   <!-- Source generator packaging -->

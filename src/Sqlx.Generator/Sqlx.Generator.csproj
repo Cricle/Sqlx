@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <!-- Basic project settings -->
   <PropertyGroup>
@@ -7,7 +7,7 @@
     <RootNamespace>Sqlx.Generator</RootNamespace>
     
     <!-- Source generator specific settings -->
-    <IsPackable>true</IsPackable>
+    <IsPackable>false</IsPackable>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <GenerateAotCompatibleCode>true</GenerateAotCompatibleCode>
     <DevelopmentDependency>true</DevelopmentDependency>

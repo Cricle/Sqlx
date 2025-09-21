@@ -69,7 +69,7 @@ jobs:
 
     - name: 📦 Pack packages
       if: github.event_name == 'push'
-      run: dotnet pack --configuration Release --no-build --output ./artifacts
+      run: dotnet pack src/Sqlx --configuration Release --no-build --output ./artifacts
 
     - name: 📤 Upload artifacts
       if: github.event_name == 'push'

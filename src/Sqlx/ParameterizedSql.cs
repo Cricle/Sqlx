@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Sqlx
 {
     /// <summary>Parameterized SQL</summary>
@@ -20,21 +22,18 @@ namespace Sqlx
             }
         }
 
-        private static string FormatParameterValue(object? value)
+        private static string FormatParameterValue(object? value) => value switch
         {
-            return value switch
-            {
-                null => "NULL",
-                string s => $"'{s.Replace("'", "''")}'",
-                bool b => b ? "1" : "0",
-                DateTime dt => $"'{dt:yyyy-MM-dd HH:mm:ss}'",
-                DateTimeOffset dto => $"'{dto:yyyy-MM-dd HH:mm:ss zzz}'",
-                Guid g => $"'{g}'",
-                decimal d => d.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                double d => d.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                float f => f.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                _ => value.ToString() ?? "NULL"
-            };
-        }
+            null => "NULL",
+            string s => $"'{s.Replace("'", "''")}'",
+            bool b => b ? "1" : "0",
+            DateTime dt => $"'{dt:yyyy-MM-dd HH:mm:ss}'",
+            DateTimeOffset dto => $"'{dto:yyyy-MM-dd HH:mm:ss zzz}'",
+            Guid g => $"'{g}'",
+            decimal d => d.ToString(CultureInfo.InvariantCulture),
+            double d => d.ToString(CultureInfo.InvariantCulture),
+            float f => f.ToString(CultureInfo.InvariantCulture),
+            _ => value.ToString() ?? "NULL"
+        };
     }
 }

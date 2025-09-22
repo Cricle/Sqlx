@@ -1,7 +1,3 @@
-#nullable enable
-using System;
-using System.Collections.Generic;
-
 namespace Sqlx
 {
     /// <summary>SQL template</summary>

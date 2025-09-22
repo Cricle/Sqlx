@@ -53,10 +53,8 @@ internal partial class MethodGenerationContext : GenerationContextBase
 
         CancellationTokenParameter = GetParameter(methodSymbol, x => x.Type.IsCancellationToken());
 
-#pragma warning disable CS0219 // Variable assigned but never used
         var rawSqlIsInParamter = true;
         var rawSqlShouldRemoveFromParams = false;
-#pragma warning restore CS0219
         // RawSqlAttribute functionality has been merged into SqlxAttribute
         var rawSqlParam = GetAttributeParamter(methodSymbol, "SqlxAttribute");
         if (rawSqlParam != null)
@@ -505,8 +503,6 @@ internal partial class MethodGenerationContext : GenerationContextBase
 
     public void WriteScalar(IndentedStringBuilder sb, List<ColumnDefine> columnDefines)
     {
-        var cancellationTokenName = CancellationTokenParameter?.Name ?? string.Empty;
-
         sb.AppendLineIf(IsAsync, $"var {ResultName} = await {CmdName}.ExecuteScalarAsync();", $"var {ResultName} = {CmdName}.ExecuteScalar();");
 
         WriteOutput(sb, columnDefines);
@@ -1214,8 +1210,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
 
     private string? GetSqlFromSyntax()
     {
-        var syntax = MethodSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() as Microsoft.CodeAnalysis.CSharp.Syntax.MethodDeclarationSyntax;
-        if (syntax == null) return null;
+        if (MethodSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is not MethodDeclarationSyntax syntax) return null;
 
         foreach (var attr in syntax.AttributeLists.SelectMany(list => list.Attributes)
                     .Where(attr => attr.Name.ToString() is "Sqlx" or "SqlxAttribute"))
@@ -2025,11 +2020,11 @@ internal partial class MethodGenerationContext : GenerationContextBase
     private List<IPropertySymbol> GetSetProperties(List<IPropertySymbol> properties)
     {
         // First look for properties marked with [Set] attribute
-        var explicitSetProperties = properties.Where(p => HasSetAttribute(p)).ToList();
+        var explicitSetProperties = properties.Where(HasSetAttribute);
 
         if (explicitSetProperties.Any())
         {
-            return explicitSetProperties;
+            return explicitSetProperties.ToList();
         }
 
         // If no explicit marking, use all non-Where properties (excluding primary keys)
@@ -2040,26 +2035,20 @@ internal partial class MethodGenerationContext : GenerationContextBase
     private List<IPropertySymbol> GetWhereProperties(List<IPropertySymbol> properties)
     {
         // First look for properties marked with [Where] attribute
-        var explicitWhereProperties = properties.Where(p => HasWhereAttribute(p)).ToList();
+        var explicitWhereProperties = properties.Where(HasWhereAttribute);
 
         if (explicitWhereProperties.Any())
         {
-            return explicitWhereProperties;
+            return explicitWhereProperties.ToList();
         }
 
         // If no explicit marking, use primary key properties as default WHERE conditions
-        return properties.Where(p => IsKeyProperty(p)).ToList();
+        return properties.Where(IsKeyProperty).ToList();
     }
 
-    private bool HasSetAttribute(IPropertySymbol property)
-    {
-        return property.GetAttributes().Any(a => a.AttributeClass?.Name == "SetAttribute");
-    }
+    private bool HasSetAttribute(IPropertySymbol property) => property.GetAttributes().Any(a => a.AttributeClass?.Name == "SetAttribute");
 
-    private bool HasWhereAttribute(IPropertySymbol property)
-    {
-        return property.GetAttributes().Any(a => a.AttributeClass?.Name == "WhereAttribute");
-    }
+    private bool HasWhereAttribute(IPropertySymbol property) => property.GetAttributes().Any(a => a.AttributeClass?.Name == "WhereAttribute");
 
     private string GenerateWhereCondition(IPropertySymbol property)
     {
@@ -2205,7 +2194,6 @@ internal partial class MethodGenerationContext : GenerationContextBase
         };
         return SqlTemplatePlaceholder.ProcessTemplate(sql, context);
     }
-
 
     private bool ShouldGenerateNullCheck(IParameterSymbol parameter)
     {

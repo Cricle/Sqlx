@@ -148,7 +148,7 @@ namespace TestNamespace
             GROUP BY u.department_id
             HAVING {{sum:u.salary}} > @minTotalSalary
             ORDER BY {{sum:u.salary}} DESC, {{max:u.performance_rating}} DESC
-            {{limit:default=50}}";
+            {{limit:default|count=50}}";
 
         var iterations = 100;
 
@@ -368,7 +368,7 @@ namespace TestNamespace
         // 创建一个包含大量占位符的模板
         var largePlaceholders = new[]
         {
-            "{{columns:auto}}", "{{where:auto}}", "{{orderby:id}}", "{{limit:default=100}}",
+            "{{columns:auto}}", "{{where:auto}}", "{{orderby:id}}", "{{limit:default|count=100}}",
             "{{sum:salary}}", "{{avg:age}}", "{{max:performance_rating}}", "{{min:hire_date}}",
             "{{upper:name}}", "{{lower:email}}", "{{trim:address}}", "{{round:salary|decimals=2}}",
             "{{between:age|min=@minAge|max=@maxAge}}", "{{like:name|pattern=@pattern}}",

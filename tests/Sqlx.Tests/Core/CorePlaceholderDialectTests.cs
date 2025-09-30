@@ -349,7 +349,7 @@ namespace TestNamespace
     [TestMethod]
     public void LimitPlaceholder_AllDialects_GeneratesCorrectPagination()
     {
-        var template = "SELECT * FROM {{table}} {{limit:default=20}}";
+        var template = "SELECT * FROM {{table}} {{limit:default|count=20}}";
 
         var expectedLimitSyntax = new Dictionary<string, string[]>
         {
@@ -372,7 +372,7 @@ namespace TestNamespace
             // 验证分页语法
             var expectedKeywords = expectedLimitSyntax[dialectName];
             var hasExpectedSyntax = expectedKeywords.Any(keyword => result.ProcessedSql.ToUpper().Contains(keyword));
-            Assert.IsTrue(hasExpectedSyntax, $"SQL should contain expected pagination syntax for {dialectName}");
+            Assert.IsTrue(hasExpectedSyntax, $"SQL should contain expected pagination syntax for {dialectName}. Expected: [{string.Join(", ", expectedKeywords)}]. Actual SQL: '{result.ProcessedSql}'");
         }
     }
 
@@ -388,7 +388,7 @@ namespace TestNamespace
             FROM {{table}}
             WHERE {{where:auto}}
             {{orderby:id}}
-            {{limit:default=50}}";
+            {{limit:default|count=50}}";
 
         foreach (var dialect in AllDialects)
         {
@@ -547,13 +547,13 @@ namespace TestNamespace
             FROM {{table}}
             WHERE {{where:auto}}
             {{orderby:id}}
-            {{limit:default=100}}
+            {{limit:default|count=100}}
             UNION ALL", 10)) + @"
             SELECT {{columns:auto|exclude=Password}}
             FROM {{table}}
             WHERE {{where:auto}}
             {{orderby:id}}
-            {{limit:default=100}}";
+            {{limit:default|count=100}}";
 
         foreach (var dialect in AllDialects)
         {

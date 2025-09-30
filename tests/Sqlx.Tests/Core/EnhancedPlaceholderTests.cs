@@ -749,7 +749,7 @@ namespace TestNamespace
             GROUP BY u.department_id
             HAVING {{sum:u.salary}} > @minTotalSalary
             ORDER BY {{sum:u.salary}} DESC
-            {{limit:default=50}}";
+            {{limit:default|count=50}}";
 
         foreach (var dialect in AllDialects)
         {

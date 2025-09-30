@@ -21,7 +21,7 @@ partial class EnhancedPlaceholderDemo
     /// <para>📝 Original Template:</para>
     /// <code>SELECT {{columns:auto}} FROM {{table}} WHERE {{between:age|min=@minAge|max=@maxAge}}</code>
     /// <para>📋 Generated SQL (Template Processed):</para>
-    /// <code>SELECT * FROM enhanced_placeholder_demo WHERE [age] BETWEEN @@minAge AND @@maxAge</code>
+    /// <code>SELECT * FROM enhanced_placeholder_demo WHERE [age] BETWEEN @minAge AND @maxAge</code>
     /// <para>🔧 Template Parameters:</para>
     /// <para>  • @minAge</para>
     /// <para>  • @maxAge</para>
@@ -47,7 +47,7 @@ partial class EnhancedPlaceholderDemo
         }
 
         __cmd__ = connection.CreateCommand();
-        __cmd__.CommandText = @"SELECT * FROM enhanced_placeholder_demo WHERE [age] BETWEEN @@minAge AND @@maxAge";
+        __cmd__.CommandText = @"SELECT * FROM enhanced_placeholder_demo WHERE [age] BETWEEN @minAge AND @maxAge";
 
         var param_minAge = __cmd__.CreateParameter();
         param_minAge.ParameterName = "@minAge";
@@ -306,7 +306,7 @@ partial class EnhancedPlaceholderDemo
     /// <para>📝 Original Template:</para>
     /// <code>SELECT {{columns:auto}} FROM {{table}} WHERE {{today:hire_date}}</code>
     /// <para>📋 Generated SQL (Template Processed):</para>
-    /// <code>SELECT * FROM enhanced_placeholder_demo WHERE CAST(GETDATE() AS DATE)</code>
+    /// <code>SELECT * FROM enhanced_placeholder_demo WHERE hire_date = CAST(GETDATE() AS DATE)</code>
     /// <para>⚠️ Template Warnings:</para>
     /// <para>  • Parameter &apos;:auto&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
     /// <para>  • Parameter &apos;:hire_date&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
@@ -327,7 +327,7 @@ partial class EnhancedPlaceholderDemo
         }
 
         __cmd__ = connection.CreateCommand();
-        __cmd__.CommandText = @"SELECT * FROM enhanced_placeholder_demo WHERE CAST(GETDATE() AS DATE)";
+        __cmd__.CommandText = @"SELECT * FROM enhanced_placeholder_demo WHERE hire_date = CAST(GETDATE() AS DATE)";
 
         try
         {
@@ -356,7 +356,7 @@ partial class EnhancedPlaceholderDemo
     /// <para>📝 Original Template:</para>
     /// <code>SELECT {{columns:auto}} FROM {{table}} WHERE {{week:hire_date}}</code>
     /// <para>📋 Generated SQL (Template Processed):</para>
-    /// <code>SELECT * FROM enhanced_placeholder_demo WHERE DATEPART(week, GETDATE())</code>
+    /// <code>SELECT * FROM enhanced_placeholder_demo WHERE hire_date = DATEPART(week, GETDATE())</code>
     /// <para>⚠️ Template Warnings:</para>
     /// <para>  • Parameter &apos;:auto&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
     /// <para>  • Parameter &apos;:hire_date&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
@@ -377,7 +377,7 @@ partial class EnhancedPlaceholderDemo
         }
 
         __cmd__ = connection.CreateCommand();
-        __cmd__.CommandText = @"SELECT * FROM enhanced_placeholder_demo WHERE DATEPART(week, GETDATE())";
+        __cmd__.CommandText = @"SELECT * FROM enhanced_placeholder_demo WHERE hire_date = DATEPART(week, GETDATE())";
 
         try
         {
@@ -406,7 +406,7 @@ partial class EnhancedPlaceholderDemo
     /// <para>📝 Original Template:</para>
     /// <code>SELECT {{columns:auto}} FROM {{table}} WHERE {{month:hire_date}}</code>
     /// <para>📋 Generated SQL (Template Processed):</para>
-    /// <code>SELECT * FROM enhanced_placeholder_demo WHERE MONTH(GETDATE())</code>
+    /// <code>SELECT * FROM enhanced_placeholder_demo WHERE hire_date = MONTH(GETDATE())</code>
     /// <para>⚠️ Template Warnings:</para>
     /// <para>  • Parameter &apos;:auto&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
     /// <para>  • Parameter &apos;:hire_date&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
@@ -427,7 +427,7 @@ partial class EnhancedPlaceholderDemo
         }
 
         __cmd__ = connection.CreateCommand();
-        __cmd__.CommandText = @"SELECT * FROM enhanced_placeholder_demo WHERE MONTH(GETDATE())";
+        __cmd__.CommandText = @"SELECT * FROM enhanced_placeholder_demo WHERE hire_date = MONTH(GETDATE())";
 
         try
         {
@@ -456,7 +456,7 @@ partial class EnhancedPlaceholderDemo
     /// <para>📝 Original Template:</para>
     /// <code>SELECT {{columns:auto}} FROM {{table}} WHERE {{year:hire_date}}</code>
     /// <para>📋 Generated SQL (Template Processed):</para>
-    /// <code>SELECT * FROM enhanced_placeholder_demo WHERE YEAR([created_at])</code>
+    /// <code>SELECT * FROM enhanced_placeholder_demo WHERE YEAR([hire_date])</code>
     /// <para>⚠️ Template Warnings:</para>
     /// <para>  • Parameter &apos;:auto&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
     /// <para>  • Parameter &apos;:hire_date&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
@@ -477,7 +477,7 @@ partial class EnhancedPlaceholderDemo
         }
 
         __cmd__ = connection.CreateCommand();
-        __cmd__.CommandText = @"SELECT * FROM enhanced_placeholder_demo WHERE YEAR([created_at])";
+        __cmd__.CommandText = @"SELECT * FROM enhanced_placeholder_demo WHERE YEAR([hire_date])";
 
         try
         {
@@ -506,12 +506,13 @@ partial class EnhancedPlaceholderDemo
     /// <para>📝 Original Template:</para>
     /// <code>SELECT {{columns:auto}} FROM {{table}} WHERE {{contains:email|text=@searchText}}</code>
     /// <para>📋 Generated SQL (Template Processed):</para>
-    /// <code>SELECT * FROM enhanced_placeholder_demo WHERE CHARINDEX(@searchValue, [email]) &gt; 0</code>
+    /// <code>SELECT * FROM enhanced_placeholder_demo WHERE [email] LIKE &apos;%&apos; + @searchText + &apos;%&apos;</code>
+    /// <para>🔧 Template Parameters:</para>
+    /// <para>  • @searchText</para>
     /// <para>⚠️ Template Warnings:</para>
     /// <para>  • Parameter &apos;:auto&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
     /// <para>  • Parameter &apos;:email&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
     /// <para>  • Cannot infer columns without entity type</para>
-    /// <para>  • Parameter &apos;searchValue&apos; not found in method signature</para>
     /// <para>🚀 This method was generated by Sqlx Advanced Template Engine</para>
     /// </summary>
     /// <param name="searchText">The searchText parameter.</param>
@@ -529,7 +530,7 @@ partial class EnhancedPlaceholderDemo
         }
 
         __cmd__ = connection.CreateCommand();
-        __cmd__.CommandText = @"SELECT * FROM enhanced_placeholder_demo WHERE CHARINDEX(@searchValue, [email]) > 0";
+        __cmd__.CommandText = @"SELECT * FROM enhanced_placeholder_demo WHERE [email] LIKE '%' + @searchText + '%'";
 
         var param_searchText = __cmd__.CreateParameter();
         param_searchText.ParameterName = "@searchText";
@@ -565,11 +566,12 @@ partial class EnhancedPlaceholderDemo
     /// <code>SELECT {{columns:auto}} FROM {{table}} WHERE {{startswith:name|prefix=@namePrefix}}</code>
     /// <para>📋 Generated SQL (Template Processed):</para>
     /// <code>SELECT * FROM enhanced_placeholder_demo WHERE [name] LIKE CONCAT(@prefix, &apos;%&apos;)</code>
+    /// <para>🔧 Template Parameters:</para>
+    /// <para>  • @prefix</para>
     /// <para>⚠️ Template Warnings:</para>
     /// <para>  • Parameter &apos;:auto&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
     /// <para>  • Parameter &apos;:name&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
     /// <para>  • Cannot infer columns without entity type</para>
-    /// <para>  • Parameter &apos;prefix&apos; not found in method signature</para>
     /// <para>🚀 This method was generated by Sqlx Advanced Template Engine</para>
     /// </summary>
     /// <param name="namePrefix">The namePrefix parameter.</param>
@@ -623,11 +625,12 @@ partial class EnhancedPlaceholderDemo
     /// <code>SELECT {{columns:auto}} FROM {{table}} WHERE {{endswith:email|suffix=@emailSuffix}}</code>
     /// <para>📋 Generated SQL (Template Processed):</para>
     /// <code>SELECT * FROM enhanced_placeholder_demo WHERE [email] LIKE CONCAT(&apos;%&apos;, @suffix)</code>
+    /// <para>🔧 Template Parameters:</para>
+    /// <para>  • @suffix</para>
     /// <para>⚠️ Template Warnings:</para>
     /// <para>  • Parameter &apos;:auto&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
     /// <para>  • Parameter &apos;:email&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
     /// <para>  • Cannot infer columns without entity type</para>
-    /// <para>  • Parameter &apos;suffix&apos; not found in method signature</para>
     /// <para>🚀 This method was generated by Sqlx Advanced Template Engine</para>
     /// </summary>
     /// <param name="emailSuffix">The emailSuffix parameter.</param>
@@ -779,8 +782,15 @@ partial class EnhancedPlaceholderDemo
     /// Creates a new entity in the database.
     /// <para>📝 Original Template:</para>
     /// <code>INSERT INTO {{table}} ({{columns:auto|exclude=Id}}) {{batch_values:auto|size=@batchSize}}</code>
-    /// <para>❌ Template Errors:</para>
-    /// <para>  • Template contains potential SQL injection patterns</para>
+    /// <para>📋 Generated SQL (Template Processed):</para>
+    /// <code>INSERT INTO enhanced_placeholder_demo (*) VALUES @batchValues</code>
+    /// <para>🔧 Template Parameters:</para>
+    /// <para>  • @batchValues</para>
+    /// <para>⚠️ Template Warnings:</para>
+    /// <para>  • Parameter &apos;:auto&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
+    /// <para>  • Parameter &apos;:auto&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
+    /// <para>  • Cannot infer columns without entity type</para>
+    /// <para>  • Invalid option &apos;size&apos; for placeholder &apos;batch_values&apos;. Template: SELECT * FROM {{table}} WHERE {{batch_values:auto|size=@batchSize}}</para>
     /// <para>🚀 This method was generated by Sqlx Advanced Template Engine</para>
     /// </summary>
     /// <param name="users">The List entity to process.</param>
@@ -799,7 +809,7 @@ partial class EnhancedPlaceholderDemo
         }
 
         __cmd__ = connection.CreateCommand();
-        __cmd__.CommandText = @"";
+        __cmd__.CommandText = @"INSERT INTO enhanced_placeholder_demo (*) VALUES @batchValues";
 
         var param_users = __cmd__.CreateParameter();
         param_users.ParameterName = "@users";
@@ -840,6 +850,8 @@ partial class EnhancedPlaceholderDemo
     /// <code>MERGE enhanced_placeholder_demo USING (VALUES {{values}}) AS src ON email = src.email</code>
     /// <para>⚠️ Template Warnings:</para>
     /// <para>  • Parameter &apos;:auto&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
+    /// <para>  • Invalid option &apos;conflict&apos; for placeholder &apos;upsert&apos;. Template: SELECT * FROM {{table}} WHERE {{upsert:auto|conflict=email}}</para>
+    /// <para>  • Invalid option &apos;update&apos; for placeholder &apos;upsert&apos;. Template: SELECT * FROM {{table}} WHERE {{upsert:auto|update=name,age,salary}}</para>
     /// <para>🚀 This method was generated by Sqlx Advanced Template Engine</para>
     /// </summary>
     /// <param name="user">The User entity to process.</param>
@@ -894,6 +906,7 @@ partial class EnhancedPlaceholderDemo
     /// <para>  • Parameter &apos;:auto&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
     /// <para>  • Parameter &apos;:department&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
     /// <para>  • Cannot infer columns without entity type</para>
+    /// <para>  • Invalid option &apos;table&apos; for placeholder &apos;exists&apos;. Template: SELECT * FROM {{table}} WHERE {{exists:department|table=departments}}</para>
     /// <para>🚀 This method was generated by Sqlx Advanced Template Engine</para>
     /// </summary>
     /// <returns>A task containing the collection of entities.</returns>
@@ -943,6 +956,8 @@ partial class EnhancedPlaceholderDemo
     /// <para>⚠️ Template Warnings:</para>
     /// <para>  • Parameter &apos;:age&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
     /// <para>  • Parameter &apos;:age&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
+    /// <para>  • Invalid option &apos;range&apos; for placeholder &apos;groupby&apos;. Template: SELECT * FROM {{table}} WHERE {{groupby:age|range=10}}</para>
+    /// <para>  • Invalid option &apos;range&apos; for placeholder &apos;groupby&apos;. Template: SELECT * FROM {{table}} WHERE {{groupby:age|range=10}}</para>
     /// <para>🚀 This method was generated by Sqlx Advanced Template Engine</para>
     /// </summary>
     /// <returns>A task containing the collection of entities.</returns>
@@ -988,13 +1003,14 @@ partial class EnhancedPlaceholderDemo
     /// <para>📝 Original Template:</para>
     /// <code>SELECT department_id, {{sum:salary}} as total_salary, {{avg:salary}} as avg_salary, {{max:salary}} as max_salary FROM {{table}} {{groupby:department_id}} {{having:count|min=5}}</code>
     /// <para>📋 Generated SQL (Template Processed):</para>
-    /// <code>SELECT department_id, SUM(*) as total_salary, AVG(*) as avg_salary, MAX(*) as max_salary FROM enhanced_placeholder_demo GROUP BY department_id HAVING COUNT(*) &gt; 5</code>
+    /// <code>SELECT department_id, SUM([salary]) as total_salary, AVG([salary]) as avg_salary, MAX([salary]) as max_salary FROM enhanced_placeholder_demo GROUP BY department_id HAVING COUNT(*) &gt; 5</code>
     /// <para>⚠️ Template Warnings:</para>
     /// <para>  • Parameter &apos;:salary&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
     /// <para>  • Parameter &apos;:salary&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
     /// <para>  • Parameter &apos;:salary&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
     /// <para>  • Parameter &apos;:department_id&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
     /// <para>  • Parameter &apos;:count&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
+    /// <para>  • Invalid option &apos;min&apos; for placeholder &apos;having&apos;. Template: SELECT * FROM {{table}} WHERE {{having:count|min=5}}</para>
     /// <para>🚀 This method was generated by Sqlx Advanced Template Engine</para>
     /// </summary>
     /// <returns>A task containing the collection of entities.</returns>
@@ -1011,7 +1027,7 @@ partial class EnhancedPlaceholderDemo
         }
 
         __cmd__ = connection.CreateCommand();
-        __cmd__.CommandText = @"SELECT department_id, SUM(*) as total_salary, AVG(*) as avg_salary, MAX(*) as max_salary FROM enhanced_placeholder_demo GROUP BY department_id HAVING COUNT(*) > 5";
+        __cmd__.CommandText = @"SELECT department_id, SUM([salary]) as total_salary, AVG([salary]) as avg_salary, MAX([salary]) as max_salary FROM enhanced_placeholder_demo GROUP BY department_id HAVING COUNT(*) > 5";
 
         try
         {

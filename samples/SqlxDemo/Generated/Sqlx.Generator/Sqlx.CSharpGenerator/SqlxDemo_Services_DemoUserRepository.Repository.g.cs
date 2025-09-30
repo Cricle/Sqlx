@@ -132,7 +132,7 @@ partial class DemoUserRepository
     /// <para>📝 Original Template:</para>
     /// <code>SELECT {{columns:auto}} FROM {{table}} WHERE [age] BETWEEN @minAge AND @maxAge {{orderby:age_desc}} {{limit:medium}}</code>
     /// <para>📋 Generated SQL (Template Processed):</para>
-    /// <code>SELECT * FROM demo_user WHERE [age] BETWEEN @minAge AND @maxAge ORDER BY [age] DESC TOP 50</code>
+    /// <code>SELECT * FROM demo_user WHERE [age] BETWEEN @minAge AND @maxAge ORDER BY [age] DESC OFFSET 0 ROWS FETCH NEXT 50 ROWS ONLY</code>
     /// <para>🔧 Template Parameters:</para>
     /// <para>  • @minAge</para>
     /// <para>  • @maxAge</para>
@@ -159,7 +159,7 @@ partial class DemoUserRepository
         }
 
         __cmd__ = connection.CreateCommand();
-        __cmd__.CommandText = @"SELECT * FROM demo_user WHERE [age] BETWEEN @minAge AND @maxAge ORDER BY [age] DESC TOP 50";
+        __cmd__.CommandText = @"SELECT * FROM demo_user WHERE [age] BETWEEN @minAge AND @maxAge ORDER BY [age] DESC OFFSET 0 ROWS FETCH NEXT 50 ROWS ONLY";
 
         var param_minAge = __cmd__.CreateParameter();
         param_minAge.ParameterName = "@minAge";
@@ -200,7 +200,7 @@ partial class DemoUserRepository
     /// <para>📝 Original Template:</para>
     /// <code>SELECT {{columns:auto}} FROM {{table}} WHERE [is_active] = {{true}} {{orderby:created_desc}} {{limit:page|offset=10}}</code>
     /// <para>📋 Generated SQL (Template Processed):</para>
-    /// <code>SELECT * FROM demo_user WHERE [is_active] = {{true}} ORDER BY [created] DESC TOP 20</code>
+    /// <code>SELECT * FROM demo_user WHERE [is_active] = {{true}} ORDER BY [created] DESC OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY</code>
     /// <para>⚠️ Template Warnings:</para>
     /// <para>  • Parameter &apos;:auto&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
     /// <para>  • Parameter &apos;:created_desc&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
@@ -223,7 +223,7 @@ partial class DemoUserRepository
         }
 
         __cmd__ = connection.CreateCommand();
-        __cmd__.CommandText = @"SELECT * FROM demo_user WHERE [is_active] = {{true}} ORDER BY [created] DESC TOP 20";
+        __cmd__.CommandText = @"SELECT * FROM demo_user WHERE [is_active] = {{true}} ORDER BY [created] DESC OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY";
 
         try
         {
@@ -298,7 +298,7 @@ partial class DemoUserRepository
     /// <para>📝 Original Template:</para>
     /// <code>SELECT {{columns:auto}} FROM {{table}} WHERE [is_active] = {{true}} {{orderby:random}} {{limit:small}}</code>
     /// <para>📋 Generated SQL (Template Processed):</para>
-    /// <code>SELECT * FROM demo_user WHERE [is_active] = {{true}} ORDER BY NEWID() TOP 10</code>
+    /// <code>SELECT * FROM demo_user WHERE [is_active] = {{true}} ORDER BY NEWID() OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY</code>
     /// <para>⚠️ Template Warnings:</para>
     /// <para>  • Parameter &apos;:auto&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
     /// <para>  • Parameter &apos;:random&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
@@ -321,7 +321,7 @@ partial class DemoUserRepository
         }
 
         __cmd__ = connection.CreateCommand();
-        __cmd__.CommandText = @"SELECT * FROM demo_user WHERE [is_active] = {{true}} ORDER BY NEWID() TOP 10";
+        __cmd__.CommandText = @"SELECT * FROM demo_user WHERE [is_active] = {{true}} ORDER BY NEWID() OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY";
 
         try
         {

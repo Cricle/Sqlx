@@ -38,70 +38,223 @@ public static class SqlTemplateEngineExtensions
             return $"ORDER BY {dialect.WrapColumn("id")} ASC";
         }
 
+        // 性能优化：预定义的LIMIT模式缓存
+        private static readonly Dictionary<string, (string SqlServer, string Oracle, string Others)> LimitPatterns = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["tiny"] = ("TOP 5", "ROWNUM <= 5", "LIMIT 5"),
+            ["small"] = ("TOP 10", "ROWNUM <= 10", "LIMIT 10"),
+            ["medium"] = ("TOP 50", "ROWNUM <= 50", "LIMIT 50"),
+            ["large"] = ("TOP 100", "ROWNUM <= 100", "LIMIT 100"),
+            ["page"] = ("TOP 20", "ROWNUM <= 20", "LIMIT 20"),
+            ["default"] = ("TOP 20", "ROWNUM <= 20", "LIMIT 20")
+        };
+
         /// <summary>
-        /// 处理LIMIT占位符 - 多数据库支持
-        /// 展示不同数据库的分页语法差异
+        /// 处理LIMIT占位符 - 多数据库支持 (增强版本)
+        /// 支持预定义模式、分页偏移量、智能默认值
         /// </summary>
         public static string ProcessLimitPlaceholder(string type, string options, SqlDefine dialect)
         {
-            // 首先尝试获取count选项，如果没有则使用default选项
-            var limit = ExtractOption(options, "count", null) ?? ExtractLimitValue(options);
+            // 检查预定义模式 - 快速路径
+            if (LimitPatterns.TryGetValue(type, out var patterns))
+            {
+                return dialect.Equals(SqlDefine.SqlServer) ? patterns.SqlServer :
+                       dialect.Equals(SqlDefine.Oracle) ? patterns.Oracle :
+                       patterns.Others;
+            }
 
-            // 确保总是有一个有效的limit值
-            if (string.IsNullOrEmpty(limit))
-                limit = "20";
+            // 智能选项解析
+            var count = ExtractOption(options, "count", null) ??
+                       ExtractOption(options, "limit", null) ??
+                       ExtractOption(options, "size", null) ??
+                       ExtractLimitValue(options) ??
+                       "20";
+
+            var offset = ExtractOption(options, "offset", null) ??
+                        ExtractOption(options, "skip", null);
 
             // 如果type指定了数据库类型，优先使用type而不是dialect
-            return type.ToLowerInvariant() switch
+            var targetDialect = type.ToLowerInvariant() switch
             {
-                "sqlserver" => $"TOP {limit}",
-                "oracle" => $"ROWNUM <= {limit}",
-                "mysql" or "postgresql" or "sqlite" => $"LIMIT {limit}",
-                _ => dialect.Equals(SqlDefine.SqlServer) ? $"TOP {limit}" :
-                     dialect.Equals(SqlDefine.Oracle) ? $"ROWNUM <= {limit}" :
-                     $"LIMIT {limit}"  // MySQL, PostgreSQL, SQLite
+                "sqlserver" => SqlDefine.SqlServer,
+                "oracle" => SqlDefine.Oracle,
+                "mysql" => SqlDefine.MySql,
+                "postgresql" => SqlDefine.PostgreSql,
+                "sqlite" => SqlDefine.SQLite,
+                _ => dialect
             };
+
+            // 根据目标数据库生成分页语句
+            if (targetDialect.Equals(SqlDefine.SqlServer))
+            {
+                return offset != null
+                    ? $"OFFSET {offset} ROWS FETCH NEXT {count} ROWS ONLY"
+                    : $"TOP {count}";
+            }
+            else if (targetDialect.Equals(SqlDefine.Oracle))
+            {
+                return offset != null
+                    ? $"OFFSET {offset} ROWS FETCH NEXT {count} ROWS ONLY"
+                    : $"ROWNUM <= {count}";
+            }
+            else
+            {
+                // MySQL, PostgreSQL, SQLite
+                return offset != null
+                    ? $"LIMIT {count} OFFSET {offset}"
+                    : $"LIMIT {count}";
+            }
         }
 
+        // 性能优化：预定义的聚合函数模式
+        private static readonly Dictionary<string, string> AggregatePatterns = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["count_all"] = "COUNT(*)",
+            ["count_rows"] = "COUNT(*)",
+            ["sum_all"] = "SUM(*)",
+            ["avg_all"] = "AVG(*)",
+            ["max_all"] = "MAX(*)",
+            ["min_all"] = "MIN(*)"
+        };
+
         /// <summary>
-        /// 处理聚合函数占位符 - 多数据库支持
+        /// 处理聚合函数占位符 - 多数据库支持 (增强版本)
+        /// 支持多种聚合函数、DISTINCT操作、列名智能解析
         /// </summary>
         public static string ProcessAggregateFunction(string function, string type, string options, SqlDefine dialect)
         {
-            // 在聚合函数中，列名通过type传递
-            var column = type;
+            // 检查预定义模式
+            var patternKey = $"{function.ToLower()}_{type}";
+            if (AggregatePatterns.TryGetValue(patternKey, out var pattern))
+                return pattern;
+
+            // 从选项中提取设置
+            var distinct = ExtractOption(options, "distinct", null) == "true";
+            var column = ExtractOption(options, "column", null) ?? type;
 
             // 处理特殊情况
             if (string.IsNullOrEmpty(column) || column == "*" || column == "all")
-                return $"{function}(*)";
-            if (column == "distinct")
-                return $"{function}(DISTINCT *)";
+            {
+                return distinct ? $"{function}(DISTINCT *)" : $"{function}(*)";
+            }
 
-            return $"{function}({column})";
+            if (column == "distinct")
+            {
+                return $"{function}(DISTINCT *)";
+            }
+
+            // 智能列名处理
+            var columnName = column.Contains('_')
+                ? column // 已经是snake_case
+                : SharedCodeGenerationUtilities.ConvertToSnakeCase(column);
+
+            // 数据库特定优化
+            var wrappedColumn = dialect.WrapColumn(columnName);
+
+            return distinct
+                ? $"{function}(DISTINCT {wrappedColumn})"
+                : $"{function}({wrappedColumn})";
         }
 
+        // 性能优化：通用占位符快速映射表
+        private static readonly Dictionary<string, string> GenericPlaceholderMap = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["distinct"] = "DISTINCT",
+            ["all"] = "*",
+            ["any"] = "1=1",
+            ["none"] = "1=0",
+            ["true"] = "1",
+            ["false"] = "0",
+            ["null"] = "NULL"
+        };
+
         /// <summary>
-        /// 通用占位符处理器 - 多数据库支持
-        /// 为所有其他占位符提供基础支持
+        /// 通用占位符处理器 - 多数据库支持 (增强版本)
+        /// 提供更丰富的占位符支持和智能默认值
         /// </summary>
         public static string ProcessGenericPlaceholder(string placeholderName, string type, string options, SqlDefine dialect)
         {
+            // 快速路径：检查简单映射
+            if (GenericPlaceholderMap.TryGetValue(placeholderName, out var simpleResult))
+                return simpleResult;
+
             return placeholderName.ToLowerInvariant() switch
             {
+                // JOIN系列
                 "join" => ProcessJoinPlaceholder(type, options, dialect),
+                "inner_join" => ProcessJoinPlaceholder("inner", options, dialect),
+                "left_join" => ProcessJoinPlaceholder("left", options, dialect),
+                "right_join" => ProcessJoinPlaceholder("right", options, dialect),
+
+                // 分组和聚合
                 "groupby" => ProcessGroupByPlaceholder(type, options, dialect),
-                "having" => $"HAVING COUNT(*) > 0",
-                "select" => type == "distinct" ? "SELECT DISTINCT" : "SELECT *",
-                "insert" => type == "into" ? "INSERT INTO user" : "INSERT INTO user",
-                "update" => "UPDATE user",
-                "delete" => type == "from" ? "DELETE FROM user" : "DELETE FROM user",
-                "distinct" => "DISTINCT",
+                "having" => ProcessHavingPlaceholder(type, options, dialect),
+
+                // 基本SQL语句
+                "select" => type == "distinct" ? "SELECT DISTINCT" : "SELECT",
+                "insert" => type == "into" ? "INSERT INTO" : "INSERT",
+                "update" => "UPDATE",
+                "delete" => type == "from" ? "DELETE FROM" : "DELETE",
+
+                // 集合操作
                 "union" => type == "all" ? "UNION ALL" : "UNION",
+                "intersect" => "INTERSECT",
+                "except" => "EXCEPT",
+
+                // 分页相关
                 "top" => ProcessLimitPlaceholder(type, options, dialect),
                 "offset" => ProcessOffsetPlaceholder(type, options, dialect),
-                _ => $"/* {placeholderName} placeholder */"
+
+                // 数据库函数
+                "uuid" => ProcessUuidFunction(dialect),
+                "random" => ProcessRandomFunction(dialect),
+                "now" => ProcessNowFunction(dialect),
+                "today" => ProcessTodayFunction(dialect),
+
+                // 默认处理
+                _ => $"/* 未知占位符: {placeholderName} */"
             };
         }
+
+        /// <summary>处理HAVING占位符 - 增强版本</summary>
+        private static string ProcessHavingPlaceholder(string type, string options, SqlDefine dialect) =>
+            type switch
+            {
+                "count" => $"HAVING COUNT(*) > {ExtractOption(options, "min", "0")}",
+                "sum" => $"HAVING SUM({ExtractOption(options, "column", "amount")}) > {ExtractOption(options, "min", "0")}",
+                "avg" => $"HAVING AVG({ExtractOption(options, "column", "value")}) > {ExtractOption(options, "min", "0")}",
+                _ => "HAVING COUNT(*) > 0"
+            };
+
+        /// <summary>处理UUID函数 - 多数据库支持</summary>
+        private static string ProcessUuidFunction(SqlDefine dialect) =>
+            dialect.Equals(SqlDefine.SqlServer) ? "NEWID()" :
+            dialect.Equals(SqlDefine.MySql) ? "UUID()" :
+            dialect.Equals(SqlDefine.PostgreSql) ? "gen_random_uuid()" :
+            "hex(randomblob(16))"; // SQLite
+
+        /// <summary>处理随机函数 - 多数据库支持</summary>
+        private static string ProcessRandomFunction(SqlDefine dialect) =>
+            dialect.Equals(SqlDefine.SqlServer) ? "RAND()" :
+            dialect.Equals(SqlDefine.MySql) ? "RAND()" :
+            dialect.Equals(SqlDefine.PostgreSql) ? "RANDOM()" :
+            "RANDOM()"; // SQLite
+
+        /// <summary>处理当前时间函数 - 多数据库支持</summary>
+        private static string ProcessNowFunction(SqlDefine dialect) =>
+            dialect.Equals(SqlDefine.SqlServer) ? "GETDATE()" :
+            dialect.Equals(SqlDefine.MySql) ? "NOW()" :
+            dialect.Equals(SqlDefine.PostgreSql) ? "NOW()" :
+            dialect.Equals(SqlDefine.Oracle) ? "SYSDATE" :
+            "datetime('now')"; // SQLite
+
+        /// <summary>处理当前日期函数 - 多数据库支持</summary>
+        private static string ProcessTodayFunction(SqlDefine dialect) =>
+            dialect.Equals(SqlDefine.SqlServer) ? "CAST(GETDATE() AS DATE)" :
+            dialect.Equals(SqlDefine.MySql) ? "CURDATE()" :
+            dialect.Equals(SqlDefine.PostgreSql) ? "CURRENT_DATE" :
+            dialect.Equals(SqlDefine.Oracle) ? "TRUNC(SYSDATE)" :
+            "date('now')"; // SQLite
 
         /// <summary>
         /// 处理JOIN占位符 - 正确解析options参数

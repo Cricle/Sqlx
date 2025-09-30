@@ -6,6 +6,7 @@
 
 using Microsoft.CodeAnalysis;
 using System.Text.RegularExpressions;
+using System.Text;
 using Sqlx;
 
 namespace Sqlx.Generator;
@@ -21,10 +22,22 @@ namespace Sqlx.Generator;
 /// </summary>
 public class SqlTemplateEngine
 {
-    // 核心正则表达式 - 精简保留
+    // 核心正则表达式 - 性能优化版本 (修复ExplicitCapture问题)
     private static readonly Regex ParameterRegex = new(@"[@:$]\w+", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly Regex PlaceholderRegex = new(@"\{\{(\w+)(?::(\w+))?(?:\|([^}]+))?\}\}", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly Regex SqlInjectionRegex = new(@"(?i)(union\s+select|drop\s+table|delete\s+from|insert\s+into|update\s+set|exec\s*\(|execute\s*\(|sp_|xp_|--|\*\/|\/\*)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    // 性能优化：缓存常用字符串
+    private static readonly Dictionary<string, string> CommonPlaceholderCache = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["*"] = "*",
+        ["1=1"] = "1=1",
+        ["COUNT(*)"] = "COUNT(*)",
+        ["SELECT *"] = "SELECT *",
+        ["ORDER BY id ASC"] = "ORDER BY id ASC",
+        ["LIMIT 20"] = "LIMIT 20",
+        ["TOP 20"] = "TOP 20"
+    };
 
     // 性能优化：通用过滤器
     private static readonly Func<IParameterSymbol, bool> NonSystemParameterFilter = p => p.Type.Name != "CancellationToken";
@@ -150,6 +163,38 @@ public class SqlTemplateEngine
                 "union" => ProcessUnionPlaceholder(placeholderType, placeholderOptions, dialect),
                 "top" => ProcessTopPlaceholder(placeholderType, placeholderOptions, dialect),
                 "offset" => ProcessOffsetPlaceholder(placeholderType, placeholderOptions, dialect),
+                // 增强的条件占位符
+                "between" => ProcessBetweenPlaceholder(placeholderType, placeholderOptions, dialect),
+                "like" => ProcessLikePlaceholder(placeholderType, placeholderOptions, dialect),
+                "in" => ProcessInPlaceholder(placeholderType, placeholderOptions, dialect),
+                "not_in" => ProcessNotInPlaceholder(placeholderType, placeholderOptions, dialect),
+                "isnull" => ProcessIsNullPlaceholder(placeholderType, placeholderOptions, dialect),
+                "notnull" => ProcessNotNullPlaceholder(placeholderType, placeholderOptions, dialect),
+                // 日期时间函数
+                "today" => ProcessTodayPlaceholder(placeholderType, placeholderOptions, dialect),
+                "week" => ProcessWeekPlaceholder(placeholderType, placeholderOptions, dialect),
+                "month" => ProcessMonthPlaceholder(placeholderType, placeholderOptions, dialect),
+                "year" => ProcessYearPlaceholder(placeholderType, placeholderOptions, dialect),
+                "date_add" => ProcessDateAddPlaceholder(placeholderType, placeholderOptions, dialect),
+                "date_diff" => ProcessDateDiffPlaceholder(placeholderType, placeholderOptions, dialect),
+                // 字符串函数
+                "contains" => ProcessContainsPlaceholder(placeholderType, placeholderOptions, dialect),
+                "startswith" => ProcessStartsWithPlaceholder(placeholderType, placeholderOptions, dialect),
+                "endswith" => ProcessEndsWithPlaceholder(placeholderType, placeholderOptions, dialect),
+                "upper" => ProcessUpperPlaceholder(placeholderType, placeholderOptions, dialect),
+                "lower" => ProcessLowerPlaceholder(placeholderType, placeholderOptions, dialect),
+                "trim" => ProcessTrimPlaceholder(placeholderType, placeholderOptions, dialect),
+                // 数学函数
+                "round" => ProcessRoundPlaceholder(placeholderType, placeholderOptions, dialect),
+                "abs" => ProcessAbsPlaceholder(placeholderType, placeholderOptions, dialect),
+                "ceiling" => ProcessCeilingPlaceholder(placeholderType, placeholderOptions, dialect),
+                "floor" => ProcessFloorPlaceholder(placeholderType, placeholderOptions, dialect),
+                // 批量操作
+                "batch_values" => ProcessBatchValuesPlaceholder(placeholderType, placeholderOptions, dialect),
+                "upsert" => ProcessUpsertPlaceholder(placeholderType, tableName, placeholderOptions, dialect),
+                // 子查询
+                "exists" => ProcessExistsPlaceholder(placeholderType, placeholderOptions, dialect),
+                "subquery" => ProcessSubqueryPlaceholder(placeholderType, placeholderOptions, dialect),
                 _ => ProcessCustomPlaceholder(match.Value, placeholderName, placeholderType, placeholderOptions, result)
             };
         });
@@ -168,7 +213,7 @@ public class SqlTemplateEngine
 
 
     /// <summary>
-    /// 处理列占位符 - 多数据库支持
+    /// 处理列占位符 - 多数据库支持 (性能优化版本)
     /// 自动应用正确的数据库列引用语法
     /// </summary>
     private string ProcessColumnsPlaceholder(string type, INamedTypeSymbol? entityType, SqlTemplateResult result, string options, SqlDefine dialect)
@@ -176,31 +221,65 @@ public class SqlTemplateEngine
         if (entityType == null)
         {
             result.Warnings.Add("Cannot infer columns without entity type");
-            return "*";
+            return CommonPlaceholderCache["*"];
         }
 
         var properties = GetFilteredProperties(entityType, options, null);
-        return type == "quoted"
-            ? string.Join(", ", properties.Select(p => dialect.WrapColumn(SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name))))
-            : string.Join(", ", properties.Select(p => SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)));
+
+        // 性能优化：预分配StringBuilder容量
+        var capacity = properties.Count * 20; // 估算每个列名约20字符
+        var sb = new StringBuilder(capacity);
+        var isQuoted = type == "quoted";
+
+        for (int i = 0; i < properties.Count; i++)
+        {
+            if (i > 0) sb.Append(", ");
+
+            var columnName = SharedCodeGenerationUtilities.ConvertToSnakeCase(properties[i].Name);
+            sb.Append(isQuoted ? dialect.WrapColumn(columnName) : columnName);
+        }
+
+        return sb.ToString();
     }
 
 
     /// <summary>
-    /// 处理值占位符 - 多数据库支持
+    /// 处理值占位符 - 多数据库支持 (性能优化版本)
     /// 自动应用正确的数据库参数语法
     /// </summary>
     private string ProcessValuesPlaceholder(string type, INamedTypeSymbol? entityType, IMethodSymbol method, string options, SqlDefine dialect)
     {
         if (entityType == null)
         {
-            return method != null
-                ? string.Join(", ", method.Parameters.Where(NonSystemParameterFilter).Select(p => $"{dialect.ParameterPrefix}{p.Name}"))
-                : string.Empty;
+            if (method == null) return string.Empty;
+
+            // 性能优化：预分配容量并使用StringBuilder
+            var methodParams = method.Parameters.Where(NonSystemParameterFilter).ToList();
+            var capacity = methodParams.Count * 15; // 估算每个参数约15字符
+            var sb = new StringBuilder(capacity);
+
+            for (int i = 0; i < methodParams.Count; i++)
+            {
+                if (i > 0) sb.Append(", ");
+                sb.Append(dialect.ParameterPrefix).Append(methodParams[i].Name);
+            }
+
+            return sb.ToString();
         }
 
         var properties = GetFilteredProperties(entityType, options, "Id");
-        return string.Join(", ", properties.Select(p => $"{dialect.ParameterPrefix}{p.Name}"));
+
+        // 性能优化：预分配StringBuilder容量
+        var propertiesCapacity = properties.Count * 15; // 估算每个参数约15字符
+        var propertiesSb = new StringBuilder(propertiesCapacity);
+
+        for (int i = 0; i < properties.Count; i++)
+        {
+            if (i > 0) propertiesSb.Append(", ");
+            propertiesSb.Append(dialect.ParameterPrefix).Append(properties[i].Name);
+        }
+
+        return propertiesSb.ToString();
     }
 
 
@@ -235,16 +314,61 @@ public class SqlTemplateEngine
     }
 
 
+    // 性能优化：扩展的ORDER BY映射表，支持更多常用排序模式
     private static readonly Dictionary<string, string> OrderByMap = new(StringComparer.OrdinalIgnoreCase)
     {
         ["id"] = "ORDER BY id ASC",
+        ["id_desc"] = "ORDER BY id DESC",
         ["name"] = "ORDER BY name ASC",
-        ["created"] = "ORDER BY created_at DESC"
+        ["name_desc"] = "ORDER BY name DESC",
+        ["created"] = "ORDER BY created_at DESC",
+        ["created_asc"] = "ORDER BY created_at ASC",
+        ["updated"] = "ORDER BY updated_at DESC",
+        ["updated_asc"] = "ORDER BY updated_at ASC",
+        ["date"] = "ORDER BY created_at DESC",
+        ["random"] = "ORDER BY NEWID()", // SQL Server
+        ["rand"] = "ORDER BY RAND()", // MySQL
+        ["priority"] = "ORDER BY priority DESC, created_at DESC"
     };
 
-    /// <summary>处理ORDER BY占位符 - 多数据库支持</summary>
-    private static string ProcessOrderByPlaceholder(string type, INamedTypeSymbol? entityType, string options, SqlDefine dialect) =>
-        OrderByMap.TryGetValue(type, out var orderBy) ? orderBy : $"ORDER BY {dialect.WrapColumn("id")} ASC";
+    /// <summary>处理ORDER BY占位符 - 多数据库支持 (增强版本)</summary>
+    private static string ProcessOrderByPlaceholder(string type, INamedTypeSymbol? entityType, string options, SqlDefine dialect)
+    {
+        // 优先检查缓存的映射
+        if (OrderByMap.TryGetValue(type, out var orderBy))
+        {
+            // 针对随机排序进行数据库特定优化
+            if (type == "random")
+            {
+                return dialect.Equals(SqlDefine.SqlServer) ? "ORDER BY NEWID()" :
+                       dialect.Equals(SqlDefine.MySql) ? "ORDER BY RAND()" :
+                       dialect.Equals(SqlDefine.PostgreSql) ? "ORDER BY RANDOM()" :
+                       dialect.Equals(SqlDefine.SQLite) ? "ORDER BY RANDOM()" :
+                       "ORDER BY NEWID()";
+            }
+
+            return orderBy;
+        }
+
+        // 智能解析自定义排序 - 支持格式如 "field_asc", "field_desc"
+        if (type.Contains('_'))
+        {
+            var parts = type.Split('_');
+            if (parts.Length == 2)
+            {
+                var field = parts[0];
+                var direction = parts[1].ToUpperInvariant();
+                if (direction is "ASC" or "DESC")
+                {
+                    var columnName = SharedCodeGenerationUtilities.ConvertToSnakeCase(field);
+                    return $"ORDER BY {dialect.WrapColumn(columnName)} {direction}";
+                }
+            }
+        }
+
+        // 默认排序
+        return $"ORDER BY {dialect.WrapColumn("id")} ASC";
+    }
 
 
     /// <summary>生成自动WHERE子句 - 多数据库支持</summary>
@@ -565,6 +689,361 @@ public class SqlTemplateEngine
     {
         return SqlTemplateEngineExtensions.MultiDatabasePlaceholderSupport.ProcessGenericPlaceholder("offset", type, options, dialect);
     }
+
+    #region 增强的条件占位符处理
+
+    /// <summary>处理BETWEEN占位符 - 范围查询</summary>
+    private static string ProcessBetweenPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", type);
+        var min = ExtractOption(options, "min", "minValue");
+        var max = ExtractOption(options, "max", "maxValue");
+        
+        return $"{dialect.WrapColumn(column)} BETWEEN {dialect.ParameterPrefix}{min} AND {dialect.ParameterPrefix}{max}";
+    }
+
+    /// <summary>处理LIKE占位符 - 模糊搜索</summary>
+    private static string ProcessLikePlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", type);
+        var pattern = ExtractOption(options, "pattern", "pattern");
+        var mode = ExtractOption(options, "mode", "contains"); // contains, starts, ends, exact
+        
+        return mode switch
+        {
+            "starts" => $"{dialect.WrapColumn(column)} LIKE CONCAT({dialect.ParameterPrefix}{pattern}, '%')",
+            "ends" => $"{dialect.WrapColumn(column)} LIKE CONCAT('%', {dialect.ParameterPrefix}{pattern})",
+            "exact" => $"{dialect.WrapColumn(column)} LIKE {dialect.ParameterPrefix}{pattern}",
+            _ => $"{dialect.WrapColumn(column)} LIKE CONCAT('%', {dialect.ParameterPrefix}{pattern}, '%')" // contains
+        };
+    }
+
+    /// <summary>处理IN占位符 - IN操作</summary>
+    private static string ProcessInPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", type);
+        var values = ExtractOption(options, "values", "values");
+        
+        return $"{dialect.WrapColumn(column)} IN ({dialect.ParameterPrefix}{values})";
+    }
+
+    /// <summary>处理NOT IN占位符</summary>
+    private static string ProcessNotInPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", type);
+        var values = ExtractOption(options, "values", "values");
+        
+        return $"{dialect.WrapColumn(column)} NOT IN ({dialect.ParameterPrefix}{values})";
+    }
+
+    /// <summary>处理IS NULL占位符</summary>
+    private static string ProcessIsNullPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", type);
+        return $"{dialect.WrapColumn(column)} IS NULL";
+    }
+
+    /// <summary>处理IS NOT NULL占位符</summary>
+    private static string ProcessNotNullPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", type);
+        return $"{dialect.WrapColumn(column)} IS NOT NULL";
+    }
+
+    #endregion
+
+    #region 日期时间函数占位符
+
+    /// <summary>处理TODAY占位符 - 当前日期</summary>
+    private static string ProcessTodayPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var format = ExtractOption(options, "format", "date"); // date, datetime, timestamp
+        
+        return format switch
+        {
+            "datetime" => GetCurrentDateTimeFunction(dialect),
+            "timestamp" => GetCurrentTimestampFunction(dialect),
+            _ => GetCurrentDateFunction(dialect)
+        };
+    }
+
+    /// <summary>处理WEEK占位符 - 周相关函数</summary>
+    private static string ProcessWeekPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var operation = ExtractOption(options, "op", type); // start, end, number
+        
+        return operation switch
+        {
+            "start" => GetWeekStartFunction(dialect),
+            "end" => GetWeekEndFunction(dialect),
+            "number" => GetWeekNumberFunction(dialect),
+            _ => GetWeekNumberFunction(dialect)
+        };
+    }
+
+    /// <summary>处理MONTH占位符 - 月份相关函数</summary>
+    private static string ProcessMonthPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var operation = ExtractOption(options, "op", type); // start, end, name, number
+        
+        return operation switch
+        {
+            "start" => GetMonthStartFunction(dialect),
+            "end" => GetMonthEndFunction(dialect),
+            "name" => GetMonthNameFunction(dialect),
+            "number" => GetMonthNumberFunction(dialect),
+            _ => GetMonthNumberFunction(dialect)
+        };
+    }
+
+    /// <summary>处理YEAR占位符 - 年份函数</summary>
+    private static string ProcessYearPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", "created_at");
+        return $"YEAR({dialect.WrapColumn(column)})";
+    }
+
+    /// <summary>处理DATE_ADD占位符 - 日期加法</summary>
+    private static string ProcessDateAddPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", "date_column");
+        var interval = ExtractOption(options, "interval", "1");
+        var unit = ExtractOption(options, "unit", "DAY"); // DAY, WEEK, MONTH, YEAR
+        
+        return dialect.Equals(SqlDefine.SqlServer) 
+            ? $"DATEADD({unit}, {interval}, {dialect.WrapColumn(column)})"
+            : dialect.Equals(SqlDefine.MySql)
+                ? $"DATE_ADD({dialect.WrapColumn(column)}, INTERVAL {interval} {unit})"
+                : $"({dialect.WrapColumn(column)} + INTERVAL {interval} {unit})"; // PostgreSQL, SQLite
+    }
+
+    /// <summary>处理DATE_DIFF占位符 - 日期差值</summary>
+    private static string ProcessDateDiffPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column1 = ExtractOption(options, "column1", "end_date");
+        var column2 = ExtractOption(options, "column2", "start_date");
+        var unit = ExtractOption(options, "unit", "DAY");
+        
+        return dialect.Equals(SqlDefine.SqlServer)
+            ? $"DATEDIFF({unit}, {dialect.WrapColumn(column2)}, {dialect.WrapColumn(column1)})"
+            : dialect.Equals(SqlDefine.MySql)
+                ? $"DATEDIFF({dialect.WrapColumn(column1)}, {dialect.WrapColumn(column2)})"
+                : $"({dialect.WrapColumn(column1)} - {dialect.WrapColumn(column2)})"; // PostgreSQL, SQLite
+    }
+
+    // 数据库特定日期时间函数
+    private static string GetCurrentDateFunction(SqlDefine dialect) =>
+        dialect.Equals(SqlDefine.SqlServer) ? "CAST(GETDATE() AS DATE)" :
+        dialect.Equals(SqlDefine.MySql) ? "CURDATE()" :
+        dialect.Equals(SqlDefine.PostgreSql) ? "CURRENT_DATE" :
+        dialect.Equals(SqlDefine.Oracle) ? "TRUNC(SYSDATE)" :
+        "date('now')"; // SQLite
+
+    private static string GetCurrentDateTimeFunction(SqlDefine dialect) =>
+        dialect.Equals(SqlDefine.SqlServer) ? "GETDATE()" :
+        dialect.Equals(SqlDefine.MySql) ? "NOW()" :
+        dialect.Equals(SqlDefine.PostgreSql) ? "NOW()" :
+        dialect.Equals(SqlDefine.Oracle) ? "SYSDATE" :
+        "datetime('now')"; // SQLite
+
+    private static string GetCurrentTimestampFunction(SqlDefine dialect) =>
+        dialect.Equals(SqlDefine.SqlServer) ? "GETUTCDATE()" :
+        dialect.Equals(SqlDefine.MySql) ? "UTC_TIMESTAMP()" :
+        dialect.Equals(SqlDefine.PostgreSql) ? "NOW() AT TIME ZONE 'UTC'" :
+        dialect.Equals(SqlDefine.Oracle) ? "SYS_EXTRACT_UTC(SYSTIMESTAMP)" :
+        "datetime('now', 'utc')"; // SQLite
+
+    private static string GetWeekStartFunction(SqlDefine dialect) =>
+        dialect.Equals(SqlDefine.SqlServer) ? "DATEADD(week, DATEDIFF(week, 0, GETDATE()), 0)" :
+        dialect.Equals(SqlDefine.MySql) ? "DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)" :
+        dialect.Equals(SqlDefine.PostgreSql) ? "date_trunc('week', CURRENT_DATE)" :
+        "date('now', 'weekday 0', '-6 days')"; // SQLite
+
+    private static string GetWeekEndFunction(SqlDefine dialect) =>
+        dialect.Equals(SqlDefine.SqlServer) ? "DATEADD(week, DATEDIFF(week, 0, GETDATE()), 6)" :
+        dialect.Equals(SqlDefine.MySql) ? "DATE_ADD(CURDATE(), INTERVAL (6 - WEEKDAY(CURDATE())) DAY)" :
+        dialect.Equals(SqlDefine.PostgreSql) ? "date_trunc('week', CURRENT_DATE) + INTERVAL '6 days'" :
+        "date('now', 'weekday 0')"; // SQLite
+
+    private static string GetWeekNumberFunction(SqlDefine dialect) =>
+        dialect.Equals(SqlDefine.SqlServer) ? "DATEPART(week, GETDATE())" :
+        dialect.Equals(SqlDefine.MySql) ? "WEEK(CURDATE())" :
+        dialect.Equals(SqlDefine.PostgreSql) ? "EXTRACT(week FROM CURRENT_DATE)" :
+        "strftime('%W', 'now')"; // SQLite
+
+    private static string GetMonthStartFunction(SqlDefine dialect) =>
+        dialect.Equals(SqlDefine.SqlServer) ? "DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)" :
+        dialect.Equals(SqlDefine.MySql) ? "DATE_FORMAT(CURDATE(), '%Y-%m-01')" :
+        dialect.Equals(SqlDefine.PostgreSql) ? "date_trunc('month', CURRENT_DATE)" :
+        "date('now', 'start of month')"; // SQLite
+
+    private static string GetMonthEndFunction(SqlDefine dialect) =>
+        dialect.Equals(SqlDefine.SqlServer) ? "EOMONTH(GETDATE())" :
+        dialect.Equals(SqlDefine.MySql) ? "LAST_DAY(CURDATE())" :
+        dialect.Equals(SqlDefine.PostgreSql) ? "date_trunc('month', CURRENT_DATE) + INTERVAL '1 month' - INTERVAL '1 day'" :
+        "date('now', 'start of month', '+1 month', '-1 day')"; // SQLite
+
+    private static string GetMonthNameFunction(SqlDefine dialect) =>
+        dialect.Equals(SqlDefine.SqlServer) ? "DATENAME(month, GETDATE())" :
+        dialect.Equals(SqlDefine.MySql) ? "MONTHNAME(CURDATE())" :
+        dialect.Equals(SqlDefine.PostgreSql) ? "to_char(CURRENT_DATE, 'Month')" :
+        "strftime('%B', 'now')"; // SQLite
+
+    private static string GetMonthNumberFunction(SqlDefine dialect) =>
+        dialect.Equals(SqlDefine.SqlServer) ? "MONTH(GETDATE())" :
+        dialect.Equals(SqlDefine.MySql) ? "MONTH(CURDATE())" :
+        dialect.Equals(SqlDefine.PostgreSql) ? "EXTRACT(month FROM CURRENT_DATE)" :
+        "strftime('%m', 'now')"; // SQLite
+
+    #endregion
+
+    #region 字符串函数占位符
+
+    /// <summary>处理CONTAINS占位符 - 包含检查</summary>
+    private static string ProcessContainsPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", type);
+        var value = ExtractOption(options, "value", "searchValue");
+        
+        return dialect.Equals(SqlDefine.SqlServer)
+            ? $"CHARINDEX({dialect.ParameterPrefix}{value}, {dialect.WrapColumn(column)}) > 0"
+            : $"{dialect.WrapColumn(column)} LIKE CONCAT('%', {dialect.ParameterPrefix}{value}, '%')";
+    }
+
+    /// <summary>处理STARTSWITH占位符</summary>
+    private static string ProcessStartsWithPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", type);
+        var value = ExtractOption(options, "value", "prefix");
+        
+        return $"{dialect.WrapColumn(column)} LIKE CONCAT({dialect.ParameterPrefix}{value}, '%')";
+    }
+
+    /// <summary>处理ENDSWITH占位符</summary>
+    private static string ProcessEndsWithPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", type);
+        var value = ExtractOption(options, "value", "suffix");
+        
+        return $"{dialect.WrapColumn(column)} LIKE CONCAT('%', {dialect.ParameterPrefix}{value})";
+    }
+
+    /// <summary>处理UPPER占位符 - 大写转换</summary>
+    private static string ProcessUpperPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", type);
+        return $"UPPER({dialect.WrapColumn(column)})";
+    }
+
+    /// <summary>处理LOWER占位符 - 小写转换</summary>
+    private static string ProcessLowerPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", type);
+        return $"LOWER({dialect.WrapColumn(column)})";
+    }
+
+    /// <summary>处理TRIM占位符 - 去除空白</summary>
+    private static string ProcessTrimPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", type);
+        var mode = ExtractOption(options, "mode", "both"); // both, leading, trailing
+        
+        return mode switch
+        {
+            "leading" => $"LTRIM({dialect.WrapColumn(column)})",
+            "trailing" => $"RTRIM({dialect.WrapColumn(column)})",
+            _ => $"TRIM({dialect.WrapColumn(column)})"
+        };
+    }
+
+    #endregion
+
+    #region 数学函数占位符
+
+    /// <summary>处理ROUND占位符 - 四舍五入</summary>
+    private static string ProcessRoundPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", type);
+        var precision = ExtractOption(options, "precision", "2");
+        
+        return $"ROUND({dialect.WrapColumn(column)}, {precision})";
+    }
+
+    /// <summary>处理ABS占位符 - 绝对值</summary>
+    private static string ProcessAbsPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", type);
+        return $"ABS({dialect.WrapColumn(column)})";
+    }
+
+    /// <summary>处理CEILING占位符 - 向上取整</summary>
+    private static string ProcessCeilingPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", type);
+        return dialect.Equals(SqlDefine.SqlServer) 
+            ? $"CEILING({dialect.WrapColumn(column)})" 
+            : $"CEIL({dialect.WrapColumn(column)})";
+    }
+
+    /// <summary>处理FLOOR占位符 - 向下取整</summary>
+    private static string ProcessFloorPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", type);
+        return $"FLOOR({dialect.WrapColumn(column)})";
+    }
+
+    #endregion
+
+    #region 批量操作和子查询占位符
+
+    /// <summary>处理BATCH_VALUES占位符 - 批量插入值</summary>
+    private static string ProcessBatchValuesPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var count = ExtractOption(options, "count", "1");
+        var columns = ExtractOption(options, "columns", "");
+        
+        if (string.IsNullOrEmpty(columns))
+            return $"VALUES {dialect.ParameterPrefix}batchValues";
+            
+        return $"VALUES ({string.Join(", ", columns.Split(',').Select(c => $"{dialect.ParameterPrefix}{c.Trim()}"))})";
+    }
+
+    /// <summary>处理UPSERT占位符 - 插入或更新</summary>
+    private static string ProcessUpsertPlaceholder(string type, string tableName, string options, SqlDefine dialect)
+    {
+        var snakeTableName = SharedCodeGenerationUtilities.ConvertToSnakeCase(tableName);
+        var conflictColumn = ExtractOption(options, "conflict", "id");
+        
+        return dialect.Equals(SqlDefine.PostgreSql)
+            ? $"INSERT INTO {snakeTableName} {{{{values}}}} ON CONFLICT ({conflictColumn}) DO UPDATE SET {{{{set:auto}}}}"
+            : dialect.Equals(SqlDefine.MySql)
+                ? $"INSERT INTO {snakeTableName} {{{{values}}}} ON DUPLICATE KEY UPDATE {{{{set:auto}}}}"
+                : dialect.Equals(SqlDefine.SQLite)
+                    ? $"INSERT OR REPLACE INTO {snakeTableName} {{{{values}}}}"
+                    : $"MERGE {snakeTableName} USING (VALUES {{{{values}}}}) AS src ON {conflictColumn} = src.{conflictColumn}"; // SQL Server
+    }
+
+    /// <summary>处理EXISTS占位符 - 存在性检查</summary>
+    private static string ProcessExistsPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var subquery = ExtractOption(options, "query", "SELECT 1 FROM table WHERE condition");
+        var negation = ExtractOption(options, "not", "false") == "true";
+        
+        return negation ? $"NOT EXISTS ({subquery})" : $"EXISTS ({subquery})";
+    }
+
+    /// <summary>处理SUBQUERY占位符 - 子查询</summary>
+    private static string ProcessSubqueryPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var query = ExtractOption(options, "query", "SELECT column FROM table");
+        var alias = ExtractOption(options, "alias", "");
+        
+        return string.IsNullOrEmpty(alias) 
+            ? $"({query})" 
+            : $"({query}) AS {dialect.WrapColumn(alias)}";
+    }
+
+    #endregion
 
     #endregion
 }

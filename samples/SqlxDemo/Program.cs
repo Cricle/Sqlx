@@ -48,6 +48,9 @@ namespace SqlxDemo
                 // 演示简化模板引擎
                 await DemonstrateSimpleTemplateEngineAsync(connection);
 
+                // 演示增强占位符功能
+                await DemonstrateEnhancedPlaceholdersAsync(connection);
+
                 Console.WriteLine();
                 Console.WriteLine("✅ 所有功能演示完成！");
             }
@@ -504,6 +507,29 @@ namespace SqlxDemo
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ 简化模板引擎演示错误: {ex.Message}");
+            }
+
+            Console.WriteLine();
+        }
+
+        /// <summary>
+        /// 演示增强占位符功能
+        /// </summary>
+        private static async Task DemonstrateEnhancedPlaceholdersAsync(SqliteConnection connection)
+        {
+            Console.WriteLine("🚀 === 增强占位符功能演示 ===");
+            Console.WriteLine("展示22个扩展占位符的强大功能");
+            Console.WriteLine();
+
+            try
+            {
+                // 运行增强占位符演示
+                await EnhancedPlaceholderDemoRunner.RunEnhancedPlaceholderDemoAsync(connection);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ 增强占位符演示错误: {ex.Message}");
+                Console.WriteLine($"   这可能是因为某些占位符功能还在完善中");
             }
 
             Console.WriteLine();

@@ -30,10 +30,34 @@ public interface IDemoUserRepository
     Task<List<User>> GetActiveUsersAsync();
 
     /// <summary>
-    /// 使用模板占位符进行范围查询
+    /// 使用模板占位符进行范围查询 - 展示优化后的ORDER BY和LIMIT功能
     /// </summary>
-    [Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE [age] BETWEEN @minAge AND @maxAge {{orderby:age}}")]
+    [Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE [age] BETWEEN @minAge AND @maxAge {{orderby:age_desc}} {{limit:medium}}")]
     Task<List<User>> GetUsersByAgeRangeAsync(int minAge, int maxAge);
+
+    /// <summary>
+    /// 使用增强的占位符功能 - 分页查询
+    /// </summary>
+    [Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE [is_active] = {{true}} {{orderby:created_desc}} {{limit:page|offset=10}}")]
+    Task<List<User>> GetActiveUsersPagedAsync();
+
+    /// <summary>
+    /// 使用聚合函数占位符 - 统计活跃用户数量
+    /// </summary>
+    [Sqlx("SELECT {{count:all}} as UserCount FROM {{table}} WHERE [is_active] = {{true}}")]
+    Task<int> GetActiveUserCountAsync();
+
+    /// <summary>
+    /// 使用随机排序占位符 - 获取随机用户
+    /// </summary>
+    [Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE [is_active] = {{true}} {{orderby:random}} {{limit:small}}")]
+    Task<List<User>> GetRandomActiveUsersAsync();
+
+    /// <summary>
+    /// 使用JOIN占位符 - 关联查询
+    /// </summary>
+    [Sqlx("SELECT {{columns:auto}} FROM {{table}} {{join:inner|table=department&on=department_id}} WHERE {{today}} >= [hire_date]")]
+    Task<List<User>> GetRecentlyHiredUsersWithDepartmentAsync();
 
     /// <summary>
     /// 使用SqlTemplateAttribute演示编译时SQL模板 - 支持标准@参数名语法

@@ -145,7 +145,7 @@ partial class SimpleTemplateDemo
     /// <para>📝 Original Template:</para>
     /// <code>SELECT {{columns:auto}} FROM {{table}} {{orderby:id}} {{limit:sqlite|default=20}}</code>
     /// <para>📋 Generated SQL (Template Processed):</para>
-    /// <code>SELECT * FROM simple_template_demo ORDER BY id ASC LIMIT 20</code>
+    /// <code>SELECT * FROM simple_template_demo ORDER BY id ASC LIMIT  OFFSET </code>
     /// <para>⚠️ Template Warnings:</para>
     /// <para>  • Parameter &apos;:auto&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
     /// <para>  • Parameter &apos;:id&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
@@ -167,7 +167,7 @@ partial class SimpleTemplateDemo
         }
 
         __cmd__ = connection.CreateCommand();
-        __cmd__.CommandText = @"SELECT * FROM simple_template_demo ORDER BY id ASC LIMIT 20";
+        __cmd__.CommandText = @"SELECT * FROM simple_template_demo ORDER BY id ASC LIMIT  OFFSET ";
 
         try
         {
@@ -444,7 +444,7 @@ partial class SimpleTemplateDemo
     /// <para>📝 Original Template:</para>
     /// <code>SELECT {{columns:auto|exclude=Password}} FROM {{table}} WHERE is_active = 1 {{orderby:name}} {{limit:sqlite|default=10}}</code>
     /// <para>📋 Generated SQL (Template Processed):</para>
-    /// <code>SELECT * FROM simple_template_demo WHERE is_active = 1 ORDER BY name ASC LIMIT 20</code>
+    /// <code>SELECT * FROM simple_template_demo WHERE is_active = 1 ORDER BY name ASC LIMIT  OFFSET </code>
     /// <para>⚠️ Template Warnings:</para>
     /// <para>  • Parameter &apos;:auto&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
     /// <para>  • Parameter &apos;:name&apos; doesn&apos;t use the correct prefix for SQL Server (expected &apos;@&apos;)</para>
@@ -466,7 +466,7 @@ partial class SimpleTemplateDemo
         }
 
         __cmd__ = connection.CreateCommand();
-        __cmd__.CommandText = @"SELECT * FROM simple_template_demo WHERE is_active = 1 ORDER BY name ASC LIMIT 20";
+        __cmd__.CommandText = @"SELECT * FROM simple_template_demo WHERE is_active = 1 ORDER BY name ASC LIMIT  OFFSET ";
 
         try
         {

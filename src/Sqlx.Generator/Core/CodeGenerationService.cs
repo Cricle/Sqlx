@@ -30,7 +30,7 @@ public class CodeGenerationService : ICodeGenerationService
         {
             // Get SQL attributes once to avoid repeated calls
             var sqlxAttr = GetSqlAttribute(method);
-            var sqlTemplate = sqlxAttr?.ConstructorArguments.FirstOrDefault().Value as string;
+            var sqlTemplate = GetSqlTemplateFromAttribute(sqlxAttr);
 
             // Process SQL template if available
             SqlTemplateResult? templateResult = null;
@@ -93,7 +93,7 @@ public class CodeGenerationService : ICodeGenerationService
         var repositoryClass = context.RepositoryClass;
 
         // Skip if the class has SqlTemplate attribute
-        if (repositoryClass.GetAttributes().Any(attr => attr.AttributeClass?.Name == "SqlTemplate"))
+        if (HasAttributeWithName(repositoryClass, "SqlTemplate"))
             return;
 
         // Get the service interface from RepositoryFor attribute
@@ -194,8 +194,7 @@ public class CodeGenerationService : ICodeGenerationService
 
     private INamedTypeSymbol? GetServiceInterface(RepositoryGenerationContext context)
     {
-        var repositoryForAttr = context.RepositoryClass.GetAttributes()
-            .FirstOrDefault(attr => attr.AttributeClass?.Name == "RepositoryForAttribute");
+        var repositoryForAttr = GetRepositoryForAttribute(context.RepositoryClass);
 
         if (repositoryForAttr?.ConstructorArguments.Length > 0)
         {
@@ -293,11 +292,10 @@ public class CodeGenerationService : ICodeGenerationService
         // Generate repository methods using template engine
         foreach (var method in serviceInterface.GetMembers().OfType<IMethodSymbol>())
         {
-            var sqlxAttr = method.GetAttributes()
-                .FirstOrDefault(a => a.AttributeClass?.Name?.Contains("Sqlx") == true ||
-                                    a.AttributeClass?.Name?.Contains("SqlTemplate") == true);
+            var sqlxAttr = GetSqlAttribute(method);
+            var sql = GetSqlTemplateFromAttribute(sqlxAttr);
 
-            if (sqlxAttr?.ConstructorArguments.FirstOrDefault().Value is string sql)
+            if (sql != null)
             {
                 // Use template engine to process SQL template
                 var templateEngine = context.TemplateEngine;
@@ -312,10 +310,7 @@ public class CodeGenerationService : ICodeGenerationService
             else
             {
                 // Check if this method has SqlTemplate attribute - if so, report error instead of fallback
-                var sqlTemplateAttr = method.GetAttributes()
-                    .FirstOrDefault(a => a.AttributeClass?.Name?.Contains("SqlTemplate") == true);
-
-                if (sqlTemplateAttr != null)
+                if (HasAttributeWithName(method, "SqlTemplate"))
                 {
                     // Report compilation error for SqlTemplate methods that can't be generated
                     throw new InvalidOperationException($"Failed to generate implementation for method '{method.Name}' with SqlTemplateAttribute. Please check the SQL template syntax and parameters.");
@@ -647,39 +642,22 @@ public class CodeGenerationService : ICodeGenerationService
 
     internal static string GetDbConnectionFieldName(INamedTypeSymbol repositoryClass)
     {
-        // Find the first DbConnection field, property, or constructor parameter
+        // 性能优化：一次性获取所有成员，避免重复遍历
+        var allMembers = repositoryClass.GetMembers().ToList();
 
-        // 1. Check fields (prioritize type checking, fallback to common names)
-        var connectionField = repositoryClass.GetMembers()
+        // 1. 首先检查字段 - 按类型和名称模式查找
+        var connectionField = allMembers
             .OfType<IFieldSymbol>()
-            .FirstOrDefault(f => f.IsDbConnection());
+            .FirstOrDefault(f => f.IsDbConnection() || IsConnectionNamePattern(f.Name));
         if (connectionField != null)
         {
             return connectionField.Name;
         }
 
-        // Check by common field names if type checking didn't work
-        connectionField = repositoryClass.GetMembers()
-            .OfType<IFieldSymbol>()
-            .FirstOrDefault(f => f.Name == "connection" ||
-                                f.Name == "_connection" ||
-                                f.Name == "Connection" ||
-                                f.Name == "_Connection" ||
-                                f.Name.EndsWith("Connection", StringComparison.OrdinalIgnoreCase));
-        if (connectionField != null)
-        {
-            return connectionField.Name;
-        }
-
-        // 2. Check properties
-        var connectionProperty = repositoryClass.GetMembers()
+        // 2. 检查属性 - 按类型和名称模式查找
+        var connectionProperty = allMembers
             .OfType<IPropertySymbol>()
-            .FirstOrDefault(p => p.IsDbConnection() ||
-                                p.Name == "connection" ||
-                                p.Name == "_connection" ||
-                                p.Name == "Connection" ||
-                                p.Name == "_Connection" ||
-                                p.Name.EndsWith("Connection", StringComparison.OrdinalIgnoreCase));
+            .FirstOrDefault(p => p.IsDbConnection() || IsConnectionNamePattern(p.Name));
         if (connectionProperty != null)
         {
             return connectionProperty.Name;
@@ -715,4 +693,25 @@ public class CodeGenerationService : ICodeGenerationService
     private static AttributeData? GetSqlAttribute(IMethodSymbol method) =>
         method.GetAttributes().FirstOrDefault(a => a.AttributeClass?.Name?.Contains("Sqlx") == true ||
                                                   a.AttributeClass?.Name?.Contains("SqlTemplate") == true);
+
+    /// <summary>Get SQL template string from attribute</summary>
+    private static string? GetSqlTemplateFromAttribute(AttributeData? attribute) =>
+        attribute?.ConstructorArguments.FirstOrDefault().Value as string;
+
+    /// <summary>Check if attribute has specific name</summary>
+    private static bool HasAttributeWithName(ISymbol symbol, string attributeName) =>
+        symbol.GetAttributes().Any(attr => attr.AttributeClass?.Name?.Contains(attributeName) == true);
+
+    /// <summary>Get RepositoryFor attribute from class</summary>
+    private static AttributeData? GetRepositoryForAttribute(INamedTypeSymbol repositoryClass) =>
+        repositoryClass.GetAttributes()
+            .FirstOrDefault(attr => attr.AttributeClass?.Name == "RepositoryForAttribute");
+
+    /// <summary>Check if name matches common connection name patterns</summary>
+    private static bool IsConnectionNamePattern(string name) =>
+        name == "connection" ||
+        name == "_connection" ||
+        name == "Connection" ||
+        name == "_Connection" ||
+        name.EndsWith("Connection", StringComparison.OrdinalIgnoreCase);
 }

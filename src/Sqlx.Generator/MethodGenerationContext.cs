@@ -21,6 +21,20 @@ using static Sqlx.Generator.Core.SharedCodeGenerationUtilities;
 
 internal partial class MethodGenerationContext : GenerationContextBase
 {
+    // 性能优化：缓存常用的SQL字符串字面量（常量字段优先）
+    private const string SqlInsert = "INSERT";
+    private const string SqlUpdate = "UPDATE";
+    private const string SqlDelete = "DELETE";
+    private const string SqlSelect = "SELECT";
+    private const string SqlInsertInto = "INSERT INTO";
+    private const string SqlUpdateSet = "UPDATE";
+    private const string SqlDeleteFrom = "DELETE FROM";
+    private const string SqlValues = "VALUES";
+    private const string SqlSet = "SET";
+    private const string SqlWhere = "WHERE";
+    private const string SqlAnd = " AND ";
+    private const string CommaSpace = ", ";
+
     internal const string DbConnectionName = Constants.GeneratedVariables.Connection;
     internal const string CmdName = "__cmd__";  // Use different name to avoid conflicts with AbstractGenerator
     internal const string DbReaderName = "__reader__";
@@ -33,6 +47,16 @@ internal partial class MethodGenerationContext : GenerationContextBase
     internal const string MethodExecuteFail = "OnExecuteFail";
 
     internal const string GetTimestampMethod = "global::System.Diagnostics.Stopwatch.GetTimestamp()";
+
+    // 性能优化：预编译正则表达式（非常量字段在后）
+    private static readonly Regex ParameterNameCleanupRegex = new("[^a-zA-Z0-9_]", RegexOptions.Compiled);
+
+    // 性能优化：辅助方法减少重复代码
+    /// <summary>为生成的SQL字符串转义列名或表名</summary>
+    private string EscapeForSqlString(string name) => SqlDef.WrapColumn(name).Replace("\"", "\\\"");
+
+    /// <summary>为生成的SQL字符串转义属性的SQL名称</summary>
+    private string EscapePropertyForSqlString(IPropertySymbol property) => SqlDef.WrapColumn(property.GetSqlName()).Replace("\"", "\\\"");
 
     internal MethodGenerationContext(ClassGenerationContext classGenerationContext, IMethodSymbol methodSymbol)
     {
@@ -165,7 +189,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
 
     public bool DeclareCommand(IndentedStringBuilder sb)
     {
-        var args = string.Join(", ", MethodSymbol.Parameters.Select(x =>
+        var args = string.Join(CommaSpace, MethodSymbol.Parameters.Select(x =>
         {
             var paramterSyntax = (ParameterSyntax)x.DeclaringSyntaxReferences[0].GetSyntax();
             var prefx = string.Join(" ", paramterSyntax.Modifiers.Select(y => y.ToString()));
@@ -337,7 +361,8 @@ internal partial class MethodGenerationContext : GenerationContextBase
         sb.AppendLine();
 
         // Paramters - skip for batch INSERT operations as they're handled in GenerateBatchInsertSql
-        var columnDefines = new List<ColumnDefine>();
+        // 性能优化：预估容量减少重分配
+        var columnDefines = new List<ColumnDefine>(MethodSymbol.Parameters.Length);
         var isBatchInsert = !string.IsNullOrEmpty(sql) && sql?.Contains("{{VALUES_PLACEHOLDER}}") == true;
 
         if (!isBatchInsert)
@@ -637,7 +662,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
                         fieldNames = tupleArgs.Select((_, index) => $"Column{index}").ToArray();
                     }
 
-                    var tupleJoins = string.Join(", ", tupleArgs.Select((x, index) =>
+                    var tupleJoins = string.Join(CommaSpace, tupleArgs.Select((x, index) =>
                         x.GetDataReadExpressionWithCachedOrdinal(DbReaderName, fieldNames[index], $"__ordinal_{fieldNames[index]}")));
                     sb.AppendLineIf(isList, $"{ResultName}.Add(({tupleJoins}));", $"yield return ({tupleJoins});");
                 }
@@ -1085,7 +1110,8 @@ internal partial class MethodGenerationContext : GenerationContextBase
 
     private List<string> GetColumnNames(ITypeSymbol returnType)
     {
-        var columnNames = new List<string>();
+        // 性能优化：预估容量减少重分配
+        var columnNames = new List<string>(10); // 大多数表不会超过10列
 
         if (returnType.IsScalarType())
         {
@@ -1133,7 +1159,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
 
         // Generate C# variable name (remove @ prefix and make it a valid identifier)
         var sqlParamName = par.GetParameterName(SqlDef.ParameterPrefix + parNamePrefx);
-        var parName = Regex.Replace(sqlParamName.TrimStart('@'), "[^a-zA-Z0-9_]", "_") + "_p";
+        var parName = ParameterNameCleanupRegex.Replace(sqlParamName.TrimStart('@'), "_") + "_p";
 
         // Generate SQL parameter name
         var name = par.GetParameterName(SqlDef.ParameterPrefix);
@@ -1203,7 +1229,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
         if (string.IsNullOrEmpty(procedureName)) return null;
 
         procedureName = ProcessSqlTemplate(procedureName!);
-        var paramSql = string.Join(", ", SqlParameters.Select(p => p.GetParameterName(SqlDef.ParameterPrefix)));
+        var paramSql = string.Join(CommaSpace, SqlParameters.Select(p => p.GetParameterName(SqlDef.ParameterPrefix)));
         var call = string.IsNullOrEmpty(paramSql) ? procedureName : $"{procedureName} {paramSql}";
         return $"@\"EXEC {call}\"";
     }
@@ -1259,9 +1285,9 @@ internal partial class MethodGenerationContext : GenerationContextBase
             Constants.SqlExecuteTypeValues.Insert => HandleInsertOperation(tableName),
             Constants.SqlExecuteTypeValues.Update => HandleUpdateOperation(tableName),
             Constants.SqlExecuteTypeValues.Delete => HandleDeleteOperation(tableName),
-            Constants.SqlExecuteTypeValues.BatchInsert => HandleBatchOperation("INSERT", tableName),
-            Constants.SqlExecuteTypeValues.BatchUpdate => HandleBatchOperation("UPDATE", tableName),
-            Constants.SqlExecuteTypeValues.BatchDelete => HandleBatchOperation("DELETE", tableName),
+            Constants.SqlExecuteTypeValues.BatchInsert => HandleBatchOperation(SqlInsert, tableName),
+            Constants.SqlExecuteTypeValues.BatchUpdate => HandleBatchOperation(SqlUpdate, tableName),
+            Constants.SqlExecuteTypeValues.BatchDelete => HandleBatchOperation(SqlDelete, tableName),
             Constants.SqlExecuteTypeValues.BatchCommand => "/* ADO.NET BatchCommand will be used */",
             _ => string.Empty
         };
@@ -1307,9 +1333,9 @@ internal partial class MethodGenerationContext : GenerationContextBase
 
         return operation switch
         {
-            "INSERT" => $"INSERT INTO {tableName} (/* columns */) VALUES (/* batch values */)",
-            "UPDATE" => $"UPDATE {tableName} SET /* columns = values */ WHERE /* condition */",
-            "DELETE" => $"DELETE FROM {tableName} WHERE /* condition */",
+            SqlInsert => $"{SqlInsertInto} {tableName} (/* columns */) {SqlValues} (/* batch values */)",
+            SqlUpdate => $"{SqlUpdate} {tableName} {SqlSet} /* columns = values */ {SqlWhere} /* condition */",
+            SqlDelete => $"{SqlDeleteFrom} {tableName} {SqlWhere} /* condition */",
             _ => $"/* {operation} operation on {tableName} */"
         };
     }
@@ -1842,8 +1868,8 @@ internal partial class MethodGenerationContext : GenerationContextBase
                     break;
                 }
 
-                var setClause = string.Join(", ", setProperties.Select(p => $"{SqlDef.WrapColumn(p.Name)} = {SqlDef.ParameterPrefix}{p.GetParameterName(string.Empty)}"));
-                var whereClause = string.Join(" AND ", whereProperties.Select(p => GenerateWhereCondition(p)));
+                var setClause = string.Join(CommaSpace, setProperties.Select(p => $"{SqlDef.WrapColumn(p.Name)} = {SqlDef.ParameterPrefix}{p.GetParameterName(string.Empty)}"));
+                var whereClause = string.Join(SqlAnd, whereProperties.Select(p => GenerateWhereCondition(p)));
                 sb.AppendLine($"{CmdName}.CommandText = \"UPDATE {SqlDef.WrapColumn(tableName!)} SET {setClause} WHERE {whereClause}\";");
                 break;
             case "DELETE":
@@ -1855,7 +1881,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
                     break;
                 }
 
-                var deleteWhereClause = string.Join(" AND ", deleteWhereProperties.Select(p => GenerateWhereCondition(p)));
+                var deleteWhereClause = string.Join(SqlAnd, deleteWhereProperties.Select(p => GenerateWhereCondition(p)));
                 sb.AppendLine($"{CmdName}.CommandText = \"DELETE FROM {SqlDef.WrapColumn(tableName!)} WHERE {deleteWhereClause}\";");
                 break;
             default:
@@ -1920,9 +1946,9 @@ internal partial class MethodGenerationContext : GenerationContextBase
 
     private void GenerateBatchInsertSql(IndentedStringBuilder sb, string tableName, List<IPropertySymbol> properties)
     {
-        var columns = string.Join(", ", properties.Select(p => SqlDef.WrapColumn(p.GetSqlName()).Replace("\"", "\\\"")));
-        var values = string.Join(", ", properties.Select(p => SqlDef.ParameterPrefix + p.GetSqlName()));
-        var wrappedTable = SqlDef.WrapColumn(tableName).Replace("\"", "\\\"");
+        var columns = string.Join(CommaSpace, properties.Select(EscapePropertyForSqlString));
+        var values = string.Join(CommaSpace, properties.Select(p => SqlDef.ParameterPrefix + p.GetSqlName()));
+        var wrappedTable = EscapeForSqlString(tableName);
         sb.AppendLine($"batchCommand.CommandText = \"INSERT INTO {wrappedTable} ({columns}) VALUES ({values})\";");
     }
 
@@ -1943,9 +1969,9 @@ internal partial class MethodGenerationContext : GenerationContextBase
             return;
         }
 
-        var setClause = string.Join(", ", setProperties.Select(p => $"{SqlDef.WrapColumn(p.GetSqlName()).Replace("\"", "\\\"")} = {SqlDef.ParameterPrefix}{p.GetSqlName()}"));
-        var whereClause = string.Join(" AND ", whereProperties.Select(p => GenerateWhereCondition(p)));
-        var wrappedTable = SqlDef.WrapColumn(tableName).Replace("\"", "\\\"");
+        var setClause = string.Join(CommaSpace, setProperties.Select(p => $"{EscapePropertyForSqlString(p)} = {SqlDef.ParameterPrefix}{p.GetSqlName()}"));
+        var whereClause = string.Join(SqlAnd, whereProperties.Select(p => GenerateWhereCondition(p)));
+        var wrappedTable = EscapeForSqlString(tableName);
 
         sb.AppendLine($"batchCommand.CommandText = \"UPDATE {wrappedTable} SET {setClause} WHERE {whereClause}\";");
     }
@@ -1960,8 +1986,8 @@ internal partial class MethodGenerationContext : GenerationContextBase
             return;
         }
 
-        var whereClause = string.Join(" AND ", whereProperties.Select(p => GenerateWhereCondition(p)));
-        var wrappedTable = SqlDef.WrapColumn(tableName).Replace("\"", "\\\"");
+        var whereClause = string.Join(SqlAnd, whereProperties.Select(p => GenerateWhereCondition(p)));
+        var wrappedTable = EscapeForSqlString(tableName);
         sb.AppendLine($"batchCommand.CommandText = \"DELETE FROM {wrappedTable} WHERE {whereClause}\";");
     }
 
@@ -1983,9 +2009,9 @@ internal partial class MethodGenerationContext : GenerationContextBase
 
             return type switch
             {
-                Constants.SqlExecuteTypeValues.BatchInsert => "INSERT",
-                Constants.SqlExecuteTypeValues.BatchUpdate => "UPDATE",
-                Constants.SqlExecuteTypeValues.BatchDelete => "DELETE",
+                Constants.SqlExecuteTypeValues.BatchInsert => SqlInsert,
+                Constants.SqlExecuteTypeValues.BatchUpdate => SqlUpdate,
+                Constants.SqlExecuteTypeValues.BatchDelete => SqlDelete,
                 Constants.SqlExecuteTypeValues.BatchCommand => GetOperationFromMethodName(), // Fallback to method name inference
                 _ => "INSERT"
             };
@@ -2000,15 +2026,15 @@ internal partial class MethodGenerationContext : GenerationContextBase
         // Try to infer operation type from method name
         var methodName = MethodSymbol.Name.ToUpperInvariant();
 
-        if (methodName.Contains("INSERT") || methodName.Contains("ADD") || methodName.Contains("CREATE"))
-            return "INSERT";
-        if (methodName.Contains("UPDATE") || methodName.Contains("MODIFY") || methodName.Contains("CHANGE"))
-            return "UPDATE";
-        if (methodName.Contains("DELETE") || methodName.Contains("REMOVE"))
-            return "DELETE";
+        if (methodName.Contains(SqlInsert) || methodName.Contains("ADD") || methodName.Contains("CREATE"))
+            return SqlInsert;
+        if (methodName.Contains(SqlUpdate) || methodName.Contains("MODIFY") || methodName.Contains("CHANGE"))
+            return SqlUpdate;
+        if (methodName.Contains(SqlDelete) || methodName.Contains("REMOVE"))
+            return SqlDelete;
 
         // Default to INSERT for backward compatibility
-        return "INSERT";
+        return SqlInsert;
     }
 
     private bool IsKeyProperty(IPropertySymbol property)
@@ -2020,26 +2046,27 @@ internal partial class MethodGenerationContext : GenerationContextBase
     private List<IPropertySymbol> GetSetProperties(List<IPropertySymbol> properties)
     {
         // First look for properties marked with [Set] attribute
-        var explicitSetProperties = properties.Where(HasSetAttribute);
+        var explicitSetProperties = properties.Where(HasSetAttribute).ToList();
 
-        if (explicitSetProperties.Any())
+        if (explicitSetProperties.Count > 0)
         {
-            return explicitSetProperties.ToList();
+            return explicitSetProperties;
         }
 
         // If no explicit marking, use all non-Where properties (excluding primary keys)
         var whereProperties = GetWhereProperties(properties);
-        return properties.Where(p => !whereProperties.Contains(p) && !IsKeyProperty(p)).ToList();
+        var whereSet = new HashSet<IPropertySymbol>(whereProperties); // 性能优化：使用HashSet提高查找效率
+        return properties.Where(p => !whereSet.Contains(p) && !IsKeyProperty(p)).ToList();
     }
 
     private List<IPropertySymbol> GetWhereProperties(List<IPropertySymbol> properties)
     {
         // First look for properties marked with [Where] attribute
-        var explicitWhereProperties = properties.Where(HasWhereAttribute);
+        var explicitWhereProperties = properties.Where(HasWhereAttribute).ToList();
 
-        if (explicitWhereProperties.Any())
+        if (explicitWhereProperties.Count > 0)
         {
-            return explicitWhereProperties.ToList();
+            return explicitWhereProperties;
         }
 
         // If no explicit marking, use primary key properties as default WHERE conditions
@@ -2069,7 +2096,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
             }
         }
 
-        return $"{SqlDef.WrapColumn(property.GetSqlName()).Replace("\"", "\\\"")} {operatorStr} {SqlDef.ParameterPrefix}{property.GetSqlName()}";
+        return $"{EscapePropertyForSqlString(property)} {operatorStr} {SqlDef.ParameterPrefix}{property.GetSqlName()}";
     }
 
 

@@ -14,6 +14,9 @@ using System.Text.RegularExpressions;
 /// </summary>
 public static class NameMapper
 {
+    // 性能优化：预编译正则表达式
+    private static readonly Regex FirstPartRegex = new("[^A-Z]*", RegexOptions.Compiled);
+    private static readonly Regex CapitalWordsRegex = new("[A-Z][^A-Z]*", RegexOptions.Compiled);
     /// <summary>
     /// Maps parameter name to snake_case for database compatibility.
     /// </summary>
@@ -30,8 +33,21 @@ public static class NameMapper
             return parameterName.ToLower();
         }
 
-        var firstname = Regex.Match(parameterName, "[^A-Z]*").Value;
-        var matches = Regex.Matches(parameterName, "[A-Z][^A-Z]*").Cast<Match>().Select(_ => _.Value.ToLower());
-        return string.IsNullOrEmpty(firstname) ? string.Join("_", matches) : string.Join("_", new string[] { firstname }.Union(matches));
+        var firstname = FirstPartRegex.Match(parameterName).Value;
+        var matches = CapitalWordsRegex.Matches(parameterName).Cast<Match>().Select(_ => _.Value.ToLower());
+        // 性能优化：避免重复的string.Join调用和临时数组创建
+        if (string.IsNullOrEmpty(firstname))
+        {
+            return string.Join("_", matches);
+        }
+
+        var allParts = new string[matches.Count() + 1];
+        allParts[0] = firstname;
+        var index = 1;
+        foreach (var match in matches)
+        {
+            allParts[index++] = match;
+        }
+        return string.Join("_", allParts);
     }
 }

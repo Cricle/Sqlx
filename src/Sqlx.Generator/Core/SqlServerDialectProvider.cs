@@ -35,7 +35,10 @@ internal class SqlServerDialectProvider : BaseDialectProvider
     public override string GenerateInsertWithReturning(string tableName, string[] columns)
     {
         var (wrappedTableName, wrappedColumns, parameters) = GetInsertParts(tableName, columns);
-        return $"INSERT INTO {wrappedTableName} ({string.Join(", ", wrappedColumns)}) OUTPUT INSERTED.{SqlDefine.WrapColumn("Id")} VALUES ({string.Join(", ", parameters)})";
+        // 性能优化：缓存重复的字符串连接结果
+        var columnsJoined = string.Join(", ", wrappedColumns);
+        var parametersJoined = string.Join(", ", parameters);
+        return $"INSERT INTO {wrappedTableName} ({columnsJoined}) OUTPUT INSERTED.{SqlDefine.WrapColumn("Id")} VALUES ({parametersJoined})";
     }
 
     /// <inheritdoc />
@@ -54,7 +57,10 @@ internal class SqlServerDialectProvider : BaseDialectProvider
         mergeStatement += "\nWHEN MATCHED THEN\n";
         mergeStatement += $"  UPDATE SET {string.Join(", ", columns.Where(c => !keyColumns.Contains(c)).Select(c => $"{SqlDefine.WrapColumn(c)} = source.{SqlDefine.WrapColumn(c)}"))}\n";
         mergeStatement += "WHEN NOT MATCHED THEN\n";
-        mergeStatement += $"  INSERT ({string.Join(", ", wrappedColumns)}) VALUES ({string.Join(", ", columns.Select(c => $"source.{SqlDefine.WrapColumn(c)}"))});";
+        // 性能优化：缓存重复的字符串连接和计算结果
+        var columnsJoined = string.Join(", ", wrappedColumns);
+        var sourceColumnsJoined = string.Join(", ", columns.Select(c => $"source.{SqlDefine.WrapColumn(c)}"));
+        mergeStatement += $"  INSERT ({columnsJoined}) VALUES ({sourceColumnsJoined});";
 
         return mergeStatement;
     }

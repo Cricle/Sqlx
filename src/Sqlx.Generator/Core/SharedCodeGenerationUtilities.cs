@@ -108,9 +108,9 @@ public static class SharedCodeGenerationUtilities
             sb.AppendLine($"var {variableName} = new {entityTypeName}();");
         }
 
+        // 性能优化：避免不必要的ToList()调用，直接遍历
         var properties = entityType.GetMembers().OfType<IPropertySymbol>()
-            .Where(p => p.CanBeReferencedByName && p.SetMethod != null)
-            .ToList();
+            .Where(p => p.CanBeReferencedByName && p.SetMethod != null);
 
         foreach (var prop in properties)
         {
@@ -154,7 +154,8 @@ public static class SharedCodeGenerationUtilities
         if (string.IsNullOrEmpty(name)) return name;
         if (name.Contains("_")) return name.ToLowerInvariant();
 
-        var result = new System.Text.StringBuilder(name.Length + 5);
+        // 性能优化：预计算容量更精确，避免重分配
+        var result = new System.Text.StringBuilder(name.Length + (name.Length >> 2));
         for (int i = 0; i < name.Length; i++)
         {
             char current = name[i];

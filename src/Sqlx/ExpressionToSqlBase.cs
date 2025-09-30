@@ -38,6 +38,7 @@ namespace Sqlx
         {
             _dialect = dialect;
             _tableName = entityType.Name;
+            _stringFunctionMap = InitializeStringFunctionMap();
         }
 
         /// <summary>Adds GROUP BY column</summary>
@@ -148,19 +149,21 @@ namespace Sqlx
             if (binary.NodeType is not (ExpressionType.Equal or ExpressionType.NotEqual)) return null;
 
             var op = binary.NodeType == ExpressionType.Equal ? "=" : "<>";
-            var (leftBool, rightBool, rightTrue, rightFalse, leftTrue, leftFalse) = (
-                IsBooleanMember(binary.Left), IsBooleanMember(binary.Right),
-                IsConstantTrue(binary.Right), IsConstantFalse(binary.Right),
-                IsConstantTrue(binary.Left), IsConstantFalse(binary.Left));
 
-            return (leftBool, rightBool, rightTrue || leftTrue, rightFalse || leftFalse) switch
+            // 简化逻辑：直接检查左右两边的模式
+            if (IsBooleanMember(binary.Left))
             {
-                (true, false, true, false) => $"{GetColumnName(binary.Left)} {op} 1",
-                (false, true, true, false) => $"{GetColumnName(binary.Right)} {op} 1",
-                (true, false, false, true) => $"{GetColumnName(binary.Left)} {op} 0",
-                (false, true, false, true) => $"{GetColumnName(binary.Right)} {op} 0",
-                _ => null
-            };
+                if (IsConstantTrue(binary.Right)) return $"{GetColumnName(binary.Left)} {op} 1";
+                if (IsConstantFalse(binary.Right)) return $"{GetColumnName(binary.Left)} {op} 0";
+            }
+
+            if (IsBooleanMember(binary.Right))
+            {
+                if (IsConstantTrue(binary.Left)) return $"{GetColumnName(binary.Right)} {op} 1";
+                if (IsConstantFalse(binary.Left)) return $"{GetColumnName(binary.Right)} {op} 0";
+            }
+
+            return null;
         }
 
         /// <summary>Parse binary expression to SQL</summary>
@@ -203,15 +206,19 @@ namespace Sqlx
         /// <summary>Formats constant value</summary>
         protected string FormatConstantValue(object? value) => _parameterized ? CreateParameter(value) : FormatValueAsLiteral(value);
 
+        // 性能优化：缓存常用的字面值
+        private const string NullLiteral = "NULL";
+        private static readonly string[] BooleanLiterals = { "0", "1" };
+
         private string FormatValueAsLiteral(object? value) => value switch
         {
-            null => "NULL",
+            null => NullLiteral,
             string s => _dialect.WrapString(s.Replace("'", "''")),
-            bool b => b ? "1" : "0",
+            bool b => BooleanLiterals[b ? 1 : 0],
             DateTime dt => _dialect.WrapString(dt.ToString("yyyy-MM-dd HH:mm:ss")),
             Guid g => _dialect.WrapString(g.ToString()),
             decimal or double or float => value.ToString()!,
-            _ => value?.ToString() ?? "NULL"
+            _ => value?.ToString() ?? NullLiteral
         };
 
         /// <summary>Creates parameter</summary>
@@ -278,46 +285,71 @@ namespace Sqlx
         protected string DatabaseType => _dialect.DatabaseType;
         private string GetConcatSyntax(params string[] parts) => _dialect.GetConcatFunction(parts);
 
+        // 性能优化：预构建数学函数映射
+        private static readonly Dictionary<(string Name, int ArgCount), Func<string[], string, string>> MathFunctionMap = new()
+        {
+            [("Abs", 1)] = (args, _) => $"ABS({args[0]})",
+            [("Round", 1)] = (args, _) => $"ROUND({args[0]})",
+            [("Round", 2)] = (args, _) => $"ROUND({args[0]}, {args[1]})",
+            [("Floor", 1)] = (args, _) => $"FLOOR({args[0]})",
+            [("Sqrt", 1)] = (args, _) => $"SQRT({args[0]})",
+            [("Ceiling", 1)] = (args, dbType) => dbType == "PostgreSql" ? $"CEIL({args[0]})" : $"CEILING({args[0]})",
+            [("Min", 2)] = (args, _) => $"LEAST({args[0]}, {args[1]})",
+            [("Max", 2)] = (args, _) => $"GREATEST({args[0]}, {args[1]})",
+            [("Pow", 2)] = (args, dbType) => $"{(dbType == "MySql" ? "POW" : "POWER")}({args[0]}, {args[1]})"
+        };
+
         /// <summary>Parses math function</summary>
         protected string ParseMathFunction(MethodCallExpression method)
         {
-            var args = method.Arguments.Select(ParseExpressionRaw).ToArray();
-            var name = method.Method.Name;
-            return (name, args.Length) switch
+            // 性能优化：避免不必要的ToArray()调用，按需创建参数数组
+            var key = (method.Method.Name, method.Arguments.Count);
+            if (MathFunctionMap.TryGetValue(key, out var func))
             {
-                ("Abs", 1) => $"ABS({args[0]})",
-                ("Round", 1) => $"ROUND({args[0]})",
-                ("Round", 2) => $"ROUND({args[0]}, {args[1]})",
-                ("Floor", 1) => $"FLOOR({args[0]})",
-                ("Sqrt", 1) => $"SQRT({args[0]})",
-                ("Ceiling", 1) => DatabaseType == "PostgreSql" ? $"CEIL({args[0]})" : $"CEILING({args[0]})",
-                ("Min", 2) => $"LEAST({args[0]}, {args[1]})",
-                ("Max", 2) => $"GREATEST({args[0]}, {args[1]})",
-                ("Pow", 2) => $"{(DatabaseType == "MySql" ? "POW" : "POWER")}({args[0]}, {args[1]})",
-                _ => "1"
-            };
+                var args = new string[method.Arguments.Count];
+                for (int i = 0; i < method.Arguments.Count; i++)
+                {
+                    args[i] = ParseExpressionRaw(method.Arguments[i]);
+                }
+                return func(args, DatabaseType);
+            }
+            return "1";
         }
+
+        // 性能优化：预构建字符串函数映射，使用实例方法访问dialect
+        private readonly Dictionary<(string Name, int ArgCount), Func<string, string[], string>> _stringFunctionMap;
+
+        /// <summary>初始化字符串函数映射</summary>
+        private Dictionary<(string Name, int ArgCount), Func<string, string[], string>> InitializeStringFunctionMap() => new()
+        {
+            [("Contains", 1)] = (obj, args) => $"{obj} LIKE {GetConcatSyntax("'%'", args[0], "'%'")}",
+            [("StartsWith", 1)] = (obj, args) => $"{obj} LIKE {GetConcatSyntax(args[0], "'%'")}",
+            [("EndsWith", 1)] = (obj, args) => $"{obj} LIKE {GetConcatSyntax("'%'", args[0])}",
+            [("ToUpper", 0)] = (obj, _) => $"UPPER({obj})",
+            [("ToLower", 0)] = (obj, _) => $"LOWER({obj})",
+            [("Trim", 0)] = (obj, _) => $"TRIM({obj})",
+            [("Replace", 2)] = (obj, args) => $"REPLACE({obj}, {args[0]}, {args[1]})",
+            [("Substring", 1)] = (obj, args) => DatabaseType == "SQLite" ? $"SUBSTR({obj}, {args[0]})" : $"SUBSTRING({obj}, {args[0]})",
+            [("Substring", 2)] = (obj, args) => DatabaseType == "SQLite" ? $"SUBSTR({obj}, {args[0]}, {args[1]})" : $"SUBSTRING({obj}, {args[0]}, {args[1]})",
+            [("Length", 0)] = (obj, _) => DatabaseType == "SqlServer" ? $"LEN({obj})" : $"LENGTH({obj})"
+        };
 
         /// <summary>Parses string function</summary>
         protected string ParseStringFunction(MethodCallExpression method)
         {
             var obj = method.Object != null ? ParseExpressionRaw(method.Object) : "";
-            var args = method.Arguments.Select(ParseExpressionRaw).ToArray();
-            var name = method.Method.Name;
-            return (name, args.Length) switch
+            // 性能优化：避免不必要的ToArray()调用，按需创建参数数组
+            var key = (method.Method.Name, method.Arguments.Count);
+            if (_stringFunctionMap.TryGetValue(key, out var func))
             {
-                ("Contains", 1) => $"{obj} LIKE {GetConcatSyntax("'%'", args[0], "'%'")}",
-                ("StartsWith", 1) => $"{obj} LIKE {GetConcatSyntax(args[0], "'%'")}",
-                ("EndsWith", 1) => $"{obj} LIKE {GetConcatSyntax("'%'", args[0])}",
-                ("ToUpper", 0) => $"UPPER({obj})",
-                ("ToLower", 0) => $"LOWER({obj})",
-                ("Trim", 0) => $"TRIM({obj})",
-                ("Replace", 2) => $"REPLACE({obj}, {args[0]}, {args[1]})",
-                ("Substring", 1) => DatabaseType == "SQLite" ? $"SUBSTR({obj}, {args[0]})" : $"SUBSTRING({obj}, {args[0]})",
-                ("Substring", 2) => DatabaseType == "SQLite" ? $"SUBSTR({obj}, {args[0]}, {args[1]})" : $"SUBSTRING({obj}, {args[0]}, {args[1]})",
-                ("Length", 0) => DatabaseType == "SqlServer" ? $"LEN({obj})" : $"LENGTH({obj})",
-                _ => obj
-            };
+                var args = new string[method.Arguments.Count];
+                for (int i = 0; i < method.Arguments.Count; i++)
+                {
+                    args[i] = ParseExpressionRaw(method.Arguments[i]);
+                }
+                return func(obj, args);
+            }
+            return obj;
         }
 
         /// <summary>Parses DateTime function</summary>

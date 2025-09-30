@@ -26,7 +26,7 @@ public interface ISimpleTemplateDemo
     Task<User?> GetUserSafelyAsync(int id);
 
     /// <summary>分页列表查询</summary>
-    [Sqlx("SELECT {{columns:auto}} FROM {{table}} {{orderby:id}} {{limit:mysql|default=20}}")]
+    [Sqlx("SELECT {{columns:auto}} FROM {{table}} {{orderby:id}} {{limit:sqlite|default=20}}")]
     Task<List<User>> GetUsersPagedAsync();
 
     /// <summary>条件查询 - 自动推断WHERE</summary>
@@ -49,12 +49,13 @@ public interface ISimpleTemplateDemo
 
     // 📊 实用查询演示
 
-    /// <summary>计数查询</summary>
-    [Sqlx("SELECT COUNT(*) FROM {{table}} WHERE is_active = 1")]
-    Task<int> GetActiveUserCountAsync();
+    // TODO: 计数查询暂时禁用，需要代码生成器支持标量类型推断
+    // /// <summary>计数查询</summary>
+    // [Sqlx("SELECT COUNT(*) FROM {{table}} WHERE is_active = 1")]
+    // Task<long> GetActiveUserCountAsync();
 
     /// <summary>排序查询</summary>
-    [Sqlx("SELECT {{columns:auto|exclude=Password}} FROM {{table}} WHERE is_active = 1 {{orderby:name}} {{limit:mysql|default=10}}")]
+    [Sqlx("SELECT {{columns:auto|exclude=Password}} FROM {{table}} WHERE is_active = 1 {{orderby:name}} {{limit:sqlite|default=10}}")]
     Task<List<User>> GetTopUsersAsync();
 }
 
@@ -125,10 +126,9 @@ public static class TemplateEngineDemo
             Console.WriteLine($"   ✅ 分页查询完成，返回 {users.Count} 条记录");
             Console.WriteLine();
 
-            // 4. 计数查询演示
-            Console.WriteLine("🔢 4. 计数查询演示");
-            var count = await demo.GetActiveUserCountAsync();
-            Console.WriteLine($"   ✅ 活跃用户数量: {count}");
+            // 4. 计数查询演示（暂时禁用）
+            Console.WriteLine("🔢 4. 计数查询演示（暂时禁用 - 需要标量类型支持）");
+            Console.WriteLine($"   ⚠️ 计数查询功能暂时禁用，等待代码生成器标量类型推断支持");
             Console.WriteLine();
 
             Console.WriteLine("🎉 所有模板占位符功能验证完成！");
@@ -139,7 +139,7 @@ public static class TemplateEngineDemo
             Console.WriteLine("   • {{where:id}} - 快速WHERE条件");
             Console.WriteLine("   • {{set:auto}} - 智能SET子句");
             Console.WriteLine("   • {{orderby:name}} - 便捷排序");
-            Console.WriteLine("   • {{limit:mysql}} - 数据库适配分页");
+            Console.WriteLine("   • {{limit:sqlite}} - 数据库适配分页");
             Console.WriteLine("   • {{values:auto}} - 参数化插入值");
         }
         catch (Exception ex)
@@ -198,7 +198,7 @@ public static class TemplateEngineDemo
                 "明确列选择，排除敏感字段"
             ),
             ["分页查询"] = (
-                "SELECT {{columns:auto}} FROM {{table}} {{orderby:id}} {{limit:mysql|default=20}}",
+                "SELECT {{columns:auto}} FROM {{table}} {{orderby:id}} {{limit:sqlite|default=20}}",
                 "SELECT * FROM users",
                 "防止大数据集性能问题"
             ),

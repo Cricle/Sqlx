@@ -66,40 +66,23 @@ namespace Sqlx
         private string EscapeString(string value) => value.Replace(StringLeft, StringLeft + StringLeft);
 
         /// <summary>Gets database type (simplified version)</summary>
-        public string DatabaseType
-        {
-            get
-            {
-                return ColumnLeft switch
-                {
-                    "`" when ColumnRight == "`" && ParameterPrefix == "@" => "MySql",
-                    "[" when ColumnRight == "]" && ParameterPrefix == "@" => "SqlServer",
-                    "\"" when ColumnRight == "\"" && ParameterPrefix == "$" => "PostgreSql",
-                    "[" when ColumnRight == "]" && ParameterPrefix == "$" => "SQLite",
-                    "\"" when ColumnRight == "\"" && ParameterPrefix == ":" => "Oracle",
-                    "\"" when ColumnRight == "\"" && ParameterPrefix == "?" => "DB2",
-                    _ => throw new NotSupportedException(ColumnLeft)
-                };
-            }
-        }
+        public string DatabaseType => GetDatabaseInfo().Name;
 
         /// <summary>Gets database type enum (type-safe version)</summary>
-        public Annotations.SqlDefineTypes DbType
-        {
-            get
+        public Annotations.SqlDefineTypes DbType => GetDatabaseInfo().Type;
+
+        /// <summary>Helper method to determine database info once</summary>
+        private (string Name, Annotations.SqlDefineTypes Type) GetDatabaseInfo() =>
+            (ColumnLeft, ColumnRight, ParameterPrefix) switch
             {
-                return DatabaseType switch
-                {
-                    "MySql" => Annotations.SqlDefineTypes.MySql,
-                    "SqlServer" => Annotations.SqlDefineTypes.SqlServer,
-                    "PostgreSql" => Annotations.SqlDefineTypes.PostgreSql,
-                    "SQLite" => Annotations.SqlDefineTypes.SQLite,
-                    "Oracle" => Annotations.SqlDefineTypes.Oracle,
-                    "DB2" => Annotations.SqlDefineTypes.DB2,
-                    _ => throw new NotSupportedException(DatabaseType)
-                };
-            }
-        }
+                ("`", "`", "@") => ("MySql", Annotations.SqlDefineTypes.MySql),
+                ("[", "]", "@") => ("SqlServer", Annotations.SqlDefineTypes.SqlServer),
+                ("\"", "\"", "$") => ("PostgreSql", Annotations.SqlDefineTypes.PostgreSql),
+                ("[", "]", "$") => ("SQLite", Annotations.SqlDefineTypes.SQLite),
+                ("\"", "\"", ":") => ("Oracle", Annotations.SqlDefineTypes.Oracle),
+                ("\"", "\"", "?") => ("DB2", Annotations.SqlDefineTypes.DB2),
+                _ => throw new NotSupportedException($"Unknown dialect: {ColumnLeft}{ColumnRight}{ParameterPrefix}")
+            };
 
         /// <summary>Gets string concatenation syntax</summary>
         public string GetConcatFunction(params string[] parts) => DatabaseType switch

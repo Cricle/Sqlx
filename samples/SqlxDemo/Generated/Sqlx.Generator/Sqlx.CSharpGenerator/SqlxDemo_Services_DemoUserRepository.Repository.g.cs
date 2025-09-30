@@ -304,9 +304,9 @@ partial class DemoUserRepository
     /// <summary>
     /// Retrieves entity data from the database.
     /// <para>📝 Original Template:</para>
-    /// <code>SELECT [id], [name], [email], [salary] FROM [user] WHERE [department_id] = @deptId AND [salary] &gt;= @minSalary ORDER BY [salary] DESC</code>
+    /// <code>SELECT [id], [name], [email], [age], [salary], [department_id], [is_active], [hire_date], [bonus], [performance_rating] FROM [user] WHERE [department_id] = @deptId AND [salary] &gt;= @minSalary ORDER BY [salary] DESC</code>
     /// <para>📋 Generated SQL (Template Processed):</para>
-    /// <code>SELECT [id], [name], [email], [salary] FROM [user] WHERE [department_id] = @deptId AND [salary] &gt;= @minSalary ORDER BY [salary] DESC</code>
+    /// <code>SELECT [id], [name], [email], [age], [salary], [department_id], [is_active], [hire_date], [bonus], [performance_rating] FROM [user] WHERE [department_id] = @deptId AND [salary] &gt;= @minSalary ORDER BY [salary] DESC</code>
     /// <para>🔧 Template Parameters:</para>
     /// <para>  • @deptId (int)</para>
     /// <para>  • @minSalary (decimal)</para>
@@ -315,7 +315,7 @@ partial class DemoUserRepository
     /// <param name="deptId">The deptId parameter.</param>
     /// <param name="minSalary">The minSalary parameter.</param>
     /// <returns>A task containing the collection of entities.</returns>
-    [global::Sqlx.Annotations.SqlTemplate("SELECT [id], [name], [email], [salary] FROM [user] WHERE [department_id] = @deptId AND [salary] >= @minSalary ORDER BY [salary] DESC", Dialect = global::Sqlx.Annotations.SqlDefineTypes.SQLite, Operation = global::Sqlx.SqlOperation.Select)]
+    [global::Sqlx.Annotations.SqlTemplate("SELECT [id], [name], [email], [age], [salary], [department_id], [is_active], [hire_date], [bonus], [performance_rating] FROM [user] WHERE [department_id] = @deptId AND [salary] >= @minSalary ORDER BY [salary] DESC", Dialect = global::Sqlx.Annotations.SqlDefineTypes.SQLite, Operation = global::Sqlx.SqlOperation.Select)]
     public System.Threading.Tasks.Task<System.Collections.Generic.List<SqlxDemo.Models.User>> GetUsersByDepartmentAndSalaryAsync(int deptId, decimal minSalary)
     {
         System.Collections.Generic.List<SqlxDemo.Models.User> __result__ = default!;
@@ -328,7 +328,7 @@ partial class DemoUserRepository
         }
 
         __cmd__ = connection.CreateCommand();
-        __cmd__.CommandText = @"SELECT [id], [name], [email], [salary] FROM [user] WHERE [department_id] = @deptId AND [salary] >= @minSalary ORDER BY [salary] DESC";
+        __cmd__.CommandText = @"SELECT [id], [name], [email], [age], [salary], [department_id], [is_active], [hire_date], [bonus], [performance_rating] FROM [user] WHERE [department_id] = @deptId AND [salary] >= @minSalary ORDER BY [salary] DESC";
 
         var param_deptId = __cmd__.CreateParameter();
         param_deptId.ParameterName = "@deptId";

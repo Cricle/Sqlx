@@ -45,7 +45,7 @@ public interface IDemoUserRepository
     /// <summary>
     /// 使用SqlTemplateAttribute进行复杂条件查询
     /// </summary>
-    [SqlTemplate("SELECT [id], [name], [email], [salary] FROM [user] WHERE [department_id] = @deptId AND [salary] >= @minSalary ORDER BY [salary] DESC",
+    [SqlTemplate("SELECT [id], [name], [email], [age], [salary], [department_id], [is_active], [hire_date], [bonus], [performance_rating] FROM [user] WHERE [department_id] = @deptId AND [salary] >= @minSalary ORDER BY [salary] DESC",
                  Dialect = SqlDefineTypes.SQLite, Operation = SqlOperation.Select)]
     Task<List<User>> GetUsersByDepartmentAndSalaryAsync(int deptId, decimal minSalary);
 

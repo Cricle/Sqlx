@@ -253,15 +253,19 @@ public class SqlTemplateEngine : ISqlTemplateEngine
     private static string ConvertToSnakeCase(string name)
     {
         if (string.IsNullOrEmpty(name)) return name;
-        if (name.Contains("_")) return name.ToLowerInvariant();
+        if (name.IndexOf('_') >= 0) return name.ToLowerInvariant();
 
-        var result = new System.Text.StringBuilder(name.Length + 5);
+        // 预计算容量，避免重新分配
+        var capacity = name.Length + (name.Length >> 2); // +25% 估算
+        var result = new System.Text.StringBuilder(capacity);
+
         for (int i = 0; i < name.Length; i++)
         {
             char current = name[i];
             if (char.IsUpper(current))
             {
-                if (i > 0 && !char.IsUpper(name[i - 1])) result.Append('_');
+                if (i > 0 && name[i - 1] != '_' && !char.IsUpper(name[i - 1]))
+                    result.Append('_');
                 result.Append(char.ToLowerInvariant(current));
             }
             else
@@ -275,14 +279,17 @@ public class SqlTemplateEngine : ISqlTemplateEngine
     private void ProcessParameters(string sql, IMethodSymbol method, SqlTemplateResult result)
     {
         if (method == null) return; // 防护性检查
-        var methodParams = method.Parameters.Where(NonSystemParameterFilter).ToList();
+
+        // 使用字典提高查找性能，避免多次遍历
+        var methodParamDict = method.Parameters
+            .Where(NonSystemParameterFilter)
+            .ToDictionary(p => p.Name, p => p, StringComparer.OrdinalIgnoreCase);
 
         foreach (Match match in ParameterRegex.Matches(sql))
         {
             var paramName = match.Value.Substring(1); // Remove @ : or $
-            var methodParam = methodParams.FirstOrDefault(p => p.Name.Equals(paramName, StringComparison.OrdinalIgnoreCase));
 
-            if (methodParam != null)
+            if (methodParamDict.TryGetValue(paramName, out var methodParam))
             {
                 result.Parameters.Add(new ParameterMapping
                 {
@@ -333,20 +340,32 @@ public class SqlTemplateEngine : ISqlTemplateEngine
     /// <summary>统一的属性过滤逻辑，减少重复代码</summary>
     private List<IPropertySymbol> GetFilteredProperties(INamedTypeSymbol entityType, string options, string? excludeProperty = null, bool requireSetter = false)
     {
-        var properties = entityType.GetMembers().OfType<IPropertySymbol>()
-            .Where(AccessiblePropertyFilter)
-            .Where(p => requireSetter ? p.SetMethod != null : true)
-            .Where(p => excludeProperty == null || p.Name != excludeProperty);
+        // 预构建排除集合，提高查找性能
+        var excludeSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (excludeProperty != null) excludeSet.Add(excludeProperty);
 
-        // 处理exclude选项
-        var exclude = ExtractOption(options, "exclude", "");
-        if (!string.IsNullOrEmpty(exclude))
+        var excludeOption = ExtractOption(options, "exclude", "");
+        if (!string.IsNullOrEmpty(excludeOption))
         {
-            var excludeList = exclude.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-            properties = properties.Where(p => !excludeList.Contains(p.Name, StringComparer.OrdinalIgnoreCase));
+            foreach (var item in excludeOption.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
+                excludeSet.Add(item.Trim());
         }
 
-        return properties.ToList();
+        // 单次遍历过滤，避免多次枚举
+        // 性能优化：预估容量减少重分配
+        var result = new List<IPropertySymbol>(16); // 大多数实体不会超过16个属性
+        foreach (var member in entityType.GetMembers())
+        {
+            if (member is IPropertySymbol property &&
+                AccessiblePropertyFilter(property) &&
+                (!requireSetter || property.SetMethod != null) &&
+                !excludeSet.Contains(property.Name))
+            {
+                result.Add(property);
+            }
+        }
+
+        return result;
     }
 
     /// <summary>
@@ -372,33 +391,18 @@ public class SqlTemplateEngine : ISqlTemplateEngine
     }
 
 
-    /// <summary>
-    /// 数据库特定安全验证
-    /// </summary>
+    /// <summary>数据库特定安全验证</summary>
     private void ValidateDialectSpecificSecurity(string templateSql, SqlTemplateResult result, SqlDefine dialect)
     {
         var upper = templateSql.ToUpperInvariant();
 
-        // PostgreSQL特定检查
-        if (dialect.Equals(SqlDefine.PostgreSql))
-        {
-            if (upper.Contains("$$") && !upper.Contains("$BODY$"))
-                result.Warnings.Add("PostgreSQL dollar-quoted strings detected, ensure they are safe");
-        }
-
-        // MySQL特定检查
-        if (dialect.Equals(SqlDefine.MySql))
-        {
-            if (upper.Contains("LOAD_FILE") || upper.Contains("INTO OUTFILE"))
-                result.Errors.Add("MySQL file operations detected, potential security risk");
-        }
-
-        // SQL Server特定检查
-        if (dialect.Equals(SqlDefine.SqlServer))
-        {
-            if (upper.Contains("OPENROWSET") || upper.Contains("OPENDATASOURCE"))
-                result.Errors.Add("SQL Server external data access detected, potential security risk");
-        }
+        // 使用模式匹配简化数据库特定检查
+        if (dialect.Equals(SqlDefine.PostgreSql) && upper.Contains("$$") && !upper.Contains("$BODY$"))
+            result.Warnings.Add("PostgreSQL dollar-quoted strings detected, ensure they are safe");
+        else if (dialect.Equals(SqlDefine.MySql) && (upper.Contains("LOAD_FILE") || upper.Contains("INTO OUTFILE")))
+            result.Errors.Add("MySQL file operations detected, potential security risk");
+        else if (dialect.Equals(SqlDefine.SqlServer) && (upper.Contains("OPENROWSET") || upper.Contains("OPENDATASOURCE")))
+            result.Errors.Add("SQL Server external data access detected, potential security risk");
     }
 
     /// <summary>
@@ -417,19 +421,19 @@ public class SqlTemplateEngine : ISqlTemplateEngine
         }
     }
 
-    /// <summary>
-    /// 获取数据库方言名称 - 用于用户友好的错误提示
-    /// </summary>
-    private static string GetDialectName(SqlDefine dialect)
+    // 性能优化：预构建方言名称映射字典
+    private static readonly Dictionary<SqlDefine, string> DialectNameMap = new()
     {
-        if (dialect.Equals(SqlDefine.MySql)) return "MySQL";
-        if (dialect.Equals(SqlDefine.SqlServer)) return "SQL Server";
-        if (dialect.Equals(SqlDefine.PostgreSql)) return "PostgreSQL";
-        if (dialect.Equals(SqlDefine.SQLite)) return "SQLite";
-        if (dialect.Equals(SqlDefine.Oracle)) return "Oracle";
-        if (dialect.Equals(SqlDefine.DB2)) return "DB2";
-        return "Unknown";
-    }
+        [SqlDefine.MySql] = "MySQL",
+        [SqlDefine.SqlServer] = "SQL Server",
+        [SqlDefine.PostgreSql] = "PostgreSQL",
+        [SqlDefine.SQLite] = "SQLite",
+        [SqlDefine.Oracle] = "Oracle",
+        [SqlDefine.DB2] = "DB2"
+    };
+
+    /// <summary>获取数据库方言名称 - 用于用户友好的错误提示</summary>
+    private static string GetDialectName(SqlDefine dialect) => DialectNameMap.TryGetValue(dialect, out var name) ? name : "Unknown";
 
     private static string ExtractOption(string options, string key, string defaultValue)
     {
@@ -445,11 +449,6 @@ public class SqlTemplateEngine : ISqlTemplateEngine
         return defaultValue;
     }
 
-    private static string ProcessLimitPlaceholder(string type, IMethodSymbol method, string options)
-    {
-        var defaultLimit = ExtractOption(options, "default", "100");
-        return type == "sqlserver" ? $"TOP {defaultLimit}" : $"LIMIT {defaultLimit}";
-    }
 
 
 

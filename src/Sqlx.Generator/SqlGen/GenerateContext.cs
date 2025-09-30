@@ -12,6 +12,9 @@ namespace Sqlx.SqlGen
 
     internal abstract class GenerateContext
     {
+        // 性能优化：预编译正则表达式
+        private static readonly Regex CapitalLetterRegex = new("[A-Z]", RegexOptions.Compiled);
+
         protected GenerateContext(MethodGenerationContext context, string tableName)
         {
             Context = context;
@@ -37,7 +40,7 @@ namespace Sqlx.SqlGen
             }
 
             // Otherwise use the existing camelCase/PascalCase conversion
-            return Regex.Replace(name, "[A-Z]", x => $"_{x.Value.ToLower()}").TrimStart('_');
+            return CapitalLetterRegex.Replace(name, x => $"_{x.Value.ToLower()}").TrimStart('_');
         }
 
         internal static string GetParamterName(string prefx, string name) => $"{prefx}{GetColumnName(name)}";

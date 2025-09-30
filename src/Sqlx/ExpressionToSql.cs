@@ -99,18 +99,19 @@ namespace Sqlx
 
         /// <summary>Extract columns from selector</summary>
         private List<string> ExtractColumnsFromSelector<TResult>(Expression<Func<T, TResult>>? selector) => selector != null ? ExtractColumns(selector.Body) : new List<string>();
-        private List<string> ExtractColumnsFromSelectors(Expression<Func<T, object>>[]? selectors)
-        {
-            if (selectors == null) return new List<string>(0);
+    private List<string> ExtractColumnsFromSelectors(Expression<Func<T, object>>[]? selectors)
+    {
+        if (selectors == null || selectors.Length == 0) return new List<string>(0);
 
-            var result = new List<string>();
-            foreach (var selector in selectors)
-            {
-                if (selector != null)
-                    result.AddRange(ExtractColumns(selector.Body));
-            }
-            return result;
+        // 性能优化：预估容量避免重新分配
+        var result = new List<string>(selectors.Length * 2);
+        foreach (var selector in selectors)
+        {
+            if (selector != null)
+                result.AddRange(ExtractColumns(selector.Body));
         }
+        return result;
+    }
 
         /// <summary>Adds WHERE condition</summary>
         public ExpressionToSql<T> Where(Expression<Func<T, bool>> predicate)
@@ -205,7 +206,16 @@ namespace Sqlx
         /// <summary>Adds multiple INSERT values</summary>
         public ExpressionToSql<T> AddValues(params object[] values)
         {
-            if (values?.Length > 0) _values.Add(values.Select(FormatConstantValue).ToList());
+            // 性能优化：避免不必要的LINQ和ToList()调用
+            if (values?.Length > 0)
+            {
+                var formattedValues = new List<string>(values.Length);
+                foreach (var value in values)
+                {
+                    formattedValues.Add(FormatConstantValue(value));
+                }
+                _values.Add(formattedValues);
+            }
             return this;
         }
 
@@ -609,19 +619,19 @@ namespace Sqlx
             // Math functions
             if (declaringType == typeof(Math))
             {
-                var args = methodCall.Arguments.Select(ParseLambdaBody).ToArray();
-                return (methodName, args.Length) switch
+                // 性能优化：避免不必要的ToArray()调用，按需解析参数
+                return (methodName, methodCall.Arguments.Count) switch
                 {
-                    ("Abs", 1) => $"ABS({args[0]})",
-                    ("Round", 1) => $"ROUND({args[0]})",
-                    ("Round", 2) => $"ROUND({args[0]}, {args[1]})",
-                    ("Floor", 1) => $"FLOOR({args[0]})",
-                    ("Ceiling", 1) => DatabaseType == "PostgreSql" ? $"CEIL({args[0]})" : $"CEILING({args[0]})",
-                    ("Min", 2) => $"LEAST({args[0]}, {args[1]})",
-                    ("Max", 2) => $"GREATEST({args[0]}, {args[1]})",
-                    ("Pow", 2) => DatabaseType == "MySql" ? $"POW({args[0]}, {args[1]})" : $"POWER({args[0]}, {args[1]})",
-                    ("Sqrt", 1) => $"SQRT({args[0]})",
-                    _ => args.Length > 0 ? args[0] : "NULL"
+                    ("Abs", 1) => $"ABS({ParseLambdaBody(methodCall.Arguments[0])})",
+                    ("Round", 1) => $"ROUND({ParseLambdaBody(methodCall.Arguments[0])})",
+                    ("Round", 2) => $"ROUND({ParseLambdaBody(methodCall.Arguments[0])}, {ParseLambdaBody(methodCall.Arguments[1])})",
+                    ("Floor", 1) => $"FLOOR({ParseLambdaBody(methodCall.Arguments[0])})",
+                    ("Ceiling", 1) => DatabaseType == "PostgreSql" ? $"CEIL({ParseLambdaBody(methodCall.Arguments[0])})" : $"CEILING({ParseLambdaBody(methodCall.Arguments[0])})",
+                    ("Min", 2) => $"LEAST({ParseLambdaBody(methodCall.Arguments[0])}, {ParseLambdaBody(methodCall.Arguments[1])})",
+                    ("Max", 2) => $"GREATEST({ParseLambdaBody(methodCall.Arguments[0])}, {ParseLambdaBody(methodCall.Arguments[1])})",
+                    ("Pow", 2) => DatabaseType == "MySql" ? $"POW({ParseLambdaBody(methodCall.Arguments[0])}, {ParseLambdaBody(methodCall.Arguments[1])})" : $"POWER({ParseLambdaBody(methodCall.Arguments[0])}, {ParseLambdaBody(methodCall.Arguments[1])})",
+                    ("Sqrt", 1) => $"SQRT({ParseLambdaBody(methodCall.Arguments[0])})",
+                    _ => methodCall.Arguments.Count > 0 ? ParseLambdaBody(methodCall.Arguments[0]) : "NULL"
                 };
             }
 
@@ -629,16 +639,16 @@ namespace Sqlx
             if (declaringType == typeof(string) && methodCall.Object != null)
             {
                 var obj = ParseLambdaBody(methodCall.Object);
-                var args = methodCall.Arguments.Select(ParseLambdaBody).ToArray();
-                return (methodName, args.Length) switch
+                // 性能优化：避免不必要的ToArray()调用，按需解析参数
+                return (methodName, methodCall.Arguments.Count) switch
                 {
                     ("Length", 0) => DatabaseType == "SqlServer" ? $"LEN({obj})" : $"LENGTH({obj})",
                     ("ToUpper", 0) => $"UPPER({obj})",
                     ("ToLower", 0) => $"LOWER({obj})",
                     ("Trim", 0) => $"TRIM({obj})",
-                    ("Substring", 1) => DatabaseType == "SQLite" ? $"SUBSTR({obj}, {args[0]})" : $"SUBSTRING({obj}, {args[0]})",
-                    ("Substring", 2) => DatabaseType == "SQLite" ? $"SUBSTR({obj}, {args[0]}, {args[1]})" : $"SUBSTRING({obj}, {args[0]}, {args[1]})",
-                    ("Replace", 2) => $"REPLACE({obj}, {args[0]}, {args[1]})",
+                    ("Substring", 1) => DatabaseType == "SQLite" ? $"SUBSTR({obj}, {ParseLambdaBody(methodCall.Arguments[0])})" : $"SUBSTRING({obj}, {ParseLambdaBody(methodCall.Arguments[0])})",
+                    ("Substring", 2) => DatabaseType == "SQLite" ? $"SUBSTR({obj}, {ParseLambdaBody(methodCall.Arguments[0])}, {ParseLambdaBody(methodCall.Arguments[1])})" : $"SUBSTRING({obj}, {ParseLambdaBody(methodCall.Arguments[0])}, {ParseLambdaBody(methodCall.Arguments[1])})",
+                    ("Replace", 2) => $"REPLACE({obj}, {ParseLambdaBody(methodCall.Arguments[0])}, {ParseLambdaBody(methodCall.Arguments[1])})",
                     _ => obj
                 };
             }

@@ -698,7 +698,7 @@ public class SqlTemplateEngine
         var column = ExtractOption(options, "column", type);
         var min = ExtractOption(options, "min", "minValue");
         var max = ExtractOption(options, "max", "maxValue");
-        
+
         return $"{dialect.WrapColumn(column)} BETWEEN {dialect.ParameterPrefix}{min} AND {dialect.ParameterPrefix}{max}";
     }
 
@@ -708,7 +708,7 @@ public class SqlTemplateEngine
         var column = ExtractOption(options, "column", type);
         var pattern = ExtractOption(options, "pattern", "pattern");
         var mode = ExtractOption(options, "mode", "contains"); // contains, starts, ends, exact
-        
+
         return mode switch
         {
             "starts" => $"{dialect.WrapColumn(column)} LIKE CONCAT({dialect.ParameterPrefix}{pattern}, '%')",
@@ -723,7 +723,7 @@ public class SqlTemplateEngine
     {
         var column = ExtractOption(options, "column", type);
         var values = ExtractOption(options, "values", "values");
-        
+
         return $"{dialect.WrapColumn(column)} IN ({dialect.ParameterPrefix}{values})";
     }
 
@@ -732,7 +732,7 @@ public class SqlTemplateEngine
     {
         var column = ExtractOption(options, "column", type);
         var values = ExtractOption(options, "values", "values");
-        
+
         return $"{dialect.WrapColumn(column)} NOT IN ({dialect.ParameterPrefix}{values})";
     }
 
@@ -758,7 +758,7 @@ public class SqlTemplateEngine
     private static string ProcessTodayPlaceholder(string type, string options, SqlDefine dialect)
     {
         var format = ExtractOption(options, "format", "date"); // date, datetime, timestamp
-        
+
         return format switch
         {
             "datetime" => GetCurrentDateTimeFunction(dialect),
@@ -771,7 +771,7 @@ public class SqlTemplateEngine
     private static string ProcessWeekPlaceholder(string type, string options, SqlDefine dialect)
     {
         var operation = ExtractOption(options, "op", type); // start, end, number
-        
+
         return operation switch
         {
             "start" => GetWeekStartFunction(dialect),
@@ -785,7 +785,7 @@ public class SqlTemplateEngine
     private static string ProcessMonthPlaceholder(string type, string options, SqlDefine dialect)
     {
         var operation = ExtractOption(options, "op", type); // start, end, name, number
-        
+
         return operation switch
         {
             "start" => GetMonthStartFunction(dialect),
@@ -809,8 +809,8 @@ public class SqlTemplateEngine
         var column = ExtractOption(options, "column", "date_column");
         var interval = ExtractOption(options, "interval", "1");
         var unit = ExtractOption(options, "unit", "DAY"); // DAY, WEEK, MONTH, YEAR
-        
-        return dialect.Equals(SqlDefine.SqlServer) 
+
+        return dialect.Equals(SqlDefine.SqlServer)
             ? $"DATEADD({unit}, {interval}, {dialect.WrapColumn(column)})"
             : dialect.Equals(SqlDefine.MySql)
                 ? $"DATE_ADD({dialect.WrapColumn(column)}, INTERVAL {interval} {unit})"
@@ -823,7 +823,7 @@ public class SqlTemplateEngine
         var column1 = ExtractOption(options, "column1", "end_date");
         var column2 = ExtractOption(options, "column2", "start_date");
         var unit = ExtractOption(options, "unit", "DAY");
-        
+
         return dialect.Equals(SqlDefine.SqlServer)
             ? $"DATEDIFF({unit}, {dialect.WrapColumn(column2)}, {dialect.WrapColumn(column1)})"
             : dialect.Equals(SqlDefine.MySql)
@@ -904,7 +904,7 @@ public class SqlTemplateEngine
     {
         var column = ExtractOption(options, "column", type);
         var value = ExtractOption(options, "value", "searchValue");
-        
+
         return dialect.Equals(SqlDefine.SqlServer)
             ? $"CHARINDEX({dialect.ParameterPrefix}{value}, {dialect.WrapColumn(column)}) > 0"
             : $"{dialect.WrapColumn(column)} LIKE CONCAT('%', {dialect.ParameterPrefix}{value}, '%')";
@@ -915,7 +915,7 @@ public class SqlTemplateEngine
     {
         var column = ExtractOption(options, "column", type);
         var value = ExtractOption(options, "value", "prefix");
-        
+
         return $"{dialect.WrapColumn(column)} LIKE CONCAT({dialect.ParameterPrefix}{value}, '%')";
     }
 
@@ -924,7 +924,7 @@ public class SqlTemplateEngine
     {
         var column = ExtractOption(options, "column", type);
         var value = ExtractOption(options, "value", "suffix");
-        
+
         return $"{dialect.WrapColumn(column)} LIKE CONCAT('%', {dialect.ParameterPrefix}{value})";
     }
 
@@ -947,7 +947,7 @@ public class SqlTemplateEngine
     {
         var column = ExtractOption(options, "column", type);
         var mode = ExtractOption(options, "mode", "both"); // both, leading, trailing
-        
+
         return mode switch
         {
             "leading" => $"LTRIM({dialect.WrapColumn(column)})",
@@ -965,7 +965,7 @@ public class SqlTemplateEngine
     {
         var column = ExtractOption(options, "column", type);
         var precision = ExtractOption(options, "precision", "2");
-        
+
         return $"ROUND({dialect.WrapColumn(column)}, {precision})";
     }
 
@@ -980,8 +980,8 @@ public class SqlTemplateEngine
     private static string ProcessCeilingPlaceholder(string type, string options, SqlDefine dialect)
     {
         var column = ExtractOption(options, "column", type);
-        return dialect.Equals(SqlDefine.SqlServer) 
-            ? $"CEILING({dialect.WrapColumn(column)})" 
+        return dialect.Equals(SqlDefine.SqlServer)
+            ? $"CEILING({dialect.WrapColumn(column)})"
             : $"CEIL({dialect.WrapColumn(column)})";
     }
 
@@ -1001,10 +1001,10 @@ public class SqlTemplateEngine
     {
         var count = ExtractOption(options, "count", "1");
         var columns = ExtractOption(options, "columns", "");
-        
+
         if (string.IsNullOrEmpty(columns))
             return $"VALUES {dialect.ParameterPrefix}batchValues";
-            
+
         return $"VALUES ({string.Join(", ", columns.Split(',').Select(c => $"{dialect.ParameterPrefix}{c.Trim()}"))})";
     }
 
@@ -1013,7 +1013,7 @@ public class SqlTemplateEngine
     {
         var snakeTableName = SharedCodeGenerationUtilities.ConvertToSnakeCase(tableName);
         var conflictColumn = ExtractOption(options, "conflict", "id");
-        
+
         return dialect.Equals(SqlDefine.PostgreSql)
             ? $"INSERT INTO {snakeTableName} {{{{values}}}} ON CONFLICT ({conflictColumn}) DO UPDATE SET {{{{set:auto}}}}"
             : dialect.Equals(SqlDefine.MySql)
@@ -1028,7 +1028,7 @@ public class SqlTemplateEngine
     {
         var subquery = ExtractOption(options, "query", "SELECT 1 FROM table WHERE condition");
         var negation = ExtractOption(options, "not", "false") == "true";
-        
+
         return negation ? $"NOT EXISTS ({subquery})" : $"EXISTS ({subquery})";
     }
 
@@ -1037,9 +1037,9 @@ public class SqlTemplateEngine
     {
         var query = ExtractOption(options, "query", "SELECT column FROM table");
         var alias = ExtractOption(options, "alias", "");
-        
-        return string.IsNullOrEmpty(alias) 
-            ? $"({query})" 
+
+        return string.IsNullOrEmpty(alias)
+            ? $"({query})"
             : $"({query}) AS {dialect.WrapColumn(alias)}";
     }
 

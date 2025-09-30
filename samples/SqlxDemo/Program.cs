@@ -45,6 +45,9 @@ namespace SqlxDemo
                 // 演示源代码生成功能
                 await DemonstrateGeneratedServicesAsync(connection);
 
+                // 演示简化模板引擎
+                await DemonstrateSimpleTemplateEngineAsync(connection);
+
                 Console.WriteLine();
                 Console.WriteLine("✅ 所有功能演示完成！");
             }
@@ -84,13 +87,13 @@ namespace SqlxDemo
                     [is_active] INTEGER DEFAULT 1
                 );
 
-                INSERT INTO [user] ([name], [email], [age], [salary], [department_id], [hire_date], [bonus], [performance_rating]) VALUES 
+                INSERT INTO [user] ([name], [email], [age], [salary], [department_id], [hire_date], [bonus], [performance_rating]) VALUES
                 ('张三', 'zhang@example.com', 28, 8000, 1, '2023-01-15', 1000, 4.5),
                 ('李四', 'li@example.com', 32, 12000, 2, '2022-06-10', 2000, 4.8),
                 ('王五', 'wang@example.com', 25, 6000, 1, '2023-03-20', 500, 4.2),
                 ('赵六', 'zhao@example.com', 35, 15000, 3, '2021-12-01', 3000, 4.9);
 
-                INSERT INTO [product] ([name], [price], [is_active]) VALUES 
+                INSERT INTO [product] ([name], [price], [is_active]) VALUES
                 ('笔记本电脑', 5999.99, 1),
                 ('无线鼠标', 199.99, 1),
                 ('机械键盘', 899.99, 1),
@@ -115,7 +118,7 @@ namespace SqlxDemo
             // 2. SqlTemplate 静态模板演示
             await DemonstrateSqlTemplateAsync(connection);
 
-            // 3. ExpressionToSql 动态查询演示  
+            // 3. ExpressionToSql 动态查询演示
             await DemonstrateExpressionToSqlAsync(connection);
 
             // 4. 源代码生成演示
@@ -146,21 +149,14 @@ namespace SqlxDemo
                 "SELECT * FROM [user] WHERE [age] > @age AND [is_active] = @active",
                 new Dictionary<string, object?> { ["age"] = 25, ["active"] = true });
 
-            Console.WriteLine($"📝 基本直接执行:");
-            Console.WriteLine($"   SQL: {sql1.Sql}");
-            Console.WriteLine($"   参数: age={sql1.Parameters.GetValueOrDefault("age")}, active={sql1.Parameters.GetValueOrDefault("active")}");
+            Console.WriteLine($"📝 基本直接执行:\n   SQL: {sql1.Sql}\n   参数: age={sql1.Parameters.GetValueOrDefault("age")}, active={sql1.Parameters.GetValueOrDefault("active")}");
 
-            // 复杂查询直接执行
             var sql2 = ParameterizedSql.Create(
                 "SELECT [name], [email], [salary] FROM [user] WHERE [salary] BETWEEN @minSalary AND @maxSalary ORDER BY [salary] DESC",
                 new Dictionary<string, object?> { ["minSalary"] = 5000, ["maxSalary"] = 15000 });
 
-            Console.WriteLine($"💼 薪资范围查询:");
-            Console.WriteLine($"   SQL: {sql2.Sql}");
-            Console.WriteLine($"   参数数量: {sql2.Parameters.Count}");
-
-            // 渲染最终SQL（用于调试）
-            Console.WriteLine($"🔍 渲染后的SQL示例: {sql1.Render}");
+            Console.WriteLine($"💼 薪资范围查询:\n   SQL: {sql2.Sql}\n   参数数量: {sql2.Parameters.Count}");
+            Console.WriteLine($"🔍 渲染后的SQL示例: {sql1.Render()}");
             Console.WriteLine();
         }
 
@@ -347,23 +343,20 @@ namespace SqlxDemo
             Console.WriteLine("🔧 === ExpressionToSql 动态查询演示 ===");
 
             // 基本查询
-            var query1 = ExpressionToSql<User>.ForSqlite()
+            var query1 = ExpressionToSql<User>.Create(SqlDefine.SQLite)
                 .Select(u => new { u.Name, u.Email, u.Age })
                 .Where(u => u.Age > 25 && u.IsActive)
                 .OrderBy(u => u.Age)
                 .Take(10);
 
-            Console.WriteLine($"🎯 类型安全的动态查询:");
-            Console.WriteLine($"   SQL: {query1.ToSql()}");
+            Console.WriteLine($"🎯 类型安全的动态查询:\n   SQL: {query1.ToSql()}");
 
-            // 复杂条件查询
-            var query2 = ExpressionToSql<User>.ForSqlite()
+            var query2 = ExpressionToSql<User>.Create(SqlDefine.SQLite)
                 .Where(u => u.Salary > 8000)
                 .And(u => u.PerformanceRating >= 4.5)
                 .OrderByDescending(u => u.Salary);
 
-            Console.WriteLine($"💰 高薪高绩效员工查询:");
-            Console.WriteLine($"   SQL: {query2.ToSql()}");
+            Console.WriteLine($"💰 高薪高绩效员工查询:\n   SQL: {query2.ToSql()}");
             Console.WriteLine();
         }
 
@@ -374,25 +367,25 @@ namespace SqlxDemo
         {
             Console.WriteLine("➕ === INSERT 操作演示 ===");
 
-            // 使用新的 As 方法
-            var insertQuery = ExpressionToSql<User>.ForSqlite()
-                .AsInsert(u => new { u.Name, u.Email, u.Age, u.Salary })
+            // 插入指定列
+            var insertQuery = ExpressionToSql<User>.Create(SqlDefine.SQLite)
+                .Insert(u => new { u.Name, u.Email, u.Age, u.Salary })
                 .Values("新员工", "new@example.com", 26, 7000);
 
-            Console.WriteLine($"👤 插入新用户 (As方法):");
+            Console.WriteLine($"👤 插入新用户:");
             Console.WriteLine($"   SQL: {insertQuery.ToSql()}");
 
             // 插入所有列
-            var insertAllQuery = ExpressionToSql<Product>.ForSqlite()
-                .AsInsertIntoAll()
+            var insertAllQuery = ExpressionToSql<Product>.Create(SqlDefine.SQLite)
+                .InsertAll()
                 .Values(null, "新产品", 1299.99, 1);
 
             Console.WriteLine($"🛍️ 插入新产品 (所有列):");
             Console.WriteLine($"   SQL: {insertAllQuery.ToSql()}");
 
             // INSERT SELECT
-            var insertSelectQuery = ExpressionToSql<User>.ForSqlite()
-                .AsInsertSelect("SELECT [name], [email], 30, 8000, 1, 1, datetime('now'), 0, 4.0 FROM [user] WHERE [id] = 1");
+            var insertSelectQuery = ExpressionToSql<User>.Create(SqlDefine.SQLite)
+                .InsertSelect("SELECT [name], [email], 30, 8000, 1, 1, datetime('now'), 0, 4.0 FROM [user] WHERE [id] = 1");
 
             Console.WriteLine($"📋 INSERT SELECT 示例:");
             Console.WriteLine($"   SQL: {insertSelectQuery.ToSql()}");
@@ -407,7 +400,7 @@ namespace SqlxDemo
             Console.WriteLine("✏️ === UPDATE 操作演示 ===");
 
             // 基本更新
-            var updateQuery = ExpressionToSql<User>.ForSqlite()
+            var updateQuery = ExpressionToSql<User>.Create(SqlDefine.SQLite)
                 .Update()
                 .Set(u => u.Salary, 9000)
                 .Set(u => u.Bonus, 1500)
@@ -417,7 +410,7 @@ namespace SqlxDemo
             Console.WriteLine($"   SQL: {updateQuery.ToSql()}");
 
             // 条件更新
-            var conditionalUpdate = ExpressionToSql<Product>.ForSqlite()
+            var conditionalUpdate = ExpressionToSql<Product>.Create(SqlDefine.SQLite)
                 .Update()
                 .Set(p => p.Price, 1999.99m)
                 .Where(p => p.Name.Contains("鼠标"));
@@ -435,14 +428,14 @@ namespace SqlxDemo
             Console.WriteLine("🗑️ === DELETE 操作演示 ===");
 
             // 条件删除
-            var deleteQuery = ExpressionToSql<User>.ForSqlite()
+            var deleteQuery = ExpressionToSql<User>.Create(SqlDefine.SQLite)
                 .Delete(u => !u.IsActive);
 
             Console.WriteLine($"🚫 删除非活跃用户:");
             Console.WriteLine($"   SQL: {deleteQuery.ToSql()}");
 
             // 复杂条件删除
-            var complexDelete = ExpressionToSql<Product>.ForSqlite()
+            var complexDelete = ExpressionToSql<Product>.Create(SqlDefine.SQLite)
                 .Delete()
                 .Where(p => p.Price < 100 && !p.Is_active);
 
@@ -459,7 +452,7 @@ namespace SqlxDemo
             Console.WriteLine("🧩 === 复杂查询演示 ===");
 
             // 分页查询
-            var pagedQuery = ExpressionToSql<User>.ForSqlite()
+            var pagedQuery = ExpressionToSql<User>.Create(SqlDefine.SQLite)
                 .Select(u => new { u.Name, u.Email, u.Salary })
                 .Where(u => u.IsActive)
                 .OrderBy(u => u.Name)
@@ -470,7 +463,7 @@ namespace SqlxDemo
             Console.WriteLine($"   SQL: {pagedQuery.ToSql()}");
 
             // 聚合查询
-            var avgQuery = ExpressionToSql<User>.ForSqlite()
+            var avgQuery = ExpressionToSql<User>.Create(SqlDefine.SQLite)
                 .Select("AVG([salary]) as AvgSalary, COUNT(*) as UserCount")
                 .Where(u => u.IsActive);
 
@@ -478,13 +471,41 @@ namespace SqlxDemo
             Console.WriteLine($"   SQL: {avgQuery.ToSql()}");
 
             // 使用 Any 占位符
-            var anyQuery = ExpressionToSql<User>.ForSqlite()
+            var anyQuery = ExpressionToSql<User>.Create(SqlDefine.SQLite)
                 .Where(u => u.Age > Any.Int("minAge") && u.Salary > Any.Value<decimal>("minSalary"));
 
             Console.WriteLine($"🎲 Any 占位符查询:");
             Console.WriteLine($"   SQL: {anyQuery.ToSql()}");
 
             Console.WriteLine($"💡 提示: Any 占位符在实际使用时会被参数化处理");
+            Console.WriteLine();
+        }
+
+        /// <summary>
+        /// 演示简化后的模板引擎功能
+        /// </summary>
+        private static async Task DemonstrateSimpleTemplateEngineAsync(SqliteConnection connection)
+        {
+            Console.WriteLine("🎯 === 简化模板引擎演示 ===");
+            Console.WriteLine("展示优化后的7个核心占位符功能");
+            Console.WriteLine();
+
+            try
+            {
+                // 展示优化特性
+                TemplateEngineDemo.ShowOptimizationFeatures();
+
+                // 展示最佳实践
+                TemplateEngineDemo.ShowBestPractices();
+
+                // 运行实际演示
+                await TemplateEngineDemo.RunSimpleTemplateDemoAsync(connection);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ 简化模板引擎演示错误: {ex.Message}");
+            }
+
             Console.WriteLine();
         }
     }

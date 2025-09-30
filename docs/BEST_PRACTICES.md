@@ -1,10 +1,10 @@
-# Sqlx 3.0 Best Practices Guide
+# Sqlx Best Practices Guide
 
-This guide provides best practices and recommended patterns for using Sqlx 3.0.
+This guide provides best practices and recommended patterns for using Sqlx.
 
 ## 🎯 Choosing the Right Usage Pattern
 
-Sqlx 3.0 offers three core usage patterns. Choosing the right pattern is key to success.
+Sqlx offers three core usage patterns. Choosing the right pattern is key to success.
 
 ### Decision Flow Chart
 ```
@@ -38,14 +38,14 @@ Need to execute SQL query?
 public static class QueryTemplates
 {
     // Common query templates
-    public static readonly SqlTemplate GetUserById = 
+    public static readonly SqlTemplate GetUserById =
         SqlTemplate.Parse("SELECT * FROM Users WHERE Id = @id");
-    
-    public static readonly SqlTemplate GetActiveUsers = 
+
+    public static readonly SqlTemplate GetActiveUsers =
         SqlTemplate.Parse("SELECT * FROM Users WHERE IsActive = @active");
-    
-    public static readonly SqlTemplate SearchUsers = 
-        SqlTemplate.Parse(@"SELECT * FROM Users 
+
+    public static readonly SqlTemplate SearchUsers =
+        SqlTemplate.Parse(@"SELECT * FROM Users
                            WHERE (@name IS NULL OR Name LIKE @name)
                            AND (@minAge IS NULL OR Age >= @minAge)
                            ORDER BY Name");
@@ -59,12 +59,12 @@ public class UserService
         var sql = QueryTemplates.GetUserById.Execute(new { id });
         // Execute with your data access method
     }
-    
+
     public List<User> SearchUsers(string? name = null, int? minAge = null)
     {
-        var sql = QueryTemplates.SearchUsers.Execute(new { 
-            name = name != null ? $"%{name}%" : null, 
-            minAge 
+        var sql = QueryTemplates.SearchUsers.Execute(new {
+            name = name != null ? $"%{name}%" : null,
+            minAge
         });
         // Execute with your data access method
     }
@@ -78,17 +78,17 @@ public class UserService
 public class UserSearchService
 {
     private readonly SqlTemplate _baseTemplate;
-    
+
     public UserSearchService()
     {
         // Convert dynamic query to reusable template
-        var baseQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+        var baseQuery = ExpressionToSql<User>.ForSqlServer()
             .Select(u => new { u.Id, u.Name, u.Email, u.Age })
             .Where(u => u.IsActive);
-            
+
         _baseTemplate = baseQuery.ToTemplate();
     }
-    
+
     public List<User> GetActiveUsers()
     {
         var sql = _baseTemplate.Execute();
@@ -105,7 +105,7 @@ public class HighPerformanceQueries
 {
     public string BuildOptimizedSearch(string department, int minAge)
     {
-        return ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+        return ExpressionToSql<User>.ForSqlServer()
             .UseParameterizedQueries()  // Enable parameterized mode
             .Where(u => u.Department == department && u.Age >= minAge)
             .Select(u => new { u.Name, u.Email })
@@ -122,13 +122,13 @@ public class HighPerformanceQueries
 
 ```csharp
 // ✅ AOT-Friendly: Explicit column specification
-var insertQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
-    .InsertInto(u => new { u.Name, u.Email, u.Age })
+var insertQuery = ExpressionToSql<User>.ForSqlServer()
+    .Insert(u => new { u.Name, u.Email, u.Age })
     .Values("John", "john@example.com", 30);
 
 // ⚠️ Avoid in AOT: Uses reflection
-var autoInsert = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
-    .InsertIntoAll()  // Reflection-based - avoid in AOT scenarios
+var autoInsert = ExpressionToSql<User>.ForSqlServer()
+    .InsertAll()  // Reflection-based - avoid in AOT scenarios
     .Values("John", "john@example.com", 30, true, DateTime.Now);
 ```
 
@@ -138,12 +138,12 @@ var autoInsert = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
 // ✅ Type-safe and AOT-compatible
 public static class TypeSafeQueries
 {
-    public static string GetUsersByDepartment<T>(string department) 
+    public static string GetUsersByDepartment<T>(string department)
         where T : class
     {
-        return ExpressionToSql<T>.Create(SqlDefine.SqlServer)
+        return ExpressionToSql<T>.ForSqlServer()
             .Where(u => EF.Property<string>(u, "Department") == department)
-            .Select(u => new { 
+            .Select(u => new {
                 Id = EF.Property<int>(u, "Id"),
                 Name = EF.Property<string>(u, "Name")
             })
@@ -171,13 +171,13 @@ public interface IUserRepository
 public class UserRepository : IUserRepository
 {
     private readonly IDbConnection _connection;
-    
+
     // Pre-compiled templates for better performance
-    private static readonly SqlTemplate GetByIdTemplate = 
+    private static readonly SqlTemplate GetByIdTemplate =
         SqlTemplate.Parse("SELECT * FROM Users WHERE Id = @id");
-        
-    private static readonly SqlTemplate CreateTemplate = 
-        SqlTemplate.Parse(@"INSERT INTO Users (Name, Email, Age, IsActive) 
+
+    private static readonly SqlTemplate CreateTemplate =
+        SqlTemplate.Parse(@"INSERT INTO Users (Name, Email, Age, IsActive)
                            VALUES (@name, @email, @age, @isActive)");
 
     public UserRepository(IDbConnection connection)
@@ -187,22 +187,22 @@ public class UserRepository : IUserRepository
 
     public async Task<User?> GetByIdAsync(int id)
     {
-        var sql = GetByIdTemplate.Execute(new { id });
+        var sql = GetByIdTemplate.Execute(new Dictionary<string, object?> { ["@id"] = id });
         return await _connection.QueryFirstOrDefaultAsync<User>(sql.Sql, sql.Parameters);
     }
 
     public async Task<List<User>> SearchAsync(UserSearchCriteria criteria)
     {
-        var query = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+        var query = ExpressionToSql<User>.ForSqlServer()
             .Select(u => new { u.Id, u.Name, u.Email, u.Age });
 
         // Build dynamic conditions
         if (!string.IsNullOrEmpty(criteria.Name))
             query = query.Where(u => u.Name.Contains(criteria.Name));
-            
+
         if (criteria.MinAge.HasValue)
             query = query.Where(u => u.Age >= criteria.MinAge.Value);
-            
+
         if (criteria.Department != null)
             query = query.Where(u => u.Department == criteria.Department);
 
@@ -214,11 +214,12 @@ public class UserRepository : IUserRepository
 
     public async Task<int> CreateAsync(User user)
     {
-        var sql = CreateTemplate.Execute(new { 
-            name = user.Name, 
-            email = user.Email, 
-            age = user.Age, 
-            isActive = user.IsActive 
+        var sql = CreateTemplate.Execute(new Dictionary<string, object?>
+        {
+            ["@name"] = user.Name,
+            ["@email"] = user.Email,
+            ["@age"] = user.Age,
+            ["@isActive"] = user.IsActive
         });
         return await _connection.ExecuteAsync(sql.Sql, sql.Parameters);
     }
@@ -231,18 +232,18 @@ public class UserRepository : IUserRepository
 public class UserService
 {
     private readonly IUserRepository _repository;
-    
+
     public UserService(IUserRepository repository)
     {
         _repository = repository;
     }
-    
+
     public async Task<UserDto?> GetUserAsync(int id)
     {
         var user = await _repository.GetByIdAsync(id);
         return user != null ? MapToDto(user) : null;
     }
-    
+
     public async Task<PagedResult<UserDto>> SearchUsersAsync(UserSearchRequest request)
     {
         var criteria = new UserSearchCriteria
@@ -253,7 +254,7 @@ public class UserService
             PageSize = request.PageSize,
             Offset = request.Page * request.PageSize
         };
-        
+
         var users = await _repository.SearchAsync(criteria);
         return new PagedResult<UserDto>
         {
@@ -278,13 +279,13 @@ public class SafeUserService
         // Validate input
         if (id <= 0)
             throw new ArgumentException("User ID must be positive", nameof(id));
-            
+
         try
         {
             var sql = ParameterizedSql.Create(
                 "SELECT * FROM Users WHERE Id = @id",
                 new { id });
-                
+
             return await ExecuteQueryAsync<User>(sql);
         }
         catch (SqlException ex)
@@ -330,25 +331,25 @@ public class UserQueryTests
     {
         // Arrange
         var template = SqlTemplate.Parse("SELECT * FROM Users WHERE Id = @id");
-        
+
         // Act
         var sql = template.Execute(new { id = 123 });
-        
+
         // Assert
         Assert.AreEqual("SELECT * FROM Users WHERE Id = 123", sql.Render());
     }
-    
+
     [TestMethod]
     public void SearchUsers_WithMultipleConditions_GeneratesCorrectSQL()
     {
         // Arrange
-        var query = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+        var query = ExpressionToSql<User>.ForSqlServer()
             .Where(u => u.Age > 18 && u.IsActive && u.Name.Contains("John"))
             .Select(u => new { u.Id, u.Name });
-            
+
         // Act
         var sql = query.ToSql();
-        
+
         // Assert
         StringAssert.Contains(sql, "WHERE ([Age] > 18 AND [IsActive] = 1");
         StringAssert.Contains(sql, "SELECT [Id], [Name]");
@@ -364,23 +365,23 @@ public class UserRepositoryIntegrationTests
 {
     private IDbConnection _connection;
     private UserRepository _repository;
-    
+
     [TestInitialize]
     public void Setup()
     {
         _connection = new SqlConnection(TestConnectionString);
         _repository = new UserRepository(_connection);
     }
-    
+
     [TestMethod]
     public async Task GetByIdAsync_ExistingUser_ReturnsUser()
     {
         // Arrange
         var userId = await CreateTestUserAsync();
-        
+
         // Act
         var user = await _repository.GetByIdAsync(userId);
-        
+
         // Assert
         Assert.IsNotNull(user);
         Assert.AreEqual(userId, user.Id);
@@ -401,18 +402,13 @@ public void ConfigureServices(IServiceCollection services)
     // Register database connection
     services.AddScoped<IDbConnection>(provider =>
         new SqlConnection(Configuration.GetConnectionString("DefaultConnection")));
-    
+
     // Register repositories and services
     services.AddScoped<IUserRepository, UserRepository>();
     services.AddScoped<UserService>();
-    
-    // Configure Sqlx options (if needed)
-    services.Configure<SqlxOptions>(options =>
-    {
-        options.DefaultDialect = SqlDefine.SqlServer;
-        options.EnableQueryCache = true;
-        options.MaxCacheSize = 1000;
-    });
+
+    // Configure default dialect (if needed)
+    services.AddSingleton<SqlDialect>(SqlDefine.SqlServer);
 }
 ```
 
@@ -423,17 +419,17 @@ public class LoggingUserRepository : IUserRepository
 {
     private readonly IUserRepository _repository;
     private readonly ILogger<LoggingUserRepository> _logger;
-    
+
     public LoggingUserRepository(IUserRepository repository, ILogger<LoggingUserRepository> logger)
     {
         _repository = repository;
         _logger = logger;
     }
-    
+
     public async Task<User?> GetByIdAsync(int id)
     {
         _logger.LogDebug("Getting user by ID: {UserId}", id);
-        
+
         var stopwatch = Stopwatch.StartNew();
         try
         {
@@ -460,7 +456,7 @@ public class LoggingUserRepository : IUserRepository
 public class PerformanceTrackingService
 {
     private readonly ILogger _logger;
-    
+
     public async Task<T> ExecuteWithTracking<T>(string operationName, Func<Task<T>> operation)
     {
         var stopwatch = Stopwatch.StartNew();
@@ -468,16 +464,16 @@ public class PerformanceTrackingService
         {
             var result = await operation();
             _logger.LogInformation(
-                "Operation {OperationName} completed in {ElapsedMs}ms", 
-                operationName, 
+                "Operation {OperationName} completed in {ElapsedMs}ms",
+                operationName,
                 stopwatch.ElapsedMilliseconds);
             return result;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, 
-                "Operation {OperationName} failed after {ElapsedMs}ms", 
-                operationName, 
+            _logger.LogError(ex,
+                "Operation {OperationName} failed after {ElapsedMs}ms",
+                operationName,
                 stopwatch.ElapsedMilliseconds);
             throw;
         }
@@ -492,20 +488,20 @@ public class CachedUserService
 {
     private readonly IMemoryCache _cache;
     private readonly IUserRepository _repository;
-    
+
     public async Task<User?> GetUserAsync(int id)
     {
         var cacheKey = $"user:{id}";
-        
+
         if (_cache.TryGetValue(cacheKey, out User? cachedUser))
             return cachedUser;
-            
+
         var user = await _repository.GetByIdAsync(id);
         if (user != null)
         {
             _cache.Set(cacheKey, user, TimeSpan.FromMinutes(10));
         }
-        
+
         return user;
     }
 }
@@ -521,13 +517,13 @@ public class CachedUserService
    - Simple, one-time queries
    - Quick prototyping
    - Simple CRUD operations
-   
+
 2. **Static Templates (`SqlTemplate`)**
    - Reusable queries with parameters
    - Report queries
    - Stored procedure calls
    - Performance-critical paths
-   
+
 3. **Dynamic Templates (`ExpressionToSql<T>`)**
    - Search functionality
    - Complex filtering
@@ -551,4 +547,4 @@ public class CachedUserService
 
 ---
 
-Following these best practices will help you build robust, performant, and maintainable applications with Sqlx 3.0.
+Following these best practices will help you build robust, performant, and maintainable applications with Sqlx.

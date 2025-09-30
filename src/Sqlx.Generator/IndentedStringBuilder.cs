@@ -9,6 +9,7 @@ namespace Sqlx.Generator.Core;
 using System;
 using System.Runtime.CompilerServices;
 using System.Text;
+using Sqlx.Generator;
 
 /// <summary>
 /// Provides a string builder with automatic indentation functionality for generating formatted code.
@@ -37,20 +38,13 @@ public sealed class IndentedStringBuilder
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public IndentedStringBuilder Append(string? value)
     {
-        if (needsIndent)
+        if (needsIndent && (value == null || (value.Length > 0 && !string.IsNullOrWhiteSpace(value))))
         {
-            // Add indent for null strings or non-whitespace strings
-            if (value == null || (value.Length > 0 && !string.IsNullOrWhiteSpace(value)))
-            {
-                WriteIndent();
-                needsIndent = false;
-            }
+            WriteIndent();
+            needsIndent = false;
         }
 
-        if (!string.IsNullOrEmpty(value))
-        {
-            builder.Append(value);
-        }
+        if (!string.IsNullOrEmpty(value)) builder.Append(value);
         return this;
     }
 
@@ -91,11 +85,7 @@ public sealed class IndentedStringBuilder
     /// <param name="falseValue">The string to append when condition is false (optional).</param>
     /// <returns>The current IndentedStringBuilder instance to support method chaining.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public IndentedStringBuilder AppendLineIf(bool condition, string? trueValue, string? falseValue)
-    {
-        AppendLine(condition ? trueValue : falseValue);
-        return this;
-    }
+    public IndentedStringBuilder AppendLineIf(bool condition, string? trueValue, string? falseValue) => AppendLine(condition ? trueValue : falseValue);
 
     /// <summary>
     /// Append the specified string to the string builder and add a newline.
@@ -105,14 +95,7 @@ public sealed class IndentedStringBuilder
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public IndentedStringBuilder AppendLine(string? value)
     {
-        if (needsIndent)
-        {
-            // Add indent for null strings or non-whitespace strings
-            if (value == null || (value.Length > 0 && !string.IsNullOrWhiteSpace(value)))
-            {
-                WriteIndent();
-            }
-        }
+        if (needsIndent && (value == null || (value.Length > 0 && !string.IsNullOrWhiteSpace(value)))) WriteIndent();
         builder.AppendLine(value ?? string.Empty);
         needsIndent = true;
         return this;
@@ -126,7 +109,7 @@ public sealed class IndentedStringBuilder
     public IndentedStringBuilder PushIndent()
     {
         depthLevel++;
-        needsIndent = true; // Next append should be indented
+        needsIndent = true;
         return this;
     }
 
@@ -137,11 +120,9 @@ public sealed class IndentedStringBuilder
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public IndentedStringBuilder PopIndent()
     {
-        if (depthLevel == 0)
-            throw new InvalidOperationException("Cannot pop at depthlevel 0");
-
+        if (depthLevel == 0) throw new InvalidOperationException(SqlxExceptionMessages.InvalidDepthLevel);
         depthLevel--;
-        needsIndent = true; // Next append should be indented
+        needsIndent = true;
         return this;
     }
 
@@ -151,9 +132,6 @@ public sealed class IndentedStringBuilder
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void WriteIndent()
     {
-        if (depthLevel > 0)
-        {
-            builder.Append(' ', depthLevel * IndentSize);
-        }
+        if (depthLevel > 0) builder.Append(' ', depthLevel * IndentSize);
     }
 }

@@ -19,24 +19,16 @@ public class SqlxGeneratorService : ISqlxGeneratorService
     private readonly ISqlTemplateEngine _templateEngine;
     private readonly AttributeHandler _attributeHandler;
 
-    /// <summary>
-    /// Gets the type inference service.
-    /// </summary>
+    /// <summary>Gets the type inference service.</summary>
     public ITypeInferenceService TypeInferenceService => _typeInferenceService;
 
-    /// <summary>
-    /// Gets the code generation service.
-    /// </summary>
+    /// <summary>Gets the code generation service.</summary>
     public ICodeGenerationService CodeGenerationService => _codeGenerationService;
 
-    /// <summary>
-    /// Gets the template engine.
-    /// </summary>
+    /// <summary>Gets the template engine.</summary>
     public ISqlTemplateEngine TemplateEngine => _templateEngine;
 
-    /// <summary>
-    /// Gets the attribute handler.
-    /// </summary>
+    /// <summary>Gets the attribute handler.</summary>
     public AttributeHandler AttributeHandler => _attributeHandler;
 
     /// <summary>

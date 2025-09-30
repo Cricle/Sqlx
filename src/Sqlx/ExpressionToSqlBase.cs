@@ -110,25 +110,17 @@ namespace Sqlx
                 : $"@p{_counter++}";
 
         /// <summary>Get default value for value types (AOT-friendly)</summary>
-        private static object? GetDefaultValueForValueType(Type type) =>
-            type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>) ? null :
-            type == typeof(int) ? 0 :
-            type == typeof(bool) ? false :
-            type == typeof(DateTime) ? DateTime.MinValue :
-            type == typeof(Guid) ? Guid.Empty :
-            type == typeof(decimal) ? 0m :
-            type == typeof(double) ? 0.0 :
-            type == typeof(float) ? 0f :
-            type == typeof(long) ? 0L :
-            type == typeof(short) ? (short)0 :
-            type == typeof(byte) ? (byte)0 :
-            type.IsValueType ? GetValueTypeDefault(type) : null;
-
-        /// <summary>AOT-safe value type default creation</summary>
-        private static object? GetValueTypeDefault(Type type)
+        private static object? GetDefaultValueForValueType(Type type)
         {
-            // For unknown value types, return 0 as a safe default
-            return type.IsGenericType ? null : 0;
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>)) return null;
+            if (type == typeof(int) || type == typeof(long) || type == typeof(short) || type == typeof(byte)) return 0;
+            if (type == typeof(bool)) return false;
+            if (type == typeof(DateTime)) return DateTime.MinValue;
+            if (type == typeof(Guid)) return Guid.Empty;
+            if (type == typeof(decimal)) return 0m;
+            if (type == typeof(double)) return 0.0;
+            if (type == typeof(float)) return 0f;
+            return type.IsValueType ? (type.IsGenericType ? null : 0) : null;
         }
 
         /// <summary>Parse aggregate function calls</summary>
@@ -218,9 +210,7 @@ namespace Sqlx
             bool b => b ? "1" : "0",
             DateTime dt => _dialect.WrapString(dt.ToString("yyyy-MM-dd HH:mm:ss")),
             Guid g => _dialect.WrapString(g.ToString()),
-            decimal d => d.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            double d => d.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            float f => f.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            decimal or double or float => value.ToString()!,
             _ => value?.ToString() ?? "NULL"
         };
 
@@ -236,11 +226,24 @@ namespace Sqlx
         protected static string RemoveOuterParentheses(string condition) => condition.StartsWith("(") && condition.EndsWith(")") ? condition.Substring(1, condition.Length - 2) : condition;
         /// <summary>Helper methods for expression checking</summary>
         protected static bool IsBooleanMember(Expression expression) => expression is MemberExpression { Type: var type } && type == typeof(bool);
+        /// <summary>Checks if the expression is a constant true value.</summary>
+        /// <param name="expression">The expression to check.</param>
+        /// <returns>True if the expression is a constant true value.</returns>
         protected static bool IsConstantTrue(Expression expression) => expression is ConstantExpression { Value: true };
+
+        /// <summary>Checks if the expression is a constant false value.</summary>
+        /// <param name="expression">The expression to check.</param>
+        /// <returns>True if the expression is a constant false value.</returns>
         protected static bool IsConstantFalse(Expression expression) => expression is ConstantExpression { Value: false };
 
-        /// <summary>String and entity property checks</summary>
+        /// <summary>Checks if the member expression represents a string property access (like string.Length).</summary>
+        /// <param name="member">The member expression to check.</param>
+        /// <returns>True if this is a string property access.</returns>
         protected static bool IsStringPropertyAccess(MemberExpression member) => member.Member.Name == "Length" && member.Expression is MemberExpression { Type: var type } stringMember && type == typeof(string) && IsEntityProperty(stringMember);
+
+        /// <summary>Checks if the binary expression represents string concatenation.</summary>
+        /// <param name="binary">The binary expression to check.</param>
+        /// <returns>True if this is a string concatenation operation.</returns>
         protected static bool IsStringConcatenation(BinaryExpression binary) => binary.Type == typeof(string) && binary.NodeType == ExpressionType.Add;
 
         /// <summary>Parses string property</summary>
@@ -249,6 +252,12 @@ namespace Sqlx
 
         /// <summary>Expression parsing helpers</summary>
         protected string ParseNotExpression(Expression operand) => operand is MemberExpression { Type: var type } member && type == typeof(bool) && IsEntityProperty(member) ? $"{GetColumnName(member)} = 0" : $"NOT ({ParseExpression(operand)})";
+        /// <summary>Formats a logical expression (AND/OR) with proper boolean handling.</summary>
+        /// <param name="logicalOperator">The logical operator (AND/OR).</param>
+        /// <param name="left">The left side of the expression.</param>
+        /// <param name="right">The right side of the expression.</param>
+        /// <param name="binary">The original binary expression for context.</param>
+        /// <returns>The formatted logical expression.</returns>
         protected string FormatLogicalExpression(string logicalOperator, string left, string right, BinaryExpression binary)
         {
             if (binary.Right is MemberExpression { Type: var rightType } rightMember && rightType == typeof(bool) && right == GetColumnName(rightMember)) right = $"{right} = 1";
@@ -262,10 +271,8 @@ namespace Sqlx
             NewExpression newExpr => newExpr.Arguments.OfType<MemberExpression>().Select(GetColumnName).ToList(),
             MemberExpression member => new List<string> { GetColumnName(member) },
             UnaryExpression { NodeType: ExpressionType.Convert } unary => ExtractColumns(unary.Operand),
-            _ => TryGetColumnName(expression)
+            _ => new List<string> { GetColumnName(expression) }
         };
-
-        private List<string> TryGetColumnName(Expression expression) => new List<string> { GetColumnName(expression) };
 
         /// <summary>Database type string</summary>
         protected string DatabaseType => _dialect.DatabaseType;
@@ -275,17 +282,18 @@ namespace Sqlx
         protected string ParseMathFunction(MethodCallExpression method)
         {
             var args = method.Arguments.Select(ParseExpressionRaw).ToArray();
-            return (method.Method.Name, args.Length) switch
+            var name = method.Method.Name;
+            return (name, args.Length) switch
             {
                 ("Abs", 1) => $"ABS({args[0]})",
                 ("Round", 1) => $"ROUND({args[0]})",
                 ("Round", 2) => $"ROUND({args[0]}, {args[1]})",
                 ("Floor", 1) => $"FLOOR({args[0]})",
+                ("Sqrt", 1) => $"SQRT({args[0]})",
                 ("Ceiling", 1) => DatabaseType == "PostgreSql" ? $"CEIL({args[0]})" : $"CEILING({args[0]})",
                 ("Min", 2) => $"LEAST({args[0]}, {args[1]})",
                 ("Max", 2) => $"GREATEST({args[0]}, {args[1]})",
-                ("Pow", 2) => DatabaseType == "MySql" ? $"POW({args[0]}, {args[1]})" : $"POWER({args[0]}, {args[1]})",
-                ("Sqrt", 1) => $"SQRT({args[0]})",
+                ("Pow", 2) => $"{(DatabaseType == "MySql" ? "POW" : "POWER")}({args[0]}, {args[1]})",
                 _ => "1"
             };
         }
@@ -295,7 +303,8 @@ namespace Sqlx
         {
             var obj = method.Object != null ? ParseExpressionRaw(method.Object) : "";
             var args = method.Arguments.Select(ParseExpressionRaw).ToArray();
-            return (method.Method.Name, args.Length) switch
+            var name = method.Method.Name;
+            return (name, args.Length) switch
             {
                 ("Contains", 1) => $"{obj} LIKE {GetConcatSyntax("'%'", args[0], "'%'")}",
                 ("StartsWith", 1) => $"{obj} LIKE {GetConcatSyntax(args[0], "'%'")}",
@@ -316,20 +325,14 @@ namespace Sqlx
         {
             var obj = method.Object != null ? ParseExpressionRaw(method.Object) : "";
             var args = method.Arguments.Select(ParseExpressionRaw).ToArray();
-            return (method.Method.Name, args.Length) switch
-            {
-                ("AddDays", 1) => DatabaseType == "SqlServer" ? $"DATEADD(DAY, {args[0]}, {obj})" : obj,
-                ("AddMonths", 1) => DatabaseType == "SqlServer" ? $"DATEADD(MONTH, {args[0]}, {obj})" : obj,
-                ("AddYears", 1) => DatabaseType == "SqlServer" ? $"DATEADD(YEAR, {args[0]}, {obj})" : obj,
-                _ => obj
-            };
+            return DatabaseType == "SqlServer" && method.Method.Name.StartsWith("Add") && args.Length == 1
+                ? $"DATEADD({method.Method.Name.Substring(3).ToUpperInvariant()}, {args[0]}, {obj})"
+                : obj;
         }
 
         /// <summary>Gets operator function</summary>
         protected static string GetOperatorFunction(string op, string left, string right) => op switch
         {
-            "%" => $"({left} % {right})",
-            "^" => $"({left} ^ {right})",
             "??" => $"COALESCE({left}, {right})",
             _ => $"({left} {op} {right})"
         };

@@ -10,6 +10,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sqlx.SqlGen;
 using Sqlx.Generator.Core;
+using Sqlx.Generator;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -288,7 +289,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
             // Generate proper error message for better developer experience
             sb.AppendLine($"// Legacy batch operation detected: {sql}");
             sb.AppendLine("// Use Constants.SqlExecuteTypeValues.BatchCommand for proper batch operations");
-            sb.AppendLine("throw new global::System.ArgumentException(\"Legacy BATCH SQL syntax detected. Please use Constants.SqlExecuteTypeValues.BatchCommand for proper batch operations.\");");
+            sb.AppendLine(SqlxExceptionMessages.GenerateArgumentExceptionThrow(SqlxExceptionMessages.LegacyBatchSql));
             sb.PopIndent();
             sb.AppendLine("}");
             return true;
@@ -319,7 +320,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
                 // Static SQL case (from SqlExecuteType, RawSql, or stored procedure)
                 sb.AppendLine($"{CmdName}.CommandText = {sql};");
 
-                // If we have ExpressionToSql parameter and this is a SqlExecuteType operation, 
+                // If we have ExpressionToSql parameter and this is a SqlExecuteType operation,
                 // append dynamic WHERE clause for SELECT/DELETE or handle UPDATE specially
                 if (ExpressionToSqlParameter != null)
                 {
@@ -544,8 +545,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
             }
             else
             {
-                sb.AppendLine($"if({ResultName} == null) throw new global::System.InvalidOperationException(");
-                sb.AppendLine($"    \"Sequence contains no elements\");");
+                sb.AppendLine($"if({ResultName} == null) throw new global::System.InvalidOperationException(\"{SqlxExceptionMessages.SequenceEmpty}\");");
             }
 
             // Direct assignment and return with proper conversion since ExecuteScalar returns object
@@ -1483,7 +1483,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
 
         // Add null check for user safety
         sb.AppendLine($"if ({collectionParameter.Name} == null)");
-        sb.AppendLine($"    throw new global::System.ArgumentNullException(nameof({collectionParameter.Name}), \"Collection parameter cannot be null for batch INSERT\");");
+        sb.AppendLine(SqlxExceptionMessages.GenerateArgumentNullCheck(collectionParameter.Name, SqlxExceptionMessages.CollectionParameterNull));
         sb.AppendLine();
 
         var objectMap = new ObjectMap(collectionParameter);
@@ -1499,7 +1499,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
 
         // Check for empty collection to avoid generating invalid SQL
         sb.AppendLine($"if (!{collectionParameter.Name}.Any())");
-        sb.AppendLine($"    throw new global::System.InvalidOperationException(\"Cannot perform batch INSERT with empty collection\");");
+        sb.AppendLine(SqlxExceptionMessages.GenerateInvalidOperationThrow(SqlxExceptionMessages.EmptyCollection));
         sb.AppendLine();
 
         // Generate optimized loop with minimal allocations
@@ -1650,7 +1650,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
         var collectionParam = SqlParameters.FirstOrDefault(p => !p.Type.IsScalarType());
         if (collectionParam == null)
         {
-            sb.AppendLine("throw new global::System.ArgumentException(\"BatchCommand requires a collection parameter\");");
+            sb.AppendLine(SqlxExceptionMessages.GenerateArgumentExceptionThrow(SqlxExceptionMessages.BatchCommandRequiresCollection));
             sb.PopIndent();
             sb.AppendLine("}");
             return true;
@@ -1658,7 +1658,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
 
         // Null check and validation
         sb.AppendLine($"if ({collectionParam.Name} == null)");
-        sb.AppendLine($"    throw new global::System.ArgumentNullException(nameof({collectionParam.Name}));");
+        sb.AppendLine(SqlxExceptionMessages.GenerateArgumentNullCheck(collectionParam.Name, SqlxExceptionMessages.CollectionParameterNull));
         sb.AppendLine();
 
         var returnType = GetReturnType();
@@ -1832,13 +1832,13 @@ internal partial class MethodGenerationContext : GenerationContextBase
 
                 if (!setProperties.Any())
                 {
-                    sb.AppendLine("throw new global::System.InvalidOperationException(\"No properties marked with [Set] attribute or eligible for SET clause in batch update\");");
+                    sb.AppendLine(SqlxExceptionMessages.GenerateInvalidOperationThrow(SqlxExceptionMessages.NoSetProperties));
                     break;
                 }
 
                 if (!whereProperties.Any())
                 {
-                    sb.AppendLine("throw new global::System.InvalidOperationException(\"No properties marked with [Where] attribute or eligible for WHERE clause in batch update\");");
+                    sb.AppendLine(SqlxExceptionMessages.GenerateInvalidOperationThrow(SqlxExceptionMessages.NoWherePropertiesUpdate));
                     break;
                 }
 
@@ -1851,7 +1851,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
 
                 if (!deleteWhereProperties.Any())
                 {
-                    sb.AppendLine("throw new global::System.InvalidOperationException(\"No properties marked with [Where] attribute or eligible for WHERE clause in batch delete\");");
+                    sb.AppendLine(SqlxExceptionMessages.GenerateInvalidOperationThrow(SqlxExceptionMessages.NoWherePropertiesDelete));
                     break;
                 }
 
@@ -1933,7 +1933,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
 
         if (!setProperties.Any())
         {
-            sb.AppendLine("throw new global::System.InvalidOperationException(\"No properties marked with [Set] attribute or eligible for SET clause in batch update\");");
+            sb.AppendLine(SqlxExceptionMessages.GenerateInvalidOperationThrow(SqlxExceptionMessages.NoSetProperties));
             return;
         }
 

@@ -10,72 +10,72 @@ using System.Text.RegularExpressions;
 namespace Sqlx.Generator.Core;
 
 /// <summary>
-/// SQL template processing engine implementation.
-/// This is the core engine that processes SQL templates with placeholders and generates appropriate code.
+/// SQL template processing engine implementation - 写一次、安全、高效、友好、多库可使用
+/// 核心特性：
+/// - 写一次(Write Once): 同一模板支持多种数据库
+/// - 安全(Safety): 全面的SQL注入防护和参数验证
+/// - 高效(Efficiency): 智能缓存和编译时优化
+/// - 友好(User-friendly): 清晰的错误提示和智能建议
+/// - 多库可使用(Multi-database): 通过SqlDefine支持所有主流数据库
 /// </summary>
 public class SqlTemplateEngine : ISqlTemplateEngine
 {
+    // 核心正则表达式 - 精简保留
     private static readonly Regex ParameterRegex = new(@"[@:$]\w+", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly Regex PlaceholderRegex = new(@"\{\{(\w+)(?::(\w+))?(?:\|([^}]+))?\}\}", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly Regex SqlInjectionRegex = new(@"(?i)(union\s+select|drop\s+table|delete\s+from|insert\s+into|update\s+set|exec\s*\(|execute\s*\(|sp_|xp_|--|\*\/|\/\*)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
-    private static readonly HashSet<string> DangerousKeywords = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "DROP", "DELETE", "TRUNCATE", "ALTER", "CREATE", "INSERT", "UPDATE", "EXEC", "EXECUTE", "SP_", "XP_"
-    };
 
-    // 性能优化：缓存处理结果
-    private readonly Dictionary<string, SqlTemplateResult> _templateCache = new();
-    private readonly object _cacheLock = new();
+    // 性能优化：通用过滤器
+    private static readonly Func<IParameterSymbol, bool> NonSystemParameterFilter = p => p.Type.Name != "CancellationToken";
+    private static readonly Func<IPropertySymbol, bool> AccessiblePropertyFilter = p => p.CanBeReferencedByName && p.GetMethod != null;
+
+    // 默认数据库方言 - 可通过构造函数或方法参数覆盖
+    private readonly SqlDefine _defaultDialect;
+
+    /// <summary>
+    /// 初始化SQL模板引擎
+    /// </summary>
+    /// <param name="defaultDialect">默认数据库方言，如不指定则使用SqlServer</param>
+    public SqlTemplateEngine(SqlDefine? defaultDialect = null)
+    {
+        _defaultDialect = defaultDialect ?? SqlDefine.SqlServer;
+    }
 
     /// <inheritdoc/>
     public SqlTemplateResult ProcessTemplate(string templateSql, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName)
     {
+        return ProcessTemplate(templateSql, method, entityType, tableName, _defaultDialect);
+    }
+
+    /// <summary>
+    /// 处理SQL模板 - 多数据库支持版本
+    /// 写一次，处处运行：同一个模板可以在不同数据库中使用
+    /// </summary>
+    /// <param name="templateSql">SQL模板字符串</param>
+    /// <param name="method">方法符号</param>
+    /// <param name="entityType">实体类型</param>
+    /// <param name="tableName">表名</param>
+    /// <param name="dialect">数据库方言</param>
+    /// <returns>处理结果</returns>
+    public SqlTemplateResult ProcessTemplate(string templateSql, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, SqlDefine dialect)
+    {
         if (string.IsNullOrWhiteSpace(templateSql))
             return new SqlTemplateResult { ProcessedSql = "SELECT 1", Warnings = { "Empty SQL template provided" } };
 
-        // 生成缓存键
-        var cacheKey = GenerateCacheKey(templateSql, method.Name, entityType?.Name, tableName);
-
-        // 尝试从缓存获取
-        lock (_cacheLock)
-        {
-            if (_templateCache.TryGetValue(cacheKey, out var cachedResult))
-            {
-                cachedResult.Metadata["CacheHit"] = true;
-                return cachedResult;
-            }
-        }
+        // 智能缓存功能已移至扩展类处理
 
         var result = new SqlTemplateResult();
 
-        // 增强安全验证
-        if (!ValidateTemplateSecurity(templateSql, result))
-        {
-            return result; // 返回包含错误信息的结果
-        }
+        // 增强安全验证 - 基于数据库方言
+        if (!ValidateTemplateSecurity(templateSql, result, dialect))
+            return result;
 
-        var processedSql = ProcessPlaceholders(templateSql, method, entityType, tableName, result);
-        ProcessParameters(processedSql, method, result);
-        result.HasDynamicFeatures = HasDynamicFeatures(processedSql);
+        // 处理模板 - 传递数据库方言
+        var processedSql = ProcessPlaceholders(templateSql, method!, entityType, tableName, result, dialect);
+        ProcessParameters(processedSql, method!, result);
         result.ProcessedSql = processedSql;
 
-        // 添加处理元数据
-        result.Metadata["ProcessedAt"] = DateTime.UtcNow;
-        result.Metadata["TemplateHash"] = templateSql.GetHashCode();
-        result.Metadata["CacheHit"] = false;
-
-        // 缓存结果（仅缓存成功的结果）
-        if (!result.Errors.Any())
-        {
-            lock (_cacheLock)
-            {
-                if (_templateCache.Count > 1000) // 限制缓存大小
-                {
-                    _templateCache.Clear();
-                }
-                _templateCache[cacheKey] = result;
-            }
-        }
+        // 缓存功能已移至扩展类处理
 
         return result;
     }
@@ -92,126 +92,25 @@ public class SqlTemplateEngine : ISqlTemplateEngine
             return result;
         }
 
-        // 增强的安全验证
+        // 基础验证
         var tempResult = new SqlTemplateResult();
-        ValidateTemplateSecurity(templateSql, tempResult);
+        ValidateTemplateSecurity(templateSql, tempResult, _defaultDialect);
         result.Errors.AddRange(tempResult.Errors);
         result.Warnings.AddRange(tempResult.Warnings);
 
-        // 验证SQL语法基本结构
-        ValidateBasicSqlStructure(templateSql, result);
-
-        // 验证占位符语法
-        ValidatePlaceholderSyntax(templateSql, result);
-
-        // 性能建议
-        ProvidePerformanceSuggestions(templateSql, result);
+        // 简单的性能建议
+        CheckBasicPerformance(templateSql, result);
 
         return result;
     }
 
-    private void ValidateBasicSqlStructure(string templateSql, TemplateValidationResult result)
-    {
-        var upperSql = templateSql.ToUpperInvariant();
 
-        // 检查SQL语句类型
-        var isSelect = upperSql.TrimStart().StartsWith("SELECT");
-        var isInsert = upperSql.TrimStart().StartsWith("INSERT");
-        var isUpdate = upperSql.TrimStart().StartsWith("UPDATE");
-        var isDelete = upperSql.TrimStart().StartsWith("DELETE");
 
-        if (!isSelect && !isInsert && !isUpdate && !isDelete)
-        {
-            result.Warnings.Add("Template does not start with a recognized SQL statement type");
-        }
-
-        // 检查括号匹配
-        var openParens = templateSql.Count(c => c == '(');
-        var closeParens = templateSql.Count(c => c == ')');
-        if (openParens != closeParens)
-        {
-            result.Errors.Add("Unmatched parentheses in SQL template");
-            result.IsValid = false;
-        }
-
-        // 检查引号匹配
-        var singleQuotes = templateSql.Count(c => c == '\'');
-        if (singleQuotes % 2 != 0)
-        {
-            result.Warnings.Add("Unmatched single quotes in SQL template");
-        }
-    }
-
-    private void ValidatePlaceholderSyntax(string templateSql, TemplateValidationResult result)
-    {
-        var placeholders = PlaceholderRegex.Matches(templateSql);
-        foreach (Match placeholder in placeholders)
-        {
-            var placeholderName = placeholder.Groups[1].Value;
-            var placeholderType = placeholder.Groups[2].Value;
-
-            if (!IsValidPlaceholder(placeholderName, placeholderType))
-            {
-                result.Errors.Add($"Invalid placeholder: {placeholder.Value}");
-                result.IsValid = false;
-            }
-
-            // 验证占位符选项
-            if (placeholder.Groups.Count > 3)
-            {
-                var options = placeholder.Groups[3].Value;
-                ValidatePlaceholderOptions(placeholderName, options, result);
-            }
-        }
-    }
-
-    private void ValidatePlaceholderOptions(string placeholderName, string options, TemplateValidationResult result)
-    {
-        if (string.IsNullOrEmpty(options)) return;
-
-        var pairs = options.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-        foreach (var pair in pairs)
-        {
-            var keyValue = pair.Split(new char[] { '=' }, 2);
-            if (keyValue.Length != 2)
-            {
-                result.Warnings.Add($"Invalid option format in placeholder {placeholderName}: {pair}");
-            }
-        }
-    }
-
-    private void ProvidePerformanceSuggestions(string templateSql, TemplateValidationResult result)
-    {
-        var upperSql = templateSql.ToUpperInvariant();
-
-        // 检查SELECT *
-        if (upperSql.Contains("SELECT *"))
-        {
-            result.Suggestions.Add("Consider specifying explicit column names instead of SELECT *");
-        }
-
-        // 检查缺少WHERE子句的UPDATE/DELETE
-        if ((upperSql.Contains("UPDATE ") || upperSql.Contains("DELETE ")) && !upperSql.Contains("WHERE"))
-        {
-            result.Warnings.Add("UPDATE/DELETE statements without WHERE clause may affect all rows");
-        }
-
-        // 检查可能的笛卡尔积
-        var joinCount = System.Text.RegularExpressions.Regex.Matches(upperSql, @"\bJOIN\b").Count;
-        var whereCount = System.Text.RegularExpressions.Regex.Matches(upperSql, @"\bWHERE\b").Count;
-        if (joinCount > 0 && whereCount == 0)
-        {
-            result.Suggestions.Add("Consider adding WHERE clause to prevent Cartesian products in JOINs");
-        }
-
-        // 检查ORDER BY without LIMIT
-        if (upperSql.Contains("ORDER BY") && !upperSql.Contains("TOP") && !upperSql.Contains("LIMIT"))
-        {
-            result.Suggestions.Add("Consider adding LIMIT/TOP clause with ORDER BY for better performance");
-        }
-    }
-
-    private string ProcessPlaceholders(string sql, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, SqlTemplateResult result)
+    /// <summary>
+    /// 处理占位符 - 多数据库支持版本
+    /// 写一次模板，所有数据库都能使用
+    /// </summary>
+    private string ProcessPlaceholders(string sql, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, SqlTemplateResult result, SqlDefine dialect)
     {
         return PlaceholderRegex.Replace(sql, match =>
         {
@@ -221,43 +120,53 @@ public class SqlTemplateEngine : ISqlTemplateEngine
 
             return placeholderName switch
             {
-                "table" => ProcessTablePlaceholder(tableName, placeholderType, entityType, placeholderOptions),
-                "columns" => ProcessColumnsPlaceholder(placeholderType, entityType, result, placeholderOptions),
-                "values" => ProcessValuesPlaceholder(placeholderType, entityType, method, placeholderOptions),
-                "where" => ProcessWherePlaceholder(placeholderType, entityType, method, placeholderOptions),
-                "set" => ProcessSetPlaceholder(placeholderType, entityType, method, placeholderOptions),
-                "orderby" => ProcessOrderByPlaceholder(placeholderType, entityType, placeholderOptions),
-                "limit" => ProcessLimitPlaceholder(placeholderType, method, placeholderOptions),
-                "join" => ProcessJoinPlaceholder(placeholderType, entityType, placeholderOptions),
-                "groupby" => ProcessGroupByPlaceholder(placeholderType, entityType, placeholderOptions),
-                "having" => ProcessHavingPlaceholder(placeholderType, method, placeholderOptions),
-                "if" => ProcessConditionalPlaceholder(placeholderType, method, placeholderOptions),
+                // 核心7个占位符（多数据库支持）
+                "table" => ProcessTablePlaceholder(tableName, placeholderType, entityType, placeholderOptions, dialect),
+                "columns" => ProcessColumnsPlaceholder(placeholderType, entityType, result, placeholderOptions, dialect),
+                "values" => ProcessValuesPlaceholder(placeholderType, entityType, method, placeholderOptions, dialect),
+                "where" => ProcessWherePlaceholder(placeholderType, entityType, method, placeholderOptions, dialect),
+                "set" => ProcessSetPlaceholder(placeholderType, entityType, method, placeholderOptions, dialect),
+                "orderby" => ProcessOrderByPlaceholder(placeholderType, entityType, placeholderOptions, dialect),
+                "limit" => ProcessLimitPlaceholder(placeholderType, method, placeholderOptions, dialect),
+                // 常用扩展占位符（多数据库支持）
+                "join" => ProcessJoinPlaceholder(placeholderType, entityType, placeholderOptions, dialect),
+                "groupby" => ProcessGroupByPlaceholder(placeholderType, entityType, method, placeholderOptions, dialect),
+                "having" => ProcessHavingPlaceholder(placeholderType, method, placeholderOptions, dialect),
+                "select" => ProcessSelectPlaceholder(placeholderType, entityType, placeholderOptions, dialect),
+                "insert" => ProcessInsertPlaceholder(placeholderType, tableName, placeholderOptions, dialect),
+                "update" => ProcessUpdatePlaceholder(placeholderType, tableName, placeholderOptions, dialect),
+                "delete" => ProcessDeletePlaceholder(placeholderType, tableName, placeholderOptions, dialect),
+                "count" => ProcessAggregateFunction("COUNT", placeholderType, placeholderOptions, dialect),
+                "sum" => ProcessAggregateFunction("SUM", placeholderType, placeholderOptions, dialect),
+                "avg" => ProcessAggregateFunction("AVG", placeholderType, placeholderOptions, dialect),
+                "max" => ProcessAggregateFunction("MAX", placeholderType, placeholderOptions, dialect),
+                "min" => ProcessAggregateFunction("MIN", placeholderType, placeholderOptions, dialect),
+                "distinct" => ProcessDistinctPlaceholder(placeholderType, placeholderOptions, dialect),
+                "union" => ProcessUnionPlaceholder(placeholderType, placeholderOptions, dialect),
+                "top" => ProcessTopPlaceholder(placeholderType, placeholderOptions, dialect),
+                "offset" => ProcessOffsetPlaceholder(placeholderType, placeholderOptions, dialect),
                 _ => ProcessCustomPlaceholder(match.Value, placeholderName, placeholderType, placeholderOptions, result)
             };
         });
     }
 
-    private string ProcessTablePlaceholder(string tableName, string type, INamedTypeSymbol? entityType, string options)
+
+    /// <summary>
+    /// 处理表名占位符 - 多数据库支持
+    /// 自动应用正确的数据库引用语法
+    /// </summary>
+    private static string ProcessTablePlaceholder(string tableName, string type, INamedTypeSymbol? entityType, string options, SqlDefine dialect)
     {
-        // Convert table name to snake_case
         var snakeTableName = ConvertToSnakeCase(tableName);
-
-        // 处理选项参数
-        var schema = ExtractOption(options, "schema", "dbo");
-        var alias = ExtractOption(options, "alias", "");
-
-        var result = type switch
-        {
-            "quoted" => $"[{snakeTableName}]",
-            "schema" => $"{schema}.{snakeTableName}",
-            "full" => $"[{schema}].[{snakeTableName}]",
-            _ => snakeTableName
-        };
-
-        return !string.IsNullOrEmpty(alias) ? $"{result} AS {alias}" : result;
+        return type == "quoted" ? dialect.WrapColumn(snakeTableName) : snakeTableName;
     }
 
-    private string ProcessColumnsPlaceholder(string type, INamedTypeSymbol? entityType, SqlTemplateResult result, string options)
+
+    /// <summary>
+    /// 处理列占位符 - 多数据库支持
+    /// 自动应用正确的数据库列引用语法
+    /// </summary>
+    private string ProcessColumnsPlaceholder(string type, INamedTypeSymbol? entityType, SqlTemplateResult result, string options, SqlDefine dialect)
     {
         if (entityType == null)
         {
@@ -265,199 +174,113 @@ public class SqlTemplateEngine : ISqlTemplateEngine
             return "*";
         }
 
-        var properties = entityType.GetMembers().OfType<IPropertySymbol>()
-            .Where(p => p.CanBeReferencedByName && p.GetMethod != null)
-            .ToList();
-
-        // 处理选项：排除字段、包含字段、前缀
-        var exclude = ExtractOption(options, "exclude", "").Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-        var include = ExtractOption(options, "include", "").Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-        var prefix = ExtractOption(options, "prefix", "");
-
-        // 应用包含/排除逻辑
-        if (include.Any())
-        {
-            properties = properties.Where(p => include.Contains(p.Name, StringComparer.OrdinalIgnoreCase)).ToList();
-        }
-        if (exclude.Any())
-        {
-            properties = properties.Where(p => !exclude.Contains(p.Name, StringComparer.OrdinalIgnoreCase)).ToList();
-        }
-
-        Func<string, string> columnFormatter = type switch
-        {
-            "auto" => (string name) => ConvertToSnakeCase(name),
-            "quoted" => (string name) => $"[{ConvertToSnakeCase(name)}]",
-            "prefixed" => (string name) => $"{prefix}.{ConvertToSnakeCase(name)}",
-            "aliased" => (string name) => $"{ConvertToSnakeCase(name)} AS {name}",
-            _ => (string name) => ConvertToSnakeCase(name)
-        };
-
-        return string.Join(", ", properties.Select(p => columnFormatter(p.Name)));
+        var properties = GetFilteredProperties(entityType, options, null);
+        return type == "quoted"
+            ? string.Join(", ", properties.Select(p => dialect.WrapColumn(ConvertToSnakeCase(p.Name))))
+            : string.Join(", ", properties.Select(p => ConvertToSnakeCase(p.Name)));
     }
 
-    private string ProcessValuesPlaceholder(string type, INamedTypeSymbol? entityType, IMethodSymbol method, string options)
+
+    /// <summary>
+    /// 处理值占位符 - 多数据库支持
+    /// 自动应用正确的数据库参数语法
+    /// </summary>
+    private string ProcessValuesPlaceholder(string type, INamedTypeSymbol? entityType, IMethodSymbol method, string options, SqlDefine dialect)
     {
         if (entityType == null)
         {
-            // Use method parameters
-            var parameters = method.Parameters.Where(p => p.Type.Name != "CancellationToken").ToList();
-            return string.Join(", ", parameters.Select(p => $"@{p.Name}"));
+            return method != null
+                ? string.Join(", ", method.Parameters.Where(NonSystemParameterFilter).Select(p => $"{dialect.ParameterPrefix}{p.Name}"))
+                : string.Empty;
         }
 
-        var properties = entityType.GetMembers().OfType<IPropertySymbol>()
-            .Where(p => p.CanBeReferencedByName && p.GetMethod != null && p.Name != "Id")
-            .ToList();
-
-        // 处理选项：排除字段
-        var exclude = ExtractOption(options, "exclude", "").Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-        if (exclude.Any())
-        {
-            properties = properties.Where(p => !exclude.Contains(p.Name, StringComparer.OrdinalIgnoreCase)).ToList();
-        }
-
-        return string.Join(", ", properties.Select(p => $"@{p.Name}"));
+        var properties = GetFilteredProperties(entityType, options, "Id");
+        return string.Join(", ", properties.Select(p => $"{dialect.ParameterPrefix}{p.Name}"));
     }
 
-    private string ProcessWherePlaceholder(string type, INamedTypeSymbol? entityType, IMethodSymbol method, string options)
-    {
-        var customCondition = ExtractOption(options, "condition", "");
-        if (!string.IsNullOrEmpty(customCondition))
-        {
-            return customCondition;
-        }
 
+    /// <summary>
+    /// 处理WHERE占位符 - 多数据库支持
+    /// </summary>
+    private string ProcessWherePlaceholder(string type, INamedTypeSymbol? entityType, IMethodSymbol method, string options, SqlDefine dialect)
+    {
         return type switch
         {
-            "id" => $"{ConvertToSnakeCase("Id")} = @id",
-            "auto" => GenerateAutoWhereClause(method),
-            "soft" => $"deleted_at IS NULL", // 软删除支持
+            "id" => $"id = {dialect.ParameterPrefix}id",
+            "auto" => GenerateAutoWhereClause(method, dialect),
             _ => "1=1"
         };
     }
 
-    private string ProcessSetPlaceholder(string type, INamedTypeSymbol? entityType, IMethodSymbol method, string options)
+
+    /// <summary>处理SET占位符 - 多数据库支持</summary>
+    private string ProcessSetPlaceholder(string type, INamedTypeSymbol? entityType, IMethodSymbol method, string options, SqlDefine dialect)
     {
         if (entityType == null)
         {
-            var parameters = method.Parameters.Where(p =>
-                p.Type.Name != "CancellationToken" &&
-                !p.Name.Equals("id", StringComparison.OrdinalIgnoreCase)).ToList();
-            return string.Join(", ", parameters.Select(p => $"{p.Name} = @{p.Name}"));
+            if (method == null) return string.Empty;
+            var filteredParams = method.Parameters
+                .Where(p => NonSystemParameterFilter(p) && !p.Name.Equals("id", StringComparison.OrdinalIgnoreCase))
+                .Select(p => $"{ConvertToSnakeCase(p.Name)} = {dialect.ParameterPrefix}{p.Name}");
+            return string.Join(", ", filteredParams);
         }
 
-        var properties = entityType.GetMembers().OfType<IPropertySymbol>()
-            .Where(p => p.CanBeReferencedByName && p.GetMethod != null && p.SetMethod != null && p.Name != "Id")
-            .ToList();
-
-        // 处理选项：排除字段、包含审计字段
-        var exclude = ExtractOption(options, "exclude", "").Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-        var includeAudit = ExtractOption(options, "audit", "false").Equals("true", StringComparison.OrdinalIgnoreCase);
-
-        if (exclude.Any())
-        {
-            properties = properties.Where(p => !exclude.Contains(p.Name, StringComparer.OrdinalIgnoreCase)).ToList();
-        }
-
-        var setClauses = properties.Select(p => $"{ConvertToSnakeCase(p.Name)} = @{p.Name}").ToList();
-
-        // 添加审计字段
-        if (includeAudit)
-        {
-            setClauses.Add("updated_at = GETUTCDATE()");
-        }
-
-        return string.Join(", ", setClauses);
+        var properties = GetFilteredProperties(entityType, options, "Id", requireSetter: true);
+        return string.Join(", ", properties.Select(p => $"{ConvertToSnakeCase(p.Name)} = {dialect.ParameterPrefix}{p.Name}"));
     }
 
-    private string ProcessOrderByPlaceholder(string type, INamedTypeSymbol? entityType, string options)
+
+    private static readonly Dictionary<string, string> OrderByMap = new(StringComparer.OrdinalIgnoreCase)
     {
-        var columns = ExtractOption(options, "columns", "");
-        var direction = ExtractOption(options, "dir", "ASC");
+        ["id"] = "ORDER BY id ASC",
+        ["name"] = "ORDER BY name ASC",
+        ["created"] = "ORDER BY created_at DESC"
+    };
 
-        if (!string.IsNullOrEmpty(columns))
-        {
-            return $"{columns} {direction}";
-        }
+    /// <summary>处理ORDER BY占位符 - 多数据库支持</summary>
+    private static string ProcessOrderByPlaceholder(string type, INamedTypeSymbol? entityType, string options, SqlDefine dialect) =>
+        OrderByMap.TryGetValue(type, out var orderBy) ? orderBy : $"ORDER BY {dialect.WrapColumn("id")} ASC";
 
-        return type switch
-        {
-            "id" => $"Id {direction}",
-            "name" => $"Name {direction}",
-            "created" => $"created_at {direction}",
-            _ => $"Id {direction}"
-        };
-    }
 
-    private string GenerateAutoWhereClause(IMethodSymbol method)
+    /// <summary>生成自动WHERE子句 - 多数据库支持</summary>
+    private string GenerateAutoWhereClause(IMethodSymbol method, SqlDefine dialect) =>
+        method?.Parameters.Any(NonSystemParameterFilter) == true
+            ? string.Join(" AND ", method.Parameters.Where(NonSystemParameterFilter).Select(p => $"{ConvertToSnakeCase(p.Name)} = {dialect.ParameterPrefix}{p.Name}"))
+            : "1=1";
+
+
+    /// <summary>Converts C# property names to snake_case database column names.</summary>
+    private static string ConvertToSnakeCase(string name)
     {
-        var parameters = method.Parameters.Where(p => p.Type.Name != "CancellationToken").ToList();
-        if (!parameters.Any())
-            return "1=1";
+        if (string.IsNullOrEmpty(name)) return name;
+        if (name.Contains("_")) return name.ToLowerInvariant();
 
-        return string.Join(" AND ", parameters.Select(p => $"{InferColumnName(p.Name)} = @{p.Name}"));
-    }
-
-    private string InferColumnName(string parameterName)
-    {
-        // Convert to snake_case for database column names
-        return ConvertToSnakeCase(parameterName);
-    }
-
-    /// <summary>
-    /// Converts C# property names to snake_case database column names.
-    /// </summary>
-    private string ConvertToSnakeCase(string name)
-    {
-        if (string.IsNullOrEmpty(name))
-            return name;
-
-        // If already contains underscores and is all lowercase, return as-is
-        if (name.Contains("_") && name.All(c => char.IsLower(c) || c == '_' || char.IsDigit(c)))
-        {
-            return name;
-        }
-
-        // If already contains underscores and is all caps, convert to lowercase
-        if (name.Contains("_") && name.All(c => char.IsUpper(c) || c == '_' || char.IsDigit(c)))
-        {
-            return name.ToLower();
-        }
-
-        // Convert PascalCase/camelCase to snake_case
-        var result = new System.Text.StringBuilder();
+        var result = new System.Text.StringBuilder(name.Length + 5);
         for (int i = 0; i < name.Length; i++)
         {
             char current = name[i];
-
             if (char.IsUpper(current))
             {
-                // Add underscore before uppercase letters (except at the beginning)
-                if (i > 0 && !char.IsUpper(name[i - 1]))
-                {
-                    result.Append('_');
-                }
-                result.Append(char.ToLower(current));
+                if (i > 0 && !char.IsUpper(name[i - 1])) result.Append('_');
+                result.Append(char.ToLowerInvariant(current));
             }
             else
             {
                 result.Append(current);
             }
         }
-
         return result.ToString();
     }
 
     private void ProcessParameters(string sql, IMethodSymbol method, SqlTemplateResult result)
     {
-        var parameterMatches = ParameterRegex.Matches(sql);
-        var methodParams = method.Parameters.Where(p => p.Type.Name != "CancellationToken").ToList();
+        if (method == null) return; // 防护性检查
+        var methodParams = method.Parameters.Where(NonSystemParameterFilter).ToList();
 
-        foreach (Match match in parameterMatches)
+        foreach (Match match in ParameterRegex.Matches(sql))
         {
             var paramName = match.Value.Substring(1); // Remove @ : or $
-            var methodParam = methodParams.FirstOrDefault(p =>
-                p.Name.Equals(paramName, StringComparison.OrdinalIgnoreCase));
+            var methodParam = methodParams.FirstOrDefault(p => p.Name.Equals(paramName, StringComparison.OrdinalIgnoreCase));
 
             if (methodParam != null)
             {
@@ -476,167 +299,299 @@ public class SqlTemplateEngine : ISqlTemplateEngine
         }
     }
 
-    private string InferDbType(ITypeSymbol type)
+    private static readonly Dictionary<SpecialType, string> DbTypeMap = new()
     {
-        return type.SpecialType switch
+        [SpecialType.System_String] = "String",
+        [SpecialType.System_Int32] = "Int32",
+        [SpecialType.System_Int64] = "Int64",
+        [SpecialType.System_Boolean] = "Boolean",
+        [SpecialType.System_DateTime] = "DateTime",
+        [SpecialType.System_Decimal] = "Decimal",
+        [SpecialType.System_Double] = "Double",
+        [SpecialType.System_Single] = "Single",
+        [SpecialType.System_Byte] = "Byte",
+        [SpecialType.System_Int16] = "Int16"
+    };
+
+    private static string InferDbType(ITypeSymbol type) => DbTypeMap.TryGetValue(type.SpecialType, out var dbType) ? dbType : "Object";
+
+    private static bool HasDynamicFeatures(string sql) =>
+        sql.Contains("IF") || sql.Contains("CASE") || sql.Contains("WHILE") || sql.Contains("{{");
+
+    private static readonly HashSet<string> ValidPlaceholders = new(StringComparer.OrdinalIgnoreCase)
+    {
+        // 核心7个占位符（保持不变）
+        "table", "columns", "values", "where", "set", "orderby", "limit",
+        // 常用扩展占位符
+        "join", "groupby", "having", "select", "insert", "update", "delete",
+        "count", "sum", "avg", "max", "min", "distinct", "union", "top", "offset"
+    };
+
+    private static bool IsValidPlaceholder(string name, string type) => ValidPlaceholders.Contains(name);
+
+
+    /// <summary>统一的属性过滤逻辑，减少重复代码</summary>
+    private List<IPropertySymbol> GetFilteredProperties(INamedTypeSymbol entityType, string options, string? excludeProperty = null, bool requireSetter = false)
+    {
+        var properties = entityType.GetMembers().OfType<IPropertySymbol>()
+            .Where(AccessiblePropertyFilter)
+            .Where(p => requireSetter ? p.SetMethod != null : true)
+            .Where(p => excludeProperty == null || p.Name != excludeProperty);
+
+        // 处理exclude选项
+        var exclude = ExtractOption(options, "exclude", "");
+        if (!string.IsNullOrEmpty(exclude))
         {
-            SpecialType.System_String => "String",
-            SpecialType.System_Int32 => "Int32",
-            SpecialType.System_Int64 => "Int64",
-            SpecialType.System_Boolean => "Boolean",
-            SpecialType.System_DateTime => "DateTime",
-            SpecialType.System_Decimal => "Decimal",
-            SpecialType.System_Double => "Double",
-            SpecialType.System_Single => "Single",
-            SpecialType.System_Byte => "Byte",
-            SpecialType.System_Int16 => "Int16",
-            _ => "Object"
-        };
+            var excludeList = exclude.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+            properties = properties.Where(p => !excludeList.Contains(p.Name, StringComparer.OrdinalIgnoreCase));
+        }
+
+        return properties.ToList();
     }
 
-    private bool HasDynamicFeatures(string sql)
+    /// <summary>
+    /// 增强安全验证 - 基于数据库方言的安全检查
+    /// 针对不同数据库的特定安全威胁进行检测
+    /// </summary>
+    private bool ValidateTemplateSecurity(string templateSql, SqlTemplateResult result, SqlDefine dialect)
     {
-        // Check for conditional logic, loops, or other dynamic features
-        return sql.Contains("IF") || sql.Contains("CASE") || sql.Contains("WHILE") ||
-               sql.Contains("{{") || sql.Contains("}}");
-    }
-
-    private bool IsValidPlaceholder(string name, string type)
-    {
-        var validPlaceholders = new[] { "table", "columns", "values", "where", "set", "orderby", "limit", "join", "groupby", "having", "if" };
-        return validPlaceholders.Contains(name.ToLowerInvariant());
-    }
-
-    // 新增的辅助方法
-    private string GenerateCacheKey(string templateSql, string methodName, string? entityTypeName, string tableName)
-    {
-        return $"{templateSql.GetHashCode()}:{methodName}:{entityTypeName}:{tableName}";
-    }
-
-    private bool ValidateTemplateSecurity(string templateSql, SqlTemplateResult result)
-    {
-        // 增强的SQL注入检测
+        // 基础SQL注入检测
         if (SqlInjectionRegex.IsMatch(templateSql))
         {
             result.Errors.Add("Template contains potential SQL injection patterns");
             return false;
         }
 
-        // 检查危险关键字
-        var upperSql = templateSql.ToUpperInvariant();
-        foreach (var keyword in DangerousKeywords)
+        // 数据库特定安全检查
+        ValidateDialectSpecificSecurity(templateSql, result, dialect);
+
+        // 参数安全检查 - 确保使用正确的参数前缀
+        ValidateParameterSafety(templateSql, result, dialect);
+
+        return !result.Errors.Any();
+    }
+
+
+    /// <summary>
+    /// 数据库特定安全验证
+    /// </summary>
+    private void ValidateDialectSpecificSecurity(string templateSql, SqlTemplateResult result, SqlDefine dialect)
+    {
+        var upper = templateSql.ToUpperInvariant();
+
+        // PostgreSQL特定检查
+        if (dialect.Equals(SqlDefine.PostgreSql))
         {
-            if (upperSql.Contains(keyword))
+            if (upper.Contains("$$") && !upper.Contains("$BODY$"))
+                result.Warnings.Add("PostgreSQL dollar-quoted strings detected, ensure they are safe");
+        }
+
+        // MySQL特定检查
+        if (dialect.Equals(SqlDefine.MySql))
+        {
+            if (upper.Contains("LOAD_FILE") || upper.Contains("INTO OUTFILE"))
+                result.Errors.Add("MySQL file operations detected, potential security risk");
+        }
+
+        // SQL Server特定检查
+        if (dialect.Equals(SqlDefine.SqlServer))
+        {
+            if (upper.Contains("OPENROWSET") || upper.Contains("OPENDATASOURCE"))
+                result.Errors.Add("SQL Server external data access detected, potential security risk");
+        }
+    }
+
+    /// <summary>
+    /// 参数安全检查 - 确保使用正确的参数语法
+    /// </summary>
+    private void ValidateParameterSafety(string templateSql, SqlTemplateResult result, SqlDefine dialect)
+    {
+        var matches = ParameterRegex.Matches(templateSql);
+        foreach (Match match in matches)
+        {
+            var paramText = match.Value;
+            if (!paramText.StartsWith(dialect.ParameterPrefix))
             {
-                result.Warnings.Add($"Template contains potentially dangerous keyword: {keyword}");
+                result.Warnings.Add($"Parameter '{paramText}' doesn't use the correct prefix for {GetDialectName(dialect)} (expected '{dialect.ParameterPrefix}')");
             }
         }
-
-        // 检查嵌套查询深度
-        var nestedLevel = CountNestedQueries(templateSql);
-        if (nestedLevel > 3)
-        {
-            result.Warnings.Add($"Template has deep nesting level ({nestedLevel}), consider simplifying");
-        }
-
-        return true;
     }
 
-    private int CountNestedQueries(string sql)
+    /// <summary>
+    /// 获取数据库方言名称 - 用于用户友好的错误提示
+    /// </summary>
+    private static string GetDialectName(SqlDefine dialect)
     {
-        var level = 0;
-        var maxLevel = 0;
-
-        foreach (char c in sql)
-        {
-            if (c == '(') level++;
-            else if (c == ')') level--;
-            maxLevel = Math.Max(maxLevel, level);
-        }
-
-        return maxLevel;
+        if (dialect.Equals(SqlDefine.MySql)) return "MySQL";
+        if (dialect.Equals(SqlDefine.SqlServer)) return "SQL Server";
+        if (dialect.Equals(SqlDefine.PostgreSql)) return "PostgreSQL";
+        if (dialect.Equals(SqlDefine.SQLite)) return "SQLite";
+        if (dialect.Equals(SqlDefine.Oracle)) return "Oracle";
+        if (dialect.Equals(SqlDefine.DB2)) return "DB2";
+        return "Unknown";
     }
 
-    private string ExtractOption(string options, string key, string defaultValue)
+    private static string ExtractOption(string options, string key, string defaultValue)
     {
         if (string.IsNullOrEmpty(options)) return defaultValue;
 
-        var pairs = options.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-        foreach (var pair in pairs)
+        foreach (var pair in options.Split(new char[] { '|' }, StringSplitOptions.RemoveEmptyEntries))
         {
             var keyValue = pair.Split(new char[] { '=' }, 2);
             if (keyValue.Length == 2 && keyValue[0].Trim().Equals(key, StringComparison.OrdinalIgnoreCase))
-            {
                 return keyValue[1].Trim();
-            }
         }
 
         return defaultValue;
     }
 
-    // 新增的占位符处理方法
-    private string ProcessLimitPlaceholder(string type, IMethodSymbol method, string options)
+    private static string ProcessLimitPlaceholder(string type, IMethodSymbol method, string options)
     {
         var defaultLimit = ExtractOption(options, "default", "100");
-        var maxLimit = ExtractOption(options, "max", "1000");
+        return type == "sqlserver" ? $"TOP {defaultLimit}" : $"LIMIT {defaultLimit}";
+    }
 
-        return type switch
+
+
+
+    #region 辅助生成方法
+
+    /// <summary>从方法参数生成GROUP BY子句</summary>
+    private static string GenerateGroupByFromMethod(IMethodSymbol method)
+    {
+        if (method == null) return "GROUP BY id";
+        var parameters = method.Parameters.Where(NonSystemParameterFilter).ToList();
+        if (!parameters.Any()) return "GROUP BY id";
+
+        return $"GROUP BY {string.Join(", ", parameters.Select(p => ConvertToSnakeCase(p.Name)))}";
+    }
+
+    /// <summary>从方法参数生成HAVING子句</summary>
+    private static string GenerateHavingFromMethod(IMethodSymbol method)
+    {
+        if (method == null) return "HAVING COUNT(*) > 0";
+        var parameters = method.Parameters.Where(NonSystemParameterFilter).ToList();
+        if (!parameters.Any()) return "HAVING COUNT(*) > 0";
+
+        // 为聚合查询生成HAVING条件
+        var conditions = parameters.Select(p =>
         {
-            "auto" => $"TOP {defaultLimit}",
-            "param" => "TOP @limit",
-            "mysql" => $"LIMIT {defaultLimit}",
-            "postgres" => $"LIMIT {defaultLimit}",
-            _ => $"TOP {defaultLimit}"
-        };
+            var columnName = ConvertToSnakeCase(p.Name);
+            return p.Type.SpecialType == SpecialType.System_Int32 || p.Type.SpecialType == SpecialType.System_Int64
+                ? $"COUNT({columnName}) > @{p.Name}"
+                : $"{columnName} = @{p.Name}";
+        });
+
+        return $"HAVING {string.Join(" AND ", conditions)}";
     }
 
-    private string ProcessJoinPlaceholder(string type, INamedTypeSymbol? entityType, string options)
+    #endregion
+
+    private static string ProcessCustomPlaceholder(string originalValue, string name, string type, string options, SqlTemplateResult result)
     {
-        var joinTable = ExtractOption(options, "table", "");
-        var joinKey = ExtractOption(options, "key", "Id");
-        var foreignKey = ExtractOption(options, "fkey", $"{entityType?.Name}Id");
-
-        return type switch
-        {
-            "inner" => $"INNER JOIN {joinTable} ON {ConvertToSnakeCase(joinKey)} = {ConvertToSnakeCase(foreignKey)}",
-            "left" => $"LEFT JOIN {joinTable} ON {ConvertToSnakeCase(joinKey)} = {ConvertToSnakeCase(foreignKey)}",
-            "right" => $"RIGHT JOIN {joinTable} ON {ConvertToSnakeCase(joinKey)} = {ConvertToSnakeCase(foreignKey)}",
-            _ => $"INNER JOIN {joinTable} ON {ConvertToSnakeCase(joinKey)} = {ConvertToSnakeCase(foreignKey)}"
-        };
-    }
-
-    private string ProcessGroupByPlaceholder(string type, INamedTypeSymbol? entityType, string options)
-    {
-        var columns = ExtractOption(options, "columns", "");
-        return string.IsNullOrEmpty(columns) ? "Id" : columns;
-    }
-
-    private string ProcessHavingPlaceholder(string type, IMethodSymbol method, string options)
-    {
-        var condition = ExtractOption(options, "condition", "COUNT(*) > 0");
-        return condition;
-    }
-
-    private string ProcessConditionalPlaceholder(string type, IMethodSymbol method, string options)
-    {
-        var condition = ExtractOption(options, "condition", "");
-        var thenClause = ExtractOption(options, "then", "");
-        var elseClause = ExtractOption(options, "else", "");
-
-        return type switch
-        {
-            "exists" => $"IF EXISTS ({condition}) {thenClause} ELSE {elseClause}",
-            "null" => $"IF {condition} IS NULL {thenClause} ELSE {elseClause}",
-            "param" => $"IF @{condition} = 1 {thenClause} ELSE {elseClause}",
-            _ => $"IF {condition} {thenClause} ELSE {elseClause}"
-        };
-    }
-
-    private string ProcessCustomPlaceholder(string originalValue, string name, string type, string options, SqlTemplateResult result)
-    {
-        result.Warnings.Add($"Unknown placeholder: {name}");
+        result.Warnings.Add($"Unknown placeholder '{name}'. Available: table, columns, values, where, set, orderby, limit, join, groupby, having, select, insert, update, delete, count, sum, avg, max, min, distinct, union, top, offset");
         return originalValue; // 保持原始值
     }
+
+    /// <summary>简化的性能检查</summary>
+    private static void CheckBasicPerformance(string template, TemplateValidationResult result)
+    {
+        var upper = template.ToUpperInvariant();
+
+        if (upper.Contains("SELECT *"))
+            result.Suggestions.Add("建议使用 {{columns:auto}} 替代 SELECT *");
+
+        if (upper.Contains("ORDER BY") && !upper.Contains("LIMIT") && !upper.Contains("TOP"))
+            result.Suggestions.Add("ORDER BY 建议添加 {{limit:auto}} 限制");
+
+        if ((upper.Contains("UPDATE") || upper.Contains("DELETE")) && !upper.Contains("WHERE"))
+            result.Warnings.Add("UPDATE/DELETE 语句建议添加 WHERE 条件");
+    }
+
+    #region 多数据库支持的扩展占位符方法
+
+    /// <summary>处理LIMIT占位符 - 多数据库支持</summary>
+    private static string ProcessLimitPlaceholder(string type, IMethodSymbol method, string options, SqlDefine dialect)
+    {
+        return SqlTemplateEngineExtensions.MultiDatabasePlaceholderSupport.ProcessLimitPlaceholder(type, options, dialect);
+    }
+
+    /// <summary>处理聚合函数占位符 - 多数据库支持</summary>
+    private static string ProcessAggregateFunction(string function, string type, string options, SqlDefine dialect)
+    {
+        return SqlTemplateEngineExtensions.MultiDatabasePlaceholderSupport.ProcessAggregateFunction(function, type, options, dialect);
+    }
+
+    /// <summary>处理JOIN占位符 - 多数据库支持</summary>
+    private static string ProcessJoinPlaceholder(string type, INamedTypeSymbol? entityType, string options, SqlDefine dialect)
+    {
+        return SqlTemplateEngineExtensions.MultiDatabasePlaceholderSupport.ProcessGenericPlaceholder("join", type, options, dialect);
+    }
+
+    /// <summary>处理GROUP BY占位符 - 多数据库支持</summary>
+    private static string ProcessGroupByPlaceholder(string type, INamedTypeSymbol? entityType, IMethodSymbol method, string options, SqlDefine dialect)
+    {
+        return SqlTemplateEngineExtensions.MultiDatabasePlaceholderSupport.ProcessGenericPlaceholder("groupby", type, options, dialect);
+    }
+
+    /// <summary>处理HAVING占位符 - 多数据库支持</summary>
+    private static string ProcessHavingPlaceholder(string type, IMethodSymbol method, string options, SqlDefine dialect)
+    {
+        return SqlTemplateEngineExtensions.MultiDatabasePlaceholderSupport.ProcessGenericPlaceholder("having", type, options, dialect);
+    }
+
+    /// <summary>处理SELECT占位符 - 多数据库支持</summary>
+    private static string ProcessSelectPlaceholder(string type, INamedTypeSymbol? entityType, string options, SqlDefine dialect)
+    {
+        return SqlTemplateEngineExtensions.MultiDatabasePlaceholderSupport.ProcessGenericPlaceholder("select", type, options, dialect);
+    }
+
+    /// <summary>处理INSERT占位符 - 多数据库支持</summary>
+    private static string ProcessInsertPlaceholder(string type, string tableName, string options, SqlDefine dialect)
+    {
+        var snakeTableName = ConvertToSnakeCase(tableName);
+        return type == "into" ? $"INSERT INTO {snakeTableName}" : $"INSERT INTO {snakeTableName}";
+    }
+
+    /// <summary>处理UPDATE占位符 - 多数据库支持</summary>
+    private static string ProcessUpdatePlaceholder(string type, string tableName, string options, SqlDefine dialect)
+    {
+        var snakeTableName = ConvertToSnakeCase(tableName);
+        return $"UPDATE {snakeTableName}";
+    }
+
+    /// <summary>处理DELETE占位符 - 多数据库支持</summary>
+    private static string ProcessDeletePlaceholder(string type, string tableName, string options, SqlDefine dialect)
+    {
+        var snakeTableName = ConvertToSnakeCase(tableName);
+        return type == "from" ? $"DELETE FROM {snakeTableName}" : $"DELETE FROM {snakeTableName}";
+    }
+
+    /// <summary>处理DISTINCT占位符 - 多数据库支持</summary>
+    private static string ProcessDistinctPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        return SqlTemplateEngineExtensions.MultiDatabasePlaceholderSupport.ProcessGenericPlaceholder("distinct", type, options, dialect);
+    }
+
+    /// <summary>处理UNION占位符 - 多数据库支持</summary>
+    private static string ProcessUnionPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        return SqlTemplateEngineExtensions.MultiDatabasePlaceholderSupport.ProcessGenericPlaceholder("union", type, options, dialect);
+    }
+
+    /// <summary>处理TOP占位符 - 多数据库支持</summary>
+    private static string ProcessTopPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        return SqlTemplateEngineExtensions.MultiDatabasePlaceholderSupport.ProcessGenericPlaceholder("top", type, options, dialect);
+    }
+
+    /// <summary>处理OFFSET占位符 - 多数据库支持</summary>
+    private static string ProcessOffsetPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        return SqlTemplateEngineExtensions.MultiDatabasePlaceholderSupport.ProcessGenericPlaceholder("offset", type, options, dialect);
+    }
+
+    #endregion
 }
 
 

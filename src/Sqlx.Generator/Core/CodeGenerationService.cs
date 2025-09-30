@@ -16,6 +16,7 @@ namespace Sqlx.Generator.Core;
 /// </summary>
 public class CodeGenerationService : ICodeGenerationService
 {
+    private static readonly SqlTemplateEngine TemplateEngine = new();
     /// <inheritdoc/>
     public void GenerateRepositoryMethod(RepositoryMethodContext context)
     {
@@ -27,26 +28,19 @@ public class CodeGenerationService : ICodeGenerationService
 
         try
         {
-            // Process SQL template first to get the resolved SQL for documentation
-            var sqlxAttr = method.GetAttributes()
-                .FirstOrDefault(a => a.AttributeClass?.Name?.Contains("Sqlx") == true ||
-                                    a.AttributeClass?.Name?.Contains("SqlTemplate") == true);
+            // Get SQL attributes once to avoid repeated calls
+            var sqlxAttr = GetSqlAttribute(method);
+            var sqlTemplate = sqlxAttr?.ConstructorArguments.FirstOrDefault().Value as string;
 
-            string? resolvedSql = null;
+            // Process SQL template if available
             SqlTemplateResult? templateResult = null;
-            string? originalTemplate = null;
-
-            if (sqlxAttr?.ConstructorArguments.FirstOrDefault().Value is string sqlTemplate)
+            if (sqlTemplate != null)
             {
-                originalTemplate = sqlTemplate;
-                // Use enhanced template engine to process SQL template
-                var templateEngine = new SqlTemplateEngine();
-                templateResult = templateEngine.ProcessTemplate(sqlTemplate, method, entityType, context.TableName);
-                resolvedSql = templateResult.ProcessedSql;
+                templateResult = TemplateEngine.ProcessTemplate(sqlTemplate, method, entityType, context.TableName);
             }
 
             // Generate method documentation with resolved SQL and template metadata
-            GenerateEnhancedMethodDocumentation(sb, method, originalTemplate, templateResult);
+            GenerateEnhancedMethodDocumentation(sb, method, sqlTemplate, templateResult);
 
             // Generate or copy Sqlx attributes
             attributeHandler.GenerateOrCopyAttributes(sb, method, entityType, context.TableName);
@@ -61,19 +55,17 @@ public class CodeGenerationService : ICodeGenerationService
             sb.AppendLine("{");
             sb.PushIndent();
 
-            if (sqlxAttr?.ConstructorArguments.FirstOrDefault().Value is string sqlTemplate2)
+            if (templateResult != null)
             {
-                var templateEngine = new SqlTemplateEngine();
-                var templateProcessResult = templateEngine.ProcessTemplate(sqlTemplate2, method, entityType, context.TableName);
                 var connectionName = GetDbConnectionFieldName(context.ClassSymbol);
-                GenerateActualDatabaseExecution(sb, method, templateProcessResult, entityType, connectionName);
+                GenerateActualDatabaseExecution(sb, method, templateResult, entityType, connectionName);
+            }
+            else if (sqlxAttr != null)
+            {
+                throw new InvalidOperationException($"Failed to generate implementation for method '{method.Name}' with SQL attribute. Please check the SQL template syntax and parameters.");
             }
             else
             {
-                var sqlTemplateAttr = method.GetAttributes().FirstOrDefault(a => a.AttributeClass?.Name?.Contains("SqlTemplate") == true);
-                if (sqlTemplateAttr != null)
-                    throw new InvalidOperationException($"Failed to generate implementation for method '{method.Name}' with SqlTemplateAttribute. Please check the SQL template syntax and parameters.");
-
                 GenerateFallbackMethodImplementation(sb, method);
             }
 
@@ -268,8 +260,9 @@ public class CodeGenerationService : ICodeGenerationService
 
             return null;
         }
-        catch
+        catch (System.Exception)
         {
+            // Return null for any reflection or analysis errors
             return null;
         }
     }
@@ -554,11 +547,9 @@ public class CodeGenerationService : ICodeGenerationService
         sb.AppendLine("catch (global::System.Exception __ex__)");
         sb.AppendLine("{");
         sb.PushIndent();
-
         sb.AppendLine("var __failTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
         sb.AppendLine($"OnExecuteFail(\"{operationName}\", __cmd__, __ex__, global::System.Diagnostics.Stopwatch.GetElapsedTime(__startTimestamp__, __failTimestamp__).Ticks);");
         sb.AppendLine("throw;");
-
         sb.PopIndent();
         sb.AppendLine("}");
     }
@@ -719,4 +710,9 @@ public class CodeGenerationService : ICodeGenerationService
         // Default fallback - common field names
         return "connection";
     }
+
+    /// <summary>Get SQL attribute from method, checking both Sqlx and SqlTemplate attributes</summary>
+    private static AttributeData? GetSqlAttribute(IMethodSymbol method) =>
+        method.GetAttributes().FirstOrDefault(a => a.AttributeClass?.Name?.Contains("Sqlx") == true ||
+                                                  a.AttributeClass?.Name?.Contains("SqlTemplate") == true);
 }

@@ -26,33 +26,33 @@ public interface IDemoUserRepository
     /// <summary>
     /// 使用模板占位符获取活跃用户列表
     /// </summary>
-    [Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE [IsActive] = 1")]
+    [Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE [is_active] = 1")]
     Task<List<User>> GetActiveUsersAsync();
 
     /// <summary>
     /// 使用模板占位符进行范围查询
     /// </summary>
-    [Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE [Age] BETWEEN @minAge AND @maxAge ORDER BY {{orderby:age}}")]
+    [Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE [age] BETWEEN @minAge AND @maxAge {{orderby:age}}")]
     Task<List<User>> GetUsersByAgeRangeAsync(int minAge, int maxAge);
 
     /// <summary>
-    /// 使用SqlTemplateAttribute演示编译时SQL模板 - 支持@{参数名}占位符语法
+    /// 使用SqlTemplateAttribute演示编译时SQL模板 - 支持标准@参数名语法
     /// </summary>
-    [SqlTemplate("SELECT * FROM [user] WHERE [Name] LIKE @{namePattern} AND [Age] > @{minAge}",
+    [SqlTemplate("SELECT * FROM [user] WHERE [name] LIKE @namePattern AND [age] > @minAge",
                  Dialect = SqlDefineTypes.SQLite, SafeMode = true)]
     Task<List<User>> SearchUsersByNameAndAgeAsync(string namePattern, int minAge);
 
     /// <summary>
     /// 使用SqlTemplateAttribute进行复杂条件查询
     /// </summary>
-    [SqlTemplate("SELECT [Id], [Name], [Email], [Salary] FROM [user] WHERE [DepartmentId] = @{deptId} AND [Salary] >= @{minSalary} ORDER BY [Salary] DESC",
+    [SqlTemplate("SELECT [id], [name], [email], [salary] FROM [user] WHERE [department_id] = @deptId AND [salary] >= @minSalary ORDER BY [salary] DESC",
                  Dialect = SqlDefineTypes.SQLite, Operation = SqlOperation.Select)]
     Task<List<User>> GetUsersByDepartmentAndSalaryAsync(int deptId, decimal minSalary);
 
     /// <summary>
     /// 使用SqlTemplateAttribute进行更新操作
     /// </summary>
-    [SqlTemplate("UPDATE [user] SET [Salary] = @{newSalary}, [Bonus] = @{bonusAmount} WHERE [Id] = @{userId}",
+    [SqlTemplate("UPDATE [user] SET [salary] = @newSalary, [bonus] = @bonusAmount WHERE [id] = @userId",
                  Dialect = SqlDefineTypes.SQLite, Operation = SqlOperation.Update)]
     Task<int> UpdateUserSalaryAndBonusAsync(int userId, decimal newSalary, decimal bonusAmount);
 }

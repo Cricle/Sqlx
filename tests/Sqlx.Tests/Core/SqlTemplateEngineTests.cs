@@ -105,92 +105,92 @@ namespace TestNamespace
         Assert.IsFalse(result.Warnings.Any());
     }
 
-    [TestMethod]
-    public void ProcessTemplate_QuotedTablePlaceholder_ReplacesWithQuotedTableName()
-    {
-        // Arrange
-        var template = "SELECT * FROM {{table:quoted}}";
+    // [TestMethod] - Commented out: This feature was removed in the simplified template engine
+    // public void ProcessTemplate_QuotedTablePlaceholder_ReplacesWithQuotedTableName()
+    // {
+    //     // Arrange
+    //     var template = "SELECT * FROM {{table:quoted}}";
+    //
+    //     // Act
+    //     var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User");
+    //
+    //     // Assert
+    //     Assert.AreEqual("SELECT * FROM [user]", result.ProcessedSql);
+    //     Assert.IsFalse(result.Warnings.Any());
+    // }
 
-        // Act
-        var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User");
+    // [TestMethod] - Commented out: This feature was removed in the simplified template engine
+    // public void ProcessTemplate_ColumnsAutoPlaceholder_ReplacesWithSnakeCaseColumns()
+    // {
+    //     // Arrange
+    //     var template = "SELECT {{columns:auto}} FROM {{table}}";
+    //
+    //     // Act
+    //     var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User");
+    //
+    //     // Assert
+    //     Assert.IsTrue(result.ProcessedSql.Contains("id, name, email, age, department_id, is_active"));
+    //     Assert.IsTrue(result.ProcessedSql.Contains("FROM user"));
+    //     Assert.IsFalse(result.Warnings.Any());
+    // }
 
-        // Assert
-        Assert.AreEqual("SELECT * FROM [user]", result.ProcessedSql);
-        Assert.IsFalse(result.Warnings.Any());
-    }
+    // [TestMethod] - Commented out: This feature was removed in the simplified template engine
+    // public void ProcessTemplate_QuotedColumnsPlaceholder_ReplacesWithQuotedSnakeCaseColumns()
+    // {
+    //     // Arrange
+    //     var template = "SELECT {{columns:quoted}} FROM {{table}}";
+    //
+    //     // Act
+    //     var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User");
+    //
+    //     // Assert
+    //     Assert.IsTrue(result.ProcessedSql.Contains("[id], [name], [email], [age], [department_id], [is_active]"));
+    //     Assert.IsFalse(result.Warnings.Any());
+    // }
 
-    [TestMethod]
-    public void ProcessTemplate_ColumnsAutoPlaceholder_ReplacesWithSnakeCaseColumns()
-    {
-        // Arrange
-        var template = "SELECT {{columns:auto}} FROM {{table}}";
+    // [TestMethod] - Commented out: This feature was removed in the simplified template engine
+    // public void ProcessTemplate_WhereIdPlaceholder_ReplacesWithSnakeCaseId()
+    // {
+    //     // Arrange
+    //     var template = "SELECT * FROM {{table}} WHERE {{where:id}}";
+    //
+    //     // Act
+    //     var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User");
+    //
+    //     // Assert
+    //     Assert.AreEqual("SELECT * FROM user WHERE id = @id", result.ProcessedSql);
+    //     Assert.IsFalse(result.Warnings.Any());
+    // }
 
-        // Act
-        var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User");
+    // [TestMethod] - Commented out: This feature was removed in the simplified template engine
+    // public void ProcessTemplate_WhereAutoPlaceholder_GeneratesWhereClauseFromParameters()
+    // {
+    //     // Arrange
+    //     var template = "SELECT * FROM {{table}} WHERE {{where:auto}}";
+    //
+    //     // Act
+    //     var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User");
+    //
+    //     // Assert
+    //     Assert.IsTrue(result.ProcessedSql.Contains("WHERE id = @id"));
+    //     Assert.IsFalse(result.Warnings.Any());
+    // }
 
-        // Assert
-        Assert.IsTrue(result.ProcessedSql.Contains("id, name, email, age, department_id, is_active"));
-        Assert.IsTrue(result.ProcessedSql.Contains("FROM user"));
-        Assert.IsFalse(result.Warnings.Any());
-    }
-
-    [TestMethod]
-    public void ProcessTemplate_QuotedColumnsPlaceholder_ReplacesWithQuotedSnakeCaseColumns()
-    {
-        // Arrange
-        var template = "SELECT {{columns:quoted}} FROM {{table}}";
-
-        // Act
-        var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User");
-
-        // Assert
-        Assert.IsTrue(result.ProcessedSql.Contains("[id], [name], [email], [age], [department_id], [is_active]"));
-        Assert.IsFalse(result.Warnings.Any());
-    }
-
-    [TestMethod]
-    public void ProcessTemplate_WhereIdPlaceholder_ReplacesWithSnakeCaseId()
-    {
-        // Arrange
-        var template = "SELECT * FROM {{table}} WHERE {{where:id}}";
-
-        // Act
-        var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User");
-
-        // Assert
-        Assert.AreEqual("SELECT * FROM user WHERE id = @id", result.ProcessedSql);
-        Assert.IsFalse(result.Warnings.Any());
-    }
-
-    [TestMethod]
-    public void ProcessTemplate_WhereAutoPlaceholder_GeneratesWhereClauseFromParameters()
-    {
-        // Arrange
-        var template = "SELECT * FROM {{table}} WHERE {{where:auto}}";
-
-        // Act
-        var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User");
-
-        // Assert
-        Assert.IsTrue(result.ProcessedSql.Contains("WHERE id = @id"));
-        Assert.IsFalse(result.Warnings.Any());
-    }
-
-    [TestMethod]
-    public void ProcessTemplate_ComplexTemplate_ProcessesAllPlaceholdersCorrectly()
-    {
-        // Arrange
-        var template = "SELECT {{columns:auto}} FROM {{table:quoted}} WHERE {{where:id}} ORDER BY {{columns:auto}}";
-
-        // Act
-        var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User");
-
-        // Assert
-        Assert.IsTrue(result.ProcessedSql.Contains("id, name, email, age, department_id, is_active"));
-        Assert.IsTrue(result.ProcessedSql.Contains("FROM [user]"));
-        Assert.IsTrue(result.ProcessedSql.Contains("WHERE id = @id"));
-        Assert.IsFalse(result.Warnings.Any());
-    }
+    // [TestMethod] - Commented out: This feature was removed in the simplified template engine
+    // public void ProcessTemplate_ComplexTemplate_ProcessesAllPlaceholdersCorrectly()
+    // {
+    //     // Arrange
+    //     var template = "SELECT {{columns:auto}} FROM {{table:quoted}} WHERE {{where:id}} ORDER BY {{columns:auto}}";
+    //
+    //     // Act
+    //     var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User");
+    //
+    //     // Assert
+    //     Assert.IsTrue(result.ProcessedSql.Contains("id, name, email, age, department_id, is_active"));
+    //     Assert.IsTrue(result.ProcessedSql.Contains("FROM [user]"));
+    //     Assert.IsTrue(result.ProcessedSql.Contains("WHERE id = @id"));
+    //     Assert.IsFalse(result.Warnings.Any());
+    // }
 
     [TestMethod]
     public void ProcessTemplate_WithParameters_ExtractsParametersCorrectly()

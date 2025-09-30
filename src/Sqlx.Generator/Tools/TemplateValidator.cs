@@ -105,8 +105,11 @@ public class TemplateValidator
 /// </summary>
 public class ValidationContext
 {
+    /// <summary>方法符号信息</summary>
     public IMethodSymbol? Method { get; set; }
+    /// <summary>实体类型符号</summary>
     public INamedTypeSymbol? EntityType { get; set; }
+    /// <summary>表名称</summary>
     public string? TableName { get; set; }
 }
 
@@ -115,8 +118,11 @@ public class ValidationContext
 /// </summary>
 public class TemplateInfo
 {
+    /// <summary>模板名称</summary>
     public string Name { get; set; } = string.Empty;
+    /// <summary>模板内容</summary>
     public string Template { get; set; } = string.Empty;
+    /// <summary>模板来源</summary>
     public string Source { get; set; } = string.Empty;
 }
 
@@ -125,17 +131,29 @@ public class TemplateInfo
 /// </summary>
 public class TemplateValidationReport
 {
+    /// <summary>模板名称</summary>
     public string Name { get; set; } = string.Empty;
+    /// <summary>模板来源</summary>
     public string Source { get; set; } = string.Empty;
+    /// <summary>模板内容</summary>
     public string Template { get; set; } = string.Empty;
+    /// <summary>验证是否成功</summary>
     public bool IsValid { get; set; } = true;
+    /// <summary>验证时间</summary>
     public DateTime ValidationTime { get; set; }
+    /// <summary>处理后的SQL</summary>
     public string ProcessedSql { get; set; } = string.Empty;
+    /// <summary>是否包含动态特性</summary>
     public bool HasDynamicFeatures { get; set; }
+    /// <summary>错误列表</summary>
     public List<string> Errors { get; set; } = new();
+    /// <summary>警告列表</summary>
     public List<string> Warnings { get; set; } = new();
+    /// <summary>建议列表</summary>
     public List<string> Suggestions { get; set; } = new();
+    /// <summary>参数映射列表</summary>
     public List<ParameterMapping> Parameters { get; set; } = new();
+    /// <summary>元数据字典</summary>
     public Dictionary<string, object> Metadata { get; set; } = new();
 }
 
@@ -144,10 +162,16 @@ public class TemplateValidationReport
 /// </summary>
 public class BatchValidationReport
 {
+    /// <summary>批量验证时间</summary>
     public DateTime ValidationTime { get; set; }
+    /// <summary>总模板数量</summary>
     public int TotalCount { get; set; }
+    /// <summary>验证通过数量</summary>
     public int PassedCount { get; set; }
+    /// <summary>验证失败数量</summary>
     public int FailedCount { get; set; }
+    /// <summary>成功率</summary>
     public double SuccessRate { get; set; }
+    /// <summary>模板验证报告列表</summary>
     public List<TemplateValidationReport> TemplateReports { get; set; } = new();
 }

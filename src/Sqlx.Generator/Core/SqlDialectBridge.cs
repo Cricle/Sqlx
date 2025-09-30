@@ -29,12 +29,19 @@ public readonly record struct SqlDefine(string ColumnLeft, string ColumnRight, s
     private string EscapeString(string value) => value.Replace(StringLeft, StringLeft + StringLeft);
 
     // Predefined dialect instances
+    /// <summary>MySQL数据库方言配置</summary>
     public static readonly SqlDefine MySql = new("`", "`", "'", "'", "@");
+    /// <summary>SQL Server数据库方言配置</summary>
     public static readonly SqlDefine SqlServer = new("[", "]", "'", "'", "@");
+    /// <summary>PostgreSQL数据库方言配置</summary>
     public static readonly SqlDefine PostgreSql = new("\"", "\"", "'", "'", "$");
+    /// <summary>SQLite数据库方言配置</summary>
     public static readonly SqlDefine SQLite = new("[", "]", "'", "'", "$");
+    /// <summary>PostgreSQL数据库方言配置（别名）</summary>
     public static readonly SqlDefine PgSql = PostgreSql;
+    /// <summary>Oracle数据库方言配置</summary>
     public static readonly SqlDefine Oracle = new("\"", "\"", "'", "'", ":");
+    /// <summary>DB2数据库方言配置</summary>
     public static readonly SqlDefine DB2 = new("\"", "\"", "'", "'", "?");
 }
 

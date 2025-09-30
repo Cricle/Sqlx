@@ -1,36 +1,36 @@
 namespace Sqlx
 {
-    /// <summary>
-    /// Database dialect definitions for mainstream databases (AOT-friendly)
-    /// </summary>
+    /// <summary>Provides predefined database dialect configurations for SQL generation.</summary>
     public static class SqlDefine
     {
-        /// <summary>SQL Server: [column] with @ parameters</summary>
+        /// <summary>SQL Server dialect configuration - uses [brackets] for columns and @ for parameters.</summary>
         public static readonly SqlDialect SqlServer = new("[", "]", "'", "'", "@");
 
-        /// <summary>MySQL: `column` with @ parameters</summary>
+        /// <summary>MySQL dialect configuration - uses `backticks` for columns and @ for parameters.</summary>
         public static readonly SqlDialect MySql = new("`", "`", "'", "'", "@");
 
-        /// <summary>PostgreSQL: "column" with $ parameters</summary>
+        /// <summary>PostgreSQL dialect configuration - uses "quotes" for columns and $ for parameters.</summary>
         public static readonly SqlDialect PostgreSql = new("\"", "\"", "'", "'", "$");
 
-        /// <summary>PostgreSQL: "column" with $ parameters (alias)</summary>
-        public static readonly SqlDialect PgSql = PostgreSql;
-
-
-        /// <summary>SQLite: [column] with $ parameters</summary>
+        /// <summary>SQLite dialect configuration - uses [brackets] for columns and $ for parameters.</summary>
         public static readonly SqlDialect SQLite = new("[", "]", "'", "'", "$");
 
-        /// <summary>SQLite: [column] with $ parameters (alias)</summary>
-        public static readonly SqlDialect Sqlite = SQLite;
-
-        /// <summary>Oracle: "column" with : parameters</summary>
+        /// <summary>Oracle dialect configuration - uses "quotes" for columns and : for parameters.</summary>
         public static readonly SqlDialect Oracle = new("\"", "\"", "'", "'", ":");
 
-        /// <summary>DB2: "column" with ? parameters</summary>
+        /// <summary>DB2 dialect configuration - uses "quotes" for columns and ? for parameters.</summary>
         public static readonly SqlDialect DB2 = new("\"", "\"", "'", "'", "?");
 
-        /// <summary>Gets SQL dialect by database type</summary>
+        /// <summary>Alias for PostgreSQL - maintains backward compatibility.</summary>
+        public static readonly SqlDialect PgSql = PostgreSql;
+
+        /// <summary>Alias for SQLite - maintains backward compatibility.</summary>
+        public static readonly SqlDialect Sqlite = SQLite;
+
+        /// <summary>Gets the appropriate SQL dialect for the specified database type.</summary>
+        /// <param name="databaseType">The database type to get the dialect for.</param>
+        /// <returns>The corresponding SqlDialect instance.</returns>
+        /// <exception cref="NotSupportedException">Thrown when the database type is not supported.</exception>
         public static SqlDialect GetDialect(Annotations.SqlDefineTypes databaseType) => databaseType switch
         {
             Annotations.SqlDefineTypes.MySql => MySql,
@@ -105,18 +105,8 @@ namespace Sqlx
         public string GetConcatFunction(params string[] parts) => DatabaseType switch
         {
             "SqlServer" => string.Join(" + ", parts),
-            "MySql" or "SQLite" => $"CONCAT({string.Join(", ", parts)})",
-            "PostgreSql" => string.Join(" || ", parts),
-            "Oracle" => string.Join(" || ", parts),
-            "DB2" => $"CONCAT({string.Join(", ", parts)})",
+            "PostgreSql" or "Oracle" => string.Join(" || ", parts),
             _ => $"CONCAT({string.Join(", ", parts)})"
-        };
-
-        /// <summary>Gets pagination syntax</summary>
-        public string GetLimitClause(int count, int offset = 0) => DatabaseType switch
-        {
-            "SqlServer" => offset > 0 ? $"OFFSET {offset} ROWS FETCH NEXT {count} ROWS ONLY" : $"TOP {count}",
-            _ => $"LIMIT {count}" + (offset > 0 ? $" OFFSET {offset}" : "")
         };
     }
 }

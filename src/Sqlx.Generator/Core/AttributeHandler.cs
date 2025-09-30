@@ -49,45 +49,9 @@ public class AttributeHandler
         try
         {
             var methodName = method.Name.ToLowerInvariant();
-            var entityTypeName = entityType?.Name ?? "Entity";
+            var paramName = method.Parameters.FirstOrDefault()?.Name ?? "id";
 
-            // Determine the appropriate Sqlx attribute based on method name patterns
-            if (methodName.Contains("getall") || methodName.StartsWith("findall"))
-            {
-                return $"[global::Sqlx.Annotations.Sqlx(\"SELECT * FROM {tableName}\")]";
-            }
-            else if (methodName.Contains("getby") || methodName.Contains("findby") ||
-                    (methodName.StartsWith("get") && method.Parameters.Length > 0))
-            {
-                var paramName = method.Parameters.FirstOrDefault()?.Name ?? "id";
-                return $"[global::Sqlx.Annotations.Sqlx(\"SELECT * FROM {tableName} WHERE Id = @{paramName}\")]";
-            }
-            else if (methodName.Contains("create") || methodName.Contains("insert") || methodName.Contains("add"))
-            {
-                return $"[global::Sqlx.Annotations.SqlExecuteType(SqlOperation.Insert, \"{tableName}\")]";
-            }
-            else if (methodName.Contains("update") || methodName.Contains("modify"))
-            {
-                return $"[global::Sqlx.Annotations.SqlExecuteType(SqlOperation.Update, \"{tableName}\")]";
-            }
-            else if (methodName.Contains("delete") || methodName.Contains("remove"))
-            {
-                return $"[global::Sqlx.Annotations.SqlExecuteType(SqlOperation.Delete, \"{tableName}\")]";
-            }
-            else if (methodName.Contains("count"))
-            {
-                return $"[global::Sqlx.Annotations.Sqlx(\"SELECT COUNT(*) FROM {tableName}\")]";
-            }
-            else if (methodName.Contains("exists"))
-            {
-                var paramName = method.Parameters.FirstOrDefault()?.Name ?? "id";
-                return $"[global::Sqlx.Annotations.Sqlx(\"SELECT COUNT(*) FROM {tableName} WHERE Id = @{paramName}\")]";
-            }
-            else
-            {
-                // Default to a SELECT query for unknown patterns
-                return $"[global::Sqlx.Annotations.Sqlx(\"SELECT * FROM {tableName}\")]";
-            }
+            return GetAttributeForMethodPattern(methodName, method.Parameters.Length > 0, tableName, paramName);
         }
         catch
         {
@@ -259,4 +223,24 @@ public class AttributeHandler
 
         return executeTypeArg.Value?.ToString() ?? "None";
     }
+
+    /// <summary>Get appropriate attribute based on method name patterns using optimized switch expressions</summary>
+    private string GetAttributeForMethodPattern(string methodName, bool hasParameters, string tableName, string paramName) => methodName switch
+    {
+        var name when name.Contains("getall") || name.StartsWith("findall")
+            => $"[global::Sqlx.Annotations.Sqlx(\"SELECT * FROM {tableName}\")]",
+        var name when (name.Contains("getby") || name.Contains("findby") || (name.StartsWith("get") && hasParameters))
+            => $"[global::Sqlx.Annotations.Sqlx(\"SELECT * FROM {tableName} WHERE Id = @{paramName}\")]",
+        var name when name.Contains("create") || name.Contains("insert") || name.Contains("add")
+            => $"[global::Sqlx.Annotations.SqlExecuteType(SqlOperation.Insert, \"{tableName}\")]",
+        var name when name.Contains("update") || name.Contains("modify")
+            => $"[global::Sqlx.Annotations.SqlExecuteType(SqlOperation.Update, \"{tableName}\")]",
+        var name when name.Contains("delete") || name.Contains("remove")
+            => $"[global::Sqlx.Annotations.SqlExecuteType(SqlOperation.Delete, \"{tableName}\")]",
+        var name when name.Contains("count")
+            => $"[global::Sqlx.Annotations.Sqlx(\"SELECT COUNT(*) FROM {tableName}\")]",
+        var name when name.Contains("exists")
+            => $"[global::Sqlx.Annotations.Sqlx(\"SELECT COUNT(*) FROM {tableName} WHERE Id = @{paramName}\")]",
+        _ => $"[global::Sqlx.Annotations.Sqlx(\"SELECT * FROM {tableName}\")]"
+    };
 }

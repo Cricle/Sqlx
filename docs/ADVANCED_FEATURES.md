@@ -1,21 +1,21 @@
-# Sqlx 3.0 Advanced Features Guide
+# Sqlx Advanced Features Guide
 
 This guide covers advanced features and best practices for Sqlx.
 
 ## 🚀 AOT (Ahead-Of-Time) Optimization
 
-Sqlx 3.0 fully supports .NET AOT compilation for optimal performance.
+Sqlx fully supports .NET AOT compilation for optimal performance.
 
 ### AOT-Friendly Design
 ```csharp
 // ✅ AOT-friendly: Explicit column specification
-var query = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
-    .InsertInto(u => new { u.Name, u.Email, u.Age })
+var query = ExpressionToSql<User>.ForSqlServer()
+    .Insert(u => new { u.Name, u.Email, u.Age })
     .Values("John", "john@example.com", 30);
 
 // ❌ Avoid in AOT: Relies on reflection
-var query = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
-    .InsertIntoAll()  // Uses reflection to get all properties
+var query = ExpressionToSql<User>.ForSqlServer()
+    .InsertAll()  // Uses reflection to get all properties
     .Values("John", "john@example.com", 30, true, DateTime.Now);
 ```
 
@@ -52,13 +52,13 @@ public class User
 }
 
 // Complex conditions with type safety
-var advancedQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+var advancedQuery = ExpressionToSql<User>.ForSqlServer()
     .Where(u => u.BirthDate > DateTime.Now.AddYears(-30))
     .Where(u => u.Department.Name == "Engineering")
     .Where(u => u.Orders.Any(o => o.Amount > 1000))
-    .Select(u => new { 
-        u.Id, 
-        u.Name, 
+    .Select(u => new {
+        u.Id,
+        u.Name,
         Age = DateTime.Now.Year - u.BirthDate.Year,
         DepartmentName = u.Department.Name
     })
@@ -69,19 +69,19 @@ var advancedQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
 ### Method Call Translation
 ```csharp
 // String methods
-var nameQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+var nameQuery = ExpressionToSql<User>.ForSqlServer()
     .Where(u => u.Name.StartsWith("John"))
     .Where(u => u.Email.Contains("@company.com"))
     .Where(u => u.Name.Length > 5);
 
 // Date methods
-var dateQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+var dateQuery = ExpressionToSql<User>.ForSqlServer()
     .Where(u => u.CreatedAt.Year == 2024)
     .Where(u => u.CreatedAt.Month >= 6)
     .Where(u => u.UpdatedAt.Date == DateTime.Today);
 
 // Math methods
-var mathQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+var mathQuery = ExpressionToSql<User>.ForSqlServer()
     .Where(u => Math.Abs(u.Balance) > 1000)
     .Where(u => Math.Round(u.Score, 2) >= 85.5);
 ```
@@ -97,18 +97,18 @@ public class QueryOptimizer
     // Convert complex dynamic query to reusable template
     public static SqlTemplate CreateUserSearchTemplate()
     {
-        var baseQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+        var baseQuery = ExpressionToSql<User>.ForSqlServer()
             .Select(u => new { u.Id, u.Name, u.Email, u.Department })
             .Where(u => u.IsActive)
             .OrderBy(u => u.Name);
-            
+
         return baseQuery.ToTemplate();
     }
-    
+
     // Use parameterized queries for better caching
     public static string CreateOptimizedSearch()
     {
-        return ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+        return ExpressionToSql<User>.ForSqlServer()
             .UseParameterizedQueries()
             .Where(u => u.Department == "IT")
             .Select(u => new { u.Name, u.Email })
@@ -122,18 +122,18 @@ public class QueryOptimizer
 public static class TemplateCache
 {
     private static readonly ConcurrentDictionary<string, SqlTemplate> _cache = new();
-    
+
     public static SqlTemplate GetOrCreate(string key, Func<SqlTemplate> factory)
     {
         return _cache.GetOrAdd(key, _ => factory());
     }
-    
+
     // Usage
     public static SqlTemplate GetUserSearchTemplate()
     {
-        return GetOrCreate("user_search", () => 
-            SqlTemplate.Parse(@"SELECT Id, Name, Email FROM Users 
-                               WHERE IsActive = 1 
+        return GetOrCreate("user_search", () =>
+            SqlTemplate.Parse(@"SELECT Id, Name, Email FROM Users
+                               WHERE IsActive = 1
                                AND (@department IS NULL OR Department = @department)
                                ORDER BY Name"));
     }
@@ -147,17 +147,17 @@ public static class TemplateCache
 ### Database-Specific Features
 ```csharp
 // SQL Server specific features
-var sqlServerQuery = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+var sqlServerQuery = ExpressionToSql<User>.ForSqlServer()
     .Select(u => new { u.Id, u.Name })
     .Take(10);  // Uses OFFSET/FETCH
 
-// MySQL specific features  
-var mysqlQuery = ExpressionToSql<User>.Create(SqlDefine.MySql)
+// MySQL specific features
+var mysqlQuery = ExpressionToSql<User>.ForMySql()
     .Select(u => new { u.Id, u.Name })
     .Take(10);  // Uses LIMIT
 
 // PostgreSQL specific features
-var postgresQuery = ExpressionToSql<User>.Create(SqlDefine.PostgreSql)
+var postgresQuery = ExpressionToSql<User>.ForPostgreSQL()
     .Select(u => new { u.Id, u.Name })
     .Take(10);  // Uses LIMIT with proper parameter handling
 ```
@@ -178,11 +178,11 @@ public static class CustomDialects
             // Additional custom configurations...
         };
     }
-    
+
     // Oracle-optimized queries
     public static string CreateOracleOptimizedQuery<T>() where T : class
     {
-        return ExpressionToSql<T>.Create(SqlDefine.Oracle)
+        return ExpressionToSql<T>.ForOracle()
             .Select()  // Oracle-specific SELECT optimization
             .ToSql();
     }
@@ -199,9 +199,9 @@ public class AdvancedReporting
 {
     public static string CreateSalesReport()
     {
-        return ExpressionToSql<Order>.Create(SqlDefine.SqlServer)
+        return ExpressionToSql<Order>.ForSqlServer()
             .GroupBy(o => new { o.CustomerId, Year = o.OrderDate.Year })
-            .Select(g => new 
+            .Select(g => new
             {
                 CustomerId = g.Key.CustomerId,
                 Year = g.Key.Year,
@@ -215,10 +215,10 @@ public class AdvancedReporting
             .OrderByDescending(g => g.Sum(o => o.Amount))
             .ToSql();
     }
-    
+
     public static string CreateDepartmentStats()
     {
-        return ExpressionToSql<Employee>.Create(SqlDefine.SqlServer)
+        return ExpressionToSql<Employee>.ForSqlServer()
             .GroupBy(e => e.Department)
             .Select(g => new
             {
@@ -238,7 +238,7 @@ public class AdvancedReporting
 // Advanced window function support
 public static string CreateRankingQuery()
 {
-    return ExpressionToSql<Employee>.Create(SqlDefine.SqlServer)
+    return ExpressionToSql<Employee>.ForSqlServer()
         .Select(e => new
         {
             e.Name,
@@ -268,7 +268,7 @@ public class AdvancedParameterHandling
             new { userIds });
         return sql.Render();
     }
-    
+
     // Handle JSON parameters (modern databases)
     public static string CreateJsonQuery()
     {
@@ -277,7 +277,7 @@ public class AdvancedParameterHandling
             "SELECT * FROM Users WHERE JsonData = @jsonData",
             new { jsonData = JsonSerializer.Serialize(jsonData) }).Render();
     }
-    
+
     // Handle complex object parameters
     public static string CreateComplexParameterQuery()
     {
@@ -287,13 +287,13 @@ public class AdvancedParameterHandling
             AgeRange = new { Min = 18, Max = 65 },
             Departments = new[] { "IT", "Sales" }
         };
-        
+
         var template = SqlTemplate.Parse(@"
-            SELECT * FROM Users 
-            WHERE Name IN @names 
-            AND Age BETWEEN @minAge AND @maxAge 
+            SELECT * FROM Users
+            WHERE Name IN @names
+            AND Age BETWEEN @minAge AND @maxAge
             AND Department IN @departments");
-            
+
         return template.Execute(new {
             names = criteria.Names,
             minAge = criteria.AgeRange.Min,
@@ -315,26 +315,26 @@ public class QueryOptimization
     // Optimize for covering indexes
     public static string CreateIndexOptimizedQuery()
     {
-        return ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+        return ExpressionToSql<User>.ForSqlServer()
             .Select(u => new { u.Id, u.Name, u.Email })  // Only select needed columns
             .Where(u => u.IsActive && u.Department == "IT")  // Use indexed columns first
             .OrderBy(u => u.Id)  // Order by clustered index when possible
             .ToSql();
     }
-    
+
     // Batch operations for better performance
     public static string CreateBatchInsert(List<User> users)
     {
-        var values = users.Select((u, i) => 
+        var values = users.Select((u, i) =>
             $"(@name{i}, @email{i}, @age{i})").ToArray();
-            
+
         var parameters = users.SelectMany((u, i) => new[]
         {
             new KeyValuePair<string, object?>($"name{i}", u.Name),
             new KeyValuePair<string, object?>($"email{i}", u.Email),
             new KeyValuePair<string, object?>($"age{i}", u.Age)
         }).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-        
+
         return ParameterizedSql.CreateWithDictionary(
             $"INSERT INTO Users (Name, Email, Age) VALUES {string.Join(", ", values)}",
             parameters).Render();
@@ -354,17 +354,17 @@ public class MemoryOptimization
             Sql = sql;
             Parameters = parameters;
         }
-        
+
         public string Sql { get; }
         public IReadOnlyDictionary<string, object?> Parameters { get; }
     }
-    
+
     // Optimize string building for large queries
     public static string CreateLargeQuery(IEnumerable<SearchFilter> filters)
     {
-        var query = ExpressionToSql<User>.Create(SqlDefine.SqlServer)
+        var query = ExpressionToSql<User>.ForSqlServer()
             .Select(u => new { u.Id, u.Name, u.Email });
-            
+
         foreach (var filter in filters)
         {
             switch (filter.Type)
@@ -380,7 +380,7 @@ public class MemoryOptimization
                     break;
             }
         }
-        
+
         return query.ToSql();
     }
 }
@@ -400,26 +400,26 @@ public class SecurityPatterns
         // Input validation
         if (string.IsNullOrWhiteSpace(searchTerm))
             throw new ArgumentException("Search term cannot be empty");
-            
+
         if (maxResults <= 0 || maxResults > 1000)
             throw new ArgumentException("Max results must be between 1 and 1000");
-        
+
         // Safe parameterized query
         return ParameterizedSql.Create(
             "SELECT TOP (@maxResults) * FROM Users WHERE Name LIKE @searchTerm",
             new { searchTerm = $"%{searchTerm}%", maxResults }).Render();
     }
-    
+
     // Whitelist approach for dynamic sorting
     public static string SafeDynamicSort(string sortColumn, bool ascending = true)
     {
         var allowedColumns = new[] { "Id", "Name", "Email", "CreatedAt" };
-        
+
         if (!allowedColumns.Contains(sortColumn))
             throw new ArgumentException($"Invalid sort column: {sortColumn}");
-            
+
         var direction = ascending ? "ASC" : "DESC";
-        
+
         return $"SELECT * FROM Users ORDER BY [{sortColumn}] {direction}";
     }
 }
@@ -437,14 +437,14 @@ public class QueryDiagnostics
     {
         var stopwatch = Stopwatch.StartNew();
         var memoryBefore = GC.GetTotalMemory(false);
-        
+
         try
         {
             var sql = queryBuilder();
             stopwatch.Stop();
-            
+
             var memoryAfter = GC.GetTotalMemory(false);
-            
+
             return new QueryStats
             {
                 QueryName = queryName,
@@ -490,17 +490,17 @@ public class EfCoreIntegration
     public static string CreateEfCompatibleQuery<T>(DbContext context) where T : class
     {
         // Use Sqlx for complex query building, then integrate with EF Core
-        var sqlxQuery = ExpressionToSql<T>.Create(SqlDefine.SqlServer)
+        var sqlxQuery = ExpressionToSql<T>.ForSqlServer()
             .Where(entity => EF.Property<bool>(entity, "IsActive"))
-            .Select(entity => new { 
+            .Select(entity => new {
                 Id = EF.Property<int>(entity, "Id"),
                 Name = EF.Property<string>(entity, "Name")
             })
             .ToSql();
-            
+
         return sqlxQuery;
     }
-    
+
     // Execute raw SQL through EF Core
     public static async Task<List<T>> ExecuteSqlxQuery<T>(DbContext context, string sql) where T : class
     {
@@ -514,18 +514,18 @@ public class EfCoreIntegration
 public class DapperIntegration
 {
     private readonly IDbConnection _connection;
-    
+
     public DapperIntegration(IDbConnection connection)
     {
         _connection = connection;
     }
-    
+
     public async Task<IEnumerable<T>> QueryAsync<T>(SqlTemplate template, object? parameters = null)
     {
         var sql = template.Execute(parameters);
         return await _connection.QueryAsync<T>(sql.Sql, sql.Parameters);
     }
-    
+
     public async Task<T?> QueryFirstOrDefaultAsync<T>(SqlTemplate template, object? parameters = null)
     {
         var sql = template.Execute(parameters);
@@ -536,4 +536,4 @@ public class DapperIntegration
 
 ---
 
-These advanced features enable you to build sophisticated, high-performance applications with Sqlx 3.0 while maintaining type safety and optimal performance characteristics.
+These advanced features enable you to build sophisticated, high-performance applications with Sqlx while maintaining type safety and optimal performance characteristics.

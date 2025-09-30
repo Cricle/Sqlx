@@ -15,11 +15,6 @@ internal static class Extensions
 {
     // No caching in source generators to ensure fresh compilation each time
 
-    public static bool CanHaveNullValue(this ITypeSymbol typeSymbol)
-    {
-        return typeSymbol.NullableAnnotation == NullableAnnotation.Annotated ||
-               (!typeSymbol.IsValueType && typeSymbol.NullableAnnotation != NullableAnnotation.NotAnnotated);
-    }
 
     public static bool IsNullableType(this ITypeSymbol type)
     {

@@ -51,56 +51,14 @@ public class TypeInferenceService : ITypeInferenceService
         // Check parameters for entity types
         foreach (var param in method.Parameters)
         {
-            if (param.Type.TypeKind == TypeKind.Class &&
-                param.Type.Name != "String" &&
-                param.Type.Name != "CancellationToken" &&
-                !IsSystemType(param.Type))
-            {
-                return param.Type as INamedTypeSymbol;
-            }
-
-            // Check for collection of entities
-            if (param.Type.IsCollectionType() &&
-                param.Type is INamedTypeSymbol collectionType &&
-                collectionType.TypeArguments.Length > 0)
-            {
-                var elementType = collectionType.TypeArguments[0];
-                if (elementType.TypeKind == TypeKind.Class &&
-                    elementType.Name != "String" &&
-                    !IsSystemType(elementType))
-                {
-                    return elementType as INamedTypeSymbol;
-                }
-            }
+            if (TryGetEntityType(param.Type, out var entityType)) return entityType;
+            if (TryGetCollectionEntityType(param.Type, out var collectionEntityType)) return collectionEntityType;
         }
 
         // Check return type
-        var returnType = method.ReturnType;
-        if (returnType is INamedTypeSymbol taskType && taskType.Name == "Task" && taskType.TypeArguments.Length > 0)
-        {
-            returnType = taskType.TypeArguments[0];
-        }
-
-        if (returnType.IsCollectionType() &&
-            returnType is INamedTypeSymbol collectionReturnType &&
-            collectionReturnType.TypeArguments.Length > 0)
-        {
-            var elementType = collectionReturnType.TypeArguments[0];
-            if (elementType.TypeKind == TypeKind.Class &&
-                elementType.Name != "String" &&
-                !IsSystemType(elementType))
-            {
-                return elementType as INamedTypeSymbol;
-            }
-        }
-
-        if (returnType.TypeKind == TypeKind.Class &&
-            returnType.Name != "String" &&
-            !IsSystemType(returnType) &&
-            !returnType.IsCollectionType())
-        {
-            return returnType as INamedTypeSymbol;
-        }
+        var returnType = UnwrapTaskType(method.ReturnType);
+        if (TryGetCollectionEntityType(returnType, out var returnCollectionType)) return returnCollectionType;
+        if (TryGetEntityType(returnType, out var returnEntityType)) return returnEntityType;
 
         return null;
     }
@@ -387,5 +345,32 @@ public class TypeInferenceService : ITypeInferenceService
     {
         return type.ContainingNamespace?.ToDisplayString().StartsWith("System") == true ||
                type.SpecialType != SpecialType.None;
+    }
+
+    /// <summary>Unwrap Task&lt;T&gt; to get the inner type T</summary>
+    private ITypeSymbol UnwrapTaskType(ITypeSymbol type) => type is INamedTypeSymbol { Name: "Task", TypeArguments.Length: > 0 } taskType ? taskType.TypeArguments[0] : type;
+
+    /// <summary>Try to get entity type from a type, returns true if successful</summary>
+    private bool TryGetEntityType(ITypeSymbol type, out INamedTypeSymbol? entityType)
+    {
+        if (type is INamedTypeSymbol named && type.TypeKind == TypeKind.Class && type.Name is not ("String" or "CancellationToken") && !IsSystemType(type))
+        {
+            entityType = named;
+            return true;
+        }
+        entityType = null;
+        return false;
+    }
+
+    /// <summary>Try to get entity type from a collection type, returns true if successful</summary>
+    private bool TryGetCollectionEntityType(ITypeSymbol type, out INamedTypeSymbol? entityType)
+    {
+        if (type.IsCollectionType() && type is INamedTypeSymbol { TypeArguments.Length: > 0 } collectionType)
+        {
+            var elementType = collectionType.TypeArguments[0];
+            return TryGetEntityType(elementType, out entityType);
+        }
+        entityType = null;
+        return false;
     }
 }

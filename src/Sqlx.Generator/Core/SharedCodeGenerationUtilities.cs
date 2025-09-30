@@ -13,21 +13,15 @@ namespace Sqlx.Generator.Core;
 /// </summary>
 public static class SharedCodeGenerationUtilities
 {
-    /// <summary>
-    /// Extract inner type from Task&lt;T&gt; type strings
-    /// </summary>
-    public static string ExtractInnerTypeFromTask(string taskType)
+    /// <summary>Extract inner type from Task&lt;T&gt; type strings</summary>
+    public static string ExtractInnerTypeFromTask(string taskType) => taskType switch
     {
-        if (taskType.StartsWith("Task<") && taskType.EndsWith(">"))
-            return taskType.Substring(5, taskType.Length - 6);
-        if (taskType.StartsWith("System.Threading.Tasks.Task<") && taskType.EndsWith(">"))
-            return taskType.Substring(28, taskType.Length - 29);
-        return "object";
-    }
+        var t when t.StartsWith("Task<") && t.EndsWith(">") => t.Substring(5, t.Length - 6),
+        var t when t.StartsWith("System.Threading.Tasks.Task<") && t.EndsWith(">") => t.Substring(28, t.Length - 29),
+        _ => "object"
+    };
 
-    /// <summary>
-    /// Escape SQL string for C# string literal
-    /// </summary>
+    /// <summary>Escape SQL string for C# string literal</summary>
     public static string EscapeSqlForCSharp(string? sql) =>
         sql?.Replace("\"", "\\\"").Replace("\r\n", "\\r\\n").Replace("\n", "\\n").Replace("\r", "\\r") ?? "";
 
@@ -63,18 +57,15 @@ public static class SharedCodeGenerationUtilities
         sb.AppendLine();
 
         // Generate parameter binding
-        foreach (var param in method.Parameters)
+        foreach (var param in method.Parameters.Where(p => p.Type.Name != "CancellationToken"))
         {
-            if (param.Type.Name != "CancellationToken")
-            {
-                var paramName = $"@{param.Name}";
-                sb.AppendLine($"var param_{param.Name} = __cmd__.CreateParameter();");
-                sb.AppendLine($"param_{param.Name}.ParameterName = \"{paramName}\";");
-                sb.AppendLine($"param_{param.Name}.Value = {param.Name};");
-                sb.AppendLine($"param_{param.Name}.DbType = {GetDbType(param.Type)};");
-                sb.AppendLine($"__cmd__.Parameters.Add(param_{param.Name});");
-                sb.AppendLine();
-            }
+            var paramName = $"@{param.Name}";
+            sb.AppendLine($"var param_{param.Name} = __cmd__.CreateParameter();")
+              .AppendLine($"param_{param.Name}.ParameterName = \"{paramName}\";")
+              .AppendLine($"param_{param.Name}.Value = {param.Name};")
+              .AppendLine($"param_{param.Name}.DbType = {GetDbType(param.Type)};")
+              .AppendLine($"__cmd__.Parameters.Add(param_{param.Name});")
+              .AppendLine();
         }
     }
 
@@ -124,64 +115,59 @@ public static class SharedCodeGenerationUtilities
         foreach (var prop in properties)
         {
             var columnName = ConvertToSnakeCase(prop.Name);
-            sb.AppendLine($"if (reader[\"{columnName}\"] != global::System.DBNull.Value)");
-            sb.AppendLine("{");
-            sb.PushIndent();
             var readMethod = prop.Type.UnwrapNullableType().GetDataReaderMethod();
-            if (string.IsNullOrEmpty(readMethod))
-            {
-                sb.AppendLine($"{variableName}.{prop.Name} = ({prop.Type.ToDisplayString()})reader[\"{columnName}\"];");
-            }
-            else
-            {
-                sb.AppendLine($"{variableName}.{prop.Name} = reader.{readMethod}(reader.GetOrdinal(\"{columnName}\"));");
-            }
-            sb.PopIndent();
-            sb.AppendLine("}");
+            var isNullable = prop.Type.CanBeReferencedByName && prop.Type.NullableAnnotation == Microsoft.CodeAnalysis.NullableAnnotation.Annotated;
+            var defaultValue = isNullable ? "null" : GetDefaultValue(prop.Type);
+
+            var valueExpression = string.IsNullOrEmpty(readMethod)
+                ? $"({prop.Type.ToDisplayString()})reader[\"{columnName}\"]"
+                : $"reader.{readMethod}(reader.GetOrdinal(\"{columnName}\"))";
+
+            sb.AppendLine($"{variableName}.{prop.Name} = reader.IsDBNull(reader.GetOrdinal(\"{columnName}\")) ? {defaultValue} : {valueExpression};");
         }
     }
 
     /// <summary>
-    /// Convert C# property names to snake_case database column names
+    /// Get default value for a type
     /// </summary>
+    private static string GetDefaultValue(ITypeSymbol type)
+    {
+        if (type.NullableAnnotation == Microsoft.CodeAnalysis.NullableAnnotation.Annotated)
+            return "null";
+
+        return type.SpecialType switch
+        {
+            SpecialType.System_String => "string.Empty",
+            SpecialType.System_Boolean => "false",
+            SpecialType.System_Int32 => "0",
+            SpecialType.System_Int64 => "0L",
+            SpecialType.System_Decimal => "0m",
+            SpecialType.System_Double => "0.0",
+            SpecialType.System_Single => "0f",
+            _ => $"default({type.ToDisplayString()})"
+        };
+    }
+
+    /// <summary>Convert C# property names to snake_case database column names</summary>
     public static string ConvertToSnakeCase(string name)
     {
-        if (string.IsNullOrEmpty(name))
-            return name;
+        if (string.IsNullOrEmpty(name)) return name;
+        if (name.Contains("_")) return name.ToLowerInvariant();
 
-        // If already contains underscores and is all lowercase, return as-is
-        if (name.Contains("_") && name.All(c => char.IsLower(c) || c == '_' || char.IsDigit(c)))
-        {
-            return name;
-        }
-
-        // If already contains underscores and is all caps, convert to lowercase
-        if (name.Contains("_") && name.All(c => char.IsUpper(c) || c == '_' || char.IsDigit(c)))
-        {
-            return name.ToLower();
-        }
-
-        // Convert PascalCase/camelCase to snake_case
-        var result = new System.Text.StringBuilder();
+        var result = new System.Text.StringBuilder(name.Length + 5);
         for (int i = 0; i < name.Length; i++)
         {
             char current = name[i];
-
             if (char.IsUpper(current))
             {
-                // Add underscore before uppercase letters (except at the beginning)
-                if (i > 0 && !char.IsUpper(name[i - 1]))
-                {
-                    result.Append('_');
-                }
-                result.Append(char.ToLower(current));
+                if (i > 0 && !char.IsUpper(name[i - 1])) result.Append('_');
+                result.Append(char.ToLowerInvariant(current));
             }
             else
             {
                 result.Append(current);
             }
         }
-
         return result.ToString();
     }
 }

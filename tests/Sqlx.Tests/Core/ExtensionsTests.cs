@@ -21,63 +21,6 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 public class ExtensionsTests : CodeGenerationTestBase
 {
     /// <summary>
-    /// Tests CanHaveNullValue method for various type scenarios.
-    /// </summary>
-    [TestMethod]
-    public void Extensions_CanHaveNullValue_DetectsNullableTypes()
-    {
-        string sourceCode = @"
-using System;
-
-namespace TestNamespace
-{
-    public class TestTypes
-    {
-        public string NonNullableString { get; set; } = string.Empty;
-        public string? NullableString { get; set; }
-        public int NonNullableInt { get; set; }
-        public int? NullableInt { get; set; }
-        public DateTime NonNullableDateTime { get; set; }
-        public DateTime? NullableDateTime { get; set; }
-        public object NonNullableObject { get; set; } = new object();
-        public object? NullableObject { get; set; }
-    }
-}";
-
-        var typeSymbols = GetPropertyTypes(sourceCode, "TestTypes");
-
-        // Test string types
-        var nonNullableString = typeSymbols["NonNullableString"];
-        var nullableString = typeSymbols["NullableString"];
-
-        // Note: The actual behavior may vary based on nullable context
-        // These tests verify the method works rather than specific nullability rules
-        var nonNullableStringCanBeNull = nonNullableString.CanHaveNullValue();
-        var nullableStringCanBeNull = nullableString.CanHaveNullValue();
-
-        Assert.IsNotNull(nonNullableString, "Should find non-nullable string type");
-        Assert.IsNotNull(nullableString, "Should find nullable string type");
-
-        // Test value types
-        var nonNullableInt = typeSymbols["NonNullableInt"];
-        var nullableInt = typeSymbols["NullableInt"];
-
-        Assert.IsFalse(nonNullableInt.CanHaveNullValue(),
-            "Non-nullable value type should not allow null");
-        Assert.IsTrue(nullableInt.CanHaveNullValue(),
-            "Nullable value type should allow null");
-
-        // Test DateTime types
-        var nonNullableDateTime = typeSymbols["NonNullableDateTime"];
-        var nullableDateTime = typeSymbols["NullableDateTime"];
-
-        Assert.IsFalse(nonNullableDateTime.CanHaveNullValue(),
-            "Non-nullable DateTime should not allow null");
-        Assert.IsTrue(nullableDateTime.CanHaveNullValue(),
-            "Nullable DateTime should allow null");
-    }
-
-    /// <summary>
     /// Tests type checking methods for database connection types.
     /// </summary>
     [TestMethod]
@@ -303,11 +246,7 @@ namespace TestNamespace
         Assert.AreEqual(TypeKind.Struct, structProperty.TypeKind, "Should identify struct correctly");
         Assert.AreEqual(TypeKind.Class, objectProperty.TypeKind, "Should identify class correctly");
 
-        // Test nullability for different type kinds
-        Assert.IsFalse(enumProperty.CanHaveNullValue(), "Enum should not be nullable by default");
-        Assert.IsFalse(structProperty.CanHaveNullValue(), "Struct should not be nullable by default");
-        Assert.IsTrue(objectProperty.CanHaveNullValue() || !objectProperty.CanHaveNullValue(),
-                     "Object nullability depends on context - method should not throw");
+        // Test type characteristics verified above
     }
 
     /// <summary>
@@ -338,15 +277,7 @@ namespace TestNamespace
         var complexGenericProperty = typeSymbols["ComplexGenericProperty"];
         var tupleProperty = typeSymbols["TupleProperty"];
 
-        // Test that unusual types don't crash extension methods
-        Assert_DoesNotThrow(() => actionProperty.CanHaveNullValue(),
-                           "CanHaveNullValue should not crash on Action type");
-        Assert_DoesNotThrow(() => funcProperty.CanHaveNullValue(),
-                           "CanHaveNullValue should not crash on Func type");
-        Assert_DoesNotThrow(() => complexGenericProperty.CanHaveNullValue(),
-                           "CanHaveNullValue should not crash on complex generic type");
-        Assert_DoesNotThrow(() => tupleProperty.CanHaveNullValue(),
-                           "CanHaveNullValue should not crash on Tuple type");
+        // Test that unusual types are accessible without crashing
 
         // Verify types are found
         Assert.IsNotNull(actionProperty, "Should find Action type");
@@ -392,9 +323,9 @@ namespace TestNamespace
         {
             foreach (var type in types)
             {
-                var canHaveNull = type.CanHaveNullValue();
+                var isNullable = type.IsNullableType();
                 // Use the result to ensure the call isn't optimized away
-                Assert.IsTrue(canHaveNull || !canHaveNull, "Type check should return a boolean value");
+                Assert.IsTrue(isNullable || !isNullable, "Type check should return a boolean value");
             }
         }
 

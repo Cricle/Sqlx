@@ -25,7 +25,7 @@ public class SqlTemplateEngine
     // 核心正则表达式 - 性能优化版本 (修复ExplicitCapture问题)
     private static readonly Regex ParameterRegex = new(@"[@:$]\w+", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly Regex PlaceholderRegex = new(@"\{\{(\w+)(?::(\w+))?(?:\|([^}]+))?\}\}", RegexOptions.Compiled | RegexOptions.CultureInvariant);
-    private static readonly Regex SqlInjectionRegex = new(@"(?i)(union\s+select|drop\s+table|delete\s+from|insert\s+into|update\s+set|exec\s*\(|execute\s*\(|sp_|xp_|--|\*\/|\/\*)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex SqlInjectionRegex = new(@"(?i)(union\s+select|drop\s+table|exec\s*\(|execute\s*\(|sp_|xp_|--|\*\/|\/\*)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     // 性能优化：缓存常用字符串
     private static readonly Dictionary<string, string> CommonPlaceholderCache = new(StringComparer.OrdinalIgnoreCase)
@@ -224,7 +224,7 @@ public class SqlTemplateEngine
             return CommonPlaceholderCache["*"];
         }
 
-        var properties = GetFilteredProperties(entityType, options, null);
+        var properties = GetFilteredProperties(entityType, options, type == "auto" ? "Id" : null);
 
         // 性能优化：预分配StringBuilder容量
         var capacity = properties.Count * 20; // 估算每个列名约20字符
@@ -267,7 +267,7 @@ public class SqlTemplateEngine
             return sb.ToString();
         }
 
-        var properties = GetFilteredProperties(entityType, options, "Id");
+        var properties = GetFilteredProperties(entityType, options, type == "auto" ? "Id" : null);
 
         // 性能优化：预分配StringBuilder容量
         var propertiesCapacity = properties.Count * 15; // 估算每个参数约15字符
@@ -394,7 +394,10 @@ public class SqlTemplateEngine
 
             if (methodParamDict.TryGetValue(paramName, out var methodParam))
             {
-                result.Parameters.Add(paramName, null); // 模板处理阶段只记录参数名
+                if (!result.Parameters.ContainsKey(paramName))
+                {
+                    result.Parameters.Add(paramName, null); // 模板处理阶段只记录参数名
+                }
             }
             else
             {

@@ -109,16 +109,16 @@ namespace TestNamespace
     [TestMethod]
     public void TablePlaceholder_AllDialects_GeneratesCorrectTableName()
     {
-        var template = "SELECT * FROM {{table}}";
+        var template = "SELECT * FROM {{table:quoted}}";
 
         var expectedTableNames = new Dictionary<string, string>
         {
-            ["SqlServer"] = "[User]",
-            ["MySql"] = "`User`",
-            ["PostgreSql"] = "\"User\"",
-            ["SQLite"] = "[User]",
-            ["Oracle"] = "\"User\"",
-            ["DB2"] = "\"User\""
+            ["SqlServer"] = "[user]",
+            ["MySql"] = "`user`",
+            ["PostgreSql"] = "\"user\"",
+            ["SQLite"] = "[user]",
+            ["Oracle"] = "\"user\"",
+            ["DB2"] = "\"user\""
         };
 
         foreach (var dialect in AllDialects)
@@ -131,8 +131,25 @@ namespace TestNamespace
             
             // 验证表名被正确包装
             var expectedTableName = expectedTableNames[dialectName];
-            Assert.IsTrue(result.ProcessedSql.Contains(expectedTableName) || result.ProcessedSql.Contains("User"), 
-                         $"SQL should contain properly quoted table name for {dialectName}");
+            Assert.IsTrue(result.ProcessedSql.Contains(expectedTableName), 
+                         $"SQL should contain properly quoted table name '{expectedTableName}' for {dialectName}. Actual SQL: {result.ProcessedSql}");
+        }
+    }
+
+    [TestMethod]
+    public void TablePlaceholder_AllDialects_ReplacesWithTableName()
+    {
+        var template = "SELECT * FROM {{table}}";
+
+        foreach (var dialect in AllDialects)
+        {
+            var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
+            var dialectName = GetDialectName(dialect);
+            var expectedTableName = SharedCodeGenerationUtilities.ConvertToSnakeCase("User");
+
+            Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), $"Processed SQL should not be empty for {dialectName}");
+            Assert.IsTrue(result.ProcessedSql.Contains(expectedTableName), $"SQL should contain table name for {dialectName}");
+            Assert.IsFalse(result.ProcessedSql.Contains("{{table}}"), $"Placeholder should be replaced for {dialectName}");
         }
     }
 

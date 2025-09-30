@@ -41,12 +41,12 @@ public static class SqlTemplateEngineExtensions
         // 性能优化：预定义的LIMIT模式缓存
         private static readonly Dictionary<string, (string SqlServer, string Oracle, string Others)> LimitPatterns = new(StringComparer.OrdinalIgnoreCase)
         {
-            ["tiny"] = ("TOP 5", "ROWNUM <= 5", "LIMIT 5"),
-            ["small"] = ("TOP 10", "ROWNUM <= 10", "LIMIT 10"),
-            ["medium"] = ("TOP 50", "ROWNUM <= 50", "LIMIT 50"),
-            ["large"] = ("TOP 100", "ROWNUM <= 100", "LIMIT 100"),
-            ["page"] = ("TOP 20", "ROWNUM <= 20", "LIMIT 20"),
-            ["default"] = ("TOP 20", "ROWNUM <= 20", "LIMIT 20")
+            ["tiny"] = ("OFFSET 0 ROWS FETCH NEXT 5 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 5 ROWS ONLY", "LIMIT 5"),
+            ["small"] = ("OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY", "LIMIT 10"),
+            ["medium"] = ("OFFSET 0 ROWS FETCH NEXT 50 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 50 ROWS ONLY", "LIMIT 50"),
+            ["large"] = ("OFFSET 0 ROWS FETCH NEXT 100 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 100 ROWS ONLY", "LIMIT 100"),
+            ["page"] = ("OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY", "LIMIT 20"),
+            ["default"] = ("OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY", "LIMIT 20")
         };
 
         /// <summary>

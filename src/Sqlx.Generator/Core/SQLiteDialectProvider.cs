@@ -4,7 +4,7 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-namespace Sqlx.Generator.Core;
+namespace Sqlx.Generator;
 
 /// <summary>
 /// SQLite database dialect provider with SQLite-specific SQL syntax.

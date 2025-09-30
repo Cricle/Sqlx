@@ -8,7 +8,7 @@ using Sqlx.SqlGen;
 using System;
 using System.Linq;
 
-namespace Sqlx.Generator.Core;
+namespace Sqlx.Generator;
 
 /// <summary>
 /// SQL Server database dialect provider with SQL Server-specific SQL syntax.

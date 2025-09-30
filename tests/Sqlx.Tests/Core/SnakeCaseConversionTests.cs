@@ -5,7 +5,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Sqlx.Generator.Core;
+using Sqlx.Generator;
 
 namespace Sqlx.Tests.Core;
 

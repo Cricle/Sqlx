@@ -16,15 +16,21 @@ public partial class CSharpGenerator
     /// <summary>
     /// C# specific syntax receiver for collecting method symbols and repository classes.
     /// </summary>
-    private class CSharpSyntaxReceiver : ISqlxSyntaxReceiver, ISyntaxReceiver
+    internal class CSharpSyntaxReceiver : ISyntaxReceiver
     {
+        /// <summary>Gets the list of collected method symbols.</summary>
         public List<IMethodSymbol> Methods { get; } = new List<IMethodSymbol>();
+        /// <summary>Gets the list of collected repository classes.</summary>
         public List<INamedTypeSymbol> RepositoryClasses { get; } = new List<INamedTypeSymbol>();
-        
+
         // Collect syntax nodes for later processing
+        /// <summary>Gets the list of collected method declaration syntax nodes.</summary>
         public List<MethodDeclarationSyntax> MethodSyntaxNodes { get; } = new List<MethodDeclarationSyntax>();
+        /// <summary>Gets the list of collected class declaration syntax nodes.</summary>
         public List<ClassDeclarationSyntax> ClassSyntaxNodes { get; } = new List<ClassDeclarationSyntax>();
 
+        /// <summary>Visits a syntax node and collects relevant method and class declarations.</summary>
+        /// <param name="syntaxNode">The syntax node to visit.</param>
         public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
         {
             // Collect method declarations with potential Sqlx attributes
@@ -39,20 +45,22 @@ public partial class CSharpGenerator
             }
         }
 
+        /// <summary>Visits a syntax node with semantic model context for enhanced analysis.</summary>
+        /// <param name="context">The generator syntax context containing the syntax node and semantic model.</param>
         public void OnVisitSyntaxNode(GeneratorSyntaxContext context)
         {
             var semanticModel = context.SemanticModel;
-            
+
             // Collect methods with Sqlx attributes
-            if (context.Node is MethodDeclarationSyntax methodDeclaration && 
-                semanticModel.GetDeclaredSymbol(methodDeclaration) is IMethodSymbol method && 
+            if (context.Node is MethodDeclarationSyntax methodDeclaration &&
+                semanticModel.GetDeclaredSymbol(methodDeclaration) is IMethodSymbol method &&
                 HasSqlxAttribute(method))
             {
                 Methods.Add(method);
             }
             // Collect repository classes with RepositoryFor attributes
-            else if (context.Node is ClassDeclarationSyntax classDeclaration && 
-                     semanticModel.GetDeclaredSymbol(classDeclaration) is INamedTypeSymbol type && 
+            else if (context.Node is ClassDeclarationSyntax classDeclaration &&
+                     semanticModel.GetDeclaredSymbol(classDeclaration) is INamedTypeSymbol type &&
                      HasRepositoryForAttribute(type))
             {
                 RepositoryClasses.Add(type);
@@ -83,8 +91,8 @@ public partial class CSharpGenerator
                 attrList.Attributes.Any(attr => IsSqlxAttributeName(attr.Name.ToString()))) == true;
         }
 
-        private static bool IsSqlxAttributeName(string? name) => name is 
-            "SqlxAttribute" or "Sqlx" or "SqlTemplateAttribute" or "SqlTemplate" or 
+        private static bool IsSqlxAttributeName(string? name) => name is
+            "SqlxAttribute" or "Sqlx" or "SqlTemplateAttribute" or "SqlTemplate" or
             "SqlExecuteTypeAttribute" or "SqlExecuteType";
 
         private static bool HasSqlxAttributeSyntax(MethodDeclarationSyntax methodDeclaration) =>
@@ -98,7 +106,7 @@ public partial class CSharpGenerator
         private static bool HasRepositoryForAttribute(INamedTypeSymbol type) =>
             type.GetAttributes().Any(attr => IsRepositoryForAttributeName(attr.AttributeClass?.Name));
 
-        private static bool IsRepositoryForAttributeName(string? name) => name is 
+        private static bool IsRepositoryForAttributeName(string? name) => name is
             "RepositoryForAttribute" or "RepositoryFor";
     }
 }

@@ -7,7 +7,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Sqlx.Generator.Core;
+using Sqlx.Generator;
 using System.Linq;
 
 namespace Sqlx.Tests.Core;
@@ -55,7 +55,7 @@ namespace TestNamespace
     public partial class UserRepository : IUserRepository
     {
         private readonly IDbConnection _connection;
-        
+
         public UserRepository(IDbConnection connection)
         {
             _connection = connection;

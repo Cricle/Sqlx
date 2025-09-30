@@ -8,7 +8,6 @@ using Microsoft.CodeAnalysis;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Sqlx.Generator.Core;
 
 namespace Sqlx.Generator.Tools;
 
@@ -17,13 +16,13 @@ namespace Sqlx.Generator.Tools;
 /// </summary>
 public class TemplateValidator
 {
-    private readonly ISqlTemplateEngine _engine;
+    private readonly SqlTemplateEngine _engine;
 
     /// <summary>
     /// Initializes a new instance of the TemplateValidator class.
     /// </summary>
     /// <param name="engine">Template engine to use for validation.</param>
-    public TemplateValidator(ISqlTemplateEngine? engine = null)
+    public TemplateValidator(SqlTemplateEngine? engine = null)
     {
         _engine = engine ?? new SqlTemplateEngine();
     }
@@ -57,7 +56,17 @@ public class TemplateValidator
                 var templateResult = _engine.ProcessTemplate(template, context.Method!, context.EntityType, context.TableName ?? "test_table");
                 report.ProcessedSql = templateResult.ProcessedSql;
                 report.HasDynamicFeatures = templateResult.HasDynamicFeatures;
-                report.Parameters.AddRange(templateResult.Parameters);
+                // 将字典转换为ParameterMapping列表
+                foreach (var param in templateResult.Parameters)
+                {
+                    report.Parameters.Add(new ParameterMapping
+                    {
+                        Name = param.Key,
+                        Type = "object",
+                        Value = param.Value,
+                        IsNullable = param.Value == null
+                    });
+                }
                 report.Warnings.AddRange(templateResult.Warnings);
                 report.Errors.AddRange(templateResult.Errors);
             }

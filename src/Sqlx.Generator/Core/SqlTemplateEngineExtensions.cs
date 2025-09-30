@@ -6,8 +6,9 @@
 
 using Microsoft.CodeAnalysis;
 using System.Text;
+using Sqlx;
 
-namespace Sqlx.Generator.Core;
+namespace Sqlx.Generator;
 
 /// <summary>
 /// SQL模板引擎扩展方法 - 为所有占位符提供多数据库支持

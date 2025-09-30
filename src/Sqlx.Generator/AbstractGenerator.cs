@@ -8,25 +8,22 @@ namespace Sqlx;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
-using Sqlx.Generator.Core;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Sqlx.Generator;
 
 /// <summary>
 /// Simplified stored procedures generator with unified service architecture.
 /// </summary>
 public abstract partial class AbstractGenerator : ISourceGenerator
 {
-    private readonly ISqlxGeneratorService _generatorService;
-
     /// <summary>
     /// Initializes a new instance of the <see cref="AbstractGenerator"/> class.
     /// </summary>
     protected AbstractGenerator()
     {
-        _generatorService = new SqlxGeneratorService();
     }
 
     /// <inheritdoc/>
@@ -38,8 +35,8 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         try
         {
             // Get the syntax receiver efficiently
-            ISqlxSyntaxReceiver? receiver = context.SyntaxReceiver as ISqlxSyntaxReceiver ??
-                                           context.SyntaxContextReceiver as ISqlxSyntaxReceiver;
+            CSharpGenerator.CSharpSyntaxReceiver? receiver = context.SyntaxReceiver as CSharpGenerator.CSharpSyntaxReceiver ??
+                                           context.SyntaxContextReceiver as CSharpGenerator.CSharpSyntaxReceiver;
 
             if (receiver == null)
             {
@@ -82,7 +79,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         context.Compilation.GetTypeByMetadataName("Sqlx.Annotations.RepositoryForAttribute"),
         context.Compilation.GetTypeByMetadataName("Sqlx.Annotations.TableNameAttribute"));
 
-    private void ProcessExistingMethods(GeneratorExecutionContext context, ISqlxSyntaxReceiver receiver, SymbolReferences symbols)
+    private void ProcessExistingMethods(GeneratorExecutionContext context, CSharpGenerator.CSharpSyntaxReceiver receiver, SymbolReferences symbols)
     {
         try
         {
@@ -133,7 +130,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         }
     }
 
-    private void ProcessRepositoryClasses(GeneratorExecutionContext context, ISqlxSyntaxReceiver receiver, SymbolReferences symbols)
+    private void ProcessRepositoryClasses(GeneratorExecutionContext context, CSharpGenerator.CSharpSyntaxReceiver receiver, SymbolReferences symbols)
     {
         foreach (var repositoryClass in receiver.RepositoryClasses)
         {
@@ -155,8 +152,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
 
                         if (sqlxAttr?.ConstructorArguments.FirstOrDefault().Value is string sql)
                         {
-                            var entityType = _generatorService.InferEntityTypeFromMethod(method);
-                            // Diagnostic analysis was simplified
+                            // Simplified: removed complex type inference
                         }
                     }
                 }
@@ -166,10 +162,9 @@ public abstract partial class AbstractGenerator : ISourceGenerator
                     repositoryClass,
                     symbols.RepositoryForAttributeSymbol,
                     symbols.TableNameAttributeSymbol,
-                    _generatorService.TypeInferenceService,
-                    _generatorService.TemplateEngine,
-                    _generatorService.AttributeHandler);
-                _generatorService.CodeGenerationService.GenerateRepositoryImplementation(generationContext);
+                    new SqlTemplateEngine(),
+                    new AttributeHandler());
+                new CodeGenerationService().GenerateRepositoryImplementation(generationContext);
             }
             catch (Exception ex)
             {
@@ -240,7 +235,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
     /// <summary>
     /// Processes collected syntax nodes to populate symbol lists.
     /// </summary>
-    private void ProcessCollectedSyntaxNodes(GeneratorExecutionContext context, ISqlxSyntaxReceiver receiver)
+    private void ProcessCollectedSyntaxNodes(GeneratorExecutionContext context, CSharpGenerator.CSharpSyntaxReceiver receiver)
     {
         try
         {

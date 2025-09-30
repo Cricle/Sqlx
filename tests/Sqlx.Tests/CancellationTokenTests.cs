@@ -24,6 +24,7 @@ using Sqlx.Annotations;
 
 namespace Foo
 {
+    [SqlDefine(SqlDefineTypes.SqlServer)]
     partial class C
     {
         private DbConnection connection;
@@ -46,6 +47,7 @@ using Sqlx.Annotations;
 
 namespace Foo
 {
+    [SqlDefine(SqlDefineTypes.SqlServer)]
     partial class C
     {
         private DbConnection connection;
@@ -76,6 +78,7 @@ namespace Foo
         public int? NullableInt32Value { get; set; }
     }
 
+    [SqlDefine(SqlDefineTypes.SqlServer)]
     partial class C
     {
         private DbConnection connection;
@@ -100,11 +103,12 @@ using Sqlx.Annotations;
 namespace Foo
 {
     public class Item { }
-    
+
+    [SqlDefine(SqlDefineTypes.SqlServer)]
     partial class C
     {
         private DbConnection connection;
-        
+
         [Sqlx(""sp_TestSP"")]
         public partial Task<IList<Item>> M(int clientId, int? personId, CancellationToken cancellationToken);
     }

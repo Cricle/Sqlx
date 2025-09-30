@@ -7,7 +7,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Sqlx.Generator.Core;
+using Sqlx.Generator;
 using System.Linq;
 
 namespace Sqlx.Tests.Core;

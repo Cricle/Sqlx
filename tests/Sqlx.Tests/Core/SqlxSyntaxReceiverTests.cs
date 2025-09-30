@@ -12,77 +12,73 @@ using System.Linq;
 namespace Sqlx.Tests.Core
 {
     /// <summary>
-    /// Tests for ISqlxSyntaxReceiver interface and syntax receiver functionality.
+    /// Tests for CSharpGenerator.CSharpSyntaxReceiver interface and syntax receiver functionality.
     /// </summary>
     [TestClass]
     public class SqlxSyntaxReceiverTests
     {
-        private class MockSqlxSyntaxReceiver : ISqlxSyntaxReceiver
+        private class MockSqlxSyntaxReceiver : CSharpGenerator.CSharpSyntaxReceiver
         {
-            public List<Microsoft.CodeAnalysis.IMethodSymbol> Methods { get; } = new List<Microsoft.CodeAnalysis.IMethodSymbol>();
-            public List<Microsoft.CodeAnalysis.INamedTypeSymbol> RepositoryClasses { get; } = new List<Microsoft.CodeAnalysis.INamedTypeSymbol>();
-            public List<Microsoft.CodeAnalysis.CSharp.Syntax.MethodDeclarationSyntax> MethodSyntaxNodes { get; } = new List<Microsoft.CodeAnalysis.CSharp.Syntax.MethodDeclarationSyntax>();
-            public List<Microsoft.CodeAnalysis.CSharp.Syntax.ClassDeclarationSyntax> ClassSyntaxNodes { get; } = new List<Microsoft.CodeAnalysis.CSharp.Syntax.ClassDeclarationSyntax>();
+            // 简化：继承所有功能，只添加测试需要的跟踪
+            public List<Microsoft.CodeAnalysis.SyntaxNode> VisitedNodes { get; } = new List<Microsoft.CodeAnalysis.SyntaxNode>();
 
-            public void OnVisitSyntaxNode(Microsoft.CodeAnalysis.SyntaxNode syntaxNode)
+            public new void OnVisitSyntaxNode(Microsoft.CodeAnalysis.SyntaxNode syntaxNode)
             {
-                // Mock implementation for testing
+                base.OnVisitSyntaxNode(syntaxNode);
                 VisitedNodes.Add(syntaxNode);
             }
 
-            public void OnVisitSyntaxNode(Microsoft.CodeAnalysis.GeneratorSyntaxContext context)
+            public new void OnVisitSyntaxNode(Microsoft.CodeAnalysis.GeneratorSyntaxContext context)
             {
-                // Mock implementation for ISyntaxContextReceiver compatibility
+                base.OnVisitSyntaxNode(context);
                 VisitedNodes.Add(context.Node);
             }
-
-            public List<Microsoft.CodeAnalysis.SyntaxNode> VisitedNodes { get; } = new List<Microsoft.CodeAnalysis.SyntaxNode>();
         }
 
         [TestMethod]
-        public void ISqlxSyntaxReceiver_Interface_HasRequiredProperties()
+        public void CSharpSyntaxReceiver_HasRequiredProperties()
         {
-            // Test that ISqlxSyntaxReceiver interface has required properties
-            var interfaceType = typeof(ISqlxSyntaxReceiver);
+            // Test that CSharpGenerator.CSharpSyntaxReceiver interface has required properties
+            var interfaceType = typeof(CSharpGenerator.CSharpSyntaxReceiver);
 
             // Check Methods property
             var methodsProperty = interfaceType.GetProperty("Methods");
-            Assert.IsNotNull(methodsProperty, "ISqlxSyntaxReceiver should have Methods property");
+            Assert.IsNotNull(methodsProperty, "CSharpGenerator.CSharpSyntaxReceiver should have Methods property");
             Assert.AreEqual(typeof(List<Microsoft.CodeAnalysis.IMethodSymbol>), methodsProperty.PropertyType,
                 "Methods property should be List<IMethodSymbol>");
 
             // Check RepositoryClasses property
             var repositoryClassesProperty = interfaceType.GetProperty("RepositoryClasses");
-            Assert.IsNotNull(repositoryClassesProperty, "ISqlxSyntaxReceiver should have RepositoryClasses property");
+            Assert.IsNotNull(repositoryClassesProperty, "CSharpGenerator.CSharpSyntaxReceiver should have RepositoryClasses property");
             Assert.AreEqual(typeof(List<Microsoft.CodeAnalysis.INamedTypeSymbol>), repositoryClassesProperty.PropertyType,
                 "RepositoryClasses property should be List<INamedTypeSymbol>");
 
             // Check MethodSyntaxNodes property
             var methodSyntaxProperty = interfaceType.GetProperty("MethodSyntaxNodes");
-            Assert.IsNotNull(methodSyntaxProperty, "ISqlxSyntaxReceiver should have MethodSyntaxNodes property");
+            Assert.IsNotNull(methodSyntaxProperty, "CSharpGenerator.CSharpSyntaxReceiver should have MethodSyntaxNodes property");
             Assert.AreEqual(typeof(List<Microsoft.CodeAnalysis.CSharp.Syntax.MethodDeclarationSyntax>), methodSyntaxProperty.PropertyType,
                 "MethodSyntaxNodes property should be List<MethodDeclarationSyntax>");
 
             // Check ClassSyntaxNodes property
             var classSyntaxProperty = interfaceType.GetProperty("ClassSyntaxNodes");
-            Assert.IsNotNull(classSyntaxProperty, "ISqlxSyntaxReceiver should have ClassSyntaxNodes property");
+            Assert.IsNotNull(classSyntaxProperty, "CSharpGenerator.CSharpSyntaxReceiver should have ClassSyntaxNodes property");
             Assert.AreEqual(typeof(List<Microsoft.CodeAnalysis.CSharp.Syntax.ClassDeclarationSyntax>), classSyntaxProperty.PropertyType,
                 "ClassSyntaxNodes property should be List<ClassDeclarationSyntax>");
         }
 
         [TestMethod]
-        public void ISqlxSyntaxReceiver_IsSimpleInterface()
+        public void CSharpSyntaxReceiver_IsSimpleInterface()
         {
-            // Test that ISqlxSyntaxReceiver is a simple collection interface (not inheriting from ISyntaxContextReceiver)
-            var interfaceType = typeof(ISqlxSyntaxReceiver);
+            // Test that CSharpGenerator.CSharpSyntaxReceiver is a simple collection interface (not inheriting from ISyntaxContextReceiver)
+            var interfaceType = typeof(CSharpGenerator.CSharpSyntaxReceiver);
             var baseInterface = typeof(Microsoft.CodeAnalysis.ISyntaxContextReceiver);
 
-            // ISqlxSyntaxReceiver is now a simple interface for data collection, not a syntax receiver
+            // CSharpGenerator.CSharpSyntaxReceiver is now a simple interface for data collection, not a syntax receiver
             Assert.IsFalse(baseInterface.IsAssignableFrom(interfaceType),
-                "ISqlxSyntaxReceiver should be a simple collection interface");
+                "CSharpGenerator.CSharpSyntaxReceiver should be a simple collection interface");
 
             // Verify it has the correct collection properties
-            Assert.IsTrue(interfaceType.IsInterface, "ISqlxSyntaxReceiver should be an interface");
+            Assert.IsTrue(interfaceType.IsClass, "CSharpGenerator.CSharpSyntaxReceiver should be a class");
         }
 
         [TestMethod]
@@ -166,26 +162,26 @@ namespace Sqlx.Tests.Core
         public void SyntaxReceiver_InterfaceContract_IsCorrect()
         {
             // Test interface contract requirements
-            var interfaceType = typeof(ISqlxSyntaxReceiver);
+            var interfaceType = typeof(CSharpGenerator.CSharpSyntaxReceiver);
 
-            // Verify it's an interface
-            Assert.IsTrue(interfaceType.IsInterface, "ISqlxSyntaxReceiver should be an interface");
+            // Verify it's a class
+            Assert.IsTrue(interfaceType.IsClass, "CSharpGenerator.CSharpSyntaxReceiver should be a class");
 
-            // Verify it's internal (not public)
-            Assert.IsFalse(interfaceType.IsPublic, "ISqlxSyntaxReceiver should be internal");
-            Assert.IsTrue(interfaceType.IsNotPublic, "ISqlxSyntaxReceiver should be internal");
+            // Verify it's internal (for nested classes, check IsNestedAssembly)
+            Assert.IsFalse(interfaceType.IsPublic, "CSharpGenerator.CSharpSyntaxReceiver should be internal");
+            Assert.IsTrue(interfaceType.IsNestedAssembly, "CSharpGenerator.CSharpSyntaxReceiver should be internal");
 
             // Verify it's a simple collection interface (no inheritance from ISyntaxContextReceiver)
             var interfaces = interfaceType.GetInterfaces();
             Assert.IsFalse(interfaces.Any(i => i == typeof(Microsoft.CodeAnalysis.ISyntaxContextReceiver)),
-                "ISqlxSyntaxReceiver should be a simple collection interface");
+                "CSharpGenerator.CSharpSyntaxReceiver should be a simple collection interface");
         }
 
         [TestMethod]
         public void SyntaxReceiver_PropertyTypes_AreCorrect()
         {
             // Test that property types are exactly what's expected
-            var interfaceType = typeof(ISqlxSyntaxReceiver);
+            var interfaceType = typeof(CSharpGenerator.CSharpSyntaxReceiver);
 
             var methodsProperty = interfaceType.GetProperty("Methods");
             Assert.IsNotNull(methodsProperty);
@@ -202,7 +198,7 @@ namespace Sqlx.Tests.Core
         public void SyntaxReceiver_Properties_HaveCorrectGettersOnly()
         {
             // Test that all properties are read-only collections
-            var interfaceType = typeof(ISqlxSyntaxReceiver);
+            var interfaceType = typeof(CSharpGenerator.CSharpSyntaxReceiver);
 
             var methodsProperty = interfaceType.GetProperty("Methods");
             Assert.IsNotNull(methodsProperty, "Methods property should exist");
@@ -229,11 +225,11 @@ namespace Sqlx.Tests.Core
         public void SyntaxReceiver_NamespaceAndAssembly_AreCorrect()
         {
             // Test namespace and assembly information
-            var interfaceType = typeof(ISqlxSyntaxReceiver);
+            var interfaceType = typeof(CSharpGenerator.CSharpSyntaxReceiver);
 
-            Assert.AreEqual("Sqlx", interfaceType.Namespace, "ISqlxSyntaxReceiver should be in Sqlx namespace");
+            Assert.AreEqual("Sqlx", interfaceType.Namespace, "CSharpGenerator.CSharpSyntaxReceiver should be in Sqlx namespace");
             Assert.AreEqual("Sqlx.Generator", interfaceType.Assembly.GetName().Name,
-                "ISqlxSyntaxReceiver should be in Sqlx.Generator assembly");
+                "CSharpGenerator.CSharpSyntaxReceiver should be in Sqlx.Generator assembly");
         }
 
         [TestMethod]

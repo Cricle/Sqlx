@@ -7,14 +7,14 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 using System.Text;
-using static Sqlx.Generator.Core.SharedCodeGenerationUtilities;
+using static Sqlx.Generator.SharedCodeGenerationUtilities;
 
-namespace Sqlx.Generator.Core;
+namespace Sqlx.Generator;
 
 /// <summary>
 /// Default implementation of code generation service.
 /// </summary>
-public class CodeGenerationService : ICodeGenerationService
+public class CodeGenerationService
 {
     private static readonly SqlTemplateEngine TemplateEngine = new();
     /// <inheritdoc/>
@@ -101,8 +101,9 @@ public class CodeGenerationService : ICodeGenerationService
         if (serviceInterface == null)
             return;
 
-        var entityType = context.TypeInferenceService.InferEntityTypeFromServiceInterface(serviceInterface);
-        var tableName = context.TypeInferenceService.GetTableName(repositoryClass, serviceInterface, context.TableNameAttributeSymbol);
+        // 简化：直接从接口名推断实体类型和表名
+        var entityType = InferEntityTypeFromInterface(serviceInterface);
+        var tableName = GetTableNameFromType(repositoryClass, entityType);
 
         var sb = new IndentedStringBuilder(string.Empty);
 
@@ -141,12 +142,13 @@ public class CodeGenerationService : ICodeGenerationService
             }
 
             // Show parameter information
-            if (templateResult.Parameters.Any())
+            // 性能优化：使用Count检查集合是否为空，比Any()更直接
+            if (templateResult.Parameters.Count > 0)
             {
                 sb.AppendLine("/// <para>🔧 Template Parameters:</para>");
                 foreach (var param in templateResult.Parameters)
                 {
-                    sb.AppendLine($"/// <para>  • @{param.Name} ({param.Type}){(param.IsNullable ? " [Nullable]" : "")}</para>");
+                    sb.AppendLine($"/// <para>  • @{param.Key}</para>");
                 }
             }
 
@@ -157,7 +159,8 @@ public class CodeGenerationService : ICodeGenerationService
             }
 
             // Show warning information
-            if (templateResult.Warnings.Any())
+            // 性能优化：使用Count检查集合是否为空，比Any()更直接
+            if (templateResult.Warnings.Count > 0)
             {
                 sb.AppendLine("/// <para>⚠️ Template Warnings:</para>");
                 foreach (var warning in templateResult.Warnings)
@@ -167,7 +170,8 @@ public class CodeGenerationService : ICodeGenerationService
             }
 
             // Show error information
-            if (templateResult.Errors.Any())
+            // 性能优化：使用Count检查集合是否为空，比Any()更直接
+            if (templateResult.Errors.Count > 0)
             {
                 sb.AppendLine("/// <para>❌ Template Errors:</para>");
                 foreach (var error in templateResult.Errors)
@@ -203,12 +207,8 @@ public class CodeGenerationService : ICodeGenerationService
                 return serviceType;
         }
 
-        // Fallback to type inference
-        var result = context.TypeInferenceService.GetServiceInterfaceFromSyntax(
-            context.RepositoryClass, context.ExecutionContext.Compilation);
-
-        // Last resort: parse the syntax directly
-        return result ?? GetServiceInterfaceFromSyntax(context);
+        // 简化：如果没有RepositoryFor属性，返回null
+        return GetServiceInterfaceFromSyntax(context);
     }
 
     private INamedTypeSymbol? GetServiceInterfaceFromSyntax(RepositoryGenerationContext context)
@@ -512,23 +512,23 @@ public class CodeGenerationService : ICodeGenerationService
         sb.AppendLine($"OnExecuting(\"{operationName}\", __cmd__);");
         sb.AppendLine();
 
-        // Execute query based on return type
-        if (IsScalarReturnType(returnTypeString))
+        // 性能优化：单次分类返回类型，避免重复计算
+        var (returnCategory, innerType) = ClassifyReturnType(returnTypeString);
+        switch (returnCategory)
         {
-            GenerateScalarExecution(sb, returnTypeString);
-        }
-        else if (IsCollectionReturnType(returnTypeString))
-        {
-            GenerateCollectionExecution(sb, returnTypeString, entityType);
-        }
-        else if (IsSingleEntityReturnType(returnTypeString))
-        {
-            GenerateSingleEntityExecution(sb, returnTypeString, entityType);
-        }
-        else
-        {
-            // Non-query execution (INSERT, UPDATE, DELETE)
-            sb.AppendLine("__result__ = __cmd__.ExecuteNonQuery();");
+            case ReturnTypeCategory.Scalar:
+                GenerateScalarExecution(sb, innerType);
+                break;
+            case ReturnTypeCategory.Collection:
+                GenerateCollectionExecution(sb, returnTypeString, entityType);
+                break;
+            case ReturnTypeCategory.SingleEntity:
+                GenerateSingleEntityExecution(sb, returnTypeString, entityType);
+                break;
+            default:
+                // Non-query execution (INSERT, UPDATE, DELETE)
+                sb.AppendLine("__result__ = __cmd__.ExecuteNonQuery();");
+                break;
         }
 
         sb.AppendLine();
@@ -549,27 +549,41 @@ public class CodeGenerationService : ICodeGenerationService
         sb.AppendLine("}");
     }
 
-    private bool IsScalarReturnType(string returnType)
+    // 性能优化：枚举避免重复字符串比较
+    private enum ReturnTypeCategory
     {
-        var innerType = ExtractInnerTypeFromTask(returnType);
-        return innerType == "int" || innerType == "bool" || innerType == "decimal" || innerType == "double" || innerType == "string";
+        Scalar,
+        Collection,
+        SingleEntity,
+        Unknown
     }
 
-    private bool IsCollectionReturnType(string returnType)
+    // 性能优化：单次调用ExtractInnerTypeFromTask，避免重复计算
+    private (ReturnTypeCategory Category, string InnerType) ClassifyReturnType(string returnType)
     {
         var innerType = ExtractInnerTypeFromTask(returnType);
-        return innerType.Contains("List<") || innerType.Contains("IEnumerable<") || innerType.Contains("[]");
+
+        // 检查标量类型
+        if (innerType == "int" || innerType == "bool" || innerType == "decimal" || innerType == "double" || innerType == "string")
+            return (ReturnTypeCategory.Scalar, innerType);
+
+        // 检查集合类型
+        if (innerType.Contains("List<") || innerType.Contains("IEnumerable<") || innerType.Contains("[]"))
+            return (ReturnTypeCategory.Collection, innerType);
+
+        // 检查单实体类型
+        if (!innerType.Equals("int", StringComparison.OrdinalIgnoreCase))
+            return (ReturnTypeCategory.SingleEntity, innerType);
+
+        return (ReturnTypeCategory.Unknown, innerType);
     }
 
-    private bool IsSingleEntityReturnType(string returnType)
-    {
-        var innerType = ExtractInnerTypeFromTask(returnType);
-        return !IsScalarReturnType(returnType) && !IsCollectionReturnType(returnType) && !innerType.Equals("int", StringComparison.OrdinalIgnoreCase);
-    }
+    private bool IsScalarReturnType(string returnType) => ClassifyReturnType(returnType).Category == ReturnTypeCategory.Scalar;
+    private bool IsCollectionReturnType(string returnType) => ClassifyReturnType(returnType).Category == ReturnTypeCategory.Collection;
+    private bool IsSingleEntityReturnType(string returnType) => ClassifyReturnType(returnType).Category == ReturnTypeCategory.SingleEntity;
 
-    private void GenerateScalarExecution(IndentedStringBuilder sb, string returnType)
+    private void GenerateScalarExecution(IndentedStringBuilder sb, string innerType)
     {
-        var innerType = ExtractInnerTypeFromTask(returnType);
         sb.AppendLine("var scalarResult = __cmd__.ExecuteScalar();");
         sb.AppendLine($"__result__ = scalarResult != null ? ({innerType})scalarResult : default({innerType});");
     }
@@ -714,4 +728,18 @@ public class CodeGenerationService : ICodeGenerationService
         name == "Connection" ||
         name == "_Connection" ||
         name.EndsWith("Connection", StringComparison.OrdinalIgnoreCase);
+
+    private INamedTypeSymbol? InferEntityTypeFromInterface(INamedTypeSymbol serviceInterface)
+    {
+        // 简化：从接口的泛型参数中获取实体类型
+        if (serviceInterface.TypeArguments.Length > 0)
+            return serviceInterface.TypeArguments[0] as INamedTypeSymbol;
+        return null;
+    }
+
+    private string GetTableNameFromType(INamedTypeSymbol repositoryClass, INamedTypeSymbol? entityType)
+    {
+        // 简化：使用实体类型名作为表名，如果没有则使用repository类名
+        return entityType?.Name ?? repositoryClass.Name.Replace("Repository", "");
+    }
 }

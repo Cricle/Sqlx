@@ -4,7 +4,7 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-namespace Sqlx.Generator.Core;
+namespace Sqlx.Generator;
 
 /// <summary>
 /// MySQL database dialect provider with MySQL-specific SQL syntax.

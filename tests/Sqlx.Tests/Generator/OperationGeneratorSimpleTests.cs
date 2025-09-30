@@ -5,7 +5,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Sqlx.Generator.Core;
+using Sqlx.Generator;
 
 namespace Sqlx.Tests.Generator;
 
@@ -15,7 +15,7 @@ namespace Sqlx.Tests.Generator;
 [TestClass]
 public class OperationGeneratorSimpleTests : TestBase
 {
-    private ISqlTemplateEngine _templateEngine = null!;
+    private SqlTemplateEngine _templateEngine = null!;
 
     [TestInitialize]
     public override void Setup()

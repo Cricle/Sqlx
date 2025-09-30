@@ -6,7 +6,7 @@
 
 using Microsoft.CodeAnalysis;
 
-namespace Sqlx.Generator.Core;
+namespace Sqlx.Generator;
 
 /// <summary>
 /// Result of method analysis for code generation.

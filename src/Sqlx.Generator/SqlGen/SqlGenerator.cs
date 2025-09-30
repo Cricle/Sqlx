@@ -4,7 +4,7 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-using Sqlx.Generator.Core;
+using Sqlx.Generator;
 
 namespace Sqlx.SqlGen
 {

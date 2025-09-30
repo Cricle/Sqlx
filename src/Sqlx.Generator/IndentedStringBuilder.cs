@@ -4,7 +4,7 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-namespace Sqlx.Generator.Core;
+namespace Sqlx.Generator;
 
 using System;
 using System.Runtime.CompilerServices;

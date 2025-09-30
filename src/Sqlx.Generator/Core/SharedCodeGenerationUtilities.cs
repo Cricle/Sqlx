@@ -6,7 +6,7 @@
 
 using Microsoft.CodeAnalysis;
 
-namespace Sqlx.Generator.Core;
+namespace Sqlx.Generator;
 
 /// <summary>
 /// Shared code generation utilities to reduce code duplication

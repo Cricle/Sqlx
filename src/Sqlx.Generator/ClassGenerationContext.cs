@@ -7,10 +7,10 @@
 namespace Sqlx;
 
 using Microsoft.CodeAnalysis;
-using Sqlx.Generator.Core;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Sqlx.Generator;
 
 internal class ClassGenerationContext : GenerationContextBase
 {
@@ -161,10 +161,8 @@ internal class ClassGenerationContext : GenerationContextBase
         var primaryParam = primaryConstructor?.Parameters.FirstOrDefault(p => check(p));
         if (primaryParam != null) return primaryParam;
 
-        // Check regular constructor parameters for backward compatibility
-        return symbol.InstanceConstructors
-            .SelectMany(c => c.Parameters)
-            .FirstOrDefault(p => check(p));
+        // 激进优化：只支持主构造函数，提高代码清晰度
+        return null;
     }
 
     private void WriteInterceptMethods(IndentedStringBuilder sb)

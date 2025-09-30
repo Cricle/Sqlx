@@ -6,7 +6,7 @@
 
 using Microsoft.CodeAnalysis;
 
-namespace Sqlx.Generator.Core;
+namespace Sqlx.Generator;
 
 /// <summary>
 /// Context for repository generation.
@@ -21,15 +21,13 @@ public class RepositoryGenerationContext
         INamedTypeSymbol repositoryClass,
         INamedTypeSymbol? repositoryForAttributeSymbol,
         INamedTypeSymbol? tableNameAttributeSymbol,
-        ITypeInferenceService typeInferenceService,
-        ISqlTemplateEngine templateEngine,
+        SqlTemplateEngine templateEngine,
         AttributeHandler attributeHandler)
     {
         ExecutionContext = executionContext;
         RepositoryClass = repositoryClass;
         RepositoryForAttributeSymbol = repositoryForAttributeSymbol;
         TableNameAttributeSymbol = tableNameAttributeSymbol;
-        TypeInferenceService = typeInferenceService;
         TemplateEngine = templateEngine;
         AttributeHandler = attributeHandler;
     }
@@ -55,14 +53,9 @@ public class RepositoryGenerationContext
     public INamedTypeSymbol? TableNameAttributeSymbol { get; }
 
     /// <summary>
-    /// Gets the type inference service.
-    /// </summary>
-    public ITypeInferenceService TypeInferenceService { get; }
-
-    /// <summary>
     /// Gets the template engine.
     /// </summary>
-    public ISqlTemplateEngine TemplateEngine { get; }
+    public SqlTemplateEngine TemplateEngine { get; }
 
     /// <summary>
     /// Gets the attribute handler.

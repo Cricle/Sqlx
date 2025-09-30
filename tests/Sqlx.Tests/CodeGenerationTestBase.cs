@@ -269,6 +269,7 @@ using Sqlx.Annotations;
         var source = @"
 using Sqlx.Annotations;
 
+[SqlDefine(SqlDefineTypes.SqlServer)]
 public class TestClass
 {
     [Sqlx(""SELECT * FROM Users"")]
@@ -379,12 +380,14 @@ public class TestClass
         var source = @"
 using Sqlx.Annotations;
 
+[SqlDefine(SqlDefineTypes.SqlServer)]
 public class TestClass1
 {
     [Sqlx(""SELECT * FROM Users"")]
     public void TestMethod1() { }
 }
 
+[SqlDefine(SqlDefineTypes.SqlServer)]
 public class TestClass2
 {
     [Sqlx(""SELECT * FROM Products"")]

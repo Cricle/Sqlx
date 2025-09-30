@@ -285,7 +285,7 @@ namespace Sqlx
         {
             var select = _custom?.Count > 0 ? $"SELECT {string.Join(", ", _custom)}" : "SELECT *";
             var from = $"FROM {_dialect.WrapColumn(_tableName!)}";
-            var where = _whereConditions.Count > 0 ? $" WHERE {string.Join(" AND ", _whereConditions.Select(RemoveOuterParentheses))}" : "";
+            var where = GetWhereClause();
             var groupBy = _groupByExpressions.Count > 0 ? $" GROUP BY {string.Join(", ", _groupByExpressions)}" : "";
             var having = _havingConditions.Count > 0 ? $" HAVING {string.Join(" AND ", _havingConditions)}" : "";
             var orderBy = _orderByExpressions.Count > 0 ? $" ORDER BY {string.Join(", ", _orderByExpressions)}" : "";
@@ -299,22 +299,47 @@ namespace Sqlx
             _dialect.DatabaseType == "SqlServer" ? $" OFFSET {_skip ?? 0} ROWS{(_take.HasValue ? $" FETCH NEXT {_take.Value} ROWS ONLY" : "")}" :
             $"{(_take.HasValue ? $" LIMIT {_take.Value}" : "")}{(_skip.HasValue ? $" OFFSET {_skip.Value}" : "")}";
 
+        // 性能优化：缓存where条件的构建，避免重复的Select(RemoveOuterParentheses)调用
+        private string GetWhereClause() => _whereConditions.Count > 0 ? $" WHERE {string.Join(" AND ", _whereConditions.Select(RemoveOuterParentheses))}" : "";
+
+        // 性能优化：避免嵌套的string.Join调用，构建VALUES子句
+        private string GetValuesClause()
+        {
+            if (_values.Count == 0) return "";
+
+            // 预分配StringBuilder容量，避免重新分配（估算）
+            var capacity = _values.Count * 30;
+            var sb = new System.Text.StringBuilder(" VALUES ", capacity);
+
+            for (int i = 0; i < _values.Count; i++)
+            {
+                if (i > 0) sb.Append(", ");
+                sb.Append('(');
+                var vals = _values[i];
+                for (int j = 0; j < vals.Count; j++)
+                {
+                    if (j > 0) sb.Append(", ");
+                    sb.Append(vals[j]);
+                }
+                sb.Append(')');
+            }
+            return sb.ToString();
+        }
 
         private string BuildInsertSql() =>
             $"INSERT INTO {_dialect.WrapColumn(_tableName!)}" +
             (_columns.Count > 0 ? $" ({string.Join(", ", _columns)})" : "") +
-            (!string.IsNullOrEmpty(_selectSql) ? $" {_selectSql}" :
-             _values.Count > 0 ? $" VALUES {string.Join(", ", _values.Select(vals => $"({string.Join(", ", vals)})"))}" : "");
+            (!string.IsNullOrEmpty(_selectSql) ? $" {_selectSql}" : GetValuesClause());
 
         private string BuildUpdateSql() =>
             $"UPDATE {_dialect.WrapColumn(_tableName!)} SET {string.Join(", ", _sets.Concat(_expressions))}" +
-            (_whereConditions.Count > 0 ? $" WHERE {string.Join(" AND ", _whereConditions.Select(RemoveOuterParentheses))}" : "");
+            GetWhereClause();
 
         private string BuildDeleteSql()
         {
             if (_whereConditions.Count == 0)
                 throw new InvalidOperationException("DELETE operation requires WHERE clause for safety. Use Delete(predicate) or call Where() before Delete().");
-            return $"DELETE FROM {_dialect.WrapColumn(_tableName!)} WHERE {string.Join(" AND ", _whereConditions.Select(RemoveOuterParentheses))}";
+            return $"DELETE FROM {_dialect.WrapColumn(_tableName!)}{GetWhereClause()}";
         }
 
         /// <summary>Enable parameterized query mode for SqlTemplate generation</summary>

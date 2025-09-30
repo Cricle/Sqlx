@@ -4,7 +4,7 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-using Sqlx.Generator.Core;
+using Sqlx;
 
 namespace Sqlx.Generator;
 
@@ -19,10 +19,14 @@ internal static class DatabaseDialectFactory
     /// </summary>
     /// <param name="dialectType">The database dialect type.</param>
     /// <returns>The appropriate dialect provider.</returns>
-    public static IDatabaseDialectProvider GetDialectProvider(SqlDefineTypes dialectType)
+    public static IDatabaseDialectProvider GetDialectProvider(SqlDefineTypes dialectType) => dialectType switch
     {
-        return CreateDialectProvider(dialectType);
-    }
+        SqlDefineTypes.MySql => new MySqlDialectProvider(),
+        SqlDefineTypes.SqlServer => new SqlServerDialectProvider(),
+        SqlDefineTypes.PostgreSql => new PostgreSqlDialectProvider(),
+        SqlDefineTypes.SQLite => new SQLiteDialectProvider(),
+        _ => throw new NotSupportedException($"Unsupported dialect: {dialectType}")
+    };
 
 
     /// <summary>
@@ -58,26 +62,10 @@ internal static class DatabaseDialectFactory
             ("\"", "\"", "?") => SqlDefineTypes.DB2,
             ("[", "]", "$") => SqlDefineTypes.SQLite,
             ("[", "]", "@") => SqlDefineTypes.SqlServer,
-            _ => SqlDefineTypes.SqlServer // Default fallback
+            _ => throw new NotSupportedException($"Unsupported dialect characteristics: {sqlDefine.ColumnLeft}, {sqlDefine.ColumnRight}, {sqlDefine.ParameterPrefix}")
         };
     }
 
-    /// <summary>
-    /// Creates a dialect provider for the specified type.
-    /// </summary>
-    /// <param name="dialectType">The dialect type.</param>
-    /// <returns>The created dialect provider.</returns>
-    private static IDatabaseDialectProvider CreateDialectProvider(SqlDefineTypes dialectType)
-    {
-        return dialectType switch
-        {
-            SqlDefineTypes.MySql => new MySqlDialectProvider(),
-            SqlDefineTypes.SqlServer => new SqlServerDialectProvider(),
-            SqlDefineTypes.PostgreSql => new PostgreSqlDialectProvider(),
-            SqlDefineTypes.SQLite => new SQLiteDialectProvider(),
-            _ => throw new NotSupportedException($"Unsupported dialect: {dialectType}")
-        };
-    }
 
 }
 

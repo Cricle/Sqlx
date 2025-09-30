@@ -7,7 +7,7 @@
 using Microsoft.CodeAnalysis;
 using System.Text;
 
-namespace Sqlx.Generator.Core;
+namespace Sqlx.Generator;
 
 /// <summary>
 /// Default implementation of attribute handler.
@@ -26,7 +26,8 @@ public class AttributeHandler
                           attr.AttributeClass?.Name == "SqlTemplateAttribute")
             .ToArray();
 
-        if (existingSqlAttributes.Any())
+        // 性能优化：使用Length检查数组是否为空，比Any()更直接
+        if (existingSqlAttributes.Length > 0)
         {
             // Copy existing attributes as-is
             foreach (var attr in existingSqlAttributes)
@@ -73,7 +74,8 @@ public class AttributeHandler
                 return string.Empty;
             }
 
-            var sb = new StringBuilder();
+            // 性能优化：预估属性代码容量，一般属性代码长度在50-200字符之间
+            var sb = new StringBuilder(128);
             sb.Append('[');
 
             // Handle different attribute types

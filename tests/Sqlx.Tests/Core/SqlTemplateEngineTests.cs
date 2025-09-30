@@ -7,7 +7,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Sqlx.Generator.Core;
+using Sqlx.Generator;
 using System.Linq;
 
 namespace Sqlx.Tests.Core;
@@ -202,7 +202,7 @@ namespace TestNamespace
         var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User");
 
         // Assert
-        Assert.IsTrue(result.Parameters.Any(p => p.Name == "id"));
+        Assert.IsTrue(result.Parameters.ContainsKey("id"));
         Assert.AreEqual("SELECT * FROM user WHERE id = @id AND name = @name", result.ProcessedSql);
     }
 

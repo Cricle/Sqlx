@@ -6,8 +6,9 @@
 
 using Microsoft.CodeAnalysis;
 using System.Text.RegularExpressions;
+using Sqlx;
 
-namespace Sqlx.Generator.Core;
+namespace Sqlx.Generator;
 
 /// <summary>
 /// SQL template processing engine implementation - 写一次、安全、高效、友好、多库可使用
@@ -18,7 +19,7 @@ namespace Sqlx.Generator.Core;
 /// - 友好(User-friendly): 清晰的错误提示和智能建议
 /// - 多库可使用(Multi-database): 通过SqlDefine支持所有主流数据库
 /// </summary>
-public class SqlTemplateEngine : ISqlTemplateEngine
+public class SqlTemplateEngine
 {
     // 核心正则表达式 - 精简保留
     private static readonly Regex ParameterRegex = new(@"[@:$]\w+", RegexOptions.Compiled | RegexOptions.CultureInvariant);
@@ -73,21 +74,25 @@ public class SqlTemplateEngine : ISqlTemplateEngine
         // 处理模板 - 传递数据库方言
         var processedSql = ProcessPlaceholders(templateSql, method!, entityType, tableName, result, dialect);
         ProcessParameters(processedSql, method!, result);
-        result.ProcessedSql = processedSql;
 
-        // 缓存功能已移至扩展类处理
-
-        return result;
+        // Return new instance with updated SQL
+        return new SqlTemplateResult
+        {
+            ProcessedSql = processedSql,
+            Parameters = result.Parameters,
+            Warnings = result.Warnings,
+            Errors = result.Errors,
+            HasDynamicFeatures = result.HasDynamicFeatures
+        };
     }
 
     /// <inheritdoc/>
     public TemplateValidationResult ValidateTemplate(string templateSql)
     {
-        var result = new TemplateValidationResult { IsValid = true };
+        var result = new TemplateValidationResult();
 
         if (string.IsNullOrWhiteSpace(templateSql))
         {
-            result.IsValid = false;
             result.Errors.Add("SQL template cannot be empty");
             return result;
         }
@@ -157,7 +162,7 @@ public class SqlTemplateEngine : ISqlTemplateEngine
     /// </summary>
     private static string ProcessTablePlaceholder(string tableName, string type, INamedTypeSymbol? entityType, string options, SqlDefine dialect)
     {
-        var snakeTableName = ConvertToSnakeCase(tableName);
+        var snakeTableName = SharedCodeGenerationUtilities.ConvertToSnakeCase(tableName);
         return type == "quoted" ? dialect.WrapColumn(snakeTableName) : snakeTableName;
     }
 
@@ -176,8 +181,8 @@ public class SqlTemplateEngine : ISqlTemplateEngine
 
         var properties = GetFilteredProperties(entityType, options, null);
         return type == "quoted"
-            ? string.Join(", ", properties.Select(p => dialect.WrapColumn(ConvertToSnakeCase(p.Name))))
-            : string.Join(", ", properties.Select(p => ConvertToSnakeCase(p.Name)));
+            ? string.Join(", ", properties.Select(p => dialect.WrapColumn(SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name))))
+            : string.Join(", ", properties.Select(p => SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)));
     }
 
 
@@ -221,12 +226,12 @@ public class SqlTemplateEngine : ISqlTemplateEngine
             if (method == null) return string.Empty;
             var filteredParams = method.Parameters
                 .Where(p => NonSystemParameterFilter(p) && !p.Name.Equals("id", StringComparison.OrdinalIgnoreCase))
-                .Select(p => $"{ConvertToSnakeCase(p.Name)} = {dialect.ParameterPrefix}{p.Name}");
+                .Select(p => $"{SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)} = {dialect.ParameterPrefix}{p.Name}");
             return string.Join(", ", filteredParams);
         }
 
         var properties = GetFilteredProperties(entityType, options, "Id", requireSetter: true);
-        return string.Join(", ", properties.Select(p => $"{ConvertToSnakeCase(p.Name)} = {dialect.ParameterPrefix}{p.Name}"));
+        return string.Join(", ", properties.Select(p => $"{SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)} = {dialect.ParameterPrefix}{p.Name}"));
     }
 
 
@@ -245,36 +250,10 @@ public class SqlTemplateEngine : ISqlTemplateEngine
     /// <summary>生成自动WHERE子句 - 多数据库支持</summary>
     private string GenerateAutoWhereClause(IMethodSymbol method, SqlDefine dialect) =>
         method?.Parameters.Any(NonSystemParameterFilter) == true
-            ? string.Join(" AND ", method.Parameters.Where(NonSystemParameterFilter).Select(p => $"{ConvertToSnakeCase(p.Name)} = {dialect.ParameterPrefix}{p.Name}"))
+            ? string.Join(" AND ", method.Parameters.Where(NonSystemParameterFilter).Select(p => $"{SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)} = {dialect.ParameterPrefix}{p.Name}"))
             : "1=1";
 
 
-    /// <summary>Converts C# property names to snake_case database column names.</summary>
-    private static string ConvertToSnakeCase(string name)
-    {
-        if (string.IsNullOrEmpty(name)) return name;
-        if (name.IndexOf('_') >= 0) return name.ToLowerInvariant();
-
-        // 预计算容量，避免重新分配
-        var capacity = name.Length + (name.Length >> 2); // +25% 估算
-        var result = new System.Text.StringBuilder(capacity);
-
-        for (int i = 0; i < name.Length; i++)
-        {
-            char current = name[i];
-            if (char.IsUpper(current))
-            {
-                if (i > 0 && name[i - 1] != '_' && !char.IsUpper(name[i - 1]))
-                    result.Append('_');
-                result.Append(char.ToLowerInvariant(current));
-            }
-            else
-            {
-                result.Append(current);
-            }
-        }
-        return result.ToString();
-    }
 
     private void ProcessParameters(string sql, IMethodSymbol method, SqlTemplateResult result)
     {
@@ -291,13 +270,7 @@ public class SqlTemplateEngine : ISqlTemplateEngine
 
             if (methodParamDict.TryGetValue(paramName, out var methodParam))
             {
-                result.Parameters.Add(new ParameterMapping
-                {
-                    Name = paramName,
-                    Type = methodParam.Type.ToDisplayString(),
-                    IsNullable = methodParam.Type.CanBeReferencedByName && methodParam.NullableAnnotation == NullableAnnotation.Annotated,
-                    DbType = InferDbType(methodParam.Type)
-                });
+                result.Parameters.Add(paramName, null); // 模板处理阶段只记录参数名
             }
             else
             {
@@ -387,7 +360,8 @@ public class SqlTemplateEngine : ISqlTemplateEngine
         // 参数安全检查 - 确保使用正确的参数前缀
         ValidateParameterSafety(templateSql, result, dialect);
 
-        return !result.Errors.Any();
+        // 性能优化：使用Count检查集合是否为空，比Any()更直接
+        return result.Errors.Count == 0;
     }
 
 
@@ -460,9 +434,10 @@ public class SqlTemplateEngine : ISqlTemplateEngine
     {
         if (method == null) return "GROUP BY id";
         var parameters = method.Parameters.Where(NonSystemParameterFilter).ToList();
-        if (!parameters.Any()) return "GROUP BY id";
+        // 性能优化：使用Count检查集合是否为空，比Any()更直接
+        if (parameters.Count == 0) return "GROUP BY id";
 
-        return $"GROUP BY {string.Join(", ", parameters.Select(p => ConvertToSnakeCase(p.Name)))}";
+        return $"GROUP BY {string.Join(", ", parameters.Select(p => SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)))}";
     }
 
     /// <summary>从方法参数生成HAVING子句</summary>
@@ -470,12 +445,13 @@ public class SqlTemplateEngine : ISqlTemplateEngine
     {
         if (method == null) return "HAVING COUNT(*) > 0";
         var parameters = method.Parameters.Where(NonSystemParameterFilter).ToList();
-        if (!parameters.Any()) return "HAVING COUNT(*) > 0";
+        // 性能优化：使用Count检查集合是否为空，比Any()更直接
+        if (parameters.Count == 0) return "HAVING COUNT(*) > 0";
 
         // 为聚合查询生成HAVING条件
         var conditions = parameters.Select(p =>
         {
-            var columnName = ConvertToSnakeCase(p.Name);
+            var columnName = SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name);
             return p.Type.SpecialType == SpecialType.System_Int32 || p.Type.SpecialType == SpecialType.System_Int64
                 ? $"COUNT({columnName}) > @{p.Name}"
                 : $"{columnName} = @{p.Name}";
@@ -548,21 +524,21 @@ public class SqlTemplateEngine : ISqlTemplateEngine
     /// <summary>处理INSERT占位符 - 多数据库支持</summary>
     private static string ProcessInsertPlaceholder(string type, string tableName, string options, SqlDefine dialect)
     {
-        var snakeTableName = ConvertToSnakeCase(tableName);
+        var snakeTableName = SharedCodeGenerationUtilities.ConvertToSnakeCase(tableName);
         return type == "into" ? $"INSERT INTO {snakeTableName}" : $"INSERT INTO {snakeTableName}";
     }
 
     /// <summary>处理UPDATE占位符 - 多数据库支持</summary>
     private static string ProcessUpdatePlaceholder(string type, string tableName, string options, SqlDefine dialect)
     {
-        var snakeTableName = ConvertToSnakeCase(tableName);
+        var snakeTableName = SharedCodeGenerationUtilities.ConvertToSnakeCase(tableName);
         return $"UPDATE {snakeTableName}";
     }
 
     /// <summary>处理DELETE占位符 - 多数据库支持</summary>
     private static string ProcessDeletePlaceholder(string type, string tableName, string options, SqlDefine dialect)
     {
-        var snakeTableName = ConvertToSnakeCase(tableName);
+        var snakeTableName = SharedCodeGenerationUtilities.ConvertToSnakeCase(tableName);
         return type == "from" ? $"DELETE FROM {snakeTableName}" : $"DELETE FROM {snakeTableName}";
     }
 

@@ -5,6 +5,7 @@
     <TargetFramework>net9.0</TargetFramework>
     <AssemblyName>TodoWebApi</AssemblyName>
     <RootNamespace>TodoWebApi</RootNamespace>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
 
     <!-- AOT 编译设置 -->
     <PublishAot>true</PublishAot>

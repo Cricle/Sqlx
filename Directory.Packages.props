@@ -13,7 +13,7 @@
   <!-- 编译器和分析器 -->
   <ItemGroup Label="Compiler and Analyzers">
     <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
     <PackageVersion Include="StyleCop.Analyzers" Version="1.2.0-beta.556" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
   </ItemGroup>
@@ -61,11 +61,6 @@
   <ItemGroup Label="Development Tools">
     <PackageVersion Include="Microsoft.Build.Locator" Version="1.5.5" />
     <PackageVersion Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
-  </ItemGroup>
-  <!-- Visual Studio 扩展开发 -->
-  <ItemGroup Label="Visual Studio Extension">
-    <PackageVersion Include="Microsoft.VisualStudio.SDK" Version="17.0.32112.339" />
-    <PackageVersion Include="Microsoft.VSSDK.BuildTools" Version="17.0.5232" />
   </ItemGroup>
   <!-- 云和身份验证 -->
   <ItemGroup Label="Cloud and Authentication">

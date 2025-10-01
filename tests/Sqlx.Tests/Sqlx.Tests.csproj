@@ -45,7 +45,6 @@
 
   <!-- Roslyn 编译器包（用于源生成器测试） -->
   <ItemGroup Label="Roslyn Testing">
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
   </ItemGroup>
 

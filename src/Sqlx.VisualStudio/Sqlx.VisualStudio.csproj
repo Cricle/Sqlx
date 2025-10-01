@@ -2,77 +2,49 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net472</TargetFramework>
-    <UseWPF>true</UseWPF>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <AssemblyName>Sqlx.VisualStudio</AssemblyName>
+    <RootNamespace>Sqlx.VisualStudio</RootNamespace>
+    <Description>Sqlx IntelliSense for Visual Studio - Standalone Extension</Description>
+
+    <!-- Visual Studio Extension Properties -->
     <IsProductComponent>true</IsProductComponent>
     <GeneratePkgDefFile>true</GeneratePkgDefFile>
     <IncludeAssemblyInVSIXContainer>true</IncludeAssemblyInVSIXContainer>
-    <IncludeDebugSymbolsInVSIXContainer>true</IncludeDebugSymbolsInVSIXContainer>
-    <IncludeDebugSymbolsInLocalVSIXDeployment>true</IncludeDebugSymbolsInLocalVSIXDeployment>
+    <IncludeDebugSymbolsInVSIXContainer>false</IncludeDebugSymbolsInVSIXContainer>
     <CopyBuildOutputToOutputDirectory>true</CopyBuildOutputToOutputDirectory>
-    <CopyOutputSymbolsToOutputDirectory>true</CopyOutputSymbolsToOutputDirectory>
+    <CopyOutputSymbolsToOutputDirectory>false</CopyOutputSymbolsToOutputDirectory>
+    <CreateVsixContainer>true</CreateVsixContainer>
+    <DeployExtension>false</DeployExtension>
     <StartAction>Program</StartAction>
     <StartProgram Condition="'$(DevEnvDir)' != ''">$(DevEnvDir)devenv.exe</StartProgram>
     <StartArguments>/rootsuffix Exp</StartArguments>
-    <NoWarn>$(NoWarn);CS1701;CS1702;CS8002;CS8618;CS8625;CS8600;CS8602;CS8604;CS8603;CS8601;VSTHRD100;VSTHRD010;VSSDK006;RS1035;SA1209;SA1111</NoWarn>
-    <AssemblyName>Sqlx.VisualStudio</AssemblyName>
-    <RootNamespace>Sqlx.VisualStudio</RootNamespace>
-    <Description>Sqlx ORM Visual Studio Extension providing SQL hover tips, method details window, and navigation.</Description>
-    <PackageTags>Sqlx;ORM;SQL;VisualStudio;IntelliSense;CodeNavigation</PackageTags>
-    <Copyright>Copyright © 2025 Sqlx Team</Copyright>
-    <Version>1.0.0</Version>
-    <UseCodebase>true</UseCodebase>
   </PropertyGroup>
 
-  <!-- Visual Studio SDK 包引用 -->
+  <!-- Visual Studio SDK packages with fixed versions -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.VSSDK.BuildTools">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-    <PackageReference Include="Microsoft.VisualStudio.SDK" ExcludeAssets="runtime" />
-    <PackageReference Include="Microsoft.VisualStudio.Shell.Framework" />
-    <PackageReference Include="Microsoft.VisualStudio.Threading" />
-    <PackageReference Include="Microsoft.VisualStudio.Validation" />
+    <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="17.9.3168" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.VisualStudio.SDK" Version="17.9.37000" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.VisualStudio.Shell.Framework" Version="17.9.37000" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.VisualStudio.Language.Intellisense" Version="17.9.187" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.VisualStudio.Text.Logic" Version="17.9.187" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.VisualStudio.Text.UI.Wpf" Version="17.9.187" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.VisualStudio.ComponentModelHost" Version="17.9.187" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.VisualStudio.LanguageServices" Version="4.8.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="4.8.0" PrivateAssets="all" />
   </ItemGroup>
 
-  <!-- 编辑器和语言服务相关包 -->
+  <!-- .NET SDK会自动包含所有.cs文件，无需显式包含 -->
+
+  <!-- VSIX Manifest -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.VisualStudio.Language.StandardClassification" />
-    <PackageReference Include="Microsoft.VisualStudio.Text.Logic" />
-    <PackageReference Include="Microsoft.VisualStudio.Text.UI.Wpf" />
-    <PackageReference Include="Microsoft.VisualStudio.Editor" />
-    <PackageReference Include="Microsoft.VisualStudio.Language.Intellisense" />
+    <None Include="source.extension.vsixmanifest">
+      <SubType>Designer</SubType>
+    </None>
   </ItemGroup>
 
-  <!-- Roslyn 代码分析包 -->
-  <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.Common" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.VisualStudio.LanguageServices" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.VisualStudio.ComponentModelHost" />
-  </ItemGroup>
-
-  <!-- WPF 相关引用 -->
-  <ItemGroup>
-    <Reference Include="PresentationCore" />
-    <Reference Include="PresentationFramework" />
-    <Reference Include="WindowsBase" />
-    <Reference Include="System.Xaml" />
-  </ItemGroup>
-
-  <!-- 项目引用 -->
-  <ItemGroup>
-    <ProjectReference Include="..\Sqlx\Sqlx.csproj" />
-  </ItemGroup>
-
-  <!-- VSCT 文件编译 -->
-  <ItemGroup>
-    <VSCTCompile Include="SqlxVSPackage.vsct">
-      <ResourceName>Menus.ctmenu</ResourceName>
-    </VSCTCompile>
-  </ItemGroup>
-
-  <!-- 内容文件 -->
+  <!-- Content files -->
   <ItemGroup>
     <Content Include="SqlxLogo.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -90,33 +62,6 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-  </ItemGroup>
-
-  <!-- Marketplace文档（不包含在VSIX中） -->
-  <ItemGroup>
-    <None Include="MARKETPLACE.md" />
-  </ItemGroup>
-
-  <!-- VSIX Manifest -->
-  <ItemGroup>
-    <None Include="source.extension.vsixmanifest">
-      <SubType>Designer</SubType>
-    </None>
-  </ItemGroup>
-
-  <!-- WPF 页面 -->
-  <ItemGroup>
-    <Page Include="ToolWindows\SqlxMethodsToolWindowControl.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-  </ItemGroup>
-
-  <!-- Compile include for generated files -->
-  <ItemGroup>
-    <Compile Update="ToolWindows\SqlxMethodsToolWindowControl.xaml.cs">
-      <DependentUpon>SqlxMethodsToolWindowControl.xaml</DependentUpon>
-    </Compile>
   </ItemGroup>
 
 </Project>

@@ -93,5 +93,6 @@
     <PackageVersion Include="Microsoft.VisualStudio.LanguageServices" Version="4.8.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="4.8.0" />
     <PackageVersion Include="Microsoft.VisualStudio.ComponentModelHost" Version="17.9.187" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
   </ItemGroup>
 </Project>

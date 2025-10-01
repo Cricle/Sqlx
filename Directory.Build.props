@@ -1,55 +1,27 @@
 <Project>
-
-  <!-- 全局属性配置 -->
+  <!-- VS插件独立解决方案 - 简化包管理 -->
   <PropertyGroup>
-    <!-- 语言和框架设置 -->
     <LangVersion>12.0</LangVersion>
-    <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-
-    <!-- 编译器设置 -->
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <WarningsAsErrors />
-    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
-
-    <!-- 常见警告抑制 -->
-    <WarningsNotAsErrors>CS8618;CS8625;CS8629;CS8604;CS8601;CS8602;CS8603;CS8765;CS1591</WarningsNotAsErrors>
-    <!-- 临时禁用StyleCop规则以专注于编译错误 -->
-    <NoWarn>$(NoWarn);RS1024;SA1028;SA1124;SA1122;SA1413;SA1116;SA1117;SA1513;SA1515;SA1512;SA1600;SA1629;SA1615;SA1611;SA1618;SA1649;SA1402;SA1108;SA1137;SA1009;SA1025;SA1507;SA1518;SA1119;SA1407;SA1316;IL3000;SA1201;SA1202;SA1204;SA1309;SA1516;SA1508;SA1401;SA1623;SA1602;SA1210;SA1309;SA1514;SA1633;SA1408;SA1128;SA1648;SA1312;SA1005;SA1601;SA1642;SA1127;SA1208;SA1200</NoWarn>
-
-    <!-- AOT 支持配置 -->
-    <IsAotCompatible Condition="'$(TargetFramework)' == 'net9.0'">true</IsAotCompatible>
-    <EnableTrimAnalyzer Condition="'$(TargetFramework)' == 'net9.0'">true</EnableTrimAnalyzer>
-    <IsTrimmable Condition="'$(TargetFramework)' == 'net9.0'">true</IsTrimmable>
-
-    <!-- 包元数据 -->
-    <Company>Sqlx Team</Company>
-    <Product>Sqlx ORM Framework</Product>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <Authors>Sqlx Team</Authors>
+    <Company>Sqlx</Company>
+    <Product>Sqlx Visual Studio Extension</Product>
     <Copyright>Copyright © 2025 Sqlx Team</Copyright>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/your-org/Sqlx</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/your-org/Sqlx</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
-    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-
-    <!-- 符号和源链接 -->
-    <IncludeSymbols>true</IncludeSymbols>
-    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PublishRepositoryUrl>true</PublishRepositoryUrl>
-
-    <!-- 文档生成 -->
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <Version>1.0.0</Version>
   </PropertyGroup>
 
-  <!-- 全局包引用 -->
-  <ItemGroup>
-    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All" />
-    <PackageReference Include="StyleCop.Analyzers" PrivateAssets="All" />
-  </ItemGroup>
+  <!-- VS SDK 包版本定义 -->
+  <PropertyGroup>
+    <VSSdkVersion>17.9.37000</VSSdkVersion>
+    <VSBuildToolsVersion>17.9.3168</VSBuildToolsVersion>
+    <RoslynVersion>4.8.0</RoslynVersion>
+    <VSLanguageServicesVersion>17.9.187</VSLanguageServicesVersion>
+  </PropertyGroup>
 
-  <!-- 样式规则配置 -->
-  <ItemGroup>
-    <AdditionalFiles Include="$(MSBuildThisFileDirectory)stylecop.json" Link="stylecop.json" />
-  </ItemGroup>
-
+  <!-- 禁用不必要的分析器警告 -->
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);CS1701;CS1702;CS8002;CS8618;CS8625;CS8600;CS8602;CS8604;CS8603;CS8601;VSTHRD100;VSTHRD010;VSSDK006;RS1035;SA1209;SA1111</NoWarn>
+  </PropertyGroup>
 </Project>

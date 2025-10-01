@@ -5,23 +5,15 @@ using System.Threading;
 using Task = System.Threading.Tasks.Task;
 using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio;
-using DTE = EnvDTE.DTE;
-using Sqlx.VisualStudio.ToolWindows;
-using Sqlx.VisualStudio.Commands;
 
 namespace Sqlx.VisualStudio
 {
     /// <summary>
-    /// Sqlx Visual Studio Package - 主扩展包
-    /// 提供SQL悬浮提示、方法详情窗口、智能导航等功能
+    /// Sqlx Visual Studio Package - 独立版本
+    /// 提供SQL悬浮提示功能
     /// </summary>
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
     [Guid(SqlxVSPackage.PackageGuidString)]
-    [ProvideMenuResource("Menus.ctmenu", 1)]
-    [ProvideToolWindow(typeof(SqlxMethodsToolWindow),
-        Style = VsDockStyle.Tabbed,
-        Window = "3ae79031-e1fa-4b8d-907f-fe0953668891", // Output Window GUID
-        Transient = true)]
     [ProvideAutoLoad(VSConstants.UICONTEXT.SolutionExistsAndFullyLoaded_string, PackageAutoLoadFlags.BackgroundLoad)]
     public sealed class SqlxVSPackage : AsyncPackage
     {
@@ -46,46 +38,8 @@ namespace Sqlx.VisualStudio
             // 切换到主线程进行UI操作
             await JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
 
-            // 初始化命令
-            await SqlxMethodsToolWindowCommand.InitializeAsync(this);
-
-            // 输出初始化信息
-            await WriteToOutputAsync("Sqlx Visual Studio Extension 已成功初始化");
-        }
-
-        /// <summary>
-        /// 写入输出窗口
-        /// </summary>
-        private async Task WriteToOutputAsync(string message)
-        {
-            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-            
-            try
-            {
-                var dte = await GetServiceAsync(typeof(DTE)) as DTE;
-                if (dte != null)
-                {
-                    var outputWindow = dte.ToolWindows.OutputWindow;
-                    var pane = outputWindow.OutputWindowPanes.Add("Sqlx Extension");
-                    pane.OutputString($"[{DateTime.Now:HH:mm:ss}] {message}\n");
-                }
-            }
-            catch
-            {
-                // 静默处理输出窗口异常
-            }
-        }
-
-        /// <summary>
-        /// 包销毁
-        /// </summary>
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                // 清理托管资源
-            }
-            base.Dispose(disposing);
+            // Sqlx QuickInfo功能会通过MEF自动注册，无需额外初始化代码
+            // 这是一个极简版本的VS插件，专注于SQL悬浮提示功能
         }
 
         #endregion

@@ -126,7 +126,7 @@ public class SqlTemplateEngine
 
         // 增强安全验证 - 基于数据库方言
         if (!ValidateTemplateSecurity(templateSql, result, dialect))
-            return result;
+        return result;
 
         // 处理模板 - 传递数据库方言
         var processedSql = ProcessPlaceholders(templateSql, method!, entityType, tableName, result, dialect);

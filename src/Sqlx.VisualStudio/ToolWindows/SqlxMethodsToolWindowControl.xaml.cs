@@ -19,7 +19,7 @@ namespace Sqlx.VisualStudio.ToolWindows
     /// </summary>
     public partial class SqlxMethodsToolWindowControl : UserControl
     {
-        private readonly ISqlxLanguageService _languageService;
+        private readonly ISqlxLanguageService? _languageService;
         private List<SqlxMethodInfoViewModel> _allMethods = new();
         private bool _isLoading = false;
 
@@ -40,9 +40,9 @@ namespace Sqlx.VisualStudio.ToolWindows
         /// <summary>
         /// 控件加载事件
         /// </summary>
-        private async void OnLoaded(object sender, RoutedEventArgs e)
+        private void OnLoaded(object sender, RoutedEventArgs e)
         {
-            await RefreshMethodsAsync();
+            _ = RefreshMethodsAsync();
         }
 
         /// <summary>
@@ -56,9 +56,9 @@ namespace Sqlx.VisualStudio.ToolWindows
         /// <summary>
         /// 刷新按钮点击事件
         /// </summary>
-        private async void RefreshButton_Click(object sender, RoutedEventArgs e)
+        private void RefreshButton_Click(object sender, RoutedEventArgs e)
         {
-            await RefreshMethodsAsync();
+            _ = RefreshMethodsAsync();
         }
 
         /// <summary>
@@ -161,28 +161,34 @@ namespace Sqlx.VisualStudio.ToolWindows
         /// </summary>
         private void NavigateToMethod(SqlxMethodInfoViewModel method)
         {
-            ThreadHelper.ThrowIfNotOnUIThread();
+            if (method == null) return;
 
-            try
+            _ = ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
             {
-                var dte = (EnvDTE.DTE)Package.GetGlobalService(typeof(EnvDTE.DTE));
-                if (dte == null) return;
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
 
-                // 打开文件
-                if (!string.IsNullOrEmpty(method.FilePath) && File.Exists(method.FilePath))
+                try
                 {
-                    dte.ItemOperations.OpenFile(method.FilePath);
+                    var dte = (EnvDTE.DTE)Package.GetGlobalService(typeof(EnvDTE.DTE));
+                    if (dte == null) return;
 
-                    // 跳转到指定行
-                    var textSelection = (EnvDTE.TextSelection)dte.ActiveDocument.Selection;
-                    textSelection.GotoLine(method.LineNumber, false);
-                    textSelection.SelectLine();
+                    // 打开文件（不检查File.Exists，让VS处理）
+                    if (!string.IsNullOrEmpty(method.FilePath))
+                    {
+                        dte.ItemOperations.OpenFile(method.FilePath);
+                        
+                        // 跳转到指定行
+                        var textSelection = (EnvDTE.TextSelection)dte.ActiveDocument.Selection;
+                        textSelection.GotoLine(method.LineNumber, false);
+                        textSelection.SelectLine();
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"导航到方法时出错: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
+                catch (Exception ex)
+                {
+                    await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                    MessageBox.Show($"导航到方法时出错: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            });
         }
 
         /// <summary>

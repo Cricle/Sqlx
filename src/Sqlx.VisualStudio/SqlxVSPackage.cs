@@ -5,6 +5,7 @@ using System.Threading;
 using Task = System.Threading.Tasks.Task;
 using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio;
+using DTE = EnvDTE.DTE;
 using Sqlx.VisualStudio.ToolWindows;
 using Sqlx.VisualStudio.Commands;
 
@@ -58,13 +59,13 @@ namespace Sqlx.VisualStudio
         private async Task WriteToOutputAsync(string message)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-
+            
             try
             {
-                var dte = await GetServiceAsync(typeof(SDTE)) as SDTE;
-                if (dte?.DTE?.ToolWindows?.OutputWindow != null)
+                var dte = await GetServiceAsync(typeof(DTE)) as DTE;
+                if (dte != null)
                 {
-                    var outputWindow = dte.DTE.ToolWindows.OutputWindow;
+                    var outputWindow = dte.ToolWindows.OutputWindow;
                     var pane = outputWindow.OutputWindowPanes.Add("Sqlx Extension");
                     pane.OutputString($"[{DateTime.Now:HH:mm:ss}] {message}\n");
                 }

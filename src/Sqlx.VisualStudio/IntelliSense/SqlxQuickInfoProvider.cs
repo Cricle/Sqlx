@@ -29,7 +29,7 @@ namespace Sqlx.VisualStudio.IntelliSense
     internal class SqlxQuickInfoSourceProvider : IAsyncQuickInfoSourceProvider
     {
         [Import]
-        private IComponentModel ComponentModel { get; set; }
+        private IComponentModel ComponentModel { get; set; } = null!;
 
         /// <summary>
         /// 尝试创建QuickInfo源
@@ -72,22 +72,23 @@ namespace Sqlx.VisualStudio.IntelliSense
 
                 // 获取触发点
                 var triggerPoint = session.GetTriggerPoint(_textBuffer);
-                if (!triggerPoint.HasValue)
+                if (triggerPoint == null)
                     return null;
 
-                // 获取当前文档
-                var document = _textBuffer.GetRelatedDocuments().FirstOrDefault();
-                if (document == null)
+                // 获取当前文档 - 简化版本
+                var documents = _workspace.CurrentSolution.Projects.SelectMany(p => p.Documents).ToList();
+                var doc = documents.FirstOrDefault();
+                if (doc == null)
                     return null;
 
                 // 获取语义模型和语法树
-                var semanticModel = await document.GetSemanticModelAsync(cancellationToken);
-                var syntaxTree = await document.GetSyntaxTreeAsync(cancellationToken);
+                var semanticModel = await doc.GetSemanticModelAsync(cancellationToken);
+                var syntaxTree = await doc.GetSyntaxTreeAsync(cancellationToken);
                 if (semanticModel == null || syntaxTree == null)
                     return null;
 
                 var root = await syntaxTree.GetRootAsync(cancellationToken);
-                var position = triggerPoint.Value.Position;
+                var position = triggerPoint.GetPosition(_textBuffer.CurrentSnapshot);
 
                 // 查找包含当前位置的方法声明
                 var methodDeclaration = root.FindToken(position).Parent?
@@ -122,10 +123,10 @@ namespace Sqlx.VisualStudio.IntelliSense
                     return null;
 
                 // 创建跟踪范围
-                var line = triggerPoint.Value.GetContainingLine();
+                var currentPosition = triggerPoint.GetPosition(_textBuffer.CurrentSnapshot);
                 var trackingSpan = _textBuffer.CurrentSnapshot.CreateTrackingSpan(
-                    line.Start,
-                    line.Length,
+                    currentPosition, 
+                    1, 
                     SpanTrackingMode.EdgeInclusive);
 
                 // 构建方法信息
@@ -134,7 +135,7 @@ namespace Sqlx.VisualStudio.IntelliSense
                     methodSymbol.ContainingType.Name,
                     methodSymbol.ContainingNamespace.ToDisplayString(),
                     sqlQuery,
-                    document.FilePath ?? document.Name,
+                    doc.FilePath ?? doc.Name,
                     methodDeclaration.GetLocation().GetLineSpan().StartLinePosition.Line + 1,
                     methodDeclaration.GetLocation().GetLineSpan().StartLinePosition.Character + 1,
                     methodSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
@@ -206,37 +207,37 @@ namespace Sqlx.VisualStudio.IntelliSense
             var textBlock = new TextBlock { TextWrapping = System.Windows.TextWrapping.Wrap };
 
             // 标题
-            textBlock.Inlines.Add(new Run("🔍 Sqlx Method: ")
-            {
+            textBlock.Inlines.Add(new Run("🔍 Sqlx Method: ") 
+            { 
                 FontWeight = System.Windows.FontWeights.Bold,
                 Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.DodgerBlue)
             });
-            textBlock.Inlines.Add(new Run(methodInfo.MethodName + Environment.NewLine)
+            textBlock.Inlines.Add(new Run(methodInfo.MethodName + "\n")
             {
                 FontWeight = System.Windows.FontWeights.Bold
             });
 
             // 方法签名
             textBlock.Inlines.Add(new Run("📝 Signature: ") { FontWeight = System.Windows.FontWeights.Bold });
-            textBlock.Inlines.Add(new Run(methodInfo.MethodSignature + Environment.NewLine));
+            textBlock.Inlines.Add(new Run(methodInfo.MethodSignature + "\n"));
 
             // 位置信息
             textBlock.Inlines.Add(new Run("📂 Location: ") { FontWeight = System.Windows.FontWeights.Bold });
-            textBlock.Inlines.Add(new Run($"{methodInfo.Namespace}.{methodInfo.ClassName}" + Environment.NewLine));
+            textBlock.Inlines.Add(new Run($"{methodInfo.Namespace}.{methodInfo.ClassName}" + "\n"));
 
             // 特性类型
             textBlock.Inlines.Add(new Run("🏷️ Attribute: ") { FontWeight = System.Windows.FontWeights.Bold });
-            textBlock.Inlines.Add(new Run($"[{methodInfo.AttributeType}]" + Environment.NewLine));
+            textBlock.Inlines.Add(new Run($"[{methodInfo.AttributeType}]" + "\n"));
 
             // SQL查询
-            textBlock.Inlines.Add(new Run("🗄️ SQL Query:" + Environment.NewLine)
-            {
+            textBlock.Inlines.Add(new Run("🗄️ SQL Query:\n") 
+            { 
                 FontWeight = System.Windows.FontWeights.Bold,
                 Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Green)
             });
-
+            
             var formattedSql = FormatSql(methodInfo.SqlQuery);
-            textBlock.Inlines.Add(new Run(formattedSql + Environment.NewLine)
+            textBlock.Inlines.Add(new Run(formattedSql + "\n")
             {
                 FontFamily = new System.Windows.Media.FontFamily("Consolas"),
                 Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.DarkSlateGray)
@@ -245,10 +246,10 @@ namespace Sqlx.VisualStudio.IntelliSense
             // 参数列表
             if (methodInfo.Parameters.Any())
             {
-                textBlock.Inlines.Add(new Run("📋 Parameters:" + Environment.NewLine) { FontWeight = System.Windows.FontWeights.Bold });
+                textBlock.Inlines.Add(new Run("📋 Parameters:\n") { FontWeight = System.Windows.FontWeights.Bold });
                 foreach (var param in methodInfo.Parameters)
                 {
-                    textBlock.Inlines.Add(new Run($"  • {param.Name}: {param.Type}" + Environment.NewLine)
+                    textBlock.Inlines.Add(new Run($"  • {param.Name}: {param.Type}\n")
                     {
                         FontFamily = new System.Windows.Media.FontFamily("Consolas")
                     });

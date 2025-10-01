@@ -49,7 +49,7 @@ namespace Sqlx.VisualStudio.Commands
         /// <summary>
         /// 获取命令实例
         /// </summary>
-        public static SqlxMethodsToolWindowCommand Instance { get; private set; }
+        public static SqlxMethodsToolWindowCommand? Instance { get; private set; }
 
         /// <summary>
         /// 获取服务提供器
@@ -64,8 +64,11 @@ namespace Sqlx.VisualStudio.Commands
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(package.DisposalToken);
 
-            OleMenuCommandService commandService = await package.GetServiceAsync(typeof(IMenuCommandService)) as OleMenuCommandService;
-            Instance = new SqlxMethodsToolWindowCommand(package, commandService);
+            var commandService = await package.GetServiceAsync(typeof(IMenuCommandService)) as OleMenuCommandService;
+            if (commandService != null)
+            {
+                Instance = new SqlxMethodsToolWindowCommand(package, commandService);
+            }
         }
 
         /// <summary>

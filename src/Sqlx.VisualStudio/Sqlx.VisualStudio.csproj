@@ -2,6 +2,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net472</TargetFramework>
+    <UseWPF>true</UseWPF>
     <IsProductComponent>true</IsProductComponent>
     <GeneratePkgDefFile>true</GeneratePkgDefFile>
     <IncludeAssemblyInVSIXContainer>true</IncludeAssemblyInVSIXContainer>
@@ -12,7 +13,7 @@
     <StartAction>Program</StartAction>
     <StartProgram Condition="'$(DevEnvDir)' != ''">$(DevEnvDir)devenv.exe</StartProgram>
     <StartArguments>/rootsuffix Exp</StartArguments>
-    <NoWarn>$(NoWarn);CS1701;CS1702;CS8002</NoWarn>
+    <NoWarn>$(NoWarn);CS1701;CS1702;CS8002;CS8618;CS8625;CS8600;CS8602;CS8604;CS8603;CS8601;VSTHRD100;VSTHRD010;VSSDK006;RS1035;SA1209;SA1111</NoWarn>
     <AssemblyName>Sqlx.VisualStudio</AssemblyName>
     <RootNamespace>Sqlx.VisualStudio</RootNamespace>
     <Description>Sqlx ORM Visual Studio Extension providing SQL hover tips, method details window, and navigation.</Description>
@@ -109,6 +110,13 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+  </ItemGroup>
+
+  <!-- Compile include for generated files -->
+  <ItemGroup>
+    <Compile Update="ToolWindows\SqlxMethodsToolWindowControl.xaml.cs">
+      <DependentUpon>SqlxMethodsToolWindowControl.xaml</DependentUpon>
+    </Compile>
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CommandTable xmlns="http://schemas.microsoft.com/VisualStudio/2005-10-18/CommandTable" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <!-- 外部引用和符号定义 -->
+  <Extern href="stdidcmd.h"/>
+  <Extern href="vsshlids.h"/>
+
+  <!-- 命令定义 -->
+  <Commands package="guidSqlxVSPackage">
+
+    <!-- 菜单组定义 -->
+    <Groups>
+      <Group guid="guidSqlxVSPackageCmdSet" id="SqlxMenuGroup" priority="0x0600">
+        <Parent guid="guidSHLMainMenu" id="IDM_VS_MENU_VIEW"/>
+      </Group>
+    </Groups>
+
+    <!-- 按钮定义 -->
+    <Buttons>
+      <!-- Sqlx方法工具窗口命令 -->
+      <Button guid="guidSqlxVSPackageCmdSet" id="SqlxMethodsToolWindowCommandId" priority="0x0100" type="Button">
+        <Parent guid="guidSqlxVSPackageCmdSet" id="SqlxMenuGroup" />
+        <Icon guid="guidImages" id="bmpSqlx" />
+        <Strings>
+          <ButtonText>Sqlx Methods</ButtonText>
+          <CommandName>Sqlx.ShowMethodsWindow</CommandName>
+          <ToolTipText>显示Sqlx方法列表窗口</ToolTipText>
+          <MenuText>&amp;Sqlx Methods</MenuText>
+        </Strings>
+      </Button>
+    </Buttons>
+
+    <!-- 位图定义 -->
+    <Bitmaps>
+      <Bitmap guid="guidImages" href="Resources\SqlxCommand.png" usedList="bmpSqlx"/>
+    </Bitmaps>
+
+  </Commands>
+
+  <!-- 键盘快捷键绑定 -->
+  <KeyBindings>
+    <KeyBinding guid="guidSqlxVSPackageCmdSet" id="SqlxMethodsToolWindowCommandId" editor="guidVSStd97" key1="S" mod1="Control Shift" key2="Q"/>
+  </KeyBindings>
+
+  <!-- 符号定义 -->
+  <Symbols>
+    <!-- 包GUID -->
+    <GuidSymbol name="guidSqlxVSPackage" value="{E7C44F2A-3D5B-4F8E-9A1C-2E6F7B8A9C3D}" />
+
+    <!-- 命令集GUID和ID -->
+    <GuidSymbol name="guidSqlxVSPackageCmdSet" value="{1B2C3D4E-5F6A-7B8C-9D0E-1F2A3B4C5D6E}">
+      <IDSymbol name="SqlxMenuGroup" value="0x1020" />
+      <IDSymbol name="SqlxMethodsToolWindowCommandId" value="0x0100" />
+    </GuidSymbol>
+
+    <!-- 图像GUID -->
+    <GuidSymbol name="guidImages" value="{A8B9C0D1-E2F3-4A5B-6C7D-8E9F0A1B2C3D}" >
+      <IDSymbol name="bmpSqlx" value="1" />
+    </GuidSymbol>
+  </Symbols>
+
+</CommandTable>

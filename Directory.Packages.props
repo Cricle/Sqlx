@@ -77,4 +77,21 @@
   <ItemGroup Label="AOT Compiler" Condition="'$(EnableAOT)' == 'true'">
     <PackageVersion Include="Microsoft.DotNet.ILCompiler" Version="9.0.0" />
   </ItemGroup>
+
+  <!-- Visual Studio SDK 包（扩展开发） -->
+  <ItemGroup Label="Visual Studio SDK">
+    <PackageVersion Include="Microsoft.VSSDK.BuildTools" Version="17.9.3168" />
+    <PackageVersion Include="Microsoft.VisualStudio.SDK" Version="17.9.37000" />
+    <PackageVersion Include="Microsoft.VisualStudio.Shell.Framework" Version="17.9.37000" />
+    <PackageVersion Include="Microsoft.VisualStudio.Threading" Version="17.9.28" />
+    <PackageVersion Include="Microsoft.VisualStudio.Validation" Version="17.8.8" />
+    <PackageVersion Include="Microsoft.VisualStudio.Language.StandardClassification" Version="17.9.187" />
+    <PackageVersion Include="Microsoft.VisualStudio.Text.Logic" Version="17.9.187" />
+    <PackageVersion Include="Microsoft.VisualStudio.Text.UI.Wpf" Version="17.9.187" />
+    <PackageVersion Include="Microsoft.VisualStudio.Editor" Version="17.9.187" />
+    <PackageVersion Include="Microsoft.VisualStudio.Language.Intellisense" Version="17.9.187" />
+    <PackageVersion Include="Microsoft.VisualStudio.LanguageServices" Version="4.8.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="4.8.0" />
+    <PackageVersion Include="Microsoft.VisualStudio.ComponentModelHost" Version="17.9.187" />
+  </ItemGroup>
 </Project>

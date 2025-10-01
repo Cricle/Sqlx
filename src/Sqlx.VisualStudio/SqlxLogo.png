@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Sqlx Logo SVG - Convert to PNG (32x32) for final use -->
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Circle -->
+  <circle cx="16" cy="16" r="15" fill="#0066cc" stroke="#004499" stroke-width="1"/>
+  
+  <!-- SQL Text -->
+  <text x="16" y="12" font-family="Arial, sans-serif" font-size="8" font-weight="bold" 
+        text-anchor="middle" fill="white">SQL</text>
+  
+  <!-- X Symbol -->
+  <text x="16" y="24" font-family="Arial, sans-serif" font-size="10" font-weight="bold" 
+        text-anchor="middle" fill="#ffcc00">X</text>
+  
+  <!-- Code Brackets -->
+  <text x="6" y="20" font-family="monospace" font-size="6" fill="#cccccc">&lt;</text>
+  <text x="26" y="20" font-family="monospace" font-size="6" fill="#cccccc">/&gt;</text>
+</svg>
+
+<!-- 
+Note: This is an SVG placeholder for the Sqlx logo. 
+For the final extension, please convert this to a 32x32 PNG file.
+Recommended tools: 
+- Online: https://svg2png.com/
+- Command line: inkscape or ImageMagick
+- Design tools: Adobe Illustrator, Figma, or similar
+-->

@@ -1,6 +1,6 @@
 # 📊 Sqlx 项目状态总览
 
-> **最后更新**: 2025年9月29日
+> **最后更新**: 2025年10月1日
 > **项目版本**: v3.0
 > **状态**: ✅ 生产就绪，功能完整稳定
 
@@ -12,9 +12,29 @@
 **Sqlx 是现代化的 .NET ORM 框架，实现了"写一次、安全、高效、友好、多库可使用"的设计目标。**
 
 - 🚀 **极致性能** - 零反射设计，AOT原生支持，性能提升27倍
-- 🛡️ **安全可靠** - 全面SQL注入防护，514个测试100%通过
+- 🛡️ **安全可靠** - 全面SQL注入防护，430个测试100%通过
 - 🌟 **写一次，处处运行** - 业界首创的多数据库模板引擎
-- 🎯 **开发友好** - 22个智能占位符，现代C#语法支持
+- 🎯 **开发友好** - 23个智能占位符，现代C#语法支持
+- 💻 **生产实例** - 完整TODO WebAPI示例，支持Vue SPA前端
+
+## 🏗️ 项目架构
+
+```
+Sqlx/
+├── src/
+│   ├── Sqlx/                    # 核心ORM库
+│   └── Sqlx.Generator/          # 源代码生成器
+├── tests/
+│   └── Sqlx.Tests/              # 单元测试项目
+├── samples/
+│   ├── SqlxDemo/                # 基础示例项目
+│   └── TodoWebApi/              # TODO WebAPI (AOT Native)
+│       ├── Models/              # 数据模型 (Todo, Category)
+│       ├── Services/            # 业务服务层
+│       ├── Json/                # AOT JSON序列化上下文
+│       └── wwwroot/             # Vue SPA前端资源
+└── docs/                        # 项目文档
+```
 
 ---
 
@@ -25,8 +45,9 @@
 |------|------|------|
 | **核心库 (src/Sqlx)** | ✅ 完全成功 | 零错误，仅128个XML注释警告 |
 | **源生成器 (src/Sqlx.Generator)** | ✅ 完全成功 | 支持AOT，多数据库模板引擎 |
-| **单元测试** | ✅ 100% 通过 | 514个测试全部通过，耗时12.2秒 |
-| **示例项目** | ✅ 功能完整 | SqlxDemo运行正常，功能演示完整 |
+| **单元测试** | ✅ 100% 通过 | 430个测试全部通过，耗时14.0秒 |
+| **示例项目** | ✅ 功能完整 | SqlxDemo运行正常，TodoWebApi支持AOT编译 |
+| **TodoWebApi** | ✅ AOT就绪 | 14MB原生可执行文件，Vue SPA前端 |
 
 ### 🚀 功能完整性
 | 功能模块 | 实现状态 | 技术亮点 |
@@ -288,6 +309,18 @@ dotnet run --project samples/SqlxDemo --configuration Release
 ✅ 多数据库模板引擎演示
 ✅ 22个智能占位符演示
 ✅ 安全特性演示
+
+# TodoWebApi项目状态
+dotnet publish samples/TodoWebApi -c Release -p:PublishAot=true
+
+# AOT原生功能完整性
+✅ .NET 9.0 Native AOT编译 (14MB可执行文件)
+✅ Vue.js SPA前端，提供完整Web界面
+✅ SQLite数据库，支持完整CRUD操作
+✅ 13个REST API端点，覆盖所有业务场景
+✅ Minimal APIs架构，AOT兼容设计
+✅ JSON源生成器，零反射序列化
+✅ Sqlx ORM集成，展示所有核心功能
 ```
 
 ---

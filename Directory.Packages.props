@@ -72,6 +72,12 @@
     <PackageVersion Include="Azure.Identity" Version="1.12.0" />
     <PackageVersion Include="Microsoft.Identity.Client" Version="4.63.0" />
   </ItemGroup>
+  <!-- Web API 框架 -->
+  <ItemGroup Label="Web API">
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0" />
+    <PackageVersion Include="Swashbuckle.AspNetCore" Version="6.9.0" />
+  </ItemGroup>
+
   <!-- AOT 编译器（实验性） -->
   <ItemGroup Label="AOT Compiler" Condition="'$(EnableAOT)' == 'true'">
     <PackageVersion Include="Microsoft.DotNet.ILCompiler" Version="9.0.0" />

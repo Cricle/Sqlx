@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sqlx TODO - AOT Native</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div id="app" class="container py-4">
+        <div class="text-center mb-4">
+            <h1 class="display-4">🚀 Sqlx TODO WebAPI</h1>
+            <p class="lead">AOT 原生编译演示 - 零反射，极致性能</p>
+        </div>
+
+        <div class="row">
+            <div class="col-md-8 mx-auto">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>📝 TODO 管理</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Add TODO Form -->
+                        <form @submit.prevent="addTodo" class="mb-4">
+                            <div class="input-group">
+                                <input v-model="newTitle" type="text" class="form-control" placeholder="输入TODO标题..." required>
+                                <button type="submit" class="btn btn-primary">添加</button>
+                            </div>
+                        </form>
+
+                        <!-- TODO List -->
+                        <div v-if="loading" class="text-center">
+                            <div class="spinner-border" role="status"></div>
+                        </div>
+                        <div v-else>
+                            <div v-if="todos.length === 0" class="text-center text-muted py-3">
+                                暂无 TODO 项目
+                            </div>
+                            <div v-else>
+                                <div v-for="todo in todos" :key="todo.id" class="card mb-2">
+                                    <div class="card-body py-2">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span :class="{ 'text-decoration-line-through text-muted': todo.isCompleted }">
+                                                {{ todo.title }}
+                                            </span>
+                                            <div>
+                                                <button @click="toggleTodo(todo)" class="btn btn-sm me-1"
+                                                        :class="todo.isCompleted ? 'btn-warning' : 'btn-success'">
+                                                    {{ todo.isCompleted ? '撤销' : '完成' }}
+                                                </button>
+                                                <button @click="deleteTodo(todo)" class="btn btn-sm btn-danger">
+                                                    删除
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Stats -->
+                        <div class="mt-4 p-3 bg-light rounded">
+                            <div class="row text-center">
+                                <div class="col-4">
+                                    <strong>{{ stats.total }}</strong><br>
+                                    <small class="text-muted">总数</small>
+                                </div>
+                                <div class="col-4">
+                                    <strong>{{ stats.completed }}</strong><br>
+                                    <small class="text-muted">完成</small>
+                                </div>
+                                <div class="col-4">
+                                    <strong>{{ stats.pending }}</strong><br>
+                                    <small class="text-muted">待办</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- API Info -->
+                <div class="card mt-4">
+                    <div class="card-body">
+                        <h6>🔧 系统信息</h6>
+                        <div class="row small">
+                            <div class="col-6"><strong>版本:</strong> {{ apiInfo.version || 'N/A' }}</div>
+                            <div class="col-6"><strong>环境:</strong> {{ apiInfo.environment || 'N/A' }}</div>
+                            <div class="col-6"><strong>数据库:</strong> {{ apiInfo.databaseType || 'SQLite' }}</div>
+                            <div class="col-6"><strong>编译:</strong> AOT Native</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script>
+        const { createApp, ref, reactive, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                const todos = ref([]);
+                const loading = ref(false);
+                const newTitle = ref('');
+                const apiInfo = reactive({ version: '', environment: '', databaseType: '' });
+                const stats = reactive({ total: 0, completed: 0, pending: 0 });
+
+                async function apiCall(url, options = {}) {
+                    const response = await fetch('/api' + url, {
+                        headers: { 'Content-Type': 'application/json', ...options.headers },
+                        ...options
+                    });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return response.json();
+                }
+
+                async function loadApiInfo() {
+                    try {
+                        const info = await apiCall('/info');
+                        Object.assign(apiInfo, info);
+                    } catch (error) {
+                        console.error('加载API信息失败:', error);
+                    }
+                }
+
+                async function loadTodos() {
+                    loading.value = true;
+                    try {
+                        const data = await apiCall('/todos');
+                        todos.value = data || [];
+                        updateStats();
+                    } catch (error) {
+                        console.error('加载TODO失败:', error);
+                        todos.value = [];
+                    } finally {
+                        loading.value = false;
+                    }
+                }
+
+                async function addTodo() {
+                    if (!newTitle.value.trim()) return;
+                    try {
+                        const todo = await apiCall('/todos', {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                title: newTitle.value.trim(),
+                                priority: 2,
+                                isCompleted: false
+                            })
+                        });
+                        todos.value.unshift(todo);
+                        newTitle.value = '';
+                        updateStats();
+                    } catch (error) {
+                        console.error('添加TODO失败:', error);
+                        alert('添加失败: ' + error.message);
+                    }
+                }
+
+                async function toggleTodo(todo) {
+                    try {
+                        const updated = await apiCall(`/todos/${todo.id}`, {
+                            method: 'PUT',
+                            body: JSON.stringify({ ...todo, isCompleted: !todo.isCompleted })
+                        });
+                        const index = todos.value.findIndex(t => t.id === todo.id);
+                        if (index !== -1) {
+                            todos.value[index] = updated;
+                            updateStats();
+                        }
+                    } catch (error) {
+                        console.error('更新TODO失败:', error);
+                        alert('更新失败: ' + error.message);
+                    }
+                }
+
+                async function deleteTodo(todo) {
+                    if (!confirm('确定删除吗？')) return;
+                    try {
+                        await apiCall(`/todos/${todo.id}`, { method: 'DELETE' });
+                        const index = todos.value.findIndex(t => t.id === todo.id);
+                        if (index !== -1) {
+                            todos.value.splice(index, 1);
+                            updateStats();
+                        }
+                    } catch (error) {
+                        console.error('删除TODO失败:', error);
+                        alert('删除失败: ' + error.message);
+                    }
+                }
+
+                function updateStats() {
+                    stats.total = todos.value.length;
+                    stats.completed = todos.value.filter(t => t.isCompleted).length;
+                    stats.pending = stats.total - stats.completed;
+                }
+
+                onMounted(() => {
+                    loadApiInfo();
+                    loadTodos();
+                });
+
+                return {
+                    todos, loading, newTitle, apiInfo, stats,
+                    addTodo, toggleTodo, deleteTodo
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

@@ -45,6 +45,7 @@ public class SqlTemplateEngine
         ["between"] = new(StringComparer.OrdinalIgnoreCase) { "min", "max", "column" },
         ["like"] = new(StringComparer.OrdinalIgnoreCase) { "pattern", "column", "mode" },
         ["in"] = new(StringComparer.OrdinalIgnoreCase) { "values", "column" },
+        ["or"] = new(StringComparer.OrdinalIgnoreCase) { "conditions", "columns" },
         ["round"] = new(StringComparer.OrdinalIgnoreCase) { "decimals", "column" },
         ["limit"] = new(StringComparer.OrdinalIgnoreCase) { "default", "offset" },
         ["columns"] = new(StringComparer.OrdinalIgnoreCase) { "exclude", "include" },
@@ -216,9 +217,10 @@ public class SqlTemplateEngine
                 "between" => ProcessBetweenPlaceholder(placeholderType, placeholderOptions, dialect),
                 "like" => ProcessLikePlaceholder(placeholderType, placeholderOptions, dialect),
                 "in" => ProcessInPlaceholder(placeholderType, placeholderOptions, dialect),
-                "not_in" => ProcessNotInPlaceholder(placeholderType, placeholderOptions, dialect),
+                "not_in" => ProcessInPlaceholder(placeholderType, placeholderOptions, dialect, true),
+                "or" => ProcessOrPlaceholder(placeholderType, placeholderOptions, dialect),
                 "isnull" => ProcessIsNullPlaceholder(placeholderType, placeholderOptions, dialect),
-                "notnull" => ProcessNotNullPlaceholder(placeholderType, placeholderOptions, dialect),
+                "notnull" => ProcessIsNullPlaceholder(placeholderType, placeholderOptions, dialect, true),
                 // 日期时间函数
                 "today" => ProcessTodayPlaceholder(placeholderType, placeholderOptions, dialect),
                 "week" => ProcessWeekPlaceholder(placeholderType, placeholderOptions, dialect),
@@ -230,14 +232,14 @@ public class SqlTemplateEngine
                 "contains" => ProcessContainsPlaceholder(placeholderType, placeholderOptions, dialect),
                 "startswith" => ProcessStartsWithPlaceholder(placeholderType, placeholderOptions, dialect),
                 "endswith" => ProcessEndsWithPlaceholder(placeholderType, placeholderOptions, dialect),
-                "upper" => ProcessUpperPlaceholder(placeholderType, placeholderOptions, dialect),
-                "lower" => ProcessLowerPlaceholder(placeholderType, placeholderOptions, dialect),
-                "trim" => ProcessTrimPlaceholder(placeholderType, placeholderOptions, dialect),
+                "upper" => ProcessStringFunction("UPPER", placeholderType, placeholderOptions, dialect),
+                "lower" => ProcessStringFunction("LOWER", placeholderType, placeholderOptions, dialect),
+                "trim" => ProcessStringFunction("TRIM", placeholderType, placeholderOptions, dialect),
                 // 数学函数
-                "round" => ProcessRoundPlaceholder(placeholderType, placeholderOptions, dialect),
-                "abs" => ProcessAbsPlaceholder(placeholderType, placeholderOptions, dialect),
-                "ceiling" => ProcessCeilingPlaceholder(placeholderType, placeholderOptions, dialect),
-                "floor" => ProcessFloorPlaceholder(placeholderType, placeholderOptions, dialect),
+                "round" => ProcessMathFunction("ROUND", placeholderType, placeholderOptions, dialect),
+                "abs" => ProcessMathFunction("ABS", placeholderType, placeholderOptions, dialect),
+                "ceiling" => ProcessMathFunction("CEILING", placeholderType, placeholderOptions, dialect),
+                "floor" => ProcessMathFunction("FLOOR", placeholderType, placeholderOptions, dialect),
                 // 批量操作
                 "batch_values" => ProcessBatchValuesPlaceholder(placeholderType, placeholderOptions, dialect),
                 "upsert" => ProcessUpsertPlaceholder(placeholderType, tableName, placeholderOptions, dialect),
@@ -473,36 +475,8 @@ public class SqlTemplateEngine
         }
     }
 
-    private static readonly Dictionary<SpecialType, string> DbTypeMap = new()
-    {
-        [SpecialType.System_String] = "String",
-        [SpecialType.System_Int32] = "Int32",
-        [SpecialType.System_Int64] = "Int64",
-        [SpecialType.System_Boolean] = "Boolean",
-        [SpecialType.System_DateTime] = "DateTime",
-        [SpecialType.System_Decimal] = "Decimal",
-        [SpecialType.System_Double] = "Double",
-        [SpecialType.System_Single] = "Single",
-        [SpecialType.System_Byte] = "Byte",
-        [SpecialType.System_Int16] = "Int16"
-    };
-
-    private static string InferDbType(ITypeSymbol type) => DbTypeMap.TryGetValue(type.SpecialType, out var dbType) ? dbType : "Object";
-
     private static bool HasDynamicFeatures(string sql) =>
         sql.Contains("IF") || sql.Contains("CASE") || sql.Contains("WHILE") || sql.Contains("{{");
-
-    private static readonly HashSet<string> ValidPlaceholders = new(StringComparer.OrdinalIgnoreCase)
-    {
-        // 核心7个占位符（保持不变）
-        "table", "columns", "values", "where", "set", "orderby", "limit",
-        // 常用扩展占位符
-        "join", "groupby", "having", "select", "insert", "update", "delete",
-        "count", "sum", "avg", "max", "min", "distinct", "union", "top", "offset"
-    };
-
-    private static bool IsValidPlaceholder(string name, string type) => ValidPlaceholders.Contains(name);
-
 
     /// <summary>统一的属性过滤逻辑，减少重复代码</summary>
     private List<IPropertySymbol> GetFilteredProperties(INamedTypeSymbol entityType, string options, string? excludeProperty = null, bool requireSetter = false, SqlTemplateResult? result = null)
@@ -983,36 +957,41 @@ public class SqlTemplateEngine
         };
     }
 
-    /// <summary>处理IN占位符 - IN操作</summary>
-    private static string ProcessInPlaceholder(string type, string options, SqlDefine dialect)
+    /// <summary>处理IN/NOT IN占位符 - 优化合并版本</summary>
+    private static string ProcessInPlaceholder(string type, string options, SqlDefine dialect, bool isNotIn = false)
     {
         var column = ExtractOption(options, "column", type);
         var values = ExtractOption(options, "values", "values");
+        var operation = isNotIn ? "NOT IN" : "IN";
 
-        return $"{dialect.WrapColumn(column)} IN ({dialect.ParameterPrefix}{values})";
+        return $"{dialect.WrapColumn(column)} {operation} ({dialect.ParameterPrefix}{values})";
     }
 
-    /// <summary>处理NOT IN占位符</summary>
-    private static string ProcessNotInPlaceholder(string type, string options, SqlDefine dialect)
+    /// <summary>处理OR占位符 - 多条件OR组合</summary>
+    private static string ProcessOrPlaceholder(string type, string options, SqlDefine dialect)
     {
-        var column = ExtractOption(options, "column", type);
-        var values = ExtractOption(options, "values", "values");
+        var conditions = ExtractOption(options, "conditions", type);
+        var columns = ExtractOption(options, "columns", "");
 
-        return $"{dialect.WrapColumn(column)} NOT IN ({dialect.ParameterPrefix}{values})";
+        if (!string.IsNullOrEmpty(columns))
+        {
+            // 多列OR: column1 = @value OR column2 = @value
+            var columnList = columns.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+            var orConditions = columnList.Select(col =>
+                $"{dialect.WrapColumn(col.Trim())} = {dialect.ParameterPrefix}{conditions}");
+            return $"({string.Join(" OR ", orConditions)})";
+        }
+
+        // 条件OR: (condition1 OR condition2)
+        return $"({conditions.Replace(",", " OR ")})";
     }
 
-    /// <summary>处理IS NULL占位符</summary>
-    private static string ProcessIsNullPlaceholder(string type, string options, SqlDefine dialect)
+    /// <summary>处理IS NULL/IS NOT NULL占位符 - 优化合并版本</summary>
+    private static string ProcessIsNullPlaceholder(string type, string options, SqlDefine dialect, bool isNotNull = false)
     {
         var column = ExtractOption(options, "column", type);
-        return $"{dialect.WrapColumn(column)} IS NULL";
-    }
-
-    /// <summary>处理IS NOT NULL占位符</summary>
-    private static string ProcessNotNullPlaceholder(string type, string options, SqlDefine dialect)
-    {
-        var column = ExtractOption(options, "column", type);
-        return $"{dialect.WrapColumn(column)} IS NOT NULL";
+        var operation = isNotNull ? "IS NOT NULL" : "IS NULL";
+        return $"{dialect.WrapColumn(column)} {operation}";
     }
 
     #endregion
@@ -1230,31 +1209,22 @@ public class SqlTemplateEngine
         return $"{dialect.WrapColumn(column)} LIKE CONCAT('%', {dialect.ParameterPrefix}{value})";
     }
 
-    /// <summary>处理UPPER占位符 - 大写转换</summary>
-    private static string ProcessUpperPlaceholder(string type, string options, SqlDefine dialect)
+    /// <summary>处理字符串函数占位符 - 统一优化版本</summary>
+    private static string ProcessStringFunction(string function, string type, string options, SqlDefine dialect)
     {
         var column = ExtractOption(options, "column", type);
-        return $"UPPER({dialect.WrapColumn(column)})";
-    }
 
-    /// <summary>处理LOWER占位符 - 小写转换</summary>
-    private static string ProcessLowerPlaceholder(string type, string options, SqlDefine dialect)
-    {
-        var column = ExtractOption(options, "column", type);
-        return $"LOWER({dialect.WrapColumn(column)})";
-    }
-
-    /// <summary>处理TRIM占位符 - 去除空白</summary>
-    private static string ProcessTrimPlaceholder(string type, string options, SqlDefine dialect)
-    {
-        var column = ExtractOption(options, "column", type);
-        var mode = ExtractOption(options, "mode", "both"); // both, leading, trailing
-
-        return mode switch
+        return function.ToUpper() switch
         {
-            "leading" => $"LTRIM({dialect.WrapColumn(column)})",
-            "trailing" => $"RTRIM({dialect.WrapColumn(column)})",
-            _ => $"TRIM({dialect.WrapColumn(column)})"
+            "UPPER" => $"UPPER({dialect.WrapColumn(column)})",
+            "LOWER" => $"LOWER({dialect.WrapColumn(column)})",
+            "TRIM" => ExtractOption(options, "mode", "both") switch
+            {
+                "leading" => $"LTRIM({dialect.WrapColumn(column)})",
+                "trailing" => $"RTRIM({dialect.WrapColumn(column)})",
+                _ => $"TRIM({dialect.WrapColumn(column)})"
+            },
+            _ => $"{function.ToUpper()}({dialect.WrapColumn(column)})"
         };
     }
 
@@ -1262,36 +1232,21 @@ public class SqlTemplateEngine
 
     #region 数学函数占位符
 
-    /// <summary>处理ROUND占位符 - 四舍五入</summary>
-    private static string ProcessRoundPlaceholder(string type, string options, SqlDefine dialect)
+    /// <summary>处理数学函数占位符 - 统一优化版本</summary>
+    private static string ProcessMathFunction(string function, string type, string options, SqlDefine dialect)
     {
         var column = ExtractOption(options, "column", type);
-        var precision = ExtractOption(options, "precision", "2");
 
-        return $"ROUND({dialect.WrapColumn(column)}, {precision})";
-    }
-
-    /// <summary>处理ABS占位符 - 绝对值</summary>
-    private static string ProcessAbsPlaceholder(string type, string options, SqlDefine dialect)
-    {
-        var column = ExtractOption(options, "column", type);
-        return $"ABS({dialect.WrapColumn(column)})";
-    }
-
-    /// <summary>处理CEILING占位符 - 向上取整</summary>
-    private static string ProcessCeilingPlaceholder(string type, string options, SqlDefine dialect)
-    {
-        var column = ExtractOption(options, "column", type);
-        return dialect.Equals(SqlDefine.SqlServer)
-            ? $"CEILING({dialect.WrapColumn(column)})"
-            : $"CEIL({dialect.WrapColumn(column)})";
-    }
-
-    /// <summary>处理FLOOR占位符 - 向下取整</summary>
-    private static string ProcessFloorPlaceholder(string type, string options, SqlDefine dialect)
-    {
-        var column = ExtractOption(options, "column", type);
-        return $"FLOOR({dialect.WrapColumn(column)})";
+        return function.ToUpper() switch
+        {
+            "ROUND" => $"ROUND({dialect.WrapColumn(column)}, {ExtractOption(options, "precision", "2")})",
+            "ABS" => $"ABS({dialect.WrapColumn(column)})",
+            "CEILING" => dialect.Equals(SqlDefine.SqlServer)
+                ? $"CEILING({dialect.WrapColumn(column)})"
+                : $"CEIL({dialect.WrapColumn(column)})",
+            "FLOOR" => $"FLOOR({dialect.WrapColumn(column)})",
+            _ => $"{function.ToUpper()}({dialect.WrapColumn(column)})"
+        };
     }
 
     #endregion

@@ -7,9 +7,10 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Sqlx.Generator;
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using Sqlx.Generator;
 
 namespace Sqlx.Tests.Core;
 
@@ -125,13 +126,13 @@ namespace TestNamespace
         {
             var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
             var dialectName = GetDialectName(dialect);
-            
+
             Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), $"Processed SQL should not be empty for {dialectName}");
             Assert.AreEqual(0, result.Errors.Count, $"Should have no errors for {dialectName}");
-            
+
             // 验证表名被正确包装
             var expectedTableName = expectedTableNames[dialectName];
-            Assert.IsTrue(result.ProcessedSql.Contains(expectedTableName), 
+            Assert.IsTrue(result.ProcessedSql.Contains(expectedTableName),
                          $"SQL should contain properly quoted table name '{expectedTableName}' for {dialectName}. Actual SQL: {result.ProcessedSql}");
         }
     }
@@ -172,15 +173,15 @@ namespace TestNamespace
         {
             var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
             var dialectName = GetDialectName(dialect);
-            
+
             Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), $"Processed SQL should not be empty for {dialectName}");
             Assert.AreEqual(0, result.Errors.Count, $"Should have no errors for {dialectName}");
-            
+
             // 验证包含基本列
             Assert.IsTrue(result.ProcessedSql.Contains("id"), $"SQL should contain id column for {dialectName}");
             Assert.IsTrue(result.ProcessedSql.Contains("name"), $"SQL should contain name column for {dialectName}");
             Assert.IsTrue(result.ProcessedSql.Contains("email"), $"SQL should contain email column for {dialectName}");
-            
+
             // 验证列名格式
             var format = expectedColumnFormats[dialectName];
             var hasProperQuoting = result.ProcessedSql.Contains($"{format.Left}id{format.Right}") ||
@@ -199,14 +200,14 @@ namespace TestNamespace
         {
             var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
             var dialectName = GetDialectName(dialect);
-            
+
             Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), $"Processed SQL should not be empty for {dialectName}");
             Assert.AreEqual(0, result.Errors.Count, $"Should have no errors for {dialectName}");
-            
+
             // 验证包含正常列
             Assert.IsTrue(result.ProcessedSql.Contains("id"), $"SQL should contain id column for {dialectName}");
             Assert.IsTrue(result.ProcessedSql.Contains("name"), $"SQL should contain name column for {dialectName}");
-            
+
             // 验证排除密码列
             Assert.IsFalse(result.ProcessedSql.ToLower().Contains("password"), $"SQL should not contain password column for {dialectName}");
         }
@@ -231,20 +232,20 @@ namespace TestNamespace
         {
             var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
             var dialectName = GetDialectName(dialect);
-            
+
             Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), $"Processed SQL should not be empty for {dialectName}");
             Assert.AreEqual(0, result.Errors.Count, $"Should have no errors for {dialectName}");
-            
+
             // 验证WHERE子句
             Assert.IsTrue(result.ProcessedSql.Contains("WHERE"), $"SQL should contain WHERE clause for {dialectName}");
             Assert.IsTrue(result.ProcessedSql.Contains("id"), $"SQL should contain id field for {dialectName}");
-            
+
             // 验证参数前缀（如果不是位置参数）
             var expectedPrefix = expectedParameterPrefixes[dialectName];
             if (expectedPrefix != "?")
             {
-                Assert.IsTrue(result.ProcessedSql.Contains($"{expectedPrefix}id") || 
-                             result.ProcessedSql.Contains($"{expectedPrefix}Id"), 
+                Assert.IsTrue(result.ProcessedSql.Contains($"{expectedPrefix}id") ||
+                             result.ProcessedSql.Contains($"{expectedPrefix}Id"),
                              $"SQL should contain parameter with correct prefix for {dialectName}");
             }
         }
@@ -259,10 +260,10 @@ namespace TestNamespace
         {
             var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
             var dialectName = GetDialectName(dialect);
-            
+
             Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), $"Processed SQL should not be empty for {dialectName}");
             Assert.AreEqual(0, result.Errors.Count, $"Should have no errors for {dialectName}");
-            
+
             // 验证WHERE子句存在
             Assert.IsTrue(result.ProcessedSql.Contains("WHERE"), $"SQL should contain WHERE clause for {dialectName}");
         }
@@ -277,15 +278,15 @@ namespace TestNamespace
         {
             var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
             var dialectName = GetDialectName(dialect);
-            
+
             Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), $"Processed SQL should not be empty for {dialectName}");
             Assert.AreEqual(0, result.Errors.Count, $"Should have no errors for {dialectName}");
-            
+
             // 验证UPDATE语句结构
             Assert.IsTrue(result.ProcessedSql.Contains("UPDATE"), $"SQL should contain UPDATE for {dialectName}");
             Assert.IsTrue(result.ProcessedSql.Contains("SET"), $"SQL should contain SET for {dialectName}");
             Assert.IsTrue(result.ProcessedSql.Contains("WHERE"), $"SQL should contain WHERE for {dialectName}");
-            
+
             // 验证排除字段
             Assert.IsFalse(result.ProcessedSql.ToLower().Contains("hire_date"), $"SQL should not contain excluded hire_date for {dialectName}");
         }
@@ -310,14 +311,14 @@ namespace TestNamespace
         {
             var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
             var dialectName = GetDialectName(dialect);
-            
+
             Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), $"Processed SQL should not be empty for {dialectName}");
             Assert.AreEqual(0, result.Errors.Count, $"Should have no errors for {dialectName}");
-            
+
             // 验证INSERT语句结构
             Assert.IsTrue(result.ProcessedSql.Contains("INSERT"), $"SQL should contain INSERT for {dialectName}");
             Assert.IsTrue(result.ProcessedSql.Contains("VALUES"), $"SQL should contain VALUES for {dialectName}");
-            
+
             // 验证参数格式
             var expectedPrefix = expectedParameterPrefixes[dialectName];
             if (expectedPrefix != "?")
@@ -336,10 +337,10 @@ namespace TestNamespace
         {
             var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
             var dialectName = GetDialectName(dialect);
-            
+
             Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), $"Processed SQL should not be empty for {dialectName}");
             Assert.AreEqual(0, result.Errors.Count, $"Should have no errors for {dialectName}");
-            
+
             // 验证ORDER BY子句
             Assert.IsTrue(result.ProcessedSql.Contains("ORDER BY"), $"SQL should contain ORDER BY for {dialectName}");
             Assert.IsTrue(result.ProcessedSql.Contains("id"), $"SQL should contain id field for {dialectName}");
@@ -365,10 +366,10 @@ namespace TestNamespace
         {
             var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
             var dialectName = GetDialectName(dialect);
-            
+
             Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), $"Processed SQL should not be empty for {dialectName}");
             Assert.AreEqual(0, result.Errors.Count, $"Should have no errors for {dialectName}");
-            
+
             // 验证分页语法
             var expectedKeywords = expectedLimitSyntax[dialectName];
             var hasExpectedSyntax = expectedKeywords.Any(keyword => result.ProcessedSql.ToUpper().Contains(keyword));
@@ -394,14 +395,14 @@ namespace TestNamespace
         {
             var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
             var dialectName = GetDialectName(dialect);
-            
+
             Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), $"Processed SQL should not be empty for {dialectName}");
             Assert.AreEqual(0, result.Errors.Count, $"Should have no errors for {dialectName}: {string.Join(", ", result.Errors)}");
-            
+
             // 验证所有占位符都被处理
             Assert.IsFalse(result.ProcessedSql.Contains("{{"), $"All placeholders should be processed for {dialectName}");
             Assert.IsFalse(result.ProcessedSql.Contains("}}"), $"All placeholders should be processed for {dialectName}");
-            
+
             // 验证基本SQL结构
             Assert.IsTrue(result.ProcessedSql.Contains("SELECT"), $"SQL should contain SELECT for {dialectName}");
             Assert.IsTrue(result.ProcessedSql.Contains("FROM"), $"SQL should contain FROM for {dialectName}");
@@ -419,14 +420,14 @@ namespace TestNamespace
         {
             var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
             var dialectName = GetDialectName(dialect);
-            
+
             Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), $"Processed SQL should not be empty for {dialectName}");
             Assert.AreEqual(0, result.Errors.Count, $"Should have no errors for {dialectName}");
-            
+
             // 验证INSERT语句完整性
             Assert.IsTrue(result.ProcessedSql.Contains("INSERT INTO"), $"SQL should contain INSERT INTO for {dialectName}");
             Assert.IsTrue(result.ProcessedSql.Contains("VALUES"), $"SQL should contain VALUES for {dialectName}");
-            
+
             // 验证括号匹配
             var openParens = result.ProcessedSql.Count(c => c == '(');
             var closeParens = result.ProcessedSql.Count(c => c == ')');
@@ -443,10 +444,10 @@ namespace TestNamespace
         {
             var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
             var dialectName = GetDialectName(dialect);
-            
+
             Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), $"Processed SQL should not be empty for {dialectName}");
             Assert.AreEqual(0, result.Errors.Count, $"Should have no errors for {dialectName}");
-            
+
             // 验证UPDATE语句完整性
             Assert.IsTrue(result.ProcessedSql.Contains("UPDATE"), $"SQL should contain UPDATE for {dialectName}");
             Assert.IsTrue(result.ProcessedSql.Contains("SET"), $"SQL should contain SET for {dialectName}");
@@ -463,10 +464,10 @@ namespace TestNamespace
         {
             var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
             var dialectName = GetDialectName(dialect);
-            
+
             Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), $"Processed SQL should not be empty for {dialectName}");
             Assert.AreEqual(0, result.Errors.Count, $"Should have no errors for {dialectName}");
-            
+
             // 验证DELETE语句完整性
             Assert.IsTrue(result.ProcessedSql.Contains("DELETE FROM"), $"SQL should contain DELETE FROM for {dialectName}");
             Assert.IsTrue(result.ProcessedSql.Contains("WHERE"), $"SQL should contain WHERE for {dialectName}");
@@ -486,9 +487,9 @@ namespace TestNamespace
         {
             var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
             var dialectName = GetDialectName(dialect);
-            
+
             // 空模板应该产生警告或返回默认值
-            Assert.IsTrue(result.Warnings.Count > 0 || !string.IsNullOrEmpty(result.ProcessedSql), 
+            Assert.IsTrue(result.Warnings.Count > 0 || !string.IsNullOrEmpty(result.ProcessedSql),
                          $"Empty template should generate warning or default SQL for {dialectName}");
         }
     }
@@ -511,9 +512,9 @@ namespace TestNamespace
             {
                 var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
                 var dialectName = GetDialectName(dialect);
-                
+
                 // 无效语法应该被处理（保留原样或产生警告）
-                Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), 
+                Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql),
                               $"Invalid syntax should be handled gracefully for {dialectName}");
                 // 不要求特定行为，但不应该崩溃
                 Assert.IsTrue(true, $"Template processing should not crash for {dialectName}");
@@ -530,11 +531,11 @@ namespace TestNamespace
         {
             var result = _engine.ProcessTemplate(template, _testMethod, null, "User", dialect);
             var dialectName = GetDialectName(dialect);
-            
+
             // null实体类型应该被处理
-            Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), 
+            Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql),
                           $"Null entity type should be handled for {dialectName}");
-            Assert.IsTrue(result.Warnings.Count > 0 || result.Errors.Count > 0, 
+            Assert.IsTrue(result.Warnings.Count > 0 || result.Errors.Count > 0,
                          $"Null entity type should generate warnings or errors for {dialectName}");
         }
     }
@@ -561,7 +562,7 @@ namespace TestNamespace
             var result = _engine.ProcessTemplate(largeTemplate, _testMethod, _userType, "User", dialect);
             var processingTime = DateTime.UtcNow - startTime;
             var dialectName = GetDialectName(dialect);
-            
+
             Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), $"Large template should be processed for {dialectName}");
             Assert.IsTrue(processingTime.TotalSeconds < 5, $"Large template processing should be fast (<5s) for {dialectName}");
         }

@@ -1,5 +1,6 @@
-using Sqlx.Annotations;
+using System;
 using System.ComponentModel.DataAnnotations;
+using Sqlx.Annotations;
 
 namespace TodoWebApi.Models;
 

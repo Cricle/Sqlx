@@ -4,9 +4,12 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Threading.Tasks;
 using Sqlx.Annotations;
 using SqlxDemo.Models;
-using System.Data;
 
 namespace SqlxDemo.Services;
 
@@ -16,7 +19,7 @@ namespace SqlxDemo.Services;
 public interface IEnhancedPlaceholderDemo
 {
     // 🔍 条件查询占位符
-    
+
     /// <summary>范围查询 - BETWEEN</summary>
     [Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE {{between:age|min=@minAge|max=@maxAge}}")]
     Task<List<User>> GetUsersByAgeRangeAsync(int minAge, int maxAge);
@@ -163,86 +166,86 @@ public static class EnhancedPlaceholderDemoRunner
         {
             // 1. 条件查询占位符演示
             Console.WriteLine("🔍 === 条件查询占位符演示 ===");
-            
+
             Console.WriteLine("📋 1. 年龄范围查询 (BETWEEN)");
             await SafeExecuteAsync(() => demo.GetUsersByAgeRangeAsync(25, 35));
-            
+
             Console.WriteLine("🔤 2. 姓名模糊查询 (LIKE)");
             await SafeExecuteAsync(() => demo.GetUsersByNamePatternAsync("%张%"));
-            
+
             Console.WriteLine("📑 3. 部门多选查询 (IN)");
             await SafeExecuteAsync(() => demo.GetUsersByDepartmentsAsync(new List<int> { 1, 2, 3 }));
-            
+
             Console.WriteLine("❌ 4. 无奖金用户 (IS NULL)");
             await SafeExecuteAsync(() => demo.GetUsersWithoutBonusAsync());
-            
+
             Console.WriteLine("✅ 5. 有绩效评分用户 (IS NOT NULL)");
             await SafeExecuteAsync(() => demo.GetUsersWithPerformanceRatingAsync());
-            
+
             Console.WriteLine();
 
             // 2. 日期时间函数演示
             Console.WriteLine("📅 === 日期时间函数占位符演示 ===");
-            
+
             Console.WriteLine("📅 1. 今天入职的用户");
             await SafeExecuteAsync(() => demo.GetTodayHiredUsersAsync());
-            
+
             Console.WriteLine("📅 2. 本周入职的用户");
             await SafeExecuteAsync(() => demo.GetWeekHiredUsersAsync());
-            
+
             Console.WriteLine("📅 3. 本月入职的用户");
             await SafeExecuteAsync(() => demo.GetMonthHiredUsersAsync());
-            
+
             Console.WriteLine("📅 4. 今年入职的用户");
             await SafeExecuteAsync(() => demo.GetYearHiredUsersAsync());
-            
+
             Console.WriteLine();
 
             // 3. 字符串函数演示
             Console.WriteLine("🔤 === 字符串函数占位符演示 ===");
-            
+
             Console.WriteLine("🔍 1. 邮箱包含文本查询");
             await SafeExecuteAsync(() => demo.GetUsersByEmailContainsAsync("gmail"));
-            
+
             Console.WriteLine("📝 2. 姓名以指定文本开始");
             await SafeExecuteAsync(() => demo.GetUsersByNameStartsWithAsync("李"));
-            
+
             Console.WriteLine("📧 3. 邮箱以指定后缀结束");
             await SafeExecuteAsync(() => demo.GetUsersByEmailEndsWithAsync(".com"));
-            
+
             Console.WriteLine();
 
             // 4. 数学函数演示
             Console.WriteLine("📊 === 数学函数占位符演示 ===");
-            
+
             Console.WriteLine("💰 1. 薪资四舍五入查询");
             await SafeExecuteAsync(() => demo.GetUsersWithRoundedSalaryAsync());
-            
+
             Console.WriteLine("📈 2. 绩效评分绝对值");
             await SafeExecuteAsync(() => demo.GetUsersWithAbsPerformanceAsync());
-            
+
             Console.WriteLine();
 
             // 5. 高级操作演示
             Console.WriteLine("🔗 === 高级操作占位符演示 ===");
-            
+
             Console.WriteLine("📦 1. 批量操作演示 (需要测试数据)");
             Console.WriteLine("   ⚠️ 批量插入和UPSERT需要准备测试数据");
-            
+
             Console.WriteLine("🔍 2. EXISTS子查询演示");
             await SafeExecuteAsync(() => demo.GetUsersInActiveDepartmentsAsync());
-            
+
             Console.WriteLine();
 
             // 6. 统计分析演示
             Console.WriteLine("📈 === 分析统计占位符演示 ===");
-            
+
             Console.WriteLine("📊 1. 年龄分组统计 (需要聚合支持)");
             Console.WriteLine("   ⚠️ 聚合查询需要代码生成器支持动态类型");
-            
+
             Console.WriteLine("💼 2. 部门薪资统计 (需要聚合支持)");
             Console.WriteLine("   ⚠️ 聚合查询需要代码生成器支持动态类型");
-            
+
             Console.WriteLine();
 
             ShowPlaceholderSummary();
@@ -292,7 +295,7 @@ public static class EnhancedPlaceholderDemoRunner
             {
                 "{{today:field}} - 今天的记录",
                 "{{week:field}} - 本周的记录",
-                "{{month:field}} - 本月的记录", 
+                "{{month:field}} - 本月的记录",
                 "{{year:field}} - 今年的记录",
                 "{{date_add:field|interval=@days}} - 日期加法",
                 "{{date_diff:field1|field2=@date}} - 日期差值"

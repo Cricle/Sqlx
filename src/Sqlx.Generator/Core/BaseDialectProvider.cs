@@ -4,6 +4,9 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
+using System;
+using System.Linq;
+
 namespace Sqlx.Generator;
 
 /// <summary>

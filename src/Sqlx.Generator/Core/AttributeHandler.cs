@@ -5,6 +5,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.CodeAnalysis;
+using System.Linq;
 using System.Text;
 
 namespace Sqlx.Generator;

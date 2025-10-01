@@ -5,12 +5,12 @@
     <TargetFrameworks>net9.0</TargetFrameworks>
     <AssemblyName>Sqlx.Tests</AssemblyName>
     <RootNamespace>Sqlx.Tests</RootNamespace>
-    
+
     <!-- 测试项目设置 -->
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
-    
+
     <!-- 警告抑制 -->
     <NoWarn>$(NoWarn);CS1591;SA1600;SA1601;SA1602;SA1633</NoWarn>
   </PropertyGroup>
@@ -46,6 +46,7 @@
   <!-- Roslyn 编译器包（用于源生成器测试） -->
   <ItemGroup Label="Roslyn Testing">
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
   </ItemGroup>
 
   <!-- 项目引用 -->
@@ -65,7 +66,7 @@
   <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0'">
     <DefineConstants>$(DefineConstants);NET8_0_OR_GREATER</DefineConstants>
   </PropertyGroup>
-  
+
   <PropertyGroup Condition="'$(TargetFramework)' == 'net9.0'">
     <DefineConstants>$(DefineConstants);NET9_0_OR_GREATER</DefineConstants>
   </PropertyGroup>

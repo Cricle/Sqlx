@@ -7,6 +7,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Collections.Generic;
 using Sqlx.Generator;
 using System;
 using System.Linq;
@@ -122,13 +123,13 @@ namespace TestNamespace
             {
                 var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
                 var dialectName = GetDialectName(dialect);
-                
+
                 // 应该检测到危险模式并产生错误或警告
-                var hasSafetyCheck = result.Errors.Count > 0 || 
-                                   result.Warnings.Count > 0 || 
+                var hasSafetyCheck = result.Errors.Count > 0 ||
+                                   result.Warnings.Count > 0 ||
                                    !ContainsDangerousKeywords(result.ProcessedSql);
-                
-                Assert.IsTrue(hasSafetyCheck, 
+
+                Assert.IsTrue(hasSafetyCheck,
                     $"Should detect or prevent SQL injection for {dialectName}. Template: {template}");
             }
         }
@@ -143,13 +144,13 @@ namespace TestNamespace
         {
             var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
             var dialectName = GetDialectName(dialect);
-            
+
             Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), $"Should generate SQL for {dialectName}");
             Assert.AreEqual(0, result.Errors.Count, $"Should have no errors for parameterized query {dialectName}");
-            
+
             // 验证参数被正确提取
             Assert.IsTrue(result.Parameters.Count >= 3, $"Should extract parameters for {dialectName}");
-            
+
             // 验证生成的SQL包含参数占位符而不是直接值
             var sql = result.ProcessedSql;
             var hasParameterPlaceholders = sql.Contains("@") || sql.Contains(":") || sql.Contains("$") || sql.Contains("?");
@@ -166,9 +167,9 @@ namespace TestNamespace
         {
             var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
             var dialectName = GetDialectName(dialect);
-            
+
             Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), $"Should generate SQL for {dialectName}");
-            
+
             // 验证敏感字段不在结果中
             var sql = result.ProcessedSql.ToLower();
             Assert.IsFalse(sql.Contains("password"), $"Should not include password field for {dialectName}");
@@ -186,7 +187,7 @@ namespace TestNamespace
         {
             var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
             var dialectName = GetDialectName(dialect);
-            
+
             // 即使显式包含，也应该产生警告
             Assert.IsTrue(result.Warnings.Count > 0, $"Should warn about including sensitive fields for {dialectName}");
         }
@@ -215,12 +216,12 @@ namespace TestNamespace
         {
             var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
             var dialectName = GetDialectName(dialect);
-            
+
             Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), $"Should generate SQL for {dialectName}");
-            
+
             var allowedPrefixes = expectedPrefixes[dialectName];
             var hasCorrectPrefix = allowedPrefixes.Any(prefix => result.ProcessedSql.Contains(prefix));
-            
+
             Assert.IsTrue(hasCorrectPrefix, $"Should use correct parameter prefix for {dialectName}. SQL: {result.ProcessedSql}");
         }
     }
@@ -234,10 +235,10 @@ namespace TestNamespace
         {
             var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
             var dialectName = GetDialectName(dialect);
-            
+
             Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), $"Should generate SQL for {dialectName}");
             Assert.AreEqual(0, result.Errors.Count, $"Should handle mixed parameters for {dialectName}");
-            
+
             // 验证所有参数都被提取
             Assert.IsTrue(result.Parameters.Count >= 4, $"Should extract all parameters for {dialectName}");
         }
@@ -252,16 +253,16 @@ namespace TestNamespace
         {
             var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
             var dialectName = GetDialectName(dialect);
-            
+
             // 参数名如果与SQL关键字冲突，应该被处理
             Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), $"Should handle keyword parameter names for {dialectName}");
-            
+
             // 应该产生警告或自动重命名
-            var hasWarningOrRename = result.Warnings.Count > 0 || 
+            var hasWarningOrRename = result.Warnings.Count > 0 ||
                                    !result.ProcessedSql.Contains("@select ") ||
                                    !result.ProcessedSql.Contains("@from ") ||
                                    !result.ProcessedSql.Contains("@where ");
-            
+
             Assert.IsTrue(hasWarningOrRename, $"Should handle SQL keyword parameters for {dialectName}");
         }
     }
@@ -280,9 +281,9 @@ namespace TestNamespace
         {
             var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
             var dialectName = GetDialectName(dialect);
-            
+
             // 应该处理或拒绝过长模板
-            Assert.IsTrue(!string.IsNullOrEmpty(result.ProcessedSql) || result.Errors.Count > 0, 
+            Assert.IsTrue(!string.IsNullOrEmpty(result.ProcessedSql) || result.Errors.Count > 0,
                          $"Should handle or reject extremely long template for {dialectName}");
         }
     }
@@ -308,11 +309,11 @@ namespace TestNamespace
                 {
                     var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
                     var dialectName = GetDialectName(dialect);
-                    
+
                     // 应该优雅处理格式错误（不崩溃）
-                    Assert.IsTrue(!string.IsNullOrEmpty(result.ProcessedSql) || 
-                                 result.Errors.Count > 0 || 
-                                 result.Warnings.Count > 0, 
+                    Assert.IsTrue(!string.IsNullOrEmpty(result.ProcessedSql) ||
+                                 result.Errors.Count > 0 ||
+                                 result.Warnings.Count > 0,
                                  $"Should handle malformed template gracefully for {dialectName}");
                 }
                 catch (Exception ex)
@@ -347,11 +348,11 @@ namespace TestNamespace
                     {
                         var result = _engine.ProcessTemplate(input.Template, _testMethod, _userType, input.TableName, dialect);
                         var dialectName = GetDialectName(dialect);
-                        
+
                         // 应该优雅处理有问题的输入
-                        Assert.IsTrue(!string.IsNullOrEmpty(result.ProcessedSql) || 
-                                     result.Errors.Count > 0 || 
-                                     result.Warnings.Count > 0, 
+                        Assert.IsTrue(!string.IsNullOrEmpty(result.ProcessedSql) ||
+                                     result.Errors.Count > 0 ||
+                                     result.Warnings.Count > 0,
                                      $"Should handle {input.Description} gracefully for {dialectName}");
                     }
                     else
@@ -392,13 +393,13 @@ namespace TestNamespace
             {
                 var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
                 var dialectName = GetDialectName(dialect);
-                
-                Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), 
+
+                Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql),
                               $"Should handle Unicode/special characters for {dialectName}");
-                
+
                 // 验证特殊字符被保留
-                Assert.IsTrue(result.ProcessedSql.Contains("@") || result.ProcessedSql.Contains(":") || 
-                             result.ProcessedSql.Contains("$") || result.ProcessedSql.Contains("?"), 
+                Assert.IsTrue(result.ProcessedSql.Contains("@") || result.ProcessedSql.Contains(":") ||
+                             result.ProcessedSql.Contains("$") || result.ProcessedSql.Contains("?"),
                              $"Should preserve parameter markers for {dialectName}");
             }
         }
@@ -425,9 +426,9 @@ namespace TestNamespace
             {
                 var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
                 var dialectName = GetDialectName(dialect);
-                
+
                 // 应该检测到无效选项并产生警告或错误
-                Assert.IsTrue(result.Warnings.Count > 0 || result.Errors.Count > 0, 
+                Assert.IsTrue(result.Warnings.Count > 0 || result.Errors.Count > 0,
                              $"Should validate placeholder options for {dialectName}. Template: {template}");
             }
         }
@@ -450,9 +451,9 @@ namespace TestNamespace
             {
                 var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
                 var dialectName = GetDialectName(dialect);
-                
+
                 // 类型不匹配应该产生警告
-                Assert.IsTrue(result.Warnings.Count > 0, 
+                Assert.IsTrue(result.Warnings.Count > 0,
                              $"Should warn about type mismatch for {dialectName}. Template: {template}");
             }
         }

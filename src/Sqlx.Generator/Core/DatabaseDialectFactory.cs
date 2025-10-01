@@ -6,6 +6,8 @@
 
 using Sqlx;
 
+using System;
+
 namespace Sqlx.Generator;
 
 /// <summary>

@@ -1,3 +1,5 @@
+using System;
+
 namespace Sqlx
 {
     /// <summary>Provides predefined database dialect configurations for SQL generation.</summary>

@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 namespace Sqlx
 {
     /// <summary>Represents a reusable SQL template that can be executed with different parameters.</summary>

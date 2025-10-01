@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 namespace Sqlx
 {
     /// <summary>Represents a parameterized SQL query with type-safe parameter handling.</summary>

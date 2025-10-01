@@ -1,3 +1,4 @@
+using System;
 using Sqlx.Annotations;
 
 namespace SqlxDemo.Models;

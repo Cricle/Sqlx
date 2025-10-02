@@ -52,5 +52,45 @@ namespace Sqlx
         public static DiagnosticDescriptor SP0020 { get; } = new DiagnosticDescriptor("SP0020", "DELETE without WHERE", "DELETE statements should always include WHERE conditions for safety.", "Sqlx", DiagnosticSeverity.Warning, true, "DELETE statements without WHERE conditions can accidentally delete all data. Always include proper WHERE conditions.");
 
         public static DiagnosticDescriptor SP0021 { get; } = new DiagnosticDescriptor("SP0021", "UPDATE without WHERE", "UPDATE statements should include WHERE conditions to avoid unintended data changes.", "Sqlx", DiagnosticSeverity.Warning, true, "UPDATE statements without WHERE conditions will modify all rows. Include WHERE conditions for targeted updates.");
+
+        // 新增诊断消息用于改进用户体验
+        public static DiagnosticDescriptor SP0022 { get; } = new DiagnosticDescriptor("SP0022", "SqlExecuteType table name suggestion", "Consider specifying table name in SqlExecuteType attribute: [SqlExecuteType(SqlOperation.{0}, \"TableName\")].", "Sqlx", DiagnosticSeverity.Info, true, "Explicitly specifying table name in SqlExecuteType attribute improves code clarity and reduces ambiguity.");
+
+        public static DiagnosticDescriptor SP0023 { get; } = new DiagnosticDescriptor("SP0023", "TableName attribute detected", "Using TableName attribute for table resolution. This can be overridden by specifying tableName parameter in SqlExecuteType.", "Sqlx", DiagnosticSeverity.Info, true, "TableName attribute provides default table name. SqlExecuteType parameter takes precedence when both are specified.");
+
+        public static DiagnosticDescriptor SP0024 { get; } = new DiagnosticDescriptor("SP0024", "Async method best practice", "Async method '{0}' should have CancellationToken parameter for better resource management.", "Sqlx", DiagnosticSeverity.Info, true, "Adding CancellationToken parameter enables proper cancellation support and improves application responsiveness.");
+
+        public static DiagnosticDescriptor SP0025 { get; } = new DiagnosticDescriptor("SP0025", "Connection parameter suggestion", "Consider using IDbConnection parameter instead of field/property for better testability.", "Sqlx", DiagnosticSeverity.Info, true, "Method-level IDbConnection parameter enables easier unit testing and dependency injection.");
+
+        public static DiagnosticDescriptor SP0026 { get; } = new DiagnosticDescriptor("SP0026", "Potential SQL injection risk", "SQL template contains potential injection risk. Use parameterized queries and avoid string concatenation.", "Sqlx", DiagnosticSeverity.Warning, true, "Always use parameterized queries to prevent SQL injection attacks. Avoid concatenating user input directly into SQL strings.");
+
+        public static DiagnosticDescriptor SP0027 { get; } = new DiagnosticDescriptor("SP0027", "Performance suggestion", "Consider using {0} for better performance in this scenario.", "Sqlx", DiagnosticSeverity.Info, true, "Performance optimization suggestions based on query patterns and usage context.");
+
+        public static DiagnosticDescriptor SP0028 { get; } = new DiagnosticDescriptor("SP0028", "Type mapping suggestion", "Entity property '{0}' type '{1}' may require explicit DbType mapping for optimal performance.", "Sqlx", DiagnosticSeverity.Info, true, "Explicit DbType mapping can improve query performance and ensure correct data type handling.");
+
+        public static DiagnosticDescriptor SP0029 { get; } = new DiagnosticDescriptor("SP0029", "Naming convention", "Method name '{0}' doesn't follow recommended naming conventions. Consider using {1}.", "Sqlx", DiagnosticSeverity.Info, true, "Following consistent naming conventions improves code readability and maintainability.");
+
+        public static DiagnosticDescriptor SP0030 { get; } = new DiagnosticDescriptor("SP0030", "Return type optimization", "Return type '{0}' can be optimized to '{1}' for this query pattern.", "Sqlx", DiagnosticSeverity.Info, true, "Optimized return types can improve performance and memory usage.");
+
+        // 高级诊断规则 - 性能和架构分析
+        public static DiagnosticDescriptor SP0031 { get; } = new DiagnosticDescriptor("SP0031", "Potential N+1 query", "Method '{0}' may cause N+1 query problem. Consider using JOIN or batch loading.", "Sqlx", DiagnosticSeverity.Warning, true, "N+1 queries can cause severe performance issues. Use JOIN queries or batch loading instead of individual queries in loops.");
+
+        public static DiagnosticDescriptor SP0032 { get; } = new DiagnosticDescriptor("SP0032", "Large result set warning", "Query may return large result set. Consider adding pagination with LIMIT/OFFSET.", "Sqlx", DiagnosticSeverity.Info, true, "Large result sets can cause memory issues. Implement pagination to improve performance and user experience.");
+
+        public static DiagnosticDescriptor SP0033 { get; } = new DiagnosticDescriptor("SP0033", "Complex JOIN detected", "Complex JOIN operation detected. Verify query performance and consider optimization.", "Sqlx", DiagnosticSeverity.Info, true, "Complex JOINs can impact performance. Monitor execution time and consider query optimization techniques.");
+
+        public static DiagnosticDescriptor SP0034 { get; } = new DiagnosticDescriptor("SP0034", "Subquery optimization", "Subquery detected. Consider using JOIN for better performance: '{0}'.", "Sqlx", DiagnosticSeverity.Info, true, "Subqueries often perform worse than JOINs. Consider rewriting as JOIN operations for better performance.");
+
+        public static DiagnosticDescriptor SP0035 { get; } = new DiagnosticDescriptor("SP0035", "Transaction scope recommendation", "Multiple database operations detected. Consider wrapping in transaction for consistency.", "Sqlx", DiagnosticSeverity.Info, true, "Multiple database operations should be wrapped in transactions to ensure data consistency and atomicity.");
+
+        public static DiagnosticDescriptor SP0036 { get; } = new DiagnosticDescriptor("SP0036", "Index usage hint", "Query on column '{0}' may benefit from database index. Consider adding index for better performance.", "Sqlx", DiagnosticSeverity.Info, true, "Queries on frequently searched columns should have appropriate database indexes for optimal performance.");
+
+        public static DiagnosticDescriptor SP0037 { get; } = new DiagnosticDescriptor("SP0037", "Result caching suggestion", "Frequently accessed query '{0}' may benefit from caching. Consider implementing result caching.", "Sqlx", DiagnosticSeverity.Info, true, "Frequently executed queries with stable results should be cached to improve application performance.");
+
+        public static DiagnosticDescriptor SP0038 { get; } = new DiagnosticDescriptor("SP0038", "Async/await pattern", "Synchronous database call detected. Consider using async pattern for better scalability.", "Sqlx", DiagnosticSeverity.Warning, true, "Synchronous database calls can block threads. Use async patterns for better application scalability and responsiveness.");
+
+        public static DiagnosticDescriptor SP0039 { get; } = new DiagnosticDescriptor("SP0039", "Connection pooling optimization", "Consider optimizing database connection usage. Use connection pooling and dispose patterns correctly.", "Sqlx", DiagnosticSeverity.Info, true, "Proper connection management is crucial for performance. Ensure connections are properly disposed and pooled.");
+
+        public static DiagnosticDescriptor SP0040 { get; } = new DiagnosticDescriptor("SP0040", "Query complexity warning", "Query complexity is high. Consider breaking into simpler operations or using stored procedures.", "Sqlx", DiagnosticSeverity.Warning, true, "Complex queries can be hard to maintain and optimize. Consider simplifying or using stored procedures for complex business logic.");
     }
 }

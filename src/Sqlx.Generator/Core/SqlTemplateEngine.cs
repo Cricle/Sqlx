@@ -6,6 +6,7 @@
 
 using Microsoft.CodeAnalysis;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -30,46 +31,6 @@ public class SqlTemplateEngine
     private static readonly Regex PlaceholderRegex = new(@"\{\{(\w+)(?::(\w+))?(?:\|([^}]+))?\}\}", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly Regex SqlInjectionRegex = new(@"(?i)(union\s+select|drop\s+table|exec\s*\(|execute\s*\(|sp_|xp_|--|\*\/|\/\*)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-    // 性能优化：缓存常用字符串
-    private static readonly Dictionary<string, string> CommonPlaceholderCache = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["*"] = "*",
-        ["1=1"] = "1=1",
-        ["COUNT(*)"] = "COUNT(*)",
-        ["SELECT *"] = "SELECT *",
-        ["ORDER BY id ASC"] = "ORDER BY id ASC",
-        ["LIMIT 20"] = "LIMIT 20",
-        ["TOP 20"] = "TOP 20"
-    };
-
-    // 性能优化：预建占位符选项映射字典，避免重复创建
-    private static readonly Dictionary<string, HashSet<string>> ValidOptionsMap = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["between"] = new(StringComparer.OrdinalIgnoreCase) { "min", "max", "column" },
-        ["like"] = new(StringComparer.OrdinalIgnoreCase) { "pattern", "column", "mode" },
-        ["in"] = new(StringComparer.OrdinalIgnoreCase) { "values", "column" },
-        ["or"] = new(StringComparer.OrdinalIgnoreCase) { "conditions", "columns" },
-        ["round"] = new(StringComparer.OrdinalIgnoreCase) { "decimals", "column" },
-        ["limit"] = new(StringComparer.OrdinalIgnoreCase) { "default", "offset" },
-        ["columns"] = new(StringComparer.OrdinalIgnoreCase) { "exclude", "include" },
-        ["values"] = new(StringComparer.OrdinalIgnoreCase) { "exclude", "include" },
-        ["contains"] = new(StringComparer.OrdinalIgnoreCase) { "text", "column", "value" },
-        ["startswith"] = new(StringComparer.OrdinalIgnoreCase) { "prefix", "column" },
-        ["endswith"] = new(StringComparer.OrdinalIgnoreCase) { "suffix", "column" }
-    };
-
-    // 性能优化：预建数值类型选项映射字典，避免重复创建
-    private static readonly Dictionary<string, HashSet<string>> NumericOptionsMap = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["round"] = new(StringComparer.OrdinalIgnoreCase) { "decimals" },
-        ["limit"] = new(StringComparer.OrdinalIgnoreCase) { "default", "offset" }
-    };
-
-    // 性能优化：预建有效的limit类型集合，避免重复创建
-    private static readonly HashSet<string> ValidLimitTypes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "small", "medium", "large", "page", "batch", "sqlite", "sqlserver", "mysql", "postgresql", "oracle"
-    };
 
     // 性能优化：通用过滤器
     private static readonly Func<IParameterSymbol, bool> NonSystemParameterFilter = p => p.Type.Name != "CancellationToken";
@@ -82,6 +43,15 @@ public class SqlTemplateEngine
         "CreditCard", "SSN", "SocialSecurityNumber", "BankAccount", "AuthToken", "RefreshToken",
         "PrivateKey", "Certificate", "Hash", "Salt", "Signature"
     };
+
+    // 性能优化：缓存snake_case转换结果，避免重复计算
+    private static readonly ConcurrentDictionary<string, string> SnakeCaseCache = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// 缓存版本的ConvertToSnakeCase方法，提升重复调用的性能
+    /// </summary>
+    private static string GetCachedSnakeCase(string name) =>
+        SnakeCaseCache.GetOrAdd(name, SharedCodeGenerationUtilities.ConvertToSnakeCase);
 
     // 默认数据库方言 - 可通过构造函数或方法参数覆盖
     private readonly SqlDefine _defaultDialect;
@@ -261,7 +231,7 @@ public class SqlTemplateEngine
     /// </summary>
     private static string ProcessTablePlaceholder(string tableName, string type, INamedTypeSymbol? entityType, string options, SqlDefine dialect)
     {
-        var snakeTableName = SharedCodeGenerationUtilities.ConvertToSnakeCase(tableName);
+        var snakeTableName = GetCachedSnakeCase(tableName);
         return type == "quoted" ? dialect.WrapColumn(snakeTableName) : snakeTableName;
     }
 
@@ -275,7 +245,7 @@ public class SqlTemplateEngine
         if (entityType == null)
         {
             result.Warnings.Add("Cannot infer columns without entity type");
-            return CommonPlaceholderCache["*"];
+            return "*";
         }
 
         var properties = GetFilteredProperties(entityType, options, type == "auto" ? "Id" : null, false, result);
@@ -289,7 +259,7 @@ public class SqlTemplateEngine
         {
             if (i > 0) sb.Append(", ");
 
-            var columnName = SharedCodeGenerationUtilities.ConvertToSnakeCase(properties[i].Name);
+            var columnName = GetCachedSnakeCase(properties[i].Name);
             sb.Append(isQuoted ? dialect.WrapColumn(columnName) : columnName);
         }
 
@@ -360,50 +330,41 @@ public class SqlTemplateEngine
             if (method == null) return string.Empty;
             var filteredParams = method.Parameters
                 .Where(p => NonSystemParameterFilter(p) && !p.Name.Equals("id", StringComparison.OrdinalIgnoreCase))
-                .Select(p => $"{SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)} = {dialect.ParameterPrefix}{p.Name}");
+                .Select(p => $"{GetCachedSnakeCase(p.Name)} = {dialect.ParameterPrefix}{p.Name}");
             return string.Join(", ", filteredParams);
         }
 
         var properties = GetFilteredProperties(entityType, options, "Id", requireSetter: true, result);
-        return string.Join(", ", properties.Select(p => $"{SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)} = {dialect.ParameterPrefix}{p.Name}"));
+        return string.Join(", ", properties.Select(p => $"{GetCachedSnakeCase(p.Name)} = {dialect.ParameterPrefix}{p.Name}"));
     }
 
 
-    // 性能优化：扩展的ORDER BY映射表，支持更多常用排序模式
-    private static readonly Dictionary<string, string> OrderByMap = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["id"] = "ORDER BY id ASC",
-        ["id_desc"] = "ORDER BY id DESC",
-        ["name"] = "ORDER BY name ASC",
-        ["name_desc"] = "ORDER BY name DESC",
-        ["created"] = "ORDER BY created_at DESC",
-        ["created_asc"] = "ORDER BY created_at ASC",
-        ["updated"] = "ORDER BY updated_at DESC",
-        ["updated_asc"] = "ORDER BY updated_at ASC",
-        ["date"] = "ORDER BY created_at DESC",
-        ["random"] = "ORDER BY NEWID()", // SQL Server
-        ["rand"] = "ORDER BY RAND()", // MySQL
-        ["priority"] = "ORDER BY priority DESC, created_at DESC"
-    };
-
-    /// <summary>处理ORDER BY占位符 - 多数据库支持 (增强版本)</summary>
+    /// <summary>处理ORDER BY占位符 - 多数据库支持 (简化版本)</summary>
     private static string ProcessOrderByPlaceholder(string type, INamedTypeSymbol? entityType, string options, SqlDefine dialect)
     {
-        // 优先检查缓存的映射
-        if (OrderByMap.TryGetValue(type, out var orderBy))
+        // 直接处理常用排序模式
+        var orderBy = type.ToLowerInvariant() switch
         {
-            // 针对随机排序进行数据库特定优化
-            if (type == "random")
-            {
-                return dialect.Equals(SqlDefine.SqlServer) ? "ORDER BY NEWID()" :
+            "id" => "ORDER BY id ASC",
+            "id_desc" => "ORDER BY id DESC",
+            "name" => "ORDER BY name ASC",
+            "name_desc" => "ORDER BY name DESC",
+            "created" => "ORDER BY created_at DESC",
+            "created_asc" => "ORDER BY created_at ASC",
+            "updated" => "ORDER BY updated_at DESC",
+            "updated_asc" => "ORDER BY updated_at ASC",
+            "date" => "ORDER BY created_at DESC",
+            "priority" => "ORDER BY priority DESC, created_at DESC",
+            "random" => dialect.Equals(SqlDefine.SqlServer) ? "ORDER BY NEWID()" :
                        dialect.Equals(SqlDefine.MySql) ? "ORDER BY RAND()" :
                        dialect.Equals(SqlDefine.PostgreSql) ? "ORDER BY RANDOM()" :
                        dialect.Equals(SqlDefine.SQLite) ? "ORDER BY RANDOM()" :
-                       "ORDER BY NEWID()";
-            }
+                       "ORDER BY NEWID()",
+            "rand" => dialect.Equals(SqlDefine.MySql) ? "ORDER BY RAND()" : "ORDER BY NEWID()",
+            _ => null
+        };
 
-            return orderBy;
-        }
+        if (orderBy != null) return orderBy;
 
         // 智能解析自定义排序 - 支持格式如 "field_asc", "field_desc"
         if (type.Contains('_'))
@@ -415,7 +376,7 @@ public class SqlTemplateEngine
                 var direction = parts[1].ToUpperInvariant();
                 if (direction is "ASC" or "DESC")
                 {
-                    var columnName = SharedCodeGenerationUtilities.ConvertToSnakeCase(field);
+                    var columnName = GetCachedSnakeCase(field);
                     return $"ORDER BY {dialect.WrapColumn(columnName)} {direction}";
                 }
             }
@@ -429,7 +390,7 @@ public class SqlTemplateEngine
     /// <summary>生成自动WHERE子句 - 多数据库支持</summary>
     private string GenerateAutoWhereClause(IMethodSymbol method, SqlDefine dialect) =>
         method?.Parameters.Any(NonSystemParameterFilter) == true
-            ? string.Join(" AND ", method.Parameters.Where(NonSystemParameterFilter).Select(p => $"{SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)} = {dialect.ParameterPrefix}{p.Name}"))
+            ? string.Join(" AND ", method.Parameters.Where(NonSystemParameterFilter).Select(p => $"{GetCachedSnakeCase(p.Name)} = {dialect.ParameterPrefix}{p.Name}"))
             : "1=1";
 
 
@@ -676,20 +637,38 @@ public class SqlTemplateEngine
     /// <summary>检查选项是否对指定占位符有效</summary>
     private static bool IsValidOptionForPlaceholder(string placeholderName, string optionName)
     {
-        return ValidOptionsMap.TryGetValue(placeholderName, out var options) && options.Contains(optionName);
+        return placeholderName.ToLowerInvariant() switch
+        {
+            "between" => optionName is "min" or "max" or "column",
+            "like" => optionName is "pattern" or "column" or "mode",
+            "in" => optionName is "values" or "column",
+            "or" => optionName is "conditions" or "columns",
+            "round" => optionName is "decimals" or "column",
+            "limit" => optionName is "default" or "offset",
+            "columns" => optionName is "exclude" or "include",
+            "values" => optionName is "exclude" or "include",
+            "contains" => optionName is "text" or "column" or "value",
+            "startswith" => optionName is "prefix" or "column",
+            "endswith" => optionName is "suffix" or "column",
+            _ => false
+        };
     }
 
     /// <summary>检查选项是否为数值类型</summary>
     private static bool IsNumericOption(string placeholderName, string optionName)
     {
-        return NumericOptionsMap.TryGetValue(placeholderName, out var options) && options.Contains(optionName);
+        return placeholderName.ToLowerInvariant() switch
+        {
+            "round" => optionName is "decimals",
+            "limit" => optionName is "default" or "offset",
+            _ => false
+        };
     }
 
     /// <summary>检查limit类型是否有效</summary>
-    private static bool IsValidLimitType(string limitType)
-    {
-        return ValidLimitTypes.Contains(limitType);
-    }
+    private static bool IsValidLimitType(string limitType) =>
+        limitType.ToLowerInvariant() is "small" or "medium" or "large" or "page" or "batch"
+            or "sqlite" or "sqlserver" or "mysql" or "postgresql" or "oracle";
 
     /// <summary>验证类型不匹配</summary>
     private static void ValidateTypeMismatch(string placeholderName, string placeholderType, string options, INamedTypeSymbol? entityType, SqlTemplateResult result)
@@ -793,7 +772,7 @@ public class SqlTemplateEngine
         if (method == null) return "GROUP BY id";
         // 性能优化：避免ToList()，直接操作枚举
         var filteredParams = method.Parameters.Where(NonSystemParameterFilter);
-        var groupByColumns = filteredParams.Select(p => SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name));
+        var groupByColumns = filteredParams.Select(p => GetCachedSnakeCase(p.Name));
         var joinedColumns = string.Join(", ", groupByColumns);
 
         if (string.IsNullOrEmpty(joinedColumns)) return "GROUP BY id";
@@ -812,7 +791,7 @@ public class SqlTemplateEngine
         // 为聚合查询生成HAVING条件
         var conditions = filteredParams.Select(p =>
         {
-            var columnName = SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name);
+            var columnName = GetCachedSnakeCase(p.Name);
             return p.Type.SpecialType == SpecialType.System_Int32 || p.Type.SpecialType == SpecialType.System_Int64
                 ? $"COUNT({columnName}) > @{p.Name}"
                 : $"{columnName} = @{p.Name}";
@@ -886,21 +865,21 @@ public class SqlTemplateEngine
     /// <summary>处理INSERT占位符 - 多数据库支持</summary>
     private static string ProcessInsertPlaceholder(string type, string tableName, string options, SqlDefine dialect)
     {
-        var snakeTableName = SharedCodeGenerationUtilities.ConvertToSnakeCase(tableName);
+        var snakeTableName = GetCachedSnakeCase(tableName);
         return type == "into" ? $"INSERT INTO {snakeTableName}" : $"INSERT INTO {snakeTableName}";
     }
 
     /// <summary>处理UPDATE占位符 - 多数据库支持</summary>
     private static string ProcessUpdatePlaceholder(string type, string tableName, string options, SqlDefine dialect)
     {
-        var snakeTableName = SharedCodeGenerationUtilities.ConvertToSnakeCase(tableName);
+        var snakeTableName = GetCachedSnakeCase(tableName);
         return $"UPDATE {snakeTableName}";
     }
 
     /// <summary>处理DELETE占位符 - 多数据库支持</summary>
     private static string ProcessDeletePlaceholder(string type, string tableName, string options, SqlDefine dialect)
     {
-        var snakeTableName = SharedCodeGenerationUtilities.ConvertToSnakeCase(tableName);
+        var snakeTableName = GetCachedSnakeCase(tableName);
         return type == "from" ? $"DELETE FROM {snakeTableName}" : $"DELETE FROM {snakeTableName}";
     }
 
@@ -1271,7 +1250,7 @@ public class SqlTemplateEngine
     /// <summary>处理UPSERT占位符 - 插入或更新</summary>
     private static string ProcessUpsertPlaceholder(string type, string tableName, string options, SqlDefine dialect)
     {
-        var snakeTableName = SharedCodeGenerationUtilities.ConvertToSnakeCase(tableName);
+        var snakeTableName = GetCachedSnakeCase(tableName);
         var conflictColumn = ExtractOption(options, "conflict", "id");
 
         return dialect.Equals(SqlDefine.PostgreSql)

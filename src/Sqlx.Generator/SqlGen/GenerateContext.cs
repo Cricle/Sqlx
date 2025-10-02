@@ -47,8 +47,10 @@ namespace Sqlx.SqlGen
 
         protected static string GetColumnName(IPropertySymbol symbol)
         {
-            var colAttr = symbol.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "DbColumnAttribute" && x.ConstructorArguments.Length == 1);
-            return colAttr == null ? GetColumnName(symbol.Name) : colAttr.ConstructorArguments[0].Value!.ToString();
+            var colAttr = symbol.GetDbColumnAttribute();  // 使用扩展方法简化代码
+            return colAttr == null || colAttr.ConstructorArguments.Length != 1
+                ? GetColumnName(symbol.Name)
+                : colAttr.ConstructorArguments[0].Value!.ToString();
         }
     }
 

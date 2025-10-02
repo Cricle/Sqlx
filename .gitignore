@@ -8,6 +8,9 @@ bin/
 obj/
 *.user
 
+# Source-generated files
+**/Generated/
+
 # Test results
 BenchmarkDotNet.Artifacts/
 TestResults/

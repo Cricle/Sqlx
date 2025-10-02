@@ -41,29 +41,29 @@ public static class SqlTemplateEngineExtensions
             return $"ORDER BY {dialect.WrapColumn("id")} ASC";
         }
 
-        // 性能优化：预定义的LIMIT模式缓存
-        private static readonly Dictionary<string, (string SqlServer, string Oracle, string Others)> LimitPatterns = new(StringComparer.OrdinalIgnoreCase)
-        {
-            ["tiny"] = ("OFFSET 0 ROWS FETCH NEXT 5 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 5 ROWS ONLY", "LIMIT 5"),
-            ["small"] = ("OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY", "LIMIT 10"),
-            ["medium"] = ("OFFSET 0 ROWS FETCH NEXT 50 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 50 ROWS ONLY", "LIMIT 50"),
-            ["large"] = ("OFFSET 0 ROWS FETCH NEXT 100 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 100 ROWS ONLY", "LIMIT 100"),
-            ["page"] = ("OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY", "LIMIT 20"),
-            ["default"] = ("OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY", "LIMIT 20")
-        };
-
         /// <summary>
-        /// 处理LIMIT占位符 - 多数据库支持 (增强版本)
+        /// 处理LIMIT占位符 - 多数据库支持 (简化版本)
         /// 支持预定义模式、分页偏移量、智能默认值
         /// </summary>
         public static string ProcessLimitPlaceholder(string type, string options, SqlDefine dialect)
         {
-            // 检查预定义模式 - 快速路径
-            if (LimitPatterns.TryGetValue(type, out var patterns))
+            // 检查预定义模式
+            var (sqlServer, oracle, others) = type.ToLowerInvariant() switch
             {
-                return dialect.Equals(SqlDefine.SqlServer) ? patterns.SqlServer :
-                       dialect.Equals(SqlDefine.Oracle) ? patterns.Oracle :
-                       patterns.Others;
+                "tiny" => ("OFFSET 0 ROWS FETCH NEXT 5 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 5 ROWS ONLY", "LIMIT 5"),
+                "small" => ("OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY", "LIMIT 10"),
+                "medium" => ("OFFSET 0 ROWS FETCH NEXT 50 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 50 ROWS ONLY", "LIMIT 50"),
+                "large" => ("OFFSET 0 ROWS FETCH NEXT 100 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 100 ROWS ONLY", "LIMIT 100"),
+                "page" => ("OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY", "LIMIT 20"),
+                "default" => ("OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY", "LIMIT 20"),
+                _ => (null, null, null)
+            };
+
+            if (sqlServer != null)
+            {
+                return dialect.Equals(SqlDefine.SqlServer) ? sqlServer :
+                       dialect.Equals(SqlDefine.Oracle) ? oracle :
+                       others;
             }
 
             // 智能选项解析
@@ -109,27 +109,25 @@ public static class SqlTemplateEngineExtensions
             }
         }
 
-        // 性能优化：预定义的聚合函数模式
-        private static readonly Dictionary<string, string> AggregatePatterns = new(StringComparer.OrdinalIgnoreCase)
-        {
-            ["count_all"] = "COUNT(*)",
-            ["count_rows"] = "COUNT(*)",
-            ["sum_all"] = "SUM(*)",
-            ["avg_all"] = "AVG(*)",
-            ["max_all"] = "MAX(*)",
-            ["min_all"] = "MIN(*)"
-        };
-
         /// <summary>
-        /// 处理聚合函数占位符 - 多数据库支持 (增强版本)
+        /// 处理聚合函数占位符 - 多数据库支持 (简化版本)
         /// 支持多种聚合函数、DISTINCT操作、列名智能解析
         /// </summary>
         public static string ProcessAggregateFunction(string function, string type, string options, SqlDefine dialect)
         {
             // 检查预定义模式
-            var patternKey = $"{function.ToLower()}_{type}";
-            if (AggregatePatterns.TryGetValue(patternKey, out var pattern))
-                return pattern;
+            var pattern = $"{function.ToLower()}_{type}".ToLowerInvariant() switch
+            {
+                "count_all" => "COUNT(*)",
+                "count_rows" => "COUNT(*)",
+                "sum_all" => "SUM(*)",
+                "avg_all" => "AVG(*)",
+                "max_all" => "MAX(*)",
+                "min_all" => "MIN(*)",
+                _ => null
+            };
+
+            if (pattern != null) return pattern;
 
             // 从选项中提取设置
             var distinct = ExtractOption(options, "distinct", null) == "true";
@@ -160,26 +158,25 @@ public static class SqlTemplateEngineExtensions
                 : $"{function}({wrappedColumn})";
         }
 
-        // 性能优化：通用占位符快速映射表
-        private static readonly Dictionary<string, string> GenericPlaceholderMap = new(StringComparer.OrdinalIgnoreCase)
-        {
-            ["all"] = "*",
-            ["any"] = "1=1",
-            ["none"] = "1=0",
-            ["true"] = "1",
-            ["false"] = "0",
-            ["null"] = "NULL"
-        };
-
         /// <summary>
-        /// 通用占位符处理器 - 多数据库支持 (增强版本)
+        /// 通用占位符处理器 - 多数据库支持 (简化版本)
         /// 提供更丰富的占位符支持和智能默认值
         /// </summary>
         public static string ProcessGenericPlaceholder(string placeholderName, string type, string options, SqlDefine dialect)
         {
-            // 快速路径：检查简单映射
-            if (GenericPlaceholderMap.TryGetValue(placeholderName, out var simpleResult))
-                return simpleResult;
+            // 简单映射
+            var simpleResult = placeholderName.ToLowerInvariant() switch
+            {
+                "all" => "*",
+                "any" => "1=1",
+                "none" => "1=0",
+                "true" => "1",
+                "false" => "0",
+                "null" => "NULL",
+                _ => null
+            };
+
+            if (simpleResult != null) return simpleResult;
 
             return placeholderName.ToLowerInvariant() switch
             {

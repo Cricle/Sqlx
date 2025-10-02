@@ -116,6 +116,37 @@ app.MapGet("/api/todos/search", async (string q, TodoService service) =>
     return Results.Json(await service.SearchAsync(q.Trim()), TodoJsonContext.Default.ListTodo);
 });
 
+// 新增的高级功能API端点 - 展示更多查询功能
+app.MapGet("/api/todos/completed", async (TodoService service) =>
+    Results.Json(await service.GetCompletedAsync(), TodoJsonContext.Default.ListTodo));
+
+app.MapGet("/api/todos/high-priority", async (TodoService service) =>
+    Results.Json(await service.GetHighPriorityAsync(), TodoJsonContext.Default.ListTodo));
+
+app.MapGet("/api/todos/due-soon", async (TodoService service) =>
+    Results.Json(await service.GetDueSoonAsync(), TodoJsonContext.Default.ListTodo));
+
+app.MapGet("/api/todos/count", async (TodoService service) =>
+{
+    var count = await service.GetTotalCountAsync();
+    return Results.Json(new Dictionary<string, object> { ["count"] = count }, TodoJsonContext.Default.DictionaryStringObject);
+});
+
+app.MapPut("/api/todos/batch/priority", async (BatchPriorityUpdateRequest request, TodoService service) =>
+{
+    if (request.Ids?.Count == 0)
+        return Results.Json(new ErrorResponse("ID列表不能为空"), TodoJsonContext.Default.ErrorResponse, statusCode: 400);
+
+    var updated = await service.UpdatePriorityBatchAsync(request.Ids, request.NewPriority);
+    return Results.Json(new Dictionary<string, object> { ["updated"] = updated }, TodoJsonContext.Default.DictionaryStringObject);
+});
+
+app.MapPost("/api/todos/archive-expired", async (TodoService service) =>
+{
+    var archived = await service.ArchiveExpiredTasksAsync();
+    return Results.Json(new Dictionary<string, object> { ["archived"] = archived }, TodoJsonContext.Default.DictionaryStringObject);
+});
+
 // 数据库初始化
 using var scope = app.Services.CreateScope();
 await scope.ServiceProvider.GetRequiredService<DatabaseService>().InitializeDatabaseAsync();

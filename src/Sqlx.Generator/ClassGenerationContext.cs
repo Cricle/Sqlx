@@ -22,21 +22,36 @@ internal class ClassGenerationContext : GenerationContextBase
         INamedTypeSymbol attributeSymbol)
     {
         ClassSymbol = classSymbol;
-        Methods = methods.Select(_ => new MethodGenerationContext(this, _)).ToList();
+        // 性能优化：使用数组而不是List，减少内存分配
+        Methods = methods.Select(_ => new MethodGenerationContext(this, _)).ToArray();
         AttributeSymbol = attributeSymbol;
+
+        // 执行诊断检查
+        PerformDiagnosticChecks();
+    }
+
+    /// <summary>
+    /// 执行各种诊断检查来指导用户最佳实践
+    /// </summary>
+    private void PerformDiagnosticChecks()
+    {
+        foreach (var method in Methods)
+        {
+            method.PerformBestPracticeChecks();
+        }
     }
 
     // Parameterless constructor for testing/mocking
     internal ClassGenerationContext()
     {
         ClassSymbol = default!;
-        Methods = new List<MethodGenerationContext>();
+        Methods = Array.Empty<MethodGenerationContext>();
         AttributeSymbol = default!;
     }
 
     public INamedTypeSymbol ClassSymbol { get; }
 
-    public List<MethodGenerationContext> Methods { get; }
+    public MethodGenerationContext[] Methods { get; }
 
     public INamedTypeSymbol AttributeSymbol { get; }
 

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using Sqlx.Annotations;
 
@@ -26,8 +27,8 @@ public record Todo
     /// <summary>是否完成</summary>
     public bool IsCompleted { get; init; }
 
-    /// <summary>优先级（1-低，2-中，3-高，4-紧急）</summary>
-    [Range(1, 4)]
+    /// <summary>优先级（1-低，2-中，3-高，4-紧急，5-最高）</summary>
+    [Range(1, 5)]
     public int Priority { get; init; } = 2;
 
     /// <summary>截止日期</summary>
@@ -124,3 +125,76 @@ public record TodoFilter
     public bool Descending { get; init; } = true;
 }
 
+/// <summary>
+/// 批量更新优先级请求
+/// </summary>
+public record BatchPriorityUpdateRequest
+{
+    [Required]
+    public List<long> Ids { get; init; } = new();
+
+    [Range(1, 5)]
+    public int NewPriority { get; init; }
+}
+
+/// <summary>
+/// API信息响应
+/// </summary>
+public record ApiInfoResponse(
+    string Name,
+    string Version,
+    string Environment,
+    string Database,
+    Dictionary<string, object> Endpoints,
+    DateTime Timestamp);
+
+/// <summary>
+/// 错误响应
+/// </summary>
+public record ErrorResponse(string Message);
+
+/// <summary>
+/// 创建TODO请求
+/// </summary>
+public record CreateTodoRequest
+{
+    [Required]
+    [StringLength(200)]
+    public string Title { get; init; } = string.Empty;
+
+    public string? Description { get; init; }
+
+    public bool IsCompleted { get; init; } = false;
+
+    [Range(1, 5)]
+    public int Priority { get; init; } = 2;
+
+    public DateTime? DueDate { get; init; }
+
+    public string? Tags { get; init; }
+
+    public int? EstimatedMinutes { get; init; }
+}
+
+/// <summary>
+/// 更新TODO请求
+/// </summary>
+public record UpdateTodoRequest
+{
+    [Required]
+    [StringLength(200)]
+    public string Title { get; init; } = string.Empty;
+
+    public string? Description { get; init; }
+
+    public bool IsCompleted { get; init; }
+
+    [Range(1, 5)]
+    public int Priority { get; init; } = 2;
+
+    public DateTime? DueDate { get; init; }
+
+    public string? Tags { get; init; }
+
+    public int? EstimatedMinutes { get; init; }
+}

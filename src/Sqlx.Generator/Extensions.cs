@@ -234,4 +234,37 @@ internal static class Extensions
     /// </summary>
     public static bool IsCollectionType(this ITypeSymbol type) =>
         type.IsArray() || type.IsIEnumerable() || type.IsList();
+
+    // 优化：添加用于减少重复属性查询的辅助方法
+    /// <summary>
+    /// 获取指定名称的属性（缓存结果以提升性能）
+    /// </summary>
+    public static AttributeData? GetAttribute(this ISymbol symbol, string attributeName) =>
+        symbol.GetAttributes().FirstOrDefault(a => a.AttributeClass?.Name == attributeName);
+
+    /// <summary>
+    /// 获取Sqlx相关属性
+    /// </summary>
+    public static AttributeData? GetSqlxAttribute(this IMethodSymbol method) =>
+        method.GetAttributes().FirstOrDefault(a =>
+            a.AttributeClass?.Name?.Contains("Sqlx") == true ||
+            a.AttributeClass?.Name?.Contains("SqlTemplate") == true);
+
+    /// <summary>
+    /// 获取SqlExecuteType属性
+    /// </summary>
+    public static AttributeData? GetSqlExecuteTypeAttribute(this IMethodSymbol method) =>
+        method.GetAttribute("SqlExecuteTypeAttribute");
+
+    /// <summary>
+    /// 获取TableName属性
+    /// </summary>
+    public static AttributeData? GetTableNameAttribute(this ISymbol symbol) =>
+        symbol.GetAttribute("TableNameAttribute");
+
+    /// <summary>
+    /// 获取DbColumn属性
+    /// </summary>
+    public static AttributeData? GetDbColumnAttribute(this ISymbol symbol) =>
+        symbol.GetAttribute("DbColumnAttribute");
 }

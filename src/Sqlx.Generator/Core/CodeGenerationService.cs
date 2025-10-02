@@ -47,11 +47,11 @@ public class CodeGenerationService
             // Generate or copy Sqlx attributes
             attributeHandler.GenerateOrCopyAttributes(sb, method, entityType, context.TableName);
 
-            // Generate method signature
-            var returnType = method.ReturnType.ToDisplayString();
+            // Generate method signature - 使用缓存版本提升性能
+            var returnType = method.ReturnType.GetCachedDisplayString();
             var methodName = method.Name;
             var parameters = string.Join(", ", method.Parameters.Select(p =>
-                $"{p.Type.ToDisplayString()} {p.Name}"));
+                $"{p.Type.GetCachedDisplayString()} {p.Name}"));
 
             sb.AppendLine($"public {returnType} {methodName}({parameters})");
             sb.AppendLine("{");
@@ -114,7 +114,7 @@ public class CodeGenerationService
 
         // Add source to compilation
         var sourceText = SourceText.From(sb.ToString().Trim(), Encoding.UTF8);
-        var fileName = $"{repositoryClass.ToDisplayString().Replace(".", "_")}.Repository.g.cs";
+        var fileName = $"{repositoryClass.GetCachedDisplayString().Replace(".", "_")}.Repository.g.cs";  // 使用缓存版本
         context.ExecutionContext.AddSource(fileName, sourceText);
     }
 
@@ -249,7 +249,7 @@ public class CodeGenerationService
 
                                 // Try to find the interface type in the compilation
                                 var interfaceType = compilation.GetTypeByMetadataName(interfaceName) ??
-                                    compilation.GetTypeByMetadataName($"{repositoryClass.ContainingNamespace.ToDisplayString()}.{interfaceName}");
+                                    compilation.GetTypeByMetadataName($"{repositoryClass.ContainingNamespace.GetCachedDisplayString()}.{interfaceName}");
 
                                 if (interfaceType != null)
                                     return interfaceType;
@@ -272,7 +272,7 @@ public class CodeGenerationService
         INamedTypeSymbol serviceInterface, INamedTypeSymbol? entityType, string tableName)
     {
         var repositoryClass = context.RepositoryClass;
-        var namespaceName = repositoryClass.ContainingNamespace.ToDisplayString();
+        var namespaceName = repositoryClass.ContainingNamespace.GetCachedDisplayString();  // 使用缓存版本
 
         // Generate namespace and usings
         // Generate namespace and usings using shared utility
@@ -368,9 +368,9 @@ public class CodeGenerationService
     private void GenerateFallbackMethod(IndentedStringBuilder sb, IMethodSymbol method)
     {
         sb.AppendLine($"// Error generating method {method.Name}: Generation failed");
-        var returnType = method.ReturnType.ToDisplayString();
+        var returnType = method.ReturnType.GetCachedDisplayString();  // 使用缓存版本
         var parameters = string.Join(", ", method.Parameters.Select(p =>
-            $"{p.Type.ToDisplayString()} {p.Name}"));
+            $"{p.Type.GetCachedDisplayString()} {p.Name}"));  // 使用缓存版本
 
         sb.AppendLine($"public {returnType} {method.Name}({parameters})");
         sb.AppendLine("{");
@@ -485,7 +485,7 @@ public class CodeGenerationService
     private void GenerateActualDatabaseExecution(IndentedStringBuilder sb, IMethodSymbol method, SqlTemplateResult templateResult, INamedTypeSymbol? entityType, string connectionName)
     {
         var returnType = method.ReturnType;
-        var returnTypeString = returnType.ToDisplayString();
+        var returnTypeString = returnType.GetCachedDisplayString();  // 使用缓存版本
         var resultVariableType = ExtractInnerTypeFromTask(returnTypeString);
         var operationName = method.Name;
 
@@ -639,7 +639,7 @@ public class CodeGenerationService
 
     private void GenerateFallbackMethodImplementation(IndentedStringBuilder sb, IMethodSymbol method)
     {
-        var returnType = method.ReturnType.ToDisplayString();
+        var returnType = method.ReturnType.GetCachedDisplayString();  // 使用缓存版本
 
         if (!method.ReturnsVoid)
         {
@@ -658,8 +658,8 @@ public class CodeGenerationService
 
     internal static string GetDbConnectionFieldName(INamedTypeSymbol repositoryClass)
     {
-        // 性能优化：一次性获取所有成员，避免重复遍历
-        var allMembers = repositoryClass.GetMembers().ToList();
+        // 性能优化：一次性获取所有成员，避免重复遍历（使用数组）
+        var allMembers = repositoryClass.GetMembers().ToArray();
 
         // 1. 首先检查字段 - 按类型和名称模式查找
         var connectionField = allMembers
@@ -707,8 +707,7 @@ public class CodeGenerationService
 
     /// <summary>Get SQL attribute from method, checking both Sqlx and SqlTemplate attributes</summary>
     private static AttributeData? GetSqlAttribute(IMethodSymbol method) =>
-        method.GetAttributes().FirstOrDefault(a => a.AttributeClass?.Name?.Contains("Sqlx") == true ||
-                                                  a.AttributeClass?.Name?.Contains("SqlTemplate") == true);
+        method.GetSqlxAttribute();  // 使用扩展方法简化代码
 
     /// <summary>Get SQL template string from attribute</summary>
     private static string? GetSqlTemplateFromAttribute(AttributeData? attribute) =>

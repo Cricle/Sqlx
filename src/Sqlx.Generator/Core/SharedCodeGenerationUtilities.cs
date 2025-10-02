@@ -5,6 +5,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.CodeAnalysis;
+using System.Collections.Concurrent;
 using System.Linq;
 
 namespace Sqlx.Generator;
@@ -14,6 +15,29 @@ namespace Sqlx.Generator;
 /// </summary>
 public static class SharedCodeGenerationUtilities
 {
+    // 缓存ToDisplayString()结果以提升性能
+    private static readonly ConcurrentDictionary<ISymbol, string> _displayStringCache =
+        new(SymbolEqualityComparer.Default);
+
+    // 缓存类型检查结果，避免重复的类型分析
+    private static readonly ConcurrentDictionary<ITypeSymbol, bool> _isScalarTypeCache =
+        new(SymbolEqualityComparer.Default);
+
+    // 缓存属性的SQL名称
+    private static readonly ConcurrentDictionary<IPropertySymbol, string> _sqlNameCache =
+        new(SymbolEqualityComparer.Default);
+
+    /// <summary>获取符号的显示字符串，使用缓存提升性能</summary>
+    public static string GetCachedDisplayString(this ISymbol symbol) =>
+        _displayStringCache.GetOrAdd(symbol, s => s.ToDisplayString());
+
+    /// <summary>缓存版本的标量类型检查</summary>
+    public static bool IsCachedScalarType(this ITypeSymbol type) =>
+        _isScalarTypeCache.GetOrAdd(type, t => t.IsScalarType());
+
+    /// <summary>缓存版本的SQL名称获取</summary>
+    public static string GetCachedSqlName(this IPropertySymbol property) =>
+        _sqlNameCache.GetOrAdd(property, p => p.GetSqlName());
     /// <summary>Extract inner type from Task&lt;T&gt; type strings</summary>
     public static string ExtractInnerTypeFromTask(string taskType) => taskType switch
     {
@@ -23,8 +47,16 @@ public static class SharedCodeGenerationUtilities
     };
 
     /// <summary>Escape SQL string for C# string literal</summary>
-    public static string EscapeSqlForCSharp(string? sql) =>
-        sql?.Replace("\"", "\\\"").Replace("\r\n", "\\r\\n").Replace("\n", "\\n").Replace("\r", "\\r") ?? "";
+    public static string EscapeSqlForCSharp(string? sql)
+    {
+        if (string.IsNullOrEmpty(sql)) return string.Empty;
+
+        // 性能优化：单次检查避免不必要的操作
+        var hasEscapeChars = sql.IndexOfAny(new[] { '"', '\r', '\n' }) >= 0;
+        if (!hasEscapeChars) return sql;
+
+        return sql.Replace("\"", "\\\"").Replace("\r\n", "\\r\\n").Replace("\n", "\\n").Replace("\r", "\\r");
+    }
 
     /// <summary>
     /// Generate standard file header
@@ -93,8 +125,8 @@ public static class SharedCodeGenerationUtilities
     /// </summary>
     public static void GenerateEntityMapping(IndentedStringBuilder sb, INamedTypeSymbol entityType, string variableName)
     {
-        // Remove nullable annotation
-        var entityTypeName = entityType.ToDisplayString();
+        // Remove nullable annotation - 使用缓存版本提升性能
+        var entityTypeName = entityType.GetCachedDisplayString();
         if (entityTypeName.EndsWith("?"))
         {
             entityTypeName = entityTypeName.TrimEnd('?');
@@ -121,7 +153,7 @@ public static class SharedCodeGenerationUtilities
             var defaultValue = isNullable ? "null" : GetDefaultValue(prop.Type);
 
             var valueExpression = string.IsNullOrEmpty(readMethod)
-                ? $"({prop.Type.ToDisplayString()})reader[\"{columnName}\"]"
+                ? $"({prop.Type.GetCachedDisplayString()})reader[\"{columnName}\"]"  // 使用缓存版本
                 : $"reader.{readMethod}(reader.GetOrdinal(\"{columnName}\"))";
 
             sb.AppendLine($"{variableName}.{prop.Name} = reader.IsDBNull(reader.GetOrdinal(\"{columnName}\")) ? {defaultValue} : {valueExpression};");
@@ -145,7 +177,7 @@ public static class SharedCodeGenerationUtilities
             SpecialType.System_Decimal => "0m",
             SpecialType.System_Double => "0.0",
             SpecialType.System_Single => "0f",
-            _ => $"default({type.ToDisplayString()})"
+            _ => $"default({type.GetCachedDisplayString()})"  // 使用缓存版本
         };
     }
 

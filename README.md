@@ -481,7 +481,8 @@ POST   /api/todos/archive-expired    # 归档过期任务
 
 ### 🔧 核心功能
 - [🌐 多数据库模板引擎](docs/MULTI_DATABASE_TEMPLATE_ENGINE.md) - 核心创新功能
-- [🎯 扩展占位符指南](docs/EXTENDED_PLACEHOLDERS_GUIDE.md) - 22个占位符详解
+- [🎯 扩展占位符指南](docs/EXTENDED_PLACEHOLDERS_GUIDE.md) - 23个占位符详解
+- [📝 CRUD操作完整指南](docs/CRUD_PLACEHOLDERS_COMPLETE_GUIDE.md) - 增删改查全场景
 - [🏗️ 高级功能指南](docs/ADVANCED_FEATURES.md) - AOT优化、性能调优
 
 ### 📖 项目信息

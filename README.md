@@ -22,13 +22,13 @@ Sqlx 是一个让你**不用手写 SQL 列名**的数据库工具。你只需要
 | 你想做什么 | Sqlx 写法 | 生成的 SQL |
 |-----------|-----------|-----------|
 | **查所有** | `SELECT {{columns}} FROM {{table}}` | `SELECT id, name, email FROM users` |
-| **按ID查** | `WHERE {{where id=@id}}` | `WHERE id = @id` |
-| **条件查** | `WHERE {{where is_active=@active}}` | `WHERE is_active = @active` |
-| **比较查** | `WHERE {{where age>=@min}}` | `WHERE age >= @min` |
-| **插入** | `{{insert into}} ({{columns --exclude Id}})` | `INSERT INTO users (name, email)` |
-| **更新** | `{{update}} SET {{set --exclude Id}}` | `UPDATE users SET name=@Name, email=@Email` |
-| **删除** | `{{delete from}} WHERE {{where id=@id}}` | `DELETE FROM users WHERE id = @id` |
-| **计数** | `SELECT {{count}}` | `SELECT COUNT(*)` |
+| **按ID查** | `WHERE id = @id` | `WHERE id = @id` |
+| **条件查** | `WHERE is_active = @active` | `WHERE is_active = @active` |
+| **比较查** | `WHERE age >= @min` | `WHERE age >= @min` |
+| **插入** | `INSERT INTO {{table}} ({{columns --exclude Id}})` | `INSERT INTO users (name, email)` |
+| **更新** | `UPDATE {{table}} SET {{set --exclude Id}}` | `UPDATE users SET name=@Name, email=@Email` |
+| **删除** | `DELETE FROM {{table}} WHERE id = @id` | `DELETE FROM users WHERE id = @id` |
+| **计数** | `SELECT COUNT(*)` | `SELECT COUNT(*)` |
 | **排序** | `{{orderby name --desc}}` | `ORDER BY name DESC` |
 
 ---
@@ -60,34 +60,37 @@ public interface IUserService
     // 查询所有用户 - 自动生成列名
     [Sqlx("SELECT {{columns}} FROM {{table}}")]
     Task<List<User>> GetAllAsync();
-    
-    // 查询单个用户 - WHERE 表达式
-    [Sqlx("SELECT {{columns}} FROM {{table}} WHERE {{where id=@id}}")]
+
+    // 查询单个用户 - 直接写 SQL
+    [Sqlx("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
     Task<User?> GetByIdAsync(int id);
-    
-    // 条件查询 - 支持任意表达式
-    [Sqlx("SELECT {{columns}} FROM {{table}} WHERE {{where is_active=@isActive}}")]
+
+    // 条件查询 - 直接写 SQL
+    [Sqlx("SELECT {{columns}} FROM {{table}} WHERE is_active = @isActive")]
     Task<List<User>> GetActiveUsersAsync(bool isActive);
-    
+
     // 创建用户 - 自动排除 Id 字段
-    [Sqlx("{{insert into}} ({{columns --exclude Id}}) VALUES ({{values}})")]
+    [Sqlx("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values}})")]
     Task<int> CreateAsync(User user);
-    
+
     // 更新用户 - 自动生成 SET 语句
-    [Sqlx("{{update}} SET {{set --exclude Id}} WHERE {{where id=@id}}")]
+    [Sqlx("UPDATE {{table}} SET {{set --exclude Id}} WHERE id = @id")]
     Task<int> UpdateAsync(User user);
-    
+
     // 删除用户
-    [Sqlx("{{delete from}} WHERE {{where id=@id}}")]
+    [Sqlx("DELETE FROM {{table}} WHERE id = @id")]
     Task<int> DeleteAsync(int id);
 }
 ```
 
 **语法说明：**
-- `{{columns}}` - 自动生成所有列名（默认 auto）
-- `{{where id=@id}}` - WHERE 表达式，支持 `=` `>` `<` `>=` `<=` `!=` 等运算符
+- `{{table}}` - 自动从 TableName 特性获取表名
+- `{{columns}}` - 自动从实体类生成列名列表
+- `{{values}}` - 自动生成参数占位符（@Param1, @Param2...）
+- `{{set}}` - 自动生成 SET 子句（col1=@val1, col2=@val2...）
+- `WHERE id = @id` - 直接写 SQL，简单清晰
 - `--exclude Id` - 排除字段（像命令行参数）
-- `{{insert into}}` `{{update}}` `{{delete from}}` - 清晰的 SQL 语义
+- `COUNT(*)` - 直接写，比 `{{count}}` 更清晰
 
 ### 第四步：就这么简单！
 ```csharp
@@ -217,79 +220,62 @@ Sqlx 提供了 **40+ 个智能占位符**，设计原则：
 
 | 你想做什么 | Sqlx 写法 | 生成的 SQL |
 |-----------|-----------|-----------|
-| 📝 **插入数据** | `{{insert into}} ({{columns --exclude Id}}) VALUES ({{values}})` | `INSERT INTO users (name, email) VALUES (@Name, @Email)` |
-| 🔄 **更新数据** | `{{update}} SET {{set --exclude Id}} WHERE {{where id=@id}}` | `UPDATE users SET name=@Name WHERE id=@id` |
-| 🗑️ **删除数据** | `{{delete from}} WHERE {{where id=@id}}` | `DELETE FROM users WHERE id = @id` |
+| 📝 **插入数据** | `INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values}})` | `INSERT INTO users (name, email) VALUES (@Name, @Email)` |
+| 🔄 **更新数据** | `UPDATE {{table}} SET {{set --exclude Id}} WHERE id = @id` | `UPDATE users SET name=@Name WHERE id=@id` |
+| 🗑️ **删除数据** | `DELETE FROM {{table}} WHERE id = @id` | `DELETE FROM users WHERE id = @id` |
 | 🔍 **查询数据** | `SELECT {{columns}} FROM {{table}}` | `SELECT id, name, email FROM users` |
-| 🎯 **条件查询** | `WHERE {{where is_active=@active}}` | `WHERE is_active = @active` |
-| 🔢 **比较查询** | `WHERE {{where age>=@min}}` | `WHERE age >= @min` |
+| 🎯 **条件查询** | `WHERE is_active = @active` | `WHERE is_active = @active` |
+| 🔢 **比较查询** | `WHERE age >= @min` | `WHERE age >= @min` |
 | 📊 **排序** | `{{orderby name --desc}}` | `ORDER BY name DESC` |
-| 🔢 **计数** | `SELECT {{count}} FROM {{table}}` | `SELECT COUNT(*) FROM users` |
-| 🔎 **LIKE查询** | `WHERE {{where name LIKE @pattern}}` | `WHERE name LIKE @pattern` |
-| ✔️ **NULL检查** | `WHERE {{where email IS NOT NULL}}` | `WHERE email IS NOT NULL` |
+| 🔢 **计数** | `SELECT COUNT(*) FROM {{table}}` | `SELECT COUNT(*) FROM users` |
+| 🔎 **LIKE查询** | `WHERE name LIKE @pattern` | `WHERE name LIKE @pattern` |
+| ✔️ **NULL检查** | `WHERE email IS NOT NULL` | `WHERE email IS NOT NULL` |
 
-#### 增强的 WHERE 语法 ⚡
+#### WHERE 条件（直接写 SQL）
 
-**支持表达式和组合，强大又灵活：**
+**简单、清晰、直接：**
 
 ```csharp
-// === 单个条件 ===
-[Sqlx("SELECT {{columns}} FROM {{table}} WHERE {{where is_active=@active}}")]
+// === 基本条件 ===
+[Sqlx("SELECT {{columns}} FROM {{table}} WHERE is_active = @active")]
 Task<List<User>> GetActiveUsersAsync(bool active);
-// 生成：WHERE is_active = @active
 
-// === 比较运算符 ===
-[Sqlx("SELECT {{columns}} FROM {{table}} WHERE {{where age>=@min}}")]
+[Sqlx("SELECT {{columns}} FROM {{table}} WHERE age >= @min")]
 Task<List<User>> GetAdultsAsync(int min = 18);
-// 生成：WHERE age >= @min
 
-// === 多个条件（AND） ===
-[Sqlx("SELECT {{columns}} FROM {{table}} WHERE {{where is_active=@active}} AND {{where age>=@minAge}}")]
+// === 组合条件（AND / OR） ===
+[Sqlx("SELECT {{columns}} FROM {{table}} WHERE is_active = @active AND age >= @minAge")]
 Task<List<User>> SearchAsync(bool active, int minAge);
-// 生成：WHERE is_active = @active AND age >= @minAge
 
-// === 多个条件（OR） ===
-[Sqlx("SELECT {{columns}} FROM {{table}} WHERE {{where name=@name}} OR {{where email=@email}}")]
+[Sqlx("SELECT {{columns}} FROM {{table}} WHERE name = @name OR email = @email")]
 Task<User?> FindByNameOrEmailAsync(string name, string email);
-// 生成：WHERE name = @name OR email = @email
 
 // === 复杂组合 ===
-[Sqlx("SELECT {{columns}} FROM {{table}} WHERE ({{where name=@name}} OR {{where email=@email}}) AND {{where is_active=true}}")]
+[Sqlx("SELECT {{columns}} FROM {{table}} WHERE (name = @name OR email = @email) AND is_active = true")]
 Task<User?> FindActiveUserAsync(string name, string email);
-// 生成：WHERE (name = @name OR email = @email) AND is_active = 1
-
-// === 常量值 ===
-[Sqlx("SELECT {{columns}} FROM {{table}} WHERE {{where status='pending'}}")]
-Task<List<Order>> GetPendingOrdersAsync();
-// 生成：WHERE status = 'pending'
 
 // === NULL 检查 ===
-[Sqlx("SELECT {{columns}} FROM {{table}} WHERE {{where email IS NOT NULL}}")]
+[Sqlx("SELECT {{columns}} FROM {{table}} WHERE email IS NOT NULL")]
 Task<List<User>> GetUsersWithEmailAsync();
-// 生成：WHERE email IS NOT NULL
 
 // === LIKE 查询 ===
-[Sqlx("SELECT {{columns}} FROM {{table}} WHERE {{where name LIKE @pattern}}")]
+[Sqlx("SELECT {{columns}} FROM {{table}} WHERE name LIKE @pattern")]
 Task<List<User>> SearchByNameAsync(string pattern);
-// 生成：WHERE name LIKE @pattern
-```
 
-**WHERE 语法特点：**
-- ✅ **支持表达式** - `is_active=@active` `age>=@min`
-- ✅ **支持运算符** - `=` `>` `<` `>=` `<=` `!=` `LIKE` `IS NULL` 等
-- ✅ **支持常量** - `status='pending'` `is_active=true` `count=0`
-- ✅ **支持组合** - 多个 `{{where}}` 用 AND/OR 连接
-- ✅ **支持括号** - 控制优先级 `(A OR B) AND C`
+// === IN 查询 ===
+[Sqlx("SELECT {{columns}} FROM {{table}} WHERE id IN (SELECT value FROM json_each(@idsJson))")]
+Task<List<User>> GetByIdsAsync(string idsJson);
+```
 
 #### 其他实用功能
 
 ```csharp
 // 部分字段查询
-[Sqlx("SELECT {{columns --only name email}} FROM {{table}} WHERE {{where age>=@minAge}}")]
+[Sqlx("SELECT {{columns --only name email}} FROM {{table}} WHERE age >= @minAge")]
 Task<List<User>> GetNamesAsync(int minAge);
 
 // 排序
-[Sqlx("SELECT {{columns}} FROM {{table}} WHERE {{where is_active=true}} {{orderby created_at --desc}}")]
+[Sqlx("SELECT {{columns}} FROM {{table}} WHERE is_active = true {{orderby created_at --desc}}")]
 Task<List<User>> GetRecentActiveAsync();
 
 // 分页
@@ -298,11 +284,13 @@ Task<List<User>> GetPagedAsync(int skip);
 ```
 
 **语法总结：**
-- `{{columns}}` - 默认 auto，不用写 `:auto`
-- `{{where expr}}` - 表达式，支持各种运算符和组合
-- `--exclude Id` - 像命令行参数
-- `--only name email` - 明确指定字段
-- `--desc` - 降序排序
+- `{{table}}` `{{columns}}` `{{values}}` `{{set}}` - 智能占位符（自动生成）
+- `WHERE expr` - 直接写 SQL，简单清晰
+- `INSERT INTO` `UPDATE` `DELETE FROM` - 直接写，无需占位符
+- `COUNT(*)` - 直接写，无需 `{{count}}`
+- `--exclude Id` - 排除字段（命令行风格）
+- `--only name email` - 只包含指定字段
+- `{{orderby col --desc}}` - 排序占位符（支持选项）
 
 **完整功能列表** → [40+占位符详解](docs/EXTENDED_PLACEHOLDERS_GUIDE.md)
 

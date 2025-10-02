@@ -73,14 +73,14 @@ public interface IDemoUserRepository
     /// 使用SqlTemplateAttribute进行复杂条件查询
     /// </summary>
     [SqlTemplate("SELECT [id], [name], [email], [age], [salary], [department_id], [is_active], [hire_date], [bonus], [performance_rating] FROM [user] WHERE [department_id] = @deptId AND [salary] >= @minSalary ORDER BY [salary] DESC",
-                 Dialect = SqlDefineTypes.SQLite, Operation = SqlOperation.Select)]
+                 Dialect = SqlDefineTypes.SQLite)]
     Task<List<User>> GetUsersByDepartmentAndSalaryAsync(int deptId, decimal minSalary);
 
     /// <summary>
     /// 使用SqlTemplateAttribute进行更新操作
     /// </summary>
     [SqlTemplate("UPDATE [user] SET [salary] = @newSalary, [bonus] = @bonusAmount WHERE [id] = @userId",
-                 Dialect = SqlDefineTypes.SQLite, Operation = SqlOperation.Update)]
+                 Dialect = SqlDefineTypes.SQLite)]
     Task<int> UpdateUserSalaryAndBonusAsync(int userId, decimal newSalary, decimal bonusAmount);
 }
 

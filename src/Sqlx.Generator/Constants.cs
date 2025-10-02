@@ -12,21 +12,6 @@ namespace Sqlx;
 internal static class Constants
 {
     /// <summary>
-    /// SQL operation type enumeration values
-    /// </summary>
-    public static class SqlExecuteTypeValues
-    {
-        public const int Select = 0;
-        public const int Update = 1;
-        public const int Insert = 2;
-        public const int Delete = 3;
-        public const int BatchInsert = 4;
-        public const int BatchUpdate = 5;
-        public const int BatchDelete = 6;
-        public const int BatchCommand = 7;
-    }
-
-    /// <summary>
     /// Variable names in generated code
     /// </summary>
     public static class GeneratedVariables

@@ -75,7 +75,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
     protected virtual SymbolReferences GetRequiredSymbols(GeneratorExecutionContext context) => new(
         context.Compilation.GetTypeByMetadataName("Sqlx.Annotations.SqlxAttribute"),
         context.Compilation.GetTypeByMetadataName("Sqlx.Annotations.ExpressionToSqlAttribute"),
-        context.Compilation.GetTypeByMetadataName("Sqlx.Annotations.SqlExecuteTypeAttribute"),
+        null, // SqlExecuteTypeAttribute has been removed - no longer needed
         context.Compilation.GetTypeByMetadataName("Sqlx.Annotations.RepositoryForAttribute"),
         context.Compilation.GetTypeByMetadataName("Sqlx.Annotations.TableNameAttribute"));
 
@@ -227,8 +227,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
         /// Gets a value indicating whether the essential symbols are available.
         /// </summary>
         public bool IsValid => SqlxAttributeSymbol != null &&
-                              ExpressionToSqlAttributeSymbol != null &&
-                              SqlExecuteTypeAttributeSymbol != null;
+                              ExpressionToSqlAttributeSymbol != null;
     }
 
 

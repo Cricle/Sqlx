@@ -23,7 +23,6 @@ public class AttributeHandler
         // Check if method already has SQL attributes
         var existingSqlAttributes = method.GetAttributes()
             .Where(attr => attr.AttributeClass?.Name == "SqlxAttribute" ||
-                          attr.AttributeClass?.Name == "SqlExecuteTypeAttribute" ||
                           attr.AttributeClass?.Name == "SqlTemplateAttribute")
             .ToArray();
 
@@ -155,25 +154,6 @@ public class AttributeHandler
                 }
                 sb.Append(')');
             }
-            else if (attributeClass.Name == "SqlExecuteTypeAttribute")
-            {
-                sb.Append("global::Sqlx.Annotations.SqlExecuteType(");
-                if (attribute.ConstructorArguments.Length > 0)
-                {
-                    var executeTypeArg = attribute.ConstructorArguments[0];
-                    sb.Append($"SqlOperation.{GetSqlExecuteTypeName(executeTypeArg)}");
-
-                    if (attribute.ConstructorArguments.Length > 1)
-                    {
-                        var tableNameArg = attribute.ConstructorArguments[1];
-                        if (tableNameArg.Value != null)
-                        {
-                            sb.Append($", \"{tableNameArg.Value}\"");
-                        }
-                    }
-                }
-                sb.Append(')');
-            }
             else
             {
                 // Generic attribute handling
@@ -209,24 +189,6 @@ public class AttributeHandler
         }
     }
 
-    private string GetSqlExecuteTypeName(TypedConstant executeTypeArg)
-    {
-        if (executeTypeArg.Value is int intValue)
-        {
-            return intValue switch
-            {
-                0 => "None",
-                1 => "Insert",
-                2 => "Update",
-                3 => "Delete",
-                4 => "Select",
-                _ => intValue.ToString()
-            };
-        }
-
-        return executeTypeArg.Value?.ToString() ?? "None";
-    }
-
     /// <summary>Get appropriate attribute based on method name patterns using optimized switch expressions</summary>
     private string GetAttributeForMethodPattern(string methodName, bool hasParameters, string tableName, string paramName) => methodName switch
     {
@@ -235,11 +197,11 @@ public class AttributeHandler
         var name when (name.Contains("getby") || name.Contains("findby") || (name.StartsWith("get") && hasParameters))
             => $"[global::Sqlx.Annotations.Sqlx(\"SELECT * FROM {tableName} WHERE Id = @{paramName}\")]",
         var name when name.Contains("create") || name.Contains("insert") || name.Contains("add")
-            => $"[global::Sqlx.Annotations.SqlExecuteType(SqlOperation.Insert, \"{tableName}\")]",
+            => $"[global::Sqlx.Annotations.Sqlx(\"{{{{insert into}}}} ({{{{columns --exclude Id}}}}) VALUES ({{{{values}}}})\")]",
         var name when name.Contains("update") || name.Contains("modify")
-            => $"[global::Sqlx.Annotations.SqlExecuteType(SqlOperation.Update, \"{tableName}\")]",
+            => $"[global::Sqlx.Annotations.Sqlx(\"{{{{update}}}} SET {{{{set --exclude Id}}}} WHERE {{{{where id=@id}}}}\")]",
         var name when name.Contains("delete") || name.Contains("remove")
-            => $"[global::Sqlx.Annotations.SqlExecuteType(SqlOperation.Delete, \"{tableName}\")]",
+            => $"[global::Sqlx.Annotations.Sqlx(\"{{{{delete from}}}} WHERE {{{{where id=@id}}}}\")]",
         var name when name.Contains("count")
             => $"[global::Sqlx.Annotations.Sqlx(\"SELECT COUNT(*) FROM {tableName}\")]",
         var name when name.Contains("exists")

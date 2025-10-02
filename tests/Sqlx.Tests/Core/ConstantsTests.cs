@@ -11,18 +11,7 @@ namespace Sqlx.Tests.Core
     [TestClass]
     public class ConstantsTests
     {
-        [TestMethod]
-        public void SqlExecuteTypeValues_AllDefined()
-        {
-            Assert.AreEqual(0, Constants.SqlExecuteTypeValues.Select);
-            Assert.AreEqual(1, Constants.SqlExecuteTypeValues.Update);
-            Assert.AreEqual(2, Constants.SqlExecuteTypeValues.Insert);
-            Assert.AreEqual(3, Constants.SqlExecuteTypeValues.Delete);
-            Assert.AreEqual(4, Constants.SqlExecuteTypeValues.BatchInsert);
-            Assert.AreEqual(5, Constants.SqlExecuteTypeValues.BatchUpdate);
-            Assert.AreEqual(6, Constants.SqlExecuteTypeValues.BatchDelete);
-            Assert.AreEqual(7, Constants.SqlExecuteTypeValues.BatchCommand);
-        }
+        // SqlExecuteTypeValues test removed - SqlExecuteType has been deprecated and replaced with SQL templates
 
         [TestMethod]
         public void GeneratedVariables_AllDefined()

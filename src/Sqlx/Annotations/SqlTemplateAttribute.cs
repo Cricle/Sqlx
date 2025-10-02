@@ -53,11 +53,6 @@ namespace Sqlx.Annotations
         /// Whether to cache generated SQL, defaults to true
         /// </summary>
         public bool EnableCaching { get; set; } = true;
-
-        /// <summary>
-        /// Execution type, used to optimize generated code
-        /// </summary>
-        public SqlOperation Operation { get; set; } = SqlOperation.Select;
     }
 
 }

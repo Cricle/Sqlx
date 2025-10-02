@@ -8,8 +8,8 @@ using System.Linq.Expressions;
 
 namespace Sqlx
 {
-    /// <summary>SQL operation types</summary>
-    public enum SqlOperation
+    /// <summary>SQL operation types for internal use</summary>
+    internal enum SqlOperation
     {
         /// <summary>SELECT operation</summary>
         Select,

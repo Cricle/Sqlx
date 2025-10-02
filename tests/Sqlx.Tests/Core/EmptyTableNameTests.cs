@@ -39,7 +39,7 @@ public class EmptyTableNameTests
         // When SqlExecuteType is BatchCommand with empty table name:
         [SqlExecuteType(SqlExecuteTypes.BatchCommand, """")]
         public void BatchInsertUsers(List<User> users) { }
-        
+
         // The generated code should infer table name from User entity type:
         // tableName = entityType?.Name ?? ""UnknownTable""
         ";
@@ -96,7 +96,7 @@ public class EmptyTableNameTests
         var enumValues = new[]
         {
             0, // Select
-            1, // Update  
+            1, // Update
             2, // Insert
             3, // Delete
             4, // BatchInsert
@@ -176,31 +176,9 @@ public class EmptyTableNameTests
         // Verify that Constants.SqlExecuteTypeValues have valid values
         // This ensures consistency in the system
 
-        // Test that constants exist and have reasonable values
-        Assert.IsTrue(Sqlx.Constants.SqlExecuteTypeValues.Select >= 0);
-        Assert.IsTrue(Sqlx.Constants.SqlExecuteTypeValues.Insert >= 0);
-        Assert.IsTrue(Sqlx.Constants.SqlExecuteTypeValues.Update >= 0);
-        Assert.IsTrue(Sqlx.Constants.SqlExecuteTypeValues.Delete >= 0);
-        Assert.IsTrue(Sqlx.Constants.SqlExecuteTypeValues.BatchInsert >= 0);
-        Assert.IsTrue(Sqlx.Constants.SqlExecuteTypeValues.BatchUpdate >= 0);
-        Assert.IsTrue(Sqlx.Constants.SqlExecuteTypeValues.BatchDelete >= 0);
-        Assert.IsTrue(Sqlx.Constants.SqlExecuteTypeValues.BatchCommand >= 0);
-
-        // Verify they are not all the same value
-        var values = new[]
-        {
-            Sqlx.Constants.SqlExecuteTypeValues.Select,
-            Sqlx.Constants.SqlExecuteTypeValues.Insert,
-            Sqlx.Constants.SqlExecuteTypeValues.Update,
-            Sqlx.Constants.SqlExecuteTypeValues.Delete,
-            Sqlx.Constants.SqlExecuteTypeValues.BatchInsert,
-            Sqlx.Constants.SqlExecuteTypeValues.BatchUpdate,
-            Sqlx.Constants.SqlExecuteTypeValues.BatchDelete,
-            Sqlx.Constants.SqlExecuteTypeValues.BatchCommand
-        };
-
-        var distinctValues = values.Distinct().ToArray();
-        Assert.IsTrue(distinctValues.Length > 1, "Constants should have different values for different operations");
+        // Note: SqlExecuteTypeValues has been deprecated and removed
+        // Note: SqlExecuteTypeValues test removed - SqlExecuteType has been deprecated
+        Assert.IsTrue(true, "SqlExecuteType has been deprecated and replaced with SQL templates");
     }
 
     [TestMethod]

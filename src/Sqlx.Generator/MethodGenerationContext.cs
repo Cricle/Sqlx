@@ -327,24 +327,6 @@ internal partial class MethodGenerationContext : GenerationContextBase
         sb.PopIndent();
         sb.AppendLine("}");
 
-        // Check if this is a BatchCommand operation - 使用扩展方法简化代码
-        var sqlExecuteTypeAttr = MethodSymbol.GetSqlExecuteTypeAttribute();
-        var isBatchCommand = false;
-        if (sqlExecuteTypeAttr != null)
-        {
-            var enumValueObj = sqlExecuteTypeAttr.ConstructorArguments[0].Value;
-            var type = enumValueObj switch
-            {
-                int intValue => intValue,
-                string strValue when int.TryParse(strValue, out var intVal) => intVal,
-                _ => Constants.SqlExecuteTypeValues.Select
-            };
-            isBatchCommand = type == Constants.SqlExecuteTypeValues.BatchCommand ||
-                           type == Constants.SqlExecuteTypeValues.BatchInsert ||
-                           type == Constants.SqlExecuteTypeValues.BatchUpdate ||
-                           type == Constants.SqlExecuteTypeValues.BatchDelete;
-        }
-
         // Always declare the variable with a unique name to avoid conflicts
         sb.AppendLine($"using (var {CmdName} = {DbConnectionName}.CreateCommand())");
         sb.AppendLine("{");
@@ -365,13 +347,6 @@ internal partial class MethodGenerationContext : GenerationContextBase
             ClassGenerationContext.GeneratorExecutionContext.ReportDiagnostic(Diagnostic.Create(Messages.SP0007, MethodSymbol.Locations[0]));
             return false;
         }
-
-        // Handle BatchCommand operations first
-        if (isBatchCommand)
-        {
-            return GenerateBatchCommandLogic(sb);
-        }
-
         // Legacy batch operations detection - redirect to proper BatchCommand
         if (!string.IsNullOrEmpty(sql) && sql?.Contains("BATCH") == true)
         {
@@ -406,20 +381,8 @@ internal partial class MethodGenerationContext : GenerationContextBase
             }
             else
             {
-                // Static SQL case (from SqlExecuteType, RawSql, or stored procedure)
+                // Static SQL case (from RawSql or stored procedure)
                 sb.AppendLine($"{CmdName}.CommandText = {sql};");
-
-                // If we have ExpressionToSql parameter and this is a SqlExecuteType operation,
-                // append dynamic WHERE clause for SELECT/DELETE or handle UPDATE specially
-                if (ExpressionToSqlParameter != null)
-                {
-                    var sqlExecuteType = MethodSymbol.GetSqlExecuteTypeAttribute();  // 使用扩展方法
-                    if (sqlExecuteType != null)
-                    {
-                        var type = (int)Enum.Parse(typeof(int), sqlExecuteType.ConstructorArguments[0].Value?.ToString() ?? "0");
-                        GenerateExpressionToSqlEnhancement(sb, type);
-                    }
-                }
             }
         }
 
@@ -536,23 +499,6 @@ internal partial class MethodGenerationContext : GenerationContextBase
         // Check for explicit ExecuteNoQueryAttribute
         if (MethodSymbol.GetAttributes().Any(x => x.AttributeClass?.Name == "ExecuteNoQueryAttribute"))
             return true;
-
-        // Check for SqlExecuteTypeAttribute with INSERT/UPDATE/DELETE operations
-        var sqlExecuteTypeAttr = MethodSymbol.GetAttributes()
-            .FirstOrDefault(x => x.AttributeClass?.Name == "SqlExecuteTypeAttribute");
-        if (sqlExecuteTypeAttr != null && sqlExecuteTypeAttr.ConstructorArguments.Length > 0)
-        {
-            var enumValueObj = sqlExecuteTypeAttr.ConstructorArguments[0].Value;
-            var sqlExecuteType = enumValueObj switch
-            {
-                int intValue => intValue,
-                string strValue when int.TryParse(strValue, out var intVal) => intVal,
-                _ => 0 // Select
-            };
-
-            // INSERT (2), UPDATE (1), DELETE (3) should use ExecuteNonQuery
-            return sqlExecuteType == 1 || sqlExecuteType == 2 || sqlExecuteType == 3;
-        }
 
         return false;
     }
@@ -1268,8 +1214,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
     private string? GetSql() =>
         GetSqlFromRawParameter() ??
         GetSqlFromSqlxAttribute() ??
-        GetSqlFromSyntax() ??
-        GetSqlFromLegacyAttributes();
+        GetSqlFromSyntax();
 
     private string? GetSqlFromRawParameter()
     {
@@ -1318,249 +1263,6 @@ internal partial class MethodGenerationContext : GenerationContextBase
         return null;
     }
 
-    private string? GetSqlFromLegacyAttributes()
-    {
-        var sqlExecuteType = MethodSymbol.GetSqlExecuteTypeAttribute();  // 使用扩展方法
-        if (sqlExecuteType == null) return null;
-
-        // Emit deprecation warning
-        ClassGenerationContext.GeneratorExecutionContext.ReportDiagnostic(
-            Diagnostic.Create(
-                new DiagnosticDescriptor(
-                    "SQLX_DEPRECATED_001",
-                    "SqlExecuteType is deprecated",
-                    "SqlExecuteTypeAttribute is deprecated. Use method naming conventions and ExpressionToSql parameters instead.",
-                    "Usage",
-                    DiagnosticSeverity.Warning,
-                    isEnabledByDefault: true),
-                MethodSymbol.Locations.FirstOrDefault()));
-
-        var enumValueObj = sqlExecuteType.ConstructorArguments[0].Value;
-        var type = enumValueObj switch
-        {
-            int intValue => intValue,
-            string strValue when int.TryParse(strValue, out var intVal) => intVal,
-            _ => Constants.SqlExecuteTypeValues.Select
-        };
-
-        var tableName = GetEffectiveTableName(sqlExecuteType.ConstructorArguments[1].Value?.ToString() ?? string.Empty);
-
-        return type switch
-        {
-            Constants.SqlExecuteTypeValues.Select => HandleSelectOperation(tableName),
-            Constants.SqlExecuteTypeValues.Insert => HandleInsertOperation(tableName),
-            Constants.SqlExecuteTypeValues.Update => HandleUpdateOperation(tableName),
-            Constants.SqlExecuteTypeValues.Delete => HandleDeleteOperation(tableName),
-            Constants.SqlExecuteTypeValues.BatchInsert => HandleBatchOperation(SqlInsert, tableName),
-            Constants.SqlExecuteTypeValues.BatchUpdate => HandleBatchOperation(SqlUpdate, tableName),
-            Constants.SqlExecuteTypeValues.BatchDelete => HandleBatchOperation(SqlDelete, tableName),
-            Constants.SqlExecuteTypeValues.BatchCommand => "/* ADO.NET BatchCommand will be used */",
-            _ => string.Empty
-        };
-    }
-
-    private string GetEffectiveTableName(string defaultTableName)
-    {
-        // Check for TableName attribute on method - 使用扩展方法
-        var methodTableNameAttr = MethodSymbol.GetTableNameAttribute();
-        if (methodTableNameAttr != null && methodTableNameAttr.ConstructorArguments.Length > 0)
-        {
-            return methodTableNameAttr.ConstructorArguments[0].Value?.ToString() ?? defaultTableName;
-        }
-
-        // Check for TableName attribute on class - 使用扩展方法
-        var classTableNameAttr = ClassGenerationContext.ClassSymbol.GetTableNameAttribute();
-        if (classTableNameAttr != null && classTableNameAttr.ConstructorArguments.Length > 0)
-        {
-            return classTableNameAttr.ConstructorArguments[0].Value?.ToString() ?? defaultTableName;
-        }
-
-        // Check for TableName attribute on parameters
-        foreach (var param in SqlParameters)
-        {
-            var paramTableNameAttr = param.GetTableNameAttribute();  // 使用扩展方法
-            if (paramTableNameAttr != null && paramTableNameAttr.ConstructorArguments.Length > 0)
-            {
-                return paramTableNameAttr.ConstructorArguments[0].Value?.ToString() ?? defaultTableName;
-            }
-        }
-
-        return defaultTableName;
-    }
-
-    private string? HandleBatchOperation(string operation, string tableName)
-    {
-        // Batch operations can work without a predefined table name
-        // The table name can be determined at runtime from the entity type or custom SQL
-        if (string.IsNullOrEmpty(tableName))
-        {
-            return $"/* {operation} operation - table name will be determined at runtime */";
-        }
-
-        return operation switch
-        {
-            SqlInsert => $"{SqlInsertInto} {tableName} (/* columns */) {SqlValues} (/* batch values */)",
-            SqlUpdate => $"{SqlUpdate} {tableName} {SqlSet} /* columns = values */ {SqlWhere} /* condition */",
-            SqlDelete => $"{SqlDeleteFrom} {tableName} {SqlWhere} /* condition */",
-            _ => $"/* {operation} operation on {tableName} */"
-        };
-    }
-
-    private string? HandleSelectOperation(string tableName)
-    {
-        // SELECT operation - always return base SQL, dynamic parts handled in code generation
-        if (string.IsNullOrEmpty(tableName))
-        {
-            // If no table name specified, assume it will be provided dynamically or via custom SQL
-            return "\"SELECT * FROM /* table name will be determined at runtime */\"";
-        }
-        return $"\"SELECT * FROM {SqlDef.WrapColumn(tableName)}\"";
-    }
-
-    private string? HandleInsertOperation(string tableName)
-    {
-        // INSERT can have:
-        // 1. ExpressionToSql + Entity parameter (single insert)
-        // 2. ExpressionToSql + IEnumerable<Entity> (batch insert)
-        // 3. Just Entity parameter (simple insert)
-
-        // Handle case where table name is not provided
-        if (string.IsNullOrEmpty(tableName))
-        {
-            if (ExpressionToSqlParameter != null)
-            {
-                return "/* INSERT statement will be generated from expression */";
-            }
-            tableName = "/* table name will be inferred from entity type */";
-        }
-
-        var entityParameter = MethodSymbol.Parameters.FirstOrDefault(p =>
-            !p.GetAttributes().Any(a => a.AttributeClass?.Name == "ExpressionToSqlAttribute" || a.AttributeClass?.Name == "ExpressionToSql") &&
-            !IsSystemParameter(p));
-
-        if (entityParameter != null)
-        {
-            var objectMap = new ObjectMap(entityParameter);
-            var context = new InsertGenerateContext(this, tableName, objectMap);
-            var baseSql = new SqlGenerator().Generate(SqlDef, Constants.SqlExecuteTypeValues.Insert, context);
-
-            if (ExpressionToSqlParameter != null)
-            {
-                // Insert with additional conditions from expression
-                return $"$\"{baseSql} \" + {ExpressionToSqlParameter.Name}.ToAdditionalClause()";
-            }
-
-            return $"\"{baseSql}\"";
-        }
-
-        // Fallback to expression-only insert
-        if (ExpressionToSqlParameter != null)
-        {
-            return $"\"INSERT INTO {tableName} VALUES (...)\"";
-        }
-
-        return string.Empty;
-    }
-
-    private string? HandleUpdateOperation(string tableName)
-    {
-        // UPDATE needs:
-        // 1. ExpressionToSql for WHERE clause
-        // 2. Entity parameter or explicit SET values
-        // Simple approach: Use ExpressionToSql for both SET and WHERE
-
-        // Handle case where table name is not provided
-        if (string.IsNullOrEmpty(tableName))
-        {
-            if (ExpressionToSqlParameter != null)
-            {
-                return "/* UPDATE statement will be generated from expression */";
-            }
-            tableName = "/* table name will be inferred from entity type */";
-        }
-
-        if (ExpressionToSqlParameter != null)
-        {
-            // Let ExpressionToSql handle the entire UPDATE statement
-            return $"\"UPDATE {tableName} SET field = value\"";
-        }
-
-        // Fallback: find entity parameter for simple update
-        var entityParameter = MethodSymbol.Parameters.FirstOrDefault(p =>
-            !IsSystemParameter(p));
-
-        if (entityParameter != null)
-        {
-            var objectMap = new ObjectMap(entityParameter);
-            var context = new UpdateGenerateContext(this, tableName, objectMap);
-            var baseSql = new SqlGenerator().Generate(SqlDef, Constants.SqlExecuteTypeValues.Update, context);
-            return $"\"{baseSql}\"";
-        }
-
-        return string.Empty;
-    }
-
-    private string? HandleDeleteOperation(string tableName)
-    {
-        // DELETE operation needs a WHERE clause for safety
-
-        // Handle case where table name is not provided
-        if (string.IsNullOrEmpty(tableName))
-        {
-            if (ExpressionToSqlParameter != null)
-            {
-                return "/* DELETE statement will be generated from expression */";
-            }
-            tableName = "/* table name will be inferred from entity type */";
-        }
-
-        // If we have ExpressionToSql parameter, let it handle the WHERE clause
-        if (ExpressionToSqlParameter != null)
-        {
-            return $"\"DELETE FROM {tableName}\"";
-        }
-
-        // For simple DELETE by ID, look for an ID parameter
-        var idParameter = MethodSymbol.Parameters.FirstOrDefault(p =>
-            !IsSystemParameter(p) &&
-            (p.Name.ToLowerInvariant() == "id" || p.Name.ToLowerInvariant().EndsWith("id")));
-
-        if (idParameter != null)
-        {
-            // Generate simple DELETE with WHERE Id = @param
-            var paramName = idParameter.Name.ToLowerInvariant();
-            return $"\"DELETE FROM {SqlDef.WrapColumn(tableName)} WHERE {SqlDef.WrapColumn("Id")} = {SqlDef.ParameterPrefix}{paramName}\"";
-        }
-
-        // Check for entity parameter that might have an Id property
-        var entityParameter = MethodSymbol.Parameters.FirstOrDefault(p =>
-            !IsSystemParameter(p) && p.Type.TypeKind == TypeKind.Class);
-
-        if (entityParameter != null)
-        {
-            // Assume entity has an Id property for DELETE WHERE clause
-            var objectMap = new ObjectMap(entityParameter);
-            var context = new DeleteGenerateContext(this, tableName, objectMap);
-            var baseSql = new SqlGenerator().Generate(SqlDef, Constants.SqlExecuteTypeValues.Delete, context);
-            return $"\"{baseSql.Replace("{0}", "Id = @Id")}\"";
-        }
-
-        // Fallback: require ExpressionToSql for safety - don't generate DELETE without WHERE
-        throw new InvalidOperationException($"DELETE operation for method {MethodSymbol.Name} requires either an 'id' parameter, entity parameter with Id property, or ExpressionToSql parameter for WHERE clause safety");
-    }
-
-    private bool IsSystemParameter(IParameterSymbol parameter)
-    {
-        // Check if parameter is a system parameter (CancellationToken, etc.)
-        var typeName = parameter.Type.Name;
-        return typeName == "CancellationToken" ||
-               typeName == "DbTransaction" ||
-               typeName == "DbConnection" ||
-               parameter.GetAttributes().Any(a =>
-                   a.AttributeClass?.Name == "TimeoutAttribute" ||
-                   a.AttributeClass?.Name == "ExpressionToSqlAttribute" ||
-                   a.AttributeClass?.Name == "ExpressionToSql");
-    }
     private void GenerateBatchInsertSql(IndentedStringBuilder sb, string sqlTemplate)
     {
         // Find the collection parameter (should be IEnumerable<T>)
@@ -1643,48 +1345,6 @@ internal partial class MethodGenerationContext : GenerationContextBase
         sb.AppendLine($"{CmdName}.CommandText = sqlBuilder.ToString();");
     }
 
-    private void GenerateExpressionToSqlEnhancement(IndentedStringBuilder sb, int operationType)
-    {
-        // Generate code to enhance the base SQL with ExpressionToSql functionality
-        switch (operationType)
-        {
-            case Constants.SqlExecuteTypeValues.Select:
-            case Constants.SqlExecuteTypeValues.Delete:
-                // For SELECT and DELETE, append WHERE clause
-                sb.AppendLine($"var __whereClause__ = {ExpressionToSqlParameter!.Name}.ToWhereClause();");
-                sb.AppendLine($"if (!string.IsNullOrEmpty(__whereClause__))");
-                sb.AppendLine("{");
-                sb.PushIndent();
-                sb.AppendLine($"{CmdName}.CommandText += \" WHERE \" + __whereClause__;");
-                sb.PopIndent();
-                sb.AppendLine("}");
-                break;
-
-            case Constants.SqlExecuteTypeValues.Update:
-                // For UPDATE, let ExpressionToSql handle the entire statement
-                sb.AppendLine($"var __template__ = {ExpressionToSqlParameter!.Name}.ToTemplate();");
-                sb.AppendLine($"{CmdName}.CommandText = __template__.Sql;");
-                sb.AppendLine($"foreach(var __param__ in __template__.Parameters)");
-                sb.AppendLine("{");
-                sb.PushIndent();
-                sb.AppendLine($"{CmdName}.Parameters.Add(__param__);");
-                sb.PopIndent();
-                sb.AppendLine("}");
-                break;
-
-            case Constants.SqlExecuteTypeValues.Insert:
-                // For INSERT, ExpressionToSql might provide additional INSERT clauses
-                sb.AppendLine($"var __insertAddition__ = {ExpressionToSqlParameter!.Name}.ToAdditionalClause();");
-                sb.AppendLine($"if (!string.IsNullOrEmpty(__insertAddition__))");
-                sb.AppendLine("{");
-                sb.PushIndent();
-                sb.AppendLine($"{CmdName}.CommandText += \" \" + __insertAddition__;");
-                sb.PopIndent();
-                sb.AppendLine("}");
-                break;
-        }
-    }
-
     private string? GetTimeoutExpression()
     {
         if (TimeoutParameter != null) return TimeoutParameter.Name;
@@ -1728,49 +1388,33 @@ internal partial class MethodGenerationContext : GenerationContextBase
 
     public sealed record ColumnDefine(string ParameterName, ISymbol Symbol);
 
-    private string? GetTableNameFromSqlExecuteType()
+    private string GetEffectiveTableName(string defaultTableName)
     {
-        var sqlExecuteTypeAttr = MethodSymbol.GetSqlExecuteTypeAttribute();  // 使用扩展方法
-        if (sqlExecuteTypeAttr != null && sqlExecuteTypeAttr.ConstructorArguments.Length > 1)
+        // Check for TableName attribute on method
+        var methodTableNameAttr = MethodSymbol.GetTableNameAttribute();
+        if (methodTableNameAttr != null && methodTableNameAttr.ConstructorArguments.Length > 0)
         {
-            return sqlExecuteTypeAttr.ConstructorArguments[1].Value?.ToString();
-        }
-        return null;
-    }
-
-    /// <summary>
-    /// 获取有效的表名，优先级：SqlExecuteType参数 > TableName特性 > 实体类型名称
-    /// </summary>
-    private string GetEffectiveTableNameForSqlExecuteType(INamedTypeSymbol? entityType = null)
-    {
-        var sqlExecuteTypeAttr = MethodSymbol.GetSqlExecuteTypeAttribute();
-
-        // 1. 首先检查SqlExecuteType的第二个参数
-        var tableNameFromAttr = GetTableNameFromSqlExecuteType();
-        if (!string.IsNullOrEmpty(tableNameFromAttr))
-        {
-            return tableNameFromAttr;
+            return methodTableNameAttr.ConstructorArguments[0].Value?.ToString() ?? defaultTableName;
         }
 
-        // 2. 如果有SqlExecuteType但没有指定表名，建议用户添加
-        if (sqlExecuteTypeAttr != null && sqlExecuteTypeAttr.ConstructorArguments.Length == 1)
+        // Check for TableName attribute on class
+        var classTableNameAttr = ClassGenerationContext.ClassSymbol.GetTableNameAttribute();
+        if (classTableNameAttr != null && classTableNameAttr.ConstructorArguments.Length > 0)
         {
-            var operation = sqlExecuteTypeAttr.ConstructorArguments[0].Value?.ToString() ?? "Unknown";
-            ReportDiagnostic(Messages.SP0022, operation);
+            return classTableNameAttr.ConstructorArguments[0].Value?.ToString() ?? defaultTableName;
         }
 
-        // 3. 检查TableName特性并给出提示
-        var hasTableNameAttr = MethodSymbol.GetTableNameAttribute() != null ||
-                              ClassGenerationContext.ClassSymbol.GetTableNameAttribute() != null;
-
-        if (hasTableNameAttr)
+        // Check for TableName attribute on parameters
+        foreach (var param in SqlParameters)
         {
-            ReportDiagnostic(Messages.SP0023);
+            var paramTableNameAttr = param.GetTableNameAttribute();
+            if (paramTableNameAttr != null && paramTableNameAttr.ConstructorArguments.Length > 0)
+            {
+                return paramTableNameAttr.ConstructorArguments[0].Value?.ToString() ?? defaultTableName;
+            }
         }
 
-        // 4. 返回有效的表名
-        var tableNameFromTableAttr = GetEffectiveTableName(entityType?.Name ?? "UnknownTable");
-        return tableNameFromTableAttr;
+        return defaultTableName;
     }
 
     /// <summary>
@@ -2030,7 +1674,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
         // Determine table, operation and properties
         var tempObjectMap = new ObjectMap(collectionParam);
         var entityType = tempObjectMap.ElementSymbol as INamedTypeSymbol;
-        var tableName = GetEffectiveTableNameForSqlExecuteType(entityType);
+        var tableName = GetEffectiveTableName(entityType?.Name ?? "UnknownTable");
 
         var objectMap = new ObjectMap(collectionParam);
         // 性能优化：避免ToList()，直接使用IEnumerable
@@ -2125,7 +1769,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
         // Determine table and properties
         var tempObjectMap = new ObjectMap(collectionParam);
         var entityType = tempObjectMap.ElementSymbol as INamedTypeSymbol;
-        var tableName = GetEffectiveTableNameForSqlExecuteType(entityType);
+        var tableName = GetEffectiveTableName(entityType?.Name ?? "UnknownTable");
 
         var objectMap = new ObjectMap(collectionParam);
         // 性能优化：避免ToList()，直接使用IEnumerable
@@ -2299,31 +1943,7 @@ internal partial class MethodGenerationContext : GenerationContextBase
 
     private string GetBatchOperationType()
     {
-        // First check SqlExecuteType attribute for specific batch operation types
-        var sqlExecuteTypeAttr = MethodSymbol.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.Name == "SqlExecuteTypeAttribute");
-
-        if (sqlExecuteTypeAttr != null && sqlExecuteTypeAttr.ConstructorArguments.Length > 0)
-        {
-            var enumValueObj = sqlExecuteTypeAttr.ConstructorArguments[0].Value;
-            var type = enumValueObj switch
-            {
-                int intValue => intValue,
-                string strValue when int.TryParse(strValue, out var intVal) => intVal,
-                _ => Constants.SqlExecuteTypeValues.Select
-            };
-
-            return type switch
-            {
-                Constants.SqlExecuteTypeValues.BatchInsert => SqlInsert,
-                Constants.SqlExecuteTypeValues.BatchUpdate => SqlUpdate,
-                Constants.SqlExecuteTypeValues.BatchDelete => SqlDelete,
-                Constants.SqlExecuteTypeValues.BatchCommand => GetOperationFromMethodName(), // Fallback to method name inference
-                _ => "INSERT"
-            };
-        }
-
-        // Fallback to method name inference
+        // Infer operation type from method name
         return GetOperationFromMethodName();
     }
 

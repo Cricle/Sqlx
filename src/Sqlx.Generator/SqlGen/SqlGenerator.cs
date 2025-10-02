@@ -10,14 +10,20 @@ namespace Sqlx.SqlGen
 {
     internal sealed class SqlGenerator
     {
+        // Internal operation type constants
+        private const int OpSelect = 0;
+        private const int OpUpdate = 1;
+        private const int OpInsert = 2;
+        private const int OpDelete = 3;
+
         public string Generate(SqlDefine def, int type, GenerateContext ctx)
         {
             return type switch
             {
-                Constants.SqlExecuteTypeValues.Select => GenerateSelect(def, (SelectGenerateContext)ctx),
-                Constants.SqlExecuteTypeValues.Insert => GenerateInsert(def, (InsertGenerateContext)ctx),
-                Constants.SqlExecuteTypeValues.Update => GenerateUpdate(def, (UpdateGenerateContext)ctx),
-                Constants.SqlExecuteTypeValues.Delete => GenerateDelete(def, (DeleteGenerateContext)ctx),
+                OpSelect => GenerateSelect(def, (SelectGenerateContext)ctx),
+                OpInsert => GenerateInsert(def, (InsertGenerateContext)ctx),
+                OpUpdate => GenerateUpdate(def, (UpdateGenerateContext)ctx),
+                OpDelete => GenerateDelete(def, (DeleteGenerateContext)ctx),
                 _ => string.Empty
             };
         }

@@ -251,12 +251,6 @@ internal static class Extensions
             a.AttributeClass?.Name?.Contains("SqlTemplate") == true);
 
     /// <summary>
-    /// 获取SqlExecuteType属性
-    /// </summary>
-    public static AttributeData? GetSqlExecuteTypeAttribute(this IMethodSymbol method) =>
-        method.GetAttribute("SqlExecuteTypeAttribute");
-
-    /// <summary>
     /// 获取TableName属性
     /// </summary>
     public static AttributeData? GetTableNameAttribute(this ISymbol symbol) =>

@@ -19,48 +19,48 @@ public interface ITodoService
     [Sqlx("SELECT {{columns}} FROM {{table}} {{orderby created_at --desc}}")]
     Task<List<Todo>> GetAllAsync();
 
-    /// <summary>根据ID获取TODO - WHERE 表达式</summary>
-    [Sqlx("SELECT {{columns}} FROM {{table}} WHERE {{where id=@id}}")]
+    /// <summary>根据ID获取TODO - 直接写 SQL</summary>
+    [Sqlx("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
     Task<Todo?> GetByIdAsync(long id);
 
-    /// <summary>创建新TODO - 使用 {{insert into}} 和 --exclude 选项</summary>
-    [Sqlx("{{insert into}} ({{columns --exclude Id}}) VALUES ({{values}}); SELECT last_insert_rowid()")]
+    /// <summary>创建新TODO - 自动生成列名和值占位符</summary>
+    [Sqlx("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values}}); SELECT last_insert_rowid()")]
     Task<long> CreateAsync(Todo todo);
 
-    /// <summary>更新TODO - 使用 {{update}} 和 {{set}} 占位符</summary>
-    [Sqlx("{{update}} SET {{set --exclude Id CreatedAt}} WHERE {{where id=@id}}")]
+    /// <summary>更新TODO - 自动生成 SET 子句</summary>
+    [Sqlx("UPDATE {{table}} SET {{set --exclude Id CreatedAt}} WHERE id = @id")]
     Task<int> UpdateAsync(Todo todo);
 
-    /// <summary>删除TODO - 使用 {{delete from}} 占位符</summary>
-    [Sqlx("{{delete from}} WHERE {{where id=@id}}")]
+    /// <summary>删除TODO - 简单直接</summary>
+    [Sqlx("DELETE FROM {{table}} WHERE id = @id")]
     Task<int> DeleteAsync(long id);
 
-    /// <summary>搜索TODO - WHERE 表达式组合（OR）</summary>
-    [Sqlx("SELECT {{columns}} FROM {{table}} WHERE {{where title LIKE @query}} OR {{where description LIKE @query}} {{orderby updated_at --desc}}")]
+    /// <summary>搜索TODO - 直接写 SQL（OR 组合）</summary>
+    [Sqlx("SELECT {{columns}} FROM {{table}} WHERE title LIKE @query OR description LIKE @query {{orderby updated_at --desc}}")]
     Task<List<Todo>> SearchAsync(string query);
 
-    /// <summary>获取已完成的TODO - WHERE 表达式（等值查询）</summary>
-    [Sqlx("SELECT {{columns}} FROM {{table}} WHERE {{where is_completed=@isCompleted}} {{orderby completed_at --desc}}")]
+    /// <summary>获取已完成的TODO - 直接写 SQL（等值查询）</summary>
+    [Sqlx("SELECT {{columns}} FROM {{table}} WHERE is_completed = @isCompleted {{orderby completed_at --desc}}")]
     Task<List<Todo>> GetCompletedAsync(bool isCompleted = true);
 
-    /// <summary>获取高优先级TODO - WHERE 表达式（多条件 AND）</summary>
-    [Sqlx("SELECT {{columns}} FROM {{table}} WHERE {{where priority>=@minPriority}} AND {{where is_completed=@isCompleted}} {{orderby priority --desc}}")]
+    /// <summary>获取高优先级TODO - 直接写 SQL（多条件 AND）</summary>
+    [Sqlx("SELECT {{columns}} FROM {{table}} WHERE priority >= @minPriority AND is_completed = @isCompleted {{orderby priority --desc}}")]
     Task<List<Todo>> GetHighPriorityAsync(int minPriority = 3, bool isCompleted = false);
 
-    /// <summary>获取即将到期的TODO - WHERE 表达式（NULL 检查 + 比较）</summary>
-    [Sqlx("SELECT {{columns}} FROM {{table}} WHERE {{where due_date IS NOT NULL}} AND {{where due_date<=@maxDueDate}} AND {{where is_completed=@isCompleted}} {{orderby due_date}}")]
+    /// <summary>获取即将到期的TODO - 直接写 SQL（NULL 检查 + 比较）</summary>
+    [Sqlx("SELECT {{columns}} FROM {{table}} WHERE due_date IS NOT NULL AND due_date <= @maxDueDate AND is_completed = @isCompleted {{orderby due_date}}")]
     Task<List<Todo>> GetDueSoonAsync(DateTime maxDueDate, bool isCompleted = false);
 
-    /// <summary>获取任务总数 - 使用 {{count}} 聚合函数</summary>
-    [Sqlx("SELECT {{count}} FROM {{table}}")]
+    /// <summary>获取任务总数 - 简单计数</summary>
+    [Sqlx("SELECT COUNT(*) FROM {{table}}")]
     Task<int> GetTotalCountAsync();
 
-    /// <summary>批量更新优先级 - {{set}} 指定列 + 复杂 WHERE</summary>
-    [Sqlx("{{update}} SET {{set --only priority updated_at}} WHERE id IN (SELECT value FROM json_each(@idsJson))")]
+    /// <summary>批量更新优先级 - 自动生成 SET 子句</summary>
+    [Sqlx("UPDATE {{table}} SET {{set --only priority updated_at}} WHERE id IN (SELECT value FROM json_each(@idsJson))")]
     Task<int> UpdatePriorityBatchAsync(string idsJson, int newPriority, DateTime updatedAt);
 
-    /// <summary>归档过期任务 - {{set}} 指定列 + WHERE 表达式</summary>
-    [Sqlx("{{update}} SET {{set --only is_completed completed_at updated_at}} WHERE {{where due_date<@maxDueDate}} AND {{where is_completed=@isCompleted}}")]
+    /// <summary>归档过期任务 - 自动生成 SET 子句</summary>
+    [Sqlx("UPDATE {{table}} SET {{set --only is_completed completed_at updated_at}} WHERE due_date < @maxDueDate AND is_completed = @isCompleted")]
     Task<int> ArchiveExpiredTasksAsync(DateTime maxDueDate, bool isCompleted, DateTime completedAt, DateTime updatedAt);
 }
 
@@ -70,6 +70,7 @@ public interface ITodoService
 /// 生成的代码位于编译输出的 TodoService.Repository.g.cs 文件中
 /// </summary>
 [TableName("todos")]  // 指定表名
+[SqlDefine(SqlDefineTypes.SQLite)]  // 指定 SQL 方言
 [RepositoryFor(typeof(ITodoService))]  // 指定要实现的接口
 public partial class TodoService(SqliteConnection connection) : ITodoService
 {

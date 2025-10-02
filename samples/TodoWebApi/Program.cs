@@ -118,7 +118,7 @@ app.MapGet("/api/todos/search", async (string q, ITodoService service) =>
 
 // 新增的高级功能API端点 - 展示更多查询功能
 app.MapGet("/api/todos/completed", async (ITodoService service) =>
-    Results.Json(await service.GetCompletedAsync(), TodoJsonContext.Default.ListTodo));
+    Results.Json(await service.GetCompletedAsync(true), TodoJsonContext.Default.ListTodo));
 
 app.MapGet("/api/todos/high-priority", async (ITodoService service) =>
     Results.Json(await service.GetHighPriorityAsync(), TodoJsonContext.Default.ListTodo));

@@ -14,20 +14,20 @@ Sqlx 是一个让你**不用手写 SQL 列名**的数据库工具。你只需要
 
 **简单来说：**
 - ❌ 不用写 `INSERT INTO users (id, name, email, age) VALUES ...`
-- ✅ 经典风格：`{{insert}} ({{columns:auto}}) VALUES ({{values:auto}})`
-- ✨ Bash 风格：`{{+}} ({{* --exclude Id}}) VALUES ({{values}})` （更简洁！）
+- ✅ Sqlx 方式：`{{insert into}} ({{columns --exclude Id}}) VALUES ({{values}})`
 - 🎉 添加/删除字段时，代码自动更新，不用改 SQL！
 
-### 🐧 一分钟速查卡
+### ⚡ 一分钟速查
 
-| 你想 | 经典写法 | Bash 风格 ✨ | 说明 |
-|------|----------|-------------|------|
-| 查所有 | `SELECT {{columns:auto}} FROM users` | `SELECT {{*}} FROM users` | * = 全部 |
-| 按ID查 | `WHERE {{where:id}}` | `WHERE {{?id}}` | ? = 条件 |
-| 插入 | `{{insert}} ({{columns:auto\|exclude=Id}})` | `{{+}} ({{* --exclude Id}})` | + = 添加 |
-| 更新 | `{{update}} SET {{set:auto\|exclude=Id}}` | `{{~}} SET {{set --exclude Id}}` | ~ = 修改 |
-| 删除 | `{{delete}} WHERE {{where:id}}` | `{{-}} WHERE {{?id}}` | - = 删除 |
-| 计数 | `SELECT {{count:all}}` | `SELECT {{#}}` | # = 计数 |
+| 你想做什么 | Sqlx 写法 | 生成的 SQL |
+|-----------|-----------|-----------|
+| **查所有** | `SELECT {{columns}} FROM {{table}}` | `SELECT id, name, email FROM users` |
+| **按ID查** | `WHERE {{where id}}` | `WHERE id = @id` |
+| **插入** | `{{insert into}} ({{columns --exclude Id}})` | `INSERT INTO users (name, email)` |
+| **更新** | `{{update}} SET {{set --exclude Id}}` | `UPDATE users SET name=@Name, email=@Email` |
+| **删除** | `{{delete from}} WHERE {{where id}}` | `DELETE FROM users WHERE id = @id` |
+| **计数** | `SELECT {{count}}` | `SELECT COUNT(*)` |
+| **排序** | `{{orderby name --desc}}` | `ORDER BY name DESC` |
 
 ---
 
@@ -52,58 +52,36 @@ public class User
 ```
 
 ### 第三步：定义你要做什么操作
-
-**经典风格（清晰易懂）：**
 ```csharp
 public interface IUserService
 {
-    // 查询所有用户
-    [Sqlx("SELECT {{columns:auto}} FROM {{table}}")]
+    // 查询所有用户 - 自动生成列名
+    [Sqlx("SELECT {{columns}} FROM {{table}}")]
     Task<List<User>> GetAllAsync();
     
-    // 查询单个用户
-    [Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE {{where:id}}")]
+    // 查询单个用户 - 自动生成 WHERE 条件
+    [Sqlx("SELECT {{columns}} FROM {{table}} WHERE {{where id}}")]
     Task<User?> GetByIdAsync(int id);
     
-    // 创建用户
-    [Sqlx("{{insert}} ({{columns:auto|exclude=Id}}) VALUES ({{values:auto}})")]
+    // 创建用户 - 自动排除 Id 字段
+    [Sqlx("{{insert into}} ({{columns --exclude Id}}) VALUES ({{values}})")]
     Task<int> CreateAsync(User user);
     
-    // 更新用户
-    [Sqlx("{{update}} SET {{set:auto|exclude=Id}} WHERE {{where:id}}")]
+    // 更新用户 - 自动生成 SET 语句
+    [Sqlx("{{update}} SET {{set --exclude Id}} WHERE {{where id}}")]
     Task<int> UpdateAsync(User user);
     
     // 删除用户
-    [Sqlx("{{delete}} WHERE {{where:id}}")]
+    [Sqlx("{{delete from}} WHERE {{where id}}")]
     Task<int> DeleteAsync(int id);
 }
 ```
 
-**Bash 风格（简洁优雅）：** ✨
-```csharp
-public interface IUserService
-{
-    // 查询所有用户 - 40% 更短！
-    [Sqlx("SELECT {{*}} FROM {{table}}")]
-    Task<List<User>> GetAllAsync();
-    
-    // 查询单个用户
-    [Sqlx("SELECT {{*}} FROM {{table}} WHERE {{?id}}")]
-    Task<User?> GetByIdAsync(int id);
-    
-    // 创建用户 - 使用 {{+}} 和 --exclude
-    [Sqlx("{{+}} ({{* --exclude Id}}) VALUES ({{values}})")]
-    Task<int> CreateAsync(User user);
-    
-    // 更新用户 - 使用 {{~}}
-    [Sqlx("{{~}} SET {{set --exclude Id}} WHERE {{?id}}")]
-    Task<int> UpdateAsync(User user);
-    
-    // 删除用户 - 使用 {{-}}
-    [Sqlx("{{-}} WHERE {{?id}}")]
-    Task<int> DeleteAsync(int id);
-}
-```
+**语法说明：**
+- `{{columns}}` - 自动生成所有列名（默认 auto）
+- `{{where id}}` - 生成 `WHERE id = @id`（空格分隔更友好）
+- `--exclude Id` - 排除字段（像命令行参数）
+- `{{insert into}}` `{{update}}` `{{delete from}}` - 清晰的 SQL 语义
 
 ### 第四步：就这么简单！
 ```csharp
@@ -218,111 +196,56 @@ Task<User?> GetByIdAsync(int id);
 
 ---
 
-### 3️⃣ 智能占位符 - 像 Bash 一样简洁直观
+### 3️⃣ 智能占位符 - 友好直观的统一语法
 
-Sqlx 提供了 **40+ 个智能占位符**，设计原则类似 Bash 命令：
+Sqlx 提供了 **40+ 个智能占位符**，设计原则：
 
 **设计原则：**
-- ✅ **简洁**：`{{table}}` 而不是 `{{table_name}}`
-- ✅ **直观**：`{{insert}}` `{{update}}` `{{delete}}` 一看就懂
-- ✅ **灵活**：支持占位符与 SQL 混用
-- ✅ **统一**：使用 `:` 指定参数，`|` 传递选项
+- ✅ **清晰命名**：用完整单词，一看就懂
+- ✅ **默认简化**：常用参数作为默认值
+- ✅ **空格分隔**：`{{where id}}` 比 `{{where:id}}` 更自然
+- ✅ **命令行选项**：`--exclude` `--only` 像 Linux 命令
+- ✅ **灵活混用**：占位符与 SQL 可以混合使用
 
 #### 核心占位符速查
 
-| 你想做什么 | 用哪个占位符 | 完整示例 |
-|-----------|------------|----------|
-| 📝 **插入数据** | `{{insert}}` `{{columns:auto}}` `{{values:auto}}` | `{{insert}} ({{columns:auto\|exclude=Id}}) VALUES ({{values:auto}})` |
-| 🔄 **更新数据** | `{{update}}` `{{set:auto}}` `{{where:id}}` | `{{update}} SET {{set:auto\|exclude=Id}} WHERE {{where:id}}` |
-| 🗑️ **删除数据** | `{{delete}}` `{{where:id}}` | `{{delete}} WHERE {{where:id}}` |
-| 🔍 **查询数据** | `{{columns:auto}}` `{{table}}` | `SELECT {{columns:auto}} FROM {{table}}` |
-| 🎯 **添加条件** | `{{where:列名}}` | `WHERE {{where:is_active}}` → `WHERE is_active = @isActive` |
-| 📊 **排序** | `{{orderby:列名_desc}}` | `{{orderby:name_desc}}` → `ORDER BY name DESC` |
-| 🔢 **计数** | `{{count:all}}` | `SELECT {{count:all}} FROM {{table}}` → `SELECT COUNT(*)` |
-| 🔎 **模糊搜索** | `{{contains:列名\|text=参数}}` | `{{contains:name\|text=@keyword}}` → `name LIKE '%' \|\| @keyword \|\| '%'` |
-| ✔️ **空值检查** | `{{notnull:列名}}` `{{isnull:列名}}` | `{{notnull:due_date}}` → `due_date IS NOT NULL` |
+| 你想做什么 | Sqlx 写法 | 生成的 SQL |
+|-----------|-----------|-----------|
+| 📝 **插入数据** | `{{insert into}} ({{columns --exclude Id}}) VALUES ({{values}})` | `INSERT INTO users (name, email) VALUES (@Name, @Email)` |
+| 🔄 **更新数据** | `{{update}} SET {{set --exclude Id}} WHERE {{where id}}` | `UPDATE users SET name=@Name WHERE id=@id` |
+| 🗑️ **删除数据** | `{{delete from}} WHERE {{where id}}` | `DELETE FROM users WHERE id = @id` |
+| 🔍 **查询数据** | `SELECT {{columns}} FROM {{table}}` | `SELECT id, name, email FROM users` |
+| 🎯 **添加条件** | `WHERE {{where is_active}}` | `WHERE is_active = @isActive` |
+| 📊 **排序** | `{{orderby name --desc}}` | `ORDER BY name DESC` |
+| 🔢 **计数** | `SELECT {{count}} FROM {{table}}` | `SELECT COUNT(*) FROM users` |
+| 🔎 **模糊搜索** | `WHERE name LIKE @keyword` | 直接写 SQL 更清晰 |
+| ✔️ **空值检查** | `WHERE {{notnull due_date}}` | `WHERE due_date IS NOT NULL` |
 
-#### 混合使用（推荐）
+#### 占位符 + SQL 混用（推荐）
 
-**占位符 + SQL 混用**，简洁又灵活：
+**灵活组合，既清晰又简洁：**
 ```csharp
-// ✅ 推荐：复杂条件直接写 SQL，简单部分用占位符
-[Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE priority >= @min AND is_completed = @status {{orderby:priority_desc}}")]
+// ✅ 推荐：简单部分用占位符，复杂条件直接写 SQL
+[Sqlx("SELECT {{columns}} FROM {{table}} WHERE priority >= @min AND is_completed = @status {{orderby priority --desc}}")]
 Task<List<Todo>> GetHighPriorityAsync(int min, bool status);
 
 // ✅ 推荐：{{notnull}} 占位符 + SQL 表达式
-[Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE {{notnull:due_date}} AND due_date <= @max {{orderby:due_date}}")]
+[Sqlx("SELECT {{columns}} FROM {{table}} WHERE {{notnull due_date}} AND due_date <= @max")]
 Task<List<Todo>> GetDueSoonAsync(DateTime max);
 
-// ❌ 不推荐：占位符过长
-[Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE {{where:priority_ge_and_min_and_is_completed_eq_status}}")]
+// ✅ 推荐：部分字段查询
+[Sqlx("SELECT {{columns --only name email}} FROM {{table}} WHERE age >= @minAge")]
+Task<List<User>> GetNamesAsync(int minAge);
 ```
+
+**语法特点：**
+- `{{columns}}` - 默认 auto，不用写 `:auto`
+- `{{where id}}` - 空格分隔，更自然
+- `--exclude Id` - 像命令行参数
+- `--only name email` - 明确指定字段
+- `--desc` - 降序排序
 
 **完整功能列表** → [40+占位符详解](docs/EXTENDED_PLACEHOLDERS_GUIDE.md)
-
----
-
-### 🐧 Bash 风格语法（增强版）⚡
-
-> **💡 设计提案：** 这是为提升开发效率设计的简写语法。
-> - ✅ 完全向后兼容（经典语法继续有效）
-> - ✅ 可选特性（可以混用或只用经典语法）
-> - 📋 参考实现：`samples/TodoWebApi/Services/TodoService.Bash.cs`
-
-**为 Linux/Unix 开发者优化的简写语法：**
-
-| Bash 风格 | 经典风格 | 说明 |
-|-----------|---------|------|
-| `{{*}}` | `{{columns:auto}}` | **所有列**（* 在 Bash 中代表全部） |
-| `{{?id}}` | `{{where:id}}` | **WHERE 条件**（? 用于条件判断） |
-| `{{+}}` | `{{insert}}` | **INSERT**（+ 表示添加） |
-| `{{~}}` | `{{update}}` | **UPDATE**（~ 表示修改） |
-| `{{-}}` | `{{delete}}` | **DELETE**（- 表示删除） |
-| `{{#}}` | `{{count:all}}` | **COUNT**（# 用于计数） |
-| `{{!null:col}}` | `{{notnull:col}}` | **NOT NULL**（! 表示否定） |
-
-**命令行选项风格：**
-
-| Bash 风格 | 经典风格 | 说明 |
-|-----------|---------|------|
-| `--exclude Id CreatedAt` | `\|exclude=Id,CreatedAt` | 更像 Linux 命令 |
-| `--only name email` | `:name,email` | 明确指定字段 |
-| `--desc priority` | `:priority_desc` | 降序排序 |
-
-**完整示例对比：**
-
-```csharp
-// === 经典风格（冗长但清晰） ===
-[Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE {{where:id}}")]
-Task<User?> GetByIdAsync(int id);
-
-[Sqlx("{{insert}} ({{columns:auto|exclude=Id}}) VALUES ({{values:auto}})")]
-Task<int> CreateAsync(User user);
-
-[Sqlx("UPDATE {{table}} SET {{set:auto|exclude=Id,CreatedAt}} WHERE {{where:id}}")]
-Task<int> UpdateAsync(User user);
-
-// === Bash 风格（简洁优雅）✨ ===
-[Sqlx("SELECT {{*}} FROM {{table}} WHERE {{?id}}")]
-Task<User?> GetByIdAsync(int id);
-
-[Sqlx("{{+}} ({{* --exclude Id}}) VALUES ({{values}})")]
-Task<int> CreateAsync(User user);
-
-[Sqlx("{{~}} SET {{set --exclude Id CreatedAt}} WHERE {{?id}}")]
-Task<int> UpdateAsync(User user);
-```
-
-**简洁度对比：**
-- 平均每行减少 **40% 字符**
-- `{{*}}` 比 `{{columns:auto}}` 短 **11 个字符**
-- `{{?id}}` 比 `{{where:id}}` 短 **5 个字符**
-- 代码可读性提升 **50%**
-
-**使用建议：**
-- ✅ **新项目**：推荐 Bash 风格（更简洁）
-- ✅ **老项目**：两种风格可混用（兼容）
-- ✅ **团队喜好**：选择团队习惯的风格
 
 ---
 

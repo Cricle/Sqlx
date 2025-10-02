@@ -23,8 +23,8 @@ public interface ITodoService
     [Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE {{where:id}}")]
     Task<Todo?> GetByIdAsync(long id);
 
-    /// <summary>创建新TODO - 使用{{columns}}和{{values}}自动生成INSERT</summary>
-    [Sqlx("INSERT INTO {{table}} ({{columns:auto|exclude=Id}}) VALUES ({{values:auto}}); SELECT last_insert_rowid()")]
+    /// <summary>创建新TODO - 使用{{insert}}占位符简化INSERT语句</summary>
+    [Sqlx("{{insert}} ({{columns:auto|exclude=Id}}) VALUES ({{values:auto}}); SELECT last_insert_rowid()")]
     Task<long> CreateAsync(Todo todo);
 
     /// <summary>更新TODO - 使用{{set:auto}}自动生成SET子句</summary>
@@ -76,7 +76,7 @@ public partial class TodoService(SqliteConnection connection) : ITodoService
     // ✨ 所有方法实现由Sqlx源代码生成器在编译时自动生成
     // 🔥 占位符在编译时被替换为实际的SQL语句
     // 📝 生成的代码包含参数绑定、结果映射等所有ADO.NET操作
-    
+
     // 可选：添加执行监控
     partial void OnExecuting(string operationName, global::System.Data.IDbCommand command)
     {

@@ -106,26 +106,37 @@ Task<List<User>> GetTopPaidUsersAsync();
 // SELECT TOP 5 * FROM user ORDER BY salary DESC
 ```
 
-### **5. 完整SQL语句**
+### **5. 完整SQL语句简化**
 
 ```csharp
-// INSERT 语句
-[Sqlx("{{insert:into}} ({{columns:auto|exclude=Id}}) {{values}}")]
+// INSERT 语句 - 使用 {{insert}} 占位符
+[Sqlx("{{insert}} ({{columns:auto|exclude=Id}}) VALUES ({{values:auto}})")]
 Task<int> InsertUserAsync(User user);
 
-// UPDATE 语句
-[Sqlx("{{update}} {{set:auto}} {{where:id}}")]
-Task<int> UpdateUserAsync(User user, int id);
+// 或者使用 {{insert:into}} 更明确
+[Sqlx("{{insert:into}} ({{columns:auto|exclude=Id}}) VALUES ({{values:auto}})")]
+Task<int> InsertUserWithReturnAsync(User user);
 
-// DELETE 语句
-[Sqlx("{{delete:from}} {{where:auto}}")]
+// UPDATE 语句 - 使用 {{update}} 占位符
+[Sqlx("{{update}} SET {{set:auto}} WHERE {{where:id}}")]
+Task<int> UpdateUserAsync(User user);
+
+// DELETE 语句 - 使用 {{delete}} 占位符  
+[Sqlx("{{delete}} WHERE {{where:auto}}")]
 Task<int> DeleteInactiveUsersAsync(bool isActive);
 
 // 生成SQL:
-// INSERT INTO user (name, email, age, salary) VALUES (@name, @email, @age, @salary)
-// UPDATE user SET name = @name, email = @email WHERE id = @id
+// INSERT INTO user (name, email, age, salary) VALUES (@Name, @Email, @Age, @Salary)
+// INSERT INTO user (name, email, age, salary) VALUES (@Name, @Email, @Age, @Salary)
+// UPDATE user SET name = @Name, email = @Email WHERE id = @Id
 // DELETE FROM user WHERE is_active = @isActive
 ```
+
+**INSERT占位符说明**：
+- `{{insert}}` - 生成 `INSERT INTO table_name`
+- `{{insert:into}}` - 同上，更明确的语法
+- 配合 `{{columns:auto|exclude=Id}}` 自动生成列名列表
+- 配合 `{{values:auto}}` 自动生成参数占位符
 
 ### **6. 高级查询**
 

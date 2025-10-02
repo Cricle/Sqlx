@@ -38,16 +38,16 @@ public interface ISimpleTemplateDemo
 
     // 🔧 增删改操作演示
 
-    /// <summary>基础插入</summary>
-    [Sqlx("INSERT INTO {{table}} ({{columns:auto|exclude=Id}}) VALUES ({{values:auto}})")]
+    /// <summary>基础插入 - 使用{{insert}}占位符简化</summary>
+    [Sqlx("{{insert}} ({{columns:auto|exclude=Id}}) VALUES ({{values:auto}})")]
     Task<int> CreateUserAsync(string name, string email, int age);
 
-    /// <summary>基础更新</summary>
-    [Sqlx("UPDATE {{table}} SET {{set:auto|exclude=Id,HireDate}} WHERE {{where:id}}")]
+    /// <summary>基础更新 - 使用{{update}}占位符简化</summary>
+    [Sqlx("{{update}} SET {{set:auto|exclude=Id,HireDate}} WHERE {{where:id}}")]
     Task<int> UpdateUserAsync(int id, string name, string email);
 
-    /// <summary>软删除</summary>
-    [Sqlx("UPDATE {{table}} SET is_active = 0 WHERE {{where:id}}")]
+    /// <summary>软删除 - 使用{{update}}占位符</summary>
+    [Sqlx("{{update}} SET is_active = 0 WHERE {{where:id}}")]
     Task<int> SoftDeleteUserAsync(int id);
 
     // 📊 实用查询演示

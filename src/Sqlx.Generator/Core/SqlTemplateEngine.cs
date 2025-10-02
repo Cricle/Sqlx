@@ -853,11 +853,26 @@ public class SqlTemplateEngine
         return SqlTemplateEngineExtensions.MultiDatabasePlaceholderSupport.ProcessGenericPlaceholder("select", type, options, dialect);
     }
 
-    /// <summary>处理INSERT占位符 - 多数据库支持</summary>
+    /// <summary>
+    /// 处理INSERT占位符 - 支持自动生成完整INSERT语句
+    /// 用法：
+    /// - {{insert}} 或 {{insert:auto}} - 生成完整的 INSERT INTO table (columns) VALUES (values)
+    /// - {{insert:into}} - 仅生成 INSERT INTO table
+    /// - {{insert:auto|exclude=Id,CreatedAt}} - 排除指定列
+    /// </summary>
     private static string ProcessInsertPlaceholder(string type, string tableName, string options, SqlDefine dialect)
     {
         var snakeTableName = SharedCodeGenerationUtilities.ConvertToSnakeCase(tableName);
-        return type == "into" ? $"INSERT INTO {snakeTableName}" : $"INSERT INTO {snakeTableName}";
+        
+        // {{insert:into}} - 只返回 INSERT INTO table_name
+        if (type == "into")
+        {
+            return $"INSERT INTO {snakeTableName}";
+        }
+        
+        // {{insert}} 或 {{insert:auto}} - 生成完整INSERT语句（不含VALUES）
+        // 返回 INSERT INTO table_name，columns和values由单独的占位符处理
+        return $"INSERT INTO {snakeTableName}";
     }
 
     /// <summary>处理UPDATE占位符 - 多数据库支持</summary>

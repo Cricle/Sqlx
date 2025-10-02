@@ -55,8 +55,12 @@ Task<List<Todo>> GetAllAsync();
 [Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE {{where:id}}")]
 Task<Todo?> GetByIdAsync(long id);
 
+// ✅ 使用 {{insert}} - 简化 INSERT 语句
+[Sqlx("{{insert}} ({{columns:auto|exclude=Id}}) VALUES ({{values:auto}})")]
+Task<long> CreateAsync(Todo todo);
+
 // ✅ 使用 {{set:auto}} - 自动生成 UPDATE SET 子句
-[Sqlx("UPDATE {{table}} SET {{set:auto|exclude=Id,CreatedAt}} WHERE {{where:id}}")]
+[Sqlx("{{update}} SET {{set:auto|exclude=Id,CreatedAt}} WHERE {{where:id}}")]
 Task<int> UpdateAsync(Todo todo);
 
 // ✅ 使用 {{count:all}} - COUNT 聚合函数

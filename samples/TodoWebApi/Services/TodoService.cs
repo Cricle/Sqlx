@@ -43,32 +43,32 @@ public interface ITodoService
     [Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE {{where:auto}} {{orderby:completed_at_desc}}")]
     Task<List<Todo>> GetCompletedAsync(bool isCompleted = true);
 
-    /// <summary>获取高优先级TODO - 使用{{columns:auto}}和多条件查询</summary>
-    [Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE priority >= 3 AND is_completed = 0 {{orderby:priority_desc,created_at_desc}}")]
-    Task<List<Todo>> GetHighPriorityAsync();
+    /// <summary>获取高优先级TODO - 使用{{where}}占位符参数化查询</summary>
+    [Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE {{where:priority_ge_and_is_completed}} {{orderby:priority_desc,created_at_desc}}")]
+    Task<List<Todo>> GetHighPriorityAsync(int minPriority = 3, bool isCompleted = false);
 
-    /// <summary>获取即将到期的TODO - 使用{{columns:auto}}和{{notnull}}占位符</summary>
-    [Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE {{notnull:due_date}} AND due_date <= datetime('now', '+7 days') AND is_completed = 0 {{orderby:due_date_asc}}")]
-    Task<List<Todo>> GetDueSoonAsync();
+    /// <summary>获取即将到期的TODO - 使用{{where}}占位符完全参数化</summary>
+    [Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE {{where:due_date_not_null_and_due_date_le_and_is_completed}} {{orderby:due_date_asc}}")]
+    Task<List<Todo>> GetDueSoonAsync(DateTime maxDueDate, bool isCompleted = false);
 
     /// <summary>获取任务总数 - 使用{{count:all}}聚合占位符</summary>
     [Sqlx("SELECT {{count:all}} FROM {{table}}")]
     Task<int> GetTotalCountAsync();
 
-    /// <summary>批量更新优先级 - 使用{{update}}和{{set}}占位符，配合JSON数组</summary>
-    [Sqlx("{{update}} SET {{set:priority}}, updated_at = datetime('now') WHERE id IN (SELECT value FROM json_each(@ids))")]
-    Task<int> UpdatePriorityBatchAsync(string ids, int newPriority);
+    /// <summary>批量更新优先级 - 使用{{update}}和{{set}}占位符完全参数化，配合JSON数组</summary>
+    [Sqlx("{{update}} SET {{set:priority,updated_at}} WHERE {{where:id_in_json_array}}")]
+    Task<int> UpdatePriorityBatchAsync(string idsJson, int newPriority, DateTime updatedAt);
 
-    /// <summary>归档过期任务 - 使用{{update}}和{{set}}占位符批量更新</summary>
-    [Sqlx("{{update}} SET {{set:is_completed}}, completed_at = datetime('now'), updated_at = datetime('now') WHERE due_date < datetime('now') AND is_completed = 0")]
-    Task<int> ArchiveExpiredTasksAsync();
-}
+    /// <summary>归档过期任务 - 使用{{where}}和{{set}}占位符完全参数化批量更新</summary>
+    [Sqlx("{{update}} SET {{set:is_completed,completed_at,updated_at}} WHERE {{where:due_date_lt_and_is_completed}}")]
+    Task<int> ArchiveExpiredTasksAsync(DateTime maxDueDate, bool isCompleted, DateTime completedAt, DateTime updatedAt);
+    }
 
-/// <summary>
+    /// <summary>
 /// TODO数据访问服务实现
 /// 通过[RepositoryFor]特性，Sqlx源代码生成器会自动生成所有方法实现
 /// 生成的代码位于编译输出的 TodoService.Repository.g.cs 文件中
-/// </summary>
+    /// </summary>
 [TableName("todos")]  // 指定表名
 [RepositoryFor(typeof(ITodoService))]  // 指定要实现的接口
 public partial class TodoService(SqliteConnection connection) : ITodoService

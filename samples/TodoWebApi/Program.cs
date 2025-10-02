@@ -121,10 +121,10 @@ app.MapGet("/api/todos/completed", async (ITodoService service) =>
     Results.Json(await service.GetCompletedAsync(true), TodoJsonContext.Default.ListTodo));
 
 app.MapGet("/api/todos/high-priority", async (ITodoService service) =>
-    Results.Json(await service.GetHighPriorityAsync(), TodoJsonContext.Default.ListTodo));
+    Results.Json(await service.GetHighPriorityAsync(minPriority: 3, isCompleted: false), TodoJsonContext.Default.ListTodo));
 
 app.MapGet("/api/todos/due-soon", async (ITodoService service) =>
-    Results.Json(await service.GetDueSoonAsync(), TodoJsonContext.Default.ListTodo));
+    Results.Json(await service.GetDueSoonAsync(DateTime.UtcNow.AddDays(7), isCompleted: false), TodoJsonContext.Default.ListTodo));
 
 app.MapGet("/api/todos/count", async (ITodoService service) =>
 {
@@ -139,13 +139,14 @@ app.MapPut("/api/todos/batch/priority", async (BatchPriorityUpdateRequest reques
 
     // 转换为JSON数组格式供SQLite的json_each使用
     var idsJson = JsonSerializer.Serialize(request.Ids, TodoJsonContext.Default.ListInt64);
-    var updated = await service.UpdatePriorityBatchAsync(idsJson, request.NewPriority);
+    var updated = await service.UpdatePriorityBatchAsync(idsJson, request.NewPriority, DateTime.UtcNow);
     return Results.Json(new Dictionary<string, object> { ["updated"] = updated }, TodoJsonContext.Default.DictionaryStringObject);
 });
 
 app.MapPost("/api/todos/archive-expired", async (ITodoService service) =>
 {
-    var archived = await service.ArchiveExpiredTasksAsync();
+    var now = DateTime.UtcNow;
+    var archived = await service.ArchiveExpiredTasksAsync(now, isCompleted: false, completedAt: now, updatedAt: now);
     return Results.Json(new Dictionary<string, object> { ["archived"] = archived }, TodoJsonContext.Default.DictionaryStringObject);
 });
 

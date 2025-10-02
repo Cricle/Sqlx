@@ -53,6 +53,16 @@ namespace SqlxDemo
 
                 Console.WriteLine();
                 Console.WriteLine("✅ 所有功能演示完成！");
+                Console.WriteLine();
+                Console.WriteLine("📚 完整功能列表:");
+                Console.WriteLine("   ✅ CRUD占位符 ({{insert}}, {{update}}, {{delete}})");
+                Console.WriteLine("   ✅ 7个核心占位符 (columns, values, where, set, orderby, limit, table)");
+                Console.WriteLine("   ✅ 22个扩展占位符 (聚合、日期、字符串等)");
+                Console.WriteLine("   ✅ 多数据库支持 (SQL Server, MySQL, PostgreSQL, SQLite, Oracle, DB2)");
+                Console.WriteLine("   ✅ 异步和取消支持");
+                Console.WriteLine("   ✅ 源代码生成");
+                Console.WriteLine("   ✅ AOT原生编译");
+                Console.WriteLine("   ✅ 类型安全和编译时验证");
             }
             catch (Exception ex)
             {

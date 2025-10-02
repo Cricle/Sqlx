@@ -19,6 +19,7 @@
 |------|------|----------|
 | [🌐 多数据库模板引擎](MULTI_DATABASE_TEMPLATE_ENGINE.md) | **核心创新**：写一次，处处运行 | ⭐⭐⭐⭐⭐ |
 | [🎯 扩展占位符指南](EXTENDED_PLACEHOLDERS_GUIDE.md) | 22个智能占位符完整说明 | ⭐⭐⭐⭐⭐ |
+| [📝 CRUD操作完整指南](CRUD_PLACEHOLDERS_COMPLETE_GUIDE.md) | **必读**：增删改查全场景占位符 | ⭐⭐⭐⭐⭐ |
 | [🛡️ 安全特性](SECURITY_FEATURES.md) | SQL注入防护和安全检查 | ⭐⭐⭐⭐ |
 | [⚡ 性能优化](PERFORMANCE_OPTIMIZATION.md) | AOT支持和性能调优 | ⭐⭐⭐⭐ |
 

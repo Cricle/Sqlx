@@ -863,13 +863,13 @@ public class SqlTemplateEngine
     private static string ProcessInsertPlaceholder(string type, string tableName, string options, SqlDefine dialect)
     {
         var snakeTableName = SharedCodeGenerationUtilities.ConvertToSnakeCase(tableName);
-        
+
         // {{insert:into}} - 只返回 INSERT INTO table_name
         if (type == "into")
         {
             return $"INSERT INTO {snakeTableName}";
         }
-        
+
         // {{insert}} 或 {{insert:auto}} - 生成完整INSERT语句（不含VALUES）
         // 返回 INSERT INTO table_name，columns和values由单独的占位符处理
         return $"INSERT INTO {snakeTableName}";

@@ -59,7 +59,9 @@
 | `{{table}}` | 表名 | `users` |
 | `{{columns}}` | 所有列（默认auto） | `id, name, email, age` |
 | `{{values}}` | 所有参数（默认auto） | `@Id, @Name, @Email, @Age` |
-| `{{where id}}` | WHERE条件 | `WHERE id = @id` |
+| `{{where id=@id}}` | WHERE条件（表达式） | `id = @id` |
+| `{{where is_active=true}}` | WHERE条件（常量） | `is_active = 1` |
+| `{{where age>=@min}}` | WHERE条件（比较） | `age >= @min` |
 | `{{set}}` | SET子句（默认auto） | `name = @Name, email = @Email` |
 | `{{orderby name}}` | 排序 | `ORDER BY name` |
 | `{{limit 10}}` | 限制行数 | `LIMIT 10` |
@@ -94,7 +96,7 @@
 Task<List<User>> GetAllAsync();
 
 // === 按ID查询 ===
-[Sqlx("SELECT {{columns}} FROM {{table}} WHERE {{where id}}")]
+[Sqlx("SELECT {{columns}} FROM {{table}} WHERE {{where id=@id}}")]
 Task<User?> GetByIdAsync(int id);
 
 // === 插入 ===
@@ -102,15 +104,69 @@ Task<User?> GetByIdAsync(int id);
 Task<int> CreateAsync(User user);
 
 // === 更新 ===
-[Sqlx("{{update}} SET {{set --exclude Id CreatedAt}} WHERE {{where id}}")]
+[Sqlx("{{update}} SET {{set --exclude Id CreatedAt}} WHERE {{where id=@id}}")]
 Task<int> UpdateAsync(User user);
 
 // === 删除 ===
-[Sqlx("{{delete from}} WHERE {{where id}}")]
+[Sqlx("{{delete from}} WHERE {{where id=@id}}")]
 Task<int> DeleteAsync(int id);
 ```
 
-### 高级查询
+### 增强的 WHERE 语法 ⚡
+
+**支持表达式和组合：**
+
+```csharp
+// === 单个条件（表达式） ===
+[Sqlx("SELECT {{columns}} FROM {{table}} WHERE {{where is_active=@isActive}}")]
+Task<List<User>> GetActiveUsersAsync(bool isActive);
+// 生成：WHERE is_active = @isActive
+
+// === 比较运算符 ===
+[Sqlx("SELECT {{columns}} FROM {{table}} WHERE {{where age>=@minAge}}")]
+Task<List<User>> GetAdultsAsync(int minAge = 18);
+// 生成：WHERE age >= @minAge
+
+[Sqlx("SELECT {{columns}} FROM {{table}} WHERE {{where salary>@min AND salary<@max}}")]
+Task<List<User>> GetSalaryRangeAsync(decimal min, decimal max);
+// 生成：WHERE salary > @min AND salary < @max
+
+// === 多个 WHERE 组合（AND） ===
+[Sqlx("SELECT {{columns}} FROM {{table}} WHERE {{where is_active=@active}} AND {{where age>=@minAge}}")]
+Task<List<User>> SearchAsync(bool active, int minAge);
+// 生成：WHERE is_active = @active AND age >= @minAge
+
+// === 多个 WHERE 组合（OR） ===
+[Sqlx("SELECT {{columns}} FROM {{table}} WHERE {{where name=@name}} OR {{where email=@email}}")]
+Task<User?> FindByNameOrEmailAsync(string name, string email);
+// 生成：WHERE name = @name OR email = @email
+
+// === 复杂条件组合 ===
+[Sqlx("SELECT {{columns}} FROM {{table}} WHERE ({{where name=@name}} OR {{where email=@email}}) AND {{where is_active=true}}")]
+Task<User?> FindActiveUserAsync(string name, string email);
+// 生成：WHERE (name = @name OR email = @email) AND is_active = 1
+
+// === 常量值支持 ===
+[Sqlx("SELECT {{columns}} FROM {{table}} WHERE {{where status='pending'}}")]
+Task<List<User>> GetPendingUsersAsync();
+// 生成：WHERE status = 'pending'
+
+[Sqlx("SELECT {{columns}} FROM {{table}} WHERE {{where is_deleted=false}}")]
+Task<List<User>> GetNonDeletedAsync();
+// 生成：WHERE is_deleted = 0
+
+// === NULL 检查 ===
+[Sqlx("SELECT {{columns}} FROM {{table}} WHERE {{where email IS NOT NULL}}")]
+Task<List<User>> GetUsersWithEmailAsync();
+// 生成：WHERE email IS NOT NULL
+
+// === LIKE 查询 ===
+[Sqlx("SELECT {{columns}} FROM {{table}} WHERE {{where name LIKE @pattern}}")]
+Task<List<User>> SearchByNameAsync(string pattern);
+// 生成：WHERE name LIKE @pattern
+```
+
+### 其他高级查询
 
 ```csharp
 // 排序
@@ -126,12 +182,8 @@ Task<List<User>> GetPagedAsync(int skip);
 Task<List<User>> GetNamesAsync();
 
 // 聚合
-[Sqlx("SELECT {{count}} FROM {{table}}")]
-Task<int> GetCountAsync();
-
-// 复杂条件（直接SQL + 占位符）
-[Sqlx("SELECT {{columns}} FROM {{table}} WHERE age >= @min AND status = @status")]
-Task<List<User>> SearchAsync(int min, string status);
+[Sqlx("SELECT {{count}} FROM {{table}} WHERE {{where is_active=true}}")]
+Task<int> GetActiveCountAsync();
 ```
 
 ---

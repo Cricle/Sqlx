@@ -11,6 +11,7 @@ namespace TodoWebApi.Json;
 /// </summary>
 [JsonSerializable(typeof(Todo))]
 [JsonSerializable(typeof(List<Todo>))]
+[JsonSerializable(typeof(List<long>))]
 [JsonSerializable(typeof(CreateTodoRequest))]
 [JsonSerializable(typeof(UpdateTodoRequest))]
 [JsonSerializable(typeof(BatchPriorityUpdateRequest))]

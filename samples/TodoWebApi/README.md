@@ -12,7 +12,8 @@
 2. **源代码生成器正常工作**
    - `Sqlx.Generator` 在 AOT 环境下正确生成所有必要的代码
    - `TodoService` 中的所有数据库操作方法都由源代码生成器自动实现
-   - 23个智能占位符在 AOT 环境下完美工作
+   - 充分使用 `{{columns:auto}}`、`{{where:auto}}`、`{{set:auto}}` 等智能占位符
+   - 无需手写 SQL 列名，添加字段时自动适配
 
 3. **JSON 序列化 AOT 兼容**
    - 使用 `JsonSerializerContext` 实现源代码生成的 JSON 序列化
@@ -36,10 +37,38 @@
 TodoWebApi (AOT Native)
 ├── Program.cs              # Minimal API 配置，AOT 兼容
 ├── Models/Todo.cs          # Record 类型模型
-├── Services/TodoService.cs # 源代码生成的数据访问层
+├── Services/TodoService.cs # 源代码生成的数据访问层（使用Sqlx占位符）
 ├── Json/TodoJsonContext.cs # AOT 兼容的 JSON 序列化上下文
 └── wwwroot/index.html      # Vue.js SPA 前端
 ```
+
+### 💡 Sqlx 占位符示例
+
+TodoService 充分展示了 Sqlx 模板占位符的强大能力：
+
+```csharp
+// ✅ 使用 {{columns:auto}} - 自动生成所有列名
+[Sqlx("SELECT {{columns:auto}} FROM {{table}} {{orderby:created_at_desc}}")]
+Task<List<Todo>> GetAllAsync();
+
+// ✅ 使用 {{where:id}} - 自动生成 WHERE 条件
+[Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE {{where:id}}")]
+Task<Todo?> GetByIdAsync(long id);
+
+// ✅ 使用 {{set:auto}} - 自动生成 UPDATE SET 子句
+[Sqlx("UPDATE {{table}} SET {{set:auto|exclude=Id,CreatedAt}} WHERE {{where:id}}")]
+Task<int> UpdateAsync(Todo todo);
+
+// ✅ 使用 {{count:all}} - COUNT 聚合函数
+[Sqlx("SELECT {{count:all}} FROM {{table}}")]
+Task<int> GetTotalCountAsync();
+```
+
+**优势**：
+- 🚀 无需手写 SQL 列名
+- 🔄 添加/删除字段时自动适配
+- 🛡️ 类型安全，编译时检查
+- 📝 代码简洁，易于维护
 
 ### 🚀 运行说明
 

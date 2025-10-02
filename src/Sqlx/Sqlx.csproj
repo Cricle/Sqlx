@@ -8,10 +8,10 @@
 
   <PropertyGroup>
     <PackageId>Sqlx</PackageId>
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <Title>Sqlx - Modern .NET ORM Framework</Title>
     <Description>
-      Sqlx 0.2.0 - Minimalist four-core module design focused on performance and usability.
+      Sqlx 0.3.0 - Minimalist four-core module design focused on performance and usability.
       Includes: Sqlx raw SQL, ExpressionToSql type-safe queries, RepositoryFor zero-code repositories, SqlTemplate high-performance templates.
       Zero reflection, native AOT support, compile-time validation, suitable for cloud-native and microservice scenarios.
     </Description>

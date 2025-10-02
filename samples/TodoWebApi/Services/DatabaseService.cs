@@ -6,21 +6,19 @@ using Microsoft.Data.Sqlite;
 namespace TodoWebApi.Services;
 
 /// <summary>
-/// 数据库初始化服务
+/// 数据库初始化服务 - 使用主构造函数简化
 /// </summary>
 public class DatabaseService(SqliteConnection connection)
 {
-    private readonly SqliteConnection _connection = connection;
-
     /// <summary>
     /// 初始化数据库表结构
     /// </summary>
     public async Task InitializeDatabaseAsync()
     {
-        if (_connection.State != ConnectionState.Open)
-            await _connection.OpenAsync();
+        if (connection.State != ConnectionState.Open)
+            await connection.OpenAsync();
 
-        using var command = _connection.CreateCommand();
+        using var command = connection.CreateCommand();
         command.CommandText = @"
             CREATE TABLE IF NOT EXISTS todos (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

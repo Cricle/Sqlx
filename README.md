@@ -178,9 +178,17 @@ Task<User?> GetByIdAsync(int id);
 
 ---
 
-### 3️⃣ 智能占位符 - 像说话一样写查询
+### 3️⃣ 智能占位符 - 像 Bash 一样简洁直观
 
-Sqlx 提供了 **23 个智能占位符**，让你像说话一样写数据库查询：
+Sqlx 提供了 **40+ 个智能占位符**，设计原则类似 Bash 命令：
+
+**设计原则：**
+- ✅ **简洁**：`{{table}}` 而不是 `{{table_name}}`
+- ✅ **直观**：`{{insert}}` `{{update}}` `{{delete}}` 一看就懂
+- ✅ **灵活**：支持占位符与 SQL 混用
+- ✅ **统一**：使用 `:` 指定参数，`|` 传递选项
+
+#### 核心占位符速查
 
 | 你想做什么 | 用哪个占位符 | 完整示例 |
 |-----------|------------|----------|
@@ -192,8 +200,25 @@ Sqlx 提供了 **23 个智能占位符**，让你像说话一样写数据库查�
 | 📊 **排序** | `{{orderby:列名_desc}}` | `{{orderby:name_desc}}` → `ORDER BY name DESC` |
 | 🔢 **计数** | `{{count:all}}` | `SELECT {{count:all}} FROM {{table}}` → `SELECT COUNT(*)` |
 | 🔎 **模糊搜索** | `{{contains:列名\|text=参数}}` | `{{contains:name\|text=@keyword}}` → `name LIKE '%' \|\| @keyword \|\| '%'` |
+| ✔️ **空值检查** | `{{notnull:列名}}` `{{isnull:列名}}` | `{{notnull:due_date}}` → `due_date IS NOT NULL` |
 
-**完整功能列表** → [23个占位符详解](docs/EXTENDED_PLACEHOLDERS_GUIDE.md)
+#### 混合使用（推荐）
+
+**占位符 + SQL 混用**，简洁又灵活：
+```csharp
+// ✅ 推荐：复杂条件直接写 SQL，简单部分用占位符
+[Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE priority >= @min AND is_completed = @status {{orderby:priority_desc}}")]
+Task<List<Todo>> GetHighPriorityAsync(int min, bool status);
+
+// ✅ 推荐：{{notnull}} 占位符 + SQL 表达式
+[Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE {{notnull:due_date}} AND due_date <= @max {{orderby:due_date}}")]
+Task<List<Todo>> GetDueSoonAsync(DateTime max);
+
+// ❌ 不推荐：占位符过长
+[Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE {{where:priority_ge_and_min_and_is_completed_eq_status}}")]
+```
+
+**完整功能列表** → [40+占位符详解](docs/EXTENDED_PLACEHOLDERS_GUIDE.md)
 
 ---
 

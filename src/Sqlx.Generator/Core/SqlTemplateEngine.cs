@@ -44,15 +44,6 @@ public class SqlTemplateEngine
         "PrivateKey", "Certificate", "Hash", "Salt", "Signature"
     };
 
-    // 性能优化：缓存snake_case转换结果，避免重复计算
-    private static readonly ConcurrentDictionary<string, string> SnakeCaseCache = new(StringComparer.OrdinalIgnoreCase);
-
-    /// <summary>
-    /// 缓存版本的ConvertToSnakeCase方法，提升重复调用的性能
-    /// </summary>
-    private static string GetCachedSnakeCase(string name) =>
-        SnakeCaseCache.GetOrAdd(name, SharedCodeGenerationUtilities.ConvertToSnakeCase);
-
     // 默认数据库方言 - 可通过构造函数或方法参数覆盖
     private readonly SqlDefine _defaultDialect;
 
@@ -231,7 +222,7 @@ public class SqlTemplateEngine
     /// </summary>
     private static string ProcessTablePlaceholder(string tableName, string type, INamedTypeSymbol? entityType, string options, SqlDefine dialect)
     {
-        var snakeTableName = GetCachedSnakeCase(tableName);
+        var snakeTableName = SharedCodeGenerationUtilities.ConvertToSnakeCase(tableName);
         return type == "quoted" ? dialect.WrapColumn(snakeTableName) : snakeTableName;
     }
 
@@ -259,7 +250,7 @@ public class SqlTemplateEngine
         {
             if (i > 0) sb.Append(", ");
 
-            var columnName = GetCachedSnakeCase(properties[i].Name);
+            var columnName = SharedCodeGenerationUtilities.ConvertToSnakeCase(properties[i].Name);
             sb.Append(isQuoted ? dialect.WrapColumn(columnName) : columnName);
         }
 
@@ -330,12 +321,12 @@ public class SqlTemplateEngine
             if (method == null) return string.Empty;
             var filteredParams = method.Parameters
                 .Where(p => NonSystemParameterFilter(p) && !p.Name.Equals("id", StringComparison.OrdinalIgnoreCase))
-                .Select(p => $"{GetCachedSnakeCase(p.Name)} = {dialect.ParameterPrefix}{p.Name}");
+                .Select(p => $"{SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)} = {dialect.ParameterPrefix}{p.Name}");
             return string.Join(", ", filteredParams);
         }
 
         var properties = GetFilteredProperties(entityType, options, "Id", requireSetter: true, result);
-        return string.Join(", ", properties.Select(p => $"{GetCachedSnakeCase(p.Name)} = {dialect.ParameterPrefix}{p.Name}"));
+        return string.Join(", ", properties.Select(p => $"{SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)} = {dialect.ParameterPrefix}{p.Name}"));
     }
 
 
@@ -376,7 +367,7 @@ public class SqlTemplateEngine
                 var direction = parts[1].ToUpperInvariant();
                 if (direction is "ASC" or "DESC")
                 {
-                    var columnName = GetCachedSnakeCase(field);
+                    var columnName = SharedCodeGenerationUtilities.ConvertToSnakeCase(field);
                     return $"ORDER BY {dialect.WrapColumn(columnName)} {direction}";
                 }
             }
@@ -390,7 +381,7 @@ public class SqlTemplateEngine
     /// <summary>生成自动WHERE子句 - 多数据库支持</summary>
     private string GenerateAutoWhereClause(IMethodSymbol method, SqlDefine dialect) =>
         method?.Parameters.Any(NonSystemParameterFilter) == true
-            ? string.Join(" AND ", method.Parameters.Where(NonSystemParameterFilter).Select(p => $"{GetCachedSnakeCase(p.Name)} = {dialect.ParameterPrefix}{p.Name}"))
+            ? string.Join(" AND ", method.Parameters.Where(NonSystemParameterFilter).Select(p => $"{SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)} = {dialect.ParameterPrefix}{p.Name}"))
             : "1=1";
 
 
@@ -772,7 +763,7 @@ public class SqlTemplateEngine
         if (method == null) return "GROUP BY id";
         // 性能优化：避免ToList()，直接操作枚举
         var filteredParams = method.Parameters.Where(NonSystemParameterFilter);
-        var groupByColumns = filteredParams.Select(p => GetCachedSnakeCase(p.Name));
+        var groupByColumns = filteredParams.Select(p => SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name));
         var joinedColumns = string.Join(", ", groupByColumns);
 
         if (string.IsNullOrEmpty(joinedColumns)) return "GROUP BY id";
@@ -791,7 +782,7 @@ public class SqlTemplateEngine
         // 为聚合查询生成HAVING条件
         var conditions = filteredParams.Select(p =>
         {
-            var columnName = GetCachedSnakeCase(p.Name);
+            var columnName = SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name);
             return p.Type.SpecialType == SpecialType.System_Int32 || p.Type.SpecialType == SpecialType.System_Int64
                 ? $"COUNT({columnName}) > @{p.Name}"
                 : $"{columnName} = @{p.Name}";
@@ -865,21 +856,21 @@ public class SqlTemplateEngine
     /// <summary>处理INSERT占位符 - 多数据库支持</summary>
     private static string ProcessInsertPlaceholder(string type, string tableName, string options, SqlDefine dialect)
     {
-        var snakeTableName = GetCachedSnakeCase(tableName);
+        var snakeTableName = SharedCodeGenerationUtilities.ConvertToSnakeCase(tableName);
         return type == "into" ? $"INSERT INTO {snakeTableName}" : $"INSERT INTO {snakeTableName}";
     }
 
     /// <summary>处理UPDATE占位符 - 多数据库支持</summary>
     private static string ProcessUpdatePlaceholder(string type, string tableName, string options, SqlDefine dialect)
     {
-        var snakeTableName = GetCachedSnakeCase(tableName);
+        var snakeTableName = SharedCodeGenerationUtilities.ConvertToSnakeCase(tableName);
         return $"UPDATE {snakeTableName}";
     }
 
     /// <summary>处理DELETE占位符 - 多数据库支持</summary>
     private static string ProcessDeletePlaceholder(string type, string tableName, string options, SqlDefine dialect)
     {
-        var snakeTableName = GetCachedSnakeCase(tableName);
+        var snakeTableName = SharedCodeGenerationUtilities.ConvertToSnakeCase(tableName);
         return type == "from" ? $"DELETE FROM {snakeTableName}" : $"DELETE FROM {snakeTableName}";
     }
 
@@ -1250,7 +1241,7 @@ public class SqlTemplateEngine
     /// <summary>处理UPSERT占位符 - 插入或更新</summary>
     private static string ProcessUpsertPlaceholder(string type, string tableName, string options, SqlDefine dialect)
     {
-        var snakeTableName = GetCachedSnakeCase(tableName);
+        var snakeTableName = SharedCodeGenerationUtilities.ConvertToSnakeCase(tableName);
         var conflictColumn = ExtractOption(options, "conflict", "id");
 
         return dialect.Equals(SqlDefine.PostgreSql)

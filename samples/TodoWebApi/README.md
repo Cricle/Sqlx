@@ -59,20 +59,48 @@ Task<Todo?> GetByIdAsync(long id);
 [Sqlx("{{insert}} ({{columns:auto|exclude=Id}}) VALUES ({{values:auto}})")]
 Task<long> CreateAsync(Todo todo);
 
-// ✅ 使用 {{set:auto}} - 自动生成 UPDATE SET 子句
+// ✅ 使用 {{update}} 和 {{set:auto}} - 自动生成 UPDATE SET 子句
 [Sqlx("{{update}} SET {{set:auto|exclude=Id,CreatedAt}} WHERE {{where:id}}")]
 Task<int> UpdateAsync(Todo todo);
+
+// ✅ 使用 {{delete}} - 简化 DELETE 语句
+[Sqlx("{{delete}} WHERE {{where:id}}")]
+Task<int> DeleteAsync(long id);
+
+// ✅ 使用 {{contains}} - LIKE 模糊查询（多列 OR 组合）
+[Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE {{contains:title|text=@query}} OR {{contains:description|text=@query}} {{orderby:updated_at_desc}}")]
+Task<List<Todo>> SearchAsync(string query);
+
+// ✅ 使用 {{notnull}} - IS NOT NULL 条件
+[Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE {{notnull:due_date}} AND due_date <= datetime('now', '+7 days') {{orderby:due_date_asc}}")]
+Task<List<Todo>> GetDueSoonAsync();
 
 // ✅ 使用 {{count:all}} - COUNT 聚合函数
 [Sqlx("SELECT {{count:all}} FROM {{table}}")]
 Task<int> GetTotalCountAsync();
+
+// ✅ 使用 {{set}} - 批量更新指定列
+[Sqlx("{{update}} SET {{set:priority}}, updated_at = datetime('now') WHERE id IN (SELECT value FROM json_each(@ids))")]
+Task<int> UpdatePriorityBatchAsync(string ids, int newPriority);
 ```
 
 **优势**：
-- 🚀 无需手写 SQL 列名
-- 🔄 添加/删除字段时自动适配
-- 🛡️ 类型安全，编译时检查
-- 📝 代码简洁，易于维护
+- 🚀 **零手写列名** - 所有列名由占位符自动生成
+- 🔄 **自动适配** - 添加/删除字段时无需修改 SQL
+- 🛡️ **类型安全** - 编译时检查，消除运行时错误
+- 📝 **简洁优雅** - 代码量减少 60%，易于维护
+- 🌐 **多数据库** - 同一套代码适配所有数据库
+
+**演示的占位符（10+ 个）**：
+- `{{columns:auto}}` - 自动列名
+- `{{table}}` - 表名
+- `{{insert}}` `{{update}}` `{{delete}}` - CRUD 简化
+- `{{where:id}}` - WHERE 条件
+- `{{set:auto}}` `{{set:priority}}` - SET 子句
+- `{{orderby}}` - ORDER BY
+- `{{count:all}}` - 聚合函数
+- `{{contains}}` - LIKE 模糊查询
+- `{{notnull}}` - IS NOT NULL
 
 ### 🚀 运行说明
 

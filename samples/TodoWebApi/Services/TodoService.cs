@@ -35,32 +35,32 @@ public interface ITodoService
     [Sqlx("DELETE FROM {{table}} WHERE {{where:id}}")]
     Task<int> DeleteAsync(long id);
 
-    /// <summary>搜索TODO - 使用SqlTemplate进行LIKE查询</summary>
-    [SqlTemplate("SELECT id, title, description, is_completed, priority, due_date, created_at, updated_at, completed_at, tags, estimated_minutes, actual_minutes FROM todos WHERE title LIKE '%' || @query || '%' OR description LIKE '%' || @query || '%' ORDER BY updated_at DESC", Dialect = SqlDefineTypes.SQLite)]
+    /// <summary>搜索TODO - 使用{{contains}}占位符进行LIKE查询（title OR description）</summary>
+    [Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE {{contains:title|text=@query}} OR {{contains:description|text=@query}} {{orderby:updated_at_desc}}")]
     Task<List<Todo>> SearchAsync(string query);
 
     /// <summary>获取已完成的TODO - 使用{{where:auto}}自动推断条件</summary>
     [Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE {{where:auto}} {{orderby:completed_at_desc}}")]
     Task<List<Todo>> GetCompletedAsync(bool isCompleted = true);
 
-    /// <summary>获取高优先级TODO - 展示多条件查询</summary>
-    [SqlTemplate("SELECT id, title, description, is_completed, priority, due_date, created_at, updated_at, completed_at, tags, estimated_minutes, actual_minutes FROM todos WHERE priority >= 3 AND is_completed = 0 ORDER BY priority DESC, created_at DESC", Dialect = SqlDefineTypes.SQLite)]
+    /// <summary>获取高优先级TODO - 使用{{columns:auto}}和多条件查询</summary>
+    [Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE priority >= 3 AND is_completed = 0 {{orderby:priority_desc,created_at_desc}}")]
     Task<List<Todo>> GetHighPriorityAsync();
 
-    /// <summary>获取即将到期的TODO - 使用SQLite日期函数</summary>
-    [SqlTemplate("SELECT id, title, description, is_completed, priority, due_date, created_at, updated_at, completed_at, tags, estimated_minutes, actual_minutes FROM todos WHERE due_date IS NOT NULL AND due_date <= datetime('now', '+7 days') AND is_completed = 0 ORDER BY due_date ASC", Dialect = SqlDefineTypes.SQLite)]
+    /// <summary>获取即将到期的TODO - 使用{{columns:auto}}和{{notnull}}占位符</summary>
+    [Sqlx("SELECT {{columns:auto}} FROM {{table}} WHERE {{notnull:due_date}} AND due_date <= datetime('now', '+7 days') AND is_completed = 0 {{orderby:due_date_asc}}")]
     Task<List<Todo>> GetDueSoonAsync();
 
     /// <summary>获取任务总数 - 使用{{count:all}}聚合占位符</summary>
     [Sqlx("SELECT {{count:all}} FROM {{table}}")]
     Task<int> GetTotalCountAsync();
 
-    /// <summary>批量更新优先级 - 使用SqlTemplate和JSON数组</summary>
-    [SqlTemplate("UPDATE todos SET priority = @newPriority, updated_at = datetime('now') WHERE id IN (SELECT value FROM json_each(@ids))", Dialect = SqlDefineTypes.SQLite, Operation = SqlOperation.Update)]
+    /// <summary>批量更新优先级 - 使用{{update}}和{{set}}占位符，配合JSON数组</summary>
+    [Sqlx("{{update}} SET {{set:priority}}, updated_at = datetime('now') WHERE id IN (SELECT value FROM json_each(@ids))")]
     Task<int> UpdatePriorityBatchAsync(string ids, int newPriority);
 
-    /// <summary>归档过期任务 - 使用SqlTemplate批量更新</summary>
-    [SqlTemplate("UPDATE todos SET is_completed = 1, completed_at = datetime('now'), updated_at = datetime('now') WHERE due_date < datetime('now') AND is_completed = 0", Dialect = SqlDefineTypes.SQLite, Operation = SqlOperation.Update)]
+    /// <summary>归档过期任务 - 使用{{update}}和{{set}}占位符批量更新</summary>
+    [Sqlx("{{update}} SET {{set:is_completed}}, completed_at = datetime('now'), updated_at = datetime('now') WHERE due_date < datetime('now') AND is_completed = 0")]
     Task<int> ArchiveExpiredTasksAsync();
 }
 

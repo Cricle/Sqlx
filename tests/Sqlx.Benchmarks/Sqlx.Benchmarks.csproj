@@ -27,5 +27,10 @@
     <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)Generated</CompilerGeneratedFilesOutputPath>
   </PropertyGroup>
 
+  <!-- 高性能模式：禁用追踪和Partial方法以获得最佳性能 -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release' AND '$(HighPerformanceMode)' == 'true'">
+    <DefineConstants>$(DefineConstants);SQLX_DISABLE_TRACING;SQLX_DISABLE_PARTIAL_METHODS</DefineConstants>
+  </PropertyGroup>
+
 </Project>
 

@@ -74,13 +74,19 @@ public class TracingOverheadBenchmark
     // ============================================================
 
     /// <summary>
-    /// 基准：原始ADO.NET（无任何开销）
+    /// 基准：原始ADO.NET（使用参数化查询，公平对比）
     /// </summary>
     [Benchmark(Baseline = true, Description = "Raw ADO.NET (基准)")]
     public User? RawAdoNet_SingleRow()
     {
         using var cmd = _connection.CreateCommand();
-        cmd.CommandText = "SELECT id, name, email, age, salary, is_active, created_at, updated_at FROM users WHERE id = 1";
+        cmd.CommandText = "SELECT id, name, email, age, salary, is_active, created_at, updated_at FROM users WHERE id = @id";
+        
+        // 参数化查询
+        var param = cmd.CreateParameter();
+        param.ParameterName = "@id";
+        param.Value = 1;
+        cmd.Parameters.Add(param);
 
         using var reader = cmd.ExecuteReader();
         if (reader.Read())
@@ -131,13 +137,14 @@ public class TracingOverheadBenchmark
     }
 
     /// <summary>
-    /// Dapper - 作为对比参考
+    /// Dapper - 作为对比参考（使用参数化查询）
     /// </summary>
     [Benchmark(Description = "Dapper")]
     public User? Dapper_SingleRow()
     {
         return _connection.QueryFirstOrDefault<User>(
-            "SELECT id, name, email, age, salary, is_active, created_at, updated_at FROM users WHERE id = 1");
+            "SELECT id, name, email, age, salary, is_active, created_at, updated_at FROM users WHERE id = @id",
+            new { id = 1 });
     }
 
     // ============================================================

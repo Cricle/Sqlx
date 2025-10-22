@@ -170,7 +170,7 @@ public class User
 {
     // ✅ Id 属性必须在第一位（对应SQL主键列）
     public int Id { get; set; }
-    
+
     // ✅ 其他属性按SQL SELECT语句中的列顺序排列
     public string Name { get; set; }
     public string Email { get; set; }
@@ -333,17 +333,17 @@ dotnet run -c Release --filter "*TracingOverhead*SingleRow*"
 
 ### 改进成果
 
-✅ **性能提升 2%** - 从16.076μs降到15.752μs  
-✅ **内存优化 52.7%** - 从2,624B降到1,240B  
-✅ **vs Dapper差距缩小 9%** - 从2.01x降到1.84x  
-✅ **编译时安全** - 源分析器检测顺序错误  
-✅ **自动修复** - CodeFixProvider快速修复  
-✅ **简化设计** - 移除不必要的特性，保持简洁高效  
+✅ **性能提升 2%** - 从16.076μs降到15.752μs
+✅ **内存优化 52.7%** - 从2,624B降到1,240B
+✅ **vs Dapper差距缩小 9%** - 从2.01x降到1.84x
+✅ **编译时安全** - 源分析器检测顺序错误
+✅ **自动修复** - CodeFixProvider快速修复
+✅ **简化设计** - 移除不必要的特性，保持简洁高效
 
 ### 设计理念
 
 > **"简单、高效、安全"**
-> 
+>
 > - 默认使用硬编码索引获得极致性能
 > - 源分析器提供编译时安全保障
 > - 零配置，开箱即用
@@ -357,7 +357,7 @@ dotnet run -c Release --filter "*TracingOverhead*SingleRow*"
 
 ---
 
-**版本**: 1.0  
-**日期**: 2025-10-22  
+**版本**: 1.0
+**日期**: 2025-10-22
 **作者**: Sqlx Team
 

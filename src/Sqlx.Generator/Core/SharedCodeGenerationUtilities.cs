@@ -92,26 +92,26 @@ public static class SharedCodeGenerationUtilities
         sb.AppendLine();
 
         // Generate parameter binding
-        // 🚀 性能优化：移除DbType显式设置，让ADO.NET provider自动推断类型（减少10%开销）
+        // 🚀 性能优化：简化参数创建，减少临时变量和赋值操作
         foreach (var param in method.Parameters.Where(p => p.Type.Name != "CancellationToken"))
         {
             var paramName = $"@{param.Name}";
             var isNullable = param.Type.IsReferenceType || param.Type.NullableAnnotation == Microsoft.CodeAnalysis.NullableAnnotation.Annotated;
 
-            sb.AppendLine($"var __p_{param.Name}__ = __cmd__.CreateParameter();")
-              .AppendLine($"__p_{param.Name}__.ParameterName = \"{paramName}\";");
-
+            // 直接创建并添加参数，减少中间步骤
+            sb.Append("{ var __p__ = __cmd__.CreateParameter(); ");
+            sb.Append($"__p__.ParameterName = \"{paramName}\"; ");
+            
             if (isNullable)
             {
-                sb.AppendLine($"__p_{param.Name}__.Value = {param.Name} ?? (object)global::System.DBNull.Value;");
+                sb.Append($"__p__.Value = {param.Name} ?? (object)global::System.DBNull.Value; ");
             }
             else
             {
-                sb.AppendLine($"__p_{param.Name}__.Value = {param.Name};");
+                sb.Append($"__p__.Value = {param.Name}; ");
             }
-
-            sb.AppendLine($"__cmd__.Parameters.Add(__p_{param.Name}__);")
-              .AppendLine();
+            
+            sb.AppendLine("__cmd__.Parameters.Add(__p__); }");
         }
     }
 

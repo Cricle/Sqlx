@@ -152,7 +152,7 @@ public class SqlTemplateEngine
             var placeholderType = match.Groups[2].Value; // 旧格式的type
             var oldFormatOptions = match.Groups[3].Value; // 旧格式的options（管道后）
             var newFormatOptions = match.Groups[4].Value; // 新格式的options（空格后）
-            
+
             // 合并options：优先使用新格式，如果为空则使用旧格式
             var placeholderOptions = !string.IsNullOrEmpty(newFormatOptions) ? newFormatOptions : oldFormatOptions;
 
@@ -222,6 +222,39 @@ public class SqlTemplateEngine
                 // 子查询
                 "exists" => ProcessExistsPlaceholder(placeholderType, placeholderOptions, dialect),
                 "subquery" => ProcessSubqueryPlaceholder(placeholderType, placeholderOptions, dialect),
+                // 分页增强
+                "page" => ProcessPagePlaceholder(placeholderType, method, placeholderOptions, dialect),
+                "pagination" => ProcessPaginationPlaceholder(placeholderType, method, placeholderOptions, dialect),
+                // 条件表达式
+                "case" => ProcessCasePlaceholder(placeholderType, placeholderOptions, dialect),
+                "coalesce" => ProcessCoalescePlaceholder(placeholderType, placeholderOptions, dialect),
+                "ifnull" => ProcessIfNullPlaceholder(placeholderType, placeholderOptions, dialect),
+                // 类型转换
+                "cast" => ProcessCastPlaceholder(placeholderType, placeholderOptions, dialect),
+                "convert" => ProcessConvertPlaceholder(placeholderType, placeholderOptions, dialect),
+                // JSON操作
+                "json_extract" => ProcessJsonExtractPlaceholder(placeholderType, placeholderOptions, dialect),
+                "json_array" => ProcessJsonArrayPlaceholder(placeholderType, placeholderOptions, dialect),
+                "json_object" => ProcessJsonObjectPlaceholder(placeholderType, placeholderOptions, dialect),
+                // 窗口函数
+                "row_number" => ProcessRowNumberPlaceholder(placeholderType, placeholderOptions, dialect),
+                "rank" => ProcessRankPlaceholder(placeholderType, placeholderOptions, dialect),
+                "dense_rank" => ProcessDenseRankPlaceholder(placeholderType, placeholderOptions, dialect),
+                "lag" => ProcessLagPlaceholder(placeholderType, placeholderOptions, dialect),
+                "lead" => ProcessLeadPlaceholder(placeholderType, placeholderOptions, dialect),
+                // 字符串高级函数
+                "substring" => ProcessSubstringPlaceholder(placeholderType, placeholderOptions, dialect),
+                "concat" => ProcessConcatPlaceholder(placeholderType, placeholderOptions, dialect),
+                "group_concat" => ProcessGroupConcatPlaceholder(placeholderType, placeholderOptions, dialect),
+                "replace" => ProcessReplacePlaceholder(placeholderType, placeholderOptions, dialect),
+                "length" => ProcessLengthPlaceholder(placeholderType, placeholderOptions, dialect),
+                // 数学高级函数
+                "power" => ProcessPowerPlaceholder(placeholderType, placeholderOptions, dialect),
+                "sqrt" => ProcessSqrtPlaceholder(placeholderType, placeholderOptions, dialect),
+                "mod" => ProcessModPlaceholder(placeholderType, placeholderOptions, dialect),
+                // 批量操作增强
+                "batch_insert" => ProcessBatchInsertPlaceholder(placeholderType, tableName, entityType, placeholderOptions, dialect),
+                "bulk_update" => ProcessBulkUpdatePlaceholder(placeholderType, tableName, placeholderOptions, dialect),
                 _ => ProcessCustomPlaceholder(match.Value, placeholderName, placeholderType, placeholderOptions, result)
             };
         });
@@ -267,7 +300,7 @@ public class SqlTemplateEngine
 
             var columnName = SharedCodeGenerationUtilities.ConvertToSnakeCase(properties[i].Name);
             sb.Append(isQuoted ? dialect.WrapColumn(columnName) : columnName);
-            
+
             // 记录列名到ColumnOrder（用于序号访问优化）
             result.ColumnOrder.Add(columnName);
         }
@@ -366,7 +399,7 @@ public class SqlTemplateEngine
             {
                 var columnName = optionsParts[0].Trim();
                 var direction = "ASC"; // 默认升序
-                
+
                 // 查找方向选项
                 for (int i = 1; i < optionsParts.Length; i++)
                 {
@@ -382,11 +415,11 @@ public class SqlTemplateEngine
                         break;
                     }
                 }
-                
+
                 return $"ORDER BY {dialect.WrapColumn(columnName)} {direction}";
             }
         }
-        
+
         // 兼容旧格式：处理 type 参数
         if (!string.IsNullOrWhiteSpace(type))
         {
@@ -503,7 +536,7 @@ public class SqlTemplateEngine
         var newFormatExclude = ExtractCommandLineOption(options, "--exclude");
         var oldFormatExclude = ExtractOption(options, "exclude", "");
         var excludeOption = !string.IsNullOrEmpty(newFormatExclude) ? newFormatExclude : oldFormatExclude;
-        
+
         if (!string.IsNullOrEmpty(excludeOption))
         {
             // 支持空格和逗号分隔的多个列名
@@ -561,7 +594,7 @@ public class SqlTemplateEngine
     {
         // 在验证SQL注入之前，先移除占位符（避免占位符选项中的 -- 被误判为SQL注释）
         var sqlWithoutPlaceholders = PlaceholderRegex.Replace(templateSql, "__PLACEHOLDER__");
-        
+
         // 基础SQL注入检测（在移除占位符后的SQL上进行）
         if (SqlInjectionRegex.IsMatch(sqlWithoutPlaceholders))
         {
@@ -648,7 +681,7 @@ public class SqlTemplateEngine
         var optionsLower = options.ToLowerInvariant();
         var flagLower = flag.ToLowerInvariant();
         var index = optionsLower.IndexOf(flagLower);
-        
+
         if (index == -1) return string.Empty;
 
         // 找到flag后面的内容
@@ -887,7 +920,20 @@ public class SqlTemplateEngine
 
     private static string ProcessCustomPlaceholder(string originalValue, string name, string type, string options, SqlTemplateResult result)
     {
-        result.Warnings.Add($"Unknown placeholder '{name}'. Available: table, columns, values, where, set, orderby, limit, join, groupby, having, select, insert, update, delete, count, sum, avg, max, min, distinct, union, top, offset");
+        result.Warnings.Add($"Unknown placeholder '{name}'. Available placeholders: " +
+            "Core: table, columns, values, where, set, orderby, limit | " +
+            "Joins: join, groupby, having | " +
+            "CRUD: select, insert, update, delete, upsert | " +
+            "Aggregates: count, sum, avg, max, min, distinct, group_concat | " +
+            "Conditions: between, like, in, not_in, or, isnull, notnull, exists, case, coalesce, ifnull | " +
+            "Dates: today, week, month, year, date_add, date_diff, date_format | " +
+            "Strings: contains, startswith, endswith, upper, lower, trim, substring, concat, replace, length | " +
+            "Math: round, abs, ceiling, floor, power, sqrt, mod | " +
+            "Window: row_number, rank, dense_rank, lag, lead | " +
+            "JSON: json_extract, json_array, json_object | " +
+            "Pagination: page, pagination, top, offset | " +
+            "Conversions: cast, convert | " +
+            "Batch: batch_values, batch_insert, bulk_update, subquery, union");
         return originalValue; // 保持原始值
     }
 
@@ -1377,6 +1423,317 @@ public class SqlTemplateEngine
         return string.IsNullOrEmpty(alias)
             ? $"({query})"
             : $"({query}) AS {dialect.WrapColumn(alias)}";
+    }
+
+    #endregion
+
+    #region 新增实用占位符 - 分页、条件、JSON、窗口函数等
+
+    /// <summary>处理PAGE占位符 - 智能分页（自动计算OFFSET和LIMIT）</summary>
+    private static string ProcessPagePlaceholder(string type, IMethodSymbol method, string options, SqlDefine dialect)
+    {
+        var pageParam = ExtractOption(options, "page", "page");
+        var sizeParam = ExtractOption(options, "size", "pageSize");
+        var defaultSize = ExtractOption(options, "default", "20");
+
+        // 生成分页逻辑：LIMIT @pageSize OFFSET (@page - 1) * @pageSize
+        return dialect.Equals(SqlDefine.SqlServer)
+            ? $"OFFSET (({dialect.ParameterPrefix}{pageParam} - 1) * {dialect.ParameterPrefix}{sizeParam}) ROWS FETCH NEXT {dialect.ParameterPrefix}{sizeParam} ROWS ONLY"
+            : dialect.Equals(SqlDefine.Oracle)
+                ? $"OFFSET (({dialect.ParameterPrefix}{pageParam} - 1) * {dialect.ParameterPrefix}{sizeParam}) ROWS FETCH NEXT {dialect.ParameterPrefix}{sizeParam} ROWS ONLY"
+                : $"LIMIT {dialect.ParameterPrefix}{sizeParam} OFFSET (({dialect.ParameterPrefix}{pageParam} - 1) * {dialect.ParameterPrefix}{sizeParam})";
+    }
+
+    /// <summary>处理PAGINATION占位符 - 完整的分页信息（包含总数）</summary>
+    private static string ProcessPaginationPlaceholder(string type, IMethodSymbol method, string options, SqlDefine dialect)
+    {
+        // 用于CTE或子查询中的分页
+        var pageParam = ExtractOption(options, "page", "page");
+        var sizeParam = ExtractOption(options, "size", "pageSize");
+
+        return dialect.Equals(SqlDefine.SqlServer)
+            ? $"ROW_NUMBER() OVER (ORDER BY id) AS RowNum"
+            : $"LIMIT {dialect.ParameterPrefix}{sizeParam} OFFSET (({dialect.ParameterPrefix}{pageParam} - 1) * {dialect.ParameterPrefix}{sizeParam})";
+    }
+
+    /// <summary>处理CASE占位符 - CASE WHEN表达式</summary>
+    private static string ProcessCasePlaceholder(string type, string options, SqlDefine dialect)
+    {
+        // 格式：{{case --when status=1 --then 'Active' --when status=0 --then 'Inactive' --else 'Unknown'}}
+        // 简化格式：{{case:status|1=Active,0=Inactive,default=Unknown}}
+
+        var column = ExtractOption(options, "column", type);
+        var whenClause = ExtractCommandLineOption(options, "--when");
+        var thenClause = ExtractCommandLineOption(options, "--then");
+        var elseClause = ExtractCommandLineOption(options, "--else");
+
+        if (!string.IsNullOrEmpty(whenClause))
+        {
+            // 命令行格式
+            return $"CASE WHEN {whenClause} THEN {thenClause} ELSE {elseClause} END";
+        }
+
+        // 简化格式处理
+        return $"CASE {dialect.WrapColumn(column)} END";
+    }
+
+    /// <summary>处理COALESCE占位符 - NULL合并</summary>
+    private static string ProcessCoalescePlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var columns = ExtractOption(options, "columns", type);
+        var defaultValue = ExtractOption(options, "default", "NULL");
+
+        var columnList = columns.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        var wrappedColumns = string.Join(", ", columnList.Select(c => dialect.WrapColumn(c.Trim())));
+
+        return $"COALESCE({wrappedColumns}, {defaultValue})";
+    }
+
+    /// <summary>处理IFNULL占位符 - NULL检查替换</summary>
+    private static string ProcessIfNullPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", type);
+        var defaultValue = ExtractOption(options, "default", "0");
+
+        return dialect.Equals(SqlDefine.SqlServer)
+            ? $"ISNULL({dialect.WrapColumn(column)}, {defaultValue})"
+            : dialect.Equals(SqlDefine.Oracle)
+                ? $"NVL({dialect.WrapColumn(column)}, {defaultValue})"
+                : $"IFNULL({dialect.WrapColumn(column)}, {defaultValue})";
+    }
+
+    /// <summary>处理CAST占位符 - 类型转换</summary>
+    private static string ProcessCastPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", type);
+        var targetType = ExtractOption(options, "as", "VARCHAR");
+
+        return $"CAST({dialect.WrapColumn(column)} AS {targetType})";
+    }
+
+    /// <summary>处理CONVERT占位符 - 类型转换（SQL Server风格）</summary>
+    private static string ProcessConvertPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", type);
+        var targetType = ExtractOption(options, "to", "VARCHAR");
+        var style = ExtractOption(options, "style", "");
+
+        if (dialect.Equals(SqlDefine.SqlServer) && !string.IsNullOrEmpty(style))
+        {
+            return $"CONVERT({targetType}, {dialect.WrapColumn(column)}, {style})";
+        }
+
+        return $"CAST({dialect.WrapColumn(column)} AS {targetType})";
+    }
+
+    /// <summary>处理JSON_EXTRACT占位符 - 提取JSON字段</summary>
+    private static string ProcessJsonExtractPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", type);
+        var path = ExtractOption(options, "path", "$.value");
+
+        return dialect.Equals(SqlDefine.SqlServer)
+            ? $"JSON_VALUE({dialect.WrapColumn(column)}, '{path}')"
+            : dialect.Equals(SqlDefine.MySql)
+                ? $"JSON_EXTRACT({dialect.WrapColumn(column)}, '{path}')"
+                : dialect.Equals(SqlDefine.PostgreSql)
+                    ? $"{dialect.WrapColumn(column)}->'{path}'"
+                    : $"JSON_EXTRACT({dialect.WrapColumn(column)}, '{path}')";
+    }
+
+    /// <summary>处理JSON_ARRAY占位符 - 创建JSON数组</summary>
+    private static string ProcessJsonArrayPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var values = ExtractOption(options, "values", "value1, value2");
+
+        return dialect.Equals(SqlDefine.SqlServer)
+            ? $"JSON_QUERY('[{values}]')"
+            : dialect.Equals(SqlDefine.MySql)
+                ? $"JSON_ARRAY({values})"
+                : dialect.Equals(SqlDefine.PostgreSql)
+                    ? $"JSON_BUILD_ARRAY({values})"
+                    : $"JSON_ARRAY({values})";
+    }
+
+    /// <summary>处理JSON_OBJECT占位符 - 创建JSON对象</summary>
+    private static string ProcessJsonObjectPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var keys = ExtractOption(options, "keys", "key");
+        var values = ExtractOption(options, "values", "value");
+
+        return dialect.Equals(SqlDefine.PostgreSql)
+            ? $"JSON_BUILD_OBJECT('{keys}', {values})"
+            : $"JSON_OBJECT('{keys}', {values})";
+    }
+
+    /// <summary>处理ROW_NUMBER占位符 - 行号窗口函数</summary>
+    private static string ProcessRowNumberPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var orderBy = ExtractOption(options, "orderby", "id");
+        var partitionBy = ExtractOption(options, "partition", "");
+
+        var partitionClause = !string.IsNullOrEmpty(partitionBy) ? $"PARTITION BY {partitionBy} " : "";
+        return $"ROW_NUMBER() OVER ({partitionClause}ORDER BY {orderBy})";
+    }
+
+    /// <summary>处理RANK占位符 - 排名窗口函数</summary>
+    private static string ProcessRankPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var orderBy = ExtractOption(options, "orderby", "id");
+        var partitionBy = ExtractOption(options, "partition", "");
+
+        var partitionClause = !string.IsNullOrEmpty(partitionBy) ? $"PARTITION BY {partitionBy} " : "";
+        return $"RANK() OVER ({partitionClause}ORDER BY {orderBy})";
+    }
+
+    /// <summary>处理DENSE_RANK占位符 - 密集排名窗口函数</summary>
+    private static string ProcessDenseRankPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var orderBy = ExtractOption(options, "orderby", "id");
+        var partitionBy = ExtractOption(options, "partition", "");
+
+        var partitionClause = !string.IsNullOrEmpty(partitionBy) ? $"PARTITION BY {partitionBy} " : "";
+        return $"DENSE_RANK() OVER ({partitionClause}ORDER BY {orderBy})";
+    }
+
+    /// <summary>处理LAG占位符 - 前一行值</summary>
+    private static string ProcessLagPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", type);
+        var offset = ExtractOption(options, "offset", "1");
+        var defaultValue = ExtractOption(options, "default", "NULL");
+        var orderBy = ExtractOption(options, "orderby", "id");
+
+        return $"LAG({dialect.WrapColumn(column)}, {offset}, {defaultValue}) OVER (ORDER BY {orderBy})";
+    }
+
+    /// <summary>处理LEAD占位符 - 后一行值</summary>
+    private static string ProcessLeadPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", type);
+        var offset = ExtractOption(options, "offset", "1");
+        var defaultValue = ExtractOption(options, "default", "NULL");
+        var orderBy = ExtractOption(options, "orderby", "id");
+
+        return $"LEAD({dialect.WrapColumn(column)}, {offset}, {defaultValue}) OVER (ORDER BY {orderBy})";
+    }
+
+    /// <summary>处理SUBSTRING占位符 - 子字符串</summary>
+    private static string ProcessSubstringPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", type);
+        var start = ExtractOption(options, "start", "1");
+        var length = ExtractOption(options, "length", "10");
+
+        return dialect.Equals(SqlDefine.SqlServer) || dialect.Equals(SqlDefine.PostgreSql)
+            ? $"SUBSTRING({dialect.WrapColumn(column)}, {start}, {length})"
+            : $"SUBSTR({dialect.WrapColumn(column)}, {start}, {length})";
+    }
+
+    /// <summary>处理CONCAT占位符 - 字符串连接</summary>
+    private static string ProcessConcatPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var columns = ExtractOption(options, "columns", type);
+        var separator = ExtractOption(options, "separator", "");
+
+        var columnList = columns.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+        if (!string.IsNullOrEmpty(separator))
+        {
+            return dialect.Equals(SqlDefine.SqlServer)
+                ? $"CONCAT_WS('{separator}', {string.Join(", ", columnList.Select(c => dialect.WrapColumn(c.Trim())))})"
+                : $"CONCAT_WS('{separator}', {string.Join(", ", columnList.Select(c => dialect.WrapColumn(c.Trim())))})";
+        }
+
+        return $"CONCAT({string.Join(", ", columnList.Select(c => dialect.WrapColumn(c.Trim())))})";
+    }
+
+    /// <summary>处理GROUP_CONCAT占位符 - 分组字符串聚合</summary>
+    private static string ProcessGroupConcatPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", type);
+        var separator = ExtractOption(options, "separator", ",");
+        var orderBy = ExtractOption(options, "orderby", "");
+
+        var orderClause = !string.IsNullOrEmpty(orderBy) ? $" ORDER BY {orderBy}" : "";
+
+        return dialect.Equals(SqlDefine.SqlServer)
+            ? $"STRING_AGG({dialect.WrapColumn(column)}, '{separator}'){orderClause}"
+            : dialect.Equals(SqlDefine.PostgreSql)
+                ? $"STRING_AGG({dialect.WrapColumn(column)}, '{separator}'{orderClause})"
+                : dialect.Equals(SqlDefine.MySql)
+                    ? $"GROUP_CONCAT({dialect.WrapColumn(column)}{orderClause} SEPARATOR '{separator}')"
+                    : $"GROUP_CONCAT({dialect.WrapColumn(column)}, '{separator}')";
+    }
+
+    /// <summary>处理REPLACE占位符 - 字符串替换</summary>
+    private static string ProcessReplacePlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", type);
+        var oldValue = ExtractOption(options, "old", "oldValue");
+        var newValue = ExtractOption(options, "new", "newValue");
+
+        return $"REPLACE({dialect.WrapColumn(column)}, '{oldValue}', '{newValue}')";
+    }
+
+    /// <summary>处理LENGTH占位符 - 字符串长度</summary>
+    private static string ProcessLengthPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", type);
+
+        return dialect.Equals(SqlDefine.SqlServer)
+            ? $"LEN({dialect.WrapColumn(column)})"
+            : dialect.Equals(SqlDefine.Oracle)
+                ? $"LENGTH({dialect.WrapColumn(column)})"
+                : $"LENGTH({dialect.WrapColumn(column)})";
+    }
+
+    /// <summary>处理POWER占位符 - 幂运算</summary>
+    private static string ProcessPowerPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", type);
+        var exponent = ExtractOption(options, "exp", "2");
+
+        return $"POWER({dialect.WrapColumn(column)}, {exponent})";
+    }
+
+    /// <summary>处理SQRT占位符 - 平方根</summary>
+    private static string ProcessSqrtPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", type);
+        return $"SQRT({dialect.WrapColumn(column)})";
+    }
+
+    /// <summary>处理MOD占位符 - 取模运算</summary>
+    private static string ProcessModPlaceholder(string type, string options, SqlDefine dialect)
+    {
+        var column = ExtractOption(options, "column", type);
+        var divisor = ExtractOption(options, "by", "2");
+
+        return dialect.Equals(SqlDefine.SqlServer)
+            ? $"({dialect.WrapColumn(column)} % {divisor})"
+            : $"MOD({dialect.WrapColumn(column)}, {divisor})";
+    }
+
+    /// <summary>处理BATCH_INSERT占位符 - 批量插入简化</summary>
+    private static string ProcessBatchInsertPlaceholder(string type, string tableName, INamedTypeSymbol? entityType, string options, SqlDefine dialect)
+    {
+        var snakeTableName = SharedCodeGenerationUtilities.ConvertToSnakeCase(tableName);
+        var batchSize = ExtractOption(options, "size", "100");
+
+        // 返回批量插入的模板
+        return $"INSERT INTO {snakeTableName} ({{{{columns --exclude Id}}}}) VALUES {{{{batch_values}}}}";
+    }
+
+    /// <summary>处理BULK_UPDATE占位符 - 批量更新</summary>
+    private static string ProcessBulkUpdatePlaceholder(string type, string tableName, string options, SqlDefine dialect)
+    {
+        var snakeTableName = SharedCodeGenerationUtilities.ConvertToSnakeCase(tableName);
+        var keyColumn = ExtractOption(options, "key", "id");
+
+        return dialect.Equals(SqlDefine.SqlServer)
+            ? $"UPDATE {snakeTableName} SET {{{{set}}}} FROM {snakeTableName} INNER JOIN @values"
+            : $"UPDATE {snakeTableName} SET {{{{set}}}} WHERE {keyColumn} IN ({{{{values}}}})";
     }
 
     #endregion

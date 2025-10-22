@@ -711,6 +711,112 @@
 <span class="code-string">"{{orderby created_at --desc}}"</span>    <span class="code-comment">// 降序</span>
 <span class="code-string">"{{orderby name --asc}}"</span>           <span class="code-comment">// 升序（默认）</span></div>
             </div>
+            
+            <h3 style="margin: 60px 0 30px; text-align: center; color: var(--primary);">🚀 80+ 高级占位符</h3>
+            
+            <div class="grid">
+                <div class="card">
+                    <h3>📄 分页 (4个)</h3>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="padding: 8px 0;">✓ <code>{{page}}</code> - 智能分页</li>
+                        <li style="padding: 8px 0;">✓ <code>{{pagination}}</code> - 分页信息</li>
+                        <li style="padding: 8px 0;">✓ <code>{{limit}}</code> - 限制数量</li>
+                        <li style="padding: 8px 0;">✓ <code>{{offset}}</code> - 偏移量</li>
+                    </ul>
+                </div>
+                
+                <div class="card">
+                    <h3>🔀 条件表达式 (10个)</h3>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="padding: 8px 0;">✓ <code>{{case}}</code> - CASE WHEN</li>
+                        <li style="padding: 8px 0;">✓ <code>{{coalesce}}</code> - NULL合并</li>
+                        <li style="padding: 8px 0;">✓ <code>{{ifnull}}</code> - NULL检查</li>
+                        <li style="padding: 8px 0;">✓ <code>{{between}}</code> - 范围</li>
+                        <li style="padding: 8px 0;">✓ <code>{{in}}</code> - IN查询</li>
+                        <li style="padding: 8px 0;">✓ <code>{{like}}</code> - 模糊搜索</li>
+                    </ul>
+                </div>
+                
+                <div class="card">
+                    <h3>📊 窗口函数 (5个)</h3>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="padding: 8px 0;">✓ <code>{{row_number}}</code> - 行号</li>
+                        <li style="padding: 8px 0;">✓ <code>{{rank}}</code> - 排名</li>
+                        <li style="padding: 8px 0;">✓ <code>{{dense_rank}}</code> - 密集排名</li>
+                        <li style="padding: 8px 0;">✓ <code>{{lag}}</code> - 前一行</li>
+                        <li style="padding: 8px 0;">✓ <code>{{lead}}</code> - 后一行</li>
+                    </ul>
+                </div>
+                
+                <div class="card">
+                    <h3>📦 JSON操作 (3个)</h3>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="padding: 8px 0;">✓ <code>{{json_extract}}</code> - 提取字段</li>
+                        <li style="padding: 8px 0;">✓ <code>{{json_array}}</code> - 创建数组</li>
+                        <li style="padding: 8px 0;">✓ <code>{{json_object}}</code> - 创建对象</li>
+                    </ul>
+                </div>
+                
+                <div class="card">
+                    <h3>🔤 字符串函数 (9个)</h3>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="padding: 8px 0;">✓ <code>{{concat}}</code> - 连接</li>
+                        <li style="padding: 8px 0;">✓ <code>{{substring}}</code> - 子串</li>
+                        <li style="padding: 8px 0;">✓ <code>{{replace}}</code> - 替换</li>
+                        <li style="padding: 8px 0;">✓ <code>{{group_concat}}</code> - 分组聚合</li>
+                        <li style="padding: 8px 0;">✓ <code>{{length}}</code> - 长度</li>
+                        <li style="padding: 8px 0;">✓ <code>{{upper}}</code> - 大写</li>
+                        <li style="padding: 8px 0;">✓ <code>{{lower}}</code> - 小写</li>
+                        <li style="padding: 8px 0;">✓ <code>{{trim}}</code> - 去空格</li>
+                    </ul>
+                </div>
+                
+                <div class="card">
+                    <h3>➗ 数学函数 (8个)</h3>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="padding: 8px 0;">✓ <code>{{round}}</code> - 四舍五入</li>
+                        <li style="padding: 8px 0;">✓ <code>{{power}}</code> - 幂运算</li>
+                        <li style="padding: 8px 0;">✓ <code>{{sqrt}}</code> - 平方根</li>
+                        <li style="padding: 8px 0;">✓ <code>{{mod}}</code> - 取模</li>
+                        <li style="padding: 8px 0;">✓ <code>{{abs}}</code> - 绝对值</li>
+                        <li style="padding: 8px 0;">✓ <code>{{ceiling}}</code> - 向上取整</li>
+                        <li style="padding: 8px 0;">✓ <code>{{floor}}</code> - 向下取整</li>
+                    </ul>
+                </div>
+                
+                <div class="card">
+                    <h3>📅 日期时间 (11个)</h3>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="padding: 8px 0;">✓ <code>{{today}}</code> - 今天</li>
+                        <li style="padding: 8px 0;">✓ <code>{{week}}</code> - 本周</li>
+                        <li style="padding: 8px 0;">✓ <code>{{month}}</code> - 本月</li>
+                        <li style="padding: 8px 0;">✓ <code>{{year}}</code> - 本年</li>
+                        <li style="padding: 8px 0;">✓ <code>{{date_add}}</code> - 日期加法</li>
+                        <li style="padding: 8px 0;">✓ <code>{{date_diff}}</code> - 日期差值</li>
+                    </ul>
+                </div>
+                
+                <div class="card">
+                    <h3>📝 类型转换 (2个)</h3>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="padding: 8px 0;">✓ <code>{{cast}}</code> - 类型转换</li>
+                        <li style="padding: 8px 0;">✓ <code>{{convert}}</code> - 转换（SQL Server）</li>
+                    </ul>
+                </div>
+                
+                <div class="card">
+                    <h3>🔄 批量操作 (3个)</h3>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="padding: 8px 0;">✓ <code>{{upsert}}</code> - 插入或更新</li>
+                        <li style="padding: 8px 0;">✓ <code>{{batch_insert}}</code> - 批量插入</li>
+                        <li style="padding: 8px 0;">✓ <code>{{bulk_update}}</code> - 批量更新</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="alert alert-info" style="margin-top: 30px;">
+                <strong>💡 提示：</strong> 核心占位符（table, columns, values, set, orderby）必学，高级占位符按需使用。大部分场景下直接写 SQL 更清晰！完整文档请查看 <a href="../PLACEHOLDERS.md" style="color: var(--primary);">占位符完整指南</a>
+            </div>
         </div>
     </section>
     

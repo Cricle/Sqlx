@@ -30,6 +30,10 @@ Sqlx 是一个让你**不用手写 SQL 列名**的数据库工具。你只需要
 | **更新** | `UPDATE {{table}} SET {{set --exclude Id}}` | `UPDATE users SET name=@Name, email=@Email` |
 | **删除** | `DELETE FROM {{table}} WHERE id = @id` | `DELETE FROM users WHERE id = @id` |
 | **排序** | `{{orderby name --desc}}` | `ORDER BY name DESC` |
+| **分页** | `{{page}}` | `LIMIT @pageSize OFFSET ((@page-1)*@pageSize)` |
+| **窗口** | `{{row_number\|orderby=created_at}}` | `ROW_NUMBER() OVER (ORDER BY created_at)` |
+| **JSON** | `{{json_extract\|column=data\|path=$.id}}` | `JSON_VALUE(data, '$.id')` |
+| **聚合** | `{{group_concat\|column=tag}}` | `STRING_AGG(tag, ',')` |
 
 ---
 
@@ -90,20 +94,33 @@ var todos = await repo.GetAllAsync();
 
 ## ✨ 核心特性
 
-### 1️⃣ 智能占位符
+### 1️⃣ 智能占位符系统
 
-**核心占位符：**
+**💡 80+ 占位符涵盖所有场景**
+
+**核心占位符（5个，必学）：**
 - `{{table}}` - 表名（从 SqlDefine 或 TableName 特性获取）
 - `{{columns}}` - 列名列表（从实体类属性自动生成）
 - `{{values}}` - 参数占位符（@param1, @param2...）
 - `{{set}}` - SET 子句（name=@Name, email=@Email...）
 - `{{orderby}}` - ORDER BY 子句
 
+**高级占位符（75+，按需使用）：**
+- **分页**: `{{page}}`, `{{pagination}}`, `{{limit}}`, `{{offset}}`
+- **条件**: `{{case}}`, `{{coalesce}}`, `{{ifnull}}`, `{{between}}`, `{{in}}`, `{{like}}`
+- **窗口函数**: `{{row_number}}`, `{{rank}}`, `{{dense_rank}}`, `{{lag}}`, `{{lead}}`
+- **JSON**: `{{json_extract}}`, `{{json_array}}`, `{{json_object}}`
+- **字符串**: `{{concat}}`, `{{substring}}`, `{{replace}}`, `{{group_concat}}`
+- **数学**: `{{round}}`, `{{power}}`, `{{sqrt}}`, `{{mod}}`
+- **日期**: `{{today}}`, `{{week}}`, `{{month}}`, `{{year}}`, `{{date_add}}`
+- **批量**: `{{upsert}}`, `{{batch_insert}}`, `{{bulk_update}}`
+
 **命令行风格选项：**
 ```csharp
 {{columns --exclude Id}}           // 排除 Id 字段
 {{columns --only Name Email}}      // 只包含指定字段
 {{orderby created_at --desc}}      // 降序排序
+{{page|page=page|size=pageSize}}   // 智能分页
 ```
 
 ### 2️⃣ 多数据库支持

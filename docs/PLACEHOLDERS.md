@@ -202,6 +202,175 @@ Task<DateTime> GetLatestDateAsync();
 
 ---
 
+## 🎓 高级占位符（可选）
+
+以下占位符用于特定场景，可以简化复杂查询，但大部分情况下**直接写SQL更清晰**。
+
+### 分页占位符
+
+#### `{{page}}` - 智能分页
+自动计算 OFFSET 和 LIMIT（适用于标准分页场景）
+
+```csharp
+// 自动计算偏移量: OFFSET = (page - 1) * pageSize
+[Sqlx("SELECT {{columns}} FROM {{table}} {{page}}")]
+Task<List<User>> GetPagedAsync(int page, int pageSize);
+
+// MySQL/PostgreSQL 生成: LIMIT @pageSize OFFSET ((@page - 1) * @pageSize)
+// SQL Server 生成: OFFSET ... ROWS FETCH NEXT ... ROWS ONLY
+```
+
+### 条件表达式
+
+#### `{{coalesce}}` - NULL 合并
+返回第一个非NULL值
+
+```csharp
+// 多列合并
+[Sqlx("SELECT id, {{coalesce|columns=email,phone,address|default='N/A'}} AS contact FROM {{table}}")]
+Task<List<Contact>> GetContactsAsync();
+
+// 生成: SELECT id, COALESCE(email, phone, address, 'N/A') AS contact FROM users
+```
+
+#### `{{case}}` - 条件表达式
+生成 CASE WHEN 语句
+
+```csharp
+[Sqlx("SELECT id, name, {{case --when status=1 --then 'Active' --else 'Inactive'}} AS status_text FROM {{table}}")]
+Task<List<User>> GetUsersWithStatusAsync();
+```
+
+### 窗口函数
+
+#### `{{row_number}}` - 行号
+为查询结果添加行号
+
+```csharp
+[Sqlx("SELECT {{row_number|orderby=created_at}} AS row_num, {{columns}} FROM {{table}}")]
+Task<List<User>> GetUsersWithRowNumberAsync();
+
+// 生成: SELECT ROW_NUMBER() OVER (ORDER BY created_at) AS row_num, ... FROM users
+```
+
+#### `{{rank}}` / `{{dense_rank}}` - 排名
+为查询结果添加排名
+
+```csharp
+[Sqlx("SELECT {{rank|orderby=score --desc}} AS rank, name, score FROM {{table}}")]
+Task<List<Player>> GetLeaderboardAsync();
+
+// 生成: SELECT RANK() OVER (ORDER BY score DESC) AS rank, name, score FROM players
+```
+
+### JSON 操作
+
+#### `{{json_extract}}` - 提取 JSON 字段
+从 JSON 列中提取值
+
+```csharp
+[Sqlx("SELECT id, {{json_extract|column=metadata|path=$.userId}} AS user_id FROM {{table}}")]
+Task<List<Event>> GetEventsAsync();
+
+// SQL Server: JSON_VALUE(metadata, '$.userId')
+// PostgreSQL: metadata->'$.userId'
+// MySQL: JSON_EXTRACT(metadata, '$.userId')
+```
+
+### 字符串函数
+
+#### `{{group_concat}}` - 分组字符串聚合
+将分组结果连接成字符串
+
+```csharp
+[Sqlx("SELECT user_id, {{group_concat|column=tag|separator=,}} AS tags FROM user_tags GROUP BY user_id")]
+Task<List<UserTags>> GetUserTagsAsync();
+
+// SQL Server: STRING_AGG(tag, ',')
+// MySQL: GROUP_CONCAT(tag SEPARATOR ',')
+// PostgreSQL: STRING_AGG(tag, ',')
+```
+
+#### `{{concat}}` - 字符串连接
+连接多个列
+
+```csharp
+[Sqlx("SELECT {{concat|columns=first_name,last_name|separator= }} AS full_name FROM {{table}}")]
+Task<List<User>> GetFullNamesAsync();
+
+// 生成: SELECT CONCAT_WS(' ', first_name, last_name) AS full_name FROM users
+```
+
+#### `{{substring}}` - 子字符串
+提取字符串的一部分
+
+```csharp
+[Sqlx("SELECT {{substring|column=email|start=1|length=10}} AS email_prefix FROM {{table}}")]
+Task<List<string>> GetEmailPrefixesAsync();
+
+// 生成: SELECT SUBSTRING(email, 1, 10) AS email_prefix FROM users
+```
+
+### 数学函数
+
+#### `{{round}}` / `{{power}}` / `{{sqrt}}` - 数学运算
+常用数学函数
+
+```csharp
+[Sqlx("SELECT {{round|column=price|precision=2}} AS rounded_price FROM {{table}}")]
+Task<List<Product>> GetProductsAsync();
+
+// 生成: SELECT ROUND(price, 2) AS rounded_price FROM products
+```
+
+### 类型转换
+
+#### `{{cast}}` - 类型转换
+转换列的数据类型
+
+```csharp
+[Sqlx("SELECT {{cast|column=id|as=VARCHAR}} AS id_string FROM {{table}}")]
+Task<List<string>> GetIdsAsStringsAsync();
+
+// 生成: SELECT CAST(id AS VARCHAR) AS id_string FROM users
+```
+
+### 批量操作
+
+#### `{{upsert}}` - 插入或更新
+自动生成 UPSERT 语句（根据数据库方言）
+
+```csharp
+[Sqlx("{{upsert|conflict=id}}")]
+Task<int> UpsertAsync(User user);
+
+// PostgreSQL: INSERT ... ON CONFLICT (id) DO UPDATE SET ...
+// MySQL: INSERT ... ON DUPLICATE KEY UPDATE ...
+// SQLite: INSERT OR REPLACE INTO ...
+```
+
+---
+
+## 💡 占位符选择建议
+
+| 场景 | 推荐方案 | 原因 |
+|------|---------|------|
+| **简单查询** | ❌ 不用高级占位符<br>✅ 直接写 SQL | 更清晰、更灵活 |
+| **标准分页** | ✅ `{{page}}`<br>⚠️ 或直接写 LIMIT/OFFSET | 占位符自动适配数据库 |
+| **窗口函数** | ✅ `{{row_number}}`、`{{rank}}`<br>⚠️ 或直接写 | 占位符简化语法 |
+| **JSON 查询** | ✅ `{{json_extract}}`<br>⚠️ 必须适配多数据库时 | 自动适配不同数据库语法 |
+| **字符串聚合** | ✅ `{{group_concat}}`<br>⚠️ 必须适配多数据库时 | 自动适配不同数据库语法 |
+| **UPSERT** | ✅ `{{upsert}}`<br>⚠️ 必须适配多数据库时 | 不同数据库语法差异大 |
+| **简单数学函数** | ❌ 不用占位符<br>✅ 直接写 `ROUND(price, 2)` | 占位符反而更复杂 |
+| **WHERE 条件** | ❌ 不用占位符<br>✅ 直接写 SQL | 直接写更直观 |
+
+**核心原则：**
+- ✅ 使用核心占位符（`{{table}}`, `{{columns}}`, `{{values}}`, `{{set}}`, `{{orderby}}`）
+- ⚠️ 高级占位符仅在**多数据库适配**或**复杂场景**下使用
+- ❌ 简单场景下，直接写 SQL 永远是最佳选择
+
+---
+
 ## 📚 完整示例：TodoWebApi
 
 ### 数据模型

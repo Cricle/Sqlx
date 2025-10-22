@@ -38,8 +38,8 @@ public partial class UserRepository(SqliteConnection connection, ILogger<UserRep
     // 🔧 实现partial方法：执行前
     partial void OnExecuting(string operationName, global::System.Data.IDbCommand command)
     {
-        logger.LogDebug("🔄 开始执行: {Operation}, SQL: {SQL}", 
-            operationName, 
+        logger.LogDebug("🔄 开始执行: {Operation}, SQL: {SQL}",
+            operationName,
             command.CommandText);
     }
 
@@ -47,8 +47,8 @@ public partial class UserRepository(SqliteConnection connection, ILogger<UserRep
     partial void OnExecuted(string operationName, global::System.Data.IDbCommand command, object? result, long elapsedTicks)
     {
         var elapsedMs = elapsedTicks * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
-        logger.LogInformation("✅ 执行完成: {Operation}, 耗时: {Elapsed:F2}ms", 
-            operationName, 
+        logger.LogInformation("✅ 执行完成: {Operation}, 耗时: {Elapsed:F2}ms",
+            operationName,
             elapsedMs);
     }
 
@@ -56,8 +56,8 @@ public partial class UserRepository(SqliteConnection connection, ILogger<UserRep
     partial void OnExecuteFail(string operationName, global::System.Data.IDbCommand command, global::System.Exception exception, long elapsedTicks)
     {
         var elapsedMs = elapsedTicks * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
-        logger.LogError(exception, "❌ 执行失败: {Operation}, 耗时: {Elapsed:F2}ms", 
-            operationName, 
+        logger.LogError(exception, "❌ 执行失败: {Operation}, 耗时: {Elapsed:F2}ms",
+            operationName,
             elapsedMs);
     }
 }
@@ -83,7 +83,7 @@ public partial class UserRepository
     partial void OnExecuted(string operationName, global::System.Data.IDbCommand command, object? result, long elapsedTicks)
     {
         var elapsedMs = elapsedTicks * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
-        s_operationDuration.Record(elapsedMs, 
+        s_operationDuration.Record(elapsedMs,
             new KeyValuePair<string, object?>("operation", operationName),
             new KeyValuePair<string, object?>("success", "true"));
     }
@@ -91,7 +91,7 @@ public partial class UserRepository
     partial void OnExecuteFail(string operationName, global::System.Data.IDbCommand command, global::System.Exception exception, long elapsedTicks)
     {
         var elapsedMs = elapsedTicks * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
-        s_operationDuration.Record(elapsedMs, 
+        s_operationDuration.Record(elapsedMs,
             new KeyValuePair<string, object?>("operation", operationName),
             new KeyValuePair<string, object?>("success", "false"),
             new KeyValuePair<string, object?>("error.type", exception.GetType().Name));
@@ -126,9 +126,9 @@ public partial class UserRepository
                 .Select(p => new { p.ParameterName, p.Value })
                 .ToArray()
         };
-        
+
         s_auditLog.Enqueue(entry);
-        
+
         // 定期持久化审计日志
         if (s_auditLog.Count > 1000)
         {
@@ -148,7 +148,7 @@ public partial class UserRepository
             ErrorMessage = exception.Message,
             ErrorType = exception.GetType().Name
         };
-        
+
         s_auditLog.Enqueue(entry);
     }
 
@@ -183,15 +183,15 @@ public partial class UserRepository
     partial void OnExecuted(string operationName, global::System.Data.IDbCommand command, object? result, long elapsedTicks)
     {
         var elapsedMs = elapsedTicks * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
-        
+
         if (elapsedMs > SlowQueryThresholdMs)
         {
-            logger.LogWarning("🐌 慢查询检测: {Operation}, 耗时: {Elapsed:F2}ms (阈值: {Threshold}ms)\n  SQL: {SQL}", 
-                operationName, 
+            logger.LogWarning("🐌 慢查询检测: {Operation}, 耗时: {Elapsed:F2}ms (阈值: {Threshold}ms)\n  SQL: {SQL}",
+                operationName,
                 elapsedMs,
                 SlowQueryThresholdMs,
                 command.CommandText);
-            
+
             // 可选：发送告警到监控系统
             _ = Task.Run(() => SendSlowQueryAlert(operationName, elapsedMs, command.CommandText));
         }
@@ -296,7 +296,7 @@ partial void OnExecuting(string operationName, IDbCommand command)
 
 ```csharp
 public partial class UserRepository(
-    SqliteConnection connection, 
+    SqliteConnection connection,
     ILogger<UserRepository> logger,
     IMetricsCollector metrics) : IUserRepository
 {
@@ -315,8 +315,8 @@ partial void OnExecuting(string operationName, IDbCommand command)
 {
 #if DEBUG
     // 开发环境：详细日志
-    logger.LogDebug("SQL: {SQL}\n参数: {Params}", 
-        command.CommandText, 
+    logger.LogDebug("SQL: {SQL}\n参数: {Params}",
+        command.CommandText,
         string.Join(", ", command.Parameters.Cast<IDataParameter>().Select(p => $"{p.ParameterName}={p.Value}")));
 #else
     // 生产环境：简化日志

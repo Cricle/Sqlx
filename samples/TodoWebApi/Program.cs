@@ -28,13 +28,6 @@ builder.Services.AddSingleton(_ => sqliteConnection);
 builder.Services.AddSingleton<ITodoService, TodoService>();
 builder.Services.AddSingleton<DatabaseService>();
 
-// 配置 Sqlx 全局拦截器
-// 1. Activity追踪（兼容OpenTelemetry）
-Sqlx.Interceptors.SqlxInterceptors.Add(new Sqlx.Interceptors.ActivityInterceptor());
-
-// 2. 简单日志拦截器（示例）
-Sqlx.Interceptors.SqlxInterceptors.Add(new TodoWebApi.Interceptors.SimpleLogInterceptor());
-
 var app = builder.Build();
 
 // 中间件配置

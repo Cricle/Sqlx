@@ -87,7 +87,10 @@ public class AttributeHandler
                     var sqlArg = attribute.ConstructorArguments[0];
                     if (sqlArg.Value != null)
                     {
-                        sb.Append($"\"{sqlArg.Value.ToString().Replace("\"", "\\\"")}\"");
+                        var sqlValue = sqlArg.Value.ToString();
+                        // 使用verbatim字符串字面量处理多行SQL，避免换行符导致的编译错误
+                        // 需要转义双引号为两个双引号
+                        sb.Append($"@\"{sqlValue.Replace("\"", "\"\"")}\"");
                     }
                 }
                 sb.Append(')');
@@ -100,7 +103,9 @@ public class AttributeHandler
                     var sqlArg = attribute.ConstructorArguments[0];
                     if (sqlArg.Value != null)
                     {
-                        sb.Append($"\"{sqlArg.Value.ToString().Replace("\"", "\\\"")}\"");
+                        var sqlValue = sqlArg.Value.ToString();
+                        // 使用verbatim字符串字面量处理多行SQL
+                        sb.Append($"@\"{sqlValue.Replace("\"", "\"\"")}\"");
                     }
                 }
 

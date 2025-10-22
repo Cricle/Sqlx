@@ -3,13 +3,14 @@ using BenchmarkDotNet.Order;
 using Dapper;
 using Microsoft.Data.Sqlite;
 using Sqlx.Benchmarks.Models;
+using Sqlx.Benchmarks.Repositories;
 using System.Data;
 
 namespace Sqlx.Benchmarks.Benchmarks;
 
 /// <summary>
-/// CRUD 操作性能测试
-/// 对比 INSERT/UPDATE/DELETE 操作的性能
+/// CRUD操作性能测试
+/// 对比 Sqlx、Dapper、原始 ADO.NET 的增删改查性能
 /// </summary>
 [MemoryDiagnoser]
 [Orderer(SummaryOrderPolicy.FastestToSlowest)]
@@ -17,7 +18,7 @@ namespace Sqlx.Benchmarks.Benchmarks;
 public class CrudBenchmark
 {
     private SqliteConnection _connection = null!;
-    private int _insertId = 1000;
+    private IUserRepository _userRepository = null!;
 
     [GlobalSetup]
     public void Setup()
@@ -40,14 +41,8 @@ public class CrudBenchmark
             )";
         cmd.ExecuteNonQuery();
 
-        // 插入初始数据
-        for (int i = 1; i <= 100; i++)
-        {
-            cmd.CommandText = $@"
-                INSERT INTO users (name, email, age, salary, is_active, created_at)
-                VALUES ('User{i}', 'user{i}@example.com', {20 + i % 50}, {30000 + i * 1000}, {i % 2}, '2024-01-01')";
-            cmd.ExecuteNonQuery();
-        }
+        // 初始化Sqlx Repository
+        _userRepository = new UserRepository(_connection);
     }
 
     [GlobalCleanup]
@@ -56,12 +51,21 @@ public class CrudBenchmark
         _connection?.Dispose();
     }
 
+    [IterationSetup]
+    public void IterationSetup()
+    {
+        // 每次迭代前清空表
+        using var cmd = _connection.CreateCommand();
+        cmd.CommandText = "DELETE FROM users";
+        cmd.ExecuteNonQuery();
+    }
+
     // ============================================================
     // INSERT 操作
     // ============================================================
 
     /// <summary>
-    /// 原始ADO.NET - 单条插入
+    /// 原始ADO.NET - 插入
     /// </summary>
     [Benchmark(Baseline = true)]
     public int RawAdoNet_Insert()
@@ -69,68 +73,74 @@ public class CrudBenchmark
         using var cmd = _connection.CreateCommand();
         cmd.CommandText = @"
             INSERT INTO users (name, email, age, salary, is_active, created_at)
-            VALUES (@name, @email, @age, @salary, @isActive, @createdAt);
-            SELECT last_insert_rowid();";
+            VALUES (@name, @email, @age, @salary, @isActive, @createdAt)";
 
-        AddParameter(cmd, "@name", DbType.String, $"NewUser{_insertId}");
-        AddParameter(cmd, "@email", DbType.String, $"newuser{_insertId}@example.com");
-        AddParameter(cmd, "@age", DbType.Int32, 25);
-        AddParameter(cmd, "@salary", DbType.Double, 50000.0);
-        AddParameter(cmd, "@isActive", DbType.Int32, 1);
-        AddParameter(cmd, "@createdAt", DbType.String, "2024-01-01");
+        var p1 = cmd.CreateParameter();
+        p1.ParameterName = "@name";
+        p1.Value = "TestUser";
+        cmd.Parameters.Add(p1);
 
-        var result = (int)(long)cmd.ExecuteScalar()!;
-        _insertId++;
-        return result;
+        var p2 = cmd.CreateParameter();
+        p2.ParameterName = "@email";
+        p2.Value = "test@example.com";
+        cmd.Parameters.Add(p2);
+
+        var p3 = cmd.CreateParameter();
+        p3.ParameterName = "@age";
+        p3.Value = 30;
+        cmd.Parameters.Add(p3);
+
+        var p4 = cmd.CreateParameter();
+        p4.ParameterName = "@salary";
+        p4.Value = 50000.0;
+        cmd.Parameters.Add(p4);
+
+        var p5 = cmd.CreateParameter();
+        p5.ParameterName = "@isActive";
+        p5.Value = 1;
+        cmd.Parameters.Add(p5);
+
+        var p6 = cmd.CreateParameter();
+        p6.ParameterName = "@createdAt";
+        p6.Value = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        cmd.Parameters.Add(p6);
+
+        return cmd.ExecuteNonQuery();
     }
 
     /// <summary>
-    /// Dapper - 单条插入
+    /// Dapper - 插入
     /// </summary>
     [Benchmark]
     public int Dapper_Insert()
     {
-        var sql = @"
+        return _connection.Execute(@"
             INSERT INTO users (name, email, age, salary, is_active, created_at)
-            VALUES (@Name, @Email, @Age, @Salary, @IsActive, @CreatedAt);
-            SELECT last_insert_rowid();";
-
-        var result = _connection.ExecuteScalar<int>(sql, new
-        {
-            Name = $"NewUser{_insertId}",
-            Email = $"newuser{_insertId}@example.com",
-            Age = 25,
-            Salary = 50000.0,
-            IsActive = 1,
-            CreatedAt = "2024-01-01"
-        });
-
-        _insertId++;
-        return result;
+            VALUES (@name, @email, @age, @salary, @isActive, @createdAt)",
+            new
+            {
+                name = "TestUser",
+                email = "test@example.com",
+                age = 30,
+                salary = 50000.0,
+                isActive = 1,
+                createdAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+            });
     }
 
     /// <summary>
-    /// Sqlx模拟 - 单条插入
+    /// Sqlx - 插入（使用源生成器生成的代码）
     /// </summary>
     [Benchmark]
     public int Sqlx_Insert()
     {
-        using var cmd = _connection.CreateCommand();
-        cmd.CommandText = @"
-            INSERT INTO users (name, email, age, salary, is_active, created_at)
-            VALUES (@name, @email, @age, @salary, @isActive, @createdAt);
-            SELECT last_insert_rowid();";
-
-        AddParameter(cmd, "@name", DbType.String, $"NewUser{_insertId}");
-        AddParameter(cmd, "@email", DbType.String, $"newuser{_insertId}@example.com");
-        AddParameter(cmd, "@age", DbType.Int32, 25);
-        AddParameter(cmd, "@salary", DbType.Double, 50000.0);
-        AddParameter(cmd, "@isActive", DbType.Int32, 1);
-        AddParameter(cmd, "@createdAt", DbType.String, "2024-01-01");
-
-        var result = (int)(long)cmd.ExecuteScalar()!;
-        _insertId++;
-        return result;
+        return _userRepository.InsertSync(
+            "TestUser",
+            "test@example.com",
+            30,
+            50000m,
+            1,
+            DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
     }
 
     // ============================================================
@@ -138,52 +148,92 @@ public class CrudBenchmark
     // ============================================================
 
     /// <summary>
-    /// 原始ADO.NET - 单条更新
+    /// 原始ADO.NET - 更新
     /// </summary>
     [Benchmark]
     public int RawAdoNet_Update()
     {
+        // 先插入一条记录
+        using (var insertCmd = _connection.CreateCommand())
+        {
+            insertCmd.CommandText = "INSERT INTO users (name, email, age, salary, is_active, created_at) VALUES ('OldUser', 'old@example.com', 25, 40000, 1, '2024-01-01')";
+            insertCmd.ExecuteNonQuery();
+        }
+
+        // 更新记录
         using var cmd = _connection.CreateCommand();
         cmd.CommandText = @"
-            UPDATE users
-            SET salary = @salary, updated_at = @updatedAt
-            WHERE id = @id";
+            UPDATE users SET name = @name, email = @email, age = @age, salary = @salary, updated_at = @updatedAt
+            WHERE id = 1";
 
-        AddParameter(cmd, "@salary", DbType.Double, 60000.0);
-        AddParameter(cmd, "@updatedAt", DbType.String, "2024-06-01");
-        AddParameter(cmd, "@id", DbType.Int32, 1);
+        var p1 = cmd.CreateParameter();
+        p1.ParameterName = "@name";
+        p1.Value = "UpdatedUser";
+        cmd.Parameters.Add(p1);
+
+        var p2 = cmd.CreateParameter();
+        p2.ParameterName = "@email";
+        p2.Value = "updated@example.com";
+        cmd.Parameters.Add(p2);
+
+        var p3 = cmd.CreateParameter();
+        p3.ParameterName = "@age";
+        p3.Value = 35;
+        cmd.Parameters.Add(p3);
+
+        var p4 = cmd.CreateParameter();
+        p4.ParameterName = "@salary";
+        p4.Value = 60000.0;
+        cmd.Parameters.Add(p4);
+
+        var p5 = cmd.CreateParameter();
+        p5.ParameterName = "@updatedAt";
+        p5.Value = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        cmd.Parameters.Add(p5);
 
         return cmd.ExecuteNonQuery();
     }
 
     /// <summary>
-    /// Dapper - 单条更新
+    /// Dapper - 更新
     /// </summary>
     [Benchmark]
     public int Dapper_Update()
     {
-        return _connection.Execute(
-            "UPDATE users SET salary = @Salary, updated_at = @UpdatedAt WHERE id = @Id",
-            new { Salary = 60000.0, UpdatedAt = "2024-06-01", Id = 1 });
+        // 先插入一条记录
+        _connection.Execute("INSERT INTO users (name, email, age, salary, is_active, created_at) VALUES ('OldUser', 'old@example.com', 25, 40000, 1, '2024-01-01')");
+
+        // 更新记录
+        return _connection.Execute(@"
+            UPDATE users SET name = @name, email = @email, age = @age, salary = @salary, updated_at = @updatedAt
+            WHERE id = 1",
+            new
+            {
+                name = "UpdatedUser",
+                email = "updated@example.com",
+                age = 35,
+                salary = 60000.0,
+                updatedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+            });
     }
 
     /// <summary>
-    /// Sqlx模拟 - 单条更新
+    /// Sqlx - 更新（使用源生成器生成的代码）
     /// </summary>
     [Benchmark]
     public int Sqlx_Update()
     {
-        using var cmd = _connection.CreateCommand();
-        cmd.CommandText = @"
-            UPDATE users
-            SET salary = @salary, updated_at = @updatedAt
-            WHERE id = @id";
+        // 先插入一条记录
+        _userRepository.InsertSync("OldUser", "old@example.com", 25, 40000m, 1, "2024-01-01");
 
-        AddParameter(cmd, "@salary", DbType.Double, 60000.0);
-        AddParameter(cmd, "@updatedAt", DbType.String, "2024-06-01");
-        AddParameter(cmd, "@id", DbType.Int32, 1);
-
-        return cmd.ExecuteNonQuery();
+        // 更新记录
+        return _userRepository.UpdateSync(
+            1,
+            "UpdatedUser",
+            "updated@example.com",
+            35,
+            60000m,
+            DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
     }
 
     // ============================================================
@@ -191,181 +241,127 @@ public class CrudBenchmark
     // ============================================================
 
     /// <summary>
-    /// 原始ADO.NET - 条件删除
+    /// 原始ADO.NET - 删除
     /// </summary>
     [Benchmark]
     public int RawAdoNet_Delete()
     {
-        using var cmd = _connection.CreateCommand();
-        cmd.CommandText = "DELETE FROM users WHERE id > @id";
+        // 先插入一条记录
+        using (var insertCmd = _connection.CreateCommand())
+        {
+            insertCmd.CommandText = "INSERT INTO users (name, email, age, salary, is_active, created_at) VALUES ('ToDelete', 'delete@example.com', 30, 50000, 1, '2024-01-01')";
+            insertCmd.ExecuteNonQuery();
+        }
 
-        AddParameter(cmd, "@id", DbType.Int32, 1000);
+        // 删除记录
+        using var cmd = _connection.CreateCommand();
+        cmd.CommandText = "DELETE FROM users WHERE id = 1";
 
         return cmd.ExecuteNonQuery();
     }
 
     /// <summary>
-    /// Dapper - 条件删除
+    /// Dapper - 删除
     /// </summary>
     [Benchmark]
     public int Dapper_Delete()
     {
-        return _connection.Execute("DELETE FROM users WHERE id > @Id", new { Id = 1000 });
+        // 先插入一条记录
+        _connection.Execute("INSERT INTO users (name, email, age, salary, is_active, created_at) VALUES ('ToDelete', 'delete@example.com', 30, 50000, 1, '2024-01-01')");
+
+        // 删除记录
+        return _connection.Execute("DELETE FROM users WHERE id = @id", new { id = 1 });
     }
 
     /// <summary>
-    /// Sqlx模拟 - 条件删除
+    /// Sqlx - 删除（使用源生成器生成的代码）
     /// </summary>
     [Benchmark]
     public int Sqlx_Delete()
     {
-        using var cmd = _connection.CreateCommand();
-        cmd.CommandText = "DELETE FROM users WHERE id > @id";
+        // 先插入一条记录
+        _userRepository.InsertSync("ToDelete", "delete@example.com", 30, 50000m, 1, "2024-01-01");
 
-        AddParameter(cmd, "@id", DbType.Int32, 1000);
-
-        return cmd.ExecuteNonQuery();
+        // 删除记录
+        return _userRepository.DeleteSync(1);
     }
 
     // ============================================================
-    // 批量操作
+    // 批量INSERT
     // ============================================================
 
     /// <summary>
-    /// 原始ADO.NET - 批量插入（10条）
+    /// 原始ADO.NET - 批量插入10条
     /// </summary>
     [Benchmark]
-    public int RawAdoNet_BulkInsert()
+    public int RawAdoNet_BatchInsert()
     {
         int count = 0;
-        using var transaction = _connection.BeginTransaction();
-        try
-        {
-            using var cmd = _connection.CreateCommand();
-            cmd.Transaction = transaction;
-            cmd.CommandText = @"
-                INSERT INTO users (name, email, age, salary, is_active, created_at)
-                VALUES (@name, @email, @age, @salary, @isActive, @createdAt)";
-
-            for (int i = 0; i < 10; i++)
-            {
-                cmd.Parameters.Clear();
-                AddParameter(cmd, "@name", DbType.String, $"BulkUser{_insertId + i}");
-                AddParameter(cmd, "@email", DbType.String, $"bulk{_insertId + i}@example.com");
-                AddParameter(cmd, "@age", DbType.Int32, 25);
-                AddParameter(cmd, "@salary", DbType.Double, 50000.0);
-                AddParameter(cmd, "@isActive", DbType.Int32, 1);
-                AddParameter(cmd, "@createdAt", DbType.String, "2024-01-01");
-
-                count += cmd.ExecuteNonQuery();
-            }
-
-            transaction.Commit();
-            _insertId += 10;
-        }
-        catch
-        {
-            transaction.Rollback();
-            throw;
-        }
-
-        return count;
-    }
-
-    /// <summary>
-    /// Dapper - 批量插入（10条）
-    /// </summary>
-    [Benchmark]
-    public int Dapper_BulkInsert()
-    {
-        var users = new List<object>();
         for (int i = 0; i < 10; i++)
         {
-            users.Add(new
-            {
-                Name = $"BulkUser{_insertId + i}",
-                Email = $"bulk{_insertId + i}@example.com",
-                Age = 25,
-                Salary = 50000.0,
-                IsActive = 1,
-                CreatedAt = "2024-01-01"
-            });
-        }
-
-        int count;
-        using var transaction = _connection.BeginTransaction();
-        try
-        {
-            count = _connection.Execute(
-                @"INSERT INTO users (name, email, age, salary, is_active, created_at)
-                  VALUES (@Name, @Email, @Age, @Salary, @IsActive, @CreatedAt)",
-                users, transaction);
-
-            transaction.Commit();
-            _insertId += 10;
-        }
-        catch
-        {
-            transaction.Rollback();
-            throw;
-        }
-
-        return count;
-    }
-
-    /// <summary>
-    /// Sqlx模拟 - 批量插入（10条）
-    /// </summary>
-    [Benchmark]
-    public int Sqlx_BulkInsert()
-    {
-        int count = 0;
-        using var transaction = _connection.BeginTransaction();
-        try
-        {
             using var cmd = _connection.CreateCommand();
-            cmd.Transaction = transaction;
             cmd.CommandText = @"
                 INSERT INTO users (name, email, age, salary, is_active, created_at)
                 VALUES (@name, @email, @age, @salary, @isActive, @createdAt)";
 
-            for (int i = 0; i < 10; i++)
-            {
-                cmd.Parameters.Clear();
-                AddParameter(cmd, "@name", DbType.String, $"BulkUser{_insertId + i}");
-                AddParameter(cmd, "@email", DbType.String, $"bulk{_insertId + i}@example.com");
-                AddParameter(cmd, "@age", DbType.Int32, 25);
-                AddParameter(cmd, "@salary", DbType.Double, 50000.0);
-                AddParameter(cmd, "@isActive", DbType.Int32, 1);
-                AddParameter(cmd, "@createdAt", DbType.String, "2024-01-01");
+            cmd.Parameters.Add(CreateParameter(cmd, "@name", $"User{i}"));
+            cmd.Parameters.Add(CreateParameter(cmd, "@email", $"user{i}@example.com"));
+            cmd.Parameters.Add(CreateParameter(cmd, "@age", 20 + i));
+            cmd.Parameters.Add(CreateParameter(cmd, "@salary", 30000.0 + i * 1000));
+            cmd.Parameters.Add(CreateParameter(cmd, "@isActive", 1));
+            cmd.Parameters.Add(CreateParameter(cmd, "@createdAt", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")));
 
-                count += cmd.ExecuteNonQuery();
-            }
-
-            transaction.Commit();
-            _insertId += 10;
+            count += cmd.ExecuteNonQuery();
         }
-        catch
-        {
-            transaction.Rollback();
-            throw;
-        }
-
         return count;
     }
 
-    // ============================================================
-    // 辅助方法
-    // ============================================================
-
-    private static void AddParameter(IDbCommand cmd, string name, DbType type, object value)
+    /// <summary>
+    /// Dapper - 批量插入10条
+    /// </summary>
+    [Benchmark]
+    public int Dapper_BatchInsert()
     {
-        var p = cmd.CreateParameter();
-        p.ParameterName = name;
-        p.DbType = type;
-        p.Value = value;
-        cmd.Parameters.Add(p);
+        var users = Enumerable.Range(0, 10).Select(i => new
+        {
+            name = $"User{i}",
+            email = $"user{i}@example.com",
+            age = 20 + i,
+            salary = 30000.0 + i * 1000,
+            isActive = 1,
+            createdAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+        });
+
+        return _connection.Execute(@"
+            INSERT INTO users (name, email, age, salary, is_active, created_at)
+            VALUES (@name, @email, @age, @salary, @isActive, @createdAt)", users);
+    }
+
+    /// <summary>
+    /// Sqlx - 批量插入10条（使用源生成器生成的代码）
+    /// </summary>
+    [Benchmark]
+    public int Sqlx_BatchInsert()
+    {
+        int count = 0;
+        for (int i = 0; i < 10; i++)
+        {
+            count += _userRepository.InsertSync(
+                $"User{i}",
+                $"user{i}@example.com",
+                20 + i,
+                30000m + i * 1000,
+                1,
+                DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+        }
+        return count;
+    }
+
+    private IDbDataParameter CreateParameter(IDbCommand cmd, string name, object value)
+    {
+        var param = cmd.CreateParameter();
+        param.ParameterName = name;
+        param.Value = value;
+        return param;
     }
 }
-
-

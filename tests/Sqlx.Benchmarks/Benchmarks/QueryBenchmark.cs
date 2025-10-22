@@ -3,6 +3,7 @@ using BenchmarkDotNet.Order;
 using Dapper;
 using Microsoft.Data.Sqlite;
 using Sqlx.Benchmarks.Models;
+using Sqlx.Benchmarks.Repositories;
 using System.Data;
 
 namespace Sqlx.Benchmarks.Benchmarks;
@@ -17,6 +18,7 @@ namespace Sqlx.Benchmarks.Benchmarks;
 public class QueryBenchmark
 {
     private SqliteConnection _connection = null!;
+    private IUserRepository _userRepository = null!;
 
     [GlobalSetup]
     public void Setup()
@@ -47,6 +49,9 @@ public class QueryBenchmark
                 VALUES ('User{i}', 'user{i}@example.com', {20 + i % 50}, {30000 + i * 1000}, {i % 2}, '2024-01-{i % 28 + 1:D2}')";
             cmd.ExecuteNonQuery();
         }
+
+        // 初始化Sqlx Repository (使用源生成的实现)
+        _userRepository = new UserRepository(_connection);
     }
 
     [GlobalCleanup]
@@ -97,36 +102,12 @@ public class QueryBenchmark
     }
 
     /// <summary>
-    /// Sqlx模拟 - 单行查询（手写映射，类似生成代码）
+    /// Sqlx - 单行查询（使用源生成器生成的代码）
     /// </summary>
     [Benchmark]
     public User? Sqlx_SingleRow()
     {
-        // 模拟源生成器生成的代码
-        using var cmd = _connection.CreateCommand();
-        cmd.CommandText = "SELECT id, name, email, age, salary, is_active, created_at, updated_at FROM users WHERE id = @id";
-
-        var p = cmd.CreateParameter();
-        p.ParameterName = "@id";
-        p.Value = 1;
-        cmd.Parameters.Add(p);
-
-        using var reader = cmd.ExecuteReader();
-        if (reader.Read())
-        {
-            return new User
-            {
-                Id = reader.GetInt32(0),
-                Name = reader.GetString(1),
-                Email = reader.GetString(2),
-                Age = reader.GetInt32(3),
-                Salary = (decimal)reader.GetDouble(4),
-                IsActive = reader.GetInt32(5) == 1,
-                CreatedAt = DateTime.Parse(reader.GetString(6)),
-                UpdatedAt = reader.IsDBNull(7) ? null : DateTime.Parse(reader.GetString(7))
-            };
-        }
-        return null;
+        return _userRepository.GetByIdSync(1);
     }
 
     // ============================================================
@@ -172,31 +153,12 @@ public class QueryBenchmark
     }
 
     /// <summary>
-    /// Sqlx模拟 - 多行查询
+    /// Sqlx - 多行查询（使用源生成器生成的代码）
     /// </summary>
     [Benchmark]
     public List<User> Sqlx_MultiRow()
     {
-        var users = new List<User>(10);
-        using var cmd = _connection.CreateCommand();
-        cmd.CommandText = "SELECT id, name, email, age, salary, is_active, created_at, updated_at FROM users LIMIT 10";
-
-        using var reader = cmd.ExecuteReader();
-        while (reader.Read())
-        {
-            users.Add(new User
-            {
-                Id = reader.GetInt32(0),
-                Name = reader.GetString(1),
-                Email = reader.GetString(2),
-                Age = reader.GetInt32(3),
-                Salary = (decimal)reader.GetDouble(4),
-                IsActive = reader.GetInt32(5) == 1,
-                CreatedAt = DateTime.Parse(reader.GetString(6)),
-                UpdatedAt = reader.IsDBNull(7) ? null : DateTime.Parse(reader.GetString(7))
-            });
-        }
-        return users;
+        return _userRepository.GetTopNSync(10);
     }
 
     // ============================================================
@@ -242,31 +204,12 @@ public class QueryBenchmark
     }
 
     /// <summary>
-    /// Sqlx模拟 - 全表查询（100行）
+    /// Sqlx - 全表查询（100行）（使用源生成器生成的代码）
     /// </summary>
     [Benchmark]
     public List<User> Sqlx_FullTable()
     {
-        var users = new List<User>(100);
-        using var cmd = _connection.CreateCommand();
-        cmd.CommandText = "SELECT id, name, email, age, salary, is_active, created_at, updated_at FROM users";
-
-        using var reader = cmd.ExecuteReader();
-        while (reader.Read())
-        {
-            users.Add(new User
-            {
-                Id = reader.GetInt32(0),
-                Name = reader.GetString(1),
-                Email = reader.GetString(2),
-                Age = reader.GetInt32(3),
-                Salary = (decimal)reader.GetDouble(4),
-                IsActive = reader.GetInt32(5) == 1,
-                CreatedAt = DateTime.Parse(reader.GetString(6)),
-                UpdatedAt = reader.IsDBNull(7) ? null : DateTime.Parse(reader.GetString(7))
-            });
-        }
-        return users;
+        return _userRepository.GetAllSync();
     }
 
     // ============================================================
@@ -323,44 +266,11 @@ public class QueryBenchmark
     }
 
     /// <summary>
-    /// Sqlx模拟 - 参数化查询
+    /// Sqlx - 参数化查询（使用源生成器生成的代码）
     /// </summary>
     [Benchmark]
     public List<User> Sqlx_WithParams()
     {
-        var users = new List<User>(10);
-        using var cmd = _connection.CreateCommand();
-        cmd.CommandText = "SELECT id, name, email, age, salary, is_active, created_at, updated_at FROM users WHERE age > @minAge AND is_active = @isActive";
-
-        var p1 = cmd.CreateParameter();
-        p1.ParameterName = "@minAge";
-        p1.Value = 30;
-        p1.DbType = DbType.Int32;
-        cmd.Parameters.Add(p1);
-
-        var p2 = cmd.CreateParameter();
-        p2.ParameterName = "@isActive";
-        p2.Value = 1;
-        p2.DbType = DbType.Int32;
-        cmd.Parameters.Add(p2);
-
-        using var reader = cmd.ExecuteReader();
-        while (reader.Read())
-        {
-            users.Add(new User
-            {
-                Id = reader.GetInt32(0),
-                Name = reader.GetString(1),
-                Email = reader.GetString(2),
-                Age = reader.GetInt32(3),
-                Salary = (decimal)reader.GetDouble(4),
-                IsActive = reader.GetInt32(5) == 1,
-                CreatedAt = DateTime.Parse(reader.GetString(6)),
-                UpdatedAt = reader.IsDBNull(7) ? null : DateTime.Parse(reader.GetString(7))
-            });
-        }
-        return users;
+        return _userRepository.GetByAgeAndStatusSync(30, 1);
     }
 }
-
-

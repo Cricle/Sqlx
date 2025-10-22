@@ -74,8 +74,22 @@ public class CodeGenerationService
             // Return result if not void
             if (!method.ReturnsVoid)
             {
-                // For repository methods, always wrap in Task.FromResult since they implement async interfaces
-                sb.AppendLine("return global::System.Threading.Tasks.Task.FromResult(__result__);");
+                // Check if the return type is Task or Task<T>
+                var methodReturnType = method.ReturnType;
+                var isTaskReturn = methodReturnType.Name == "Task" && 
+                                   methodReturnType.ContainingNamespace?.ToDisplayString() == "System.Threading.Tasks";
+                
+                if (isTaskReturn)
+                {
+                    // For async methods returning Task<T>, wrap in Task.FromResult
+                    sb.AppendLine("return global::System.Threading.Tasks.Task.FromResult(__result__);");
+                }
+                else
+                {
+                    // For synchronous methods, cast and return directly
+                    var returnTypeName = methodReturnType.GetCachedDisplayString();
+                    sb.AppendLine($"return ({returnTypeName})__result__;");
+                }
             }
 
             sb.PopIndent();
@@ -129,18 +143,34 @@ public class CodeGenerationService
         // Add detailed information if template processing results are available
         if (templateResult != null)
         {
-            // Show original template
+            // Show original template (use para instead of code to avoid XML parsing issues)
             if (!string.IsNullOrEmpty(originalTemplate))
             {
                 sb.AppendLine("/// <para>📝 Original Template:</para>");
-                sb.AppendLine($"/// <code>{System.Security.SecurityElement.Escape(originalTemplate)}</code>");
+                // Use para tags to avoid XML code block parsing issues with multi-line SQL
+                foreach (var line in originalTemplate.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var trimmedLine = line.Trim();
+                    if (!string.IsNullOrWhiteSpace(trimmedLine))
+                    {
+                        sb.AppendLine($"/// <para>    {System.Security.SecurityElement.Escape(trimmedLine)}</para>");
+                    }
+                }
             }
 
             // Show processed SQL
             if (!string.IsNullOrEmpty(templateResult.ProcessedSql))
             {
                 sb.AppendLine("/// <para>📋 Generated SQL (Template Processed):</para>");
-                sb.AppendLine($"/// <code>{System.Security.SecurityElement.Escape(templateResult.ProcessedSql)}</code>");
+                // Use para tags to avoid XML code block parsing issues with multi-line SQL
+                foreach (var line in templateResult.ProcessedSql.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var trimmedLine = line.Trim();
+                    if (!string.IsNullOrWhiteSpace(trimmedLine))
+                    {
+                        sb.AppendLine($"/// <para>    {System.Security.SecurityElement.Escape(trimmedLine)}</para>");
+                    }
+                }
             }
 
             // Show parameter information

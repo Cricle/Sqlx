@@ -13,9 +13,9 @@
 
 ### 核心文档
 - **[占位符参考](PLACEHOLDERS.md)** - 所有占位符的详细说明
-- **[设计原则](DESIGN_PRINCIPLES.md)** - Sqlx 的核心设计理念
 - **[最佳实践](BEST_PRACTICES.md)** - 推荐的使用方式
 - **[Partial 方法指南](PARTIAL_METHODS_GUIDE.md)** - 自定义拦截详解
+- **[框架兼容性](FRAMEWORK_COMPATIBILITY.md)** - .NET 框架支持
 
 ### 高级主题
 - **[多数据库支持](MULTI_DATABASE_TEMPLATE_ENGINE.md)** - 6种数据库适配
@@ -23,9 +23,7 @@
 - **[API 参考](API_REFERENCE.md)** - 完整的API文档
 
 ### 性能与优化
-- **[性能分析](../PERFORMANCE_ANALYSIS.md)** - 完整的性能测试报告
-- **[性能瓶颈分析](../PERFORMANCE_BOTTLENECK_ANALYSIS.md)** - GetOrdinal优化详解
-- **[性能优化报告](../PERFORMANCE_OPTIMIZATION_REPORT.md)** - 优化历程
+- **[性能优化总结](../FORCED_TRACING_SUMMARY.md)** - 完整的性能测试报告和优化历程
 
 ---
 
@@ -45,16 +43,14 @@
 
 | 文档 | 说明 |
 |------|------|
-| [设计原则](DESIGN_PRINCIPLES.md) | 核心设计理念 |
 | [多数据库支持](MULTI_DATABASE_TEMPLATE_ENGINE.md) | 数据库适配机制 |
+| [框架兼容性](FRAMEWORK_COMPATIBILITY.md) | .NET框架支持 |
 
 ### ⚡ 性能
 
 | 文档 | 说明 |
 |------|------|
-| [性能分析](../PERFORMANCE_ANALYSIS.md) | 完整性能测试 |
-| [性能瓶颈分析](../PERFORMANCE_BOTTLENECK_ANALYSIS.md) | GetOrdinal优化 |
-| [性能优化报告](../PERFORMANCE_OPTIMIZATION_REPORT.md) | 优化历程 |
+| [性能优化总结](../FORCED_TRACING_SUMMARY.md) | 完整性能测试和优化历程 |
 
 ### 🔧 开发者
 
@@ -74,15 +70,14 @@
 3. [快速参考](QUICK_REFERENCE.md) - 收藏速查表
 
 ### 路线 2：深入学习（1小时）
-1. [设计原则](DESIGN_PRINCIPLES.md) - 理解设计思想
-2. [占位符参考](PLACEHOLDERS.md) - 掌握所有占位符
-3. [最佳实践](BEST_PRACTICES.md) - 学习推荐用法
-4. [高级特性](ADVANCED_FEATURES.md) - 探索进阶功能
+1. [占位符参考](PLACEHOLDERS.md) - 掌握所有占位符
+2. [最佳实践](BEST_PRACTICES.md) - 学习推荐用法
+3. [高级特性](ADVANCED_FEATURES.md) - 探索进阶功能
+4. [多数据库支持](MULTI_DATABASE_TEMPLATE_ENGINE.md) - 了解数据库适配
 
 ### 路线 3：性能优化（30分钟）
-1. [性能分析](../PERFORMANCE_ANALYSIS.md) - 了解性能数据
-2. [性能瓶颈分析](../PERFORMANCE_BOTTLENECK_ANALYSIS.md) - 深入优化细节
-3. [Partial 方法指南](PARTIAL_METHODS_GUIDE.md) - 自定义性能追踪
+1. [性能优化总结](../FORCED_TRACING_SUMMARY.md) - 了解性能数据和优化历程
+2. [Partial 方法指南](PARTIAL_METHODS_GUIDE.md) - 自定义性能追踪
 
 ---
 
@@ -94,7 +89,7 @@
 |------|----------|
 | **5分钟快速上手** | [快速开始](QUICK_START_GUIDE.md) + [快速参考](QUICK_REFERENCE.md) |
 | **学习所有占位符** | [占位符参考](PLACEHOLDERS.md) |
-| **了解性能表现** | [性能分析](../PERFORMANCE_ANALYSIS.md) |
+| **了解性能表现** | [性能优化总结](../FORCED_TRACING_SUMMARY.md) |
 | **从EF Core迁移** | [迁移指南](MIGRATION_GUIDE.md) |
 | **多数据库支持** | [多数据库支持](MULTI_DATABASE_TEMPLATE_ENGINE.md) |
 | **自定义拦截逻辑** | [Partial 方法指南](PARTIAL_METHODS_GUIDE.md) |
@@ -134,6 +129,6 @@
 
 **📚 选择你感兴趣的主题，开始探索吧！**
 
-[快速开始](QUICK_START_GUIDE.md) · [占位符](PLACEHOLDERS.md) · [最佳实践](BEST_PRACTICES.md) · [性能](../PERFORMANCE_ANALYSIS.md)
+[快速开始](QUICK_START_GUIDE.md) · [占位符](PLACEHOLDERS.md) · [最佳实践](BEST_PRACTICES.md) · [性能优化](../FORCED_TRACING_SUMMARY.md)
 
 </div>

@@ -81,7 +81,7 @@ public class TracingOverheadBenchmark
     {
         using var cmd = _connection.CreateCommand();
         cmd.CommandText = "SELECT id, name, email, age, salary, is_active, created_at, updated_at FROM users WHERE id = @id";
-        
+
         // 参数化查询
         var param = cmd.CreateParameter();
         param.ParameterName = "@id";

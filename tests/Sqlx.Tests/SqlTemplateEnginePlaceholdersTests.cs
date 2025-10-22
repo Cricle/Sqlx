@@ -93,7 +93,8 @@ public class SqlTemplateEnginePlaceholdersTests
     public void ColumnsPlaceholder_WithMultipleExcludes_ShouldExcludeAllSpecified()
     {
         // Arrange
-        var template = "INSERT INTO {{table}} ({{columns --exclude Id CreatedAt}}) VALUES ({{values}})";
+        // 注意：columns 和 values 都需要指定相同的排除选项以保持一致
+        var template = "INSERT INTO {{table}} ({{columns --exclude Id CreatedAt}}) VALUES ({{values --exclude Id CreatedAt}})";
 
         // Act
         var result = _engine!.ProcessTemplate(template, _testMethod!, _testEntity!, "test_table");
@@ -234,8 +235,10 @@ public class SqlTemplateEnginePlaceholdersTests
 
         // Assert
         // 应该包含 LIMIT 或 TOP（取决于数据库方言）
+        System.Diagnostics.Debug.WriteLine($"生成的SQL: {result.ProcessedSql}");
+        System.Diagnostics.Debug.WriteLine($"Errors: {string.Join(", ", result.Errors)}");
         var hasLimit = result.ProcessedSql.Contains("LIMIT") || result.ProcessedSql.Contains("TOP");
-        Assert.IsTrue(hasLimit, "应该包含 LIMIT 或 TOP");
+        Assert.IsTrue(hasLimit, $"应该包含 LIMIT 或 TOP。实际SQL: {result.ProcessedSql}");
     }
 
     #endregion

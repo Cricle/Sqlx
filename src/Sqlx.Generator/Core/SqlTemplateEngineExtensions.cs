@@ -88,22 +88,23 @@ public static class SqlTemplateEngineExtensions
             };
 
             // 根据目标数据库生成分页语句
+            // 注意：检查 IsNullOrEmpty 而不是 != null，因为 ExtractOption 可能返回空字符串
             if (targetDialect.Equals(SqlDefine.SqlServer))
             {
-                return offset != null
+                return !string.IsNullOrEmpty(offset)
                     ? $"OFFSET {offset} ROWS FETCH NEXT {count} ROWS ONLY"
                     : $"TOP {count}";
             }
             else if (targetDialect.Equals(SqlDefine.Oracle))
             {
-                return offset != null
+                return !string.IsNullOrEmpty(offset)
                     ? $"OFFSET {offset} ROWS FETCH NEXT {count} ROWS ONLY"
                     : $"ROWNUM <= {count}";
             }
             else
             {
                 // MySQL, PostgreSQL, SQLite
-                return offset != null
+                return !string.IsNullOrEmpty(offset)
                     ? $"LIMIT {count} OFFSET {offset}"
                     : $"LIMIT {count}";
             }

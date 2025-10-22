@@ -295,7 +295,8 @@ public class SqlTemplateEngine
         for (int i = 0; i < properties.Count; i++)
         {
             if (i > 0) propertiesSb.Append(", ");
-            propertiesSb.Append(dialect.ParameterPrefix).Append(properties[i].Name);
+            var paramName = SharedCodeGenerationUtilities.ConvertToSnakeCase(properties[i].Name);
+            propertiesSb.Append(dialect.ParameterPrefix).Append(paramName);
         }
 
         return propertiesSb.ToString();
@@ -329,7 +330,12 @@ public class SqlTemplateEngine
         }
 
         var properties = GetFilteredProperties(entityType, options, "Id", requireSetter: true, result);
-        return string.Join(", ", properties.Select(p => $"{SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)} = {dialect.ParameterPrefix}{p.Name}"));
+        return string.Join(", ", properties.Select(p =>
+        {
+            var columnName = SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name);
+            var paramName = columnName; // 参数名也使用snake_case
+            return $"{columnName} = {dialect.ParameterPrefix}{paramName}";
+        }));
     }
 
 
@@ -476,10 +482,12 @@ public class SqlTemplateEngine
         var excludeSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (excludeProperty != null) excludeSet.Add(excludeProperty);
 
-        var excludeOption = ExtractOption(options, "exclude", "");
+        // 解析新格式的选项（例如：--exclude Id CreatedAt）
+        var excludeOption = ExtractCommandLineOption(options, "--exclude");
         if (!string.IsNullOrEmpty(excludeOption))
         {
-            foreach (var item in excludeOption.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
+            // 支持空格分隔的多个列名
+            foreach (var item in excludeOption.Split(new char[] { ' ', ',' }, StringSplitOptions.RemoveEmptyEntries))
                 excludeSet.Add(item.Trim());
         }
 
@@ -608,6 +616,30 @@ public class SqlTemplateEngine
         }
 
         return defaultValue;
+    }
+
+    /// <summary>
+    /// 提取命令行风格的选项（例如：--exclude Id CreatedAt）
+    /// </summary>
+    private static string ExtractCommandLineOption(string options, string flag)
+    {
+        if (string.IsNullOrEmpty(options)) return string.Empty;
+
+        var optionsLower = options.ToLowerInvariant();
+        var flagLower = flag.ToLowerInvariant();
+        var index = optionsLower.IndexOf(flagLower);
+        
+        if (index == -1) return string.Empty;
+
+        // 找到flag后面的内容
+        var startIndex = index + flag.Length;
+        if (startIndex >= options.Length) return string.Empty;
+
+        // 找到下一个--或结束
+        var nextFlagIndex = options.IndexOf(" --", startIndex);
+        var endIndex = nextFlagIndex == -1 ? options.Length : nextFlagIndex;
+
+        return options.Substring(startIndex, endIndex - startIndex).Trim();
     }
 
     /// <summary>验证占位符选项</summary>

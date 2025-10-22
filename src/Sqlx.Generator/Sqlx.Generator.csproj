@@ -12,6 +12,9 @@
     <GenerateAotCompatibleCode>true</GenerateAotCompatibleCode>
     <DevelopmentDependency>true</DevelopmentDependency>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    
+    <!-- Disable analyzer release tracking warnings (optional best practice) -->
+    <NoWarn>$(NoWarn);RS2007;RS2008</NoWarn>
   </PropertyGroup>
 
   <!-- Package metadata -->
@@ -46,6 +49,12 @@
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- Analyzer release tracking -->
+  <ItemGroup>
+    <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
+    <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
   </ItemGroup>
 
   <!-- Package files -->

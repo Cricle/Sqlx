@@ -653,11 +653,14 @@ public class CodeGenerationService
         var innerType = ExtractInnerTypeFromTask(returnType);
 
         // 检查标量类型
-        if (innerType == "int" || innerType == "bool" || innerType == "decimal" || innerType == "double" || innerType == "string")
+        if (innerType == "int" || innerType == "bool" || innerType == "decimal" || innerType == "double" || innerType == "string" || innerType == "long")
             return (ReturnTypeCategory.Scalar, innerType);
 
-        // 检查集合类型
-        if (innerType.Contains("List<") || innerType.Contains("IEnumerable<") || innerType.Contains("[]"))
+        // 检查集合类型（支持完全限定名称）
+        if (innerType.Contains("List<") || innerType.Contains(".List<") ||  // System.Collections.Generic.List<>
+            innerType.Contains("IEnumerable<") || innerType.Contains(".IEnumerable<") ||
+            innerType.Contains("ICollection<") || innerType.Contains(".ICollection<") ||
+            innerType.Contains("[]"))
             return (ReturnTypeCategory.Collection, innerType);
 
         // 检查单实体类型
@@ -680,7 +683,9 @@ public class CodeGenerationService
     private void GenerateCollectionExecution(IndentedStringBuilder sb, string returnType, INamedTypeSymbol? entityType)
     {
         var innerType = ExtractInnerTypeFromTask(returnType);
-        sb.AppendLine($"__result__ = new {innerType}();");
+        // 确保使用全局命名空间前缀，避免命名冲突
+        var collectionType = innerType.StartsWith("System.") ? $"global::{innerType}" : innerType;
+        sb.AppendLine($"__result__ = new {collectionType}();");
         sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
         sb.AppendLine("while (reader.Read())");
         sb.AppendLine("{");
@@ -689,7 +694,7 @@ public class CodeGenerationService
         if (entityType != null)
         {
             GenerateEntityFromReader(sb, entityType, "item");
-            sb.AppendLine("__result__.Add(item);");
+            sb.AppendLine($"(({collectionType})__result__).Add(item);");
         }
 
         sb.PopIndent();

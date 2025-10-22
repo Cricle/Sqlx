@@ -43,7 +43,7 @@ public static class SharedCodeGenerationUtilities
     {
         var t when t.StartsWith("Task<") && t.EndsWith(">") => t.Substring(5, t.Length - 6),
         var t when t.StartsWith("System.Threading.Tasks.Task<") && t.EndsWith(">") => t.Substring(28, t.Length - 29),
-        _ => "object"
+        _ => taskType // 对于非Task类型，返回原始类型而不是"object"
     };
 
     /// <summary>Escape SQL string for C# string literal</summary>

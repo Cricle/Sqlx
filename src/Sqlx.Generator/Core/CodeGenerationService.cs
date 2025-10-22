@@ -530,7 +530,7 @@ public class CodeGenerationService
     {
         var returnType = method.ReturnType;
         var returnTypeString = returnType.GetCachedDisplayString();  // 使用缓存版本
-        
+
         // 检查是否应该生成追踪和指标代码
         var shouldGenerateTracing = ShouldGenerateTracing(method, classSymbol);
         var shouldGenerateMetrics = ShouldGenerateMetrics(method, classSymbol);
@@ -553,18 +553,18 @@ public class CodeGenerationService
             sb.AppendLine("#if !SQLX_DISABLE_TRACING");
             sb.AppendLine("// Activity跟踪（可通过[EnableTracing(false)]或定义SQLX_DISABLE_TRACING禁用）");
             sb.AppendLine("var __activity__ = global::System.Diagnostics.Activity.Current;");
-            
+
             if (shouldGenerateMetrics)
             {
                 sb.AppendLine("var __startTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
             }
-            
+
             sb.AppendLine();
             sb.AppendLine("// 设置Activity标签（如果存在）");
             sb.AppendLine("if (__activity__ != null)");
             sb.AppendLine("{");
             sb.PushIndent();
-            
+
             if (!string.IsNullOrEmpty(activityName))
             {
                 sb.AppendLine($"__activity__.DisplayName = \"{activityName}\";");
@@ -573,15 +573,15 @@ public class CodeGenerationService
             {
                 sb.AppendLine($"__activity__.DisplayName = \"{operationName}\";");
             }
-            
+
             sb.AppendLine("__activity__.SetTag(\"db.system\", \"sql\");");
             sb.AppendLine($"__activity__.SetTag(\"db.operation\", \"{operationName}\");");
-            
+
             if (logSql)
             {
                 sb.AppendLine($"__activity__.SetTag(\"db.statement\", @\"{EscapeSqlForCSharp(templateResult.ProcessedSql)}\");");
             }
-            
+
             sb.PopIndent();
             sb.AppendLine("}");
             sb.AppendLine("#endif");
@@ -650,7 +650,7 @@ public class CodeGenerationService
             {
                 sb.AppendLine("#if !SQLX_DISABLE_TRACING");
             }
-            
+
             // Calculate elapsed time
             sb.AppendLine("// 计算执行耗时");
             sb.AppendLine("var __endTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
@@ -703,7 +703,7 @@ public class CodeGenerationService
             {
                 sb.AppendLine("#if !SQLX_DISABLE_TRACING");
             }
-            
+
             // Calculate elapsed time on error
             sb.AppendLine("var __endTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
             sb.AppendLine("var __elapsedTicks__ = __endTimestamp__ - __startTimestamp__;");
@@ -1083,9 +1083,9 @@ public class CodeGenerationService
     {
         // 首先检查方法级别的EnableTracingAttribute
         var methodTracing = method.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.Name == "EnableTracingAttribute" || 
+            .FirstOrDefault(a => a.AttributeClass?.Name == "EnableTracingAttribute" ||
                                a.AttributeClass?.Name == "EnableTracing");
-        
+
         if (methodTracing != null)
         {
             // 方法级别的设置优先
@@ -1098,9 +1098,9 @@ public class CodeGenerationService
 
         // 然后检查类级别的EnableTracingAttribute
         var classTracing = classSymbol.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.Name == "EnableTracingAttribute" || 
+            .FirstOrDefault(a => a.AttributeClass?.Name == "EnableTracingAttribute" ||
                                a.AttributeClass?.Name == "EnableTracing");
-        
+
         if (classTracing != null)
         {
             var enabledArg = classTracing.ConstructorArguments.FirstOrDefault();
@@ -1124,9 +1124,9 @@ public class CodeGenerationService
     {
         // 首先检查方法级别的EnableMetricsAttribute
         var methodMetrics = method.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.Name == "EnableMetricsAttribute" || 
+            .FirstOrDefault(a => a.AttributeClass?.Name == "EnableMetricsAttribute" ||
                                a.AttributeClass?.Name == "EnableMetrics");
-        
+
         if (methodMetrics != null)
         {
             // 方法级别的设置优先
@@ -1139,9 +1139,9 @@ public class CodeGenerationService
 
         // 然后检查类级别的EnableMetricsAttribute
         var classMetrics = classSymbol.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.Name == "EnableMetricsAttribute" || 
+            .FirstOrDefault(a => a.AttributeClass?.Name == "EnableMetricsAttribute" ||
                                a.AttributeClass?.Name == "EnableMetrics");
-        
+
         if (classMetrics != null)
         {
             var enabledArg = classMetrics.ConstructorArguments.FirstOrDefault();
@@ -1162,9 +1162,9 @@ public class CodeGenerationService
     {
         // 首先检查方法级别
         var methodAttr = method.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.Name == "EnableTracingAttribute" || 
+            .FirstOrDefault(a => a.AttributeClass?.Name == "EnableTracingAttribute" ||
                                a.AttributeClass?.Name == "EnableTracing");
-        
+
         if (methodAttr != null && methodAttr.NamedArguments.Length > 0)
         {
             return ExtractTracingConfig(methodAttr);
@@ -1172,9 +1172,9 @@ public class CodeGenerationService
 
         // 然后检查类级别
         var classAttr = classSymbol.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.Name == "EnableTracingAttribute" || 
+            .FirstOrDefault(a => a.AttributeClass?.Name == "EnableTracingAttribute" ||
                                a.AttributeClass?.Name == "EnableTracing");
-        
+
         if (classAttr != null && classAttr.NamedArguments.Length > 0)
         {
             return ExtractTracingConfig(classAttr);

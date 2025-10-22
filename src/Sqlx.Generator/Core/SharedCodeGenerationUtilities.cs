@@ -152,6 +152,16 @@ public static class SharedCodeGenerationUtilities
             return;
         }
 
+        // 🚀 性能优化：缓存GetOrdinal结果，避免重复查找（每个字段只调用一次GetOrdinal）
+        sb.AppendLine("// 缓存列序号（性能优化：避免重复GetOrdinal调用）");
+        for (int i = 0; i < properties.Length; i++)
+        {
+            var prop = properties[i];
+            var columnName = ConvertToSnakeCase(prop.Name);
+            sb.AppendLine($"var __ord_{prop.Name}__ = reader.GetOrdinal(\"{columnName}\");");
+        }
+        sb.AppendLine();
+
         // Use object initializer syntax to support init-only properties
         if (variableName == "__result__")
         {
@@ -168,17 +178,18 @@ public static class SharedCodeGenerationUtilities
         for (int i = 0; i < properties.Length; i++)
         {
             var prop = properties[i];
-            var columnName = ConvertToSnakeCase(prop.Name);
             var readMethod = prop.Type.UnwrapNullableType().GetDataReaderMethod();
             var isNullable = prop.Type.CanBeReferencedByName && prop.Type.NullableAnnotation == Microsoft.CodeAnalysis.NullableAnnotation.Annotated;
             var defaultValue = isNullable ? "null" : GetDefaultValue(prop.Type);
 
+            // 使用缓存的序号变量
+            var ordinalVar = $"__ord_{prop.Name}__";
             var valueExpression = string.IsNullOrEmpty(readMethod)
-                ? $"({prop.Type.GetCachedDisplayString()})reader[\"{columnName}\"]"  // 使用缓存版本
-                : $"reader.{readMethod}(reader.GetOrdinal(\"{columnName}\"))";
+                ? $"({prop.Type.GetCachedDisplayString()})reader[{ordinalVar}]"  // 使用缓存版本
+                : $"reader.{readMethod}({ordinalVar})";
 
             var comma = i < properties.Length - 1 ? "," : "";
-            sb.AppendLine($"{prop.Name} = reader.IsDBNull(reader.GetOrdinal(\"{columnName}\")) ? {defaultValue} : {valueExpression}{comma}");
+            sb.AppendLine($"{prop.Name} = reader.IsDBNull({ordinalVar}) ? {defaultValue} : {valueExpression}{comma}");
         }
 
         sb.PopIndent();

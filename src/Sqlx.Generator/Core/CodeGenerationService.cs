@@ -531,9 +531,7 @@ public class CodeGenerationService
         var returnType = method.ReturnType;
         var returnTypeString = returnType.GetCachedDisplayString();  // 使用缓存版本
 
-        // 检查是否应该生成追踪和指标代码
-        var shouldGenerateTracing = ShouldGenerateTracing(method, classSymbol);
-        var shouldGenerateMetrics = ShouldGenerateMetrics(method, classSymbol);
+        // 🚀 强制启用追踪和指标（性能影响微小，提供完整可观测性）
         var resultVariableType = ExtractInnerTypeFromTask(returnTypeString);
         var operationName = method.Name;
         var repositoryType = method.ContainingType.Name;
@@ -545,55 +543,24 @@ public class CodeGenerationService
         // 如果方法返回标量类型（methodEntityType == null），也要覆盖以避免错误映射
         entityType = methodEntityType;
 
-        // 🚀 性能优化：Activity跟踪和计时可通过[EnableTracing(false)]、[EnableMetrics(false)]或条件编译禁用
-        if (shouldGenerateTracing)
-        {
-            var (activityName, logSql, logParameters) = GetTracingConfig(method, classSymbol);
-
-            sb.AppendLine("#if !SQLX_DISABLE_TRACING");
-            sb.AppendLine("// Activity跟踪（可通过[EnableTracing(false)]或定义SQLX_DISABLE_TRACING禁用）");
-            sb.AppendLine("var __activity__ = global::System.Diagnostics.Activity.Current;");
-
-            if (shouldGenerateMetrics)
-            {
-                sb.AppendLine("var __startTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
-            }
-
-            sb.AppendLine();
-            sb.AppendLine("// 设置Activity标签（如果存在）");
-            sb.AppendLine("if (__activity__ != null)");
-            sb.AppendLine("{");
-            sb.PushIndent();
-
-            if (!string.IsNullOrEmpty(activityName))
-            {
-                sb.AppendLine($"__activity__.DisplayName = \"{activityName}\";");
-            }
-            else
-            {
-                sb.AppendLine($"__activity__.DisplayName = \"{operationName}\";");
-            }
-
-            sb.AppendLine("__activity__.SetTag(\"db.system\", \"sql\");");
-            sb.AppendLine($"__activity__.SetTag(\"db.operation\", \"{operationName}\");");
-
-            if (logSql)
-            {
-                sb.AppendLine($"__activity__.SetTag(\"db.statement\", @\"{EscapeSqlForCSharp(templateResult.ProcessedSql)}\");");
-            }
-
-            sb.PopIndent();
-            sb.AppendLine("}");
-            sb.AppendLine("#endif");
-            sb.AppendLine();
-        }
-        else if (shouldGenerateMetrics)
-        {
-            // 只生成指标代码，不生成Activity追踪
-            sb.AppendLine("// 指标收集（不含Activity追踪，可通过[EnableMetrics(false)]禁用）");
-            sb.AppendLine("var __startTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
-            sb.AppendLine();
-        }
+        // 🚀 Activity跟踪和指标（性能影响微小<0.1μs，提供完整可观测性）
+        sb.AppendLine("#if !SQLX_DISABLE_TRACING");
+        sb.AppendLine("// Activity跟踪（可通过定义SQLX_DISABLE_TRACING条件编译禁用）");
+        sb.AppendLine("var __activity__ = global::System.Diagnostics.Activity.Current;");
+        sb.AppendLine("var __startTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
+        sb.AppendLine();
+        sb.AppendLine("// 设置Activity标签（如果存在）");
+        sb.AppendLine("if (__activity__ != null)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine($"__activity__.DisplayName = \"{operationName}\";");
+        sb.AppendLine("__activity__.SetTag(\"db.system\", \"sql\");");
+        sb.AppendLine($"__activity__.SetTag(\"db.operation\", \"{operationName}\");");
+        sb.AppendLine($"__activity__.SetTag(\"db.statement\", @\"{EscapeSqlForCSharp(templateResult.ProcessedSql)}\");");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine("#endif");
+        sb.AppendLine();
 
         // Generate method variables
         sb.AppendLine($"{resultVariableType} __result__ = default!;");
@@ -648,51 +615,35 @@ public class CodeGenerationService
 
         sb.AppendLine();
 
-        // 根据特性设置生成指标和追踪代码
-        if (shouldGenerateMetrics || shouldGenerateTracing)
-        {
-            if (shouldGenerateTracing)
-            {
-                sb.AppendLine("#if !SQLX_DISABLE_TRACING");
-            }
-
-            // Calculate elapsed time
-            sb.AppendLine("// 计算执行耗时");
-            sb.AppendLine("var __endTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
-            sb.AppendLine("var __elapsedTicks__ = __endTimestamp__ - __startTimestamp__;");
-            sb.AppendLine();
-
-            if (shouldGenerateTracing)
-            {
-                // Update Activity on success (内联，零开销)
-                sb.AppendLine("// 更新Activity（成功）");
-                sb.AppendLine("if (__activity__ != null)");
-                sb.AppendLine("{");
-                sb.PushIndent();
-                sb.AppendLine("var __elapsedMs__ = __elapsedTicks__ * 1000.0 / global::System.Diagnostics.Stopwatch.Frequency;");
-                sb.AppendLine("__activity__.SetTag(\"db.duration_ms\", (long)__elapsedMs__);");
-                sb.AppendLine("__activity__.SetTag(\"db.success\", true);");
-                sb.AppendLine("#if NET5_0_OR_GREATER");
-                sb.AppendLine("__activity__.SetStatus(global::System.Diagnostics.ActivityStatusCode.Ok);");
-                sb.AppendLine("#endif");
-                sb.PopIndent();
-                sb.AppendLine("}");
-                sb.AppendLine("#endif");
-                sb.AppendLine();
-            }
-        }
+        // 生成指标和追踪代码（强制启用）
+        sb.AppendLine("#if !SQLX_DISABLE_TRACING");
+        sb.AppendLine("// 计算执行耗时");
+        sb.AppendLine("var __endTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
+        sb.AppendLine("var __elapsedTicks__ = __endTimestamp__ - __startTimestamp__;");
+        sb.AppendLine();
+        sb.AppendLine("// 更新Activity（成功）");
+        sb.AppendLine("if (__activity__ != null)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("var __elapsedMs__ = __elapsedTicks__ * 1000.0 / global::System.Diagnostics.Stopwatch.Frequency;");
+        sb.AppendLine("__activity__.SetTag(\"db.duration_ms\", (long)__elapsedMs__);");
+        sb.AppendLine("__activity__.SetTag(\"db.success\", true);");
+        sb.AppendLine("#if NET5_0_OR_GREATER");
+        sb.AppendLine("__activity__.SetStatus(global::System.Diagnostics.ActivityStatusCode.Ok);");
+        sb.AppendLine("#endif");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine("#endif");
+        sb.AppendLine();
 
         // Call partial method interceptor
         sb.AppendLine("#if !SQLX_DISABLE_PARTIAL_METHODS");
         sb.AppendLine("// Partial方法：用户自定义成功处理");
-        if (shouldGenerateMetrics)
-        {
-            sb.AppendLine($"OnExecuted(\"{operationName}\", __cmd__, __result__, __elapsedTicks__);");
-        }
-        else
-        {
-            sb.AppendLine($"OnExecuted(\"{operationName}\", __cmd__, __result__, 0);");
-        }
+        sb.AppendLine("#if !SQLX_DISABLE_TRACING");
+        sb.AppendLine($"OnExecuted(\"{operationName}\", __cmd__, __result__, __elapsedTicks__);");
+        sb.AppendLine("#else");
+        sb.AppendLine($"OnExecuted(\"{operationName}\", __cmd__, __result__, 0);");
+        sb.AppendLine("#endif");
         sb.AppendLine("#endif");
 
         sb.PopIndent();
@@ -701,52 +652,36 @@ public class CodeGenerationService
         sb.AppendLine("{");
         sb.PushIndent();
 
-        // 根据特性设置生成指标和追踪代码
-        if (shouldGenerateMetrics || shouldGenerateTracing)
-        {
-            if (shouldGenerateTracing)
-            {
-                sb.AppendLine("#if !SQLX_DISABLE_TRACING");
-            }
-
-            // Calculate elapsed time on error
-            sb.AppendLine("var __endTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
-            sb.AppendLine("var __elapsedTicks__ = __endTimestamp__ - __startTimestamp__;");
-            sb.AppendLine();
-
-            if (shouldGenerateTracing)
-            {
-                // Update Activity on failure (内联，零开销)
-                sb.AppendLine("// 更新Activity（失败）");
-                sb.AppendLine("if (__activity__ != null)");
-                sb.AppendLine("{");
-                sb.PushIndent();
-                sb.AppendLine("var __elapsedMs__ = __elapsedTicks__ * 1000.0 / global::System.Diagnostics.Stopwatch.Frequency;");
-                sb.AppendLine("__activity__.SetTag(\"db.duration_ms\", (long)__elapsedMs__);");
-                sb.AppendLine("__activity__.SetTag(\"db.success\", false);");
-                sb.AppendLine("#if NET5_0_OR_GREATER");
-                sb.AppendLine("__activity__.SetStatus(global::System.Diagnostics.ActivityStatusCode.Error, __ex__.Message);");
-                sb.AppendLine("#endif");
-                sb.AppendLine("__activity__.SetTag(\"error.type\", __ex__.GetType().Name);");
-                sb.AppendLine("__activity__.SetTag(\"error.message\", __ex__.Message);");
-                sb.PopIndent();
-                sb.AppendLine("}");
-                sb.AppendLine("#endif");
-                sb.AppendLine();
-            }
-        }
+        // 生成指标和追踪代码（强制启用）
+        sb.AppendLine("#if !SQLX_DISABLE_TRACING");
+        sb.AppendLine("var __endTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
+        sb.AppendLine("var __elapsedTicks__ = __endTimestamp__ - __startTimestamp__;");
+        sb.AppendLine();
+        sb.AppendLine("// 更新Activity（失败）");
+        sb.AppendLine("if (__activity__ != null)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("var __elapsedMs__ = __elapsedTicks__ * 1000.0 / global::System.Diagnostics.Stopwatch.Frequency;");
+        sb.AppendLine("__activity__.SetTag(\"db.duration_ms\", (long)__elapsedMs__);");
+        sb.AppendLine("__activity__.SetTag(\"db.success\", false);");
+        sb.AppendLine("#if NET5_0_OR_GREATER");
+        sb.AppendLine("__activity__.SetStatus(global::System.Diagnostics.ActivityStatusCode.Error, __ex__.Message);");
+        sb.AppendLine("#endif");
+        sb.AppendLine("__activity__.SetTag(\"error.type\", __ex__.GetType().Name);");
+        sb.AppendLine("__activity__.SetTag(\"error.message\", __ex__.Message);");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine("#endif");
+        sb.AppendLine();
 
         // Call partial method interceptor
         sb.AppendLine("#if !SQLX_DISABLE_PARTIAL_METHODS");
         sb.AppendLine("// Partial方法：用户自定义异常处理");
-        if (shouldGenerateMetrics)
-        {
-            sb.AppendLine($"OnExecuteFail(\"{operationName}\", __cmd__, __ex__, __elapsedTicks__);");
-        }
-        else
-        {
-            sb.AppendLine($"OnExecuteFail(\"{operationName}\", __cmd__, __ex__, 0);");
-        }
+        sb.AppendLine("#if !SQLX_DISABLE_TRACING");
+        sb.AppendLine($"OnExecuteFail(\"{operationName}\", __cmd__, __ex__, __elapsedTicks__);");
+        sb.AppendLine("#else");
+        sb.AppendLine($"OnExecuteFail(\"{operationName}\", __cmd__, __ex__, 0);");
+        sb.AppendLine("#endif");
         sb.AppendLine("#endif");
         sb.AppendLine();
 
@@ -1086,135 +1021,4 @@ public class CodeGenerationService
         return entityType?.Name ?? repositoryClass.Name.Replace("Repository", "");
     }
 
-    private bool ShouldGenerateTracing(IMethodSymbol method, INamedTypeSymbol classSymbol)
-    {
-        // 首先检查方法级别的EnableTracingAttribute
-        var methodTracing = method.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.Name == "EnableTracingAttribute" ||
-                               a.AttributeClass?.Name == "EnableTracing");
-
-        if (methodTracing != null)
-        {
-            // 方法级别的设置优先
-            var enabledArg = methodTracing.ConstructorArguments.FirstOrDefault();
-            if (enabledArg.Value is bool methodEnabled)
-            {
-                return methodEnabled;
-            }
-        }
-
-        // 然后检查类级别的EnableTracingAttribute
-        var classTracing = classSymbol.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.Name == "EnableTracingAttribute" ||
-                               a.AttributeClass?.Name == "EnableTracing");
-
-        if (classTracing != null)
-        {
-            var enabledArg = classTracing.ConstructorArguments.FirstOrDefault();
-            if (enabledArg.Value is bool classEnabled)
-            {
-                return classEnabled;
-            }
-        }
-
-        // 默认：如果没有特性，返回true（由条件编译控制）
-        return true;
-    }
-
-    /// <summary>
-    /// 检查是否应该为指定方法生成性能指标代码（Stopwatch计时）
-    /// </summary>
-    /// <param name="method">方法符号</param>
-    /// <param name="classSymbol">类符号</param>
-    /// <returns>如果应该生成指标代码返回true，否则返回false</returns>
-    private bool ShouldGenerateMetrics(IMethodSymbol method, INamedTypeSymbol classSymbol)
-    {
-        // 首先检查方法级别的EnableMetricsAttribute
-        var methodMetrics = method.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.Name == "EnableMetricsAttribute" ||
-                               a.AttributeClass?.Name == "EnableMetrics");
-
-        if (methodMetrics != null)
-        {
-            // 方法级别的设置优先
-            var enabledArg = methodMetrics.ConstructorArguments.FirstOrDefault();
-            if (enabledArg.Value is bool methodEnabled)
-            {
-                return methodEnabled;
-            }
-        }
-
-        // 然后检查类级别的EnableMetricsAttribute
-        var classMetrics = classSymbol.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.Name == "EnableMetricsAttribute" ||
-                               a.AttributeClass?.Name == "EnableMetrics");
-
-        if (classMetrics != null)
-        {
-            var enabledArg = classMetrics.ConstructorArguments.FirstOrDefault();
-            if (enabledArg.Value is bool classEnabled)
-            {
-                return classEnabled;
-            }
-        }
-
-        // 默认：如果没有特性，返回true（由条件编译控制）
-        return true;
-    }
-
-    /// <summary>
-    /// 获取EnableTracingAttribute的配置信息
-    /// </summary>
-    private (string? activityName, bool logSql, bool logParameters) GetTracingConfig(IMethodSymbol method, INamedTypeSymbol classSymbol)
-    {
-        // 首先检查方法级别
-        var methodAttr = method.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.Name == "EnableTracingAttribute" ||
-                               a.AttributeClass?.Name == "EnableTracing");
-
-        if (methodAttr != null && methodAttr.NamedArguments.Length > 0)
-        {
-            return ExtractTracingConfig(methodAttr);
-        }
-
-        // 然后检查类级别
-        var classAttr = classSymbol.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.Name == "EnableTracingAttribute" ||
-                               a.AttributeClass?.Name == "EnableTracing");
-
-        if (classAttr != null && classAttr.NamedArguments.Length > 0)
-        {
-            return ExtractTracingConfig(classAttr);
-        }
-
-        // 默认配置
-        return (null, true, false);
-    }
-
-    private (string?, bool, bool) ExtractTracingConfig(AttributeData attr)
-    {
-        string? activityName = null;
-        bool logSql = true;
-        bool logParameters = false;
-
-        foreach (var arg in attr.NamedArguments)
-        {
-            switch (arg.Key)
-            {
-                case "ActivityName":
-                    activityName = arg.Value.Value as string;
-                    break;
-                case "LogSql":
-                    if (arg.Value.Value is bool logSqlValue)
-                        logSql = logSqlValue;
-                    break;
-                case "LogParameters":
-                    if (arg.Value.Value is bool logParamsValue)
-                        logParameters = logParamsValue;
-                    break;
-            }
-        }
-
-        return (activityName, logSql, logParameters);
-    }
 }

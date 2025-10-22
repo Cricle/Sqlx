@@ -41,8 +41,8 @@ public class CrudBenchmark
             )";
         cmd.ExecuteNonQuery();
 
-        // 初始化Sqlx Repository (使用零追踪版本)
-        _userRepository = new UserRepositoryNoTracing(_connection);
+        // 初始化Sqlx Repository（强制启用追踪和指标，性能影响微小）
+        _userRepository = new UserRepository(_connection);
     }
 
     [GlobalCleanup]

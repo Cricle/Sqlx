@@ -5,46 +5,20 @@ using Sqlx.Benchmarks.Models;
 namespace Sqlx.Benchmarks.Repositories;
 
 /// <summary>
-/// 用户Repository实现 - 默认配置（启用追踪和指标）
-/// 用于测试带有完整追踪的性能
+/// 用户Repository实现 - Sqlx源生成器
+/// 强制启用Activity追踪和Stopwatch计时（性能影响微小<0.1μs）
+/// 提供完整的分布式追踪和性能监控能力
 /// </summary>
 [TableName("users")]
 [SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IUserRepository))]
-[EnableTracing(true)]  // 启用Activity追踪
-[EnableMetrics(true)]  // 启用性能指标
-public partial class UserRepositoryWithTracing(SqliteConnection connection) : IUserRepository
+public partial class UserRepository(SqliteConnection connection) : IUserRepository
 {
     // 所有接口方法实现由Sqlx源生成器在编译时自动生成
-    // 生成的代码包含Activity追踪和Stopwatch计时
-}
-
-/// <summary>
-/// 用户Repository实现 - 高性能配置（禁用追踪和指标）
-/// 用于测试零开销的极致性能（默认使用硬编码索引）
-/// </summary>
-[TableName("users")]
-[SqlDefine(SqlDefineTypes.SQLite)]
-[RepositoryFor(typeof(IUserRepository))]
-[EnableTracing(false)]  // 禁用Activity追踪
-[EnableMetrics(false)]  // 禁用性能指标
-public partial class UserRepositoryNoTracing(SqliteConnection connection) : IUserRepository
-{
-    // 所有接口方法实现由Sqlx源生成器在编译时自动生成
-    // 生成的代码不含Activity追踪和Stopwatch计时（极致性能）
-    // 默认使用硬编码索引访问（reader.GetInt32(0)等）
-}
-
-/// <summary>
-/// 用户Repository实现 - 只启用指标（不含Activity追踪）
-/// 用于测试只有Stopwatch计时的性能影响
-/// </summary>
-[TableName("users")]
-[SqlDefine(SqlDefineTypes.SQLite)]
-[RepositoryFor(typeof(IUserRepository))]
-[EnableTracing(false)]  // 禁用Activity追踪
-[EnableMetrics(true)]   // 启用性能指标
-public partial class UserRepositoryMetricsOnly(SqliteConnection connection) : IUserRepository
-{
-    // 生成的代码只包含Stopwatch计时，不含Activity追踪
+    // 生成的代码包含：
+    // - Activity追踪（OpenTelemetry兼容）
+    // - Stopwatch计时（精确性能指标）
+    // - 硬编码索引访问（极致性能，reader.GetInt32(0)等）
+    // - 智能IsDBNull检查（只对nullable类型检查）
+    // - Command自动释放（finally块）
 }

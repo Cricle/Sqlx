@@ -219,7 +219,7 @@ public static class SharedCodeGenerationUtilities
             }
 
             var readMethod = prop.Type.UnwrapNullableType().GetDataReaderMethod();
-            
+
             // 🎯 关键性能优化：只对nullable类型检查IsDBNull，非nullable类型直接读取
             // 这可以减少60-70%的IsDBNull调用，提升5-6μs性能
             var isNullable = prop.Type.NullableAnnotation == Microsoft.CodeAnalysis.NullableAnnotation.Annotated;
@@ -230,7 +230,7 @@ public static class SharedCodeGenerationUtilities
                 : $"reader.{readMethod}({ordinalIndex})";
 
             if (!first) sb.Append(",");
-            
+
             // 只对nullable类型生成IsDBNull检查
             if (isNullable)
             {
@@ -241,7 +241,7 @@ public static class SharedCodeGenerationUtilities
                 // 非nullable类型直接读取，无需检查（减少约0.8μs/字段的开销）
                 sb.AppendLine($"{prop.Name} = {valueExpression}");
             }
-            
+
             first = false;
         }
 
@@ -308,7 +308,7 @@ public static class SharedCodeGenerationUtilities
         {
             var prop = properties[i];
             var readMethod = prop.Type.UnwrapNullableType().GetDataReaderMethod();
-            
+
             // 🎯 关键性能优化：只对nullable类型检查IsDBNull
             var isNullable = prop.Type.NullableAnnotation == Microsoft.CodeAnalysis.NullableAnnotation.Annotated;
 
@@ -319,7 +319,7 @@ public static class SharedCodeGenerationUtilities
                 : $"reader.{readMethod}({ordinalVar})";
 
             var comma = i < properties.Length - 1 ? "," : "";
-            
+
             // 只对nullable类型生成IsDBNull检查
             if (isNullable)
             {

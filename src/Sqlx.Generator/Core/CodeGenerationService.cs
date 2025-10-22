@@ -581,10 +581,10 @@ public class CodeGenerationService
                 GenerateScalarExecution(sb, innerType);
                 break;
             case ReturnTypeCategory.Collection:
-                GenerateCollectionExecution(sb, returnTypeString, entityType);
+                GenerateCollectionExecution(sb, returnTypeString, entityType, templateResult);
                 break;
             case ReturnTypeCategory.SingleEntity:
-                GenerateSingleEntityExecution(sb, returnTypeString, entityType);
+                GenerateSingleEntityExecution(sb, returnTypeString, entityType, templateResult);
                 break;
             default:
                 // Non-query execution (INSERT, UPDATE, DELETE)
@@ -723,7 +723,7 @@ public class CodeGenerationService
         sb.AppendLine($"__result__ = scalarResult != null ? ({innerType})scalarResult : default({innerType});");
     }
 
-    private void GenerateCollectionExecution(IndentedStringBuilder sb, string returnType, INamedTypeSymbol? entityType)
+    private void GenerateCollectionExecution(IndentedStringBuilder sb, string returnType, INamedTypeSymbol? entityType, SqlTemplateResult templateResult)
     {
         var innerType = ExtractInnerTypeFromTask(returnType);
         // 确保使用全局命名空间前缀，避免命名冲突
@@ -736,7 +736,7 @@ public class CodeGenerationService
 
         if (entityType != null)
         {
-            GenerateEntityFromReader(sb, entityType, "item");
+            GenerateEntityFromReader(sb, entityType, "item", templateResult);
             sb.AppendLine($"(({collectionType})__result__).Add(item);");
         }
 
@@ -744,7 +744,7 @@ public class CodeGenerationService
         sb.AppendLine("}");
     }
 
-    private void GenerateSingleEntityExecution(IndentedStringBuilder sb, string returnType, INamedTypeSymbol? entityType)
+    private void GenerateSingleEntityExecution(IndentedStringBuilder sb, string returnType, INamedTypeSymbol? entityType, SqlTemplateResult templateResult)
     {
         sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
         sb.AppendLine("if (reader.Read())");
@@ -753,7 +753,7 @@ public class CodeGenerationService
 
         if (entityType != null)
         {
-            GenerateEntityFromReader(sb, entityType, "__result__");
+            GenerateEntityFromReader(sb, entityType, "__result__", templateResult);
         }
 
         sb.PopIndent();
@@ -766,10 +766,10 @@ public class CodeGenerationService
         sb.AppendLine("}");
     }
 
-    private void GenerateEntityFromReader(IndentedStringBuilder sb, INamedTypeSymbol entityType, string variableName)
+    private void GenerateEntityFromReader(IndentedStringBuilder sb, INamedTypeSymbol entityType, string variableName, SqlTemplateResult templateResult)
     {
-        // Use shared utility for entity mapping
-        SharedCodeGenerationUtilities.GenerateEntityMapping(sb, entityType, variableName);
+        // 🚀 性能优化：使用列顺序信息进行直接序号访问（避免GetOrdinal查找）
+        SharedCodeGenerationUtilities.GenerateEntityMapping(sb, entityType, variableName, templateResult.ColumnOrder);
     }
 
     private void GenerateFallbackMethodImplementation(IndentedStringBuilder sb, IMethodSymbol method)

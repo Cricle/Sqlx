@@ -42,4 +42,10 @@ public sealed class SqlTemplateResult
     /// Gets a value indicating whether the template has dynamic features.
     /// </summary>
     public bool HasDynamicFeatures { get; init; } = false;
+
+    /// <summary>
+    /// Gets the column names in the order they appear in the SQL SELECT statement.
+    /// Used for direct ordinal access optimization.
+    /// </summary>
+    public List<string> ColumnOrder { get; init; } = new();
 }

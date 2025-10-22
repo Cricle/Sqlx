@@ -107,7 +107,8 @@ public class SqlTemplateEngine
             Parameters = result.Parameters,
             Warnings = result.Warnings,
             Errors = result.Errors,
-            HasDynamicFeatures = result.HasDynamicFeatures
+            HasDynamicFeatures = result.HasDynamicFeatures,
+            ColumnOrder = result.ColumnOrder  // 🚀 复制列顺序信息用于序号访问优化
         };
     }
 
@@ -257,12 +258,18 @@ public class SqlTemplateEngine
         var sb = new StringBuilder(capacity);
         var isQuoted = type == "quoted";
 
+        // 🚀 性能优化：记录列顺序以支持直接序号访问
+        result.ColumnOrder.Clear(); // 清除之前的顺序
+
         for (int i = 0; i < properties.Count; i++)
         {
             if (i > 0) sb.Append(", ");
 
             var columnName = SharedCodeGenerationUtilities.ConvertToSnakeCase(properties[i].Name);
             sb.Append(isQuoted ? dialect.WrapColumn(columnName) : columnName);
+            
+            // 记录列名到ColumnOrder（用于序号访问优化）
+            result.ColumnOrder.Add(columnName);
         }
 
         return sb.ToString();

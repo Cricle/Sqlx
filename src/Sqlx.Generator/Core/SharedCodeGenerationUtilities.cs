@@ -5,7 +5,9 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.CodeAnalysis;
+using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Sqlx.Generator;
@@ -121,9 +123,124 @@ public static class SharedCodeGenerationUtilities
     }
 
     /// <summary>
-    /// Generate entity property mapping
+    /// Generate entity property mapping with optional ordinal access optimization
     /// </summary>
-    public static void GenerateEntityMapping(IndentedStringBuilder sb, INamedTypeSymbol entityType, string variableName)
+    public static void GenerateEntityMapping(IndentedStringBuilder sb, INamedTypeSymbol entityType, string variableName, List<string>? columnOrder = null)
+    {
+        // 🚀 性能优化：如果有列顺序信息，使用直接序号访问（避免GetOrdinal查找）
+        if (columnOrder != null && columnOrder.Count > 0)
+        {
+            sb.AppendLine($"// 🚀 使用直接序号访问（优化版本）- {columnOrder.Count}列");
+            GenerateEntityMappingWithOrdinals(sb, entityType, variableName, columnOrder);
+            return;
+        }
+
+        // 向后兼容：没有列顺序信息时，使用GetOrdinal查找
+        sb.AppendLine($"// 使用GetOrdinal查找（兼容版本） - columnOrder: {(columnOrder == null ? "null" : "empty")}");
+        GenerateEntityMappingWithGetOrdinal(sb, entityType, variableName);
+    }
+
+    /// <summary>
+    /// Generate entity property mapping using direct ordinal access (performance optimized)
+    /// </summary>
+    private static void GenerateEntityMappingWithOrdinals(IndentedStringBuilder sb, INamedTypeSymbol entityType, string variableName, List<string> columnOrder)
+    {
+        // Remove nullable annotation
+        var entityTypeName = entityType.GetCachedDisplayString();
+        if (entityTypeName.EndsWith("?"))
+        {
+            entityTypeName = entityTypeName.TrimEnd('?');
+        }
+
+        // 获取所有可映射的属性
+        var properties = entityType.GetMembers().OfType<IPropertySymbol>()
+            .Where(p => p.CanBeReferencedByName && p.SetMethod != null)
+            .ToArray();
+
+        if (properties.Length == 0)
+        {
+            if (variableName == "__result__")
+            {
+                sb.AppendLine($"__result__ = new {entityTypeName}();");
+            }
+            else
+            {
+                sb.AppendLine($"var {variableName} = new {entityTypeName}();");
+            }
+            return;
+        }
+
+        // 🚀 关键优化：根据SQL列顺序映射到属性（属性顺序变动不影响）
+        // 创建列名到序号的映射
+        var columnToOrdinal = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        for (int i = 0; i < columnOrder.Count; i++)
+        {
+            columnToOrdinal[columnOrder[i]] = i;
+        }
+
+        // DEBUG模式下验证列名（生产环境零开销）
+        sb.AppendLine("#if DEBUG");
+        sb.AppendLine("// DEBUG: 验证列名和顺序（发现属性变动问题）");
+        for (int i = 0; i < columnOrder.Count; i++)
+        {
+            sb.AppendLine($"if (reader.GetName({i}) != \"{columnOrder[i]}\")");
+            sb.AppendLine("{");
+            sb.PushIndent();
+            sb.AppendLine($"throw new global::System.InvalidOperationException($\"Expected column '{columnOrder[i]}' at index {i}, but found '{{reader.GetName({i})}}'. SQL column order may have changed.\");");
+            sb.PopIndent();
+            sb.AppendLine("}");
+        }
+        sb.AppendLine("#endif");
+        sb.AppendLine();
+
+        // 使用对象初始化器语法
+        if (variableName == "__result__")
+        {
+            sb.AppendLine($"__result__ = new {entityTypeName}");
+        }
+        else
+        {
+            sb.AppendLine($"var {variableName} = new {entityTypeName}");
+        }
+        
+        sb.AppendLine("{");
+        sb.PushIndent();
+
+        // 根据属性映射到对应的列序号
+        bool first = true;
+        foreach (var prop in properties)
+        {
+            var columnName = ConvertToSnakeCase(prop.Name);
+            
+            // 查找该属性对应的列序号
+            if (!columnToOrdinal.TryGetValue(columnName, out int ordinal))
+            {
+                // 列不存在于SQL中，跳过或使用默认值
+                continue;
+            }
+
+            var readMethod = prop.Type.UnwrapNullableType().GetDataReaderMethod();
+            var isNullable = prop.Type.CanBeReferencedByName && prop.Type.NullableAnnotation == Microsoft.CodeAnalysis.NullableAnnotation.Annotated;
+            var defaultValue = isNullable ? "null" : GetDefaultValue(prop.Type);
+
+            // 🚀 性能优化：直接使用序号访问（无GetOrdinal查找开销）
+            var valueExpression = string.IsNullOrEmpty(readMethod)
+                ? $"({prop.Type.GetCachedDisplayString()})reader[{ordinal}]"
+                : $"reader.{readMethod}({ordinal})";
+
+            if (!first) sb.Append(",");
+            sb.AppendLine($"{prop.Name} = reader.IsDBNull({ordinal}) ? {defaultValue} : {valueExpression}");
+            first = false;
+        }
+
+        sb.PopIndent();
+        sb.AppendLine("};");
+    }
+
+    /// <summary>
+    /// Generate entity property mapping using GetOrdinal (backward compatible)
+    /// </summary>
+    private static void GenerateEntityMappingWithGetOrdinal(IndentedStringBuilder sb, INamedTypeSymbol entityType, string variableName)
     {
         // Remove nullable annotation - 使用缓存版本提升性能
         var entityTypeName = entityType.GetCachedDisplayString();

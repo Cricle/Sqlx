@@ -11,25 +11,25 @@ public interface IUserRepository
     /// <summary>
     /// 根据ID查询单个用户（同步方法用于benchmark）
     /// </summary>
-    [Sqlx("SELECT id, name, email, age, salary, is_active, created_at, updated_at FROM users WHERE id = @id")]
+    [Sqlx("SELECT {{columns}} FROM users WHERE id = @id")]
     User? GetByIdSync(int id);
 
     /// <summary>
     /// 查询前N条记录（同步方法用于benchmark）
     /// </summary>
-    [Sqlx("SELECT id, name, email, age, salary, is_active, created_at, updated_at FROM users LIMIT @limit")]
+    [Sqlx("SELECT {{columns}} FROM users LIMIT @limit")]
     List<User> GetTopNSync(int limit);
 
     /// <summary>
     /// 查询所有用户（同步方法用于benchmark）
     /// </summary>
-    [Sqlx("SELECT id, name, email, age, salary, is_active, created_at, updated_at FROM users")]
+    [Sqlx("SELECT {{columns}} FROM users")]
     List<User> GetAllSync();
 
     /// <summary>
     /// 参数化查询 - 根据年龄和激活状态过滤（同步方法用于benchmark）
     /// </summary>
-    [Sqlx("SELECT id, name, email, age, salary, is_active, created_at, updated_at FROM users WHERE age > @minAge AND is_active = @isActive")]
+    [Sqlx("SELECT {{columns}} FROM users WHERE age > @minAge AND is_active = @isActive")]
     List<User> GetByAgeAndStatusSync(int minAge, int isActive);
 
     /// <summary>

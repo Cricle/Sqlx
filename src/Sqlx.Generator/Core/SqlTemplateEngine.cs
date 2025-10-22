@@ -28,10 +28,11 @@ public class SqlTemplateEngine
 {
     // 核心正则表达式 - 性能优化版本 (修复ExplicitCapture问题和占位符冲突)
     private static readonly Regex ParameterRegex = new(@"[@:$]\w+", RegexOptions.Compiled | RegexOptions.CultureInvariant);
-    // 修复：占位符使用空格分隔选项，不是管道符 | 
-    // 格式：{{placeholder}} 或 {{placeholder options}} 
-    // 示例：{{columns}}, {{columns --exclude Id}}, {{orderby created_at --desc}}
-    private static readonly Regex PlaceholderRegex = new(@"\{\{(\w+)(?:\s+([^}]+))?\}\}", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    // 支持两种占位符格式（向后兼容）：
+    // 1. 新格式（命令行风格）：{{columns --exclude Id}}, {{orderby created_at --desc}}
+    // 2. 旧格式（冒号管道风格）：{{columns:auto|exclude=Id}}, {{limit:default|count=20}}
+    // 捕获组：(1)name, (2)type（旧格式）, (3)options（旧格式，管道后）, (4)options（新格式，空格后）
+    private static readonly Regex PlaceholderRegex = new(@"\{\{(\w+)(?::(\w+))?(?:\|([^}\s]+))?(?:\s+([^}]+))?\}\}", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly Regex SqlInjectionRegex = new(@"(?i)(union\s+select|drop\s+table|exec\s*\(|execute\s*\(|sp_|xp_|--|\*\/|\/\*)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
 
@@ -144,8 +145,15 @@ public class SqlTemplateEngine
         return PlaceholderRegex.Replace(sql, match =>
         {
             var placeholderName = match.Groups[1].Value.ToLowerInvariant();
-            var placeholderOptions = match.Groups[2].Value; // Group 2 现在是选项（空格后的内容）
-            var placeholderType = ""; // 不再从正则中获取类型
+            // 支持两种格式：
+            // 旧格式：{{name:type|options}} -> Groups: (1)name, (2)type, (3)options
+            // 新格式：{{name --options}}    -> Groups: (1)name, (2)"", (3)"", (4)options
+            var placeholderType = match.Groups[2].Value; // 旧格式的type
+            var oldFormatOptions = match.Groups[3].Value; // 旧格式的options（管道后）
+            var newFormatOptions = match.Groups[4].Value; // 新格式的options（空格后）
+            
+            // 合并options：优先使用新格式，如果为空则使用旧格式
+            var placeholderOptions = !string.IsNullOrEmpty(newFormatOptions) ? newFormatOptions : oldFormatOptions;
 
             // 验证占位符选项
             ValidatePlaceholderOptions(placeholderName, placeholderType, placeholderOptions, result);
@@ -482,11 +490,16 @@ public class SqlTemplateEngine
         var excludeSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (excludeProperty != null) excludeSet.Add(excludeProperty);
 
-        // 解析新格式的选项（例如：--exclude Id CreatedAt）
-        var excludeOption = ExtractCommandLineOption(options, "--exclude");
+        // 解析排除选项（支持两种格式）：
+        // 新格式：--exclude Id CreatedAt
+        // 旧格式：exclude=Id,CreatedAt 或 exclude=Id
+        var newFormatExclude = ExtractCommandLineOption(options, "--exclude");
+        var oldFormatExclude = ExtractOption(options, "exclude", "");
+        var excludeOption = !string.IsNullOrEmpty(newFormatExclude) ? newFormatExclude : oldFormatExclude;
+        
         if (!string.IsNullOrEmpty(excludeOption))
         {
-            // 支持空格分隔的多个列名
+            // 支持空格和逗号分隔的多个列名
             foreach (var item in excludeOption.Split(new char[] { ' ', ',' }, StringSplitOptions.RemoveEmptyEntries))
                 excludeSet.Add(item.Trim());
         }

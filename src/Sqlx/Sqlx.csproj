@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;net8.0;net9.0</TargetFrameworks>
@@ -37,6 +37,11 @@
 	  <None Include="../Sqlx.Generator/bin/$(Configuration)/netstandard2.0/Sqlx.Generator.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
 	  <None Include="..\..\README.md" Pack="true" PackagePath="\" Visible="false" />
     <None Include="..\..\docs\**\*.md" Pack="true" PackagePath="docs\" Visible="false" />
+  </ItemGroup>
+
+  <ItemGroup Condition="$(TargetFramework)=='netstandard2.0'">
+    <PackageReference Include="System.Diagnostics.DiagnosticSource" />
+    <PackageReference Include="System.Memory" />
   </ItemGroup>
 
 </Project>

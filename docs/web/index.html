@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sqlx - 现代化 .NET ORM 框架</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            padding: 4rem 0;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .tagline {
+            font-size: 1.5rem;
+            opacity: 0.9;
+            margin-bottom: 2rem;
+        }
+
+        .badges {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 2rem;
+        }
+
+        .badge {
+            background: rgba(255,255,255,0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+        }
+
+        .content {
+            background: white;
+            border-radius: 12px;
+            padding: 3rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+
+        .docs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .doc-card {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .doc-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .doc-card h3 {
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .doc-card p {
+            color: #666;
+            margin-bottom: 1rem;
+        }
+
+        .doc-card a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .doc-card a:hover {
+            text-decoration: underline;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .feature {
+            text-align: center;
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature h3 {
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: white;
+            color: #667eea;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            backdrop-filter: blur(10px);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+        }
+
+        footer {
+            text-align: center;
+            color: white;
+            padding: 2rem;
+            opacity: 0.8;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+
+        .section-title {
+            text-align: center;
+            color: #333;
+            margin-bottom: 2rem;
+            font-size: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 Sqlx</h1>
+            <p class="tagline">现代化、高性能、类型安全的 .NET ORM 框架</p>
+            <div class="badges">
+                <span class="badge">✨ 零反射</span>
+                <span class="badge">⚡ 源代码生成</span>
+                <span class="badge">🎯 类型安全</span>
+                <span class="badge">🔥 高性能</span>
+                <span class="badge">📦 AOT 支持</span>
+            </div>
+            <div class="cta-buttons">
+                <a href="https://github.com/your-repo/Sqlx" class="btn btn-primary">GitHub</a>
+                <a href="https://www.nuget.org/packages/Sqlx" class="btn btn-secondary">NuGet</a>
+                <a href="../DOCUMENTATION_INDEX.md" class="btn btn-secondary">文档</a>
+            </div>
+        </header>
+
+        <div class="content">
+            <h2 class="section-title">✨ 核心特性</h2>
+            <div class="features">
+                <div class="feature">
+                    <div class="feature-icon">⚡</div>
+                    <h3>零 GC 拦截器</h3>
+                    <p>栈分配，零堆分配，性能极致优化</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🎯</div>
+                    <h3>类型安全</h3>
+                    <p>编译时验证，运行时零错误</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🔥</div>
+                    <h3>高性能</h3>
+                    <p>接近原生 ADO.NET，超越 Dapper</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">📦</div>
+                    <h3>AOT 支持</h3>
+                    <p>完全支持 Native AOT 编译</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🌐</div>
+                    <h3>多数据库</h3>
+                    <p>SQL Server, MySQL, PostgreSQL, SQLite</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🛠️</div>
+                    <h3>源代码生成</h3>
+                    <p>编译时生成，零运行时开销</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="content">
+            <h2 class="section-title">📚 文档导航</h2>
+            <div class="docs-grid">
+                <div class="doc-card">
+                    <h3>🎯 快速开始</h3>
+                    <p>快速入门指南，5分钟上手 Sqlx</p>
+                    <a href="../QUICK_REFERENCE.md">查看文档 →</a>
+                </div>
+
+                <div class="doc-card">
+                    <h3>📖 完整文档</h3>
+                    <p>所有文档的完整索引和导航</p>
+                    <a href="../DOCUMENTATION_INDEX.md">查看文档 →</a>
+                </div>
+
+                <div class="doc-card">
+                    <h3>⚡ 性能优化</h3>
+                    <p>性能优化总结和 Benchmark 报告</p>
+                    <a href="../FINAL_OPTIMIZATION_SUMMARY.md">查看文档 →</a>
+                </div>
+
+                <div class="doc-card">
+                    <h3>🔧 设计原则</h3>
+                    <p>核心设计理念：Fail Fast、零缓存、源生成</p>
+                    <a href="../DESIGN_PRINCIPLES.md">查看文档 →</a>
+                </div>
+
+                <div class="doc-card">
+                    <h3>🎨 拦截器设计</h3>
+                    <p>零 GC 拦截器架构和实现细节</p>
+                    <a href="../GLOBAL_INTERCEPTOR_DESIGN.md">查看文档 →</a>
+                </div>
+
+                <div class="doc-card">
+                    <h3>🌐 框架兼容性</h3>
+                    <p>netstandard2.0 到 .NET 9.0 全支持</p>
+                    <a href="../FRAMEWORK_COMPATIBILITY.md">查看文档 →</a>
+                </div>
+
+                <div class="doc-card">
+                    <h3>📊 Benchmark 测试</h3>
+                    <p>性能测试结果和对比分析</p>
+                    <a href="../BENCHMARKS_SUMMARY.md">查看文档 →</a>
+                </div>
+
+                <div class="doc-card">
+                    <h3>🔍 代码审查</h3>
+                    <p>生成代码质量审查和优化建议</p>
+                    <a href="../GENERATED_CODE_REVIEW.md">查看文档 →</a>
+                </div>
+
+                <div class="doc-card">
+                    <h3>📋 项目状态</h3>
+                    <p>当前进度和未来规划</p>
+                    <a href="../PROJECT_STATUS.md">查看文档 →</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="content">
+            <h2 class="section-title">📦 快速安装</h2>
+            <p style="text-align: center; margin-bottom: 1rem;">通过 NuGet 安装 Sqlx：</p>
+            <div style="background: #2d2d2d; color: #f8f8f2; padding: 1.5rem; border-radius: 8px; font-family: 'Consolas', 'Monaco', monospace;">
+                <p style="margin-bottom: 0.5rem;"># Package Manager</p>
+                <p style="color: #50fa7b; margin-bottom: 1rem;">Install-Package Sqlx</p>
+
+                <p style="margin-bottom: 0.5rem;"># .NET CLI</p>
+                <p style="color: #50fa7b; margin-bottom: 1rem;">dotnet add package Sqlx</p>
+
+                <p style="margin-bottom: 0.5rem;"># PackageReference</p>
+                <p style="color: #50fa7b;">&lt;PackageReference Include="Sqlx" /&gt;</p>
+            </div>
+        </div>
+
+        <div class="content">
+            <h2 class="section-title">💡 代码示例</h2>
+            <div style="background: #2d2d2d; color: #f8f8f2; padding: 1.5rem; border-radius: 8px; font-family: 'Consolas', 'Monaco', monospace; overflow-x: auto;">
+<pre style="color: #f8f8f2;"><span style="color: #ff79c6;">// 1. 定义接口</span>
+<span style="color: #8be9fd;">public interface</span> <span style="color: #50fa7b;">IUserRepository</span>
+{
+    <span style="color: #ff79c6;">[Sqlx("SELECT * FROM users WHERE id = @id")]</span>
+    <span style="color: #8be9fd;">Task</span>&lt;<span style="color: #50fa7b;">User</span>?&gt; <span style="color: #50fa7b;">GetUserByIdAsync</span>(<span style="color: #8be9fd;">int</span> id);
+
+    <span style="color: #ff79c6;">[Sqlx("INSERT INTO users ({{columns --exclude Id}}) VALUES ({{values}})")]</span>
+    <span style="color: #8be9fd;">Task</span>&lt;<span style="color: #8be9fd;">long</span>&gt; <span style="color: #50fa7b;">CreateAsync</span>(<span style="color: #50fa7b;">User</span> user);
+}
+
+<span style="color: #ff79c6;">// 2. 使用 RepositoryFor 自动生成实现</span>
+<span style="color: #ff79c6;">[RepositoryFor(typeof(IUserRepository))]</span>
+<span style="color: #8be9fd;">public partial class</span> <span style="color: #50fa7b;">UserRepository</span>(<span style="color: #50fa7b;">IDbConnection</span> connection)
+    : <span style="color: #50fa7b;">IUserRepository</span>
+{
+    <span style="color: #ff79c6;">// 源代码生成器自动生成所有方法实现</span>
+}
+
+<span style="color: #ff79c6;">// 3. 使用</span>
+<span style="color: #8be9fd;">var</span> user = <span style="color: #8be9fd;">await</span> repository.<span style="color: #50fa7b;">GetUserByIdAsync</span>(<span style="color: #bd93f9;">1</span>);
+</pre>
+            </div>
+        </div>
+
+        <footer>
+            <p>Made with ❤️ by Sqlx Team</p>
+            <p style="margin-top: 0.5rem;">© 2025 Sqlx. All rights reserved.</p>
+        </footer>
+    </div>
+</body>
+</html>
+
+

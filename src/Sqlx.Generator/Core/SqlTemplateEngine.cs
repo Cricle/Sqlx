@@ -28,7 +28,10 @@ public class SqlTemplateEngine
 {
     // 核心正则表达式 - 性能优化版本 (修复ExplicitCapture问题和占位符冲突)
     private static readonly Regex ParameterRegex = new(@"[@:$]\w+", RegexOptions.Compiled | RegexOptions.CultureInvariant);
-    private static readonly Regex PlaceholderRegex = new(@"\{\{(\w+)(?::(\w+))?(?:\|([^}]+))?\}\}", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    // 修复：占位符使用空格分隔选项，不是管道符 | 
+    // 格式：{{placeholder}} 或 {{placeholder options}} 
+    // 示例：{{columns}}, {{columns --exclude Id}}, {{orderby created_at --desc}}
+    private static readonly Regex PlaceholderRegex = new(@"\{\{(\w+)(?:\s+([^}]+))?\}\}", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly Regex SqlInjectionRegex = new(@"(?i)(union\s+select|drop\s+table|exec\s*\(|execute\s*\(|sp_|xp_|--|\*\/|\/\*)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
 
@@ -141,8 +144,8 @@ public class SqlTemplateEngine
         return PlaceholderRegex.Replace(sql, match =>
         {
             var placeholderName = match.Groups[1].Value.ToLowerInvariant();
-            var placeholderType = match.Groups[2].Value.ToLowerInvariant();
-            var placeholderOptions = match.Groups[3].Value; // 新增：选项支持
+            var placeholderOptions = match.Groups[2].Value; // Group 2 现在是选项（空格后的内容）
+            var placeholderType = ""; // 不再从正则中获取类型
 
             // 验证占位符选项
             ValidatePlaceholderOptions(placeholderName, placeholderType, placeholderOptions, result);
@@ -333,42 +336,75 @@ public class SqlTemplateEngine
     /// <summary>处理ORDER BY占位符 - 多数据库支持 (简化版本)</summary>
     private static string ProcessOrderByPlaceholder(string type, INamedTypeSymbol? entityType, string options, SqlDefine dialect)
     {
-        // 直接处理常用排序模式
-        var orderBy = type.ToLowerInvariant() switch
+        // 优先处理 options（新格式）：created_at --desc
+        if (!string.IsNullOrWhiteSpace(options))
         {
-            "id" => "ORDER BY id ASC",
-            "id_desc" => "ORDER BY id DESC",
-            "name" => "ORDER BY name ASC",
-            "name_desc" => "ORDER BY name DESC",
-            "created" => "ORDER BY created_at DESC",
-            "created_asc" => "ORDER BY created_at ASC",
-            "updated" => "ORDER BY updated_at DESC",
-            "updated_asc" => "ORDER BY updated_at ASC",
-            "date" => "ORDER BY created_at DESC",
-            "priority" => "ORDER BY priority DESC, created_at DESC",
-            "random" => dialect.Equals(SqlDefine.SqlServer) ? "ORDER BY NEWID()" :
-                       dialect.Equals(SqlDefine.MySql) ? "ORDER BY RAND()" :
-                       dialect.Equals(SqlDefine.PostgreSql) ? "ORDER BY RANDOM()" :
-                       dialect.Equals(SqlDefine.SQLite) ? "ORDER BY RANDOM()" :
-                       "ORDER BY NEWID()",
-            "rand" => dialect.Equals(SqlDefine.MySql) ? "ORDER BY RAND()" : "ORDER BY NEWID()",
-            _ => null
-        };
-
-        if (orderBy != null) return orderBy;
-
-        // 智能解析自定义排序 - 支持格式如 "field_asc", "field_desc"
-        if (type.Contains('_'))
-        {
-            var parts = type.Split('_');
-            if (parts.Length == 2)
+            // 解析格式：column_name --asc/--desc
+            var optionsParts = options.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            if (optionsParts.Length >= 1)
             {
-                var field = parts[0];
-                var direction = parts[1].ToUpperInvariant();
-                if (direction is "ASC" or "DESC")
+                var columnName = optionsParts[0].Trim();
+                var direction = "ASC"; // 默认升序
+                
+                // 查找方向选项
+                for (int i = 1; i < optionsParts.Length; i++)
                 {
-                    var columnName = SharedCodeGenerationUtilities.ConvertToSnakeCase(field);
-                    return $"ORDER BY {dialect.WrapColumn(columnName)} {direction}";
+                    var part = optionsParts[i].ToLowerInvariant();
+                    if (part == "--desc")
+                    {
+                        direction = "DESC";
+                        break;
+                    }
+                    else if (part == "--asc")
+                    {
+                        direction = "ASC";
+                        break;
+                    }
+                }
+                
+                return $"ORDER BY {dialect.WrapColumn(columnName)} {direction}";
+            }
+        }
+        
+        // 兼容旧格式：处理 type 参数
+        if (!string.IsNullOrWhiteSpace(type))
+        {
+            var orderBy = type.ToLowerInvariant() switch
+            {
+                "id" => "ORDER BY id ASC",
+                "id_desc" => "ORDER BY id DESC",
+                "name" => "ORDER BY name ASC",
+                "name_desc" => "ORDER BY name DESC",
+                "created" => "ORDER BY created_at DESC",
+                "created_asc" => "ORDER BY created_at ASC",
+                "updated" => "ORDER BY updated_at DESC",
+                "updated_asc" => "ORDER BY updated_at ASC",
+                "date" => "ORDER BY created_at DESC",
+                "priority" => "ORDER BY priority DESC, created_at DESC",
+                "random" => dialect.Equals(SqlDefine.SqlServer) ? "ORDER BY NEWID()" :
+                           dialect.Equals(SqlDefine.MySql) ? "ORDER BY RAND()" :
+                           dialect.Equals(SqlDefine.PostgreSql) ? "ORDER BY RANDOM()" :
+                           dialect.Equals(SqlDefine.SQLite) ? "ORDER BY RANDOM()" :
+                           "ORDER BY NEWID()",
+                "rand" => dialect.Equals(SqlDefine.MySql) ? "ORDER BY RAND()" : "ORDER BY NEWID()",
+                _ => null
+            };
+
+            if (orderBy != null) return orderBy;
+
+            // 智能解析自定义排序 - 支持格式如 "field_asc", "field_desc"
+            if (type.Contains('_'))
+            {
+                var parts = type.Split('_');
+                if (parts.Length == 2)
+                {
+                    var field = parts[0];
+                    var direction = parts[1].ToUpperInvariant();
+                    if (direction is "ASC" or "DESC")
+                    {
+                        var columnName = SharedCodeGenerationUtilities.ConvertToSnakeCase(field);
+                        return $"ORDER BY {dialect.WrapColumn(columnName)} {direction}";
+                    }
                 }
             }
         }
@@ -495,17 +531,20 @@ public class SqlTemplateEngine
     /// </summary>
     private bool ValidateTemplateSecurity(string templateSql, SqlTemplateResult result, SqlDefine dialect)
     {
-        // 基础SQL注入检测
-        if (SqlInjectionRegex.IsMatch(templateSql))
+        // 在验证SQL注入之前，先移除占位符（避免占位符选项中的 -- 被误判为SQL注释）
+        var sqlWithoutPlaceholders = PlaceholderRegex.Replace(templateSql, "__PLACEHOLDER__");
+        
+        // 基础SQL注入检测（在移除占位符后的SQL上进行）
+        if (SqlInjectionRegex.IsMatch(sqlWithoutPlaceholders))
         {
             result.Errors.Add("Template contains potential SQL injection patterns");
             return false;
         }
 
-        // 数据库特定安全检查
+        // 数据库特定安全检查（使用原始模板）
         ValidateDialectSpecificSecurity(templateSql, result, dialect);
 
-        // 参数安全检查 - 确保使用正确的参数前缀
+        // 参数安全检查 - 确保使用正确的参数前缀（使用原始模板）
         ValidateParameterSafety(templateSql, result, dialect);
 
         // 性能优化：使用Count检查集合是否为空，比Any()更直接

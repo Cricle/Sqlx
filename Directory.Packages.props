@@ -6,6 +6,7 @@
   <!-- 核心 .NET 运行时包 -->
   <ItemGroup Label="Runtime">
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.9" />
+    <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="5.0.0" />
     <PackageVersion Include="System.Memory" Version="4.5.5" />
     <PackageVersion Include="System.Data.Common" Version="4.3.0" />
     <PackageVersion Include="System.Text.Json" Version="8.0.5" />
@@ -46,6 +47,7 @@
   <!-- 性能和基准测试 -->
   <ItemGroup Label="Performance">
     <PackageVersion Include="BenchmarkDotNet" Version="0.14.0" />
+    <PackageVersion Include="Dapper" Version="2.1.35" />
     <PackageVersion Include="System.Diagnostics.PerformanceCounter" Version="8.0.0" />
   </ItemGroup>
   <!-- Microsoft Extensions -->
@@ -72,11 +74,9 @@
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0" />
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="6.9.0" />
   </ItemGroup>
-
   <!-- AOT 编译器（实验性） -->
   <ItemGroup Label="AOT Compiler" Condition="'$(EnableAOT)' == 'true'">
     <PackageVersion Include="Microsoft.DotNet.ILCompiler" Version="9.0.0" />
   </ItemGroup>
-
   <!-- 注意：Visual Studio SDK 包由 VS 插件项目独立管理 (ManagePackageVersionsCentrally=false) -->
 </Project>

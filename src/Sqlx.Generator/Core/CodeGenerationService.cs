@@ -488,11 +488,28 @@ public class CodeGenerationService
         var returnTypeString = returnType.GetCachedDisplayString();  // 使用缓存版本
         var resultVariableType = ExtractInnerTypeFromTask(returnTypeString);
         var operationName = method.Name;
+        var repositoryType = method.ContainingType.Name;
+
+        // 从方法返回类型重新推断实体类型（覆盖接口级别的推断）
+        // 这样可以正确处理返回标量的方法（如 INSERT 返回 ID）
+        var methodEntityType = TryInferEntityTypeFromMethodReturnType(returnType);
+        // 如果方法返回实体类型，使用方法级别的推断
+        // 如果方法返回标量类型（methodEntityType == null），也要覆盖以避免错误映射
+        entityType = methodEntityType;
+
+        // Generate execution context (stack allocation, string literals for zero ToString() overhead)
+        sb.AppendLine("// 创建执行上下文（栈分配，使用字符串字面量）");
+        sb.AppendLine("var __ctx__ = new global::Sqlx.Interceptors.SqlxExecutionContext(");
+        sb.PushIndent();
+        sb.AppendLine($"\"{operationName}\",");
+        sb.AppendLine($"\"{repositoryType}\",");
+        sb.AppendLine($"@\"{EscapeSqlForCSharp(templateResult.ProcessedSql)}\");");
+        sb.PopIndent();
+        sb.AppendLine();
 
         // Generate method variables
         sb.AppendLine($"{resultVariableType} __result__ = default!;");
         sb.AppendLine("global::System.Data.IDbCommand? __cmd__ = null;");
-        sb.AppendLine("var __startTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
         sb.AppendLine();
 
         // Use shared utilities for database setup
@@ -510,7 +527,13 @@ public class CodeGenerationService
         sb.AppendLine("{");
         sb.PushIndent();
 
-        // Call OnExecuting interceptor
+        // Call global interceptor - OnExecuting
+        sb.AppendLine("// 全局拦截器：执行前");
+        sb.AppendLine("global::Sqlx.Interceptors.SqlxInterceptors.OnExecuting(ref __ctx__);");
+        sb.AppendLine();
+
+        // Call partial method interceptor (for backward compatibility)
+        sb.AppendLine("// Partial方法拦截器（向后兼容）");
         sb.AppendLine($"OnExecuting(\"{operationName}\", __cmd__);");
         sb.AppendLine();
 
@@ -534,21 +557,55 @@ public class CodeGenerationService
         }
 
         sb.AppendLine();
-        sb.AppendLine("var __endTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
 
-        // Call OnExecuted interceptor
-        sb.AppendLine($"OnExecuted(\"{operationName}\", __cmd__, __result__, global::System.Diagnostics.Stopwatch.GetElapsedTime(__startTimestamp__, __endTimestamp__).Ticks);");
+        // Update context
+        sb.AppendLine("// 更新执行上下文");
+        sb.AppendLine("__ctx__.EndTimestamp = global::System.Diagnostics.Stopwatch.GetTimestamp();");
+        sb.AppendLine("__ctx__.Result = __result__;");
+        sb.AppendLine();
+
+        // Call global interceptor - OnExecuted
+        sb.AppendLine("// 全局拦截器：执行成功");
+        sb.AppendLine("global::Sqlx.Interceptors.SqlxInterceptors.OnExecuted(ref __ctx__);");
+        sb.AppendLine();
+
+        // Call partial method interceptor (for backward compatibility)
+        sb.AppendLine("// Partial方法拦截器（向后兼容）");
+        sb.AppendLine($"OnExecuted(\"{operationName}\", __cmd__, __result__, __ctx__.EndTimestamp - __ctx__.StartTimestamp);");
 
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine("catch (global::System.Exception __ex__)");
         sb.AppendLine("{");
         sb.PushIndent();
-        sb.AppendLine("var __failTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
-        sb.AppendLine($"OnExecuteFail(\"{operationName}\", __cmd__, __ex__, global::System.Diagnostics.Stopwatch.GetElapsedTime(__startTimestamp__, __failTimestamp__).Ticks);");
+
+        // Update context with exception
+        sb.AppendLine("// 更新执行上下文");
+        sb.AppendLine("__ctx__.EndTimestamp = global::System.Diagnostics.Stopwatch.GetTimestamp();");
+        sb.AppendLine("__ctx__.Exception = __ex__;");
+        sb.AppendLine();
+
+        // Call global interceptor - OnFailed
+        sb.AppendLine("// 全局拦截器：执行失败");
+        sb.AppendLine("global::Sqlx.Interceptors.SqlxInterceptors.OnFailed(ref __ctx__);");
+        sb.AppendLine();
+
+        // Call partial method interceptor (for backward compatibility)
+        sb.AppendLine("// Partial方法拦截器（向后兼容）");
+        sb.AppendLine($"OnExecuteFail(\"{operationName}\", __cmd__, __ex__, __ctx__.EndTimestamp - __ctx__.StartTimestamp);");
+        sb.AppendLine();
+
         sb.AppendLine("throw;");
         sb.PopIndent();
         sb.AppendLine("}");
+    }
+
+    /// <summary>
+    /// Escape SQL string for C# verbatim string literal
+    /// </summary>
+    private static string EscapeSqlForCSharp(string sql)
+    {
+        return sql.Replace("\"", "\"\"");
     }
 
     // 性能优化：枚举避免重复字符串比较
@@ -732,10 +789,127 @@ public class CodeGenerationService
 
     private INamedTypeSymbol? InferEntityTypeFromInterface(INamedTypeSymbol serviceInterface)
     {
-        // 简化：从接口的泛型参数中获取实体类型
+        // 1. 尝试从接口的泛型参数中获取实体类型
         if (serviceInterface.TypeArguments.Length > 0)
             return serviceInterface.TypeArguments[0] as INamedTypeSymbol;
+
+        // 2. 如果接口不是泛型的，尝试从方法返回类型推断
+        // 遍历接口的所有方法，找到第一个返回实体类型的方法
+        foreach (var member in serviceInterface.GetMembers())
+        {
+            if (member is IMethodSymbol method)
+            {
+                // 先尝试从返回类型推断
+                var entityType = TryInferEntityTypeFromMethodReturnType(method.ReturnType);
+                if (entityType != null)
+                    return entityType;
+
+                // 如果返回类型不是实体，尝试从参数类型推断（用于INSERT/UPDATE等方法）
+                foreach (var param in method.Parameters)
+                {
+                    if (param.Type is INamedTypeSymbol paramType && !IsScalarType(paramType))
+                    {
+                        // 排除常见的非实体类型
+                        var paramTypeName = paramType.GetCachedDisplayString();
+                        if (!paramTypeName.StartsWith("System.") &&
+                            !paramTypeName.StartsWith("Microsoft.") &&
+                            !paramType.IsGenericType)
+                        {
+                            return paramType;
+                        }
+                    }
+                }
+            }
+        }
+
         return null;
+    }
+
+    /// <summary>
+    /// 从方法返回类型推断实体类型
+    /// 支持: User, User?, Task&lt;User&gt;, Task&lt;User?&gt;, Task&lt;List&lt;User&gt;&gt;, IEnumerable&lt;User&gt; 等
+    /// </summary>
+    private INamedTypeSymbol? TryInferEntityTypeFromMethodReturnType(ITypeSymbol returnType)
+    {
+        // 处理可空类型: User? -> User
+        if (returnType.NullableAnnotation == NullableAnnotation.Annotated && returnType is INamedTypeSymbol namedType)
+        {
+            // 对于值类型的可空类型 (Nullable<T>)，获取 T
+            if (namedType.IsGenericType && namedType.ConstructedFrom.SpecialType == SpecialType.System_Nullable_T)
+            {
+                returnType = namedType.TypeArguments[0];
+            }
+        }
+
+        // 如果是泛型类型，检查是否是 Task/ValueTask/List/IEnumerable 等容器
+        if (returnType is INamedTypeSymbol namedReturnType && namedReturnType.IsGenericType)
+        {
+            var typeName = namedReturnType.ConstructedFrom.GetCachedDisplayString();
+
+            // Task<T>, ValueTask<T>
+            if (typeName.StartsWith("System.Threading.Tasks.Task<") ||
+                typeName.StartsWith("System.Threading.Tasks.ValueTask<"))
+            {
+                var innerType = namedReturnType.TypeArguments[0];
+                return TryInferEntityTypeFromMethodReturnType(innerType); // 递归处理内层类型
+            }
+
+            // List<T>, IEnumerable<T>, ICollection<T>, IReadOnlyList<T> 等集合类型
+            if (typeName.Contains("List<") ||
+                typeName.Contains("IEnumerable<") ||
+                typeName.Contains("ICollection<") ||
+                typeName.Contains("IReadOnlyList<") ||
+                typeName.Contains("IReadOnlyCollection<"))
+            {
+                var elementType = namedReturnType.TypeArguments[0];
+                // 集合的元素类型如果不是基元类型，则认为是实体类型
+                if (elementType is INamedTypeSymbol namedElementType && !IsScalarType(namedElementType))
+                {
+                    return namedElementType;
+                }
+            }
+        }
+
+        // 如果返回类型本身是一个命名类型，且不是基元类型或Task，则可能是实体类型
+        if (returnType is INamedTypeSymbol candidateType &&
+            !IsScalarType(candidateType) &&
+            !candidateType.GetCachedDisplayString().StartsWith("System.Threading.Tasks."))
+        {
+            return candidateType;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 判断是否是标量类型（基元类型、string、DateTime 等，而非实体类型）
+    /// </summary>
+    private bool IsScalarType(INamedTypeSymbol type)
+    {
+        // 基元类型（int, long, bool, string 等）
+        if (type.SpecialType != SpecialType.None)
+            return true;
+
+        var typeName = type.GetCachedDisplayString();
+
+        // 常见的标量类型
+        if (typeName == "System.DateTime" ||
+            typeName == "System.DateTimeOffset" ||
+            typeName == "System.TimeSpan" ||
+            typeName == "System.Guid" ||
+            typeName == "System.Decimal" ||
+            typeName == "System.Byte[]")
+        {
+            return true;
+        }
+
+        // System命名空间下的值类型通常是标量
+        if (typeName.StartsWith("System.") && type.IsValueType)
+        {
+            return true;
+        }
+
+        return false;
     }
 
     private string GetTableNameFromType(INamedTypeSymbol repositoryClass, INamedTypeSymbol? entityType)

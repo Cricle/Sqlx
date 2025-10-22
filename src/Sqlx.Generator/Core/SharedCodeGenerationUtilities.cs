@@ -132,21 +132,42 @@ public static class SharedCodeGenerationUtilities
             entityTypeName = entityTypeName.TrimEnd('?');
         }
 
+        // 性能优化：避免不必要的ToList()调用，直接遍历
+        // 支持 set 和 init 属性
+        var properties = entityType.GetMembers().OfType<IPropertySymbol>()
+            .Where(p => p.CanBeReferencedByName && p.SetMethod != null)
+            .ToArray();
+
+        if (properties.Length == 0)
+        {
+            // No properties to map, just create empty object
+            if (variableName == "__result__")
+            {
+                sb.AppendLine($"__result__ = new {entityTypeName}();");
+            }
+            else
+            {
+                sb.AppendLine($"var {variableName} = new {entityTypeName}();");
+            }
+            return;
+        }
+
+        // Use object initializer syntax to support init-only properties
         if (variableName == "__result__")
         {
-            sb.AppendLine($"__result__ = new {entityTypeName}();");
+            sb.AppendLine($"__result__ = new {entityTypeName}");
         }
         else
         {
-            sb.AppendLine($"var {variableName} = new {entityTypeName}();");
+            sb.AppendLine($"var {variableName} = new {entityTypeName}");
         }
+        
+        sb.AppendLine("{");
+        sb.PushIndent();
 
-        // 性能优化：避免不必要的ToList()调用，直接遍历
-        var properties = entityType.GetMembers().OfType<IPropertySymbol>()
-            .Where(p => p.CanBeReferencedByName && p.SetMethod != null);
-
-        foreach (var prop in properties)
+        for (int i = 0; i < properties.Length; i++)
         {
+            var prop = properties[i];
             var columnName = ConvertToSnakeCase(prop.Name);
             var readMethod = prop.Type.UnwrapNullableType().GetDataReaderMethod();
             var isNullable = prop.Type.CanBeReferencedByName && prop.Type.NullableAnnotation == Microsoft.CodeAnalysis.NullableAnnotation.Annotated;
@@ -156,8 +177,12 @@ public static class SharedCodeGenerationUtilities
                 ? $"({prop.Type.GetCachedDisplayString()})reader[\"{columnName}\"]"  // 使用缓存版本
                 : $"reader.{readMethod}(reader.GetOrdinal(\"{columnName}\"))";
 
-            sb.AppendLine($"{variableName}.{prop.Name} = reader.IsDBNull(reader.GetOrdinal(\"{columnName}\")) ? {defaultValue} : {valueExpression};");
+            var comma = i < properties.Length - 1 ? "," : "";
+            sb.AppendLine($"{prop.Name} = reader.IsDBNull(reader.GetOrdinal(\"{columnName}\")) ? {defaultValue} : {valueExpression}{comma}");
         }
+
+        sb.PopIndent();
+        sb.AppendLine("};");
     }
 
     /// <summary>

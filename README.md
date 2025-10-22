@@ -524,12 +524,96 @@ dotnet add package Sqlx.Generator
 
 ---
 
+## ⚡ 性能与拦截器
+
+### 零GC拦截器
+
+Sqlx 提供了**零堆分配**的全局拦截器，用于追踪和监控：
+
+```csharp
+// 注册 Activity 拦截器（使用 Activity.Current）
+Sqlx.Interceptors.SqlxInterceptors.Add(new Sqlx.Interceptors.ActivityInterceptor());
+
+// 自定义拦截器
+public class MyInterceptor : ISqlxInterceptor
+{
+    public void OnExecuting(ref SqlxExecutionContext context)
+    {
+        Console.WriteLine($"执行: {context.OperationName.ToString()}");
+    }
+
+    public void OnExecuted(ref SqlxExecutionContext context)
+    {
+        Console.WriteLine($"完成: {context.ElapsedMilliseconds:F2}ms");
+    }
+
+    public void OnFailed(ref SqlxExecutionContext context)
+    {
+        Console.WriteLine($"失败: {context.Exception?.Message}");
+    }
+}
+```
+
+**关键特性**:
+- ✅ **零GC** - ref struct 栈分配
+- ✅ **低开销** - <5% 性能影响
+- ✅ **Activity集成** - 兼容 APM 工具
+- ✅ **多拦截器** - 最多支持8个
+
+详见：[拦截器使用指南](samples/TodoWebApi/INTERCEPTOR_USAGE.md)
+
+### 性能基准测试
+
+完整的性能测试套件，对比 Sqlx vs Dapper vs ADO.NET：
+
+```bash
+cd tests/Sqlx.Benchmarks
+dotnet run -c Release
+```
+
+**测试覆盖**:
+- 拦截器性能（7个测试）
+- 查询操作（12个测试）
+- CRUD操作（9个测试）
+- 复杂查询（12个测试）
+
+**性能目标**:
+- Sqlx ≈ 手写 ADO.NET（<5%差异）
+- Sqlx > Dapper（快10-30%）
+- 拦截器零GC，<5%开销
+
+详见：[性能测试文档](docs/BENCHMARKS_SUMMARY.md)
+
+---
+
+## 📚 完整文档
+
+### 📖 快速导航
+
+- **[📂 文档中心 (docs/)](docs/)** - 所有文档的入口
+- **[🌐 在线文档](docs/web/index.html)** - GitHub Pages 网站
+- **[📋 快速参考](docs/QUICK_REFERENCE.md)** - 一页纸速查表
+
+### 📚 核心文档
+
+| 文档 | 说明 |
+|------|------|
+| [DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md) | **文档索引导航** |
+| [DESIGN_PRINCIPLES.md](docs/DESIGN_PRINCIPLES.md) | 核心设计原则 |
+| [FINAL_OPTIMIZATION_SUMMARY.md](docs/FINAL_OPTIMIZATION_SUMMARY.md) | 优化和Bug修复总结 |
+| [BENCHMARKS_SUMMARY.md](docs/BENCHMARKS_SUMMARY.md) | 性能测试完整报告 |
+| [FRAMEWORK_COMPATIBILITY.md](docs/FRAMEWORK_COMPATIBILITY.md) | 框架兼容性说明 |
+| [samples/TodoWebApi/INTERCEPTOR_USAGE.md](samples/TodoWebApi/INTERCEPTOR_USAGE.md) | 拦截器使用指南 |
+
+---
+
 ## 💬 获取帮助
 
-- 📖 [完整文档](docs/README.md)
-- 💡 [示例代码](samples/)
-- 🐛 [问题反馈](https://github.com/your-org/sqlx/issues)
-- 💬 讨论群：[加入社区](#)
+- 📖 [文档中心](docs/) - 完整的文档导航
+- 📋 [快速参考](docs/QUICK_REFERENCE.md) - 一页纸速查表
+- 💡 [示例代码](samples/) - 实际使用示例
+- 🐛 [问题反馈](https://github.com/your-org/sqlx/issues) - 提交 Bug 和建议
+- ⚡ [性能测试](tests/Sqlx.Benchmarks/) - 运行 Benchmark
 
 ---
 

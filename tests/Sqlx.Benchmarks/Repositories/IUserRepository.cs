@@ -54,8 +54,8 @@ public interface IUserRepository
     /// 复杂查询 - JOIN、聚合、排序（同步方法用于benchmark）
     /// </summary>
     [Sqlx(@"
-        SELECT id, name, email, age, salary, is_active, created_at, updated_at 
-        FROM users 
+        SELECT id, name, email, age, salary, is_active, created_at, updated_at
+        FROM users
         WHERE is_active = 1 AND age BETWEEN @minAge AND @maxAge
         ORDER BY salary DESC, name ASC
         LIMIT @limit")]

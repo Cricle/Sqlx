@@ -379,9 +379,10 @@ TodoWebApi/
 ## 📚 相关文档
 
 - [📘 Sqlx 主文档](../../README.md)
-- [🎯 占位符完整指南](../../docs/EXTENDED_PLACEHOLDERS_GUIDE.md)
-- [📝 CRUD 操作指南](../../docs/CRUD_PLACEHOLDERS_COMPLETE_GUIDE.md)
+- [🎯 占位符完整指南](../../docs/PLACEHOLDERS.md)
 - [💡 最佳实践](../../docs/BEST_PRACTICES.md)
+- [⚡ 性能分析](../../PERFORMANCE_ANALYSIS.md)
+- [🔧 Partial 方法指南](../../docs/PARTIAL_METHODS_GUIDE.md)
 
 ---
 

@@ -38,7 +38,6 @@ Sqlx 是一个让你**不用手写 SQL 列名**的数据库工具。你只需要
 ### 第一步：安装
 ```bash
 dotnet add package Sqlx
-dotnet add package Sqlx.Generator
 ```
 
 ### 第二步：定义你的数据

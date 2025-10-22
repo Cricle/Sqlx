@@ -21,7 +21,7 @@ public partial class UserRepositoryWithTracing(SqliteConnection connection) : IU
 
 /// <summary>
 /// 用户Repository实现 - 高性能配置（禁用追踪和指标）
-/// 用于测试零开销的极致性能
+/// 用于测试零开销的极致性能（默认使用硬编码索引）
 /// </summary>
 [TableName("users")]
 [SqlDefine(SqlDefineTypes.SQLite)]
@@ -32,6 +32,7 @@ public partial class UserRepositoryNoTracing(SqliteConnection connection) : IUse
 {
     // 所有接口方法实现由Sqlx源生成器在编译时自动生成
     // 生成的代码不含Activity追踪和Stopwatch计时（极致性能）
+    // 默认使用硬编码索引访问（reader.GetInt32(0)等）
 }
 
 /// <summary>
@@ -47,4 +48,3 @@ public partial class UserRepositoryMetricsOnly(SqliteConnection connection) : IU
 {
     // 生成的代码只包含Stopwatch计时，不含Activity追踪
 }
-

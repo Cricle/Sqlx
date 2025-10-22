@@ -102,7 +102,7 @@ public class TracingOverheadBenchmark
 
     /// <summary>
     /// Sqlx - 零追踪（EnableTracing=false, EnableMetrics=false）
-    /// 测试极致性能，无任何追踪和指标开销
+    /// 测试极致性能，无任何追踪和指标开销（默认使用硬编码索引）
     /// </summary>
     [Benchmark(Description = "Sqlx 零追踪")]
     public User? Sqlx_NoTracing_SingleRow()

@@ -136,13 +136,15 @@ public static class SharedCodeGenerationUtilities
     /// <summary>
     /// Generate entity property mapping with optional ordinal access optimization
     /// </summary>
-    public static void GenerateEntityMapping(IndentedStringBuilder sb, INamedTypeSymbol entityType, string variableName, List<string>? columnOrder = null)
+    public static void GenerateEntityMapping(IndentedStringBuilder sb, INamedTypeSymbol entityType, string variableName, List<string>? columnOrder = null, bool useOrdinalIndex = true)
     {
-        // 🚀 性能优化：如果有列顺序信息，使用直接序号访问（避免GetOrdinal查找）
+        // 🚀 性能优化：默认使用硬编码索引访问（极致性能）
+        // 如果列顺序不匹配，源分析器会发出编译警告
         if (columnOrder != null && columnOrder.Count > 0)
         {
-            sb.AppendLine($"// 🚀 使用直接序号访问（优化版本）- {columnOrder.Count}列: [{string.Join(", ", columnOrder)}]");
-            GenerateEntityMappingWithOrdinals(sb, entityType, variableName, columnOrder);
+            sb.AppendLine($"// 🚀 使用硬编码索引访问（极致性能）- {columnOrder.Count}列: [{string.Join(", ", columnOrder)}]");
+            sb.AppendLine($"// ⚠️ 如果C#属性顺序与SQL列顺序不一致，源分析器会发出警告");
+            GenerateEntityMappingWithHardcodedOrdinals(sb, entityType, variableName, columnOrder);
             return;
         }
 
@@ -153,9 +155,9 @@ public static class SharedCodeGenerationUtilities
     }
 
     /// <summary>
-    /// Generate entity property mapping using direct ordinal access (performance optimized)
+    /// Generate entity property mapping using hardcoded ordinal index (extreme performance mode)
     /// </summary>
-    private static void GenerateEntityMappingWithOrdinals(IndentedStringBuilder sb, INamedTypeSymbol entityType, string variableName, List<string> columnOrder)
+    private static void GenerateEntityMappingWithHardcodedOrdinals(IndentedStringBuilder sb, INamedTypeSymbol entityType, string variableName, List<string> columnOrder)
     {
         // Remove nullable annotation
         var entityTypeName = entityType.GetCachedDisplayString();
@@ -182,25 +184,13 @@ public static class SharedCodeGenerationUtilities
             return;
         }
 
-        // 🚀 关键优化：根据SQL列顺序映射到属性（属性顺序变动不影响）
-        // 创建列名到序号的映射
+        // 🚀 极致优化：直接使用硬编码索引（0, 1, 2...）访问列
+        // 创建列名到硬编码索引的映射
         var columnToOrdinal = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         for (int i = 0; i < columnOrder.Count; i++)
         {
             columnToOrdinal[columnOrder[i]] = i;
         }
-
-        // 🚀 性能优化：运行时获取列序号，但使用已知的列名（避免属性顺序依赖）
-        // 这比GetOrdinal(ConvertToSnakeCase(propName))更高效，因为我们预先知道列名
-        var columnToOrdinalVar = new Dictionary<string, string>();
-        sb.AppendLine("// 获取列序号（按SQL列顺序，不依赖属性顺序）");
-        for (int i = 0; i < columnOrder.Count; i++)
-        {
-            var ordinalVarName = $"__ord_{i}__";
-            columnToOrdinalVar[columnOrder[i]] = ordinalVarName;
-            sb.AppendLine($"var {ordinalVarName} = reader.GetOrdinal(\"{columnOrder[i]}\");");
-        }
-        sb.AppendLine();
 
         // 使用对象初始化器语法（支持init-only属性）
         if (variableName == "__result__")
@@ -215,14 +205,14 @@ public static class SharedCodeGenerationUtilities
         sb.AppendLine("{");
         sb.PushIndent();
 
-        // 根据属性映射到对应的列序号变量
+        // 根据属性映射到对应的硬编码索引
         bool first = true;
         foreach (var prop in properties)
         {
             var columnName = ConvertToSnakeCase(prop.Name);
-            
-            // 查找该属性对应的列序号变量
-            if (!columnToOrdinalVar.TryGetValue(columnName, out string ordinalVar))
+
+            // 查找该属性对应的硬编码索引
+            if (!columnToOrdinal.TryGetValue(columnName, out int ordinalIndex))
             {
                 // 列不存在于SQL中，跳过或使用默认值
                 continue;
@@ -232,13 +222,13 @@ public static class SharedCodeGenerationUtilities
             var isNullable = prop.Type.CanBeReferencedByName && prop.Type.NullableAnnotation == Microsoft.CodeAnalysis.NullableAnnotation.Annotated;
             var defaultValue = isNullable ? "null" : GetDefaultValue(prop.Type);
 
-            // 🚀 性能优化：使用获取的序号变量（运行时安全，性能优于每次GetOrdinal）
+            // 🚀 极致性能：直接使用硬编码索引（例如：reader.GetInt32(0)）
             var valueExpression = string.IsNullOrEmpty(readMethod)
-                ? $"({prop.Type.GetCachedDisplayString()})reader[{ordinalVar}]"
-                : $"reader.{readMethod}({ordinalVar})";
+                ? $"({prop.Type.GetCachedDisplayString()})reader[{ordinalIndex}]"
+                : $"reader.{readMethod}({ordinalIndex})";
 
             if (!first) sb.Append(",");
-            sb.AppendLine($"{prop.Name} = reader.IsDBNull({ordinalVar}) ? {defaultValue} : {valueExpression}");
+            sb.AppendLine($"{prop.Name} = reader.IsDBNull({ordinalIndex}) ? {defaultValue} : {valueExpression}");
             first = false;
         }
 

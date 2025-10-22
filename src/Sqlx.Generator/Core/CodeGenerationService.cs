@@ -849,7 +849,8 @@ public class CodeGenerationService
 
     private void GenerateEntityFromReader(IndentedStringBuilder sb, INamedTypeSymbol entityType, string variableName, SqlTemplateResult templateResult)
     {
-        // 🚀 性能优化：使用列顺序信息进行直接序号访问（避免GetOrdinal查找）
+        // 🚀 性能优化：默认使用硬编码索引访问（极致性能）
+        // 源分析器会检测列顺序不匹配并发出警告
         SharedCodeGenerationUtilities.GenerateEntityMapping(sb, entityType, variableName, templateResult.ColumnOrder);
     }
 
@@ -1077,12 +1078,6 @@ public class CodeGenerationService
         return entityType?.Name ?? repositoryClass.Name.Replace("Repository", "");
     }
 
-    /// <summary>
-    /// 检查是否应该为指定方法生成Activity追踪代码
-    /// </summary>
-    /// <param name="method">方法符号</param>
-    /// <param name="classSymbol">类符号</param>
-    /// <returns>如果应该生成追踪代码返回true，否则返回false</returns>
     private bool ShouldGenerateTracing(IMethodSymbol method, INamedTypeSymbol classSymbol)
     {
         // 首先检查方法级别的EnableTracingAttribute

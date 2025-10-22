@@ -527,14 +527,21 @@ public class CodeGenerationService
         // 如果方法返回标量类型（methodEntityType == null），也要覆盖以避免错误映射
         entityType = methodEntityType;
 
-        // Generate execution context (stack allocation, string literals for zero ToString() overhead)
-        sb.AppendLine("// 创建执行上下文（栈分配，使用字符串字面量）");
-        sb.AppendLine("var __ctx__ = new global::Sqlx.Interceptors.SqlxExecutionContext(");
+        // 🚀 性能优化：内联Activity跟踪，移除拦截器框架开销
+        sb.AppendLine("// Activity跟踪（内联，零开销）");
+        sb.AppendLine("var __activity__ = global::System.Diagnostics.Activity.Current;");
+        sb.AppendLine("var __startTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
+        sb.AppendLine();
+        sb.AppendLine("// 设置Activity标签（如果存在）");
+        sb.AppendLine("if (__activity__ != null)");
+        sb.AppendLine("{");
         sb.PushIndent();
-        sb.AppendLine($"\"{operationName}\",");
-        sb.AppendLine($"\"{repositoryType}\",");
-        sb.AppendLine($"@\"{EscapeSqlForCSharp(templateResult.ProcessedSql)}\");");
+        sb.AppendLine($"__activity__.DisplayName = \"{operationName}\";");
+        sb.AppendLine("__activity__.SetTag(\"db.system\", \"sql\");");
+        sb.AppendLine($"__activity__.SetTag(\"db.operation\", \"{operationName}\");");
+        sb.AppendLine($"__activity__.SetTag(\"db.statement\", @\"{EscapeSqlForCSharp(templateResult.ProcessedSql)}\");");
         sb.PopIndent();
+        sb.AppendLine("}");
         sb.AppendLine();
 
         // Generate method variables
@@ -552,18 +559,13 @@ public class CodeGenerationService
         sb.AppendLine();
         SharedCodeGenerationUtilities.GenerateCommandSetup(sb, templateResult.ProcessedSql, method, connectionName);
 
-        // Add try-catch block with interceptors
+        // Add try-catch block
         sb.AppendLine("try");
         sb.AppendLine("{");
         sb.PushIndent();
 
-        // Call global interceptor - OnExecuting
-        sb.AppendLine("// 全局拦截器：执行前");
-        sb.AppendLine("global::Sqlx.Interceptors.SqlxInterceptors.OnExecuting(ref __ctx__);");
-        sb.AppendLine();
-
-        // Call partial method interceptor (for backward compatibility)
-        sb.AppendLine("// Partial方法拦截器（向后兼容）");
+        // Call partial method interceptor (用户自定义扩展点)
+        sb.AppendLine("// Partial方法：用户自定义拦截逻辑");
         sb.AppendLine($"OnExecuting(\"{operationName}\", __cmd__);");
         sb.AppendLine();
 
@@ -588,20 +590,30 @@ public class CodeGenerationService
 
         sb.AppendLine();
 
-        // Update context
-        sb.AppendLine("// 更新执行上下文");
-        sb.AppendLine("__ctx__.EndTimestamp = global::System.Diagnostics.Stopwatch.GetTimestamp();");
-        sb.AppendLine("__ctx__.Result = __result__;");
+        // Calculate elapsed time
+        sb.AppendLine("// 计算执行耗时");
+        sb.AppendLine("var __endTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
+        sb.AppendLine("var __elapsedTicks__ = __endTimestamp__ - __startTimestamp__;");
         sb.AppendLine();
 
-        // Call global interceptor - OnExecuted
-        sb.AppendLine("// 全局拦截器：执行成功");
-        sb.AppendLine("global::Sqlx.Interceptors.SqlxInterceptors.OnExecuted(ref __ctx__);");
+        // Update Activity on success (内联，零开销)
+        sb.AppendLine("// 更新Activity（成功）");
+        sb.AppendLine("if (__activity__ != null)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("var __elapsedMs__ = __elapsedTicks__ * 1000.0 / global::System.Diagnostics.Stopwatch.Frequency;");
+        sb.AppendLine("__activity__.SetTag(\"db.duration_ms\", (long)__elapsedMs__);");
+        sb.AppendLine("__activity__.SetTag(\"db.success\", true);");
+        sb.AppendLine("#if NET5_0_OR_GREATER");
+        sb.AppendLine("__activity__.SetStatus(global::System.Diagnostics.ActivityStatusCode.Ok);");
+        sb.AppendLine("#endif");
+        sb.PopIndent();
+        sb.AppendLine("}");
         sb.AppendLine();
 
-        // Call partial method interceptor (for backward compatibility)
-        sb.AppendLine("// Partial方法拦截器（向后兼容）");
-        sb.AppendLine($"OnExecuted(\"{operationName}\", __cmd__, __result__, __ctx__.EndTimestamp - __ctx__.StartTimestamp);");
+        // Call partial method interceptor
+        sb.AppendLine("// Partial方法：用户自定义成功处理");
+        sb.AppendLine($"OnExecuted(\"{operationName}\", __cmd__, __result__, __elapsedTicks__);");
 
         sb.PopIndent();
         sb.AppendLine("}");
@@ -609,20 +621,31 @@ public class CodeGenerationService
         sb.AppendLine("{");
         sb.PushIndent();
 
-        // Update context with exception
-        sb.AppendLine("// 更新执行上下文");
-        sb.AppendLine("__ctx__.EndTimestamp = global::System.Diagnostics.Stopwatch.GetTimestamp();");
-        sb.AppendLine("__ctx__.Exception = __ex__;");
+        // Calculate elapsed time on error
+        sb.AppendLine("var __endTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
+        sb.AppendLine("var __elapsedTicks__ = __endTimestamp__ - __startTimestamp__;");
         sb.AppendLine();
 
-        // Call global interceptor - OnFailed
-        sb.AppendLine("// 全局拦截器：执行失败");
-        sb.AppendLine("global::Sqlx.Interceptors.SqlxInterceptors.OnFailed(ref __ctx__);");
+        // Update Activity on failure (内联，零开销)
+        sb.AppendLine("// 更新Activity（失败）");
+        sb.AppendLine("if (__activity__ != null)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("var __elapsedMs__ = __elapsedTicks__ * 1000.0 / global::System.Diagnostics.Stopwatch.Frequency;");
+        sb.AppendLine("__activity__.SetTag(\"db.duration_ms\", (long)__elapsedMs__);");
+        sb.AppendLine("__activity__.SetTag(\"db.success\", false);");
+        sb.AppendLine("#if NET5_0_OR_GREATER");
+        sb.AppendLine("__activity__.SetStatus(global::System.Diagnostics.ActivityStatusCode.Error, __ex__.Message);");
+        sb.AppendLine("#endif");
+        sb.AppendLine("__activity__.SetTag(\"error.type\", __ex__.GetType().Name);");
+        sb.AppendLine("__activity__.SetTag(\"error.message\", __ex__.Message);");
+        sb.PopIndent();
+        sb.AppendLine("}");
         sb.AppendLine();
 
-        // Call partial method interceptor (for backward compatibility)
-        sb.AppendLine("// Partial方法拦截器（向后兼容）");
-        sb.AppendLine($"OnExecuteFail(\"{operationName}\", __cmd__, __ex__, __ctx__.EndTimestamp - __ctx__.StartTimestamp);");
+        // Call partial method interceptor
+        sb.AppendLine("// Partial方法：用户自定义异常处理");
+        sb.AppendLine($"OnExecuteFail(\"{operationName}\", __cmd__, __ex__, __elapsedTicks__);");
         sb.AppendLine();
 
         sb.AppendLine("throw;");

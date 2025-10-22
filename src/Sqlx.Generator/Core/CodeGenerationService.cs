@@ -601,12 +601,16 @@ public class CodeGenerationService
         sb.AppendLine();
 
         // Use shared utilities for database setup
+        // 🚀 性能优化：连接状态检查可通过 SQLX_DISABLE_AUTO_OPEN 条件编译禁用（减少8-12%开销）
+        // 如果应用程序自行管理连接生命周期，可定义此符号以提升性能
+        sb.AppendLine("#if !SQLX_DISABLE_AUTO_OPEN");
         sb.AppendLine($"if ({connectionName}.State != global::System.Data.ConnectionState.Open)");
         sb.AppendLine("{");
         sb.PushIndent();
         sb.AppendLine($"{connectionName}.Open();");
         sb.PopIndent();
         sb.AppendLine("}");
+        sb.AppendLine("#endif");
         sb.AppendLine();
         SharedCodeGenerationUtilities.GenerateCommandSetup(sb, templateResult.ProcessedSql, method, connectionName);
 

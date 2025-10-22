@@ -64,7 +64,7 @@ public class SqlServerDialectProviderTests
     public void GenerateInsertWithReturning_ShouldUseOutputClause()
     {
         var result = _provider.GenerateInsertWithReturning("Users", new[] { "Name", "Email" });
-        
+
         Assert.IsTrue(result.Contains("OUTPUT"));
         Assert.IsTrue(result.Contains("INSERTED"));
         Assert.IsTrue(result.Contains("Users"));
@@ -77,7 +77,7 @@ public class SqlServerDialectProviderTests
     public void GenerateBatchInsert_ShouldGenerateMultipleValueSets()
     {
         var result = _provider.GenerateBatchInsert("Users", new[] { "Name", "Email" }, 3);
-        
+
         Assert.IsTrue(result.Contains("INSERT INTO"));
         Assert.IsTrue(result.Contains("Users"));
         Assert.IsTrue(result.Contains("Name"));
@@ -94,7 +94,7 @@ public class SqlServerDialectProviderTests
             "Users",
             new[] { "Id", "Name", "Email" },
             new[] { "Id" });
-        
+
         Assert.IsTrue(result.Contains("MERGE") || result.Contains("UPDATE") || result.Contains("INSERT"));
     }
 
@@ -144,7 +144,7 @@ public class SqlServerDialectProviderTests
     {
         var dateTime = new DateTime(2024, 1, 15, 10, 30, 45);
         var result = _provider.FormatDateTime(dateTime);
-        
+
         Assert.IsNotNull(result);
         Assert.IsTrue(result.Contains("2024") || result.Contains("24"));
     }
@@ -166,7 +166,7 @@ public class SqlServerDialectProviderTests
     public void GetConcatenationSyntax_ShouldUsePlusOperator()
     {
         var result = _provider.GetConcatenationSyntax("'Hello'", "' '", "'World'");
-        
+
         Assert.IsNotNull(result);
         // SQL Server uses + or CONCAT
         Assert.IsTrue(result.Contains("+") || result.Contains("CONCAT"));

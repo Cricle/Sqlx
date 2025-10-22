@@ -105,7 +105,7 @@ public class BaseDialectProviderTests
             foreach (var type in commonTypes)
             {
                 var result = provider.GetDatabaseTypeName(type);
-                Assert.IsFalse(string.IsNullOrEmpty(result), 
+                Assert.IsFalse(string.IsNullOrEmpty(result),
                     $"{provider.DialectType} 应该为 {type.Name} 返回数据库类型");
             }
         }
@@ -128,7 +128,7 @@ public class BaseDialectProviderTests
         foreach (var provider in providers)
         {
             var result = provider.GenerateLimitClause(10, null);
-            Assert.IsFalse(string.IsNullOrEmpty(result), 
+            Assert.IsFalse(string.IsNullOrEmpty(result),
                 $"{provider.DialectType} 应该生成LIMIT子句");
         }
     }
@@ -150,7 +150,7 @@ public class BaseDialectProviderTests
         foreach (var provider in providers)
         {
             var result = provider.GetCurrentDateTimeSyntax();
-            Assert.IsFalse(string.IsNullOrEmpty(result), 
+            Assert.IsFalse(string.IsNullOrEmpty(result),
                 $"{provider.DialectType} 应该返回当前日期时间语法");
         }
     }
@@ -172,7 +172,7 @@ public class BaseDialectProviderTests
         foreach (var provider in providers)
         {
             var result = provider.GetConcatenationSyntax("'Hello'", "'World'");
-            Assert.IsFalse(string.IsNullOrEmpty(result), 
+            Assert.IsFalse(string.IsNullOrEmpty(result),
                 $"{provider.DialectType} 应该返回字符串连接语法");
         }
     }
@@ -196,7 +196,7 @@ public class BaseDialectProviderTests
         foreach (var provider in providers)
         {
             var result = provider.FormatDateTime(dateTime);
-            Assert.IsFalse(string.IsNullOrEmpty(result), 
+            Assert.IsFalse(string.IsNullOrEmpty(result),
                 $"{provider.DialectType} 应该格式化DateTime");
         }
     }

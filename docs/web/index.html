@@ -2,66 +2,108 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sqlx - 现代化 .NET 数据库访问框架 | 完整功能文档</title>
-    <meta name="description" content="Sqlx - 高性能、类型安全、零反射的.NET ORM框架，支持编译时代码生成和多数据库">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="theme-color" content="#667eea">
+    <title>Sqlx - 现代化 .NET 数据库访问框架 | 高性能 ORM</title>
+    <meta name="description" content="Sqlx - 零反射、编译时代码生成的高性能 .NET ORM 框架，支持多数据库、类型安全、AOT 编译">
+    <meta name="keywords" content="Sqlx, .NET, ORM, 数据库, Source Generator, 高性能, AOT, 零反射">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="Sqlx - 现代化 .NET 数据库访问框架">
+    <meta property="og:description" content="零反射、编译时代码生成的高性能 .NET ORM 框架">
+    <meta property="og:type" content="website">
+    
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        /* ========== CSS Variables ========== */
         :root {
             --primary-color: #667eea;
             --secondary-color: #764ba2;
             --text-color: #333;
             --text-light: #666;
             --bg-light: #f8f9fa;
+            --bg-white: #ffffff;
             --border-color: #e0e0e0;
             --success-color: #10b981;
             --warning-color: #f59e0b;
             --danger-color: #ef4444;
+            --info-color: #3b82f6;
             --code-bg: #2d2d2d;
             --code-text: #f8f8f2;
+            --shadow: 0 2px 10px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 30px rgba(0,0,0,0.15);
+            --transition: all 0.3s ease;
+        }
+
+        /* Dark Mode Variables */
+        [data-theme="dark"] {
+            --text-color: #e4e4e7;
+            --text-light: #a1a1aa;
+            --bg-light: #18181b;
+            --bg-white: #27272a;
+            --border-color: #3f3f46;
+            --shadow: 0 2px 10px rgba(0,0,0,0.3);
+            --shadow-lg: 0 10px 30px rgba(0,0,0,0.4);
+        }
+
+        /* ========== Reset & Base ========== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            font-size: 16px;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Microsoft YaHei', sans-serif;
             line-height: 1.6;
             color: var(--text-color);
-            background: #fff;
+            background: var(--bg-white);
+            transition: background-color 0.3s, color 0.3s;
         }
 
-        /* Navigation */
+        /* ========== Navigation ========== */
         nav {
             position: sticky;
             top: 0;
             background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
             color: white;
             padding: 1rem 0;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: var(--shadow);
             z-index: 1000;
+            backdrop-filter: blur(10px);
         }
 
         .nav-container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 0 2rem;
+            padding: 0 1.5rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        .nav-title {
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
             font-size: 1.5rem;
             font-weight: 700;
+            cursor: pointer;
+        }
+
+        .nav-brand span {
+            font-size: 1.8rem;
         }
 
         .nav-links {
             display: flex;
             gap: 2rem;
             list-style: none;
+            align-items: center;
         }
 
         .nav-links a {
@@ -69,35 +111,167 @@
             text-decoration: none;
             font-weight: 500;
             transition: opacity 0.2s;
+            white-space: nowrap;
         }
 
         .nav-links a:hover {
             opacity: 0.8;
         }
 
-        /* Hero Section */
+        /* Mobile Menu */
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+        }
+
+        .mobile-nav {
+            display: none;
+            position: fixed;
+            top: 60px;
+            left: 0;
+            right: 0;
+            background: var(--bg-white);
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: var(--shadow);
+            z-index: 999;
+        }
+
+        .mobile-nav.active {
+            display: block;
+        }
+
+        .mobile-nav-links {
+            list-style: none;
+            padding: 1rem;
+        }
+
+        .mobile-nav-links li {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .mobile-nav-links a {
+            color: var(--text-color);
+            text-decoration: none;
+            font-weight: 500;
+            display: block;
+        }
+
+        /* Theme Toggle */
+        .theme-toggle {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            transition: var(--transition);
+        }
+
+        .theme-toggle:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        /* Search Box */
+        .search-container {
+            position: relative;
+            max-width: 600px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 1rem 1rem 1rem 3rem;
+            border: 2px solid var(--border-color);
+            border-radius: 50px;
+            font-size: 1rem;
+            background: var(--bg-white);
+            color: var(--text-color);
+            transition: var(--transition);
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 2.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-light);
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 1.5rem;
+            right: 1.5rem;
+            background: var(--bg-white);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            margin-top: 0.5rem;
+            max-height: 400px;
+            overflow-y: auto;
+            display: none;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .search-results.active {
+            display: block;
+        }
+
+        .search-result-item {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .search-result-item:hover {
+            background: var(--bg-light);
+        }
+
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+
+        /* ========== Hero Section ========== */
         .hero {
             background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
             color: white;
             text-align: center;
-            padding: 6rem 2rem 4rem;
+            padding: 4rem 1.5rem 3rem;
         }
 
         .hero h1 {
-            font-size: 3.5rem;
+            font-size: clamp(2rem, 5vw, 3.5rem);
             margin-bottom: 1rem;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
         }
 
         .hero p {
-            font-size: 1.5rem;
+            font-size: clamp(1rem, 3vw, 1.5rem);
             opacity: 0.95;
             margin-bottom: 2rem;
         }
 
         .badges {
             display: flex;
-            gap: 1rem;
+            gap: 0.75rem;
             justify-content: center;
             flex-wrap: wrap;
             margin: 2rem 0;
@@ -109,6 +283,7 @@
             border-radius: 20px;
             font-weight: 600;
             backdrop-filter: blur(10px);
+            font-size: clamp(0.85rem, 2vw, 1rem);
         }
 
         .cta-buttons {
@@ -120,12 +295,15 @@
         }
 
         .btn {
-            padding: 1rem 2rem;
+            padding: 0.875rem 1.75rem;
             border-radius: 8px;
             text-decoration: none;
             font-weight: 600;
-            transition: all 0.3s;
+            transition: var(--transition);
             display: inline-block;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
         }
 
         .btn-primary {
@@ -146,14 +324,14 @@
             box-shadow: 0 6px 20px rgba(0,0,0,0.2);
         }
 
-        /* Container */
+        /* ========== Container ========== */
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 0 2rem;
+            padding: 0 1.5rem;
         }
 
-        /* Section */
+        /* ========== Section ========== */
         section {
             padding: 4rem 0;
             border-bottom: 1px solid var(--border-color);
@@ -164,44 +342,44 @@
         }
 
         .section-title {
-            font-size: 2.5rem;
+            font-size: clamp(2rem, 4vw, 2.5rem);
             margin-bottom: 1rem;
             color: var(--primary-color);
             text-align: center;
         }
 
         .section-subtitle {
-            font-size: 1.2rem;
+            font-size: clamp(1rem, 2vw, 1.2rem);
             color: var(--text-light);
             text-align: center;
             margin-bottom: 3rem;
         }
 
-        /* Grid Layouts */
+        /* ========== Grid Layouts ========== */
         .grid-2 {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 2rem;
         }
 
         .grid-3 {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
         }
 
-        /* Cards */
+        /* ========== Cards ========== */
         .card {
-            background: white;
+            background: var(--bg-white);
             border: 1px solid var(--border-color);
             border-radius: 12px;
             padding: 2rem;
-            transition: all 0.3s;
+            transition: var(--transition);
         }
 
         .card:hover {
             transform: translateY(-4px);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            box-shadow: var(--shadow-lg);
         }
 
         .card-icon {
@@ -212,7 +390,7 @@
         .card h3 {
             color: var(--primary-color);
             margin-bottom: 1rem;
-            font-size: 1.5rem;
+            font-size: clamp(1.25rem, 3vw, 1.5rem);
         }
 
         .card p {
@@ -220,7 +398,7 @@
             line-height: 1.8;
         }
 
-        /* Feature Box */
+        /* ========== Feature Box ========== */
         .feature-box {
             background: var(--bg-light);
             border-left: 4px solid var(--primary-color);
@@ -253,7 +431,7 @@
             font-weight: bold;
         }
 
-        /* Code Block */
+        /* ========== Code Block ========== */
         .code-block {
             background: var(--code-bg);
             color: var(--code-text);
@@ -262,40 +440,33 @@
             overflow-x: auto;
             margin: 1.5rem 0;
             font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-            font-size: 0.9rem;
+            font-size: clamp(0.8rem, 1.5vw, 0.9rem);
             line-height: 1.6;
         }
 
         .code-block pre {
             margin: 0;
+            white-space: pre;
+            word-wrap: normal;
         }
 
-        .code-comment {
-            color: #6a9955;
+        .code-comment { color: #6a9955; }
+        .code-keyword { color: #569cd6; }
+        .code-string { color: #ce9178; }
+        .code-type { color: #4ec9b0; }
+        .code-method { color: #dcdcaa; }
+
+        /* ========== Table ========== */
+        .table-responsive {
+            overflow-x: auto;
+            margin: 2rem 0;
         }
 
-        .code-keyword {
-            color: #569cd6;
-        }
-
-        .code-string {
-            color: #ce9178;
-        }
-
-        .code-type {
-            color: #4ec9b0;
-        }
-
-        .code-method {
-            color: #dcdcaa;
-        }
-
-        /* Table */
         .comparison-table {
             width: 100%;
+            min-width: 600px;
             border-collapse: collapse;
-            margin: 2rem 0;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: var(--shadow);
         }
 
         .comparison-table th,
@@ -315,53 +486,33 @@
             background: var(--bg-light);
         }
 
-        .comparison-table .highlight {
-            background: #e0f2fe;
-            font-weight: 600;
+        .comparison-table code {
+            background: rgba(0,0,0,0.1);
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-size: 0.9em;
         }
 
-        /* Performance Chart */
-        .perf-bar {
-            background: var(--bg-light);
-            padding: 1rem;
-            margin: 0.5rem 0;
-            border-radius: 4px;
-            position: relative;
-        }
-
-        .perf-bar-label {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-        }
-
-        .perf-bar-value {
-            height: 30px;
-            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            padding: 0 1rem;
-            color: white;
-            font-weight: 600;
-        }
-
-        /* Tabs */
+        /* ========== Tabs ========== */
         .tabs {
             display: flex;
-            gap: 1rem;
+            gap: 0.5rem;
             border-bottom: 2px solid var(--border-color);
             margin-bottom: 2rem;
+            flex-wrap: wrap;
         }
 
         .tab {
-            padding: 1rem 2rem;
+            padding: 0.875rem 1.5rem;
             cursor: pointer;
             border-bottom: 3px solid transparent;
-            transition: all 0.3s;
+            transition: var(--transition);
             font-weight: 600;
             color: var(--text-light);
+            background: none;
+            border-top: none;
+            border-left: none;
+            border-right: none;
         }
 
         .tab.active {
@@ -379,9 +530,15 @@
 
         .tab-content.active {
             display: block;
+            animation: fadeIn 0.3s;
         }
 
-        /* Alert Box */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ========== Alert Box ========== */
         .alert {
             padding: 1rem 1.5rem;
             border-radius: 8px;
@@ -397,7 +554,7 @@
 
         .alert-info {
             background: #dbeafe;
-            border-color: #3b82f6;
+            border-color: var(--info-color);
             color: #1e3a8a;
         }
 
@@ -407,12 +564,57 @@
             color: #92400e;
         }
 
-        /* Footer */
+        [data-theme="dark"] .alert-success {
+            background: #064e3b;
+            color: #d1fae5;
+        }
+
+        [data-theme="dark"] .alert-info {
+            background: #1e3a8a;
+            color: #dbeafe;
+        }
+
+        [data-theme="dark"] .alert-warning {
+            background: #78350f;
+            color: #fef3c7;
+        }
+
+        /* ========== Back to Top ========== */
+        .back-to-top {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--primary-color);
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--shadow-lg);
+            transition: var(--transition);
+            z-index: 999;
+            border: none;
+            font-size: 1.5rem;
+        }
+
+        .back-to-top.show {
+            display: flex;
+        }
+
+        .back-to-top:hover {
+            background: var(--secondary-color);
+            transform: translateY(-4px);
+        }
+
+        /* ========== Footer ========== */
         footer {
             background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
             color: white;
             text-align: center;
-            padding: 3rem 2rem;
+            padding: 3rem 1.5rem;
             margin-top: 4rem;
         }
 
@@ -420,23 +622,146 @@
             margin: 0.5rem 0;
         }
 
-        /* Responsive */
-        @media (max-width: 768px) {
-            .hero h1 {
-                font-size: 2.5rem;
-            }
+        /* ========== Table of Contents ========== */
+        .toc {
+            position: fixed;
+            right: 2rem;
+            top: 100px;
+            width: 250px;
+            background: var(--bg-white);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: none;
+            box-shadow: var(--shadow);
+        }
 
-            .hero p {
-                font-size: 1.2rem;
+        .toc.show {
+            display: block;
+        }
+
+        .toc h3 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .toc ul {
+            list-style: none;
+        }
+
+        .toc li {
+            padding: 0.5rem 0;
+        }
+
+        .toc a {
+            color: var(--text-color);
+            text-decoration: none;
+            transition: var(--transition);
+            font-size: 0.9rem;
+        }
+
+        .toc a:hover {
+            color: var(--primary-color);
+        }
+
+        .toc a.active {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        /* ========== Responsive ========== */
+        @media (max-width: 1400px) {
+            .toc {
+                display: none !important;
+            }
+        }
+
+        @media (max-width: 768px) {
+            html {
+                font-size: 14px;
             }
 
             .nav-links {
                 display: none;
             }
 
+            .mobile-menu-btn {
+                display: block;
+            }
+
+            .hero {
+                padding: 3rem 1rem 2rem;
+            }
+
+            section {
+                padding: 3rem 0;
+            }
+
             .grid-2,
             .grid-3 {
                 grid-template-columns: 1fr;
+            }
+
+            .card {
+                padding: 1.5rem;
+            }
+
+            .back-to-top {
+                bottom: 1rem;
+                right: 1rem;
+                width: 45px;
+                height: 45px;
+            }
+
+            .search-container {
+                padding: 0 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            html {
+                font-size: 13px;
+            }
+
+            .nav-brand {
+                font-size: 1.25rem;
+            }
+
+            .cta-buttons {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .btn {
+                width: 100%;
+                text-align: center;
+            }
+
+            .badges {
+                gap: 0.5rem;
+            }
+
+            .badge {
+                font-size: 0.8rem;
+                padding: 0.4rem 0.8rem;
+            }
+        }
+
+        /* ========== Print Styles ========== */
+        @media print {
+            nav, .mobile-nav, .back-to-top, .search-container, footer {
+                display: none;
+            }
+
+            .hero {
+                background: none;
+                color: black;
+            }
+
+            .card {
+                break-inside: avoid;
+                page-break-inside: avoid;
             }
         }
     </style>
@@ -445,17 +770,43 @@
     <!-- Navigation -->
     <nav>
         <div class="nav-container">
-            <div class="nav-title">🚀 Sqlx</div>
+            <div class="nav-brand" onclick="scrollToTop()">
+                <span>🚀</span>
+                <span>Sqlx</span>
+            </div>
             <ul class="nav-links">
                 <li><a href="#overview">概览</a></li>
-                <li><a href="#features">核心功能</a></li>
-                <li><a href="#placeholders">占位符</a></li>
-                <li><a href="#performance">性能</a></li>
+                <li><a href="#features">功能</a></li>
+                <li><a href="#api">API</a></li>
                 <li><a href="#examples">示例</a></li>
-                <li><a href="https://github.com/Cricle/Sqlx">GitHub</a></li>
+                <li><a href="https://github.com/Cricle/Sqlx" target="_blank">GitHub</a></li>
+                <li>
+                    <button class="theme-toggle" onclick="toggleTheme()" aria-label="切换主题">
+                        <span id="theme-icon">🌙</span>
+                    </button>
+                </li>
             </ul>
+            <button class="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="菜单">
+                ☰
+            </button>
         </div>
     </nav>
+
+    <!-- Mobile Navigation -->
+    <div class="mobile-nav" id="mobileNav">
+        <ul class="mobile-nav-links">
+            <li><a href="#overview" onclick="closeMobileMenu()">概览</a></li>
+            <li><a href="#features" onclick="closeMobileMenu()">功能</a></li>
+            <li><a href="#api" onclick="closeMobileMenu()">API</a></li>
+            <li><a href="#examples" onclick="closeMobileMenu()">示例</a></li>
+            <li><a href="https://github.com/Cricle/Sqlx" target="_blank">GitHub</a></li>
+            <li>
+                <button class="theme-toggle" onclick="toggleTheme()" style="margin: 0.5rem 0; width: 100%;">
+                    切换主题
+                </button>
+            </li>
+        </ul>
+    </div>
 
     <!-- Hero Section -->
     <div class="hero">
@@ -463,19 +814,39 @@
         <p>现代化、高性能、类型安全的 .NET 数据库访问框架</p>
         
         <div class="badges">
-            <span class="badge">✨ 编译时代码生成</span>
+            <span class="badge">✨ 编译时生成</span>
             <span class="badge">⚡ 零反射</span>
             <span class="badge">🎯 类型安全</span>
-            <span class="badge">🔥 直接序号访问</span>
-            <span class="badge">📦 AOT 支持</span>
+            <span class="badge">🔥 序号访问</span>
+            <span class="badge">📦 AOT支持</span>
             <span class="badge">🌐 多数据库</span>
         </div>
 
         <div class="cta-buttons">
-            <a href="https://github.com/Cricle/Sqlx" class="btn btn-primary">GitHub 仓库</a>
-            <a href="https://www.nuget.org/packages/Sqlx" class="btn btn-secondary">NuGet 包</a>
+            <a href="https://github.com/Cricle/Sqlx" class="btn btn-primary" target="_blank">GitHub 仓库</a>
+            <a href="https://www.nuget.org/packages/Sqlx" class="btn btn-secondary" target="_blank">NuGet 包</a>
             <a href="../README.md" class="btn btn-secondary">查看文档</a>
         </div>
+    </div>
+
+    <!-- Search Box -->
+    <div class="search-container">
+        <span class="search-icon">🔍</span>
+        <input type="text" class="search-box" id="searchBox" placeholder="搜索文档..." oninput="handleSearch(event)">
+        <div class="search-results" id="searchResults"></div>
+    </div>
+
+    <!-- Table of Contents -->
+    <div class="toc" id="toc">
+        <h3>📑 目录</h3>
+        <ul>
+            <li><a href="#overview">概览</a></li>
+            <li><a href="#features">核心功能</a></li>
+            <li><a href="#api">API 文档</a></li>
+            <li><a href="#performance">性能</a></li>
+            <li><a href="#examples">示例</a></li>
+            <li><a href="#installation">安装</a></li>
+        </ul>
     </div>
 
     <!-- Overview Section -->
@@ -506,629 +877,35 @@
                     <div class="feature-box">
                         <h4>📊 性能数据</h4>
                         <ul>
-                            <li>单行查询：7.371μs（vs Raw ADO.NET 6.434μs）</li>
+                            <li>单行查询：7.371μs（vs Raw 6.434μs）</li>
                             <li>内存分配：1.21KB（比Dapper少46%）</li>
                             <li>零反射开销</li>
-                            <li>完整Activity追踪和性能指标</li>
+                            <li>完整Activity追踪</li>
                             <li>比Dapper快20%</li>
                         </ul>
                     </div>
 
                     <div class="alert alert-info">
-                        <strong>ℹ️ 性能优势：</strong> 通过编译时代码生成、命令自动释放和智能IsDBNull检查，Sqlx现在比Dapper快20%，同时提供完整的分布式追踪和性能监控
+                        <strong>ℹ️ 性能优势：</strong> 通过编译时代码生成和多项优化，Sqlx比Dapper快20%，同时提供完整的分布式追踪
                     </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Core Features Section -->
-    <section id="features" style="background: var(--bg-light);">
-        <div class="container">
-            <h2 class="section-title">✨ 核心功能模块</h2>
-            <p class="section-subtitle">详细了解 Sqlx 的每个功能模块</p>
+    <!-- Back to Top Button -->
+    <button class="back-to-top" id="backToTop" onclick="scrollToTop()" aria-label="返回顶部">
+        ↑
+    </button>
 
-            <!-- Module 1: Smart Placeholders -->
-            <div class="card" style="margin-bottom: 3rem;">
-                <div class="card-icon">📝</div>
-                <h3>模块 1：智能占位符系统</h3>
-                <p style="margin-bottom: 1.5rem;">自动生成SQL片段，无需手写列名和参数</p>
-
-                <div class="feature-box">
-                    <h4>核心占位符</h4>
-                    <table class="comparison-table">
-                        <thead>
-                            <tr>
-                                <th>占位符</th>
-                                <th>功能</th>
-                                <th>生成示例</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><code>{{table}}</code></td>
-                                <td>表名</td>
-                                <td><code>users</code></td>
-                            </tr>
-                            <tr>
-                                <td><code>{{columns}}</code></td>
-                                <td>所有列名</td>
-                                <td><code>id, name, email, age</code></td>
-                            </tr>
-                            <tr>
-                                <td><code>{{columns --exclude Id}}</code></td>
-                                <td>排除指定列</td>
-                                <td><code>name, email, age</code></td>
-                            </tr>
-                            <tr>
-                                <td><code>{{values}}</code></td>
-                                <td>参数占位符</td>
-                                <td><code>@Name, @Email, @Age</code></td>
-                            </tr>
-                            <tr>
-                                <td><code>{{set}}</code></td>
-                                <td>UPDATE SET子句</td>
-                                <td><code>name=@Name, email=@Email</code></td>
-                            </tr>
-                            <tr>
-                                <td><code>{{orderby created_at --desc}}</code></td>
-                                <td>排序</td>
-                                <td><code>ORDER BY created_at DESC</code></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="code-block">
-<pre><span class="code-comment">// 示例：使用占位符的查询</span>
-<span class="code-keyword">public interface</span> <span class="code-type">IUserRepository</span>
-{
-    <span class="code-comment">// 自动生成列名</span>
-    [<span class="code-type">Sqlx</span>(<span class="code-string">"SELECT {{columns}} FROM {{table}}"</span>)]
-    <span class="code-type">Task</span>&lt;<span class="code-type">List</span>&lt;<span class="code-type">User</span>&gt;&gt; <span class="code-method">GetAllAsync</span>();
-
-    <span class="code-comment">// 排除自增ID</span>
-    [<span class="code-type">Sqlx</span>(<span class="code-string">"INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values}})"</span>)]
-    <span class="code-type">Task</span>&lt;<span class="code-keyword">long</span>&gt; <span class="code-method">CreateAsync</span>(<span class="code-type">User</span> user);
-
-    <span class="code-comment">// 自动生成SET子句</span>
-    [<span class="code-type">Sqlx</span>(<span class="code-string">"UPDATE {{table}} SET {{set --exclude Id}} WHERE id = @id"</span>)]
-    <span class="code-type">Task</span>&lt;<span class="code-keyword">int</span>&gt; <span class="code-method">UpdateAsync</span>(<span class="code-type">User</span> user);
-}</pre>
-                </div>
-            </div>
-
-            <!-- Module 2: Code Generation -->
-            <div class="card" style="margin-bottom: 3rem;">
-                <div class="card-icon">⚙️</div>
-                <h3>模块 2：编译时代码生成</h3>
-                <p style="margin-bottom: 1.5rem;">使用Source Generator在编译时生成高性能代码</p>
-
-                <div class="grid-2">
-                    <div>
-                        <h4 style="color: var(--primary-color); margin-bottom: 1rem;">你写的代码</h4>
-                        <div class="code-block">
-<pre><span class="code-comment">// 只需一行！</span>
-[<span class="code-type">RepositoryFor</span>(<span class="code-keyword">typeof</span>(<span class="code-type">IUserRepository</span>))]
-[<span class="code-type">SqlDefine</span>(Dialect = <span class="code-type">SqlDialect</span>.Sqlite)]
-<span class="code-keyword">public partial class</span> <span class="code-type">UserRepository</span>(<span class="code-type">IDbConnection</span> conn)
-    : <span class="code-type">IUserRepository</span>;</pre>
-                        </div>
-                    </div>
-
-                    <div>
-                        <h4 style="color: var(--primary-color); margin-bottom: 1rem;">生成的代码特性</h4>
-                        <div class="feature-box">
-                            <ul>
-                                <li>零反射 - 直接调用ADO.NET</li>
-                                <li>序号访问 - reader.GetInt32(0)</li>
-                                <li>类型安全 - 编译时检查</li>
-                                <li>Activity追踪 - 可选的性能监控</li>
-                                <li>Partial方法 - 用户自定义拦截</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Module 3: Multi-Database Support -->
-            <div class="card" style="margin-bottom: 3rem;">
-                <div class="card-icon">🌐</div>
-                <h3>模块 3：多数据库支持</h3>
-                <p style="margin-bottom: 1.5rem;">一份代码，支持6种数据库</p>
-
-                <div class="grid-3">
-                    <div class="feature-box">
-                        <h4>SQL Server</h4>
-                        <p><code>[SqlDefine(Dialect = SqlDialect.SqlServer)]</code></p>
-                    </div>
-                    <div class="feature-box">
-                        <h4>MySQL</h4>
-                        <p><code>[SqlDefine(Dialect = SqlDialect.MySql)]</code></p>
-                    </div>
-                    <div class="feature-box">
-                        <h4>PostgreSQL</h4>
-                        <p><code>[SqlDefine(Dialect = SqlDialect.PostgreSql)]</code></p>
-                    </div>
-                    <div class="feature-box">
-                        <h4>SQLite</h4>
-                        <p><code>[SqlDefine(Dialect = SqlDialect.Sqlite)]</code></p>
-                    </div>
-                    <div class="feature-box">
-                        <h4>Oracle</h4>
-                        <p><code>[SqlDefine(Dialect = SqlDialect.Oracle)]</code></p>
-                    </div>
-                    <div class="feature-box">
-                        <h4>DB2</h4>
-                        <p><code>[SqlDefine(Dialect = SqlDialect.DB2)]</code></p>
-                    </div>
-                </div>
-
-                <div class="alert alert-success" style="margin-top: 2rem;">
-                    <strong>✅ 自动适配：</strong> 占位符会根据数据库类型自动生成正确的SQL语法（如列引号、参数前缀、分页语法等）
-                </div>
-            </div>
-
-            <!-- Module 4: Performance Optimization -->
-            <div class="card">
-                <div class="card-icon">⚡</div>
-                <h3>模块 4：性能优化技术</h3>
-                <p style="margin-bottom: 1.5rem;">多项编译时优化，接近手写ADO.NET性能</p>
-
-                <div class="grid-2">
-                    <div>
-                        <div class="feature-box">
-                            <h4>1. 直接序号访问</h4>
-                            <p>避免GetOrdinal字符串查找</p>
-                            <div class="code-block" style="margin-top: 1rem;">
-<pre><span class="code-comment">// ✅ Sqlx生成</span>
-Id = reader.<span class="code-method">GetInt32</span>(<span class="code-string">0</span>)
-
-<span class="code-comment">// ❌ 传统方式</span>
-<span class="code-keyword">var</span> ord = reader.<span class="code-method">GetOrdinal</span>(<span class="code-string">"id"</span>);
-Id = reader.<span class="code-method">GetInt32</span>(ord);</pre>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <div class="feature-box">
-                            <h4>2. GetOrdinal缓存</h4>
-                            <p>减少53%内存分配</p>
-                            <div class="code-block" style="margin-top: 1rem;">
-<pre><span class="code-comment">// 性能数据</span>
-优化前: 2624B
-优化后: 1240B
-改善: -53% ✅</pre>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="feature-box" style="margin-top: 2rem;">
-                    <h4>3. 可选的Activity追踪</h4>
-                    <p>通过条件编译完全移除追踪开销</p>
-                    <div class="code-block" style="margin-top: 1rem;">
-<pre><span class="code-comment">// 默认启用Activity追踪</span>
-dotnet build
-
-<span class="code-comment">// 高性能模式：禁用追踪</span>
-dotnet build /p:DefineConstants=SQLX_DISABLE_TRACING</pre>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Placeholders Section -->
-    <section id="placeholders">
-        <div class="container">
-            <h2 class="section-title">📝 占位符完整参考</h2>
-            <p class="section-subtitle">所有可用的占位符及其用法</p>
-
-            <div class="tabs">
-                <div class="tab active" onclick="showTab('basic')">基础占位符</div>
-                <div class="tab" onclick="showTab('advanced')">高级选项</div>
-                <div class="tab" onclick="showTab('examples')">实战示例</div>
-            </div>
-
-            <div id="tab-basic" class="tab-content active">
-                <table class="comparison-table">
-                    <thead>
-                        <tr>
-                            <th>占位符</th>
-                            <th>说明</th>
-                            <th>示例输出</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><code>{{table}}</code></td>
-                            <td>表名（从TableName或SqlDefine获取）</td>
-                            <td><code>users</code></td>
-                        </tr>
-                        <tr>
-                            <td><code>{{columns}}</code></td>
-                            <td>所有列名（snake_case格式）</td>
-                            <td><code>id, name, email, created_at</code></td>
-                        </tr>
-                        <tr>
-                            <td><code>{{values}}</code></td>
-                            <td>参数占位符列表</td>
-                            <td><code>@Name, @Email, @CreatedAt</code></td>
-                        </tr>
-                        <tr>
-                            <td><code>{{set}}</code></td>
-                            <td>UPDATE SET子句</td>
-                            <td><code>name=@Name, email=@Email</code></td>
-                        </tr>
-                        <tr>
-                            <td><code>{{where}}</code></td>
-                            <td>WHERE条件（从参数推断）</td>
-                            <td><code>WHERE id = @id</code></td>
-                        </tr>
-                        <tr>
-                            <td><code>{{orderby column}}</code></td>
-                            <td>ORDER BY子句</td>
-                            <td><code>ORDER BY created_at</code></td>
-                        </tr>
-                        <tr>
-                            <td><code>{{limit}}</code></td>
-                            <td>分页LIMIT（多数据库适配）</td>
-                            <td><code>LIMIT @limit OFFSET @offset</code></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div id="tab-advanced" class="tab-content">
-                <h3 style="color: var(--primary-color); margin-bottom: 1rem;">命令行风格选项</h3>
-                
-                <div class="feature-box">
-                    <h4>--exclude 排除字段</h4>
-                    <div class="code-block">
-<pre><code>{{columns --exclude Id}}        <span class="code-comment">// 排除Id字段</span>
-{{columns --exclude Id CreatedAt}}  <span class="code-comment">// 排除多个字段</span>
-{{set --exclude Id CreatedAt}}     <span class="code-comment">// UPDATE时排除不可变字段</span></code></pre>
-                    </div>
-                </div>
-
-                <div class="feature-box">
-                    <h4>--only 仅包含字段</h4>
-                    <div class="code-block">
-<pre><code>{{columns --only Name Email}}    <span class="code-comment">// 只选择指定字段</span>
-{{set --only Priority UpdatedAt}} <span class="code-comment">// 只更新指定字段</span></code></pre>
-                    </div>
-                </div>
-
-                <div class="feature-box">
-                    <h4>--desc / --asc 排序方向</h4>
-                    <div class="code-block">
-<pre><code>{{orderby created_at --desc}}    <span class="code-comment">// 降序</span>
-{{orderby name --asc}}           <span class="code-comment">// 升序（默认）</span></code></pre>
-                    </div>
-                </div>
-            </div>
-
-            <div id="tab-examples" class="tab-content">
-                <h3 style="color: var(--primary-color); margin-bottom: 1rem;">实战示例</h3>
-                
-                <div class="code-block">
-<pre><span class="code-comment">// 1. 完整的CRUD操作</span>
-<span class="code-keyword">public interface</span> <span class="code-type">IUserRepository</span>
-{
-    <span class="code-comment">// 查询所有（自动生成列名和排序）</span>
-    [<span class="code-type">Sqlx</span>(<span class="code-string">"SELECT {{columns}} FROM {{table}} {{orderby created_at --desc}}"</span>)]
-    <span class="code-type">Task</span>&lt;<span class="code-type">List</span>&lt;<span class="code-type">User</span>&gt;&gt; <span class="code-method">GetAllAsync</span>();
-
-    <span class="code-comment">// 插入（排除自增ID）</span>
-    [<span class="code-type">Sqlx</span>(<span class="code-string">"INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values}})"</span>)]
-    <span class="code-type">Task</span>&lt;<span class="code-keyword">long</span>&gt; <span class="code-method">CreateAsync</span>(<span class="code-type">User</span> user);
-
-    <span class="code-comment">// 更新（排除ID和创建时间）</span>
-    [<span class="code-type">Sqlx</span>(<span class="code-string">"UPDATE {{table}} SET {{set --exclude Id CreatedAt}} WHERE id = @id"</span>)]
-    <span class="code-type">Task</span>&lt;<span class="code-keyword">int</span>&gt; <span class="code-method">UpdateAsync</span>(<span class="code-type">User</span> user);
-
-    <span class="code-comment">// 批量更新（只更新指定字段）</span>
-    [<span class="code-type">Sqlx</span>(<span class="code-string">"UPDATE {{table}} SET {{set --only IsActive UpdatedAt}} WHERE id IN (@ids)"</span>)]
-    <span class="code-type">Task</span>&lt;<span class="code-keyword">int</span>&gt; <span class="code-method">BulkActivateAsync</span>(<span class="code-keyword">bool</span> isActive, <span class="code-type">DateTime</span> updatedAt, <span class="code-keyword">long</span>[] ids);
-
-    <span class="code-comment">// 删除</span>
-    [<span class="code-type">Sqlx</span>(<span class="code-string">"DELETE FROM {{table}} WHERE id = @id"</span>)]
-    <span class="code-type">Task</span>&lt;<span class="code-keyword">int</span>&gt; <span class="code-method">DeleteAsync</span>(<span class="code-keyword">long</span> id);
-}</pre>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Performance Section -->
-    <section id="performance" style="background: var(--bg-light);">
-        <div class="container">
-            <h2 class="section-title">⚡ 性能测试报告</h2>
-            <p class="section-subtitle">基于 BenchmarkDotNet 的真实性能数据</p>
-
-            <div class="card" style="margin-bottom: 2rem;">
-                <h3 style="color: var(--primary-color); margin-bottom: 1.5rem;">单行查询性能对比</h3>
-                <p style="color: var(--text-light); margin-bottom: 1.5rem;">测试环境：AMD Ryzen 7 5800H, .NET 8.0.21, Windows 10</p>
-
-                <div class="perf-bar">
-                    <div class="perf-bar-label">
-                        <span><strong>Raw ADO.NET</strong> (基准)</span>
-                        <span>6.434 μs</span>
-                    </div>
-                    <div class="perf-bar-value" style="width: 70%; background: #10b981;">
-                        1.17 KB
-                    </div>
-                </div>
-
-                <div class="perf-bar">
-                    <div class="perf-bar-label">
-                        <span><strong>Sqlx</strong> (强制启用追踪和指标)</span>
-                        <span>7.371 μs ⚡ 比Dapper快20%</span>
-                    </div>
-                    <div class="perf-bar-value" style="width: 80%; background: var(--secondary-color);">
-                        1.21 KB (-46% vs Dapper)
-                    </div>
-                </div>
-
-                <div class="perf-bar">
-                    <div class="perf-bar-label">
-                        <span><strong>Dapper</strong> (反射 + IL生成)</span>
-                        <span>9.241 μs</span>
-                    </div>
-                    <div class="perf-bar-value" style="width: 100%;">
-                        2.25 KB
-                    </div>
-                </div>
-            </div>
-
-            <div class="grid-2">
-                <div class="card">
-                    <h4 style="color: var(--primary-color); margin-bottom: 1rem;">✅ Sqlx 优势</h4>
-                    <ul style="list-style: none; padding: 0;">
-                        <li style="padding: 0.5rem 0;">✓ 零反射，编译时代码生成</li>
-                        <li style="padding: 0.5rem 0;">✓ 比Dapper快20%，内存少46%</li>
-                        <li style="padding: 0.5rem 0;">✓ 类型安全，编译时检查</li>
-                        <li style="padding: 0.5rem 0;">✓ 硬编码索引访问优化</li>
-                        <li style="padding: 0.5rem 0;">✓ 完整Activity追踪和性能指标</li>
-                        <li style="padding: 0.5rem 0;">✓ 支持AOT编译</li>
-                    </ul>
-                </div>
-
-                <div class="card">
-                    <h4 style="color: var(--primary-color); margin-bottom: 1rem;">📊 性能特征</h4>
-                    <ul style="list-style: none; padding: 0;">
-                        <li style="padding: 0.5rem 0;">• 延迟：仅比Raw ADO.NET慢15%</li>
-                        <li style="padding: 0.5rem 0;">• 内存：比Dapper少46%分配</li>
-                        <li style="padding: 0.5rem 0;">• 智能IsDBNull：只对nullable类型检查</li>
-                        <li style="padding: 0.5rem 0;">• 代码：减少90%手写代码</li>
-                        <li style="padding: 0.5rem 0;">• 维护：添加字段自动更新SQL</li>
-                        <li style="padding: 0.5rem 0;">• 安全：编译时类型检查</li>
-                    </ul>
-                </div>
-            </div>
-
-            <div class="alert alert-info" style="margin-top: 2rem;">
-                <strong>💡 性能说明：</strong> Sqlx通过命令自动释放、智能IsDBNull检查、硬编码索引访问等优化，现在比Dapper快20%，仅比Raw ADO.NET慢15%。同时提供完整的Activity追踪和性能指标，是最快的ORM框架！
-            </div>
-        </div>
-    </section>
-
-    <!-- Partial Methods Section -->
-    <section id="partial-methods">
-        <div class="container">
-            <h2 class="section-title">🔧 Partial 方法拦截</h2>
-            <p class="section-subtitle">零开销的自定义拦截逻辑</p>
-
-            <div class="card">
-                <p style="margin-bottom: 1.5rem;">Sqlx 生成的代码包含三个 partial 方法，允许你在不修改生成代码的情况下添加自定义逻辑：</p>
-
-                <div class="code-block">
-<pre>[<span class="code-type">RepositoryFor</span>(<span class="code-keyword">typeof</span>(<span class="code-type">ITodoRepository</span>))]
-<span class="code-keyword">public partial class</span> <span class="code-type">TodoRepository</span> : <span class="code-type">ITodoRepository</span>
-{
-    <span class="code-comment">// 在SQL执行前拦截</span>
-    <span class="code-keyword">partial void</span> <span class="code-method">OnExecuting</span>(<span class="code-keyword">string</span> operation, <span class="code-type">IDbCommand</span> command)
-    {
-        Console.<span class="code-method">WriteLine</span>(<span class="code-string">$"执行: {command.CommandText}"</span>);
-        
-        <span class="code-comment">// 可以修改command、添加日志、验证参数等</span>
-    }
-
-    <span class="code-comment">// 在SQL执行后拦截（成功）</span>
-    <span class="code-keyword">partial void</span> <span class="code-method">OnExecuted</span>(<span class="code-keyword">string</span> operation, <span class="code-type">IDbCommand</span> command, 
-                        <span class="code-keyword">object</span>? result, <span class="code-keyword">long</span> elapsedTicks)
-    {
-        <span class="code-keyword">var</span> ms = elapsedTicks * 1000.0 / Stopwatch.Frequency;
-        Console.<span class="code-method">WriteLine</span>(<span class="code-string">$"完成 {operation}，耗时 {ms:F2}ms"</span>);
-    }
-
-    <span class="code-comment">// 在SQL执行失败时拦截</span>
-    <span class="code-keyword">partial void</span> <span class="code-method">OnExecuteFail</span>(<span class="code-keyword">string</span> operation, <span class="code-type">IDbCommand</span> command, 
-                            <span class="code-type">Exception</span> ex, <span class="code-keyword">long</span> elapsedTicks)
-    {
-        Console.Error.<span class="code-method">WriteLine</span>(<span class="code-string">$"失败: {ex.Message}"</span>);
-    }
-}</pre>
-                </div>
-
-                <div class="grid-2" style="margin-top: 2rem;">
-                    <div class="feature-box">
-                        <h4>✅ 优势</h4>
-                        <ul>
-                            <li>零开销 - 未实现时编译器自动移除</li>
-                            <li>完全控制 - 在自己的代码中实现</li>
-                            <li>类型安全 - 编译时检查</li>
-                            <li>无侵入 - 不修改生成代码</li>
-                        </ul>
-                    </div>
-
-                    <div class="feature-box">
-                        <h4>📋 常见用途</h4>
-                        <ul>
-                            <li>性能监控和日志记录</li>
-                            <li>SQL审计和安全检查</li>
-                            <li>慢查询告警</li>
-                            <li>自定义错误处理</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Examples Section -->
-    <section id="examples" style="background: var(--bg-light);">
-        <div class="container">
-            <h2 class="section-title">💡 完整示例项目</h2>
-            <p class="section-subtitle">TodoWebApi - 真实可用的 Todo 管理 API</p>
-
-            <div class="card">
-                <h3 style="color: var(--primary-color); margin-bottom: 1rem;">📋 项目特性</h3>
-                <div class="grid-2">
-                    <div>
-                        <h4 style="margin: 1rem 0;">✅ 功能完整</h4>
-                        <ul style="padding-left: 1.5rem;">
-                            <li>完整的 RESTful API</li>
-                            <li>CRUD 操作</li>
-                            <li>条件查询和搜索</li>
-                            <li>批量操作</li>
-                            <li>统计功能</li>
-                            <li>排序和分页</li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h4 style="margin: 1rem 0;">🎯 最佳实践</h4>
-                        <ul style="padding-left: 1.5rem;">
-                            <li>占位符使用</li>
-                            <li>错误处理</li>
-                            <li>Activity追踪</li>
-                            <li>Partial方法拦截</li>
-                            <li>多数据库适配</li>
-                            <li>性能优化</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="alert alert-success" style="margin-top: 2rem;">
-                    <strong>🚀 快速开始：</strong>
-                    <div class="code-block" style="margin-top: 1rem;">
-<pre>cd samples/TodoWebApi
-dotnet run
-<span class="code-comment"># 访问 http://localhost:5000</span></pre>
-                    </div>
-                </div>
-
-                <div style="text-align: center; margin-top: 2rem;">
-                    <a href="../../samples/TodoWebApi/" class="btn btn-primary">查看完整示例 →</a>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Installation Section -->
-    <section id="installation">
-        <div class="container">
-            <h2 class="section-title">📦 安装与使用</h2>
-            <p class="section-subtitle">快速开始使用 Sqlx</p>
-
-            <div class="grid-2">
-                <div class="card">
-                    <h3 style="color: var(--primary-color); margin-bottom: 1rem;">安装</h3>
-                    <div class="code-block">
-<pre><span class="code-comment"># 通过 NuGet 安装</span>
-dotnet add package Sqlx
-dotnet add package Sqlx.Generator</pre>
-                    </div>
-
-                    <h4 style="margin: 1.5rem 0 1rem;">或者在 .csproj 中添加：</h4>
-                    <div class="code-block">
-<pre><span class="code-keyword">&lt;ItemGroup&gt;</span>
-  <span class="code-keyword">&lt;PackageReference</span> <span class="code-type">Include</span>=<span class="code-string">"Sqlx"</span> /&gt;
-  <span class="code-keyword">&lt;PackageReference</span> <span class="code-type">Include</span>=<span class="code-string">"Sqlx.Generator"</span> /&gt;
-<span class="code-keyword">&lt;/ItemGroup&gt;</span></pre>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <h3 style="color: var(--primary-color); margin-bottom: 1rem;">快速上手</h3>
-                    <div class="code-block">
-<pre><span class="code-comment">// 1. 定义模型</span>
-<span class="code-keyword">public class</span> <span class="code-type">Todo</span>
-{
-    <span class="code-keyword">public long</span> Id { <span class="code-keyword">get</span>; <span class="code-keyword">set</span>; }
-    <span class="code-keyword">public string</span> Title { <span class="code-keyword">get</span>; <span class="code-keyword">set</span>; }
-    <span class="code-keyword">public bool</span> IsCompleted { <span class="code-keyword">get</span>; <span class="code-keyword">set</span>; }
-}
-
-<span class="code-comment">// 2. 定义接口</span>
-<span class="code-keyword">public interface</span> <span class="code-type">ITodoRepo</span>
-{
-    [<span class="code-type">Sqlx</span>(<span class="code-string">"SELECT {{columns}} FROM {{table}}"</span>)]
-    <span class="code-type">Task</span>&lt;<span class="code-type">List</span>&lt;<span class="code-type">Todo</span>&gt;&gt; <span class="code-method">GetAllAsync</span>();
-}
-
-<span class="code-comment">// 3. 实现（自动生成）</span>
-[<span class="code-type">RepositoryFor</span>(<span class="code-keyword">typeof</span>(<span class="code-type">ITodoRepo</span>))]
-[<span class="code-type">SqlDefine</span>(Dialect = <span class="code-type">SqlDialect</span>.Sqlite, 
-          TableName = <span class="code-string">"todos"</span>)]
-<span class="code-keyword">public partial class</span> <span class="code-type">TodoRepo</span>(<span class="code-type">IDbConnection</span> conn)
-    : <span class="code-type">ITodoRepo</span>;</pre>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Documentation Section -->
-    <section id="documentation" style="background: var(--bg-light);">
-        <div class="container">
-            <h2 class="section-title">📚 文档资源</h2>
-            <p class="section-subtitle">完整的文档和学习资料</p>
-
-            <div class="grid-3">
-                <div class="card">
-                    <h3>📖 核心文档</h3>
-                    <ul style="list-style: none; padding: 0;">
-                        <li style="padding: 0.5rem 0;"><a href="../README.md" style="color: var(--primary-color);">→ 文档中心</a></li>
-                        <li style="padding: 0.5rem 0;"><a href="../QUICK_REFERENCE.md" style="color: var(--primary-color);">→ 快速参考</a></li>
-                        <li style="padding: 0.5rem 0;"><a href="../PLACEHOLDERS.md" style="color: var(--primary-color);">→ 占位符参考</a></li>
-                        <li style="padding: 0.5rem 0;"><a href="../BEST_PRACTICES.md" style="color: var(--primary-color);">→ 最佳实践</a></li>
-                    </ul>
-                </div>
-
-                <div class="card">
-                    <h3>⚡ 性能相关</h3>
-                    <ul style="list-style: none; padding: 0;">
-                        <li style="padding: 0.5rem 0;"><a href="../../FORCED_TRACING_SUMMARY.md" style="color: var(--primary-color);">→ 性能优化总结</a></li>
-                        <li style="padding: 0.5rem 0;"><a href="../FRAMEWORK_COMPATIBILITY.md" style="color: var(--primary-color);">→ 框架兼容性</a></li>
-                        <li style="padding: 0.5rem 0;"><a href="../../tests/Sqlx.Benchmarks/README.md" style="color: var(--primary-color);">→ Benchmark指南</a></li>
-                    </ul>
-                </div>
-
-                <div class="card">
-                    <h3>🔧 开发者</h3>
-                    <ul style="list-style: none; padding: 0;">
-                        <li style="padding: 0.5rem 0;"><a href="../PARTIAL_METHODS_GUIDE.md" style="color: var(--primary-color);">→ Partial方法</a></li>
-                        <li style="padding: 0.5rem 0;"><a href="../API_REFERENCE.md" style="color: var(--primary-color);">→ API参考</a></li>
-                        <li style="padding: 0.5rem 0;"><a href="../MIGRATION_GUIDE.md" style="color: var(--primary-color);">→ 迁移指南</a></li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Footer -->
     <footer>
         <div class="container">
             <h2 style="margin-bottom: 1rem;">🚀 开始使用 Sqlx</h2>
             <p style="margin-bottom: 2rem; font-size: 1.1rem;">高性能、类型安全、易维护的 .NET 数据库访问框架</p>
             
             <div class="cta-buttons">
-                <a href="https://github.com/Cricle/Sqlx" class="btn btn-primary">GitHub 仓库</a>
-                <a href="https://www.nuget.org/packages/Sqlx" class="btn btn-secondary">NuGet 包</a>
-                <a href="../../samples/TodoWebApi/" class="btn btn-secondary">查看示例</a>
+                <a href="https://github.com/Cricle/Sqlx" class="btn btn-primary" target="_blank">GitHub 仓库</a>
+                <a href="https://www.nuget.org/packages/Sqlx" class="btn btn-secondary" target="_blank">NuGet 包</a>
             </div>
 
             <p style="margin-top: 3rem; opacity: 0.8;">Made with ❤️ by Cricle</p>
@@ -1137,28 +914,140 @@ dotnet add package Sqlx.Generator</pre>
     </footer>
 
     <script>
+        // Theme Management
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            document.getElementById('theme-icon').textContent = newTheme === 'dark' ? '☀️' : '🌙';
+        }
+
+        // Load saved theme
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            if (savedTheme === 'dark') {
+                document.getElementById('theme-icon').textContent = '☀️';
+            }
+        })();
+
+        // Mobile Menu
+        function toggleMobileMenu() {
+            document.getElementById('mobileNav').classList.toggle('active');
+        }
+
+        function closeMobileMenu() {
+            document.getElementById('mobileNav').classList.remove('active');
+        }
+
+        // Back to Top
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        window.addEventListener('scroll', function() {
+            const backToTop = document.getElementById('backToTop');
+            const toc = document.getElementById('toc');
+            
+            if (window.pageYOffset > 300) {
+                backToTop.classList.add('show');
+                if (window.innerWidth > 1400) {
+                    toc.classList.add('show');
+                }
+            } else {
+                backToTop.classList.remove('show');
+                toc.classList.remove('show');
+            }
+        });
+
+        // Search Functionality
+        const searchData = [
+            { title: '项目概览', section: 'overview', keywords: ['概览', '介绍', 'sqlx', '性能', '核心理念'] },
+            { title: '核心功能', section: 'features', keywords: ['功能', '占位符', '代码生成', '多数据库'] },
+            { title: 'API 文档', section: 'api', keywords: ['api', '接口', '特性', 'attribute', '方法'] },
+            { title: '性能测试', section: 'performance', keywords: ['性能', 'benchmark', '对比', 'dapper'] },
+            { title: '示例代码', section: 'examples', keywords: ['示例', 'example', 'todo', '完整'] },
+            { title: '安装使用', section: 'installation', keywords: ['安装', 'nuget', 'install', '快速开始'] }
+        ];
+
+        function handleSearch(event) {
+            const query = event.target.value.toLowerCase().trim();
+            const resultsContainer = document.getElementById('searchResults');
+            
+            if (!query) {
+                resultsContainer.classList.remove('active');
+                return;
+            }
+
+            const results = searchData.filter(item => 
+                item.title.toLowerCase().includes(query) || 
+                item.keywords.some(kw => kw.includes(query))
+            );
+
+            if (results.length > 0) {
+                resultsContainer.innerHTML = results.map(result => 
+                    `<div class="search-result-item" onclick="navigateTo('${result.section}')">
+                        ${result.title}
+                    </div>`
+                ).join('');
+                resultsContainer.classList.add('active');
+            } else {
+                resultsContainer.innerHTML = '<div class="search-result-item">未找到匹配结果</div>';
+                resultsContainer.classList.add('active');
+            }
+        }
+
+        function navigateTo(section) {
+            document.getElementById('searchResults').classList.remove('active');
+            document.getElementById('searchBox').value = '';
+            document.getElementById(section).scrollIntoView({ behavior: 'smooth' });
+            closeMobileMenu();
+        }
+
+        // Close search results when clicking outside
+        document.addEventListener('click', function(event) {
+            const searchContainer = document.querySelector('.search-container');
+            if (!searchContainer.contains(event.target)) {
+                document.getElementById('searchResults').classList.remove('active');
+            }
+        });
+
+        // Tab switching
         function showTab(tabName) {
-            // Hide all tab contents
             const contents = document.querySelectorAll('.tab-content');
-            contents.forEach(content => {
-                content.classList.remove('active');
-            });
+            contents.forEach(content => content.classList.remove('active'));
 
-            // Remove active class from all tabs
             const tabs = document.querySelectorAll('.tab');
-            tabs.forEach(tab => {
-                tab.classList.remove('active');
-            });
+            tabs.forEach(tab => tab.classList.remove('active'));
 
-            // Show selected tab content
             const selectedContent = document.getElementById(`tab-${tabName}`);
             if (selectedContent) {
                 selectedContent.classList.add('active');
             }
 
-            // Add active class to clicked tab
             event.target.classList.add('active');
         }
+
+        // Active TOC item on scroll
+        window.addEventListener('scroll', function() {
+            const sections = document.querySelectorAll('section[id]');
+            const scrollY = window.pageYOffset;
+
+            sections.forEach(section => {
+                const sectionHeight = section.offsetHeight;
+                const sectionTop = section.offsetTop - 100;
+                const sectionId = section.getAttribute('id');
+                const tocLink = document.querySelector(`.toc a[href="#${sectionId}"]`);
+
+                if (scrollY > sectionTop && scrollY <= sectionTop + sectionHeight) {
+                    document.querySelectorAll('.toc a').forEach(a => a.classList.remove('active'));
+                    if (tocLink) tocLink.classList.add('active');
+                }
+            });
+        });
     </script>
 </body>
 </html>
+

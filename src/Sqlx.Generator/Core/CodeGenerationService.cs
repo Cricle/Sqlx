@@ -96,10 +96,17 @@ public class CodeGenerationService
             sb.AppendLine("}");
             sb.AppendLine();
         }
-        catch (System.Exception)
+        catch (System.Exception ex)
         {
-            // Generate a fallback method on error
-            GenerateFallbackMethod(sb, method);
+            // 🔴 重新抛出异常，附加详细的上下文信息
+            // 不要吞没异常，这会导致调试困难
+            var methodName = method.Name;
+            var className = method.ContainingType?.Name ?? "Unknown";
+            var errorMessage = $"Failed to generate method '{methodName}' in class '{className}'. " +
+                             $"Error: {ex.Message}. " +
+                             $"Check the SQL template syntax, method parameters, and entity type definition.";
+            
+            throw new InvalidOperationException(errorMessage, ex);
         }
     }
 
@@ -291,9 +298,16 @@ public class CodeGenerationService
 
             return null;
         }
-        catch (System.Exception)
+        catch (System.Exception ex)
         {
-            // Return null for any reflection or analysis errors
+            // 🔴 记录异常信息，在DEBUG模式下输出诊断
+            // 这个方法用于推断接口类型，失败时返回null是合理的，但应该记录原因
+#if DEBUG
+            System.Diagnostics.Debug.WriteLine($"[Sqlx.Generator] Failed to get service interface from syntax for class '{context.RepositoryClass.Name}': {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[Sqlx.Generator] Stack trace: {ex.StackTrace}");
+#endif
+            // 在生产环境仍然返回null，让调用者处理
+            // 但至少在开发时能看到错误信息
             return null;
         }
     }

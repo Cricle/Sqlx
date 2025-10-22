@@ -97,10 +97,10 @@ public static class SharedCodeGenerationUtilities
         {
             var paramName = $"@{param.Name}";
             var isNullable = param.Type.IsReferenceType || param.Type.NullableAnnotation == Microsoft.CodeAnalysis.NullableAnnotation.Annotated;
-            
+
             sb.AppendLine($"var __p_{param.Name}__ = __cmd__.CreateParameter();")
               .AppendLine($"__p_{param.Name}__.ParameterName = \"{paramName}\";");
-            
+
             if (isNullable)
             {
                 sb.AppendLine($"__p_{param.Name}__.Value = {param.Name} ?? (object)global::System.DBNull.Value;");
@@ -109,7 +109,7 @@ public static class SharedCodeGenerationUtilities
             {
                 sb.AppendLine($"__p_{param.Name}__.Value = {param.Name};");
             }
-            
+
             sb.AppendLine($"__cmd__.Parameters.Add(__p_{param.Name}__);")
               .AppendLine();
         }
@@ -190,22 +190,19 @@ public static class SharedCodeGenerationUtilities
             columnToOrdinal[columnOrder[i]] = i;
         }
 
-        // DEBUG模式下验证列名（生产环境零开销）
-        sb.AppendLine("#if DEBUG");
-        sb.AppendLine("// DEBUG: 验证列名和顺序（发现属性变动问题）");
+        // 🚀 性能优化：运行时获取列序号，但使用已知的列名（避免属性顺序依赖）
+        // 这比GetOrdinal(ConvertToSnakeCase(propName))更高效，因为我们预先知道列名
+        var columnToOrdinalVar = new Dictionary<string, string>();
+        sb.AppendLine("// 获取列序号（按SQL列顺序，不依赖属性顺序）");
         for (int i = 0; i < columnOrder.Count; i++)
         {
-            sb.AppendLine($"if (reader.GetName({i}) != \"{columnOrder[i]}\")");
-            sb.AppendLine("{");
-            sb.PushIndent();
-            sb.AppendLine($"throw new global::System.InvalidOperationException($\"Expected column '{columnOrder[i]}' at index {i}, but found '{{reader.GetName({i})}}'. SQL column order may have changed.\");");
-            sb.PopIndent();
-            sb.AppendLine("}");
+            var ordinalVarName = $"__ord_{i}__";
+            columnToOrdinalVar[columnOrder[i]] = ordinalVarName;
+            sb.AppendLine($"var {ordinalVarName} = reader.GetOrdinal(\"{columnOrder[i]}\");");
         }
-        sb.AppendLine("#endif");
         sb.AppendLine();
 
-        // 使用对象初始化器语法
+        // 使用对象初始化器语法（支持init-only属性）
         if (variableName == "__result__")
         {
             sb.AppendLine($"__result__ = new {entityTypeName}");
@@ -214,18 +211,18 @@ public static class SharedCodeGenerationUtilities
         {
             sb.AppendLine($"var {variableName} = new {entityTypeName}");
         }
-        
+
         sb.AppendLine("{");
         sb.PushIndent();
 
-        // 根据属性映射到对应的列序号
+        // 根据属性映射到对应的列序号变量
         bool first = true;
         foreach (var prop in properties)
         {
             var columnName = ConvertToSnakeCase(prop.Name);
             
-            // 查找该属性对应的列序号
-            if (!columnToOrdinal.TryGetValue(columnName, out int ordinal))
+            // 查找该属性对应的列序号变量
+            if (!columnToOrdinalVar.TryGetValue(columnName, out string ordinalVar))
             {
                 // 列不存在于SQL中，跳过或使用默认值
                 continue;
@@ -235,13 +232,13 @@ public static class SharedCodeGenerationUtilities
             var isNullable = prop.Type.CanBeReferencedByName && prop.Type.NullableAnnotation == Microsoft.CodeAnalysis.NullableAnnotation.Annotated;
             var defaultValue = isNullable ? "null" : GetDefaultValue(prop.Type);
 
-            // 🚀 性能优化：直接使用序号访问（无GetOrdinal查找开销）
+            // 🚀 性能优化：使用获取的序号变量（运行时安全，性能优于每次GetOrdinal）
             var valueExpression = string.IsNullOrEmpty(readMethod)
-                ? $"({prop.Type.GetCachedDisplayString()})reader[{ordinal}]"
-                : $"reader.{readMethod}({ordinal})";
+                ? $"({prop.Type.GetCachedDisplayString()})reader[{ordinalVar}]"
+                : $"reader.{readMethod}({ordinalVar})";
 
             if (!first) sb.Append(",");
-            sb.AppendLine($"{prop.Name} = reader.IsDBNull({ordinal}) ? {defaultValue} : {valueExpression}");
+            sb.AppendLine($"{prop.Name} = reader.IsDBNull({ordinalVar}) ? {defaultValue} : {valueExpression}");
             first = false;
         }
 
@@ -300,7 +297,7 @@ public static class SharedCodeGenerationUtilities
         {
             sb.AppendLine($"var {variableName} = new {entityTypeName}");
         }
-        
+
         sb.AppendLine("{");
         sb.PushIndent();
 

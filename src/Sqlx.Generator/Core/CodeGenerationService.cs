@@ -76,9 +76,9 @@ public class CodeGenerationService
             {
                 // Check if the return type is Task or Task<T>
                 var methodReturnType = method.ReturnType;
-                var isTaskReturn = methodReturnType.Name == "Task" && 
+                var isTaskReturn = methodReturnType.Name == "Task" &&
                                    methodReturnType.ContainingNamespace?.ToDisplayString() == "System.Threading.Tasks";
-                
+
                 if (isTaskReturn)
                 {
                     // For async methods returning Task<T>, wrap in Task.FromResult

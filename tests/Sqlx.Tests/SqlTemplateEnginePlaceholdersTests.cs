@@ -351,7 +351,7 @@ public class SqlTemplateEnginePlaceholdersTests
         var template = "SELECT {{columns}} FROM {{table}} {{limit}}";
         
         // Act
-        var result = _engine!.ProcessTemplate(template, _testMethod!, _testEntity!, "test_table", SqlDefine.SQLite);
+        var result = _engine!.ProcessTemplate(template, _testMethod!, _testEntity!, "test_table", Sqlx.Generator.SqlDefine.SQLite);
         
         // Assert
         // SQLite 使用 LIMIT
@@ -370,7 +370,7 @@ public class SqlTemplateEnginePlaceholdersTests
         var template = "SELECT {{columns}} FROM {{table}} {{limit}}";
         
         // Act
-        var result = _engine!.ProcessTemplate(template, _testMethod!, _testEntity!, "test_table", SqlDefine.SqlServer);
+        var result = _engine!.ProcessTemplate(template, _testMethod!, _testEntity!, "test_table", Sqlx.Generator.SqlDefine.SqlServer);
         
         // Assert
         // SQL Server 可能使用 TOP

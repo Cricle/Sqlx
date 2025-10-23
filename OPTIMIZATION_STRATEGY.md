@@ -76,28 +76,28 @@ public async Task<User?> GetFromTableAsync(string tableName, int id)
     // 内联验证（编译器完全优化）
     if (tableName.Length == 0 || tableName.Length > 128)
         throw new ArgumentException("Invalid table name length", nameof(tableName));
-    
+
     if (!char.IsLetter(tableName[0]) && tableName[0] != '_')
         throw new ArgumentException("Table name must start with letter or underscore", nameof(tableName));
-    
+
     if (tableName.Contains("DROP", StringComparison.OrdinalIgnoreCase) ||
         tableName.Contains("--") ||
         tableName.Contains("/*"))
         throw new ArgumentException("Invalid table name", nameof(tableName));
-    
+
     // 直接拼接 SQL（高性能）
     var sql = $"SELECT id, name, email FROM {tableName} WHERE id = @id";
-    
+
     // Activity 跟踪（内联）
     using var activity = SqlxActivitySource.Instance.StartActivity("GetFromTableAsync");
     activity?.SetTag("db.table", tableName);
-    
+
     // 执行查询（直接使用序号访问）
     using var connection = new SqlConnection(_connectionString);
     await connection.OpenAsync();
     using var command = new SqlCommand(sql, connection);
     command.Parameters.Add(new SqlParameter("@id", SqlDbType.Int) { Value = id });
-    
+
     using var reader = await command.ExecuteReaderAsync();
     if (await reader.ReadAsync())
     {
@@ -158,22 +158,22 @@ public static class SqlValidator
     {
         if (identifier.Length == 0 || identifier.Length > 128)
             return false;
-        
+
         // 手动字符检查（快）
         char first = identifier[0];
         if (!((first >= 'a' && first <= 'z') || (first >= 'A' && first <= 'Z') || first == '_'))
             return false;
-        
+
         for (int i = 1; i < identifier.Length; i++)
         {
             char c = identifier[i];
             if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'))
                 return false;
         }
-        
+
         return true;
     }
-    
+
     /// <summary>
     /// 检查危险关键字
     /// </summary>
@@ -208,11 +208,11 @@ public static class SqlValidator
 private string GenerateDynamicSqlMethod(MethodInfo method, string template)
 {
     StringBuilder sb = new();
-    
+
     // 简单的字符串拼接
     sb.AppendLine($"public async Task<{returnType}> {methodName}({parameters})");
     sb.AppendLine("{");
-    
+
     // 查找动态参数
     foreach (var param in method.Parameters)
     {
@@ -223,15 +223,15 @@ private string GenerateDynamicSqlMethod(MethodInfo method, string template)
             sb.AppendLine($"        throw new ArgumentException(\"Invalid length\", nameof({param.Name}));");
         }
     }
-    
+
     // 替换占位符
     string sql = template.Replace("{{@tableName}}", $"{{{tableName}}}");
     sb.AppendLine($"    var sql = $\"{sql}\";");
-    
+
     // 生成执行代码
     sb.AppendLine("    // ... 执行 SQL");
     sb.AppendLine("}");
-    
+
     return sb.ToString();
 }
 ```
@@ -244,20 +244,20 @@ public async Task<User?> GetFromTableAsync(string tableName, int id)
     // ✅ 内联验证（编译器完全优化）
     if (tableName.Length > 128)
         throw new ArgumentException("Invalid table name length", nameof(tableName));
-    
+
     if (!char.IsLetter(tableName[0]) && tableName[0] != '_')
         throw new ArgumentException("Table name must start with letter", nameof(tableName));
-    
+
     if (tableName.Contains("DROP", StringComparison.OrdinalIgnoreCase))
         throw new ArgumentException("Invalid table name", nameof(tableName));
-    
+
     // ✅ 直接拼接（字符串驻留）
     var sql = $"SELECT id, name, email FROM {tableName} WHERE id = @id";
-    
+
     // ✅ Activity 内联
     using var activity = SqlxActivitySource.Instance.StartActivity("GetFromTableAsync");
     activity?.SetTag("db.table", tableName);
-    
+
     // ✅ 硬编码序号访问
     // ... reader.GetInt32(0), reader.GetString(1) ...
 }

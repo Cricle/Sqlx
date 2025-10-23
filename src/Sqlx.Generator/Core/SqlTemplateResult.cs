@@ -39,9 +39,9 @@ public sealed class SqlTemplateResult
     public bool IsValid => Errors.Count == 0;
 
     /// <summary>
-    /// Gets a value indicating whether the template has dynamic features.
+    /// Gets or sets a value indicating whether the template has dynamic features (e.g., {{@tableName}}).
     /// </summary>
-    public bool HasDynamicFeatures { get; init; } = false;
+    public bool HasDynamicFeatures { get; set; } = false;
 
     /// <summary>
     /// Gets the column names in the order they appear in the SQL SELECT statement.

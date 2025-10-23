@@ -28,11 +28,12 @@ public class SqlTemplateEngine
 {
     // 核心正则表达式 - 性能优化版本 (修复ExplicitCapture问题和占位符冲突)
     private static readonly Regex ParameterRegex = new(@"[@:$]\w+", RegexOptions.Compiled | RegexOptions.CultureInvariant);
-    // 支持两种占位符格式（向后兼容）：
+    // 支持三种占位符格式（向后兼容）：
     // 1. 新格式（命令行风格）：{{columns --exclude Id}}, {{orderby created_at --desc}}
     // 2. 旧格式（冒号管道风格）：{{columns:auto|exclude=Id}}, {{limit:default|count=20}}
-    // 捕获组：(1)name, (2)type（旧格式）, (3)options（旧格式，管道后）, (4)options（新格式，空格后）
-    private static readonly Regex PlaceholderRegex = new(@"\{\{(\w+)(?::(\w+))?(?:\|([^}\s]+))?(?:\s+([^}]+))?\}\}", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    // 3. 动态占位符（@ 前缀）：{{@tableName}}, {{@whereClause}}
+    // 捕获组：(1)@前缀（动态标记）, (2)name, (3)type（旧格式）, (4)options（旧格式，管道后）, (5)options（新格式，空格后）
+    private static readonly Regex PlaceholderRegex = new(@"\{\{(@)?(\w+)(?::(\w+))?(?:\|([^}\s]+))?(?:\s+([^}]+))?\}\}", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly Regex SqlInjectionRegex = new(@"(?i)(union\s+select|drop\s+table|exec\s*\(|execute\s*\(|sp_|xp_|--|\*\/|\/\*)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
 
@@ -145,13 +146,25 @@ public class SqlTemplateEngine
     {
         return PlaceholderRegex.Replace(sql, match =>
         {
-            var placeholderName = match.Groups[1].Value.ToLowerInvariant();
+            // 检查是否是动态占位符（@ 前缀）
+            var isDynamic = match.Groups[1].Value == "@";
+            var placeholderName = match.Groups[2].Value.ToLowerInvariant();
+            
+            // 如果是动态占位符，直接返回 C# 字符串插值格式
+            if (isDynamic)
+            {
+                // {{@tableName}} -> {tableName}
+                // 标记结果包含动态特性，用于后续生成验证代码
+                result.HasDynamicFeatures = true;
+                return $"{{{placeholderName}}}";
+            }
+            
             // 支持两种格式：
-            // 旧格式：{{name:type|options}} -> Groups: (1)name, (2)type, (3)options
-            // 新格式：{{name --options}}    -> Groups: (1)name, (2)"", (3)"", (4)options
-            var placeholderType = match.Groups[2].Value; // 旧格式的type
-            var oldFormatOptions = match.Groups[3].Value; // 旧格式的options（管道后）
-            var newFormatOptions = match.Groups[4].Value; // 新格式的options（空格后）
+            // 旧格式：{{name:type|options}} -> Groups: (1)"", (2)name, (3)type, (4)options
+            // 新格式：{{name --options}}    -> Groups: (1)"", (2)name, (3)"", (4)"", (5)options
+            var placeholderType = match.Groups[3].Value; // 旧格式的type
+            var oldFormatOptions = match.Groups[4].Value; // 旧格式的options（管道后）
+            var newFormatOptions = match.Groups[5].Value; // 新格式的options（空格后）
 
             // 合并options：优先使用新格式，如果为空则使用旧格式
             var placeholderOptions = !string.IsNullOrEmpty(newFormatOptions) ? newFormatOptions : oldFormatOptions;

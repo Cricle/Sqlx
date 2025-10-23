@@ -116,7 +116,7 @@ public class SqlDefineComprehensiveTests
         Assert.AreEqual("]", dialect.ColumnRight);
         Assert.AreEqual("'", dialect.StringLeft);
         Assert.AreEqual("'", dialect.StringRight);
-        Assert.AreEqual("$", dialect.ParameterPrefix);
+        Assert.AreEqual("@", dialect.ParameterPrefix); // SQLite uses @ for ADO.NET compatibility
     }
 
     #endregion
@@ -190,15 +190,15 @@ public class SqlDefineComprehensiveTests
     [TestMethod]
     public void SqlDefine_DialectsWithSameParameterPrefix_AreGroupedCorrectly()
     {
-        // @ prefix group
-        var atPrefixDialects = new[] { SqlDefine.MySql, SqlDefine.SqlServer };
+        // @ prefix group (includes SQLite for ADO.NET compatibility)
+        var atPrefixDialects = new[] { SqlDefine.MySql, SqlDefine.SqlServer, SqlDefine.Sqlite };
         foreach (var dialect in atPrefixDialects)
         {
             Assert.AreEqual("@", dialect.ParameterPrefix);
         }
 
         // $ prefix group  
-        var dollarPrefixDialects = new[] { SqlDefine.PgSql, SqlDefine.Sqlite };
+        var dollarPrefixDialects = new[] { SqlDefine.PgSql };
         foreach (var dialect in dollarPrefixDialects)
         {
             Assert.AreEqual("$", dialect.ParameterPrefix);
@@ -309,7 +309,7 @@ public class SqlDefineComprehensiveTests
             new { Name = "PostgreSQL", Dialect = SqlDefine.PgSql, Expected = "$param1" },
             new { Name = "Oracle", Dialect = SqlDefine.Oracle, Expected = ":param1" },
             new { Name = "DB2", Dialect = SqlDefine.DB2, Expected = "?param1" },
-            new { Name = "SQLite", Dialect = SqlDefine.Sqlite, Expected = "$param1" }
+            new { Name = "SQLite", Dialect = SqlDefine.Sqlite, Expected = "@param1" } // SQLite uses @ for ADO.NET compatibility
         };
 
         foreach (var testCase in testCases)

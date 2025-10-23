@@ -223,7 +223,7 @@ namespace Sqlx.Tests.Core
                 ("PostgreSQL", SqlDefine.PgSql, "$"),
                 ("Oracle", SqlDefine.Oracle, ":"),
                 ("DB2", SqlDefine.DB2, "?"),
-                ("SQLite", SqlDefine.Sqlite, "$")
+                ("SQLite", SqlDefine.Sqlite, "@") // SQLite uses @ for ADO.NET compatibility
             };
 
             // Act & Assert

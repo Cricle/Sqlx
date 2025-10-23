@@ -31,6 +31,8 @@ Sqlx 是一个让你**不用手写 SQL 列名**的数据库工具。你只需要
 | **删除** | `DELETE FROM {{table}} WHERE id = @id` | `DELETE FROM users WHERE id = @id` |
 | **排序** | `{{orderby name --desc}}` | `ORDER BY name DESC` |
 | **分页** | `{{page}}` | `LIMIT @pageSize OFFSET ((@page-1)*@pageSize)` |
+| **动态表名** 🆕 | `SELECT * FROM {{@tableName}}` | `SELECT * FROM tenant1_users` |
+| **动态条件** 🆕 | `WHERE {{@whereClause}}` | `WHERE age > 18 AND status='active'` |
 | **窗口** | `{{row_number\|orderby=created_at}}` | `ROW_NUMBER() OVER (ORDER BY created_at)` |
 | **JSON** | `{{json_extract\|column=data\|path=$.id}}` | `JSON_VALUE(data, '$.id')` |
 | **聚合** | `{{group_concat\|column=tag}}` | `STRING_AGG(tag, ',')` |
@@ -114,6 +116,33 @@ var todos = await repo.GetAllAsync();
 - **数学**: `{{round}}`, `{{power}}`, `{{sqrt}}`, `{{mod}}`
 - **日期**: `{{today}}`, `{{week}}`, `{{month}}`, `{{year}}`, `{{date_add}}`
 - **批量**: `{{upsert}}`, `{{batch_insert}}`, `{{bulk_update}}`
+
+**🆕 动态占位符（@ 前缀）：**
+适用于多租户、分库分表等高级场景，需要显式标记 `[DynamicSql]` 特性：
+
+```csharp
+// ⚠️ 动态表名（多租户系统）
+[Sqlx("SELECT {{columns}} FROM {{@tableName}} WHERE id = @id")]
+Task<User?> GetFromTableAsync([DynamicSql] string tableName, int id);
+
+// 调用前必须验证
+var allowedTables = new[] { "users", "admin_users", "guest_users" };
+if (!allowedTables.Contains(tableName))
+    throw new ArgumentException("Invalid table name");
+
+var user = await repo.GetFromTableAsync("users", userId);
+```
+
+**动态占位符类型**：
+- `[DynamicSql]` - 标识符（表名/列名，最严格验证）
+- `[DynamicSql(Type = DynamicSqlType.Fragment)]` - SQL片段（WHERE/JOIN子句）
+- `[DynamicSql(Type = DynamicSqlType.TablePart)]` - 表名部分（前缀/后缀）
+
+**⚠️ 安全警告**：
+- 必须强制标记 `[DynamicSql]` 特性（否则编译错误）
+- 必须在调用前验证参数（使用白名单）
+- 不要在公共 API 中暴露动态参数
+- 生成的代码会包含内联验证逻辑
 
 **命令行风格选项：**
 ```csharp

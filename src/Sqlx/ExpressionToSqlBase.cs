@@ -457,6 +457,18 @@ namespace Sqlx
             return merged;
         }
 
+        /// <summary>Gets WHERE clause without WHERE keyword</summary>
+        public virtual string ToWhereClause() => 
+            _whereConditions.Count == 0 
+                ? string.Empty 
+                : string.Join(" AND ", _whereConditions.Select(c => 
+                    c.StartsWith("(") && c.EndsWith(")") 
+                        ? c.Substring(1, c.Length - 2) 
+                        : c));
+
+        /// <summary>Gets parameters dictionary for command binding</summary>
+        public virtual Dictionary<string, object?> GetParameters() => new Dictionary<string, object?>(_parameters);
+
         /// <summary>Converts to SQL string</summary>
         public abstract string ToSql();
         /// <summary>Converts to SQL template</summary>

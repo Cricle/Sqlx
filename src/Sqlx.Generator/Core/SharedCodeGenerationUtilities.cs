@@ -86,14 +86,68 @@ public static class SharedCodeGenerationUtilities
     {
         sb.AppendLine($"__cmd__ = {connectionName}.CreateCommand();");
 
-        // Properly escape SQL string for C# code generation
-        var escapedSql = sql.Replace("\"", "\"\"").Replace("\r\n", "\\r\\n").Replace("\n", "\\n").Replace("\t", "\\t");
-        sb.AppendLine($"__cmd__.CommandText = @\"{escapedSql}\";");
+        // Check for runtime WHERE markers
+        bool hasRuntimeWhere = sql.Contains("{RUNTIME_WHERE_");
+        
+        if (hasRuntimeWhere)
+        {
+            // Generate dynamic SQL building
+            GenerateDynamicWhereSql(sb, sql, method);
+        }
+        else
+        {
+            // Properly escape SQL string for C# code generation
+            var escapedSql = sql.Replace("\"", "\"\"").Replace("\r\n", "\\r\\n").Replace("\n", "\\n").Replace("\t", "\\t");
+            sb.AppendLine($"__cmd__.CommandText = @\"{escapedSql}\";");
+        }
+        
         sb.AppendLine();
 
         // Generate parameter binding
+        GenerateParameterBinding(sb, method, hasRuntimeWhere);
+    }
+    
+    /// <summary>
+    /// Generate parameter binding code
+    /// </summary>
+    private static void GenerateParameterBinding(IndentedStringBuilder sb, IMethodSymbol method, bool hasRuntimeWhere)
+    {
+        // First, bind parameters from ExpressionToSql if present
+        if (hasRuntimeWhere)
+        {
+            var exprParams = method.Parameters.Where(p => 
+                p.GetAttributes().Any(a => a.AttributeClass?.Name == "ExpressionToSqlAttribute"));
+            
+            foreach (var exprParam in exprParams)
+            {
+                sb.AppendLine($"// Bind parameters from ExpressionToSql: {exprParam.Name}");
+                sb.AppendLine($"if ({exprParam.Name} != null)");
+                sb.AppendLine("{");
+                sb.PushIndent();
+                sb.AppendLine($"foreach (var __kvp__ in {exprParam.Name}.GetParameters())");
+                sb.AppendLine("{");
+                sb.PushIndent();
+                sb.AppendLine("var __p__ = __cmd__.CreateParameter();");
+                sb.AppendLine("__p__.ParameterName = __kvp__.Key;");
+                sb.AppendLine("__p__.Value = __kvp__.Value ?? (object)global::System.DBNull.Value;");
+                sb.AppendLine("__cmd__.Parameters.Add(__p__);");
+                sb.PopIndent();
+                sb.AppendLine("}");
+                sb.PopIndent();
+                sb.AppendLine("}");
+                sb.AppendLine();
+            }
+        }
+        
+        // Then bind regular parameters (excluding special ones)
+        var regularParams = method.Parameters.Where(p => 
+            p.Type.Name != "CancellationToken" &&
+            !p.GetAttributes().Any(a => 
+                a.AttributeClass?.Name == "ExpressionToSqlAttribute" ||
+                (a.AttributeClass?.Name == "DynamicSqlAttribute" && hasRuntimeWhere)));
+        
         // 🚀 性能优化：简化参数创建，减少临时变量和赋值操作
-        foreach (var param in method.Parameters.Where(p => p.Type.Name != "CancellationToken"))
+        foreach (var param in regularParams)
         {
             var paramName = $"@{param.Name}";
             // ✅ 全面支持：nullable value types (int?) 和 nullable reference types (string?)
@@ -114,6 +168,65 @@ public static class SharedCodeGenerationUtilities
 
             sb.AppendLine("__cmd__.Parameters.Add(__p__); }");
         }
+    }
+
+    /// <summary>
+    /// Generate dynamic WHERE SQL building code
+    /// </summary>
+    private static void GenerateDynamicWhereSql(IndentedStringBuilder sb, string sql, IMethodSymbol method)
+    {
+        sb.AppendLine("// Build SQL with dynamic WHERE clause");
+        sb.AppendLine("var __sql__ = @\"" + sql.Replace("\"", "\"\"") + "\";");
+        sb.AppendLine();
+        
+        // Find all runtime WHERE markers
+        var markers = System.Text.RegularExpressions.Regex.Matches(sql, @"\{RUNTIME_WHERE_([^}]+)\}");
+        
+        foreach (System.Text.RegularExpressions.Match match in markers)
+        {
+            var fullMarker = match.Value;
+            var markerContent = match.Groups[1].Value;
+            
+            if (markerContent.StartsWith("EXPR_"))
+            {
+                // ExpressionToSql parameter
+                var paramName = markerContent.Substring(5);
+                sb.AppendLine($"// Extract WHERE from ExpressionToSql parameter: {paramName}");
+                sb.AppendLine($"var __whereClause_{paramName}__ = {paramName}?.ToWhereClause() ?? \"1=1\";");
+                sb.AppendLine($"__sql__ = __sql__.Replace(\"{fullMarker}\", __whereClause_{paramName}__);");
+                sb.AppendLine();
+            }
+            else if (markerContent.StartsWith("DYNAMIC_"))
+            {
+                // DynamicSql parameter with validation
+                var paramName = markerContent.Substring(8);
+                sb.AppendLine($"// Validate and insert DynamicSql WHERE parameter: {paramName}");
+                sb.AppendLine($"if (!global::Sqlx.Validation.SqlValidator.IsValidFragment({paramName}.AsSpan()))");
+                sb.AppendLine("{");
+                sb.PushIndent();
+                sb.AppendLine($"throw new global::System.ArgumentException($\"Invalid SQL fragment: {{{paramName}}}. Contains dangerous keywords or operations.\", nameof({paramName}));");
+                sb.PopIndent();
+                sb.AppendLine("}");
+                sb.AppendLine($"__sql__ = __sql__.Replace(\"{fullMarker}\", {paramName});");
+                sb.AppendLine();
+            }
+            else
+            {
+                // Regular parameter as WHERE fragment (with validation)
+                var paramName = markerContent;
+                sb.AppendLine($"// Insert parameter as WHERE fragment: {paramName}");
+                sb.AppendLine($"if (!global::Sqlx.Validation.SqlValidator.IsValidFragment({paramName}.AsSpan()))");
+                sb.AppendLine("{");
+                sb.PushIndent();
+                sb.AppendLine($"throw new global::System.ArgumentException($\"Invalid SQL fragment: {{{paramName}}}. Contains dangerous keywords or operations.\", nameof({paramName}));");
+                sb.PopIndent();
+                sb.AppendLine("}");
+                sb.AppendLine($"__sql__ = __sql__.Replace(\"{fullMarker}\", {paramName});");
+                sb.AppendLine();
+            }
+        }
+        
+        sb.AppendLine("__cmd__.CommandText = __sql__;");
     }
 
     /// <summary>

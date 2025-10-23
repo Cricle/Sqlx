@@ -371,10 +371,46 @@ public class SqlTemplateEngine
 
 
     /// <summary>
-    /// 处理WHERE占位符 - 多数据库支持
+    /// Processes WHERE placeholder - supports multiple sources
     /// </summary>
     private string ProcessWherePlaceholder(string type, INamedTypeSymbol? entityType, IMethodSymbol method, string options, SqlDefine dialect)
     {
+        // Check for ExpressionToSql parameter
+        var exprParam = method.Parameters.FirstOrDefault(p => 
+            p.GetAttributes().Any(a => a.AttributeClass?.Name == "ExpressionToSqlAttribute"));
+        
+        // Check for DynamicSql WHERE parameter
+        var dynamicWhereParam = method.Parameters.FirstOrDefault(p =>
+            p.GetAttributes().Any(a => 
+                a.AttributeClass?.Name == "DynamicSqlAttribute" &&
+                a.NamedArguments.Any(arg => 
+                    arg.Key == "Type" && 
+                    arg.Value.Value?.ToString() == "1"))); // Fragment = 1
+        
+        // Priority: @paramName > ExpressionToSql > auto > id > default
+        if (!string.IsNullOrWhiteSpace(type) && type.StartsWith("@"))
+        {
+            // {{where @customWhere}} - use parameter as WHERE fragment
+            var paramName = type.Substring(1);
+            var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
+            if (param != null)
+            {
+                return $"{{RUNTIME_WHERE_{paramName}}}"; // Marker for code generation
+            }
+        }
+        
+        if (exprParam != null)
+        {
+            // {{where}} with [ExpressionToSql] parameter - extract WHERE clause
+            return $"{{RUNTIME_WHERE_EXPR_{exprParam.Name}}}"; // Marker for code generation
+        }
+        
+        if (dynamicWhereParam != null)
+        {
+            // {{where}} with [DynamicSql(Type=Fragment)] parameter
+            return $"{{RUNTIME_WHERE_DYNAMIC_{dynamicWhereParam.Name}}}"; // Marker for code generation
+        }
+        
         return type switch
         {
             "id" => $"id = {dialect.ParameterPrefix}id",

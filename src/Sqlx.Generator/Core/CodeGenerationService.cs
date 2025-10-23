@@ -382,7 +382,7 @@ public class CodeGenerationService
         // Generate repository methods using template engine
         // Support interface inheritance - collect methods from base interfaces too
         var allMethods = GetAllInterfaceMethods(serviceInterface);
-        
+
         foreach (var method in allMethods)
         {
             var sqlxAttr = GetSqlAttribute(method);
@@ -1268,11 +1268,11 @@ public class CodeGenerationService
     {
         // Get methods directly defined in this interface
         var directMethods = interfaceSymbol.GetMembers().OfType<IMethodSymbol>();
-        
+
         // Get methods from all base interfaces
         var baseMethods = interfaceSymbol.AllInterfaces
             .SelectMany(baseInterface => baseInterface.GetMembers().OfType<IMethodSymbol>());
-        
+
         // Combine and deduplicate (in case of method overrides)
         return directMethods.Concat(baseMethods)
             .GroupBy(m => m.Name + "_" + string.Join("_", m.Parameters.Select(p => p.Type.ToDisplayString())))

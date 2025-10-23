@@ -1142,9 +1142,13 @@ public class SqlTemplateEngine
     private static string ProcessJoinPlaceholder(string type, INamedTypeSymbol? entityType, string options, SqlDefine dialect, IMethodSymbol method)
     {
         // Check for dynamic JOIN parameter: {{join @paramName}}
-        if (!string.IsNullOrWhiteSpace(type) && type.StartsWith("@"))
+        // @paramName can be in either 'type' ({{join:@paramName}}) or 'options' ({{join @paramName}})
+        var paramSource = !string.IsNullOrWhiteSpace(options) && options.StartsWith("@") ? options :
+                         !string.IsNullOrWhiteSpace(type) && type.StartsWith("@") ? type : null;
+        
+        if (paramSource != null)
         {
-            var paramName = type.Substring(1);
+            var paramName = paramSource.Substring(1).Trim();
             var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
             if (param != null)
             {
@@ -1161,9 +1165,13 @@ public class SqlTemplateEngine
     private static string ProcessGroupByPlaceholder(string type, INamedTypeSymbol? entityType, IMethodSymbol method, string options, SqlDefine dialect)
     {
         // Check for dynamic GROUPBY parameter: {{groupby @paramName}}
-        if (!string.IsNullOrWhiteSpace(type) && type.StartsWith("@"))
+        // @paramName can be in either 'type' ({{groupby:@paramName}}) or 'options' ({{groupby @paramName}})
+        var paramSource = !string.IsNullOrWhiteSpace(options) && options.StartsWith("@") ? options :
+                         !string.IsNullOrWhiteSpace(type) && type.StartsWith("@") ? type : null;
+        
+        if (paramSource != null)
         {
-            var paramName = type.Substring(1);
+            var paramName = paramSource.Substring(1).Trim();
             var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
             if (param != null)
             {

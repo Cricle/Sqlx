@@ -192,7 +192,7 @@ public class SqlTemplateEngine
                 "orderby" => ProcessOrderByPlaceholder(placeholderType, entityType, placeholderOptions, dialect, method),
                 "limit" => ProcessLimitPlaceholder(placeholderType, method, placeholderOptions, dialect),
                 // 常用扩展占位符（多数据库支持）
-                "join" => ProcessJoinPlaceholder(placeholderType, entityType, placeholderOptions, dialect),
+                "join" => ProcessJoinPlaceholder(placeholderType, entityType, placeholderOptions, dialect, method),
                 "groupby" => ProcessGroupByPlaceholder(placeholderType, entityType, method, placeholderOptions, dialect),
                 "having" => ProcessHavingPlaceholder(placeholderType, method, placeholderOptions, dialect),
                 "select" => ProcessSelectPlaceholder(placeholderType, entityType, placeholderOptions, dialect),
@@ -474,12 +474,12 @@ public class SqlTemplateEngine
     {
         // Check for dynamic ORDERBY parameter
         var dynamicOrderParam = method.Parameters.FirstOrDefault(p =>
-            p.GetAttributes().Any(a => 
+            p.GetAttributes().Any(a =>
                 a.AttributeClass?.Name == "DynamicSqlAttribute" &&
-                a.NamedArguments.Any(arg => 
-                    arg.Key == "Type" && 
+                a.NamedArguments.Any(arg =>
+                    arg.Key == "Type" &&
                     arg.Value.Value?.ToString() == "1"))); // Fragment = 1
-        
+
         // Priority: @paramName > dynamic param > options > type
         if (!string.IsNullOrWhiteSpace(type) && type.StartsWith("@"))
         {
@@ -491,13 +491,13 @@ public class SqlTemplateEngine
                 return $"{{RUNTIME_ORDERBY_{paramName}}}"; // Marker for code generation
             }
         }
-        
+
         if (dynamicOrderParam != null)
         {
             // {{orderby}} with [DynamicSql(Type=Fragment)] parameter
             return $"{{RUNTIME_ORDERBY_DYNAMIC_{dynamicOrderParam.Name}}}"; // Marker for code generation
         }
-        
+
         // Static ORDERBY generation (existing behavior)
         // 优先处理 options（新格式）：created_at --desc
         if (!string.IsNullOrWhiteSpace(options))
@@ -1138,15 +1138,41 @@ public class SqlTemplateEngine
         return SqlTemplateEngineExtensions.MultiDatabasePlaceholderSupport.ProcessAggregateFunction(function, type, options, dialect);
     }
 
-    /// <summary>处理JOIN占位符 - 多数据库支持</summary>
-    private static string ProcessJoinPlaceholder(string type, INamedTypeSymbol? entityType, string options, SqlDefine dialect)
+    /// <summary>Processes JOIN placeholder - supports dynamic runtime joins</summary>
+    private static string ProcessJoinPlaceholder(string type, INamedTypeSymbol? entityType, string options, SqlDefine dialect, IMethodSymbol method)
     {
+        // Check for dynamic JOIN parameter: {{join @paramName}}
+        if (!string.IsNullOrWhiteSpace(type) && type.StartsWith("@"))
+        {
+            var paramName = type.Substring(1);
+            var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
+            if (param != null)
+            {
+                // Return marker for runtime string interpolation
+                return $"{{RUNTIME_JOIN_{paramName}}}";
+            }
+        }
+        
+        // Static JOIN generation (existing behavior)
         return SqlTemplateEngineExtensions.MultiDatabasePlaceholderSupport.ProcessGenericPlaceholder("join", type, options, dialect);
     }
 
-    /// <summary>处理GROUP BY占位符 - 多数据库支持</summary>
+    /// <summary>Processes GROUPBY placeholder - supports dynamic runtime grouping</summary>
     private static string ProcessGroupByPlaceholder(string type, INamedTypeSymbol? entityType, IMethodSymbol method, string options, SqlDefine dialect)
     {
+        // Check for dynamic GROUPBY parameter: {{groupby @paramName}}
+        if (!string.IsNullOrWhiteSpace(type) && type.StartsWith("@"))
+        {
+            var paramName = type.Substring(1);
+            var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
+            if (param != null)
+            {
+                // Return marker for runtime string interpolation
+                return $"{{RUNTIME_GROUPBY_{paramName}}}";
+            }
+        }
+        
+        // Static GROUPBY generation (existing behavior)
         return SqlTemplateEngineExtensions.MultiDatabasePlaceholderSupport.ProcessGenericPlaceholder("groupby", type, options, dialect);
     }
 

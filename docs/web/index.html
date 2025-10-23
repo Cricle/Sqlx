@@ -26,7 +26,7 @@
             background: #fff;
         }
         .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
-        
+
         /* Header */
         header {
             background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
@@ -58,7 +58,7 @@
         .btn-primary { background: white; color: var(--primary); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
         .btn-secondary { background: rgba(255,255,255,0.2); color: white; border: 2px solid white; }
         .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.2); }
-        
+
         /* Navigation */
         nav {
             position: sticky;
@@ -77,7 +77,7 @@
             transition: color 0.3s;
         }
         nav a:hover { color: var(--primary); }
-        
+
         /* Sections */
         section { padding: 80px 20px; }
         section:nth-child(even) { background: var(--light); }
@@ -93,11 +93,11 @@
             font-size: 1.2rem;
             margin-bottom: 3rem;
         }
-        
+
         /* Grid */
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; }
         .grid-3 { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
-        
+
         /* Cards */
         .card {
             background: white;
@@ -109,7 +109,7 @@
         .card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.15); }
         .card-icon { font-size: 3rem; margin-bottom: 15px; }
         .card h3 { color: var(--primary); margin-bottom: 15px; }
-        
+
         /* Performance */
         .perf-chart {
             background: white;
@@ -132,7 +132,7 @@
             transition: width 0.5s;
         }
         .perf-bar-label { display: flex; justify-content: space-between; padding: 5px 10px; font-weight: 600; }
-        
+
         /* Table */
         .table {
             width: 100%;
@@ -156,7 +156,7 @@
         }
         .table tr:hover { background: var(--light); }
         .table .highlight { background: #e0f2fe; font-weight: 600; }
-        
+
         /* Code */
         .code-block {
             background: #2d2d2d;
@@ -172,7 +172,7 @@
         .code-keyword { color: #569cd6; }
         .code-string { color: #ce9178; }
         .code-type { color: #4ec9b0; }
-        
+
         /* Feature Box */
         .feature-box {
             background: var(--light);
@@ -191,7 +191,7 @@
             color: var(--success);
             font-weight: bold;
         }
-        
+
         /* Alert */
         .alert {
             padding: 15px 20px;
@@ -202,7 +202,7 @@
         .alert-success { background: #d1fae5; border-color: var(--success); color: #065f46; }
         .alert-info { background: #dbeafe; border-color: #3b82f6; color: #1e3a8a; }
         .alert-warning { background: #fef3c7; border-color: var(--warning); color: #92400e; }
-        
+
         /* Comparison */
         .comparison {
             display: grid;
@@ -221,7 +221,7 @@
         .comparison-item h3 { margin-bottom: 15px; }
         .comparison-metric { font-size: 2rem; font-weight: bold; color: var(--primary); margin: 10px 0; }
         .comparison-label { color: var(--text-light); font-size: 0.9rem; }
-        
+
         /* Footer */
         footer {
             background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
@@ -230,7 +230,7 @@
             padding: 50px 20px;
         }
         footer p { margin: 10px 0; }
-        
+
         /* Responsive */
         @media (max-width: 768px) {
             h1 { font-size: 2rem; }
@@ -245,7 +245,7 @@
     <header>
         <h1>🚀 Sqlx</h1>
         <p class="subtitle">高性能、类型安全、零反射的 .NET ORM 框架</p>
-        
+
         <div class="badges">
             <span class="badge">✨ 编译时代码生成</span>
             <span class="badge">⚡ 比 Dapper 快 20%</span>
@@ -254,14 +254,14 @@
             <span class="badge">📦 AOT 支持</span>
             <span class="badge">🌐 6种数据库</span>
         </div>
-        
+
         <div class="cta-buttons">
             <a href="https://github.com/Cricle/Sqlx" class="btn btn-primary" target="_blank">GitHub 仓库</a>
             <a href="https://www.nuget.org/packages/Sqlx" class="btn btn-secondary" target="_blank">NuGet 包</a>
             <a href="#performance" class="btn btn-secondary">性能数据</a>
         </div>
     </header>
-    
+
     <!-- Navigation -->
     <nav>
         <div class="container">
@@ -275,22 +275,22 @@
             </ul>
         </div>
     </nav>
-    
+
     <!-- Performance Section -->
     <section id="performance">
         <div class="container">
             <h2 class="section-title">⚡ 真实性能数据</h2>
             <p class="section-subtitle">基于 BenchmarkDotNet 的实际测试结果</p>
-            
+
             <div class="alert alert-success">
                 <strong>🎉 性能突破：</strong> Sqlx 比 Dapper 快 20%，内存占用少 46%，同时提供完整的 Activity 追踪和性能指标！
             </div>
-            
+
             <!-- Performance Chart -->
             <div class="perf-chart">
                 <h3 style="margin-bottom: 20px;">单行查询性能对比（真实数据）</h3>
                 <p style="color: var(--text-light); margin-bottom: 30px;">测试环境：AMD Ryzen 7 5800H, .NET 8.0.21, Windows 10</p>
-                
+
                 <div class="perf-bar">
                     <div class="perf-bar-label">
                         <span><strong>Raw ADO.NET</strong> (基准)</span>
@@ -300,7 +300,7 @@
                         1.17 KB
                     </div>
                 </div>
-                
+
                 <div class="perf-bar">
                     <div class="perf-bar-label">
                         <span><strong>Sqlx</strong> (强制追踪) 🏆</span>
@@ -310,7 +310,7 @@
                         1.21 KB (-46% vs Dapper)
                     </div>
                 </div>
-                
+
                 <div class="perf-bar">
                     <div class="perf-bar-label">
                         <span><strong>Dapper</strong> (反射 + IL生成)</span>
@@ -321,7 +321,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Performance Table -->
             <table class="table">
                 <thead>
@@ -361,7 +361,7 @@
                     </tr>
                 </tbody>
             </table>
-            
+
             <div class="grid">
                 <div class="card">
                     <div class="card-icon">⚡</div>
@@ -373,7 +373,7 @@
                         <li style="padding: 8px 0;">✓ 硬编码索引访问</li>
                     </ul>
                 </div>
-                
+
                 <div class="card">
                     <div class="card-icon">💾</div>
                     <h3>内存优势</h3>
@@ -384,7 +384,7 @@
                         <li style="padding: 8px 0;">✓ 无额外分配</li>
                     </ul>
                 </div>
-                
+
                 <div class="card">
                     <div class="card-icon">📊</div>
                     <h3>可观测性</h3>
@@ -396,78 +396,84 @@
                     </ul>
                 </div>
             </div>
-            
+
             <div class="alert alert-info">
                 <strong>💡 性能说明：</strong> Sqlx通过命令自动释放、智能IsDBNull检查、硬编码索引访问等优化，在提供完整Activity追踪和性能指标的同时，仍比Dapper快20%。这是目前最快的.NET ORM框架！
             </div>
         </div>
     </section>
-    
+
     <!-- Features Section -->
     <section id="features">
         <div class="container">
             <h2 class="section-title">✨ 核心功能</h2>
             <p class="section-subtitle">完整的功能集，简单易用</p>
-            
+
             <div class="grid-3">
                 <div class="card">
                     <div class="card-icon">📝</div>
                     <h3>智能占位符</h3>
                     <p>自动生成 SQL 片段，无需手写列名</p>
                 </div>
-                
+
                 <div class="card">
                     <div class="card-icon">⚙️</div>
                     <h3>编译时生成</h3>
                     <p>Source Generator 在编译时生成高性能代码</p>
                 </div>
-                
+
                 <div class="card">
                     <div class="card-icon">🌐</div>
                     <h3>多数据库支持</h3>
                     <p>支持 6 种主流数据库</p>
                 </div>
-                
+
                 <div class="card">
                     <div class="card-icon">🎯</div>
                     <h3>类型安全</h3>
                     <p>编译时检查，避免运行时错误</p>
                 </div>
-                
+
                 <div class="card">
                     <div class="card-icon">🔥</div>
                     <h3>零反射</h3>
                     <p>直接调用 ADO.NET，无反射开销</p>
                 </div>
-                
+
                 <div class="card">
                     <div class="card-icon">📦</div>
                     <h3>AOT 支持</h3>
                     <p>完全支持 Native AOT 编译</p>
                 </div>
-                
+
                 <div class="card">
                     <div class="card-icon">📊</div>
                     <h3>Activity 追踪</h3>
                     <p>内置 OpenTelemetry 兼容追踪</p>
                 </div>
-                
+
                 <div class="card">
                     <div class="card-icon">🔧</div>
                     <h3>Partial 方法</h3>
                     <p>零开销的自定义拦截</p>
                 </div>
-                
+
                 <div class="card">
                     <div class="card-icon">⚡</div>
                     <h3>性能优化</h3>
                     <p>硬编码索引访问、智能 IsDBNull</p>
                 </div>
+
+                <div class="card" style="border: 2px solid var(--warning);">
+                    <div class="card-icon">🔐</div>
+                    <h3>动态占位符 🆕</h3>
+                    <p>多租户、分库分表支持（需显式标记）</p>
+                </div>
             </div>
-            
+
             <!-- Feature Details -->
             <h3 style="margin-top: 60px; margin-bottom: 30px; text-align: center; color: var(--primary);">功能详细说明</h3>
-            
+
             <div class="feature-box">
                 <h4>📝 智能占位符系统</h4>
                 <table class="table">
@@ -509,10 +515,82 @@
                             <td>排序</td>
                             <td><code>ORDER BY created_at DESC</code></td>
                         </tr>
+                        <tr style="background: #fff3cd;">
+                            <td><code>{{@tableName}} 🆕</code></td>
+                            <td>动态表名（需 <code>[DynamicSql]</code>）</td>
+                            <td><code>tenant1_users</code></td>
+                        </tr>
+                        <tr style="background: #fff3cd;">
+                            <td><code>{{@whereClause}} 🆕</code></td>
+                            <td>动态 SQL 片段（需特性标记）</td>
+                            <td><code>age > 18 AND status='active'</code></td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
-            
+
+            <!-- Dynamic Placeholder Feature Box -->
+            <div class="feature-box" style="border-left: 4px solid var(--warning); background: #fffbeb;">
+                <h4>🔐 动态占位符（高级功能）🆕</h4>
+                <div style="background: #fee; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <p style="color: var(--danger); font-weight: 600; margin: 0;">
+                        ⚠️ 安全警告：动态占位符会绕过参数化查询，存在 SQL 注入风险！
+                    </p>
+                </div>
+                
+                <p><strong>适用场景：</strong>多租户系统、分库分表、动态查询</p>
+                
+                <h5 style="margin-top: 20px; color: var(--primary);">使用示例：</h5>
+                <pre style="background: white; padding: 15px; border-radius: 8px; overflow-x: auto; border: 1px solid var(--border);"><code>// 1️⃣ 定义接口（必须显式标记 [DynamicSql]）
+[Sqlx("SELECT {{columns}} FROM {{@tableName}} WHERE id = @id")]
+Task&lt;User?&gt; GetFromTableAsync([DynamicSql] string tableName, int id);
+
+// 2️⃣ 调用前必须验证（使用白名单）
+var allowedTables = new[] { "users", "admin_users", "guest_users" };
+if (!allowedTables.Contains(tableName))
+    throw new ArgumentException("Invalid table name");
+
+var user = await repo.GetFromTableAsync("users", userId);</code></pre>
+
+                <h5 style="margin-top: 20px; color: var(--primary);">三种验证类型：</h5>
+                <ul style="margin-left: 20px; line-height: 1.8;">
+                    <li><code>[DynamicSql]</code> - 标识符（表名/列名，最严格验证）</li>
+                    <li><code>[DynamicSql(Type = DynamicSqlType.Fragment)]</code> - SQL片段（WHERE/JOIN子句）</li>
+                    <li><code>[DynamicSql(Type = DynamicSqlType.TablePart)]</code> - 表名部分（前缀/后缀）</li>
+                </ul>
+                
+                <h5 style="margin-top: 20px; color: var(--primary);">安全要求：</h5>
+                <div class="grid" style="grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 10px;">
+                    <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid var(--success);">
+                        <strong style="color: var(--success);">✅ 必须做</strong>
+                        <ul style="margin: 10px 0 0 20px; line-height: 1.8;">
+                            <li>显式标记 <code>[DynamicSql]</code> 特性</li>
+                            <li>使用白名单验证</li>
+                            <li>编写单元测试</li>
+                        </ul>
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid var(--danger);">
+                        <strong style="color: var(--danger);">❌ 禁止做</strong>
+                        <ul style="margin: 10px 0 0 20px; line-height: 1.8;">
+                            <li>直接使用用户输入</li>
+                            <li>在公共 API 中暴露</li>
+                            <li>跳过验证逻辑</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <p style="margin-top: 20px; padding: 15px; background: white; border-radius: 8px; border: 1px solid var(--border);">
+                    <strong>Roslyn 分析器支持：</strong> Sqlx 提供 10 个诊断规则，在编译时检测不安全的使用，包括：
+                    缺少特性标记、不安全数据源、缺少验证、公共 API 暴露等。
+                </p>
+                
+                <p style="margin-top: 15px; text-align: center;">
+                    <a href="../PLACEHOLDERS.md#动态占位符-前缀---高级功能" style="color: var(--primary); font-weight: 600; text-decoration: none;">
+                        📖 查看完整文档 →
+                    </a>
+                </p>
+            </div>
+
             <div class="feature-box">
                 <h4>🌐 支持的数据库</h4>
                 <div class="grid-3">
@@ -524,7 +602,7 @@
                     <div>✓ <strong>DB2</strong></div>
                 </div>
             </div>
-            
+
             <div class="feature-box">
                 <h4>⚡ 性能优化技术</h4>
                 <ul>
@@ -537,13 +615,13 @@
             </div>
         </div>
     </section>
-    
+
     <!-- Comparison Section -->
     <section id="comparison">
         <div class="container">
             <h2 class="section-title">📊 与其他 ORM 对比</h2>
             <p class="section-subtitle">为什么选择 Sqlx？</p>
-            
+
             <div class="comparison">
                 <div class="comparison-item winner">
                     <h3>🏆 Sqlx</h3>
@@ -556,7 +634,7 @@
                     <div class="comparison-metric" style="color: var(--success);">✓</div>
                     <div class="comparison-label">AOT 支持</div>
                 </div>
-                
+
                 <div class="comparison-item">
                     <h3>Dapper</h3>
                     <div class="comparison-metric">9.241 μs</div>
@@ -568,7 +646,7 @@
                     <div class="comparison-metric" style="color: var(--warning);">⚠</div>
                     <div class="comparison-label">AOT 部分支持</div>
                 </div>
-                
+
                 <div class="comparison-item">
                     <h3>EF Core</h3>
                     <div class="comparison-metric">~50 μs</div>
@@ -581,7 +659,7 @@
                     <div class="comparison-label">AOT 支持</div>
                 </div>
             </div>
-            
+
             <table class="table">
                 <thead>
                     <tr>
@@ -642,19 +720,19 @@
                     </tr>
                 </tbody>
             </table>
-            
+
             <div class="alert alert-warning">
                 <strong>🎯 选择建议：</strong> 如果你需要极致性能和简单易用，选择 Sqlx。如果你需要复杂的 ORM 功能（如变更追踪、延迟加载），选择 EF Core。如果你只需要基础的对象映射，Dapper 也是不错的选择。
             </div>
         </div>
     </section>
-    
+
     <!-- API Section -->
     <section id="api">
         <div class="container">
             <h2 class="section-title">📚 API 文档</h2>
             <p class="section-subtitle">完整的 API 参考</p>
-            
+
             <div class="feature-box">
                 <h4>🏷️ 特性 (Attributes)</h4>
                 <div class="code-block"><span class="code-comment">// 1. [Sqlx] - 标记方法使用 SQL 模板</span>
@@ -673,7 +751,7 @@
 [<span class="code-type">TableName</span>(<span class="code-string">"custom_users"</span>)]
 <span class="code-keyword">public class</span> <span class="code-type">User</span> { }</div>
             </div>
-            
+
             <div class="feature-box">
                 <h4>🔧 Partial 方法（自定义拦截）</h4>
                 <div class="code-block"><span class="code-comment">// 在 SQL 执行前拦截</span>
@@ -683,7 +761,7 @@
 }
 
 <span class="code-comment">// 在 SQL 执行成功后拦截</span>
-<span class="code-keyword">partial void</span> <span class="code-method">OnExecuted</span>(<span class="code-keyword">string</span> operation, <span class="code-type">IDbCommand</span> command, 
+<span class="code-keyword">partial void</span> <span class="code-method">OnExecuted</span>(<span class="code-keyword">string</span> operation, <span class="code-type">IDbCommand</span> command,
                         <span class="code-keyword">object</span>? result, <span class="code-keyword">long</span> elapsedTicks)
 {
     <span class="code-keyword">var</span> ms = elapsedTicks * 1000.0 / Stopwatch.Frequency;
@@ -691,13 +769,13 @@
 }
 
 <span class="code-comment">// 在 SQL 执行失败时拦截</span>
-<span class="code-keyword">partial void</span> <span class="code-method">OnExecuteFail</span>(<span class="code-keyword">string</span> operation, <span class="code-type">IDbCommand</span> command, 
+<span class="code-keyword">partial void</span> <span class="code-method">OnExecuteFail</span>(<span class="code-keyword">string</span> operation, <span class="code-type">IDbCommand</span> command,
                             <span class="code-type">Exception</span> ex, <span class="code-keyword">long</span> elapsedTicks)
 {
     Console.Error.<span class="code-method">WriteLine</span>(<span class="code-string">$"失败: {ex.Message}"</span>);
 }</div>
             </div>
-            
+
             <div class="feature-box">
                 <h4>📝 占位符命令行选项</h4>
                 <div class="code-block"><span class="code-comment">// --exclude: 排除字段</span>
@@ -711,9 +789,9 @@
 <span class="code-string">"{{orderby created_at --desc}}"</span>    <span class="code-comment">// 降序</span>
 <span class="code-string">"{{orderby name --asc}}"</span>           <span class="code-comment">// 升序（默认）</span></div>
             </div>
-            
+
             <h3 style="margin: 60px 0 30px; text-align: center; color: var(--primary);">🚀 80+ 高级占位符</h3>
-            
+
             <div class="grid">
                 <div class="card">
                     <h3>📄 分页 (4个)</h3>
@@ -724,7 +802,7 @@
                         <li style="padding: 8px 0;">✓ <code>{{offset}}</code> - 偏移量</li>
                     </ul>
                 </div>
-                
+
                 <div class="card">
                     <h3>🔀 条件表达式 (10个)</h3>
                     <ul style="list-style: none; padding: 0;">
@@ -736,7 +814,7 @@
                         <li style="padding: 8px 0;">✓ <code>{{like}}</code> - 模糊搜索</li>
                     </ul>
                 </div>
-                
+
                 <div class="card">
                     <h3>📊 窗口函数 (5个)</h3>
                     <ul style="list-style: none; padding: 0;">
@@ -747,7 +825,7 @@
                         <li style="padding: 8px 0;">✓ <code>{{lead}}</code> - 后一行</li>
                     </ul>
                 </div>
-                
+
                 <div class="card">
                     <h3>📦 JSON操作 (3个)</h3>
                     <ul style="list-style: none; padding: 0;">
@@ -756,7 +834,7 @@
                         <li style="padding: 8px 0;">✓ <code>{{json_object}}</code> - 创建对象</li>
                     </ul>
                 </div>
-                
+
                 <div class="card">
                     <h3>🔤 字符串函数 (9个)</h3>
                     <ul style="list-style: none; padding: 0;">
@@ -770,7 +848,7 @@
                         <li style="padding: 8px 0;">✓ <code>{{trim}}</code> - 去空格</li>
                     </ul>
                 </div>
-                
+
                 <div class="card">
                     <h3>➗ 数学函数 (8个)</h3>
                     <ul style="list-style: none; padding: 0;">
@@ -783,7 +861,7 @@
                         <li style="padding: 8px 0;">✓ <code>{{floor}}</code> - 向下取整</li>
                     </ul>
                 </div>
-                
+
                 <div class="card">
                     <h3>📅 日期时间 (11个)</h3>
                     <ul style="list-style: none; padding: 0;">
@@ -795,7 +873,7 @@
                         <li style="padding: 8px 0;">✓ <code>{{date_diff}}</code> - 日期差值</li>
                     </ul>
                 </div>
-                
+
                 <div class="card">
                     <h3>📝 类型转换 (2个)</h3>
                     <ul style="list-style: none; padding: 0;">
@@ -803,7 +881,7 @@
                         <li style="padding: 8px 0;">✓ <code>{{convert}}</code> - 转换（SQL Server）</li>
                     </ul>
                 </div>
-                
+
                 <div class="card">
                     <h3>🔄 批量操作 (3个)</h3>
                     <ul style="list-style: none; padding: 0;">
@@ -813,19 +891,19 @@
                     </ul>
                 </div>
             </div>
-            
+
             <div class="alert alert-info" style="margin-top: 30px;">
                 <strong>💡 提示：</strong> 核心占位符（table, columns, values, set, orderby）必学，高级占位符按需使用。大部分场景下直接写 SQL 更清晰！完整文档请查看 <a href="../PLACEHOLDERS.md" style="color: var(--primary);">占位符完整指南</a>
             </div>
         </div>
     </section>
-    
+
     <!-- Examples Section -->
     <section id="examples">
         <div class="container">
             <h2 class="section-title">💡 完整示例</h2>
             <p class="section-subtitle">从零开始的完整 CRUD 示例</p>
-            
+
             <div class="code-block"><span class="code-comment">// 1. 定义实体（Id 必须是第一个属性）</span>
 [<span class="code-type">TableName</span>(<span class="code-string">"todos"</span>)]
 <span class="code-keyword">public class</span> <span class="code-type">Todo</span>
@@ -842,19 +920,19 @@
     <span class="code-comment">// 查询所有（自动生成列名和排序）</span>
     [<span class="code-type">Sqlx</span>(<span class="code-string">"SELECT {{columns}} FROM {{table}} {{orderby created_at --desc}}"</span>)]
     <span class="code-type">Task</span>&lt;<span class="code-type">List</span>&lt;<span class="code-type">Todo</span>&gt;&gt; <span class="code-method">GetAllAsync</span>();
-    
+
     <span class="code-comment">// 根据ID查询</span>
     [<span class="code-type">Sqlx</span>(<span class="code-string">"SELECT {{columns}} FROM {{table}} WHERE id = @id"</span>)]
     <span class="code-type">Task</span>&lt;<span class="code-type">Todo</span>?&gt; <span class="code-method">GetByIdAsync</span>(<span class="code-keyword">int</span> id);
-    
+
     <span class="code-comment">// 插入（排除自增ID）</span>
     [<span class="code-type">Sqlx</span>(<span class="code-string">"INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values}})"</span>)]
     <span class="code-type">Task</span>&lt;<span class="code-keyword">long</span>&gt; <span class="code-method">CreateAsync</span>(<span class="code-type">Todo</span> todo);
-    
+
     <span class="code-comment">// 更新（排除ID和创建时间）</span>
     [<span class="code-type">Sqlx</span>(<span class="code-string">"UPDATE {{table}} SET {{set --exclude Id CreatedAt}} WHERE id = @id"</span>)]
     <span class="code-type">Task</span>&lt;<span class="code-keyword">int</span>&gt; <span class="code-method">UpdateAsync</span>(<span class="code-type">Todo</span> todo);
-    
+
     <span class="code-comment">// 删除</span>
     [<span class="code-type">Sqlx</span>(<span class="code-string">"DELETE FROM {{table}} WHERE id = @id"</span>)]
     <span class="code-type">Task</span>&lt;<span class="code-keyword">int</span>&gt; <span class="code-method">DeleteAsync</span>(<span class="code-keyword">int</span> id);
@@ -892,20 +970,20 @@ newTodo.IsCompleted = <span class="code-keyword">true</span>;
 
 <span class="code-comment">// 删除</span>
 <span class="code-keyword">await</span> repo.<span class="code-method">DeleteAsync</span>((<span class="code-keyword">int</span>)id);</div>
-            
+
             <div class="alert alert-success">
                 <strong>🚀 快速开始：</strong> 只需 3 步（定义实体、定义接口、标记实现类），Sqlx 自动生成高性能代码。无需手写任何 SQL 映射代码！
             </div>
-            
+
             <h3 style="margin: 60px 0 30px; text-align: center; color: var(--primary);">安装使用</h3>
-            
+
             <div class="grid">
                 <div class="card">
                     <h3>📦 NuGet 安装</h3>
                     <div class="code-block" style="margin-top: 15px;">dotnet add package Sqlx
 dotnet add package Sqlx.Generator</div>
                 </div>
-                
+
                 <div class="card">
                     <h3>🔧 框架要求</h3>
                     <ul style="list-style: none; padding: 0; margin-top: 15px;">
@@ -915,7 +993,7 @@ dotnet add package Sqlx.Generator</div>
                         <li style="padding: 8px 0;">✓ 跨平台</li>
                     </ul>
                 </div>
-                
+
                 <div class="card">
                     <h3>📚 文档资源</h3>
                     <ul style="list-style: none; padding: 0; margin-top: 15px;">
@@ -928,24 +1006,24 @@ dotnet add package Sqlx.Generator</div>
             </div>
         </div>
     </section>
-    
+
     <!-- Footer -->
     <footer>
         <div class="container">
             <h2 style="margin-bottom: 20px;">🚀 开始使用 Sqlx</h2>
             <p style="margin-bottom: 30px; font-size: 1.1rem;">高性能、类型安全、零反射的 .NET 数据库访问框架</p>
-            
+
             <div class="cta-buttons">
                 <a href="https://github.com/Cricle/Sqlx" class="btn btn-primary" target="_blank">GitHub 仓库</a>
                 <a href="https://www.nuget.org/packages/Sqlx" class="btn btn-secondary" target="_blank">NuGet 包</a>
                 <a href="../../samples/TodoWebApi/" class="btn btn-secondary">查看示例</a>
             </div>
-            
+
             <p style="margin-top: 50px; opacity: 0.8;">Made with ❤️ by Cricle</p>
             <p style="opacity: 0.8;">© 2025 Sqlx. Licensed under MIT.</p>
         </div>
     </footer>
-    
+
     <script>
         // Smooth scroll
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
@@ -957,7 +1035,7 @@ dotnet add package Sqlx.Generator</div>
                 }
             });
         });
-        
+
         // Performance bar animation
         window.addEventListener('load', () => {
             const bars = document.querySelectorAll('.perf-bar-inner');

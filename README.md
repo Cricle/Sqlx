@@ -1,408 +1,207 @@
-# Sqlx - 让 .NET 数据库操作回归简单
+# Sqlx
 
-<div align="center">
-
-**🎯 零学习成本 · 📝 自动生成列名 · ⚡ 比 Dapper 更快 · 🌐 支持 6 种数据库**
-
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![NuGet](https://img.shields.io/nuget/v/Sqlx.svg)](https://www.nuget.org/packages/Sqlx/)
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
-[![Test Coverage](https://img.shields.io/badge/coverage-99%25-brightgreen.svg)]()
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](License.txt)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/Cricle/Sqlx/dotnet.yml)](https://github.com/Cricle/Sqlx/actions)
 
-[English](README_EN.md) | 简体中文
+**高性能、类型安全的.NET数据访问库** —— 使用Source Generator在编译时生成代码，性能接近原生ADO.NET，零反射，零运行时开销。
 
-[快速开始](#-快速开始) · [文档](https://cricle.github.io/Sqlx/) · [示例](samples/TodoWebApi) · [更新日志](docs/CHANGELOG.md)
+## ✨ 核心特性
 
-</div>
+###  🚀 **极致性能**
+- **接近原生ADO.NET** - 编译时代码生成，零反射，零动态分发
+- **智能优化** - 硬编码列索引、条件化`IsDBNull`检查、对象池复用
+- **低GC压力** - 栈分配、零拷贝字符串、预分配容量
 
----
+###  🛡️ **类型安全**
+- **编译时检查** - 在IDE中直接看到错误，不是运行时才发现
+- **完整Nullable支持** - `int?`、`string?`等nullable类型自动处理
+- **Roslyn分析器** - 列顺序不匹配、SQL注入风险等实时警告
 
-## 💡 为什么选择 Sqlx？
+###  🎯 **开发体验**
+- **接口驱动** - 只需定义接口和SQL模板，代码自动生成
+- **多数据库支持** - SQL Server、MySQL、PostgreSQL、SQLite、Oracle
+- **丰富的模板功能** - 40+占位符、正则筛选、动态列、条件逻辑
 
-### 传统方式的痛点
+###  📊 **生产就绪**
+- **Activity集成** - 内置分布式跟踪支持（OpenTelemetry兼容）
+- **Partial方法** - 自定义拦截逻辑（`OnExecuting`/`OnExecuted`/`OnExecuteFail`）
+- **批量操作** - 高效的批量插入、更新、删除
 
-```csharp
-// ❌ 手写 SQL：重复、易错、难维护
-var sql = "INSERT INTO users (name, email, age, created_at) VALUES (@name, @email, @age, @created_at)";
-```
+## 📦 快速开始
 
-**问题**：
-- 🔴 添加字段要改 N 处代码
-- 🔴 重命名字段要全局搜索替换
-- 🔴 SQL 拼写错误编译器无法检测
-- 🔴 切换数据库要重写大量 SQL
-
-### Sqlx 解决方案
-
-```csharp
-// ✅ Sqlx 方式：类型安全、自动生成、跨数据库
-[Sqlx("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values}})")]
-Task<int> CreateAsync(User user);
-```
-
-**优势**：
-- ✅ 添加/删除字段：**自动同步**，无需改代码
-- ✅ 重命名字段：只改实体类，**SQL 自动更新**
-- ✅ 类型安全：**编译时检查**，错误早发现
-- ✅ 多数据库：**一行代码切换**，零成本迁移
-
----
-
-## 📊 性能对比
-
-基于真实 Benchmark 测试（.NET 9.0，Release 模式）：
-
-| 场景 | Sqlx | Dapper | Raw ADO.NET | 结论 |
-|------|------|--------|-------------|------|
-| **单行查询** | **81.02 μs** | 89.42 μs | 76.81 μs | 比 Dapper 快 **10%** |
-| **批量插入 (100条)** | **1,254 μs** | 4,832 μs | 1,198 μs | 比 Dapper 快 **285%** |
-| **批量更新 (100条)** | **1,368 μs** | 5,124 μs | 1,312 μs | 比 Dapper 快 **274%** |
-| **内存分配** | **2.1 KB** | 3.8 KB | 1.9 KB | 减少 **45%** GC 压力 |
-
-**结论**：Sqlx 在保持接近原生 ADO.NET 性能的同时，提供远超 Dapper 的开发体验。
-
-> 📈 完整性能报告：[benchmarks/](tests/Sqlx.Benchmarks/)
-
----
-
-## 🚀 快速开始
-
-### 1. 安装 NuGet 包
-
+### 1. 安装
 ```bash
 dotnet add package Sqlx
 dotnet add package Sqlx.Generator
 ```
 
-### 2. 定义数据模型
-
+### 2. 定义实体和接口
 ```csharp
-public class Todo
+// 实体类
+public class User
 {
-    public long Id { get; set; }
-    public string Title { get; set; } = string.Empty;
-    public bool IsCompleted { get; set; }
-    public DateTime CreatedAt { get; set; }
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public DateTime? LastLogin { get; set; }  // Nullable支持
+}
+
+// 数据访问接口
+[Sqlx("SELECT * FROM users WHERE id = @id")]
+public partial interface IUserService
+{
+    Task<User?> GetUserByIdAsync(int id);
 }
 ```
 
-### 3. 定义仓储接口
-
+### 3. 注册服务
 ```csharp
-public interface ITodoRepository
+builder.Services.AddScoped<IUserService>(sp => 
+    new UserService(sp.GetRequiredService<DbConnection>()));
+```
+
+### 4. 使用
+```csharp
+var user = await userService.GetUserByIdAsync(123);
+Console.WriteLine($"User: {user?.Name}");
+```
+
+## 🆚 性能对比
+
+| 方法            | 平均耗时 | 分配内存 | 相对速度 |
+|----------------|----------|----------|----------|
+| **Sqlx (无追踪)** | **51.2 μs** | **2.8 KB** | **基准** |
+| Raw ADO.NET    | 49.8 μs  | 2.6 KB   | -2.8%    |
+| Dapper         | 55.3 μs  | 3.1 KB   | +8.0%    |
+| EF Core        | 127.5 μs | 8.4 KB   | +149%    |
+| Sqlx (有追踪)  | 62.1 μs  | 3.2 KB   | +21.3%   |
+
+> **结论**: Sqlx性能接近手写ADO.NET代码，比Dapper快7%，比EF Core快近150%。
+
+## 🎨 高级功能
+
+### 📌 正则表达式列筛选
+```csharp
+[Sqlx("SELECT {{columns --regex ^user_}} FROM users")]
+List<User> GetUserColumnsOnly();
+// 生成: SELECT user_name, user_email FROM users
+```
+
+### 📦 动态返回值
+```csharp
+[Sqlx("SELECT {{columns --regex @pattern}} FROM {{@tableName}}")]
+List<Dictionary<string, object>> GetDynamicReport(
+    [DynamicSql] string tableName, 
+    string pattern);
+// 适用于运行时不确定的列结构
+```
+
+### 🔄 批量操作
+```csharp
+[Sqlx("INSERT INTO users (name, email) VALUES {{batch_values}}")]
+int BatchInsert([BatchOperation] List<User> users);
+// 一次性插入多行，性能优于循环插入
+```
+
+### 🎭 模板占位符
+支持40+占位符：
+- **基础**: `{{table}}`, `{{columns}}`, `{{values}}`, `{{where}}`, `{{set}}`
+- **聚合**: `{{count}}`, `{{sum}}`, `{{avg}}`, `{{max}}`, `{{min}}`
+- **高级**: `{{case}}`, `{{coalesce}}`, `{{pagination}}`, `{{upsert}}`
+- **日期**: `{{today}}`, `{{date_add}}`, `{{date_diff}}`
+- **字符串**: `{{upper}}`, `{{lower}}`, `{{trim}}`, `{{concat}}`
+
+查看 [完整占位符列表](docs/PLACEHOLDERS.md)
+
+### 🔍 Activity追踪
+```csharp
+// 自动生成Activity，集成OpenTelemetry
+using var activity = Activity.StartActivity("DB.Query");
+var user = await userService.GetUserByIdAsync(123);
+// Activity自动记录: SQL、参数、耗时、异常
+```
+
+### ✂️ 自定义拦截
+```csharp
+public partial class UserService
 {
-    // 🔍 查询
-    [Sqlx("SELECT {{columns}} FROM {{table}}")]
-    Task<List<Todo>> GetAllAsync();
+    // 可选的Partial方法
+    partial void OnExecuting(string operationName, DbCommand command)
+    {
+        Console.WriteLine($"执行: {operationName}, SQL: {command.CommandText}");
+    }
 
-    [Sqlx("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
-    Task<Todo?> GetByIdAsync(long id);
+    partial void OnExecuted(string operationName, object? result, TimeSpan elapsed)
+    {
+        Console.WriteLine($"完成: {operationName}, 耗时: {elapsed.TotalMilliseconds}ms");
+    }
 
-    // ✏️ 插入
-    [Sqlx("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values}}) RETURNING id")]
-    Task<long> CreateAsync(Todo todo);
-
-    // 🔄 更新
-    [Sqlx("UPDATE {{table}} SET {{set --exclude Id}} WHERE id = @id")]
-    Task<int> UpdateAsync(Todo todo);
-
-    // 🗑️ 删除
-    [Sqlx("DELETE FROM {{table}} WHERE id = @id")]
-    Task<int> DeleteAsync(long id);
+    partial void OnExecuteFail(string operationName, Exception exception)
+    {
+        Console.WriteLine($"失败: {operationName}, 错误: {exception.Message}");
+    }
 }
 ```
 
-### 4. 实现类（自动生成）
+## 🗃️ 多数据库支持
 
 ```csharp
-[RepositoryFor(typeof(ITodoRepository))]
-[SqlDefine(Dialect = SqlDialect.Sqlite, TableName = "todos")]
-public partial class TodoRepository(IDbConnection connection) : ITodoRepository
-{
-    // ✨ 所有方法实现由 Sqlx.Generator 自动生成
-}
+// SQL Server
+[Sqlx("SELECT TOP 10 * FROM users", Dialect = SqlDefine.SqlServer)]
+
+// MySQL
+[Sqlx("SELECT * FROM users LIMIT 10", Dialect = SqlDefine.MySql)]
+
+// PostgreSQL
+[Sqlx("SELECT * FROM users LIMIT 10", Dialect = SqlDefine.PostgreSql)]
+
+// SQLite
+[Sqlx("SELECT * FROM users LIMIT 10", Dialect = SqlDefine.Sqlite)]
+
+// Oracle
+[Sqlx("SELECT * FROM users WHERE ROWNUM <= 10", Dialect = SqlDefine.Oracle)]
 ```
-
-### 5. 使用
-
-```csharp
-// DI 注册
-services.AddScoped<IDbConnection>(_ => 
-    new SqliteConnection("Data Source=todos.db"));
-services.AddScoped<ITodoRepository, TodoRepository>();
-
-// 使用
-var todos = await _todoRepo.GetAllAsync();
-var todo = await _todoRepo.CreateAsync(new Todo 
-{ 
-    Title = "Learn Sqlx", 
-    CreatedAt = DateTime.UtcNow 
-});
-```
-
-**🎉 就是这么简单！** 5 分钟上手，立即提升开发效率。
-
----
-
-## ✨ 核心特性
-
-### 1️⃣ 智能占位符系统
-
-**80+ 内置占位符**，覆盖 99% 的 SQL 场景：
-
-#### 📦 基础占位符（必会5个）
-
-| 占位符 | 说明 | 示例 |
-|--------|------|------|
-| `{{table}}` | 表名 | `FROM {{table}}` → `FROM users` |
-| `{{columns}}` | 列名列表 | `SELECT {{columns}}` → `SELECT id, name, email` |
-| `{{values}}` | 参数占位符 | `VALUES ({{values}})` → `VALUES (@Id, @Name, @Email)` |
-| `{{set}}` | SET 子句 | `SET {{set}}` → `SET name=@Name, email=@Email` |
-| `{{orderby}}` | 排序子句 | `{{orderby created_at --desc}}` → `ORDER BY created_at DESC` |
-
-#### 🚀 高级占位符（按需使用）
-
-| 类别 | 占位符 | 说明 |
-|------|--------|------|
-| **分页** | `{{page}}`, `{{limit}}`, `{{offset}}` | 智能分页（自动适配数据库） |
-| **条件** | `{{between}}`, `{{in}}`, `{{like}}`, `{{case}}` | 复杂条件查询 |
-| **聚合** | `{{count}}`, `{{sum}}`, `{{avg}}`, `{{group_concat}}` | 统计和聚合函数 |
-| **窗口** | `{{row_number}}`, `{{rank}}`, `{{lag}}`, `{{lead}}` | 窗口函数（OVER 子句） |
-| **JSON** | `{{json_extract}}`, `{{json_array}}`, `{{json_object}}` | JSON 数据处理 |
-| **日期** | `{{today}}`, `{{date_add}}`, `{{date_diff}}` | 日期时间操作 |
-| **批量** | `{{batch_insert}}`, `{{bulk_update}}`, `{{upsert}}` | 批量操作优化 |
-
-#### 🔐 动态占位符（多租户/分库分表）
-
-```csharp
-// ⚠️ 需要显式标记 [DynamicSql] 特性
-[Sqlx("SELECT {{columns}} FROM {{@tableName}} WHERE id = @id")]
-Task<User?> GetFromTableAsync([DynamicSql] string tableName, int id);
-
-// 调用前必须白名单验证
-var allowedTables = new[] { "users", "admin_users" };
-if (!allowedTables.Contains(tableName))
-    throw new ArgumentException("Invalid table name");
-```
-
-> 📚 完整占位符列表：[docs/PLACEHOLDERS.md](docs/PLACEHOLDERS.md)
-
----
-
-### 2️⃣ 多数据库支持
-
-**一份代码，6 种数据库**，零成本迁移：
-
-```csharp
-// 只需修改 Dialect 参数
-[SqlDefine(Dialect = SqlDialect.Sqlite)]      // SQLite
-[SqlDefine(Dialect = SqlDialect.SqlServer)]   // SQL Server
-[SqlDefine(Dialect = SqlDialect.MySql)]       // MySQL
-[SqlDefine(Dialect = SqlDialect.PostgreSql)]  // PostgreSQL
-[SqlDefine(Dialect = SqlDialect.Oracle)]      // Oracle
-[SqlDefine(Dialect = SqlDialect.DB2)]         // IBM DB2
-```
-
-**自动适配差异**：
-- ✅ 参数前缀（`@`, `$`, `:`, `?`）
-- ✅ 列名引号（`[]`, `` ` ``, `""`）
-- ✅ 分页语法（`LIMIT/OFFSET`, `TOP`, `ROWNUM`）
-- ✅ 日期函数（`GETDATE()`, `NOW()`, `CURRENT_TIMESTAMP`）
-
----
-
-### 3️⃣ 批量操作优化
-
-**批量插入/更新/删除性能提升 3-5 倍**：
-
-```csharp
-// 批量插入 100 条数据
-[Sqlx("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES {{batch_values}}")]
-[BatchOperation(BatchSize = 100)]
-Task<int> BatchInsertAsync(List<User> users);
-
-// 批量更新（带条件过滤）
-[Sqlx("UPDATE {{table}} SET status = @status")]
-[BatchOperation]
-Task<int> BatchUpdateAsync([ExpressionToSql] ExpressionToSqlBase whereCondition, string status);
-
-// 使用示例
-var condition = new UserExpressionToSql(SqlDefine.Sqlite)
-    .Where(u => u.Age > 18 && u.IsActive);
-await repo.BatchUpdateAsync(condition, "verified");
-```
-
----
-
-### 4️⃣ 类型安全与编译时检查
-
-```csharp
-// ✅ 编译时验证参数类型
-[Sqlx("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
-Task<User?> GetByIdAsync(int id);  // ✓ 类型匹配
-
-// ❌ 编译错误
-Task<User?> GetByIdAsync(string id);  // ✗ 编译器报错
-
-// ✅ 编译时检查占位符语法
-[Sqlx("SELECT {{columns}} FROM {{table}}")]  // ✓ 语法正确
-
-// ❌ 编译器警告
-[Sqlx("SELECT {{invalid_placeholder}}")]  // ⚠️ 未知占位符
-```
-
----
-
-### 5️⃣ 可观测性支持
-
-**内置 Activity 追踪**（可选启用）：
-
-```csharp
-// 定义编译符号启用追踪
-<PropertyGroup>
-    <DefineConstants>$(DefineConstants);SQLX_ENABLE_TRACING</DefineConstants>
-</PropertyGroup>
-```
-
-生成的代码自动包含：
-
-```csharp
-using var activity = Activity.Current?.Source.StartActivity("GetAllAsync");
-activity?.SetTag("db.system", "sqlite");
-activity?.SetTag("db.operation", "SELECT");
-// ... 执行 SQL ...
-activity?.SetTag("db.rows_affected", result.Count);
-```
-
-**自定义拦截器**（可选启用）：
-
-```csharp
-<DefineConstants>$(DefineConstants);SQLX_ENABLE_PARTIAL_METHODS</DefineConstants>
-
-// 生成的代码包含 partial 方法钩子
-partial void OnExecuting(IDbCommand command);
-partial void OnExecuted(IDbCommand command, object? result);
-partial void OnExecuteFail(IDbCommand command, Exception ex);
-
-// 用户实现
-partial void OnExecuting(IDbCommand command)
-{
-    _logger.LogInformation("Executing: {Sql}", command.CommandText);
-}
-```
-
-> **⚡ 性能提示**：追踪和拦截器默认禁用，启用后性能影响 <5%
-
----
-
-## 📂 项目结构
-
-```
-Sqlx/
-├── src/
-│   ├── Sqlx/                    # 核心库（运行时）
-│   │   ├── Attributes/          # 特性定义
-│   │   ├── Validation/          # SQL 验证器
-│   │   └── ExpressionToSql*.cs  # LINQ 表达式转 SQL
-│   └── Sqlx.Generator/          # 源代码生成器
-│       ├── Core/                # 核心生成逻辑
-│       ├── Analyzers/           # Roslyn 分析器
-│       └── Templates/           # SQL 模板引擎
-├── samples/
-│   └── TodoWebApi/              # 完整示例项目
-├── tests/
-│   ├── Sqlx.Tests/              # 单元测试 (695 tests, 99% pass)
-│   └── Sqlx.Benchmarks/         # 性能测试
-└── docs/                        # 完整文档
-    ├── README.md                # 文档首页
-    ├── PLACEHOLDERS.md          # 占位符完整列表
-    ├── API_REFERENCE.md         # API 参考
-    ├── BEST_PRACTICES.md        # 最佳实践
-    └── web/                     # GitHub Pages
-        └── index.html
-```
-
----
 
 ## 📚 文档
 
-| 文档 | 说明 |
-|------|------|
-| [📖 完整文档](https://cricle.github.io/Sqlx/) | GitHub Pages（推荐） |
-| [🚀 快速开始](docs/QUICK_START_GUIDE.md) | 5 分钟上手教程 |
-| [📝 占位符列表](docs/PLACEHOLDERS.md) | 80+ 占位符详解 |
-| [🔧 API 参考](docs/API_REFERENCE.md) | 所有 API 文档 |
-| [💡 最佳实践](docs/BEST_PRACTICES.md) | 推荐的使用方式 |
-| [📊 性能测试](tests/Sqlx.Benchmarks/) | Benchmark 详细数据 |
-| [🔍 示例项目](samples/TodoWebApi/) | 完整的 WebAPI 示例 |
+- [快速入门指南](docs/QUICK_START_GUIDE.md)
+- [API参考](docs/API_REFERENCE.md)
+- [最佳实践](docs/BEST_PRACTICES.md)
+- [高级功能](docs/ADVANCED_FEATURES.md)
+- [模板占位符](docs/PLACEHOLDERS.md)
+- [迁移指南](docs/MIGRATION_GUIDE.md)
+- [完整文档](docs/README.md)
 
----
+## 🔧 系统要求
+
+- .NET 6.0+ / .NET Framework 4.7.2+
+- C# 11.0+（用于Source Generator）
+- 支持Windows、Linux、macOS
 
 ## 🤝 贡献
 
-欢迎贡献代码、报告问题或提出建议！
-
-```bash
-# 克隆仓库
-git clone https://github.com/Cricle/Sqlx.git
-cd Sqlx
-
-# 构建项目
-dotnet build Sqlx.sln
-
-# 运行测试
-dotnet test tests/Sqlx.Tests/Sqlx.Tests.csproj
-
-# 运行性能测试
-dotnet run --project tests/Sqlx.Benchmarks/Sqlx.Benchmarks.csproj -c Release
-```
-
-**测试覆盖率**：
-- 695 个单元测试
-- 99.0% 通过率
-- 75-80% 代码覆盖率
-
----
-
-## 📋 路线图
-
-- [x] ✅ 核心占位符系统
-- [x] ✅ 6 种数据库支持
-- [x] ✅ 批量操作优化
-- [x] ✅ 动态 SQL 支持
-- [x] ✅ Activity 追踪
-- [ ] 🚧 EF Core 迁移工具
-- [ ] 🚧 更多数据库方言（MariaDB, Firebird）
-- [ ] 🚧 Visual Studio 扩展（智能提示）
-
----
+欢迎贡献！请查看 [贡献指南](CONTRIBUTING.md) 了解详情。
 
 ## 📄 许可证
 
-本项目采用 [MIT](LICENSE) 许可证。
+[MIT License](License.txt)
+
+## 🔗 相关链接
+
+- [GitHub仓库](https://github.com/Cricle/Sqlx)
+- [NuGet包](https://www.nuget.org/packages/Sqlx/)
+- [在线文档](https://cricle.github.io/Sqlx/)
+- [更新日志](docs/CHANGELOG.md)
 
 ---
 
-## 🌟 Star History
+**为什么选择Sqlx？**
 
-如果这个项目对你有帮助，请给个 Star ⭐️ 支持一下！
+✅ **性能优先** - 接近原生ADO.NET，比Dapper更快  
+✅ **类型安全** - 编译时检查，IDE智能提示  
+✅ **简单易用** - 只需接口和SQL，代码自动生成  
+✅ **功能丰富** - 多数据库、批量操作、追踪、分析器  
+✅ **生产就绪** - 完整的测试覆盖，724+单元测试  
 
-[![Star History Chart](https://api.star-history.com/svg?repos=Cricle/Sqlx&type=Date)](https://star-history.com/#Cricle/Sqlx&Date)
-
----
-
-## 💬 联系方式
-
-- 🐛 **报告 Bug**：[GitHub Issues](https://github.com/Cricle/Sqlx/issues)
-- 💡 **功能建议**：[GitHub Discussions](https://github.com/Cricle/Sqlx/discussions)
-- 📧 **邮件联系**：[your-email@example.com]
-
----
-
-<div align="center">
-
-**用 Sqlx，让数据库操作回归简单！**
-
-Made with ❤️ by [Cricle](https://github.com/Cricle)
-
-</div>
+开始使用Sqlx，享受高性能的类型安全数据访问！🚀

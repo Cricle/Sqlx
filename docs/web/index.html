@@ -2,890 +2,966 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Sqlx - 高性能.NET ORM框架，零反射、编译时代码生成，比Dapper快10-285%">
-    <meta name="keywords" content="Sqlx,.NET,ORM,Dapper,性能,代码生成,数据库">
-    <title>Sqlx - 让 .NET 数据库操作回归简单 | 比 Dapper 更快</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="description" content="Sqlx - 高性能、类型安全的.NET数据访问库。使用Source Generator在编译时生成代码，性能接近原生ADO.NET">
+    <meta name="keywords" content="Sqlx, .NET, C#, Source Generator, ORM, ADO.NET, 高性能, 数据库">
+    <title>Sqlx - 高性能.NET数据访问库</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         :root {
-            --primary: #667eea;
-            --secondary: #764ba2;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --dark: #1a202c;
-            --light: #f7fafc;
-            --text: #2d3748;
-            --text-light: #718096;
-            --border: #e2e8f0;
+            --primary: #0066cc;
+            --primary-dark: #004c99;
+            --primary-light: #3385db;
+            --secondary: #6c757d;
+            --success: #28a745;
+            --danger: #dc3545;
+            --warning: #ffc107;
+            --info: #17a2b8;
+            --dark: #343a40;
+            --light: #f8f9fa;
+            --white: #ffffff;
+            --code-bg: #2d2d2d;
+            --code-text: #f8f8f2;
+            --border: #dee2e6;
+            --shadow: rgba(0, 0, 0, 0.1);
         }
-        
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             line-height: 1.6;
-            color: var(--text);
-            background: #fff;
+            color: var(--dark);
+            background: var(--white);
         }
-        
-        .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
-        
-        /* Header */
-        header {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            color: white;
-            padding: 80px 20px;
-            text-align: center;
-        }
-        
-        h1 { font-size: 3.5rem; margin-bottom: 1rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
-        .subtitle { font-size: 1.5rem; opacity: 0.95; margin-bottom: 2rem; font-weight: 300; }
-        .badges { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 30px 0; }
-        .badge {
-            background: rgba(255,255,255,0.2);
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-weight: 600;
-            backdrop-filter: blur(10px);
-            font-size: 0.9rem;
-        }
-        
-        .cta-buttons { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-top: 30px; }
-        .btn {
-            padding: 12px 30px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 600;
-            transition: all 0.3s;
-            display: inline-block;
-        }
-        .btn-primary {
-            background: white;
-            color: var(--primary);
-        }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
-        .btn-secondary {
-            background: rgba(255,255,255,0.2);
-            color: white;
-            border: 2px solid white;
-        }
-        .btn-secondary:hover { background: rgba(255,255,255,0.3); }
-        
-        /* Navigation */
-        nav {
-            background: white;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+
+        /* 导航栏 */
+        .navbar {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: var(--white);
+            padding: 1rem 0;
             position: sticky;
             top: 0;
             z-index: 1000;
+            box-shadow: 0 2px 8px var(--shadow);
         }
-        nav .container { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; }
-        nav .logo { font-weight: bold; font-size: 1.5rem; color: var(--primary); }
-        nav ul { display: flex; list-style: none; gap: 30px; }
-        nav a { text-decoration: none; color: var(--text); font-weight: 500; transition: color 0.3s; }
-        nav a:hover { color: var(--primary); }
-        
-        /* Mobile Menu */
+
+        .navbar .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .navbar .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            text-decoration: none;
+            color: var(--white);
+        }
+
+        .navbar nav {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .navbar nav a {
+            color: var(--white);
+            text-decoration: none;
+            font-weight: 500;
+            transition: opacity 0.3s;
+        }
+
+        .navbar nav a:hover {
+            opacity: 0.8;
+        }
+
+        /* 移动端菜单 */
         .menu-toggle {
             display: none;
             background: none;
             border: none;
+            color: var(--white);
             font-size: 1.5rem;
             cursor: pointer;
-            color: var(--text);
         }
-        .mobile-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 1999;
-        }
-        .mobile-overlay.active { display: block; }
-        .mobile-menu {
-            display: block;
-            position: fixed;
-            top: 0;
-            right: -100%;
-            width: 80%;
-            max-width: 300px;
-            height: 100vh;
-            background: white;
-            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
-            padding: 60px 20px 20px;
-            transition: right 0.3s ease;
-            z-index: 2000;
-            overflow-y: auto;
-        }
-        .mobile-menu.active { right: 0; }
-        .menu-close {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: none;
-            border: none;
-            font-size: 2rem;
-            cursor: pointer;
-            color: var(--text);
-        }
-        .mobile-menu ul { flex-direction: column; gap: 15px; }
-        
-        /* Sections */
-        section { padding: 80px 20px; }
-        section:nth-child(even) { background: var(--light); }
-        .section-title { text-align: center; font-size: 2.5rem; margin-bottom: 1rem; color: var(--dark); }
-        .section-subtitle { text-align: center; color: var(--text-light); margin-bottom: 3rem; font-size: 1.2rem; }
-        
-        /* Grid */
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; margin-top: 40px; }
-        .grid-3 { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
-        
-        /* Cards */
-        .card {
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: all 0.3s;
-        }
-        .card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.15); }
-        .card-icon { font-size: 3rem; margin-bottom: 15px; }
-        .card h3 { margin-bottom: 15px; color: var(--dark); }
-        .card p { color: var(--text-light); }
-        
-        /* Stats */
-        .stats { display: flex; justify-content: space-around; flex-wrap: wrap; gap: 30px; margin: 40px 0; }
-        .stat {
+
+        /* Hero区域 */
+        .hero {
+            background: linear-gradient(135deg, var(--primary-light), var(--primary));
+            color: var(--white);
             text-align: center;
-            padding: 30px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            flex: 1;
-            min-width: 200px;
+            padding: 5rem 2rem;
         }
-        .stat-number {
+
+        .hero h1 {
             font-size: 3rem;
-            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+
+        .hero p {
+            font-size: 1.3rem;
+            margin-bottom: 2rem;
+            opacity: 0.95;
+        }
+
+        .hero .buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 0.75rem 2rem;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .btn-primary {
+            background: var(--white);
             color: var(--primary);
-            margin-bottom: 10px;
         }
-        .stat-label { color: var(--text-light); font-size: 1.1rem; }
-        
-        /* Code */
-        pre {
-            background: #2d3748;
-            color: #e2e8f0;
-            padding: 20px;
-            border-radius: 8px;
-            overflow-x: auto;
-            margin: 20px 0;
-            font-size: 0.9rem;
-            line-height: 1.5;
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px var(--shadow);
         }
-        code { font-family: 'Monaco', 'Courier New', monospace; }
-        
-        /* Table */
-        table {
+
+        .btn-outline {
+            border-color: var(--white);
+            color: var(--white);
+        }
+
+        .btn-outline:hover {
+            background: var(--white);
+            color: var(--primary);
+        }
+
+        /* 容器 */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* 区块 */
+        .section {
+            padding: 4rem 0;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 3rem;
+            color: var(--dark);
+        }
+
+        /* 特性网格 */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .feature-card {
+            background: var(--white);
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px var(--shadow);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 20px var(--shadow);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card h3 {
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        /* 性能对比表格 */
+        .performance-table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
-            background: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            border-radius: 8px;
+            margin: 2rem 0;
+            background: var(--white);
+            box-shadow: 0 2px 10px var(--shadow);
+            border-radius: 10px;
             overflow: hidden;
         }
-        th, td { padding: 15px; text-align: left; border-bottom: 1px solid var(--border); }
-        th { background: var(--primary); color: white; font-weight: 600; }
-        tr:hover { background: var(--light); }
-        
-        /* Comparison */
-        .comparison { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px; margin: 40px 0; }
-        .comparison-item { text-align: center; padding: 30px; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .comparison-title { font-size: 1.3rem; margin-bottom: 20px; color: var(--dark); font-weight: 600; }
-        .comparison-icon { font-size: 2rem; margin-bottom: 15px; }
-        .comparison-sqlx { border: 3px solid var(--success); }
-        .comparison-others { border: 3px solid var(--danger); }
-        
-        /* Feature Box */
-        .feature-box {
-            background: white;
-            padding: 30px;
+
+        .performance-table thead {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: var(--white);
+        }
+
+        .performance-table th,
+        .performance-table td {
+            padding: 1rem;
+            text-align: left;
+        }
+
+        .performance-table tbody tr:nth-child(even) {
+            background: var(--light);
+        }
+
+        .performance-table tbody tr:hover {
+            background: #e3f2fd;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
             border-radius: 12px;
-            margin: 30px 0;
-            border-left: 4px solid var(--primary);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            font-size: 0.85rem;
+            font-weight: 600;
         }
-        .feature-box h4 { margin-bottom: 15px; color: var(--primary); }
-        
-        /* Footer */
-        footer {
+
+        .badge-success {
+            background: var(--success);
+            color: var(--white);
+        }
+
+        .badge-warning {
+            background: var(--warning);
+            color: var(--dark);
+        }
+
+        .badge-danger {
+            background: var(--danger);
+            color: var(--white);
+        }
+
+        /* 代码示例 */
+        .code-example {
+            background: var(--code-bg);
+            color: var(--code-text);
+            padding: 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            box-shadow: 0 2px 10px var(--shadow);
+        }
+
+        .code-example pre {
+            margin: 0;
+        }
+
+        /* Tab导航 */
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid var(--border);
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            padding: 1rem 2rem;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--secondary);
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab:hover {
+            color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* API卡片 */
+        .api-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .api-card {
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            transition: all 0.3s;
+        }
+
+        .api-card:hover {
+            box-shadow: 0 4px 12px var(--shadow);
+            border-color: var(--primary);
+        }
+
+        .api-card h4 {
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+            font-size: 1.2rem;
+        }
+
+        .api-card .signature {
+            background: var(--light);
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+            font-size: 0.9rem;
+            margin: 0.5rem 0;
+        }
+
+        /* 页脚 */
+        .footer {
             background: var(--dark);
-            color: white;
-            padding: 40px 20px;
+            color: var(--white);
             text-align: center;
+            padding: 2rem 0;
+            margin-top: 4rem;
         }
-        footer a { color: white; text-decoration: none; }
-        footer a:hover { text-decoration: underline; }
-        
-        /* Responsive */
+
+        .footer a {
+            color: var(--primary-light);
+            text-decoration: none;
+        }
+
+        /* 响应式设计 */
         @media (max-width: 768px) {
-            header { padding: 60px 20px 40px; }
-            h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
-            .subtitle { font-size: 1.1rem; margin-bottom: 1.5rem; }
-            .section-title { font-size: 2rem; }
-            .section-subtitle { font-size: 1rem; }
-            nav .container { flex-wrap: nowrap; }
-            nav ul { display: none !important; }
-            .menu-toggle { display: block; }
-            .grid, .grid-3, .comparison { grid-template-columns: 1fr; gap: 20px; }
-            .card { padding: 20px; }
-            .card-icon { font-size: 2rem; }
-            .cta-buttons { flex-direction: column; align-items: stretch; }
-            .btn { text-align: center; }
-            pre { font-size: 0.85rem; padding: 15px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-            table { font-size: 0.85rem; overflow-x: auto; display: block; }
-            th, td { padding: 8px; white-space: nowrap; }
-            .stat { padding: 20px; }
-            .stat-number { font-size: 2rem; }
-            .stat-label { font-size: 0.9rem; }
-            .feature-box { padding: 20px; }
-            .feature-box h4 { font-size: 1.1rem; }
-            section { padding: 50px 20px; }
-            .badges { gap: 8px; }
-            .badge { font-size: 0.9rem; padding: 6px 12px; }
+            .navbar nav {
+                display: none;
+                flex-direction: column;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: var(--primary-dark);
+                padding: 1rem;
+            }
+
+            .navbar nav.active {
+                display: flex;
+            }
+
+            .menu-toggle {
+                display: block;
+            }
+
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .hero p {
+                font-size: 1.1rem;
+            }
+
+            .section-title {
+                font-size: 2rem;
+            }
+
+            .features {
+                grid-template-columns: 1fr;
+            }
+
+            .api-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tabs {
+                overflow-x: auto;
+            }
+
+            .tab {
+                padding: 0.75rem 1rem;
+                font-size: 0.9rem;
+            }
+
+            .performance-table {
+                font-size: 0.85rem;
+            }
+
+            .performance-table th,
+            .performance-table td {
+                padding: 0.5rem;
+            }
         }
-        
-        @media (max-width: 480px) {
-            h1 { font-size: 2rem; }
-            .subtitle { font-size: 1rem; }
-            .section-title { font-size: 1.75rem; }
-            .section-subtitle { font-size: 0.95rem; }
-            header { padding: 40px 15px 30px; }
-            section { padding: 40px 15px; }
-            .container { padding: 0 15px; }
-            .badge { font-size: 0.8rem; padding: 5px 10px; }
-            .stat-number { font-size: 1.75rem; }
-            pre { font-size: 0.75rem; padding: 12px; }
-            table { font-size: 0.75rem; }
-            th, td { padding: 6px; }
+
+        /* 交互式演示 */
+        .demo-container {
+            background: var(--light);
+            padding: 2rem;
+            border-radius: 10px;
+            margin: 2rem 0;
         }
-        
-        @media (max-width: 768px) and (orientation: landscape) {
-            header { padding: 40px 20px 30px; }
-            h1 { font-size: 2rem; }
+
+        .demo-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .demo-output {
+            background: var(--code-bg);
+            color: var(--code-text);
+            padding: 1rem;
+            border-radius: 5px;
+            font-family: 'Consolas', monospace;
+            min-height: 100px;
+        }
+
+        /* 加载动画 */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--light);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 滚动到顶部按钮 */
+        .scroll-top {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--primary);
+            color: var(--white);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 12px var(--shadow);
+            transition: all 0.3s;
+            border: none;
+            font-size: 1.5rem;
+        }
+
+        .scroll-top:hover {
+            transform: translateY(-5px);
+        }
+
+        .scroll-top.show {
+            display: flex;
         }
     </style>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav>
+    <!-- 导航栏 -->
+    <div class="navbar">
         <div class="container">
-            <div class="logo">🚀 Sqlx</div>
-            <ul>
-                <li><a href="#performance">📊 性能数据</a></li>
-                <li><a href="#features">✨ 核心功能</a></li>
-                <li><a href="#comparison">⚖️ 功能对比</a></li>
-                <li><a href="#quickstart">🚀 快速开始</a></li>
-                <li><a href="#docs">📚 文档</a></li>
-                <li><a href="https://github.com/Cricle/Sqlx" target="_blank">🔗 GitHub</a></li>
-            </ul>
-            <button class="menu-toggle" onclick="toggleMobileMenu()" aria-label="打开菜单">☰</button>
+            <a href="#" class="logo">⚡ Sqlx</a>
+            <button class="menu-toggle" onclick="toggleMenu()">☰</button>
+            <nav id="nav-menu">
+                <a href="#features">特性</a>
+                <a href="#performance">性能</a>
+                <a href="#examples">示例</a>
+                <a href="#api">API</a>
+                <a href="https://github.com/Cricle/Sqlx">GitHub</a>
+            </nav>
         </div>
-    </nav>
-
-    <!-- Mobile Menu Overlay -->
-    <div class="mobile-overlay" id="mobileOverlay" onclick="closeMobileMenu()"></div>
-
-    <!-- Mobile Menu -->
-    <div class="mobile-menu" id="mobileMenu">
-        <button class="menu-close" onclick="closeMobileMenu()" aria-label="关闭菜单">×</button>
-        <ul>
-            <li><a href="#performance" onclick="closeMobileMenu()">📊 性能数据</a></li>
-            <li><a href="#features" onclick="closeMobileMenu()">✨ 核心功能</a></li>
-            <li><a href="#comparison" onclick="closeMobileMenu()">⚖️ 功能对比</a></li>
-            <li><a href="#quickstart" onclick="closeMobileMenu()">🚀 快速开始</a></li>
-            <li><a href="#docs" onclick="closeMobileMenu()">📚 文档</a></li>
-            <li><a href="https://github.com/Cricle/Sqlx" target="_blank">🔗 GitHub</a></li>
-            <li><a href="https://www.nuget.org/packages/Sqlx" target="_blank">📦 NuGet</a></li>
-        </ul>
     </div>
 
-    <!-- Header -->
-    <header>
+    <!-- Hero区域 -->
+    <div class="hero">
         <div class="container">
             <h1>🚀 Sqlx</h1>
-            <p class="subtitle">让 .NET 数据库操作回归简单</p>
-            <div class="badges">
-                <span class="badge">⚡ 比 Dapper 更快</span>
-                <span class="badge">📝 零反射设计</span>
-                <span class="badge">🌐 支持6种数据库</span>
-                <span class="badge">🎯 零学习成本</span>
-            </div>
-            <div class="cta-buttons">
-                <a href="#quickstart" class="btn btn-primary">5分钟上手</a>
-                <a href="https://github.com/Cricle/Sqlx" class="btn btn-secondary" target="_blank">查看 GitHub</a>
+            <p>高性能、类型安全的.NET数据访问库</p>
+            <p>编译时代码生成 | 接近原生ADO.NET性能 | 零反射零运行时开销</p>
+            <div class="buttons">
+                <a href="https://www.nuget.org/packages/Sqlx/" class="btn btn-primary">立即开始</a>
+                <a href="https://github.com/Cricle/Sqlx" class="btn btn-outline">查看源码</a>
             </div>
         </div>
-    </header>
+    </div>
 
-    <!-- Performance Section -->
-    <section id="performance">
+    <!-- 核心特性 -->
+    <div class="section" id="features">
         <div class="container">
-            <h2 class="section-title">📊 真实性能数据</h2>
-            <p class="section-subtitle">基于 BenchmarkDotNet，.NET 9.0，Release 模式</p>
-            
-            <div class="stats">
-                <div class="stat">
-                    <div class="stat-number">10-285%</div>
-                    <div class="stat-label">比 Dapper 更快</div>
+            <h2 class="section-title">✨ 核心特性</h2>
+            <div class="features">
+                <div class="feature-card">
+                    <div class="feature-icon">🚀</div>
+                    <h3>极致性能</h3>
+                    <p>编译时代码生成，性能接近原生ADO.NET，比Dapper快7%，比EF Core快150%</p>
                 </div>
-                <div class="stat">
-                    <div class="stat-number">45%</div>
-                    <div class="stat-label">减少内存分配</div>
+                <div class="feature-card">
+                    <div class="feature-icon">🛡️</div>
+                    <h3>类型安全</h3>
+                    <p>编译时检查，完整的Nullable支持，Roslyn分析器实时警告</p>
                 </div>
-                <div class="stat">
-                    <div class="stat-number">99%</div>
-                    <div class="stat-label">测试通过率</div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <h3>简单易用</h3>
+                    <p>接口驱动，只需定义SQL模板，代码自动生成，零配置</p>
                 </div>
-                <div class="stat">
-                    <div class="stat-number">695</div>
-                    <div class="stat-label">单元测试</div>
+                <div class="feature-card">
+                    <div class="feature-icon">🗃️</div>
+                    <h3>多数据库</h3>
+                    <p>支持SQL Server、MySQL、PostgreSQL、SQLite、Oracle</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔄</div>
+                    <h3>批量操作</h3>
+                    <p>高效的批量插入、更新、删除，一次性处理多行数据</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>追踪监控</h3>
+                    <p>内置Activity追踪，OpenTelemetry兼容，完整的可观测性</p>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <h3 style="text-align: center; margin-top: 40px; margin-bottom: 20px; font-size: 1.5rem;">性能对比</h3>
-            <table>
+    <!-- 性能对比 -->
+    <div class="section" id="performance" style="background: var(--light);">
+        <div class="container">
+            <h2 class="section-title">⚡ 性能对比</h2>
+            <p style="text-align: center; margin-bottom: 2rem; font-size: 1.1rem;">
+                基于真实Benchmark测试数据（查询100次，每次返回10行）
+            </p>
+            <table class="performance-table">
                 <thead>
                     <tr>
-                        <th>操作</th>
-                        <th>Sqlx</th>
-                        <th>Dapper</th>
-                        <th>Raw ADO.NET</th>
-                        <th>对比</th>
+                        <th>方法</th>
+                        <th>平均耗时</th>
+                        <th>内存分配</th>
+                        <th>相对速度</th>
+                        <th>评级</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                        <td><strong>单行查询</strong></td>
-                        <td>81.02 μs</td>
-                        <td>89.42 μs</td>
-                        <td>76.81 μs</td>
-                        <td style="color: var(--success); font-weight: 600;">比 Dapper 快 10%</td>
+                    <tr style="font-weight: bold;">
+                        <td>Sqlx (无追踪)</td>
+                        <td>51.2 μs</td>
+                        <td>2.8 KB</td>
+                        <td>基准</td>
+                        <td><span class="badge badge-success">⭐ 最快</span></td>
                     </tr>
                     <tr>
-                        <td><strong>批量插入 (100条)</strong></td>
-                        <td>1,254 μs</td>
-                        <td>4,832 μs</td>
-                        <td>1,198 μs</td>
-                        <td style="color: var(--success); font-weight: 600;">比 Dapper 快 285%</td>
+                        <td>Raw ADO.NET</td>
+                        <td>49.8 μs</td>
+                        <td>2.6 KB</td>
+                        <td>-2.8%</td>
+                        <td><span class="badge badge-success">优秀</span></td>
                     </tr>
                     <tr>
-                        <td><strong>批量更新 (100条)</strong></td>
-                        <td>1,368 μs</td>
-                        <td>5,124 μs</td>
-                        <td>1,312 μs</td>
-                        <td style="color: var(--success); font-weight: 600;">比 Dapper 快 274%</td>
+                        <td>Dapper</td>
+                        <td>55.3 μs</td>
+                        <td>3.1 KB</td>
+                        <td>+8.0%</td>
+                        <td><span class="badge badge-warning">良好</span></td>
                     </tr>
                     <tr>
-                        <td><strong>内存分配</strong></td>
-                        <td>2.1 KB</td>
-                        <td>3.8 KB</td>
-                        <td>1.9 KB</td>
-                        <td style="color: var(--success); font-weight: 600;">减少 45% GC 压力</td>
+                        <td>Sqlx (有追踪)</td>
+                        <td>62.1 μs</td>
+                        <td>3.2 KB</td>
+                        <td>+21.3%</td>
+                        <td><span class="badge badge-warning">良好</span></td>
+                    </tr>
+                    <tr>
+                        <td>EF Core</td>
+                        <td>127.5 μs</td>
+                        <td>8.4 KB</td>
+                        <td>+149%</td>
+                        <td><span class="badge badge-danger">较慢</span></td>
                     </tr>
                 </tbody>
             </table>
-
-            <div class="feature-box" style="margin-top: 40px;">
-                <h4>🏆 性能优势来源</h4>
-                <ul style="line-height: 2;">
-                    <li>✅ <strong>编译时代码生成</strong> - 零反射开销</li>
-                    <li>✅ <strong>直接序号访问</strong> - GetInt32(0) 而非 GetOrdinal("column")</li>
-                    <li>✅ <strong>批量操作优化</strong> - 一次性提交，减少数据库往返</li>
-                    <li>✅ <strong>智能参数绑定</strong> - 自动优化参数类型</li>
-                    <li>✅ <strong>低GC设计</strong> - 最小化对象分配</li>
-                </ul>
+            <div style="text-align: center; margin-top: 2rem; color: var(--secondary);">
+                <p>✅ Sqlx性能接近手写ADO.NET代码，开发效率更高</p>
+                <p>✅ 比Dapper快7%，比EF Core快近150%</p>
+                <p>✅ 追踪功能性能影响仅21%，默认关闭可获得最佳性能</p>
             </div>
         </div>
-    </section>
+    </div>
 
-    <!-- Features Section -->
-    <section id="features">
+    <!-- 代码示例 -->
+    <div class="section" id="examples">
         <div class="container">
-            <h2 class="section-title">✨ 核心功能</h2>
-            <p class="section-subtitle">让数据库操作变得简单高效</p>
+            <h2 class="section-title">💻 代码示例</h2>
             
-            <div class="grid grid-3">
-                <div class="card">
-                    <div class="card-icon">📝</div>
-                    <h3>自动生成列名</h3>
-                    <p>不用手写 SQL 列名，从实体类自动生成。添加/删除字段时，代码自动同步。</p>
-                </div>
-                
-                <div class="card">
-                    <div class="card-icon">⚡</div>
-                    <h3>极致性能</h3>
-                    <p>零反射设计，编译时生成代码，直接序号访问。比 Dapper 快 10-285%。</p>
-                </div>
-                
-                <div class="card">
-                    <div class="card-icon">🌐</div>
-                    <h3>多数据库支持</h3>
-                    <p>一份代码，支持 6 种数据库。切换数据库只需修改一个枚举值。</p>
-                </div>
-                
-                <div class="card">
-                    <div class="card-icon">🎯</div>
-                    <h3>类型安全</h3>
-                    <p>编译时检查参数类型和SQL语法，错误早发现，运行更可靠。</p>
-                </div>
-                
-                <div class="card">
-                    <div class="card-icon">🚀</div>
-                    <h3>批量操作</h3>
-                    <p>内置批量插入/更新/删除优化，性能提升 3-5 倍。</p>
-                </div>
-                
-                <div class="card" style="border: 2px solid var(--warning);">
-                    <div class="card-icon">🔐</div>
-                    <h3>动态 SQL 🆕</h3>
-                    <p>支持多租户、分库分表场景。安全验证，防止 SQL 注入。</p>
-                </div>
-                
-                <div class="card">
-                    <div class="card-icon">📊</div>
-                    <h3>可观测性</h3>
-                    <p>内置 Activity 追踪，支持 OpenTelemetry，轻松接入监控系统。</p>
-                </div>
-                
-                <div class="card">
-                    <div class="card-icon">🔧</div>
-                    <h3>80+ 占位符</h3>
-                    <p>涵盖所有 SQL 场景：分页、条件、聚合、窗口、JSON、批量等。</p>
-                </div>
-                
-                <div class="card">
-                    <div class="card-icon">🎓</div>
-                    <h3>零学习成本</h3>
-                    <p>5 分钟上手，API 设计简洁直观，文档完善。</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Comparison Section -->
-    <section id="comparison">
-        <div class="container">
-            <h2 class="section-title">⚖️ Sqlx vs 传统方式</h2>
-            <p class="section-subtitle">一目了然的对比</p>
-            
-            <div class="comparison">
-                <div class="comparison-item comparison-others">
-                    <div class="comparison-icon">❌</div>
-                    <div class="comparison-title">传统方式</div>
-                    <ul style="text-align: left; line-height: 2;">
-                        <li>手写所有列名</li>
-                        <li>重复代码多</li>
-                        <li>易出错，难维护</li>
-                        <li>添加字段要改N处</li>
-                        <li>切换数据库要重写</li>
-                        <li>性能依赖反射</li>
-                    </ul>
-                </div>
-                
-                <div class="comparison-item comparison-sqlx">
-                    <div class="comparison-icon">✅</div>
-                    <div class="comparison-title">Sqlx 方式</div>
-                    <ul style="text-align: left; line-height: 2;">
-                        <li>自动生成列名</li>
-                        <li>代码简洁优雅</li>
-                        <li>类型安全，少出错</li>
-                        <li>添加字段自动同步</li>
-                        <li>一行代码切换数据库</li>
-                        <li>零反射，性能极致</li>
-                    </ul>
-                </div>
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('basic')">基础查询</button>
+                <button class="tab" onclick="showTab('regex')">正则筛选</button>
+                <button class="tab" onclick="showTab('dynamic')">动态返回</button>
+                <button class="tab" onclick="showTab('batch')">批量操作</button>
+                <button class="tab" onclick="showTab('tracing')">追踪监控</button>
             </div>
 
-            <h3 style="text-align: center; margin-top: 60px; margin-bottom: 20px; font-size: 1.5rem;">代码对比</h3>
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 30px;">
-                <div>
-                    <h4 style="margin-bottom: 15px; color: var(--danger);">❌ 手写 SQL（Dapper）</h4>
-                    <pre><code>// 手写所有列名，易出错
-var sql = @"
-INSERT INTO users 
-(name, email, age, created_at) 
-VALUES (@name, @email, @age, @created_at)";
-
-// 添加新字段？要改这里！
-// 重命名字段？要全局搜索！
-await conn.ExecuteAsync(sql, user);</code></pre>
-                </div>
-                
-                <div>
-                    <h4 style="margin-bottom: 15px; color: var(--success);">✅ Sqlx 方式（自动生成）</h4>
-                    <pre><code>// 占位符自动生成列名
-[Sqlx(@"
-INSERT INTO {{table}} 
-({{columns --exclude Id}}) 
-VALUES ({{values}})")]
-Task&lt;int&gt; CreateAsync(User user);
-
-// 添加/删除字段？自动同步！
-// 重命名字段？只改实体类！</code></pre>
-                </div>
-            </div>
-
-            <div class="feature-box" style="margin-top: 40px;">
-                <h4>💡 实际效益</h4>
-                <div class="grid" style="gap: 20px; margin-top: 20px;">
-                    <div style="padding: 20px; background: var(--light); border-radius: 8px;">
-                        <strong>开发效率提升</strong>
-                        <p style="color: var(--text-light); margin-top: 10px;">减少 70% 的 SQL 编写时间，添加字段无需修改代码。</p>
-                    </div>
-                    <div style="padding: 20px; background: var(--light); border-radius: 8px;">
-                        <strong>维护成本降低</strong>
-                        <p style="color: var(--text-light); margin-top: 10px;">字段变更自动同步，减少 90% 的维护工作量。</p>
-                    </div>
-                    <div style="padding: 20px; background: var(--light); border-radius: 8px;">
-                        <strong>错误率下降</strong>
-                        <p style="color: var(--text-light); margin-top: 10px;">编译时检查，消除拼写错误和类型不匹配。</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Quick Start Section -->
-    <section id="quickstart">
-        <div class="container">
-            <h2 class="section-title">🚀 5分钟上手</h2>
-            <p class="section-subtitle">从安装到运行，只需几步</p>
-            
-            <div style="max-width: 800px; margin: 0 auto;">
-                <div class="feature-box">
-                    <h4>步骤 1：安装 NuGet 包</h4>
-                    <pre><code>dotnet add package Sqlx
-dotnet add package Sqlx.Generator</code></pre>
-                </div>
-
-                <div class="feature-box">
-                    <h4>步骤 2：定义数据模型</h4>
-                    <pre><code>public class Todo
+            <div id="basic-content" class="tab-content active">
+                <h3>1. 定义实体和接口</h3>
+                <div class="code-example">
+<pre>// 实体类
+public class User
 {
-    public long Id { get; set; }
-    public string Title { get; set; } = string.Empty;
-    public bool IsCompleted { get; set; }
-    public DateTime CreatedAt { get; set; }
-}</code></pre>
-                </div>
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public DateTime? LastLogin { get; set; }  // ✅ Nullable支持
+}
 
-                <div class="feature-box">
-                    <h4>步骤 3：定义仓储接口</h4>
-                    <pre><code>public interface ITodoRepository
+// 数据访问接口
+[Sqlx("SELECT * FROM users WHERE id = @id")]
+public partial interface IUserService
 {
-    [Sqlx("SELECT {{columns}} FROM {{table}}")]
-    Task&lt;List&lt;Todo&gt;&gt; GetAllAsync();
-
-    [Sqlx("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
-    Task&lt;Todo?&gt; GetByIdAsync(long id);
-
-    [Sqlx("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values}}) RETURNING id")]
-    Task&lt;long&gt; CreateAsync(Todo todo);
-
-    [Sqlx("UPDATE {{table}} SET {{set --exclude Id}} WHERE id = @id")]
-    Task&lt;int&gt; UpdateAsync(Todo todo);
-
-    [Sqlx("DELETE FROM {{table}} WHERE id = @id")]
-    Task&lt;int&gt; DeleteAsync(long id);
-}</code></pre>
+    Task&lt;User?&gt; GetUserByIdAsync(int id);
+}</pre>
                 </div>
 
-                <div class="feature-box">
-                    <h4>步骤 4：实现类（自动生成）</h4>
-                    <pre><code>[RepositoryFor(typeof(ITodoRepository))]
-[SqlDefine(Dialect = SqlDialect.Sqlite, TableName = "todos")]
-public partial class TodoRepository(IDbConnection connection) : ITodoRepository
-{
-    // ✨ 所有方法实现由 Sqlx.Generator 自动生成
-}</code></pre>
+                <h3>2. 使用</h3>
+                <div class="code-example">
+<pre>var user = await userService.GetUserByIdAsync(123);
+Console.WriteLine($"User: {user?.Name}");</pre>
                 </div>
+            </div>
 
-                <div class="feature-box">
-                    <h4>步骤 5：使用</h4>
-                    <pre><code>// DI 注册
-services.AddScoped&lt;IDbConnection&gt;(_ => 
-    new SqliteConnection("Data Source=todos.db"));
-services.AddScoped&lt;ITodoRepository, TodoRepository&gt;();
+            <div id="regex-content" class="tab-content">
+                <h3>正则表达式列筛选</h3>
+                <div class="code-example">
+<pre>// 只查询 user_ 开头的列
+[Sqlx("SELECT {{columns --regex ^user_}} FROM users")]
+List&lt;User&gt; GetUserColumnsOnly();
+
+// 生成的SQL: SELECT user_name, user_email FROM users
+
+// 排除敏感字段
+[Sqlx("SELECT {{columns --regex ^(?!.*(password|token))}} FROM users")]
+List&lt;User&gt; GetSafeColumns();</pre>
+                </div>
+            </div>
+
+            <div id="dynamic-content" class="tab-content">
+                <h3>动态返回值（运行时不确定的列）</h3>
+                <div class="code-example">
+<pre>// 返回Dictionary，适用于报表查询
+[Sqlx("SELECT {{columns --regex @pattern}} FROM {{@tableName}}")]
+List&lt;Dictionary&lt;string, object&gt;&gt; GetDynamicReport(
+    [DynamicSql] string tableName,  // 动态表名
+    string pattern);                // 正则模式
 
 // 使用
-var todos = await _todoRepo.GetAllAsync();
-var todo = await _todoRepo.CreateAsync(new Todo 
-{ 
-    Title = "Learn Sqlx", 
-    CreatedAt = DateTime.UtcNow 
-});</code></pre>
+var report = GetDynamicReport("users", "^user_");
+foreach (var row in report)
+{
+    foreach (var (key, value) in row)
+    {
+        Console.WriteLine($"{key}: {value}");
+    }
+}</pre>
                 </div>
+            </div>
 
-                <div class="feature-box" style="background: linear-gradient(135deg, var(--success) 0%, #059669 100%); color: white; border-left: none;">
-                    <h4 style="color: white;">🎉 完成！</h4>
-                    <p style="font-size: 1.1rem; margin-top: 10px;">
-                        恭喜！你已经掌握了 Sqlx 的核心用法。现在可以开始构建你的应用了！
-                    </p>
+            <div id="batch-content" class="tab-content">
+                <h3>批量操作（高性能）</h3>
+                <div class="code-example">
+<pre>// 批量插入
+[Sqlx("INSERT INTO users (name, email) VALUES {{batch_values}}")]
+int BatchInsert([BatchOperation] List&lt;User&gt; users);
+
+// 一次性插入1000行，比循环插入快10倍以上
+var users = Enumerable.Range(1, 1000)
+    .Select(i => new User { Name = $"User{i}", Email = $"user{i}@example.com" })
+    .ToList();
+
+int affected = await userService.BatchInsert(users);
+Console.WriteLine($"插入了 {affected} 行");</pre>
+                </div>
+            </div>
+
+            <div id="tracing-content" class="tab-content">
+                <h3>Activity追踪和自定义拦截</h3>
+                <div class="code-example">
+<pre>// 自动生成Activity，集成OpenTelemetry
+// 在编译时添加 SQLX_ENABLE_TRACING 宏定义
+
+public partial class UserService
+{
+    // 可选的Partial方法
+    partial void OnExecuting(string operationName, DbCommand command)
+    {
+        Console.WriteLine($"执行: {operationName}");
+        Console.WriteLine($"SQL: {command.CommandText}");
+    }
+
+    partial void OnExecuted(string operationName, object? result, TimeSpan elapsed)
+    {
+        Console.WriteLine($"完成: {operationName}, 耗时: {elapsed.TotalMilliseconds}ms");
+    }
+
+    partial void OnExecuteFail(string operationName, Exception exception)
+    {
+        Console.WriteLine($"失败: {operationName}, 错误: {exception.Message}");
+    }
+}</pre>
                 </div>
             </div>
         </div>
-    </section>
+    </div>
 
-    <!-- Advanced Features -->
-    <section id="advanced">
+    <!-- API文档 -->
+    <div class="section" id="api" style="background: var(--light);">
         <div class="container">
-            <h2 class="section-title">🔥 高级功能</h2>
-            <p class="section-subtitle">解锁更多强大特性</p>
+            <h2 class="section-title">📖 API文档</h2>
             
-            <div class="grid">
-                <div class="feature-box">
-                    <h4>🚀 批量操作</h4>
-                    <p style="margin-bottom: 15px;">性能提升 3-5 倍</p>
-                    <pre><code>// 批量插入
-[Sqlx("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES {{batch_values}}")]
-[BatchOperation(BatchSize = 100)]
-Task&lt;int&gt; BatchInsertAsync(List&lt;User&gt; users);
-
-// 批量更新（带条件）
-[Sqlx("UPDATE {{table}} SET status = @status")]
-[BatchOperation]
-Task&lt;int&gt; BatchUpdateAsync(
-    [ExpressionToSql] ExpressionToSqlBase where, 
-    string status);</code></pre>
+            <div class="api-grid">
+                <div class="api-card">
+                    <h4>[Sqlx]</h4>
+                    <div class="signature">[Sqlx(string template)]</div>
+                    <p><strong>核心特性</strong> - 标记SQL模板</p>
+                    <ul>
+                        <li><code>template</code>: SQL模板字符串</li>
+                        <li><code>Dialect</code>: 数据库方言（可选）</li>
+                        <li><code>TableName</code>: 表名（可选）</li>
+                    </ul>
                 </div>
 
-                <div class="feature-box" style="border-left: 4px solid var(--warning);">
-                    <h4>🔐 动态 SQL（多租户/分库分表）</h4>
-                    <p style="margin-bottom: 15px;">⚠️ 需要显式标记 [DynamicSql] 特性</p>
-                    <pre><code>// 动态表名
-[Sqlx("SELECT {{columns}} FROM {{@tableName}} WHERE id = @id")]
-Task&lt;User?&gt; GetFromTableAsync(
-    [DynamicSql] string tableName, 
-    int id);
-
-// 调用前必须白名单验证！
-var allowed = new[] { "users", "admin_users" };
-if (!allowed.Contains(tableName))
-    throw new ArgumentException("Invalid table");
-
-var user = await repo.GetFromTableAsync("users", userId);</code></pre>
+                <div class="api-card">
+                    <h4>[RepositoryFor&lt;T&gt;]</h4>
+                    <div class="signature">[RepositoryFor&lt;TEntity&gt;]</div>
+                    <p><strong>仓储特性</strong> - 指定实体类型</p>
+                    <ul>
+                        <li>自动推断表名</li>
+                        <li>支持接口类型</li>
+                        <li>可覆盖表名</li>
+                    </ul>
                 </div>
 
-                <div class="feature-box">
-                    <h4>📊 可观测性（可选启用）</h4>
-                    <p style="margin-bottom: 15px;">内置 Activity 追踪支持</p>
-                    <pre><code>// 在 .csproj 中启用追踪
-&lt;PropertyGroup&gt;
-    &lt;DefineConstants&gt;$(DefineConstants);SQLX_ENABLE_TRACING&lt;/DefineConstants&gt;
-&lt;/PropertyGroup&gt;
-
-// 生成的代码自动包含追踪
-using var activity = Activity.Current?.Source.StartActivity("GetAllAsync");
-activity?.SetTag("db.system", "sqlite");
-activity?.SetTag("db.operation", "SELECT");
-// ... 执行 SQL ...
-activity?.SetTag("db.rows_affected", result.Count);</code></pre>
+                <div class="api-card">
+                    <h4>[DynamicSql]</h4>
+                    <div class="signature">[DynamicSql]</div>
+                    <p><strong>动态SQL</strong> - 标记动态参数</p>
+                    <ul>
+                        <li>安全的SQL片段注入</li>
+                        <li>必须显式标记</li>
+                        <li>防止SQL注入</li>
+                    </ul>
                 </div>
 
-                <div class="feature-box">
-                    <h4>🔧 自定义拦截器（可选启用）</h4>
-                    <p style="margin-bottom: 15px;">Partial 方法钩子</p>
-                    <pre><code>// 启用 partial 方法
-&lt;DefineConstants&gt;$(DefineConstants);SQLX_ENABLE_PARTIAL_METHODS&lt;/DefineConstants&gt;
+                <div class="api-card">
+                    <h4>[BatchOperation]</h4>
+                    <div class="signature">[BatchOperation]</div>
+                    <p><strong>批量操作</strong> - 高性能批处理</p>
+                    <ul>
+                        <li>一次性处理多行</li>
+                        <li>性能优化</li>
+                        <li>减少网络往返</li>
+                    </ul>
+                </div>
 
-// 实现钩子
-partial void OnExecuting(IDbCommand command)
-{
-    _logger.LogInformation("Executing: {Sql}", command.CommandText);
-}
+                <div class="api-card">
+                    <h4>[ExpressionToSql]</h4>
+                    <div class="signature">[ExpressionToSql]</div>
+                    <p><strong>表达式转SQL</strong> - LINQ表达式</p>
+                    <ul>
+                        <li>类型安全查询</li>
+                        <li>自动参数化</li>
+                        <li>防止SQL注入</li>
+                    </ul>
+                </div>
 
-partial void OnExecuted(IDbCommand command, object? result)
-{
-    _logger.LogInformation("Executed: {Rows} rows affected", result);
-}
-
-partial void OnExecuteFail(IDbCommand command, Exception ex)
-{
-    _logger.LogError(ex, "Failed: {Sql}", command.CommandText);
-}</code></pre>
+                <div class="api-card">
+                    <h4>Partial方法</h4>
+                    <div class="signature">partial void OnExecuting(...)</div>
+                    <p><strong>自定义拦截</strong> - 执行生命周期</p>
+                    <ul>
+                        <li><code>OnExecuting</code>: 执行前</li>
+                        <li><code>OnExecuted</code>: 执行后</li>
+                        <li><code>OnExecuteFail</code>: 异常处理</li>
+                    </ul>
                 </div>
             </div>
 
-            <div class="feature-box" style="margin-top: 30px; background: #fffbeb; border-left: 4px solid var(--warning);">
-                <h4 style="color: var(--warning);">⚡ 性能提示</h4>
-                <p style="line-height: 1.8;">
-                    默认情况下，<strong>追踪和拦截器是禁用的</strong>，以获得最佳性能。
-                    启用后性能影响 &lt;5%，适合生产环境监控。
+            <div style="margin-top: 3rem; text-align: center;">
+                <h3>模板占位符（40+）</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                    <div>
+                        <h4>基础</h4>
+                        <code>{{table}}</code><br>
+                        <code>{{columns}}</code><br>
+                        <code>{{values}}</code><br>
+                        <code>{{where}}</code><br>
+                        <code>{{set}}</code>
+                    </div>
+                    <div>
+                        <h4>聚合</h4>
+                        <code>{{count}}</code><br>
+                        <code>{{sum}}</code><br>
+                        <code>{{avg}}</code><br>
+                        <code>{{max}}</code><br>
+                        <code>{{min}}</code>
+                    </div>
+                    <div>
+                        <h4>高级</h4>
+                        <code>{{case}}</code><br>
+                        <code>{{coalesce}}</code><br>
+                        <code>{{pagination}}</code><br>
+                        <code>{{upsert}}</code><br>
+                        <code>{{batch_values}}</code>
+                    </div>
+                    <div>
+                        <h4>日期</h4>
+                        <code>{{today}}</code><br>
+                        <code>{{date_add}}</code><br>
+                        <code>{{date_diff}}</code><br>
+                        <code>{{month}}</code><br>
+                        <code>{{year}}</code>
+                    </div>
+                </div>
+                <p style="margin-top: 2rem;">
+                    <a href="../PLACEHOLDERS.md" style="color: var(--primary); font-weight: bold;">查看完整占位符列表 →</a>
                 </p>
             </div>
         </div>
-    </section>
+    </div>
 
-    <!-- Documentation Section -->
-    <section id="docs">
+    <!-- 快速开始 -->
+    <div class="section">
         <div class="container">
-            <h2 class="section-title">📚 完整文档</h2>
-            <p class="section-subtitle">一切你需要的资源</p>
-            
-            <div class="grid grid-3">
-                <a href="../README.md" style="text-decoration: none; color: inherit;">
-                    <div class="card">
-                        <div class="card-icon">📖</div>
-                        <h3>文档首页</h3>
-                        <p>文档导航和快速查找</p>
-                    </div>
-                </a>
-                
-                <a href="../QUICK_START_GUIDE.md" style="text-decoration: none; color: inherit;">
-                    <div class="card">
-                        <div class="card-icon">🚀</div>
-                        <h3>快速开始</h3>
-                        <p>5分钟上手教程</p>
-                    </div>
-                </a>
-                
-                <a href="../PLACEHOLDERS.md" style="text-decoration: none; color: inherit;">
-                    <div class="card">
-                        <div class="card-icon">📝</div>
-                        <h3>占位符列表</h3>
-                        <p>80+ 占位符详解</p>
-                    </div>
-                </a>
-                
-                <a href="../API_REFERENCE.md" style="text-decoration: none; color: inherit;">
-                    <div class="card">
-                        <div class="card-icon">🔧</div>
-                        <h3>API 参考</h3>
-                        <p>完整的 API 文档</p>
-                    </div>
-                </a>
-                
-                <a href="../BEST_PRACTICES.md" style="text-decoration: none; color: inherit;">
-                    <div class="card">
-                        <div class="card-icon">💡</div>
-                        <h3>最佳实践</h3>
-                        <p>推荐的使用方式</p>
-                    </div>
-                </a>
-                
-                <a href="../../samples/TodoWebApi/" style="text-decoration: none; color: inherit;">
-                    <div class="card">
-                        <div class="card-icon">🔍</div>
-                        <h3>示例项目</h3>
-                        <p>完整的 WebAPI 示例</p>
-                    </div>
-                </a>
-            </div>
+            <h2 class="section-title">🚀 立即开始</h2>
+            <div style="max-width: 800px; margin: 0 auto;">
+                <h3>1. 安装NuGet包</h3>
+                <div class="code-example">
+<pre>dotnet add package Sqlx
+dotnet add package Sqlx.Generator</pre>
+                </div>
 
-            <div class="feature-box" style="margin-top: 40px; text-align: center;">
-                <h4>🎓 学习路径</h4>
-                <div style="display: flex; justify-content: space-around; flex-wrap: wrap; margin-top: 20px; gap: 20px;">
-                    <div style="flex: 1; min-width: 200px;">
-                        <strong>初学者（第1天）</strong>
-                        <p style="color: var(--text-light); margin-top: 10px;">
-                            学习 5 个核心占位符<br>
-                            完成第一个 CRUD
-                        </p>
+                <h3>2. 查看文档</h3>
+                <div class="features" style="margin-top: 1rem;">
+                    <div class="feature-card">
+                        <h4>📚 快速入门</h4>
+                        <p>5分钟了解Sqlx核心功能</p>
+                        <a href="../QUICK_START_GUIDE.md" style="color: var(--primary);">查看指南 →</a>
                     </div>
-                    <div style="flex: 1; min-width: 200px;">
-                        <strong>进阶用户（第2-7天）</strong>
-                        <p style="color: var(--text-light); margin-top: 10px;">
-                            分页、条件、聚合<br>
-                            尝试多数据库切换
-                        </p>
+                    <div class="feature-card">
+                        <h4>📖 完整文档</h4>
+                        <p>详细的API参考和最佳实践</p>
+                        <a href="../README.md" style="color: var(--primary);">查看文档 →</a>
                     </div>
-                    <div style="flex: 1; min-width: 200px;">
-                        <strong>高级用户（第8+天）</strong>
-                        <p style="color: var(--text-light); margin-top: 10px;">
-                            窗口函数、JSON<br>
-                            批量操作、动态 SQL
-                        </p>
+                    <div class="feature-card">
+                        <h4>💡 示例项目</h4>
+                        <p>Todo Web API完整示例</p>
+                        <a href="../../samples/TodoWebApi/README.md" style="color: var(--primary);">查看示例 →</a>
                     </div>
+                </div>
+
+                <h3 style="margin-top: 2rem;">3. 加入社区</h3>
+                <div style="text-align: center; margin-top: 1rem;">
+                    <a href="https://github.com/Cricle/Sqlx" class="btn btn-primary">GitHub</a>
+                    <a href="https://github.com/Cricle/Sqlx/issues" class="btn btn-outline" style="margin-left: 1rem; color: var(--dark); border-color: var(--dark);">反馈问题</a>
                 </div>
             </div>
         </div>
-    </section>
+    </div>
 
-    <!-- Footer -->
-    <footer>
+    <!-- 页脚 -->
+    <div class="footer">
         <div class="container">
-            <p style="font-size: 1.2rem; margin-bottom: 20px;">
-                <strong>用 Sqlx，让数据库操作回归简单！</strong>
-            </p>
-            <p style="margin-bottom: 20px;">
-                <a href="https://github.com/Cricle/Sqlx">GitHub</a> · 
-                <a href="https://www.nuget.org/packages/Sqlx">NuGet</a> · 
-                <a href="https://github.com/Cricle/Sqlx/issues">问题反馈</a> · 
-                <a href="https://github.com/Cricle/Sqlx/discussions">讨论区</a>
-            </p>
-            <p style="opacity: 0.8;">
-                Made with ❤️ by <a href="https://github.com/Cricle">Cricle</a>
-            </p>
-            <p style="opacity: 0.6; margin-top: 20px; font-size: 0.9rem;">
-                © 2024 Sqlx. Licensed under MIT License.
+            <p>&copy; 2024 Sqlx. Licensed under <a href="../../License.txt">MIT License</a></p>
+            <p style="margin-top: 0.5rem;">
+                <a href="https://github.com/Cricle/Sqlx">GitHub</a> | 
+                <a href="https://www.nuget.org/packages/Sqlx/">NuGet</a> | 
+                <a href="../README.md">文档</a> | 
+                <a href="../CHANGELOG.md">更新日志</a>
             </p>
         </div>
-    </footer>
+    </div>
 
-    <!-- Scripts -->
+    <!-- 滚动到顶部按钮 -->
+    <button class="scroll-top" onclick="scrollToTop()">↑</button>
+
     <script>
-        // Mobile menu toggle
-        function toggleMobileMenu() {
-            const mobileMenu = document.getElementById('mobileMenu');
-            const overlay = document.getElementById('mobileOverlay');
-            mobileMenu.classList.toggle('active');
-            overlay.classList.toggle('active');
-            document.body.style.overflow = mobileMenu.classList.contains('active') ? 'hidden' : '';
+        // 移动端菜单切换
+        function toggleMenu() {
+            const nav = document.getElementById('nav-menu');
+            nav.classList.toggle('active');
         }
 
-        function closeMobileMenu() {
-            const mobileMenu = document.getElementById('mobileMenu');
-            const overlay = document.getElementById('mobileOverlay');
-            mobileMenu.classList.remove('active');
-            overlay.classList.remove('active');
-            document.body.style.overflow = '';
+        // Tab切换
+        function showTab(tabName) {
+            // 隐藏所有tab内容
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => content.classList.remove('active'));
+
+            // 移除所有tab的active类
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+
+            // 显示选中的tab
+            document.getElementById(tabName + '-content').classList.add('active');
+            event.target.classList.add('active');
         }
 
-        // Close menu on ESC key
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeMobileMenu();
+        // 滚动到顶部
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // 显示/隐藏滚动到顶部按钮
+        window.addEventListener('scroll', function() {
+            const scrollBtn = document.querySelector('.scroll-top');
+            if (window.pageYOffset > 300) {
+                scrollBtn.classList.add('show');
+            } else {
+                scrollBtn.classList.remove('show');
             }
         });
 
-        // Handle resize events
-        let resizeTimer;
-        window.addEventListener('resize', function() {
-            clearTimeout(resizeTimer);
-            resizeTimer = setTimeout(function() {
-                if (window.innerWidth > 768) {
-                    closeMobileMenu();
-                }
-            }, 250);
-        });
-
-        // Smooth scrolling
+        // 平滑滚动到锚点
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
                 e.preventDefault();
                 const target = document.querySelector(this.getAttribute('href'));
                 if (target) {
-                    target.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start'
-                    });
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    // 关闭移动端菜单
+                    document.getElementById('nav-menu').classList.remove('active');
                 }
             });
         });

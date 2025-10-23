@@ -192,10 +192,10 @@ namespace TestNamespace
     {
         // Arrange - 复杂正则（对于短列名不会超时）
         var template = "SELECT {{columns --regex (a+)+t}} FROM users";
-        
+
         // Act - 对于短列名（如 created_at），正则应该正常工作
         var result = _engine.ProcessTemplate(template, _testMethod, _userEntityType, "users");
-        
+
         // Assert - 匹配包含 'at' 的列
         Assert.IsNotNull(result);
         // created_at 和 updated_at 都包含 'at'
@@ -249,10 +249,10 @@ namespace TestNamespace
     {
         // Arrange - 空的正则模式
         var template = "SELECT {{columns --regex}} FROM users";
-        
+
         // Act - 空模式会被忽略，返回所有列
         var result = _engine.ProcessTemplate(template, _testMethod, _userEntityType, "users");
-        
+
         // Assert - 应该返回所有列（就像没有 --regex 一样）
         Assert.IsNotNull(result);
         StringAssert.Contains(result.ProcessedSql, "id");

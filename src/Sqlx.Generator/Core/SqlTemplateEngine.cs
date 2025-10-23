@@ -376,17 +376,17 @@ public class SqlTemplateEngine
     private string ProcessWherePlaceholder(string type, INamedTypeSymbol? entityType, IMethodSymbol method, string options, SqlDefine dialect)
     {
         // Check for ExpressionToSql parameter
-        var exprParam = method.Parameters.FirstOrDefault(p => 
+        var exprParam = method.Parameters.FirstOrDefault(p =>
             p.GetAttributes().Any(a => a.AttributeClass?.Name == "ExpressionToSqlAttribute"));
-        
+
         // Check for DynamicSql WHERE parameter
         var dynamicWhereParam = method.Parameters.FirstOrDefault(p =>
-            p.GetAttributes().Any(a => 
+            p.GetAttributes().Any(a =>
                 a.AttributeClass?.Name == "DynamicSqlAttribute" &&
-                a.NamedArguments.Any(arg => 
-                    arg.Key == "Type" && 
+                a.NamedArguments.Any(arg =>
+                    arg.Key == "Type" &&
                     arg.Value.Value?.ToString() == "1"))); // Fragment = 1
-        
+
         // Priority: @paramName > ExpressionToSql > auto > id > default
         if (!string.IsNullOrWhiteSpace(type) && type.StartsWith("@"))
         {
@@ -398,19 +398,19 @@ public class SqlTemplateEngine
                 return $"{{RUNTIME_WHERE_{paramName}}}"; // Marker for code generation
             }
         }
-        
+
         if (exprParam != null)
         {
             // {{where}} with [ExpressionToSql] parameter - extract WHERE clause
             return $"{{RUNTIME_WHERE_EXPR_{exprParam.Name}}}"; // Marker for code generation
         }
-        
+
         if (dynamicWhereParam != null)
         {
             // {{where}} with [DynamicSql(Type=Fragment)] parameter
             return $"{{RUNTIME_WHERE_DYNAMIC_{dynamicWhereParam.Name}}}"; // Marker for code generation
         }
-        
+
         return type switch
         {
             "id" => $"id = {dialect.ParameterPrefix}id",
@@ -420,9 +420,36 @@ public class SqlTemplateEngine
     }
 
 
-    /// <summary>处理SET占位符 - 多数据库支持</summary>
+    /// <summary>Processes SET placeholder - supports dynamic runtime SET clauses</summary>
     private string ProcessSetPlaceholder(string type, INamedTypeSymbol? entityType, IMethodSymbol method, string options, SqlDefine dialect, SqlTemplateResult result)
     {
+        // Check for dynamic SET parameter
+        var dynamicSetParam = method.Parameters.FirstOrDefault(p =>
+            p.GetAttributes().Any(a =>
+                a.AttributeClass?.Name == "DynamicSqlAttribute" &&
+                a.NamedArguments.Any(arg =>
+                    arg.Key == "Type" &&
+                    arg.Value.Value?.ToString() == "1"))); // Fragment = 1
+
+        // Priority: @paramName > entity-based > parameter-based
+        if (!string.IsNullOrWhiteSpace(type) && type.StartsWith("@"))
+        {
+            // {{set @customSet}} - use parameter as SET fragment
+            var paramName = type.Substring(1);
+            var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
+            if (param != null)
+            {
+                return $"{{RUNTIME_SET_{paramName}}}"; // Marker for code generation
+            }
+        }
+
+        if (dynamicSetParam != null)
+        {
+            // {{set}} with [DynamicSql(Type=Fragment)] parameter
+            return $"{{RUNTIME_SET_DYNAMIC_{dynamicSetParam.Name}}}"; // Marker for code generation
+        }
+
+        // Static SET generation (existing behavior)
         if (entityType == null)
         {
             if (method == null) return string.Empty;
@@ -436,7 +463,7 @@ public class SqlTemplateEngine
         return string.Join(", ", properties.Select(p =>
         {
             var columnName = SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name);
-            var paramName = columnName; // 参数名也使用snake_case
+            var paramName = columnName;
             return $"{columnName} = {dialect.ParameterPrefix}{paramName}";
         }));
     }

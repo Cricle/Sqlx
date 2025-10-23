@@ -86,13 +86,17 @@ public static class SharedCodeGenerationUtilities
     {
         sb.AppendLine($"__cmd__ = {connectionName}.CreateCommand();");
 
-        // Check for runtime WHERE markers
-        bool hasRuntimeWhere = sql.Contains("{RUNTIME_WHERE_");
+        // Check for runtime dynamic placeholders (WHERE, SET, ORDERBY, etc.)
+        bool hasDynamicPlaceholders = sql.Contains("{RUNTIME_WHERE_") || 
+                                     sql.Contains("{RUNTIME_SET_") ||
+                                     sql.Contains("{RUNTIME_ORDERBY_") ||
+                                     sql.Contains("{RUNTIME_JOIN_") ||
+                                     sql.Contains("{RUNTIME_GROUPBY_");
         
-        if (hasRuntimeWhere)
+        if (hasDynamicPlaceholders)
         {
-            // Generate dynamic SQL building
-            GenerateDynamicWhereSql(sb, sql, method);
+            // Generate dynamic SQL building with string interpolation
+            GenerateDynamicSql(sb, sql, method);
         }
         else
         {
@@ -104,7 +108,7 @@ public static class SharedCodeGenerationUtilities
         sb.AppendLine();
 
         // Generate parameter binding
-        GenerateParameterBinding(sb, method, hasRuntimeWhere);
+        GenerateParameterBinding(sb, method, hasDynamicPlaceholders);
     }
     
     /// <summary>
@@ -171,14 +175,15 @@ public static class SharedCodeGenerationUtilities
     }
 
     /// <summary>
-    /// Generate dynamic WHERE SQL building code (zero-allocation, compile-time string splitting)
+    /// Generate dynamic SQL building code (WHERE, SET, ORDERBY, etc.) with zero-allocation string interpolation
     /// </summary>
-    private static void GenerateDynamicWhereSql(IndentedStringBuilder sb, string sql, IMethodSymbol method)
+    private static void GenerateDynamicSql(IndentedStringBuilder sb, string sql, IMethodSymbol method)
     {
-        sb.AppendLine("// Build SQL with dynamic WHERE clause (compile-time splitting, zero Replace calls)");
+        sb.AppendLine("// Build SQL with dynamic placeholders (compile-time splitting, zero Replace calls)");
         
-        // Find all runtime WHERE markers
-        var markers = System.Text.RegularExpressions.Regex.Matches(sql, @"\{RUNTIME_WHERE_([^}]+)\}");
+        // Find all runtime dynamic markers (WHERE, SET, ORDERBY, JOIN, GROUPBY)
+        var markers = System.Text.RegularExpressions.Regex.Matches(sql, 
+            @"\{RUNTIME_(WHERE|SET|ORDERBY|JOIN|GROUPBY)_([^}]+)\}");
         
         if (markers.Count == 0)
         {
@@ -190,7 +195,7 @@ public static class SharedCodeGenerationUtilities
         
         // Split SQL into parts at compile time
         var sqlParts = new System.Collections.Generic.List<string>();
-        var whereVariables = new System.Collections.Generic.List<(string varName, string markerContent)>();
+        var dynamicVariables = new System.Collections.Generic.List<(string varName, string placeholderType, string markerContent)>();
         
         int lastIndex = 0;
         foreach (System.Text.RegularExpressions.Match match in markers)
@@ -198,9 +203,10 @@ public static class SharedCodeGenerationUtilities
             // Add SQL part before marker
             sqlParts.Add(sql.Substring(lastIndex, match.Index - lastIndex));
             
-            var markerContent = match.Groups[1].Value;
-            var varName = $"__whereClause_{whereVariables.Count}__";
-            whereVariables.Add((varName, markerContent));
+            var placeholderType = match.Groups[1].Value; // WHERE, SET, ORDERBY, etc.
+            var markerContent = match.Groups[2].Value;   // EXPR_paramName, DYNAMIC_paramName, or paramName
+            var varName = $"__{placeholderType.ToLower()}Clause_{dynamicVariables.Count}__";
+            dynamicVariables.Add((varName, placeholderType, markerContent));
             
             lastIndex = match.Index + match.Length;
         }
@@ -208,23 +214,32 @@ public static class SharedCodeGenerationUtilities
         // Add final SQL part after last marker
         sqlParts.Add(sql.Substring(lastIndex));
         
-        // Generate WHERE extraction code
-        for (int i = 0; i < whereVariables.Count; i++)
+        // Generate dynamic clause extraction code
+        for (int i = 0; i < dynamicVariables.Count; i++)
         {
-            var (varName, markerContent) = whereVariables[i];
+            var (varName, placeholderType, markerContent) = dynamicVariables[i];
             
             if (markerContent.StartsWith("EXPR_"))
             {
                 // ExpressionToSql parameter
                 var paramName = markerContent.Substring(5);
-                sb.AppendLine($"// Extract WHERE from ExpressionToSql: {paramName}");
-                sb.AppendLine($"var {varName} = {paramName}?.ToWhereClause() ?? \"1=1\";");
+                sb.AppendLine($"// Extract {placeholderType} from ExpressionToSql: {paramName}");
+                
+                if (placeholderType == "WHERE")
+                {
+                    sb.AppendLine($"var {varName} = {paramName}?.ToWhereClause() ?? \"1=1\";");
+                }
+                else
+                {
+                    // For SET, ORDERBY, etc. - extract as SQL fragment
+                    sb.AppendLine($"var {varName} = {paramName}?.ToSql() ?? \"\";");
+                }
             }
             else if (markerContent.StartsWith("DYNAMIC_"))
             {
                 // DynamicSql parameter with validation
                 var paramName = markerContent.Substring(8);
-                sb.AppendLine($"// Validate DynamicSql WHERE: {paramName}");
+                sb.AppendLine($"// Validate DynamicSql {placeholderType}: {paramName}");
                 sb.AppendLine($"if (!global::Sqlx.Validation.SqlValidator.IsValidFragment({paramName}.AsSpan()))");
                 sb.AppendLine("{");
                 sb.PushIndent();
@@ -235,9 +250,9 @@ public static class SharedCodeGenerationUtilities
             }
             else
             {
-                // Regular parameter as WHERE fragment (with validation)
+                // Regular parameter as SQL fragment (with validation)
                 var paramName = markerContent;
-                sb.AppendLine($"// Validate WHERE fragment: {paramName}");
+                sb.AppendLine($"// Validate {placeholderType} fragment: {paramName}");
                 sb.AppendLine($"if (!global::Sqlx.Validation.SqlValidator.IsValidFragment({paramName}.AsSpan()))");
                 sb.AppendLine("{");
                 sb.PushIndent();
@@ -268,9 +283,9 @@ public static class SharedCodeGenerationUtilities
                 var part = sqlParts[i].Replace("\"", "\"\"");
                 sb.Append(part);
                 
-                if (i < whereVariables.Count)
+                if (i < dynamicVariables.Count)
                 {
-                    sb.Append($"{{{whereVariables[i].varName}}}");
+                    sb.Append($"{{{dynamicVariables[i].varName}}}");
                 }
             }
             sb.Append("\"");

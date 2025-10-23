@@ -37,6 +37,8 @@ dotnet add package Sqlx.Generator
 ```
 
 ### 2. 定义实体和接口
+
+**方式1: 使用通用CRUD接口（推荐）**
 ```csharp
 // 实体类
 public class User
@@ -44,14 +46,43 @@ public class User
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
-    public DateTime? LastLogin { get; set; }  // Nullable支持
+    public DateTime? LastLogin { get; set; }
 }
 
-// 数据访问接口
-[Sqlx("SELECT * FROM users WHERE id = @id")]
-public partial interface IUserService
+// 继承通用接口，立即获得8个标准CRUD方法 ✨
+[RepositoryFor<User>]
+[TableName("users")]
+[SqlDefine(SqlDefineTypes.SQLite)]
+public partial class UserRepository : ICrudRepository<User, int>
 {
+    public UserRepository(DbConnection connection) { }
+    
+    // ✅ 已自动生成以下方法（无需手写！）：
+    // - GetByIdAsync(id)            : 根据ID查询
+    // - GetAllAsync(limit, offset)  : 分页查询
+    // - InsertAsync(entity)         : 插入
+    // - UpdateAsync(entity)         : 更新
+    // - DeleteAsync(id)             : 删除
+    // - CountAsync()                : 统计总数
+    // - ExistsAsync(id)             : 检查存在
+    // - BatchInsertAsync(entities)  : 批量插入
+}
+```
+
+**方式2: 自定义接口（完全控制）**
+```csharp
+// 数据访问接口
+public interface IUserService
+{
+    [Sqlx("SELECT {{columns}} FROM users WHERE id = @id")]
     Task<User?> GetUserByIdAsync(int id);
+}
+
+[RepositoryFor<IUserService>]
+[TableName("users")]
+public partial class UserService : IUserService
+{
+    public UserService(DbConnection connection) { }
 }
 ```
 
@@ -80,6 +111,79 @@ Console.WriteLine($"User: {user?.Name}");
 > **结论**: Sqlx性能接近手写ADO.NET代码，比Dapper快7%，比EF Core快近150%。
 
 ## 🎨 高级功能
+
+### 🗂️ 通用CRUD接口
+
+**快速开始 —— 零样板代码**
+
+Sqlx提供了`ICrudRepository<TEntity, TKey>`通用接口，包含8个常用数据访问方法。只需继承接口，Sqlx会在编译时自动生成高性能实现代码。
+
+```csharp
+// 1️⃣ 定义实体
+public class Product
+{
+    public int Id { get; init; }
+    public string Name { get; init; } = "";
+    public decimal Price { get; init; }
+    public DateTime CreatedAt { get; init; }
+}
+
+// 2️⃣ 继承通用接口（一行代码搞定！）
+[RepositoryFor<Product>]
+[TableName("products")]
+public partial class ProductRepository : ICrudRepository<Product, int>
+{
+    public ProductRepository(DbConnection connection) { }
+}
+
+// 3️⃣ 使用（8个方法全自动生成）
+var product = await repo.GetByIdAsync(1);           // ✅ 根据ID查询
+var all = await repo.GetAllAsync(limit: 10);        // ✅ 分页查询
+await repo.InsertAsync(newProduct);                 // ✅ 插入
+await repo.UpdateAsync(product);                    // ✅ 更新
+await repo.DeleteAsync(1);                          // ✅ 删除
+var count = await repo.CountAsync();                // ✅ 统计总数
+var exists = await repo.ExistsAsync(1);             // ✅ 检查存在
+await repo.BatchInsertAsync(products);              // ✅ 批量插入
+```
+
+**最佳实践 SQL**
+
+所有生成的SQL遵循最佳实践：
+- ✅ **明确列名** - 不使用`SELECT *`，性能更好
+- ✅ **参数化查询** - 防止SQL注入
+- ✅ **索引友好** - WHERE条件使用主键
+- ✅ **批量优化** - `BatchInsertAsync`使用单条INSERT多行VALUES
+
+```sql
+-- GetByIdAsync生成的SQL
+SELECT id, name, price, created_at FROM products WHERE id = @id
+
+-- GetAllAsync生成的SQL
+SELECT id, name, price, created_at FROM products 
+ORDER BY id LIMIT @limit OFFSET @offset
+
+-- BatchInsertAsync生成的SQL
+INSERT INTO products (name, price, created_at) VALUES 
+  (@name_0, @price_0, @created_at_0),
+  (@name_1, @price_1, @created_at_1),
+  (@name_2, @price_2, @created_at_2)
+```
+
+**扩展自定义方法**
+
+混合使用通用接口和自定义方法：
+
+```csharp
+public interface IProductRepository : ICrudRepository<Product, int>
+{
+    // ✅ 从ICrudRepository继承8个标准方法
+    // ✅ 添加业务特定方法
+    
+    [Sqlx("SELECT {{columns}} FROM {{table}} WHERE price <= @maxPrice")]
+    Task<List<Product>> GetCheapProductsAsync(decimal maxPrice);
+}
+```
 
 ### 📌 正则表达式列筛选
 ```csharp

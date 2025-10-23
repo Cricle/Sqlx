@@ -25,7 +25,7 @@ builder.Services.AddCors(options =>
 var sqliteConnection = new SqliteConnection("Data Source=todos.db;Cache=Shared;Foreign Keys=true");
 builder.Services.AddSingleton(_ => sqliteConnection);
 
-builder.Services.AddSingleton<ITodoService, TodoService>();
+builder.Services.AddSingleton<ITodoRepository, TodoRepository>();
 builder.Services.AddSingleton<DatabaseService>();
 
 var app = builder.Build();
@@ -46,18 +46,18 @@ app.MapGet("/api/info", () =>
         new Dictionary<string, object> { ["todos"] = "/api/todos" },
         DateTime.UtcNow), TodoJsonContext.Default.ApiInfoResponse));
 
-app.MapGet("/api/todos", async (ITodoService service) =>
-    Results.Json(await service.GetAllAsync(), TodoJsonContext.Default.ListTodo));
+app.MapGet("/api/todos", async (ITodoRepository repo) =>
+    Results.Json(await repo.GetAllAsync(limit: 100), TodoJsonContext.Default.ListTodo));
 
-app.MapGet("/api/todos/{id:long}", async (long id, ITodoService service) =>
+app.MapGet("/api/todos/{id:long}", async (long id, ITodoRepository repo) =>
 {
-    var todo = await service.GetByIdAsync(id);
+    var todo = await repo.GetByIdAsync(id);
     return todo is not null
         ? Results.Json(todo, TodoJsonContext.Default.Todo)
         : Results.Json(new ErrorResponse("TODO未找到"), TodoJsonContext.Default.ErrorResponse, statusCode: 404);
 });
 
-app.MapPost("/api/todos", async (CreateTodoRequest request, ITodoService service) =>
+app.MapPost("/api/todos", async (CreateTodoRequest request, ITodoRepository repo, SqliteConnection conn) =>
 {
     var todo = new Todo
     {
@@ -72,14 +72,20 @@ app.MapPost("/api/todos", async (CreateTodoRequest request, ITodoService service
         UpdatedAt = DateTime.UtcNow
     };
 
-    var id = await service.CreateAsync(todo);
-    var created = await service.GetByIdAsync(id);
+    await repo.InsertAsync(todo);
+    
+    // 获取最后插入的ID
+    using var cmd = conn.CreateCommand();
+    cmd.CommandText = "SELECT last_insert_rowid()";
+    var newId = (long)(await cmd.ExecuteScalarAsync() ?? 0L);
+    
+    var created = todo with { Id = newId };
     return Results.Json(created, TodoJsonContext.Default.Todo, statusCode: 201);
 });
 
-app.MapPut("/api/todos/{id:long}", async (long id, UpdateTodoRequest request, ITodoService service) =>
+app.MapPut("/api/todos/{id:long}", async (long id, UpdateTodoRequest request, ITodoRepository repo) =>
 {
-    var existing = await service.GetByIdAsync(id);
+    var existing = await repo.GetByIdAsync(id);
     if (existing is null)
         return Results.Json(new ErrorResponse("TODO未找到"), TodoJsonContext.Default.ErrorResponse, statusCode: 404);
 
@@ -96,58 +102,51 @@ app.MapPut("/api/todos/{id:long}", async (long id, UpdateTodoRequest request, IT
         CompletedAt = request.IsCompleted ? (existing.CompletedAt ?? DateTime.UtcNow) : null
     };
 
-    await service.UpdateAsync(updated);
+    await repo.UpdateAsync(updated);
     return Results.Json(updated, TodoJsonContext.Default.Todo);
 });
 
-app.MapDelete("/api/todos/{id:long}", async (long id, ITodoService service) =>
+app.MapDelete("/api/todos/{id:long}", async (long id, ITodoRepository repo) =>
 {
-    var result = await service.DeleteAsync(id);
+    var result = await repo.DeleteAsync(id);
     return result == 0
         ? Results.Json(new ErrorResponse("TODO未找到"), TodoJsonContext.Default.ErrorResponse, statusCode: 404)
         : Results.NoContent();
 });
 
-app.MapGet("/api/todos/search", async (string q, ITodoService service) =>
+app.MapGet("/api/todos/search", async (string q, ITodoRepository repo) =>
 {
     if (string.IsNullOrWhiteSpace(q))
         return Results.Json(new ErrorResponse("搜索关键词不能为空"), TodoJsonContext.Default.ErrorResponse, statusCode: 400);
 
-    return Results.Json(await service.SearchAsync(q.Trim()), TodoJsonContext.Default.ListTodo);
+    return Results.Json(await repo.SearchAsync($"%{q.Trim()}%"), TodoJsonContext.Default.ListTodo);
 });
 
 // 新增的高级功能API端点 - 展示更多查询功能
-app.MapGet("/api/todos/completed", async (ITodoService service) =>
-    Results.Json(await service.GetCompletedAsync(true), TodoJsonContext.Default.ListTodo));
+app.MapGet("/api/todos/completed", async (ITodoRepository repo) =>
+    Results.Json(await repo.GetByCompletionStatusAsync(true), TodoJsonContext.Default.ListTodo));
 
-app.MapGet("/api/todos/high-priority", async (ITodoService service) =>
-    Results.Json(await service.GetHighPriorityAsync(minPriority: 3, isCompleted: false), TodoJsonContext.Default.ListTodo));
+app.MapGet("/api/todos/high-priority", async (ITodoRepository repo) =>
+    Results.Json(await repo.GetByPriorityAsync(minPriority: 3, isCompleted: false), TodoJsonContext.Default.ListTodo));
 
-app.MapGet("/api/todos/due-soon", async (ITodoService service) =>
-    Results.Json(await service.GetDueSoonAsync(DateTime.UtcNow.AddDays(7), isCompleted: false), TodoJsonContext.Default.ListTodo));
+app.MapGet("/api/todos/due-soon", async (ITodoRepository repo) =>
+    Results.Json(await repo.GetDueSoonAsync(DateTime.UtcNow.AddDays(7), isCompleted: false), TodoJsonContext.Default.ListTodo));
 
-app.MapGet("/api/todos/count", async (ITodoService service) =>
+app.MapGet("/api/todos/count", async (ITodoRepository repo) =>
 {
-    var count = await service.GetTotalCountAsync();
+    var count = await repo.CountAsync();
     return Results.Json(new Dictionary<string, object> { ["count"] = count }, TodoJsonContext.Default.DictionaryStringObject);
 });
 
-app.MapPut("/api/todos/batch/priority", async (BatchPriorityUpdateRequest request, ITodoService service) =>
+app.MapPut("/api/todos/batch/priority", async (BatchPriorityUpdateRequest request, ITodoRepository repo) =>
 {
     if (request.Ids?.Count == 0)
         return Results.Json(new ErrorResponse("ID列表不能为空"), TodoJsonContext.Default.ErrorResponse, statusCode: 400);
 
     // 转换为JSON数组格式供SQLite的json_each使用
     var idsJson = JsonSerializer.Serialize(request.Ids, TodoJsonContext.Default.ListInt64);
-    var updated = await service.UpdatePriorityBatchAsync(idsJson, request.NewPriority, DateTime.UtcNow);
+    var updated = await repo.BatchUpdatePriorityAsync(idsJson, request.NewPriority, DateTime.UtcNow);
     return Results.Json(new Dictionary<string, object> { ["updated"] = updated }, TodoJsonContext.Default.DictionaryStringObject);
-});
-
-app.MapPost("/api/todos/archive-expired", async (ITodoService service) =>
-{
-    var now = DateTime.UtcNow;
-    var archived = await service.ArchiveExpiredTasksAsync(now, isCompleted: false, completedAt: now, updatedAt: now);
-    return Results.Json(new Dictionary<string, object> { ["archived"] = archived }, TodoJsonContext.Default.DictionaryStringObject);
 });
 
 // 数据库初始化

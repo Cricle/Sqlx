@@ -19,14 +19,20 @@
 
 ### 📚 核心概念（30分钟）
 
-3. **[API参考](API_REFERENCE.md)**
+3. **[通用CRUD接口](CRUD_REPOSITORY.md)** ⭐ 零样板代码
+   - `ICrudRepository<TEntity, TKey>` 通用接口
+   - 8个标准CRUD方法自动生成
+   - SQL最佳实践
+   - 扩展自定义方法
+
+4. **[API参考](API_REFERENCE.md)**
    - `[Sqlx]` 特性详解
    - `[RepositoryFor]` 特性
    - `[DynamicSql]` 动态SQL
    - `[BatchOperation]` 批量操作
    - `[ExpressionToSql]` 表达式转换
 
-4. **[模板占位符](PLACEHOLDERS.md)** ⭐ 核心功能
+5. **[模板占位符](PLACEHOLDERS.md)** ⭐ 核心功能
    - 40+占位符完整列表
    - 基础占位符（table, columns, values, where, set）
    - 高级占位符（case, coalesce, pagination）
@@ -36,27 +42,27 @@
    - 正则筛选（--regex）
    - 示例和最佳实践
 
-5. **[多数据库模板引擎](MULTI_DATABASE_TEMPLATE_ENGINE.md)**
+6. **[多数据库模板引擎](MULTI_DATABASE_TEMPLATE_ENGINE.md)**
    - 跨数据库兼容性
    - 方言系统设计
    - 特定数据库优化
 
 ### 🎯 高级特性（1小时）
 
-6. **[高级功能](ADVANCED_FEATURES.md)**
+7. **[高级功能](ADVANCED_FEATURES.md)**
    - 正则表达式列筛选
    - 动态返回值（`List<Dictionary<string, object>>`）
    - 批量操作优化
    - 表达式转SQL
    - 安全字符串插值
 
-7. **[Partial方法指南](PARTIAL_METHODS_GUIDE.md)**
+8. **[Partial方法指南](PARTIAL_METHODS_GUIDE.md)**
    - OnExecuting - 执行前拦截
    - OnExecuted - 执行后处理
    - OnExecuteFail - 异常处理
    - 性能追踪集成
 
-8. **[Activity追踪与指标](FRAMEWORK_COMPATIBILITY.md)**
+9. **[Activity追踪与指标](FRAMEWORK_COMPATIBILITY.md)**
    - OpenTelemetry集成
    - 分布式追踪
    - 性能指标收集

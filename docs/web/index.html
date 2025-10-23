@@ -628,14 +628,78 @@
             <h2 class="section-title">💻 代码示例</h2>
 
             <div class="tabs">
-                <button class="tab active" onclick="showTab('basic')">基础查询</button>
+                <button class="tab active" onclick="showTab('crud')">通用CRUD</button>
+                <button class="tab" onclick="showTab('basic')">基础查询</button>
                 <button class="tab" onclick="showTab('regex')">正则筛选</button>
                 <button class="tab" onclick="showTab('dynamic')">动态返回</button>
                 <button class="tab" onclick="showTab('batch')">批量操作</button>
                 <button class="tab" onclick="showTab('tracing')">追踪监控</button>
             </div>
 
-            <div id="basic-content" class="tab-content active">
+            <div id="crud-content" class="tab-content active">
+                <h3>🗂️ 通用CRUD接口 - 零样板代码</h3>
+                <p style="color: var(--secondary); margin-bottom: 1.5rem;">
+                    继承 <code>ICrudRepository&lt;TEntity, TKey&gt;</code> 立即获得8个标准CRUD方法，无需手写SQL！
+                </p>
+                <div class="code-example">
+<pre>// 1️⃣ 定义实体
+public class Product
+{
+    public int Id { get; init; }
+    public string Name { get; init; } = "";
+    public decimal Price { get; init; }
+    public DateTime CreatedAt { get; init; }
+}
+
+// 2️⃣ 继承通用接口（一行代码搞定！）
+[RepositoryFor&lt;Product&gt;]
+[TableName("products")]
+public partial class ProductRepository : ICrudRepository&lt;Product, int&gt;
+{
+    public ProductRepository(DbConnection connection) { }
+}
+
+// 3️⃣ 使用（8个方法全自动生成 ✨）
+var product = await repo.GetByIdAsync(1);           // 根据ID查询
+var all = await repo.GetAllAsync(limit: 10);        // 分页查询
+await repo.InsertAsync(newProduct);                 // 插入
+await repo.UpdateAsync(product);                    // 更新
+await repo.DeleteAsync(1);                          // 删除
+var count = await repo.CountAsync();                // 统计总数
+var exists = await repo.ExistsAsync(1);             // 检查存在
+await repo.BatchInsertAsync(products);              // 批量插入</pre>
+                </div>
+
+                <h3>✅ 生成的SQL（最佳实践）</h3>
+                <div class="code-example">
+<pre>-- GetByIdAsync
+SELECT id, name, price, created_at FROM products WHERE id = @id
+
+-- GetAllAsync
+SELECT id, name, price, created_at FROM products 
+ORDER BY id LIMIT @limit OFFSET @offset
+
+-- BatchInsertAsync (高性能：一次SQL插入多行)
+INSERT INTO products (name, price, created_at) VALUES 
+  (@name_0, @price_0, @created_at_0),
+  (@name_1, @price_1, @created_at_1),
+  (@name_2, @price_2, @created_at_2)</pre>
+                </div>
+
+                <h3>🎯 扩展自定义方法</h3>
+                <div class="code-example">
+<pre>public interface IProductRepository : ICrudRepository&lt;Product, int&gt;
+{
+    // ✅ 从ICrudRepository继承8个标准方法
+    // ✅ 添加业务特定方法
+    
+    [Sqlx("SELECT {{columns}} FROM {{table}} WHERE price &lt;= @maxPrice")]
+    Task&lt;List&lt;Product&gt;&gt; GetCheapProductsAsync(decimal maxPrice);
+}</pre>
+                </div>
+            </div>
+
+            <div id="basic-content" class="tab-content">
                 <h3>1. 定义实体和接口</h3>
                 <div class="code-example">
 <pre>// 实体类

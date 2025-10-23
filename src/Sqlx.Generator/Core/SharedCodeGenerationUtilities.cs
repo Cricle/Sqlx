@@ -29,15 +29,15 @@ public static class SharedCodeGenerationUtilities
     private static readonly ConcurrentDictionary<IPropertySymbol, string> _sqlNameCache =
         new(SymbolEqualityComparer.Default);
 
-    /// <summary>获取符号的显示字符串，使用缓存提升性能</summary>
+    /// <summary>Gets symbol display string with cache for performance.</summary>
     public static string GetCachedDisplayString(this ISymbol symbol) =>
         _displayStringCache.GetOrAdd(symbol, s => s.ToDisplayString());
 
-    /// <summary>缓存版本的标量类型检查</summary>
+    /// <summary>Cached scalar type check.</summary>
     public static bool IsCachedScalarType(this ITypeSymbol type) =>
         _isScalarTypeCache.GetOrAdd(type, t => t.IsScalarType());
 
-    /// <summary>缓存版本的SQL名称获取</summary>
+    /// <summary>Cached SQL name getter.</summary>
     public static string GetCachedSqlName(this IPropertySymbol property) =>
         _sqlNameCache.GetOrAdd(property, p => p.GetSqlName());
     /// <summary>Extract inner type from Task&lt;T&gt; type strings</summary>

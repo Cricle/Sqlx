@@ -543,9 +543,9 @@ public class CodeGenerationService
         // 如果方法返回标量类型（methodEntityType == null），也要覆盖以避免错误映射
         entityType = methodEntityType;
 
-        // 🚀 Activity跟踪和指标（性能影响微小<0.1μs，提供完整可观测性）
-        sb.AppendLine("#if !SQLX_DISABLE_TRACING");
-        sb.AppendLine("// Activity跟踪（可通过定义SQLX_DISABLE_TRACING条件编译禁用）");
+        // 🚀 Activity跟踪和指标（默认禁用以获得最佳性能，可通过定义SQLX_ENABLE_TRACING启用）
+        sb.AppendLine("#if SQLX_ENABLE_TRACING");
+        sb.AppendLine("// Activity跟踪（可通过定义SQLX_ENABLE_TRACING条件编译启用）");
         sb.AppendLine("var __activity__ = global::System.Diagnostics.Activity.Current;");
         sb.AppendLine("var __startTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
         sb.AppendLine();
@@ -593,8 +593,8 @@ public class CodeGenerationService
         sb.AppendLine("{");
         sb.PushIndent();
 
-        // Call partial method interceptor (用户自定义扩展点，可通过SQLX_DISABLE_PARTIAL_METHODS禁用)
-        sb.AppendLine("#if !SQLX_DISABLE_PARTIAL_METHODS");
+        // Call partial method interceptor (用户自定义扩展点，可通过SQLX_ENABLE_PARTIAL_METHODS启用)
+        sb.AppendLine("#if SQLX_ENABLE_PARTIAL_METHODS");
         sb.AppendLine("// Partial方法：用户自定义拦截逻辑");
         sb.AppendLine($"OnExecuting(\"{operationName}\", __cmd__);");
         sb.AppendLine("#endif");
@@ -622,7 +622,7 @@ public class CodeGenerationService
         sb.AppendLine();
 
         // 生成指标和追踪代码（强制启用）
-        sb.AppendLine("#if !SQLX_DISABLE_TRACING");
+        sb.AppendLine("#if SQLX_ENABLE_TRACING");
         sb.AppendLine("// 计算执行耗时");
         sb.AppendLine("var __endTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
         sb.AppendLine("var __elapsedTicks__ = __endTimestamp__ - __startTimestamp__;");
@@ -643,9 +643,9 @@ public class CodeGenerationService
         sb.AppendLine();
 
         // Call partial method interceptor
-        sb.AppendLine("#if !SQLX_DISABLE_PARTIAL_METHODS");
+        sb.AppendLine("#if SQLX_ENABLE_PARTIAL_METHODS");
         sb.AppendLine("// Partial方法：用户自定义成功处理");
-        sb.AppendLine("#if !SQLX_DISABLE_TRACING");
+        sb.AppendLine("#if SQLX_ENABLE_TRACING");
         sb.AppendLine($"OnExecuted(\"{operationName}\", __cmd__, __result__, __elapsedTicks__);");
         sb.AppendLine("#else");
         sb.AppendLine($"OnExecuted(\"{operationName}\", __cmd__, __result__, 0);");
@@ -659,7 +659,7 @@ public class CodeGenerationService
         sb.PushIndent();
 
         // 生成指标和追踪代码（强制启用）
-        sb.AppendLine("#if !SQLX_DISABLE_TRACING");
+        sb.AppendLine("#if SQLX_ENABLE_TRACING");
         sb.AppendLine("var __endTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
         sb.AppendLine("var __elapsedTicks__ = __endTimestamp__ - __startTimestamp__;");
         sb.AppendLine();
@@ -681,9 +681,9 @@ public class CodeGenerationService
         sb.AppendLine();
 
         // Call partial method interceptor
-        sb.AppendLine("#if !SQLX_DISABLE_PARTIAL_METHODS");
+        sb.AppendLine("#if SQLX_ENABLE_PARTIAL_METHODS");
         sb.AppendLine("// Partial方法：用户自定义异常处理");
-        sb.AppendLine("#if !SQLX_DISABLE_TRACING");
+        sb.AppendLine("#if SQLX_ENABLE_TRACING");
         sb.AppendLine($"OnExecuteFail(\"{operationName}\", __cmd__, __ex__, __elapsedTicks__);");
         sb.AppendLine("#else");
         sb.AppendLine($"OnExecuteFail(\"{operationName}\", __cmd__, __ex__, 0);");

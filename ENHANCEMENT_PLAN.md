@@ -1,6 +1,6 @@
 # 🚀 Sqlx 增强功能实现计划
 
-**日期**: 2024-10-23  
+**日期**: 2024-10-23
 **版本**: v1.1.0 计划
 
 ---
@@ -136,10 +136,10 @@ public void Regex_MatchUserColumns_ReturnsFilteredColumns()
 {
     // Arrange
     var template = "SELECT {{columns --regex ^user_}} FROM users";
-    
+
     // Act
     var result = engine.ProcessTemplate(template, ...);
-    
+
     // Assert
     Assert.AreEqual("SELECT user_name, user_email FROM users", result.ProcessedSql);
 }
@@ -200,26 +200,26 @@ private bool IsDynamicReturnType(ITypeSymbol returnType)
 public async Task<List<Dictionary<string, object>>> GetDynamicColumnsAsync()
 {
     var __result__ = new List<Dictionary<string, object>>();
-    
+
     using var __cmd__ = __connection__.CreateCommand();
     __cmd__.CommandText = "SELECT data_name, data_age, data_city FROM users";
-    
+
     using var __reader__ = await __cmd__.ExecuteReaderAsync();
-    
+
     while (await __reader__.ReadAsync())
     {
         var __row__ = new Dictionary<string, object>(__reader__.FieldCount);
-        
+
         for (int i = 0; i < __reader__.FieldCount; i++)
         {
             var __columnName__ = __reader__.GetName(i);
             var __value__ = __reader__.IsDBNull(i) ? null : __reader__.GetValue(i);
             __row__[__columnName__] = __value__;
         }
-        
+
         __result__.Add(__row__);
     }
-    
+
     return __result__;
 }
 ```
@@ -236,10 +236,10 @@ public async Task DynamicReturn_WithRegexFilter_ReturnsCorrectData()
 {
     // Arrange
     var repo = new TestRepository(connection);
-    
+
     // Act
     var results = await repo.GetDynamicColumnsAsync();
-    
+
     // Assert
     Assert.AreEqual(2, results.Count);
     Assert.IsTrue(results[0].ContainsKey("data_name"));
@@ -261,7 +261,7 @@ public readonly ref struct InterpolatedSqlString
 {
     public string Sql { get; }
     public Dictionary<string, object?> Parameters { get; }
-    
+
     public static InterpolatedSqlString Create(
         [InterpolatedStringHandler] ref InterpolatedSqlStringHandler handler)
     {
@@ -290,26 +290,26 @@ public ref struct InterpolatedSqlStringHandler
     private ValueStringBuilder _builder;
     private Dictionary<string, object?> _parameters;
     private int _parameterCount;
-    
+
     public InterpolatedSqlStringHandler(int literalLength, int formattedCount)
     {
         _builder = new ValueStringBuilder(stackalloc char[256]);
         _parameters = new Dictionary<string, object?>(formattedCount);
         _parameterCount = 0;
     }
-    
+
     public void AppendLiteral(string value)
     {
         _builder.Append(value);
     }
-    
+
     public void AppendFormatted<T>(T value)
     {
         var paramName = $"@p{_parameterCount++}";
         _builder.Append(paramName);
         _parameters[paramName] = value;
     }
-    
+
     public InterpolatedSqlString GetFormattedString()
     {
         return new InterpolatedSqlString(_builder.ToString(), _parameters);
@@ -341,11 +341,11 @@ public void InterpolatedSql_WithParameters_GeneratesCorrectSql()
     // Arrange
     var name = "admin";
     var age = 25;
-    
+
     // Act
     var query = InterpolatedSqlString.Create(
         $"SELECT * FROM users WHERE name = {name} AND age > {age}");
-    
+
     // Assert
     Assert.AreEqual("SELECT * FROM users WHERE name = @p0 AND age > @p1", query.Sql);
     Assert.AreEqual("admin", query.Parameters["@p0"]);
@@ -476,9 +476,9 @@ private static readonly ConcurrentDictionary<string, Regex> RegexCache = new();
 
 private List<string> FilterColumns(List<string> columns, string pattern)
 {
-    var regex = RegexCache.GetOrAdd(pattern, p => 
+    var regex = RegexCache.GetOrAdd(pattern, p =>
         new Regex(p, RegexOptions.Compiled, TimeSpan.FromMilliseconds(100)));
-    
+
     return columns.Where(c => regex.IsMatch(c)).ToList();
 }
 ```
@@ -641,8 +641,8 @@ var sql = InterpolatedSqlString.Create($"SELECT * FROM {table}"); // 使用 [Dyn
 - ✅ **简洁性**: 保持代码可读和可维护
 - ✅ **渐进式**: 所有新功能都是可选的，不破坏兼容性
 
-**预计时间**: 10-14 天  
-**风险**: 中等（通过充分测试和文档缓解）  
+**预计时间**: 10-14 天
+**风险**: 中等（通过充分测试和文档缓解）
 **收益**: 高（大幅提升灵活性和易用性）
 
 ---

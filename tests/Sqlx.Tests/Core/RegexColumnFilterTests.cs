@@ -80,10 +80,10 @@ namespace TestNamespace
     {
         // Arrange
         var template = "SELECT {{columns --regex ^user_}} FROM users";
-        
+
         // Act
         var result = _engine.ProcessTemplate(template, _testMethod, _userEntityType, "users");
-        
+
         // Assert
         Assert.IsNotNull(result);
         StringAssert.Contains(result.ProcessedSql, "user_name");
@@ -97,10 +97,10 @@ namespace TestNamespace
     {
         // Arrange
         var template = "SELECT {{columns --regex _at$}} FROM users";
-        
+
         // Act
         var result = _engine.ProcessTemplate(template, _testMethod, _userEntityType, "users");
-        
+
         // Assert
         StringAssert.Contains(result.ProcessedSql, "created_at");
         StringAssert.Contains(result.ProcessedSql, "updated_at");
@@ -112,10 +112,10 @@ namespace TestNamespace
     {
         // Arrange - 排除包含 "password" 或 "secret" 的列
         var template = "SELECT {{columns --regex ^(?!.*(password|secret))}} FROM users";
-        
+
         // Act
         var result = _engine.ProcessTemplate(template, _testMethod, _secureEntityType, "users");
-        
+
         // Assert
         StringAssert.Contains(result.ProcessedSql, "id");
         StringAssert.Contains(result.ProcessedSql, "name");
@@ -128,10 +128,10 @@ namespace TestNamespace
     {
         // Arrange
         var template = "SELECT {{columns --regex (?i)^USER_}} FROM users";
-        
+
         // Act
         var result = _engine.ProcessTemplate(template, _testMethod, _userEntityType, "users");
-        
+
         // Assert
         StringAssert.Contains(result.ProcessedSql, "user_name");
         StringAssert.Contains(result.ProcessedSql, "user_email");
@@ -146,10 +146,10 @@ namespace TestNamespace
     {
         // Arrange - 正则筛选 user_ 开头，再排除 user_email
         var template = "SELECT {{columns --regex ^user_ --exclude user_email}} FROM users";
-        
+
         // Act
         var result = _engine.ProcessTemplate(template, _testMethod, _userEntityType, "users");
-        
+
         // Assert
         StringAssert.Contains(result.ProcessedSql, "user_name");
         Assert.IsFalse(result.ProcessedSql.Contains("user_email"));
@@ -161,10 +161,10 @@ namespace TestNamespace
     {
         // Arrange - 正则筛选后，再用 --only 进一步限制
         var template = "SELECT {{columns --regex ^user_ --only user_name}} FROM users";
-        
+
         // Act
         var result = _engine.ProcessTemplate(template, _testMethod, _userEntityType, "users");
-        
+
         // Assert
         StringAssert.Contains(result.ProcessedSql, "user_name");
         Assert.IsFalse(result.ProcessedSql.Contains("user_email"));
@@ -179,9 +179,9 @@ namespace TestNamespace
     {
         // Arrange - 无效的正则表达式
         var template = "SELECT {{columns --regex [}} FROM users";
-        
+
         // Act & Assert
-        Assert.ThrowsException<ArgumentException>(() => 
+        Assert.ThrowsException<ArgumentException>(() =>
         {
             _engine.ProcessTemplate(template, _testMethod, _userEntityType, "users");
         });
@@ -192,13 +192,13 @@ namespace TestNamespace
     {
         // Arrange - 可能导致 ReDoS 的复杂正则
         var template = "SELECT {{columns --regex (a+)+b}} FROM users";
-        
+
         // Act & Assert
-        var ex = Assert.ThrowsException<InvalidOperationException>(() => 
+        var ex = Assert.ThrowsException<InvalidOperationException>(() =>
         {
             _engine.ProcessTemplate(template, _testMethod, _userEntityType, "users");
         });
-        
+
         StringAssert.Contains(ex.Message, "timeout", "Should mention timeout");
     }
 
@@ -207,14 +207,14 @@ namespace TestNamespace
     {
         // Arrange - 正则不匹配任何列
         var template = "SELECT {{columns --regex ^xyz_}} FROM users";
-        
+
         // Act
         var result = _engine.ProcessTemplate(template, _testMethod, _userEntityType, "users");
-        
+
         // Assert
         // 应该生成空的列列表或抛出警告
         Assert.IsTrue(
-            string.IsNullOrWhiteSpace(result.ProcessedSql) || 
+            string.IsNullOrWhiteSpace(result.ProcessedSql) ||
             result.Warnings.Any(w => w.Contains("No columns matched")),
             "Should have warning about no matches");
     }
@@ -228,12 +228,12 @@ namespace TestNamespace
     {
         // Arrange
         var template = "SELECT {{columns --regex ^user_}} FROM users";
-        
+
         // Act - 多次处理相同模板
         var result1 = _engine.ProcessTemplate(template, _testMethod, _userEntityType, "users");
         var result2 = _engine.ProcessTemplate(template, _testMethod, _userEntityType, "users");
         var result3 = _engine.ProcessTemplate(template, _testMethod, _userEntityType, "users");
-        
+
         // Assert - 结果应该一致（说明缓存工作正常）
         Assert.AreEqual(result1.ProcessedSql, result2.ProcessedSql);
         Assert.AreEqual(result2.ProcessedSql, result3.ProcessedSql);
@@ -248,9 +248,9 @@ namespace TestNamespace
     {
         // Arrange
         var template = "SELECT {{columns --regex}} FROM users";
-        
+
         // Act & Assert - 应该抛出异常或匹配所有列
-        Assert.ThrowsException<ArgumentException>(() => 
+        Assert.ThrowsException<ArgumentException>(() =>
         {
             _engine.ProcessTemplate(template, _testMethod, _userEntityType, "users");
         });
@@ -261,10 +261,10 @@ namespace TestNamespace
     {
         // Arrange - 匹配所有列的正则
         var template = "SELECT {{columns --regex .*}} FROM users";
-        
+
         // Act
         var result = _engine.ProcessTemplate(template, _testMethod, _userEntityType, "users");
-        
+
         // Assert
         StringAssert.Contains(result.ProcessedSql, "id");
         StringAssert.Contains(result.ProcessedSql, "user_name");

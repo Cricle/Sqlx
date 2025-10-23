@@ -1141,8 +1141,15 @@ public class SqlTemplateEngine
     /// <summary>Processes JOIN placeholder - supports dynamic runtime joins</summary>
     private static string ProcessJoinPlaceholder(string type, INamedTypeSymbol? entityType, string options, SqlDefine dialect, IMethodSymbol method)
     {
-        // Check for dynamic JOIN parameter: {{join @paramName}}
-        // @paramName can be in either 'type' ({{join:@paramName}}) or 'options' ({{join @paramName}})
+        // Auto-detect: Check for DynamicSql Fragment parameter
+        var dynamicJoinParam = method.Parameters.FirstOrDefault(p =>
+            p.GetAttributes().Any(a =>
+                a.AttributeClass?.Name == "DynamicSqlAttribute" &&
+                a.NamedArguments.Any(arg =>
+                    arg.Key == "Type" &&
+                    arg.Value.Value?.ToString() == "1"))); // Fragment = 1
+        
+        // Priority 1: Explicit parameter reference {{join @paramName}}
         var paramSource = !string.IsNullOrWhiteSpace(options) && options.StartsWith("@") ? options :
                          !string.IsNullOrWhiteSpace(type) && type.StartsWith("@") ? type : null;
         
@@ -1152,9 +1159,14 @@ public class SqlTemplateEngine
             var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
             if (param != null)
             {
-                // Return marker for runtime string interpolation
                 return $"{{RUNTIME_JOIN_{paramName}}}";
             }
+        }
+        
+        // Priority 2: Auto-detect DynamicSql Fragment parameter (like SET/WHERE/ORDERBY)
+        if (dynamicJoinParam != null)
+        {
+            return $"{{RUNTIME_JOIN_DYNAMIC_{dynamicJoinParam.Name}}}";
         }
         
         // Static JOIN generation (existing behavior)
@@ -1164,8 +1176,15 @@ public class SqlTemplateEngine
     /// <summary>Processes GROUPBY placeholder - supports dynamic runtime grouping</summary>
     private static string ProcessGroupByPlaceholder(string type, INamedTypeSymbol? entityType, IMethodSymbol method, string options, SqlDefine dialect)
     {
-        // Check for dynamic GROUPBY parameter: {{groupby @paramName}}
-        // @paramName can be in either 'type' ({{groupby:@paramName}}) or 'options' ({{groupby @paramName}})
+        // Auto-detect: Check for DynamicSql Fragment parameter
+        var dynamicGroupParam = method.Parameters.FirstOrDefault(p =>
+            p.GetAttributes().Any(a =>
+                a.AttributeClass?.Name == "DynamicSqlAttribute" &&
+                a.NamedArguments.Any(arg =>
+                    arg.Key == "Type" &&
+                    arg.Value.Value?.ToString() == "1"))); // Fragment = 1
+        
+        // Priority 1: Explicit parameter reference {{groupby @paramName}}
         var paramSource = !string.IsNullOrWhiteSpace(options) && options.StartsWith("@") ? options :
                          !string.IsNullOrWhiteSpace(type) && type.StartsWith("@") ? type : null;
         
@@ -1175,9 +1194,14 @@ public class SqlTemplateEngine
             var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
             if (param != null)
             {
-                // Return marker for runtime string interpolation
                 return $"{{RUNTIME_GROUPBY_{paramName}}}";
             }
+        }
+        
+        // Priority 2: Auto-detect DynamicSql Fragment parameter (like SET/WHERE/ORDERBY)
+        if (dynamicGroupParam != null)
+        {
+            return $"{{RUNTIME_GROUPBY_DYNAMIC_{dynamicGroupParam.Name}}}";
         }
         
         // Static GROUPBY generation (existing behavior)

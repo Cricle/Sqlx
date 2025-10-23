@@ -567,6 +567,12 @@ public class CodeGenerationService
         sb.AppendLine("global::System.Data.IDbCommand? __cmd__ = null;");
         sb.AppendLine();
 
+        // 🔐 动态占位符验证（如果模板包含动态特性）
+        if (templateResult.HasDynamicFeatures)
+        {
+            GenerateDynamicPlaceholderValidation(sb, method);
+        }
+
         // Use shared utilities for database setup
         // 🚀 性能优化：默认不检查连接状态（假设调用者已打开连接）
         // 如需自动打开连接，可定义 SQLX_ENABLE_AUTO_OPEN 条件编译符号
@@ -1019,6 +1025,81 @@ public class CodeGenerationService
     {
         // 简化：使用实体类型名作为表名，如果没有则使用repository类名
         return entityType?.Name ?? repositoryClass.Name.Replace("Repository", "");
+    }
+
+    /// <summary>
+    /// 生成动态占位符验证代码（内联到生成的方法中）
+    /// </summary>
+    /// <param name="sb">代码字符串构建器</param>
+    /// <param name="method">方法符号</param>
+    private void GenerateDynamicPlaceholderValidation(IndentedStringBuilder sb, IMethodSymbol method)
+    {
+        sb.AppendLine("// 🔐 动态占位符验证（编译时生成，运行时零反射开销）");
+        sb.AppendLine();
+
+        foreach (var parameter in method.Parameters)
+        {
+            // 检查参数是否有 [DynamicSql] 特性
+            var dynamicSqlAttr = parameter.GetAttributes()
+                .FirstOrDefault(attr => attr.AttributeClass?.Name == "DynamicSqlAttribute");
+
+            if (dynamicSqlAttr == null)
+                continue;
+
+            // 参数必须是 string 类型
+            if (parameter.Type.SpecialType != SpecialType.System_String)
+            {
+                // 这应该在分析器阶段就报错，这里作为防御性编程
+                continue;
+            }
+
+            // 获取 DynamicSqlType 类型（默认为 Identifier = 0）
+            var dynamicSqlType = 0; // DynamicSqlType.Identifier
+            if (dynamicSqlAttr.NamedArguments.Length > 0)
+            {
+                var typeArg = dynamicSqlAttr.NamedArguments
+                    .FirstOrDefault(arg => arg.Key == "Type");
+                if (typeArg.Value.Value is int typeValue)
+                {
+                    dynamicSqlType = typeValue;
+                }
+            }
+
+            var paramName = parameter.Name;
+
+            // 根据 DynamicSqlType 生成不同的验证代码
+            switch (dynamicSqlType)
+            {
+                case 0: // Identifier
+                    sb.AppendLine($"if (!global::Sqlx.Validation.SqlValidator.IsValidIdentifier({paramName}.AsSpan()))");
+                    sb.AppendLine("{");
+                    sb.PushIndent();
+                    sb.AppendLine($"throw new global::System.ArgumentException($\"Invalid identifier: {{{paramName}}}. Only letters, digits, and underscores are allowed.\", nameof({paramName}));");
+                    sb.PopIndent();
+                    sb.AppendLine("}");
+                    break;
+
+                case 1: // Fragment
+                    sb.AppendLine($"if (!global::Sqlx.Validation.SqlValidator.IsValidFragment({paramName}.AsSpan()))");
+                    sb.AppendLine("{");
+                    sb.PushIndent();
+                    sb.AppendLine($"throw new global::System.ArgumentException($\"Invalid SQL fragment: {{{paramName}}}. Contains dangerous keywords or operations.\", nameof({paramName}));");
+                    sb.PopIndent();
+                    sb.AppendLine("}");
+                    break;
+
+                case 2: // TablePart
+                    sb.AppendLine($"if (!global::Sqlx.Validation.SqlValidator.IsValidTablePart({paramName}.AsSpan()))");
+                    sb.AppendLine("{");
+                    sb.PushIndent();
+                    sb.AppendLine($"throw new global::System.ArgumentException($\"Invalid table part: {{{paramName}}}. Only letters and digits are allowed.\", nameof({paramName}));");
+                    sb.PopIndent();
+                    sb.AppendLine("}");
+                    break;
+            }
+
+            sb.AppendLine();
+        }
     }
 
 }

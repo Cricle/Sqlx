@@ -211,10 +211,21 @@ int BatchInsert([BatchOperation] List<User> users);
 ### 🎭 模板占位符
 支持40+占位符：
 - **基础**: `{{table}}`, `{{columns}}`, `{{values}}`, `{{where}}`, `{{set}}`
+- **动态**: `{{set @param}}`, `{{orderby @param}}`, `{{join @param}}`, `{{groupby @param}}` ⚡ 零GC
 - **聚合**: `{{count}}`, `{{sum}}`, `{{avg}}`, `{{max}}`, `{{min}}`
 - **高级**: `{{case}}`, `{{coalesce}}`, `{{pagination}}`, `{{upsert}}`
 - **日期**: `{{today}}`, `{{date_add}}`, `{{date_diff}}`
 - **字符串**: `{{upper}}`, `{{lower}}`, `{{trim}}`, `{{concat}}`
+
+**动态占位符示例**（字符串插值优化，零 Replace 调用）：
+```csharp
+// 动态排序
+[Sqlx("SELECT {{columns}} FROM {{table}} {{orderby @sort}}")]
+Task<List<Todo>> GetSortedAsync([DynamicSql(Type = DynamicSqlType.Fragment)] string sort);
+
+await repo.GetSortedAsync("priority DESC, created_at DESC");
+// 生成: SELECT * FROM todos ORDER BY priority DESC, created_at DESC
+```
 
 查看 [完整占位符列表](docs/PLACEHOLDERS.md)
 

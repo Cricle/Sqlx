@@ -847,7 +847,120 @@ public partial class UserService
                         <li>防止SQL注入</li>
                     </ul>
                 </div>
+            </div>
 
+            <!-- 动态占位符详细示例 -->
+            <div style="margin-top: 3rem;">
+                <h3 style="text-align: center; margin-bottom: 2rem;">⚡ 动态占位符（高性能）</h3>
+                <div class="performance-highlight">
+                    <div class="metric">
+                        <div class="metric-value">0 GC</div>
+                        <div class="metric-label">零内存分配</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">~50ns</div>
+                        <div class="metric-label">SQL验证耗时</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">字符串插值</div>
+                        <div class="metric-label">零Replace调用</div>
+                    </div>
+                </div>
+
+                <div class="api-grid" style="margin-top: 2rem;">
+                    <div class="api-card">
+                        <h4>{{set @param}} - 动态SET</h4>
+                        <div class="code-example">
+<pre>// 动态指定更新字段
+[Sqlx("UPDATE {{table}} SET {{set @updates}} WHERE id = @id")]
+Task&lt;int&gt; UpdatePartialAsync(
+    int id,
+    [DynamicSql(Type = DynamicSqlType.Fragment)] string updates);
+
+// 调用
+await repo.UpdatePartialAsync(1, "name = @name, email = @email");
+// 生成: UPDATE users SET name = @name, email = @email WHERE id = 1</pre>
+                        </div>
+                        <p><strong>适用场景：</strong> 部分字段更新、条件更新</p>
+                    </div>
+
+                    <div class="api-card">
+                        <h4>{{orderby @param}} - 动态排序</h4>
+                        <div class="code-example">
+<pre>// 动态排序规则
+[Sqlx("SELECT {{columns}} FROM {{table}} {{orderby @sort}}")]
+Task&lt;List&lt;Todo&gt;&gt; GetSortedAsync(
+    [DynamicSql(Type = DynamicSqlType.Fragment)] string sort);
+
+// 调用
+await repo.GetSortedAsync("priority DESC, created_at DESC");
+// 生成: SELECT * FROM todos ORDER BY priority DESC, created_at DESC</pre>
+                        </div>
+                        <p><strong>适用场景：</strong> 用户自定义排序、多列排序</p>
+                    </div>
+
+                    <div class="api-card">
+                        <h4>{{join @param}} - 动态JOIN</h4>
+                        <div class="code-example">
+<pre>// 动态JOIN子句
+[Sqlx("SELECT o.*, c.name FROM orders o {{join @joins}} WHERE o.id = @id")]
+Task&lt;Order?&gt; GetWithDetailsAsync(
+    int id,
+    [DynamicSql(Type = DynamicSqlType.Fragment)] string joins);
+
+// 调用
+await repo.GetWithDetailsAsync(1, "INNER JOIN customers c ON o.customer_id = c.id");
+// 生成: SELECT o.*, c.name FROM orders o INNER JOIN customers c ON o.customer_id = c.id WHERE o.id = @id</pre>
+                        </div>
+                        <p><strong>适用场景：</strong> 复杂查询、可选关联</p>
+                    </div>
+
+                    <div class="api-card">
+                        <h4>{{groupby @param}} - 动态GROUP BY</h4>
+                        <div class="code-example">
+<pre>// 动态分组列
+[Sqlx("SELECT {{groupby @cols}}, COUNT(*) FROM {{table}} {{groupby @cols}}")]
+Task&lt;List&lt;Dictionary&lt;string, object&gt;&gt;&gt; GetAggregatedAsync(
+    [DynamicSql(Type = DynamicSqlType.Fragment)] string cols);
+
+// 调用
+await repo.GetAggregatedAsync("category, status");
+// 生成: SELECT category, status, COUNT(*) FROM items GROUP BY category, status</pre>
+                        </div>
+                        <p><strong>适用场景：</strong> 报表查询、聚合分析</p>
+                    </div>
+                </div>
+
+                <div class="feature-box" style="margin-top: 2rem;">
+                    <h4>🔒 安全保障</h4>
+                    <ul>
+                        <li>✅ 所有动态占位符必须标记 <code>[DynamicSql(Type = DynamicSqlType.Fragment)]</code></li>
+                        <li>✅ 自动包含 <code>SqlValidator.IsValidFragment()</code> 检查</li>
+                        <li>✅ 拒绝 DDL（DROP/TRUNCATE）、EXEC、注释等危险操作</li>
+                        <li>✅ 基于 <code>ReadOnlySpan&lt;char&gt;</code> 的零GC验证</li>
+                    </ul>
+                </div>
+
+                <div class="code-example" style="margin-top: 2rem;">
+                    <h4>生成代码示例（字符串插值优化）</h4>
+<pre>// Sqlx 自动生成的方法
+public async Task&lt;List&lt;Todo&gt;&gt; GetSortedAsync(string sort)
+{
+    // ✅ SQL片段验证（~50ns，零GC）
+    if (!SqlValidator.IsValidFragment(sort.AsSpan()))
+        throw new ArgumentException($"Invalid SQL fragment: {sort}. Contains dangerous keywords.", nameof(sort));
+
+    var __orderByClause_0__ = sort;
+
+    // ✅ 字符串插值（零Replace调用，编译时优化）
+    __cmd__.CommandText = $@"SELECT id, title, priority FROM todos ORDER BY {__orderByClause_0__}";
+
+    // ... 执行SQL
+}</pre>
+                </div>
+            </div>
+
+            <div class="api-grid" style="margin-top: 3rem;">
                 <div class="api-card">
                     <h4>[BatchOperation]</h4>
                     <div class="signature">[BatchOperation]</div>

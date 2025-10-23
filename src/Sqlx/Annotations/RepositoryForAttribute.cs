@@ -12,7 +12,7 @@ namespace Sqlx.Annotations
     /// Marks a class as a repository for a specified service interface.
     /// </summary>
     /// <remarks>
-    /// <para>⚠️ <strong>Best Practice</strong>: The <paramref name="serviceType"/> should be an interface type.</para>
+    /// <para>⚠️ <strong>Best Practice</strong>: The service type should be an interface type.</para>
     /// <para>The repository class should implement the specified interface.</para>
     /// <para><strong>Example:</strong></para>
     /// <code>

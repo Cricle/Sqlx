@@ -7,6 +7,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using static Sqlx.Generator.SharedCodeGenerationUtilities;
@@ -267,14 +268,26 @@ public class CodeGenerationService
     {
         var repositoryForAttr = GetRepositoryForAttribute(context.RepositoryClass);
 
-        if (repositoryForAttr?.ConstructorArguments.Length > 0)
+        if (repositoryForAttr != null)
         {
-            var typeArg = repositoryForAttr.ConstructorArguments[0];
-            if (typeArg.Value is INamedTypeSymbol serviceType)
-                return serviceType;
+            // Check if it's a generic RepositoryFor<T> attribute
+            if (repositoryForAttr.AttributeClass is INamedTypeSymbol attrClass && attrClass.IsGenericType)
+            {
+                // Generic version: RepositoryFor<TService>
+                var typeArg = attrClass.TypeArguments.FirstOrDefault();
+                if (typeArg is INamedTypeSymbol serviceType)
+                    return serviceType;
+            }
+            // Non-generic version: RepositoryFor(typeof(TService))
+            else if (repositoryForAttr.ConstructorArguments.Length > 0)
+            {
+                var typeArg = repositoryForAttr.ConstructorArguments[0];
+                if (typeArg.Value is INamedTypeSymbol serviceType)
+                    return serviceType;
+            }
         }
 
-        // 简化：如果没有RepositoryFor属性，返回null
+        // Fallback: try to get from syntax
         return GetServiceInterfaceFromSyntax(context);
     }
 
@@ -367,7 +380,10 @@ public class CodeGenerationService
         // GenerateDbConnectionFieldIfNeeded(sb, repositoryClass);
 
         // Generate repository methods using template engine
-        foreach (var method in serviceInterface.GetMembers().OfType<IMethodSymbol>())
+        // Support interface inheritance - collect methods from base interfaces too
+        var allMethods = GetAllInterfaceMethods(serviceInterface);
+        
+        foreach (var method in allMethods)
         {
             var sqlxAttr = GetSqlAttribute(method);
             var sql = GetSqlTemplateFromAttribute(sqlxAttr);
@@ -1242,6 +1258,25 @@ public class CodeGenerationService
 
             sb.AppendLine();
         }
+    }
+
+    /// <summary>
+    /// Gets all methods from an interface including methods from base interfaces.
+    /// Supports interface inheritance like ICrudRepository.
+    /// </summary>
+    private IEnumerable<IMethodSymbol> GetAllInterfaceMethods(INamedTypeSymbol interfaceSymbol)
+    {
+        // Get methods directly defined in this interface
+        var directMethods = interfaceSymbol.GetMembers().OfType<IMethodSymbol>();
+        
+        // Get methods from all base interfaces
+        var baseMethods = interfaceSymbol.AllInterfaces
+            .SelectMany(baseInterface => baseInterface.GetMembers().OfType<IMethodSymbol>());
+        
+        // Combine and deduplicate (in case of method overrides)
+        return directMethods.Concat(baseMethods)
+            .GroupBy(m => m.Name + "_" + string.Join("_", m.Parameters.Select(p => p.Type.ToDisplayString())))
+            .Select(g => g.First());
     }
 
 }

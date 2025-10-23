@@ -2,6 +2,7 @@ namespace Sqlx.Validation;
 
 using System;
 using System.Runtime.CompilerServices;
+using Sqlx.Annotations;
 
 /// <summary>
 /// SQL dynamic parameter validator (runtime, high performance).

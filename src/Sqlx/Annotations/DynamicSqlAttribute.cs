@@ -1,4 +1,10 @@
-namespace Sqlx;
+// -----------------------------------------------------------------------
+// <copyright file="DynamicSqlAttribute.cs" company="Cricle">
+// Copyright (c) Cricle. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
+
+namespace Sqlx.Annotations;
 
 using System;
 
@@ -14,7 +20,7 @@ using System;
 /// <code>
 /// [Sqlx("SELECT {{columns}} FROM {{@tableName}} WHERE id = @id")]
 /// Task&lt;User?&gt; GetUserAsync([DynamicSql] string tableName, int id);
-/// 
+///
 /// // Must validate at call site
 /// if (!allowedTables.Contains(tableName))
 ///     throw new ArgumentException("Invalid table");
@@ -48,3 +54,4 @@ public enum DynamicSqlType
     /// </summary>
     TablePart = 2
 }
+

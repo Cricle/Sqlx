@@ -1,5 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Sqlx;
+using Sqlx.Annotations;
 using Sqlx.Validation;
 using System;
 

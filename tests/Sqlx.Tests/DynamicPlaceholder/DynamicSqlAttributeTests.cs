@@ -1,5 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Sqlx;
+using Sqlx.Annotations;
 using System;
 using System.Linq;
 using System.Reflection;
@@ -180,7 +181,7 @@ public class DynamicSqlAttributeTests
         var attributeType = typeof(DynamicSqlAttribute);
 
         // Assert
-        Assert.AreEqual("Sqlx", attributeType.Namespace);
+        Assert.AreEqual("Sqlx.Annotations", attributeType.Namespace);
     }
 
     [TestMethod]
@@ -190,7 +191,7 @@ public class DynamicSqlAttributeTests
         var enumType = typeof(DynamicSqlType);
 
         // Assert
-        Assert.AreEqual("Sqlx", enumType.Namespace);
+        Assert.AreEqual("Sqlx.Annotations", enumType.Namespace);
     }
 
     [TestMethod]

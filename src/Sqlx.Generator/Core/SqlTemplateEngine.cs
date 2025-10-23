@@ -1141,6 +1141,9 @@ public class SqlTemplateEngine
     /// <summary>Processes JOIN placeholder - supports dynamic runtime joins</summary>
     private static string ProcessJoinPlaceholder(string type, INamedTypeSymbol? entityType, string options, SqlDefine dialect, IMethodSymbol method)
     {
+        // DEBUG: Log inputs
+        System.Diagnostics.Debug.WriteLine($"ProcessJoinPlaceholder: type='{type}', options='{options}'");
+        
         // Auto-detect: Check for DynamicSql Fragment parameter
         var dynamicJoinParam = method.Parameters.FirstOrDefault(p =>
             p.GetAttributes().Any(a =>
@@ -1156,20 +1159,31 @@ public class SqlTemplateEngine
         if (paramSource != null)
         {
             var paramName = paramSource.Substring(1).Trim();
-            var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
+            // DEBUG: Check parameter matching
+            System.Diagnostics.Debug.WriteLine($"  Looking for param: '{paramName}'");
+            System.Diagnostics.Debug.WriteLine($"  Available params: {string.Join(", ", method.Parameters.Select(p => p.Name))}");
+            var param = method.Parameters.FirstOrDefault(p => p.Name.Equals(paramName, StringComparison.Ordinal));
             if (param != null)
             {
+                // DEBUG:
+                System.Diagnostics.Debug.WriteLine($"  FOUND! Returning RUNTIME_JOIN_{paramName}");
                 return $"{{RUNTIME_JOIN_{paramName}}}";
             }
+            // DEBUG:
+            System.Diagnostics.Debug.WriteLine($"  NOT FOUND - will try auto-detect");
         }
 
         // Priority 2: Auto-detect DynamicSql Fragment parameter (like SET/WHERE/ORDERBY)
         if (dynamicJoinParam != null)
         {
+            // DEBUG:
+            System.Diagnostics.Debug.WriteLine($"  Auto-detected: {dynamicJoinParam.Name}");
             return $"{{RUNTIME_JOIN_DYNAMIC_{dynamicJoinParam.Name}}}";
         }
 
         // Static JOIN generation (existing behavior)
+        // DEBUG:
+        System.Diagnostics.Debug.WriteLine($"  Falling back to static JOIN");
         return SqlTemplateEngineExtensions.MultiDatabasePlaceholderSupport.ProcessGenericPlaceholder("join", type, options, dialect);
     }
 

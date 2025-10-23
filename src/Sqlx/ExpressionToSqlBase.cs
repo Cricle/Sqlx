@@ -30,6 +30,15 @@ namespace Sqlx
         /// Whether to use parameterized query mode (default: false - inline constant values)
         /// </summary>
         protected bool _parameterized = false;
+        /// <summary>
+        /// External WHERE expression for batch operations
+        /// </summary>
+        internal ExpressionToSqlBase? _whereExpression;
+
+        /// <summary>
+        /// Batch parameters storage for batch insert operations
+        /// </summary>
+        internal List<Dictionary<string, object?>>? _batchParameters = null;
 
         /// <summary>
         /// Parameter counter for generating unique parameter names
@@ -390,6 +399,63 @@ namespace Sqlx
             ExpressionType.Coalesce => GetOperatorFunction("??", left, right),
             _ => $"{left} = {right}"
         };
+
+        /// <summary>
+        /// Merges WHERE conditions from another ExpressionToSqlBase (for batch operations)
+        /// </summary>
+        /// <param name="expression">The expression to merge from</param>
+        /// <returns>This instance for chaining</returns>
+        public virtual ExpressionToSqlBase WhereFrom(ExpressionToSqlBase expression)
+        {
+            if (expression == null)
+                throw new ArgumentNullException(nameof(expression));
+
+            _whereExpression = expression;
+            return this;
+        }
+
+        /// <summary>
+        /// Gets merged WHERE conditions (including from external expression)
+        /// </summary>
+        /// <returns>WHERE clause string (without "WHERE" keyword)</returns>
+        internal string GetMergedWhereConditions()
+        {
+            var conditions = new List<string>(_whereConditions);
+
+            if (_whereExpression != null)
+            {
+                conditions.AddRange(_whereExpression._whereConditions);
+            }
+
+            return conditions.Count > 0
+                ? string.Join(" AND ", conditions)
+                : "";
+        }
+
+        /// <summary>
+        /// Gets merged parameters (including from external expression)
+        /// </summary>
+        /// <returns>Merged parameter dictionary</returns>
+        internal Dictionary<string, object?> GetMergedParameters()
+        {
+            var merged = new Dictionary<string, object?>(_parameters);
+
+            if (_whereExpression != null)
+            {
+                foreach (var kvp in _whereExpression._parameters)
+                {
+                    // Avoid duplicate keys by prefixing
+                    var key = kvp.Key;
+                    if (merged.ContainsKey(key))
+                    {
+                        key = $"__ext_{key}";
+                    }
+                    merged[key] = kvp.Value;
+                }
+            }
+
+            return merged;
+        }
 
         /// <summary>Converts to SQL string</summary>
         public abstract string ToSql();

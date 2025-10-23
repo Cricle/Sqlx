@@ -23,16 +23,16 @@ public interface ITenantTodoRepository
     // ✅ 使用 [DynamicSql] 标记动态表名参数
     [Sqlx("SELECT id, title, is_completed, created_at FROM {{@tableName}} WHERE id = @id")]
     Task<Todo?> GetByIdAsync([DynamicSql] string tableName, long id);
-    
+
     [Sqlx("SELECT id, title, is_completed, created_at FROM {{@tableName}} ORDER BY created_at DESC")]
     Task<List<Todo>> GetAllAsync([DynamicSql] string tableName);
-    
+
     [Sqlx("INSERT INTO {{@tableName}} (title, is_completed, created_at) VALUES (@Title, @IsCompleted, @CreatedAt) RETURNING id")]
     Task<long> CreateAsync([DynamicSql] string tableName, Todo todo);
-    
+
     [Sqlx("UPDATE {{@tableName}} SET title = @Title, is_completed = @IsCompleted WHERE id = @Id")]
     Task<int> UpdateAsync([DynamicSql] string tableName, Todo todo);
-    
+
     [Sqlx("DELETE FROM {{@tableName}} WHERE id = @id")]
     Task<int> DeleteAsync([DynamicSql] string tableName, long id);
 }
@@ -64,54 +64,54 @@ namespace TodoWebApi.Services;
 public class TenantTodoService
 {
     private readonly ITenantTodoRepository _repository;
-    
+
     // ✅ 白名单：只允许这些租户
     private static readonly HashSet<string> AllowedTenants = new(StringComparer.OrdinalIgnoreCase)
     {
         "tenant1", "tenant2", "tenant3", "demo", "test"
     };
-    
+
     public TenantTodoService(ITenantTodoRepository repository)
     {
         _repository = repository;
     }
-    
+
     // ✅ 安全方法：内部验证
     private string GetTableName(string tenantId)
     {
         if (string.IsNullOrWhiteSpace(tenantId))
             throw new ArgumentException("Tenant ID cannot be empty", nameof(tenantId));
-        
+
         if (!AllowedTenants.Contains(tenantId))
             throw new ArgumentException($"Invalid tenant: {tenantId}", nameof(tenantId));
-        
+
         return $"{tenantId}_todos";
     }
-    
+
     public async Task<Todo?> GetTodoAsync(string tenantId, long id)
     {
         var tableName = GetTableName(tenantId);  // 白名单验证
         return await _repository.GetByIdAsync(tableName, id);
     }
-    
+
     public async Task<List<Todo>> GetAllTodosAsync(string tenantId)
     {
         var tableName = GetTableName(tenantId);
         return await _repository.GetAllAsync(tableName);
     }
-    
+
     public async Task<long> CreateTodoAsync(string tenantId, Todo todo)
     {
         var tableName = GetTableName(tenantId);
         return await _repository.CreateAsync(tableName, todo);
     }
-    
+
     public async Task<int> UpdateTodoAsync(string tenantId, Todo todo)
     {
         var tableName = GetTableName(tenantId);
         return await _repository.UpdateAsync(tableName, todo);
     }
-    
+
     public async Task<int> DeleteTodoAsync(string tenantId, long id)
     {
         var tableName = GetTableName(tenantId);
@@ -132,12 +132,12 @@ namespace TodoWebApi.Controllers;
 public class TenantTodoController : ControllerBase
 {
     private readonly TenantTodoService _service;
-    
+
     public TenantTodoController(TenantTodoService service)
     {
         _service = service;
     }
-    
+
     // ✅ 正确：不直接暴露 tableName，通过 tenantId 映射
     [HttpGet("{tenantId}/todos")]
     public async Task<ActionResult<List<Todo>>> GetTodos(string tenantId)
@@ -152,7 +152,7 @@ public class TenantTodoController : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
-    
+
     [HttpGet("{tenantId}/todos/{id}")]
     public async Task<ActionResult<Todo>> GetTodo(string tenantId, long id)
     {
@@ -166,7 +166,7 @@ public class TenantTodoController : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
-    
+
     [HttpPost("{tenantId}/todos")]
     public async Task<ActionResult<Todo>> CreateTodo(string tenantId, [FromBody] Todo todo)
     {
@@ -203,7 +203,7 @@ public interface ILogRepository
     // ✅ 使用 TablePart 类型（只允许字母和数字）
     [Sqlx("SELECT id, level, message, created_at FROM logs_{{@monthSuffix}} WHERE created_at >= @startDate")]
     Task<List<Log>> GetLogsAsync(
-        [DynamicSql(Type = DynamicSqlType.TablePart)] string monthSuffix, 
+        [DynamicSql(Type = DynamicSqlType.TablePart)] string monthSuffix,
         DateTime startDate);
 }
 
@@ -215,12 +215,12 @@ public partial class LogRepository(IDbConnection connection) : ILogRepository;
 public class LogService
 {
     private readonly ILogRepository _repository;
-    
+
     public async Task<List<Log>> GetCurrentMonthLogsAsync()
     {
         // ✅ 生成月份后缀（格式：202410）
         var monthSuffix = DateTime.Now.ToString("yyyyMM");
-        
+
         // ✅ 只允许字母和数字，符合 TablePart 验证规则
         var logs = await _repository.GetLogsAsync(monthSuffix, DateTime.Today);
         return logs;
@@ -258,14 +258,14 @@ public partial class AdvancedTodoRepository(IDbConnection connection) : IAdvance
 public class AdvancedTodoService
 {
     private readonly IAdvancedTodoRepository _repository;
-    
+
     public async Task<List<Todo>> GetActiveTodosAsync()
     {
         // ✅ 硬编码的安全 WHERE 子句
         var whereClause = "is_completed = 0 AND deleted_at IS NULL";
         return await _repository.QueryAsync(whereClause);
     }
-    
+
     public async Task<List<Todo>> GetRecentTodosAsync(int days)
     {
         // ✅ 参数化的日期值，WHERE 子句本身是硬编码的
@@ -286,7 +286,7 @@ public class AdvancedTodoService
    ```csharp
    // ✅ 正确
    Task GetAsync([DynamicSql] string tableName);
-   
+
    // ❌ 错误：编译失败
    Task GetAsync(string tableName);  // 使用了 {{@tableName}} 但未标记特性
    ```
@@ -296,7 +296,7 @@ public class AdvancedTodoService
    // ✅ 正确：白名单
    private static readonly HashSet<string> AllowedTenants = new() { "tenant1", "tenant2" };
    if (!AllowedTenants.Contains(tenantId)) throw new ArgumentException();
-   
+
    // ❌ 错误：直接使用
    await repo.GetAsync(userInput);
    ```
@@ -308,7 +308,7 @@ public class AdvancedTodoService
    {
        private string GetTableName(string tenantId) { /* 白名单验证 */ }
    }
-   
+
    // ❌ 错误：在 Controller 中直接暴露
    [HttpGet("api/query/{tableName}")]
    public async Task<IActionResult> Query(string tableName) { /* 不安全！ */ }
@@ -355,25 +355,25 @@ public class TenantTodoServiceTests
     {
         // Arrange
         var service = CreateService();
-        
+
         // Act
         var result = await service.GetAllTodosAsync("tenant1");
-        
+
         // Assert
         Assert.NotNull(result);
     }
-    
+
     [Fact]
     public async Task GetTodoAsync_InvalidTenant_ThrowsException()
     {
         // Arrange
         var service = CreateService();
-        
+
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(
             () => service.GetAllTodosAsync("evil_tenant"));
     }
-    
+
     [Theory]
     [InlineData("DROP TABLE users")]
     [InlineData("tenant1'; DROP TABLE todos--")]
@@ -382,7 +382,7 @@ public class TenantTodoServiceTests
     {
         // Arrange
         var service = CreateService();
-        
+
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(
             () => service.GetAllTodosAsync(maliciousInput));

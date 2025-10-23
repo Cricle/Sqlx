@@ -108,7 +108,7 @@ public interface ITenantRepository
 {
     [Sqlx("SELECT {{columns}} FROM {{@tenantTable}} WHERE id = @id")]
     Task<User?> GetUserAsync([DynamicSql] string tenantTable, int id);
-    
+
     [Sqlx("SELECT {{columns}} FROM {{@tenantTable}} WHERE {{@condition}}")]
     Task<List<User>> QueryUsersAsync(
         [DynamicSql] string tenantTable,
@@ -119,30 +119,30 @@ public interface ITenantRepository
 public class TenantService
 {
     private readonly ITenantRepository _repo;
-    private static readonly HashSet<string> AllowedTenants = new() 
-    { 
-        "tenant1_users", "tenant2_users", "tenant3_users" 
+    private static readonly HashSet<string> AllowedTenants = new()
+    {
+        "tenant1_users", "tenant2_users", "tenant3_users"
     };
-    
+
     public async Task<User?> GetTenantUserAsync(string tenantId, int userId)
     {
         // ✅ 白名单验证
         var tableName = $"{tenantId}_users";
         if (!AllowedTenants.Contains(tableName))
             throw new ArgumentException($"Invalid tenant: {tenantId}");
-        
+
         return await _repo.GetUserAsync(tableName, userId);
     }
-    
+
     public async Task<List<User>> QueryActiveUsers(string tenantId)
     {
         var tableName = $"{tenantId}_users";
         if (!AllowedTenants.Contains(tableName))
             throw new ArgumentException($"Invalid tenant: {tenantId}");
-        
+
         // ✅ 硬编码的安全条件
         var condition = "is_active = 1 AND deleted_at IS NULL";
-        
+
         return await _repo.QueryUsersAsync(tableName, condition);
     }
 }
@@ -159,18 +159,18 @@ public async Task<User?> GetFromTableAsync(string tableName, int id)
     // ✅ 内联验证代码（编译器完全优化）
     if (tableName.Length == 0 || tableName.Length > 128)
         throw new ArgumentException("Invalid table name length", nameof(tableName));
-    
+
     if (!char.IsLetter(tableName[0]) && tableName[0] != '_')
         throw new ArgumentException("Table name must start with letter or underscore", nameof(tableName));
-    
+
     if (tableName.Contains("DROP", StringComparison.OrdinalIgnoreCase) ||
         tableName.Contains("--") ||
         tableName.Contains("/*"))
         throw new ArgumentException("Invalid table name", nameof(tableName));
-    
+
     // ✅ 使用 C# 字符串插值（高性能）
     var sql = $"SELECT id, name, email FROM {tableName} WHERE id = @id";
-    
+
     // ... 执行 SQL
 }
 ```

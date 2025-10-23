@@ -1,3 +1,4 @@
+
 # Sqlx API 参考文档
 
 ## 🔐 动态占位符 API
@@ -60,12 +61,12 @@ public enum DynamicSqlType
     /// 标识符（表名、列名）- 最严格验证
     /// </summary>
     Identifier = 0,
-    
+
     /// <summary>
     /// SQL 片段（WHERE、JOIN、ORDER BY 等子句）- 中等验证
     /// </summary>
     Fragment = 1,
-    
+
     /// <summary>
     /// 表名部分（前缀、后缀）- 严格验证
     /// </summary>
@@ -99,25 +100,25 @@ public static class SqlValidator
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsValidIdentifier(ReadOnlySpan<char> identifier);
-    
+
     /// <summary>
     /// 检查是否包含危险关键字
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool ContainsDangerousKeyword(ReadOnlySpan<char> text);
-    
+
     /// <summary>
     /// 验证SQL片段（WHERE、JOIN等）- 优化版
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsValidFragment(ReadOnlySpan<char> fragment);
-    
+
     /// <summary>
     /// 验证表名部分（前缀、后缀）- 零 GC 版本
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsValidTablePart(ReadOnlySpan<char> part);
-    
+
     /// <summary>
     /// 根据类型验证动态 SQL 参数
     /// </summary>
@@ -135,7 +136,7 @@ public static class SqlValidator
 **参数**:
 - `identifier`: 要验证的标识符
 
-**返回值**: 
+**返回值**:
 - `true` - 有效
 - `false` - 无效
 
@@ -159,7 +160,7 @@ var isInvalid = SqlValidator.IsValidIdentifier("DROP TABLE".AsSpan()); // false
 **参数**:
 - `text`: 要检查的文本
 
-**返回值**: 
+**返回值**:
 - `true` - 包含危险关键字
 - `false` - 不包含
 
@@ -182,7 +183,7 @@ var safe = SqlValidator.ContainsDangerousKeyword("age > 18".AsSpan());         /
 **参数**:
 - `fragment`: SQL 片段
 
-**返回值**: 
+**返回值**:
 - `true` - 有效
 - `false` - 无效
 
@@ -206,7 +207,7 @@ var isInvalid = SqlValidator.IsValidFragment("age > 18; DROP TABLE users".AsSpan
 **参数**:
 - `part`: 表名部分
 
-**返回值**: 
+**返回值**:
 - `true` - 有效
 - `false` - 无效
 
@@ -230,7 +231,7 @@ var isInvalid = SqlValidator.IsValidTablePart("2024_10".AsSpan()); // false（�
 - `value`: 要验证的值
 - `type`: 验证类型
 
-**返回值**: 
+**返回值**:
 - `true` - 有效
 - `false` - 无效
 

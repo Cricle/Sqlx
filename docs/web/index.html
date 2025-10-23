@@ -537,9 +537,9 @@
                         ⚠️ 安全警告：动态占位符会绕过参数化查询，存在 SQL 注入风险！
                     </p>
                 </div>
-                
+
                 <p><strong>适用场景：</strong>多租户系统、分库分表、动态查询</p>
-                
+
                 <h5 style="margin-top: 20px; color: var(--primary);">使用示例：</h5>
                 <pre style="background: white; padding: 15px; border-radius: 8px; overflow-x: auto; border: 1px solid var(--border);"><code>// 1️⃣ 定义接口（必须显式标记 [DynamicSql]）
 [Sqlx("SELECT {{columns}} FROM {{@tableName}} WHERE id = @id")]
@@ -558,7 +558,7 @@ var user = await repo.GetFromTableAsync("users", userId);</code></pre>
                     <li><code>[DynamicSql(Type = DynamicSqlType.Fragment)]</code> - SQL片段（WHERE/JOIN子句）</li>
                     <li><code>[DynamicSql(Type = DynamicSqlType.TablePart)]</code> - 表名部分（前缀/后缀）</li>
                 </ul>
-                
+
                 <h5 style="margin-top: 20px; color: var(--primary);">安全要求：</h5>
                 <div class="grid" style="grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 10px;">
                     <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid var(--success);">
@@ -578,12 +578,12 @@ var user = await repo.GetFromTableAsync("users", userId);</code></pre>
                         </ul>
                     </div>
                 </div>
-                
+
                 <p style="margin-top: 20px; padding: 15px; background: white; border-radius: 8px; border: 1px solid var(--border);">
                     <strong>Roslyn 分析器支持：</strong> Sqlx 提供 10 个诊断规则，在编译时检测不安全的使用，包括：
                     缺少特性标记、不安全数据源、缺少验证、公共 API 暴露等。
                 </p>
-                
+
                 <p style="margin-top: 15px; text-align: center;">
                     <a href="../PLACEHOLDERS.md#动态占位符-前缀---高级功能" style="color: var(--primary); font-weight: 600; text-decoration: none;">
                         📖 查看完整文档 →

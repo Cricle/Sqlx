@@ -644,6 +644,12 @@ public class CodeGenerationService
             case ReturnTypeCategory.SingleEntity:
                 GenerateSingleEntityExecution(sb, returnTypeString, entityType, templateResult);
                 break;
+            case ReturnTypeCategory.DynamicDictionary:
+                GenerateDynamicDictionaryExecution(sb, innerType);
+                break;
+            case ReturnTypeCategory.DynamicDictionaryCollection:
+                GenerateDynamicDictionaryCollectionExecution(sb, innerType);
+                break;
             default:
                 // Non-query execution (INSERT, UPDATE, DELETE)
                 sb.AppendLine("__result__ = __cmd__.ExecuteNonQuery();");
@@ -748,6 +754,8 @@ public class CodeGenerationService
         Scalar,
         Collection,
         SingleEntity,
+        DynamicDictionary,          // Dictionary<string, object>
+        DynamicDictionaryCollection, // List<Dictionary<string, object>>
         Unknown
     }
 
@@ -755,6 +763,14 @@ public class CodeGenerationService
     private (ReturnTypeCategory Category, string InnerType) ClassifyReturnType(string returnType)
     {
         var innerType = ExtractInnerTypeFromTask(returnType);
+
+        // 检查动态字典集合类型：List<Dictionary<string, object>>
+        if (IsDynamicDictionaryCollection(innerType))
+            return (ReturnTypeCategory.DynamicDictionaryCollection, innerType);
+
+        // 检查动态字典类型：Dictionary<string, object>
+        if (IsDynamicDictionary(innerType))
+            return (ReturnTypeCategory.DynamicDictionary, innerType);
 
         // 检查标量类型
         if (innerType == "int" || innerType == "bool" || innerType == "decimal" || innerType == "double" || innerType == "string" || innerType == "long")
@@ -772,6 +788,31 @@ public class CodeGenerationService
             return (ReturnTypeCategory.SingleEntity, innerType);
 
         return (ReturnTypeCategory.Unknown, innerType);
+    }
+
+    /// <summary>
+    /// 检查是否为动态字典类型：Dictionary&lt;string, object&gt;
+    /// </summary>
+    private bool IsDynamicDictionary(string type)
+    {
+        // 支持多种格式：
+        // - Dictionary<string, object>
+        // - System.Collections.Generic.Dictionary<string, object>
+        // - global::System.Collections.Generic.Dictionary<string, object>
+        return type.Contains("Dictionary<string, object>") || 
+               type.Contains("Dictionary<System.String, System.Object>");
+    }
+
+    /// <summary>
+    /// 检查是否为动态字典集合类型：List&lt;Dictionary&lt;string, object&gt;&gt;
+    /// </summary>
+    private bool IsDynamicDictionaryCollection(string type)
+    {
+        // 支持多种格式：
+        // - List<Dictionary<string, object>>
+        // - System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, object>>
+        return (type.Contains("List<") && type.Contains("Dictionary<string, object>")) ||
+               (type.Contains("List<") && type.Contains("Dictionary<System.String, System.Object>"));
     }
 
     private bool IsScalarReturnType(string returnType) => ClassifyReturnType(returnType).Category == ReturnTypeCategory.Scalar;
@@ -823,6 +864,76 @@ public class CodeGenerationService
         sb.AppendLine("{");
         sb.PushIndent();
         sb.AppendLine("__result__ = default;");
+        sb.PopIndent();
+        sb.AppendLine("}");
+    }
+
+    /// <summary>
+    /// 生成动态字典集合的执行代码：List&lt;Dictionary&lt;string, object&gt;&gt;
+    /// 适用于运行时列不确定的查询（如报表、动态查询）
+    /// </summary>
+    private void GenerateDynamicDictionaryCollectionExecution(IndentedStringBuilder sb, string returnType)
+    {
+        // 确保使用全局命名空间前缀
+        var collectionType = returnType.StartsWith("System.") ? $"global::{returnType}" : returnType;
+        
+        sb.AppendLine($"__result__ = new {collectionType}();");
+        sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
+        sb.AppendLine();
+        sb.AppendLine("// 🚀 性能优化：预读取列名，避免每行重复调用GetName()");
+        sb.AppendLine("var fieldCount = reader.FieldCount;");
+        sb.AppendLine("var columnNames = new string[fieldCount];");
+        sb.AppendLine("for (var i = 0; i < fieldCount; i++)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("columnNames[i] = reader.GetName(i);");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+        sb.AppendLine("while (reader.Read())");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("// 🚀 性能优化：预分配容量");
+        sb.AppendLine("var dict = new global::System.Collections.Generic.Dictionary<string, object>(fieldCount);");
+        sb.AppendLine("for (var i = 0; i < fieldCount; i++)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("// 🛡️ 安全处理DBNull");
+        sb.AppendLine("dict[columnNames[i]] = reader.IsDBNull(i) ? null! : reader.GetValue(i);");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine($"(({collectionType})__result__).Add(dict);");
+        sb.PopIndent();
+        sb.AppendLine("}");
+    }
+
+    /// <summary>
+    /// 生成单行动态字典的执行代码：Dictionary&lt;string, object&gt;?
+    /// 适用于返回单行动态结果的查询
+    /// </summary>
+    private void GenerateDynamicDictionaryExecution(IndentedStringBuilder sb, string returnType)
+    {
+        sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
+        sb.AppendLine("if (reader.Read())");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("// 🚀 性能优化：预分配容量");
+        sb.AppendLine("var fieldCount = reader.FieldCount;");
+        sb.AppendLine("__result__ = new global::System.Collections.Generic.Dictionary<string, object>(fieldCount);");
+        sb.AppendLine("for (var i = 0; i < fieldCount; i++)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("var columnName = reader.GetName(i);");
+        sb.AppendLine("// 🛡️ 安全处理DBNull");
+        sb.AppendLine("__result__[columnName] = reader.IsDBNull(i) ? null! : reader.GetValue(i);");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine("else");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("__result__ = null;");
         sb.PopIndent();
         sb.AppendLine("}");
     }

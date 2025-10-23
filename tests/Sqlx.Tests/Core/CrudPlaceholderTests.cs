@@ -192,12 +192,12 @@ namespace TestNamespace
         Assert.IsTrue(sql.StartsWith("UPDATE todo"), $"SQL should start with UPDATE todo: {sql}");
         Assert.IsTrue(sql.Contains("SET"), $"SQL should contain SET: {sql}");
         Assert.IsTrue(sql.Contains("title"), $"SQL should contain column 'title': {sql}");
-        
+
         // Check that id is not in SET clause (but it's OK in WHERE clause)
         var setClause = sql.Substring(sql.IndexOf("SET"), sql.IndexOf("WHERE") - sql.IndexOf("SET"));
         Assert.IsFalse(setClause.Contains("id"), $"SET clause should not contain excluded column 'id': {setClause}");
         Assert.IsFalse(setClause.Contains("created_at"), $"SET clause should not contain excluded column 'created_at': {setClause}");
-        
+
         Assert.IsTrue(sql.Contains("WHERE"), $"SQL should contain WHERE: {sql}");
         Assert.IsFalse(result.Errors.Any());
     }
@@ -349,7 +349,7 @@ namespace TestNamespace
 
         // Assert
         var sql = result.ProcessedSql.Trim();
-        Assert.IsTrue(sql.Contains("todo_item") || sql.Contains("todo_items"), 
+        Assert.IsTrue(sql.Contains("todo_item") || sql.Contains("todo_items"),
             $"Table name should be converted to snake_case: {sql}");
     }
 
@@ -387,7 +387,7 @@ namespace TestNamespace
 
         // Assert
         // Should still generate INSERT INTO, ignoring invalid option
-        Assert.IsTrue(result.ProcessedSql.Contains("INSERT INTO"), 
+        Assert.IsTrue(result.ProcessedSql.Contains("INSERT INTO"),
             $"Should generate INSERT INTO despite invalid option: {result.ProcessedSql}");
     }
 
@@ -402,7 +402,7 @@ namespace TestNamespace
 
         // Assert
         // Should either use a default or add a warning
-        Assert.IsTrue(result.ProcessedSql.Contains("UPDATE") || result.Warnings.Any(), 
+        Assert.IsTrue(result.ProcessedSql.Contains("UPDATE") || result.Warnings.Any(),
             "Should generate UPDATE or add warning");
     }
 
@@ -417,7 +417,7 @@ namespace TestNamespace
 
         // Assert
         // The diagnostic system should warn about DELETE without WHERE
-        Assert.IsTrue(result.ProcessedSql.Contains("DELETE FROM"), 
+        Assert.IsTrue(result.ProcessedSql.Contains("DELETE FROM"),
             $"Should generate DELETE FROM: {result.ProcessedSql}");
     }
 
@@ -450,7 +450,7 @@ namespace TestNamespace
         stopwatch.Stop();
 
         // Assert - Should complete quickly (< 1 second for 3000 operations)
-        Assert.IsTrue(stopwatch.ElapsedMilliseconds < 1000, 
+        Assert.IsTrue(stopwatch.ElapsedMilliseconds < 1000,
             $"CRUD placeholder processing should be fast. Took {stopwatch.ElapsedMilliseconds}ms");
     }
 
@@ -473,7 +473,7 @@ namespace TestNamespace
             {
                 var engine = new SqlTemplateEngine();
                 var result = engine.ProcessTemplate(template, _testMethod, _todoType, "Todo");
-                
+
                 if (result.Errors.Any())
                 {
                     exceptions.Add(new System.Exception($"Thread {i}: {string.Join(", ", result.Errors)}"));
@@ -486,7 +486,7 @@ namespace TestNamespace
         });
 
         // Assert
-        Assert.IsFalse(exceptions.Any(), 
+        Assert.IsFalse(exceptions.Any(),
             $"Should be thread-safe. Exceptions: {string.Join("; ", exceptions.Select(e => e.Message))}");
     }
 

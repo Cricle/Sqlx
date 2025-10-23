@@ -74,7 +74,7 @@ public class SqlTemplateEngineTests
         var result = _engine.ProcessTemplate(template, null!, null!, "users");
 
         // Assert
-        Assert.IsTrue(result.ProcessedSql.Contains("{tableName}"), 
+        Assert.IsTrue(result.ProcessedSql.Contains("{tableName}"),
             "Dynamic placeholder should be converted to C# string interpolation format");
     }
 
@@ -122,7 +122,7 @@ public class SqlTemplateEngineTests
 
         // Assert
         Assert.IsTrue(result.HasDynamicFeatures);
-        Assert.IsTrue(result.ProcessedSql.Contains("{tableName}"), 
+        Assert.IsTrue(result.ProcessedSql.Contains("{tableName}"),
             "Dynamic placeholder should be processed");
         // 注意：{{columns}} 应该被替换为实际的列名，但这里我们只测试动态占位符标记
     }

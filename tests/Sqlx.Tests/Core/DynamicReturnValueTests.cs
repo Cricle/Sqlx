@@ -72,7 +72,7 @@ namespace TestNamespace
 
         // 获取测试符号
         _userEntityType = _compilation.GetTypeByMetadataName("TestNamespace.User")!;
-        
+
         // 获取 Dictionary<string, object> 和 List<Dictionary<string, object>> 类型
         _dictionaryStringObjectType = _compilation.GetTypeByMetadataName("System.Collections.Generic.Dictionary`2")!
             .Construct(_compilation.GetSpecialType(SpecialType.System_String), _compilation.GetSpecialType(SpecialType.System_Object));
@@ -88,15 +88,15 @@ namespace TestNamespace
         // Arrange
         var serviceType = _compilation.GetTypeByMetadataName("TestNamespace.IReportService")!;
         var method = serviceType.GetMembers("GetDynamicReport").OfType<IMethodSymbol>().First();
-        
+
         // Act
         var returnType = method.ReturnType as INamedTypeSymbol;
-        
+
         // Assert - 验证返回类型是 List<Dictionary<string, object>>
         Assert.IsNotNull(returnType);
         Assert.AreEqual("List", returnType.Name);
         Assert.IsTrue(returnType.TypeArguments.Length > 0);
-        
+
         var dictType = returnType.TypeArguments[0] as INamedTypeSymbol;
         Assert.IsNotNull(dictType);
         Assert.AreEqual("Dictionary", dictType.Name);
@@ -111,10 +111,10 @@ namespace TestNamespace
         // Arrange
         var serviceType = _compilation.GetTypeByMetadataName("TestNamespace.IReportService")!;
         var method = serviceType.GetMembers("GetRegexReport").OfType<IMethodSymbol>().First();
-        
+
         // Act
         var returnType = method.ReturnType;
-        
+
         // Assert - 验证方法支持 --regex 参数
         Assert.IsNotNull(method.Parameters.FirstOrDefault(p => p.Name == "regexPattern"));
     }
@@ -125,10 +125,10 @@ namespace TestNamespace
         // Arrange
         var serviceType = _compilation.GetTypeByMetadataName("TestNamespace.IReportService")!;
         var method = serviceType.GetMembers("GetSingleRow").OfType<IMethodSymbol>().First();
-        
+
         // Act
         var returnType = method.ReturnType;
-        
+
         // Assert - 单行应该返回 Dictionary<string, object>? (nullable)
         Assert.IsTrue(returnType.NullableAnnotation == NullableAnnotation.Annotated ||
                      returnType.ToString().Contains("?"),
@@ -149,7 +149,7 @@ namespace TestNamespace
         // 3. 使用 reader.GetName(i) 获取列名
         // 4. 使用 reader.GetValue(i) 获取值
         // 5. 处理 DBNull
-        
+
         // 这里我们只是标记测试意图
         Assert.IsTrue(true, "CodeGen test - to be implemented with actual generator");
     }
@@ -162,7 +162,7 @@ namespace TestNamespace
         //     dict[columnName] = null;
         // else
         //     dict[columnName] = reader.GetValue(i);
-        
+
         Assert.IsTrue(true, "DBNull handling test - to be implemented with actual generator");
     }
 
@@ -172,10 +172,10 @@ namespace TestNamespace
         // Arrange
         var serviceType = _compilation.GetTypeByMetadataName("TestNamespace.IReportService")!;
         var method = serviceType.GetMembers("GetAsyncReport").OfType<IMethodSymbol>().First();
-        
+
         // Act
         var returnType = method.ReturnType as INamedTypeSymbol;
-        
+
         // Assert - 验证异步支持
         Assert.IsNotNull(returnType);
         Assert.AreEqual("Task", returnType.Name);
@@ -191,7 +191,7 @@ namespace TestNamespace
         // 验证生成的代码应该：
         // var capacity = reader.FieldCount;
         // var dict = new Dictionary<string, object>(capacity);
-        
+
         Assert.IsTrue(true, "Performance test - should pre-allocate capacity");
     }
 
@@ -200,7 +200,7 @@ namespace TestNamespace
     {
         // 验证生成的代码应该：
         // 第一次读取列名并缓存，避免每行重复调用 GetName()
-        
+
         Assert.IsTrue(true, "Performance test - should cache column names");
     }
 
@@ -213,7 +213,7 @@ namespace TestNamespace
     {
         // 验证生成的代码应该：
         // 检查列名是否合法（防止注入）
-        
+
         Assert.IsTrue(true, "Security test - should validate column names");
     }
 
@@ -221,7 +221,7 @@ namespace TestNamespace
     public void Security_DynamicReturn_ShouldNotExposeSensitiveData()
     {
         // 验证：如果SQL中有敏感字段，应该给出警告
-        
+
         Assert.IsTrue(true, "Security test - should warn about sensitive fields");
     }
 
@@ -233,7 +233,7 @@ namespace TestNamespace
     public void Boundary_DynamicReturn_EmptyResult_ShouldReturnEmptyList()
     {
         // 验证：没有数据时应该返回空List，而不是null
-        
+
         Assert.IsTrue(true, "Boundary test - empty result should return empty list");
     }
 
@@ -241,7 +241,7 @@ namespace TestNamespace
     public void Boundary_DynamicReturn_ZeroColumns_ShouldReturnEmptyDict()
     {
         // 验证：没有列时应该返回空Dictionary
-        
+
         Assert.IsTrue(true, "Boundary test - zero columns should return empty dict");
     }
 
@@ -249,7 +249,7 @@ namespace TestNamespace
     public void Boundary_DynamicReturn_NullValue_ShouldStoreNull()
     {
         // 验证：DBNull 应该转换为 C# null
-        
+
         Assert.IsTrue(true, "Boundary test - DBNull should convert to null");
     }
 
@@ -263,7 +263,7 @@ namespace TestNamespace
         // 验证：--regex 应该能与动态返回值结合使用
         // SELECT {{columns --regex ^user_}} 
         // 返回 List<Dictionary<string, object>>
-        
+
         Assert.IsTrue(true, "Integration test - combine with --regex");
     }
 
@@ -272,7 +272,7 @@ namespace TestNamespace
     {
         // 验证：应该支持模板占位符
         // SELECT {{columns}} FROM {{table}} WHERE {{where}}
-        
+
         Assert.IsTrue(true, "Integration test - work with templates");
     }
 

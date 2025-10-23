@@ -256,7 +256,7 @@ namespace TestNamespace
         StringAssert.Contains(result.ProcessedSql, "id");
         StringAssert.Contains(result.ProcessedSql, "category_id");
         StringAssert.Contains(result.ProcessedSql, "supplier_id");
-        
+
         // 不应该包含其他列
         Assert.IsFalse(result.ProcessedSql.Contains("name"), "Should not contain 'name'");
         Assert.IsFalse(result.ProcessedSql.Contains("price"), "Should not contain 'price'");
@@ -273,7 +273,7 @@ namespace TestNamespace
         // 这可以减少 60-70% 的 IsDBNull 调用
 
         var properties = _entityType.GetMembers().OfType<IPropertySymbol>().ToArray();
-        
+
         // 统计 nullable 和 non-nullable 属性数量
         var nullableCount = properties.Count(p => p.Type.IsNullableType());
         var nonNullableCount = properties.Count(p => !p.Type.IsNullableType());
@@ -281,11 +281,11 @@ namespace TestNamespace
         // 在这个测试实体中，nullable 和 non-nullable 应该大致相当
         Assert.IsTrue(nullableCount > 0, "Should have nullable properties");
         Assert.IsTrue(nonNullableCount > 0, "Should have non-nullable properties");
-        
+
         // 验证 IsDBNull 调用减少的百分比
         var totalProps = nullableCount + nonNullableCount;
         var savedChecks = (double)nonNullableCount / totalProps * 100;
-        
+
         Assert.IsTrue(savedChecks > 40, $"Should save at least 40% of IsDBNull checks, actual: {savedChecks:F1}%");
     }
 

@@ -47,7 +47,7 @@ namespace TestNamespace
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
         // 验证参数绑定代码存在
         Assert.IsTrue(generatedCode.Contains("AddWithValue") || generatedCode.Contains("Parameters"));
@@ -89,7 +89,7 @@ namespace TestNamespace
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
         // 验证结果映射代码 - 直接索引访问
         Assert.IsTrue(generatedCode.Contains("Id ="));
@@ -127,7 +127,7 @@ namespace TestNamespace
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
         // 验证异常处理结构
         Assert.IsTrue(generatedCode.Contains("try"));
@@ -165,7 +165,7 @@ namespace TestNamespace
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
         // 验证命令创建代码
         Assert.IsTrue(generatedCode.Contains("CreateCommand") || generatedCode.Contains("__cmd__"));
@@ -201,7 +201,7 @@ namespace TestNamespace
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
         // 验证命令释放代码在finally块
         Assert.IsTrue(generatedCode.Contains("__cmd__?.Dispose()"));
@@ -237,7 +237,7 @@ namespace TestNamespace
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
         // 验证异步代码生成 - 可能使用Task.FromResult或ExecuteNonQueryAsync
         Assert.IsTrue(generatedCode.Contains("Task") || generatedCode.Contains("GetAsync"));
@@ -274,7 +274,7 @@ namespace TestNamespace
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
         // 验证List生成代码
         Assert.IsTrue(generatedCode.Contains("List<"));
@@ -310,7 +310,7 @@ namespace TestNamespace
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
         Assert.IsTrue(generatedCode.Contains("GetByIdAsync"));
     }
@@ -343,7 +343,7 @@ namespace TestNamespace
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
         Assert.IsTrue(generatedCode.Contains("GetCountAsync"));
     }
@@ -382,7 +382,7 @@ namespace TestNamespace
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
         // 验证非查询代码生成
         Assert.IsTrue(generatedCode.Contains("ExecuteNonQuery") || generatedCode.Contains("InsertAsync"));
@@ -424,7 +424,7 @@ namespace TestNamespace
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
         // 验证IsDBNull检查生成
         Assert.IsTrue(generatedCode.Contains("IsDBNull"));

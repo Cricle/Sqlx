@@ -62,7 +62,7 @@ public class DialectIntegrationTests
         // SQL Server可能使用TOP或OFFSET-FETCH，与其他不同
         // MySQL, PostgreSQL, SQLite都使用LIMIT OFFSET
         var limitSyntaxes = new[] { sqlServerLimit, mySqlLimit, postgreSqlLimit, sqliteLimit };
-        
+
         // 至少应该有一些差异
         Assert.IsTrue(limitSyntaxes.Any(s => !string.IsNullOrEmpty(s)));
     }
@@ -106,7 +106,7 @@ public class DialectIntegrationTests
         // MySQL: CONCAT()
         // PostgreSQL: ||
         // SQLite: ||
-        
+
         // 确保都生成了有效的连接语法
         Assert.IsTrue(!string.IsNullOrEmpty(sqlServerConcat));
         Assert.IsTrue(!string.IsNullOrEmpty(mySqlConcat));
@@ -147,7 +147,7 @@ public class DialectIntegrationTests
             foreach (var batchSize in batchSizes)
             {
                 var result = provider.GenerateBatchInsert("users", new[] { "name" }, batchSize);
-                Assert.IsFalse(string.IsNullOrEmpty(result), 
+                Assert.IsFalse(string.IsNullOrEmpty(result),
                     $"{provider.DialectType} 应该处理批量大小 {batchSize}");
             }
         }
@@ -200,7 +200,7 @@ public class DialectIntegrationTests
             foreach (var date in testDates)
             {
                 var formatted = provider.FormatDateTime(date);
-                Assert.IsFalse(string.IsNullOrEmpty(formatted), 
+                Assert.IsFalse(string.IsNullOrEmpty(formatted),
                     $"{provider.DialectType} 应该格式化 {date}");
             }
         }

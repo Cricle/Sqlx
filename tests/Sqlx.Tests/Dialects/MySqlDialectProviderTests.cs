@@ -64,7 +64,7 @@ public class MySqlDialectProviderTests
     public void GenerateInsertWithReturning_ShouldUseLastInsertId()
     {
         var result = _provider.GenerateInsertWithReturning("users", new[] { "name", "email" });
-        
+
         Assert.IsTrue(result.Contains("INSERT INTO"));
         Assert.IsTrue(result.Contains("users"));
     }
@@ -76,7 +76,7 @@ public class MySqlDialectProviderTests
     public void GenerateBatchInsert_ShouldGenerateMultipleValueSets()
     {
         var result = _provider.GenerateBatchInsert("users", new[] { "name", "email" }, 3);
-        
+
         Assert.IsTrue(result.Contains("INSERT INTO"));
         Assert.IsTrue(result.Contains("users"));
         Assert.IsTrue(result.Contains("name"));
@@ -93,7 +93,7 @@ public class MySqlDialectProviderTests
             "users",
             new[] { "id", "name", "email" },
             new[] { "id" });
-        
+
         Assert.IsTrue(result.Contains("ON DUPLICATE KEY UPDATE") || result.Contains("INSERT"));
     }
 
@@ -143,7 +143,7 @@ public class MySqlDialectProviderTests
     {
         var dateTime = new DateTime(2024, 1, 15, 10, 30, 45);
         var result = _provider.FormatDateTime(dateTime);
-        
+
         Assert.IsNotNull(result);
         Assert.IsTrue(result.Contains("2024") || result.Contains("24"));
     }
@@ -165,7 +165,7 @@ public class MySqlDialectProviderTests
     public void GetConcatenationSyntax_ShouldUseConcatFunction()
     {
         var result = _provider.GetConcatenationSyntax("'Hello'", "' '", "'World'");
-        
+
         Assert.IsNotNull(result);
         Assert.IsTrue(result.Contains("CONCAT"));
     }

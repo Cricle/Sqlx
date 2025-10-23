@@ -102,19 +102,19 @@ namespace Sqlx
 
         /// <summary>Extract columns from selector</summary>
         private List<string> ExtractColumnsFromSelector<TResult>(Expression<Func<T, TResult>>? selector) => selector != null ? ExtractColumns(selector.Body) : new List<string>();
-    private List<string> ExtractColumnsFromSelectors(Expression<Func<T, object>>[]? selectors)
-    {
-        if (selectors == null || selectors.Length == 0) return new List<string>(0);
-
-        // 性能优化：预估容量避免重新分配
-        var result = new List<string>(selectors.Length * 2);
-        foreach (var selector in selectors)
+        private List<string> ExtractColumnsFromSelectors(Expression<Func<T, object>>[]? selectors)
         {
-            if (selector != null)
-                result.AddRange(ExtractColumns(selector.Body));
+            if (selectors == null || selectors.Length == 0) return new List<string>(0);
+
+            // 性能优化：预估容量避免重新分配
+            var result = new List<string>(selectors.Length * 2);
+            foreach (var selector in selectors)
+            {
+                if (selector != null)
+                    result.AddRange(ExtractColumns(selector.Body));
+            }
+            return result;
         }
-        return result;
-    }
 
         /// <summary>Adds WHERE condition</summary>
         public ExpressionToSql<T> Where(Expression<Func<T, bool>> predicate)

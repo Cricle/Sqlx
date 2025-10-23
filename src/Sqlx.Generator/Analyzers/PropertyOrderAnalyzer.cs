@@ -23,7 +23,7 @@ namespace Sqlx.Generator.Analyzers
 
         private static readonly LocalizableString Title = "属性顺序与SQL列顺序不匹配";
         private static readonly LocalizableString MessageFormat = "实体类型 '{0}' 的属性顺序与SQL列顺序不匹配。期望顺序: {1}";
-        private static readonly LocalizableString Description = 
+        private static readonly LocalizableString Description =
             "为了使用硬编码索引访问（极致性能），C#属性顺序必须与SQL模板中的列顺序一致。" +
             "当前使用 reader.GetInt32(0) 等硬编码索引访问，如果顺序不匹配会导致运行时错误。";
 
@@ -42,7 +42,7 @@ namespace Sqlx.Generator.Analyzers
         {
             context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
             context.EnableConcurrentExecution();
-            
+
             // 注册类声明分析
             context.RegisterSyntaxNodeAction(AnalyzeClassDeclaration, SyntaxKind.ClassDeclaration);
         }
@@ -98,9 +98,9 @@ namespace Sqlx.Generator.Analyzers
 
             // 这里简单示例：如果第一个属性不是id，发出警告
             // 实际应该与SQL模板比对，但在Analyzer中无法获取SQL模板，所以采用启发式规则
-            
+
             // 启发式规则1：如果类有Id属性，它应该是第一个
-            var idProperty = properties.FirstOrDefault(p => 
+            var idProperty = properties.FirstOrDefault(p =>
                 p.Name.Equals("Id", System.StringComparison.OrdinalIgnoreCase));
 
             if (idProperty != null && properties.IndexOf(idProperty) != 0)
@@ -122,10 +122,10 @@ namespace Sqlx.Generator.Analyzers
         {
             // Repository类分析：检查接口方法中使用的实体类型
             // 这里可以扩展以检查方法参数和返回类型
-            
+
             // 获取 RepositoryFor 特性的类型参数
             var repositoryForAttr = classSymbol.GetAttributes()
-                .FirstOrDefault(a => a.AttributeClass?.Name == "RepositoryForAttribute" || 
+                .FirstOrDefault(a => a.AttributeClass?.Name == "RepositoryForAttribute" ||
                                    a.AttributeClass?.Name == "RepositoryFor");
 
             if (repositoryForAttr == null || repositoryForAttr.ConstructorArguments.Length == 0)
@@ -170,7 +170,7 @@ namespace Sqlx.Generator.Analyzers
         {
             // 检查是否是实体类型（有TableName特性）
             return type.GetAttributes().Any(a =>
-                a.AttributeClass?.Name == "TableNameAttribute" || 
+                a.AttributeClass?.Name == "TableNameAttribute" ||
                 a.AttributeClass?.Name == "TableName");
         }
 

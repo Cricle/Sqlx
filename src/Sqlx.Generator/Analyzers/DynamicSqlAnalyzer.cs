@@ -69,7 +69,7 @@ public class DynamicSqlAnalyzer : DiagnosticAnalyzer
 
         // 检查是否有[Sqlx]或[SqlxAttribute]特性
         var sqlxAttribute = methodSymbol.GetAttributes()
-            .FirstOrDefault(attr => attr.AttributeClass?.Name == "SqlxAttribute" || 
+            .FirstOrDefault(attr => attr.AttributeClass?.Name == "SqlxAttribute" ||
                                    attr.AttributeClass?.Name == "Sqlx");
 
         if (sqlxAttribute == null)
@@ -100,7 +100,7 @@ public class DynamicSqlAnalyzer : DiagnosticAnalyzer
         // 检查SQLX2001和SQLX2006
         foreach (var placeholderName in dynamicPlaceholders)
         {
-            var parameter = parameters.FirstOrDefault(p => 
+            var parameter = parameters.FirstOrDefault(p =>
                 p.Name.Equals(placeholderName, System.StringComparison.Ordinal));
 
             if (parameter == null)
@@ -108,7 +108,7 @@ public class DynamicSqlAnalyzer : DiagnosticAnalyzer
 
             // 检查是否有[DynamicSql]特性
             var hasDynamicSqlAttribute = parameter.GetAttributes()
-                .Any(attr => attr.AttributeClass?.Name == "DynamicSqlAttribute" || 
+                .Any(attr => attr.AttributeClass?.Name == "DynamicSqlAttribute" ||
                             attr.AttributeClass?.Name == "DynamicSql");
 
             if (!hasDynamicSqlAttribute)
@@ -178,7 +178,7 @@ public class DynamicSqlAnalyzer : DiagnosticAnalyzer
     private static System.Collections.Generic.HashSet<string> ExtractDynamicPlaceholders(string sqlTemplate)
     {
         var placeholders = new System.Collections.Generic.HashSet<string>();
-        
+
         // 简单的正则匹配 {{@paramName}}
         var pattern = @"\{\{@(\w+)\}\}";
         var matches = System.Text.RegularExpressions.Regex.Matches(sqlTemplate, pattern);

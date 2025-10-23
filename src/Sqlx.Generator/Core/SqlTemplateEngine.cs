@@ -43,7 +43,7 @@ public class SqlTemplateEngine
 
     // 正则表达式缓存 - 避免重复编译
     private static readonly ConcurrentDictionary<string, Regex> RegexCache = new ConcurrentDictionary<string, Regex>();
-    
+
     // 正则超时设置 - 防止ReDoS攻击
     private static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(100);
 
@@ -101,7 +101,7 @@ public class SqlTemplateEngine
 
         // 增强安全验证 - 基于数据库方言
         if (!ValidateTemplateSecurity(templateSql, result, dialect))
-        return result;
+            return result;
 
         // 处理模板 - 传递数据库方言
         var processedSql = ProcessPlaceholders(templateSql, method!, entityType, tableName, result, dialect);

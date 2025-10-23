@@ -22,12 +22,12 @@ public class SqlTemplateEngineSecurityTests
     public void Initialize()
     {
         _engine = new SqlTemplateEngine();
-        
+
         // 创建测试用的 IMethodSymbol 和 INamedTypeSymbol
         var compilation = CreateTestCompilation();
         var testClass = compilation.GetTypeByMetadataName("TestEntity")!;
         _testEntity = testClass;
-        
+
         var methodClass = compilation.GetTypeByMetadataName("TestMethods")!;
         _testMethod = methodClass.GetMembers("GetAllAsync").OfType<IMethodSymbol>().First();
     }
@@ -38,14 +38,14 @@ public class SqlTemplateEngineSecurityTests
     {
         // Arrange
         var template = "SELECT {{columns}} FROM {{table}} {{orderby created_at --desc}}";
-        
+
         // Act
         var result = _engine!.ProcessTemplate(template, _testMethod!, _testEntity!, "test_table");
-        
+
         // Assert
         Assert.IsNotNull(result);
         Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), "ProcessedSql 不应为空");
-        Assert.IsFalse(result.Errors.Any(e => e.Contains("SQL injection")), 
+        Assert.IsFalse(result.Errors.Any(e => e.Contains("SQL injection")),
             $"不应该有 SQL 注入错误。实际错误: {string.Join("; ", result.Errors)}");
     }
 
@@ -55,10 +55,10 @@ public class SqlTemplateEngineSecurityTests
     {
         // Arrange
         var template = "SELECT {{columns}} FROM {{table}} {{orderby created_at --desc}}";
-        
+
         // Act
         var result = _engine!.ProcessTemplate(template, _testMethod!, _testEntity!, "test_table");
-        
+
         // Assert
         Assert.IsNotNull(result.ProcessedSql);
         Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), "ProcessedSql 不应为空");
@@ -73,10 +73,10 @@ public class SqlTemplateEngineSecurityTests
     {
         // Arrange
         var template = "SELECT {{columns}} FROM {{table}} {{orderby created_at --desc}}";
-        
+
         // Act
         var result = _engine!.ProcessTemplate(template, _testMethod!, _testEntity!, "test_table");
-        
+
         // Assert
         StringAssert.Contains(result.ProcessedSql, "ORDER BY");
         StringAssert.Contains(result.ProcessedSql, "DESC");
@@ -96,16 +96,16 @@ public class SqlTemplateEngineSecurityTests
             "SELECT * FROM {{table}} {{orderby created_at --desc}}",
             "SELECT * FROM {{table}} {{limit --offset 10}}"
         };
-        
+
         foreach (var template in templates)
         {
             // Act
             var result = _engine!.ProcessTemplate(template, _testMethod!, _testEntity!, "test_table");
-            
+
             // Assert
-            Assert.IsFalse(result.Errors.Any(e => e.Contains("SQL injection")), 
+            Assert.IsFalse(result.Errors.Any(e => e.Contains("SQL injection")),
                 $"模板 '{template}' 不应触发 SQL 注入检测。错误: {string.Join("; ", result.Errors)}");
-            Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), 
+            Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql),
                 $"模板 '{template}' 应该生成非空的 SQL");
         }
     }
@@ -123,14 +123,14 @@ public class SqlTemplateEngineSecurityTests
             "exec('malicious code')",
             "SELECT * FROM users /* comment */ WHERE id = 1"
         };
-        
+
         foreach (var template in maliciousTemplates)
         {
             // Act
             var result = _engine!.ProcessTemplate(template, _testMethod!, _testEntity!, "test_table");
-            
+
             // Assert
-            Assert.IsTrue(result.Errors.Any(e => e.Contains("SQL injection") || e.Contains("security")), 
+            Assert.IsTrue(result.Errors.Any(e => e.Contains("SQL injection") || e.Contains("security")),
                 $"恶意模板 '{template}' 应该被检测为 SQL 注入");
         }
     }
@@ -141,10 +141,10 @@ public class SqlTemplateEngineSecurityTests
     {
         // Arrange
         var template = "";
-        
+
         // Act
         var result = _engine!.ProcessTemplate(template, _testMethod!, _testEntity!, "test_table");
-        
+
         // Assert
         Assert.IsNotNull(result);
         Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), "应该有默认值");
@@ -157,10 +157,10 @@ public class SqlTemplateEngineSecurityTests
     {
         // Arrange
         var template = "SELECT {{columns}} FROM {{table}}";
-        
+
         // Act
         var result = _engine!.ProcessTemplate(template, _testMethod!, _testEntity!, "test_table");
-        
+
         // Assert
         var lowerSql = result.ProcessedSql.ToLowerInvariant();
         StringAssert.Contains(lowerSql, "id");

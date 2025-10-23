@@ -51,7 +51,7 @@ namespace TestNamespace
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
         // SQLite通常不使用列引号，或者使用双引号
         Assert.IsFalse(generatedCode.Contains("[Id]"), "SQLite不应该使用方括号");
@@ -92,10 +92,10 @@ namespace TestNamespace
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
         // SQL Server使用方括号
-        Assert.IsTrue(generatedCode.Contains("[Id]") || generatedCode.Contains("Id"), 
+        Assert.IsTrue(generatedCode.Contains("[Id]") || generatedCode.Contains("Id"),
             "SQL Server应该使用方括号或不引号");
     }
 
@@ -133,10 +133,10 @@ namespace TestNamespace
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
         // MySQL使用反引号
-        Assert.IsTrue(generatedCode.Contains("`Id`") || generatedCode.Contains("Id"), 
+        Assert.IsTrue(generatedCode.Contains("`Id`") || generatedCode.Contains("Id"),
             "MySQL应该使用反引号或不引号");
     }
 
@@ -174,10 +174,10 @@ namespace TestNamespace
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
         // PostgreSQL使用双引号
-        Assert.IsTrue(generatedCode.Contains("\"Id\"") || generatedCode.Contains("Id"), 
+        Assert.IsTrue(generatedCode.Contains("\"Id\"") || generatedCode.Contains("Id"),
             "PostgreSQL应该使用双引号或不引号");
     }
 
@@ -324,10 +324,10 @@ namespace TestNamespace
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
         // 验证参数绑定和其他功能正常
-        Assert.IsTrue(generatedCode.Contains("@id") || generatedCode.Contains("AddWithValue"), 
+        Assert.IsTrue(generatedCode.Contains("@id") || generatedCode.Contains("AddWithValue"),
             "参数绑定应该正常工作");
     }
 }

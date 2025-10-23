@@ -202,7 +202,7 @@ public class CodeGenerationService
                     sb.AppendLine($"/// <para>  • {paramType} {paramName}{attributes}</para>");
                 }
             }
-            
+
             // Show SQL parameter placeholders
             if (templateResult.Parameters.Count > 0)
             {
@@ -210,9 +210,9 @@ public class CodeGenerationService
                 foreach (var param in templateResult.Parameters)
                 {
                     // 尝试从方法参数中找到对应的类型
-                    var methodParam = method.Parameters.FirstOrDefault(p => 
+                    var methodParam = method.Parameters.FirstOrDefault(p =>
                         string.Equals(p.Name, param.Key, StringComparison.OrdinalIgnoreCase));
-                    var paramInfo = methodParam != null 
+                    var paramInfo = methodParam != null
                         ? $"@{param.Key} ({methodParam.Type.GetCachedDisplayString()})"
                         : $"@{param.Key}";
                     sb.AppendLine($"/// <para>  • {paramInfo}</para>");
@@ -799,7 +799,7 @@ public class CodeGenerationService
         // - Dictionary<string, object>
         // - System.Collections.Generic.Dictionary<string, object>
         // - global::System.Collections.Generic.Dictionary<string, object>
-        return type.Contains("Dictionary<string, object>") || 
+        return type.Contains("Dictionary<string, object>") ||
                type.Contains("Dictionary<System.String, System.Object>");
     }
 
@@ -876,7 +876,7 @@ public class CodeGenerationService
     {
         // 确保使用全局命名空间前缀
         var collectionType = returnType.StartsWith("System.") ? $"global::{returnType}" : returnType;
-        
+
         sb.AppendLine($"__result__ = new {collectionType}();");
         sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
         sb.AppendLine();

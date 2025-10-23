@@ -52,7 +52,7 @@ namespace TestNamespace
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
         // 验证生成的代码使用了connection参数
         Assert.IsTrue(generatedCode.Contains("connection") || generatedCode.Contains("Connection"));
@@ -131,7 +131,7 @@ namespace TestNamespace
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
         Assert.IsTrue(generatedCode.Contains("GetAsync"));
     }
@@ -198,7 +198,7 @@ namespace TestNamespace
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
         Assert.IsTrue(generatedCode.Contains("GetAsync"));
     }
@@ -276,7 +276,7 @@ namespace TestNamespace
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
         Assert.IsTrue(generatedCode.Contains("GetAllAsync"));
         Assert.IsTrue(generatedCode.Contains("GetByIdAsync"));

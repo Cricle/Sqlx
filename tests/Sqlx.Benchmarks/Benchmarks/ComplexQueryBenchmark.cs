@@ -218,7 +218,7 @@ public class ComplexQueryBenchmark
 
         // 3. 再次查询 - 测试多次调用
         var allUsers = _userRepository.GetTopNSync(100);
-        
+
         return totalCount;
     }
 }

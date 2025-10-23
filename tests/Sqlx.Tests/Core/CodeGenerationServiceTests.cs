@@ -66,16 +66,16 @@ namespace TestNamespace
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "TodoRepository");
-        
+
         // 验证所有CRUD方法都生成了
         Assert.IsTrue(generatedCode.Contains("GetAllAsync"));
         Assert.IsTrue(generatedCode.Contains("GetByIdAsync"));
         Assert.IsTrue(generatedCode.Contains("CreateAsync"));
         Assert.IsTrue(generatedCode.Contains("UpdateAsync"));
         Assert.IsTrue(generatedCode.Contains("DeleteAsync"));
-        
+
         // 验证类结构正确
         Assert.IsTrue(generatedCode.Contains("partial class TodoRepository"));
     }
@@ -110,7 +110,7 @@ namespace MyCompany.Data.Repositories
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
         Assert.IsTrue(generatedCode.Contains("namespace MyCompany.Data.Repositories"));
     }
@@ -145,9 +145,9 @@ namespace TestNamespace
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
-        
+
         // 验证必要的using指令
         Assert.IsTrue(generatedCode.Contains("using System"));
         Assert.IsTrue(generatedCode.Contains("using System.Data"));
@@ -183,9 +183,9 @@ namespace TestNamespace
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
-        
+
         // 验证三个partial方法声明
         Assert.IsTrue(generatedCode.Contains("partial void OnExecuting"));
         Assert.IsTrue(generatedCode.Contains("partial void OnExecuted"));
@@ -222,9 +222,9 @@ namespace TestNamespace
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
-        
+
         // 验证Activity追踪代码
         Assert.IsTrue(generatedCode.Contains("Activity.Current"));
         Assert.IsTrue(generatedCode.Contains("Stopwatch.GetTimestamp()"));
@@ -276,9 +276,9 @@ namespace TestNamespace
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
-        
+
         // 验证所有方法都生成了
         Assert.IsTrue(generatedCode.Contains("GetAllAsync"));
         Assert.IsTrue(generatedCode.Contains("GetByIdAsync"));
@@ -323,7 +323,7 @@ namespace TestNamespace
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
         Assert.IsTrue(generatedCode.Contains("GetListAsync"));
         Assert.IsTrue(generatedCode.Contains("GetEnumerableAsync"));
@@ -361,7 +361,7 @@ namespace TestNamespace
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
         Assert.IsTrue(generatedCode.Contains("GetAsync"));
     }
@@ -403,7 +403,7 @@ namespace TestNamespace
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
         Assert.IsTrue(generatedCode.Contains("GetAsync"));
     }

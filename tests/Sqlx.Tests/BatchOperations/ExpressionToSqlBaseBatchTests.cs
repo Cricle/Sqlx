@@ -28,17 +28,17 @@ public class ExpressionToSqlBaseBatchTests
 
         public override string ToSql() => string.Empty;
         public override SqlTemplate ToTemplate() => new SqlTemplate();
-        
+
         // Public accessors for testing internal fields
         public new List<string> _whereConditions => base._whereConditions;
         public new Dictionary<string, object?> _parameters => base._parameters;
         public new ExpressionToSqlBase? _whereExpression => base._whereExpression;
-        public new List<Dictionary<string, object?>>? _batchParameters 
+        public new List<Dictionary<string, object?>>? _batchParameters
         {
             get => base._batchParameters;
             set => base._batchParameters = value;
         }
-        
+
         public new string GetMergedWhereConditions() => base.GetMergedWhereConditions();
         public new Dictionary<string, object?> GetMergedParameters() => base.GetMergedParameters();
     }

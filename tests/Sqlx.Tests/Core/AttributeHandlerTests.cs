@@ -49,10 +49,10 @@ namespace TestNamespace
 }";
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
-        
-        Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error), 
+
+        Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error),
             "不应该有编译错误");
-        
+
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
         Assert.IsTrue(generatedCode.Contains("GetUserAsync"), "应该生成GetUserAsync方法");
     }
@@ -85,7 +85,7 @@ namespace TestNamespace
 }";
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
-        
+
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
         Assert.IsTrue(generatedCode.Contains("partial class UserRepository"));
@@ -126,7 +126,7 @@ namespace TestNamespace
 }";
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
-        
+
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
         // TableName主要用于占位符替换，不一定直接出现在生成的C#代码中
@@ -162,7 +162,7 @@ namespace TestNamespace
 }";
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
-        
+
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
         Assert.IsTrue(generatedCode.Contains("UserRepository"));
@@ -197,7 +197,7 @@ namespace TestNamespace
 }";
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
-        
+
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
     }
 
@@ -230,7 +230,7 @@ namespace TestNamespace
 }";
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
-        
+
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
     }
 
@@ -256,12 +256,12 @@ namespace TestNamespace
 }";
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
-        
+
         // 没有RepositoryFor特性，不应该生成代码
         var allGenerated = compilation.SyntaxTrees
             .Where(st => st.FilePath.Contains("UserRepository"))
             .ToList();
-        
+
         // 应该只有源代码，没有生成的代码
         Assert.IsTrue(allGenerated.Count <= 1, "不应该生成额外的代码");
     }
@@ -301,7 +301,7 @@ namespace TestNamespace
 }";
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
-        
+
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "UserRepository");
         // TableName主要用于占位符替换，验证代码生成成功即可

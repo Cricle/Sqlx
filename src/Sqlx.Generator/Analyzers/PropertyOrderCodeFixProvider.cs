@@ -23,7 +23,7 @@ namespace Sqlx.Generator.Analyzers
     [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(PropertyOrderCodeFixProvider)), Shared]
     public class PropertyOrderCodeFixProvider : CodeFixProvider
     {
-        public sealed override ImmutableArray<string> FixableDiagnosticIds => 
+        public sealed override ImmutableArray<string> FixableDiagnosticIds =>
             ImmutableArray.Create(PropertyOrderAnalyzer.DiagnosticId);
 
         public sealed override FixAllProvider GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;

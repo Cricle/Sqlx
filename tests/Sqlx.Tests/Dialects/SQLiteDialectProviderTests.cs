@@ -64,7 +64,7 @@ public class SQLiteDialectProviderTests
     public void GenerateInsertWithReturning_ShouldUseReturningOrLastInsertRowid()
     {
         var result = _provider.GenerateInsertWithReturning("users", new[] { "name", "email" });
-        
+
         Assert.IsTrue(result.Contains("INSERT INTO"));
         Assert.IsTrue(result.Contains("users"));
     }
@@ -76,7 +76,7 @@ public class SQLiteDialectProviderTests
     public void GenerateBatchInsert_ShouldGenerateMultipleValueSets()
     {
         var result = _provider.GenerateBatchInsert("users", new[] { "name", "email" }, 3);
-        
+
         Assert.IsTrue(result.Contains("INSERT INTO"));
         Assert.IsTrue(result.Contains("users"));
         Assert.IsTrue(result.Contains("name"));
@@ -93,7 +93,7 @@ public class SQLiteDialectProviderTests
             "users",
             new[] { "id", "name", "email" },
             new[] { "id" });
-        
+
         Assert.IsTrue(result.Contains("INSERT") || result.Contains("REPLACE") || result.Contains("ON CONFLICT"));
     }
 
@@ -144,7 +144,7 @@ public class SQLiteDialectProviderTests
     {
         var dateTime = new DateTime(2024, 1, 15, 10, 30, 45);
         var result = _provider.FormatDateTime(dateTime);
-        
+
         Assert.IsNotNull(result);
         Assert.IsTrue(result.Contains("2024") || result.Contains("24"));
     }
@@ -166,7 +166,7 @@ public class SQLiteDialectProviderTests
     public void GetConcatenationSyntax_ShouldUsePipeOperator()
     {
         var result = _provider.GetConcatenationSyntax("'Hello'", "' '", "'World'");
-        
+
         Assert.IsNotNull(result);
         // SQLite uses ||
         Assert.IsTrue(result.Contains("||"));

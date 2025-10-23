@@ -71,9 +71,9 @@ public class DynamicSqlAttributeTests
 
         // Assert
         Assert.IsNotNull(attributeUsage, "DynamicSqlAttribute should have AttributeUsage");
-        Assert.AreEqual(AttributeTargets.Parameter, attributeUsage.ValidOn, 
+        Assert.AreEqual(AttributeTargets.Parameter, attributeUsage.ValidOn,
             "DynamicSqlAttribute should only be valid on parameters");
-        Assert.IsFalse(attributeUsage.AllowMultiple, 
+        Assert.IsFalse(attributeUsage.AllowMultiple,
             "DynamicSqlAttribute should not allow multiple instances");
     }
 

@@ -41,6 +41,12 @@ public class SqlTemplateEngine
     private static readonly Func<IParameterSymbol, bool> NonSystemParameterFilter = p => p.Type.Name != "CancellationToken";
     private static readonly Func<IPropertySymbol, bool> AccessiblePropertyFilter = p => p.CanBeReferencedByName && p.GetMethod != null;
 
+    // 正则表达式缓存 - 避免重复编译
+    private static readonly ConcurrentDictionary<string, Regex> RegexCache = new ConcurrentDictionary<string, Regex>();
+    
+    // 正则超时设置 - 防止ReDoS攻击
+    private static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(100);
+
     // 安全性：敏感字段检测
     private static readonly HashSet<string> SensitiveFieldNames = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -557,6 +563,36 @@ public class SqlTemplateEngine
                 excludeSet.Add(item.Trim());
         }
 
+        // 解析 --regex 选项（用于正则表达式过滤）
+        var regexPattern = ExtractCommandLineOption(options, "--regex");
+        Regex? compiledRegex = null;
+        if (!string.IsNullOrEmpty(regexPattern))
+        {
+            try
+            {
+                // 从缓存获取或编译新正则表达式
+                compiledRegex = RegexCache.GetOrAdd(regexPattern, pattern =>
+                {
+                    // 编译正则表达式，使用超时防止ReDoS
+                    return new Regex(pattern, RegexOptions.Compiled | RegexOptions.CultureInvariant, RegexTimeout);
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                // 正则表达式语法错误
+                throw new ArgumentException($"Invalid regex pattern '{regexPattern}': {ex.Message}", ex);
+            }
+        }
+
+        // 解析 --only 选项（显式包含列）
+        var onlyOption = ExtractCommandLineOption(options, "--only");
+        var onlySet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (!string.IsNullOrEmpty(onlyOption))
+        {
+            foreach (var item in onlyOption.Split(new char[] { ' ', ',' }, StringSplitOptions.RemoveEmptyEntries))
+                onlySet.Add(item.Trim());
+        }
+
         // 检查显式包含敏感字段的选项
         var includeOption = ExtractOption(options, "include", "");
         var includeSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -576,6 +612,33 @@ public class SqlTemplateEngine
                 (!requireSetter || property.SetMethod != null) &&
                 !excludeSet.Contains(property.Name))
             {
+                // 转换为snake_case进行过滤（与实际列名一致）
+                var columnName = SharedCodeGenerationUtilities.ConvertToSnakeCase(property.Name);
+
+                // --only 过滤（最高优先级）
+                if (onlySet.Count > 0 && !onlySet.Contains(property.Name) && !onlySet.Contains(columnName))
+                {
+                    continue;
+                }
+
+                // --regex 过滤（在 --only 之后应用）
+                if (compiledRegex != null)
+                {
+                    try
+                    {
+                        // 对列名进行正则匹配（尝试Property名和snake_case列名）
+                        if (!compiledRegex.IsMatch(property.Name) && !compiledRegex.IsMatch(columnName))
+                        {
+                            continue; // 不匹配，跳过
+                        }
+                    }
+                    catch (RegexMatchTimeoutException)
+                    {
+                        // 正则匹配超时 - ReDoS 保护
+                        throw new InvalidOperationException($"Regex pattern '{regexPattern}' caused timeout - possible ReDoS attack");
+                    }
+                }
+
                 // 敏感字段安全检测
                 bool isSensitive = SensitiveFieldNames.Contains(property.Name);
 
@@ -594,6 +657,12 @@ public class SqlTemplateEngine
                     properties.Add(property);
                 }
             }
+        }
+
+        // 如果使用了--regex但没有匹配到任何列，添加警告
+        if (compiledRegex != null && properties.Count == 0)
+        {
+            result?.Warnings.Add($"No columns matched the regex pattern '{regexPattern}'");
         }
 
         return properties;

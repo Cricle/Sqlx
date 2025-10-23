@@ -15,7 +15,7 @@ namespace Sqlx.Generator;
 internal class SQLiteDialectProvider : BaseDialectProvider
 {
     /// <inheritdoc />
-    public override SqlDefine SqlDefine => new SqlDefine("[", "]", "'", "'", "@"); // Use @ for actual parameter generation
+    public override SqlDefine SqlDefine => SqlDefine.SQLite;
 
     /// <inheritdoc />
     public override Generator.SqlDefineTypes DialectType => SqlDefineTypes.SQLite;

@@ -14,8 +14,8 @@ namespace Sqlx
         /// <summary>PostgreSQL dialect configuration - uses "quotes" for columns and $ for parameters.</summary>
         public static readonly SqlDialect PostgreSql = new("\"", "\"", "'", "'", "$");
 
-        /// <summary>SQLite dialect configuration - uses [brackets] for columns and $ for parameters.</summary>
-        public static readonly SqlDialect SQLite = new("[", "]", "'", "'", "$");
+        /// <summary>SQLite dialect configuration - uses [brackets] for columns and @ for parameters (ADO.NET standard).</summary>
+        public static readonly SqlDialect SQLite = new("[", "]", "'", "'", "@");
 
         /// <summary>Oracle dialect configuration - uses "quotes" for columns and : for parameters.</summary>
         public static readonly SqlDialect Oracle = new("\"", "\"", "'", "'", ":");
@@ -74,13 +74,16 @@ namespace Sqlx
         public Annotations.SqlDefineTypes DbType => GetDatabaseInfo().Type;
 
         /// <summary>Helper method to determine database info once</summary>
+        /// <remarks>
+        /// Note: SQLite and SQL Server both use [brackets] and @, so we match SQL Server first by convention.
+        /// If SQLite-specific behavior is needed, use SqlDefine.SQLite explicitly.
+        /// </remarks>
         private (string Name, Annotations.SqlDefineTypes Type) GetDatabaseInfo() =>
             (ColumnLeft, ColumnRight, ParameterPrefix) switch
             {
                 ("`", "`", "@") => ("MySql", Annotations.SqlDefineTypes.MySql),
-                ("[", "]", "@") => ("SqlServer", Annotations.SqlDefineTypes.SqlServer),
+                ("[", "]", "@") => ("SqlServer", Annotations.SqlDefineTypes.SqlServer), // Also matches SQLite
                 ("\"", "\"", "$") => ("PostgreSql", Annotations.SqlDefineTypes.PostgreSql),
-                ("[", "]", "$") => ("SQLite", Annotations.SqlDefineTypes.SQLite),
                 ("\"", "\"", ":") => ("Oracle", Annotations.SqlDefineTypes.Oracle),
                 ("\"", "\"", "?") => ("DB2", Annotations.SqlDefineTypes.DB2),
                 _ => throw new NotSupportedException($"Unknown dialect: {ColumnLeft}{ColumnRight}{ParameterPrefix}")

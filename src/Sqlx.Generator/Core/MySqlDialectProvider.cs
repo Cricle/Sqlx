@@ -24,9 +24,9 @@ internal class MySqlDialectProvider : BaseDialectProvider
     public override string GenerateLimitClause(int? limit, int? offset) =>
         (limit, offset) switch
         {
-            (not null, not null) => $"LIMIT {offset}, {limit}",
+            (not null, not null) => $"LIMIT {limit} OFFSET {offset}",  // Modern syntax (MySQL 5.0+)
             (not null, null) => $"LIMIT {limit}",
-            (null, not null) => $"LIMIT {offset}, 18446744073709551615",
+            (null, not null) => throw new ArgumentException("MySQL requires LIMIT when OFFSET is specified. Use LIMIT with a very large number if you need OFFSET only."),
             _ => string.Empty
         };
 

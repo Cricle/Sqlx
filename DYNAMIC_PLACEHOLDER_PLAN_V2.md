@@ -717,7 +717,7 @@ public async Task<List<User>> SearchUsers(string userInputTable)
     var allowedTables = new[] { "users", "admins", "guests" };
     if (!allowedTables.Contains(userInputTable))
         throw new ArgumentException("Invalid table");
-    
+
     return await _repo.GetFromTableAsync(userInputTable);
 }
 ```
@@ -788,7 +788,7 @@ public async Task<List<User>> GetUsersByTable([DynamicSql] string tableName)
     // 当前只有简单验证
     if (string.IsNullOrEmpty(tableName))
         throw new ArgumentException();
-    
+
     return await _repo.GetFromTableAsync(tableName);
 }
 
@@ -802,7 +802,7 @@ public async Task<List<User>> GetUsersByTable([DynamicSql] string tableName)
 {
     if (!AllowedTables.Contains(tableName))
         throw new ArgumentException("Invalid table name");
-    
+
     return await _repo.GetFromTableAsync(tableName);
 }
 ```
@@ -848,7 +848,7 @@ public class UserController : ControllerBase
             "admin" => "admin_users",
             _ => throw new ArgumentException()
         };
-        
+
         var users = await _repo.GetFromTableAsync(tableName);
         return Ok(users);
     }
@@ -947,7 +947,7 @@ public class DynamicSqlTests
         var users = await _repo.GetFromTableAsync("users");
         Assert.IsNotNull(users);
     }
-    
+
     [TestMethod]
     [ExpectedException(typeof(ArgumentException))]
     public async Task GetFromTableAsync_InvalidTable_ThrowsException()
@@ -987,7 +987,7 @@ public async Task Query([DynamicSql] string tableName)
 {
     if (tableName.Length > 128)
         throw new ArgumentException("Table name too long");
-    
+
     return await _repo.GetFromTableAsync(tableName);
 }
 ```
@@ -1050,7 +1050,7 @@ public class DynamicSqlAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description: "Dynamic SQL parameters must be explicitly marked for safety."
     );
-    
+
     private static readonly DiagnosticDescriptor Rule2002 = new(
         id: "SQLX2002",
         title: "Dynamic SQL parameter may come from untrusted source",
@@ -1060,40 +1060,40 @@ public class DynamicSqlAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description: "Using user input directly in dynamic SQL is dangerous."
     );
-    
+
     // ... 其他规则
-    
+
     public override void Initialize(AnalysisContext context)
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
-        
+
         // 注册语法分析
         context.RegisterSyntaxNodeAction(AnalyzeMethod, SyntaxKind.MethodDeclaration);
         context.RegisterSyntaxNodeAction(AnalyzeInvocation, SyntaxKind.InvocationExpression);
         context.RegisterSyntaxNodeAction(AnalyzeAttribute, SyntaxKind.Attribute);
     }
-    
+
     private void AnalyzeMethod(SyntaxNodeAnalysisContext context)
     {
         var method = (MethodDeclarationSyntax)context.Node;
-        
+
         // 检查是否有 [Sqlx] 特性
         var sqlxAttr = GetSqlxAttribute(method);
         if (sqlxAttr == null) return;
-        
+
         // 提取 SQL 模板
         var template = GetSqlTemplate(sqlxAttr);
-        
+
         // 查找动态占位符 {{@paramName}}
         var dynamicParams = ExtractDynamicPlaceholders(template);
-        
+
         foreach (var paramName in dynamicParams)
         {
             // 检查参数是否存在
             var param = method.ParameterList.Parameters
                 .FirstOrDefault(p => p.Identifier.Text == paramName);
-            
+
             if (param == null)
             {
                 // 占位符对应的参数不存在
@@ -1101,19 +1101,19 @@ public class DynamicSqlAnalyzer : DiagnosticAnalyzer
                     Rule2010, sqlxAttr.GetLocation(), paramName));
                 continue;
             }
-            
+
             // 检查是否有 [DynamicSql] 特性
             var hasDynamicSqlAttr = param.AttributeLists
                 .SelectMany(al => al.Attributes)
                 .Any(a => a.Name.ToString().Contains("DynamicSql"));
-            
+
             if (!hasDynamicSqlAttr)
             {
                 // SQLX2001: 缺少 [DynamicSql] 特性
                 context.ReportDiagnostic(Diagnostic.Create(
                     Rule2001, param.GetLocation(), paramName));
             }
-            
+
             // 检查参数类型
             var paramType = context.SemanticModel.GetTypeInfo(param.Type!).Type;
             if (paramType?.SpecialType != SpecialType.System_String)
@@ -1123,32 +1123,32 @@ public class DynamicSqlAnalyzer : DiagnosticAnalyzer
                     Rule2006, param.GetLocation(), paramName));
             }
         }
-        
+
         // 检查 SQL 模板是否包含危险操作
         CheckDangerousSql(context, sqlxAttr, template);
     }
-    
+
     private void AnalyzeInvocation(SyntaxNodeAnalysisContext context)
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
-        
+
         // 获取被调用方法的符号
         var methodSymbol = context.SemanticModel.GetSymbolInfo(invocation).Symbol as IMethodSymbol;
         if (methodSymbol == null) return;
-        
+
         // 检查方法是否有动态 SQL 参数
         var dynamicParams = methodSymbol.Parameters
             .Where(p => HasDynamicSqlAttribute(p))
             .ToList();
-        
+
         if (!dynamicParams.Any()) return;
-        
+
         // 检查调用处是否进行了验证
         foreach (var param in dynamicParams)
         {
             var argument = GetArgumentForParameter(invocation, param);
             if (argument == null) continue;
-            
+
             // 检查是否在调用前进行了验证
             if (!HasValidationBeforeCall(context, invocation, argument))
             {
@@ -1156,7 +1156,7 @@ public class DynamicSqlAnalyzer : DiagnosticAnalyzer
                 context.ReportDiagnostic(Diagnostic.Create(
                     Rule2003, argument.GetLocation(), param.Name));
             }
-            
+
             // 检查是否来自不安全的来源
             if (IsFromUntrustedSource(context, argument))
             {
@@ -1164,7 +1164,7 @@ public class DynamicSqlAnalyzer : DiagnosticAnalyzer
                 context.ReportDiagnostic(Diagnostic.Create(
                     Rule2002, argument.GetLocation(), param.Name));
             }
-            
+
             // 建议使用白名单
             if (ShouldUseWhitelist(context, invocation))
             {
@@ -1173,7 +1173,7 @@ public class DynamicSqlAnalyzer : DiagnosticAnalyzer
                     Rule2004, argument.GetLocation(), param.Name));
             }
         }
-        
+
         // 检查是否在公共 API 中
         if (IsInPublicApi(context, invocation))
         {
@@ -1182,40 +1182,40 @@ public class DynamicSqlAnalyzer : DiagnosticAnalyzer
                 Rule2005, invocation.GetLocation()));
         }
     }
-    
+
     // 辅助方法
-    private bool HasValidationBeforeCall(SyntaxNodeAnalysisContext context, 
+    private bool HasValidationBeforeCall(SyntaxNodeAnalysisContext context,
         InvocationExpressionSyntax invocation, ArgumentSyntax argument)
     {
         // 向上查找 5 行代码
         var method = invocation.FirstAncestorOrSelf<MethodDeclarationSyntax>();
         if (method == null) return false;
-        
+
         var statements = method.Body?.Statements ?? method.ExpressionBody?.Expression;
         // 查找验证模式: if, throw, ArgumentException, Contains, Length
         // ...
-        
+
         return false;  // 简化
     }
-    
+
     private bool IsFromUntrustedSource(SyntaxNodeAnalysisContext context, ArgumentSyntax argument)
     {
         // 检查参数名是否包含：input, request, form, query
         // 检查是否有 [FromBody], [FromQuery] 等特性
         // ...
-        
+
         return false;  // 简化
     }
-    
-    private void CheckDangerousSql(SyntaxNodeAnalysisContext context, 
+
+    private void CheckDangerousSql(SyntaxNodeAnalysisContext context,
         AttributeSyntax attr, string template)
     {
         var dangerousPatterns = new[]
         {
-            "DROP TABLE", "DROP DATABASE", "TRUNCATE", 
+            "DROP TABLE", "DROP DATABASE", "TRUNCATE",
             "DELETE FROM", "EXEC", "EXECUTE"
         };
-        
+
         foreach (var pattern in dangerousPatterns)
         {
             if (template.Contains(pattern, StringComparison.OrdinalIgnoreCase))
@@ -1238,17 +1238,17 @@ public class DynamicSqlAnalyzer : DiagnosticAnalyzer
 [Shared]
 public class DynamicSqlCodeFixProvider : CodeFixProvider
 {
-    public override ImmutableArray<string> FixableDiagnosticIds => 
+    public override ImmutableArray<string> FixableDiagnosticIds =>
         ImmutableArray.Create("SQLX2001", "SQLX2003", "SQLX2009");
-    
+
     public override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
         var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken);
         var diagnostic = context.Diagnostics.First();
         var diagnosticSpan = diagnostic.Location.SourceSpan;
-        
+
         var node = root.FindNode(diagnosticSpan);
-        
+
         if (diagnostic.Id == "SQLX2001")
         {
             // 添加 [DynamicSql] 特性

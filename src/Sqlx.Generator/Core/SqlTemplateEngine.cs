@@ -149,7 +149,7 @@ public class SqlTemplateEngine
             // 检查是否是动态占位符（@ 前缀）
             var isDynamic = match.Groups[1].Value == "@";
             var placeholderName = match.Groups[2].Value.ToLowerInvariant();
-            
+
             // 如果是动态占位符，直接返回 C# 字符串插值格式
             if (isDynamic)
             {
@@ -158,7 +158,7 @@ public class SqlTemplateEngine
                 result.HasDynamicFeatures = true;
                 return $"{{{placeholderName}}}";
             }
-            
+
             // 支持两种格式：
             // 旧格式：{{name:type|options}} -> Groups: (1)"", (2)name, (3)type, (4)options
             // 新格式：{{name --options}}    -> Groups: (1)"", (2)name, (3)"", (4)"", (5)options

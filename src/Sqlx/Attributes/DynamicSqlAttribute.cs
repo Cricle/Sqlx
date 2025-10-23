@@ -25,14 +25,14 @@ using System;
 /// // 示例 1：多租户表名
 /// [Sqlx("SELECT {{columns}} FROM {{@tableName}} WHERE id = @id")]
 /// Task&lt;User?&gt; GetUserAsync([DynamicSql] string tableName, int id);
-/// 
+///
 /// // 调用处必须验证
 /// var allowedTables = new[] { "users", "admin_users", "guest_users" };
 /// if (!allowedTables.Contains(tableName))
 ///     throw new ArgumentException("Invalid table name");
-/// 
+///
 /// var user = await repo.GetUserAsync(tableName, userId);
-/// 
+///
 /// // 示例 2：动态 WHERE 子句
 /// [Sqlx("SELECT {{columns}} FROM users WHERE {{@whereClause}}")]
 /// Task&lt;List&lt;User&gt;&gt; QueryUsersAsync([DynamicSql(Type = DynamicSqlType.Fragment)] string whereClause);

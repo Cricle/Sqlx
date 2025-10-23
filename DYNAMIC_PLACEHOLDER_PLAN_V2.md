@@ -323,7 +323,7 @@ internal static class CompileTimeValidator
         return parameter.GetAttributes()
             .Any(a => a.AttributeClass?.Name == "DynamicSqlAttribute");
     }
-    
+
     /// <summary>
     /// 验证占位符格式是否正确
     /// </summary>
@@ -351,19 +351,19 @@ public async Task<User?> GetFromTableAsync(string tableName, int id)
     // 编译器会完全优化这些检查
     if (tableName.Length == 0 || tableName.Length > 128)
         throw new ArgumentException("Invalid table name length", nameof(tableName));
-    
+
     // 手动展开的字符检查（编译器优化为高效代码）
     char first = tableName[0];
     if (!((first >= 'a' && first <= 'z') || (first >= 'A' && first <= 'Z') || first == '_'))
         throw new ArgumentException("Table name must start with letter or underscore", nameof(tableName));
-    
+
     for (int i = 1; i < tableName.Length; i++)
     {
         char c = tableName[i];
         if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'))
             throw new ArgumentException($"Invalid character in table name: '{c}'", nameof(tableName));
     }
-    
+
     // 检查关键字（常量化，编译器优化）
     if (tableName.Equals("DROP", StringComparison.OrdinalIgnoreCase) ||
         tableName.Equals("TRUNCATE", StringComparison.OrdinalIgnoreCase) ||
@@ -374,10 +374,10 @@ public async Task<User?> GetFromTableAsync(string tableName, int id)
     {
         throw new ArgumentException("Table name contains SQL keywords or comments", nameof(tableName));
     }
-    
+
     // ✅ 直接拼接 - 高性能
     var sql = $"SELECT id, name, email FROM {tableName} WHERE id = @id";
-    
+
     // ... 执行SQL
 }
 ```
@@ -417,12 +417,12 @@ public static class SqlValidator
     {
         if (identifier.Length == 0 || identifier.Length > 128)
             return false;
-        
+
         // 第一个字符必须是字母或下划线
         char first = identifier[0];
         if (!((first >= 'a' && first <= 'z') || (first >= 'A' && first <= 'Z') || first == '_'))
             return false;
-        
+
         // 后续字符必须是字母、数字或下划线
         for (int i = 1; i < identifier.Length; i++)
         {
@@ -430,10 +430,10 @@ public static class SqlValidator
             if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'))
                 return false;
         }
-        
+
         return true;
     }
-    
+
     /// <summary>
     /// 检查是否包含危险关键字
     /// </summary>
@@ -473,24 +473,24 @@ public async Task<User?> GetFromTableAsync(string tableName, int id)
 {
     // ✅ 简单的内联验证（不过度优化源生成器）
     // 生成器只需要简单的字符串拼接即可
-    
+
     // 长度检查
     if (tableName.Length == 0 || tableName.Length > 128)
         throw new ArgumentException("Invalid table name length", nameof(tableName));
-    
+
     // 字符检查（内联）
     if (!char.IsLetter(tableName[0]) && tableName[0] != '_')
         throw new ArgumentException("Table name must start with letter or underscore", nameof(tableName));
-    
+
     // 关键字检查（常量比较，编译器优化）
     if (tableName.Contains("DROP", StringComparison.OrdinalIgnoreCase) ||
         tableName.Contains("--") ||
         tableName.Contains("/*"))
         throw new ArgumentException("Invalid table name", nameof(tableName));
-    
+
     // 直接拼接SQL（高性能）
     var sql = $"SELECT id, name, email FROM {tableName} WHERE id = @id";
-    
+
     // ... 执行SQL
 }
 ```
@@ -556,7 +556,7 @@ activity?.SetTag("db.dynamic.params", "tableName");  // 记录哪些参数是动
 
 **明确优化重点**：
 - ❌ **源生成器**（编译时）- 只运行一次，**无需优化**
-- ✅ **生成的代码**（运行时）- 每次执行，**必须优化** 
+- ✅ **生成的代码**（运行时）- 每次执行，**必须优化**
 - ✅ **主库代码**（运行时）- 热路径调用，**必须优化**
 
 ### 实际性能数据（运行时）
@@ -593,7 +593,7 @@ public async Task<User?> GetFromTableAsync(string tableName, int id)
     if (tableName.Length == 0 || tableName.Length > 128) throw ...;
     if (!char.IsLetter(tableName[0])) throw ...;
     if (tableName.Contains("DROP", StringComparison.OrdinalIgnoreCase)) throw ...;
-    
+
     var sql = $"SELECT * FROM {tableName} WHERE id = @id";  // 直接拼接
     // ...
 }
@@ -647,6 +647,632 @@ private void GenerateValidation(StringBuilder sb, string param)
 - ✅ 使用 StringBuilder 即可
 - ✅ 不需要 Span/stackalloc
 - ✅ 易于维护和调试
+
+---
+
+## 🔍 Roslyn 分析器设计
+
+### 诊断规则总览
+
+| 规则ID | 严重级别 | 说明 |
+|-------|---------|------|
+| **SQLX2001** | Error | 使用动态占位符但参数未标记 `[DynamicSql]` |
+| **SQLX2002** | Warning | 动态参数来自不安全的来源（用户输入） |
+| **SQLX2003** | Warning | 动态参数缺少验证逻辑 |
+| **SQLX2004** | Info | 建议使用白名单验证 |
+| **SQLX2005** | Warning | 动态参数在公共 API 中暴露 |
+| **SQLX2006** | Error | 动态参数类型错误（必须是 string） |
+| **SQLX2007** | Warning | SQL 模板包含潜在危险操作 |
+| **SQLX2008** | Info | 建议添加单元测试 |
+| **SQLX2009** | Warning | 动态参数长度未限制 |
+| **SQLX2010** | Error | `[DynamicSql]` 特性使用错误 |
+
+---
+
+### 分析器实现
+
+#### 1. SQLX2001 - 强制特性标记 ⭐
+
+**场景**：使用 `{{@paramName}}` 但参数未标记 `[DynamicSql]`
+
+```csharp
+// ❌ 错误：使用动态占位符但未标记特性
+[Sqlx("SELECT * FROM {{@tableName}} WHERE id = @id")]
+Task<User?> GetUserAsync(string tableName, int id);  // ← 缺少 [DynamicSql]
+
+// ✅ 正确：正确标记特性
+[Sqlx("SELECT * FROM {{@tableName}} WHERE id = @id")]
+Task<User?> GetUserAsync([DynamicSql] string tableName, int id);
+```
+
+**诊断信息**：
+```
+SQLX2001: Parameter 'tableName' is used as dynamic SQL but not marked with [DynamicSql] attribute
+Severity: Error
+Description: Dynamic SQL parameters must be explicitly marked with [DynamicSql] attribute for safety.
+```
+
+**代码修复**：
+```csharp
+// 自动添加 [DynamicSql] 特性
+Task<User?> GetUserAsync([DynamicSql] string tableName, int id);
+```
+
+---
+
+#### 2. SQLX2002 - 不安全的数据源 ⚠️
+
+**场景**：动态参数直接来自用户输入
+
+```csharp
+// ❌ 警告：直接使用用户输入
+public async Task<List<User>> SearchUsers(string userInputTable)
+{
+    return await _repo.GetFromTableAsync(userInputTable);  // ← 不安全！
+}
+
+// ✅ 建议：使用白名单
+public async Task<List<User>> SearchUsers(string userInputTable)
+{
+    var allowedTables = new[] { "users", "admins", "guests" };
+    if (!allowedTables.Contains(userInputTable))
+        throw new ArgumentException("Invalid table");
+    
+    return await _repo.GetFromTableAsync(userInputTable);
+}
+```
+
+**诊断信息**：
+```
+SQLX2002: Dynamic SQL parameter 'userInputTable' may come from untrusted source
+Severity: Warning
+Description: Using user input directly in dynamic SQL is dangerous. Consider using a whitelist.
+Location: Method parameter, HTTP request, form input
+```
+
+**检测逻辑**：
+- 参数名包含：`input`, `request`, `form`, `query`, `body`
+- 方法有 `[HttpGet]`, `[HttpPost]` 等特性
+- 参数类型来自 ASP.NET Core 绑定（`[FromBody]`, `[FromQuery]`）
+
+---
+
+#### 3. SQLX2003 - 缺少验证 ⚠️
+
+**场景**：动态参数未经验证直接使用
+
+```csharp
+// ❌ 警告：缺少验证
+public interface IUserRepository
+{
+    [Sqlx("SELECT * FROM {{@tableName}}")]
+    Task<List<User>> GetFromTableAsync([DynamicSql] string tableName);
+}
+
+// 调用处：
+await repo.GetFromTableAsync(userInput);  // ← 缺少验证！
+
+// ✅ 正确：添加验证
+if (string.IsNullOrWhiteSpace(tableName) || tableName.Length > 128)
+    throw new ArgumentException("Invalid table name");
+await repo.GetFromTableAsync(tableName);
+```
+
+**诊断信息**：
+```
+SQLX2003: Dynamic SQL parameter 'tableName' is not validated before use
+Severity: Warning
+Description: Always validate dynamic SQL parameters before passing to repository methods.
+Suggested validation:
+  - Check for null/empty
+  - Check length limits
+  - Check for dangerous characters
+  - Use whitelist if possible
+```
+
+**检测逻辑**：
+- 检查调用点前 5 行代码
+- 查找验证模式：`if`, `throw`, `ArgumentException`, `Contains`, `Length`
+- 如果未找到验证，发出警告
+
+---
+
+#### 4. SQLX2004 - 建议白名单 💡
+
+**场景**：可以使用白名单但未使用
+
+```csharp
+// ⚠️ 建议：使用白名单更安全
+public async Task<List<User>> GetUsersByTable([DynamicSql] string tableName)
+{
+    // 当前只有简单验证
+    if (string.IsNullOrEmpty(tableName))
+        throw new ArgumentException();
+    
+    return await _repo.GetFromTableAsync(tableName);
+}
+
+// ✅ 更好：使用白名单
+private static readonly HashSet<string> AllowedTables = new()
+{
+    "users", "admins", "guests"
+};
+
+public async Task<List<User>> GetUsersByTable([DynamicSql] string tableName)
+{
+    if (!AllowedTables.Contains(tableName))
+        throw new ArgumentException("Invalid table name");
+    
+    return await _repo.GetFromTableAsync(tableName);
+}
+```
+
+**诊断信息**：
+```
+SQLX2004: Consider using a whitelist for dynamic SQL parameter 'tableName'
+Severity: Info
+Description: Whitelist validation is more secure than character checking.
+Example:
+  private static readonly HashSet<string> AllowedTables = new() { "users", "admins" };
+  if (!AllowedTables.Contains(tableName)) throw new ArgumentException();
+```
+
+---
+
+#### 5. SQLX2005 - 公共 API 暴露 ⚠️
+
+**场景**：在公共 API 中暴露动态参数
+
+```csharp
+// ❌ 警告：公共 API 暴露动态 SQL
+public class UserController : ControllerBase
+{
+    [HttpGet]
+    public async Task<IActionResult> GetUsers([FromQuery] string tableName)  // ← 危险！
+    {
+        var users = await _repo.GetFromTableAsync(tableName);
+        return Ok(users);
+    }
+}
+
+// ✅ 正确：不在公共 API 中暴露
+public class UserController : ControllerBase
+{
+    [HttpGet]
+    public async Task<IActionResult> GetUsers([FromQuery] string tableType)
+    {
+        // 内部映射，不暴露动态参数
+        var tableName = tableType switch
+        {
+            "regular" => "users",
+            "admin" => "admin_users",
+            _ => throw new ArgumentException()
+        };
+        
+        var users = await _repo.GetFromTableAsync(tableName);
+        return Ok(users);
+    }
+}
+```
+
+**诊断信息**：
+```
+SQLX2005: Dynamic SQL parameter 'tableName' is exposed in public API
+Severity: Warning
+Description: Avoid exposing dynamic SQL parameters in public APIs (Controllers, gRPC services).
+Use internal mapping or enum instead.
+```
+
+**检测逻辑**：
+- 方法是 public
+- 类继承自：`ControllerBase`, `Controller`, `ServiceBase`
+- 方法有 HTTP 特性：`[HttpGet]`, `[HttpPost]`, `[Route]`
+
+---
+
+#### 6. SQLX2006 - 类型错误 ❌
+
+**场景**：动态参数类型不是 string
+
+```csharp
+// ❌ 错误：动态参数必须是 string
+[Sqlx("SELECT * FROM {{@tableId}}")]
+Task<User?> GetUserAsync([DynamicSql] int tableId);  // ← 类型错误！
+
+// ✅ 正确：使用 string
+[Sqlx("SELECT * FROM {{@tableName}}")]
+Task<User?> GetUserAsync([DynamicSql] string tableName);
+```
+
+**诊断信息**：
+```
+SQLX2006: Dynamic SQL parameter 'tableId' must be of type 'string'
+Severity: Error
+Description: [DynamicSql] attribute can only be applied to string parameters.
+```
+
+---
+
+#### 7. SQLX2007 - 危险 SQL 操作 ⚠️
+
+**场景**：SQL 模板包含危险操作
+
+```csharp
+// ❌ 警告：包含危险操作
+[Sqlx("DROP TABLE {{@tableName}}")]  // ← 危险！
+Task DropTableAsync([DynamicSql] string tableName);
+
+[Sqlx("DELETE FROM {{@tableName}}")]  // ← 危险！
+Task DeleteAllAsync([DynamicSql] string tableName);
+
+// ✅ 建议：限制为安全操作
+[Sqlx("SELECT * FROM {{@tableName}}")]
+Task<List<User>> GetFromTableAsync([DynamicSql] string tableName);
+```
+
+**诊断信息**：
+```
+SQLX2007: SQL template contains dangerous operation 'DROP TABLE'
+Severity: Warning
+Description: Dynamic SQL with DDL/DML operations (DROP, TRUNCATE, DELETE without WHERE) is dangerous.
+Consider using fixed queries or adding extra validation.
+```
+
+**检测模式**：
+- `DROP TABLE`, `DROP DATABASE`
+- `TRUNCATE TABLE`
+- `DELETE FROM` (没有 WHERE)
+- `UPDATE` (没有 WHERE)
+- `EXEC`, `EXECUTE`
+
+---
+
+#### 8. SQLX2008 - 建议测试 💡
+
+**场景**：动态 SQL 方法缺少单元测试
+
+```csharp
+// ⚠️ 建议：添加单元测试
+[Sqlx("SELECT * FROM {{@tableName}}")]
+Task<List<User>> GetFromTableAsync([DynamicSql] string tableName);
+
+// 建议添加测试：
+/*
+[TestClass]
+public class DynamicSqlTests
+{
+    [TestMethod]
+    public async Task GetFromTableAsync_ValidTable_ReturnsUsers()
+    {
+        var users = await _repo.GetFromTableAsync("users");
+        Assert.IsNotNull(users);
+    }
+    
+    [TestMethod]
+    [ExpectedException(typeof(ArgumentException))]
+    public async Task GetFromTableAsync_InvalidTable_ThrowsException()
+    {
+        await _repo.GetFromTableAsync("DROP TABLE users");
+    }
+}
+*/
+```
+
+**诊断信息**：
+```
+SQLX2008: Method with dynamic SQL lacks unit tests
+Severity: Info
+Description: Methods using [DynamicSql] should have comprehensive unit tests covering:
+  - Valid inputs
+  - Invalid inputs (SQL injection attempts)
+  - Edge cases (empty, null, long strings)
+```
+
+---
+
+#### 9. SQLX2009 - 缺少长度限制 ⚠️
+
+**场景**：动态参数未限制长度
+
+```csharp
+// ❌ 警告：未限制长度
+public async Task Query([DynamicSql] string tableName)
+{
+    // 直接使用，可能被超长字符串攻击
+    return await _repo.GetFromTableAsync(tableName);
+}
+
+// ✅ 正确：限制长度
+public async Task Query([DynamicSql] string tableName)
+{
+    if (tableName.Length > 128)
+        throw new ArgumentException("Table name too long");
+    
+    return await _repo.GetFromTableAsync(tableName);
+}
+```
+
+**诊断信息**：
+```
+SQLX2009: Dynamic SQL parameter 'tableName' has no length validation
+Severity: Warning
+Description: Always validate the length of dynamic SQL parameters to prevent DoS attacks.
+Suggested: if (tableName.Length > 128) throw new ArgumentException();
+```
+
+---
+
+#### 10. SQLX2010 - 特性使用错误 ❌
+
+**场景**：`[DynamicSql]` 特性使用不当
+
+```csharp
+// ❌ 错误：应用到非参数位置
+[DynamicSql]  // ← 不能应用到方法
+public async Task Query(string tableName) { }
+
+// ❌ 错误：参数未在 SQL 模板中使用
+[Sqlx("SELECT * FROM users")]
+Task<List<User>> GetUsersAsync([DynamicSql] string tableName);  // ← 未使用
+
+// ✅ 正确：正确使用
+[Sqlx("SELECT * FROM {{@tableName}}")]
+Task<List<User>> GetUsersAsync([DynamicSql] string tableName);
+```
+
+**诊断信息**：
+```
+SQLX2010: [DynamicSql] attribute used incorrectly
+Severity: Error
+Cases:
+  - Applied to non-parameter element
+  - Parameter not used in SQL template
+  - SQL template doesn't contain {{@paramName}}
+```
+
+---
+
+### 分析器实现代码结构
+
+```csharp
+namespace Sqlx.Generator.Analyzers;
+
+[DiagnosticAnalyzer(LanguageNames.CSharp)]
+public class DynamicSqlAnalyzer : DiagnosticAnalyzer
+{
+    // 诊断规则定义
+    private static readonly DiagnosticDescriptor Rule2001 = new(
+        id: "SQLX2001",
+        title: "Dynamic SQL parameter must be marked with [DynamicSql]",
+        messageFormat: "Parameter '{0}' is used as dynamic SQL but not marked with [DynamicSql] attribute",
+        category: "Security",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "Dynamic SQL parameters must be explicitly marked for safety."
+    );
+    
+    private static readonly DiagnosticDescriptor Rule2002 = new(
+        id: "SQLX2002",
+        title: "Dynamic SQL parameter may come from untrusted source",
+        messageFormat: "Parameter '{0}' may come from untrusted source (user input, HTTP request)",
+        category: "Security",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Using user input directly in dynamic SQL is dangerous."
+    );
+    
+    // ... 其他规则
+    
+    public override void Initialize(AnalysisContext context)
+    {
+        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
+        context.EnableConcurrentExecution();
+        
+        // 注册语法分析
+        context.RegisterSyntaxNodeAction(AnalyzeMethod, SyntaxKind.MethodDeclaration);
+        context.RegisterSyntaxNodeAction(AnalyzeInvocation, SyntaxKind.InvocationExpression);
+        context.RegisterSyntaxNodeAction(AnalyzeAttribute, SyntaxKind.Attribute);
+    }
+    
+    private void AnalyzeMethod(SyntaxNodeAnalysisContext context)
+    {
+        var method = (MethodDeclarationSyntax)context.Node;
+        
+        // 检查是否有 [Sqlx] 特性
+        var sqlxAttr = GetSqlxAttribute(method);
+        if (sqlxAttr == null) return;
+        
+        // 提取 SQL 模板
+        var template = GetSqlTemplate(sqlxAttr);
+        
+        // 查找动态占位符 {{@paramName}}
+        var dynamicParams = ExtractDynamicPlaceholders(template);
+        
+        foreach (var paramName in dynamicParams)
+        {
+            // 检查参数是否存在
+            var param = method.ParameterList.Parameters
+                .FirstOrDefault(p => p.Identifier.Text == paramName);
+            
+            if (param == null)
+            {
+                // 占位符对应的参数不存在
+                context.ReportDiagnostic(Diagnostic.Create(
+                    Rule2010, sqlxAttr.GetLocation(), paramName));
+                continue;
+            }
+            
+            // 检查是否有 [DynamicSql] 特性
+            var hasDynamicSqlAttr = param.AttributeLists
+                .SelectMany(al => al.Attributes)
+                .Any(a => a.Name.ToString().Contains("DynamicSql"));
+            
+            if (!hasDynamicSqlAttr)
+            {
+                // SQLX2001: 缺少 [DynamicSql] 特性
+                context.ReportDiagnostic(Diagnostic.Create(
+                    Rule2001, param.GetLocation(), paramName));
+            }
+            
+            // 检查参数类型
+            var paramType = context.SemanticModel.GetTypeInfo(param.Type!).Type;
+            if (paramType?.SpecialType != SpecialType.System_String)
+            {
+                // SQLX2006: 类型错误
+                context.ReportDiagnostic(Diagnostic.Create(
+                    Rule2006, param.GetLocation(), paramName));
+            }
+        }
+        
+        // 检查 SQL 模板是否包含危险操作
+        CheckDangerousSql(context, sqlxAttr, template);
+    }
+    
+    private void AnalyzeInvocation(SyntaxNodeAnalysisContext context)
+    {
+        var invocation = (InvocationExpressionSyntax)context.Node;
+        
+        // 获取被调用方法的符号
+        var methodSymbol = context.SemanticModel.GetSymbolInfo(invocation).Symbol as IMethodSymbol;
+        if (methodSymbol == null) return;
+        
+        // 检查方法是否有动态 SQL 参数
+        var dynamicParams = methodSymbol.Parameters
+            .Where(p => HasDynamicSqlAttribute(p))
+            .ToList();
+        
+        if (!dynamicParams.Any()) return;
+        
+        // 检查调用处是否进行了验证
+        foreach (var param in dynamicParams)
+        {
+            var argument = GetArgumentForParameter(invocation, param);
+            if (argument == null) continue;
+            
+            // 检查是否在调用前进行了验证
+            if (!HasValidationBeforeCall(context, invocation, argument))
+            {
+                // SQLX2003: 缺少验证
+                context.ReportDiagnostic(Diagnostic.Create(
+                    Rule2003, argument.GetLocation(), param.Name));
+            }
+            
+            // 检查是否来自不安全的来源
+            if (IsFromUntrustedSource(context, argument))
+            {
+                // SQLX2002: 不安全的数据源
+                context.ReportDiagnostic(Diagnostic.Create(
+                    Rule2002, argument.GetLocation(), param.Name));
+            }
+            
+            // 建议使用白名单
+            if (ShouldUseWhitelist(context, invocation))
+            {
+                // SQLX2004: 建议白名单
+                context.ReportDiagnostic(Diagnostic.Create(
+                    Rule2004, argument.GetLocation(), param.Name));
+            }
+        }
+        
+        // 检查是否在公共 API 中
+        if (IsInPublicApi(context, invocation))
+        {
+            // SQLX2005: 公共 API 暴露
+            context.ReportDiagnostic(Diagnostic.Create(
+                Rule2005, invocation.GetLocation()));
+        }
+    }
+    
+    // 辅助方法
+    private bool HasValidationBeforeCall(SyntaxNodeAnalysisContext context, 
+        InvocationExpressionSyntax invocation, ArgumentSyntax argument)
+    {
+        // 向上查找 5 行代码
+        var method = invocation.FirstAncestorOrSelf<MethodDeclarationSyntax>();
+        if (method == null) return false;
+        
+        var statements = method.Body?.Statements ?? method.ExpressionBody?.Expression;
+        // 查找验证模式: if, throw, ArgumentException, Contains, Length
+        // ...
+        
+        return false;  // 简化
+    }
+    
+    private bool IsFromUntrustedSource(SyntaxNodeAnalysisContext context, ArgumentSyntax argument)
+    {
+        // 检查参数名是否包含：input, request, form, query
+        // 检查是否有 [FromBody], [FromQuery] 等特性
+        // ...
+        
+        return false;  // 简化
+    }
+    
+    private void CheckDangerousSql(SyntaxNodeAnalysisContext context, 
+        AttributeSyntax attr, string template)
+    {
+        var dangerousPatterns = new[]
+        {
+            "DROP TABLE", "DROP DATABASE", "TRUNCATE", 
+            "DELETE FROM", "EXEC", "EXECUTE"
+        };
+        
+        foreach (var pattern in dangerousPatterns)
+        {
+            if (template.Contains(pattern, StringComparison.OrdinalIgnoreCase))
+            {
+                // SQLX2007: 危险操作
+                context.ReportDiagnostic(Diagnostic.Create(
+                    Rule2007, attr.GetLocation(), pattern));
+            }
+        }
+    }
+}
+```
+
+---
+
+### Code Fix Provider
+
+```csharp
+[ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(DynamicSqlCodeFixProvider))]
+[Shared]
+public class DynamicSqlCodeFixProvider : CodeFixProvider
+{
+    public override ImmutableArray<string> FixableDiagnosticIds => 
+        ImmutableArray.Create("SQLX2001", "SQLX2003", "SQLX2009");
+    
+    public override async Task RegisterCodeFixesAsync(CodeFixContext context)
+    {
+        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken);
+        var diagnostic = context.Diagnostics.First();
+        var diagnosticSpan = diagnostic.Location.SourceSpan;
+        
+        var node = root.FindNode(diagnosticSpan);
+        
+        if (diagnostic.Id == "SQLX2001")
+        {
+            // 添加 [DynamicSql] 特性
+            context.RegisterCodeFix(
+                CodeAction.Create(
+                    title: "Add [DynamicSql] attribute",
+                    createChangedDocument: c => AddDynamicSqlAttributeAsync(context.Document, node, c),
+                    equivalenceKey: "AddDynamicSql"),
+                diagnostic);
+        }
+        else if (diagnostic.Id == "SQLX2003")
+        {
+            // 添加验证代码
+            context.RegisterCodeFix(
+                CodeAction.Create(
+                    title: "Add validation",
+                    createChangedDocument: c => AddValidationAsync(context.Document, node, c),
+                    equivalenceKey: "AddValidation"),
+                diagnostic);
+        }
+        // ...
+    }
+}
+```
 
 ---
 

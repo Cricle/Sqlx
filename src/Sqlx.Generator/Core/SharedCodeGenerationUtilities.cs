@@ -171,62 +171,112 @@ public static class SharedCodeGenerationUtilities
     }
 
     /// <summary>
-    /// Generate dynamic WHERE SQL building code
+    /// Generate dynamic WHERE SQL building code (zero-allocation, compile-time string splitting)
     /// </summary>
     private static void GenerateDynamicWhereSql(IndentedStringBuilder sb, string sql, IMethodSymbol method)
     {
-        sb.AppendLine("// Build SQL with dynamic WHERE clause");
-        sb.AppendLine("var __sql__ = @\"" + sql.Replace("\"", "\"\"") + "\";");
-        sb.AppendLine();
+        sb.AppendLine("// Build SQL with dynamic WHERE clause (compile-time splitting, zero Replace calls)");
         
         // Find all runtime WHERE markers
         var markers = System.Text.RegularExpressions.Regex.Matches(sql, @"\{RUNTIME_WHERE_([^}]+)\}");
         
+        if (markers.Count == 0)
+        {
+            // Fallback: no markers found
+            var escapedSql = sql.Replace("\"", "\"\"");
+            sb.AppendLine($"__cmd__.CommandText = @\"{escapedSql}\";");
+            return;
+        }
+        
+        // Split SQL into parts at compile time
+        var sqlParts = new System.Collections.Generic.List<string>();
+        var whereVariables = new System.Collections.Generic.List<(string varName, string markerContent)>();
+        
+        int lastIndex = 0;
         foreach (System.Text.RegularExpressions.Match match in markers)
         {
-            var fullMarker = match.Value;
+            // Add SQL part before marker
+            sqlParts.Add(sql.Substring(lastIndex, match.Index - lastIndex));
+            
             var markerContent = match.Groups[1].Value;
+            var varName = $"__whereClause_{whereVariables.Count}__";
+            whereVariables.Add((varName, markerContent));
+            
+            lastIndex = match.Index + match.Length;
+        }
+        
+        // Add final SQL part after last marker
+        sqlParts.Add(sql.Substring(lastIndex));
+        
+        // Generate WHERE extraction code
+        for (int i = 0; i < whereVariables.Count; i++)
+        {
+            var (varName, markerContent) = whereVariables[i];
             
             if (markerContent.StartsWith("EXPR_"))
             {
                 // ExpressionToSql parameter
                 var paramName = markerContent.Substring(5);
-                sb.AppendLine($"// Extract WHERE from ExpressionToSql parameter: {paramName}");
-                sb.AppendLine($"var __whereClause_{paramName}__ = {paramName}?.ToWhereClause() ?? \"1=1\";");
-                sb.AppendLine($"__sql__ = __sql__.Replace(\"{fullMarker}\", __whereClause_{paramName}__);");
-                sb.AppendLine();
+                sb.AppendLine($"// Extract WHERE from ExpressionToSql: {paramName}");
+                sb.AppendLine($"var {varName} = {paramName}?.ToWhereClause() ?? \"1=1\";");
             }
             else if (markerContent.StartsWith("DYNAMIC_"))
             {
                 // DynamicSql parameter with validation
                 var paramName = markerContent.Substring(8);
-                sb.AppendLine($"// Validate and insert DynamicSql WHERE parameter: {paramName}");
+                sb.AppendLine($"// Validate DynamicSql WHERE: {paramName}");
                 sb.AppendLine($"if (!global::Sqlx.Validation.SqlValidator.IsValidFragment({paramName}.AsSpan()))");
                 sb.AppendLine("{");
                 sb.PushIndent();
-                sb.AppendLine($"throw new global::System.ArgumentException($\"Invalid SQL fragment: {{{paramName}}}. Contains dangerous keywords or operations.\", nameof({paramName}));");
+                sb.AppendLine($"throw new global::System.ArgumentException($\"Invalid SQL fragment: {{{paramName}}}. Contains dangerous keywords.\", nameof({paramName}));");
                 sb.PopIndent();
                 sb.AppendLine("}");
-                sb.AppendLine($"__sql__ = __sql__.Replace(\"{fullMarker}\", {paramName});");
-                sb.AppendLine();
+                sb.AppendLine($"var {varName} = {paramName};");
             }
             else
             {
                 // Regular parameter as WHERE fragment (with validation)
                 var paramName = markerContent;
-                sb.AppendLine($"// Insert parameter as WHERE fragment: {paramName}");
+                sb.AppendLine($"// Validate WHERE fragment: {paramName}");
                 sb.AppendLine($"if (!global::Sqlx.Validation.SqlValidator.IsValidFragment({paramName}.AsSpan()))");
                 sb.AppendLine("{");
                 sb.PushIndent();
-                sb.AppendLine($"throw new global::System.ArgumentException($\"Invalid SQL fragment: {{{paramName}}}. Contains dangerous keywords or operations.\", nameof({paramName}));");
+                sb.AppendLine($"throw new global::System.ArgumentException($\"Invalid SQL fragment: {{{paramName}}}. Contains dangerous keywords.\", nameof({paramName}));");
                 sb.PopIndent();
                 sb.AppendLine("}");
-                sb.AppendLine($"__sql__ = __sql__.Replace(\"{fullMarker}\", {paramName});");
-                sb.AppendLine();
+                sb.AppendLine($"var {varName} = {paramName};");
             }
         }
         
-        sb.AppendLine("__cmd__.CommandText = __sql__;");
+        sb.AppendLine();
+        
+        // Generate SQL concatenation using string interpolation (compile-time optimized)
+        sb.Append("__cmd__.CommandText = ");
+        
+        if (sqlParts.Count == 1)
+        {
+            // No dynamic parts
+            var escapedSql = sqlParts[0].Replace("\"", "\"\"");
+            sb.Append($"@\"{escapedSql}\"");
+        }
+        else
+        {
+            // Build using string interpolation (compiler optimizes to StringBuilder)
+            sb.Append("$@\"");
+            for (int i = 0; i < sqlParts.Count; i++)
+            {
+                var part = sqlParts[i].Replace("\"", "\"\"");
+                sb.Append(part);
+                
+                if (i < whereVariables.Count)
+                {
+                    sb.Append($"{{{whereVariables[i].varName}}}");
+                }
+            }
+            sb.Append("\"");
+        }
+        
+        sb.AppendLine(";");
     }
 
     /// <summary>

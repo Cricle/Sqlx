@@ -180,14 +180,42 @@ public class CodeGenerationService
                 }
             }
 
-            // Show parameter information
+            // Show parameter information with types
             // 性能优化：使用Count检查集合是否为空，比Any()更直接
+            if (method.Parameters.Length > 0)
+            {
+                sb.AppendLine("/// <para>📌 Method Parameters:</para>");
+                foreach (var param in method.Parameters)
+                {
+                    var paramType = param.Type.GetCachedDisplayString();
+                    var paramName = param.Name;
+                    // 检查是否有特殊特性
+                    var attributes = string.Empty;
+                    if (param.GetAttributes().Any(a => a.AttributeClass?.Name == "DynamicSqlAttribute"))
+                    {
+                        attributes = " [DynamicSql]";
+                    }
+                    else if (param.GetAttributes().Any(a => a.AttributeClass?.Name == "ExpressionToSqlAttribute"))
+                    {
+                        attributes = " [ExpressionToSql]";
+                    }
+                    sb.AppendLine($"/// <para>  • {paramType} {paramName}{attributes}</para>");
+                }
+            }
+            
+            // Show SQL parameter placeholders
             if (templateResult.Parameters.Count > 0)
             {
-                sb.AppendLine("/// <para>🔧 Template Parameters:</para>");
+                sb.AppendLine("/// <para>🔧 SQL Parameter Placeholders:</para>");
                 foreach (var param in templateResult.Parameters)
                 {
-                    sb.AppendLine($"/// <para>  • @{param.Key}</para>");
+                    // 尝试从方法参数中找到对应的类型
+                    var methodParam = method.Parameters.FirstOrDefault(p => 
+                        string.Equals(p.Name, param.Key, StringComparison.OrdinalIgnoreCase));
+                    var paramInfo = methodParam != null 
+                        ? $"@{param.Key} ({methodParam.Type.GetCachedDisplayString()})"
+                        : $"@{param.Key}";
+                    sb.AppendLine($"/// <para>  • {paramInfo}</para>");
                 }
             }
 
@@ -305,6 +333,9 @@ public class CodeGenerationService
 #if DEBUG
             System.Diagnostics.Debug.WriteLine($"[Sqlx.Generator] Failed to get service interface from syntax for class '{context.RepositoryClass.Name}': {ex.Message}");
             System.Diagnostics.Debug.WriteLine($"[Sqlx.Generator] Stack trace: {ex.StackTrace}");
+#else
+            // 在Release模式下，避免编译器警告
+            _ = ex;
 #endif
             // 在生产环境仍然返回null，让调用者处理
             // 但至少在开发时能看到错误信息

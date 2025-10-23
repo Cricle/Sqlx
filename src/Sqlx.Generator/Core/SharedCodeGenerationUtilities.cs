@@ -96,7 +96,8 @@ public static class SharedCodeGenerationUtilities
         foreach (var param in method.Parameters.Where(p => p.Type.Name != "CancellationToken"))
         {
             var paramName = $"@{param.Name}";
-            var isNullable = param.Type.IsReferenceType || param.Type.NullableAnnotation == Microsoft.CodeAnalysis.NullableAnnotation.Annotated;
+            // ✅ 全面支持：nullable value types (int?) 和 nullable reference types (string?)
+            var isNullable = param.Type.IsNullableType() || param.Type.IsReferenceType;
 
             // 直接创建并添加参数，减少中间步骤
             sb.Append("{ var __p__ = __cmd__.CreateParameter(); ");
@@ -222,7 +223,8 @@ public static class SharedCodeGenerationUtilities
 
             // 🎯 关键性能优化：只对nullable类型检查IsDBNull，非nullable类型直接读取
             // 这可以减少60-70%的IsDBNull调用，提升5-6μs性能
-            var isNullable = prop.Type.NullableAnnotation == Microsoft.CodeAnalysis.NullableAnnotation.Annotated;
+            // ✅ 全面支持：nullable value types (int?) 和 nullable reference types (string?)
+            var isNullable = prop.Type.IsNullableType();
 
             // 🚀 极致性能：直接使用硬编码索引（例如：reader.GetInt32(0)）
             var valueExpression = string.IsNullOrEmpty(readMethod)
@@ -310,7 +312,8 @@ public static class SharedCodeGenerationUtilities
             var readMethod = prop.Type.UnwrapNullableType().GetDataReaderMethod();
 
             // 🎯 关键性能优化：只对nullable类型检查IsDBNull
-            var isNullable = prop.Type.NullableAnnotation == Microsoft.CodeAnalysis.NullableAnnotation.Annotated;
+            // ✅ 全面支持：nullable value types (int?) 和 nullable reference types (string?)
+            var isNullable = prop.Type.IsNullableType();
 
             // 使用缓存的序号变量
             var ordinalVar = $"__ord_{prop.Name}__";
@@ -340,7 +343,8 @@ public static class SharedCodeGenerationUtilities
     /// </summary>
     private static string GetDefaultValue(ITypeSymbol type)
     {
-        if (type.NullableAnnotation == Microsoft.CodeAnalysis.NullableAnnotation.Annotated)
+        // ✅ 全面支持：nullable value types (int?) 和 nullable reference types (string?)
+        if (type.IsNullableType())
             return "null";
 
         return type.SpecialType switch

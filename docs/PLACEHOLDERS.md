@@ -10,6 +10,208 @@
 
 ---
 
+## 🚨 动态占位符（@ 前缀）- 高级功能
+
+### 什么是动态占位符？
+
+动态占位符使用 `{{@paramName}}` 语法，允许在运行时动态指定表名、列名或 SQL 片段。主要用于：
+- 🏢 多租户系统（每个租户独立的表）
+- 🗂️ 分库分表（动态表后缀）
+- 🔍 动态查询（运行时构建 WHERE 子句）
+
+### ⚠️ 安全警告
+
+**动态占位符会绕过参数化查询，存在 SQL 注入风险！**
+
+**使用前必须：**
+- ✅ 显式标记 `[DynamicSql]` 特性（否则编译错误）
+- ✅ 在调用前进行严格验证（白名单）
+- ✅ 不要在公共 API 中暴露
+- ✅ 生成的代码会包含内联验证
+
+---
+
+### 动态占位符类型
+
+#### 1. `[DynamicSql]` - 标识符（表名/列名）
+
+**验证规则（最严格）：**
+- 只允许字母、数字、下划线
+- 必须以字母或下划线开头
+- 长度限制：1-128 字符
+- 不能包含 SQL 关键字
+
+```csharp
+// ✅ 多租户表名
+public interface IUserRepository
+{
+    [Sqlx("SELECT {{columns}} FROM {{@tableName}} WHERE id = @id")]
+    Task<User?> GetFromTableAsync([DynamicSql] string tableName, int id);
+}
+
+// 调用前验证
+var allowedTables = new[] { "users", "admin_users", "guest_users" };
+if (!allowedTables.Contains(tableName))
+    throw new ArgumentException("Invalid table name");
+
+var user = await repo.GetFromTableAsync("users", userId);
+// 生成 SQL: SELECT id, name, email FROM users WHERE id = @id
+```
+
+---
+
+#### 2. `[DynamicSql(Type = DynamicSqlType.Fragment)]` - SQL 片段
+
+**验证规则（中等）：**
+- 禁止 DDL 操作（DROP、TRUNCATE、ALTER、CREATE）
+- 禁止危险函数（EXEC、EXECUTE、xp_、sp_executesql）
+- 禁止注释符号（--, /*）
+- 长度限制：1-4096 字符
+
+```csharp
+// ✅ 动态 WHERE 子句
+[Sqlx("SELECT {{columns}} FROM {{table}} WHERE {{@whereClause}}")]
+Task<List<User>> QueryAsync([DynamicSql(Type = DynamicSqlType.Fragment)] string whereClause);
+
+// 调用
+var where = "age > 18 AND status = 'active'";
+var users = await repo.QueryAsync(where);
+// 生成 SQL: SELECT id, name, email FROM users WHERE age > 18 AND status = 'active'
+```
+
+---
+
+#### 3. `[DynamicSql(Type = DynamicSqlType.TablePart)]` - 表名部分
+
+**验证规则（严格）：**
+- 只允许字母和数字
+- 不允许下划线、空格等特殊字符
+- 长度限制：1-64 字符
+
+```csharp
+// ✅ 分表后缀
+[Sqlx("SELECT {{columns}} FROM logs_{{@suffix}} WHERE created_at > @date")]
+Task<List<Log>> GetLogsAsync([DynamicSql(Type = DynamicSqlType.TablePart)] string suffix, DateTime date);
+
+// 调用
+var logs = await repo.GetLogsAsync("202410", DateTime.Today);
+// 生成 SQL: SELECT id, level, message FROM logs_202410 WHERE created_at > @date
+```
+
+---
+
+### 完整示例：多租户系统
+
+```csharp
+// 1. 定义接口
+public interface ITenantRepository
+{
+    [Sqlx("SELECT {{columns}} FROM {{@tenantTable}} WHERE id = @id")]
+    Task<User?> GetUserAsync([DynamicSql] string tenantTable, int id);
+    
+    [Sqlx("SELECT {{columns}} FROM {{@tenantTable}} WHERE {{@condition}}")]
+    Task<List<User>> QueryUsersAsync(
+        [DynamicSql] string tenantTable,
+        [DynamicSql(Type = DynamicSqlType.Fragment)] string condition);
+}
+
+// 2. 使用（带验证）
+public class TenantService
+{
+    private readonly ITenantRepository _repo;
+    private static readonly HashSet<string> AllowedTenants = new() 
+    { 
+        "tenant1_users", "tenant2_users", "tenant3_users" 
+    };
+    
+    public async Task<User?> GetTenantUserAsync(string tenantId, int userId)
+    {
+        // ✅ 白名单验证
+        var tableName = $"{tenantId}_users";
+        if (!AllowedTenants.Contains(tableName))
+            throw new ArgumentException($"Invalid tenant: {tenantId}");
+        
+        return await _repo.GetUserAsync(tableName, userId);
+    }
+    
+    public async Task<List<User>> QueryActiveUsers(string tenantId)
+    {
+        var tableName = $"{tenantId}_users";
+        if (!AllowedTenants.Contains(tableName))
+            throw new ArgumentException($"Invalid tenant: {tenantId}");
+        
+        // ✅ 硬编码的安全条件
+        var condition = "is_active = 1 AND deleted_at IS NULL";
+        
+        return await _repo.QueryUsersAsync(tableName, condition);
+    }
+}
+```
+
+---
+
+### 生成的代码示例
+
+```csharp
+// Sqlx 生成的方法（包含内联验证）
+public async Task<User?> GetFromTableAsync(string tableName, int id)
+{
+    // ✅ 内联验证代码（编译器完全优化）
+    if (tableName.Length == 0 || tableName.Length > 128)
+        throw new ArgumentException("Invalid table name length", nameof(tableName));
+    
+    if (!char.IsLetter(tableName[0]) && tableName[0] != '_')
+        throw new ArgumentException("Table name must start with letter or underscore", nameof(tableName));
+    
+    if (tableName.Contains("DROP", StringComparison.OrdinalIgnoreCase) ||
+        tableName.Contains("--") ||
+        tableName.Contains("/*"))
+        throw new ArgumentException("Invalid table name", nameof(tableName));
+    
+    // ✅ 使用 C# 字符串插值（高性能）
+    var sql = $"SELECT id, name, email FROM {tableName} WHERE id = @id";
+    
+    // ... 执行 SQL
+}
+```
+
+---
+
+### 最佳实践
+
+#### ✅ 推荐做法
+1. 使用白名单验证所有动态参数
+2. 在内部服务层使用，不暴露给公共 API
+3. 使用硬编码的常量作为动态参数
+4. 为动态查询方法编写充分的单元测试
+
+#### ❌ 禁止做法
+1. 不要直接使用用户输入作为动态参数
+2. 不要在 Web API 控制器中直接使用
+3. 不要禁用或跳过验证逻辑
+4. 不要在动态片段中使用 DDL 操作
+
+---
+
+### Roslyn 分析器支持
+
+Sqlx 提供 10 个诊断规则来检测不安全的使用：
+
+- **SQLX2001** (Error): 使用 `{{@}}` 但参数未标记 `[DynamicSql]`
+- **SQLX2002** (Warning): 动态参数来自不安全来源（用户输入）
+- **SQLX2003** (Warning): 调用前缺少验证
+- **SQLX2004** (Info): 建议使用白名单验证
+- **SQLX2005** (Warning): 在公共 API 中暴露动态参数
+- **SQLX2006** (Error): 动态参数类型不是 string
+- **SQLX2007** (Warning): SQL 模板包含危险操作
+- **SQLX2008** (Info): 建议添加单元测试
+- **SQLX2009** (Warning): 缺少长度限制检查
+- **SQLX2010** (Error): `[DynamicSql]` 特性使用错误
+
+详见：[分析器设计文档](../ANALYZER_DESIGN.md)
+
+---
+
 ## 🌟 核心占位符（必会）
 
 ### 1. `{{table}}` - 表名

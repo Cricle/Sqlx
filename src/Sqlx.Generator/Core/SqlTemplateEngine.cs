@@ -1148,11 +1148,11 @@ public class SqlTemplateEngine
                 a.NamedArguments.Any(arg =>
                     arg.Key == "Type" &&
                     arg.Value.Value?.ToString() == "1"))); // Fragment = 1
-        
+
         // Priority 1: Explicit parameter reference {{join @paramName}}
         var paramSource = !string.IsNullOrWhiteSpace(options) && options.StartsWith("@") ? options :
                          !string.IsNullOrWhiteSpace(type) && type.StartsWith("@") ? type : null;
-        
+
         if (paramSource != null)
         {
             var paramName = paramSource.Substring(1).Trim();
@@ -1162,13 +1162,13 @@ public class SqlTemplateEngine
                 return $"{{RUNTIME_JOIN_{paramName}}}";
             }
         }
-        
+
         // Priority 2: Auto-detect DynamicSql Fragment parameter (like SET/WHERE/ORDERBY)
         if (dynamicJoinParam != null)
         {
             return $"{{RUNTIME_JOIN_DYNAMIC_{dynamicJoinParam.Name}}}";
         }
-        
+
         // Static JOIN generation (existing behavior)
         return SqlTemplateEngineExtensions.MultiDatabasePlaceholderSupport.ProcessGenericPlaceholder("join", type, options, dialect);
     }
@@ -1183,11 +1183,11 @@ public class SqlTemplateEngine
                 a.NamedArguments.Any(arg =>
                     arg.Key == "Type" &&
                     arg.Value.Value?.ToString() == "1"))); // Fragment = 1
-        
+
         // Priority 1: Explicit parameter reference {{groupby @paramName}}
         var paramSource = !string.IsNullOrWhiteSpace(options) && options.StartsWith("@") ? options :
                          !string.IsNullOrWhiteSpace(type) && type.StartsWith("@") ? type : null;
-        
+
         if (paramSource != null)
         {
             var paramName = paramSource.Substring(1).Trim();
@@ -1197,13 +1197,13 @@ public class SqlTemplateEngine
                 return $"{{RUNTIME_GROUPBY_{paramName}}}";
             }
         }
-        
+
         // Priority 2: Auto-detect DynamicSql Fragment parameter (like SET/WHERE/ORDERBY)
         if (dynamicGroupParam != null)
         {
             return $"{{RUNTIME_GROUPBY_DYNAMIC_{dynamicGroupParam.Name}}}";
         }
-        
+
         // Static GROUPBY generation (existing behavior)
         return SqlTemplateEngineExtensions.MultiDatabasePlaceholderSupport.ProcessGenericPlaceholder("groupby", type, options, dialect);
     }

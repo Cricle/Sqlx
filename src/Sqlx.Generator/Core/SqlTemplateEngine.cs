@@ -189,7 +189,7 @@ public class SqlTemplateEngine
                 "values" => ProcessValuesPlaceholder(placeholderType, entityType, method, placeholderOptions, dialect, result),
                 "where" => ProcessWherePlaceholder(placeholderType, entityType, method, placeholderOptions, dialect),
                 "set" => ProcessSetPlaceholder(placeholderType, entityType, method, placeholderOptions, dialect, result),
-                "orderby" => ProcessOrderByPlaceholder(placeholderType, entityType, placeholderOptions, dialect),
+                "orderby" => ProcessOrderByPlaceholder(placeholderType, entityType, placeholderOptions, dialect, method),
                 "limit" => ProcessLimitPlaceholder(placeholderType, method, placeholderOptions, dialect),
                 // 常用扩展占位符（多数据库支持）
                 "join" => ProcessJoinPlaceholder(placeholderType, entityType, placeholderOptions, dialect),
@@ -469,9 +469,36 @@ public class SqlTemplateEngine
     }
 
 
-    /// <summary>处理ORDER BY占位符 - 多数据库支持 (简化版本)</summary>
-    private static string ProcessOrderByPlaceholder(string type, INamedTypeSymbol? entityType, string options, SqlDefine dialect)
+    /// <summary>Processes ORDERBY placeholder - supports dynamic runtime ordering</summary>
+    private static string ProcessOrderByPlaceholder(string type, INamedTypeSymbol? entityType, string options, SqlDefine dialect, IMethodSymbol method)
     {
+        // Check for dynamic ORDERBY parameter
+        var dynamicOrderParam = method.Parameters.FirstOrDefault(p =>
+            p.GetAttributes().Any(a => 
+                a.AttributeClass?.Name == "DynamicSqlAttribute" &&
+                a.NamedArguments.Any(arg => 
+                    arg.Key == "Type" && 
+                    arg.Value.Value?.ToString() == "1"))); // Fragment = 1
+        
+        // Priority: @paramName > dynamic param > options > type
+        if (!string.IsNullOrWhiteSpace(type) && type.StartsWith("@"))
+        {
+            // {{orderby @customOrder}} - use parameter as ORDERBY fragment
+            var paramName = type.Substring(1);
+            var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
+            if (param != null)
+            {
+                return $"{{RUNTIME_ORDERBY_{paramName}}}"; // Marker for code generation
+            }
+        }
+        
+        if (dynamicOrderParam != null)
+        {
+            // {{orderby}} with [DynamicSql(Type=Fragment)] parameter
+            return $"{{RUNTIME_ORDERBY_DYNAMIC_{dynamicOrderParam.Name}}}"; // Marker for code generation
+        }
+        
+        // Static ORDERBY generation (existing behavior)
         // 优先处理 options（新格式）：created_at --desc
         if (!string.IsNullOrWhiteSpace(options))
         {

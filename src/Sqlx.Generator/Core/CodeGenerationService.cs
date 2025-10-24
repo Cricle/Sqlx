@@ -1089,7 +1089,7 @@ public class CodeGenerationService
     private static AttributeData? GetRepositoryForAttribute(INamedTypeSymbol repositoryClass) =>
         repositoryClass.GetAttributes()
             .FirstOrDefault(attr => attr.AttributeClass?.Name == "RepositoryForAttribute" ||
-                                   (attr.AttributeClass?.OriginalDefinition != null && 
+                                   (attr.AttributeClass?.OriginalDefinition != null &&
                                     attr.AttributeClass.OriginalDefinition.Name == "RepositoryForAttribute"));
 
     /// <summary>Check if name matches common connection name patterns</summary>

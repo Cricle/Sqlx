@@ -12,21 +12,32 @@ namespace Sqlx.Annotations
     /// Marks a class as repository for a specified service interface.
     /// </summary>
     /// <remarks>
-    /// Best practice: Use interface type. Repository class should implement the specified interface.
-    /// Supports both generic and non-generic syntax.
+    /// <para>Supports both generic and non-generic syntax.</para>
+    /// <para><strong>Best Practice:</strong> Define a custom interface that extends ICrudRepository for better maintainability.</para>
+    /// <para><strong>Supported Interface Types:</strong></para>
+    /// <list type="bullet">
+    /// <item><description>Custom interfaces (recommended)</description></item>
+    /// <item><description>ICrudRepository&lt;TEntity, TKey&gt; (full CRUD operations)</description></item>
+    /// <item><description>IReadOnlyRepository&lt;TEntity&gt; (read-only operations)</description></item>
+    /// <item><description>Any interface with [SqlTemplate] methods</description></item>
+    /// </list>
     /// </remarks>
     /// <example>
     /// <code>
-    /// // Non-generic syntax
-    /// [RepositoryFor(typeof(IUserRepository))]
+    /// // Example 1: Custom interface (recommended)
+    /// public interface IUserRepository : ICrudRepository&lt;User, int&gt; { }
+    /// 
+    /// [RepositoryFor(typeof(IUserRepository))]  // Non-generic syntax
     /// public partial class UserRepository : IUserRepository { }
     ///
-    /// // Generic syntax (recommended)
-    /// [RepositoryFor&lt;IUserRepository&gt;]
+    /// [RepositoryFor&lt;IUserRepository&gt;]     // Generic syntax (cleaner)
     /// public partial class UserRepository : IUserRepository { }
     ///
-    /// // For ICrudRepository
-    /// [RepositoryFor&lt;User&gt;]
+    /// // Example 2: Direct generic interface usage
+    /// [RepositoryFor(typeof(ICrudRepository&lt;User, int&gt;))]  // Non-generic
+    /// public partial class UserRepository : ICrudRepository&lt;User, int&gt; { }
+    /// 
+    /// [RepositoryFor&lt;ICrudRepository&lt;User, int&gt;&gt;]   // Generic (C# 11+)
     /// public partial class UserRepository : ICrudRepository&lt;User, int&gt; { }
     /// </code>
     /// </example>
@@ -47,18 +58,26 @@ namespace Sqlx.Annotations
     }
 
     /// <summary>
-    /// Generic version of RepositoryForAttribute for better type safety and cleaner syntax.
+    /// Generic version of RepositoryForAttribute for better type safety and cleaner syntax (C# 11+).
     /// </summary>
-    /// <typeparam name="TService">Service interface or entity type.</typeparam>
+    /// <typeparam name="TService">Service interface type (must be an interface).</typeparam>
+    /// <remarks>
+    /// <para>This generic version provides compile-time type safety and cleaner syntax.</para>
+    /// <para>TService must be an interface type with [SqlTemplate] methods.</para>
+    /// </remarks>
     /// <example>
     /// <code>
-    /// // For interface
+    /// // Custom interface
     /// [RepositoryFor&lt;IUserRepository&gt;]
     /// public partial class UserRepository : IUserRepository { }
     ///
-    /// // For entity (will implement ICrudRepository)
-    /// [RepositoryFor&lt;User&gt;]
+    /// // Direct ICrudRepository usage
+    /// [RepositoryFor&lt;ICrudRepository&lt;User, int&gt;&gt;]
     /// public partial class UserRepository : ICrudRepository&lt;User, int&gt; { }
+    /// 
+    /// // IReadOnlyRepository usage
+    /// [RepositoryFor&lt;IReadOnlyRepository&lt;Product&gt;&gt;]
+    /// public partial class ProductRepository : IReadOnlyRepository&lt;Product&gt; { }
     /// </code>
     /// </example>
     [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = false, Inherited = false)]

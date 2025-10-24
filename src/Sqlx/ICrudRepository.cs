@@ -31,7 +31,7 @@ namespace Sqlx
         /// Generated SQL: SELECT id, name, ... FROM table WHERE id = @id
         /// Uses primary key index for optimal performance.
         /// </remarks>
-        [SqlxAttribute("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
+        [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
         Task<TEntity?> GetByIdAsync(TKey id, CancellationToken cancellationToken = default);
 
         /// <summary>Gets all entities with pagination.</summary>
@@ -43,7 +43,7 @@ namespace Sqlx
         /// Generated SQL: SELECT id, name, ... FROM table ORDER BY id LIMIT @limit OFFSET @offset
         /// Always uses LIMIT to prevent loading too much data. Ordered by primary key for stable results.
         /// </remarks>
-        [SqlxAttribute("SELECT {{columns}} FROM {{table}} ORDER BY id {{limit --param limit}} {{offset --param offset}}")]
+        [SqlTemplate("SELECT {{columns}} FROM {{table}} ORDER BY id {{limit --param limit}} {{offset --param offset}}")]
         Task<List<TEntity>> GetAllAsync(int limit = 100, int offset = 0, CancellationToken cancellationToken = default);
 
         /// <summary>Inserts new entity.</summary>
@@ -54,7 +54,7 @@ namespace Sqlx
         /// Generated SQL: INSERT INTO table (name, email, ...) VALUES (@name, @email, ...)
         /// Excludes Id column (assumed to be auto-increment primary key).
         /// </remarks>
-        [SqlxAttribute("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values --exclude Id}})")]
+        [SqlTemplate("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values --exclude Id}})")]
         Task<int> InsertAsync(TEntity entity, CancellationToken cancellationToken = default);
 
         /// <summary>Updates entity by primary key.</summary>
@@ -65,7 +65,7 @@ namespace Sqlx
         /// Generated SQL: UPDATE table SET name = @name, ... WHERE id = @id
         /// Excludes Id column (primary key should not be updated).
         /// </remarks>
-        [SqlxAttribute("UPDATE {{table}} SET {{set --exclude Id}} WHERE id = @id")]
+        [SqlTemplate("UPDATE {{table}} SET {{set --exclude Id}} WHERE id = @id")]
         Task<int> UpdateAsync(TEntity entity, CancellationToken cancellationToken = default);
 
         /// <summary>Deletes entity by primary key.</summary>
@@ -76,7 +76,7 @@ namespace Sqlx
         /// Generated SQL: DELETE FROM table WHERE id = @id
         /// This is a physical delete and cannot be undone. Consider soft delete with is_deleted flag.
         /// </remarks>
-        [SqlxAttribute("DELETE FROM {{table}} WHERE id = @id")]
+        [SqlTemplate("DELETE FROM {{table}} WHERE id = @id")]
         Task<int> DeleteAsync(TKey id, CancellationToken cancellationToken = default);
 
         /// <summary>Gets total count of entities.</summary>
@@ -86,7 +86,7 @@ namespace Sqlx
         /// Generated SQL: SELECT COUNT(*) FROM table
         /// For large tables, consider using approximations.
         /// </remarks>
-        [SqlxAttribute("SELECT COUNT(*) FROM {{table}}")]
+        [SqlTemplate("SELECT COUNT(*) FROM {{table}}")]
         Task<int> CountAsync(CancellationToken cancellationToken = default);
 
         /// <summary>Checks if entity exists.</summary>
@@ -97,7 +97,7 @@ namespace Sqlx
         /// Generated SQL: SELECT CASE WHEN EXISTS(SELECT 1 FROM table WHERE id = @id) THEN 1 ELSE 0 END
         /// Uses EXISTS for better performance than COUNT(*).
         /// </remarks>
-        [SqlxAttribute("SELECT CASE WHEN EXISTS(SELECT 1 FROM {{table}} WHERE id = @id) THEN 1 ELSE 0 END")]
+        [SqlTemplate("SELECT CASE WHEN EXISTS(SELECT 1 FROM {{table}} WHERE id = @id) THEN 1 ELSE 0 END")]
         Task<bool> ExistsAsync(TKey id, CancellationToken cancellationToken = default);
 
         /// <summary>Batch inserts multiple entities (high performance).</summary>
@@ -108,7 +108,7 @@ namespace Sqlx
         /// Generated SQL: INSERT INTO table (name, ...) VALUES (@name_0, ...), (@name_1, ...), (@name_2, ...)
         /// 10-50x faster than looping InsertAsync. Be aware of database parameter limits (typically 2100).
         /// </remarks>
-        [SqlxAttribute("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES {{batch_values --exclude Id}}")]
+        [SqlTemplate("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES {{batch_values --exclude Id}}")]
         [BatchOperation]
         Task<int> BatchInsertAsync(List<TEntity> entities, CancellationToken cancellationToken = default);
     }
@@ -123,19 +123,19 @@ namespace Sqlx
         where TEntity : class
     {
         /// <summary>Gets entity by primary key.</summary>
-        [SqlxAttribute("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
+        [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
         Task<TEntity?> GetByIdAsync(TKey id, CancellationToken cancellationToken = default);
 
         /// <summary>Gets all entities with pagination.</summary>
-        [SqlxAttribute("SELECT {{columns}} FROM {{table}} ORDER BY id {{limit --param limit}} {{offset --param offset}}")]
+        [SqlTemplate("SELECT {{columns}} FROM {{table}} ORDER BY id {{limit --param limit}} {{offset --param offset}}")]
         Task<List<TEntity>> GetAllAsync(int limit = 100, int offset = 0, CancellationToken cancellationToken = default);
 
         /// <summary>Gets total count of entities.</summary>
-        [SqlxAttribute("SELECT COUNT(*) FROM {{table}}")]
+        [SqlTemplate("SELECT COUNT(*) FROM {{table}}")]
         Task<int> CountAsync(CancellationToken cancellationToken = default);
 
         /// <summary>Checks if entity exists.</summary>
-        [SqlxAttribute("SELECT CASE WHEN EXISTS(SELECT 1 FROM {{table}} WHERE id = @id) THEN 1 ELSE 0 END")]
+        [SqlTemplate("SELECT CASE WHEN EXISTS(SELECT 1 FROM {{table}} WHERE id = @id) THEN 1 ELSE 0 END")]
         Task<bool> ExistsAsync(TKey id, CancellationToken cancellationToken = default);
     }
 }

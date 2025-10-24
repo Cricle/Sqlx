@@ -137,22 +137,41 @@ public abstract partial class AbstractGenerator : ISourceGenerator
             try
             {
                 // Analyze interface methods in repository class
+                // Match by name to support both generic and non-generic RepositoryForAttribute
                 var repositoryForAttr = repositoryClass.GetAttributes()
-                    .FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, symbols.RepositoryForAttributeSymbol));
+                    .FirstOrDefault(a => a.AttributeClass?.Name == "RepositoryForAttribute" || 
+                                        (a.AttributeClass?.OriginalDefinition != null && 
+                                         a.AttributeClass.OriginalDefinition.Name == "RepositoryForAttribute"));
 
-                if (repositoryForAttr?.ConstructorArguments.FirstOrDefault().Value is INamedTypeSymbol interfaceType)
+                if (repositoryForAttr != null)
                 {
-                    var interfaceMethods = interfaceType.GetMembers().OfType<IMethodSymbol>().ToList();
-
-                    // Perform diagnostic analysis for each method in the interface
-                    foreach (var method in interfaceMethods)
+                    INamedTypeSymbol? interfaceType = null;
+                    
+                    // Handle generic RepositoryFor<T> attribute
+                    if (repositoryForAttr.AttributeClass is INamedTypeSymbol attrClass && attrClass.IsGenericType)
                     {
-                        var sqlxAttr = method.GetAttributes()
-                            .FirstOrDefault(a => a.AttributeClass?.Name?.Contains("Sqlx") == true);
+                        interfaceType = attrClass.TypeArguments.FirstOrDefault() as INamedTypeSymbol;
+                    }
+                    // Handle non-generic RepositoryFor(typeof(T)) attribute
+                    else if (repositoryForAttr.ConstructorArguments.FirstOrDefault().Value is INamedTypeSymbol constructorArg)
+                    {
+                        interfaceType = constructorArg;
+                    }
 
-                        if (sqlxAttr?.ConstructorArguments.FirstOrDefault().Value is string sql)
+                    if (interfaceType != null)
+                    {
+                        var interfaceMethods = interfaceType.GetMembers().OfType<IMethodSymbol>().ToList();
+
+                        // Perform diagnostic analysis for each method in the interface
+                        foreach (var method in interfaceMethods)
                         {
-                            // Simplified: removed complex type inference
+                            var sqlxAttr = method.GetAttributes()
+                                .FirstOrDefault(a => a.AttributeClass?.Name?.Contains("Sqlx") == true);
+
+                            if (sqlxAttr?.ConstructorArguments.FirstOrDefault().Value is string sql)
+                            {
+                                // Simplified: removed complex type inference
+                            }
                         }
                     }
                 }

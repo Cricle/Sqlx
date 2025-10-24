@@ -106,8 +106,19 @@ public partial class CSharpGenerator
         private static bool HasRepositoryForAttribute(INamedTypeSymbol type) =>
             type.GetAttributes().Any(attr => IsRepositoryForAttributeName(attr.AttributeClass?.Name));
 
-        private static bool IsRepositoryForAttributeName(string? name) => name is
-            "RepositoryForAttribute" or "RepositoryFor";
+        private static bool IsRepositoryForAttributeName(string? name)
+        {
+            if (string.IsNullOrEmpty(name))
+                return false;
+
+            // Support both non-generic and generic syntax:
+            // - Non-generic: "RepositoryFor" or "RepositoryForAttribute"
+            // - Generic: "RepositoryFor<T>" or "RepositoryForAttribute<T>"
+            return name == "RepositoryFor" ||
+                   name == "RepositoryForAttribute" ||
+                   name.StartsWith("RepositoryFor<") ||
+                   name.StartsWith("RepositoryForAttribute<");
+        }
     }
 }
 

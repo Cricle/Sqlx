@@ -274,16 +274,34 @@ public class CodeGenerationService
             if (repositoryForAttr.AttributeClass is INamedTypeSymbol attrClass && attrClass.IsGenericType)
             {
                 // Generic version: RepositoryFor<TService>
+                // TService can be a simple type or a generic type like ICrudRepository<User, int>
                 var typeArg = attrClass.TypeArguments.FirstOrDefault();
                 if (typeArg is INamedTypeSymbol serviceType)
+                {
+                    // Return the type directly - it can be a constructed generic type
                     return serviceType;
+                }
+                // Handle ITypeSymbol that might not be INamedTypeSymbol
+                if (typeArg != null && typeArg.TypeKind == TypeKind.Interface)
+                {
+                    return typeArg as INamedTypeSymbol;
+                }
             }
             // Non-generic version: RepositoryFor(typeof(TService))
             else if (repositoryForAttr.ConstructorArguments.Length > 0)
             {
                 var typeArg = repositoryForAttr.ConstructorArguments[0];
+                // Handle both simple types and generic types
                 if (typeArg.Value is INamedTypeSymbol serviceType)
+                {
+                    // Return the type directly - it can be a constructed generic type
                     return serviceType;
+                }
+                // Try to get as ITypeSymbol first
+                if (typeArg.Value is ITypeSymbol typeSymbol && typeSymbol.TypeKind == TypeKind.Interface)
+                {
+                    return typeSymbol as INamedTypeSymbol;
+                }
             }
         }
 
@@ -1070,7 +1088,9 @@ public class CodeGenerationService
     /// <summary>Get RepositoryFor attribute from class</summary>
     private static AttributeData? GetRepositoryForAttribute(INamedTypeSymbol repositoryClass) =>
         repositoryClass.GetAttributes()
-            .FirstOrDefault(attr => attr.AttributeClass?.Name == "RepositoryForAttribute");
+            .FirstOrDefault(attr => attr.AttributeClass?.Name == "RepositoryForAttribute" ||
+                                   (attr.AttributeClass?.OriginalDefinition != null && 
+                                    attr.AttributeClass.OriginalDefinition.Name == "RepositoryForAttribute"));
 
     /// <summary>Check if name matches common connection name patterns</summary>
     private static bool IsConnectionNamePattern(string name) =>

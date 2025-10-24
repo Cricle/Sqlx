@@ -115,7 +115,8 @@ namespace Sqlx.Tests.RepositoryFor
             
             // Assert
             Assert.IsNotNull(repoType);
-            Assert.IsTrue(repoType.GetInterfaces().Any(i => i.Name.Contains("IReadOnlyRepository")));
+            Assert.IsTrue(repoType.GetInterfaces().Any(i => i.Name.Contains("IReadRepository")));
+            Assert.IsTrue(repoType.GetMethods().Any(m => m.Name == "GetByIdAsync"));
             Assert.IsTrue(repoType.GetMethods().Any(m => m.Name == "GetAllAsync"));
         }
 
@@ -127,8 +128,9 @@ namespace Sqlx.Tests.RepositoryFor
             
             // Assert
             Assert.IsNotNull(repoType);
-            Assert.IsTrue(repoType.GetInterfaces().Any(i => i.Name.Contains("IReadOnlyRepository")));
-            Assert.IsTrue(repoType.GetMethods().Any(m => m.Name == "CountAsync"));
+            Assert.IsTrue(repoType.GetInterfaces().Any(i => i.Name.Contains("IReadRepository")));
+            Assert.IsTrue(repoType.GetMethods().Any(m => m.Name == "GetByIdAsync"));
+            Assert.IsTrue(repoType.GetMethods().Any(m => m.Name == "GetAllAsync"));
         }
 
         [TestMethod]

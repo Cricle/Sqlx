@@ -53,9 +53,10 @@
   <!-- 项目引用 -->
   <ItemGroup Label="Project References">
     <ProjectReference Include="..\..\src\Sqlx\Sqlx.csproj" />
+    <!-- Generator: both as analyzer and assembly reference for testing -->
     <ProjectReference Include="..\..\src\Sqlx.Generator\Sqlx.Generator.csproj"
                       OutputItemType="Analyzer"
-                      ReferenceOutputAssembly="false" />
+                      ReferenceOutputAssembly="true" />
   </ItemGroup>
 
   <!-- 测试数据文件 -->

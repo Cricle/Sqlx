@@ -15,8 +15,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text.RegularExpressions;
-using Sqlx;
-using static Sqlx.Extensions;
 using static Sqlx.Generator.SharedCodeGenerationUtilities;
 
 internal partial class MethodGenerationContext : GenerationContextBase
@@ -25,11 +23,6 @@ internal partial class MethodGenerationContext : GenerationContextBase
     private const string SqlInsert = "INSERT";
     private const string SqlUpdate = "UPDATE";
     private const string SqlDelete = "DELETE";
-    private const string SqlInsertInto = "INSERT INTO";
-    private const string SqlDeleteFrom = "DELETE FROM";
-    private const string SqlValues = "VALUES";
-    private const string SqlSet = "SET";
-    private const string SqlWhere = "WHERE";
     private const string SqlAnd = " AND ";
     private const string CommaSpace = ", ";
 

@@ -43,10 +43,32 @@ public static class SqlTemplateEngineExtensions
 
         /// <summary>
         /// 处理LIMIT占位符 - 多数据库支持 (简化版本)
-        /// 支持预定义模式、分页偏移量、智能默认值
+        /// 支持预定义模式、分页偏移量、智能默认值、参数化形式
         /// </summary>
         public static string ProcessLimitPlaceholder(string type, string options, SqlDefine dialect)
         {
+            // 检查是否是参数化形式: --param paramName
+            var paramMatch = System.Text.RegularExpressions.Regex.Match(options ?? "", @"--param\s+(\w+)");
+            if (paramMatch.Success)
+            {
+                var paramName = paramMatch.Groups[1].Value;
+                // 返回参数化的LIMIT（由方法参数提供值）
+                // MySQL, PostgreSQL, SQLite使用LIMIT语法
+                if (dialect.Equals(SqlDefine.SqlServer))
+                {
+                    return $"TOP ({dialect.ParameterPrefix}{paramName})";
+                }
+                else if (dialect.Equals(SqlDefine.Oracle))
+                {
+                    return $"ROWNUM <= {dialect.ParameterPrefix}{paramName}";
+                }
+                else
+                {
+                    // MySQL, PostgreSQL, SQLite
+                    return $"LIMIT {dialect.ParameterPrefix}{paramName}";
+                }
+            }
+
             // 检查预定义模式
             var (sqlServer, oracle, others) = type.ToLowerInvariant() switch
             {
@@ -107,6 +129,46 @@ public static class SqlTemplateEngineExtensions
                 return !string.IsNullOrEmpty(offset)
                     ? $"LIMIT {count} OFFSET {offset}"
                     : $"LIMIT {count}";
+            }
+        }
+
+        /// <summary>
+        /// 处理OFFSET占位符 - 多数据库支持
+        /// 支持参数化形式、智能默认值
+        /// </summary>
+        public static string ProcessOffsetPlaceholder(string type, string options, SqlDefine dialect)
+        {
+            // 检查是否是参数化形式: --param paramName
+            var paramMatch = System.Text.RegularExpressions.Regex.Match(options ?? "", @"--param\s+(\w+)");
+            if (paramMatch.Success)
+            {
+                var paramName = paramMatch.Groups[1].Value;
+                // 返回参数化的OFFSET（由方法参数提供值）
+                if (dialect.Equals(SqlDefine.SqlServer) || dialect.Equals(SqlDefine.Oracle))
+                {
+                    return $"OFFSET {dialect.ParameterPrefix}{paramName} ROWS";
+                }
+                else
+                {
+                    // MySQL, PostgreSQL, SQLite
+                    return $"OFFSET {dialect.ParameterPrefix}{paramName}";
+                }
+            }
+
+            // 智能选项解析
+            var offset = ExtractOption(options, "offset", null) ??
+                        ExtractOption(options, "skip", null) ??
+                        "0";
+
+            // 根据数据库生成OFFSET语句
+            if (dialect.Equals(SqlDefine.SqlServer) || dialect.Equals(SqlDefine.Oracle))
+            {
+                return $"OFFSET {offset} ROWS";
+            }
+            else
+            {
+                // MySQL, PostgreSQL, SQLite
+                return $"OFFSET {offset}";
             }
         }
 

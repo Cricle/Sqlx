@@ -1179,12 +1179,6 @@ public class CodeGenerationService
         return false;
     }
 
-    private string GetTableNameFromType(INamedTypeSymbol repositoryClass, INamedTypeSymbol? entityType)
-    {
-        // 简化：使用实体类型名作为表名，如果没有则使用repository类名
-        return entityType?.Name ?? repositoryClass.Name.Replace("Repository", "");
-    }
-
     /// <summary>
     /// 生成动态占位符验证代码（内联到生成的方法中）
     /// </summary>
@@ -1227,7 +1221,7 @@ public class CodeGenerationService
 
             // 根据 DynamicSqlType 生成不同的验证代码
 
-        
+
             switch (dynamicSqlType)
             {
                 case 0: // Identifier
@@ -1290,7 +1284,7 @@ public class CodeGenerationService
         // First, check if repository class has TableNameAttribute
         var repositoryTableNameAttr = repositoryClass.GetAttributes()
             .FirstOrDefault(attr => attr.AttributeClass?.Name == "TableNameAttribute" || attr.AttributeClass?.Name == "TableName");
-        
+
         if (repositoryTableNameAttr != null && repositoryTableNameAttr.ConstructorArguments.Length > 0)
         {
             var tableName = repositoryTableNameAttr.ConstructorArguments[0].Value?.ToString();
@@ -1298,12 +1292,12 @@ public class CodeGenerationService
                 return tableName;
         }
 
-        // Second, check if entity type has TableNameAttribute  
+        // Second, check if entity type has TableNameAttribute
         if (entityType != null)
         {
             var entityTableNameAttr = entityType.GetAttributes()
                 .FirstOrDefault(attr => attr.AttributeClass?.Name == "TableNameAttribute" || attr.AttributeClass?.Name == "TableName");
-            
+
             if (entityTableNameAttr != null && entityTableNameAttr.ConstructorArguments.Length > 0)
             {
                 var tableName = entityTableNameAttr.ConstructorArguments[0].Value?.ToString();

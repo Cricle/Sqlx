@@ -349,28 +349,6 @@ public static class SqlTemplateEngineExtensions
             return $"GROUP BY {column}";
         }
 
-        /// <summary>
-        /// 处理OFFSET占位符 - 展示数据库间的语法差异
-        /// </summary>
-        private static string ProcessOffsetPlaceholder(string type, string options, SqlDefine dialect)
-        {
-            var offset = ExtractOffsetValue(options);
-            var rows = ExtractRowsValue(options);
-
-            // 如果type指定了数据库类型，使用type而不是dialect
-            return type.ToLowerInvariant() switch
-            {
-                "mysql" or "postgresql" or "sqlite" => $"LIMIT {rows} OFFSET {offset}",
-                "sqlserver" or "oracle" => $"OFFSET {offset} ROWS FETCH NEXT {rows} ROWS ONLY",
-                _ => dialect switch
-                {
-                    var d when d.Equals(SqlDefine.SqlServer) => $"OFFSET {offset} ROWS FETCH NEXT {rows} ROWS ONLY",
-                    var d when d.Equals(SqlDefine.Oracle) => $"OFFSET {offset} ROWS FETCH NEXT {rows} ROWS ONLY",
-                    _ => $"LIMIT {rows} OFFSET {offset}"  // MySQL, PostgreSQL, SQLite
-                }
-            };
-        }
-
         // 辅助方法
         private static string ExtractLimitValue(string options) => ExtractOption(options, "default", "10");
         private static string ExtractOffsetValue(string options) => ExtractOption(options, "offset", "0");

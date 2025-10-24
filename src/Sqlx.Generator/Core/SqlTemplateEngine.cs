@@ -1565,22 +1565,38 @@ public class SqlTemplateEngine
                     : $"{dialect.WrapColumn(column)} LIKE '%' || {dialect.ParameterPrefix}{parameterValue} || '%'"; // SQLite, Oracle, DB2
     }
 
-    /// <summary>处理STARTSWITH占位符</summary>
+    /// <summary>处理STARTSWITH占位符 - 多数据库支持</summary>
     private static string ProcessStartsWithPlaceholder(string type, string options, SqlDefine dialect)
     {
         var column = ExtractOption(options, "column", type);
         var value = ExtractOption(options, "value", "prefix");
 
-        return $"{dialect.WrapColumn(column)} LIKE CONCAT({dialect.ParameterPrefix}{value}, '%')";
+        // 根据数据库方言生成正确的LIKE语句
+        if (dialect.Equals(SqlDefine.SqlServer) || dialect.Equals(SqlDefine.MySql))
+        {
+            return $"{dialect.WrapColumn(column)} LIKE CONCAT({dialect.ParameterPrefix}{value}, '%')";
+        }
+        else // PostgreSQL, SQLite, Oracle, DB2
+        {
+            return $"{dialect.WrapColumn(column)} LIKE {dialect.ParameterPrefix}{value} || '%'";
+        }
     }
 
-    /// <summary>处理ENDSWITH占位符</summary>
+    /// <summary>处理ENDSWITH占位符 - 多数据库支持</summary>
     private static string ProcessEndsWithPlaceholder(string type, string options, SqlDefine dialect)
     {
         var column = ExtractOption(options, "column", type);
         var value = ExtractOption(options, "value", "suffix");
 
-        return $"{dialect.WrapColumn(column)} LIKE CONCAT('%', {dialect.ParameterPrefix}{value})";
+        // 根据数据库方言生成正确的LIKE语句
+        if (dialect.Equals(SqlDefine.SqlServer) || dialect.Equals(SqlDefine.MySql))
+        {
+            return $"{dialect.WrapColumn(column)} LIKE CONCAT('%', {dialect.ParameterPrefix}{value})";
+        }
+        else // PostgreSQL, SQLite, Oracle, DB2
+        {
+            return $"{dialect.WrapColumn(column)} LIKE '%' || {dialect.ParameterPrefix}{value}";
+        }
     }
 
     /// <summary>处理字符串函数占位符 - 统一优化版本</summary>
@@ -1639,19 +1655,37 @@ public class SqlTemplateEngine
         return $"VALUES ({string.Join(", ", columns.Split(',').Select(c => $"{dialect.ParameterPrefix}{c.Trim()}"))})";
     }
 
-    /// <summary>处理UPSERT占位符 - 插入或更新</summary>
+    /// <summary>处理UPSERT占位符 - 插入或更新 - 多数据库支持</summary>
     private static string ProcessUpsertPlaceholder(string type, string tableName, string options, SqlDefine dialect)
     {
         var snakeTableName = SharedCodeGenerationUtilities.ConvertToSnakeCase(tableName);
         var conflictColumn = ExtractOption(options, "conflict", "id");
 
-        return dialect.Equals(SqlDefine.PostgreSql)
-            ? $"INSERT INTO {snakeTableName} {{{{values}}}} ON CONFLICT ({conflictColumn}) DO UPDATE SET {{{{set:auto}}}}"
-            : dialect.Equals(SqlDefine.MySql)
-                ? $"INSERT INTO {snakeTableName} {{{{values}}}} ON DUPLICATE KEY UPDATE {{{{set:auto}}}}"
-                : dialect.Equals(SqlDefine.SQLite)
-                    ? $"INSERT OR REPLACE INTO {snakeTableName} {{{{values}}}}"
-                    : $"MERGE {snakeTableName} USING (VALUES {{{{values}}}}) AS src ON {conflictColumn} = src.{conflictColumn}"; // SQL Server
+        if (dialect.Equals(SqlDefine.PostgreSql))
+        {
+            // PostgreSQL: INSERT ... ON CONFLICT DO UPDATE
+            return $"INSERT INTO {dialect.WrapColumn(snakeTableName)} {{{{columns}}}} VALUES {{{{values}}}} ON CONFLICT ({dialect.WrapColumn(conflictColumn)}) DO UPDATE SET {{{{set:auto}}}}";
+        }
+        else if (dialect.Equals(SqlDefine.MySql))
+        {
+            // MySQL: INSERT ... ON DUPLICATE KEY UPDATE
+            return $"INSERT INTO {dialect.WrapColumn(snakeTableName)} {{{{columns}}}} VALUES {{{{values}}}} ON DUPLICATE KEY UPDATE {{{{set:auto}}}}";
+        }
+        else if (dialect.Equals(SqlDefine.SQLite))
+        {
+            // SQLite: INSERT OR REPLACE (simpler but replaces entire row)
+            return $"INSERT OR REPLACE INTO {dialect.WrapColumn(snakeTableName)} {{{{columns}}}} VALUES {{{{values}}}}";
+        }
+        else if (dialect.Equals(SqlDefine.SqlServer))
+        {
+            // SQL Server: MERGE statement (more complex but standard)
+            return $"MERGE {dialect.WrapColumn(snakeTableName)} AS target USING (SELECT {{{{values}}}}) AS source ON target.{dialect.WrapColumn(conflictColumn)} = source.{dialect.WrapColumn(conflictColumn)} WHEN MATCHED THEN UPDATE SET {{{{set:auto}}}} WHEN NOT MATCHED THEN INSERT {{{{columns}}}} VALUES {{{{values}}}};";
+        }
+        else // Oracle and other databases
+        {
+            // Oracle: MERGE statement
+            return $"MERGE INTO {dialect.WrapColumn(snakeTableName)} target USING (SELECT {{{{values}}}} FROM DUAL) source ON (target.{dialect.WrapColumn(conflictColumn)} = source.{dialect.WrapColumn(conflictColumn)}) WHEN MATCHED THEN UPDATE SET {{{{set:auto}}}} WHEN NOT MATCHED THEN INSERT {{{{columns}}}} VALUES {{{{values}}}}";
+        }
     }
 
     /// <summary>处理EXISTS占位符 - 存在性检查</summary>
@@ -1775,44 +1809,93 @@ public class SqlTemplateEngine
         return $"CAST({dialect.WrapColumn(column)} AS {targetType})";
     }
 
-    /// <summary>处理JSON_EXTRACT占位符 - 提取JSON字段</summary>
+    /// <summary>处理JSON_EXTRACT占位符 - 提取JSON字段 - 多数据库支持</summary>
     private static string ProcessJsonExtractPlaceholder(string type, string options, SqlDefine dialect)
     {
         var column = ExtractOption(options, "column", type);
         var path = ExtractOption(options, "path", "$.value");
 
-        return dialect.Equals(SqlDefine.SqlServer)
-            ? $"JSON_VALUE({dialect.WrapColumn(column)}, '{path}')"
-            : dialect.Equals(SqlDefine.MySql)
-                ? $"JSON_EXTRACT({dialect.WrapColumn(column)}, '{path}')"
-                : dialect.Equals(SqlDefine.PostgreSql)
-                    ? $"{dialect.WrapColumn(column)}->'{path}'"
-                    : $"JSON_EXTRACT({dialect.WrapColumn(column)}, '{path}')";
+        if (dialect.Equals(SqlDefine.SqlServer))
+        {
+            return $"JSON_VALUE({dialect.WrapColumn(column)}, '{path}')";
+        }
+        else if (dialect.Equals(SqlDefine.MySql))
+        {
+            return $"JSON_EXTRACT({dialect.WrapColumn(column)}, '{path}')";
+        }
+        else if (dialect.Equals(SqlDefine.PostgreSql))
+        {
+            // PostgreSQL uses ->> for text extraction or -> for JSON extraction
+            // For text value: column->>'key' or column#>>'{array,path}'
+            return path.StartsWith("$.")
+                ? $"{dialect.WrapColumn(column)}->>'{path.Substring(2)}'"
+                : $"{dialect.WrapColumn(column)}->'{path}'";
+        }
+        else if (dialect.Equals(SqlDefine.SQLite))
+        {
+            return $"JSON_EXTRACT({dialect.WrapColumn(column)}, '{path}')";
+        }
+        else // Oracle 12c+ supports JSON_VALUE
+        {
+            return $"JSON_VALUE({dialect.WrapColumn(column)}, '{path}')";
+        }
     }
 
-    /// <summary>处理JSON_ARRAY占位符 - 创建JSON数组</summary>
+    /// <summary>处理JSON_ARRAY占位符 - 创建JSON数组 - 多数据库支持</summary>
     private static string ProcessJsonArrayPlaceholder(string type, string options, SqlDefine dialect)
     {
         var values = ExtractOption(options, "values", "value1, value2");
 
-        return dialect.Equals(SqlDefine.SqlServer)
-            ? $"JSON_QUERY('[{values}]')"
-            : dialect.Equals(SqlDefine.MySql)
-                ? $"JSON_ARRAY({values})"
-                : dialect.Equals(SqlDefine.PostgreSql)
-                    ? $"JSON_BUILD_ARRAY({values})"
-                    : $"JSON_ARRAY({values})";
+        if (dialect.Equals(SqlDefine.SqlServer))
+        {
+            // SQL Server 2016+ uses JSON_QUERY with string
+            return $"JSON_QUERY('[{values}]')";
+        }
+        else if (dialect.Equals(SqlDefine.MySql))
+        {
+            return $"JSON_ARRAY({values})";
+        }
+        else if (dialect.Equals(SqlDefine.PostgreSql))
+        {
+            return $"JSON_BUILD_ARRAY({values})";
+        }
+        else if (dialect.Equals(SqlDefine.SQLite))
+        {
+            return $"JSON_ARRAY({values})";
+        }
+        else // Oracle 12c+ supports JSON_ARRAY
+        {
+            return $"JSON_ARRAY({values})";
+        }
     }
 
-    /// <summary>处理JSON_OBJECT占位符 - 创建JSON对象</summary>
+    /// <summary>处理JSON_OBJECT占位符 - 创建JSON对象 - 多数据库支持</summary>
     private static string ProcessJsonObjectPlaceholder(string type, string options, SqlDefine dialect)
     {
         var keys = ExtractOption(options, "keys", "key");
         var values = ExtractOption(options, "values", "value");
 
-        return dialect.Equals(SqlDefine.PostgreSql)
-            ? $"JSON_BUILD_OBJECT('{keys}', {values})"
-            : $"JSON_OBJECT('{keys}', {values})";
+        if (dialect.Equals(SqlDefine.SqlServer))
+        {
+            // SQL Server uses JSON_OBJECT (2022+) or manual construction
+            return $"JSON_OBJECT('{keys}': {values})";
+        }
+        else if (dialect.Equals(SqlDefine.MySql))
+        {
+            return $"JSON_OBJECT('{keys}', {values})";
+        }
+        else if (dialect.Equals(SqlDefine.PostgreSql))
+        {
+            return $"JSON_BUILD_OBJECT('{keys}', {values})";
+        }
+        else if (dialect.Equals(SqlDefine.SQLite))
+        {
+            return $"JSON_OBJECT('{keys}', {values})";
+        }
+        else // Oracle 19c+ supports JSON_OBJECT
+        {
+            return $"JSON_OBJECT('{keys}' VALUE {values})";
+        }
     }
 
     /// <summary>处理ROW_NUMBER占位符 - 行号窗口函数</summary>
@@ -1879,7 +1962,7 @@ public class SqlTemplateEngine
             : $"SUBSTR({dialect.WrapColumn(column)}, {start}, {length})";
     }
 
-    /// <summary>处理CONCAT占位符 - 字符串连接</summary>
+    /// <summary>处理CONCAT占位符 - 字符串连接 - 多数据库支持</summary>
     private static string ProcessConcatPlaceholder(string type, string options, SqlDefine dialect)
     {
         var columns = ExtractOption(options, "columns", type);
@@ -1889,12 +1972,32 @@ public class SqlTemplateEngine
 
         if (!string.IsNullOrEmpty(separator))
         {
-            return dialect.Equals(SqlDefine.SqlServer)
-                ? $"CONCAT_WS('{separator}', {string.Join(", ", columnList.Select(c => dialect.WrapColumn(c.Trim())))})"
-                : $"CONCAT_WS('{separator}', {string.Join(", ", columnList.Select(c => dialect.WrapColumn(c.Trim())))})";
+            // CONCAT_WS - 不是所有数据库都支持
+            if (dialect.Equals(SqlDefine.SqlServer) || dialect.Equals(SqlDefine.MySql))
+            {
+                return $"CONCAT_WS('{separator}', {string.Join(", ", columnList.Select(c => dialect.WrapColumn(c.Trim())))})";
+            }
+            else if (dialect.Equals(SqlDefine.PostgreSql))
+            {
+                // PostgreSQL: array_to_string(ARRAY[...], separator)
+                return $"array_to_string(ARRAY[{string.Join(", ", columnList.Select(c => dialect.WrapColumn(c.Trim())))}], '{separator}')";
+            }
+            else // SQLite, Oracle, DB2 - 手动插入分隔符
+            {
+                var parts = columnList.Select(c => dialect.WrapColumn(c.Trim())).ToList();
+                return string.Join($" || '{separator}' || ", parts);
+            }
         }
 
-        return $"CONCAT({string.Join(", ", columnList.Select(c => dialect.WrapColumn(c.Trim())))})";
+        // 无分隔符的连接
+        if (dialect.Equals(SqlDefine.SqlServer) || dialect.Equals(SqlDefine.MySql))
+        {
+            return $"CONCAT({string.Join(", ", columnList.Select(c => dialect.WrapColumn(c.Trim())))})";
+        }
+        else // PostgreSQL, SQLite, Oracle, DB2 - 使用 || 运算符
+        {
+            return string.Join(" || ", columnList.Select(c => dialect.WrapColumn(c.Trim())));
+        }
     }
 
     /// <summary>处理GROUP_CONCAT占位符 - 分组字符串聚合</summary>

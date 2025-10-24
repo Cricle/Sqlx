@@ -12,12 +12,14 @@ namespace TodoWebApi.Json;
 [JsonSerializable(typeof(Todo))]
 [JsonSerializable(typeof(List<Todo>))]
 [JsonSerializable(typeof(List<long>))]
+[JsonSerializable(typeof(int))]
 [JsonSerializable(typeof(CreateTodoRequest))]
 [JsonSerializable(typeof(UpdateTodoRequest))]
 [JsonSerializable(typeof(BatchPriorityUpdateRequest))]
 [JsonSerializable(typeof(Dictionary<string, object>))]
 [JsonSerializable(typeof(ErrorResponse))]
 [JsonSerializable(typeof(ApiInfoResponse))]
+[JsonSerializable(typeof(BatchUpdateResult))]
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     WriteIndented = true,

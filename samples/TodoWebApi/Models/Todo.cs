@@ -154,6 +154,11 @@ public record ApiInfoResponse(
 public record ErrorResponse(string Message);
 
 /// <summary>
+/// 批量更新结果
+/// </summary>
+public record BatchUpdateResult(int UpdatedCount);
+
+/// <summary>
 /// 创建TODO请求
 /// </summary>
 public record CreateTodoRequest

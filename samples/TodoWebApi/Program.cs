@@ -119,11 +119,12 @@ app.MapPut("/api/todos/{id:long}/complete", async (long id, ITodoRepository repo
 });
 
 // Batch update priority
-app.MapPut("/api/todos/batch/priority", async (BatchPriorityRequest request, ITodoRepository repo) =>
+app.MapPut("/api/todos/batch/priority", async (BatchPriorityUpdateRequest request, ITodoRepository repo) =>
 {
-    var idsJson = System.Text.Json.JsonSerializer.Serialize(request.Ids);
-    var result = await repo.BatchUpdatePriorityAsync(idsJson, request.Priority, DateTime.UtcNow);
-    return Results.Ok(new { UpdatedCount = result });
+    // Manual JSON array construction for AOT compatibility
+    var idsJson = $"[{string.Join(",", request.Ids)}]";
+    var result = await repo.BatchUpdatePriorityAsync(idsJson, request.NewPriority, DateTime.UtcNow);
+    return Results.Json(new BatchUpdateResult(result), TodoJsonContext.Default.BatchUpdateResult);
 });
 
 // Search todos
@@ -152,6 +153,3 @@ await scope.ServiceProvider.GetRequiredService<DatabaseService>().InitializeData
 
 Console.WriteLine("✅ Sqlx TODO Demo running at http://localhost:5000");
 app.Run();
-
-// Request models
-record BatchPriorityRequest(long[] Ids, int Priority);

@@ -39,9 +39,9 @@ public class SqlTemplateEngine
 
     // 性能优化：通用过滤器
     private static readonly Func<IParameterSymbol, bool> NonSystemParameterFilter = p => p.Type.Name != "CancellationToken";
-    private static readonly Func<IPropertySymbol, bool> AccessiblePropertyFilter = p => 
-        p.CanBeReferencedByName && 
-        p.GetMethod != null && 
+    private static readonly Func<IPropertySymbol, bool> AccessiblePropertyFilter = p =>
+        p.CanBeReferencedByName &&
+        p.GetMethod != null &&
         p.Name != "EqualityContract" &&  // Exclude record compiler-generated property
         !p.IsImplicitlyDeclared;          // Exclude all implicitly declared properties
 

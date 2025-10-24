@@ -53,12 +53,13 @@ public static class SqlTemplateEngineExtensions
             {
                 var paramName = paramMatch.Groups[1].Value;
                 // 返回参数化的LIMIT（由方法参数提供值）
-                // MySQL, PostgreSQL, SQLite使用LIMIT语法
-                if (dialect.Equals(SqlDefine.SqlServer))
+                // 使用DatabaseType字符串区分数据库，因为SQLite和SQL Server有相同的结构但不同的行为
+                var dbType = dialect.DatabaseType;
+                if (dbType == "SqlServer")
                 {
                     return $"TOP ({dialect.ParameterPrefix}{paramName})";
                 }
-                else if (dialect.Equals(SqlDefine.Oracle))
+                else if (dbType == "Oracle")
                 {
                     return $"ROWNUM <= {dialect.ParameterPrefix}{paramName}";
                 }
@@ -144,7 +145,8 @@ public static class SqlTemplateEngineExtensions
             {
                 var paramName = paramMatch.Groups[1].Value;
                 // 返回参数化的OFFSET（由方法参数提供值）
-                if (dialect.Equals(SqlDefine.SqlServer) || dialect.Equals(SqlDefine.Oracle))
+                var dbType = dialect.DatabaseType;
+                if (dbType == "SqlServer" || dbType == "Oracle")
                 {
                     return $"OFFSET {dialect.ParameterPrefix}{paramName} ROWS";
                 }
@@ -161,7 +163,8 @@ public static class SqlTemplateEngineExtensions
                         "0";
 
             // 根据数据库生成OFFSET语句
-            if (dialect.Equals(SqlDefine.SqlServer) || dialect.Equals(SqlDefine.Oracle))
+            var dbType2 = dialect.DatabaseType;
+            if (dbType2 == "SqlServer" || dbType2 == "Oracle")
             {
                 return $"OFFSET {offset} ROWS";
             }

@@ -838,7 +838,7 @@ public class CodeGenerationService
     private void GenerateScalarExecution(IndentedStringBuilder sb, string innerType)
     {
         sb.AppendLine("var scalarResult = __cmd__.ExecuteScalar();");
-        
+
         // Handle numeric type conversions (e.g., SQLite COUNT returns Int64 but method expects Int32)
         if (innerType == "int" || innerType == "System.Int32")
         {

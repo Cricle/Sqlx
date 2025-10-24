@@ -28,6 +28,18 @@ public readonly record struct SqlDefine(string ColumnLeft, string ColumnRight, s
     /// <summary>Escapes special characters in string values.</summary>
     private string EscapeString(string value) => value.Replace(StringLeft, StringLeft + StringLeft);
 
+    /// <summary>Gets database type name</summary>
+    public string DatabaseType => (ColumnLeft, ColumnRight, ParameterPrefix) switch
+    {
+        ("`", "`", "@") => "MySql",
+        ("[", "]", "@") => "SqlServer",
+        ("\"", "\"", "$") => "PostgreSql",
+        ("[", "]", "$") => "SQLite",  // Generator-specific: SQLite uses $ to differentiate from SQL Server
+        ("\"", "\"", ":") => "Oracle",
+        ("\"", "\"", "?") => "DB2",
+        _ => "Unknown"
+    };
+
     // Predefined dialect instances
     /// <summary>MySQL数据库方言配置</summary>
     public static readonly SqlDefine MySql = new("`", "`", "'", "'", "@");

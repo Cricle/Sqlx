@@ -158,7 +158,8 @@ public class SqlTemplateEngine
         {
             // 检查是否是动态占位符（@ 前缀）
             var isDynamic = match.Groups[1].Value == "@";
-            var placeholderName = match.Groups[2].Value.ToLowerInvariant();
+            var placeholderNameOriginal = match.Groups[2].Value;
+            var placeholderName = placeholderNameOriginal.ToLowerInvariant();
 
             // 如果是动态占位符，直接返回 C# 字符串插值格式
             if (isDynamic)
@@ -166,7 +167,7 @@ public class SqlTemplateEngine
                 // {{@tableName}} -> {tableName}
                 // 标记结果包含动态特性，用于后续生成验证代码
                 result.HasDynamicFeatures = true;
-                return $"{{{placeholderName}}}";
+                return $"{{{placeholderNameOriginal}}}"; // Preserve original case for dynamic placeholders
             }
 
             // 支持两种格式：

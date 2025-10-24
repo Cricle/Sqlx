@@ -357,7 +357,7 @@ namespace Sqlx
         /// <summary>Convert to SQL string</summary>
         public override string ToSql() => BuildSql();
         /// <summary>Generate WHERE clause part</summary>
-        public string ToWhereClause() => _whereConditions.Count == 0 ? string.Empty : string.Join(" AND ", _whereConditions);
+        public override string ToWhereClause() => _whereConditions.Count == 0 ? string.Empty : string.Join(" AND ", _whereConditions);
 
         /// <summary>Generate additional clauses (GROUP BY, HAVING, ORDER BY, LIMIT, OFFSET)</summary>
         public string ToAdditionalClause()

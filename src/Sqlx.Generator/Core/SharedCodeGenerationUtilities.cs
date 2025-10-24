@@ -87,12 +87,12 @@ public static class SharedCodeGenerationUtilities
         sb.AppendLine($"__cmd__ = {connectionName}.CreateCommand();");
 
         // Check for runtime dynamic placeholders (WHERE, SET, ORDERBY, etc.)
-        bool hasDynamicPlaceholders = sql.Contains("{RUNTIME_WHERE_") || 
+        bool hasDynamicPlaceholders = sql.Contains("{RUNTIME_WHERE_") ||
                                      sql.Contains("{RUNTIME_SET_") ||
                                      sql.Contains("{RUNTIME_ORDERBY_") ||
                                      sql.Contains("{RUNTIME_JOIN_") ||
                                      sql.Contains("{RUNTIME_GROUPBY_");
-        
+
         if (hasDynamicPlaceholders)
         {
             // Generate dynamic SQL building with string interpolation
@@ -100,17 +100,17 @@ public static class SharedCodeGenerationUtilities
         }
         else
         {
-            // Properly escape SQL string for C# code generation
-            var escapedSql = sql.Replace("\"", "\"\"").Replace("\r\n", "\\r\\n").Replace("\n", "\\n").Replace("\t", "\\t");
-            sb.AppendLine($"__cmd__.CommandText = @\"{escapedSql}\";");
+        // Properly escape SQL string for C# code generation
+        var escapedSql = sql.Replace("\"", "\"\"").Replace("\r\n", "\\r\\n").Replace("\n", "\\n").Replace("\t", "\\t");
+        sb.AppendLine($"__cmd__.CommandText = @\"{escapedSql}\";");
         }
-        
+
         sb.AppendLine();
 
         // Generate parameter binding
         GenerateParameterBinding(sb, method, hasDynamicPlaceholders);
     }
-    
+
     /// <summary>
     /// Generate parameter binding code
     /// </summary>
@@ -119,9 +119,9 @@ public static class SharedCodeGenerationUtilities
         // First, bind parameters from ExpressionToSql if present
         if (hasRuntimeWhere)
         {
-            var exprParams = method.Parameters.Where(p => 
+            var exprParams = method.Parameters.Where(p =>
                 p.GetAttributes().Any(a => a.AttributeClass?.Name == "ExpressionToSqlAttribute"));
-            
+
             foreach (var exprParam in exprParams)
             {
                 sb.AppendLine($"// Bind parameters from ExpressionToSql: {exprParam.Name}");
@@ -142,43 +142,43 @@ public static class SharedCodeGenerationUtilities
                 sb.AppendLine();
             }
         }
-        
+
         // Then bind regular parameters (excluding special ones)
-        var regularParams = method.Parameters.Where(p => 
+        var regularParams = method.Parameters.Where(p =>
             p.Type.Name != "CancellationToken" &&
-            !p.GetAttributes().Any(a => 
+            !p.GetAttributes().Any(a =>
                 a.AttributeClass?.Name == "ExpressionToSqlAttribute" ||
                 (a.AttributeClass?.Name == "DynamicSqlAttribute" && hasRuntimeWhere)));
-        
+
         // 🚀 性能优化：简化参数创建，减少临时变量和赋值操作
         foreach (var param in regularParams)
         {
             // Check if parameter type is an entity class (has properties that should be expanded)
             var paramType = param.Type as INamedTypeSymbol;
-            var isEntityType = paramType != null && 
-                              paramType.TypeKind == TypeKind.Class && 
+            var isEntityType = paramType != null &&
+                              paramType.TypeKind == TypeKind.Class &&
                               paramType.GetMembers().OfType<IPropertySymbol>().Any(p => p.CanBeReferencedByName && p.GetMethod != null);
-            
+
             if (isEntityType && param.Name.Equals("entity", StringComparison.OrdinalIgnoreCase))
             {
                 // Expand entity properties - bind each property as separate parameter
                 var properties = paramType!.GetMembers()
                     .OfType<IPropertySymbol>()
-                    .Where(p => p.CanBeReferencedByName && 
-                               p.GetMethod != null && 
+                    .Where(p => p.CanBeReferencedByName &&
+                               p.GetMethod != null &&
                                p.Name != "EqualityContract" &&
                                !p.IsImplicitlyDeclared)
                     .ToList();
-                
+
                 foreach (var prop in properties)
                 {
                     var propSqlName = ConvertToSnakeCase(prop.Name);
                     var paramName = $"@{propSqlName}";
                     var isNullable = prop.Type.IsNullableType() || prop.Type.IsReferenceType;
-                    
+
                     sb.Append("{ var __p__ = __cmd__.CreateParameter(); ");
                     sb.Append($"__p__.ParameterName = \"{paramName}\"; ");
-                    
+
                     if (isNullable)
                     {
                         sb.Append($"__p__.Value = {param.Name}.{prop.Name} ?? (object)global::System.DBNull.Value; ");
@@ -187,14 +187,14 @@ public static class SharedCodeGenerationUtilities
                     {
                         sb.Append($"__p__.Value = {param.Name}.{prop.Name}; ");
                     }
-                    
+
                     sb.AppendLine("__cmd__.Parameters.Add(__p__); }");
                 }
             }
             else
             {
                 // Regular parameter binding (scalar types, collections, etc.)
-                var paramName = $"@{param.Name}";
+            var paramName = $"@{param.Name}";
                 var isNullable = param.Type.IsNullableType() || param.Type.IsReferenceType;
 
                 sb.Append("{ var __p__ = __cmd__.CreateParameter(); ");
@@ -220,11 +220,11 @@ public static class SharedCodeGenerationUtilities
     private static void GenerateDynamicSql(IndentedStringBuilder sb, string sql, IMethodSymbol method)
     {
         sb.AppendLine("// Build SQL with dynamic placeholders (compile-time splitting, zero Replace calls)");
-        
+
         // Find all runtime dynamic markers (WHERE, SET, ORDERBY, JOIN, GROUPBY)
-        var markers = System.Text.RegularExpressions.Regex.Matches(sql, 
+        var markers = System.Text.RegularExpressions.Regex.Matches(sql,
             @"\{RUNTIME_(WHERE|SET|ORDERBY|JOIN|GROUPBY)_([^}]+)\}");
-        
+
         if (markers.Count == 0)
         {
             // Fallback: no markers found
@@ -232,39 +232,39 @@ public static class SharedCodeGenerationUtilities
             sb.AppendLine($"__cmd__.CommandText = @\"{escapedSql}\";");
             return;
         }
-        
+
         // Split SQL into parts at compile time
         var sqlParts = new System.Collections.Generic.List<string>();
         var dynamicVariables = new System.Collections.Generic.List<(string varName, string placeholderType, string markerContent)>();
-        
+
         int lastIndex = 0;
         foreach (System.Text.RegularExpressions.Match match in markers)
         {
             // Add SQL part before marker
             sqlParts.Add(sql.Substring(lastIndex, match.Index - lastIndex));
-            
+
             var placeholderType = match.Groups[1].Value; // WHERE, SET, ORDERBY, etc.
             var markerContent = match.Groups[2].Value;   // EXPR_paramName, DYNAMIC_paramName, or paramName
             var varName = $"__{placeholderType.ToLower()}Clause_{dynamicVariables.Count}__";
             dynamicVariables.Add((varName, placeholderType, markerContent));
-            
+
             lastIndex = match.Index + match.Length;
         }
-        
+
         // Add final SQL part after last marker
         sqlParts.Add(sql.Substring(lastIndex));
-        
+
         // Generate dynamic clause extraction code
         for (int i = 0; i < dynamicVariables.Count; i++)
         {
             var (varName, placeholderType, markerContent) = dynamicVariables[i];
-            
+
             if (markerContent.StartsWith("EXPR_"))
             {
                 // ExpressionToSql parameter
                 var paramName = markerContent.Substring(5);
                 sb.AppendLine($"// Extract {placeholderType} from ExpressionToSql: {paramName}");
-                
+
                 if (placeholderType == "WHERE")
                 {
                     sb.AppendLine($"var {varName} = {paramName}?.ToWhereClause() ?? \"1=1\";");
@@ -302,12 +302,12 @@ public static class SharedCodeGenerationUtilities
                 sb.AppendLine($"var {varName} = {paramName};");
             }
         }
-        
+
         sb.AppendLine();
-        
+
         // Generate SQL concatenation using string interpolation (compile-time optimized)
         sb.Append("__cmd__.CommandText = ");
-        
+
         if (sqlParts.Count == 1)
         {
             // No dynamic parts
@@ -322,7 +322,7 @@ public static class SharedCodeGenerationUtilities
             {
                 var part = sqlParts[i].Replace("\"", "\"\"");
                 sb.Append(part);
-                
+
                 if (i < dynamicVariables.Count)
                 {
                     sb.Append($"{{{dynamicVariables[i].varName}}}");
@@ -330,7 +330,7 @@ public static class SharedCodeGenerationUtilities
             }
             sb.Append("\"");
         }
-        
+
         sb.AppendLine(";");
     }
 
@@ -491,12 +491,12 @@ public static class SharedCodeGenerationUtilities
         {
             // No properties to map, just create empty object
             if (variableName == "__result__")
-            {
-                sb.AppendLine($"__result__ = new {entityTypeName}();");
-            }
-            else
-            {
-                sb.AppendLine($"var {variableName} = new {entityTypeName}();");
+        {
+            sb.AppendLine($"__result__ = new {entityTypeName}();");
+        }
+        else
+        {
+            sb.AppendLine($"var {variableName} = new {entityTypeName}();");
             }
             return;
         }

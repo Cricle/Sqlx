@@ -56,15 +56,16 @@ internal static class DatabaseDialectFactory
     /// <returns>The inferred dialect type.</returns>
     private static SqlDefineTypes InferDialectFromCharacteristics(SqlDefine sqlDefine)
     {
-        return (sqlDefine.ColumnLeft, sqlDefine.ColumnRight, sqlDefine.ParameterPrefix) switch
+        // Use DatabaseType property for accurate detection (handles SQLite/SQL Server overlap)
+        return sqlDefine.DatabaseType switch
         {
-            ("`", "`", "@") => SqlDefineTypes.MySql,
-            ("\"", "\"", "$") => SqlDefineTypes.PostgreSql,
-            ("\"", "\"", ":") => SqlDefineTypes.Oracle,
-            ("\"", "\"", "?") => SqlDefineTypes.DB2,
-            ("[", "]", "$") => SqlDefineTypes.SQLite,
-            ("[", "]", "@") => SqlDefineTypes.SqlServer,
-            _ => throw new NotSupportedException($"Unsupported dialect characteristics: {sqlDefine.ColumnLeft}, {sqlDefine.ColumnRight}, {sqlDefine.ParameterPrefix}")
+            "MySql" => SqlDefineTypes.MySql,
+            "SqlServer" => SqlDefineTypes.SqlServer,
+            "PostgreSql" => SqlDefineTypes.PostgreSql,
+            "SQLite" => SqlDefineTypes.SQLite,
+            "Oracle" => SqlDefineTypes.Oracle,
+            "DB2" => SqlDefineTypes.DB2,
+            _ => throw new NotSupportedException($"Unsupported dialect: {sqlDefine.DatabaseType}")
         };
     }
 

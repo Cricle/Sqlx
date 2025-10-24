@@ -28,17 +28,31 @@ public readonly record struct SqlDefine(string ColumnLeft, string ColumnRight, s
     /// <summary>Escapes special characters in string values.</summary>
     private string EscapeString(string value) => value.Replace(StringLeft, StringLeft + StringLeft);
 
-    /// <summary>Gets database type name</summary>
-    public string DatabaseType => (ColumnLeft, ColumnRight, ParameterPrefix) switch
+    /// <summary>Gets database type name - uses explicit assignment to handle SQLite/SQL Server overlap</summary>
+    public string DatabaseType
     {
-        ("`", "`", "@") => "MySql",
-        ("[", "]", "@") => "SqlServer",
-        ("\"", "\"", "$") => "PostgreSql",
-        ("[", "]", "$") => "SQLite",  // Generator-specific: SQLite uses $ to differentiate from SQL Server
-        ("\"", "\"", ":") => "Oracle",
-        ("\"", "\"", "?") => "DB2",
-        _ => "Unknown"
-    };
+        get
+        {
+            // Explicit instance checks first (most reliable)
+            if (this.Equals(SQLite)) return "SQLite";
+            if (this.Equals(SqlServer)) return "SqlServer";
+            if (this.Equals(MySql)) return "MySql";
+            if (this.Equals(PostgreSql)) return "PostgreSql";
+            if (this.Equals(Oracle)) return "Oracle";
+            if (this.Equals(DB2)) return "DB2";
+            
+            // Pattern matching fallback
+            return (ColumnLeft, ColumnRight, ParameterPrefix) switch
+            {
+                ("`", "`", "@") => "MySql",
+                ("\"", "\"", "$") => "PostgreSql",
+                ("\"", "\"", ":") => "Oracle",
+                ("\"", "\"", "?") => "DB2",
+                ("[", "]", "@") => "SqlServer",  // Default for [, ], @
+                _ => "Unknown"
+            };
+        }
+    }
 
     // Predefined dialect instances
     /// <summary>MySQL数据库方言配置</summary>
@@ -47,8 +61,8 @@ public readonly record struct SqlDefine(string ColumnLeft, string ColumnRight, s
     public static readonly SqlDefine SqlServer = new("[", "]", "'", "'", "@");
     /// <summary>PostgreSQL数据库方言配置</summary>
     public static readonly SqlDefine PostgreSql = new("\"", "\"", "'", "'", "$");
-    /// <summary>SQLite数据库方言配置</summary>
-    public static readonly SqlDefine SQLite = new("[", "]", "'", "'", "$");
+    /// <summary>SQLite数据库方言配置 - Uses @ like SQL Server, distinguished by explicit instance checks</summary>
+    public static readonly SqlDefine SQLite = new("[", "]", "'", "'", "@");
     /// <summary>PostgreSQL数据库方言配置（别名）</summary>
     public static readonly SqlDefine PgSql = PostgreSql;
     /// <summary>Oracle数据库方言配置</summary>

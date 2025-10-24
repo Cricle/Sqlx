@@ -1,6 +1,7 @@
 // Simple test to verify RepositoryFor with non-generic interface works
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Data.Common;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Sqlx.Annotations;
@@ -28,13 +29,19 @@ namespace Sqlx.Tests.RepositoryFor
     {
     }
 
-    //[TestClass]  // Temporarily disabled
+    [TestClass]
     public class SimpleTest
     {
         [TestMethod]
         public void SimpleInterface_ShouldCompile()
         {
-            Assert.IsTrue(true, "TestRepository compiled successfully");
+            // Verify the repository type is correctly generated
+            var repoType = typeof(TestRepository);
+            
+            // Assert
+            Assert.IsNotNull(repoType);
+            Assert.IsTrue(repoType.GetInterfaces().Any(i => i == typeof(ITestRepository)));
+            Assert.IsTrue(repoType.GetMethods().Any(m => m.Name == "GetByIdAsync"));
         }
     }
 }

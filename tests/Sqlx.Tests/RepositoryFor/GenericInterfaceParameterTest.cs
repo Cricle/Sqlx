@@ -1,6 +1,7 @@
 // TDD: Test for RepositoryFor with generic interface parameters
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Data.Common;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Sqlx.Annotations;
@@ -86,36 +87,48 @@ namespace Sqlx.Tests.RepositoryFor
         {
             // Arrange & Act - compilation is the test
             // If this compiles, the source generator worked correctly
+            var repoType = typeof(UserCrudRepository);
             
             // Assert
-            Assert.IsTrue(true, "UserCrudRepository compiled successfully with non-generic RepositoryFor syntax");
+            Assert.IsNotNull(repoType);
+            Assert.IsTrue(repoType.GetInterfaces().Any(i => i.Name.Contains("ICrudRepository")));
+            Assert.IsTrue(repoType.GetMethods().Any(m => m.Name == "GetByIdAsync"));
         }
 
         [TestMethod]
         public void RepositoryFor_GenericSyntax_WithICrudRepository_ShouldCompile()
         {
             // Arrange & Act - compilation is the test
+            var repoType = typeof(ProductCrudRepository);
             
             // Assert
-            Assert.IsTrue(true, "ProductCrudRepository compiled successfully with generic RepositoryFor syntax");
+            Assert.IsNotNull(repoType);
+            Assert.IsTrue(repoType.GetInterfaces().Any(i => i.Name.Contains("ICrudRepository")));
+            Assert.IsTrue(repoType.GetMethods().Any(m => m.Name == "InsertAsync"));
         }
 
         [TestMethod]
         public void RepositoryFor_NonGenericSyntax_WithCustomInterface_ShouldCompile()
         {
             // Arrange & Act - compilation is the test
+            var repoType = typeof(UserReadRepository);
             
             // Assert
-            Assert.IsTrue(true, "UserReadRepository compiled successfully with custom generic interface");
+            Assert.IsNotNull(repoType);
+            Assert.IsTrue(repoType.GetInterfaces().Any(i => i.Name.Contains("IReadOnlyRepository")));
+            Assert.IsTrue(repoType.GetMethods().Any(m => m.Name == "GetAllAsync"));
         }
 
         [TestMethod]
         public void RepositoryFor_GenericSyntax_WithCustomInterface_ShouldCompile()
         {
             // Arrange & Act - compilation is the test
+            var repoType = typeof(ProductReadRepository);
             
             // Assert
-            Assert.IsTrue(true, "ProductReadRepository compiled successfully with custom generic interface");
+            Assert.IsNotNull(repoType);
+            Assert.IsTrue(repoType.GetInterfaces().Any(i => i.Name.Contains("IReadOnlyRepository")));
+            Assert.IsTrue(repoType.GetMethods().Any(m => m.Name == "CountAsync"));
         }
 
         [TestMethod]

@@ -1,6 +1,7 @@
 // TDD Dialect Compilation Tests - Verify all dialects generate correct code
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Data.Common;
+using System.Linq;
 using Sqlx.Annotations;
 
 namespace Sqlx.Tests.Dialects
@@ -31,7 +32,10 @@ namespace Sqlx.Tests.Dialects
         [TestMethod]
         public void MySql_ShouldCompile()
         {
-            Assert.IsTrue(true);
+            // Verify the repository type is correctly generated
+            var repoType = typeof(MySqlProductRepo);
+            Assert.IsNotNull(repoType);
+            Assert.IsTrue(repoType.GetInterfaces().Any(i => i.Name.Contains("ICrudRepository")));
         }
     }
 
@@ -52,7 +56,10 @@ namespace Sqlx.Tests.Dialects
         [TestMethod]
         public void PostgreSql_ShouldCompile()
         {
-            Assert.IsTrue(true);
+            // Verify the repository type is correctly generated
+            var repoType = typeof(PostgreSqlProductRepo);
+            Assert.IsNotNull(repoType);
+            Assert.IsTrue(repoType.GetInterfaces().Any(i => i.Name.Contains("ICrudRepository")));
         }
     }
 
@@ -73,7 +80,10 @@ namespace Sqlx.Tests.Dialects
         [TestMethod]
         public void SqlServer_ShouldCompile()
         {
-            Assert.IsTrue(true);
+            // Verify the repository type is correctly generated
+            var repoType = typeof(SqlServerProductRepo);
+            Assert.IsNotNull(repoType);
+            Assert.IsTrue(repoType.GetInterfaces().Any(i => i.Name.Contains("ICrudRepository")));
         }
     }
 
@@ -94,7 +104,10 @@ namespace Sqlx.Tests.Dialects
         [TestMethod]
         public void SQLite_ShouldCompile()
         {
-            Assert.IsTrue(true);
+            // Verify the repository type is correctly generated
+            var repoType = typeof(SQLiteProductRepo);
+            Assert.IsNotNull(repoType);
+            Assert.IsTrue(repoType.GetInterfaces().Any(i => i.Name.Contains("ICrudRepository")));
         }
     }
 

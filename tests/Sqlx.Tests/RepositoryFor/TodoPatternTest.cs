@@ -1,6 +1,7 @@
 // Test following the TodoWebApi pattern
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Data.Common;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Sqlx.Annotations;
@@ -35,7 +36,15 @@ namespace Sqlx.Tests.RepositoryFor
         [TestMethod]
         public void TodoPattern_ShouldCompile()
         {
-            Assert.IsTrue(true, "StudentRepository compiled successfully");
+            // Verify the repository type is correctly generated
+            var repoType = typeof(StudentRepository);
+            
+            // Assert
+            Assert.IsNotNull(repoType);
+            Assert.IsTrue(repoType.GetInterfaces().Any(i => i == typeof(IStudentRepository)));
+            Assert.IsTrue(repoType.GetInterfaces().Any(i => i.Name.Contains("ICrudRepository")));
+            Assert.IsTrue(repoType.GetMethods().Any(m => m.Name == "GetByIdAsync"));
+            Assert.IsTrue(repoType.GetMethods().Any(m => m.Name == "InsertAsync"));
         }
     }
 }

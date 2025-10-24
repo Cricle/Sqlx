@@ -42,42 +42,49 @@
    - 正则筛选（--regex）
    - 示例和最佳实践
 
-6. **[多数据库模板引擎](MULTI_DATABASE_TEMPLATE_ENGINE.md)**
+6. **[多数据库占位符支持](MULTI_DATABASE_PLACEHOLDERS.md)** ⭐ 一次编写，处处运行
+   - 5种数据库完全支持（SQL Server、MySQL、PostgreSQL、SQLite、Oracle）
+   - 字符串函数多数据库语法对照
+   - JSON操作跨数据库兼容
+   - UPSERT语句自动适配
+   - 数据库迁移零成本
+
+7. **[多数据库模板引擎](MULTI_DATABASE_TEMPLATE_ENGINE.md)**
    - 跨数据库兼容性
    - 方言系统设计
    - 特定数据库优化
 
 ### 🎯 高级特性（1小时）
 
-7. **[高级功能](ADVANCED_FEATURES.md)**
+8. **[高级功能](ADVANCED_FEATURES.md)**
    - 正则表达式列筛选
    - 动态返回值（`List<Dictionary<string, object>>`）
    - 批量操作优化
    - 表达式转SQL
    - 安全字符串插值
 
-8. **[Partial方法指南](PARTIAL_METHODS_GUIDE.md)**
+9. **[Partial方法指南](PARTIAL_METHODS_GUIDE.md)**
    - OnExecuting - 执行前拦截
    - OnExecuted - 执行后处理
    - OnExecuteFail - 异常处理
    - 性能追踪集成
 
-9. **[Activity追踪与指标](FRAMEWORK_COMPATIBILITY.md)**
-   - OpenTelemetry集成
-   - 分布式追踪
-   - 性能指标收集
-   - 条件编译（SQLX_ENABLE_TRACING）
+10. **[Activity追踪与指标](FRAMEWORK_COMPATIBILITY.md)**
+    - OpenTelemetry集成
+    - 分布式追踪
+    - 性能指标收集
+    - 条件编译（SQLX_ENABLE_TRACING）
 
 ### 📐 最佳实践（30分钟）
 
-9. **[最佳实践](BEST_PRACTICES.md)** ⭐ 重要
-   - 性能优化技巧
-   - 安全性建议
-   - 代码组织
-   - 错误处理
-   - 测试策略
+11. **[最佳实践](BEST_PRACTICES.md)** ⭐ 重要
+    - 性能优化技巧
+    - 安全性建议
+    - 代码组织
+    - 错误处理
+    - 测试策略
 
-10. **[迁移指南](MIGRATION_GUIDE.md)**
+12. **[迁移指南](MIGRATION_GUIDE.md)**
     - 从Dapper迁移
     - 从EF Core迁移
     - 从ADO.NET迁移

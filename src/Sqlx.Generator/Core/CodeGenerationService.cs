@@ -838,7 +838,33 @@ public class CodeGenerationService
     private void GenerateScalarExecution(IndentedStringBuilder sb, string innerType)
     {
         sb.AppendLine("var scalarResult = __cmd__.ExecuteScalar();");
-        sb.AppendLine($"__result__ = scalarResult != null ? ({innerType})scalarResult : default({innerType});");
+        
+        // Handle numeric type conversions (e.g., SQLite COUNT returns Int64 but method expects Int32)
+        if (innerType == "int" || innerType == "System.Int32")
+        {
+            sb.AppendLine("__result__ = scalarResult != null ? Convert.ToInt32(scalarResult) : default(int);");
+        }
+        else if (innerType == "long" || innerType == "System.Int64")
+        {
+            sb.AppendLine("__result__ = scalarResult != null ? Convert.ToInt64(scalarResult) : default(long);");
+        }
+        else if (innerType == "decimal" || innerType == "System.Decimal")
+        {
+            sb.AppendLine("__result__ = scalarResult != null ? Convert.ToDecimal(scalarResult) : default(decimal);");
+        }
+        else if (innerType == "double" || innerType == "System.Double")
+        {
+            sb.AppendLine("__result__ = scalarResult != null ? Convert.ToDouble(scalarResult) : default(double);");
+        }
+        else if (innerType == "bool" || innerType == "System.Boolean")
+        {
+            sb.AppendLine("__result__ = scalarResult != null ? Convert.ToBoolean(scalarResult) : default(bool);");
+        }
+        else
+        {
+            // Direct cast for other types
+            sb.AppendLine($"__result__ = scalarResult != null ? ({innerType})scalarResult : default({innerType});");
+        }
     }
 
     private void GenerateCollectionExecution(IndentedStringBuilder sb, string returnType, INamedTypeSymbol? entityType, SqlTemplateResult templateResult)

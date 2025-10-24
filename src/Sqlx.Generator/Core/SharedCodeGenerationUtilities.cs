@@ -153,24 +153,64 @@ public static class SharedCodeGenerationUtilities
         // 🚀 性能优化：简化参数创建，减少临时变量和赋值操作
         foreach (var param in regularParams)
         {
-            var paramName = $"@{param.Name}";
-            // ✅ 全面支持：nullable value types (int?) 和 nullable reference types (string?)
-            var isNullable = param.Type.IsNullableType() || param.Type.IsReferenceType;
-
-            // 直接创建并添加参数，减少中间步骤
-            sb.Append("{ var __p__ = __cmd__.CreateParameter(); ");
-            sb.Append($"__p__.ParameterName = \"{paramName}\"; ");
-
-            if (isNullable)
+            // Check if parameter type is an entity class (has properties that should be expanded)
+            var paramType = param.Type as INamedTypeSymbol;
+            var isEntityType = paramType != null && 
+                              paramType.TypeKind == TypeKind.Class && 
+                              paramType.GetMembers().OfType<IPropertySymbol>().Any(p => p.CanBeReferencedByName && p.GetMethod != null);
+            
+            if (isEntityType && param.Name.Equals("entity", StringComparison.OrdinalIgnoreCase))
             {
-                sb.Append($"__p__.Value = {param.Name} ?? (object)global::System.DBNull.Value; ");
+                // Expand entity properties - bind each property as separate parameter
+                var properties = paramType!.GetMembers()
+                    .OfType<IPropertySymbol>()
+                    .Where(p => p.CanBeReferencedByName && 
+                               p.GetMethod != null && 
+                               p.Name != "EqualityContract" &&
+                               !p.IsImplicitlyDeclared)
+                    .ToList();
+                
+                foreach (var prop in properties)
+                {
+                    var propSqlName = ConvertToSnakeCase(prop.Name);
+                    var paramName = $"@{propSqlName}";
+                    var isNullable = prop.Type.IsNullableType() || prop.Type.IsReferenceType;
+                    
+                    sb.Append("{ var __p__ = __cmd__.CreateParameter(); ");
+                    sb.Append($"__p__.ParameterName = \"{paramName}\"; ");
+                    
+                    if (isNullable)
+                    {
+                        sb.Append($"__p__.Value = {param.Name}.{prop.Name} ?? (object)global::System.DBNull.Value; ");
+                    }
+                    else
+                    {
+                        sb.Append($"__p__.Value = {param.Name}.{prop.Name}; ");
+                    }
+                    
+                    sb.AppendLine("__cmd__.Parameters.Add(__p__); }");
+                }
             }
             else
             {
-                sb.Append($"__p__.Value = {param.Name}; ");
-            }
+                // Regular parameter binding (scalar types, collections, etc.)
+                var paramName = $"@{param.Name}";
+                var isNullable = param.Type.IsNullableType() || param.Type.IsReferenceType;
 
-            sb.AppendLine("__cmd__.Parameters.Add(__p__); }");
+                sb.Append("{ var __p__ = __cmd__.CreateParameter(); ");
+                sb.Append($"__p__.ParameterName = \"{paramName}\"; ");
+
+                if (isNullable)
+                {
+                    sb.Append($"__p__.Value = {param.Name} ?? (object)global::System.DBNull.Value; ");
+                }
+                else
+                {
+                    sb.Append($"__p__.Value = {param.Name}; ");
+                }
+
+                sb.AppendLine("__cmd__.Parameters.Add(__p__); }");
+            }
         }
     }
 

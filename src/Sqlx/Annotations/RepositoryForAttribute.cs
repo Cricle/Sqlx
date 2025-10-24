@@ -26,7 +26,7 @@ namespace Sqlx.Annotations
     /// <code>
     /// // Example 1: Custom interface (recommended)
     /// public interface IUserRepository : ICrudRepository&lt;User, int&gt; { }
-    /// 
+    ///
     /// [RepositoryFor(typeof(IUserRepository))]  // Non-generic syntax
     /// public partial class UserRepository : IUserRepository { }
     ///
@@ -36,7 +36,7 @@ namespace Sqlx.Annotations
     /// // Example 2: Direct generic interface usage
     /// [RepositoryFor(typeof(ICrudRepository&lt;User, int&gt;))]  // Non-generic
     /// public partial class UserRepository : ICrudRepository&lt;User, int&gt; { }
-    /// 
+    ///
     /// [RepositoryFor&lt;ICrudRepository&lt;User, int&gt;&gt;]   // Generic (C# 11+)
     /// public partial class UserRepository : ICrudRepository&lt;User, int&gt; { }
     /// </code>
@@ -74,7 +74,7 @@ namespace Sqlx.Annotations
     /// // Direct ICrudRepository usage
     /// [RepositoryFor&lt;ICrudRepository&lt;User, int&gt;&gt;]
     /// public partial class UserRepository : ICrudRepository&lt;User, int&gt; { }
-    /// 
+    ///
     /// // IReadOnlyRepository usage
     /// [RepositoryFor&lt;IReadOnlyRepository&lt;Product&gt;&gt;]
     /// public partial class ProductRepository : IReadOnlyRepository&lt;Product&gt; { }

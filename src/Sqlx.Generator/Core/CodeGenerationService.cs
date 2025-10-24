@@ -1226,6 +1226,8 @@ public class CodeGenerationService
             var paramName = parameter.Name;
 
             // 根据 DynamicSqlType 生成不同的验证代码
+
+        
             switch (dynamicSqlType)
             {
                 case 0: // Identifier
@@ -1277,6 +1279,47 @@ public class CodeGenerationService
         return directMethods.Concat(baseMethods)
             .GroupBy(m => m.Name + "_" + string.Join("_", m.Parameters.Select(p => p.Type.ToDisplayString())))
             .Select(g => g.First());
+    }
+
+    /// <summary>
+    /// Gets the table name from TableNameAttribute or infers it from entity type.
+    /// Checks both repository class and entity type for TableNameAttribute.
+    /// </summary>
+    private string GetTableNameFromType(INamedTypeSymbol repositoryClass, INamedTypeSymbol? entityType)
+    {
+        // First, check if repository class has TableNameAttribute
+        var repositoryTableNameAttr = repositoryClass.GetAttributes()
+            .FirstOrDefault(attr => attr.AttributeClass?.Name == "TableNameAttribute" || attr.AttributeClass?.Name == "TableName");
+        
+        if (repositoryTableNameAttr != null && repositoryTableNameAttr.ConstructorArguments.Length > 0)
+        {
+            var tableName = repositoryTableNameAttr.ConstructorArguments[0].Value?.ToString();
+            if (!string.IsNullOrEmpty(tableName))
+                return tableName;
+        }
+
+        // Second, check if entity type has TableNameAttribute  
+        if (entityType != null)
+        {
+            var entityTableNameAttr = entityType.GetAttributes()
+                .FirstOrDefault(attr => attr.AttributeClass?.Name == "TableNameAttribute" || attr.AttributeClass?.Name == "TableName");
+            
+            if (entityTableNameAttr != null && entityTableNameAttr.ConstructorArguments.Length > 0)
+            {
+                var tableName = entityTableNameAttr.ConstructorArguments[0].Value?.ToString();
+                if (!string.IsNullOrEmpty(tableName))
+                    return tableName;
+            }
+        }
+
+        // Fallback: infer from entity type name (convert to lowercase, keep plural if present)
+        if (entityType != null)
+        {
+            return entityType.Name.ToLowerInvariant();
+        }
+
+        // Last resort: use repository class name
+        return repositoryClass.Name.Replace("Repository", "").ToLowerInvariant();
     }
 
 }

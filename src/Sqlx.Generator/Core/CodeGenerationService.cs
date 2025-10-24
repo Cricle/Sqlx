@@ -52,7 +52,13 @@ public class CodeGenerationService
             var returnType = method.ReturnType.GetCachedDisplayString();
             var methodName = method.Name;
             var parameters = string.Join(", ", method.Parameters.Select(p =>
-                $"{p.Type.GetCachedDisplayString()} {p.Name}"));
+            {
+                var paramType = p.Type.GetCachedDisplayString();
+                var paramName = p.Name;
+                // Include default value if parameter has one
+                var defaultValue = p.HasExplicitDefaultValue ? $" = {GetDefaultValueString(p)}" : string.Empty;
+                return $"{paramType} {paramName}{defaultValue}";
+            }));
 
             sb.AppendLine($"public {returnType} {methodName}({parameters})");
             sb.AppendLine("{");
@@ -479,7 +485,12 @@ public class CodeGenerationService
         sb.AppendLine($"// Error generating method {method.Name}: Generation failed");
         var returnType = method.ReturnType.GetCachedDisplayString();  // 使用缓存版本
         var parameters = string.Join(", ", method.Parameters.Select(p =>
-            $"{p.Type.GetCachedDisplayString()} {p.Name}"));  // 使用缓存版本
+        {
+            var paramType = p.Type.GetCachedDisplayString();
+            var paramName = p.Name;
+            var defaultValue = p.HasExplicitDefaultValue ? $" = {GetDefaultValueString(p)}" : string.Empty;
+            return $"{paramType} {paramName}{defaultValue}";
+        }));
 
         sb.AppendLine($"public {returnType} {method.Name}({parameters})");
         sb.AppendLine("{");
@@ -1089,8 +1100,32 @@ public class CodeGenerationService
     private static AttributeData? GetRepositoryForAttribute(INamedTypeSymbol repositoryClass) =>
         repositoryClass.GetAttributes()
             .FirstOrDefault(attr => attr.AttributeClass?.Name == "RepositoryForAttribute" ||
-                                   (attr.AttributeClass?.OriginalDefinition != null &&
+                                   (attr.AttributeClass?.OriginalDefinition != null && 
                                     attr.AttributeClass.OriginalDefinition.Name == "RepositoryForAttribute"));
+
+    /// <summary>Get formatted default value string for parameter</summary>
+    private static string GetDefaultValueString(IParameterSymbol parameter)
+    {
+        if (!parameter.HasExplicitDefaultValue)
+            return string.Empty;
+
+        var value = parameter.ExplicitDefaultValue;
+        
+        // Handle null
+        if (value == null)
+            return "default";
+
+        // Handle strings
+        if (value is string str)
+            return $"\"{str}\"";
+
+        // Handle booleans
+        if (value is bool b)
+            return b ? "true" : "false";
+
+        // Handle numbers and other primitives
+        return value.ToString() ?? "default";
+    }
 
     /// <summary>Check if name matches common connection name patterns</summary>
     private static bool IsConnectionNamePattern(string name) =>

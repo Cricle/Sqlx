@@ -24,6 +24,7 @@ builder.Services.AddCors(options =>
 
 // Configure SQLite connection
 var sqliteConnection = new SqliteConnection("Data Source=todos.db;Cache=Shared;Foreign Keys=true");
+sqliteConnection.Open();  // Open connection immediately for singleton
 builder.Services.AddSingleton(_ => sqliteConnection);
 
 // Register Sqlx-generated repository
@@ -116,24 +117,3 @@ await scope.ServiceProvider.GetRequiredService<DatabaseService>().InitializeData
 
 Console.WriteLine("✅ Sqlx TODO Demo running at http://localhost:5000");
 app.Run();
-
-// Request/Response models
-public record CreateTodoRequest(
-    string Title,
-    string? Description = null,
-    bool IsCompleted = false,
-    int Priority = 2,
-    DateTime? DueDate = null,
-    string? Tags = null,
-    int? EstimatedMinutes = null
-);
-
-public record UpdateTodoRequest(
-    string Title,
-    string? Description = null,
-    bool IsCompleted = false,
-    int Priority = 2,
-    DateTime? DueDate = null,
-    string? Tags = null,
-    int? EstimatedMinutes = null
-);

@@ -52,26 +52,26 @@ public interface ITodoRepository : ICrudRepository<Todo, long>
     // Custom business methods:
 
     /// <summary>Searches todos by title or description.</summary>
-    [SqlxAttribute("SELECT {{columns}} FROM {{table}} WHERE title LIKE @query OR description LIKE @query {{orderby updated_at --desc}}")]
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE title LIKE @query OR description LIKE @query {{orderby updated_at --desc}}")]
     Task<List<Todo>> SearchAsync(string query);
 
     /// <summary>Gets todos by completion status.</summary>
-    [SqlxAttribute("SELECT {{columns}} FROM {{table}} WHERE is_completed = @isCompleted {{orderby completed_at --desc}}")]
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE is_completed = @isCompleted {{orderby completed_at --desc}}")]
     Task<List<Todo>> GetByCompletionStatusAsync(bool isCompleted = true);
 
     /// <summary>Gets high priority todos.</summary>
-    [SqlxAttribute("SELECT {{columns}} FROM {{table}} WHERE priority >= @minPriority AND is_completed = @isCompleted {{orderby priority --desc}}")]
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE priority >= @minPriority AND is_completed = @isCompleted {{orderby priority --desc}}")]
     Task<List<Todo>> GetByPriorityAsync(int minPriority = 3, bool isCompleted = false);
 
     /// <summary>Gets todos due soon.</summary>
-    [SqlxAttribute("SELECT {{columns}} FROM {{table}} WHERE due_date IS NOT NULL AND due_date <= @dueDate AND is_completed = @isCompleted {{orderby due_date}}")]
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE due_date IS NOT NULL AND due_date <= @dueDate AND is_completed = @isCompleted {{orderby due_date}}")]
     Task<List<Todo>> GetDueSoonAsync(DateTime dueDate, bool isCompleted = false);
 
     /// <summary>Marks todo as completed.</summary>
-    [SqlxAttribute("UPDATE {{table}} SET is_completed = 1, completed_at = @completedAt, updated_at = @updatedAt WHERE id = @id")]
+    [SqlTemplate("UPDATE {{table}} SET is_completed = 1, completed_at = @completedAt, updated_at = @updatedAt WHERE id = @id")]
     Task<int> MarkAsCompletedAsync(long id, DateTime completedAt, DateTime updatedAt);
 
     /// <summary>Batch updates priority for multiple todos.</summary>
-    [SqlxAttribute("UPDATE {{table}} SET priority = @priority, updated_at = @updatedAt WHERE id IN (SELECT value FROM json_each(@idsJson))")]
+    [SqlTemplate("UPDATE {{table}} SET priority = @priority, updated_at = @updatedAt WHERE id IN (SELECT value FROM json_each(@idsJson))")]
     Task<int> BatchUpdatePriorityAsync(string idsJson, int priority, DateTime updatedAt);
 }

@@ -357,12 +357,12 @@ public class SqlTemplateEnginePlaceholdersTests
         var result = _engine!.ProcessTemplate(template, _testMethod!, _testEntity!, "test_table", Sqlx.Generator.SqlDefine.SQLite);
 
         // Assert
-        // SQLite 使用 LIMIT
-        if (result.ProcessedSql.Contains("LIMIT") || result.ProcessedSql.Contains("TOP"))
-        {
-            // LIMIT 语法应该是 SQLite 风格
-            Assert.IsTrue(true);
-        }
+        Assert.IsNotNull(result);
+        Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql));
+        // SQLite should generate valid SQL
+        StringAssert.Contains(result.ProcessedSql, "SELECT");
+        StringAssert.Contains(result.ProcessedSql, "FROM");
+        StringAssert.Contains(result.ProcessedSql, "test_table");
     }
 
     [TestMethod]
@@ -376,8 +376,12 @@ public class SqlTemplateEnginePlaceholdersTests
         var result = _engine!.ProcessTemplate(template, _testMethod!, _testEntity!, "test_table", Sqlx.Generator.SqlDefine.SqlServer);
 
         // Assert
-        // SQL Server 可能使用 TOP
         Assert.IsNotNull(result);
+        Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql));
+        // SQL Server should generate valid SQL
+        StringAssert.Contains(result.ProcessedSql, "SELECT");
+        StringAssert.Contains(result.ProcessedSql, "FROM");
+        StringAssert.Contains(result.ProcessedSql, "test_table");
     }
 
     #endregion

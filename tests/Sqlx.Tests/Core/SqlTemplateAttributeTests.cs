@@ -25,58 +25,25 @@ public class SqlTemplateAttributeTests
     }
 
     [TestMethod]
-    public void SqlTemplateAttribute_WithDialectAndOperation_GeneratesCorrectly()
-    {
-        // This test verifies the structure without requiring full compilation
-        // The actual attribute generation is tested in integration tests
-        Assert.IsTrue(true, "SqlTemplate attribute generation is tested in integration scenarios");
-    }
-
-    [TestMethod]
-    public void SqlTemplateAttribute_WithOnlyDialect_GeneratesCorrectly()
-    {
-        Assert.IsTrue(true, "SqlTemplate with only dialect tested in integration scenarios");
-    }
-
-    [TestMethod]
-    public void SqlTemplateAttribute_WithoutNamedParameters_GeneratesCorrectly()
-    {
-        Assert.IsTrue(true, "SqlTemplate without named parameters tested in integration scenarios");
-    }
-
-    [TestMethod]
-    public void AttributeHandler_IdentifiesSqlTemplateAttribute()
+    public void AttributeHandler_ShouldBeInstantiable()
     {
         // Test basic AttributeHandler functionality
         var handler = new AttributeHandler();
-        Assert.IsNotNull(handler, "AttributeHandler should be instantiable");
+        Assert.IsNotNull(handler);
     }
 
     [TestMethod]
-    public void AttributeHandler_ExtractsSqlTemplateConstructorArgument()
+    public void IndentedStringBuilder_ShouldProduceValidOutput()
     {
-        Assert.IsTrue(true, "SQL template argument extraction tested in integration scenarios");
-    }
-
-    [TestMethod]
-    public void AttributeHandler_ExtractsNamedArguments()
-    {
-        Assert.IsTrue(true, "Named argument extraction tested in integration scenarios");
-    }
-
-    [TestMethod]
-    public void GenerateOrCopyAttributes_ProducesValidCSharpCode()
-    {
-        // Test basic functionality without full compilation
+        // Test basic string builder functionality
         var sb = new IndentedStringBuilder(string.Empty);
         sb.AppendLine("// Test output");
         var result = sb.ToString();
-        Assert.IsTrue(result.Contains("// Test output"), "IndentedStringBuilder should work correctly");
+        
+        Assert.IsNotNull(result);
+        Assert.IsTrue(result.Contains("// Test output"));
     }
 
-    [TestMethod]
-    public void SqlTemplateAttribute_UsesGlobalNamespaces()
-    {
-        Assert.IsTrue(true, "Global namespace usage tested in integration scenarios");
-    }
+    // Note: Detailed SqlTemplate attribute generation tests are covered in integration tests
+    // with actual source generation scenarios in RepositoryFor tests and DialectCompilationTests
 }

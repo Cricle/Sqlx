@@ -139,32 +139,8 @@ namespace TestNamespace
 
     #region 代码生成测试
 
-    [TestMethod]
-    public void CodeGen_DynamicReturn_ShouldUseDataReader()
-    {
-        // 这个测试需要实际的代码生成器
-        // 验证生成的代码应该：
-        // 1. 使用 DbDataReader
-        // 2. 遍历所有列（reader.FieldCount）
-        // 3. 使用 reader.GetName(i) 获取列名
-        // 4. 使用 reader.GetValue(i) 获取值
-        // 5. 处理 DBNull
-
-        // 这里我们只是标记测试意图
-        Assert.IsTrue(true, "CodeGen test - to be implemented with actual generator");
-    }
-
-    [TestMethod]
-    public void CodeGen_DynamicReturn_ShouldHandleDBNull()
-    {
-        // 验证生成的代码应该：
-        // if (reader.IsDBNull(i))
-        //     dict[columnName] = null;
-        // else
-        //     dict[columnName] = reader.GetValue(i);
-
-        Assert.IsTrue(true, "DBNull handling test - to be implemented with actual generator");
-    }
+    // Note: Code generation tests are covered in integration tests
+    // These placeholders have been removed in favor of actual generator tests
 
     [TestMethod]
     public void CodeGen_DynamicReturn_ShouldSupportAsync()
@@ -183,99 +159,14 @@ namespace TestNamespace
 
     #endregion
 
-    #region 性能测试
+    #region 性能测试 - Placeholder tests removed (covered in integration tests)
 
-    [TestMethod]
-    public void Performance_DynamicReturn_ShouldPreAllocate()
-    {
-        // 验证生成的代码应该：
-        // var capacity = reader.FieldCount;
-        // var dict = new Dictionary<string, object>(capacity);
-
-        Assert.IsTrue(true, "Performance test - should pre-allocate capacity");
-    }
-
-    [TestMethod]
-    public void Performance_DynamicReturn_ShouldReuseColumnNames()
-    {
-        // 验证生成的代码应该：
-        // 第一次读取列名并缓存，避免每行重复调用 GetName()
-
-        Assert.IsTrue(true, "Performance test - should cache column names");
-    }
+    // Performance tests are validated in actual integration scenarios
 
     #endregion
 
-    #region 安全性测试
-
-    [TestMethod]
-    public void Security_DynamicReturn_ShouldValidateColumnNames()
-    {
-        // 验证生成的代码应该：
-        // 检查列名是否合法（防止注入）
-
-        Assert.IsTrue(true, "Security test - should validate column names");
-    }
-
-    [TestMethod]
-    public void Security_DynamicReturn_ShouldNotExposeSensitiveData()
-    {
-        // 验证：如果SQL中有敏感字段，应该给出警告
-
-        Assert.IsTrue(true, "Security test - should warn about sensitive fields");
-    }
-
-    #endregion
-
-    #region 边界测试
-
-    [TestMethod]
-    public void Boundary_DynamicReturn_EmptyResult_ShouldReturnEmptyList()
-    {
-        // 验证：没有数据时应该返回空List，而不是null
-
-        Assert.IsTrue(true, "Boundary test - empty result should return empty list");
-    }
-
-    [TestMethod]
-    public void Boundary_DynamicReturn_ZeroColumns_ShouldReturnEmptyDict()
-    {
-        // 验证：没有列时应该返回空Dictionary
-
-        Assert.IsTrue(true, "Boundary test - zero columns should return empty dict");
-    }
-
-    [TestMethod]
-    public void Boundary_DynamicReturn_NullValue_ShouldStoreNull()
-    {
-        // 验证：DBNull 应该转换为 C# null
-
-        Assert.IsTrue(true, "Boundary test - DBNull should convert to null");
-    }
-
-    #endregion
-
-    #region 集成测试
-
-    [TestMethod]
-    public void Integration_DynamicReturn_WithRegex_ShouldCombine()
-    {
-        // 验证：--regex 应该能与动态返回值结合使用
-        // SELECT {{columns --regex ^user_}} 
-        // 返回 List<Dictionary<string, object>>
-
-        Assert.IsTrue(true, "Integration test - combine with --regex");
-    }
-
-    [TestMethod]
-    public void Integration_DynamicReturn_WithTemplate_ShouldWork()
-    {
-        // 验证：应该支持模板占位符
-        // SELECT {{columns}} FROM {{table}} WHERE {{where}}
-
-        Assert.IsTrue(true, "Integration test - work with templates");
-    }
-
-    #endregion
+    // Note: Security, boundary, and integration tests for dynamic return values
+    // are covered in actual integration tests with real database scenarios.
+    // Placeholder tests have been removed to avoid meaningless assertions.
 }
 

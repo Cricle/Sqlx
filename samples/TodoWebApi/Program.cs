@@ -111,6 +111,26 @@ app.MapDelete("/api/todos/{id:long}", async (long id, ITodoRepository repo) =>
     return result == 0 ? Results.NotFound() : Results.NoContent();
 });
 
+// Search todos
+app.MapGet("/api/todos/search", async (string q, ITodoRepository repo) =>
+    Results.Json(await repo.SearchAsync($"%{q}%"), TodoJsonContext.Default.ListTodo));
+
+// Get completed todos
+app.MapGet("/api/todos/completed", async (ITodoRepository repo) =>
+    Results.Json(await repo.GetByCompletionStatusAsync(true), TodoJsonContext.Default.ListTodo));
+
+// Get high priority todos
+app.MapGet("/api/todos/high-priority", async (ITodoRepository repo) =>
+    Results.Json(await repo.GetByPriorityAsync(3, false), TodoJsonContext.Default.ListTodo));
+
+// Get todos due soon (next 7 days)
+app.MapGet("/api/todos/due-soon", async (ITodoRepository repo) =>
+    Results.Json(await repo.GetDueSoonAsync(DateTime.UtcNow.AddDays(7), false), TodoJsonContext.Default.ListTodo));
+
+// Get total count
+app.MapGet("/api/todos/count", async (ITodoRepository repo) =>
+    Results.Json(await repo.CountAsync(), TodoJsonContext.Default.Int32));
+
 // Initialize database
 using var scope = app.Services.CreateScope();
 await scope.ServiceProvider.GetRequiredService<DatabaseService>().InitializeDatabaseAsync();

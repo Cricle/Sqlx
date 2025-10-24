@@ -33,18 +33,18 @@ namespace Test
 }";
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
-        
+
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
 
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "ItemRepo");
 
         // Verify the method was generated
         Assert.IsTrue(generatedCode.Contains("JoinTestAsync"), "Method JoinTestAsync should be generated");
-        
+
         // Verify string interpolation is used
         Assert.IsTrue(generatedCode.Contains("$@\""), "Should use string interpolation");
         Assert.IsTrue(generatedCode.Contains("__joinClause_0__"), "Should declare join clause variable");
-        
+
         // Verify SQL validation is included
         Assert.IsTrue(generatedCode.Contains("SqlValidator.IsValidFragment"), "Should include SQL validation");
     }
@@ -113,7 +113,7 @@ namespace Test
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
 
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "ItemRepo");
-        
+
         // Debug output
         System.Console.WriteLine("=== ORDERBY TEST ===");
         System.Console.WriteLine(generatedCode);
@@ -139,7 +139,7 @@ using Sqlx.Annotations;
 
 namespace Test
 {
-    public class Item { 
+    public class Item {
         public int Id { get; set; }
         public string Category { get; set; }
     }
@@ -160,7 +160,7 @@ namespace Test
         Assert.IsFalse(diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
 
         var generatedCode = TestHelper.GetGeneratedCode(compilation, "ItemRepo");
-        
+
         // Debug output
         System.Console.WriteLine("=== GROUPBY TEST ===");
         System.Console.WriteLine(generatedCode);
@@ -214,7 +214,7 @@ namespace Test
         Assert.IsTrue(
             generatedCode.Contains("__orderByClause") || generatedCode.Contains("RUNTIME_ORDERBY"),
             "Should declare orderby clause variable or marker");
-        
+
         // Both validations should be present
         var validationCount = System.Text.RegularExpressions.Regex.Matches(generatedCode, "SqlValidator\\.IsValidFragment").Count;
         Assert.IsTrue(validationCount >= 2, $"Should have at least 2 SQL validations, but found {validationCount}");
@@ -246,12 +246,12 @@ namespace Test
 }";
 
         var (diagnostics, compilation) = TestHelper.GetGeneratedOutput(source);
-        
+
         // Should have an error or warning because @j is not marked with [DynamicSql]
-        var issues = diagnostics.Where(d => 
-            d.Severity == DiagnosticSeverity.Error || 
+        var issues = diagnostics.Where(d =>
+            d.Severity == DiagnosticSeverity.Error ||
             d.Severity == DiagnosticSeverity.Warning).ToList();
-        
+
         // If no diagnostics, at least verify the code was generated
         if (!issues.Any())
         {

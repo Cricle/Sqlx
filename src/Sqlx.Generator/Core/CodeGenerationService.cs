@@ -1100,7 +1100,7 @@ public class CodeGenerationService
     private static AttributeData? GetRepositoryForAttribute(INamedTypeSymbol repositoryClass) =>
         repositoryClass.GetAttributes()
             .FirstOrDefault(attr => attr.AttributeClass?.Name == "RepositoryForAttribute" ||
-                                   (attr.AttributeClass?.OriginalDefinition != null && 
+                                   (attr.AttributeClass?.OriginalDefinition != null &&
                                     attr.AttributeClass.OriginalDefinition.Name == "RepositoryForAttribute"));
 
     /// <summary>Get formatted default value string for parameter</summary>
@@ -1110,7 +1110,7 @@ public class CodeGenerationService
             return string.Empty;
 
         var value = parameter.ExplicitDefaultValue;
-        
+
         // Handle null
         if (value == null)
             return "default";

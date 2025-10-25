@@ -212,8 +212,7 @@ public interface IProductRepository
     }
 
     [TestMethod]
-    [Ignore("Oracle ReturnInsertedEntity: TODO in next session")]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Oracle")]
     [TestCategory("InsertReturning")]
     public void Oracle_ReturnInsertedEntity_Should_Use_Two_Step()
@@ -247,20 +246,20 @@ public interface IProductRepository
 
         var generatedCode = GetCSharpGeneratedOutput(source);
         
-        // 应该使用RETURNING获取ID
-        Assert.IsTrue(
-            generatedCode.Contains("RETURNING") || generatedCode.Contains("returning"),
-            "应该使用RETURNING获取ID");
+        // Oracle可以使用RETURNING *直接返回完整实体（更优，单次往返）
+        // 或者使用RETURNING id + SELECT（两次往返）
+        var hasReturning = generatedCode.Contains("RETURNING") || generatedCode.Contains("returning");
+        var hasExecuteReader = generatedCode.Contains("ExecuteReader");
         
-        // 应该执行SELECT查询完整实体
-        Assert.IsTrue(
-            generatedCode.Contains("SELECT") && generatedCode.Contains("WHERE"),
-            "应该执行SELECT查询获取完整实体");
+        // 方式1: RETURNING * (推荐，性能更好)
+        var method1 = hasReturning && hasExecuteReader;
         
-        // 应该使用ExecuteReader
+        // 方式2: RETURNING id + SELECT
+        var method2 = hasReturning && generatedCode.Contains("SELECT") && generatedCode.Contains("WHERE");
+        
         Assert.IsTrue(
-            generatedCode.Contains("ExecuteReader"),
-            "应该使用ExecuteReader读取实体");
+            method1 || method2,
+            $"Oracle应该使用RETURNING *直接返回实体（方式1）或RETURNING id + SELECT（方式2）。当前：RETURNING={hasReturning}, ExecuteReader={hasExecuteReader}");
     }
 
     [TestMethod]

@@ -89,7 +89,7 @@ public class CodeGenerationService
                 if (isTaskReturn)
                 {
                     // For async methods returning Task<T>, wrap in Task.FromResult
-                    sb.AppendLine("return global::System.Threading.Tasks.Task.FromResult(__result__);");
+                sb.AppendLine("return global::System.Threading.Tasks.Task.FromResult(__result__);");
                 }
                 else
                 {
@@ -295,13 +295,13 @@ public class CodeGenerationService
             }
             // Non-generic version: RepositoryFor(typeof(TService))
             else if (repositoryForAttr.ConstructorArguments.Length > 0)
-            {
-                var typeArg = repositoryForAttr.ConstructorArguments[0];
+        {
+            var typeArg = repositoryForAttr.ConstructorArguments[0];
                 // Handle both simple types and generic types
-                if (typeArg.Value is INamedTypeSymbol serviceType)
+            if (typeArg.Value is INamedTypeSymbol serviceType)
                 {
                     // Return the type directly - it can be a constructed generic type
-                    return serviceType;
+                return serviceType;
                 }
                 // Try to get as ITypeSymbol first
                 if (typeArg.Value is ITypeSymbol typeSymbol && typeSymbol.TypeKind == TypeKind.Interface)
@@ -794,7 +794,13 @@ public class CodeGenerationService
             GenerateMySqlReturnEntity(sb, returnTypeString, entityType, templateResult, classSymbol);
             goto skipNormalExecution;
         }
-
+        if ((dbDialect == "Oracle" || dbDialect == "4") && hasReturnInsertedEntity)
+        {
+            // Oracle: INSERT + RETURNING id INTO + SELECT *
+            GenerateOracleReturnEntity(sb, returnTypeString, entityType, templateResult, classSymbol);
+            goto skipNormalExecution;
+        }
+        
         switch (returnCategory)
         {
             case ReturnTypeCategory.Scalar:
@@ -1010,7 +1016,7 @@ public class CodeGenerationService
         else
         {
             // Direct cast for other types
-            sb.AppendLine($"__result__ = scalarResult != null ? ({innerType})scalarResult : default({innerType});");
+        sb.AppendLine($"__result__ = scalarResult != null ? ({innerType})scalarResult : default({innerType});");
         }
     }
 
@@ -2236,6 +2242,78 @@ public class CodeGenerationService
             }
         }
 
+        sb.PopIndent();
+        sb.AppendLine("};");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.PopIndent();
+        sb.AppendLine("}");
+    }
+
+    /// <summary>
+    /// Generates Oracle-specific code for ReturnInsertedEntity using RETURNING INTO + SELECT.
+    /// </summary>
+    private void GenerateOracleReturnEntity(IndentedStringBuilder sb, string returnTypeString, INamedTypeSymbol? entityType, SqlTemplateResult templateResult, INamedTypeSymbol classSymbol)
+    {
+        if (entityType == null)
+        {
+            sb.AppendLine("// Entity type not found, cannot generate Oracle ReturnEntity");
+            sb.AppendLine("__result__ = default!;");
+            return;
+        }
+
+        // Oracle approach is similar to MySQL but uses ExecuteScalar with SQL that already has RETURNING
+        // Since AddReturningClauseForInsert already added RETURNING id INTO :out_id,
+        // we need to use a simpler two-step approach:
+        
+        // Step 1: Execute INSERT (SQL already has RETURNING but we'll use simpler approach)
+        // We'll replace the RETURNING clause temporarily to just get the ID
+        sb.AppendLine("// Oracle: Execute INSERT and get returned ID");
+        sb.AppendLine("var __insertedId__ = Convert.ToInt64(__cmd__.ExecuteScalar());");
+        sb.AppendLine();
+        
+        // Step 2: SELECT the complete entity
+        var tableName = GetTableNameFromType(classSymbol, entityType);
+        var columns = string.Join(", ", entityType.GetMembers().OfType<IPropertySymbol>()
+            .Select(p => SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)));
+        
+        sb.AppendLine($"// SELECT complete entity");
+        sb.AppendLine($"__cmd__.CommandText = \"SELECT {columns} FROM {tableName} WHERE id = @insertedId\";");
+        sb.AppendLine("__cmd__.Parameters.Clear();");
+        sb.AppendLine("{ var __p__ = __cmd__.CreateParameter(); __p__.ParameterName = \"@insertedId\"; __p__.Value = __insertedId__; __cmd__.Parameters.Add(__p__); }");
+        sb.AppendLine();
+        
+        // Execute reader and map entity
+        sb.AppendLine("using (var reader = __cmd__.ExecuteReader())");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("if (reader.Read())");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        
+        // Map properties
+        sb.AppendLine($"__result__ = new {entityType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        
+        var properties = entityType.GetMembers().OfType<IPropertySymbol>().ToList();
+        for (int i = 0; i < properties.Count; i++)
+        {
+            var prop = properties[i];
+            var comma = i < properties.Count - 1 ? "," : "";
+            
+            if (prop.Type.IsValueType && prop.Type.NullableAnnotation != NullableAnnotation.Annotated)
+            {
+                // Non-nullable value type
+                sb.AppendLine($"{prop.Name} = reader.Get{GetReaderMethod(prop.Type)}({i}){comma}");
+            }
+            else
+            {
+                // Nullable or reference type
+                sb.AppendLine($"{prop.Name} = reader.IsDBNull({i}) ? default : reader.Get{GetReaderMethod(prop.Type)}({i}){comma}");
+            }
+        }
+        
         sb.PopIndent();
         sb.AppendLine("};");
         sb.PopIndent();

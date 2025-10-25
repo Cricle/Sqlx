@@ -800,7 +800,7 @@ public class CodeGenerationService
             GenerateOracleReturnEntity(sb, returnTypeString, entityType, templateResult, classSymbol);
             goto skipNormalExecution;
         }
-        
+
         switch (returnCategory)
         {
             case ReturnTypeCategory.Scalar:
@@ -2265,24 +2265,24 @@ public class CodeGenerationService
         // Oracle approach is similar to MySQL but uses ExecuteScalar with SQL that already has RETURNING
         // Since AddReturningClauseForInsert already added RETURNING id INTO :out_id,
         // we need to use a simpler two-step approach:
-        
+
         // Step 1: Execute INSERT (SQL already has RETURNING but we'll use simpler approach)
         // We'll replace the RETURNING clause temporarily to just get the ID
         sb.AppendLine("// Oracle: Execute INSERT and get returned ID");
         sb.AppendLine("var __insertedId__ = Convert.ToInt64(__cmd__.ExecuteScalar());");
         sb.AppendLine();
-        
+
         // Step 2: SELECT the complete entity
         var tableName = GetTableNameFromType(classSymbol, entityType);
         var columns = string.Join(", ", entityType.GetMembers().OfType<IPropertySymbol>()
             .Select(p => SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)));
-        
+
         sb.AppendLine($"// SELECT complete entity");
         sb.AppendLine($"__cmd__.CommandText = \"SELECT {columns} FROM {tableName} WHERE id = @insertedId\";");
         sb.AppendLine("__cmd__.Parameters.Clear();");
         sb.AppendLine("{ var __p__ = __cmd__.CreateParameter(); __p__.ParameterName = \"@insertedId\"; __p__.Value = __insertedId__; __cmd__.Parameters.Add(__p__); }");
         sb.AppendLine();
-        
+
         // Execute reader and map entity
         sb.AppendLine("using (var reader = __cmd__.ExecuteReader())");
         sb.AppendLine("{");
@@ -2290,18 +2290,18 @@ public class CodeGenerationService
         sb.AppendLine("if (reader.Read())");
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         // Map properties
         sb.AppendLine($"__result__ = new {entityType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}");
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         var properties = entityType.GetMembers().OfType<IPropertySymbol>().ToList();
         for (int i = 0; i < properties.Count; i++)
         {
             var prop = properties[i];
             var comma = i < properties.Count - 1 ? "," : "";
-            
+
             if (prop.Type.IsValueType && prop.Type.NullableAnnotation != NullableAnnotation.Annotated)
             {
                 // Non-nullable value type
@@ -2313,7 +2313,7 @@ public class CodeGenerationService
                 sb.AppendLine($"{prop.Name} = reader.IsDBNull({i}) ? default : reader.Get{GetReaderMethod(prop.Type)}({i}){comma}");
             }
         }
-        
+
         sb.PopIndent();
         sb.AppendLine("};");
         sb.PopIndent();

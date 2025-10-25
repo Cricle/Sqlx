@@ -1790,7 +1790,7 @@ public class CodeGenerationService
             var columnsSection = sql.Substring(insertIntoIndex, columnsEndIndex - insertIntoIndex);
             var columnsToAdd = new System.Collections.Generic.List<string>();
             var valuesToAdd = new System.Collections.Generic.List<string>();
-            
+
             for (int i = 0; i < additionalColumns.Count; i++)
             {
                 // Only add if column not already present

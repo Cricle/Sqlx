@@ -1786,13 +1786,31 @@ public class CodeGenerationService
 
         if (columnsEndIndex > 0 && valuesStartIndex > 0 && valuesEndIndex > valuesStartIndex)
         {
-            // Add columns
-            var newSql = sql.Substring(0, columnsEndIndex);
-            newSql += ", " + string.Join(", ", additionalColumns);
-            newSql += sql.Substring(columnsEndIndex, valuesEndIndex - columnsEndIndex);
-            newSql += ", " + string.Join(", ", additionalValues);
-            newSql += sql.Substring(valuesEndIndex);
-            return newSql;
+            // Check which columns are not already in the SQL
+            var columnsSection = sql.Substring(insertIntoIndex, columnsEndIndex - insertIntoIndex);
+            var columnsToAdd = new System.Collections.Generic.List<string>();
+            var valuesToAdd = new System.Collections.Generic.List<string>();
+            
+            for (int i = 0; i < additionalColumns.Count; i++)
+            {
+                // Only add if column not already present
+                if (columnsSection.IndexOf(additionalColumns[i], StringComparison.OrdinalIgnoreCase) < 0)
+                {
+                    columnsToAdd.Add(additionalColumns[i]);
+                    valuesToAdd.Add(additionalValues[i]);
+                }
+            }
+
+            // Only modify SQL if there are columns to add
+            if (columnsToAdd.Count > 0)
+            {
+                var newSql = sql.Substring(0, columnsEndIndex);
+                newSql += ", " + string.Join(", ", columnsToAdd);
+                newSql += sql.Substring(columnsEndIndex, valuesEndIndex - columnsEndIndex);
+                newSql += ", " + string.Join(", ", valuesToAdd);
+                newSql += sql.Substring(valuesEndIndex);
+                return newSql;
+            }
         }
 
         return sql;

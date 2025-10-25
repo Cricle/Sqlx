@@ -15,8 +15,7 @@ namespace Sqlx.Tests.ParameterTests;
 public class TDD_ParameterEdgeCases
 {
     [TestMethod]
-    [Ignore("TODO: Fix NULL parameter handling")]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Parameters")]
     [TestCategory("EdgeCase")]
     public void Parameter_NullValue_ShouldHandleCorrectly()
@@ -50,8 +49,7 @@ public class TDD_ParameterEdgeCases
     }
     
     [TestMethod]
-    [Ignore("TODO: Fix generated code for empty string parameters")]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Parameters")]
     [TestCategory("EdgeCase")]
     public void Parameter_EmptyString_ShouldWork()
@@ -82,8 +80,7 @@ public class TDD_ParameterEdgeCases
     }
     
     [TestMethod]
-    [Ignore("TODO: Fix generated code for special characters")]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Parameters")]
     [TestCategory("EdgeCase")]
     public void Parameter_SpecialCharacters_ShouldNotBreakQuery()
@@ -126,8 +123,7 @@ public class TDD_ParameterEdgeCases
     }
     
     [TestMethod]
-    [Ignore("TODO: Fix generated code for long strings")]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Parameters")]
     [TestCategory("EdgeCase")]
     public void Parameter_ReasonableLongString_ShouldWork()
@@ -269,8 +265,7 @@ public class TDD_ParameterEdgeCases
     }
     
     [TestMethod]
-    [Ignore("TODO: Fix generated code for unicode characters")]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Parameters")]
     [TestCategory("Unicode")]
     public void Parameter_BasicUnicodeCharacters_ShouldWork()
@@ -341,10 +336,10 @@ public partial class ParamTestRepository(IDbConnection connection) : IParamTestR
 
 public interface IParamTestRepository
 {
-    [SqlTemplate("SELECT * FROM users WHERE name = @name")]
+    [SqlTemplate("SELECT id, name, email, '' as first_name, '' as last_name FROM users WHERE name = @name")]
     Task<ParamTestUser?> FindByNameAsync(string? name);
     
-    [SqlTemplate("SELECT * FROM users WHERE name = @name")]
+    [SqlTemplate("SELECT id, name, email, '' as first_name, '' as last_name FROM users WHERE name = @name")]
     Task<ParamTestUser?> FindByNameExactAsync(string name);
     
     [SqlTemplate("SELECT * FROM accounts WHERE balance = @balance")]

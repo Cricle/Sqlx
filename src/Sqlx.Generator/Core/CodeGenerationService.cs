@@ -727,11 +727,11 @@ public class CodeGenerationService
 
         // 🚀 TDD Green: Check for [AuditFields]
         var auditFieldsConfig = GetAuditFieldsConfig(originalEntityType);
-
+        
         if (auditFieldsConfig != null)
         {
             var dbDialect = GetDatabaseDialect(classSymbol);
-
+            
             // INSERT: Add CreatedAt, CreatedBy
             if (processedSql.IndexOf("INSERT", StringComparison.OrdinalIgnoreCase) >= 0)
             {
@@ -742,6 +742,14 @@ public class CodeGenerationService
             {
                 processedSql = AddAuditFieldsToUpdate(processedSql, auditFieldsConfig, dbDialect, method);
             }
+        }
+
+        // 🚀 TDD Green: Check for [ConcurrencyCheck]
+        var concurrencyColumn = GetConcurrencyCheckColumn(originalEntityType);
+        if (concurrencyColumn != null && processedSql.IndexOf("UPDATE", StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            // ADD optimistic locking: version = version + 1 AND version = @version
+            processedSql = AddConcurrencyCheck(processedSql, concurrencyColumn, method);
         }
 
         SharedCodeGenerationUtilities.GenerateCommandSetup(sb, processedSql, method, connectionName);
@@ -1832,6 +1840,69 @@ public class CodeGenerationService
         public string? CreatedByColumn { get; set; }
         public string UpdatedAtColumn { get; set; } = "UpdatedAt";
         public string? UpdatedByColumn { get; set; }
+    }
+
+    /// <summary>
+    /// Detects concurrency check column from [ConcurrencyCheck] attribute on entity properties.
+    /// </summary>
+    private static string? GetConcurrencyCheckColumn(INamedTypeSymbol? entityType)
+    {
+        if (entityType == null) return null;
+
+        // 遍历实体的所有属性，找到标记[ConcurrencyCheck]的属性
+        foreach (var member in entityType.GetMembers())
+        {
+            if (member is IPropertySymbol property)
+            {
+                var hasConcurrencyCheck = property.GetAttributes()
+                    .Any(a => a.AttributeClass?.Name == "ConcurrencyCheckAttribute" ||
+                             a.AttributeClass?.Name == "ConcurrencyCheck");
+
+                if (hasConcurrencyCheck)
+                {
+                    return property.Name;  // 返回属性名，如"Version"
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Adds concurrency check to UPDATE statement:
+    /// 1. SET clause: version = version + 1
+    /// 2. WHERE clause: AND version = @version
+    /// </summary>
+    private static string AddConcurrencyCheck(string sql, string versionColumn, IMethodSymbol method)
+    {
+        var versionCol = SharedCodeGenerationUtilities.ConvertToSnakeCase(versionColumn);
+        var versionParam = "@" + versionColumn.ToLower();
+
+        // 找到WHERE子句的位置
+        var whereIndex = sql.IndexOf("WHERE", StringComparison.OrdinalIgnoreCase);
+        
+        if (whereIndex > 0)
+        {
+            // 有WHERE子句：在SET末尾添加version递增，在WHERE末尾添加version检查
+            var beforeWhere = sql.Substring(0, whereIndex).TrimEnd();
+            var afterWhere = sql.Substring(whereIndex);
+            
+            // 添加version递增到SET子句
+            var newSql = $"{beforeWhere}, {versionCol} = {versionCol} + 1 {afterWhere}";
+            
+            // 在WHERE子句末尾添加version检查
+            newSql = newSql + $" AND {versionCol} = {versionParam}";
+            
+            return newSql;
+        }
+        else
+        {
+            // 无WHERE子句：创建WHERE version = @version，并在SET末尾添加version递增
+            var newSql = sql.TrimEnd();
+            newSql = $"{newSql}, {versionCol} = {versionCol} + 1 WHERE {versionCol} = {versionParam}";
+            
+            return newSql;
+        }
     }
 
 }

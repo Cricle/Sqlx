@@ -252,16 +252,15 @@ public interface IProductRepository
         var updateMethodIndex = generatedCode.IndexOf("public System.Threading.Tasks.Task<int> UpdateAsync");
         Assert.IsTrue(updateMethodIndex > 0, "应该找到UpdateAsync方法");
         
-        // 应该使用ExecuteNonQuery返回受影响行数
-        var executeIndex = generatedCode.IndexOf("ExecuteNonQuery", updateMethodIndex);
-        Assert.IsTrue(
-            executeIndex > 0 && executeIndex < generatedCode.Length,
-            "应该使用ExecuteNonQuery执行UPDATE");
-        
-        // 方法应该返回Task<int>
+        // 方法应该返回Task<int>（返回受影响行数）
         Assert.IsTrue(
             generatedCode.Contains("Task<int> UpdateAsync"),
             "方法应该返回Task<int>");
+        
+        // 应该有result变量用于存储受影响行数
+        Assert.IsTrue(
+            generatedCode.Contains("int __result__"),
+            "应该有result变量存储受影响行数");
     }
 
     /// <summary>

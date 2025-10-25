@@ -819,7 +819,7 @@ public class CodeGenerationService
                 }
                 break;
             case ReturnTypeCategory.Collection:
-                GenerateCollectionExecution(sb, returnTypeString, entityType, templateResult);
+                GenerateCollectionExecution(sb, returnTypeString, entityType, templateResult, method);
                 break;
             case ReturnTypeCategory.SingleEntity:
                 GenerateSingleEntityExecution(sb, returnTypeString, entityType, templateResult);
@@ -1032,12 +1032,28 @@ public class CodeGenerationService
         }
     }
 
-    private void GenerateCollectionExecution(IndentedStringBuilder sb, string returnType, INamedTypeSymbol? entityType, SqlTemplateResult templateResult)
+    private void GenerateCollectionExecution(IndentedStringBuilder sb, string returnType, INamedTypeSymbol? entityType, SqlTemplateResult templateResult, IMethodSymbol method)
     {
         var innerType = ExtractInnerTypeFromTask(returnType);
         // 确保使用全局命名空间前缀，避免命名冲突
         var collectionType = innerType.StartsWith("System.") ? $"global::{innerType}" : innerType;
-        sb.AppendLine($"__result__ = new {collectionType}();");
+        
+        // 🚀 性能优化：智能预分配List容量
+        // 检测LIMIT参数并预分配容量，减少List重新分配和GC压力
+        var limitParam = DetectLimitParameter(templateResult.ProcessedSql, method);
+        if (limitParam != null)
+        {
+            sb.AppendLine($"// 🚀 性能优化：预分配List容量（基于LIMIT参数）");
+            sb.AppendLine($"var __initialCapacity__ = {limitParam} > 0 ? {limitParam} : 16;");
+            sb.AppendLine($"__result__ = new {collectionType}(__initialCapacity__);");
+        }
+        else
+        {
+            // 使用默认初始容量16，平衡小查询和大查询
+            sb.AppendLine($"// 🚀 性能优化：预分配默认容量（避免频繁扩容）");
+            sb.AppendLine($"__result__ = new {collectionType}(16);");
+        }
+        
         sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
 
         // 🚀 性能优化：在循环外缓存列序号
@@ -1061,6 +1077,54 @@ public class CodeGenerationService
 
         sb.PopIndent();
         sb.AppendLine("}");
+    }
+    
+    /// <summary>
+    /// 检测SQL中的LIMIT参数，用于List容量预分配优化
+    /// </summary>
+    private string? DetectLimitParameter(string sql, IMethodSymbol method)
+    {
+        // 检测LIMIT子句模式：
+        // - LIMIT @paramName
+        // - LIMIT @limit
+        // - LIMIT :paramName (Oracle)
+        var sqlUpper = sql.ToUpperInvariant();
+        
+        // 查找LIMIT关键字
+        var limitIndex = sqlUpper.LastIndexOf("LIMIT");
+        if (limitIndex < 0) return null;
+        
+        // 提取LIMIT后的参数名
+        var afterLimit = sql.Substring(limitIndex + 5).Trim();
+        
+        // 匹配 @paramName 或 :paramName
+        var match = System.Text.RegularExpressions.Regex.Match(afterLimit, @"^[@:](\w+)");
+        if (!match.Success) return null;
+        
+        var paramName = match.Groups[1].Value;
+        
+        // 验证参数是否存在于方法签名中
+        var param = method.Parameters.FirstOrDefault(p => 
+            p.Name.Equals(paramName, StringComparison.OrdinalIgnoreCase));
+        
+        if (param != null && IsIntegerType(param.Type))
+        {
+            return paramName;
+        }
+        
+        return null;
+    }
+    
+    /// <summary>
+    /// 检查类型是否为整数类型
+    /// </summary>
+    private bool IsIntegerType(ITypeSymbol type)
+    {
+        var typeName = type.ToDisplayString();
+        return typeName == "int" || typeName == "long" || 
+               typeName == "short" || typeName == "byte" ||
+               typeName == "uint" || typeName == "ulong" ||
+               typeName == "ushort" || typeName == "sbyte";
     }
 
     private void GenerateSingleEntityExecution(IndentedStringBuilder sb, string returnType, INamedTypeSymbol? entityType, SqlTemplateResult templateResult)

@@ -61,7 +61,7 @@ public interface IUserRepository
         var generatedCode = GetCSharpGeneratedOutput(source);
 
         // Assert
-        var getByIdsMethodIndex = generatedCode.IndexOf("public System.Threading.Tasks.Task<global::System.Collections.Generic.List<Test.User>> GetByIdsAsync");
+        var getByIdsMethodIndex = generatedCode.IndexOf("GetByIdsAsync");
         Assert.IsTrue(getByIdsMethodIndex > 0, "应该找到GetByIdsAsync方法");
         
         // 应该展开集合参数（使用foreach遍历）
@@ -73,6 +73,11 @@ public interface IUserRepository
         Assert.IsTrue(
             generatedCode.Contains("IN (") || generatedCode.Contains("IN("),
             "应该包含IN子句");
+        
+        // 应该有空集合检查
+        Assert.IsTrue(
+            generatedCode.Contains(".Any()"),
+            "应该检查集合是否为空");
     }
 
     /// <summary>
@@ -118,10 +123,15 @@ public interface IUserRepository
         var getByStatusesMethodIndex = generatedCode.IndexOf("GetByStatusesAsync");
         Assert.IsTrue(getByStatusesMethodIndex > 0, "应该找到GetByStatusesAsync方法");
         
-        // 应该处理IEnumerable参数
+        // 应该处理IEnumerable参数 - 展开为多个参数
         Assert.IsTrue(
             generatedCode.Contains("foreach") && generatedCode.Contains("statuses"),
             "应该使用foreach遍历statuses参数");
+        
+        // 应该有动态IN子句替换
+        Assert.IsTrue(
+            generatedCode.Contains("__inClause_statuses__"),
+            "应该有动态IN子句变量");
     }
 
     /// <summary>

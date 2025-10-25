@@ -1,7 +1,7 @@
 # 集合支持增强 - 实施计划
 
-**优先级**: ⭐⭐⭐ 高  
-**预计用时**: 3-4小时  
+**优先级**: ⭐⭐⭐ 高
+**预计用时**: 3-4小时
 **用户价值**: 极高（IN查询和批量操作是最常见需求）
 
 ---
@@ -26,7 +26,7 @@ public interface IUserRepository
     // 方法1: 数组参数
     [SqlTemplate("SELECT * FROM {{table}} WHERE id IN (@ids)")]
     Task<List<User>> GetByIdsAsync(long[] ids);
-    
+
     // 方法2: IEnumerable参数
     [SqlTemplate("SELECT * FROM {{table}} WHERE status IN (@statuses)")]
     Task<List<User>> GetByStatusesAsync(IEnumerable<string> statuses);
@@ -104,23 +104,23 @@ Task<int> InsertManyAsync(IEnumerable<User> users);
 private static bool IsEnumerableParameter(IParameterSymbol param)
 {
     var type = param.Type;
-    
+
     // 排除string（虽然是IEnumerable<char>）
     if (type.SpecialType == SpecialType.System_String)
         return false;
-    
+
     // 检查是否实现IEnumerable<T>
     if (type is IArrayTypeSymbol)
         return true;
-    
+
     if (type is INamedTypeSymbol namedType)
     {
         // IEnumerable<T>, List<T>, T[]等
-        return namedType.AllInterfaces.Any(i => 
-            i.Name == "IEnumerable" && 
+        return namedType.AllInterfaces.Any(i =>
+            i.Name == "IEnumerable" &&
             i.ContainingNamespace.ToDisplayString() == "System.Collections.Generic");
     }
-    
+
     return false;
 }
 ```
@@ -182,13 +182,13 @@ private static void GenerateCommandSetup(IndentedStringBuilder sb, string sql, I
                 sb.AppendLine($"var __sql__ = @\"{sql}\".Replace(");
                 sb.AppendLine($"    \"IN (@{param.Name})\", ");
                 sb.AppendLine($"    \"IN (\" + __inClause_{param.Name} + \")\");");
-                
+
                 sb.AppendLine($"__cmd__.CommandText = __sql__;");
                 return;
             }
         }
     }
-    
+
     // 没有集合参数：静态SQL
     sb.AppendLine($"__cmd__.CommandText = @\"{sql}\";");
 }
@@ -213,21 +213,21 @@ protected override Expression VisitMethodCall(MethodCallExpression node)
     {
         // ids.Contains(x.Id)
         // 转换为: x.Id IN (1, 2, 3)
-        
+
         var member = Visit(node.Arguments[0]); // x.Id
         var collection = node.Object; // ids
-        
+
         // 提取集合的值
         var values = GetCollectionValues(collection);
-        
+
         _sql.Append(member);
         _sql.Append(" IN (");
         _sql.Append(string.Join(", ", values.Select(v => AddParameter(v))));
         _sql.Append(")");
-        
+
         return node;
     }
-    
+
     return base.VisitMethodCall(node);
 }
 ```
@@ -250,7 +250,7 @@ public sealed class BatchOperationAttribute : Attribute
     /// Maximum number of items per batch. Default is 1000.
     /// </summary>
     public int MaxBatchSize { get; set; } = 1000;
-    
+
     /// <summary>
     /// Maximum number of parameters per batch (database limit).
     /// Default is 2100 for SQL Server.
@@ -271,14 +271,14 @@ private string ProcessValuesPlaceholder(string type, string options, IMethodSymb
     {
         var paramName = options.Substring(1);
         var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
-        
+
         if (param != null && IsEnumerableParameter(param))
         {
             // 返回运行时标记
             return $"{{{{RUNTIME_BATCH_VALUES_{paramName}}}}}";
         }
     }
-    
+
     return "VALUES ({{columns}})"; // 默认
 }
 ```
@@ -298,7 +298,7 @@ private static void GenerateBatchInsert(IndentedStringBuilder sb, IMethodSymbol 
     sb.AppendLine($"foreach (var __batch__ in __batches__)");
     sb.AppendLine("{");
     sb.PushIndent();
-    
+
     // 生成VALUES子句
     sb.AppendLine("var __valuesClauses__ = new List<string>();");
     sb.AppendLine("int __itemIndex__ = 0;");
@@ -310,10 +310,10 @@ private static void GenerateBatchInsert(IndentedStringBuilder sb, IMethodSymbol 
     sb.AppendLine("__itemIndex__++;");
     sb.PopIndent();
     sb.AppendLine("}");
-    
+
     sb.AppendLine("var __values__ = string.Join(\", \", __valuesClauses__);");
     sb.AppendLine("__cmd__.CommandText = __baseSql__ + __values__;");
-    
+
     // 绑定参数
     sb.AppendLine("__itemIndex__ = 0;");
     sb.AppendLine("foreach (var __item__ in __batch__)");
@@ -324,11 +324,11 @@ private static void GenerateBatchInsert(IndentedStringBuilder sb, IMethodSymbol 
     sb.AppendLine("__itemIndex__++;");
     sb.PopIndent();
     sb.AppendLine("}");
-    
+
     // 执行
     sb.AppendLine("__totalAffected__ += await __cmd__.ExecuteNonQueryAsync();");
     sb.AppendLine("__cmd__.Parameters.Clear();");
-    
+
     sb.PopIndent();
     sb.AppendLine("}");
     sb.AppendLine("return __totalAffected__;");
@@ -350,9 +350,9 @@ public void IN_Query_Array_Parameter_Should_Expand()
         [SqlTemplate(""SELECT * FROM {{table}} WHERE id IN (@ids)"")]
         Task<List<User>> GetByIdsAsync(long[] ids);
     ";
-    
+
     var generatedCode = GetCSharpGeneratedOutput(source);
-    
+
     // 应该展开为多个参数
     StringAssert.Contains(generatedCode, "@ids");
     StringAssert.Contains(generatedCode, "foreach");
@@ -369,9 +369,9 @@ public void IN_Query_IEnumerable_Should_Work()
         [SqlTemplate(""SELECT * FROM {{table}} WHERE status IN (@statuses)"")]
         Task<List<User>> GetByStatusesAsync(IEnumerable<string> statuses);
     ";
-    
+
     var generatedCode = GetCSharpGeneratedOutput(source);
-    
+
     StringAssert.Contains(generatedCode, "IEnumerable");
     StringAssert.Contains(generatedCode, "IN (");
 }
@@ -386,9 +386,9 @@ public void Expression_Contains_Should_Generate_IN()
         [SqlTemplate(""SELECT * FROM {{table}} WHERE {{where @predicate}}"")]
         Task<List<User>> GetWhereAsync(Expression<Func<User, bool>> predicate);
     ";
-    
+
     var generatedCode = GetCSharpGeneratedOutput(source);
-    
+
     // 应该使用ExpressionToSql引擎（已有Contains支持）
     StringAssert.Contains(generatedCode, "ExpressionToSql");
 }
@@ -404,9 +404,9 @@ public void BatchInsert_Should_Generate_Multiple_VALUES()
         [BatchOperation]
         Task<int> BatchInsertAsync(IEnumerable<User> entities);
     ";
-    
+
     var generatedCode = GetCSharpGeneratedOutput(source);
-    
+
     StringAssert.Contains(generatedCode, "VALUES");
     StringAssert.Contains(generatedCode, "Chunk");
 }
@@ -422,9 +422,9 @@ public void BatchInsert_Should_Auto_Chunk()
         [BatchOperation(MaxBatchSize = 500)]
         Task<int> BatchInsertAsync(IEnumerable<User> entities);
     ";
-    
+
     var generatedCode = GetCSharpGeneratedOutput(source);
-    
+
     StringAssert.Contains(generatedCode, "Chunk");
     StringAssert.Contains(generatedCode, "500");
 }
@@ -439,9 +439,9 @@ public void Empty_Collection_Should_Handle_Gracefully()
         [SqlTemplate(""SELECT * FROM {{table}} WHERE id IN (@ids)"")]
         Task<List<User>> GetByIdsAsync(long[] ids);
     ";
-    
+
     var generatedCode = GetCSharpGeneratedOutput(source);
-    
+
     // 应该有空集合检查
     StringAssert.Contains(generatedCode, "Any()");
 }
@@ -456,9 +456,9 @@ public void String_Parameter_Should_Not_Be_Treated_As_Collection()
         [SqlTemplate(""SELECT * FROM {{table}} WHERE name = @name"")]
         Task<List<User>> GetByNameAsync(string name);
     ";
-    
+
     var generatedCode = GetCSharpGeneratedOutput(source);
-    
+
     // string不应该被展开
     Assert.IsFalse(generatedCode.Contains("foreach"));
 }
@@ -585,6 +585,6 @@ var affected = await repo.BatchInsertAsync(users);
 
 ---
 
-**创建时间**: 2025-10-25  
+**创建时间**: 2025-10-25
 **状态**: 准备开始实施
 

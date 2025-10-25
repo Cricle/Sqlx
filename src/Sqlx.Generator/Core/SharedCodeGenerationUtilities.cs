@@ -100,9 +100,46 @@ public static class SharedCodeGenerationUtilities
         }
         else
         {
-        // Properly escape SQL string for C# code generation
-        var escapedSql = sql.Replace("\"", "\"\"").Replace("\r\n", "\\r\\n").Replace("\n", "\\n").Replace("\t", "\\t");
-        sb.AppendLine($"__cmd__.CommandText = @\"{escapedSql}\";");
+            // Check if we have collection parameters that need IN clause expansion
+            var collectionParams = method.Parameters.Where(IsEnumerableParameter).ToList();
+            
+            if (collectionParams.Any())
+            {
+                // Dynamic SQL with IN clause expansion
+                var escapedSql = sql.Replace("\"", "\"\"").Replace("\r\n", "\\r\\n").Replace("\n", "\\n").Replace("\t", "\\t");
+                sb.AppendLine($"var __sql__ = @\"{escapedSql}\";");
+                
+                foreach (var param in collectionParams)
+                {
+                    sb.AppendLine();
+                    sb.AppendLine($"// Replace IN (@{param.Name}) with expanded parameter list");
+                    sb.AppendLine($"if ({param.Name} != null && {param.Name}.Any())");
+                    sb.AppendLine("{");
+                    sb.PushIndent();
+                    sb.AppendLine($"var __inClause_{param.Name}__ = string.Join(\", \", ");
+                    sb.AppendLine($"    global::System.Linq.Enumerable.Range(0, global::System.Linq.Enumerable.Count({param.Name}))");
+                    sb.AppendLine($"    .Select(i => $\"@{param.Name}{{i}}\"));");
+                    sb.AppendLine($"__sql__ = __sql__.Replace(\"IN (@{param.Name})\", $\"IN ({{__inClause_{param.Name}__}})\");");
+                    sb.PopIndent();
+                    sb.AppendLine("}");
+                    sb.AppendLine("else");
+                    sb.AppendLine("{");
+                    sb.PushIndent();
+                    sb.AppendLine($"// Empty collection - use 1=0 to return no results");
+                    sb.AppendLine($"__sql__ = __sql__.Replace(\"IN (@{param.Name})\", \"IN (NULL)\");");
+                    sb.PopIndent();
+                    sb.AppendLine("}");
+                }
+                
+                sb.AppendLine();
+                sb.AppendLine("__cmd__.CommandText = __sql__;");
+            }
+            else
+            {
+                // Static SQL (no dynamic placeholders, no collection parameters)
+                var escapedSql = sql.Replace("\"", "\"\"").Replace("\r\n", "\\r\\n").Replace("\n", "\\n").Replace("\t", "\\t");
+                sb.AppendLine($"__cmd__.CommandText = @\"{escapedSql}\";");
+            }
         }
 
         sb.AppendLine();
@@ -191,9 +228,26 @@ public static class SharedCodeGenerationUtilities
                     sb.AppendLine("__cmd__.Parameters.Add(__p__); }");
                 }
             }
+            else if (IsEnumerableParameter(param))
+            {
+                // Collection parameter - expand to multiple parameters for IN queries
+                sb.AppendLine($"// Expand collection parameter: {param.Name} for IN clause");
+                sb.AppendLine($"int __index_{param.Name}__ = 0;");
+                sb.AppendLine($"foreach (var __item__ in {param.Name})");
+                sb.AppendLine("{");
+                sb.PushIndent();
+                sb.AppendLine("var __p__ = __cmd__.CreateParameter();");
+                sb.AppendLine($"__p__.ParameterName = $\"@{param.Name}{{__index_{param.Name}__}}\";");
+                sb.AppendLine("__p__.Value = __item__ ?? (object)global::System.DBNull.Value;");
+                sb.AppendLine("__cmd__.Parameters.Add(__p__);");
+                sb.AppendLine($"__index_{param.Name}__++;");
+                sb.PopIndent();
+                sb.AppendLine("}");
+                sb.AppendLine();
+            }
             else
             {
-                // Regular parameter binding (scalar types, collections, etc.)
+                // Regular parameter binding (scalar types)
             var paramName = $"@{param.Name}";
                 var isNullable = param.Type.IsNullableType() || param.Type.IsReferenceType;
 
@@ -683,5 +737,39 @@ public static class SharedCodeGenerationUtilities
         }
 
         return "SqlServer"; // Default if no [SqlDefine] attribute
+    }
+
+    /// <summary>
+    /// Checks if a parameter is a collection type (IEnumerable, List, Array, etc.) but NOT string.
+    /// </summary>
+    private static bool IsEnumerableParameter(IParameterSymbol param)
+    {
+        var type = param.Type;
+
+        // Exclude string (even though it's IEnumerable<char>)
+        if (type.SpecialType == SpecialType.System_String)
+            return false;
+
+        // Check for array types
+        if (type is IArrayTypeSymbol)
+            return true;
+
+        // Check for IEnumerable<T>, List<T>, etc.
+        if (type is INamedTypeSymbol namedType)
+        {
+            // Check if the type itself is IEnumerable<T>
+            if (namedType.Name == "IEnumerable" &&
+                namedType.ContainingNamespace?.ToDisplayString() == "System.Collections.Generic")
+            {
+                return true;
+            }
+
+            // Check if any of its interfaces is IEnumerable<T>
+            return namedType.AllInterfaces.Any(i =>
+                i.Name == "IEnumerable" &&
+                i.ContainingNamespace?.ToDisplayString() == "System.Collections.Generic");
+        }
+
+        return false;
     }
 }

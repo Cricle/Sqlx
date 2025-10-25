@@ -17,7 +17,7 @@ public class BatchInsertBenchmark
     private IDbConnection _connection = null!;
     private IUserRepository _sqlxRepo = null!;
     private List<User> _users = null!;
-    
+
     private class Config : ManualConfig
     {
         public Config()
@@ -26,19 +26,19 @@ public class BatchInsertBenchmark
             WithOption(ConfigOptions.DisableOptimizationsValidator, true);
         }
     }
-    
+
     [Params(10, 100)]
     public int RowCount;
-    
+
     [GlobalSetup]
     public void Setup()
     {
         _connection = new SqliteConnection("Data Source=:memory:");
         _connection.Open();
         DatabaseSetup.InitializeDatabase(_connection);
-        
+
         _sqlxRepo = new UserRepository(_connection);
-        
+
         _users = Enumerable.Range(1, RowCount)
             .Select(i => new User
             {
@@ -49,26 +49,26 @@ public class BatchInsertBenchmark
             })
             .ToList();
     }
-    
+
     [GlobalCleanup]
     public void Cleanup()
     {
         _connection?.Dispose();
     }
-    
+
     [IterationSetup]
     public void IterationSetup()
     {
         // Clean up inserted data before each iteration
         DatabaseSetup.CleanupDatabase(_connection);
     }
-    
+
     [Benchmark(Baseline = true, Description = "Dapper (Individual)")]
     public int Dapper_BatchInsert_Individual()
     {
         using var transaction = _connection.BeginTransaction();
         var affected = 0;
-        
+
         foreach (var user in _users)
         {
             affected += _connection.Execute(
@@ -76,11 +76,11 @@ public class BatchInsertBenchmark
                 user,
                 transaction);
         }
-        
+
         transaction.Commit();
         return affected;
     }
-    
+
     [Benchmark(Description = "Sqlx (Batch)")]
     public int Sqlx_BatchInsert()
     {

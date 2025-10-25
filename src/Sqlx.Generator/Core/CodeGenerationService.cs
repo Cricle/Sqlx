@@ -2048,8 +2048,9 @@ public class CodeGenerationService
         sb.AppendLine("{");
         sb.PushIndent();
 
-        // Create command
-        sb.AppendLine($"var __cmd__ = {connectionName}.CreateCommand();");
+        // Reuse existing __cmd__ from outer scope
+        // Clear previous parameters if any
+        sb.AppendLine("__cmd__.Parameters.Clear();");
         sb.AppendLine();
 
         // Build VALUES clause
@@ -2118,7 +2119,7 @@ public class CodeGenerationService
 
         // Execute
         sb.AppendLine("__totalAffected__ += __cmd__.ExecuteNonQuery();");
-        sb.AppendLine("__cmd__.Dispose();");
+        // Note: __cmd__ will be disposed by outer scope
 
         sb.PopIndent();
         sb.AppendLine("}");

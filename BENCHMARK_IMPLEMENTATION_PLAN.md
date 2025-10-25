@@ -1,9 +1,9 @@
 # Sqlx 性能 Benchmark 实施计划
 
-**日期**: 2025-10-25  
-**优先级**: ⭐⭐⭐ 高  
-**目标**: 验证Sqlx性能达到或超越Dapper  
-**预计时间**: 3-4小时  
+**日期**: 2025-10-25
+**优先级**: ⭐⭐⭐ 高
+**目标**: 验证Sqlx性能达到或超越Dapper
+**预计时间**: 3-4小时
 
 ---
 
@@ -50,7 +50,7 @@ DELETE FROM users WHERE id = @id
 
 ### 场景6: 批量INSERT (Batch Insert)
 ```csharp
-INSERT INTO users (name, email, age) VALUES 
+INSERT INTO users (name, email, age) VALUES
   (@name0, @email0, @age0),
   (@name1, @email1, @age1),
   ... (100 rows)
@@ -59,8 +59,8 @@ INSERT INTO users (name, email, age) VALUES
 
 ### 场景7: 复杂查询 (JOIN)
 ```csharp
-SELECT u.*, o.* FROM users u 
-INNER JOIN orders o ON u.id = o.user_id 
+SELECT u.*, o.* FROM users u
+INNER JOIN orders o ON u.id = o.user_id
 WHERE u.id = @id
 ```
 **对比框架**: Sqlx, Dapper, EF Core
@@ -139,32 +139,32 @@ public class SelectSingleBenchmark
     private IDbConnection _connection = null!;
     private IUserRepository _sqlxRepo = null!;
     private DbContext _efContext = null!;
-    
+
     [GlobalSetup]
     public void Setup()
     {
         _connection = new SQLiteConnection("Data Source=:memory:");
         _connection.Open();
         SeedDatabase(_connection);
-        
+
         _sqlxRepo = new UserRepository(_connection);
         _efContext = new AppDbContext();
     }
-    
+
     [Benchmark(Baseline = true)]
     public User? Dapper_SelectSingle()
     {
         return _connection.QueryFirstOrDefault<User>(
-            "SELECT * FROM users WHERE id = @id", 
+            "SELECT * FROM users WHERE id = @id",
             new { id = 1 });
     }
-    
+
     [Benchmark]
     public User? Sqlx_SelectSingle()
     {
         return _sqlxRepo.GetByIdAsync(1).GetAwaiter().GetResult();
     }
-    
+
     [Benchmark]
     public User? EFCore_SelectSingle()
     {
@@ -179,10 +179,10 @@ public class SelectSingleBenchmark
 public class BatchInsertBenchmark
 {
     private List<User> _users = null!;
-    
+
     [Params(10, 100, 1000)]
     public int RowCount;
-    
+
     [GlobalSetup]
     public void Setup()
     {
@@ -190,7 +190,7 @@ public class BatchInsertBenchmark
             .Select(i => new User { Name = $"User{i}", Email = $"user{i}@test.com", Age = 20 + i % 50 })
             .ToList();
     }
-    
+
     [Benchmark(Baseline = true)]
     public int Dapper_BatchInsert()
     {
@@ -199,14 +199,14 @@ public class BatchInsertBenchmark
         foreach (var user in _users)
         {
             affected += _connection.Execute(
-                "INSERT INTO users (name, email, age) VALUES (@Name, @Email, @Age)", 
-                user, 
+                "INSERT INTO users (name, email, age) VALUES (@Name, @Email, @Age)",
+                user,
                 tx);
         }
         tx.Commit();
         return affected;
     }
-    
+
     [Benchmark]
     public int Sqlx_BatchInsert()
     {
@@ -232,7 +232,7 @@ public static class DatabaseSetup
                 is_active INTEGER DEFAULT 1,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )");
-        
+
         connection.Execute(@"
             CREATE TABLE IF NOT EXISTS orders (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -241,20 +241,20 @@ public static class DatabaseSetup
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id)
             )");
-        
+
         // Seed data
         var users = Enumerable.Range(1, 1000)
-            .Select(i => new User { 
-                Name = $"User{i}", 
-                Email = $"user{i}@test.com", 
+            .Select(i => new User {
+                Name = $"User{i}",
+                Email = $"user{i}@test.com",
                 Age = 20 + i % 50,
                 IsActive = i % 10 != 0
             });
-        
+
         foreach (var user in users)
         {
             connection.Execute(
-                "INSERT INTO users (name, email, age, is_active) VALUES (@Name, @Email, @Age, @IsActive)", 
+                "INSERT INTO users (name, email, age, is_active) VALUES (@Name, @Email, @Age, @IsActive)",
                 user);
         }
     }
@@ -387,7 +387,7 @@ public class SelectSingleBenchmark
 
 ---
 
-**创建时间**: 2025-10-25  
-**状态**: 准备开始  
+**创建时间**: 2025-10-25
+**状态**: 准备开始
 **下一步**: 创建Benchmark项目结构
 

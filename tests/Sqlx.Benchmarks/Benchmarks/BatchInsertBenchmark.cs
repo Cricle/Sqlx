@@ -81,17 +81,10 @@ public class BatchInsertBenchmark
         return affected;
     }
     
-    [Benchmark(Description = "Sqlx (Individual - TODO: Fix batch)")]
+    [Benchmark(Description = "Sqlx (Batch)")]
     public int Sqlx_BatchInsert()
     {
-        // TODO: Fix BatchOperation __cmd__ bug in generator
-        // Temporarily using individual inserts like Dapper
-        var affected = 0;
-        foreach (var user in _users)
-        {
-            affected += _sqlxRepo.InsertAsync(user.Name, user.Email, user.Age, user.IsActive).GetAwaiter().GetResult();
-        }
-        return affected;
+        return _sqlxRepo.BatchInsertAsync(_users).GetAwaiter().GetResult();
     }
 }
 

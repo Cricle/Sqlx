@@ -18,18 +18,18 @@ public static class DatabaseSetup
                 is_active INTEGER DEFAULT 1,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )");
-        
+
         // Clear existing data
         connection.Execute("DELETE FROM users");
-        
+
         // Seed test data (1000 users for realistic benchmarking)
         SeedUsers(connection, 1000);
     }
-    
+
     private static void SeedUsers(IDbConnection connection, int count)
     {
         using var transaction = connection.BeginTransaction();
-        
+
         for (int i = 1; i <= count; i++)
         {
             connection.Execute(
@@ -43,10 +43,10 @@ public static class DatabaseSetup
                 },
                 transaction);
         }
-        
+
         transaction.Commit();
     }
-    
+
     public static void CleanupDatabase(IDbConnection connection)
     {
         connection.Execute("DELETE FROM users WHERE id > 1000");

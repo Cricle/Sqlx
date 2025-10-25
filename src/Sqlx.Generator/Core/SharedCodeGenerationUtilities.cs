@@ -264,19 +264,19 @@ public static class SharedCodeGenerationUtilities
                 // Native Expression<Func<T, bool>> parameter - generate bridge code
                 var paramName = markerContent.Substring(12);
                 var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
-                
+
                 if (param != null)
                 {
                     // Extract entity type from Expression<Func<TEntity, bool>>
                     var entityType = ExtractEntityTypeFromExpression(param.Type);
                     var dialectValue = GetDialectForMethod(method);
-                    
+
                     sb.AppendLine($"// Bridge: Convert Expression<Func<{entityType.Name}, bool>> to SQL");
                     sb.AppendLine($"var __expr_{paramName}__ = new global::Sqlx.ExpressionToSql<{entityType.ToDisplayString()}>(global::Sqlx.SqlDialect.{dialectValue});");
                     sb.AppendLine($"__expr_{paramName}__.Where({paramName});");
                     sb.AppendLine($"var {varName} = __expr_{paramName}__.ToWhereClause();");
                     sb.AppendLine();
-                    
+
                     // Bind parameters from the expression
                     sb.AppendLine($"// Bind parameters from Expression: {paramName}");
                     sb.AppendLine($"foreach (var __p__ in __expr_{paramName}__.GetParameters())");
@@ -525,7 +525,7 @@ public static class SharedCodeGenerationUtilities
         if (properties.Length == 0)
         {
             // No properties to map, just create empty object
-            if (variableName == "__result__")
+        if (variableName == "__result__")
         {
             sb.AppendLine($"__result__ = new {entityTypeName}();");
         }
@@ -651,7 +651,7 @@ public static class SharedCodeGenerationUtilities
         {
             return (INamedTypeSymbol)funcType.TypeArguments[0];
         }
-        
+
         throw new System.InvalidOperationException($"Cannot extract entity type from Expression parameter: {expressionType.ToDisplayString()}");
     }
 
@@ -663,11 +663,11 @@ public static class SharedCodeGenerationUtilities
         var classSymbol = method.ContainingType;
         var sqlDefineAttr = classSymbol.GetAttributes()
             .FirstOrDefault(a => a.AttributeClass?.Name == "SqlDefineAttribute");
-        
+
         if (sqlDefineAttr != null && sqlDefineAttr.ConstructorArguments.Length > 0)
         {
             var enumValue = sqlDefineAttr.ConstructorArguments[0].Value;
-            
+
             // Map SqlDefineTypes enum to SqlDialect enum names
             // SqlDefineTypes: MySql=0, SqlServer=1, PostgreSql=2, SQLite=3, Oracle=4
             // SqlDialect: MySQL, SqlServer, PostgreSQL, SQLite, Oracle
@@ -681,7 +681,7 @@ public static class SharedCodeGenerationUtilities
                 _ => "SqlServer" // Default
             };
         }
-        
+
         return "SqlServer"; // Default if no [SqlDefine] attribute
     }
 }

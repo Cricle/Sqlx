@@ -1037,7 +1037,7 @@ public class CodeGenerationService
         var innerType = ExtractInnerTypeFromTask(returnType);
         // 确保使用全局命名空间前缀，避免命名冲突
         var collectionType = innerType.StartsWith("System.") ? $"global::{innerType}" : innerType;
-        
+
         // 🚀 性能优化：智能预分配List容量
         // 检测LIMIT参数并预分配容量，减少List重新分配和GC压力
         var limitParam = DetectLimitParameter(templateResult.ProcessedSql, method);
@@ -1053,21 +1053,37 @@ public class CodeGenerationService
             sb.AppendLine($"// 🚀 性能优化：预分配默认容量（避免频繁扩容）");
             sb.AppendLine($"__result__ = new {collectionType}(16);");
         }
-        
+
         sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
 
-        // 🚀 性能优化：在循环外缓存列序号
+        // 🚀 性能优化：在第一次Read()后缓存列序号
+        // 注意：必须在Read()后调用GetOrdinal()，否则空结果集会失败
         if (entityType != null && (templateResult.ColumnOrder == null || templateResult.ColumnOrder.Count == 0))
         {
             sb.AppendLine();
-            sb.AppendLine("// 🚀 性能优化：缓存列序号（循环外执行一次）");
-            GenerateOrdinalCaching(sb, entityType);
+            sb.AppendLine("// 🚀 性能优化：声明列序号缓存变量（在第一次读取后赋值）");
+            GenerateOrdinalCachingDeclarations(sb, entityType);
+            sb.AppendLine("bool __firstRow__ = true;");
             sb.AppendLine();
         }
 
         sb.AppendLine("while (reader.Read())");
         sb.AppendLine("{");
         sb.PushIndent();
+
+        // 在循环内第一次迭代时初始化ordinal
+        if (entityType != null && (templateResult.ColumnOrder == null || templateResult.ColumnOrder.Count == 0))
+        {
+            sb.AppendLine("if (__firstRow__)");
+            sb.AppendLine("{");
+            sb.PushIndent();
+            sb.AppendLine("// 初始化列序号（仅执行一次）");
+            GenerateOrdinalCachingInitialization(sb, entityType);
+            sb.AppendLine("__firstRow__ = false;");
+            sb.PopIndent();
+            sb.AppendLine("}");
+            sb.AppendLine();
+        }
 
         if (entityType != null)
         {
@@ -1078,7 +1094,7 @@ public class CodeGenerationService
         sb.PopIndent();
         sb.AppendLine("}");
     }
-    
+
     /// <summary>
     /// 检测SQL中的LIMIT参数，用于List容量预分配优化
     /// </summary>
@@ -1089,39 +1105,39 @@ public class CodeGenerationService
         // - LIMIT @limit
         // - LIMIT :paramName (Oracle)
         var sqlUpper = sql.ToUpperInvariant();
-        
+
         // 查找LIMIT关键字
         var limitIndex = sqlUpper.LastIndexOf("LIMIT");
         if (limitIndex < 0) return null;
-        
+
         // 提取LIMIT后的参数名
         var afterLimit = sql.Substring(limitIndex + 5).Trim();
-        
+
         // 匹配 @paramName 或 :paramName
         var match = System.Text.RegularExpressions.Regex.Match(afterLimit, @"^[@:](\w+)");
         if (!match.Success) return null;
-        
+
         var paramName = match.Groups[1].Value;
-        
+
         // 验证参数是否存在于方法签名中
-        var param = method.Parameters.FirstOrDefault(p => 
+        var param = method.Parameters.FirstOrDefault(p =>
             p.Name.Equals(paramName, StringComparison.OrdinalIgnoreCase));
-        
+
         if (param != null && IsIntegerType(param.Type))
         {
             return paramName;
         }
-        
+
         return null;
     }
-    
+
     /// <summary>
     /// 检查类型是否为整数类型
     /// </summary>
     private bool IsIntegerType(ITypeSymbol type)
     {
         var typeName = type.ToDisplayString();
-        return typeName == "int" || typeName == "long" || 
+        return typeName == "int" || typeName == "long" ||
                typeName == "short" || typeName == "byte" ||
                typeName == "uint" || typeName == "ulong" ||
                typeName == "ushort" || typeName == "sbyte";
@@ -2462,6 +2478,43 @@ public class CodeGenerationService
         {
             var columnName = SharedCodeGenerationUtilities.ConvertToSnakeCase(prop.Name);
             sb.AppendLine($"var __ord_{prop.Name}__ = reader.GetOrdinal(\"{columnName}\");");
+        }
+    }
+
+    /// <summary>
+    /// 生成列序号缓存变量的声明（初始化为-1）
+    /// </summary>
+    private void GenerateOrdinalCachingDeclarations(IndentedStringBuilder sb, INamedTypeSymbol entityType)
+    {
+        var properties = entityType.GetMembers()
+            .OfType<IPropertySymbol>()
+            .Where(p => p.CanBeReferencedByName && p.GetMethod != null)
+            .ToArray();
+
+        if (properties.Length == 0) return;
+
+        foreach (var prop in properties)
+        {
+            sb.AppendLine($"int __ord_{prop.Name}__ = -1;");
+        }
+    }
+
+    /// <summary>
+    /// 生成列序号缓存变量的初始化（赋值）
+    /// </summary>
+    private void GenerateOrdinalCachingInitialization(IndentedStringBuilder sb, INamedTypeSymbol entityType)
+    {
+        var properties = entityType.GetMembers()
+            .OfType<IPropertySymbol>()
+            .Where(p => p.CanBeReferencedByName && p.GetMethod != null)
+            .ToArray();
+
+        if (properties.Length == 0) return;
+
+        foreach (var prop in properties)
+        {
+            var columnName = SharedCodeGenerationUtilities.ConvertToSnakeCase(prop.Name);
+            sb.AppendLine($"__ord_{prop.Name}__ = reader.GetOrdinal(\"{columnName}\");");
         }
     }
 

@@ -42,8 +42,7 @@ public class TDD_ErrorHandling
     }
     
     [TestMethod]
-    [Ignore("TODO: Generated code issue with empty result set")]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("ErrorHandling")]
     [TestCategory("Core")]
     public void Query_EmptyTable_ShouldReturnEmptyList()

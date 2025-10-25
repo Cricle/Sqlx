@@ -393,13 +393,22 @@ public class SqlTemplateEngine
                     arg.Value.Value?.ToString() == "1"))); // Fragment = 1
 
         // Priority: @paramName > ExpressionToSql > auto > id > default
-        if (!string.IsNullOrWhiteSpace(type) && type.StartsWith("@"))
+        // Check both type and options for @paramName (supports both {{where:@param}} and {{where @param}})
+        var paramSource = !string.IsNullOrWhiteSpace(type) && type.StartsWith("@") ? type : 
+                         !string.IsNullOrWhiteSpace(options) && options.StartsWith("@") ? options : null;
+        
+        if (paramSource != null)
         {
             // {{where @customWhere}} - use parameter as WHERE fragment
-            var paramName = type.Substring(1);
+            var paramName = paramSource.Substring(1).Trim();
             var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
             if (param != null)
             {
+                // Check if parameter is Expression<Func<T, bool>>
+                if (IsNativeExpressionParameter(param))
+                {
+                    return $"{{RUNTIME_WHERE_NATIVE_EXPR_{paramName}}}"; // Marker for native Expression
+                }
                 return $"{{RUNTIME_WHERE_{paramName}}}"; // Marker for code generation
             }
         }
@@ -2086,6 +2095,40 @@ public class SqlTemplateEngine
         return dialect.Equals(SqlDefine.SqlServer)
             ? $"UPDATE {snakeTableName} SET {{{{set}}}} FROM {snakeTableName} INNER JOIN @values"
             : $"UPDATE {snakeTableName} SET {{{{set}}}} WHERE {keyColumn} IN ({{{{values}}}})";
+    }
+
+    /// <summary>
+    /// Checks if a parameter is Expression&lt;Func&lt;T, bool&gt;&gt;
+    /// </summary>
+    private static bool IsNativeExpressionParameter(IParameterSymbol param)
+    {
+        if (param.Type is not INamedTypeSymbol namedType)
+        {
+            return false;
+        }
+
+        // Check if it's System.Linq.Expressions.Expression<T>
+        if (namedType.Name != "Expression" ||
+            namedType.ContainingNamespace?.ToDisplayString() != "System.Linq.Expressions")
+        {
+            return false;
+        }
+
+        // Check if T is Func<TEntity, bool>
+        if (namedType.TypeArguments.Length == 0 ||
+            namedType.TypeArguments[0] is not INamedTypeSymbol funcType)
+        {
+            return false;
+        }
+
+        if (funcType.Name != "Func" ||
+            funcType.TypeArguments.Length != 2 ||
+            funcType.TypeArguments[1].SpecialType != SpecialType.System_Boolean)
+        {
+            return false;
+        }
+
+        return true;
     }
 
     #endregion

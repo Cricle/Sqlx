@@ -259,7 +259,42 @@ public static class SharedCodeGenerationUtilities
         {
             var (varName, placeholderType, markerContent) = dynamicVariables[i];
 
-            if (markerContent.StartsWith("EXPR_"))
+            if (markerContent.StartsWith("NATIVE_EXPR_"))
+            {
+                // Native Expression<Func<T, bool>> parameter - generate bridge code
+                var paramName = markerContent.Substring(12);
+                var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
+                
+                if (param != null)
+                {
+                    // Extract entity type from Expression<Func<TEntity, bool>>
+                    var entityType = ExtractEntityTypeFromExpression(param.Type);
+                    var dialectValue = GetDialectForMethod(method);
+                    
+                    sb.AppendLine($"// Bridge: Convert Expression<Func<{entityType.Name}, bool>> to SQL");
+                    sb.AppendLine($"var __expr_{paramName}__ = new global::Sqlx.ExpressionToSql<{entityType.ToDisplayString()}>(global::Sqlx.SqlDialect.{dialectValue});");
+                    sb.AppendLine($"__expr_{paramName}__.Where({paramName});");
+                    sb.AppendLine($"var {varName} = __expr_{paramName}__.ToWhereClause();");
+                    sb.AppendLine();
+                    
+                    // Bind parameters from the expression
+                    sb.AppendLine($"// Bind parameters from Expression: {paramName}");
+                    sb.AppendLine($"foreach (var __p__ in __expr_{paramName}__.GetParameters())");
+                    sb.AppendLine("{");
+                    sb.PushIndent();
+                    sb.AppendLine("var __param__ = __cmd__.CreateParameter();");
+                    sb.AppendLine("__param__.ParameterName = __p__.Key;");
+                    sb.AppendLine("__param__.Value = __p__.Value ?? global::System.DBNull.Value;");
+                    sb.AppendLine("__cmd__.Parameters.Add(__param__);");
+                    sb.PopIndent();
+                    sb.AppendLine("}");
+                }
+                else
+                {
+                    sb.AppendLine($"var {varName} = \"1=1\"; // Expression parameter not found");
+                }
+            }
+            else if (markerContent.StartsWith("EXPR_"))
             {
                 // ExpressionToSql parameter
                 var paramName = markerContent.Substring(5);
@@ -600,5 +635,53 @@ public static class SharedCodeGenerationUtilities
             }
         }
         return result.ToString();
+    }
+
+    /// <summary>
+    /// Extract entity type from Expression&lt;Func&lt;TEntity, bool&gt;&gt;
+    /// </summary>
+    private static INamedTypeSymbol ExtractEntityTypeFromExpression(ITypeSymbol expressionType)
+    {
+        // Expression<Func<TEntity, bool>>
+        //                  ^^^^^^^ extract this
+        if (expressionType is INamedTypeSymbol namedType &&
+            namedType.TypeArguments.Length > 0 &&
+            namedType.TypeArguments[0] is INamedTypeSymbol funcType &&
+            funcType.TypeArguments.Length > 0)
+        {
+            return (INamedTypeSymbol)funcType.TypeArguments[0];
+        }
+        
+        throw new System.InvalidOperationException($"Cannot extract entity type from Expression parameter: {expressionType.ToDisplayString()}");
+    }
+
+    /// <summary>
+    /// Get database dialect for a method (from [SqlDefine] attribute on class)
+    /// </summary>
+    private static string GetDialectForMethod(IMethodSymbol method)
+    {
+        var classSymbol = method.ContainingType;
+        var sqlDefineAttr = classSymbol.GetAttributes()
+            .FirstOrDefault(a => a.AttributeClass?.Name == "SqlDefineAttribute");
+        
+        if (sqlDefineAttr != null && sqlDefineAttr.ConstructorArguments.Length > 0)
+        {
+            var enumValue = sqlDefineAttr.ConstructorArguments[0].Value;
+            
+            // Map SqlDefineTypes enum to SqlDialect enum names
+            // SqlDefineTypes: MySql=0, SqlServer=1, PostgreSql=2, SQLite=3, Oracle=4
+            // SqlDialect: MySQL, SqlServer, PostgreSQL, SQLite, Oracle
+            return enumValue switch
+            {
+                0 => "MySQL",
+                1 => "SqlServer",
+                2 => "PostgreSQL",
+                3 => "SQLite",
+                4 => "Oracle",
+                _ => "SqlServer" // Default
+            };
+        }
+        
+        return "SqlServer"; // Default if no [SqlDefine] attribute
     }
 }

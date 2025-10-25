@@ -214,10 +214,10 @@ public interface IUserRepository
         // Assert
         StringAssert.Contains(generatedCode, "WHERE", "应该生成WHERE子句");
         
-        // 应该支持大于等于运算符
+        // 应该有Expression桥接代码（运算符在运行时由ExpressionToSql引擎处理）
         Assert.IsTrue(
-            generatedCode.Contains(">=") || generatedCode.Contains("GreaterThanOrEqual"),
-            "应该支持大于等于运算符");
+            generatedCode.Contains("ExpressionToSql<") && generatedCode.Contains(".Where(predicate)"),
+            "应该生成Expression桥接代码");
     }
 
     /// <summary>

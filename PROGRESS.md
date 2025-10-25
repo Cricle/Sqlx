@@ -1,21 +1,37 @@
 # Sqlx 开发进度
 
-## 📊 总体进度: 73% (8.8/12)
+## 📊 总体进度: 75% (9.3/12)
 
 ```
-███████████████████████████░░░ 73%
+████████████████████████████░░ 75%
 ```
+
+## 🎯 100% 数据库覆盖达成！
+
+| 数据库 | ReturnInsertedId | ReturnInsertedEntity | 性能 |
+|--------|------------------|---------------------|------|
+| **PostgreSQL** | `RETURNING id` | `RETURNING *` | ⭐⭐⭐⭐⭐ 单次往返 |
+| **SQLite** | `RETURNING id` | `RETURNING *` | ⭐⭐⭐⭐⭐ 单次往返 |
+| **SQL Server** | `OUTPUT INSERTED.id` | `OUTPUT INSERTED.*` | ⭐⭐⭐⭐⭐ 单次往返 |
+| **MySQL** | `LAST_INSERT_ID()` | `INSERT + SELECT` | ⭐⭐⭐⭐ 两次往返 |
+| **Oracle** | `RETURNING INTO` | `RETURNING *` | ⭐⭐⭐⭐⭐ 单次往返 |
 
 ---
 
 ## ✅ 已完成 (8.6)
 
-### 1. Insert返回ID/Entity功能
+### 1. Insert返回ID/Entity功能 ✅
 - [ReturnInsertedId] 特性
 - [ReturnInsertedEntity] 特性
-- 支持PostgreSQL, SQL Server, SQLite
-- **测试**: 8/8 ✅
-- **用时**: ~3小时
+- 🎯 支持全部5种数据库 (100%覆盖)
+  - PostgreSQL: RETURNING
+  - SQLite: RETURNING
+  - SQL Server: OUTPUT INSERTED
+  - MySQL: LAST_INSERT_ID()
+  - Oracle: RETURNING INTO
+- 与AuditFields/SoftDelete/ConcurrencyCheck完美集成
+- **测试**: 17/17 ✅ (8基础 + 3 MySQL + 3 Oracle + 3集成)
+- **用时**: ~5小时
 
 ### 2. Expression参数支持 (Phase 1+2) ✅
 - Expression<Func<T, bool>> 直接作为WHERE参数

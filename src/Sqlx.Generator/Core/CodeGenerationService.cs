@@ -728,10 +728,6 @@ public class CodeGenerationService
         // 🚀 TDD Green: Check for [AuditFields]
         var auditFieldsConfig = GetAuditFieldsConfig(originalEntityType);
         
-        // DEBUG
-        sb.AppendLine($"// DEBUG AuditFields: config={(auditFieldsConfig != null ? "EXISTS" : "NULL")}, entityType={originalEntityType?.Name ?? "null"}");
-        sb.AppendLine($"// DEBUG AuditFields: SQL={EscapeSqlForCSharp(processedSql)}");
-        
         if (auditFieldsConfig != null)
         {
             var dbDialect = GetDatabaseDialect(classSymbol);
@@ -739,20 +735,12 @@ public class CodeGenerationService
             // INSERT: Add CreatedAt, CreatedBy
             if (processedSql.IndexOf("INSERT", StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                sb.AppendLine($"// DEBUG AuditFields: Detected INSERT, adding audit fields");
-                var originalSql = processedSql;
                 processedSql = AddAuditFieldsToInsert(processedSql, auditFieldsConfig, dbDialect, method);
-                sb.AppendLine($"// DEBUG AuditFields: Before={EscapeSqlForCSharp(originalSql)}");
-                sb.AppendLine($"// DEBUG AuditFields: After={EscapeSqlForCSharp(processedSql)}");
             }
             // UPDATE: Add UpdatedAt, UpdatedBy (including DELETE converted to UPDATE)
             else if (processedSql.IndexOf("UPDATE", StringComparison.OrdinalIgnoreCase) >= 0 || wasDeleteConverted)
             {
-                sb.AppendLine($"// DEBUG AuditFields: Detected UPDATE, adding audit fields");
-                var originalSql = processedSql;
                 processedSql = AddAuditFieldsToUpdate(processedSql, auditFieldsConfig, dbDialect, method);
-                sb.AppendLine($"// DEBUG AuditFields: Before={EscapeSqlForCSharp(originalSql)}");
-                sb.AppendLine($"// DEBUG AuditFields: After={EscapeSqlForCSharp(processedSql)}");
             }
         }
 

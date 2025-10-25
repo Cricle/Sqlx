@@ -53,6 +53,9 @@ public partial class UserRepository(IDbConnection connection) : IUserRepository 
 
 public interface IUserRepository
 {
+    [SqlTemplate(""SELECT * FROM {{table}}"")]
+    Task<List<User>> GetAllAsync();  // 帮助推断实体类型
+    
     [SqlTemplate(""INSERT INTO {{table}} (name) VALUES (@name)"")]
     Task<int> InsertAsync(string name);
 }
@@ -115,6 +118,9 @@ public partial class UserRepository(IDbConnection connection) : IUserRepository 
 
 public interface IUserRepository
 {
+    [SqlTemplate(""SELECT * FROM {{table}}"")]
+    Task<List<User>> GetAllAsync();  // 帮助推断实体类型
+    
     [SqlTemplate(""INSERT INTO {{table}} (name) VALUES (@name)"")]
     Task<int> InsertAsync(string name, string createdBy);
 }
@@ -174,6 +180,9 @@ public partial class UserRepository(IDbConnection connection) : IUserRepository 
 
 public interface IUserRepository
 {
+    [SqlTemplate(""SELECT * FROM {{table}}"")]
+    Task<List<User>> GetAllAsync();  // 帮助推断实体类型
+    
     [SqlTemplate(""UPDATE {{table}} SET name = @name WHERE id = @id"")]
     Task<int> UpdateAsync(long id, string name);
 }
@@ -234,6 +243,9 @@ public partial class UserRepository(IDbConnection connection) : IUserRepository 
 
 public interface IUserRepository
 {
+    [SqlTemplate(""SELECT * FROM {{table}}"")]
+    Task<List<User>> GetAllAsync();  // 帮助推断实体类型
+    
     [SqlTemplate(""UPDATE {{table}} SET name = @name WHERE id = @id"")]
     Task<int> UpdateAsync(long id, string name, string updatedBy);
 }
@@ -291,6 +303,9 @@ public partial class UserRepository(IDbConnection connection) : IUserRepository 
 
 public interface IUserRepository
 {
+    [SqlTemplate(""SELECT * FROM {{table}}"")]
+    Task<List<User>> GetAllAsync();  // 帮助推断实体类型
+    
     [SqlTemplate(""INSERT INTO {{table}} (name) VALUES (@name)"")]
     Task<int> InsertAsync(string name);
 }

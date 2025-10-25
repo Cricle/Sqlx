@@ -2004,17 +2004,46 @@ public class CodeGenerationService
             }
         }
 
-        // Get properties to insert (excluding Id if specified)
-        var properties = entityType.GetMembers()
+        // Parse column names from SQL: INSERT INTO table (col1, col2) VALUES (...)
+        List<string>? specifiedColumns = null;
+        var insertMatch = System.Text.RegularExpressions.Regex.Match(sql, @"INSERT\s+INTO\s+\w+\s*\(([^)]+)\)", 
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        
+        if (insertMatch.Success)
+        {
+            var columnsText = insertMatch.Groups[1].Value;
+            specifiedColumns = columnsText.Split(',')
+                .Select(c => c.Trim())
+                .Where(c => !string.IsNullOrEmpty(c))
+                .ToList();
+        }
+
+        // Get properties to insert
+        var allProperties = entityType.GetMembers()
             .OfType<IPropertySymbol>()
             .Where(p => p.CanBeReferencedByName && p.GetMethod != null)
             .ToList();
 
-        // Check if columns exclude Id from SQL template
-        var excludeId = sql.Contains("--exclude Id") || sql.Contains("--exclude id");
-        if (excludeId)
+        List<IPropertySymbol> properties;
+        
+        if (specifiedColumns != null && specifiedColumns.Count > 0)
         {
-            properties = properties.Where(p => p.Name != "Id").ToList();
+            // Use only properties that match specified columns (case-insensitive snake_case match)
+            properties = new List<IPropertySymbol>();
+            foreach (var column in specifiedColumns)
+            {
+                var prop = allProperties.FirstOrDefault(p => 
+                    SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name).Equals(column, StringComparison.OrdinalIgnoreCase));
+                if (prop != null)
+                {
+                    properties.Add(prop);
+                }
+            }
+        }
+        else
+        {
+            // Fallback: use all properties except Id (auto-increment)
+            properties = allProperties.Where(p => p.Name != "Id").ToList();
         }
 
         // Remove --exclude from SQL

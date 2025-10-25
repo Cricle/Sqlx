@@ -84,7 +84,22 @@ public class BatchInsertBenchmark
     [Benchmark(Description = "Sqlx (Batch)")]
     public int Sqlx_BatchInsert()
     {
-        return _sqlxRepo.BatchInsertAsync(_users).GetAwaiter().GetResult();
+        try
+        {
+            // Ensure connection is open
+            if (_connection.State != ConnectionState.Open)
+            {
+                _connection.Open();
+            }
+            
+            return _sqlxRepo.BatchInsertAsync(_users).GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+            Console.WriteLine($"Stack: {ex.StackTrace}");
+            throw;
+        }
     }
 }
 

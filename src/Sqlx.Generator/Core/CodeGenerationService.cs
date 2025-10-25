@@ -2020,6 +2020,10 @@ public class CodeGenerationService
         // Remove --exclude from SQL
         var baseSql = sql.Replace("--exclude Id", "").Replace("--exclude id", "").Trim();
 
+        // Create command (reuse __cmd__ from outer scope)
+        sb.AppendLine($"__cmd__ = {connectionName}.CreateCommand();");
+        sb.AppendLine();
+
         // Generate code
         sb.AppendLine($"int __totalAffected__ = 0;");
         sb.AppendLine();
@@ -2028,6 +2032,7 @@ public class CodeGenerationService
         sb.AppendLine($"if ({paramName} == null || !{paramName}.Any())");
         sb.AppendLine("{");
         sb.PushIndent();
+        sb.AppendLine("__cmd__?.Dispose();");
         sb.AppendLine("return global::System.Threading.Tasks.Task.FromResult(0);");
         sb.PopIndent();
         sb.AppendLine("}");
@@ -2119,10 +2124,13 @@ public class CodeGenerationService
 
         // Execute
         sb.AppendLine("__totalAffected__ += __cmd__.ExecuteNonQuery();");
-        // Note: __cmd__ will be disposed by outer scope
 
         sb.PopIndent();
         sb.AppendLine("}");
+        sb.AppendLine();
+
+        // Dispose command
+        sb.AppendLine("__cmd__?.Dispose();");
         sb.AppendLine();
 
         // Return result

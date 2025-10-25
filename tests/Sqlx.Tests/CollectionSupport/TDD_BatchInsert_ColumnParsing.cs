@@ -82,7 +82,7 @@ public interface ITestUserRepository
             new() { Name = "Bob", Email = "bob@test.com", Age = 30, IsActive = false },
             new() { Name = "Charlie", Email = "charlie@test.com", Age = 35, IsActive = true }
         };
-        
+
         // Act
         int affected;
         try

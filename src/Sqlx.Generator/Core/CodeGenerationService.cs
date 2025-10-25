@@ -685,15 +685,15 @@ public class CodeGenerationService
         var hasReturnInsertedEntity = method.GetAttributes()
             .Any(a => a.AttributeClass?.Name == "ReturnInsertedEntityAttribute" || a.AttributeClass?.Name == "ReturnInsertedEntity");
 
+        var currentDbDialect = GetDatabaseDialect(classSymbol);
+        
         if (hasReturnInsertedId)
         {
-            var dbDialect = GetDatabaseDialect(classSymbol);
-            processedSql = AddReturningClauseForInsert(processedSql, dbDialect, returnAll: false);
+            processedSql = AddReturningClauseForInsert(processedSql, currentDbDialect, returnAll: false);
         }
         else if (hasReturnInsertedEntity)
         {
-            var dbDialect = GetDatabaseDialect(classSymbol);
-            processedSql = AddReturningClauseForInsert(processedSql, dbDialect, returnAll: true);
+            processedSql = AddReturningClauseForInsert(processedSql, currentDbDialect, returnAll: true);
         }
 
         // 🚀 TDD Green: Check for [SoftDelete]
@@ -710,12 +710,11 @@ public class CodeGenerationService
             // Check for actual DELETE statement (not just containing "DELETE" in parameter names)
             var normalizedSql = System.Text.RegularExpressions.Regex.Replace(processedSql, @"@\w+", ""); // Remove parameters
             if (normalizedSql.IndexOf("DELETE FROM", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                (normalizedSql.StartsWith("DELETE ", StringComparison.OrdinalIgnoreCase) &&
+                (normalizedSql.StartsWith("DELETE ", StringComparison.OrdinalIgnoreCase) && 
                  normalizedSql.IndexOf("INSERT", StringComparison.OrdinalIgnoreCase) < 0))
             {
-                var dbDialect = GetDatabaseDialect(classSymbol);
                 var entityTableName = originalEntityType?.Name ?? "table";
-                processedSql = ConvertDeleteToSoftDelete(processedSql, softDeleteConfig, dbDialect, entityTableName);
+                processedSql = ConvertDeleteToSoftDelete(processedSql, softDeleteConfig, currentDbDialect, entityTableName);
                 wasDeleteConverted = true;  // Mark that DELETE was converted to UPDATE
             }
             // Add soft delete filter to SELECT queries (if not already present and not [IncludeDeleted])
@@ -744,17 +743,15 @@ public class CodeGenerationService
 
         if (auditFieldsConfig != null)
         {
-            var dbDialect = GetDatabaseDialect(classSymbol);
-
             // INSERT: Add CreatedAt, CreatedBy
             if (processedSql.IndexOf("INSERT", StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                processedSql = AddAuditFieldsToInsert(processedSql, auditFieldsConfig, dbDialect, method);
+                processedSql = AddAuditFieldsToInsert(processedSql, auditFieldsConfig, currentDbDialect, method);
             }
             // UPDATE: Add UpdatedAt, UpdatedBy (including DELETE converted to UPDATE)
             else if (processedSql.IndexOf("UPDATE", StringComparison.OrdinalIgnoreCase) >= 0 || wasDeleteConverted)
             {
-                processedSql = AddAuditFieldsToUpdate(processedSql, auditFieldsConfig, dbDialect, method);
+                processedSql = AddAuditFieldsToUpdate(processedSql, auditFieldsConfig, currentDbDialect, method);
             }
         }
 
@@ -782,6 +779,22 @@ public class CodeGenerationService
 
         // 性能优化：单次分类返回类型，避免重复计算
         var (returnCategory, innerType) = ClassifyReturnType(returnTypeString);
+        
+        // 🚀 MySQL/Oracle Special Handling for ReturnInsertedId/Entity
+        var dbDialect = GetDatabaseDialect(classSymbol);
+        if ((dbDialect == "MySql" || dbDialect == "0") && hasReturnInsertedId && returnCategory == ReturnTypeCategory.Scalar)
+        {
+            // MySQL: INSERT + SELECT LAST_INSERT_ID()
+            GenerateMySqlLastInsertId(sb, innerType);
+            goto skipNormalExecution;
+        }
+        if ((dbDialect == "MySql" || dbDialect == "0") && hasReturnInsertedEntity)
+        {
+            // MySQL: INSERT + LAST_INSERT_ID + SELECT *
+            GenerateMySqlReturnEntity(sb, returnTypeString, entityType, templateResult, classSymbol);
+            goto skipNormalExecution;
+        }
+        
         switch (returnCategory)
         {
             case ReturnTypeCategory.Scalar:
@@ -805,6 +818,7 @@ public class CodeGenerationService
                 break;
         }
 
+        skipNormalExecution:
         sb.AppendLine();
 
         // 生成指标和追踪代码（强制启用）
@@ -2106,6 +2120,128 @@ public class CodeGenerationService
 
         // Return result
         sb.AppendLine("return global::System.Threading.Tasks.Task.FromResult(__totalAffected__);");
+    }
+
+    /// <summary>
+    /// Generates MySQL-specific code for ReturnInsertedId using LAST_INSERT_ID().
+    /// </summary>
+    private void GenerateMySqlLastInsertId(IndentedStringBuilder sb, string innerType)
+    {
+        // Step 1: Execute INSERT
+        sb.AppendLine("__cmd__.ExecuteNonQuery();");
+        sb.AppendLine();
+        
+        // Step 2: Get LAST_INSERT_ID()
+        sb.AppendLine("// MySQL: Get last inserted ID");
+        sb.AppendLine("__cmd__.CommandText = \"SELECT LAST_INSERT_ID()\";");
+        sb.AppendLine("__cmd__.Parameters.Clear();");
+        sb.AppendLine("var scalarResult = __cmd__.ExecuteScalar();");
+        
+        // Convert result
+        if (innerType == "long" || innerType == "System.Int64")
+        {
+            sb.AppendLine("__result__ = scalarResult != null ? Convert.ToInt64(scalarResult) : default(long);");
+        }
+        else if (innerType == "int" || innerType == "System.Int32")
+        {
+            sb.AppendLine("__result__ = scalarResult != null ? Convert.ToInt32(scalarResult) : default(int);");
+        }
+        else
+        {
+            sb.AppendLine($"__result__ = scalarResult != null ? Convert.To{innerType.Replace("System.", "")}(scalarResult) : default({innerType});");
+        }
+    }
+
+    /// <summary>
+    /// Gets the appropriate IDataReader Get method for a property type.
+    /// </summary>
+    private string GetReaderMethod(ITypeSymbol type)
+    {
+        var typeName = type.ToDisplayString();
+        return typeName switch
+        {
+            "string" or "System.String" => "String",
+            "int" or "System.Int32" => "Int32",
+            "long" or "System.Int64" => "Int64",
+            "bool" or "System.Boolean" => "Boolean",
+            "decimal" or "System.Decimal" => "Decimal",
+            "double" or "System.Double" => "Double",
+            "float" or "System.Single" => "Float",
+            "System.DateTime" => "DateTime",
+            "System.Guid" => "Guid",
+            _ => "Value" // Fallback to GetValue
+        };
+    }
+
+    /// <summary>
+    /// Generates MySQL-specific code for ReturnInsertedEntity using LAST_INSERT_ID() + SELECT.
+    /// </summary>
+    private void GenerateMySqlReturnEntity(IndentedStringBuilder sb, string returnTypeString, INamedTypeSymbol? entityType, SqlTemplateResult templateResult, INamedTypeSymbol classSymbol)
+    {
+        if (entityType == null)
+        {
+            sb.AppendLine("// Entity type not found, cannot generate MySQL ReturnEntity");
+            sb.AppendLine("__result__ = default!;");
+            return;
+        }
+
+        // Step 1: Execute INSERT and get LAST_INSERT_ID
+        sb.AppendLine("__cmd__.ExecuteNonQuery();");
+        sb.AppendLine();
+        sb.AppendLine("// MySQL: Get last inserted ID");
+        sb.AppendLine("__cmd__.CommandText = \"SELECT LAST_INSERT_ID()\";");
+        sb.AppendLine("__cmd__.Parameters.Clear();");
+        sb.AppendLine("var __lastInsertId__ = Convert.ToInt64(__cmd__.ExecuteScalar());");
+        sb.AppendLine();
+        
+        // Step 2: SELECT the complete entity
+        var tableName = GetTableNameFromType(classSymbol, entityType);
+        var columns = string.Join(", ", entityType.GetMembers().OfType<IPropertySymbol>()
+            .Select(p => SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)));
+        
+        sb.AppendLine($"// SELECT complete entity");
+        sb.AppendLine($"__cmd__.CommandText = \"SELECT {columns} FROM {tableName} WHERE id = @lastId\";");
+        sb.AppendLine("__cmd__.Parameters.Clear();");
+        sb.AppendLine("{ var __p__ = __cmd__.CreateParameter(); __p__.ParameterName = \"@lastId\"; __p__.Value = __lastInsertId__; __cmd__.Parameters.Add(__p__); }");
+        sb.AppendLine();
+        
+        // Execute reader and map entity
+        sb.AppendLine("using (var reader = __cmd__.ExecuteReader())");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("if (reader.Read())");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        
+        // Map properties
+        sb.AppendLine($"__result__ = new {entityType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        
+        var properties = entityType.GetMembers().OfType<IPropertySymbol>().ToList();
+        for (int i = 0; i < properties.Count; i++)
+        {
+            var prop = properties[i];
+            var comma = i < properties.Count - 1 ? "," : "";
+            
+            if (prop.Type.IsValueType && prop.Type.NullableAnnotation != NullableAnnotation.Annotated)
+            {
+                // Non-nullable value type
+                sb.AppendLine($"{prop.Name} = reader.Get{GetReaderMethod(prop.Type)}({i}){comma}");
+            }
+            else
+            {
+                // Nullable or reference type
+                sb.AppendLine($"{prop.Name} = reader.IsDBNull({i}) ? default : reader.Get{GetReaderMethod(prop.Type)}({i}){comma}");
+            }
+        }
+        
+        sb.PopIndent();
+        sb.AppendLine("};");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.PopIndent();
+        sb.AppendLine("}");
     }
 
 }

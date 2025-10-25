@@ -399,6 +399,15 @@ public class CodeGenerationService
         sb.AppendLine("{");
         sb.PushIndent();
 
+        // 🔧 Transaction支持：添加Repository级别的Transaction属性
+        // 用户可以通过设置此属性让所有Repository操作参与同一个事务
+        sb.AppendLine("/// <summary>");
+        sb.AppendLine("/// Gets or sets the transaction to use for all database operations.");
+        sb.AppendLine("/// When set, all generated methods will use this transaction.");
+        sb.AppendLine("/// </summary>");
+        sb.AppendLine("public global::System.Data.IDbTransaction? Transaction { get; set; }");
+        sb.AppendLine();
+
         // Generate connection field if needed
         // Skip DbConnection field generation as it's likely already defined in partial class
         // GenerateDbConnectionFieldIfNeeded(sb, repositoryClass);
@@ -2153,6 +2162,14 @@ public class CodeGenerationService
 
         // Create command (reuse __cmd__ from outer scope)
         sb.AppendLine($"__cmd__ = {connectionName}.CreateCommand();");
+
+        // 🔧 Transaction支持：如果Repository设置了Transaction属性，将其设置到command上
+        sb.AppendLine("if (Transaction != null)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("__cmd__.Transaction = Transaction;");
+        sb.PopIndent();
+        sb.AppendLine("}");
         sb.AppendLine();
 
         // Generate code

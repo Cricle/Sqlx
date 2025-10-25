@@ -86,6 +86,16 @@ public static class SharedCodeGenerationUtilities
     {
         sb.AppendLine($"__cmd__ = {connectionName}.CreateCommand();");
 
+        // 🔧 Transaction支持：如果Repository设置了Transaction属性，将其设置到command上
+        // 这允许Repository的所有操作参与同一个事务
+        sb.AppendLine("if (Transaction != null)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("__cmd__.Transaction = Transaction;");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+
         // Check for runtime dynamic placeholders (WHERE, SET, ORDERBY, etc.)
         bool hasDynamicPlaceholders = sql.Contains("{RUNTIME_WHERE_") ||
                                      sql.Contains("{RUNTIME_SET_") ||
@@ -102,13 +112,13 @@ public static class SharedCodeGenerationUtilities
         {
             // Check if we have collection parameters that need IN clause expansion
             var collectionParams = method.Parameters.Where(IsEnumerableParameter).ToList();
-            
+
             if (collectionParams.Any())
             {
                 // Dynamic SQL with IN clause expansion
                 var escapedSql = sql.Replace("\"", "\"\"").Replace("\r\n", "\\r\\n").Replace("\n", "\\n").Replace("\t", "\\t");
                 sb.AppendLine($"var __sql__ = @\"{escapedSql}\";");
-                
+
                 foreach (var param in collectionParams)
                 {
                     sb.AppendLine();
@@ -130,7 +140,7 @@ public static class SharedCodeGenerationUtilities
                     sb.PopIndent();
                     sb.AppendLine("}");
                 }
-                
+
                 sb.AppendLine();
                 sb.AppendLine("__cmd__.CommandText = __sql__;");
             }

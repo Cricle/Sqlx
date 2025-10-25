@@ -806,7 +806,7 @@ public class CodeGenerationService
             case ReturnTypeCategory.Scalar:
                 // 检查SQL是否是NonQuery命令（UPDATE, DELETE, INSERT）
                 var sqlUpper = templateResult.ProcessedSql.TrimStart().ToUpperInvariant();
-                if (sqlUpper.StartsWith("UPDATE ") || sqlUpper.StartsWith("DELETE ") || 
+                if (sqlUpper.StartsWith("UPDATE ") || sqlUpper.StartsWith("DELETE ") ||
                     (sqlUpper.StartsWith("INSERT ") && innerType == "int"))
                 {
                     // NonQuery命令，返回affected rows

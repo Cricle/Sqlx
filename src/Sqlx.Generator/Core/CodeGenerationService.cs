@@ -1027,13 +1027,23 @@ public class CodeGenerationService
         var collectionType = innerType.StartsWith("System.") ? $"global::{innerType}" : innerType;
         sb.AppendLine($"__result__ = new {collectionType}();");
         sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
+        
+        // 🚀 性能优化：在循环外缓存列序号
+        if (entityType != null && (templateResult.ColumnOrder == null || templateResult.ColumnOrder.Count == 0))
+        {
+            sb.AppendLine();
+            sb.AppendLine("// 🚀 性能优化：缓存列序号（循环外执行一次）");
+            GenerateOrdinalCaching(sb, entityType);
+            sb.AppendLine();
+        }
+        
         sb.AppendLine("while (reader.Read())");
         sb.AppendLine("{");
         sb.PushIndent();
 
         if (entityType != null)
         {
-            GenerateEntityFromReader(sb, entityType, "item", templateResult);
+            GenerateEntityFromReaderInLoop(sb, entityType, "item", templateResult);
             sb.AppendLine($"(({collectionType})__result__).Add(item);");
         }
 
@@ -2358,6 +2368,97 @@ public class CodeGenerationService
         sb.AppendLine("}");
         sb.PopIndent();
         sb.AppendLine("}");
+    }
+
+    /// <summary>
+    /// 生成列序号缓存代码（在while循环外执行）
+    /// </summary>
+    private void GenerateOrdinalCaching(IndentedStringBuilder sb, INamedTypeSymbol entityType)
+    {
+        var properties = entityType.GetMembers()
+            .OfType<IPropertySymbol>()
+            .Where(p => p.CanBeReferencedByName && p.GetMethod != null)
+            .ToArray();
+
+        if (properties.Length == 0) return;
+
+        foreach (var prop in properties)
+        {
+            var columnName = SharedCodeGenerationUtilities.ConvertToSnakeCase(prop.Name);
+            sb.AppendLine($"var __ord_{prop.Name}__ = reader.GetOrdinal(\"{columnName}\");");
+        }
+    }
+
+    /// <summary>
+    /// 在循环内生成实体创建代码（使用缓存的列序号）
+    /// </summary>
+    private void GenerateEntityFromReaderInLoop(IndentedStringBuilder sb, INamedTypeSymbol entityType, string variableName, SqlTemplateResult templateResult)
+    {
+        // 如果有ColumnOrder，使用硬编码索引（极致性能）
+        if (templateResult.ColumnOrder != null && templateResult.ColumnOrder.Count > 0)
+        {
+            SharedCodeGenerationUtilities.GenerateEntityMapping(sb, entityType, variableName, templateResult.ColumnOrder);
+            return;
+        }
+
+        // 使用缓存的ordinal变量（已在循环外生成）
+        var entityTypeName = entityType.GetCachedDisplayString();
+        if (entityTypeName.EndsWith("?"))
+        {
+            entityTypeName = entityTypeName.Substring(0, entityTypeName.Length - 1);
+        }
+
+        var properties = entityType.GetMembers()
+            .OfType<IPropertySymbol>()
+            .Where(p => p.CanBeReferencedByName && p.GetMethod != null)
+            .ToArray();
+
+        if (properties.Length == 0)
+        {
+            sb.AppendLine($"var {variableName} = new {entityTypeName}();");
+            return;
+        }
+
+        // 使用对象初始化器语法
+        if (variableName == "__result__")
+        {
+            sb.AppendLine($"__result__ = new {entityTypeName}");
+        }
+        else
+        {
+            sb.AppendLine($"var {variableName} = new {entityTypeName}");
+        }
+
+        sb.AppendLine("{");
+        sb.PushIndent();
+
+        for (int i = 0; i < properties.Length; i++)
+        {
+            var prop = properties[i];
+            var readMethod = prop.Type.UnwrapNullableType().GetDataReaderMethod();
+            var isNullable = prop.Type.IsNullableType();
+
+            // 使用缓存的序号变量
+            var ordinalVar = $"__ord_{prop.Name}__";
+            var valueExpression = string.IsNullOrEmpty(readMethod)
+                ? $"({prop.Type.GetCachedDisplayString()})reader[{ordinalVar}]"
+                : $"reader.{readMethod}({ordinalVar})";
+
+            var comma = i < properties.Length - 1 ? "," : "";
+
+            // 只对nullable类型生成IsDBNull检查
+            if (isNullable)
+            {
+                sb.AppendLine($"{prop.Name} = reader.IsDBNull({ordinalVar}) ? null : {valueExpression}{comma}");
+            }
+            else
+            {
+                sb.AppendLine($"{prop.Name} = {valueExpression}{comma}");
+            }
+        }
+
+        sb.PopIndent();
+        sb.AppendLine("};");
     }
 
 }

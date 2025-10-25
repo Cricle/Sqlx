@@ -671,7 +671,7 @@ public class CodeGenerationService
         // 🚀 TDD Phase 3: Check for batch INSERT operation FIRST (before any SQL modifications)
         var processedSql = templateResult.ProcessedSql;
         var hasBatchValues = processedSql.Contains("__RUNTIME_BATCH_VALUES_");
-        
+
         if (hasBatchValues)
         {
             // Generate batch INSERT code (complete execution flow)
@@ -1934,7 +1934,19 @@ public class CodeGenerationService
         var paramName = sql.Substring(startIndex + marker.Length, endIndex - startIndex - marker.Length);
 
         var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
-        if (param == null || entityType == null) return;
+        if (param == null) return;
+        
+        // Infer entity type from IEnumerable<T> parameter if not provided
+        if (entityType == null)
+        {
+            var paramType = param.Type as INamedTypeSymbol;
+            if (paramType != null && paramType.TypeArguments.Length > 0)
+            {
+                entityType = paramType.TypeArguments[0] as INamedTypeSymbol;
+            }
+        }
+        
+        if (entityType == null) return; // Still null after inference, cannot proceed
 
         // Get MaxBatchSize from [BatchOperation] attribute
         var batchOpAttr = method.GetAttributes()

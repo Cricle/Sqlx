@@ -364,7 +364,7 @@ public class SqlTemplateEngine
         {
             var paramName = options.Substring(1);
             var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
-            
+
             if (param != null && SharedCodeGenerationUtilities.IsEnumerableParameter(param))
             {
                 // Return runtime marker for batch INSERT (without {{ }} to avoid re-processing)

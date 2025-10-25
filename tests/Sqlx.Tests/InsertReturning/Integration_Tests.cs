@@ -215,7 +215,6 @@ public interface IProductRepository
     }
 
     [TestMethod]
-    [Ignore("TODO: Fix RETURNING clause generation with all features combined")]
     [TestCategory("Integration")]
     [TestCategory("InsertReturning")]
     public void ReturnInsertedId_WithAllFeatures_Should_Work()
@@ -274,7 +273,6 @@ public interface IProductRepository
     }
 
     [TestMethod]
-    [Ignore("TODO: Fix RETURNING clause generation with all features combined")]
     [TestCategory("Integration")]
     [TestCategory("InsertReturning")]
     public void ReturnInsertedEntity_WithAllFeatures_Should_ReturnComplete()

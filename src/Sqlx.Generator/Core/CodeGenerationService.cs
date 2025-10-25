@@ -707,7 +707,11 @@ public class CodeGenerationService
                 .Any(a => a.AttributeClass?.Name == "IncludeDeletedAttribute" || a.AttributeClass?.Name == "IncludeDeleted");
 
             // Convert DELETE to UPDATE (soft delete)
-            if (processedSql.IndexOf("DELETE", StringComparison.OrdinalIgnoreCase) >= 0)
+            // Check for actual DELETE statement (not just containing "DELETE" in parameter names)
+            var normalizedSql = System.Text.RegularExpressions.Regex.Replace(processedSql, @"@\w+", ""); // Remove parameters
+            if (normalizedSql.IndexOf("DELETE FROM", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                (normalizedSql.StartsWith("DELETE ", StringComparison.OrdinalIgnoreCase) &&
+                 normalizedSql.IndexOf("INSERT", StringComparison.OrdinalIgnoreCase) < 0))
             {
                 var dbDialect = GetDatabaseDialect(classSymbol);
                 var entityTableName = originalEntityType?.Name ?? "table";

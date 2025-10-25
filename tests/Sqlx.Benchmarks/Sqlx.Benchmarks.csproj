@@ -2,35 +2,23 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <LangVersion>latest</LangVersion>
-    <ServerGarbageCollection>true</ServerGarbageCollection>
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" />
-    <PackageReference Include="Microsoft.Data.Sqlite" />
     <PackageReference Include="Dapper" />
+    <PackageReference Include="Microsoft.Data.Sqlite" />
+    <PackageReference Include="System.Data.SQLite" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Sqlx\Sqlx.csproj" />
-    <ProjectReference Include="..\..\src\Sqlx.Generator\Sqlx.Generator.csproj" 
-                      OutputItemType="Analyzer" 
-                      ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\Sqlx.Generator\Sqlx.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
-  <PropertyGroup>
-    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-    <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)Generated</CompilerGeneratedFilesOutputPath>
-  </PropertyGroup>
-
-  <!-- 高性能模式：禁用追踪和Partial方法以获得最佳性能 -->
-  <PropertyGroup Condition="'$(Configuration)' == 'Release' AND '$(HighPerformanceMode)' == 'true'">
-    <DefineConstants>$(DefineConstants);SQLX_DISABLE_TRACING;SQLX_DISABLE_PARTIAL_METHODS</DefineConstants>
-  </PropertyGroup>
-
 </Project>
-

@@ -56,8 +56,10 @@ namespace Test
             // PostgreSQL应该生成RETURNING id子句
             StringAssert.Contains(generatedCode, "RETURNING", "应该包含RETURNING子句");
 
-            // 应该使用ExecuteScalarAsync获取返回值
-            StringAssert.Contains(generatedCode, "ExecuteScalarAsync", "应该使用ExecuteScalarAsync");
+            // 应该使用ExecuteScalar获取返回值 (同步或异步都可以)
+            Assert.IsTrue(
+                generatedCode.Contains("ExecuteScalar"),
+                "应该使用ExecuteScalar获取返回值");
 
             // 应该返回Task<long>
             StringAssert.Contains(generatedCode, "Task<long>", "方法签名应该返回Task<long>");

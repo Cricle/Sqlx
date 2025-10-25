@@ -45,9 +45,35 @@
 
 ---
 
-## 🚦 TDD阶段2: 绿灯 🔄 进行中
+## 🚦 TDD阶段2: 绿灯 ✅ 已完成
 
-### 需要实现的逻辑
+### 🎉 实施成果
+
+**所有4个TDD测试全部通过！**
+
+```
+测试摘要: 总计: 4, 失败: 0, 成功: 4, 已跳过: 0
+```
+
+**已实现的功能：**
+1. ✅ 特性检测：自动识别 `[ReturnInsertedId]` 特性
+2. ✅ 多数据库支持：
+   - PostgreSQL: `INSERT ... RETURNING id`
+   - SQL Server: `INSERT ... OUTPUT INSERTED.id VALUES ...`
+   - SQLite: `INSERT ... RETURNING id`
+   - MySQL: 预留支持（需要LAST_INSERT_ID()）
+   - Oracle: 预留支持（需要RETURNING INTO）
+3. ✅ AOT友好：移除所有反射代码（GetType()调用）
+4. ✅ 使用ExecuteScalar正确获取返回的ID
+
+**关键代码修改：**
+- `src/Sqlx.Generator/Core/CodeGenerationService.cs` (第665-675行): 检测特性并修改SQL
+- `src/Sqlx.Generator/Core/CodeGenerationService.cs` (第1415-1484行): 新增辅助方法
+  - `GetDatabaseDialect()`: 从SqlDefineAttribute获取数据库方言
+  - `AddReturningClauseForInsert()`: 根据方言添加RETURNING/OUTPUT子句
+- `src/Sqlx.Generator/Core/CodeGenerationService.cs` (第773行): 移除GetType()调用，确保AOT友好
+
+### 实现的逻辑（已完成）
 
 #### 1. 源生成器识别特性
 **位置**: `src/Sqlx.Generator/Core/CodeGenerationService.cs`

@@ -689,6 +689,7 @@ public class CodeGenerationService
         // 🚀 TDD Green: Check for [SoftDelete]
         // Use originalEntityType (not entityType which may be null for scalar returns)
         var softDeleteConfig = GetSoftDeleteConfig(originalEntityType);
+        var wasDeleteConverted = false;  // Track if DELETE was converted to UPDATE
 
         if (softDeleteConfig != null)
         {
@@ -701,6 +702,7 @@ public class CodeGenerationService
                 var dbDialect = GetDatabaseDialect(classSymbol);
                 var entityTableName = originalEntityType?.Name ?? "table";
                 processedSql = ConvertDeleteToSoftDelete(processedSql, softDeleteConfig, dbDialect, entityTableName);
+                wasDeleteConverted = true;  // Mark that DELETE was converted to UPDATE
             }
             // Add soft delete filter to SELECT queries (if not already present and not [IncludeDeleted])
             else if (!hasIncludeDeleted && processedSql.IndexOf("SELECT", StringComparison.OrdinalIgnoreCase) >= 0)
@@ -720,6 +722,37 @@ public class CodeGenerationService
                     var insertIndex = whereIndex + 5; // Length of "WHERE"
                     processedSql = processedSql.Insert(insertIndex, $" {flagColumn} = false AND");
                 }
+            }
+        }
+
+        // 🚀 TDD Green: Check for [AuditFields]
+        var auditFieldsConfig = GetAuditFieldsConfig(originalEntityType);
+        
+        // DEBUG
+        sb.AppendLine($"// DEBUG AuditFields: config={(auditFieldsConfig != null ? "EXISTS" : "NULL")}, entityType={originalEntityType?.Name ?? "null"}");
+        sb.AppendLine($"// DEBUG AuditFields: SQL={EscapeSqlForCSharp(processedSql)}");
+        
+        if (auditFieldsConfig != null)
+        {
+            var dbDialect = GetDatabaseDialect(classSymbol);
+            
+            // INSERT: Add CreatedAt, CreatedBy
+            if (processedSql.IndexOf("INSERT", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                sb.AppendLine($"// DEBUG AuditFields: Detected INSERT, adding audit fields");
+                var originalSql = processedSql;
+                processedSql = AddAuditFieldsToInsert(processedSql, auditFieldsConfig, dbDialect, method);
+                sb.AppendLine($"// DEBUG AuditFields: Before={EscapeSqlForCSharp(originalSql)}");
+                sb.AppendLine($"// DEBUG AuditFields: After={EscapeSqlForCSharp(processedSql)}");
+            }
+            // UPDATE: Add UpdatedAt, UpdatedBy (including DELETE converted to UPDATE)
+            else if (processedSql.IndexOf("UPDATE", StringComparison.OrdinalIgnoreCase) >= 0 || wasDeleteConverted)
+            {
+                sb.AppendLine($"// DEBUG AuditFields: Detected UPDATE, adding audit fields");
+                var originalSql = processedSql;
+                processedSql = AddAuditFieldsToUpdate(processedSql, auditFieldsConfig, dbDialect, method);
+                sb.AppendLine($"// DEBUG AuditFields: Before={EscapeSqlForCSharp(originalSql)}");
+                sb.AppendLine($"// DEBUG AuditFields: After={EscapeSqlForCSharp(processedSql)}");
             }
         }
 
@@ -1654,6 +1687,163 @@ public class CodeGenerationService
         public string FlagColumn { get; set; } = "IsDeleted";
         public string? TimestampColumn { get; set; }
         public string? DeletedByColumn { get; set; }
+    }
+
+    /// <summary>
+    /// Detects audit fields configuration from [AuditFields] attribute on entity type.
+    /// </summary>
+    private static AuditFieldsConfig? GetAuditFieldsConfig(INamedTypeSymbol? entityType)
+    {
+        if (entityType == null) return null;
+
+        var attr = entityType.GetAttributes()
+            .FirstOrDefault(a => a.AttributeClass?.Name == "AuditFieldsAttribute" ||
+                                a.AttributeClass?.Name == "AuditFields");
+
+        if (attr == null) return null;
+
+        var createdAtColumn = "CreatedAt";
+        string? createdByColumn = null;
+        var updatedAtColumn = "UpdatedAt";
+        string? updatedByColumn = null;
+
+        foreach (var namedArg in attr.NamedArguments)
+        {
+            if (namedArg.Key == "CreatedAtColumn" && namedArg.Value.Value != null)
+            {
+                createdAtColumn = namedArg.Value.Value.ToString() ?? "CreatedAt";
+            }
+            else if (namedArg.Key == "CreatedByColumn" && namedArg.Value.Value != null)
+            {
+                createdByColumn = namedArg.Value.Value.ToString();
+            }
+            else if (namedArg.Key == "UpdatedAtColumn" && namedArg.Value.Value != null)
+            {
+                updatedAtColumn = namedArg.Value.Value.ToString() ?? "UpdatedAt";
+            }
+            else if (namedArg.Key == "UpdatedByColumn" && namedArg.Value.Value != null)
+            {
+                updatedByColumn = namedArg.Value.Value.ToString();
+            }
+        }
+
+        return new AuditFieldsConfig
+        {
+            CreatedAtColumn = createdAtColumn,
+            CreatedByColumn = createdByColumn,
+            UpdatedAtColumn = updatedAtColumn,
+            UpdatedByColumn = updatedByColumn
+        };
+    }
+
+    /// <summary>
+    /// Adds audit fields (CreatedAt, CreatedBy) to INSERT statement.
+    /// </summary>
+    private static string AddAuditFieldsToInsert(string sql, AuditFieldsConfig config, string dialect, IMethodSymbol method)
+    {
+        var createdAtCol = SharedCodeGenerationUtilities.ConvertToSnakeCase(config.CreatedAtColumn);
+        var timestampSql = GetCurrentTimestampSql(dialect);
+
+        // 简单实现：在VALUES子句末尾添加审计字段
+        // INSERT INTO table (col1, col2) VALUES (val1, val2)
+        // 变为: INSERT INTO table (col1, col2, created_at, created_by) VALUES (val1, val2, NOW(), @createdBy)
+
+        var additionalColumns = new System.Collections.Generic.List<string> { createdAtCol };
+        var additionalValues = new System.Collections.Generic.List<string> { timestampSql };
+
+        // Check if method has createdBy parameter
+        if (!string.IsNullOrEmpty(config.CreatedByColumn))
+        {
+            var createdByParam = method.Parameters.FirstOrDefault(p =>
+                p.Name.Equals("createdBy", StringComparison.OrdinalIgnoreCase) ||
+                p.Name.Equals("created_by", StringComparison.OrdinalIgnoreCase));
+
+            if (createdByParam != null)
+            {
+                var createdByCol = SharedCodeGenerationUtilities.ConvertToSnakeCase(config.CreatedByColumn);
+                additionalColumns.Add(createdByCol);
+                additionalValues.Add("@" + createdByParam.Name);
+            }
+        }
+
+        // Find INSERT INTO ... (columns) VALUES (values)
+        var insertIntoIndex = sql.IndexOf("INSERT INTO", StringComparison.OrdinalIgnoreCase);
+        if (insertIntoIndex < 0) return sql;
+
+        var valuesIndex = sql.IndexOf("VALUES", StringComparison.OrdinalIgnoreCase);
+        if (valuesIndex < 0) return sql;
+
+        // Find the closing parenthesis of columns list
+        var columnsEndIndex = sql.LastIndexOf(')', valuesIndex);
+        var valuesStartIndex = sql.IndexOf('(', valuesIndex);
+        var valuesEndIndex = sql.LastIndexOf(')');
+
+        if (columnsEndIndex > 0 && valuesStartIndex > 0 && valuesEndIndex > valuesStartIndex)
+        {
+            // Add columns
+            var newSql = sql.Substring(0, columnsEndIndex);
+            newSql += ", " + string.Join(", ", additionalColumns);
+            newSql += sql.Substring(columnsEndIndex, valuesEndIndex - columnsEndIndex);
+            newSql += ", " + string.Join(", ", additionalValues);
+            newSql += sql.Substring(valuesEndIndex);
+            return newSql;
+        }
+
+        return sql;
+    }
+
+    /// <summary>
+    /// Adds audit fields (UpdatedAt, UpdatedBy) to UPDATE statement.
+    /// </summary>
+    private static string AddAuditFieldsToUpdate(string sql, AuditFieldsConfig config, string dialect, IMethodSymbol method)
+    {
+        var updatedAtCol = SharedCodeGenerationUtilities.ConvertToSnakeCase(config.UpdatedAtColumn);
+        var timestampSql = GetCurrentTimestampSql(dialect);
+
+        // UPDATE table SET col1 = val1 WHERE ...
+        // 变为: UPDATE table SET col1 = val1, updated_at = NOW(), updated_by = @updatedBy WHERE ...
+
+        var additionalSets = new System.Collections.Generic.List<string> { $"{updatedAtCol} = {timestampSql}" };
+
+        // Check if method has updatedBy parameter
+        if (!string.IsNullOrEmpty(config.UpdatedByColumn))
+        {
+            var updatedByParam = method.Parameters.FirstOrDefault(p =>
+                p.Name.Equals("updatedBy", StringComparison.OrdinalIgnoreCase) ||
+                p.Name.Equals("updated_by", StringComparison.OrdinalIgnoreCase));
+
+            if (updatedByParam != null)
+            {
+                var updatedByCol = SharedCodeGenerationUtilities.ConvertToSnakeCase(config.UpdatedByColumn);
+                additionalSets.Add($"{updatedByCol} = @{updatedByParam.Name}");
+            }
+        }
+
+        // Find WHERE clause
+        var whereIndex = sql.IndexOf("WHERE", StringComparison.OrdinalIgnoreCase);
+        if (whereIndex > 0)
+        {
+            // Insert before WHERE
+            var beforeWhere = sql.Substring(0, whereIndex).TrimEnd();
+            var afterWhere = sql.Substring(whereIndex);
+            return $"{beforeWhere}, {string.Join(", ", additionalSets)} {afterWhere}";
+        }
+        else
+        {
+            // No WHERE clause, append at end
+            return sql.TrimEnd() + ", " + string.Join(", ", additionalSets);
+        }
+    }
+
+    /// <summary>
+    /// Configuration for audit fields feature.
+    /// </summary>
+    private class AuditFieldsConfig
+    {
+        public string CreatedAtColumn { get; set; } = "CreatedAt";
+        public string? CreatedByColumn { get; set; }
+        public string UpdatedAtColumn { get; set; } = "UpdatedAt";
+        public string? UpdatedByColumn { get; set; }
     }
 
 }

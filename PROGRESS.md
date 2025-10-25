@@ -1,9 +1,9 @@
 # Sqlx 开发进度
 
-## 📊 总体进度: 62% (7.5/12)
+## 📊 总体进度: 65% (7.8/12)
 
 ```
-███████████████████████░░░░░░░ 62%
+███████████████████████░░░░░░░ 65%
 ```
 
 ---
@@ -70,6 +70,16 @@
 - **测试**: 3/3 ✅ (816/816 总测试通过)
 - **用时**: ~0.5小时
 
+### 9. 集合支持 Phase 3 - 批量INSERT ⏳ (30%完成)
+- BatchOperationAttribute特性定义 ✅
+- TDD红灯测试完成 ✅ (2/4待实现)
+- 实施计划制定 ✅
+- SqlTemplateEngine修改 ⏳
+- 批量INSERT代码生成 ⏳
+- **测试**: 2/4 ✅ (2/4待实现)
+- **用时**: ~0.5小时（计划制定）
+- **剩余**: ~2-3小时（实施）
+
 ---
 
 ## 📋 下一步 (建议优先级)
@@ -114,11 +124,11 @@
 
 ## 💻 代码统计
 
-- **新增文件**: 31个
-- **修改文件**: 5个（主要）
-- **代码行数**: ~2,850行
-- **Git提交**: 32个
-- **Token使用**: 730k / 1M (73%)
+- **新增文件**: 36个
+- **修改文件**: 6个（主要）  
+- **代码行数**: ~3,200行
+- **Git提交**: 37个
+- **Token使用**: 860k / 1M (86%)
 
 ---
 
@@ -146,31 +156,52 @@
 
 ## 🚀 下次会话建议
 
-**开始**: 批量INSERT支持 (1.5-2h)
-**理由**: 集合支持Phase 1和2已完成，Phase 3将完成整个集合支持功能
+**继续**: 批量INSERT支持 - Phase 3剩余70% (2-3h)  
+**理由**: Phase 1和2已完成并生产就绪，Phase 3已有30%完成（特性+测试+计划）
 
-**实施步骤**:
-1. 创建`[BatchOperation]`特性
-2. 实现`{{values @paramName}}`占位符
-3. 批量INSERT代码生成
-4. 自动分批逻辑（处理数据库参数限制）
-5. TDD测试（预计4-5个测试）
+**已完成（Phase 3 30%）**:
+- ✅ BatchOperationAttribute特性定义
+- ✅ TDD红灯测试（2/4待实现）
+- ✅ 详细实施计划
+- ✅ 问题分析和解决方案
+
+**剩余工作（Phase 3 70%）**:
+1. **SqlTemplateEngine修改** (30分钟)
+   - 添加`{{values @paramName}}`占位符处理
+   - 返回`{RUNTIME_BATCH_VALUES_paramName}`标记
+
+2. **CodeGenerationService修改** (90分钟)
+   - 检测RUNTIME_BATCH_VALUES标记
+   - 检测[BatchOperation]特性
+   - 生成批量INSERT专用代码
+
+3. **批量INSERT代码生成** (60分钟)
+   - Chunk分批：`entities.Chunk(MaxBatchSize)`
+   - VALUES子句：`VALUES (@p0, @p1), (@p2, @p3), ...`
+   - 参数绑定：每个batch/item/property
+   - 累加结果：`__totalAffected__ += result`
 
 **预期成果**:
 ```csharp
-[SqlTemplate("INSERT INTO {{table}} ({{columns}}) VALUES {{values @entities}}")]
-[BatchOperation(MaxBatchSize = 1000)]
-Task<int> BatchInsertAsync(IEnumerable<User> entities);
-
-// 自动分批：5000条 → 5批，每批1000条
+var __batches__ = entities.Chunk(500);
+foreach (var __batch__ in __batches__) {
+    // Build: VALUES (@name0, @age0), (@name1, @age1), ...
+    // Bind: 所有参数
+    __totalAffected__ += __cmd__.ExecuteNonQuery();
+}
+return __totalAffected__;
 ```
 
-**然后继续**:
+**完成Phase 3后继续**:
 - Insert MySQL/Oracle支持 (3-4h)
 - Expression Phase 2 - 更多运算符和函数 (2-3h)
 - 性能优化和GC优化 (2-3h)
 
+**详细文档**: 
+- `BATCH_INSERT_IMPLEMENTATION_STATUS.md` - 完整实施计划
+- `SESSION_4_PROGRESS_UPDATE.md` - 当前进度
+
 ---
 
-**最后更新**: 2025-10-25 (会话#4完成 - 集合支持Phase 1+2 100%)
+**最后更新**: 2025-10-25 (会话#4 - Phase 1+2完成100%, Phase 3进行中30%)
 

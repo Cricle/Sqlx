@@ -727,11 +727,11 @@ public class CodeGenerationService
 
         // 🚀 TDD Green: Check for [AuditFields]
         var auditFieldsConfig = GetAuditFieldsConfig(originalEntityType);
-        
+
         if (auditFieldsConfig != null)
         {
             var dbDialect = GetDatabaseDialect(classSymbol);
-            
+
             // INSERT: Add CreatedAt, CreatedBy
             if (processedSql.IndexOf("INSERT", StringComparison.OrdinalIgnoreCase) >= 0)
             {
@@ -1880,19 +1880,19 @@ public class CodeGenerationService
 
         // 找到WHERE子句的位置
         var whereIndex = sql.IndexOf("WHERE", StringComparison.OrdinalIgnoreCase);
-        
+
         if (whereIndex > 0)
         {
             // 有WHERE子句：在SET末尾添加version递增，在WHERE末尾添加version检查
             var beforeWhere = sql.Substring(0, whereIndex).TrimEnd();
             var afterWhere = sql.Substring(whereIndex);
-            
+
             // 添加version递增到SET子句
             var newSql = $"{beforeWhere}, {versionCol} = {versionCol} + 1 {afterWhere}";
-            
+
             // 在WHERE子句末尾添加version检查
             newSql = newSql + $" AND {versionCol} = {versionParam}";
-            
+
             return newSql;
         }
         else
@@ -1900,7 +1900,7 @@ public class CodeGenerationService
             // 无WHERE子句：创建WHERE version = @version，并在SET末尾添加version递增
             var newSql = sql.TrimEnd();
             newSql = $"{newSql}, {versionCol} = {versionCol} + 1 WHERE {versionCol} = {versionParam}";
-            
+
             return newSql;
         }
     }

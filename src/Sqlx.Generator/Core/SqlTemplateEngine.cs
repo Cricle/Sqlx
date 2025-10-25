@@ -394,9 +394,9 @@ public class SqlTemplateEngine
 
         // Priority: @paramName > ExpressionToSql > auto > id > default
         // Check both type and options for @paramName (supports both {{where:@param}} and {{where @param}})
-        var paramSource = !string.IsNullOrWhiteSpace(type) && type.StartsWith("@") ? type : 
+        var paramSource = !string.IsNullOrWhiteSpace(type) && type.StartsWith("@") ? type :
                          !string.IsNullOrWhiteSpace(options) && options.StartsWith("@") ? options : null;
-        
+
         if (paramSource != null)
         {
             // {{where @customWhere}} - use parameter as WHERE fragment

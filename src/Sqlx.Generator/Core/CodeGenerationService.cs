@@ -668,8 +668,18 @@ public class CodeGenerationService
         sb.AppendLine("#endif");
         sb.AppendLine();
 
-        // 🚀 TDD Green: Check for [ReturnInsertedId] or [ReturnInsertedEntity] and modify SQL
+        // 🚀 TDD Phase 3: Check for batch INSERT operation FIRST (before any SQL modifications)
         var processedSql = templateResult.ProcessedSql;
+        var hasBatchValues = processedSql.Contains("__RUNTIME_BATCH_VALUES_");
+        
+        if (hasBatchValues)
+        {
+            // Generate batch INSERT code (complete execution flow)
+            GenerateBatchInsertCode(sb, processedSql, method, originalEntityType, connectionName);
+            return; // Batch INSERT handles everything, exit early
+        }
+
+        // 🚀 TDD Green: Check for [ReturnInsertedId] or [ReturnInsertedEntity] and modify SQL
         var hasReturnInsertedId = method.GetAttributes()
             .Any(a => a.AttributeClass?.Name == "ReturnInsertedIdAttribute" || a.AttributeClass?.Name == "ReturnInsertedId");
         var hasReturnInsertedEntity = method.GetAttributes()
@@ -750,17 +760,6 @@ public class CodeGenerationService
         {
             // ADD optimistic locking: version = version + 1 AND version = @version
             processedSql = AddConcurrencyCheck(processedSql, concurrencyColumn, method);
-        }
-
-        // 🚀 TDD Phase 3: Check for batch INSERT operation
-        var hasBatchValues = processedSql.Contains("{{RUNTIME_BATCH_VALUES_") ||
-                             processedSql.Contains("{RUNTIME_BATCH_VALUES_");
-
-        if (hasBatchValues)
-        {
-            // Generate batch INSERT code (complete execution flow)
-            GenerateBatchInsertCode(sb, processedSql, method, originalEntityType, connectionName);
-            return; // Batch INSERT handles everything, exit early
         }
 
         SharedCodeGenerationUtilities.GenerateCommandSetup(sb, processedSql, method, connectionName);
@@ -1926,12 +1925,12 @@ public class CodeGenerationService
         INamedTypeSymbol? entityType,
         string connectionName)
     {
-        // Extract parameter name from {{RUNTIME_BATCH_VALUES_paramName}}
-        var marker = "{{RUNTIME_BATCH_VALUES_";
+        // Extract parameter name from __RUNTIME_BATCH_VALUES_paramName__
+        var marker = "__RUNTIME_BATCH_VALUES_";
         var startIndex = sql.IndexOf(marker);
         if (startIndex < 0) return;
 
-        var endIndex = sql.IndexOf("}}", startIndex + marker.Length);
+        var endIndex = sql.IndexOf("__", startIndex + marker.Length);
         var paramName = sql.Substring(startIndex + marker.Length, endIndex - startIndex - marker.Length);
 
         var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
@@ -2025,7 +2024,7 @@ public class CodeGenerationService
 
         // Replace marker in SQL
         sb.AppendLine($"var __sql__ = @\"{baseSql}\";");
-        sb.AppendLine($"__sql__ = __sql__.Replace(\"{{{{{marker}{paramName}}}}}\", __values__);");
+        sb.AppendLine($"__sql__ = __sql__.Replace(\"{marker}{paramName}__\", __values__);");
         sb.AppendLine("__cmd__.CommandText = __sql__;");
         sb.AppendLine();
 

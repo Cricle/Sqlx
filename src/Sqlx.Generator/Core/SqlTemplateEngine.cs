@@ -103,6 +103,26 @@ public class SqlTemplateEngine
 
         var result = new SqlTemplateResult();
 
+        // 🚀 TDD Phase 3: Infer entity type from IEnumerable<T> parameter if entityType is null
+        // This is needed for batch INSERT operations where method returns Task<int> instead of entity
+        if (entityType == null && method != null)
+        {
+            // Look for IEnumerable<T> parameter (batch operations)
+            foreach (var param in method.Parameters)
+            {
+                if (SharedCodeGenerationUtilities.IsEnumerableParameter(param))
+                {
+                    // Extract T from IEnumerable<T>
+                    var paramType = param.Type as INamedTypeSymbol;
+                    if (paramType != null && paramType.TypeArguments.Length > 0)
+                    {
+                        entityType = paramType.TypeArguments[0] as INamedTypeSymbol;
+                        break; // Use first collection parameter's element type
+                    }
+                }
+            }
+        }
+
         // 增强安全验证 - 基于数据库方言
         if (!ValidateTemplateSecurity(templateSql, result, dialect))
             return result;
@@ -344,11 +364,11 @@ public class SqlTemplateEngine
         {
             var paramName = options.Substring(1);
             var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
-
+            
             if (param != null && SharedCodeGenerationUtilities.IsEnumerableParameter(param))
             {
-                // Return runtime marker for batch INSERT
-                return $"{{{{RUNTIME_BATCH_VALUES_{paramName}}}}}";
+                // Return runtime marker for batch INSERT (without {{ }} to avoid re-processing)
+                return $"__RUNTIME_BATCH_VALUES_{paramName}__";
             }
         }
 

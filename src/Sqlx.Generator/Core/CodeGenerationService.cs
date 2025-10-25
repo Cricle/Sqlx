@@ -615,11 +615,11 @@ public class CodeGenerationService
         // 从方法返回类型重新推断实体类型（覆盖接口级别的推断）
         // 这样可以正确处理返回标量的方法（如 INSERT 返回 ID）
         var methodEntityType = TryInferEntityTypeFromMethodReturnType(returnType);
-        
+
         // ⚠️ IMPORTANT: Save original entityType for soft delete checking BEFORE overwriting
         // Soft delete needs the original entity type from the interface/class level
         var originalEntityType = entityType;
-        
+
         // 如果方法返回实体类型，使用方法级别的推断
         // 如果方法返回标量类型（methodEntityType == null），也要覆盖以避免错误映射
         entityType = methodEntityType;
@@ -689,7 +689,7 @@ public class CodeGenerationService
         // 🚀 TDD Green: Check for [SoftDelete]
         // Use originalEntityType (not entityType which may be null for scalar returns)
         var softDeleteConfig = GetSoftDeleteConfig(originalEntityType);
-        
+
         if (softDeleteConfig != null)
         {
             var hasIncludeDeleted = method.GetAttributes()

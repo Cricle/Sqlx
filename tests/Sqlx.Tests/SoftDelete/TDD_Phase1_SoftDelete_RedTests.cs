@@ -208,6 +208,9 @@ public partial class UserRepository(IDbConnection connection) : IUserRepository 
 
 public interface IUserRepository
 {
+    [SqlTemplate(""SELECT * FROM {{table}}"")]
+    Task<List<User>> GetAllAsync();  // 添加此方法以便推断实体类型
+    
     [SqlTemplate(""DELETE FROM {{table}} WHERE id = @id"")]
     Task<int> DeleteAsync(long id);
 }
@@ -217,8 +220,12 @@ public interface IUserRepository
         var generatedCode = GetCSharpGeneratedOutput(source);
 
         // Assert
-        // DELETE应该转换为UPDATE
-        var commandTextIndex = generatedCode.IndexOf("CommandText =");
+        // DELETE应该转换为UPDATE - 查找DeleteAsync方法的CommandText
+        var deleteMethodIndex = generatedCode.IndexOf("public System.Threading.Tasks.Task<int> DeleteAsync");
+        Assert.IsTrue(deleteMethodIndex > 0, "应该找到DeleteAsync方法");
+        
+        // 从DeleteAsync方法开始往后查找CommandText
+        var commandTextIndex = generatedCode.IndexOf("CommandText =", deleteMethodIndex);
         if (commandTextIndex > 0)
         {
             var sqlPart = generatedCode.Substring(commandTextIndex,
@@ -270,6 +277,9 @@ public partial class UserRepository(IDbConnection connection) : IUserRepository 
 
 public interface IUserRepository
 {
+    [SqlTemplate(""SELECT * FROM {{table}}"")]
+    Task<List<User>> GetAllAsync();  // 添加此方法以便推断实体类型
+    
     [SqlTemplate(""DELETE FROM {{table}} WHERE id = @id"")]
     Task<int> DeleteAsync(long id);
 }
@@ -278,8 +288,11 @@ public interface IUserRepository
         // Act
         var generatedCode = GetCSharpGeneratedOutput(source);
 
-        // Assert
-        var commandTextIndex = generatedCode.IndexOf("CommandText =");
+        // Assert - 查找DeleteAsync方法的CommandText
+        var deleteMethodIndex = generatedCode.IndexOf("public System.Threading.Tasks.Task<int> DeleteAsync");
+        Assert.IsTrue(deleteMethodIndex > 0, "应该找到DeleteAsync方法");
+        
+        var commandTextIndex = generatedCode.IndexOf("CommandText =", deleteMethodIndex);
         if (commandTextIndex > 0)
         {
             var sqlPart = generatedCode.Substring(commandTextIndex,

@@ -753,9 +753,9 @@ public class CodeGenerationService
         }
 
         // 🚀 TDD Phase 3: Check for batch INSERT operation
-        var hasBatchValues = processedSql.Contains("{{RUNTIME_BATCH_VALUES_") || 
+        var hasBatchValues = processedSql.Contains("{{RUNTIME_BATCH_VALUES_") ||
                              processedSql.Contains("{RUNTIME_BATCH_VALUES_");
-        
+
         if (hasBatchValues)
         {
             // Generate batch INSERT code (complete execution flow)
@@ -1933,14 +1933,14 @@ public class CodeGenerationService
 
         var endIndex = sql.IndexOf("}}", startIndex + marker.Length);
         var paramName = sql.Substring(startIndex + marker.Length, endIndex - startIndex - marker.Length);
-        
+
         var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
         if (param == null || entityType == null) return;
 
         // Get MaxBatchSize from [BatchOperation] attribute
         var batchOpAttr = method.GetAttributes()
             .FirstOrDefault(a => a.AttributeClass?.Name == "BatchOperationAttribute");
-        
+
         int maxBatchSize = 1000; // Default
         if (batchOpAttr != null)
         {
@@ -1970,7 +1970,7 @@ public class CodeGenerationService
         // Generate code
         sb.AppendLine($"int __totalAffected__ = 0;");
         sb.AppendLine();
-        
+
         // Check for empty collection
         sb.AppendLine($"if ({paramName} == null || !{paramName}.Any())");
         sb.AppendLine("{");
@@ -2042,7 +2042,7 @@ public class CodeGenerationService
             sb.PushIndent();
             sb.AppendLine("var __p__ = __cmd__.CreateParameter();");
             sb.AppendLine($"__p__.ParameterName = $\"@{snakeName}{{__itemIndex__}}\";");
-            
+
             // Handle nullable
             if (prop.Type.IsReferenceType || prop.NullableAnnotation == NullableAnnotation.Annotated)
             {
@@ -2052,7 +2052,7 @@ public class CodeGenerationService
             {
                 sb.AppendLine($"__p__.Value = __item__.{prop.Name};");
             }
-            
+
             sb.AppendLine("__cmd__.Parameters.Add(__p__);");
             sb.PopIndent();
             sb.AppendLine("}");

@@ -344,14 +344,14 @@ public class SqlTemplateEngine
         {
             var paramName = options.Substring(1);
             var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
-            
+
             if (param != null && SharedCodeGenerationUtilities.IsEnumerableParameter(param))
             {
                 // Return runtime marker for batch INSERT
                 return $"{{{{RUNTIME_BATCH_VALUES_{paramName}}}}}";
             }
         }
-        
+
         if (entityType == null)
         {
             if (method == null) return string.Empty;

@@ -1542,7 +1542,7 @@ public class CodeGenerationService
         if (entityType == null) return null;
 
         var attr = entityType.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.Name == "SoftDeleteAttribute" || 
+            .FirstOrDefault(a => a.AttributeClass?.Name == "SoftDeleteAttribute" ||
                                 a.AttributeClass?.Name == "SoftDelete");
 
         if (attr == null) return null;

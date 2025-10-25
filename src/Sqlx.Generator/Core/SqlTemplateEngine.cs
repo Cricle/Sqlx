@@ -446,7 +446,7 @@ public class SqlTemplateEngine
                 var flagColumn = "IsDeleted";
                 var softDeleteAttr = entityType.GetAttributes()
                     .FirstOrDefault(a => a.AttributeClass?.Name == "SoftDeleteAttribute" || a.AttributeClass?.Name == "SoftDelete");
-                
+
                 if (softDeleteAttr != null)
                 {
                     var flagColumnArg = softDeleteAttr.NamedArguments

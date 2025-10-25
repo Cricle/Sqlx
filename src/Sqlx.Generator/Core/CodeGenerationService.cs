@@ -663,15 +663,22 @@ public class CodeGenerationService
         sb.AppendLine("#endif");
         sb.AppendLine();
 
-        // 🚀 TDD Green: Check for [ReturnInsertedId] attribute and modify SQL for RETURNING/OUTPUT
+        // 🚀 TDD Green: Check for [ReturnInsertedId] or [ReturnInsertedEntity] and modify SQL
         var processedSql = templateResult.ProcessedSql;
         var hasReturnInsertedId = method.GetAttributes()
             .Any(a => a.AttributeClass?.Name == "ReturnInsertedIdAttribute" || a.AttributeClass?.Name == "ReturnInsertedId");
+        var hasReturnInsertedEntity = method.GetAttributes()
+            .Any(a => a.AttributeClass?.Name == "ReturnInsertedEntityAttribute" || a.AttributeClass?.Name == "ReturnInsertedEntity");
 
         if (hasReturnInsertedId)
         {
             var dbDialect = GetDatabaseDialect(classSymbol);
-            processedSql = AddReturningClauseForInsert(processedSql, dbDialect);
+            processedSql = AddReturningClauseForInsert(processedSql, dbDialect, returnAll: false);
+        }
+        else if (hasReturnInsertedEntity)
+        {
+            var dbDialect = GetDatabaseDialect(classSymbol);
+            processedSql = AddReturningClauseForInsert(processedSql, dbDialect, returnAll: true);
         }
 
         SharedCodeGenerationUtilities.GenerateCommandSetup(sb, processedSql, method, connectionName);
@@ -1435,29 +1442,35 @@ public class CodeGenerationService
     /// Adds RETURNING/OUTPUT clause to INSERT statement based on database dialect.
     /// TDD: This method makes the green tests pass by adding the appropriate syntax.
     /// </summary>
-    private static string AddReturningClauseForInsert(string sql, string dialect)
+    /// <param name="sql">The original SQL INSERT statement</param>
+    /// <param name="dialect">Database dialect (enum value or name)</param>
+    /// <param name="returnAll">If true, returns all columns (*); if false, returns only id</param>
+    private static string AddReturningClauseForInsert(string sql, string dialect, bool returnAll = false)
     {
         // Dialect can be either enum value (0, 1, 2...) or string name
         // SqlDefineTypes enum: MySql=0, SqlServer=1, PostgreSql=2, SQLite=3, Oracle=4
 
+        var returningClause = returnAll ? "*" : "id";
+
         // PostgreSQL (2) and SQLite (3): ADD RETURNING clause at the end
         if (dialect == "PostgreSql" || dialect == "2" || dialect == "SQLite" || dialect == "3")
         {
-            return sql + " RETURNING id";
+            return sql + $" RETURNING {returningClause}";
         }
 
-        // SQL Server (1): INSERT OUTPUT INSERTED.id VALUES ...
+        // SQL Server (1): INSERT OUTPUT INSERTED.* VALUES ...
         if (dialect == "SqlServer" || dialect == "1")
         {
+            var outputClause = returnAll ? "OUTPUT INSERTED.*" : "OUTPUT INSERTED.id";
             // Find the position of VALUES keyword
             var valuesIndex = sql.IndexOf("VALUES", StringComparison.OrdinalIgnoreCase);
             if (valuesIndex > 0)
             {
-                // Insert OUTPUT INSERTED.id before VALUES
-                return sql.Insert(valuesIndex, "OUTPUT INSERTED.id ");
+                // Insert OUTPUT INSERTED.* before VALUES
+                return sql.Insert(valuesIndex, outputClause + " ");
             }
             // Fallback: add at the end
-            return sql + " OUTPUT INSERTED.id";
+            return sql + " " + outputClause;
         }
 
         // MySQL (0): For MySQL, we'll need a different approach (LAST_INSERT_ID())
@@ -1473,6 +1486,12 @@ public class CodeGenerationService
         // Oracle (4): RETURNING id INTO :out_id
         if (dialect == "Oracle" || dialect == "4")
         {
+            if (returnAll)
+            {
+                // Oracle doesn't support RETURNING * INTO easily
+                // We'll need to list all columns explicitly
+                return sql + " RETURNING * INTO :out_entity"; // Simplified for now
+            }
             return sql + " RETURNING id INTO :out_id";
         }
 

@@ -681,6 +681,41 @@ public class CodeGenerationService
             processedSql = AddReturningClauseForInsert(processedSql, dbDialect, returnAll: true);
         }
 
+        // 🚀 TDD Green: Check for [SoftDelete]
+        var softDeleteConfig = GetSoftDeleteConfig(entityType);
+        if (softDeleteConfig != null)
+        {
+            var hasIncludeDeleted = method.GetAttributes()
+                .Any(a => a.AttributeClass?.Name == "IncludeDeletedAttribute" || a.AttributeClass?.Name == "IncludeDeleted");
+
+            // Convert DELETE to UPDATE (soft delete)
+            if (processedSql.IndexOf("DELETE", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                var dbDialect = GetDatabaseDialect(classSymbol);
+                var entityTableName = entityType?.Name ?? "table";
+                processedSql = ConvertDeleteToSoftDelete(processedSql, softDeleteConfig, dbDialect, entityTableName);
+            }
+            // Add soft delete filter to SELECT queries (if not already present and not [IncludeDeleted])
+            else if (!hasIncludeDeleted && processedSql.IndexOf("SELECT", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                var flagColumn = SharedCodeGenerationUtilities.ConvertToSnakeCase(softDeleteConfig.FlagColumn);
+                var hasWhere = processedSql.IndexOf("WHERE", StringComparison.OrdinalIgnoreCase) >= 0;
+
+                if (!hasWhere)
+                {
+                    // No WHERE clause - add one
+                    processedSql = processedSql + $" WHERE {flagColumn} = false";
+                }
+                else
+                {
+                    // Has WHERE clause - append with AND
+                    var whereIndex = processedSql.IndexOf("WHERE", StringComparison.OrdinalIgnoreCase);
+                    var insertIndex = whereIndex + 5; // Length of "WHERE"
+                    processedSql = processedSql.Insert(insertIndex, $" {flagColumn} = false AND");
+                }
+            }
+        }
+
         SharedCodeGenerationUtilities.GenerateCommandSetup(sb, processedSql, method, connectionName);
 
         // Add try-catch block
@@ -1497,6 +1532,121 @@ public class CodeGenerationService
 
         // Default: return unchanged
         return sql;
+    }
+
+    /// <summary>
+    /// Detects soft delete configuration from [SoftDelete] attribute on entity type.
+    /// </summary>
+    private static SoftDeleteConfig? GetSoftDeleteConfig(INamedTypeSymbol? entityType)
+    {
+        if (entityType == null) return null;
+
+        var attr = entityType.GetAttributes()
+            .FirstOrDefault(a => a.AttributeClass?.Name == "SoftDeleteAttribute" || 
+                                a.AttributeClass?.Name == "SoftDelete");
+
+        if (attr == null) return null;
+
+        var flagColumn = "IsDeleted";
+        string? timestampColumn = null;
+        string? deletedByColumn = null;
+
+        foreach (var namedArg in attr.NamedArguments)
+        {
+            if (namedArg.Key == "FlagColumn" && namedArg.Value.Value != null)
+            {
+                flagColumn = namedArg.Value.Value.ToString() ?? "IsDeleted";
+            }
+            else if (namedArg.Key == "TimestampColumn" && namedArg.Value.Value != null)
+            {
+                timestampColumn = namedArg.Value.Value.ToString();
+            }
+            else if (namedArg.Key == "DeletedByColumn" && namedArg.Value.Value != null)
+            {
+                deletedByColumn = namedArg.Value.Value.ToString();
+            }
+        }
+
+        return new SoftDeleteConfig
+        {
+            FlagColumn = flagColumn,
+            TimestampColumn = timestampColumn,
+            DeletedByColumn = deletedByColumn
+        };
+    }
+
+    /// <summary>
+    /// Converts DELETE statement to UPDATE for soft delete.
+    /// </summary>
+    private static string ConvertDeleteToSoftDelete(string sql, SoftDeleteConfig config, string dialect, string tableName)
+    {
+        if (sql.IndexOf("DELETE", StringComparison.OrdinalIgnoreCase) < 0)
+        {
+            return sql;
+        }
+
+        var flagColumn = SharedCodeGenerationUtilities.ConvertToSnakeCase(config.FlagColumn);
+        var setClause = $"{flagColumn} = true";
+
+        // Add timestamp if configured
+        if (!string.IsNullOrEmpty(config.TimestampColumn))
+        {
+            var timestampColumn = SharedCodeGenerationUtilities.ConvertToSnakeCase(config.TimestampColumn);
+            var timestampSql = GetCurrentTimestampSql(dialect);
+            setClause += $", {timestampColumn} = {timestampSql}";
+        }
+
+        // Extract WHERE clause from DELETE statement
+        // Pattern: DELETE FROM table WHERE condition
+        var deleteFromIndex = sql.IndexOf("DELETE FROM", StringComparison.OrdinalIgnoreCase);
+        if (deleteFromIndex < 0)
+        {
+            deleteFromIndex = sql.IndexOf("DELETE", StringComparison.OrdinalIgnoreCase);
+        }
+
+        var whereIndex = sql.IndexOf("WHERE", StringComparison.OrdinalIgnoreCase);
+        string whereClause = "";
+
+        if (whereIndex > deleteFromIndex)
+        {
+            whereClause = sql.Substring(whereIndex);
+        }
+        else
+        {
+            // No WHERE clause, add default (this is dangerous but we'll allow it)
+            whereClause = "WHERE 1=1";
+        }
+
+        // Convert to UPDATE
+        var snakeTableName = SharedCodeGenerationUtilities.ConvertToSnakeCase(tableName);
+        return $"UPDATE {snakeTableName} SET {setClause} {whereClause}";
+    }
+
+    /// <summary>
+    /// Gets the current timestamp SQL for different database dialects.
+    /// </summary>
+    private static string GetCurrentTimestampSql(string dialect)
+    {
+        // Handle both enum value and string name
+        return dialect switch
+        {
+            "PostgreSql" or "2" => "NOW()",
+            "SqlServer" or "1" => "GETDATE()",
+            "MySql" or "0" => "NOW()",
+            "SQLite" or "3" => "datetime('now')",
+            "Oracle" or "4" => "SYSDATE",
+            _ => "CURRENT_TIMESTAMP"
+        };
+    }
+
+    /// <summary>
+    /// Configuration for soft delete feature.
+    /// </summary>
+    private class SoftDeleteConfig
+    {
+        public string FlagColumn { get; set; } = "IsDeleted";
+        public string? TimestampColumn { get; set; }
+        public string? DeletedByColumn { get; set; }
     }
 
 }

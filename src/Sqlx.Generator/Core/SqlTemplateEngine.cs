@@ -425,12 +425,54 @@ public class SqlTemplateEngine
             return $"{{RUNTIME_WHERE_DYNAMIC_{dynamicWhereParam.Name}}}"; // Marker for code generation
         }
 
-        return type switch
+        var baseWhereClause = type switch
         {
             "id" => $"id = {dialect.ParameterPrefix}id",
             "auto" => GenerateAutoWhereClause(method, dialect),
             _ => "1=1"
         };
+
+        // 🚀 TDD Green: Add soft delete filter if entity has [SoftDelete] and method doesn't have [IncludeDeleted]
+        if (entityType != null)
+        {
+            var hasSoftDelete = entityType.GetAttributes()
+                .Any(a => a.AttributeClass?.Name == "SoftDeleteAttribute" || a.AttributeClass?.Name == "SoftDelete");
+            var hasIncludeDeleted = method.GetAttributes()
+                .Any(a => a.AttributeClass?.Name == "IncludeDeletedAttribute" || a.AttributeClass?.Name == "IncludeDeleted");
+
+            if (hasSoftDelete && !hasIncludeDeleted)
+            {
+                // Get flag column name from attribute (default: IsDeleted)
+                var flagColumn = "IsDeleted";
+                var softDeleteAttr = entityType.GetAttributes()
+                    .FirstOrDefault(a => a.AttributeClass?.Name == "SoftDeleteAttribute" || a.AttributeClass?.Name == "SoftDelete");
+                
+                if (softDeleteAttr != null)
+                {
+                    var flagColumnArg = softDeleteAttr.NamedArguments
+                        .FirstOrDefault(a => a.Key == "FlagColumn");
+                    if (flagColumnArg.Value.Value != null)
+                    {
+                        flagColumn = flagColumnArg.Value.Value.ToString() ?? "IsDeleted";
+                    }
+                }
+
+                var snakeCaseFlagColumn = SharedCodeGenerationUtilities.ConvertToSnakeCase(flagColumn);
+                var softDeleteCondition = $"{snakeCaseFlagColumn} = false";
+
+                // Combine with existing WHERE clause
+                if (baseWhereClause == "1=1")
+                {
+                    return softDeleteCondition;
+                }
+                else
+                {
+                    return $"{baseWhereClause} AND {softDeleteCondition}";
+                }
+            }
+        }
+
+        return baseWhereClause;
     }
 
 

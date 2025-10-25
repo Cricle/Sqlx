@@ -2006,9 +2006,9 @@ public class CodeGenerationService
 
         // Parse column names from SQL: INSERT INTO table (col1, col2) VALUES (...)
         List<string>? specifiedColumns = null;
-        var insertMatch = System.Text.RegularExpressions.Regex.Match(sql, @"INSERT\s+INTO\s+\w+\s*\(([^)]+)\)", 
+        var insertMatch = System.Text.RegularExpressions.Regex.Match(sql, @"INSERT\s+INTO\s+\w+\s*\(([^)]+)\)",
             System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        
+
         if (insertMatch.Success)
         {
             var columnsText = insertMatch.Groups[1].Value;
@@ -2025,14 +2025,14 @@ public class CodeGenerationService
             .ToList();
 
         List<IPropertySymbol> properties;
-        
+
         if (specifiedColumns != null && specifiedColumns.Count > 0)
         {
             // Use only properties that match specified columns (case-insensitive snake_case match)
             properties = new List<IPropertySymbol>();
             foreach (var column in specifiedColumns)
             {
-                var prop = allProperties.FirstOrDefault(p => 
+                var prop = allProperties.FirstOrDefault(p =>
                     SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name).Equals(column, StringComparison.OrdinalIgnoreCase));
                 if (prop != null)
                 {

@@ -91,7 +91,7 @@ public class BatchInsertBenchmark
             {
                 _connection.Open();
             }
-            
+
             return _sqlxRepo.BatchInsertAsync(_users).GetAwaiter().GetResult();
         }
         catch (Exception ex)

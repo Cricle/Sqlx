@@ -92,6 +92,17 @@ namespace Sqlx
             if (IsAnyPlaceholder(method)) return CreateParameterForAnyPlaceholder(method);
             if (IsAggregateContext(method)) return ParseAggregateMethodCall(method);
 
+            // Check for collection Contains (IN clause) before string Contains
+            if (method.Method.Name == "Contains" && method.Object != null)
+            {
+                // Collection.Contains(item) → item IN (collection values)
+                var objectType = method.Object.Type;
+                if (IsCollectionType(objectType) && !IsStringType(objectType))
+                {
+                    return ParseCollectionContains(method);
+                }
+            }
+
             return method.Method.DeclaringType switch
             {
                 var t when t == typeof(Math) => ParseMathFunction(method),
@@ -99,6 +110,70 @@ namespace Sqlx
                 var t when t == typeof(DateTime) => ParseDateTimeFunction(method),
                 _ => method.Object != null ? ParseExpressionRaw(method.Object) : "1=1"
             };
+        }
+
+        /// <summary>Checks if type is a collection type (IEnumerable, List, Array, etc.)</summary>
+        private static bool IsCollectionType(Type type)
+        {
+            if (type.IsArray) return true;
+            if (type.IsGenericType)
+            {
+                var genericDef = type.GetGenericTypeDefinition();
+                return genericDef == typeof(List<>) ||
+                       genericDef == typeof(IEnumerable<>) ||
+                       genericDef == typeof(ICollection<>) ||
+                       genericDef == typeof(IList<>);
+            }
+            return false;
+        }
+
+        /// <summary>Checks if type is string</summary>
+        private static bool IsStringType(Type type) => type == typeof(string);
+
+        /// <summary>Parses collection Contains to IN clause</summary>
+        protected string ParseCollectionContains(MethodCallExpression method)
+        {
+            // ids.Contains(x.Id) → x.Id IN (1, 2, 3)
+            if (method.Arguments.Count != 1) return "1=1";
+
+            var collectionExpr = method.Object;
+            var itemExpr = method.Arguments[0];
+
+            // Get the property/column being checked
+            var columnSql = ParseExpression(itemExpr);
+
+            // Evaluate the collection to get its values
+            try
+            {
+                var collection = Expression.Lambda(collectionExpr!).Compile().DynamicInvoke();
+                if (collection == null) return $"{columnSql} IN (NULL)";
+
+                // Convert collection to array of values
+                var values = new List<string>();
+                foreach (var item in (System.Collections.IEnumerable)collection)
+                {
+                    if (item == null)
+                    {
+                        values.Add("NULL");
+                    }
+                    else
+                    {
+                        values.Add(FormatConstantValue(item));
+                    }
+                }
+
+                if (values.Count == 0)
+                {
+                    return $"{columnSql} IN (NULL)";
+                }
+
+                return $"{columnSql} IN ({string.Join(", ", values)})";
+            }
+            catch
+            {
+                // If we can't evaluate the collection, fall back to 1=1
+                return "1=1";
+            }
         }
 
         private static bool IsAggregateContext(MethodCallExpression method) => method.Method.Name is "Count" or "Sum" or "Average" or "Avg" or "Max" or "Min";

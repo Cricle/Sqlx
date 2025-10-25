@@ -804,7 +804,19 @@ public class CodeGenerationService
         switch (returnCategory)
         {
             case ReturnTypeCategory.Scalar:
-                GenerateScalarExecution(sb, innerType);
+                // 检查SQL是否是NonQuery命令（UPDATE, DELETE, INSERT）
+                var sqlUpper = templateResult.ProcessedSql.TrimStart().ToUpperInvariant();
+                if (sqlUpper.StartsWith("UPDATE ") || sqlUpper.StartsWith("DELETE ") || 
+                    (sqlUpper.StartsWith("INSERT ") && innerType == "int"))
+                {
+                    // NonQuery命令，返回affected rows
+                    sb.AppendLine("__result__ = __cmd__.ExecuteNonQuery();");
+                }
+                else
+                {
+                    // 真正的Scalar查询（SELECT COUNT, SUM等）
+                    GenerateScalarExecution(sb, innerType);
+                }
                 break;
             case ReturnTypeCategory.Collection:
                 GenerateCollectionExecution(sb, returnTypeString, entityType, templateResult);

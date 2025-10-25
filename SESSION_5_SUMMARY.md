@@ -1,8 +1,8 @@
 # Session #5 Summary - Expression Phase 2 完成
 
 **日期**: 2025-10-25  
-**时长**: ~1小时  
-**Token**: ~70k  
+**时长**: ~2.5小时  
+**Token**: ~110k  
 
 ---
 
@@ -33,8 +33,16 @@
   - `!= null` → `IS NOT NULL`
 
 **测试结果**: 11/11 ✅ (100%)  
-**总测试**: 841/841 ✅ (100%)  
+**总测试**: 841 → 846 ✅ (100%)  
 **无回归**: ✅
+
+### 2.5. 关键BUG修复 ✅
+**SoftDelete误判`IsDeleted`属性**:
+- **问题**: `processedSql.IndexOf("DELETE")` 误匹配 `@is_deleted` 参数
+- **后果**: INSERT语句被错误转换为UPDATE
+- **影响**: 所有包含`IsDeleted`属性的Entity的INSERT操作失败
+- **修复**: 使用Regex移除参数后再检查DELETE语句
+- **测试**: WithAllFeatures集成测试全部通过
 
 ---
 
@@ -87,7 +95,7 @@ foreach (var __p__ in __expr_predicate__.GetParameters())
 **完成**: 72% (8.6/12)  
 **增量**: +2%
 
-**测试**: 819 → 841 (+22新测试)
+**测试**: 819 → 846 (+27新测试，100%通过)
 
 ---
 

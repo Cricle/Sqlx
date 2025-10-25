@@ -17,8 +17,7 @@ namespace Sqlx.Tests.QueryScenarios;
 public class TDD_AdvancedSqlFeatures
 {
     [TestMethod]
-    [Ignore("TODO: Advanced SQL features require additional testing/investigation")]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("SQL")]
     [TestCategory("Core")]
     public void Sql_Distinct_ShouldRemoveDuplicates()
@@ -53,7 +52,7 @@ public class TDD_AdvancedSqlFeatures
     }
     
     [TestMethod]
-    [Ignore("TODO: Advanced SQL features require additional testing/investigation")]
+    [Ignore("TODO: Investigate SQL escaping issue with multiline templates")]
     [TestCategory("TDD-Red")]
     [TestCategory("SQL")]
     [TestCategory("Core")]

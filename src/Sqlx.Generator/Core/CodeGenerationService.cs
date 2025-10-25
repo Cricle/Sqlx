@@ -686,7 +686,7 @@ public class CodeGenerationService
             .Any(a => a.AttributeClass?.Name == "ReturnInsertedEntityAttribute" || a.AttributeClass?.Name == "ReturnInsertedEntity");
 
         var currentDbDialect = GetDatabaseDialect(classSymbol);
-        
+
         if (hasReturnInsertedId)
         {
             processedSql = AddReturningClauseForInsert(processedSql, currentDbDialect, returnAll: false);
@@ -710,7 +710,7 @@ public class CodeGenerationService
             // Check for actual DELETE statement (not just containing "DELETE" in parameter names)
             var normalizedSql = System.Text.RegularExpressions.Regex.Replace(processedSql, @"@\w+", ""); // Remove parameters
             if (normalizedSql.IndexOf("DELETE FROM", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                (normalizedSql.StartsWith("DELETE ", StringComparison.OrdinalIgnoreCase) && 
+                (normalizedSql.StartsWith("DELETE ", StringComparison.OrdinalIgnoreCase) &&
                  normalizedSql.IndexOf("INSERT", StringComparison.OrdinalIgnoreCase) < 0))
             {
                 var entityTableName = originalEntityType?.Name ?? "table";
@@ -779,7 +779,7 @@ public class CodeGenerationService
 
         // 性能优化：单次分类返回类型，避免重复计算
         var (returnCategory, innerType) = ClassifyReturnType(returnTypeString);
-        
+
         // 🚀 MySQL/Oracle Special Handling for ReturnInsertedId/Entity
         var dbDialect = GetDatabaseDialect(classSymbol);
         if ((dbDialect == "MySql" || dbDialect == "0") && hasReturnInsertedId && returnCategory == ReturnTypeCategory.Scalar)
@@ -794,7 +794,7 @@ public class CodeGenerationService
             GenerateMySqlReturnEntity(sb, returnTypeString, entityType, templateResult, classSymbol);
             goto skipNormalExecution;
         }
-        
+
         switch (returnCategory)
         {
             case ReturnTypeCategory.Scalar:
@@ -2130,13 +2130,13 @@ public class CodeGenerationService
         // Step 1: Execute INSERT
         sb.AppendLine("__cmd__.ExecuteNonQuery();");
         sb.AppendLine();
-        
+
         // Step 2: Get LAST_INSERT_ID()
         sb.AppendLine("// MySQL: Get last inserted ID");
         sb.AppendLine("__cmd__.CommandText = \"SELECT LAST_INSERT_ID()\";");
         sb.AppendLine("__cmd__.Parameters.Clear();");
         sb.AppendLine("var scalarResult = __cmd__.ExecuteScalar();");
-        
+
         // Convert result
         if (innerType == "long" || innerType == "System.Int64")
         {
@@ -2193,18 +2193,18 @@ public class CodeGenerationService
         sb.AppendLine("__cmd__.Parameters.Clear();");
         sb.AppendLine("var __lastInsertId__ = Convert.ToInt64(__cmd__.ExecuteScalar());");
         sb.AppendLine();
-        
+
         // Step 2: SELECT the complete entity
         var tableName = GetTableNameFromType(classSymbol, entityType);
         var columns = string.Join(", ", entityType.GetMembers().OfType<IPropertySymbol>()
             .Select(p => SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)));
-        
+
         sb.AppendLine($"// SELECT complete entity");
         sb.AppendLine($"__cmd__.CommandText = \"SELECT {columns} FROM {tableName} WHERE id = @lastId\";");
         sb.AppendLine("__cmd__.Parameters.Clear();");
         sb.AppendLine("{ var __p__ = __cmd__.CreateParameter(); __p__.ParameterName = \"@lastId\"; __p__.Value = __lastInsertId__; __cmd__.Parameters.Add(__p__); }");
         sb.AppendLine();
-        
+
         // Execute reader and map entity
         sb.AppendLine("using (var reader = __cmd__.ExecuteReader())");
         sb.AppendLine("{");
@@ -2212,18 +2212,18 @@ public class CodeGenerationService
         sb.AppendLine("if (reader.Read())");
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         // Map properties
         sb.AppendLine($"__result__ = new {entityType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}");
         sb.AppendLine("{");
         sb.PushIndent();
-        
+
         var properties = entityType.GetMembers().OfType<IPropertySymbol>().ToList();
         for (int i = 0; i < properties.Count; i++)
         {
             var prop = properties[i];
             var comma = i < properties.Count - 1 ? "," : "";
-            
+
             if (prop.Type.IsValueType && prop.Type.NullableAnnotation != NullableAnnotation.Annotated)
             {
                 // Non-nullable value type
@@ -2235,7 +2235,7 @@ public class CodeGenerationService
                 sb.AppendLine($"{prop.Name} = reader.IsDBNull({i}) ? default : reader.Get{GetReaderMethod(prop.Type)}({i}){comma}");
             }
         }
-        
+
         sb.PopIndent();
         sb.AppendLine("};");
         sb.PopIndent();

@@ -727,11 +727,11 @@ public class CodeGenerationService
 
         // 🚀 TDD Green: Check for [AuditFields]
         var auditFieldsConfig = GetAuditFieldsConfig(originalEntityType);
-        
+
         if (auditFieldsConfig != null)
         {
             var dbDialect = GetDatabaseDialect(classSymbol);
-            
+
             // INSERT: Add CreatedAt, CreatedBy
             if (processedSql.IndexOf("INSERT", StringComparison.OrdinalIgnoreCase) >= 0)
             {

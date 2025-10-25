@@ -1935,7 +1935,7 @@ public class CodeGenerationService
 
         var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
         if (param == null) return;
-        
+
         // Infer entity type from IEnumerable<T> parameter if not provided
         if (entityType == null)
         {
@@ -1945,7 +1945,7 @@ public class CodeGenerationService
                 entityType = paramType.TypeArguments[0] as INamedTypeSymbol;
             }
         }
-        
+
         if (entityType == null) return; // Still null after inference, cannot proceed
 
         // Get MaxBatchSize from [BatchOperation] attribute

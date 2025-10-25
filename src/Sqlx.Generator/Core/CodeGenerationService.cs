@@ -1027,7 +1027,7 @@ public class CodeGenerationService
         var collectionType = innerType.StartsWith("System.") ? $"global::{innerType}" : innerType;
         sb.AppendLine($"__result__ = new {collectionType}();");
         sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
-        
+
         // 🚀 性能优化：在循环外缓存列序号
         if (entityType != null && (templateResult.ColumnOrder == null || templateResult.ColumnOrder.Count == 0))
         {
@@ -1036,7 +1036,7 @@ public class CodeGenerationService
             GenerateOrdinalCaching(sb, entityType);
             sb.AppendLine();
         }
-        
+
         sb.AppendLine("while (reader.Read())");
         sb.AppendLine("{");
         sb.PushIndent();

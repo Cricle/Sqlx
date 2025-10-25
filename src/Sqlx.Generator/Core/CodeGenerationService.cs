@@ -752,6 +752,17 @@ public class CodeGenerationService
             processedSql = AddConcurrencyCheck(processedSql, concurrencyColumn, method);
         }
 
+        // 🚀 TDD Phase 3: Check for batch INSERT operation
+        var hasBatchValues = processedSql.Contains("{{RUNTIME_BATCH_VALUES_") || 
+                             processedSql.Contains("{RUNTIME_BATCH_VALUES_");
+        
+        if (hasBatchValues)
+        {
+            // Generate batch INSERT code (complete execution flow)
+            GenerateBatchInsertCode(sb, processedSql, method, originalEntityType, connectionName);
+            return; // Batch INSERT handles everything, exit early
+        }
+
         SharedCodeGenerationUtilities.GenerateCommandSetup(sb, processedSql, method, connectionName);
 
         // Add try-catch block
@@ -1903,6 +1914,165 @@ public class CodeGenerationService
 
             return newSql;
         }
+    }
+
+    /// <summary>
+    /// TDD Phase 3: Generate batch INSERT code with auto-chunking
+    /// </summary>
+    private static void GenerateBatchInsertCode(
+        IndentedStringBuilder sb,
+        string sql,
+        IMethodSymbol method,
+        INamedTypeSymbol? entityType,
+        string connectionName)
+    {
+        // Extract parameter name from {{RUNTIME_BATCH_VALUES_paramName}}
+        var marker = "{{RUNTIME_BATCH_VALUES_";
+        var startIndex = sql.IndexOf(marker);
+        if (startIndex < 0) return;
+
+        var endIndex = sql.IndexOf("}}", startIndex + marker.Length);
+        var paramName = sql.Substring(startIndex + marker.Length, endIndex - startIndex - marker.Length);
+        
+        var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
+        if (param == null || entityType == null) return;
+
+        // Get MaxBatchSize from [BatchOperation] attribute
+        var batchOpAttr = method.GetAttributes()
+            .FirstOrDefault(a => a.AttributeClass?.Name == "BatchOperationAttribute");
+        
+        int maxBatchSize = 1000; // Default
+        if (batchOpAttr != null)
+        {
+            var maxBatchSizeArg = batchOpAttr.NamedArguments.FirstOrDefault(a => a.Key == "MaxBatchSize");
+            if (maxBatchSizeArg.Value.Value != null)
+            {
+                maxBatchSize = (int)maxBatchSizeArg.Value.Value;
+            }
+        }
+
+        // Get properties to insert (excluding Id if specified)
+        var properties = entityType.GetMembers()
+            .OfType<IPropertySymbol>()
+            .Where(p => p.CanBeReferencedByName && p.GetMethod != null)
+            .ToList();
+
+        // Check if columns exclude Id from SQL template
+        var excludeId = sql.Contains("--exclude Id") || sql.Contains("--exclude id");
+        if (excludeId)
+        {
+            properties = properties.Where(p => p.Name != "Id").ToList();
+        }
+
+        // Remove --exclude from SQL
+        var baseSql = sql.Replace("--exclude Id", "").Replace("--exclude id", "").Trim();
+
+        // Generate code
+        sb.AppendLine($"int __totalAffected__ = 0;");
+        sb.AppendLine();
+        
+        // Check for empty collection
+        sb.AppendLine($"if ({paramName} == null || !{paramName}.Any())");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("return global::System.Threading.Tasks.Task.FromResult(0);");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+
+        // Chunk batches
+        if (batchOpAttr != null)
+        {
+            sb.AppendLine($"var __batches__ = {paramName}.Chunk({maxBatchSize});");
+        }
+        else
+        {
+            sb.AppendLine($"var __batches__ = new[] {{ {paramName} }};");
+        }
+        sb.AppendLine();
+
+        sb.AppendLine("foreach (var __batch__ in __batches__)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+
+        // Create command
+        sb.AppendLine($"var __cmd__ = {connectionName}.CreateCommand();");
+        sb.AppendLine();
+
+        // Build VALUES clause
+        sb.AppendLine("var __valuesClauses__ = new global::System.Collections.Generic.List<string>();");
+        sb.AppendLine("int __itemIndex__ = 0;");
+        sb.AppendLine("foreach (var __item__ in __batch__)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+
+        // Generate (@param0_0, @param0_1, ...) for each item
+        var paramPlaceholders = properties.Select(p =>
+        {
+            var snakeName = SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name);
+            return $"@{snakeName}{{__itemIndex__}}";
+        });
+        var valuesClause = string.Join(", ", paramPlaceholders);
+
+        sb.AppendLine($"__valuesClauses__.Add($\"({valuesClause})\");");
+        sb.AppendLine("__itemIndex__++;");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+
+        sb.AppendLine("var __values__ = string.Join(\", \", __valuesClauses__);");
+        sb.AppendLine();
+
+        // Replace marker in SQL
+        sb.AppendLine($"var __sql__ = @\"{baseSql}\";");
+        sb.AppendLine($"__sql__ = __sql__.Replace(\"{{{{{marker}{paramName}}}}}\", __values__);");
+        sb.AppendLine("__cmd__.CommandText = __sql__;");
+        sb.AppendLine();
+
+        // Bind parameters
+        sb.AppendLine("__itemIndex__ = 0;");
+        sb.AppendLine("foreach (var __item__ in __batch__)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+
+        foreach (var prop in properties)
+        {
+            var snakeName = SharedCodeGenerationUtilities.ConvertToSnakeCase(prop.Name);
+            sb.AppendLine("{");
+            sb.PushIndent();
+            sb.AppendLine("var __p__ = __cmd__.CreateParameter();");
+            sb.AppendLine($"__p__.ParameterName = $\"@{snakeName}{{__itemIndex__}}\";");
+            
+            // Handle nullable
+            if (prop.Type.IsReferenceType || prop.NullableAnnotation == NullableAnnotation.Annotated)
+            {
+                sb.AppendLine($"__p__.Value = __item__.{prop.Name} ?? (object)global::System.DBNull.Value;");
+            }
+            else
+            {
+                sb.AppendLine($"__p__.Value = __item__.{prop.Name};");
+            }
+            
+            sb.AppendLine("__cmd__.Parameters.Add(__p__);");
+            sb.PopIndent();
+            sb.AppendLine("}");
+        }
+
+        sb.AppendLine("__itemIndex__++;");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+
+        // Execute
+        sb.AppendLine("__totalAffected__ += __cmd__.ExecuteNonQuery();");
+        sb.AppendLine("__cmd__.Dispose();");
+
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+
+        // Return result
+        sb.AppendLine("return global::System.Threading.Tasks.Task.FromResult(__totalAffected__);");
     }
 
 }

@@ -339,6 +339,19 @@ public class SqlTemplateEngine
     /// </summary>
     private string ProcessValuesPlaceholder(string type, INamedTypeSymbol? entityType, IMethodSymbol method, string options, SqlDefine dialect, SqlTemplateResult result)
     {
+        // Check for batch operation: {{values @paramName}}
+        if (options != null && options.StartsWith("@"))
+        {
+            var paramName = options.Substring(1);
+            var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
+            
+            if (param != null && SharedCodeGenerationUtilities.IsEnumerableParameter(param))
+            {
+                // Return runtime marker for batch INSERT
+                return $"{{{{RUNTIME_BATCH_VALUES_{paramName}}}}}";
+            }
+        }
+        
         if (entityType == null)
         {
             if (method == null) return string.Empty;

@@ -742,7 +742,7 @@ public static class SharedCodeGenerationUtilities
     /// <summary>
     /// Checks if a parameter is a collection type (IEnumerable, List, Array, etc.) but NOT string.
     /// </summary>
-    private static bool IsEnumerableParameter(IParameterSymbol param)
+    public static bool IsEnumerableParameter(IParameterSymbol param)
     {
         var type = param.Type;
 

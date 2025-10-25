@@ -1,9 +1,9 @@
 # Sqlx 开发进度
 
-## 📊 总体进度: 65% (7.8/12)
+## 📊 总体进度: 67% (8.1/12)
 
 ```
-███████████████████████░░░░░░░ 65%
+█████████████████████████░░░░░ 67%
 ```
 
 ---
@@ -70,15 +70,20 @@
 - **测试**: 3/3 ✅ (816/816 总测试通过)
 - **用时**: ~0.5小时
 
-### 9. 集合支持 Phase 3 - 批量INSERT ⏳ (30%完成)
+### 9. 集合支持 Phase 3 - 批量INSERT ⏳ (70%完成)
 - BatchOperationAttribute特性定义 ✅
-- TDD红灯测试完成 ✅ (2/4待实现)
-- 实施计划制定 ✅
-- SqlTemplateEngine修改 ⏳
-- 批量INSERT代码生成 ⏳
-- **测试**: 2/4 ✅ (2/4待实现)
-- **用时**: ~0.5小时（计划制定）
-- **剩余**: ~2-3小时（实施）
+- TDD红灯测试完成 ✅ (2/4基础通过)
+- SqlTemplateEngine修改 ✅ ({{values @param}}标记生成)
+- GenerateBatchInsertCode实现 ✅ (158行完整实现)
+  - Chunk分批逻辑 ✅
+  - VALUES子句动态生成 ✅
+  - 参数批量绑定 ✅
+  - 空集合处理 ✅
+  - 累加受影响行数 ✅
+- **待修复**: entityType推断（{{columns}}占位符展开）⏳
+- **测试**: 2/4 ✅ (2/4待entityType修复)
+- **用时**: ~2.5小时（核心实现完成）
+- **剩余**: 30-45分钟（修复entityType推断）
 
 ---
 
@@ -124,11 +129,11 @@
 
 ## 💻 代码统计
 
-- **新增文件**: 36个
-- **修改文件**: 6个（主要）
-- **代码行数**: ~3,200行
-- **Git提交**: 37个
-- **Token使用**: 860k / 1M (86%)
+- **新增文件**: 39个
+- **修改文件**: 7个（主要）  
+- **代码行数**: ~3,550行
+- **Git提交**: 42个
+- **Token使用**: 932k / 1M (93%)
 
 ---
 
@@ -156,30 +161,31 @@
 
 ## 🚀 下次会话建议
 
-**继续**: 批量INSERT支持 - Phase 3剩余70% (2-3h)
-**理由**: Phase 1和2已完成并生产就绪，Phase 3已有30%完成（特性+测试+计划）
+**继续**: 批量INSERT支持 - Phase 3剩余30% (30-45分钟)
+**理由**: Phase 1和2已完成并生产就绪，Phase 3已有70%完成（核心实现就绪）
 
-**已完成（Phase 3 30%）**:
+**已完成（Phase 3 70%）**:
 - ✅ BatchOperationAttribute特性定义
-- ✅ TDD红灯测试（2/4待实现）
-- ✅ 详细实施计划
-- ✅ 问题分析和解决方案
+- ✅ TDD红灯测试（2/4基础通过）
+- ✅ SqlTemplateEngine修改（{{values @param}}标记）
+- ✅ GenerateBatchInsertCode完整实现（158行）
+  - Chunk分批、VALUES生成、参数绑定、累加结果
+- ✅ 详细实施计划和问题分析
 
-**剩余工作（Phase 3 70%）**:
-1. **SqlTemplateEngine修改** (30分钟)
-   - 添加`{{values @paramName}}`占位符处理
-   - 返回`{RUNTIME_BATCH_VALUES_paramName}`标记
+**剩余工作（Phase 3 30%）**:
+1. **修复entityType推断** (15-20分钟)
+   - 在SqlTemplateEngine处理时从`IEnumerable<T>`提取T类型
+   - 确保`{{columns --exclude Id}}`正确展开为`(name, age)`
+   - 位置：SqlTemplateEngine.ProcessTemplate或相关方法
 
-2. **CodeGenerationService修改** (90分钟)
-   - 检测RUNTIME_BATCH_VALUES标记
-   - 检测[BatchOperation]特性
-   - 生成批量INSERT专用代码
+2. **测试验证** (10分钟)
+   - 运行DEBUG测试确认SQL正确生成
+   - 确认完整批量INSERT代码生成
 
-3. **批量INSERT代码生成** (60分钟)
-   - Chunk分批：`entities.Chunk(MaxBatchSize)`
-   - VALUES子句：`VALUES (@p0, @p1), (@p2, @p3), ...`
-   - 参数绑定：每个batch/item/property
-   - 累加结果：`__totalAffected__ += result`
+3. **测试通过** (5-15分钟)
+   - 运行4个批量INSERT测试
+   - 确保4/4通过
+   - 调试修正（如需要）
 
 **预期成果**:
 ```csharp
@@ -203,5 +209,5 @@ return __totalAffected__;
 
 ---
 
-**最后更新**: 2025-10-25 (会话#4 - Phase 1+2完成100%, Phase 3进行中30%)
+**最后更新**: 2025-10-25 (会话#4 - Phase 1+2完成100%, Phase 3进行中70%)
 

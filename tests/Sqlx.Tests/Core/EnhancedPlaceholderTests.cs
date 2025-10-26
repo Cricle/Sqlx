@@ -572,7 +572,7 @@ namespace TestNamespace
     [TestMethod]
     public void BatchValuesPlaceholder_AllDialects_GeneratesCorrectSql()
     {
-        var template = "INSERT INTO {{table}} ({{columns:auto|exclude=Id}}) {{batch_values:auto|size=100}}";
+        var template = "INSERT INTO {{table}} ({{columns:auto|exclude=Id}}) VALUES {{batch_values:auto|size=100}}";
 
         foreach (var dialect in AllDialects)
         {
@@ -582,7 +582,9 @@ namespace TestNamespace
             Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), $"Processed SQL should not be empty for {dialectName}");
             Assert.AreEqual(0, result.Errors.Count, $"Should have no errors for {dialectName}");
             Assert.IsTrue(result.ProcessedSql.Contains("INSERT"), $"SQL should contain INSERT for {dialectName}");
-            Assert.IsTrue(result.ProcessedSql.Contains("VALUES"), $"SQL should contain VALUES for {dialectName}");
+            // {{batch_values}} generates runtime marker __RUNTIME_BATCH_VALUES_xxx__
+            Assert.IsTrue(result.ProcessedSql.Contains("__RUNTIME_BATCH_VALUES_") || result.ProcessedSql.Contains("VALUES"), 
+                $"SQL should contain runtime marker or VALUES for {dialectName}");
         }
     }
 

@@ -261,7 +261,7 @@ public class SqlTemplateEngine
                 "ceiling" => ProcessMathFunction("CEILING", placeholderType, placeholderOptions, dialect),
                 "floor" => ProcessMathFunction("FLOOR", placeholderType, placeholderOptions, dialect),
                 // 批量操作
-                "batch_values" => ProcessBatchValuesPlaceholder(placeholderType, placeholderOptions, dialect),
+                "batch_values" => ProcessBatchValuesPlaceholder(placeholderType, placeholderOptions, method, dialect),
                 "upsert" => ProcessUpsertPlaceholder(placeholderType, tableName, placeholderOptions, dialect),
                 // 子查询
                 "exists" => ProcessExistsPlaceholder(placeholderType, placeholderOptions, dialect),
@@ -1728,15 +1728,35 @@ public class SqlTemplateEngine
     #region 批量操作和子查询占位符
 
     /// <summary>处理BATCH_VALUES占位符 - 批量插入值</summary>
-    private static string ProcessBatchValuesPlaceholder(string type, string options, SqlDefine dialect)
+    private string ProcessBatchValuesPlaceholder(string type, string options, IMethodSymbol method, SqlDefine dialect)
     {
-        var count = ExtractOption(options, "count", "1");
-        var columns = ExtractOption(options, "columns", "");
+        // Check for explicit parameter name: {{batch_values @paramName}}
+        string? paramName = null;
+        
+        if (!string.IsNullOrEmpty(options) && options.StartsWith("@"))
+        {
+            paramName = options.Substring(1);
+        }
+        else
+        {
+            // Infer the first IEnumerable parameter
+            var enumerableParam = method.Parameters.FirstOrDefault(p => 
+                SharedCodeGenerationUtilities.IsEnumerableParameter(p));
+            
+            if (enumerableParam != null)
+            {
+                paramName = enumerableParam.Name;
+            }
+        }
 
-        if (string.IsNullOrEmpty(columns))
-            return $"VALUES {dialect.ParameterPrefix}batchValues";
+        if (string.IsNullOrEmpty(paramName))
+        {
+            // Fallback to old behavior if no parameter found
+            return $"{dialect.ParameterPrefix}batchValues";
+        }
 
-        return $"VALUES ({string.Join(", ", columns.Split(',').Select(c => $"{dialect.ParameterPrefix}{c.Trim()}"))})";
+        // Return runtime marker for batch INSERT (will be processed at runtime)
+        return $"__RUNTIME_BATCH_VALUES_{paramName}__";
     }
 
     /// <summary>处理UPSERT占位符 - 插入或更新 - 多数据库支持</summary>

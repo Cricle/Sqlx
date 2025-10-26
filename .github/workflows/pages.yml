@@ -1,10 +1,11 @@
-name: Deploy to GitHub Pages
+name: 🌐 Deploy to GitHub Pages
 
 on:
   push:
     branches: [ main, master ]
     paths:
-      - 'docs/**'
+      - 'docs/web/**'
+      - '.github/workflows/pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -18,24 +19,56 @@ concurrency:
 
 jobs:
   deploy:
+    name: 🚀 Deploy Pages
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    
     steps:
-      - name: Checkout
+      - name: 📥 Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Setup Pages
+      - name: 🔍 Validate HTML
+        run: |
+          echo "🔍 Validating HTML files..."
+          if [ -f "docs/web/index.html" ]; then
+            echo "✅ index.html found"
+            # Basic validation
+            if grep -q "<!DOCTYPE html>" docs/web/index.html; then
+              echo "✅ Valid HTML doctype"
+            else
+              echo "⚠️ Missing or invalid doctype"
+            fi
+          else
+            echo "❌ index.html not found!"
+            exit 1
+          fi
+
+      - name: 📦 Setup Pages
         uses: actions/configure-pages@v4
 
-      - name: Upload artifact
+      - name: 📤 Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: 'docs/web'
 
-      - name: Deploy to GitHub Pages
+      - name: 🚀 Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+      
+      - name: ✅ Deployment Summary
+        if: success()
+        run: |
+          echo "🎉 GitHub Pages deployed successfully!"
+          echo "🔗 URL: ${{ steps.deployment.outputs.page_url }}"
+      
+      - name: ❌ Deployment Failed
+        if: failure()
+        run: |
+          echo "❌ GitHub Pages deployment failed!"
+          echo "Please check the logs above for details."
 
 

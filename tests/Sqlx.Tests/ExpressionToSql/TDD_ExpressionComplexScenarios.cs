@@ -71,7 +71,7 @@ public class TDD_ExpressionComplexScenarios
     {
         // (age > 25 AND salary > 50000) OR (is_active = 1 AND score > 90)
         var result = await _repo.GetByComplexConditionAsync(25, 50000.0, true, 90.0);
-        
+
         Assert.IsNotNull(result);
         Assert.IsTrue(result.Count > 0);
         // 应该匹配: Eve (active, score=92), Charlie (age=35, salary=60000), Frank (age=40, salary=70000)
@@ -84,7 +84,7 @@ public class TDD_ExpressionComplexScenarios
     {
         // age >= 30 AND salary >= 55000 AND is_active = 1
         var result = await _repo.GetByMultipleAndAsync(30, 55000.0, true);
-        
+
         Assert.IsNotNull(result);
         Assert.AreEqual(2, result.Count); // Eve, Henry
         Assert.IsTrue(result.All(x => x.age >= 30 && x.salary >= 55000.0 && x.is_active));
@@ -96,7 +96,7 @@ public class TDD_ExpressionComplexScenarios
     {
         // category = 'Sales' OR category = 'IT' OR department = 'Dept-A'
         var result = await _repo.GetByMultipleOrAsync();
-        
+
         Assert.IsNotNull(result);
         Assert.IsTrue(result.Count >= 6); // Sales(3) + IT(3) - overlaps with Dept-A
     }
@@ -111,7 +111,7 @@ public class TDD_ExpressionComplexScenarios
     {
         // name.Contains("a")
         var result = await _repo.GetByNameContainsAsync("a");
-        
+
         Assert.IsNotNull(result);
         Assert.IsTrue(result.Count > 0);
         Assert.IsTrue(result.All(x => x.name.Contains("a", StringComparison.OrdinalIgnoreCase)));
@@ -123,7 +123,7 @@ public class TDD_ExpressionComplexScenarios
     {
         // name.StartsWith("A")
         var result = await _repo.GetByNameStartsWithAsync("A");
-        
+
         Assert.IsNotNull(result);
         Assert.IsTrue(result.Any(x => x.name.StartsWith("A")));
     }
@@ -134,7 +134,7 @@ public class TDD_ExpressionComplexScenarios
     {
         // email.EndsWith("@test.com")
         var result = await _repo.GetByEmailEndsWithAsync("@test.com");
-        
+
         Assert.IsNotNull(result);
         Assert.AreEqual(8, result.Count); // All emails
     }
@@ -145,7 +145,7 @@ public class TDD_ExpressionComplexScenarios
     {
         // name.Length > 5
         var result = await _repo.GetByNameLengthAsync(5);
-        
+
         Assert.IsNotNull(result);
         Assert.IsTrue(result.All(x => x.name.Length > 5));
     }
@@ -160,7 +160,7 @@ public class TDD_ExpressionComplexScenarios
     {
         // age + 5 > 35
         var result = await _repo.GetByAgeAdditionAsync(5, 35);
-        
+
         Assert.IsNotNull(result);
         Assert.IsTrue(result.All(x => x.age + 5 > 35));
     }
@@ -171,7 +171,7 @@ public class TDD_ExpressionComplexScenarios
     {
         // salary * 1.1 > 60000
         var result = await _repo.GetBySalaryMultiplyAsync(1.1, 60000.0);
-        
+
         Assert.IsNotNull(result);
         Assert.IsTrue(result.All(x => x.salary * 1.1 > 60000.0));
     }
@@ -182,7 +182,7 @@ public class TDD_ExpressionComplexScenarios
     {
         // age % 2 = 0 (even ages)
         var result = await _repo.GetByAgeModuloAsync(2, 0);
-        
+
         Assert.IsNotNull(result);
         Assert.IsTrue(result.All(x => x.age % 2 == 0));
     }
@@ -197,7 +197,7 @@ public class TDD_ExpressionComplexScenarios
     {
         // age >= 28 AND age <= 35
         var result = await _repo.GetByAgeBetweenAsync(28, 35);
-        
+
         Assert.IsNotNull(result);
         Assert.IsTrue(result.All(x => x.age >= 28 && x.age <= 35));
     }
@@ -208,7 +208,7 @@ public class TDD_ExpressionComplexScenarios
     {
         // category != 'Sales'
         var result = await _repo.GetByCategoryNotEqualAsync("Sales");
-        
+
         Assert.IsNotNull(result);
         Assert.IsTrue(result.All(x => x.category != "Sales"));
     }
@@ -219,7 +219,7 @@ public class TDD_ExpressionComplexScenarios
     {
         // !(is_active = 0) => is_active = 1
         var result = await _repo.GetByNegatedActiveAsync();
-        
+
         Assert.IsNotNull(result);
         Assert.IsTrue(result.All(x => x.is_active));
     }
@@ -234,7 +234,7 @@ public class TDD_ExpressionComplexScenarios
     {
         // (age > 30 AND salary > 60000) OR (is_active = 1 AND score > 85 AND category = 'IT')
         var result = await _repo.GetByComplexBusinessLogicAsync();
-        
+
         Assert.IsNotNull(result);
         Assert.IsTrue(result.Count > 0);
     }
@@ -245,7 +245,7 @@ public class TDD_ExpressionComplexScenarios
     {
         // ((age > 25 AND salary > 45000) OR (score > 80)) AND is_active = 1
         var result = await _repo.GetByThreeLayerNestingAsync();
-        
+
         Assert.IsNotNull(result);
         Assert.IsTrue(result.All(x => x.is_active));
     }
@@ -256,7 +256,7 @@ public class TDD_ExpressionComplexScenarios
     {
         // (age * 2 > 60) AND (salary / 1000 < 60) AND (score >= 85)
         var result = await _repo.GetByMixedOperatorsAsync();
-        
+
         Assert.IsNotNull(result);
         Assert.IsTrue(result.All(x => x.age * 2 > 60 && x.salary / 1000 < 60 && x.score >= 85));
     }

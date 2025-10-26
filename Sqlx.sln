@@ -56,6 +56,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{9144
 		scripts\README.md = scripts\README.md
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FullFeatureDemo", "samples\FullFeatureDemo\FullFeatureDemo.csproj", "{7A9AA708-2026-FDF3-4A85-D70D5D607708}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -82,6 +84,10 @@ Global
 		{F6B78358-AF74-44EE-9A2E-13D7153F3132}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F6B78358-AF74-44EE-9A2E-13D7153F3132}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F6B78358-AF74-44EE-9A2E-13D7153F3132}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7A9AA708-2026-FDF3-4A85-D70D5D607708}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7A9AA708-2026-FDF3-4A85-D70D5D607708}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7A9AA708-2026-FDF3-4A85-D70D5D607708}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7A9AA708-2026-FDF3-4A85-D70D5D607708}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -92,6 +98,7 @@ Global
 		{64973327-8AE6-4F9E-867E-BA391274A852} = {B8F42F0A-4D1C-4B5E-9C4E-5F7B8A6E9C4D}
 		{B8E4C2D5-9F7A-4C1B-8D6E-3F9A1B2C5E7D} = {B8F42F0A-4D1C-4B5E-9C4E-5F7B8A6E9C4D}
 		{F6B78358-AF74-44EE-9A2E-13D7153F3132} = {C9E4D7B2-6F3A-4B5E-8C7D-5F8E9A1B2C4D}
+		{7A9AA708-2026-FDF3-4A85-D70D5D607708} = {C9E4D7B2-6F3A-4B5E-8C7D-5F8E9A1B2C4D}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {E18E939C-FD52-4D7F-8232-5E7BE9DF8EBF}

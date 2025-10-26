@@ -789,7 +789,7 @@ public class CodeGenerationService
         // 性能优化：单次分类返回类型，避免重复计算
         var (returnCategory, innerType) = ClassifyReturnType(returnTypeString);
 
-        // 🚀 MySQL/Oracle Special Handling for ReturnInsertedId/Entity
+        // 🚀 MySQL/SQLite/Oracle Special Handling for ReturnInsertedId/Entity
         var dbDialect = GetDatabaseDialect(classSymbol);
         if ((dbDialect == "MySql" || dbDialect == "0") && hasReturnInsertedId && returnCategory == ReturnTypeCategory.Scalar)
         {
@@ -797,10 +797,22 @@ public class CodeGenerationService
             GenerateMySqlLastInsertId(sb, innerType);
             goto skipNormalExecution;
         }
+        if ((dbDialect == "SQLite" || dbDialect == "3") && hasReturnInsertedId && returnCategory == ReturnTypeCategory.Scalar)
+        {
+            // SQLite: INSERT + SELECT last_insert_rowid()
+            GenerateSQLiteLastInsertId(sb, innerType);
+            goto skipNormalExecution;
+        }
         if ((dbDialect == "MySql" || dbDialect == "0") && hasReturnInsertedEntity)
         {
             // MySQL: INSERT + LAST_INSERT_ID + SELECT *
             GenerateMySqlReturnEntity(sb, returnTypeString, entityType, templateResult, classSymbol);
+            goto skipNormalExecution;
+        }
+        if ((dbDialect == "SQLite" || dbDialect == "3") && hasReturnInsertedEntity)
+        {
+            // SQLite: INSERT + last_insert_rowid() + SELECT *
+            GenerateSQLiteReturnEntity(sb, returnTypeString, entityType, templateResult, classSymbol);
             goto skipNormalExecution;
         }
         if ((dbDialect == "Oracle" || dbDialect == "4") && hasReturnInsertedEntity)
@@ -815,15 +827,19 @@ public class CodeGenerationService
             case ReturnTypeCategory.Scalar:
                 // 检查SQL是否是NonQuery命令（UPDATE, DELETE, INSERT）
                 var sqlUpper = templateResult.ProcessedSql.TrimStart().ToUpperInvariant();
-                if (sqlUpper.StartsWith("UPDATE ") || sqlUpper.StartsWith("DELETE ") ||
-                    (sqlUpper.StartsWith("INSERT ") && innerType == "int"))
+                // Special case: If SQL has "; SELECT last_insert_rowid()" (SQLite), use ExecuteScalar
+                var hasSqliteLastInsertRowid = templateResult.ProcessedSql.IndexOf("last_insert_rowid()", StringComparison.OrdinalIgnoreCase) >= 0;
+                
+                if (!hasSqliteLastInsertRowid && 
+                    (sqlUpper.StartsWith("UPDATE ") || sqlUpper.StartsWith("DELETE ") ||
+                    (sqlUpper.StartsWith("INSERT ") && innerType == "int")))
                 {
                     // NonQuery命令，返回affected rows
                     sb.AppendLine("__result__ = __cmd__.ExecuteNonQuery();");
                 }
                 else
                 {
-                    // 真正的Scalar查询（SELECT COUNT, SUM等）
+                    // 真正的Scalar查询（SELECT COUNT, SUM等）或 SQLite last_insert_rowid()
                     GenerateScalarExecution(sb, innerType);
                 }
                 break;
@@ -1668,10 +1684,19 @@ public class CodeGenerationService
 
         var returningClause = returnAll ? "*" : "id";
 
-        // PostgreSQL (2) and SQLite (3): ADD RETURNING clause at the end
-        if (dialect == "PostgreSql" || dialect == "2" || dialect == "SQLite" || dialect == "3")
+        // PostgreSQL (2): ADD RETURNING clause at the end
+        if (dialect == "PostgreSql" || dialect == "2")
         {
             return sql + $" RETURNING {returningClause}";
+        }
+
+        // SQLite (3): Use custom code generation instead of SQL-level RETURNING
+        // RETURNING was only added in SQLite 3.35+ (2021-03-12), so we handle it differently
+        // The actual logic is in GenerateSQLiteLastInsertId() and GenerateSQLiteReturnEntity()
+        if (dialect == "SQLite" || dialect == "3")
+        {
+            // Return original SQL - special handling in execution code
+            return sql;
         }
 
         // SQL Server (1): INSERT OUTPUT INSERTED.* VALUES ...
@@ -2316,6 +2341,38 @@ public class CodeGenerationService
     }
 
     /// <summary>
+    /// Generates SQLite-specific code for ReturnInsertedId using last_insert_rowid().
+    /// Similar to MySQL but uses SQLite's last_insert_rowid() function.
+    /// </summary>
+    private void GenerateSQLiteLastInsertId(IndentedStringBuilder sb, string innerType)
+    {
+        // Step 1: Execute INSERT
+        sb.AppendLine("// 🚀 SQLite Special Handling: INSERT + last_insert_rowid()");
+        sb.AppendLine("__cmd__.ExecuteNonQuery();");
+        sb.AppendLine();
+
+        // Step 2: Get last_insert_rowid()
+        sb.AppendLine("// SQLite: Get last inserted ID using last_insert_rowid()");
+        sb.AppendLine("__cmd__.CommandText = \"SELECT last_insert_rowid()\";");
+        sb.AppendLine("__cmd__.Parameters.Clear();");
+        sb.AppendLine("var scalarResult = __cmd__.ExecuteScalar();");
+
+        // Convert result
+        if (innerType == "long" || innerType == "System.Int64")
+        {
+            sb.AppendLine("__result__ = scalarResult != null ? Convert.ToInt64(scalarResult) : default(long);");
+        }
+        else if (innerType == "int" || innerType == "System.Int32")
+        {
+            sb.AppendLine("__result__ = scalarResult != null ? Convert.ToInt32(scalarResult) : default(int);");
+        }
+        else
+        {
+            sb.AppendLine($"__result__ = scalarResult != null ? Convert.To{innerType.Replace("System.", "")}(scalarResult) : default({innerType});");
+        }
+    }
+
+    /// <summary>
     /// Gets the appropriate IDataReader Get method for a property type.
     /// </summary>
     private string GetReaderMethod(ITypeSymbol type)
@@ -2353,6 +2410,78 @@ public class CodeGenerationService
         sb.AppendLine();
         sb.AppendLine("// MySQL: Get last inserted ID");
         sb.AppendLine("__cmd__.CommandText = \"SELECT LAST_INSERT_ID()\";");
+        sb.AppendLine("__cmd__.Parameters.Clear();");
+        sb.AppendLine("var __lastInsertId__ = Convert.ToInt64(__cmd__.ExecuteScalar());");
+        sb.AppendLine();
+
+        // Step 2: SELECT the complete entity
+        var tableName = GetTableNameFromType(classSymbol, entityType);
+        var columns = string.Join(", ", entityType.GetMembers().OfType<IPropertySymbol>()
+            .Select(p => SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)));
+
+        sb.AppendLine($"// SELECT complete entity");
+        sb.AppendLine($"__cmd__.CommandText = \"SELECT {columns} FROM {tableName} WHERE id = @lastId\";");
+        sb.AppendLine("__cmd__.Parameters.Clear();");
+        sb.AppendLine("{ var __p__ = __cmd__.CreateParameter(); __p__.ParameterName = \"@lastId\"; __p__.Value = __lastInsertId__; __cmd__.Parameters.Add(__p__); }");
+        sb.AppendLine();
+
+        // Execute reader and map entity
+        sb.AppendLine("using (var reader = __cmd__.ExecuteReader())");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("if (reader.Read())");
+        sb.AppendLine("{");
+        sb.PushIndent();
+
+        // Map properties
+        sb.AppendLine($"__result__ = new {entityType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}");
+        sb.AppendLine("{");
+        sb.PushIndent();
+
+        var properties = entityType.GetMembers().OfType<IPropertySymbol>().ToList();
+        for (int i = 0; i < properties.Count; i++)
+        {
+            var prop = properties[i];
+            var comma = i < properties.Count - 1 ? "," : "";
+
+            if (prop.Type.IsValueType && prop.Type.NullableAnnotation != NullableAnnotation.Annotated)
+            {
+                // Non-nullable value type
+                sb.AppendLine($"{prop.Name} = reader.Get{GetReaderMethod(prop.Type)}({i}){comma}");
+            }
+            else
+            {
+                // Nullable or reference type
+                sb.AppendLine($"{prop.Name} = reader.IsDBNull({i}) ? default : reader.Get{GetReaderMethod(prop.Type)}({i}){comma}");
+            }
+        }
+
+        sb.PopIndent();
+        sb.AppendLine("};");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.PopIndent();
+        sb.AppendLine("}");
+    }
+
+    /// <summary>
+    /// Generates SQLite-specific code for ReturnInsertedEntity using last_insert_rowid() + SELECT.
+    /// Similar to MySQL but uses SQLite's last_insert_rowid() function.
+    /// </summary>
+    private void GenerateSQLiteReturnEntity(IndentedStringBuilder sb, string returnTypeString, INamedTypeSymbol? entityType, SqlTemplateResult templateResult, INamedTypeSymbol classSymbol)
+    {
+        if (entityType == null)
+        {
+            sb.AppendLine("// Entity type not found, cannot generate SQLite ReturnEntity");
+            sb.AppendLine("__result__ = default!;");
+            return;
+        }
+
+        // Step 1: Execute INSERT and get last_insert_rowid()
+        sb.AppendLine("__cmd__.ExecuteNonQuery();");
+        sb.AppendLine();
+        sb.AppendLine("// SQLite: Get last inserted ID");
+        sb.AppendLine("__cmd__.CommandText = \"SELECT last_insert_rowid()\";");
         sb.AppendLine("__cmd__.Parameters.Clear();");
         sb.AppendLine("var __lastInsertId__ = Convert.ToInt64(__cmd__.ExecuteScalar());");
         sb.AppendLine();

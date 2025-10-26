@@ -84,7 +84,7 @@ public static class SharedCodeGenerationUtilities
     /// </summary>
     public static void GenerateCommandSetup(IndentedStringBuilder sb, string sql, IMethodSymbol method, string connectionName)
     {
-        sb.AppendLine($"__cmd__ = {connectionName}.CreateCommand();");
+        sb.AppendLine($"__cmd__ = (global::System.Data.Common.DbCommand){connectionName}.CreateCommand();");
 
         // 🔧 Transaction支持：如果Repository设置了Transaction属性，将其设置到command上
         // 这允许Repository的所有操作参与同一个事务
@@ -150,7 +150,7 @@ public static class SharedCodeGenerationUtilities
                 // Static SQL (no dynamic placeholders, no collection parameters)
                 // For verbatim string (@"..."), only double quotes need escaping
                 var escapedSql = sql.Replace("\"", "\"\"");
-                sb.AppendLine($"__cmd__.CommandText = @\"{escapedSql}\";");
+        sb.AppendLine($"__cmd__.CommandText = @\"{escapedSql}\";");
             }
         }
 

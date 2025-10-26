@@ -42,7 +42,7 @@ public class Product
 {
     public long Id { get; set; }
     public string Name { get; set; } = """";
-    
+
     [ConcurrencyCheck]
     public int Version { get; set; }
 }
@@ -55,7 +55,7 @@ public interface IProductRepository
 {
     [SqlTemplate(""SELECT * FROM {{table}}"")]
     Task<List<Product>> GetAllAsync();  // 帮助推断实体类型
-    
+
     [SqlTemplate(""UPDATE {{table}} SET name = @name WHERE id = @id"")]
     Task<int> UpdateAsync(Product entity);
 }
@@ -65,14 +65,14 @@ public interface IProductRepository
         var generatedCode = GetCSharpGeneratedOutput(source);
 
         // Assert
-        var updateMethodIndex = generatedCode.IndexOf("public System.Threading.Tasks.Task<int> UpdateAsync");
+        var updateMethodIndex = generatedCode.IndexOf("public async System.Threading.Tasks.Task<int> UpdateAsync");
         Assert.IsTrue(updateMethodIndex > 0, "应该找到UpdateAsync方法");
-        
+
         var commandTextIndex = generatedCode.IndexOf("CommandText =", updateMethodIndex);
         Assert.IsTrue(commandTextIndex > 0, "应该找到CommandText");
-        
+
         var sqlPart = generatedCode.Substring(commandTextIndex, Math.Min(500, generatedCode.Length - commandTextIndex));
-        
+
         // 应该包含version递增
         Assert.IsTrue(
             sqlPart.Contains("version = version + 1") || sqlPart.Contains("Version = Version + 1"),
@@ -102,7 +102,7 @@ public class Product
 {
     public long Id { get; set; }
     public string Name { get; set; } = """";
-    
+
     [ConcurrencyCheck]
     public int Version { get; set; }
 }
@@ -115,7 +115,7 @@ public interface IProductRepository
 {
     [SqlTemplate(""SELECT * FROM {{table}}"")]
     Task<List<Product>> GetAllAsync();  // 帮助推断实体类型
-    
+
     [SqlTemplate(""UPDATE {{table}} SET name = @name WHERE id = @id"")]
     Task<int> UpdateAsync(Product entity);
 }
@@ -125,17 +125,17 @@ public interface IProductRepository
         var generatedCode = GetCSharpGeneratedOutput(source);
 
         // Assert
-        var updateMethodIndex = generatedCode.IndexOf("public System.Threading.Tasks.Task<int> UpdateAsync");
+        var updateMethodIndex = generatedCode.IndexOf("public async System.Threading.Tasks.Task<int> UpdateAsync");
         Assert.IsTrue(updateMethodIndex > 0, "应该找到UpdateAsync方法");
-        
+
         var commandTextIndex = generatedCode.IndexOf("CommandText =", updateMethodIndex);
         var sqlPart = generatedCode.Substring(commandTextIndex, Math.Min(500, generatedCode.Length - commandTextIndex));
-        
+
         // 应该在WHERE子句检查version
         Assert.IsTrue(
             sqlPart.Contains("version = @") || sqlPart.Contains("Version = @"),
             "应该在WHERE子句检查version");
-        
+
         // 应该包含AND（因为已有WHERE id = @id）
         Assert.IsTrue(
             sqlPart.Contains(" AND ") || sqlPart.Contains(" and "),
@@ -164,7 +164,7 @@ namespace Test;
 public class Product
 {
     public string Name { get; set; } = """";
-    
+
     [ConcurrencyCheck]
     public int Version { get; set; }
 }
@@ -177,7 +177,7 @@ public interface IProductRepository
 {
     [SqlTemplate(""SELECT * FROM {{table}}"")]
     Task<List<Product>> GetAllAsync();  // 帮助推断实体类型
-    
+
     [SqlTemplate(""UPDATE {{table}} SET name = @name"")]
     Task<int> UpdateAsync(Product entity);
 }
@@ -187,17 +187,17 @@ public interface IProductRepository
         var generatedCode = GetCSharpGeneratedOutput(source);
 
         // Assert
-        var updateMethodIndex = generatedCode.IndexOf("public System.Threading.Tasks.Task<int> UpdateAsync");
+        var updateMethodIndex = generatedCode.IndexOf("public async System.Threading.Tasks.Task<int> UpdateAsync");
         Assert.IsTrue(updateMethodIndex > 0, "应该找到UpdateAsync方法");
-        
+
         var commandTextIndex = generatedCode.IndexOf("CommandText =", updateMethodIndex);
         var sqlPart = generatedCode.Substring(commandTextIndex, Math.Min(500, generatedCode.Length - commandTextIndex));
-        
+
         // 应该添加WHERE子句
         Assert.IsTrue(
             sqlPart.Contains("WHERE") || sqlPart.Contains("where"),
             "应该添加WHERE子句");
-        
+
         // 应该包含version检查
         Assert.IsTrue(
             sqlPart.Contains("version = @") || sqlPart.Contains("Version = @"),
@@ -226,7 +226,7 @@ namespace Test;
 public class Product
 {
     public long Id { get; set; }
-    
+
     [ConcurrencyCheck]
     public int Version { get; set; }
 }
@@ -239,7 +239,7 @@ public interface IProductRepository
 {
     [SqlTemplate(""SELECT * FROM {{table}}"")]
     Task<List<Product>> GetAllAsync();  // 帮助推断实体类型
-    
+
     [SqlTemplate(""UPDATE {{table}} SET name = @name WHERE id = @id"")]
     Task<int> UpdateAsync(Product entity);
 }
@@ -249,14 +249,14 @@ public interface IProductRepository
         var generatedCode = GetCSharpGeneratedOutput(source);
 
         // Assert
-        var updateMethodIndex = generatedCode.IndexOf("public System.Threading.Tasks.Task<int> UpdateAsync");
+        var updateMethodIndex = generatedCode.IndexOf("public async System.Threading.Tasks.Task<int> UpdateAsync");
         Assert.IsTrue(updateMethodIndex > 0, "应该找到UpdateAsync方法");
-        
+
         // 方法应该返回Task<int>（返回受影响行数）
         Assert.IsTrue(
             generatedCode.Contains("Task<int> UpdateAsync"),
             "方法应该返回Task<int>");
-        
+
         // 应该有result变量用于存储受影响行数
         Assert.IsTrue(
             generatedCode.Contains("int __result__"),
@@ -287,10 +287,10 @@ public class Product
 {
     public long Id { get; set; }
     public string Name { get; set; } = """";
-    
+
     [ConcurrencyCheck]
     public int Version { get; set; }
-    
+
     public DateTime UpdatedAt { get; set; }
 }
 
@@ -302,7 +302,7 @@ public interface IProductRepository
 {
     [SqlTemplate(""SELECT * FROM {{table}}"")]
     Task<List<Product>> GetAllAsync();  // 帮助推断实体类型
-    
+
     [SqlTemplate(""UPDATE {{table}} SET name = @name WHERE id = @id"")]
     Task<int> UpdateAsync(Product entity);
 }
@@ -312,21 +312,21 @@ public interface IProductRepository
         var generatedCode = GetCSharpGeneratedOutput(source);
 
         // Assert
-        var updateMethodIndex = generatedCode.IndexOf("public System.Threading.Tasks.Task<int> UpdateAsync");
+        var updateMethodIndex = generatedCode.IndexOf("public async System.Threading.Tasks.Task<int> UpdateAsync");
         Assert.IsTrue(updateMethodIndex > 0, "应该找到UpdateAsync方法");
-        
+
         var commandTextIndex = generatedCode.IndexOf("CommandText =", updateMethodIndex);
         var sqlPart = generatedCode.Substring(commandTextIndex, Math.Min(600, generatedCode.Length - commandTextIndex));
-        
+
         // 应该同时包含audit fields和concurrency check
         Assert.IsTrue(
             sqlPart.Contains("updated_at") || sqlPart.Contains("UpdatedAt"),
             "应该包含审计字段updated_at");
-        
+
         Assert.IsTrue(
             sqlPart.Contains("version = version + 1") || sqlPart.Contains("Version = Version + 1"),
             "应该包含version递增");
-        
+
         Assert.IsTrue(
             sqlPart.Contains("version = @") || sqlPart.Contains("Version = @"),
             "应该检查version");

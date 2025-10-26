@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.Common;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
 using Sqlx;
@@ -163,25 +164,25 @@ public interface IAdvancedRepository
 // ==================== 仓储实现 ====================
 [SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IUserRepository))]
-public partial class UserRepository(IDbConnection connection) : IUserRepository { }
+public partial class UserRepository(DbConnection connection) : IUserRepository { }
 
 [SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IProductRepository))]
-public partial class ProductRepository(IDbConnection connection) : IProductRepository { }
+public partial class ProductRepository(DbConnection connection) : IProductRepository { }
 
 [SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IOrderRepository))]
-public partial class OrderRepository(IDbConnection connection) : IOrderRepository { }
+public partial class OrderRepository(DbConnection connection) : IOrderRepository { }
 
 [SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IAccountRepository))]
-public partial class AccountRepository(IDbConnection connection) : IAccountRepository { }
+public partial class AccountRepository(DbConnection connection) : IAccountRepository { }
 
 [SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(ILogRepository))]
-public partial class LogRepository(IDbConnection connection) : ILogRepository { }
+public partial class LogRepository(DbConnection connection) : ILogRepository { }
 
 [SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IAdvancedRepository))]
-public partial class AdvancedRepository(IDbConnection connection) : IAdvancedRepository { }
+public partial class AdvancedRepository(DbConnection connection) : IAdvancedRepository { }
 

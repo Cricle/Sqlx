@@ -92,7 +92,7 @@ namespace TestNamespace
         var result = sb.ToString();
 
         // Assert
-        Assert.IsTrue(result.Contains("partial void OnExecuting(string operationName, global::System.Data.IDbCommand command)"),
+        Assert.IsTrue(result.Contains("partial void OnExecuting(string operationName, global::System.Data.Common.DbCommand command)"),
             "Should generate OnExecuting method");
         Assert.IsTrue(result.Contains("Called before executing a repository operation"),
             "Should include documentation for OnExecuting");
@@ -109,7 +109,7 @@ namespace TestNamespace
         var result = sb.ToString();
 
         // Assert
-        Assert.IsTrue(result.Contains("partial void OnExecuted(string operationName, global::System.Data.IDbCommand command, object? result, long elapsedTicks)"),
+        Assert.IsTrue(result.Contains("partial void OnExecuted(string operationName, global::System.Data.Common.DbCommand command, object? result, long elapsedTicks)"),
             "Should generate OnExecuted method");
         Assert.IsTrue(result.Contains("Called after successfully executing a repository operation"),
             "Should include documentation for OnExecuted");
@@ -126,7 +126,7 @@ namespace TestNamespace
         var result = sb.ToString();
 
         // Assert
-        Assert.IsTrue(result.Contains("partial void OnExecuteFail(string operationName, global::System.Data.IDbCommand command, global::System.Exception exception, long elapsedTicks)"),
+        Assert.IsTrue(result.Contains("partial void OnExecuteFail(string operationName, global::System.Data.Common.DbCommand command, global::System.Exception exception, long elapsedTicks)"),
             "Should generate OnExecuteFail method");
         Assert.IsTrue(result.Contains("Called when a repository operation fails with an exception"),
             "Should include documentation for OnExecuteFail");
@@ -188,8 +188,8 @@ namespace TestNamespace
         var result = sb.ToString();
 
         // Assert
-        Assert.IsTrue(result.Contains("global::System.Data.IDbCommand"),
-            "Should use global namespace for IDbCommand");
+        Assert.IsTrue(result.Contains("global::System.Data.Common.DbCommand"),
+            "Should use global namespace for DbCommand");
         Assert.IsTrue(result.Contains("global::System.Exception"),
             "Should use global namespace for Exception");
     }
@@ -243,8 +243,8 @@ namespace Test
         Assert.IsTrue(result.Contains("/// </summary>"), "Should close XML documentation");
 
         // Verify proper method signatures
-        Assert.IsTrue(result.Contains("partial void OnExecuting(string operationName, global::System.Data.IDbCommand command);"));
-        Assert.IsTrue(result.Contains("partial void OnExecuted(string operationName, global::System.Data.IDbCommand command, object? result, long elapsedTicks);"));
-        Assert.IsTrue(result.Contains("partial void OnExecuteFail(string operationName, global::System.Data.IDbCommand command, global::System.Exception exception, long elapsedTicks);"));
+        Assert.IsTrue(result.Contains("partial void OnExecuting(string operationName, global::System.Data.Common.DbCommand command);"));
+        Assert.IsTrue(result.Contains("partial void OnExecuted(string operationName, global::System.Data.Common.DbCommand command, object? result, long elapsedTicks);"));
+        Assert.IsTrue(result.Contains("partial void OnExecuteFail(string operationName, global::System.Data.Common.DbCommand command, global::System.Exception exception, long elapsedTicks);"));
     }
 }

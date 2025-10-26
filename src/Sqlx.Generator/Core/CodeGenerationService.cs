@@ -60,7 +60,9 @@ public class CodeGenerationService
                 return $"{paramType} {paramName}{defaultValue}";
             }));
 
-            sb.AppendLine($"public {returnType} {methodName}({parameters})");
+            // Add async modifier for Task-based methods
+            var asyncModifier = returnType.Contains("Task") ? "async " : "";
+            sb.AppendLine($"public {asyncModifier}{returnType} {methodName}({parameters})");
             sb.AppendLine("{");
             sb.PushIndent();
 
@@ -88,8 +90,8 @@ public class CodeGenerationService
 
                 if (isTaskReturn)
                 {
-                    // For async methods returning Task<T>, wrap in Task.FromResult
-                sb.AppendLine("return global::System.Threading.Tasks.Task.FromResult(__result__);");
+                    // For async methods, return directly (the async keyword handles Task wrapping)
+                    sb.AppendLine("return __result__;");
                 }
                 else
                 {
@@ -405,7 +407,7 @@ public class CodeGenerationService
         sb.AppendLine("/// Gets or sets the transaction to use for all database operations.");
         sb.AppendLine("/// When set, all generated methods will use this transaction.");
         sb.AppendLine("/// </summary>");
-        sb.AppendLine("public global::System.Data.IDbTransaction? Transaction { get; set; }");
+        sb.AppendLine("public global::System.Data.Common.DbTransaction? Transaction { get; set; }");
         sb.AppendLine();
 
         // Generate connection field if needed
@@ -465,7 +467,7 @@ public class CodeGenerationService
         sb.AppendLine("/// </summary>");
         sb.AppendLine("/// <param name=\"operationName\">The name of the operation being executed.</param>");
         sb.AppendLine("/// <param name=\"command\">The database command to be executed.</param>");
-        sb.AppendLine("partial void OnExecuting(string operationName, global::System.Data.IDbCommand command);");
+        sb.AppendLine("partial void OnExecuting(string operationName, global::System.Data.Common.DbCommand command);");
         sb.AppendLine();
 
         sb.AppendLine("/// <summary>");
@@ -475,7 +477,7 @@ public class CodeGenerationService
         sb.AppendLine("/// <param name=\"command\">The database command that was executed.</param>");
         sb.AppendLine("/// <param name=\"result\">The result of the operation.</param>");
         sb.AppendLine("/// <param name=\"elapsedTicks\">The elapsed time in ticks.</param>");
-        sb.AppendLine("partial void OnExecuted(string operationName, global::System.Data.IDbCommand command, object? result, long elapsedTicks);");
+        sb.AppendLine("partial void OnExecuted(string operationName, global::System.Data.Common.DbCommand command, object? result, long elapsedTicks);");
         sb.AppendLine();
 
         sb.AppendLine("/// <summary>");
@@ -485,7 +487,7 @@ public class CodeGenerationService
         sb.AppendLine("/// <param name=\"command\">The database command that failed.</param>");
         sb.AppendLine("/// <param name=\"exception\">The exception that occurred.</param>");
         sb.AppendLine("/// <param name=\"elapsedTicks\">The elapsed time in ticks before failure.</param>");
-        sb.AppendLine("partial void OnExecuteFail(string operationName, global::System.Data.IDbCommand command, global::System.Exception exception, long elapsedTicks);");
+        sb.AppendLine("partial void OnExecuteFail(string operationName, global::System.Data.Common.DbCommand command, global::System.Exception exception, long elapsedTicks);");
         sb.AppendLine();
     }
 
@@ -501,7 +503,9 @@ public class CodeGenerationService
             return $"{paramType} {paramName}{defaultValue}";
         }));
 
-        sb.AppendLine($"public {returnType} {method.Name}({parameters})");
+        // Add async modifier for Task-based methods
+        var asyncModifier = returnType.Contains("Task") ? "async " : "";
+        sb.AppendLine($"public {asyncModifier}{returnType} {method.Name}({parameters})");
         sb.AppendLine("{");
         sb.PushIndent();
 
@@ -654,8 +658,13 @@ public class CodeGenerationService
 
         // Generate method variables
         sb.AppendLine($"{resultVariableType} __result__ = default!;");
-        sb.AppendLine("global::System.Data.IDbCommand? __cmd__ = null;");
+        sb.AppendLine("global::System.Data.Common.DbCommand? __cmd__ = null;");
         sb.AppendLine();
+
+        // 🚀 检查是否有CancellationToken参数
+        var cancellationTokenParam = method.Parameters.FirstOrDefault(p => p.Type.Name == "CancellationToken");
+        var hasCancellationToken = cancellationTokenParam != null;
+        var cancellationTokenArg = hasCancellationToken ? $", {cancellationTokenParam!.Name}" : "";
 
         // 🔐 动态占位符验证（如果模板包含动态特性）
         if (templateResult.HasDynamicFeatures)
@@ -684,7 +693,7 @@ public class CodeGenerationService
         if (hasBatchValues)
         {
             // Generate batch INSERT code (complete execution flow)
-            GenerateBatchInsertCode(sb, processedSql, method, originalEntityType, connectionName);
+            GenerateBatchInsertCode(sb, processedSql, method, originalEntityType, connectionName, cancellationTokenArg);
             return; // Batch INSERT handles everything, exit early
         }
 
@@ -808,32 +817,32 @@ public class CodeGenerationService
         {
             sb.AppendLine("// 🔍 DIAGNOSTIC: Entering MySQL special handling");
             // MySQL: INSERT + SELECT LAST_INSERT_ID()
-            GenerateMySqlLastInsertId(sb, innerType);
+            GenerateMySqlLastInsertId(sb, innerType, cancellationTokenArg);
             goto skipNormalExecution;
         }
         if ((dbDialect == "SQLite" || dbDialect == "5") && hasReturnInsertedId && returnCategory == ReturnTypeCategory.Scalar)
         {
             sb.AppendLine("// 🔍 DIAGNOSTIC: Entering SQLite special handling");
             // SQLite: INSERT + SELECT last_insert_rowid()
-            GenerateSQLiteLastInsertId(sb, innerType);
+            GenerateSQLiteLastInsertId(sb, innerType, cancellationTokenArg);
             goto skipNormalExecution;
         }
         if ((dbDialect == "MySql" || dbDialect == "0") && hasReturnInsertedEntity)
         {
             // MySQL: INSERT + LAST_INSERT_ID + SELECT *
-            GenerateMySqlReturnEntity(sb, returnTypeString, entityType, templateResult, classSymbol);
+            GenerateMySqlReturnEntity(sb, returnTypeString, entityType, templateResult, classSymbol, cancellationTokenArg);
             goto skipNormalExecution;
         }
         if ((dbDialect == "SQLite" || dbDialect == "5") && hasReturnInsertedEntity)
         {
             // SQLite: INSERT + last_insert_rowid() + SELECT *
-            GenerateSQLiteReturnEntity(sb, returnTypeString, entityType, templateResult, classSymbol);
+            GenerateSQLiteReturnEntity(sb, returnTypeString, entityType, templateResult, classSymbol, cancellationTokenArg);
             goto skipNormalExecution;
         }
         if ((dbDialect == "Oracle" || dbDialect == "3") && hasReturnInsertedEntity)
         {
             // Oracle: INSERT + RETURNING id INTO + SELECT *
-            GenerateOracleReturnEntity(sb, returnTypeString, entityType, templateResult, classSymbol);
+            GenerateOracleReturnEntity(sb, returnTypeString, entityType, templateResult, classSymbol, cancellationTokenArg);
             goto skipNormalExecution;
         }
 
@@ -850,29 +859,29 @@ public class CodeGenerationService
                     (sqlUpper.StartsWith("INSERT ") && innerType == "int")))
                 {
                     // NonQuery命令，返回affected rows
-                    sb.AppendLine("__result__ = __cmd__.ExecuteNonQuery();");
+                    sb.AppendLine($"__result__ = await __cmd__.ExecuteNonQueryAsync({cancellationTokenArg.TrimStart(',', ' ')});");
                 }
                 else
                 {
                     // 真正的Scalar查询（SELECT COUNT, SUM等）或 SQLite last_insert_rowid()
-                GenerateScalarExecution(sb, innerType);
+                GenerateScalarExecution(sb, innerType, cancellationTokenArg);
                 }
                 break;
             case ReturnTypeCategory.Collection:
-                GenerateCollectionExecution(sb, returnTypeString, entityType, templateResult, method);
+                GenerateCollectionExecution(sb, returnTypeString, entityType, templateResult, method, cancellationTokenArg);
                 break;
             case ReturnTypeCategory.SingleEntity:
-                GenerateSingleEntityExecution(sb, returnTypeString, entityType, templateResult);
+                GenerateSingleEntityExecution(sb, returnTypeString, entityType, templateResult, cancellationTokenArg);
                 break;
             case ReturnTypeCategory.DynamicDictionary:
-                GenerateDynamicDictionaryExecution(sb, innerType);
+                GenerateDynamicDictionaryExecution(sb, innerType, cancellationTokenArg);
                 break;
             case ReturnTypeCategory.DynamicDictionaryCollection:
-                GenerateDynamicDictionaryCollectionExecution(sb, innerType);
+                GenerateDynamicDictionaryCollectionExecution(sb, innerType, cancellationTokenArg);
                 break;
             default:
                 // Non-query execution (INSERT, UPDATE, DELETE)
-                sb.AppendLine("__result__ = __cmd__.ExecuteNonQuery();");
+                sb.AppendLine($"__result__ = await __cmd__.ExecuteNonQueryAsync({cancellationTokenArg.TrimStart(',', ' ')});");
                 break;
         }
 
@@ -1045,9 +1054,9 @@ public class CodeGenerationService
     private bool IsCollectionReturnType(string returnType) => ClassifyReturnType(returnType).Category == ReturnTypeCategory.Collection;
     private bool IsSingleEntityReturnType(string returnType) => ClassifyReturnType(returnType).Category == ReturnTypeCategory.SingleEntity;
 
-    private void GenerateScalarExecution(IndentedStringBuilder sb, string innerType)
+    private void GenerateScalarExecution(IndentedStringBuilder sb, string innerType, string cancellationTokenArg = "")
     {
-        sb.AppendLine("var scalarResult = __cmd__.ExecuteScalar();");
+        sb.AppendLine($"var scalarResult = await __cmd__.ExecuteScalarAsync({cancellationTokenArg.TrimStart(',', ' ')});");
 
         // Handle numeric type conversions (e.g., SQLite COUNT returns Int64 but method expects Int32)
         if (innerType == "int" || innerType == "System.Int32")
@@ -1077,7 +1086,7 @@ public class CodeGenerationService
         }
     }
 
-    private void GenerateCollectionExecution(IndentedStringBuilder sb, string returnType, INamedTypeSymbol? entityType, SqlTemplateResult templateResult, IMethodSymbol method)
+    private void GenerateCollectionExecution(IndentedStringBuilder sb, string returnType, INamedTypeSymbol? entityType, SqlTemplateResult templateResult, IMethodSymbol method, string cancellationTokenArg = "")
     {
         var innerType = ExtractInnerTypeFromTask(returnType);
         // 确保使用全局命名空间前缀，避免命名冲突
@@ -1099,7 +1108,7 @@ public class CodeGenerationService
             sb.AppendLine($"__result__ = new {collectionType}(16);");
         }
 
-        sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
+        sb.AppendLine($"using var reader = await __cmd__.ExecuteReaderAsync({cancellationTokenArg.TrimStart(',', ' ')});");
 
         // 🚀 性能优化：在第一次Read()后缓存列序号
         // 注意：必须在Read()后调用GetOrdinal()，否则空结果集会失败
@@ -1112,7 +1121,7 @@ public class CodeGenerationService
             sb.AppendLine();
         }
 
-        sb.AppendLine("while (reader.Read())");
+        sb.AppendLine($"while (await reader.ReadAsync({cancellationTokenArg.TrimStart(',', ' ')}))");
         sb.AppendLine("{");
         sb.PushIndent();
 
@@ -1188,10 +1197,10 @@ public class CodeGenerationService
                typeName == "ushort" || typeName == "sbyte";
     }
 
-    private void GenerateSingleEntityExecution(IndentedStringBuilder sb, string returnType, INamedTypeSymbol? entityType, SqlTemplateResult templateResult)
+    private void GenerateSingleEntityExecution(IndentedStringBuilder sb, string returnType, INamedTypeSymbol? entityType, SqlTemplateResult templateResult, string cancellationTokenArg = "")
     {
-        sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
-        sb.AppendLine("if (reader.Read())");
+        sb.AppendLine($"using var reader = await __cmd__.ExecuteReaderAsync({cancellationTokenArg.TrimStart(',', ' ')});");
+        sb.AppendLine($"if (await reader.ReadAsync({cancellationTokenArg.TrimStart(',', ' ')}))");
         sb.AppendLine("{");
         sb.PushIndent();
 
@@ -1214,13 +1223,13 @@ public class CodeGenerationService
     /// 生成动态字典集合的执行代码：List&lt;Dictionary&lt;string, object&gt;&gt;
     /// 适用于运行时列不确定的查询（如报表、动态查询）
     /// </summary>
-    private void GenerateDynamicDictionaryCollectionExecution(IndentedStringBuilder sb, string returnType)
+    private void GenerateDynamicDictionaryCollectionExecution(IndentedStringBuilder sb, string returnType, string cancellationTokenArg = "")
     {
         // 确保使用全局命名空间前缀
         var collectionType = returnType.StartsWith("System.") ? $"global::{returnType}" : returnType;
 
         sb.AppendLine($"__result__ = new {collectionType}();");
-        sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
+        sb.AppendLine($"using var reader = await __cmd__.ExecuteReaderAsync({cancellationTokenArg.TrimStart(',', ' ')});");
         sb.AppendLine();
         sb.AppendLine("// 🚀 性能优化：预读取列名，避免每行重复调用GetName()");
         sb.AppendLine("var fieldCount = reader.FieldCount;");
@@ -1232,7 +1241,7 @@ public class CodeGenerationService
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
-        sb.AppendLine("while (reader.Read())");
+        sb.AppendLine($"while (await reader.ReadAsync({cancellationTokenArg.TrimStart(',', ' ')}))");
         sb.AppendLine("{");
         sb.PushIndent();
         sb.AppendLine("// 🚀 性能优化：预分配容量");
@@ -1253,10 +1262,10 @@ public class CodeGenerationService
     /// 生成单行动态字典的执行代码：Dictionary&lt;string, object&gt;?
     /// 适用于返回单行动态结果的查询
     /// </summary>
-    private void GenerateDynamicDictionaryExecution(IndentedStringBuilder sb, string returnType)
+    private void GenerateDynamicDictionaryExecution(IndentedStringBuilder sb, string returnType, string cancellationTokenArg = "")
     {
-        sb.AppendLine("using var reader = __cmd__.ExecuteReader();");
-        sb.AppendLine("if (reader.Read())");
+        sb.AppendLine($"using var reader = await __cmd__.ExecuteReaderAsync({cancellationTokenArg.TrimStart(',', ' ')});");
+        sb.AppendLine($"if (await reader.ReadAsync({cancellationTokenArg.TrimStart(',', ' ')}))");
         sb.AppendLine("{");
         sb.PushIndent();
         sb.AppendLine("// 🚀 性能优化：预分配容量");
@@ -2121,7 +2130,8 @@ public class CodeGenerationService
         string sql,
         IMethodSymbol method,
         INamedTypeSymbol? entityType,
-        string connectionName)
+        string connectionName,
+        string cancellationTokenArg = "")
     {
         // Extract parameter name from __RUNTIME_BATCH_VALUES_paramName__
         var marker = "__RUNTIME_BATCH_VALUES_";
@@ -2206,7 +2216,7 @@ public class CodeGenerationService
         var baseSql = sql.Replace("--exclude Id", "").Replace("--exclude id", "").Trim();
 
         // Create command (reuse __cmd__ from outer scope)
-        sb.AppendLine($"__cmd__ = {connectionName}.CreateCommand();");
+        sb.AppendLine($"__cmd__ = (global::System.Data.Common.DbCommand){connectionName}.CreateCommand();");
 
         // 🔧 Transaction支持：如果Repository设置了Transaction属性，将其设置到command上
         sb.AppendLine("if (Transaction != null)");
@@ -2226,7 +2236,7 @@ public class CodeGenerationService
         sb.AppendLine("{");
         sb.PushIndent();
         sb.AppendLine("__cmd__?.Dispose();");
-        sb.AppendLine("return global::System.Threading.Tasks.Task.FromResult(0);");
+        sb.AppendLine("return 0;");
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
@@ -2316,7 +2326,7 @@ public class CodeGenerationService
         sb.AppendLine();
 
         // Execute
-        sb.AppendLine("__totalAffected__ += __cmd__.ExecuteNonQuery();");
+        sb.AppendLine($"__totalAffected__ += await __cmd__.ExecuteNonQueryAsync({cancellationTokenArg.TrimStart(',', ' ')});");
 
         sb.PopIndent();
         sb.AppendLine("}");
@@ -2326,24 +2336,24 @@ public class CodeGenerationService
         sb.AppendLine("__cmd__?.Dispose();");
         sb.AppendLine();
 
-        // Return result
-        sb.AppendLine("return global::System.Threading.Tasks.Task.FromResult(__totalAffected__);");
+        // Return result (async method returns directly)
+        sb.AppendLine("return __totalAffected__;");
     }
 
     /// <summary>
     /// Generates MySQL-specific code for ReturnInsertedId using LAST_INSERT_ID().
     /// </summary>
-    private void GenerateMySqlLastInsertId(IndentedStringBuilder sb, string innerType)
+    private void GenerateMySqlLastInsertId(IndentedStringBuilder sb, string innerType, string cancellationTokenArg = "")
     {
         // Step 1: Execute INSERT
-        sb.AppendLine("__cmd__.ExecuteNonQuery();");
+        sb.AppendLine($"await __cmd__.ExecuteNonQueryAsync({cancellationTokenArg.TrimStart(',', ' ')});");
         sb.AppendLine();
 
         // Step 2: Get LAST_INSERT_ID()
         sb.AppendLine("// MySQL: Get last inserted ID");
         sb.AppendLine("__cmd__.CommandText = \"SELECT LAST_INSERT_ID()\";");
         sb.AppendLine("__cmd__.Parameters.Clear();");
-        sb.AppendLine("var scalarResult = __cmd__.ExecuteScalar();");
+        sb.AppendLine($"var scalarResult = await __cmd__.ExecuteScalarAsync({cancellationTokenArg.TrimStart(',', ' ')});");
 
         // Convert result
         if (innerType == "long" || innerType == "System.Int64")
@@ -2364,18 +2374,18 @@ public class CodeGenerationService
     /// Generates SQLite-specific code for ReturnInsertedId using last_insert_rowid().
     /// Similar to MySQL but uses SQLite's last_insert_rowid() function.
     /// </summary>
-    private void GenerateSQLiteLastInsertId(IndentedStringBuilder sb, string innerType)
+    private void GenerateSQLiteLastInsertId(IndentedStringBuilder sb, string innerType, string cancellationTokenArg = "")
     {
         // Step 1: Execute INSERT
         sb.AppendLine("// 🚀 SQLite Special Handling: INSERT + last_insert_rowid()");
-        sb.AppendLine("__cmd__.ExecuteNonQuery();");
+        sb.AppendLine($"await __cmd__.ExecuteNonQueryAsync({cancellationTokenArg.TrimStart(',', ' ')});");
         sb.AppendLine();
 
         // Step 2: Get last_insert_rowid()
         sb.AppendLine("// SQLite: Get last inserted ID using last_insert_rowid()");
         sb.AppendLine("__cmd__.CommandText = \"SELECT last_insert_rowid()\";");
         sb.AppendLine("__cmd__.Parameters.Clear();");
-        sb.AppendLine("var scalarResult = __cmd__.ExecuteScalar();");
+        sb.AppendLine($"var scalarResult = await __cmd__.ExecuteScalarAsync({cancellationTokenArg.TrimStart(',', ' ')});");
 
         // Convert result
         if (innerType == "long" || innerType == "System.Int64")
@@ -2416,7 +2426,7 @@ public class CodeGenerationService
     /// <summary>
     /// Generates MySQL-specific code for ReturnInsertedEntity using LAST_INSERT_ID() + SELECT.
     /// </summary>
-    private void GenerateMySqlReturnEntity(IndentedStringBuilder sb, string returnTypeString, INamedTypeSymbol? entityType, SqlTemplateResult templateResult, INamedTypeSymbol classSymbol)
+    private void GenerateMySqlReturnEntity(IndentedStringBuilder sb, string returnTypeString, INamedTypeSymbol? entityType, SqlTemplateResult templateResult, INamedTypeSymbol classSymbol, string cancellationTokenArg = "")
     {
         if (entityType == null)
         {
@@ -2426,12 +2436,12 @@ public class CodeGenerationService
         }
 
         // Step 1: Execute INSERT and get LAST_INSERT_ID
-        sb.AppendLine("__cmd__.ExecuteNonQuery();");
+        sb.AppendLine($"await __cmd__.ExecuteNonQueryAsync({cancellationTokenArg.TrimStart(',', ' ')});");
         sb.AppendLine();
         sb.AppendLine("// MySQL: Get last inserted ID");
         sb.AppendLine("__cmd__.CommandText = \"SELECT LAST_INSERT_ID()\";");
         sb.AppendLine("__cmd__.Parameters.Clear();");
-        sb.AppendLine("var __lastInsertId__ = Convert.ToInt64(__cmd__.ExecuteScalar());");
+        sb.AppendLine($"var __lastInsertId__ = Convert.ToInt64(await __cmd__.ExecuteScalarAsync({cancellationTokenArg.TrimStart(',', ' ')}));");
         sb.AppendLine();
 
         // Step 2: SELECT the complete entity
@@ -2446,10 +2456,10 @@ public class CodeGenerationService
         sb.AppendLine();
 
         // Execute reader and map entity
-        sb.AppendLine("using (var reader = __cmd__.ExecuteReader())");
+        sb.AppendLine($"using (var reader = await __cmd__.ExecuteReaderAsync({cancellationTokenArg.TrimStart(',', ' ')}))");
         sb.AppendLine("{");
         sb.PushIndent();
-        sb.AppendLine("if (reader.Read())");
+        sb.AppendLine($"if (await reader.ReadAsync({cancellationTokenArg.TrimStart(',', ' ')}))");
         sb.AppendLine("{");
         sb.PushIndent();
 
@@ -2488,7 +2498,7 @@ public class CodeGenerationService
     /// Generates SQLite-specific code for ReturnInsertedEntity using last_insert_rowid() + SELECT.
     /// Similar to MySQL but uses SQLite's last_insert_rowid() function.
     /// </summary>
-    private void GenerateSQLiteReturnEntity(IndentedStringBuilder sb, string returnTypeString, INamedTypeSymbol? entityType, SqlTemplateResult templateResult, INamedTypeSymbol classSymbol)
+    private void GenerateSQLiteReturnEntity(IndentedStringBuilder sb, string returnTypeString, INamedTypeSymbol? entityType, SqlTemplateResult templateResult, INamedTypeSymbol classSymbol, string cancellationTokenArg = "")
     {
         if (entityType == null)
         {
@@ -2498,12 +2508,12 @@ public class CodeGenerationService
         }
 
         // Step 1: Execute INSERT and get last_insert_rowid()
-        sb.AppendLine("__cmd__.ExecuteNonQuery();");
+        sb.AppendLine($"await __cmd__.ExecuteNonQueryAsync({cancellationTokenArg.TrimStart(',', ' ')});");
         sb.AppendLine();
         sb.AppendLine("// SQLite: Get last inserted ID");
         sb.AppendLine("__cmd__.CommandText = \"SELECT last_insert_rowid()\";");
         sb.AppendLine("__cmd__.Parameters.Clear();");
-        sb.AppendLine("var __lastInsertId__ = Convert.ToInt64(__cmd__.ExecuteScalar());");
+        sb.AppendLine($"var __lastInsertId__ = Convert.ToInt64(await __cmd__.ExecuteScalarAsync({cancellationTokenArg.TrimStart(',', ' ')}));");
         sb.AppendLine();
 
         // Step 2: SELECT the complete entity
@@ -2518,10 +2528,10 @@ public class CodeGenerationService
         sb.AppendLine();
 
         // Execute reader and map entity
-        sb.AppendLine("using (var reader = __cmd__.ExecuteReader())");
+        sb.AppendLine($"using (var reader = await __cmd__.ExecuteReaderAsync({cancellationTokenArg.TrimStart(',', ' ')}))");
         sb.AppendLine("{");
         sb.PushIndent();
-        sb.AppendLine("if (reader.Read())");
+        sb.AppendLine($"if (await reader.ReadAsync({cancellationTokenArg.TrimStart(',', ' ')}))");
         sb.AppendLine("{");
         sb.PushIndent();
 
@@ -2559,7 +2569,7 @@ public class CodeGenerationService
     /// <summary>
     /// Generates Oracle-specific code for ReturnInsertedEntity using RETURNING INTO + SELECT.
     /// </summary>
-    private void GenerateOracleReturnEntity(IndentedStringBuilder sb, string returnTypeString, INamedTypeSymbol? entityType, SqlTemplateResult templateResult, INamedTypeSymbol classSymbol)
+    private void GenerateOracleReturnEntity(IndentedStringBuilder sb, string returnTypeString, INamedTypeSymbol? entityType, SqlTemplateResult templateResult, INamedTypeSymbol classSymbol, string cancellationTokenArg = "")
     {
         if (entityType == null)
         {
@@ -2575,7 +2585,7 @@ public class CodeGenerationService
         // Step 1: Execute INSERT (SQL already has RETURNING but we'll use simpler approach)
         // We'll replace the RETURNING clause temporarily to just get the ID
         sb.AppendLine("// Oracle: Execute INSERT and get returned ID");
-        sb.AppendLine("var __insertedId__ = Convert.ToInt64(__cmd__.ExecuteScalar());");
+        sb.AppendLine($"var __insertedId__ = Convert.ToInt64(await __cmd__.ExecuteScalarAsync({cancellationTokenArg.TrimStart(',', ' ')}));");
         sb.AppendLine();
 
         // Step 2: SELECT the complete entity
@@ -2590,10 +2600,10 @@ public class CodeGenerationService
         sb.AppendLine();
 
         // Execute reader and map entity
-        sb.AppendLine("using (var reader = __cmd__.ExecuteReader())");
+        sb.AppendLine($"using (var reader = await __cmd__.ExecuteReaderAsync({cancellationTokenArg.TrimStart(',', ' ')}))");
         sb.AppendLine("{");
         sb.PushIndent();
-        sb.AppendLine("if (reader.Read())");
+        sb.AppendLine($"if (await reader.ReadAsync({cancellationTokenArg.TrimStart(',', ' ')}))");
         sb.AppendLine("{");
         sb.PushIndent();
 

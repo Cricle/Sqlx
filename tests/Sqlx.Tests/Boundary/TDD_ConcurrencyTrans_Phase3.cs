@@ -50,7 +50,7 @@ public class TDD_ConcurrencyTrans_Phase3
     {
         _connection!.Execute("INSERT INTO accounts VALUES (1, 'Alice', 1000.0)");
 
-        using (var transaction = _connection.BeginTransaction())
+        using (var transaction = _connection.BeginTransaction() as System.Data.Common.DbTransaction ?? throw new InvalidOperationException("BeginTransaction must return DbTransaction"))
         {
             _repo!.Transaction = transaction;
             await _repo.UpdateBalanceAsync(1, 1500.0);
@@ -68,7 +68,7 @@ public class TDD_ConcurrencyTrans_Phase3
     {
         _connection!.Execute("INSERT INTO accounts VALUES (1, 'Alice', 1000.0)");
 
-        using (var transaction = _connection.BeginTransaction())
+        using (var transaction = _connection.BeginTransaction() as System.Data.Common.DbTransaction ?? throw new InvalidOperationException("BeginTransaction must return DbTransaction"))
         {
             _repo!.Transaction = transaction;
             await _repo.UpdateBalanceAsync(1, 1500.0);
@@ -92,7 +92,7 @@ public class TDD_ConcurrencyTrans_Phase3
         _connection!.Execute("INSERT INTO accounts VALUES (1, 'Alice', 1000.0)");
         _connection.Execute("INSERT INTO accounts VALUES (2, 'Bob', 500.0)");
 
-        using (var transaction = _connection.BeginTransaction())
+        using (var transaction = _connection.BeginTransaction() as System.Data.Common.DbTransaction ?? throw new InvalidOperationException("BeginTransaction must return DbTransaction"))
         {
             _repo!.Transaction = transaction;
 
@@ -119,7 +119,7 @@ public class TDD_ConcurrencyTrans_Phase3
 
         try
         {
-            using (var transaction = _connection.BeginTransaction())
+            using (var transaction = _connection.BeginTransaction() as System.Data.Common.DbTransaction ?? throw new InvalidOperationException("BeginTransaction must return DbTransaction"))
             {
                 _repo!.Transaction = transaction;
                 await _repo.UpdateBalanceAsync(1, 1500.0);
@@ -149,7 +149,7 @@ public class TDD_ConcurrencyTrans_Phase3
         _connection!.Execute("INSERT INTO accounts VALUES (1, 'Alice', 1000.0)");
 
         // Transaction 1
-        using (var transaction = _connection.BeginTransaction())
+        using (var transaction = _connection.BeginTransaction() as System.Data.Common.DbTransaction ?? throw new InvalidOperationException("BeginTransaction must return DbTransaction"))
         {
             _repo!.Transaction = transaction;
             await _repo.UpdateBalanceAsync(1, 1100.0);
@@ -157,7 +157,7 @@ public class TDD_ConcurrencyTrans_Phase3
         }
 
         // Transaction 2
-        using (var transaction = _connection.BeginTransaction())
+        using (var transaction = _connection.BeginTransaction() as System.Data.Common.DbTransaction ?? throw new InvalidOperationException("BeginTransaction must return DbTransaction"))
         {
             _repo!.Transaction = transaction;
             await _repo.UpdateBalanceAsync(1, 1200.0);
@@ -193,7 +193,7 @@ public class TDD_ConcurrencyTrans_Phase3
     [Description("INSERT and SELECT in transaction should work")]
     public async Task Transaction_InsertAndSelect_ShouldWork()
     {
-        using (var transaction = _connection!.BeginTransaction())
+        using (var transaction = _connection!.BeginTransaction() as System.Data.Common.DbTransaction ?? throw new InvalidOperationException("BeginTransaction must return DbTransaction"))
         {
             _repo!.Transaction = transaction;
 
@@ -220,7 +220,7 @@ public class TDD_ConcurrencyTrans_Phase3
         _connection!.Execute("INSERT INTO accounts VALUES (1, 'Alice', 1000.0)");
         _connection.Execute("INSERT INTO accounts VALUES (2, 'Bob', 2000.0)");
 
-        using (var transaction = _connection.BeginTransaction())
+        using (var transaction = _connection.BeginTransaction() as System.Data.Common.DbTransaction ?? throw new InvalidOperationException("BeginTransaction must return DbTransaction"))
         {
             _repo!.Transaction = transaction;
 

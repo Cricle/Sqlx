@@ -63,7 +63,7 @@ public interface IUserRepository
         // Assert
         // 应该在生成的SQL中添加 WHERE is_deleted = false
         Assert.IsTrue(
-            generatedCode.Contains("is_deleted = false") || 
+            generatedCode.Contains("is_deleted = false") ||
             generatedCode.Contains("is_deleted = 0") ||
             generatedCode.Contains("IsDeleted = false"),
             "应该自动添加软删除过滤条件");
@@ -168,9 +168,9 @@ public interface IUserRepository
         var commandTextIndex = generatedCode.IndexOf("CommandText =");
         if (commandTextIndex > 0)
         {
-            var sqlPart = generatedCode.Substring(commandTextIndex, 
+            var sqlPart = generatedCode.Substring(commandTextIndex,
                 Math.Min(200, generatedCode.Length - commandTextIndex));
-            
+
             Assert.IsFalse(
                 sqlPart.Contains("is_deleted = false") || sqlPart.Contains("is_deleted = 0"),
                 "[IncludeDeleted]应该绕过软删除过滤");
@@ -210,7 +210,7 @@ public interface IUserRepository
 {
     [SqlTemplate(""SELECT * FROM {{table}}"")]
     Task<List<User>> GetAllAsync();  // 添加此方法以便推断实体类型
-    
+
     [SqlTemplate(""DELETE FROM {{table}} WHERE id = @id"")]
     Task<int> DeleteAsync(long id);
 }
@@ -221,21 +221,21 @@ public interface IUserRepository
 
         // Assert
         // DELETE应该转换为UPDATE - 查找DeleteAsync方法的CommandText
-        var deleteMethodIndex = generatedCode.IndexOf("public System.Threading.Tasks.Task<int> DeleteAsync");
+        var deleteMethodIndex = generatedCode.IndexOf("public async System.Threading.Tasks.Task<int> DeleteAsync");
         Assert.IsTrue(deleteMethodIndex > 0, "应该找到DeleteAsync方法");
-        
+
         // 从DeleteAsync方法开始往后查找CommandText
         var commandTextIndex = generatedCode.IndexOf("CommandText =", deleteMethodIndex);
         if (commandTextIndex > 0)
         {
             var sqlPart = generatedCode.Substring(commandTextIndex,
                 Math.Min(300, generatedCode.Length - commandTextIndex));
-            
+
             Assert.IsTrue(
                 sqlPart.Contains("UPDATE") || sqlPart.Contains("update"),
                 "DELETE应该转换为UPDATE");
             Assert.IsTrue(
-                sqlPart.Contains("is_deleted = true") || 
+                sqlPart.Contains("is_deleted = true") ||
                 sqlPart.Contains("is_deleted = 1") ||
                 sqlPart.Contains("SET") || sqlPart.Contains("set"),
                 "应该设置is_deleted标志");
@@ -279,7 +279,7 @@ public interface IUserRepository
 {
     [SqlTemplate(""SELECT * FROM {{table}}"")]
     Task<List<User>> GetAllAsync();  // 添加此方法以便推断实体类型
-    
+
     [SqlTemplate(""DELETE FROM {{table}} WHERE id = @id"")]
     Task<int> DeleteAsync(long id);
 }
@@ -289,15 +289,15 @@ public interface IUserRepository
         var generatedCode = GetCSharpGeneratedOutput(source);
 
         // Assert - 查找DeleteAsync方法的CommandText
-        var deleteMethodIndex = generatedCode.IndexOf("public System.Threading.Tasks.Task<int> DeleteAsync");
+        var deleteMethodIndex = generatedCode.IndexOf("public async System.Threading.Tasks.Task<int> DeleteAsync");
         Assert.IsTrue(deleteMethodIndex > 0, "应该找到DeleteAsync方法");
-        
+
         var commandTextIndex = generatedCode.IndexOf("CommandText =", deleteMethodIndex);
         if (commandTextIndex > 0)
         {
             var sqlPart = generatedCode.Substring(commandTextIndex,
                 Math.Min(400, generatedCode.Length - commandTextIndex));
-            
+
             // 应该设置is_deleted和deleted_at
             Assert.IsTrue(
                 sqlPart.Contains("is_deleted") || sqlPart.Contains("IsDeleted"),

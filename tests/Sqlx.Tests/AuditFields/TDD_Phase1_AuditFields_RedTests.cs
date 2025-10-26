@@ -55,7 +55,7 @@ public interface IUserRepository
 {
     [SqlTemplate(""SELECT * FROM {{table}}"")]
     Task<List<User>> GetAllAsync();  // 帮助推断实体类型
-    
+
     [SqlTemplate(""INSERT INTO {{table}} (name) VALUES (@name)"")]
     Task<int> InsertAsync(string name);
 }
@@ -65,19 +65,19 @@ public interface IUserRepository
         var generatedCode = GetCSharpGeneratedOutput(source);
 
         // Assert
-        var insertMethodIndex = generatedCode.IndexOf("public System.Threading.Tasks.Task<int> InsertAsync");
+        var insertMethodIndex = generatedCode.IndexOf("public async System.Threading.Tasks.Task<int> InsertAsync");
         Assert.IsTrue(insertMethodIndex > 0, "应该找到InsertAsync方法");
-        
+
         var commandTextIndex = generatedCode.IndexOf("CommandText =", insertMethodIndex);
         Assert.IsTrue(commandTextIndex > 0, "应该找到CommandText");
-        
+
         var sqlPart = generatedCode.Substring(commandTextIndex, Math.Min(500, generatedCode.Length - commandTextIndex));
-        
+
         // 应该包含created_at字段
         Assert.IsTrue(
             sqlPart.Contains("created_at") || sqlPart.Contains("CreatedAt"),
             "应该包含created_at字段");
-        
+
         // 应该使用数据库时间函数（PostgreSQL使用NOW()）
         Assert.IsTrue(
             sqlPart.Contains("NOW()") || sqlPart.Contains("CURRENT_TIMESTAMP") ||
@@ -120,7 +120,7 @@ public interface IUserRepository
 {
     [SqlTemplate(""SELECT * FROM {{table}}"")]
     Task<List<User>> GetAllAsync();  // 帮助推断实体类型
-    
+
     [SqlTemplate(""INSERT INTO {{table}} (name) VALUES (@name)"")]
     Task<int> InsertAsync(string name, string createdBy);
 }
@@ -130,17 +130,17 @@ public interface IUserRepository
         var generatedCode = GetCSharpGeneratedOutput(source);
 
         // Assert
-        var insertMethodIndex = generatedCode.IndexOf("public System.Threading.Tasks.Task<int> InsertAsync");
+        var insertMethodIndex = generatedCode.IndexOf("public async System.Threading.Tasks.Task<int> InsertAsync");
         Assert.IsTrue(insertMethodIndex > 0, "应该找到InsertAsync方法");
-        
+
         var commandTextIndex = generatedCode.IndexOf("CommandText =", insertMethodIndex);
         var sqlPart = generatedCode.Substring(commandTextIndex, Math.Min(500, generatedCode.Length - commandTextIndex));
-        
+
         // 应该包含created_by字段
         Assert.IsTrue(
             sqlPart.Contains("created_by") || sqlPart.Contains("CreatedBy"),
             "应该包含created_by字段");
-        
+
         // 应该有@createdBy参数
         Assert.IsTrue(
             sqlPart.Contains("@createdBy") || sqlPart.Contains("@created_by"),
@@ -182,7 +182,7 @@ public interface IUserRepository
 {
     [SqlTemplate(""SELECT * FROM {{table}}"")]
     Task<List<User>> GetAllAsync();  // 帮助推断实体类型
-    
+
     [SqlTemplate(""UPDATE {{table}} SET name = @name WHERE id = @id"")]
     Task<int> UpdateAsync(long id, string name);
 }
@@ -192,17 +192,17 @@ public interface IUserRepository
         var generatedCode = GetCSharpGeneratedOutput(source);
 
         // Assert
-        var updateMethodIndex = generatedCode.IndexOf("public System.Threading.Tasks.Task<int> UpdateAsync");
+        var updateMethodIndex = generatedCode.IndexOf("public async System.Threading.Tasks.Task<int> UpdateAsync");
         Assert.IsTrue(updateMethodIndex > 0, "应该找到UpdateAsync方法");
-        
+
         var commandTextIndex = generatedCode.IndexOf("CommandText =", updateMethodIndex);
         var sqlPart = generatedCode.Substring(commandTextIndex, Math.Min(500, generatedCode.Length - commandTextIndex));
-        
+
         // 应该在SET子句中包含updated_at
         Assert.IsTrue(
             sqlPart.Contains("updated_at") || sqlPart.Contains("UpdatedAt"),
             "应该包含updated_at字段");
-        
+
         // 应该使用数据库时间函数
         Assert.IsTrue(
             sqlPart.Contains("NOW()") || sqlPart.Contains("CURRENT_TIMESTAMP") ||
@@ -245,7 +245,7 @@ public interface IUserRepository
 {
     [SqlTemplate(""SELECT * FROM {{table}}"")]
     Task<List<User>> GetAllAsync();  // 帮助推断实体类型
-    
+
     [SqlTemplate(""UPDATE {{table}} SET name = @name WHERE id = @id"")]
     Task<int> UpdateAsync(long id, string name, string updatedBy);
 }
@@ -255,17 +255,17 @@ public interface IUserRepository
         var generatedCode = GetCSharpGeneratedOutput(source);
 
         // Assert
-        var updateMethodIndex = generatedCode.IndexOf("public System.Threading.Tasks.Task<int> UpdateAsync");
+        var updateMethodIndex = generatedCode.IndexOf("public async System.Threading.Tasks.Task<int> UpdateAsync");
         Assert.IsTrue(updateMethodIndex > 0, "应该找到UpdateAsync方法");
-        
+
         var commandTextIndex = generatedCode.IndexOf("CommandText =", updateMethodIndex);
         var sqlPart = generatedCode.Substring(commandTextIndex, Math.Min(500, generatedCode.Length - commandTextIndex));
-        
+
         // 应该包含updated_by字段
         Assert.IsTrue(
             sqlPart.Contains("updated_by") || sqlPart.Contains("UpdatedBy"),
             "应该包含updated_by字段");
-        
+
         // 应该有@updatedBy参数
         Assert.IsTrue(
             sqlPart.Contains("@updatedBy") || sqlPart.Contains("@updated_by"),
@@ -305,14 +305,14 @@ public interface IUserRepository
 {
     [SqlTemplate(""SELECT * FROM {{table}}"")]
     Task<List<User>> GetAllAsync();  // 帮助推断实体类型
-    
+
     [SqlTemplate(""INSERT INTO {{table}} (name) VALUES (@name)"")]
     Task<int> InsertAsync(string name);
 }
 ";
 
         var sqlServerCode = GetCSharpGeneratedOutput(sqlServerSource);
-        
+
         // SQL Server应该使用GETDATE()
         Assert.IsTrue(
             sqlServerCode.Contains("GETDATE()") || sqlServerCode.Contains("CURRENT_TIMESTAMP"),
@@ -357,7 +357,7 @@ public interface IUserRepository
 {
     [SqlTemplate(""SELECT * FROM {{table}}"")]
     Task<List<User>> GetAllAsync();
-    
+
     [SqlTemplate(""DELETE FROM {{table}} WHERE id = @id"")]
     Task<int> DeleteAsync(long id);
 }
@@ -367,12 +367,12 @@ public interface IUserRepository
         var generatedCode = GetCSharpGeneratedOutput(source);
 
         // Assert
-        var deleteMethodIndex = generatedCode.IndexOf("public System.Threading.Tasks.Task<int> DeleteAsync");
+        var deleteMethodIndex = generatedCode.IndexOf("public async System.Threading.Tasks.Task<int> DeleteAsync");
         Assert.IsTrue(deleteMethodIndex > 0, "应该找到DeleteAsync方法");
-        
+
         var commandTextIndex = generatedCode.IndexOf("CommandText =", deleteMethodIndex);
         var sqlPart = generatedCode.Substring(commandTextIndex, Math.Min(500, generatedCode.Length - commandTextIndex));
-        
+
         // DELETE转UPDATE时，应该同时设置updated_at
         Assert.IsTrue(
             sqlPart.Contains("UPDATE"),

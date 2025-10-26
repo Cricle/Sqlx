@@ -247,9 +247,9 @@ public static class SharedCodeGenerationUtilities
                 var elementType = param.Type is INamedTypeSymbol namedType && namedType.TypeArguments.Length > 0
                     ? namedType.TypeArguments[0]
                     : null;
-                var isElementNullable = elementType != null && 
+                var isElementNullable = elementType != null &&
                                       (elementType.IsNullableType() || elementType.IsReferenceType);
-                
+
                 sb.AppendLine($"// Expand collection parameter: {param.Name} for IN clause");
                 sb.AppendLine($"int __index_{param.Name}__ = 0;");
                 sb.AppendLine($"foreach (var __item__ in {param.Name})");
@@ -257,7 +257,7 @@ public static class SharedCodeGenerationUtilities
                 sb.PushIndent();
                 sb.AppendLine("var __p__ = __cmd__.CreateParameter();");
                 sb.AppendLine($"__p__.ParameterName = $\"@{param.Name}{{__index_{param.Name}__}}\";");
-                
+
                 if (isElementNullable)
                 {
                     sb.AppendLine("__p__.Value = __item__ ?? (object)global::System.DBNull.Value;");
@@ -266,7 +266,7 @@ public static class SharedCodeGenerationUtilities
                 {
                     sb.AppendLine("__p__.Value = __item__;");
                 }
-                
+
                 sb.AppendLine("__cmd__.Parameters.Add(__p__);");
                 sb.AppendLine($"__index_{param.Name}__++;");
                 sb.PopIndent();

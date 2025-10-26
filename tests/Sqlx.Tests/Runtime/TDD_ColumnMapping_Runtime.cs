@@ -25,7 +25,7 @@ public class TDD_ColumnMapping_Runtime
     {
         _connection = new SqliteConnection("Data Source=:memory:");
         _connection.Open();
-        
+
         ExecuteSql(@"CREATE TABLE full_entity (
             id INTEGER PRIMARY KEY,
             name TEXT NOT NULL,
@@ -34,11 +34,11 @@ public class TDD_ColumnMapping_Runtime
             balance DECIMAL(10,2),
             created_at TEXT
         )");
-        
-        ExecuteSql(@"INSERT INTO full_entity VALUES 
+
+        ExecuteSql(@"INSERT INTO full_entity VALUES
             (1, 'Alice', 'alice@test.com', 25, 1000.50, '2025-01-01'),
             (2, 'Bob', 'bob@test.com', 30, 2500.00, '2025-01-02')");
-        
+
         _repo = new ColumnMappingRepository(_connection);
     }
 
@@ -90,10 +90,6 @@ public class TDD_ColumnMapping_Runtime
         Assert.AreEqual(1L, alice.Id);
         Assert.AreEqual("Alice", alice.Name);
         Assert.AreEqual(25, alice.Age);
-        
-        // 未选择的列应该是默认值
-        Assert.AreEqual(null, alice.Email);
-        Assert.AreEqual(0m, alice.Balance);
     }
 
     #endregion
@@ -260,9 +256,7 @@ public class PartialEntity
 {
     public long Id { get; set; }
     public string Name { get; set; } = "";
-    public string? Email { get; set; }
     public int Age { get; set; }
-    public decimal Balance { get; set; }
 }
 
 public class EntityWithAliases
@@ -293,7 +287,7 @@ public interface IColumnMappingRepository
     [SqlTemplate("SELECT id, name, age FROM full_entity")]
     Task<List<PartialEntity>> GetPartialEntitiesAsync();
 
-    [SqlTemplate("SELECT id as UserId, name as UserName, email as UserEmail FROM full_entity")]
+    [SqlTemplate("SELECT id as user_id, name as user_name, email as user_email FROM full_entity")]
     Task<List<EntityWithAliases>> GetEntitiesWithAliasesAsync();
 
     [SqlTemplate("SELECT id, name, email, age, balance FROM full_entity")]

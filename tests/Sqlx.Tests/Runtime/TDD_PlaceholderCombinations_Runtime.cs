@@ -27,7 +27,7 @@ public class TDD_PlaceholderCombinations_Runtime
     {
         _connection = new SqliteConnection("Data Source=:memory:");
         _connection.Open();
-        
+
         ExecuteSql(@"CREATE TABLE products (
             id INTEGER PRIMARY KEY,
             name TEXT NOT NULL,
@@ -36,7 +36,7 @@ public class TDD_PlaceholderCombinations_Runtime
             category TEXT,
             is_active INTEGER DEFAULT 1
         )");
-        
+
         // 插入测试数据
         ExecuteSql("INSERT INTO products VALUES (1, 'Laptop', 999.99, 10, 'Electronics', 1)");
         ExecuteSql("INSERT INTO products VALUES (2, 'Mouse', 29.99, 50, 'Electronics', 1)");
@@ -45,7 +45,7 @@ public class TDD_PlaceholderCombinations_Runtime
         ExecuteSql("INSERT INTO products VALUES (5, 'Chair', 199.99, 20, 'Furniture', 1)");
         ExecuteSql("INSERT INTO products VALUES (6, 'Desk', 399.99, 5, 'Furniture', 1)");
         ExecuteSql("INSERT INTO products VALUES (7, 'Lamp', 49.99, 0, 'Furniture', 0)");
-        
+
         _repo = new PlaceholderRepository(_connection);
     }
 
@@ -102,7 +102,7 @@ public class TDD_PlaceholderCombinations_Runtime
 
         // Assert
         Assert.AreEqual(1, affected, "应该更新1条记录");
-        
+
         // 验证更新结果
         var product = await GetProductById(1);
         Assert.AreEqual(899.99m, product.Price, 0.01m);
@@ -121,7 +121,7 @@ public class TDD_PlaceholderCombinations_Runtime
         // Assert
         Assert.IsTrue(results.Count > 0);
         Assert.IsTrue(results.All(p => p.IsActive == 1), "应该只返回活跃产品");
-        
+
         // 验证排序（降序）
         for (int i = 0; i < results.Count - 1; i++)
         {
@@ -176,7 +176,7 @@ public class TDD_PlaceholderCombinations_Runtime
         // Assert
         Assert.IsTrue(results.Count <= 3, "应该最多返回3条");
         Assert.IsTrue(results.All(p => p.IsActive == 1));
-        
+
         // 验证排序
         for (int i = 0; i < results.Count - 1; i++)
         {
@@ -226,7 +226,7 @@ public class TDD_PlaceholderCombinations_Runtime
         param.ParameterName = "@id";
         param.Value = id;
         cmd.Parameters.Add(param);
-        
+
         using var reader = await Task.Run(() => cmd.ExecuteReader());
         if (await Task.Run(() => reader.Read()))
         {

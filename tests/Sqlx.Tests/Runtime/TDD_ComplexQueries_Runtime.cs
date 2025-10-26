@@ -27,19 +27,19 @@ public class TDD_ComplexQueries_Runtime
     {
         _connection = new SqliteConnection("Data Source=:memory:");
         _connection.Open();
-        
+
         // SQLite: 禁用外键约束以简化测试
         ExecuteSql("PRAGMA foreign_keys = OFF");
-        
+
         // 创建测试表
         ExecuteSql(@"CREATE TABLE users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, 
-            name TEXT NOT NULL, 
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
             email TEXT,
             age INTEGER NOT NULL,
             balance DECIMAL(10, 2) DEFAULT 0
         )");
-        
+
         ExecuteSql(@"CREATE TABLE orders (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
@@ -47,13 +47,13 @@ public class TDD_ComplexQueries_Runtime
             amount DECIMAL(10, 2) NOT NULL,
             FOREIGN KEY (user_id) REFERENCES users(id)
         )");
-        
+
         ExecuteSql(@"CREATE TABLE categories (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             code TEXT NOT NULL,
             name TEXT NOT NULL
         )");
-        
+
         ExecuteSql(@"CREATE TABLE products (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
@@ -61,10 +61,10 @@ public class TDD_ComplexQueries_Runtime
             category_code TEXT,
             FOREIGN KEY (category_code) REFERENCES categories(code)
         )");
-        
+
         // 插入测试数据
         SeedTestData();
-        
+
         _repo = new ComplexQueryRepository(_connection);
     }
 
@@ -87,16 +87,16 @@ public class TDD_ComplexQueries_Runtime
         ExecuteSql("INSERT INTO users (name, email, age, balance) VALUES ('Alice', 'alice@test.com', 25, 1000.50)");
         ExecuteSql("INSERT INTO users (name, email, age, balance) VALUES ('Bob', 'bob@test.com', 30, 2500.75)");
         ExecuteSql("INSERT INTO users (name, email, age, balance) VALUES ('Charlie', 'charlie@test.com', 35, 500.00)");
-        
+
         // Orders
         ExecuteSql("INSERT INTO orders (user_id, product_name, amount) VALUES (1, 'Product A', 100.00)");
         ExecuteSql("INSERT INTO orders (user_id, product_name, amount) VALUES (1, 'Product B', 200.00)");
         ExecuteSql("INSERT INTO orders (user_id, product_name, amount) VALUES (2, 'Product C', 300.00)");
-        
+
         // Categories
         ExecuteSql("INSERT INTO categories (code, name) VALUES ('ELEC', 'Electronics')");
         ExecuteSql("INSERT INTO categories (code, name) VALUES ('BOOK', 'Books')");
-        
+
         // Products
         ExecuteSql("INSERT INTO products (name, price, category_code) VALUES ('Laptop', 999.99, 'ELEC')");
         ExecuteSql("INSERT INTO products (name, price, category_code) VALUES ('Phone', 499.99, 'ELEC')");
@@ -114,7 +114,7 @@ public class TDD_ComplexQueries_Runtime
         // Assert
         Assert.IsNotNull(results);
         Assert.AreEqual(3, results.Count, "应该返回3个产品详情");
-        
+
         var laptop = results.First(p => p.ProductName == "Laptop");
         Assert.AreEqual("Electronics", laptop.CategoryName);
         Assert.AreEqual(999.99m, laptop.Price);
@@ -131,7 +131,7 @@ public class TDD_ComplexQueries_Runtime
 
         // Assert
         Assert.IsTrue(results.Count >= 4, "应该包含所有用户，即使没有订单");
-        
+
         var davidOrders = results.Where(r => r.UserName == "David").ToList();
         Assert.AreEqual(1, davidOrders.Count, "David应该有1条记录");
     }
@@ -149,7 +149,7 @@ public class TDD_ComplexQueries_Runtime
         // Assert
         Assert.IsNotNull(results);
         Assert.IsTrue(results.Count >= 2, "应该至少有2个用户统计");
-        
+
         var aliceStats = results.FirstOrDefault(s => s.UserName == "Alice");
         Assert.IsNotNull(aliceStats, "应该有Alice的统计");
         Assert.AreEqual(2, aliceStats.OrderCount, "Alice应该有2个订单");
@@ -189,7 +189,7 @@ public class TDD_ComplexQueries_Runtime
         // Assert
         Assert.IsNotNull(results);
         Assert.AreEqual(2, results.Count, "应该有2个有订单的用户");
-        
+
         var userNames = results.Select(u => u.Name).ToList();
         CollectionAssert.Contains(userNames, "Alice");
         CollectionAssert.Contains(userNames, "Bob");
@@ -246,7 +246,7 @@ public class TDD_ComplexQueries_Runtime
         // Assert
         Assert.IsNotNull(results);
         Assert.IsTrue(results.Count <= 3, "年龄应该去重");
-        
+
         var ages = results.Select(r => r.Age).ToList();
         Assert.AreEqual(ages.Count, ages.Distinct().Count(), "不应该有重复年龄");
     }
@@ -260,7 +260,7 @@ public class TDD_ComplexQueries_Runtime
     {
         // 这个测试确保生成的SQL没有字面文本 \r\n
         // 如果有，SQLite会报错 "unrecognized token"
-        
+
         // Act - 如果SQL有字面文本\r\n，这会抛出异常
         var results = await _repo.GetProductDetailsAsync();
 
@@ -291,11 +291,11 @@ public class TDD_ComplexQueries_Runtime
 
         // Assert
         Assert.IsTrue(results.Count > 0);
-        
+
         var bobRisk = results.FirstOrDefault(r => r.Name == "Bob");
         Assert.IsNotNull(bobRisk);
         Assert.AreEqual("High", bobRisk.RiskLevel, "Bob余额高应该是High");
-        
+
         var charlieRisk = results.FirstOrDefault(r => r.Name == "Charlie");
         Assert.IsNotNull(charlieRisk);
         Assert.AreEqual("Low", charlieRisk.RiskLevel, "Charlie余额低应该是Low");
@@ -357,21 +357,21 @@ public class AgeResult
 public interface IComplexQueryRepository
 {
     // JOIN查询（多行SQL）
-    [SqlTemplate(@"SELECT p.id as ProductId, p.name as ProductName, p.price as Price, c.name as CategoryName
+    [SqlTemplate(@"SELECT p.id as product_id, p.name as product_name, p.price as price, c.name as category_name
                    FROM products p
                    INNER JOIN categories c ON p.category_code = c.code")]
     Task<List<ProductDetail>> GetProductDetailsAsync();
 
     // LEFT JOIN
-    [SqlTemplate(@"SELECT u.id as UserId, u.name as UserName, o.product_name as ProductName
+    [SqlTemplate(@"SELECT u.id as user_id, u.name as user_name, o.product_name as product_name
                    FROM users u
                    LEFT JOIN orders o ON u.id = o.user_id")]
     Task<List<UserOrder>> GetUserOrdersAsync();
 
     // 聚合查询（多行SQL）
-    [SqlTemplate(@"SELECT u.id as UserId, u.name as UserName, 
-                          COUNT(o.id) as OrderCount, 
-                          COALESCE(SUM(o.amount), 0) as TotalSpent
+    [SqlTemplate(@"SELECT u.id as user_id, u.name as user_name, 
+                          COUNT(o.id) as order_count, 
+                          COALESCE(SUM(o.amount), 0) as total_spent
                    FROM users u
                    LEFT JOIN orders o ON u.id = o.user_id
                    GROUP BY u.id, u.name
@@ -385,7 +385,7 @@ public interface IComplexQueryRepository
     Task<decimal> GetTotalBalanceAsync();
 
     // 子查询
-    [SqlTemplate(@"SELECT * FROM users 
+    [SqlTemplate(@"SELECT * FROM users
                    WHERE id IN (SELECT DISTINCT user_id FROM orders)")]
     Task<List<User>> GetUsersWithOrdersAsync();
 
@@ -394,15 +394,15 @@ public interface IComplexQueryRepository
     Task<List<User>> GetUsersWithOrdersUsingExistsAsync();
 
     // 排序和分页
-    [SqlTemplate(@"SELECT id, name, email, age, balance 
-                   FROM users 
-                   ORDER BY balance DESC 
+    [SqlTemplate(@"SELECT id, name, email, age, balance
+                   FROM users
+                   ORDER BY balance DESC
                    LIMIT @limit")]
     Task<List<User>> GetTopRichUsersAsync(int limit);
 
-    [SqlTemplate(@"SELECT id, name, email, age, balance 
-                   FROM users 
-                   ORDER BY id 
+    [SqlTemplate(@"SELECT id, name, email, age, balance
+                   FROM users
+                   ORDER BY id
                    LIMIT @limit OFFSET @offset")]
     Task<List<User>> GetUsersPaginatedAsync(int limit, int offset);
 
@@ -412,7 +412,7 @@ public interface IComplexQueryRepository
 
     // CASE WHEN
     [SqlTemplate(@"SELECT id, name,
-                   CASE 
+                   CASE
                        WHEN balance > 1000 THEN 'High'
                        WHEN balance > 500 THEN 'Medium'
                        ELSE 'Low'

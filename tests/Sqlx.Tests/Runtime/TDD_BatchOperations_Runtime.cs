@@ -26,11 +26,11 @@ public class TDD_BatchOperations_Runtime
     {
         _connection = new SqliteConnection("Data Source=:memory:");
         _connection.Open();
-        
+
         // 创建测试表
         ExecuteSql("CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, age INTEGER NOT NULL)");
         ExecuteSql("CREATE TABLE logs (id INTEGER PRIMARY KEY AUTOINCREMENT, level TEXT, message TEXT, created_at TEXT)");
-        
+
         _repo = new BatchTestRepository(_connection);
     }
 
@@ -55,9 +55,9 @@ public class TDD_BatchOperations_Runtime
         // Arrange
         var users = new[]
         {
-            new { name = "Alice", age = 25 },
-            new { name = "Bob", age = 30 },
-            new { name = "Charlie", age = 35 }
+            new UserBatchItem { Name = "Alice", Age = 25 },
+            new UserBatchItem { Name = "Bob", Age = 30 },
+            new UserBatchItem { Name = "Charlie", Age = 35 }
         };
 
         // Act
@@ -75,7 +75,7 @@ public class TDD_BatchOperations_Runtime
     {
         // Arrange: 生成1000条数据
         var users = Enumerable.Range(1, 1000)
-            .Select(i => new { name = $"User{i}", age = 20 + (i % 50) })
+            .Select(i => new UserBatchItem { Name = $"User{i}", Age = 20 + (i % 50) })
             .ToArray();
 
         // Act
@@ -92,7 +92,7 @@ public class TDD_BatchOperations_Runtime
     public async Task BatchInsert_EmptyCollection_ShouldInsertZero()
     {
         // Arrange
-        var users = Array.Empty<object>();
+        var users = Array.Empty<UserBatchItem>();
 
         // Act
         var affected = await _repo.BatchInsertUsersAsync(users);
@@ -111,8 +111,8 @@ public class TDD_BatchOperations_Runtime
         // Arrange
         var logs = new[]
         {
-            new { level = "INFO", message = "Test1", created_at = "2025-01-01 12:00:00" },
-            new { level = "WARN", message = "Test2", created_at = "2025-01-01 12:01:00" }
+            new LogBatchItem { Level = "INFO", Message = "Test1", CreatedAt = "2025-01-01 12:00:00" },
+            new LogBatchItem { Level = "WARN", Message = "Test2", CreatedAt = "2025-01-01 12:01:00" }
         };
 
         // Act
@@ -132,7 +132,7 @@ public class TDD_BatchOperations_Runtime
         // Arrange
         var logs = new[]
         {
-            new { level = "ERROR", message = "Critical", created_at = "2025-01-01" }
+            new LogBatchItem { Level = "ERROR", Message = "Critical", CreatedAt = "2025-01-01" }
         };
 
         // Act - 如果SQL有 "VALUES VALUES"，这里会抛出异常
@@ -152,9 +152,9 @@ public class TDD_BatchOperations_Runtime
         // Arrange: 包含特殊字符的数据
         var users = new[]
         {
-            new { name = "O'Brien", age = 25 },
-            new { name = "Alice \"Wonder\" Smith", age = 30 },
-            new { name = "Bob; DROP TABLE users;--", age = 35 }
+            new UserBatchItem { Name = "O'Brien", Age = 25 },
+            new UserBatchItem { Name = "Alice \"Wonder\" Smith", Age = 30 },
+            new UserBatchItem { Name = "Bob; DROP TABLE users;--", Age = 35 }
         };
 
         // Act
@@ -174,10 +174,10 @@ public class TDD_BatchOperations_Runtime
         // Arrange: Unicode字符
         var users = new[]
         {
-            new { name = "张三", age = 25 },
-            new { name = "李四", age = 30 },
-            new { name = "Müller", age = 35 },
-            new { name = "José", age = 40 }
+            new UserBatchItem { Name = "张三", Age = 25 },
+            new UserBatchItem { Name = "李四", Age = 30 },
+            new UserBatchItem { Name = "Müller", Age = 35 },
+            new UserBatchItem { Name = "José", Age = 40 }
         };
 
         // Act
@@ -203,7 +203,7 @@ public class TDD_BatchOperations_Runtime
     {
         // Arrange
         var users = Enumerable.Range(1, 10000)
-            .Select(i => new { name = $"User{i}", age = 20 + (i % 50) })
+            .Select(i => new UserBatchItem { Name = $"User{i}", Age = 20 + (i % 50) })
             .ToArray();
 
         // Act
@@ -250,11 +250,24 @@ public interface IBatchTestRepository
 {
     [SqlTemplate("INSERT INTO users (name, age) VALUES {{batch_values}}")]
     [BatchOperation(MaxBatchSize = 1000)]
-    Task<int> BatchInsertUsersAsync(IEnumerable<object> users);
+    Task<int> BatchInsertUsersAsync(IEnumerable<UserBatchItem> users);
 
     [SqlTemplate("INSERT INTO logs (level, message, created_at) VALUES {{batch_values}}")]
     [BatchOperation]
-    Task<int> BatchInsertLogsAsync(IEnumerable<object> logs);
+    Task<int> BatchInsertLogsAsync(IEnumerable<LogBatchItem> logs);
+}
+
+public class UserBatchItem
+{
+    public string Name { get; set; } = "";
+    public int Age { get; set; }
+}
+
+public class LogBatchItem
+{
+    public string Level { get; set; } = "";
+    public string Message { get; set; } = "";
+    public string CreatedAt { get; set; } = "";
 }
 
 [SqlDefine(SqlDefineTypes.SQLite)]

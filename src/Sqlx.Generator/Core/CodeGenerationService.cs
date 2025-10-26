@@ -800,10 +800,10 @@ public class CodeGenerationService
 
         // 🚀 MySQL/SQLite/Oracle Special Handling for ReturnInsertedId/Entity
         var dbDialect = GetDatabaseDialect(classSymbol);
-        
+
         // 🔍 Diagnostic: Log special handling checks
         sb.AppendLine($"// 🔍 DIAGNOSTIC: Checking special handling - DbDialect={dbDialect}, HasReturnId={hasReturnInsertedId}, Category={returnCategory}");
-        
+
         if ((dbDialect == "MySql" || dbDialect == "0") && hasReturnInsertedId && returnCategory == ReturnTypeCategory.Scalar)
         {
             sb.AppendLine("// 🔍 DIAGNOSTIC: Entering MySQL special handling");
@@ -811,7 +811,7 @@ public class CodeGenerationService
             GenerateMySqlLastInsertId(sb, innerType);
             goto skipNormalExecution;
         }
-        if ((dbDialect == "SQLite" || dbDialect == "3") && hasReturnInsertedId && returnCategory == ReturnTypeCategory.Scalar)
+        if ((dbDialect == "SQLite" || dbDialect == "5") && hasReturnInsertedId && returnCategory == ReturnTypeCategory.Scalar)
         {
             sb.AppendLine("// 🔍 DIAGNOSTIC: Entering SQLite special handling");
             // SQLite: INSERT + SELECT last_insert_rowid()
@@ -824,13 +824,13 @@ public class CodeGenerationService
             GenerateMySqlReturnEntity(sb, returnTypeString, entityType, templateResult, classSymbol);
             goto skipNormalExecution;
         }
-        if ((dbDialect == "SQLite" || dbDialect == "3") && hasReturnInsertedEntity)
+        if ((dbDialect == "SQLite" || dbDialect == "5") && hasReturnInsertedEntity)
         {
             // SQLite: INSERT + last_insert_rowid() + SELECT *
             GenerateSQLiteReturnEntity(sb, returnTypeString, entityType, templateResult, classSymbol);
             goto skipNormalExecution;
         }
-        if ((dbDialect == "Oracle" || dbDialect == "4") && hasReturnInsertedEntity)
+        if ((dbDialect == "Oracle" || dbDialect == "3") && hasReturnInsertedEntity)
         {
             // Oracle: INSERT + RETURNING id INTO + SELECT *
             GenerateOracleReturnEntity(sb, returnTypeString, entityType, templateResult, classSymbol);
@@ -844,8 +844,8 @@ public class CodeGenerationService
                 var sqlUpper = templateResult.ProcessedSql.TrimStart().ToUpperInvariant();
                 // Special case: If SQL has "; SELECT last_insert_rowid()" (SQLite), use ExecuteScalar
                 var hasSqliteLastInsertRowid = templateResult.ProcessedSql.IndexOf("last_insert_rowid()", StringComparison.OrdinalIgnoreCase) >= 0;
-                
-                if (!hasSqliteLastInsertRowid && 
+
+                if (!hasSqliteLastInsertRowid &&
                     (sqlUpper.StartsWith("UPDATE ") || sqlUpper.StartsWith("DELETE ") ||
                     (sqlUpper.StartsWith("INSERT ") && innerType == "int")))
                 {
@@ -1700,7 +1700,7 @@ public class CodeGenerationService
     private static string AddReturningClauseForInsert(string sql, string dialect, bool returnAll = false)
     {
         // Dialect can be either enum value (0, 1, 2...) or string name
-        // SqlDefineTypes enum: MySql=0, SqlServer=1, PostgreSql=2, SQLite=3, Oracle=4
+        // SqlDefineTypes enum: MySql=0, SqlServer=1, PostgreSql=2, Oracle=3, DB2=4, SQLite=5
 
         var returningClause = returnAll ? "*" : "id";
 
@@ -1710,10 +1710,10 @@ public class CodeGenerationService
             return sql + $" RETURNING {returningClause}";
         }
 
-        // SQLite (3): Use custom code generation instead of SQL-level RETURNING
+        // SQLite (5): Use custom code generation instead of SQL-level RETURNING
         // RETURNING was only added in SQLite 3.35+ (2021-03-12), so we handle it differently
         // The actual logic is in GenerateSQLiteLastInsertId() and GenerateSQLiteReturnEntity()
-        if (dialect == "SQLite" || dialect == "3")
+        if (dialect == "SQLite" || dialect == "5")
         {
             // Return original SQL - special handling in execution code
             return sql;
@@ -1744,8 +1744,8 @@ public class CodeGenerationService
             return sql;
         }
 
-        // Oracle (4): RETURNING id INTO :out_id
-        if (dialect == "Oracle" || dialect == "4")
+        // Oracle (3): RETURNING id INTO :out_id
+        if (dialect == "Oracle" || dialect == "3")
         {
             if (returnAll)
             {

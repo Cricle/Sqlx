@@ -1,15 +1,32 @@
 <Project>
-  <!-- VS插件独立解决方案 - 简化包管理 -->
+  <!-- 通用项目配置 -->
   <PropertyGroup>
     <LangVersion>12.0</LangVersion>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <!-- 统一版本管理 -->
+  <PropertyGroup>
+    <Version>0.4.0</Version>
+    <AssemblyVersion>0.4.0.0</AssemblyVersion>
+    <FileVersion>0.4.0.0</FileVersion>
+  </PropertyGroup>
+
+  <!-- NuGet 包通用信息 -->
+  <PropertyGroup>
     <Authors>Sqlx Team</Authors>
     <Company>Sqlx</Company>
-    <Product>Sqlx Visual Studio Extension</Product>
+    <Product>Sqlx</Product>
     <Copyright>Copyright © 2025 Sqlx Team</Copyright>
-    <Version>1.0.0</Version>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/sqlxorg/sqlx</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/sqlxorg/sqlx</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
   <!-- VS SDK 包版本定义 -->

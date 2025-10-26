@@ -12,7 +12,7 @@
     <GenerateAotCompatibleCode>true</GenerateAotCompatibleCode>
     <DevelopmentDependency>true</DevelopmentDependency>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
-    
+
     <!-- Disable analyzer release tracking warnings (optional best practice) -->
     <NoWarn>$(NoWarn);RS2007;RS2008</NoWarn>
   </PropertyGroup>
@@ -20,10 +20,9 @@
   <!-- Package metadata -->
   <PropertyGroup>
     <PackageId>Sqlx.Generator</PackageId>
-    <Version>2.0.0</Version>
     <Title>Sqlx.Generator - Source Generator</Title>
     <Description>
-      Source generator for Sqlx 2.0.0 - Generates high-performance, type-safe data access code at compile time.
+      Source generator for Sqlx 0.4.0 - Generates high-performance, type-safe data access code at compile time.
       ✨ NEW: JOIN query generation, GROUP BY/HAVING, IN/LIKE/BETWEEN, CASE WHEN support
       💼 Transaction: Automatic Repository.Transaction property integration
       ⚡ Optimizations: List capacity pre-allocation, ordinal caching, minimal GC
@@ -36,7 +35,7 @@
       primary-constructor;record;netstandard;csharp;dotnet;production-ready
     </PackageTags>
     <PackageReleaseNotes>
-      v2.0.0 - Major Release: Production Ready! 🎉
+      v0.4.0 - Major Update
       🔗 JOIN query code generation (INNER/LEFT/multi-table)
       🎯 Advanced SQL: GROUP BY/HAVING, IN/LIKE/BETWEEN, CASE WHEN
       💼 Transaction support with Repository.Transaction property
@@ -44,7 +43,6 @@
       🛡️ Enhanced error handling: NULL, Unicode, large result sets
       📊 100% tested: 963 tests passing, ready for production use
     </PackageReleaseNotes>
-    <Authors>Sqlx Team</Authors>
   </PropertyGroup>
 
   <!-- Dependencies -->

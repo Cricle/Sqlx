@@ -8,10 +8,9 @@
 
   <PropertyGroup>
     <PackageId>Sqlx</PackageId>
-    <Version>2.0.0</Version>
     <Title>Sqlx - High-Performance Type-Safe .NET ORM</Title>
     <Description>
-      Sqlx 2.0.0 - Production-ready ORM with Dapper-level performance and EF Core-level features.
+      Sqlx 0.4.0 - Production-ready ORM with Dapper-level performance and EF Core-level features.
       ✨ NEW: JOIN queries (INNER/LEFT), GROUP BY/HAVING, IN/LIKE/BETWEEN, CASE WHEN, Transaction support
       ⚡ Performance: Close to Dapper (1.08-1.27x), better memory efficiency
       🛡️ Type-safe: Compile-time validation, zero reflection, full nullable support
@@ -25,7 +24,7 @@
       compile-time;zero-reflection;production-ready
     </PackageTags>
     <PackageReleaseNotes>
-      v2.0.0 - Major Release: Production Ready! 🎉
+      v0.4.0 - Major Update
       ✅ 100% Test Coverage: 963/963 tests passing
       🔗 JOIN Queries: INNER JOIN, LEFT JOIN, multi-table joins
       🎯 Advanced SQL: GROUP BY/HAVING, IN/LIKE/BETWEEN, CASE WHEN, DISTINCT
@@ -35,7 +34,6 @@
       📚 Full documentation and migration guide available
     </PackageReleaseNotes>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <Authors>Sqlx Team</Authors>
   </PropertyGroup>
 
   <ItemGroup>

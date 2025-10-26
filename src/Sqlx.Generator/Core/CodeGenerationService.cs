@@ -696,6 +696,12 @@ public class CodeGenerationService
 
         var currentDbDialect = GetDatabaseDialect(classSymbol);
 
+        // 🔍 Diagnostic: Log ReturnInsertedId detection
+        if (hasReturnInsertedId || hasReturnInsertedEntity)
+        {
+            sb.AppendLine($"// 🔍 DIAGNOSTIC: Method={method.Name}, DbDialect={currentDbDialect}, HasReturnId={hasReturnInsertedId}, HasReturnEntity={hasReturnInsertedEntity}");
+        }
+
         if (hasReturnInsertedId)
         {
             processedSql = AddReturningClauseForInsert(processedSql, currentDbDialect, returnAll: false);
@@ -789,16 +795,25 @@ public class CodeGenerationService
         // 性能优化：单次分类返回类型，避免重复计算
         var (returnCategory, innerType) = ClassifyReturnType(returnTypeString);
 
+        // 🔍 Diagnostic: Log return type classification
+        sb.AppendLine($"// 🔍 DIAGNOSTIC: ReturnType={returnTypeString}, Category={returnCategory}, InnerType={innerType}");
+
         // 🚀 MySQL/SQLite/Oracle Special Handling for ReturnInsertedId/Entity
         var dbDialect = GetDatabaseDialect(classSymbol);
+        
+        // 🔍 Diagnostic: Log special handling checks
+        sb.AppendLine($"// 🔍 DIAGNOSTIC: Checking special handling - DbDialect={dbDialect}, HasReturnId={hasReturnInsertedId}, Category={returnCategory}");
+        
         if ((dbDialect == "MySql" || dbDialect == "0") && hasReturnInsertedId && returnCategory == ReturnTypeCategory.Scalar)
         {
+            sb.AppendLine("// 🔍 DIAGNOSTIC: Entering MySQL special handling");
             // MySQL: INSERT + SELECT LAST_INSERT_ID()
             GenerateMySqlLastInsertId(sb, innerType);
             goto skipNormalExecution;
         }
         if ((dbDialect == "SQLite" || dbDialect == "3") && hasReturnInsertedId && returnCategory == ReturnTypeCategory.Scalar)
         {
+            sb.AppendLine("// 🔍 DIAGNOSTIC: Entering SQLite special handling");
             // SQLite: INSERT + SELECT last_insert_rowid()
             GenerateSQLiteLastInsertId(sb, innerType);
             goto skipNormalExecution;
@@ -840,7 +855,7 @@ public class CodeGenerationService
                 else
                 {
                     // 真正的Scalar查询（SELECT COUNT, SUM等）或 SQLite last_insert_rowid()
-                    GenerateScalarExecution(sb, innerType);
+                GenerateScalarExecution(sb, innerType);
                 }
                 break;
             case ReturnTypeCategory.Collection:
@@ -978,8 +993,13 @@ public class CodeGenerationService
         if (IsDynamicDictionary(innerType))
             return (ReturnTypeCategory.DynamicDictionary, innerType);
 
-        // 检查标量类型
-        if (innerType == "int" || innerType == "bool" || innerType == "decimal" || innerType == "double" || innerType == "string" || innerType == "long")
+        // 检查标量类型（支持简单名称和完全限定名称）
+        if (innerType == "int" || innerType == "System.Int32" ||
+            innerType == "long" || innerType == "System.Int64" ||
+            innerType == "bool" || innerType == "System.Boolean" ||
+            innerType == "decimal" || innerType == "System.Decimal" ||
+            innerType == "double" || innerType == "System.Double" ||
+            innerType == "string" || innerType == "System.String")
             return (ReturnTypeCategory.Scalar, innerType);
 
         // 检查集合类型（支持完全限定名称）

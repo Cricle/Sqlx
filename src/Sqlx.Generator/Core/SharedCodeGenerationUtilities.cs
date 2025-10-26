@@ -116,7 +116,8 @@ public static class SharedCodeGenerationUtilities
             if (collectionParams.Any())
             {
                 // Dynamic SQL with IN clause expansion
-                var escapedSql = sql.Replace("\"", "\"\"").Replace("\r\n", "\\r\\n").Replace("\n", "\\n").Replace("\t", "\\t");
+                // For verbatim string (@"..."), only double quotes need escaping
+                var escapedSql = sql.Replace("\"", "\"\"");
                 sb.AppendLine($"var __sql__ = @\"{escapedSql}\";");
 
                 foreach (var param in collectionParams)
@@ -147,7 +148,8 @@ public static class SharedCodeGenerationUtilities
             else
             {
                 // Static SQL (no dynamic placeholders, no collection parameters)
-                var escapedSql = sql.Replace("\"", "\"\"").Replace("\r\n", "\\r\\n").Replace("\n", "\\n").Replace("\t", "\\t");
+                // For verbatim string (@"..."), only double quotes need escaping
+                var escapedSql = sql.Replace("\"", "\"\"");
                 sb.AppendLine($"__cmd__.CommandText = @\"{escapedSql}\";");
             }
         }

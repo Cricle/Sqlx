@@ -156,7 +156,7 @@ public interface IAdvancedRepository
     Task<List<User>> GetHighValueCustomersAsync(decimal minAmount);
 
     // TOP查询
-    [SqlTemplate(@"SELECT name, age, balance FROM users ORDER BY balance DESC LIMIT @limit")]
+    [SqlTemplate(@"SELECT id, name, email, age, balance, created_at FROM users ORDER BY balance DESC LIMIT @limit")]
     Task<List<User>> GetTopRichUsersAsync(int limit);
 }
 

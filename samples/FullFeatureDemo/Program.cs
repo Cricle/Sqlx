@@ -373,7 +373,7 @@ static async Task Demo7_TransactionsAsync(IDbConnection connection)
 }
 
 
-static async Task InitializeDatabaseAsync(IDbConnection connection)
+static Task InitializeDatabaseAsync(IDbConnection connection)
 {
     Console.WriteLine("🔧 初始化数据库...");
     
@@ -439,6 +439,8 @@ static async Task InitializeDatabaseAsync(IDbConnection connection)
     
     Console.WriteLine("   ✅ 数据库初始化完成");
     Console.WriteLine();
+    
+    return Task.CompletedTask;
 }
 
 static void PrintSection(string title)

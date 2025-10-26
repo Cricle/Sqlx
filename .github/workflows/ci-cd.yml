@@ -79,7 +79,6 @@ jobs:
       if: github.event_name == 'push'
       run: |
         dotnet pack src/Sqlx --configuration Release --no-build --output ./artifacts
-        dotnet pack src/Sqlx.Generator --configuration Release --no-build --output ./artifacts
 
     - name: 📤 Upload artifacts
       if: github.event_name == 'push'

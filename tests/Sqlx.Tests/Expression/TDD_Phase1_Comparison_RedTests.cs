@@ -24,7 +24,7 @@ public class TDD_Phase1_Comparison_RedTests : CodeGenerationTestBase
     /// Expected SQL: WHERE age = @p0
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Expression-Comparison")]
     public void Expression_Equal_Should_Generate_Equal_SQL()
     {
@@ -78,7 +78,7 @@ public interface IUserRepository
     /// Expected SQL: WHERE age > @p0
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Expression-Comparison")]
     public void Expression_GreaterThan_Should_Generate_GreaterThan_SQL()
     {
@@ -127,7 +127,7 @@ public interface IUserRepository
     /// Expected SQL: WHERE age <> @p0
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Expression-Comparison")]
     public void Expression_NotEqual_Should_Generate_NotEqual_SQL()
     {
@@ -176,7 +176,7 @@ public interface IUserRepository
     /// Expected SQL: WHERE age >= @p0
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Expression-Comparison")]
     public void Expression_GreaterThanOrEqual_Should_Generate_GreaterThanOrEqual_SQL()
     {
@@ -224,7 +224,7 @@ public interface IUserRepository
     /// Expression parameter should be AOT-friendly (no runtime compilation).
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Expression-Comparison")]
     [TestCategory("AOT")]
     public void Expression_Should_Be_AOT_Friendly()
@@ -276,7 +276,7 @@ public interface IUserRepository
     /// Expression: u => u.Age > 18 (as a baseline test)
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Expression-Comparison")]
     public void Expression_LessThan_Should_Generate_LessThan_SQL()
     {

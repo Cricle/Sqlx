@@ -25,7 +25,7 @@ public class TDD_Phase1_INQuery_RedTests : CodeGenerationTestBase
     /// Array parameter should expand to multiple parameters in IN clause
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("CollectionSupport")]
     [TestCategory("IN-Query")]
     public void IN_Query_Array_Parameter_Should_Expand_To_Multiple_Parameters()
@@ -84,7 +84,7 @@ public interface IUserRepository
     /// IEnumerable parameter should work the same as array
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("CollectionSupport")]
     [TestCategory("IN-Query")]
     public void IN_Query_IEnumerable_Parameter_Should_Work()
@@ -138,7 +138,7 @@ public interface IUserRepository
     /// String parameter should NOT be treated as collection (even though it's IEnumerable<char>)
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("CollectionSupport")]
     [TestCategory("IN-Query")]
     public void String_Parameter_Should_Not_Be_Treated_As_Collection()
@@ -194,7 +194,7 @@ public interface IUserRepository
     /// Empty collection should be handled gracefully (avoid SQL error: WHERE id IN ())
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("CollectionSupport")]
     [TestCategory("IN-Query")]
     public void Empty_Collection_Should_Handle_Gracefully()
@@ -241,7 +241,7 @@ public interface IUserRepository
     /// List<T> parameter should work
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("CollectionSupport")]
     [TestCategory("IN-Query")]
     public void IN_Query_List_Parameter_Should_Work()

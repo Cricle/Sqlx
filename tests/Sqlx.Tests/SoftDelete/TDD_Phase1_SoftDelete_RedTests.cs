@@ -24,7 +24,7 @@ public class TDD_Phase1_SoftDelete_RedTests : CodeGenerationTestBase
     /// SELECT without WHERE should add "WHERE is_deleted = false"
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("SoftDelete")]
     public void SoftDelete_SELECT_Without_WHERE_Should_Add_Filter()
     {
@@ -73,7 +73,7 @@ public interface IUserRepository
     /// SELECT with existing WHERE should add "AND is_deleted = false"
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("SoftDelete")]
     public void SoftDelete_SELECT_With_WHERE_Should_Add_AND_Filter()
     {
@@ -125,7 +125,7 @@ public interface IUserRepository
     /// [IncludeDeleted] should bypass soft delete filter
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("SoftDelete")]
     public void IncludeDeleted_Should_Not_Filter()
     {
@@ -181,7 +181,7 @@ public interface IUserRepository
     /// DELETE should convert to UPDATE with is_deleted = true
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("SoftDelete")]
     public void SoftDelete_DELETE_Should_Convert_To_UPDATE()
     {
@@ -249,7 +249,7 @@ public interface IUserRepository
     /// DELETE with TimestampColumn should set deleted_at
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("SoftDelete")]
     public void SoftDelete_DELETE_With_Timestamp_Should_Set_DeletedAt()
     {

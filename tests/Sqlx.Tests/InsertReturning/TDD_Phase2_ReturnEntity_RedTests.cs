@@ -20,7 +20,7 @@ public class TDD_Phase2_ReturnInsertedEntity_RedTests : CodeGenerationTestBase
     /// PostgreSQL should generate RETURNING * clause to return all columns.
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Insert-ReturnEntity")]
     [TestCategory("PostgreSQL")]
     public void PostgreSQL_InsertAndGetEntity_Should_Generate_RETURNING_Star()
@@ -79,7 +79,7 @@ public interface IUserRepository
     /// SQL Server should generate OUTPUT INSERTED.* clause.
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Insert-ReturnEntity")]
     [TestCategory("SqlServer")]
     public void SqlServer_InsertAndGetEntity_Should_Generate_OUTPUT_INSERTED_Star()
@@ -132,7 +132,7 @@ public interface IUserRepository
     /// Should handle nullable columns correctly.
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Insert-ReturnEntity")]
     [TestCategory("Nullable")]
     public void ReturnInsertedEntity_Should_Handle_Nullable_Columns()
@@ -183,7 +183,7 @@ public interface IUserRepository
     /// Should be AOT-friendly with no reflection.
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Insert-ReturnEntity")]
     [TestCategory("AOT")]
     public void ReturnInsertedEntity_Should_Be_AOT_Friendly()

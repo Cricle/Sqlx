@@ -16,7 +16,7 @@ namespace Sqlx.Tests.CollectionSupport;
 public class TDD_BatchInsert_ColumnParsing : CodeGenerationTestBase
 {
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("BatchInsert")]
     [TestCategory("ColumnParsing")]
     public void BatchInsert_WithExplicitColumns_ExcludingIdAndCreatedAt_ShouldWork()
@@ -110,7 +110,7 @@ public interface ITestUserRepository
     }
 
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("BatchInsert")]
     [TestCategory("ColumnParsing")]
     public void BatchInsert_WithExplicitColumns_LargerBatch_ShouldWork()
@@ -156,7 +156,7 @@ public interface ITestUserRepository
     }
 
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("BatchInsert")]
     [TestCategory("ColumnParsing")]
     public void BatchInsert_WithExplicitColumns_100Items_ShouldWork()

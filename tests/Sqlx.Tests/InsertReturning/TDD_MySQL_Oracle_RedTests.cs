@@ -21,7 +21,7 @@ public class TDD_MySQL_Oracle_RedTests : CodeGenerationTestBase
     #region MySQL Tests
 
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("MySQL")]
     [TestCategory("InsertReturning")]
     public void MySQL_ReturnInsertedId_Should_UseLAST_INSERT_ID()
@@ -66,7 +66,7 @@ public interface IProductRepository
     }
 
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("MySQL")]
     [TestCategory("InsertReturning")]
     public void MySQL_ReturnInsertedEntity_Should_Use_INSERT_Then_SELECT()
@@ -117,7 +117,7 @@ public interface IProductRepository
     }
 
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("MySQL")]
     [TestCategory("InsertReturning")]
     public void MySQL_ReturnInsertedId_WithAuditFields_Should_Work()
@@ -167,7 +167,7 @@ public interface IProductRepository
     #region Oracle Tests
 
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Oracle")]
     [TestCategory("InsertReturning")]
     public void Oracle_ReturnInsertedId_Should_Use_RETURNING_INTO()
@@ -263,7 +263,7 @@ public interface IProductRepository
     }
 
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Oracle")]
     [TestCategory("InsertReturning")]
     public void Oracle_Parameters_Should_Use_Colon_Format()

@@ -23,24 +23,24 @@ public class TDD_ErrorHandling
     {
         var connection = new SqliteConnection("Data Source=:memory:");
         connection.Open();
-        
+
         connection.Execute(@"
             CREATE TABLE users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL
             )");
-        
+
         var repo = new ErrorTestRepository(connection);
-        
+
         // Act: Query non-existent record
         var user = repo.GetUserByIdAsync(999).Result;
-        
+
         // Assert: Should return null
         Assert.IsNull(user);
-        
+
         connection.Dispose();
     }
-    
+
     [TestMethod]
     [TestCategory("TDD-Green")]
     [TestCategory("ErrorHandling")]
@@ -49,25 +49,25 @@ public class TDD_ErrorHandling
     {
         var connection = new SqliteConnection("Data Source=:memory:");
         connection.Open();
-        
+
         connection.Execute(@"
             CREATE TABLE users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL
             )");
-        
+
         var repo = new ErrorTestRepository(connection);
-        
+
         // Act: Query empty table
         var users = repo.GetAllUsersAsync().Result;
-        
+
         // Assert: Should return empty list, not null
         Assert.IsNotNull(users);
         Assert.AreEqual(0, users.Count);
-        
+
         connection.Dispose();
     }
-    
+
     [TestMethod]
     [TestCategory("TDD-Green")]
     [TestCategory("ErrorHandling")]
@@ -76,24 +76,24 @@ public class TDD_ErrorHandling
     {
         var connection = new SqliteConnection("Data Source=:memory:");
         connection.Open();
-        
+
         connection.Execute(@"
             CREATE TABLE users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL
             )");
-        
+
         var repo = new ErrorTestRepository(connection);
-        
+
         // Act: Update non-existent record
         var affected = repo.UpdateUserAsync(999, "NewName").Result;
-        
+
         // Assert: Should return 0 affected rows
         Assert.AreEqual(0, affected);
-        
+
         connection.Dispose();
     }
-    
+
     [TestMethod]
     [TestCategory("TDD-Green")]
     [TestCategory("ErrorHandling")]
@@ -102,24 +102,24 @@ public class TDD_ErrorHandling
     {
         var connection = new SqliteConnection("Data Source=:memory:");
         connection.Open();
-        
+
         connection.Execute(@"
             CREATE TABLE users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL
             )");
-        
+
         var repo = new ErrorTestRepository(connection);
-        
+
         // Act: Delete non-existent record
         var affected = repo.DeleteUserAsync(999).Result;
-        
+
         // Assert: Should return 0 affected rows
         Assert.AreEqual(0, affected);
-        
+
         connection.Dispose();
     }
-    
+
     [TestMethod]
     [TestCategory("TDD-Green")]
     [TestCategory("ErrorHandling")]
@@ -128,26 +128,26 @@ public class TDD_ErrorHandling
     {
         var connection = new SqliteConnection("Data Source=:memory:");
         connection.Open();
-        
+
         connection.Execute(@"
             CREATE TABLE users (
                 id INTEGER PRIMARY KEY,
                 name TEXT NOT NULL
             )");
-        
+
         connection.Execute("INSERT INTO users (id, name) VALUES (1, 'Alice')");
-        
+
         var repo = new ErrorTestRepository(connection);
-        
+
         // Act & Assert: Should throw exception
         await Assert.ThrowsExceptionAsync<SqliteException>(async () =>
         {
             await repo.InsertUserWithIdAsync(1, "Bob");
         });
-        
+
         connection.Dispose();
     }
-    
+
     [TestMethod]
     [TestCategory("TDD-Green")]
     [TestCategory("ErrorHandling")]
@@ -156,132 +156,129 @@ public class TDD_ErrorHandling
     {
         var connection = new SqliteConnection("Data Source=:memory:");
         connection.Open();
-        
+
         connection.Execute(@"
             CREATE TABLE users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 email TEXT
             )");
-        
+
         connection.Execute("INSERT INTO users (name, email) VALUES ('Alice', NULL)");
         connection.Execute("INSERT INTO users (name, email) VALUES ('Bob', 'bob@test.com')");
-        
+
         var repo = new ErrorTestRepository(connection);
-        
+
         // Act
-        var alice = repo.GetUserByIdAsync(1).Result;
-        var bob = repo.GetUserByIdAsync(2).Result;
-        
+        var alice = repo.GetUserWithEmailByIdAsync(1).Result;
+        var bob = repo.GetUserWithEmailByIdAsync(2).Result;
+
         // Assert
         Assert.IsNotNull(alice);
         Assert.IsNull(alice.Email);
-        
+
         Assert.IsNotNull(bob);
         Assert.AreEqual("bob@test.com", bob.Email);
-        
+
         connection.Dispose();
     }
-    
+
     [TestMethod]
-    [Ignore("TODO: Large result set testing needs investigation")]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("ErrorHandling")]
     [TestCategory("Boundary")]
     public void Query_LargeResultSet_ShouldHandleCorrectly()
     {
         var connection = new SqliteConnection("Data Source=:memory:");
         connection.Open();
-        
+
         connection.Execute(@"
             CREATE TABLE users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL
             )");
-        
+
         // Insert 1000 records
         for (int i = 1; i <= 1000; i++)
         {
             connection.Execute($"INSERT INTO users (name) VALUES ('User{i}')");
         }
-        
+
         var repo = new ErrorTestRepository(connection);
-        
+
         // Act: Query all 1000 records
         var users = repo.GetAllUsersAsync().Result;
-        
+
         // Assert: Should return all records
         Assert.AreEqual(1000, users.Count);
-        
+
         connection.Dispose();
     }
-    
+
     [TestMethod]
-    [Ignore("TODO: Empty parameter needs special handling")]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("ErrorHandling")]
     [TestCategory("EmptyParameter")]
     public void Query_WithEmptyParameter_ShouldWorkCorrectly()
     {
         var connection = new SqliteConnection("Data Source=:memory:");
         connection.Open();
-        
+
         connection.Execute(@"
             CREATE TABLE users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL
             )");
-        
+
         connection.Execute("INSERT INTO users (name) VALUES ('')");
         connection.Execute("INSERT INTO users (name) VALUES ('Alice')");
-        
+
         var repo = new ErrorTestRepository(connection);
-        
+
         // Act: Query with empty string parameter
         var user = repo.FindByNameAsync("").Result;
-        
+
         // Assert: Should find the empty name record
         Assert.IsNotNull(user);
         Assert.AreEqual("", user.Name);
-        
+
         connection.Dispose();
     }
-    
+
     [TestMethod]
-    [Ignore("TODO: Connection reuse testing needs investigation")]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("ErrorHandling")]
     [TestCategory("MultipleQueries")]
     public void Connection_ReuseForMultipleQueries_ShouldWork()
     {
         var connection = new SqliteConnection("Data Source=:memory:");
         connection.Open();
-        
+
         connection.Execute(@"
             CREATE TABLE users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL
             )");
-        
+
         connection.Execute("INSERT INTO users (name) VALUES ('Alice')");
         connection.Execute("INSERT INTO users (name) VALUES ('Bob')");
-        
+
         var repo = new ErrorTestRepository(connection);
-        
+
         // Act: Multiple queries on same connection
         var user1 = repo.GetUserByIdAsync(1).Result;
         var user2 = repo.GetUserByIdAsync(2).Result;
         var allUsers = repo.GetAllUsersAsync().Result;
-        
+
         // Assert: All queries should work
         Assert.IsNotNull(user1);
         Assert.AreEqual("Alice", user1.Name);
-        
+
         Assert.IsNotNull(user2);
         Assert.AreEqual("Bob", user2.Name);
-        
+
         Assert.AreEqual(2, allUsers.Count);
-        
+
         connection.Dispose();
     }
 }
@@ -300,21 +297,24 @@ public partial class ErrorTestRepository(IDbConnection connection) : IErrorTestR
 
 public interface IErrorTestRepository
 {
-    [SqlTemplate("SELECT * FROM users WHERE id = @id")]
+    [SqlTemplate("SELECT id, name, NULL as email FROM users WHERE id = @id")]
     Task<ErrorTestUser?> GetUserByIdAsync(long id);
-    
-    [SqlTemplate("SELECT * FROM users")]
+
+    [SqlTemplate("SELECT id, name, email FROM users WHERE id = @id")]
+    Task<ErrorTestUser?> GetUserWithEmailByIdAsync(long id);
+
+    [SqlTemplate("SELECT id, name, NULL as email FROM users")]
     Task<List<ErrorTestUser>> GetAllUsersAsync();
-    
-    [SqlTemplate("SELECT * FROM users WHERE name = @name")]
+
+    [SqlTemplate("SELECT id, name, NULL as email FROM users WHERE name = @name")]
     Task<ErrorTestUser?> FindByNameAsync(string name);
-    
+
     [SqlTemplate("UPDATE users SET name = @name WHERE id = @id")]
     Task<int> UpdateUserAsync(long id, string name);
-    
+
     [SqlTemplate("DELETE FROM users WHERE id = @id")]
     Task<int> DeleteUserAsync(long id);
-    
+
     [SqlTemplate("INSERT INTO users (id, name) VALUES (@id, @name)")]
     Task<int> InsertUserWithIdAsync(long id, string name);
 }

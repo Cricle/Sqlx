@@ -25,7 +25,7 @@ public class TDD_Phase3_BatchInsert_RedTests : CodeGenerationTestBase
     /// {{values @entities}} should generate VALUES clauses for batch insert
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("CollectionSupport")]
     [TestCategory("BatchInsert")]
     public void BatchInsert_Should_Generate_VALUES_Clauses()
@@ -80,7 +80,7 @@ public interface IUserRepository
     /// [BatchOperation] should enable automatic batching
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("CollectionSupport")]
     [TestCategory("BatchInsert")]
     public void BatchOperation_Should_Enable_Auto_Batching()
@@ -135,7 +135,7 @@ public interface IProductRepository
     /// Batch insert should return total affected rows
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("CollectionSupport")]
     [TestCategory("BatchInsert")]
     public void BatchInsert_Should_Return_Total_Affected_Rows()
@@ -190,7 +190,7 @@ public interface IOrderRepository
     /// Empty collection should be handled gracefully
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("CollectionSupport")]
     [TestCategory("BatchInsert")]
     public void BatchInsert_Empty_Collection_Should_Handle_Gracefully()

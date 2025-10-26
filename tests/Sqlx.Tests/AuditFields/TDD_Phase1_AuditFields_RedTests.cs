@@ -24,7 +24,7 @@ public class TDD_Phase1_AuditFields_RedTests : CodeGenerationTestBase
     /// INSERT should automatically add created_at = NOW()
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("AuditFields")]
     [TestCategory("INSERT")]
     public void AuditFields_INSERT_Should_Set_CreatedAt()
@@ -89,7 +89,7 @@ public interface IUserRepository
     /// INSERT with CreatedBy should add created_by parameter
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("AuditFields")]
     [TestCategory("INSERT")]
     public void AuditFields_INSERT_Should_Set_CreatedBy_From_Parameter()
@@ -151,7 +151,7 @@ public interface IUserRepository
     /// UPDATE should automatically add updated_at = NOW()
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("AuditFields")]
     [TestCategory("UPDATE")]
     public void AuditFields_UPDATE_Should_Set_UpdatedAt()
@@ -214,7 +214,7 @@ public interface IUserRepository
     /// UPDATE with UpdatedBy should add updated_by parameter
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("AuditFields")]
     [TestCategory("UPDATE")]
     public void AuditFields_UPDATE_Should_Set_UpdatedBy_From_Parameter()
@@ -276,7 +276,7 @@ public interface IUserRepository
     /// Different databases should use appropriate timestamp functions
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("AuditFields")]
     [TestCategory("MultiDatabase")]
     public void AuditFields_Should_Use_Database_Specific_Timestamp_Functions()
@@ -323,7 +323,7 @@ public interface IUserRepository
     /// Audit fields should work together with soft delete
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("AuditFields")]
     [TestCategory("Integration")]
     public void AuditFields_Should_Work_With_SoftDelete()

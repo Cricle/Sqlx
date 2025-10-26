@@ -13,7 +13,7 @@ namespace Sqlx.Tests.InsertReturning
     public class TDD_Phase1_ReturnInsertedId_RedTests : CodeGenerationTestBase
     {
         [TestMethod]
-        [TestCategory("TDD-Red")]
+        [TestCategory("TDD-Green")]
         [TestCategory("Insert-ReturnId")]
         [TestCategory("PostgreSQL")]
         public void PostgreSQL_InsertAndGetId_Should_Generate_RETURNING_Clause()
@@ -66,7 +66,7 @@ namespace Test
         }
 
         [TestMethod]
-        [TestCategory("TDD-Red")]
+        [TestCategory("TDD-Green")]
         [TestCategory("Insert-ReturnId")]
         [TestCategory("SqlServer")]
         public void SqlServer_InsertAndGetId_Should_Generate_OUTPUT_Clause()
@@ -109,7 +109,7 @@ namespace Test
         }
 
         [TestMethod]
-        [TestCategory("TDD-Red")]
+        [TestCategory("TDD-Green")]
         [TestCategory("AOT")]
         public void ReturnInsertedId_Should_Be_AOT_Friendly_No_Reflection()
         {
@@ -156,7 +156,7 @@ namespace Test
         }
 
         [TestMethod]
-        [TestCategory("TDD-Red")]
+        [TestCategory("TDD-Green")]
         [TestCategory("GC-Optimization")]
         public void ReturnInsertedId_With_ValueTask_Should_Generate_ValueTask_Return()
         {

@@ -24,7 +24,7 @@ public class TDD_Phase2_Operators_RedTests : CodeGenerationTestBase
     #region Phase 2A: 比较运算符
 
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Expression")]
     [TestCategory("Phase2")]
     public void Expression_GreaterThanOrEqual_Should_Generate_SQL()
@@ -64,7 +64,7 @@ public interface IUserRepository
     }
 
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Expression")]
     [TestCategory("Phase2")]
     public void Expression_LessThanOrEqual_Should_Generate_SQL()
@@ -104,7 +104,7 @@ public interface IUserRepository
     }
 
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Expression")]
     [TestCategory("Phase2")]
     public void Expression_NotEqual_Should_Generate_SQL()
@@ -148,7 +148,7 @@ public interface IUserRepository
     #region Phase 2B: 逻辑运算符
 
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Expression")]
     [TestCategory("Phase2")]
     public void Expression_And_Should_Generate_SQL()
@@ -188,7 +188,7 @@ public interface IUserRepository
     }
 
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Expression")]
     [TestCategory("Phase2")]
     public void Expression_Or_Should_Generate_SQL()
@@ -228,7 +228,7 @@ public interface IUserRepository
     }
 
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Expression")]
     [TestCategory("Phase2")]
     public void Expression_Not_Should_Generate_SQL()
@@ -272,7 +272,7 @@ public interface IUserRepository
     #region Phase 2C: 字符串方法
 
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Expression")]
     [TestCategory("Phase2")]
     public void Expression_StartsWith_Should_Generate_LIKE()
@@ -312,7 +312,7 @@ public interface IUserRepository
     }
 
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Expression")]
     [TestCategory("Phase2")]
     public void Expression_EndsWith_Should_Generate_LIKE()
@@ -352,7 +352,7 @@ public interface IUserRepository
     }
 
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Expression")]
     [TestCategory("Phase2")]
     public void Expression_StringContains_Should_Generate_LIKE()
@@ -396,7 +396,7 @@ public interface IUserRepository
     #region Phase 2D: NULL检查
 
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Expression")]
     [TestCategory("Phase2")]
     public void Expression_EqualNull_Should_Generate_IS_NULL()
@@ -436,7 +436,7 @@ public interface IUserRepository
     }
 
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Expression")]
     [TestCategory("Phase2")]
     public void Expression_NotEqualNull_Should_Generate_IS_NOT_NULL()

@@ -26,7 +26,7 @@ public class TDD_Phase2_ExpressionContains_RedTests : CodeGenerationTestBase
     /// Expression with Contains should generate IN clause
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("CollectionSupport")]
     [TestCategory("Expression-Contains")]
     public void Expression_Contains_Should_Generate_IN_Clause()
@@ -82,7 +82,7 @@ public interface IUserRepository
     /// Expression Contains with List should work
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("CollectionSupport")]
     [TestCategory("Expression-Contains")]
     public void Expression_Contains_With_List_Should_Work()
@@ -133,7 +133,7 @@ public interface IProductRepository
     /// Expression with multiple conditions including Contains should work
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("CollectionSupport")]
     [TestCategory("Expression-Contains")]
     public void Expression_Multiple_Conditions_With_Contains_Should_Work()

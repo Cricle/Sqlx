@@ -23,7 +23,7 @@ public class TDD_Phase1_ConcurrencyCheck_RedTests : CodeGenerationTestBase
     /// UPDATE should automatically increment version
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("ConcurrencyCheck")]
     [TestCategory("UPDATE")]
     public void ConcurrencyCheck_UPDATE_Should_Increment_Version()
@@ -83,7 +83,7 @@ public interface IProductRepository
     /// UPDATE should check version in WHERE clause
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("ConcurrencyCheck")]
     [TestCategory("UPDATE")]
     public void ConcurrencyCheck_UPDATE_Should_Check_Version_In_WHERE()
@@ -146,7 +146,7 @@ public interface IProductRepository
     /// UPDATE without WHERE should add WHERE version = @version
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("ConcurrencyCheck")]
     [TestCategory("UPDATE")]
     public void ConcurrencyCheck_UPDATE_Without_WHERE_Should_Add_WHERE()
@@ -208,7 +208,7 @@ public interface IProductRepository
     /// Should return affected rows count (0 indicates conflict)
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("ConcurrencyCheck")]
     [TestCategory("Return")]
     public void ConcurrencyCheck_Should_Return_Affected_Rows()
@@ -267,7 +267,7 @@ public interface IProductRepository
     /// ConcurrencyCheck should work together with AuditFields
     /// </summary>
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("ConcurrencyCheck")]
     [TestCategory("Integration")]
     public void ConcurrencyCheck_Should_Work_With_AuditFields()

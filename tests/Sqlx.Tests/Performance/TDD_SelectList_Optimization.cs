@@ -166,7 +166,7 @@ public interface IUserRepository
     }
     
     [TestMethod]
-    [TestCategory("TDD-Red")]
+    [TestCategory("TDD-Green")]
     [TestCategory("Performance")]
     [TestCategory("SelectList")]
     public void Benchmark_CompareMapping_vs_ManualLoop()

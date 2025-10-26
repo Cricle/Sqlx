@@ -28,7 +28,7 @@ public partial class TodoRepository(SqliteConnection connection) : ITodoReposito
     // Custom business methods auto-generated from interface definitions below
 
     // Optional: execution monitoring
-    partial void OnExecuting(string operationName, global::System.Data.IDbCommand command)
+    partial void OnExecuting(string operationName, global::System.Data.Common.DbCommand command)
     {
         System.Diagnostics.Debug.WriteLine($"[{operationName}] SQL: {command.CommandText}");
     }

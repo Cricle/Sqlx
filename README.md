@@ -5,7 +5,7 @@
 [![NuGet](https://img.shields.io/nuget/v/Sqlx.svg)](https://www.nuget.org/packages/Sqlx/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](License.txt)
 [![Build](https://img.shields.io/github/actions/workflow/status/Cricle/Sqlx/dotnet.yml)](https://github.com/Cricle/Sqlx/actions)
-[![Tests](https://img.shields.io/badge/tests-1331%2F1331-brightgreen)](PROJECT_STATUS.md)
+[![Tests](https://img.shields.io/badge/tests-1412%2F1438-brightgreen)](PROJECT_STATUS.md)
 [![Coverage](https://img.shields.io/badge/coverage-95%25-brightgreen)](PROJECT_STATUS.md)
 
 **高性能、类型安全的 .NET 数据访问库**
@@ -30,9 +30,9 @@ public interface IUserRepository {
 // 2️⃣ 实现仓储 - Source Generator 自动生成代码
 [SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IUserRepository))]
-public partial class UserRepository(IDbConnection conn) : IUserRepository { }
+public partial class UserRepository(DbConnection conn) : IUserRepository { }
 
-// 3️⃣ 使用 - 完整的类型安全和智能感知
+// 3️⃣ 使用 - 完整的类型安全和智能感知 + 真正的异步
 var user = await repo.GetByIdAsync(1);
 Console.WriteLine(user?.Name);  // ✅ 编译时类型检查
 ```
@@ -85,6 +85,17 @@ Console.WriteLine(user?.Name);  // ✅ 编译时类型检查
 
 </td>
 </tr>
+<tr>
+<td colspan="2">
+
+### ⚡ 完全异步 (v1.x+)
+- **真正的异步I/O** - 使用`DbCommand`/`DbConnection`，不是`Task.FromResult`包装
+- **CancellationToken支持** - 自动检测并传递到所有数据库调用
+- **零阻塞操作** - 更高并发能力，支持任务取消
+- **向后兼容** - 只需将`IDbConnection`改为`DbConnection`
+
+</td>
+</tr>
 </table>
 
 ---
@@ -119,10 +130,12 @@ public interface IUserRepo {
 // 3. 实现仓储（自动生成）
 [SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IUserRepo))]
-public partial class UserRepo(IDbConnection conn) : IUserRepo { }
+public partial class UserRepo(DbConnection conn) : IUserRepo { }
 
-// 4. 使用
-using var conn = new SqliteConnection("Data Source=app.db");
+// 4. 使用（完全异步 + 支持取消令牌）
+using DbConnection conn = new SqliteConnection("Data Source=app.db");
+await conn.OpenAsync();
+
 var repo = new UserRepo(conn);
 
 await repo.InsertAsync("Alice", 25);
@@ -214,13 +227,13 @@ await repo.BatchInsertAsync(hugeList);  // ✅ 自动分批
 
 **事务支持**
 ```csharp
-using var tx = conn.BeginTransaction();
+using var tx = await conn.BeginTransactionAsync();
 var repo = new UserRepo(conn) { Transaction = tx };
 
 await repo.InsertAsync("User1", 20);
 await repo.InsertAsync("User2", 25);
 
-tx.Commit();  // ✅ 原子操作
+await tx.CommitAsync();  // ✅ 原子操作
 ```
 
 </td>
@@ -234,6 +247,28 @@ Task<long> InsertAndGetIdAsync(string name);
 
 // 自动返回新插入的ID
 var id = await repo.InsertAndGetIdAsync("Alice");
+```
+
+</td>
+</tr>
+<tr>
+<td colspan="2">
+
+**CancellationToken 自动支持** ⚡
+```csharp
+// 在接口中添加 CancellationToken 参数
+public interface IUserRepo {
+    [SqlTemplate("SELECT * FROM users WHERE age >= @minAge")]
+    Task<List<User>> GetAdultsAsync(int minAge, CancellationToken ct = default);
+}
+
+// 自动传递到所有数据库调用
+using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+try {
+    var users = await repo.GetAdultsAsync(18, cts.Token);  // ✅ 支持超时
+} catch (OperationCanceledException) {
+    // 操作被取消
+}
 ```
 
 </td>
@@ -326,6 +361,47 @@ dotnet run -c Release
 ```
 
 📊 [查看测试报告](PROJECT_STATUS.md)
+
+---
+
+## 🔄 异步迁移指南
+
+如果您从旧版本升级到v1.x（完全异步版本）：
+
+### 快速迁移步骤
+
+1. **更新连接类型**
+```diff
+- using IDbConnection conn = new SqliteConnection("...");
++ using DbConnection conn = new SqliteConnection("...");
+```
+
+2. **更新仓储定义**
+```diff
+- public partial class UserRepo(IDbConnection conn) : IUserRepo { }
++ public partial class UserRepo(DbConnection conn) : IUserRepo { }
+```
+
+3. **添加 using 语句**
+```csharp
+using System.Data.Common;  // 添加这行
+```
+
+4. **可选：添加 CancellationToken 支持**
+```diff
+- Task<User> GetUserAsync(long id);
++ Task<User> GetUserAsync(long id, CancellationToken ct = default);
+```
+
+5. **重新编译**
+```bash
+dotnet clean
+dotnet build
+```
+
+✅ **完成！** 所有生成的代码会自动使用真正的异步API。
+
+📖 详细迁移文档: [ASYNC_MIGRATION_SUMMARY.md](ASYNC_MIGRATION_SUMMARY.md)
 
 ---
 

@@ -10,86 +10,86 @@ namespace TodoWebApi.Models;
 /// 支持多种数据类型、索引、约束和AOT编译
 /// </summary>
 [TableName("todos")]
-public record Todo
+public class Todo
 {
     /// <summary>主键ID</summary>
     [Key]
-    public long Id { get; init; }
+    public long Id { get; set; }
 
     /// <summary>TODO标题</summary>
     [Required]
     [StringLength(200)]
-    public string Title { get; init; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
 
     /// <summary>TODO描述</summary>
-    public string? Description { get; init; }
+    public string? Description { get; set; }
 
     /// <summary>是否完成</summary>
-    public bool IsCompleted { get; init; }
+    public bool IsCompleted { get; set; }
 
     /// <summary>优先级（1-低，2-中，3-高，4-紧急，5-最高）</summary>
     [Range(1, 5)]
-    public int Priority { get; init; } = 2;
+    public int Priority { get; set; } = 2;
 
     /// <summary>截止日期</summary>
-    public DateTime? DueDate { get; init; }
+    public DateTime? DueDate { get; set; }
 
     /// <summary>创建时间</summary>
-    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>更新时间</summary>
-    public DateTime UpdatedAt { get; init; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>完成时间</summary>
-    public DateTime? CompletedAt { get; init; }
+    public DateTime? CompletedAt { get; set; }
 
     /// <summary>标签（JSON格式存储）</summary>
-    public string? Tags { get; init; }
+    public string? Tags { get; set; }
 
     /// <summary>估计工作时间（分钟）</summary>
-    public int? EstimatedMinutes { get; init; }
+    public int? EstimatedMinutes { get; set; }
 
     /// <summary>实际工作时间（分钟）</summary>
-    public int? ActualMinutes { get; init; }
+    public int? ActualMinutes { get; set; }
 }
 
 /// <summary>
 /// TODO分类模型
 /// </summary>
 [TableName("categories")]
-public record Category
+public class Category
 {
     [Key]
-    public long Id { get; init; }
+    public long Id { get; set; }
 
     [Required]
     [StringLength(100)]
-    public string Name { get; init; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
 
-    public string? Description { get; init; }
+    public string? Description { get; set; }
 
     [StringLength(7)] // #RRGGBB格式
-    public string Color { get; init; } = "#007bff";
+    public string Color { get; set; } = "#007bff";
 
-    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    public bool IsActive { get; init; } = true;
+    public bool IsActive { get; set; } = true;
 }
 
 /// <summary>
 /// TODO与分类的关联模型
 /// </summary>
 [TableName("todo_categories")]
-public record TodoCategory
+public class TodoCategory
 {
     [Key]
-    public long Id { get; init; }
+    public long Id { get; set; }
 
-    public long TodoId { get; init; }
+    public long TodoId { get; set; }
 
-    public long CategoryId { get; init; }
+    public long CategoryId { get; set; }
 
-    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
 /// <summary>

@@ -76,8 +76,8 @@ app.MapPost("/api/todos", async (CreateTodoRequest request, ITodoRepository repo
     cmd.CommandText = "SELECT last_insert_rowid()";
     var newId = (long)(await cmd.ExecuteScalarAsync() ?? 0L);
 
-    var created = todo with { Id = newId };
-    return Results.Json(created, TodoJsonContext.Default.Todo, statusCode: 201);
+    todo.Id = newId;
+    return Results.Json(todo, TodoJsonContext.Default.Todo, statusCode: 201);
 });
 
 // Update todo
@@ -87,21 +87,18 @@ app.MapPut("/api/todos/{id:long}", async (long id, UpdateTodoRequest request, IT
     if (existing is null)
         return Results.NotFound();
 
-    var updated = existing with
-    {
-        Title = request.Title,
-        Description = request.Description,
-        IsCompleted = request.IsCompleted,
-        Priority = request.Priority,
-        DueDate = request.DueDate,
-        Tags = request.Tags,
-        EstimatedMinutes = request.EstimatedMinutes,
-        UpdatedAt = DateTime.UtcNow,
-        CompletedAt = request.IsCompleted ? (existing.CompletedAt ?? DateTime.UtcNow) : null
-    };
+    existing.Title = request.Title;
+    existing.Description = request.Description;
+    existing.IsCompleted = request.IsCompleted;
+    existing.Priority = request.Priority;
+    existing.DueDate = request.DueDate;
+    existing.Tags = request.Tags;
+    existing.EstimatedMinutes = request.EstimatedMinutes;
+    existing.UpdatedAt = DateTime.UtcNow;
+    existing.CompletedAt = request.IsCompleted ? (existing.CompletedAt ?? DateTime.UtcNow) : null;
 
-    await repo.UpdateAsync(updated);
-    return Results.Json(updated, TodoJsonContext.Default.Todo);
+    await repo.UpdateAsync(existing);
+    return Results.Json(existing, TodoJsonContext.Default.Todo);
 });
 
 // Delete todo

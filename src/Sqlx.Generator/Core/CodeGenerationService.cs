@@ -393,6 +393,7 @@ public class CodeGenerationService
         GenerateFileHeader(sb, namespaceName);
         sb.AppendLine("using System.Linq;");
         sb.AppendLine("using System.Threading;");
+        sb.AppendLine("using Sqlx;");  // For ExpressionExtensions
         sb.AppendLine("using Sqlx.Annotations;");
         sb.AppendLine();
 
@@ -2415,18 +2416,34 @@ public class CodeGenerationService
     /// </summary>
     private string GetReaderMethod(ITypeSymbol type)
     {
-        var typeName = type.ToDisplayString();
+        // Get the full type name without nullable annotations
+        var typeName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+            .Replace("global::", "")
+            .TrimEnd('?');  // Remove nullable suffix if present
+        
+        // Also try the simple name for matching
+        var simpleName = type.Name;
+        
         return typeName switch
         {
             "string" or "System.String" => "String",
-            "int" or "System.Int32" => "Int32",
-            "long" or "System.Int64" => "Int64",
-            "bool" or "System.Boolean" => "Boolean",
-            "decimal" or "System.Decimal" => "Decimal",
-            "double" or "System.Double" => "Double",
-            "float" or "System.Single" => "Float",
-            "System.DateTime" => "DateTime",
-            "System.Guid" => "Guid",
+            "int" or "System.Int32" or "Int32" => "Int32",
+            "long" or "System.Int64" or "Int64" => "Int64",
+            "bool" or "System.Boolean" or "Boolean" => "Boolean",
+            "decimal" or "System.Decimal" or "Decimal" => "Decimal",
+            "double" or "System.Double" or "Double" => "Double",
+            "float" or "System.Single" or "Single" => "Float",
+            "System.DateTime" or "DateTime" => "DateTime",
+            "System.Guid" or "Guid" => "Guid",
+            _ when simpleName == "String" => "String",
+            _ when simpleName == "Int32" => "Int32",
+            _ when simpleName == "Int64" => "Int64",
+            _ when simpleName == "Boolean" => "Boolean",
+            _ when simpleName == "Decimal" => "Decimal",
+            _ when simpleName == "Double" => "Double",
+            _ when simpleName == "Single" => "Float",
+            _ when simpleName == "DateTime" => "DateTime",
+            _ when simpleName == "Guid" => "Guid",
             _ => "Value" // Fallback to GetValue
         };
     }
@@ -2489,8 +2506,11 @@ public class CodeGenerationService
             }
             else
             {
-                // Nullable or reference type
-                sb.AppendLine($"{prop.Name} = reader.IsDBNull({i}) ? default : reader.Get{GetReaderMethod(prop.Type)}({i}){comma}");
+                // Nullable or reference type - unwrap nullable type for GetReaderMethod
+                var underlyingType = prop.Type is INamedTypeSymbol namedType && namedType.IsGenericType && namedType.ConstructedFrom.ToString() == "System.Nullable<T>"
+                    ? namedType.TypeArguments[0]
+                    : prop.Type;
+                sb.AppendLine($"{prop.Name} = reader.IsDBNull({i}) ? default : reader.Get{GetReaderMethod(underlyingType)}({i}){comma}");
             }
         }
 
@@ -2561,8 +2581,11 @@ public class CodeGenerationService
             }
             else
             {
-                // Nullable or reference type
-                sb.AppendLine($"{prop.Name} = reader.IsDBNull({i}) ? default : reader.Get{GetReaderMethod(prop.Type)}({i}){comma}");
+                // Nullable or reference type - unwrap nullable type for GetReaderMethod
+                var underlyingType = prop.Type is INamedTypeSymbol namedType && namedType.IsGenericType && namedType.ConstructedFrom.ToString() == "System.Nullable<T>"
+                    ? namedType.TypeArguments[0]
+                    : prop.Type;
+                sb.AppendLine($"{prop.Name} = reader.IsDBNull({i}) ? default : reader.Get{GetReaderMethod(underlyingType)}({i}){comma}");
             }
         }
 
@@ -2633,8 +2656,11 @@ public class CodeGenerationService
             }
             else
             {
-                // Nullable or reference type
-                sb.AppendLine($"{prop.Name} = reader.IsDBNull({i}) ? default : reader.Get{GetReaderMethod(prop.Type)}({i}){comma}");
+                // Nullable or reference type - unwrap nullable type for GetReaderMethod
+                var underlyingType = prop.Type is INamedTypeSymbol namedType && namedType.IsGenericType && namedType.ConstructedFrom.ToString() == "System.Nullable<T>"
+                    ? namedType.TypeArguments[0]
+                    : prop.Type;
+                sb.AppendLine($"{prop.Name} = reader.IsDBNull({i}) ? default : reader.Get{GetReaderMethod(underlyingType)}({i}){comma}");
             }
         }
 

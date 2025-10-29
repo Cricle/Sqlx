@@ -52,6 +52,8 @@
     <Compile Include="SyntaxColoring\SqlClassificationDefinitions.cs" />
     <Compile Include="QuickActions\GenerateRepositoryCodeAction.cs" />
     <Compile Include="QuickActions\AddCrudMethodsCodeAction.cs" />
+    <Compile Include="Diagnostics\SqlTemplateParameterAnalyzer.cs" />
+    <Compile Include="Diagnostics\SqlTemplateParameterCodeFixProvider.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="source.extension.vsixmanifest">

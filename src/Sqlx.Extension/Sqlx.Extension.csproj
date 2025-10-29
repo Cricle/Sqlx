@@ -71,6 +71,8 @@
     <Compile Include="Commands\ShowSqlExecutionLogCommand.cs" />
     <Compile Include="ToolWindows\TemplateVisualizerWindow.cs" />
     <Compile Include="Commands\ShowTemplateVisualizerCommand.cs" />
+    <Compile Include="ToolWindows\PerformanceAnalyzerWindow.cs" />
+    <Compile Include="Commands\ShowPerformanceAnalyzerCommand.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="source.extension.vsixmanifest">

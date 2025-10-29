@@ -71,11 +71,11 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.VisualStudio.SDK" Version="17.0.32112.339" ExcludeAssets="runtime" NoWarn="NU1604" />
-    <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="17.14.2101" NoWarn="NU1604" />
-    <PackageReference Include="Microsoft.VisualStudio.Text.UI" Version="17.0.487" />
-    <PackageReference Include="Microsoft.VisualStudio.CoreUtility" Version="17.0.467" />
-    <PackageReference Include="Microsoft.VisualStudio.Language.StandardClassification" Version="17.0.498" />
+    <PackageReference Include="Microsoft.VisualStudio.SDK" ExcludeAssets="runtime" NoWarn="NU1604" />
+    <PackageReference Include="Microsoft.VSSDK.BuildTools" NoWarn="NU1604" />
+    <PackageReference Include="Microsoft.VisualStudio.Text.UI" />
+    <PackageReference Include="Microsoft.VisualStudio.CoreUtility" />
+    <PackageReference Include="Microsoft.VisualStudio.Language.StandardClassification" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(VSToolsPath)\VSSDK\Microsoft.VsSDK.targets" Condition="'$(VSToolsPath)' != ''" />

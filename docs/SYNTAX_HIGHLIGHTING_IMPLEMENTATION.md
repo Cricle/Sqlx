@@ -1,7 +1,7 @@
 # SqlTemplate 语法着色功能实现总结
 
-> **版本**: 0.5.0  
-> **日期**: 2025-10-29  
+> **版本**: 0.5.0
+> **日期**: 2025-10-29
 > **状态**: ✅ 实现完成并推送
 
 ---
@@ -74,10 +74,10 @@ SyntaxColoring/
    ```csharp
    // SQL关键字（大小写不敏感）
    @"\b(SELECT|INSERT|UPDATE|...)\b"
-   
+
    // 占位符（支持 --desc）
    @"\{\{[a-zA-Z_][a-zA-Z0-9_]*(?:\s+--desc)?\}\}"
-   
+
    // 参数
    @"@[a-zA-Z_][a-zA-Z0-9_]*"
    ```
@@ -102,7 +102,7 @@ SyntaxColoring/
    [Export(typeof(IClassifierProvider))]
    [ContentType("CSharp")]
    internal class SqlTemplateClassifierProvider { }
-   
+
    [Export(typeof(EditorFormatDefinition))]
    [ClassificationType(ClassificationTypeNames = "SqlKeyword")]
    internal sealed class SqlKeywordFormat { }
@@ -201,14 +201,14 @@ SyntaxColoring/
 public IList<ClassificationSpan> GetClassificationSpans(SnapshotSpan span)
 {
     var classifications = new List<ClassificationSpan>();
-    
+
     // 1. 检测上下文
     if (!IsSqlTemplateContext(span))
         return classifications;
-    
+
     // 2. 提取SQL内容
     var sqlContent = ExtractSqlContent(text);
-    
+
     // 3. 按优先级分类
     // 3.1 注释（最高）
     foreach (Match match in CommentRegex.Matches(sqlContent))
@@ -216,12 +216,12 @@ public IList<ClassificationSpan> GetClassificationSpans(SnapshotSpan span)
         classifications.Add(new ClassificationSpan(..., _sqlCommentType));
         classifiedRanges.Add(...);
     }
-    
+
     // 3.2 字符串
     // 3.3 占位符
     // 3.4 参数
     // 3.5 关键字（最低）
-    
+
     return classifications;
 }
 ```
@@ -420,15 +420,15 @@ internal sealed class SqlKeywordFormat : ClassificationFormatDefinition
 
 ---
 
-**功能状态**: ✅ **完成并推送**  
-**质量评级**: ⭐⭐⭐⭐⭐  
+**功能状态**: ✅ **完成并推送**
+**质量评级**: ⭐⭐⭐⭐⭐
 **用户价值**: 🔥🔥🔥 **极高**
 
 **下一步**: 继续实现 P0 剩余功能（快速操作、参数验证）
 
 ---
 
-**实现日期**: 2025-10-29  
-**开发团队**: Sqlx Team  
+**实现日期**: 2025-10-29
+**开发团队**: Sqlx Team
 **版本**: 0.5.0-dev
 

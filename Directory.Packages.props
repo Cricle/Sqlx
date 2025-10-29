@@ -79,5 +79,12 @@
   <ItemGroup Label="AOT Compiler" Condition="'$(EnableAOT)' == 'true'">
     <PackageVersion Include="Microsoft.DotNet.ILCompiler" Version="9.0.0" />
   </ItemGroup>
-  <!-- 注意：Visual Studio SDK 包由 VS 插件项目独立管理 (ManagePackageVersionsCentrally=false) -->
+  <!-- Visual Studio SDK -->
+  <ItemGroup Label="Visual Studio SDK">
+    <PackageVersion Include="Microsoft.VisualStudio.SDK" Version="17.0.32112.339" />
+    <PackageVersion Include="Microsoft.VSSDK.BuildTools" Version="17.14.2101" />
+    <PackageVersion Include="Microsoft.VisualStudio.Text.UI" Version="17.0.487" />
+    <PackageVersion Include="Microsoft.VisualStudio.CoreUtility" Version="17.0.467" />
+    <PackageVersion Include="Microsoft.VisualStudio.Language.StandardClassification" Version="17.0.498" />
+  </ItemGroup>
 </Project>

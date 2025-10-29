@@ -24,11 +24,11 @@ namespace Sqlx.Extension
     /// </para>
     /// </remarks>
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
-    [Guid(Sqlx.ExtensionPackage.PackageGuidString)]
-    public sealed class Sqlx.ExtensionPackage : AsyncPackage
+    [Guid(SqlxExtensionPackage.PackageGuidString)]
+    public sealed class SqlxExtensionPackage : AsyncPackage
     {
-         /// <summary>
-        /// Sqlx.ExtensionPackage GUID string.
+        /// <summary>
+        /// SqlxExtensionPackage GUID string.
         /// </summary>
         public const string PackageGuidString = "68875e51-7398-40d1-a8ab-5f2070fe3b4e";
 

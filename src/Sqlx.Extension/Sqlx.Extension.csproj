@@ -50,7 +50,6 @@
     <Compile Include="SyntaxColoring\SqlTemplateClassifier.cs" />
     <Compile Include="SyntaxColoring\SqlTemplateClassifierProvider.cs" />
     <Compile Include="SyntaxColoring\SqlClassificationDefinitions.cs" />
-    <Compile Include="Examples\SyntaxHighlightingExample.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="source.extension.vsixmanifest">
@@ -61,6 +60,12 @@
       <IncludeInVSIX>true</IncludeInVSIX>
     </None>
     <None Include="README.md">
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </None>
+    <None Include="Examples\SyntaxHighlightingExample.cs">
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </None>
+    <None Include="IMPLEMENTATION_NOTES.md">
       <IncludeInVSIX>true</IncludeInVSIX>
     </None>
   </ItemGroup>

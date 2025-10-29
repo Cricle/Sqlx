@@ -75,6 +75,12 @@
     <Compile Include="Commands\ShowPerformanceAnalyzerCommand.cs" />
     <Compile Include="ToolWindows\EntityMappingViewerWindow.cs" />
     <Compile Include="Commands\ShowEntityMappingViewerCommand.cs" />
+    <Compile Include="Debugging\SqlBreakpointInfo.cs" />
+    <Compile Include="Debugging\SqlBreakpointManager.cs" />
+    <Compile Include="ToolWindows\SqlBreakpointWindow.cs" />
+    <Compile Include="Commands\ShowSqlBreakpointCommand.cs" />
+    <Compile Include="ToolWindows\SqlWatchWindow.cs" />
+    <Compile Include="Commands\ShowSqlWatchCommand.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="source.extension.vsixmanifest">

@@ -139,6 +139,24 @@
           <ButtonText>Entity Mapping Viewer</ButtonText>
         </Strings>
       </Button>
+
+      <!-- SQL Breakpoint Window Command -->
+      <Button guid="guidSqlxExtensionPackageCmdSet" id="ShowSqlBreakpointCommandId" priority="0x0108" type="Button">
+        <Parent guid="guidSqlxExtensionPackageCmdSet" id="SqlxMenuGroup" />
+        <Icon guid="guidImages" id="bmpBreakpoint" />
+        <Strings>
+          <ButtonText>SQL Breakpoints</ButtonText>
+        </Strings>
+      </Button>
+
+      <!-- SQL Watch Window Command -->
+      <Button guid="guidSqlxExtensionPackageCmdSet" id="ShowSqlWatchCommandId" priority="0x0109" type="Button">
+        <Parent guid="guidSqlxExtensionPackageCmdSet" id="SqlxMenuGroup" />
+        <Icon guid="guidImages" id="bmpWatch" />
+        <Strings>
+          <ButtonText>SQL Watch</ButtonText>
+        </Strings>
+      </Button>
     </Buttons>
 
     <!--The bitmaps section is used to define the bitmaps that are used for the commands.-->
@@ -148,7 +166,7 @@
             bitmap strip containing the bitmaps and then there are the numeric ids of the elements used
             inside a button definition. An important aspect of this declaration is that the element id
             must be the actual index (1-based) of the bitmap inside the bitmap strip. -->
-      <Bitmap guid="guidImages" href="Resources\SqlxIcons.png" usedList="bmpSql, bmpCode, bmpTest, bmpExplorer, bmpLog, bmpVisualizer, bmpPerformance, bmpMapping"/>
+      <Bitmap guid="guidImages" href="Resources\SqlxIcons.png" usedList="bmpSql, bmpCode, bmpTest, bmpExplorer, bmpLog, bmpVisualizer, bmpPerformance, bmpMapping, bmpBreakpoint, bmpWatch"/>
     </Bitmaps>
   </Commands>
 
@@ -169,6 +187,8 @@
       <IDSymbol name="ShowTemplateVisualizerCommandId" value="0x0105" />
       <IDSymbol name="ShowPerformanceAnalyzerCommandId" value="0x0106" />
       <IDSymbol name="ShowEntityMappingViewerCommandId" value="0x0107" />
+      <IDSymbol name="ShowSqlBreakpointCommandId" value="0x0108" />
+      <IDSymbol name="ShowSqlWatchCommandId" value="0x0109" />
     </GuidSymbol>
 
     <!-- Icon images -->
@@ -181,6 +201,8 @@
       <IDSymbol name="bmpVisualizer" value="6" />
       <IDSymbol name="bmpPerformance" value="7" />
       <IDSymbol name="bmpMapping" value="8" />
+      <IDSymbol name="bmpBreakpoint" value="9" />
+      <IDSymbol name="bmpWatch" value="10" />
     </GuidSymbol>
   </Symbols>
 </CommandTable>

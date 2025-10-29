@@ -73,9 +73,8 @@ namespace Sqlx
         /// <example>
         /// await repo.UpdateWhereAsync(x => x.Status == "Pending", new { Status = "Active" });
         /// </example>
-        [ExpressionToSql(Target = "where")]
         [SqlTemplate("UPDATE {{table}} SET {{set --from updates}} {{where}}")]
-        Task<int> UpdateWhereAsync(Expression<Func<TEntity, bool>> predicate, object updates, CancellationToken cancellationToken = default);
+        Task<int> UpdateWhereAsync([ExpressionToSql] Expression<Func<TEntity, bool>> predicate, object updates, CancellationToken cancellationToken = default);
 
         /// <summary>Inserts if not exists, updates if exists (UPSERT/MERGE).</summary>
         /// <param name="entity">Entity to upsert</param>
@@ -105,11 +104,10 @@ namespace Sqlx
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Rows affected</returns>
         /// <example>
-        /// await repo.DeleteWhereAsync(x => x.CreatedAt < DateTime.Now.AddYears(-1));
+        /// await repo.DeleteWhereAsync(x => x.CreatedAt &lt; DateTime.Now.AddYears(-1));
         /// </example>
-        [ExpressionToSql]
         [SqlTemplate("DELETE FROM {{table}} {{where}}")]
-        Task<int> DeleteWhereAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
+        Task<int> DeleteWhereAsync([ExpressionToSql] Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
 
         // ===== Soft Delete Operations =====
 

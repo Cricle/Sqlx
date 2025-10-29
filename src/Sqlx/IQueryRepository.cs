@@ -104,21 +104,19 @@ namespace Sqlx
         // ===== Condition-based Queries =====
 
         /// <summary>Gets entities matching expression predicate.</summary>
-        /// <param name="predicate">Expression predicate (e.g., x => x.Age > 18 && x.IsActive)</param>
+        /// <param name="predicate">Expression predicate (e.g., x =&gt; x.Age &gt; 18 &amp;&amp; x.IsActive)</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>List of matching entities</returns>
         /// <example>
-        /// var users = await repo.GetWhereAsync(x => x.Age >= 18 && x.IsActive);
+        /// var users = await repo.GetWhereAsync(x =&gt; x.Age &gt;= 18 &amp;&amp; x.IsActive);
         /// </example>
-        [ExpressionToSql]
-        Task<List<TEntity>> GetWhereAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
+        Task<List<TEntity>> GetWhereAsync([ExpressionToSql] Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
 
         /// <summary>Gets first entity matching expression predicate.</summary>
         /// <param name="predicate">Expression predicate</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>First matching entity or null</returns>
-        [ExpressionToSql]
-        Task<TEntity?> GetFirstWhereAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
+        Task<TEntity?> GetFirstWhereAsync([ExpressionToSql] Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
 
         // ===== Existence Checks =====
 
@@ -133,8 +131,7 @@ namespace Sqlx
         /// <param name="predicate">Expression predicate</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>True if any match found, false otherwise</returns>
-        [ExpressionToSql]
-        Task<bool> ExistsWhereAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
+        Task<bool> ExistsWhereAsync([ExpressionToSql] Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
     }
 }
 

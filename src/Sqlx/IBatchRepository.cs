@@ -65,13 +65,12 @@ namespace Sqlx
         /// <returns>Rows affected</returns>
         /// <example>
         /// await repo.BatchUpdateWhereAsync(
-        ///     x => x.Status == "Pending" && x.CreatedAt < DateTime.Now.AddDays(-7),
+        ///     x =&gt; x.Status == "Pending" &amp;&amp; x.CreatedAt &lt; DateTime.Now.AddDays(-7),
         ///     new { Status = "Expired", UpdatedAt = DateTime.Now }
         /// );
         /// </example>
-        [ExpressionToSql]
         [SqlTemplate("UPDATE {{table}} SET {{set --from updates}} {{where}}")]
-        Task<int> BatchUpdateWhereAsync(Expression<Func<TEntity, bool>> predicate, object updates, CancellationToken cancellationToken = default);
+        Task<int> BatchUpdateWhereAsync([ExpressionToSql] Expression<Func<TEntity, bool>> predicate, object updates, CancellationToken cancellationToken = default);
 
         // ===== Batch Delete =====
 

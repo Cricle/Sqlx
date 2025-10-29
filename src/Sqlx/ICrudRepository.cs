@@ -12,26 +12,27 @@ using Sqlx.Annotations;
 namespace Sqlx
 {
     /// <summary>
-    /// Standard CRUD repository interface combining query, command, and aggregate operations.
+    /// Standard CRUD repository interface combining query and command operations.
     /// </summary>
     /// <typeparam name="TEntity">Entity type</typeparam>
     /// <typeparam name="TKey">Primary key type (int, long, Guid, etc.)</typeparam>
     /// <remarks>
-    /// This interface combines IQueryRepository, ICommandRepository, and IAggregateRepository
-    /// for standard CRUD scenarios. For more operations, use IRepository or individual interfaces.
+    /// This interface combines IQueryRepository and ICommandRepository
+    /// for standard CRUD scenarios. For aggregate operations, use IAggregateRepository separately.
+    /// For all operations combined, use IRepository interface.
     /// All queries use explicit column names (no SELECT *), parameterized queries for SQL injection prevention,
     /// and support CancellationToken for operation cancellation.
     /// </remarks>
     public interface ICrudRepository<TEntity, TKey> :
         IQueryRepository<TEntity, TKey>,
-        ICommandRepository<TEntity, TKey>,
-        IAggregateRepository<TEntity, TKey>
+        ICommandRepository<TEntity, TKey>
         where TEntity : class
     {
         // This interface inherits all methods from:
         // - IQueryRepository: GetById, GetAll, GetWhere, GetPage, Exists, etc.
         // - ICommandRepository: Insert, Update, Delete, SoftDelete, Upsert, etc.
-        // - IAggregateRepository: Count, Sum, Avg, Max, Min, etc.
+        // 
+        // For aggregate operations (Count, Sum, Avg, Max, Min), use IAggregateRepository separately
 
         // Legacy methods below for backward compatibility (v0.4)
         // New code should use the inherited methods instead
@@ -44,7 +45,7 @@ namespace Sqlx
         /// Uses primary key index for optimal performance.
         /// </remarks>
         [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
-        Task<TEntity?> GetByIdAsync(TKey id, CancellationToken cancellationToken = default);
+        new Task<TEntity?> GetByIdAsync(TKey id, CancellationToken cancellationToken = default);
 
         /// <summary>Gets all entities with pagination.</summary>
         /// <param name="limit">Max rows to return (default 100)</param>
@@ -67,7 +68,7 @@ namespace Sqlx
         /// Excludes Id column (assumed to be auto-increment primary key).
         /// </remarks>
         [SqlTemplate("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values --exclude Id}})")]
-        Task<int> InsertAsync(TEntity entity, CancellationToken cancellationToken = default);
+        new Task<int> InsertAsync(TEntity entity, CancellationToken cancellationToken = default);
 
         /// <summary>Updates entity by primary key.</summary>
         /// <param name="entity">Entity to update (must contain Id)</param>
@@ -78,7 +79,7 @@ namespace Sqlx
         /// Excludes Id column (primary key should not be updated).
         /// </remarks>
         [SqlTemplate("UPDATE {{table}} SET {{set --exclude Id}} WHERE id = @id")]
-        Task<int> UpdateAsync(TEntity entity, CancellationToken cancellationToken = default);
+        new Task<int> UpdateAsync(TEntity entity, CancellationToken cancellationToken = default);
 
         /// <summary>Deletes entity by primary key.</summary>
         /// <param name="id">Primary key of entity to delete</param>
@@ -89,7 +90,7 @@ namespace Sqlx
         /// This is a physical delete and cannot be undone. Consider soft delete with is_deleted flag.
         /// </remarks>
         [SqlTemplate("DELETE FROM {{table}} WHERE id = @id")]
-        Task<int> DeleteAsync(TKey id, CancellationToken cancellationToken = default);
+        new Task<int> DeleteAsync(TKey id, CancellationToken cancellationToken = default);
 
         /// <summary>Gets total count of entities.</summary>
         /// <param name="cancellationToken">Cancellation token</param>
@@ -99,7 +100,7 @@ namespace Sqlx
         /// For large tables, consider using approximations.
         /// </remarks>
         [SqlTemplate("SELECT COUNT(*) FROM {{table}}")]
-        Task<int> CountAsync(CancellationToken cancellationToken = default);
+        Task<long> CountAsync(CancellationToken cancellationToken = default);
 
         /// <summary>Checks if entity exists.</summary>
         /// <param name="id">Primary key value</param>
@@ -110,7 +111,7 @@ namespace Sqlx
         /// Uses EXISTS for better performance than COUNT(*).
         /// </remarks>
         [SqlTemplate("SELECT CASE WHEN EXISTS(SELECT 1 FROM {{table}} WHERE id = @id) THEN 1 ELSE 0 END")]
-        Task<bool> ExistsAsync(TKey id, CancellationToken cancellationToken = default);
+        new Task<bool> ExistsAsync(TKey id, CancellationToken cancellationToken = default);
 
         /// <summary>Batch inserts multiple entities (high performance).</summary>
         /// <param name="entities">Entities to insert</param>

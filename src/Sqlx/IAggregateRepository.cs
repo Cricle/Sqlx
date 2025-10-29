@@ -34,11 +34,10 @@ namespace Sqlx
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Count of matching rows</returns>
         /// <example>
-        /// long count = await repo.CountWhereAsync(x => x.IsActive && x.Age >= 18);
+        /// long count = await repo.CountWhereAsync(x =&gt; x.IsActive &amp;&amp; x.Age &gt;= 18);
         /// </example>
-        [ExpressionToSql]
         [SqlTemplate("SELECT COUNT(*) FROM {{table}} {{where}}")]
-        Task<long> CountWhereAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
+        Task<long> CountWhereAsync([ExpressionToSql] Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
 
         /// <summary>Gets count grouped by column value.</summary>
         /// <param name="column">Column name to group by</param>
@@ -69,11 +68,10 @@ namespace Sqlx
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Sum of matching rows</returns>
         /// <example>
-        /// decimal paidTotal = await repo.SumWhereAsync("amount", x => x.Status == "Paid");
+        /// decimal paidTotal = await repo.SumWhereAsync("amount", x =&gt; x.Status == "Paid");
         /// </example>
-        [ExpressionToSql]
         [SqlTemplate("SELECT COALESCE(SUM(@column), 0) FROM {{table}} {{where}}")]
-        Task<decimal> SumWhereAsync(string column, Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
+        Task<decimal> SumWhereAsync(string column, [ExpressionToSql] Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
 
         // ===== Average Operations =====
 
@@ -92,9 +90,8 @@ namespace Sqlx
         /// <param name="predicate">Expression predicate for WHERE clause</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Average of matching rows</returns>
-        [ExpressionToSql]
         [SqlTemplate("SELECT COALESCE(AVG(@column), 0) FROM {{table}} {{where}}")]
-        Task<decimal> AvgWhereAsync(string column, Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
+        Task<decimal> AvgWhereAsync(string column, [ExpressionToSql] Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
 
         // ===== Min/Max Operations =====
 

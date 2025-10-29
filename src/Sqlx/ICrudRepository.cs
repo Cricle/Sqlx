@@ -12,17 +12,29 @@ using Sqlx.Annotations;
 namespace Sqlx
 {
     /// <summary>
-    /// Generic CRUD repository interface providing standard create, read, update, delete operations.
+    /// Standard CRUD repository interface combining query, command, and aggregate operations.
     /// </summary>
     /// <typeparam name="TEntity">Entity type</typeparam>
     /// <typeparam name="TKey">Primary key type (int, long, Guid, etc.)</typeparam>
     /// <remarks>
+    /// This interface combines IQueryRepository, ICommandRepository, and IAggregateRepository
+    /// for standard CRUD scenarios. For more operations, use IRepository or individual interfaces.
     /// All queries use explicit column names (no SELECT *), parameterized queries for SQL injection prevention,
     /// and support CancellationToken for operation cancellation.
     /// </remarks>
-    public interface ICrudRepository<TEntity, TKey>
+    public interface ICrudRepository<TEntity, TKey> :
+        IQueryRepository<TEntity, TKey>,
+        ICommandRepository<TEntity, TKey>,
+        IAggregateRepository<TEntity, TKey>
         where TEntity : class
     {
+        // This interface inherits all methods from:
+        // - IQueryRepository: GetById, GetAll, GetWhere, GetPage, Exists, etc.
+        // - ICommandRepository: Insert, Update, Delete, SoftDelete, Upsert, etc.
+        // - IAggregateRepository: Count, Sum, Avg, Max, Min, etc.
+        
+        // Legacy methods below for backward compatibility (v0.4)
+        // New code should use the inherited methods instead
         /// <summary>Gets entity by primary key.</summary>
         /// <param name="id">Primary key value</param>
         /// <param name="cancellationToken">Cancellation token</param>
@@ -114,28 +126,64 @@ namespace Sqlx
     }
 
     /// <summary>
-    /// Read-only repository interface - contains only query operations.
+    /// Complete repository interface with all operations (50+ methods).
+    /// </summary>
+    /// <typeparam name="TEntity">Entity type</typeparam>
+    /// <typeparam name="TKey">Primary key type</typeparam>
+    public interface IRepository<TEntity, TKey> :
+        IQueryRepository<TEntity, TKey>,
+        ICommandRepository<TEntity, TKey>,
+        IBatchRepository<TEntity, TKey>,
+        IAggregateRepository<TEntity, TKey>,
+        IAdvancedRepository<TEntity, TKey>
+        where TEntity : class
+    {
+        // This interface inherits all methods from all repository interfaces
+    }
+
+    /// <summary>
+    /// Read-only repository interface - contains only query and aggregate operations.
     /// Suitable for reporting, data display, read replicas, and CQRS query models.
     /// </summary>
     /// <typeparam name="TEntity">Entity type</typeparam>
     /// <typeparam name="TKey">Primary key type</typeparam>
-    public interface IReadOnlyRepository<TEntity, TKey>
+    public interface IReadOnlyRepository<TEntity, TKey> :
+        IQueryRepository<TEntity, TKey>,
+        IAggregateRepository<TEntity, TKey>
         where TEntity : class
     {
-        /// <summary>Gets entity by primary key.</summary>
-        [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
-        Task<TEntity?> GetByIdAsync(TKey id, CancellationToken cancellationToken = default);
+        // This interface inherits methods from:
+        // - IQueryRepository: GetById, GetAll, GetWhere, GetPage, Exists, etc.
+        // - IAggregateRepository: Count, Sum, Avg, Max, Min, etc.
+    }
 
-        /// <summary>Gets all entities with pagination.</summary>
-        [SqlTemplate("SELECT {{columns}} FROM {{table}} ORDER BY id {{limit --param limit}} {{offset --param offset}}")]
-        Task<List<TEntity>> GetAllAsync(int limit = 100, int offset = 0, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Bulk operations repository interface for high-performance data manipulation.
+    /// </summary>
+    /// <typeparam name="TEntity">Entity type</typeparam>
+    /// <typeparam name="TKey">Primary key type</typeparam>
+    public interface IBulkRepository<TEntity, TKey> :
+        IQueryRepository<TEntity, TKey>,
+        IBatchRepository<TEntity, TKey>
+        where TEntity : class
+    {
+        // This interface inherits methods from:
+        // - IQueryRepository: For reading data
+        // - IBatchRepository: For bulk insert/update/delete operations
+    }
 
-        /// <summary>Gets total count of entities.</summary>
-        [SqlTemplate("SELECT COUNT(*) FROM {{table}}")]
-        Task<int> CountAsync(CancellationToken cancellationToken = default);
-
-        /// <summary>Checks if entity exists.</summary>
-        [SqlTemplate("SELECT CASE WHEN EXISTS(SELECT 1 FROM {{table}} WHERE id = @id) THEN 1 ELSE 0 END")]
-        Task<bool> ExistsAsync(TKey id, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Write-only repository interface for command side in CQRS pattern.
+    /// </summary>
+    /// <typeparam name="TEntity">Entity type</typeparam>
+    /// <typeparam name="TKey">Primary key type</typeparam>
+    public interface IWriteOnlyRepository<TEntity, TKey> :
+        ICommandRepository<TEntity, TKey>,
+        IBatchRepository<TEntity, TKey>
+        where TEntity : class
+    {
+        // This interface inherits methods from:
+        // - ICommandRepository: For single entity operations
+        // - IBatchRepository: For bulk operations
     }
 }

@@ -10,7 +10,7 @@ using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
-using Xunit;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Sqlx;
 using Sqlx.Annotations;
 
@@ -20,6 +20,7 @@ namespace Sqlx.Tests.Predefined
     /// Comprehensive tests for all predefined repository interfaces.
     /// Tests record types, struct values, and all interface methods.
     /// </summary>
+    [TestClass]
     public class PredefinedInterfacesTests : IDisposable
     {
         private readonly SqliteConnection _connection;
@@ -35,105 +36,9 @@ namespace Sqlx.Tests.Predefined
             _connection?.Dispose();
         }
 
-        #region Test Entities
-
-        // Test with record type (user requirement: support record)
-        [TableName("users")]
-        public record User
-        {
-            public long Id { get; set; }
-            public string Name { get; set; } = string.Empty;
-            public string? Email { get; set; }
-            public int Age { get; set; }
-            public bool IsActive { get; set; }
-            public DateTime CreatedAt { get; set; }
-            public DateTime? UpdatedAt { get; set; }
-        }
-
-        // Test with regular class
-        [TableName("products")]
-        public class Product
-        {
-            public long Id { get; set; }
-            public string Name { get; set; } = string.Empty;
-            public decimal Price { get; set; }
-            public int Stock { get; set; }
-            public DateTime CreatedAt { get; set; }
-        }
-
-        // Test struct value type (user requirement: support struct return values)
-        public struct UserStats
-        {
-            public int TotalUsers { get; set; }
-            public int ActiveUsers { get; set; }
-            public double AverageAge { get; set; }
-        }
-
-        #endregion
-
-        #region Test Repositories
-
-        [RepositoryFor(typeof(User))]
-        public partial class UserCrudRepository : ICrudRepository<User, long>
-        {
-            public IDbConnection Connection { get; }
-            public UserCrudRepository(IDbConnection connection)
-            {
-                Connection = connection;
-            }
-        }
-
-        [RepositoryFor(typeof(User))]
-        public partial class UserQueryRepository : IQueryRepository<User, long>
-        {
-            public IDbConnection Connection { get; }
-            public UserQueryRepository(IDbConnection connection)
-            {
-                Connection = connection;
-            }
-        }
-
-        [RepositoryFor(typeof(User))]
-        public partial class UserCommandRepository : ICommandRepository<User, long>
-        {
-            public IDbConnection Connection { get; }
-            public UserCommandRepository(IDbConnection connection)
-            {
-                Connection = connection;
-            }
-        }
-
-        [RepositoryFor(typeof(User))]
-        public partial class UserAggregateRepository : IAggregateRepository<User, long>
-        {
-            public IDbConnection Connection { get; }
-            public UserAggregateRepository(IDbConnection connection)
-            {
-                Connection = connection;
-            }
-        }
-
-        [RepositoryFor(typeof(User))]
-        public partial class UserBatchRepository : IBatchRepository<User, long>
-        {
-            public IDbConnection Connection { get; }
-            public UserBatchRepository(IDbConnection connection)
-            {
-                Connection = connection;
-            }
-        }
-
-        [RepositoryFor(typeof(Product))]
-        public partial class ProductRepository : ICrudRepository<Product, long>
-        {
-            public IDbConnection Connection { get; }
-            public ProductRepository(IDbConnection connection)
-            {
-                Connection = connection;
-            }
-        }
-
-        #endregion
+        // Entities and Repositories are now defined in separate files:
+        // - TestEntities.cs: User (record), Product (class), UserStats (struct)
+        // - TestRepositories.cs: All test repository implementations
 
         #region Helper Methods
 
@@ -171,7 +76,7 @@ namespace Sqlx.Tests.Predefined
 
         #region ICrudRepository Tests
 
-        [Fact]
+        [TestMethod]
         public async Task ICrudRepository_GetByIdAsync_RecordType_ShouldWork()
         {
             // Arrange
@@ -180,10 +85,10 @@ namespace Sqlx.Tests.Predefined
             
             // This test verifies record type support
             // The source generator should handle record types correctly
-            Assert.NotNull(repo);
+            Assert.IsNotNull(repo);
         }
 
-        [Fact]
+        [TestMethod]
         public async Task ICrudRepository_CountAsync_ShouldReturnZeroForEmptyTable()
         {
             // Arrange
@@ -194,14 +99,14 @@ namespace Sqlx.Tests.Predefined
             var count = await repo.CountAsync();
             
             // Assert
-            Assert.Equal(0L, count);
+            Assert.AreEqual(0L, count);
         }
 
         #endregion
 
         #region IQueryRepository Tests
 
-        [Fact]
+        [TestMethod]
         public async Task IQueryRepository_GetByIdAsync_ShouldReturnNullWhenNotFound()
         {
             // Arrange
@@ -212,10 +117,10 @@ namespace Sqlx.Tests.Predefined
             var user = await repo.GetByIdAsync(999);
             
             // Assert
-            Assert.Null(user);
+            Assert.IsNull(user);
         }
 
-        [Fact]
+        [TestMethod]
         public async Task IQueryRepository_GetAllAsync_ShouldReturnEmptyList()
         {
             // Arrange
@@ -227,10 +132,10 @@ namespace Sqlx.Tests.Predefined
             
             // Assert
             Assert.NotNull(users);
-            Assert.Empty(users);
+            Assert.AreEqual(0, users.Count);
         }
 
-        [Fact]
+        [TestMethod]
         public async Task IQueryRepository_ExistsAsync_ShouldReturnFalse()
         {
             // Arrange
@@ -241,14 +146,14 @@ namespace Sqlx.Tests.Predefined
             var exists = await repo.ExistsAsync(999);
             
             // Assert
-            Assert.False(exists);
+            Assert.IsFalse(exists);
         }
 
         #endregion
 
         #region ICommandRepository Tests
 
-        [Fact]
+        [TestMethod]
         public async Task ICommandRepository_DeleteAsync_ShouldReturnZeroWhenNotFound()
         {
             // Arrange
@@ -259,14 +164,14 @@ namespace Sqlx.Tests.Predefined
             var affected = await repo.DeleteAsync(999);
             
             // Assert
-            Assert.Equal(0, affected);
+            Assert.AreEqual(0, affected);
         }
 
         #endregion
 
         #region IAggregateRepository Tests
 
-        [Fact]
+        [TestMethod]
         public async Task IAggregateRepository_CountAsync_ShouldReturnZero()
         {
             // Arrange
@@ -277,10 +182,10 @@ namespace Sqlx.Tests.Predefined
             var count = await repo.CountAsync();
             
             // Assert
-            Assert.Equal(0L, count);
+            Assert.AreEqual(0L, count);
         }
 
-        [Fact]
+        [TestMethod]
         public async Task IAggregateRepository_SumAsync_ShouldReturnZero()
         {
             // Arrange
@@ -291,10 +196,10 @@ namespace Sqlx.Tests.Predefined
             var sum = await repo.SumAsync("age");
             
             // Assert
-            Assert.Equal(0m, sum);
+            Assert.AreEqual(0m, sum);
         }
 
-        [Fact]
+        [TestMethod]
         public async Task IAggregateRepository_AvgAsync_ShouldReturnZero()
         {
             // Arrange
@@ -305,14 +210,14 @@ namespace Sqlx.Tests.Predefined
             var avg = await repo.AvgAsync("age");
             
             // Assert
-            Assert.Equal(0m, avg);
+            Assert.AreEqual(0m, avg);
         }
 
         #endregion
 
         #region IBatchRepository Tests
 
-        [Fact]
+        [TestMethod]
         public async Task IBatchRepository_BatchInsertAsync_ShouldReturnZeroForEmptyList()
         {
             // Arrange
@@ -324,14 +229,14 @@ namespace Sqlx.Tests.Predefined
             var affected = await repo.BatchInsertAsync(users);
             
             // Assert
-            Assert.Equal(0, affected);
+            Assert.AreEqual(0, affected);
         }
 
         #endregion
 
         #region Class Type Tests
 
-        [Fact]
+        [TestMethod]
         public async Task ProductRepository_ClassType_ShouldWork()
         {
             // Arrange
@@ -339,10 +244,10 @@ namespace Sqlx.Tests.Predefined
             var repo = new ProductRepository(_connection);
             
             // This test verifies class type support
-            Assert.NotNull(repo);
+            Assert.IsNotNull(repo);
         }
 
-        [Fact]
+        [TestMethod]
         public async Task ProductRepository_CountAsync_ShouldReturnZero()
         {
             // Arrange
@@ -353,7 +258,7 @@ namespace Sqlx.Tests.Predefined
             var count = await repo.CountAsync();
             
             // Assert
-            Assert.Equal(0L, count);
+            Assert.AreEqual(0L, count);
         }
 
         #endregion
@@ -363,7 +268,7 @@ namespace Sqlx.Tests.Predefined
         /// <summary>
         /// Verifies all IQueryRepository methods are implemented.
         /// </summary>
-        [Fact]
+        [TestMethod]
         public void IQueryRepository_AllMethodsShouldBeImplemented()
         {
             var interfaceType = typeof(IQueryRepository<,>);
@@ -372,23 +277,23 @@ namespace Sqlx.Tests.Predefined
             // Verify we have the expected methods
             var methodNames = methods.Select(m => m.Name).ToList();
             
-            Assert.Contains("GetByIdAsync", methodNames);
-            Assert.Contains("GetByIdsAsync", methodNames);
-            Assert.Contains("GetAllAsync", methodNames);
-            Assert.Contains("GetTopAsync", methodNames);
-            Assert.Contains("GetRangeAsync", methodNames);
-            Assert.Contains("GetPageAsync", methodNames);
-            Assert.Contains("GetWhereAsync", methodNames);
-            Assert.Contains("GetFirstWhereAsync", methodNames);
-            Assert.Contains("ExistsAsync", methodNames);
-            Assert.Contains("ExistsWhereAsync", methodNames);
-            Assert.Contains("GetRandomAsync", methodNames);
+            CollectionAssert.Contains(methodNames, "GetByIdAsync");
+            CollectionAssert.Contains(methodNames, "GetByIdsAsync");
+            CollectionAssert.Contains(methodNames, "GetAllAsync");
+            CollectionAssert.Contains(methodNames, "GetTopAsync");
+            CollectionAssert.Contains(methodNames, "GetRangeAsync");
+            CollectionAssert.Contains(methodNames, "GetPageAsync");
+            CollectionAssert.Contains(methodNames, "GetWhereAsync");
+            CollectionAssert.Contains(methodNames, "GetFirstWhereAsync");
+            CollectionAssert.Contains(methodNames, "ExistsAsync");
+            CollectionAssert.Contains(methodNames, "ExistsWhereAsync");
+            CollectionAssert.Contains(methodNames, "GetRandomAsync");
         }
 
         /// <summary>
         /// Verifies all ICommandRepository methods are implemented.
         /// </summary>
-        [Fact]
+        [TestMethod]
         public void ICommandRepository_AllMethodsShouldBeImplemented()
         {
             var interfaceType = typeof(ICommandRepository<,>);
@@ -396,23 +301,23 @@ namespace Sqlx.Tests.Predefined
             
             var methodNames = methods.Select(m => m.Name).ToList();
             
-            Assert.Contains("InsertAsync", methodNames);
-            Assert.Contains("InsertAndGetIdAsync", methodNames);
-            Assert.Contains("InsertAndGetEntityAsync", methodNames);
-            Assert.Contains("UpdateAsync", methodNames);
-            Assert.Contains("UpdatePartialAsync", methodNames);
-            Assert.Contains("UpdateWhereAsync", methodNames);
-            Assert.Contains("DeleteAsync", methodNames);
-            Assert.Contains("DeleteWhereAsync", methodNames);
-            Assert.Contains("SoftDeleteAsync", methodNames);
-            Assert.Contains("RestoreAsync", methodNames);
-            Assert.Contains("PurgeDeletedAsync", methodNames);
+            CollectionAssert.Contains(methodNames, "InsertAsync");
+            CollectionAssert.Contains(methodNames, "InsertAndGetIdAsync");
+            CollectionAssert.Contains(methodNames, "InsertAndGetEntityAsync");
+            CollectionAssert.Contains(methodNames, "UpdateAsync");
+            CollectionAssert.Contains(methodNames, "UpdatePartialAsync");
+            CollectionAssert.Contains(methodNames, "UpdateWhereAsync");
+            CollectionAssert.Contains(methodNames, "DeleteAsync");
+            CollectionAssert.Contains(methodNames, "DeleteWhereAsync");
+            CollectionAssert.Contains(methodNames, "SoftDeleteAsync");
+            CollectionAssert.Contains(methodNames, "RestoreAsync");
+            CollectionAssert.Contains(methodNames, "PurgeDeletedAsync");
         }
 
         /// <summary>
         /// Verifies all IAggregateRepository methods are implemented.
         /// </summary>
-        [Fact]
+        [TestMethod]
         public void IAggregateRepository_AllMethodsShouldBeImplemented()
         {
             var interfaceType = typeof(IAggregateRepository<,>);
@@ -420,27 +325,27 @@ namespace Sqlx.Tests.Predefined
             
             var methodNames = methods.Select(m => m.Name).ToList();
             
-            Assert.Contains("CountAsync", methodNames);
-            Assert.Contains("CountWhereAsync", methodNames);
-            Assert.Contains("CountByAsync", methodNames);
-            Assert.Contains("SumAsync", methodNames);
-            Assert.Contains("SumWhereAsync", methodNames);
-            Assert.Contains("AvgAsync", methodNames);
-            Assert.Contains("AvgWhereAsync", methodNames);
-            Assert.Contains("MaxIntAsync", methodNames);
-            Assert.Contains("MaxLongAsync", methodNames);
-            Assert.Contains("MaxDecimalAsync", methodNames);
-            Assert.Contains("MaxDateTimeAsync", methodNames);
-            Assert.Contains("MinIntAsync", methodNames);
-            Assert.Contains("MinLongAsync", methodNames);
-            Assert.Contains("MinDecimalAsync", methodNames);
-            Assert.Contains("MinDateTimeAsync", methodNames);
+            CollectionAssert.Contains(methodNames, "CountAsync");
+            CollectionAssert.Contains(methodNames, "CountWhereAsync");
+            CollectionAssert.Contains(methodNames, "CountByAsync");
+            CollectionAssert.Contains(methodNames, "SumAsync");
+            CollectionAssert.Contains(methodNames, "SumWhereAsync");
+            CollectionAssert.Contains(methodNames, "AvgAsync");
+            CollectionAssert.Contains(methodNames, "AvgWhereAsync");
+            CollectionAssert.Contains(methodNames, "MaxIntAsync");
+            CollectionAssert.Contains(methodNames, "MaxLongAsync");
+            CollectionAssert.Contains(methodNames, "MaxDecimalAsync");
+            CollectionAssert.Contains(methodNames, "MaxDateTimeAsync");
+            CollectionAssert.Contains(methodNames, "MinIntAsync");
+            CollectionAssert.Contains(methodNames, "MinLongAsync");
+            CollectionAssert.Contains(methodNames, "MinDecimalAsync");
+            CollectionAssert.Contains(methodNames, "MinDateTimeAsync");
         }
 
         /// <summary>
         /// Verifies all IBatchRepository methods are implemented.
         /// </summary>
-        [Fact]
+        [TestMethod]
         public void IBatchRepository_AllMethodsShouldBeImplemented()
         {
             var interfaceType = typeof(IBatchRepository<,>);
@@ -448,14 +353,14 @@ namespace Sqlx.Tests.Predefined
             
             var methodNames = methods.Select(m => m.Name).ToList();
             
-            Assert.Contains("BatchInsertAsync", methodNames);
-            Assert.Contains("BatchInsertAndGetIdsAsync", methodNames);
-            Assert.Contains("BatchUpdateAsync", methodNames);
-            Assert.Contains("BatchUpdateWhereAsync", methodNames);
-            Assert.Contains("BatchDeleteAsync", methodNames);
-            Assert.Contains("BatchSoftDeleteAsync", methodNames);
-            Assert.Contains("BatchUpsertAsync", methodNames);
-            Assert.Contains("BatchExistsAsync", methodNames);
+            CollectionAssert.Contains(methodNames, "BatchInsertAsync");
+            CollectionAssert.Contains(methodNames, "BatchInsertAndGetIdsAsync");
+            CollectionAssert.Contains(methodNames, "BatchUpdateAsync");
+            CollectionAssert.Contains(methodNames, "BatchUpdateWhereAsync");
+            CollectionAssert.Contains(methodNames, "BatchDeleteAsync");
+            CollectionAssert.Contains(methodNames, "BatchSoftDeleteAsync");
+            CollectionAssert.Contains(methodNames, "BatchUpsertAsync");
+            CollectionAssert.Contains(methodNames, "BatchExistsAsync");
         }
 
         #endregion

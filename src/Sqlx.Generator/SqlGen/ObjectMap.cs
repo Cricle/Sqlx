@@ -28,7 +28,12 @@ namespace Sqlx.SqlGen
 
             Properties = ElementSymbol is INamedTypeSymbol namedTypeSymbol
                 ? namedTypeSymbol.GetMembers().OfType<IPropertySymbol>()
-                    .Where(p => p.CanBeReferencedByName && p.Name != "EqualityContract")
+                    .Where(p => p.CanBeReferencedByName && 
+                                p.Name != "EqualityContract" &&  // Filter out record internal property
+                                !p.IsStatic &&                    // Filter out static properties
+                                !p.IsIndexer &&                   // Filter out indexers
+                                p.GetMethod != null &&            // Must have getter
+                                p.GetMethod.DeclaredAccessibility == Accessibility.Public) // Must be public
                     .ToList()
                 : new List<IPropertySymbol>();
         }

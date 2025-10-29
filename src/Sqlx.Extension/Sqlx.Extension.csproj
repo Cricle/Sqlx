@@ -108,12 +108,15 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
 
-  <!-- NuGet 包 - 最简配置，让 SDK 自动引入其余依赖 -->
+  <!-- NuGet 包 - 基于 VS 2022 官方 VSIX 模板 -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.VisualStudio.SDK" Version="17.0.32112.339" />
-    <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="17.1.4054">
+    <PackageReference Include="Microsoft.VisualStudio.SDK" Version="17.0.32112.339">
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="17.0.5232">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <!-- Roslyn - 用于代码分析功能 -->
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.0.1" />
   </ItemGroup>
 

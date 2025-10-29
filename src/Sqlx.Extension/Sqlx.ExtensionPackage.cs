@@ -3,6 +3,8 @@ using System;
 using System.Runtime.InteropServices;
 using System.Threading;
 using Task = System.Threading.Tasks.Task;
+using Sqlx.Extension.ToolWindows;
+using Sqlx.Extension.Commands;
 
 namespace Sqlx.Extension
 {
@@ -25,6 +27,11 @@ namespace Sqlx.Extension
     /// </remarks>
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
     [Guid(SqlxExtensionPackage.PackageGuidString)]
+    [ProvideMenuResource("Menus.ctmenu", 1)]
+    [ProvideToolWindow(typeof(SqlPreviewWindow), Style = VsDockStyle.Tabbed, Window = "3ae79031-e1bc-11d0-8f78-00a0c9110057")]
+    [ProvideToolWindow(typeof(GeneratedCodeWindow), Style = VsDockStyle.Tabbed, Window = "3ae79031-e1bc-11d0-8f78-00a0c9110057")]
+    [ProvideToolWindow(typeof(QueryTesterWindow), Style = VsDockStyle.Tabbed, Window = "3ae79031-e1bc-11d0-8f78-00a0c9110057")]
+    [ProvideToolWindow(typeof(RepositoryExplorerWindow), Style = VsDockStyle.Tabbed, Window = "3ae79031-e1bc-11d0-8f78-00a0c9110057")]
     public sealed class SqlxExtensionPackage : AsyncPackage
     {
         /// <summary>
@@ -46,6 +53,12 @@ namespace Sqlx.Extension
         // When initialized asynchronously, the current thread may be a background thread at this point.
         // Do any initialization that requires the UI thread after switching to the UI thread.
         await this.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
+
+        // Initialize commands
+        await ShowSqlPreviewCommand.InitializeAsync(this);
+        await ShowGeneratedCodeCommand.InitializeAsync(this);
+        await ShowQueryTesterCommand.InitializeAsync(this);
+        await ShowRepositoryExplorerCommand.InitializeAsync(this);
     }
 
     #endregion

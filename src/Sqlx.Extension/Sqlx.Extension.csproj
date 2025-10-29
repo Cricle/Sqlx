@@ -60,11 +60,18 @@
     <Compile Include="ToolWindows\GeneratedCodeWindow.cs" />
     <Compile Include="ToolWindows\QueryTesterWindow.cs" />
     <Compile Include="ToolWindows\RepositoryExplorerWindow.cs" />
+    <Compile Include="Commands\ShowSqlPreviewCommand.cs" />
+    <Compile Include="Commands\ShowGeneratedCodeCommand.cs" />
+    <Compile Include="Commands\ShowQueryTesterCommand.cs" />
+    <Compile Include="Commands\ShowRepositoryExplorerCommand.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="source.extension.vsixmanifest">
       <SubType>Designer</SubType>
     </None>
+    <VSCTCompile Include="SqlxExtension.vsct">
+      <ResourceName>Menus.ctmenu</ResourceName>
+    </VSCTCompile>
     <None Include="Snippets\SqlxSnippets.snippet">
       <SubType>Designer</SubType>
       <IncludeInVSIX>true</IncludeInVSIX>

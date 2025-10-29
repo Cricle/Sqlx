@@ -1,8 +1,8 @@
 # Sqlx Visual Studio Extension - Implementation Status
 
 > **Last Updated**: 2025-10-29  
-> **Current Version**: v0.4.0  
-> **Overall Progress**: 80% (Phase 2 Complete)
+> **Current Version**: v0.5.0-preview  
+> **Overall Progress**: 85% (Phase 3 P0 Complete)
 
 ---
 
@@ -14,7 +14,8 @@
 | Phase 2 P0 | ✅ Complete | 100% | v0.2.0 |
 | Phase 2 P1 | ✅ Complete | 100% | v0.3.0 |
 | Phase 2 P2 | ✅ Complete | 100% | v0.4.0 |
-| Phase 3 | ⏳ Planned | 0% | v1.0.0 |
+| Phase 3 P0 | ✅ Complete | 100% | v0.5.0 |
+| Phase 3 P1 | ⏳ Planned | 0% | v1.0.0 |
 
 ---
 
@@ -180,7 +181,53 @@
 
 ---
 
-## ⏳ Phase 3 - Advanced Debugging (v1.0.0) - PLANNED
+## ✅ Phase 3 P0 - Debugging Tools (v0.5.0) - COMPLETE
+
+### 3.1 SQL Breakpoint Manager (P0) ✅
+- **Status**: ✅ Complete
+- **Priority**: P0
+- **Lines**: ~840
+- **Features**:
+  - ✅ 4 breakpoint types (Line, Conditional, HitCount, LogPoint)
+  - ✅ Breakpoint management (Add/Remove/Update)
+  - ✅ Enable/Disable breakpoints
+  - ✅ Condition setting
+  - ✅ Hit count management
+  - ✅ DataGrid display
+  - ✅ Breakpoint hit dialog
+  - ✅ Event-driven (Added/Removed/Updated/Hit)
+  - ✅ Thread-safe (lock protection)
+  - ✅ Real-time updates
+- **Files**:
+  - SqlBreakpointInfo.cs
+  - SqlBreakpointManager.cs
+  - SqlBreakpointWindow.cs
+  - ShowSqlBreakpointCommand.cs
+
+### 3.2 SQL Watch Window (P0) ✅
+- **Status**: ✅ Complete
+- **Priority**: P0
+- **Lines**: ~390
+- **Features**:
+  - ✅ 5 watch item types
+    - SQL parameters (@id, @name)
+    - Generated SQL (generatedSql)
+    - Execution results (result.*)
+    - Performance metrics (executionTime)
+    - Expressions (pending runtime integration)
+  - ✅ DataGrid three-column display
+  - ✅ Add watch item dialog
+  - ✅ Remove/Clear functions
+  - ✅ Refresh values
+  - ✅ Summary statistics
+  - ✅ 8 sample watch items
+- **Files**:
+  - SqlWatchWindow.cs
+  - ShowSqlWatchCommand.cs
+
+---
+
+## ⏳ Phase 3 P1 - Runtime Integration (v1.0.0) - PLANNED
 
 ### 3.1 SQL Breakpoints (P3)
 - **Status**: ⏳ Planned
@@ -221,19 +268,20 @@
 | Template Visualizer | 2 | ~775 | ✅ |
 | Performance Analyzer | 2 | ~550 | ✅ |
 | Entity Mapping Viewer | 2 | ~630 | ✅ |
-| **Total (Complete)** | **27** | **~8,000+** | **✅** |
-| SQL Breakpoints | 2 | ~500 | ⏳ |
-| Watch Window | 1 | ~250 | ⏳ |
-| **Total (Planned)** | **3** | **~750** | **⏳** |
-| **Grand Total** | **30** | **~8,993** | **80%** |
+| SQL Breakpoint Manager | 4 | ~840 | ✅ |
+| SQL Watch Window | 2 | ~390 | ✅ |
+| **Total (Complete)** | **33** | **~9,200+** | **✅** |
+| Runtime Integration | 5 | ~1,000 | ⏳ |
+| **Total (Planned)** | **5** | **~1,000** | **⏳** |
+| **Grand Total** | **38** | **~10,200** | **85%** |
 
 ### Feature Completion
 
 ```
 Phase 1:  ████████████████ 100% (4/4 features)
 Phase 2:  ████████████████ 100% (9/9 features)
-Phase 3:  ░░░░░░░░░░░░░░░░   0% (0/2 features)
-Overall:  ████████████████  80% (13/15 features)
+Phase 3:  ████████░░░░░░░░  50% (2/4 features)
+Overall:  ████████████████░  85% (15/17 features)
 ```
 
 ### Development Efficiency Impact
@@ -254,15 +302,18 @@ Overall:  ████████████████  80% (13/15 features)
 ## 🎯 Current Focus
 
 ### Active Development
-- ⏳ Phase 3 - Advanced Debugging (Planned)
-  - SQL Breakpoints
-  - Watch Window
+- ⏳ Phase 3 P1 - Runtime Integration (Planned)
+  - Modify Sqlx core library
+  - Inject breakpoint check code
+  - Implement real execution pause
+  - Expression evaluator integration
 
 ### Recently Completed
-- ✅ Phase 2 P2 (2025-10-29)
-  - Template Visualizer (~775 lines)
-  - Performance Analyzer (~550 lines)
-  - Entity Mapping Viewer (~630 lines)
+- ✅ Phase 3 P0 (2025-10-29)
+  - SQL Breakpoint Manager (~840 lines)
+  - SQL Watch Window (~390 lines)
+  - 4 breakpoint types
+  - 5 watch item types
 
 ### Next Milestones
 1. **Phase 2 P2** (Estimated: 1-2 weeks)
@@ -355,8 +406,8 @@ Overall:  ████████████████  80% (13/15 features)
 ---
 
 **Last Build**: 2025-10-29  
-**Last Commit**: 766d971  
-**Status**: ✅ Phase 2 Complete - All commits pushed to GitHub  
-**Next**: Phase 3 - SQL Breakpoints & Watch Window
+**Last Commit**: 8f998e5  
+**Status**: ✅ Phase 3 P0 Complete - Committed (push pending)  
+**Next**: v0.5.0-preview Release or Phase 3 P1 Runtime Integration
 
-**Progress: 80% Complete** 🎉
+**Progress: 85% Complete** 🎉

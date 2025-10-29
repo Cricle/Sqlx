@@ -72,6 +72,12 @@
     <None Include="IMPLEMENTATION_NOTES.md">
       <IncludeInVSIX>true</IncludeInVSIX>
     </None>
+    <None Include="BUILD.md">
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </None>
+    <None Include="IMPORTANT_BUILD_NOTES.md">
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System" />

@@ -69,6 +69,8 @@
     <Compile Include="IntelliSense\SqlxCompletionCommandHandler.cs" />
     <Compile Include="ToolWindows\SqlExecutionLogWindow.cs" />
     <Compile Include="Commands\ShowSqlExecutionLogCommand.cs" />
+    <Compile Include="ToolWindows\TemplateVisualizerWindow.cs" />
+    <Compile Include="Commands\ShowTemplateVisualizerCommand.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="source.extension.vsixmanifest">

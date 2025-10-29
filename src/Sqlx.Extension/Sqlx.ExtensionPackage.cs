@@ -33,6 +33,7 @@ namespace Sqlx.Extension
     [ProvideToolWindow(typeof(QueryTesterWindow), Style = VsDockStyle.Tabbed, Window = "3ae79031-e1bc-11d0-8f78-00a0c9110057")]
     [ProvideToolWindow(typeof(RepositoryExplorerWindow), Style = VsDockStyle.Tabbed, Window = "3ae79031-e1bc-11d0-8f78-00a0c9110057")]
     [ProvideToolWindow(typeof(SqlExecutionLogWindow), Style = VsDockStyle.Tabbed, Window = "3ae79031-e1bc-11d0-8f78-00a0c9110057")]
+    [ProvideToolWindow(typeof(TemplateVisualizerWindow), Style = VsDockStyle.Tabbed, Window = "3ae79031-e1bc-11d0-8f78-00a0c9110057")]
     public sealed class SqlxExtensionPackage : AsyncPackage
     {
         /// <summary>
@@ -61,6 +62,7 @@ namespace Sqlx.Extension
         await ShowQueryTesterCommand.InitializeAsync(this);
         await ShowRepositoryExplorerCommand.InitializeAsync(this);
         await ShowSqlExecutionLogCommand.InitializeAsync(this);
+        await ShowTemplateVisualizerCommand.InitializeAsync(this);
     }
 
     #endregion

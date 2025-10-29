@@ -487,6 +487,7 @@
             <div class="logo">⚡ Sqlx</div>
             <button class="mobile-menu-btn" onclick="toggleMenu()">☰</button>
             <ul class="nav-links" id="navLinks">
+                <li><a href="#download">下载</a></li>
                 <li><a href="#features">特性</a></li>
                 <li><a href="#vs-extension">VS插件</a></li>
                 <li><a href="#docs">文档</a></li>
@@ -504,9 +505,9 @@
         <p>高性能 · 类型安全 · 完全异步 · 零配置</p>
         <p style="font-size: 1.2rem; opacity: 0.8;">接近原生ADO.NET性能的.NET数据访问库</p>
         <div class="hero-buttons">
-            <a href="#quickstart" class="btn btn-primary">快速开始</a>
+            <a href="#download" class="btn btn-primary">📥 立即下载</a>
+            <a href="#quickstart" class="btn btn-outline">快速开始</a>
             <a href="https://github.com/Cricle/Sqlx" class="btn btn-outline" target="_blank">查看源码</a>
-            <a href="https://www.nuget.org/packages/Sqlx/" class="btn btn-outline" target="_blank">NuGet下载</a>
         </div>
     </div>
 
@@ -529,6 +530,83 @@
                 <div class="stat-number">0</div>
                 <div class="stat-label">运行时开销</div>
             </div>
+        </div>
+    </div>
+
+    <!-- 下载部分 -->
+    <div class="container" id="download" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 4rem 2rem; margin: 3rem auto; border-radius: 20px; color: white;">
+        <h2 style="color: white; text-align: center; font-size: 2.5rem; margin-bottom: 1rem;">📥 立即下载</h2>
+        <p style="text-align: center; font-size: 1.2rem; margin-bottom: 3rem; opacity: 0.9;">选择适合您的版本开始使用</p>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; max-width: 1000px; margin: 0 auto;">
+            <!-- NuGet Package -->
+            <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border-radius: 15px; padding: 2rem; border: 2px solid rgba(255,255,255,0.2);">
+                <div style="font-size: 3rem; text-align: center; margin-bottom: 1rem;">📦</div>
+                <h3 style="color: white; text-align: center; margin-bottom: 1rem;">Sqlx 核心库</h3>
+                <p style="opacity: 0.9; margin-bottom: 1.5rem; text-align: center;">高性能.NET数据访问库</p>
+                <div style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; font-family: monospace; font-size: 0.9rem; text-align: center;">
+                    dotnet add package Sqlx
+                </div>
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;">
+                    <a href="https://www.nuget.org/packages/Sqlx/" target="_blank" style="display: inline-block; padding: 0.75rem 1.5rem; background: white; color: #667eea; border-radius: 8px; text-decoration: none; font-weight: bold;">NuGet Gallery</a>
+                    <a href="https://github.com/Cricle/Sqlx/releases" target="_blank" style="display: inline-block; padding: 0.75rem 1.5rem; background: rgba(255,255,255,0.2); color: white; border-radius: 8px; text-decoration: none; font-weight: bold;">Release Notes</a>
+                </div>
+                <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.2); opacity: 0.8; font-size: 0.9rem;">
+                    <div>✅ v0.4.0 Latest</div>
+                    <div>✅ .NET 6.0+</div>
+                    <div>✅ 5+ Databases</div>
+                </div>
+            </div>
+
+            <!-- VS Extension -->
+            <div style="background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border-radius: 15px; padding: 2rem; border: 2px solid rgba(255,215,0,0.5); position: relative;">
+                <div style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); color: #000; padding: 0.3rem 1rem; border-radius: 20px; font-weight: bold; font-size: 0.8rem;">🔥 NEW</div>
+                <div style="font-size: 3rem; text-align: center; margin-bottom: 1rem;">🎨</div>
+                <h3 style="color: white; text-align: center; margin-bottom: 1rem;">Visual Studio Extension</h3>
+                <p style="opacity: 0.9; margin-bottom: 1.5rem; text-align: center;">完整的开发工具链</p>
+                <div style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; text-align: center;">
+                    <div style="font-size: 0.9rem; margin-bottom: 0.5rem;">v0.5.0-preview</div>
+                    <div style="font-size: 0.85rem; opacity: 0.8;">14个工具窗口 · 22倍效率</div>
+                </div>
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;">
+                    <a href="https://github.com/Cricle/Sqlx/releases/latest" target="_blank" style="display: inline-block; padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); color: #000; border-radius: 8px; text-decoration: none; font-weight: bold;">下载 VSIX</a>
+                    <a href="../TUTORIAL.md" target="_blank" style="display: inline-block; padding: 0.75rem 1.5rem; background: rgba(255,255,255,0.2); color: white; border-radius: 8px; text-decoration: none; font-weight: bold;">完整教程</a>
+                </div>
+                <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.2); opacity: 0.8; font-size: 0.9rem;">
+                    <div>✅ VS 2022 (17.0+)</div>
+                    <div>✅ SQL着色 & IntelliSense</div>
+                    <div>✅ 14 Tool Windows</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 快速安装指南 -->
+        <div style="max-width: 900px; margin: 3rem auto 0; background: rgba(0,0,0,0.2); padding: 2rem; border-radius: 15px;">
+            <h3 style="color: white; margin-bottom: 1.5rem; text-align: center;">⚡ 60秒快速开始</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
+                <div>
+                    <div style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 10px; margin-bottom: 0.5rem;">
+                        <div style="font-weight: bold; margin-bottom: 0.5rem;">1️⃣ 安装NuGet包</div>
+                        <code style="display: block; background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 5px; font-size: 0.85rem;">dotnet add package Sqlx<br>dotnet add package Sqlx.Generator</code>
+                    </div>
+                </div>
+                <div>
+                    <div style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 10px; margin-bottom: 0.5rem;">
+                        <div style="font-weight: bold; margin-bottom: 0.5rem;">2️⃣ 安装VS Extension</div>
+                        <code style="display: block; background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 5px; font-size: 0.85rem;">1. 下载 Sqlx.Extension.vsix<br>2. 双击安装<br>3. 重启VS</code>
+                    </div>
+                </div>
+                <div>
+                    <div style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 10px; margin-bottom: 0.5rem;">
+                        <div style="font-weight: bold; margin-bottom: 0.5rem;">3️⃣ 开始使用</div>
+                        <code style="display: block; background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 5px; font-size: 0.85rem;">输入: sqlx-repo [Tab]<br>自动生成Repository<br>享受22倍效率! 🚀</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 2rem; opacity: 0.8;">
+            <a href="../QUICK_REFERENCE.md" target="_blank" style="color: white; text-decoration: underline;">查看完整参考 →</a>
         </div>
     </div>
 

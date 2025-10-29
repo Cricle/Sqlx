@@ -74,10 +74,10 @@ dotnet build
 
 **VS 2022:**
 ```
-Solution Explorer 
-  > Dependencies 
-  > Analyzers 
-  > Sqlx.Generator 
+Solution Explorer
+  > Dependencies
+  > Analyzers
+  > Sqlx.Generator
   > [生成的文件]
 ```
 
@@ -97,7 +97,7 @@ System.NullReferenceException: Object reference not set to an instance of an obj
 #### 1. 依赖注入配置
 ```csharp
 // ✅ 正确
-services.AddScoped<IDbConnection>(sp => 
+services.AddScoped<IDbConnection>(sp =>
     new SqlConnection(connectionString));
 services.AddScoped<IUserRepository, UserRepository>();
 

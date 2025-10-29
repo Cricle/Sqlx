@@ -32,9 +32,21 @@ namespace Sqlx
         // - IQueryRepository: GetById, GetAll, GetWhere, GetPage, Exists, etc.
         // - ICommandRepository: Insert, Update, Delete, SoftDelete, Upsert, etc.
         //
-        // For aggregate operations (Count, Sum, Avg, Max, Min), use IAggregateRepository
+        // For aggregate operations (Sum, Avg, Max, Min), use IAggregateRepository
         // For batch operations, use IBatchRepository
-        // No additional methods needed - this is a combination interface
+
+        // ===== Common Aggregate (for convenience) =====
+
+        /// <summary>Gets total count of entities.</summary>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Total row count</returns>
+        /// <remarks>
+        /// This is a convenience method also available in IAggregateRepository.
+        /// Generated SQL: SELECT COUNT(*) FROM table
+        /// For large tables, consider using ISchemaRepository.GetApproximateRowCountAsync() for faster results.
+        /// </remarks>
+        [SqlTemplate("SELECT COUNT(*) FROM {{table}}")]
+        Task<long> CountAsync(CancellationToken cancellationToken = default);
     }
 
     /// <summary>

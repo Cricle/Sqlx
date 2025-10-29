@@ -1,7 +1,7 @@
 # Sqlx.Extension 构建说明
 
-> **项目类型**: Visual Studio Extension (VSIX)  
-> **框架**: .NET Framework 4.7.2  
+> **项目类型**: Visual Studio Extension (VSIX)
+> **框架**: .NET Framework 4.7.2
 > **IDE要求**: Visual Studio 2022 (含 VS SDK)
 
 ---
@@ -152,7 +152,7 @@ bin\Release\
 
 **原因**: VS 插件项目使用旧版 MSBuild 格式，不支持 `dotnet build`
 
-**解决**: 
+**解决**:
 - 使用 Visual Studio IDE 构建
 - 或使用 `msbuild` 命令行工具
 
@@ -322,7 +322,7 @@ Build started...
 
 ---
 
-**最后更新**: 2025-10-29  
-**版本**: 0.5.0-dev  
+**最后更新**: 2025-10-29
+**版本**: 0.5.0-dev
 **状态**: ✅ 编译配置已完成
 

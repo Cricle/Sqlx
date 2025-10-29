@@ -130,6 +130,15 @@
           <ButtonText>Performance Analyzer</ButtonText>
         </Strings>
       </Button>
+
+      <!-- Entity Mapping Viewer Window Command -->
+      <Button guid="guidSqlxExtensionPackageCmdSet" id="ShowEntityMappingViewerCommandId" priority="0x0107" type="Button">
+        <Parent guid="guidSqlxExtensionPackageCmdSet" id="SqlxMenuGroup" />
+        <Icon guid="guidImages" id="bmpMapping" />
+        <Strings>
+          <ButtonText>Entity Mapping Viewer</ButtonText>
+        </Strings>
+      </Button>
     </Buttons>
 
     <!--The bitmaps section is used to define the bitmaps that are used for the commands.-->
@@ -139,7 +148,7 @@
             bitmap strip containing the bitmaps and then there are the numeric ids of the elements used
             inside a button definition. An important aspect of this declaration is that the element id
             must be the actual index (1-based) of the bitmap inside the bitmap strip. -->
-      <Bitmap guid="guidImages" href="Resources\SqlxIcons.png" usedList="bmpSql, bmpCode, bmpTest, bmpExplorer, bmpLog, bmpVisualizer, bmpPerformance"/>
+      <Bitmap guid="guidImages" href="Resources\SqlxIcons.png" usedList="bmpSql, bmpCode, bmpTest, bmpExplorer, bmpLog, bmpVisualizer, bmpPerformance, bmpMapping"/>
     </Bitmaps>
   </Commands>
 
@@ -159,6 +168,7 @@
       <IDSymbol name="ShowSqlExecutionLogCommandId" value="0x0104" />
       <IDSymbol name="ShowTemplateVisualizerCommandId" value="0x0105" />
       <IDSymbol name="ShowPerformanceAnalyzerCommandId" value="0x0106" />
+      <IDSymbol name="ShowEntityMappingViewerCommandId" value="0x0107" />
     </GuidSymbol>
 
     <!-- Icon images -->
@@ -170,6 +180,7 @@
       <IDSymbol name="bmpLog" value="5" />
       <IDSymbol name="bmpVisualizer" value="6" />
       <IDSymbol name="bmpPerformance" value="7" />
+      <IDSymbol name="bmpMapping" value="8" />
     </GuidSymbol>
   </Symbols>
 </CommandTable>

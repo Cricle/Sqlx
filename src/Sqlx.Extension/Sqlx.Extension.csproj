@@ -73,6 +73,8 @@
     <Compile Include="Commands\ShowTemplateVisualizerCommand.cs" />
     <Compile Include="ToolWindows\PerformanceAnalyzerWindow.cs" />
     <Compile Include="Commands\ShowPerformanceAnalyzerCommand.cs" />
+    <Compile Include="ToolWindows\EntityMappingViewerWindow.cs" />
+    <Compile Include="Commands\ShowEntityMappingViewerCommand.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="source.extension.vsixmanifest">

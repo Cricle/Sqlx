@@ -405,8 +405,11 @@ public partial class UserRepository
 
 ### 📖 文档目录
 
+> **💡 不知道从哪开始？查看 [📑 完整文档导航索引 (INDEX.md)](INDEX.md)** ⭐ NEW
+
 #### 🚀 快速上手
 - [快速开始指南](docs/QUICK_START_GUIDE.md) - 5分钟上手
+- [安装指南](INSTALL.md) - 详细安装步骤 ⭐ NEW
 - [完整教程](TUTORIAL.md) - 10课从入门到精通 ⭐
 - [快速参考](QUICK_REFERENCE.md) - 一页纸速查表
 - [FAQ](FAQ.md) - 35+常见问题解答 ⭐ NEW
@@ -419,7 +422,8 @@ public partial class UserRepository
 
 #### 🔄 迁移与对比
 - [迁移指南](MIGRATION_GUIDE.md) - 从EF Core/Dapper/ADO.NET迁移 ⭐ NEW
-- [性能对比](BenchmarkDotNet.Artifacts/results/) - 基准测试结果
+- [性能基准测试](PERFORMANCE.md) - 详细性能数据和优化技巧 ⭐ NEW
+- [基准测试结果](BenchmarkDotNet.Artifacts/results/) - 原始测试报告
 
 #### 🛠️ VS 扩展文档
 - [VS 扩展增强计划](docs/VS_EXTENSION_ENHANCEMENT_PLAN.md) - 完整开发计划

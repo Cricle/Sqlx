@@ -99,26 +99,19 @@
     <Reference Include="PresentationFramework" />
     <Reference Include="WindowsBase" />
   </ItemGroup>
+  <!-- NuGet 包 - 避免降级警告的最优配置 -->
   <ItemGroup>
     <PackageReference Include="Microsoft.VisualStudio.SDK" Version="17.0.32112.339">
-      <IncludeAssets>compile; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="17.14.2101">
+    <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="17.0.5232">
       <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.VisualStudio.Shell.15.0" Version="17.0.32112.339" />
-    <PackageReference Include="Microsoft.VisualStudio.Shell.Framework" Version="17.0.32112.339" />
-    <PackageReference Include="Microsoft.VisualStudio.Shell.Interop" Version="17.0.32112.339" />
-    <PackageReference Include="Microsoft.VisualStudio.Shell.Interop.15.0.DesignTime" Version="17.0.32112.339" />
-    <PackageReference Include="Microsoft.VisualStudio.Text.UI" Version="17.0.487" />
-    <PackageReference Include="Microsoft.VisualStudio.Text.Data" Version="17.0.487" />
-    <PackageReference Include="Microsoft.VisualStudio.CoreUtility" Version="17.0.467" />
-    <PackageReference Include="Microsoft.VisualStudio.Language.StandardClassification" Version="17.0.498" />
-    <PackageReference Include="Microsoft.VisualStudio.TextManager.Interop" Version="17.0.32112.339" />
-    <PackageReference Include="Microsoft.VisualStudio.Threading" Version="17.0.64" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.8.0" />
-    <PackageReference Include="System.Collections.Immutable" Version="8.0.0" />
+    <!-- 显式指定版本以避免降级 -->
+    <PackageReference Include="Microsoft.VisualStudio.CoreUtility" Version="17.0.491" />
+    <PackageReference Include="Microsoft.VisualStudio.Text.Data" Version="17.0.491" />
+    <PackageReference Include="Microsoft.VisualStudio.Text.UI" Version="17.0.491" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.0.1" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="License.txt">

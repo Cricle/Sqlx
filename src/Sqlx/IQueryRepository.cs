@@ -85,12 +85,14 @@ namespace Sqlx
         /// <example>
         /// var users = await repo.GetWhereAsync(x =&gt; x.Age &gt;= 18 &amp;&amp; x.IsActive);
         /// </example>
+        [SqlTemplate("SELECT {{columns}} FROM {{table}} {{where}}")]
         Task<List<TEntity>> GetWhereAsync([ExpressionToSql] Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
 
         /// <summary>Gets first entity matching expression predicate.</summary>
         /// <param name="predicate">Expression predicate</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>First matching entity or null</returns>
+        [SqlTemplate("SELECT {{columns}} FROM {{table}} {{where}} LIMIT 1")]
         Task<TEntity?> GetFirstWhereAsync([ExpressionToSql] Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
 
         // ===== Existence Checks =====
@@ -106,6 +108,7 @@ namespace Sqlx
         /// <param name="predicate">Expression predicate</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>True if any match found, false otherwise</returns>
+        [SqlTemplate("SELECT CASE WHEN EXISTS(SELECT 1 FROM {{table}} {{where}}) THEN 1 ELSE 0 END")]
         Task<bool> ExistsWhereAsync([ExpressionToSql] Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
 
         // ===== Additional Useful Methods =====
@@ -116,11 +119,13 @@ namespace Sqlx
         /// <returns>List of random entities</returns>
         /// <remarks>
         /// Uses database-specific random function:
-        /// - SQL Server: NEWID()
-        /// - MySQL: RAND()
-        /// - PostgreSQL: RANDOM()
-        /// - SQLite: RANDOM()
+        /// - SQL Server: ORDER BY NEWID()
+        /// - MySQL: ORDER BY RAND()
+        /// - PostgreSQL: ORDER BY RANDOM()
+        /// - SQLite: ORDER BY RANDOM()
+        /// Oracle: ORDER BY DBMS_RANDOM.VALUE
         /// </remarks>
+        [SqlTemplate("SELECT {{columns}} FROM {{table}} ORDER BY RANDOM() LIMIT @count")]
         Task<List<TEntity>> GetRandomAsync(int count, CancellationToken cancellationToken = default);
 
         /// <summary>Gets distinct values from a column.</summary>
@@ -132,6 +137,7 @@ namespace Sqlx
         /// var statuses = await repo.GetDistinctValuesAsync("status");
         /// // ["active", "inactive", "pending"]
         /// </example>
+        [SqlTemplate("SELECT DISTINCT {{column}} FROM {{table}} WHERE {{column}} IS NOT NULL ORDER BY {{column}} {{limit --param limit}}")]
         Task<List<string>> GetDistinctValuesAsync([DynamicSql(Type = DynamicSqlType.Identifier)] string column, int limit = 1000, CancellationToken cancellationToken = default);
     }
 }

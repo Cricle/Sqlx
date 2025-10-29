@@ -5,7 +5,7 @@
         <DisplayName>Sqlx - High-Performance .NET Data Access</DisplayName>
         <Description xml:space="preserve">Visual Studio extension for Sqlx - provides syntax highlighting, code snippets, and IntelliSense for SqlTemplate attributes. Features: SQL keyword highlighting, placeholder coloring, parameter highlighting, 10+ code snippets.</Description>
         <MoreInfo>https://github.com/Cricle/Sqlx</MoreInfo>
-        <License>LICENSE.txt</License>
+        <License>License.txt</License>
         <Icon>Resources\Icon.png</Icon>
         <PreviewImage>Resources\Preview.png</PreviewImage>
         <Tags>Sqlx, ORM, SQL, Database, Data Access, Snippets, Syntax Highlighting</Tags>

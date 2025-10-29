@@ -67,6 +67,10 @@
     <None Include="source.extension.vsixmanifest">
       <SubType>Designer</SubType>
     </None>
+    <None Include="..\..\License.txt">
+      <Link>License.txt</Link>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </None>
     <None Include="Snippets\SqlxSnippets.snippet">
       <SubType>Designer</SubType>
       <IncludeInVSIX>true</IncludeInVSIX>

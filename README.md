@@ -434,6 +434,11 @@ public partial class UserRepository
 - [故障排除](TROUBLESHOOTING.md) - 常见问题解决
 - [贡献指南](CONTRIBUTING.md) - 如何参与贡献
 - [发布指南](HOW_TO_RELEASE.md) - 发布流程（维护者）
+- [开发者速查卡](DEVELOPER_CHEATSHEET.md) - 一页纸速查手册 ⭐ NEW
+
+#### 🛠️ 开发工具
+- [健康检查脚本](scripts/health-check.ps1) - 项目健康检查工具 ⭐ NEW
+- [发布检查清单](RELEASE_CHECKLIST.md) - 发布前100+检查项 ⭐ NEW
 
 #### 🤖 AI 助手文档
 - [AI-VIEW.md](AI-VIEW.md) - AI助手使用指南（全特性、注意事项）

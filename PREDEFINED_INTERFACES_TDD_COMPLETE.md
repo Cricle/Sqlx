@@ -51,19 +51,19 @@
 ```csharp
 1. IQueryRepository_AllMethodsHaveSqlTemplates()
    - 验证至少11个方法有SqlTemplate属性
-   
+
 2. ICommandRepository_AllMethodsHaveSqlTemplates()
    - 验证至少11个方法有SqlTemplate属性
-   
+
 3. IAggregateRepository_AllMethodsHaveSqlTemplates()
    - 验证至少15个方法有SqlTemplate属性
-   
+
 4. IBatchRepository_AllMethodsHaveSqlTemplates()
    - 验证至少5个方法有SqlTemplate属性
-   
+
 5. IMaintenanceRepository_AllMethodsHaveSqlTemplates()
    - 验证至少3个方法有SqlTemplate属性
-   
+
 6. DocumentSpecialImplementationNeeds()
    - 文档化需要特殊实现的10个方法类别
 ```
@@ -135,7 +135,7 @@
 1. ✅ **验证现有SqlTemplate正确性**
    - 运行测试项目
    - 检查生成的SQL语句
-   
+
 2. ⚠️ **修复数据库方言差异**
    - RANDOM()函数适配
    - LIMIT/OFFSET SQL Server/Oracle适配
@@ -143,11 +143,11 @@
 ### 中优先级 (P1)
 3. 🔄 **实现双查询方法**
    - GetPageAsync实现
-   
+
 4. 🔄 **实现批量操作**
    - BatchExistsAsync
    - BatchUpdateAsync
-   
+
 5. 🔄 **支持非实体返回类型**
    - 修改源生成器支持List<string>, List<int>等返回类型
    - 恢复GetDistinctValuesAsync

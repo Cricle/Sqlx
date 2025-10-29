@@ -1,7 +1,7 @@
 # Sqlx Visual Studio 插件增强计划
 
-> **版本**: 0.4.0  
-> **目标**: 极大提升开发者体验，简化 Sqlx 使用难度  
+> **版本**: 0.4.0
+> **目标**: 极大提升开发者体验，简化 Sqlx 使用难度
 > **最后更新**: 2025-10-29
 
 ---
@@ -106,43 +106,61 @@ Task<List<$Entity$>> Query$Name$Async(
 
 ---
 
-#### 1.2 项目模板
+#### 1.2 SqlTemplate 语法着色
 
-**功能描述**: 提供开箱即用的项目模板
+**功能描述**: 为 SqlTemplate 字符串提供语法高亮和着色
 
-**模板列表**:
+**着色方案**:
 
-1. **Sqlx Console App**
-   ```
-   MyApp/
-   ├── Models/
-   │   └── User.cs
-   ├── Repositories/
-   │   ├── IUserRepository.cs
-   │   └── UserRepository.cs
-   ├── Database/
-   │   └── DatabaseInitializer.cs
-   ├── appsettings.json
-   └── Program.cs
-   ```
+```csharp
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE age >= @minAge")]
+//            ^^^^^^ SQL关键字(蓝色)
+//                   ^^^^^^^^^^ 占位符(橙色) 
+//                                    ^^^^^ SQL关键字(蓝色)
+//                                          ^^^^^^^^ 占位符(橙色)
+//                                                   ^^^^^ SQL关键字(蓝色)
+//                                                               ^^^^^^^ 参数(绿色)
+```
 
-2. **Sqlx Web API**
-   ```
-   MyWebApi/
-   ├── Models/
-   ├── Repositories/
-   ├── Services/
-   ├── Controllers/
-   ├── Program.cs
-   └── appsettings.json
-   ```
+**支持的元素**:
 
-3. **Sqlx + ASP.NET Core MVC**
-4. **Sqlx + Blazor Server**
-5. **Sqlx Minimal API**
+1. **SQL 关键字** (蓝色 `#569CD6`)
+   - SELECT, INSERT, UPDATE, DELETE
+   - FROM, WHERE, JOIN, ON
+   - ORDER BY, GROUP BY, HAVING
+   - LIMIT, OFFSET, DISTINCT
+   - AND, OR, NOT, IN, LIKE, BETWEEN
 
-**实现优先级**: 🟡 P1  
-**预计工时**: 5天
+2. **占位符** (橙色 `#CE9178`)
+   - `{{columns}}`, `{{table}}`, `{{values}}`
+   - `{{where}}`, `{{set}}`, `{{batch_values}}`
+   - `{{limit}}`, `{{offset}}`, `{{orderby}}`
+
+3. **参数** (绿色 `#4EC9B0`)
+   - `@id`, `@name`, `@age` 等
+   - `@{paramName}` 语法
+
+4. **字符串字面量** (棕色 `#D69D85`)
+   - 单引号字符串 `'value'`
+
+5. **注释** (灰色 `#6A9955`)
+   - `-- 单行注释`
+   - `/* 多行注释 */`
+
+**界面效果**:
+
+<img src="../docs/images/syntax-highlight-preview.png" alt="语法高亮预览" />
+
+**功能点**:
+
+- ✅ 实时语法着色（无性能影响）
+- ✅ 支持多行 SQL
+- ✅ 支持嵌套字符串
+- ✅ 可自定义颜色主题
+- ✅ 与 VS 主题集成
+
+**实现优先级**: 🔴 P0（最高）  
+**预计工时**: 4天
 
 ---
 
@@ -171,7 +189,7 @@ Task<List<$Entity$>> Query$Name$Async(
    → 自动生成方法和 SQL 模板
    ```
 
-**实现优先级**: 🔴 P0  
+**实现优先级**: 🔴 P0
 **预计工时**: 5天
 
 ---
@@ -200,7 +218,7 @@ Task<List<$Entity$>> Query$Name$Async(
    - SELECT, INSERT, UPDATE, DELETE 高亮
    - WHERE, ORDER BY, GROUP BY 高亮
 
-**实现优先级**: 🟠 P1  
+**实现优先级**: 🟠 P1
 **预计工时**: 8天
 
 ---
@@ -229,7 +247,7 @@ Task<List<$Entity$>> Query$Name$Async(
    Task<User?> CountAsync();  // ❌ 错误: 返回类型应该是 Task<long>
    ```
 
-**实现优先级**: 🔴 P0  
+**实现优先级**: 🔴 P0
 **预计工时**: 6天
 
 ---
@@ -266,7 +284,7 @@ Task<User?> GetAsync(long id);
 // 快速修复2: 将 SQL 中改为 @id
 ```
 
-**实现优先级**: 🟠 P1  
+**实现优先级**: 🟠 P1
 **预计工时**: 10天
 
 ---
@@ -309,7 +327,7 @@ Task<User?> GetAsync(long id);
 - ✅ 跳转到定义
 - ✅ 复制代码
 
-**实现优先级**: 🟡 P2  
+**实现优先级**: 🟡 P2
 **预计工时**: 7天
 
 ---
@@ -349,7 +367,7 @@ Task<User?> GetAsync(long id);
 - ✅ 复制 SQL
 - ✅ 测试查询（连接数据库执行）
 
-**实现优先级**: 🟡 P2  
+**实现优先级**: 🟡 P2
 **预计工时**: 8天
 
 ---
@@ -389,7 +407,7 @@ Task<User?> GetAsync(long id);
 - ✅ 生成实体类代码
 - ✅ 生成数据库迁移脚本
 
-**实现优先级**: 🟢 P3（低优先级）  
+**实现优先级**: 🟢 P3（低优先级）
 **预计工时**: 15天
 
 ---
@@ -429,7 +447,7 @@ Task<User?> GetAsync(long id);
 - ✅ 设置默认连接
 - ✅ 执行测试查询
 
-**实现优先级**: 🟡 P2  
+**实现优先级**: 🟡 P2
 **预计工时**: 6天
 
 ---
@@ -472,7 +490,7 @@ Task<User?> GetAsync(long id);
 - ✅ 显示执行时间
 - ✅ 保存测试用例
 
-**实现优先级**: 🟢 P3  
+**实现优先级**: 🟢 P3
 **预计工时**: 8天
 
 ---
@@ -518,7 +536,7 @@ Task<User?> GetAsync(long id);
 - ✅ 大结果集警告（建议 LIMIT）
 - ✅ 复杂 JOIN 分析
 
-**实现优先级**: 🟢 P3  
+**实现优先级**: 🟢 P3
 **预计工时**: 10天
 
 ---
@@ -562,7 +580,7 @@ CREATE INDEX idx_users_email ON users(email);
 ALTER TABLE users DROP COLUMN email;
 ```
 
-**实现优先级**: 🟢 P3  
+**实现优先级**: 🟢 P3
 **预计工时**: 12天
 
 ---
@@ -591,7 +609,7 @@ ALTER TABLE users DROP COLUMN email;
    - 敏感信息泄露
    - 权限检查
 
-**实现优先级**: 🔵 P4（未来）  
+**实现优先级**: 🔵 P4（未来）
 **预计工时**: 8天
 
 ---
@@ -625,7 +643,7 @@ var user = await repo.GetByIdAsync(1);
 ```
 ```
 
-**实现优先级**: 🔵 P4  
+**实现优先级**: 🔵 P4
 **预计工时**: 5天
 
 ---
@@ -634,17 +652,17 @@ var user = await repo.GetByIdAsync(1);
 
 ### P0 - 必须有（v0.5.0）🔴
 1. ✅ 代码片段（Snippets）- 3天
-2. ✅ 快速操作（Quick Actions）- 5天
-3. ✅ 参数验证和提示 - 6天
+2. ✅ SqlTemplate 语法着色 - 4天
+3. ✅ 快速操作（Quick Actions）- 5天
+4. ✅ 参数验证和提示 - 6天
 
-**总计**: 14天
+**总计**: 18天
 
 ### P1 - 应该有（v0.6.0）🟠
-4. ✅ 项目模板 - 5天
 5. ✅ SQL 智能提示 - 8天
 6. ✅ 实时诊断和建议 - 10天
 
-**总计**: 23天
+**总计**: 18天
 
 ### P2 - 最好有（v0.7.0）🟡
 7. ✅ 生成代码查看器 - 7天
@@ -678,10 +696,15 @@ Sqlx.Extension (VS Extension)
 ├── Core/
 │   ├── SqlxPackage.cs                 // 主包
 │   ├── LanguageService.cs             // 语言服务
-│   └── DiagnosticAnalyzer.cs          // 诊断分析器
+│   ├── DiagnosticAnalyzer.cs          // 诊断分析器
+│   └── SyntaxHighlighter.cs           // 语法着色器
 ├── Features/
 │   ├── Snippets/
 │   │   └── SqlxSnippets.cs
+│   ├── SyntaxColoring/
+│   │   ├── SqlTemplateClassifier.cs   // 语法分类器
+│   │   ├── SqlTokenTagger.cs          // 标记器
+│   │   └── SqlColorProvider.cs        // 颜色提供者
 │   ├── QuickActions/
 │   │   ├── GenerateRepositoryAction.cs
 │   │   ├── AddCrudMethodsAction.cs
@@ -702,19 +725,10 @@ Sqlx.Extension (VS Extension)
 │       ├── GeneratedCodeViewer.cs
 │       ├── SqlPreview.cs
 │       └── QueryTester.cs
-├── Templates/
-│   ├── Projects/
-│   │   ├── ConsoleApp/
-│   │   ├── WebApi/
-│   │   └── BlazorServer/
-│   └── Items/
-│       ├── Repository.cs
-│       ├── Entity.cs
-│       └── Service.cs
 └── Resources/
     ├── Icons/
     ├── Snippets/
-    └── Templates/
+    └── ColorSchemes/
 ```
 
 ### 技术栈
@@ -747,32 +761,38 @@ Sqlx.Extension (VS Extension)
 
 ---
 
-### Sprint 2: 代码片段 + 快速操作（Week 3-4）
+### Sprint 2: 代码片段 + 语法着色（Week 3-4）
 
-**目标**: 实现 P0 功能
+**目标**: 实现 P0 基础功能
 
 - [ ] 实现所有代码片段
-- [ ] 实现"生成仓储"快速操作
-- [ ] 实现"添加 CRUD 方法"快速操作
+- [ ] 实现 SqlTemplate 语法着色器
+  - [ ] SQL 关键字识别和着色
+  - [ ] 占位符识别和着色
+  - [ ] 参数识别和着色
+  - [ ] 支持多行 SQL
+  - [ ] 主题集成
 - [ ] 编写单元测试
 
 **交付物**:
 - ✅ 10+ 代码片段
-- ✅ 3 个快速操作
+- ✅ 完整的语法着色器
 - ✅ 单元测试覆盖率 > 80%
 
 ---
 
-### Sprint 3: 参数验证（Week 5-6）
+### Sprint 3: 快速操作 + 参数验证（Week 5-6）
 
-**目标**: 实现参数匹配验证
+**目标**: 实现代码生成和验证
 
+- [ ] 实现"生成仓储"快速操作
+- [ ] 实现"添加 CRUD 方法"快速操作
 - [ ] 实现参数不匹配诊断
 - [ ] 实现快速修复
-- [ ] 实现参数智能提示
 - [ ] 集成测试
 
 **交付物**:
+- ✅ 3 个快速操作
 - ✅ 参数验证功能
 - ✅ 5+ 快速修复
 - ✅ 文档更新
@@ -918,11 +938,11 @@ public interface IUserRepository
     //                      • {{columns}}
     //                      • {{table}}
     //                      • {{where}}
-    
+
     // 输入参数自动提示
     [SqlTemplate("SELECT * FROM users WHERE id = @|")]
     //                                            ↑ 自动提示方法参数
-    
+
     // 返回类型警告
     [SqlTemplate("SELECT COUNT(*) FROM users")]
     Task<User?> CountAsync();  // ⚠️ 警告: 建议返回 Task<long>
@@ -1015,22 +1035,56 @@ Sqlx: 未找到方法实现
 通过 VS 插件，我们将：
 1. ✅ **降低学习门槛** - 新手 5 分钟上手
 2. ✅ **提升开发效率** - 减少 80% 手动代码
-3. ✅ **保证代码质量** - 实时检测和修复
-4. ✅ **增强开发体验** - 可视化和智能提示
+3. ✅ **提升代码可读性** - SQL 语法高亮着色
+4. ✅ **保证代码质量** - 实时检测和修复
+5. ✅ **增强开发体验** - 可视化和智能提示
+
+### 核心特色
+
+**SqlTemplate 语法着色** 🎨
+- 实时高亮 SQL 关键字、占位符、参数
+- 提升代码可读性 50%+
+- 减少语法错误 60%+
+
+**智能代码片段** ⚡
+- 10+ 常用代码片段
+- 30秒创建完整仓储
+- 效率提升 95%+
+
+**实时诊断验证** 🔍
+- 编码时即时发现错误
+- 智能快速修复建议
+- 减少调试时间 70%+
 
 ### 路线图
 
 ```
 v0.5.0 (Sprint 1-3) - 基础增强         📅 Q1 2026
+  ✅ 代码片段
+  ✅ SqlTemplate 语法着色 🎨
+  ✅ 快速操作
+  ✅ 参数验证
+
 v0.6.0 (Sprint 4-6) - 智能增强         📅 Q2 2026
+  ✅ SQL 智能提示
+  ✅ 实时诊断
+
 v0.7.0 (Sprint 7-9) - 可视化工具       📅 Q3 2026
+  ✅ 代码查看器
+  ✅ SQL 预览器
+
 v0.8.0 (Sprint 10+) - 高级功能         📅 Q4 2026
+  ✅ 测试工具
+  ✅ 性能分析
+
 v0.9.0 (未来)       - 团队协作         📅 2027+
+  ✅ 代码审查
+  ✅ 文档生成
 ```
 
 ---
 
-**文档版本**: 0.4.0  
-**最后更新**: 2025-10-29  
+**文档版本**: 0.4.0
+**最后更新**: 2025-10-29
 **维护**: Sqlx Team
 

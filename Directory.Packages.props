@@ -87,4 +87,8 @@
     <PackageVersion Include="Microsoft.VisualStudio.CoreUtility" Version="17.0.467" />
     <PackageVersion Include="Microsoft.VisualStudio.Language.StandardClassification" Version="17.0.498" />
   </ItemGroup>
+  <!-- Roslyn CodeAnalysis (for Quick Actions) -->
+  <ItemGroup Label="Roslyn CodeAnalysis">
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.8.0" />
+  </ItemGroup>
 </Project>

@@ -3,6 +3,8 @@
   <PropertyGroup>
     <MinimumVisualStudioVersion>17.0</MinimumVisualStudioVersion>
     <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
   </PropertyGroup>
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -79,6 +81,12 @@
       <IncludeInVSIX>true</IncludeInVSIX>
     </None>
     <None Include="QUICK_FIX_STEPS.md">
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </None>
+    <None Include="CS0246_ERROR_FIX.md">
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </None>
+    <None Include="diagnose-and-fix.ps1">
       <IncludeInVSIX>true</IncludeInVSIX>
     </None>
   </ItemGroup>

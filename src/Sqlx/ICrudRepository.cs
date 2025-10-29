@@ -32,7 +32,7 @@ namespace Sqlx
         // - IQueryRepository: GetById, GetAll, GetWhere, GetPage, Exists, etc.
         // - ICommandRepository: Insert, Update, Delete, SoftDelete, Upsert, etc.
         // - IAggregateRepository: Count, Sum, Avg, Max, Min, etc.
-        
+
         // Legacy methods below for backward compatibility (v0.4)
         // New code should use the inherited methods instead
         /// <summary>Gets entity by primary key.</summary>

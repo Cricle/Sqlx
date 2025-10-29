@@ -56,6 +56,10 @@
     <Compile Include="QuickActions\AddCrudMethodsCodeAction.cs" />
     <Compile Include="Diagnostics\SqlTemplateParameterAnalyzer.cs" />
     <Compile Include="Diagnostics\SqlTemplateParameterCodeFixProvider.cs" />
+    <Compile Include="ToolWindows\SqlPreviewWindow.cs" />
+    <Compile Include="ToolWindows\GeneratedCodeWindow.cs" />
+    <Compile Include="ToolWindows\QueryTesterWindow.cs" />
+    <Compile Include="ToolWindows\RepositoryExplorerWindow.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="source.extension.vsixmanifest">
@@ -77,16 +81,13 @@
     <None Include="BUILD.md">
       <IncludeInVSIX>true</IncludeInVSIX>
     </None>
-    <None Include="IMPORTANT_BUILD_NOTES.md">
+    <None Include="HOW_TO_BUILD_VSIX.md">
       <IncludeInVSIX>true</IncludeInVSIX>
     </None>
-    <None Include="QUICK_FIX_STEPS.md">
+    <None Include="TESTING_GUIDE.md">
       <IncludeInVSIX>true</IncludeInVSIX>
     </None>
-    <None Include="CS0246_ERROR_FIX.md">
-      <IncludeInVSIX>true</IncludeInVSIX>
-    </None>
-    <None Include="diagnose-and-fix.ps1">
+    <None Include="VS_EXTENSION_IMPLEMENTATION_STATUS.md">
       <IncludeInVSIX>true</IncludeInVSIX>
     </None>
   </ItemGroup>

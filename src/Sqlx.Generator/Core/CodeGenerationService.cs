@@ -511,7 +511,15 @@ public class CodeGenerationService
 
         if (!method.ReturnsVoid)
         {
-            sb.AppendLine($"return default({returnType});");
+            // For async methods, extract the inner type from Task<T>
+            var defaultType = returnType;
+            if (asyncModifier != "" && returnType.StartsWith("System.Threading.Tasks.Task<") && returnType.EndsWith(">"))
+            {
+                // Extract inner type from Task<T>
+                defaultType = returnType.Substring("System.Threading.Tasks.Task<".Length, 
+                                                   returnType.Length - "System.Threading.Tasks.Task<".Length - 1);
+            }
+            sb.AppendLine($"return default({defaultType});");
         }
 
         sb.PopIndent();

@@ -1,6 +1,6 @@
 # 🏗️ 如何构建 VSIX 文件
 
-> **重要**: VSIX 项目 **必须** 使用 Visual Studio 或 MSBuild 构建  
+> **重要**: VSIX 项目 **必须** 使用 Visual Studio 或 MSBuild 构建
 > **不能** 使用 `dotnet build`
 
 ---
@@ -399,9 +399,9 @@ ls bin/Release/Sqlx.Extension.vsix -lh
 
 ---
 
-**最后更新**: 2025-10-29  
-**VS 版本**: 2022 (17.0+)  
-**项目类型**: VSIX Extension  
+**最后更新**: 2025-10-29
+**VS 版本**: 2022 (17.0+)
+**项目类型**: VSIX Extension
 **构建工具**: MSBuild / Visual Studio
 
 **🎯 记住**: VSIX 项目 **必须** 用 Visual Studio 构建，不能用 `dotnet build`！

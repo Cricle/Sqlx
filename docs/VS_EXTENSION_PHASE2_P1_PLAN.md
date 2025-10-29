@@ -1,7 +1,7 @@
 # VS Extension Phase 2 P1 实施计划
 
-> **状态**: 🚧 进行中  
-> **版本**: v0.3.0  
+> **状态**: 🚧 进行中
+> **版本**: v0.3.0
 > **优先级**: P1
 
 ---
@@ -178,9 +178,9 @@ internal class SqlxCompletionSource : ICompletionSource
 {
     private ITextBuffer _textBuffer;
     private IClassificationTypeRegistryService _registry;
-    
+
     public void AugmentCompletionSession(
-        ICompletionSession session, 
+        ICompletionSession session,
         IList<CompletionSet> completionSets)
     {
         // 1. 检测光标位置
@@ -201,7 +201,7 @@ internal class SqlxCompletionSourceProvider : ICompletionSourceProvider
 {
     [Import]
     internal IClassificationTypeRegistryService ClassificationRegistry { get; set; }
-    
+
     public ICompletionSource TryCreateCompletionSource(ITextBuffer textBuffer)
     {
         return new SqlxCompletionSource(textBuffer, ClassificationRegistry);
@@ -233,14 +233,14 @@ private IEnumerable<Completion> GetPlaceholderCompletions()
 public class SqlExecutionLogWindow : ToolWindowPane
 {
     private SqlExecutionLogControl _control;
-    
+
     public SqlExecutionLogWindow() : base(null)
     {
         this.Caption = "Sqlx SQL Execution Log";
         this._control = new SqlExecutionLogControl();
         this.Content = this._control;
     }
-    
+
     public void AddLog(SqlExecutionLog log)
     {
         this._control.AddLog(log);
@@ -260,7 +260,7 @@ public interface ISqlxLogService
         int rowsAffected,
         bool success,
         string error = null);
-        
+
     event EventHandler<SqlExecutionLog> LogAdded;
 }
 ```
@@ -275,7 +275,7 @@ public async Task<User> GetByIdAsync(long id)
     {
         // 执行查询
         var result = await ...;
-        
+
         // 记录成功
         LogService.LogExecution(
             "GetByIdAsync",
@@ -284,7 +284,7 @@ public async Task<User> GetByIdAsync(long id)
             elapsedMs,
             1,
             true);
-            
+
         return result;
     }
     catch (Exception ex)
@@ -388,7 +388,7 @@ public async Task<User> GetByIdAsync(long id)
 
 ---
 
-**当前状态**: ✅ SQL 着色修复完成，准备开始 P1 实施  
+**当前状态**: ✅ SQL 着色修复完成，准备开始 P1 实施
 **下一步**: 实现占位符智能提示
 
 

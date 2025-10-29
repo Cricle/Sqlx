@@ -12,14 +12,14 @@
 
 ## Icon Strip Layout
 
-The `SqlxIcons.png` file should contain 4 icons in a horizontal strip (64x16 pixels total):
+The `SqlxIcons.png` file should contain 5 icons in a horizontal strip (80x16 pixels total):
 
 ```
-┌───────┬───────┬───────┬───────┐
-│   1   │   2   │   3   │   4   │
-│  SQL  │ Code  │ Test  │ Explr │
-└───────┴───────┴───────┴───────┘
- 16x16   16x16   16x16   16x16
+┌───────┬───────┬───────┬───────┬───────┐
+│   1   │   2   │   3   │   4   │   5   │
+│  SQL  │ Code  │ Test  │ Explr │  Log  │
+└───────┴───────┴───────┴───────┴───────┘
+ 16x16   16x16   16x16   16x16   16x16
 ```
 
 ---
@@ -50,18 +50,25 @@ The `SqlxIcons.png` file should contain 4 icons in a horizontal strip (64x16 pix
 - **Color**: Orange (#CA5010 - VS Orange)
 - **Usage**: Repository Explorer window menu item
 
+### Icon 5: SQL Execution Log (bmpLog)
+- **Description**: Log/document icon
+- **Suggested Design**: Document with list lines or clipboard
+- **Color**: Purple (#A853C8 - VS Magenta)
+- **Usage**: SQL Execution Log window menu item
+
 ---
 
 ## Creating the Icon File
 
 ### Option 1: Create with Image Editor
 1. Open your preferred image editor (Photoshop, GIMP, Paint.NET, etc.)
-2. Create a new image: 64x16 pixels, transparent background
-3. Draw 4 icons at positions:
+2. Create a new image: 80x16 pixels, transparent background
+3. Draw 5 icons at positions:
    - Icon 1: 0-15px
    - Icon 2: 16-31px
    - Icon 3: 32-47px
    - Icon 4: 48-63px
+   - Icon 5: 64-79px
 4. Save as `SqlxIcons.png` with transparency
 
 ### Option 2: Use Visual Studio Icon Library
@@ -71,11 +78,12 @@ The `SqlxIcons.png` file should contain 4 icons in a horizontal strip (64x16 pix
 4. Save as `SqlxIcons.png`
 
 ### Option 3: Use Placeholder (For Testing)
-Create a simple 64x16 PNG with colored squares:
+Create a simple 80x16 PNG with colored squares:
 - Square 1 (0-15): Blue
 - Square 2 (16-31): Purple
 - Square 3 (32-47): Green
 - Square 4 (48-63): Orange
+- Square 5 (64-79): Magenta
 
 ---
 

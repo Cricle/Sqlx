@@ -1,7 +1,7 @@
 # SQL 着色修复完成总结
 
-> **提交**: `c7ccf0c`  
-> **状态**: ✅ 本地已完成，待推送  
+> **提交**: `c7ccf0c`
+> **状态**: ✅ 本地已完成，待推送
 > **日期**: 2025-10-29
 
 ---
@@ -229,8 +229,8 @@ msbuild /p:Configuration=Debug
 [SqlTemplate("SELECT * FROM users")]
 
 // Verbatim 字符串
-[SqlTemplate(@"SELECT * 
-FROM users 
+[SqlTemplate(@"SELECT *
+FROM users
 WHERE id = @id")]
 
 // 带转义的字符串
@@ -283,7 +283,7 @@ WHERE id = @id")]
 ### Phase 2 P1 (下周)
 - [ ] 实现占位符智能提示
   - CompletionSource
-  - CompletionSourceProvider  
+  - CompletionSourceProvider
   - 占位符列表
   - 参数提示
 
@@ -342,8 +342,8 @@ WHERE id = @id")]
 
 ---
 
-**状态**: ✅ SQL 着色修复完成并本地提交  
-**提交**: `c7ccf0c`  
+**状态**: ✅ SQL 着色修复完成并本地提交
+**提交**: `c7ccf0c`
 **待推送**: 网络问题解决后执行 `git push origin main`
 
 **🎉 SQL 语法着色现在更准确、更稳定、更强大！**

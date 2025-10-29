@@ -31,7 +31,7 @@ namespace Sqlx
         // This interface inherits all methods from:
         // - IQueryRepository: GetById, GetAll, GetWhere, GetPage, Exists, etc.
         // - ICommandRepository: Insert, Update, Delete, SoftDelete, Upsert, etc.
-        // 
+        //
         // For aggregate operations (Count, Sum, Avg, Max, Min), use IAggregateRepository separately
 
         // Legacy methods below for backward compatibility (v0.4)

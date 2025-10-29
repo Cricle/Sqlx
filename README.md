@@ -439,6 +439,7 @@ public partial class UserRepository
 #### 🛠️ 开发工具
 - [健康检查脚本](scripts/health-check.ps1) - 项目健康检查工具 ⭐ NEW
 - [发布检查清单](RELEASE_CHECKLIST.md) - 发布前100+检查项 ⭐ NEW
+- [编译修复报告](COMPILATION_FIX_COMPLETE.md) - 接口层编译错误修复 ⭐ NEW
 
 #### 🤖 AI 助手文档
 - [AI-VIEW.md](AI-VIEW.md) - AI助手使用指南（全特性、注意事项）

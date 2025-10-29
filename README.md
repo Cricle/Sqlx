@@ -405,25 +405,33 @@ public partial class UserRepository
 
 ### 📖 文档目录
 
-#### 核心文档
+#### 🚀 快速上手
 - [快速开始指南](docs/QUICK_START_GUIDE.md) - 5分钟上手
+- [完整教程](TUTORIAL.md) - 10课从入门到精通 ⭐
+- [快速参考](QUICK_REFERENCE.md) - 一页纸速查表
+- [FAQ](FAQ.md) - 35+常见问题解答 ⭐ NEW
+
+#### 📚 核心文档
 - [API参考](docs/API_REFERENCE.md) - 完整API文档
 - [占位符指南](docs/PLACEHOLDERS.md) - 占位符详解
 - [最佳实践](docs/BEST_PRACTICES.md) - 推荐用法
-
-#### 高级功能
-- [表达式树](docs/EXPRESSION_TO_SQL.md) - 表达式转SQL
 - [高级特性](docs/ADVANCED_FEATURES.md) - SoftDelete、AuditFields等
-- [性能优化](docs/PERFORMANCE_OPTIMIZATION.md) - 性能调优
-- [多数据库支持](docs/MULTI_DATABASE_SUPPORT.md) - 数据库方言
 
-#### VS 扩展文档
-- [VS 扩展计划](docs/VSCODE_EXTENSION_PLAN.md) - 开发计划与路线图
-- [扩展功能总结](docs/EXTENSION_SUMMARY.md) - 功能概览
+#### 🔄 迁移与对比
+- [迁移指南](MIGRATION_GUIDE.md) - 从EF Core/Dapper/ADO.NET迁移 ⭐ NEW
+- [性能对比](BenchmarkDotNet.Artifacts/results/) - 基准测试结果
+
+#### 🛠️ VS 扩展文档
+- [VS 扩展增强计划](docs/VS_EXTENSION_ENHANCEMENT_PLAN.md) - 完整开发计划
+- [实现状态](src/Sqlx.Extension/VS_EXTENSION_IMPLEMENTATION_STATUS.md) - 功能完成度
 - [语法高亮实现](docs/SYNTAX_HIGHLIGHTING_IMPLEMENTATION.md) - 技术实现细节
-- [Phase 1 完成报告](docs/VS_EXTENSION_PHASE1_COMPLETE.md) - 开发里程碑
 
-#### AI 助手文档
+#### 🆘 帮助与支持
+- [故障排除](TROUBLESHOOTING.md) - 常见问题解决
+- [贡献指南](CONTRIBUTING.md) - 如何参与贡献
+- [发布指南](HOW_TO_RELEASE.md) - 发布流程（维护者）
+
+#### 🤖 AI 助手文档
 - [AI-VIEW.md](AI-VIEW.md) - AI助手使用指南（全特性、注意事项）
 
 ---

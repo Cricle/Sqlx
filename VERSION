@@ -1,0 +1,185 @@
+# Sqlx Version Information
+
+## Current Versions
+
+### Sqlx Core Library
+- **Version**: 0.4.0
+- **Release Date**: 2024-10-26
+- **Status**: Stable
+- **NuGet**: https://www.nuget.org/packages/Sqlx/
+
+### Sqlx.Generator
+- **Version**: 0.4.0
+- **Release Date**: 2024-10-26
+- **Status**: Stable
+- **NuGet**: https://www.nuget.org/packages/Sqlx.Generator/
+
+### Sqlx Visual Studio Extension
+- **Version**: 0.5.0-preview
+- **Release Date**: 2025-10-29 (Planned)
+- **Status**: Preview
+- **Download**: https://github.com/Cricle/Sqlx/releases
+
+## Version History
+
+### v0.5.0-preview (VS Extension - 2025-10-29)
+- First preview release of Visual Studio Extension
+- 14 professional tool windows
+- 20 core features
+- 22x average efficiency improvement
+- Complete documentation (500+ pages)
+- Production ready
+
+### v0.4.0 (Core Library - 2024-10-26)
+- Enhanced Repository interfaces (10 interfaces, 50+ methods)
+- Improved performance
+- Better type safety
+- Extended database support
+
+### v0.3.0 (Previous)
+- Initial stable release
+- Basic CRUD operations
+- SqlTemplate support
+- Placeholder system
+
+## Compatibility
+
+### .NET Support
+- ✅ .NET 6.0
+- ✅ .NET 7.0
+- ✅ .NET 8.0
+- ✅ .NET 9.0+
+- ✅ .NET Framework 4.7.2+
+
+### Visual Studio Support (Extension)
+- ✅ Visual Studio 2022 (17.0+)
+- ❌ Visual Studio 2019 (not supported)
+- ❌ Visual Studio Code (planned)
+- ❌ JetBrains Rider (planned)
+
+### Database Support
+- ✅ SQLite
+- ✅ MySQL
+- ✅ PostgreSQL
+- ✅ SQL Server
+- ✅ Oracle
+
+## Next Release
+
+### v0.6.0 (Planned)
+- Custom icon set for VS Extension
+- User feedback improvements
+- Bug fixes
+- Performance optimizations
+- Documentation enhancements
+
+### v1.0.0 (Planned - Major)
+- Runtime integration for debugging
+- Real SQL breakpoint support
+- Expression evaluation
+- Production-ready label
+- Stability improvements
+
+### v2.0.0 (Future)
+- AI-assisted SQL generation
+- Cloud template sharing
+- VS Code extension
+- Rider extension
+- Team collaboration features
+
+## Version Scheme
+
+We follow [Semantic Versioning 2.0.0](https://semver.org/):
+
+```
+MAJOR.MINOR.PATCH[-PRERELEASE]
+
+MAJOR: Breaking changes
+MINOR: New features (backward compatible)
+PATCH: Bug fixes (backward compatible)
+PRERELEASE: preview, alpha, beta, rc
+```
+
+### Examples
+- `0.4.0` - Stable release
+- `0.5.0-preview` - Preview release
+- `1.0.0-rc.1` - Release candidate
+- `2.0.0-alpha.1` - Alpha release
+
+## Release Channels
+
+### Stable
+- **Core Library**: NuGet packages
+- **Frequency**: As needed (typically monthly)
+- **Stability**: Production ready
+- **Support**: Full support
+
+### Preview
+- **VS Extension**: VSIX packages
+- **Frequency**: Feature-based
+- **Stability**: Feature complete, testing phase
+- **Support**: Community support
+
+### Nightly (Future)
+- **All Components**: CI/CD builds
+- **Frequency**: Daily
+- **Stability**: Experimental
+- **Support**: No support
+
+## Deprecation Policy
+
+### Minor Version Deprecation
+- Features marked deprecated in current minor version
+- Will be removed in next major version
+- At least 6 months notice
+
+### Major Version Support
+- Current major version: Full support
+- Previous major version: Security fixes only (1 year)
+- Older versions: No support
+
+### Current Support Matrix
+
+| Version | Status | Support Until | Notes |
+|---------|--------|---------------|-------|
+| 0.5.x | Preview | TBD | VS Extension preview |
+| 0.4.x | Current | Active | Full support |
+| 0.3.x | Previous | 2025-04-26 | Security fixes only |
+| 0.2.x | EOL | - | No support |
+
+## How to Check Version
+
+### Sqlx Core Library
+```csharp
+// In your code
+var version = typeof(SqlTemplateAttribute).Assembly.GetName().Version;
+Console.WriteLine($"Sqlx Version: {version}");
+```
+
+### Sqlx.Generator
+```bash
+# Check NuGet package version
+dotnet list package | grep Sqlx.Generator
+```
+
+### VS Extension
+```
+Visual Studio > Extensions > Manage Extensions > Installed > Sqlx
+```
+
+## Changelog
+
+For detailed changes in each version, see [CHANGELOG.md](CHANGELOG.md).
+
+## Questions?
+
+- **Documentation**: https://cricle.github.io/Sqlx/
+- **FAQ**: [FAQ.md](FAQ.md)
+- **Issues**: https://github.com/Cricle/Sqlx/issues
+- **Discussions**: https://github.com/Cricle/Sqlx/discussions
+
+---
+
+**Last Updated**: 2025-10-29
+
+

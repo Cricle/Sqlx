@@ -128,17 +128,18 @@ namespace Sqlx
         [SqlTemplate("SELECT {{columns}} FROM {{table}} ORDER BY RANDOM() LIMIT @count")]
         Task<List<TEntity>> GetRandomAsync(int count, CancellationToken cancellationToken = default);
 
-        /// <summary>Gets distinct values from a column.</summary>
-        /// <param name="column">Column name to get distinct values from</param>
-        /// <param name="limit">Maximum number of distinct values to return (default 1000)</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>List of distinct values</returns>
-        /// <example>
-        /// var statuses = await repo.GetDistinctValuesAsync("status");
-        /// // ["active", "inactive", "pending"]
-        /// </example>
-        [SqlTemplate("SELECT DISTINCT {{column}} FROM {{table}} WHERE {{column}} IS NOT NULL ORDER BY {{column}} {{limit --param limit}}")]
-        Task<List<string>> GetDistinctValuesAsync([DynamicSql(Type = DynamicSqlType.Identifier)] string column, int limit = 1000, CancellationToken cancellationToken = default);
+        // TODO: GetDistinctValuesAsync需要源生成器特殊支持来处理非实体返回类型
+        // /// <summary>Gets distinct values from a column.</summary>
+        // /// <param name="column">Column name to get distinct values from</param>
+        // /// <param name="limit">Maximum number of distinct values to return (default 1000)</param>
+        // /// <param name="cancellationToken">Cancellation token</param>
+        // /// <returns>List of distinct values</returns>
+        // /// <example>
+        // /// var statuses = await repo.GetDistinctValuesAsync("status");
+        // /// // ["active", "inactive", "pending"]
+        // /// </example>
+        // [SqlTemplate("SELECT DISTINCT {{column}} FROM {{table}} WHERE {{column}} IS NOT NULL ORDER BY {{column}} {{limit --param limit}}")]
+        // Task<List<string>> GetDistinctValuesAsync([DynamicSql(Type = DynamicSqlType.Identifier)] string column, int limit = 1000, CancellationToken cancellationToken = default);
     }
 }
 

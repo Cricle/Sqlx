@@ -1,7 +1,7 @@
 # Sqlx Diagnostics (诊断和代码修复)
 
-> **功能**: 实时代码分析和自动修复  
-> **状态**: ✅ 实现完成  
+> **功能**: 实时代码分析和自动修复
+> **状态**: ✅ 实现完成
 > **优先级**: P0
 
 ---
@@ -32,7 +32,7 @@ Task<User?> GetUserAsync(long id);  // ← 应该是 userId 或修改 SQL
 Task<User?> GetUserAsync(long id);
 ```
 
-**自动修复**: 
+**自动修复**:
 - 添加缺失的参数到方法签名
 
 ---
@@ -76,7 +76,7 @@ Task<User?> GetUserAsync(long id);
 
 ```csharp
 // ⚠️ 警告 - ComplexObject 可能不适合直接用于SQL参数
-public class ComplexObject 
+public class ComplexObject
 {
     public Dictionary<string, object> Data { get; set; }
     public Action Handler { get; set; }
@@ -219,7 +219,7 @@ public class SqlTemplateParameterAnalyzer : DiagnosticAnalyzer
     {
         // 注册语法节点分析
         context.RegisterSyntaxNodeAction(
-            AnalyzeMethodDeclaration, 
+            AnalyzeMethodDeclaration,
             SyntaxKind.MethodDeclaration);
     }
 }
@@ -229,7 +229,7 @@ public class SqlTemplateParameterAnalyzer : DiagnosticAnalyzer
 
 ```csharp
 // 从 SQL 模板提取参数
-private static readonly Regex SqlParameterRegex = 
+private static readonly Regex SqlParameterRegex =
     new Regex(@"@([a-zA-Z_][a-zA-Z0-9_]*)", RegexOptions.Compiled);
 
 var sqlParameters = SqlParameterRegex.Matches(sqlTemplate)
@@ -413,20 +413,20 @@ Task GetAsync(long id, CancellationToken ct = default);
 
 ### 1. 默认参数类型
 
-**问题**: 自动添加的参数类型默认为 `object`  
-**解决**: 手动修改为正确类型  
+**问题**: 自动添加的参数类型默认为 `object`
+**解决**: 手动修改为正确类型
 **影响**: 低（一次性修改）
 
 ### 2. 动态SQL
 
-**问题**: 不支持字符串插值的SQL  
-**解决**: 使用占位符代替  
+**问题**: 不支持字符串插值的SQL
+**解决**: 使用占位符代替
 **影响**: 低（不推荐动态SQL）
 
 ### 3. 复杂类型检测
 
-**问题**: 可能误报某些自定义类型  
-**解决**: 抑制特定警告  
+**问题**: 可能误报某些自定义类型
+**解决**: 抑制特定警告
 **影响**: 低（罕见情况）
 
 ---
@@ -483,7 +483,7 @@ Task GetAsync(long id, CancellationToken ct = default);
 
 ---
 
-**状态**: ✅ 实现完成  
-**版本**: 0.5.0-dev  
+**状态**: ✅ 实现完成
+**版本**: 0.5.0-dev
 **最后更新**: 2025-10-29
 

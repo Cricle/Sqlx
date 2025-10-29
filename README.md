@@ -2,7 +2,8 @@
 
 <div align="center">
 
-[![NuGet](https://img.shields.io/nuget/v/Sqlx.svg)](https://www.nuget.org/packages/Sqlx/)
+[![NuGet](https://img.shields.io/badge/nuget-v0.4.0-blue)](https://www.nuget.org/packages/Sqlx/)
+[![VS Extension](https://img.shields.io/badge/VS%20Extension-v0.1.0-green)](#️-visual-studio-插件)
 [![Tests](https://img.shields.io/badge/tests-1412%20passed-brightgreen)](tests/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0-purple.svg)](#)
@@ -561,17 +562,34 @@ SqlTemplate 字符串实时语法高亮，让 SQL 代码清晰易读：
 
 ### 安装方式
 
-1. **从源码构建**:
-   ```bash
-   cd src/Sqlx.Extension
-   # 在 Visual Studio 2022 中打开 Sqlx.sln
-   # 按 F5 构建并测试
-   ```
+#### 方式 1: Visual Studio Marketplace（推荐）
+```
+扩展 → 管理扩展 → 在线 → 搜索 "Sqlx"
+下载并安装 → 重启 Visual Studio
+```
 
-2. **查看文档**:
-   - [构建说明](src/Sqlx.Extension/BUILD.md)
-   - [测试指南](src/Sqlx.Extension/TESTING_GUIDE.md)
-   - [完整计划](docs/VSCODE_EXTENSION_PLAN.md)
+#### 方式 2: 从 Releases 下载
+1. 访问 [GitHub Releases](https://github.com/Cricle/Sqlx/releases)
+2. 下载最新的 `Sqlx.Extension.vsix`
+3. 双击 `.vsix` 文件安装
+4. 重启 Visual Studio
+
+#### 方式 3: 从源码构建
+```bash
+cd src/Sqlx.Extension
+# 在 Visual Studio 2022 中打开 Sqlx.sln
+# 生成 → 重新生成解决方案
+# 查看 bin/Debug/Sqlx.Extension.vsix
+```
+
+**系统要求**:
+- ✅ Visual Studio 2022 (17.0+)
+- ✅ .NET Framework 4.7.2+
+
+**相关文档**:
+- [扩展开发计划](docs/VSCODE_EXTENSION_PLAN.md)
+- [构建说明](src/Sqlx.Extension/BUILD.md)
+- [测试指南](src/Sqlx.Extension/TESTING_GUIDE.md)
 
 ### 开发效率提升
 

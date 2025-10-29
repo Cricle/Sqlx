@@ -45,6 +45,21 @@
   - 错误处理
   - 测试策略
 
+### 🛠️ Visual Studio 插件
+
+- **[VS 扩展开发计划](VSCODE_EXTENSION_PLAN.md)** - 完整的扩展功能规划
+  - 语法着色（✅ 已完成）
+  - 代码片段（✅ 已完成）
+  - 快速操作（✅ 已完成）
+  - 参数验证（✅ 已完成）
+  - IntelliSense（规划中）
+  - 生成代码查看器（规划中）
+
+- **[扩展开发总结](EXTENSION_SUMMARY.md)** - P0 功能完成报告
+- **[语法高亮实现](SYNTAX_HIGHLIGHTING_IMPLEMENTATION.md)** - 技术实现细节
+- **[构建说明](../src/Sqlx.Extension/BUILD.md)** - 如何构建扩展
+- **[测试指南](../src/Sqlx.Extension/TESTING_GUIDE.md)** - 功能测试清单
+
 ---
 
 ## 🌐 在线资源

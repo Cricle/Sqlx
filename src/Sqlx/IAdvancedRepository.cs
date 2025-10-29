@@ -64,15 +64,6 @@ namespace Sqlx
 
         // ===== Bulk Operations =====
 
-        /// <summary>Truncates table (deletes all rows and resets auto-increment).</summary>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <remarks>
-        /// ⚠️ WARNING: This is a permanent operation that cannot be rolled back in most databases.
-        /// Extremely fast but destructive. Use with caution.
-        /// </remarks>
-        [SqlTemplate("TRUNCATE TABLE {{table}}")]
-        Task TruncateAsync(CancellationToken cancellationToken = default);
-
         /// <summary>Bulk copy/import large amount of data using database-specific bulk insert.</summary>
         /// <param name="entities">Entities to import</param>
         /// <param name="cancellationToken">Cancellation token</param>
@@ -87,29 +78,23 @@ namespace Sqlx
         /// </remarks>
         Task<int> BulkCopyAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default);
 
-        // ===== Table Operations =====
+        // ===== Transaction Operations =====
 
-        /// <summary>Generates CREATE TABLE DDL statement for entity.</summary>
-        /// <returns>CREATE TABLE SQL statement</returns>
-        /// <example>
-        /// string ddl = await repo.GenerateCreateTableSqlAsync();
-        /// // CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL, ...);
-        /// </example>
-        Task<string> GenerateCreateTableSqlAsync();
-
-        /// <summary>Checks if table exists in database.</summary>
+        /// <summary>Begins a new database transaction.</summary>
         /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>True if table exists, false otherwise</returns>
-        Task<bool> TableExistsAsync(CancellationToken cancellationToken = default);
+        /// <remarks>
+        /// Call CommitTransactionAsync() to commit or RollbackTransactionAsync() to rollback.
+        /// Ensure you dispose the transaction properly.
+        /// </remarks>
+        Task BeginTransactionAsync(CancellationToken cancellationToken = default);
 
-        /// <summary>Creates table if it doesn't exist.</summary>
+        /// <summary>Commits the current transaction.</summary>
         /// <param name="cancellationToken">Cancellation token</param>
-        Task CreateTableIfNotExistsAsync(CancellationToken cancellationToken = default);
+        Task CommitTransactionAsync(CancellationToken cancellationToken = default);
 
-        /// <summary>Drops table from database.</summary>
+        /// <summary>Rolls back the current transaction.</summary>
         /// <param name="cancellationToken">Cancellation token</param>
-        /// <remarks>⚠️ WARNING: This is irreversible! All data will be lost.</remarks>
-        Task DropTableAsync(CancellationToken cancellationToken = default);
+        Task RollbackTransactionAsync(CancellationToken cancellationToken = default);
     }
 }
 

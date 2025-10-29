@@ -47,8 +47,8 @@ namespace Sqlx
         /// var counts = await repo.CountByAsync("status");
         /// // { "active": 100, "inactive": 50, "banned": 10 }
         /// </example>
-        [SqlTemplate("SELECT @column, COUNT(*) FROM {{table}} GROUP BY @column")]
-        Task<Dictionary<string, long>> CountByAsync(string column, CancellationToken cancellationToken = default);
+        [SqlTemplate("SELECT {{column}}, COUNT(*) FROM {{table}} GROUP BY {{column}}")]
+        Task<Dictionary<string, long>> CountByAsync([DynamicSql(Type = DynamicSqlType.Identifier)] string column, CancellationToken cancellationToken = default);
 
         // ===== Sum Operations =====
 
@@ -59,8 +59,8 @@ namespace Sqlx
         /// <example>
         /// decimal totalPrice = await repo.SumAsync("price");
         /// </example>
-        [SqlTemplate("SELECT COALESCE(SUM(@column), 0) FROM {{table}}")]
-        Task<decimal> SumAsync(string column, CancellationToken cancellationToken = default);
+        [SqlTemplate("SELECT COALESCE(SUM({{column}}), 0) FROM {{table}}")]
+        Task<decimal> SumAsync([DynamicSql(Type = DynamicSqlType.Identifier)] string column, CancellationToken cancellationToken = default);
 
         /// <summary>Sums column for entities matching expression predicate.</summary>
         /// <param name="column">Column name to sum</param>
@@ -70,8 +70,8 @@ namespace Sqlx
         /// <example>
         /// decimal paidTotal = await repo.SumWhereAsync("amount", x =&gt; x.Status == "Paid");
         /// </example>
-        [SqlTemplate("SELECT COALESCE(SUM(@column), 0) FROM {{table}} {{where}}")]
-        Task<decimal> SumWhereAsync(string column, [ExpressionToSql] Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
+        [SqlTemplate("SELECT COALESCE(SUM({{column}}), 0) FROM {{table}} {{where}}")]
+        Task<decimal> SumWhereAsync([DynamicSql(Type = DynamicSqlType.Identifier)] string column, [ExpressionToSql] Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
 
         // ===== Average Operations =====
 
@@ -82,64 +82,77 @@ namespace Sqlx
         /// <example>
         /// decimal avgAge = await repo.AvgAsync("age");
         /// </example>
-        [SqlTemplate("SELECT COALESCE(AVG(@column), 0) FROM {{table}}")]
-        Task<decimal> AvgAsync(string column, CancellationToken cancellationToken = default);
+        [SqlTemplate("SELECT COALESCE(AVG({{column}}), 0) FROM {{table}}")]
+        Task<decimal> AvgAsync([DynamicSql(Type = DynamicSqlType.Identifier)] string column, CancellationToken cancellationToken = default);
 
         /// <summary>Gets average for entities matching expression predicate.</summary>
         /// <param name="column">Column name to average</param>
         /// <param name="predicate">Expression predicate for WHERE clause</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Average of matching rows</returns>
-        [SqlTemplate("SELECT COALESCE(AVG(@column), 0) FROM {{table}} {{where}}")]
-        Task<decimal> AvgWhereAsync(string column, [ExpressionToSql] Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
+        [SqlTemplate("SELECT COALESCE(AVG({{column}}), 0) FROM {{table}} {{where}}")]
+        Task<decimal> AvgWhereAsync([DynamicSql(Type = DynamicSqlType.Identifier)] string column, [ExpressionToSql] Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
 
         // ===== Min/Max Operations =====
 
-        /// <summary>Gets maximum value of a column.</summary>
-        /// <typeparam name="T">Column type</typeparam>
+        /// <summary>Gets maximum integer value of a column.</summary>
+        /// <param name="column">Column name</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Maximum value</returns>
+        [SqlTemplate("SELECT MAX({{column}}) FROM {{table}}")]
+        Task<int> MaxIntAsync([DynamicSql(Type = DynamicSqlType.Identifier)] string column, CancellationToken cancellationToken = default);
+
+        /// <summary>Gets maximum long value of a column.</summary>
+        /// <param name="column">Column name</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Maximum value</returns>
+        [SqlTemplate("SELECT MAX({{column}}) FROM {{table}}")]
+        Task<long> MaxLongAsync([DynamicSql(Type = DynamicSqlType.Identifier)] string column, CancellationToken cancellationToken = default);
+
+        /// <summary>Gets maximum decimal value of a column.</summary>
         /// <param name="column">Column name</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Maximum value</returns>
         /// <example>
-        /// decimal maxPrice = await repo.MaxAsync&lt;decimal&gt;("price");
+        /// decimal maxPrice = await repo.MaxDecimalAsync("price");
         /// </example>
-        [SqlTemplate("SELECT MAX(@column) FROM {{table}}")]
-        Task<T> MaxAsync<T>(string column, CancellationToken cancellationToken = default);
+        [SqlTemplate("SELECT MAX({{column}}) FROM {{table}}")]
+        Task<decimal> MaxDecimalAsync([DynamicSql(Type = DynamicSqlType.Identifier)] string column, CancellationToken cancellationToken = default);
 
-        /// <summary>Gets minimum value of a column.</summary>
-        /// <typeparam name="T">Column type</typeparam>
+        /// <summary>Gets maximum DateTime value of a column.</summary>
+        /// <param name="column">Column name</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Maximum value</returns>
+        [SqlTemplate("SELECT MAX({{column}}) FROM {{table}}")]
+        Task<DateTime> MaxDateTimeAsync([DynamicSql(Type = DynamicSqlType.Identifier)] string column, CancellationToken cancellationToken = default);
+
+        /// <summary>Gets minimum integer value of a column.</summary>
         /// <param name="column">Column name</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Minimum value</returns>
-        [SqlTemplate("SELECT MIN(@column) FROM {{table}}")]
-        Task<T> MinAsync<T>(string column, CancellationToken cancellationToken = default);
+        [SqlTemplate("SELECT MIN({{column}}) FROM {{table}}")]
+        Task<int> MinIntAsync([DynamicSql(Type = DynamicSqlType.Identifier)] string column, CancellationToken cancellationToken = default);
 
-        /// <summary>Gets min and max values in a single query.</summary>
-        /// <typeparam name="T">Column type</typeparam>
+        /// <summary>Gets minimum long value of a column.</summary>
         /// <param name="column">Column name</param>
         /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Tuple with minimum and maximum values</returns>
-        /// <example>
-        /// var (min, max) = await repo.MinMaxAsync&lt;decimal&gt;("price");
-        /// </example>
-        [SqlTemplate("SELECT MIN(@column), MAX(@column) FROM {{table}}")]
-        Task<(T Min, T Max)> MinMaxAsync<T>(string column, CancellationToken cancellationToken = default);
+        /// <returns>Minimum value</returns>
+        [SqlTemplate("SELECT MIN({{column}}) FROM {{table}}")]
+        Task<long> MinLongAsync([DynamicSql(Type = DynamicSqlType.Identifier)] string column, CancellationToken cancellationToken = default);
 
-        // ===== Custom Aggregate =====
-
-        /// <summary>Executes custom aggregate function.</summary>
-        /// <typeparam name="T">Return type</typeparam>
-        /// <param name="function">SQL aggregate function name (e.g., "STRING_AGG", "GROUP_CONCAT")</param>
+        /// <summary>Gets minimum decimal value of a column.</summary>
         /// <param name="column">Column name</param>
-        /// <param name="separator">Optional separator for string aggregation functions</param>
         /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Aggregate result</returns>
-        /// <example>
-        /// // PostgreSQL: string allNames = await repo.AggregateAsync&lt;string&gt;("STRING_AGG", "name", ", ");
-        /// // MySQL: string allNames = await repo.AggregateAsync&lt;string&gt;("GROUP_CONCAT", "name", ", ");
-        /// </example>
-        [SqlTemplate("SELECT @function(@column, @separator) FROM {{table}}")]
-        Task<T> AggregateAsync<T>(string function, string column, string? separator = null, CancellationToken cancellationToken = default);
+        /// <returns>Minimum value</returns>
+        [SqlTemplate("SELECT MIN({{column}}) FROM {{table}}")]
+        Task<decimal> MinDecimalAsync([DynamicSql(Type = DynamicSqlType.Identifier)] string column, CancellationToken cancellationToken = default);
+
+        /// <summary>Gets minimum DateTime value of a column.</summary>
+        /// <param name="column">Column name</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Minimum value</returns>
+        [SqlTemplate("SELECT MIN({{column}}) FROM {{table}}")]
+        Task<DateTime> MinDateTimeAsync([DynamicSql(Type = DynamicSqlType.Identifier)] string column, CancellationToken cancellationToken = default);
     }
 }
 

@@ -30,33 +30,6 @@ namespace Sqlx
         [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
         Task<TEntity?> GetByIdAsync(TKey id, CancellationToken cancellationToken = default);
 
-        /// <summary>Gets first entity (throws if not found).</summary>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>First entity</returns>
-        /// <exception cref="InvalidOperationException">Thrown when no entity found</exception>
-        [SqlTemplate("SELECT {{columns}} FROM {{table}} {{limit --value 1}}")]
-        Task<TEntity> GetFirstAsync(CancellationToken cancellationToken = default);
-
-        /// <summary>Gets first entity or null if not found.</summary>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>First entity or null</returns>
-        [SqlTemplate("SELECT {{columns}} FROM {{table}} {{limit --value 1}}")]
-        Task<TEntity?> GetFirstOrDefaultAsync(CancellationToken cancellationToken = default);
-
-        /// <summary>Gets single entity (throws if 0 or multiple found).</summary>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Single entity</returns>
-        /// <exception cref="InvalidOperationException">Thrown when 0 or multiple entities found</exception>
-        [SqlTemplate("SELECT {{columns}} FROM {{table}}")]
-        Task<TEntity> GetSingleAsync(CancellationToken cancellationToken = default);
-
-        /// <summary>Gets single entity or null (throws if multiple found).</summary>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Single entity or null</returns>
-        /// <exception cref="InvalidOperationException">Thrown when multiple entities found</exception>
-        [SqlTemplate("SELECT {{columns}} FROM {{table}}")]
-        Task<TEntity?> GetSingleOrDefaultAsync(CancellationToken cancellationToken = default);
-
         // ===== Multiple Entity Queries =====
 
         /// <summary>Gets multiple entities by IDs.</summary>
@@ -67,12 +40,14 @@ namespace Sqlx
         [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id IN {{values --param ids}}")]
         Task<List<TEntity>> GetByIdsAsync(List<TKey> ids, CancellationToken cancellationToken = default);
 
-        /// <summary>Gets all entities with optional ordering.</summary>
+        /// <summary>Gets all entities with automatic limit and optional ordering.</summary>
+        /// <param name="limit">Maximum number of rows to return (default 1000, max 10000 recommended)</param>
         /// <param name="orderBy">ORDER BY clause (e.g., "name ASC, created_at DESC"). Null for no ordering.</param>
         /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>List of entities</returns>
-        [SqlTemplate("SELECT {{columns}} FROM {{table}} {{orderby --param orderBy}}")]
-        Task<List<TEntity>> GetAllAsync(string? orderBy = null, CancellationToken cancellationToken = default);
+        /// <returns>List of entities (up to limit)</returns>
+        /// <remarks>Always limited to prevent memory issues. For large datasets, use pagination (GetPageAsync or GetRangeAsync).</remarks>
+        [SqlTemplate("SELECT {{columns}} FROM {{table}} {{orderby --param orderBy}} {{limit --param limit}}")]
+        Task<List<TEntity>> GetAllAsync(int limit = 1000, string? orderBy = null, CancellationToken cancellationToken = default);
 
         /// <summary>Gets top N entities.</summary>
         /// <param name="limit">Maximum number of rows to return</param>
@@ -132,6 +107,33 @@ namespace Sqlx
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>True if any match found, false otherwise</returns>
         Task<bool> ExistsWhereAsync([ExpressionToSql] Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
+
+        // ===== Additional Useful Methods =====
+
+        /// <summary>Gets random N entities.</summary>
+        /// <param name="count">Number of random entities to return</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>List of random entities</returns>
+        /// <remarks>
+        /// Uses database-specific random function:
+        /// - SQL Server: NEWID()
+        /// - MySQL: RAND()
+        /// - PostgreSQL: RANDOM()
+        /// - SQLite: RANDOM()
+        /// </remarks>
+        Task<List<TEntity>> GetRandomAsync(int count, CancellationToken cancellationToken = default);
+
+        /// <summary>Gets distinct values from a column.</summary>
+        /// <param name="column">Column name to get distinct values from</param>
+        /// <param name="limit">Maximum number of distinct values to return (default 1000)</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>List of distinct values</returns>
+        /// <example>
+        /// var statuses = await repo.GetDistinctValuesAsync("status");
+        /// // ["active", "inactive", "pending"]
+        /// </example>
+        Task<List<string>> GetDistinctValuesAsync([DynamicSql(Type = DynamicSqlType.Identifier)] string column, int limit = 1000, CancellationToken cancellationToken = default);
     }
 }
+
 

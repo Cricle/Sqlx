@@ -107,6 +107,19 @@ namespace Sqlx
         /// </remarks>
         [BatchOperation(MaxBatchSize = 500)]
         Task<int> BatchUpsertAsync(List<TEntity> entities, CancellationToken cancellationToken = default);
+
+        // ===== Batch Query =====
+
+        /// <summary>Checks existence of multiple IDs.</summary>
+        /// <param name="ids">List of primary key values to check</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>List of booleans indicating existence (same order as input)</returns>
+        /// <example>
+        /// var exists = await repo.BatchExistsAsync(new List&lt;long&gt; { 1, 2, 99999 });
+        /// // [true, true, false]
+        /// </example>
+        Task<List<bool>> BatchExistsAsync(List<TKey> ids, CancellationToken cancellationToken = default);
     }
 }
+
 

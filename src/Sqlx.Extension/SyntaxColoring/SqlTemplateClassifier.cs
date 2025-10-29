@@ -66,85 +66,120 @@ namespace Sqlx.Extension.SyntaxColoring
         public IList<ClassificationSpan> GetClassificationSpans(SnapshotSpan span)
         {
             var classifications = new List<ClassificationSpan>();
-            var text = span.GetText();
-
-            // Check if this is inside a SqlTemplate attribute
-            if (!IsSqlTemplateContext(span))
+            
+            try
             {
-                return classifications;
+                // Get the full line text
+                var line = span.Start.GetContainingLine();
+                var lineText = line.GetText();
+                
+                // Check if this line contains SqlTemplate attribute
+                if (!lineText.Contains("SqlTemplate"))
+                {
+                    return classifications;
+                }
+
+                // Find the SQL string content
+                var sqlRegex = new Regex(@"\[SqlTemplate\s*\(\s*(?:@)?""([^""]*)""\s*\)", RegexOptions.IgnoreCase);
+                var match = sqlRegex.Match(lineText);
+                
+                if (!match.Success)
+                {
+                    return classifications;
+                }
+
+                var sqlContent = match.Groups[1].Value;
+                if (string.IsNullOrEmpty(sqlContent))
+                {
+                    return classifications;
+                }
+
+                // Calculate the start position of SQL content in the line
+                var sqlStartInLine = match.Groups[1].Index;
+                var sqlStartPosition = line.Start.Position + sqlStartInLine;
+
+                // Create a list to track already classified regions
+                var classifiedRanges = new List<Tuple<int, int>>();
+
+                // 1. Classify comments first
+                foreach (Match commentMatch in CommentRegex.Matches(sqlContent))
+                {
+                    var start = sqlStartPosition + commentMatch.Index;
+                    if (start >= span.Start && start < span.End)
+                    {
+                        var end = Math.Min(start + commentMatch.Length, span.End);
+                        var matchSpan = new SnapshotSpan(span.Snapshot, start, end - start);
+                        classifications.Add(new ClassificationSpan(matchSpan, _sqlCommentType));
+                        classifiedRanges.Add(Tuple.Create(commentMatch.Index, commentMatch.Index + commentMatch.Length));
+                    }
+                }
+
+                // 2. Classify string literals
+                foreach (Match stringMatch in StringLiteralRegex.Matches(sqlContent))
+                {
+                    if (IsAlreadyClassified(stringMatch.Index, stringMatch.Length, classifiedRanges))
+                        continue;
+
+                    var start = sqlStartPosition + stringMatch.Index;
+                    if (start >= span.Start && start < span.End)
+                    {
+                        var end = Math.Min(start + stringMatch.Length, span.End);
+                        var matchSpan = new SnapshotSpan(span.Snapshot, start, end - start);
+                        classifications.Add(new ClassificationSpan(matchSpan, _sqlStringType));
+                        classifiedRanges.Add(Tuple.Create(stringMatch.Index, stringMatch.Index + stringMatch.Length));
+                    }
+                }
+
+                // 3. Classify placeholders
+                foreach (Match placeholderMatch in PlaceholderRegex.Matches(sqlContent))
+                {
+                    if (IsAlreadyClassified(placeholderMatch.Index, placeholderMatch.Length, classifiedRanges))
+                        continue;
+
+                    var start = sqlStartPosition + placeholderMatch.Index;
+                    if (start >= span.Start && start < span.End)
+                    {
+                        var end = Math.Min(start + placeholderMatch.Length, span.End);
+                        var matchSpan = new SnapshotSpan(span.Snapshot, start, end - start);
+                        classifications.Add(new ClassificationSpan(matchSpan, _sqlPlaceholderType));
+                        classifiedRanges.Add(Tuple.Create(placeholderMatch.Index, placeholderMatch.Index + placeholderMatch.Length));
+                    }
+                }
+
+                // 4. Classify parameters
+                foreach (Match paramMatch in ParameterRegex.Matches(sqlContent))
+                {
+                    if (IsAlreadyClassified(paramMatch.Index, paramMatch.Length, classifiedRanges))
+                        continue;
+
+                    var start = sqlStartPosition + paramMatch.Index;
+                    if (start >= span.Start && start < span.End)
+                    {
+                        var end = Math.Min(start + paramMatch.Length, span.End);
+                        var matchSpan = new SnapshotSpan(span.Snapshot, start, end - start);
+                        classifications.Add(new ClassificationSpan(matchSpan, _sqlParameterType));
+                        classifiedRanges.Add(Tuple.Create(paramMatch.Index, paramMatch.Index + paramMatch.Length));
+                    }
+                }
+
+                // 5. Classify SQL keywords
+                foreach (Match keywordMatch in SqlKeywordRegex.Matches(sqlContent))
+                {
+                    if (IsAlreadyClassified(keywordMatch.Index, keywordMatch.Length, classifiedRanges))
+                        continue;
+
+                    var start = sqlStartPosition + keywordMatch.Index;
+                    if (start >= span.Start && start < span.End)
+                    {
+                        var end = Math.Min(start + keywordMatch.Length, span.End);
+                        var matchSpan = new SnapshotSpan(span.Snapshot, start, end - start);
+                        classifications.Add(new ClassificationSpan(matchSpan, _sqlKeywordType));
+                    }
+                }
             }
-
-            // Extract the SQL string content (between quotes)
-            var sqlContent = ExtractSqlContent(text);
-            if (string.IsNullOrEmpty(sqlContent))
+            catch
             {
-                return classifications;
-            }
-
-            // Find the start offset of the SQL content within the span
-            var sqlStartOffset = text.IndexOf('"') + 1;
-            if (sqlStartOffset <= 0)
-            {
-                return classifications;
-            }
-
-            // Create a list to track already classified regions
-            var classifiedRanges = new List<Tuple<int, int>>();
-
-            // 1. Classify comments first (highest priority to avoid conflicts)
-            foreach (Match match in CommentRegex.Matches(sqlContent))
-            {
-                var start = span.Start + sqlStartOffset + match.Index;
-                var matchSpan = new SnapshotSpan(span.Snapshot, start, match.Length);
-                classifications.Add(new ClassificationSpan(matchSpan, _sqlCommentType));
-                classifiedRanges.Add(Tuple.Create(match.Index, match.Index + match.Length));
-            }
-
-            // 2. Classify string literals (to avoid classifying keywords inside strings)
-            foreach (Match match in StringLiteralRegex.Matches(sqlContent))
-            {
-                if (IsAlreadyClassified(match.Index, match.Length, classifiedRanges))
-                    continue;
-
-                var start = span.Start + sqlStartOffset + match.Index;
-                var matchSpan = new SnapshotSpan(span.Snapshot, start, match.Length);
-                classifications.Add(new ClassificationSpan(matchSpan, _sqlStringType));
-                classifiedRanges.Add(Tuple.Create(match.Index, match.Index + match.Length));
-            }
-
-            // 3. Classify placeholders
-            foreach (Match match in PlaceholderRegex.Matches(sqlContent))
-            {
-                if (IsAlreadyClassified(match.Index, match.Length, classifiedRanges))
-                    continue;
-
-                var start = span.Start + sqlStartOffset + match.Index;
-                var matchSpan = new SnapshotSpan(span.Snapshot, start, match.Length);
-                classifications.Add(new ClassificationSpan(matchSpan, _sqlPlaceholderType));
-                classifiedRanges.Add(Tuple.Create(match.Index, match.Index + match.Length));
-            }
-
-            // 4. Classify parameters
-            foreach (Match match in ParameterRegex.Matches(sqlContent))
-            {
-                if (IsAlreadyClassified(match.Index, match.Length, classifiedRanges))
-                    continue;
-
-                var start = span.Start + sqlStartOffset + match.Index;
-                var matchSpan = new SnapshotSpan(span.Snapshot, start, match.Length);
-                classifications.Add(new ClassificationSpan(matchSpan, _sqlParameterType));
-                classifiedRanges.Add(Tuple.Create(match.Index, match.Index + match.Length));
-            }
-
-            // 5. Classify SQL keywords
-            foreach (Match match in SqlKeywordRegex.Matches(sqlContent))
-            {
-                if (IsAlreadyClassified(match.Index, match.Length, classifiedRanges))
-                    continue;
-
-                var start = span.Start + sqlStartOffset + match.Index;
-                var matchSpan = new SnapshotSpan(span.Snapshot, start, match.Length);
-                classifications.Add(new ClassificationSpan(matchSpan, _sqlKeywordType));
+                // Silently ignore errors
             }
 
             return classifications;
@@ -155,12 +190,23 @@ namespace Sqlx.Extension.SyntaxColoring
         /// </summary>
         private bool IsSqlTemplateContext(SnapshotSpan span)
         {
-            var text = span.GetText();
-            
-            // Simple check: does the text contain [SqlTemplate(" pattern
-            return text.Contains("[SqlTemplate(") || 
-                   text.Contains("SqlTemplate(\"") ||
-                   text.Contains("SqlTemplate(@\"");
+            try
+            {
+                // Get a larger context (up to 500 characters before and after)
+                var snapshot = span.Snapshot;
+                var start = Math.Max(0, span.Start - 500);
+                var end = Math.Min(snapshot.Length, span.End + 500);
+                var contextSpan = new SnapshotSpan(snapshot, start, end - start);
+                var contextText = contextSpan.GetText();
+
+                // Look for SqlTemplate attribute pattern
+                var sqlTemplatePattern = new Regex(@"\[SqlTemplate\s*\(\s*[""@]", RegexOptions.IgnoreCase);
+                return sqlTemplatePattern.IsMatch(contextText);
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         /// <summary>
@@ -168,14 +214,36 @@ namespace Sqlx.Extension.SyntaxColoring
         /// </summary>
         private string ExtractSqlContent(string text)
         {
-            // Find content between quotes
-            var startQuote = text.IndexOf('"');
-            if (startQuote < 0) return null;
+            try
+            {
+                // Handle verbatim string @"..."
+                if (text.Contains("@\""))
+                {
+                    var startIndex = text.IndexOf("@\"") + 2;
+                    var endIndex = text.LastIndexOf('"');
+                    if (endIndex > startIndex)
+                    {
+                        return text.Substring(startIndex, endIndex - startIndex);
+                    }
+                }
 
-            var endQuote = text.LastIndexOf('"');
-            if (endQuote <= startQuote) return null;
+                // Handle regular string "..."
+                var firstQuote = text.IndexOf('"');
+                if (firstQuote >= 0)
+                {
+                    var lastQuote = text.LastIndexOf('"');
+                    if (lastQuote > firstQuote)
+                    {
+                        return text.Substring(firstQuote + 1, lastQuote - firstQuote - 1);
+                    }
+                }
 
-            return text.Substring(startQuote + 1, endQuote - startQuote - 1);
+                return null;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         /// <summary>

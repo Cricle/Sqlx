@@ -82,6 +82,9 @@
     <None Include="Examples\SyntaxHighlightingExample.cs">
       <IncludeInVSIX>true</IncludeInVSIX>
     </None>
+    <None Include="Examples\SyntaxColoringTestExample.cs">
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </None>
     <None Include="IMPLEMENTATION_NOTES.md">
       <IncludeInVSIX>true</IncludeInVSIX>
     </None>

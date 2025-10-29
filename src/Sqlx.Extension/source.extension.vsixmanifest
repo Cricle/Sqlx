@@ -9,6 +9,7 @@
         <Icon>Resources\Icon.png</Icon>
         <PreviewImage>Resources\Preview.png</PreviewImage>
         <Tags>Sqlx, ORM, SQL, Database, Data Access, Snippets, Syntax Highlighting</Tags>
+        <Preview>true</Preview>
     </Metadata>
     <Installation>
         <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.0, 18.0)">

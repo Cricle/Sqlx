@@ -35,7 +35,7 @@ namespace Sqlx
         [BatchOperation(MaxBatchSize = 1000)]
         Task<int> BatchInsertAsync(List<TEntity> entities, CancellationToken cancellationToken = default);
 
-        // TODO: 修复批量插入返回ID列表 - 源生成器方法体关闭逻辑问题
+        // TODO: BatchInsertAndGetIdsAsync 在 RepositoryFor 场景下有问题
         // /// <summary>Batch inserts and returns all generated primary keys.</summary>
         // /// <param name="entities">List of entities to insert</param>
         // /// <param name="cancellationToken">Cancellation token</param>

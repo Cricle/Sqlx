@@ -67,7 +67,7 @@ public class CodeGenerationService
             sb.PushIndent();
 
             bool methodBodyComplete = false;
-            
+
             if (templateResult != null)
             {
                 var connectionName = GetDbConnectionFieldName(context.ClassSymbol);
@@ -983,7 +983,7 @@ public class CodeGenerationService
         sb.AppendLine("__cmd__?.Dispose();");
         sb.PopIndent();
         sb.AppendLine("}");
-        
+
         return false; // Method body is not complete, outer code needs to add return statement and close brace
     }
 
@@ -2377,11 +2377,11 @@ public class CodeGenerationService
             sb.AppendLine($"// Execute and retrieve inserted IDs");
             sb.AppendLine($"await __cmd__.ExecuteNonQueryAsync({cancellationTokenArg.TrimStart(',', ' ')});");
             sb.AppendLine();
-            
+
             // Database-specific last insert ID retrieval
             sb.AppendLine($"// Get last insert id (database-specific)");
             sb.AppendLine($"__cmd__.Parameters.Clear();");
-            
+
             if (dbDialect == "SQLite" || dbDialect == "5")
             {
                 sb.AppendLine($"__cmd__.CommandText = \"SELECT last_insert_rowid()\";");
@@ -2399,7 +2399,7 @@ public class CodeGenerationService
                 // Default to SQLite
                 sb.AppendLine($"__cmd__.CommandText = \"SELECT last_insert_rowid()\";");
             }
-            
+
             sb.AppendLine($"var __lastId__ = Convert.ToInt64(await __cmd__.ExecuteScalarAsync({cancellationTokenArg.TrimStart(',', ' ')}));");
             sb.AppendLine($"var __batchCount__ = __batch__.Count();");
             sb.AppendLine($"var __firstId__ = __lastId__ - __batchCount__ + 1;");
@@ -2432,7 +2432,7 @@ public class CodeGenerationService
         {
             sb.AppendLine("return __totalAffected__;");
         }
-        
+
         // Close method body (PopIndent and closing brace)
         sb.PopIndent();
         sb.AppendLine("}");

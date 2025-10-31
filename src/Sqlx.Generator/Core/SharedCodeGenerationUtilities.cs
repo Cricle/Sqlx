@@ -502,9 +502,9 @@ public static class SharedCodeGenerationUtilities
             entityTypeName = entityTypeName.TrimEnd('?');
         }
 
-        // 获取所有可映射的属性
+        // 获取所有可映射的属性（排除 record 的 EqualityContract）
         var properties = entityType.GetMembers().OfType<IPropertySymbol>()
-            .Where(p => p.CanBeReferencedByName && p.SetMethod != null)
+            .Where(p => p.CanBeReferencedByName && p.SetMethod != null && p.Name != "EqualityContract")
             .ToArray();
 
         if (properties.Length == 0)
@@ -599,9 +599,9 @@ public static class SharedCodeGenerationUtilities
         }
 
         // 性能优化：避免不必要的ToList()调用，直接遍历
-        // 支持 set 和 init 属性
+        // 支持 set 和 init 属性（排除 record 的 EqualityContract）
         var properties = entityType.GetMembers().OfType<IPropertySymbol>()
-            .Where(p => p.CanBeReferencedByName && p.SetMethod != null)
+            .Where(p => p.CanBeReferencedByName && p.SetMethod != null && p.Name != "EqualityContract")
             .ToArray();
 
         if (properties.Length == 0)

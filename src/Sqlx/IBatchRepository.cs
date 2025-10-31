@@ -35,14 +35,15 @@ namespace Sqlx
         [BatchOperation(MaxBatchSize = 1000)]
         Task<int> BatchInsertAsync(List<TEntity> entities, CancellationToken cancellationToken = default);
 
-        /// <summary>Batch inserts and returns all generated primary keys.</summary>
-        /// <param name="entities">List of entities to insert</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>List of generated primary key values</returns>
-        [SqlTemplate("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES {{batch_values --exclude Id}}")]
-        [BatchOperation(MaxBatchSize = 1000)]
-        [ReturnInsertedId]
-        Task<List<TKey>> BatchInsertAndGetIdsAsync(List<TEntity> entities, CancellationToken cancellationToken = default);
+        // TODO: 修复批量插入返回ID列表
+        // /// <summary>Batch inserts and returns all generated primary keys.</summary>
+        // /// <param name="entities">List of entities to insert</param>
+        // /// <param name="cancellationToken">Cancellation token</param>
+        // /// <returns>List of generated primary key values</returns>
+        // [SqlTemplate("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES {{batch_values --exclude Id}}")]
+        // [BatchOperation(MaxBatchSize = 1000)]
+        // [ReturnInsertedId]
+        // Task<List<TKey>> BatchInsertAndGetIdsAsync(List<TEntity> entities, CancellationToken cancellationToken = default);
 
         // ===== Batch Update =====
 

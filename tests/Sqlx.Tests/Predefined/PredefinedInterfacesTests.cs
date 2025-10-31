@@ -131,7 +131,7 @@ namespace Sqlx.Tests.Predefined
             var users = await repo.GetAllAsync();
             
             // Assert
-            Assert.NotNull(users);
+            Assert.IsNotNull(users);
             Assert.AreEqual(0, users.Count);
         }
 

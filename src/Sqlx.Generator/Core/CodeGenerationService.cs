@@ -2193,10 +2193,10 @@ public class CodeGenerationService
                 .ToList();
         }
 
-        // Get properties to insert
+        // Get properties to insert (exclude record's EqualityContract)
         var allProperties = entityType.GetMembers()
             .OfType<IPropertySymbol>()
-            .Where(p => p.CanBeReferencedByName && p.GetMethod != null)
+            .Where(p => p.CanBeReferencedByName && p.GetMethod != null && p.Name != "EqualityContract")
             .ToList();
 
         List<IPropertySymbol> properties;
@@ -2236,8 +2236,24 @@ public class CodeGenerationService
         sb.AppendLine("}");
         sb.AppendLine();
 
+        // Check if method returns List<TKey> with [ReturnInsertedId]
+        var hasReturnInsertedId = method.GetAttributes()
+            .Any(a => a.AttributeClass?.Name == "ReturnInsertedIdAttribute" || a.AttributeClass?.Name == "ReturnInsertedId");
+        var returnType = method.ReturnType.GetCachedDisplayString();
+        var innerType = SharedCodeGenerationUtilities.ExtractInnerTypeFromTask(returnType);
+        var isListReturn = innerType.StartsWith("List<") || innerType.StartsWith("System.Collections.Generic.List<");
+
         // Generate code
-        sb.AppendLine($"int __totalAffected__ = 0;");
+        if (hasReturnInsertedId && isListReturn)
+        {
+            // Extract TKey from List<TKey>
+            var keyType = innerType.Replace("List<", "").Replace("System.Collections.Generic.List<", "").TrimEnd('>');
+            sb.AppendLine($"var __ids__ = new global::System.Collections.Generic.List<{keyType}>();");
+        }
+        else
+        {
+            sb.AppendLine($"int __totalAffected__ = 0;");
+        }
         sb.AppendLine();
 
         // Check for empty collection
@@ -2245,7 +2261,15 @@ public class CodeGenerationService
         sb.AppendLine("{");
         sb.PushIndent();
         sb.AppendLine("__cmd__?.Dispose();");
-        sb.AppendLine("return 0;");
+        if (hasReturnInsertedId && isListReturn)
+        {
+            var keyType = innerType.Replace("List<", "").Replace("System.Collections.Generic.List<", "").TrimEnd('>');
+            sb.AppendLine($"return new global::System.Collections.Generic.List<{keyType}>();");
+        }
+        else
+        {
+            sb.AppendLine("return 0;");
+        }
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
@@ -2335,7 +2359,31 @@ public class CodeGenerationService
         sb.AppendLine();
 
         // Execute
-        sb.AppendLine($"__totalAffected__ += await __cmd__.ExecuteNonQueryAsync({cancellationTokenArg.TrimStart(',', ' ')});");
+        if (hasReturnInsertedId && isListReturn)
+        {
+            // For returning IDs, we need to retrieve them after insert
+            var keyType = innerType.Replace("List<", "").Replace("System.Collections.Generic.List<", "").TrimEnd('>');
+            
+            sb.AppendLine($"// Execute and retrieve inserted IDs");
+            sb.AppendLine($"await __cmd__.ExecuteNonQueryAsync({cancellationTokenArg.TrimStart(',', ' ')});");
+            sb.AppendLine();
+            sb.AppendLine($"// For SQLite/MySQL: Get last insert id and calculate range");
+            sb.AppendLine($"__cmd__.CommandText = \"SELECT last_insert_rowid()\";");
+            sb.AppendLine($"__cmd__.Parameters.Clear();");
+            sb.AppendLine($"var __lastId__ = Convert.ToInt64(await __cmd__.ExecuteScalarAsync({cancellationTokenArg.TrimStart(',', ' ')}));");
+            sb.AppendLine($"var __batchCount__ = __batch__.Count();");
+            sb.AppendLine($"var __firstId__ = __lastId__ - __batchCount__ + 1;");
+            sb.AppendLine($"for (long i = 0; i < __batchCount__; i++)");
+            sb.AppendLine("{");
+            sb.PushIndent();
+            sb.AppendLine($"__ids__.Add(({keyType})(__firstId__ + i));");
+            sb.PopIndent();
+            sb.AppendLine("}");
+        }
+        else
+        {
+            sb.AppendLine($"__totalAffected__ += await __cmd__.ExecuteNonQueryAsync({cancellationTokenArg.TrimStart(',', ' ')});");
+        }
 
         sb.PopIndent();
         sb.AppendLine("}");
@@ -2346,7 +2394,14 @@ public class CodeGenerationService
         sb.AppendLine();
 
         // Return result (async method returns directly)
-        sb.AppendLine("return __totalAffected__;");
+        if (hasReturnInsertedId && isListReturn)
+        {
+            sb.AppendLine("return __ids__;");
+        }
+        else
+        {
+            sb.AppendLine("return __totalAffected__;");
+        }
     }
 
     /// <summary>
@@ -2472,6 +2527,7 @@ public class CodeGenerationService
         // Step 2: SELECT the complete entity
         var tableName = GetTableNameFromType(classSymbol, entityType);
         var columns = string.Join(", ", entityType.GetMembers().OfType<IPropertySymbol>()
+            .Where(p => p.Name != "EqualityContract")
             .Select(p => SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)));
 
         sb.AppendLine($"// SELECT complete entity");
@@ -2493,7 +2549,8 @@ public class CodeGenerationService
         sb.AppendLine("{");
         sb.PushIndent();
 
-        var properties = entityType.GetMembers().OfType<IPropertySymbol>().ToList();
+        var properties = entityType.GetMembers().OfType<IPropertySymbol>()
+            .Where(p => p.Name != "EqualityContract").ToList();
         for (int i = 0; i < properties.Count; i++)
         {
             var prop = properties[i];
@@ -2547,6 +2604,7 @@ public class CodeGenerationService
         // Step 2: SELECT the complete entity
         var tableName = GetTableNameFromType(classSymbol, entityType);
         var columns = string.Join(", ", entityType.GetMembers().OfType<IPropertySymbol>()
+            .Where(p => p.Name != "EqualityContract")
             .Select(p => SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)));
 
         sb.AppendLine($"// SELECT complete entity");
@@ -2568,7 +2626,8 @@ public class CodeGenerationService
         sb.AppendLine("{");
         sb.PushIndent();
 
-        var properties = entityType.GetMembers().OfType<IPropertySymbol>().ToList();
+        var properties = entityType.GetMembers().OfType<IPropertySymbol>()
+            .Where(p => p.Name != "EqualityContract").ToList();
         for (int i = 0; i < properties.Count; i++)
         {
             var prop = properties[i];
@@ -2622,6 +2681,7 @@ public class CodeGenerationService
         // Step 2: SELECT the complete entity
         var tableName = GetTableNameFromType(classSymbol, entityType);
         var columns = string.Join(", ", entityType.GetMembers().OfType<IPropertySymbol>()
+            .Where(p => p.Name != "EqualityContract")
             .Select(p => SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)));
 
         sb.AppendLine($"// SELECT complete entity");
@@ -2643,7 +2703,8 @@ public class CodeGenerationService
         sb.AppendLine("{");
         sb.PushIndent();
 
-        var properties = entityType.GetMembers().OfType<IPropertySymbol>().ToList();
+        var properties = entityType.GetMembers().OfType<IPropertySymbol>()
+            .Where(p => p.Name != "EqualityContract").ToList();
         for (int i = 0; i < properties.Count; i++)
         {
             var prop = properties[i];
@@ -2749,7 +2810,7 @@ public class CodeGenerationService
 
         var properties = entityType.GetMembers()
             .OfType<IPropertySymbol>()
-            .Where(p => p.CanBeReferencedByName && p.GetMethod != null)
+            .Where(p => p.CanBeReferencedByName && p.GetMethod != null && p.Name != "EqualityContract")
             .ToArray();
 
         if (properties.Length == 0)

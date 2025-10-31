@@ -70,14 +70,14 @@ public interface IUserRepository
     // 使用 {{占位符}} 实现跨数据库SQL
     [SqlTemplate("SELECT {{columns}} FROM users WHERE id = @id")]
     Task<User?> GetByIdAsync(long id, CancellationToken ct = default);
-    
+
     [SqlTemplate("INSERT INTO users (name, age, balance) VALUES (@name, @age, @balance)")]
     [ReturnInsertedId]
     Task<long> InsertAsync(string name, int age, decimal balance, CancellationToken ct = default);
-    
+
     [SqlTemplate("SELECT {{columns}} FROM users WHERE age >= @minAge {{limit}}")]
     Task<List<User>> GetAdultsAsync(int minAge = 18, int? limit = null, CancellationToken ct = default);
-    
+
     // 批量插入，自动处理参数限制
     [SqlTemplate("INSERT INTO users (name, age, balance) VALUES {{batch_values}}")]
     [BatchOperation(MaxBatchSize = 500)]
@@ -159,19 +159,19 @@ Task<User?> GetByIdAsync(long id);  // 返回值可能为null
 真正的异步I/O，不是`Task.FromResult`包装：
 
 ```csharp
-public partial class UserRepository(DbConnection connection) : IUserRepository 
+public partial class UserRepository(DbConnection connection) : IUserRepository
 {
     public async Task<User?> GetByIdAsync(long id, CancellationToken ct = default)
     {
         using var cmd = connection.CreateCommand();
         cmd.CommandText = "SELECT id, name, age FROM users WHERE id = @id";
         cmd.Parameters.AddWithValue("@id", id);
-        
+
         // 真正的异步I/O
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         if (await reader.ReadAsync(ct))
         {
-            return new User 
+            return new User
             {
                 Id = reader.GetInt64(0),
                 Name = reader.GetString(1),
@@ -213,7 +213,7 @@ var users = await repo.GetUsersAsync(cancellationToken: cts.Token);
 Task<List<User>> GetUsersAsync(int minAge, int? limit = null, int? offset = null);
 
 // SQLite: SELECT id, name, age FROM users WHERE age >= @minAge ORDER BY age LIMIT @limit OFFSET @offset
-// MySQL:  SELECT id, name, age FROM users WHERE age >= @minAge ORDER BY age LIMIT @limit OFFSET @offset  
+// MySQL:  SELECT id, name, age FROM users WHERE age >= @minAge ORDER BY age LIMIT @limit OFFSET @offset
 // SQL Server: SELECT TOP (@limit) id, name, age FROM users WHERE age >= @minAge ORDER BY age OFFSET @offset ROWS
 ```
 
@@ -340,13 +340,13 @@ public partial class UserRepository
     {
         _logger.LogDebug("[{Op}] SQL: {Sql}", operationName, command.CommandText);
     }
-    
+
     // SQL执行后
     partial void OnExecuted(string operationName, DbCommand command, long elapsedMilliseconds)
     {
         _logger.LogInformation("[{Op}] 完成，耗时: {Ms}ms", operationName, elapsedMilliseconds);
     }
-    
+
     // SQL执行失败
     partial void OnExecuteFail(string operationName, DbCommand command, Exception exception)
     {
@@ -533,14 +533,14 @@ public class Account
 {
     public long Id { get; set; }
     public decimal Balance { get; set; }
-    
+
     [ConcurrencyCheck]
     public long Version { get; set; }
 }
 
 // 更新时会自动检查版本号
 await repo.UpdateAsync(account);
-// UPDATE accounts SET balance = @balance, version = version + 1 
+// UPDATE accounts SET balance = @balance, version = version + 1
 // WHERE id = @id AND version = @version
 ```
 
@@ -562,7 +562,7 @@ SqlTemplate 字符串实时语法高亮，让 SQL 代码清晰易读：
 ```
 
 - 🔵 SQL 关键字 (蓝色)
-- 🟠 占位符 (橙色)  
+- 🟠 占位符 (橙色)
 - 🟢 参数 (绿色)
 - 🟤 字符串 (棕色)
 - ⚪ 注释 (灰色)
@@ -653,7 +653,7 @@ cd src/Sqlx.Extension
 }
 
 // Startup.cs / Program.cs
-services.AddScoped<DbConnection>(sp => 
+services.AddScoped<DbConnection>(sp =>
 {
     var conn = new SqliteConnection(Configuration.GetConnectionString("DefaultConnection"));
     conn.Open();
@@ -669,12 +669,12 @@ services.AddScoped<IUserRepository, UserRepository>();
 public class UserService
 {
     private readonly IUserRepository _userRepo;
-    
+
     public UserService(IUserRepository userRepo)
     {
         _userRepo = userRepo;
     }
-    
+
     public async Task<User?> GetUserAsync(long id)
     {
         return await _userRepo.GetByIdAsync(id);

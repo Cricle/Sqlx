@@ -66,10 +66,12 @@ public class CodeGenerationService
             sb.AppendLine("{");
             sb.PushIndent();
 
+            bool methodBodyComplete = false;
+            
             if (templateResult != null)
             {
                 var connectionName = GetDbConnectionFieldName(context.ClassSymbol);
-                GenerateActualDatabaseExecution(sb, method, templateResult, entityType, connectionName, context.ClassSymbol);
+                methodBodyComplete = GenerateActualDatabaseExecution(sb, method, templateResult, entityType, connectionName, context.ClassSymbol);
             }
             else if (sqlxAttr != null)
             {
@@ -80,29 +82,33 @@ public class CodeGenerationService
                 GenerateFallbackMethodImplementation(sb, method);
             }
 
-            // Return result if not void
-            if (!method.ReturnsVoid)
+            // Only add return statement and close method if body is not already complete
+            if (!methodBodyComplete)
             {
-                // Check if the return type is Task or Task<T>
-                var methodReturnType = method.ReturnType;
-                var isTaskReturn = methodReturnType.Name == "Task" &&
-                                   methodReturnType.ContainingNamespace?.ToDisplayString() == "System.Threading.Tasks";
+                // Return result if not void
+                if (!method.ReturnsVoid)
+                {
+                    // Check if the return type is Task or Task<T>
+                    var methodReturnType = method.ReturnType;
+                    var isTaskReturn = methodReturnType.Name == "Task" &&
+                                       methodReturnType.ContainingNamespace?.ToDisplayString() == "System.Threading.Tasks";
 
-                if (isTaskReturn)
-                {
-                    // For async methods, return directly (the async keyword handles Task wrapping)
-                    sb.AppendLine("return __result__;");
+                    if (isTaskReturn)
+                    {
+                        // For async methods, return directly (the async keyword handles Task wrapping)
+                        sb.AppendLine("return __result__;");
+                    }
+                    else
+                    {
+                        // For synchronous methods, cast and return directly
+                        var returnTypeName = methodReturnType.GetCachedDisplayString();
+                        sb.AppendLine($"return ({returnTypeName})__result__;");
+                    }
                 }
-                else
-                {
-                    // For synchronous methods, cast and return directly
-                    var returnTypeName = methodReturnType.GetCachedDisplayString();
-                    sb.AppendLine($"return ({returnTypeName})__result__;");
-                }
+
+                sb.PopIndent();
+                sb.AppendLine("}");
             }
-
-            sb.PopIndent();
-            sb.AppendLine("}");
             sb.AppendLine();
         }
         catch (System.Exception ex)
@@ -624,7 +630,7 @@ public class CodeGenerationService
         return $"The {returnType.Name} result.";
     }
 
-    private void GenerateActualDatabaseExecution(IndentedStringBuilder sb, IMethodSymbol method, SqlTemplateResult templateResult, INamedTypeSymbol? entityType, string connectionName, INamedTypeSymbol classSymbol)
+    private bool GenerateActualDatabaseExecution(IndentedStringBuilder sb, IMethodSymbol method, SqlTemplateResult templateResult, INamedTypeSymbol? entityType, string connectionName, INamedTypeSymbol classSymbol)
     {
         var returnType = method.ReturnType;
         var returnTypeString = returnType.GetCachedDisplayString();  // 使用缓存版本
@@ -701,9 +707,9 @@ public class CodeGenerationService
 
         if (hasBatchValues)
         {
-            // Generate batch INSERT code (complete execution flow)
-            GenerateBatchInsertCode(sb, processedSql, method, originalEntityType, connectionName, cancellationTokenArg);
-            return; // Batch INSERT handles everything, exit early
+            // Generate batch INSERT code (complete execution flow, including method closure)
+            GenerateBatchInsertCode(sb, processedSql, method, originalEntityType, connectionName, classSymbol, cancellationTokenArg);
+            return true; // Batch INSERT handles everything including method closure
         }
 
         // 🚀 TDD Green: Check for [ReturnInsertedId] or [ReturnInsertedEntity] and modify SQL
@@ -977,6 +983,8 @@ public class CodeGenerationService
         sb.AppendLine("__cmd__?.Dispose();");
         sb.PopIndent();
         sb.AppendLine("}");
+        
+        return false; // Method body is not complete, outer code needs to add return statement and close brace
     }
 
     /// <summary>
@@ -2140,6 +2148,7 @@ public class CodeGenerationService
         IMethodSymbol method,
         INamedTypeSymbol? entityType,
         string connectionName,
+        INamedTypeSymbol classSymbol,
         string cancellationTokenArg = "")
     {
         // Extract parameter name from __RUNTIME_BATCH_VALUES_paramName__
@@ -2363,13 +2372,34 @@ public class CodeGenerationService
         {
             // For returning IDs, we need to retrieve them after insert
             var keyType = innerType.Replace("List<", "").Replace("System.Collections.Generic.List<", "").TrimEnd('>');
+            var dbDialect = GetDatabaseDialect(classSymbol);
 
             sb.AppendLine($"// Execute and retrieve inserted IDs");
             sb.AppendLine($"await __cmd__.ExecuteNonQueryAsync({cancellationTokenArg.TrimStart(',', ' ')});");
             sb.AppendLine();
-            sb.AppendLine($"// For SQLite/MySQL: Get last insert id and calculate range");
-            sb.AppendLine($"__cmd__.CommandText = \"SELECT last_insert_rowid()\";");
+            
+            // Database-specific last insert ID retrieval
+            sb.AppendLine($"// Get last insert id (database-specific)");
             sb.AppendLine($"__cmd__.Parameters.Clear();");
+            
+            if (dbDialect == "SQLite" || dbDialect == "5")
+            {
+                sb.AppendLine($"__cmd__.CommandText = \"SELECT last_insert_rowid()\";");
+            }
+            else if (dbDialect == "MySql" || dbDialect == "0")
+            {
+                sb.AppendLine($"__cmd__.CommandText = \"SELECT LAST_INSERT_ID()\";");
+            }
+            else if (dbDialect == "SqlServer" || dbDialect == "3")
+            {
+                sb.AppendLine($"__cmd__.CommandText = \"SELECT SCOPE_IDENTITY()\";");
+            }
+            else
+            {
+                // Default to SQLite
+                sb.AppendLine($"__cmd__.CommandText = \"SELECT last_insert_rowid()\";");
+            }
+            
             sb.AppendLine($"var __lastId__ = Convert.ToInt64(await __cmd__.ExecuteScalarAsync({cancellationTokenArg.TrimStart(',', ' ')}));");
             sb.AppendLine($"var __batchCount__ = __batch__.Count();");
             sb.AppendLine($"var __firstId__ = __lastId__ - __batchCount__ + 1;");
@@ -2402,6 +2432,10 @@ public class CodeGenerationService
         {
             sb.AppendLine("return __totalAffected__;");
         }
+        
+        // Close method body (PopIndent and closing brace)
+        sb.PopIndent();
+        sb.AppendLine("}");
     }
 
     /// <summary>

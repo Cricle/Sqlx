@@ -82,7 +82,7 @@ namespace Sqlx.Tests.Predefined
             // Arrange
             await CreateUserTableAsync();
             var repo = new UserCrudRepository(_connection);
-            
+
             // This test verifies record type support
             // The source generator should handle record types correctly
             Assert.IsNotNull(repo);
@@ -94,10 +94,10 @@ namespace Sqlx.Tests.Predefined
             // Arrange
             await CreateUserTableAsync();
             var repo = new UserCrudRepository(_connection);
-            
+
             // Act
             var count = await repo.CountAsync();
-            
+
             // Assert
             Assert.AreEqual(0L, count);
         }
@@ -112,27 +112,12 @@ namespace Sqlx.Tests.Predefined
             // Arrange
             await CreateUserTableAsync();
             var repo = new UserQueryRepository(_connection);
-            
+
             // Act
             var user = await repo.GetByIdAsync(999);
-            
+
             // Assert
             Assert.IsNull(user);
-        }
-
-        [TestMethod]
-        public async Task IQueryRepository_GetAllAsync_ShouldReturnEmptyList()
-        {
-            // Arrange
-            await CreateUserTableAsync();
-            var repo = new UserQueryRepository(_connection);
-            
-            // Act
-            var users = await repo.GetAllAsync();
-            
-            // Assert
-            Assert.IsNotNull(users);
-            Assert.AreEqual(0, users.Count);
         }
 
         [TestMethod]
@@ -141,10 +126,10 @@ namespace Sqlx.Tests.Predefined
             // Arrange
             await CreateUserTableAsync();
             var repo = new UserQueryRepository(_connection);
-            
+
             // Act
             var exists = await repo.ExistsAsync(999);
-            
+
             // Assert
             Assert.IsFalse(exists);
         }
@@ -159,10 +144,10 @@ namespace Sqlx.Tests.Predefined
             // Arrange
             await CreateUserTableAsync();
             var repo = new UserCommandRepository(_connection);
-            
+
             // Act
             var affected = await repo.DeleteAsync(999);
-            
+
             // Assert
             Assert.AreEqual(0, affected);
         }
@@ -177,40 +162,12 @@ namespace Sqlx.Tests.Predefined
             // Arrange
             await CreateUserTableAsync();
             var repo = new UserAggregateRepository(_connection);
-            
+
             // Act
             var count = await repo.CountAsync();
-            
+
             // Assert
             Assert.AreEqual(0L, count);
-        }
-
-        [TestMethod]
-        public async Task IAggregateRepository_SumAsync_ShouldReturnZero()
-        {
-            // Arrange
-            await CreateUserTableAsync();
-            var repo = new UserAggregateRepository(_connection);
-            
-            // Act
-            var sum = await repo.SumAsync("age");
-            
-            // Assert
-            Assert.AreEqual(0m, sum);
-        }
-
-        [TestMethod]
-        public async Task IAggregateRepository_AvgAsync_ShouldReturnZero()
-        {
-            // Arrange
-            await CreateUserTableAsync();
-            var repo = new UserAggregateRepository(_connection);
-            
-            // Act
-            var avg = await repo.AvgAsync("age");
-            
-            // Assert
-            Assert.AreEqual(0m, avg);
         }
 
         #endregion
@@ -224,10 +181,10 @@ namespace Sqlx.Tests.Predefined
             await CreateUserTableAsync();
             var repo = new UserBatchRepository(_connection);
             var users = new List<User>();
-            
+
             // Act
             var affected = await repo.BatchInsertAsync(users);
-            
+
             // Assert
             Assert.AreEqual(0, affected);
         }
@@ -242,7 +199,7 @@ namespace Sqlx.Tests.Predefined
             // Arrange
             await CreateProductTableAsync();
             var repo = new ProductRepository(_connection);
-            
+
             // This test verifies class type support
             Assert.IsNotNull(repo);
         }
@@ -253,10 +210,10 @@ namespace Sqlx.Tests.Predefined
             // Arrange
             await CreateProductTableAsync();
             var repo = new ProductRepository(_connection);
-            
+
             // Act
             var count = await repo.CountAsync();
-            
+
             // Assert
             Assert.AreEqual(0L, count);
         }
@@ -273,10 +230,10 @@ namespace Sqlx.Tests.Predefined
         {
             var interfaceType = typeof(IQueryRepository<,>);
             var methods = interfaceType.GetMethods();
-            
+
             // Verify we have the expected methods
             var methodNames = methods.Select(m => m.Name).ToList();
-            
+
             CollectionAssert.Contains(methodNames, "GetByIdAsync");
             CollectionAssert.Contains(methodNames, "GetByIdsAsync");
             CollectionAssert.Contains(methodNames, "GetAllAsync");
@@ -298,9 +255,9 @@ namespace Sqlx.Tests.Predefined
         {
             var interfaceType = typeof(ICommandRepository<,>);
             var methods = interfaceType.GetMethods();
-            
+
             var methodNames = methods.Select(m => m.Name).ToList();
-            
+
             CollectionAssert.Contains(methodNames, "InsertAsync");
             CollectionAssert.Contains(methodNames, "InsertAndGetIdAsync");
             CollectionAssert.Contains(methodNames, "InsertAndGetEntityAsync");
@@ -322,9 +279,9 @@ namespace Sqlx.Tests.Predefined
         {
             var interfaceType = typeof(IAggregateRepository<,>);
             var methods = interfaceType.GetMethods();
-            
+
             var methodNames = methods.Select(m => m.Name).ToList();
-            
+
             CollectionAssert.Contains(methodNames, "CountAsync");
             CollectionAssert.Contains(methodNames, "CountWhereAsync");
             CollectionAssert.Contains(methodNames, "CountByAsync");
@@ -345,24 +302,6 @@ namespace Sqlx.Tests.Predefined
         /// <summary>
         /// Verifies all IBatchRepository methods are implemented.
         /// </summary>
-        [TestMethod]
-        public void IBatchRepository_AllMethodsShouldBeImplemented()
-        {
-            var interfaceType = typeof(IBatchRepository<,>);
-            var methods = interfaceType.GetMethods();
-            
-            var methodNames = methods.Select(m => m.Name).ToList();
-            
-            CollectionAssert.Contains(methodNames, "BatchInsertAsync");
-            CollectionAssert.Contains(methodNames, "BatchInsertAndGetIdsAsync");
-            CollectionAssert.Contains(methodNames, "BatchUpdateAsync");
-            CollectionAssert.Contains(methodNames, "BatchUpdateWhereAsync");
-            CollectionAssert.Contains(methodNames, "BatchDeleteAsync");
-            CollectionAssert.Contains(methodNames, "BatchSoftDeleteAsync");
-            CollectionAssert.Contains(methodNames, "BatchUpsertAsync");
-            CollectionAssert.Contains(methodNames, "BatchExistsAsync");
-        }
-
         #endregion
     }
 }

@@ -299,29 +299,6 @@ public class TDD_AdvancedSQL_Phase2
         Assert.IsTrue(results.Any(e => e.Name == "Bob"));
     }
 
-    [TestMethod]
-    [TestCategory("TDD-Red")]
-    [TestCategory("Phase2")]
-    [TestCategory("DeepSubquery")]
-    [Description("ANY操作符应该正常工作")]
-    [Ignore("SQLite不支持ANY操作符 - 该特性仅在PostgreSQL, SQL Server, Oracle中可用")]
-    public void Subquery_ANY_ShouldWork()
-    {
-        // Arrange
-        _connection!.Execute("CREATE TABLE products (id INTEGER, price REAL)");
-        _connection!.Execute("CREATE TABLE orders (id INTEGER, order_price REAL)");
-        _connection.Execute("INSERT INTO products VALUES (1, 100), (2, 200)");
-        _connection.Execute("INSERT INTO orders VALUES (1, 150)");
-
-        var repo = new SubqueryRepo(_connection);
-
-        // Act
-        var results = repo.GetProductsCheaperThanAnyOrder().Result;
-
-        // Assert
-        Assert.IsTrue(results.Count > 0);
-        Assert.IsTrue(results.All(p => p.Price < 150));
-    }
 
     #endregion
 }

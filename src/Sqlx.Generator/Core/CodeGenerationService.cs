@@ -517,7 +517,7 @@ public class CodeGenerationService
             if (asyncModifier != "" && returnType.StartsWith("System.Threading.Tasks.Task<") && returnType.EndsWith(">"))
             {
                 // Extract inner type from Task<T>
-                defaultType = returnType.Substring("System.Threading.Tasks.Task<".Length, 
+                defaultType = returnType.Substring("System.Threading.Tasks.Task<".Length,
                                                    returnType.Length - "System.Threading.Tasks.Task<".Length - 1);
             }
             sb.AppendLine($"return default({defaultType});");
@@ -2363,7 +2363,7 @@ public class CodeGenerationService
         {
             // For returning IDs, we need to retrieve them after insert
             var keyType = innerType.Replace("List<", "").Replace("System.Collections.Generic.List<", "").TrimEnd('>');
-            
+
             sb.AppendLine($"// Execute and retrieve inserted IDs");
             sb.AppendLine($"await __cmd__.ExecuteNonQueryAsync({cancellationTokenArg.TrimStart(',', ' ')});");
             sb.AppendLine();
@@ -2475,10 +2475,10 @@ public class CodeGenerationService
         var typeName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
             .Replace("global::", "")
             .TrimEnd('?');  // Remove nullable suffix if present
-        
+
         // Also try the simple name for matching
         var simpleName = type.Name;
-        
+
         return typeName switch
         {
             "string" or "System.String" => "String",

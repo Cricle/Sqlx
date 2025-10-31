@@ -235,32 +235,6 @@ public class TDD_SqlInjectionPrevention
     [TestMethod]
     [TestCategory("Security")]
     [TestCategory("SqlInjection")]
-    [Description("批量操作中的SQL注入应被阻止")]
-    [Ignore("批量操作需要源生成器完整支持 - 待后续实现")]
-    public async Task SqlInjection_BatchOperations_ShouldBePrevented()
-    {
-        // Arrange
-        var repo = new SecurityTestRepository(_connection!);
-        var maliciousUsers = new List<SecurityUser>
-        {
-            new() { Id = 10, Username = "test1", Password = "pass1", Email = "test1@test.com" },
-            new() { Id = 11, Username = "test2'; DROP TABLE users; --", Password = "pass2", Email = "test2@test.com" }
-        };
-
-        // Act
-        var inserted = await repo.BatchInsertUsersAsync(maliciousUsers);
-
-        // Assert
-        Assert.AreEqual(2, inserted, "应该插入2条记录");
-
-        // 验证表未被删除
-        var allUsers = await repo.GetAllUsersAsync();
-        Assert.AreEqual(5, allUsers.Count, "表应该有5条记录（3原有+2新增）");
-    }
-
-    [TestMethod]
-    [TestCategory("Security")]
-    [TestCategory("SqlInjection")]
     [Description("特殊字符组合注入应被正确转义")]
     public async Task SqlInjection_SpecialCharactersCombination_ShouldBeEscaped()
     {

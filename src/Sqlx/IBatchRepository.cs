@@ -37,7 +37,7 @@ namespace Sqlx
 
         // NOTE: BatchInsertAndGetIdsAsync 在 RepositoryFor 预定义接口中暂不可用
         // 如需使用此功能，请在自定义接口中显式声明该方法。
-        // 
+        //
         // 使用示例（推荐方式）：
         // [SqlDefine(SqlDefineTypes.SQLite)]
         // public partial interface IMyBatchRepo
@@ -47,7 +47,7 @@ namespace Sqlx
         //     [ReturnInsertedId]
         //     Task<List<long>> BatchInsertAndGetIdsAsync(List<MyEntity> entities, CancellationToken cancellationToken = default);
         // }
-        // 
+        //
         // /// <summary>Batch inserts and returns all generated primary keys.</summary>
         // /// <param name="entities">List of entities to insert</param>
         // /// <param name="cancellationToken">Cancellation token</param>

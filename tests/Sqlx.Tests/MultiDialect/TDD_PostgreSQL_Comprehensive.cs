@@ -26,6 +26,7 @@ namespace Sqlx.Tests.MultiDialect;
 public class TDD_PostgreSQL_Comprehensive : ComprehensiveTestBase
 {
     protected override string DialectName => "PostgreSQL";
+    protected override string TableName => "dialect_users_postgresql";
 
     protected override DbConnection CreateConnection()
     {
@@ -131,7 +132,7 @@ public interface IPostgreSQLUserRepository : IDialectUserRepositoryBase
     new Task<List<DialectUser>> GetUsersWithoutEmailAsync(CancellationToken cancellationToken = default);
 
     [SqlTemplate("SELECT DISTINCT age FROM dialect_users_postgresql ORDER BY age")]
-    new Task<List<int>> GetDistinctAgesAsync(CancellationToken cancellationToken = default);
+    new Task<List<Dictionary<string, object>>> GetDistinctAgesAsync(CancellationToken cancellationToken = default);
 
     [SqlTemplate("SELECT id, username, email, age, balance, is_active as isActive, created_at as createdAt FROM dialect_users_postgresql WHERE id IN (SELECT id FROM dialect_users_postgresql WHERE balance > 100)")]
     new Task<List<DialectUser>> GetRichUsersAsync(CancellationToken cancellationToken = default);

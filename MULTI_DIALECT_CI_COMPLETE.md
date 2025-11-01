@@ -77,7 +77,7 @@ fc5699f fix(ci): 删除未实现的PostgreSQL测试以修复CI
 
 **问题**: SQL Server 2022容器健康检查失败
 
-**原因**: 
+**原因**:
 - 旧路径: `/opt/mssql-tools/bin/sqlcmd`
 - SQL Server 2022使用新路径: `/opt/mssql-tools18/bin/sqlcmd`
 
@@ -101,18 +101,18 @@ test-all-dialects:
   name: 🗄️ Multi-Dialect Tests
   runs-on: ubuntu-latest
   needs: test-local
-  
+
   services:
     postgres:
       image: postgres:16
       ports: 5432:5432
       health-cmd: pg_isready
-    
+
     mysql:
       image: mysql:8.3
       ports: 3306:3306
       health-cmd: mysqladmin ping
-    
+
     sqlserver:
       image: mcr.microsoft.com/mssql/server:2022-latest
       ports: 1433:1433
@@ -177,7 +177,7 @@ dotnet test
 # CI环境 (GitHub Actions)
 dotnet test --settings .runsettings.ci
 
-# 结果: 
+# 结果:
 # - test-local job: 1,555个测试 (SQLite)
 # - test-all-dialects job: 1,555个测试 (包括PostgreSQL)
 ```
@@ -357,7 +357,7 @@ feat(ci): 添加PostgreSQL多方言测试并修复SQL Server健康检查
 
 ---
 
-**生成时间**: 2025-11-01  
-**状态**: ⏸️ 待推送 (本地提交完成)  
+**生成时间**: 2025-11-01
+**状态**: ⏸️ 待推送 (本地提交完成)
 **推送命令**: `git push origin main`
 

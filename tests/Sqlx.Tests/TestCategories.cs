@@ -55,5 +55,10 @@ public static class TestCategories
     /// 单元测试
     /// </summary>
     public const string Unit = "Unit";
+
+    /// <summary>
+    /// CI环境测试 - 在CI环境中运行的测试
+    /// </summary>
+    public const string CI = "CI";
 }
 

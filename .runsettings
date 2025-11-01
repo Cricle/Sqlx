@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <RunConfiguration>
+    <!-- 并行测试执行 -->
+    <MaxCpuCount>0</MaxCpuCount>
+    <!-- 测试超时时间（毫秒） -->
+    <TestSessionTimeout>600000</TestSessionTimeout>
+  </RunConfiguration>
+
+  <MSTest>
+    <!-- 并行执行测试 -->
+    <Parallelize>
+      <Workers>0</Workers>
+      <Scope>MethodLevel</Scope>
+    </Parallelize>
+  </MSTest>
+
+  <!-- 本地开发环境：只运行SQLite测试，跳过需要真实数据库的测试 -->
+  <TestRunParameters>
+    <Parameter name="Environment" value="Local" />
+  </TestRunParameters>
+
+  <!-- 数据收集器配置 -->
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <!-- 代码覆盖率 -->
+      <DataCollector friendlyName="Code Coverage" uri="datacollector://Microsoft/CodeCoverage/2.0" assemblyQualifiedName="Microsoft.VisualStudio.Coverage.DynamicCoverageDataCollector, Microsoft.VisualStudio.TraceCollector, Version=11.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+        <Configuration>
+          <CodeCoverage>
+            <ModulePaths>
+              <Include>
+                <ModulePath>.*Sqlx\.dll$</ModulePath>
+                <ModulePath>.*Sqlx\.Generator\.dll$</ModulePath>
+              </Include>
+              <Exclude>
+                <ModulePath>.*Tests.*</ModulePath>
+              </Exclude>
+            </ModulePaths>
+          </CodeCoverage>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>
+

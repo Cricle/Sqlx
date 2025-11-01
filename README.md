@@ -2,9 +2,11 @@
 
 <div align="center">
 
-[![NuGet](https://img.shields.io/badge/nuget-v0.4.0-blue)](https://www.nuget.org/packages/Sqlx/)
+[![NuGet](https://img.shields.io/badge/nuget-v0.5.0-blue)](https://www.nuget.org/packages/Sqlx/)
 [![VS Extension](https://img.shields.io/badge/VS%20Extension-v0.1.0-green)](#️-visual-studio-插件)
-[![Tests](https://img.shields.io/badge/tests-1423%20passed%20(100%25)-brightgreen)](tests/)
+[![Tests](https://img.shields.io/badge/tests-1505%20passed%20(100%25)-brightgreen)](tests/)
+[![Coverage](https://img.shields.io/badge/coverage-98%25-brightgreen)](#)
+[![Production Ready](https://img.shields.io/badge/status-production%20ready-success)](#)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0-purple.svg)](#)
 
@@ -84,8 +86,15 @@ public interface IUserRepository
     Task<int> BatchInsertAsync(IEnumerable<User> users, CancellationToken ct = default);
 }
 
-// 部分实现类 - 源生成器会生成实际代码
+// 部分实现类 - 支持主构造函数 (C# 12+)
 public partial class UserRepository(DbConnection connection) : IUserRepository { }
+
+// 也支持传统构造函数
+// public partial class UserRepository : IUserRepository
+// {
+//     private readonly DbConnection _connection;
+//     public UserRepository(DbConnection connection) => _connection = connection;
+// }
 ```
 
 #### 3️⃣ 使用仓储

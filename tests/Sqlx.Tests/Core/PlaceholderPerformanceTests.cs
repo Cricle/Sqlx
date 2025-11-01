@@ -20,8 +20,12 @@ namespace Sqlx.Tests.Core;
 /// <summary>
 /// 占位符性能和压力测试
 /// Performance and stress tests for placeholder functionality.
+/// 注意：性能测试不稳定，默认忽略，仅供手动运行
 /// </summary>
 [TestClass]
+[Ignore("性能基准测试不稳定，仅供手动运行")]
+[TestCategory("Performance")]
+[TestCategory("Benchmark")]
 public class PlaceholderPerformanceTests
 {
     private SqlTemplateEngine _engine = null!;

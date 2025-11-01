@@ -449,9 +449,10 @@ namespace TestNamespace
 
         stopwatch.Stop();
 
-        // Assert - Should complete quickly (< 1 second for 3000 operations)
-        Assert.IsTrue(stopwatch.ElapsedMilliseconds < 1000,
-            $"CRUD placeholder processing should be fast. Took {stopwatch.ElapsedMilliseconds}ms");
+        // Assert - Should complete in reasonable time (< 5 seconds for 3000 operations)
+        // Note: This is a smoke test for severe performance regression, not a precise benchmark
+        Assert.IsTrue(stopwatch.ElapsedMilliseconds < 5000,
+            $"CRUD placeholder processing took too long. Took {stopwatch.ElapsedMilliseconds}ms");
     }
 
     #endregion

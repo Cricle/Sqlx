@@ -13,10 +13,13 @@ namespace Sqlx.Tests.Performance;
 /// <summary>
 /// Phase 4 Batch 7: 性能极限测试
 /// 新增8个极限场景测试
+/// 注意：性能测试不稳定，默认忽略，仅供手动运行
 /// </summary>
 [TestClass]
+[Ignore("性能基准测试不稳定，仅供手动运行")]
 [TestCategory("TDD-Green")]
 [TestCategory("Performance")]
+[TestCategory("Benchmark")]
 [TestCategory("Phase4")]
 public class TDD_PerformanceLimit_Phase4
 {

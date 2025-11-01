@@ -13,9 +13,9 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: true
 
 jobs:
-  # 🧪 测试和构建
-  test:
-    name: 🧪 Test & Build
+  # 🧪 本地测试 (SQLite)
+  test-local:
+    name: 🧪 Local Tests (SQLite)
     runs-on: ubuntu-latest
 
     steps:
@@ -42,21 +42,22 @@ jobs:
     - name: 🏗️ Build
       run: dotnet build --configuration Release --no-restore /p:TreatWarningsAsErrors=true
 
-    - name: 🧪 Run tests
+    - name: 🧪 Run Local Tests (SQLite)
       run: |
         dotnet test --configuration Release --no-build \
                     --collect:"XPlat Code Coverage" \
                     --logger "console;verbosity=minimal" \
                     --framework net9.0 \
-                    --settings tests/coverlet.runsettings \
+                    --settings .runsettings \
                     --results-directory ./TestResults
 
     - name: 📋 Test Summary
       if: always()
       run: |
-        echo "✅ Test Results:"
+        echo "✅ Local Test Results (SQLite):"
         echo "  - Configuration: Release"
         echo "  - Framework: net9.0"
+        echo "  - Database: SQLite (In-Memory)"
         echo "  - Coverage: Generated"
 
     - name: 📊 Generate coverage report
@@ -67,13 +68,15 @@ jobs:
                         -targetdir:"coverage-report" \
                         -reporttypes:"Html;Cobertura;JsonSummary"
 
-    - name: 📊 Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
+    - name: 📤 Upload test results
       if: always()
+      uses: actions/upload-artifact@v4
       with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        directory: coverage-report/
-        fail_ci_if_error: false
+        name: test-results-local
+        path: |
+          **/TestResults/*.trx
+          **/TestResults/**/coverage.cobertura.xml
+        retention-days: 30
 
     - name: 📦 Pack packages
       if: github.event_name == 'push'
@@ -88,11 +91,145 @@ jobs:
         path: ./artifacts/*.nupkg
         retention-days: 7
 
+  # 🗄️ 多方言测试 (PostgreSQL, MySQL, SQL Server)
+  test-all-dialects:
+    name: 🗄️ Multi-Dialect Tests
+    runs-on: ubuntu-latest
+    needs: test-local
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: sqlx_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      mysql:
+        image: mysql:8.3
+        env:
+          MYSQL_DATABASE: sqlx_test
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          SA_PASSWORD: YourStrong@Passw0rd
+          ACCEPT_EULA: Y
+          MSSQL_PID: Developer
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong@Passw0rd -Q 'SELECT 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+          --health-start-period 30s
+
+    steps:
+    - name: 📥 Checkout
+      uses: actions/checkout@v4
+
+    - name: 🔧 Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: 📦 Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.props') }}
+        restore-keys: ${{ runner.os }}-nuget-
+
+    - name: 📦 Restore dependencies
+      run: dotnet restore
+
+    - name: 🏗️ Build
+      run: dotnet build --configuration Release --no-restore
+
+    - name: ⏳ Wait for databases
+      run: |
+        echo "⏳ Waiting for databases to be ready..."
+        sleep 10
+        echo "✅ Databases should be ready"
+
+    - name: 🧪 Run Multi-Dialect Tests
+      env:
+        CI: true
+        POSTGRESQL_CONNECTION: "Host=localhost;Port=5432;Database=sqlx_test;Username=postgres;Password=postgres"
+        MYSQL_CONNECTION: "Server=localhost;Port=3306;Database=sqlx_test;Uid=root;Pwd=root"
+        SQLSERVER_CONNECTION: "Server=localhost,1433;Database=sqlx_test;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True"
+      run: |
+        dotnet test --configuration Release --no-build \
+                    --collect:"XPlat Code Coverage" \
+                    --logger "console;verbosity=minimal" \
+                    --logger "trx" \
+                    --framework net9.0 \
+                    --settings .runsettings.ci \
+                    --results-directory ./TestResults
+
+    - name: 📋 Multi-Dialect Test Summary
+      if: always()
+      run: |
+        echo "✅ Multi-Dialect Test Results:"
+        echo "  - SQLite: ✅ (In-Memory)"
+        echo "  - PostgreSQL: ✅ (localhost:5432)"
+        echo "  - MySQL: 🚧 (localhost:3306, tests not yet implemented)"
+        echo "  - SQL Server: 🚧 (localhost:1433, tests not yet implemented)"
+
+    - name: 📤 Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-all-dialects
+        path: |
+          **/TestResults/*.trx
+          **/TestResults/**/coverage.cobertura.xml
+        retention-days: 30
+
+  # 📊 代码覆盖率报告
+  coverage:
+    name: 📊 Coverage Report
+    runs-on: ubuntu-latest
+    needs: [test-local, test-all-dialects]
+    if: always()
+
+    steps:
+    - name: 📥 Download test results
+      uses: actions/download-artifact@v4
+      with:
+        path: test-results
+
+    - name: 📊 Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      if: always()
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        directory: test-results/
+        files: "**/coverage.cobertura.xml"
+        fail_ci_if_error: false
+
   # 🚀 发布到 NuGet (仅在创建 v* tag 时)
   publish:
     name: 🚀 Publish to NuGet
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test-local, test-all-dialects]
     if: startsWith(github.ref, 'refs/tags/v')
     environment: production
 

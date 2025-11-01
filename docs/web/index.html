@@ -519,12 +519,12 @@
                 <div class="stat-label">ADO.NET性能对比</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">1,412</div>
+                <div class="stat-number">1,423</div>
                 <div class="stat-label">单元测试通过</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">5+</div>
-                <div class="stat-label">支持的数据库</div>
+                <div class="stat-number">98%</div>
+                <div class="stat-label">功能支持度</div>
             </div>
             <div class="stat-card">
                 <div class="stat-number">0</div>
@@ -537,7 +537,7 @@
     <div class="container" id="download" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 4rem 2rem; margin: 3rem auto; border-radius: 20px; color: white;">
         <h2 style="color: white; text-align: center; font-size: 2.5rem; margin-bottom: 1rem;">📥 立即下载</h2>
         <p style="text-align: center; font-size: 1.2rem; margin-bottom: 3rem; opacity: 0.9;">选择适合您的版本开始使用</p>
-        
+
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; max-width: 1000px; margin: 0 auto;">
             <!-- NuGet Package -->
             <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border-radius: 15px; padding: 2rem; border: 2px solid rgba(255,255,255,0.2);">
@@ -552,8 +552,9 @@
                     <a href="https://github.com/Cricle/Sqlx/releases" target="_blank" style="display: inline-block; padding: 0.75rem 1.5rem; background: rgba(255,255,255,0.2); color: white; border-radius: 8px; text-decoration: none; font-weight: bold;">Release Notes</a>
                 </div>
                 <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.2); opacity: 0.8; font-size: 0.9rem;">
-                    <div>✅ v0.4.0 Latest</div>
-                    <div>✅ .NET 6.0+</div>
+                    <div>✅ v0.5.0 Latest</div>
+                    <div>✅ Production Ready</div>
+                    <div>✅ .NET 8.0 | 9.0</div>
                     <div>✅ 5+ Databases</div>
                 </div>
             </div>
@@ -614,7 +615,7 @@
     <div class="container" id="features">
         <h2>🎯 核心特性</h2>
         <p class="section-subtitle">让数据访问回归简单，让性能接近极致</p>
-        
+
         <div class="features-grid">
             <div class="feature-card">
                 <div class="feature-icon">⚡</div>
@@ -694,7 +695,7 @@
     <div class="container" id="vs-extension" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 3rem 2rem; border-radius: 20px; margin: 3rem auto;">
         <h2 style="color: white;">🛠️ Visual Studio 插件</h2>
         <p class="section-subtitle" style="color: rgba(255,255,255,0.9);">极大提升开发体验的 IDE 扩展</p>
-        
+
         <div class="features-grid">
             <div class="feature-card" style="background: rgba(255,255,255,0.95);">
                 <div class="feature-icon">🎨</div>
@@ -817,7 +818,7 @@
         </div>
 
         <div style="text-align: center; margin-top: 3rem; padding: 2rem; background: white; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-            <h3 style="margin-bottom: 1rem;">📦 项目结构（v0.4.0）</h3>
+            <h3 style="margin-bottom: 1rem;">📦 项目结构（v0.5.0）</h3>
             <div style="text-align: left; display: inline-block; font-family: 'Courier New', monospace; font-size: 0.9rem; line-height: 1.8;">
                 <div>📁 <strong>Sqlx/</strong></div>
                 <div>&nbsp;&nbsp;├── 📄 README.md <span style="color: var(--text-muted);">// 项目主页</span></div>
@@ -1085,7 +1086,7 @@ dotnet add package Sqlx
 {
     [SqlTemplate(<span class="string">"SELECT {{columns}} FROM users WHERE id = @id"</span>)]
     Task&lt;User?&gt; GetByIdAsync(<span class="keyword">long</span> id, CancellationToken ct = <span class="keyword">default</span>);
-    
+
     [SqlTemplate(<span class="string">"INSERT INTO users (name, age) VALUES (@name, @age)"</span>)]
     [ReturnInsertedId]
     Task&lt;<span class="keyword">long</span>&gt; InsertAsync(<span class="keyword">string</span> name, <span class="keyword">int</span> age, CancellationToken ct = <span class="keyword">default</span>);

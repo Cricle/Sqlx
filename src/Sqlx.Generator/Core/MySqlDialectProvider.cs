@@ -92,5 +92,31 @@ internal class MySqlDialectProvider : BaseDialectProvider
 
         return $"CONCAT({string.Join(", ", expressions)})";
     }
+
+    /// <inheritdoc />
+    public override string GetReturningIdClause()
+    {
+        // MySQL doesn't support RETURNING clause, needs to use LAST_INSERT_ID()
+        return string.Empty;
+    }
+
+    /// <inheritdoc />
+    public override string GetBoolTrueLiteral()
+    {
+        return "1";
+    }
+
+    /// <inheritdoc />
+    public override string GetBoolFalseLiteral()
+    {
+        return "0";
+    }
+
+    /// <inheritdoc />
+    public override string GenerateLimitOffsetClause(string limitParam, string offsetParam, out bool requiresOrderBy)
+    {
+        requiresOrderBy = false;
+        return $"LIMIT {limitParam} OFFSET {offsetParam}";
+    }
 }
 

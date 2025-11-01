@@ -105,5 +105,31 @@ internal class SQLiteDialectProvider : BaseDialectProvider
 
         return string.Join(" || ", expressions);
     }
+
+    /// <inheritdoc />
+    public override string GetReturningIdClause()
+    {
+        // SQLite doesn't support RETURNING clause, needs to use last_insert_rowid()
+        return string.Empty;
+    }
+
+    /// <inheritdoc />
+    public override string GetBoolTrueLiteral()
+    {
+        return "1";
+    }
+
+    /// <inheritdoc />
+    public override string GetBoolFalseLiteral()
+    {
+        return "0";
+    }
+
+    /// <inheritdoc />
+    public override string GenerateLimitOffsetClause(string limitParam, string offsetParam, out bool requiresOrderBy)
+    {
+        requiresOrderBy = false;
+        return $"LIMIT {limitParam} OFFSET {offsetParam}";
+    }
 }
 

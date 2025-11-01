@@ -126,5 +126,30 @@ internal class PostgreSqlDialectProvider : BaseDialectProvider
         // PostgreSQL uses || for concatenation
         return string.Join(" || ", expressions);
     }
+
+    /// <inheritdoc />
+    public override string GetReturningIdClause()
+    {
+        return "RETURNING id";
+    }
+
+    /// <inheritdoc />
+    public override string GetBoolTrueLiteral()
+    {
+        return "true";
+    }
+
+    /// <inheritdoc />
+    public override string GetBoolFalseLiteral()
+    {
+        return "false";
+    }
+
+    /// <inheritdoc />
+    public override string GenerateLimitOffsetClause(string limitParam, string offsetParam, out bool requiresOrderBy)
+    {
+        requiresOrderBy = false;
+        return $"LIMIT {limitParam} OFFSET {offsetParam}";
+    }
 }
 

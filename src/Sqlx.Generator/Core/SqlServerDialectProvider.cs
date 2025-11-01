@@ -104,5 +104,31 @@ internal class SqlServerDialectProvider : BaseDialectProvider
 
         return string.Join(" + ", expressions);
     }
+
+    /// <inheritdoc />
+    public override string GetReturningIdClause()
+    {
+        // SQL Server doesn't support RETURNING clause, needs to use SCOPE_IDENTITY()
+        return string.Empty;
+    }
+
+    /// <inheritdoc />
+    public override string GetBoolTrueLiteral()
+    {
+        return "1";
+    }
+
+    /// <inheritdoc />
+    public override string GetBoolFalseLiteral()
+    {
+        return "0";
+    }
+
+    /// <inheritdoc />
+    public override string GenerateLimitOffsetClause(string limitParam, string offsetParam, out bool requiresOrderBy)
+    {
+        requiresOrderBy = true; // SQL Server requires ORDER BY for OFFSET/FETCH
+        return $"OFFSET {offsetParam} ROWS FETCH NEXT {limitParam} ROWS ONLY";
+    }
 }
 

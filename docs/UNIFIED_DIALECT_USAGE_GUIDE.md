@@ -33,8 +33,8 @@ public interface IUserRepositoryBase
     Task<User?> GetByIdAsync(int id, CancellationToken ct = default);
 
     [SqlTemplate(@"
-        INSERT INTO {{table}} (username, email, age, created_at) 
-        VALUES (@username, @email, @age, {{current_timestamp}}) 
+        INSERT INTO {{table}} (username, email, age, created_at)
+        VALUES (@username, @email, @age, {{current_timestamp}})
         {{returning_id}}")]
     Task<int> InsertAsync(User user, CancellationToken ct = default);
 
@@ -52,13 +52,13 @@ public interface IUserRepositoryBase
 
 ```csharp
 // PostgreSQL
-[RepositoryFor(typeof(IUserRepositoryBase), 
-    Dialect = SqlDefineTypes.PostgreSql, 
+[RepositoryFor(typeof(IUserRepositoryBase),
+    Dialect = SqlDefineTypes.PostgreSql,
     TableName = "users")]
 public partial class PostgreSQLUserRepository : IUserRepositoryBase
 {
     private readonly DbConnection _connection;
-    
+
     public PostgreSQLUserRepository(DbConnection connection)
     {
         _connection = connection;
@@ -66,13 +66,13 @@ public partial class PostgreSQLUserRepository : IUserRepositoryBase
 }
 
 // MySQL
-[RepositoryFor(typeof(IUserRepositoryBase), 
-    Dialect = SqlDefineTypes.MySql, 
+[RepositoryFor(typeof(IUserRepositoryBase),
+    Dialect = SqlDefineTypes.MySql,
     TableName = "users")]
 public partial class MySQLUserRepository : IUserRepositoryBase
 {
     private readonly DbConnection _connection;
-    
+
     public MySQLUserRepository(DbConnection connection)
     {
         _connection = connection;
@@ -80,13 +80,13 @@ public partial class MySQLUserRepository : IUserRepositoryBase
 }
 
 // SQL Server
-[RepositoryFor(typeof(IUserRepositoryBase), 
-    Dialect = SqlDefineTypes.SqlServer, 
+[RepositoryFor(typeof(IUserRepositoryBase),
+    Dialect = SqlDefineTypes.SqlServer,
     TableName = "users")]
 public partial class SqlServerUserRepository : IUserRepositoryBase
 {
     private readonly DbConnection _connection;
-    
+
     public SqlServerUserRepository(DbConnection connection)
     {
         _connection = connection;
@@ -94,13 +94,13 @@ public partial class SqlServerUserRepository : IUserRepositoryBase
 }
 
 // SQLite
-[RepositoryFor(typeof(IUserRepositoryBase), 
-    Dialect = SqlDefineTypes.SQLite, 
+[RepositoryFor(typeof(IUserRepositoryBase),
+    Dialect = SqlDefineTypes.SQLite,
     TableName = "users")]
 public partial class SQLiteUserRepository : IUserRepositoryBase
 {
     private readonly DbConnection _connection;
-    
+
     public SQLiteUserRepository(DbConnection connection)
     {
         _connection = connection;
@@ -128,8 +128,8 @@ public partial class PostgreSQLUserRepository
     public async Task<int> InsertAsync(User user, CancellationToken ct = default)
     {
         var __sql__ = @"
-            INSERT INTO ""users"" (username, email, age, created_at) 
-            VALUES (@username, @email, @age, CURRENT_TIMESTAMP) 
+            INSERT INTO ""users"" (username, email, age, created_at)
+            VALUES (@username, @email, @age, CURRENT_TIMESTAMP)
             RETURNING id";
         // ... 执行逻辑，使用 RETURNING 获取ID
     }
@@ -159,8 +159,8 @@ public partial class MySQLUserRepository
     public async Task<int> InsertAsync(User user, CancellationToken ct = default)
     {
         var __sql__ = @"
-            INSERT INTO `users` (username, email, age, created_at) 
-            VALUES (@username, @email, @age, NOW()) 
+            INSERT INTO `users` (username, email, age, created_at)
+            VALUES (@username, @email, @age, NOW())
             ";
         // ... 执行逻辑，使用 LAST_INSERT_ID() 获取ID
     }
@@ -281,7 +281,7 @@ public class User { } // 推断为 "user"
 
 ```csharp
 [SqlTemplate(@"
-    INSERT INTO {{table}} ({{columns}}, created_at, is_active) 
+    INSERT INTO {{table}} ({{columns}}, created_at, is_active)
     VALUES (@id, @username, @email, {{current_timestamp}}, {{bool_true}})
     {{returning_id}}")]
 Task<int> InsertAsync(User user, CancellationToken ct = default);
@@ -291,16 +291,16 @@ Task<int> InsertAsync(User user, CancellationToken ct = default);
 
 ```csharp
 [SqlTemplate(@"
-    SELECT * FROM {{table}} 
+    SELECT * FROM {{table}}
     WHERE (@username IS NULL OR username = @username)
       AND (@minAge IS NULL OR age >= @minAge)
       AND active = {{bool_true}}
     ORDER BY created_at DESC
     LIMIT @limit")]
 Task<List<User>> SearchAsync(
-    string? username, 
-    int? minAge, 
-    int limit, 
+    string? username,
+    int? minAge,
+    int limit,
     CancellationToken ct = default);
 ```
 
@@ -351,7 +351,7 @@ services.AddScoped<IUserRepositoryBase>(sp =>
 ### 2. 批量操作
 ```csharp
 [SqlTemplate(@"
-    INSERT INTO {{table}} (username, email) 
+    INSERT INTO {{table}} (username, email)
     VALUES (@username0, @email0), (@username1, @email1), (@username2, @email2)
     {{returning_id}}")]
 Task<List<int>> BatchInsertAsync(List<User> users, CancellationToken ct = default);
@@ -376,10 +376,10 @@ public class UserRepositoryTests
         using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync();
         var repository = new SQLiteUserRepository(connection);
-        
+
         // Act
         var user = await repository.GetByIdAsync(1);
-        
+
         // Assert
         Assert.IsNotNull(user);
         Assert.AreEqual("test@example.com", user.Email);
@@ -409,7 +409,7 @@ public class MultiDialectIntegrationTests
             var user = new User { Username = "test", Email = "test@example.com" };
             var id = await repo.InsertAsync(user);
             var retrieved = await repo.GetByIdAsync(id);
-            
+
             Assert.IsNotNull(retrieved);
             Assert.AreEqual("test@example.com", retrieved.Email);
         }

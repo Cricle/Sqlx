@@ -21,7 +21,7 @@
 
 **方言提供者：**
 - ✅ PostgreSQLDialectProvider
-- ✅ MySQLDialectProvider  
+- ✅ MySQLDialectProvider
 - ✅ SqlServerDialectProvider
 - ✅ SQLiteDialectProvider
 
@@ -84,13 +84,13 @@ public interface IUserRepositoryBase
 }
 
 // 2. 指定方言和表名（实现类为空）
-[RepositoryFor(typeof(IUserRepositoryBase), 
-    Dialect = SqlDefineTypes.PostgreSql, 
+[RepositoryFor(typeof(IUserRepositoryBase),
+    Dialect = SqlDefineTypes.PostgreSql,
     TableName = "users")]
 public partial class PostgreSQLUserRepository : IUserRepositoryBase { }
 
-[RepositoryFor(typeof(IUserRepositoryBase), 
-    Dialect = SqlDefineTypes.MySql, 
+[RepositoryFor(typeof(IUserRepositoryBase),
+    Dialect = SqlDefineTypes.MySql,
     TableName = "users")]
 public partial class MySQLUserRepository : IUserRepositoryBase { }
 ```
@@ -308,7 +308,7 @@ var mysqlSql = mysqlProvider.ReplacePlaceholders(template, tableName: "users");
 
 ---
 
-*最后更新: 2025-11-01*  
-*当前版本: Phase 2.3 完成*  
+*最后更新: 2025-11-01*
+*当前版本: Phase 2.3 完成*
 *总进度: 80%*
 

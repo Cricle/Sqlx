@@ -65,13 +65,9 @@ public static class DatabaseConnectionHelper
 
         try
         {
-            // 需要 Npgsql 包
-            // var connection = new NpgsqlConnection(connectionString);
-            // connection.Open();
-            // return connection;
-
-            // 暂时返回null，等待实现
-            return null;
+            var connection = new Npgsql.NpgsqlConnection(connectionString);
+            connection.Open();
+            return connection;
         }
         catch (Exception ex)
         {
@@ -93,13 +89,9 @@ public static class DatabaseConnectionHelper
 
         try
         {
-            // 需要 MySqlConnector 包
-            // var connection = new MySqlConnection(connectionString);
-            // connection.Open();
-            // return connection;
-
-            // 暂时返回null，等待实现
-            return null;
+            var connection = new MySqlConnector.MySqlConnection(connectionString);
+            connection.Open();
+            return connection;
         }
         catch (Exception ex)
         {
@@ -121,13 +113,9 @@ public static class DatabaseConnectionHelper
 
         try
         {
-            // 需要 Microsoft.Data.SqlClient 包
-            // var connection = new SqlConnection(connectionString);
-            // connection.Open();
-            // return connection;
-
-            // 暂时返回null，等待实现
-            return null;
+            var connection = new Microsoft.Data.SqlClient.SqlConnection(connectionString);
+            connection.Open();
+            return connection;
         }
         catch (Exception ex)
         {

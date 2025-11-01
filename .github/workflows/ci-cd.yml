@@ -166,8 +166,26 @@ jobs:
     - name: ⏳ Wait for databases
       run: |
         echo "⏳ Waiting for databases to be ready..."
-        sleep 10
+        sleep 15
         echo "✅ Databases should be ready"
+
+    - name: 🗄️ Initialize PostgreSQL
+      run: |
+        PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c "CREATE DATABASE sqlx_test;"
+        PGPASSWORD=postgres psql -h localhost -U postgres -d sqlx_test -f tests/Sqlx.Tests/Infrastructure/init-postgresql.sql
+        echo "✅ PostgreSQL initialized"
+
+    - name: 🗄️ Initialize MySQL
+      run: |
+        mysql -h 127.0.0.1 -P 3306 -u root -proot -e "CREATE DATABASE IF NOT EXISTS sqlx_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+        mysql -h 127.0.0.1 -P 3306 -u root -proot sqlx_test < tests/Sqlx.Tests/Infrastructure/init-mysql.sql
+        echo "✅ MySQL initialized"
+
+    - name: 🗄️ Initialize SQL Server
+      run: |
+        /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong@Passw0rd' -C -Q "CREATE DATABASE sqlx_test;"
+        /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong@Passw0rd' -C -d sqlx_test -i tests/Sqlx.Tests/Infrastructure/init-sqlserver.sql
+        echo "✅ SQL Server initialized"
 
     - name: 🧪 Run Multi-Dialect Tests
       env:

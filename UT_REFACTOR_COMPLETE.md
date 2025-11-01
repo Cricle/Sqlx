@@ -98,7 +98,7 @@ $ git diff --stat main~1 main
  delete mode 100644 tests/Sqlx.Tests/Performance/TDD_SelectList_Optimization.cs
 ```
 
-**删除代码**: 1,949行  
+**删除代码**: 1,949行
 **新增代码**: 3行 (仅清理后的空行)
 
 ## ✅ 重构原则
@@ -263,7 +263,7 @@ public class DatabaseStressTests
 
 ---
 
-**生成时间**: 2025-11-01  
-**版本**: v0.5.1  
+**生成时间**: 2025-11-01
+**版本**: v0.5.1
 **状态**: ✅ Refactoring Complete
 

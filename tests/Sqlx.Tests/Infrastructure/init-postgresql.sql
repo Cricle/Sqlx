@@ -12,7 +12,8 @@ CREATE TABLE dialect_users_postgresql (
     age INT NOT NULL,
     balance DECIMAL(18, 2) NOT NULL DEFAULT 0,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_login_at TIMESTAMP NULL
 );
 
 -- 创建索引

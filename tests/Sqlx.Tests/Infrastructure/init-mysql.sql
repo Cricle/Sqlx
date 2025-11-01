@@ -13,6 +13,7 @@ CREATE TABLE dialect_users_mysql (
     balance DECIMAL(18, 2) NOT NULL DEFAULT 0,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_login_at TIMESTAMP NULL,
     INDEX idx_dialect_users_mysql_username (username),
     INDEX idx_dialect_users_mysql_age (age),
     INDEX idx_dialect_users_mysql_balance (balance)

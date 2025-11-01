@@ -50,11 +50,11 @@ namespace TestNamespace
     {
         // Arrange
         var (compilation, interfaceSymbol, entityType) = CompileAndGetSymbols(TestCode, "IBaseRepository", "TestEntity");
-        
+
         // Debug: check if symbols are null
         Assert.IsNotNull(interfaceSymbol, "Interface symbol should not be null");
         Assert.IsNotNull(entityType, "Entity type should not be null");
-        
+
         var resolver = new TemplateInheritanceResolver();
         var dialectProvider = new PostgreSqlDialectProvider();
 
@@ -263,7 +263,7 @@ namespace TestNamespace
         string entityName)
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(code);
-        
+
         // Add reference to the basic runtime assemblies
         var refPaths = new[]
         {

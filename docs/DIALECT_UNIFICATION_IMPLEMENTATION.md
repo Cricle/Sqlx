@@ -38,10 +38,10 @@ public interface IPostgreSQLUserRepository : IDialectUserRepositoryBase
 {
     [SqlTemplateAttribute(@"SELECT * FROM ""dialect_users_postgresql"" WHERE id = @id")]
     new Task<User?> GetByIdAsync(int id, CancellationToken ct);
-    
+
     [SqlTemplateAttribute(@"INSERT INTO ""dialect_users_postgresql"" ...")]
     new Task<int> InsertAsync(User user, CancellationToken ct);
-    
+
     // ... 还有18个方法，每个方法都要重复定义
 }
 
@@ -59,10 +59,10 @@ public interface IDialectUserRepositoryBase
 {
     [SqlTemplate(@"SELECT * FROM {{table}} WHERE id = @id")]
     Task<User?> GetByIdAsync(int id, CancellationToken ct);
-    
+
     [SqlTemplate(@"INSERT INTO {{table}} ({{columns}}) VALUES (@username, @email, @age) {{returning_id}}")]
     Task<int> InsertAsync(User user, CancellationToken ct);
-    
+
     // ... 只需要定义一次
 }
 
@@ -118,17 +118,17 @@ public void GenerateRepositoryClass(...)
     // 1. 检查类是否有 RepositoryFor 属性
     var repoFor = GetRepositoryForAttribute(classSymbol);
     if (repoFor == null) return;
-    
+
     // 2. 获取方言提供者
     var dialectProvider = GetDialectProvider(repoFor.Dialect);
-    
+
     // 3. 解析继承的模板
     var resolver = new TemplateInheritanceResolver();
     var inheritedTemplates = resolver.ResolveInheritedTemplates(
         interfaceSymbol,
         classSymbol,
         dialectProvider);
-    
+
     // 4. 为每个继承的方法生成实现
     foreach (var template in inheritedTemplates)
     {
@@ -146,7 +146,7 @@ public class RepositoryForAttribute : Attribute
     public Type EntityType { get; set; }
     public SqlDefineTypes Dialect { get; set; }
     public string? TableName { get; set; }  // 新增：显式指定表名
-    
+
     // 如果 TableName 为 null，则从 EntityType 推断
 }
 ```
@@ -165,7 +165,7 @@ public class TemplateInheritanceTests
         // When: 解析 PostgreSQL 方言，TableName = "users"
         // Then: 生成 "SELECT * FROM \"users\""
     }
-    
+
     [TestMethod]
     public void MultiDialect_SameInterface_ShouldGenerateDifferentSQL()
     {

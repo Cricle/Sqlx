@@ -196,32 +196,6 @@ public class TDD_BatchOperations_Runtime
 
     #endregion
 
-    #region 性能测试（基准）
-
-    [TestMethod]
-    [Ignore("性能基准测试不稳定，仅供手动运行")]
-    [TestCategory("Performance")]
-    [TestCategory("Benchmark")]
-    public async Task BatchInsert_10000Records_ShouldCompleteQuickly()
-    {
-        // Arrange
-        var users = Enumerable.Range(1, 10000)
-            .Select(i => new UserBatchItem { Name = $"User{i}", Age = 20 + (i % 50) })
-            .ToArray();
-
-        // Act
-        var sw = System.Diagnostics.Stopwatch.StartNew();
-        var affected = await _repo.BatchInsertUsersAsync(users);
-        sw.Stop();
-
-        // Assert
-        Assert.AreEqual(10000, affected);
-        Assert.IsTrue(sw.ElapsedMilliseconds < 2000,
-            $"10000条记录应该在2秒内完成，实际: {sw.ElapsedMilliseconds}ms");
-    }
-
-    #endregion
-
     #region Helper Methods
 
     private int GetCount(string tableName)

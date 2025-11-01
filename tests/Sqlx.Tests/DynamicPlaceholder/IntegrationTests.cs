@@ -225,41 +225,6 @@ public class IntegrationTests
             $"Average validation time ({averageMicroseconds:F2}μs) should be less than 10μs per call");
     }
 
-    [TestMethod]
-    [Ignore("GC和内存测试不稳定，仅供手动运行")]
-    public void GeneratedValidation_NoAllocation_ShouldBeZeroGC()
-    {
-        // Arrange
-        var tableName = "users";
-        var iterations = 1000;
-
-        // Act - 预热
-        ValidateDynamicParameter_Identifier(tableName);
-
-        // 强制GC并记录初始值
-        GC.Collect(2, GCCollectionMode.Forced, true, true);
-        GC.WaitForPendingFinalizers();
-        var gen0Before = GC.CollectionCount(0);
-        var gen1Before = GC.CollectionCount(1);
-        var gen2Before = GC.CollectionCount(2);
-
-        // 执行验证
-        for (int i = 0; i < iterations; i++)
-        {
-            ValidateDynamicParameter_Identifier(tableName);
-        }
-
-        // 记录结束值
-        var gen0After = GC.CollectionCount(0);
-        var gen1After = GC.CollectionCount(1);
-        var gen2After = GC.CollectionCount(2);
-
-        // Assert - 应该没有触发任何GC
-        Assert.AreEqual(gen0Before, gen0After, "Should not trigger Gen0 GC");
-        Assert.AreEqual(gen1Before, gen1After, "Should not trigger Gen1 GC");
-        Assert.AreEqual(gen2Before, gen2After, "Should not trigger Gen2 GC");
-    }
-
     #endregion
 
     #region 错误消息测试

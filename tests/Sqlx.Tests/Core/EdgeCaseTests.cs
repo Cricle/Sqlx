@@ -450,48 +450,5 @@ namespace Sqlx.Tests.Core
             }
         }
 
-        [TestMethod]
-        [Ignore("GC和内存测试不稳定，仅供手动运行")]
-        public void PerformanceEdgeCases_HighLoad_HandledCorrectly()
-        {
-            // Test performance under high load scenarios
-            var startTime = DateTime.UtcNow;
-
-            // Simulate high-frequency operations
-            var operations = 10000;
-            var results = new List<int>(operations);
-
-            for (int i = 0; i < operations; i++)
-            {
-                // Simulate some work
-                var result = i * 2 + 1;
-                results.Add(result);
-            }
-
-            var endTime = DateTime.UtcNow;
-            var duration = endTime - startTime;
-
-            Assert.AreEqual(operations, results.Count);
-            Assert.IsTrue(duration.TotalMilliseconds < 5000); // Should complete within 5 seconds
-
-            // Test memory usage doesn't grow excessively
-            var initialMemory = GC.GetTotalMemory(false);
-
-            // Create and dispose many objects
-            for (int i = 0; i < 1000; i++)
-            {
-                var temp = new List<int>(Enumerable.Range(0, 100));
-                temp.Clear();
-            }
-
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
-
-            var finalMemory = GC.GetTotalMemory(false);
-
-            // Memory should not grow significantly after GC
-            Assert.IsTrue(finalMemory - initialMemory < 1024 * 1024); // Less than 1MB growth
-        }
     }
 }

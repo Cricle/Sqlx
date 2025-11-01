@@ -423,41 +423,6 @@ namespace TestNamespace
 
     #endregion
 
-    #region 性能测试
-
-    [TestMethod]
-    [Ignore("性能基准测试不稳定，仅供手动运行")]
-    public void CrudPlaceholders_Performance_ProcessesQuickly()
-    {
-        // Arrange
-        var templates = new[]
-        {
-            "{{insert}} ({{columns:auto|exclude=Id}}) VALUES ({{values:auto}})",
-            "{{update}} SET {{set:auto|exclude=Id}} WHERE {{where:id}}",
-            "{{delete}} WHERE {{where:id}}"
-        };
-
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-
-        // Act - Process each template 1000 times
-        for (int i = 0; i < 1000; i++)
-        {
-            foreach (var template in templates)
-            {
-                _engine.ProcessTemplate(template, _testMethod, _todoType, "Todo");
-            }
-        }
-
-        stopwatch.Stop();
-
-        // Assert - Should complete in reasonable time (< 5 seconds for 3000 operations)
-        // Note: This is a smoke test for severe performance regression, not a precise benchmark
-        Assert.IsTrue(stopwatch.ElapsedMilliseconds < 5000,
-            $"CRUD placeholder processing took too long. Took {stopwatch.ElapsedMilliseconds}ms");
-    }
-
-    #endregion
-
     #region 多线程安全测试
 
     [TestMethod]

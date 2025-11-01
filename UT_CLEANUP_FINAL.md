@@ -104,7 +104,7 @@ public void PerformanceEdgeCases_HighLoad_HandledCorrectly()
 ### GC和内存测试 (5个)
 
 **问题**:
-1. **GC不确定性**: 
+1. **GC不确定性**:
    - `GC.Collect()` 不保证立即回收
    - GC策略因系统而异
    - 无法精确控制GC时机
@@ -252,7 +252,7 @@ tests/Sqlx.Tests/
 
 ---
 
-**生成时间**: 2025-11-01  
-**版本**: v0.5.1  
+**生成时间**: 2025-11-01
+**版本**: v0.5.1
 **状态**: ✅ Ready for Production
 

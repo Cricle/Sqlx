@@ -47,27 +47,6 @@ public class TDD_LargeDataPerf_Phase3
     }
 
     [TestMethod]
-    [Ignore("性能基准测试不稳定，仅供手动运行")]
-    [TestCategory("Performance")]
-    [TestCategory("Benchmark")]
-    [Description("Query 1000 records should complete quickly")]
-    public async Task Query_1000Records_ShouldBeQuick()
-    {
-        // Insert 1000 records
-        for (int i = 1; i <= 1000; i++)
-        {
-            _connection!.Execute($"INSERT INTO large_data VALUES ({i}, 'Item{i}', {i * 1.5}, 'Cat{i % 10}')");
-        }
-
-        var sw = Stopwatch.StartNew();
-        var results = await _repo!.GetAllAsync();
-        sw.Stop();
-
-        Assert.AreEqual(1000, results.Count);
-        Assert.IsTrue(sw.ElapsedMilliseconds < 1000, $"Query took {sw.ElapsedMilliseconds}ms, expected < 1000ms");
-    }
-
-    [TestMethod]
     [Description("Query with pagination on large dataset should work")]
     public async Task Query_PaginationLarge_ShouldWork()
     {

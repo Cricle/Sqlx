@@ -4,11 +4,12 @@
 
 [![NuGet](https://img.shields.io/badge/nuget-v0.5.0-blue)](https://www.nuget.org/packages/Sqlx/)
 [![VS Extension](https://img.shields.io/badge/VS%20Extension-v0.1.0-green)](#️-visual-studio-插件)
-[![Tests](https://img.shields.io/badge/tests-1505%20passed%20(100%25)-brightgreen)](tests/)
-[![Coverage](https://img.shields.io/badge/coverage-98%25-brightgreen)](#)
+[![Tests](https://img.shields.io/badge/tests-1615%20passed%20(96.3%25)-brightgreen)](tests/)
+[![Coverage](https://img.shields.io/badge/coverage-96.4%25-brightgreen)](#)
 [![Production Ready](https://img.shields.io/badge/status-production%20ready-success)](#)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0-purple.svg)](#)
+[![Databases](https://img.shields.io/badge/databases-4%20supported-blue)](#-支持的数据库)
 
 **极致性能 · 类型安全 · 完全异步 · 零配置**
 
@@ -33,7 +34,7 @@ Sqlx 是一个**高性能、类型安全的 .NET 数据访问库**，通过**源
 | 代码生成 | ✅ 编译时 | ❌ 无 | ✅ 运行时 |
 | AOT支持 | ✅ 完整 | ✅ 完整 | ⚠️ 有限 |
 | GC压力 | ⚡ 极低 | ⚡ 低 | ⚡⚡ 中等 |
-| 多数据库 | ✅ 5+ | ✅ 多种 | ✅ 多种 |
+| 多数据库 | ✅ 4种 (SQLite, PostgreSQL, MySQL, SQL Server) | ✅ 多种 | ✅ 多种 |
 
 ---
 
@@ -703,13 +704,53 @@ public class UserService
 
 ## 🗄️ 支持的数据库
 
-| 数据库 | 版本 | 状态 | 特性支持 |
-|--------|------|------|----------|
-| SQLite | 3.x | ✅ 完全支持 | 全部特性 |
-| MySQL | 5.7+ / 8.0+ | ✅ 完全支持 | 全部特性 |
-| PostgreSQL | 12+ | ✅ 完全支持 | 全部特性 |
-| SQL Server | 2016+ | ✅ 完全支持 | 全部特性 |
-| Oracle | 12c+ | ✅ 完全支持 | 全部特性 |
+| 数据库 | 版本 | 状态 | 测试数 | 文档 |
+|--------|------|------|--------|------|
+| SQLite | 3.x | ✅ 完全支持 | 20个 | [查看](tests/Sqlx.Tests/MultiDialect/TDD_SQLite_Comprehensive.cs) |
+| PostgreSQL | 16+ | ✅ 完全支持 | 20个 | [查看](tests/Sqlx.Tests/MultiDialect/TDD_PostgreSQL_Comprehensive.cs) |
+| MySQL | 8.3+ | ✅ 完全支持 | 20个 | [查看](tests/Sqlx.Tests/MultiDialect/TDD_MySQL_Comprehensive.cs) |
+| SQL Server | 2022+ | ✅ 完全支持 | 20个 | [查看](tests/Sqlx.Tests/MultiDialect/TDD_SqlServer_Comprehensive.cs) |
+| Oracle | 12c+ | 🔄 计划中 | - | - |
+| MariaDB | 10.x+ | 🔄 计划中 | - | - |
+
+### 多数据库测试架构
+
+Sqlx采用"**写一次，多数据库运行**"的测试架构：
+
+```csharp
+// 1. 定义通用接口
+public partial interface IUserRepository
+{
+    Task<long> InsertAsync(string name, int age);
+    Task<User?> GetByIdAsync(long id);
+}
+
+// 2. 为每个数据库定义SQL模板
+public partial interface IPostgreSQLUserRepository : IUserRepository
+{
+    [SqlTemplate("INSERT INTO users (name, age) VALUES (@name, @age) RETURNING id")]
+    new Task<long> InsertAsync(string name, int age);
+    
+    [SqlTemplate("SELECT {{columns}} FROM users WHERE id = @id")]
+    new Task<User?> GetByIdAsync(long id);
+}
+
+// 3. 源生成器自动生成实现
+[RepositoryFor(typeof(IPostgreSQLUserRepository))]
+[SqlDefine(SqlDefineTypes.PostgreSql)]
+public partial class PostgreSQLUserRepository : IPostgreSQLUserRepository
+{
+    // 自动生成所有方法实现
+}
+```
+
+**优势**：
+- ✅ 测试逻辑100%复用
+- ✅ SQL方言自动适配
+- ✅ 编译时类型检查
+- ✅ 零运行时开销
+
+详细文档：[MULTI_DIALECT_TESTING.md](MULTI_DIALECT_TESTING.md)
 
 ---
 

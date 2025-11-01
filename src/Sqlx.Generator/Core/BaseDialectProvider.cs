@@ -58,6 +58,66 @@ internal abstract class BaseDialectProvider : IDatabaseDialectProvider
     /// <inheritdoc />
     public abstract string GetConcatenationSyntax(params string[] expressions);
 
+    /// <inheritdoc />
+    public virtual string ReplacePlaceholders(string sqlTemplate, string? tableName = null, string[]? columns = null)
+    {
+        if (string.IsNullOrEmpty(sqlTemplate))
+            return sqlTemplate;
+
+        var result = sqlTemplate;
+
+        // Replace {{table}}
+        if (tableName != null && result.Contains(Core.DialectPlaceholders.Table))
+        {
+            result = result.Replace(Core.DialectPlaceholders.Table, SqlDefine.WrapColumn(tableName));
+        }
+
+        // Replace {{columns}}
+        if (columns != null && columns.Length > 0 && result.Contains(Core.DialectPlaceholders.Columns))
+        {
+            var wrappedColumns = string.Join(", ", columns.Select(c => SqlDefine.WrapColumn(c)));
+            result = result.Replace(Core.DialectPlaceholders.Columns, wrappedColumns);
+        }
+
+        // Replace {{returning_id}}
+        if (result.Contains(Core.DialectPlaceholders.ReturningId))
+        {
+            result = result.Replace(Core.DialectPlaceholders.ReturningId, GetReturningIdClause());
+        }
+
+        // Replace {{bool_true}}
+        if (result.Contains(Core.DialectPlaceholders.BoolTrue))
+        {
+            result = result.Replace(Core.DialectPlaceholders.BoolTrue, GetBoolTrueLiteral());
+        }
+
+        // Replace {{bool_false}}
+        if (result.Contains(Core.DialectPlaceholders.BoolFalse))
+        {
+            result = result.Replace(Core.DialectPlaceholders.BoolFalse, GetBoolFalseLiteral());
+        }
+
+        // Replace {{current_timestamp}}
+        if (result.Contains(Core.DialectPlaceholders.CurrentTimestamp))
+        {
+            result = result.Replace(Core.DialectPlaceholders.CurrentTimestamp, GetCurrentDateTimeSyntax());
+        }
+
+        return result;
+    }
+
+    /// <inheritdoc />
+    public abstract string GetReturningIdClause();
+
+    /// <inheritdoc />
+    public abstract string GetBoolTrueLiteral();
+
+    /// <inheritdoc />
+    public abstract string GetBoolFalseLiteral();
+
+    /// <inheritdoc />
+    public abstract string GenerateLimitOffsetClause(string limitParam, string offsetParam, out bool requiresOrderBy);
+
     /// <summary>
     /// Helper method to generate basic insert statement parts.
     /// </summary>

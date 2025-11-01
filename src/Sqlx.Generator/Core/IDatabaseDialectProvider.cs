@@ -83,5 +83,41 @@ internal interface IDatabaseDialectProvider
     /// <param name="expressions">The expressions to concatenate.</param>
     /// <returns>The SQL string concatenation expression.</returns>
     string GetConcatenationSyntax(params string[] expressions);
+
+    /// <summary>
+    /// Replaces dialect-specific placeholders in a SQL template.
+    /// </summary>
+    /// <param name="sqlTemplate">The SQL template containing placeholders.</param>
+    /// <param name="tableName">The table name to replace {{table}} placeholder.</param>
+    /// <param name="columns">The column names to replace {{columns}} placeholder.</param>
+    /// <returns>The SQL template with placeholders replaced.</returns>
+    string ReplacePlaceholders(string sqlTemplate, string? tableName = null, string[]? columns = null);
+
+    /// <summary>
+    /// Gets the SQL fragment for returning the inserted ID.
+    /// </summary>
+    /// <returns>The RETURNING clause or empty string.</returns>
+    string GetReturningIdClause();
+
+    /// <summary>
+    /// Gets the boolean TRUE literal for this dialect.
+    /// </summary>
+    /// <returns>The boolean TRUE literal.</returns>
+    string GetBoolTrueLiteral();
+
+    /// <summary>
+    /// Gets the boolean FALSE literal for this dialect.
+    /// </summary>
+    /// <returns>The boolean FALSE literal.</returns>
+    string GetBoolFalseLiteral();
+
+    /// <summary>
+    /// Generates a combined LIMIT and OFFSET clause.
+    /// </summary>
+    /// <param name="limitParam">The limit parameter name.</param>
+    /// <param name="offsetParam">The offset parameter name.</param>
+    /// <param name="requiresOrderBy">Whether ORDER BY is required (true for SQL Server).</param>
+    /// <returns>The SQL LIMIT/OFFSET clause.</returns>
+    string GenerateLimitOffsetClause(string limitParam, string offsetParam, out bool requiresOrderBy);
 }
 

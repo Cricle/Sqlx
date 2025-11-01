@@ -730,7 +730,7 @@ public partial interface IPostgreSQLUserRepository : IUserRepository
 {
     [SqlTemplate("INSERT INTO users (name, age) VALUES (@name, @age) RETURNING id")]
     new Task<long> InsertAsync(string name, int age);
-    
+
     [SqlTemplate("SELECT {{columns}} FROM users WHERE id = @id")]
     new Task<User?> GetByIdAsync(long id);
 }

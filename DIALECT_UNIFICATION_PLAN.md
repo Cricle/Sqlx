@@ -51,7 +51,7 @@ public partial interface IDialectUserRepositoryBase
 {
     [SqlTemplate("INSERT INTO {{table}} (username, email, age) VALUES (@username, @email, @age) {{returning_id}}")]
     Task<long> InsertAsync(string username, string email, int age);
-    
+
     [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
     Task<User?> GetByIdAsync(long id);
 }
@@ -60,7 +60,7 @@ public partial interface IDialectUserRepositoryBase
 [RepositoryFor(typeof(IDialectUserRepositoryBase))]
 [SqlDefine(SqlDefineTypes.PostgreSql)]
 [TableName("users")]
-public partial class PostgreSQLUserRepository(DbConnection connection) 
+public partial class PostgreSQLUserRepository(DbConnection connection)
     : IDialectUserRepositoryBase
 {
     // 源生成器自动生成所有方法
@@ -69,7 +69,7 @@ public partial class PostgreSQLUserRepository(DbConnection connection)
 [RepositoryFor(typeof(IDialectUserRepositoryBase))]
 [SqlDefine(SqlDefineTypes.MySql)]
 [TableName("users")]
-public partial class MySQLUserRepository(DbConnection connection) 
+public partial class MySQLUserRepository(DbConnection connection)
     : IDialectUserRepositoryBase
 {
     // 源生成器自动生成所有方法
@@ -298,8 +298,8 @@ public partial interface IDialectUserRepositoryTemplate
 
 ---
 
-**计划制定时间**: 2025-11-01  
-**预计完成时间**: 2025-11-05  
-**计划制定人**: AI Assistant  
-**审批人**: 待确认  
+**计划制定时间**: 2025-11-01
+**预计完成时间**: 2025-11-05
+**计划制定人**: AI Assistant
+**审批人**: 待确认
 

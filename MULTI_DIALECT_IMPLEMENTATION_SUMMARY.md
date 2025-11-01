@@ -267,9 +267,9 @@ https://github.com/Cricle/Sqlx/issues
 
 ---
 
-**项目状态**: ✅ 生产就绪  
-**测试覆盖率**: 96.4%  
-**支持数据库**: 4种 (SQLite, PostgreSQL, MySQL, SQL Server)  
-**测试数量**: 1,615个  
-**文档完整性**: ✅ 完整  
+**项目状态**: ✅ 生产就绪
+**测试覆盖率**: 96.4%
+**支持数据库**: 4种 (SQLite, PostgreSQL, MySQL, SQL Server)
+**测试数量**: 1,615个
+**文档完整性**: ✅ 完整
 

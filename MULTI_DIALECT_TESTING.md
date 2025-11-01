@@ -54,10 +54,10 @@ public partial interface IPostgreSQLUserRepository : IDialectUserRepositoryBase
 {
     [SqlTemplate("INSERT INTO dialect_users_postgresql (...) VALUES (...) RETURNING id")]
     new Task<long> InsertAsync(...);
-    
+
     [SqlTemplate("SELECT {{columns}} FROM dialect_users_postgresql WHERE id = @id")]
     new Task<DialectUser?> GetByIdAsync(long id, CancellationToken ct = default);
-    
+
     // ... 为每个方法定义PostgreSQL特定的SQL
 }
 ```
@@ -69,7 +69,7 @@ public partial interface IPostgreSQLUserRepository : IDialectUserRepositoryBase
 ```csharp
 [RepositoryFor(typeof(IPostgreSQLUserRepository))]
 [SqlDefine(SqlDefineTypes.PostgreSql)]
-public partial class PostgreSQLUserRepository(DbConnection connection) 
+public partial class PostgreSQLUserRepository(DbConnection connection)
     : IPostgreSQLUserRepository
 {
     // 源生成器自动生成所有方法实现
@@ -85,17 +85,17 @@ public class TDD_PostgreSQL_Comprehensive : ComprehensiveTestBase
 {
     protected override string DialectName => "PostgreSQL";
     protected override string TableName => "dialect_users_postgresql";
-    
+
     protected override DbConnection CreateConnection()
     {
         return DatabaseConnectionHelper.GetPostgreSQLConnection();
     }
-    
+
     protected override void CreateTable()
     {
         // PostgreSQL建表SQL
     }
-    
+
     protected override IDialectUserRepositoryBase CreateRepository()
     {
         return new PostgreSQLUserRepository(_connection!);
@@ -195,7 +195,7 @@ public partial interface IOracleUserRepository : IDialectUserRepositoryBase
 {
     [SqlTemplate("INSERT INTO dialect_users_oracle (...) VALUES (...) RETURNING id INTO :id")]
     new Task<long> InsertAsync(...);
-    
+
     // ... 为所有方法定义Oracle特定的SQL
 }
 ```
@@ -205,7 +205,7 @@ public partial interface IOracleUserRepository : IDialectUserRepositoryBase
 ```csharp
 [RepositoryFor(typeof(IOracleUserRepository))]
 [SqlDefine(SqlDefineTypes.Oracle)]
-public partial class OracleUserRepository(DbConnection connection) 
+public partial class OracleUserRepository(DbConnection connection)
     : IOracleUserRepository
 {
 }
@@ -221,14 +221,14 @@ public class TDD_Oracle_Comprehensive : ComprehensiveTestBase
 {
     protected override string DialectName => "Oracle";
     protected override string TableName => "dialect_users_oracle";
-    
+
     protected override DbConnection CreateConnection()
     {
         if (!DatabaseConnectionHelper.IsCI)
             Assert.Inconclusive("Oracle tests are only run in CI environment.");
         return DatabaseConnectionHelper.GetOracleConnection()!;
     }
-    
+
     protected override void CreateTable()
     {
         using var cmd = _connection!.CreateCommand();
@@ -239,7 +239,7 @@ public class TDD_Oracle_Comprehensive : ComprehensiveTestBase
                 WHEN OTHERS THEN NULL;
             END;
             /
-            
+
             CREATE TABLE dialect_users_oracle (
                 id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
                 username VARCHAR2(50) NOT NULL,
@@ -253,7 +253,7 @@ public class TDD_Oracle_Comprehensive : ComprehensiveTestBase
         ";
         cmd.ExecuteNonQuery();
     }
-    
+
     protected override IDialectUserRepositoryBase CreateRepository()
     {
         return new OracleUserRepository(_connection!);

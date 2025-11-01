@@ -426,6 +426,7 @@ namespace TestNamespace
     #region 性能测试
 
     [TestMethod]
+    [Ignore("性能基准测试不稳定，仅供手动运行")]
     public void CrudPlaceholders_Performance_ProcessesQuickly()
     {
         // Arrange

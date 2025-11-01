@@ -49,7 +49,7 @@
    // 需要添加：检查RepositoryFor.TableName属性
    var repositoryForAttr = repositoryClass.GetAttributes()
        .FirstOrDefault(attr => attr.AttributeClass?.Name.StartsWith("RepositoryForAttribute"));
-   
+
    if (repositoryForAttr != null)
    {
        var tableNameArg = repositoryForAttr.NamedArguments
@@ -65,7 +65,7 @@
    {
        var attr = repositoryClass.GetAttributes()
            .FirstOrDefault(attr => attr.AttributeClass?.Name.StartsWith("RepositoryForAttribute"));
-       
+
        if (attr != null)
        {
            var dialectArg = attr.NamedArguments
@@ -73,7 +73,7 @@
            if (dialectArg.Value.Value is int dialectValue)
                return (SqlDefineTypes)dialectValue;
        }
-       
+
        return SqlDefineTypes.SQLite; // default
    }
    ```
@@ -84,14 +84,14 @@
    {
        var repositoryClass = context.RepositoryClass;
        var serviceInterface = GetServiceInterface(repositoryClass);
-       
+
        // NEW: Get dialect and table name from RepositoryFor
        var dialect = GetDialectFromRepositoryFor(repositoryClass);
        var dialectProvider = GetDialectProvider(dialect);
-       
+
        var entityType = InferEntityTypeFromInterface(serviceInterface);
        var tableName = GetTableNameFromType(repositoryClass, entityType);
-       
+
        // NEW: Resolve inherited templates with placeholder replacement
        var resolver = new TemplateInheritanceResolver();
        var inheritedTemplates = resolver.ResolveInheritedTemplates(
@@ -99,7 +99,7 @@
            dialectProvider,
            tableName,
            entityType);
-       
+
        // Generate methods from inherited templates
        foreach (var template in inheritedTemplates)
        {

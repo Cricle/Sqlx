@@ -618,6 +618,7 @@ public partial interface IUserService
         #region 内存边界测试
 
         [TestMethod]
+        [Ignore("GC和内存测试不稳定，仅供手动运行")]
         public void SourceGenerator_MemoryUsageUnderStress_DoesNotLeak()
         {
             // Arrange

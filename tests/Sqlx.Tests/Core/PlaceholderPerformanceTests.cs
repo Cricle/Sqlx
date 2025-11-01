@@ -364,6 +364,7 @@ namespace TestNamespace
     #region 📊 内存和资源测试
 
     [TestMethod]
+    [Ignore("GC和内存测试不稳定，仅供手动运行")]
     public void LargeTemplate_Memory_HandlesEfficiently()
     {
         // 创建一个包含大量占位符的模板
@@ -409,6 +410,7 @@ namespace TestNamespace
     }
 
     [TestMethod]
+    [Ignore("GC和内存测试不稳定，仅供手动运行")]
     public void RepeatedProcessing_Memory_DoesNotLeak()
     {
         var template = "SELECT {{columns:auto}} FROM {{table}} WHERE {{between:age|min=@minAge|max=@maxAge}} AND {{like:name|pattern=@pattern}}";

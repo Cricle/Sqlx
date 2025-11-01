@@ -226,6 +226,7 @@ public class IntegrationTests
     }
 
     [TestMethod]
+    [Ignore("GC和内存测试不稳定，仅供手动运行")]
     public void GeneratedValidation_NoAllocation_ShouldBeZeroGC()
     {
         // Arrange

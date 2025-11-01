@@ -37,8 +37,8 @@
 
 ### 方案A: 完整集成（推荐但耗时）
 
-**时间**: 8-10小时  
-**风险**: 中等  
+**时间**: 8-10小时
+**风险**: 中等
 **价值**: 高
 
 **步骤**:
@@ -60,8 +60,8 @@
 
 ### 方案B: 渐进式实施（实际可行）
 
-**时间**: 2-3小时（第一阶段）  
-**风险**: 低  
+**时间**: 2-3小时（第一阶段）
+**风险**: 低
 **价值**: 中-高
 
 **步骤**:
@@ -116,14 +116,14 @@ internal class TemplateInheritanceGenerator
         var dialectProvider = DialectHelper.GetDialectProvider(dialect);
         var entityType = InferEntityType(serviceInterface);
         var tableName = DialectHelper.GetTableNameFromRepositoryFor(repositoryClass, entityType);
-        
+
         // 2. Check if should use template inheritance
         if (!DialectHelper.ShouldUseTemplateInheritance(serviceInterface))
         {
             // Fallback to original logic
             return;
         }
-        
+
         // 3. Resolve inherited templates
         var resolver = new TemplateInheritanceResolver();
         var templates = resolver.ResolveInheritedTemplates(
@@ -131,18 +131,18 @@ internal class TemplateInheritanceGenerator
             dialectProvider,
             tableName,
             entityType);
-        
+
         // 4. Generate methods
         var sb = new IndentedStringBuilder();
         GenerateClassHeader(sb, repositoryClass, serviceInterface);
-        
+
         foreach (var template in templates)
         {
             GenerateMethod(sb, template, entityType);
         }
-        
+
         GenerateClassFooter(sb);
-        
+
         // 5. Add source
         context.ExecutionContext.AddSource(
             $"{repositoryClass.Name}.g.cs",
@@ -158,13 +158,13 @@ internal class TemplateInheritanceGenerator
 public void Execute(GeneratorExecutionContext context)
 {
     // ... existing code ...
-    
+
     foreach (var candidate in receiver.Candidates)
     {
         // Check if using new template inheritance system
         var useTemplateInheritance = candidate.GetAttributes()
             .Any(attr => attr.AttributeClass?.Name == "UseTemplateInheritanceAttribute");
-        
+
         if (useTemplateInheritance)
         {
             // Use new generator
@@ -191,8 +191,8 @@ public interface IUserRepositoryBase
 }
 
 [UseTemplateInheritance]  // Opt-in to new system
-[RepositoryFor(typeof(IUserRepositoryBase), 
-    Dialect = SqlDefineTypes.PostgreSql, 
+[RepositoryFor(typeof(IUserRepositoryBase),
+    Dialect = SqlDefineTypes.PostgreSql,
     TableName = "users")]
 public partial class PostgreSQLUserRepository : IUserRepositoryBase { }
 ```
@@ -306,6 +306,6 @@ public partial class PostgreSQLUserRepository : IUserRepositoryBase { }
 
 ---
 
-*最后更新: 2025-11-01*  
+*最后更新: 2025-11-01*
 *当前阶段: Phase 2.3 完成，等待Phase 2.5决策*
 

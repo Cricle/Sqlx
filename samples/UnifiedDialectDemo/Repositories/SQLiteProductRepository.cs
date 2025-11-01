@@ -14,8 +14,8 @@ namespace UnifiedDialectDemo.Repositories;
 /// SQLite implementation - only needs to specify dialect and table name.
 /// The source generator will adapt all SQL templates from IProductRepositoryBase.
 /// </summary>
-[RepositoryFor(typeof(IProductRepositoryBase), 
-    Dialect = SqlDefineTypes.SQLite, 
+[RepositoryFor(typeof(IProductRepositoryBase),
+    Dialect = SqlDefineTypes.SQLite,
     TableName = "products")]
 public partial class SQLiteProductRepository : IProductRepositoryBase
 {

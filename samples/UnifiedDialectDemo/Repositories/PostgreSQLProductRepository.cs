@@ -14,8 +14,8 @@ namespace UnifiedDialectDemo.Repositories;
 /// PostgreSQL implementation - only needs to specify dialect and table name.
 /// The source generator will adapt all SQL templates from IProductRepositoryBase.
 /// </summary>
-[RepositoryFor(typeof(IProductRepositoryBase), 
-    Dialect = SqlDefineTypes.PostgreSql, 
+[RepositoryFor(typeof(IProductRepositoryBase),
+    Dialect = SqlDefineTypes.PostgreSql,
     TableName = "products")]
 public partial class PostgreSQLProductRepository : IProductRepositoryBase
 {

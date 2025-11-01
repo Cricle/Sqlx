@@ -36,7 +36,7 @@ public interface IProductRepositoryBase
     /// PostgreSQL: RETURNING id, MySQL/SQLite: uses LAST_INSERT_ID/last_insert_rowid
     /// </summary>
     [SqlTemplate(@"
-        INSERT INTO {{table}} (name, description, price, stock, is_active, created_at) 
+        INSERT INTO {{table}} (name, description, price, stock, is_active, created_at)
         VALUES (@name, @description, @price, @stock, {{bool_true}}, {{current_timestamp}})
         {{returning_id}}")]
     Task<int> InsertAsync(Product product, CancellationToken ct = default);
@@ -46,10 +46,10 @@ public interface IProductRepositoryBase
     /// Uses {{table}} and {{current_timestamp}} placeholders.
     /// </summary>
     [SqlTemplate(@"
-        UPDATE {{table}} 
-        SET name = @name, 
-            description = @description, 
-            price = @price, 
+        UPDATE {{table}}
+        SET name = @name,
+            description = @description,
+            price = @price,
             stock = @stock,
             updated_at = {{current_timestamp}}
         WHERE id = @id")]
@@ -60,7 +60,7 @@ public interface IProductRepositoryBase
     /// Uses {{table}} and {{bool_false}} placeholders.
     /// </summary>
     [SqlTemplate(@"
-        UPDATE {{table}} 
+        UPDATE {{table}}
         SET is_active = {{bool_false}},
             updated_at = {{current_timestamp}}
         WHERE id = @id")]
@@ -79,8 +79,8 @@ public interface IProductRepositoryBase
     /// Uses {{table}} placeholder.
     /// </summary>
     [SqlTemplate(@"
-        SELECT * FROM {{table}} 
-        WHERE LOWER(name) LIKE LOWER(@searchTerm) 
+        SELECT * FROM {{table}}
+        WHERE LOWER(name) LIKE LOWER(@searchTerm)
           AND is_active = {{bool_true}}
         ORDER BY name")]
     Task<List<Product>> SearchByNameAsync(string searchTerm, CancellationToken ct = default);

@@ -51,7 +51,7 @@ public interface IProductRepositoryBase
     Task<List<Product>> GetActiveProductsAsync(CancellationToken ct = default);
 
     [SqlTemplate(@"
-        INSERT INTO {{table}} (...) 
+        INSERT INTO {{table}} (...)
         VALUES (..., {{current_timestamp}})
         {{returning_id}}")]
     Task<int> InsertAsync(Product product, CancellationToken ct = default);
@@ -61,8 +61,8 @@ public interface IProductRepositoryBase
 ### Dialect Implementation
 
 ```csharp
-[RepositoryFor(typeof(IProductRepositoryBase), 
-    Dialect = SqlDefineTypes.PostgreSql, 
+[RepositoryFor(typeof(IProductRepositoryBase),
+    Dialect = SqlDefineTypes.PostgreSql,
     TableName = "products")]
 public partial class PostgreSQLProductRepository : IProductRepositoryBase
 {
@@ -112,7 +112,7 @@ public partial class PostgreSQLProductRepository
     public async Task<int> InsertAsync(Product product, CancellationToken ct)
     {
         var __sql__ = @"
-            INSERT INTO ""products"" (name, description, price, stock, is_active, created_at) 
+            INSERT INTO ""products"" (name, description, price, stock, is_active, created_at)
             VALUES (@name, @description, @price, @stock, true, CURRENT_TIMESTAMP)
             RETURNING id";
         // ... execution code with RETURNING
@@ -134,7 +134,7 @@ public partial class MySQLProductRepository
     public async Task<int> InsertAsync(Product product, CancellationToken ct)
     {
         var __sql__ = @"
-            INSERT INTO `products` (name, description, price, stock, is_active, created_at) 
+            INSERT INTO `products` (name, description, price, stock, is_active, created_at)
             VALUES (@name, @description, @price, @stock, 1, NOW())
             ";
         // ... execution code with LAST_INSERT_ID()

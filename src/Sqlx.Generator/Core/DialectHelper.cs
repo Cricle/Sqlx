@@ -22,21 +22,21 @@ internal static class DialectHelper
     public static SqlDefineTypes GetDialectFromRepositoryFor(INamedTypeSymbol repositoryClass)
     {
         var attr = repositoryClass.GetAttributes()
-            .FirstOrDefault(attr => 
+            .FirstOrDefault(attr =>
                 attr.AttributeClass?.Name == "RepositoryForAttribute" ||
                 (attr.AttributeClass?.Name.StartsWith("RepositoryForAttribute`") ?? false));
-        
+
         if (attr != null)
         {
             var dialectArg = attr.NamedArguments
                 .FirstOrDefault(arg => arg.Key == "Dialect");
-            
+
             if (dialectArg.Value.Value is int dialectValue)
             {
                 return (SqlDefineTypes)dialectValue;
             }
         }
-        
+
         return SqlDefineTypes.SQLite; // default
     }
 
@@ -51,7 +51,7 @@ internal static class DialectHelper
     {
         // First priority: Check RepositoryFor attribute's TableName property
         var repositoryForAttr = repositoryClass.GetAttributes()
-            .FirstOrDefault(attr => 
+            .FirstOrDefault(attr =>
                 attr.AttributeClass?.Name == "RepositoryForAttribute" ||
                 (attr.AttributeClass?.Name.StartsWith("RepositoryForAttribute`") ?? false));
 
@@ -60,7 +60,7 @@ internal static class DialectHelper
             // Look for TableName named argument
             var tableNameArg = repositoryForAttr.NamedArguments
                 .FirstOrDefault(arg => arg.Key == "TableName");
-            
+
             if (tableNameArg.Value.Value is string tableNameValue && !string.IsNullOrEmpty(tableNameValue))
             {
                 return tableNameValue;
@@ -69,7 +69,7 @@ internal static class DialectHelper
 
         // Second priority: Check if repository class has TableNameAttribute
         var repositoryTableNameAttr = repositoryClass.GetAttributes()
-            .FirstOrDefault(attr => attr.AttributeClass?.Name == "TableNameAttribute" || 
+            .FirstOrDefault(attr => attr.AttributeClass?.Name == "TableNameAttribute" ||
                                    attr.AttributeClass?.Name == "TableName");
 
         if (repositoryTableNameAttr != null && repositoryTableNameAttr.ConstructorArguments.Length > 0)
@@ -83,7 +83,7 @@ internal static class DialectHelper
         if (entityType != null)
         {
             var entityTableNameAttr = entityType.GetAttributes()
-                .FirstOrDefault(attr => attr.AttributeClass?.Name == "TableNameAttribute" || 
+                .FirstOrDefault(attr => attr.AttributeClass?.Name == "TableNameAttribute" ||
                                        attr.AttributeClass?.Name == "TableName");
 
             if (entityTableNameAttr != null && entityTableNameAttr.ConstructorArguments.Length > 0)
@@ -144,7 +144,7 @@ internal static class DialectHelper
                 var hasSqlTemplate = method.GetAttributes()
                     .Any(attr => attr.AttributeClass?.Name == "SqlTemplateAttribute" ||
                                 attr.AttributeClass?.Name == "SqlxAttribute");
-                
+
                 if (hasSqlTemplate)
                 {
                     // Check if the SQL contains placeholders
@@ -152,7 +152,7 @@ internal static class DialectHelper
                         .FirstOrDefault(attr => attr.AttributeClass?.Name == "SqlTemplateAttribute" ||
                                               attr.AttributeClass?.Name == "SqlxAttribute")
                         ?.ConstructorArguments.FirstOrDefault().Value?.ToString();
-                    
+
                     if (sqlArg != null && DialectPlaceholders.ContainsPlaceholders(sqlArg))
                     {
                         return true;

@@ -27,9 +27,9 @@ using Sqlx.Annotations;
 namespace Test
 {
     public class User { public int Id { get; set; } }
-    
+
     public interface IUserRepository { }
-    
+
     [RepositoryFor(typeof(IUserRepository), Dialect = SqlDefineTypes.PostgreSql)]
     public partial class UserRepository : IUserRepository { }
 }
@@ -54,9 +54,9 @@ using Sqlx.Annotations;
 namespace Test
 {
     public class User { public int Id { get; set; } }
-    
+
     public interface IUserRepository { }
-    
+
     [RepositoryFor(typeof(IUserRepository))]
     public partial class UserRepository : IUserRepository { }
 }
@@ -81,9 +81,9 @@ using Sqlx.Annotations;
 namespace Test
 {
     public class User { public int Id { get; set; } }
-    
+
     public interface IUserRepository { }
-    
+
     [RepositoryFor(typeof(IUserRepository), TableName = ""custom_users"")]
     public partial class UserRepository : IUserRepository { }
 }
@@ -108,9 +108,9 @@ using Sqlx.Annotations;
 namespace Test
 {
     public class User { public int Id { get; set; } }
-    
+
     public interface IUserRepository { }
-    
+
     [RepositoryFor(typeof(IUserRepository))]
     public partial class UserRepository : IUserRepository { }
 }
@@ -182,7 +182,7 @@ using Sqlx.Annotations;
 namespace Test
 {
     public class User { public int Id { get; set; } }
-    
+
     public interface IUserRepository
     {
         [SqlTemplate(""SELECT * FROM {{table}} WHERE id = @id"")]
@@ -212,7 +212,7 @@ using Sqlx.Annotations;
 namespace Test
 {
     public class User { public int Id { get; set; } }
-    
+
     public interface IUserRepository
     {
         [SqlTemplate(""SELECT * FROM users WHERE id = @id"")]
@@ -242,13 +242,13 @@ using Sqlx.Annotations;
 namespace Test
 {
     public class User { public int Id { get; set; } }
-    
+
     public interface IUserRepositoryBase
     {
         [SqlTemplate(""SELECT * FROM {{table}} WHERE id = @id"")]
         Task<User?> GetByIdAsync(int id, CancellationToken ct);
     }
-    
+
     [RepositoryFor(typeof(IUserRepositoryBase), Dialect = SqlDefineTypes.PostgreSql, TableName = ""pg_users"")]
     public partial class PostgreSQLUserRepository : IUserRepositoryBase { }
 }
@@ -272,7 +272,7 @@ namespace Test
     private (Compilation compilation, INamedTypeSymbol symbol) CompileAndGetSymbol(string code, string typeName)
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(code);
-        
+
         var refPaths = new[]
         {
             typeof(object).Assembly.Location,

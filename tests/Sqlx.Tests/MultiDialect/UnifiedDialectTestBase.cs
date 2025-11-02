@@ -263,10 +263,10 @@ public abstract class UnifiedDialectTestBase
     {
         // 先删除表（如果存在），确保每次测试都是干净的环境
         await DropUnifiedTableAsync();
-        
+
         // 等待一小段时间确保删除操作完成
         await Task.Delay(100);
-        
+
         var dialect = GetDialectType();
         string sql;
 
@@ -347,14 +347,32 @@ public abstract class UnifiedDialectTestBase
     }
 
     /// <summary>
-    /// 统一的删除表 - 所有数据库通用
+    /// 统一的删除表 - 根据方言使用不同的语法
     /// </summary>
     protected async Task DropUnifiedTableAsync()
     {
         try
         {
+            var dialect = GetDialectType();
+            string sql;
+
+            switch (dialect)
+            {
+                case SqlDefineTypes.SqlServer:
+                    // SQL Server 需要使用 IF OBJECT_ID 语法
+                    sql = $@"
+                        IF OBJECT_ID(N'{TableName}', N'U') IS NOT NULL
+                            DROP TABLE {TableName};";
+                    break;
+
+                default:
+                    // PostgreSQL, MySQL, SQLite 都支持 DROP TABLE IF EXISTS
+                    sql = $"DROP TABLE IF EXISTS {TableName}";
+                    break;
+            }
+
             using var cmd = Connection!.CreateCommand();
-            cmd.CommandText = $"DROP TABLE IF EXISTS {TableName}";
+            cmd.CommandText = sql;
             await cmd.ExecuteNonQueryAsync();
         }
         catch (Exception ex)

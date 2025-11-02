@@ -68,7 +68,6 @@ using Sqlx;
 using Sqlx.Annotations;
 
 [SqlDefine(SqlDefineTypes.SQLite)]
-[RepositoryFor(typeof(User))]
 public interface IUserRepository
 {
     // 使用 {{占位符}} 实现跨数据库SQL
@@ -89,6 +88,7 @@ public interface IUserRepository
 }
 
 // 部分实现类 - 支持主构造函数 (C# 12+)
+[RepositoryFor(typeof(IUserRepository))]
 public partial class UserRepository(DbConnection connection) : IUserRepository { }
 
 // 也支持传统构造函数
@@ -289,19 +289,19 @@ public partial interface IUnifiedUserRepository
 }
 
 // 2️⃣ SQLite 实现 - 只需指定方言和表名！
-[RepositoryFor(typeof(User), Dialect = "SQLite", TableName = "users")]
+[RepositoryFor(typeof(IUnifiedUserRepository), Dialect = "SQLite", TableName = "users")]
 public partial class SQLiteUserRepository(DbConnection connection) : IUnifiedUserRepository { }
 
 // 3️⃣ PostgreSQL 实现 - 完全相同的定义！
-[RepositoryFor(typeof(User), Dialect = "PostgreSql", TableName = "users")]
+[RepositoryFor(typeof(IUnifiedUserRepository), Dialect = "PostgreSql", TableName = "users")]
 public partial class PostgreSQLUserRepository(DbConnection connection) : IUnifiedUserRepository { }
 
 // 4️⃣ MySQL 实现
-[RepositoryFor(typeof(User), Dialect = "MySql", TableName = "users")]
+[RepositoryFor(typeof(IUnifiedUserRepository), Dialect = "MySql", TableName = "users")]
 public partial class MySQLUserRepository(DbConnection connection) : IUnifiedUserRepository { }
 
 // 5️⃣ SQL Server 实现
-[RepositoryFor(typeof(User), Dialect = "SqlServer", TableName = "users")]
+[RepositoryFor(typeof(IUnifiedUserRepository), Dialect = "SqlServer", TableName = "users")]
 public partial class SqlServerUserRepository(DbConnection connection) : IUnifiedUserRepository { }
 ```
 
@@ -842,16 +842,16 @@ public partial interface IUnifiedUserRepository
 }
 
 // 2️⃣ 为每个数据库创建实现类（只需1行配置）
-[RepositoryFor(typeof(User), Dialect = "SQLite", TableName = "users")]
+[RepositoryFor(typeof(IUnifiedUserRepository), Dialect = "SQLite", TableName = "users")]
 public partial class SQLiteUserRepository(DbConnection conn) : IUnifiedUserRepository { }
 
-[RepositoryFor(typeof(User), Dialect = "PostgreSql", TableName = "users")]
+[RepositoryFor(typeof(IUnifiedUserRepository), Dialect = "PostgreSql", TableName = "users")]
 public partial class PostgreSQLUserRepository(DbConnection conn) : IUnifiedUserRepository { }
 
-[RepositoryFor(typeof(User), Dialect = "MySql", TableName = "users")]
+[RepositoryFor(typeof(IUnifiedUserRepository), Dialect = "MySql", TableName = "users")]
 public partial class MySQLUserRepository(DbConnection conn) : IUnifiedUserRepository { }
 
-[RepositoryFor(typeof(User), Dialect = "SqlServer", TableName = "users")]
+[RepositoryFor(typeof(IUnifiedUserRepository), Dialect = "SqlServer", TableName = "users")]
 public partial class SqlServerUserRepository(DbConnection conn) : IUnifiedUserRepository { }
 ```
 

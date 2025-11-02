@@ -36,7 +36,6 @@ public class User
 
 // 仓储接口
 [SqlDefine(SqlDefineTypes.SQLite)]
-[RepositoryFor(typeof(User))]
 public interface IUserRepository
 {
     [SqlTemplate("SELECT {{columns}} FROM users WHERE id = @id")]
@@ -48,6 +47,7 @@ public interface IUserRepository
 }
 
 // 实现类
+[RepositoryFor(typeof(IUserRepository))]
 public partial class UserRepository(DbConnection connection) : IUserRepository { }
 ```
 
@@ -79,16 +79,16 @@ public partial interface IUserRepository
 }
 
 // 4个数据库实现（只需1行配置）
-[RepositoryFor(typeof(User), Dialect = "SQLite", TableName = "users")]
+[RepositoryFor(typeof(IUserRepository), Dialect = "SQLite", TableName = "users")]
 public partial class SQLiteUserRepository(DbConnection conn) : IUserRepository { }
 
-[RepositoryFor(typeof(User), Dialect = "PostgreSql", TableName = "users")]
+[RepositoryFor(typeof(IUserRepository), Dialect = "PostgreSql", TableName = "users")]
 public partial class PostgreSQLUserRepository(DbConnection conn) : IUserRepository { }
 
-[RepositoryFor(typeof(User), Dialect = "MySql", TableName = "users")]
+[RepositoryFor(typeof(IUserRepository), Dialect = "MySql", TableName = "users")]
 public partial class MySQLUserRepository(DbConnection conn) : IUserRepository { }
 
-[RepositoryFor(typeof(User), Dialect = "SqlServer", TableName = "users")]
+[RepositoryFor(typeof(IUserRepository), Dialect = "SqlServer", TableName = "users")]
 public partial class SqlServerUserRepository(DbConnection conn) : IUserRepository { }
 ```
 

@@ -1,7 +1,7 @@
 # 📚 Sqlx 占位符完整参考手册
 
-> **最后更新**: 2025-11-02  
-> **版本**: v0.5.1  
+> **最后更新**: 2025-11-02
+> **版本**: v0.5.1
 > **适用于**: .NET 8.0+ | .NET 9.0+
 
 ## 📖 目录
@@ -185,8 +185,8 @@ Task<List<User>> GetPagedAsync(int? limit = null, int? offset = null);
 
 ```csharp
 [SqlTemplate(@"
-    SELECT u.*, p.title 
-    FROM {{table}} u 
+    SELECT u.*, p.title
+    FROM {{table}} u
     {{join --type inner --table posts p --on u.id=p.user_id}}
 ")]
 Task<List<UserWithPosts>> GetUsersWithPostsAsync();
@@ -216,9 +216,9 @@ Task<List<CategoryCount>> GetCategoryStatsAsync();
 
 ```csharp
 [SqlTemplate(@"
-    SELECT category, COUNT(*) as cnt 
-    FROM {{table}} 
-    {{groupby category}} 
+    SELECT category, COUNT(*) as cnt
+    FROM {{table}}
+    {{groupby category}}
     {{having --condition 'COUNT(*) > @minCount'}}
 ")]
 Task<List<CategoryCount>> GetPopularCategoriesAsync(int minCount);
@@ -315,8 +315,8 @@ Task<List<string>> GetFullNamesAsync();
 
 ```csharp
 [SqlTemplate(@"
-    SELECT user_id, {{group_concat --column tag --separator ','}} AS tags 
-    FROM user_tags 
+    SELECT user_id, {{group_concat --column tag --separator ','}} AS tags
+    FROM user_tags
     GROUP BY user_id
 ")]
 Task<List<UserTags>> GetUserTagsAsync();
@@ -351,7 +351,7 @@ Task<List<UserTags>> GetUserTagsAsync();
 {{year --column date}} // YEAR(date)
 
 // 日期运算（自动适配数据库）
-{{date_add --column created_at --days 7}} 
+{{date_add --column created_at --days 7}}
 // MySQL: DATE_ADD(created_at, INTERVAL 7 DAY)
 // PostgreSQL: created_at + INTERVAL '7 days'
 // SQL Server: DATEADD(day, 7, created_at)
@@ -368,7 +368,7 @@ Task<List<UserTags>> GetUserTagsAsync();
 
 ```csharp
 [SqlTemplate(@"
-    SELECT id, name, 
+    SELECT id, name,
     {{case --when 'status=1' --then 'Active' --when 'status=0' --then 'Inactive' --else 'Unknown'}} AS status_text
     FROM {{table}}
 ")]
@@ -459,7 +459,7 @@ Task<List<User>> GetUsersWithStatusAsync();
 Task<int> BatchInsertAsync(IEnumerable<User> users);
 
 // 运行时展开:
-// INSERT INTO users (name, email) VALUES 
+// INSERT INTO users (name, email) VALUES
 // (@Name0, @Email0), (@Name1, @Email1), ...
 ```
 

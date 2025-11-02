@@ -217,7 +217,7 @@ public abstract class UnifiedDialectTestBase
     public async Task Initialize()
     {
         Connection = CreateConnection();
-        
+
         // 如果连接为null（例如本地环境没有数据库），跳过测试
         if (Connection == null)
         {
@@ -494,7 +494,7 @@ public abstract class UnifiedDialectTestBase
     {
         // Arrange
         await Repository!.InsertAsync("user1", "user1@test.com", 20, 100m, DateTime.UtcNow, null, true);
-        await Repository.InsertAsync("user2", "user2@test.com", 25, 150m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("user2", "user2@test.com", 25, 160m, DateTime.UtcNow, null, true);
         await Repository.InsertAsync("user3", "user3@test.com", 30, 200m, DateTime.UtcNow, null, true);
 
         // Act

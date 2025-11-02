@@ -37,37 +37,48 @@ public class CodeGenerationService
             var sqlxAttr = GetSqlAttribute(method);
             var sqlTemplate = GetSqlTemplateFromAttribute(sqlxAttr);
 
+            // Extract table name from RepositoryFor attribute (if available)
+            var resolvedTableName = context.TableName;
+            if (context.ClassSymbol != null)
+            {
+                resolvedTableName = Core.DialectHelper.GetTableNameFromRepositoryFor(context.ClassSymbol, entityType) ?? context.TableName;
+            }
+
             // If no template on method, try to resolve from inherited interfaces
             if (sqlTemplate == null && method.ContainingType is INamedTypeSymbol containingType)
             {
-                // Extract dialect and table name from RepositoryFor attribute
+                // Extract dialect from RepositoryFor attribute
                 var dialect = Core.DialectHelper.GetDialectFromRepositoryFor(context.ClassSymbol);
-                var tableName = Core.DialectHelper.GetTableNameFromRepositoryFor(context.ClassSymbol, entityType) ?? context.TableName;
                 var dialectProvider = Core.DialectHelper.GetDialectProvider(dialect);
-
+                
                 // Try to resolve inherited templates for this interface
                 var inheritedTemplates = TemplateResolver.ResolveInheritedTemplates(
-                    containingType,
+                    containingType, 
                     dialectProvider,
-                    tableName,
+                    resolvedTableName,
                     entityType);
-
+                
                 // Find matching template for this method
-                var matchingTemplate = inheritedTemplates.FirstOrDefault(t =>
-                    t.Method.Name == method.Name &&
+                var matchingTemplate = inheritedTemplates.FirstOrDefault(t => 
+                    t.Method.Name == method.Name && 
                     t.Method.Parameters.Length == method.Parameters.Length);
-
+                
                 if (matchingTemplate != null)
                 {
                     sqlTemplate = matchingTemplate.ProcessedSql;
                 }
             }
 
-            // Process SQL template if available
+            // Process SQL template if available (use resolvedTableName and correct dialect)
             SqlTemplateResult? templateResult = null;
             if (sqlTemplate != null)
             {
-                templateResult = TemplateEngine.ProcessTemplate(sqlTemplate, method, entityType, context.TableName);
+                // Get the correct dialect for this repository
+                var dialectType = Core.DialectHelper.GetDialectFromRepositoryFor(context.ClassSymbol);
+                var dialectProvider = Core.DialectHelper.GetDialectProvider(dialectType);
+                var sqlDefine = dialectProvider.SqlDefine;
+                
+                templateResult = TemplateEngine.ProcessTemplate(sqlTemplate, method, entityType, resolvedTableName, sqlDefine);
             }
 
             // Generate method documentation with resolved SQL and template metadata
@@ -486,9 +497,15 @@ public class CodeGenerationService
 
             if (sql != null)
             {
-                // Use template engine to process SQL template
+                // Use template engine to process SQL template with correct dialect
                 var templateEngine = context.TemplateEngine;
-                var templateResult = templateEngine.ProcessTemplate(sql, method, entityType, tableName);
+                
+                // Get the correct dialect for this repository
+                var dialectType = Core.DialectHelper.GetDialectFromRepositoryFor(context.RepositoryClass);
+                var dialectProvider = Core.DialectHelper.GetDialectProvider(dialectType);
+                var sqlDefine = dialectProvider.SqlDefine;
+                
+                var templateResult = templateEngine.ProcessTemplate(sql, method, entityType, tableName, sqlDefine);
 
                 var methodContext = new RepositoryMethodContext(
                     sb, method, entityType, tableName, templateResult.ProcessedSql,

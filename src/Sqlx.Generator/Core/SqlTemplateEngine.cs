@@ -217,6 +217,10 @@ public class SqlTemplateEngine
                 "or" => ProcessOrPlaceholder(placeholderType, placeholderOptions, dialect),
                 "isnull" => ProcessIsNullPlaceholder(placeholderType, placeholderOptions, dialect),
                 "notnull" => ProcessIsNullPlaceholder(placeholderType, placeholderOptions, dialect, true),
+                // Dialect-specific placeholders
+                "bool_true" => GetBoolTrueLiteral(dialect),
+                "bool_false" => GetBoolFalseLiteral(dialect),
+                "current_timestamp" => GetCurrentTimestampSyntax(dialect),
                 // 日期时间函数
                 "today" => ProcessTodayPlaceholder(placeholderType, placeholderOptions, dialect),
                 "week" => ProcessWeekPlaceholder(placeholderType, placeholderOptions, dialect),
@@ -2185,6 +2189,45 @@ public class SqlTemplateEngine
         }
 
         return true;
+    }
+
+    #endregion
+
+    #region Dialect-specific helper methods
+
+    /// <summary>
+    /// Gets the boolean TRUE literal for the specified dialect.
+    /// </summary>
+    private static string GetBoolTrueLiteral(SqlDefine dialect)
+    {
+        if (dialect == SqlDefine.PostgreSql)
+            return "true";
+        
+        return "1"; // MySQL, SQL Server, SQLite, Oracle all use 1
+    }
+
+    /// <summary>
+    /// Gets the boolean FALSE literal for the specified dialect.
+    /// </summary>
+    private static string GetBoolFalseLiteral(SqlDefine dialect)
+    {
+        if (dialect == SqlDefine.PostgreSql)
+            return "false";
+        
+        return "0"; // MySQL, SQL Server, SQLite, Oracle all use 0
+    }
+
+    /// <summary>
+    /// Gets the current timestamp syntax for the specified dialect.
+    /// </summary>
+    private static string GetCurrentTimestampSyntax(SqlDefine dialect)
+    {
+        if (dialect == SqlDefine.SqlServer)
+            return "GETDATE()";
+        if (dialect == SqlDefine.Oracle)
+            return "SYSTIMESTAMP";
+        
+        return "CURRENT_TIMESTAMP"; // PostgreSQL, MySQL, SQLite
     }
 
     #endregion

@@ -1753,6 +1753,24 @@ public class CodeGenerationService
     /// </summary>
     private static string GetDatabaseDialect(INamedTypeSymbol classSymbol)
     {
+        // First check [RepositoryFor] attribute's Dialect property
+        var repositoryForAttr = classSymbol.GetAttributes()
+            .FirstOrDefault(a => a.AttributeClass?.Name == "RepositoryForAttribute" || a.AttributeClass?.Name == "RepositoryFor");
+
+        if (repositoryForAttr != null && repositoryForAttr.NamedArguments.Length > 0)
+        {
+            // Check for Dialect named argument
+            foreach (var na in repositoryForAttr.NamedArguments)
+            {
+                if (na.Key == "Dialect" && na.Value.Value != null)
+                {
+                    // SqlDefineTypes is an enum, get its string representation
+                    return na.Value.Value.ToString();
+                }
+            }
+        }
+
+        // Fallback: check [SqlDefine] attribute
         var sqlDefineAttr = classSymbol.GetAttributes()
             .FirstOrDefault(a => a.AttributeClass?.Name == "SqlDefineAttribute");
 

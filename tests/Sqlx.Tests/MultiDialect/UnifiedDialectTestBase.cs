@@ -41,8 +41,7 @@ public partial interface IUnifiedDialectUserRepository
 
     [SqlTemplate(@"
         INSERT INTO {{table}} (username, email, age, balance, created_at, last_login_at, is_active)
-        VALUES (@username, @email, @age, @balance, @createdAt, @lastLoginAt, @isActive)
-        {{returning_id}}")]
+        VALUES (@username, @email, @age, @balance, @createdAt, @lastLoginAt, @isActive)")]
     [ReturnInsertedId]
     Task<long> InsertAsync(string username, string email, int age, decimal balance, DateTime createdAt, DateTime? lastLoginAt, bool isActive, CancellationToken ct = default);
 
@@ -129,7 +128,7 @@ public partial interface IUnifiedDialectUserRepository
 
     // ==================== 时间戳 ====================
 
-    [SqlTemplate("INSERT INTO {{table}} (username, email, age, balance, created_at, last_login_at, is_active) VALUES (@username, @email, @age, @balance, {{current_timestamp}}, NULL, {{bool_true}}) {{returning_id}}")]
+    [SqlTemplate("INSERT INTO {{table}} (username, email, age, balance, created_at, last_login_at, is_active) VALUES (@username, @email, @age, @balance, {{current_timestamp}}, NULL, {{bool_true}})")]
     [ReturnInsertedId]
     Task<long> InsertWithCurrentTimestampAsync(string username, string email, int age, decimal balance, CancellationToken ct = default);
 }
@@ -218,6 +217,14 @@ public abstract class UnifiedDialectTestBase
     public async Task Initialize()
     {
         Connection = CreateConnection();
+        
+        // 如果连接为null（例如本地环境没有数据库），跳过测试
+        if (Connection == null)
+        {
+            Assert.Inconclusive("Database connection is not available in the current environment.");
+            return;
+        }
+
         await Connection.OpenAsync();
         Repository = CreateRepository(Connection);
 

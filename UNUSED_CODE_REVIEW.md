@@ -1,7 +1,7 @@
 # 🔍 Sqlx 无用代码审查报告
 
-**审查日期**: 2025-11-01  
-**审查范围**: src/Sqlx.Generator  
+**审查日期**: 2025-11-01
+**审查范围**: src/Sqlx.Generator
 **审查方法**: 全面代码扫描和引用分析
 
 ---
@@ -16,8 +16,8 @@
 
 ### 1. DatabaseDialectFactory.cs ❌
 
-**位置**: `src/Sqlx.Generator/Core/DatabaseDialectFactory.cs`  
-**原因**: 功能与`DialectHelper.GetDialectProvider`重复  
+**位置**: `src/Sqlx.Generator/Core/DatabaseDialectFactory.cs`
+**原因**: 功能与`DialectHelper.GetDialectProvider`重复
 **引用次数**: 0（仅在自身文件中出现）
 
 **代码**:
@@ -36,15 +36,15 @@ internal static class DatabaseDialectFactory
 }
 ```
 
-**替代方案**: 已被`DialectHelper.GetDialectProvider`替代  
+**替代方案**: 已被`DialectHelper.GetDialectProvider`替代
 **建议**: ✅ **删除整个文件**
 
 ---
 
 ### 2. MethodAnalysisResult.cs ❌
 
-**位置**: `src/Sqlx.Generator/Core/MethodAnalysisResult.cs`  
-**原因**: 定义了`MethodAnalysisResult` record和`MethodOperationType` enum，但从未被使用  
+**位置**: `src/Sqlx.Generator/Core/MethodAnalysisResult.cs`
+**原因**: 定义了`MethodAnalysisResult` record和`MethodOperationType` enum，但从未被使用
 **引用次数**: 0（仅在自身文件中出现）
 
 **代码**:
@@ -74,8 +74,8 @@ public enum MethodOperationType
 
 ### 3. ParameterMapping.cs ❌
 
-**位置**: `src/Sqlx.Generator/Core/ParameterMapping.cs`  
-**原因**: 仅被`TemplateValidator`引用，而`TemplateValidator`本身也未被使用  
+**位置**: `src/Sqlx.Generator/Core/ParameterMapping.cs`
+**原因**: 仅被`TemplateValidator`引用，而`TemplateValidator`本身也未被使用
 **引用次数**: 1（仅在`TemplateValidator.cs`中）
 
 **代码**:
@@ -96,8 +96,8 @@ public sealed class ParameterMapping
 
 ### 4. TemplateValidator.cs ❌
 
-**位置**: `src/Sqlx.Generator/Tools/TemplateValidator.cs`  
-**原因**: 完全未被使用的工具类  
+**位置**: `src/Sqlx.Generator/Tools/TemplateValidator.cs`
+**原因**: 完全未被使用的工具类
 **引用次数**: 0（仅在自身文件中出现）
 
 **说明**: 这是一个模板验证工具类，但在源生成器中从未被调用
@@ -106,7 +106,7 @@ public sealed class ParameterMapping
 
 ---
 
-### 5. TemplateValidationResult.cs ⚠️
+### 5. TemplateValidationResult.cs ✅
 
 **位置**: `src/Sqlx.Generator/Core/TemplateValidationResult.cs`  
 **原因**: 仅被`SqlTemplateEngine.ValidateTemplate`方法使用，而该方法本身也未被使用  
@@ -123,7 +123,7 @@ public sealed class TemplateValidationResult
 }
 ```
 
-**建议**: ⚠️ **条件删除**（如果确认`ValidateTemplate`方法未被使用）
+**建议**: ✅ **已删除**
 
 ---
 
@@ -131,8 +131,8 @@ public sealed class TemplateValidationResult
 
 ### 1. DialectHelper.ShouldUseTemplateInheritance ❌
 
-**位置**: `src/Sqlx.Generator/Core/DialectHelper.cs:131`  
-**原因**: 从未被调用  
+**位置**: `src/Sqlx.Generator/Core/DialectHelper.cs:131`
+**原因**: 从未被调用
 **引用次数**: 0（仅定义）
 
 **代码**:
@@ -152,7 +152,7 @@ private static bool HasSqlTemplateAttributes(INamedTypeSymbol interfaceSymbol)
 
 ---
 
-### 2. SqlTemplateEngine.ValidateTemplate ⚠️
+### 2. SqlTemplateEngine.ValidateTemplate ✅
 
 **位置**: `src/Sqlx.Generator/Core/SqlTemplateEngine.cs:147`  
 **原因**: 仅被`TemplateValidator`调用，而`TemplateValidator`本身未被使用  
@@ -173,18 +173,17 @@ private static void CheckBasicPerformance(string template, TemplateValidationRes
 }
 ```
 
-**建议**: ⚠️ **条件删除**（如果确认不需要模板验证功能）
+**建议**: ✅ **已删除**（包括`CheckBasicPerformance`辅助方法）
 
 ---
 
 ## 📊 统计汇总
 
-| 类别 | 数量 | 建议 |
+| 类别 | 数量 | 状态 |
 |------|------|------|
-| 完全未使用的文件 | 4个 | ✅ 立即删除 |
-| 条件删除的文件 | 1个 | ⚠️ 确认后删除 |
-| 未使用的方法 | 2个 | ✅ 删除 |
-| **总计** | **7项** | **可删除** |
+| 完全未使用的文件 | 5个 | ✅ 已删除 |
+| 未使用的方法 | 3个 | ✅ 已删除 |
+| **总计** | **8项** | **✅ 已删除** |
 
 ---
 
@@ -267,7 +266,7 @@ cd samples/UnifiedDialectDemo
 dotnet run --configuration Release
 ```
 
-**预期结果**: 
+**预期结果**:
 - ✅ 编译成功
 - ✅ 所有测试通过
 - ✅ 演示项目正常运行
@@ -302,7 +301,7 @@ dotnet run --configuration Release
 
 ---
 
-**审查人**: Code Review Team  
-**审查日期**: 2025-11-01  
+**审查人**: Code Review Team
+**审查日期**: 2025-11-01
 **状态**: ✅ 审查完成
 

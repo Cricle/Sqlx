@@ -143,30 +143,6 @@ public class SqlTemplateEngine
         };
     }
 
-    /// <inheritdoc/>
-    public TemplateValidationResult ValidateTemplate(string templateSql)
-    {
-        var result = new TemplateValidationResult();
-
-        if (string.IsNullOrWhiteSpace(templateSql))
-        {
-            result.Errors.Add("SQL template cannot be empty");
-            return result;
-        }
-
-        // 基础验证
-        var tempResult = new SqlTemplateResult();
-        ValidateTemplateSecurity(templateSql, tempResult, _defaultDialect);
-        result.Errors.AddRange(tempResult.Errors);
-        result.Warnings.AddRange(tempResult.Warnings);
-
-        // 简单的性能建议
-        CheckBasicPerformance(templateSql, result);
-
-        return result;
-    }
-
-
 
     /// <summary>
     /// 处理占位符 - 多数据库支持版本
@@ -1196,21 +1172,6 @@ public class SqlTemplateEngine
             "Conversions: cast, convert | " +
             "Batch: batch_values, batch_insert, bulk_update, subquery, union");
         return originalValue; // 保持原始值
-    }
-
-    /// <summary>简化的性能检查</summary>
-    private static void CheckBasicPerformance(string template, TemplateValidationResult result)
-    {
-        var upper = template.ToUpperInvariant();
-
-        if (upper.Contains("SELECT *"))
-            result.Suggestions.Add("建议使用 {{columns:auto}} 替代 SELECT *");
-
-        if (upper.Contains("ORDER BY") && !upper.Contains("LIMIT") && !upper.Contains("TOP"))
-            result.Suggestions.Add("ORDER BY 建议添加 {{limit:auto}} 限制");
-
-        if ((upper.Contains("UPDATE") || upper.Contains("DELETE")) && !upper.Contains("WHERE"))
-            result.Warnings.Add("UPDATE/DELETE 语句建议添加 WHERE 条件");
     }
 
     #region 多数据库支持的扩展占位符方法

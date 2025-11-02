@@ -225,7 +225,12 @@ public abstract class UnifiedDialectTestBase
             return;
         }
 
-        await Connection.OpenAsync();
+        // 只有当连接未打开时才打开（DatabaseConnectionHelper可能已经打开了连接）
+        if (Connection.State != System.Data.ConnectionState.Open)
+        {
+            await Connection.OpenAsync();
+        }
+        
         Repository = CreateRepository(Connection);
 
         // 创建表

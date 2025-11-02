@@ -2202,7 +2202,7 @@ public class SqlTemplateEngine
     {
         if (dialect == SqlDefine.PostgreSql)
             return "true";
-        
+
         return "1"; // MySQL, SQL Server, SQLite, Oracle all use 1
     }
 
@@ -2213,7 +2213,7 @@ public class SqlTemplateEngine
     {
         if (dialect == SqlDefine.PostgreSql)
             return "false";
-        
+
         return "0"; // MySQL, SQL Server, SQLite, Oracle all use 0
     }
 
@@ -2226,7 +2226,7 @@ public class SqlTemplateEngine
             return "GETDATE()";
         if (dialect == SqlDefine.Oracle)
             return "SYSTIMESTAMP";
-        
+
         return "CURRENT_TIMESTAMP"; // PostgreSQL, MySQL, SQLite
     }
 

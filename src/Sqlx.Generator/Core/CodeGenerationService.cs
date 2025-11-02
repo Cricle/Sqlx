@@ -50,19 +50,19 @@ public class CodeGenerationService
                 // Extract dialect from RepositoryFor attribute
                 var dialect = Core.DialectHelper.GetDialectFromRepositoryFor(context.ClassSymbol);
                 var dialectProvider = Core.DialectHelper.GetDialectProvider(dialect);
-                
+
                 // Try to resolve inherited templates for this interface
                 var inheritedTemplates = TemplateResolver.ResolveInheritedTemplates(
-                    containingType, 
+                    containingType,
                     dialectProvider,
                     resolvedTableName,
                     entityType);
-                
+
                 // Find matching template for this method
-                var matchingTemplate = inheritedTemplates.FirstOrDefault(t => 
-                    t.Method.Name == method.Name && 
+                var matchingTemplate = inheritedTemplates.FirstOrDefault(t =>
+                    t.Method.Name == method.Name &&
                     t.Method.Parameters.Length == method.Parameters.Length);
-                
+
                 if (matchingTemplate != null)
                 {
                     sqlTemplate = matchingTemplate.ProcessedSql;
@@ -77,7 +77,7 @@ public class CodeGenerationService
                 var dialectType = Core.DialectHelper.GetDialectFromRepositoryFor(context.ClassSymbol);
                 var dialectProvider = Core.DialectHelper.GetDialectProvider(dialectType);
                 var sqlDefine = dialectProvider.SqlDefine;
-                
+
                 templateResult = TemplateEngine.ProcessTemplate(sqlTemplate, method, entityType, resolvedTableName, sqlDefine);
             }
 
@@ -469,6 +469,9 @@ public class CodeGenerationService
             var sqlxAttr = GetSqlAttribute(method);
             var sql = GetSqlTemplateFromAttribute(sqlxAttr);
 
+            // Track whether SQL came from inherited template (already processed)
+            bool sqlAlreadyProcessed = false;
+
             // If no template on method, try to resolve from inherited interfaces
             if (sql == null && method.ContainingType is INamedTypeSymbol containingType)
             {
@@ -492,23 +495,40 @@ public class CodeGenerationService
                 if (matchingTemplate != null)
                 {
                     sql = matchingTemplate.ProcessedSql;
+                    sqlAlreadyProcessed = true; // Mark that dialect placeholders are already replaced
                 }
             }
 
             if (sql != null)
             {
-                // Use template engine to process SQL template with correct dialect
-                var templateEngine = context.TemplateEngine;
-                
-                // Get the correct dialect for this repository
-                var dialectType = Core.DialectHelper.GetDialectFromRepositoryFor(context.RepositoryClass);
-                var dialectProvider = Core.DialectHelper.GetDialectProvider(dialectType);
-                var sqlDefine = dialectProvider.SqlDefine;
-                
-                var templateResult = templateEngine.ProcessTemplate(sql, method, entityType, tableName, sqlDefine);
+                string processedSql;
+
+                if (sqlAlreadyProcessed)
+                {
+                    // SQL came from inherited template - dialect placeholders already replaced
+                    // Still need to process for other placeholders ({{values}}, {{where}}, etc.)
+                    var templateEngine = context.TemplateEngine;
+                    var dialectType = Core.DialectHelper.GetDialectFromRepositoryFor(context.RepositoryClass);
+                    var dialectProvider = Core.DialectHelper.GetDialectProvider(dialectType);
+                    var sqlDefine = dialectProvider.SqlDefine;
+
+                    var templateResult = templateEngine.ProcessTemplate(sql, method, entityType, tableName, sqlDefine);
+                    processedSql = templateResult.ProcessedSql;
+                }
+                else
+                {
+                    // SQL has original template - needs full processing
+                    var templateEngine = context.TemplateEngine;
+                    var dialectType = Core.DialectHelper.GetDialectFromRepositoryFor(context.RepositoryClass);
+                    var dialectProvider = Core.DialectHelper.GetDialectProvider(dialectType);
+                    var sqlDefine = dialectProvider.SqlDefine;
+
+                    var templateResult = templateEngine.ProcessTemplate(sql, method, entityType, tableName, sqlDefine);
+                    processedSql = templateResult.ProcessedSql;
+                }
 
                 var methodContext = new RepositoryMethodContext(
-                    sb, method, entityType, tableName, templateResult.ProcessedSql,
+                    sb, method, entityType, tableName, processedSql,
                     context.AttributeHandler, context.RepositoryClass);
 
                 GenerateRepositoryMethod(methodContext);

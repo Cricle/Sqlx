@@ -1,8 +1,11 @@
 -- MySQL 初始化脚本
 -- 创建测试表
 
--- 删除已存在的表
+-- 删除已存在的表（旧测试）
 DROP TABLE IF EXISTS dialect_users_mysql;
+
+-- 删除统一方言测试表（UnifiedDialect测试）
+DROP TABLE IF EXISTS unified_dialect_users_my;
 
 -- 创建用户表
 CREATE TABLE dialect_users_mysql (

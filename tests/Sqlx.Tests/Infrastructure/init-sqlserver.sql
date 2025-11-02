@@ -1,9 +1,14 @@
 -- SQL Server 初始化脚本
 -- 创建测试表
 
--- 删除已存在的表
+-- 删除已存在的表（旧测试）
 IF OBJECT_ID('dialect_users_sqlserver', 'U') IS NOT NULL
     DROP TABLE dialect_users_sqlserver;
+GO
+
+-- 删除统一方言测试表（UnifiedDialect测试）
+IF OBJECT_ID('unified_dialect_users_ss', 'U') IS NOT NULL
+    DROP TABLE unified_dialect_users_ss;
 GO
 
 -- 创建用户表

@@ -20,6 +20,8 @@ namespace Sqlx.Generator;
 public class CodeGenerationService
 {
     private static readonly SqlTemplateEngine TemplateEngine = new();
+    private static readonly Core.TemplateInheritanceResolver TemplateResolver = new();
+    
     /// <inheritdoc/>
     public void GenerateRepositoryMethod(RepositoryMethodContext context)
     {
@@ -34,6 +36,32 @@ public class CodeGenerationService
             // Get SQL attributes once to avoid repeated calls
             var sqlxAttr = GetSqlAttribute(method);
             var sqlTemplate = GetSqlTemplateFromAttribute(sqlxAttr);
+
+            // If no template on method, try to resolve from inherited interfaces
+            if (sqlTemplate == null && method.ContainingType is INamedTypeSymbol containingType)
+            {
+                // Extract dialect and table name from RepositoryFor attribute
+                var dialect = Core.DialectHelper.GetDialectFromRepositoryFor(context.ClassSymbol);
+                var tableName = Core.DialectHelper.GetTableNameFromRepositoryFor(context.ClassSymbol, entityType) ?? context.TableName;
+                var dialectProvider = Core.DialectHelper.GetDialectProvider(dialect);
+                
+                // Try to resolve inherited templates for this interface
+                var inheritedTemplates = TemplateResolver.ResolveInheritedTemplates(
+                    containingType, 
+                    dialectProvider,
+                    tableName,
+                    entityType);
+                
+                // Find matching template for this method
+                var matchingTemplate = inheritedTemplates.FirstOrDefault(t => 
+                    t.Method.Name == method.Name && 
+                    t.Method.Parameters.Length == method.Parameters.Length);
+                
+                if (matchingTemplate != null)
+                {
+                    sqlTemplate = matchingTemplate.ProcessedSql;
+                }
+            }
 
             // Process SQL template if available
             SqlTemplateResult? templateResult = null;
@@ -429,6 +457,32 @@ public class CodeGenerationService
         {
             var sqlxAttr = GetSqlAttribute(method);
             var sql = GetSqlTemplateFromAttribute(sqlxAttr);
+
+            // If no template on method, try to resolve from inherited interfaces
+            if (sql == null && method.ContainingType is INamedTypeSymbol containingType)
+            {
+                // Extract dialect and table name from RepositoryFor attribute
+                var dialect = Core.DialectHelper.GetDialectFromRepositoryFor(repositoryClass);
+                var tblName = Core.DialectHelper.GetTableNameFromRepositoryFor(repositoryClass, entityType) ?? tableName;
+                var dialectProvider = Core.DialectHelper.GetDialectProvider(dialect);
+                
+                // Try to resolve inherited templates for this interface
+                var inheritedTemplates = TemplateResolver.ResolveInheritedTemplates(
+                    containingType, 
+                    dialectProvider,
+                    tblName,
+                    entityType);
+                
+                // Find matching template for this method
+                var matchingTemplate = inheritedTemplates.FirstOrDefault(t => 
+                    t.Method.Name == method.Name && 
+                    t.Method.Parameters.Length == method.Parameters.Length);
+                
+                if (matchingTemplate != null)
+                {
+                    sql = matchingTemplate.ProcessedSql;
+                }
+            }
 
             if (sql != null)
             {

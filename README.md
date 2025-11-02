@@ -238,17 +238,17 @@ public interface IUserRepositoryBase
 {
     [SqlTemplate(@"SELECT * FROM {{table}} WHERE active = {{bool_true}}")]
     Task<List<User>> GetActiveUsersAsync();
-    
+
     [SqlTemplate(@"
-        INSERT INTO {{table}} (name, created_at) 
-        VALUES (@name, {{current_timestamp}}) 
+        INSERT INTO {{table}} (name, created_at)
+        VALUES (@name, {{current_timestamp}})
         {{returning_id}}")]
     Task<int> InsertAsync(User user);
 }
 
 // 2️⃣ PostgreSQL 实现
-[RepositoryFor(typeof(IUserRepositoryBase), 
-    Dialect = SqlDefineTypes.PostgreSql, 
+[RepositoryFor(typeof(IUserRepositoryBase),
+    Dialect = SqlDefineTypes.PostgreSql,
     TableName = "users")]
 public partial class PostgreSQLUserRepository : IUserRepositoryBase
 {
@@ -256,8 +256,8 @@ public partial class PostgreSQLUserRepository : IUserRepositoryBase
 }
 
 // 3️⃣ MySQL 实现
-[RepositoryFor(typeof(IUserRepositoryBase), 
-    Dialect = SqlDefineTypes.MySql, 
+[RepositoryFor(typeof(IUserRepositoryBase),
+    Dialect = SqlDefineTypes.MySql,
     TableName = "users")]
 public partial class MySQLUserRepository : IUserRepositoryBase
 {

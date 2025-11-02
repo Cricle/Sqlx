@@ -163,10 +163,19 @@ jobs:
     - name: 🏗️ Build
       run: dotnet build --configuration Release --no-restore
 
+    - name: 📦 Install SQL Server tools
+      run: |
+        curl https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc
+        curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
+        sudo apt-get update
+        sudo ACCEPT_EULA=Y apt-get install -y mssql-tools18 unixodbc-dev
+        echo 'export PATH="$PATH:/opt/mssql-tools18/bin"' >> ~/.bashrc
+        export PATH="$PATH:/opt/mssql-tools18/bin"
+
     - name: ⏳ Wait for databases
       run: |
         echo "⏳ Waiting for databases to be ready..."
-        sleep 20
+        sleep 30
         
         echo "🔍 Testing PostgreSQL connection..."
         PGPASSWORD=postgres psql -h localhost -U postgres -c "SELECT 1" || echo "⚠️ PostgreSQL not ready"

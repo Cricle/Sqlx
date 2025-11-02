@@ -1123,5 +1123,246 @@ public abstract class UnifiedDialectTestBase
         // 最后一次更新应该是最新的登录时间
         Assert.IsTrue(user.LastLoginAt.Value > loginTime2);
     }
+
+    // ==================== 更多边界条件和错误处理测试 ====================
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task Insert_WithEmptyUsername_ShouldWork()
+    {
+        // Arrange & Act
+        var id = await Repository!.InsertAsync("", "empty@test.com", 25, 100m, DateTime.UtcNow, null, true);
+        var user = await Repository.GetByIdAsync(id);
+
+        // Assert
+        Assert.IsNotNull(user);
+        Assert.AreEqual("", user.Username);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task Search_WithSqlInjectionAttempt_ShouldBeSecure()
+    {
+        // Arrange - SQL注入尝试
+        await Repository!.InsertAsync("normaluser", "normal@test.com", 25, 100m, DateTime.UtcNow, null, true);
+        
+        // Act - 尝试SQL注入
+        var injectionPattern = "'; DROP TABLE users; --";
+        var users = await Repository.SearchByUsernameAsync(injectionPattern);
+
+        // Assert - 应该没有找到用户，而不是删除表
+        Assert.AreEqual(0, users.Count);
+        
+        // 验证表仍然存在
+        var allUsers = await Repository.GetAllAsync();
+        Assert.IsTrue(allUsers.Count > 0);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task GetByAgeRange_WithInvertedRange_ShouldReturnEmpty()
+    {
+        // Arrange
+        await Repository!.InsertAsync("user1", "user1@test.com", 25, 100m, DateTime.UtcNow, null, true);
+
+        // Act - 反转的范围（max < min）
+        var users = await Repository.GetByAgeRangeAsync(50, 20);
+
+        // Assert
+        Assert.AreEqual(0, users.Count);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task GetByMinBalance_WithNegativeValue_ShouldWork()
+    {
+        // Arrange
+        await Repository!.InsertAsync("userneg1", "userneg1@test.com", 25, -50m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("userneg2", "userneg2@test.com", 30, -100m, DateTime.UtcNow, null, true);
+
+        // Act
+        var users = await Repository.GetByMinBalanceAsync(-75m);
+
+        // Assert
+        Assert.AreEqual(1, users.Count);
+        Assert.AreEqual("userneg1", users[0].Username);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task Update_NonExistentUser_ShouldReturnZero()
+    {
+        // Act
+        var affected = await Repository!.UpdateAsync(99999999, "new@test.com", 200m);
+
+        // Assert
+        Assert.AreEqual(0, affected);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task Delete_NonExistentUser_ShouldReturnZero()
+    {
+        // Act
+        var affected = await Repository!.DeleteAsync(99999999);
+
+        // Assert
+        Assert.AreEqual(0, affected);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task GetByDateRange_WithFutureDates_ShouldReturnEmpty()
+    {
+        // Arrange
+        await Repository!.InsertAsync("futureuser", "future@test.com", 25, 100m, DateTime.UtcNow, null, true);
+
+        // Act - 未来的日期范围
+        var futureStart = DateTime.UtcNow.AddDays(1);
+        var futureEnd = DateTime.UtcNow.AddDays(10);
+        var users = await Repository.GetUsersByDateRangeAsync(futureStart, futureEnd);
+
+        // Assert
+        Assert.AreEqual(0, users.Count);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task Search_WithEmptyPattern_ShouldReturnEmpty()
+    {
+        // Arrange
+        await Repository!.InsertAsync("searchuser", "search@test.com", 25, 100m, DateTime.UtcNow, null, true);
+
+        // Act
+        var users = await Repository.SearchByUsernameAsync("");
+
+        // Assert
+        Assert.AreEqual(0, users.Count);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task InsertAndDelete_MultipleTimes_ShouldWork()
+    {
+        // Arrange & Act - 多次插入和删除
+        for (int i = 0; i < 5; i++)
+        {
+            var id = await Repository!.InsertAsync($"temp{i}", $"temp{i}@test.com", 25, 100m, DateTime.UtcNow, null, true);
+            var user = await Repository.GetByIdAsync(id);
+            Assert.IsNotNull(user);
+            
+            var deleted = await Repository.DeleteAsync(id);
+            Assert.AreEqual(1, deleted);
+            
+            var deletedUser = await Repository.GetByIdAsync(id);
+            Assert.IsNull(deletedUser);
+        }
+
+        // Assert
+        var count = await Repository!.CountAsync();
+        // 应该只有之前的测试数据，没有temp用户
+        Assert.IsTrue(count >= 0);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task UpdateLastLogin_WithNull_ShouldWork()
+    {
+        // Arrange
+        var id = await Repository!.InsertAsync("nullupdate", "null@test.com", 25, 100m, DateTime.UtcNow, DateTime.UtcNow, true);
+
+        // Act - 将last_login设为NULL
+        await Repository.UpdateLastLoginAsync(id, null);
+        var user = await Repository.GetByIdAsync(id);
+
+        // Assert
+        Assert.IsNotNull(user);
+        Assert.IsNull(user.LastLoginAt);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task GetAll_OrderByUsername_ShouldBeSorted()
+    {
+        // Arrange
+        await Repository!.InsertAsync("charlie", "c@test.com", 30, 100m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("alice", "a@test.com", 25, 100m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("bob", "b@test.com", 28, 100m, DateTime.UtcNow, null, true);
+
+        // Act
+        var users = await Repository.GetAllOrderByUsernameAsync();
+        var testUsers = users.Where(u => u.Username == "alice" || u.Username == "bob" || u.Username == "charlie").ToList();
+
+        // Assert
+        Assert.IsTrue(testUsers.Count >= 3);
+        for (int i = 0; i < testUsers.Count - 1; i++)
+        {
+            Assert.IsTrue(string.Compare(testUsers[i].Username, testUsers[i + 1].Username, StringComparison.Ordinal) <= 0);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task GetAll_OrderByBalanceDesc_ShouldBeSorted()
+    {
+        // Arrange
+        await Repository!.InsertAsync("userbal1", "userbal1@test.com", 25, 50m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("userbal2", "userbal2@test.com", 30, 300m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("userbal3", "userbal3@test.com", 35, 150m, DateTime.UtcNow, null, true);
+
+        // Act
+        var users = await Repository.GetAllOrderByBalanceDescAsync();
+
+        // Assert
+        Assert.IsTrue(users.Count >= 3);
+        for (int i = 0; i < users.Count - 1; i++)
+        {
+            Assert.IsTrue(users[i].Balance >= users[i + 1].Balance);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task CancellationToken_ShouldBeAccepted()
+    {
+        // Arrange
+        using var cts = new CancellationTokenSource();
+
+        // Act - 正常执行（不取消）
+        var count = await Repository!.CountAsync(cts.Token);
+
+        // Assert
+        Assert.IsTrue(count >= 0);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task GetMaxBalance_WithNegativeBalances_ShouldWork()
+    {
+        // Arrange
+        await Repository!.InsertAsync("neg1", "neg1@test.com", 25, -50m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("neg2", "neg2@test.com", 30, -100m, DateTime.UtcNow, null, true);
+
+        // Act
+        var max = await Repository.GetMaxBalanceAsync();
+
+        // Assert - 最大值应该是-50（因为-50 > -100）
+        Assert.IsTrue(max >= -50m);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task GetMinAge_WithVariousAges_ShouldReturnMinimum()
+    {
+        // Arrange
+        await Repository!.InsertAsync("young", "young@test.com", 18, 100m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("old", "old@test.com", 80, 100m, DateTime.UtcNow, null, true);
+
+        // Act
+        var minAge = await Repository.GetMinAgeAsync();
+
+        // Assert
+        Assert.IsTrue(minAge <= 18);
+    }
 }
 

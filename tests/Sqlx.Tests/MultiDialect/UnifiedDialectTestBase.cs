@@ -721,5 +721,400 @@ public abstract class UnifiedDialectTestBase
         // Assert
         Assert.AreEqual(2, users.Count);
     }
+
+    // ==================== 边界条件测试 ====================
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task Insert_WithZeroBalance_ShouldWork()
+    {
+        // Arrange & Act
+        var id = await Repository!.InsertAsync("zerobalance", "zero@test.com", 25, 0m, DateTime.UtcNow, null, true);
+        var user = await Repository.GetByIdAsync(id);
+
+        // Assert
+        Assert.IsNotNull(user);
+        Assert.AreEqual(0m, user.Balance);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task Insert_WithNegativeBalance_ShouldWork()
+    {
+        // Arrange & Act
+        var id = await Repository!.InsertAsync("negative", "negative@test.com", 25, -100m, DateTime.UtcNow, null, true);
+        var user = await Repository.GetByIdAsync(id);
+
+        // Assert
+        Assert.IsNotNull(user);
+        Assert.AreEqual(-100m, user.Balance);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task Insert_WithVeryLargeBalance_ShouldWork()
+    {
+        // Arrange & Act
+        var id = await Repository!.InsertAsync("wealthy", "wealthy@test.com", 25, 999999999.99m, DateTime.UtcNow, null, true);
+        var user = await Repository.GetByIdAsync(id);
+
+        // Assert
+        Assert.IsNotNull(user);
+        Assert.AreEqual(999999999.99m, user.Balance);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task Insert_WithMinAge_ShouldWork()
+    {
+        // Arrange & Act
+        var id = await Repository!.InsertAsync("young", "young@test.com", 0, 100m, DateTime.UtcNow, null, true);
+        var user = await Repository.GetByIdAsync(id);
+
+        // Assert
+        Assert.IsNotNull(user);
+        Assert.AreEqual(0, user.Age);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task Insert_WithMaxAge_ShouldWork()
+    {
+        // Arrange & Act
+        var id = await Repository!.InsertAsync("old", "old@test.com", 150, 100m, DateTime.UtcNow, null, true);
+        var user = await Repository.GetByIdAsync(id);
+
+        // Assert
+        Assert.IsNotNull(user);
+        Assert.AreEqual(150, user.Age);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task Insert_WithLongUsername_ShouldWork()
+    {
+        // Arrange
+        var longUsername = new string('a', 100);
+
+        // Act
+        var id = await Repository!.InsertAsync(longUsername, "long@test.com", 25, 100m, DateTime.UtcNow, null, true);
+        var user = await Repository.GetByIdAsync(id);
+
+        // Assert
+        Assert.IsNotNull(user);
+        Assert.AreEqual(longUsername, user.Username);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task Insert_WithSpecialCharacters_ShouldWork()
+    {
+        // Arrange
+        var specialUsername = "user@#$%^&*()_+-=[]{}|;':\",./<>?";
+
+        // Act
+        var id = await Repository!.InsertAsync(specialUsername, "special@test.com", 25, 100m, DateTime.UtcNow, null, true);
+        var user = await Repository.GetByIdAsync(id);
+
+        // Assert
+        Assert.IsNotNull(user);
+        Assert.AreEqual(specialUsername, user.Username);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task Insert_WithUnicodeCharacters_ShouldWork()
+    {
+        // Arrange
+        var unicodeUsername = "用户测试αβγδ";
+
+        // Act
+        var id = await Repository!.InsertAsync(unicodeUsername, "unicode@test.com", 25, 100m, DateTime.UtcNow, null, true);
+        var user = await Repository.GetByIdAsync(id);
+
+        // Assert
+        Assert.IsNotNull(user);
+        Assert.AreEqual(unicodeUsername, user.Username);
+    }
+
+    // ==================== 空结果测试 ====================
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task GetByUsername_WithNonExistentUsername_ShouldReturnNull()
+    {
+        // Act
+        var user = await Repository!.GetByUsernameAsync("nonexistent");
+
+        // Assert
+        Assert.IsNull(user);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task GetAll_WithEmptyTable_ShouldReturnEmptyList()
+    {
+        // Act
+        var users = await Repository!.GetAllAsync();
+
+        // Assert
+        Assert.IsNotNull(users);
+        Assert.AreEqual(0, users.Count);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task Count_WithEmptyTable_ShouldReturnZero()
+    {
+        // Act
+        var count = await Repository!.CountAsync();
+
+        // Assert
+        Assert.AreEqual(0, count);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task GetTotalBalance_WithEmptyTable_ShouldReturnZero()
+    {
+        // Act
+        var total = await Repository!.GetTotalBalanceAsync();
+
+        // Assert
+        Assert.AreEqual(0m, total);
+    }
+
+    // ==================== 批量操作测试 ====================
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task BatchInsert_ShouldWork()
+    {
+        // Arrange & Act
+        for (int i = 0; i < 10; i++)
+        {
+            await Repository!.InsertAsync($"user{i}", $"user{i}@test.com", 20 + i, 100m * i, DateTime.UtcNow, null, true);
+        }
+
+        // Assert
+        var users = await Repository!.GetAllAsync();
+        Assert.AreEqual(10, users.Count);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task BatchInsert_WithMixedActiveStatus_ShouldWork()
+    {
+        // Arrange & Act
+        for (int i = 0; i < 20; i++)
+        {
+            await Repository!.InsertAsync($"user{i}", $"user{i}@test.com", 20 + i, 100m * i, DateTime.UtcNow, null, i % 2 == 0);
+        }
+
+        // Assert
+        var activeUsers = await Repository!.GetActiveUsersAsync();
+        var inactiveUsers = await Repository!.GetInactiveUsersAsync();
+        Assert.AreEqual(10, activeUsers.Count);
+        Assert.AreEqual(10, inactiveUsers.Count);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task UpdateMultiple_ShouldWork()
+    {
+        // Arrange
+        var id1 = await Repository!.InsertAsync("user1", "user1@test.com", 20, 100m, DateTime.UtcNow, null, true);
+        var id2 = await Repository.InsertAsync("user2", "user2@test.com", 25, 150m, DateTime.UtcNow, null, true);
+        var id3 = await Repository.InsertAsync("user3", "user3@test.com", 30, 200m, DateTime.UtcNow, null, true);
+
+        // Act
+        await Repository.UpdateAsync(id1, "updated1@test.com", 1000m);
+        await Repository.UpdateAsync(id2, "updated2@test.com", 2000m);
+        await Repository.UpdateAsync(id3, "updated3@test.com", 3000m);
+
+        // Assert
+        var users = await Repository.GetAllAsync();
+        Assert.AreEqual(3, users.Count);
+        Assert.IsTrue(users.All(u => u.Email.StartsWith("updated")));
+        Assert.AreEqual(6000m, await Repository.GetTotalBalanceAsync());
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task DeleteMultiple_ShouldWork()
+    {
+        // Arrange
+        var id1 = await Repository!.InsertAsync("user1", "user1@test.com", 20, 100m, DateTime.UtcNow, null, true);
+        var id2 = await Repository.InsertAsync("user2", "user2@test.com", 25, 150m, DateTime.UtcNow, null, true);
+        var id3 = await Repository.InsertAsync("user3", "user3@test.com", 30, 200m, DateTime.UtcNow, null, true);
+
+        // Act
+        await Repository.DeleteAsync(id1);
+        await Repository.DeleteAsync(id3);
+
+        // Assert
+        var users = await Repository.GetAllAsync();
+        Assert.AreEqual(1, users.Count);
+        Assert.AreEqual(id2, users[0].Id);
+    }
+
+    // ==================== 复杂查询测试 ====================
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task ComplexQuery_AgeRangeWithActiveStatus_ShouldWork()
+    {
+        // Arrange
+        await Repository!.InsertAsync("user1", "user1@test.com", 20, 100m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("user2", "user2@test.com", 25, 150m, DateTime.UtcNow, null, false);
+        await Repository.InsertAsync("user3", "user3@test.com", 30, 200m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("user4", "user4@test.com", 35, 250m, DateTime.UtcNow, null, false);
+
+        // Act
+        var ageRangeUsers = await Repository.GetByAgeRangeAsync(20, 30);
+        var activeUsers = await Repository.GetActiveUsersAsync();
+
+        // Assert - 使用LINQ在客户端过滤（因为没有组合查询方法）
+        var result = ageRangeUsers.Where(u => activeUsers.Any(a => a.Id == u.Id)).ToList();
+        Assert.AreEqual(2, result.Count);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task ComplexQuery_OrderAndFilter_ShouldWork()
+    {
+        // Arrange
+        await Repository!.InsertAsync("charlie", "charlie@test.com", 30, 100m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("alice", "alice@test.com", 25, 200m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("bob", "bob@test.com", 35, 150m, DateTime.UtcNow, null, false);
+        await Repository.InsertAsync("dave", "dave@test.com", 20, 300m, DateTime.UtcNow, null, true);
+
+        // Act
+        var activeUsers = await Repository.GetActiveUsersAsync();
+        var orderedUsers = await Repository.GetAllOrderByUsernameAsync();
+
+        // Assert
+        Assert.AreEqual(3, activeUsers.Count);
+        Assert.AreEqual(4, orderedUsers.Count);
+        Assert.AreEqual("alice", orderedUsers[0].Username);
+    }
+
+    // ==================== 数据完整性测试 ====================
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task InsertAndUpdate_PreserveOtherFields_ShouldWork()
+    {
+        // Arrange
+        var createdAt = DateTime.UtcNow.AddDays(-1);
+        var id = await Repository!.InsertAsync("testuser", "test@example.com", 25, 100m, createdAt, null, true);
+
+        // Act
+        await Repository.UpdateAsync(id, "updated@example.com", 200m);
+        var user = await Repository.GetByIdAsync(id);
+
+        // Assert
+        Assert.IsNotNull(user);
+        Assert.AreEqual("testuser", user.Username); // Username未改变
+        Assert.AreEqual(25, user.Age); // Age未改变
+        Assert.IsTrue(user.IsActive); // IsActive未改变
+        Assert.AreEqual("updated@example.com", user.Email); // Email已更新
+        Assert.AreEqual(200m, user.Balance); // Balance已更新
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task UpdateLastLogin_PreserveOtherFields_ShouldWork()
+    {
+        // Arrange
+        var id = await Repository!.InsertAsync("testuser", "test@example.com", 25, 100m, DateTime.UtcNow, null, true);
+        var loginTime = DateTime.UtcNow;
+
+        // Act
+        await Repository.UpdateLastLoginAsync(id, loginTime);
+        var user = await Repository.GetByIdAsync(id);
+
+        // Assert
+        Assert.IsNotNull(user);
+        Assert.AreEqual("testuser", user.Username);
+        Assert.AreEqual("test@example.com", user.Email);
+        Assert.AreEqual(25, user.Age);
+        Assert.AreEqual(100m, user.Balance);
+        Assert.IsTrue(user.IsActive);
+        Assert.IsNotNull(user.LastLoginAt);
+    }
+
+    // ==================== 聚合函数边界测试 ====================
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task GetAverageAge_WithSingleUser_ShouldWork()
+    {
+        // Arrange
+        await Repository!.InsertAsync("user1", "user1@test.com", 25, 100m, DateTime.UtcNow, null, true);
+
+        // Act
+        var avgAge = await Repository.GetAverageAgeAsync();
+
+        // Assert
+        Assert.AreEqual(25.0, avgAge, 0.01);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task Aggregates_WithDecimalPrecision_ShouldWork()
+    {
+        // Arrange
+        await Repository!.InsertAsync("user1", "user1@test.com", 20, 100.11m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("user2", "user2@test.com", 25, 200.22m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("user3", "user3@test.com", 30, 300.33m, DateTime.UtcNow, null, true);
+
+        // Act
+        var total = await Repository.GetTotalBalanceAsync();
+
+        // Assert
+        Assert.AreEqual(600.66m, total);
+    }
+
+    // ==================== 时间戳测试 ====================
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task Insert_WithPastDate_ShouldWork()
+    {
+        // Arrange
+        var pastDate = DateTime.UtcNow.AddYears(-10);
+
+        // Act
+        var id = await Repository!.InsertAsync("olduser", "old@test.com", 25, 100m, pastDate, null, true);
+        var user = await Repository.GetByIdAsync(id);
+
+        // Assert
+        Assert.IsNotNull(user);
+        Assert.IsTrue(user.CreatedAt < DateTime.UtcNow.AddYears(-9));
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task UpdateLastLogin_MultipleUpdates_ShouldWork()
+    {
+        // Arrange
+        var id = await Repository!.InsertAsync("testuser", "test@example.com", 25, 100m, DateTime.UtcNow, null, true);
+        var loginTime1 = DateTime.UtcNow.AddHours(-2);
+        var loginTime2 = DateTime.UtcNow.AddHours(-1);
+        var loginTime3 = DateTime.UtcNow;
+
+        // Act
+        await Repository.UpdateLastLoginAsync(id, loginTime1);
+        await Repository.UpdateLastLoginAsync(id, loginTime2);
+        await Repository.UpdateLastLoginAsync(id, loginTime3);
+        var user = await Repository.GetByIdAsync(id);
+
+        // Assert
+        Assert.IsNotNull(user);
+        Assert.IsNotNull(user.LastLoginAt);
+        // 最后一次更新应该是最新的登录时间
+        Assert.IsTrue(user.LastLoginAt.Value > loginTime2);
+    }
 }
 

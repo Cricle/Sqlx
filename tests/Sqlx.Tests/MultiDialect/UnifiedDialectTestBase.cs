@@ -238,6 +238,97 @@ public abstract class UnifiedDialectTestBase
     protected abstract Task CreateTableAsync();
     protected abstract Task DropTableAsync();
 
+    /// <summary>
+    /// 获取当前数据库方言类型
+    /// </summary>
+    protected abstract SqlDefineTypes GetDialectType();
+
+    /// <summary>
+    /// 统一的DDL生成 - 根据方言自动生成建表语句
+    /// 这样DDL只需要定义一次！
+    /// </summary>
+    protected async Task CreateUnifiedTableAsync()
+    {
+        var dialect = GetDialectType();
+        string sql;
+
+        switch (dialect)
+        {
+            case SqlDefineTypes.PostgreSql:
+                sql = $@"
+                    CREATE TABLE {TableName} (
+                        id BIGSERIAL PRIMARY KEY,
+                        username TEXT NOT NULL,
+                        email TEXT NOT NULL,
+                        age INTEGER NOT NULL,
+                        balance DECIMAL(18, 2) NOT NULL,
+                        created_at TIMESTAMP NOT NULL,
+                        last_login_at TIMESTAMP,
+                        is_active BOOLEAN NOT NULL
+                    )";
+                break;
+
+            case SqlDefineTypes.MySql:
+                sql = $@"
+                    CREATE TABLE {TableName} (
+                        id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                        username VARCHAR(255) NOT NULL,
+                        email VARCHAR(255) NOT NULL,
+                        age INT NOT NULL,
+                        balance DECIMAL(18, 2) NOT NULL,
+                        created_at DATETIME NOT NULL,
+                        last_login_at DATETIME,
+                        is_active BOOLEAN NOT NULL
+                    )";
+                break;
+
+            case SqlDefineTypes.SqlServer:
+                sql = $@"
+                    CREATE TABLE {TableName} (
+                        id BIGINT IDENTITY(1,1) PRIMARY KEY,
+                        username NVARCHAR(255) NOT NULL,
+                        email NVARCHAR(255) NOT NULL,
+                        age INT NOT NULL,
+                        balance DECIMAL(18, 2) NOT NULL,
+                        created_at DATETIME2 NOT NULL,
+                        last_login_at DATETIME2,
+                        is_active BIT NOT NULL
+                    )";
+                break;
+
+            case SqlDefineTypes.SQLite:
+                sql = $@"
+                    CREATE TABLE {TableName} (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        username TEXT NOT NULL,
+                        email TEXT NOT NULL,
+                        age INTEGER NOT NULL,
+                        balance REAL NOT NULL,
+                        created_at TEXT NOT NULL,
+                        last_login_at TEXT,
+                        is_active INTEGER NOT NULL
+                    )";
+                break;
+
+            default:
+                throw new NotSupportedException($"Dialect {dialect} is not supported");
+        }
+
+        using var cmd = Connection!.CreateCommand();
+        cmd.CommandText = sql;
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    /// <summary>
+    /// 统一的删除表 - 所有数据库通用
+    /// </summary>
+    protected async Task DropUnifiedTableAsync()
+    {
+        using var cmd = Connection!.CreateCommand();
+        cmd.CommandText = $"DROP TABLE IF EXISTS {TableName}";
+        await cmd.ExecuteNonQueryAsync();
+    }
+
     // ==================== 统一的测试方法（写一次，全部数据库运行）====================
 
     [TestMethod]

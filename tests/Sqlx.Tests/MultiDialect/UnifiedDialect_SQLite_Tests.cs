@@ -8,6 +8,7 @@ using System.Data.Common;
 using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Sqlx.Annotations;
 
 namespace Sqlx.Tests.MultiDialect;
 
@@ -31,30 +32,10 @@ public class UnifiedDialect_SQLite_Tests : UnifiedDialectTestBase
         return new SQLiteUnifiedUserRepository(connection);
     }
 
-    protected override async Task CreateTableAsync()
-    {
-        var sql = $@"
-            CREATE TABLE {TableName} (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT NOT NULL,
-                email TEXT NOT NULL,
-                age INTEGER NOT NULL,
-                balance REAL NOT NULL,
-                created_at TEXT NOT NULL,
-                last_login_at TEXT,
-                is_active INTEGER NOT NULL
-            )";
+    protected override SqlDefineTypes GetDialectType() => SqlDefineTypes.SQLite;
 
-        using var cmd = Connection!.CreateCommand();
-        cmd.CommandText = sql;
-        await cmd.ExecuteNonQueryAsync();
-    }
+    protected override Task CreateTableAsync() => CreateUnifiedTableAsync();
 
-    protected override async Task DropTableAsync()
-    {
-        using var cmd = Connection!.CreateCommand();
-        cmd.CommandText = $"DROP TABLE IF EXISTS {TableName}";
-        await cmd.ExecuteNonQueryAsync();
-    }
+    protected override Task DropTableAsync() => DropUnifiedTableAsync();
 }
 

@@ -24,9 +24,9 @@ public class UnifiedDialect_SqlServer_Tests : UnifiedDialectTestBase
 {
     protected override string TableName => "unified_dialect_users_ss";
 
-    protected override DbConnection CreateConnection()
+    protected override DbConnection? CreateConnection()
     {
-        return DatabaseConnectionHelper.GetSqlServerConnection(TestContext)!;
+        return DatabaseConnectionHelper.GetSqlServerConnection(TestContext);
     }
 
     protected override IUnifiedDialectUserRepository CreateRepository(DbConnection connection)

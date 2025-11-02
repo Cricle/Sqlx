@@ -210,7 +210,7 @@ public abstract class UnifiedDialectTestBase
     protected IUnifiedDialectUserRepository? Repository;
     protected abstract string TableName { get; }
 
-    protected abstract DbConnection CreateConnection();
+    protected abstract DbConnection? CreateConnection();
     protected abstract IUnifiedDialectUserRepository CreateRepository(DbConnection connection);
 
     [TestInitialize]
@@ -1145,14 +1145,14 @@ public abstract class UnifiedDialectTestBase
     {
         // Arrange - SQL注入尝试
         await Repository!.InsertAsync("normaluser", "normal@test.com", 25, 100m, DateTime.UtcNow, null, true);
-        
+
         // Act - 尝试SQL注入
         var injectionPattern = "'; DROP TABLE users; --";
         var users = await Repository.SearchByUsernameAsync(injectionPattern);
 
         // Assert - 应该没有找到用户，而不是删除表
         Assert.AreEqual(0, users.Count);
-        
+
         // 验证表仍然存在
         var allUsers = await Repository.GetAllAsync();
         Assert.IsTrue(allUsers.Count > 0);
@@ -1250,10 +1250,10 @@ public abstract class UnifiedDialectTestBase
             var id = await Repository!.InsertAsync($"temp{i}", $"temp{i}@test.com", 25, 100m, DateTime.UtcNow, null, true);
             var user = await Repository.GetByIdAsync(id);
             Assert.IsNotNull(user);
-            
+
             var deleted = await Repository.DeleteAsync(id);
             Assert.AreEqual(1, deleted);
-            
+
             var deletedUser = await Repository.GetByIdAsync(id);
             Assert.IsNull(deletedUser);
         }

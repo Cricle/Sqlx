@@ -24,9 +24,9 @@ public class UnifiedDialect_PostgreSQL_Tests : UnifiedDialectTestBase
 {
     protected override string TableName => "unified_dialect_users_pg";
 
-    protected override DbConnection CreateConnection()
+    protected override DbConnection? CreateConnection()
     {
-        return DatabaseConnectionHelper.GetPostgreSQLConnection(TestContext)!;
+        return DatabaseConnectionHelper.GetPostgreSQLConnection(TestContext);
     }
 
     protected override IUnifiedDialectUserRepository CreateRepository(DbConnection connection)

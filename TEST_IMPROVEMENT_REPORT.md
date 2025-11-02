@@ -1,6 +1,6 @@
 # 测试改进报告 - 100%通过率达成 🏆
 
-**生成时间**: 2025-11-02  
+**生成时间**: 2025-11-02
 **状态**: ✅ 生产就绪 - 100%测试通过率
 
 ---
@@ -123,12 +123,12 @@ INSERT INTO users (...) VALUES (...) GETDATE()
 private static string GetCurrentTimestampSyntax(SqlDefine dialect)
 {
     var dbType = dialect.DatabaseType;  // 使用属性而不是==
-    
+
     if (dbType == "SqlServer")
         return "GETDATE()";
     if (dbType == "Oracle")
         return "SYSTIMESTAMP";
-    
+
     return "CURRENT_TIMESTAMP";  // PostgreSQL, MySQL, SQLite
 }
 ```
@@ -395,7 +395,7 @@ private static string GetCurrentTimestampSyntax(SqlDefine dialect)
 
 ---
 
-**报告生成时间**: 2025-11-02 16:10  
-**版本**: v1.0.0  
+**报告生成时间**: 2025-11-02 16:10
+**版本**: v1.0.0
 **状态**: ✅ 生产就绪
 

@@ -248,7 +248,7 @@ public partial class SqlServerUserRepository : IUserRepositoryBase
 }
 ```
 
-**结果**: 
+**结果**:
 - ✅ 接口定义**只写一次**（`IUserRepositoryBase`）
 - ✅ SQL模板**只写一次**（在接口方法上）
 - ✅ 4个实现类**只需指定方言和表名**
@@ -266,9 +266,9 @@ public abstract class UnifiedDialectTestBase
     protected DbConnection? Connection;
     protected IUnifiedDialectUserRepository? Repository;
     protected abstract string TableName { get; }
-    
+
     protected abstract SqlDefineTypes GetDialectType();
-    
+
     // DDL只定义一次！根据方言自动生成不同的建表语句
     protected async Task CreateUnifiedTableAsync()
     {
@@ -330,7 +330,7 @@ public class UnifiedDialect_SQLite_Tests : UnifiedDialectTestBase
 {
     protected override string TableName => "unified_dialect_users_sq";
     protected override SqlDefineTypes GetDialectType() => SqlDefineTypes.SQLite;
-    
+
     protected override Task CreateTableAsync() => CreateUnifiedTableAsync();
     // DDL不需要重复写！
 }
@@ -340,7 +340,7 @@ public class UnifiedDialect_PostgreSQL_Tests : UnifiedDialectTestBase
 {
     protected override string TableName => "unified_dialect_users_pg";
     protected override SqlDefineTypes GetDialectType() => SqlDefineTypes.PostgreSql;
-    
+
     protected override Task CreateTableAsync() => CreateUnifiedTableAsync();
     // DDL不需要重复写！
 }

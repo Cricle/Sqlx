@@ -243,11 +243,11 @@ public abstract class UnifiedDialectTestBase
         {
             var tableKey = $"{GetType().Name}_{TableName}";
             var dialect = GetDialectType();
-            
+
             // 特殊处理：SQLite内存数据库每次连接都是新的，必须重新创建表
-            var isSQLiteMemory = dialect == SqlDefineTypes.SQLite && 
+            var isSQLiteMemory = dialect == SqlDefineTypes.SQLite &&
                                  Connection!.ConnectionString.Contains(":memory:", StringComparison.OrdinalIgnoreCase);
-            
+
             if (isSQLiteMemory || !CreatedTables.Contains(tableKey))
             {
                 // SQLite内存数据库或第一次初始化：创建表
@@ -286,52 +286,30 @@ public abstract class UnifiedDialectTestBase
     protected abstract Task DropTableAsync();
 
     /// <summary>
-    /// 清空表数据（TRUNCATE TABLE）
-    /// 这比DROP+CREATE快得多，而且避免了并发冲突
+    /// 清空表数据（DELETE FROM）
+    /// 注意：使用DELETE而不是TRUNCATE，因为：
+    /// 1. TRUNCATE需要特殊权限（可能在CI中没有）
+    /// 2. TRUNCATE不能用于有外键的表
+    /// 3. DELETE更通用，所有数据库都支持
     /// </summary>
     protected virtual async Task TruncateTableAsync()
     {
         try
         {
-            var dialect = GetDialectType();
-            string sql;
-
-            switch (dialect)
-            {
-                case SqlDefineTypes.SqlServer:
-                    // SQL Server: TRUNCATE TABLE
-                    sql = $"TRUNCATE TABLE {TableName}";
-                    break;
-
-                case SqlDefineTypes.SQLite:
-                    // SQLite: DELETE FROM (SQLite不支持TRUNCATE)
-                    sql = $"DELETE FROM {TableName}";
-                    break;
-
-                default:
-                    // PostgreSQL, MySQL: TRUNCATE TABLE
-                    sql = $"TRUNCATE TABLE {TableName}";
-                    break;
-            }
-
+            // 使用 DELETE FROM 而不是 TRUNCATE TABLE
+            // 原因：
+            // 1. MySQL的TRUNCATE可能需要特殊权限
+            // 2. TRUNCATE在事务中行为不一致
+            // 3. DELETE更可靠，虽然稍慢但足够快
             using var cmd = Connection!.CreateCommand();
-            cmd.CommandText = sql;
-            await cmd.ExecuteNonQueryAsync();
+            cmd.CommandText = $"DELETE FROM {TableName}";
+            var rowsAffected = await cmd.ExecuteNonQueryAsync();
+            Console.WriteLine($"  🗑️  Deleted {rowsAffected} rows from {TableName}");
         }
         catch (Exception ex)
         {
-            // 如果TRUNCATE失败，回退到DELETE
-            Console.WriteLine($"⚠️ Warning: TRUNCATE failed: {ex.Message}, falling back to DELETE");
-            try
-            {
-                using var deleteCmd = Connection!.CreateCommand();
-                deleteCmd.CommandText = $"DELETE FROM {TableName}";
-                await deleteCmd.ExecuteNonQueryAsync();
-            }
-            catch (Exception deleteEx)
-            {
-                Console.WriteLine($"⚠️ Warning: DELETE also failed: {deleteEx.Message}");
-            }
+            Console.WriteLine($"⚠️ Warning: Failed to delete from {TableName}: {ex.GetType().Name}: {ex.Message}");
+            throw; // 重新抛出异常，让测试失败
         }
     }
 

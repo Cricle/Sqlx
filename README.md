@@ -201,32 +201,74 @@ using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 var users = await repo.GetUsersAsync(cancellationToken: cts.Token);
 ```
 
-### 4. 📝 强大的占位符系统
+### 4. 📝 强大的占位符系统 (70+ 占位符)
 
-跨数据库SQL模板，一次编写，多数据库运行：
+跨数据库SQL模板，一次编写，多数据库运行。支持 **70+ 占位符**，覆盖所有SQL场景！
 
-| 占位符 | 说明 | SQLite | MySQL | PostgreSQL | SQL Server |
-|--------|------|--------|-------|------------|------------|
-| `{{columns}}` | 自动列选择 | `id, name, age` | `id, name, age` | `id, name, age` | `id, name, age` |
-| `{{table}}` | 表名 | `users` | `users` | `users` | `users` |
-| `{{values}}` | VALUES子句 | `(@id, @name)` | `(@id, @name)` | `(@id, @name)` | `(@id, @name)` |
-| `{{where}}` | WHERE条件 | 表达式树 | 表达式树 | 表达式树 | 表达式树 |
-| `{{limit}}` | 分页限制 | `LIMIT @limit` | `LIMIT @limit` | `LIMIT @limit` | `TOP (@limit)` |
-| `{{offset}}` | 分页偏移 | `OFFSET @offset` | `OFFSET @offset` | `OFFSET @offset` | `OFFSET @offset ROWS` |
-| `{{orderby}}` | 排序 | `ORDER BY created_at DESC` | `ORDER BY created_at DESC` | `ORDER BY created_at DESC` | `ORDER BY created_at DESC` |
-| `{{batch_values}}` | 批量插入 | 自动生成 | 自动生成 | 自动生成 | 自动生成 |
+#### 核心占位符（7个必会）
 
-**示例**：
+| 占位符 | 说明 | 示例 |
+|--------|------|------|
+| `{{table}}` | 表名（自动snake_case） | `users` |
+| `{{columns}}` | 列名列表 | `id, name, email, age` |
+| `{{columns --exclude Password}}` | 排除列 | `id, name, email` |
+| `{{values}}` | 值占位符 | `(@Name, @Email, @Age)` |
+| `{{set}}` | SET子句 | `name=@Name, email=@Email` |
+| `{{orderby created_at --desc}}` | 排序 | `ORDER BY created_at DESC` |
+| `{{limit}}` | 分页限制（自动适配） | `LIMIT @limit` / `TOP (@limit)` |
+
+#### 扩展占位符（50+）
+
+| 类别 | 占位符 | 数量 |
+|------|-------|-----|
+| **连接与分组** | `{{join}}` `{{groupby}}` `{{having}}` | 3 |
+| **条件操作** | `{{in}}` `{{like}}` `{{between}}` `{{isnull}}` `{{or}}` | 5 |
+| **聚合函数** | `{{count}}` `{{sum}}` `{{avg}}` `{{max}}` `{{min}}` | 5 |
+| **字符串函数** | `{{concat}}` `{{substring}}` `{{upper}}` `{{lower}}` `{{trim}}` `{{group_concat}}` `{{replace}}` `{{length}}` | 8 |
+| **数学函数** | `{{round}}` `{{abs}}` `{{ceiling}}` `{{floor}}` `{{power}}` `{{sqrt}}` `{{mod}}` | 7 |
+| **日期时间** | `{{today}}` `{{week}}` `{{month}}` `{{year}}` `{{date_add}}` `{{date_diff}}` | 6 |
+| **条件表达式** | `{{case}}` `{{coalesce}}` `{{ifnull}}` | 3 |
+| **窗口函数** | `{{row_number}}` `{{rank}}` `{{dense_rank}}` `{{lag}}` `{{lead}}` | 5 |
+| **JSON操作** | `{{json_extract}}` `{{json_array}}` `{{json_object}}` | 3 |
+| **批量操作** | `{{batch_values}}` `{{batch_insert}}` `{{upsert}}` | 3 |
+| **其他** | `{{distinct}}` `{{union}}` `{{cast}}` `{{exists}}` 等 | 10+ |
+
+#### 方言特定占位符
+
+| 占位符 | SQLite | PostgreSQL | MySQL | SQL Server |
+|--------|--------|-----------|-------|------------|
+| `{{bool_true}}` | `1` | `TRUE` | `TRUE` | `1` |
+| `{{bool_false}}` | `0` | `FALSE` | `FALSE` | `0` |
+| `{{current_timestamp}}` | `CURRENT_TIMESTAMP` | `CURRENT_TIMESTAMP` | `CURRENT_TIMESTAMP` | `GETDATE()` |
+
+#### 使用示例
 
 ```csharp
-// 同一个SQL模板
-[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE age >= @minAge {{orderby age}} {{limit}} {{offset}}")]
-Task<List<User>> GetUsersAsync(int minAge, int? limit = null, int? offset = null);
+// ✅ 核心占位符 - 简单清晰
+[SqlTemplate("SELECT {{columns --exclude Password}} FROM {{table}} WHERE age >= @minAge {{orderby created_at --desc}} {{limit}}")]
+Task<List<User>> GetUsersAsync(int minAge, int? limit = null);
 
-// SQLite: SELECT id, name, age FROM users WHERE age >= @minAge ORDER BY age LIMIT @limit OFFSET @offset
-// MySQL:  SELECT id, name, age FROM users WHERE age >= @minAge ORDER BY age LIMIT @limit OFFSET @offset
-// SQL Server: SELECT TOP (@limit) id, name, age FROM users WHERE age >= @minAge ORDER BY age OFFSET @offset ROWS
+// ✅ JOIN + GROUP BY - 复杂查询
+[SqlTemplate(@"
+    SELECT u.id, u.name, COUNT(o.id) as order_count
+    FROM {{table}} u
+    {{join --type left --table orders o --on u.id=o.user_id}}
+    {{groupby u.id, u.name}}
+    {{having --condition 'COUNT(o.id) > @minCount'}}
+")]
+Task<List<UserStats>> GetUserStatsAsync(int minCount);
+
+// ✅ 批量操作 - 高性能
+[SqlTemplate("INSERT INTO {{table}} (name, email) VALUES {{batch_values}}")]
+[BatchOperation(MaxBatchSize = 500)]
+Task<int> BatchInsertAsync(IEnumerable<User> users);
+
+// ✅ 方言适配 - 跨数据库
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE is_active = {{bool_true}} AND created_at > {{current_timestamp}} - INTERVAL '7 days'")]
+Task<List<User>> GetRecentActiveUsersAsync();
 ```
+
+**📚 完整文档**: [70+ 占位符完整参考](docs/PLACEHOLDER_REFERENCE.md) | [占位符详细教程](docs/PLACEHOLDERS.md)
 
 ### 5. 🌐 统一方言架构 ✨ 生产就绪
 

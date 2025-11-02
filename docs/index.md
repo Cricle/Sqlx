@@ -140,7 +140,8 @@ Task<User?> GetByIdAsync(long id);  // 编译器报错
 
 ### 📖 核心文档
 - [API参考](API_REFERENCE.md) - 完整API文档
-- [占位符指南](PLACEHOLDERS.md) - 占位符详解
+- [**占位符完整参考**](PLACEHOLDER_REFERENCE.md) - **70+ 占位符速查手册** ⭐
+- [占位符详细教程](PLACEHOLDERS.md) - 占位符详解
 - [最佳实践](BEST_PRACTICES.md) - 推荐用法
 - [高级特性](ADVANCED_FEATURES.md) - SoftDelete、AuditFields等
 

@@ -82,7 +82,7 @@ public abstract class UnifiedDialectTestBase
     public async Task Initialize()
     {
         Connection = CreateConnection();
-        
+
         if (Connection == null)
         {
             Assert.Inconclusive("Database connection is not available.");

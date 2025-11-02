@@ -19,7 +19,7 @@
 ```
 
 ```
-❌ Assert.IsTrue failed  
+❌ Assert.IsTrue failed
    at GetAll_OrderByUsername_ShouldBeSorted()
 
 🗑️ Deleted 2 rows from unified_dialect_users_ss
@@ -45,7 +45,7 @@ try {
 }
 ```
 
-**解决的问题**: 
+**解决的问题**:
 - ✅ 避免并发CREATE TABLE冲突
 - ✅ 表只创建一次
 
@@ -79,28 +79,28 @@ protected virtual async Task TruncateTableAsync()
 时间  测试A                              测试B                              测试C
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 T0   [Initialize开始]                  [Initialize开始]                  [Initialize开始]
-     
+
 T1   [获取锁]                          [等待锁]                          [等待锁]
      DELETE FROM table (0 rows)
      [释放锁]
-     
+
 T2   开始执行测试                       [获取锁]                          [等待锁]
-     INSERT INTO table (id=1)          DELETE FROM table (1 row) ❌      
+     INSERT INTO table (id=1)          DELETE FROM table (1 row) ❌
                                        [释放锁]
-     
+
 T3   INSERT INTO table (id=2)          开始执行测试                       [获取锁]
                                        INSERT INTO table (id=3)          DELETE FROM table (2 rows) ❌
                                                                          [释放锁]
-     
+
 T4   SELECT * FROM table               INSERT INTO table (id=4)          开始执行测试
      ❌ 预期2行，实际4行                                                   INSERT INTO table (id=5)
-     
-T5   测试失败！                         SELECT * FROM table               
+
+T5   测试失败！                         SELECT * FROM table
                                        ❌ 预期2行，实际3行
-                                       
+
 T6                                     测试失败！                         SELECT * FROM table
                                                                          ✅ 预期2行，实际2行
-                                                                         
+
 T7                                                                       测试成功！
 ```
 
@@ -282,7 +282,7 @@ Failed:     0, Passed:  1813, Skipped: 0, Total: 1813
 ### 1. 共享状态的危险性
 
 **问题**: 多个测试共享同一个数据库表
-**教训**: 
+**教训**:
 - 共享状态需要同步机制
 - 锁的粒度要覆盖整个临界区
 - 不要只保护初始化，要保护整个操作
@@ -373,9 +373,9 @@ Version 4: 锁 + DELETE FROM + DoNotParallelize (顺序执行) ← 当前
 **跨环境**: ⭐⭐⭐⭐⭐ (所有环境都可用)
 
 ---
-**修复日期**: 2025-11-02  
-**修复人**: AI Assistant  
-**测试环境**: Windows 10, .NET 9.0, MSTest  
-**CI环境**: GitHub Actions, Ubuntu 22.04, Docker  
+**修复日期**: 2025-11-02
+**修复人**: AI Assistant
+**测试环境**: Windows 10, .NET 9.0, MSTest
+**CI环境**: GitHub Actions, Ubuntu 22.04, Docker
 **预期结果**: ✅ 248/248测试通过 (100%)
 

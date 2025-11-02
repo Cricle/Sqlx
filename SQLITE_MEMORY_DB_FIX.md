@@ -90,17 +90,17 @@ try
 {
     var tableKey = $"{GetType().Name}_{TableName}";
     var dialect = GetDialectType();
-    
+
     // 特殊处理：SQLite内存数据库每次连接都是新的，必须重新创建表
-    var isSQLiteMemory = dialect == SqlDefineTypes.SQLite && 
+    var isSQLiteMemory = dialect == SqlDefineTypes.SQLite &&
                          Connection!.ConnectionString.Contains(":memory:", StringComparison.OrdinalIgnoreCase);
-    
+
     if (isSQLiteMemory || !CreatedTables.Contains(tableKey))
     {
         // SQLite内存数据库或第一次初始化：创建表
         Console.WriteLine($"🏗️  [{GetType().Name}] Creating table {TableName}...");
         await CreateTableAsync();
-        
+
         if (!isSQLiteMemory)
         {
             // 只有非内存数据库才记录已创建（避免误判）
@@ -126,7 +126,7 @@ finally
 
 #### 1. 检测SQLite内存数据库
 ```csharp
-var isSQLiteMemory = dialect == SqlDefineTypes.SQLite && 
+var isSQLiteMemory = dialect == SqlDefineTypes.SQLite &&
                      Connection.ConnectionString.Contains(":memory:", StringComparison.OrdinalIgnoreCase);
 ```
 
@@ -288,7 +288,7 @@ File.Delete("test.db-wal");
 
 **问题**: 将持久化数据库的优化策略（表复用）错误地应用到了临时性的内存数据库上。
 
-**解决**: 
+**解决**:
 1. ✅ 识别SQLite内存数据库的特殊性
 2. ✅ 每次为内存数据库创建新表
 3. ✅ 保持持久化数据库的TRUNCATE优化
@@ -298,7 +298,7 @@ File.Delete("test.db-wal");
 
 ---
 **修复日期**: 2025-11-02
-**修复人**: AI Assistant  
+**修复人**: AI Assistant
 **测试环境**: Windows 10, .NET 9.0, SQLite :memory:
 **测试结果**: ✅ 62/62通过
 

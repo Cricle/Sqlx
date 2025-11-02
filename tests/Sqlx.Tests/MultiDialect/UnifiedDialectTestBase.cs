@@ -264,6 +264,9 @@ public abstract class UnifiedDialectTestBase
         // 先删除表（如果存在），确保每次测试都是干净的环境
         await DropUnifiedTableAsync();
         
+        // 等待一小段时间确保删除操作完成
+        await Task.Delay(100);
+        
         var dialect = GetDialectType();
         string sql;
 
@@ -329,9 +332,18 @@ public abstract class UnifiedDialectTestBase
                 throw new NotSupportedException($"Dialect {dialect} is not supported");
         }
 
-        using var cmd = Connection!.CreateCommand();
-        cmd.CommandText = sql;
-        await cmd.ExecuteNonQueryAsync();
+        try
+        {
+            using var cmd = Connection!.CreateCommand();
+            cmd.CommandText = sql;
+            await cmd.ExecuteNonQueryAsync();
+        }
+        catch (Exception ex)
+        {
+            // 如果创建失败，记录错误并重新抛出
+            Console.WriteLine($"❌ Failed to create table {TableName}: {ex.Message}");
+            throw;
+        }
     }
 
     /// <summary>
@@ -339,9 +351,17 @@ public abstract class UnifiedDialectTestBase
     /// </summary>
     protected async Task DropUnifiedTableAsync()
     {
-        using var cmd = Connection!.CreateCommand();
-        cmd.CommandText = $"DROP TABLE IF EXISTS {TableName}";
-        await cmd.ExecuteNonQueryAsync();
+        try
+        {
+            using var cmd = Connection!.CreateCommand();
+            cmd.CommandText = $"DROP TABLE IF EXISTS {TableName}";
+            await cmd.ExecuteNonQueryAsync();
+        }
+        catch (Exception ex)
+        {
+            // 忽略删除表的错误（表可能不存在）
+            Console.WriteLine($"⚠️ Warning: Failed to drop table {TableName}: {ex.Message}");
+        }
     }
 
     // ==================== 统一的测试方法（写一次，全部数据库运行）====================

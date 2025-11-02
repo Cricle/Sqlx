@@ -2,8 +2,8 @@
 
 ## 🎉 项目里程碑达成
 
-**日期**: 2025-11-01  
-**状态**: Phase 2 核心工作完成 ✅  
+**日期**: 2025-11-01
+**状态**: Phase 2 核心工作完成 ✅
 **完成度**: 85%
 
 ---
@@ -29,7 +29,7 @@
 
 ### 1. 占位符系统 ✅
 
-**文件**: 
+**文件**:
 - `src/Sqlx.Generator/Core/DialectPlaceholders.cs`
 - `src/Sqlx.Generator/Core/*DialectProvider.cs` (4个方言)
 
@@ -44,7 +44,7 @@
 ```csharp
 var provider = new PostgreSqlDialectProvider();
 var sql = provider.ReplacePlaceholders(
-    "SELECT * FROM {{table}} WHERE active = {{bool_true}}", 
+    "SELECT * FROM {{table}} WHERE active = {{bool_true}}",
     tableName: "users");
 // Result: SELECT * FROM "users" WHERE active = true
 ```
@@ -94,7 +94,7 @@ foreach (var template in templates)
 
 **优先级系统**:
 1. `RepositoryFor.TableName` 属性（最高）
-2. `TableNameAttribute` 
+2. `TableNameAttribute`
 3. 从实体类型推断（最低）
 
 ---
@@ -115,8 +115,8 @@ public sealed class RepositoryForAttribute : System.Attribute
 
 **使用示例**:
 ```csharp
-[RepositoryFor(typeof(IUserRepositoryBase), 
-    Dialect = SqlDefineTypes.PostgreSql, 
+[RepositoryFor(typeof(IUserRepositoryBase),
+    Dialect = SqlDefineTypes.PostgreSql,
     TableName = "users")]
 public partial class PostgreSQLUserRepository : IUserRepositoryBase { }
 ```
@@ -426,8 +426,8 @@ Phase 2核心工作已经完成，所有组件都已就绪并经过充分验证�
 
 ---
 
-**报告生成时间**: 2025-11-01  
-**项目状态**: Phase 2 核心完成 ✅  
+**报告生成时间**: 2025-11-01
+**项目状态**: Phase 2 核心完成 ✅
 **建议下一步**: 根据用户反馈决定是否继续Phase 2.5集成
 
 ---

@@ -2200,9 +2200,10 @@ public class SqlTemplateEngine
     /// </summary>
     private static string GetBoolTrueLiteral(SqlDefine dialect)
     {
-        if (dialect == SqlDefine.PostgreSql)
+        // Use DatabaseType to distinguish between dialects with same configuration
+        if (dialect.DatabaseType == "PostgreSql")
             return "true";
-
+        
         return "1"; // MySQL, SQL Server, SQLite, Oracle all use 1
     }
 
@@ -2211,9 +2212,10 @@ public class SqlTemplateEngine
     /// </summary>
     private static string GetBoolFalseLiteral(SqlDefine dialect)
     {
-        if (dialect == SqlDefine.PostgreSql)
+        // Use DatabaseType to distinguish between dialects with same configuration
+        if (dialect.DatabaseType == "PostgreSql")
             return "false";
-
+        
         return "0"; // MySQL, SQL Server, SQLite, Oracle all use 0
     }
 
@@ -2222,11 +2224,14 @@ public class SqlTemplateEngine
     /// </summary>
     private static string GetCurrentTimestampSyntax(SqlDefine dialect)
     {
-        if (dialect == SqlDefine.SqlServer)
+        // Use DatabaseType to distinguish between SQLite and SQL Server (same config)
+        var dbType = dialect.DatabaseType;
+        
+        if (dbType == "SqlServer")
             return "GETDATE()";
-        if (dialect == SqlDefine.Oracle)
+        if (dbType == "Oracle")
             return "SYSTIMESTAMP";
-
+        
         return "CURRENT_TIMESTAMP"; // PostgreSQL, MySQL, SQLite
     }
 

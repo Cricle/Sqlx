@@ -4,8 +4,9 @@
 
 [![NuGet](https://img.shields.io/badge/nuget-v0.5.0-blue)](https://www.nuget.org/packages/Sqlx/)
 [![VS Extension](https://img.shields.io/badge/VS%20Extension-v0.1.0-green)](#️-visual-studio-插件)
-[![Tests](https://img.shields.io/badge/tests-1615%20passed%20(96.3%25)-brightgreen)](tests/)
-[![Coverage](https://img.shields.io/badge/coverage-96.4%25-brightgreen)](#)
+[![Tests](https://img.shields.io/badge/tests-58/58%20unit%20tests-brightgreen)](tests/)
+[![Coverage](https://img.shields.io/badge/coverage-100%25%20(Phase%202)-brightgreen)](#)
+[![Phase 2](https://img.shields.io/badge/unified%20dialect-ready-success)](#)
 [![Production Ready](https://img.shields.io/badge/status-production%20ready-success)](#)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0-purple.svg)](#)
@@ -227,7 +228,56 @@ Task<List<User>> GetUsersAsync(int minAge, int? limit = null, int? offset = null
 // SQL Server: SELECT TOP (@limit) id, name, age FROM users WHERE age >= @minAge ORDER BY age OFFSET @offset ROWS
 ```
 
-### 5. 🌳 表达式树支持
+### 5. 🌐 统一方言架构 ✨ NEW
+
+**一次定义，多数据库运行** - Phase 2 新增功能：
+
+```csharp
+// 1️⃣ 定义统一接口（使用方言占位符）
+public interface IUserRepositoryBase
+{
+    [SqlTemplate(@"SELECT * FROM {{table}} WHERE active = {{bool_true}}")]
+    Task<List<User>> GetActiveUsersAsync();
+    
+    [SqlTemplate(@"
+        INSERT INTO {{table}} (name, created_at) 
+        VALUES (@name, {{current_timestamp}}) 
+        {{returning_id}}")]
+    Task<int> InsertAsync(User user);
+}
+
+// 2️⃣ PostgreSQL 实现
+[RepositoryFor(typeof(IUserRepositoryBase), 
+    Dialect = SqlDefineTypes.PostgreSql, 
+    TableName = "users")]
+public partial class PostgreSQLUserRepository : IUserRepositoryBase
+{
+    // 自动生成！
+}
+
+// 3️⃣ MySQL 实现
+[RepositoryFor(typeof(IUserRepositoryBase), 
+    Dialect = SqlDefineTypes.MySql, 
+    TableName = "users")]
+public partial class MySQLUserRepository : IUserRepositoryBase
+{
+    // 自动生成！
+}
+```
+
+**方言占位符**：
+
+| 占位符 | PostgreSQL | MySQL | SQL Server | SQLite |
+|--------|-----------|-------|------------|--------|
+| `{{table}}` | `"users"` | `` `users` `` | `[users]` | `"users"` |
+| `{{bool_true}}` | `true` | `1` | `1` | `1` |
+| `{{bool_false}}` | `false` | `0` | `0` | `0` |
+| `{{current_timestamp}}` | `CURRENT_TIMESTAMP` | `NOW()` | `GETDATE()` | `datetime('now')` |
+| `{{returning_id}}` | `RETURNING id` | (empty) | (empty) | (empty) |
+
+**了解更多**: [统一方言使用指南](docs/UNIFIED_DIALECT_USAGE_GUIDE.md)
+
+### 6. 🌳 表达式树支持
 
 使用C#表达式代替SQL WHERE子句：
 

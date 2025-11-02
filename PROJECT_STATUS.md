@@ -1,7 +1,7 @@
 # Sqlx 项目状态
 
-**最后更新**: 2025-11-01  
-**当前版本**: v0.4.0 + Phase 2 完成  
+**最后更新**: 2025-11-01
+**当前版本**: v0.4.0 + Phase 2 完成
 **项目状态**: ✅ 生产就绪
 
 ---
@@ -36,11 +36,11 @@ public interface IUserRepositoryBase
 }
 
 // 多个方言实现
-[RepositoryFor(typeof(IUserRepositoryBase), 
+[RepositoryFor(typeof(IUserRepositoryBase),
     Dialect = SqlDefineTypes.PostgreSql, TableName = "users")]
 public partial class PostgreSQLUserRepository : IUserRepositoryBase { }
 
-[RepositoryFor(typeof(IUserRepositoryBase), 
+[RepositoryFor(typeof(IUserRepositoryBase),
     Dialect = SqlDefineTypes.MySql, TableName = "users")]
 public partial class MySQLUserRepository : IUserRepositoryBase { }
 ```
@@ -184,37 +184,37 @@ dotnet run
 public interface IUserRepositoryBase
 {
     [SqlTemplate(@"
-        SELECT * FROM {{table}} 
-        WHERE active = {{bool_true}} 
+        SELECT * FROM {{table}}
+        WHERE active = {{bool_true}}
         ORDER BY name")]
     Task<List<User>> GetActiveUsersAsync();
 
     [SqlTemplate(@"
-        INSERT INTO {{table}} (name, created_at) 
-        VALUES (@name, {{current_timestamp}}) 
+        INSERT INTO {{table}} (name, created_at)
+        VALUES (@name, {{current_timestamp}})
         {{returning_id}}")]
     Task<int> InsertAsync(User user);
 }
 
 // 2. PostgreSQL实现
-[RepositoryFor(typeof(IUserRepositoryBase), 
-    Dialect = SqlDefineTypes.PostgreSql, 
+[RepositoryFor(typeof(IUserRepositoryBase),
+    Dialect = SqlDefineTypes.PostgreSql,
     TableName = "users")]
 public partial class PostgreSQLUserRepository : IUserRepositoryBase
 {
     private readonly DbConnection _connection;
-    public PostgreSQLUserRepository(DbConnection connection) 
+    public PostgreSQLUserRepository(DbConnection connection)
         => _connection = connection;
 }
 
 // 3. MySQL实现
-[RepositoryFor(typeof(IUserRepositoryBase), 
-    Dialect = SqlDefineTypes.MySql, 
+[RepositoryFor(typeof(IUserRepositoryBase),
+    Dialect = SqlDefineTypes.MySql,
     TableName = "users")]
 public partial class MySQLUserRepository : IUserRepositoryBase
 {
     private readonly DbConnection _connection;
-    public MySQLUserRepository(DbConnection connection) 
+    public MySQLUserRepository(DbConnection connection)
         => _connection = connection;
 }
 ```
@@ -273,5 +273,5 @@ Phase 2核心工作已完成，统一方言架构基础设施已就绪！
 
 ---
 
-**项目状态**: ✅ 生产就绪  
+**项目状态**: ✅ 生产就绪
 **最后更新**: 2025-11-01

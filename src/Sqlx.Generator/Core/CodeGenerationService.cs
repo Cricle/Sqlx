@@ -21,7 +21,7 @@ public class CodeGenerationService
 {
     private static readonly SqlTemplateEngine TemplateEngine = new();
     private static readonly Core.TemplateInheritanceResolver TemplateResolver = new();
-    
+
     /// <inheritdoc/>
     public void GenerateRepositoryMethod(RepositoryMethodContext context)
     {
@@ -44,19 +44,19 @@ public class CodeGenerationService
                 var dialect = Core.DialectHelper.GetDialectFromRepositoryFor(context.ClassSymbol);
                 var tableName = Core.DialectHelper.GetTableNameFromRepositoryFor(context.ClassSymbol, entityType) ?? context.TableName;
                 var dialectProvider = Core.DialectHelper.GetDialectProvider(dialect);
-                
+
                 // Try to resolve inherited templates for this interface
                 var inheritedTemplates = TemplateResolver.ResolveInheritedTemplates(
-                    containingType, 
+                    containingType,
                     dialectProvider,
                     tableName,
                     entityType);
-                
+
                 // Find matching template for this method
-                var matchingTemplate = inheritedTemplates.FirstOrDefault(t => 
-                    t.Method.Name == method.Name && 
+                var matchingTemplate = inheritedTemplates.FirstOrDefault(t =>
+                    t.Method.Name == method.Name &&
                     t.Method.Parameters.Length == method.Parameters.Length);
-                
+
                 if (matchingTemplate != null)
                 {
                     sqlTemplate = matchingTemplate.ProcessedSql;
@@ -465,19 +465,19 @@ public class CodeGenerationService
                 var dialect = Core.DialectHelper.GetDialectFromRepositoryFor(repositoryClass);
                 var tblName = Core.DialectHelper.GetTableNameFromRepositoryFor(repositoryClass, entityType) ?? tableName;
                 var dialectProvider = Core.DialectHelper.GetDialectProvider(dialect);
-                
+
                 // Try to resolve inherited templates for this interface
                 var inheritedTemplates = TemplateResolver.ResolveInheritedTemplates(
-                    containingType, 
+                    containingType,
                     dialectProvider,
                     tblName,
                     entityType);
-                
+
                 // Find matching template for this method
-                var matchingTemplate = inheritedTemplates.FirstOrDefault(t => 
-                    t.Method.Name == method.Name && 
+                var matchingTemplate = inheritedTemplates.FirstOrDefault(t =>
+                    t.Method.Name == method.Name &&
                     t.Method.Parameters.Length == method.Parameters.Length);
-                
+
                 if (matchingTemplate != null)
                 {
                     sql = matchingTemplate.ProcessedSql;

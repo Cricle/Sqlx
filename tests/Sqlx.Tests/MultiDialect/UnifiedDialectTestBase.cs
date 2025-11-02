@@ -373,12 +373,36 @@ public abstract class UnifiedDialectTestBase
 
             using var cmd = Connection!.CreateCommand();
             cmd.CommandText = sql;
+            Console.WriteLine($"🗑️  Attempting to drop table {TableName}...");
             await cmd.ExecuteNonQueryAsync();
+            Console.WriteLine($"✅ Successfully dropped table {TableName}");
         }
         catch (Exception ex)
         {
             // 忽略删除表的错误（表可能不存在）
-            Console.WriteLine($"⚠️ Warning: Failed to drop table {TableName}: {ex.Message}");
+            Console.WriteLine($"⚠️ Warning: Failed to drop table {TableName}: {ex.GetType().Name}: {ex.Message}");
+            
+            // 如果删除失败，尝试TRUNCATE作为备选（清空表）
+            try
+            {
+                using var truncateCmd = Connection!.CreateCommand();
+                var dialect = GetDialectType();
+                if (dialect == SqlDefineTypes.SqlServer)
+                {
+                    truncateCmd.CommandText = $"TRUNCATE TABLE {TableName}";
+                }
+                else
+                {
+                    truncateCmd.CommandText = $"TRUNCATE TABLE {TableName}";
+                }
+                Console.WriteLine($"🔄 Attempting to truncate table {TableName} instead...");
+                await truncateCmd.ExecuteNonQueryAsync();
+                Console.WriteLine($"✅ Successfully truncated table {TableName}");
+            }
+            catch (Exception truncateEx)
+            {
+                Console.WriteLine($"⚠️ Warning: Failed to truncate table {TableName}: {truncateEx.GetType().Name}: {truncateEx.Message}");
+            }
         }
     }
 

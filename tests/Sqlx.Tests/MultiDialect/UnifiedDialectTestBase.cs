@@ -213,6 +213,10 @@ public abstract class UnifiedDialectTestBase
     protected abstract DbConnection? CreateConnection();
     protected abstract IUnifiedDialectUserRepository CreateRepository(DbConnection connection);
 
+    // 类级别的锁，用于保护表的创建/删除操作，避免并发冲突
+    private static readonly SemaphoreSlim TableCreationLock = new(1, 1);
+    private static readonly HashSet<string> CreatedTables = new();
+
     [TestInitialize]
     public async Task Initialize()
     {
@@ -233,8 +237,31 @@ public abstract class UnifiedDialectTestBase
 
         Repository = CreateRepository(Connection);
 
-        // 创建表
-        await CreateTableAsync();
+        // 使用锁保护表的创建，确保同一时间只有一个线程在创建表
+        await TableCreationLock.WaitAsync();
+        try
+        {
+            var tableKey = $"{GetType().Name}_{TableName}";
+            if (!CreatedTables.Contains(tableKey))
+            {
+                // 第一次初始化：创建表
+                Console.WriteLine($"🏗️  [{GetType().Name}] Creating table {TableName} for the first time...");
+                await CreateTableAsync();
+                CreatedTables.Add(tableKey);
+                Console.WriteLine($"✅ [{GetType().Name}] Table {TableName} created successfully");
+            }
+            else
+            {
+                // 后续初始化：清空表数据
+                Console.WriteLine($"🔄 [{GetType().Name}] Truncating table {TableName}...");
+                await TruncateTableAsync();
+                Console.WriteLine($"✅ [{GetType().Name}] Table {TableName} truncated successfully");
+            }
+        }
+        finally
+        {
+            TableCreationLock.Release();
+        }
     }
 
     [TestCleanup]
@@ -242,13 +269,62 @@ public abstract class UnifiedDialectTestBase
     {
         if (Connection != null)
         {
-            await DropTableAsync();
             await Connection.DisposeAsync();
         }
     }
 
     protected abstract Task CreateTableAsync();
     protected abstract Task DropTableAsync();
+
+    /// <summary>
+    /// 清空表数据（TRUNCATE TABLE）
+    /// 这比DROP+CREATE快得多，而且避免了并发冲突
+    /// </summary>
+    protected virtual async Task TruncateTableAsync()
+    {
+        try
+        {
+            var dialect = GetDialectType();
+            string sql;
+
+            switch (dialect)
+            {
+                case SqlDefineTypes.SqlServer:
+                    // SQL Server: TRUNCATE TABLE
+                    sql = $"TRUNCATE TABLE {TableName}";
+                    break;
+
+                case SqlDefineTypes.SQLite:
+                    // SQLite: DELETE FROM (SQLite不支持TRUNCATE)
+                    sql = $"DELETE FROM {TableName}";
+                    break;
+
+                default:
+                    // PostgreSQL, MySQL: TRUNCATE TABLE
+                    sql = $"TRUNCATE TABLE {TableName}";
+                    break;
+            }
+
+            using var cmd = Connection!.CreateCommand();
+            cmd.CommandText = sql;
+            await cmd.ExecuteNonQueryAsync();
+        }
+        catch (Exception ex)
+        {
+            // 如果TRUNCATE失败，回退到DELETE
+            Console.WriteLine($"⚠️ Warning: TRUNCATE failed: {ex.Message}, falling back to DELETE");
+            try
+            {
+                using var deleteCmd = Connection!.CreateCommand();
+                deleteCmd.CommandText = $"DELETE FROM {TableName}";
+                await deleteCmd.ExecuteNonQueryAsync();
+            }
+            catch (Exception deleteEx)
+            {
+                Console.WriteLine($"⚠️ Warning: DELETE also failed: {deleteEx.Message}");
+            }
+        }
+    }
 
     /// <summary>
     /// 获取当前数据库方言类型
@@ -381,7 +457,7 @@ public abstract class UnifiedDialectTestBase
         {
             // 忽略删除表的错误（表可能不存在）
             Console.WriteLine($"⚠️ Warning: Failed to drop table {TableName}: {ex.GetType().Name}: {ex.Message}");
-            
+
             // 如果删除失败，尝试TRUNCATE作为备选（清空表）
             try
             {

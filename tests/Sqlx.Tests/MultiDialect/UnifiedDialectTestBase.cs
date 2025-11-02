@@ -230,7 +230,7 @@ public abstract class UnifiedDialectTestBase
         {
             await Connection.OpenAsync();
         }
-        
+
         Repository = CreateRepository(Connection);
 
         // 创建表
@@ -261,6 +261,9 @@ public abstract class UnifiedDialectTestBase
     /// </summary>
     protected async Task CreateUnifiedTableAsync()
     {
+        // 先删除表（如果存在），确保每次测试都是干净的环境
+        await DropUnifiedTableAsync();
+        
         var dialect = GetDialectType();
         string sql;
 

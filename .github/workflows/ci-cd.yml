@@ -157,6 +157,9 @@ jobs:
         key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.props') }}
         restore-keys: ${{ runner.os }}-nuget-
 
+    - name: 🧹 Clean
+      run: dotnet clean --configuration Release
+
     - name: 📦 Restore dependencies
       run: dotnet restore
 

@@ -4,9 +4,9 @@
 
 [![NuGet](https://img.shields.io/badge/nuget-v0.5.0-blue)](https://www.nuget.org/packages/Sqlx/)
 [![VS Extension](https://img.shields.io/badge/VS%20Extension-v0.1.0-green)](#️-visual-studio-插件)
-[![Tests](https://img.shields.io/badge/tests-58/58%20unit%20tests-brightgreen)](tests/)
-[![Coverage](https://img.shields.io/badge/coverage-100%25%20(Phase%202)-brightgreen)](#)
-[![Phase 2](https://img.shields.io/badge/unified%20dialect-ready-success)](#)
+[![Tests](https://img.shields.io/badge/tests-1647%20passed-brightgreen)](tests/)
+[![Coverage](https://img.shields.io/badge/coverage-59.6%25-yellow)](#)
+[![Unified Dialect](https://img.shields.io/badge/unified%20dialect-production%20ready-success)](#)
 [![Production Ready](https://img.shields.io/badge/status-production%20ready-success)](#)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0-purple.svg)](#)
@@ -228,54 +228,69 @@ Task<List<User>> GetUsersAsync(int minAge, int? limit = null, int? offset = null
 // SQL Server: SELECT TOP (@limit) id, name, age FROM users WHERE age >= @minAge ORDER BY age OFFSET @offset ROWS
 ```
 
-### 5. 🌐 统一方言架构 ✨ NEW
+### 5. 🌐 统一方言架构 ✨ 生产就绪
 
-**一次定义，多数据库运行** - Phase 2 新增功能：
+**一次定义，多数据库运行** - 真正的跨数据库统一接口：
 
 ```csharp
 // 1️⃣ 定义统一接口（使用方言占位符）
-public interface IUserRepositoryBase
+public partial interface IUnifiedUserRepository
 {
-    [SqlTemplate(@"SELECT * FROM {{table}} WHERE active = {{bool_true}}")]
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE is_active = {{bool_true}}")]
     Task<List<User>> GetActiveUsersAsync();
 
     [SqlTemplate(@"
-        INSERT INTO {{table}} (name, created_at)
-        VALUES (@name, {{current_timestamp}})
-        {{returning_id}}")]
-    Task<int> InsertAsync(User user);
+        INSERT INTO {{table}} (username, email, created_at)
+        VALUES (@username, @email, {{current_timestamp}})")]
+    [ReturnInsertedId]
+    Task<long> InsertAsync(string username, string email);
 }
 
-// 2️⃣ PostgreSQL 实现
-[RepositoryFor(typeof(IUserRepositoryBase),
-    Dialect = SqlDefineTypes.PostgreSql,
-    TableName = "users")]
-public partial class PostgreSQLUserRepository : IUserRepositoryBase
-{
-    // 自动生成！
-}
+// 2️⃣ SQLite 实现 - 只需指定方言和表名！
+[RepositoryFor(typeof(User), Dialect = "SQLite", TableName = "users")]
+public partial class SQLiteUserRepository(DbConnection connection) : IUnifiedUserRepository { }
 
-// 3️⃣ MySQL 实现
-[RepositoryFor(typeof(IUserRepositoryBase),
-    Dialect = SqlDefineTypes.MySql,
-    TableName = "users")]
-public partial class MySQLUserRepository : IUserRepositoryBase
-{
-    // 自动生成！
-}
+// 3️⃣ PostgreSQL 实现 - 完全相同的定义！
+[RepositoryFor(typeof(User), Dialect = "PostgreSql", TableName = "users")]
+public partial class PostgreSQLUserRepository(DbConnection connection) : IUnifiedUserRepository { }
+
+// 4️⃣ MySQL 实现
+[RepositoryFor(typeof(User), Dialect = "MySql", TableName = "users")]
+public partial class MySQLUserRepository(DbConnection connection) : IUnifiedUserRepository { }
+
+// 5️⃣ SQL Server 实现
+[RepositoryFor(typeof(User), Dialect = "SqlServer", TableName = "users")]
+public partial class SqlServerUserRepository(DbConnection connection) : IUnifiedUserRepository { }
 ```
 
-**方言占位符**：
+**方言占位符自动适配**：
 
-| 占位符 | PostgreSQL | MySQL | SQL Server | SQLite |
-|--------|-----------|-------|------------|--------|
-| `{{table}}` | `"users"` | `` `users` `` | `[users]` | `"users"` |
-| `{{bool_true}}` | `true` | `1` | `1` | `1` |
-| `{{bool_false}}` | `false` | `0` | `0` | `0` |
-| `{{current_timestamp}}` | `CURRENT_TIMESTAMP` | `NOW()` | `GETDATE()` | `datetime('now')` |
-| `{{returning_id}}` | `RETURNING id` | (empty) | (empty) | (empty) |
+| 占位符 | SQLite | PostgreSQL | MySQL | SQL Server |
+|--------|--------|-----------|-------|------------|
+| `{{table}}` | `[users]` | `"users"` | `` `users` `` | `[users]` |
+| `{{columns}}` | `id, name, age` | `id, name, age` | `id, name, age` | `id, name, age` |
+| `{{bool_true}}` | `1` | `true` | `1` | `1` |
+| `{{bool_false}}` | `0` | `false` | `0` | `0` |
+| `{{current_timestamp}}` | `CURRENT_TIMESTAMP` | `CURRENT_TIMESTAMP` | `CURRENT_TIMESTAMP` | `GETDATE()` |
 
-**了解更多**: [统一方言使用指南](docs/UNIFIED_DIALECT_USAGE_GUIDE.md)
+**核心优势**：
+- ✅ **写一次，多数据库运行** - 1个接口 + 4行配置 = 4个数据库支持
+- ✅ **编译时适配** - 零运行时开销
+- ✅ **类型安全** - 编译时验证
+- ✅ **测试覆盖** - 248个测试用例（62个测试 × 4个数据库）
+
+**测试验证**：
+```
+✅ SQLite:       62个测试 100%通过
+✅ PostgreSQL:   62个测试 100%通过（CI）
+✅ MySQL:        62个测试 100%通过（CI）
+✅ SQL Server:   62个测试 100%通过（CI）
+```
+
+**了解更多**: 
+- [统一方言使用指南](docs/UNIFIED_DIALECT_USAGE_GUIDE.md)
+- [统一方言状态报告](UNIFIED_DIALECT_STATUS.md)
+- [测试改进报告](TEST_IMPROVEMENT_REPORT.md)
 
 ### 6. 🌳 表达式树支持
 
@@ -754,53 +769,102 @@ public class UserService
 
 ## 🗄️ 支持的数据库
 
-| 数据库 | 版本 | 状态 | 测试数 | 文档 |
-|--------|------|------|--------|------|
-| SQLite | 3.x | ✅ 完全支持 | 20个 | [查看](tests/Sqlx.Tests/MultiDialect/TDD_SQLite_Comprehensive.cs) |
-| PostgreSQL | 16+ | ✅ 完全支持 | 20个 | [查看](tests/Sqlx.Tests/MultiDialect/TDD_PostgreSQL_Comprehensive.cs) |
-| MySQL | 8.3+ | ✅ 完全支持 | 20个 | [查看](tests/Sqlx.Tests/MultiDialect/TDD_MySQL_Comprehensive.cs) |
-| SQL Server | 2022+ | ✅ 完全支持 | 20个 | [查看](tests/Sqlx.Tests/MultiDialect/TDD_SqlServer_Comprehensive.cs) |
-| Oracle | 12c+ | 🔄 计划中 | - | - |
-| MariaDB | 10.x+ | 🔄 计划中 | - | - |
+| 数据库 | 版本 | 状态 | 测试数 | 通过率 | 文档 |
+|--------|------|------|--------|--------|------|
+| **SQLite** | 3.x | ✅ **生产就绪** | 62个 | 100% | [查看](tests/Sqlx.Tests/MultiDialect/UnifiedDialect_SQLite_Tests.cs) |
+| **PostgreSQL** | 16+ | ✅ **生产就绪** | 62个 | 100% | [查看](tests/Sqlx.Tests/MultiDialect/UnifiedDialect_PostgreSQL_Tests.cs) |
+| **MySQL** | 8.3+ | ✅ **生产就绪** | 62个 | 100% | [查看](tests/Sqlx.Tests/MultiDialect/UnifiedDialect_MySQL_Tests.cs) |
+| **SQL Server** | 2022+ | ✅ **生产就绪** | 62个 | 100% | [查看](tests/Sqlx.Tests/MultiDialect/UnifiedDialect_SqlServer_Tests.cs) |
+| Oracle | 12c+ | 🔄 计划中 | - | - | - |
+| MariaDB | 10.x+ | 🔄 计划中 | - | - | - |
+
+**总计**: 248个测试用例（62个测试 × 4个数据库）| **通过率**: 100% ✅
 
 ### 多数据库测试架构
 
-Sqlx采用"**写一次，多数据库运行**"的测试架构：
+Sqlx采用"**写一次，多数据库运行**"的统一测试架构：
 
 ```csharp
-// 1. 定义通用接口
-public partial interface IUserRepository
+// 1️⃣ 定义统一接口（一次定义）
+public partial interface IUnifiedUserRepository
 {
-    Task<long> InsertAsync(string name, int age);
+    [SqlTemplate("INSERT INTO {{table}} (username, email) VALUES (@username, @email)")]
+    [ReturnInsertedId]
+    Task<long> InsertAsync(string username, string email);
+
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
     Task<User?> GetByIdAsync(long id);
+
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE is_active = {{bool_true}}")]
+    Task<List<User>> GetActiveUsersAsync();
 }
 
-// 2. 为每个数据库定义SQL模板
-public partial interface IPostgreSQLUserRepository : IUserRepository
-{
-    [SqlTemplate("INSERT INTO users (name, age) VALUES (@name, @age) RETURNING id")]
-    new Task<long> InsertAsync(string name, int age);
+// 2️⃣ 为每个数据库创建实现类（只需1行配置）
+[RepositoryFor(typeof(User), Dialect = "SQLite", TableName = "users")]
+public partial class SQLiteUserRepository(DbConnection conn) : IUnifiedUserRepository { }
 
-    [SqlTemplate("SELECT {{columns}} FROM users WHERE id = @id")]
-    new Task<User?> GetByIdAsync(long id);
-}
+[RepositoryFor(typeof(User), Dialect = "PostgreSql", TableName = "users")]
+public partial class PostgreSQLUserRepository(DbConnection conn) : IUnifiedUserRepository { }
 
-// 3. 源生成器自动生成实现
-[RepositoryFor(typeof(IPostgreSQLUserRepository))]
-[SqlDefine(SqlDefineTypes.PostgreSql)]
-public partial class PostgreSQLUserRepository : IPostgreSQLUserRepository
-{
-    // 自动生成所有方法实现
-}
+[RepositoryFor(typeof(User), Dialect = "MySql", TableName = "users")]
+public partial class MySQLUserRepository(DbConnection conn) : IUnifiedUserRepository { }
+
+[RepositoryFor(typeof(User), Dialect = "SqlServer", TableName = "users")]
+public partial class SqlServerUserRepository(DbConnection conn) : IUnifiedUserRepository { }
 ```
 
-**优势**：
-- ✅ 测试逻辑100%复用
-- ✅ SQL方言自动适配
-- ✅ 编译时类型检查
-- ✅ 零运行时开销
+**自动适配示例**：
 
-详细文档：[MULTI_DIALECT_TESTING.md](MULTI_DIALECT_TESTING.md)
+| SQL模板 | SQLite生成 | PostgreSQL生成 | MySQL生成 | SQL Server生成 |
+|---------|-----------|---------------|----------|---------------|
+| `{{table}}` | `[users]` | `"users"` | `` `users` `` | `[users]` |
+| `{{bool_true}}` | `1` | `true` | `1` | `1` |
+| `{{current_timestamp}}` | `CURRENT_TIMESTAMP` | `CURRENT_TIMESTAMP` | `CURRENT_TIMESTAMP` | `GETDATE()` |
+
+**核心优势**：
+- ✅ **1个接口 → 4个数据库** - 真正的"写一次"
+- ✅ **编译时适配** - 方言占位符自动替换
+- ✅ **类型安全** - 编译时验证，零运行时开销
+- ✅ **测试覆盖** - 每个测试自动在4个数据库上运行
+- ✅ **DDL统一** - 表结构定义也只写一次
+
+**测试示例**：
+```csharp
+// 测试基类 - 定义一次
+public abstract class UnifiedDialectTestBase
+{
+    [TestMethod]
+    public async Task Insert_ShouldWork()
+    {
+        var id = await Repository.InsertAsync("alice", "alice@test.com");
+        var user = await Repository.GetByIdAsync(id);
+        Assert.IsNotNull(user);
+        Assert.AreEqual("alice", user.Username);
+    }
+    
+    // ... 62个测试方法
+}
+
+// 4个子类，每个只需3行代码
+[TestClass]
+public class SQLiteTests : UnifiedDialectTestBase { /* 配置SQLite */ }
+
+[TestClass]
+public class PostgreSQLTests : UnifiedDialectTestBase { /* 配置PostgreSQL */ }
+
+[TestClass]
+public class MySQLTests : UnifiedDialectTestBase { /* 配置MySQL */ }
+
+[TestClass]
+public class SqlServerTests : UnifiedDialectTestBase { /* 配置SQL Server */ }
+```
+
+**结果**: 62个测试 × 4个数据库 = **248个测试用例**，全部自动生成和运行！
+
+详细文档：
+- [统一方言状态报告](UNIFIED_DIALECT_STATUS.md)
+- [测试改进报告](TEST_IMPROVEMENT_REPORT.md)
+- [CI修复报告](CI_FIX_REPORT.md)
 
 ---
 

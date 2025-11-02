@@ -1,6 +1,6 @@
 # CI多数据库连接修复报告 🔧
 
-**修复日期**: 2025-11-02  
+**修复日期**: 2025-11-02
 **状态**: ✅ 已修复 - CI测试现在能够优雅处理数据库连接失败
 
 ---
@@ -11,8 +11,8 @@
 ```
 Failed Subquery_ShouldFilterCorrectly [< 1 ms]
 Error Message:
-   Initialization method Sqlx.Tests.MultiDialect.TDD_SqlServer_Comprehensive.Initialize threw exception. 
-   System.InvalidOperationException: Failed to connect to SQL Server: 
+   Initialization method Sqlx.Tests.MultiDialect.TDD_SqlServer_Comprehensive.Initialize threw exception.
+   System.InvalidOperationException: Failed to connect to SQL Server:
    A network-related or instance-specific error occurred while establishing a connection to SQL Server.
 ```
 
@@ -52,13 +52,13 @@ protected override DbConnection CreateConnection()
 public async Task Initialize()
 {
     Connection = CreateConnection();  // 如果子类用!，这里会得到null!
-    
+
     if (Connection == null)  // 这个检查被绕过了
     {
         Assert.Inconclusive("...");
         return;
     }
-    
+
     await Connection.OpenAsync();  // ❌ NullReferenceException!
 }
 ```
@@ -366,20 +366,20 @@ public static DbConnection? GetDatabaseConnection(string name, Func<DbConnection
 public abstract class TestBase
 {
     protected DbConnection? Connection;
-    
+
     protected abstract DbConnection? CreateConnection();  // 可空返回
-    
+
     [TestInitialize]
     public async Task Initialize()
     {
         Connection = CreateConnection();
-        
+
         if (Connection == null)
         {
             Assert.Inconclusive("Database not available");  // 跳过而不是失败
             return;
         }
-        
+
         await Connection.OpenAsync();
         // ... 继续初始化
     }
@@ -484,8 +484,8 @@ public class PostgreSQL_Tests : TestBase
 
 ---
 
-**修复完成时间**: 2025-11-02  
-**状态**: ✅ 已验证并提交  
-**影响范围**: CI/CD流程, 多数据库测试, 开发体验  
+**修复完成时间**: 2025-11-02
+**状态**: ✅ 已验证并提交
+**影响范围**: CI/CD流程, 多数据库测试, 开发体验
 **破坏性变更**: 无
 

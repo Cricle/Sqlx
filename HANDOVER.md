@@ -1,7 +1,7 @@
 # 🎯 Sqlx Phase 2 统一方言架构 - 项目交接文档
 
-**交接日期**: 2025-11-01  
-**项目状态**: ✅ 已完成并交付  
+**交接日期**: 2025-11-01
+**项目状态**: ✅ 已完成并交付
 **完成度**: 95%
 
 ---
@@ -73,8 +73,8 @@ Sqlx/
 ## 🎯 核心组件说明
 
 ### 1. DialectPlaceholders.cs
-**位置**: `src/Sqlx.Generator/Core/DialectPlaceholders.cs`  
-**作用**: 定义10个方言占位符常量  
+**位置**: `src/Sqlx.Generator/Core/DialectPlaceholders.cs`
+**作用**: 定义10个方言占位符常量
 **测试**: `DialectPlaceholderTests.cs` (21个测试)
 
 **关键占位符**:
@@ -87,8 +87,8 @@ Sqlx/
 - `{{concat}}` - 字符串连接
 
 ### 2. TemplateInheritanceResolver.cs
-**位置**: `src/Sqlx.Generator/Core/TemplateInheritanceResolver.cs`  
-**作用**: 递归解析接口继承的SQL模板并替换占位符  
+**位置**: `src/Sqlx.Generator/Core/TemplateInheritanceResolver.cs`
+**作用**: 递归解析接口继承的SQL模板并替换占位符
 **测试**: `TemplateInheritanceResolverTests.cs` (6个测试)
 
 **关键方法**:
@@ -106,8 +106,8 @@ public List<MethodTemplate> ResolveInheritedTemplates(
 - 冲突处理（最派生接口优先）
 
 ### 3. DialectHelper.cs
-**位置**: `src/Sqlx.Generator/Core/DialectHelper.cs`  
-**作用**: 从`RepositoryFor`属性提取方言和表名信息  
+**位置**: `src/Sqlx.Generator/Core/DialectHelper.cs`
+**作用**: 从`RepositoryFor`属性提取方言和表名信息
 **测试**: `DialectHelperTests.cs` (11个测试)
 
 **关键方法**:
@@ -118,7 +118,7 @@ public static IDatabaseDialectProvider GetDialectProvider(SqlDefineTypes dialect
 ```
 
 ### 4. CodeGenerationService集成
-**位置**: `src/Sqlx.Generator/Core/CodeGenerationService.cs`  
+**位置**: `src/Sqlx.Generator/Core/CodeGenerationService.cs`
 **修改**: 在`GenerateRepositoryMethod`和`GenerateRepositoryImplementationFromInterface`中集成模板继承
 
 **工作流程**:
@@ -139,33 +139,33 @@ public interface IUserRepositoryBase
 {
     [SqlTemplate(@"SELECT * FROM {{table}} WHERE active = {{bool_true}}")]
     Task<List<User>> GetActiveUsersAsync();
-    
+
     [SqlTemplate(@"
-        INSERT INTO {{table}} (name, created_at) 
-        VALUES (@name, {{current_timestamp}}) 
+        INSERT INTO {{table}} (name, created_at)
+        VALUES (@name, {{current_timestamp}})
         {{returning_id}}")]
     Task<int> InsertAsync(string name);
 }
 
 // 2️⃣ PostgreSQL实现
-[RepositoryFor(typeof(IUserRepositoryBase), 
-    Dialect = SqlDefineTypes.PostgreSql, 
+[RepositoryFor(typeof(IUserRepositoryBase),
+    Dialect = SqlDefineTypes.PostgreSql,
     TableName = "users")]
 public partial class PostgreSQLUserRepository : IUserRepositoryBase
 {
     private readonly DbConnection _connection;
-    public PostgreSQLUserRepository(DbConnection connection) 
+    public PostgreSQLUserRepository(DbConnection connection)
         => _connection = connection;
 }
 
 // 3️⃣ MySQL实现
-[RepositoryFor(typeof(IUserRepositoryBase), 
-    Dialect = SqlDefineTypes.MySql, 
+[RepositoryFor(typeof(IUserRepositoryBase),
+    Dialect = SqlDefineTypes.MySql,
     TableName = "users")]
 public partial class MySQLUserRepository : IUserRepositoryBase
 {
     private readonly DbConnection _connection;
-    public MySQLUserRepository(DbConnection connection) 
+    public MySQLUserRepository(DbConnection connection)
         => _connection = connection;
 }
 ```
@@ -358,13 +358,13 @@ dotnet run --configuration Release
 
 ### 问题排查
 
-**问题**: 编译错误  
+**问题**: 编译错误
 **解决**: 确保安装了.NET 9.0 SDK
 
-**问题**: 测试失败  
+**问题**: 测试失败
 **解决**: 检查是否是需要真实数据库连接的集成测试（这些会被跳过）
 
-**问题**: 演示项目运行失败  
+**问题**: 演示项目运行失败
 **解决**: 确保在`samples/UnifiedDialectDemo`目录下运行
 
 ---
@@ -421,13 +421,13 @@ dotnet run --configuration Release
 
 ## 📝 签收
 
-**项目**: Phase 2 统一方言架构  
-**状态**: ✅ 已完成并交付  
-**质量**: ✅ 生产就绪  
-**文档**: ✅ 完整  
+**项目**: Phase 2 统一方言架构
+**状态**: ✅ 已完成并交付
+**质量**: ✅ 生产就绪
+**文档**: ✅ 完整
 
-**交接日期**: 2025-11-01  
-**版本**: v0.4.0 + Phase 2 Complete  
+**交接日期**: 2025-11-01
+**版本**: v0.4.0 + Phase 2 Complete
 
 ---
 

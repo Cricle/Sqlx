@@ -122,53 +122,5 @@ internal static class DialectHelper
             _ => new SQLiteDialectProvider()
         };
     }
-
-    /// <summary>
-    /// Checks if the repository uses template inheritance (has base interfaces with SqlTemplate attributes).
-    /// </summary>
-    /// <param name="serviceInterface">The service interface.</param>
-    /// <returns>True if template inheritance should be used; otherwise, false.</returns>
-    public static bool ShouldUseTemplateInheritance(INamedTypeSymbol serviceInterface)
-    {
-        // Check if any base interface or the interface itself has methods with SqlTemplate attributes
-        return HasSqlTemplateAttributes(serviceInterface);
-    }
-
-    private static bool HasSqlTemplateAttributes(INamedTypeSymbol interfaceSymbol)
-    {
-        // Check current interface methods
-        foreach (var member in interfaceSymbol.GetMembers())
-        {
-            if (member is IMethodSymbol method)
-            {
-                var hasSqlTemplate = method.GetAttributes()
-                    .Any(attr => attr.AttributeClass?.Name == "SqlTemplateAttribute" ||
-                                attr.AttributeClass?.Name == "SqlxAttribute");
-
-                if (hasSqlTemplate)
-                {
-                    // Check if the SQL contains placeholders
-                    var sqlArg = method.GetAttributes()
-                        .FirstOrDefault(attr => attr.AttributeClass?.Name == "SqlTemplateAttribute" ||
-                                              attr.AttributeClass?.Name == "SqlxAttribute")
-                        ?.ConstructorArguments.FirstOrDefault().Value?.ToString();
-
-                    if (sqlArg != null && DialectPlaceholders.ContainsPlaceholders(sqlArg))
-                    {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        // Check base interfaces recursively
-        foreach (var baseInterface in interfaceSymbol.Interfaces)
-        {
-            if (HasSqlTemplateAttributes(baseInterface))
-                return true;
-        }
-
-        return false;
-    }
 }
 

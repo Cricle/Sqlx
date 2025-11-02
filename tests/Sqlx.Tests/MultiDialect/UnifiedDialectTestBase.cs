@@ -414,5 +414,312 @@ public abstract class UnifiedDialectTestBase
         // Assert
         Assert.AreEqual(500m, total);
     }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task Update_ShouldWork()
+    {
+        // Arrange
+        var id = await Repository!.InsertAsync("testuser", "test@example.com", 25, 100m, DateTime.UtcNow, null, true);
+
+        // Act
+        var affected = await Repository.UpdateAsync(id, "updated@example.com", 200m);
+        var user = await Repository.GetByIdAsync(id);
+
+        // Assert
+        Assert.AreEqual(1, affected);
+        Assert.IsNotNull(user);
+        Assert.AreEqual("updated@example.com", user.Email);
+        Assert.AreEqual(200m, user.Balance);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task Delete_ShouldWork()
+    {
+        // Arrange
+        var id = await Repository!.InsertAsync("testuser", "test@example.com", 25, 100m, DateTime.UtcNow, null, true);
+
+        // Act
+        var affected = await Repository.DeleteAsync(id);
+        var user = await Repository.GetByIdAsync(id);
+
+        // Assert
+        Assert.AreEqual(1, affected);
+        Assert.IsNull(user);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task GetByUsername_ShouldWork()
+    {
+        // Arrange
+        await Repository!.InsertAsync("testuser", "test@example.com", 25, 100m, DateTime.UtcNow, null, true);
+
+        // Act
+        var user = await Repository.GetByUsernameAsync("testuser");
+
+        // Assert
+        Assert.IsNotNull(user);
+        Assert.AreEqual("testuser", user.Username);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task GetByAgeRange_ShouldWork()
+    {
+        // Arrange
+        await Repository!.InsertAsync("user1", "user1@test.com", 20, 100m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("user2", "user2@test.com", 25, 150m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("user3", "user3@test.com", 35, 200m, DateTime.UtcNow, null, true);
+
+        // Act
+        var users = await Repository.GetByAgeRangeAsync(22, 30);
+
+        // Assert
+        Assert.AreEqual(1, users.Count);
+        Assert.AreEqual(25, users[0].Age);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task GetByMinBalance_ShouldWork()
+    {
+        // Arrange
+        await Repository!.InsertAsync("user1", "user1@test.com", 20, 100m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("user2", "user2@test.com", 25, 150m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("user3", "user3@test.com", 30, 200m, DateTime.UtcNow, null, true);
+
+        // Act
+        var users = await Repository.GetByMinBalanceAsync(150m);
+
+        // Assert
+        Assert.AreEqual(2, users.Count);
+        Assert.IsTrue(users.All(u => u.Balance > 150m));
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task GetInactiveUsers_ShouldWork()
+    {
+        // Arrange
+        await Repository!.InsertAsync("active1", "active1@test.com", 30, 100m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("inactive1", "inactive1@test.com", 25, 50m, DateTime.UtcNow, null, false);
+        await Repository.InsertAsync("inactive2", "inactive2@test.com", 35, 150m, DateTime.UtcNow, null, false);
+
+        // Act
+        var inactiveUsers = await Repository.GetInactiveUsersAsync();
+
+        // Assert
+        Assert.AreEqual(2, inactiveUsers.Count);
+        Assert.IsTrue(inactiveUsers.All(u => !u.IsActive));
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task GetNeverLoggedInUsers_ShouldWork()
+    {
+        // Arrange
+        await Repository!.InsertAsync("user1", "user1@test.com", 20, 100m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("user2", "user2@test.com", 25, 150m, DateTime.UtcNow, DateTime.UtcNow, true);
+
+        // Act
+        var users = await Repository.GetNeverLoggedInUsersAsync();
+
+        // Assert
+        Assert.AreEqual(1, users.Count);
+        Assert.IsNull(users[0].LastLoginAt);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task GetLoggedInUsers_ShouldWork()
+    {
+        // Arrange
+        await Repository!.InsertAsync("user1", "user1@test.com", 20, 100m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("user2", "user2@test.com", 25, 150m, DateTime.UtcNow, DateTime.UtcNow, true);
+
+        // Act
+        var users = await Repository.GetLoggedInUsersAsync();
+
+        // Assert
+        Assert.AreEqual(1, users.Count);
+        Assert.IsNotNull(users[0].LastLoginAt);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task UpdateLastLogin_ShouldWork()
+    {
+        // Arrange
+        var id = await Repository!.InsertAsync("testuser", "test@example.com", 25, 100m, DateTime.UtcNow, null, true);
+        var loginTime = DateTime.UtcNow;
+
+        // Act
+        var affected = await Repository.UpdateLastLoginAsync(id, loginTime);
+        var user = await Repository.GetByIdAsync(id);
+
+        // Assert
+        Assert.AreEqual(1, affected);
+        Assert.IsNotNull(user);
+        Assert.IsNotNull(user.LastLoginAt);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task Count_ShouldWork()
+    {
+        // Arrange
+        await Repository!.InsertAsync("user1", "user1@test.com", 20, 100m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("user2", "user2@test.com", 25, 150m, DateTime.UtcNow, null, false);
+        await Repository.InsertAsync("user3", "user3@test.com", 30, 200m, DateTime.UtcNow, null, true);
+
+        // Act
+        var count = await Repository.CountAsync();
+
+        // Assert
+        Assert.AreEqual(3, count);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task GetAverageAge_ShouldWork()
+    {
+        // Arrange
+        await Repository!.InsertAsync("user1", "user1@test.com", 20, 100m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("user2", "user2@test.com", 30, 150m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("user3", "user3@test.com", 40, 200m, DateTime.UtcNow, null, true);
+
+        // Act
+        var avgAge = await Repository.GetAverageAgeAsync();
+
+        // Assert
+        Assert.AreEqual(30.0, avgAge, 0.1);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task GetMinAge_ShouldWork()
+    {
+        // Arrange
+        await Repository!.InsertAsync("user1", "user1@test.com", 20, 100m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("user2", "user2@test.com", 30, 150m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("user3", "user3@test.com", 40, 200m, DateTime.UtcNow, null, true);
+
+        // Act
+        var minAge = await Repository.GetMinAgeAsync();
+
+        // Assert
+        Assert.AreEqual(20, minAge);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task GetMaxBalance_ShouldWork()
+    {
+        // Arrange
+        await Repository!.InsertAsync("user1", "user1@test.com", 20, 100m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("user2", "user2@test.com", 30, 150m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("user3", "user3@test.com", 40, 200m, DateTime.UtcNow, null, true);
+
+        // Act
+        var maxBalance = await Repository.GetMaxBalanceAsync();
+
+        // Assert
+        Assert.AreEqual(200m, maxBalance);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task GetAllOrderByUsername_ShouldWork()
+    {
+        // Arrange
+        await Repository!.InsertAsync("charlie", "charlie@test.com", 20, 100m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("alice", "alice@test.com", 30, 150m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("bob", "bob@test.com", 40, 200m, DateTime.UtcNow, null, true);
+
+        // Act
+        var users = await Repository.GetAllOrderByUsernameAsync();
+
+        // Assert
+        Assert.AreEqual(3, users.Count);
+        Assert.AreEqual("alice", users[0].Username);
+        Assert.AreEqual("bob", users[1].Username);
+        Assert.AreEqual("charlie", users[2].Username);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task GetAllOrderByBalanceDesc_ShouldWork()
+    {
+        // Arrange
+        await Repository!.InsertAsync("user1", "user1@test.com", 20, 100m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("user2", "user2@test.com", 30, 200m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("user3", "user3@test.com", 40, 150m, DateTime.UtcNow, null, true);
+
+        // Act
+        var users = await Repository.GetAllOrderByBalanceDescAsync();
+
+        // Assert
+        Assert.AreEqual(3, users.Count);
+        Assert.AreEqual(200m, users[0].Balance);
+        Assert.AreEqual(150m, users[1].Balance);
+        Assert.AreEqual(100m, users[2].Balance);
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task GetAllOrderByAgeAndBalance_ShouldWork()
+    {
+        // Arrange
+        await Repository!.InsertAsync("user1", "user1@test.com", 20, 200m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("user2", "user2@test.com", 20, 100m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("user3", "user3@test.com", 30, 150m, DateTime.UtcNow, null, true);
+
+        // Act
+        var users = await Repository.GetAllOrderByAgeAndBalanceAsync();
+
+        // Assert
+        Assert.AreEqual(3, users.Count);
+        Assert.AreEqual(20, users[0].Age);
+        Assert.AreEqual(200m, users[0].Balance); // 同年龄按balance降序
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task SearchByUsername_ShouldWork()
+    {
+        // Arrange
+        await Repository!.InsertAsync("alice", "alice@test.com", 20, 100m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("bob", "bob@test.com", 30, 150m, DateTime.UtcNow, null, true);
+        await Repository.InsertAsync("alice2", "alice2@test.com", 40, 200m, DateTime.UtcNow, null, true);
+
+        // Act
+        var users = await Repository.SearchByUsernameAsync("%alice%");
+
+        // Assert
+        Assert.AreEqual(2, users.Count);
+        Assert.IsTrue(users.All(u => u.Username.Contains("alice")));
+    }
+
+    [TestMethod]
+    [TestCategory(TestCategories.Integration)]
+    public async Task GetUsersByDateRange_ShouldWork()
+    {
+        // Arrange
+        var date1 = DateTime.UtcNow.AddDays(-10);
+        var date2 = DateTime.UtcNow.AddDays(-5);
+        var date3 = DateTime.UtcNow;
+
+        await Repository!.InsertAsync("user1", "user1@test.com", 20, 100m, date1, null, true);
+        await Repository.InsertAsync("user2", "user2@test.com", 30, 150m, date2, null, true);
+        await Repository.InsertAsync("user3", "user3@test.com", 40, 200m, date3, null, true);
+
+        // Act
+        var users = await Repository.GetUsersByDateRangeAsync(date1.AddDays(-1), date2.AddDays(1));
+
+        // Assert
+        Assert.AreEqual(2, users.Count);
+    }
 }
 

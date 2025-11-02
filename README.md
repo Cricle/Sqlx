@@ -287,7 +287,7 @@ public partial class SqlServerUserRepository(DbConnection connection) : IUnified
 ✅ SQL Server:   62个测试 100%通过（CI）
 ```
 
-**了解更多**: 
+**了解更多**:
 - [统一方言使用指南](docs/UNIFIED_DIALECT_USAGE_GUIDE.md)
 - [统一方言状态报告](UNIFIED_DIALECT_STATUS.md)
 - [测试改进报告](TEST_IMPROVEMENT_REPORT.md)
@@ -841,7 +841,7 @@ public abstract class UnifiedDialectTestBase
         Assert.IsNotNull(user);
         Assert.AreEqual("alice", user.Username);
     }
-    
+
     // ... 62个测试方法
 }
 

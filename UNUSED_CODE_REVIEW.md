@@ -182,8 +182,10 @@ private static void CheckBasicPerformance(string template, TemplateValidationRes
 | 类别 | 数量 | 状态 |
 |------|------|------|
 | 完全未使用的文件 | 5个 | ✅ 已删除 |
-| 未使用的方法 | 3个 | ✅ 已删除 |
-| **总计** | **8项** | **✅ 已删除** |
+| 未使用的方法 | 4个 | ✅ 已删除 |
+| 引用已删除方法的测试 | 8个 | ✅ 已删除 |
+| **总计** | **17项** | **✅ 已删除** |
+| **减少代码行数** | **~735行** | **✅ 完成** |
 
 ---
 
@@ -301,7 +303,67 @@ dotnet run --configuration Release
 
 ---
 
+## 🧪 第三批：删除引用已删除方法的测试
+
+### 删除的测试方法（8个）
+
+#### 1. DialectHelperTests（3个测试）
+
+**文件**: `tests/Sqlx.Tests/Generator/DialectHelperTests.cs`
+
+1. `ShouldUseTemplateInheritance_WithPlaceholders_ShouldReturnTrue()`
+   - **原因**: 引用了已删除的 `DialectHelper.ShouldUseTemplateInheritance()` 方法
+   - **行数**: ~29行
+
+2. `ShouldUseTemplateInheritance_WithoutPlaceholders_ShouldReturnFalse()`
+   - **原因**: 引用了已删除的 `DialectHelper.ShouldUseTemplateInheritance()` 方法
+   - **行数**: ~29行
+
+3. `CombinedScenario_PostgreSQLWithCustomTable_ShouldWorkCorrectly()`
+   - **原因**: 引用了已删除的 `DialectHelper.ShouldUseTemplateInheritance()` 方法
+   - **行数**: ~40行
+
+#### 2. SqlTemplateEngineTests（2个测试）
+
+**文件**: `tests/Sqlx.Tests/Core/SqlTemplateEngineTests.cs`
+
+1. `ValidateTemplate_ValidTemplate_ReturnsValid()`
+   - **原因**: 引用了已删除的 `SqlTemplateEngine.ValidateTemplate()` 方法
+   - **行数**: ~13行
+
+2. `ValidateTemplate_EmptyTemplate_ReturnsInvalid()`
+   - **原因**: 引用了已删除的 `SqlTemplateEngine.ValidateTemplate()` 方法
+   - **行数**: ~13行
+
+#### 3. OperationGeneratorSimpleTests（3个测试）
+
+**文件**: `tests/Sqlx.Tests/Generator/OperationGeneratorSimpleTests.cs`
+
+1. `ValidateTemplate_ValidSql_ReturnsValid()`
+   - **原因**: 引用了已删除的 `SqlTemplateEngine.ValidateTemplate()` 方法
+   - **行数**: ~14行
+
+2. `ValidateTemplate_EmptyTemplate_ReturnsInvalid()`
+   - **原因**: 引用了已删除的 `SqlTemplateEngine.ValidateTemplate()` 方法
+   - **行数**: ~14行
+
+3. `ValidateTemplate_TemplateWithPlaceholders_ReturnsValid()`
+   - **原因**: 引用了已删除的 `SqlTemplateEngine.ValidateTemplate()` 方法
+   - **行数**: ~11行
+
+### 验证结果
+
+```
+✅ 编译成功（0错误，0警告）
+✅ 1585/1645测试通过 (96.4%)
+✅ 60个测试跳过（需要真实数据库）
+✅ 0个测试失败
+```
+
+---
+
 **审查人**: Code Review Team
 **审查日期**: 2025-11-01
-**状态**: ✅ 审查完成
+**最后更新**: 2025-11-01
+**状态**: ✅ 审查完成，清理完成
 

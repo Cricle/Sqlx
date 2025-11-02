@@ -242,17 +242,26 @@ public abstract class UnifiedDialectTestBase
         try
         {
             var tableKey = $"{GetType().Name}_{TableName}";
-            if (!CreatedTables.Contains(tableKey))
+            var dialect = GetDialectType();
+            
+            // 特殊处理：SQLite内存数据库每次连接都是新的，必须重新创建表
+            var isSQLiteMemory = dialect == SqlDefineTypes.SQLite && 
+                                 Connection!.ConnectionString.Contains(":memory:", StringComparison.OrdinalIgnoreCase);
+            
+            if (isSQLiteMemory || !CreatedTables.Contains(tableKey))
             {
-                // 第一次初始化：创建表
-                Console.WriteLine($"🏗️  [{GetType().Name}] Creating table {TableName} for the first time...");
+                // SQLite内存数据库或第一次初始化：创建表
+                Console.WriteLine($"🏗️  [{GetType().Name}] Creating table {TableName}...");
                 await CreateTableAsync();
-                CreatedTables.Add(tableKey);
+                if (!isSQLiteMemory)
+                {
+                    CreatedTables.Add(tableKey);
+                }
                 Console.WriteLine($"✅ [{GetType().Name}] Table {TableName} created successfully");
             }
             else
             {
-                // 后续初始化：清空表数据
+                // 后续初始化（非SQLite内存数据库）：清空表数据
                 Console.WriteLine($"🔄 [{GetType().Name}] Truncating table {TableName}...");
                 await TruncateTableAsync();
                 Console.WriteLine($"✅ [{GetType().Name}] Table {TableName} truncated successfully");

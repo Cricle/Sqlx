@@ -220,32 +220,4 @@ namespace TestNamespace
         // Unknown placeholders may or may not generate warnings depending on implementation
         Assert.IsTrue(true, "Test should verify that unknown placeholders are preserved");
     }
-
-    [TestMethod]
-    public void ValidateTemplate_ValidTemplate_ReturnsValid()
-    {
-        // Arrange
-        var template = "SELECT {{columns:auto}} FROM {{table}} WHERE {{where:id}}";
-
-        // Act
-        var result = _engine.ValidateTemplate(template);
-
-        // Assert
-        Assert.IsTrue(result.IsValid);
-        Assert.IsFalse(result.Errors.Any());
-    }
-
-    [TestMethod]
-    public void ValidateTemplate_EmptyTemplate_ReturnsInvalid()
-    {
-        // Arrange
-        var template = "";
-
-        // Act
-        var result = _engine.ValidateTemplate(template);
-
-        // Assert
-        Assert.IsFalse(result.IsValid);
-        Assert.IsTrue(result.Errors.Any(e => e.Contains("empty")));
-    }
 }

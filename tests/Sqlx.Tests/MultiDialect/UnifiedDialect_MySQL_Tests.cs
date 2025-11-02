@@ -17,6 +17,7 @@ namespace Sqlx.Tests.MultiDialect;
 /// MySQL测试 - 只需要实现连接创建和指定方言，测试方法自动继承！
 /// </summary>
 [TestClass]
+[DoNotParallelize] // 禁用并行执行，因为所有测试共享同一个表
 [TestCategory(TestCategories.Integration)]
 [TestCategory(TestCategories.MySQL)]
 [TestCategory(TestCategories.CI)]

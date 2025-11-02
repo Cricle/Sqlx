@@ -17,6 +17,7 @@ namespace Sqlx.Tests.MultiDialect;
 /// PostgreSQL测试 - 只需要实现连接创建和表创建，测试方法自动继承！
 /// </summary>
 [TestClass]
+[DoNotParallelize] // 禁用并行执行，因为所有测试共享同一个表
 [TestCategory(TestCategories.Integration)]
 [TestCategory(TestCategories.PostgreSQL)]
 [TestCategory(TestCategories.CI)]

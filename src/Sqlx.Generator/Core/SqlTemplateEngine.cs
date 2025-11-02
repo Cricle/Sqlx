@@ -1693,7 +1693,7 @@ public class SqlTemplateEngine
     {
         // Check for explicit parameter name: {{batch_values @paramName}}
         string? paramName = null;
-        
+
         if (!string.IsNullOrEmpty(options) && options.StartsWith("@"))
         {
             paramName = options.Substring(1);
@@ -1701,9 +1701,9 @@ public class SqlTemplateEngine
         else
         {
             // Infer the first IEnumerable parameter
-            var enumerableParam = method.Parameters.FirstOrDefault(p => 
+            var enumerableParam = method.Parameters.FirstOrDefault(p =>
                 SharedCodeGenerationUtilities.IsEnumerableParameter(p));
-            
+
             if (enumerableParam != null)
             {
                 paramName = enumerableParam.Name;

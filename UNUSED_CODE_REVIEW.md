@@ -108,8 +108,8 @@ public sealed class ParameterMapping
 
 ### 5. TemplateValidationResult.cs ✅
 
-**位置**: `src/Sqlx.Generator/Core/TemplateValidationResult.cs`  
-**原因**: 仅被`SqlTemplateEngine.ValidateTemplate`方法使用，而该方法本身也未被使用  
+**位置**: `src/Sqlx.Generator/Core/TemplateValidationResult.cs`
+**原因**: 仅被`SqlTemplateEngine.ValidateTemplate`方法使用，而该方法本身也未被使用
 **引用次数**: 3（2次在自身文件，1次在`SqlTemplateEngine.cs`）
 
 **代码**:
@@ -154,8 +154,8 @@ private static bool HasSqlTemplateAttributes(INamedTypeSymbol interfaceSymbol)
 
 ### 2. SqlTemplateEngine.ValidateTemplate ✅
 
-**位置**: `src/Sqlx.Generator/Core/SqlTemplateEngine.cs:147`  
-**原因**: 仅被`TemplateValidator`调用，而`TemplateValidator`本身未被使用  
+**位置**: `src/Sqlx.Generator/Core/SqlTemplateEngine.cs:147`
+**原因**: 仅被`TemplateValidator`调用，而`TemplateValidator`本身未被使用
 **引用次数**: 1（仅在`TemplateValidator.cs`中）
 
 **代码**:

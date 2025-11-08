@@ -1645,6 +1645,23 @@ public class CodeGenerationService
             return true;
         }
 
+        // 排除集合类型（Dictionary, List 等），这些不应被当作实体类型
+        // 🔧 修复：Dictionary<string, object?> 等集合类型不应该被当作实体来映射属性
+        if (type.IsGenericType)
+        {
+            var baseTypeName = type.ConstructedFrom.GetCachedDisplayString();
+            if (baseTypeName.Contains("Dictionary<") ||
+                baseTypeName.Contains("List<") ||
+                baseTypeName.Contains("IEnumerable<") ||
+                baseTypeName.Contains("ICollection<") ||
+                baseTypeName.Contains("HashSet<") ||
+                baseTypeName.Contains("Queue<") ||
+                baseTypeName.Contains("Stack<"))
+            {
+                return true;
+            }
+        }
+
         return false;
     }
 

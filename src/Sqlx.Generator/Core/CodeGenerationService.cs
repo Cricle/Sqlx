@@ -1145,7 +1145,7 @@ public class CodeGenerationService
         // - System.Collections.Generic.Dictionary<System.String, System.Object>
         // - global::System.Collections.Generic.Dictionary<string, object>
         // 使用正则表达式匹配更灵活
-        return System.Text.RegularExpressions.Regex.IsMatch(type, 
+        return System.Text.RegularExpressions.Regex.IsMatch(type,
             @"Dictionary\s*<\s*(string|System\.String)\s*,\s*(object|System\.Object)\s*\??\s*>",
             System.Text.RegularExpressions.RegexOptions.IgnoreCase);
     }
@@ -1160,12 +1160,12 @@ public class CodeGenerationService
         // - List<Dictionary<string, object?>>
         // - System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, object>>
         // 首先检查是否包含 List<，然后检查是否包含 Dictionary<string, object>
-        if (!type.Contains("List<") && !type.Contains("IEnumerable<") && 
+        if (!type.Contains("List<") && !type.Contains("IEnumerable<") &&
             !type.Contains("ICollection<") && !type.Contains("IReadOnlyList<"))
         {
             return false;
         }
-        
+
         // 使用正则表达式匹配 Dictionary<string, object> 模式
         return System.Text.RegularExpressions.Regex.IsMatch(type,
             @"Dictionary\s*<\s*(string|System\.String)\s*,\s*(object|System\.Object)\s*\??\s*>",

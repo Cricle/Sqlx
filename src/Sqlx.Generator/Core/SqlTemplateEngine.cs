@@ -1183,7 +1183,7 @@ public class SqlTemplateEngine
     /// <summary>处理LIMIT占位符 - 多数据库支持</summary>
     private static string ProcessLimitPlaceholder(string type, IMethodSymbol method, string options, SqlDefine dialect)
     {
-        return SqlTemplateEngineExtensions.MultiDatabasePlaceholderSupport.ProcessLimitPlaceholder(type, options, dialect);
+        return SqlTemplateEngineExtensions.MultiDatabasePlaceholderSupport.ProcessLimitPlaceholder(type, options, dialect, method);
     }
 
     /// <summary>处理聚合函数占位符 - 多数据库支持</summary>

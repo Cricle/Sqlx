@@ -45,19 +45,38 @@ public static class SqlTemplateEngineExtensions
         /// 处理LIMIT占位符 - 多数据库支持 (简化版本)
         /// 支持预定义模式、分页偏移量、智能默认值、参数化形式
         /// </summary>
-        public static string ProcessLimitPlaceholder(string type, string options, SqlDefine dialect)
+        public static string ProcessLimitPlaceholder(string type, string options, SqlDefine dialect, Microsoft.CodeAnalysis.IMethodSymbol method = null)
         {
-            // 检查是否是参数化形式: --param paramName
+            // 自动检测 limit 参数（如果没有明确指定 --param）
             var paramMatch = System.Text.RegularExpressions.Regex.Match(options ?? "", @"--param\s+(\w+)");
+            string paramName = null;
+
             if (paramMatch.Success)
             {
-                var paramName = paramMatch.Groups[1].Value;
+                paramName = paramMatch.Groups[1].Value;
+            }
+            else if (method != null)
+            {
+                // 自动检测名为 "limit" 的参数
+                var limitParam = method.Parameters.FirstOrDefault(p =>
+                    p.Name.Equals("limit", System.StringComparison.OrdinalIgnoreCase));
+                if (limitParam != null)
+                {
+                    paramName = limitParam.Name;
+                }
+            }
+
+            // 如果找到了参数名，生成参数化的 LIMIT
+            if (!string.IsNullOrEmpty(paramName))
+            {
                 // 返回参数化的LIMIT（由方法参数提供值）
                 // 使用DatabaseType字符串区分数据库，因为SQLite和SQL Server有相同的结构但不同的行为
                 var dbType = dialect.DatabaseType;
                 if (dbType == "SqlServer")
                 {
-                    return $"TOP ({dialect.ParameterPrefix}{paramName})";
+                    // SQL Server: 使用 OFFSET...FETCH 语法（需要 ORDER BY）
+                    // 生成运行时占位符，让代码生成器处理
+                    return $"{{RUNTIME_LIMIT_{paramName}}}";
                 }
                 else if (dbType == "Oracle")
                 {

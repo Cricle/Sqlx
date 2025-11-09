@@ -96,10 +96,12 @@ public static class SharedCodeGenerationUtilities
         sb.AppendLine("}");
         sb.AppendLine();
 
-        // Check for runtime dynamic placeholders (WHERE, SET, ORDERBY, etc.)
+        // Check for runtime dynamic placeholders (WHERE, SET, ORDERBY, LIMIT, etc.)
         bool hasDynamicPlaceholders = sql.Contains("{RUNTIME_WHERE_") ||
                                      sql.Contains("{RUNTIME_SET_") ||
                                      sql.Contains("{RUNTIME_ORDERBY_") ||
+                                     sql.Contains("{RUNTIME_LIMIT_") ||
+                                     sql.Contains("{RUNTIME_OFFSET_") ||
                                      sql.Contains("{RUNTIME_JOIN_") ||
                                      sql.Contains("{RUNTIME_GROUPBY_");
 
@@ -303,9 +305,9 @@ public static class SharedCodeGenerationUtilities
     {
         sb.AppendLine("// Build SQL with dynamic placeholders (compile-time splitting, zero Replace calls)");
 
-        // Find all runtime dynamic markers (WHERE, SET, ORDERBY, JOIN, GROUPBY)
+        // Find all runtime dynamic markers (WHERE, SET, ORDERBY, LIMIT, OFFSET, JOIN, GROUPBY)
         var markers = System.Text.RegularExpressions.Regex.Matches(sql,
-            @"\{RUNTIME_(WHERE|SET|ORDERBY|JOIN|GROUPBY)_([^}]+)\}");
+            @"\{RUNTIME_(WHERE|SET|ORDERBY|LIMIT|OFFSET|JOIN|GROUPBY)_([^}]+)\}");
 
         if (markers.Count == 0)
         {
@@ -404,6 +406,40 @@ public static class SharedCodeGenerationUtilities
                 sb.PopIndent();
                 sb.AppendLine("}");
                 sb.AppendLine($"var {varName} = {paramName};");
+            }
+            else if (placeholderType == "LIMIT" || placeholderType == "OFFSET")
+            {
+                // LIMIT/OFFSET parameter - generate conditional SQL for SQL Server
+                var paramName = markerContent;
+                var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
+
+                if (param != null && param.Type.Name.Contains("Nullable"))
+                {
+                    // Nullable parameter - generate conditional code
+                    if (placeholderType == "LIMIT")
+                    {
+                        // For SQL Server: OFFSET 0 ROWS FETCH NEXT {limit} ROWS ONLY
+                        sb.AppendLine($"// Generate LIMIT clause for {paramName}");
+                        sb.AppendLine($"var {varName} = {paramName}.HasValue ? $\"OFFSET 0 ROWS FETCH NEXT {{{paramName}.Value}} ROWS ONLY\" : \"\";");
+                    }
+                    else // OFFSET
+                    {
+                        sb.AppendLine($"// Generate OFFSET clause for {paramName}");
+                        sb.AppendLine($"var {varName} = {paramName}.HasValue ? $\"OFFSET {{{paramName}.Value}} ROWS\" : \"\";");
+                    }
+                }
+                else
+                {
+                    // Non-nullable parameter
+                    if (placeholderType == "LIMIT")
+                    {
+                        sb.AppendLine($"var {varName} = $\"OFFSET 0 ROWS FETCH NEXT {{{paramName}}} ROWS ONLY\";");
+                    }
+                    else // OFFSET
+                    {
+                        sb.AppendLine($"var {varName} = $\"OFFSET {{{paramName}}} ROWS\";");
+                    }
+                }
             }
             else
             {

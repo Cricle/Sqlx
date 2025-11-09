@@ -1,8 +1,10 @@
 using System;
+using Sqlx.Annotations;
 
 namespace FullFeatureDemo;
 
 // 1. 基础用户模型
+[TableName("users")]
 public class User
 {
     public long Id { get; set; }
@@ -11,9 +13,12 @@ public class User
     public int Age { get; set; }
     public decimal Balance { get; set; }
     public DateTime CreatedAt { get; set; }
+    public bool IsActive { get; set; } = true;
 }
 
 // 2. 带软删除的产品模型
+[TableName("products")]
+[SoftDelete(FlagColumn = "is_deleted")]
 public class Product
 {
     public long Id { get; set; }
@@ -22,11 +27,17 @@ public class Product
     public decimal Price { get; set; }
     public int Stock { get; set; }
     
-    // 软删除标记
+    // 软删除标记（自动管理）
     public bool IsDeleted { get; set; }
 }
 
 // 3. 带审计字段的订单模型
+[TableName("orders")]
+[AuditFields(
+    CreatedAtColumn = "created_at",
+    CreatedByColumn = "created_by",
+    UpdatedAtColumn = "updated_at",
+    UpdatedByColumn = "updated_by")]
 public class Order
 {
     public long Id { get; set; }
@@ -34,7 +45,7 @@ public class Order
     public decimal TotalAmount { get; set; }
     public string Status { get; set; } = "";
     
-    // 审计字段
+    // 审计字段（自动管理）
     public DateTime CreatedAt { get; set; }
     public string CreatedBy { get; set; } = "";
     public DateTime? UpdatedAt { get; set; }
@@ -42,6 +53,7 @@ public class Order
 }
 
 // 4. 带乐观锁的账户模型
+[TableName("accounts")]
 public class Account
 {
     public long Id { get; set; }
@@ -49,10 +61,12 @@ public class Account
     public decimal Balance { get; set; }
     
     // 乐观锁版本号
+    [ConcurrencyCheck]
     public long Version { get; set; }
 }
 
 // 5. 日志模型（批量操作）
+[TableName("logs")]
 public class Log
 {
     public long Id { get; set; }

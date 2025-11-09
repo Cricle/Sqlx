@@ -1140,10 +1140,14 @@ public class CodeGenerationService
     {
         // 支持多种格式：
         // - Dictionary<string, object>
+        // - Dictionary<string, object?>
         // - System.Collections.Generic.Dictionary<string, object>
+        // - System.Collections.Generic.Dictionary<System.String, System.Object>
         // - global::System.Collections.Generic.Dictionary<string, object>
-        return type.Contains("Dictionary<string, object>") ||
-               type.Contains("Dictionary<System.String, System.Object>");
+        // 使用正则表达式匹配更灵活
+        return System.Text.RegularExpressions.Regex.IsMatch(type, 
+            @"Dictionary\s*<\s*(string|System\.String)\s*,\s*(object|System\.Object)\s*\??\s*>",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
     }
 
     /// <summary>
@@ -1153,9 +1157,19 @@ public class CodeGenerationService
     {
         // 支持多种格式：
         // - List<Dictionary<string, object>>
+        // - List<Dictionary<string, object?>>
         // - System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, object>>
-        return (type.Contains("List<") && type.Contains("Dictionary<string, object>")) ||
-               (type.Contains("List<") && type.Contains("Dictionary<System.String, System.Object>"));
+        // 首先检查是否包含 List<，然后检查是否包含 Dictionary<string, object>
+        if (!type.Contains("List<") && !type.Contains("IEnumerable<") && 
+            !type.Contains("ICollection<") && !type.Contains("IReadOnlyList<"))
+        {
+            return false;
+        }
+        
+        // 使用正则表达式匹配 Dictionary<string, object> 模式
+        return System.Text.RegularExpressions.Regex.IsMatch(type,
+            @"Dictionary\s*<\s*(string|System\.String)\s*,\s*(object|System\.Object)\s*\??\s*>",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
     }
 
     private bool IsScalarReturnType(string returnType) => ClassifyReturnType(returnType).Category == ReturnTypeCategory.Scalar;

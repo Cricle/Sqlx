@@ -34,7 +34,7 @@ public interface IUserRepository
     Task<long> InsertAsync(string name, string email, int age, decimal balance, DateTime createdAt, bool isActive = true);
 
     // ✨ 使用 {{set}} 占位符更新
-    [SqlTemplate("UPDATE {{table}} SET {{set}} WHERE id = @id")]
+    [SqlTemplate("UPDATE {{table}} SET {{set --exclude Id}} WHERE id = @id")]
     Task<int> UpdateAsync(User user);
 
     // ✨ 简单删除
@@ -66,12 +66,19 @@ public interface IUserRepository
     Task<List<int>> GetDistinctAgesAsync();
 
     // ✨ 使用 {{coalesce}} 处理NULL值
-    [SqlTemplate("SELECT id, name, {{coalesce email, 'no-email@example.com'}} as email FROM {{table}} WHERE id = @id")]
+    [SqlTemplate("SELECT id, name, {{coalesce email, 'no-email@example.com'}} as email, age, balance, created_at, is_active FROM {{table}} WHERE id = @id")]
     Task<User?> GetUserWithDefaultEmailAsync(long id);
 
     // ✨ 使用 {{current_timestamp}} 方言占位符
     [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE created_at > {{current_timestamp}} - INTERVAL '7 days'")]
     Task<List<User>> GetRecentUsersAsync();
+
+    // 方言占位符测试方法
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE is_active = {{bool_true}}")]
+    Task<List<User>> GetActiveUsersAsync();
+
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE is_active = {{bool_false}}")]
+    Task<List<User>> GetInactiveUsersAsync();
 }
 
 // ==================== 2. 软删除仓储（使用占位符） ====================
@@ -118,6 +125,10 @@ public interface IProductRepository
     // ✨ 使用 {{between}} 占位符价格范围查询
     [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE price {{between @minPrice, @maxPrice}} AND is_deleted = {{bool_false}}")]
     Task<List<Product>> GetByPriceRangeAsync(decimal minPrice, decimal maxPrice);
+
+    // 获取活跃产品（未删除）
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE is_deleted = {{bool_false}}")]
+    Task<List<Product>> GetActiveProductsAsync();
 }
 
 // ==================== 3. 审计字段仓储（使用占位符） ====================

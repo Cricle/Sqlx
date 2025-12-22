@@ -1353,41 +1353,162 @@ public class SqlTemplateEngine
     /// <summary>处理BETWEEN占位符 - 范围查询</summary>
     private static string ProcessBetweenPlaceholder(string type, string options, SqlDefine dialect)
     {
-        var column = ExtractOption(options, "column", type);
-        var min = ExtractOption(options, "min", "minValue");
-        var max = ExtractOption(options, "max", "maxValue");
+        // Check if this is a simple parameter reference: {{between @minPrice, @maxPrice}}
+        // The parameters can be in either type (old format) or options (new format)
+        var paramRef = !string.IsNullOrEmpty(type) && type.Contains("@") ? type :
+                      !string.IsNullOrEmpty(options) && options.Contains("@") && !options.Contains("--") ? options : null;
 
-        // 避免重复添加参数前缀
-        var minParam = min.StartsWith("@") || min.StartsWith(":") || min.StartsWith("$") ? min : $"{dialect.ParameterPrefix}{min}";
-        var maxParam = max.StartsWith("@") || max.StartsWith(":") || max.StartsWith("$") ? max : $"{dialect.ParameterPrefix}{max}";
+        if (paramRef != null)
+        {
+            // Simple format: {{between @minPrice, @maxPrice}} -> just "BETWEEN @minPrice AND @maxPrice"
+            // Parse the two parameters separated by comma
+            var parts = paramRef.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 2)
+            {
+                var minParam = parts[0].Trim().TrimStart('@', ':', '$');
+                var maxParam = parts[1].Trim().TrimStart('@', ':', '$');
+                return $"BETWEEN {dialect.ParameterPrefix}{minParam} AND {dialect.ParameterPrefix}{maxParam}";
+            }
+        }
 
-        return $"{dialect.WrapColumn(column)} BETWEEN {minParam} AND {maxParam}";
+        // Advanced format with options: {{between --column price --min minPrice --max maxPrice}}
+        // Try command-line style first (--key value), then fall back to pipe style (key=value)
+        var column = ExtractCommandLineOption(options, "--column");
+        if (string.IsNullOrEmpty(column)) column = ExtractOption(options, "column", type);
+        
+        var min = ExtractCommandLineOption(options, "--min");
+        if (string.IsNullOrEmpty(min)) min = ExtractOption(options, "min", "minValue");
+        
+        var max = ExtractCommandLineOption(options, "--max");
+        if (string.IsNullOrEmpty(max)) max = ExtractOption(options, "max", "maxValue");
+
+        // Ensure parameters have correct prefix
+        if (!min.StartsWith("@") && !min.StartsWith(":") && !min.StartsWith("$"))
+        {
+            min = $"{dialect.ParameterPrefix}{min}";
+        }
+        else
+        {
+            var paramName = min.TrimStart('@', ':', '$');
+            min = $"{dialect.ParameterPrefix}{paramName}";
+        }
+
+        if (!max.StartsWith("@") && !max.StartsWith(":") && !max.StartsWith("$"))
+        {
+            max = $"{dialect.ParameterPrefix}{max}";
+        }
+        else
+        {
+            var paramName = max.TrimStart('@', ':', '$');
+            max = $"{dialect.ParameterPrefix}{paramName}";
+        }
+
+        return $"{dialect.WrapColumn(column)} BETWEEN {min} AND {max}";
     }
 
-    /// <summary>处理LIKE占位符 - 模糊搜索</summary>
+    /// <summary>处理LIKE占位符 - 模糊搜索 (支持多数据库方言)</summary>
     private static string ProcessLikePlaceholder(string type, string options, SqlDefine dialect)
     {
-        var column = ExtractOption(options, "column", type);
-        var pattern = ExtractOption(options, "pattern", "pattern");
-        var mode = ExtractOption(options, "mode", "contains"); // contains, starts, ends, exact
+        // Check if this is a simple parameter reference: {{like @paramName}}
+        // The @paramName can be in either type (old format) or options (new format)
+        var paramRef = !string.IsNullOrEmpty(type) && type.StartsWith("@") ? type :
+                      !string.IsNullOrEmpty(options) && options.Trim().StartsWith("@") && !options.Contains("--") ? options.Trim() : null;
 
+        if (paramRef != null)
+        {
+            // Simple format: {{like @pattern}} -> just "LIKE @pattern"
+            // The pattern is expected to already contain wildcards (e.g., "%Mac%")
+            return $"LIKE {paramRef}";
+        }
+
+        // Advanced format with options: {{like --mode contains --column name --pattern searchTerm}}
+        // Try command-line style first (--key value), then fall back to pipe style (key=value)
+        var column = ExtractCommandLineOption(options, "--column");
+        if (string.IsNullOrEmpty(column)) column = ExtractOption(options, "column", type);
+        
+        var pattern = ExtractCommandLineOption(options, "--pattern");
+        if (string.IsNullOrEmpty(pattern)) pattern = ExtractOption(options, "pattern", "pattern");
+        
+        var mode = ExtractCommandLineOption(options, "--mode");
+        if (string.IsNullOrEmpty(mode)) mode = ExtractOption(options, "mode", "contains");
+
+        // Ensure pattern has parameter prefix
+        if (!pattern.StartsWith("@") && !pattern.StartsWith(":") && !pattern.StartsWith("$"))
+        {
+            pattern = $"{dialect.ParameterPrefix}{pattern}";
+        }
+
+        // Use dialect-specific string concatenation
         return mode switch
         {
-            "starts" => $"{dialect.WrapColumn(column)} LIKE CONCAT({dialect.ParameterPrefix}{pattern}, '%')",
-            "ends" => $"{dialect.WrapColumn(column)} LIKE CONCAT('%', {dialect.ParameterPrefix}{pattern})",
-            "exact" => $"{dialect.WrapColumn(column)} LIKE {dialect.ParameterPrefix}{pattern}",
-            _ => $"{dialect.WrapColumn(column)} LIKE CONCAT('%', {dialect.ParameterPrefix}{pattern}, '%')" // contains
+            "starts" => $"{dialect.WrapColumn(column)} LIKE {GetDialectConcat(dialect, pattern, "'%'")}",
+            "ends" => $"{dialect.WrapColumn(column)} LIKE {GetDialectConcat(dialect, "'%'", pattern)}",
+            "exact" => $"{dialect.WrapColumn(column)} LIKE {pattern}",
+            _ => $"{dialect.WrapColumn(column)} LIKE {GetDialectConcat(dialect, "'%'", pattern, "'%'")}" // contains
         };
+    }
+
+    /// <summary>获取数据库方言特定的字符串连接语法</summary>
+    private static string GetDialectConcat(SqlDefine dialect, params string[] parts)
+    {
+        var dbType = dialect.DatabaseType;
+        
+        if (dbType == "SQLite" || dbType == "PostgreSql" || dbType == "Oracle")
+        {
+            // SQLite, PostgreSQL, Oracle use || operator
+            return string.Join(" || ", parts);
+        }
+        else if (dbType == "SqlServer")
+        {
+            // SQL Server uses + operator
+            return string.Join(" + ", parts);
+        }
+        else
+        {
+            // MySQL and others use CONCAT function
+            return $"CONCAT({string.Join(", ", parts)})";
+        }
     }
 
     /// <summary>处理IN/NOT IN占位符 - 优化合并版本</summary>
     private static string ProcessInPlaceholder(string type, string options, SqlDefine dialect, bool isNotIn = false)
     {
-        var column = ExtractOption(options, "column", type);
-        var values = ExtractOption(options, "values", "values");
         var operation = isNotIn ? "NOT IN" : "IN";
+        
+        // Check if this is a simple parameter reference: {{in @paramName}} or {{not_in @paramName}}
+        // The @paramName can be in either type (old format) or options (new format)
+        var paramRef = !string.IsNullOrEmpty(type) && type.StartsWith("@") ? type :
+                      !string.IsNullOrEmpty(options) && options.Trim().StartsWith("@") && !options.Contains("--") ? options.Trim() : null;
 
-        return $"{dialect.WrapColumn(column)} {operation} ({dialect.ParameterPrefix}{values})";
+        if (paramRef != null)
+        {
+            // Simple format: {{in @ids}} -> just "IN (@ids)" with correct parameter prefix
+            // Ensure parameter has correct prefix for the dialect
+            var paramName = paramRef.TrimStart('@', ':', '$');
+            return $"{operation} ({dialect.ParameterPrefix}{paramName})";
+        }
+
+        // Advanced format with options: {{in --column id --values ids}}
+        // Try command-line style first (--key value), then fall back to pipe style (key=value)
+        var column = ExtractCommandLineOption(options, "--column");
+        if (string.IsNullOrEmpty(column)) column = ExtractOption(options, "column", type);
+        
+        var values = ExtractCommandLineOption(options, "--values");
+        if (string.IsNullOrEmpty(values)) values = ExtractOption(options, "values", "values");
+
+        // Ensure values parameter has correct prefix
+        if (!values.StartsWith("@") && !values.StartsWith(":") && !values.StartsWith("$"))
+        {
+            values = $"{dialect.ParameterPrefix}{values}";
+        }
+        else
+        {
+            // Replace prefix with dialect-specific one
+            var paramName = values.TrimStart('@', ':', '$');
+            values = $"{dialect.ParameterPrefix}{paramName}";
+        }
+
+        return $"{dialect.WrapColumn(column)} {operation} ({values})";
     }
 
     /// <summary>处理OR占位符 - 多条件OR组合</summary>
@@ -1832,6 +1953,48 @@ public class SqlTemplateEngine
     /// <summary>处理COALESCE占位符 - NULL合并</summary>
     private static string ProcessCoalescePlaceholder(string type, string options, SqlDefine dialect)
     {
+        // 检测简单格式: {{coalesce email, 'default'}} 或 {{coalesce col1, col2, 'default'}}
+        // 内容可能在 type 或 options 中
+        var content = !string.IsNullOrWhiteSpace(options) ? options : type;
+        var simpleFormat = !string.IsNullOrWhiteSpace(content) && content.Contains(',');
+        
+        if (simpleFormat)
+        {
+            // 解析逗号分隔的值
+            var parts = content.Split(',')
+                .Select(p => p.Trim())
+                .Where(p => !string.IsNullOrWhiteSpace(p))
+                .ToList();
+
+            if (parts.Count == 0)
+            {
+                return "COALESCE(NULL)";
+            }
+
+            // 处理每个部分：如果是字符串字面量（带引号）或数字，保持原样；否则作为列名包装
+            var processedParts = parts.Select(part =>
+            {
+                // 检查是否是字符串字面量（单引号或双引号）
+                if ((part.StartsWith("'") && part.EndsWith("'")) ||
+                    (part.StartsWith("\"") && part.EndsWith("\"")))
+                {
+                    return part;
+                }
+
+                // 检查是否是数字
+                if (decimal.TryParse(part, out _))
+                {
+                    return part;
+                }
+
+                // 否则作为列名包装
+                return dialect.WrapColumn(part);
+            }).ToList();
+
+            return $"COALESCE({string.Join(", ", processedParts)})";
+        }
+
+        // 高级格式: {{coalesce --columns col1,col2 --default 'value'}}
         var columns = ExtractOption(options, "columns", type);
         var defaultValue = ExtractOption(options, "default", "NULL");
 
@@ -2072,9 +2235,35 @@ public class SqlTemplateEngine
     /// <summary>处理GROUP_CONCAT占位符 - 分组字符串聚合</summary>
     private static string ProcessGroupConcatPlaceholder(string type, string options, SqlDefine dialect)
     {
-        var column = ExtractOption(options, "column", type);
-        var separator = ExtractOption(options, "separator", ",");
-        var orderBy = ExtractOption(options, "orderby", "");
+        // 检测简单格式: {{group_concat message, ', '}} 或 {{group_concat message}}
+        // 内容可能在 type 或 options 中
+        var content = !string.IsNullOrWhiteSpace(options) ? options : type;
+        var simpleFormat = !string.IsNullOrWhiteSpace(content) && !content.Contains("--");
+        
+        string column;
+        string separator;
+        string orderBy = "";
+        
+        if (simpleFormat && content.Contains(','))
+        {
+            // 解析简单格式: column, 'separator'
+            var parts = content.Split(new[] { ',' }, 2); // 只分割第一个逗号
+            column = parts[0].Trim();
+            separator = parts.Length > 1 ? parts[1].Trim().Trim('\'', '"') : ",";
+        }
+        else if (simpleFormat)
+        {
+            // 只有列名，没有分隔符: {{group_concat message}}
+            column = content.Trim();
+            separator = ",";
+        }
+        else
+        {
+            // 高级格式: {{group_concat --column message --separator ', '}}
+            column = ExtractOption(options, "column", type);
+            separator = ExtractOption(options, "separator", ",");
+            orderBy = ExtractOption(options, "orderby", "");
+        }
 
         var orderClause = !string.IsNullOrEmpty(orderBy) ? $" ORDER BY {orderBy}" : "";
 

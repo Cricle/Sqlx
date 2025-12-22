@@ -619,15 +619,47 @@ internal partial class MethodGenerationContext : GenerationContextBase
                 var isList = DeclareReturnType == ReturnTypes.List || (IsAsync && DeclareReturnType == ReturnTypes.IEnumerable);
                 if (isList) WriteDeclareReturnList(sb);
 
-                // Cache column ordinals for performance
-                var columnNames = GetColumnNames(returnType);
-                WriteCachedOrdinals(sb, columnNames);
+                // For scalar types, don't cache ordinals - just use ordinal 0 directly
+                // This avoids issues when the actual column name doesn't match "Column0"
+                var isScalarList = returnType.IsCachedScalarType();
+                
+                if (!isScalarList)
+                {
+                    // Cache column ordinals for performance (only for non-scalar types)
+                    var columnNames = GetColumnNames(returnType);
+                    WriteCachedOrdinals(sb, columnNames);
+                }
 
                 WriteBeginReader(sb);
 
-                if (returnType.IsCachedScalarType())
+                if (isScalarList)
                 {
-                    sb.AppendLineIf(isList, $"{ResultName}.Add({returnType.GetDataReadExpressionWithCachedOrdinal(DbReaderName, "Column0", "__ordinal_Column0")});", $"yield return {returnType.GetDataReadExpressionWithCachedOrdinal(DbReaderName, "Column0", "__ordinal_Column0")};");
+                    // For scalar lists, read directly from ordinal 0 without caching
+                    // Use the reader method directly with ordinal 0
+                    var method = returnType.GetDataReaderMethod();
+                    if (method == null)
+                    {
+                        // Fallback to indexer for types without specific reader method
+                        sb.AppendLineIf(isList, $"{ResultName}.Add(({returnType.ToDisplayString()}){DbReaderName}[0]);", $"yield return ({returnType.ToDisplayString()}){DbReaderName}[0];");
+                    }
+                    else
+                    {
+                        // Use the specific reader method with ordinal 0
+                        var isNullable = returnType.IsNullableType();
+                        if (isNullable)
+                        {
+                            sb.AppendLineIf(isList, $"{ResultName}.Add({DbReaderName}.IsDBNull(0) ? null : {DbReaderName}.{method}(0));", $"yield return {DbReaderName}.IsDBNull(0) ? null : {DbReaderName}.{method}(0);");
+                        }
+                        else if (returnType.SpecialType == SpecialType.System_String && returnType.NullableAnnotation == NullableAnnotation.NotAnnotated)
+                        {
+                            // For non-nullable strings, return empty string instead of null
+                            sb.AppendLineIf(isList, $"{ResultName}.Add({DbReaderName}.IsDBNull(0) ? string.Empty : {DbReaderName}.{method}(0));", $"yield return {DbReaderName}.IsDBNull(0) ? string.Empty : {DbReaderName}.{method}(0);");
+                        }
+                        else
+                        {
+                            sb.AppendLineIf(isList, $"{ResultName}.Add({DbReaderName}.{method}(0));", $"yield return {DbReaderName}.{method}(0);");
+                        }
+                    }
                 }
                 else if (isTuple)
                 {

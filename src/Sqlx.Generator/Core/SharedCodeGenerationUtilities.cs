@@ -243,12 +243,15 @@ public static class SharedCodeGenerationUtilities
         foreach (var param in regularParams)
         {
             // Check if parameter type is an entity class (has properties that should be expanded)
+            // Exclude: string, primitive types, system types, collections
             var paramType = param.Type as INamedTypeSymbol;
             var isEntityType = paramType != null &&
                               paramType.TypeKind == TypeKind.Class &&
+                              paramType.SpecialType == SpecialType.None && // Exclude string, object, etc.
+                              !paramType.ContainingNamespace.ToDisplayString().StartsWith("System") && // Exclude System.* types
                               paramType.GetMembers().OfType<IPropertySymbol>().Any(p => p.CanBeReferencedByName && p.GetMethod != null);
 
-            if (isEntityType && param.Name.Equals("entity", StringComparison.OrdinalIgnoreCase))
+            if (isEntityType)
             {
                 // Expand entity properties - bind each property as separate parameter
                 var properties = paramType!.GetMembers()

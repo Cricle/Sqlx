@@ -64,6 +64,8 @@
     <ProjectReference Include="..\..\src\Sqlx.Generator\Sqlx.Generator.csproj"
                       OutputItemType="Analyzer"
                       ReferenceOutputAssembly="true" />
+    <!-- FullFeatureDemo: for integration tests -->
+    <ProjectReference Include="..\..\samples\FullFeatureDemo\FullFeatureDemo.csproj" />
   </ItemGroup>
 
   <!-- 测试数据文件 -->

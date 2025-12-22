@@ -124,7 +124,19 @@ public class TDD_ConstructorSupport_Async : IDisposable
 
     public void Dispose()
     {
-        _connection?.Dispose();
+        try
+        {
+            if (_connection?.State != ConnectionState.Closed)
+            {
+                _connection?.Close();
+            }
+            _connection?.Dispose();
+        }
+        catch (Exception)
+        {
+            // Ignore disposal errors - connection may already be in invalid state
+            // due to concurrent operations in tests
+        }
     }
 
     // ==================== 基础异步操作测试 ====================

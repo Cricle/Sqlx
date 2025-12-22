@@ -91,6 +91,7 @@ internal class PostgreSqlDialectProvider : BaseDialectProvider
     {
         return dotNetType.Name switch
         {
+            nameof(System.Int16) => "SMALLINT",
             nameof(System.Int32) => "INTEGER",
             nameof(System.Int64) => "BIGINT",
             nameof(System.Decimal) => "DECIMAL(18,2)",
@@ -101,6 +102,7 @@ internal class PostgreSqlDialectProvider : BaseDialectProvider
             nameof(System.Boolean) => "BOOLEAN",
             nameof(System.Byte) => "SMALLINT",
             nameof(System.Guid) => "UUID",
+            "Byte[]" => "BYTEA",
             _ => "VARCHAR(4000)"
         };
     }

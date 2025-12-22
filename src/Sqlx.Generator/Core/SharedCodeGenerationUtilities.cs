@@ -29,9 +29,45 @@ public static class SharedCodeGenerationUtilities
     private static readonly ConcurrentDictionary<IPropertySymbol, string> _sqlNameCache =
         new(SymbolEqualityComparer.Default);
 
+    // 🔧 修复：使用正确的SymbolDisplayFormat来显示可空类型
+    // 这确保 int? 显示为 "int?" 而不是 "int" 或 "Nullable<int>"
+    // 注意：不使用 GlobalNamespaceStyle.Included 以避免在文件名中产生无效字符 ":"
+    private static readonly SymbolDisplayFormat _nullableAwareFormat = new SymbolDisplayFormat(
+        globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Omitted,
+        typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+        genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
+        miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes |
+                              SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
+
     /// <summary>Gets symbol display string with cache for performance.</summary>
     public static string GetCachedDisplayString(this ISymbol symbol) =>
-        _displayStringCache.GetOrAdd(symbol, s => s.ToDisplayString());
+        _displayStringCache.GetOrAdd(symbol, s => GetDisplayStringWithNullable(s));
+
+    /// <summary>
+    /// Gets display string with proper nullable type handling.
+    /// Ensures int? is displayed as "int?" not "int" or "Nullable&lt;int&gt;".
+    /// </summary>
+    private static string GetDisplayStringWithNullable(ISymbol symbol)
+    {
+        if (symbol is ITypeSymbol typeSymbol)
+        {
+            // 检查是否是 Nullable<T> 值类型 (如 int?, long?, bool? 等)
+            if (typeSymbol is INamedTypeSymbol namedType &&
+                namedType.IsGenericType &&
+                namedType.ConstructedFrom.SpecialType == SpecialType.System_Nullable_T)
+            {
+                // 获取内部类型并添加 ? 后缀
+                var innerType = namedType.TypeArguments[0];
+                var innerTypeString = innerType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+                return innerTypeString + "?";
+            }
+
+            // 对于引用类型的可空注解，使用标准格式（不包含 global:: 前缀）
+            return typeSymbol.ToDisplayString(_nullableAwareFormat);
+        }
+
+        return symbol.ToDisplayString();
+    }
 
     /// <summary>Cached scalar type check.</summary>
     public static bool IsCachedScalarType(this ITypeSymbol type) =>
@@ -82,7 +118,7 @@ public static class SharedCodeGenerationUtilities
     /// <summary>
     /// Generate command creation and parameter binding
     /// </summary>
-    public static void GenerateCommandSetup(IndentedStringBuilder sb, string sql, IMethodSymbol method, string connectionName)
+    public static void GenerateCommandSetup(IndentedStringBuilder sb, string sql, IMethodSymbol method, string connectionName, INamedTypeSymbol? classSymbol = null)
     {
         sb.AppendLine($"__cmd__ = (global::System.Data.Common.DbCommand){connectionName}.CreateCommand();");
 
@@ -103,12 +139,14 @@ public static class SharedCodeGenerationUtilities
                                      sql.Contains("{RUNTIME_LIMIT_") ||
                                      sql.Contains("{RUNTIME_OFFSET_") ||
                                      sql.Contains("{RUNTIME_JOIN_") ||
-                                     sql.Contains("{RUNTIME_GROUPBY_");
+                                     sql.Contains("{RUNTIME_GROUPBY_") ||
+                                     sql.Contains("{RUNTIME_NULLABLE_LIMIT_") ||
+                                     sql.Contains("{RUNTIME_NULLABLE_OFFSET_");
 
         if (hasDynamicPlaceholders)
         {
             // Generate dynamic SQL building with string interpolation
-            GenerateDynamicSql(sb, sql, method);
+            GenerateDynamicSql(sb, sql, method, classSymbol);
         }
         else
         {
@@ -301,13 +339,13 @@ public static class SharedCodeGenerationUtilities
     /// <summary>
     /// Generate dynamic SQL building code (WHERE, SET, ORDERBY, etc.) with zero-allocation string interpolation
     /// </summary>
-    private static void GenerateDynamicSql(IndentedStringBuilder sb, string sql, IMethodSymbol method)
+    private static void GenerateDynamicSql(IndentedStringBuilder sb, string sql, IMethodSymbol method, INamedTypeSymbol? classSymbol = null)
     {
         sb.AppendLine("// Build SQL with dynamic placeholders (compile-time splitting, zero Replace calls)");
 
-        // Find all runtime dynamic markers (WHERE, SET, ORDERBY, LIMIT, OFFSET, JOIN, GROUPBY)
+        // Find all runtime dynamic markers (WHERE, SET, ORDERBY, LIMIT, OFFSET, JOIN, GROUPBY, NULLABLE_LIMIT, NULLABLE_OFFSET)
         var markers = System.Text.RegularExpressions.Regex.Matches(sql,
-            @"\{RUNTIME_(WHERE|SET|ORDERBY|LIMIT|OFFSET|JOIN|GROUPBY)_([^}]+)\}");
+            @"\{RUNTIME_(WHERE|SET|ORDERBY|LIMIT|OFFSET|JOIN|GROUPBY|NULLABLE_LIMIT|NULLABLE_OFFSET)_([^}]+)\}");
 
         if (markers.Count == 0)
         {
@@ -438,6 +476,85 @@ public static class SharedCodeGenerationUtilities
                     else // OFFSET
                     {
                         sb.AppendLine($"var {varName} = $\"OFFSET {{{paramName}}} ROWS\";");
+                    }
+                }
+            }
+            else if (placeholderType == "NULLABLE_LIMIT" || placeholderType == "NULLABLE_OFFSET")
+            {
+                // 🔧 修复：处理可空的 LIMIT/OFFSET 参数
+                // 生成条件代码：只有当参数有值时才添加 LIMIT/OFFSET 子句
+                var paramName = markerContent;
+                var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
+
+                // 获取方言类型以生成正确的 SQL 语法
+                // 使用 classSymbol（如果提供）而不是 method.ContainingType，因为方法可能来自接口
+                var dialectValue = classSymbol != null ? GetDialectForClass(classSymbol) : GetDialectForMethod(method);
+
+                // 检查是否同时存在 NULLABLE_OFFSET 和 NULLABLE_LIMIT
+                var hasNullableOffset = dynamicVariables.Any(v => v.placeholderType == "NULLABLE_OFFSET");
+                var hasNullableLimit = dynamicVariables.Any(v => v.placeholderType == "NULLABLE_LIMIT");
+                
+                // 🔧 修复：检查 SQL 中是否有非可空的 OFFSET（直接生成的 OFFSET @xxx）
+                // 这种情况下，当 LIMIT 为 null 时也需要生成默认的 LIMIT 值
+                var hasNonNullableOffset = sql.Contains("OFFSET @") || sql.Contains("OFFSET $") || sql.Contains("OFFSET :");
+
+                if (placeholderType == "NULLABLE_LIMIT")
+                {
+                    sb.AppendLine($"// 🔧 Generate conditional LIMIT clause for nullable parameter: {paramName} (dialect: {dialectValue})");
+                    if (dialectValue == "SqlServer")
+                    {
+                        // SQL Server 需要 OFFSET...FETCH 语法
+                        // 如果没有 OFFSET 参数，需要添加 OFFSET 0 ROWS
+                        if (hasNullableOffset)
+                        {
+                            // 有 OFFSET 参数，只生成 FETCH 部分
+                            sb.AppendLine($"var {varName} = {paramName}.HasValue ? $\"FETCH NEXT {{{paramName}.Value}} ROWS ONLY\" : \"\";");
+                        }
+                        else
+                        {
+                            // 没有 OFFSET 参数，需要添加 OFFSET 0 ROWS
+                            sb.AppendLine($"var {varName} = {paramName}.HasValue ? $\"OFFSET 0 ROWS FETCH NEXT {{{paramName}.Value}} ROWS ONLY\" : \"\";");
+                        }
+                    }
+                    else
+                    {
+                        // MySQL, PostgreSQL, SQLite 使用 LIMIT 语法
+                        // 🔧 修复：如果有 OFFSET 参数（可空或非可空），当 LIMIT 为 null 时需要生成一个很大的默认值
+                        // 因为 SQLite/MySQL/PostgreSQL 的 OFFSET 必须配合 LIMIT 使用
+                        if (hasNullableOffset || hasNonNullableOffset)
+                        {
+                            sb.AppendLine($"var {varName} = {paramName}.HasValue ? $\"LIMIT {{{paramName}.Value}}\" : \"LIMIT 2147483647\";");
+                        }
+                        else
+                        {
+                            sb.AppendLine($"var {varName} = {paramName}.HasValue ? $\"LIMIT {{{paramName}.Value}}\" : \"\";");
+                        }
+                    }
+                }
+                else // NULLABLE_OFFSET
+                {
+                    sb.AppendLine($"// 🔧 Generate conditional OFFSET clause for nullable parameter: {paramName} (dialect: {dialectValue})");
+                    if (dialectValue == "SqlServer")
+                    {
+                        // SQL Server: OFFSET x ROWS (FETCH 由 LIMIT 生成)
+                        // 如果有 LIMIT，当 OFFSET 为 null 时需要生成 OFFSET 0 ROWS
+                        if (hasNullableLimit)
+                        {
+                            sb.AppendLine($"var {varName} = {paramName}.HasValue ? $\"OFFSET {{{paramName}.Value}} ROWS\" : \"OFFSET 0 ROWS\";");
+                        }
+                        else
+                        {
+                            sb.AppendLine($"var {varName} = {paramName}.HasValue ? $\"OFFSET {{{paramName}.Value}} ROWS\" : \"\";");
+                        }
+                    }
+                    else if (dialectValue == "Oracle")
+                    {
+                        sb.AppendLine($"var {varName} = {paramName}.HasValue ? $\"OFFSET {{{paramName}.Value}} ROWS\" : \"\";");
+                    }
+                    else
+                    {
+                        // MySQL, PostgreSQL, SQLite
+                        sb.AppendLine($"var {varName} = {paramName}.HasValue ? $\"OFFSET {{{paramName}.Value}}\" : \"\";");
                     }
                 }
             }
@@ -779,28 +896,59 @@ public static class SharedCodeGenerationUtilities
     private static string GetDialectForMethod(IMethodSymbol method)
     {
         var classSymbol = method.ContainingType;
+        return GetDialectForClass(classSymbol);
+    }
+
+    /// <summary>
+    /// Get database dialect for a class (from [SqlDefine] or [RepositoryFor] attribute)
+    /// </summary>
+    private static string GetDialectForClass(INamedTypeSymbol classSymbol)
+    {
+        // 1. 首先检查 [SqlDefine] 属性
         var sqlDefineAttr = classSymbol.GetAttributes()
             .FirstOrDefault(a => a.AttributeClass?.Name == "SqlDefineAttribute");
 
         if (sqlDefineAttr != null && sqlDefineAttr.ConstructorArguments.Length > 0)
         {
             var enumValue = sqlDefineAttr.ConstructorArguments[0].Value;
-
-            // Map SqlDefineTypes enum to SqlDialect enum names
-            // SqlDefineTypes: MySql=0, SqlServer=1, PostgreSql=2, SQLite=3, Oracle=4
-            // SqlDialect: MySQL, SqlServer, PostgreSQL, SQLite, Oracle
-            return enumValue switch
-            {
-                0 => "MySQL",
-                1 => "SqlServer",
-                2 => "PostgreSQL",
-                3 => "SQLite",
-                4 => "Oracle",
-                _ => "SqlServer" // Default
-            };
+            return MapDialectEnumToString(enumValue);
         }
 
-        return "SqlServer"; // Default if no [SqlDefine] attribute
+        // 2. 检查 [RepositoryFor] 属性的 Dialect 命名参数
+        var repositoryForAttr = classSymbol.GetAttributes()
+            .FirstOrDefault(a => a.AttributeClass?.Name == "RepositoryForAttribute" || 
+                                a.AttributeClass?.Name == "RepositoryFor");
+
+        if (repositoryForAttr != null)
+        {
+            var dialectArg = repositoryForAttr.NamedArguments
+                .FirstOrDefault(arg => arg.Key == "Dialect");
+            
+            if (dialectArg.Value.Value != null)
+            {
+                return MapDialectEnumToString(dialectArg.Value.Value);
+            }
+        }
+
+        return "SqlServer"; // Default
+    }
+
+    /// <summary>
+    /// Map SqlDefineTypes enum value to dialect string
+    /// SqlDefineTypes: MySql=0, SqlServer=1, PostgreSql=2, Oracle=3, DB2=4, SQLite=5
+    /// </summary>
+    private static string MapDialectEnumToString(object? enumValue)
+    {
+        return enumValue switch
+        {
+            0 => "MySQL",
+            1 => "SqlServer",
+            2 => "PostgreSQL",
+            3 => "Oracle",
+            4 => "DB2",
+            5 => "SQLite",
+            _ => "SqlServer" // Default
+        };
     }
 
     /// <summary>

@@ -893,7 +893,7 @@ public class CodeGenerationService
             processedSql = AddConcurrencyCheck(processedSql, concurrencyColumn, method);
         }
 
-        SharedCodeGenerationUtilities.GenerateCommandSetup(sb, processedSql, method, connectionName);
+        SharedCodeGenerationUtilities.GenerateCommandSetup(sb, processedSql, method, connectionName, classSymbol);
 
         // Add try-catch block
         sb.AppendLine("try");

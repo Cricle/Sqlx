@@ -208,7 +208,7 @@ public class SqlTemplateEngine
                 "distinct" => ProcessDistinctPlaceholder(placeholderType, placeholderOptions, dialect),
                 "union" => ProcessUnionPlaceholder(placeholderType, placeholderOptions, dialect),
                 "top" => ProcessTopPlaceholder(placeholderType, placeholderOptions, dialect),
-                "offset" => ProcessOffsetPlaceholder(placeholderType, placeholderOptions, dialect),
+                "offset" => ProcessOffsetPlaceholder(placeholderType, placeholderOptions, dialect, method),
                 // 增强的条件占位符
                 "between" => ProcessBetweenPlaceholder(placeholderType, placeholderOptions, dialect),
                 "like" => ProcessLikePlaceholder(placeholderType, placeholderOptions, dialect),
@@ -1343,9 +1343,9 @@ public class SqlTemplateEngine
     }
 
     /// <summary>处理OFFSET占位符 - 多数据库支持</summary>
-    private static string ProcessOffsetPlaceholder(string type, string options, SqlDefine dialect)
+    private static string ProcessOffsetPlaceholder(string type, string options, SqlDefine dialect, IMethodSymbol method)
     {
-        return SqlTemplateEngineExtensions.MultiDatabasePlaceholderSupport.ProcessGenericPlaceholder("offset", type, options, dialect);
+        return SqlTemplateEngineExtensions.MultiDatabasePlaceholderSupport.ProcessOffsetPlaceholder(type, options, dialect, method);
     }
 
     #region 增强的条件占位符处理

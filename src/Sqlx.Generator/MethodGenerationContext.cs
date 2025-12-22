@@ -1053,12 +1053,25 @@ internal partial class MethodGenerationContext : GenerationContextBase
                 };
             }
 
-            return new SqlDefine(
-                methodDef.ConstructorArguments[0].Value?.ToString() ?? "[",
-                methodDef.ConstructorArguments[1].Value?.ToString() ?? "]",
-                methodDef.ConstructorArguments[2].Value?.ToString() ?? "'",
-                methodDef.ConstructorArguments[3].Value?.ToString() ?? "'",
-                methodDef.ConstructorArguments[4].Value?.ToString() ?? "@");
+            // Custom SqlDefine with explicit delimiters - infer DbTypeName from pattern
+            var columnLeft = methodDef.ConstructorArguments[0].Value?.ToString() ?? "[";
+            var columnRight = methodDef.ConstructorArguments[1].Value?.ToString() ?? "]";
+            var stringLeft = methodDef.ConstructorArguments[2].Value?.ToString() ?? "'";
+            var stringRight = methodDef.ConstructorArguments[3].Value?.ToString() ?? "'";
+            var paramPrefix = methodDef.ConstructorArguments[4].Value?.ToString() ?? "@";
+            
+            // Infer DbTypeName from delimiter pattern
+            var dbTypeName = (columnLeft, columnRight, paramPrefix) switch
+            {
+                ("`", "`", "@") => "MySql",
+                ("\"", "\"", "$") => "PostgreSql",
+                ("\"", "\"", ":") => "Oracle",
+                ("\"", "\"", "?") => "DB2",
+                ("[", "]", "@") => "SqlServer",  // Default for [, ], @
+                _ => "Custom"
+            };
+            
+            return new SqlDefine(columnLeft, columnRight, stringLeft, stringRight, paramPrefix, dbTypeName);
         }
 
         // Try to infer database dialect from the connection type

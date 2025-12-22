@@ -70,6 +70,7 @@ internal class SQLiteDialectProvider : BaseDialectProvider
     {
         return dotNetType.Name switch
         {
+            nameof(System.Int16) => "INTEGER",
             nameof(System.Int32) => "INTEGER",
             nameof(System.Int64) => "INTEGER",
             nameof(System.Decimal) => "REAL",
@@ -80,6 +81,7 @@ internal class SQLiteDialectProvider : BaseDialectProvider
             nameof(System.Boolean) => "INTEGER",
             nameof(System.Byte) => "INTEGER",
             nameof(System.Guid) => "TEXT",
+            "Byte[]" => "BLOB",
             _ => "TEXT"
         };
     }

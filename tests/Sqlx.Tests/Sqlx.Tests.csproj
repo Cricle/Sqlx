@@ -33,6 +33,10 @@
     <PackageReference Include="Moq" />
     <PackageReference Include="Verify.MSTest" />
     <PackageReference Include="coverlet.collector" PrivateAssets="all" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
+    <PackageReference Include="FsCheck" />
+    <PackageReference Include="FsCheck.Xunit" />
   </ItemGroup>
 
   <!-- 数据库测试包 -->

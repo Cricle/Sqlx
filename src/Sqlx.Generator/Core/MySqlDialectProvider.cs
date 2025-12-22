@@ -58,6 +58,7 @@ internal class MySqlDialectProvider : BaseDialectProvider
     {
         return dotNetType.Name switch
         {
+            nameof(System.Int16) => "SMALLINT",
             nameof(System.Int32) => "INT",
             nameof(System.Int64) => "BIGINT",
             nameof(System.Decimal) => "DECIMAL(18,2)",
@@ -68,6 +69,7 @@ internal class MySqlDialectProvider : BaseDialectProvider
             nameof(System.Boolean) => "BOOLEAN",
             nameof(System.Byte) => "TINYINT",
             nameof(System.Guid) => "CHAR(36)",
+            "Byte[]" => "BLOB",
             _ => "VARCHAR(4000)"
         };
     }

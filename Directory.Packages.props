@@ -44,6 +44,8 @@
     <PackageVersion Include="Moq" Version="4.20.70" />
     <PackageVersion Include="Verify.MSTest" Version="28.9.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.3" />
+    <PackageVersion Include="FsCheck" Version="2.16.6" />
+    <PackageVersion Include="FsCheck.Xunit" Version="2.16.6" />
   </ItemGroup>
   <!-- 性能和基准测试 -->
   <ItemGroup Label="Performance">

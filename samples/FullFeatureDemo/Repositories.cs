@@ -34,7 +34,7 @@ public interface IUserRepository
     Task<long> InsertAsync(string name, string email, int age, decimal balance, DateTime createdAt, bool isActive = true);
 
     // ✨ 使用 {{set}} 占位符更新
-    [SqlTemplate("UPDATE {{table}} {{set}} WHERE id = @id")]
+    [SqlTemplate("UPDATE {{table}} SET {{set}} WHERE id = @id")]
     Task<int> UpdateAsync(User user);
 
     // ✨ 简单删除

@@ -44,16 +44,45 @@ public static class SqlTemplateEngineExtensions
         /// <summary>
         /// 处理LIMIT占位符 - 多数据库支持 (简化版本)
         /// 支持预定义模式、分页偏移量、智能默认值、参数化形式
+        /// 🔧 修复：正确处理可空参数 (int? limit = null)
         /// </summary>
         public static string ProcessLimitPlaceholder(string type, string options, SqlDefine dialect, Microsoft.CodeAnalysis.IMethodSymbol method = null)
         {
+            // 🔧 优先检查预定义模式（不受参数可空性影响）
+            var (sqlServer, oracle, others) = type.ToLowerInvariant() switch
+            {
+                "tiny" => ("OFFSET 0 ROWS FETCH NEXT 5 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 5 ROWS ONLY", "LIMIT 5"),
+                "small" => ("OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY", "LIMIT 10"),
+                "medium" => ("OFFSET 0 ROWS FETCH NEXT 50 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 50 ROWS ONLY", "LIMIT 50"),
+                "large" => ("OFFSET 0 ROWS FETCH NEXT 100 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 100 ROWS ONLY", "LIMIT 100"),
+                "page" => ("OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY", "LIMIT 20"),
+                "default" => ("OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY", "LIMIT 20"),
+                _ => (null, null, null)
+            };
+
+            // 如果是预定义模式，直接返回固定值
+            if (sqlServer != null)
+            {
+                return dialect.Equals(SqlDefine.SqlServer) ? sqlServer :
+                       dialect.Equals(SqlDefine.Oracle) ? oracle :
+                       others;
+            }
+
             // 自动检测 limit 参数（如果没有明确指定 --param）
             var paramMatch = System.Text.RegularExpressions.Regex.Match(options ?? "", @"--param\s+(\w+)");
             string paramName = null;
+            bool isNullableParam = false;
 
             if (paramMatch.Success)
             {
                 paramName = paramMatch.Groups[1].Value;
+                // 检查参数是否是可空类型
+                if (method != null)
+                {
+                    var param = method.Parameters.FirstOrDefault(p =>
+                        p.Name.Equals(paramName, System.StringComparison.OrdinalIgnoreCase));
+                    isNullableParam = param != null && IsNullableType(param.Type);
+                }
             }
             else if (method != null)
             {
@@ -63,12 +92,21 @@ public static class SqlTemplateEngineExtensions
                 if (limitParam != null)
                 {
                     paramName = limitParam.Name;
+                    isNullableParam = IsNullableType(limitParam.Type);
                 }
             }
 
             // 如果找到了参数名，生成参数化的 LIMIT
             if (!string.IsNullOrEmpty(paramName))
             {
+                // 🔧 修复：对于可空参数，生成运行时占位符让代码生成器处理条件逻辑
+                if (isNullableParam)
+                {
+                    // 返回运行时占位符，代码生成器会生成条件代码：
+                    // if (limit.HasValue) { sql += "LIMIT @limit"; cmd.Parameters.Add("@limit", limit.Value); }
+                    return $"{{RUNTIME_NULLABLE_LIMIT_{paramName}}}";
+                }
+
                 // 返回参数化的LIMIT（由方法参数提供值）
                 // 使用DatabaseType字符串区分数据库，因为SQLite和SQL Server有相同的结构但不同的行为
                 var dbType = dialect.DatabaseType;
@@ -87,25 +125,6 @@ public static class SqlTemplateEngineExtensions
                     // MySQL, PostgreSQL, SQLite
                     return $"LIMIT {dialect.ParameterPrefix}{paramName}";
                 }
-            }
-
-            // 检查预定义模式
-            var (sqlServer, oracle, others) = type.ToLowerInvariant() switch
-            {
-                "tiny" => ("OFFSET 0 ROWS FETCH NEXT 5 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 5 ROWS ONLY", "LIMIT 5"),
-                "small" => ("OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY", "LIMIT 10"),
-                "medium" => ("OFFSET 0 ROWS FETCH NEXT 50 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 50 ROWS ONLY", "LIMIT 50"),
-                "large" => ("OFFSET 0 ROWS FETCH NEXT 100 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 100 ROWS ONLY", "LIMIT 100"),
-                "page" => ("OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY", "LIMIT 20"),
-                "default" => ("OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY", "OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY", "LIMIT 20"),
-                _ => (null, null, null)
-            };
-
-            if (sqlServer != null)
-            {
-                return dialect.Equals(SqlDefine.SqlServer) ? sqlServer :
-                       dialect.Equals(SqlDefine.Oracle) ? oracle :
-                       others;
             }
 
             // 智能选项解析
@@ -153,16 +172,65 @@ public static class SqlTemplateEngineExtensions
         }
 
         /// <summary>
+        /// 检查类型是否是可空类型 (Nullable&lt;T&gt; 或引用类型的可空注解)
+        /// </summary>
+        private static bool IsNullableType(Microsoft.CodeAnalysis.ITypeSymbol type)
+        {
+            // 检查 Nullable<T> 值类型 (如 int?, long?, bool? 等)
+            if (type is Microsoft.CodeAnalysis.INamedTypeSymbol namedType &&
+                namedType.IsGenericType &&
+                namedType.ConstructedFrom.SpecialType == Microsoft.CodeAnalysis.SpecialType.System_Nullable_T)
+            {
+                return true;
+            }
+
+            // 检查引用类型的可空注解
+            return type.NullableAnnotation == Microsoft.CodeAnalysis.NullableAnnotation.Annotated;
+        }
+
+        /// <summary>
         /// 处理OFFSET占位符 - 多数据库支持
         /// 支持参数化形式、智能默认值
+        /// 🔧 修复：正确处理可空参数 (int? offset = null)
         /// </summary>
-        public static string ProcessOffsetPlaceholder(string type, string options, SqlDefine dialect)
+        public static string ProcessOffsetPlaceholder(string type, string options, SqlDefine dialect, Microsoft.CodeAnalysis.IMethodSymbol method = null)
         {
             // 检查是否是参数化形式: --param paramName
             var paramMatch = System.Text.RegularExpressions.Regex.Match(options ?? "", @"--param\s+(\w+)");
+            string paramName = null;
+            bool isNullableParam = false;
+
             if (paramMatch.Success)
             {
-                var paramName = paramMatch.Groups[1].Value;
+                paramName = paramMatch.Groups[1].Value;
+                // 检查参数是否是可空类型
+                if (method != null)
+                {
+                    var param = method.Parameters.FirstOrDefault(p =>
+                        p.Name.Equals(paramName, System.StringComparison.OrdinalIgnoreCase));
+                    isNullableParam = param != null && IsNullableType(param.Type);
+                }
+            }
+            else if (method != null)
+            {
+                // 自动检测名为 "offset" 的参数
+                var offsetParam = method.Parameters.FirstOrDefault(p =>
+                    p.Name.Equals("offset", System.StringComparison.OrdinalIgnoreCase));
+                if (offsetParam != null)
+                {
+                    paramName = offsetParam.Name;
+                    isNullableParam = IsNullableType(offsetParam.Type);
+                }
+            }
+
+            if (!string.IsNullOrEmpty(paramName))
+            {
+                // 🔧 修复：对于可空参数，生成运行时占位符让代码生成器处理条件逻辑
+                if (isNullableParam)
+                {
+                    return $"{{RUNTIME_NULLABLE_OFFSET_{paramName}}}";
+                }
+
                 // 返回参数化的OFFSET（由方法参数提供值）
                 var dbType = dialect.DatabaseType;
                 if (dbType == "SqlServer" || dbType == "Oracle")

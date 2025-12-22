@@ -15,7 +15,8 @@ namespace Sqlx.Generator;
 /// <param name="StringLeft">Gets string left delimiter</param>
 /// <param name="StringRight">Gets string right delimiter</param>
 /// <param name="ParameterPrefix">Gets parameter prefix</param>
-public readonly record struct SqlDefine(string ColumnLeft, string ColumnRight, string StringLeft, string StringRight, string ParameterPrefix)
+/// <param name="DbTypeName">Gets database type name for disambiguation (SQLite vs SqlServer)</param>
+public readonly record struct SqlDefine(string ColumnLeft, string ColumnRight, string StringLeft, string StringRight, string ParameterPrefix, string DbTypeName = "")
 {
     /// <summary>Wraps a column name with dialect-specific delimiters.</summary>
     public string WrapColumn(string columnName) =>
@@ -28,46 +29,42 @@ public readonly record struct SqlDefine(string ColumnLeft, string ColumnRight, s
     /// <summary>Escapes special characters in string values.</summary>
     private string EscapeString(string value) => value.Replace(StringLeft, StringLeft + StringLeft);
 
-    /// <summary>Gets database type name - uses explicit assignment to handle SQLite/SQL Server overlap</summary>
+    /// <summary>Gets database type name - uses DbTypeName field for explicit disambiguation</summary>
     public string DatabaseType
     {
         get
         {
-            // Explicit instance checks first (most reliable)
-            if (this.Equals(SQLite)) return "SQLite";
-            if (this.Equals(SqlServer)) return "SqlServer";
-            if (this.Equals(MySql)) return "MySql";
-            if (this.Equals(PostgreSql)) return "PostgreSql";
-            if (this.Equals(Oracle)) return "Oracle";
-            if (this.Equals(DB2)) return "DB2";
+            // If DbTypeName is explicitly set, use it (most reliable)
+            if (!string.IsNullOrEmpty(DbTypeName))
+                return DbTypeName;
             
-            // Pattern matching fallback
+            // Pattern matching fallback for backward compatibility
             return (ColumnLeft, ColumnRight, ParameterPrefix) switch
             {
                 ("`", "`", "@") => "MySql",
                 ("\"", "\"", "$") => "PostgreSql",
                 ("\"", "\"", ":") => "Oracle",
                 ("\"", "\"", "?") => "DB2",
-                ("[", "]", "@") => "SqlServer",  // Default for [, ], @
+                ("[", "]", "@") => "SqlServer",  // Default for [, ], @ when DbTypeName not set
                 _ => "Unknown"
             };
         }
     }
 
-    // Predefined dialect instances
+    // Predefined dialect instances with explicit DbTypeName
     /// <summary>MySQL数据库方言配置</summary>
-    public static readonly SqlDefine MySql = new("`", "`", "'", "'", "@");
+    public static readonly SqlDefine MySql = new("`", "`", "'", "'", "@", "MySql");
     /// <summary>SQL Server数据库方言配置</summary>
-    public static readonly SqlDefine SqlServer = new("[", "]", "'", "'", "@");
+    public static readonly SqlDefine SqlServer = new("[", "]", "'", "'", "@", "SqlServer");
     /// <summary>PostgreSQL数据库方言配置</summary>
-    public static readonly SqlDefine PostgreSql = new("\"", "\"", "'", "'", "$");
-    /// <summary>SQLite数据库方言配置 - Uses @ like SQL Server, distinguished by explicit instance checks</summary>
-    public static readonly SqlDefine SQLite = new("[", "]", "'", "'", "@");
+    public static readonly SqlDefine PostgreSql = new("\"", "\"", "'", "'", "$", "PostgreSql");
+    /// <summary>SQLite数据库方言配置 - Uses @ like SQL Server, distinguished by DbTypeName</summary>
+    public static readonly SqlDefine SQLite = new("[", "]", "'", "'", "@", "SQLite");
     /// <summary>PostgreSQL数据库方言配置（别名）</summary>
     public static readonly SqlDefine PgSql = PostgreSql;
     /// <summary>Oracle数据库方言配置</summary>
-    public static readonly SqlDefine Oracle = new("\"", "\"", "'", "'", ":");
+    public static readonly SqlDefine Oracle = new("\"", "\"", "'", "'", ":", "Oracle");
     /// <summary>DB2数据库方言配置</summary>
-    public static readonly SqlDefine DB2 = new("\"", "\"", "'", "'", "?");
+    public static readonly SqlDefine DB2 = new("\"", "\"", "'", "'", "?", "DB2");
 }
 

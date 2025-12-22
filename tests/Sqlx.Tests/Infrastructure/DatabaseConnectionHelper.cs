@@ -61,7 +61,7 @@ public static class DatabaseConnectionHelper
 
         var connectionString = Environment.GetEnvironmentVariable("POSTGRESQL_CONNECTION") ??
                                testContext?.Properties["PostgreSQLConnection"]?.ToString() ??
-                               "Host=localhost;Port=5432;Database=sqlx_test;Username=postgres;Password=postgres";
+                               "Host=localhost;Port=5432;Database=sqlx_test;Username=postgres;Password=postgres;Pooling=false;Timeout=5";
 
         try
         {
@@ -88,7 +88,7 @@ public static class DatabaseConnectionHelper
 
         var connectionString = Environment.GetEnvironmentVariable("MYSQL_CONNECTION") ??
                                testContext?.Properties["MySQLConnection"]?.ToString() ??
-                               "Server=localhost;Port=3306;Database=sqlx_test;Uid=root;Pwd=root";
+                               "Server=localhost;Port=3307;Database=sqlx_test;Uid=root;Pwd=root";
 
         try
         {
@@ -100,7 +100,7 @@ public static class DatabaseConnectionHelper
         {
             // 在CI环境如果连接失败，记录错误但返回null，让测试跳过而不是失败
             Console.WriteLine($"⚠️ Failed to connect to MySQL: {ex.Message}");
-            Console.WriteLine($"Connection string (masked): Server=localhost;Port=3306;Database=sqlx_test;Uid=***;Pwd=***");
+            Console.WriteLine($"Connection string (masked): Server=localhost;Port=3307;Database=sqlx_test;Uid=***;Pwd=***");
             return null;
         }
     }

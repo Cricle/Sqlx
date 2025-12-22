@@ -240,6 +240,7 @@ public class DatabaseFixture : IDisposable
             DELETE FROM accounts;
             DELETE FROM orders;
             DELETE FROM products;
+            DELETE FROM categories;
             DELETE FROM users;
         ";
         cmd.ExecuteNonQuery();

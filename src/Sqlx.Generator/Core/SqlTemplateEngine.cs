@@ -127,9 +127,12 @@ public class SqlTemplateEngine
         if (!ValidateTemplateSecurity(templateSql, result, dialect))
             return result;
 
+        // 先从原始模板提取参数（在占位符处理之前）
+        // 这样可以确保 DB2 等使用位置参数的方言也能正确提取参数名
+        ProcessParameters(templateSql, method!, result);
+
         // 处理模板 - 传递数据库方言
         var processedSql = ProcessPlaceholders(templateSql, method!, entityType, tableName, result, dialect);
-        ProcessParameters(processedSql, method!, result);
 
         // Return new instance with updated SQL
         return new SqlTemplateResult
@@ -305,8 +308,35 @@ public class SqlTemplateEngine
             // 批量操作增强
             "batch_insert" => ProcessBatchInsertPlaceholder(placeholderType, tableName, entityType, placeholderOptions, dialect),
             "bulk_update" => ProcessBulkUpdatePlaceholder(placeholderType, tableName, placeholderOptions, dialect),
-            _ => ProcessCustomPlaceholder($"{{{{{placeholderName}}}}}", placeholderName, placeholderType, placeholderOptions, result)
+            _ => ProcessCustomPlaceholder(
+                BuildOriginalPlaceholder(placeholderName, placeholderType, placeholderOptions), 
+                placeholderName, placeholderType, placeholderOptions, result)
         };
+    }
+
+    /// <summary>
+    /// 重建原始占位符字符串（用于未知占位符的保留）
+    /// </summary>
+    private static string BuildOriginalPlaceholder(string name, string type, string options)
+    {
+        var result = name;
+        if (!string.IsNullOrEmpty(type))
+        {
+            result += $":{type}";
+        }
+        if (!string.IsNullOrEmpty(options))
+        {
+            // 判断是新格式还是旧格式
+            if (options.StartsWith("--"))
+            {
+                result += $" {options}"; // 新格式：空格分隔
+            }
+            else
+            {
+                result += $"|{options}"; // 旧格式：管道分隔
+            }
+        }
+        return $"{{{{{result}}}}}";
     }
 
 

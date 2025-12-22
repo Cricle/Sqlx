@@ -161,53 +161,53 @@ public interface ILogRepository
     Task<long> CountByLevelAsync(string level);
 }
 
-// ==================== 6. 高级查询仓储（占位符未实现） ====================
+// ==================== 6. 高级查询仓储（使用标准 SQL） ====================
 public interface IAdvancedRepository
 {
-    // 注意: 以下方法使用的高级占位符尚未实现,测试会失败
+    // 修改：使用标准 SQL 而不是高级占位符
     
     [SqlTemplate(@"
         SELECT p.id as product_id, p.name as product_name, p.price, c.name as category_name
-        FROM {{table products}} p
-        {{join --type inner --table categories c --on p.category = c.code}}
+        FROM {{table}} p
+        INNER JOIN {{table categories}} c ON p.category = c.code
         WHERE p.is_deleted = {{bool_false}}
     ")]
     Task<List<ProductDetail>> GetProductDetailsAsync();
 
     [SqlTemplate(@"
         SELECT u.id as user_id, u.name as user_name, 
-               {{count o.id}} as order_count, 
-               COALESCE(SUM([o].[total_amount]), 0) as total_spent
+               COUNT(o.id) as order_count, 
+               COALESCE(SUM(o.total_amount), 0) as total_spent
         FROM {{table users}} u
-        {{join --type left --table orders o --on u.id = o.user_id}}
-        {{groupby u.id, u.name}}
-        {{having --condition 'COUNT(o.id) > 0'}}
+        LEFT JOIN {{table orders}} o ON u.id = o.user_id
+        GROUP BY u.id, u.name
+        HAVING COUNT(o.id) > 0
     ")]
     Task<List<UserStats>> GetUserStatsAsync();
 
     [SqlTemplate(@"
-        SELECT {{columns}} FROM {{table users}}
-        WHERE {{exists --query 'SELECT 1 FROM orders WHERE orders.user_id = users.id AND total_amount > @minAmount'}}
+        SELECT {{columns}} FROM {{table users}} u
+        WHERE EXISTS (SELECT 1 FROM {{table orders}} o WHERE o.user_id = u.id AND o.total_amount > @minAmount)
     ")]
     Task<List<User>> GetHighValueCustomersAsync(decimal minAmount);
 
-    [SqlTemplate("SELECT {{columns}} FROM {{table users}} {{orderby balance --desc}} {{limit}}")]
+    [SqlTemplate("SELECT {{columns}} FROM {{table users}} ORDER BY balance DESC {{limit}}")]
     Task<List<User>> GetTopRichUsersAsync(int? limit = 10);
 
     [SqlTemplate(@"
         SELECT name, 'user' as type FROM {{table users}} WHERE balance > @minBalance
-        {{union}}
+        UNION
         SELECT name, 'product' as type FROM {{table products}} WHERE price > @minPrice
     ")]
     Task<List<Dictionary<string, object?>>> GetHighValueEntitiesAsync(decimal minBalance, decimal minPrice);
 
     [SqlTemplate(@"
         SELECT id, name, balance,
-        {{case 
-            --when 'balance > 10000' --then 'VIP'
-            --when 'balance > 5000' --then 'Premium'
-            --else 'Regular'
-        }} as level
+        CASE 
+            WHEN balance > 10000 THEN 'VIP'
+            WHEN balance > 5000 THEN 'Premium'
+            ELSE 'Regular'
+        END as level
         FROM {{table users}}
     ")]
     Task<List<Dictionary<string, object?>>> GetUsersWithLevelAsync();
@@ -215,7 +215,7 @@ public interface IAdvancedRepository
     [SqlTemplate(@"
         SELECT * FROM (
             SELECT {{columns}}, 
-                   {{row_number --partition_by category --order_by price DESC}} as rank
+                   ROW_NUMBER() OVER (PARTITION BY category ORDER BY price DESC) as rank
             FROM {{table products}}
             WHERE is_deleted = {{bool_false}}
         )

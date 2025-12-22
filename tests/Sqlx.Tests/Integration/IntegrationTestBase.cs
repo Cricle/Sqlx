@@ -5,7 +5,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Sqlx;
+using Sqlx.Annotations;
 
 namespace Sqlx.Tests.Integration;
 
@@ -18,21 +18,15 @@ public abstract class IntegrationTestBase
     protected static DatabaseFixture _fixture = null!;
     protected bool _needsSeedData = false;  // 子类可以设置是否需要预置数据
 
-    [ClassInitialize]
-    public static void BaseClassInitialize(TestContext context)
-    {
-        _fixture = new DatabaseFixture();
-    }
-
-    [ClassCleanup]
-    public static void BaseClassCleanup()
-    {
-        _fixture?.Dispose();
-    }
-
     [TestInitialize]
     public virtual void TestInitialize()
     {
+        // 确保 fixture 已初始化
+        if (_fixture == null)
+        {
+            _fixture = new DatabaseFixture();
+        }
+        
         // 每个测试前清理数据
         _fixture.CleanupData(SqlDefineTypes.SQLite);
         

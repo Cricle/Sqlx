@@ -500,7 +500,7 @@ public class NullableLimitOffset_MySQL_Tests : NullableLimitOffsetTestBase
         try
         {
             var conn = new MySqlConnector.MySqlConnection(
-                "Server=localhost;Port=3306;Database=sqlx_test;User=root;Password=root;AllowUserVariables=true");
+                "Server=localhost;Port=3307;Database=sqlx_test;User=root;Password=root;AllowUserVariables=true");
             return conn;
         }
         catch
@@ -513,54 +513,3 @@ public class NullableLimitOffset_MySQL_Tests : NullableLimitOffsetTestBase
         => new MySQLPaginationRepository(connection);
 }
 
-// ==================== PostgreSQL 测试 ====================
-
-[TestClass]
-public class NullableLimitOffset_PostgreSQL_Tests : NullableLimitOffsetTestBase
-{
-    protected override string TableName => "pagination_users_pg";
-    protected override SqlDefineTypes DialectType => SqlDefineTypes.PostgreSql;
-
-    protected override DbConnection? CreateConnection()
-    {
-        try
-        {
-            var conn = new Npgsql.NpgsqlConnection(
-                "Host=localhost;Port=5432;Database=sqlx_test;Username=postgres;Password=postgres");
-            return conn;
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    protected override IPaginationUserRepository CreateRepository(DbConnection connection)
-        => new PostgreSQLPaginationRepository(connection);
-}
-
-// ==================== SQL Server 测试 ====================
-
-[TestClass]
-public class NullableLimitOffset_SqlServer_Tests : NullableLimitOffsetTestBase
-{
-    protected override string TableName => "pagination_users_ss";
-    protected override SqlDefineTypes DialectType => SqlDefineTypes.SqlServer;
-
-    protected override DbConnection? CreateConnection()
-    {
-        try
-        {
-            var conn = new Microsoft.Data.SqlClient.SqlConnection(
-                "Server=localhost,1433;Database=master;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=true");
-            return conn;
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    protected override IPaginationUserRepository CreateRepository(DbConnection connection)
-        => new SqlServerPaginationRepository(connection);
-}

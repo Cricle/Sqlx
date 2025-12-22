@@ -18,20 +18,11 @@ namespace Sqlx.Tests.Integration;
 /// 测试: {{count}}, {{sum}}, {{avg}}, {{max}}, {{min}}
 /// </summary>
 [TestClass]
-public class TDD_AggregateFunctions_Integration
+public class TDD_AggregateFunctions_Integration : IntegrationTestBase
 {
-    private DatabaseFixture _fixture = null!;
-
-    [TestInitialize]
-    public void Initialize()
+    public TDD_AggregateFunctions_Integration()
     {
-        _fixture = new DatabaseFixture();
-    }
-
-    [TestCleanup]
-    public void Cleanup()
-    {
-        _fixture?.Dispose();
+        _needsSeedData = true;  // 需要预置数据
     }
 
     [TestMethod]
@@ -39,20 +30,15 @@ public class TDD_AggregateFunctions_Integration
     [TestCategory("AggregateFunctions")]
     public async Task AggregateFunctions_Sum_SQLite()
     {
-        // Arrange
+        // Arrange - 预置数据已经包含15个用户，总余额 = 17500
         var connection = _fixture.GetConnection(SqlDefineTypes.SQLite);
-        _fixture.CleanupData(SqlDefineTypes.SQLite);
-        _fixture.SeedTestData(SqlDefineTypes.SQLite);  // 插入测试数据
         var repo = new UserRepository(connection);
-        await repo.InsertAsync("用户1", "user1@example.com", 25, 1000m, DateTime.Now, true);
-        await repo.InsertAsync("用户2", "user2@example.com", 30, 2000m, DateTime.Now, true);
-        await repo.InsertAsync("用户3", "user3@example.com", 35, 3000m, DateTime.Now, true);
 
         // Act - 使用 {{sum balance}} 占位符
         var totalBalance = await repo.GetTotalBalanceAsync();
 
         // Assert
-        Assert.AreEqual(6000m, totalBalance, "总余额应该是6000");
+        Assert.AreEqual(17500m, totalBalance, "总余额应该是17500（15个预置用户）");
     }
 
     [TestMethod]
@@ -60,12 +46,9 @@ public class TDD_AggregateFunctions_Integration
     [TestCategory("AggregateFunctions")]
     public async Task AggregateFunctions_Avg_SQLite()
     {
-        // Arrange
+        // Arrange - 预置数据已经包含15个用户，年龄分布：25(5个), 30(5个), 35(5个)
         var connection = _fixture.GetConnection(SqlDefineTypes.SQLite);
         var repo = new UserRepository(connection);
-        await repo.InsertAsync("用户1", "user1@example.com", 20, 1000m, DateTime.Now, true);
-        await repo.InsertAsync("用户2", "user2@example.com", 30, 2000m, DateTime.Now, true);
-        await repo.InsertAsync("用户3", "user3@example.com", 40, 3000m, DateTime.Now, true);
 
         // Act - 使用 {{avg age}} 占位符
         var avgAge = await repo.GetAverageAgeAsync();
@@ -79,12 +62,9 @@ public class TDD_AggregateFunctions_Integration
     [TestCategory("AggregateFunctions")]
     public async Task AggregateFunctions_Max_SQLite()
     {
-        // Arrange
+        // Arrange - 预置数据已经包含15个用户，最高余额是5000
         var connection = _fixture.GetConnection(SqlDefineTypes.SQLite);
         var repo = new UserRepository(connection);
-        await repo.InsertAsync("用户1", "user1@example.com", 25, 1000m, DateTime.Now, true);
-        await repo.InsertAsync("用户2", "user2@example.com", 30, 5000m, DateTime.Now, true);
-        await repo.InsertAsync("用户3", "user3@example.com", 35, 3000m, DateTime.Now, true);
 
         // Act - 使用 {{max balance}} 占位符
         var maxBalance = await repo.GetMaxBalanceAsync();
@@ -98,14 +78,9 @@ public class TDD_AggregateFunctions_Integration
     [TestCategory("AggregateFunctions")]
     public async Task AggregateFunctions_Count_SQLite()
     {
-        // Arrange
+        // Arrange - 预置数据已经包含15个用户
         var connection = _fixture.GetConnection(SqlDefineTypes.SQLite);
         var repo = new UserRepository(connection);
-        var testUsers = IntegrationTestHelpers.GenerateTestUsers(15);
-        foreach (var user in testUsers)
-        {
-            await repo.InsertAsync(user.Name, user.Email, user.Age, user.Balance, user.CreatedAt, user.IsActive);
-        }
 
         // Act - 使用 {{count}} 占位符
         var count = await repo.CountAsync();
@@ -119,14 +94,9 @@ public class TDD_AggregateFunctions_Integration
     [TestCategory("AggregateFunctions")]
     public async Task AggregateFunctions_Distinct_SQLite()
     {
-        // Arrange
+        // Arrange - 预置数据已经包含15个用户，年龄分布：25(5个), 30(5个), 35(5个)
         var connection = _fixture.GetConnection(SqlDefineTypes.SQLite);
         var repo = new UserRepository(connection);
-        await repo.InsertAsync("用户1", "user1@example.com", 25, 1000m, DateTime.Now, true);
-        await repo.InsertAsync("用户2", "user2@example.com", 25, 2000m, DateTime.Now, true);
-        await repo.InsertAsync("用户3", "user3@example.com", 30, 3000m, DateTime.Now, true);
-        await repo.InsertAsync("用户4", "user4@example.com", 30, 4000m, DateTime.Now, true);
-        await repo.InsertAsync("用户5", "user5@example.com", 35, 5000m, DateTime.Now, true);
 
         // Act - 使用 {{distinct age}} 占位符
         var distinctAges = await repo.GetDistinctAgesAsync();

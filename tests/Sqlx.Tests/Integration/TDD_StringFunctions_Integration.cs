@@ -6,6 +6,7 @@
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Sqlx;
@@ -19,20 +20,11 @@ namespace Sqlx.Tests.Integration;
 /// 测试: {{like}}, {{in}}, {{between}}, {{distinct}}, {{coalesce}}
 /// </summary>
 [TestClass]
-public class TDD_StringFunctions_Integration
+public class TDD_StringFunctions_Integration : IntegrationTestBase
 {
-    private DatabaseFixture _fixture = null!;
-
-    [TestInitialize]
-    public void Initialize()
+    public TDD_StringFunctions_Integration()
     {
-        _fixture = new DatabaseFixture();
-    }
-
-    [TestCleanup]
-    public void Cleanup()
-    {
-        _fixture?.Dispose();
+        _needsSeedData = false;  // 每个测试自己插入数据
     }
 
     [TestMethod]
@@ -66,13 +58,15 @@ public class TDD_StringFunctions_Integration
         var connection = _fixture.GetConnection(SqlDefineTypes.SQLite);
         var productRepo = new ProductRepository(connection);
         var products = IntegrationTestHelpers.GenerateTestProducts(3);
+        var insertedIds = new List<long>();
         foreach (var product in products)
         {
-            await productRepo.InsertAsync(product.Name, product.Category, product.Price, product.Stock);
+            var id = await productRepo.InsertAsync(product.Name, product.Category, product.Price, product.Stock);
+            insertedIds.Add(id);
         }
 
-        // Act - 使用 {{in @ids}} 占位符
-        var ids = new long[] { 1, 2 };
+        // Act - 使用 {{in @ids}} 占位符，使用实际插入的 ID
+        var ids = insertedIds.Take(2).ToArray();
         var results = await productRepo.GetByIdsAsync(ids);
 
         // Assert

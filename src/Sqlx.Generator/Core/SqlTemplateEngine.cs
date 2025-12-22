@@ -1881,7 +1881,21 @@ public class SqlTemplateEngine
     /// <summary>处理EXISTS占位符 - 存在性检查</summary>
     private static string ProcessExistsPlaceholder(string type, string options, SqlDefine dialect)
     {
-        var subquery = ExtractOption(options, "query", "SELECT 1 FROM table WHERE condition");
+        // 支持两种格式:
+        // 1. 命令行风格: {{exists --query 'SELECT 1 FROM orders WHERE ...'}}
+        // 2. 管道风格: {{exists query=SELECT 1 FROM orders|not=false}}
+        
+        var subquery = ExtractCommandLineOption(options, "--query");
+        if (string.IsNullOrEmpty(subquery))
+        {
+            subquery = ExtractOption(options, "query", "SELECT 1 FROM table WHERE condition");
+        }
+        else
+        {
+            // 移除引号
+            subquery = subquery.Trim('\'', '"');
+        }
+        
         var negation = ExtractOption(options, "not", "false") == "true";
 
         return negation ? $"NOT EXISTS ({subquery})" : $"EXISTS ({subquery})";
@@ -1932,22 +1946,60 @@ public class SqlTemplateEngine
     /// <summary>处理CASE占位符 - CASE WHEN表达式</summary>
     private static string ProcessCasePlaceholder(string type, string options, SqlDefine dialect)
     {
-        // 格式：{{case --when status=1 --then 'Active' --when status=0 --then 'Inactive' --else 'Unknown'}}
-        // 简化格式：{{case:status|1=Active,0=Inactive,default=Unknown}}
-
+        // 支持多个 WHEN-THEN 子句:
+        // {{case --when 'balance > 10000' --then 'VIP' --when 'balance > 5000' --then 'Premium' --else 'Regular'}}
+        
         var column = ExtractOption(options, "column", type);
-        var whenClause = ExtractCommandLineOption(options, "--when");
-        var thenClause = ExtractCommandLineOption(options, "--then");
-        var elseClause = ExtractCommandLineOption(options, "--else");
-
-        if (!string.IsNullOrEmpty(whenClause))
+        
+        // 解析所有 --when 和 --then 对
+        var caseBuilder = new System.Text.StringBuilder("CASE");
+        
+        var remainingOptions = options;
+        while (!string.IsNullOrEmpty(remainingOptions))
         {
-            // 命令行格式
-            return $"CASE WHEN {whenClause} THEN {thenClause} ELSE {elseClause} END";
+            var whenStart = remainingOptions.IndexOf("--when");
+            if (whenStart == -1) break;
+            
+            var whenContent = ExtractCommandLineOption(remainingOptions.Substring(whenStart), "--when");
+            if (string.IsNullOrEmpty(whenContent)) break;
+            
+            // 移除引号
+            whenContent = whenContent.Trim('\'', '"');
+            
+            // 查找对应的 --then
+            var thenStart = remainingOptions.IndexOf("--then", whenStart);
+            if (thenStart == -1) break;
+            
+            var thenContent = ExtractCommandLineOption(remainingOptions.Substring(thenStart), "--then");
+            if (string.IsNullOrEmpty(thenContent)) break;
+            
+            // 移除引号
+            thenContent = thenContent.Trim('\'', '"');
+            
+            caseBuilder.Append($" WHEN {whenContent} THEN '{thenContent}'");
+            
+            // 移动到下一个可能的 --when
+            var nextWhenStart = remainingOptions.IndexOf("--when", thenStart);
+            if (nextWhenStart == -1)
+            {
+                remainingOptions = "";
+            }
+            else
+            {
+                remainingOptions = remainingOptions.Substring(nextWhenStart);
+            }
         }
-
-        // 简化格式处理
-        return $"CASE {dialect.WrapColumn(column)} END";
+        
+        // 处理 --else 子句
+        var elseClause = ExtractCommandLineOption(options, "--else");
+        if (!string.IsNullOrEmpty(elseClause))
+        {
+            elseClause = elseClause.Trim('\'', '"');
+            caseBuilder.Append($" ELSE '{elseClause}'");
+        }
+        
+        caseBuilder.Append(" END");
+        return caseBuilder.ToString();
     }
 
     /// <summary>处理COALESCE占位符 - NULL合并</summary>
@@ -2133,8 +2185,21 @@ public class SqlTemplateEngine
     /// <summary>处理ROW_NUMBER占位符 - 行号窗口函数</summary>
     private static string ProcessRowNumberPlaceholder(string type, string options, SqlDefine dialect)
     {
-        var orderBy = ExtractOption(options, "orderby", "id");
-        var partitionBy = ExtractOption(options, "partition", "");
+        // 支持两种格式:
+        // 1. 命令行风格: {{row_number --partition_by category --order_by price DESC}}
+        // 2. 管道风格: {{row_number orderby=id|partition=category}}
+        
+        var orderBy = ExtractCommandLineOption(options, "--order_by");
+        if (string.IsNullOrEmpty(orderBy))
+        {
+            orderBy = ExtractOption(options, "orderby", "id");
+        }
+        
+        var partitionBy = ExtractCommandLineOption(options, "--partition_by");
+        if (string.IsNullOrEmpty(partitionBy))
+        {
+            partitionBy = ExtractOption(options, "partition", "");
+        }
 
         var partitionClause = !string.IsNullOrEmpty(partitionBy) ? $"PARTITION BY {partitionBy} " : "";
         return $"ROW_NUMBER() OVER ({partitionClause}ORDER BY {orderBy})";

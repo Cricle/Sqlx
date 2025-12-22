@@ -385,15 +385,30 @@ public static class SqlTemplateEngineExtensions
             };
         }
 
-        /// <summary>处理HAVING占位符 - 增强版本</summary>
-        private static string ProcessHavingPlaceholder(string type, string options, SqlDefine dialect) =>
-            type switch
+        /// <summary>处理HAVING占位符 - 支持命令行风格和管道风格</summary>
+        private static string ProcessHavingPlaceholder(string type, string options, SqlDefine dialect)
+        {
+            // 支持两种格式:
+            // 1. 命令行风格: {{having --condition 'COUNT(o.id) > 0'}}
+            // 2. 管道风格: {{having type=count|min=0}}
+            
+            var condition = ExtractCommandLineOption(options, "--condition");
+            if (!string.IsNullOrEmpty(condition))
+            {
+                // 移除引号
+                condition = condition.Trim('\'', '"');
+                return $"HAVING {condition}";
+            }
+            
+            // 回退到旧格式
+            return type switch
             {
                 "count" => $"HAVING COUNT(*) > {ExtractOption(options, "min", "0")}",
                 "sum" => $"HAVING SUM({ExtractOption(options, "column", "amount")}) > {ExtractOption(options, "min", "0")}",
                 "avg" => $"HAVING AVG({ExtractOption(options, "column", "value")}) > {ExtractOption(options, "min", "0")}",
-                _ => "HAVING COUNT(*) > 0"
+                _ => !string.IsNullOrEmpty(type) ? $"HAVING {type}" : "HAVING COUNT(*) > 0"
             };
+        }
 
         /// <summary>处理UUID函数 - 多数据库支持</summary>
         private static string ProcessUuidFunction(SqlDefine dialect) =>
@@ -426,14 +441,25 @@ public static class SqlTemplateEngineExtensions
             "date('now')"; // SQLite
 
         /// <summary>
-        /// 处理JOIN占位符 - 正确解析options参数
+        /// 处理JOIN占位符 - 支持命令行风格和管道风格
         /// </summary>
         private static string ProcessJoinPlaceholder(string type, string options, SqlDefine dialect)
         {
-            var table = ExtractOption(options, "table", "other_table");
-            var condition = ExtractOption(options, "on", "id");
+            // 支持两种格式:
+            // 1. 命令行风格: {{join --type left --table orders o --on u.id = o.user_id}}
+            // 2. 管道风格: {{join type=left|table=orders|on=u.id = o.user_id}}
+            
+            var joinType = ExtractCommandLineOption(options, "--type");
+            if (string.IsNullOrEmpty(joinType)) joinType = ExtractOption(options, "type", type);
+            if (string.IsNullOrEmpty(joinType)) joinType = "inner";
+            
+            var table = ExtractCommandLineOption(options, "--table");
+            if (string.IsNullOrEmpty(table)) table = ExtractOption(options, "table", "other_table");
+            
+            var condition = ExtractCommandLineOption(options, "--on");
+            if (string.IsNullOrEmpty(condition)) condition = ExtractOption(options, "on", "id");
 
-            return type.ToLowerInvariant() switch
+            return joinType.ToLowerInvariant() switch
             {
                 "inner" => $"INNER JOIN {table} ON {condition}",
                 "left" => $"LEFT JOIN {table} ON {condition}",
@@ -475,6 +501,30 @@ public static class SqlTemplateEngineExtensions
         private static string ExtractOffsetValue(string options) => ExtractOption(options, "offset", "0");
         private static string ExtractRowsValue(string options) => ExtractOption(options, "rows", "10");
         private static string ExtractColumnOption(string options, string defaultValue) => ExtractOption(options, "column", defaultValue);
+
+        /// <summary>
+        /// 提取命令行风格的选项（例如：--type left --table orders）
+        /// </summary>
+        private static string ExtractCommandLineOption(string options, string flag)
+        {
+            if (string.IsNullOrEmpty(options)) return string.Empty;
+
+            var optionsLower = options.ToLowerInvariant();
+            var flagLower = flag.ToLowerInvariant();
+            var index = optionsLower.IndexOf(flagLower);
+
+            if (index == -1) return string.Empty;
+
+            // 找到flag后面的内容
+            var startIndex = index + flag.Length;
+            if (startIndex >= options.Length) return string.Empty;
+
+            // 找到下一个--或结束
+            var nextFlagIndex = options.IndexOf(" --", startIndex);
+            var endIndex = nextFlagIndex == -1 ? options.Length : nextFlagIndex;
+
+            return options.Substring(startIndex, endIndex - startIndex).Trim();
+        }
 
         private static string ExtractOption(string options, string key, string? defaultValue)
         {

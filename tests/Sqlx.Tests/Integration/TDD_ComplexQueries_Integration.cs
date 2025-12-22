@@ -164,4 +164,92 @@ public class TDD_ComplexQueries_Integration
         Assert.AreEqual(2, products.Count, "应该有2个产品在价格范围内");
         Assert.IsTrue(products.All(p => p.Price >= 100m && p.Price <= 1000m));
     }
+
+    [TestMethod]
+    [TestCategory("Integration")]
+    [TestCategory("ComplexQueries")]
+    public async Task ComplexQueries_GroupByWithHaving_FiltersGroups()
+    {
+        // Arrange
+        var connection = _fixture.GetConnection(SqlDefineTypes.SQLite);
+        _fixture.CleanupData(SqlDefineTypes.SQLite);
+        var advancedRepo = new AdvancedRepository(connection);
+        var userRepo = new UserRepository(connection);
+        var orderRepo = new OrderRepository(connection);
+        
+        // 创建用户和订单
+        var userId1 = await userRepo.InsertAsync("活跃用户", "active@example.com", 30, 5000m, DateTime.Now, true);
+        var userId2 = await userRepo.InsertAsync("普通用户", "normal@example.com", 25, 1000m, DateTime.Now, true);
+        var userId3 = await userRepo.InsertAsync("新用户", "new@example.com", 28, 500m, DateTime.Now, true);
+        
+        // userId1 有多个订单
+        await orderRepo.InsertAsync(userId1, 1000m, "completed", "system");
+        await orderRepo.InsertAsync(userId1, 2000m, "completed", "system");
+        await orderRepo.InsertAsync(userId1, 1500m, "pending", "system");
+        
+        // userId2 有一个订单
+        await orderRepo.InsertAsync(userId2, 500m, "completed", "system");
+        
+        // userId3 没有订单
+
+        // Act - 使用 {{groupby}} + {{having}} 只返回有订单的用户
+        var userStats = await advancedRepo.GetUserStatsAsync();
+
+        // Assert
+        Assert.IsTrue(userStats.Count >= 2, "应该至少有2个有订单的用户");
+        
+        // 验证所有返回的用户都有订单（HAVING COUNT(o.id) > 0）
+        foreach (var stats in userStats)
+        {
+            Assert.IsTrue(stats.OrderCount > 0, "所有返回的用户都应该有订单");
+        }
+        
+        // 验证没有订单的用户不在结果中
+        Assert.IsFalse(userStats.Any(s => s.UserId == userId3), "没有订单的用户不应该在结果中");
+    }
+
+    [TestMethod]
+    [TestCategory("Integration")]
+    [TestCategory("ComplexQueries")]
+    public async Task ComplexQueries_OrderStatsByStatus_AggregatesCorrectly()
+    {
+        // Arrange
+        var connection = _fixture.GetConnection(SqlDefineTypes.SQLite);
+        _fixture.CleanupData(SqlDefineTypes.SQLite);
+        var orderRepo = new OrderRepository(connection);
+        var userRepo = new UserRepository(connection);
+        
+        var userId = await userRepo.InsertAsync("测试用户", "test@example.com", 30, 5000m, DateTime.Now, true);
+        
+        // 创建不同状态的订单
+        await orderRepo.InsertAsync(userId, 1000m, "completed", "system");
+        await orderRepo.InsertAsync(userId, 2000m, "completed", "system");
+        await orderRepo.InsertAsync(userId, 1500m, "pending", "system");
+        await orderRepo.InsertAsync(userId, 500m, "pending", "system");
+        await orderRepo.InsertAsync(userId, 800m, "cancelled", "system");
+
+        // Act - 按状态统计订单
+        var stats = await orderRepo.GetOrderStatsByStatusAsync();
+
+        // Assert
+        Assert.AreEqual(3, stats.Count, "应该有3种不同的状态");
+        
+        // 验证 completed 状态
+        var completedStats = stats.FirstOrDefault(s => s["status"]?.ToString() == "completed");
+        Assert.IsNotNull(completedStats);
+        Assert.AreEqual(2L, completedStats["order_count"], "completed 应该有2个订单");
+        Assert.AreEqual(3000m, completedStats["total"], "completed 总金额应该是3000");
+        
+        // 验证 pending 状态
+        var pendingStats = stats.FirstOrDefault(s => s["status"]?.ToString() == "pending");
+        Assert.IsNotNull(pendingStats);
+        Assert.AreEqual(2L, pendingStats["order_count"], "pending 应该有2个订单");
+        Assert.AreEqual(2000m, pendingStats["total"], "pending 总金额应该是2000");
+        
+        // 验证 cancelled 状态
+        var cancelledStats = stats.FirstOrDefault(s => s["status"]?.ToString() == "cancelled");
+        Assert.IsNotNull(cancelledStats);
+        Assert.AreEqual(1L, cancelledStats["order_count"], "cancelled 应该有1个订单");
+        Assert.AreEqual(800m, cancelledStats["total"], "cancelled 总金额应该是800");
+    }
 }

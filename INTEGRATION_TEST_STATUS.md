@@ -1,108 +1,185 @@
 # Sqlx 集成测试状态报告
 
-## 📊 当前进度
+**最后更新**: 2024-12-22  
+**构建状态**: ✅ 成功  
 
-### 测试统计
-- **总测试数**: 52 (不含表达式树测试)
-- **通过**: 50 (96.2%) ✅
-- **失败**: 2 (3.8%) ⚠️ (Known Issue: {{distinct}} 占位符)
+## 📊 测试运行结果
 
-### 已完成的测试文件
-1. ✅ **TDD_BasicPlaceholders_Integration.cs** (7 tests)
-   - 基础 CRUD 操作
-   - {{columns}}, {{table}}, {{values}}, {{set}}, {{orderby}}, {{limit}}, {{offset}}
+### 总体统计
+- **总计**: 2,600 个测试
+- **成功**: 2,313 个 (89.0%) ✅
+- **失败**: 96 个 (3.7%) ⚠️
+- **跳过**: 191 个 (7.3%) ⏭️
 
-2. ⚠️ **TDD_AggregateFunctions_Integration.cs** (5 tests, 1 Known Issue)
-   - {{count}}, {{sum}}, {{avg}}, {{max}}, {{min}}
-   - ⚠️ {{distinct}} - 返回空列表问题
+### 重要里程碑
+1. ✅ **FullFeatureDemo 迁移完成** - 所有示例代码已迁移到测试项目
+2. ✅ **解决方案清理** - 移除了 FullFeatureDemo 项目引用
+3. ✅ **构建成功** - 所有项目编译通过
+4. ✅ **89% 测试通过率** - 大部分功能正常工作
 
-3. ⚠️ **TDD_StringFunctions_Integration.cs** (5 tests, 1 Known Issue)
-   - {{like}}, {{in}}, {{between}}, {{coalesce}}
-   - ⚠️ {{distinct}} - 返回空列表问题
+## 🔍 失败测试分析
 
-4. ✅ **TDD_BatchOperations_Integration.cs** (5 tests)
-   - {{batch_values}}, {{group_concat}}
-   - 批量插入和聚合操作
+### 1. 数据库连接问题 (约 60 个失败) ⚠️
 
-5. ✅ **TDD_DialectPlaceholders_Integration.cs** (5 tests)
-   - {{bool_true}}, {{bool_false}}, {{current_timestamp}}
-   - 自动递增 ID，软删除
+**状态**: 预期失败（需要配置数据库）
 
-6. ✅ **TDD_ComplexQueries_Integration.cs** (18 tests) 🆕
-   - {{groupby}}, {{orderby --desc}}
-   - 分页查询，多条件查询
-   - 价格范围查询
+**问题**:
+- PostgreSQL: 密码认证失败 (28P01)
+- SQL Server: 连接超时/无法访问服务器
 
-7. ⚠️ **TDD_ExpressionTree_Integration.cs** (5 tests, Known Issue) 🆕
-   - 表达式树转 SQL
-   - ⚠️ SQL 生成错误: "'users' is not a function"
-   - 需要修复表达式树处理逻辑
+**影响测试**:
+- `NullableLimitOffset_PostgreSQL_Tests` (所有测试)
+- `NullableLimitOffset_SqlServer_Tests` (所有测试)
 
-## 🔍 Known Issues
+**解决方案**:
+- 配置本地 PostgreSQL 和 SQL Server 实例
+- 或使用 Docker Compose 提供测试数据库
+- 或在 CI 环境中跳过这些测试
 
-### 1. {{distinct}} 占位符问题
+### 2. 缺少数据表 (约 20 个失败) 🔧
 
-**症状**: `Task<List<int>> GetDistinctAgesAsync()` 返回空列表
+**问题**: 测试引用 `productdetail` 表但数据库中不存在
 
-**影响范围**: 仅影响返回标量列表的方法（`List<int>`, `List<string>` 等）
+**错误**: `SQLite Error 1: 'no such table: productdetail'`
 
-**SQL 生成**: ✅ 正确 - `SELECT DISTINCT [age] FROM users ORDER BY [age]`
+**影响测试**:
+- `TDD_CaseExpression_Integration` (3 tests)
+  - `CaseExpression_UserLevel_CategorizesCorrectly`
+  - `CaseExpression_MultipleConditions_WorksCorrectly`
+  - `CaseExpression_AllUsersInSameCategory_ReturnsCorrectly`
+- `TDD_JoinOperations_Integration` (1 test)
+  - `JoinOperations_InnerJoin_ReturnsMatchingRecords`
+- `TDD_SubqueriesAndSets_Integration` (2 tests)
+  - `Sets_Union_CombinesResults`
+  - `Sets_Union_RemovesDuplicates`
+- `TDD_WindowFunctions_Integration` (4 tests)
+  - `WindowFunctions_RowNumber_*` 系列测试
 
-**问题根源**: C# 代码生成器在读取标量列表结果时存在问题
+**根本原因**: `DatabaseFixture` 中缺少 `productdetail` 表的创建逻辑
 
-**临时方案**: 标记为 Known Issue，不阻塞其他测试的开发
+**解决方案**: 在 `DatabaseFixture.cs` 中添加表创建语句
 
-### 2. 表达式树查询问题 🆕
+### 3. SQL 语法错误 (约 10 个失败) 🔧
 
-**症状**: 所有表达式树查询失败，错误 "'users' is not a function"
+**问题**: 生成的 SQL 包含语法错误
 
-**影响范围**: 所有使用 `[ExpressionToSql]` 的查询方法
+**错误类型**:
+- `near ",": syntax error` - 逗号位置错误
+- `near "table": syntax error` - SQL 关键字冲突
 
-**SQL 生成**: ❌ 错误 - 生成了错误的 SQL 语法
+**影响测试**:
+- `ComplexQueries_GroupByWithHaving_FiltersGroups`
+- `JoinOperations_LeftJoin_IncludesNullRecords`
+- `JoinOperations_GroupByWithJoin_AggregatesCorrectly`
+- `Subqueries_Exists_FiltersCorrectly`
 
-**问题根源**: 表达式树转 SQL 的逻辑有问题
+**根本原因**: `GetUserStatsAsync` 等方法生成的 SQL 有语法问题
 
-**临时方案**: 标记为 Known Issue，暂时跳过这些测试
+**解决方案**: 检查并修复 SQL 模板和生成逻辑
 
-## 📋 下一步工作
+### 4. 类型不匹配 (约 3 个失败) 🔧
 
-### 立即任务
-- [x] 创建基础集成测试文件 (7 个文件)
-- [ ] 添加多数据库支持
-  - [x] SQLite (已完成)
-  - [ ] MySQL (Docker)
-  - [ ] PostgreSQL (Docker)
-  - [ ] SQL Server (Docker)
+**问题**: `Decimal` vs `Double` 类型断言失败
 
-### 短期任务
-- [ ] 解决 {{distinct}} Known Issue
-- [ ] 解决表达式树 Known Issue
-- [ ] 删除 FullFeatureDemo 项目
-- [ ] 更新文档
+**错误**: `Assert.AreEqual 失败。应为: <3000 (System.Decimal)>，实际为: <3000 (System.Double)>`
 
-### 中期任务
-- [ ] 添加更多边界情况测试
-- [ ] 添加错误处理测试
-- [ ] 添加性能测试
+**影响测试**:
+- `ComplexQueries_OrderStatsByStatus_AggregatesCorrectly`
 
-## 🎯 目标
+**根本原因**: 数据库返回的数值类型与预期不匹配
 
-将 FullFeatureDemo 的所有功能转换为集成测试，然后删除 FullFeatureDemo 项目，确保所有功能都有完整的测试覆盖。
+**解决方案**: 
+- 统一使用 `decimal` 类型
+- 或在断言中使用类型转换
 
-## 📝 测试执行
+### 5. DB2 参数化问题 (约 3 个失败) 🔧
+
+**问题**: DB2 方言的参数提取不正确
+
+**错误**: `Assert.IsTrue 失败。Should extract parameters for DB2`
+
+**影响测试**:
+- `ParameterSafety_AllDialects_EnsuresParameterization`
+- `ParameterizedQuery_AllDialects_EnforcesParameterization`
+- `MixedParameterTypes_AllDialects_HandlesConsistently`
+
+**根本原因**: DB2 方言的占位符处理逻辑有问题
+
+**解决方案**: 检查并修复 DB2 方言的参数提取逻辑
+
+## 📋 下一步行动
+
+### 🔥 高优先级
+
+1. **修复 productdetail 表缺失**
+   - [ ] 在 `DatabaseFixture.cs` 中添加表创建
+   - [ ] 确保所有测试需要的表都被创建
+   - [ ] 预计修复: 20 个测试
+
+2. **修复 SQL 语法错误**
+   - [ ] 检查 `GetUserStatsAsync` 的 SQL 模板
+   - [ ] 修复逗号和关键字冲突
+   - [ ] 预计修复: 10 个测试
+
+3. **修复 DB2 参数化**
+   - [ ] 检查 DB2 方言的参数提取逻辑
+   - [ ] 确保所有占位符都被正确参数化
+   - [ ] 预计修复: 3 个测试
+
+### ⚡ 中优先级
+
+4. **修复类型映射**
+   - [ ] 统一 Decimal/Double 的处理
+   - [ ] 更新相关测试断言
+   - [ ] 预计修复: 3 个测试
+
+5. **配置数据库环境**
+   - [ ] 提供 PostgreSQL 测试配置指南
+   - [ ] 提供 SQL Server 测试配置指南
+   - [ ] 考虑使用 Docker Compose
+   - [ ] 预计修复: 60 个测试
+
+### 📊 低优先级
+
+6. **分析跳过的测试**
+   - [ ] 检查 191 个跳过的测试
+   - [ ] 评估是否需要启用
+   - [ ] 更新测试文档
+
+## 🎯 测试覆盖率目标
+
+| 类别 | 当前 | 目标 |
+|------|------|------|
+| 单元测试 | 89% | 95% |
+| 集成测试 | 89% | 95% |
+| 数据库测试 | 77% | 90% |
+
+## 📝 测试执行命令
 
 ```bash
-# 运行所有集成测试（不含表达式树）
-dotnet test tests/Sqlx.Tests/Sqlx.Tests.csproj --filter "TestCategory=BasicPlaceholders | TestCategory=AggregateFunctions | TestCategory=StringFunctions | TestCategory=BatchOperations | TestCategory=DialectPlaceholders | TestCategory=ComplexQueries"
+# 运行所有测试
+dotnet test
 
-# 运行特定类别
-dotnet test --filter "TestCategory=BasicPlaceholders"
-dotnet test --filter "TestCategory=ComplexQueries"
+# 只运行单元测试（跳过集成测试）
+dotnet test --filter "TestCategory!=Integration"
+
+# 只运行集成测试
+dotnet test --filter "TestCategory=Integration"
+
+# 运行特定测试类
+dotnet test --filter "FullyQualifiedName~TDD_BasicPlaceholders"
+
+# 生成测试报告
+dotnet test --logger "trx;LogFileName=test-results.trx"
 ```
+
+## 📚 相关文档
+
+- [测试模型定义](tests/Sqlx.Tests/TestModels/TestModels.cs)
+- [测试仓储](tests/Sqlx.Tests/TestModels/TestRepositories.cs)
+- [数据库 Fixture](tests/Sqlx.Tests/Integration/DatabaseFixture.cs)
+- [迁移指南](MIGRATION_GUIDE.md)
 
 ---
 
-**最后更新**: 2025-12-22  
-**状态**: 基本完成 (96.2% 测试通过)  
-**下一个里程碑**: 添加多数据库支持，然后删除 FullFeatureDemo
-
+**下一个里程碑**: 修复所有已知问题，达到 95% 测试通过率

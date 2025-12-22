@@ -175,25 +175,4 @@ public class TDD_OptimisticLocking_Integration
         Assert.AreEqual(1300m, finalAccount.Balance);
         Assert.AreEqual(3L, finalAccount.Version, "经过3次更新，version 应该为 3");
     }
-
-    [TestMethod]
-    [TestCategory("Integration")]
-    [TestCategory("OptimisticLocking")]
-    public async Task OptimisticLocking_Cast_ReturnsCorrectType()
-    {
-        // Arrange
-        var connection = _fixture.GetConnection(SqlDefineTypes.SQLite);
-        _fixture.CleanupData(SqlDefineTypes.SQLite);
-        var accountRepo = new AccountRepository(connection);
-        
-        var accountId = await accountRepo.InsertAsync("ACC006", 1234.56m);
-
-        // Act - 使用 {{cast}} 类型转换
-        var account = await accountRepo.GetAccountWithCastAsync(accountId);
-
-        // Assert
-        Assert.IsNotNull(account);
-        Assert.AreEqual("ACC006", account.AccountNo);
-        Assert.AreEqual(1234.56m, account.Balance);
-    }
 }

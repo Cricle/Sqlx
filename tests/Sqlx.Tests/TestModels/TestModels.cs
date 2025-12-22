@@ -1,7 +1,13 @@
+// -----------------------------------------------------------------------
+// <copyright file="TestModels.cs" company="Cricle">
+// Copyright (c) Cricle. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
+
 using System;
 using Sqlx.Annotations;
 
-namespace FullFeatureDemo;
+namespace Sqlx.Tests.TestModels;
 
 // 1. 基础用户模型
 [TableName("users")]
@@ -92,4 +98,3 @@ public class ProductDetail
     public decimal Price { get; set; }
     public string CategoryName { get; set; } = "";
 }
-

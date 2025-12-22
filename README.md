@@ -565,19 +565,22 @@ public partial class UserRepository
 
 ## 🎯 示例项目
 
-### [FullFeatureDemo](samples/FullFeatureDemo/)
+### 集成测试示例
 
-完整演示所有Sqlx功能：
-- ✅ 基础CRUD操作
-- ✅ 批量操作
-- ✅ 事务支持
-- ✅ 占位符使用
-- ✅ 表达式树查询
-- ✅ 高级SQL（JOIN、聚合、分页）
+完整演示所有Sqlx功能的集成测试位于 `tests/Sqlx.Tests/Integration/`:
+
+- ✅ 基础CRUD操作 (`TDD_BasicPlaceholders_Integration.cs`)
+- ✅ 聚合函数 (`TDD_AggregateFunctions_Integration.cs`)
+- ✅ 字符串函数 (`TDD_StringFunctions_Integration.cs`)
+- ✅ 批量操作 (`TDD_BatchOperations_Integration.cs`)
+- ✅ 方言占位符 (`TDD_DialectPlaceholders_Integration.cs`)
+- ✅ 乐观锁 (`TDD_OptimisticLocking_Integration.cs`)
+
+运行测试:
 
 ```bash
-cd samples/FullFeatureDemo
-dotnet run
+cd tests/Sqlx.Tests
+dotnet test --filter "TestCategory=Integration"
 ```
 
 ### [TodoWebApi](samples/TodoWebApi/)

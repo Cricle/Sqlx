@@ -9,7 +9,7 @@ using System;
 using System.Threading.Tasks;
 using Sqlx;
 using Sqlx.Annotations;
-using FullFeatureDemo;
+using Sqlx.Tests.TestModels;
 
 namespace Sqlx.Tests.Integration;
 

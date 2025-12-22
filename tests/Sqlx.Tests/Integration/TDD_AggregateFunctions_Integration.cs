@@ -41,6 +41,8 @@ public class TDD_AggregateFunctions_Integration
     {
         // Arrange
         var connection = _fixture.GetConnection(SqlDefineTypes.SQLite);
+        _fixture.CleanupData(SqlDefineTypes.SQLite);
+        _fixture.SeedTestData(SqlDefineTypes.SQLite);  // 插入测试数据
         var repo = new UserRepository(connection);
         await repo.InsertAsync("用户1", "user1@example.com", 25, 1000m, DateTime.Now, true);
         await repo.InsertAsync("用户2", "user2@example.com", 30, 2000m, DateTime.Now, true);

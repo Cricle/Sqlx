@@ -70,13 +70,25 @@ public class DatabaseFixture : IDisposable
     {
         using var cmd = connection.CreateCommand();
 
-        // 创建所有测试表
+        // 创建所有测试表（不插入数据）
         cmd.CommandText = GetSchemaScript(dialect);
         cmd.ExecuteNonQuery();
     }
 
     /// <summary>
-    /// 获取数据库架构脚本
+    /// 插入测试数据（供需要预置数据的测试使用）
+    /// </summary>
+    public void SeedTestData(SqlDefineTypes dialect)
+    {
+        var connection = GetConnection(dialect);
+        using var cmd = connection.CreateCommand();
+
+        cmd.CommandText = GetSeedDataScript(dialect);
+        cmd.ExecuteNonQuery();
+    }
+
+    /// <summary>
+    /// 获取数据库架构脚本（只创建表，不插入数据）
     /// </summary>
     private string GetSchemaScript(SqlDefineTypes dialect)
     {
@@ -94,6 +106,60 @@ public class DatabaseFixture : IDisposable
                     is_active INTEGER NOT NULL DEFAULT 1
                 );
 
+                CREATE TABLE categories (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    code TEXT NOT NULL UNIQUE,
+                    name TEXT NOT NULL
+                );
+
+                CREATE TABLE products (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    category TEXT NOT NULL,
+                    price REAL NOT NULL,
+                    stock INTEGER NOT NULL,
+                    is_deleted INTEGER NOT NULL DEFAULT 0
+                );
+
+                CREATE TABLE orders (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    total_amount REAL NOT NULL,
+                    status TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    created_by TEXT NOT NULL,
+                    updated_at TEXT,
+                    updated_by TEXT
+                );
+
+                CREATE TABLE accounts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    account_no TEXT NOT NULL,
+                    balance REAL NOT NULL,
+                    version INTEGER NOT NULL DEFAULT 0
+                );
+
+                CREATE TABLE logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    level TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    timestamp TEXT NOT NULL
+                );
+            ";
+        }
+
+        throw new NotImplementedException($"Schema script not implemented for {dialect}");
+    }
+
+    /// <summary>
+    /// 获取测试数据插入脚本
+    /// </summary>
+    private string GetSeedDataScript(SqlDefineTypes dialect)
+    {
+        // SQLite seed data
+        if (dialect == SqlDefineTypes.SQLite)
+        {
+            return @"
                 -- 插入测试用户数据（15个用户，符合测试期望）
                 INSERT INTO users (name, email, age, balance, created_at, is_active) 
                 VALUES ('用户A', 'usera@example.com', 25, 1000.00, '2024-01-01', 1);
@@ -126,24 +192,9 @@ public class DatabaseFixture : IDisposable
                 INSERT INTO users (name, email, age, balance, created_at, is_active) 
                 VALUES ('用户O', 'usero@example.com', 35, 1200.00, '2024-01-15', 1);
 
-                CREATE TABLE categories (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    code TEXT NOT NULL UNIQUE,
-                    name TEXT NOT NULL
-                );
-
                 INSERT INTO categories (code, name) VALUES ('Electronics', '电子产品');
                 INSERT INTO categories (code, name) VALUES ('Books', '图书');
                 INSERT INTO categories (code, name) VALUES ('Clothing', '服装');
-
-                CREATE TABLE products (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT NOT NULL,
-                    category TEXT NOT NULL,
-                    price REAL NOT NULL,
-                    stock INTEGER NOT NULL,
-                    is_deleted INTEGER NOT NULL DEFAULT 0
-                );
 
                 -- 插入测试产品数据（确保价格范围符合测试期望）
                 INSERT INTO products (name, category, price, stock, is_deleted) 
@@ -161,17 +212,6 @@ public class DatabaseFixture : IDisposable
                 INSERT INTO products (name, category, price, stock, is_deleted) 
                 VALUES ('Pants', 'Clothing', 79.99, 25, 0);
 
-                CREATE TABLE orders (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER NOT NULL,
-                    total_amount REAL NOT NULL,
-                    status TEXT NOT NULL,
-                    created_at TEXT NOT NULL,
-                    created_by TEXT NOT NULL,
-                    updated_at TEXT,
-                    updated_by TEXT
-                );
-
                 -- 插入测试订单数据（确保金额符合测试期望）
                 INSERT INTO orders (user_id, total_amount, status, created_at, created_by) 
                 VALUES (1, 1000.00, 'completed', '2024-01-10', 'system');
@@ -181,24 +221,10 @@ public class DatabaseFixture : IDisposable
                 VALUES (2, 500.00, 'pending', '2024-01-12', 'system');
                 INSERT INTO orders (user_id, total_amount, status, created_at, created_by) 
                 VALUES (3, 1500.00, 'completed', '2024-01-13', 'system');
-
-                CREATE TABLE accounts (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    account_no TEXT NOT NULL,
-                    balance REAL NOT NULL,
-                    version INTEGER NOT NULL DEFAULT 0
-                );
-
-                CREATE TABLE logs (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    level TEXT NOT NULL,
-                    message TEXT NOT NULL,
-                    timestamp TEXT NOT NULL
-                );
             ";
         }
 
-        throw new NotImplementedException($"Schema script not implemented for {dialect}");
+        throw new NotImplementedException($"Seed data script not implemented for {dialect}");
     }
 
     /// <summary>

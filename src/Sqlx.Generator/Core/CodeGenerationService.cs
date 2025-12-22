@@ -1266,6 +1266,58 @@ public class CodeGenerationService
             GenerateEntityFromReaderInLoop(sb, entityType, "item", templateResult);
             sb.AppendLine($"(({collectionType})__result__).Add(item);");
         }
+        else
+        {
+            // Handle scalar collections (List<int>, List<string>, etc.)
+            // Extract the element type from the collection type
+            var elementTypeMatch = System.Text.RegularExpressions.Regex.Match(innerType, @"List<(.+)>$");
+            if (elementTypeMatch.Success)
+            {
+                var elementTypeName = elementTypeMatch.Groups[1].Value;
+                sb.AppendLine($"// Read scalar value from column 0");
+                
+                // Generate appropriate reader code based on type
+                if (elementTypeName == "int" || elementTypeName == "System.Int32")
+                {
+                    sb.AppendLine($"var item = reader.GetInt32(0);");
+                }
+                else if (elementTypeName == "long" || elementTypeName == "System.Int64")
+                {
+                    sb.AppendLine($"var item = reader.GetInt64(0);");
+                }
+                else if (elementTypeName == "string" || elementTypeName == "System.String")
+                {
+                    sb.AppendLine($"var item = reader.IsDBNull(0) ? string.Empty : reader.GetString(0);");
+                }
+                else if (elementTypeName == "decimal" || elementTypeName == "System.Decimal")
+                {
+                    sb.AppendLine($"var item = reader.GetDecimal(0);");
+                }
+                else if (elementTypeName == "double" || elementTypeName == "System.Double")
+                {
+                    sb.AppendLine($"var item = reader.GetDouble(0);");
+                }
+                else if (elementTypeName == "bool" || elementTypeName == "System.Boolean")
+                {
+                    sb.AppendLine($"var item = reader.GetBoolean(0);");
+                }
+                else if (elementTypeName == "DateTime" || elementTypeName == "System.DateTime")
+                {
+                    sb.AppendLine($"var item = reader.GetDateTime(0);");
+                }
+                else if (elementTypeName == "Guid" || elementTypeName == "System.Guid")
+                {
+                    sb.AppendLine($"var item = reader.GetGuid(0);");
+                }
+                else
+                {
+                    // Fallback to indexer for unknown types
+                    sb.AppendLine($"var item = ({elementTypeName})reader[0];");
+                }
+                
+                sb.AppendLine($"(({collectionType})__result__).Add(item);");
+            }
+        }
 
         sb.PopIndent();
         sb.AppendLine("}");

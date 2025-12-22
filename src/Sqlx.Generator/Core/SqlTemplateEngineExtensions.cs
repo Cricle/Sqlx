@@ -285,7 +285,20 @@ public static class SqlTemplateEngineExtensions
             // 从选项中提取设置
             var distinct = ExtractOption(options, "distinct", null) == "true";
             var columnOption = ExtractOption(options, "column", null);
-            var column = !string.IsNullOrEmpty(columnOption) ? columnOption : type;
+            
+            // 🔧 Fix: If options is a simple word (no --), treat it as the column name
+            // This supports both {{sum balance}} and {{sum --column balance}}
+            string column;
+            if (!string.IsNullOrEmpty(options) && !options.TrimStart().StartsWith("--"))
+            {
+                // Simple format: {{sum balance}} -> options = "balance"
+                column = options.Trim();
+            }
+            else
+            {
+                // Flag format: {{sum --column balance}} or use type
+                column = !string.IsNullOrEmpty(columnOption) ? columnOption : type;
+            }
 
             // 处理特殊情况
             if (string.IsNullOrEmpty(column) || column == "*" || column == "all")
@@ -435,8 +448,26 @@ public static class SqlTemplateEngineExtensions
         /// </summary>
         private static string ProcessGroupByPlaceholder(string type, string options, SqlDefine dialect)
         {
-            var column = ExtractOption(options, "column", type);
-            return $"GROUP BY {column}";
+            // 支持简单格式: {{groupby level}} 或 {{groupby col1, col2}}
+            // 内容可能在 type 或 options 中
+            var content = !string.IsNullOrWhiteSpace(options) ? options : type;
+            
+            // 检测是否是高级格式（包含 --column 或其他标志）
+            var isAdvancedFormat = !string.IsNullOrWhiteSpace(content) && content.Contains("--");
+            
+            if (isAdvancedFormat)
+            {
+                // 高级格式: {{groupby --column level}}
+                var column = ExtractOption(options, "column", type);
+                return $"GROUP BY {column}";
+            }
+            else if (!string.IsNullOrWhiteSpace(content))
+            {
+                // 简单格式: {{groupby level}} 或 {{groupby col1, col2}}
+                return $"GROUP BY {content}";
+            }
+            
+            return "GROUP BY ";
         }
 
         // 辅助方法
@@ -462,12 +493,18 @@ public static class SqlTemplateEngineExtensions
         /// <summary>处理DISTINCT字段占位符</summary>
         public static string ProcessDistinctField(string type, string options, SqlDefine dialect)
         {
-            var fieldOption = ExtractOption(options, "field", null);
-            var field = !string.IsNullOrEmpty(fieldOption) ? fieldOption : type;
+            // Priority: options > type (to support both {{distinct age}} and {{distinct:age}} formats)
+            // For {{distinct age}}, options="age" and type=""
+            // For {{distinct:age}}, options="" and type="age"
+            var field = !string.IsNullOrEmpty(options) ? options.Trim().Split(' ')[0] : type;
+
+            // DEBUG: Log what we're processing
+            System.Diagnostics.Debug.WriteLine($"ProcessDistinctField: type='{type}', options='{options}', field='{field}'");
 
             // 确保有有效的字段名
             if (string.IsNullOrEmpty(field))
             {
+                System.Diagnostics.Debug.WriteLine("ProcessDistinctField: field is empty, returning 'DISTINCT *'");
                 return "DISTINCT *";
             }
 
@@ -487,11 +524,14 @@ public static class SqlTemplateEngineExtensions
             // 再次检查转换结果
             if (string.IsNullOrEmpty(columnName))
             {
+                System.Diagnostics.Debug.WriteLine("ProcessDistinctField: columnName is empty after conversion, returning 'DISTINCT *'");
                 return "DISTINCT *";
             }
 
             var wrappedColumn = dialect.WrapColumn(columnName);
-            return $"DISTINCT {wrappedColumn}";
+            var result = $"DISTINCT {wrappedColumn}";
+            System.Diagnostics.Debug.WriteLine($"ProcessDistinctField: returning '{result}'");
+            return result;
         }
 
     }

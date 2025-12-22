@@ -94,14 +94,15 @@ public class DatabaseFixture : IDisposable
                     is_active INTEGER NOT NULL DEFAULT 1
                 );
 
-                CREATE TABLE products (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT NOT NULL,
-                    category TEXT NOT NULL,
-                    price REAL NOT NULL,
-                    stock INTEGER NOT NULL,
-                    is_deleted INTEGER NOT NULL DEFAULT 0
-                );
+                -- 插入测试用户数据
+                INSERT INTO users (name, email, age, balance, created_at, is_active) 
+                VALUES ('Alice', 'alice@example.com', 25, 15000.00, '2024-01-01', 1);
+                INSERT INTO users (name, email, age, balance, created_at, is_active) 
+                VALUES ('Bob', 'bob@example.com', 30, 8000.00, '2024-01-02', 1);
+                INSERT INTO users (name, email, age, balance, created_at, is_active) 
+                VALUES ('Charlie', 'charlie@example.com', 35, 3000.00, '2024-01-03', 1);
+                INSERT INTO users (name, email, age, balance, created_at, is_active) 
+                VALUES ('David', 'david@example.com', 28, 12000.00, '2024-01-04', 1);
 
                 CREATE TABLE categories (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -113,6 +114,25 @@ public class DatabaseFixture : IDisposable
                 INSERT INTO categories (code, name) VALUES ('Books', '图书');
                 INSERT INTO categories (code, name) VALUES ('Clothing', '服装');
 
+                CREATE TABLE products (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    category TEXT NOT NULL,
+                    price REAL NOT NULL,
+                    stock INTEGER NOT NULL,
+                    is_deleted INTEGER NOT NULL DEFAULT 0
+                );
+
+                -- 插入测试产品数据
+                INSERT INTO products (name, category, price, stock, is_deleted) 
+                VALUES ('Laptop', 'Electronics', 999.99, 10, 0);
+                INSERT INTO products (name, category, price, stock, is_deleted) 
+                VALUES ('Phone', 'Electronics', 599.99, 20, 0);
+                INSERT INTO products (name, category, price, stock, is_deleted) 
+                VALUES ('Book', 'Books', 29.99, 50, 0);
+                INSERT INTO products (name, category, price, stock, is_deleted) 
+                VALUES ('Shirt', 'Clothing', 39.99, 30, 0);
+
                 CREATE TABLE orders (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER NOT NULL,
@@ -123,6 +143,16 @@ public class DatabaseFixture : IDisposable
                     updated_at TEXT,
                     updated_by TEXT
                 );
+
+                -- 插入测试订单数据
+                INSERT INTO orders (user_id, total_amount, status, created_at, created_by) 
+                VALUES (1, 1000.00, 'completed', '2024-01-10', 'system');
+                INSERT INTO orders (user_id, total_amount, status, created_at, created_by) 
+                VALUES (1, 2000.00, 'completed', '2024-01-11', 'system');
+                INSERT INTO orders (user_id, total_amount, status, created_at, created_by) 
+                VALUES (2, 500.00, 'pending', '2024-01-12', 'system');
+                INSERT INTO orders (user_id, total_amount, status, created_at, created_by) 
+                VALUES (3, 1500.00, 'completed', '2024-01-13', 'system');
 
                 CREATE TABLE accounts (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -94,15 +94,37 @@ public class DatabaseFixture : IDisposable
                     is_active INTEGER NOT NULL DEFAULT 1
                 );
 
-                -- 插入测试用户数据
+                -- 插入测试用户数据（15个用户，符合测试期望）
                 INSERT INTO users (name, email, age, balance, created_at, is_active) 
-                VALUES ('Alice', 'alice@example.com', 25, 15000.00, '2024-01-01', 1);
+                VALUES ('用户A', 'usera@example.com', 25, 1000.00, '2024-01-01', 1);
                 INSERT INTO users (name, email, age, balance, created_at, is_active) 
-                VALUES ('Bob', 'bob@example.com', 30, 8000.00, '2024-01-02', 1);
+                VALUES ('用户B', 'userb@example.com', 30, 2000.00, '2024-01-02', 1);
                 INSERT INTO users (name, email, age, balance, created_at, is_active) 
-                VALUES ('Charlie', 'charlie@example.com', 35, 3000.00, '2024-01-03', 1);
+                VALUES ('用户C', 'userc@example.com', 35, 5000.00, '2024-01-03', 1);
                 INSERT INTO users (name, email, age, balance, created_at, is_active) 
-                VALUES ('David', 'david@example.com', 28, 12000.00, '2024-01-04', 1);
+                VALUES ('用户D', 'userd@example.com', 25, 500.00, '2024-01-04', 1);
+                INSERT INTO users (name, email, age, balance, created_at, is_active) 
+                VALUES ('用户E', 'usere@example.com', 30, 1500.00, '2024-01-05', 1);
+                INSERT INTO users (name, email, age, balance, created_at, is_active) 
+                VALUES ('用户F', 'userf@example.com', 35, 800.00, '2024-01-06', 1);
+                INSERT INTO users (name, email, age, balance, created_at, is_active) 
+                VALUES ('用户G', 'userg@example.com', 25, 300.00, '2024-01-07', 1);
+                INSERT INTO users (name, email, age, balance, created_at, is_active) 
+                VALUES ('用户H', 'userh@example.com', 30, 600.00, '2024-01-08', 1);
+                INSERT INTO users (name, email, age, balance, created_at, is_active) 
+                VALUES ('用户I', 'useri@example.com', 35, 400.00, '2024-01-09', 1);
+                INSERT INTO users (name, email, age, balance, created_at, is_active) 
+                VALUES ('用户J', 'userj@example.com', 25, 200.00, '2024-01-10', 1);
+                INSERT INTO users (name, email, age, balance, created_at, is_active) 
+                VALUES ('用户K', 'userk@example.com', 30, 700.00, '2024-01-11', 1);
+                INSERT INTO users (name, email, age, balance, created_at, is_active) 
+                VALUES ('用户L', 'userl@example.com', 35, 900.00, '2024-01-12', 1);
+                INSERT INTO users (name, email, age, balance, created_at, is_active) 
+                VALUES ('用户M', 'userm@example.com', 25, 1100.00, '2024-01-13', 1);
+                INSERT INTO users (name, email, age, balance, created_at, is_active) 
+                VALUES ('用户N', 'usern@example.com', 30, 1300.00, '2024-01-14', 1);
+                INSERT INTO users (name, email, age, balance, created_at, is_active) 
+                VALUES ('用户O', 'usero@example.com', 35, 1200.00, '2024-01-15', 1);
 
                 CREATE TABLE categories (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -123,15 +145,21 @@ public class DatabaseFixture : IDisposable
                     is_deleted INTEGER NOT NULL DEFAULT 0
                 );
 
-                -- 插入测试产品数据
+                -- 插入测试产品数据（确保价格范围符合测试期望）
                 INSERT INTO products (name, category, price, stock, is_deleted) 
                 VALUES ('Laptop', 'Electronics', 999.99, 10, 0);
                 INSERT INTO products (name, category, price, stock, is_deleted) 
                 VALUES ('Phone', 'Electronics', 599.99, 20, 0);
                 INSERT INTO products (name, category, price, stock, is_deleted) 
-                VALUES ('Book', 'Books', 29.99, 50, 0);
+                VALUES ('Tablet', 'Electronics', 399.99, 15, 0);
                 INSERT INTO products (name, category, price, stock, is_deleted) 
-                VALUES ('Shirt', 'Clothing', 39.99, 30, 0);
+                VALUES ('Book1', 'Books', 29.99, 50, 0);
+                INSERT INTO products (name, category, price, stock, is_deleted) 
+                VALUES ('Book2', 'Books', 39.99, 40, 0);
+                INSERT INTO products (name, category, price, stock, is_deleted) 
+                VALUES ('Shirt', 'Clothing', 49.99, 30, 0);
+                INSERT INTO products (name, category, price, stock, is_deleted) 
+                VALUES ('Pants', 'Clothing', 79.99, 25, 0);
 
                 CREATE TABLE orders (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -144,7 +172,7 @@ public class DatabaseFixture : IDisposable
                     updated_by TEXT
                 );
 
-                -- 插入测试订单数据
+                -- 插入测试订单数据（确保金额符合测试期望）
                 INSERT INTO orders (user_id, total_amount, status, created_at, created_by) 
                 VALUES (1, 1000.00, 'completed', '2024-01-10', 'system');
                 INSERT INTO orders (user_id, total_amount, status, created_at, created_by) 

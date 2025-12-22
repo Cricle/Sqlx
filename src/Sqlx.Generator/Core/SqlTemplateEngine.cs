@@ -147,152 +147,196 @@ public class SqlTemplateEngine
     /// <summary>
     /// 处理占位符 - 多数据库支持版本
     /// 写一次模板，所有数据库都能使用
+    /// 支持嵌套占位符（例如：{{coalesce {{sum amount}}, 0}}）
     /// </summary>
     private string ProcessPlaceholders(string sql, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, SqlTemplateResult result, SqlDefine dialect)
     {
-        return PlaceholderRegex.Replace(sql, match =>
+        // 支持嵌套占位符：最多迭代3次以处理嵌套
+        // 例如：{{coalesce {{sum o.total_amount}}, 0}} 需要2次迭代
+        string previousSql;
+        int maxIterations = 3;
+        int iteration = 0;
+        
+        do
         {
-            // 检查是否是动态占位符（@ 前缀）
-            var isDynamic = match.Groups[1].Value == "@";
-            var placeholderNameOriginal = match.Groups[2].Value;
-            var placeholderName = placeholderNameOriginal.ToLowerInvariant();
-
-            // 如果是动态占位符，直接返回 C# 字符串插值格式
-            if (isDynamic)
+            previousSql = sql;
+            sql = PlaceholderRegex.Replace(sql, match =>
             {
-                // {{@tableName}} -> {tableName}
-                // 标记结果包含动态特性，用于后续生成验证代码
-                result.HasDynamicFeatures = true;
-                return $"{{{placeholderNameOriginal}}}"; // Preserve original case for dynamic placeholders
-            }
+                // 检查是否是动态占位符（@ 前缀）
+                var isDynamic = match.Groups[1].Value == "@";
+                var placeholderNameOriginal = match.Groups[2].Value;
+                var placeholderName = placeholderNameOriginal.ToLowerInvariant();
 
-            // 支持两种格式：
-            // 旧格式：{{name:type|options}} -> Groups: (1)"", (2)name, (3)type, (4)options
-            // 新格式：{{name --options}}    -> Groups: (1)"", (2)name, (3)"", (4)"", (5)options
-            var placeholderType = match.Groups[3].Value; // 旧格式的type
-            var oldFormatOptions = match.Groups[4].Value; // 旧格式的options（管道后）
-            var newFormatOptions = match.Groups[5].Value; // 新格式的options（空格后）
+                // 如果是动态占位符，直接返回 C# 字符串插值格式
+                if (isDynamic)
+                {
+                    // {{@tableName}} -> {tableName}
+                    // 标记结果包含动态特性，用于后续生成验证代码
+                    result.HasDynamicFeatures = true;
+                    return $"{{{placeholderNameOriginal}}}"; // Preserve original case for dynamic placeholders
+                }
 
-            // 合并options：优先使用新格式，如果为空则使用旧格式
-            var placeholderOptions = !string.IsNullOrEmpty(newFormatOptions) ? newFormatOptions : oldFormatOptions;
+                // 支持两种格式：
+                // 旧格式：{{name:type|options}} -> Groups: (1)"", (2)name, (3)type, (4)options
+                // 新格式：{{name --options}}    -> Groups: (1)"", (2)name, (3)"", (4)"", (5)options
+                var placeholderType = match.Groups[3].Value; // 旧格式的type
+                var oldFormatOptions = match.Groups[4].Value; // 旧格式的options（管道后）
+                var newFormatOptions = match.Groups[5].Value; // 新格式的options（空格后）
 
-            // 验证占位符选项
-            ValidatePlaceholderOptions(placeholderName, placeholderType, placeholderOptions, result);
+                // 合并options：优先使用新格式，如果为空则使用旧格式
+                var placeholderOptions = !string.IsNullOrEmpty(newFormatOptions) ? newFormatOptions : oldFormatOptions;
 
-            // 验证类型匹配
-            ValidateTypeMismatch(placeholderName, placeholderType, placeholderOptions, entityType, result);
+                // 验证占位符选项（仅在第一次迭代时）
+                if (iteration == 0)
+                {
+                    ValidatePlaceholderOptions(placeholderName, placeholderType, placeholderOptions, result);
+                    ValidateTypeMismatch(placeholderName, placeholderType, placeholderOptions, entityType, result);
+                }
 
-            return placeholderName switch
-            {
-                // 核心7个占位符（多数据库支持）
-                "table" => ProcessTablePlaceholder(tableName, placeholderType, entityType, placeholderOptions, dialect),
-                "columns" => ProcessColumnsPlaceholder(placeholderType, entityType, result, placeholderOptions, dialect),
-                "values" => ProcessValuesPlaceholder(placeholderType, entityType, method, placeholderOptions, dialect, result),
-                "where" => ProcessWherePlaceholder(placeholderType, entityType, method, placeholderOptions, dialect),
-                "set" => ProcessSetPlaceholder(placeholderType, entityType, method, placeholderOptions, dialect, result),
-                "orderby" => ProcessOrderByPlaceholder(placeholderType, entityType, placeholderOptions, dialect, method),
-                "limit" => ProcessLimitPlaceholder(placeholderType, method, placeholderOptions, dialect),
-                // 常用扩展占位符（多数据库支持）
-                "join" => ProcessJoinPlaceholder(placeholderType, entityType, placeholderOptions, dialect, method),
-                "groupby" => ProcessGroupByPlaceholder(placeholderType, entityType, method, placeholderOptions, dialect),
-                "having" => ProcessHavingPlaceholder(placeholderType, method, placeholderOptions, dialect),
-                "select" => ProcessSelectPlaceholder(placeholderType, entityType, placeholderOptions, dialect),
-                "insert" => ProcessInsertPlaceholder(placeholderType, tableName, placeholderOptions, dialect),
-                "update" => ProcessUpdatePlaceholder(placeholderType, tableName, placeholderOptions, dialect),
-                "delete" => ProcessDeletePlaceholder(placeholderType, tableName, placeholderOptions, dialect),
-                "count" => ProcessAggregateFunction("COUNT", placeholderType, placeholderOptions, dialect),
-                "sum" => ProcessAggregateFunction("SUM", placeholderType, placeholderOptions, dialect),
-                "avg" => ProcessAggregateFunction("AVG", placeholderType, placeholderOptions, dialect),
-                "max" => ProcessAggregateFunction("MAX", placeholderType, placeholderOptions, dialect),
-                "min" => ProcessAggregateFunction("MIN", placeholderType, placeholderOptions, dialect),
-                "distinct" => ProcessDistinctPlaceholder(placeholderType, placeholderOptions, dialect),
-                "union" => ProcessUnionPlaceholder(placeholderType, placeholderOptions, dialect),
-                "top" => ProcessTopPlaceholder(placeholderType, placeholderOptions, dialect),
-                "offset" => ProcessOffsetPlaceholder(placeholderType, placeholderOptions, dialect, method),
-                // 增强的条件占位符
-                "between" => ProcessBetweenPlaceholder(placeholderType, placeholderOptions, dialect),
-                "like" => ProcessLikePlaceholder(placeholderType, placeholderOptions, dialect),
-                "in" => ProcessInPlaceholder(placeholderType, placeholderOptions, dialect),
-                "not_in" => ProcessInPlaceholder(placeholderType, placeholderOptions, dialect, true),
-                "or" => ProcessOrPlaceholder(placeholderType, placeholderOptions, dialect),
-                "isnull" => ProcessIsNullPlaceholder(placeholderType, placeholderOptions, dialect),
-                "notnull" => ProcessIsNullPlaceholder(placeholderType, placeholderOptions, dialect, true),
-                // Dialect-specific placeholders
-                "bool_true" => GetBoolTrueLiteral(dialect),
-                "bool_false" => GetBoolFalseLiteral(dialect),
-                "current_timestamp" => GetCurrentTimestampSyntax(dialect),
-                // 日期时间函数
-                "today" => ProcessTodayPlaceholder(placeholderType, placeholderOptions, dialect),
-                "week" => ProcessWeekPlaceholder(placeholderType, placeholderOptions, dialect),
-                "month" => ProcessMonthPlaceholder(placeholderType, placeholderOptions, dialect),
-                "year" => ProcessYearPlaceholder(placeholderType, placeholderOptions, dialect),
-                "date_add" => ProcessDateAddPlaceholder(placeholderType, placeholderOptions, dialect),
-                "date_diff" => ProcessDateDiffPlaceholder(placeholderType, placeholderOptions, dialect),
-                // 字符串函数
-                "contains" => ProcessContainsPlaceholder(placeholderType, placeholderOptions, dialect),
-                "startswith" => ProcessStartsWithPlaceholder(placeholderType, placeholderOptions, dialect),
-                "endswith" => ProcessEndsWithPlaceholder(placeholderType, placeholderOptions, dialect),
-                "upper" => ProcessStringFunction("UPPER", placeholderType, placeholderOptions, dialect),
-                "lower" => ProcessStringFunction("LOWER", placeholderType, placeholderOptions, dialect),
-                "trim" => ProcessStringFunction("TRIM", placeholderType, placeholderOptions, dialect),
-                // 数学函数
-                "round" => ProcessMathFunction("ROUND", placeholderType, placeholderOptions, dialect),
-                "abs" => ProcessMathFunction("ABS", placeholderType, placeholderOptions, dialect),
-                "ceiling" => ProcessMathFunction("CEILING", placeholderType, placeholderOptions, dialect),
-                "floor" => ProcessMathFunction("FLOOR", placeholderType, placeholderOptions, dialect),
-                // 批量操作
-                "batch_values" => ProcessBatchValuesPlaceholder(placeholderType, placeholderOptions, method, dialect),
-                "upsert" => ProcessUpsertPlaceholder(placeholderType, tableName, placeholderOptions, dialect),
-                // 子查询
-                "exists" => ProcessExistsPlaceholder(placeholderType, placeholderOptions, dialect),
-                "subquery" => ProcessSubqueryPlaceholder(placeholderType, placeholderOptions, dialect),
-                // 分页增强
-                "page" => ProcessPagePlaceholder(placeholderType, method, placeholderOptions, dialect),
-                "pagination" => ProcessPaginationPlaceholder(placeholderType, method, placeholderOptions, dialect),
-                // 条件表达式
-                "case" => ProcessCasePlaceholder(placeholderType, placeholderOptions, dialect),
-                "coalesce" => ProcessCoalescePlaceholder(placeholderType, placeholderOptions, dialect),
-                "ifnull" => ProcessIfNullPlaceholder(placeholderType, placeholderOptions, dialect),
-                // 类型转换
-                "cast" => ProcessCastPlaceholder(placeholderType, placeholderOptions, dialect),
-                "convert" => ProcessConvertPlaceholder(placeholderType, placeholderOptions, dialect),
-                // JSON操作
-                "json_extract" => ProcessJsonExtractPlaceholder(placeholderType, placeholderOptions, dialect),
-                "json_array" => ProcessJsonArrayPlaceholder(placeholderType, placeholderOptions, dialect),
-                "json_object" => ProcessJsonObjectPlaceholder(placeholderType, placeholderOptions, dialect),
-                // 窗口函数
-                "row_number" => ProcessRowNumberPlaceholder(placeholderType, placeholderOptions, dialect),
-                "rank" => ProcessRankPlaceholder(placeholderType, placeholderOptions, dialect),
-                "dense_rank" => ProcessDenseRankPlaceholder(placeholderType, placeholderOptions, dialect),
-                "lag" => ProcessLagPlaceholder(placeholderType, placeholderOptions, dialect),
-                "lead" => ProcessLeadPlaceholder(placeholderType, placeholderOptions, dialect),
-                // 字符串高级函数
-                "substring" => ProcessSubstringPlaceholder(placeholderType, placeholderOptions, dialect),
-                "concat" => ProcessConcatPlaceholder(placeholderType, placeholderOptions, dialect),
-                "group_concat" => ProcessGroupConcatPlaceholder(placeholderType, placeholderOptions, dialect),
-                "replace" => ProcessReplacePlaceholder(placeholderType, placeholderOptions, dialect),
-                "length" => ProcessLengthPlaceholder(placeholderType, placeholderOptions, dialect),
-                // 数学高级函数
-                "power" => ProcessPowerPlaceholder(placeholderType, placeholderOptions, dialect),
-                "sqrt" => ProcessSqrtPlaceholder(placeholderType, placeholderOptions, dialect),
-                "mod" => ProcessModPlaceholder(placeholderType, placeholderOptions, dialect),
-                // 批量操作增强
-                "batch_insert" => ProcessBatchInsertPlaceholder(placeholderType, tableName, entityType, placeholderOptions, dialect),
-                "bulk_update" => ProcessBulkUpdatePlaceholder(placeholderType, tableName, placeholderOptions, dialect),
-                _ => ProcessCustomPlaceholder(match.Value, placeholderName, placeholderType, placeholderOptions, result)
-            };
-        });
+                return ProcessSinglePlaceholder(placeholderName, placeholderType, placeholderOptions, method, entityType, tableName, result, dialect);
+            });
+            
+            iteration++;
+        } while (sql != previousSql && iteration < maxIterations);
+        
+        return sql;
+    }
+    
+    /// <summary>
+    /// 处理单个占位符
+    /// </summary>
+    private string ProcessSinglePlaceholder(string placeholderName, string placeholderType, string placeholderOptions, 
+        IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, SqlTemplateResult result, SqlDefine dialect)
+    {
+        return placeholderName switch
+        {
+            // 核心7个占位符（多数据库支持）
+            "table" => ProcessTablePlaceholder(tableName, placeholderType, entityType, placeholderOptions, dialect),
+            "columns" => ProcessColumnsPlaceholder(placeholderType, entityType, result, placeholderOptions, dialect),
+            "values" => ProcessValuesPlaceholder(placeholderType, entityType, method, placeholderOptions, dialect, result),
+            "where" => ProcessWherePlaceholder(placeholderType, entityType, method, placeholderOptions, dialect),
+            "set" => ProcessSetPlaceholder(placeholderType, entityType, method, placeholderOptions, dialect, result),
+            "orderby" => ProcessOrderByPlaceholder(placeholderType, entityType, placeholderOptions, dialect, method),
+            "limit" => ProcessLimitPlaceholder(placeholderType, method, placeholderOptions, dialect),
+            // 常用扩展占位符（多数据库支持）
+            "join" => ProcessJoinPlaceholder(placeholderType, entityType, placeholderOptions, dialect, method),
+            "groupby" => ProcessGroupByPlaceholder(placeholderType, entityType, method, placeholderOptions, dialect),
+            "having" => ProcessHavingPlaceholder(placeholderType, method, placeholderOptions, dialect),
+            "select" => ProcessSelectPlaceholder(placeholderType, entityType, placeholderOptions, dialect),
+            "insert" => ProcessInsertPlaceholder(placeholderType, tableName, placeholderOptions, dialect),
+            "update" => ProcessUpdatePlaceholder(placeholderType, tableName, placeholderOptions, dialect),
+            "delete" => ProcessDeletePlaceholder(placeholderType, tableName, placeholderOptions, dialect),
+            "count" => ProcessAggregateFunction("COUNT", placeholderType, placeholderOptions, dialect),
+            "sum" => ProcessAggregateFunction("SUM", placeholderType, placeholderOptions, dialect),
+            "avg" => ProcessAggregateFunction("AVG", placeholderType, placeholderOptions, dialect),
+            "max" => ProcessAggregateFunction("MAX", placeholderType, placeholderOptions, dialect),
+            "min" => ProcessAggregateFunction("MIN", placeholderType, placeholderOptions, dialect),
+            "distinct" => ProcessDistinctPlaceholder(placeholderType, placeholderOptions, dialect),
+            "union" => ProcessUnionPlaceholder(placeholderType, placeholderOptions, dialect),
+            "top" => ProcessTopPlaceholder(placeholderType, placeholderOptions, dialect),
+            "offset" => ProcessOffsetPlaceholder(placeholderType, placeholderOptions, dialect, method),
+            // 增强的条件占位符
+            "between" => ProcessBetweenPlaceholder(placeholderType, placeholderOptions, dialect),
+            "like" => ProcessLikePlaceholder(placeholderType, placeholderOptions, dialect),
+            "in" => ProcessInPlaceholder(placeholderType, placeholderOptions, dialect),
+            "not_in" => ProcessInPlaceholder(placeholderType, placeholderOptions, dialect, true),
+            "or" => ProcessOrPlaceholder(placeholderType, placeholderOptions, dialect),
+            "isnull" => ProcessIsNullPlaceholder(placeholderType, placeholderOptions, dialect),
+            "notnull" => ProcessIsNullPlaceholder(placeholderType, placeholderOptions, dialect, true),
+            // Dialect-specific placeholders
+            "bool_true" => GetBoolTrueLiteral(dialect),
+            "bool_false" => GetBoolFalseLiteral(dialect),
+            "current_timestamp" => GetCurrentTimestampSyntax(dialect),
+            // 日期时间函数
+            "today" => ProcessTodayPlaceholder(placeholderType, placeholderOptions, dialect),
+            "week" => ProcessWeekPlaceholder(placeholderType, placeholderOptions, dialect),
+            "month" => ProcessMonthPlaceholder(placeholderType, placeholderOptions, dialect),
+            "year" => ProcessYearPlaceholder(placeholderType, placeholderOptions, dialect),
+            "date_add" => ProcessDateAddPlaceholder(placeholderType, placeholderOptions, dialect),
+            "date_diff" => ProcessDateDiffPlaceholder(placeholderType, placeholderOptions, dialect),
+            // 字符串函数
+            "contains" => ProcessContainsPlaceholder(placeholderType, placeholderOptions, dialect),
+            "startswith" => ProcessStartsWithPlaceholder(placeholderType, placeholderOptions, dialect),
+            "endswith" => ProcessEndsWithPlaceholder(placeholderType, placeholderOptions, dialect),
+            "upper" => ProcessStringFunction("UPPER", placeholderType, placeholderOptions, dialect),
+            "lower" => ProcessStringFunction("LOWER", placeholderType, placeholderOptions, dialect),
+            "trim" => ProcessStringFunction("TRIM", placeholderType, placeholderOptions, dialect),
+            // 数学函数
+            "round" => ProcessMathFunction("ROUND", placeholderType, placeholderOptions, dialect),
+            "abs" => ProcessMathFunction("ABS", placeholderType, placeholderOptions, dialect),
+            "ceiling" => ProcessMathFunction("CEILING", placeholderType, placeholderOptions, dialect),
+            "floor" => ProcessMathFunction("FLOOR", placeholderType, placeholderOptions, dialect),
+            // 批量操作
+            "batch_values" => ProcessBatchValuesPlaceholder(placeholderType, placeholderOptions, method, dialect),
+            "upsert" => ProcessUpsertPlaceholder(placeholderType, tableName, placeholderOptions, dialect),
+            // 子查询
+            "exists" => ProcessExistsPlaceholder(placeholderType, placeholderOptions, dialect),
+            "subquery" => ProcessSubqueryPlaceholder(placeholderType, placeholderOptions, dialect),
+            // 分页增强
+            "page" => ProcessPagePlaceholder(placeholderType, method, placeholderOptions, dialect),
+            "pagination" => ProcessPaginationPlaceholder(placeholderType, method, placeholderOptions, dialect),
+            // 条件表达式
+            "case" => ProcessCasePlaceholder(placeholderType, placeholderOptions, dialect),
+            "coalesce" => ProcessCoalescePlaceholder(placeholderType, placeholderOptions, dialect),
+            "ifnull" => ProcessIfNullPlaceholder(placeholderType, placeholderOptions, dialect),
+            // 类型转换
+            "cast" => ProcessCastPlaceholder(placeholderType, placeholderOptions, dialect),
+            "convert" => ProcessConvertPlaceholder(placeholderType, placeholderOptions, dialect),
+            // JSON操作
+            "json_extract" => ProcessJsonExtractPlaceholder(placeholderType, placeholderOptions, dialect),
+            "json_array" => ProcessJsonArrayPlaceholder(placeholderType, placeholderOptions, dialect),
+            "json_object" => ProcessJsonObjectPlaceholder(placeholderType, placeholderOptions, dialect),
+            // 窗口函数
+            "row_number" => ProcessRowNumberPlaceholder(placeholderType, placeholderOptions, dialect),
+            "rank" => ProcessRankPlaceholder(placeholderType, placeholderOptions, dialect),
+            "dense_rank" => ProcessDenseRankPlaceholder(placeholderType, placeholderOptions, dialect),
+            "lag" => ProcessLagPlaceholder(placeholderType, placeholderOptions, dialect),
+            "lead" => ProcessLeadPlaceholder(placeholderType, placeholderOptions, dialect),
+            // 字符串高级函数
+            "substring" => ProcessSubstringPlaceholder(placeholderType, placeholderOptions, dialect),
+            "concat" => ProcessConcatPlaceholder(placeholderType, placeholderOptions, dialect),
+            "group_concat" => ProcessGroupConcatPlaceholder(placeholderType, placeholderOptions, dialect),
+            "replace" => ProcessReplacePlaceholder(placeholderType, placeholderOptions, dialect),
+            "length" => ProcessLengthPlaceholder(placeholderType, placeholderOptions, dialect),
+            // 数学高级函数
+            "power" => ProcessPowerPlaceholder(placeholderType, placeholderOptions, dialect),
+            "sqrt" => ProcessSqrtPlaceholder(placeholderType, placeholderOptions, dialect),
+            "mod" => ProcessModPlaceholder(placeholderType, placeholderOptions, dialect),
+            // 批量操作增强
+            "batch_insert" => ProcessBatchInsertPlaceholder(placeholderType, tableName, entityType, placeholderOptions, dialect),
+            "bulk_update" => ProcessBulkUpdatePlaceholder(placeholderType, tableName, placeholderOptions, dialect),
+            _ => ProcessCustomPlaceholder($"{{{{{placeholderName}}}}}", placeholderName, placeholderType, placeholderOptions, result)
+        };
     }
 
 
     /// <summary>
     /// 处理表名占位符 - 多数据库支持
     /// 自动应用正确的数据库引用语法
+    /// 支持格式：
+    /// - {{table}} - 使用默认表名（从实体类型推断）
+    /// - {{table users}} - 使用指定的表名
+    /// - {{table:quoted}} - 使用引号包裹的表名
     /// </summary>
     private static string ProcessTablePlaceholder(string tableName, string type, INamedTypeSymbol? entityType, string options, SqlDefine dialect)
     {
-        var snakeTableName = SharedCodeGenerationUtilities.ConvertToSnakeCase(tableName);
-        return type == "quoted" ? dialect.WrapColumn(snakeTableName) : snakeTableName;
+        // 如果 type 不为空且不是 "quoted"，则使用 type 作为表名
+        // 这支持 {{table users}} 这种格式
+        string actualTableName;
+        bool shouldQuote = false;
+        
+        if (!string.IsNullOrEmpty(type) && type != "quoted")
+        {
+            actualTableName = type;
+        }
+        else
+        {
+            actualTableName = tableName;
+            shouldQuote = type == "quoted";
+        }
+        
+        var snakeTableName = SharedCodeGenerationUtilities.ConvertToSnakeCase(actualTableName);
+        return shouldQuote ? dialect.WrapColumn(snakeTableName) : snakeTableName;
     }
 
 

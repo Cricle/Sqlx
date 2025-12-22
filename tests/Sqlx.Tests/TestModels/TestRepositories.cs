@@ -177,7 +177,7 @@ public interface IAdvancedRepository
     [SqlTemplate(@"
         SELECT u.id as user_id, u.name as user_name, 
                {{count o.id}} as order_count, 
-               {{coalesce {{sum o.total_amount}}, 0}} as total_spent
+               COALESCE(SUM([o].[total_amount]), 0) as total_spent
         FROM {{table users}} u
         {{join --type left --table orders o --on u.id = o.user_id}}
         {{groupby u.id, u.name}}

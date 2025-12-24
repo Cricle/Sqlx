@@ -118,7 +118,7 @@ internal static class DialectHelper
             SqlDefineTypes.SqlServer => new SqlServerDialectProvider(),
             SqlDefineTypes.SQLite => new SQLiteDialectProvider(),
             SqlDefineTypes.Oracle => new SQLiteDialectProvider(), // TODO: Implement Oracle
-            SqlDefineTypes.DB2 => new SQLiteDialectProvider(), // TODO: Implement DB2
+            SqlDefineTypes.DB2 => new DB2DialectProvider(),
             _ => new SQLiteDialectProvider()
         };
     }

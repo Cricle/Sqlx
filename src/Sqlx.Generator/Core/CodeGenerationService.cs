@@ -745,11 +745,10 @@ public class CodeGenerationService
 
         // 🚀 Activity跟踪和指标（默认禁用以获得最佳性能，可通过定义SQLX_ENABLE_TRACING启用）
         sb.AppendLine("#if SQLX_ENABLE_TRACING");
-        sb.AppendLine("// Activity跟踪（可通过定义SQLX_ENABLE_TRACING条件编译启用）");
+        sb.AppendLine("// Activity track（Define SQLX_ENABLE_TRACING to enable）");
         sb.AppendLine("var __activity__ = global::System.Diagnostics.Activity.Current;");
         sb.AppendLine("var __startTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
         sb.AppendLine();
-        sb.AppendLine("// 设置Activity标签（如果存在）");
         sb.AppendLine("if (__activity__ != null)");
         sb.AppendLine("{");
         sb.PushIndent();
@@ -996,11 +995,9 @@ public class CodeGenerationService
 
         // 生成指标和追踪代码（强制启用）
         sb.AppendLine("#if SQLX_ENABLE_TRACING");
-        sb.AppendLine("// 计算执行耗时");
         sb.AppendLine("var __endTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
         sb.AppendLine("var __elapsedTicks__ = __endTimestamp__ - __startTimestamp__;");
         sb.AppendLine();
-        sb.AppendLine("// 更新Activity（成功）");
         sb.AppendLine("if (__activity__ != null)");
         sb.AppendLine("{");
         sb.PushIndent();
@@ -1017,7 +1014,6 @@ public class CodeGenerationService
 
         // Call partial method interceptor
         sb.AppendLine("#if SQLX_ENABLE_PARTIAL_METHODS");
-        sb.AppendLine("// Partial方法：用户自定义成功处理");
         sb.AppendLine("#if SQLX_ENABLE_TRACING");
         sb.AppendLine($"OnExecuted(\"{operationName}\", __cmd__, __result__, __elapsedTicks__);");
         sb.AppendLine("#else");
@@ -1036,7 +1032,6 @@ public class CodeGenerationService
         sb.AppendLine("var __endTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
         sb.AppendLine("var __elapsedTicks__ = __endTimestamp__ - __startTimestamp__;");
         sb.AppendLine();
-        sb.AppendLine("// 更新Activity（失败）");
         sb.AppendLine("if (__activity__ != null)");
         sb.AppendLine("{");
         sb.PushIndent();
@@ -1055,7 +1050,6 @@ public class CodeGenerationService
 
         // Call partial method interceptor
         sb.AppendLine("#if SQLX_ENABLE_PARTIAL_METHODS");
-        sb.AppendLine("// Partial方法：用户自定义异常处理");
         sb.AppendLine("#if SQLX_ENABLE_TRACING");
         sb.AppendLine($"OnExecuteFail(\"{operationName}\", __cmd__, __ex__, __elapsedTicks__);");
         sb.AppendLine("#else");
@@ -1070,7 +1064,6 @@ public class CodeGenerationService
         sb.AppendLine("finally");
         sb.AppendLine("{");
         sb.PushIndent();
-        sb.AppendLine("// 🚀 性能关键：及时释放Command资源（减少2-3μs开销）");
         sb.AppendLine("__cmd__?.Dispose();");
         sb.PopIndent();
         sb.AppendLine("}");
@@ -1172,10 +1165,6 @@ public class CodeGenerationService
             System.Text.RegularExpressions.RegexOptions.IgnoreCase);
     }
 
-    private bool IsScalarReturnType(string returnType) => ClassifyReturnType(returnType).Category == ReturnTypeCategory.Scalar;
-    private bool IsCollectionReturnType(string returnType) => ClassifyReturnType(returnType).Category == ReturnTypeCategory.Collection;
-    private bool IsSingleEntityReturnType(string returnType) => ClassifyReturnType(returnType).Category == ReturnTypeCategory.SingleEntity;
-
     private void GenerateScalarExecution(IndentedStringBuilder sb, string innerType, string cancellationTokenArg = "")
     {
         sb.AppendLine($"var scalarResult = await __cmd__.ExecuteScalarAsync({cancellationTokenArg.TrimStart(',', ' ')});");
@@ -1219,14 +1208,12 @@ public class CodeGenerationService
         var limitParam = DetectLimitParameter(templateResult.ProcessedSql, method);
         if (limitParam != null)
         {
-            sb.AppendLine($"// 🚀 性能优化：预分配List容量（基于LIMIT参数）");
             sb.AppendLine($"var __initialCapacity__ = {limitParam} > 0 ? {limitParam} : 16;");
             sb.AppendLine($"__result__ = new {collectionType}(__initialCapacity__);");
         }
         else
         {
             // 使用默认初始容量16，平衡小查询和大查询
-            sb.AppendLine($"// 🚀 性能优化：预分配默认容量（避免频繁扩容）");
             sb.AppendLine($"__result__ = new {collectionType}(16);");
         }
 
@@ -1237,7 +1224,6 @@ public class CodeGenerationService
         if (entityType != null && (templateResult.ColumnOrder == null || templateResult.ColumnOrder.Count == 0))
         {
             sb.AppendLine();
-            sb.AppendLine("// 🚀 性能优化：声明列序号缓存变量（在第一次读取后赋值）");
             GenerateOrdinalCachingDeclarations(sb, entityType);
             sb.AppendLine("bool __firstRow__ = true;");
             sb.AppendLine();
@@ -1253,7 +1239,6 @@ public class CodeGenerationService
             sb.AppendLine("if (__firstRow__)");
             sb.AppendLine("{");
             sb.PushIndent();
-            sb.AppendLine("// 初始化列序号（仅执行一次）");
             GenerateOrdinalCachingInitialization(sb, entityType);
             sb.AppendLine("__firstRow__ = false;");
             sb.PopIndent();
@@ -1405,7 +1390,6 @@ public class CodeGenerationService
         sb.AppendLine($"__result__ = new {collectionType}();");
         sb.AppendLine($"using var reader = await __cmd__.ExecuteReaderAsync({cancellationTokenArg.TrimStart(',', ' ')});");
         sb.AppendLine();
-        sb.AppendLine("// 🚀 性能优化：预读取列名，避免每行重复调用GetName()");
         sb.AppendLine("var fieldCount = reader.FieldCount;");
         sb.AppendLine("var columnNames = new string[fieldCount];");
         sb.AppendLine("for (var i = 0; i < fieldCount; i++)");
@@ -1418,12 +1402,10 @@ public class CodeGenerationService
         sb.AppendLine($"while (await reader.ReadAsync({cancellationTokenArg.TrimStart(',', ' ')}))");
         sb.AppendLine("{");
         sb.PushIndent();
-        sb.AppendLine("// 🚀 性能优化：预分配容量");
         sb.AppendLine("var dict = new global::System.Collections.Generic.Dictionary<string, object>(fieldCount);");
         sb.AppendLine("for (var i = 0; i < fieldCount; i++)");
         sb.AppendLine("{");
         sb.PushIndent();
-        sb.AppendLine("// 🛡️ 安全处理DBNull");
         sb.AppendLine("dict[columnNames[i]] = reader.IsDBNull(i) ? null! : reader.GetValue(i);");
         sb.PopIndent();
         sb.AppendLine("}");
@@ -1442,14 +1424,12 @@ public class CodeGenerationService
         sb.AppendLine($"if (await reader.ReadAsync({cancellationTokenArg.TrimStart(',', ' ')}))");
         sb.AppendLine("{");
         sb.PushIndent();
-        sb.AppendLine("// 🚀 性能优化：预分配容量");
         sb.AppendLine("var fieldCount = reader.FieldCount;");
         sb.AppendLine("__result__ = new global::System.Collections.Generic.Dictionary<string, object>(fieldCount);");
         sb.AppendLine("for (var i = 0; i < fieldCount; i++)");
         sb.AppendLine("{");
         sb.PushIndent();
         sb.AppendLine("var columnName = reader.GetName(i);");
-        sb.AppendLine("// 🛡️ 安全处理DBNull");
         sb.AppendLine("__result__[columnName] = reader.IsDBNull(i) ? null! : reader.GetValue(i);");
         sb.PopIndent();
         sb.AppendLine("}");
@@ -1738,7 +1718,6 @@ public class CodeGenerationService
     /// <param name="method">方法符号</param>
     private void GenerateDynamicPlaceholderValidation(IndentedStringBuilder sb, IMethodSymbol method)
     {
-        sb.AppendLine("// 🔐 动态占位符验证（编译时生成，运行时零反射开销）");
         sb.AppendLine();
 
         foreach (var parameter in method.Parameters)
@@ -2957,25 +2936,6 @@ public class CodeGenerationService
         sb.AppendLine("}");
         sb.PopIndent();
         sb.AppendLine("}");
-    }
-
-    /// <summary>
-    /// 生成列序号缓存代码（在while循环外执行）
-    /// </summary>
-    private void GenerateOrdinalCaching(IndentedStringBuilder sb, INamedTypeSymbol entityType)
-    {
-        var properties = entityType.GetMembers()
-            .OfType<IPropertySymbol>()
-            .Where(p => p.CanBeReferencedByName && p.GetMethod != null)
-            .ToArray();
-
-        if (properties.Length == 0) return;
-
-        foreach (var prop in properties)
-        {
-            var columnName = SharedCodeGenerationUtilities.ConvertToSnakeCase(prop.Name);
-            sb.AppendLine($"var __ord_{prop.Name}__ = reader.GetOrdinal(\"{columnName}\");");
-        }
     }
 
     /// <summary>

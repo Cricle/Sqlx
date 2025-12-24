@@ -64,7 +64,7 @@ public readonly record struct SqlDefine(string ColumnLeft, string ColumnRight, s
     public static readonly SqlDefine PgSql = PostgreSql;
     /// <summary>Oracle数据库方言配置</summary>
     public static readonly SqlDefine Oracle = new("\"", "\"", "'", "'", ":", "Oracle");
-    /// <summary>DB2数据库方言配置</summary>
-    public static readonly SqlDefine DB2 = new("\"", "\"", "'", "'", "?", "DB2");
+    /// <summary>DB2数据库方言配置 - Uses :param format</summary>
+    public static readonly SqlDefine DB2 = new("\"", "\"", "'", "'", ":", "DB2");
 }
 

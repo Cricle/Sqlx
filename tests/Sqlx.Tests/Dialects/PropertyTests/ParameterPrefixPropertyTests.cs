@@ -166,6 +166,27 @@ public class ParameterPrefixPropertyTests
     }
 
     /// <summary>
+    /// **Property 3: DB2 parameter extraction**
+    /// *For any* SQL query in DB2 dialect containing :param format parameters,
+    /// all parameters should be correctly extracted.
+    /// **Validates: Requirements 1.4**
+    /// **Feature: ci-fixes-and-e2e-expansion, Property 3: DB2 parameter extraction**
+    /// </summary>
+    [Property(MaxTest = 100, Arbitrary = new[] { typeof(ParameterArbitraries) })]
+    public Property DB2_ParameterPrefix_ShouldUseColon(string paramName)
+    {
+        if (string.IsNullOrEmpty(paramName))
+            return true.ToProperty();
+
+        // Act
+        var result = GenSqlDefine.DB2.ParameterPrefix + paramName;
+
+        // Assert - DB2 uses :param format
+        return (result.StartsWith(":"))
+            .Label($"DB2 parameter: '{paramName}', Result: '{result}'");
+    }
+
+    /// <summary>
     /// Property: Parameter name should be preserved after prefix.
     /// *For any* parameter name, the generated parameter should contain the original name unchanged.
     /// </summary>
@@ -225,6 +246,16 @@ public class ParameterPrefixPropertyTests
     public void Oracle_ShouldUseColonPrefix()
     {
         Assert.Equal(":", GenSqlDefine.Oracle.ParameterPrefix);
+    }
+
+    /// <summary>
+    /// Property: DB2 should use : prefix.
+    /// **Validates: Requirements 1.4**
+    /// </summary>
+    [Fact]
+    public void DB2_ShouldUseColonPrefix()
+    {
+        Assert.Equal(":", GenSqlDefine.DB2.ParameterPrefix);
     }
 }
 

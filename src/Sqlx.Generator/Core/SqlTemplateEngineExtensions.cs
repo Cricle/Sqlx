@@ -284,31 +284,46 @@ public static class SqlTemplateEngineExtensions
 
             // 从选项中提取设置
             var distinct = ExtractOption(options, "distinct", null) == "true";
+            var useCoalesce = ExtractOption(options, "coalesce", null) == "true" || 
+                             ExtractOption(options, "default", null) != null;
+            var defaultValue = ExtractOption(options, "default", "0");
             var columnOption = ExtractOption(options, "column", null);
             
-            // 🔧 Fix: If options is a simple word (no --), treat it as the column name
-            // This supports both {{sum balance}} and {{sum --column balance}}
+            // Determine the column name
+            // Priority: columnOption > type > options (if not a flag)
             string column;
-            if (!string.IsNullOrEmpty(options) && !options.TrimStart().StartsWith("--"))
+            if (!string.IsNullOrEmpty(columnOption))
             {
-                // Simple format: {{sum balance}} -> options = "balance"
+                // Explicit --column flag
+                column = columnOption;
+            }
+            else if (!string.IsNullOrEmpty(type))
+            {
+                // Type parameter (e.g., {{count *}} or {{sum balance}})
+                column = type;
+            }
+            else if (!string.IsNullOrEmpty(options) && !options.TrimStart().StartsWith("--"))
+            {
+                // Simple format without flags: {{sum balance}}
                 column = options.Trim();
             }
             else
             {
-                // Flag format: {{sum --column balance}} or use type
-                column = !string.IsNullOrEmpty(columnOption) ? columnOption : type;
+                // No column specified, use *
+                column = "*";
             }
 
             // 处理特殊情况
             if (string.IsNullOrEmpty(column) || column == "*" || column == "all")
             {
-                return distinct ? $"{function}(DISTINCT *)" : $"{function}(*)";
+                var baseResult = distinct ? $"{function}(DISTINCT *)" : $"{function}(*)";
+                return useCoalesce ? $"COALESCE({baseResult}, {defaultValue})" : baseResult;
             }
 
             if (column == "distinct")
             {
-                return $"{function}(DISTINCT *)";
+                var baseResult = $"{function}(DISTINCT *)";
+                return useCoalesce ? $"COALESCE({baseResult}, {defaultValue})" : baseResult;
             }
 
             // 智能列名处理
@@ -316,12 +331,16 @@ public static class SqlTemplateEngineExtensions
                 ? column // 已经是snake_case
                 : SharedCodeGenerationUtilities.ConvertToSnakeCase(column);
 
-            // 数据库特定优化
-            var wrappedColumn = dialect.WrapColumn(columnName);
+            // 在函数参数中，通常不需要引用标识符（除非是保留字）
+            // 简单列名直接使用，复杂表达式保持原样
+            var columnExpr = columnName.Contains('(') || columnName.Contains('.') ? columnName : columnName;
 
-            return distinct
-                ? $"{function}(DISTINCT {wrappedColumn})"
-                : $"{function}({wrappedColumn})";
+            var result = distinct
+                ? $"{function}(DISTINCT {columnExpr})"
+                : $"{function}({columnExpr})";
+            
+            // Wrap with COALESCE if requested
+            return useCoalesce ? $"COALESCE({result}, {defaultValue})" : result;
         }
 
         /// <summary>
@@ -526,9 +545,9 @@ public static class SqlTemplateEngineExtensions
             return options.Substring(startIndex, endIndex - startIndex).Trim();
         }
 
-        private static string ExtractOption(string options, string key, string? defaultValue)
+        private static string? ExtractOption(string options, string key, string? defaultValue)
         {
-            if (string.IsNullOrEmpty(options)) return defaultValue ?? "";
+            if (string.IsNullOrEmpty(options)) return defaultValue;
 
             foreach (var pair in options.Split(new char[] { '|' }, StringSplitOptions.RemoveEmptyEntries))
             {
@@ -537,7 +556,7 @@ public static class SqlTemplateEngineExtensions
                     return keyValue[1].Trim();
             }
 
-            return defaultValue ?? "";
+            return defaultValue;
         }
 
         /// <summary>处理DISTINCT字段占位符</summary>

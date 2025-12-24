@@ -142,7 +142,7 @@ app.MapGet("/api/todos/due-soon", async (ITodoRepository repo) =>
 
 // Get total count
 app.MapGet("/api/todos/count", async (ITodoRepository repo) =>
-    Results.Json(await repo.CountAsync(), TodoJsonContext.Default.Int32));
+    Results.Json((int)await repo.CountAsync(), TodoJsonContext.Default.Int32));
 
 // Initialize database
 using var scope = app.Services.CreateScope();

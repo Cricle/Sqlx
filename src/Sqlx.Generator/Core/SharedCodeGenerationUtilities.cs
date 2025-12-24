@@ -565,14 +565,37 @@ public static class SharedCodeGenerationUtilities
             {
                 // Regular parameter as SQL fragment (with validation)
                 var paramName = markerContent;
-                sb.AppendLine($"// Validate {placeholderType} fragment: {paramName}");
-                sb.AppendLine($"if (!global::Sqlx.Validation.SqlValidator.IsValidFragment({paramName}.AsSpan()))");
-                sb.AppendLine("{");
-                sb.PushIndent();
-                sb.AppendLine($"throw new global::System.ArgumentException($\"Invalid SQL fragment: {{{paramName}}}. Contains dangerous keywords.\", nameof({paramName}));");
-                sb.PopIndent();
-                sb.AppendLine("}");
-                sb.AppendLine($"var {varName} = {paramName};");
+                var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
+                
+                // Check if parameter is nullable (string? or Nullable<T>)
+                bool isNullable = param != null && (
+                    param.Type.NullableAnnotation == Microsoft.CodeAnalysis.NullableAnnotation.Annotated ||
+                    param.Type.Name.Contains("Nullable"));
+                
+                if (isNullable)
+                {
+                    // For nullable parameters, only validate if not null/empty
+                    sb.AppendLine($"// Validate {placeholderType} fragment: {paramName} (nullable)");
+                    sb.AppendLine($"if (!string.IsNullOrEmpty({paramName}) && !global::Sqlx.Validation.SqlValidator.IsValidFragment({paramName}.AsSpan()))");
+                    sb.AppendLine("{");
+                    sb.PushIndent();
+                    sb.AppendLine($"throw new global::System.ArgumentException($\"Invalid SQL fragment: {{{paramName}}}. Contains dangerous keywords.\", nameof({paramName}));");
+                    sb.PopIndent();
+                    sb.AppendLine("}");
+                    sb.AppendLine($"var {varName} = {paramName} ?? \"\";");
+                }
+                else
+                {
+                    // For non-nullable parameters, always validate
+                    sb.AppendLine($"// Validate {placeholderType} fragment: {paramName}");
+                    sb.AppendLine($"if (!global::Sqlx.Validation.SqlValidator.IsValidFragment({paramName}.AsSpan()))");
+                    sb.AppendLine("{");
+                    sb.PushIndent();
+                    sb.AppendLine($"throw new global::System.ArgumentException($\"Invalid SQL fragment: {{{paramName}}}. Contains dangerous keywords.\", nameof({paramName}));");
+                    sb.PopIndent();
+                    sb.AppendLine("}");
+                    sb.AppendLine($"var {varName} = {paramName};");
+                }
             }
         }
 

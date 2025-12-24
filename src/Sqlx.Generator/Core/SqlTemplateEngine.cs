@@ -32,9 +32,14 @@ public class SqlTemplateEngine
     // 1. 新格式（命令行风格）：{{columns --exclude Id}}, {{orderby created_at --desc}}
     // 2. 旧格式（冒号管道风格）：{{columns:auto|exclude=Id}}, {{limit:default|count=20}}
     // 3. 动态占位符（@ 前缀）：{{@tableName}}, {{@whereClause}}
-    // 捕获组：(1)@前缀（动态标记）, (2)name, (3)type（旧格式）, (4)options（旧格式，管道后）, (5)options（新格式，空格后）
-    private static readonly Regex PlaceholderRegex = new(@"\{\{(@)?(\w+)(?::(\w+))?(?:\|([^}\s]+))?(?:\s+([^}]+))?\}\}", RegexOptions.Compiled | RegexOptions.CultureInvariant);
-    private static readonly Regex SqlInjectionRegex = new(@"(?i)(union\s+select|drop\s+table|exec\s*\(|execute\s*\(|sp_|xp_|--|\*\/|\/\*)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    // 4. 嵌套占位符：{{coalesce {{sum balance}}, 0}}
+    // 使用平衡组来匹配嵌套的花括号
+    // 捕获组：(1)@前缀（动态标记）, (2)name, (3)完整内容（包括嵌套）
+    private static readonly Regex PlaceholderRegex = new(@"\{\{(@)?(\w+)(?::|\s+)?((?:[^{}]|\{(?!\{)|\}(?!\})|(?<open>\{\{)|(?<-open>\}\}))*)(?(open)(?!))\}\}", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    // SQL injection detection - exclude legitimate UNION queries by requiring suspicious context
+    // Matches: "UNION SELECT" only when preceded by suspicious patterns or when it appears to be injected
+    // Allows: Legitimate "FROM table1 UNION SELECT" patterns in templates
+    private static readonly Regex SqlInjectionRegex = new(@"(?i)(;\s*union\s+select|'\s*union\s+select|drop\s+table|exec\s*\(|execute\s*\(|sp_|xp_|--|\*\/|\/\*)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
 
     // 性能优化：通用过滤器
@@ -151,44 +156,105 @@ public class SqlTemplateEngine
     /// 处理占位符 - 多数据库支持版本
     /// 写一次模板，所有数据库都能使用
     /// 支持嵌套占位符（例如：{{coalesce {{sum amount}}, 0}}）
+    /// 处理策略：从最内层到最外层逐层处理
     /// </summary>
     private string ProcessPlaceholders(string sql, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, SqlTemplateResult result, SqlDefine dialect)
     {
         // 支持嵌套占位符：最多迭代3次以处理嵌套
         // 例如：{{coalesce {{sum o.total_amount}}, 0}} 需要2次迭代
+        // 策略：每次迭代处理最内层的占位符（不包含其他{{的占位符）
         string previousSql;
         int maxIterations = 3;
         int iteration = 0;
         
+        // 创建一个简单的正则表达式来匹配最内层的占位符（不包含嵌套的{{）
+        // 匹配 {{...}} 其中 ... 不包含 {{
+        var innermostPlaceholderRegex = new Regex(@"\{\{(?![^}]*\{\{)([^}]+)\}\}", RegexOptions.Compiled);
+        
         do
         {
             previousSql = sql;
-            sql = PlaceholderRegex.Replace(sql, match =>
+            sql = innermostPlaceholderRegex.Replace(sql, match =>
             {
+                // 提取占位符内容
+                var fullContent = match.Groups[1].Value;
+                
                 // 检查是否是动态占位符（@ 前缀）
-                var isDynamic = match.Groups[1].Value == "@";
-                var placeholderNameOriginal = match.Groups[2].Value;
-                var placeholderName = placeholderNameOriginal.ToLowerInvariant();
-
-                // 如果是动态占位符，直接返回 C# 字符串插值格式
+                var isDynamic = fullContent.StartsWith("@");
                 if (isDynamic)
                 {
-                    // {{@tableName}} -> {tableName}
-                    // 标记结果包含动态特性，用于后续生成验证代码
+                    var placeholderNameOriginal = fullContent.Substring(1);
                     result.HasDynamicFeatures = true;
-                    return $"{{{placeholderNameOriginal}}}"; // Preserve original case for dynamic placeholders
+                    return $"{{{placeholderNameOriginal}}}";
                 }
-
-                // 支持两种格式：
-                // 旧格式：{{name:type|options}} -> Groups: (1)"", (2)name, (3)type, (4)options
-                // 新格式：{{name --options}}    -> Groups: (1)"", (2)name, (3)"", (4)"", (5)options
-                var placeholderType = match.Groups[3].Value; // 旧格式的type
-                var oldFormatOptions = match.Groups[4].Value; // 旧格式的options（管道后）
-                var newFormatOptions = match.Groups[5].Value; // 新格式的options（空格后）
-
-                // 合并options：优先使用新格式，如果为空则使用旧格式
-                var placeholderOptions = !string.IsNullOrEmpty(newFormatOptions) ? newFormatOptions : oldFormatOptions;
-
+                
+                // 解析占位符名称和内容
+                // 格式: name:type|options 或 name type 或 name --options
+                string placeholderName = "";
+                string placeholderType = "";
+                string placeholderOptions = "";
+                
+                // 提取占位符名称（第一个单词）
+                var spaceIndex = fullContent.IndexOfAny(new[] { ' ', ':', '|' });
+                if (spaceIndex > 0)
+                {
+                    placeholderName = fullContent.Substring(0, spaceIndex).Trim().ToLowerInvariant();
+                    var content = fullContent.Substring(spaceIndex + 1).Trim();
+                    
+                    // 解析剩余内容
+                    if (fullContent[spaceIndex] == ':')
+                    {
+                        // 旧格式: name:type|options
+                        var pipeIndex = content.IndexOf('|');
+                        if (pipeIndex >= 0)
+                        {
+                            placeholderType = content.Substring(0, pipeIndex).Trim();
+                            placeholderOptions = content.Substring(pipeIndex + 1).Trim();
+                        }
+                        else
+                        {
+                            placeholderType = content;
+                        }
+                    }
+                    else
+                    {
+                        // 新格式或简单格式
+                        var pipeIndex = content.IndexOf('|');
+                        if (pipeIndex >= 0)
+                        {
+                            placeholderType = content.Substring(0, pipeIndex).Trim();
+                            placeholderOptions = content.Substring(pipeIndex + 1).Trim();
+                        }
+                        else
+                        {
+                            // 对于 orderby, limit, offset 等占位符，整个内容都是 options
+                            // 例如: {{orderby created_at --desc}} -> options = "created_at --desc"
+                            // 例如: {{limit --param count}} -> options = "--param count"
+                            if (placeholderName == "orderby" || placeholderName == "limit" || placeholderName == "offset")
+                            {
+                                placeholderOptions = content;
+                            }
+                            else
+                            {
+                                var dashIndex = content.IndexOf("--");
+                                if (dashIndex >= 0)
+                                {
+                                    placeholderType = content.Substring(0, dashIndex).Trim();
+                                    placeholderOptions = content.Substring(dashIndex).Trim();
+                                }
+                                else
+                                {
+                                    placeholderOptions = content;
+                                }
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    placeholderName = fullContent.Trim().ToLowerInvariant();
+                }
+                
                 // 验证占位符选项（仅在第一次迭代时）
                 if (iteration == 0)
                 {
@@ -345,22 +411,30 @@ public class SqlTemplateEngine
     /// 自动应用正确的数据库引用语法
     /// 支持格式：
     /// - {{table}} - 使用默认表名（从实体类型推断）
-    /// - {{table users}} - 使用指定的表名
+    /// - {{table tableName}} - 使用指定的表名（通过options参数）
     /// - {{table:quoted}} - 使用引号包裹的表名
+    /// - {{table users}} - 使用指定的表名（通过type参数，向后兼容）
     /// </summary>
     private static string ProcessTablePlaceholder(string tableName, string type, INamedTypeSymbol? entityType, string options, SqlDefine dialect)
     {
-        // 如果 type 不为空且不是 "quoted"，则使用 type 作为表名
-        // 这支持 {{table users}} 这种格式
         string actualTableName;
         bool shouldQuote = false;
         
-        if (!string.IsNullOrEmpty(type) && type != "quoted")
+        // Priority: options > type > default tableName
+        // This supports both {{table tableName}} (new format) and {{table:tableName}} (old format)
+        if (!string.IsNullOrEmpty(options) && !options.TrimStart().StartsWith("--"))
         {
+            // New format: {{table tableName}} -> options = "tableName"
+            actualTableName = options.Trim();
+        }
+        else if (!string.IsNullOrEmpty(type) && type != "quoted")
+        {
+            // Old format: {{table:tableName}} -> type = "tableName"
             actualTableName = type;
         }
         else
         {
+            // Default: use provided tableName
             actualTableName = tableName;
             shouldQuote = type == "quoted";
         }
@@ -623,7 +697,7 @@ public class SqlTemplateEngine
                     arg.Key == "Type" &&
                     arg.Value.Value?.ToString() == "1"))); // Fragment = 1
 
-        // Priority: @paramName > dynamic param > options > type
+        // Priority: @paramName > --param > dynamic param > options > type
         if (!string.IsNullOrWhiteSpace(type) && type.StartsWith("@"))
         {
             // {{orderby @customOrder}} - use parameter as ORDERBY fragment
@@ -632,6 +706,20 @@ public class SqlTemplateEngine
             if (param != null)
             {
                 return $"{{RUNTIME_ORDERBY_{paramName}}}"; // Marker for code generation
+            }
+        }
+
+        // Check for --param option (e.g., {{orderby --param orderBy}})
+        if (!string.IsNullOrWhiteSpace(options))
+        {
+            var paramOption = ExtractCommandLineOption(options, "--param");
+            if (!string.IsNullOrEmpty(paramOption))
+            {
+                var param = method.Parameters.FirstOrDefault(p => p.Name == paramOption);
+                if (param != null)
+                {
+                    return $"{{RUNTIME_ORDERBY_{paramOption}}}"; // Marker for code generation
+                }
             }
         }
 
@@ -650,6 +738,13 @@ public class SqlTemplateEngine
             if (optionsParts.Length >= 1)
             {
                 var columnName = optionsParts[0].Trim();
+                
+                // Skip if this is a --param option (already handled above)
+                if (columnName == "--param")
+                {
+                    return $"ORDER BY {dialect.WrapColumn("id")} ASC"; // Default fallback
+                }
+                
                 var direction = "ASC"; // 默认升序
 
                 // 查找方向选项
@@ -1681,12 +1776,20 @@ public class SqlTemplateEngine
     {
         var field = ExtractOption(options, "field", type); // 使用type作为字段名
         var column = ExtractOption(options, "column", type != "year" ? type : "created_at");
+        
+        // 智能列名处理 - 在函数参数中不使用引用标识符
+        var columnName = column.Contains('_')
+            ? column // 已经是snake_case
+            : SharedCodeGenerationUtilities.ConvertToSnakeCase(column);
+        
+        // 简单列名直接使用，复杂表达式保持原样
+        var columnExpr = columnName.Contains('(') || columnName.Contains('.') ? columnName : columnName;
 
-        var yearFunction = dialect.Equals(SqlDefine.SqlServer) ? $"YEAR({dialect.WrapColumn(column)})" :
-                          dialect.Equals(SqlDefine.MySql) ? $"YEAR({dialect.WrapColumn(column)})" :
-                          dialect.Equals(SqlDefine.PostgreSql) ? $"EXTRACT(YEAR FROM {dialect.WrapColumn(column)})" :
-                          dialect.Equals(SqlDefine.Oracle) ? $"EXTRACT(YEAR FROM {dialect.WrapColumn(column)})" :
-                          $"strftime('%Y', {dialect.WrapColumn(column)})"; // SQLite
+        var yearFunction = dialect.Equals(SqlDefine.SqlServer) ? $"YEAR({columnExpr})" :
+                          dialect.Equals(SqlDefine.MySql) ? $"YEAR({columnExpr})" :
+                          dialect.Equals(SqlDefine.PostgreSql) ? $"EXTRACT(YEAR FROM {columnExpr})" :
+                          dialect.Equals(SqlDefine.Oracle) ? $"EXTRACT(YEAR FROM {columnExpr})" :
+                          $"CAST(strftime('%Y', {columnExpr}) AS INTEGER)"; // SQLite
 
         // 如果有字段名且与column不同，生成比较条件；否则只返回年份函数
         return !string.IsNullOrEmpty(field) && field != "year" && field != column
@@ -1847,18 +1950,25 @@ public class SqlTemplateEngine
     private static string ProcessStringFunction(string function, string type, string options, SqlDefine dialect)
     {
         var column = ExtractOption(options, "column", type);
+        
+        // 在函数参数中，通常不需要引用标识符（除非是保留字）
+        // 简单列名直接使用，复杂表达式保持原样
+        var columnExpr = column.Contains('(') || column.Contains('.') ? column : column;
 
         return function.ToUpper() switch
         {
-            "UPPER" => $"UPPER({dialect.WrapColumn(column)})",
-            "LOWER" => $"LOWER({dialect.WrapColumn(column)})",
+            "UPPER" => $"UPPER({columnExpr})",
+            "LOWER" => $"LOWER({columnExpr})",
             "TRIM" => ExtractOption(options, "mode", "both") switch
             {
-                "leading" => $"LTRIM({dialect.WrapColumn(column)})",
-                "trailing" => $"RTRIM({dialect.WrapColumn(column)})",
-                _ => $"TRIM({dialect.WrapColumn(column)})"
+                "leading" => $"LTRIM({columnExpr})",
+                "trailing" => $"RTRIM({columnExpr})",
+                _ => $"TRIM({columnExpr})"
             },
-            _ => $"{function.ToUpper()}({dialect.WrapColumn(column)})"
+            "LENGTH" => dialect.Equals(SqlDefine.SqlServer) 
+                ? $"LEN({columnExpr})" 
+                : $"LENGTH({columnExpr})",
+            _ => $"{function.ToUpper()}({columnExpr})"
         };
     }
 
@@ -1869,17 +1979,45 @@ public class SqlTemplateEngine
     /// <summary>处理数学函数占位符 - 统一优化版本</summary>
     private static string ProcessMathFunction(string function, string type, string options, SqlDefine dialect)
     {
+        // Check for simple comma-separated format: {{round AVG(balance), 2}}
+        var content = !string.IsNullOrWhiteSpace(options) ? options : type;
+        var simpleFormat = !string.IsNullOrWhiteSpace(content) && content.Contains(',');
+        
+        if (simpleFormat && function.ToUpper() == "ROUND")
+        {
+            // Parse comma-separated values for ROUND function
+            var parts = content.Split(',')
+                .Select(p => p.Trim())
+                .Where(p => !string.IsNullOrWhiteSpace(p))
+                .ToList();
+            
+            if (parts.Count >= 2)
+            {
+                // First part is the column/expression, second part is precision
+                var columnExpr = parts[0];
+                var precision = parts[1];
+                
+                // Use expression as-is (no wrapping)
+                return $"ROUND({columnExpr}, {precision})";
+            }
+        }
+        
+        // Standard format with options
         var column = ExtractOption(options, "column", type);
+        
+        // 在函数参数中，通常不需要引用标识符（除非是保留字）
+        // 简单列名直接使用，复杂表达式保持原样
+        var mathColumnExpr = column.Contains('(') || column.Contains('.') ? column : column;
 
         return function.ToUpper() switch
         {
-            "ROUND" => $"ROUND({dialect.WrapColumn(column)}, {ExtractOption(options, "precision", "2")})",
-            "ABS" => $"ABS({dialect.WrapColumn(column)})",
+            "ROUND" => $"ROUND({mathColumnExpr}, {ExtractOption(options, "precision", "2")})",
+            "ABS" => $"ABS({mathColumnExpr})",
             "CEILING" => dialect.Equals(SqlDefine.SqlServer)
-                ? $"CEILING({dialect.WrapColumn(column)})"
-                : $"CEIL({dialect.WrapColumn(column)})",
-            "FLOOR" => $"FLOOR({dialect.WrapColumn(column)})",
-            _ => $"{function.ToUpper()}({dialect.WrapColumn(column)})"
+                ? $"CEILING({mathColumnExpr})"
+                : $"CEIL({mathColumnExpr})",
+            "FLOOR" => $"FLOOR({mathColumnExpr})",
+            _ => $"{function.ToUpper()}({mathColumnExpr})"
         };
     }
 
@@ -2429,12 +2567,20 @@ public class SqlTemplateEngine
     private static string ProcessLengthPlaceholder(string type, string options, SqlDefine dialect)
     {
         var column = ExtractOption(options, "column", type);
+        
+        // 智能列名处理 - 在函数参数中不使用引用标识符
+        var columnName = column.Contains('_')
+            ? column // 已经是snake_case
+            : SharedCodeGenerationUtilities.ConvertToSnakeCase(column);
+        
+        // 简单列名直接使用，复杂表达式保持原样
+        var columnExpr = columnName.Contains('(') || columnName.Contains('.') ? columnName : columnName;
 
         return dialect.Equals(SqlDefine.SqlServer)
-            ? $"LEN({dialect.WrapColumn(column)})"
+            ? $"LEN({columnExpr})"
             : dialect.Equals(SqlDefine.Oracle)
-                ? $"LENGTH({dialect.WrapColumn(column)})"
-                : $"LENGTH({dialect.WrapColumn(column)})";
+                ? $"LENGTH({columnExpr})"
+                : $"LENGTH({columnExpr})";
     }
 
     /// <summary>处理POWER占位符 - 幂运算</summary>

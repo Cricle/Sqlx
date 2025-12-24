@@ -499,7 +499,118 @@ public class PlaceholderPropertyTests
     }
 
     #endregion
+
+    #region Property 1: Table Placeholder Parameter Usage (CI Fixes)
+
+    /// <summary>
+    /// **Property 1: Table placeholder parameter usage**
+    /// *For any* SQL template containing {{table tableName}} and a tableName parameter,
+    /// the generated SQL should use the parameter value instead of the default table name.
+    /// **Validates: Requirements 1.1**
+    /// **Feature: ci-fixes-and-e2e-expansion, Property 1: Table placeholder parameter usage**
+    /// </summary>
+    [Property(MaxTest = 100, Arbitrary = new[] { typeof(PlaceholderArbitraries) })]
+    public Property TablePlaceholder_WithParameterName_ShouldUseParameterValue(
+        string defaultTableName, string parameterTableName, DialectWithConfig dialectConfig)
+    {
+        // Skip empty or null table names
+        if (string.IsNullOrWhiteSpace(defaultTableName) || string.IsNullOrWhiteSpace(parameterTableName))
+            return true.ToProperty();
+
+        var dialect = dialectConfig.Dialect;
+        // Use new format: {{table parameterTableName}}
+        var template = $"SELECT * FROM {{{{table {parameterTableName}}}}}";
+
+        // Act
+        var result = _engine.ProcessTemplate(template, _testMethod, _testEntity, defaultTableName, dialect);
+
+        // Expected: should use parameterTableName, not defaultTableName
+        var expectedSnakeCaseName = SharedCodeGenerationUtilities.ConvertToSnakeCase(parameterTableName);
+        var defaultSnakeCaseName = SharedCodeGenerationUtilities.ConvertToSnakeCase(defaultTableName);
+
+        // Assert: The processed SQL should contain the parameter table name (not the default)
+        // and should NOT contain the original {{table ...}} placeholder
+        var containsExpected = result.ProcessedSql.Contains(expectedSnakeCaseName);
+        var notContainsPlaceholder = !result.ProcessedSql.Contains("{{table");
+        
+        // If the names are the same after snake_case conversion, we can't distinguish them
+        if (expectedSnakeCaseName.Equals(defaultSnakeCaseName, StringComparison.OrdinalIgnoreCase))
+            return true.ToProperty();
+
+        return (notContainsPlaceholder && containsExpected)
+            .Label($"Dialect: {dialectConfig.Config.DialectName}, " +
+                   $"DefaultTableName: '{defaultTableName}', " +
+                   $"ParameterTableName: '{parameterTableName}', " +
+                   $"Expected: '{expectedSnakeCaseName}', " +
+                   $"Result: '{result.ProcessedSql}'");
+    }
+
+    #endregion
+
+    #region Property 2: Nested Placeholder Resolution (CI Fixes)
+
+    /// <summary>
+    /// **Property 2: Nested placeholder resolution**
+    /// *For any* SQL template with nested placeholders up to 3 levels deep,
+    /// all placeholders should be resolved correctly in the final SQL.
+    /// **Validates: Requirements 1.2**
+    /// **Feature: ci-fixes-and-e2e-expansion, Property 2: Nested placeholder resolution**
+    /// </summary>
+    [Property(MaxTest = 100, Arbitrary = new[] { typeof(PlaceholderArbitraries) })]
+    public Property NestedPlaceholder_UpTo3Levels_ShouldResolveCorrectly(DialectWithConfig dialectConfig)
+    {
+        var dialect = dialectConfig.Dialect;
+        
+        // Test nested placeholders: {{coalesce {{sum balance}}, 0}}
+        // This requires 2 iterations to resolve
+        var template = "SELECT {{coalesce {{sum balance}}, 0}} FROM {{table}}";
+
+        // Act
+        var result = _engine.ProcessTemplate(template, _testMethod, _testEntity, "users", dialect);
+
+        // Assert: Should not contain any unresolved placeholders
+        var hasUnresolvedPlaceholders = result.ProcessedSql.Contains("{{");
+        
+        // Should contain COALESCE and SUM
+        var containsCoalesce = result.ProcessedSql.ToUpperInvariant().Contains("COALESCE");
+        var containsSum = result.ProcessedSql.ToUpperInvariant().Contains("SUM");
+
+        return (!hasUnresolvedPlaceholders && containsCoalesce && containsSum)
+            .Label($"Dialect: {dialectConfig.Config.DialectName}, " +
+                   $"Result: '{result.ProcessedSql}'");
+    }
+
+    /// <summary>
+    /// Property 2 (continued): Triple nested placeholders should resolve correctly.
+    /// </summary>
+    [Property(MaxTest = 100, Arbitrary = new[] { typeof(PlaceholderArbitraries) })]
+    public Property NestedPlaceholder_TripleNested_ShouldResolveCorrectly(DialectWithConfig dialectConfig)
+    {
+        var dialect = dialectConfig.Dialect;
+        
+        // Test triple nested: {{coalesce {{round {{avg balance}}, 2}}, 0}}
+        // This requires 3 iterations to resolve
+        var template = "SELECT {{coalesce {{round {{avg balance}}, 2}}, 0}} FROM {{table}}";
+
+        // Act
+        var result = _engine.ProcessTemplate(template, _testMethod, _testEntity, "users", dialect);
+
+        // Assert: Should not contain any unresolved placeholders
+        var hasUnresolvedPlaceholders = result.ProcessedSql.Contains("{{");
+        
+        // Should contain COALESCE, ROUND, and AVG
+        var containsCoalesce = result.ProcessedSql.ToUpperInvariant().Contains("COALESCE");
+        var containsRound = result.ProcessedSql.ToUpperInvariant().Contains("ROUND");
+        var containsAvg = result.ProcessedSql.ToUpperInvariant().Contains("AVG");
+
+        return (!hasUnresolvedPlaceholders && containsCoalesce && containsRound && containsAvg)
+            .Label($"Dialect: {dialectConfig.Config.DialectName}, " +
+                   $"Result: '{result.ProcessedSql}'");
+    }
+
+    #endregion
 }
+
 
 /// <summary>
 /// Custom arbitraries for placeholder property tests.

@@ -173,7 +173,7 @@ public abstract class E2ETestBase
         // 创建表结构
         await CreateTablesAsync();
         
-        // 清理数据
+        // 清理数据（确保干净的开始）
         await CleanupDataAsync();
     }
 
@@ -183,7 +183,14 @@ public abstract class E2ETestBase
         if (Connection != null)
         {
             // 清理测试数据
-            await CleanupDataAsync();
+            try
+            {
+                await CleanupDataAsync();
+            }
+            catch
+            {
+                // 忽略清理错误
+            }
             Connection.Dispose();
         }
     }
@@ -504,8 +511,17 @@ public class E2E_MySQL_Tests : E2ETestBase
         if (Connection == null) return;
 
         using var cmd = Connection.CreateCommand();
+        
+        // 先删除表
         cmd.CommandText = @"
-            CREATE TABLE IF NOT EXISTS e2e_products (
+            DROP TABLE IF EXISTS e2e_orders;
+            DROP TABLE IF EXISTS e2e_products;
+        ";
+        await cmd.ExecuteNonQueryAsync();
+        
+        // 创建表
+        cmd.CommandText = @"
+            CREATE TABLE e2e_products (
                 id BIGINT PRIMARY KEY AUTO_INCREMENT,
                 name VARCHAR(255) NOT NULL,
                 description TEXT,
@@ -516,7 +532,7 @@ public class E2E_MySQL_Tests : E2ETestBase
                 updated_at DATETIME
             );
 
-            CREATE TABLE IF NOT EXISTS e2e_orders (
+            CREATE TABLE e2e_orders (
                 id BIGINT PRIMARY KEY AUTO_INCREMENT,
                 order_number VARCHAR(50) NOT NULL,
                 product_id BIGINT NOT NULL,

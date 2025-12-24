@@ -168,6 +168,9 @@ public abstract class NullableLimitOffsetTestBase
 
         Repository = CreateRepository(Connection);
         await CreateTableAsync();
+        
+        // 确保数据干净后再插入
+        await Repository.DeleteAllAsync();
         await SeedTestDataAsync();
     }
 
@@ -179,7 +182,14 @@ public abstract class NullableLimitOffsetTestBase
             // 清理测试数据
             if (Repository != null)
             {
-                await Repository.DeleteAllAsync();
+                try
+                {
+                    await Repository.DeleteAllAsync();
+                }
+                catch
+                {
+                    // 忽略清理错误
+                }
             }
             await Connection.DisposeAsync();
         }
@@ -189,19 +199,21 @@ public abstract class NullableLimitOffsetTestBase
     {
         using var cmd = Connection!.CreateCommand();
         
-        // 创建表 (使用 IF NOT EXISTS 避免并发冲突)
-        cmd.CommandText = DialectType switch
-        {
-            SqlDefineTypes.SQLite => $"CREATE TABLE IF NOT EXISTS {TableName} (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, score INTEGER NOT NULL)",
-            SqlDefineTypes.MySql => $"CREATE TABLE IF NOT EXISTS {TableName} (id BIGINT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL, score INT NOT NULL)",
-            SqlDefineTypes.PostgreSql => $"CREATE TABLE IF NOT EXISTS {TableName} (id BIGSERIAL PRIMARY KEY, name TEXT NOT NULL, score INTEGER NOT NULL)",
-            SqlDefineTypes.SqlServer => $"IF OBJECT_ID(N'{TableName}', N'U') IS NULL CREATE TABLE {TableName} (id BIGINT IDENTITY(1,1) PRIMARY KEY, name NVARCHAR(255) NOT NULL, score INT NOT NULL)",
-            _ => throw new NotSupportedException()
-        };
+        // 先删除表（确保干净的开始）
+        cmd.CommandText = DialectType == SqlDefineTypes.SqlServer
+            ? $"IF OBJECT_ID(N'{TableName}', N'U') IS NOT NULL DROP TABLE {TableName}"
+            : $"DROP TABLE IF EXISTS {TableName}";
         await cmd.ExecuteNonQueryAsync();
         
-        // 清空表数据 (确保测试开始时数据是干净的)
-        cmd.CommandText = $"DELETE FROM {TableName}";
+        // 创建表
+        cmd.CommandText = DialectType switch
+        {
+            SqlDefineTypes.SQLite => $"CREATE TABLE {TableName} (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, score INTEGER NOT NULL)",
+            SqlDefineTypes.MySql => $"CREATE TABLE {TableName} (id BIGINT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL, score INT NOT NULL)",
+            SqlDefineTypes.PostgreSql => $"CREATE TABLE {TableName} (id BIGSERIAL PRIMARY KEY, name TEXT NOT NULL, score INTEGER NOT NULL)",
+            SqlDefineTypes.SqlServer => $"CREATE TABLE {TableName} (id BIGINT IDENTITY(1,1) PRIMARY KEY, name NVARCHAR(255) NOT NULL, score INT NOT NULL)",
+            _ => throw new NotSupportedException()
+        };
         await cmd.ExecuteNonQueryAsync();
     }
 

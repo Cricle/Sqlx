@@ -8,10 +8,10 @@
   </RunConfiguration>
 
   <MSTest>
-    <!-- 并行执行测试 -->
+    <!-- 并行执行测试 - 类级别并行，避免同一测试类的方法并发冲突 -->
     <Parallelize>
       <Workers>0</Workers>
-      <Scope>MethodLevel</Scope>
+      <Scope>ClassLevel</Scope>
     </Parallelize>
   </MSTest>
 

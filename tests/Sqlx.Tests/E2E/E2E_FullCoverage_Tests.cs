@@ -198,8 +198,6 @@ public abstract class E2ETestBase
     [TestCategory("CRUD")]
     public async Task E2E_BasicCRUD_ShouldWork()
     {
-        if (ProductRepo == null) return;
-
         // Create
         var productId = await ProductRepo.CreateAsync(
             "Test Product",
@@ -248,8 +246,6 @@ public abstract class E2ETestBase
     [TestCategory("Query")]
     public async Task E2E_ConditionalQueries_ShouldWork()
     {
-        if (ProductRepo == null) return;
-
         // 插入测试数据
         await ProductRepo.CreateAsync("Active Product 1", "Desc 1", 50m, 10, true, DateTime.Now);
         await ProductRepo.CreateAsync("Active Product 2", "Desc 2", 150m, 20, true, DateTime.Now);
@@ -275,8 +271,6 @@ public abstract class E2ETestBase
     [TestCategory("Aggregate")]
     public async Task E2E_AggregateQueries_ShouldWork()
     {
-        if (ProductRepo == null) return;
-
         // 插入测试数据
         await ProductRepo.CreateAsync("Product 1", null, 100m, 10, true, DateTime.Now);
         await ProductRepo.CreateAsync("Product 2", null, 200m, 20, true, DateTime.Now);
@@ -300,8 +294,6 @@ public abstract class E2ETestBase
     [TestCategory("Pagination")]
     public async Task E2E_Pagination_ShouldWork()
     {
-        if (ProductRepo == null) return;
-
         // 插入测试数据
         for (int i = 1; i <= 25; i++)
         {
@@ -336,8 +328,6 @@ public abstract class E2ETestBase
     [TestCategory("Relations")]
     public async Task E2E_RelatedData_ShouldWork()
     {
-        if (ProductRepo == null || OrderRepo == null) return;
-
         // 创建产品
         var productId = await ProductRepo.CreateAsync(
             "Test Product",
@@ -379,8 +369,6 @@ public abstract class E2ETestBase
     [TestCategory("Transaction")]
     public async Task E2E_Transaction_ShouldWork()
     {
-        if (ProductRepo == null || Connection == null) return;
-
         // 简单测试：创建产品后验证
         var productId = await ProductRepo.CreateAsync(
             "Transactional Product",
@@ -403,8 +391,6 @@ public abstract class E2ETestBase
     [TestCategory("BulkOperations")]
     public async Task E2E_BulkOperations_ShouldWork()
     {
-        if (ProductRepo == null) return;
-
         // 批量插入
         var ids = new List<long>();
         for (int i = 1; i <= 100; i++)

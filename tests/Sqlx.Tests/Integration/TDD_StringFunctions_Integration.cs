@@ -20,6 +20,7 @@ namespace Sqlx.Tests.Integration;
 /// 测试: {{like}}, {{in}}, {{between}}, {{distinct}}, {{coalesce}}
 /// </summary>
 [TestClass]
+[DoNotParallelize]
 public class TDD_StringFunctions_Integration : IntegrationTestBase
 {
     public TDD_StringFunctions_Integration()

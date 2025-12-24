@@ -20,6 +20,7 @@ namespace Sqlx.Tests.Integration;
 /// 测试: {{batch_values}}, {{group_concat}}, {{groupby}}
 /// </summary>
 [TestClass]
+[DoNotParallelize]
 public class TDD_BatchOperations_Integration
 {
     private DatabaseFixture _fixture = null!;

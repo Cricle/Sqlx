@@ -18,6 +18,7 @@ namespace Sqlx.Tests.Integration;
 /// 测试: {{count}}, {{sum}}, {{avg}}, {{max}}, {{min}}
 /// </summary>
 [TestClass]
+[DoNotParallelize]
 public class TDD_AggregateFunctions_Integration : IntegrationTestBase
 {
     public TDD_AggregateFunctions_Integration()

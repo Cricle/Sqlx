@@ -17,6 +17,7 @@ namespace Sqlx.Tests.Integration;
 /// 测试版本号控制的并发更新
 /// </summary>
 [TestClass]
+[DoNotParallelize]
 public class TDD_OptimisticLocking_Integration
 {
     private static DatabaseFixture _fixture = null!;

@@ -19,6 +19,7 @@ namespace Sqlx.Tests.Integration;
 /// 测试基本的多表关联查询
 /// </summary>
 [TestClass]
+[DoNotParallelize]
 public class TDD_JoinOperations_Integration : IntegrationTestBase
 {
     public TDD_JoinOperations_Integration()

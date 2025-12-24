@@ -18,6 +18,7 @@ namespace Sqlx.Tests.Integration;
 /// 测试 {{bool_true}}, {{bool_false}}, {{current_timestamp}} 等方言特定占位符
 /// </summary>
 [TestClass]
+[DoNotParallelize]
 public class TDD_DialectPlaceholders_Integration
 {
     private static DatabaseFixture _fixture = null!;

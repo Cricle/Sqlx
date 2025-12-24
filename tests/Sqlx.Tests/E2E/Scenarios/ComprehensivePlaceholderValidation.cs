@@ -753,6 +753,8 @@ public class ComprehensivePlaceholderValidation_SQLite : ComprehensivePlaceholde
 // ==================== MySQL Tests ====================
 
 [TestClass]
+[TestCategory(TestCategories.MySQL)]
+[TestCategory(TestCategories.CI)]
 public class ComprehensivePlaceholderValidation_MySQL : ComprehensivePlaceholderValidation_Base
 {
     protected override SqlDefineTypes DialectType => SqlDefineTypes.MySql;
@@ -779,6 +781,8 @@ public class ComprehensivePlaceholderValidation_MySQL : ComprehensivePlaceholder
 // ==================== PostgreSQL Tests ====================
 
 [TestClass]
+[TestCategory(TestCategories.PostgreSQL)]
+[TestCategory(TestCategories.CI)]
 public class ComprehensivePlaceholderValidation_PostgreSQL : ComprehensivePlaceholderValidation_Base
 {
     protected override SqlDefineTypes DialectType => SqlDefineTypes.PostgreSql;
@@ -805,6 +809,8 @@ public class ComprehensivePlaceholderValidation_PostgreSQL : ComprehensivePlaceh
 // ==================== SQL Server Tests ====================
 
 [TestClass]
+[TestCategory(TestCategories.SqlServer)]
+[TestCategory(TestCategories.CI)]
 public class ComprehensivePlaceholderValidation_SqlServer : ComprehensivePlaceholderValidation_Base
 {
     protected override SqlDefineTypes DialectType => SqlDefineTypes.SqlServer;

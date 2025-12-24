@@ -19,6 +19,7 @@ namespace Sqlx.Tests.Integration;
 /// 测试: {{columns}}, {{table}}, {{values}}, {{set}}, {{orderby}}, {{limit}}, {{offset}}
 /// </summary>
 [TestClass]
+[DoNotParallelize]
 public class TDD_BasicPlaceholders_Integration
 {
     private DatabaseFixture _fixture = null!;

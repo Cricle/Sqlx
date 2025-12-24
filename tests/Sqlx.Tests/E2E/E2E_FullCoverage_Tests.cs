@@ -13,6 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Sqlx;
 using Sqlx.Annotations;
+using Sqlx.Tests.Infrastructure;
 
 namespace Sqlx.Tests.E2E;
 
@@ -486,22 +487,15 @@ public class E2E_SQLite_Tests : E2ETestBase
 // ==================== MySQL 测试 ====================
 
 [TestClass]
+[TestCategory(TestCategories.MySQL)]
+[TestCategory(TestCategories.CI)]
 public class E2E_MySQL_Tests : E2ETestBase
 {
     protected override SqlDefineTypes DialectType => SqlDefineTypes.MySql;
 
     protected override DbConnection? CreateConnection()
     {
-        try
-        {
-            var conn = new MySqlConnector.MySqlConnection(
-                "Server=localhost;Port=3307;Database=sqlx_test;Uid=root;Pwd=root");
-            return conn;
-        }
-        catch
-        {
-            return null;
-        }
+        return DatabaseConnectionHelper.GetMySQLConnection(TestContext);
     }
 
     protected override IE2EProductRepository CreateProductRepository(DbConnection connection)
@@ -509,6 +503,8 @@ public class E2E_MySQL_Tests : E2ETestBase
 
     protected override IE2EOrderRepository CreateOrderRepository(DbConnection connection)
         => new MySQLE2EOrderRepository(connection);
+    
+    public TestContext TestContext { get; set; } = null!;
 
     protected override async Task CreateTablesAsync()
     {

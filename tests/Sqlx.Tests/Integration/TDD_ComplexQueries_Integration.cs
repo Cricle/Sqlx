@@ -19,6 +19,7 @@ namespace Sqlx.Tests.Integration;
 /// 测试 GROUPBY, HAVING, CASE 等复杂SQL功能
 /// </summary>
 [TestClass]
+[DoNotParallelize]
 public class TDD_ComplexQueries_Integration : IntegrationTestBase
 {
     public TDD_ComplexQueries_Integration()

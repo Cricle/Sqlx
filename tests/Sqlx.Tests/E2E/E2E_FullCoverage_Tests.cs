@@ -31,14 +31,14 @@ public partial class SQLiteE2EOrderRepository : IE2EOrderRepository
     public SQLiteE2EOrderRepository(DbConnection connection) => _connection = connection;
 }
 
-[RepositoryFor(typeof(IE2EProductRepository), Dialect = SqlDefineTypes.MySql, TableName = "e2e_products")]
+[RepositoryFor(typeof(IE2EProductRepository), Dialect = SqlDefineTypes.MySql, TableName = "e2e_products_mysql")]
 public partial class MySQLE2EProductRepository : IE2EProductRepository
 {
     private readonly DbConnection _connection;
     public MySQLE2EProductRepository(DbConnection connection) => _connection = connection;
 }
 
-[RepositoryFor(typeof(IE2EOrderRepository), Dialect = SqlDefineTypes.MySql, TableName = "e2e_orders")]
+[RepositoryFor(typeof(IE2EOrderRepository), Dialect = SqlDefineTypes.MySql, TableName = "e2e_orders_mysql")]
 public partial class MySQLE2EOrderRepository : IE2EOrderRepository
 {
     private readonly DbConnection _connection;
@@ -514,7 +514,7 @@ public class E2E_MySQL_Tests : E2ETestBase
         
         // 创建表 (使用 IF NOT EXISTS 避免并发冲突)
         cmd.CommandText = @"
-            CREATE TABLE IF NOT EXISTS e2e_products (
+            CREATE TABLE IF NOT EXISTS e2e_products_mysql (
                 id BIGINT PRIMARY KEY AUTO_INCREMENT,
                 name VARCHAR(255) NOT NULL,
                 description TEXT,
@@ -525,7 +525,7 @@ public class E2E_MySQL_Tests : E2ETestBase
                 updated_at DATETIME
             );
 
-            CREATE TABLE IF NOT EXISTS e2e_orders (
+            CREATE TABLE IF NOT EXISTS e2e_orders_mysql (
                 id BIGINT PRIMARY KEY AUTO_INCREMENT,
                 order_number VARCHAR(50) NOT NULL,
                 product_id BIGINT NOT NULL,

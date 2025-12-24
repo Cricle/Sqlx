@@ -120,14 +120,14 @@ public partial class SQLitePaginationRepository : IPaginationUserRepository
     public SQLitePaginationRepository(DbConnection connection) => _connection = connection;
 }
 
-[RepositoryFor(typeof(IPaginationUserRepository), Dialect = SqlDefineTypes.MySql, TableName = "pagination_users_my")]
+[RepositoryFor(typeof(IPaginationUserRepository), Dialect = SqlDefineTypes.MySql, TableName = "pagination_users_my_nullable")]
 public partial class MySQLPaginationRepository : IPaginationUserRepository
 {
     private readonly DbConnection _connection;
     public MySQLPaginationRepository(DbConnection connection) => _connection = connection;
 }
 
-[RepositoryFor(typeof(IPaginationUserRepository), Dialect = SqlDefineTypes.PostgreSql, TableName = "pagination_users_pg")]
+[RepositoryFor(typeof(IPaginationUserRepository), Dialect = SqlDefineTypes.PostgreSql, TableName = "pagination_users_pg_nullable")]
 public partial class PostgreSQLPaginationRepository : IPaginationUserRepository
 {
     private readonly DbConnection _connection;
@@ -167,9 +167,9 @@ public abstract class NullableLimitOffsetTestBase
             await Connection.OpenAsync();
 
         Repository = CreateRepository(Connection);
-        await CreateTableAsync();
         
-        // 确保数据干净后再插入
+        // 创建表并清理数据
+        await CreateTableAsync();
         await Repository.DeleteAllAsync();
         await SeedTestDataAsync();
     }

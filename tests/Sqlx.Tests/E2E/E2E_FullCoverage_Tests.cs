@@ -512,16 +512,9 @@ public class E2E_MySQL_Tests : E2ETestBase
 
         using var cmd = Connection.CreateCommand();
         
-        // 先删除表
+        // 创建表 (使用 IF NOT EXISTS 避免并发冲突)
         cmd.CommandText = @"
-            DROP TABLE IF EXISTS e2e_orders;
-            DROP TABLE IF EXISTS e2e_products;
-        ";
-        await cmd.ExecuteNonQueryAsync();
-        
-        // 创建表
-        cmd.CommandText = @"
-            CREATE TABLE e2e_products (
+            CREATE TABLE IF NOT EXISTS e2e_products (
                 id BIGINT PRIMARY KEY AUTO_INCREMENT,
                 name VARCHAR(255) NOT NULL,
                 description TEXT,
@@ -532,7 +525,7 @@ public class E2E_MySQL_Tests : E2ETestBase
                 updated_at DATETIME
             );
 
-            CREATE TABLE e2e_orders (
+            CREATE TABLE IF NOT EXISTS e2e_orders (
                 id BIGINT PRIMARY KEY AUTO_INCREMENT,
                 order_number VARCHAR(50) NOT NULL,
                 product_id BIGINT NOT NULL,

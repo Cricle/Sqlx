@@ -216,9 +216,15 @@ public class SqlTemplateEngine
                             placeholderType = content;
                         }
                     }
+                    else if (fullContent[spaceIndex] == '|')
+                    {
+                        // 管道分隔格式: {{between|min=@minPrice|max=@maxPrice}}
+                        // 整个内容都是 options，不要在后续的 | 处分割
+                        placeholderOptions = content;
+                    }
                     else
                     {
-                        // 新格式或简单格式
+                        // 空格分隔格式
                         var pipeIndex = content.IndexOf('|');
                         if (pipeIndex >= 0)
                         {

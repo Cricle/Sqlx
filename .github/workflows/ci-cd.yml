@@ -132,6 +132,7 @@ jobs:
 
     - name: 🧪 Run All Tests (SQLite + Multi-Dialect)
       env:
+        CI: true
         POSTGRESQL_CONNECTION: "Host=localhost;Port=5432;Database=sqlx_test;Username=postgres;Password=postgres"
         MYSQL_CONNECTION: "Server=localhost;Port=3306;Database=sqlx_test;Uid=root;Pwd=root"
         SQLSERVER_CONNECTION: "Server=localhost,1433;Database=sqlx_test;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True"
@@ -141,7 +142,7 @@ jobs:
                     --logger "console;verbosity=minimal" \
                     --logger "trx" \
                     --framework net9.0 \
-                    --settings .runsettings \
+                    --settings .runsettings.ci \
                     --results-directory ./TestResults
 
     - name: 📋 Test Summary

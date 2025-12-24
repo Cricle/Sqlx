@@ -20,8 +20,8 @@ namespace Sqlx
         /// <summary>Oracle dialect configuration - uses "quotes" for columns and : for parameters.</summary>
         public static readonly SqlDialect Oracle = new("\"", "\"", "'", "'", ":");
 
-        /// <summary>DB2 dialect configuration - uses "quotes" for columns and : for parameters.</summary>
-        public static readonly SqlDialect DB2 = new("\"", "\"", "'", "'", ":");
+        /// <summary>DB2 dialect configuration - uses "quotes" for columns and ? for parameters.</summary>
+        public static readonly SqlDialect DB2 = new("\"", "\"", "'", "'", "?");
 
         /// <summary>Alias for PostgreSQL - maintains backward compatibility.</summary>
         public static readonly SqlDialect PgSql = PostgreSql;
@@ -77,6 +77,7 @@ namespace Sqlx
         /// <remarks>
         /// Note: SQLite and SQL Server both use [brackets] and @, so we match SQL Server first by convention.
         /// If SQLite-specific behavior is needed, use SqlDefine.SQLite explicitly.
+        /// DB2 uses "quotes" and ?, Oracle uses "quotes" and :
         /// </remarks>
         private (string Name, Annotations.SqlDefineTypes Type) GetDatabaseInfo() =>
             (ColumnLeft, ColumnRight, ParameterPrefix) switch
@@ -84,7 +85,8 @@ namespace Sqlx
                 ("`", "`", "@") => ("MySql", Annotations.SqlDefineTypes.MySql),
                 ("[", "]", "@") => ("SqlServer", Annotations.SqlDefineTypes.SqlServer), // Also matches SQLite
                 ("\"", "\"", "$") => ("PostgreSql", Annotations.SqlDefineTypes.PostgreSql),
-                ("\"", "\"", ":") => ("Oracle", Annotations.SqlDefineTypes.Oracle), // Both Oracle and DB2 use :
+                ("\"", "\"", ":") => ("Oracle", Annotations.SqlDefineTypes.Oracle),
+                ("\"", "\"", "?") => ("DB2", Annotations.SqlDefineTypes.DB2),
                 _ => throw new NotSupportedException($"Unknown dialect: {ColumnLeft}{ColumnRight}{ParameterPrefix}")
             };
 

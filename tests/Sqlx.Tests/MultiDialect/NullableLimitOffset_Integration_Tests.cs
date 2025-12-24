@@ -12,6 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Sqlx.Annotations;
+using Sqlx.Tests.Infrastructure;
 
 namespace Sqlx.Tests.MultiDialect;
 
@@ -490,6 +491,8 @@ public class NullableLimitOffset_SQLite_Tests : NullableLimitOffsetTestBase
 // ==================== MySQL 测试 ====================
 
 [TestClass]
+[TestCategory(TestCategories.MySQL)]
+[TestCategory(TestCategories.CI)]
 public class NullableLimitOffset_MySQL_Tests : NullableLimitOffsetTestBase
 {
     protected override string TableName => "pagination_users_my";
@@ -497,19 +500,12 @@ public class NullableLimitOffset_MySQL_Tests : NullableLimitOffsetTestBase
 
     protected override DbConnection? CreateConnection()
     {
-        try
-        {
-            var conn = new MySqlConnector.MySqlConnection(
-                "Server=localhost;Port=3307;Database=sqlx_test;User=root;Password=root;AllowUserVariables=true");
-            return conn;
-        }
-        catch
-        {
-            return null;
-        }
+        return DatabaseConnectionHelper.GetMySQLConnection(TestContext);
     }
 
     protected override IPaginationUserRepository CreateRepository(DbConnection connection)
         => new MySQLPaginationRepository(connection);
+    
+    public TestContext TestContext { get; set; } = null!;
 }
 

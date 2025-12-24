@@ -100,7 +100,7 @@ public interface IProductRepository
     [IncludeDeleted]
     Task<Product?> GetByIdIncludingDeletedAsync(long id);
 
-    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE price {{between @minPrice, @maxPrice}} AND is_deleted = {{bool_false}}")]
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE price BETWEEN @minPrice AND @maxPrice AND is_deleted = {{bool_false}}")]
     Task<List<Product>> GetByPriceRangeAsync(decimal minPrice, decimal maxPrice);
 
     [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE is_deleted = {{bool_false}}")]

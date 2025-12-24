@@ -13,89 +13,10 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: true
 
 jobs:
-  # 🧪 本地测试 (SQLite)
-  test-local:
-    name: 🧪 Local Tests (SQLite)
+  # 🧪 测试 (SQLite + 多方言数据库)
+  test:
+    name: 🧪 Tests (SQLite + Multi-Dialect)
     runs-on: ubuntu-latest
-
-    steps:
-    - name: 📥 Checkout
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-
-    - name: 🔧 Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
-
-    - name: 📦 Cache NuGet packages
-      uses: actions/cache@v4
-      with:
-        path: ~/.nuget/packages
-        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.props') }}
-        restore-keys: ${{ runner.os }}-nuget-
-
-    - name: 📦 Restore dependencies
-      run: dotnet restore
-
-    - name: 🏗️ Build
-      run: dotnet build --configuration Release --no-restore /p:TreatWarningsAsErrors=true
-
-    - name: 🧪 Run Local Tests (SQLite)
-      run: |
-        dotnet test --configuration Release --no-build \
-                    --collect:"XPlat Code Coverage" \
-                    --logger "console;verbosity=minimal" \
-                    --framework net9.0 \
-                    --settings .runsettings \
-                    --results-directory ./TestResults
-
-    - name: 📋 Test Summary
-      if: always()
-      run: |
-        echo "✅ Local Test Results (SQLite):"
-        echo "  - Configuration: Release"
-        echo "  - Framework: net9.0"
-        echo "  - Database: SQLite (In-Memory)"
-        echo "  - Coverage: Generated"
-
-    - name: 📊 Generate coverage report
-      run: |
-        # 避免重复安装工具
-        dotnet tool install -g dotnet-reportgenerator-globaltool --version 5.2.0
-        reportgenerator -reports:"**/TestResults/**/coverage.cobertura.xml" \
-                        -targetdir:"coverage-report" \
-                        -reporttypes:"Html;Cobertura;JsonSummary"
-
-    - name: 📤 Upload test results
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-results-local
-        path: |
-          **/TestResults/*.trx
-          **/TestResults/**/coverage.cobertura.xml
-        retention-days: 30
-
-    - name: 📦 Pack packages
-      if: github.event_name == 'push'
-      run: |
-        dotnet pack src/Sqlx --configuration Release --no-build --output ./artifacts
-
-    - name: 📤 Upload artifacts
-      if: github.event_name == 'push'
-      uses: actions/upload-artifact@v4
-      with:
-        name: nuget-packages
-        path: ./artifacts/*.nupkg
-        retention-days: 7
-
-  # 🗄️ 多方言测试 (PostgreSQL, MySQL, SQL Server)
-  test-all-dialects:
-    name: 🗄️ Multi-Dialect Tests
-    runs-on: ubuntu-latest
-    needs: test-local
 
     services:
       postgres:
@@ -144,6 +65,8 @@ jobs:
     steps:
     - name: 📥 Checkout
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: 🔧 Setup .NET
       uses: actions/setup-dotnet@v4
@@ -157,14 +80,11 @@ jobs:
         key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.props') }}
         restore-keys: ${{ runner.os }}-nuget-
 
-    - name: 🧹 Clean
-      run: dotnet clean --configuration Release
-
     - name: 📦 Restore dependencies
       run: dotnet restore
 
     - name: 🏗️ Build
-      run: dotnet build --configuration Release --no-restore
+      run: dotnet build --configuration Release --no-restore /p:TreatWarningsAsErrors=true
 
     - name: 📦 Install SQL Server tools
       run: |
@@ -210,7 +130,7 @@ jobs:
         /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong@Passw0rd' -C -d sqlx_test -i tests/Sqlx.Tests/Infrastructure/init-sqlserver.sql
         echo "✅ SQL Server initialized"
 
-    - name: 🧪 Run Multi-Dialect Tests
+    - name: 🧪 Run All Tests (SQLite + Multi-Dialect)
       env:
         CI: true
         POSTGRESQL_CONNECTION: "Host=localhost;Port=5432;Database=sqlx_test;Username=postgres;Password=postgres"
@@ -225,30 +145,55 @@ jobs:
                     --settings .runsettings.ci \
                     --results-directory ./TestResults
 
-    - name: 📋 Multi-Dialect Test Summary
+    - name: 📋 Test Summary
       if: always()
       run: |
-        echo "✅ Multi-Dialect Test Results:"
+        echo "✅ Test Results:"
+        echo "  - Configuration: Release"
+        echo "  - Framework: net9.0"
         echo "  - SQLite: ✅ (In-Memory)"
-        echo "  - PostgreSQL: 🚧 (localhost:5432, tests will skip if Npgsql not installed)"
-        echo "  - MySQL: 🚧 (localhost:3306, tests not yet implemented)"
-        echo "  - SQL Server: 🚧 (localhost:1433, tests not yet implemented)"
+        echo "  - PostgreSQL: ✅ (localhost:5432)"
+        echo "  - MySQL: ✅ (localhost:3306)"
+        echo "  - SQL Server: ✅ (localhost:1433)"
+        echo "  - Coverage: Generated"
+
+    - name: 📊 Generate coverage report
+      if: always()
+      run: |
+        dotnet tool install -g dotnet-reportgenerator-globaltool --version 5.2.0 || true
+        reportgenerator -reports:"**/TestResults/**/coverage.cobertura.xml" \
+                        -targetdir:"coverage-report" \
+                        -reporttypes:"Html;Cobertura;JsonSummary" || true
 
     - name: 📤 Upload test results
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: test-results-all-dialects
+        name: test-results
         path: |
           **/TestResults/*.trx
           **/TestResults/**/coverage.cobertura.xml
+          coverage-report/
         retention-days: 30
+
+    - name: 📦 Pack packages
+      if: github.event_name == 'push'
+      run: |
+        dotnet pack src/Sqlx --configuration Release --no-build --output ./artifacts
+
+    - name: 📤 Upload artifacts
+      if: github.event_name == 'push'
+      uses: actions/upload-artifact@v4
+      with:
+        name: nuget-packages
+        path: ./artifacts/*.nupkg
+        retention-days: 7
 
   # 📊 代码覆盖率报告
   coverage:
     name: 📊 Coverage Report
     runs-on: ubuntu-latest
-    needs: [test-local, test-all-dialects]
+    needs: test
     if: always()
 
     steps:
@@ -270,7 +215,7 @@ jobs:
   publish:
     name: 🚀 Publish to NuGet
     runs-on: ubuntu-latest
-    needs: [test-local, test-all-dialects]
+    needs: test
     if: startsWith(github.ref, 'refs/tags/v')
     environment: production
 

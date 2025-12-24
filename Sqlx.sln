@@ -28,7 +28,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.gitignore = .gitignore
 		Directory.Build.props = Directory.Build.props
 		Directory.Packages.props = Directory.Packages.props
-		FORCED_TRACING_SUMMARY.md = FORCED_TRACING_SUMMARY.md
 		License.txt = License.txt
 		README.md = README.md
 		stylecop.json = stylecop.json
@@ -50,13 +49,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{AECA725D-8
 		docs\README.md = docs\README.md
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{91441283-7573-4C48-AA67-F79CA62A36F5}"
-	ProjectSection(SolutionItems) = preProject
-		scripts\build.ps1 = scripts\build.ps1
-		scripts\README.md = scripts\README.md
-	EndProjectSection
-EndProject
-
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sqlx.Extension", "src\Sqlx.Extension\Sqlx.Extension.csproj", "{B29065D8-0A8C-427D-9A7A-399A0B0357C2}"
 EndProject
 Global
@@ -83,7 +75,6 @@ Global
 		{B8E4C2D5-9F7A-4C1B-8D6E-3F9A1B2C5E7D}.Release|Any CPU.Build.0 = Release|Any CPU
 		{F6B78358-AF74-44EE-9A2E-13D7153F3132}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{F6B78358-AF74-44EE-9A2E-13D7153F3132}.Release|Any CPU.ActiveCfg = Release|Any CPU
-
 		{B29065D8-0A8C-427D-9A7A-399A0B0357C2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{B29065D8-0A8C-427D-9A7A-399A0B0357C2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 	EndGlobalSection

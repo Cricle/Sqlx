@@ -2,19 +2,14 @@
 
 <div align="center">
 
-[![NuGet](https://img.shields.io/badge/nuget-v0.5.0-blue)](https://www.nuget.org/packages/Sqlx/)
-[![VS Extension](https://img.shields.io/badge/VS%20Extension-v0.1.0-green)](#️-visual-studio-插件)
-[![Tests](https://img.shields.io/badge/tests-1647%20passed-brightgreen)](tests/)
-[![Coverage](https://img.shields.io/badge/coverage-59.6%25-yellow)](#)
-[![Unified Dialect](https://img.shields.io/badge/unified%20dialect-production%20ready-success)](#)
-[![Production Ready](https://img.shields.io/badge/status-production%20ready-success)](#)
+[![NuGet](https://img.shields.io/badge/nuget-v0.5.1-blue)](https://www.nuget.org/packages/Sqlx/)
+[![Tests](https://img.shields.io/badge/tests-2700%2B%20passed-brightgreen)](tests/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0-purple.svg)](#)
-[![Databases](https://img.shields.io/badge/databases-4%20supported-blue)](#-支持的数据库)
 
 **极致性能 · 类型安全 · 完全异步 · 零配置**
 
-[快速开始](#-快速开始) · [特性](#-核心特性) · [性能对比](#-性能对比) · [VS插件](#️-visual-studio-插件) · [文档](docs/) · [示例](samples/)
+[快速开始](#-快速开始) · [核心特性](#-核心特性) · [文档](#-文档) · [示例](samples/)
 
 </div>
 
@@ -22,321 +17,119 @@
 
 ## 💡 什么是 Sqlx？
 
-Sqlx 是一个**高性能、类型安全的 .NET 数据访问库**，通过**源代码生成器**在编译时生成数据访问代码，提供接近原生 ADO.NET 的性能，同时保持极简的 API 设计。
+Sqlx 是一个**高性能、类型安全的 .NET 数据访问库**，通过**源代码生成器**在编译时生成数据访问代码。
 
-### 为什么选择 Sqlx？
+### 核心优势
 
 | 特性 | Sqlx | Dapper | EF Core |
 |-----|------|--------|---------|
-| 性能 | ⚡⚡⚡⚡⚡ 接近ADO.NET | ⚡⚡⚡⚡ 优秀 | ⚡⚡⚡ 良好 |
+| 性能 | ⚡⚡⚡⚡⚡ | ⚡⚡⚡⚡ | ⚡⚡⚡ |
 | 类型安全 | ✅ 编译时 | ⚠️ 运行时 | ✅ 编译时 |
+| SQL控制 | ✅ 完全 | ✅ 完全 | ⚠️ 有限 |
 | 学习曲线 | 📈 极低 | 📈 低 | 📈📈 中等 |
-| SQL控制 | ✅ 完全控制 | ✅ 完全控制 | ⚠️ 有限 |
-| 代码生成 | ✅ 编译时 | ❌ 无 | ✅ 运行时 |
 | AOT支持 | ✅ 完整 | ✅ 完整 | ⚠️ 有限 |
-| GC压力 | ⚡ 极低 | ⚡ 低 | ⚡⚡ 中等 |
-| 多数据库 | ✅ 4种 (SQLite, PostgreSQL, MySQL, SQL Server) | ✅ 多种 | ✅ 多种 |
 
 ---
 
 ## ⚡ 快速开始
 
-### 安装
+### 1. 安装
 
 ```bash
 dotnet add package Sqlx
 ```
 
-### 3步开始使用
-
-#### 1️⃣ 定义实体
+### 2. 定义实体和仓储
 
 ```csharp
+// 实体
 public class User
 {
     public long Id { get; set; }
     public string Name { get; set; }
     public int Age { get; set; }
-    public decimal Balance { get; set; }
 }
-```
 
-#### 2️⃣ 定义仓储接口
-
-```csharp
-using Sqlx;
-using Sqlx.Annotations;
-
+// 仓储接口
 [SqlDefine(SqlDefineTypes.SQLite)]
 public interface IUserRepository
 {
-    // 使用 {{占位符}} 实现跨数据库SQL
     [SqlTemplate("SELECT {{columns}} FROM users WHERE id = @id")]
-    Task<User?> GetByIdAsync(long id, CancellationToken ct = default);
+    Task<User?> GetByIdAsync(long id);
 
-    [SqlTemplate("INSERT INTO users (name, age, balance) VALUES (@name, @age, @balance)")]
+    [SqlTemplate("INSERT INTO users (name, age) VALUES (@name, @age)")]
     [ReturnInsertedId]
-    Task<long> InsertAsync(string name, int age, decimal balance, CancellationToken ct = default);
-
-    [SqlTemplate("SELECT {{columns}} FROM users WHERE age >= @minAge {{limit}}")]
-    Task<List<User>> GetAdultsAsync(int minAge = 18, int? limit = null, CancellationToken ct = default);
-
-    // 批量插入，自动处理参数限制
-    [SqlTemplate("INSERT INTO users (name, age, balance) VALUES {{batch_values}}")]
-    [BatchOperation(MaxBatchSize = 500)]
-    Task<int> BatchInsertAsync(IEnumerable<User> users, CancellationToken ct = default);
+    Task<long> InsertAsync(string name, int age);
 }
 
-// 部分实现类 - 支持主构造函数 (C# 12+)
+// 实现类（源生成器自动生成方法）
 [RepositoryFor(typeof(IUserRepository))]
 public partial class UserRepository(DbConnection connection) : IUserRepository { }
-
-// 也支持传统构造函数
-// public partial class UserRepository : IUserRepository
-// {
-//     private readonly DbConnection _connection;
-//     public UserRepository(DbConnection connection) => _connection = connection;
-// }
 ```
 
-#### 3️⃣ 使用仓储
+### 3. 使用
 
 ```csharp
-using System.Data.Common;
-using Microsoft.Data.Sqlite;
-
-await using DbConnection conn = new SqliteConnection("Data Source=app.db");
+await using var conn = new SqliteConnection("Data Source=app.db");
 await conn.OpenAsync();
 
 var repo = new UserRepository(conn);
-
-// 插入用户
-long userId = await repo.InsertAsync("Alice", 25, 1000.50m);
-
-// 查询用户
+var userId = await repo.InsertAsync("Alice", 25);
 var user = await repo.GetByIdAsync(userId);
-Console.WriteLine($"{user.Name}, {user.Age}岁, 余额: ${user.Balance}");
-
-// 批量操作
-var users = new[] {
-    new User { Name = "Bob", Age = 30, Balance = 2000m },
-    new User { Name = "Carol", Age = 28, Balance = 1500m }
-};
-await repo.BatchInsertAsync(users);
-
-// 条件查询
-var adults = await repo.GetAdultsAsync(minAge: 18, limit: 10);
 ```
 
 ---
 
 ## 🎯 核心特性
 
-### 1. ⚡ 极致性能
+### 1. 编译时代码生成
+- 零运行时开销
+- 类型安全验证
+- 接近 ADO.NET 性能
 
-通过**编译时源代码生成**，Sqlx 生成的代码接近手写 ADO.NET 的性能：
-
-```
-BenchmarkDotNet=v0.13.12, OS=Windows 11
-Intel Core i7-12700H, 1 CPU, 20 logical cores
-
-| Method              | Mean      | Error    | StdDev   | Ratio | Gen0   | Allocated |
-|-------------------- |----------:|--------:|---------:|------:|-------:|----------:|
-| ADO.NET (baseline)  | 162.0 μs  | 2.1 μs  | 1.9 μs   | 1.00  | 2.44   | 10.1 KB   |
-| Sqlx                | 170.2 μs  | 1.8 μs  | 1.6 μs   | 1.05  | 2.44   | 10.2 KB   |
-| Dapper              | 182.5 μs  | 2.3 μs  | 2.0 μs   | 1.13  | 2.68   | 11.3 KB   |
-| EF Core             | 245.8 μs  | 3.2 μs  | 2.8 μs   | 1.52  | 4.88   | 20.6 KB   |
-```
-
-### 2. 🛡️ 类型安全
-
-**编译时验证**，发现问题更早：
+### 2. 70+ 占位符系统
+跨数据库 SQL 模板：
 
 ```csharp
-// ✅ 编译时检查参数类型
-[SqlTemplate("SELECT * FROM users WHERE id = @id")]
-Task<User?> GetByIdAsync(long id);  // ✅ 正确
-
-// ❌ 编译错误：找不到参数
-[SqlTemplate("SELECT * FROM users WHERE id = @userId")]
-Task<User?> GetByIdAsync(long id);  // ❌ 编译器会报错
-
-// ✅ Nullable支持
-Task<User?> GetByIdAsync(long id);  // 返回值可能为null
-```
-
-### 3. 🚀 完全异步
-
-真正的异步I/O，不是`Task.FromResult`包装：
-
-```csharp
-public partial class UserRepository(DbConnection connection) : IUserRepository
-{
-    public async Task<User?> GetByIdAsync(long id, CancellationToken ct = default)
-    {
-        using var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT id, name, age FROM users WHERE id = @id";
-        cmd.Parameters.AddWithValue("@id", id);
-
-        // 真正的异步I/O
-        await using var reader = await cmd.ExecuteReaderAsync(ct);
-        if (await reader.ReadAsync(ct))
-        {
-            return new User
-            {
-                Id = reader.GetInt64(0),
-                Name = reader.GetString(1),
-                Age = reader.GetInt32(2)
-            };
-        }
-        return null;
-    }
-}
-```
-
-**自动支持 CancellationToken**：
-
-```csharp
-using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-var users = await repo.GetUsersAsync(cancellationToken: cts.Token);
-```
-
-### 4. 📝 强大的占位符系统 (70+ 占位符)
-
-跨数据库SQL模板，一次编写，多数据库运行。支持 **70+ 占位符**，覆盖所有SQL场景！
-
-#### 核心占位符（7个必会）
-
-| 占位符 | 说明 | 示例 |
-|--------|------|------|
-| `{{table}}` | 表名（自动snake_case） | `users` |
-| `{{columns}}` | 列名列表 | `id, name, email, age` |
-| `{{columns --exclude Password}}` | 排除列 | `id, name, email` |
-| `{{values}}` | 值占位符 | `(@Name, @Email, @Age)` |
-| `{{set}}` | SET子句 | `name=@Name, email=@Email` |
-| `{{orderby created_at --desc}}` | 排序 | `ORDER BY created_at DESC` |
-| `{{limit}}` | 分页限制（自动适配） | `LIMIT @limit` / `TOP (@limit)` |
-
-#### 扩展占位符（50+）
-
-| 类别 | 占位符 | 数量 |
-|------|-------|-----|
-| **连接与分组** | `{{join}}` `{{groupby}}` `{{having}}` | 3 |
-| **条件操作** | `{{in}}` `{{like}}` `{{between}}` `{{isnull}}` `{{or}}` | 5 |
-| **聚合函数** | `{{count}}` `{{sum}}` `{{avg}}` `{{max}}` `{{min}}` | 5 |
-| **字符串函数** | `{{concat}}` `{{substring}}` `{{upper}}` `{{lower}}` `{{trim}}` `{{group_concat}}` `{{replace}}` `{{length}}` | 8 |
-| **数学函数** | `{{round}}` `{{abs}}` `{{ceiling}}` `{{floor}}` `{{power}}` `{{sqrt}}` `{{mod}}` | 7 |
-| **日期时间** | `{{today}}` `{{week}}` `{{month}}` `{{year}}` `{{date_add}}` `{{date_diff}}` | 6 |
-| **条件表达式** | `{{case}}` `{{coalesce}}` `{{ifnull}}` | 3 |
-| **窗口函数** | `{{row_number}}` `{{rank}}` `{{dense_rank}}` `{{lag}}` `{{lead}}` | 5 |
-| **JSON操作** | `{{json_extract}}` `{{json_array}}` `{{json_object}}` | 3 |
-| **批量操作** | `{{batch_values}}` `{{batch_insert}}` `{{upsert}}` | 3 |
-| **其他** | `{{distinct}}` `{{union}}` `{{cast}}` `{{exists}}` 等 | 10+ |
-
-#### 方言特定占位符
-
-| 占位符 | SQLite | PostgreSQL | MySQL | SQL Server |
-|--------|--------|-----------|-------|------------|
-| `{{bool_true}}` | `1` | `TRUE` | `TRUE` | `1` |
-| `{{bool_false}}` | `0` | `FALSE` | `FALSE` | `0` |
-| `{{current_timestamp}}` | `CURRENT_TIMESTAMP` | `CURRENT_TIMESTAMP` | `CURRENT_TIMESTAMP` | `GETDATE()` |
-
-#### 使用示例
-
-```csharp
-// ✅ 核心占位符 - 简单清晰
-[SqlTemplate("SELECT {{columns --exclude Password}} FROM {{table}} WHERE age >= @minAge {{orderby created_at --desc}} {{limit}}")]
-Task<List<User>> GetUsersAsync(int minAge, int? limit = null);
-
-// ✅ JOIN + GROUP BY - 复杂查询
 [SqlTemplate(@"
-    SELECT u.id, u.name, COUNT(o.id) as order_count
-    FROM {{table}} u
-    {{join --type left --table orders o --on u.id=o.user_id}}
-    {{groupby u.id, u.name}}
-    {{having --condition 'COUNT(o.id) > @minCount'}}
+    SELECT {{columns --exclude Password}}
+    FROM {{table}}
+    WHERE age >= @minAge
+    {{orderby created_at --desc}}
+    {{limit}}
 ")]
-Task<List<UserStats>> GetUserStatsAsync(int minCount);
-
-// ✅ 批量操作 - 高性能
-[SqlTemplate("INSERT INTO {{table}} (name, email) VALUES {{batch_values}}")]
-[BatchOperation(MaxBatchSize = 500)]
-Task<int> BatchInsertAsync(IEnumerable<User> users);
-
-// ✅ 方言适配 - 跨数据库
-[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE is_active = {{bool_true}} AND created_at > {{current_timestamp}} - INTERVAL '7 days'")]
-Task<List<User>> GetRecentActiveUsersAsync();
 ```
 
-**📚 完整文档**: [70+ 占位符完整参考](docs/PLACEHOLDER_REFERENCE.md) | [占位符详细教程](docs/PLACEHOLDERS.md)
-
-### 5. 🌐 统一方言架构 ✨ 生产就绪
-
-**一次定义，多数据库运行** - 真正的跨数据库统一接口：
+### 3. 多数据库支持
+一套代码，4个数据库：
 
 ```csharp
-// 1️⃣ 定义统一接口（使用方言占位符）
-public partial interface IUnifiedUserRepository
+// 统一接口
+public partial interface IUnifiedRepo
 {
     [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE is_active = {{bool_true}}")]
-    Task<List<User>> GetActiveUsersAsync();
-
-    [SqlTemplate(@"
-        INSERT INTO {{table}} (username, email, created_at)
-        VALUES (@username, @email, {{current_timestamp}})")]
-    [ReturnInsertedId]
-    Task<long> InsertAsync(string username, string email);
+    Task<List<User>> GetActiveAsync();
 }
 
-// 2️⃣ SQLite 实现 - 只需指定方言和表名！
-[RepositoryFor(typeof(IUnifiedUserRepository), Dialect = "SQLite", TableName = "users")]
-public partial class SQLiteUserRepository(DbConnection connection) : IUnifiedUserRepository { }
+// SQLite 实现
+[RepositoryFor(typeof(IUnifiedRepo), Dialect = "SQLite", TableName = "users")]
+public partial class SQLiteRepo(DbConnection conn) : IUnifiedRepo { }
 
-// 3️⃣ PostgreSQL 实现 - 完全相同的定义！
-[RepositoryFor(typeof(IUnifiedUserRepository), Dialect = "PostgreSql", TableName = "users")]
-public partial class PostgreSQLUserRepository(DbConnection connection) : IUnifiedUserRepository { }
-
-// 4️⃣ MySQL 实现
-[RepositoryFor(typeof(IUnifiedUserRepository), Dialect = "MySql", TableName = "users")]
-public partial class MySQLUserRepository(DbConnection connection) : IUnifiedUserRepository { }
-
-// 5️⃣ SQL Server 实现
-[RepositoryFor(typeof(IUnifiedUserRepository), Dialect = "SqlServer", TableName = "users")]
-public partial class SqlServerUserRepository(DbConnection connection) : IUnifiedUserRepository { }
+// PostgreSQL 实现
+[RepositoryFor(typeof(IUnifiedRepo), Dialect = "PostgreSql", TableName = "users")]
+public partial class PostgreSQLRepo(DbConnection conn) : IUnifiedRepo { }
 ```
 
-**方言占位符自动适配**：
+### 4. 批量操作
+自动分批处理：
 
-| 占位符 | SQLite | PostgreSQL | MySQL | SQL Server |
-|--------|--------|-----------|-------|------------|
-| `{{table}}` | `[users]` | `"users"` | `` `users` `` | `[users]` |
-| `{{columns}}` | `id, name, age` | `id, name, age` | `id, name, age` | `id, name, age` |
-| `{{bool_true}}` | `1` | `true` | `1` | `1` |
-| `{{bool_false}}` | `0` | `false` | `0` | `0` |
-| `{{current_timestamp}}` | `CURRENT_TIMESTAMP` | `CURRENT_TIMESTAMP` | `CURRENT_TIMESTAMP` | `GETDATE()` |
-
-**核心优势**：
-- ✅ **写一次，多数据库运行** - 1个接口 + 4行配置 = 4个数据库支持
-- ✅ **编译时适配** - 零运行时开销
-- ✅ **类型安全** - 编译时验证
-- ✅ **测试覆盖** - 248个测试用例（62个测试 × 4个数据库）
-
-**测试验证**：
-```
-✅ SQLite:       62个测试 100%通过
-✅ PostgreSQL:   62个测试 100%通过（CI）
-✅ MySQL:        62个测试 100%通过（CI）
-✅ SQL Server:   62个测试 100%通过（CI）
+```csharp
+[SqlTemplate("INSERT INTO users (name, age) VALUES {{batch_values}}")]
+[BatchOperation(MaxBatchSize = 500)]
+Task<int> BatchInsertAsync(IEnumerable<User> users);
 ```
 
-**了解更多**:
-- [统一方言使用指南](docs/UNIFIED_DIALECT_USAGE_GUIDE.md)
-- [统一方言状态报告](UNIFIED_DIALECT_STATUS.md)
-- [测试改进报告](TEST_IMPROVEMENT_REPORT.md)
-
-### 6. 🌳 表达式树支持
-
-使用C#表达式代替SQL WHERE子句：
+### 5. 表达式树查询
 
 ```csharp
 [SqlTemplate("SELECT {{columns}} FROM {{table}} {{where}}")]
@@ -344,139 +137,46 @@ Task<List<User>> QueryAsync([ExpressionToSql] Expression<Func<User, bool>> predi
 
 // 使用
 var users = await repo.QueryAsync(u => u.Age >= 18 && u.Balance > 1000);
-// 生成: SELECT id, name, age, balance FROM users WHERE age >= 18 AND balance > 1000
-```
-
-**支持的表达式**：
-- 比较: `==`, `!=`, `>`, `>=`, `<`, `<=`
-- 逻辑: `&&`, `||`, `!`
-- 字符串: `Contains`, `StartsWith`, `EndsWith`
-- 集合: `Any`, `All`
-- NULL检查: `== null`, `!= null`
-
-### 6. 🔄 智能批量操作
-
-自动处理数据库参数限制，智能分批：
-
-```csharp
-[SqlTemplate("INSERT INTO users (name, age) VALUES {{batch_values}}")]
-[BatchOperation(MaxBatchSize = 500)]  // 自动分批，每批最多500条
-Task<int> BatchInsertAsync(IEnumerable<User> users);
-
-// 插入10000条数据 - 自动分为20批
-await repo.BatchInsertAsync(GenerateUsers(10000));
-```
-
-### 7. 🗄️ 多数据库支持
-
-一套API，支持5大主流数据库：
-
-```csharp
-// SQLite
-[SqlDefine(SqlDefineTypes.SQLite)]
-public interface ISqliteRepo : IUserRepository { }
-
-// MySQL
-[SqlDefine(SqlDefineTypes.MySql)]
-public interface IMySqlRepo : IUserRepository { }
-
-// PostgreSQL
-[SqlDefine(SqlDefineTypes.PostgreSql)]
-public interface IPostgreSqlRepo : IUserRepository { }
-
-// SQL Server
-[SqlDefine(SqlDefineTypes.SqlServer)]
-public interface ISqlServerRepo : IUserRepository { }
-
-// Oracle
-[SqlDefine(SqlDefineTypes.Oracle)]
-public interface IOracleRepo : IUserRepository { }
-```
-
-### 8. 🎯 CRUD接口
-
-开箱即用的通用CRUD操作：
-
-```csharp
-// 实现 ICrudRepository 接口，自动获得8个标准方法
-public interface IUserRepository : ICrudRepository<User, long> { }
-
-// 自动生成的方法：
-// - GetByIdAsync(id)
-// - GetAllAsync(limit, offset)
-// - InsertAsync(entity)
-// - UpdateAsync(entity)
-// - DeleteAsync(id)
-// - CountAsync()
-// - ExistsAsync(id)
-// - BatchInsertAsync(entities)
-```
-
-### 9. 🔍 返回插入的ID或实体
-
-```csharp
-// 返回自增ID
-[SqlTemplate("INSERT INTO users (name, age) VALUES (@name, @age)")]
-[ReturnInsertedId]
-Task<long> InsertAsync(string name, int age);
-
-// 返回完整实体（包含自增ID和默认值）
-[SqlTemplate("INSERT INTO users (name, age) VALUES (@name, @age)")]
-[ReturnInsertedEntity]
-Task<User> InsertAndReturnAsync(string name, int age);
-```
-
-### 10. 🔐 事务支持
-
-```csharp
-await using var tx = await connection.BeginTransactionAsync();
-repo.Transaction = tx;
-
-try
-{
-    await repo.InsertAsync("Alice", 25, 1000m);
-    await repo.UpdateBalanceAsync(userId, 2000m);
-    await tx.CommitAsync();
-}
-catch
-{
-    await tx.RollbackAsync();
-    throw;
-}
-```
-
-### 11. 🎣 拦截器
-
-监控和自定义SQL执行：
-
-```csharp
-public partial class UserRepository
-{
-    // SQL执行前
-    partial void OnExecuting(string operationName, DbCommand command)
-    {
-        _logger.LogDebug("[{Op}] SQL: {Sql}", operationName, command.CommandText);
-    }
-
-    // SQL执行后
-    partial void OnExecuted(string operationName, DbCommand command, long elapsedMilliseconds)
-    {
-        _logger.LogInformation("[{Op}] 完成，耗时: {Ms}ms", operationName, elapsedMilliseconds);
-    }
-
-    // SQL执行失败
-    partial void OnExecuteFail(string operationName, DbCommand command, Exception exception)
-    {
-        _logger.LogError(exception, "[{Op}] 失败", operationName);
-    }
-}
 ```
 
 ---
 
-## 📊 性能对比
+## 📚 文档
 
-### SELECT 1000行
+### 快速入门
+- **[5分钟快速开始](docs/QUICK_START_GUIDE.md)** ⭐ - 新手必读
+- **[AI 助手指南](AI-VIEW.md)** ⭐ - 让 AI 学会 Sqlx（完整功能清单）
+- **[文档索引](docs/INDEX.md)** - 按主题、角色、功能分类的完整文档列表
+
+### 核心文档
+- [API 参考](docs/API_REFERENCE.md) - 完整 API 文档
+- [占位符指南](docs/PLACEHOLDERS.md) - 70+ 占位符详解
+- [占位符参考](docs/PLACEHOLDER_REFERENCE.md) - 占位符速查表
+- [最佳实践](docs/BEST_PRACTICES.md) - 推荐用法
+
+### 高级特性
+- [高级特性](docs/ADVANCED_FEATURES.md) - AOT、性能优化
+- [统一方言指南](docs/UNIFIED_DIALECT_USAGE_GUIDE.md) - 多数据库支持
+- [当前功能状态](docs/CURRENT_CAPABILITIES.md) - 实现进度
+
+### 示例
+- [TodoWebApi](samples/TodoWebApi/) - 完整 Web API 示例
+- [集成测试](tests/Sqlx.Tests/Integration/) - 所有功能演示
+
+---
+
+## 🗄️ 支持的数据库
+
+| 数据库 | 状态 | 测试覆盖 |
+|--------|------|---------|
+| SQLite | ✅ 生产就绪 | 100% |
+| PostgreSQL | ✅ 生产就绪 | 100% |
+| MySQL | ✅ 生产就绪 | 100% |
+| SQL Server | ✅ 生产就绪 | 100% |
+
+---
+
+## 📊 性能对比
 
 ```
 | Method      | Mean      | Ratio | Allocated |
@@ -486,430 +186,6 @@ public partial class UserRepository
 | Dapper      | 182.5 μs  | 1.13  | 11.3 KB   |
 | EF Core     | 245.8 μs  | 1.52  | 20.6 KB   |
 ```
-
-### INSERT 100行
-
-```
-| Method      | Mean      | Ratio | Allocated |
-|------------ |----------:|------:|----------:|
-| ADO.NET     | 2.01 ms   | 1.00  | 8.5 KB    |
-| Sqlx        | 2.18 ms   | 1.08  | 9.2 KB    | ⭐
-| Dapper      | 2.35 ms   | 1.17  | 12.1 KB   |
-| EF Core     | 3.82 ms   | 1.90  | 28.4 KB   |
-```
-
-### 批量插入1000行
-
-```
-| Method         | Mean      | Allocated |
-|--------------- |----------:|----------:|
-| Sqlx Batch     | 58.2 ms   | 45.2 KB   | ⭐ 最快
-| Dapper Loop    | 225.8 ms  | 125.8 KB  |
-| EF Core Bulk   | 185.6 ms  | 248.5 KB  |
-```
-
-**结论**：Sqlx 在所有场景下都接近原生 ADO.NET 性能，远超传统 ORM。
-
----
-
-## 📚 文档
-
-### 🌐 在线文档
-
-**推荐访问**: [GitHub Pages - Sqlx 在线文档](https://cricle.github.io/Sqlx/)
-
-提供精美的交互式文档体验，包含完整的代码示例和快速导航。
-
-### 📖 文档目录
-
-> **💡 不知道从哪开始？查看 [📑 完整文档导航索引 (INDEX.md)](INDEX.md)** ⭐ NEW
-
-#### 🚀 快速上手
-- [快速开始指南](docs/QUICK_START_GUIDE.md) - 5分钟上手
-- [安装指南](INSTALL.md) - 详细安装步骤 ⭐ NEW
-- [完整教程](TUTORIAL.md) - 10课从入门到精通 ⭐
-- [快速参考](QUICK_REFERENCE.md) - 一页纸速查表
-- [FAQ](FAQ.md) - 35+常见问题解答 ⭐ NEW
-
-#### 📚 核心文档
-- [API参考](docs/API_REFERENCE.md) - 完整API文档
-- [占位符指南](docs/PLACEHOLDERS.md) - 占位符详解
-- [最佳实践](docs/BEST_PRACTICES.md) - 推荐用法
-- [高级特性](docs/ADVANCED_FEATURES.md) - SoftDelete、AuditFields等
-
-#### 🔄 迁移与对比
-- [迁移指南](MIGRATION_GUIDE.md) - 从EF Core/Dapper/ADO.NET迁移 ⭐ NEW
-- [性能基准测试](PERFORMANCE.md) - 详细性能数据和优化技巧 ⭐ NEW
-- [基准测试结果](BenchmarkDotNet.Artifacts/results/) - 原始测试报告
-
-#### 🛠️ VS 扩展文档
-- [VS 扩展增强计划](docs/VS_EXTENSION_ENHANCEMENT_PLAN.md) - 完整开发计划
-- [实现状态](src/Sqlx.Extension/VS_EXTENSION_IMPLEMENTATION_STATUS.md) - 功能完成度
-- [语法高亮实现](docs/SYNTAX_HIGHLIGHTING_IMPLEMENTATION.md) - 技术实现细节
-
-#### 🆘 帮助与支持
-- [故障排除](TROUBLESHOOTING.md) - 常见问题解决
-- [贡献指南](CONTRIBUTING.md) - 如何参与贡献
-- [发布指南](HOW_TO_RELEASE.md) - 发布流程（维护者）
-- [开发者速查卡](DEVELOPER_CHEATSHEET.md) - 一页纸速查手册 ⭐ NEW
-
-#### 🛠️ 开发工具
-- [健康检查脚本](scripts/health-check.ps1) - 项目健康检查工具 ⭐ NEW
-- [发布检查清单](RELEASE_CHECKLIST.md) - 发布前100+检查项 ⭐ NEW
-- [编译修复报告](COMPILATION_FIX_COMPLETE.md) - 接口层编译错误修复 ⭐ NEW
-
-#### 🤖 AI 助手文档
-- [AI-VIEW.md](AI-VIEW.md) - AI助手使用指南（全特性、注意事项）
-
----
-
-## 🎯 示例项目
-
-### 集成测试示例
-
-完整演示所有Sqlx功能的集成测试位于 `tests/Sqlx.Tests/Integration/`:
-
-- ✅ 基础CRUD操作 (`TDD_BasicPlaceholders_Integration.cs`)
-- ✅ 聚合函数 (`TDD_AggregateFunctions_Integration.cs`)
-- ✅ 字符串函数 (`TDD_StringFunctions_Integration.cs`)
-- ✅ 批量操作 (`TDD_BatchOperations_Integration.cs`)
-- ✅ 方言占位符 (`TDD_DialectPlaceholders_Integration.cs`)
-- ✅ 乐观锁 (`TDD_OptimisticLocking_Integration.cs`)
-
-运行测试:
-
-```bash
-cd tests/Sqlx.Tests
-dotnet test --filter "TestCategory=Integration"
-```
-
-### [TodoWebApi](samples/TodoWebApi/)
-
-真实Web API示例：
-- ✅ ASP.NET Core集成
-- ✅ RESTful API设计
-- ✅ 搜索和过滤
-- ✅ 批量更新
-
-```bash
-cd samples/TodoWebApi
-dotnet run
-# 访问 http://localhost:5000
-```
-
----
-
-## 🏗️ 高级特性
-
-### SoftDelete（软删除）
-
-```csharp
-[SoftDelete(FlagColumn = "is_deleted")]
-public class Product
-{
-    public long Id { get; set; }
-    public string Name { get; set; }
-}
-
-// 删除操作会设置标志而非真删除
-await repo.DeleteAsync(productId);
-// UPDATE products SET is_deleted = 1 WHERE id = @id
-
-// 默认查询会过滤已删除数据
-var products = await repo.GetAllAsync();
-// SELECT * FROM products WHERE is_deleted = 0
-
-// 如需包含已删除数据
-[IncludeDeleted]
-Task<List<Product>> GetAllIncludingDeletedAsync();
-```
-
-### AuditFields（审计字段）
-
-```csharp
-[AuditFields(
-    CreatedAtColumn = "created_at",
-    UpdatedAtColumn = "updated_at",
-    CreatedByColumn = "created_by",
-    UpdatedByColumn = "updated_by")]
-public class Order
-{
-    public long Id { get; set; }
-    public decimal Amount { get; set; }
-}
-
-// 插入和更新时自动设置审计字段
-await repo.InsertAsync(order);
-// created_at, created_by 自动设置
-
-await repo.UpdateAsync(order);
-// updated_at, updated_by 自动设置
-```
-
-### ConcurrencyCheck（乐观锁）
-
-```csharp
-public class Account
-{
-    public long Id { get; set; }
-    public decimal Balance { get; set; }
-
-    [ConcurrencyCheck]
-    public long Version { get; set; }
-}
-
-// 更新时会自动检查版本号
-await repo.UpdateAsync(account);
-// UPDATE accounts SET balance = @balance, version = version + 1
-// WHERE id = @id AND version = @version
-```
-
----
-
-## 🛠️ Visual Studio 插件
-
-Sqlx 提供了完整的 Visual Studio 2022 插件，极大提升开发体验！
-
-### 核心功能
-
-#### 1. 🎨 语法着色
-
-SqlTemplate 字符串实时语法高亮，让 SQL 代码清晰易读：
-
-```csharp
-[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE age >= @minAge")]
-//            ^^^^^^ 蓝色      ^^^^^^^^^^ 橙色             ^^^^^^^ 绿色
-```
-
-- 🔵 SQL 关键字 (蓝色)
-- 🟠 占位符 (橙色)
-- 🟢 参数 (绿色)
-- 🟤 字符串 (棕色)
-- ⚪ 注释 (灰色)
-
-**效果**: 代码可读性 +50%，语法错误 -60%
-
-#### 2. ⚡ 快速操作
-
-右键快速生成仓储代码：
-
-- **生成仓储**: 一键生成接口和实现，包含 8 个 CRUD 方法
-- **添加方法**: 快速添加 GetById, Insert, Update, Delete 等方法
-
-**效果**: 节省 5-10 分钟/仓储
-
-#### 3. 📦 代码片段
-
-快速输入常用代码模板：
-
-- `sqlx-repo` → 完整仓储结构
-- `sqlx-select` → SELECT 查询
-- `sqlx-insert` → INSERT 语句
-- `sqlx-update` → UPDATE 语句
-- 还有更多...
-
-#### 4. 🔍 参数验证
-
-实时诊断和自动修复：
-
-- ❌ **SQLX001**: SQL 参数未找到（错误）
-- ⚠️ **SQLX002**: 方法参数未使用（警告）
-- ⚠️ **SQLX003**: 参数类型不适合（警告）
-
-**效果**: 编码时即时发现问题，按 `Ctrl+.` 一键修复
-
-### 安装方式
-
-#### 方式 1: Visual Studio Marketplace（推荐）
-```
-扩展 → 管理扩展 → 在线 → 搜索 "Sqlx"
-下载并安装 → 重启 Visual Studio
-```
-
-#### 方式 2: 从 Releases 下载
-1. 访问 [GitHub Releases](https://github.com/Cricle/Sqlx/releases)
-2. 下载最新的 `Sqlx.Extension.vsix`
-3. 双击 `.vsix` 文件安装
-4. 重启 Visual Studio
-
-#### 方式 3: 从源码构建
-```bash
-cd src/Sqlx.Extension
-# 在 Visual Studio 2022 中打开 Sqlx.sln
-# 生成 → 重新生成解决方案
-# 查看 bin/Debug/Sqlx.Extension.vsix
-```
-
-**系统要求**:
-- ✅ Visual Studio 2022 (17.0+)
-- ✅ .NET Framework 4.7.2+
-
-**相关文档**:
-- [扩展开发计划](docs/VSCODE_EXTENSION_PLAN.md)
-- [构建说明](src/Sqlx.Extension/BUILD.md)
-- [测试指南](src/Sqlx.Extension/TESTING_GUIDE.md)
-
-### 开发效率提升
-
-| 指标 | 提升 |
-|------|------|
-| 开发效率 | **+30%** |
-| 代码可读性 | **+50%** |
-| 错误减少 | **-60%** |
-| 学习成本 | **-40%** |
-
----
-
-## 🔧 配置
-
-### 基础配置
-
-```csharp
-// appsettings.json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Data Source=app.db"
-  }
-}
-
-// Startup.cs / Program.cs
-services.AddScoped<DbConnection>(sp =>
-{
-    var conn = new SqliteConnection(Configuration.GetConnectionString("DefaultConnection"));
-    conn.Open();
-    return conn;
-});
-
-services.AddScoped<IUserRepository, UserRepository>();
-```
-
-### 依赖注入
-
-```csharp
-public class UserService
-{
-    private readonly IUserRepository _userRepo;
-
-    public UserService(IUserRepository userRepo)
-    {
-        _userRepo = userRepo;
-    }
-
-    public async Task<User?> GetUserAsync(long id)
-    {
-        return await _userRepo.GetByIdAsync(id);
-    }
-}
-```
-
----
-
-## ⚙️ 支持的.NET版本
-
-- ✅ .NET 8.0
-- ✅ .NET 9.0
-- ✅ .NET Standard 2.0 (库)
-
----
-
-## 🗄️ 支持的数据库
-
-| 数据库 | 版本 | 状态 | 测试数 | 通过率 | 文档 |
-|--------|------|------|--------|--------|------|
-| **SQLite** | 3.x | ✅ **生产就绪** | 62个 | 100% | [查看](tests/Sqlx.Tests/MultiDialect/UnifiedDialect_SQLite_Tests.cs) |
-| **PostgreSQL** | 16+ | ✅ **生产就绪** | 62个 | 100% | [查看](tests/Sqlx.Tests/MultiDialect/UnifiedDialect_PostgreSQL_Tests.cs) |
-| **MySQL** | 8.3+ | ✅ **生产就绪** | 62个 | 100% | [查看](tests/Sqlx.Tests/MultiDialect/UnifiedDialect_MySQL_Tests.cs) |
-| **SQL Server** | 2022+ | ✅ **生产就绪** | 62个 | 100% | [查看](tests/Sqlx.Tests/MultiDialect/UnifiedDialect_SqlServer_Tests.cs) |
-| Oracle | 12c+ | 🔄 计划中 | - | - | - |
-| MariaDB | 10.x+ | 🔄 计划中 | - | - | - |
-
-**总计**: 248个测试用例（62个测试 × 4个数据库）| **通过率**: 100% ✅
-
-### 多数据库测试架构
-
-Sqlx采用"**写一次，多数据库运行**"的统一测试架构：
-
-```csharp
-// 1️⃣ 定义统一接口（一次定义）
-public partial interface IUnifiedUserRepository
-{
-    [SqlTemplate("INSERT INTO {{table}} (username, email) VALUES (@username, @email)")]
-    [ReturnInsertedId]
-    Task<long> InsertAsync(string username, string email);
-
-    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
-    Task<User?> GetByIdAsync(long id);
-
-    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE is_active = {{bool_true}}")]
-    Task<List<User>> GetActiveUsersAsync();
-}
-
-// 2️⃣ 为每个数据库创建实现类（只需1行配置）
-[RepositoryFor(typeof(IUnifiedUserRepository), Dialect = "SQLite", TableName = "users")]
-public partial class SQLiteUserRepository(DbConnection conn) : IUnifiedUserRepository { }
-
-[RepositoryFor(typeof(IUnifiedUserRepository), Dialect = "PostgreSql", TableName = "users")]
-public partial class PostgreSQLUserRepository(DbConnection conn) : IUnifiedUserRepository { }
-
-[RepositoryFor(typeof(IUnifiedUserRepository), Dialect = "MySql", TableName = "users")]
-public partial class MySQLUserRepository(DbConnection conn) : IUnifiedUserRepository { }
-
-[RepositoryFor(typeof(IUnifiedUserRepository), Dialect = "SqlServer", TableName = "users")]
-public partial class SqlServerUserRepository(DbConnection conn) : IUnifiedUserRepository { }
-```
-
-**自动适配示例**：
-
-| SQL模板 | SQLite生成 | PostgreSQL生成 | MySQL生成 | SQL Server生成 |
-|---------|-----------|---------------|----------|---------------|
-| `{{table}}` | `[users]` | `"users"` | `` `users` `` | `[users]` |
-| `{{bool_true}}` | `1` | `true` | `1` | `1` |
-| `{{current_timestamp}}` | `CURRENT_TIMESTAMP` | `CURRENT_TIMESTAMP` | `CURRENT_TIMESTAMP` | `GETDATE()` |
-
-**核心优势**：
-- ✅ **1个接口 → 4个数据库** - 真正的"写一次"
-- ✅ **编译时适配** - 方言占位符自动替换
-- ✅ **类型安全** - 编译时验证，零运行时开销
-- ✅ **测试覆盖** - 每个测试自动在4个数据库上运行
-- ✅ **DDL统一** - 表结构定义也只写一次
-
-**测试示例**：
-```csharp
-// 测试基类 - 定义一次
-public abstract class UnifiedDialectTestBase
-{
-    [TestMethod]
-    public async Task Insert_ShouldWork()
-    {
-        var id = await Repository.InsertAsync("alice", "alice@test.com");
-        var user = await Repository.GetByIdAsync(id);
-        Assert.IsNotNull(user);
-        Assert.AreEqual("alice", user.Username);
-    }
-
-    // ... 62个测试方法
-}
-
-// 4个子类，每个只需3行代码
-[TestClass]
-public class SQLiteTests : UnifiedDialectTestBase { /* 配置SQLite */ }
-
-[TestClass]
-public class PostgreSQLTests : UnifiedDialectTestBase { /* 配置PostgreSQL */ }
-
-[TestClass]
-public class MySQLTests : UnifiedDialectTestBase { /* 配置MySQL */ }
-
-[TestClass]
-public class SqlServerTests : UnifiedDialectTestBase { /* 配置SQL Server */ }
-```
-
-**结果**: 62个测试 × 4个数据库 = **248个测试用例**，全部自动生成和运行！
-
-详细文档：
-- [统一方言状态报告](UNIFIED_DIALECT_STATUS.md)
-- [测试改进报告](TEST_IMPROVEMENT_REPORT.md)
-- [CI修复报告](CI_FIX_REPORT.md)
 
 ---
 
@@ -922,20 +198,6 @@ public class SqlServerTests : UnifiedDialectTestBase { /* 配置SQL Server */ }
 ## 📄 许可证
 
 [MIT License](LICENSE.txt)
-
----
-
-## 🌟 Star History
-
-如果Sqlx对您有帮助，请给个Star⭐！
-
----
-
-## 📞 联系方式
-
-- 🐛 问题反馈: [GitHub Issues](https://github.com/Cricle/Sqlx/issues)
-- 💬 讨论交流: [GitHub Discussions](https://github.com/Cricle/Sqlx/discussions)
-- 📧 邮件: [项目联系邮箱]
 
 ---
 

@@ -1,220 +1,176 @@
-# Sqlx - 高性能 .NET 数据访问库
+# Sqlx 文档索引
 
-<div align="center">
-
-[![NuGet](https://img.shields.io/badge/nuget-v0.5.0-blue)](https://www.nuget.org/packages/Sqlx/)
-[![Tests](https://img.shields.io/badge/tests-1647%20passed-brightgreen)](https://github.com/Cricle/Sqlx/tree/main/tests)
-[![Coverage](https://img.shields.io/badge/coverage-59.6%25-yellow)](#)
-[![Production Ready](https://img.shields.io/badge/status-production%20ready-success)](#)
-
-**极致性能 · 类型安全 · 完全异步 · 零配置**
-
-[快速开始](#快速开始) · [核心特性](#核心特性) · [API文档](API_REFERENCE.md) · [GitHub](https://github.com/Cricle/Sqlx)
-
-</div>
+> **完整的 Sqlx 文档导航** - 从入门到精通
 
 ---
 
 ## 🚀 快速开始
 
-### 1. 安装
+### 新手入门（推荐顺序）
 
-```bash
-dotnet add package Sqlx
-```
+1. **[README](../README.md)** - 项目概览和核心优势
+2. **[快速开始指南](QUICK_START_GUIDE.md)** ⭐ - 5 分钟上手 Sqlx
+3. **[AI 助手指南](../AI-VIEW.md)** ⭐ - 让 AI 学会 Sqlx（完整功能清单）
 
-### 2. 定义实体和仓储
+### 核心文档
 
-```csharp
-// 实体
-public class User
-{
-    public long Id { get; set; }
-    public string Name { get; set; }
-    public int Age { get; set; }
-}
-
-// 仓储接口
-[SqlDefine(SqlDefineTypes.SQLite)]
-public interface IUserRepository
-{
-    [SqlTemplate("SELECT {{columns}} FROM users WHERE id = @id")]
-    Task<User?> GetByIdAsync(long id);
-
-    [SqlTemplate("INSERT INTO users (name, age) VALUES (@name, @age)")]
-    [ReturnInsertedId]
-    Task<long> InsertAsync(string name, int age);
-}
-
-// 实现类
-[RepositoryFor(typeof(IUserRepository))]
-public partial class UserRepository(DbConnection connection) : IUserRepository { }
-```
-
-### 3. 使用
-
-```csharp
-await using var conn = new SqliteConnection("Data Source=:memory:");
-await conn.OpenAsync();
-
-var repo = new UserRepository(conn);
-var userId = await repo.InsertAsync("Alice", 25);
-var user = await repo.GetByIdAsync(userId);
-```
+4. **[占位符指南](PLACEHOLDERS.md)** - 70+ 占位符详解
+5. **[API 参考](API_REFERENCE.md)** - 完整 API 文档
+6. **[最佳实践](BEST_PRACTICES.md)** - 推荐的使用模式
 
 ---
 
-## ✨ 核心特性
+## 📚 按主题分类
 
-### 🌐 统一方言架构
+### 入门教程
 
-**写一次，多数据库运行** - 真正的跨数据库统一接口
+| 文档 | 描述 | 难度 |
+|------|------|------|
+| [快速开始指南](QUICK_START_GUIDE.md) | 5 分钟上手 Sqlx | ⭐ 新手 |
+| [AI 助手指南](../AI-VIEW.md) | 完整功能清单和代码模式 | ⭐ 新手 |
+| [README](../README.md) | 项目概览 | ⭐ 新手 |
 
-```csharp
-// 1个接口定义
-public partial interface IUserRepository
-{
-    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE is_active = {{bool_true}}")]
-    Task<List<User>> GetActiveUsersAsync();
-}
+### 核心功能
 
-// 4个数据库实现（只需1行配置）
-[RepositoryFor(typeof(IUserRepository), Dialect = "SQLite", TableName = "users")]
-public partial class SQLiteUserRepository(DbConnection conn) : IUserRepository { }
+| 文档 | 描述 | 难度 |
+|------|------|------|
+| [占位符指南](PLACEHOLDERS.md) | 70+ 占位符详解 | ⭐⭐ 进阶 |
+| [API 参考](API_REFERENCE.md) | 完整 API 文档 | ⭐⭐ 进阶 |
+| [占位符参考](PLACEHOLDER_REFERENCE.md) | 占位符速查表 | ⭐ 新手 |
 
-[RepositoryFor(typeof(IUserRepository), Dialect = "PostgreSql", TableName = "users")]
-public partial class PostgreSQLUserRepository(DbConnection conn) : IUserRepository { }
 
-[RepositoryFor(typeof(IUserRepository), Dialect = "MySql", TableName = "users")]
-public partial class MySQLUserRepository(DbConnection conn) : IUserRepository { }
+### 高级特性
 
-[RepositoryFor(typeof(IUserRepository), Dialect = "SqlServer", TableName = "users")]
-public partial class SqlServerUserRepository(DbConnection conn) : IUserRepository { }
-```
+| 文档 | 描述 | 难度 |
+|------|------|------|
+| [高级特性](ADVANCED_FEATURES.md) | AOT、类型安全查询、性能优化 | ⭐⭐⭐ 高级 |
+| [统一方言指南](UNIFIED_DIALECT_USAGE_GUIDE.md) | 多数据库支持详解 | ⭐⭐ 进阶 |
+| [当前功能状态](CURRENT_CAPABILITIES.md) | 已实现功能和进度 | ⭐⭐ 进阶 |
 
-**测试验证**: 248个测试用例（62个测试 × 4个数据库）| **通过率**: 100% ✅
+### 最佳实践
 
-### ⚡ 极致性能
+| 文档 | 描述 | 难度 |
+|------|------|------|
+| [最佳实践](BEST_PRACTICES.md) | 推荐的使用模式 | ⭐⭐ 进阶 |
+| [增强仓储接口](ENHANCED_REPOSITORY_INTERFACES.md) | 仓储模式详解 | ⭐⭐ 进阶 |
 
-通过编译时源代码生成，接近原生 ADO.NET 性能：
+### 扩展和工具
 
-| 操作 | ADO.NET | Sqlx | Dapper | EF Core |
-|------|---------|------|--------|---------|
-| SELECT 1000行 | 162 μs | 170 μs (1.05x) | 182 μs (1.13x) | 246 μs (1.52x) |
-| INSERT 100行 | 2.01 ms | 2.18 ms (1.08x) | 2.35 ms (1.17x) | 3.82 ms (1.90x) |
-| 批量插入 1000行 | - | **58.2 ms** | 225.8 ms | 185.6 ms |
-
-### 🛡️ 类型安全
-
-编译时验证，发现问题更早：
-
-```csharp
-// ✅ 编译时检查参数
-[SqlTemplate("SELECT * FROM users WHERE id = @id")]
-Task<User?> GetByIdAsync(long id);
-
-// ❌ 编译错误：参数不匹配
-[SqlTemplate("SELECT * FROM users WHERE id = @userId")]
-Task<User?> GetByIdAsync(long id);  // 编译器报错
-```
-
-### 📝 强大的占位符系统
-
-跨数据库SQL模板，自动适配：
-
-| 占位符 | SQLite | PostgreSQL | MySQL | SQL Server |
-|--------|--------|-----------|-------|------------|
-| `{{table}}` | `[users]` | `"users"` | `` `users` `` | `[users]` |
-| `{{columns}}` | `id, name` | `id, name` | `id, name` | `id, name` |
-| `{{bool_true}}` | `1` | `true` | `1` | `1` |
-| `{{current_timestamp}}` | `CURRENT_TIMESTAMP` | `CURRENT_TIMESTAMP` | `CURRENT_TIMESTAMP` | `GETDATE()` |
+| 文档 | 描述 | 难度 |
+|------|------|------|
+| [扩展总结](EXTENSION_SUMMARY.md) | Visual Studio 扩展功能 | ⭐⭐ 进阶 |
 
 ---
 
-## 📚 文档导航
+## 🗂️ 按角色分类
 
-### 🚀 快速上手
-- [快速开始指南](QUICK_START_GUIDE.md) - 5分钟上手
-- [完整教程](../TUTORIAL.md) - 从入门到精通
-- [快速参考](../QUICK_REFERENCE.md) - 一页纸速查
+### 我是新手
 
-### 📖 核心文档
-- [API参考](API_REFERENCE.md) - 完整API文档
-- [**占位符完整参考**](PLACEHOLDER_REFERENCE.md) - **70+ 占位符速查手册** ⭐
-- [占位符详细教程](PLACEHOLDERS.md) - 占位符详解
-- [最佳实践](BEST_PRACTICES.md) - 推荐用法
-- [高级特性](ADVANCED_FEATURES.md) - SoftDelete、AuditFields等
+**推荐学习路径**:
+1. [README](../README.md) - 了解 Sqlx 是什么
+2. [快速开始指南](QUICK_START_GUIDE.md) - 5 分钟上手
+3. [占位符指南](PLACEHOLDERS.md) - 学习核心占位符
+4. [最佳实践](BEST_PRACTICES.md) - 学习推荐用法
 
-### 🌐 统一方言
-- [统一方言使用指南](UNIFIED_DIALECT_USAGE_GUIDE.md) - 详细用法
-- [统一方言状态报告](../UNIFIED_DIALECT_STATUS.md) - 实现状态
-- [测试改进报告](../TEST_IMPROVEMENT_REPORT.md) - 测试覆盖
+**示例项目**:
+- [TodoWebApi](../samples/TodoWebApi/) - 完整 Web API 示例
 
-### 🔄 迁移与对比
-- [迁移指南](../MIGRATION_GUIDE.md) - 从其他ORM迁移
-- [性能基准测试](../PERFORMANCE.md) - 详细性能数据
+### 我是 AI 助手
 
-### 🆘 帮助与支持
-- [FAQ](../FAQ.md) - 常见问题解答
-- [故障排除](../TROUBLESHOOTING.md) - 问题解决
-- [贡献指南](../CONTRIBUTING.md) - 参与贡献
+**推荐阅读**:
+1. **[AI 助手指南](../AI-VIEW.md)** ⭐ - 完整功能清单
+2. [占位符指南](PLACEHOLDERS.md) - 70+ 占位符详解
+3. [API 参考](API_REFERENCE.md) - 完整 API 文档
+4. [最佳实践](BEST_PRACTICES.md) - 正确做法 vs 错误做法
 
----
+### 我是高级开发者
 
-## 🎯 示例项目
+**推荐阅读**:
+1. [高级特性](ADVANCED_FEATURES.md) - AOT、性能优化
+2. [统一方言指南](UNIFIED_DIALECT_USAGE_GUIDE.md) - 多数据库架构
+3. [当前功能状态](CURRENT_CAPABILITIES.md) - 实现细节
+4. [API 参考](API_REFERENCE.md) - 完整 API
 
-### [FullFeatureDemo](https://github.com/Cricle/Sqlx/tree/main/samples/FullFeatureDemo)
-完整演示所有Sqlx功能
-
-### [TodoWebApi](https://github.com/Cricle/Sqlx/tree/main/samples/TodoWebApi)
-真实Web API示例
-
-### [UnifiedDialectDemo](https://github.com/Cricle/Sqlx/tree/main/samples/UnifiedDialectDemo)
-统一方言架构演示
 
 ---
 
-## 🗄️ 支持的数据库
+## 📖 文档列表（按字母排序）
 
-| 数据库 | 状态 | 测试数 | 通过率 |
-|--------|------|--------|--------|
-| **SQLite** | ✅ 生产就绪 | 62 | 100% |
-| **PostgreSQL** | ✅ 生产就绪 | 62 | 100% |
-| **MySQL** | ✅ 生产就绪 | 62 | 100% |
-| **SQL Server** | ✅ 生产就绪 | 62 | 100% |
-
-**总计**: 248个测试用例 | **通过率**: 100% ✅
-
----
-
-## 📊 项目状态
-
-| 指标 | 值 |
-|------|---|
-| **测试总数** | 1647 |
-| **测试通过** | 1647 (100%) |
-| **代码覆盖率** | 59.6% |
-| **NuGet版本** | v0.5.0 |
-| **状态** | ✅ 生产就绪 |
+| 文档 | 描述 |
+|------|------|
+| [ADVANCED_FEATURES.md](ADVANCED_FEATURES.md) | 高级特性：AOT、类型安全查询、性能优化 |
+| [API_REFERENCE.md](API_REFERENCE.md) | 完整的 API 参考文档 |
+| [BEST_PRACTICES.md](BEST_PRACTICES.md) | 最佳实践和推荐模式 |
+| [CURRENT_CAPABILITIES.md](CURRENT_CAPABILITIES.md) | 当前功能状态和实现进度 |
+| [ENHANCED_REPOSITORY_INTERFACES.md](ENHANCED_REPOSITORY_INTERFACES.md) | 增强的仓储接口模式 |
+| [EXTENSION_SUMMARY.md](EXTENSION_SUMMARY.md) | Visual Studio 扩展功能总结 |
+| [INDEX.md](INDEX.md) | 本文档 - 文档索引 |
+| [PLACEHOLDER_REFERENCE.md](PLACEHOLDER_REFERENCE.md) | 占位符速查表 |
+| [PLACEHOLDERS.md](PLACEHOLDERS.md) | 占位符完整指南（70+ 占位符） |
+| [QUICK_START_GUIDE.md](QUICK_START_GUIDE.md) | 5 分钟快速开始指南 |
+| [README.md](README.md) | 文档中心首页 |
+| [UNIFIED_DIALECT_USAGE_GUIDE.md](UNIFIED_DIALECT_USAGE_GUIDE.md) | 统一方言使用指南（多数据库） |
 
 ---
 
-## 🤝 参与贡献
+## 🎯 按功能查找
 
-欢迎贡献！请查看 [贡献指南](../CONTRIBUTING.md)。
+### 占位符相关
+
+- [占位符指南](PLACEHOLDERS.md) - 完整教程
+- [占位符参考](PLACEHOLDER_REFERENCE.md) - 速查表
+- [AI 助手指南](../AI-VIEW.md) - 包含占位符清单
+
+### 多数据库支持
+
+- [统一方言指南](UNIFIED_DIALECT_USAGE_GUIDE.md) - 详细用法
+- [当前功能状态](CURRENT_CAPABILITIES.md) - 实现状态
+- [AI 助手指南](../AI-VIEW.md) - 多数据库示例
+
+### CRUD 操作
+
+- [快速开始指南](QUICK_START_GUIDE.md) - 基础 CRUD
+- [AI 助手指南](../AI-VIEW.md) - 完整 CRUD 清单
+- [最佳实践](BEST_PRACTICES.md) - CRUD 最佳实践
+
+### 性能优化
+
+- [高级特性](ADVANCED_FEATURES.md) - 性能优化技巧
+- [最佳实践](BEST_PRACTICES.md) - 性能相关建议
+- [AI 助手指南](../AI-VIEW.md) - 性能优化章节
+
+---
+
+## 🌐 在线资源
+
+- **[GitHub Pages](https://cricle.github.io/Sqlx/web/)** - 在线文档
+- **[GitHub 仓库](https://github.com/Cricle/Sqlx)** - 源代码
+- **[NuGet 包](https://www.nuget.org/packages/Sqlx/)** - 下载
+
+---
+
+## 📦 示例项目
+
+- **[TodoWebApi](../samples/TodoWebApi/)** - 完整 Web API 示例
+  - RESTful API
+  - CRUD 操作
+  - 搜索和分页
+  - 测试脚本
+
+---
+
+## 🤝 贡献
+
+发现文档有误或需要改进？
+
+- [提交 Issue](https://github.com/Cricle/Sqlx/issues)
+- [提交 Pull Request](https://github.com/Cricle/Sqlx/pulls)
 
 ---
 
 ## 📄 许可证
 
-[MIT License](../LICENSE.txt)
-
----
-
-## 📞 联系方式
-
-- 🐛 问题反馈: [GitHub Issues](https://github.com/Cricle/Sqlx/issues)
-- 💬 讨论交流: [GitHub Discussions](https://github.com/Cricle/Sqlx/discussions)
+Sqlx 采用 [MIT 许可证](../LICENSE.txt)。
 
 ---
 
@@ -222,9 +178,6 @@ Task<User?> GetByIdAsync(long id);  // 编译器报错
 
 **Sqlx - 让数据访问回归简单，让性能接近极致！** 🚀
 
-Made with ❤️ by the Sqlx Team
-
-[返回GitHub](https://github.com/Cricle/Sqlx)
+[返回文档中心](README.md) · [返回 GitHub](https://github.com/Cricle/Sqlx)
 
 </div>
-

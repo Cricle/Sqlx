@@ -1,1325 +1,1078 @@
-# Sqlx AI 助手使用指南
+# Sqlx AI 助手完全指南
 
-> **版本**: 0.4.0  
-> **目标**: 帮助AI助手快速掌握Sqlx库的完整功能和使用方式  
-> **最后更新**: 2025-10-26
+> **目标读者**: AI 助手（如 GitHub Copilot、ChatGPT、Claude 等）
+> **目的**: 让 AI 完全理解 Sqlx 的所有功能、使用方式、注意事项和最佳实践
 
 ---
 
 ## 📋 目录
 
-1. [快速参考](#快速参考)
-2. [核心概念](#核心概念)
-3. [完整特性列表](#完整特性列表)
+1. [核心概念](#核心概念)
+2. [三大核心组件](#三大核心组件)
+3. [完整功能清单](#完整功能清单)
 4. [代码模式](#代码模式)
 5. [重要注意事项](#重要注意事项)
-6. [常见错误](#常见错误)
+6. [完整示例](#完整示例)
 7. [性能优化](#性能优化)
-8. [故障排查](#故障排查)
+8. [调试技巧](#调试技巧)
 
 ---
 
-## 快速参考
+## 🎯 核心概念
 
-### 最小示例（3步）
+### Sqlx 是什么？
+
+Sqlx 是一个**编译时源代码生成器**，用于生成高性能、类型安全的数据访问代码。
+
+**核心特点**:
+- ✅ **编译时生成** - 零运行时开销，接近 ADO.NET 性能
+- ✅ **类型安全** - 编译时验证 SQL 和参数
+- ✅ **占位符系统** - 70+ 占位符自动生成复杂 SQL
+- ✅ **多数据库** - 一套代码支持 4 种数据库（SQLite、PostgreSQL、MySQL、SQL Server）
+- ✅ **零配置** - 无需 DbContext、无需映射配置
+
+### 工作原理
+
+```
+用户代码 (接口 + 属性)
+    ↓
+源代码生成器 (编译时)
+    ↓
+生成的实现代码 (partial class)
+    ↓
+编译到程序集
+```
+
+
+---
+
+## 🏗️ 三大核心组件
+
+### 1. 特性 (Attributes)
+
+#### `[SqlDefine]` - 定义数据库类型
 
 ```csharp
-// 1. 定义实体
-public class User 
+[SqlDefine(SqlDefineTypes.SQLite)]    // SQLite
+[SqlDefine(SqlDefineTypes.PostgreSql)] // PostgreSQL
+[SqlDefine(SqlDefineTypes.MySql)]      // MySQL
+[SqlDefine(SqlDefineTypes.SqlServer)]  // SQL Server
+```
+
+#### `[SqlTemplate]` - 定义 SQL 模板
+
+```csharp
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
+Task<User?> GetByIdAsync(long id);
+```
+
+#### `[RepositoryFor]` - 标记仓储实现
+
+```csharp
+[RepositoryFor(typeof(IUserRepository))]
+public partial class UserRepository(DbConnection connection) : IUserRepository { }
+
+// 或指定方言和表名（统一方言架构）
+[RepositoryFor(typeof(IUserRepository), Dialect = SqlDefineTypes.PostgreSql, TableName = "users")]
+public partial class PostgreSQLUserRepository(DbConnection connection) : IUserRepository { }
+```
+
+#### `[TableName]` - 指定表名
+
+```csharp
+[TableName("users")]
+public class User { ... }
+```
+
+#### `[ReturnInsertedId]` - 返回插入的 ID
+
+```csharp
+[SqlTemplate("INSERT INTO {{table}} (name) VALUES (@name)")]
+[ReturnInsertedId]
+Task<long> InsertAsync(string name);
+```
+
+
+### 2. 占位符系统
+
+#### 核心占位符（必会）
+
+| 占位符 | 作用 | 示例 |
+|--------|------|------|
+| `{{table}}` | 表名 | `users` → `"users"` (PostgreSQL) / `` `users` `` (MySQL) |
+| `{{columns}}` | 列名列表 | `id, name, email, age` |
+| `{{columns --exclude Id}}` | 排除列 | `name, email, age` |
+| `{{columns --only Id Name}}` | 只包含列 | `id, name` |
+| `{{values}}` | 值占位符 | `@Name, @Email, @Age` |
+| `{{set}}` | SET 子句 | `name=@Name, email=@Email` |
+| `{{set --exclude Id}}` | SET 排除列 | `name=@Name, email=@Email` |
+| `{{orderby col}}` | 排序 | `ORDER BY col` |
+| `{{orderby col --desc}}` | 降序 | `ORDER BY col DESC` |
+| `{{orderby col --asc}}` | 升序 | `ORDER BY col ASC` |
+
+#### 数据库方言占位符
+
+| 占位符 | SQLite | PostgreSQL | MySQL | SQL Server |
+|--------|--------|-----------|-------|------------|
+| `{{bool_true}}` | `1` | `true` | `1` | `1` |
+| `{{bool_false}}` | `0` | `false` | `0` | `0` |
+| `{{current_timestamp}}` | `CURRENT_TIMESTAMP` | `CURRENT_TIMESTAMP` | `NOW()` | `GETDATE()` |
+| `{{returning_id}}` | (empty) | `RETURNING id` | (empty) | `OUTPUT INSERTED.id` |
+
+#### 分页占位符
+
+| 占位符 | 作用 | 示例 |
+|--------|------|------|
+| `{{limit}}` | LIMIT 子句 | `LIMIT @limit` |
+| `{{offset}}` | OFFSET 子句 | `OFFSET @offset` |
+| `{{limit --param pageSize}}` | 动态参数 | `LIMIT @pageSize` |
+| `{{offset --param skip}}` | 动态参数 | `OFFSET @skip` |
+
+
+### 3. 实体类
+
+```csharp
+// 推荐：使用 Record 类型
+[TableName("users")]
+public record User
 {
     public long Id { get; set; }
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Email { get; set; }  // 可空字段
     public int Age { get; set; }
+    public bool IsActive { get; set; }
+    public DateTime CreatedAt { get; set; }
 }
-
-// 2. 定义仓储接口
-[SqlDefine(SqlDefineTypes.SQLite)]
-[RepositoryFor(typeof(User))]
-public interface IUserRepository
-{
-    [SqlTemplate("SELECT {{columns}} FROM users WHERE id = @id")]
-    Task<User?> GetByIdAsync(long id, CancellationToken ct = default);
-}
-
-// 3. 实现仓储
-public partial class UserRepository(DbConnection connection) : IUserRepository { }
-```
-
-### 关键命名空间
-
-```csharp
-using Sqlx;                    // 核心类型
-using Sqlx.Annotations;        // 特性标记
-using System.Data.Common;      // DbConnection (必须)
-using System.Linq.Expressions; // 表达式树
 ```
 
 ---
 
-## 核心概念
+## 📚 完整功能清单
 
-### 1. 源代码生成器机制
+### CRUD 操作
 
-**工作原理**：
-```
-用户编写接口 + [SqlTemplate]
-    ↓
-编译时 Roslyn 源生成器分析
-    ↓
-自动生成 partial 类实现
-    ↓
-编译器编译生成的代码
-    ↓
-零运行时开销，纯ADO.NET代码
-```
-
-**关键点**：
-- ✅ 所有代码在**编译时**生成，无反射、无动态
-- ✅ 生成的代码直接使用 `DbCommand`、`DbDataReader`
-- ✅ 支持 AOT (Ahead-of-Time) 编译
-- ✅ 性能接近手写 ADO.NET
-
-### 2. 必需的特性标记
-
-| 特性 | 位置 | 用途 | 必需性 |
-|------|------|------|--------|
-| `[SqlDefine]` | 接口/类 | 指定数据库方言 | ✅ 必需 |
-| `[RepositoryFor]` | 类 | 标记实体类型 | ✅ 必需 |
-| `[SqlTemplate]` | 方法 | 定义SQL模板 | ✅ 必需（对自定义方法） |
-| `[TableName]` | 实体类 | 指定表名 | ⚠️ 可选 |
-
-### 3. 占位符系统
-
-Sqlx 的核心功能，提供跨数据库SQL模板：
-
-| 占位符 | 生成内容 | 适用场景 |
-|--------|----------|----------|
-| `{{columns}}` | `id, name, age, balance` | SELECT 列列表 |
-| `{{table}}` | `users` | 表名引用 |
-| `{{values}}` | `(@id, @name, @age)` | INSERT VALUES |
-| `{{where}}` | `WHERE age >= 18 AND ...` | 表达式树条件 |
-| `{{limit}}` | `LIMIT @limit` / `TOP (@limit)` | 分页限制 |
-| `{{offset}}` | `OFFSET @offset` / `OFFSET @offset ROWS` | 分页偏移 |
-| `{{orderby column [--desc]}}` | `ORDER BY column [DESC]` | 排序 |
-| `{{set}}` | `name=@name, age=@age` | UPDATE SET |
-| `{{batch_values}}` | `(@v1, @v2), (@v3, @v4)...` | 批量插入 |
-
----
-
-## 完整特性列表
-
-### ✅ 已实现特性
-
-#### 1. 基础数据访问
+#### 查询（SELECT）
 
 ```csharp
-// SELECT 单条记录（可空）
-[SqlTemplate("SELECT {{columns}} FROM users WHERE id = @id")]
+// 1. 查询所有
+[SqlTemplate("SELECT {{columns}} FROM {{table}}")]
+Task<List<User>> GetAllAsync();
+
+// 2. 根据 ID 查询
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
 Task<User?> GetByIdAsync(long id);
 
-// SELECT 多条记录
-[SqlTemplate("SELECT {{columns}} FROM users WHERE age >= @minAge")]
-Task<List<User>> GetAdultsAsync(int minAge);
+// 3. 条件查询
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE age >= @minAge AND is_active = @isActive")]
+Task<List<User>> SearchAsync(int minAge, bool isActive);
 
-// INSERT 返回影响行数
-[SqlTemplate("INSERT INTO users (name, age) VALUES (@name, @age)")]
-Task<int> InsertAsync(string name, int age);
+// 4. 排序查询
+[SqlTemplate("SELECT {{columns}} FROM {{table}} {{orderby created_at --desc}}")]
+Task<List<User>> GetRecentAsync();
 
-// UPDATE
-[SqlTemplate("UPDATE users SET name = @name WHERE id = @id")]
-Task<int> UpdateAsync(long id, string name);
+// 5. 分页查询
+[SqlTemplate("SELECT {{columns}} FROM {{table}} {{orderby id}} {{limit --param pageSize}} {{offset --param skip}}")]
+Task<List<User>> GetPagedAsync(int pageSize, int skip);
 
-// DELETE
-[SqlTemplate("DELETE FROM users WHERE id = @id")]
+// 6. 只查询部分列
+[SqlTemplate("SELECT {{columns --only Id Name Email}} FROM {{table}}")]
+Task<List<User>> GetBasicInfoAsync();
+
+// 7. 排除敏感列
+[SqlTemplate("SELECT {{columns --exclude Password Salt}} FROM {{table}}")]
+Task<List<User>> GetPublicInfoAsync();
+```
+
+
+#### 插入（INSERT）
+
+```csharp
+// 1. 基本插入
+[SqlTemplate("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values}})")]
+Task<int> InsertAsync(User user);
+
+// 2. 插入并返回 ID
+[SqlTemplate("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values}})")]
+[ReturnInsertedId]
+Task<long> InsertAndGetIdAsync(User user);
+
+// 3. 插入指定字段
+[SqlTemplate("INSERT INTO {{table}} (name, email) VALUES (@name, @email)")]
+[ReturnInsertedId]
+Task<long> InsertBasicAsync(string name, string email);
+
+// 4. 插入带默认值
+[SqlTemplate("INSERT INTO {{table}} ({{columns --exclude Id CreatedAt}}) VALUES ({{values}})")]
+[ReturnInsertedId]
+Task<long> InsertWithDefaultsAsync(User user);
+```
+
+#### 更新（UPDATE）
+
+```csharp
+// 1. 更新所有字段（排除 ID）
+[SqlTemplate("UPDATE {{table}} SET {{set --exclude Id}} WHERE id = @id")]
+Task<int> UpdateAsync(User user);
+
+// 2. 更新所有字段（排除 ID 和 CreatedAt）
+[SqlTemplate("UPDATE {{table}} SET {{set --exclude Id CreatedAt}} WHERE id = @id")]
+Task<int> UpdateAsync(User user);
+
+// 3. 只更新指定字段
+[SqlTemplate("UPDATE {{table}} SET {{set --only Name Email}} WHERE id = @id")]
+Task<int> UpdateBasicInfoAsync(User user);
+
+// 4. 更新单个字段
+[SqlTemplate("UPDATE {{table}} SET is_active = @isActive WHERE id = @id")]
+Task<int> UpdateStatusAsync(long id, bool isActive);
+
+// 5. 批量更新
+[SqlTemplate("UPDATE {{table}} SET is_active = @isActive WHERE id IN (SELECT value FROM json_each(@idsJson))")]
+Task<int> UpdateStatusBatchAsync(string idsJson, bool isActive);
+```
+
+
+#### 删除（DELETE）
+
+```csharp
+// 1. 根据 ID 删除
+[SqlTemplate("DELETE FROM {{table}} WHERE id = @id")]
 Task<int> DeleteAsync(long id);
 
-// COUNT
-[SqlTemplate("SELECT COUNT(*) FROM users")]
+// 2. 条件删除
+[SqlTemplate("DELETE FROM {{table}} WHERE is_active = @isActive")]
+Task<int> DeleteInactiveAsync(bool isActive);
+
+// 3. 批量删除
+[SqlTemplate("DELETE FROM {{table}} WHERE id IN (SELECT value FROM json_each(@idsJson))")]
+Task<int> DeleteBatchAsync(string idsJson);
+```
+
+#### 聚合查询
+
+```csharp
+// 1. 计数
+[SqlTemplate("SELECT COUNT(*) FROM {{table}}")]
 Task<long> CountAsync();
 
-// EXISTS
-[SqlTemplate("SELECT COUNT(1) FROM users WHERE id = @id")]
-Task<bool> ExistsAsync(long id);
+// 2. 条件计数
+[SqlTemplate("SELECT COUNT(*) FROM {{table}} WHERE is_active = @isActive")]
+Task<long> CountActiveAsync(bool isActive);
+
+// 3. 求和
+[SqlTemplate("SELECT SUM(amount) FROM {{table}} WHERE user_id = @userId")]
+Task<decimal> GetTotalAmountAsync(long userId);
+
+// 4. 平均值
+[SqlTemplate("SELECT AVG(age) FROM {{table}}")]
+Task<double> GetAverageAgeAsync();
+
+// 5. 最大/最小值
+[SqlTemplate("SELECT MAX(created_at) FROM {{table}}")]
+Task<DateTime> GetLatestDateAsync();
+
+// 6. 存在性检查
+[SqlTemplate("SELECT EXISTS(SELECT 1 FROM {{table}} WHERE email = @email)")]
+Task<bool> ExistsAsync(string email);
 ```
 
-#### 2. 返回类型支持
-
-| 返回类型 | 用途 | 示例 |
-|---------|------|------|
-| `Task<T?>` | 单个实体（可能为null） | `Task<User?>` |
-| `Task<List<T>>` | 实体列表 | `Task<List<User>>` |
-| `Task<int>` | 影响行数 | INSERT/UPDATE/DELETE |
-| `Task<long>` | 计数/ID | COUNT/自增ID |
-| `Task<bool>` | 布尔结果 | EXISTS |
-| `Task<Dictionary<string, object?>>` | 动态单行 | 复杂查询 |
-| `Task<List<Dictionary<string, object?>>>` | 动态多行 | 复杂查询 |
-
-#### 3. 占位符详解
-
-##### `{{columns}}` - 自动列选择
-
-```csharp
-public class User 
-{
-    public long Id { get; set; }        // → id
-    public string Name { get; set; }    // → name
-    public int Age { get; set; }        // → age
-    public decimal Balance { get; set; }// → balance
-}
-
-// {{columns}} → id, name, age, balance
-[SqlTemplate("SELECT {{columns}} FROM users")]
-Task<List<User>> GetAllAsync();
-```
-
-**命名规则**：
-- PascalCase → snake_case
-- `Id` → `id`
-- `UserName` → `user_name`
-- `CreatedAt` → `created_at`
-
-##### `{{table}}` - 表名
-
-```csharp
-// 使用 [TableName] 指定
-[TableName("app_users")]
-public class User { }
-
-// {{table}} → app_users
-[SqlTemplate("SELECT * FROM {{table}}")]
-Task<List<User>> GetAllAsync();
-
-// 不指定则使用类名小写
-public class Product { }  // → product
-```
-
-##### `{{where}}` - 表达式树条件
-
-```csharp
-[SqlTemplate("SELECT {{columns}} FROM users {{where}}")]
-Task<List<User>> QueryAsync([ExpressionToSql] Expression<Func<User, bool>> predicate);
-
-// 使用
-await repo.QueryAsync(u => u.Age >= 18 && u.Balance > 1000);
-// 生成: SELECT id, name, age, balance FROM users WHERE age >= 18 AND balance > 1000
-```
-
-**支持的表达式**：
-```csharp
-// 比较运算符
-u => u.Age == 18        // age = 18
-u => u.Age != 18        // age != 18
-u => u.Age > 18         // age > 18
-u => u.Age >= 18        // age >= 18
-u => u.Age < 18         // age < 18
-u => u.Age <= 18        // age <= 18
-
-// 逻辑运算符
-u => u.Age >= 18 && u.Balance > 1000    // age >= 18 AND balance > 1000
-u => u.Age < 18 || u.IsVip              // age < 18 OR is_vip = 1
-u => !u.IsDeleted                        // is_deleted = 0
-
-// NULL 检查
-u => u.Email == null     // email IS NULL
-u => u.Email != null     // email IS NOT NULL
-
-// 字符串方法
-u => u.Name.Contains("Alice")    // name LIKE '%Alice%'
-u => u.Name.StartsWith("A")      // name LIKE 'A%'
-u => u.Name.EndsWith("e")        // name LIKE '%e'
-```
-
-**不支持的表达式**：
-```csharp
-// ❌ 方法调用（除字符串方法）
-u => u.Age.ToString()
-
-// ❌ 复杂Lambda
-u => Calculate(u.Age, u.Balance)
-
-// ❌ 本地变量引用
-var minAge = 18;
-u => u.Age >= minAge  // ❌ 应该用参数代替
-
-// ❌ 集合操作
-u => u.Tags.Any(t => t == "VIP")
-```
-
-##### `{{limit}}` 和 `{{offset}}` - 跨数据库分页
-
-```csharp
-[SqlTemplate("SELECT {{columns}} FROM users {{orderby id}} {{limit}} {{offset}}")]
-Task<List<User>> GetPagedAsync(int? limit = null, int? offset = null);
-
-// SQLite/MySQL/PostgreSQL:
-// SELECT id, name FROM users ORDER BY id LIMIT @limit OFFSET @offset
-
-// SQL Server:
-// SELECT id, name FROM users ORDER BY id 
-// OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
-```
-
-**注意事项**：
-- ✅ 参数类型必须是 `int?`（可选）
-- ✅ 如果参数为 `null`，占位符会被移除
-- ⚠️ SQL Server 的 `OFFSET` 需要 `ORDER BY`
-
-##### `{{orderby}}` - 排序
-
-```csharp
-// 基本排序
-[SqlTemplate("SELECT {{columns}} FROM users {{orderby created_at}}")]
-Task<List<User>> GetUsersAsync();
-// → ORDER BY created_at ASC
-
-// 降序
-[SqlTemplate("SELECT {{columns}} FROM users {{orderby created_at --desc}}")]
-Task<List<User>> GetRecentUsersAsync();
-// → ORDER BY created_at DESC
-
-// 多列排序
-[SqlTemplate("SELECT {{columns}} FROM users {{orderby age --desc, name}}")]
-Task<List<User>> GetUsersAsync();
-// → ORDER BY age DESC, name ASC
-```
-
-##### `{{set}}` - UPDATE SET子句
-
-```csharp
-// 自动生成 SET 子句（排除主键）
-[SqlTemplate("UPDATE users {{set}} WHERE id = @id")]
-Task<int> UpdateAsync(User user);
-// → UPDATE users SET name=@name, age=@age, balance=@balance WHERE id = @id
-```
-
-##### `{{batch_values}}` - 批量插入
-
-```csharp
-[SqlTemplate("INSERT INTO users (name, age) VALUES {{batch_values}}")]
-[BatchOperation(MaxBatchSize = 500)]
-Task<int> BatchInsertAsync(IEnumerable<User> users);
-
-// 自动生成: 
-// INSERT INTO users (name, age) VALUES 
-// (@name_0, @age_0), (@name_1, @age_1), (@name_2, @age_2)...
-
-// 自动分批处理（考虑数据库参数限制）
-await repo.BatchInsertAsync(GenerateUsers(10000));
-// 自动分为 20 批（每批 500 条）
-```
-
-#### 4. 特殊功能特性
-
-##### 返回插入的ID
-
-```csharp
-[SqlTemplate("INSERT INTO users (name, age) VALUES (@name, @age)")]
-[ReturnInsertedId]
-Task<long> InsertAsync(string name, int age);
-
-// 自动添加数据库特定的返回ID逻辑：
-// SQLite:      SELECT last_insert_rowid()
-// MySQL:       SELECT LAST_INSERT_ID()
-// PostgreSQL:  RETURNING id
-// SQL Server:  OUTPUT INSERTED.id
-// Oracle:      RETURNING id INTO :id
-```
-
-##### 返回插入的实体
-
-```csharp
-[SqlTemplate("INSERT INTO users (name, age) VALUES (@name, @age)")]
-[ReturnInsertedEntity]
-Task<User> InsertAndReturnAsync(string name, int age);
-
-// 执行插入后自动查询完整实体（包括默认值）
-```
-
-##### 批量操作
-
-```csharp
-[SqlTemplate("INSERT INTO users (name, age) VALUES {{batch_values}}")]
-[BatchOperation(MaxBatchSize = 500)]  // 每批最多500条
-Task<int> BatchInsertAsync(IEnumerable<User> users);
-
-// 特点：
-// - 自动处理数据库参数限制（SQL Server: 2100参数）
-// - 自动分批（如果数据超过 MaxBatchSize）
-// - 返回总影响行数
-```
-
-##### 表达式转SQL
-
-```csharp
-[SqlTemplate("SELECT {{columns}} FROM users {{where}}")]
-Task<List<User>> FindAsync([ExpressionToSql] Expression<Func<User, bool>> predicate);
-
-// 使用
-var users = await repo.FindAsync(u => u.Age >= 18 && u.IsActive);
-```
-
-#### 5. 事务支持
-
-```csharp
-// 仓储自动支持事务
-public partial class UserRepository(DbConnection connection) : IUserRepository 
-{
-    public DbTransaction? Transaction { get; set; }  // 自动生成
-}
-
-// 使用
-await using var tx = await connection.BeginTransactionAsync();
-repo.Transaction = tx;
-
-try 
-{
-    await repo.InsertAsync(user);
-    await repo.UpdateBalanceAsync(userId, 1000m);
-    await tx.CommitAsync();
-}
-catch 
-{
-    await tx.RollbackAsync();
-    throw;
-}
-```
-
-#### 6. 拦截器（Partial Methods）
-
-```csharp
-public partial class UserRepository 
-{
-    // SQL 执行前
-    partial void OnExecuting(string operationName, DbCommand command)
-    {
-        Console.WriteLine($"[{operationName}] SQL: {command.CommandText}");
-        // 可以修改 command
-        // 可以记录开始时间
-    }
-    
-    // SQL 执行后
-    partial void OnExecuted(string operationName, DbCommand command, long elapsedMilliseconds)
-    {
-        Console.WriteLine($"[{operationName}] 完成，耗时: {elapsedMilliseconds}ms");
-        // 可以记录性能指标
-    }
-    
-    // SQL 执行失败
-    partial void OnExecuteFail(string operationName, DbCommand command, Exception exception)
-    {
-        Console.WriteLine($"[{operationName}] 失败: {exception.Message}");
-        // 可以记录错误
-        // 可以发送告警
-    }
-}
-```
-
-#### 7. ICrudRepository 接口
-
-自动实现8个标准CRUD方法：
-
-```csharp
-public interface ICrudRepository<TEntity, TKey>
-{
-    Task<TEntity?> GetByIdAsync(TKey id, CancellationToken ct = default);
-    Task<List<TEntity>> GetAllAsync(int? limit = null, int? offset = null, CancellationToken ct = default);
-    Task<long> InsertAsync(TEntity entity, CancellationToken ct = default);
-    Task<int> UpdateAsync(TEntity entity, CancellationToken ct = default);
-    Task<int> DeleteAsync(TKey id, CancellationToken ct = default);
-    Task<long> CountAsync(CancellationToken ct = default);
-    Task<bool> ExistsAsync(TKey id, CancellationToken ct = default);
-    Task<int> BatchInsertAsync(IEnumerable<TEntity> entities, CancellationToken ct = default);
-}
-
-// 使用
-[SqlDefine(SqlDefineTypes.SQLite)]
-[RepositoryFor(typeof(User))]
-public interface IUserRepository : ICrudRepository<User, long> 
-{
-    // 自动获得8个方法
-    // 可以添加自定义方法
-}
-```
-
-#### 8. 高级特性（部分实现）
-
-##### SoftDelete（软删除）
-
-```csharp
-[SoftDelete(
-    FlagColumn = "is_deleted",           // 删除标志列
-    TimestampColumn = "deleted_at",      // 删除时间列（可选）
-    DeletedByColumn = "deleted_by")]     // 删除人列（可选）
-public class Product 
-{
-    public long Id { get; set; }
-    public string Name { get; set; }
-    // 不需要显式定义软删除列
-}
-
-// DELETE 操作会转换为 UPDATE
-await repo.DeleteAsync(productId);
-// UPDATE products SET is_deleted = 1, deleted_at = NOW() WHERE id = @id
-
-// 查询自动过滤已删除数据
-var products = await repo.GetAllAsync();
-// SELECT * FROM products WHERE is_deleted = 0
-
-// 包含已删除数据
-[SqlTemplate("SELECT {{columns}} FROM products")]
-[IncludeDeleted]
-Task<List<Product>> GetAllIncludingDeletedAsync();
-```
-
-##### AuditFields（审计字段）
-
-```csharp
-[AuditFields(
-    CreatedAtColumn = "created_at",
-    CreatedByColumn = "created_by",
-    UpdatedAtColumn = "updated_at",
-    UpdatedByColumn = "updated_by")]
-public class Order 
-{
-    public long Id { get; set; }
-    public decimal Amount { get; set; }
-}
-
-// INSERT 时自动设置 created_at, created_by
-// UPDATE 时自动设置 updated_at, updated_by
-```
-
-##### ConcurrencyCheck（乐观锁）
-
-```csharp
-public class Account 
-{
-    public long Id { get; set; }
-    public decimal Balance { get; set; }
-    
-    [ConcurrencyCheck]
-    public long Version { get; set; }
-}
-
-// UPDATE 时自动检查版本
-// UPDATE accounts SET balance=@balance, version=version+1 
-// WHERE id=@id AND version=@version
-
-// 如果版本不匹配，返回 0（无行受影响）
-```
-
-#### 9. 多数据库支持
-
-```csharp
-// 使用 SqlDefine 指定数据库方言
-[SqlDefine(SqlDefineTypes.SQLite)]      // SQLite
-[SqlDefine(SqlDefineTypes.MySql)]       // MySQL
-[SqlDefine(SqlDefineTypes.PostgreSql)]  // PostgreSQL
-[SqlDefine(SqlDefineTypes.SqlServer)]   // SQL Server
-[SqlDefine(SqlDefineTypes.Oracle)]      // Oracle
-
-// 占位符会根据方言生成不同SQL
-```
-
-**方言差异示例**：
-
-| 功能 | SQLite | SQL Server | PostgreSQL |
-|------|--------|------------|------------|
-| LIMIT | `LIMIT @n` | `TOP (@n)` | `LIMIT @n` |
-| 返回ID | `SELECT last_insert_rowid()` | `OUTPUT INSERTED.id` | `RETURNING id` |
-| 布尔值 | `1/0` | `1/0` | `TRUE/FALSE` |
 
 ---
 
-## 代码模式
+## 🎨 代码模式
 
-### 模式1: 基础CRUD仓储
+### 模式 1: 基础 CRUD 仓储
 
 ```csharp
 // 1. 定义实体
 [TableName("users")]
-public class User 
+public record User
 {
     public long Id { get; set; }
-    public string Name { get; set; }
-    public string? Email { get; set; }  // Nullable
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
     public int Age { get; set; }
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
 }
 
-// 2. 定义接口（继承 ICrudRepository）
+// 2. 定义接口
 [SqlDefine(SqlDefineTypes.SQLite)]
-[RepositoryFor(typeof(User))]
-public interface IUserRepository : ICrudRepository<User, long> 
-{
-    // 自动获得8个方法，无需定义
-}
-
-// 3. 实现类
-public partial class UserRepository(DbConnection connection) : IUserRepository { }
-
-// 4. 使用
-await using var conn = new SqliteConnection("Data Source=app.db");
-await conn.OpenAsync();
-var repo = new UserRepository(conn);
-
-var user = new User { Name = "Alice", Age = 25, IsActive = true, CreatedAt = DateTime.UtcNow };
-long userId = await repo.InsertAsync(user);
-var found = await repo.GetByIdAsync(userId);
-```
-
-### 模式2: 自定义查询方法
-
-```csharp
-[SqlDefine(SqlDefineTypes.SQLite)]
-[RepositoryFor(typeof(User))]
-public interface IUserRepository : ICrudRepository<User, long>
-{
-    // 简单条件查询
-    [SqlTemplate("SELECT {{columns}} FROM users WHERE age >= @minAge AND is_active = @isActive")]
-    Task<List<User>> GetActiveUsersAsync(int minAge, bool isActive = true);
-    
-    // 使用 LIKE 搜索
-    [SqlTemplate("SELECT {{columns}} FROM users WHERE name LIKE @pattern")]
-    Task<List<User>> SearchByNameAsync(string pattern);
-    
-    // 分页查询
-    [SqlTemplate("SELECT {{columns}} FROM users {{orderby created_at --desc}} {{limit}} {{offset}}")]
-    Task<List<User>> GetPagedAsync(int? limit = 20, int? offset = 0);
-    
-    // 聚合查询
-    [SqlTemplate("SELECT COUNT(*) FROM users WHERE age >= @minAge")]
-    Task<long> CountAdultsAsync(int minAge = 18);
-    
-    // 复杂查询返回动态字典
-    [SqlTemplate(@"
-        SELECT u.id, u.name, COUNT(o.id) as order_count
-        FROM users u
-        LEFT JOIN orders o ON o.user_id = u.id
-        GROUP BY u.id, u.name
-        HAVING COUNT(o.id) > @minOrders
-    ")]
-    Task<List<Dictionary<string, object?>>> GetActiveUsersWithOrdersAsync(int minOrders = 5);
-}
-```
-
-### 模式3: 表达式树查询
-
-```csharp
-[SqlDefine(SqlDefineTypes.SQLite)]
-[RepositoryFor(typeof(User))]
-public interface IUserRepository 
-{
-    // 使用表达式树
-    [SqlTemplate("SELECT {{columns}} FROM users {{where}}")]
-    Task<List<User>> QueryAsync([ExpressionToSql] Expression<Func<User, bool>> predicate);
-    
-    // 表达式树 + 分页
-    [SqlTemplate("SELECT {{columns}} FROM users {{where}} {{orderby id}} {{limit}} {{offset}}")]
-    Task<List<User>> QueryPagedAsync(
-        [ExpressionToSql] Expression<Func<User, bool>> predicate,
-        int? limit = null,
-        int? offset = null);
-}
-
-// 使用
-var adults = await repo.QueryAsync(u => u.Age >= 18 && u.IsActive);
-var richUsers = await repo.QueryAsync(u => u.Balance > 10000 && !u.IsDeleted);
-var searchResults = await repo.QueryAsync(u => u.Name.Contains("Alice"));
-```
-
-### 模式4: 批量操作
-
-```csharp
-[SqlDefine(SqlDefineTypes.SQLite)]
-[RepositoryFor(typeof(User))]
-public interface IUserRepository 
-{
-    // 批量插入
-    [SqlTemplate("INSERT INTO users (name, age, is_active) VALUES {{batch_values}}")]
-    [BatchOperation(MaxBatchSize = 500)]
-    Task<int> BatchInsertAsync(IEnumerable<User> users);
-    
-    // 批量更新（通过临时表，高级用法）
-    [SqlTemplate(@"
-        UPDATE users 
-        SET is_active = 0 
-        WHERE id IN (SELECT value FROM json_each(@ids))
-    ")]
-    Task<int> BatchDeactivateAsync(string ids);  // JSON array string
-}
-
-// 使用
-var users = Enumerable.Range(1, 10000)
-    .Select(i => new User { Name = $"User{i}", Age = 20 + i % 50 })
-    .ToList();
-
-await repo.BatchInsertAsync(users);  // 自动分批
-```
-
-### 模式5: 事务处理
-
-```csharp
-public class UserService 
-{
-    private readonly IUserRepository _userRepo;
-    private readonly IOrderRepository _orderRepo;
-    private readonly DbConnection _connection;
-    
-    public async Task<long> CreateUserWithOrderAsync(User user, Order order) 
-    {
-        await using var tx = await _connection.BeginTransactionAsync();
-        _userRepo.Transaction = tx;
-        _orderRepo.Transaction = tx;
-        
-        try 
-        {
-            // 插入用户
-            long userId = await _userRepo.InsertAsync(user);
-            
-            // 插入订单
-            order.UserId = userId;
-            await _orderRepo.InsertAsync(order);
-            
-            // 提交事务
-            await tx.CommitAsync();
-            return userId;
-        }
-        catch 
-        {
-            await tx.RollbackAsync();
-            throw;
-        }
-    }
-}
-```
-
-### 模式6: 依赖注入集成
-
-```csharp
-// Program.cs / Startup.cs
-var builder = WebApplication.CreateBuilder(args);
-
-// 注册数据库连接
-builder.Services.AddScoped<DbConnection>(sp => 
-{
-    var conn = new SqliteConnection("Data Source=app.db");
-    conn.Open();  // 立即打开
-    return conn;
-});
-
-// 注册仓储
-builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<IOrderRepository, OrderRepository>();
-
-// 使用
-public class UserController : ControllerBase 
-{
-    private readonly IUserRepository _userRepo;
-    
-    public UserController(IUserRepository userRepo) 
-    {
-        _userRepo = userRepo;
-    }
-    
-    [HttpGet("{id}")]
-    public async Task<ActionResult<User>> GetUser(long id) 
-    {
-        var user = await _userRepo.GetByIdAsync(id);
-        return user is not null ? Ok(user) : NotFound();
-    }
-}
-```
-
-### 模式7: 拦截器监控
-
-```csharp
-public partial class UserRepository 
-{
-    private readonly ILogger<UserRepository> _logger;
-    
-    // 构造函数注入日志
-    public UserRepository(DbConnection connection, ILogger<UserRepository> logger)
-        : this(connection) 
-    {
-        _logger = logger;
-    }
-    
-    partial void OnExecuting(string operationName, DbCommand command)
-    {
-        _logger.LogDebug("[{Op}] SQL: {Sql}", operationName, command.CommandText);
-    }
-    
-    partial void OnExecuted(string operationName, DbCommand command, long elapsedMs)
-    {
-        if (elapsedMs > 1000) 
-        {
-            _logger.LogWarning(
-                "[{Op}] 慢查询检测: {Ms}ms\nSQL: {Sql}",
-                operationName, elapsedMs, command.CommandText);
-        }
-    }
-    
-    partial void OnExecuteFail(string operationName, DbCommand command, Exception exception)
-    {
-        _logger.LogError(exception, "[{Op}] 执行失败", operationName);
-    }
-}
-```
-
----
-
-## 重要注意事项
-
-### ⚠️ 关键限制
-
-#### 1. 接口和实现必须分文件
-
-```csharp
-// ❌ 错误：同一文件
-// UserRepository.cs
-public interface IUserRepository { }
-public partial class UserRepository : IUserRepository { }  // ❌ 不会生成代码
-
-// ✅ 正确：分开文件
-// IUserRepository.cs
-public interface IUserRepository { }
-
-// UserRepository.cs
-public partial class UserRepository : IUserRepository { }  // ✅ 会生成代码
-```
-
-**原因**：源生成器在编译时运行，无法看到正在编译的同一文件中的定义。
-
-#### 2. 必须使用 DbConnection（不是 IDbConnection）
-
-```csharp
-// ❌ 错误：IDbConnection 不支持异步
-public partial class UserRepository(IDbConnection connection) : IUserRepository { }
-
-// ✅ 正确：DbConnection 支持异步
-public partial class UserRepository(DbConnection connection) : IUserRepository { }
-```
-
-**原因**：`IDbConnection` 是旧接口，不支持真正的异步I/O。
-
-#### 3. CancellationToken 参数命名
-
-```csharp
-// ✅ 正确：参数名必须包含 "cancellation" 或 "token"
-Task<User?> GetByIdAsync(long id, CancellationToken ct = default);
-Task<User?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
-
-// ❌ 错误：不会被识别为 CancellationToken
-Task<User?> GetByIdAsync(long id, CancellationToken c = default);
-```
-
-#### 4. SQL 参数必须与方法参数匹配
-
-```csharp
-// ✅ 正确：参数名匹配（不区分大小写）
-[SqlTemplate("SELECT * FROM users WHERE id = @id AND age = @age")]
-Task<User?> GetUserAsync(long id, int age);
-
-// ❌ 错误：SQL中的参数找不到
-[SqlTemplate("SELECT * FROM users WHERE id = @userId")]
-Task<User?> GetUserAsync(long id);  // 参数名不匹配
-```
-
-#### 5. 实体类必须使用公共属性
-
-```csharp
-// ✅ 正确：公共属性
-public class User 
-{
-    public long Id { get; set; }
-    public string Name { get; set; }
-}
-
-// ❌ 错误：字段、私有属性不会被识别
-public class User 
-{
-    public long Id;  // ❌ 字段
-    private string Name { get; set; }  // ❌ 私有
-}
-```
-
-#### 6. Nullable 引用类型支持
-
-```csharp
-#nullable enable
-
-public class User 
-{
-    public long Id { get; set; }
-    public string Name { get; set; } = string.Empty;  // 不可空
-    public string? Email { get; set; }  // 可空
-    public int? Age { get; set; }  // 可空值类型
-}
-
-// 生成的代码会正确处理 null 检查
-if (!reader.IsDBNull(emailOrdinal))
-{
-    entity.Email = reader.GetString(emailOrdinal);
-}
-```
-
-### 🔒 安全注意事项
-
-#### 1. 防止SQL注入
-
-```csharp
-// ✅ 安全：使用参数化查询
-[SqlTemplate("SELECT * FROM users WHERE name = @name")]
-Task<List<User>> FindByNameAsync(string name);
-
-// ❌ 危险：不要使用字符串拼接（Sqlx不支持这种方式）
-// 所有 @参数 都会自动参数化，天然防SQL注入
-```
-
-#### 2. 连接管理
-
-```csharp
-// ✅ 正确：使用 using 或 await using
-await using DbConnection conn = new SqliteConnection("...");
-await conn.OpenAsync();
-// 自动关闭和释放
-
-// ❌ 错误：不释放连接
-DbConnection conn = new SqliteConnection("...");
-await conn.OpenAsync();
-// 可能导致连接泄漏
-```
-
-#### 3. 事务管理
-
-```csharp
-// ✅ 正确：使用 try-catch-finally
-await using var tx = await conn.BeginTransactionAsync();
-try 
-{
-    await repo.InsertAsync(user);
-    await tx.CommitAsync();
-}
-catch 
-{
-    await tx.RollbackAsync();
-    throw;
-}
-
-// ❌ 错误：忘记 Rollback
-await using var tx = await conn.BeginTransactionAsync();
-await repo.InsertAsync(user);
-await tx.CommitAsync();  // 如果出错怎么办？
-```
-
-### 🎯 命名约定
-
-#### 属性名 → 列名转换
-
-```csharp
-// 自动转换规则（PascalCase → snake_case）
-Id           → id
-Name         → name
-UserName     → user_name
-CreatedAt    → created_at
-IsActive     → is_active
-EmailAddress → email_address
-```
-
-#### 类名 → 表名转换
-
-```csharp
-// 默认：类名小写
-User    → user
-Product → product
-OrderItem → orderitem  // 注意：不是 order_item
-
-// 推荐：使用 [TableName] 明确指定
-[TableName("users")]
-public class User { }
-
-[TableName("order_items")]
-public class OrderItem { }
-```
-
----
-
-## 常见错误
-
-### 错误1: 生成的代码找不到
-
-**症状**：
-```
-error CS0535: 'UserRepository' does not implement interface member 'IUserRepository.GetByIdAsync(long)'
-```
-
-**原因**：
-1. 接口和实现在同一文件
-2. 缺少 `[SqlDefine]` 或 `[RepositoryFor]`
-3. 项目未重新编译
-
-**解决方案**：
-```csharp
-// 1. 确保接口和实现分文件
-// 2. 确保标记了必需特性
-[SqlDefine(SqlDefineTypes.SQLite)]
-[RepositoryFor(typeof(User))]
-public interface IUserRepository { }
-
-public partial class UserRepository(DbConnection connection) : IUserRepository { }
-
-// 3. 重新编译
-dotnet clean
-dotnet build
-```
-
-### 错误2: SQL参数找不到
-
-**症状**：
-```
-error: SQL template contains parameter @userId but method does not have matching parameter
-```
-
-**原因**：SQL中的参数名与方法参数不匹配
-
-**解决方案**：
-```csharp
-// ❌ 错误
-[SqlTemplate("SELECT * FROM users WHERE id = @userId")]
-Task<User?> GetByIdAsync(long id);
-
-// ✅ 正确
-[SqlTemplate("SELECT * FROM users WHERE id = @id")]
-Task<User?> GetByIdAsync(long id);
-```
-
-### 错误3: 异步方法不支持
-
-**症状**：
-```
-error: Cannot use IDbConnection with async methods
-```
-
-**原因**：使用了 `IDbConnection` 而不是 `DbConnection`
-
-**解决方案**：
-```csharp
-// ❌ 错误
-public partial class UserRepository(IDbConnection connection) : IUserRepository { }
-
-// ✅ 正确
-public partial class UserRepository(DbConnection connection) : IUserRepository { }
-```
-
-### 错误4: 返回类型不匹配
-
-**症状**：
-```
-error: Return type mismatch for method GetByIdAsync
-```
-
-**原因**：返回类型与SQL语句不匹配
-
-**解决方案**：
-```csharp
-// ✅ SELECT 单行 → Task<T?>
-[SqlTemplate("SELECT * FROM users WHERE id = @id")]
-Task<User?> GetByIdAsync(long id);
-
-// ✅ SELECT 多行 → Task<List<T>>
-[SqlTemplate("SELECT * FROM users")]
-Task<List<User>> GetAllAsync();
-
-// ✅ INSERT/UPDATE/DELETE → Task<int>
-[SqlTemplate("DELETE FROM users WHERE id = @id")]
-Task<int> DeleteAsync(long id);
-
-// ✅ COUNT → Task<long>
-[SqlTemplate("SELECT COUNT(*) FROM users")]
-Task<long> CountAsync();
-```
-
-### 错误5: 表达式树不支持的操作
-
-**症状**：
-```
-error: Expression type 'MethodCall' is not supported in SQL conversion
-```
-
-**原因**：使用了不支持的表达式操作
-
-**解决方案**：
-```csharp
-// ❌ 错误：不支持的方法调用
-u => u.Age.ToString() == "18"
-
-// ✅ 正确：使用支持的操作
-u => u.Age == 18
-
-// ❌ 错误：本地变量
-var minAge = 18;
-u => u.Age >= minAge
-
-// ✅ 正确：使用参数
-[SqlTemplate("SELECT {{columns}} FROM users {{where}}")]
-Task<List<User>> QueryAsync(
-    [ExpressionToSql] Expression<Func<User, bool>> predicate,
-    int minAge = 18);
-```
-
----
-
-## 性能优化
-
-### 1. 使用批量操作
-
-```csharp
-// ❌ 慢：循环插入（N次数据库往返）
-foreach (var user in users) 
-{
-    await repo.InsertAsync(user);
-}
-
-// ✅ 快：批量插入（1-2次数据库往返）
-await repo.BatchInsertAsync(users);
-```
-
-### 2. 使用 LIMIT 限制结果集
-
-```csharp
-// ❌ 慢：查询所有数据
-[SqlTemplate("SELECT {{columns}} FROM users")]
-Task<List<User>> GetAllAsync();
-
-// ✅ 快：限制结果数量
-[SqlTemplate("SELECT {{columns}} FROM users {{limit}}")]
-Task<List<User>> GetAllAsync(int? limit = 100);
-```
-
-### 3. 只查询需要的列
-
-```csharp
-// ❌ 慢：SELECT *
-[SqlTemplate("SELECT * FROM users")]
-Task<List<User>> GetAllAsync();
-
-// ✅ 快：只查询需要的列
-[SqlTemplate("SELECT id, name FROM users")]
-Task<List<Dictionary<string, object?>>> GetNamesAsync();
-```
-
-### 4. 使用连接池
-
-```csharp
-// 连接字符串中配置
-// SQLite
-"Data Source=app.db;Cache=Shared;Pooling=true"
-
-// MySQL
-"Server=localhost;Database=app;Pooling=true;Min Pool Size=5;Max Pool Size=100"
-
-// PostgreSQL
-"Host=localhost;Database=app;Pooling=true;Minimum Pool Size=5;Maximum Pool Size=100"
-```
-
-### 5. 使用索引
-
-```sql
--- 为常用查询字段创建索引
-CREATE INDEX idx_user_age ON users(age);
-CREATE INDEX idx_user_email ON users(email);
-CREATE INDEX idx_user_created_at ON users(created_at);
-
--- 组合索引
-CREATE INDEX idx_user_age_balance ON users(age, balance);
-```
-
-### 6. 避免 N+1 查询
-
-```csharp
-// ❌ 慢：N+1 查询
-var users = await userRepo.GetAllAsync();
-foreach (var user in users) 
-{
-    var orders = await orderRepo.GetByUserIdAsync(user.Id);  // N 次查询
-}
-
-// ✅ 快：使用 JOIN
-[SqlTemplate(@"
-    SELECT u.id, u.name, o.id as order_id, o.amount
-    FROM users u
-    LEFT JOIN orders o ON o.user_id = u.id
-")]
-Task<List<Dictionary<string, object?>>> GetUsersWithOrdersAsync();
-```
-
----
-
-## 故障排查
-
-### 查看生成的代码
-
-生成的代码位置：
-```
-项目目录/obj/Debug/net9.0/generated/Sqlx.Generator/Sqlx.Generator.CSharpGenerator/
-    └── UserRepository.g.cs
-```
-
-或在IDE中：
-- **Visual Studio**: Solution Explorer → Dependencies → Analyzers → Sqlx.Generator
-- **Rider**: 类似位置
-
-### 启用生成器日志
-
-```xml
-<!-- .csproj -->
-<PropertyGroup>
-    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-    <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
-</PropertyGroup>
-```
-
-### 常见问题检查清单
-
-- [ ] 接口和实现是否在不同文件？
-- [ ] 是否标记了 `[SqlDefine]`？
-- [ ] 是否标记了 `[RepositoryFor]`？
-- [ ] 是否使用 `DbConnection`（不是 `IDbConnection`）？
-- [ ] SQL参数名是否与方法参数匹配？
-- [ ] 返回类型是否正确？
-- [ ] 是否重新编译了项目？
-
----
-
-## 完整示例总结
-
-### 最小完整示例
-
-```csharp
-using System.Data.Common;
-using Microsoft.Data.Sqlite;
-using Sqlx;
-using Sqlx.Annotations;
-
-// 1. 实体
-[TableName("users")]
-public class User 
-{
-    public long Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public int Age { get; set; }
-}
-
-// 2. 接口
-[SqlDefine(SqlDefineTypes.SQLite)]
-[RepositoryFor(typeof(User))]
-public interface IUserRepository 
+public interface IUserRepository
 {
     [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
     Task<User?> GetByIdAsync(long id);
-    
-    [SqlTemplate("INSERT INTO {{table}} (name, age) VALUES (@name, @age)")]
+
+    [SqlTemplate("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values}})")]
     [ReturnInsertedId]
-    Task<long> InsertAsync(string name, int age);
+    Task<long> InsertAsync(User user);
+
+    [SqlTemplate("UPDATE {{table}} SET {{set --exclude Id CreatedAt}} WHERE id = @id")]
+    Task<int> UpdateAsync(User user);
+
+    [SqlTemplate("DELETE FROM {{table}} WHERE id = @id")]
+    Task<int> DeleteAsync(long id);
 }
 
-// 3. 实现
+// 3. 实现类（源生成器自动生成方法）
+[RepositoryFor(typeof(IUserRepository))]
 public partial class UserRepository(DbConnection connection) : IUserRepository { }
+```
 
-// 4. 使用
-class Program 
+
+### 模式 2: 统一方言架构（多数据库）
+
+```csharp
+// 1. 定义统一接口（使用占位符）
+public interface IUserRepository
 {
-    static async Task Main() 
-    {
-        await using var conn = new SqliteConnection("Data Source=:memory:");
-        await conn.OpenAsync();
-        
-        // 创建表
-        using var cmd = conn.CreateCommand();
-        cmd.CommandText = @"
-            CREATE TABLE users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                age INTEGER NOT NULL
-            )";
-        await cmd.ExecuteNonQueryAsync();
-        
-        // 使用仓储
-        var repo = new UserRepository(conn);
-        long id = await repo.InsertAsync("Alice", 25);
-        var user = await repo.GetByIdAsync(id);
-        
-        Console.WriteLine($"User: {user?.Name}, Age: {user?.Age}");
-    }
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
+    Task<User?> GetByIdAsync(long id);
+
+    [SqlTemplate("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values}}) {{returning_id}}")]
+    Task<long> InsertAsync(User user);
+
+    [SqlTemplate("UPDATE {{table}} SET is_active = {{bool_true}} WHERE id = @id")]
+    Task<int> ActivateAsync(long id);
+}
+
+// 2. SQLite 实现
+[RepositoryFor(typeof(IUserRepository), Dialect = SqlDefineTypes.SQLite, TableName = "users")]
+public partial class SQLiteUserRepository(DbConnection connection) : IUserRepository { }
+
+// 3. PostgreSQL 实现
+[RepositoryFor(typeof(IUserRepository), Dialect = SqlDefineTypes.PostgreSql, TableName = "users")]
+public partial class PostgreSQLUserRepository(DbConnection connection) : IUserRepository { }
+
+// 4. MySQL 实现
+[RepositoryFor(typeof(IUserRepository), Dialect = SqlDefineTypes.MySql, TableName = "users")]
+public partial class MySQLUserRepository(DbConnection connection) : IUserRepository { }
+
+// 5. SQL Server 实现
+[RepositoryFor(typeof(IUserRepository), Dialect = SqlDefineTypes.SqlServer, TableName = "users")]
+public partial class SqlServerUserRepository(DbConnection connection) : IUserRepository { }
+```
+
+**生成的 SQL 对比**:
+
+| 数据库 | `{{table}}` | `{{bool_true}}` | `{{returning_id}}` |
+|--------|------------|----------------|-------------------|
+| SQLite | `"users"` | `1` | (empty) |
+| PostgreSQL | `"users"` | `true` | `RETURNING id` |
+| MySQL | `` `users` `` | `1` | (empty) |
+| SQL Server | `[users]` | `1` | `OUTPUT INSERTED.id` |
+
+
+### 模式 3: 复杂查询
+
+```csharp
+public interface IUserRepository
+{
+    // 多条件查询
+    [SqlTemplate(@"
+        SELECT {{columns}}
+        FROM {{table}}
+        WHERE age >= @minAge
+          AND age <= @maxAge
+          AND is_active = @isActive
+        {{orderby created_at --desc}}
+        {{limit --param pageSize}}
+        {{offset --param skip}}
+    ")]
+    Task<List<User>> SearchAsync(int minAge, int maxAge, bool isActive, int pageSize, int skip);
+
+    // OR 条件
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE name LIKE @query OR email LIKE @query")]
+    Task<List<User>> SearchByNameOrEmailAsync(string query);
+
+    // NULL 检查
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE email IS NOT NULL")]
+    Task<List<User>> GetUsersWithEmailAsync();
+
+    // IN 查询（SQLite）
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id IN (SELECT value FROM json_each(@idsJson))")]
+    Task<List<User>> GetByIdsAsync(string idsJson);
+
+    // JOIN 查询
+    [SqlTemplate(@"
+        SELECT u.{{columns}}, o.id as order_id, o.amount
+        FROM {{table}} u
+        INNER JOIN orders o ON u.id = o.user_id
+        WHERE u.id = @userId
+    ")]
+    Task<List<UserWithOrders>> GetUserWithOrdersAsync(long userId);
 }
 ```
 
+
+### 模式 4: 批量操作
+
+```csharp
+public interface IUserRepository
+{
+    // 批量插入（循环调用）
+    async Task<int> InsertManyAsync(List<User> users)
+    {
+        var count = 0;
+        foreach (var user in users)
+        {
+            await InsertAsync(user);
+            count++;
+        }
+        return count;
+    }
+
+    // 批量更新（使用 JSON 数组）
+    [SqlTemplate("UPDATE {{table}} SET is_active = @isActive WHERE id IN (SELECT value FROM json_each(@idsJson))")]
+    Task<int> UpdateStatusBatchAsync(string idsJson, bool isActive);
+
+    // 批量删除
+    [SqlTemplate("DELETE FROM {{table}} WHERE id IN (SELECT value FROM json_each(@idsJson))")]
+    Task<int> DeleteBatchAsync(string idsJson);
+}
+
+// 使用示例
+var ids = new[] { 1L, 2L, 3L };
+var idsJson = JsonSerializer.Serialize(ids);
+await repo.UpdateStatusBatchAsync(idsJson, true);
+```
+
+### 模式 5: 事务支持
+
+```csharp
+// 使用标准 ADO.NET 事务
+await using var connection = new SqliteConnection("Data Source=app.db");
+await connection.OpenAsync();
+
+await using var transaction = await connection.BeginTransactionAsync();
+try
+{
+    var repo = new UserRepository(connection);
+
+    var userId = await repo.InsertAsync(new User { Name = "Alice" });
+    await repo.UpdateAsync(new User { Id = userId, Name = "Alice Updated" });
+
+    await transaction.CommitAsync();
+}
+catch
+{
+    await transaction.RollbackAsync();
+    throw;
+}
+```
+
+
 ---
 
-## 总结
+## ⚠️ 重要注意事项
+
+### ✅ 正确做法
+
+#### 1. 使用占位符生成复杂内容
+
+```csharp
+// ✅ 正确：使用 {{columns}} 自动生成列名
+[SqlTemplate("SELECT {{columns}} FROM {{table}}")]
+Task<List<User>> GetAllAsync();
+
+// ✅ 正确：使用 {{set}} 自动生成 SET 子句
+[SqlTemplate("UPDATE {{table}} SET {{set --exclude Id}} WHERE id = @id")]
+Task<int> UpdateAsync(User user);
+
+// ✅ 正确：使用 {{values}} 自动生成值占位符
+[SqlTemplate("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values}})")]
+Task<int> InsertAsync(User user);
+```
+
+#### 2. 直接写简单的 SQL
+
+```csharp
+// ✅ 正确：WHERE 条件直接写
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
+Task<User?> GetByIdAsync(long id);
+
+// ✅ 正确：聚合函数直接写
+[SqlTemplate("SELECT COUNT(*) FROM {{table}}")]
+Task<long> CountAsync();
+
+// ✅ 正确：INSERT/UPDATE/DELETE 关键字直接写
+[SqlTemplate("DELETE FROM {{table}} WHERE id = @id")]
+Task<int> DeleteAsync(long id);
+```
+
+#### 3. 参数化查询
+
+```csharp
+// ✅ 正确：使用 @参数
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE name = @name")]
+Task<User?> GetByNameAsync(string name);
+
+// ✅ 正确：多个参数
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE age >= @minAge AND age <= @maxAge")]
+Task<List<User>> GetByAgeRangeAsync(int minAge, int maxAge);
+```
+
+
+#### 4. 排除字段
+
+```csharp
+// ✅ 正确：插入时排除自增 ID
+[SqlTemplate("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values}})")]
+Task<int> InsertAsync(User user);
+
+// ✅ 正确：更新时排除不可变字段
+[SqlTemplate("UPDATE {{table}} SET {{set --exclude Id CreatedAt}} WHERE id = @id")]
+Task<int> UpdateAsync(User user);
+
+// ✅ 正确：只更新指定字段
+[SqlTemplate("UPDATE {{table}} SET {{set --only Name Email}} WHERE id = @id")]
+Task<int> UpdateBasicInfoAsync(User user);
+```
+
+#### 5. 使用 Record 类型
+
+```csharp
+// ✅ 正确：使用 Record
+[TableName("users")]
+public record User
+{
+    public long Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Email { get; set; }
+}
+```
+
+#### 6. 异步方法
+
+```csharp
+// ✅ 正确：所有方法都是异步的
+Task<List<User>> GetAllAsync();
+Task<User?> GetByIdAsync(long id);
+Task<int> InsertAsync(User user);
+```
+
+
+### ❌ 错误做法
+
+#### 1. 过度使用占位符
+
+```csharp
+// ❌ 错误：WHERE 条件不需要占位符
+[SqlTemplate("SELECT {{columns}} FROM {{table}} {{where id=@id}}")]
+Task<User?> GetByIdAsync(long id);
+
+// ✅ 正确：直接写 WHERE
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
+Task<User?> GetByIdAsync(long id);
+```
+
+#### 2. 字符串拼接（SQL 注入风险）
+
+```csharp
+// ❌ 错误：字符串拼接
+[SqlTemplate($"SELECT * FROM users WHERE name = '{name}'")]
+Task<User?> GetByNameAsync(string name);
+
+// ✅ 正确：参数化查询
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE name = @name")]
+Task<User?> GetByNameAsync(string name);
+```
+
+#### 3. 忘记排除自增 ID
+
+```csharp
+// ❌ 错误：包含 Id 字段
+[SqlTemplate("INSERT INTO {{table}} ({{columns}}) VALUES ({{values}})")]
+Task<int> InsertAsync(User user);
+
+// ✅ 正确：排除 Id
+[SqlTemplate("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values}})")]
+Task<int> InsertAsync(User user);
+```
+
+#### 4. 更新不可变字段
+
+```csharp
+// ❌ 错误：会更新 CreatedAt
+[SqlTemplate("UPDATE {{table}} SET {{set}} WHERE id = @id")]
+Task<int> UpdateAsync(User user);
+
+// ✅ 正确：排除不可变字段
+[SqlTemplate("UPDATE {{table}} SET {{set --exclude Id CreatedAt}} WHERE id = @id")]
+Task<int> UpdateAsync(User user);
+```
+
+
+#### 5. 硬编码表名
+
+```csharp
+// ❌ 错误：硬编码表名
+[SqlTemplate("SELECT * FROM users WHERE id = @id")]
+Task<User?> GetByIdAsync(long id);
+
+// ✅ 正确：使用 {{table}} 占位符
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
+Task<User?> GetByIdAsync(long id);
+```
+
+#### 6. 硬编码布尔值
+
+```csharp
+// ❌ 错误：硬编码 1（不同数据库可能不同）
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE is_active = 1")]
+Task<List<User>> GetActiveAsync();
+
+// ✅ 正确：使用 {{bool_true}} 占位符
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE is_active = {{bool_true}}")]
+Task<List<User>> GetActiveAsync();
+```
+
+#### 7. 同步方法
+
+```csharp
+// ❌ 错误：同步方法
+List<User> GetAll();
+
+// ✅ 正确：异步方法
+Task<List<User>> GetAllAsync();
+```
+
+
+---
+
+## 📖 完整示例
+
+### 示例 1: 用户管理系统
+
+```csharp
+// 1. 实体类
+[TableName("users")]
+public record User
+{
+    public long Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string? Password { get; set; }
+    public int Age { get; set; }
+    public bool IsActive { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+}
+
+// 2. 仓储接口
+[SqlDefine(SqlDefineTypes.SQLite)]
+public interface IUserRepository
+{
+    // 查询所有用户
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} {{orderby created_at --desc}}")]
+    Task<List<User>> GetAllAsync();
+
+    // 根据 ID 查询
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
+    Task<User?> GetByIdAsync(long id);
+
+    // 根据邮箱查询
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE email = @email")]
+    Task<User?> GetByEmailAsync(string email);
+
+    // 搜索用户（排除密码）
+    [SqlTemplate("SELECT {{columns --exclude Password}} FROM {{table}} WHERE name LIKE @query OR email LIKE @query")]
+    Task<List<User>> SearchAsync(string query);
+
+    // 分页查询活跃用户
+    [SqlTemplate(@"
+        SELECT {{columns --exclude Password}}
+        FROM {{table}}
+        WHERE is_active = {{bool_true}}
+        {{orderby created_at --desc}}
+        {{limit --param pageSize}}
+        {{offset --param skip}}
+    ")]
+    Task<List<User>> GetActivePagedAsync(int pageSize, int skip);
+
+    // 创建用户
+    [SqlTemplate("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values}})")]
+    [ReturnInsertedId]
+    Task<long> InsertAsync(User user);
+
+    // 更新用户（排除 Id 和 CreatedAt）
+    [SqlTemplate("UPDATE {{table}} SET {{set --exclude Id CreatedAt}} WHERE id = @id")]
+    Task<int> UpdateAsync(User user);
+
+    // 激活用户
+    [SqlTemplate("UPDATE {{table}} SET is_active = {{bool_true}}, updated_at = {{current_timestamp}} WHERE id = @id")]
+    Task<int> ActivateAsync(long id);
+
+    // 删除用户
+    [SqlTemplate("DELETE FROM {{table}} WHERE id = @id")]
+    Task<int> DeleteAsync(long id);
+
+    // 统计
+    [SqlTemplate("SELECT COUNT(*) FROM {{table}}")]
+    Task<long> CountAsync();
+
+    [SqlTemplate("SELECT COUNT(*) FROM {{table}} WHERE is_active = {{bool_true}}")]
+    Task<long> CountActiveAsync();
+
+    // 检查邮箱是否存在
+    [SqlTemplate("SELECT EXISTS(SELECT 1 FROM {{table}} WHERE email = @email)")]
+    Task<bool> EmailExistsAsync(string email);
+}
+
+// 3. 实现类
+[RepositoryFor(typeof(IUserRepository))]
+public partial class UserRepository(DbConnection connection) : IUserRepository { }
+```
+
+
+### 示例 2: 电商订单系统
+
+```csharp
+// 1. 实体类
+[TableName("orders")]
+public record Order
+{
+    public long Id { get; set; }
+    public long UserId { get; set; }
+    public decimal Amount { get; set; }
+    public string Status { get; set; } = "pending";
+    public DateTime CreatedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
+}
+
+// 2. 仓储接口
+[SqlDefine(SqlDefineTypes.SQLite)]
+public interface IOrderRepository
+{
+    // 查询用户的所有订单
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE user_id = @userId {{orderby created_at --desc}}")]
+    Task<List<Order>> GetByUserIdAsync(long userId);
+
+    // 查询待处理订单
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE status = @status {{orderby created_at}}")]
+    Task<List<Order>> GetByStatusAsync(string status);
+
+    // 查询用户的订单总额
+    [SqlTemplate("SELECT SUM(amount) FROM {{table}} WHERE user_id = @userId AND status = @status")]
+    Task<decimal> GetTotalAmountAsync(long userId, string status);
+
+    // 创建订单
+    [SqlTemplate("INSERT INTO {{table}} ({{columns --exclude Id CompletedAt}}) VALUES ({{values}})")]
+    [ReturnInsertedId]
+    Task<long> InsertAsync(Order order);
+
+    // 更新订单状态
+    [SqlTemplate("UPDATE {{table}} SET status = @status, completed_at = @completedAt WHERE id = @id")]
+    Task<int> UpdateStatusAsync(long id, string status, DateTime? completedAt);
+
+    // 取消订单
+    [SqlTemplate("UPDATE {{table}} SET status = 'cancelled' WHERE id = @id AND status = 'pending'")]
+    Task<int> CancelAsync(long id);
+
+    // 统计用户订单数
+    [SqlTemplate("SELECT COUNT(*) FROM {{table}} WHERE user_id = @userId")]
+    Task<long> CountByUserAsync(long userId);
+}
+
+// 3. 实现类
+[RepositoryFor(typeof(IOrderRepository))]
+public partial class OrderRepository(DbConnection connection) : IOrderRepository { }
+```
+
+
+### 示例 3: 博客系统（多数据库）
+
+```csharp
+// 1. 实体类
+[TableName("posts")]
+public record Post
+{
+    public long Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Content { get; set; } = string.Empty;
+    public long AuthorId { get; set; }
+    public bool IsPublished { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? PublishedAt { get; set; }
+}
+
+// 2. 统一接口（使用占位符）
+public interface IPostRepository
+{
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
+    Task<Post?> GetByIdAsync(long id);
+
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE is_published = {{bool_true}} {{orderby published_at --desc}}")]
+    Task<List<Post>> GetPublishedAsync();
+
+    [SqlTemplate("INSERT INTO {{table}} ({{columns --exclude Id PublishedAt}}) VALUES ({{values}}) {{returning_id}}")]
+    Task<long> InsertAsync(Post post);
+
+    [SqlTemplate("UPDATE {{table}} SET is_published = {{bool_true}}, published_at = {{current_timestamp}} WHERE id = @id")]
+    Task<int> PublishAsync(long id);
+
+    [SqlTemplate("DELETE FROM {{table}} WHERE id = @id")]
+    Task<int> DeleteAsync(long id);
+}
+
+// 3. SQLite 实现
+[RepositoryFor(typeof(IPostRepository), Dialect = SqlDefineTypes.SQLite, TableName = "posts")]
+public partial class SQLitePostRepository(DbConnection connection) : IPostRepository { }
+
+// 4. PostgreSQL 实现
+[RepositoryFor(typeof(IPostRepository), Dialect = SqlDefineTypes.PostgreSql, TableName = "posts")]
+public partial class PostgreSQLPostRepository(DbConnection connection) : IPostRepository { }
+
+// 5. MySQL 实现
+[RepositoryFor(typeof(IPostRepository), Dialect = SqlDefineTypes.MySql, TableName = "posts")]
+public partial class MySQLPostRepository(DbConnection connection) : IPostRepository { }
+
+// 6. SQL Server 实现
+[RepositoryFor(typeof(IPostRepository), Dialect = SqlDefineTypes.SqlServer, TableName = "posts")]
+public partial class SqlServerPostRepository(DbConnection connection) : IPostRepository { }
+```
+
+**生成的 SQL 对比**:
+
+```sql
+-- SQLite
+INSERT INTO "posts" (...) VALUES (...)
+-- (使用 last_insert_rowid() 获取 ID)
+
+-- PostgreSQL
+INSERT INTO "posts" (...) VALUES (...) RETURNING id
+
+-- MySQL
+INSERT INTO `posts` (...) VALUES (...)
+-- (使用 LAST_INSERT_ID() 获取 ID)
+
+-- SQL Server
+INSERT INTO [posts] (...) OUTPUT INSERTED.id VALUES (...)
+```
+
+
+---
+
+## 🚀 性能优化
+
+### 1. 只查询需要的列
+
+```csharp
+// ❌ 不好：查询所有列
+[SqlTemplate("SELECT {{columns}} FROM {{table}}")]
+Task<List<User>> GetAllAsync();
+
+// ✅ 更好：只查询需要的列
+[SqlTemplate("SELECT {{columns --only Id Name Email}} FROM {{table}}")]
+Task<List<User>> GetBasicInfoAsync();
+```
+
+### 2. 使用索引列进行查询
+
+```csharp
+// ✅ 好：使用索引列（id, email）
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
+Task<User?> GetByIdAsync(long id);
+
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE email = @email")]
+Task<User?> GetByEmailAsync(string email);
+```
+
+### 3. 批量操作
+
+```csharp
+// ❌ 不好：循环单条插入
+foreach (var user in users)
+{
+    await repo.InsertAsync(user);
+}
+
+// ✅ 更好：使用批量操作
+var idsJson = JsonSerializer.Serialize(ids);
+await repo.UpdateStatusBatchAsync(idsJson, true);
+```
+
+### 4. 连接管理
+
+```csharp
+// ✅ 好：使用 using 自动释放连接
+await using var connection = new SqliteConnection("Data Source=app.db");
+await connection.OpenAsync();
+
+var repo = new UserRepository(connection);
+var users = await repo.GetAllAsync();
+```
+
+
+---
+
+## 🔍 调试技巧
+
+### 1. 查看生成的代码
+
+生成的代码位于：`obj/Debug/net9.0/generated/Sqlx.Generator/Sqlx.Generator.CSharpGenerator/`
+
+```
+obj/Debug/net9.0/generated/
+└── Sqlx.Generator/
+    └── Sqlx.Generator.CSharpGenerator/
+        └── UserRepository.Repository.g.cs  ← 查看这个文件
+```
+
+### 2. 查看生成的 SQL
+
+在生成的代码中，可以看到实际的 SQL：
+
+```csharp
+public async Task<User?> GetByIdAsync(long id)
+{
+    var __sql__ = @"SELECT id, name, email, age, is_active, created_at FROM ""users"" WHERE id = @id";
+    // ... 执行逻辑
+}
+```
+
+### 3. 编译错误
+
+如果遇到编译错误，检查：
+- ✅ 是否标记了 `[RepositoryFor]` 特性
+- ✅ 是否使用了 `partial` 关键字
+- ✅ SQL 模板是否正确
+- ✅ 参数名是否匹配
+
+### 4. 运行时错误
+
+如果遇到运行时错误，检查：
+- ✅ 数据库连接是否正确
+- ✅ 表名是否存在
+- ✅ 列名是否匹配
+- ✅ 参数类型是否正确
+
+
+---
+
+## 📋 快速参考
+
+### 核心特性
+
+| 特性 | 用途 | 示例 |
+|------|------|------|
+| `[SqlDefine]` | 定义数据库类型 | `[SqlDefine(SqlDefineTypes.SQLite)]` |
+| `[SqlTemplate]` | 定义 SQL 模板 | `[SqlTemplate("SELECT * FROM {{table}}")]` |
+| `[RepositoryFor]` | 标记仓储实现 | `[RepositoryFor(typeof(IUserRepository))]` |
+| `[TableName]` | 指定表名 | `[TableName("users")]` |
+| `[ReturnInsertedId]` | 返回插入的 ID | `[ReturnInsertedId]` |
+
+### 核心占位符
+
+| 占位符 | 作用 |
+|--------|------|
+| `{{table}}` | 表名 |
+| `{{columns}}` | 列名列表 |
+| `{{columns --exclude Id}}` | 排除列 |
+| `{{columns --only Id Name}}` | 只包含列 |
+| `{{values}}` | 值占位符 |
+| `{{set}}` | SET 子句 |
+| `{{set --exclude Id}}` | SET 排除列 |
+| `{{orderby col}}` | 排序 |
+| `{{orderby col --desc}}` | 降序 |
+| `{{limit}}` | LIMIT 子句 |
+| `{{offset}}` | OFFSET 子句 |
+| `{{bool_true}}` | 布尔 true |
+| `{{bool_false}}` | 布尔 false |
+| `{{current_timestamp}}` | 当前时间戳 |
+| `{{returning_id}}` | RETURNING/OUTPUT 子句 |
+
+### 数据库类型
+
+| 类型 | 枚举值 |
+|------|--------|
+| SQLite | `SqlDefineTypes.SQLite` |
+| PostgreSQL | `SqlDefineTypes.PostgreSql` |
+| MySQL | `SqlDefineTypes.MySql` |
+| SQL Server | `SqlDefineTypes.SqlServer` |
+
+
+---
+
+## 🎓 学习路径
+
+### 第 1 步：基础 CRUD（5 分钟）
+
+1. 定义实体类（使用 `[TableName]`）
+2. 定义接口（使用 `[SqlTemplate]`）
+3. 创建实现类（使用 `[RepositoryFor]`）
+4. 使用仓储
+
+### 第 2 步：占位符系统（10 分钟）
+
+1. 学习核心占位符：`{{table}}`, `{{columns}}`, `{{values}}`, `{{set}}`, `{{orderby}}`
+2. 学习排除选项：`--exclude`, `--only`
+3. 学习方言占位符：`{{bool_true}}`, `{{current_timestamp}}`, `{{returning_id}}`
+
+### 第 3 步：复杂查询（15 分钟）
+
+1. 多条件查询（AND, OR）
+2. 分页查询（`{{limit}}`, `{{offset}}`）
+3. 聚合查询（COUNT, SUM, AVG）
+4. JOIN 查询
+
+### 第 4 步：多数据库支持（10 分钟）
+
+1. 理解统一方言架构
+2. 使用 `RepositoryFor` 的 `Dialect` 和 `TableName` 参数
+3. 为每个数据库创建实现类
+
+### 第 5 步：最佳实践（10 分钟）
+
+1. 何时使用占位符，何时直接写 SQL
+2. 参数化查询避免 SQL 注入
+3. 排除字段的技巧
+4. 性能优化建议
+
+---
+
+## 📚 相关文档
+
+- [快速开始指南](docs/QUICK_START_GUIDE.md) - 5 分钟上手
+- [占位符完整指南](docs/PLACEHOLDERS.md) - 70+ 占位符详解
+- [API 参考](docs/API_REFERENCE.md) - 完整 API 文档
+- [最佳实践](docs/BEST_PRACTICES.md) - 推荐用法
+- [统一方言指南](docs/UNIFIED_DIALECT_USAGE_GUIDE.md) - 多数据库支持
+- [TodoWebApi 示例](samples/TodoWebApi/) - 完整 Web API 示例
+
+---
+
+## 🎯 总结
 
 ### Sqlx 的核心优势
 
-1. ✅ **极致性能** - 接近原生 ADO.NET（1.05-1.13x）
-2. ✅ **类型安全** - 编译时验证，零运行时错误
-3. ✅ **零反射** - 所有代码编译时生成
-4. ✅ **完全异步** - 真正的异步I/O
-5. ✅ **简单易用** - 学习曲线极低
-6. ✅ **跨数据库** - 一套代码，5种数据库
+1. **编译时生成** - 零运行时开销，接近 ADO.NET 性能
+2. **类型安全** - 编译时验证，减少运行时错误
+3. **占位符系统** - 自动生成复杂 SQL，减少手写代码
+4. **多数据库** - 一套代码支持 4 种数据库
+5. **零配置** - 无需 DbContext、无需映射配置
+6. **易学易用** - 5 个核心占位符即可上手
 
-### Sqlx 的适用场景
+### 设计理念
 
-✅ **推荐使用**：
-- 性能要求高的应用
-- 需要完全控制SQL的场景
-- 微服务架构
-- AOT部署
-- CRUD为主的应用
+- ✅ **智能占位符** - 用于自动生成复杂内容（列名、SET 子句等）
+- ✅ **直接写 SQL** - 简单的内容（WHERE、聚合函数）直接写更清晰
+- ✅ **类型安全** - 编译时验证，发现问题更早
+- ✅ **性能优先** - 零运行时开销，接近原生性能
 
-❌ **不推荐使用**：
-- 需要复杂ORM功能（导航属性、延迟加载）
-- 团队不熟悉SQL
-- 需要频繁更改数据模型
+### 开始使用
 
-### 快速参考卡片
-
-```csharp
-// 基础模板
-[SqlDefine(SqlDefineTypes.SQLite)]
-[RepositoryFor(typeof(Entity))]
-public interface IRepo {
-    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
-    Task<Entity?> GetAsync(long id);
-}
-public partial class Repo(DbConnection conn) : IRepo { }
-
-// 常用占位符
-{{columns}}      // 列列表
-{{table}}        // 表名
-{{where}}        // WHERE子句（表达式树）
-{{limit}}        // LIMIT
-{{offset}}       // OFFSET
-{{orderby col}}  // ORDER BY
-{{set}}          // UPDATE SET
-{{batch_values}} // 批量VALUES
-
-// 常用特性
-[ReturnInsertedId]    // 返回自增ID
-[BatchOperation]      // 批量操作
-[ExpressionToSql]     // 表达式参数
-[IncludeDeleted]      // 包含软删除
-
-// 拦截器
-partial void OnExecuting(string op, DbCommand cmd);
-partial void OnExecuted(string op, DbCommand cmd, long ms);
-partial void OnExecuteFail(string op, DbCommand cmd, Exception ex);
-```
+1. 安装 NuGet 包：`dotnet add package Sqlx`
+2. 定义实体和接口
+3. 标记实现类
+4. 开始使用！
 
 ---
 
-**文档版本**: 0.4.0  
-**最后更新**: 2025-10-26  
-**维护**: Sqlx Team
+<div align="center">
 
+**Sqlx - 让数据访问回归简单，让性能接近极致！** 🚀
+
+Made with ❤️ by the Sqlx Team
+
+</div>

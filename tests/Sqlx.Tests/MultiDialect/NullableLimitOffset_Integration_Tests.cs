@@ -175,7 +175,14 @@ public abstract class NullableLimitOffsetTestBase
     public async Task Cleanup()
     {
         if (Connection != null)
+        {
+            // 清理测试数据
+            if (Repository != null)
+            {
+                await Repository.DeleteAllAsync();
+            }
             await Connection.DisposeAsync();
+        }
     }
 
     protected async Task CreateTableAsync()
@@ -193,7 +200,7 @@ public abstract class NullableLimitOffsetTestBase
         };
         await cmd.ExecuteNonQueryAsync();
         
-        // 清空表数据
+        // 清空表数据 (确保测试开始时数据是干净的)
         cmd.CommandText = $"DELETE FROM {TableName}";
         await cmd.ExecuteNonQueryAsync();
     }

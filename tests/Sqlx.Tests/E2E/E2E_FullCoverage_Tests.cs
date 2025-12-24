@@ -178,9 +178,14 @@ public abstract class E2ETestBase
     }
 
     [TestCleanup]
-    public void Cleanup()
+    public async Task Cleanup()
     {
-        Connection?.Dispose();
+        if (Connection != null)
+        {
+            // 清理测试数据
+            await CleanupDataAsync();
+            Connection.Dispose();
+        }
     }
 
     protected abstract Task CreateTablesAsync();

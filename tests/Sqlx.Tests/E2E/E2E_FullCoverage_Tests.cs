@@ -164,7 +164,9 @@ public abstract class E2ETestBase
             return;
         }
 
-        await Connection.OpenAsync();
+        if (Connection.State != System.Data.ConnectionState.Open)
+            await Connection.OpenAsync();
+            
         ProductRepo = CreateProductRepository(Connection);
         OrderRepo = CreateOrderRepository(Connection);
 

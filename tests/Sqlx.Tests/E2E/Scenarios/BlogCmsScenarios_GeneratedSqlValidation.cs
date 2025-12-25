@@ -281,17 +281,18 @@ public class BlogCmsScenarios_GeneratedSqlValidation
     [TestCategory("TDD")]
     [TestCategory("GeneratedSql")]
     [TestCategory("CrossDialect")]
+    [Ignore("MySQL comparison test - placeholder for future implementation")]
     public void MySQL_BlogPostRepository_ShouldGenerateSameFunctionalityAsSQLite()
     {
         // This test would verify MySQL generates correct SQL
-        // Currently skipped because MySQL requires Docker
+        // Marked as Ignore until implementation is complete
         
         // When MySQL is available, this test should:
         // 1. Create the same data as SQLite tests
         // 2. Verify all operations work identically
         // 3. Ensure placeholders expand correctly for MySQL syntax
         
-        Assert.Inconclusive("MySQL tests require Docker - skipping for now");
+        Assert.Inconclusive("MySQL comparison test not yet implemented");
     }
 
     [TestMethod]

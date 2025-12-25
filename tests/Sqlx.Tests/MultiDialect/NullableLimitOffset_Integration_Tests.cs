@@ -506,7 +506,7 @@ public class NullableLimitOffset_SQLite_Tests : NullableLimitOffsetTestBase
 [TestCategory(TestCategories.CI)]
 public class NullableLimitOffset_MySQL_Tests : NullableLimitOffsetTestBase
 {
-    protected override string TableName => "pagination_users_my";
+    protected override string TableName => "pagination_users_my_nullable";
     protected override SqlDefineTypes DialectType => SqlDefineTypes.MySql;
 
     protected override DbConnection? CreateConnection()

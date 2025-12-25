@@ -262,11 +262,12 @@ public class AuthenticationScenarios_GeneratedSqlValidation
     [TestCategory("TDD")]
     [TestCategory("GeneratedSql")]
     [TestCategory("CrossDialect")]
+    [Ignore("MySQL comparison test - placeholder for future implementation")]
     public void MySQL_AuthRepositories_ShouldGenerateSameFunctionalityAsSQLite()
     {
         // This test would verify MySQL generates correct SQL
-        // Currently skipped because MySQL requires Docker
+        // Marked as Ignore until implementation is complete
         
-        Assert.Inconclusive("MySQL tests require Docker - skipping for now");
+        Assert.Inconclusive("MySQL comparison test not yet implemented");
     }
 }

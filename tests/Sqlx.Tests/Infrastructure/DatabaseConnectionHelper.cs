@@ -17,13 +17,20 @@ using Testcontainers.MsSql;
 namespace Sqlx.Tests.Infrastructure;
 
 /// <summary>
-/// 数据库连接辅助类，使用 Testcontainers 自动管理数据库容器
-/// 每个测试类使用独立的容器实例，测试方法之间通过清理数据来隔离
+/// 数据库连接辅助类
+/// CI环境：使用GitHub Actions提供的数据库服务（通过环境变量配置）
+/// 本地环境：使用Testcontainers自动管理数据库容器，每个测试类使用独立的容器实例
 /// </summary>
 public static class DatabaseConnectionHelper
 {
     // 使用 ConcurrentDictionary 跟踪测试类和对应的容器
     private static readonly ConcurrentDictionary<string, IAsyncDisposable> _containerMap = new();
+    
+    /// <summary>
+    /// 判断当前是否在CI环境
+    /// </summary>
+    private static bool IsCI => !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI")) ||
+                                !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"));
 
     /// <summary>
     /// 清理指定测试类的容器
@@ -58,13 +65,31 @@ public static class DatabaseConnectionHelper
     }
 
     /// <summary>
-    /// 获取PostgreSQL数据库连接（使用 Testcontainers）
-    /// 每个测试类使用独立的容器实例，测试方法之间通过清理数据来隔离
+    /// 获取PostgreSQL数据库连接
+    /// CI环境：使用GitHub Actions提供的数据库服务
+    /// 本地环境：使用Testcontainers，每个测试类使用独立的容器实例
     /// </summary>
     public static DbConnection? GetPostgreSQLConnection(string testClassName, TestContext? testContext = null)
     {
         try
         {
+            // CI环境：使用环境变量中的连接字符串
+            if (IsCI)
+            {
+                var connectionString = Environment.GetEnvironmentVariable("POSTGRESQL_CONNECTION");
+                if (string.IsNullOrEmpty(connectionString))
+                {
+                    Console.WriteLine($"⚠️ [{testClassName}] POSTGRESQL_CONNECTION environment variable not set in CI");
+                    return null;
+                }
+                
+                Console.WriteLine($"🔗 [{testClassName}] Using CI PostgreSQL service");
+                var ciConnection = new Npgsql.NpgsqlConnection(connectionString);
+                ciConnection.Open();
+                return ciConnection;
+            }
+            
+            // 本地环境：使用Testcontainers
             // 检查是否已经为这个测试类创建了容器
             if (!_containerMap.ContainsKey(testClassName))
             {
@@ -84,14 +109,14 @@ public static class DatabaseConnectionHelper
             }
 
             var existingContainer = (PostgreSqlContainer)_containerMap[testClassName];
-            var connection = new Npgsql.NpgsqlConnection(existingContainer.GetConnectionString());
-            connection.Open();
+            var localConnection = new Npgsql.NpgsqlConnection(existingContainer.GetConnectionString());
+            localConnection.Open();
             
-            return connection;
+            return localConnection;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"⚠️ [{testClassName}] Failed to start PostgreSQL container: {ex.GetType().Name}: {ex.Message}");
+            Console.WriteLine($"⚠️ [{testClassName}] Failed to connect to PostgreSQL: {ex.GetType().Name}: {ex.Message}");
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
             if (ex.InnerException != null)
             {
@@ -102,13 +127,31 @@ public static class DatabaseConnectionHelper
     }
 
     /// <summary>
-    /// 获取MySQL数据库连接（使用 Testcontainers）
-    /// 每个测试类使用独立的容器实例，测试方法之间通过清理数据来隔离
+    /// 获取MySQL数据库连接
+    /// CI环境：使用GitHub Actions提供的数据库服务
+    /// 本地环境：使用Testcontainers，每个测试类使用独立的容器实例
     /// </summary>
     public static DbConnection? GetMySQLConnection(string testClassName, TestContext? testContext = null)
     {
         try
         {
+            // CI环境：使用环境变量中的连接字符串
+            if (IsCI)
+            {
+                var connectionString = Environment.GetEnvironmentVariable("MYSQL_CONNECTION");
+                if (string.IsNullOrEmpty(connectionString))
+                {
+                    Console.WriteLine($"⚠️ [{testClassName}] MYSQL_CONNECTION environment variable not set in CI");
+                    return null;
+                }
+                
+                Console.WriteLine($"🔗 [{testClassName}] Using CI MySQL service");
+                var ciConnection = new MySqlConnector.MySqlConnection(connectionString);
+                ciConnection.Open();
+                return ciConnection;
+            }
+            
+            // 本地环境：使用Testcontainers
             // 检查是否已经为这个测试类创建了容器
             if (!_containerMap.ContainsKey(testClassName))
             {
@@ -128,14 +171,14 @@ public static class DatabaseConnectionHelper
             }
 
             var existingContainer = (MySqlContainer)_containerMap[testClassName];
-            var connection = new MySqlConnector.MySqlConnection(existingContainer.GetConnectionString());
-            connection.Open();
+            var localConnection = new MySqlConnector.MySqlConnection(existingContainer.GetConnectionString());
+            localConnection.Open();
             
-            return connection;
+            return localConnection;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"⚠️ [{testClassName}] Failed to start MySQL container: {ex.GetType().Name}: {ex.Message}");
+            Console.WriteLine($"⚠️ [{testClassName}] Failed to connect to MySQL: {ex.GetType().Name}: {ex.Message}");
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
             if (ex.InnerException != null)
             {
@@ -146,13 +189,31 @@ public static class DatabaseConnectionHelper
     }
 
     /// <summary>
-    /// 获取SQL Server数据库连接（使用 Testcontainers）
-    /// 每个测试类使用独立的容器实例，测试方法之间通过清理数据来隔离
+    /// 获取SQL Server数据库连接
+    /// CI环境：使用GitHub Actions提供的数据库服务
+    /// 本地环境：使用Testcontainers，每个测试类使用独立的容器实例
     /// </summary>
     public static DbConnection? GetSqlServerConnection(string testClassName, TestContext? testContext = null)
     {
         try
         {
+            // CI环境：使用环境变量中的连接字符串
+            if (IsCI)
+            {
+                var connectionString = Environment.GetEnvironmentVariable("SQLSERVER_CONNECTION");
+                if (string.IsNullOrEmpty(connectionString))
+                {
+                    Console.WriteLine($"⚠️ [{testClassName}] SQLSERVER_CONNECTION environment variable not set in CI");
+                    return null;
+                }
+                
+                Console.WriteLine($"🔗 [{testClassName}] Using CI SQL Server service");
+                var ciConnection = new Microsoft.Data.SqlClient.SqlConnection(connectionString);
+                ciConnection.Open();
+                return ciConnection;
+            }
+            
+            // 本地环境：使用Testcontainers
             // 检查是否已经为这个测试类创建了容器
             if (!_containerMap.ContainsKey(testClassName))
             {
@@ -170,14 +231,14 @@ public static class DatabaseConnectionHelper
             }
 
             var existingContainer = (MsSqlContainer)_containerMap[testClassName];
-            var connection = new Microsoft.Data.SqlClient.SqlConnection(existingContainer.GetConnectionString());
-            connection.Open();
+            var localConnection = new Microsoft.Data.SqlClient.SqlConnection(existingContainer.GetConnectionString());
+            localConnection.Open();
             
-            return connection;
+            return localConnection;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"⚠️ [{testClassName}] Failed to start SQL Server container: {ex.GetType().Name}: {ex.Message}");
+            Console.WriteLine($"⚠️ [{testClassName}] Failed to connect to SQL Server: {ex.GetType().Name}: {ex.Message}");
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
             if (ex.InnerException != null)
             {

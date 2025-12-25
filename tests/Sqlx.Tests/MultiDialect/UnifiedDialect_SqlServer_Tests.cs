@@ -27,7 +27,7 @@ public class UnifiedDialect_SqlServer_Tests : UnifiedDialectTestBase
 
     protected override DbConnection? CreateConnection()
     {
-        return DatabaseConnectionHelper.GetSqlServerConnection(TestContext);
+        return DatabaseConnectionHelper.GetSqlServerConnection(nameof(UnifiedDialect_SqlServer_Tests), TestContext);
     }
 
     protected override IUnifiedDialectUserRepository CreateRepository(DbConnection connection)
@@ -42,5 +42,11 @@ public class UnifiedDialect_SqlServer_Tests : UnifiedDialectTestBase
     protected override Task DropTableAsync() => DropUnifiedTableAsync();
 
     public TestContext TestContext { get; set; } = null!;
+    
+    [ClassCleanup]
+    public static async Task ClassCleanup()
+    {
+        await DatabaseConnectionHelper.CleanupContainerAsync(nameof(UnifiedDialect_SqlServer_Tests));
+    }
 }
 

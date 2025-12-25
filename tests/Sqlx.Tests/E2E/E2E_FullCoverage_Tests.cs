@@ -191,6 +191,8 @@ public abstract class E2ETestBase
             {
                 // 忽略清理错误
             }
+            
+            // 只关闭连接，不清理容器（容器在 ClassCleanup 中清理）
             Connection.Dispose();
         }
     }
@@ -495,7 +497,7 @@ public class E2E_MySQL_Tests : E2ETestBase
 
     protected override DbConnection? CreateConnection()
     {
-        return DatabaseConnectionHelper.GetMySQLConnection(TestContext);
+        return DatabaseConnectionHelper.GetMySQLConnection(nameof(E2E_MySQL_Tests), TestContext);
     }
 
     protected override IE2EProductRepository CreateProductRepository(DbConnection connection)
@@ -505,6 +507,12 @@ public class E2E_MySQL_Tests : E2ETestBase
         => new MySQLE2EOrderRepository(connection);
     
     public TestContext TestContext { get; set; } = null!;
+    
+    [ClassCleanup]
+    public static async Task ClassCleanup()
+    {
+        await DatabaseConnectionHelper.CleanupContainerAsync(nameof(E2E_MySQL_Tests));
+    }
 
     protected override async Task CreateTablesAsync()
     {

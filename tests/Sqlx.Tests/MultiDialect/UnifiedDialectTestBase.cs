@@ -12,6 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Sqlx.Annotations;
+using Sqlx.Tests.Infrastructure;
 
 namespace Sqlx.Tests.MultiDialect;
 
@@ -278,6 +279,7 @@ public abstract class UnifiedDialectTestBase
     {
         if (Connection != null)
         {
+            // 只关闭连接，不清理容器（容器在 ClassCleanup 中清理）
             await Connection.DisposeAsync();
         }
     }

@@ -191,6 +191,8 @@ public abstract class NullableLimitOffsetTestBase
                     // 忽略清理错误
                 }
             }
+            
+            // 只关闭连接，不清理容器（容器在 ClassCleanup 中清理）
             await Connection.DisposeAsync();
         }
     }
@@ -511,12 +513,18 @@ public class NullableLimitOffset_MySQL_Tests : NullableLimitOffsetTestBase
 
     protected override DbConnection? CreateConnection()
     {
-        return DatabaseConnectionHelper.GetMySQLConnection(TestContext);
+        return DatabaseConnectionHelper.GetMySQLConnection(nameof(NullableLimitOffset_MySQL_Tests), TestContext);
     }
 
     protected override IPaginationUserRepository CreateRepository(DbConnection connection)
         => new MySQLPaginationRepository(connection);
     
     public TestContext TestContext { get; set; } = null!;
+    
+    [ClassCleanup]
+    public static async Task ClassCleanup()
+    {
+        await DatabaseConnectionHelper.CleanupContainerAsync(nameof(NullableLimitOffset_MySQL_Tests));
+    }
 }
 

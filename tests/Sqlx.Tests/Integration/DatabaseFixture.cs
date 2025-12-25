@@ -23,7 +23,8 @@ namespace Sqlx.Tests.Integration;
 /// <summary>
 /// 数据库连接管理和测试基础设施
 /// 支持 SQLite, MySQL, PostgreSQL, SQL Server, Oracle
-/// 使用 Testcontainers 自动管理数据库容器生命周期
+/// CI环境：使用GitHub Actions提供的数据库服务（通过环境变量配置）
+/// 本地环境：使用Testcontainers自动管理数据库容器生命周期
 /// </summary>
 public class DatabaseFixture : IDisposable
 {
@@ -77,10 +78,30 @@ public class DatabaseFixture : IDisposable
     }
 
     /// <summary>
-    /// 创建 MySQL 连接（使用 Testcontainers）
+    /// 判断当前是否在CI环境
+    /// </summary>
+    private static bool IsCI => !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI")) ||
+                                !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"));
+
+    /// <summary>
+    /// 创建 MySQL 连接
+    /// CI环境：使用GitHub Actions提供的数据库服务
+    /// 本地环境：使用Testcontainers
     /// </summary>
     private DbConnection CreateMySqlConnection()
     {
+        // CI环境：使用环境变量中的连接字符串
+        if (IsCI)
+        {
+            var connectionString = Environment.GetEnvironmentVariable("MYSQL_CONNECTION");
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                throw new InvalidOperationException("MYSQL_CONNECTION environment variable not set in CI");
+            }
+            return new MySqlConnection(connectionString);
+        }
+        
+        // 本地环境：使用Testcontainers
         if (_mySqlContainer == null)
         {
             _mySqlContainer = new MySqlBuilder()
@@ -97,10 +118,24 @@ public class DatabaseFixture : IDisposable
     }
 
     /// <summary>
-    /// 创建 PostgreSQL 连接（使用 Testcontainers）
+    /// 创建 PostgreSQL 连接
+    /// CI环境：使用GitHub Actions提供的数据库服务
+    /// 本地环境：使用Testcontainers
     /// </summary>
     private DbConnection CreatePostgreSqlConnection()
     {
+        // CI环境：使用环境变量中的连接字符串
+        if (IsCI)
+        {
+            var connectionString = Environment.GetEnvironmentVariable("POSTGRESQL_CONNECTION");
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                throw new InvalidOperationException("POSTGRESQL_CONNECTION environment variable not set in CI");
+            }
+            return new NpgsqlConnection(connectionString);
+        }
+        
+        // 本地环境：使用Testcontainers
         if (_postgreSqlContainer == null)
         {
             _postgreSqlContainer = new PostgreSqlBuilder()
@@ -117,10 +152,24 @@ public class DatabaseFixture : IDisposable
     }
 
     /// <summary>
-    /// 创建 SQL Server 连接（使用 Testcontainers）
+    /// 创建 SQL Server 连接
+    /// CI环境：使用GitHub Actions提供的数据库服务
+    /// 本地环境：使用Testcontainers
     /// </summary>
     private DbConnection CreateSqlServerConnection()
     {
+        // CI环境：使用环境变量中的连接字符串
+        if (IsCI)
+        {
+            var connectionString = Environment.GetEnvironmentVariable("SQLSERVER_CONNECTION");
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                throw new InvalidOperationException("SQLSERVER_CONNECTION environment variable not set in CI");
+            }
+            return new SqlConnection(connectionString);
+        }
+        
+        // 本地环境：使用Testcontainers
         if (_msSqlContainer == null)
         {
             _msSqlContainer = new MsSqlBuilder()

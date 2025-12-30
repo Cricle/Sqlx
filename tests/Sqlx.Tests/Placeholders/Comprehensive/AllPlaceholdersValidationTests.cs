@@ -422,16 +422,6 @@ public class CorePlaceholderTestRepository
         }
         
         await Task.Run(() => cmd.ExecuteNonQuery());
-        
-        // Clean up any existing data (important for CI where databases are shared)
-        await CleanupTableAsync();
-    }
-
-    public async Task CleanupTableAsync()
-    {
-        using var cmd = _connection.CreateCommand();
-        cmd.CommandText = "DELETE FROM placeholder_test";
-        await Task.Run(() => cmd.ExecuteNonQuery());
     }
 
     public async Task<long> InsertTestDataAsync(string name, decimal amount)

@@ -41,13 +41,13 @@ public static class SqlValidator
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool ContainsDangerousKeyword(ReadOnlySpan<char> text)
     {
-        return text.Contains("DROP".AsSpan(), StringComparison.OrdinalIgnoreCase) ||
-               text.Contains("TRUNCATE".AsSpan(), StringComparison.OrdinalIgnoreCase) ||
-               text.Contains("ALTER".AsSpan(), StringComparison.OrdinalIgnoreCase) ||
-               text.Contains("EXEC".AsSpan(), StringComparison.OrdinalIgnoreCase) ||
-               text.Contains("--".AsSpan(), StringComparison.Ordinal) ||
-               text.Contains("/*".AsSpan(), StringComparison.Ordinal) ||
-               text.Contains(";".AsSpan(), StringComparison.Ordinal);
+        ReadOnlySpan<string> kw = ["DROP", "TRUNCATE", "ALTER", "EXEC", "--", "/*", ";"];
+        foreach (string keyword in kw)
+        {
+            if (text.Contains(keyword.AsSpan(), StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
     }
 
     /// <summary>
@@ -76,7 +76,7 @@ public static class SqlValidator
         // Only letters and digits
         foreach (char c in part)
         {
-            if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')))
+            if (!char.IsLetterOrDigit(c))
                 return false;
         }
 

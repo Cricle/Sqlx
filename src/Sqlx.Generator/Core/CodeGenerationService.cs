@@ -749,13 +749,14 @@ public class CodeGenerationService
         sb.AppendLine("var __activity__ = global::System.Diagnostics.Activity.Current;");
         sb.AppendLine("var __startTimestamp__ = global::System.Diagnostics.Stopwatch.GetTimestamp();");
         sb.AppendLine();
-        sb.AppendLine("if (__activity__ != null)");
+        sb.AppendLine("if(__activity__ != null)");
         sb.AppendLine("{");
         sb.PushIndent();
-        sb.AppendLine($"__activity__.DisplayName = \"{operationName}\";");
-        sb.AppendLine("__activity__.SetTag(\"db.system\", \"sql\");");
-        sb.AppendLine($"__activity__.SetTag(\"db.operation\", \"{operationName}\");");
-        sb.AppendLine($"__activity__.SetTag(\"db.statement\", @\"{EscapeSqlForCSharp(templateResult.ProcessedSql)}\");");
+        sb.AppendLine("var tags = new global::System.Diagnostics.ActivityTagsCollection();");
+        sb.AppendLine("tags.Add(\"db.system\",\"sql\");");
+        sb.AppendLine("tags.Add(\"db.operation\",\"operationName\");");
+        sb.AppendLine($"tags.Add(\"db.statement\",\"{EscapeSqlForCSharp(templateResult.ProcessedSql)}\");");
+        sb.AppendLine("__activity__.AddEvent(new ActivityEvent(\"{operationName}\",default,tags));");
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine("#endif");
@@ -872,13 +873,14 @@ public class CodeGenerationService
 
         if (auditFieldsConfig != null)
         {
-            // INSERT: Add CreatedAt, CreatedBy
-            if (processedSql.IndexOf("INSERT", StringComparison.OrdinalIgnoreCase) >= 0)
+            // INSERT: Add CreatedAt, CreatedBy (must start with INSERT keyword)
+            if (IsSqlStatementType(processedSql, "INSERT"))
             {
                 processedSql = AddAuditFieldsToInsert(processedSql, auditFieldsConfig, currentDbDialect, method);
             }
             // UPDATE: Add UpdatedAt, UpdatedBy (including DELETE converted to UPDATE)
-            else if (processedSql.IndexOf("UPDATE", StringComparison.OrdinalIgnoreCase) >= 0 || wasDeleteConverted)
+            // Note: Must check for UPDATE keyword at start to avoid false matches with column names like "updated_at"
+            else if (IsSqlStatementType(processedSql, "UPDATE") || wasDeleteConverted)
             {
                 processedSql = AddAuditFieldsToUpdate(processedSql, auditFieldsConfig, currentDbDialect, method);
             }
@@ -886,7 +888,7 @@ public class CodeGenerationService
 
         // 🚀 TDD Green: Check for [ConcurrencyCheck]
         var concurrencyColumn = GetConcurrencyCheckColumn(originalEntityType);
-        if (concurrencyColumn != null && processedSql.IndexOf("UPDATE", StringComparison.OrdinalIgnoreCase) >= 0)
+        if (concurrencyColumn != null && IsSqlStatementType(processedSql, "UPDATE"))
         {
             // ADD optimistic locking: version = version + 1 AND version = @version
             processedSql = AddConcurrencyCheck(processedSql, concurrencyColumn, method);
@@ -1249,7 +1251,7 @@ public class CodeGenerationService
         if (entityType != null)
         {
             GenerateEntityFromReaderInLoop(sb, entityType, "item", templateResult);
-            sb.AppendLine($"(({collectionType})__result__).Add(item);");
+            sb.AppendLine($"__result__.Add(item);");
         }
         else
         {
@@ -1300,7 +1302,7 @@ public class CodeGenerationService
                     sb.AppendLine($"var item = ({elementTypeName})reader[0];");
                 }
                 
-                sb.AppendLine($"(({collectionType})__result__).Add(item);");
+                sb.AppendLine($"__result__.Add(item);");
             }
         }
 
@@ -1409,7 +1411,7 @@ public class CodeGenerationService
         sb.AppendLine("dict[columnNames[i]] = reader.IsDBNull(i) ? null! : reader.GetValue(i);");
         sb.PopIndent();
         sb.AppendLine("}");
-        sb.AppendLine($"(({collectionType})__result__).Add(dict);");
+        sb.AppendLine($"__result__.Add(dict);");
         sb.PopIndent();
         sb.AppendLine("}");
     }
@@ -2204,20 +2206,37 @@ public class CodeGenerationService
         // UPDATE table SET col1 = val1 WHERE ...
         // 变为: UPDATE table SET col1 = val1, updated_at = NOW(), updated_by = @updatedBy WHERE ...
 
-        var additionalSets = new System.Collections.Generic.List<string> { $"{updatedAtCol} = {timestampSql}" };
+        var additionalSets = new System.Collections.Generic.List<string>();
+
+        // Only add updated_at if not already present in SQL
+        if (sql.IndexOf(updatedAtCol, StringComparison.OrdinalIgnoreCase) < 0)
+        {
+            additionalSets.Add($"{updatedAtCol} = {timestampSql}");
+        }
 
         // Check if method has updatedBy parameter
         if (!string.IsNullOrEmpty(config.UpdatedByColumn))
         {
-            var updatedByParam = method.Parameters.FirstOrDefault(p =>
-                p.Name.Equals("updatedBy", StringComparison.OrdinalIgnoreCase) ||
-                p.Name.Equals("updated_by", StringComparison.OrdinalIgnoreCase));
+            var updatedByCol = SharedCodeGenerationUtilities.ConvertToSnakeCase(config.UpdatedByColumn);
 
-            if (updatedByParam != null)
+            // Only add updated_by if not already present in SQL
+            if (sql.IndexOf(updatedByCol, StringComparison.OrdinalIgnoreCase) < 0)
             {
-                var updatedByCol = SharedCodeGenerationUtilities.ConvertToSnakeCase(config.UpdatedByColumn);
-                additionalSets.Add($"{updatedByCol} = @{updatedByParam.Name}");
+                var updatedByParam = method.Parameters.FirstOrDefault(p =>
+                    p.Name.Equals("updatedBy", StringComparison.OrdinalIgnoreCase) ||
+                    p.Name.Equals("updated_by", StringComparison.OrdinalIgnoreCase));
+
+                if (updatedByParam != null)
+                {
+                    additionalSets.Add($"{updatedByCol} = @{updatedByParam.Name}");
+                }
             }
+        }
+
+        // If no additional fields to add, return original SQL
+        if (additionalSets.Count == 0)
+        {
+            return sql;
         }
 
         // Find WHERE clause
@@ -2283,28 +2302,51 @@ public class CodeGenerationService
         var versionCol = SharedCodeGenerationUtilities.ConvertToSnakeCase(versionColumn);
         var versionParam = "@" + versionColumn.ToLower();
 
+        // Check if version column is already in SET clause (already manually added)
+        var setVersionPattern = $"{versionCol} =";
+        var hasVersionInSet = sql.IndexOf(setVersionPattern, StringComparison.OrdinalIgnoreCase) >= 0;
+
+        // Check if version column is already in WHERE clause
+        var whereVersionPattern = $"{versionCol} = {versionParam}";
+        var hasVersionInWhere = sql.IndexOf(whereVersionPattern, StringComparison.OrdinalIgnoreCase) >= 0;
+
         // 找到WHERE子句的位置
         var whereIndex = sql.IndexOf("WHERE", StringComparison.OrdinalIgnoreCase);
 
         if (whereIndex > 0)
         {
-            // 有WHERE子句：在SET末尾添加version递增，在WHERE末尾添加version检查
             var beforeWhere = sql.Substring(0, whereIndex).TrimEnd();
             var afterWhere = sql.Substring(whereIndex);
+            var newSql = sql;
 
-            // 添加version递增到SET子句
-            var newSql = $"{beforeWhere}, {versionCol} = {versionCol} + 1 {afterWhere}";
+            // 只有当SET子句中没有version时才添加version递增
+            if (!hasVersionInSet)
+            {
+                newSql = $"{beforeWhere}, {versionCol} = {versionCol} + 1 {afterWhere}";
+                // Recalculate afterWhere position after modification
+                whereIndex = newSql.IndexOf("WHERE", StringComparison.OrdinalIgnoreCase);
+            }
 
-            // 在WHERE子句末尾添加version检查
-            newSql = newSql + $" AND {versionCol} = {versionParam}";
+            // 只有当WHERE子句中没有version检查时才添加
+            if (!hasVersionInWhere)
+            {
+                newSql = newSql + $" AND {versionCol} = {versionParam}";
+            }
 
             return newSql;
         }
         else
         {
-            // 无WHERE子句：创建WHERE version = @version，并在SET末尾添加version递增
             var newSql = sql.TrimEnd();
-            newSql = $"{newSql}, {versionCol} = {versionCol} + 1 WHERE {versionCol} = {versionParam}";
+
+            // 只有当SET子句中没有version时才添加version递增
+            if (!hasVersionInSet)
+            {
+                newSql = $"{newSql}, {versionCol} = {versionCol} + 1";
+            }
+
+            // 添加WHERE子句（因为没有WHERE，所以version检查肯定不存在）
+            newSql = $"{newSql} WHERE {versionCol} = {versionParam}";
 
             return newSql;
         }
@@ -2720,6 +2762,8 @@ public class CodeGenerationService
             return;
         }
 
+        var dialect = SqlDefine.MySql;
+
         // Step 1: Execute INSERT and get LAST_INSERT_ID
         sb.AppendLine($"await __cmd__.ExecuteNonQueryAsync({cancellationTokenArg.TrimStart(',', ' ')});");
         sb.AppendLine();
@@ -2733,10 +2777,10 @@ public class CodeGenerationService
         var tableName = GetTableNameFromType(classSymbol, entityType);
         var columns = string.Join(", ", entityType.GetMembers().OfType<IPropertySymbol>()
             .Where(p => p.Name != "EqualityContract")
-            .Select(p => SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)));
+            .Select(p => dialect.WrapColumn(SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name))));
 
         sb.AppendLine($"// SELECT complete entity");
-        sb.AppendLine($"__cmd__.CommandText = \"SELECT {columns} FROM {tableName} WHERE id = @lastId\";");
+        sb.AppendLine($"__cmd__.CommandText = \"SELECT {columns} FROM {tableName} WHERE {dialect.WrapColumn("id")} = @lastId\";");
         sb.AppendLine("__cmd__.Parameters.Clear();");
         sb.AppendLine("{ var __p__ = __cmd__.CreateParameter(); __p__.ParameterName = \"@lastId\"; __p__.Value = __lastInsertId__; __cmd__.Parameters.Add(__p__); }");
         sb.AppendLine();
@@ -2797,6 +2841,8 @@ public class CodeGenerationService
             return;
         }
 
+        var dialect = SqlDefine.SQLite;
+
         // Step 1: Execute INSERT and get last_insert_rowid()
         sb.AppendLine($"await __cmd__.ExecuteNonQueryAsync({cancellationTokenArg.TrimStart(',', ' ')});");
         sb.AppendLine();
@@ -2810,10 +2856,10 @@ public class CodeGenerationService
         var tableName = GetTableNameFromType(classSymbol, entityType);
         var columns = string.Join(", ", entityType.GetMembers().OfType<IPropertySymbol>()
             .Where(p => p.Name != "EqualityContract")
-            .Select(p => SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)));
+            .Select(p => dialect.WrapColumn(SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name))));
 
         sb.AppendLine($"// SELECT complete entity");
-        sb.AppendLine($"__cmd__.CommandText = \"SELECT {columns} FROM {tableName} WHERE id = @lastId\";");
+        sb.AppendLine($"__cmd__.CommandText = \"SELECT {columns} FROM {tableName} WHERE {dialect.WrapColumn("id")} = @lastId\";");
         sb.AppendLine("__cmd__.Parameters.Clear();");
         sb.AppendLine("{ var __p__ = __cmd__.CreateParameter(); __p__.ParameterName = \"@lastId\"; __p__.Value = __lastInsertId__; __cmd__.Parameters.Add(__p__); }");
         sb.AppendLine();
@@ -2873,6 +2919,8 @@ public class CodeGenerationService
             return;
         }
 
+        var dialect = SqlDefine.Oracle;
+
         // Oracle approach is similar to MySQL but uses ExecuteScalar with SQL that already has RETURNING
         // Since AddReturningClauseForInsert already added RETURNING id INTO :out_id,
         // we need to use a simpler two-step approach:
@@ -2887,12 +2935,12 @@ public class CodeGenerationService
         var tableName = GetTableNameFromType(classSymbol, entityType);
         var columns = string.Join(", ", entityType.GetMembers().OfType<IPropertySymbol>()
             .Where(p => p.Name != "EqualityContract")
-            .Select(p => SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)));
+            .Select(p => dialect.WrapColumn(SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name))));
 
         sb.AppendLine($"// SELECT complete entity");
-        sb.AppendLine($"__cmd__.CommandText = \"SELECT {columns} FROM {tableName} WHERE id = @insertedId\";");
+        sb.AppendLine($"__cmd__.CommandText = \"SELECT {columns} FROM {tableName} WHERE {dialect.WrapColumn("id")} = :insertedId\";");
         sb.AppendLine("__cmd__.Parameters.Clear();");
-        sb.AppendLine("{ var __p__ = __cmd__.CreateParameter(); __p__.ParameterName = \"@insertedId\"; __p__.Value = __insertedId__; __cmd__.Parameters.Add(__p__); }");
+        sb.AppendLine("{ var __p__ = __cmd__.CreateParameter(); __p__.ParameterName = \":insertedId\"; __p__.Value = __insertedId__; __cmd__.Parameters.Add(__p__); }");
         sb.AppendLine();
 
         // Execute reader and map entity
@@ -3045,6 +3093,33 @@ public class CodeGenerationService
 
         sb.PopIndent();
         sb.AppendLine("};");
+    }
+
+    /// <summary>
+    /// Checks if the SQL statement starts with the specified keyword (e.g., SELECT, INSERT, UPDATE, DELETE).
+    /// This avoids false positives when the keyword appears in column names like "updated_at".
+    /// </summary>
+    /// <param name="sql">The SQL statement to check.</param>
+    /// <param name="keyword">The SQL keyword to look for (e.g., "UPDATE", "INSERT").</param>
+    /// <returns>True if the SQL statement starts with the keyword, false otherwise.</returns>
+    private static bool IsSqlStatementType(string sql, string keyword)
+    {
+        if (string.IsNullOrWhiteSpace(sql) || string.IsNullOrWhiteSpace(keyword))
+            return false;
+
+        // Trim leading whitespace and check if the SQL starts with the keyword followed by whitespace or end
+        var trimmedSql = sql.TrimStart();
+        if (trimmedSql.StartsWith(keyword, StringComparison.OrdinalIgnoreCase))
+        {
+            // Make sure the keyword is followed by whitespace or end of string (not part of another word)
+            if (trimmedSql.Length == keyword.Length)
+                return true;
+
+            var charAfterKeyword = trimmedSql[keyword.Length];
+            return char.IsWhiteSpace(charAfterKeyword) || charAfterKeyword == '(' || charAfterKeyword == '[';
+        }
+
+        return false;
     }
 
 }

@@ -71,7 +71,7 @@ namespace Sqlx
         protected string ParseExpression(Expression expression, bool treatBoolAsComparison = true) => expression switch
         {
             BinaryExpression binary => ParseBinaryExpression(binary),
-            MemberExpression member when treatBoolAsComparison && member.Type == typeof(bool) => $"{GetColumnName(member)} = 1",
+            MemberExpression member when treatBoolAsComparison && member.Type == typeof(bool) => $"{GetColumnName(member)} = {GetBooleanTrueLiteral()}",
             MemberExpression member when IsStringPropertyAccess(member) => ParseStringProperty(member),
             MemberExpression member when IsEntityProperty(member) => GetColumnName(member),
             MemberExpression member => treatBoolAsComparison ? GetColumnName(member) : FormatConstantValue(GetMemberValueOptimized(member)),
@@ -281,9 +281,43 @@ namespace Sqlx
         /// <summary>Get column name from expression</summary>
         protected string GetColumnName(Expression expression) =>
             expression is UnaryExpression { NodeType: ExpressionType.Convert } unary ? GetColumnName(unary.Operand) :
-            expression is MemberExpression member ? _dialect.WrapColumn(member.Member.Name) :
+            expression is MemberExpression member ? _dialect.WrapColumn(ConvertToSnakeCase(member.Member.Name)) :
             ParseExpressionRaw(expression);
 
+        /// <summary>Converts PascalCase/camelCase to snake_case for database column names</summary>
+        protected static string ConvertToSnakeCase(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return name;
+            
+            // Fast path for already lowercase names
+            bool hasUpper = false;
+            for (int i = 0; i < name.Length; i++)
+            {
+                if (char.IsUpper(name[i]))
+                {
+                    hasUpper = true;
+                    break;
+                }
+            }
+            if (!hasUpper) return name;
+            
+            // Convert PascalCase/camelCase to snake_case
+            var result = new System.Text.StringBuilder(name.Length + 4);
+            for (int i = 0; i < name.Length; i++)
+            {
+                char c = name[i];
+                if (char.IsUpper(c))
+                {
+                    if (i > 0) result.Append('_');
+                    result.Append(char.ToLowerInvariant(c));
+                }
+                else
+                {
+                    result.Append(c);
+                }
+            }
+            return result.ToString();
+        }
 
         /// <summary>Checks if member is entity property</summary>
         protected static bool IsEntityProperty(MemberExpression member) => member.Expression is ParameterExpression;
@@ -293,15 +327,32 @@ namespace Sqlx
         /// <summary>Formats constant value</summary>
         protected string FormatConstantValue(object? value) => _parameterized ? CreateParameter(value) : FormatValueAsLiteral(value);
 
-        // 性能优化：缓存常用的字面值
+        /// <summary>Gets the boolean TRUE literal based on database dialect</summary>
+        /// <remarks>
+        /// PostgreSQL uses true/false keywords, while SQLite/SQL Server use 1/0
+        /// </remarks>
+        protected string GetBooleanTrueLiteral() => _dialect.DatabaseType switch
+        {
+            "PostgreSql" => "true",
+            "Oracle" => "1",  // Oracle uses 1/0
+            _ => "1"          // SQLite, SQL Server, MySQL use 1/0
+        };
+
+        /// <summary>Gets the boolean FALSE literal based on database dialect</summary>
+        protected string GetBooleanFalseLiteral() => _dialect.DatabaseType switch
+        {
+            "PostgreSql" => "false",
+            "Oracle" => "0",
+            _ => "0"
+        };
+
         private const string NullLiteral = "NULL";
-        private static readonly string[] BooleanLiterals = { "0", "1" };
 
         private string FormatValueAsLiteral(object? value) => value switch
         {
             null => NullLiteral,
             string s => _dialect.WrapString(s.Replace("'", "''")),
-            bool b => BooleanLiterals[b ? 1 : 0],
+            bool b => b ? GetBooleanTrueLiteral() : GetBooleanFalseLiteral(),
             DateTime dt => _dialect.WrapString(dt.ToString("yyyy-MM-dd HH:mm:ss")),
             Guid g => _dialect.WrapString(g.ToString()),
             decimal or double or float => value.ToString()!,
@@ -345,7 +396,7 @@ namespace Sqlx
             member.Member.Name == "Length" ? (DatabaseType == "SqlServer" ? $"LEN({ParseExpressionRaw(member.Expression!)})" : $"LENGTH({ParseExpressionRaw(member.Expression!)})") : GetColumnName(member);
 
         /// <summary>Expression parsing helpers</summary>
-        protected string ParseNotExpression(Expression operand) => operand is MemberExpression { Type: var type } member && type == typeof(bool) && IsEntityProperty(member) ? $"{GetColumnName(member)} = 0" : $"NOT ({ParseExpression(operand)})";
+        protected string ParseNotExpression(Expression operand) => operand is MemberExpression { Type: var type } member && type == typeof(bool) && IsEntityProperty(member) ? $"{GetColumnName(member)} = {GetBooleanFalseLiteral()}" : $"NOT ({ParseExpression(operand)})";
         /// <summary>Formats a logical expression (AND/OR) with proper boolean handling.</summary>
         /// <param name="logicalOperator">The logical operator (AND/OR).</param>
         /// <param name="left">The left side of the expression.</param>
@@ -354,8 +405,8 @@ namespace Sqlx
         /// <returns>The formatted logical expression.</returns>
         protected string FormatLogicalExpression(string logicalOperator, string left, string right, BinaryExpression binary)
         {
-            if (binary.Right is MemberExpression { Type: var rightType } rightMember && rightType == typeof(bool) && right == GetColumnName(rightMember)) right = $"{right} = 1";
-            if (binary.Left is MemberExpression { Type: var leftType } leftMember && leftType == typeof(bool) && left == GetColumnName(leftMember)) left = $"{left} = 1";
+            if (binary.Right is MemberExpression { Type: var rightType } rightMember && rightType == typeof(bool) && right == GetColumnName(rightMember)) right = $"{right} = {GetBooleanTrueLiteral()}";
+            if (binary.Left is MemberExpression { Type: var leftType } leftMember && leftType == typeof(bool) && left == GetColumnName(leftMember)) left = $"{left} = {GetBooleanTrueLiteral()}";
             return $"({left} {logicalOperator} {right})";
         }
 

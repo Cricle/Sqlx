@@ -467,7 +467,8 @@ public class SqlTemplateEngine
         // 性能优化：预分配StringBuilder容量
         var capacity = properties.Count * 20; // 估算每个列名约20字符
         var sb = new StringBuilder(capacity);
-        var isQuoted = type == "quoted";
+        // 默认引用列名，除非明确指定 type == "raw"
+        var shouldQuote = type != "raw";
 
         // 🚀 性能优化：记录列顺序以支持直接序号访问
         result.ColumnOrder.Clear(); // 清除之前的顺序
@@ -477,7 +478,7 @@ public class SqlTemplateEngine
             if (i > 0) sb.Append(", ");
 
             var columnName = SharedCodeGenerationUtilities.ConvertToSnakeCase(properties[i].Name);
-            sb.Append(isQuoted ? dialect.WrapColumn(columnName) : columnName);
+            sb.Append(shouldQuote ? dialect.WrapColumn(columnName) : columnName);
 
             // 记录列名到ColumnOrder（用于序号访问优化）
             result.ColumnOrder.Add(columnName);
@@ -594,7 +595,7 @@ public class SqlTemplateEngine
 
         var baseWhereClause = type switch
         {
-            "id" => $"id = {dialect.ParameterPrefix}id",
+            "id" => $"{dialect.WrapColumn("id")} = {dialect.ParameterPrefix}id",
             "auto" => GenerateAutoWhereClause(method, dialect),
             _ => "1=1"
         };
@@ -625,7 +626,7 @@ public class SqlTemplateEngine
                 }
 
                 var snakeCaseFlagColumn = SharedCodeGenerationUtilities.ConvertToSnakeCase(flagColumn);
-                var softDeleteCondition = $"{snakeCaseFlagColumn} = false";
+                var softDeleteCondition = $"{dialect.WrapColumn(snakeCaseFlagColumn)} = false";
 
                 // Combine with existing WHERE clause
                 if (baseWhereClause == "1=1")
@@ -678,7 +679,7 @@ public class SqlTemplateEngine
             if (method == null) return string.Empty;
             var filteredParams = method.Parameters
                 .Where(p => NonSystemParameterFilter(p) && !p.Name.Equals("id", StringComparison.OrdinalIgnoreCase))
-                .Select(p => $"{SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)} = {dialect.ParameterPrefix}{p.Name}");
+                .Select(p => $"{dialect.WrapColumn(SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name))} = {dialect.ParameterPrefix}{p.Name}");
             return string.Join(", ", filteredParams);
         }
 
@@ -687,7 +688,7 @@ public class SqlTemplateEngine
         {
             var columnName = SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name);
             var paramName = columnName;
-            return $"{columnName} = {dialect.ParameterPrefix}{paramName}";
+            return $"{dialect.WrapColumn(columnName)} = {dialect.ParameterPrefix}{paramName}";
         }));
     }
 
@@ -778,16 +779,16 @@ public class SqlTemplateEngine
         {
             var orderBy = type.ToLowerInvariant() switch
             {
-                "id" => "ORDER BY id ASC",
-                "id_desc" => "ORDER BY id DESC",
-                "name" => "ORDER BY name ASC",
-                "name_desc" => "ORDER BY name DESC",
-                "created" => "ORDER BY created_at DESC",
-                "created_asc" => "ORDER BY created_at ASC",
-                "updated" => "ORDER BY updated_at DESC",
-                "updated_asc" => "ORDER BY updated_at ASC",
-                "date" => "ORDER BY created_at DESC",
-                "priority" => "ORDER BY priority DESC, created_at DESC",
+                "id" => $"ORDER BY {dialect.WrapColumn("id")} ASC",
+                "id_desc" => $"ORDER BY {dialect.WrapColumn("id")} DESC",
+                "name" => $"ORDER BY {dialect.WrapColumn("name")} ASC",
+                "name_desc" => $"ORDER BY {dialect.WrapColumn("name")} DESC",
+                "created" => $"ORDER BY {dialect.WrapColumn("created_at")} DESC",
+                "created_asc" => $"ORDER BY {dialect.WrapColumn("created_at")} ASC",
+                "updated" => $"ORDER BY {dialect.WrapColumn("updated_at")} DESC",
+                "updated_asc" => $"ORDER BY {dialect.WrapColumn("updated_at")} ASC",
+                "date" => $"ORDER BY {dialect.WrapColumn("created_at")} DESC",
+                "priority" => $"ORDER BY {dialect.WrapColumn("priority")} DESC, {dialect.WrapColumn("created_at")} DESC",
                 "random" => dialect.Equals(SqlDefine.SqlServer) ? "ORDER BY NEWID()" :
                            dialect.Equals(SqlDefine.MySql) ? "ORDER BY RAND()" :
                            dialect.Equals(SqlDefine.PostgreSql) ? "ORDER BY RANDOM()" :
@@ -824,7 +825,7 @@ public class SqlTemplateEngine
     /// <summary>生成自动WHERE子句 - 多数据库支持</summary>
     private string GenerateAutoWhereClause(IMethodSymbol method, SqlDefine dialect) =>
         method?.Parameters.Any(NonSystemParameterFilter) == true
-            ? string.Join(" AND ", method.Parameters.Where(NonSystemParameterFilter).Select(p => $"{SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)} = {dialect.ParameterPrefix}{p.Name}"))
+            ? string.Join(" AND ", method.Parameters.Where(NonSystemParameterFilter).Select(p => $"{dialect.WrapColumn(SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name))} = {dialect.ParameterPrefix}{p.Name}"))
             : "1=1";
 
 

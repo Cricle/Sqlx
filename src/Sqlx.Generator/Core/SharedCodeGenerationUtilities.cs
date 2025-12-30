@@ -399,7 +399,9 @@ public static class SharedCodeGenerationUtilities
                     sb.AppendLine($"// Bridge: Convert Expression<Func<{entityType.Name}, bool>> to SQL");
                     sb.AppendLine($"var __expr_{paramName}__ = new global::Sqlx.ExpressionToSql<{entityType.ToDisplayString()}>(global::Sqlx.SqlDialect.{dialectValue});");
                     sb.AppendLine($"__expr_{paramName}__.Where({paramName});");
-                    sb.AppendLine($"var {varName} = __expr_{paramName}__.ToWhereClause();");
+                    sb.AppendLine($"var __{paramName}_clause__ = __expr_{paramName}__.ToWhereClause();");
+                    // Add WHERE keyword prefix when condition exists
+                    sb.AppendLine($"var {varName} = string.IsNullOrEmpty(__{paramName}_clause__) ? \"\" : \"WHERE \" + __{paramName}_clause__;");
                     sb.AppendLine();
 
                     // Bind parameters from the expression
@@ -416,18 +418,23 @@ public static class SharedCodeGenerationUtilities
                 }
                 else
                 {
-                    sb.AppendLine($"var {varName} = \"1=1\"; // Expression parameter not found");
+                    sb.AppendLine($"var {varName} = \"\"; // Expression parameter not found");
                 }
             }
             else if (markerContent.StartsWith("EXPR_"))
             {
-                // ExpressionToSql parameter
+                // ExpressionToSql parameter - need to pass correct dialect
                 var paramName = markerContent.Substring(5);
+                var dialectValue = classSymbol != null ? GetDialectForClass(classSymbol) : GetDialectForMethod(method);
+                
                 sb.AppendLine($"// Extract {placeholderType} from ExpressionToSql: {paramName}");
 
                 if (placeholderType == "WHERE")
                 {
-                    sb.AppendLine($"var {varName} = {paramName}?.ToWhereClause() ?? \"1=1\";");
+                    // Add WHERE keyword prefix when condition exists
+                    // Pass the correct dialect to ToWhereClause extension method
+                    sb.AppendLine($"var __{paramName}_clause__ = {paramName}?.ToWhereClause(global::Sqlx.SqlDefine.{dialectValue}) ?? \"\";");
+                    sb.AppendLine($"var {varName} = string.IsNullOrEmpty(__{paramName}_clause__) ? \"\" : \"WHERE \" + __{paramName}_clause__;");
                 }
                 else
                 {
@@ -657,15 +664,15 @@ public static class SharedCodeGenerationUtilities
         // 如果列顺序不匹配，源分析器会发出编译警告
         if (columnOrder != null && columnOrder.Count > 0)
         {
-            sb.AppendLine($"// 🚀 使用硬编码索引访问（极致性能）- {columnOrder.Count}列: [{string.Join(", ", columnOrder)}]");
-            sb.AppendLine($"// ⚠️ 如果C#属性顺序与SQL列顺序不一致，源分析器会发出警告");
+            sb.AppendLine($"// 🚀 Access using hardcoded indices- {columnOrder.Count}列: [{string.Join(", ", columnOrder)}]");
+            sb.AppendLine($"// ⚠️ If the order of C# properties does not match the order of SQL columns, the source analyzer will issue a warning");
             GenerateEntityMappingWithHardcodedOrdinals(sb, entityType, variableName, columnOrder);
             return;
         }
 
         // 向后兼容：没有列顺序信息时，使用GetOrdinal查找
-        sb.AppendLine($"// ⚠️ 使用GetOrdinal查找（兼容版本）- columnOrder为{(columnOrder == null ? "null" : "empty")}");
-        sb.AppendLine($"// 性能警告：未使用序号访问优化，查询性能可能降低20%");
+        sb.AppendLine($"// ⚠️ Use GetOrdinal to search for compatible versions- columnOrder is {(columnOrder == null ? "null" : "empty")}");
+        sb.AppendLine($"// Performance warning: Without using serial number access optimization, query performance may decrease by 20%");
         GenerateEntityMappingWithGetOrdinal(sb, entityType, variableName);
     }
 
@@ -962,18 +969,19 @@ public static class SharedCodeGenerationUtilities
     /// <summary>
     /// Map SqlDefineTypes enum value to dialect string
     /// SqlDefineTypes: MySql=0, SqlServer=1, PostgreSql=2, Oracle=3, DB2=4, SQLite=5
+    /// Returns the exact field name as defined in SqlDefine class
     /// </summary>
     private static string MapDialectEnumToString(object? enumValue)
     {
         return enumValue switch
         {
-            0 => "MySQL",
-            1 => "SqlServer",
-            2 => "PostgreSQL",
-            3 => "Oracle",
-            4 => "DB2",
-            5 => "SQLite",
-            _ => "SqlServer" // Default
+            0 => "MySql",       // SqlDefine.MySql
+            1 => "SqlServer",   // SqlDefine.SqlServer
+            2 => "PostgreSql",  // SqlDefine.PostgreSql
+            3 => "Oracle",      // SqlDefine.Oracle
+            4 => "DB2",         // SqlDefine.DB2
+            5 => "SQLite",      // SqlDefine.SQLite
+            _ => "SqlServer"    // Default
         };
     }
 

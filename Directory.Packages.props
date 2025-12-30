@@ -26,6 +26,7 @@
     <PackageVersion Include="MySqlConnector" Version="2.4.0" />
     <PackageVersion Include="Npgsql" Version="8.0.6" />
     <PackageVersion Include="System.Data.SQLite" Version="1.0.119" />
+    <PackageVersion Include="IBM.Data.Db2" Version="8.0.0.300" />
   </ItemGroup>
   <!-- Entity Framework（仅测试使用） -->
   <ItemGroup Label="Entity Framework">

@@ -15,23 +15,38 @@ namespace Sqlx.Generator.Core;
 internal static class DialectHelper
 {
     /// <summary>
-    /// Extracts the dialect from RepositoryFor attribute.
+    /// Extracts the dialect from RepositoryFor or SqlDefine attribute.
     /// </summary>
     /// <param name="repositoryClass">The repository class symbol.</param>
     /// <returns>The SQL dialect type, or SQLite as default.</returns>
     public static SqlDefineTypes GetDialectFromRepositoryFor(INamedTypeSymbol repositoryClass)
     {
-        var attr = repositoryClass.GetAttributes()
+        // First, check RepositoryFor attribute's Dialect property
+        var repositoryForAttr = repositoryClass.GetAttributes()
             .FirstOrDefault(attr =>
                 attr.AttributeClass?.Name == "RepositoryForAttribute" ||
                 (attr.AttributeClass?.Name.StartsWith("RepositoryForAttribute`") ?? false));
 
-        if (attr != null)
+        if (repositoryForAttr != null)
         {
-            var dialectArg = attr.NamedArguments
+            var dialectArg = repositoryForAttr.NamedArguments
                 .FirstOrDefault(arg => arg.Key == "Dialect");
 
             if (dialectArg.Value.Value is int dialectValue)
+            {
+                return (SqlDefineTypes)dialectValue;
+            }
+        }
+
+        // Second, check SqlDefine attribute (preferred for dialect specification)
+        var sqlDefineAttr = repositoryClass.GetAttributes()
+            .FirstOrDefault(attr =>
+                attr.AttributeClass?.Name == "SqlDefineAttribute" ||
+                attr.AttributeClass?.Name == "SqlDefine");
+
+        if (sqlDefineAttr != null && sqlDefineAttr.ConstructorArguments.Length > 0)
+        {
+            if (sqlDefineAttr.ConstructorArguments[0].Value is int dialectValue)
             {
                 return (SqlDefineTypes)dialectValue;
             }

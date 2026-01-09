@@ -12,7 +12,6 @@ namespace Sqlx.SqlGen
 
     internal abstract class GenerateContext
     {
-        // 性能优化：预编译正则表达式
         private static readonly Regex CapitalLetterRegex = new("[A-Z]", RegexOptions.Compiled);
 
         protected GenerateContext(MethodGenerationContext context, string tableName)

@@ -11,6 +11,9 @@
     <IsTestProject>true</IsTestProject>
     <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
 
+    <!-- 源生成器调试设置 -->
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+
     <!-- 警告抑制 -->
     <NoWarn>$(NoWarn);CS1591;SA1600;SA1601;SA1602;SA1633</NoWarn>
   </PropertyGroup>

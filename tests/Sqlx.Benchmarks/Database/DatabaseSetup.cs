@@ -1,6 +1,5 @@
-using System.Data;
 using Dapper;
-using Sqlx.Benchmarks.Models;
+using System.Data;
 
 namespace Sqlx.Benchmarks.Database;
 

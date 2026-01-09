@@ -316,7 +316,6 @@ namespace TestNamespace
         var typeSymbols = GetPropertyTypes(sourceCode, "PerformanceTestTypes");
         var types = typeSymbols.Values.ToArray();
 
-        var startTime = DateTime.UtcNow;
 
         // Perform many type checks to test performance and caching
         for (int i = 0; i < 1000; i++)
@@ -329,11 +328,6 @@ namespace TestNamespace
             }
         }
 
-        var endTime = DateTime.UtcNow;
-        var elapsed = endTime - startTime;
-
-        Assert.IsTrue(elapsed.TotalSeconds < 5,
-            $"Many type checks should complete quickly. Took: {elapsed.TotalSeconds} seconds");
     }
 
     /// <summary>

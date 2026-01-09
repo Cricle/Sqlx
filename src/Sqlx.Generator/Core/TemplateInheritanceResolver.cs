@@ -91,10 +91,13 @@ internal class TemplateInheritanceResolver
         if (string.IsNullOrEmpty(sqlTemplate))
             return null;
 
-        // Check if template contains placeholders
-        if (!DialectPlaceholders.ContainsPlaceholders(sqlTemplate))
+        // Check if template contains any placeholders (static or dynamic)
+        // Dynamic placeholders like {{column}}, {{where}}, {{orderby}} will be processed by SqlTemplateEngine
+        var containsAnyPlaceholder = sqlTemplate.Contains("{{");
+        
+        if (!containsAnyPlaceholder)
         {
-            // No placeholders, return as-is
+            // No placeholders at all, return as-is
             return new MethodTemplate
             {
                 Method = method,
@@ -104,6 +107,11 @@ internal class TemplateInheritanceResolver
             };
         }
 
+        // Check if template contains only static placeholders that can be replaced now
+        // Dynamic placeholders ({{column}}, {{where}}, {{orderby}}, {{set}}, {{values}}, {{limit}}, {{offset}})
+        // should NOT be replaced here - they will be processed by SqlTemplateEngine
+        var containsStaticPlaceholders = DialectPlaceholders.ContainsPlaceholders(sqlTemplate);
+        
         // Extract column names from entity type
         string[]? columns = null;
         if (entityType != null)
@@ -115,8 +123,11 @@ internal class TemplateInheritanceResolver
                 .ToArray();
         }
 
-        // Replace placeholders
-        var processedSql = dialectProvider.ReplacePlaceholders(sqlTemplate, tableName, columns);
+        // Replace only static placeholders ({{table}}, {{columns}}, {{returning_id}}, etc.)
+        // Dynamic placeholders will be handled by SqlTemplateEngine later
+        var processedSql = containsStaticPlaceholders 
+            ? dialectProvider.ReplacePlaceholders(sqlTemplate, tableName, columns)
+            : sqlTemplate;
 
         return new MethodTemplate
         {

@@ -43,10 +43,7 @@ public class UnifiedDialect_PostgreSQL_Tests : UnifiedDialectTestBase
 
     public TestContext TestContext { get; set; } = null!;
     
-    [ClassCleanup]
-    public static async Task ClassCleanup()
-    {
-        await DatabaseConnectionHelper.CleanupContainerAsync(nameof(UnifiedDialect_PostgreSQL_Tests));
-    }
+    // Note: Container cleanup is now handled by AssemblyTestFixture
+    // No need for ClassCleanup anymore
 }
 

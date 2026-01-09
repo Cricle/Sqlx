@@ -1,210 +1,234 @@
-# Sqlx - 高性能 .NET 数据访问库
-
 <div align="center">
 
-[![NuGet](https://img.shields.io/badge/nuget-v0.5.1-blue)](https://www.nuget.org/packages/Sqlx/)
-[![Tests](https://img.shields.io/badge/tests-2700%2B%20passed-brightgreen)](tests/)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
-[![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0-purple.svg)](#)
+<img src="docs/web/favicon.svg" width="120" height="120" alt="Catga Logo"/>
 
-**极致性能 · 类型安全 · 完全异步 · 零配置**
+# Catga
 
-[快速开始](#-快速开始) · [核心特性](#-核心特性) · [文档](#-文档) · [示例](samples/)
+**High-Performance .NET CQRS/Event Sourcing Framework**
+
+[![.NET 9](https://img.shields.io/badge/.NET-9.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
+[![Native AOT](https://img.shields.io/badge/Native-AOT-success?logo=dotnet)](https://learn.microsoft.com/dotnet/core/deploying/native-aot/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+**Zero Reflection · Source Generated · Native AOT · Distributed Ready**
+
+[Quick Start](#-quick-start) · [Performance](#-performance) · [Examples](#-ordersystem-example) · [Documentation](https://cricle.github.io/Catga/)
 
 </div>
 
 ---
 
-## 💡 什么是 Sqlx？
+## ⚡ Performance
 
-Sqlx 是一个**高性能、类型安全的 .NET 数据访问库**，通过**源代码生成器**在编译时生成数据访问代码。
+> BenchmarkDotNet on AMD Ryzen 7 5800H, .NET 9.0.8
 
-### 核心优势
-
-| 特性 | Sqlx | Dapper | EF Core |
-|-----|------|--------|---------|
-| 性能 | ⚡⚡⚡⚡⚡ | ⚡⚡⚡⚡ | ⚡⚡⚡ |
-| 类型安全 | ✅ 编译时 | ⚠️ 运行时 | ✅ 编译时 |
-| SQL控制 | ✅ 完全 | ✅ 完全 | ⚠️ 有限 |
-| 学习曲线 | 📈 极低 | 📈 低 | 📈📈 中等 |
-| AOT支持 | ✅ 完整 | ✅ 完整 | ⚠️ 有限 |
+| Scenario | Latency | Memory | Throughput |
+|----------|---------|--------|------------|
+| Create Order (Command) | **351 ns** | 104 B | 2.8M ops/sec |
+| Get Order (Query) | **337 ns** | 80 B | 2.9M ops/sec |
+| Event (3 handlers) | **352 ns** | 208 B | 2.8M ops/sec |
+| Complete Flow (Command + Event) | **729 ns** | 312 B | 1.4M ops/sec |
+| E-Commerce (Order + Payment + Query) | **923 ns** | 416 B | 1.1M ops/sec |
+| Batch 10 Flows | **10.2 μs** | 4.2 KB | 98K flows/sec |
+| Concurrent 10 Flows | **9.3 μs** | 4.3 KB | 108K flows/sec |
+| High-Throughput 20 Orders | **5.8 μs** | 5.4 KB | 172K ops/sec |
 
 ---
 
-## ⚡ 快速开始
+## ✨ Features
 
-### 1. 安装
+- **Zero Reflection** - Source Generator, compile-time handler discovery
+- **Native AOT** - Full support, trimming safe
+- **Distributed** - Redis Streams, NATS JetStream
+- **Event Sourcing** - Event Store, Snapshots, Projections, Time Travel
+- **Flow DSL** - Distributed workflows, Sagas, ForEach parallel processing
+- **Reliability** - Outbox/Inbox, Idempotency, Dead Letter Queue
+- **Observability** - OpenTelemetry tracing, Metrics
+
+---
+
+## 🚀 Quick Start
 
 ```bash
-dotnet add package Sqlx
+dotnet add package Catga
+dotnet add package Catga.Transport.InMemory
+dotnet add package Catga.Persistence.InMemory
+dotnet add package Catga.Serialization.MemoryPack
 ```
 
-### 2. 定义实体和仓储
-
 ```csharp
-// 实体
-public class User
+// Define command
+[MemoryPackable]
+public partial record CreateOrder(string ProductId, int Quantity) : IRequest<Order>;
+
+// Define handler
+public class CreateOrderHandler : IRequestHandler<CreateOrder, Order>
 {
-    public long Id { get; set; }
-    public string Name { get; set; }
-    public int Age { get; set; }
+    public ValueTask<CatgaResult<Order>> HandleAsync(CreateOrder cmd, CancellationToken ct = default)
+        => new(CatgaResult<Order>.Success(new Order(cmd.ProductId, cmd.Quantity)));
 }
 
-// 仓储接口
-[SqlDefine(SqlDefineTypes.SQLite)]
-public interface IUserRepository
+// Configure
+builder.Services.AddCatga().UseMemoryPack();
+builder.Services.AddInMemoryTransport();
+builder.Services.AddInMemoryPersistence();
+
+// Use
+var result = await mediator.SendAsync<CreateOrder, Order>(new("PROD-001", 5));
+```
+
+---
+
+## 📦 Packages
+
+| Package | Description |
+|---------|-------------|
+| `Catga` | Core framework |
+| `Catga.Transport.InMemory` | In-memory transport |
+| `Catga.Transport.Redis` | Redis Streams |
+| `Catga.Transport.Nats` | NATS JetStream |
+| `Catga.Persistence.InMemory` | In-memory persistence |
+| `Catga.Persistence.Redis` | Redis persistence |
+| `Catga.Persistence.Nats` | NATS persistence |
+| `Catga.Serialization.MemoryPack` | Binary serialization |
+| `Catga.AspNetCore` | ASP.NET Core integration |
+
+---
+
+## 🛒 OrderSystem Example
+
+A complete e-commerce system demonstrating best practices. Focus on your business logic, not framework boilerplate.
+
+```
+examples/OrderSystem.Api/
+├── Domain/           # Business entities
+├── Messages/         # Commands, Queries, Events
+├── Handlers/         # Business logic
+├── Flows/            # Distributed workflows
+└── Program.cs        # Minimal setup
+```
+
+### Run
+
+```bash
+cd examples/OrderSystem.Api
+dotnet run
+```
+
+### Key Patterns
+
+**1. Commands & Queries** - Clean separation of write/read operations
+```csharp
+// Command - changes state
+public record CreateOrder(string CustomerId, List<OrderItem> Items) : IRequest<Order>;
+
+// Query - reads state
+public record GetOrder(string OrderId) : IRequest<Order>;
+```
+
+**2. Event Sourcing** - Full audit trail
+```csharp
+public record OrderCreated(string OrderId, string CustomerId) : IEvent;
+public record OrderShipped(string OrderId, string TrackingNumber) : IEvent;
+```
+
+**3. Flow DSL** - Distributed workflows
+```csharp
+public class OrderFlow : FlowConfig<OrderState>
 {
-    [SqlTemplate("SELECT {{columns}} FROM users WHERE id = @id")]
-    Task<User?> GetByIdAsync(long id);
-
-    [SqlTemplate("INSERT INTO users (name, age) VALUES (@name, @age)")]
-    [ReturnInsertedId]
-    Task<long> InsertAsync(string name, int age);
+    protected override void Configure(IFlowBuilder<OrderState> flow)
+    {
+        flow.Send(s => new ReserveInventory(s.Items))
+            .IfFail(s => new ReleaseInventory(s.ReservationId));
+        
+        flow.Send(s => new ProcessPayment(s.OrderId, s.Total))
+            .IfFail(s => new RefundPayment(s.PaymentId));
+        
+        flow.Publish(s => new OrderCompleted(s.OrderId));
+    }
 }
-
-// 实现类（源生成器自动生成方法）
-[RepositoryFor(typeof(IUserRepository))]
-public partial class UserRepository(DbConnection connection) : IUserRepository { }
-```
-
-### 3. 使用
-
-```csharp
-await using var conn = new SqliteConnection("Data Source=app.db");
-await conn.OpenAsync();
-
-var repo = new UserRepository(conn);
-var userId = await repo.InsertAsync("Alice", 25);
-var user = await repo.GetByIdAsync(userId);
 ```
 
 ---
 
-## 🎯 核心特性
-
-### 1. 编译时代码生成
-- 零运行时开销
-- 类型安全验证
-- 接近 ADO.NET 性能
-
-### 2. 70+ 占位符系统
-跨数据库 SQL 模板：
+## 🗄️ Event Sourcing
 
 ```csharp
-[SqlTemplate(@"
-    SELECT {{columns --exclude Password}}
-    FROM {{table}}
-    WHERE age >= @minAge
-    {{orderby created_at --desc}}
-    {{limit}}
-")]
+// Append events
+await eventStore.AppendAsync("Order-123", new[] { orderCreated, itemAdded });
+
+// Read stream
+var stream = await eventStore.ReadAsync("Order-123");
+
+// Snapshots
+await snapshotStore.SaveAsync("Order-123", aggregate, version);
+
+// Time Travel
+var stateAtV5 = await timeTravelService.GetStateAtVersionAsync("order-1", 5);
 ```
 
-### 3. 多数据库支持
-一套代码，4个数据库：
+---
+
+## 🔄 Flow DSL
 
 ```csharp
-// 统一接口
-public partial interface IUnifiedRepo
+public class ProcessOrderFlow : FlowConfig<OrderState>
 {
-    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE is_active = {{bool_true}}")]
-    Task<List<User>> GetActiveAsync();
+    protected override void Configure(IFlowBuilder<OrderState> flow)
+    {
+        // Sequential steps with compensation
+        flow.Send(s => new ReserveInventory(s.OrderId))
+            .Into(s => s.ReservationId)
+            .IfFail(s => new ReleaseInventory(s.ReservationId));
+
+        // Parallel processing
+        flow.ForEach<OrderItem>(s => s.Items)
+            .Configure((item, f) => f.Send(s => new ProcessItem(item.Id)))
+            .WithParallelism(4)
+            .ContinueOnFailure()
+        .EndForEach();
+
+        // Conditional logic
+        flow.If(s => s.AllItemsProcessed)
+            .Send(s => new CompleteOrder(s.OrderId))
+        .EndIf();
+    }
 }
-
-// SQLite 实现
-[RepositoryFor(typeof(IUnifiedRepo), Dialect = "SQLite", TableName = "users")]
-public partial class SQLiteRepo(DbConnection conn) : IUnifiedRepo { }
-
-// PostgreSQL 实现
-[RepositoryFor(typeof(IUnifiedRepo), Dialect = "PostgreSql", TableName = "users")]
-public partial class PostgreSQLRepo(DbConnection conn) : IUnifiedRepo { }
 ```
 
-### 4. 批量操作
-自动分批处理：
+---
+
+## 🔧 Configuration
 
 ```csharp
-[SqlTemplate("INSERT INTO users (name, age) VALUES {{batch_values}}")]
-[BatchOperation(MaxBatchSize = 500)]
-Task<int> BatchInsertAsync(IEnumerable<User> users);
-```
+// OpenTelemetry
+builder.Services.AddOpenTelemetry()
+    .WithTracing(t => t.AddSource(CatgaOpenTelemetryExtensions.ActivitySourceName))
+    .WithMetrics(m => m.AddMeter(CatgaOpenTelemetryExtensions.MeterName));
 
-### 5. 表达式树查询
+// Resilience
+builder.Services.AddCatga()
+    .UseResilience(o => o.TransportRetryCount = 3);
 
-```csharp
-[SqlTemplate("SELECT {{columns}} FROM {{table}} {{where}}")]
-Task<List<User>> QueryAsync([ExpressionToSql] Expression<Func<User, bool>> predicate);
-
-// 使用
-var users = await repo.QueryAsync(u => u.Age >= 18 && u.Balance > 1000);
-```
-
----
-
-## 📚 文档
-
-### 快速入门
-- **[5分钟快速开始](docs/QUICK_START_GUIDE.md)** ⭐ - 新手必读
-- **[AI 助手指南](AI-VIEW.md)** ⭐ - 让 AI 学会 Sqlx（完整功能清单）
-- **[文档索引](docs/INDEX.md)** - 按主题、角色、功能分类的完整文档列表
-
-### 核心文档
-- [API 参考](docs/API_REFERENCE.md) - 完整 API 文档
-- [占位符指南](docs/PLACEHOLDERS.md) - 70+ 占位符详解
-- [占位符参考](docs/PLACEHOLDER_REFERENCE.md) - 占位符速查表
-- [最佳实践](docs/BEST_PRACTICES.md) - 推荐用法
-
-### 高级特性
-- [高级特性](docs/ADVANCED_FEATURES.md) - AOT、性能优化
-- [统一方言指南](docs/UNIFIED_DIALECT_USAGE_GUIDE.md) - 多数据库支持
-- [当前功能状态](docs/CURRENT_CAPABILITIES.md) - 实现进度
-
-### 示例
-- [TodoWebApi](samples/TodoWebApi/) - 完整 Web API 示例
-- [集成测试](tests/Sqlx.Tests/Integration/) - 所有功能演示
-
----
-
-## 🗄️ 支持的数据库
-
-| 数据库 | 状态 | 测试覆盖 |
-|--------|------|---------|
-| SQLite | ✅ 生产就绪 | 100% |
-| PostgreSQL | ✅ 生产就绪 | 100% |
-| MySQL | ✅ 生产就绪 | 100% |
-| SQL Server | ✅ 生产就绪 | 100% |
-
----
-
-## 📊 性能对比
-
-```
-| Method      | Mean      | Ratio | Allocated |
-|------------ |----------:|------:|----------:|
-| ADO.NET     | 162.0 μs  | 1.00  | 10.1 KB   |
-| Sqlx        | 170.2 μs  | 1.05  | 10.2 KB   | ⭐
-| Dapper      | 182.5 μs  | 1.13  | 11.3 KB   |
-| EF Core     | 245.8 μs  | 1.52  | 20.6 KB   |
+// Reliability
+builder.Services.AddCatga()
+    .UseInbox()
+    .UseOutbox();
 ```
 
 ---
 
-## 🤝 贡献
+## 📚 Documentation
 
-欢迎贡献！请查看 [贡献指南](CONTRIBUTING.md)。
-
----
-
-## 📄 许可证
-
-[MIT License](LICENSE.txt)
+- [Getting Started](./docs/articles/getting-started.md)
+- [Flow DSL Guide](./docs/guides/flow-dsl.md)
+- [Event Sourcing](./docs/articles/event-sourcing.md)
+- [Architecture](./docs/architecture/ARCHITECTURE.md)
+- [API Reference](https://cricle.github.io/Catga/api/)
 
 ---
 
-<div align="center">
+## 📄 License
 
-**Sqlx - 让数据访问回归简单，让性能接近极致！** 🚀
+[MIT](LICENSE)
 
-Made with ❤️ by the Sqlx Team
-
-</div>

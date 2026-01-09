@@ -1,4 +1,5 @@
 using BenchmarkDotNet.Running;
+using Sqlx.Benchmarks;
 using Sqlx.Benchmarks.Benchmarks;
 
 namespace Sqlx.Benchmarks;
@@ -16,6 +17,7 @@ class Program
             Console.WriteLine("1. SelectSingleBenchmark - Single row SELECT performance");
             Console.WriteLine("2. SelectListBenchmark - Multiple rows SELECT performance");
             Console.WriteLine("3. BatchInsertBenchmark - Batch INSERT performance (Sqlx advantage!)");
+            Console.WriteLine("4. PredefinedInterfacesBenchmarks - Predefined vs Custom interface performance");
             Console.WriteLine("\nRun with --filter <BenchmarkName> to run specific benchmark");
             Console.WriteLine("Run without arguments to run all benchmarks");
             return;
@@ -40,6 +42,10 @@ class Program
                 case "batchinsert":
                     BenchmarkRunner.Run<BatchInsertBenchmark>(config);
                     break;
+                case "predefined":
+                case "predefinedinterfaces":
+                    BenchmarkRunner.Run<PredefinedInterfacesBenchmarks>(config);
+                    break;
                 default:
                     Console.WriteLine($"Unknown benchmark: {filter}");
                     Console.WriteLine("Use --list to see available benchmarks");
@@ -53,6 +59,7 @@ class Program
             BenchmarkRunner.Run<SelectSingleBenchmark>(config);
             BenchmarkRunner.Run<SelectListBenchmark>(config);
             BenchmarkRunner.Run<BatchInsertBenchmark>(config);
+            BenchmarkRunner.Run<PredefinedInterfacesBenchmarks>(config);
         }
         
         Console.WriteLine("\nBenchmarks complete!");

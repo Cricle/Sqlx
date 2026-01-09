@@ -20,7 +20,7 @@ public partial class TestUserRepository(IDbConnection connection) : ITestUserRep
 
 public interface ITestUserRepository
 {
-    [SqlTemplate("INSERT INTO users (name, email, age, is_active) VALUES {{values @users}}")]
+    [SqlTemplate("INSERT INTO users (name, email, age, is_active) VALUES {{batch_values @users}}")]
     [BatchOperation(MaxBatchSize = 100)]
     Task<int> BatchInsertAsync(IEnumerable<TestUser> users);
     

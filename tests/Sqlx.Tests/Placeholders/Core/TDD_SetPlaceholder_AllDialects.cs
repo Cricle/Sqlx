@@ -174,7 +174,7 @@ namespace TestNamespace
     }
 
     [TestMethod]
-    [Description("{{set}} - PostgreSQL 使用 $param 前缀")]
+    [Description("{{set}} - PostgreSQL 使用 @param 前缀")]
     public void Set_PostgreSQL_UsesDollarPrefix()
     {
         var template = "UPDATE users SET {{set}} WHERE id = @id";
@@ -184,8 +184,8 @@ namespace TestNamespace
         Assert.IsTrue(sqlUpper.Contains("SET"),
             $"PostgreSQL 应该包含 SET。实际 SQL: {result.ProcessedSql}");
 
-        // 应该包含参数（$param 或运行时标记）
-        Assert.IsTrue(result.ProcessedSql.Contains("$") || result.ProcessedSql.Contains("{RUNTIME"),
+        // 应该包含参数（@param 或运行时标记）
+        Assert.IsTrue(result.ProcessedSql.Contains("@") || result.ProcessedSql.Contains("{RUNTIME"),
             $"PostgreSQL 应该包含参数引用。实际 SQL: {result.ProcessedSql}");
     }
 

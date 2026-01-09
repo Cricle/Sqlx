@@ -29,11 +29,6 @@ public class DatabaseFixture : IDisposable
 {
     private readonly Dictionary<SqlDefineTypes, DbConnection> _connections = new();
     private readonly Dictionary<SqlDefineTypes, bool> _initialized = new();
-    
-    // Testcontainers instances
-    private MySqlContainer? _mySqlContainer;
-    private PostgreSqlContainer? _postgreSqlContainer;
-    private MsSqlContainer? _msSqlContainer;
 
     /// <summary>
     /// 获取指定方言的数据库连接
@@ -77,61 +72,48 @@ public class DatabaseFixture : IDisposable
     }
 
     /// <summary>
-    /// 创建 MySQL 连接（使用 Testcontainers）
+    /// 创建 MySQL 连接（使用共享容器）
     /// </summary>
     private DbConnection CreateMySqlConnection()
     {
-        if (_mySqlContainer == null)
+        // 使用共享的 Assembly 级别容器
+        var container = Infrastructure.AssemblyTestFixture.MySqlContainer;
+        if (container == null)
         {
-            _mySqlContainer = new MySqlBuilder()
-                .WithImage("mysql:8.3")
-                .WithDatabase("sqlx_test")
-                .WithUsername("root")
-                .WithPassword("root")
-                .Build();
-            
-            _mySqlContainer.StartAsync().GetAwaiter().GetResult();
+            throw new InvalidOperationException("MySQL container is not available. Ensure AssemblyTestFixture is initialized.");
         }
 
-        return new MySqlConnection(_mySqlContainer.GetConnectionString());
+        return new MySqlConnection(container.GetConnectionString());
     }
 
     /// <summary>
-    /// 创建 PostgreSQL 连接（使用 Testcontainers）
+    /// 创建 PostgreSQL 连接（使用共享容器）
     /// </summary>
     private DbConnection CreatePostgreSqlConnection()
     {
-        if (_postgreSqlContainer == null)
+        // 使用共享的 Assembly 级别容器
+        var container = Infrastructure.AssemblyTestFixture.PostgreSqlContainer;
+        if (container == null)
         {
-            _postgreSqlContainer = new PostgreSqlBuilder()
-                .WithImage("postgres:16")
-                .WithDatabase("sqlx_test")
-                .WithUsername("postgres")
-                .WithPassword("postgres")
-                .Build();
-            
-            _postgreSqlContainer.StartAsync().GetAwaiter().GetResult();
+            throw new InvalidOperationException("PostgreSQL container is not available. Ensure AssemblyTestFixture is initialized.");
         }
 
-        return new NpgsqlConnection(_postgreSqlContainer.GetConnectionString());
+        return new NpgsqlConnection(container.GetConnectionString());
     }
 
     /// <summary>
-    /// 创建 SQL Server 连接（使用 Testcontainers）
+    /// 创建 SQL Server 连接（使用共享容器）
     /// </summary>
     private DbConnection CreateSqlServerConnection()
     {
-        if (_msSqlContainer == null)
+        // 使用共享的 Assembly 级别容器
+        var container = Infrastructure.AssemblyTestFixture.MsSqlContainer;
+        if (container == null)
         {
-            _msSqlContainer = new MsSqlBuilder()
-                .WithImage("mcr.microsoft.com/mssql/server:2019-latest")
-                .WithPassword("YourStrong@Passw0rd")
-                .Build();
-            
-            _msSqlContainer.StartAsync().GetAwaiter().GetResult();
+            throw new InvalidOperationException("SQL Server container is not available. Ensure AssemblyTestFixture is initialized.");
         }
 
-        return new SqlConnection(_msSqlContainer.GetConnectionString());
+        return new SqlConnection(container.GetConnectionString());
     }
 
     /// <summary>
@@ -656,7 +638,8 @@ public class DatabaseFixture : IDisposable
     }
 
     /// <summary>
-    /// 释放所有数据库连接和容器
+    /// 释放所有数据库连接
+    /// 注意：容器由 AssemblyTestFixture 统一管理，不在此处释放
     /// </summary>
     public void Dispose()
     {
@@ -667,10 +650,7 @@ public class DatabaseFixture : IDisposable
         }
         _connections.Clear();
 
-        // Stop and dispose Testcontainers
-        _mySqlContainer?.DisposeAsync().AsTask().GetAwaiter().GetResult();
-        _postgreSqlContainer?.DisposeAsync().AsTask().GetAwaiter().GetResult();
-        _msSqlContainer?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        // 容器由 AssemblyTestFixture 统一管理，不在此处释放
     }
 
     /// <summary>

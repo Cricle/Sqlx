@@ -4,6 +4,7 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -68,7 +69,7 @@ namespace Sqlx
         /// <summary>Gets column names of the table.</summary>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>List of column names in database order</returns>
-        Task<System.Collections.Generic.List<string>> GetColumnNamesAsync(CancellationToken cancellationToken = default);
+        Task<IList<string>> GetColumnNamesAsync(CancellationToken cancellationToken = default);
 
         /// <summary>Gets table row count estimate (fast, approximate).</summary>
         /// <param name="cancellationToken">Cancellation token</param>

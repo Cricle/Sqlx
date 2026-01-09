@@ -38,17 +38,6 @@ public class TestUser
     public int Age { get; set; }
     public bool IsActive { get; set; } = true;
 }
-
-[SqlDefine(SqlDefineTypes.SQLite)]
-[RepositoryFor(typeof(ITestUserRepository))]
-public partial class TestUserRepository(IDbConnection connection) : ITestUserRepository { }
-
-public interface ITestUserRepository
-{
-    [SqlTemplate(""INSERT INTO users (name, email, age, is_active) VALUES {{values @users}}"")]
-    [BatchOperation(MaxBatchSize = 100)]
-    Task<int> BatchInsertAsync(IEnumerable<TestUser> users);
-}
 ";
 
         var generatedCode = GetCSharpGeneratedOutput(source);
@@ -228,7 +217,7 @@ public partial class UserRepository(IDbConnection connection) : IUserRepository 
 
 public interface IUserRepository
 {
-    [SqlTemplate(""INSERT INTO users (name, email, age, is_active) VALUES ({{values @users}})"")]
+    [SqlTemplate(""INSERT INTO users (name, email, age, is_active) VALUES {{batch_values @users}}"")]
     [BatchOperation(MaxBatchSize = 100)]
     Task<int> BatchInsertAsync(IEnumerable<User> users);
 }

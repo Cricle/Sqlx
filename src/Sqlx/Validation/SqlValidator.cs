@@ -1,9 +1,8 @@
 namespace Sqlx.Validation;
 
-using System;
-using System.Buffers;
-using System.Runtime.CompilerServices;
 using Sqlx.Annotations;
+using System;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// SQL dynamic parameter validator (runtime, high performance).
@@ -18,20 +17,18 @@ public static class SqlValidator
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsValidIdentifier(ReadOnlySpan<char> identifier)
     {
-        if (identifier.Length == 0 || identifier.Length > 128)
-            return false;
+        int len = identifier.Length;
+        if (len == 0 || len > 128) return false;
 
         // First char must be letter or underscore
-        char first = identifier[0];
-        if (!((first >= 'a' && first <= 'z') || (first >= 'A' && first <= 'Z') || first == '_'))
-            return false;
+        char c = identifier[0];
+        if (!char.IsLetter(c) && c != '_') return false;
 
         // Following chars must be letter, digit, or underscore
-        for (int i = 1; i < identifier.Length; i++)
+        for (int i = 1; i < len; i++)
         {
-            char c = identifier[i];
-            if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'))
-                return false;
+            c = identifier[i];
+            if (!char.IsLetterOrDigit(c) && c != '_') return false;
         }
 
         return true;
@@ -41,8 +38,8 @@ public static class SqlValidator
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool ContainsDangerousKeyword(ReadOnlySpan<char> text)
     {
-        ReadOnlySpan<string> kw = ["DROP", "TRUNCATE", "ALTER", "EXEC", "--", "/*", ";"];
-        foreach (string keyword in kw)
+        ReadOnlySpan<string> keywords = ["DROP", "TRUNCATE", "ALTER", "EXEC", "--", "/*", ";"];
+        foreach (string keyword in keywords)
         {
             if (text.Contains(keyword.AsSpan(), StringComparison.OrdinalIgnoreCase))
                 return true;
@@ -56,12 +53,7 @@ public static class SqlValidator
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsValidFragment(ReadOnlySpan<char> fragment)
-    {
-        if (fragment.Length == 0 || fragment.Length > 4096)
-            return false;
-
-        return !ContainsDangerousKeyword(fragment);
-    }
+        => fragment.Length > 0 && fragment.Length <= 4096 && !ContainsDangerousKeyword(fragment);
 
     /// <summary>
     /// Validates table part (prefix/suffix).
@@ -70,14 +62,12 @@ public static class SqlValidator
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsValidTablePart(ReadOnlySpan<char> part)
     {
-        if (part.Length == 0 || part.Length > 64)
-            return false;
+        int len = part.Length;
+        if (len == 0 || len > 64) return false;
 
-        // Only letters and digits
-        foreach (char c in part)
+        for (int i = 0; i < len; i++)
         {
-            if (!char.IsLetterOrDigit(c))
-                return false;
+            if (!char.IsLetterOrDigit(part[i])) return false;
         }
 
         return true;
@@ -86,13 +76,11 @@ public static class SqlValidator
     /// <summary>Validates dynamic SQL parameter by type.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool Validate(ReadOnlySpan<char> value, DynamicSqlType type)
-    {
-        return type switch
+        => type switch
         {
             DynamicSqlType.Identifier => IsValidIdentifier(value),
             DynamicSqlType.Fragment => IsValidFragment(value),
             DynamicSqlType.TablePart => IsValidTablePart(value),
             _ => false
         };
-    }
 }

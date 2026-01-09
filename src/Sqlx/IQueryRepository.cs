@@ -38,7 +38,7 @@ namespace Sqlx
         /// <returns>List of entities</returns>
         /// <remarks>Generated SQL: SELECT * FROM table WHERE id IN (@id0, @id1, @id2...)</remarks>
         [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id IN {{values --param ids}}")]
-        Task<List<TEntity>> GetByIdsAsync(List<TKey> ids, CancellationToken cancellationToken = default);
+        Task<List<TEntity>> GetByIdsAsync(IList<TKey> ids, CancellationToken cancellationToken = default);
 
         /// <summary>Gets all entities with automatic limit and optional ordering.</summary>
         /// <param name="limit">Maximum number of rows to return (default 1000, max 10000 recommended)</param>
@@ -74,6 +74,7 @@ namespace Sqlx
         /// <param name="orderBy">ORDER BY clause. Null defaults to primary key order.</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Paged result with items and pagination metadata</returns>
+        [SqlTemplate("{{get_page}}")]
         Task<PagedResult<TEntity>> GetPageAsync(int pageNumber = 1, int pageSize = 20, string? orderBy = null, CancellationToken cancellationToken = default);
 
         // ===== Condition-based Queries =====
@@ -125,21 +126,20 @@ namespace Sqlx
         /// - SQLite: ORDER BY RANDOM()
         /// Oracle: ORDER BY DBMS_RANDOM.VALUE
         /// </remarks>
-        [SqlTemplate("SELECT {{columns}} FROM {{table}} ORDER BY RANDOM() LIMIT @count")]
+        [SqlTemplate("SELECT {{columns}} FROM {{table}} ORDER BY {{random_function}} {{limit --param count}}")]
         Task<List<TEntity>> GetRandomAsync(int count, CancellationToken cancellationToken = default);
 
-        // TODO: GetDistinctValuesAsync需要源生成器特殊支持来处理非实体返回类型
-        // /// <summary>Gets distinct values from a column.</summary>
-        // /// <param name="column">Column name to get distinct values from</param>
-        // /// <param name="limit">Maximum number of distinct values to return (default 1000)</param>
-        // /// <param name="cancellationToken">Cancellation token</param>
-        // /// <returns>List of distinct values</returns>
-        // /// <example>
-        // /// var statuses = await repo.GetDistinctValuesAsync("status");
-        // /// // ["active", "inactive", "pending"]
-        // /// </example>
-        // [SqlTemplate("SELECT DISTINCT {{column}} FROM {{table}} WHERE {{column}} IS NOT NULL ORDER BY {{column}} {{limit --param limit}}")]
-        // Task<List<string>> GetDistinctValuesAsync([DynamicSql(Type = DynamicSqlType.Identifier)] string column, int limit = 1000, CancellationToken cancellationToken = default);
+        /// <summary>Gets distinct values from a column.</summary>
+        /// <param name="column">Column name to get distinct values from</param>
+        /// <param name="limit">Maximum number of distinct values to return (default 1000)</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>List of distinct values</returns>
+        /// <example>
+        /// var statuses = await repo.GetDistinctValuesAsync("status");
+        /// // ["active", "inactive", "pending"]
+        /// </example>
+        [SqlTemplate("SELECT DISTINCT {{column}} FROM {{table}} WHERE {{column}} IS NOT NULL ORDER BY {{column}} {{limit --param limit}}")]
+        Task<List<string>> GetDistinctValuesAsync([DynamicSql(Type = DynamicSqlType.Identifier)] string column, int limit = 1000, CancellationToken cancellationToken = default);
     }
 }
 

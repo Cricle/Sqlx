@@ -103,8 +103,8 @@ public class TDD_BetweenPlaceholder
         var result = _engine.ProcessTemplate(template, _searchMethod, _productType, "products", dialect);
 
         // Assert
-        Assert.IsTrue(result.ProcessedSql.Contains("BETWEEN $minPrice AND $maxPrice"), 
-            $"PostgreSQL应该使用 'BETWEEN $minPrice AND $maxPrice'。实际SQL: {result.ProcessedSql}");
+        Assert.IsTrue(result.ProcessedSql.Contains("BETWEEN @minPrice AND @maxPrice"), 
+            $"PostgreSQL应该使用 'BETWEEN @minPrice AND @maxPrice'。实际SQL: {result.ProcessedSql}");
     }
 
     [TestMethod]

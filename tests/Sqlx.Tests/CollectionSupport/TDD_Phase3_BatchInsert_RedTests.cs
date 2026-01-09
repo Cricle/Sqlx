@@ -107,7 +107,7 @@ public partial class ProductRepository(IDbConnection connection) : IProductRepos
 
 public interface IProductRepository
 {
-    [SqlTemplate(""INSERT INTO {{table}} ({{columns}}) VALUES {{values @entities}}"")]
+    [SqlTemplate(""INSERT INTO {{table}} ({{columns}}) VALUES {{batch_values @entities}}"")]
     [BatchOperation(MaxBatchSize = 500)]
     Task<int> BatchInsertAsync(IEnumerable<Product> entities);
 }
@@ -162,7 +162,7 @@ public partial class OrderRepository(IDbConnection connection) : IOrderRepositor
 
 public interface IOrderRepository
 {
-    [SqlTemplate(""INSERT INTO {{table}} ({{columns}}) VALUES {{values @entities}}"")]
+    [SqlTemplate(""INSERT INTO {{table}} ({{columns}}) VALUES {{batch_values @entities}}"")]
     [BatchOperation]
     Task<int> BatchInsertAsync(IEnumerable<Order> entities);
 }

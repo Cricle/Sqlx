@@ -34,20 +34,19 @@ public static class NameMapper
         }
 
         var firstname = FirstPartRegex.Match(parameterName).Value;
-        var matches = CapitalWordsRegex.Matches(parameterName).Cast<Match>().Select(_ => _.Value.ToLower());
-        // 性能优化：避免重复的string.Join调用和临时数组创建
+        var matches = CapitalWordsRegex.Matches(parameterName);
+
         if (string.IsNullOrEmpty(firstname))
         {
-            return string.Join("_", matches);
+            return string.Join("_", matches.Cast<Match>().Select(m => m.Value.ToLower()));
         }
 
-        var allParts = new string[matches.Count() + 1];
-        allParts[0] = firstname;
-        var index = 1;
-        foreach (var match in matches)
+        var parts = new string[matches.Count + 1];
+        parts[0] = firstname;
+        for (int i = 0; i < matches.Count; i++)
         {
-            allParts[index++] = match;
+            parts[i + 1] = matches[i].Value.ToLower();
         }
-        return string.Join("_", allParts);
+        return string.Join("_", parts);
     }
 }

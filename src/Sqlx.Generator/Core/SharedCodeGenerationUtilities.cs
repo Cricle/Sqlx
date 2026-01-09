@@ -76,6 +76,59 @@ public static class SharedCodeGenerationUtilities
     /// <summary>Cached SQL name getter.</summary>
     public static string GetCachedSqlName(this IPropertySymbol property) =>
         _sqlNameCache.GetOrAdd(property, p => p.GetSqlName());
+
+    /// <summary>
+    /// Resolves an interface type parameter to its concrete type from the implementing class.
+    /// For example, if class UserRepo implements IPartialUpdateRepository&lt;User, int, UserUpdate&gt;,
+    /// this method can resolve "TUpdates" to "UserUpdate".
+    /// </summary>
+    /// <param name="implementingClass">The class that implements the interface</param>
+    /// <param name="typeParameterName">The name of the type parameter to resolve (e.g., "TUpdates")</param>
+    /// <returns>The concrete type, or null if not found</returns>
+    public static ITypeSymbol? ResolveInterfaceTypeArgument(INamedTypeSymbol implementingClass, string typeParameterName)
+    {
+        // Search through all implemented interfaces
+        foreach (var iface in implementingClass.AllInterfaces)
+        {
+            if (!iface.IsGenericType) continue;
+            
+            var originalDef = iface.OriginalDefinition;
+            var typeParams = originalDef.TypeParameters;
+            var typeArgs = iface.TypeArguments;
+            
+            for (int i = 0; i < typeParams.Length && i < typeArgs.Length; i++)
+            {
+                if (typeParams[i].Name == typeParameterName)
+                {
+                    return typeArgs[i];
+                }
+            }
+        }
+        
+        // Also check base types
+        var baseType = implementingClass.BaseType;
+        while (baseType != null)
+        {
+            if (baseType.IsGenericType)
+            {
+                var originalDef = baseType.OriginalDefinition;
+                var typeParams = originalDef.TypeParameters;
+                var typeArgs = baseType.TypeArguments;
+                
+                for (int i = 0; i < typeParams.Length && i < typeArgs.Length; i++)
+                {
+                    if (typeParams[i].Name == typeParameterName)
+                    {
+                        return typeArgs[i];
+                    }
+                }
+            }
+            baseType = baseType.BaseType;
+        }
+        
+        return null;
+    }
+
     /// <summary>Extract inner type from Task&lt;T&gt; type strings</summary>
     public static string ExtractInnerTypeFromTask(string taskType) => taskType switch
     {
@@ -89,7 +142,6 @@ public static class SharedCodeGenerationUtilities
     {
         if (string.IsNullOrEmpty(sql)) return string.Empty;
 
-        // 性能优化：单次检查避免不必要的操作
         var hasEscapeChars = sql.IndexOfAny(new[] { '"', '\r', '\n' }) >= 0;
         if (!hasEscapeChars) return sql;
 
@@ -132,33 +184,61 @@ public static class SharedCodeGenerationUtilities
         sb.AppendLine("}");
         sb.AppendLine();
 
+        // Check for TableNameBy attribute - dynamic table name at runtime
+        string? dynamicTableNameMethodName = null;
+        if (classSymbol != null)
+        {
+            var tableNameByAttr = classSymbol.GetTableNameByAttribute();
+            if (tableNameByAttr != null && tableNameByAttr.ConstructorArguments.Length > 0)
+            {
+                dynamicTableNameMethodName = tableNameByAttr.ConstructorArguments[0].Value?.ToString();
+            }
+        }
+
+        // If we have dynamic table name, wrap the SQL in a variable and replace table name at runtime
+        bool hasDynamicTableName = !string.IsNullOrEmpty(dynamicTableNameMethodName);
+
         // Check for runtime dynamic placeholders (WHERE, SET, ORDERBY, LIMIT, etc.)
         bool hasDynamicPlaceholders = sql.Contains("{RUNTIME_WHERE_") ||
                                      sql.Contains("{RUNTIME_SET_") ||
+                                     sql.Contains("{RUNTIME_SET_FROM_") ||
+                                     sql.Contains("{RUNTIME_SET_EXPR_") ||
                                      sql.Contains("{RUNTIME_ORDERBY_") ||
                                      sql.Contains("{RUNTIME_LIMIT_") ||
                                      sql.Contains("{RUNTIME_OFFSET_") ||
                                      sql.Contains("{RUNTIME_JOIN_") ||
                                      sql.Contains("{RUNTIME_GROUPBY_") ||
+                                     sql.Contains("{RUNTIME_COLUMN_") ||
+                                     sql.Contains("{RUNTIME_SQL_") ||
                                      sql.Contains("{RUNTIME_NULLABLE_LIMIT_") ||
                                      sql.Contains("{RUNTIME_NULLABLE_OFFSET_");
 
         if (hasDynamicPlaceholders)
         {
             // Generate dynamic SQL building with string interpolation
-            GenerateDynamicSql(sb, sql, method, classSymbol);
+            GenerateDynamicSql(sb, sql, method, classSymbol, dynamicTableNameMethodName);
         }
         else
         {
             // Check if we have collection parameters that need IN clause expansion
             var collectionParams = method.Parameters.Where(IsEnumerableParameter).ToList();
 
-            if (collectionParams.Any())
+            if (collectionParams.Any() || hasDynamicTableName)
             {
-                // Dynamic SQL with IN clause expansion
+                // Dynamic SQL with IN clause expansion or dynamic table name
                 // For verbatim string (@"..."), only double quotes need escaping
                 var escapedSql = sql.Replace("\"", "\"\"");
                 sb.AppendLine($"var __sql__ = @\"{escapedSql}\";");
+
+                // Handle dynamic table name replacement
+                if (hasDynamicTableName)
+                {
+                    sb.AppendLine();
+                    sb.AppendLine($"// Get dynamic table name from method: {dynamicTableNameMethodName}");
+                    sb.AppendLine($"var __dynamicTableName__ = {dynamicTableNameMethodName}();");
+                    sb.AppendLine("// Replace {{table}} placeholder with actual table name");
+                    sb.AppendLine("__sql__ = __sql__.Replace(\"{{table}}\", __dynamicTableName__);");
+                }
 
                 foreach (var param in collectionParams)
                 {
@@ -187,29 +267,63 @@ public static class SharedCodeGenerationUtilities
             }
             else
             {
-                // Static SQL (no dynamic placeholders, no collection parameters)
-                // For verbatim string (@"..."), only double quotes need escaping
-                var escapedSql = sql.Replace("\"", "\"\"");
-        sb.AppendLine($"__cmd__.CommandText = @\"{escapedSql}\";");
+                // Static SQL (no dynamic placeholders, no collection parameters, but may have dynamic table name)
+                if (hasDynamicTableName)
+                {
+                    // For verbatim string (@"..."), only double quotes need escaping
+                    var escapedSql = sql.Replace("\"", "\"\"");
+                    sb.AppendLine($"var __sql__ = @\"{escapedSql}\";");
+                    sb.AppendLine();
+                    sb.AppendLine($"// Get dynamic table name from method: {dynamicTableNameMethodName}");
+                    sb.AppendLine($"var __dynamicTableName__ = {dynamicTableNameMethodName}();");
+                    sb.AppendLine("// Replace {{table}} placeholder with actual table name");
+                    sb.AppendLine("__sql__ = __sql__.Replace(\"{{table}}\", __dynamicTableName__);");
+                    sb.AppendLine();
+                    sb.AppendLine("__cmd__.CommandText = __sql__;");
+                }
+                else
+                {
+                    // Truly static SQL
+                    // For verbatim string (@"..."), only double quotes need escaping
+                    var escapedSql = sql.Replace("\"", "\"\"");
+                    sb.AppendLine($"__cmd__.CommandText = @\"{escapedSql}\";");
+                }
             }
         }
 
         sb.AppendLine();
 
+        // Extract SET_FROM parameter names to exclude from regular binding
+        var setFromParams = new System.Collections.Generic.HashSet<string>();
+        var setFromMatches = System.Text.RegularExpressions.Regex.Matches(sql, @"\{RUNTIME_SET_FROM_([^}]+)\}");
+        foreach (System.Text.RegularExpressions.Match match in setFromMatches)
+        {
+            setFromParams.Add(match.Groups[1].Value);
+        }
+        
+        // Extract SET_EXPR parameter names to exclude from regular binding
+        var setExprMatches = System.Text.RegularExpressions.Regex.Matches(sql, @"\{RUNTIME_SET_EXPR_([^}]+)\}");
+        foreach (System.Text.RegularExpressions.Match match in setExprMatches)
+        {
+            setFromParams.Add(match.Groups[1].Value);
+        }
+
         // Generate parameter binding
-        GenerateParameterBinding(sb, method, hasDynamicPlaceholders);
+        GenerateParameterBinding(sb, method, hasDynamicPlaceholders, setFromParams);
     }
 
     /// <summary>
     /// Generate parameter binding code
     /// </summary>
-    private static void GenerateParameterBinding(IndentedStringBuilder sb, IMethodSymbol method, bool hasRuntimeWhere)
+    private static void GenerateParameterBinding(IndentedStringBuilder sb, IMethodSymbol method, bool hasRuntimeWhere, System.Collections.Generic.HashSet<string>? setFromParams = null)
     {
         // First, bind parameters from ExpressionToSql if present
         if (hasRuntimeWhere)
         {
             var exprParams = method.Parameters.Where(p =>
-                p.GetAttributes().Any(a => a.AttributeClass?.Name == "ExpressionToSqlAttribute"));
+                p.GetAttributes().Any(a => a.AttributeClass?.Name == "ExpressionToSqlAttribute") &&
+                // Exclude parameters used with SET_EXPR - their parameters are bound during SET_EXPR processing
+                !(setFromParams != null && setFromParams.Contains(p.Name)));
 
             foreach (var exprParam in exprParams)
             {
@@ -235,23 +349,50 @@ public static class SharedCodeGenerationUtilities
         // Then bind regular parameters (excluding special ones)
         var regularParams = method.Parameters.Where(p =>
             p.Type.Name != "CancellationToken" &&
+            // Exclude parameters used with --from option (SET_FROM) - their properties are bound individually
+            !(setFromParams != null && setFromParams.Contains(p.Name)) &&
             !p.GetAttributes().Any(a =>
                 a.AttributeClass?.Name == "ExpressionToSqlAttribute" ||
                 (a.AttributeClass?.Name == "DynamicSqlAttribute" && hasRuntimeWhere)));
 
-        // 🚀 性能优化：简化参数创建，减少临时变量和赋值操作
         foreach (var param in regularParams)
         {
             // Check if parameter type is an entity class (has properties that should be expanded)
             // Exclude: string, primitive types, system types, collections
             var paramType = param.Type as INamedTypeSymbol;
+            var isTypeParameter = param.Type.TypeKind == TypeKind.TypeParameter;
             var isEntityType = paramType != null &&
                               paramType.TypeKind == TypeKind.Class &&
                               paramType.SpecialType == SpecialType.None && // Exclude string, object, etc.
                               !paramType.ContainingNamespace.ToDisplayString().StartsWith("System") && // Exclude System.* types
                               paramType.GetMembers().OfType<IPropertySymbol>().Any(p => p.CanBeReferencedByName && p.GetMethod != null);
 
-            if (isEntityType)
+            if (isTypeParameter)
+            {
+                // Generic type parameter (like TParams) - generate runtime reflection code
+                // This is AOT-compatible because we use GetProperties() with proper trimming annotations
+                sb.AppendLine($"// AOT-compatible parameter binding from generic parameter: {param.Name}");
+                sb.AppendLine($"if ({param.Name} != null)");
+                sb.AppendLine("{");
+                sb.PushIndent();
+                sb.AppendLine($"var __{param.Name}_props__ = {param.Name}.GetType().GetProperties(global::System.Reflection.BindingFlags.Public | global::System.Reflection.BindingFlags.Instance);");
+                sb.AppendLine($"foreach (var __prop__ in __{param.Name}_props__)");
+                sb.AppendLine("{");
+                sb.PushIndent();
+                sb.AppendLine("if (__prop__.Name == \"EqualityContract\") continue;");
+                sb.AppendLine("var __paramName__ = \"@\" + __prop__.Name;");
+                sb.AppendLine($"var __paramValue__ = __prop__.GetValue({param.Name});");
+                sb.AppendLine("var __p__ = __cmd__.CreateParameter();");
+                sb.AppendLine("__p__.ParameterName = __paramName__;");
+                sb.AppendLine("__p__.Value = __paramValue__ ?? global::System.DBNull.Value;");
+                sb.AppendLine("__cmd__.Parameters.Add(__p__);");
+                sb.PopIndent();
+                sb.AppendLine("}");
+                sb.PopIndent();
+                sb.AppendLine("}");
+                sb.AppendLine();
+            }
+            else if (isEntityType)
             {
                 // Expand entity properties - bind each property as separate parameter
                 var properties = paramType!.GetMembers()
@@ -342,19 +483,37 @@ public static class SharedCodeGenerationUtilities
     /// <summary>
     /// Generate dynamic SQL building code (WHERE, SET, ORDERBY, etc.) with zero-allocation string interpolation
     /// </summary>
-    private static void GenerateDynamicSql(IndentedStringBuilder sb, string sql, IMethodSymbol method, INamedTypeSymbol? classSymbol = null)
+    private static void GenerateDynamicSql(IndentedStringBuilder sb, string sql, IMethodSymbol method, INamedTypeSymbol? classSymbol = null, string? dynamicTableNameMethodName = null)
     {
         sb.AppendLine("// Build SQL with dynamic placeholders (compile-time splitting, zero Replace calls)");
 
-        // Find all runtime dynamic markers (WHERE, SET, ORDERBY, LIMIT, OFFSET, JOIN, GROUPBY, NULLABLE_LIMIT, NULLABLE_OFFSET)
+        // Handle dynamic table name if specified
+        if (!string.IsNullOrEmpty(dynamicTableNameMethodName))
+        {
+            sb.AppendLine($"// Get dynamic table name from method: {dynamicTableNameMethodName}");
+            sb.AppendLine($"var __dynamicTableName__ = {dynamicTableNameMethodName}();");
+            sb.AppendLine();
+        }
+
+        // Find all runtime dynamic markers (WHERE, SET, SET_FROM, SET_EXPR, ORDERBY, LIMIT, OFFSET, JOIN, GROUPBY, COLUMN, SQL, NULLABLE_LIMIT, NULLABLE_OFFSET)
         var markers = System.Text.RegularExpressions.Regex.Matches(sql,
-            @"\{RUNTIME_(WHERE|SET|ORDERBY|LIMIT|OFFSET|JOIN|GROUPBY|NULLABLE_LIMIT|NULLABLE_OFFSET)_([^}]+)\}");
+            @"\{RUNTIME_(WHERE|SET_FROM|SET_EXPR|SET|ORDERBY|LIMIT|OFFSET|JOIN|GROUPBY|COLUMN|SQL|NULLABLE_LIMIT|NULLABLE_OFFSET)_([^}]+)\}");
 
         if (markers.Count == 0)
         {
-            // Fallback: no markers found
-            var escapedSql = sql.Replace("\"", "\"\"");
-            sb.AppendLine($"__cmd__.CommandText = @\"{escapedSql}\";");
+            // Fallback: no markers found, but may have dynamic table name
+            if (!string.IsNullOrEmpty(dynamicTableNameMethodName))
+            {
+                var escapedSql = sql.Replace("\"", "\"\"");
+                sb.AppendLine($"var __sql__ = @\"{escapedSql}\";");
+                sb.AppendLine("__sql__ = __sql__.Replace(\"{{table}}\", __dynamicTableName__);");
+                sb.AppendLine("__cmd__.CommandText = __sql__;");
+            }
+            else
+            {
+                var escapedSql = sql.Replace("\"", "\"\"");
+                sb.AppendLine($"__cmd__.CommandText = @\"{escapedSql}\";");
+            }
             return;
         }
 
@@ -457,23 +616,49 @@ public static class SharedCodeGenerationUtilities
             }
             else if (placeholderType == "LIMIT" || placeholderType == "OFFSET")
             {
-                // LIMIT/OFFSET parameter - generate conditional SQL for SQL Server
+                // LIMIT/OFFSET parameter - generate conditional SQL based on dialect
                 var paramName = markerContent;
                 var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
+                
+                // Get dialect to generate correct SQL syntax
+                var dialectValue = classSymbol != null ? GetDialectForClass(classSymbol) : GetDialectForMethod(method);
 
                 if (param != null && param.Type.Name.Contains("Nullable"))
                 {
                     // Nullable parameter - generate conditional code
                     if (placeholderType == "LIMIT")
                     {
-                        // For SQL Server: OFFSET 0 ROWS FETCH NEXT {limit} ROWS ONLY
-                        sb.AppendLine($"// Generate LIMIT clause for {paramName}");
-                        sb.AppendLine($"var {varName} = {paramName}.HasValue ? $\"OFFSET 0 ROWS FETCH NEXT {{{paramName}.Value}} ROWS ONLY\" : \"\";");
+                        if (dialectValue == "SqlServer")
+                        {
+                            // SQL Server: OFFSET 0 ROWS FETCH NEXT {limit} ROWS ONLY
+                            sb.AppendLine($"// Generate LIMIT clause for {paramName} (SQL Server)");
+                            sb.AppendLine($"var {varName} = {paramName}.HasValue ? $\"OFFSET 0 ROWS FETCH NEXT {{{paramName}.Value}} ROWS ONLY\" : \"\";");
+                        }
+                        else if (dialectValue == "Oracle")
+                        {
+                            sb.AppendLine($"// Generate LIMIT clause for {paramName} (Oracle)");
+                            sb.AppendLine($"var {varName} = {paramName}.HasValue ? $\"FETCH NEXT {{{paramName}.Value}} ROWS ONLY\" : \"\";");
+                        }
+                        else
+                        {
+                            // MySQL, PostgreSQL, SQLite
+                            sb.AppendLine($"// Generate LIMIT clause for {paramName}");
+                            sb.AppendLine($"var {varName} = {paramName}.HasValue ? $\"LIMIT {{{paramName}.Value}}\" : \"\";");
+                        }
                     }
                     else // OFFSET
                     {
-                        sb.AppendLine($"// Generate OFFSET clause for {paramName}");
-                        sb.AppendLine($"var {varName} = {paramName}.HasValue ? $\"OFFSET {{{paramName}.Value}} ROWS\" : \"\";");
+                        if (dialectValue == "SqlServer" || dialectValue == "Oracle")
+                        {
+                            sb.AppendLine($"// Generate OFFSET clause for {paramName} (SQL Server/Oracle)");
+                            sb.AppendLine($"var {varName} = {paramName}.HasValue ? $\"OFFSET {{{paramName}.Value}} ROWS\" : \"\";");
+                        }
+                        else
+                        {
+                            // MySQL, PostgreSQL, SQLite
+                            sb.AppendLine($"// Generate OFFSET clause for {paramName}");
+                            sb.AppendLine($"var {varName} = {paramName}.HasValue ? $\"OFFSET {{{paramName}.Value}}\" : \"\";");
+                        }
                     }
                 }
                 else
@@ -481,11 +666,44 @@ public static class SharedCodeGenerationUtilities
                     // Non-nullable parameter
                     if (placeholderType == "LIMIT")
                     {
-                        sb.AppendLine($"var {varName} = $\"OFFSET 0 ROWS FETCH NEXT {{{paramName}}} ROWS ONLY\";");
+                        if (dialectValue == "SqlServer")
+                        {
+                            // SQL Server: OFFSET 0 ROWS FETCH NEXT {limit} ROWS ONLY
+                            // Check if there's an ORDER BY clause in the SQL
+                            var hasOrderBy = dynamicVariables.Any(v => v.placeholderType == "ORDERBY");
+                            if (hasOrderBy)
+                            {
+                                // There's a dynamic ORDER BY - make LIMIT conditional on it
+                                var orderByVar = dynamicVariables.First(v => v.placeholderType == "ORDERBY").varName;
+                                sb.AppendLine($"var {varName} = !string.IsNullOrEmpty({orderByVar}) ? $\"OFFSET 0 ROWS FETCH NEXT {{{paramName}}} ROWS ONLY\" : \"\";");
+                            }
+                            else
+                            {
+                                // No dynamic ORDER BY - assume it's in the template
+                                sb.AppendLine($"var {varName} = $\"OFFSET 0 ROWS FETCH NEXT {{{paramName}}} ROWS ONLY\";");
+                            }
+                        }
+                        else if (dialectValue == "Oracle")
+                        {
+                            sb.AppendLine($"var {varName} = $\"FETCH NEXT {{{paramName}}} ROWS ONLY\";");
+                        }
+                        else
+                        {
+                            // MySQL, PostgreSQL, SQLite
+                            sb.AppendLine($"var {varName} = $\"LIMIT {{{paramName}}}\";");
+                        }
                     }
                     else // OFFSET
                     {
-                        sb.AppendLine($"var {varName} = $\"OFFSET {{{paramName}}} ROWS\";");
+                        if (dialectValue == "SqlServer" || dialectValue == "Oracle")
+                        {
+                            sb.AppendLine($"var {varName} = $\"OFFSET {{{paramName}}} ROWS\";");
+                        }
+                        else
+                        {
+                            // MySQL, PostgreSQL, SQLite
+                            sb.AppendLine($"var {varName} = $\"OFFSET {{{paramName}}}\";");
+                        }
                     }
                 }
             }
@@ -568,6 +786,276 @@ public static class SharedCodeGenerationUtilities
                     }
                 }
             }
+            else if (placeholderType == "SET_FROM")
+            {
+                // AOT-compatible SET clause generation from generic TUpdates parameter
+                // For generic type parameters, we generate inline code that uses AOT-compatible reflection
+                var paramName = markerContent;
+                var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
+                
+                if (param != null)
+                {
+                    var paramType = param.Type as INamedTypeSymbol;
+                    var dialectValue = classSymbol != null ? GetDialectForClass(classSymbol) : GetDialectForMethod(method);
+                    var dialect = GetSqlDefineFromDialect(dialectValue);
+                    
+                    // Get the quote character for column names based on dialect
+                    var columnQuoteStart = dialect.ColumnLeft;
+                    var columnQuoteEnd = dialect.ColumnRight;
+                    var paramPrefix = dialect.ParameterPrefix;
+                    
+                    // For generic type parameters (TUpdates), check if it's an interface-level type parameter
+                    // Interface-level type parameters (e.g., IPartialUpdateRepository<TEntity, TKey, TUpdates>)
+                    // are resolved at compile time when the user implements the interface.
+                    // Method-level type parameters (e.g., UpdatePartialAsync<TUpdates>) cannot be analyzed.
+                    if (param.Type.TypeKind == TypeKind.TypeParameter)
+                    {
+                        var typeParamName = param.Type.Name; // e.g., "TUpdates"
+                        var typeParam = param.Type as ITypeParameterSymbol;
+                        
+                        // Check if this is an interface-level type parameter (can be resolved)
+                        // or a method-level type parameter (cannot be resolved)
+                        var isInterfaceLevelTypeParam = typeParam?.DeclaringType != null;
+                        
+                        if (isInterfaceLevelTypeParam && classSymbol != null)
+                        {
+                            // Try to resolve the concrete type from the implemented interface
+                            var concreteType = ResolveInterfaceTypeArgument(classSymbol, typeParamName);
+                            if (concreteType != null && concreteType.TypeKind != TypeKind.TypeParameter)
+                            {
+                                // Successfully resolved to concrete type - generate compile-time code
+                                var properties = concreteType.GetMembers()
+                                    .OfType<IPropertySymbol>()
+                                    .Where(p => p.CanBeReferencedByName && 
+                                               p.GetMethod != null && 
+                                               !p.IsImplicitlyDeclared &&
+                                               p.Name != "EqualityContract")
+                                    .ToList();
+                                
+                                if (properties.Count > 0)
+                                {
+                                    var setClause = string.Join(", ", properties.Select(p =>
+                                    {
+                                        var columnName = ConvertToSnakeCase(p.Name);
+                                        return $"{dialect.WrapColumn(columnName)} = {dialect.ParameterPrefix}{p.Name}";
+                                    }));
+                                    sb.AppendLine($"// Compile-time resolved: {typeParamName} -> {concreteType.Name}");
+                                    sb.AppendLine($"var {varName} = \"{setClause}\";");
+                                    
+                                    // Also generate parameter binding for the resolved type
+                                    sb.AppendLine($"// Bind parameters from resolved type: {concreteType.Name}");
+                                    foreach (var prop in properties)
+                                    {
+                                        var propSqlName = ConvertToSnakeCase(prop.Name);
+                                        var isNullable = prop.Type.IsNullableType() || prop.Type.IsReferenceType;
+                                        
+                                        sb.Append("{ var __p__ = __cmd__.CreateParameter(); ");
+                                        sb.Append($"__p__.ParameterName = \"{dialect.ParameterPrefix}{propSqlName}\"; ");
+                                        
+                                        if (isNullable)
+                                        {
+                                            sb.Append($"__p__.Value = {paramName}.{prop.Name} ?? (object)global::System.DBNull.Value; ");
+                                        }
+                                        else
+                                        {
+                                            sb.Append($"__p__.Value = {paramName}.{prop.Name}; ");
+                                        }
+                                        
+                                        sb.AppendLine("__cmd__.Parameters.Add(__p__); }");
+                                    }
+                                }
+                                else
+                                {
+                                    sb.AppendLine($"var {varName} = \"\"; // No properties found in {concreteType.Name}");
+                                }
+                            }
+                            else
+                            {
+                                // Could not resolve - generate error
+                                sb.AppendLine($"#error Sqlx: Could not resolve interface type parameter '{typeParamName}' to a concrete type.");
+                                sb.AppendLine($"var {varName} = \"\";");
+                            }
+                        }
+                        else
+                        {
+                            // Method-level type parameter - cannot be analyzed at compile time
+                            // Use #warning instead of #error to allow compilation while still alerting users
+                            sb.AppendLine($"#warning Sqlx: Method-level generic type parameter '{typeParamName}' cannot be used with {{{{set --from}}}}. Use IPartialUpdateRepository<TEntity, TKey, TUpdates> interface instead.");
+                            sb.AppendLine($"var {varName} = \"\";");
+                        }
+                    }
+                    else if (paramType != null)
+                    {
+                        // For concrete types, extract properties at compile time
+                        var properties = paramType.GetMembers()
+                            .OfType<IPropertySymbol>()
+                            .Where(p => p.CanBeReferencedByName && 
+                                       p.GetMethod != null && 
+                                       !p.IsImplicitlyDeclared &&
+                                       p.Name != "EqualityContract")
+                            .ToList();
+                        
+                        if (properties.Count > 0)
+                        {
+                            var setClause = string.Join(", ", properties.Select(p =>
+                            {
+                                var columnName = ConvertToSnakeCase(p.Name);
+                                return $"{dialect.WrapColumn(columnName)} = {dialect.ParameterPrefix}{p.Name}";
+                            }));
+                            sb.AppendLine($"var {varName} = \"{setClause}\";");
+                        }
+                        else
+                        {
+                            sb.AppendLine($"var {varName} = \"\"; // No properties found in {paramType.Name}");
+                        }
+                    }
+                    else
+                    {
+                        sb.AppendLine($"var {varName} = \"\"; // Unable to analyze parameter type");
+                    }
+                }
+                else
+                {
+                    sb.AppendLine($"var {varName} = \"\"; // Parameter not found: {paramName}");
+                }
+            }
+            else if (placeholderType == "SET_EXPR")
+            {
+                // Expression-based SET clause generation for IExpressionUpdateRepository
+                // Uses Expression<Func<TEntity, TEntity>> to specify which properties to update
+                // The expression is analyzed at runtime using ExpressionToSql
+                var paramName = markerContent;
+                var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
+                
+                if (param != null)
+                {
+                    var dialectValue = classSymbol != null ? GetDialectForClass(classSymbol) : GetDialectForMethod(method);
+                    
+                    // Generate code to extract SET clause from the expression at runtime
+                    // The expression is of type Expression<Func<TEntity, TEntity>>
+                    // We need to analyze the MemberInitExpression to extract property assignments
+                    sb.AppendLine($"// Extract SET clause from Expression<Func<TEntity, TEntity>>: {paramName}");
+                    sb.AppendLine($"var __{paramName}_setClause__ = \"\";");
+                    sb.AppendLine($"var __{paramName}_setParams__ = new global::System.Collections.Generic.List<(string Name, object Value)>();");
+                    sb.AppendLine($"if ({paramName} != null)");
+                    sb.AppendLine("{");
+                    sb.PushIndent();
+                    sb.AppendLine($"var __body__ = {paramName}.Body;");
+                    sb.AppendLine("if (__body__ is global::System.Linq.Expressions.MemberInitExpression __memberInit__)");
+                    sb.AppendLine("{");
+                    sb.PushIndent();
+                    sb.AppendLine("var __setClauses__ = new global::System.Collections.Generic.List<string>();");
+                    sb.AppendLine("var __paramIndex__ = 0;");
+                    sb.AppendLine("foreach (var __binding__ in __memberInit__.Bindings)");
+                    sb.AppendLine("{");
+                    sb.PushIndent();
+                    sb.AppendLine("if (__binding__ is global::System.Linq.Expressions.MemberAssignment __assignment__)");
+                    sb.AppendLine("{");
+                    sb.PushIndent();
+                    sb.AppendLine("var __propName__ = __assignment__.Member.Name;");
+                    sb.AppendLine("var __columnName__ = global::Sqlx.Generator.SharedCodeGenerationUtilities.ConvertToSnakeCase(__propName__);");
+                    sb.AppendLine($"var __paramName__ = \"@__expr_p\" + __paramIndex__;");
+                    sb.AppendLine("__paramIndex__++;");
+                    sb.AppendLine();
+                    sb.AppendLine("// Extract value from the expression");
+                    sb.AppendLine("object __value__ = null;");
+                    sb.AppendLine("if (__assignment__.Expression is global::System.Linq.Expressions.ConstantExpression __constExpr__)");
+                    sb.AppendLine("{");
+                    sb.PushIndent();
+                    sb.AppendLine("__value__ = __constExpr__.Value;");
+                    sb.PopIndent();
+                    sb.AppendLine("}");
+                    sb.AppendLine("else");
+                    sb.AppendLine("{");
+                    sb.PushIndent();
+                    sb.AppendLine("// Compile and invoke the expression to get the value");
+                    sb.AppendLine("var __lambda__ = global::System.Linq.Expressions.Expression.Lambda(__assignment__.Expression);");
+                    sb.AppendLine("var __compiled__ = __lambda__.Compile();");
+                    sb.AppendLine("__value__ = __compiled__.DynamicInvoke();");
+                    sb.PopIndent();
+                    sb.AppendLine("}");
+                    sb.AppendLine();
+                    sb.AppendLine($"__setClauses__.Add($\"{{__columnName__}} = {{__paramName__}}\");");
+                    sb.AppendLine($"__{paramName}_setParams__.Add((__paramName__, __value__));");
+                    sb.PopIndent();
+                    sb.AppendLine("}");
+                    sb.PopIndent();
+                    sb.AppendLine("}");
+                    sb.AppendLine($"__{paramName}_setClause__ = string.Join(\", \", __setClauses__);");
+                    sb.PopIndent();
+                    sb.AppendLine("}");
+                    sb.PopIndent();
+                    sb.AppendLine("}");
+                    sb.AppendLine($"var {varName} = __{paramName}_setClause__;");
+                    sb.AppendLine();
+                    
+                    // Bind the extracted parameters
+                    sb.AppendLine($"// Bind parameters from expression: {paramName}");
+                    sb.AppendLine($"foreach (var __exprParam__ in __{paramName}_setParams__)");
+                    sb.AppendLine("{");
+                    sb.PushIndent();
+                    sb.AppendLine("var __p__ = __cmd__.CreateParameter();");
+                    sb.AppendLine("__p__.ParameterName = __exprParam__.Name;");
+                    sb.AppendLine("__p__.Value = __exprParam__.Value ?? global::System.DBNull.Value;");
+                    sb.AppendLine("__cmd__.Parameters.Add(__p__);");
+                    sb.PopIndent();
+                    sb.AppendLine("}");
+                }
+                else
+                {
+                    sb.AppendLine($"var {varName} = \"\"; // Parameter not found: {paramName}");
+                }
+            }
+            else if (placeholderType == "COLUMN")
+            {
+                // Dynamic column name with SQL injection protection
+                var paramName = markerContent.StartsWith("DYNAMIC_") ? markerContent.Substring(8) : markerContent;
+                sb.AppendLine($"// Validate dynamic column name: {paramName}");
+                sb.AppendLine($"if (!global::Sqlx.Validation.SqlValidator.IsValidIdentifier({paramName}.AsSpan()))");
+                sb.AppendLine("{");
+                sb.PushIndent();
+                sb.AppendLine($"throw new global::System.ArgumentException($\"Invalid column name: {{{paramName}}}. Only letters, digits, and underscores are allowed.\", nameof({paramName}));");
+                sb.PopIndent();
+                sb.AppendLine("}");
+                sb.AppendLine($"var {varName} = {paramName};");
+            }
+            else if (placeholderType == "SQL")
+            {
+                // Raw SQL fragment - the entire SQL is provided by the parameter
+                // This is used by IAdvancedRepository.ExecuteRawAsync, QueryRawAsync, etc.
+                var paramName = markerContent.StartsWith("DYNAMIC_") ? markerContent.Substring(8) : markerContent;
+                var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
+                
+                // Check if parameter is nullable (string? or Nullable<T>)
+                bool isNullable = param != null && (
+                    param.Type.NullableAnnotation == Microsoft.CodeAnalysis.NullableAnnotation.Annotated ||
+                    param.Type.Name.Contains("Nullable"));
+                
+                if (isNullable)
+                {
+                    // For nullable parameters, only validate if not null/empty
+                    sb.AppendLine($"// Validate raw SQL fragment: {paramName} (nullable)");
+                    sb.AppendLine($"if (!string.IsNullOrEmpty({paramName}) && !global::Sqlx.Validation.SqlValidator.IsValidFragment({paramName}.AsSpan()))");
+                    sb.AppendLine("{");
+                    sb.PushIndent();
+                    sb.AppendLine($"throw new global::System.ArgumentException($\"Invalid SQL fragment: {{{paramName}}}. Contains dangerous keywords.\", nameof({paramName}));");
+                    sb.PopIndent();
+                    sb.AppendLine("}");
+                    sb.AppendLine($"var {varName} = {paramName} ?? \"\";");
+                }
+                else
+                {
+                    // For non-nullable parameters, always validate
+                    sb.AppendLine($"// Validate raw SQL fragment: {paramName}");
+                    sb.AppendLine($"if (!global::Sqlx.Validation.SqlValidator.IsValidFragment({paramName}.AsSpan()))");
+                    sb.AppendLine("{");
+                    sb.PushIndent();
+                    sb.AppendLine($"throw new global::System.ArgumentException($\"Invalid SQL fragment: {{{paramName}}}. Contains dangerous keywords.\", nameof({paramName}));");
+                    sb.PopIndent();
+                    sb.AppendLine("}");
+                    sb.AppendLine($"var {varName} = {paramName};");
+                }
+            }
             else
             {
                 // Regular parameter as SQL fragment (with validation)
@@ -609,7 +1097,15 @@ public static class SharedCodeGenerationUtilities
         sb.AppendLine();
 
         // Generate SQL concatenation using string interpolation (compile-time optimized)
-        sb.Append("__cmd__.CommandText = ");
+        if (!string.IsNullOrEmpty(dynamicTableNameMethodName))
+        {
+            // Need to replace {{table}} placeholder with dynamic table name
+            sb.Append("var __finalSql__ = ");
+        }
+        else
+        {
+            sb.Append("__cmd__.CommandText = ");
+        }
 
         if (sqlParts.Count == 1)
         {
@@ -635,24 +1131,13 @@ public static class SharedCodeGenerationUtilities
         }
 
         sb.AppendLine(";");
-    }
 
-    /// <summary>
-    /// Get DbType
-    /// </summary>
-    public static string GetDbType(ITypeSymbol type)
-    {
-        return type.SpecialType switch
+        // Handle dynamic table name replacement if needed
+        if (!string.IsNullOrEmpty(dynamicTableNameMethodName))
         {
-            SpecialType.System_String => "global::System.Data.DbType.String",
-            SpecialType.System_Int32 => "global::System.Data.DbType.Int32",
-            SpecialType.System_Int64 => "global::System.Data.DbType.Int64",
-            SpecialType.System_Boolean => "global::System.Data.DbType.Boolean",
-            SpecialType.System_DateTime => "global::System.Data.DbType.DateTime",
-            SpecialType.System_Decimal => "global::System.Data.DbType.Decimal",
-            SpecialType.System_Double => "global::System.Data.DbType.Double",
-            _ => "global::System.Data.DbType.Object"
-        };
+            sb.AppendLine("__finalSql__ = __finalSql__.Replace(\"{{table}}\", __dynamicTableName__);");
+            sb.AppendLine("__cmd__.CommandText = __finalSql__;");
+        }
     }
 
     /// <summary>
@@ -660,7 +1145,6 @@ public static class SharedCodeGenerationUtilities
     /// </summary>
     public static void GenerateEntityMapping(IndentedStringBuilder sb, INamedTypeSymbol entityType, string variableName, List<string>? columnOrder = null, bool useOrdinalIndex = true)
     {
-        // 🚀 性能优化：默认使用硬编码索引访问（极致性能）
         // 如果列顺序不匹配，源分析器会发出编译警告
         if (columnOrder != null && columnOrder.Count > 0)
         {
@@ -742,8 +1226,6 @@ public static class SharedCodeGenerationUtilities
 
             var readMethod = prop.Type.UnwrapNullableType().GetDataReaderMethod();
 
-            // 🎯 关键性能优化：只对nullable类型检查IsDBNull，非nullable类型直接读取
-            // 这可以减少60-70%的IsDBNull调用，提升5-6μs性能
             // ✅ 全面支持：nullable value types (int?) 和 nullable reference types (string?)
             var isNullable = prop.Type.IsNullableType();
 
@@ -784,7 +1266,6 @@ public static class SharedCodeGenerationUtilities
             entityTypeName = entityTypeName.TrimEnd('?');
         }
 
-        // 性能优化：避免不必要的ToList()调用，直接遍历
         // 支持 set 和 init 属性（排除 record 的 EqualityContract）
         var properties = entityType.GetMembers().OfType<IPropertySymbol>()
             .Where(p => p.CanBeReferencedByName && p.SetMethod != null && p.Name != "EqualityContract")
@@ -804,8 +1285,6 @@ public static class SharedCodeGenerationUtilities
             return;
         }
 
-        // 🚀 性能优化：缓存GetOrdinal结果，避免重复查找（每个字段只调用一次GetOrdinal）
-        sb.AppendLine("// 缓存列序号（性能优化：避免重复GetOrdinal调用）");
         for (int i = 0; i < properties.Length; i++)
         {
             var prop = properties[i];
@@ -832,7 +1311,6 @@ public static class SharedCodeGenerationUtilities
             var prop = properties[i];
             var readMethod = prop.Type.UnwrapNullableType().GetDataReaderMethod();
 
-            // 🎯 关键性能优化：只对nullable类型检查IsDBNull
             // ✅ 全面支持：nullable value types (int?) 和 nullable reference types (string?)
             var isNullable = prop.Type.IsNullableType();
 
@@ -859,35 +1337,12 @@ public static class SharedCodeGenerationUtilities
         sb.AppendLine("};");
     }
 
-    /// <summary>
-    /// Get default value for a type
-    /// </summary>
-    private static string GetDefaultValue(ITypeSymbol type)
-    {
-        // ✅ 全面支持：nullable value types (int?) 和 nullable reference types (string?)
-        if (type.IsNullableType())
-            return "null";
-
-        return type.SpecialType switch
-        {
-            SpecialType.System_String => "string.Empty",
-            SpecialType.System_Boolean => "false",
-            SpecialType.System_Int32 => "0",
-            SpecialType.System_Int64 => "0L",
-            SpecialType.System_Decimal => "0m",
-            SpecialType.System_Double => "0.0",
-            SpecialType.System_Single => "0f",
-            _ => $"default({type.GetCachedDisplayString()})"  // 使用缓存版本
-        };
-    }
-
     /// <summary>Convert C# property names to snake_case database column names</summary>
     public static string ConvertToSnakeCase(string name)
     {
         if (string.IsNullOrEmpty(name)) return name;
         if (name.Contains("_")) return name.ToLowerInvariant();
 
-        // 性能优化：预计算容量更精确，避免重分配
         var result = new System.Text.StringBuilder(name.Length + (name.Length >> 2));
         for (int i = 0; i < name.Length; i++)
         {
@@ -982,6 +1437,23 @@ public static class SharedCodeGenerationUtilities
             4 => "DB2",         // SqlDefine.DB2
             5 => "SQLite",      // SqlDefine.SQLite
             _ => "SqlServer"    // Default
+        };
+    }
+
+    /// <summary>
+    /// Get SqlDefine instance from dialect string
+    /// </summary>
+    private static SqlDefine GetSqlDefineFromDialect(string dialectValue)
+    {
+        return dialectValue switch
+        {
+            "MySql" => SqlDefine.MySql,
+            "SqlServer" => SqlDefine.SqlServer,
+            "PostgreSql" => SqlDefine.PostgreSql,
+            "Oracle" => SqlDefine.Oracle,
+            "DB2" => SqlDefine.DB2,
+            "SQLite" => SqlDefine.SQLite,
+            _ => SqlDefine.SqlServer // Default
         };
     }
 

@@ -172,37 +172,4 @@ using var batch = connection.CreateBatch();
 
         Assert.IsNotNull(correctResourcePattern, "This documents correct resource management");
     }
-
-    [TestMethod]
-    public void DbBatch_PerformanceConsiderations_ShouldBeDocumented()
-    {
-        // This test documents performance considerations for DbBatch
-
-        // Performance benefits:
-        // 1. Reduced network round-trips
-        // 2. Better database optimization opportunities
-        // 3. Atomic execution of multiple operations
-
-        // Performance considerations:
-        // 1. Batch size should be reasonable (not too large)
-        // 2. All commands in batch should be of similar type for best performance
-        // 3. Parameter binding is more efficient than string concatenation
-
-        Assert.IsTrue(true, "Performance considerations are documented");
-    }
-
-    [TestMethod]
-    public void DbBatch_CommonMistakes_ShouldBeAvoided()
-    {
-        // This test documents common mistakes to avoid with DbBatch
-
-        // Common mistakes:
-        // 1. Not checking CanCreateBatch before using CreateBatch()
-        // 2. Not adding DbBatchCommand to BatchCommands collection
-        // 3. Reusing DbBatchCommand instances across different batches
-        // 4. Not properly disposing the batch
-        // 5. Mixing different database operations inappropriately
-
-        Assert.IsTrue(true, "Common mistakes are documented");
-    }
 }

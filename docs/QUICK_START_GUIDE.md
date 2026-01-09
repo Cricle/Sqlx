@@ -49,6 +49,54 @@ public record User
 
 ## 📖 第三步：创建服务接口
 
+### 方式一：使用预定义接口（推荐 - 最简单）⭐
+
+Sqlx 提供了完善的预定义 CRUD 接口，包含 **50+ 个常用方法**，无需手写任何 SQL！
+
+```csharp
+using Sqlx;
+
+// 只需一行代码，自动获得 15+ 个 CRUD 方法！
+public interface IUserService : ICrudRepository<User, int> { }
+```
+
+**自动获得的方法包括**：
+- `GetByIdAsync(id)` - 根据 ID 查询
+- `GetAllAsync(limit, orderBy)` - 查询所有（带限制和排序）
+- `GetWhereAsync(predicate)` - 条件查询（支持表达式）
+- `GetPageAsync(pageNumber, pageSize)` - 分页查询
+- `InsertAsync(entity)` - 插入实体
+- `InsertAndGetIdAsync(entity)` - 插入并返回 ID
+- `UpdateAsync(entity)` - 更新实体
+- `DeleteAsync(id)` - 删除实体
+- `ExistsAsync(id)` - 检查是否存在
+- `CountAsync()` - 统计数量
+- ... 还有 5+ 个方法！
+
+📖 **[查看完整方法列表](PREDEFINED_INTERFACES_GUIDE.md)**
+
+**扩展自定义方法**：
+
+```csharp
+// 继承预定义接口，再添加自定义方法
+public interface IUserService : ICrudRepository<User, int>
+{
+    // 自定义查询
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE is_active = @isActive")]
+    Task<List<User>> GetActiveUsersAsync(bool isActive);
+
+    // 搜索用户
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE name LIKE @query OR email LIKE @query")]
+    Task<List<User>> SearchAsync(string query);
+}
+```
+
+---
+
+### 方式二：手写所有方法（完全控制）
+
+如果需要完全控制每个方法的 SQL，可以手写：
+
 ```csharp
 using Sqlx.Annotations;
 
@@ -91,6 +139,22 @@ public interface IUserService
     Task<int> CountActiveUsersAsync(bool isActive);
 }
 ```
+
+---
+
+### 更多预定义接口选择
+
+根据你的场景选择合适的接口：
+
+| 接口 | 方法数 | 适用场景 |
+|------|--------|---------|
+| `ICrudRepository<TEntity, TKey>` | 15+ | 基础 CRUD 操作 |
+| `IRepository<TEntity, TKey>` | 50+ | 完整功能（查询、命令、批量、聚合） |
+| `IReadOnlyRepository<TEntity, TKey>` | 26 | 只读场景（报表、CQRS 查询端） |
+| `IBulkRepository<TEntity, TKey>` | 17 | 批量操作（高性能场景） |
+| `IWriteOnlyRepository<TEntity, TKey>` | 17 | 只写场景（CQRS 命令端） |
+
+📖 **[查看接口选择指南](PREDEFINED_INTERFACES_GUIDE.md#interface-selection)**
 
 ---
 

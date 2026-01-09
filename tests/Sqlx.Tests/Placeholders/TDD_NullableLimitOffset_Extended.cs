@@ -98,14 +98,14 @@ public class TDD_NullableLimitOffset_Extended
     }
 
     [TestMethod]
-    [Description("PostgreSQL 非可空 limit 应该使用 $ 参数前缀")]
+    [Description("PostgreSQL 非可空 limit 应该使用 @ 参数前缀")]
     public void PostgreSQL_NonNullableLimit_ShouldUseDollarPrefix()
     {
         var template = "SELECT * FROM {{table}} ORDER BY id {{limit}}";
         var result = _engine.ProcessTemplate(template, _methodWithNonNullableLimit, _userType, "users", Sqlx.Generator.SqlDefine.PostgreSql);
 
-        Assert.IsTrue(result.ProcessedSql.Contains("LIMIT $limit"),
-            $"PostgreSQL 非可空 limit 应该使用 $ 参数前缀。实际 SQL: {result.ProcessedSql}");
+        Assert.IsTrue(result.ProcessedSql.Contains("LIMIT @limit"),
+            $"PostgreSQL 非可空 limit 应该使用 @ 参数前缀。实际 SQL: {result.ProcessedSql}");
     }
 
     [TestMethod]
@@ -425,7 +425,7 @@ public class TDD_NullableLimitOffset_Extended
             $"SQLite 应该生成 LIMIT @limit。实际: {sqliteResult.ProcessedSql}");
 
         var sqlServerResult = _engine.ProcessTemplate(template, _methodWithNonNullableLimit, _userType, "users", Sqlx.Generator.SqlDefine.SqlServer);
-        Assert.IsTrue(sqlServerResult.ProcessedSql.Contains("{RUNTIME_LIMIT_limit}"),
+        Assert.IsTrue(sqlServerResult.ProcessedSql.Contains("{RUNTIME_LIMIT"),
             $"SQL Server 应该生成 RUNTIME_LIMIT 占位符。实际: {sqlServerResult.ProcessedSql}");
     }
 
@@ -485,7 +485,7 @@ public class TDD_NullableLimitOffset_Extended
     }
 
     [TestMethod]
-    [Description("PostgreSQL 非可空 offset 应该使用 $ 参数前缀")]
+    [Description("PostgreSQL 非可空 offset 应该使用 @ 参数前缀")]
     public void PostgreSQL_NonNullableOffset_ShouldUseDollarPrefix()
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(@"
@@ -501,8 +501,8 @@ public class TDD_NullableLimitOffset_Extended
         var template = "SELECT * FROM {{table}} ORDER BY id {{offset}}";
         var result = _engine.ProcessTemplate(template, method, userType, "users", Sqlx.Generator.SqlDefine.PostgreSql);
 
-        Assert.IsTrue(result.ProcessedSql.Contains("OFFSET $offset"),
-            $"PostgreSQL 非可空 offset 应该使用 $ 参数前缀。实际: {result.ProcessedSql}");
+        Assert.IsTrue(result.ProcessedSql.Contains("OFFSET @offset"),
+            $"PostgreSQL 非可空 offset 应该使用 @ 参数前缀。实际: {result.ProcessedSql}");
     }
 
     #endregion

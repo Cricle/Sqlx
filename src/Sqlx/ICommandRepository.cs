@@ -55,26 +55,61 @@ namespace Sqlx
         Task<int> UpdateAsync(TEntity entity, CancellationToken cancellationToken = default);
 
         /// <summary>Updates specific columns only (partial update).</summary>
+        /// <typeparam name="TUpdates">Type containing the properties to update (can be anonymous type or named type)</typeparam>
         /// <param name="id">Entity primary key</param>
-        /// <param name="updates">Anonymous object with column-value pairs to update</param>
+        /// <param name="updates">Object with column-value pairs to update (properties are analyzed at compile time)</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Rows affected (0 = not found, 1 = success)</returns>
+        /// <remarks>
+        /// <para>
+        /// ⚠️ AOT LIMITATION: This method uses method-level generics which cannot be fully analyzed
+        /// at compile time by the source generator. For full AOT compatibility, use one of these alternatives:
+        /// </para>
+        /// <para>
+        /// 1. <see cref="IPartialUpdateRepository{TEntity, TKey, TUpdates}"/> - Interface-level generics
+        /// 2. <see cref="IExpressionUpdateRepository{TEntity, TKey}"/> - Expression-based updates
+        /// 3. Define a custom method with a concrete type parameter
+        /// </para>
+        /// <para>
+        /// Property names are automatically converted to snake_case column names.
+        /// </para>
+        /// </remarks>
         /// <example>
-        /// await repo.UpdatePartialAsync(userId, new { Name = "Alice", UpdatedAt = DateTime.Now });
+        /// // For AOT compatibility, prefer IPartialUpdateRepository:
+        /// public record UserNameUpdate(string Name, DateTime UpdatedAt);
+        /// [RepositoryFor&lt;IPartialUpdateRepository&lt;User, int, UserNameUpdate&gt;&gt;]
+        /// public partial class UserRepository { }
+        /// 
+        /// // Or use expression-based updates:
+        /// [RepositoryFor&lt;IExpressionUpdateRepository&lt;User, int&gt;&gt;]
+        /// public partial class UserRepository { }
+        /// await repo.UpdateFieldsAsync(userId, u => new User { Name = "Alice" });
         /// </example>
         [SqlTemplate("UPDATE {{table}} SET {{set --from updates}} WHERE id = @id")]
-        Task<int> UpdatePartialAsync(TKey id, object updates, CancellationToken cancellationToken = default);
+        Task<int> UpdatePartialAsync<TUpdates>(TKey id, TUpdates updates, CancellationToken cancellationToken = default);
 
         /// <summary>Updates entities matching expression predicate.</summary>
+        /// <typeparam name="TUpdates">Type containing the properties to update (can be anonymous type or named type)</typeparam>
         /// <param name="predicate">Expression predicate for WHERE clause</param>
-        /// <param name="updates">Anonymous object with column-value pairs to update</param>
+        /// <param name="updates">Object with column-value pairs to update (properties are analyzed at compile time)</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Rows affected</returns>
+        /// <remarks>
+        /// <para>
+        /// ⚠️ AOT LIMITATION: This method uses method-level generics which cannot be fully analyzed
+        /// at compile time by the source generator. For full AOT compatibility, use one of these alternatives:
+        /// </para>
+        /// <para>
+        /// 1. <see cref="IPartialUpdateRepository{TEntity, TKey, TUpdates}"/> - Interface-level generics
+        /// 2. <see cref="IExpressionUpdateRepository{TEntity, TKey}"/> - Expression-based updates
+        /// </para>
+        /// </remarks>
         /// <example>
-        /// await repo.UpdateWhereAsync(x => x.Status == "Pending", new { Status = "Active" });
+        /// // For AOT compatibility, prefer IPartialUpdateRepository or IExpressionUpdateRepository
+        /// await repo.UpdateFieldsWhereAsync(x => x.Status == "Pending", u => new User { Status = "Active" });
         /// </example>
         [SqlTemplate("UPDATE {{table}} SET {{set --from updates}} {{where}}")]
-        Task<int> UpdateWhereAsync([ExpressionToSql] Expression<Func<TEntity, bool>> predicate, object updates, CancellationToken cancellationToken = default);
+        Task<int> UpdateWhereAsync<TUpdates>([ExpressionToSql] Expression<Func<TEntity, bool>> predicate, TUpdates updates, CancellationToken cancellationToken = default);
 
         /// <summary>Inserts if not exists, updates if exists (UPSERT/MERGE).</summary>
         /// <param name="entity">Entity to upsert</param>
@@ -87,6 +122,7 @@ namespace Sqlx
         /// - SQLite: INSERT OR REPLACE
         /// - SQL Server: MERGE
         /// </remarks>
+        [SqlTemplate("{{upsert}}")]
         Task<int> UpsertAsync(TEntity entity, CancellationToken cancellationToken = default);
 
         // ===== Delete Operations =====

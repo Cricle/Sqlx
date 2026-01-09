@@ -50,8 +50,8 @@ namespace Sqlx.Tests.Core
             // Check RepositoryClasses property
             var repositoryClassesProperty = interfaceType.GetProperty("RepositoryClasses");
             Assert.IsNotNull(repositoryClassesProperty, "CSharpGenerator.CSharpSyntaxReceiver should have RepositoryClasses property");
-            Assert.AreEqual(typeof(List<Microsoft.CodeAnalysis.INamedTypeSymbol>), repositoryClassesProperty.PropertyType,
-                "RepositoryClasses property should be List<INamedTypeSymbol>");
+            Assert.AreEqual(typeof(HashSet<Microsoft.CodeAnalysis.INamedTypeSymbol>), repositoryClassesProperty.PropertyType,
+                "RepositoryClasses property should be HashSet<INamedTypeSymbol>");
 
             // Check MethodSyntaxNodes property
             var methodSyntaxProperty = interfaceType.GetProperty("MethodSyntaxNodes");
@@ -109,7 +109,7 @@ namespace Sqlx.Tests.Core
 
             // Test that the collections are mutable
             Assert.IsTrue(receiver.Methods is List<Microsoft.CodeAnalysis.IMethodSymbol>);
-            Assert.IsTrue(receiver.RepositoryClasses is List<Microsoft.CodeAnalysis.INamedTypeSymbol>);
+            Assert.IsTrue(receiver.RepositoryClasses is HashSet<Microsoft.CodeAnalysis.INamedTypeSymbol>);
         }
 
         [TestMethod]
@@ -125,7 +125,7 @@ namespace Sqlx.Tests.Core
 
             // Test RepositoryClasses collection
             Assert.IsNotNull(receiver.RepositoryClasses);
-            Assert.IsTrue(receiver.RepositoryClasses is List<Microsoft.CodeAnalysis.INamedTypeSymbol>);
+            Assert.IsTrue(receiver.RepositoryClasses is HashSet<Microsoft.CodeAnalysis.INamedTypeSymbol>);
             Assert.AreEqual(0, receiver.RepositoryClasses.Count);
 
             // Test that collections are separate instances
@@ -191,7 +191,7 @@ namespace Sqlx.Tests.Core
             var repositoryClassesProperty = interfaceType.GetProperty("RepositoryClasses");
             Assert.IsNotNull(repositoryClassesProperty);
             Assert.IsTrue(repositoryClassesProperty.CanRead, "RepositoryClasses property should be readable");
-            Assert.AreEqual(typeof(List<Microsoft.CodeAnalysis.INamedTypeSymbol>), repositoryClassesProperty.PropertyType);
+            Assert.AreEqual(typeof(HashSet<Microsoft.CodeAnalysis.INamedTypeSymbol>), repositoryClassesProperty.PropertyType);
         }
 
         [TestMethod]
@@ -258,9 +258,9 @@ namespace Sqlx.Tests.Core
             // Test thread safety considerations (conceptual)
             var receiver = new MockSqlxSyntaxReceiver();
 
-            // List<T> is not thread-safe, so we expect non-thread-safe collections
+            // List<T> and HashSet<T> are not thread-safe, so we expect non-thread-safe collections
             Assert.IsTrue(receiver.Methods is List<Microsoft.CodeAnalysis.IMethodSymbol>);
-            Assert.IsTrue(receiver.RepositoryClasses is List<Microsoft.CodeAnalysis.INamedTypeSymbol>);
+            Assert.IsTrue(receiver.RepositoryClasses is HashSet<Microsoft.CodeAnalysis.INamedTypeSymbol>);
 
             // This is expected behavior - syntax receivers are used in single-threaded context
             // during compilation, so thread safety is not required
@@ -276,17 +276,15 @@ namespace Sqlx.Tests.Core
             Assert.AreEqual(0, receiver.Methods.Count);
             Assert.AreEqual(0, receiver.RepositoryClasses.Count);
 
-            // Collections should be concrete List<T> for performance
+            // Collections should be concrete types for performance
             Assert.IsTrue(receiver.Methods is List<Microsoft.CodeAnalysis.IMethodSymbol>);
-            Assert.IsTrue(receiver.RepositoryClasses is List<Microsoft.CodeAnalysis.INamedTypeSymbol>);
+            Assert.IsTrue(receiver.RepositoryClasses is HashSet<Microsoft.CodeAnalysis.INamedTypeSymbol>);
 
-            // Test that collections don't pre-allocate large capacity
+            // Test that List doesn't pre-allocate large capacity
             var methodsList = receiver.Methods as List<Microsoft.CodeAnalysis.IMethodSymbol>;
-            var reposList = receiver.RepositoryClasses as List<Microsoft.CodeAnalysis.INamedTypeSymbol>;
 
             // Capacity should be reasonable (List<T> default is 0 for empty list)
             Assert.IsTrue(methodsList!.Capacity >= 0 && methodsList.Capacity <= 4);
-            Assert.IsTrue(reposList!.Capacity >= 0 && reposList.Capacity <= 4);
         }
     }
 }

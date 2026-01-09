@@ -11,7 +11,7 @@ namespace Sqlx
         /// <summary>MySQL dialect configuration - uses `backticks` for columns and @ for parameters.</summary>
         public static readonly SqlDialect MySql = new("`", "`", "'", "'", "@");
 
-        /// <summary>PostgreSQL dialect configuration - uses "quotes" for columns and @ for parameters (Npgsql supports @name format).</summary>
+        /// <summary>PostgreSQL dialect configuration - uses "quotes" for columns and @ for parameters.</summary>
         public static readonly SqlDialect PostgreSql = new("\"", "\"", "'", "'", "@");
 
         /// <summary>SQLite dialect configuration - uses [brackets] for columns and @ for parameters (ADO.NET standard).</summary>
@@ -84,7 +84,8 @@ namespace Sqlx
             {
                 ("`", "`", "@") => ("MySql", Annotations.SqlDefineTypes.MySql),
                 ("[", "]", "@") => ("SqlServer", Annotations.SqlDefineTypes.SqlServer), // Also matches SQLite
-                ("\"" , "\"", "@") => ("PostgreSql", Annotations.SqlDefineTypes.PostgreSql),
+                ("\"", "\"", "@") => ("PostgreSql", Annotations.SqlDefineTypes.PostgreSql),
+                ("\"", "\"", "$") => ("PostgreSql", Annotations.SqlDefineTypes.PostgreSql), // Legacy support
                 ("\"", "\"", ":") => ("Oracle", Annotations.SqlDefineTypes.Oracle),
                 ("\"", "\"", "?") => ("DB2", Annotations.SqlDefineTypes.DB2),
                 _ => throw new NotSupportedException($"Unknown dialect: {ColumnLeft}{ColumnRight}{ParameterPrefix}")

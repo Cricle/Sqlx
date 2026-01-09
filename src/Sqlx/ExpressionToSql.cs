@@ -106,7 +106,6 @@ namespace Sqlx
         {
             if (selectors == null || selectors.Length == 0) return new List<string>(0);
 
-            // 性能优化：预估容量避免重新分配
             var result = new List<string>(selectors.Length * 2);
             foreach (var selector in selectors)
             {
@@ -209,7 +208,6 @@ namespace Sqlx
         /// <summary>Adds multiple INSERT values</summary>
         public ExpressionToSql<T> AddValues(params object[] values)
         {
-            // 性能优化：避免不必要的LINQ和ToList()调用
             if (values?.Length > 0)
             {
                 var formattedValues = new List<string>(values.Length);
@@ -302,10 +300,8 @@ namespace Sqlx
             _dialect.DatabaseType == "SqlServer" ? $" OFFSET {_skip ?? 0} ROWS{(_take.HasValue ? $" FETCH NEXT {_take.Value} ROWS ONLY" : "")}" :
             $"{(_take.HasValue ? $" LIMIT {_take.Value}" : "")}{(_skip.HasValue ? $" OFFSET {_skip.Value}" : "")}";
 
-        // 性能优化：缓存where条件的构建，避免重复的Select(RemoveOuterParentheses)调用
         private string GetWhereClause() => _whereConditions.Count > 0 ? $" WHERE {string.Join(" AND ", _whereConditions.Select(RemoveOuterParentheses))}" : "";
 
-        // 性能优化：避免嵌套的string.Join调用，构建VALUES子句
         private string GetValuesClause()
         {
             if (_values.Count == 0) return "";
@@ -647,7 +643,6 @@ namespace Sqlx
             // Math functions
             if (declaringType == typeof(Math))
             {
-                // 性能优化：避免不必要的ToArray()调用，按需解析参数
                 return (methodName, methodCall.Arguments.Count) switch
                 {
                     ("Abs", 1) => $"ABS({ParseLambdaBody(methodCall.Arguments[0])})",
@@ -667,7 +662,6 @@ namespace Sqlx
             if (declaringType == typeof(string) && methodCall.Object != null)
             {
                 var obj = ParseLambdaBody(methodCall.Object);
-                // 性能优化：避免不必要的ToArray()调用，按需解析参数
                 return (methodName, methodCall.Arguments.Count) switch
                 {
                     ("Length", 0) => DatabaseType == "SqlServer" ? $"LEN({obj})" : $"LENGTH({obj})",

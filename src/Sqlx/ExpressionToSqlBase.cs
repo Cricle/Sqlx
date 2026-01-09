@@ -43,7 +43,7 @@ namespace Sqlx
         /// <summary>
         /// Parameter counter for generating unique parameter names
         /// </summary>
-        protected int _counter = 0;
+        protected int _counter;
 
         /// <summary>Initializes with SQL dialect and entity type</summary>
         protected ExpressionToSqlBase(SqlDialect dialect, Type entityType)
@@ -423,7 +423,6 @@ namespace Sqlx
         protected string DatabaseType => _dialect.DatabaseType;
         private string GetConcatSyntax(params string[] parts) => _dialect.GetConcatFunction(parts);
 
-        // 性能优化：预构建数学函数映射
         private static readonly Dictionary<(string Name, int ArgCount), Func<string[], string, string>> MathFunctionMap = new()
         {
             [("Abs", 1)] = (args, _) => $"ABS({args[0]})",
@@ -440,7 +439,6 @@ namespace Sqlx
         /// <summary>Parses math function</summary>
         protected string ParseMathFunction(MethodCallExpression method)
         {
-            // 性能优化：避免不必要的ToArray()调用，按需创建参数数组
             var key = (method.Method.Name, method.Arguments.Count);
             if (MathFunctionMap.TryGetValue(key, out var func))
             {
@@ -454,7 +452,6 @@ namespace Sqlx
             return "1";
         }
 
-        // 性能优化：预构建字符串函数映射，使用实例方法访问dialect
         private readonly Dictionary<(string Name, int ArgCount), Func<string, string[], string>> _stringFunctionMap;
 
         /// <summary>初始化字符串函数映射</summary>
@@ -476,7 +473,6 @@ namespace Sqlx
         protected string ParseStringFunction(MethodCallExpression method)
         {
             var obj = method.Object != null ? ParseExpressionRaw(method.Object) : "";
-            // 性能优化：避免不必要的ToArray()调用，按需创建参数数组
             var key = (method.Method.Name, method.Arguments.Count);
             if (_stringFunctionMap.TryGetValue(key, out var func))
             {

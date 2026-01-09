@@ -74,8 +74,10 @@ public partial interface IParameterizedConstructorRepo
 [RepositoryFor(typeof(IParameterizedConstructorRepo))]
 public partial class ParameterizedConstructorRepo(DbConnection connection) : IParameterizedConstructorRepo
 {
-    // 验证连接参数
-    private DbConnection ValidatedConnection => connection ?? throw new ArgumentNullException(nameof(connection));
+    // 🔧 IMPORTANT: Primary constructor parameters are not accessible across partial class files
+    // You MUST define a protected or internal field/property to store the connection
+    // so the generated code can access it
+    protected readonly DbConnection _connection = connection;
 }
 
 // ==================== 场景3: 多个参数的构造函数 ====================

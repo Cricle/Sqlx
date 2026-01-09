@@ -359,4 +359,75 @@ public class ExpressionToSqlAdvancedTests
         Assert.IsFalse(string.IsNullOrWhiteSpace(template.Sql));
         Assert.IsTrue(template.Parameters.Count >= 0);
     }
+
+    /// <summary>
+    /// Tests that NULL comparison generates "IS NULL" instead of "= NULL" in SQL.
+    /// This is critical for SQL correctness as "= NULL" always returns false.
+    /// </summary>
+    [TestMethod]
+    public void ExpressionToSql_NullComparison_GeneratesIsNull()
+    {
+        // Arrange
+        var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer();
+
+        // Act - Test equality with null
+        expressionToSql.Where(u => u.Name == null);
+        var whereClause = expressionToSql.ToWhereClause();
+
+        // Assert
+        Assert.IsTrue(whereClause.Contains("IS NULL"), 
+            $"Expected 'IS NULL' in WHERE clause, but got: {whereClause}");
+        Assert.IsFalse(whereClause.Contains("= NULL"), 
+            $"Should not contain '= NULL' in WHERE clause: {whereClause}");
+    }
+
+    /// <summary>
+    /// Tests that NOT NULL comparison generates "IS NOT NULL" instead of "<> NULL" in SQL.
+    /// </summary>
+    [TestMethod]
+    public void ExpressionToSql_NotNullComparison_GeneratesIsNotNull()
+    {
+        // Arrange
+        var expressionToSql = ExpressionToSql<TestUser>.ForSqlServer();
+
+        // Act - Test inequality with null
+        expressionToSql.Where(u => u.Name != null);
+        var whereClause = expressionToSql.ToWhereClause();
+
+        // Assert
+        Assert.IsTrue(whereClause.Contains("IS NOT NULL"), 
+            $"Expected 'IS NOT NULL' in WHERE clause, but got: {whereClause}");
+        Assert.IsFalse(whereClause.Contains("<> NULL") && !whereClause.Contains("IS NOT NULL"), 
+            $"Should not contain '<> NULL' without 'IS NOT NULL' in WHERE clause: {whereClause}");
+    }
+
+    /// <summary>
+    /// Tests NULL comparison across all database dialects to ensure consistent behavior.
+    /// </summary>
+    [TestMethod]
+    public void ExpressionToSql_NullComparison_AllDialects_GeneratesIsNull()
+    {
+        // Test all dialects
+        var dialects = new[]
+        {
+            ("SQL Server", ExpressionToSql<TestUser>.ForSqlServer()),
+            ("MySQL", ExpressionToSql<TestUser>.ForMySql()),
+            ("PostgreSQL", ExpressionToSql<TestUser>.ForPostgreSQL()),
+            ("SQLite", ExpressionToSql<TestUser>.ForSqlite()),
+            ("Oracle", ExpressionToSql<TestUser>.ForOracle())
+        };
+
+        foreach (var (dialectName, expressionToSql) in dialects)
+        {
+            // Act
+            expressionToSql.Where(u => u.Name == null);
+            var whereClause = expressionToSql.ToWhereClause();
+
+            // Assert
+            Assert.IsTrue(whereClause.Contains("IS NULL"), 
+                $"{dialectName}: Expected 'IS NULL' in WHERE clause, but got: {whereClause}");
+            Assert.IsFalse(whereClause.Contains("= NULL"), 
+                $"{dialectName}: Should not contain '= NULL' in WHERE clause: {whereClause}");
+        }
+    }
 }

@@ -26,7 +26,7 @@ public class ParameterPrefixPropertyTests
     /// generated SQL SHALL use the correct parameter prefix.
     /// 
     /// MySQL: @
-    /// PostgreSQL: $ (or @)
+    /// PostgreSQL: @ (Npgsql uses named parameters)
     /// SQL Server: @
     /// SQLite: @
     /// Oracle: :
@@ -98,7 +98,7 @@ public class ParameterPrefixPropertyTests
     }
 
     /// <summary>
-    /// Property: PostgreSQL should use $ as parameter prefix.
+    /// Property: PostgreSQL should use @ as parameter prefix (Npgsql standard).
     /// </summary>
     [Property(MaxTest = 100, Arbitrary = new[] { typeof(ParameterArbitraries) })]
     public Property PostgreSQL_ParameterPrefix_ShouldUseDollarSign(string paramName)
@@ -110,7 +110,7 @@ public class ParameterPrefixPropertyTests
         var result = GenSqlDefine.PostgreSql.ParameterPrefix + paramName;
 
         // Assert
-        return (result.StartsWith("$"))
+        return (result.StartsWith("@"))
             .Label($"PostgreSQL parameter: '{paramName}', Result: '{result}'");
     }
 
@@ -231,12 +231,12 @@ public class ParameterPrefixPropertyTests
     }
 
     /// <summary>
-    /// Property: PostgreSQL should use $ prefix.
+    /// Property: PostgreSQL should use @ prefix (Npgsql uses named parameters with @).
     /// </summary>
     [Fact]
     public void PostgreSQL_ShouldUseDollarPrefix()
     {
-        Assert.Equal("$", GenSqlDefine.PostgreSql.ParameterPrefix);
+        Assert.Equal("@", GenSqlDefine.PostgreSql.ParameterPrefix);
     }
 
     /// <summary>

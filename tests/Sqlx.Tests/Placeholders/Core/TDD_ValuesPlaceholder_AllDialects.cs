@@ -182,7 +182,7 @@ namespace TestNamespace
     }
 
     [TestMethod]
-    [Description("{{values}} - PostgreSQL 使用 $param 前缀")]
+    [Description("{{values}} - PostgreSQL 使用 @param 前缀")]
     public void Values_PostgreSQL_UsesDollarPrefix()
     {
         var template = "INSERT INTO users (name, email) VALUES ({{values}})";
@@ -194,9 +194,9 @@ namespace TestNamespace
         Assert.IsTrue(sqlUpper.Contains("VALUES"),
             "PostgreSQL 应该包含 VALUES");
 
-        // 应该包含参数引用（$param）
-        Assert.IsTrue(result.ProcessedSql.Contains("$"),
-            $"PostgreSQL 应该使用 $ 前缀。实际 SQL: {result.ProcessedSql}");
+        // 应该包含参数引用（@param）
+        Assert.IsTrue(result.ProcessedSql.Contains("@"),
+            $"PostgreSQL 应该使用 @ 前缀。实际 SQL: {result.ProcessedSql}");
     }
 
     [TestMethod]

@@ -257,17 +257,4 @@ public class AuthenticationScenarios_GeneratedSqlValidation
         
         Assert.IsTrue(true, "All placeholders expanded correctly");
     }
-
-    [TestMethod]
-    [TestCategory("TDD")]
-    [TestCategory("GeneratedSql")]
-    [TestCategory("CrossDialect")]
-    [Ignore("MySQL comparison test - placeholder for future implementation")]
-    public void MySQL_AuthRepositories_ShouldGenerateSameFunctionalityAsSQLite()
-    {
-        // This test would verify MySQL generates correct SQL
-        // Marked as Ignore until implementation is complete
-        
-        Assert.Inconclusive("MySQL comparison test not yet implemented");
-    }
 }

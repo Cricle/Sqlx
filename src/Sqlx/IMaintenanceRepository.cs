@@ -16,16 +16,23 @@ namespace Sqlx
     /// </summary>
     /// <typeparam name="TEntity">Entity type</typeparam>
     /// <remarks>
+    /// <para>
     /// This interface is intentionally separated to prevent accidental usage.
     /// Requires explicit implementation and should be restricted to admin users.
     /// Always backup data before using these methods.
-    /// 
+    /// </para>
+    /// <para>
+    /// <para>
     /// Recommended usage:
-    /// 1. Separate from normal repositories
-    /// 2. Require special permissions
-    /// 3. Log all operations
-    /// 4. Confirm operations (require user confirmation)
-    /// 5. Backup before executing
+    /// </para>
+    /// <list type="bullet">
+    /// <item>Separate from normal repositories</item>
+    /// <item>Require special permissions</item>
+    /// <item>Log all operations</item>
+    /// <item>Confirm operations (require user confirmation)</item>
+    /// <item>Backup before executing</item>
+    /// </list>
+    /// </para>
     /// </remarks>
     public interface IMaintenanceRepository<TEntity>
         where TEntity : class
@@ -39,19 +46,23 @@ namespace Sqlx
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Task</returns>
         /// <remarks>
+        /// <para>
         /// Differences from DELETE:
         /// - TRUNCATE is faster (no row-by-row deletion)
         /// - TRUNCATE resets auto-increment counter
         /// - TRUNCATE cannot be rolled back in some databases
         /// - TRUNCATE bypasses triggers
         /// - TRUNCATE requires TRUNCATE privilege
-        /// 
+        /// </para>
+        /// <para>
+        /// <list type="bullet">
         /// Use cases:
-        /// - Clear test data
-        /// - Reset staging environment
-        /// - Remove all temporary/cache data
-        /// 
-        /// ⚠️ Always backup before truncating!
+        /// <item>Clear test data</item>
+        /// <item>Reset staging environment</item>
+        /// <item>Remove all temporary/cache data</item>
+        /// </list>
+        /// </para>
+        /// <para>⚠️ Always backup before truncating!</para>
         /// </remarks>
         [SqlTemplate("TRUNCATE TABLE {{table}}")]
         Task TruncateAsync(CancellationToken cancellationToken = default);
@@ -63,20 +74,28 @@ namespace Sqlx
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Task</returns>
         /// <remarks>
+        /// <para>
         /// This operation:
-        /// - Removes table structure
-        /// - Deletes all table data
-        /// - Removes all indexes
-        /// - Removes all triggers
-        /// - CANNOT be undone
-        /// 
+        /// <list type="bullet">
+        /// <item>Removes table structure</item>
+        /// <item>Deletes all table data</item>
+        /// <item>Removes all indexes</item>
+        /// <item>Removes all triggers</item>
+        /// <item>CANNOT be undone</item>
+        /// </list>
+        /// </para>
+        /// <para>
         /// Use cases:
-        /// - Remove obsolete tables
-        /// - Clean up migration tables
-        /// - Delete test tables
-        /// 
+        /// <list type="bullet">
+        /// <item>Remove obsolete tables</item>
+        /// <item>Clean up migration tables</item>
+        /// <item>Delete test tables</item>
+        /// </list>
+        /// </para>
+        /// <para>
         /// ⚠️ ALWAYS backup before dropping!
         /// ⚠️ Verify table name before execution!
+        /// </para>
         /// </remarks>
         [SqlTemplate("DROP TABLE IF EXISTS {{table}}")]
         Task DropTableAsync(CancellationToken cancellationToken = default);
@@ -88,17 +107,22 @@ namespace Sqlx
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Number of rows deleted</returns>
         /// <remarks>
+        /// <para>
         /// Differences from TRUNCATE:
+        /// <para>
         /// - DELETE is slower (row-by-row deletion)
+        /// </para>
         /// - DELETE does NOT reset auto-increment
         /// - DELETE CAN be rolled back
         /// - DELETE triggers fire
         /// - DELETE can be in transaction
-        /// 
+        /// </para>
+        /// <para>
         /// Use when:
         /// - Need to rollback if something goes wrong
         /// - Need triggers to fire
         /// - TRUNCATE is not available
+        /// </para>
         /// </remarks>
         [SqlTemplate("DELETE FROM {{table}}")]
         Task<int> DeleteAllAsync(CancellationToken cancellationToken = default);
@@ -108,17 +132,20 @@ namespace Sqlx
         /// <summary>Rebuilds table indexes for performance optimization.</summary>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <remarks>
+        /// <para>
         /// Database-specific implementation:
         /// - SQL Server: ALTER INDEX ALL ON table REBUILD
         /// - PostgreSQL: REINDEX TABLE table
         /// - MySQL: OPTIMIZE TABLE table
         /// - SQLite: VACUUM
-        /// 
+        /// </para>
+        /// <para>
         /// When to use:
         /// - After bulk inserts/updates
         /// - Index fragmentation detected
         /// - Query performance degradation
         /// - Regular maintenance schedule
+        /// </para>
         /// </remarks>
         Task RebuildIndexesAsync(CancellationToken cancellationToken = default);
 

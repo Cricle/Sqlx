@@ -75,7 +75,7 @@ public record DialectTestConfig(
         DialectName: "PostgreSQL",
         ExpectedIdentifierQuoteLeft: "\"",
         ExpectedIdentifierQuoteRight: "\"",
-        ExpectedParameterPrefix: "$",
+        ExpectedParameterPrefix: "@",
         ExpectedBoolTrue: "true",
         ExpectedBoolFalse: "false",
         ExpectedCurrentTimestamp: "CURRENT_TIMESTAMP",

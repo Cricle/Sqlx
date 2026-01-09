@@ -1,42 +1,78 @@
 <Project>
-  <!-- 通用项目配置 -->
+
   <PropertyGroup>
-    <LangVersion>12.0</LangVersion>
+    <!-- Common Settings -->
+    <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-  </PropertyGroup>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
-  <!-- 统一版本管理 -->
-  <PropertyGroup>
-    <Version>0.5.0</Version>
-  </PropertyGroup>
+    <!-- Default Target Frameworks -->
+    <TargetFrameworks Condition="'$(TargetFrameworks)' == '' AND '$(MSBuildProjectExtension)' == '.csproj' AND '$(MSBuildProjectName)' != 'Catga.SourceGenerator'">net9.0;net8.0</TargetFrameworks>
+    <TargetFramework Condition="'$(TargetFramework)' == '' AND '$(TargetFrameworks)' == ''">net9.0</TargetFramework>
 
-  <!-- NuGet 包通用信息 -->
-  <PropertyGroup>
-    <Authors>Sqlx Team</Authors>
-    <Company>Sqlx</Company>
-    <Product>Sqlx</Product>
-    <Copyright>Copyright © 2025 Sqlx Team</Copyright>
+    <!-- Version (centralized) -->
+    <Version>0.1.0</Version>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+    <InformationalVersion>0.1.0</InformationalVersion>
+
+    <!-- NuGet Package Info -->
+    <Authors>Catga Contributors</Authors>
+    <Company>Catga</Company>
+    <Product>Catga - High-Performance CQRS Framework</Product>
+    <Copyright>Copyright © 2025 Catga Contributors</Copyright>
+    <Description>高性能、100% AOT 兼容的分布式 CQRS 框架</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/sqlxorg/sqlx</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/sqlxorg/sqlx</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/Cricle/Catga</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>cqrs;mediator;distributed;aot;native-aot;high-performance</PackageTags>
+    <PackageReleaseNotes>https://github.com/Cricle/Catga/releases</PackageReleaseNotes>
+
+    <!-- Repository -->
+    <RepositoryUrl>https://github.com/Cricle/Catga</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
+
+    <!-- Compiler Options -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);CS1591;RS2008</NoWarn>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+    <!-- SourceLink -->
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <EnableSourceLink>false</EnableSourceLink>
+    <EnableSourceControlManagerQueries>false</EnableSourceControlManagerQueries>
+
+    <!-- Deterministic Build -->
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+
+    <!-- Central Package Management -->
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
 
-  <!-- VS SDK 包版本定义 -->
-  <PropertyGroup>
-    <VSSdkVersion>17.9.37000</VSSdkVersion>
-    <VSBuildToolsVersion>17.9.3168</VSBuildToolsVersion>
-    <RoslynVersion>4.8.0</RoslynVersion>
-    <VSLanguageServicesVersion>17.9.187</VSLanguageServicesVersion>
+  <!-- Test Project Settings -->
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true' OR $(MSBuildProjectName.Contains('Tests')) OR $(MSBuildProjectName.Contains('Benchmark'))">
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
 
-  <!-- 禁用不必要的分析器警告 -->
-  <PropertyGroup>
-    <NoWarn>$(NoWarn);CS1701;CS1702;CS8002;CS8618;CS8625;CS8600;CS8602;CS8604;CS8603;CS8601;VSTHRD100;VSTHRD010;VSSDK006;RS1035;SA1209;SA1111</NoWarn>
-  </PropertyGroup>
+  <!-- README and Icon -->
+  <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)README.md')">
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+  <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)icon.png')">
+    <None Include="$(MSBuildThisFileDirectory)icon.png" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <!-- Common Test References -->
+  <ItemGroup Condition="'$(IsTestProject)' == 'true'">
+    <Using Include="Xunit" />
+  </ItemGroup>
+
 </Project>

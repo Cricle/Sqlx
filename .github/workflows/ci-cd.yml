@@ -131,6 +131,7 @@ jobs:
         echo "✅ SQL Server initialized"
 
     - name: 🧪 Run All Tests (SQLite + Multi-Dialect)
+      timeout-minutes: 30
       env:
         POSTGRESQL_CONNECTION: "Host=localhost;Port=5432;Database=sqlx_test;Username=postgres;Password=postgres"
         MYSQL_CONNECTION: "Server=localhost;Port=3306;Database=sqlx_test;Uid=root;Pwd=root"

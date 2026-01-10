@@ -5,22 +5,25 @@
 ### 1. CI/CD Pipeline (`ci-cd.yml`)
 **触发条件**: Push 到 main/develop 分支，PR 到 main 分支，创建 v* tag
 
-**测试策略**:
-- **单元测试** (10分钟): 快速测试，不依赖真实数据库，使用 SQLite 内存数据库
-  - 过滤器: `TestCategory!=Integration&TestCategory!=E2E&TestCategory!=CI`
-  
-- **集成测试** (15分钟): SQLite 集成测试
-  - 过滤器: `TestCategory=Integration&TestCategory!=PostgreSQL&TestCategory!=MySQL&TestCategory!=SqlServer`
-  
-- **多方言测试** (10分钟): 仅在 push 到 main 分支时运行
-  - 过滤器: `TestCategory=CI`
-  - 包含 PostgreSQL, MySQL, SQL Server 的关键测试
+**测试策略 - 矩阵并行执行**:
 
-**优化点**:
-- 分离快速和慢速测试
-- PR 只运行单元测试和 SQLite 集成测试
-- 多方言测试只在 main 分支运行
-- 数据库初始化只在需要时执行
+#### Job 1: 单元测试 (5-8分钟)
+- 快速测试，不依赖真实数据库
+- 使用 SQLite 内存数据库
+- 过滤器: `TestCategory!=Integration&TestCategory!=E2E&TestCategory!=CI`
+
+#### Job 2-5: 集成测试 (并行执行，每个 8-12分钟)
+使用矩阵策略，每个 job 只启动一个数据库服务：
+- **SQLite**: 集成测试，无需外部数据库
+- **PostgreSQL**: PostgreSQL 特定测试 + CI 关键测试
+- **MySQL**: MySQL 特定测试 + CI 关键测试  
+- **SQL Server**: SQL Server 特定测试 + CI 关键测试
+
+**优势**:
+- ✅ 并行执行，总时间取决于最慢的 job
+- ✅ 每个 job 只启动一个数据库，启动快
+- ✅ 失败隔离，某个数据库失败不影响其他
+- ✅ 资源利用率高，GitHub Actions 并发执行
 
 ### 2. Full Multi-Dialect Tests (`full-test.yml`)
 **触发条件**: 手动触发或每周日凌晨2点
@@ -44,38 +47,41 @@
 
 ## 数据库服务优化
 
+### 矩阵策略 - 关键优化
+- **每个 job 只启动一个数据库**: 大幅减少启动时间
+- **并行执行**: 4个集成测试 job 同时运行
+- **失败隔离**: 某个数据库测试失败不影响其他
+- **资源高效**: 充分利用 GitHub Actions 并发能力
+
 ### 镜像优化
 - PostgreSQL: 使用 `postgres:16-alpine` (更小更快)
-- MySQL: 保持 `mysql:8.3`
-- SQL Server: 保持 `mcr.microsoft.com/mssql/server:2022-latest`
+- MySQL: `mysql:8.3`
+- SQL Server: `mcr.microsoft.com/mssql/server:2022-latest`
 
 ### 健康检查优化
-- 检查间隔: 从 10s 降至 5s
-- 检查超时: 从 5s 降至 3s
-- 启动等待期: PostgreSQL 10s, MySQL 15s, SQL Server 20s
-- 添加 PostgreSQL shared memory 优化
-
-### 数据库初始化优化
-- **并行初始化**: 三个数据库同时初始化，而非串行
-- **智能等待**: 使用循环检查代替固定等待时间
-- **快速失败**: 添加连接超时参数 (`-l 1`, `-l 5`)
-- **静默输出**: 减少不必要的日志输出
+- 检查间隔: 5s
+- 检查超时: 3s
+- 启动等待期: PostgreSQL 10s, MySQL 15s, SQL Server 30s
 
 ### 预期改进
-- 数据库启动: 从 30s 固定等待降至 10-20s 动态等待
-- 数据库初始化: 从串行 30-60s 降至并行 15-30s
-- **总体节省**: 约 30-50 秒
+- **单个 job 数据库启动**: 10-30s (vs 之前 60-90s 启动3个数据库)
+- **总执行时间**: 取决于最慢的 job (~10-12分钟)
+- **并行优势**: 4个数据库测试同时进行，而非串行
 
-### 优化前
-- 所有测试一起运行: ~20-30分钟
-- 经常超时
+### 优化前 (串行执行)
+- 启动3个数据库: ~60-90秒
+- 初始化3个数据库: ~30-60秒
+- 运行所有测试: ~15-20分钟
+- **总计**: ~20-30分钟
 
-### 优化后
-- 单元测试: ~3-5分钟
-- 集成测试 (SQLite): ~5-8分钟
-- 多方言测试: ~5-8分钟
-- **总计 (PR)**: ~10-15分钟
-- **总计 (Main)**: ~15-20分钟
+### 优化后 (矩阵并行)
+- 单元测试 job: ~5-8分钟
+- 集成测试 jobs (并行):
+  - SQLite: ~5-8分钟
+  - PostgreSQL: ~10-12分钟 (包含启动+初始化+测试)
+  - MySQL: ~10-12分钟
+  - SQL Server: ~10-12分钟
+- **总计 (墙上时间)**: ~10-12分钟 (并行执行)
 
 ## 本地开发
 

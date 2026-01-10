@@ -13,65 +13,14 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: true
 
 jobs:
-  # 🧪 测试 (SQLite + 多方言数据库)
-  test:
-    name: 🧪 Tests (SQLite + Multi-Dialect)
+  # 🧪 单元测试 (快速，无数据库依赖)
+  unit-tests:
+    name: 🧪 Unit Tests
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: sqlx_test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 5
-          --health-start-period 10s
-          --shm-size=256mb
-
-      mysql:
-        image: mysql:8.3
-        env:
-          MYSQL_DATABASE: sqlx_test
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_ALLOW_EMPTY_PASSWORD: yes
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd "mysqladmin ping -h localhost"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 5
-          --health-start-period 15s
-
-      sqlserver:
-        image: mcr.microsoft.com/mssql/server:2022-latest
-        env:
-          SA_PASSWORD: YourStrong@Passw0rd
-          ACCEPT_EULA: Y
-          MSSQL_PID: Developer
-          MSSQL_COLLATION: SQL_Latin1_General_CP1_CI_AS
-        ports:
-          - 1433:1433
-        options: >-
-          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P YourStrong@Passw0rd -Q 'SELECT 1' -C -l 1"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
-          --health-start-period 20s
 
     steps:
     - name: 📥 Checkout
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
 
     - name: 🔧 Setup .NET
       uses: actions/setup-dotnet@v4
@@ -91,96 +40,7 @@ jobs:
     - name: 🏗️ Build
       run: dotnet build --configuration Release --no-restore /p:TreatWarningsAsErrors=true
 
-    - name: 📦 Install SQL Server tools
-      run: |
-        curl https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc
-        curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
-        sudo apt-get update
-        sudo ACCEPT_EULA=Y apt-get install -y mssql-tools18 unixodbc-dev
-        echo 'export PATH="$PATH:/opt/mssql-tools18/bin"' >> ~/.bashrc
-        export PATH="$PATH:/opt/mssql-tools18/bin"
-
-    - name: ⏳ Wait for databases
-      run: |
-        echo "⏳ Databases are starting via health checks..."
-        echo "🔍 Verifying PostgreSQL..."
-        for i in {1..10}; do
-          if PGPASSWORD=postgres psql -h localhost -U postgres -c "SELECT 1" > /dev/null 2>&1; then
-            echo "✅ PostgreSQL ready"
-            break
-          fi
-          echo "⏳ Waiting for PostgreSQL... ($i/10)"
-          sleep 2
-        done
-
-        echo "🔍 Verifying MySQL..."
-        for i in {1..10}; do
-          if mysql -h 127.0.0.1 -P 3306 -u root -proot -e "SELECT 1" > /dev/null 2>&1; then
-            echo "✅ MySQL ready"
-            break
-          fi
-          echo "⏳ Waiting for MySQL... ($i/10)"
-          sleep 2
-        done
-
-        echo "🔍 Verifying SQL Server..."
-        for i in {1..15}; do
-          if /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong@Passw0rd' -C -Q "SELECT 1" -l 1 > /dev/null 2>&1; then
-            echo "✅ SQL Server ready"
-            break
-          fi
-          echo "⏳ Waiting for SQL Server... ($i/15)"
-          sleep 2
-        done
-
-        echo "✅ All databases are ready"
-
-    - name: 🗄️ Initialize Databases (for Multi-Dialect Tests)
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      run: |
-        echo "🗄️ Initializing databases in parallel..."
-        
-        # PostgreSQL 初始化（后台）
-        (
-          echo "🗄️ PostgreSQL: Creating database..."
-          PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c "DROP DATABASE IF EXISTS sqlx_test;" 2>/dev/null || true
-          PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c "CREATE DATABASE sqlx_test;"
-          echo "🗄️ PostgreSQL: Running init script..."
-          PGPASSWORD=postgres psql -h localhost -U postgres -d sqlx_test -f tests/Sqlx.Tests/Infrastructure/init-postgresql.sql -q
-          echo "✅ PostgreSQL initialized"
-        ) &
-        PG_PID=$!
-        
-        # MySQL 初始化（后台）
-        (
-          echo "🗄️ MySQL: Creating database..."
-          mysql -h 127.0.0.1 -P 3306 -u root -proot -e "DROP DATABASE IF EXISTS sqlx_test;" 2>/dev/null || true
-          mysql -h 127.0.0.1 -P 3306 -u root -proot -e "CREATE DATABASE sqlx_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-          echo "🗄️ MySQL: Running init script..."
-          mysql -h 127.0.0.1 -P 3306 -u root -proot sqlx_test < tests/Sqlx.Tests/Infrastructure/init-mysql.sql
-          echo "✅ MySQL initialized"
-        ) &
-        MYSQL_PID=$!
-        
-        # SQL Server 初始化（后台）
-        (
-          echo "🗄️ SQL Server: Creating database..."
-          /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong@Passw0rd' -C -Q "DROP DATABASE IF EXISTS sqlx_test;" -l 5 2>/dev/null || true
-          /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong@Passw0rd' -C -Q "CREATE DATABASE sqlx_test;" -l 5
-          echo "🗄️ SQL Server: Running init script..."
-          /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong@Passw0rd' -C -d sqlx_test -i tests/Sqlx.Tests/Infrastructure/init-sqlserver.sql -l 5
-          echo "✅ SQL Server initialized"
-        ) &
-        MSSQL_PID=$!
-        
-        # 等待所有初始化完成
-        wait $PG_PID
-        wait $MYSQL_PID
-        wait $MSSQL_PID
-        
-        echo "✅ All databases initialized in parallel"
-
-    - name: 🧪 Run Unit Tests (Fast)
+    - name: 🧪 Run Unit Tests
       timeout-minutes: 10
       run: |
         dotnet test --configuration Release --no-build \
@@ -190,101 +50,207 @@ jobs:
                     --framework net9.0 \
                     --filter "TestCategory!=Integration&TestCategory!=E2E&TestCategory!=CI" \
                     --settings .runsettings.ci \
-                    --results-directory ./TestResults/Unit
-
-    - name: 🧪 Run Integration Tests (SQLite Only)
-      timeout-minutes: 15
-      env:
-        POSTGRESQL_CONNECTION: "Host=localhost;Port=5432;Database=sqlx_test;Username=postgres;Password=postgres"
-        MYSQL_CONNECTION: "Server=localhost;Port=3306;Database=sqlx_test;Uid=root;Pwd=root"
-        SQLSERVER_CONNECTION: "Server=localhost,1433;Database=sqlx_test;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True"
-      run: |
-        dotnet test --configuration Release --no-build \
-                    --collect:"XPlat Code Coverage" \
-                    --logger "console;verbosity=minimal" \
-                    --logger "trx" \
-                    --framework net9.0 \
-                    --filter "TestCategory=Integration&TestCategory!=PostgreSQL&TestCategory!=MySQL&TestCategory!=SqlServer" \
-                    --settings .runsettings.ci \
-                    --results-directory ./TestResults/Integration
-
-    - name: 🧪 Run Multi-Dialect Tests (Sample)
-      timeout-minutes: 10
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      env:
-        POSTGRESQL_CONNECTION: "Host=localhost;Port=5432;Database=sqlx_test;Username=postgres;Password=postgres"
-        MYSQL_CONNECTION: "Server=localhost;Port=3306;Database=sqlx_test;Uid=root;Pwd=root"
-        SQLSERVER_CONNECTION: "Server=localhost,1433;Database=sqlx_test;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True"
-      run: |
-        dotnet test --configuration Release --no-build \
-                    --collect:"XPlat Code Coverage" \
-                    --logger "console;verbosity=minimal" \
-                    --logger "trx" \
-                    --framework net9.0 \
-                    --filter "TestCategory=CI" \
-                    --settings .runsettings.ci \
-                    --results-directory ./TestResults/MultiDialect
-
-    - name: 📋 Test Summary
-      if: always()
-      run: |
-        echo "✅ Test Results:"
-        echo "  - Configuration: Release"
-        echo "  - Framework: net9.0"
-        echo "  - Unit Tests: ✅ (Fast, SQLite In-Memory)"
-        echo "  - Integration Tests: ✅ (SQLite)"
-        if [ "${{ github.event_name }}" == "push" ] && [ "${{ github.ref }}" == "refs/heads/main" ]; then
-          echo "  - Multi-Dialect Tests: ✅ (PostgreSQL, MySQL, SQL Server)"
-        else
-          echo "  - Multi-Dialect Tests: ⏭️ (Skipped for PR)"
-        fi
-        echo "  - Coverage: Generated"
-
-    - name: 📊 Generate coverage report
-      if: always()
-      run: |
-        dotnet tool install -g dotnet-reportgenerator-globaltool --version 5.2.0 || true
-        reportgenerator -reports:"**/TestResults/**/coverage.cobertura.xml" \
-                        -targetdir:"coverage-report" \
-                        -reporttypes:"Html;Cobertura;JsonSummary" || true
-        echo "📊 Coverage reports generated from all test runs"
+                    --results-directory ./TestResults
 
     - name: 📤 Upload test results
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: test-results
+        name: unit-test-results
         path: |
           **/TestResults/*.trx
           **/TestResults/**/coverage.cobertura.xml
-          coverage-report/
-        retention-days: 30
+        retention-days: 7
 
-    - name: 📦 Pack packages
-      if: github.event_name == 'push'
+  # 🧪 集成测试 (SQLite + 单个数据库方言)
+  integration-tests:
+    name: 🧪 Integration Tests (${{ matrix.database }})
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        database: [sqlite, postgresql, mysql, sqlserver]
+        include:
+          - database: sqlite
+            test-filter: "TestCategory=Integration&TestCategory!=PostgreSQL&TestCategory!=MySQL&TestCategory!=SqlServer"
+            needs-db: false
+          - database: postgresql
+            test-filter: "TestCategory=PostgreSQL|TestCategory=CI"
+            needs-db: true
+            db-image: postgres:16-alpine
+            db-port: 5432
+          - database: mysql
+            test-filter: "TestCategory=MySQL|TestCategory=CI"
+            needs-db: true
+            db-image: mysql:8.3
+            db-port: 3306
+          - database: sqlserver
+            test-filter: "TestCategory=SqlServer|TestCategory=CI"
+            needs-db: true
+            db-image: mcr.microsoft.com/mssql/server:2022-latest
+            db-port: 1433
+
+    services:
+      database:
+        image: ${{ matrix.needs-db && matrix.db-image || '' }}
+        env:
+          # PostgreSQL
+          POSTGRES_DB: ${{ matrix.database == 'postgresql' && 'sqlx_test' || '' }}
+          POSTGRES_USER: ${{ matrix.database == 'postgresql' && 'postgres' || '' }}
+          POSTGRES_PASSWORD: ${{ matrix.database == 'postgresql' && 'postgres' || '' }}
+          POSTGRES_INITDB_ARGS: ${{ matrix.database == 'postgresql' && '-E UTF8 --locale=C' || '' }}
+          # MySQL
+          MYSQL_DATABASE: ${{ matrix.database == 'mysql' && 'sqlx_test' || '' }}
+          MYSQL_ROOT_PASSWORD: ${{ matrix.database == 'mysql' && 'root' || '' }}
+          MYSQL_ALLOW_EMPTY_PASSWORD: ${{ matrix.database == 'mysql' && 'yes' || '' }}
+          # SQL Server
+          SA_PASSWORD: ${{ matrix.database == 'sqlserver' && 'YourStrong@Passw0rd' || '' }}
+          ACCEPT_EULA: ${{ matrix.database == 'sqlserver' && 'Y' || '' }}
+          MSSQL_PID: ${{ matrix.database == 'sqlserver' && 'Developer' || '' }}
+        ports:
+          - ${{ matrix.db-port }}:${{ matrix.db-port }}
+        options: >-
+          ${{ matrix.needs-db && format('
+          --health-cmd "{0}"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+          --health-start-period {1}',
+          matrix.database == 'postgresql' && 'pg_isready -U postgres' ||
+          matrix.database == 'mysql' && 'mysqladmin ping -h localhost' ||
+          matrix.database == 'sqlserver' && '/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P YourStrong@Passw0rd -Q "SELECT 1" -C -l 1' || '',
+          matrix.database == 'postgresql' && '10s' ||
+          matrix.database == 'mysql' && '15s' ||
+          matrix.database == 'sqlserver' && '30s' || '10s'
+          ) || '' }}
+
+    steps:
+    - name: 📥 Checkout
+      uses: actions/checkout@v4
+
+    - name: 🔧 Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: 📦 Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.props') }}
+        restore-keys: ${{ runner.os }}-nuget-
+
+    - name: 📦 Restore dependencies
+      run: dotnet restore
+
+    - name: 🏗️ Build
+      run: dotnet build --configuration Release --no-restore /p:TreatWarningsAsErrors=true
+
+    - name: 📦 Install database tools
+      if: matrix.needs-db
       run: |
-        dotnet pack src/Sqlx --configuration Release --no-build --output ./artifacts
+        if [ "${{ matrix.database }}" == "sqlserver" ]; then
+          curl https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc
+          curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
+          sudo apt-get update
+          sudo ACCEPT_EULA=Y apt-get install -y mssql-tools18 unixodbc-dev
+          echo 'export PATH="$PATH:/opt/mssql-tools18/bin"' >> ~/.bashrc
+          export PATH="$PATH:/opt/mssql-tools18/bin"
+        fi
 
-    - name: 📤 Upload artifacts
-      if: github.event_name == 'push'
+    - name: 🗄️ Initialize Database
+      if: matrix.needs-db
+      run: |
+        echo "🗄️ Initializing ${{ matrix.database }}..."
+        
+        if [ "${{ matrix.database }}" == "postgresql" ]; then
+          for i in {1..10}; do
+            if PGPASSWORD=postgres psql -h localhost -U postgres -c "SELECT 1" > /dev/null 2>&1; then
+              echo "✅ PostgreSQL ready"
+              break
+            fi
+            sleep 2
+          done
+          PGPASSWORD=postgres psql -h localhost -U postgres -d sqlx_test -f tests/Sqlx.Tests/Infrastructure/init-postgresql.sql -q
+          
+        elif [ "${{ matrix.database }}" == "mysql" ]; then
+          for i in {1..10}; do
+            if mysql -h 127.0.0.1 -P 3306 -u root -proot -e "SELECT 1" > /dev/null 2>&1; then
+              echo "✅ MySQL ready"
+              break
+            fi
+            sleep 2
+          done
+          mysql -h 127.0.0.1 -P 3306 -u root -proot sqlx_test < tests/Sqlx.Tests/Infrastructure/init-mysql.sql
+          
+        elif [ "${{ matrix.database }}" == "sqlserver" ]; then
+          for i in {1..15}; do
+            if /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong@Passw0rd' -C -Q "SELECT 1" -l 1 > /dev/null 2>&1; then
+              echo "✅ SQL Server ready"
+              break
+            fi
+            sleep 2
+          done
+          /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong@Passw0rd' -C -d sqlx_test -i tests/Sqlx.Tests/Infrastructure/init-sqlserver.sql -l 5
+        fi
+        
+        echo "✅ ${{ matrix.database }} initialized"
+
+    - name: 🧪 Run Integration Tests
+      timeout-minutes: 15
+      env:
+        POSTGRESQL_CONNECTION: ${{ matrix.database == 'postgresql' && 'Host=localhost;Port=5432;Database=sqlx_test;Username=postgres;Password=postgres' || '' }}
+        MYSQL_CONNECTION: ${{ matrix.database == 'mysql' && 'Server=localhost;Port=3306;Database=sqlx_test;Uid=root;Pwd=root' || '' }}
+        SQLSERVER_CONNECTION: ${{ matrix.database == 'sqlserver' && 'Server=localhost,1433;Database=sqlx_test;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True' || '' }}
+      run: |
+        dotnet test --configuration Release --no-build \
+                    --collect:"XPlat Code Coverage" \
+                    --logger "console;verbosity=minimal" \
+                    --logger "trx" \
+                    --framework net9.0 \
+                    --filter "${{ matrix.test-filter }}" \
+                    --settings .runsettings.ci \
+                    --results-directory ./TestResults
+
+    - name: 📤 Upload test results
+      if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: nuget-packages
-        path: ./artifacts/*.nupkg
+        name: integration-test-results-${{ matrix.database }}
+        path: |
+          **/TestResults/*.trx
+          **/TestResults/**/coverage.cobertura.xml
         retention-days: 7
 
   # 📊 代码覆盖率报告
   coverage:
     name: 📊 Coverage Report
     runs-on: ubuntu-latest
-    needs: test
+    needs: [unit-tests, integration-tests]
     if: always()
 
     steps:
-    - name: 📥 Download test results
+    - name: 📥 Download all test results
       uses: actions/download-artifact@v4
       with:
         path: test-results
+
+    - name: 📊 Generate combined coverage report
+      run: |
+        dotnet tool install -g dotnet-reportgenerator-globaltool --version 5.2.0 || true
+        reportgenerator -reports:"test-results/**/coverage.cobertura.xml" \
+                        -targetdir:"coverage-report" \
+                        -reporttypes:"Html;Cobertura;JsonSummary" || true
+
+    - name: 📤 Upload coverage report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: coverage-report/
+        retention-days: 30
 
     - name: 📊 Upload coverage to Codecov
       uses: codecov/codecov-action@v4
@@ -295,11 +261,43 @@ jobs:
         files: "**/coverage.cobertura.xml"
         fail_ci_if_error: false
 
+  # 📦 打包
+  package:
+    name: 📦 Package
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests]
+    if: github.event_name == 'push'
+
+    steps:
+    - name: 📥 Checkout
+      uses: actions/checkout@v4
+
+    - name: 🔧 Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: 📦 Restore dependencies
+      run: dotnet restore
+
+    - name: 🏗️ Build
+      run: dotnet build --configuration Release --no-restore
+
+    - name: 📦 Pack packages
+      run: dotnet pack src/Sqlx --configuration Release --no-build --output ./artifacts
+
+    - name: 📤 Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: nuget-packages
+        path: ./artifacts/*.nupkg
+        retention-days: 7
+
   # 🚀 发布到 NuGet (仅在创建 v* tag 时)
   publish:
     name: 🚀 Publish to NuGet
     runs-on: ubuntu-latest
-    needs: test
+    needs: [unit-tests, integration-tests]
     if: startsWith(github.ref, 'refs/tags/v')
     environment: production
 

@@ -521,6 +521,10 @@ public class NullableLimitOffset_MySQL_Tests : NullableLimitOffsetTestBase
     
     public TestContext TestContext { get; set; } = null!;
     
-    // Note: Container cleanup is now handled by AssemblyTestFixture
+    [ClassCleanup]
+    public static async Task ClassCleanup()
+    {
+        await DatabaseConnectionHelper.CleanupContainerAsync(nameof(NullableLimitOffset_MySQL_Tests));
+    }
 }
 

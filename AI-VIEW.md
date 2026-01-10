@@ -281,140 +281,7 @@ Task<bool> ExistsAsync(string email);
 
 ## 🎨 代码模式
 
-### 模式 0: 使用预定义接口（推荐 - 最简单）⭐
-
-**最佳实践**: Sqlx 提供了完善的预定义 CRUD 接口，包含 **50+ 个常用方法**，无需手写 SQL！
-
-```csharp
-// 1. 定义实体
-[TableName("users")]
-public record User
-{
-    public long Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public int Age { get; set; }
-    public bool IsActive { get; set; }
-    public DateTime CreatedAt { get; set; }
-}
-
-// 2. 使用预定义接口 - 自动获得 15+ 个 CRUD 方法
-[RepositoryFor(typeof(ICrudRepository<User, long>))]
-public partial class UserRepository(DbConnection connection) 
-    : ICrudRepository<User, long> { }
-
-// 3. 开始使用 - 已自动拥有所有方法！
-var repo = new UserRepository(connection);
-
-// 查询
-var user = await repo.GetByIdAsync(1);
-var allUsers = await repo.GetAllAsync(limit: 100);
-var adults = await repo.GetWhereAsync(u => u.Age >= 18);
-var page = await repo.GetPageAsync(pageNumber: 1, pageSize: 20);
-
-// 插入
-var userId = await repo.InsertAndGetIdAsync(new User { Name = "Alice", Age = 25 });
-
-// 更新
-user.Age = 26;
-await repo.UpdateAsync(user);
-
-// 删除
-await repo.DeleteAsync(userId);
-
-// 统计
-var count = await repo.CountAsync();
-var exists = await repo.ExistsAsync(userId);
-```
-
-**预定义接口选择**:
-
-| 接口 | 方法数 | 适用场景 | 包含的功能 |
-|------|--------|---------|-----------|
-| `ICrudRepository<TEntity, TKey>` | 15+ | 基础 CRUD | 查询 + 命令 + 基础聚合 |
-| `IRepository<TEntity, TKey>` | 50+ | 完整功能 | 查询 + 命令 + 批量 + 聚合 + 高级 |
-| `IReadOnlyRepository<TEntity, TKey>` | 26 | 只读场景 | 查询 + 聚合（报表、CQRS 查询端） |
-| `IBulkRepository<TEntity, TKey>` | 17 | 批量操作 | 查询 + 批量（高性能场景） |
-| `IWriteOnlyRepository<TEntity, TKey>` | 17 | 只写场景 | 命令 + 批量（CQRS 命令端） |
-
-**扩展自定义方法**:
-
-```csharp
-// 继承预定义接口，再添加自定义方法
-public interface IUserRepository : ICrudRepository<User, long>
-{
-    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE is_active = @isActive {{orderby created_at --desc}}")]
-    Task<List<User>> GetActiveUsersAsync(bool isActive);
-    
-    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE name LIKE @query OR email LIKE @query")]
-    Task<List<User>> SearchAsync(string query);
-}
-
-[RepositoryFor(typeof(IUserRepository))]
-public partial class UserRepository(DbConnection connection) : IUserRepository { }
-```
-
-**预定义接口包含的方法**:
-
-`ICrudRepository<TEntity, TKey>` 包含：
-- **查询方法** (来自 IQueryRepository):
-  - `GetByIdAsync(id)` - 根据 ID 查询
-  - `GetByIdsAsync(ids)` - 批量 ID 查询
-  - `GetAllAsync(limit, orderBy)` - 查询所有
-  - `GetTopAsync(limit, orderBy)` - 查询前 N 条
-  - `GetRangeAsync(limit, offset, orderBy)` - 范围查询
-  - `GetPageAsync(pageNumber, pageSize, orderBy)` - 分页查询
-  - `GetWhereAsync(predicate)` - 条件查询（表达式）
-  - `GetFirstWhereAsync(predicate)` - 查询第一条
-  - `ExistsAsync(id)` - 检查存在
-  - `ExistsWhereAsync(predicate)` - 条件存在检查
-  - `GetRandomAsync(count)` - 随机查询
-
-- **命令方法** (来自 ICommandRepository):
-  - `InsertAsync(entity)` - 插入
-  - `InsertAndGetIdAsync(entity)` - 插入并返回 ID
-  - `InsertAndGetEntityAsync(entity)` - 插入并返回完整实体
-  - `UpdateAsync(entity)` - 更新
-  - `UpdatePartialAsync(id, updates)` - 部分更新
-  - `UpdateWhereAsync(predicate, updates)` - 条件更新
-  - `UpsertAsync(entity)` - 插入或更新
-  - `DeleteAsync(id)` - 删除
-  - `DeleteWhereAsync(predicate)` - 条件删除
-  - `SoftDeleteAsync(id)` - 软删除
-  - `RestoreAsync(id)` - 恢复软删除
-  - `PurgeDeletedAsync()` - 清除已删除
-
-- **聚合方法** (来自 IAggregateRepository):
-  - `CountAsync()` - 统计总数
-
-`IRepository<TEntity, TKey>` 额外包含：
-- **批量方法** (来自 IBatchRepository):
-  - `BatchInsertAsync(entities)` - 批量插入
-  - `BatchUpdateAsync(entities)` - 批量更新
-  - `BatchUpdateWhereAsync(predicate, updates)` - 批量条件更新
-  - `BatchDeleteAsync(ids)` - 批量删除
-  - `BatchSoftDeleteAsync(ids)` - 批量软删除
-  - `BatchUpsertAsync(entities)` - 批量插入或更新
-  - `BatchExistsAsync(ids)` - 批量存在检查
-
-- **完整聚合方法** (来自 IAggregateRepository):
-  - `CountWhereAsync(predicate)` - 条件统计
-  - `CountByAsync(column)` - 分组统计
-  - `SumAsync(column)` - 求和
-  - `SumWhereAsync(column, predicate)` - 条件求和
-  - `AvgAsync(column)` - 平均值
-  - `AvgWhereAsync(column, predicate)` - 条件平均值
-  - `MaxIntAsync(column)`, `MaxLongAsync`, `MaxDecimalAsync`, `MaxDateTimeAsync` - 最大值
-  - `MinIntAsync(column)`, `MinLongAsync`, `MinDecimalAsync`, `MinDateTimeAsync` - 最小值
-
-- **高级方法** (来自 IAdvancedRepository):
-  - 原始 SQL 执行、事务管理等
-
-📖 **[查看完整的预定义接口指南](docs/PREDEFINED_INTERFACES_GUIDE.md)**
-
----
-
-### 模式 1: 基础 CRUD 仓储（手写方法）
+### 模式 1: 基础 CRUD 仓储
 
 ```csharp
 // 1. 定义实体
@@ -1182,14 +1049,12 @@ public async Task<User?> GetByIdAsync(long id)
 1. **编译时生成** - 零运行时开销，接近 ADO.NET 性能
 2. **类型安全** - 编译时验证，减少运行时错误
 3. **占位符系统** - 自动生成复杂 SQL，减少手写代码
-4. **预定义接口** - 50+ 个常用方法，无需手写 SQL ⭐
-5. **多数据库** - 一套代码支持 4 种数据库
-6. **零配置** - 无需 DbContext、无需映射配置
-7. **易学易用** - 5 个核心占位符即可上手
+4. **多数据库** - 一套代码支持 4 种数据库
+5. **零配置** - 无需 DbContext、无需映射配置
+6. **易学易用** - 5 个核心占位符即可上手
 
 ### 设计理念
 
-- ✅ **预定义接口优先** - 使用 ICrudRepository 等预定义接口快速开始
 - ✅ **智能占位符** - 用于自动生成复杂内容（列名、SET 子句等）
 - ✅ **直接写 SQL** - 简单的内容（WHERE、聚合函数）直接写更清晰
 - ✅ **类型安全** - 编译时验证，发现问题更早
@@ -1197,13 +1062,6 @@ public async Task<User?> GetByIdAsync(long id)
 
 ### 开始使用
 
-**推荐方式（3 行代码）**:
-1. 定义实体类
-2. 使用预定义接口：`public interface IUserRepo : ICrudRepository<User, long> { }`
-3. 标记实现类：`[RepositoryFor(typeof(IUserRepo))] public partial class UserRepo(DbConnection conn) : IUserRepo { }`
-4. 开始使用 - 已自动拥有 15+ 个 CRUD 方法！
-
-**传统方式（需要手写方法）**:
 1. 安装 NuGet 包：`dotnet add package Sqlx`
 2. 定义实体和接口
 3. 标记实现类

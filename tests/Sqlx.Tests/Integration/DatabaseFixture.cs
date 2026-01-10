@@ -29,6 +29,11 @@ public class DatabaseFixture : IDisposable
 {
     private readonly Dictionary<SqlDefineTypes, DbConnection> _connections = new();
     private readonly Dictionary<SqlDefineTypes, bool> _initialized = new();
+    
+    // Testcontainers instances
+    private MySqlContainer? _mySqlContainer;
+    private PostgreSqlContainer? _postgreSqlContainer;
+    private MsSqlContainer? _msSqlContainer;
 
     /// <summary>
     /// 获取指定方言的数据库连接
@@ -72,48 +77,61 @@ public class DatabaseFixture : IDisposable
     }
 
     /// <summary>
-    /// 创建 MySQL 连接（使用共享容器）
+    /// 创建 MySQL 连接（使用 Testcontainers）
     /// </summary>
     private DbConnection CreateMySqlConnection()
     {
-        // 使用共享的 Assembly 级别容器
-        var container = Infrastructure.AssemblyTestFixture.MySqlContainer;
-        if (container == null)
+        if (_mySqlContainer == null)
         {
-            throw new InvalidOperationException("MySQL container is not available. Ensure AssemblyTestFixture is initialized.");
+            _mySqlContainer = new MySqlBuilder()
+                .WithImage("mysql:8.3")
+                .WithDatabase("sqlx_test")
+                .WithUsername("root")
+                .WithPassword("root")
+                .Build();
+            
+            _mySqlContainer.StartAsync().GetAwaiter().GetResult();
         }
 
-        return new MySqlConnection(container.GetConnectionString());
+        return new MySqlConnection(_mySqlContainer.GetConnectionString());
     }
 
     /// <summary>
-    /// 创建 PostgreSQL 连接（使用共享容器）
+    /// 创建 PostgreSQL 连接（使用 Testcontainers）
     /// </summary>
     private DbConnection CreatePostgreSqlConnection()
     {
-        // 使用共享的 Assembly 级别容器
-        var container = Infrastructure.AssemblyTestFixture.PostgreSqlContainer;
-        if (container == null)
+        if (_postgreSqlContainer == null)
         {
-            throw new InvalidOperationException("PostgreSQL container is not available. Ensure AssemblyTestFixture is initialized.");
+            _postgreSqlContainer = new PostgreSqlBuilder()
+                .WithImage("postgres:16")
+                .WithDatabase("sqlx_test")
+                .WithUsername("postgres")
+                .WithPassword("postgres")
+                .Build();
+            
+            _postgreSqlContainer.StartAsync().GetAwaiter().GetResult();
         }
 
-        return new NpgsqlConnection(container.GetConnectionString());
+        return new NpgsqlConnection(_postgreSqlContainer.GetConnectionString());
     }
 
     /// <summary>
-    /// 创建 SQL Server 连接（使用共享容器）
+    /// 创建 SQL Server 连接（使用 Testcontainers）
     /// </summary>
     private DbConnection CreateSqlServerConnection()
     {
-        // 使用共享的 Assembly 级别容器
-        var container = Infrastructure.AssemblyTestFixture.MsSqlContainer;
-        if (container == null)
+        if (_msSqlContainer == null)
         {
-            throw new InvalidOperationException("SQL Server container is not available. Ensure AssemblyTestFixture is initialized.");
+            _msSqlContainer = new MsSqlBuilder()
+                .WithImage("mcr.microsoft.com/mssql/server:2019-latest")
+                .WithPassword("YourStrong@Passw0rd")
+                .Build();
+            
+            _msSqlContainer.StartAsync().GetAwaiter().GetResult();
         }
 
-        return new SqlConnection(container.GetConnectionString());
+        return new SqlConnection(_msSqlContainer.GetConnectionString());
     }
 
     /// <summary>
@@ -638,8 +656,7 @@ public class DatabaseFixture : IDisposable
     }
 
     /// <summary>
-    /// 释放所有数据库连接
-    /// 注意：容器由 AssemblyTestFixture 统一管理，不在此处释放
+    /// 释放所有数据库连接和容器
     /// </summary>
     public void Dispose()
     {
@@ -650,7 +667,10 @@ public class DatabaseFixture : IDisposable
         }
         _connections.Clear();
 
-        // 容器由 AssemblyTestFixture 统一管理，不在此处释放
+        // Stop and dispose Testcontainers
+        _mySqlContainer?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        _postgreSqlContainer?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        _msSqlContainer?.DisposeAsync().AsTask().GetAwaiter().GetResult();
     }
 
     /// <summary>

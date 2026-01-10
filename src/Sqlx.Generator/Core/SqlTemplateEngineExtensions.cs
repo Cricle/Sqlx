@@ -112,8 +112,8 @@ public static class SqlTemplateEngineExtensions
                 var dbType = dialect.DatabaseType;
                 if (dbType == "SqlServer")
                 {
-                    // SQL Server: 使用运行时占位符，因为 OFFSET/FETCH 需要 ORDER BY
-                    // 代码生成器会检查是否有 ORDER BY 并生成条件代码
+                    // SQL Server: 使用 OFFSET...FETCH 语法（需要 ORDER BY）
+                    // 生成运行时占位符，让代码生成器处理
                     return $"{{RUNTIME_LIMIT_{paramName}}}";
                 }
                 else if (dbType == "Oracle")

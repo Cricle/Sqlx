@@ -118,7 +118,7 @@ public class TDD_InPlaceholder
 
         // Assert
         Assert.IsTrue(result.ProcessedSql.Contains("IN (@ids)"), 
-            $"PostgreSQL应该使用 'IN (@ids)'。实际SQL: {result.ProcessedSql}");
+            $"PostgreSQL应该使用 'IN (@ids)' (Npgsql supports @ format)。实际SQL: {result.ProcessedSql}");
     }
 
     [TestMethod]

@@ -86,37 +86,6 @@ internal static class DialectPlaceholders
     public const string Concat = "{{concat}}";
 
     /// <summary>
-    /// Placeholder for dynamic column name.
-    /// Used in methods like GetDistinctValuesAsync where column name is a runtime parameter.
-    /// Example: {{column}} -> runtime validated column name
-    /// </summary>
-    public const string Column = "{{column}}";
-
-    /// <summary>
-    /// Placeholder for ORDER BY clause.
-    /// Example: {{orderby}} -> ORDER BY column_name
-    /// </summary>
-    public const string OrderBy = "{{orderby}}";
-
-    /// <summary>
-    /// Placeholder for WHERE clause.
-    /// Example: {{where}} -> WHERE condition
-    /// </summary>
-    public const string Where = "{{where}}";
-
-    /// <summary>
-    /// Placeholder for SET clause in UPDATE statements.
-    /// Example: {{set}} -> SET column1 = @value1, column2 = @value2
-    /// </summary>
-    public const string Set = "{{set}}";
-
-    /// <summary>
-    /// Placeholder for VALUES clause in INSERT statements.
-    /// Example: {{values}} -> (@value1, @value2, ...)
-    /// </summary>
-    public const string Values = "{{values}}";
-
-    /// <summary>
     /// All supported placeholders for validation.
     /// </summary>
     public static readonly string[] All = new[]
@@ -130,12 +99,7 @@ internal static class DialectPlaceholders
         BoolFalse,
         LimitOffset,
         CurrentTimestamp,
-        Concat,
-        Column,
-        OrderBy,
-        Where,
-        Set,
-        Values
+        Concat
     };
 
     /// <summary>

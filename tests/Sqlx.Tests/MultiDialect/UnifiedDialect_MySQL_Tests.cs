@@ -43,7 +43,10 @@ public class UnifiedDialect_MySQL_Tests : UnifiedDialectTestBase
 
     public TestContext TestContext { get; set; } = null!;
     
-    // Note: Container cleanup is now handled by AssemblyTestFixture
-    // No need for ClassCleanup anymore
+    [ClassCleanup]
+    public static async Task ClassCleanup()
+    {
+        await DatabaseConnectionHelper.CleanupContainerAsync(nameof(UnifiedDialect_MySQL_Tests));
+    }
 }
 

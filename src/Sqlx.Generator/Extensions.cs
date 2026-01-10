@@ -38,17 +38,7 @@ internal static class Extensions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool IsTypeInHierarchy(ISymbol symbol, string targetTypeName)
     {
-        // Get the type from the symbol (field, property, or type itself)
-        ITypeSymbol? type = symbol switch
-        {
-            IFieldSymbol field => field.Type,
-            IPropertySymbol property => property.Type,
-            IParameterSymbol parameter => parameter.Type,
-            ITypeSymbol typeSymbol => typeSymbol,
-            _ => null
-        };
-
-        if (type == null) return false;
+        if (symbol is not ITypeSymbol type) return false;
 
         while (type != null)
         {
@@ -245,6 +235,7 @@ internal static class Extensions
     public static bool IsCollectionType(this ITypeSymbol type) =>
         type.IsArray() || type.IsIEnumerable() || type.IsList();
 
+    // 优化：添加用于减少重复属性查询的辅助方法
     /// <summary>
     /// 获取指定名称的属性（缓存结果以提升性能）
     /// </summary>
@@ -260,10 +251,10 @@ internal static class Extensions
             a.AttributeClass?.Name?.Contains("SqlTemplate") == true);
 
     /// <summary>
-    /// 获取TableNameBy属性
+    /// 获取TableName属性
     /// </summary>
-    public static AttributeData? GetTableNameByAttribute(this ISymbol symbol) =>
-        symbol.GetAttribute("TableNameByAttribute");
+    public static AttributeData? GetTableNameAttribute(this ISymbol symbol) =>
+        symbol.GetAttribute("TableNameAttribute");
 
     /// <summary>
     /// 获取DbColumn属性

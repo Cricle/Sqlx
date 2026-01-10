@@ -322,7 +322,6 @@ public class SqlTemplateEngine
             "bool_true" => GetBoolTrueLiteral(dialect),
             "bool_false" => GetBoolFalseLiteral(dialect),
             "current_timestamp" => GetCurrentTimestampSyntax(dialect),
-            "random_function" => GetRandomFunctionSyntax(dialect),
             // 日期时间函数
             "today" => ProcessTodayPlaceholder(placeholderType, placeholderOptions, dialect),
             "week" => ProcessWeekPlaceholder(placeholderType, placeholderOptions, dialect),
@@ -345,10 +344,6 @@ public class SqlTemplateEngine
             // 批量操作
             "batch_values" => ProcessBatchValuesPlaceholder(placeholderType, placeholderOptions, method, dialect),
             "upsert" => ProcessUpsertPlaceholder(placeholderType, tableName, placeholderOptions, dialect),
-            "batch_update" => ProcessBatchUpdatePlaceholder(placeholderType, tableName, entityType, placeholderOptions, dialect, method),
-            "batch_upsert" => ProcessBatchUpsertPlaceholder(placeholderType, tableName, entityType, placeholderOptions, dialect, method),
-            "batch_exists" => ProcessBatchExistsPlaceholder(placeholderType, placeholderOptions, dialect, method),
-            "get_page" => ProcessGetPagePlaceholder(placeholderType, entityType, tableName, placeholderOptions, dialect, method),
             // 子查询
             "exists" => ProcessExistsPlaceholder(placeholderType, placeholderOptions, dialect),
             "subquery" => ProcessSubqueryPlaceholder(placeholderType, placeholderOptions, dialect),
@@ -385,57 +380,10 @@ public class SqlTemplateEngine
             // 批量操作增强
             "batch_insert" => ProcessBatchInsertPlaceholder(placeholderType, tableName, entityType, placeholderOptions, dialect),
             "bulk_update" => ProcessBulkUpdatePlaceholder(placeholderType, tableName, placeholderOptions, dialect),
-            // 动态列名支持（用于 GetDistinctValuesAsync 等方法）
-            "column" => ProcessColumnPlaceholder(placeholderType, placeholderOptions, method, dialect),
-            // 原始 SQL 片段支持（用于 IAdvancedRepository 的 ExecuteRawAsync 等方法）
-            "sql" => ProcessSqlPlaceholder(placeholderType, placeholderOptions, method, result),
             _ => ProcessCustomPlaceholder(
                 BuildOriginalPlaceholder(placeholderName, placeholderType, placeholderOptions), 
                 placeholderName, placeholderType, placeholderOptions, result)
         };
-    }
-
-    /// <summary>
-    /// 处理原始 SQL 占位符 - 用于 IAdvancedRepository 的 ExecuteRawAsync 等方法
-    /// 支持格式：
-    /// - {{sql @paramName}} - 使用指定参数作为 SQL 片段
-    /// - {{sql}} - 自动检测带有 [DynamicSql(Type = Fragment)] 的参数
-    /// </summary>
-    private static string ProcessSqlPlaceholder(string type, string options, IMethodSymbol method, SqlTemplateResult result)
-    {
-        // Auto-detect: Check for DynamicSql Fragment parameter
-        var dynamicSqlParam = method.Parameters.FirstOrDefault(p =>
-            p.GetAttributes().Any(a =>
-                a.AttributeClass?.Name == "DynamicSqlAttribute" &&
-                a.NamedArguments.Any(arg =>
-                    arg.Key == "Type" &&
-                    arg.Value.Value?.ToString() == "1"))); // Fragment = 1
-
-        // Priority 1: Explicit parameter reference {{sql @paramName}}
-        var paramSource = !string.IsNullOrWhiteSpace(options) && options.StartsWith("@") ? options :
-                         !string.IsNullOrWhiteSpace(type) && type.StartsWith("@") ? type : null;
-
-        if (paramSource != null)
-        {
-            var paramName = paramSource.Substring(1).Trim();
-            var param = method.Parameters.FirstOrDefault(p => p.Name.Equals(paramName, StringComparison.Ordinal));
-            if (param != null)
-            {
-                result.HasDynamicFeatures = true;
-                return $"{{RUNTIME_SQL_{paramName}}}";
-            }
-        }
-
-        // Priority 2: Auto-detect DynamicSql Fragment parameter
-        if (dynamicSqlParam != null)
-        {
-            result.HasDynamicFeatures = true;
-            return $"{{RUNTIME_SQL_DYNAMIC_{dynamicSqlParam.Name}}}";
-        }
-
-        // No parameter found - return empty string
-        result.Warnings.Add("{{sql}} placeholder requires a parameter with [DynamicSql(Type = Fragment)] attribute");
-        return "";
     }
 
     /// <summary>
@@ -546,27 +494,16 @@ public class SqlTemplateEngine
     /// </summary>
     private string ProcessValuesPlaceholder(string type, INamedTypeSymbol? entityType, IMethodSymbol method, string options, SqlDefine dialect, SqlTemplateResult result)
     {
-        // Check for batch operation: {{values @paramName}} or {{values --param paramName}}
-        string paramName = null;
-        
+        // Check for batch operation: {{values @paramName}}
         if (options != null && options.StartsWith("@"))
         {
-            paramName = options.Substring(1);
-        }
-        else if (!string.IsNullOrWhiteSpace(options))
-        {
-            // Check for --param option (e.g., {{values --param ids}})
-            paramName = ExtractCommandLineOption(options, "--param");
-        }
-        
-        if (!string.IsNullOrEmpty(paramName))
-        {
+            var paramName = options.Substring(1);
             var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
 
             if (param != null && SharedCodeGenerationUtilities.IsEnumerableParameter(param))
             {
-                // Return runtime marker for IN clause expansion (without {{ }} to avoid re-processing)
-                return $"(@{paramName})";
+                // Return runtime marker for batch INSERT (without {{ }} to avoid re-processing)
+                return $"__RUNTIME_BATCH_VALUES_{paramName}__";
             }
         }
 
@@ -598,8 +535,8 @@ public class SqlTemplateEngine
         for (int i = 0; i < properties.Count; i++)
         {
             if (i > 0) propertiesSb.Append(", ");
-            var paramName2 = SharedCodeGenerationUtilities.ConvertToSnakeCase(properties[i].Name);
-            propertiesSb.Append(dialect.ParameterPrefix).Append(paramName2);
+            var paramName = SharedCodeGenerationUtilities.ConvertToSnakeCase(properties[i].Name);
+            propertiesSb.Append(dialect.ParameterPrefix).Append(paramName);
         }
 
         return propertiesSb.ToString();
@@ -710,83 +647,6 @@ public class SqlTemplateEngine
     /// <summary>Processes SET placeholder - supports dynamic runtime SET clauses</summary>
     private string ProcessSetPlaceholder(string type, INamedTypeSymbol? entityType, IMethodSymbol method, string options, SqlDefine dialect, SqlTemplateResult result)
     {
-        // Check for --expr option: {{set --expr updateExpression}}
-        // This uses Expression<Func<TEntity, TEntity>> to specify which properties to update (AOT-compatible)
-        // The expression is analyzed at runtime to extract property assignments
-        var exprOption = ExtractCommandLineOption(options, "--expr");
-        if (!string.IsNullOrEmpty(exprOption))
-        {
-            var param = method.Parameters.FirstOrDefault(p => p.Name == exprOption);
-            if (param != null)
-            {
-                // Verify the parameter has [ExpressionToSql] attribute
-                var hasExpressionToSqlAttr = param.GetAttributes().Any(a => 
-                    a.AttributeClass?.Name == "ExpressionToSqlAttribute");
-                
-                if (hasExpressionToSqlAttr)
-                {
-                    // Return a runtime marker that will be processed during code generation
-                    // The expression will be analyzed at runtime to extract SET clause
-                    result.HasDynamicFeatures = true;
-                    return $"{{RUNTIME_SET_EXPR_{exprOption}}}";
-                }
-                else
-                {
-                    result.Warnings.Add($"Parameter '{exprOption}' used with --expr option should have [ExpressionToSql] attribute");
-                    return $"{{RUNTIME_SET_EXPR_{exprOption}}}";
-                }
-            }
-            else
-            {
-                result.Warnings.Add($"Parameter '{exprOption}' not found for --expr option");
-                return "";
-            }
-        }
-
-        // Check for --from option: {{set --from paramName}}
-        // This extracts properties from the specified parameter type at compile time (AOT-compatible)
-        var fromOption = ExtractCommandLineOption(options, "--from");
-        if (!string.IsNullOrEmpty(fromOption))
-        {
-            var param = method.Parameters.FirstOrDefault(p => p.Name == fromOption);
-            if (param != null)
-            {
-                // Get the parameter type and extract its properties at compile time
-                var paramType = param.Type as INamedTypeSymbol;
-                if (paramType != null)
-                {
-                    // For generic type parameters (TUpdates), we need to generate runtime marker
-                    // The actual property extraction will happen in code generation phase
-                    if (param.Type.TypeKind == TypeKind.TypeParameter)
-                    {
-                        // Return a runtime marker that will be processed during code generation
-                        return $"{{RUNTIME_SET_FROM_{fromOption}}}";
-                    }
-                    
-                    // For concrete types, extract properties at compile time
-                    var fromProperties = paramType.GetMembers()
-                        .OfType<IPropertySymbol>()
-                        .Where(p => p.CanBeReferencedByName && 
-                                   p.GetMethod != null && 
-                                   !p.IsImplicitlyDeclared &&
-                                   p.Name != "EqualityContract")
-                        .ToList();
-                    
-                    if (fromProperties.Count > 0)
-                    {
-                        return string.Join(", ", fromProperties.Select(p =>
-                        {
-                            var columnName = SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name);
-                            return $"{dialect.WrapColumn(columnName)} = {dialect.ParameterPrefix}{p.Name}";
-                        }));
-                    }
-                }
-                
-                // Fallback: return runtime marker for code generation to handle
-                return $"{{RUNTIME_SET_FROM_{fromOption}}}";
-            }
-        }
-
         // Check for dynamic SET parameter
         var dynamicSetParam = method.Parameters.FirstOrDefault(p =>
             p.GetAttributes().Any(a =>
@@ -1592,58 +1452,6 @@ public class SqlTemplateEngine
         return SqlTemplateEngineExtensions.MultiDatabasePlaceholderSupport.ProcessGenericPlaceholder("groupby", type, options, dialect);
     }
 
-    /// <summary>
-    /// Processes COLUMN placeholder - supports dynamic column names with SQL injection protection
-    /// Used for methods like GetDistinctValuesAsync that need runtime column selection
-    /// </summary>
-    /// <param name="type">Placeholder type</param>
-    /// <param name="options">Placeholder options</param>
-    /// <param name="method">Method symbol</param>
-    /// <param name="dialect">Database dialect</param>
-    /// <returns>Runtime placeholder or static column name</returns>
-    private static string ProcessColumnPlaceholder(string type, string options, IMethodSymbol method, SqlDefine dialect)
-    {
-        // Auto-detect: Check for DynamicSql Identifier parameter
-        // DynamicSqlType.Identifier = 0
-        var dynamicColumnParam = method.Parameters.FirstOrDefault(p =>
-            p.GetAttributes().Any(a =>
-                a.AttributeClass?.Name == "DynamicSqlAttribute" &&
-                (a.NamedArguments.Length == 0 || // Default is Identifier
-                 a.NamedArguments.Any(arg =>
-                    arg.Key == "Type" &&
-                    (arg.Value.Value?.ToString() == "0" ||  // Numeric value
-                     arg.Value.Value?.ToString() == "Identifier"))))); // Enum name
-
-        // Priority 1: Explicit parameter reference {{column @paramName}}
-        var paramSource = !string.IsNullOrWhiteSpace(options) && options.StartsWith("@") ? options :
-                         !string.IsNullOrWhiteSpace(type) && type.StartsWith("@") ? type : null;
-
-        if (paramSource != null)
-        {
-            var paramName = paramSource.Substring(1).Trim();
-            var param = method.Parameters.FirstOrDefault(p => p.Name.Equals(paramName, StringComparison.Ordinal));
-            if (param != null)
-            {
-                return $"{{RUNTIME_COLUMN_{paramName}}}";
-            }
-        }
-
-        // Priority 2: Auto-detect DynamicSql Identifier parameter
-        if (dynamicColumnParam != null)
-        {
-            return $"{{RUNTIME_COLUMN_DYNAMIC_{dynamicColumnParam.Name}}}";
-        }
-
-        // Priority 3: Static column name from options
-        if (!string.IsNullOrWhiteSpace(options))
-        {
-            return dialect.WrapColumn(options.Trim());
-        }
-
-        // Fallback: return placeholder for error reporting
-        return "{{column}}";
-    }
-
     /// <summary>处理HAVING占位符 - 多数据库支持</summary>
     private static string ProcessHavingPlaceholder(string type, IMethodSymbol method, string options, SqlDefine dialect)
     {
@@ -1806,19 +1614,13 @@ public class SqlTemplateEngine
             pattern = $"{dialect.ParameterPrefix}{pattern}";
         }
 
-        // Ensure column is wrapped if needed
-        if (!string.IsNullOrEmpty(column) && !column.Contains(".") && !column.Contains("("))
-        {
-            column = dialect.WrapColumn(column);
-        }
-
         // Use dialect-specific string concatenation
         return mode switch
         {
-            "starts" => $"{column} LIKE {GetDialectConcat(dialect, pattern, "'%'")}",
-            "ends" => $"{column} LIKE {GetDialectConcat(dialect, "'%'", pattern)}",
-            "exact" => $"{column} LIKE {pattern}",
-            _ => $"{column} LIKE {GetDialectConcat(dialect, "'%'", pattern, "'%'")}" // contains
+            "starts" => $"{dialect.WrapColumn(column)} LIKE {GetDialectConcat(dialect, pattern, "'%'")}",
+            "ends" => $"{dialect.WrapColumn(column)} LIKE {GetDialectConcat(dialect, "'%'", pattern)}",
+            "exact" => $"{dialect.WrapColumn(column)} LIKE {pattern}",
+            _ => $"{dialect.WrapColumn(column)} LIKE {GetDialectConcat(dialect, "'%'", pattern, "'%'")}" // contains
         };
     }
 
@@ -2271,35 +2073,27 @@ public class SqlTemplateEngine
         if (dialect.Equals(SqlDefine.PostgreSql))
         {
             // PostgreSQL: INSERT ... ON CONFLICT DO UPDATE
-            return $"INSERT INTO {dialect.WrapColumn(snakeTableName)} ({{{{columns}}}}) VALUES ({{{{values}}}}) ON CONFLICT ({dialect.WrapColumn(conflictColumn)}) DO UPDATE SET {{{{set:auto}}}}";
+            return $"INSERT INTO {dialect.WrapColumn(snakeTableName)} {{{{columns}}}} VALUES {{{{values}}}} ON CONFLICT ({dialect.WrapColumn(conflictColumn)}) DO UPDATE SET {{{{set:auto}}}}";
         }
         else if (dialect.Equals(SqlDefine.MySql))
         {
             // MySQL: INSERT ... ON DUPLICATE KEY UPDATE
-            return $"INSERT INTO {dialect.WrapColumn(snakeTableName)} ({{{{columns}}}}) VALUES ({{{{values}}}}) ON DUPLICATE KEY UPDATE {{{{set:auto}}}}";
+            return $"INSERT INTO {dialect.WrapColumn(snakeTableName)} {{{{columns}}}} VALUES {{{{values}}}} ON DUPLICATE KEY UPDATE {{{{set:auto}}}}";
         }
         else if (dialect.Equals(SqlDefine.SQLite))
         {
             // SQLite: INSERT OR REPLACE (simpler but replaces entire row)
-            return $"INSERT OR REPLACE INTO {dialect.WrapColumn(snakeTableName)} ({{{{columns}}}}) VALUES ({{{{values}}}})";
+            return $"INSERT OR REPLACE INTO {dialect.WrapColumn(snakeTableName)} {{{{columns}}}} VALUES {{{{values}}}}";
         }
         else if (dialect.Equals(SqlDefine.SqlServer))
         {
-            // SQL Server: MERGE statement using VALUES
-            // Source table includes all columns (including Id for matching)
-            // But INSERT only inserts non-Id columns, referencing source.column_name
-            // We need to manually construct the source column references
-            // MERGE target USING (VALUES (@id, @name, ...)) AS source (id, name, ...) ON target.id = source.id
-            // WHEN MATCHED THEN UPDATE SET name = source.name, ...
-            // WHEN NOT MATCHED THEN INSERT (name, email, ...) VALUES (source.name, source.email, ...)
-            
-            // For now, use a runtime marker to handle this in code generation
-            return $"__RUNTIME_UPSERT_{snakeTableName}__";
+            // SQL Server: MERGE statement (more complex but standard)
+            return $"MERGE {dialect.WrapColumn(snakeTableName)} AS target USING (SELECT {{{{values}}}}) AS source ON target.{dialect.WrapColumn(conflictColumn)} = source.{dialect.WrapColumn(conflictColumn)} WHEN MATCHED THEN UPDATE SET {{{{set:auto}}}} WHEN NOT MATCHED THEN INSERT {{{{columns}}}} VALUES {{{{values}}}};";
         }
         else // Oracle and other databases
         {
             // Oracle: MERGE statement
-            return $"MERGE INTO {dialect.WrapColumn(snakeTableName)} target USING (SELECT {{{{values}}}} FROM DUAL) source ON (target.{dialect.WrapColumn(conflictColumn)} = source.{dialect.WrapColumn(conflictColumn)}) WHEN MATCHED THEN UPDATE SET {{{{set:auto}}}} WHEN NOT MATCHED THEN INSERT ({{{{columns}}}}) VALUES ({{{{values}}}})";
+            return $"MERGE INTO {dialect.WrapColumn(snakeTableName)} target USING (SELECT {{{{values}}}} FROM DUAL) source ON (target.{dialect.WrapColumn(conflictColumn)} = source.{dialect.WrapColumn(conflictColumn)}) WHEN MATCHED THEN UPDATE SET {{{{set:auto}}}} WHEN NOT MATCHED THEN INSERT {{{{columns}}}} VALUES {{{{values}}}}";
         }
     }
 
@@ -2844,88 +2638,6 @@ public class SqlTemplateEngine
             : $"UPDATE {snakeTableName} SET {{{{set}}}} WHERE {keyColumn} IN ({{{{values}}}})";
     }
 
-    /// <summary>处理BATCH_UPDATE占位符 - 批量更新多个实体</summary>
-    private string ProcessBatchUpdatePlaceholder(string type, string tableName, INamedTypeSymbol? entityType, string options, SqlDefine dialect, IMethodSymbol method)
-    {
-        // 批量更新使用CASE WHEN语句
-        // UPDATE table SET 
-        //   col1 = CASE WHEN id = 1 THEN val1 WHEN id = 2 THEN val2 END,
-        //   col2 = CASE WHEN id = 1 THEN val1 WHEN id = 2 THEN val2 END
-        // WHERE id IN (1, 2, ...)
-        
-        var snakeTableName = SharedCodeGenerationUtilities.ConvertToSnakeCase(tableName);
-        
-        // 标记为需要运行时处理 - 使用 __ 语法避免被当作占位符重新处理
-        return $"__RUNTIME_BATCH_UPDATE_{snakeTableName}__";
-    }
-
-    /// <summary>处理BATCH_UPSERT占位符 - 批量插入或更新</summary>
-    private string ProcessBatchUpsertPlaceholder(string type, string tableName, INamedTypeSymbol? entityType, string options, SqlDefine dialect, IMethodSymbol method)
-    {
-        var snakeTableName = SharedCodeGenerationUtilities.ConvertToSnakeCase(tableName);
-        var conflictColumn = ExtractOption(options, "conflict", "id");
-
-        if (dialect.Equals(SqlDefine.SQLite))
-        {
-            // SQLite: INSERT OR REPLACE - use runtime marker for full control
-            return $"__RUNTIME_BATCH_UPSERT_{snakeTableName}__";
-        }
-        else if (dialect.Equals(SqlDefine.MySql))
-        {
-            // MySQL: INSERT ... ON DUPLICATE KEY UPDATE - use runtime marker
-            return $"__RUNTIME_BATCH_UPSERT_{snakeTableName}__";
-        }
-        else if (dialect.Equals(SqlDefine.PostgreSql))
-        {
-            // PostgreSQL: INSERT ... ON CONFLICT DO UPDATE - use runtime marker
-            return $"__RUNTIME_BATCH_UPSERT_{snakeTableName}__";
-        }
-        else if (dialect.Equals(SqlDefine.SqlServer))
-        {
-            // SQL Server: MERGE statement - too complex for template, use runtime marker
-            return $"__RUNTIME_BATCH_UPSERT_{snakeTableName}__";
-        }
-        else // Oracle and other databases
-        {
-            // Mark for runtime processing
-            return $"__RUNTIME_BATCH_UPSERT_{snakeTableName}__";
-        }
-    }
-
-    /// <summary>处理BATCH_EXISTS占位符 - 批量检查存在性</summary>
-    private string ProcessBatchExistsPlaceholder(string type, string options, SqlDefine dialect, IMethodSymbol method)
-    {
-        // 查找IList<TKey> ids参数
-        var idsParam = method.Parameters.FirstOrDefault(p => 
-            p.Name == "ids" && SharedCodeGenerationUtilities.IsEnumerableParameter(p));
-        
-        if (idsParam == null)
-        {
-            return "SELECT 0"; // Fallback
-        }
-
-        // 生成SQL: 
-        // SELECT id, CASE WHEN EXISTS(SELECT 1 FROM table WHERE id = input.id) THEN 1 ELSE 0 END as exists
-        // FROM (VALUES (@id0), (@id1), ...) AS input(id)
-        // ORDER BY id
-        
-        // 标记为需要运行时处理（因为需要动态生成VALUES列表）- 使用 __ 语法避免被当作占位符重新处理
-        return "__RUNTIME_BATCH_EXISTS__";
-    }
-
-    /// <summary>处理GET_PAGE占位符 - 分页查询（包含总数）</summary>
-    private string ProcessGetPagePlaceholder(string type, INamedTypeSymbol? entityType, string tableName, string options, SqlDefine dialect, IMethodSymbol method)
-    {
-        // GetPageAsync需要两个查询:
-        // 1. SELECT COUNT(*) FROM table WHERE ...
-        // 2. SELECT * FROM table WHERE ... ORDER BY ... LIMIT ... OFFSET ...
-        
-        var snakeTableName = SharedCodeGenerationUtilities.ConvertToSnakeCase(tableName);
-        
-        // 标记为需要运行时处理（需要执行两个查询）- 使用 __ 语法避免被当作占位符重新处理
-        return $"__RUNTIME_GET_PAGE_{snakeTableName}__";
-    }
-
     /// <summary>
     /// Checks if a parameter is Expression&lt;Func&lt;T, bool&gt;&gt;
     /// </summary>
@@ -3002,23 +2714,6 @@ public class SqlTemplateEngine
             return "SYSTIMESTAMP";
 
         return "CURRENT_TIMESTAMP"; // PostgreSQL, MySQL, SQLite
-    }
-
-    /// <summary>
-    /// Gets the random function syntax for the specified dialect.
-    /// </summary>
-    private static string GetRandomFunctionSyntax(SqlDefine dialect)
-    {
-        var dbType = dialect.DatabaseType;
-
-        if (dbType == "SqlServer")
-            return "NEWID()";
-        if (dbType == "MySql")
-            return "RAND()";
-        if (dbType == "Oracle")
-            return "DBMS_RANDOM.VALUE";
-
-        return "RANDOM()"; // PostgreSQL, SQLite
     }
 
     #endregion

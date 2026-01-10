@@ -218,6 +218,11 @@ public class IntegrationTests
             ValidateDynamicParameter_Identifier(tableName);
         }
         var elapsed = DateTime.UtcNow - startTime;
+
+        // Assert - 10000次验证应该在合理时间内完成
+        var averageMicroseconds = elapsed.TotalMilliseconds * 1000 / iterations;
+        Assert.IsTrue(averageMicroseconds < 10,
+            $"Average validation time ({averageMicroseconds:F2}μs) should be less than 10μs per call");
     }
 
     #endregion

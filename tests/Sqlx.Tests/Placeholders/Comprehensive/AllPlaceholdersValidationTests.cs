@@ -385,14 +385,17 @@ public class CorePlaceholderTestRepository
     public async Task CreateTableAsync()
     {
         using var cmd = _connection.CreateCommand();
+        cmd.CommandText = @"
+            CREATE TABLE IF NOT EXISTS placeholder_test (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                amount REAL NOT NULL
+            )";
         
-        // Drop table first to ensure clean state
         if (_dialect == SqlDefineTypes.SqlServer)
         {
-            cmd.CommandText = "IF EXISTS (SELECT * FROM sys.tables WHERE name = 'placeholder_test') DROP TABLE placeholder_test";
-            await Task.Run(() => cmd.ExecuteNonQuery());
-            
             cmd.CommandText = @"
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'placeholder_test')
                 CREATE TABLE placeholder_test (
                     id BIGINT PRIMARY KEY IDENTITY(1,1),
                     name NVARCHAR(255) NOT NULL,
@@ -401,11 +404,8 @@ public class CorePlaceholderTestRepository
         }
         else if (_dialect == SqlDefineTypes.MySql)
         {
-            cmd.CommandText = "DROP TABLE IF EXISTS placeholder_test";
-            await Task.Run(() => cmd.ExecuteNonQuery());
-            
             cmd.CommandText = @"
-                CREATE TABLE placeholder_test (
+                CREATE TABLE IF NOT EXISTS placeholder_test (
                     id BIGINT PRIMARY KEY AUTO_INCREMENT,
                     name VARCHAR(255) NOT NULL,
                     amount DECIMAL(18,2) NOT NULL
@@ -413,26 +413,11 @@ public class CorePlaceholderTestRepository
         }
         else if (_dialect == SqlDefineTypes.PostgreSql)
         {
-            cmd.CommandText = "DROP TABLE IF EXISTS placeholder_test";
-            await Task.Run(() => cmd.ExecuteNonQuery());
-            
             cmd.CommandText = @"
-                CREATE TABLE placeholder_test (
+                CREATE TABLE IF NOT EXISTS placeholder_test (
                     id BIGSERIAL PRIMARY KEY,
                     name VARCHAR(255) NOT NULL,
                     amount DECIMAL(18,2) NOT NULL
-                )";
-        }
-        else // SQLite
-        {
-            cmd.CommandText = "DROP TABLE IF EXISTS placeholder_test";
-            await Task.Run(() => cmd.ExecuteNonQuery());
-            
-            cmd.CommandText = @"
-                CREATE TABLE placeholder_test (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT NOT NULL,
-                    amount REAL NOT NULL
                 )";
         }
         

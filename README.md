@@ -33,12 +33,16 @@ Sqlx 是一个**高性能、类型安全的 .NET 数据访问库**，通过**源
 
 ## ⚡ 快速开始
 
-### 方式一：使用预定义接口（推荐 - 3 行代码）⭐
+### 1. 安装
 
-Sqlx 提供了完善的预定义 CRUD 接口，包含 **50+ 个常用方法**，无需手写任何 SQL！
+```bash
+dotnet add package Sqlx
+```
+
+### 2. 定义实体和仓储
 
 ```csharp
-// 1. 定义实体
+// 实体
 public class User
 {
     public long Id { get; set; }
@@ -46,38 +50,6 @@ public class User
     public int Age { get; set; }
 }
 
-// 2. 使用预定义接口（自动获得 15+ 个 CRUD 方法）
-[RepositoryFor(typeof(ICrudRepository<User, long>))]
-public partial class UserRepository(DbConnection connection) 
-    : ICrudRepository<User, long> { }
-
-// 3. 开始使用 - 已自动拥有所有 CRUD 方法！
-await using var conn = new SqliteConnection("Data Source=app.db");
-var repo = new UserRepository(conn);
-
-var userId = await repo.InsertAndGetIdAsync(new User { Name = "Alice", Age = 25 });
-var user = await repo.GetByIdAsync(userId);
-var allUsers = await repo.GetAllAsync();
-await repo.UpdateAsync(user);
-await repo.DeleteAsync(userId);
-// ... 还有 10+ 个方法可用！
-```
-
-**预定义接口包含的方法**：
-- `ICrudRepository<TEntity, TKey>` - 15+ 个基础 CRUD 方法
-- `IRepository<TEntity, TKey>` - 50+ 个完整方法（查询、命令、批量、聚合、高级）
-- `IReadOnlyRepository<TEntity, TKey>` - 26 个只读方法（适合报表、CQRS 查询端）
-- `IBulkRepository<TEntity, TKey>` - 17 个批量操作方法（高性能场景）
-
-📖 **[查看完整的预定义接口指南](docs/PREDEFINED_INTERFACES_GUIDE.md)**
-
----
-
-### 方式二：手写 SQL 模板（完全控制）
-
-如果需要完全控制 SQL 或自定义查询，可以手写方法：
-
-```csharp
 // 仓储接口
 [SqlDefine(SqlDefineTypes.SQLite)]
 public interface IUserRepository
@@ -85,9 +57,9 @@ public interface IUserRepository
     [SqlTemplate("SELECT {{columns}} FROM users WHERE id = @id")]
     Task<User?> GetByIdAsync(long id);
 
-    [SqlTemplate("INSERT INTO users ({{columns --exclude Id}}) VALUES ({{values}})")]
+    [SqlTemplate("INSERT INTO users (name, age) VALUES (@name, @age)")]
     [ReturnInsertedId]
-    Task<long> InsertAsync(User user);
+    Task<long> InsertAsync(string name, int age);
 }
 
 // 实现类（源生成器自动生成方法）
@@ -95,18 +67,15 @@ public interface IUserRepository
 public partial class UserRepository(DbConnection connection) : IUserRepository { }
 ```
 
-**推荐做法**：结合使用预定义接口和自定义方法
+### 3. 使用
 
 ```csharp
-// 继承预定义接口获得基础 CRUD，再添加自定义方法
-public interface IUserRepository : ICrudRepository<User, long>
-{
-    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE age >= @minAge")]
-    Task<List<User>> GetAdultsAsync(int minAge = 18);
-}
+await using var conn = new SqliteConnection("Data Source=app.db");
+await conn.OpenAsync();
 
-[RepositoryFor(typeof(IUserRepository))]
-public partial class UserRepository(DbConnection connection) : IUserRepository { }
+var repo = new UserRepository(conn);
+var userId = await repo.InsertAsync("Alice", 25);
+var user = await repo.GetByIdAsync(userId);
 ```
 
 ---
@@ -176,7 +145,6 @@ var users = await repo.QueryAsync(u => u.Age >= 18 && u.Balance > 1000);
 
 ### 快速入门
 - **[5分钟快速开始](docs/QUICK_START_GUIDE.md)** ⭐ - 新手必读
-- **[预定义接口指南](docs/PREDEFINED_INTERFACES_GUIDE.md)** ⭐ - 50+ 个预定义方法，无需手写 SQL
 - **[AI 助手指南](AI-VIEW.md)** ⭐ - 让 AI 学会 Sqlx（完整功能清单）
 - **[文档索引](docs/INDEX.md)** - 按主题、角色、功能分类的完整文档列表
 

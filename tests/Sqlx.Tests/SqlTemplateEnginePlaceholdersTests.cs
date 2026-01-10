@@ -21,7 +21,8 @@ public class SqlTemplateEnginePlaceholdersTests
     [TestInitialize]
     public void Initialize()
     {
-        _engine = new SqlTemplateEngine();
+        // Use SQLite dialect for consistent test results (no brackets, @ prefix)
+        _engine = new SqlTemplateEngine(Sqlx.Generator.SqlDefine.SQLite);
 
         var compilation = CreateTestCompilation();
         var testClass = compilation.GetTypeByMetadataName("TestEntity")!;
@@ -144,11 +145,11 @@ public class SqlTemplateEnginePlaceholdersTests
 
         // Assert
         var lowerSql = result.ProcessedSql.ToLowerInvariant();
-        // Accept both quoted and unquoted column names
-        Assert.IsTrue(lowerSql.Contains("name = @name") || lowerSql.Contains("[name] = @name"),
-            "SET clause should contain name column");
-        Assert.IsTrue(lowerSql.Contains("updated_at = @updated_at") || lowerSql.Contains("[updated_at] = @updated_at"),
-            "SET clause should contain updated_at column");
+        // SQLite uses [brackets], so check for both formats
+        Assert.IsTrue(lowerSql.Contains("name] = @name") || lowerSql.Contains("name = @name"),
+            $"应该包含 name 列的赋值。实际SQL: {result.ProcessedSql}");
+        Assert.IsTrue(lowerSql.Contains("updated_at] = @updated_at") || lowerSql.Contains("updated_at = @updated_at"),
+            $"应该包含 updated_at 列的赋值。实际SQL: {result.ProcessedSql}");
     }
 
     [TestMethod]
@@ -165,12 +166,13 @@ public class SqlTemplateEnginePlaceholdersTests
         var lowerSql = result.ProcessedSql.ToLowerInvariant();
         Assert.IsFalse(lowerSql.Contains("id = @id,") || lowerSql.Contains(", id = @id"),
             "SET 子句不应该包含 id");
-        Assert.IsFalse(lowerSql.Contains("created_at = @created_at") && lowerSql.Contains("[created_at] = @created_at"),
+        Assert.IsFalse(lowerSql.Contains("created_at = @created_at"),
             "SET 子句不应该包含 created_at");
-        Assert.IsTrue(lowerSql.Contains("name = @name") || lowerSql.Contains("[name] = @name"),
-            "SET clause should contain name column");
-        Assert.IsTrue(lowerSql.Contains("updated_at = @updated_at") || lowerSql.Contains("[updated_at] = @updated_at"),
-            "SET clause should contain updated_at column");
+        // SQLite uses [brackets], so check for both formats
+        Assert.IsTrue(lowerSql.Contains("name] = @name") || lowerSql.Contains("name = @name"),
+            $"应该包含 name 列的赋值。实际SQL: {result.ProcessedSql}");
+        Assert.IsTrue(lowerSql.Contains("updated_at] = @updated_at") || lowerSql.Contains("updated_at = @updated_at"),
+            $"应该包含 updated_at 列的赋值。实际SQL: {result.ProcessedSql}");
     }
 
     #endregion

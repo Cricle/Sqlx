@@ -111,6 +111,32 @@ public class SqlTemplateEngineSecurityTests
     }
 
     [TestMethod]
+    [Description("真正的 SQL 注入模式应该被检测")]
+    [Ignore("SQL injection detection is not implemented - templates are processed as-is")]
+    public void RealSqlInjection_ShouldBeDetected()
+    {
+        // Arrange
+        var maliciousTemplates = new[]
+        {
+            "SELECT * FROM users UNION SELECT * FROM passwords",
+            "DROP TABLE users",
+            "SELECT * FROM users WHERE id = 1; DROP TABLE users",
+            "exec('malicious code')",
+            "SELECT * FROM users /* comment */ WHERE id = 1"
+        };
+
+        foreach (var template in maliciousTemplates)
+        {
+            // Act
+            var result = _engine!.ProcessTemplate(template, _testMethod!, _testEntity!, "test_table");
+
+            // Assert
+            Assert.IsTrue(result.Errors.Any(e => e.Contains("SQL injection") || e.Contains("security")),
+                $"恶意模板 '{template}' 应该被检测为 SQL 注入");
+        }
+    }
+
+    [TestMethod]
     [Description("空模板应返回警告但不应崩溃")]
     public void EmptyTemplate_ShouldReturnWarningNotCrash()
     {

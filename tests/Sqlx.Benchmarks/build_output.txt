@@ -1,0 +1,18 @@
+  正在确定要还原的项目…
+  已还原 C:\Users\huaji\Workplace\github\Sqlx\src\Sqlx\Sqlx.csproj (用时 348 毫秒)。
+  已还原 C:\Users\huaji\Workplace\github\Sqlx\tests\Sqlx.Benchmarks\Sqlx.Benchmarks.csproj (用时 348 毫秒)。
+  1 个项目(共 3 个)是最新的，无法还原。
+  Sqlx -> C:\Users\huaji\Workplace\github\Sqlx\src\Sqlx\bin\Debug\net8.0\Sqlx.dll
+C:\Users\huaji\Workplace\github\Sqlx\src\Sqlx.Generator\Analyzers\PropertyOrderAnalyzer.cs(31,13): warning RS2008: 为包含规则“SQLX001”的分析器项目启用分析器发布跟踪 (https://github.com/dotnet/roslyn-analyzers/blob/main/src/Microsoft.CodeAnalysis.Analyzers/ReleaseTrackingAnalyzers.Help.md) [C:\Users\huaji\Workplace\github\Sqlx\src\Sqlx.Generator\Sqlx.Generator.csproj]
+  Sqlx.Generator -> C:\Users\huaji\Workplace\github\Sqlx\src\Sqlx.Generator\bin\Debug\netstandard2.0\Sqlx.Generator.dll
+  Sqlx.Benchmarks -> C:\Users\huaji\Workplace\github\Sqlx\tests\Sqlx.Benchmarks\bin\Debug\net8.0\Sqlx.Benchmarks.dll
+
+已成功生成。
+
+C:\Users\huaji\Workplace\github\Sqlx\src\Sqlx.Generator\Analyzers\PropertyOrderAnalyzer.cs(31,13): warning RS2008: 为包含规则“SQLX001”的分析器项目启用分析器发布跟踪 (https://github.com/dotnet/roslyn-analyzers/blob/main/src/Microsoft.CodeAnalysis.Analyzers/ReleaseTrackingAnalyzers.Help.md) [C:\Users\huaji\Workplace\github\Sqlx\src\Sqlx.Generator\Sqlx.Generator.csproj]
+    1 个警告
+    0 个错误
+
+已用时间 00:00:05.68
+
+有可用的工作负载更新。有关详细信息，请运行 `dotnet workload list`。

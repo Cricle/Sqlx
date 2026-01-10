@@ -143,65 +143,25 @@ public partial interface IE2EOrderRepository
 
 // ==================== 测试基类 ====================
 
-public abstract class E2ETestBase : IDisposable
+public abstract class E2ETestBase
 {
-    // Shared connection per test class - initialized once, reused for all tests
-    private static readonly Dictionary<string, DbConnection> _sharedConnections = new();
-    private static readonly Dictionary<string, bool> _tablesCreated = new();
-    private static readonly object _lock = new();
-
-    protected DbConnection? Connection { get; set; }
+    protected DbConnection? Connection { get; private set; }
     protected IE2EProductRepository? ProductRepo { get; private set; }
     protected IE2EOrderRepository? OrderRepo { get; private set; }
 
     protected abstract SqlDefineTypes DialectType { get; }
-    protected abstract string TestClassName { get; }
     protected abstract DbConnection? CreateConnection();
     protected abstract IE2EProductRepository CreateProductRepository(DbConnection connection);
     protected abstract IE2EOrderRepository CreateOrderRepository(DbConnection connection);
 
-    /// <summary>
-    /// Cleanup all shared connections - called at assembly cleanup.
-    /// </summary>
-    public static void CleanupSharedConnections()
-    {
-        lock (_lock)
-        {
-            foreach (var conn in _sharedConnections.Values)
-            {
-                try
-                {
-                    conn?.Dispose();
-                }
-                catch
-                {
-                    // Ignore disposal errors
-                }
-            }
-            _sharedConnections.Clear();
-            _tablesCreated.Clear();
-        }
-    }
-
     [TestInitialize]
     public async Task Initialize()
     {
-        var connectionKey = $"{DialectType}_{TestClassName}";
-        
-        lock (_lock)
+        Connection = CreateConnection();
+        if (Connection == null)
         {
-            if (!_sharedConnections.ContainsKey(connectionKey))
-            {
-                var conn = CreateConnection();
-                if (conn == null)
-                {
-                    Assert.Inconclusive($"{DialectType} database is not available");
-                    return;
-                }
-                _sharedConnections[connectionKey] = conn;
-            }
-            
-            Connection = _sharedConnections[connectionKey];
+            Assert.Inconclusive($"{DialectType} database is not available");
+            return;
         }
 
         if (Connection.State != System.Data.ConnectionState.Open)
@@ -210,40 +170,31 @@ public abstract class E2ETestBase : IDisposable
         ProductRepo = CreateProductRepository(Connection);
         OrderRepo = CreateOrderRepository(Connection);
 
-        // Only create tables once per test class
-        if (!_tablesCreated.ContainsKey(connectionKey))
-        {
-            await CreateTablesAsync();
-            lock (_lock)
-            {
-                _tablesCreated[connectionKey] = true;
-            }
-        }
+        // 创建表结构
+        await CreateTablesAsync();
         
-        // Clear data before each test instead of recreating tables
+        // 清理数据（确保干净的开始）
         await CleanupDataAsync();
     }
 
     [TestCleanup]
     public async Task Cleanup()
     {
-        // Clear test data after each test
         if (Connection != null)
         {
+            // 清理测试数据
             try
             {
                 await CleanupDataAsync();
             }
             catch
             {
-                // Ignore cleanup errors
+                // 忽略清理错误
             }
+            
+            // 只关闭连接，不清理容器（容器在 ClassCleanup 中清理）
+            Connection.Dispose();
         }
-        
-        // Don't dispose shared connection - it will be reused by other tests
-        Connection = null;
-        ProductRepo = null;
-        OrderRepo = null;
     }
 
     protected abstract Task CreateTablesAsync();
@@ -254,15 +205,6 @@ public abstract class E2ETestBase : IDisposable
             await OrderRepo.DeleteAllAsync();
         if (ProductRepo != null)
             await ProductRepo.DeleteAllAsync();
-    }
-
-    public void Dispose()
-    {
-        // Don't dispose shared connection - it will be reused by other tests
-        // Connection cleanup happens at assembly level
-        Connection = null;
-        ProductRepo = null;
-        OrderRepo = null;
     }
 
     // ==================== E2E 测试场景 ====================
@@ -500,7 +442,6 @@ public abstract class E2ETestBase : IDisposable
 public class E2E_SQLite_Tests : E2ETestBase
 {
     protected override SqlDefineTypes DialectType => SqlDefineTypes.SQLite;
-    protected override string TestClassName => nameof(E2E_SQLite_Tests);
 
     protected override DbConnection? CreateConnection()
     {
@@ -553,7 +494,6 @@ public class E2E_SQLite_Tests : E2ETestBase
 public class E2E_MySQL_Tests : E2ETestBase
 {
     protected override SqlDefineTypes DialectType => SqlDefineTypes.MySql;
-    protected override string TestClassName => nameof(E2E_MySQL_Tests);
 
     protected override DbConnection? CreateConnection()
     {
@@ -568,7 +508,11 @@ public class E2E_MySQL_Tests : E2ETestBase
     
     public TestContext TestContext { get; set; } = null!;
     
-    // Note: Container cleanup is now handled by AssemblyTestFixture
+    [ClassCleanup]
+    public static async Task ClassCleanup()
+    {
+        await DatabaseConnectionHelper.CleanupContainerAsync(nameof(E2E_MySQL_Tests));
+    }
 
     protected override async Task CreateTablesAsync()
     {

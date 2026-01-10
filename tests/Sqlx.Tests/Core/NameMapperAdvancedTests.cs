@@ -332,10 +332,13 @@ namespace Sqlx.Tests.Core
             // Test performance with large inputs
             var largeInput = string.Join("", Enumerable.Range(0, 1000).Select(i => $"Property{i}"));
 
+            var startTime = DateTime.UtcNow;
             var result = NameMapper.MapName(largeInput);
+            var duration = DateTime.UtcNow - startTime;
 
             Assert.IsNotNull(result);
             Assert.IsTrue(result.Length > 0);
+            Assert.IsTrue(duration.TotalMilliseconds < 1000, "Performance test failed - took too long");
         }
 
         [TestMethod]

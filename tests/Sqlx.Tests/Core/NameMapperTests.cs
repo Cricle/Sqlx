@@ -214,6 +214,8 @@ public class NameMapperTests
             "CustomerBillingAddress", "ProductCategoryName", "OrderLineItemQuantity"
         };
 
+        var startTime = DateTime.UtcNow;
+
         // Perform many name mappings to test performance
         for (int i = 0; i < 1000; i++)
         {
@@ -227,6 +229,12 @@ public class NameMapperTests
                 Assert.IsNotNull(snakeCase, "Snake case name should not be null");
             }
         }
+
+        var endTime = DateTime.UtcNow;
+        var elapsed = endTime - startTime;
+
+        Assert.IsTrue(elapsed.TotalSeconds < 5,
+            $"Many name mappings should complete quickly. Took: {elapsed.TotalSeconds} seconds");
     }
 
     /// <summary>

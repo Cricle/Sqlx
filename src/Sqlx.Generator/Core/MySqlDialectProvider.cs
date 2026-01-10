@@ -34,6 +34,7 @@ internal class MySqlDialectProvider : BaseDialectProvider
     public override string GenerateInsertWithReturning(string tableName, string[] columns)
     {
         var (wrappedTableName, wrappedColumns, parameters) = GetInsertParts(tableName, columns);
+        // 性能优化：缓存重复的字符串连接结果
         var columnsJoined = string.Join(", ", wrappedColumns);
         var parametersJoined = string.Join(", ", parameters);
         return $"INSERT INTO {wrappedTableName} ({columnsJoined}) VALUES ({parametersJoined}); SELECT LAST_INSERT_ID()";

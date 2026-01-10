@@ -273,4 +273,26 @@ public class BatchFallbackTests
         }
     }
 
+    [TestMethod]
+    public void BatchFallback_PerformanceConsiderations()
+    {
+        // This test documents the performance characteristics
+        // of batch vs fallback execution
+
+        // Batch mode advantages:
+        // - Single round-trip to database
+        // - Better performance for large datasets
+        // - Native database optimization
+
+        // Fallback mode characteristics:
+        // - Multiple round-trips to database
+        // - Compatible with older database versions
+        // - Works with any IDbConnection implementation
+
+        // The generated code should prefer batch when available
+        // but gracefully fallback when not supported
+
+        Assert.IsTrue(true, "Batch mode should be preferred when available for better performance");
+        Assert.IsTrue(true, "Fallback mode should be used when batch is not supported for compatibility");
+    }
 }

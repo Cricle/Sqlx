@@ -119,7 +119,7 @@ namespace TestNamespace
             (Sqlx.Generator.SqlDefine.SQLite, "@"),
             (Sqlx.Generator.SqlDefine.MySql, "@"),
             (Sqlx.Generator.SqlDefine.SqlServer, "@"),
-            (Sqlx.Generator.SqlDefine.PostgreSql, "@")
+            (Sqlx.Generator.SqlDefine.PostgreSql, "@")  // Npgsql supports @ format
         };
 
         foreach (var (dialect, expectedPrefix) in dialects)

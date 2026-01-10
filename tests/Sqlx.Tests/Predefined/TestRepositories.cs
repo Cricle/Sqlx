@@ -15,9 +15,6 @@ namespace Sqlx.Tests.Predefined
     public partial class UserCrudRepository(IDbConnection connection) 
         : ICrudRepository<User, long>
     {
-        // 🔧 IMPORTANT: For partial classes with primary constructor, 
-        // define a field to store the connection so generated code can access it
-        protected readonly IDbConnection connection = connection;
     }
 
     [SqlDefine(SqlDefineTypes.SQLite)]
@@ -25,7 +22,6 @@ namespace Sqlx.Tests.Predefined
     public partial class UserQueryRepository(IDbConnection connection) 
         : IQueryRepository<User, long>
     {
-        protected readonly IDbConnection connection = connection;
     }
 
     [SqlDefine(SqlDefineTypes.SQLite)]
@@ -33,7 +29,6 @@ namespace Sqlx.Tests.Predefined
     public partial class UserCommandRepository(IDbConnection connection) 
         : ICommandRepository<User, long>
     {
-        protected readonly IDbConnection connection = connection;
     }
 
     [SqlDefine(SqlDefineTypes.SQLite)]
@@ -41,7 +36,6 @@ namespace Sqlx.Tests.Predefined
     public partial class UserAggregateRepository(IDbConnection connection) 
         : IAggregateRepository<User, long>
     {
-        protected readonly IDbConnection connection = connection;
     }
 
     [SqlDefine(SqlDefineTypes.SQLite)]
@@ -49,7 +43,6 @@ namespace Sqlx.Tests.Predefined
     public partial class UserBatchRepository(IDbConnection connection) 
         : IBatchRepository<User, long>
     {
-        protected readonly IDbConnection connection = connection;
     }
 
     [SqlDefine(SqlDefineTypes.SQLite)]
@@ -57,12 +50,6 @@ namespace Sqlx.Tests.Predefined
     public partial class ProductRepository(IDbConnection connection) 
         : ICrudRepository<Product, long>
     {
-        protected readonly IDbConnection connection = connection;
     }
-
-    // ===== AOT-Compatible Partial Update Repositories =====
-    // NOTE: IPartialUpdateRepository and IExpressionUpdateRepository interfaces
-    // are planned for future implementation. See docs/ENHANCED_REPOSITORY_INTERFACES.md
-    // for the complete design specification.
 }
 

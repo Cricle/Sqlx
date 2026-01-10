@@ -17,12 +17,16 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using static Sqlx.Generator.SharedCodeGenerationUtilities;
 
-internal class MethodGenerationContext : GenerationContextBase
+internal partial class MethodGenerationContext : GenerationContextBase
 {
+    // 性能优化：缓存常用的SQL字符串字面量（常量字段优先）
+    private const string SqlInsert = "INSERT";
+    private const string SqlUpdate = "UPDATE";
+    private const string SqlDelete = "DELETE";
+    private const string SqlAnd = " AND ";
     private const string CommaSpace = ", ";
 
-    internal const string IAsyncEnumerable = "IAsyncEnumerable";
-    internal const string DbConnectionName = "__conn__";
+    internal const string DbConnectionName = Constants.GeneratedVariables.Connection;
     internal const string CmdName = "__cmd__";  // Use different name to avoid conflicts with AbstractGenerator
     internal const string DbReaderName = "__reader__";
     internal const string ResultName = "__result__";
@@ -35,8 +39,10 @@ internal class MethodGenerationContext : GenerationContextBase
 
     internal const string GetTimestampMethod = "global::System.Diagnostics.Stopwatch.GetTimestamp()";
 
+    // 性能优化：预编译正则表达式（非常量字段在后）
     private static readonly Regex ParameterNameCleanupRegex = new("[^a-zA-Z0-9_]", RegexOptions.Compiled);
 
+    // 性能优化：预构建类型转换映射，避免重复的if-else链
     private static readonly Dictionary<SpecialType, string> TypeConversionMap = new()
     {
         { SpecialType.System_Int32, "global::System.Convert.ToInt32" },
@@ -47,6 +53,12 @@ internal class MethodGenerationContext : GenerationContextBase
         { SpecialType.System_Single, "global::System.Convert.ToSingle" }
     };
 
+    // 性能优化：辅助方法减少重复代码
+    /// <summary>为生成的SQL字符串转义列名或表名</summary>
+    private string EscapeForSqlString(string name) => SqlDef.WrapColumn(name).Replace("\"", "\\\"");
+
+    /// <summary>为生成的SQL字符串转义属性的SQL名称</summary>
+    private string EscapePropertyForSqlString(IPropertySymbol property) => SqlDef.WrapColumn(GetCachedPropertySqlName(property)).Replace("\"", "\\\"");
 
     /// <summary>性能优化：统一的数据库连接查找逻辑，避免重复代码</summary>
     private ISymbol? FindConnectionMember(INamedTypeSymbol repositoryClass)
@@ -74,6 +86,35 @@ internal class MethodGenerationContext : GenerationContextBase
 
         return null;
     }
+
+    /// <summary>性能优化：缓存属性的属性查找，避免重复枚举</summary>
+    private readonly Dictionary<IPropertySymbol, ImmutableArray<AttributeData>> _propertyAttributeCache = new(SymbolEqualityComparer.Default);
+
+    private ImmutableArray<AttributeData> GetCachedPropertyAttributes(IPropertySymbol property)
+    {
+        if (!_propertyAttributeCache.TryGetValue(property, out var attributes))
+        {
+            attributes = property.GetAttributes();
+            _propertyAttributeCache[property] = attributes;
+        }
+        return attributes;
+    }
+
+    /// <summary>性能优化：快速检查属性是否包含指定特性</summary>
+    private bool HasAttributeByName(IPropertySymbol property, string attributeName)
+    {
+        var attributes = GetCachedPropertyAttributes(property);
+        foreach (var attr in attributes)
+        {
+            if (attr.AttributeClass?.Name == attributeName)
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>性能优化：使用全局缓存获取属性SQL名称</summary>
+    private string GetCachedPropertySqlName(IPropertySymbol property) =>
+        property.GetCachedSqlName();
 
     internal MethodGenerationContext(ClassGenerationContext classGenerationContext, IMethodSymbol methodSymbol)
     {
@@ -135,7 +176,7 @@ internal class MethodGenerationContext : GenerationContextBase
         SqlParameters = parameters;
         DeclareReturnType = GetReturnType();
         CancellationTokenKey = CancellationTokenParameter?.Name ?? "default(global::System.Threading.CancellationToken)";
-        IsAsync = MethodSymbol.ReturnType?.Name == "Task" || MethodSymbol.ReturnType?.Name == IAsyncEnumerable;
+        IsAsync = MethodSymbol.ReturnType?.Name == "Task" || MethodSymbol.ReturnType?.Name == Constants.TypeNames.IAsyncEnumerable;
         SqlDef = GetSqlDefine();
         AsyncKey = IsAsync ? "async " : string.Empty;
         AwaitKey = IsAsync ? "await " : string.Empty;
@@ -198,7 +239,7 @@ internal class MethodGenerationContext : GenerationContextBase
     /// <summary>
     /// Public properties for tests
     /// </summary>
-    public bool ReturnIsEnumerable => ReturnType.Name == "IEnumerable" || ReturnType.Name == IAsyncEnumerable;
+    public bool ReturnIsEnumerable => ReturnType.Name == "IEnumerable" || ReturnType.Name == Constants.TypeNames.IAsyncEnumerable;
 
     private SqlDefine SqlDef { get; }
 
@@ -341,6 +382,7 @@ internal class MethodGenerationContext : GenerationContextBase
         sb.AppendLine();
 
         // Paramters - skip for batch INSERT operations as they're handled in GenerateBatchInsertSql
+        // 性能优化：预估容量减少重分配
         var columnDefines = new List<ColumnDefine>(MethodSymbol.Parameters.Length);
         var isBatchInsert = !string.IsNullOrEmpty(sql) && sql?.Contains("{{VALUES_PLACEHOLDER}}") == true;
 
@@ -580,7 +622,7 @@ internal class MethodGenerationContext : GenerationContextBase
                 // For scalar types, don't cache ordinals - just use ordinal 0 directly
                 // This avoids issues when the actual column name doesn't match "Column0"
                 var isScalarList = returnType.IsCachedScalarType();
-
+                
                 if (!isScalarList)
                 {
                     // Cache column ordinals for performance (only for non-scalar types)
@@ -626,7 +668,7 @@ internal class MethodGenerationContext : GenerationContextBase
 
                     // For tuples, try to get field names from tuple type
                     string[] fieldNames;
-                    if (tupleType.TupleElements != default && tupleType.TupleElements.Length > 0)
+                    if (tupleType.TupleElements != null && tupleType.TupleElements.Length > 0)
                     {
                         fieldNames = tupleType.TupleElements.Select(e => e.Name).ToArray();
                     }
@@ -658,7 +700,7 @@ internal class MethodGenerationContext : GenerationContextBase
             }
             else if (DeclareReturnType == ReturnTypes.ListDictionaryStringObject)
             {
-                const string mapType = "global::System.Collections.Generic.Dictionary<global::System.String,global::System.Object?>";
+                var mapType = "global::System.Collections.Generic.Dictionary<global::System.String,global::System.Object?>";
                 var listType = $"global::System.Collections.Generic.List<{mapType}>";
                 sb.AppendLine($"{listType} {ResultName} = new {listType}();");
                 WriteBeginReader(sb);
@@ -746,6 +788,7 @@ internal class MethodGenerationContext : GenerationContextBase
 
                 constructExpress = $"new {ElementType.ToDisplayString(NullableFlowState.None)}({string.Join(", ", construct.Parameters.Select(x => $"x.{FindProperty(x)!.Name}"))})";
 
+                // 性能优化：避免复杂的LINQ嵌套，使用HashSet提高查找效率
                 var constructorParamNames = new HashSet<string>(construct.Parameters.Select(p => p.Name), StringComparer.OrdinalIgnoreCase);
                 var properties = new List<IPropertySymbol>();
                 foreach (var member in ElementType.GetMembers())
@@ -911,11 +954,13 @@ internal class MethodGenerationContext : GenerationContextBase
             // Return the reader itself or handle specially
             if (symbol.Name == "DbDataReader")
             {
+                // 性能优化：缓存ToDisplayString结果，避免重复调用
                 var symbolTypeName = symbol.ToDisplayString();
                 sb.AppendLine($"{symbolTypeName} {DataName} = {DbReaderName};");
             }
             else
             {
+                // 性能优化：缓存ToDisplayString结果，避免重复调用
                 var symbolTypeName = symbol.ToDisplayString();
                 var symbolTypeNameWithNullFlow = symbol.ToDisplayString(NullableFlowState.None);
                 sb.AppendLine($"{symbolTypeName} {DataName} = default({symbolTypeNameWithNullFlow});");
@@ -929,7 +974,7 @@ internal class MethodGenerationContext : GenerationContextBase
                 // Use enhanced entity mapping for records and primary constructors
                 sb.AppendLine($"// Enhanced entity mapping for {(PrimaryConstructorAnalyzer.IsRecord(namedType) ? "record" : "primary constructor")} type");
                 // Simple entity mapping - removed EnhancedEntityMappingGenerator
-                GenerateEntityMapping(sb, namedType, "entity");
+                SharedCodeGenerationUtilities.GenerateEntityMapping(sb, namedType, "entity");
                 // Rename the generated entity variable to match expected DataName if it will be used
                 if (DataName != "entity" && !string.IsNullOrEmpty(listName))
                 {
@@ -940,6 +985,7 @@ internal class MethodGenerationContext : GenerationContextBase
             else
             {
                 // Traditional class instantiation
+                // 性能优化：缓存ToDisplayString结果，避免重复调用
                 var symbolTypeNameWithNullFlow = symbol.ToDisplayString(NullableFlowState.None);
                 sb.AppendLine($"{symbolTypeNameWithNullFlow} {DataName} = {newExp}{symbolTypeNameWithNullFlow}{expCall}!;");
             }
@@ -947,6 +993,7 @@ internal class MethodGenerationContext : GenerationContextBase
         else
         {
             // Fallback for non-named types
+            // 性能优化：缓存ToDisplayString结果，避免重复调用
             var symbolTypeNameWithNullFlow = symbol.ToDisplayString(NullableFlowState.None);
             sb.AppendLine($"{symbolTypeNameWithNullFlow} {DataName} = {newExp}{symbolTypeNameWithNullFlow}{expCall}!;");
         }
@@ -1044,7 +1091,7 @@ internal class MethodGenerationContext : GenerationContextBase
             var stringLeft = methodDef.ConstructorArguments[2].Value?.ToString() ?? "'";
             var stringRight = methodDef.ConstructorArguments[3].Value?.ToString() ?? "'";
             var paramPrefix = methodDef.ConstructorArguments[4].Value?.ToString() ?? "@";
-
+            
             // Infer DbTypeName from delimiter pattern
             var dbTypeName = (columnLeft, columnRight, paramPrefix) switch
             {
@@ -1055,7 +1102,7 @@ internal class MethodGenerationContext : GenerationContextBase
                 ("[", "]", "@") => "SqlServer",  // Default for [, ], @
                 _ => "Custom"
             };
-
+            
             return new SqlDefine(columnLeft, columnRight, stringLeft, stringRight, paramPrefix, dbTypeName);
         }
 
@@ -1072,6 +1119,7 @@ internal class MethodGenerationContext : GenerationContextBase
 
     private SqlDefine? InferDialectFromConnectionType(INamedTypeSymbol repositoryClass)
     {
+        // 性能优化：使用统一的连接查找方法
         var connectionMember = FindConnectionMember(repositoryClass);
         if (connectionMember != null)
         {
@@ -1112,6 +1160,7 @@ internal class MethodGenerationContext : GenerationContextBase
 
     private List<string> GetColumnNames(ITypeSymbol returnType)
     {
+        // 性能优化：预估容量减少重分配
         var columnNames = new List<string>(10); // 大多数表不会超过10列
 
         if (returnType.IsCachedScalarType())
@@ -1271,6 +1320,7 @@ internal class MethodGenerationContext : GenerationContextBase
 
         var objectMap = new ObjectMap(collectionParameter);
         var baseSql = sqlTemplate.Replace("{{VALUES_PLACEHOLDER}}", "");
+        // 性能优化：直接使用IEnumerable，避免创建中间List
         var properties = objectMap.Properties;
 
         // Generate optimized batch INSERT logic with StringBuilder for better performance
@@ -1281,6 +1331,7 @@ internal class MethodGenerationContext : GenerationContextBase
         sb.AppendLine();
 
         // Check for empty collection to avoid generating invalid SQL
+        // 性能优化：使用Count检查集合是否为空，比Any()更直接
         sb.AppendLine($"if ({collectionParameter.Name}.Count == 0)");
         sb.AppendLine(SqlxExceptionMessages.GenerateInvalidOperationThrow(SqlxExceptionMessages.EmptyCollection));
         sb.AppendLine();
@@ -1358,7 +1409,7 @@ internal class MethodGenerationContext : GenerationContextBase
         var actualType = ReturnType;
 
         if (actualType.Name == "IEnumerable") return ReturnTypes.IEnumerable;
-        if (actualType.Name == IAsyncEnumerable) return ReturnTypes.IAsyncEnumerable;
+        if (actualType.Name == Constants.TypeNames.IAsyncEnumerable) return ReturnTypes.IAsyncEnumerable;
         if (actualType.Name == "List"
             && actualType is INamedTypeSymbol symbol
             && symbol.IsGenericType
@@ -1374,6 +1425,35 @@ internal class MethodGenerationContext : GenerationContextBase
     }
 
     public sealed record ColumnDefine(string ParameterName, ISymbol Symbol);
+
+    private string GetEffectiveTableName(string defaultTableName)
+    {
+        // Check for TableName attribute on method
+        var methodTableNameAttr = MethodSymbol.GetTableNameAttribute();
+        if (methodTableNameAttr != null && methodTableNameAttr.ConstructorArguments.Length > 0)
+        {
+            return methodTableNameAttr.ConstructorArguments[0].Value?.ToString() ?? defaultTableName;
+        }
+
+        // Check for TableName attribute on class
+        var classTableNameAttr = ClassGenerationContext.ClassSymbol.GetTableNameAttribute();
+        if (classTableNameAttr != null && classTableNameAttr.ConstructorArguments.Length > 0)
+        {
+            return classTableNameAttr.ConstructorArguments[0].Value?.ToString() ?? defaultTableName;
+        }
+
+        // Check for TableName attribute on parameters
+        foreach (var param in SqlParameters)
+        {
+            var paramTableNameAttr = param.GetTableNameAttribute();
+            if (paramTableNameAttr != null && paramTableNameAttr.ConstructorArguments.Length > 0)
+            {
+                return paramTableNameAttr.ConstructorArguments[0].Value?.ToString() ?? defaultTableName;
+            }
+        }
+
+        return defaultTableName;
+    }
 
     /// <summary>
     /// 检查方法的最佳实践并提供诊断建议
@@ -1582,6 +1662,431 @@ internal class MethodGenerationContext : GenerationContextBase
         }
     }
 
+    private bool GenerateBatchCommandLogic(IndentedStringBuilder sb)
+    {
+        // Find collection parameter
+        var collectionParam = SqlParameters.FirstOrDefault(p => !p.Type.IsCachedScalarType());
+        if (collectionParam == null)
+        {
+            sb.AppendLine(SqlxExceptionMessages.GenerateArgumentExceptionThrow(SqlxExceptionMessages.BatchCommandRequiresCollection));
+            sb.PopIndent();
+            sb.AppendLine("}");
+            return true;
+        }
+
+        // Null check and validation
+        sb.AppendLine($"if ({collectionParam.Name} == null)");
+        sb.AppendLine(SqlxExceptionMessages.GenerateArgumentNullCheck(collectionParam.Name, SqlxExceptionMessages.CollectionParameterNull));
+        sb.AppendLine();
+
+        var returnType = GetReturnType();
+
+        // Check if DbBatch is supported
+        sb.AppendLine("// Try to use native DbBatch if supported, otherwise fallback to individual commands");
+        sb.AppendLine($"if ({DbConnectionName} is global::System.Data.Common.DbConnection dbConn && dbConn.CanCreateBatch)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+
+        // Generate native DbBatch implementation
+        GenerateNativeDbBatchLogic(sb, collectionParam, returnType);
+
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine("else");
+        sb.AppendLine("{");
+        sb.PushIndent();
+
+        // Generate fallback implementation
+        GenerateFallbackBatchLogic(sb, collectionParam, returnType);
+
+        sb.PopIndent();
+        sb.AppendLine("}");
+
+        sb.PopIndent();
+        sb.AppendLine("}");
+        return true;
+    }
+
+    private void GenerateNativeDbBatchLogic(IndentedStringBuilder sb, IParameterSymbol collectionParam, ReturnTypes returnType)
+    {
+        // Determine table, operation and properties
+        var tempObjectMap = new ObjectMap(collectionParam);
+        var entityType = tempObjectMap.ElementSymbol as INamedTypeSymbol;
+        var tableName = GetEffectiveTableName(entityType?.Name ?? "UnknownTable");
+
+        var objectMap = new ObjectMap(collectionParam);
+        // 性能优化：避免ToList()，直接使用IEnumerable
+        var properties = objectMap.Properties;
+        var operationType = GetBatchOperationType();
+
+        // Initialize return value for counting operations
+        if (returnType == ReturnTypes.Scalar)
+        {
+            sb.AppendLine("int totalAffectedRows = 0;");
+        }
+
+        sb.AppendLine("using var batch = dbConn.CreateBatch();");
+        if (TransactionParameter != null)
+            sb.AppendLine($"batch.Transaction = {TransactionParameter.Name};");
+        sb.AppendLine();
+
+        // Build batch commands
+        sb.AppendLine($"foreach (var item in {collectionParam.Name})");
+        sb.AppendLine("{");
+        sb.PushIndent();
+
+        sb.AppendLine("var batchCommand = batch.CreateBatchCommand();");
+
+        // Generate SQL based on operation type
+        switch (operationType)
+        {
+            case "INSERT":
+                GenerateBatchInsertSql(sb, tableName!, properties);
+                break;
+            case "UPDATE":
+                GenerateBatchUpdateSql(sb, tableName!, properties);
+                break;
+            case "DELETE":
+                GenerateBatchDeleteSql(sb, tableName!, properties);
+                break;
+            default:
+                GenerateBatchInsertSql(sb, tableName!, properties); // Default to INSERT
+                break;
+        }
+
+        // Add parameters for each property
+        foreach (var prop in properties)
+        {
+            var paramVar = $"param_{prop.Name.ToLowerInvariant()}";
+            sb.AppendLine($"var {paramVar} = batchCommand.CreateParameter();");
+            sb.AppendLine($"{paramVar}.ParameterName = \"{SqlDef.ParameterPrefix}{prop.GetSqlName()}\";");
+            sb.AppendLine($"{paramVar}.DbType = {prop.Type.GetDbType()};");
+            sb.AppendLine($"{paramVar}.Value = (object?)item.{prop.Name} ?? global::System.DBNull.Value;");
+            sb.AppendLine($"batchCommand.Parameters.Add({paramVar});");
+        }
+
+        sb.AppendLine("batch.BatchCommands.Add(batchCommand);");
+
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+
+        // Execute the batch
+        if (IsAsync)
+        {
+            if (returnType == ReturnTypes.Scalar)
+            {
+                sb.AppendLine("totalAffectedRows = await batch.ExecuteNonQueryAsync();");
+            }
+            else
+            {
+                sb.AppendLine("await batch.ExecuteNonQueryAsync();");
+            }
+        }
+        else
+        {
+            if (returnType == ReturnTypes.Scalar)
+            {
+                sb.AppendLine("totalAffectedRows = batch.ExecuteNonQuery();");
+            }
+            else
+            {
+                sb.AppendLine("batch.ExecuteNonQuery();");
+            }
+        }
+
+        // Return result if needed
+        if (returnType == ReturnTypes.Scalar)
+        {
+            sb.AppendLine("return totalAffectedRows;");
+        }
+    }
+
+    private void GenerateFallbackBatchLogic(IndentedStringBuilder sb, IParameterSymbol collectionParam, ReturnTypes returnType)
+    {
+        // Determine table and properties
+        var tempObjectMap = new ObjectMap(collectionParam);
+        var entityType = tempObjectMap.ElementSymbol as INamedTypeSymbol;
+        var tableName = GetEffectiveTableName(entityType?.Name ?? "UnknownTable");
+
+        var objectMap = new ObjectMap(collectionParam);
+        // 性能优化：避免ToList()，直接使用IEnumerable
+        var properties = objectMap.Properties;
+        var operationType = GetBatchOperationType();
+
+        // Initialize return value for counting operations
+        if (returnType == ReturnTypes.Scalar)
+        {
+            sb.AppendLine("int totalAffectedRows = 0;");
+        }
+
+        // Precompute column and value placeholders
+        sb.AppendLine($"var __columns__ = \"{string.Join(", ", properties.Select(p => SqlDef.WrapColumn(p.Name)))}\";");
+        sb.AppendLine($"var __values__ = \"{string.Join(", ", properties.Select(p => SqlDef.ParameterPrefix + p.GetParameterName(string.Empty)))}\";");
+        sb.AppendLine();
+
+        // Build individual commands using foreach loop
+        sb.AppendLine($"foreach (var item in {collectionParam.Name})");
+        sb.AppendLine("{");
+        sb.PushIndent();
+
+        // Generate command text based on operation type
+        switch (operationType)
+        {
+            case "INSERT":
+                sb.AppendLine($"{CmdName}.CommandText = \"INSERT INTO {SqlDef.WrapColumn(tableName!)} (\" + __columns__ + \") VALUES (\" + __values__ + \")\";");
+                break;
+            case "UPDATE":
+                var setProperties = GetSetProperties(properties);
+                var whereProperties = GetWhereProperties(properties);
+
+                // 性能优化：使用Count检查集合是否为空，比Any()更直接
+                if (setProperties.Count == 0)
+                {
+                    sb.AppendLine(SqlxExceptionMessages.GenerateInvalidOperationThrow(SqlxExceptionMessages.NoSetProperties));
+                    break;
+                }
+
+                if (whereProperties.Count == 0)
+                {
+                    sb.AppendLine(SqlxExceptionMessages.GenerateInvalidOperationThrow(SqlxExceptionMessages.NoWherePropertiesUpdate));
+                    break;
+                }
+
+                var setClause = string.Join(CommaSpace, setProperties.Select(p => $"{SqlDef.WrapColumn(p.Name)} = {SqlDef.ParameterPrefix}{p.GetParameterName(string.Empty)}"));
+                var whereClause = string.Join(SqlAnd, whereProperties.Select(p => GenerateWhereCondition(p)));
+                sb.AppendLine($"{CmdName}.CommandText = \"UPDATE {SqlDef.WrapColumn(tableName!)} SET {setClause} WHERE {whereClause}\";");
+                break;
+            case "DELETE":
+                var deleteWhereProperties = GetWhereProperties(properties);
+
+                // 性能优化：使用Count检查集合是否为空，比Any()更直接
+                if (deleteWhereProperties.Count == 0)
+                {
+                    sb.AppendLine(SqlxExceptionMessages.GenerateInvalidOperationThrow(SqlxExceptionMessages.NoWherePropertiesDelete));
+                    break;
+                }
+
+                var deleteWhereClause = string.Join(SqlAnd, deleteWhereProperties.Select(p => GenerateWhereCondition(p)));
+                sb.AppendLine($"{CmdName}.CommandText = \"DELETE FROM {SqlDef.WrapColumn(tableName!)} WHERE {deleteWhereClause}\";");
+                break;
+            default:
+                sb.AppendLine($"{CmdName}.CommandText = \"INSERT INTO {SqlDef.WrapColumn(tableName!)} (\" + __columns__ + \") VALUES (\" + __values__ + \")\";");
+                break;
+        }
+
+        sb.AppendLine($"{CmdName}.Parameters.Clear();");
+
+        // Set transaction and timeout if specified
+        if (TransactionParameter != null)
+            sb.AppendLine($"{CmdName}.Transaction = {TransactionParameter.Name};");
+        var timeoutExpression = GetTimeoutExpression();
+        if (!string.IsNullOrWhiteSpace(timeoutExpression))
+            sb.AppendLine($"{CmdName}.CommandTimeout = {timeoutExpression};");
+
+        // Add parameters for each property
+        foreach (var prop in properties)
+        {
+            var paramVar = $"param_{prop.Name.ToLowerInvariant()}";
+            sb.AppendLine($"var {paramVar} = {CmdName}.CreateParameter();");
+            sb.AppendLine($"{paramVar}.ParameterName = \"{SqlDef.ParameterPrefix}{prop.GetParameterName(string.Empty)}\";");
+            sb.AppendLine($"{paramVar}.DbType = {prop.Type.GetDbType()};");
+            sb.AppendLine($"{paramVar}.Value = (object?)item.{prop.Name} ?? global::System.DBNull.Value;");
+            sb.AppendLine($"{CmdName}.Parameters.Add({paramVar});");
+        }
+
+        // Execute the command
+        if (IsAsync)
+        {
+            if (returnType == ReturnTypes.Scalar)
+            {
+                sb.AppendLine($"totalAffectedRows += await {CmdName}.ExecuteNonQueryAsync();");
+            }
+            else
+            {
+                sb.AppendLine($"await {CmdName}.ExecuteNonQueryAsync();");
+            }
+        }
+        else
+        {
+            if (returnType == ReturnTypes.Scalar)
+            {
+                sb.AppendLine($"totalAffectedRows += {CmdName}.ExecuteNonQuery();");
+            }
+            else
+            {
+                sb.AppendLine($"{CmdName}.ExecuteNonQuery();");
+            }
+        }
+
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+
+        // Return result if needed
+        if (returnType == ReturnTypes.Scalar)
+        {
+            sb.AppendLine("return totalAffectedRows;");
+        }
+    }
+
+    private void GenerateBatchInsertSql(IndentedStringBuilder sb, string tableName, List<IPropertySymbol> properties)
+    {
+        var columns = string.Join(CommaSpace, properties.Select(EscapePropertyForSqlString));
+        var values = string.Join(CommaSpace, properties.Select(p => SqlDef.ParameterPrefix + p.GetSqlName()));
+        var wrappedTable = EscapeForSqlString(tableName);
+        sb.AppendLine($"batchCommand.CommandText = \"INSERT INTO {wrappedTable} ({columns}) VALUES ({values})\";");
+    }
+
+    private void GenerateBatchUpdateSql(IndentedStringBuilder sb, string tableName, List<IPropertySymbol> properties)
+    {
+        var setProperties = GetSetProperties(properties);
+        var whereProperties = GetWhereProperties(properties);
+
+        // 性能优化：使用Count检查集合是否为空，比Any()更直接
+        if (setProperties.Count == 0)
+        {
+            sb.AppendLine(SqlxExceptionMessages.GenerateInvalidOperationThrow(SqlxExceptionMessages.NoSetProperties));
+            return;
+        }
+
+        if (whereProperties.Count == 0)
+        {
+            sb.AppendLine(SqlxExceptionMessages.GenerateInvalidOperationThrow(SqlxExceptionMessages.NoWherePropertiesUpdate));
+            return;
+        }
+
+        var setClause = string.Join(CommaSpace, setProperties.Select(p => $"{EscapePropertyForSqlString(p)} = {SqlDef.ParameterPrefix}{p.GetSqlName()}"));
+        var whereClause = string.Join(SqlAnd, whereProperties.Select(p => GenerateWhereCondition(p)));
+        var wrappedTable = EscapeForSqlString(tableName);
+
+        sb.AppendLine($"batchCommand.CommandText = \"UPDATE {wrappedTable} SET {setClause} WHERE {whereClause}\";");
+    }
+
+    private void GenerateBatchDeleteSql(IndentedStringBuilder sb, string tableName, List<IPropertySymbol> properties)
+    {
+        var whereProperties = GetWhereProperties(properties);
+
+        // 性能优化：使用Count检查集合是否为空，比Any()更直接
+        if (whereProperties.Count == 0)
+        {
+            sb.AppendLine(SqlxExceptionMessages.GenerateInvalidOperationThrow(SqlxExceptionMessages.NoWherePropertiesDelete));
+            return;
+        }
+
+        var whereClause = string.Join(SqlAnd, whereProperties.Select(p => GenerateWhereCondition(p)));
+        var wrappedTable = EscapeForSqlString(tableName);
+        sb.AppendLine($"batchCommand.CommandText = \"DELETE FROM {wrappedTable} WHERE {whereClause}\";");
+    }
+
+    private string GetBatchOperationType()
+    {
+        // Infer operation type from method name
+        return GetOperationFromMethodName();
+    }
+
+    private string GetOperationFromMethodName()
+    {
+        // Try to infer operation type from method name
+        var methodName = MethodSymbol.Name.ToUpperInvariant();
+
+        if (methodName.Contains(SqlInsert) || methodName.Contains("ADD") || methodName.Contains("CREATE"))
+            return SqlInsert;
+        if (methodName.Contains(SqlUpdate) || methodName.Contains("MODIFY") || methodName.Contains("CHANGE"))
+            return SqlUpdate;
+        if (methodName.Contains(SqlDelete) || methodName.Contains("REMOVE"))
+            return SqlDelete;
+
+        // 激进优化：直接抛出异常，强制明确操作类型，提高代码质量
+        throw new InvalidOperationException($"Cannot infer operation type from method name '{methodName}'. Use explicit SqlExecuteType attribute.");
+    }
+
+    private bool IsKeyProperty(IPropertySymbol property) =>
+        property.Name.ToUpperInvariant() is var name && (name is "ID" or "KEY" || name.EndsWith("ID") || name.EndsWith("KEY"));
+
+    private List<IPropertySymbol> GetSetProperties(List<IPropertySymbol> properties)
+    {
+        // 性能优化：单次遍历查找 [Set] 属性
+        var explicitSetProperties = new List<IPropertySymbol>();
+        foreach (var property in properties)
+        {
+            if (HasSetAttribute(property))
+                explicitSetProperties.Add(property);
+        }
+
+        if (explicitSetProperties.Count > 0)
+        {
+            return explicitSetProperties;
+        }
+
+        // If no explicit marking, use all non-Where properties (excluding primary keys)
+        var whereProperties = GetWhereProperties(properties);
+        var whereSet = new HashSet<IPropertySymbol>(whereProperties, SymbolEqualityComparer.Default); // 性能优化：使用HashSet提高查找效率
+
+        // 性能优化：单次遍历过滤非Where和非Key属性
+        var result = new List<IPropertySymbol>();
+        foreach (var property in properties)
+        {
+            if (!whereSet.Contains(property) && !IsKeyProperty(property))
+                result.Add(property);
+        }
+        return result;
+    }
+
+    private List<IPropertySymbol> GetWhereProperties(List<IPropertySymbol> properties)
+    {
+        // 性能优化：单次遍历查找 [Where] 属性
+        var explicitWhereProperties = new List<IPropertySymbol>();
+        foreach (var property in properties)
+        {
+            if (HasWhereAttribute(property))
+                explicitWhereProperties.Add(property);
+        }
+
+        if (explicitWhereProperties.Count > 0)
+        {
+            return explicitWhereProperties;
+        }
+
+        // 性能优化：单次遍历查找 Key 属性
+        var keyProperties = new List<IPropertySymbol>();
+        foreach (var property in properties)
+        {
+            if (IsKeyProperty(property))
+                keyProperties.Add(property);
+        }
+        return keyProperties;
+    }
+
+    private bool HasSetAttribute(IPropertySymbol property) => HasAttributeByName(property, "SetAttribute");
+
+    private bool HasWhereAttribute(IPropertySymbol property) => HasAttributeByName(property, "WhereAttribute");
+
+    private string GenerateWhereCondition(IPropertySymbol property)
+    {
+        // 性能优化：使用缓存的属性查找
+        var attributes = GetCachedPropertyAttributes(property);
+        var whereAttr = attributes.FirstOrDefault(a => a.AttributeClass?.Name == "WhereAttribute");
+        var operatorStr = "="; // Default operator
+
+        if (whereAttr != null && whereAttr.ConstructorArguments.Length > 0)
+        {
+            operatorStr = whereAttr.ConstructorArguments[0].Value?.ToString() ?? "=";
+        }
+        else if (whereAttr != null)
+        {
+            // Check Operator property
+            var operatorProp = whereAttr.NamedArguments.FirstOrDefault(na => na.Key == "Operator");
+            if (!operatorProp.Equals(default(KeyValuePair<string, Microsoft.CodeAnalysis.TypedConstant>)))
+            {
+                operatorStr = operatorProp.Value.Value?.ToString() ?? "=";
+            }
+        }
+
+        return $"{EscapePropertyForSqlString(property)} {operatorStr} {SqlDef.ParameterPrefix}{property.GetSqlName()}";
+    }
+
+
     private string GetDbConnectionFieldName(INamedTypeSymbol repositoryClass)
     {
         // Find the first DbConnection field or property
@@ -1694,6 +2199,7 @@ internal class MethodGenerationContext : GenerationContextBase
         if (string.IsNullOrEmpty(sql))
             return sql;
 
+        // 性能优化：使用SqlTemplateEngine替代重复的SqlTemplatePlaceholder
         var templateEngine = new SqlTemplateEngine(SqlDef);
         var result = templateEngine.ProcessTemplate(sql, MethodSymbol, null, string.Empty, SqlDef);
         return result.ProcessedSql;

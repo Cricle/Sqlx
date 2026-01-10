@@ -220,7 +220,7 @@ namespace Sqlx.Tests.Core
             {
                 ("SQL Server", SqlDefine.SqlServer, "@"),
                 ("MySQL", SqlDefine.MySql, "@"),
-                ("PostgreSQL", SqlDefine.PgSql, "@"),
+                ("PostgreSQL", SqlDefine.PgSql, "$"),
                 ("Oracle", SqlDefine.Oracle, ":"),
                 ("DB2", SqlDefine.DB2, "?"),
                 ("SQLite", SqlDefine.Sqlite, "@") // SQLite uses @ for ADO.NET compatibility

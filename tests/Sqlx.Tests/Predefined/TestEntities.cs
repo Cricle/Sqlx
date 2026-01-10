@@ -40,17 +40,5 @@ namespace Sqlx.Tests.Predefined
         public int ActiveUsers { get; set; }
         public double AverageAge { get; set; }
     }
-
-    // Update types for IPartialUpdateRepository (AOT-compatible)
-    // These are concrete types that can be analyzed at compile time
-    
-    /// <summary>Update type for user name and email</summary>
-    public record UserNameUpdate(string Name, string? Email);
-    
-    /// <summary>Update type for user status</summary>
-    public record UserStatusUpdate(bool IsActive, DateTime? UpdatedAt);
-    
-    /// <summary>Update type for user age</summary>
-    public record UserAgeUpdate(int Age);
 }
 

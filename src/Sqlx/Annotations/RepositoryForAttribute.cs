@@ -47,7 +47,7 @@ namespace Sqlx.Annotations
     /// public partial class MySQLUserRepository : IUserRepositoryBase { }
     /// </code>
     /// </example>
-    [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
+    [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
     public sealed class RepositoryForAttribute : System.Attribute
     {
         /// <summary>

@@ -15,7 +15,7 @@ namespace Sqlx
         /// <param name="parameters">Optional parameters to use for execution. If null, uses template's default parameters.</param>
         /// <returns>A ParameterizedSql instance ready for execution.</returns>
         public ParameterizedSql Execute(IReadOnlyDictionary<string, object?>? parameters = null) =>
-            new ParameterizedSql(Sql, parameters ?? Parameters);
+            ParameterizedSql.Create(Sql, parameters ?? Parameters);
 
         /// <summary>Creates a builder for fluent parameter binding.</summary>
         /// <returns>A new SqlTemplateBuilder instance.</returns>
@@ -43,6 +43,6 @@ namespace Sqlx
 
         /// <summary>Builds the final ParameterizedSql with all bound parameters.</summary>
         /// <returns>A ParameterizedSql instance ready for execution.</returns>
-        public ParameterizedSql Build() => new ParameterizedSql(_template.Sql, _parameters);
+        public ParameterizedSql Build() => ParameterizedSql.Create(_template.Sql, _parameters);
     }
 }

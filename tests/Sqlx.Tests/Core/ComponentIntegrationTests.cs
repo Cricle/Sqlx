@@ -134,7 +134,7 @@ namespace Sqlx.Tests.Core
             {
                 ("SqlServer", SqlDefine.SqlServer, "@"),
                 ("MySQL", SqlDefine.MySql, "@"),
-                ("PostgreSQL", SqlDefine.PgSql, "@"),
+                ("PostgreSQL", SqlDefine.PgSql, "$"),
                 ("Oracle", SqlDefine.Oracle, ":"),
                 // ("SQLite", SqlDefine.Sqlite, "@"), // Skip SQLite for now
                 ("DB2", SqlDefine.DB2, "?")
@@ -294,7 +294,7 @@ namespace Sqlx.Tests.Core
 
             Assert.AreEqual("@userId", sqlServerParam);
             Assert.AreEqual("@userId", mysqlParam);
-            Assert.AreEqual("@userId", postgresParam);
+            Assert.AreEqual("$userId", postgresParam);
             Assert.AreEqual(":userId", oracleParam);
             // Assert.AreEqual("@userId", sqliteParam); // Skip SQLite for now
 
@@ -302,7 +302,7 @@ namespace Sqlx.Tests.Core
             var parameterPairs = new[]
             {
                 ("@userId", parameterValue),
-                ("@userId", parameterValue),
+                ("$userId", parameterValue),
                 (":userId", parameterValue)
             };
 

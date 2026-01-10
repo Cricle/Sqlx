@@ -69,33 +69,21 @@ namespace Sqlx.Tests.Integration;
     public partial class MySqlComprehensiveRepository : IComprehensiveRepository
     {
         private readonly DbConnection _connection;
-        
-        public MySqlComprehensiveRepository(DbConnection connection)
-        {
-            _connection = connection;
-        }
+        public MySqlComprehensiveRepository(DbConnection connection) => _connection = connection;
     }
     
     [RepositoryFor(typeof(ITransactionRepository), Dialect = SqlDefineTypes.MySql, TableName = "transaction_test_mysql")]
     public partial class MySqlTransactionRepository : ITransactionRepository
     {
         private readonly DbConnection _connection;
-        
-        public MySqlTransactionRepository(DbConnection connection)
-        {
-            _connection = connection;
-        }
+        public MySqlTransactionRepository(DbConnection connection) => _connection = connection;
     }
     
     [RepositoryFor(typeof(IAggregateTestRepository), Dialect = SqlDefineTypes.MySql, TableName = "aggregate_test_mysql")]
     public partial class MySqlAggregateRepository : IAggregateTestRepository
     {
         private readonly DbConnection _connection;
-        
-        public MySqlAggregateRepository(DbConnection connection)
-        {
-            _connection = connection;
-        }
+        public MySqlAggregateRepository(DbConnection connection) => _connection = connection;
     }
     
     // ==================== PostgreSQL 仓储 ====================
@@ -104,33 +92,21 @@ namespace Sqlx.Tests.Integration;
     public partial class PostgreSqlComprehensiveRepository : IComprehensiveRepository
     {
         private readonly DbConnection _connection;
-        
-        public PostgreSqlComprehensiveRepository(DbConnection connection)
-        {
-            _connection = connection;
-        }
+        public PostgreSqlComprehensiveRepository(DbConnection connection) => _connection = connection;
     }
     
     [RepositoryFor(typeof(ITransactionRepository), Dialect = SqlDefineTypes.PostgreSql, TableName = "transaction_test_pgsql")]
     public partial class PostgreSqlTransactionRepository : ITransactionRepository
     {
         private readonly DbConnection _connection;
-        
-        public PostgreSqlTransactionRepository(DbConnection connection)
-        {
-            _connection = connection;
-        }
+        public PostgreSqlTransactionRepository(DbConnection connection) => _connection = connection;
     }
     
     [RepositoryFor(typeof(IAggregateTestRepository), Dialect = SqlDefineTypes.PostgreSql, TableName = "aggregate_test_pgsql")]
     public partial class PostgreSqlAggregateRepository : IAggregateTestRepository
     {
         private readonly DbConnection _connection;
-        
-        public PostgreSqlAggregateRepository(DbConnection connection)
-        {
-            _connection = connection;
-        }
+        public PostgreSqlAggregateRepository(DbConnection connection) => _connection = connection;
     }
     
     // ==================== 仓储接口 ====================

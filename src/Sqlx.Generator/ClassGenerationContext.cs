@@ -22,6 +22,7 @@ internal class ClassGenerationContext : GenerationContextBase
         INamedTypeSymbol attributeSymbol)
     {
         ClassSymbol = classSymbol;
+        // 性能优化：使用数组而不是List，减少内存分配
         Methods = methods.Select(_ => new MethodGenerationContext(this, _)).ToArray();
         AttributeSymbol = attributeSymbol;
 
@@ -137,7 +138,7 @@ internal class ClassGenerationContext : GenerationContextBase
         if (symbol == null) return null;
 
         return symbol.GetMembers().OfType<IFieldSymbol>().FirstOrDefault(check) ??
-            symbol.GetMembers().OfType<IPropertySymbol>().FirstOrDefault(check);
+            (ISymbol?)symbol.GetMembers().OfType<IPropertySymbol>().FirstOrDefault(check);
     }
 
     private AttributeData? GetAttribute(INamedTypeSymbol? symbol, Func<AttributeData, bool> check)

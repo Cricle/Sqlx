@@ -42,8 +42,7 @@ public readonly record struct SqlDefine(string ColumnLeft, string ColumnRight, s
             return (ColumnLeft, ColumnRight, ParameterPrefix) switch
             {
                 ("`", "`", "@") => "MySql",
-                ("\"", "\"", "@") => "PostgreSql",  // PostgreSQL with @ (Npgsql named parameters)
-                ("\"", "\"", "$") => "PostgreSql",  // PostgreSQL with $ (legacy/positional)
+                ("\"", "\"", "$") => "PostgreSql",
                 ("\"", "\"", ":") => "Oracle",
                 ("\"", "\"", "?") => "DB2",
                 ("[", "]", "@") => "SqlServer",  // Default for [, ], @ when DbTypeName not set
@@ -57,7 +56,7 @@ public readonly record struct SqlDefine(string ColumnLeft, string ColumnRight, s
     public static readonly SqlDefine MySql = new("`", "`", "'", "'", "@", "MySql");
     /// <summary>SQL Server数据库方言配置</summary>
     public static readonly SqlDefine SqlServer = new("[", "]", "'", "'", "@", "SqlServer");
-    /// <summary>PostgreSQL数据库方言配置 - Uses @ for named parameters (Npgsql standard)</summary>
+    /// <summary>PostgreSQL数据库方言配置 - Npgsql supports @paramName format</summary>
     public static readonly SqlDefine PostgreSql = new("\"", "\"", "'", "'", "@", "PostgreSql");
     /// <summary>SQLite数据库方言配置 - Uses @ like SQL Server, distinguished by DbTypeName</summary>
     public static readonly SqlDefine SQLite = new("[", "]", "'", "'", "@", "SQLite");

@@ -10,9 +10,10 @@ using Npgsql;
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
-using System.Linq;
 using System.Threading.Tasks;
-using Sqlx.Tests.Infrastructure;
+using Testcontainers.MySql;
+using Testcontainers.PostgreSql;
+using DotNet.Testcontainers.Builders;
 
 namespace Sqlx.Tests.Integration;
 
@@ -22,9 +23,11 @@ namespace Sqlx.Tests.Integration;
 /// 验证生成的代码能够正确执行并操作真实数据库
 /// </summary>
 [TestClass]
-[TestCategory(TestCategories.Integration)]
 public class TDD_MySqlPostgreSql_Integration_Tests
 {
+    private static MySqlContainer? _mysqlContainer;
+    private static PostgreSqlContainer? _postgresContainer;
+    
     private static MySqlConnection? _mysqlConnection;
     private static NpgsqlConnection? _postgresConnection;
     
@@ -34,37 +37,23 @@ public class TDD_MySqlPostgreSql_Integration_Tests
     [ClassInitialize]
     public static async Task ClassInitialize(TestContext context)
     {
-        // 使用共享容器
+        // 并行启动两个容器以加速初始化
         var mysqlTask = Task.Run(async () =>
         {
             try
             {
-                var container = AssemblyTestFixture.MySqlContainer;
-                if (container == null)
-                {
-                    context.WriteLine("⚠️ MySQL container not available");
-                    return;
-                }
+                context.WriteLine("🚀 Starting MySQL container...");
+                _mysqlContainer = new MySqlBuilder()
+                    .WithImage("mysql:8.0")
+                    .WithDatabase("sqlx_test")
+                    .WithUsername("root")
+                    .WithPassword("test123")
+                    .Build();
                 
-                // 创建独立数据库
-                var dbName = "sqlx_test_mysqlpostgresql";
-                var adminConnectionString = container.GetConnectionString();
-                using (var adminConn = new MySqlConnection(adminConnectionString))
-                {
-                    await adminConn.OpenAsync();
-                    using (var cmd = adminConn.CreateCommand())
-                    {
-                        cmd.CommandText = $"CREATE DATABASE IF NOT EXISTS `{dbName}`";
-                        await cmd.ExecuteNonQueryAsync();
-                    }
-                }
-
-                var builder = new MySqlConnector.MySqlConnectionStringBuilder(adminConnectionString)
-                {
-                    Database = dbName
-                };
+                await _mysqlContainer.StartAsync();
+                context.WriteLine($"✅ MySQL container started");
                 
-                _mysqlConnection = new MySqlConnection(builder.ConnectionString);
+                _mysqlConnection = new MySqlConnection(_mysqlContainer.GetConnectionString());
                 await _mysqlConnection.OpenAsync();
                 _mysqlRepo = new MySqlComprehensiveRepository(_mysqlConnection);
                 
@@ -81,38 +70,18 @@ public class TDD_MySqlPostgreSql_Integration_Tests
         {
             try
             {
-                var container = AssemblyTestFixture.PostgreSqlContainer;
-                if (container == null)
-                {
-                    context.WriteLine("⚠️ PostgreSQL container not available");
-                    return;
-                }
+                context.WriteLine("🚀 Starting PostgreSQL container...");
+                _postgresContainer = new PostgreSqlBuilder()
+                    .WithImage("postgres:16-alpine")
+                    .WithDatabase("sqlx_test")
+                    .WithUsername("postgres")
+                    .WithPassword("test123")
+                    .Build();
                 
-                // 创建独立数据库
-                var dbName = "sqlx_test_mysqlpostgresql_pg";
-                var adminConnectionString = container.GetConnectionString();
-                using (var adminConn = new NpgsqlConnection(adminConnectionString))
-                {
-                    await adminConn.OpenAsync();
-                    using (var cmd = adminConn.CreateCommand())
-                    {
-                        cmd.CommandText = $"SELECT 1 FROM pg_database WHERE datname = '{dbName}'";
-                        var exists = await cmd.ExecuteScalarAsync() != null;
-                        
-                        if (!exists)
-                        {
-                            cmd.CommandText = $"CREATE DATABASE {dbName}";
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-                    }
-                }
-
-                var builder = new Npgsql.NpgsqlConnectionStringBuilder(adminConnectionString)
-                {
-                    Database = dbName
-                };
+                await _postgresContainer.StartAsync();
+                context.WriteLine($"✅ PostgreSQL container started");
                 
-                _postgresConnection = new NpgsqlConnection(builder.ConnectionString);
+                _postgresConnection = new NpgsqlConnection(_postgresContainer.GetConnectionString());
                 await _postgresConnection.OpenAsync();
                 _postgresRepo = new PostgreSqlComprehensiveRepository(_postgresConnection);
                 
@@ -141,7 +110,18 @@ public class TDD_MySqlPostgreSql_Integration_Tests
             await _postgresConnection.DisposeAsync();
         }
         
-        // 容器由 AssemblyTestFixture 管理，不需要清理
+        // 停止并清理容器
+        if (_mysqlContainer != null)
+        {
+            await _mysqlContainer.StopAsync();
+            await _mysqlContainer.DisposeAsync();
+        }
+        
+        if (_postgresContainer != null)
+        {
+            await _postgresContainer.StopAsync();
+            await _postgresContainer.DisposeAsync();
+        }
     }
 
     private static async Task CreateMySqlTableAsync(MySqlConnection connection)
@@ -423,15 +403,8 @@ public class TDD_MySqlPostgreSql_Integration_Tests
         var countAll = await _mysqlRepo.GetAllAsync();
         Assert.AreEqual(3, countAll.Count, $"Should have 3 total records, got {countAll.Count}");
 
-        // Note: SUM returns NULL when there are no rows, but we have 3 rows
-        // If sum is null, it might be a code generation issue
         var sum = await _mysqlRepo.SumDecimalValuesAsync();
-        if (sum == null)
-        {
-            // Fallback: calculate sum manually to verify data
-            var manualSum = countAll.Sum(x => x.DecimalValue);
-            Assert.Fail($"Sum returned null but manual calculation shows {manualSum}. This indicates a code generation issue.");
-        }
+        Assert.IsNotNull(sum, $"Sum should not be null. CountAll={countAll.Count}, Count(active=true)={count}");
         Assert.AreEqual(61.5m, sum.Value, "Sum should be 61.5");
 
         var avg = await _mysqlRepo.AverageIntValuesAsync();

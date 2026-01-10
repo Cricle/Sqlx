@@ -603,8 +603,7 @@ namespace TestNamespace
 
             // 不同数据库的UPSERT语法不同，检查基本结构
             var sql = result.ProcessedSql.ToUpper();
-            // SQL Server uses runtime marker for complex MERGE statements
-            var hasUpsertSyntax = sql.Contains("INSERT") || sql.Contains("MERGE") || sql.Contains("REPLACE") || sql.Contains("__RUNTIME_UPSERT_");
+            var hasUpsertSyntax = sql.Contains("INSERT") || sql.Contains("MERGE") || sql.Contains("REPLACE");
             Assert.IsTrue(hasUpsertSyntax, $"SQL should contain UPSERT-like syntax for {dialectName}");
         }
     }

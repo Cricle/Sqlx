@@ -20,8 +20,8 @@ public partial class CSharpGenerator
     {
         /// <summary>Gets the list of collected method symbols.</summary>
         public List<IMethodSymbol> Methods { get; } = new List<IMethodSymbol>();
-        /// <summary>Gets the set of collected repository classes (deduplicated).</summary>
-        public HashSet<INamedTypeSymbol> RepositoryClasses { get; } = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+        /// <summary>Gets the list of collected repository classes.</summary>
+        public List<INamedTypeSymbol> RepositoryClasses { get; } = new List<INamedTypeSymbol>();
 
         // Collect syntax nodes for later processing
         /// <summary>Gets the list of collected method declaration syntax nodes.</summary>

@@ -222,7 +222,7 @@ namespace TestNamespace
         {
             ["SqlServer"] = "@",
             ["MySql"] = "@",
-            ["PostgreSql"] = "@",
+            ["PostgreSql"] = "$",
             ["SQLite"] = "@",  // 🔧 修复：SQLite 使用 @ 作为参数前缀（ADO.NET 标准）
             ["Oracle"] = ":",
             ["DB2"] = "?"
@@ -301,7 +301,7 @@ namespace TestNamespace
         {
             ["SqlServer"] = "@",
             ["MySql"] = "@",
-            ["PostgreSql"] = "@",
+            ["PostgreSql"] = "$",
             ["SQLite"] = "@",  // 🔧 修复：SQLite 使用 @ 作为参数前缀（ADO.NET 标准）
             ["Oracle"] = ":",
             ["DB2"] = "?"

@@ -152,7 +152,7 @@ public class TDD_NullableLimitOffset_AllDialects
     }
 
     [TestMethod]
-    [Description("SQL Server 非可空 limit 应该生成运行时占位符")]
+    [Description("SQL Server 非可空 limit 应该生成 RUNTIME_LIMIT 占位符")]
     public void SqlServer_NonNullableLimit_ShouldGenerateRuntimePlaceholder()
     {
         var template = "SELECT * FROM {{table}} ORDER BY id {{limit}}";

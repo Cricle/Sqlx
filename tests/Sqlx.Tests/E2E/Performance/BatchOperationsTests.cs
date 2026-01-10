@@ -60,14 +60,21 @@ public class BatchOperationsTests
         }).ToList();
 
         // Act
+        var stopwatch = Stopwatch.StartNew();
         var inserted = await repo.BatchInsertAsync(products);
+        stopwatch.Stop();
 
         // Assert
         Assert.AreEqual(1000, inserted, "Should insert 1000 products");
+        Assert.IsTrue(stopwatch.ElapsedMilliseconds < 5000, 
+            $"Batch insert should complete within 5 seconds, actual: {stopwatch.ElapsedMilliseconds}ms");
         
         // Verify data integrity
         var count = await repo.CountAsync();
         Assert.AreEqual(1000, count, "Should have 1000 products in database");
+        
+        Console.WriteLine($"Batch insert 1000 products: {stopwatch.ElapsedMilliseconds}ms");
+        Console.WriteLine($"Average per record: {stopwatch.ElapsedMilliseconds / 1000.0:F4}ms");
     }
 
     /// <summary>

@@ -1,5 +1,4 @@
 using BenchmarkDotNet.Running;
-using Sqlx.Benchmarks;
 using Sqlx.Benchmarks.Benchmarks;
 
 namespace Sqlx.Benchmarks;

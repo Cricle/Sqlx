@@ -104,7 +104,7 @@ public class TDD_BetweenPlaceholder
 
         // Assert
         Assert.IsTrue(result.ProcessedSql.Contains("BETWEEN @minPrice AND @maxPrice"), 
-            $"PostgreSQL应该使用 'BETWEEN @minPrice AND @maxPrice'。实际SQL: {result.ProcessedSql}");
+            $"PostgreSQL应该使用 'BETWEEN @minPrice AND @maxPrice' (Npgsql supports @ format)。实际SQL: {result.ProcessedSql}");
     }
 
     [TestMethod]

@@ -18,7 +18,7 @@ namespace Sqlx
         /// <summary>
         /// Gets or sets the items in the current page.
         /// </summary>
-        public List<T> Items { get; set; } = new List<T>(0);
+        public List<T> Items { get; set; } = new List<T>();
 
         /// <summary>
         /// Gets or sets the current page number (1-based).

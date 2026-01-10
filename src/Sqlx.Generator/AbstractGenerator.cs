@@ -96,7 +96,7 @@ public abstract partial class AbstractGenerator : ISourceGenerator
 
                     // Skip all interface methods - they should only be processed through repository classes
                     if (containingType.TypeKind == TypeKind.Interface)
-                        continue;
+                        return;
 
                     // Generate code for methods
 
@@ -132,7 +132,6 @@ public abstract partial class AbstractGenerator : ISourceGenerator
 
     private void ProcessRepositoryClasses(GeneratorExecutionContext context, CSharpGenerator.CSharpSyntaxReceiver receiver, SymbolReferences symbols)
     {
-        // RepositoryClasses is now a HashSet, so it's already deduplicated
         foreach (var repositoryClass in receiver.RepositoryClasses)
         {
             try

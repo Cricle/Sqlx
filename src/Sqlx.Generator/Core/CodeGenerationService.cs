@@ -90,68 +90,6 @@ public class CodeGenerationService
             // Generate method signature - 使用缓存版本提升性能
             var returnType = method.ReturnType.GetCachedDisplayString();
             var methodName = method.Name;
-            
-            // Handle generic type parameters for generic methods (e.g., UpdatePartialAsync<TUpdates>)
-            var typeParameters = "";
-            var typeConstraints = "";
-            if (method.IsGenericMethod && method.TypeParameters.Length > 0)
-            {
-                typeParameters = "<" + string.Join(", ", method.TypeParameters.Select(tp => tp.Name)) + ">";
-                
-                // Generate type parameter constraints
-                var constraintClauses = new List<string>();
-                foreach (var tp in method.TypeParameters)
-                {
-                    var constraints = new List<string>();
-                    
-                    // Check for reference type constraint (class)
-                    if (tp.HasReferenceTypeConstraint)
-                    {
-                        constraints.Add("class");
-                    }
-                    
-                    // Check for value type constraint (struct)
-                    if (tp.HasValueTypeConstraint)
-                    {
-                        constraints.Add("struct");
-                    }
-                    
-                    // Check for unmanaged constraint
-                    if (tp.HasUnmanagedTypeConstraint)
-                    {
-                        constraints.Add("unmanaged");
-                    }
-                    
-                    // Check for notnull constraint
-                    if (tp.HasNotNullConstraint)
-                    {
-                        constraints.Add("notnull");
-                    }
-                    
-                    // Add type constraints (base class or interfaces)
-                    foreach (var constraintType in tp.ConstraintTypes)
-                    {
-                        constraints.Add(constraintType.GetCachedDisplayString());
-                    }
-                    
-                    // Check for new() constraint
-                    if (tp.HasConstructorConstraint)
-                    {
-                        constraints.Add("new()");
-                    }
-                    
-                    if (constraints.Count > 0)
-                    {
-                        constraintClauses.Add($"where {tp.Name} : {string.Join(", ", constraints)}");
-                    }
-                }
-                
-                if (constraintClauses.Count > 0)
-                {
-                    typeConstraints = " " + string.Join(" ", constraintClauses);
-                }
-            }
-            
             var parameters = string.Join(", ", method.Parameters.Select(p =>
             {
                 var paramType = p.Type.GetCachedDisplayString();
@@ -163,7 +101,7 @@ public class CodeGenerationService
 
             // Add async modifier for Task-based methods
             var asyncModifier = returnType.Contains("Task") ? "async " : "";
-            sb.AppendLine($"public {asyncModifier}{returnType} {methodName}{typeParameters}({parameters}){typeConstraints}");
+            sb.AppendLine($"public {asyncModifier}{returnType} {methodName}({parameters})");
             sb.AppendLine("{");
             sb.PushIndent();
 
@@ -297,6 +235,7 @@ public class CodeGenerationService
             }
 
             // Show parameter information with types
+            // 性能优化：使用Count检查集合是否为空，比Any()更直接
             if (method.Parameters.Length > 0)
             {
                 sb.AppendLine("/// <para>📌 Method Parameters:</para>");
@@ -341,6 +280,7 @@ public class CodeGenerationService
             }
 
             // Show warning information
+            // 性能优化：使用Count检查集合是否为空，比Any()更直接
             if (templateResult.Warnings.Count > 0)
             {
                 sb.AppendLine("/// <para>⚠️ Template Warnings:</para>");
@@ -351,6 +291,7 @@ public class CodeGenerationService
             }
 
             // Show error information
+            // 性能优化：使用Count检查集合是否为空，比Any()更直接
             if (templateResult.Errors.Count > 0)
             {
                 sb.AppendLine("/// <para>❌ Template Errors:</para>");
@@ -501,23 +442,6 @@ public class CodeGenerationService
         sb.AppendLine("using Sqlx.Annotations;");
         sb.AppendLine();
 
-        // Check if the class is nested and generate containing type hierarchy
-        var containingTypes = new List<INamedTypeSymbol>();
-        var currentType = repositoryClass.ContainingType;
-        while (currentType != null)
-        {
-            containingTypes.Insert(0, currentType);
-            currentType = currentType.ContainingType;
-        }
-
-        // Generate containing type declarations (for nested classes)
-        foreach (var containingType in containingTypes)
-        {
-            sb.AppendLine($"partial class {containingType.Name}");
-            sb.AppendLine("{");
-            sb.PushIndent();
-        }
-
         // Generate partial class
         sb.AppendLine($"partial class {repositoryClass.Name}");
         sb.AppendLine("{");
@@ -532,8 +456,9 @@ public class CodeGenerationService
         sb.AppendLine("public global::System.Data.Common.DbTransaction? Transaction { get; set; }");
         sb.AppendLine();
 
-        // Note: Connection field should be defined in user's partial class as protected or internal
-        // to be accessible from generated code. Private fields are not accessible across partial class files.
+        // Generate connection field if needed
+        // Skip DbConnection field generation as it's likely already defined in partial class
+        // GenerateDbConnectionFieldIfNeeded(sb, repositoryClass);
 
         // Generate repository methods using template engine
         // Support interface inheritance - collect methods from base interfaces too
@@ -606,20 +531,7 @@ public class CodeGenerationService
                     sb, method, entityType, tableName, processedSql,
                     context.AttributeHandler, context.RepositoryClass);
 
-                try
-                {
-                    GenerateRepositoryMethod(methodContext);
-                }
-                catch (Exception ex)
-                {
-                    // 🔴 Catch and log exception details for debugging
-                    sb.AppendLine($"// Error generating method {method.Name}: {ex.Message}");
-                    sb.AppendLine($"// Exception type: {ex.GetType().Name}");
-                    #if DEBUG
-                    sb.AppendLine($"// Stack trace: {ex.StackTrace?.Replace(Environment.NewLine, Environment.NewLine + "// ")}");
-                    #endif
-                    GenerateFallbackMethod(sb, method);
-                }
+                GenerateRepositoryMethod(methodContext);
             }
             else
             {
@@ -639,13 +551,6 @@ public class CodeGenerationService
 
         sb.PopIndent();
         sb.AppendLine("}");
-
-        // Close containing type declarations (for nested classes)
-        for (int i = 0; i < containingTypes.Count; i++)
-        {
-            sb.PopIndent();
-            sb.AppendLine("}");
-        }
     }
 
     /// <summary>
@@ -655,21 +560,6 @@ public class CodeGenerationService
     /// <param name="repositoryClass">The repository class symbol to generate interceptor methods for.</param>
     public void GenerateInterceptorMethods(IndentedStringBuilder sb, INamedTypeSymbol repositoryClass)
     {
-        // Collect and validate interceptor attributes
-        var interceptByAttrs = repositoryClass.GetAttributes()
-            .Where(a => a.AttributeClass?.Name == "InterceptByAttribute" || a.AttributeClass?.Name == "InterceptBy")
-            .ToList();
-
-        if (interceptByAttrs.Any())
-        {
-            sb.AppendLine("// Interceptors from [InterceptBy] attributes");
-            
-            // No fields needed for static interceptors
-            // For instance interceptors, we'll create new instances on each call
-            
-            sb.AppendLine();
-        }
-
         sb.AppendLine("/// <summary>");
         sb.AppendLine("/// Called before executing a repository operation.");
         sb.AppendLine("/// </summary>");
@@ -889,6 +779,7 @@ public class CodeGenerationService
         }
 
         // Use shared utilities for database setup
+        // 🚀 性能优化：默认不检查连接状态（假设调用者已打开连接）
         // 如需自动打开连接，可定义 SQLX_ENABLE_AUTO_OPEN 条件编译符号
         // 这样可以减少每次查询8-12%的开销
         sb.AppendLine("#if SQLX_ENABLE_AUTO_OPEN");
@@ -904,9 +795,6 @@ public class CodeGenerationService
         // 🚀 TDD Phase 3: Check for batch INSERT operation FIRST (before any SQL modifications)
         var processedSql = templateResult.ProcessedSql;
         var hasBatchValues = processedSql.Contains("__RUNTIME_BATCH_VALUES_");
-        
-        // Get database dialect early for runtime marker handling
-        var currentDbDialect = GetDatabaseDialect(classSymbol);
 
         if (hasBatchValues)
         {
@@ -915,44 +803,13 @@ public class CodeGenerationService
             return true; // Batch INSERT handles everything including method closure
         }
 
-        // 🚀 Check for runtime markers and generate specialized code
-        if (processedSql.Contains("__RUNTIME_BATCH_UPDATE_"))
-        {
-            // Convert string dialect to SqlDefine instance
-            var dialectInstance = ConvertDialectStringToSqlDefine(currentDbDialect);
-            GenerateBatchUpdateCode(sb, processedSql, method, originalEntityType, connectionName, classSymbol, dialectInstance, cancellationTokenArg);
-            return true;
-        }
-
-        if (processedSql.Contains("__RUNTIME_UPSERT_"))
-        {
-            GenerateUpsertCode(sb, processedSql, method, originalEntityType, connectionName, classSymbol, cancellationTokenArg, currentDbDialect);
-            return true;
-        }
-
-        if (processedSql.Contains("__RUNTIME_BATCH_UPSERT_"))
-        {
-            GenerateBatchUpsertCode(sb, processedSql, method, originalEntityType, connectionName, classSymbol, cancellationTokenArg, currentDbDialect);
-            return true;
-        }
-
-        if (processedSql.Contains("__RUNTIME_BATCH_EXISTS__"))
-        {
-            GenerateBatchExistsCode(sb, processedSql, method, connectionName, classSymbol, cancellationTokenArg);
-            return true;
-        }
-
-        if (processedSql.Contains("__RUNTIME_GET_PAGE_"))
-        {
-            GenerateGetPageCode(sb, processedSql, method, originalEntityType, connectionName, classSymbol, cancellationTokenArg);
-            return true;
-        }
-
         // 🚀 TDD Green: Check for [ReturnInsertedId] or [ReturnInsertedEntity] and modify SQL
         var hasReturnInsertedId = method.GetAttributes()
             .Any(a => a.AttributeClass?.Name == "ReturnInsertedIdAttribute" || a.AttributeClass?.Name == "ReturnInsertedId");
         var hasReturnInsertedEntity = method.GetAttributes()
             .Any(a => a.AttributeClass?.Name == "ReturnInsertedEntityAttribute" || a.AttributeClass?.Name == "ReturnInsertedEntity");
+
+        var currentDbDialect = GetDatabaseDialect(classSymbol);
 
         // 🔍 Diagnostic: Log ReturnInsertedId detection
         if (hasReturnInsertedId || hasReturnInsertedEntity)
@@ -967,26 +824,6 @@ public class CodeGenerationService
         else if (hasReturnInsertedEntity)
         {
             processedSql = AddReturningClauseForInsert(processedSql, currentDbDialect, returnAll: true);
-            
-            // For SQL Server OUTPUT INSERTED.*, we need to update columnOrder to include all columns (including Id)
-            // because OUTPUT INSERTED.* returns all columns, not just the ones in the INSERT statement
-            if ((currentDbDialect == "SqlServer" || currentDbDialect == "1") && originalEntityType != null)
-            {
-                // Get all properties including Id
-                var allProperties = originalEntityType.GetMembers()
-                    .OfType<IPropertySymbol>()
-                    .Where(p => p.CanBeReferencedByName && p.GetMethod != null && p.Name != "EqualityContract")
-                    .OrderBy(p => p.Name == "Id" ? 0 : 1) // Put Id first
-                    .ToList();
-                
-                // Update columnOrder to include all columns in the correct order
-                templateResult.ColumnOrder.Clear();
-                foreach (var prop in allProperties)
-                {
-                    var columnName = SharedCodeGenerationUtilities.ConvertToSnakeCase(prop.Name);
-                    templateResult.ColumnOrder.Add(columnName);
-                }
-            }
         }
 
         // 🚀 TDD Green: Check for [SoftDelete]
@@ -1064,61 +901,14 @@ public class CodeGenerationService
         sb.AppendLine("{");
         sb.PushIndent();
 
-        // Call [InterceptBy] interceptors
-        var interceptByAttrs = classSymbol?.GetAttributes()
-            .Where(a => a.AttributeClass?.Name == "InterceptByAttribute" || a.AttributeClass?.Name == "InterceptBy")
-            .ToList() ?? new List<AttributeData>();
-
-        if (interceptByAttrs.Any())
-        {
-            sb.AppendLine("// Call InterceptBy interceptors");
-            for (int i = 0; i < interceptByAttrs.Count; i++)
-            {
-                var attr = interceptByAttrs[i];
-                if (attr.ConstructorArguments.Length > 0)
-                {
-                    var interceptorType = attr.ConstructorArguments[0].Value as INamedTypeSymbol;
-                    if (interceptorType != null)
-                    {
-                        var typeName = interceptorType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                        
-                        // Check if interceptor is static
-                        var isStatic = interceptorType.IsStatic;
-                        
-                        // Compile-time validation
-                        var implementsICommandInterceptor = interceptorType.AllInterfaces.Any(i => 
-                            i.Name == "ICommandInterceptor");
-                        var implementsIStaticCommandInterceptor = interceptorType.AllInterfaces.Any(i => 
-                            i.Name == "IStaticCommandInterceptor");
-                        
-                        if (!implementsICommandInterceptor && !implementsIStaticCommandInterceptor && !isStatic)
-                        {
-                            // Generate compile error
-                            sb.AppendLine($"#error Interceptor type '{interceptorType.Name}' must implement ICommandInterceptor or IStaticCommandInterceptor");
-                            continue;
-                        }
-                        
-                        if (isStatic)
-                        {
-                            // Static interceptor - call static method directly
-                            sb.AppendLine($"{typeName}.OnExecuting(\"{operationName}\", __cmd__);");
-                        }
-                        else
-                        {
-                            // Instance interceptor - create new instance each time
-                            sb.AppendLine($"new {typeName}().OnExecuting(\"{operationName}\", __cmd__);");
-                        }
-                    }
-                }
-            }
-        }
-
         // Call partial method interceptor (用户自定义扩展点，可通过SQLX_ENABLE_PARTIAL_METHODS启用)
         sb.AppendLine("#if SQLX_ENABLE_PARTIAL_METHODS");
+        sb.AppendLine("// Partial方法：用户自定义拦截逻辑");
         sb.AppendLine($"OnExecuting(\"{operationName}\", __cmd__);");
         sb.AppendLine("#endif");
         sb.AppendLine();
 
+        // 性能优化：单次分类返回类型，避免重复计算
         var (returnCategory, innerType) = ClassifyReturnType(returnTypeString);
 
         // 🔍 Diagnostic: Log return type classification
@@ -1170,14 +960,10 @@ public class CodeGenerationService
                 var sqlUpper = templateResult.ProcessedSql.TrimStart().ToUpperInvariant();
                 // Special case: If SQL has "; SELECT last_insert_rowid()" (SQLite), use ExecuteScalar
                 var hasSqliteLastInsertRowid = templateResult.ProcessedSql.IndexOf("last_insert_rowid()", StringComparison.OrdinalIgnoreCase) >= 0;
-                // Special case: If SQL contains {RUNTIME_SQL_} marker, it's a raw SQL execution
-                // For methods returning int (like ExecuteRawAsync), use ExecuteNonQueryAsync
-                var hasRuntimeSqlMarker = templateResult.ProcessedSql.Contains("{RUNTIME_SQL_");
 
                 if (!hasSqliteLastInsertRowid &&
                     (sqlUpper.StartsWith("UPDATE ") || sqlUpper.StartsWith("DELETE ") ||
-                    (sqlUpper.StartsWith("INSERT ") && innerType == "int") ||
-                    (hasRuntimeSqlMarker && innerType == "int")))
+                    (sqlUpper.StartsWith("INSERT ") && innerType == "int")))
                 {
                     // NonQuery命令，返回affected rows
                     sb.AppendLine($"__result__ = await __cmd__.ExecuteNonQueryAsync({cancellationTokenArg.TrimStart(',', ' ')});");
@@ -1228,34 +1014,6 @@ public class CodeGenerationService
         sb.AppendLine("#endif");
         sb.AppendLine();
 
-        // Call [InterceptBy] interceptors
-        if (interceptByAttrs.Any())
-        {
-            sb.AppendLine("// Call InterceptBy interceptors OnExecuted");
-            for (int i = 0; i < interceptByAttrs.Count; i++)
-            {
-                var attr = interceptByAttrs[i];
-                if (attr.ConstructorArguments.Length > 0)
-                {
-                    var interceptorType = attr.ConstructorArguments[0].Value as INamedTypeSymbol;
-                    if (interceptorType != null)
-                    {
-                        var typeName = interceptorType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                        var isStatic = interceptorType.IsStatic;
-                        
-                        if (isStatic)
-                        {
-                            sb.AppendLine($"{typeName}.OnExecuted(\"{operationName}\", __cmd__);");
-                        }
-                        else
-                        {
-                            sb.AppendLine($"new {typeName}().OnExecuted(\"{operationName}\", __cmd__);");
-                        }
-                    }
-                }
-            }
-        }
-
         // Call partial method interceptor
         sb.AppendLine("#if SQLX_ENABLE_PARTIAL_METHODS");
         sb.AppendLine("#if SQLX_ENABLE_TRACING");
@@ -1292,34 +1050,6 @@ public class CodeGenerationService
         sb.AppendLine("#endif");
         sb.AppendLine();
 
-        // Call [InterceptBy] interceptors
-        if (interceptByAttrs.Any())
-        {
-            sb.AppendLine("// Call InterceptBy interceptors OnError");
-            for (int i = 0; i < interceptByAttrs.Count; i++)
-            {
-                var attr = interceptByAttrs[i];
-                if (attr.ConstructorArguments.Length > 0)
-                {
-                    var interceptorType = attr.ConstructorArguments[0].Value as INamedTypeSymbol;
-                    if (interceptorType != null)
-                    {
-                        var typeName = interceptorType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                        var isStatic = interceptorType.IsStatic;
-                        
-                        if (isStatic)
-                        {
-                            sb.AppendLine($"{typeName}.OnError(\"{operationName}\", __cmd__, __ex__);");
-                        }
-                        else
-                        {
-                            sb.AppendLine($"new {typeName}().OnError(\"{operationName}\", __cmd__, __ex__);");
-                        }
-                    }
-                }
-            }
-        }
-
         // Call partial method interceptor
         sb.AppendLine("#if SQLX_ENABLE_PARTIAL_METHODS");
         sb.AppendLine("#if SQLX_ENABLE_TRACING");
@@ -1351,6 +1081,7 @@ public class CodeGenerationService
         return sql.Replace("\"", "\"\"");
     }
 
+    // 性能优化：枚举避免重复字符串比较
     private enum ReturnTypeCategory
     {
         Scalar,
@@ -1361,6 +1092,7 @@ public class CodeGenerationService
         Unknown
     }
 
+    // 性能优化：单次调用ExtractInnerTypeFromTask，避免重复计算
     private (ReturnTypeCategory Category, string InnerType) ClassifyReturnType(string returnType)
     {
         var innerType = ExtractInnerTypeFromTask(returnType);
@@ -1373,27 +1105,13 @@ public class CodeGenerationService
         if (IsDynamicDictionary(innerType))
             return (ReturnTypeCategory.DynamicDictionary, innerType);
 
-        // 检查标量类型（支持简单名称、完全限定名称和 nullable 类型）
-        // 先获取基础类型（去掉 ? 或 Nullable<>）
-        var baseType = innerType.EndsWith("?") 
-            ? innerType.TrimEnd('?') 
-            : (innerType.StartsWith("Nullable<") || innerType.StartsWith("System.Nullable<"))
-                ? innerType.Substring(innerType.IndexOf('<') + 1).TrimEnd('>')
-                : innerType;
-        
-        if (baseType == "int" || baseType == "System.Int32" ||
-            baseType == "long" || baseType == "System.Int64" ||
-            baseType == "bool" || baseType == "System.Boolean" ||
-            baseType == "decimal" || baseType == "System.Decimal" ||
-            baseType == "double" || baseType == "System.Double" ||
-            baseType == "float" || baseType == "System.Single" ||
-            baseType == "DateTime" || baseType == "System.DateTime" ||
-            baseType == "string" || baseType == "System.String")
-            return (ReturnTypeCategory.Scalar, innerType);
-
-        // 检查泛型类型参数（如 TResult）- 通常用于 ExecuteScalarAsync<TResult>
-        // 泛型类型参数通常是单个大写字母开头的标识符，如 T, TResult, TValue 等
-        if (IsGenericTypeParameter(baseType))
+        // 检查标量类型（支持简单名称和完全限定名称）
+        if (innerType == "int" || innerType == "System.Int32" ||
+            innerType == "long" || innerType == "System.Int64" ||
+            innerType == "bool" || innerType == "System.Boolean" ||
+            innerType == "decimal" || innerType == "System.Decimal" ||
+            innerType == "double" || innerType == "System.Double" ||
+            innerType == "string" || innerType == "System.String")
             return (ReturnTypeCategory.Scalar, innerType);
 
         // 检查集合类型（支持完全限定名称）
@@ -1408,28 +1126,6 @@ public class CodeGenerationService
             return (ReturnTypeCategory.SingleEntity, innerType);
 
         return (ReturnTypeCategory.Unknown, innerType);
-    }
-
-    /// <summary>
-    /// 检查是否为泛型类型参数（如 TResult, T, TValue 等）
-    /// </summary>
-    private bool IsGenericTypeParameter(string type)
-    {
-        // 泛型类型参数通常是：
-        // - 单个大写字母 T
-        // - T 开头后跟大写字母的标识符，如 TResult, TValue, TEntity
-        // - 不包含命名空间分隔符 . 或 ::
-        if (string.IsNullOrEmpty(type) || type.Contains(".") || type.Contains("::"))
-            return false;
-        
-        // 检查是否以 T 开头且后面是大写字母或为空
-        if (type.Length == 1 && type[0] == 'T')
-            return true;
-        
-        if (type.Length > 1 && type[0] == 'T' && char.IsUpper(type[1]))
-            return true;
-        
-        return false;
     }
 
     /// <summary>
@@ -1475,95 +1171,31 @@ public class CodeGenerationService
     {
         sb.AppendLine($"var scalarResult = await __cmd__.ExecuteScalarAsync({cancellationTokenArg.TrimStart(',', ' ')});");
 
-        // Check if the type is nullable
-        var isNullable = innerType.EndsWith("?") || innerType.StartsWith("Nullable<");
-        var baseType = isNullable 
-            ? (innerType.EndsWith("?") ? innerType.TrimEnd('?') : innerType.Substring(9, innerType.Length - 10))
-            : innerType;
-
         // Handle numeric type conversions (e.g., SQLite COUNT returns Int64 but method expects Int32)
-        if (baseType == "int" || baseType == "System.Int32")
+        if (innerType == "int" || innerType == "System.Int32")
         {
-            if (isNullable)
-            {
-                sb.AppendLine("__result__ = scalarResult != null && scalarResult != DBNull.Value ? Convert.ToInt32(scalarResult) : (int?)null;");
-            }
-            else
-            {
-                sb.AppendLine("__result__ = scalarResult != null && scalarResult != DBNull.Value ? Convert.ToInt32(scalarResult) : default(int);");
-            }
+            sb.AppendLine("__result__ = scalarResult != null ? Convert.ToInt32(scalarResult) : default(int);");
         }
-        else if (baseType == "long" || baseType == "System.Int64")
+        else if (innerType == "long" || innerType == "System.Int64")
         {
-            if (isNullable)
-            {
-                sb.AppendLine("__result__ = scalarResult != null && scalarResult != DBNull.Value ? Convert.ToInt64(scalarResult) : (long?)null;");
-            }
-            else
-            {
-                sb.AppendLine("__result__ = scalarResult != null && scalarResult != DBNull.Value ? Convert.ToInt64(scalarResult) : default(long);");
-            }
+            sb.AppendLine("__result__ = scalarResult != null ? Convert.ToInt64(scalarResult) : default(long);");
         }
-        else if (baseType == "decimal" || baseType == "System.Decimal")
+        else if (innerType == "decimal" || innerType == "System.Decimal")
         {
-            if (isNullable)
-            {
-                sb.AppendLine("__result__ = scalarResult != null && scalarResult != DBNull.Value ? Convert.ToDecimal(scalarResult) : (decimal?)null;");
-            }
-            else
-            {
-                sb.AppendLine("__result__ = scalarResult != null && scalarResult != DBNull.Value ? Convert.ToDecimal(scalarResult) : default(decimal);");
-            }
+            sb.AppendLine("__result__ = scalarResult != null ? Convert.ToDecimal(scalarResult) : default(decimal);");
         }
-        else if (baseType == "double" || baseType == "System.Double")
+        else if (innerType == "double" || innerType == "System.Double")
         {
-            if (isNullable)
-            {
-                sb.AppendLine("__result__ = scalarResult != null && scalarResult != DBNull.Value ? Convert.ToDouble(scalarResult) : (double?)null;");
-            }
-            else
-            {
-                sb.AppendLine("__result__ = scalarResult != null && scalarResult != DBNull.Value ? Convert.ToDouble(scalarResult) : default(double);");
-            }
+            sb.AppendLine("__result__ = scalarResult != null ? Convert.ToDouble(scalarResult) : default(double);");
         }
-        else if (baseType == "bool" || baseType == "System.Boolean")
+        else if (innerType == "bool" || innerType == "System.Boolean")
         {
-            if (isNullable)
-            {
-                sb.AppendLine("__result__ = scalarResult != null && scalarResult != DBNull.Value ? Convert.ToBoolean(scalarResult) : (bool?)null;");
-            }
-            else
-            {
-                sb.AppendLine("__result__ = scalarResult != null && scalarResult != DBNull.Value ? Convert.ToBoolean(scalarResult) : default(bool);");
-            }
-        }
-        else if (baseType == "DateTime" || baseType == "System.DateTime")
-        {
-            if (isNullable)
-            {
-                sb.AppendLine("__result__ = scalarResult != null && scalarResult != DBNull.Value ? Convert.ToDateTime(scalarResult) : (DateTime?)null;");
-            }
-            else
-            {
-                sb.AppendLine("__result__ = scalarResult != null && scalarResult != DBNull.Value ? Convert.ToDateTime(scalarResult) : default(DateTime);");
-            }
+            sb.AppendLine("__result__ = scalarResult != null ? Convert.ToBoolean(scalarResult) : default(bool);");
         }
         else
         {
-            // Handle generic type parameters (TResult, T, etc.) and other types
-            // Use Convert.ChangeType for generic type parameters to handle runtime type conversion
-            if (IsGenericTypeParameter(baseType))
-            {
-                sb.AppendLine($"__result__ = scalarResult != null && scalarResult != DBNull.Value ? ({innerType})Convert.ChangeType(scalarResult, typeof({innerType})) : default({innerType})!;");
-            }
-            else if (isNullable)
-            {
-                sb.AppendLine($"__result__ = scalarResult != null && scalarResult != DBNull.Value ? ({baseType})scalarResult : ({innerType})null;");
-            }
-            else
-            {
-                sb.AppendLine($"__result__ = scalarResult != null && scalarResult != DBNull.Value ? ({innerType})scalarResult : default({innerType});");
-            }
+            // Direct cast for other types
+        sb.AppendLine($"__result__ = scalarResult != null ? ({innerType})scalarResult : default({innerType});");
         }
     }
 
@@ -1573,6 +1205,7 @@ public class CodeGenerationService
         // 确保使用全局命名空间前缀，避免命名冲突
         var collectionType = innerType.StartsWith("System.") ? $"global::{innerType}" : innerType;
 
+        // 🚀 性能优化：智能预分配List容量
         // 检测LIMIT参数并预分配容量，减少List重新分配和GC压力
         var limitParam = DetectLimitParameter(templateResult.ProcessedSql, method);
         if (limitParam != null)
@@ -1588,6 +1221,7 @@ public class CodeGenerationService
 
         sb.AppendLine($"using var reader = await __cmd__.ExecuteReaderAsync({cancellationTokenArg.TrimStart(',', ' ')});");
 
+        // 🚀 性能优化：在第一次Read()后缓存列序号
         // 注意：必须在Read()后调用GetOrdinal()，否则空结果集会失败
         if (entityType != null && (templateResult.ColumnOrder == null || templateResult.ColumnOrder.Count == 0))
         {
@@ -1813,6 +1447,7 @@ public class CodeGenerationService
 
     private void GenerateEntityFromReader(IndentedStringBuilder sb, INamedTypeSymbol entityType, string variableName, SqlTemplateResult templateResult)
     {
+        // 🚀 性能优化：默认使用硬编码索引访问（极致性能）
         // 源分析器会检测列顺序不匹配并发出警告
         SharedCodeGenerationUtilities.GenerateEntityMapping(sb, entityType, variableName, templateResult.ColumnOrder);
     }
@@ -1838,23 +1473,19 @@ public class CodeGenerationService
 
     internal static string GetDbConnectionFieldName(INamedTypeSymbol repositoryClass)
     {
-        // Strategy: Look for DbConnection field/property in multiple ways
-        // IMPORTANT: Primary constructor parameters are NOT accessible across partial class files
-        // So we must find a field or property that stores the connection
-        
+        // 性能优化：一次性获取所有成员，避免重复遍历（使用数组）
         var allMembers = repositoryClass.GetMembers().ToArray();
 
-        // 1. First check fields - look for DbConnection type or connection name pattern
+        // 1. 首先检查字段 - 按类型和名称模式查找
         var connectionField = allMembers
             .OfType<IFieldSymbol>()
-            .Where(f => !f.Name.StartsWith("<")) // Exclude compiler-generated fields
             .FirstOrDefault(f => f.IsDbConnection() || IsConnectionNamePattern(f.Name));
         if (connectionField != null)
         {
             return connectionField.Name;
         }
 
-        // 2. Check properties - look for DbConnection type or connection name pattern
+        // 2. 检查属性 - 按类型和名称模式查找
         var connectionProperty = allMembers
             .OfType<IPropertySymbol>()
             .FirstOrDefault(p => p.IsDbConnection() || IsConnectionNamePattern(p.Name));
@@ -1863,118 +1494,30 @@ public class CodeGenerationService
             return connectionProperty.Name;
         }
 
-        // 3. Check primary constructor parameters (C# 12 feature)
-        // NOTE: Primary constructor parameters create compiler-generated private fields like <paramName>P
-        // that are NOT accessible across partial class files.
+        // 3. Check primary constructor parameters
         var primaryConstructor = PrimaryConstructorAnalyzer.GetPrimaryConstructor(repositoryClass);
         if (primaryConstructor != null)
         {
             var connectionParam = primaryConstructor.Parameters.FirstOrDefault(p => p.Type.IsDbConnection());
             if (connectionParam != null)
             {
-                // Check if there's a compiler-generated backing field
-                var backingField = allMembers
-                    .OfType<IFieldSymbol>()
-                    .FirstOrDefault(f => f.Name == $"<{connectionParam.Name}>P");
-                
-                if (backingField != null)
-                {
-                    // Found compiler-generated backing field - this means user is using primary constructor
-                    // but hasn't defined a field/property to store the connection.
-                    // We MUST return a user-defined field name, not the backing field name.
-                    // Try to find a common pattern:
-                    var userField = allMembers
-                        .OfType<IFieldSymbol>()
-                        .FirstOrDefault(f => f.Name == $"_{connectionParam.Name}" && f.IsDbConnection());
-                    
-                    if (userField != null)
-                    {
-                        return userField.Name;
-                    }
-                    
-                    // No user-defined field found - return the most common pattern and let it fail with a clear error
-                    return $"_{connectionParam.Name}";
-                }
-                
-                // No backing field found - parameter might be directly accessible
                 return connectionParam.Name;
             }
         }
 
-        // 4. Check regular constructor parameters and infer field name
-        // This is the most common pattern: constructor parameter stored in a field
-        var constructor = repositoryClass.InstanceConstructors
-            .Where(c => !c.IsStatic && !c.IsImplicitlyDeclared)
-            .FirstOrDefault();
-        
+        // 4. Check regular constructor parameters (fallback)
+        var constructor = repositoryClass.InstanceConstructors.FirstOrDefault();
         if (constructor != null)
         {
             var connectionParam = constructor.Parameters.FirstOrDefault(p => p.Type.IsDbConnection());
             if (connectionParam != null)
             {
-                // Common patterns for field names based on constructor parameter:
-                // 1. _paramName (most common C# convention)
-                // 2. paramName (less common)
-                // 3. m_paramName (older convention)
-                var possibleFieldNames = new[]
-                {
-                    $"_{connectionParam.Name}",
-                    connectionParam.Name,
-                    $"m_{connectionParam.Name}"
-                };
-
-                // Try to find a field with one of these names
-                // Note: During source generation, GetMembers() might not return private fields
-                // from partial class declarations, so we check all possibilities
-                foreach (var fieldName in possibleFieldNames)
-                {
-                    var field = allMembers
-                        .OfType<IFieldSymbol>()
-                        .FirstOrDefault(f => f.Name == fieldName);
-                    if (field != null)
-                    {
-                        return field.Name;
-                    }
-                }
-
-                // If no field found, assume the most common pattern: _paramName
-                // This is a safe assumption because:
-                // - It's the most common C# naming convention
-                // - The user's partial class likely follows this pattern
-                // - If they don't, they can use a property or different pattern
-                return $"_{connectionParam.Name}";
+                return connectionParam.Name;
             }
         }
 
-        // 5. Check syntax declarations directly (fallback for partial classes)
-        // This handles cases where GetMembers() doesn't return private fields from partial classes
-        foreach (var syntaxRef in repositoryClass.DeclaringSyntaxReferences)
-        {
-            var syntax = syntaxRef.GetSyntax();
-            if (syntax is Microsoft.CodeAnalysis.CSharp.Syntax.ClassDeclarationSyntax classDecl)
-            {
-                // Look for field declarations in the syntax tree
-                var fieldDecls = classDecl.Members
-                    .OfType<Microsoft.CodeAnalysis.CSharp.Syntax.FieldDeclarationSyntax>();
-                
-                foreach (var fieldDecl in fieldDecls)
-                {
-                    var variable = fieldDecl.Declaration.Variables.FirstOrDefault();
-                    if (variable != null)
-                    {
-                        var fieldName = variable.Identifier.Text;
-                        // Check if this looks like a connection field
-                        if (IsConnectionNamePattern(fieldName))
-                        {
-                            return fieldName;
-                        }
-                    }
-                }
-            }
-        }
-
-        // 6. Default fallback - use the most common field name
-        return "_connection";
+        // Default fallback - common field names
+        return "connection";
     }
 
     /// <summary>Get SQL attribute from method, checking both Sqlx and SqlTemplate attributes</summary>
@@ -2322,8 +1865,8 @@ public class CodeGenerationService
             {
                 if (na.Key == "Dialect" && na.Value.Value != null)
                 {
-                    // Get enum name from value
-                    return ConvertEnumValueToName(na.Value.Value);
+                    // SqlDefineTypes is an enum, get its string representation
+                    return na.Value.Value.ToString();
                 }
             }
         }
@@ -2337,34 +1880,13 @@ public class CodeGenerationService
             var dialectValue = sqlDefineAttr.ConstructorArguments[0].Value;
             if (dialectValue != null)
             {
-                // Get enum name from value
-                return ConvertEnumValueToName(dialectValue);
+                // SqlDefineTypes is an enum, get its string representation
+                return dialectValue.ToString();
             }
         }
 
         // Default to SqlServer if not specified
         return "SqlServer";
-    }
-
-    /// <summary>
-    /// Converts SqlDefineTypes enum value to name
-    /// </summary>
-    private static string ConvertEnumValueToName(object enumValue)
-    {
-        if (enumValue == null) return "SqlServer";
-        
-        // Convert enum value (int) to name
-        var intValue = Convert.ToInt32(enumValue);
-        return intValue switch
-        {
-            0 => "MySql",
-            1 => "SqlServer",
-            2 => "PostgreSql",
-            3 => "Oracle",
-            4 => "DB2",
-            5 => "SQLite",
-            _ => "SqlServer"
-        };
     }
 
     /// <summary>
@@ -2717,55 +2239,14 @@ public class CodeGenerationService
             return sql;
         }
 
-        // Find WHERE clause - but NOT inside runtime markers like {RUNTIME_WHERE_EXPR_...}
-        // First, check if there's a runtime WHERE marker
-        var runtimeWhereIndex = sql.IndexOf("{RUNTIME_WHERE", StringComparison.OrdinalIgnoreCase);
-        
-        // Find the actual WHERE keyword (not inside a runtime marker)
-        var whereIndex = -1;
-        var searchStart = 0;
-        while (true)
-        {
-            var idx = sql.IndexOf("WHERE", searchStart, StringComparison.OrdinalIgnoreCase);
-            if (idx < 0) break;
-            
-            // Check if this WHERE is inside a runtime marker
-            // A runtime marker looks like {RUNTIME_WHERE_...}
-            // If we find WHERE and it's preceded by {RUNTIME_ or _WHERE_, it's part of a marker
-            var isInsideMarker = false;
-            if (idx > 0)
-            {
-                // Check if this is part of {RUNTIME_WHERE_...} or similar
-                var beforeWhere = sql.Substring(Math.Max(0, idx - 20), Math.Min(20, idx));
-                if (beforeWhere.Contains("{RUNTIME_") || beforeWhere.Contains("_WHERE"))
-                {
-                    isInsideMarker = true;
-                }
-            }
-            
-            if (!isInsideMarker)
-            {
-                whereIndex = idx;
-                break;
-            }
-            
-            searchStart = idx + 5; // Move past this WHERE
-        }
-        
+        // Find WHERE clause
+        var whereIndex = sql.IndexOf("WHERE", StringComparison.OrdinalIgnoreCase);
         if (whereIndex > 0)
         {
             // Insert before WHERE
             var beforeWhere = sql.Substring(0, whereIndex).TrimEnd();
             var afterWhere = sql.Substring(whereIndex);
             return $"{beforeWhere}, {string.Join(", ", additionalSets)} {afterWhere}";
-        }
-        else if (runtimeWhereIndex > 0)
-        {
-            // There's a runtime WHERE marker but no actual WHERE keyword
-            // Insert before the runtime marker
-            var beforeMarker = sql.Substring(0, runtimeWhereIndex).TrimEnd();
-            var afterMarker = sql.Substring(runtimeWhereIndex);
-            return $"{beforeMarker}, {string.Join(", ", additionalSets)} {afterMarker}";
         }
         else
         {
@@ -2829,36 +2310,8 @@ public class CodeGenerationService
         var whereVersionPattern = $"{versionCol} = {versionParam}";
         var hasVersionInWhere = sql.IndexOf(whereVersionPattern, StringComparison.OrdinalIgnoreCase) >= 0;
 
-        // Find WHERE clause - but NOT inside runtime markers like {RUNTIME_WHERE_EXPR_...}
-        var runtimeWhereIndex = sql.IndexOf("{RUNTIME_WHERE", StringComparison.OrdinalIgnoreCase);
-        
-        // Find the actual WHERE keyword (not inside a runtime marker)
-        var whereIndex = -1;
-        var searchStart = 0;
-        while (true)
-        {
-            var idx = sql.IndexOf("WHERE", searchStart, StringComparison.OrdinalIgnoreCase);
-            if (idx < 0) break;
-            
-            // Check if this WHERE is inside a runtime marker
-            var isInsideMarker = false;
-            if (idx > 0)
-            {
-                var beforeWhere = sql.Substring(Math.Max(0, idx - 20), Math.Min(20, idx));
-                if (beforeWhere.Contains("{RUNTIME_") || beforeWhere.Contains("_WHERE"))
-                {
-                    isInsideMarker = true;
-                }
-            }
-            
-            if (!isInsideMarker)
-            {
-                whereIndex = idx;
-                break;
-            }
-            
-            searchStart = idx + 5;
-        }
+        // 找到WHERE子句的位置
+        var whereIndex = sql.IndexOf("WHERE", StringComparison.OrdinalIgnoreCase);
 
         if (whereIndex > 0)
         {
@@ -2875,28 +2328,6 @@ public class CodeGenerationService
             }
 
             // 只有当WHERE子句中没有version检查时才添加
-            if (!hasVersionInWhere)
-            {
-                newSql = newSql + $" AND {versionCol} = {versionParam}";
-            }
-
-            return newSql;
-        }
-        else if (runtimeWhereIndex > 0)
-        {
-            // There's a runtime WHERE marker but no actual WHERE keyword
-            var beforeMarker = sql.Substring(0, runtimeWhereIndex).TrimEnd();
-            var afterMarker = sql.Substring(runtimeWhereIndex);
-            var newSql = sql;
-
-            // 只有当SET子句中没有version时才添加version递增
-            if (!hasVersionInSet)
-            {
-                newSql = $"{beforeMarker}, {versionCol} = {versionCol} + 1 {afterMarker}";
-            }
-
-            // 只有当WHERE子句中没有version检查时才添加
-            // For runtime WHERE markers, append after the marker
             if (!hasVersionInWhere)
             {
                 newSql = newSql + $" AND {versionCol} = {versionParam}";
@@ -2971,16 +2402,15 @@ public class CodeGenerationService
         }
 
         // Parse column names from SQL: INSERT INTO table (col1, col2) VALUES (...)
-        // Support quoted table names: INSERT INTO `table` (col1, col2) or INSERT INTO [table] (col1, col2)
         List<string>? specifiedColumns = null;
-        var insertMatch = System.Text.RegularExpressions.Regex.Match(sql, @"INSERT\s+INTO\s+[`\[]?\w+[`\]]?\s*\(([^)]+)\)",
+        var insertMatch = System.Text.RegularExpressions.Regex.Match(sql, @"INSERT\s+INTO\s+\w+\s*\(([^)]+)\)",
             System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
         if (insertMatch.Success)
         {
             var columnsText = insertMatch.Groups[1].Value;
             specifiedColumns = columnsText.Split(',')
-                .Select(c => c.Trim().Trim('[', ']', '"', '`', ' ', '\t', '\r', '\n'))  // Remove brackets, quotes, and whitespace from column names
+                .Select(c => c.Trim())
                 .Where(c => !string.IsNullOrEmpty(c))
                 .ToList();
         }
@@ -2997,43 +2427,14 @@ public class CodeGenerationService
         {
             // Use only properties that match specified columns (case-insensitive snake_case match)
             properties = new List<IPropertySymbol>();
-            
-            // 🔍 DEBUG: Add comment to generated code to verify this code is being executed
-            sb.AppendLine($"// 🔍 DEBUG: Processing {specifiedColumns.Count} specified columns from SQL");
-            
             foreach (var column in specifiedColumns)
             {
                 var prop = allProperties.FirstOrDefault(p =>
                     SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name).Equals(column, StringComparison.OrdinalIgnoreCase));
-                
-                // Fallback: if no match found, try direct name matching (case-insensitive)
-                if (prop == null)
-                {
-                    prop = allProperties.FirstOrDefault(p => p.Name.Equals(column, StringComparison.OrdinalIgnoreCase));
-                }
-                
                 if (prop != null)
                 {
                     properties.Add(prop);
                 }
-                else
-                {
-                    // 🔍 DEBUG: Log when a column doesn't match any property
-                    // This helps diagnose column matching issues
-                    System.Diagnostics.Debug.WriteLine($"[Sqlx.Generator] Column '{column}' from SQL did not match any property in entity '{entityType.Name}'");
-                    System.Diagnostics.Debug.WriteLine($"[Sqlx.Generator] Available properties: {string.Join(", ", allProperties.Select(p => $"{p.Name} -> {SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)}"))}");
-                    
-                    // Add comment to generated code
-                    sb.AppendLine($"// 🔍 DEBUG: Column '{column}' did not match any property");
-                }
-            }
-            
-            // 🔍 DEBUG: Log the final properties list
-            if (properties.Count == 0)
-            {
-                System.Diagnostics.Debug.WriteLine($"[Sqlx.Generator] WARNING: No properties matched for entity '{entityType.Name}'!");
-                System.Diagnostics.Debug.WriteLine($"[Sqlx.Generator] Specified columns: {string.Join(", ", specifiedColumns)}");
-                System.Diagnostics.Debug.WriteLine($"[Sqlx.Generator] Available properties: {string.Join(", ", allProperties.Select(p => $"{p.Name} -> {SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)}"))}");
             }
         }
         else
@@ -3067,17 +2468,8 @@ public class CodeGenerationService
         // Generate code
         if (hasReturnInsertedId && isListReturn)
         {
-            // Extract TKey from List<TKey> - handle both qualified and unqualified names
-            var keyType = innerType;
-            if (keyType.StartsWith("System.Collections.Generic.List<"))
-            {
-                keyType = keyType.Substring("System.Collections.Generic.List<".Length).TrimEnd('>');
-            }
-            else if (keyType.StartsWith("List<"))
-            {
-                keyType = keyType.Substring("List<".Length).TrimEnd('>');
-            }
-            
+            // Extract TKey from List<TKey>
+            var keyType = innerType.Replace("List<", "").Replace("System.Collections.Generic.List<", "").TrimEnd('>');
             sb.AppendLine($"var __ids__ = new global::System.Collections.Generic.List<{keyType}>();");
         }
         else
@@ -3093,16 +2485,7 @@ public class CodeGenerationService
         sb.AppendLine("__cmd__?.Dispose();");
         if (hasReturnInsertedId && isListReturn)
         {
-            // Use the same keyType extraction logic
-            var keyType = innerType;
-            if (keyType.StartsWith("System.Collections.Generic.List<"))
-            {
-                keyType = keyType.Substring("System.Collections.Generic.List<".Length).TrimEnd('>');
-            }
-            else if (keyType.StartsWith("List<"))
-            {
-                keyType = keyType.Substring("List<".Length).TrimEnd('>');
-            }
+            var keyType = innerType.Replace("List<", "").Replace("System.Collections.Generic.List<", "").TrimEnd('>');
             sb.AppendLine($"return new global::System.Collections.Generic.List<{keyType}>();");
         }
         else
@@ -3148,21 +2531,7 @@ public class CodeGenerationService
         });
         var valuesClause = string.Join(", ", paramPlaceholders);
 
-        // 🔍 DEBUG: Add comment showing what properties were found
-        if (properties.Count == 0)
-        {
-            // 🔴 CRITICAL ERROR: No properties matched!
-            var errorMsg = $"CRITICAL: No properties matched for batch insert! " +
-                          $"Entity: {entityType.Name}, " +
-                          $"Specified columns: [{string.Join(", ", specifiedColumns ?? new List<string>())}], " +
-                          $"Available properties: [{string.Join(", ", allProperties.Select(p => $"{p.Name}=>{SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)}"))}]";
-            throw new InvalidOperationException(errorMsg);
-        }
-
-        sb.AppendLine($"// ✓ Matched {properties.Count} properties: {string.Join(", ", properties.Select(p => p.Name))}");
-
-        // Use string concatenation to avoid interpolation issues
-        sb.AppendLine("__valuesClauses__.Add($\"(" + valuesClause + ")\");");
+        sb.AppendLine($"__valuesClauses__.Add($\"({valuesClause})\");");
         sb.AppendLine("__itemIndex__++;");
         sb.PopIndent();
         sb.AppendLine("}");
@@ -3171,25 +2540,9 @@ public class CodeGenerationService
         sb.AppendLine("var __values__ = string.Join(\", \", __valuesClauses__);");
         sb.AppendLine();
 
-        // Replace marker in SQL - escape quotes for verbatim string literal
-        var escapedBaseSql = baseSql.Replace("\"", "\"\"");
-        sb.AppendLine($"var __sql__ = @\"{escapedBaseSql}\";");
+        // Replace marker in SQL
+        sb.AppendLine($"var __sql__ = @\"{baseSql}\";");
         sb.AppendLine($"__sql__ = __sql__.Replace(\"{marker}{paramName}__\", __values__);");
-        
-        // For SQL Server and MySQL with ReturnInsertedId, append SELECT to the INSERT
-        if (hasReturnInsertedId && isListReturn)
-        {
-            var dbDialect = GetDatabaseDialect(classSymbol);
-            if (dbDialect == "SqlServer" || dbDialect == "1")
-            {
-                sb.AppendLine($"__sql__ += \"; SELECT CAST(SCOPE_IDENTITY() AS BIGINT)\";");
-            }
-            else if (dbDialect == "MySql" || dbDialect == "0")
-            {
-                sb.AppendLine($"__sql__ += \"; SELECT LAST_INSERT_ID()\";");
-            }
-        }
-        
         sb.AppendLine("__cmd__.CommandText = __sql__;");
         sb.AppendLine();
 
@@ -3231,69 +2584,38 @@ public class CodeGenerationService
         if (hasReturnInsertedId && isListReturn)
         {
             // For returning IDs, we need to retrieve them after insert
-            // Extract TKey from List<TKey> - handle both qualified and unqualified names
-            var keyType = innerType;
-            if (keyType.StartsWith("System.Collections.Generic.List<"))
-            {
-                keyType = keyType.Substring("System.Collections.Generic.List<".Length).TrimEnd('>');
-            }
-            else if (keyType.StartsWith("List<"))
-            {
-                keyType = keyType.Substring("List<".Length).TrimEnd('>');
-            }
-            
+            var keyType = innerType.Replace("List<", "").Replace("System.Collections.Generic.List<", "").TrimEnd('>');
             var dbDialect = GetDatabaseDialect(classSymbol);
 
-            if (dbDialect == "SqlServer" || dbDialect == "1" || dbDialect == "MySql" || dbDialect == "0")
+            sb.AppendLine($"// Execute and retrieve inserted IDs");
+            sb.AppendLine($"await __cmd__.ExecuteNonQueryAsync({cancellationTokenArg.TrimStart(',', ' ')});");
+            sb.AppendLine();
+
+            // Database-specific last insert ID retrieval
+            sb.AppendLine($"// Get last insert id (database-specific)");
+            sb.AppendLine($"__cmd__.Parameters.Clear();");
+
+            if (dbDialect == "SQLite" || dbDialect == "5")
             {
-                // SQL Server and MySQL: INSERT with appended SELECT
-                sb.AppendLine($"// Execute INSERT and retrieve last inserted ID ({(dbDialect == "SqlServer" || dbDialect == "1" ? "SQL Server" : "MySQL")})");
-                sb.AppendLine($"var __lastId__ = Convert.ToInt64(await __cmd__.ExecuteScalarAsync({cancellationTokenArg.TrimStart(',', ' ')}) ?? 0L);");
-                sb.AppendLine($"var __batchCount__ = __batch__.Count();");
-                
-                if (dbDialect == "MySql" || dbDialect == "0")
-                {
-                    // MySQL: LAST_INSERT_ID() returns the FIRST auto-increment ID of the batch
-                    sb.AppendLine($"var __firstId__ = __lastId__;");
-                }
-                else
-                {
-                    // SQL Server: SCOPE_IDENTITY() returns the LAST auto-increment ID of the batch
-                    sb.AppendLine($"var __firstId__ = __lastId__ - __batchCount__ + 1;");
-                }
+                sb.AppendLine($"__cmd__.CommandText = \"SELECT last_insert_rowid()\";");
+            }
+            else if (dbDialect == "MySql" || dbDialect == "0")
+            {
+                sb.AppendLine($"__cmd__.CommandText = \"SELECT LAST_INSERT_ID()\";");
+            }
+            else if (dbDialect == "SqlServer" || dbDialect == "3")
+            {
+                sb.AppendLine($"__cmd__.CommandText = \"SELECT SCOPE_IDENTITY()\";");
             }
             else
             {
-                // Other databases: Execute INSERT, then query last ID
-                sb.AppendLine($"// Execute and retrieve inserted IDs");
-                sb.AppendLine($"await __cmd__.ExecuteNonQueryAsync({cancellationTokenArg.TrimStart(',', ' ')});");
-                sb.AppendLine();
-
-                // Database-specific last insert ID retrieval
-                sb.AppendLine($"// Get last insert id (database-specific)");
-                sb.AppendLine($"__cmd__.Parameters.Clear();");
-
-                if (dbDialect == "SQLite" || dbDialect == "5")
-                {
-                    sb.AppendLine($"__cmd__.CommandText = \"SELECT last_insert_rowid()\";");
-                }
-                else if (dbDialect == "PostgreSql" || dbDialect == "2")
-                {
-                    // PostgreSQL should use RETURNING clause in the INSERT statement itself
-                    // For now, fall back to currval (requires knowing sequence name)
-                    sb.AppendLine($"__cmd__.CommandText = \"SELECT lastval()\";");
-                }
-                else
-                {
-                    // Default to SQLite
-                    sb.AppendLine($"__cmd__.CommandText = \"SELECT last_insert_rowid()\";");
-                }
-
-                sb.AppendLine($"var __lastId__ = Convert.ToInt64(await __cmd__.ExecuteScalarAsync({cancellationTokenArg.TrimStart(',', ' ')}) ?? 0L);");
-                sb.AppendLine($"var __batchCount__ = __batch__.Count();");
-                sb.AppendLine($"var __firstId__ = __lastId__ - __batchCount__ + 1;");
+                // Default to SQLite
+                sb.AppendLine($"__cmd__.CommandText = \"SELECT last_insert_rowid()\";");
             }
 
+            sb.AppendLine($"var __lastId__ = Convert.ToInt64(await __cmd__.ExecuteScalarAsync({cancellationTokenArg.TrimStart(',', ' ')}));");
+            sb.AppendLine($"var __batchCount__ = __batch__.Count();");
+            sb.AppendLine($"var __firstId__ = __lastId__ - __batchCount__ + 1;");
             sb.AppendLine($"for (long i = 0; i < __batchCount__; i++)");
             sb.AppendLine("{");
             sb.PushIndent();
@@ -3327,922 +2649,6 @@ public class CodeGenerationService
         // Close method body (PopIndent and closing brace)
         sb.PopIndent();
         sb.AppendLine("}");
-    }
-
-    /// <summary>
-    /// Generate batch UPDATE code with CASE WHEN logic
-    /// </summary>
-    private static void GenerateBatchUpdateCode(
-        IndentedStringBuilder sb,
-        string sql,
-        IMethodSymbol method,
-        INamedTypeSymbol? entityType,
-        string connectionName,
-        INamedTypeSymbol classSymbol,
-        SqlDefine dialect,
-        string cancellationTokenArg = "")
-    {
-        // Extract table name from marker
-        var marker = "__RUNTIME_BATCH_UPDATE_";
-        var startIndex = sql.IndexOf(marker);
-        if (startIndex < 0) return;
-
-        var endIndex = sql.IndexOf("__", startIndex + marker.Length);
-        var tableName = sql.Substring(startIndex + marker.Length, endIndex - startIndex - marker.Length);
-
-        // Find the entities parameter
-        var entitiesParam = method.Parameters.FirstOrDefault(p => 
-            SharedCodeGenerationUtilities.IsEnumerableParameter(p));
-        if (entitiesParam == null) return;
-
-        // Infer entity type from IEnumerable<T> parameter if not provided
-        if (entityType == null)
-        {
-            var paramType = entitiesParam.Type as INamedTypeSymbol;
-            if (paramType != null && paramType.TypeArguments.Length > 0)
-            {
-                entityType = paramType.TypeArguments[0] as INamedTypeSymbol;
-            }
-        }
-
-        if (entityType == null) return;
-
-        // Get properties to update (exclude Id)
-        var properties = entityType.GetMembers()
-            .OfType<IPropertySymbol>()
-            .Where(p => p.CanBeReferencedByName && p.GetMethod != null && 
-                       p.Name != "EqualityContract" && p.Name != "Id")
-            .ToList();
-
-        // Create command
-        sb.AppendLine($"__cmd__ = (global::System.Data.Common.DbCommand){connectionName}.CreateCommand();");
-        sb.AppendLine("if (Transaction != null)");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        sb.AppendLine("__cmd__.Transaction = Transaction;");
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.AppendLine();
-
-        sb.AppendLine($"int __totalAffected__ = 0;");
-        sb.AppendLine();
-
-        // Check for empty collection
-        sb.AppendLine($"if ({entitiesParam.Name} == null || !{entitiesParam.Name}.Any())");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        sb.AppendLine("__cmd__?.Dispose();");
-        sb.AppendLine("return 0;");
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.AppendLine();
-
-        // Build UPDATE with CASE WHEN for each column
-        sb.AppendLine("var __sqlBuilder__ = new global::System.Text.StringBuilder();");
-        sb.AppendLine($"__sqlBuilder__.Append(\"UPDATE {tableName} SET \");");
-        sb.AppendLine();
-
-        // Generate CASE WHEN for each property
-        sb.AppendLine($"// Generate CASE WHEN for each column");
-        sb.AppendLine($"var __setClauses__ = new global::System.Collections.Generic.List<string>();");
-        
-        foreach (var prop in properties)
-        {
-            var snakeName = SharedCodeGenerationUtilities.ConvertToSnakeCase(prop.Name);
-            
-            // For PostgreSQL, add ELSE clause to preserve type information and avoid type inference issues
-            if (dialect.DatabaseType == "PostgreSql")
-            {
-                sb.AppendLine($"__setClauses__.Add(\"{snakeName} = CASE \" + ");
-                sb.PushIndent();
-                sb.AppendLine($"string.Join(\" \", {entitiesParam.Name}.Select((e, i) => $\"WHEN id = @id{{i}} THEN @{snakeName}{{i}}\")) + ");
-                sb.AppendLine($"\" ELSE {snakeName} END\");");
-                sb.PopIndent();
-            }
-            else
-            {
-                sb.AppendLine($"__setClauses__.Add(\"{snakeName} = CASE \" + ");
-                sb.PushIndent();
-                sb.AppendLine($"string.Join(\" \", {entitiesParam.Name}.Select((e, i) => $\"WHEN id = @id{{i}} THEN @{snakeName}{{i}}\")) + ");
-                sb.AppendLine($"\" END\");");
-                sb.PopIndent();
-            }
-        }
-
-        sb.AppendLine();
-        sb.AppendLine("__sqlBuilder__.Append(string.Join(\", \", __setClauses__));");
-        sb.AppendLine();
-
-        // Add WHERE clause with all IDs
-        sb.AppendLine($"__sqlBuilder__.Append(\" WHERE id IN (\");");
-        sb.AppendLine($"__sqlBuilder__.Append(string.Join(\", \", {entitiesParam.Name}.Select((e, i) => $\"@id{{i}}\")));");
-        sb.AppendLine($"__sqlBuilder__.Append(\")\");");
-        sb.AppendLine();
-
-        sb.AppendLine("__cmd__.CommandText = __sqlBuilder__.ToString();");
-        sb.AppendLine();
-
-        // Bind parameters
-        sb.AppendLine($"int __index__ = 0;");
-        sb.AppendLine($"foreach (var __entity__ in {entitiesParam.Name})");
-        sb.AppendLine("{");
-        sb.PushIndent();
-
-        // Add Id parameter
-        sb.AppendLine("{");
-        sb.PushIndent();
-        sb.AppendLine("var __p__ = __cmd__.CreateParameter();");
-        sb.AppendLine("__p__.ParameterName = $\"@id{__index__}\";");
-        sb.AppendLine("__p__.Value = __entity__.Id;");
-        sb.AppendLine("__cmd__.Parameters.Add(__p__);");
-        sb.PopIndent();
-        sb.AppendLine("}");
-
-        // Add property parameters
-        foreach (var prop in properties)
-        {
-            var snakeName = SharedCodeGenerationUtilities.ConvertToSnakeCase(prop.Name);
-            sb.AppendLine("{");
-            sb.PushIndent();
-            sb.AppendLine("var __p__ = __cmd__.CreateParameter();");
-            sb.AppendLine($"__p__.ParameterName = $\"@{snakeName}{{__index__}}\";");
-            
-            // Handle nullable types
-            if (prop.Type.NullableAnnotation == NullableAnnotation.Annotated || 
-                prop.Type.IsReferenceType)
-            {
-                sb.AppendLine($"__p__.Value = __entity__.{prop.Name} ?? (object)global::System.DBNull.Value;");
-            }
-            else
-            {
-                sb.AppendLine($"__p__.Value = __entity__.{prop.Name};");
-            }
-            
-            sb.AppendLine("__cmd__.Parameters.Add(__p__);");
-            sb.PopIndent();
-            sb.AppendLine("}");
-        }
-
-        sb.AppendLine("__index__++;");
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.AppendLine();
-
-        // Execute
-        sb.AppendLine($"__totalAffected__ = await __cmd__.ExecuteNonQueryAsync({cancellationTokenArg.TrimStart(',', ' ')});");
-        sb.AppendLine();
-
-        // Dispose and return
-        sb.AppendLine("__cmd__?.Dispose();");
-        sb.AppendLine("return __totalAffected__;");
-
-        // Close method body
-        sb.PopIndent();
-        sb.AppendLine("}");
-    }
-
-    /// <summary>
-    /// Generate single entity UPSERT code (database-specific)
-    /// </summary>
-    private static void GenerateUpsertCode(
-        IndentedStringBuilder sb,
-        string sql,
-        IMethodSymbol method,
-        INamedTypeSymbol? entityType,
-        string connectionName,
-        INamedTypeSymbol classSymbol,
-        string cancellationTokenArg = "",
-        string dbDialect = "")
-    {
-        // Extract table name from marker
-        var marker = "__RUNTIME_UPSERT_";
-        var startIndex = sql.IndexOf(marker);
-        if (startIndex < 0) return;
-
-        var endIndex = sql.IndexOf("__", startIndex + marker.Length);
-        var tableName = sql.Substring(startIndex + marker.Length, endIndex - startIndex - marker.Length);
-
-        // Find the entity parameter
-        var entityParam = method.Parameters.FirstOrDefault(p => 
-            p.Type.Equals(entityType, SymbolEqualityComparer.Default));
-        if (entityParam == null) return;
-
-        if (entityType == null) return;
-
-        // Get all properties (including Id for upsert)
-        var properties = entityType.GetMembers()
-            .OfType<IPropertySymbol>()
-            .Where(p => p.CanBeReferencedByName && p.GetMethod != null && p.Name != "EqualityContract")
-            .ToList();
-
-        // Get properties excluding Id for UPDATE clause
-        var updateProperties = properties.Where(p => p.Name != "Id").ToList();
-
-        // Get dialect provider to properly quote column names
-        var dialectProvider = Core.DialectHelper.GetDialectProvider(Core.DialectHelper.GetDialectFromRepositoryFor(classSymbol));
-        
-        // Create command
-        sb.AppendLine($"__cmd__ = (global::System.Data.Common.DbCommand){connectionName}.CreateCommand();");
-        sb.AppendLine("if (Transaction != null)");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        sb.AppendLine("__cmd__.Transaction = Transaction;");
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.AppendLine();
-
-        // Build database-specific UPSERT SQL
-        sb.AppendLine($"// Database-specific UPSERT for {dbDialect}");
-        
-        if (dbDialect == "SqlServer")
-        {
-            // SQL Server uses MERGE statement
-            // MERGE INTO target USING (VALUES (...)) AS source (...) ON target.id = source.id
-            // WHEN MATCHED THEN UPDATE SET ...
-            // WHEN NOT MATCHED THEN INSERT (...) VALUES (...);
-            
-            var quotedColumnNames = string.Join(", ", properties.Select(p => 
-                dialectProvider.SqlDefine.WrapColumn(SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name))));
-            
-            var paramPlaceholders = string.Join(", ", properties.Select(p =>
-            {
-                var snakeName = SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name);
-                return $"@{snakeName}";
-            }));
-            
-            // Build UPDATE SET clause (exclude Id)
-            var updateSetClauses = string.Join(", ", updateProperties.Select(p =>
-            {
-                var snakeName = SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name);
-                var quotedColumn = dialectProvider.SqlDefine.WrapColumn(snakeName);
-                return $"{quotedColumn} = source.{quotedColumn}";
-            }));
-            
-            // Build INSERT column list and VALUES list (exclude Id for IDENTITY columns)
-            var insertColumns = string.Join(", ", updateProperties.Select(p =>
-            {
-                var snakeName = SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name);
-                return dialectProvider.SqlDefine.WrapColumn(snakeName);
-            }));
-            
-            var insertValues = string.Join(", ", updateProperties.Select(p =>
-            {
-                var snakeName = SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name);
-                var quotedColumn = dialectProvider.SqlDefine.WrapColumn(snakeName);
-                return $"source.{quotedColumn}";
-            }));
-            
-            var escapedColumnNames = quotedColumnNames.Replace("\"", "\"\"");
-            var escapedUpdateSet = updateSetClauses.Replace("\"", "\"\"");
-            var escapedInsertColumns = insertColumns.Replace("\"", "\"\"");
-            var escapedInsertValues = insertValues.Replace("\"", "\"\"");
-            
-            sb.AppendLine($"__cmd__.CommandText = @\"MERGE INTO {tableName} AS target USING (VALUES ({paramPlaceholders})) AS source ({escapedColumnNames}) ON target.[id] = source.[id] WHEN MATCHED THEN UPDATE SET {escapedUpdateSet} WHEN NOT MATCHED THEN INSERT ({escapedInsertColumns}) VALUES ({escapedInsertValues});\";");
-        }
-        else
-        {
-            // For other databases, this shouldn't be reached as they use template-based upsert
-            sb.AppendLine($"__cmd__.CommandText = \"{sql}\";");
-        }
-        
-        sb.AppendLine();
-
-        // Bind parameters
-        foreach (var prop in properties)
-        {
-            var snakeName = SharedCodeGenerationUtilities.ConvertToSnakeCase(prop.Name);
-            sb.AppendLine("{");
-            sb.PushIndent();
-            sb.AppendLine("var __p__ = __cmd__.CreateParameter();");
-            sb.AppendLine($"__p__.ParameterName = \"@{snakeName}\";");
-            
-            if (prop.Type.NullableAnnotation == NullableAnnotation.Annotated || 
-                prop.Type.IsReferenceType)
-            {
-                sb.AppendLine($"__p__.Value = {entityParam.Name}.{prop.Name} ?? (object)global::System.DBNull.Value;");
-            }
-            else
-            {
-                sb.AppendLine($"__p__.Value = {entityParam.Name}.{prop.Name};");
-            }
-            
-            sb.AppendLine("__cmd__.Parameters.Add(__p__);");
-            sb.PopIndent();
-            sb.AppendLine("}");
-        }
-        sb.AppendLine();
-
-        // Execute
-        sb.AppendLine($"__result__ = await __cmd__.ExecuteNonQueryAsync({cancellationTokenArg.TrimStart(',', ' ')});");
-        sb.AppendLine();
-
-        // Dispose and return
-        sb.AppendLine("__cmd__?.Dispose();");
-        sb.AppendLine("return __result__;");
-
-        // Close method body
-        sb.PopIndent();
-        sb.AppendLine("}");
-    }
-
-    /// <summary>
-    /// Generate batch UPSERT code (database-specific)
-    /// </summary>
-    private static void GenerateBatchUpsertCode(
-        IndentedStringBuilder sb,
-        string sql,
-        IMethodSymbol method,
-        INamedTypeSymbol? entityType,
-        string connectionName,
-        INamedTypeSymbol classSymbol,
-        string cancellationTokenArg = "",
-        string dbDialect = "")
-    {
-        // Extract table name from marker
-        var marker = "__RUNTIME_BATCH_UPSERT_";
-        var startIndex = sql.IndexOf(marker);
-        if (startIndex < 0) return;
-
-        var endIndex = sql.IndexOf("__", startIndex + marker.Length);
-        var tableName = sql.Substring(startIndex + marker.Length, endIndex - startIndex - marker.Length);
-
-        // Find the entities parameter
-        var entitiesParam = method.Parameters.FirstOrDefault(p => 
-            SharedCodeGenerationUtilities.IsEnumerableParameter(p));
-        if (entitiesParam == null) return;
-
-        // Infer entity type from IEnumerable<T> parameter if not provided
-        if (entityType == null)
-        {
-            var paramType = entitiesParam.Type as INamedTypeSymbol;
-            if (paramType != null && paramType.TypeArguments.Length > 0)
-            {
-                entityType = paramType.TypeArguments[0] as INamedTypeSymbol;
-            }
-        }
-
-        if (entityType == null) return;
-
-        // Get all properties (including Id for upsert)
-        var properties = entityType.GetMembers()
-            .OfType<IPropertySymbol>()
-            .Where(p => p.CanBeReferencedByName && p.GetMethod != null && p.Name != "EqualityContract")
-            .ToList();
-
-        // Get properties excluding Id for UPDATE clause
-        var updateProperties = properties.Where(p => p.Name != "Id").ToList();
-
-        // Create command
-        sb.AppendLine($"__cmd__ = (global::System.Data.Common.DbCommand){connectionName}.CreateCommand();");
-        sb.AppendLine("if (Transaction != null)");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        sb.AppendLine("__cmd__.Transaction = Transaction;");
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.AppendLine();
-
-        sb.AppendLine($"int __totalAffected__ = 0;");
-        sb.AppendLine();
-
-        // Check for empty collection
-        sb.AppendLine($"if ({entitiesParam.Name} == null || !{entitiesParam.Name}.Any())");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        sb.AppendLine("__cmd__?.Dispose();");
-        sb.AppendLine("return 0;");
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.AppendLine();
-
-        // Chunk batches
-        sb.AppendLine($"var __batches__ = {entitiesParam.Name}.Chunk(500);");
-        sb.AppendLine();
-
-        sb.AppendLine("foreach (var __batch__ in __batches__)");
-        sb.AppendLine("{");
-        sb.PushIndent();
-
-        sb.AppendLine("__cmd__.Parameters.Clear();");
-        sb.AppendLine();
-
-        // Build VALUES clause
-        sb.AppendLine("var __valuesClauses__ = new global::System.Collections.Generic.List<string>();");
-        sb.AppendLine("int __itemIndex__ = 0;");
-        sb.AppendLine("foreach (var __item__ in __batch__)");
-        sb.AppendLine("{");
-        sb.PushIndent();
-
-        var paramPlaceholders = properties.Select(p =>
-        {
-            var snakeName = SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name);
-            return $"@{snakeName}{{__itemIndex__}}";
-        });
-        var valuesClause = string.Join(", ", paramPlaceholders);
-        sb.AppendLine($"__valuesClauses__.Add($\"({valuesClause})\");");
-        sb.AppendLine("__itemIndex__++;");
-
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.AppendLine();
-
-        sb.AppendLine("var __values__ = string.Join(\", \", __valuesClauses__);");
-        sb.AppendLine();
-
-        // Build database-specific UPSERT SQL
-        // Get dialect provider to properly quote column names
-        var dialectProvider = Core.DialectHelper.GetDialectProvider(Core.DialectHelper.GetDialectFromRepositoryFor(classSymbol));
-        var quotedColumnNames = string.Join(", ", properties.Select(p => 
-            dialectProvider.SqlDefine.WrapColumn(SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name))));
-        
-        // Generate database-specific UPSERT
-        sb.AppendLine($"// Database-specific UPSERT for {dbDialect}");
-        
-        // Build the SQL string - escape quotes for verbatim string literal by doubling them
-        // Note: For verbatim strings (@"..."), only double quotes need escaping, not backticks
-        var escapedColumnNames = quotedColumnNames.Replace("\"", "\"\"");
-        var upsertSql = $"INSERT INTO {tableName} ({escapedColumnNames}) VALUES __RUNTIME_BATCH_VALUES_{entitiesParam.Name}__";
-        
-        // Add conflict resolution based on dialect
-        if (dbDialect == "PostgreSql")
-        {
-            var updateSetClauses = string.Join(", ", updateProperties.Select(p =>
-            {
-                var snakeName = SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name);
-                var quotedColumn = dialectProvider.SqlDefine.WrapColumn(snakeName);
-                var escapedQuotedColumn = quotedColumn.Replace("\"", "\"\"");
-                return $"{escapedQuotedColumn} = EXCLUDED.{escapedQuotedColumn}";
-            }));
-            upsertSql += $" ON CONFLICT (id) DO UPDATE SET {updateSetClauses}";
-        }
-        else if (dbDialect == "MySql")
-        {
-            var updateSetClauses = string.Join(", ", updateProperties.Select(p =>
-            {
-                var snakeName = SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name);
-                var quotedColumn = dialectProvider.SqlDefine.WrapColumn(snakeName);
-                // For verbatim strings, only double quotes need escaping, not backticks
-                var escapedQuotedColumn = quotedColumn.Replace("\"", "\"\"");
-                return $"{escapedQuotedColumn} = VALUES({escapedQuotedColumn})";
-            }));
-            upsertSql += $" ON DUPLICATE KEY UPDATE {updateSetClauses}";
-        }
-        else if (dbDialect == "SQLite")
-        {
-            // SQLite uses INSERT OR REPLACE
-            upsertSql = $"INSERT OR REPLACE INTO {tableName} ({escapedColumnNames}) VALUES __RUNTIME_BATCH_VALUES_{entitiesParam.Name}__";
-        }
-        else if (dbDialect == "SqlServer")
-        {
-            // SQL Server uses MERGE statement
-            // MERGE INTO target USING (VALUES ...) AS source (...) ON ... WHEN MATCHED ... WHEN NOT MATCHED ...
-            
-            // Build UPDATE SET clause (exclude Id)
-            var updateSetClauses = string.Join(", ", updateProperties.Select(p =>
-            {
-                var snakeName = SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name);
-                var quotedColumn = dialectProvider.SqlDefine.WrapColumn(snakeName);
-                // For verbatim strings, only double quotes need escaping, not square brackets
-                var escapedQuotedColumn = quotedColumn.Replace("\"", "\"\"");
-                return $"{escapedQuotedColumn} = source.{escapedQuotedColumn}";
-            }));
-            
-            // Build INSERT column list and VALUES list (exclude Id for IDENTITY columns)
-            var insertColumns = string.Join(", ", updateProperties.Select(p =>
-            {
-                var snakeName = SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name);
-                var quotedColumn = dialectProvider.SqlDefine.WrapColumn(snakeName);
-                return quotedColumn.Replace("\"", "\"\"");
-            }));
-            
-            var insertValues = string.Join(", ", updateProperties.Select(p =>
-            {
-                var snakeName = SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name);
-                var quotedColumn = dialectProvider.SqlDefine.WrapColumn(snakeName);
-                return $"source.{quotedColumn.Replace("\"", "\"\"")}";
-            }));
-            
-            upsertSql = $"MERGE INTO {tableName} AS target USING (VALUES __RUNTIME_BATCH_VALUES_{entitiesParam.Name}__) AS source ({escapedColumnNames}) ON target.[id] = source.[id] WHEN MATCHED THEN UPDATE SET {updateSetClauses} WHEN NOT MATCHED THEN INSERT ({insertColumns}) VALUES ({insertValues});";
-        }
-        
-        // Generate the code that builds the SQL at runtime
-        sb.AppendLine($"var __sql__ = @\"{upsertSql}\";");
-        sb.AppendLine($"__sql__ = __sql__.Replace(\"__RUNTIME_BATCH_VALUES_{entitiesParam.Name}__\", __values__);");
-        sb.AppendLine("__cmd__.CommandText = __sql__;");
-        sb.AppendLine();
-
-        // Bind parameters
-        sb.AppendLine("__itemIndex__ = 0;");
-        sb.AppendLine("foreach (var __item__ in __batch__)");
-        sb.AppendLine("{");
-        sb.PushIndent();
-
-        foreach (var prop in properties)
-        {
-            var snakeName = SharedCodeGenerationUtilities.ConvertToSnakeCase(prop.Name);
-            sb.AppendLine("{");
-            sb.PushIndent();
-            sb.AppendLine("var __p__ = __cmd__.CreateParameter();");
-            sb.AppendLine($"__p__.ParameterName = $\"@{snakeName}{{__itemIndex__}}\";");
-            
-            if (prop.Type.NullableAnnotation == NullableAnnotation.Annotated || 
-                prop.Type.IsReferenceType)
-            {
-                sb.AppendLine($"__p__.Value = __item__.{prop.Name} ?? (object)global::System.DBNull.Value;");
-            }
-            else
-            {
-                sb.AppendLine($"__p__.Value = __item__.{prop.Name};");
-            }
-            
-            sb.AppendLine("__cmd__.Parameters.Add(__p__);");
-            sb.PopIndent();
-            sb.AppendLine("}");
-        }
-
-        sb.AppendLine("__itemIndex__++;");
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.AppendLine();
-
-        // Execute
-        sb.AppendLine($"__totalAffected__ += await __cmd__.ExecuteNonQueryAsync({cancellationTokenArg.TrimStart(',', ' ')});");
-
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.AppendLine();
-
-        // Dispose and return
-        sb.AppendLine("__cmd__?.Dispose();");
-        sb.AppendLine("return __totalAffected__;");
-
-        // Close method body
-        sb.PopIndent();
-        sb.AppendLine("}");
-    }
-
-    /// <summary>
-    /// Generate batch EXISTS code
-    /// </summary>
-    private static void GenerateBatchExistsCode(
-        IndentedStringBuilder sb,
-        string sql,
-        IMethodSymbol method,
-        string connectionName,
-        INamedTypeSymbol classSymbol,
-        string cancellationTokenArg = "")
-    {
-        // Find the ids parameter
-        var idsParam = method.Parameters.FirstOrDefault(p => 
-            p.Name == "ids" && SharedCodeGenerationUtilities.IsEnumerableParameter(p));
-        if (idsParam == null) return;
-
-        // Get table name from method's containing type (repository)
-        var repositoryForAttr = classSymbol?.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.Name == "RepositoryForAttribute" || a.AttributeClass?.Name == "RepositoryFor");
-        
-        string tableName = "users"; // Default fallback
-        if (repositoryForAttr != null)
-        {
-            // Try to extract entity type from RepositoryFor attribute
-            INamedTypeSymbol? entityType = null;
-            if (repositoryForAttr.AttributeClass is INamedTypeSymbol attrClass && attrClass.IsGenericType)
-            {
-                // Generic version: RepositoryFor<TService>
-                var typeArg = attrClass.TypeArguments.FirstOrDefault();
-                if (typeArg is INamedTypeSymbol serviceType && serviceType.IsGenericType)
-                {
-                    // Extract TEntity from ICrudRepository<TEntity, TKey> or IBatchRepository<TEntity, TKey>
-                    entityType = serviceType.TypeArguments.FirstOrDefault() as INamedTypeSymbol;
-                }
-            }
-            else if (repositoryForAttr.ConstructorArguments.Length > 0)
-            {
-                // Non-generic version: RepositoryFor(typeof(TService))
-                var typeArg = repositoryForAttr.ConstructorArguments[0];
-                if (typeArg.Value is INamedTypeSymbol serviceType && serviceType.IsGenericType)
-                {
-                    // Extract TEntity from ICrudRepository<TEntity, TKey> or IBatchRepository<TEntity, TKey>
-                    entityType = serviceType.TypeArguments.FirstOrDefault() as INamedTypeSymbol;
-                }
-            }
-            
-            if (entityType != null)
-            {
-                // Check for [TableName] attribute first
-                var tableNameAttr = entityType.GetAttributes()
-                    .FirstOrDefault(a => a.AttributeClass?.Name == "TableNameAttribute" || a.AttributeClass?.Name == "TableName");
-                if (tableNameAttr != null && tableNameAttr.ConstructorArguments.Length > 0)
-                {
-                    tableName = tableNameAttr.ConstructorArguments[0].Value?.ToString() ?? SharedCodeGenerationUtilities.ConvertToSnakeCase(entityType.Name);
-                }
-                else
-                {
-                    tableName = SharedCodeGenerationUtilities.ConvertToSnakeCase(entityType.Name);
-                }
-            }
-        }
-
-        // Create command
-        sb.AppendLine($"__cmd__ = (global::System.Data.Common.DbCommand){connectionName}.CreateCommand();");
-        sb.AppendLine("if (Transaction != null)");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        sb.AppendLine("__cmd__.Transaction = Transaction;");
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.AppendLine();
-
-        sb.AppendLine($"__result__ = new global::System.Collections.Generic.List<bool>();");
-        sb.AppendLine();
-
-        // Check for empty collection
-        sb.AppendLine($"if ({idsParam.Name} == null || !{idsParam.Name}.Any())");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        sb.AppendLine("__cmd__?.Dispose();");
-        sb.AppendLine("return __result__;");
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.AppendLine();
-
-        // For each ID, check if it exists
-        sb.AppendLine($"foreach (var __id__ in {idsParam.Name})");
-        sb.AppendLine("{");
-        sb.PushIndent();
-
-        sb.AppendLine("__cmd__.Parameters.Clear();");
-        sb.AppendLine($"__cmd__.CommandText = \"SELECT COUNT(*) FROM {tableName} WHERE id = @id\";");
-        sb.AppendLine();
-
-        sb.AppendLine("var __p__ = __cmd__.CreateParameter();");
-        sb.AppendLine("__p__.ParameterName = \"@id\";");
-        sb.AppendLine("__p__.Value = __id__;");
-        sb.AppendLine("__cmd__.Parameters.Add(__p__);");
-        sb.AppendLine();
-
-        sb.AppendLine($"var __count__ = Convert.ToInt32(await __cmd__.ExecuteScalarAsync({cancellationTokenArg.TrimStart(',', ' ')}));");
-        sb.AppendLine("__result__.Add(__count__ > 0);");
-
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.AppendLine();
-
-        // Dispose and return
-        sb.AppendLine("__cmd__?.Dispose();");
-        sb.AppendLine("return __result__;");
-
-        // Close method body
-        sb.PopIndent();
-        sb.AppendLine("}");
-    }
-
-    /// <summary>
-    /// Generate GET PAGE code (COUNT + SELECT)
-    /// </summary>
-    private static void GenerateGetPageCode(
-        IndentedStringBuilder sb,
-        string sql,
-        IMethodSymbol method,
-        INamedTypeSymbol? entityType,
-        string connectionName,
-        INamedTypeSymbol classSymbol,
-        string cancellationTokenArg = "")
-    {
-        // Extract table name from marker
-        var marker = "__RUNTIME_GET_PAGE_";
-        var startIndex = sql.IndexOf(marker);
-        if (startIndex < 0) return;
-
-        var endIndex = sql.IndexOf("__", startIndex + marker.Length);
-        var tableName = sql.Substring(startIndex + marker.Length, endIndex - startIndex - marker.Length);
-
-        // Extract entity type from method return type if not provided
-        // GetPageAsync returns Task<PagedResult<TEntity>>
-        if (entityType == null && method.ReturnType is INamedTypeSymbol returnType)
-        {
-            // Extract TEntity from Task<PagedResult<TEntity>>
-            if (returnType.Name == "Task" && returnType.TypeArguments.Length > 0)
-            {
-                var pagedResultType = returnType.TypeArguments[0] as INamedTypeSymbol;
-                if (pagedResultType != null && pagedResultType.Name == "PagedResult" && pagedResultType.TypeArguments.Length > 0)
-                {
-                    entityType = pagedResultType.TypeArguments[0] as INamedTypeSymbol;
-                }
-            }
-        }
-
-        // Find parameters
-        var pageNumberParam = method.Parameters.FirstOrDefault(p => p.Name == "pageNumber");
-        var pageSizeParam = method.Parameters.FirstOrDefault(p => p.Name == "pageSize");
-        var orderByParam = method.Parameters.FirstOrDefault(p => p.Name == "orderBy");
-
-        if (pageNumberParam == null || pageSizeParam == null)
-        {
-            sb.AppendLine("// Error: GetPageAsync requires pageNumber and pageSize parameters");
-            sb.AppendLine("return default;");
-            sb.PopIndent();
-            sb.AppendLine("}");
-            return;
-        }
-
-        // Get database dialect for proper SQL syntax
-        var dbDialect = GetDatabaseDialect(classSymbol);
-        var isPostgreSQL = dbDialect == "PostgreSql" || dbDialect == "1";
-        var isSqlServer = dbDialect == "SqlServer" || dbDialect == "2";
-
-        // Create command
-        sb.AppendLine($"__cmd__ = (global::System.Data.Common.DbCommand){connectionName}.CreateCommand();");
-        sb.AppendLine("if (Transaction != null)");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        sb.AppendLine("__cmd__.Transaction = Transaction;");
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.AppendLine();
-
-        // Calculate offset from pageNumber and pageSize
-        sb.AppendLine($"// Calculate offset from pageNumber and pageSize");
-        sb.AppendLine($"var __offset__ = ({pageNumberParam.Name} - 1) * {pageSizeParam.Name};");
-        sb.AppendLine();
-
-        // Execute COUNT query
-        sb.AppendLine($"// Step 1: Get total count");
-        sb.AppendLine($"__cmd__.CommandText = \"SELECT COUNT(*) FROM {tableName}\";");
-        sb.AppendLine($"var __totalCount__ = Convert.ToInt64(await __cmd__.ExecuteScalarAsync({cancellationTokenArg.TrimStart(',', ' ')}));");
-        sb.AppendLine();
-
-        // Build SELECT query with proper ORDER BY and pagination
-        sb.AppendLine($"// Step 2: Get page data");
-        
-        // Get columns from entity type
-        var columns = "*";
-        if (entityType != null)
-        {
-            var properties = entityType.GetMembers()
-                .OfType<IPropertySymbol>()
-                .Where(p => p.CanBeReferencedByName && p.GetMethod != null && p.Name != "EqualityContract" && !p.IsImplicitlyDeclared)
-                .ToList();
-            
-            if (properties.Any())
-            {
-                columns = string.Join(", ", properties.Select(p => SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)));
-            }
-        }
-
-        // Build ORDER BY clause
-        if (orderByParam != null)
-        {
-            sb.AppendLine($"var __orderByClause__ = string.IsNullOrWhiteSpace({orderByParam.Name}) ? \"id\" : {orderByParam.Name};");
-        }
-        else
-        {
-            sb.AppendLine($"var __orderByClause__ = \"id\";");
-        }
-
-        // Build SQL based on dialect
-        if (isSqlServer)
-        {
-            // SQL Server uses OFFSET...FETCH
-            sb.AppendLine($"__cmd__.CommandText = $\"SELECT {columns} FROM {tableName} ORDER BY {{__orderByClause__}} OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY\";");
-        }
-        else
-        {
-            // MySQL, PostgreSQL, SQLite use LIMIT...OFFSET
-            sb.AppendLine($"__cmd__.CommandText = $\"SELECT {columns} FROM {tableName} ORDER BY {{__orderByClause__}} LIMIT @limit OFFSET @offset\";");
-        }
-        sb.AppendLine();
-
-        // Add parameters
-        sb.AppendLine("{");
-        sb.PushIndent();
-        sb.AppendLine("var __p__ = __cmd__.CreateParameter();");
-        sb.AppendLine("__p__.ParameterName = \"@offset\";");
-        sb.AppendLine("__p__.Value = __offset__;");
-        sb.AppendLine("__cmd__.Parameters.Add(__p__);");
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        sb.AppendLine("var __p__ = __cmd__.CreateParameter();");
-        sb.AppendLine("__p__.ParameterName = \"@limit\";");
-        sb.AppendLine($"__p__.Value = {pageSizeParam.Name};");
-        sb.AppendLine("__cmd__.Parameters.Add(__p__);");
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.AppendLine();
-
-        // Execute reader and map results
-        var entityTypeName = entityType?.ToDisplayString() ?? "object";
-        sb.AppendLine($"var __items__ = new global::System.Collections.Generic.List<{entityTypeName}>();");
-        sb.AppendLine($"using (var __reader__ = await __cmd__.ExecuteReaderAsync({cancellationTokenArg.TrimStart(',', ' ')}))");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        sb.AppendLine("while (await __reader__.ReadAsync())");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        
-        // Generate entity mapping code
-        if (entityType != null)
-        {
-            sb.AppendLine($"var __entity__ = new {entityTypeName}();");
-            
-            var properties = entityType.GetMembers()
-                .OfType<IPropertySymbol>()
-                .Where(p => p.CanBeReferencedByName && p.GetMethod != null && p.SetMethod != null && p.Name != "EqualityContract" && !p.IsImplicitlyDeclared)
-                .ToList();
-            
-            for (int i = 0; i < properties.Count; i++)
-            {
-                var prop = properties[i];
-                var columnName = SharedCodeGenerationUtilities.ConvertToSnakeCase(prop.Name);
-                var propType = prop.Type.ToDisplayString();
-                
-                // Handle nullable types
-                var isNullable = prop.Type.NullableAnnotation == NullableAnnotation.Annotated || 
-                                prop.Type.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T;
-                
-                // 🔧 Fix: Use Convert methods for numeric types to handle database type differences (e.g., SQLite Int64 → Int32)
-                var convertMethod = GetConvertMethod(prop.Type);
-                
-                if (isNullable)
-                {
-                    if (convertMethod != null)
-                    {
-                        sb.AppendLine($"__entity__.{prop.Name} = __reader__.IsDBNull({i}) ? default : ({propType}){convertMethod}(__reader__.GetValue({i}));");
-                    }
-                    else
-                    {
-                        sb.AppendLine($"__entity__.{prop.Name} = __reader__.IsDBNull({i}) ? default : ({propType})__reader__.GetValue({i});");
-                    }
-                }
-                else
-                {
-                    if (convertMethod != null)
-                    {
-                        sb.AppendLine($"__entity__.{prop.Name} = ({propType}){convertMethod}(__reader__.GetValue({i}));");
-                    }
-                    else
-                    {
-                        sb.AppendLine($"__entity__.{prop.Name} = ({propType})__reader__.GetValue({i});");
-                    }
-                }
-            }
-            
-            sb.AppendLine("__items__.Add(__entity__);");
-        }
-        
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.AppendLine();
-
-        // Calculate total pages
-        sb.AppendLine();
-
-        // Return PagedResult
-        sb.AppendLine("__cmd__?.Dispose();");
-        sb.AppendLine($"__result__ = new global::Sqlx.PagedResult<{entityTypeName}>");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        sb.AppendLine("Items = __items__,");
-        sb.AppendLine($"PageNumber = {pageNumberParam.Name},");
-        sb.AppendLine($"PageSize = {pageSizeParam.Name},");
-        sb.AppendLine("TotalCount = __totalCount__");
-        sb.PopIndent();
-        sb.AppendLine("};");
-        sb.AppendLine("return __result__;");
-
-        // Close method body
-        sb.PopIndent();
-        sb.AppendLine("}");
-    }
-
-    /// <summary>
-    /// Gets the appropriate Convert method for a type to handle database type differences.
-    /// For example, SQLite returns Int64 for integers, but C# entities may use Int32.
-    /// </summary>
-    private static string? GetConvertMethod(ITypeSymbol type)
-    {
-        // Get the underlying type if nullable
-        var underlyingType = type.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T
-            ? ((INamedTypeSymbol)type).TypeArguments[0]
-            : type;
-
-        return underlyingType.SpecialType switch
-        {
-            SpecialType.System_Int32 => "Convert.ToInt32",
-            SpecialType.System_Int64 => "Convert.ToInt64",
-            SpecialType.System_Int16 => "Convert.ToInt16",
-            SpecialType.System_Byte => "Convert.ToByte",
-            SpecialType.System_Boolean => "Convert.ToBoolean",
-            SpecialType.System_Decimal => "Convert.ToDecimal",
-            SpecialType.System_Double => "Convert.ToDouble",
-            SpecialType.System_Single => "Convert.ToSingle",
-            SpecialType.System_DateTime => "Convert.ToDateTime",
-            _ => null // For strings, objects, and other types, use direct cast
-        };
     }
 
     /// <summary>
@@ -4587,7 +2993,7 @@ public class CodeGenerationService
     {
         var properties = entityType.GetMembers()
             .OfType<IPropertySymbol>()
-            .Where(p => p.CanBeReferencedByName && p.GetMethod != null && p.Name != "EqualityContract" && !p.IsImplicitlyDeclared)
+            .Where(p => p.CanBeReferencedByName && p.GetMethod != null)
             .ToArray();
 
         if (properties.Length == 0) return;
@@ -4605,7 +3011,7 @@ public class CodeGenerationService
     {
         var properties = entityType.GetMembers()
             .OfType<IPropertySymbol>()
-            .Where(p => p.CanBeReferencedByName && p.GetMethod != null && p.Name != "EqualityContract" && !p.IsImplicitlyDeclared)
+            .Where(p => p.CanBeReferencedByName && p.GetMethod != null)
             .ToArray();
 
         if (properties.Length == 0) return;
@@ -4714,23 +3120,6 @@ public class CodeGenerationService
         }
 
         return false;
-    }
-
-    /// <summary>
-    /// Converts dialect string to SqlDefine instance
-    /// </summary>
-    private static SqlDefine ConvertDialectStringToSqlDefine(string dialectString)
-    {
-        return dialectString switch
-        {
-            "MySql" => SqlDefine.MySql,
-            "SqlServer" => SqlDefine.SqlServer,
-            "PostgreSql" => SqlDefine.PostgreSql,
-            "SQLite" => SqlDefine.SQLite,
-            "Oracle" => SqlDefine.Oracle,
-            "DB2" => SqlDefine.DB2,
-            _ => SqlDefine.SqlServer // Default fallback
-        };
     }
 
 }

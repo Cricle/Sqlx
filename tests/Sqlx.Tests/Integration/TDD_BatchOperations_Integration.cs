@@ -147,6 +147,15 @@ public class TDD_BatchOperations_Integration
         var logs = IntegrationTestHelpers.GenerateTestLogs(1000);
 
         // Act
+        var stopwatch = Stopwatch.StartNew();
         await logRepo.BatchInsertAsync(logs);
+        stopwatch.Stop();
+
+        // Assert
+        var avgTime = stopwatch.ElapsedMilliseconds / 1000.0;
+        Assert.IsTrue(avgTime < 1.0, $"平均每条记录应该小于1ms，实际: {avgTime:F4}ms");
+        
+        Console.WriteLine($"批量插入1000条记录耗时: {stopwatch.ElapsedMilliseconds}ms");
+        Console.WriteLine($"平均每条: {avgTime:F4}ms");
     }
 }

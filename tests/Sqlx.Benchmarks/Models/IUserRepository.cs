@@ -1,5 +1,6 @@
-using Sqlx.Annotations;
 using System.Data;
+using Sqlx.Annotations;
+using Sqlx.Benchmarks.Models;
 
 namespace Sqlx.Benchmarks.Models;
 
@@ -20,7 +21,7 @@ public interface IUserRepository
     [SqlTemplate("INSERT INTO users (name, email, age, is_active) VALUES (@name, @email, @age, @is_active)")]
     Task<int> InsertAsync(string name, string email, int age, bool is_active);
 
-    [SqlTemplate("INSERT INTO users (name, email, age, is_active) VALUES {{batch_values @users}}")]
+    [SqlTemplate("INSERT INTO users (name, email, age, is_active) VALUES {{values @users}}")]
     [BatchOperation(MaxBatchSize = 100)]
     Task<int> BatchInsertAsync(IEnumerable<User> users);
 

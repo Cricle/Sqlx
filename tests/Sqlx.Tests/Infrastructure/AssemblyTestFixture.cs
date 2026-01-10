@@ -6,243 +6,114 @@
 
 using System;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Testcontainers.MySql;
 using Testcontainers.PostgreSql;
 using Testcontainers.MsSql;
+using Xunit;
 
 namespace Sqlx.Tests.Infrastructure;
 
 /// <summary>
-/// Assembly级别的测试固件，用于管理所有测试的共享资源
-/// 实现单例容器模式：每种数据库只启动一个容器，所有测试共享
-/// 每个测试类使用独立的数据库名称来保证隔离
+/// Assembly-level test fixture for managing shared database containers
+/// Containers are started once per test assembly and shared across all tests
 /// </summary>
-[TestClass]
-public static class AssemblyTestFixture
+public class AssemblyTestFixture : IAsyncLifetime
 {
-    private static MySqlContainer? _sharedMySqlContainer;
-    private static PostgreSqlContainer? _sharedPostgreSqlContainer;
-    private static MsSqlContainer? _sharedMsSqlContainer;
-
-    private static bool _isInitialized = false;
-    private static readonly object _initLock = new object();
-    private static readonly object _mysqlLock = new object();
-    private static readonly object _postgresLock = new object();
-    private static readonly object _sqlserverLock = new object();
+    /// <summary>
+    /// Shared MySQL container instance
+    /// </summary>
+    public static MySqlContainer? MySqlContainer { get; private set; }
 
     /// <summary>
-    /// Assembly级别初始化 - 按需启动数据库容器（懒加载）
+    /// Shared PostgreSQL container instance
     /// </summary>
-    [AssemblyInitialize]
-    public static void AssemblyInitialize(TestContext context)
-    {
-        lock (_initLock)
-        {
-            if (_isInitialized)
-                return;
-            _isInitialized = true;
-        }
-
-        context.WriteLine("🚀 Assembly initialized - containers will start on demand");
-    }
+    public static PostgreSqlContainer? PostgreSqlContainer { get; private set; }
 
     /// <summary>
-    /// Assembly级别清理 - 停止并清理所有容器
+    /// Shared SQL Server container instance
     /// </summary>
-    [AssemblyCleanup]
-    public static void AssemblyCleanup()
-    {
-        Console.WriteLine("🧹 Cleaning up shared database containers...");
+    public static MsSqlContainer? MsSqlContainer { get; private set; }
 
-        // Cleanup E2E test shared connections first
-        try
-        {
-            Sqlx.Tests.E2E.PredefinedInterfacesE2ETestBase.CleanupSharedConnections();
-            Console.WriteLine("✅ PredefinedInterfaces E2E test connections cleaned up");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"⚠️ Error cleaning up PredefinedInterfaces E2E connections: {ex.Message}");
-        }
+    /// <summary>
+    /// Initialize containers before any tests run
+    /// </summary>
+    public async Task InitializeAsync()
+    {
+        Console.WriteLine("🚀 Starting database containers...");
 
         try
         {
-            Sqlx.Tests.E2E.E2ETestBase.CleanupSharedConnections();
-            Console.WriteLine("✅ E2E_FullCoverage test connections cleaned up");
+            // Start MySQL container
+            MySqlContainer = new MySqlBuilder()
+                .WithImage("mysql:8.0")
+                .WithDatabase("testdb")
+                .WithUsername("testuser")
+                .WithPassword("testpass")
+                .Build();
+
+            // Start PostgreSQL container
+            PostgreSqlContainer = new PostgreSqlBuilder()
+                .WithImage("postgres:15")
+                .WithDatabase("testdb")
+                .WithUsername("testuser")
+                .WithPassword("testpass")
+                .Build();
+
+            // Start SQL Server container
+            MsSqlContainer = new MsSqlBuilder()
+                .WithImage("mcr.microsoft.com/mssql/server:2022-latest")
+                .WithPassword("YourStrong@Passw0rd")
+                .Build();
+
+            // Start all containers in parallel
+            await Task.WhenAll(
+                MySqlContainer.StartAsync(),
+                PostgreSqlContainer.StartAsync(),
+                MsSqlContainer.StartAsync()
+            );
+
+            Console.WriteLine("✅ All database containers started successfully");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"⚠️ Error cleaning up E2E_FullCoverage connections: {ex.Message}");
-        }
-
-        var tasks = new System.Collections.Generic.List<Task>();
-
-        if (_sharedMySqlContainer != null)
-        {
-            tasks.Add(Task.Run(async () =>
-            {
-                try
-                {
-                    await _sharedMySqlContainer.StopAsync();
-                    await _sharedMySqlContainer.DisposeAsync();
-                    Console.WriteLine("✅ MySQL container stopped");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"⚠️ Error stopping MySQL container: {ex.Message}");
-                }
-            }));
-        }
-
-        if (_sharedPostgreSqlContainer != null)
-        {
-            tasks.Add(Task.Run(async () =>
-            {
-                try
-                {
-                    await _sharedPostgreSqlContainer.StopAsync();
-                    await _sharedPostgreSqlContainer.DisposeAsync();
-                    Console.WriteLine("✅ PostgreSQL container stopped");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"⚠️ Error stopping PostgreSQL container: {ex.Message}");
-                }
-            }));
-        }
-
-        if (_sharedMsSqlContainer != null)
-        {
-            tasks.Add(Task.Run(async () =>
-            {
-                try
-                {
-                    await _sharedMsSqlContainer.StopAsync();
-                    await _sharedMsSqlContainer.DisposeAsync();
-                    Console.WriteLine("✅ SQL Server container stopped");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"⚠️ Error stopping SQL Server container: {ex.Message}");
-                }
-            }));
-        }
-
-        if (tasks.Count > 0)
-        {
-            Task.WhenAll(tasks).GetAwaiter().GetResult();
-        }
-        
-        Console.WriteLine("✅ All containers cleaned up");
-    }
-
-    // ==================== 容器访问器（懒加载）====================
-
-    public static MySqlContainer? MySqlContainer
-    {
-        get
-        {
-            if (_sharedMySqlContainer == null)
-            {
-                lock (_mysqlLock)
-                {
-                    if (_sharedMySqlContainer == null)
-                    {
-                        try
-                        {
-                            Console.WriteLine("🐬 Starting MySQL container on demand...");
-                            var container = new MySqlBuilder()
-                                .WithImage("mysql:8.3")
-                                .WithUsername("root")
-                                .WithPassword("test_password_123")
-                                .WithPortBinding(3306, true)
-                                .Build();
-
-                            container.StartAsync().GetAwaiter().GetResult();
-                            _sharedMySqlContainer = container;
-                            Console.WriteLine($"✅ MySQL container started at {container.Hostname}:{container.GetMappedPublicPort(3306)}");
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"❌ Failed to start MySQL container: {ex.Message}");
-                            return null;
-                        }
-                    }
-                }
-            }
-            return _sharedMySqlContainer;
+            Console.WriteLine($"❌ Failed to start database containers: {ex.Message}");
+            throw;
         }
     }
 
-    public static PostgreSqlContainer? PostgreSqlContainer
+    /// <summary>
+    /// Cleanup containers after all tests complete
+    /// </summary>
+    public async Task DisposeAsync()
     {
-        get
-        {
-            if (_sharedPostgreSqlContainer == null)
-            {
-                lock (_postgresLock)
-                {
-                    if (_sharedPostgreSqlContainer == null)
-                    {
-                        try
-                        {
-                            Console.WriteLine("🐘 Starting PostgreSQL container on demand...");
-                            var container = new PostgreSqlBuilder()
-                                .WithImage("postgres:16")
-                                .WithUsername("postgres")
-                                .WithPassword("test_password_123")
-                                .WithPortBinding(5432, true)
-                                .Build();
+        Console.WriteLine("🧹 Stopping database containers...");
 
-                            container.StartAsync().GetAwaiter().GetResult();
-                            _sharedPostgreSqlContainer = container;
-                            Console.WriteLine($"✅ PostgreSQL container started at {container.Hostname}:{container.GetMappedPublicPort(5432)}");
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"❌ Failed to start PostgreSQL container: {ex.Message}");
-                            return null;
-                        }
-                    }
-                }
+        try
+        {
+            var disposeTasks = new System.Collections.Generic.List<Task>();
+
+            if (MySqlContainer != null)
+            {
+                disposeTasks.Add(MySqlContainer.DisposeAsync().AsTask());
             }
-            return _sharedPostgreSqlContainer;
+
+            if (PostgreSqlContainer != null)
+            {
+                disposeTasks.Add(PostgreSqlContainer.DisposeAsync().AsTask());
+            }
+
+            if (MsSqlContainer != null)
+            {
+                disposeTasks.Add(MsSqlContainer.DisposeAsync().AsTask());
+            }
+
+            await Task.WhenAll(disposeTasks);
+
+            Console.WriteLine("✅ All database containers stopped successfully");
         }
-    }
-
-    public static MsSqlContainer? MsSqlContainer
-    {
-        get
+        catch (Exception ex)
         {
-            if (_sharedMsSqlContainer == null)
-            {
-                lock (_sqlserverLock)
-                {
-                    if (_sharedMsSqlContainer == null)
-                    {
-                        try
-                        {
-                            Console.WriteLine("🗄️ Starting SQL Server container on demand...");
-                            var container = new MsSqlBuilder()
-                                .WithImage("mcr.microsoft.com/mssql/server:2019-latest")
-                                .WithPassword("YourStrong@Passw0rd123")
-                                .WithPortBinding(1433, true)
-                                .Build();
-
-                            container.StartAsync().GetAwaiter().GetResult();
-                            _sharedMsSqlContainer = container;
-                            Console.WriteLine($"✅ SQL Server container started at {container.Hostname}:{container.GetMappedPublicPort(1433)}");
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"❌ Failed to start SQL Server container: {ex.Message}");
-                            return null;
-                        }
-                    }
-                }
-            }
-            return _sharedMsSqlContainer;
+            Console.WriteLine($"⚠️ Error stopping database containers: {ex.Message}");
         }
     }
 }

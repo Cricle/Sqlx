@@ -84,12 +84,12 @@ jobs:
           - database: mysql
             test-filter: "TestCategory=MySQL|TestCategory=CI"
             needs-db: true
-            db-image: mysql:8.3
+            db-image: mysql:8.0
             db-port: 3306
           - database: sqlserver
             test-filter: "TestCategory=SqlServer|TestCategory=CI"
             needs-db: true
-            db-image: mcr.microsoft.com/mssql/server:2022-latest
+            db-image: mcr.microsoft.com/mssql/server:2019-latest
             db-port: 1433
 
     services:

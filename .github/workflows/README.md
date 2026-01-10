@@ -54,9 +54,9 @@
 - **资源高效**: 充分利用 GitHub Actions 并发能力
 
 ### 镜像优化
-- PostgreSQL: 使用 `postgres:16-alpine` (更小更快)
-- MySQL: `mysql:8.3`
-- SQL Server: `mcr.microsoft.com/mssql/server:2022-latest`
+- **PostgreSQL**: `postgres:16-alpine` (Alpine Linux, 更小更快)
+- **MySQL**: `mysql:8.0` (稳定版本，优化配置)
+- **SQL Server**: `mcr.microsoft.com/mssql/server:2019-latest` (更轻量的2019版本)
 
 ### 健康检查优化
 - 检查间隔: 5s

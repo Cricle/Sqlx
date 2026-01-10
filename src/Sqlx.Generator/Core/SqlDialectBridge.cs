@@ -56,8 +56,8 @@ public readonly record struct SqlDefine(string ColumnLeft, string ColumnRight, s
     public static readonly SqlDefine MySql = new("`", "`", "'", "'", "@", "MySql");
     /// <summary>SQL Server数据库方言配置</summary>
     public static readonly SqlDefine SqlServer = new("[", "]", "'", "'", "@", "SqlServer");
-    /// <summary>PostgreSQL数据库方言配置 - Npgsql supports @paramName format</summary>
-    public static readonly SqlDefine PostgreSql = new("\"", "\"", "'", "'", "@", "PostgreSql");
+    /// <summary>PostgreSQL数据库方言配置 - Uses $paramName format</summary>
+    public static readonly SqlDefine PostgreSql = new("\"", "\"", "'", "'", "$", "PostgreSql");
     /// <summary>SQLite数据库方言配置 - Uses @ like SQL Server, distinguished by DbTypeName</summary>
     public static readonly SqlDefine SQLite = new("[", "]", "'", "'", "@", "SQLite");
     /// <summary>PostgreSQL数据库方言配置（别名）</summary>

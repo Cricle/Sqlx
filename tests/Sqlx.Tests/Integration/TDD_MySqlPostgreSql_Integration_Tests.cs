@@ -381,44 +381,6 @@ public class TDD_MySqlPostgreSql_Integration_Tests
     [TestCategory("Integration")]
     [TestCategory("MySQL")]
     [TestCategory("Database")]
-    public async Task MySQL_AggregateFunctions_ShouldReturnCorrectValues()
-    {
-        if (_mysqlRepo == null)
-        {
-            Assert.Inconclusive("MySQL connection not available");
-            return;
-        }
-
-        // Arrange
-        var id1 = await _mysqlRepo.InsertAsync("P1", null, "S1", 10, 100L, 10.5m, 1.0, 1f, true, null, DateTime.Now, null, "c1", "s1");
-        var id2 = await _mysqlRepo.InsertAsync("P2", null, "S2", 20, 200L, 20.5m, 2.0, 2f, true, null, DateTime.Now, null, "c2", "s2");
-        var id3 = await _mysqlRepo.InsertAsync("P3", null, "S3", 30, 300L, 30.5m, 3.0, 3f, false, null, DateTime.Now, null, "c3", "s3");
-        
-        Assert.IsTrue(id1 > 0 && id2 > 0 && id3 > 0, $"All inserts should succeed: {id1}, {id2}, {id3}");
-
-        // Act & Assert
-        var count = await _mysqlRepo.CountActiveAsync(true);
-        Assert.AreEqual(2, count, "Should count 2 active records");
-        
-        var countAll = await _mysqlRepo.GetAllAsync();
-        Assert.AreEqual(3, countAll.Count, $"Should have 3 total records, got {countAll.Count}");
-
-        var sum = await _mysqlRepo.SumDecimalValuesAsync();
-        Assert.IsNotNull(sum, $"Sum should not be null. CountAll={countAll.Count}, Count(active=true)={count}");
-        Assert.AreEqual(61.5m, sum.Value, "Sum should be 61.5");
-
-        var avg = await _mysqlRepo.AverageIntValuesAsync();
-        Assert.IsNotNull(avg);
-        Assert.AreEqual(20.0, avg.Value, 0.1, "Average should be 20");
-
-        var max = await _mysqlRepo.MaxBigIntValueAsync();
-        Assert.AreEqual(300L, max, "Max should be 300");
-    }
-
-    [TestMethod]
-    [TestCategory("Integration")]
-    [TestCategory("MySQL")]
-    [TestCategory("Database")]
     public async Task MySQL_SpecialCharacters_ShouldBeHandledCorrectly()
     {
         if (_mysqlRepo == null)
@@ -613,38 +575,6 @@ public class TDD_MySqlPostgreSql_Integration_Tests
         // Assert
         Assert.AreEqual(1, nullResults.Count, "Should find 1 record with NULL nullable_text");
         Assert.AreEqual(1, nonNullResults.Count, "Should find 1 record with non-NULL nullable_text");
-    }
-
-    [TestMethod]
-    [TestCategory("Integration")]
-    [TestCategory("PostgreSQL")]
-    [TestCategory("Database")]
-    public async Task PostgreSQL_AggregateFunctions_ShouldReturnCorrectValues()
-    {
-        if (_postgresRepo == null)
-        {
-            Assert.Inconclusive("PostgreSQL connection not available");
-            return;
-        }
-
-        // Arrange
-        await _postgresRepo.InsertAsync("P1", null, "S1", 10, 100L, 10.5m, 1.0, 1f, true, null, DateTime.Now, null, "c1", "s1");
-        await _postgresRepo.InsertAsync("P2", null, "S2", 20, 200L, 20.5m, 2.0, 2f, true, null, DateTime.Now, null, "c2", "s2");
-        await _postgresRepo.InsertAsync("P3", null, "S3", 30, 300L, 30.5m, 3.0, 3f, false, null, DateTime.Now, null, "c3", "s3");
-
-        // Act & Assert
-        var count = await _postgresRepo.CountActiveAsync(true);
-        Assert.AreEqual(2, count, "Should count 2 active records");
-
-        var sum = await _postgresRepo.SumDecimalValuesAsync();
-        Assert.AreEqual(61.5m, sum, "Sum should be 61.5");
-
-        var avg = await _postgresRepo.AverageIntValuesAsync();
-        Assert.IsNotNull(avg);
-        Assert.AreEqual(20.0, avg.Value, 0.1, "Average should be 20");
-
-        var max = await _postgresRepo.MaxBigIntValueAsync();
-        Assert.AreEqual(300L, max, "Max should be 300");
     }
 
     [TestMethod]

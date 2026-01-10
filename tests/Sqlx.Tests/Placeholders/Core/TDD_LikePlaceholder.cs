@@ -121,8 +121,8 @@ public class TDD_LikePlaceholder
         var result = _engine.ProcessTemplate(template, method, _productType, "products", dialect);
 
         // Assert
-        Assert.IsTrue(result.ProcessedSql.Contains("'%' || @searchTerm || '%'"), 
-            $"PostgreSQL应该使用||操作符和@参数前缀 (Npgsql supports @ format)。实际SQL: {result.ProcessedSql}");
+        Assert.IsTrue(result.ProcessedSql.Contains("'%' || $searchTerm || '%'"), 
+            $"PostgreSQL应该使用||操作符和$参数前缀。实际SQL: {result.ProcessedSql}");
     }
 
     [TestMethod]

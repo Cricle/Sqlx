@@ -4,11 +4,21 @@
 
 ---
 
+## 📊 项目状态
+
+- **版本**: v0.5.1
+- **测试**: 3,738 个测试全部通过
+- **覆盖率**: 88.6% (核心库)
+- **性能**: 比 Dapper 快 37%，内存少 48%
+- **数据库**: 支持 SQLite, PostgreSQL, MySQL, SQL Server
+
+---
+
 ## 🚀 快速开始
 
 ### 新手入门（推荐顺序）
 
-1. **[README](../README.md)** - 项目概览和核心优势
+1. **[README](../README.md)** - 项目概览和性能对比
 2. **[快速开始指南](QUICK_START_GUIDE.md)** ⭐ - 5 分钟上手 Sqlx
 3. **[AI 助手指南](../AI-VIEW.md)** ⭐ - 让 AI 学会 Sqlx（完整功能清单）
 
@@ -17,6 +27,7 @@
 4. **[占位符指南](PLACEHOLDERS.md)** - 70+ 占位符详解
 5. **[API 参考](API_REFERENCE.md)** - 完整 API 文档
 6. **[最佳实践](BEST_PRACTICES.md)** - 推荐的使用模式
+7. **[测试覆盖率报告](../FINAL_COVERAGE_REPORT.md)** - 详细的测试覆盖率分析
 
 ---
 

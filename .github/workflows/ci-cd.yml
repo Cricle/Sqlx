@@ -142,7 +142,7 @@ jobs:
                     --logger "console;verbosity=minimal" \
                     --logger "trx" \
                     --framework net9.0 \
-                    --settings .runsettings \
+                    --settings .runsettings.ci \
                     --results-directory ./TestResults
 
     - name: 📋 Test Summary

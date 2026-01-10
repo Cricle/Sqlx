@@ -1,18 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RunSettings>
   <RunConfiguration>
-    <!-- 并行测试执行 -->
+    <!-- 并行测试执行 - CI环境使用更多CPU -->
     <MaxCpuCount>0</MaxCpuCount>
-    <!-- CI环境测试超时时间（毫秒） -->
-    <TestSessionTimeout>1200000</TestSessionTimeout>
+    <!-- CI环境测试超时时间（毫秒） - 单个测试会话 -->
+    <TestSessionTimeout>900000</TestSessionTimeout>
   </RunConfiguration>
 
   <MSTest>
-    <!-- 并行执行测试 - 类级别并行，避免同一测试类的方法并发冲突 -->
+    <!-- 并行执行测试 - 方法级别并行以提高速度 -->
     <Parallelize>
       <Workers>0</Workers>
-      <Scope>ClassLevel</Scope>
+      <Scope>MethodLevel</Scope>
     </Parallelize>
+    <!-- 测试超时 - 单个测试方法 -->
+    <TestTimeout>60000</TestTimeout>
   </MSTest>
 
   <!-- CI环境：运行所有数据库方言的测试 -->

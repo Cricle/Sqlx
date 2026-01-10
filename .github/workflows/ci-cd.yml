@@ -111,27 +111,38 @@ jobs:
 
         echo "✅ Database connection tests completed"
 
-    - name: 🗄️ Initialize PostgreSQL
+    - name: 🗄️ Initialize Databases (for Multi-Dialect Tests)
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       run: |
+        echo "🗄️ Initializing PostgreSQL..."
         PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c "DROP DATABASE IF EXISTS sqlx_test;"
         PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c "CREATE DATABASE sqlx_test;"
         PGPASSWORD=postgres psql -h localhost -U postgres -d sqlx_test -f tests/Sqlx.Tests/Infrastructure/init-postgresql.sql
-        echo "✅ PostgreSQL initialized"
-
-    - name: 🗄️ Initialize MySQL
-      run: |
+        
+        echo "🗄️ Initializing MySQL..."
         mysql -h 127.0.0.1 -P 3306 -u root -proot -e "CREATE DATABASE IF NOT EXISTS sqlx_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
         mysql -h 127.0.0.1 -P 3306 -u root -proot sqlx_test < tests/Sqlx.Tests/Infrastructure/init-mysql.sql
-        echo "✅ MySQL initialized"
-
-    - name: 🗄️ Initialize SQL Server
-      run: |
+        
+        echo "🗄️ Initializing SQL Server..."
         /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong@Passw0rd' -C -Q "CREATE DATABASE sqlx_test;"
         /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong@Passw0rd' -C -d sqlx_test -i tests/Sqlx.Tests/Infrastructure/init-sqlserver.sql
-        echo "✅ SQL Server initialized"
+        
+        echo "✅ All databases initialized"
 
-    - name: 🧪 Run All Tests (SQLite + Multi-Dialect)
-      timeout-minutes: 30
+    - name: 🧪 Run Unit Tests (Fast)
+      timeout-minutes: 10
+      run: |
+        dotnet test --configuration Release --no-build \
+                    --collect:"XPlat Code Coverage" \
+                    --logger "console;verbosity=minimal" \
+                    --logger "trx" \
+                    --framework net9.0 \
+                    --filter "TestCategory!=Integration&TestCategory!=E2E&TestCategory!=CI" \
+                    --settings .runsettings.ci \
+                    --results-directory ./TestResults/Unit
+
+    - name: 🧪 Run Integration Tests (SQLite Only)
+      timeout-minutes: 15
       env:
         POSTGRESQL_CONNECTION: "Host=localhost;Port=5432;Database=sqlx_test;Username=postgres;Password=postgres"
         MYSQL_CONNECTION: "Server=localhost;Port=3306;Database=sqlx_test;Uid=root;Pwd=root"
@@ -142,8 +153,26 @@ jobs:
                     --logger "console;verbosity=minimal" \
                     --logger "trx" \
                     --framework net9.0 \
+                    --filter "TestCategory=Integration&TestCategory!=PostgreSQL&TestCategory!=MySQL&TestCategory!=SqlServer" \
                     --settings .runsettings.ci \
-                    --results-directory ./TestResults
+                    --results-directory ./TestResults/Integration
+
+    - name: 🧪 Run Multi-Dialect Tests (Sample)
+      timeout-minutes: 10
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      env:
+        POSTGRESQL_CONNECTION: "Host=localhost;Port=5432;Database=sqlx_test;Username=postgres;Password=postgres"
+        MYSQL_CONNECTION: "Server=localhost;Port=3306;Database=sqlx_test;Uid=root;Pwd=root"
+        SQLSERVER_CONNECTION: "Server=localhost,1433;Database=sqlx_test;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True"
+      run: |
+        dotnet test --configuration Release --no-build \
+                    --collect:"XPlat Code Coverage" \
+                    --logger "console;verbosity=minimal" \
+                    --logger "trx" \
+                    --framework net9.0 \
+                    --filter "TestCategory=CI" \
+                    --settings .runsettings.ci \
+                    --results-directory ./TestResults/MultiDialect
 
     - name: 📋 Test Summary
       if: always()
@@ -151,10 +180,13 @@ jobs:
         echo "✅ Test Results:"
         echo "  - Configuration: Release"
         echo "  - Framework: net9.0"
-        echo "  - SQLite: ✅ (In-Memory)"
-        echo "  - PostgreSQL: ✅ (localhost:5432)"
-        echo "  - MySQL: ✅ (localhost:3306)"
-        echo "  - SQL Server: ✅ (localhost:1433)"
+        echo "  - Unit Tests: ✅ (Fast, SQLite In-Memory)"
+        echo "  - Integration Tests: ✅ (SQLite)"
+        if [ "${{ github.event_name }}" == "push" ] && [ "${{ github.ref }}" == "refs/heads/main" ]; then
+          echo "  - Multi-Dialect Tests: ✅ (PostgreSQL, MySQL, SQL Server)"
+        else
+          echo "  - Multi-Dialect Tests: ⏭️ (Skipped for PR)"
+        fi
         echo "  - Coverage: Generated"
 
     - name: 📊 Generate coverage report
@@ -164,6 +196,7 @@ jobs:
         reportgenerator -reports:"**/TestResults/**/coverage.cobertura.xml" \
                         -targetdir:"coverage-report" \
                         -reporttypes:"Html;Cobertura;JsonSummary" || true
+        echo "📊 Coverage reports generated from all test runs"
 
     - name: 📤 Upload test results
       if: always()

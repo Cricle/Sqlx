@@ -207,12 +207,12 @@ jobs:
         files: "**/coverage.cobertura.xml"
         fail_ci_if_error: false
 
-  # 📦 打包
+  # 📦 Package NuGet packages (only on tag push)
   package:
     name: 📦 Package
     runs-on: ubuntu-latest
     needs: [unit-tests, integration-tests-sqlite, integration-tests-db]
-    if: github.event_name == 'push'
+    if: startsWith(github.ref, 'refs/tags/v')
 
     steps:
     - name: 📥 Checkout
@@ -237,13 +237,13 @@ jobs:
       with:
         name: nuget-packages
         path: ./artifacts/*.nupkg
-        retention-days: 7
+        retention-days: 30
 
-  # 🚀 发布到 NuGet (仅在创建 v* tag 时)
+  # 🚀 Publish to NuGet (only on v* tag push)
   publish:
     name: 🚀 Publish to NuGet
     runs-on: ubuntu-latest
-    needs: [unit-tests, integration-tests-sqlite, integration-tests-db]
+    needs: [package]
     if: startsWith(github.ref, 'refs/tags/v')
     environment: production
 

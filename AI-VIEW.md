@@ -11,6 +11,12 @@
 2. [三大核心组件](#三大核心组件)
 3. [完整功能清单](#完整功能清单)
 4. [代码模式](#代码模式)
+   - 模式 1: 基础 CRUD 仓储
+   - 模式 2: 统一方言架构（多数据库）
+   - 模式 3: 复杂查询
+   - 模式 4: 批量操作
+   - 模式 5: 事务支持
+   - 模式 6: SqlTemplate ADO.NET 集成 ⭐ 新功能
 5. [重要注意事项](#重要注意事项)
 6. [完整示例](#完整示例)
 7. [性能优化](#性能优化)
@@ -460,6 +466,77 @@ catch
     throw;
 }
 ```
+
+### 模式 6: SqlTemplate ADO.NET 集成 ⭐
+
+**新功能**: SqlTemplate 现在提供高性能 ADO.NET 扩展方法，可以直接执行 SQL 模板！
+
+```csharp
+// 1. 定义返回 SqlTemplate 的方法（用于调试和 ADO.NET 集成）
+public interface IUserRepository
+{
+    // 返回 SqlTemplate - 用于调试或 ADO.NET 执行
+    [SqlTemplate("SELECT COUNT(*) FROM {{table}} WHERE age >= @minAge")]
+    SqlTemplate GetCountSql(int minAge);
+    
+    // 返回数据 - 正常执行
+    [SqlTemplate("SELECT COUNT(*) FROM {{table}} WHERE age >= @minAge")]
+    Task<int> GetCountAsync(int minAge);
+}
+
+// 2. 使用 ADO.NET 扩展方法直接执行
+var repo = new UserRepository(connection);
+
+// 获取 SqlTemplate
+var template = repo.GetCountSql(18);
+
+// 方式 1: ExecuteScalar - 执行标量查询
+int count = await template.ExecuteScalarAsync<int>(connection);
+string? name = await template.ExecuteScalarAsync<string>(connection);
+
+// 方式 2: ExecuteNonQuery - 执行 INSERT/UPDATE/DELETE
+var insertTemplate = repo.InsertUserSql("Alice", 25);
+int rowsAffected = await insertTemplate.ExecuteNonQueryAsync(connection);
+
+// 方式 3: ExecuteReader - 获取数据读取器
+var queryTemplate = repo.GetUsersSql(18);
+using var reader = await queryTemplate.ExecuteReaderAsync(connection);
+while (await reader.ReadAsync())
+{
+    var id = reader.GetInt64(0);
+    var name = reader.GetString(1);
+    // 处理数据...
+}
+
+// 方式 4: CreateCommand - 完全控制
+using var cmd = template.CreateCommand(connection);
+cmd.CommandTimeout = 30;
+using var reader2 = await cmd.ExecuteReaderAsync();
+
+// 方式 5: 参数覆盖 - 重用模板
+var overrides = new Dictionary<string, object?> { ["@minAge"] = 30 };
+int count2 = await template.ExecuteScalarAsync<int>(connection, parameterOverrides: overrides);
+
+// 方式 6: 事务支持
+using var transaction = connection.BeginTransaction();
+await template.ExecuteNonQueryAsync(connection, transaction);
+transaction.Commit();
+```
+
+**性能特点**:
+- ⚡ **ValueTask<T>** - 零分配异步操作
+- 🔒 **线程安全** - 不可变设计，无状态扩展
+- 🗑️ **低 GC 压力** - 最小内存分配
+- 🐛 **调试友好** - 清晰的错误消息
+
+**性能对比** (真实 BenchmarkDotNet 数据):
+| 操作 | 手动 ADO.NET | SqlTemplate | 开销 |
+|------|-------------|-------------|------|
+| CreateCommand | 354.1 ns | 348.4 ns | -1.6% (更快!) |
+| ExecuteScalar<int> | 49.8 μs | 51.3 μs | +3.0% |
+| ExecuteScalar<string> | 4.32 μs | 4.76 μs | +10.2% |
+
+详细文档: [SqlTemplate ADO.NET Integration](docs/SQLTEMPLATE_ADONET_INTEGRATION.md)
 
 
 ---

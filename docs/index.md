@@ -48,6 +48,7 @@
 | [占位符指南](PLACEHOLDERS.md) | 70+ 占位符详解 | ⭐⭐ 进阶 |
 | [API 参考](API_REFERENCE.md) | 完整 API 文档 | ⭐⭐ 进阶 |
 | [SqlTemplate 返回类型](SQL_TEMPLATE_RETURN_TYPE.md) | SQL 调试功能 | ⭐⭐ 进阶 |
+| [SqlTemplate ADO.NET 集成](SQLTEMPLATE_ADONET_INTEGRATION.md) | 高性能 ADO.NET 扩展方法 ⭐ | ⭐⭐ 进阶 |
 | [占位符参考](PLACEHOLDER_REFERENCE.md) | 占位符速查表 | ⭐ 新手 |
 
 
@@ -122,6 +123,7 @@
 | [QUICK_START_GUIDE.md](QUICK_START_GUIDE.md) | 5 分钟快速开始指南 |
 | [README.md](README.md) | 文档中心首页 |
 | [SQL_TEMPLATE_RETURN_TYPE.md](SQL_TEMPLATE_RETURN_TYPE.md) | SqlTemplate 返回类型 - SQL 调试功能 |
+| [SQLTEMPLATE_ADONET_INTEGRATION.md](SQLTEMPLATE_ADONET_INTEGRATION.md) | SqlTemplate ADO.NET 集成 - 高性能扩展方法 ⭐ |
 | [UNIFIED_DIALECT_USAGE_GUIDE.md](UNIFIED_DIALECT_USAGE_GUIDE.md) | 统一方言使用指南（多数据库） |
 
 ---

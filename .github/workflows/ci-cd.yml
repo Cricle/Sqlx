@@ -111,7 +111,7 @@ jobs:
           **/TestResults/**/coverage.cobertura.xml
         retention-days: 7
 
-  # 🧪 集成测试 - 数据库方言 (PostgreSQL, MySQL, SQL Server)
+  # 🧪 集成测试 - 数据库方言 (使用 Testcontainers)
   integration-tests-db:
     name: 🧪 Integration Tests (${{ matrix.database }})
     runs-on: ubuntu-latest
@@ -122,49 +122,11 @@ jobs:
         database: [postgresql, mysql, sqlserver]
         include:
           - database: postgresql
-            test-filter: "TestCategory=PostgreSQL|TestCategory=CI"
-            db-image: postgres:16-alpine
-            db-port: 5432
-            health-cmd: "pg_isready -U postgres"
-            health-start-period: "10s"
+            test-filter: "TestCategory=PostgreSQL"
           - database: mysql
-            test-filter: "TestCategory=MySQL|TestCategory=CI"
-            db-image: mysql:8.0
-            db-port: 3306
-            health-cmd: "mysqladmin ping -h localhost"
-            health-start-period: "15s"
+            test-filter: "TestCategory=MySQL"
           - database: sqlserver
-            test-filter: "TestCategory=SqlServer|TestCategory=CI"
-            db-image: mcr.microsoft.com/mssql/server:2019-latest
-            db-port: 1433
-            health-cmd: "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P YourStrong@Passw0rd -Q 'SELECT 1' -C -l 1"
-            health-start-period: "30s"
-
-    services:
-      database:
-        image: ${{ matrix.db-image }}
-        env:
-          # PostgreSQL
-          POSTGRES_DB: ${{ matrix.database == 'postgresql' && 'sqlx_test' || '' }}
-          POSTGRES_USER: ${{ matrix.database == 'postgresql' && 'postgres' || '' }}
-          POSTGRES_PASSWORD: ${{ matrix.database == 'postgresql' && 'postgres' || '' }}
-          POSTGRES_INITDB_ARGS: ${{ matrix.database == 'postgresql' && '-E UTF8 --locale=C' || '' }}
-          # MySQL
-          MYSQL_DATABASE: ${{ matrix.database == 'mysql' && 'sqlx_test' || '' }}
-          MYSQL_ROOT_PASSWORD: ${{ matrix.database == 'mysql' && 'root' || '' }}
-          MYSQL_ALLOW_EMPTY_PASSWORD: ${{ matrix.database == 'mysql' && 'yes' || '' }}
-          # SQL Server
-          SA_PASSWORD: ${{ matrix.database == 'sqlserver' && 'YourStrong@Passw0rd' || '' }}
-          ACCEPT_EULA: ${{ matrix.database == 'sqlserver' && 'Y' || '' }}
-          MSSQL_PID: ${{ matrix.database == 'sqlserver' && 'Developer' || '' }}
-        ports:
-          - ${{ matrix.db-port }}:${{ matrix.db-port }}
-        options: >-
-          --health-cmd "${{ matrix.health-cmd }}"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
-          --health-start-period ${{ matrix.health-start-period }}
+            test-filter: "TestCategory=SqlServer"
 
     steps:
     - name: 📥 Checkout
@@ -188,62 +150,8 @@ jobs:
     - name: 🏗️ Build
       run: dotnet build --configuration Release --no-restore /p:TreatWarningsAsErrors=true
 
-    - name: 📦 Install database tools
-      if: matrix.database == 'sqlserver'
-      run: |
-        curl https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc
-        curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
-        sudo apt-get update
-        sudo ACCEPT_EULA=Y apt-get install -y mssql-tools18 unixodbc-dev
-        echo 'export PATH="$PATH:/opt/mssql-tools18/bin"' >> ~/.bashrc
-        export PATH="$PATH:/opt/mssql-tools18/bin"
-
-    - name: 🗄️ Initialize Database
-      run: |
-        echo "🗄️ Initializing ${{ matrix.database }}..."
-        
-        if [ "${{ matrix.database }}" == "postgresql" ]; then
-          for i in {1..10}; do
-            if PGPASSWORD=postgres psql -h localhost -U postgres -c "SELECT 1" > /dev/null 2>&1; then
-              echo "✅ PostgreSQL ready"
-              break
-            fi
-            sleep 2
-          done
-          PGPASSWORD=postgres psql -h localhost -U postgres -d sqlx_test -f tests/Sqlx.Tests/Infrastructure/init-postgresql.sql -q
-          
-        elif [ "${{ matrix.database }}" == "mysql" ]; then
-          for i in {1..10}; do
-            if mysql -h 127.0.0.1 -P 3306 -u root -proot -e "SELECT 1" > /dev/null 2>&1; then
-              echo "✅ MySQL ready"
-              break
-            fi
-            sleep 2
-          done
-          mysql -h 127.0.0.1 -P 3306 -u root -proot sqlx_test < tests/Sqlx.Tests/Infrastructure/init-mysql.sql
-          
-        elif [ "${{ matrix.database }}" == "sqlserver" ]; then
-          for i in {1..15}; do
-            if /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong@Passw0rd' -C -Q "SELECT 1" -l 1 > /dev/null 2>&1; then
-              echo "✅ SQL Server ready"
-              break
-            fi
-            sleep 2
-          done
-          echo "🗄️ Creating SQL Server database..."
-          /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong@Passw0rd' -C -Q "IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = 'sqlx_test') CREATE DATABASE sqlx_test;" -l 5
-          echo "🗄️ Running SQL Server init script..."
-          /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong@Passw0rd' -C -d sqlx_test -i tests/Sqlx.Tests/Infrastructure/init-sqlserver.sql -l 5
-        fi
-        
-        echo "✅ ${{ matrix.database }} initialized"
-
     - name: 🧪 Run Integration Tests
       timeout-minutes: 15
-      env:
-        POSTGRESQL_CONNECTION: ${{ matrix.database == 'postgresql' && 'Host=localhost;Port=5432;Database=sqlx_test;Username=postgres;Password=postgres' || '' }}
-        MYSQL_CONNECTION: ${{ matrix.database == 'mysql' && 'Server=localhost;Port=3306;Database=sqlx_test;Uid=root;Pwd=root' || '' }}
-        SQLSERVER_CONNECTION: ${{ matrix.database == 'sqlserver' && 'Server=localhost,1433;Database=sqlx_test;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True' || '' }}
       run: |
         dotnet test --configuration Release --no-build \
                     --collect:"XPlat Code Coverage" \

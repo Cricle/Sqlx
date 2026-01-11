@@ -230,6 +230,9 @@ jobs:
             fi
             sleep 2
           done
+          echo "🗄️ Creating SQL Server database..."
+          /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong@Passw0rd' -C -Q "IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = 'sqlx_test') CREATE DATABASE sqlx_test;" -l 5
+          echo "🗄️ Running SQL Server init script..."
           /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong@Passw0rd' -C -d sqlx_test -i tests/Sqlx.Tests/Infrastructure/init-sqlserver.sql -l 5
         fi
         

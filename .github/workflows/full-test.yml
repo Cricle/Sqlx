@@ -150,7 +150,7 @@ jobs:
         # SQL Server 初始化（后台）
         (
           echo "🗄️ SQL Server: Creating database..."
-          /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong@Passw0rd' -C -Q "DROP DATABASE IF EXISTS sqlx_test;" -l 5 2>/dev/null || true
+          /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong@Passw0rd' -C -Q "IF EXISTS (SELECT name FROM sys.databases WHERE name = 'sqlx_test') DROP DATABASE sqlx_test;" -l 5 2>/dev/null || true
           /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong@Passw0rd' -C -Q "CREATE DATABASE sqlx_test;" -l 5
           echo "🗄️ SQL Server: Running init script..."
           /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong@Passw0rd' -C -d sqlx_test -i tests/Sqlx.Tests/Infrastructure/init-sqlserver.sql -l 5

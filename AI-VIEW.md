@@ -1113,6 +1113,8 @@ public async Task<User?> GetByIdAsync(long id)
 - [快速开始指南](docs/QUICK_START_GUIDE.md) - 5 分钟上手
 - [占位符完整指南](docs/PLACEHOLDERS.md) - 70+ 占位符详解
 - [API 参考](docs/API_REFERENCE.md) - 完整 API 文档
+- [SqlTemplate ADO.NET 集成](docs/SQLTEMPLATE_ADONET_INTEGRATION.md) - 高性能 ADO.NET 扩展方法 ⭐
+- [SqlTemplate 返回类型](docs/SQL_TEMPLATE_RETURN_TYPE.md) - SQL 调试功能
 - [最佳实践](docs/BEST_PRACTICES.md) - 推荐用法
 - [统一方言指南](docs/UNIFIED_DIALECT_USAGE_GUIDE.md) - 多数据库支持
 - [TodoWebApi 示例](samples/TodoWebApi/) - 完整 Web API 示例
@@ -1129,6 +1131,7 @@ public async Task<User?> GetByIdAsync(long id)
 4. **多数据库** - 一套代码支持 4 种数据库
 5. **零配置** - 无需 DbContext、无需映射配置
 6. **易学易用** - 5 个核心占位符即可上手
+7. **ADO.NET 集成** - 高性能扩展方法，直接执行 SqlTemplate ⭐
 
 ### 设计理念
 

@@ -215,7 +215,7 @@ public class TDD_MySqlPostgreSql_Comprehensive_Tests
     [TestCategory("Integration")]
     [TestCategory("MySQL")]
     [TestCategory("Comprehensive")]
-    public async Task MySQL_InsertAndRetrieve_AllDataTypes()
+    public void MySQL_InsertAndRetrieve_AllDataTypes()
     {
         // Arrange - 这是一个代码生成测试，只验证生成的代码能编译
         // 实际数据库测试需要运行容器
@@ -229,7 +229,7 @@ public class TDD_MySqlPostgreSql_Comprehensive_Tests
     [TestCategory("Integration")]
     [TestCategory("PostgreSQL")]
     [TestCategory("Comprehensive")]
-    public async Task PostgreSQL_InsertAndRetrieve_AllDataTypes()
+    public void PostgreSQL_InsertAndRetrieve_AllDataTypes()
     {
         // Arrange - 这是一个代码生成测试，只验证生成的代码能编译
         
@@ -242,7 +242,7 @@ public class TDD_MySqlPostgreSql_Comprehensive_Tests
     [TestCategory("Integration")]
     [TestCategory("MySQL")]
     [TestCategory("SpecialChars")]
-    public async Task MySQL_SpecialCharacters_ShouldBeEscapedProperly()
+    public void MySQL_SpecialCharacters_ShouldBeEscapedProperly()
     {
         // 验证特殊字符方法存在
         var method = typeof(MySqlComprehensiveRepository).GetMethod("SearchBySpecialCharsAsync");
@@ -253,7 +253,7 @@ public class TDD_MySqlPostgreSql_Comprehensive_Tests
     [TestCategory("Integration")]
     [TestCategory("PostgreSQL")]
     [TestCategory("SpecialChars")]
-    public async Task PostgreSQL_SpecialCharacters_ShouldBeEscapedProperly()
+    public void PostgreSQL_SpecialCharacters_ShouldBeEscapedProperly()
     {
         // 验证特殊字符方法存在
         var method = typeof(PostgreSqlComprehensiveRepository).GetMethod("SearchBySpecialCharsAsync");
@@ -264,7 +264,7 @@ public class TDD_MySqlPostgreSql_Comprehensive_Tests
     [TestCategory("Integration")]
     [TestCategory("MySQL")]
     [TestCategory("Null")]
-    public async Task MySQL_NullHandling_ShouldWorkCorrectly()
+    public void MySQL_NullHandling_ShouldWorkCorrectly()
     {
         // 验证 NULL 处理方法存在
         var methodNull = typeof(MySqlComprehensiveRepository).GetMethod("GetWithNullTextAsync");
@@ -278,7 +278,7 @@ public class TDD_MySqlPostgreSql_Comprehensive_Tests
     [TestCategory("Integration")]
     [TestCategory("PostgreSQL")]
     [TestCategory("Null")]
-    public async Task PostgreSQL_NullHandling_ShouldWorkCorrectly()
+    public void PostgreSQL_NullHandling_ShouldWorkCorrectly()
     {
         // 验证 NULL 处理方法存在
         var methodNull = typeof(PostgreSqlComprehensiveRepository).GetMethod("GetWithNullTextAsync");
@@ -292,7 +292,7 @@ public class TDD_MySqlPostgreSql_Comprehensive_Tests
     [TestCategory("Integration")]
     [TestCategory("MySQL")]
     [TestCategory("Aggregate")]
-    public async Task MySQL_AggregateFunctions_ShouldBeSupported()
+    public void MySQL_AggregateFunctions_ShouldBeSupported()
     {
         // 验证聚合函数方法存在
         Assert.IsNotNull(typeof(MySqlComprehensiveRepository).GetMethod("CountActiveAsync"));
@@ -306,7 +306,7 @@ public class TDD_MySqlPostgreSql_Comprehensive_Tests
     [TestCategory("Integration")]
     [TestCategory("PostgreSQL")]
     [TestCategory("Aggregate")]
-    public async Task PostgreSQL_AggregateFunctions_ShouldBeSupported()
+    public void PostgreSQL_AggregateFunctions_ShouldBeSupported()
     {
         // 验证聚合函数方法存在
         Assert.IsNotNull(typeof(PostgreSqlComprehensiveRepository).GetMethod("CountActiveAsync"));
@@ -320,7 +320,7 @@ public class TDD_MySqlPostgreSql_Comprehensive_Tests
     [TestCategory("Integration")]
     [TestCategory("MySQL")]
     [TestCategory("DateRange")]
-    public async Task MySQL_DateRangeQuery_ShouldWork()
+    public void MySQL_DateRangeQuery_ShouldWork()
     {
         var method = typeof(MySqlComprehensiveRepository).GetMethod("GetByDateRangeAsync");
         Assert.IsNotNull(method);
@@ -330,7 +330,7 @@ public class TDD_MySqlPostgreSql_Comprehensive_Tests
     [TestCategory("Integration")]
     [TestCategory("PostgreSQL")]
     [TestCategory("DateRange")]
-    public async Task PostgreSQL_DateRangeQuery_ShouldWork()
+    public void PostgreSQL_DateRangeQuery_ShouldWork()
     {
         var method = typeof(PostgreSqlComprehensiveRepository).GetMethod("GetByDateRangeAsync");
         Assert.IsNotNull(method);
@@ -340,7 +340,7 @@ public class TDD_MySqlPostgreSql_Comprehensive_Tests
     [TestCategory("Integration")]
     [TestCategory("MySQL")]
     [TestCategory("InQuery")]
-    public async Task MySQL_InQuery_ShouldWork()
+    public void MySQL_InQuery_ShouldWork()
     {
         var method = typeof(MySqlComprehensiveRepository).GetMethod("GetByStatusInAsync");
         Assert.IsNotNull(method);
@@ -350,7 +350,7 @@ public class TDD_MySqlPostgreSql_Comprehensive_Tests
     [TestCategory("Integration")]
     [TestCategory("PostgreSQL")]
     [TestCategory("InQuery")]
-    public async Task PostgreSQL_InQuery_ShouldWork()
+    public void PostgreSQL_InQuery_ShouldWork()
     {
         var method = typeof(PostgreSqlComprehensiveRepository).GetMethod("GetByStatusInAsync");
         Assert.IsNotNull(method);

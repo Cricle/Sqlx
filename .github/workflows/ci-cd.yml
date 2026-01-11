@@ -49,7 +49,6 @@ jobs:
                     --logger "trx" \
                     --framework net9.0 \
                     --filter "TestCategory!=Integration&TestCategory!=E2E&TestCategory!=CI" \
-                    --settings .runsettings.ci \
                     --results-directory ./TestResults
 
     - name: 📤 Upload test results
@@ -98,7 +97,6 @@ jobs:
                     --logger "trx" \
                     --framework net9.0 \
                     --filter "TestCategory=Integration&TestCategory!=PostgreSQL&TestCategory!=MySQL&TestCategory!=SqlServer" \
-                    --settings .runsettings.ci \
                     --results-directory ./TestResults
 
     - name: 📤 Upload test results

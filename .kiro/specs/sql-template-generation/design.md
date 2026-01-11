@@ -241,19 +241,23 @@ public readonly record struct SqlTemplate(
 
 ```csharp
 // 定义 Repository 接口
-[RepositoryFor<User>]
-public partial interface IUserRepository
+[TableName("Users")]
+[SqlDefine(SqlDefineTypes.SQLite)]
+[RepositoryFor(typeof(IUserRepository))]
+public partial class UserRepository(DbConnection connection) : IUserRepository { }
+
+public interface IUserRepository
 {
     // 返回 SqlTemplate - 只生成 SQL，不执行
-    [Sqlx("SELECT * FROM Users WHERE Id = @id")]
+    [SqlTemplate("SELECT * FROM {{table}} WHERE Id = @id")]
     SqlTemplate GetUserByIdSql(int id);
     
     // 返回 User - 正常执行查询
-    [Sqlx("SELECT * FROM Users WHERE Id = @id")]
+    [SqlTemplate("SELECT * FROM {{table}} WHERE Id = @id")]
     User? GetUserById(int id);
     
     // 批量插入 - 返回 SqlTemplate
-    [Sqlx("INSERT INTO Users (Name, Email) VALUES")]
+    [SqlTemplate("INSERT INTO {{table}} (Name, Email) VALUES {{batch_values}}")]
     SqlTemplate InsertUsersSql(List<User> users);
 }
 

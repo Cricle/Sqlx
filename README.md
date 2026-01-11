@@ -53,25 +53,24 @@ public class User
     public int Age { get; set; }
 }
 
-// 仓储接口
+// 仓储接口和实现
+[TableName("users")]
 [SqlDefine(SqlDefineTypes.SQLite)]
+[RepositoryFor(typeof(IUserRepository))]
+public partial class UserRepository(DbConnection connection) : IUserRepository { }
+
 public interface IUserRepository
 {
-    [SqlTemplate("SELECT {{columns}} FROM users WHERE id = @id")]
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
     Task<User?> GetByIdAsync(long id);
 
-    [SqlTemplate("INSERT INTO users (name, age) VALUES (@name, @age)")]
+    [SqlTemplate("INSERT INTO {{table}} (name, age) VALUES (@name, @age)")]
     [ReturnInsertedId]
     Task<long> InsertAsync(string name, int age);
     
-    [SqlTemplate("INSERT INTO users (name, age) VALUES {{batch_values}}")]
-    [BatchOperation(MaxBatchSize = 500)]
+    [SqlTemplate("INSERT INTO {{table}} (name, age) VALUES {{batch_values}}")]
     Task<int> BatchInsertAsync(IEnumerable<User> users);
 }
-
-// 实现类（源生成器自动生成方法）
-[RepositoryFor(typeof(IUserRepository))]
-public partial class UserRepository(DbConnection connection) : IUserRepository { }
 ```
 
 ### 3. 使用

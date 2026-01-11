@@ -14,14 +14,19 @@ Sqlx 根据方法的返回类型决定是生成 SQL 还是执行查询：
 - **返回其他类型**: 正常执行数据库查询
 
 ```csharp
+[TableName("users")]
+[SqlDefine(SqlDefineTypes.SQLite)]
+[RepositoryFor(typeof(IUserRepository))]
+public partial class UserRepository(DbConnection connection) : IUserRepository { }
+
 public interface IUserRepository
 {
     // 调试模式 - 返回 SqlTemplate
-    [Sqlx("SELECT * FROM users WHERE id = @id")]
+    [SqlTemplate("SELECT * FROM {{table}} WHERE id = @id")]
     SqlTemplate GetUserByIdSql(int id);
     
     // 执行模式 - 返回实体
-    [Sqlx("SELECT * FROM users WHERE id = @id")]
+    [SqlTemplate("SELECT * FROM {{table}} WHERE id = @id")]
     Task<User?> GetUserByIdAsync(int id);
 }
 ```
@@ -47,19 +52,23 @@ public readonly record struct SqlTemplate(
 ### 1. 定义 SqlTemplate 返回方法
 
 ```csharp
-[RepositoryFor<User>]
-public partial interface IUserRepository
+[TableName("users")]
+[SqlDefine(SqlDefineTypes.SQLite)]
+[RepositoryFor(typeof(IUserRepository))]
+public partial class UserRepository(DbConnection connection) : IUserRepository { }
+
+public interface IUserRepository
 {
     // 简单查询
-    [Sqlx("SELECT * FROM users WHERE age >= @minAge")]
+    [SqlTemplate("SELECT * FROM {{table}} WHERE age >= @minAge")]
     SqlTemplate GetAdultUsersSql(int minAge);
     
     // 带多个参数
-    [Sqlx("SELECT * FROM users WHERE age >= @minAge AND city = @city")]
+    [SqlTemplate("SELECT * FROM {{table}} WHERE age >= @minAge AND city = @city")]
     SqlTemplate GetUsersByCitySql(int minAge, string city);
     
     // 异步版本
-    [Sqlx("SELECT * FROM users WHERE id = @id")]
+    [SqlTemplate("SELECT * FROM {{table}} WHERE id = @id")]
     Task<SqlTemplate> GetUserByIdSqlAsync(int id);
 }
 ```
@@ -158,7 +167,7 @@ public class UserFilter
     public string? City { get; set; }
 }
 
-[Sqlx("SELECT * FROM users WHERE age >= @MinAge AND city = @City")]
+[SqlTemplate("SELECT * FROM {{table}} WHERE age >= @MinAge AND city = @City")]
 SqlTemplate FilterUsersSql(UserFilter filter);
 
 // 使用
@@ -171,7 +180,7 @@ var template = repo.FilterUsersSql(new UserFilter { MinAge = 18, City = "Beijing
 SqlTemplate 支持批量插入的 SQL 生成：
 
 ```csharp
-[Sqlx("INSERT INTO users (name, age) VALUES {{batch_values}}")]
+[SqlTemplate("INSERT INTO {{table}} (name, age) VALUES {{batch_values}}")]
 SqlTemplate BatchInsertUsersSql(List<User> users);
 
 // 使用
@@ -362,7 +371,7 @@ SqlTemplate GetUsersSql();  // 对应 List<User> 或 Task<List<User>>
 SqlTemplate 完全支持所有占位符：
 
 ```csharp
-[Sqlx(@"
+[SqlTemplate(@"
     SELECT {{columns --exclude Password}}
     FROM {{table}}
     WHERE age >= @minAge
@@ -380,7 +389,7 @@ var template = repo.QueryUsersSql(18, 10);
 SqlTemplate 支持表达式树参数：
 
 ```csharp
-[Sqlx("SELECT {{columns}} FROM {{table}} {{where}}")]
+[SqlTemplate("SELECT {{columns}} FROM {{table}} {{where}}")]
 SqlTemplate QuerySql([ExpressionToSql] Expression<Func<User, bool>> predicate);
 
 var template = repo.QuerySql(u => u.Age >= 18 && u.City == "Beijing");
@@ -393,10 +402,10 @@ Console.WriteLine(template.Sql);
 SqlTemplate 支持批量操作占位符：
 
 ```csharp
-[Sqlx("INSERT INTO users (name, age) VALUES {{batch_values}}")]
+[SqlTemplate("INSERT INTO {{table}} (name, age) VALUES {{batch_values}}")]
 SqlTemplate BatchInsertSql(List<User> users);
 
-[Sqlx("UPDATE users SET age = @age WHERE id IN {{in_clause}}")]
+[SqlTemplate("UPDATE {{table}} SET age = @age WHERE id IN {{in_clause}}")]
 SqlTemplate BatchUpdateSql(int age, List<int> ids);
 ```
 
@@ -436,7 +445,7 @@ public class UserFilter
 }
 
 // ❌ 错误 - string 是标量类型，不会展开
-[Sqlx("SELECT * FROM users WHERE name = @Name")]
+[SqlTemplate("SELECT * FROM {{table}} WHERE name = @Name")]
 SqlTemplate GetUserSql(string filter);  // Parameters: { "@filter": "..." }
 ```
 
@@ -450,11 +459,11 @@ SqlTemplate GetUserSql(string filter);  // Parameters: { "@filter": "..." }
 
 ```csharp
 // ❌ 错误
-[Sqlx("INSERT INTO users (name, age)")]
+[SqlTemplate("INSERT INTO {{table}} (name, age)")]
 SqlTemplate BatchInsertSql(List<User> users);
 
 // ✅ 正确
-[Sqlx("INSERT INTO users (name, age) VALUES {{batch_values}}")]
+[SqlTemplate("INSERT INTO {{table}} (name, age) VALUES {{batch_values}}")]
 SqlTemplate BatchInsertSql(List<User> users);
 ```
 

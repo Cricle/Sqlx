@@ -8,10 +8,10 @@
   </RunConfiguration>
 
   <MSTest>
-    <!-- 并行执行测试 - 方法级别并行以提高速度 -->
+    <!-- 并行执行测试 - 类级别并行以避免同一类内的竞态条件 -->
     <Parallelize>
       <Workers>0</Workers>
-      <Scope>MethodLevel</Scope>
+      <Scope>ClassLevel</Scope>
     </Parallelize>
     <!-- 测试超时 - 单个测试方法 (2分钟，适应容器启动时间) -->
     <TestTimeout>120000</TestTimeout>

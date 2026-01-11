@@ -13,8 +13,8 @@
       <Workers>0</Workers>
       <Scope>MethodLevel</Scope>
     </Parallelize>
-    <!-- 测试超时 - 单个测试方法 -->
-    <TestTimeout>60000</TestTimeout>
+    <!-- 测试超时 - 单个测试方法 (2分钟，适应容器启动时间) -->
+    <TestTimeout>120000</TestTimeout>
   </MSTest>
 
   <!-- CI环境：运行所有数据库方言的测试 -->

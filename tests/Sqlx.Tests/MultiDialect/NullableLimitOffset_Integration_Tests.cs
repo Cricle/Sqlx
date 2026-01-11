@@ -201,7 +201,25 @@ public abstract class NullableLimitOffsetTestBase
     {
         using var cmd = Connection!.CreateCommand();
         
-        // 创建表 (使用 IF NOT EXISTS 避免并发冲突)
+        // Drop table first to ensure clean state
+        try
+        {
+            cmd.CommandText = DialectType switch
+            {
+                SqlDefineTypes.SQLite => $"DROP TABLE IF EXISTS {TableName}",
+                SqlDefineTypes.MySql => $"DROP TABLE IF EXISTS {TableName}",
+                SqlDefineTypes.PostgreSql => $"DROP TABLE IF EXISTS {TableName}",
+                SqlDefineTypes.SqlServer => $"IF OBJECT_ID(N'{TableName}', N'U') IS NOT NULL DROP TABLE {TableName}",
+                _ => throw new NotSupportedException()
+            };
+            await cmd.ExecuteNonQueryAsync();
+        }
+        catch
+        {
+            // Ignore errors if table doesn't exist
+        }
+        
+        // Create table (使用 IF NOT EXISTS 避免并发冲突)
         cmd.CommandText = DialectType switch
         {
             SqlDefineTypes.SQLite => $"CREATE TABLE IF NOT EXISTS {TableName} (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, score INTEGER NOT NULL)",

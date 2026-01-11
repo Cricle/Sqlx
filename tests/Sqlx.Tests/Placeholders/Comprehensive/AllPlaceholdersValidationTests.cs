@@ -26,8 +26,11 @@ namespace Sqlx.Tests.Placeholders.Comprehensive;
 /// 5. 日期时间: current_timestamp, year, month, day
 /// 6. 数学函数: round, abs, ceiling, floor
 /// 7. 高级占位符: group_concat, case, cast
+/// 
+/// 注意: 这些测试启动多个数据库容器，需要较长时间，因此标记为 Integration 测试
 /// </summary>
 [TestClass]
+[TestCategory(TestCategories.Integration)]
 public class AllPlaceholdersValidationTests
 {
     private DatabaseFixture _fixture = null!;
@@ -47,6 +50,7 @@ public class AllPlaceholdersValidationTests
     #region Core Placeholders Tests
 
     [TestMethod]
+    [TestCategory(TestCategories.Integration)]
     [TestCategory("Placeholder")]
     [TestCategory("Comprehensive")]
     [TestCategory("Core")]
@@ -77,6 +81,7 @@ public class AllPlaceholdersValidationTests
     }
 
     [TestMethod]
+    [TestCategory(TestCategories.Integration)]
     [TestCategory("Placeholder")]
     [TestCategory("Comprehensive")]
     [TestCategory("Core")]
@@ -107,6 +112,7 @@ public class AllPlaceholdersValidationTests
 
 
     [TestMethod]
+    [TestCategory(TestCategories.Integration)]
     [TestCategory("Placeholder")]
     [TestCategory("Comprehensive")]
     [TestCategory("Core")]
@@ -140,6 +146,7 @@ public class AllPlaceholdersValidationTests
     #region Aggregate Function Tests
 
     [TestMethod]
+    [TestCategory(TestCategories.Integration)]
     [TestCategory("Placeholder")]
     [TestCategory("Comprehensive")]
     [TestCategory("Aggregate")]
@@ -186,6 +193,7 @@ public class AllPlaceholdersValidationTests
     #region String Function Tests
 
     [TestMethod]
+    [TestCategory(TestCategories.Integration)]
     [TestCategory("Placeholder")]
     [TestCategory("Comprehensive")]
     [TestCategory("String")]
@@ -226,6 +234,7 @@ public class AllPlaceholdersValidationTests
     #region Date/Time Function Tests
 
     [TestMethod]
+    [TestCategory(TestCategories.Integration)]
     [TestCategory("Placeholder")]
     [TestCategory("Comprehensive")]
     [TestCategory("DateTime")]
@@ -263,6 +272,7 @@ public class AllPlaceholdersValidationTests
     #region Math Function Tests
 
     [TestMethod]
+    [TestCategory(TestCategories.Integration)]
     [TestCategory("Placeholder")]
     [TestCategory("Comprehensive")]
     [TestCategory("Math")]
@@ -296,6 +306,7 @@ public class AllPlaceholdersValidationTests
     #region Conditional Placeholder Tests
 
     [TestMethod]
+    [TestCategory(TestCategories.Integration)]
     [TestCategory("Placeholder")]
     [TestCategory("Comprehensive")]
     [TestCategory("Conditional")]
@@ -331,6 +342,7 @@ public class AllPlaceholdersValidationTests
     #region Pagination Tests
 
     [TestMethod]
+    [TestCategory(TestCategories.Integration)]
     [TestCategory("Placeholder")]
     [TestCategory("Comprehensive")]
     [TestCategory("Pagination")]

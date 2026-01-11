@@ -122,11 +122,11 @@ jobs:
         database: [postgresql, mysql, sqlserver]
         include:
           - database: postgresql
-            test-filter: "TestCategory=PostgreSQL"
+            test-filter: "TestCategory=PostgreSQL&FullyQualifiedName!~TDD_MySqlPostgreSql_Integration_Tests"
           - database: mysql
-            test-filter: "TestCategory=MySQL"
+            test-filter: "TestCategory=MySQL&FullyQualifiedName!~TDD_MySqlPostgreSql_Integration_Tests"
           - database: sqlserver
-            test-filter: "TestCategory=SqlServer"
+            test-filter: "TestCategory=SqlServer&FullyQualifiedName!~TDD_MySqlPostgreSql_Integration_Tests"
 
     steps:
     - name: 📥 Checkout

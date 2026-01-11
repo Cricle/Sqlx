@@ -73,24 +73,49 @@ namespace Sqlx
         /// <summary>Gets database type enum (type-safe version)</summary>
         public Annotations.SqlDefineTypes DbType => GetDatabaseInfo().Type;
 
-        /// <summary>Helper method to determine database info once</summary>
+        /// <summary>
+        /// Determines database type and name from dialect configuration.
+        /// </summary>
         /// <remarks>
-        /// Note: SQLite and SQL Server both use [brackets] and @, so we match SQL Server first by convention.
-        /// If SQLite-specific behavior is needed, use SqlDefine.SQLite explicitly.
-        /// DB2 uses "quotes" and ?, Oracle uses "quotes" and :
+        /// <para><strong>Ambiguity Note:</strong> SQLite and SQL Server share identical syntax ([brackets], @ prefix).</para>
+        /// <para>This method returns "SqlServer" for both cases. To distinguish between them:</para>
+        /// <list type="bullet">
+        /// <item><description>Use <see cref="SqlDefine.SQLite"/> or <see cref="SqlDefine.SqlServer"/> explicitly</description></item>
+        /// <item><description>Compare dialect instances using reference equality</description></item>
+        /// </list>
+        /// <para><strong>Dialect Signatures:</strong></para>
+        /// <list type="bullet">
+        /// <item><description>MySQL: `backticks` + @</description></item>
+        /// <item><description>SQL Server/SQLite: [brackets] + @</description></item>
+        /// <item><description>PostgreSQL: "quotes" + $</description></item>
+        /// <item><description>Oracle: "quotes" + :</description></item>
+        /// <item><description>DB2: "quotes" + ?</description></item>
+        /// </list>
         /// </remarks>
+        /// <returns>A tuple containing the database name and type enum.</returns>
+        /// <exception cref="NotSupportedException">Thrown when the dialect configuration is not recognized.</exception>
         private (string Name, Annotations.SqlDefineTypes Type) GetDatabaseInfo() =>
             (ColumnLeft, ColumnRight, ParameterPrefix) switch
             {
                 ("`", "`", "@") => ("MySql", Annotations.SqlDefineTypes.MySql),
-                ("[", "]", "@") => ("SqlServer", Annotations.SqlDefineTypes.SqlServer), // Also matches SQLite
-                ("\"" , "\"", "$") => ("PostgreSql", Annotations.SqlDefineTypes.PostgreSql),
+                ("[", "]", "@") => ("SqlServer", Annotations.SqlDefineTypes.SqlServer), // Ambiguous: also matches SQLite
+                ("\"", "\"", "$") => ("PostgreSql", Annotations.SqlDefineTypes.PostgreSql),
                 ("\"", "\"", ":") => ("Oracle", Annotations.SqlDefineTypes.Oracle),
                 ("\"", "\"", "?") => ("DB2", Annotations.SqlDefineTypes.DB2),
-                _ => throw new NotSupportedException($"Unknown dialect: {ColumnLeft}{ColumnRight}{ParameterPrefix}")
+                _ => throw new NotSupportedException($"Unknown dialect configuration: ColumnLeft='{ColumnLeft}', ColumnRight='{ColumnRight}', ParameterPrefix='{ParameterPrefix}'")
             };
 
-        /// <summary>Gets string concatenation syntax</summary>
+        /// <summary>Gets the string concatenation syntax for the current database dialect.</summary>
+        /// <param name="parts">The string parts to concatenate.</param>
+        /// <returns>A SQL expression that concatenates the specified parts.</returns>
+        /// <remarks>
+        /// <para><strong>Dialect-Specific Syntax:</strong></para>
+        /// <list type="bullet">
+        /// <item><description>SQL Server: part1 + part2 + part3</description></item>
+        /// <item><description>PostgreSQL/Oracle: part1 || part2 || part3</description></item>
+        /// <item><description>MySQL/SQLite/DB2: CONCAT(part1, part2, part3)</description></item>
+        /// </list>
+        /// </remarks>
         public string GetConcatFunction(params string[] parts) => DatabaseType switch
         {
             "SqlServer" => string.Join(" + ", parts),

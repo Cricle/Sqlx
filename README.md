@@ -230,6 +230,26 @@ var users = await repo.QueryAsync(u => u.Age >= 18 && u.Balance > 1000);
 // 生成: SELECT * FROM users WHERE age >= 18 AND balance > 1000
 ```
 
+### 6. SQL 调试功能
+
+通过返回类型获取生成的 SQL，无需执行查询：
+
+```csharp
+// 调试模式 - 返回 SqlTemplate
+[SqlTemplate("SELECT * FROM users WHERE age >= @minAge")]
+SqlTemplate GetAdultUsersSql(int minAge);
+
+// 执行模式 - 返回数据
+[SqlTemplate("SELECT * FROM users WHERE age >= @minAge")]
+Task<List<User>> GetAdultUsersAsync(int minAge);
+
+// 使用
+var template = repo.GetAdultUsersSql(18);
+Console.WriteLine(template.Sql);        // SELECT * FROM users WHERE age >= @minAge
+Console.WriteLine(template.Parameters["@minAge"]);  // 18
+Console.WriteLine(template.Execute().Render());     // SELECT * FROM users WHERE age >= 18
+```
+
 ---
 
 ## 🗄️ 支持的数据库
@@ -254,6 +274,7 @@ var users = await repo.QueryAsync(u => u.Age >= 18 && u.Balance > 1000);
 
 ### 核心文档
 - [API 参考](docs/API_REFERENCE.md) - 完整 API 文档
+- [SqlTemplate 返回类型](docs/SQL_TEMPLATE_RETURN_TYPE.md) - SQL 调试功能 ⭐
 - [占位符指南](docs/PLACEHOLDERS.md) - 70+ 占位符详解
 - [占位符参考](docs/PLACEHOLDER_REFERENCE.md) - 占位符速查表
 - [最佳实践](docs/BEST_PRACTICES.md) - 推荐用法
@@ -264,7 +285,8 @@ var users = await repo.QueryAsync(u => u.Age >= 18 && u.Balance > 1000);
 - [当前功能状态](docs/CURRENT_CAPABILITIES.md) - 实现进度
 
 ### 示例
-- [TodoWebApi](samples/TodoWebApi/) - 完整 Web API 示例
+
+- [TodoWebApi](samples/TodoWebApi/) - 完整 Web API 示例（包含 SqlTemplate 演示）
 - [FullDemo](samples/FullDemo/) - 完整功能演示
 - [集成测试](tests/Sqlx.Tests/Integration/) - 所有功能演示
 

@@ -111,7 +111,25 @@ Task<List<Todo>> GetByCompletionStatusAsync(bool isCompleted);
 ### 3. **Source Generation**
 All code generated at compile-time - zero reflection at runtime!
 
-### 4. **AOT Compatibility**
+### 4. **SqlTemplate Return Type (Debugging)**
+Get generated SQL without executing queries:
+```csharp
+// Debug mode - returns SqlTemplate
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE title LIKE @query")]
+SqlTemplate SearchSql(string query);
+
+// Execution mode - returns data
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE title LIKE @query")]
+Task<List<Todo>> SearchAsync(string query);
+
+// Usage
+var template = repo.SearchSql("%test%");
+Console.WriteLine(template.Sql);  // SELECT * FROM todos WHERE title LIKE @query
+Console.WriteLine(template.Parameters["@query"]);  // %test%
+Console.WriteLine(template.Execute().Render());  // SELECT * FROM todos WHERE title LIKE '%test%'
+```
+
+### 5. **AOT Compatibility**
 Full support for Native AOT compilation:
 ```bash
 dotnet publish -c Release -r win-x64 --self-contained

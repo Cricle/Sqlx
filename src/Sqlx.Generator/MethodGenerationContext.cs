@@ -423,6 +423,12 @@ internal partial class MethodGenerationContext : GenerationContextBase
             sb.AppendLine($"{MethodExecuting}({MethodNameString}, {CmdName});");
         }
 
+        // SqlTemplate generation mode - return SQL and parameters without executing
+        if (DeclareReturnType == ReturnTypes.SqlTemplate)
+        {
+            return GenerateSqlTemplateReturn(sb, sql);
+        }
+
         // Execute
         if (DeclareReturnType == ReturnTypes.Void)
         {
@@ -1408,6 +1414,13 @@ internal partial class MethodGenerationContext : GenerationContextBase
         if (ReturnType.SpecialType == SpecialType.System_Void) return ReturnTypes.Void;
         var actualType = ReturnType;
 
+        // Check for SqlTemplate return type
+        if (actualType.Name == "SqlTemplate" && 
+            actualType.ContainingNamespace?.ToDisplayString() == "Sqlx")
+        {
+            return ReturnTypes.SqlTemplate;
+        }
+
         if (actualType.Name == "IEnumerable") return ReturnTypes.IEnumerable;
         if (actualType.Name == Constants.TypeNames.IAsyncEnumerable) return ReturnTypes.IAsyncEnumerable;
         if (actualType.Name == "List"
@@ -2260,6 +2273,190 @@ internal partial class MethodGenerationContext : GenerationContextBase
 
         return false;
     }
+
+    /// <summary>
+    /// Generates code that returns SqlTemplate without executing the query.
+    /// </summary>
+    private bool GenerateSqlTemplateReturn(IndentedStringBuilder sb, string? sql)
+    {
+        if (string.IsNullOrEmpty(sql))
+        {
+            ClassGenerationContext.GeneratorExecutionContext.ReportDiagnostic(
+                Diagnostic.Create(Messages.SP0007, MethodSymbol.Locations[0]));
+            return false;
+        }
+
+        // Check for batch INSERT operations (case-insensitive)
+        if (sql.IndexOf("{{VALUES_PLACEHOLDER}}", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            sql.IndexOf("{{values_placeholder}}", StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            return GenerateBatchInsertSqlTemplate(sb, sql);
+        }
+
+        // Create parameters dictionary
+        sb.AppendLine("var parameters = new global::System.Collections.Generic.Dictionary<string, object?>();");
+        sb.AppendLine();
+
+        // Add parameters to dictionary
+        foreach (var param in SqlParameters)
+        {
+            var isScalarType = param.Type.IsCachedScalarType();
+            if (isScalarType)
+            {
+                AddParameterToDictionary(sb, param, param.Type, string.Empty);
+            }
+            else
+            {
+                // Handle complex type parameters
+                foreach (var property in param.Type.GetMembers().OfType<IPropertySymbol>())
+                {
+                    AddParameterToDictionary(sb, property, property.Type, param.Name);
+                }
+            }
+        }
+
+        // Return SqlTemplate
+        sb.AppendLine($"var __result__ = new global::Sqlx.SqlTemplate({sql}, parameters);");
+        
+        // Call MethodExecuted event
+        WriteMethodExecuted(sb, "__result__");
+        
+        sb.AppendLine("return __result__;");
+
+        // Close try block
+        sb.PopIndent();
+        sb.AppendLine("}");
+        
+        // Add catch block
+        sb.AppendLine("catch (global::System.Exception ex)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine($"{MethodExecuteFail}({MethodNameString}, {CmdName}, ex, ");
+        sb.AppendLine($"    {GetTimestampMethod} - {StartTimeName});");
+        sb.AppendLine("throw;");
+        sb.PopIndent();
+        sb.AppendLine("}");
+
+        // Close the method
+        sb.PopIndent();
+        sb.AppendLine("}");
+
+        return true;
+    }
+
+    /// <summary>
+    /// Adds a parameter to the parameters dictionary.
+    /// </summary>
+    private void AddParameterToDictionary(
+        IndentedStringBuilder sb,
+        ISymbol symbol,
+        ITypeSymbol type,
+        string prefix)
+    {
+        var paramName = symbol.GetParameterName(SqlDef.ParameterPrefix);
+        var visitPath = string.IsNullOrEmpty(prefix)
+            ? symbol.Name
+            : $"{prefix}?.{symbol.Name}";
+
+        sb.AppendLine($"parameters[\"{paramName}\"] = {visitPath};");
+    }
+
+    /// <summary>
+    /// Generates SqlTemplate for batch INSERT operations.
+    /// </summary>
+    private bool GenerateBatchInsertSqlTemplate(IndentedStringBuilder sb, string sqlTemplate)
+    {
+        // Find the collection parameter
+        var collectionParameter = SqlParameters.FirstOrDefault(p => !p.Type.IsCachedScalarType());
+        if (collectionParameter == null)
+        {
+            ClassGenerationContext.GeneratorExecutionContext.ReportDiagnostic(
+                Diagnostic.Create(Messages.SP0007, MethodSymbol.Locations[0]));
+            return false;
+        }
+
+        var objectMap = new ObjectMap(collectionParameter);
+        // Handle both uppercase and lowercase placeholders using Regex for case-insensitive replacement
+        var baseSql = System.Text.RegularExpressions.Regex.Replace(
+            sqlTemplate, 
+            @"\{\{VALUES_PLACEHOLDER\}\}", 
+            "", 
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        sb.AppendLine($"var baseSql = \"{baseSql.Trim('"')}\";");
+        sb.AppendLine("var sqlBuilder = new global::System.Text.StringBuilder(baseSql);");
+        sb.AppendLine("var parameters = new global::System.Collections.Generic.Dictionary<string, object?>();");
+        sb.AppendLine("var paramIndex = 0;");
+        sb.AppendLine("var isFirst = true;");
+        sb.AppendLine();
+
+        // Check for empty collection
+        sb.AppendLine($"if ({collectionParameter.Name} == null || !{collectionParameter.Name}.Any())");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("throw new global::System.InvalidOperationException(\"Collection parameter cannot be null or empty\");");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+
+        // Generate loop
+        sb.AppendLine($"foreach (var item in {collectionParameter.Name})");
+        sb.AppendLine("{");
+        sb.PushIndent();
+
+        sb.AppendLine("if (!isFirst) sqlBuilder.Append(\", \");");
+        sb.AppendLine("else isFirst = false;");
+        sb.AppendLine("sqlBuilder.Append(\"(\");");
+
+        var properties = objectMap.Properties;
+        for (int i = 0; i < properties.Count; i++)
+        {
+            var property = properties[i];
+            var paramName = $"{SqlDef.ParameterPrefix}{property.GetParameterName(string.Empty)}_{{paramIndex}}";
+
+            if (i > 0)
+            {
+                sb.AppendLine("sqlBuilder.Append(\", \");");
+            }
+
+            sb.AppendLine($"sqlBuilder.Append(\"{paramName}\");");
+            sb.AppendLine($"parameters[\"{paramName}\"] = item.{property.Name};");
+        }
+
+        sb.AppendLine("sqlBuilder.Append(\")\");");
+        sb.AppendLine("paramIndex++;");
+
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+
+        sb.AppendLine("var __result__ = new global::Sqlx.SqlTemplate(sqlBuilder.ToString(), parameters);");
+        
+        // Call MethodExecuted event
+        WriteMethodExecuted(sb, "__result__");
+        
+        sb.AppendLine("return __result__;");
+
+        // Close try block
+        sb.PopIndent();
+        sb.AppendLine("}");
+        
+        // Add catch block
+        sb.AppendLine("catch (global::System.Exception ex)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine($"{MethodExecuteFail}({MethodNameString}, {CmdName}, ex, ");
+        sb.AppendLine($"    {GetTimestampMethod} - {StartTimeName});");
+        sb.AppendLine("throw;");
+        sb.PopIndent();
+        sb.AppendLine("}");
+
+        // Close the method
+        sb.PopIndent();
+        sb.AppendLine("}");
+
+        return true;
+    }
 }
 
 internal enum ReturnTypes
@@ -2271,4 +2468,5 @@ internal enum ReturnTypes
     List = 4,
     ListDictionaryStringObject = 5,
     Object = 6,
+    SqlTemplate = 7,
 }

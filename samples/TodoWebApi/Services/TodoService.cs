@@ -74,4 +74,15 @@ public interface ITodoRepository : ICrudRepository<Todo, long>
     /// <summary>Batch updates priority for multiple todos.</summary>
     [SqlTemplate("UPDATE {{table}} SET priority = @priority, updated_at = @updatedAt WHERE id IN (SELECT value FROM json_each(@idsJson))")]
     Task<int> BatchUpdatePriorityAsync(string idsJson, int priority, DateTime updatedAt);
+
+    // SqlTemplate return type methods - for debugging and testing
+    // These methods return the generated SQL and parameters without executing the query
+
+    /// <summary>Gets the SQL for searching todos (debug mode).</summary>
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE title LIKE @query OR description LIKE @query {{orderby updated_at --desc}}")]
+    SqlTemplate SearchSql(string query);
+
+    /// <summary>Gets the SQL for fetching todos by completion status (debug mode).</summary>
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE is_completed = @isCompleted {{orderby completed_at --desc}}")]
+    SqlTemplate GetByCompletionStatusSql(bool isCompleted = true);
 }

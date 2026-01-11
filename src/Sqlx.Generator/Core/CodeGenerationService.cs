@@ -955,6 +955,10 @@ public class CodeGenerationService
 
         switch (returnCategory)
         {
+            case ReturnTypeCategory.SqlTemplate:
+                // SqlTemplate: Return SQL and parameters without executing
+                GenerateSqlTemplateReturn(sb, templateResult, method, classSymbol);
+                break;
             case ReturnTypeCategory.Scalar:
                 // 检查SQL是否是NonQuery命令（UPDATE, DELETE, INSERT）
                 var sqlUpper = templateResult.ProcessedSql.TrimStart().ToUpperInvariant();
@@ -1089,6 +1093,7 @@ public class CodeGenerationService
         SingleEntity,
         DynamicDictionary,          // Dictionary<string, object>
         DynamicDictionaryCollection, // List<Dictionary<string, object>>
+        SqlTemplate,                // Sqlx.SqlTemplate
         Unknown
     }
 
@@ -1096,6 +1101,11 @@ public class CodeGenerationService
     private (ReturnTypeCategory Category, string InnerType) ClassifyReturnType(string returnType)
     {
         var innerType = ExtractInnerTypeFromTask(returnType);
+
+        // 检查 SqlTemplate 类型
+        if (innerType == "Sqlx.SqlTemplate" || innerType == "SqlTemplate" || 
+            innerType == "global::Sqlx.SqlTemplate")
+            return (ReturnTypeCategory.SqlTemplate, innerType);
 
         // 检查动态字典集合类型：List<Dictionary<string, object>>
         if (IsDynamicDictionaryCollection(innerType))
@@ -3122,4 +3132,148 @@ public class CodeGenerationService
         return false;
     }
 
+    /// <summary>
+    /// Generates code that returns SqlTemplate without executing the query.
+    /// </summary>
+    private void GenerateSqlTemplateReturn(IndentedStringBuilder sb, SqlTemplateResult templateResult, IMethodSymbol method, INamedTypeSymbol? classSymbol)
+    {
+        // Get dialect information
+        var dialectType = Core.DialectHelper.GetDialectFromRepositoryFor(classSymbol);
+        var dialectProvider = Core.DialectHelper.GetDialectProvider(dialectType);
+        var parameterPrefix = dialectProvider.SqlDefine.ParameterPrefix;
+
+        // Check for batch INSERT operations (case-insensitive)
+        var sql = templateResult.ProcessedSql;
+        if (sql.IndexOf("{{VALUES_PLACEHOLDER}}", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            sql.IndexOf("{{values_placeholder}}", StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            GenerateBatchInsertSqlTemplate(sb, sql, method, parameterPrefix);
+            return;
+        }
+
+        // Create parameters dictionary
+        sb.AppendLine("var parameters = new global::System.Collections.Generic.Dictionary<string, object?>();");
+        
+        // Add parameters to dictionary
+        // templateResult.Parameters keys should include the parameter prefix (e.g., "@id", "$id")
+        // We need to map these to the actual method parameter values
+        foreach (var sqlParam in templateResult.Parameters)
+        {
+            // sqlParam.Key might be "@id" or "id" depending on the SQL template engine
+            var paramKey = sqlParam.Key;
+            var paramNameWithoutPrefix = paramKey.TrimStart('@', ':', '$');
+            
+            // Ensure the key in the dictionary has the correct parameter prefix
+            var dictionaryKey = paramKey.StartsWith(parameterPrefix) ? paramKey : parameterPrefix + paramKey;
+            
+            // Try to find a matching method parameter (case-insensitive)
+            var methodParam = method.Parameters.FirstOrDefault(p =>
+                string.Equals(p.Name, paramNameWithoutPrefix, StringComparison.OrdinalIgnoreCase));
+            
+            if (methodParam != null)
+            {
+                // Direct scalar parameter
+                sb.AppendLine($"parameters[\"{dictionaryKey}\"] = {methodParam.Name};");
+            }
+            else
+            {
+                // Check if it's a property of a complex object parameter
+                // For example, @Name might come from user.Name
+                foreach (var param in method.Parameters)
+                {
+                    if (!param.Type.IsCachedScalarType())
+                    {
+                        // Check if this complex object has a property matching the parameter name
+                        var property = param.Type.GetMembers()
+                            .OfType<IPropertySymbol>()
+                            .FirstOrDefault(p => string.Equals(p.Name, paramNameWithoutPrefix, StringComparison.OrdinalIgnoreCase));
+                        
+                        if (property != null)
+                        {
+                            // Found it! Use param.property syntax
+                            sb.AppendLine($"parameters[\"{dictionaryKey}\"] = {param.Name}?.{property.Name};");
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        
+        sb.AppendLine();
+        sb.AppendLine($"__result__ = new global::Sqlx.SqlTemplate(@\"{templateResult.ProcessedSql.Replace("\"", "\"\"")}\", parameters);");
+    }
+
+    /// <summary>
+    /// Generates SqlTemplate for batch INSERT operations.
+    /// </summary>
+    private void GenerateBatchInsertSqlTemplate(IndentedStringBuilder sb, string sqlTemplate, IMethodSymbol method, string parameterPrefix)
+    {
+        // Find the collection parameter
+        var collectionParameter = method.Parameters.FirstOrDefault(p => !p.Type.IsCachedScalarType());
+        if (collectionParameter == null)
+        {
+            // No collection parameter found - this shouldn't happen
+            sb.AppendLine("throw new global::System.InvalidOperationException(\"Batch INSERT requires a collection parameter\");");
+            return;
+        }
+
+        // Handle both uppercase and lowercase placeholders using Regex for case-insensitive replacement
+        var baseSql = System.Text.RegularExpressions.Regex.Replace(
+            sqlTemplate, 
+            @"\{\{VALUES_PLACEHOLDER\}\}", 
+            "", 
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        sb.AppendLine($"var baseSql = @\"{baseSql.Replace("\"", "\"\"").Trim()}\";");
+        sb.AppendLine("var sqlBuilder = new global::System.Text.StringBuilder(baseSql);");
+        sb.AppendLine("var parameters = new global::System.Collections.Generic.Dictionary<string, object?>();");
+        sb.AppendLine("var paramIndex = 0;");
+        sb.AppendLine("var isFirst = true;");
+        sb.AppendLine();
+
+        // Check for empty collection
+        sb.AppendLine($"if ({collectionParameter.Name} == null || !{collectionParameter.Name}.Any())");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("throw new global::System.InvalidOperationException(\"Collection parameter cannot be null or empty\");");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+
+        // Generate loop
+        sb.AppendLine($"foreach (var item in {collectionParameter.Name})");
+        sb.AppendLine("{");
+        sb.PushIndent();
+
+        sb.AppendLine("if (!isFirst) sqlBuilder.Append(\", \");");
+        sb.AppendLine("else isFirst = false;");
+        sb.AppendLine("sqlBuilder.Append(\"(\");");
+
+        // Get properties from the collection element type
+        var elementType = collectionParameter.Type.UnwrapListType();
+        var properties = elementType.GetMembers().OfType<IPropertySymbol>().ToList();
+
+        for (int i = 0; i < properties.Count; i++)
+        {
+            var property = properties[i];
+            var paramName = $"{parameterPrefix}{property.Name}_{{paramIndex}}";
+
+            if (i > 0)
+            {
+                sb.AppendLine("sqlBuilder.Append(\", \");");
+            }
+
+            sb.AppendLine($"sqlBuilder.Append(\"{paramName}\");");
+            sb.AppendLine($"parameters[\"{paramName}\"] = item.{property.Name};");
+        }
+
+        sb.AppendLine("sqlBuilder.Append(\")\");");
+        sb.AppendLine("paramIndex++;");
+
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+
+        sb.AppendLine("__result__ = new global::Sqlx.SqlTemplate(sqlBuilder.ToString(), parameters);");
+    }
 }

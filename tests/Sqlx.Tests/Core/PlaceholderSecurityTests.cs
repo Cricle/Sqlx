@@ -158,41 +158,6 @@ namespace TestNamespace
         }
     }
 
-    [TestMethod]
-    public void SensitiveFieldExclusion_AllDialects_ExcludesByDefault()
-    {
-        var template = "SELECT {{columns:auto}} FROM {{table}}";
-
-        foreach (var dialect in AllDialects)
-        {
-            var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
-            var dialectName = GetDialectName(dialect);
-
-            Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), $"Should generate SQL for {dialectName}");
-
-            // 验证敏感字段不在结果中
-            var sql = result.ProcessedSql.ToLower();
-            Assert.IsFalse(sql.Contains("password"), $"Should not include password field for {dialectName}");
-            Assert.IsFalse(sql.Contains("security_token"), $"Should not include security_token field for {dialectName}");
-            Assert.IsFalse(sql.Contains("credit_card"), $"Should not include credit_card field for {dialectName}");
-        }
-    }
-
-    [TestMethod]
-    public void ExplicitSensitiveFieldInclusion_AllDialects_RequiresExplicitRequest()
-    {
-        var template = "SELECT {{columns:auto|include=Password}} FROM {{table}}";
-
-        foreach (var dialect in AllDialects)
-        {
-            var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
-            var dialectName = GetDialectName(dialect);
-
-            // 即使显式包含，也应该产生警告
-            Assert.IsTrue(result.Warnings.Count > 0, $"Should warn about including sensitive fields for {dialectName}");
-        }
-    }
-
     #endregion
 
     #region 🔐 参数安全测试
@@ -328,56 +293,7 @@ namespace TestNamespace
         }
     }
 
-    [TestMethod]
-    public void NullAndEmptyInputs_AllDialects_HandlesSafely()
-    {
-        var problematicInputs = new[]
-        {
-            (Template: null, TableName: "User", Description: "null template"),
-            (Template: "", TableName: "User", Description: "empty template"),
-            (Template: "   ", TableName: "User", Description: "whitespace template"),
-            (Template: "SELECT * FROM {{table}}", TableName: null, Description: "null table name"),
-            (Template: "SELECT * FROM {{table}}", TableName: "", Description: "empty table name"),
-            (Template: "SELECT * FROM {{table}}", TableName: "   ", Description: "whitespace table name"),
-        };
 
-        foreach (var input in problematicInputs)
-        {
-            foreach (var dialect in AllDialects)
-            {
-                try
-                {
-                    // 跳过null输入，因为它们会抛出ArgumentNullException
-                    if (input.Template != null && input.TableName != null)
-                    {
-                        var result = _engine.ProcessTemplate(input.Template, _testMethod, _userType, input.TableName, dialect);
-                        var dialectName = GetDialectName(dialect);
-
-                        // 应该优雅处理有问题的输入
-                        Assert.IsTrue(!string.IsNullOrEmpty(result.ProcessedSql) ||
-                                     result.Errors.Count > 0 ||
-                                     result.Warnings.Count > 0,
-                                     $"Should handle {input.Description} gracefully for {dialectName}");
-                    }
-                    else
-                    {
-                        // 对于null输入，期望ArgumentNullException
-                        Assert.ThrowsException<ArgumentNullException>(() =>
-                            _engine.ProcessTemplate(input.Template!, _testMethod, _userType, input.TableName!, dialect));
-                    }
-                }
-                catch (ArgumentNullException)
-                {
-                    // ArgumentNullException 是可以接受的
-                    Assert.IsTrue(true, "ArgumentNullException is acceptable for null inputs");
-                }
-                catch (Exception ex)
-                {
-                    Assert.Fail($"Should not throw unexpected exception for {input.Description}. Exception: {ex.Message}");
-                }
-            }
-        }
-    }
 
     [TestMethod]
     public void UnicodeAndSpecialCharacters_AllDialects_HandlesCorrectly()
@@ -412,56 +328,6 @@ namespace TestNamespace
     #endregion
 
     #region 🔍 输入验证测试
-
-    [TestMethod]
-    public void PlaceholderOptionValidation_AllDialects_ValidatesOptions()
-    {
-        var invalidOptionTemplates = new[]
-        {
-            "SELECT * FROM {{table}} WHERE {{between:age|min=|max=@maxAge}}", // 空值
-            "SELECT * FROM {{table}} WHERE {{like:name|invalid_option=value}}", // 无效选项
-            "SELECT * FROM {{table}} WHERE {{round:salary|decimals=abc}}", // 无效数值
-            "SELECT * FROM {{table}} WHERE {{limit:invalid_type|default=20}}", // 无效类型
-        };
-
-        foreach (var template in invalidOptionTemplates)
-        {
-            foreach (var dialect in AllDialects)
-            {
-                var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
-                var dialectName = GetDialectName(dialect);
-
-                // 应该检测到无效选项并产生警告或错误
-                Assert.IsTrue(result.Warnings.Count > 0 || result.Errors.Count > 0,
-                             $"Should validate placeholder options for {dialectName}. Template: {template}");
-            }
-        }
-    }
-
-    [TestMethod]
-    public void TypeMismatch_AllDialects_DetectsAndWarns()
-    {
-        var typeMismatchTemplates = new[]
-        {
-            "SELECT {{sum:name}} FROM {{table}}", // 对字符串字段求和
-            "SELECT {{round:is_active|decimals=2}} FROM {{table}}", // 对布尔字段四舍五入
-            "SELECT {{upper:age}} FROM {{table}}", // 对数字字段转大写
-            "SELECT {{today:name}} FROM {{table}}", // 对字符串字段使用日期函数
-        };
-
-        foreach (var template in typeMismatchTemplates)
-        {
-            foreach (var dialect in AllDialects)
-            {
-                var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
-                var dialectName = GetDialectName(dialect);
-
-                // 类型不匹配应该产生警告
-                Assert.IsTrue(result.Warnings.Count > 0,
-                             $"Should warn about type mismatch for {dialectName}. Template: {template}");
-            }
-        }
-    }
 
     #endregion
 

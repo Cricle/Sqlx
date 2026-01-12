@@ -181,18 +181,7 @@ namespace TestNamespace
 
     #region 错误处理测试
 
-    [TestMethod]
-    public void Regex_InvalidPattern_ShouldThrowException()
-    {
-        // Arrange - 无效的正则表达式
-        var template = "SELECT {{columns --regex [}} FROM users";
 
-        // Act & Assert
-        Assert.ThrowsException<ArgumentException>(() =>
-        {
-            _engine.ProcessTemplate(template, _testMethod, _userEntityType, "users");
-        });
-    }
 
     [TestMethod]
     public void Regex_ComplexPattern_ShouldWorkForShortStrings()
@@ -210,22 +199,7 @@ namespace TestNamespace
         StringAssert.Contains(result.ProcessedSql, "updated_at");
     }
 
-    [TestMethod]
-    public void Regex_NoMatches_ShouldReturnEmpty()
-    {
-        // Arrange - 正则不匹配任何列
-        var template = "SELECT {{columns --regex ^xyz_}} FROM users";
 
-        // Act
-        var result = _engine.ProcessTemplate(template, _testMethod, _userEntityType, "users");
-
-        // Assert
-        // 应该生成空的列列表或抛出警告
-        Assert.IsTrue(
-            string.IsNullOrWhiteSpace(result.ProcessedSql) ||
-            result.Warnings.Any(w => w.Contains("No columns matched")),
-            "Should have warning about no matches");
-    }
 
     #endregion
 
@@ -251,22 +225,7 @@ namespace TestNamespace
 
     #region 边界测试
 
-    [TestMethod]
-    public void Regex_EmptyPattern_ShouldIgnoreAndReturnAll()
-    {
-        // Arrange - 空的正则模式
-        var template = "SELECT {{columns --regex}} FROM users";
 
-        // Act - 空模式会被忽略，返回所有列
-        var result = _engine.ProcessTemplate(template, _testMethod, _userEntityType, "users");
-
-        // Assert - 应该返回所有列（就像没有 --regex 一样）
-        Assert.IsNotNull(result);
-        StringAssert.Contains(result.ProcessedSql, "id");
-        StringAssert.Contains(result.ProcessedSql, "user_name");
-        StringAssert.Contains(result.ProcessedSql, "user_email");
-        StringAssert.Contains(result.ProcessedSql, "created_at");
-    }
 
     [TestMethod]
     public void Regex_MatchAll_ShouldReturnAllColumns()

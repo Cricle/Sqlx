@@ -362,3 +362,61 @@ internal sealed class SQLiteDialectProvider : BaseDialectProvider
         return $"LIMIT {limitParam} OFFSET {offsetParam}";
     }
 }
+
+
+/// <summary>
+/// DB2 dialect provider.
+/// </summary>
+internal sealed class DB2DialectProvider : BaseDialectProvider
+{
+    public override SqlDefine SqlDefine => SqlDefine.DB2;
+    public override SqlDefineTypes DialectType => SqlDefineTypes.DB2;
+
+    public override string GenerateLimitClause(int? limit, int? offset) =>
+        (limit, offset) switch
+        {
+            (not null, not null) => $"OFFSET {offset.Value} ROWS FETCH FIRST {limit.Value} ROWS ONLY",
+            (not null, null) => $"FETCH FIRST {limit.Value} ROWS ONLY",
+            (null, not null) => $"OFFSET {offset.Value} ROWS",
+            _ => string.Empty
+        };
+
+    public override string GenerateInsertWithReturning(string tableName, string[] columns)
+    {
+        var (t, c, p) = GetInsertParts(tableName, columns);
+        return $"SELECT id FROM FINAL TABLE (INSERT INTO {t} ({JoinCols(c)}) VALUES ({JoinCols(p)}))";
+    }
+
+    public override string GenerateUpsert(string tableName, string[] columns, string[] keyColumns)
+    {
+        var t = SqlDefine.WrapColumn(tableName);
+        var cols = columns.Select(c => SqlDefine.WrapColumn(c)).ToArray();
+        var keys = keyColumns.Select(c => SqlDefine.WrapColumn(c)).ToArray();
+        var pars = columns.Select(c => $":{c.ToLowerInvariant()}").ToArray();
+        var updates = columns.Where(c => !keyColumns.Contains(c))
+            .Select(c => $"target.{SqlDefine.WrapColumn(c)} = source.{SqlDefine.WrapColumn(c)}");
+        var onClause = keys.Select(k => $"target.{k} = source.{k}");
+        var srcCols = cols.Select(c => $"source.{c}");
+
+        return $"MERGE INTO {t} AS target USING (VALUES ({JoinCols(pars)})) AS source ({JoinCols(cols)}) " +
+               $"ON {string.Join(" AND ", onClause)} WHEN MATCHED THEN UPDATE SET {string.Join(", ", updates)} " +
+               $"WHEN NOT MATCHED THEN INSERT ({JoinCols(cols)}) VALUES ({string.Join(", ", srcCols)})";
+    }
+
+    public override string FormatDateTime(DateTime dateTime) => $"'{dateTime:yyyy-MM-dd HH:mm:ss}'";
+    public override string GetCurrentDateTimeSyntax() => "CURRENT TIMESTAMP";
+    public override string GetConcatenationSyntax(params string[] expressions) => string.Join(" || ", expressions);
+    public override string GetReturningIdClause() => string.Empty;
+
+    public override string GenerateLimitOffsetClause(string limitParam, string offsetParam, out bool requiresOrderBy)
+    {
+        requiresOrderBy = false;
+        if (!string.IsNullOrEmpty(offsetParam) && !string.IsNullOrEmpty(limitParam))
+            return $"OFFSET :{offsetParam} ROWS FETCH FIRST :{limitParam} ROWS ONLY";
+        if (!string.IsNullOrEmpty(limitParam))
+            return $"FETCH FIRST :{limitParam} ROWS ONLY";
+        if (!string.IsNullOrEmpty(offsetParam))
+            return $"OFFSET :{offsetParam} ROWS";
+        return string.Empty;
+    }
+}

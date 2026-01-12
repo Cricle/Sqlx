@@ -5,6 +5,7 @@
 // -----------------------------------------------------------------------
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 
@@ -15,6 +16,8 @@ namespace Sqlx
     /// </summary>
     public static class ExpressionExtensions
     {
+        private static readonly ConcurrentDictionary<Expression, Func<object?>> CompiledExpressionCache = new();
+
         /// <summary>
         /// Converts a predicate expression to a SQL WHERE clause.
         /// </summary>
@@ -74,7 +77,7 @@ namespace Sqlx
                     break;
 
                 case MemberExpression { Expression: ConstantExpression } member:
-                    var value = EvaluateExpression(member);
+                    var value = EvaluateCached(member);
                     if (value != null)
                     {
                         parameters[$"p{parameters.Count}"] = value;
@@ -101,11 +104,16 @@ namespace Sqlx
             }
         }
 
-        private static object? EvaluateExpression(Expression expression)
+        private static object? EvaluateCached(Expression expression)
         {
             try
             {
-                return Expression.Lambda(expression).Compile().DynamicInvoke();
+                var compiled = CompiledExpressionCache.GetOrAdd(
+                    expression,
+                    static expr => Expression.Lambda<Func<object?>>(
+                        Expression.Convert(expr, typeof(object))).Compile());
+
+                return compiled();
             }
             catch
             {

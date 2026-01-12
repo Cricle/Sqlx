@@ -93,19 +93,22 @@ namespace Sqlx
 
         // ===== Existence Checks =====
 
-        /// <summary>Checks if entity exists by primary key.</summary>
-        /// <param name="id">Primary key value</param>
+        /// <summary>Checks if entity exists, optionally with a filter condition.</summary>
+        /// <param name="predicate">Optional expression predicate for filtering (null = check if any entity exists)</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>True if exists, false otherwise</returns>
-        [SqlTemplate("SELECT CASE WHEN EXISTS(SELECT 1 FROM {{table}} WHERE id = @id) THEN 1 ELSE 0 END")]
-        Task<bool> ExistsAsync(TKey id, CancellationToken cancellationToken = default);
-
-        /// <summary>Checks if any entity matches expression predicate.</summary>
-        /// <param name="predicate">Expression predicate</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>True if any match found, false otherwise</returns>
-        [SqlTemplate("SELECT CASE WHEN EXISTS(SELECT 1 FROM {{table}} {{where --param predicate}}) THEN 1 ELSE 0 END")]
-        Task<bool> ExistsWhereAsync([ExpressionToSql] Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
+        /// <example>
+        /// // Check if any user exists
+        /// bool hasUsers = await repo.ExistsAsync();
+        /// 
+        /// // Check if specific user exists
+        /// bool exists = await repo.ExistsAsync(x => x.Id == 123);
+        /// 
+        /// // Check if active users exist
+        /// bool hasActive = await repo.ExistsAsync(x => x.IsActive);
+        /// </example>
+        [SqlTemplate("SELECT CASE WHEN EXISTS(SELECT 1 FROM {{table}} {{*ifnotnull predicate}}{{where --param predicate}}{{/ifnotnull}}) THEN 1 ELSE 0 END")]
+        Task<bool> ExistsAsync([ExpressionToSql] Expression<Func<TEntity, bool>>? predicate = null, CancellationToken cancellationToken = default);
 
         // ===== Additional Useful Methods =====
 

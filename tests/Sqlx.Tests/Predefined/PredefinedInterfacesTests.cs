@@ -127,8 +127,8 @@ namespace Sqlx.Tests.Predefined
             await CreateUserTableAsync();
             var repo = new UserQueryRepository(_connection);
 
-            // Act
-            var exists = await repo.ExistsAsync(999);
+            // Act - check if user with id 999 exists
+            var exists = await repo.ExistsAsync(x => x.Id == 999);
 
             // Assert
             Assert.IsFalse(exists);

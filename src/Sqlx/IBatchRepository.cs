@@ -82,7 +82,7 @@ namespace Sqlx
         ///     new { Status = "Expired", UpdatedAt = DateTime.Now }
         /// );
         /// </example>
-        [SqlTemplate("UPDATE {{table}} SET {{set --from updates}} {{where}}")]
+        [SqlTemplate("UPDATE {{table}} SET {{set --from updates}} {{where --param predicate}}")]
         Task<int> BatchUpdateWhereAsync([ExpressionToSql] Expression<Func<TEntity, bool>> predicate, object updates, CancellationToken cancellationToken = default);
 
         // ===== Batch Delete =====

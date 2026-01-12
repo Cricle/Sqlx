@@ -84,7 +84,7 @@ namespace Sqlx
         /// <example>
         /// await repo.DeleteWhereAsync(x => x.CreatedAt &lt; DateTime.Now.AddYears(-1));
         /// </example>
-        [SqlTemplate("DELETE FROM {{table}} {{where}}")]
+        [SqlTemplate("DELETE FROM {{table}} {{where --param predicate}}")]
         Task<int> DeleteWhereAsync([ExpressionToSql] Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
 
         // ===== Soft Delete Operations =====

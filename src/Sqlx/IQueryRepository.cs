@@ -48,13 +48,6 @@ namespace Sqlx
         [SqlTemplate("SELECT {{columns}} FROM {{table}} {{limit --param limit}}")]
         Task<List<TEntity>> GetAllAsync(int limit = 1000, CancellationToken cancellationToken = default);
 
-        /// <summary>Gets top N entities.</summary>
-        /// <param name="limit">Maximum number of rows to return</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>List of entities (up to limit)</returns>
-        [SqlTemplate("SELECT {{columns}} FROM {{table}} {{limit --param limit}}")]
-        Task<List<TEntity>> GetTopAsync(int limit, CancellationToken cancellationToken = default);
-
         // ===== Pagination =====
 
         /// <summary>Gets entities with offset/limit pagination.</summary>

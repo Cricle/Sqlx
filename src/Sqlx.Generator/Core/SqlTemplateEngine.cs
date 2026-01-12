@@ -362,16 +362,9 @@ public class SqlTemplateEngine
             "random" => GetRandomFunction(dialect),
             // 批量操作
             "batch_values" => ProcessBatchValuesPlaceholder(placeholderType, placeholderOptions, method, dialect),
-            "upsert" => ProcessUpsertPlaceholder(placeholderType, tableName, placeholderOptions, dialect),
-            // 分页增强
-            "page" => ProcessPagePlaceholder(placeholderType, method, placeholderOptions, dialect),
-            "pagination" => ProcessPaginationPlaceholder(placeholderType, method, placeholderOptions, dialect),
             // 条件表达式（数据库方言差异较大）
             "coalesce" => ProcessCoalescePlaceholder(placeholderType, placeholderOptions, dialect),
             "ifnull" => ProcessIfNullPlaceholder(placeholderType, placeholderOptions, dialect),
-            // 批量操作增强
-            "batch_insert" => ProcessBatchInsertPlaceholder(placeholderType, tableName, entityType, placeholderOptions, dialect),
-            "bulk_update" => ProcessBulkUpdatePlaceholder(placeholderType, tableName, placeholderOptions, dialect),
             _ => ProcessCustomPlaceholder(
                 BuildOriginalPlaceholder(placeholderName, placeholderType, placeholderOptions), 
                 placeholderName, placeholderType, placeholderOptions, result)
@@ -1952,39 +1945,6 @@ public class SqlTemplateEngine
 
         // Return runtime marker for batch INSERT (will be processed at runtime)
         return $"__RUNTIME_BATCH_VALUES_{paramName}__";
-    }
-
-    /// <summary>处理UPSERT占位符 - 插入或更新 - 多数据库支持</summary>
-    private static string ProcessUpsertPlaceholder(string type, string tableName, string options, SqlDefine dialect)
-    {
-        var snakeTableName = SharedCodeGenerationUtilities.ConvertToSnakeCase(tableName);
-        var conflictColumn = ExtractOption(options, "conflict", "id");
-
-        if (dialect.Equals(SqlDefine.PostgreSql))
-        {
-            // PostgreSQL: INSERT ... ON CONFLICT DO UPDATE
-            return $"INSERT INTO {dialect.WrapColumn(snakeTableName)} {{{{columns}}}} VALUES {{{{values}}}} ON CONFLICT ({dialect.WrapColumn(conflictColumn)}) DO UPDATE SET {{{{set:auto}}}}";
-        }
-        else if (dialect.Equals(SqlDefine.MySql))
-        {
-            // MySQL: INSERT ... ON DUPLICATE KEY UPDATE
-            return $"INSERT INTO {dialect.WrapColumn(snakeTableName)} {{{{columns}}}} VALUES {{{{values}}}} ON DUPLICATE KEY UPDATE {{{{set:auto}}}}";
-        }
-        else if (dialect.Equals(SqlDefine.SQLite))
-        {
-            // SQLite: INSERT OR REPLACE (simpler but replaces entire row)
-            return $"INSERT OR REPLACE INTO {dialect.WrapColumn(snakeTableName)} {{{{columns}}}} VALUES {{{{values}}}}";
-        }
-        else if (dialect.Equals(SqlDefine.SqlServer))
-        {
-            // SQL Server: MERGE statement (more complex but standard)
-            return $"MERGE {dialect.WrapColumn(snakeTableName)} AS target USING (SELECT {{{{values}}}}) AS source ON target.{dialect.WrapColumn(conflictColumn)} = source.{dialect.WrapColumn(conflictColumn)} WHEN MATCHED THEN UPDATE SET {{{{set:auto}}}} WHEN NOT MATCHED THEN INSERT {{{{columns}}}} VALUES {{{{values}}}};";
-        }
-        else // Oracle and other databases
-        {
-            // Oracle: MERGE statement
-            return $"MERGE INTO {dialect.WrapColumn(snakeTableName)} target USING (SELECT {{{{values}}}} FROM DUAL) source ON (target.{dialect.WrapColumn(conflictColumn)} = source.{dialect.WrapColumn(conflictColumn)}) WHEN MATCHED THEN UPDATE SET {{{{set:auto}}}} WHEN NOT MATCHED THEN INSERT {{{{columns}}}} VALUES {{{{values}}}}";
-        }
     }
 
     /// <summary>处理EXISTS占位符 - 存在性检查</summary>

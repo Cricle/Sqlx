@@ -1,3 +1,9 @@
+// -----------------------------------------------------------------------
+// <copyright file="SqlTemplateExtensions.cs" company="Cricle">
+// Copyright (c) Cricle. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
+
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -10,20 +16,12 @@ namespace Sqlx
 {
     /// <summary>
     /// High-performance ADO.NET integration extensions for SqlTemplate.
-    /// Thread-safe, low-allocation, and debugger-friendly.
     /// </summary>
     public static class SqlTemplateExtensions
     {
         /// <summary>
-        /// Creates a DbCommand from this SqlTemplate with optional parameter overrides.
+        /// Creates a DbCommand from this SqlTemplate.
         /// </summary>
-        /// <param name="template">The SQL template</param>
-        /// <param name="connection">The database connection (must not be null)</param>
-        /// <param name="transaction">Optional transaction</param>
-        /// <param name="commandTimeout">Optional command timeout in seconds</param>
-        /// <param name="parameterOverrides">Optional parameter value overrides</param>
-        /// <returns>A configured DbCommand ready to execute</returns>
-        /// <exception cref="ArgumentNullException">Thrown when connection is null</exception>
         public static DbCommand CreateCommand(
             this SqlTemplate template,
             DbConnection connection,
@@ -31,42 +29,30 @@ namespace Sqlx
             int? commandTimeout = null,
             IReadOnlyDictionary<string, object?>? parameterOverrides = null)
         {
-            // Parameter validation (debugger-friendly)
             if (connection == null)
-                throw new ArgumentNullException(nameof(connection), "Database connection cannot be null");
+            {
+                throw new ArgumentNullException(nameof(connection));
+            }
 
-            // Create Command
             var command = connection.CreateCommand();
             command.CommandText = template.Sql;
-            
-            if (transaction != null)
-                command.Transaction = transaction;
-            
-            if (commandTimeout.HasValue)
-                command.CommandTimeout = commandTimeout.Value;
 
-            // Add parameters (performance optimized)
-            var paramCount = template.Parameters.Count;
-            if (paramCount > 0)
+            if (transaction != null)
             {
-                foreach (var param in template.Parameters)
-                {
-                    var dbParam = command.CreateParameter();
-                    dbParam.ParameterName = param.Key;
-                    
-                    object? value;
-                    if (parameterOverrides != null && parameterOverrides.TryGetValue(param.Key, out var overrideValue))
-                    {
-                        value = overrideValue;
-                    }
-                    else
-                    {
-                        value = param.Value;
-                    }
-                    
-                    dbParam.Value = value ?? DBNull.Value;
-                    command.Parameters.Add(dbParam);
-                }
+                command.Transaction = transaction;
+            }
+
+            if (commandTimeout.HasValue)
+            {
+                command.CommandTimeout = commandTimeout.Value;
+            }
+
+            foreach (var param in template.Parameters)
+            {
+                var dbParam = command.CreateParameter();
+                dbParam.ParameterName = param.Key;
+                dbParam.Value = GetParameterValue(param.Key, param.Value, parameterOverrides);
+                command.Parameters.Add(dbParam);
             }
 
             return command;
@@ -85,9 +71,10 @@ namespace Sqlx
             CancellationToken cancellationToken = default)
         {
             if (connection == null)
-                throw new ArgumentNullException(nameof(connection), "Database connection cannot be null");
+            {
+                throw new ArgumentNullException(nameof(connection));
+            }
 
-            // Only open connection if needed
             if (connection.State != ConnectionState.Open)
             {
                 await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
@@ -96,8 +83,10 @@ namespace Sqlx
             return template.CreateCommand(connection, transaction, commandTimeout, parameterOverrides);
         }
 
+        #region Async Methods
+
         /// <summary>
-        /// Executes the template and returns a data reader (async).
+        /// Executes the template and returns a data reader.
         /// </summary>
         public static async ValueTask<DbDataReader> ExecuteReaderAsync(
             this SqlTemplate template,
@@ -107,23 +96,21 @@ namespace Sqlx
             CommandBehavior behavior = CommandBehavior.Default,
             CancellationToken cancellationToken = default)
         {
-            var command = await template.CreateCommandAsync(
-                connection, transaction, commandTimeout: null, parameterOverrides, 
-                cancellationToken).ConfigureAwait(false);
-            
+            var command = await template.CreateCommandAsync(connection, transaction, null, parameterOverrides, cancellationToken).ConfigureAwait(false);
+
             try
             {
                 return await command.ExecuteReaderAsync(behavior, cancellationToken).ConfigureAwait(false);
             }
             catch
             {
-                command?.Dispose();
+                command.Dispose();
                 throw;
             }
         }
 
         /// <summary>
-        /// Executes the template and returns the number of affected rows (async).
+        /// Executes the template and returns the number of affected rows.
         /// </summary>
         public static async ValueTask<int> ExecuteNonQueryAsync(
             this SqlTemplate template,
@@ -132,22 +119,12 @@ namespace Sqlx
             IReadOnlyDictionary<string, object?>? parameterOverrides = null,
             CancellationToken cancellationToken = default)
         {
-            var command = await template.CreateCommandAsync(
-                connection, transaction, commandTimeout: null, parameterOverrides,
-                cancellationToken).ConfigureAwait(false);
-            
-            try
-            {
-                return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-            }
-            finally
-            {
-                command?.Dispose();
-            }
+            using var command = await template.CreateCommandAsync(connection, transaction, null, parameterOverrides, cancellationToken).ConfigureAwait(false);
+            return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
-        /// Executes the template and returns a scalar value (async, non-generic).
+        /// Executes the template and returns a scalar value.
         /// </summary>
         public static async ValueTask<object?> ExecuteScalarAsync(
             this SqlTemplate template,
@@ -156,24 +133,12 @@ namespace Sqlx
             IReadOnlyDictionary<string, object?>? parameterOverrides = null,
             CancellationToken cancellationToken = default)
         {
-            var command = await template.CreateCommandAsync(
-                connection, transaction, commandTimeout: null, parameterOverrides,
-                cancellationToken).ConfigureAwait(false);
-            
-            try
-            {
-                var result = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
-                return result == DBNull.Value ? null : result;
-            }
-            finally
-            {
-                command?.Dispose();
-            }
+            using var command = await template.CreateCommandAsync(connection, transaction, null, parameterOverrides, cancellationToken).ConfigureAwait(false);
+            return NormalizeDbNull(await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false));
         }
 
         /// <summary>
-        /// Executes the template and returns a scalar value with type conversion (async).
-        /// Supports nullable value types, reference types, and automatic conversions.
+        /// Executes the template and returns a scalar value with type conversion.
         /// </summary>
         public static async ValueTask<T?> ExecuteScalarAsync<T>(
             this SqlTemplate template,
@@ -182,42 +147,16 @@ namespace Sqlx
             IReadOnlyDictionary<string, object?>? parameterOverrides = null,
             CancellationToken cancellationToken = default)
         {
-            var command = await template.CreateCommandAsync(
-                connection, transaction, commandTimeout: null, parameterOverrides,
-                cancellationToken).ConfigureAwait(false);
-            
-            try
-            {
-                var result = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
-                
-                if (result == null || result == DBNull.Value)
-                    return default;
-                
-                // Performance optimization: avoid unnecessary type conversion
-                if (result is T typedResult)
-                    return typedResult;
-                
-                // Handle Nullable<T>
-                var targetType = typeof(T);
-                var underlyingType = Nullable.GetUnderlyingType(targetType);
-                if (underlyingType != null)
-                {
-                    // T is Nullable<TValue>, convert to TValue
-                    return (T?)Convert.ChangeType(result, underlyingType);
-                }
-                
-                return (T)Convert.ChangeType(result, targetType);
-            }
-            finally
-            {
-                command?.Dispose();
-            }
+            using var command = await template.CreateCommandAsync(connection, transaction, null, parameterOverrides, cancellationToken).ConfigureAwait(false);
+            return ConvertScalar<T>(await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false));
         }
 
-        // ========== Synchronous versions ==========
-        
+        #endregion
+
+        #region Sync Methods
+
         /// <summary>
-        /// Executes the template and returns a data reader (sync).
+        /// Executes the template and returns a data reader.
         /// </summary>
         public static DbDataReader ExecuteReader(
             this SqlTemplate template,
@@ -231,7 +170,7 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// Executes the template and returns the number of affected rows (sync).
+        /// Executes the template and returns the number of affected rows.
         /// </summary>
         public static int ExecuteNonQuery(
             this SqlTemplate template,
@@ -244,7 +183,7 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// Executes the template and returns a scalar value (sync, non-generic).
+        /// Executes the template and returns a scalar value.
         /// </summary>
         public static object? ExecuteScalar(
             this SqlTemplate template,
@@ -253,13 +192,11 @@ namespace Sqlx
             IReadOnlyDictionary<string, object?>? parameterOverrides = null)
         {
             using var command = template.CreateCommand(connection, transaction, parameterOverrides: parameterOverrides);
-            var result = command.ExecuteScalar();
-            return result == DBNull.Value ? null : result;
+            return NormalizeDbNull(command.ExecuteScalar());
         }
 
         /// <summary>
-        /// Executes the template and returns a scalar value with type conversion (sync).
-        /// Supports nullable value types, reference types, and automatic conversions.
+        /// Executes the template and returns a scalar value with type conversion.
         /// </summary>
         public static T? ExecuteScalar<T>(
             this SqlTemplate template,
@@ -268,23 +205,43 @@ namespace Sqlx
             IReadOnlyDictionary<string, object?>? parameterOverrides = null)
         {
             using var command = template.CreateCommand(connection, transaction, parameterOverrides: parameterOverrides);
-            var result = command.ExecuteScalar();
-            
-            if (result == null || result == DBNull.Value)
-                return default;
-            
-            if (result is T typedResult)
-                return typedResult;
-            
-            // Handle Nullable<T>
-            var targetType = typeof(T);
-            var underlyingType = Nullable.GetUnderlyingType(targetType);
-            if (underlyingType != null)
-            {
-                return (T?)Convert.ChangeType(result, underlyingType);
-            }
-            
-            return (T)Convert.ChangeType(result, targetType);
+            return ConvertScalar<T>(command.ExecuteScalar());
         }
+
+        #endregion
+
+        #region Private Helpers
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static object GetParameterValue(string key, object? value, IReadOnlyDictionary<string, object?>? overrides)
+        {
+            if (overrides != null && overrides.TryGetValue(key, out var overrideValue))
+            {
+                return overrideValue ?? DBNull.Value;
+            }
+
+            return value ?? DBNull.Value;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static object? NormalizeDbNull(object? result) => result == DBNull.Value ? null : result;
+
+        private static T? ConvertScalar<T>(object? result)
+        {
+            if (result == null || result == DBNull.Value)
+            {
+                return default;
+            }
+
+            if (result is T typed)
+            {
+                return typed;
+            }
+
+            var targetType = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
+            return (T?)Convert.ChangeType(result, targetType);
+        }
+
+        #endregion
     }
 }

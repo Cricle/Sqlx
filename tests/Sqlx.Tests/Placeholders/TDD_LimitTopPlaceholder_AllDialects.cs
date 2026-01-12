@@ -15,7 +15,7 @@ using Sqlx.Generator;
 namespace Sqlx.Tests.Placeholders;
 
 /// <summary>
-/// {{limit}} 和 {{top}} 占位符在所有数据库方言中的完整测试
+/// {{limit}} 占位符在所有数据库方言中的完整测试
 /// 覆盖 SQLite, PostgreSQL, MySQL, SQL Server 的所有分页语法
 /// </summary>
 [TestClass]
@@ -196,57 +196,6 @@ namespace TestNamespace
 
     #endregion
 
-    #region {{top}} 占位符 - 所有方言
-
-    [TestMethod]
-    [Description("{{top}} 占位符应该在所有方言中工作")]
-    public void Top_AllDialects_GeneratesCorrectSyntax()
-    {
-        var template = "SELECT {{top}} * FROM {{table}}";
-
-        foreach (var dialect in AllDialects)
-        {
-            var result = _engine.ProcessTemplate(template, _testMethod, _userType, "users", dialect);
-            var dialectName = GetDialectName(dialect);
-
-            Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql),
-                $"[{dialectName}] 生成的 SQL 不应该为空");
-
-            // {{top}} 应该被处理（不再包含占位符）
-            Assert.IsFalse(result.ProcessedSql.Contains("{{top}}"),
-                $"[{dialectName}] SQL 不应该包含未处理的 {{{{top}}}} 占位符");
-        }
-    }
-
-    [TestMethod]
-    [Description("{{top}} 和 {{limit}} 应该都能生成分页语法")]
-    public void Top_IsAliasForLimit()
-    {
-        var templateTop = "SELECT * FROM {{table}} {{top}}";
-        var templateLimit = "SELECT * FROM {{table}} {{limit}}";
-
-        foreach (var dialect in AllDialects)
-        {
-            var resultTop = _engine.ProcessTemplate(templateTop, _testMethodWithLimit, _userType, "users", dialect);
-            var resultLimit = _engine.ProcessTemplate(templateLimit, _testMethodWithLimit, _userType, "users", dialect);
-            var dialectName = GetDialectName(dialect);
-
-            // 两者都应该生成有效的 SQL
-            Assert.IsFalse(string.IsNullOrEmpty(resultTop.ProcessedSql),
-                $"[{dialectName}] {{{{top}}}} 应该生成 SQL");
-            Assert.IsFalse(string.IsNullOrEmpty(resultLimit.ProcessedSql),
-                $"[{dialectName}] {{{{limit}}}} 应该生成 SQL");
-
-            // 两者都应该处理占位符（不再包含 {{ 或 }}）
-            Assert.IsFalse(resultTop.ProcessedSql.Contains("{{") || resultTop.ProcessedSql.Contains("}}"),
-                $"[{dialectName}] {{{{top}}}} 不应该包含未处理的占位符。实际: {resultTop.ProcessedSql}");
-            Assert.IsFalse(resultLimit.ProcessedSql.Contains("{{") || resultLimit.ProcessedSql.Contains("}}"),
-                $"[{dialectName}] {{{{limit}}}} 不应该包含未处理的占位符。实际: {resultLimit.ProcessedSql}");
-        }
-    }
-
-    #endregion
-
     #region {{limit}} + {{offset}} 组合 - 所有方言
 
     [TestMethod]
@@ -409,10 +358,10 @@ namespace TestNamespace
     #region 带 ORDER BY 的测试 - 所有方言
 
     [TestMethod]
-    [Description("{{limit}} 与 {{orderby}} 组合应该在所有方言中正确工作")]
+    [Description("{{limit}} 与 ORDER BY 组合应该在所有方言中正确工作")]
     public void Limit_WithOrderBy_AllDialects()
     {
-        var template = "SELECT * FROM {{table}} {{orderby id --desc}} {{limit}}";
+        var template = "SELECT * FROM {{table}} ORDER BY id DESC {{limit}}";
 
         foreach (var dialect in AllDialects)
         {
@@ -468,8 +417,6 @@ namespace TestNamespace
             // 不应该包含未处理的占位符
             Assert.IsFalse(result.ProcessedSql.Contains("{{limit}}"),
                 $"[{dialectName}] SQL 不应该包含未处理的 {{{{limit}}}}。实际 SQL: {result.ProcessedSql}");
-            Assert.IsFalse(result.ProcessedSql.Contains("{{top}}"),
-                $"[{dialectName}] SQL 不应该包含未处理的 {{{{top}}}}。实际 SQL: {result.ProcessedSql}");
         }
     }
 
@@ -512,10 +459,10 @@ namespace TestNamespace
     #region 复杂组合测试
 
     [TestMethod]
-    [Description("{{columns}} + {{where}} + {{orderby}} + {{limit}} 完整组合 - 所有方言")]
+    [Description("{{columns}} + {{where}} + ORDER BY + {{limit}} 完整组合 - 所有方言")]
     public void CompleteQuery_AllDialects_WithAllPlaceholders()
     {
-        var template = "SELECT {{columns}} FROM {{table}} WHERE age >= @minAge {{orderby age --desc}} {{limit}}";
+        var template = "SELECT {{columns}} FROM {{table}} WHERE age >= @minAge ORDER BY age DESC {{limit}}";
 
         foreach (var dialect in AllDialects)
         {

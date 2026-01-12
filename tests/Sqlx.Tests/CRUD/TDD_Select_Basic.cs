@@ -652,8 +652,8 @@ public interface IBasicSelectProductRepository
     Task<List<BasicSelectProduct>> GetAllOrderByPriceAndStockAsync();
 }
 
-[RepositoryFor<IBasicSelectProductRepository>]
 [SqlDefine(SqlDefineTypes.SQLite)]
+[RepositoryFor(typeof(IBasicSelectProductRepository))]
 public partial class BasicSelectProductRepository : IBasicSelectProductRepository
 {
     private readonly IDbConnection _connection;

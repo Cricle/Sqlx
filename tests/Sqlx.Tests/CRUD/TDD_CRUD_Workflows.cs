@@ -406,8 +406,8 @@ public interface IWorkflowOrderRepository
     Task<int> DeleteOrderAsync(long id);
 }
 
-[RepositoryFor<IWorkflowOrderRepository>]
 [SqlDefine(SqlDefineTypes.SQLite)]
+[RepositoryFor(typeof(IWorkflowOrderRepository))]
 public partial class WorkflowOrderRepository : IWorkflowOrderRepository
 {
     private readonly IDbConnection _connection;

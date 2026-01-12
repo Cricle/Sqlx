@@ -19,49 +19,6 @@ namespace Sqlx
     public interface IAdvancedRepository<TEntity, TKey>
         where TEntity : class
     {
-        // ===== Raw SQL Operations =====
-
-        /// <summary>Executes raw SQL command (INSERT/UPDATE/DELETE).</summary>
-        /// <param name="sql">SQL command string</param>
-        /// <param name="parameters">Anonymous object with parameters</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Rows affected</returns>
-        /// <example>
-        /// await repo.ExecuteRawAsync("UPDATE users SET status = @status WHERE age > @age", new { status = 1, age = 18 });
-        /// </example>
-        Task<int> ExecuteRawAsync(string sql, object? parameters = null, CancellationToken cancellationToken = default);
-
-        /// <summary>Executes raw SQL query returning entities.</summary>
-        /// <param name="sql">SQL query string</param>
-        /// <param name="parameters">Anonymous object with parameters</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>List of entities</returns>
-        Task<List<TEntity>> QueryRawAsync(string sql, object? parameters = null, CancellationToken cancellationToken = default);
-
-        /// <summary>Executes raw SQL query returning custom type.</summary>
-        /// <typeparam name="T">Return type</typeparam>
-        /// <param name="sql">SQL query string</param>
-        /// <param name="parameters">Anonymous object with parameters</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>List of custom type instances</returns>
-        /// <example>
-        /// var dtos = await repo.QueryRawAsync&lt;UserDto&gt;(
-        ///     "SELECT u.id, u.name, COUNT(o.id) as OrderCount FROM users u LEFT JOIN orders o ON u.id = o.user_id GROUP BY u.id, u.name"
-        /// );
-        /// </example>
-        Task<List<T>> QueryRawAsync<T>(string sql, object? parameters = null, CancellationToken cancellationToken = default);
-
-        /// <summary>Executes raw SQL query returning single scalar value.</summary>
-        /// <typeparam name="T">Return type</typeparam>
-        /// <param name="sql">SQL query string</param>
-        /// <param name="parameters">Anonymous object with parameters</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Scalar value</returns>
-        /// <example>
-        /// int maxId = await repo.ExecuteScalarAsync&lt;int&gt;("SELECT MAX(id) FROM users");
-        /// </example>
-        Task<T> ExecuteScalarAsync<T>(string sql, object? parameters = null, CancellationToken cancellationToken = default);
-
         // ===== Bulk Operations =====
 
         /// <summary>Bulk copy/import large amount of data using database-specific bulk insert.</summary>

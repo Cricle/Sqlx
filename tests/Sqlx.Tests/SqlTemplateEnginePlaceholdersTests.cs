@@ -177,57 +177,6 @@ public class SqlTemplateEnginePlaceholdersTests
 
     #endregion
 
-    #region {{orderby}} 占位符测试
-
-    [TestMethod]
-    [Description("{{orderby created_at --asc}} 应该生成升序排序")]
-    public void OrderByPlaceholder_WithAsc_ShouldGenerateAscendingOrder()
-    {
-        // Arrange
-        var template = "SELECT * FROM {{table}} {{orderby created_at --asc}}";
-
-        // Act
-        var result = _engine!.ProcessTemplate(template, _testMethod!, _testEntity!, "test_table");
-
-        // Assert
-        StringAssert.Contains(result.ProcessedSql, "ORDER BY");
-        StringAssert.Contains(result.ProcessedSql, "ASC");
-        StringAssert.Contains(result.ProcessedSql, "created_at");
-    }
-
-    [TestMethod]
-    [Description("{{orderby name --desc}} 应该生成降序排序")]
-    public void OrderByPlaceholder_WithDesc_ShouldGenerateDescendingOrder()
-    {
-        // Arrange
-        var template = "SELECT * FROM {{table}} {{orderby name --desc}}";
-
-        // Act
-        var result = _engine!.ProcessTemplate(template, _testMethod!, _testEntity!, "test_table");
-
-        // Assert
-        StringAssert.Contains(result.ProcessedSql, "ORDER BY");
-        StringAssert.Contains(result.ProcessedSql, "DESC");
-        StringAssert.Contains(result.ProcessedSql, "name");
-    }
-
-    [TestMethod]
-    [Description("{{orderby}} 无选项时应该有默认排序")]
-    public void OrderByPlaceholder_WithoutOptions_ShouldUseDefaultOrder()
-    {
-        // Arrange
-        var template = "SELECT * FROM {{table}} {{orderby}}";
-
-        // Act
-        var result = _engine!.ProcessTemplate(template, _testMethod!, _testEntity!, "test_table");
-
-        // Assert
-        StringAssert.Contains(result.ProcessedSql, "ORDER BY");
-        // 应该有默认排序（通常是 id ASC）
-    }
-
-    #endregion
-
     #region {{limit}} 占位符测试
 
     [TestMethod]
@@ -257,7 +206,7 @@ public class SqlTemplateEnginePlaceholdersTests
     public void MultiplePlaceholders_ShouldWorkTogether()
     {
         // Arrange
-        var template = "SELECT {{columns --exclude Id}} FROM {{table}} {{orderby created_at --desc}} {{limit}}";
+        var template = "SELECT {{columns --exclude Id}} FROM {{table}} WHERE created_at > @startDate ORDER BY created_at DESC {{limit}}";
 
         // Act
         var result = _engine!.ProcessTemplate(template, _testMethod!, _testEntity!, "users");

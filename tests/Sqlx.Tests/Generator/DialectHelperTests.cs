@@ -18,7 +18,7 @@ public class DialectHelperTests
 {
     [TestMethod]
     [TestCategory(TestCategories.Unit)]
-    public void GetDialectFromRepositoryFor_WithDialectSet_ShouldReturnDialect()
+    public void GetDialectFromSqlDefine_WithDialectSet_ShouldReturnDialect()
     {
         // Arrange
         var code = @"
@@ -30,7 +30,8 @@ namespace Test
 
     public interface IUserRepository { }
 
-    [RepositoryFor(typeof(IUserRepository), Dialect = SqlDefineTypes.PostgreSql)]
+    [SqlDefine(SqlDefineTypes.PostgreSql)]
+    [RepositoryFor(typeof(IUserRepository))]
     public partial class UserRepository : IUserRepository { }
 }
 ";
@@ -45,7 +46,7 @@ namespace Test
 
     [TestMethod]
     [TestCategory(TestCategories.Unit)]
-    public void GetDialectFromRepositoryFor_NoDialectSet_ShouldReturnDefault()
+    public void GetDialectFromSqlDefine_NoDialectSet_ShouldReturnDefault()
     {
         // Arrange
         var code = @"
@@ -72,7 +73,7 @@ namespace Test
 
     [TestMethod]
     [TestCategory(TestCategories.Unit)]
-    public void GetTableNameFromRepositoryFor_WithTableNameSet_ShouldReturnTableName()
+    public void GetTableNameFromTableNameAttribute_WithTableNameSet_ShouldReturnTableName()
     {
         // Arrange
         var code = @"
@@ -84,7 +85,8 @@ namespace Test
 
     public interface IUserRepository { }
 
-    [RepositoryFor(typeof(IUserRepository), TableName = ""custom_users"")]
+    [TableName(""custom_users"")]
+    [RepositoryFor(typeof(IUserRepository))]
     public partial class UserRepository : IUserRepository { }
 }
 ";
@@ -196,4 +198,3 @@ namespace Test
         return (compilation, symbol!);
     }
 }
-

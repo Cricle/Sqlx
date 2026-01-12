@@ -1,578 +1,660 @@
-# 💡 Sqlx 最佳实践指南
+# Best Practices
 
-本指南提供使用 Sqlx 的最佳实践和推荐模式。
+Recommended patterns and practices for using Sqlx effectively.
+
+## General Principles
+
+### ✅ Use Placeholders for Repetitive SQL
+
+Placeholders reduce boilerplate and adapt to different databases automatically.
+
+**Good:**
+```csharp
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
+Task<User?> GetByIdAsync(long id);
+```
+
+**Bad:**
+```csharp
+[SqlTemplate("SELECT id, name, email, age, is_active FROM users WHERE id = @id")]
+Task<User?> GetByIdAsync(long id);
+```
+
+**Why:** Placeholders automatically update when you add/remove entity properties.
 
 ---
 
-## 🎯 核心原则
+### ✅ Write Simple SQL Directly
 
-### 1. 智能占位符 vs 直接写 SQL
+Don't use placeholders for simple SQL that won't change.
 
-**核心理念**：复杂的用占位符，简单的直接写
-
-| 场景 | 推荐方式 | 原因 |
-|------|---------|------|
-| **列名列表** | `{{columns}}` | 自动生成，类型安全，维护方便 |
-| **表名** | `{{table}}` | 自动转换命名规则 |
-| **SET 子句** | `{{set}}` | 自动生成复杂赋值语句 |
-| **值占位符** | `{{values}}` | 自动匹配列顺序 |
-| **WHERE 条件** | 直接写 SQL | 更清晰，更灵活 |
-| **聚合函数** | 直接写 SQL | 更简短，更标准 |
-| **INSERT/UPDATE/DELETE** | 直接写关键字 | 一目了然 |
-
-**示例：**
-
+**Good:**
 ```csharp
-// ✅ 推荐：智能占位符 + 直接 SQL
-[Sqlx("SELECT {{columns}} FROM {{table}} WHERE age >= @minAge AND is_active = @isActive {{orderby created_at --desc}}")]
-Task<List<User>> SearchAsync(int minAge, bool isActive);
-
-// ❌ 避免：过度使用占位符
-[Sqlx("{{select}} {{columns}} {{from}} {{table}} {{where age>=@minAge}} {{and is_active=@isActive}} {{orderby created_at --desc}}")]
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE email = @email AND is_active = @isActive")]
+Task<User?> FindActiveByEmailAsync(string email, bool isActive);
 ```
+
+**Bad:**
+```csharp
+[SqlTemplate("SELECT {{columns}} FROM {{table}} {{where email=@email AND is_active=@isActive}}")]
+Task<User?> FindActiveByEmailAsync(string email, bool isActive);
+```
+
+**Why:** Simple WHERE clauses are clearer when written directly.
 
 ---
 
-## 🏗️ 项目结构最佳实践
+## Entity Design
 
-### 推荐的文件组织
+### ✅ Use Record Types
 
-```
-YourProject/
-├── Models/                    # 数据模型
-│   ├── User.cs
-│   ├── Order.cs
-│   └── Product.cs
-├── Services/                  # 服务层（Repository）
-│   ├── IUserService.cs       # 接口（包含 Sqlx 属性）
-│   ├── UserService.cs        # 实现（标记 RepositoryFor）
-│   ├── IOrderService.cs
-│   └── OrderService.cs
-├── Queries/                   # 复杂查询（可选）
-│   ├── UserQueries.cs
-│   └── ReportQueries.cs
-└── Data/                      # 数据库上下文
-    └── DatabaseService.cs
-```
+Records provide immutability and value equality out of the box.
 
-### 数据模型规范
-
+**Good:**
 ```csharp
-using Sqlx.Annotations;
-
-// ✅ 推荐：使用 Record 和 TableName
 [TableName("users")]
 public record User
 {
-    public int Id { get; set; }
+    public long Id { get; set; }
     public string Name { get; set; } = string.Empty;
-    public string? Email { get; set; }  // 可空字段
-    public int Age { get; set; }
-    public bool IsActive { get; set; }
+    public string Email { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
-    public DateTime? UpdatedAt { get; set; }  // 可空字段
-}
-
-// ❌ 避免：过多的业务逻辑在模型中
-public class User
-{
-    // ... 属性 ...
-
-    // ❌ 不要在模型中写业务逻辑
-    public void Activate() { IsActive = true; }
-    public bool CanEdit(User editor) { /* ... */ }
 }
 ```
 
-### 服务层规范
+**Why:** Records are concise and provide better semantics for data objects.
 
+---
+
+### ✅ Use Nullable Reference Types
+
+Enable nullable reference types to catch null-related bugs at compile time.
+
+**Good:**
 ```csharp
-// ✅ 推荐：接口定义 + 自动实现
-public interface IUserService
+public record User
 {
-    // 清晰的方法名和注释
-    /// <summary>获取所有活跃用户</summary>
-    [Sqlx("SELECT {{columns}} FROM {{table}} WHERE is_active = @isActive {{orderby created_at --desc}}")]
-    Task<List<User>> GetActiveUsersAsync(bool isActive = true);
-
-    /// <summary>根据ID获取用户</summary>
-    [Sqlx("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
-    Task<User?> GetByIdAsync(int id);
-
-    /// <summary>创建用户</summary>
-    [Sqlx("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values}})")]
-    Task<int> CreateAsync(User user);
+    public long Id { get; set; }
+    public string Name { get; set; } = string.Empty;  // Required
+    public string? Email { get; set; }                 // Optional
 }
+```
 
-[SqlDefine(SqlDefineTypes.SqlServer)]
-[RepositoryFor(typeof(IUserService))]
-public partial class UserService(IDbConnection connection) : IUserService;
+**Why:** Explicit nullability prevents null reference exceptions.
+
+---
+
+### ✅ Initialize Non-Nullable Strings
+
+Always initialize non-nullable string properties.
+
+**Good:**
+```csharp
+public string Name { get; set; } = string.Empty;
+```
+
+**Bad:**
+```csharp
+public string Name { get; set; }  // Warning: Non-nullable property not initialized
 ```
 
 ---
 
-## 🎯 SQL 编写最佳实践
+## Repository Design
 
-### 1. WHERE 条件
+### ✅ Use Interfaces for Repositories
 
+Define repository contracts as interfaces.
+
+**Good:**
 ```csharp
-// ✅ 推荐：直接写清晰的 SQL
-[Sqlx("SELECT {{columns}} FROM {{table}} WHERE age >= @minAge AND age <= @maxAge")]
-Task<List<User>> GetUsersByAgeRangeAsync(int minAge, int maxAge);
-
-// ✅ 推荐：使用参数避免 SQL 注入
-[Sqlx("SELECT {{columns}} FROM {{table}} WHERE name LIKE @query")]
-Task<List<User>> SearchByNameAsync(string query);  // 调用时: SearchByNameAsync("%john%")
-
-// ❌ 避免：字符串拼接（SQL 注入风险）
-// 不要这样做：
-// [Sqlx($"SELECT * FROM users WHERE name LIKE '{query}'")]
-```
-
-### 2. 排除字段策略
-
-```csharp
-// ✅ 插入时排除自增 ID
-[Sqlx("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values}})")]
-Task<int> CreateAsync(User user);
-
-// ✅ 更新时排除不可变字段
-[Sqlx("UPDATE {{table}} SET {{set --exclude Id CreatedAt}} WHERE id = @id")]
-Task<int> UpdateAsync(User user);
-
-// ✅ 只更新特定字段
-[Sqlx("UPDATE {{table}} SET {{set --only Name Email Age}} WHERE id = @id")]
-Task<int> UpdateBasicInfoAsync(User user);
-```
-
-### 3. 排序和分页
-
-```csharp
-// ✅ 推荐：使用 orderby 占位符
-[Sqlx("SELECT {{columns}} FROM {{table}} {{orderby created_at --desc}}")]
-Task<List<User>> GetRecentUsersAsync();
-
-// ✅ 多列排序
-[Sqlx("SELECT {{columns}} FROM {{table}} {{orderby priority --desc}} {{orderby created_at --desc}}")]
-Task<List<Todo>> GetSortedTodosAsync();
-
-// ✅ 分页（SQL Server / PostgreSQL）
-[Sqlx(@"SELECT {{columns}} FROM {{table}}
-        {{orderby id}}
-        OFFSET @skip ROWS
-        FETCH NEXT @take ROWS ONLY")]
-Task<List<User>> GetPagedAsync(int skip, int take);
-
-// ✅ 分页（MySQL / SQLite）
-[Sqlx("SELECT {{columns}} FROM {{table}} {{orderby id}} LIMIT @take OFFSET @skip")]
-Task<List<User>> GetPagedAsync(int skip, int take);
-```
-
-### 4. 批量操作
-
-```csharp
-// ✅ 推荐：使用 JSON 数组（SQLite / PostgreSQL / SQL Server）
-[Sqlx("UPDATE {{table}} SET is_active = @isActive WHERE id IN (SELECT value FROM json_each(@idsJson))")]
-Task<int> ActivateUsersAsync(string idsJson, bool isActive);
-
-// 调用示例：
-var ids = new[] { 1, 2, 3 };
-var idsJson = JsonSerializer.Serialize(ids);
-await userService.ActivateUsersAsync(idsJson, true);
-
-// ✅ 批量插入（多次调用单条插入）
-public async Task<int> CreateManyAsync(List<User> users)
+public interface IUserRepository
 {
-    var count = 0;
-    foreach (var user in users)
-    {
-        count += await CreateAsync(user);
-    }
-    return count;
+    Task<User?> GetByIdAsync(long id);
+    Task<List<User>> GetAllAsync();
+    Task<long> InsertAsync(User user);
 }
+
+[RepositoryFor(typeof(IUserRepository))]
+public partial class UserRepository : IUserRepository { }
 ```
+
+**Why:** Interfaces enable dependency injection and testing.
 
 ---
 
-## 🔒 安全最佳实践
+### ✅ Use Async Methods
 
-### 1. 参数化查询（必须）
+All database operations should be asynchronous.
 
+**Good:**
 ```csharp
-// ✅ 正确：使用参数
-[Sqlx("SELECT {{columns}} FROM {{table}} WHERE name = @name")]
-Task<User?> GetByNameAsync(string name);
-
-// ❌ 错误：字符串插值（SQL 注入风险）
-// 永远不要这样做：
-// [Sqlx($"SELECT * FROM users WHERE name = '{name}'")]
-```
-
-### 2. 输入验证
-
-```csharp
-public async Task<List<User>> SearchAsync(string query)
-{
-    // ✅ 推荐：验证输入
-    if (string.IsNullOrWhiteSpace(query))
-        throw new ArgumentException("查询条件不能为空", nameof(query));
-
-    if (query.Length > 100)
-        throw new ArgumentException("查询条件过长", nameof(query));
-
-    // 调用服务
-    return await _userService.SearchAsync($"%{query}%");
-}
-```
-
-### 3. 权限检查
-
-```csharp
-public async Task<int> DeleteAsync(int id, int currentUserId)
-{
-    // ✅ 推荐：检查权限
-    var user = await GetByIdAsync(id);
-    if (user == null)
-        throw new NotFoundException("用户不存在");
-
-    if (user.Id != currentUserId && !await IsAdminAsync(currentUserId))
-        throw new UnauthorizedAccessException("无权删除此用户");
-
-    return await _userService.DeleteAsync(id);
-}
-```
-
----
-
-## 🚀 性能优化最佳实践
-
-### 1. 只查询需要的列
-
-```csharp
-// ✅ 推荐：只查询需要的列
-[Sqlx("SELECT {{columns --only Id Name Email}} FROM {{table}}")]
-Task<List<User>> GetBasicInfoAsync();
-
-// ❌ 避免：查询所有列（如果不需要）
-[Sqlx("SELECT {{columns}} FROM {{table}}")]  // 包括所有列，可能很大
-Task<List<User>> GetBasicInfoAsync();
-```
-
-### 2. 使用异步方法
-
-```csharp
-// ✅ 推荐：使用异步方法
+Task<User?> GetByIdAsync(long id);
 Task<List<User>> GetAllAsync();
-Task<User?> GetByIdAsync(int id);
-Task<int> CreateAsync(User user);
+```
 
-// ❌ 避免：同步方法（阻塞线程）
+**Bad:**
+```csharp
+User? GetById(long id);
 List<User> GetAll();
-User? GetById(int id);
 ```
 
-### 3. 连接管理
+**Why:** Async methods prevent thread blocking and improve scalability.
 
+---
+
+### ✅ Return Nullable for Single Results
+
+Use nullable return types for queries that might not find a result.
+
+**Good:**
 ```csharp
-// ✅ 推荐：使用依赖注入管理连接
-public class UserController : ControllerBase
-{
-    private readonly IUserService _userService;
-
-    public UserController(IUserService userService)
-    {
-        _userService = userService;
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> GetAll()
-    {
-        var users = await _userService.GetAllAsync();
-        return Ok(users);
-    }
-}
-
-// 在 Startup.cs / Program.cs 中注册
-services.AddScoped<IDbConnection>(sp =>
-    new SqlConnection(Configuration.GetConnectionString("Default")));
-services.AddScoped<IUserService, UserService>();
+Task<User?> GetByIdAsync(long id);
+Task<User?> FindByEmailAsync(string email);
 ```
 
-### 4. 缓存策略
-
+**Bad:**
 ```csharp
-public class CachedUserService : IUserService
-{
-    private readonly IUserService _innerService;
-    private readonly IMemoryCache _cache;
-
-    public CachedUserService(IUserService innerService, IMemoryCache cache)
-    {
-        _innerService = innerService;
-        _cache = cache;
-    }
-
-    public async Task<User?> GetByIdAsync(int id)
-    {
-        var cacheKey = $"user_{id}";
-
-        // ✅ 推荐：缓存不常变化的数据
-        if (_cache.TryGetValue(cacheKey, out User? user))
-            return user;
-
-        user = await _innerService.GetByIdAsync(id);
-        if (user != null)
-        {
-            _cache.Set(cacheKey, user, TimeSpan.FromMinutes(5));
-        }
-
-        return user;
-    }
-}
+Task<User> GetByIdAsync(long id);  // What if not found?
 ```
 
 ---
 
-## 🧪 测试最佳实践
+## SQL Template Patterns
 
-### 1. 单元测试
+### ✅ Exclude Auto-Increment IDs in INSERT
 
+Always exclude auto-increment primary keys from INSERT statements.
+
+**Good:**
 ```csharp
-public class UserServiceTests
-{
-    [Fact]
-    public async Task GetByIdAsync_ExistingUser_ReturnsUser()
-    {
-        // Arrange
-        var connection = new SqliteConnection("Data Source=:memory:");
-        await connection.OpenAsync();
-
-        // 创建表
-        await connection.ExecuteAsync(@"
-            CREATE TABLE users (
-                id INTEGER PRIMARY KEY,
-                name TEXT NOT NULL,
-                email TEXT,
-                age INTEGER,
-                is_active INTEGER
-            )");
-
-        // 插入测试数据
-        await connection.ExecuteAsync(
-            "INSERT INTO users (id, name, email, age, is_active) VALUES (1, 'Test', 'test@example.com', 25, 1)");
-
-        var service = new UserService(connection);
-
-        // Act
-        var user = await service.GetByIdAsync(1);
-
-        // Assert
-        Assert.NotNull(user);
-        Assert.Equal("Test", user.Name);
-        Assert.Equal("test@example.com", user.Email);
-    }
-}
+[SqlTemplate("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values --exclude Id}})")]
+[ReturnInsertedId]
+Task<long> InsertAsync(User user);
 ```
 
-### 2. 集成测试
-
+**Bad:**
 ```csharp
-public class UserServiceIntegrationTests : IClassFixture<DatabaseFixture>
-{
-    private readonly DatabaseFixture _fixture;
-
-    public UserServiceIntegrationTests(DatabaseFixture fixture)
-    {
-        _fixture = fixture;
-    }
-
-    [Fact]
-    public async Task CreateAsync_ValidUser_InsertsUser()
-    {
-        // Arrange
-        var service = new UserService(_fixture.Connection);
-        var user = new User
-        {
-            Name = "John Doe",
-            Email = "john@example.com",
-            Age = 30,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        // Act
-        var result = await service.CreateAsync(user);
-
-        // Assert
-        Assert.True(result > 0);
-
-        // Verify
-        var created = await service.GetByIdAsync(result);
-        Assert.NotNull(created);
-        Assert.Equal(user.Name, created.Name);
-    }
-}
+[SqlTemplate("INSERT INTO {{table}} ({{columns}}) VALUES ({{values}})")]
+Task<long> InsertAsync(User user);
 ```
+
+**Why:** Auto-increment IDs are generated by the database.
 
 ---
 
-## 📊 监控和调试
+### ✅ Exclude Immutable Fields in UPDATE
 
-### 1. 日志记录
+Don't update fields that shouldn't change.
 
+**Good:**
 ```csharp
-public class LoggingUserService : IUserService
-{
-    private readonly IUserService _innerService;
-    private readonly ILogger<LoggingUserService> _logger;
-
-    public LoggingUserService(IUserService innerService, ILogger<LoggingUserService> logger)
-    {
-        _innerService = innerService;
-        _logger = logger;
-    }
-
-    public async Task<User?> GetByIdAsync(int id)
-    {
-        _logger.LogInformation("Getting user by ID: {UserId}", id);
-
-        try
-        {
-            var user = await _innerService.GetByIdAsync(id);
-
-            if (user == null)
-                _logger.LogWarning("User not found: {UserId}", id);
-            else
-                _logger.LogInformation("User found: {UserId}, Name: {UserName}", id, user.Name);
-
-            return user;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting user by ID: {UserId}", id);
-            throw;
-        }
-    }
-}
-```
-
-### 2. 查看生成的 SQL
-
-生成的代码在 `obj/Debug/net9.0/generated/` 目录：
-
-```
-obj/Debug/net9.0/generated/
-└── Sqlx.Generator/
-    └── Sqlx.Generator.CSharpGenerator/
-        └── UserService.Repository.g.cs  ← 查看这个文件
-```
-
----
-
-## 🌐 多数据库最佳实践
-
-### 1. 使用配置切换数据库
-
-```csharp
-public class DatabaseConfig
-{
-    public static SqlDefineTypes GetDialect()
-    {
-        var dbType = Environment.GetEnvironmentVariable("DB_TYPE") ?? "SqlServer";
-
-        return dbType.ToLower() switch
-        {
-            "sqlserver" => SqlDefineTypes.SqlServer,
-            "mysql" => SqlDefineTypes.MySQL,
-            "postgresql" => SqlDefineTypes.PostgreSQL,
-            "sqlite" => SqlDefineTypes.SQLite,
-            _ => SqlDefineTypes.SqlServer
-        };
-    }
-}
-
-// 在服务中使用
-[SqlDefine(SqlDefineTypes.SqlServer)]  // 默认，可以被配置覆盖
-[RepositoryFor(typeof(IUserService))]
-public partial class UserService(IDbConnection connection) : IUserService;
-```
-
-### 2. 避免数据库特定的语法
-
-```csharp
-// ✅ 推荐：使用通用 SQL
-[Sqlx("SELECT {{columns}} FROM {{table}} WHERE created_at >= @startDate")]
-Task<List<User>> GetRecentUsersAsync(DateTime startDate);
-
-// ❌ 避免：数据库特定语法
-[Sqlx("SELECT {{columns}} FROM {{table}} WHERE created_at >= DATEADD(day, -7, GETDATE())")]  // SQL Server 特定
-Task<List<User>> GetRecentUsersAsync();
-```
-
----
-
-## 🎯 常见陷阱和解决方案
-
-### 1. 忘记排除自增 ID
-
-```csharp
-// ❌ 错误：包含 Id 字段
-[Sqlx("INSERT INTO {{table}} ({{columns}}) VALUES ({{values}})")]
-Task<int> CreateAsync(User user);  // 插入时包含 Id，会报错
-
-// ✅ 正确：排除 Id
-[Sqlx("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values}})")]
-Task<int> CreateAsync(User user);
-```
-
-### 2. 更新时修改不可变字段
-
-```csharp
-// ❌ 错误：更新 CreatedAt
-[Sqlx("UPDATE {{table}} SET {{set}} WHERE id = @id")]
-Task<int> UpdateAsync(User user);  // 会更新 CreatedAt
-
-// ✅ 正确：排除不可变字段
-[Sqlx("UPDATE {{table}} SET {{set --exclude Id CreatedAt}} WHERE id = @id")]
+[SqlTemplate("UPDATE {{table}} SET {{set --exclude Id CreatedAt}} WHERE id = @id")]
 Task<int> UpdateAsync(User user);
 ```
 
-### 3. 忘记处理 NULL 值
-
+**Bad:**
 ```csharp
-// ✅ 推荐：明确处理 NULL
-[Sqlx("SELECT {{columns}} FROM {{table}} WHERE email IS NOT NULL AND email = @email")]
-Task<User?> GetByEmailAsync(string email);
+[SqlTemplate("UPDATE {{table}} SET {{set}} WHERE id = @id")]
+Task<int> UpdateAsync(User user);
+```
 
-// 或在调用前检查
-public async Task<User?> GetByEmailAsync(string? email)
+**Why:** Prevents accidental modification of immutable fields.
+
+---
+
+### ✅ Use Parameterized Queries
+
+Always use parameters, never string concatenation.
+
+**Good:**
+```csharp
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE name = @name")]
+Task<User?> GetByNameAsync(string name);
+```
+
+**Bad:**
+```csharp
+[SqlTemplate($"SELECT {{columns}} FROM {{table}} WHERE name = '{name}'")]
+Task<User?> GetByNameAsync(string name);
+```
+
+**Why:** Prevents SQL injection attacks.
+
+---
+
+### ✅ Use Dialect Placeholders for Portability
+
+Use dialect-specific placeholders instead of hardcoding values.
+
+**Good:**
+```csharp
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE is_active = {{bool_true}}")]
+Task<List<User>> GetActiveAsync();
+
+[SqlTemplate("UPDATE {{table}} SET updated_at = {{current_timestamp}} WHERE id = @id")]
+Task<int> TouchAsync(long id);
+```
+
+**Bad:**
+```csharp
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE is_active = 1")]
+Task<List<User>> GetActiveAsync();
+
+[SqlTemplate("UPDATE {{table}} SET updated_at = GETDATE() WHERE id = @id")]
+Task<int> TouchAsync(long id);
+```
+
+**Why:** Makes code portable across different databases.
+
+---
+
+## Performance Optimization
+
+### ✅ Select Only Required Columns
+
+Don't select columns you don't need.
+
+**Good:**
+```csharp
+[SqlTemplate("SELECT {{columns --only Id Name Email}} FROM {{table}}")]
+Task<List<User>> GetBasicInfoAsync();
+```
+
+**Bad:**
+```csharp
+[SqlTemplate("SELECT {{columns}} FROM {{table}}")]
+Task<List<User>> GetBasicInfoAsync();
+```
+
+**Why:** Reduces network traffic and memory usage.
+
+---
+
+### ✅ Use Pagination for Large Result Sets
+
+Always paginate when querying large datasets.
+
+**Good:**
+```csharp
+[SqlTemplate(@"
+    SELECT {{columns}} 
+    FROM {{table}} 
+    ORDER BY created_at DESC 
+    LIMIT @pageSize 
+    OFFSET @skip
+")]
+Task<List<User>> GetPagedAsync(int pageSize, int skip);
+```
+
+**Why:** Prevents memory exhaustion and improves response time.
+
+---
+
+### ✅ Use Batch Operations
+
+Batch multiple operations when possible.
+
+**Good:**
+```csharp
+[SqlTemplate("INSERT INTO {{table}} (name, age) VALUES {{batch_values}}")]
+[BatchOperation(MaxBatchSize = 500)]
+Task<int> BatchInsertAsync(IEnumerable<User> users);
+```
+
+**Bad:**
+```csharp
+foreach (var user in users)
 {
-    if (string.IsNullOrEmpty(email))
-        return null;
+    await repo.InsertAsync(user);
+}
+```
 
-    return await _userService.GetByEmailAsync(email);
+**Why:** Reduces round trips to the database.
+
+---
+
+### ✅ Use Indexes
+
+Create indexes on frequently queried columns.
+
+```sql
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_created_at ON users(created_at);
+```
+
+**Why:** Dramatically improves query performance.
+
+---
+
+## Connection Management
+
+### ✅ Use `using` Statements
+
+Always dispose connections properly.
+
+**Good:**
+```csharp
+await using var connection = new SqliteConnection(connectionString);
+await connection.OpenAsync();
+
+var repo = new UserRepository(connection);
+var users = await repo.GetAllAsync();
+```
+
+**Why:** Ensures connections are returned to the pool.
+
+---
+
+### ✅ Reuse Connections
+
+Reuse the same connection for multiple operations.
+
+**Good:**
+```csharp
+await using var connection = new SqliteConnection(connectionString);
+await connection.OpenAsync();
+
+var repo = new UserRepository(connection);
+var user1 = await repo.GetByIdAsync(1);
+var user2 = await repo.GetByIdAsync(2);
+```
+
+**Bad:**
+```csharp
+await using var conn1 = new SqliteConnection(connectionString);
+await conn1.OpenAsync();
+var user1 = await new UserRepository(conn1).GetByIdAsync(1);
+
+await using var conn2 = new SqliteConnection(connectionString);
+await conn2.OpenAsync();
+var user2 = await new UserRepository(conn2).GetByIdAsync(2);
+```
+
+**Why:** Reduces connection overhead.
+
+---
+
+## Transaction Management
+
+### ✅ Use Transactions for Multiple Operations
+
+Wrap related operations in transactions.
+
+**Good:**
+```csharp
+await using var connection = new SqliteConnection(connectionString);
+await connection.OpenAsync();
+
+await using var transaction = await connection.BeginTransactionAsync();
+try
+{
+    var repo = new UserRepository(connection);
+    
+    var userId = await repo.InsertAsync(user);
+    await repo.UpdateAsync(user with { Id = userId });
+    
+    await transaction.CommitAsync();
+}
+catch
+{
+    await transaction.RollbackAsync();
+    throw;
+}
+```
+
+**Why:** Ensures data consistency.
+
+---
+
+## Error Handling
+
+### ✅ Handle Specific Exceptions
+
+Catch specific database exceptions.
+
+**Good:**
+```csharp
+try
+{
+    await repo.InsertAsync(user);
+}
+catch (SqliteException ex) when (ex.SqliteErrorCode == 19) // CONSTRAINT
+{
+    throw new DuplicateEmailException("Email already exists", ex);
+}
+```
+
+**Bad:**
+```csharp
+try
+{
+    await repo.InsertAsync(user);
+}
+catch (Exception ex)
+{
+    // Too broad
 }
 ```
 
 ---
 
-## 📚 相关文档
+### ✅ Validate Input
 
-- [📖 快速开始](QUICK_START_GUIDE.md)
-- [🎯 占位符指南](PLACEHOLDERS.md)
-- [🌐 多数据库支持](MULTI_DATABASE_TEMPLATE_ENGINE.md)
-- [🚀 TodoWebApi 示例](../samples/TodoWebApi/README.md)
+Validate input before database operations.
+
+**Good:**
+```csharp
+public async Task<long> InsertAsync(User user)
+{
+    if (string.IsNullOrWhiteSpace(user.Name))
+        throw new ArgumentException("Name is required", nameof(user));
+    
+    if (string.IsNullOrWhiteSpace(user.Email))
+        throw new ArgumentException("Email is required", nameof(user));
+    
+    return await _repo.InsertAsync(user);
+}
+```
 
 ---
 
-## 🎉 总结
+## Testing
 
-**Sqlx 最佳实践核心：**
+### ✅ Use In-Memory Databases for Tests
 
-1. ✅ **简单清晰** - 智能占位符 + 直接 SQL
-2. ✅ **类型安全** - 编译时检查，运行时安全
-3. ✅ **性能优先** - 异步方法，合理缓存
-4. ✅ **安全第一** - 参数化查询，输入验证
-5. ✅ **可维护性** - 清晰结构，完整测试
+Use SQLite in-memory databases for fast tests.
 
-遵循这些最佳实践，您将构建出高质量、高性能、易维护的数据访问层！
+**Good:**
+```csharp
+[Fact]
+public async Task InsertAsync_ShouldReturnId()
+{
+    // Arrange
+    await using var connection = new SqliteConnection("Data Source=:memory:");
+    await connection.OpenAsync();
+    
+    await connection.ExecuteAsync(@"
+        CREATE TABLE users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL
+        )
+    ");
+    
+    var repo = new UserRepository(connection);
+    
+    // Act
+    var userId = await repo.InsertAsync(new User 
+    { 
+        Name = "Alice", 
+        Email = "alice@example.com" 
+    });
+    
+    // Assert
+    Assert.True(userId > 0);
+}
+```
+
+---
+
+### ✅ Test with SqlxDebugger
+
+Use `[SqlxDebugger]` to verify generated SQL.
+
+**Good:**
+```csharp
+[SqlxDebugger]
+[SqlDefine(SqlDefineTypes.SQLite)]
+[TableName("users")]
+[RepositoryFor(typeof(IUserRepository))]
+public partial class UserRepository : IUserRepository { }
+
+[Fact]
+public void GetByIdAsync_ShouldGenerateCorrectSql()
+{
+    var repo = new UserRepository(null!);
+    var sql = repo.GetGetByIdAsyncSql(123);
+    
+    Assert.Equal("SELECT id, name, email FROM users WHERE id = @id", sql);
+}
+```
+
+---
+
+## Security
+
+### ✅ Never Concatenate User Input
+
+Always use parameters for user input.
+
+**Good:**
+```csharp
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE email = @email")]
+Task<User?> FindByEmailAsync(string email);
+```
+
+**Bad:**
+```csharp
+[SqlTemplate($"SELECT {{columns}} FROM {{table}} WHERE email = '{email}'")]
+Task<User?> FindByEmailAsync(string email);
+```
+
+**Why:** Prevents SQL injection.
+
+---
+
+### ✅ Exclude Sensitive Columns
+
+Don't return sensitive data unless necessary.
+
+**Good:**
+```csharp
+[SqlTemplate("SELECT {{columns --exclude Password Salt}} FROM {{table}}")]
+Task<List<User>> GetAllAsync();
+```
+
+**Why:** Reduces exposure of sensitive information.
+
+---
+
+## Code Organization
+
+### ✅ One Repository Per Entity
+
+Create separate repositories for each entity.
+
+**Good:**
+```
+Repositories/
+  ├── IUserRepository.cs
+  ├── UserRepository.cs
+  ├── IOrderRepository.cs
+  └── OrderRepository.cs
+```
+
+---
+
+### ✅ Group Related Methods
+
+Organize methods logically within repositories.
+
+**Good:**
+```csharp
+public interface IUserRepository
+{
+    // Queries
+    Task<User?> GetByIdAsync(long id);
+    Task<User?> FindByEmailAsync(string email);
+    Task<List<User>> GetAllAsync();
+    Task<List<User>> SearchAsync(string query);
+    
+    // Commands
+    Task<long> InsertAsync(User user);
+    Task<int> UpdateAsync(User user);
+    Task<int> DeleteAsync(long id);
+    
+    // Aggregates
+    Task<long> CountAsync();
+    Task<bool> EmailExistsAsync(string email);
+}
+```
+
+---
+
+## Common Pitfalls
+
+### ❌ Forgetting `partial` Keyword
+
+```csharp
+// ❌ Wrong
+public class UserRepository : IUserRepository { }
+
+// ✅ Correct
+public partial class UserRepository : IUserRepository { }
+```
+
+---
+
+### ❌ Including Id in INSERT
+
+```csharp
+// ❌ Wrong
+[SqlTemplate("INSERT INTO {{table}} ({{columns}}) VALUES ({{values}})")]
+
+// ✅ Correct
+[SqlTemplate("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values --exclude Id}})")]
+```
+
+---
+
+### ❌ Updating Immutable Fields
+
+```csharp
+// ❌ Wrong
+[SqlTemplate("UPDATE {{table}} SET {{set}} WHERE id = @id")]
+
+// ✅ Correct
+[SqlTemplate("UPDATE {{table}} SET {{set --exclude Id CreatedAt}} WHERE id = @id")]
+```
+
+---
+
+### ❌ Hardcoding Database-Specific Values
+
+```csharp
+// ❌ Wrong
+[SqlTemplate("WHERE is_active = 1")]
+
+// ✅ Correct
+[SqlTemplate("WHERE is_active = {{bool_true}}")]
+```
+
+---
+
+## See Also
+
+- [Quick Start Guide](QUICK_START.md)
+- [Placeholder Reference](PLACEHOLDER_REFERENCE.md)
+- [API Reference](API_REFERENCE.md)
+- [Multi-Database Guide](MULTI_DATABASE.md)

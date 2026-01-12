@@ -53,9 +53,9 @@ namespace Sqlx.Tests.RepositoryFor
     {
     }
 
-    // Test 2: Generic syntax with ICrudRepository<T, TKey>
+    // Test 2: Non-generic syntax with ICrudRepository<T, TKey> for Product
     [SqlDefine(SqlDefineTypes.SQLite)]
-    [RepositoryFor<ICrudRepository<Product, int>>]
+    [RepositoryFor(typeof(ICrudRepository<Product, int>))]
     public partial class ProductCrudRepository(DbConnection connection) 
         : ICrudRepository<Product, int>
     {
@@ -69,9 +69,9 @@ namespace Sqlx.Tests.RepositoryFor
     {
     }
 
-    // Test 4: Custom generic interface with generic syntax
+    // Test 4: Custom generic interface with non-generic syntax for Product
     [SqlDefine(SqlDefineTypes.SQLite)]
-    [RepositoryFor<IReadRepository<Product>>]
+    [RepositoryFor(typeof(IReadRepository<Product>))]
     public partial class ProductReadRepository(DbConnection connection) 
         : IReadRepository<Product>
     {
@@ -96,7 +96,7 @@ namespace Sqlx.Tests.RepositoryFor
         }
 
         [TestMethod]
-        public void RepositoryFor_GenericSyntax_WithICrudRepository_ShouldCompile()
+        public void RepositoryFor_NonGenericSyntax_WithICrudRepository_ForProduct_ShouldCompile()
         {
             // Arrange & Act - compilation is the test
             var repoType = typeof(ProductCrudRepository);
@@ -121,7 +121,7 @@ namespace Sqlx.Tests.RepositoryFor
         }
 
         [TestMethod]
-        public void RepositoryFor_GenericSyntax_WithCustomInterface_ShouldCompile()
+        public void RepositoryFor_NonGenericSyntax_WithCustomInterface_ForProduct_ShouldCompile()
         {
             // Arrange & Act - compilation is the test
             var repoType = typeof(ProductReadRepository);
@@ -174,4 +174,3 @@ namespace Sqlx.Tests.RepositoryFor
         }
     }
 }
-

@@ -329,25 +329,6 @@ namespace TestNamespace
     }
 
     [TestMethod]
-    public void OrderByPlaceholder_AllDialects_GeneratesCorrectOrderBy()
-    {
-        var template = "SELECT * FROM {{table}} {{orderby:id}}";
-
-        foreach (var dialect in AllDialects)
-        {
-            var result = _engine.ProcessTemplate(template, _testMethod, _userType, "User", dialect);
-            var dialectName = GetDialectName(dialect);
-
-            Assert.IsFalse(string.IsNullOrEmpty(result.ProcessedSql), $"Processed SQL should not be empty for {dialectName}");
-            Assert.AreEqual(0, result.Errors.Count, $"Should have no errors for {dialectName}");
-
-            // 验证ORDER BY子句
-            Assert.IsTrue(result.ProcessedSql.Contains("ORDER BY"), $"SQL should contain ORDER BY for {dialectName}");
-            Assert.IsTrue(result.ProcessedSql.Contains("id"), $"SQL should contain id field for {dialectName}");
-        }
-    }
-
-    [TestMethod]
     public void LimitPlaceholder_AllDialects_GeneratesCorrectPagination()
     {
         var template = "SELECT * FROM {{table}} {{limit:default|count=20}}";
@@ -388,7 +369,7 @@ namespace TestNamespace
             SELECT {{columns:auto|exclude=Password}}
             FROM {{table}}
             WHERE {{where:auto}}
-            {{orderby:id}}
+            ORDER BY id
             {{limit:default|count=50}}";
 
         foreach (var dialect in AllDialects)
@@ -407,7 +388,6 @@ namespace TestNamespace
             Assert.IsTrue(result.ProcessedSql.Contains("SELECT"), $"SQL should contain SELECT for {dialectName}");
             Assert.IsTrue(result.ProcessedSql.Contains("FROM"), $"SQL should contain FROM for {dialectName}");
             Assert.IsTrue(result.ProcessedSql.Contains("WHERE"), $"SQL should contain WHERE for {dialectName}");
-            Assert.IsTrue(result.ProcessedSql.Contains("ORDER BY"), $"SQL should contain ORDER BY for {dialectName}");
         }
     }
 

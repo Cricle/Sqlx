@@ -1,104 +1,119 @@
-# Sqlx 文档中心
+# Sqlx Documentation
 
-> **欢迎来到 Sqlx 文档中心！** 这里包含了使用 Sqlx 所需的所有文档。
+Welcome to the Sqlx documentation!
 
----
+## Getting Started
 
-## 📊 项目亮点
+- **[Quick Start Guide](QUICK_START.md)** - Get up and running in 5 minutes
+- **[Placeholder Reference](PLACEHOLDER_REFERENCE.md)** - Complete guide to all placeholders
+- **[API Reference](API_REFERENCE.md)** - Full API documentation
 
-- **⚡ 高性能**: 比 Dapper 快 37%，内存少 48%
-- **🧪 高质量**: 3,738 个测试，88.6% 覆盖率
-- **🔒 类型安全**: 编译时验证，零运行时错误
-- **🌐 多数据库**: 支持 SQLite, PostgreSQL, MySQL, SQL Server
-- **📦 零配置**: 开箱即用，无需复杂配置
+## Guides
 
----
+- **[Best Practices](BEST_PRACTICES.md)** - Recommended patterns and tips
+- **[Multi-Database Guide](MULTI_DATABASE.md)** - Write code that works across databases
 
-## 🚀 快速导航
+## What is Sqlx?
 
-### 新手入门（推荐顺序）
+Sqlx is a compile-time source generator for building type-safe, high-performance database access layers in .NET. It generates ADO.NET code at compile time, providing:
 
-1. **[项目 README](../README.md)** - 了解 Sqlx 是什么，查看性能对比
-2. **[快速开始指南](QUICK_START_GUIDE.md)** ⭐ - 5 分钟上手
-3. **[AI 助手指南](../AI-VIEW.md)** ⭐ - 完整功能清单和代码模式
+- **Zero runtime overhead** - No reflection, no dynamic code
+- **Type safety** - Catch SQL errors at compile time
+- **Multi-database support** - Write once, run on SQLite, PostgreSQL, MySQL, SQL Server
+- **Smart templates** - 40+ placeholders that adapt to different databases
 
-### 核心文档
+## Quick Example
 
-4. **[占位符指南](PLACEHOLDERS.md)** - 70+ 占位符详解
-5. **[API 参考](API_REFERENCE.md)** - 完整 API 文档
-6. **[最佳实践](BEST_PRACTICES.md)** - 推荐的使用模式
-7. **[测试覆盖率报告](../FINAL_COVERAGE_REPORT.md)** - 详细的测试覆盖率分析
+```csharp
+// 1. Define entity
+public class User
+{
+    public long Id { get; set; }
+    public string Name { get; set; }
+    public int Age { get; set; }
+}
 
-### 完整文档索引
+// 2. Define repository interface
+public interface IUserRepository
+{
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
+    Task<User?> GetByIdAsync(long id);
 
-📖 **[查看完整文档索引](index.md)** - 按主题、角色、功能分类的完整文档列表
+    [SqlTemplate("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values --exclude Id}})")]
+    [ReturnInsertedId]
+    Task<long> InsertAsync(User user);
+}
 
----
+// 3. Implement repository (code generated automatically)
+[SqlDefine(SqlDefineTypes.SQLite)]
+[TableName("users")]
+[RepositoryFor(typeof(IUserRepository))]
+public partial class UserRepository(DbConnection connection) : IUserRepository { }
 
-## 📚 按主题浏览
+// 4. Use it
+var repo = new UserRepository(connection);
+var userId = await repo.InsertAsync(new User { Name = "Alice", Age = 25 });
+var user = await repo.GetByIdAsync(userId);
+```
 
-### 入门教程
+## Key Features
 
-| 文档 | 描述 | 难度 |
-|------|------|------|
-| [快速开始指南](QUICK_START_GUIDE.md) | 5 分钟上手 Sqlx | ⭐ 新手 |
-| [AI 助手指南](../AI-VIEW.md) | 让 AI 学会 Sqlx | ⭐ 新手 |
+### Compile-Time Generation
 
-### 核心功能
+Sqlx generates code at compile time, not runtime. This means:
+- No reflection overhead
+- No runtime code generation
+- Full AOT compatibility
+- Near-ADO.NET performance
 
-| 文档 | 描述 | 难度 |
-|------|------|------|
-| [占位符指南](PLACEHOLDERS.md) | 70+ 占位符详解 | ⭐⭐ 进阶 |
-| [API 参考](API_REFERENCE.md) | 完整 API 文档 | ⭐⭐ 进阶 |
-| [占位符参考](PLACEHOLDER_REFERENCE.md) | 占位符速查表 | ⭐ 新手 |
+### Type-Safe SQL
 
-### 高级特性
+SQL templates are validated at compile time:
+- Parameter mismatches caught early
+- Return type validation
+- Column name validation
 
-| 文档 | 描述 | 难度 |
-|------|------|------|
-| [高级特性](ADVANCED_FEATURES.md) | AOT、性能优化 | ⭐⭐⭐ 高级 |
-| [统一方言指南](UNIFIED_DIALECT_USAGE_GUIDE.md) | 多数据库支持 | ⭐⭐ 进阶 |
-| [最佳实践](BEST_PRACTICES.md) | 推荐用法 | ⭐⭐ 进阶 |
+### Multi-Database Support
 
----
+Write SQL templates once, run on any database:
+- SQLite
+- PostgreSQL
+- MySQL
+- SQL Server
 
-## 🌐 在线资源
+### Smart Placeholders
 
-- **[GitHub Pages](https://cricle.github.io/Sqlx/web/)** - 在线文档
-- **[GitHub 仓库](https://github.com/Cricle/Sqlx)** - 源代码
-- **[NuGet 包](https://www.nuget.org/packages/Sqlx/)** - 下载
+40+ placeholders that automatically adapt to different databases:
+- `{{table}}` - Table name with proper quoting
+- `{{columns}}` - All column names
+- `{{bool_true}}` - Boolean true literal (1, true, etc.)
+- `{{current_timestamp}}` - Current timestamp function
+- And many more...
 
----
+## Documentation Structure
 
-## 📦 示例项目
+### For Beginners
 
-- **[TodoWebApi](../samples/TodoWebApi/)** - 完整 Web API 示例
-  - RESTful API
-  - CRUD 操作
-  - 搜索和分页
-  - 测试脚本
+1. Start with [Quick Start Guide](QUICK_START.md)
+2. Learn about [Placeholders](PLACEHOLDER_REFERENCE.md)
+3. Review [Best Practices](BEST_PRACTICES.md)
 
----
+### For Advanced Users
 
-## 🤝 贡献
+1. Explore [API Reference](API_REFERENCE.md)
+2. Learn [Multi-Database](MULTI_DATABASE.md) patterns
+3. Check out the [TodoWebApi sample](../samples/TodoWebApi/)
 
-发现文档有误或需要改进？
+## Need Help?
 
-- [提交 Issue](https://github.com/Cricle/Sqlx/issues)
-- [提交 Pull Request](https://github.com/Cricle/Sqlx/pulls)
+- **Issues:** [GitHub Issues](https://github.com/your-repo/Sqlx/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/your-repo/Sqlx/discussions)
+- **Examples:** [samples/TodoWebApi](../samples/TodoWebApi/)
 
----
+## Contributing
 
-## 📄 许可证
+Contributions are welcome! Please see our contributing guidelines.
 
-Sqlx 采用 [MIT 许可证](../LICENSE.txt)。
+## License
 
----
-
-<div align="center">
-
-**Sqlx - 让数据访问回归简单，让性能接近极致！** 🚀
-
-[查看完整文档索引](INDEX.md) · [返回 GitHub](https://github.com/Cricle/Sqlx)
-
-</div>
+Sqlx is licensed under the MIT License.

@@ -933,11 +933,11 @@ public static class SharedCodeGenerationUtilities
     }
 
     /// <summary>
-    /// Get database dialect for a class (from [SqlDefine] or [RepositoryFor] attribute)
+    /// Get database dialect for a class (from [SqlDefine] attribute)
     /// </summary>
     private static string GetDialectForClass(INamedTypeSymbol classSymbol)
     {
-        // 1. 首先检查 [SqlDefine] 属性
+        // Check [SqlDefine] attribute
         var sqlDefineAttr = classSymbol.GetAttributes()
             .FirstOrDefault(a => a.AttributeClass?.Name == "SqlDefineAttribute");
 
@@ -945,22 +945,6 @@ public static class SharedCodeGenerationUtilities
         {
             var enumValue = sqlDefineAttr.ConstructorArguments[0].Value;
             return MapDialectEnumToString(enumValue);
-        }
-
-        // 2. 检查 [RepositoryFor] 属性的 Dialect 命名参数
-        var repositoryForAttr = classSymbol.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.Name == "RepositoryForAttribute" || 
-                                a.AttributeClass?.Name == "RepositoryFor");
-
-        if (repositoryForAttr != null)
-        {
-            var dialectArg = repositoryForAttr.NamedArguments
-                .FirstOrDefault(arg => arg.Key == "Dialect");
-            
-            if (dialectArg.Value.Value != null)
-            {
-                return MapDialectEnumToString(dialectArg.Value.Value);
-            }
         }
 
         return "SqlServer"; // Default

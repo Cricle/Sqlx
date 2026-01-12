@@ -40,41 +40,37 @@ namespace Sqlx
         [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id IN {{values --param ids}}")]
         Task<List<TEntity>> GetByIdsAsync(List<TKey> ids, CancellationToken cancellationToken = default);
 
-        /// <summary>Gets all entities with automatic limit and optional ordering.</summary>
+        /// <summary>Gets all entities with automatic limit.</summary>
         /// <param name="limit">Maximum number of rows to return (default 1000, max 10000 recommended)</param>
-        /// <param name="orderBy">ORDER BY clause (e.g., "name ASC, created_at DESC"). Null for no ordering.</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>List of entities (up to limit)</returns>
         /// <remarks>Always limited to prevent memory issues. For large datasets, use pagination (GetPageAsync or GetRangeAsync).</remarks>
-        [SqlTemplate("SELECT {{columns}} FROM {{table}} {{orderby --param orderBy}} {{limit --param limit}}")]
-        Task<List<TEntity>> GetAllAsync(int limit = 1000, string? orderBy = null, CancellationToken cancellationToken = default);
+        [SqlTemplate("SELECT {{columns}} FROM {{table}} {{limit --param limit}}")]
+        Task<List<TEntity>> GetAllAsync(int limit = 1000, CancellationToken cancellationToken = default);
 
         /// <summary>Gets top N entities.</summary>
         /// <param name="limit">Maximum number of rows to return</param>
-        /// <param name="orderBy">ORDER BY clause. Null for no specific order.</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>List of entities (up to limit)</returns>
-        [SqlTemplate("SELECT {{columns}} FROM {{table}} {{orderby --param orderBy}} {{limit --param limit}}")]
-        Task<List<TEntity>> GetTopAsync(int limit, string? orderBy = null, CancellationToken cancellationToken = default);
+        [SqlTemplate("SELECT {{columns}} FROM {{table}} {{limit --param limit}}")]
+        Task<List<TEntity>> GetTopAsync(int limit, CancellationToken cancellationToken = default);
 
         // ===== Pagination =====
 
         /// <summary>Gets entities with offset/limit pagination.</summary>
         /// <param name="limit">Maximum number of rows to return</param>
         /// <param name="offset">Number of rows to skip</param>
-        /// <param name="orderBy">ORDER BY clause. Null defaults to primary key order.</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>List of entities</returns>
-        [SqlTemplate("SELECT {{columns}} FROM {{table}} {{orderby --param orderBy}} {{limit --param limit}} {{offset --param offset}}")]
-        Task<List<TEntity>> GetRangeAsync(int limit = 100, int offset = 0, string? orderBy = null, CancellationToken cancellationToken = default);
+        [SqlTemplate("SELECT {{columns}} FROM {{table}} {{limit --param limit}} {{offset --param offset}}")]
+        Task<List<TEntity>> GetRangeAsync(int limit = 100, int offset = 0, CancellationToken cancellationToken = default);
 
         /// <summary>Gets a page of entities with total count.</summary>
         /// <param name="pageNumber">Page number (1-based)</param>
         /// <param name="pageSize">Number of items per page</param>
-        /// <param name="orderBy">ORDER BY clause. Null defaults to primary key order.</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Paged result with items and pagination metadata</returns>
-        Task<PagedResult<TEntity>> GetPageAsync(int pageNumber = 1, int pageSize = 20, string? orderBy = null, CancellationToken cancellationToken = default);
+        Task<PagedResult<TEntity>> GetPageAsync(int pageNumber = 1, int pageSize = 20, CancellationToken cancellationToken = default);
 
         // ===== Condition-based Queries =====
 

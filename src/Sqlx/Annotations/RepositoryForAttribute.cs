@@ -12,7 +12,8 @@ namespace Sqlx.Annotations
     /// Marks a class as repository for a specified service interface.
     /// </summary>
     /// <remarks>
-    /// <para>Supports both generic and non-generic syntax.</para>
+    /// <para>Use [SqlDefine] attribute to specify the database dialect.</para>
+    /// <para>Use [TableName] attribute to specify the table name.</para>
     /// <para><strong>Best Practice:</strong> Define a custom interface that extends ICrudRepository for better maintainability.</para>
     /// <para><strong>Supported Interface Types:</strong></para>
     /// <list type="bullet">
@@ -27,10 +28,9 @@ namespace Sqlx.Annotations
     /// // Example 1: Custom interface (recommended)
     /// public interface IUserRepository : ICrudRepository&lt;User, int&gt; { }
     ///
-    /// [RepositoryFor(typeof(IUserRepository))]  // Non-generic syntax
-    /// public partial class UserRepository : IUserRepository { }
-    ///
-    /// [RepositoryFor&lt;IUserRepository&gt;]     // Generic syntax (cleaner)
+    /// [SqlDefine(SqlDefineTypes.SQLite)]
+    /// [TableName("users")]
+    /// [RepositoryFor(typeof(IUserRepository))]
     /// public partial class UserRepository : IUserRepository { }
     ///
     /// // Example 2: Multi-dialect support with unified interface
@@ -40,10 +40,14 @@ namespace Sqlx.Annotations
     ///     new Task&lt;User?&gt; GetByIdAsync(int id, CancellationToken ct);
     /// }
     ///
-    /// [RepositoryFor(typeof(IUserRepositoryBase), Dialect = SqlDefineTypes.PostgreSql, TableName = "users")]
+    /// [SqlDefine(SqlDefineTypes.PostgreSql)]
+    /// [TableName("users")]
+    /// [RepositoryFor(typeof(IUserRepositoryBase))]
     /// public partial class PostgreSQLUserRepository : IUserRepositoryBase { }
     ///
-    /// [RepositoryFor(typeof(IUserRepositoryBase), Dialect = SqlDefineTypes.MySql, TableName = "users")]
+    /// [SqlDefine(SqlDefineTypes.MySql)]
+    /// [TableName("users")]
+    /// [RepositoryFor(typeof(IUserRepositoryBase))]
     /// public partial class MySQLUserRepository : IUserRepositoryBase { }
     /// </code>
     /// </example>
@@ -61,62 +65,5 @@ namespace Sqlx.Annotations
 
         /// <summary>Gets the service interface type.</summary>
         public System.Type ServiceType { get; }
-
-        /// <summary>
-        /// Gets or sets the database dialect for this repository.
-        /// Used for multi-dialect support with SQL template placeholders.
-        /// </summary>
-        public SqlDefineTypes Dialect { get; set; } = SqlDefineTypes.SQLite;
-
-        /// <summary>
-        /// Gets or sets the table name for this repository.
-        /// Used for {{table}} placeholder replacement in SQL templates.
-        /// If not specified, the table name is inferred from the entity type.
-        /// </summary>
-        public string? TableName { get; set; }
-    }
-
-    /// <summary>
-    /// Generic version of RepositoryForAttribute for better type safety and cleaner syntax (C# 11+).
-    /// </summary>
-    /// <typeparam name="TService">Service interface type (must be an interface).</typeparam>
-    /// <remarks>
-    /// <para>This generic version provides compile-time type safety and cleaner syntax.</para>
-    /// <para>TService must be an interface type with [SqlTemplate] methods.</para>
-    /// </remarks>
-    /// <example>
-    /// <code>
-    /// // Custom interface
-    /// [RepositoryFor&lt;IUserRepository&gt;]
-    /// public partial class UserRepository : IUserRepository { }
-    ///
-    /// // Direct ICrudRepository usage
-    /// [RepositoryFor&lt;ICrudRepository&lt;User, int&gt;&gt;]
-    /// public partial class UserRepository : ICrudRepository&lt;User, int&gt; { }
-    ///
-    /// // Multi-dialect support
-    /// [RepositoryFor&lt;IUserRepositoryBase&gt;(Dialect = SqlDefineTypes.PostgreSql, TableName = "users")]
-    /// public partial class PostgreSQLUserRepository : IUserRepositoryBase { }
-    /// </code>
-    /// </example>
-    [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
-    public sealed class RepositoryForAttribute<TService> : System.Attribute
-        where TService : class
-    {
-        /// <summary>Gets the service interface or entity type.</summary>
-        public System.Type ServiceType => typeof(TService);
-
-        /// <summary>
-        /// Gets or sets the database dialect for this repository.
-        /// Used for multi-dialect support with SQL template placeholders.
-        /// </summary>
-        public SqlDefineTypes Dialect { get; set; } = SqlDefineTypes.SQLite;
-
-        /// <summary>
-        /// Gets or sets the table name for this repository.
-        /// Used for {{table}} placeholder replacement in SQL templates.
-        /// If not specified, the table name is inferred from the entity type.
-        /// </summary>
-        public string? TableName { get; set; }
     }
 }

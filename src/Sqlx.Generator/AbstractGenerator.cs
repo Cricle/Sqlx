@@ -137,23 +137,16 @@ public abstract partial class AbstractGenerator : ISourceGenerator
             try
             {
                 // Analyze interface methods in repository class
-                // Match by name to support both generic and non-generic RepositoryForAttribute
+                // Match by name for RepositoryForAttribute
                 var repositoryForAttr = repositoryClass.GetAttributes()
-                    .FirstOrDefault(a => a.AttributeClass?.Name == "RepositoryForAttribute" || 
-                                        (a.AttributeClass?.OriginalDefinition != null && 
-                                         a.AttributeClass.OriginalDefinition.Name == "RepositoryForAttribute"));
+                    .FirstOrDefault(a => a.AttributeClass?.Name == "RepositoryForAttribute");
 
                 if (repositoryForAttr != null)
                 {
                     INamedTypeSymbol? interfaceType = null;
                     
-                    // Handle generic RepositoryFor<T> attribute
-                    if (repositoryForAttr.AttributeClass is INamedTypeSymbol attrClass && attrClass.IsGenericType)
-                    {
-                        interfaceType = attrClass.TypeArguments.FirstOrDefault() as INamedTypeSymbol;
-                    }
                     // Handle non-generic RepositoryFor(typeof(T)) attribute
-                    else if (repositoryForAttr.ConstructorArguments.FirstOrDefault().Value is INamedTypeSymbol constructorArg)
+                    if (repositoryForAttr.ConstructorArguments.FirstOrDefault().Value is INamedTypeSymbol constructorArg)
                     {
                         interfaceType = constructorArg;
                     }

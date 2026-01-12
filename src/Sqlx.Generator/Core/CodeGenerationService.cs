@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using static Sqlx.Generator.SharedCodeGenerationUtilities;
 
 namespace Sqlx.Generator;
@@ -84,8 +85,7 @@ public class CodeGenerationService
             // Generate method documentation with resolved SQL and template metadata
             GenerateEnhancedMethodDocumentation(sb, method, sqlTemplate, templateResult);
 
-            // Generate or copy Sqlx attributes
-            attributeHandler.GenerateOrCopyAttributes(sb, method, entityType, context.TableName);
+            // Note: SqlTemplate attribute is already on the interface method, no need to duplicate it here
 
             // Generate method signature - 使用缓存版本提升性能
             var returnType = method.ReturnType.GetCachedDisplayString();
@@ -149,6 +149,15 @@ public class CodeGenerationService
                 sb.AppendLine("}");
             }
             sb.AppendLine();
+
+            // Generate SqlxDebugger method if attribute is present on method OR class
+            bool hasMethodDebugger = HasAttributeWithName(method, "SqlxDebugger");
+            bool hasClassDebugger = context.ClassSymbol != null && HasAttributeWithName(context.ClassSymbol, "SqlxDebugger");
+            
+            if ((hasMethodDebugger || hasClassDebugger) && templateResult != null && sqlTemplate != null)
+            {
+                GenerateSqlDebuggerMethod(sb, method, entityType, context.TableName, sqlTemplate, context.ClassSymbol);
+            }
         }
         catch (System.Exception ex)
         {
@@ -323,32 +332,15 @@ public class CodeGenerationService
 
         if (repositoryForAttr != null)
         {
-            // Check if it's a generic RepositoryFor<T> attribute
-            if (repositoryForAttr.AttributeClass is INamedTypeSymbol attrClass && attrClass.IsGenericType)
+            // Non-generic version: RepositoryFor(typeof(TService))
+            if (repositoryForAttr.ConstructorArguments.Length > 0)
             {
-                // Generic version: RepositoryFor<TService>
-                // TService can be a simple type or a generic type like ICrudRepository<User, int>
-                var typeArg = attrClass.TypeArguments.FirstOrDefault();
-                if (typeArg is INamedTypeSymbol serviceType)
+                var typeArg = repositoryForAttr.ConstructorArguments[0];
+                // Handle both simple types and generic types
+                if (typeArg.Value is INamedTypeSymbol serviceType)
                 {
                     // Return the type directly - it can be a constructed generic type
                     return serviceType;
-                }
-                // Handle ITypeSymbol that might not be INamedTypeSymbol
-                if (typeArg != null && typeArg.TypeKind == TypeKind.Interface)
-                {
-                    return typeArg as INamedTypeSymbol;
-                }
-            }
-            // Non-generic version: RepositoryFor(typeof(TService))
-            else if (repositoryForAttr.ConstructorArguments.Length > 0)
-        {
-            var typeArg = repositoryForAttr.ConstructorArguments[0];
-                // Handle both simple types and generic types
-            if (typeArg.Value is INamedTypeSymbol serviceType)
-                {
-                    // Return the type directly - it can be a constructed generic type
-                return serviceType;
                 }
                 // Try to get as ITypeSymbol first
                 if (typeArg.Value is ITypeSymbol typeSymbol && typeSymbol.TypeKind == TypeKind.Interface)
@@ -1864,24 +1856,7 @@ public class CodeGenerationService
     /// </summary>
     private static string GetDatabaseDialect(INamedTypeSymbol classSymbol)
     {
-        // First check [RepositoryFor] attribute's Dialect property
-        var repositoryForAttr = classSymbol.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.Name == "RepositoryForAttribute" || a.AttributeClass?.Name == "RepositoryFor");
-
-        if (repositoryForAttr != null && repositoryForAttr.NamedArguments.Length > 0)
-        {
-            // Check for Dialect named argument
-            foreach (var na in repositoryForAttr.NamedArguments)
-            {
-                if (na.Key == "Dialect" && na.Value.Value != null)
-                {
-                    // SqlDefineTypes is an enum, get its string representation
-                    return na.Value.Value.ToString();
-                }
-            }
-        }
-
-        // Fallback: check [SqlDefine] attribute
+        // Check [SqlDefine] attribute
         var sqlDefineAttr = classSymbol.GetAttributes()
             .FirstOrDefault(a => a.AttributeClass?.Name == "SqlDefineAttribute");
 
@@ -3275,5 +3250,258 @@ public class CodeGenerationService
         sb.AppendLine();
 
         sb.AppendLine("__result__ = new global::Sqlx.SqlTemplate(sqlBuilder.ToString(), parameters);");
+    }
+
+    /// <summary>
+    /// Generates a SQL debugger method that returns the processed SQL template without executing it.
+    /// This method is generated when [SqlxDebugger] attribute is present on a repository method.
+    /// </summary>
+    private void GenerateSqlDebuggerMethod(
+        IndentedStringBuilder sb,
+        IMethodSymbol method,
+        INamedTypeSymbol? entityType,
+        string tableName,
+        string sqlTemplate,
+        INamedTypeSymbol classSymbol)
+    {
+        // Generate method name: Get[MethodName]Sql
+        var debugMethodName = $"Get{method.Name}Sql";
+
+        // Generate parameters (exclude CancellationToken, add optional SqlDefine)
+        var parameters = method.Parameters
+            .Where(p => p.Type.Name != "CancellationToken")
+            .Select(p =>
+            {
+                var paramType = p.Type.GetCachedDisplayString();
+                var paramName = p.Name;
+                var defaultValue = p.HasExplicitDefaultValue ? $" = {GetDefaultValueString(p)}" : "";
+                return $"{paramType} {paramName}{defaultValue}";
+            })
+            .ToList();
+
+        // Add optional SqlDefine parameter for dialect selection
+        parameters.Add("global::Sqlx.Generator.SqlDefine? dialect = null");
+
+        var parameterList = string.Join(", ", parameters);
+
+        // Generate XML documentation
+        sb.AppendLine("/// <summary>");
+        sb.AppendLine($"/// Gets the processed SQL template for {method.Name} without executing the query.");
+        sb.AppendLine("/// This method is generated by [SqlxDebugger] attribute for testing and debugging purposes.");
+        sb.AppendLine("/// </summary>");
+
+        foreach (var parameter in method.Parameters.Where(p => p.Type.Name != "CancellationToken"))
+        {
+            sb.AppendLine($"/// <param name=\"{parameter.Name}\">{GetParameterDescription(parameter)}</param>");
+        }
+
+        sb.AppendLine("/// <param name=\"dialect\">Optional database dialect to use for SQL generation. If null, uses the repository's default dialect.</param>");
+        sb.AppendLine("/// <returns>The processed SQL template string with all placeholders resolved.</returns>");
+
+        // Generate method signature
+        sb.AppendLine($"public string {debugMethodName}({parameterList})");
+        sb.AppendLine("{");
+        sb.PushIndent();
+
+        // Get the dialect from RepositoryFor attribute or use the provided one
+        var dialectType = Core.DialectHelper.GetDialectFromRepositoryFor(classSymbol);
+        var defaultDialectValue = dialectType.ToString();
+
+        sb.AppendLine($"var actualDialect = dialect ?? global::Sqlx.Generator.SqlDefine.{defaultDialectValue};");
+        sb.AppendLine();
+
+        // Get resolved table name
+        var resolvedTableName = Core.DialectHelper.GetTableNameFromRepositoryFor(classSymbol, entityType) ?? tableName;
+
+        // Get entity properties for column/value generation
+        var properties = entityType?.GetMembers().OfType<IPropertySymbol>()
+            .Where(p => !p.IsStatic && p.DeclaredAccessibility == Accessibility.Public)
+            .ToList() ?? new List<IPropertySymbol>();
+
+        // Pre-compute column lists for different scenarios
+        var allColumns = string.Join(", ", properties.Select(p => SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)));
+        var columnsExcludeId = string.Join(", ", properties
+            .Where(p => !p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase))
+            .Select(p => SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)));
+        var valuesExcludeId = string.Join(", ", properties
+            .Where(p => !p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase))
+            .Select(p => "@" + SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)));
+        var setExcludeId = string.Join(", ", properties
+            .Where(p => !p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase))
+            .Select(p => {
+                var colName = SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name);
+                return $"{colName} = @{colName}";
+            }));
+
+        // Generate dialect-specific SQL using if-else chain
+        sb.AppendLine("string sql;");
+
+        // Generate SQL for each dialect
+        var dialects = new[] { "SQLite", "PostgreSql", "MySql", "SqlServer" };
+        bool isFirst = true;
+        foreach (var dialect in dialects)
+        {
+            var dialectEnum = dialect switch
+            {
+                "SQLite" => SqlDefine.SQLite,
+                "PostgreSql" => SqlDefine.PostgreSql,
+                "MySql" => SqlDefine.MySql,
+                "SqlServer" => SqlDefine.SqlServer,
+                _ => SqlDefine.SQLite
+            };
+
+            // Process the template for this dialect
+            var processedSql = ProcessTemplateForDebugger(sqlTemplate, resolvedTableName, properties, dialectEnum, method);
+            var escapedSql = processedSql.Replace("\"", "\\\"");
+            
+            if (isFirst)
+            {
+                sb.AppendLine($"if (actualDialect == global::Sqlx.Generator.SqlDefine.{dialect})");
+                isFirst = false;
+            }
+            else
+            {
+                sb.AppendLine($"else if (actualDialect == global::Sqlx.Generator.SqlDefine.{dialect})");
+            }
+            sb.AppendLine("{");
+            sb.PushIndent();
+            sb.AppendLine($"sql = \"{escapedSql}\";");
+            sb.PopIndent();
+            sb.AppendLine("}");
+        }
+
+        // Default case - convert SqlDefineTypes to SqlDefine
+        var defaultDialect = dialectType switch
+        {
+            SqlDefineTypes.SQLite => SqlDefine.SQLite,
+            SqlDefineTypes.PostgreSql => SqlDefine.PostgreSql,
+            SqlDefineTypes.MySql => SqlDefine.MySql,
+            SqlDefineTypes.SqlServer => SqlDefine.SqlServer,
+            SqlDefineTypes.Oracle => SqlDefine.Oracle,
+            SqlDefineTypes.DB2 => SqlDefine.DB2,
+            _ => SqlDefine.SQLite
+        };
+        var defaultSql = ProcessTemplateForDebugger(sqlTemplate, resolvedTableName, properties, defaultDialect, method);
+        var escapedDefaultSql = defaultSql.Replace("\"", "\\\"");
+        sb.AppendLine("else");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine($"sql = \"{escapedDefaultSql}\";");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+
+        sb.AppendLine("return sql;");
+
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+    }
+
+    /// <summary>
+    /// Process SQL template for debugger output, replacing all compile-time placeholders.
+    /// </summary>
+    private string ProcessTemplateForDebugger(
+        string template, 
+        string tableName, 
+        List<IPropertySymbol> properties,
+        SqlDefine dialect,
+        IMethodSymbol method)
+    {
+        var sql = template;
+
+        // Process {{table}} placeholder - wrap with dialect-specific quotes
+        sql = sql.Replace("{{table}}", dialect.WrapColumn(tableName));
+
+        // Process {{columns}} placeholder (without options) - wrap each column with dialect-specific quotes
+        var allColumns = string.Join(", ", properties.Select(p => dialect.WrapColumn(SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name))));
+        sql = sql.Replace("{{columns}}", allColumns);
+
+        // Process {{columns --exclude Id}} placeholder - wrap each column with dialect-specific quotes
+        var columnsExcludeId = string.Join(", ", properties
+            .Where(p => !p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase))
+            .Select(p => dialect.WrapColumn(SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name))));
+        sql = Regex.Replace(sql, @"\{\{columns\s+--exclude\s+Id\}\}", columnsExcludeId, RegexOptions.IgnoreCase);
+
+        // Process {{values --exclude Id}} placeholder
+        var valuesExcludeId = string.Join(", ", properties
+            .Where(p => !p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase))
+            .Select(p => "@" + SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name)));
+        sql = Regex.Replace(sql, @"\{\{values\s+--exclude\s+Id\}\}", valuesExcludeId, RegexOptions.IgnoreCase);
+
+        // Process {{values --param paramName}} placeholder (for IN clause)
+        sql = Regex.Replace(sql, @"\{\{values\s+--param\s+(\w+)\}\}", m => {
+            var paramName = m.Groups[1].Value;
+            return $"/* RUNTIME_VALUES --param {paramName} */";
+        });
+
+        // Process {{set --exclude Id}} placeholder - wrap each column with dialect-specific quotes
+        var setExcludeId = string.Join(", ", properties
+            .Where(p => !p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase))
+            .Select(p => {
+                var colName = SharedCodeGenerationUtilities.ConvertToSnakeCase(p.Name);
+                return $"{dialect.WrapColumn(colName)} = @{colName}";
+            }));
+        sql = Regex.Replace(sql, @"\{\{set\s+--exclude\s+Id\}\}", setExcludeId, RegexOptions.IgnoreCase);
+
+        // Process {{set --from updates}} placeholder
+        sql = Regex.Replace(sql, @"\{\{set\s+--from\s+(\w+)\}\}", m => {
+            var paramName = m.Groups[1].Value;
+            return $"/* RUNTIME_SET --from {paramName} */";
+        });
+
+        // Process {{where}} placeholder (expression-based)
+        sql = sql.Replace("{{where}}", "/* RUNTIME_WHERE */");
+
+        // Process {{wrap --param paramName}} placeholder - wraps column with dialect-specific quotes
+        // MySQL: `column`, PostgreSQL: "column", SQL Server/SQLite: [column]
+        sql = Regex.Replace(sql, @"\{\{wrap\s+--param\s+(\w+)\}\}", m => {
+            var paramName = m.Groups[1].Value;
+            return $"/* RUNTIME_WRAP --param {paramName} */";
+        });
+
+        // Process {{wrap columnName}} placeholder - static column wrapping
+        sql = Regex.Replace(sql, @"\{\{wrap\s+(\w+)\}\}", m => {
+            var columnName = m.Groups[1].Value;
+            return dialect.WrapColumn(columnName);
+        });
+
+        // Process {{limit --param paramName}} placeholder
+        sql = Regex.Replace(sql, @"\{\{limit\s+--param\s+(\w+)\}\}", m => {
+            var paramName = m.Groups[1].Value;
+            return $"/* RUNTIME_LIMIT --param {paramName} */";
+        });
+
+        // Process {{offset --param paramName}} placeholder
+        sql = Regex.Replace(sql, @"\{\{offset\s+--param\s+(\w+)\}\}", m => {
+            var paramName = m.Groups[1].Value;
+            return $"/* RUNTIME_OFFSET --param {paramName} */";
+        });
+
+        // Process any remaining {{...}} placeholders as runtime markers
+        sql = Regex.Replace(sql, @"\{\{(\w+)([^}]*)\}\}", m => {
+            var placeholderName = m.Groups[1].Value;
+            var options = m.Groups[2].Value;
+            return $"/* RUNTIME_{placeholderName.ToUpper()}{options} */";
+        });
+
+        return sql;
+    }
+
+    /// <summary>
+    /// Gets the SqlDefine enum value name from dialect type string.
+    /// </summary>
+    private string GetDialectEnumValue(string dialectType)
+    {
+        return dialectType switch
+        {
+            "MySql" or "0" => "MySql",
+            "SqlServer" or "1" => "SqlServer",
+            "PostgreSql" or "2" => "PostgreSql",
+            "Oracle" or "3" => "Oracle",
+            "DB2" or "4" => "DB2",
+            "SQLite" or "5" => "SQLite",
+            _ => "SqlServer"
+        };
     }
 }

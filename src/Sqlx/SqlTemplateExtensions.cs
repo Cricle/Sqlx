@@ -54,7 +54,6 @@ namespace Sqlx
                     var dbParam = command.CreateParameter();
                     dbParam.ParameterName = param.Key;
                     
-                    // Performance optimization: use TryGetValue to avoid two dictionary lookups
                     object? value;
                     if (parameterOverrides != null && parameterOverrides.TryGetValue(param.Key, out var overrideValue))
                     {

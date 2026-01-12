@@ -478,8 +478,8 @@ public interface IBasicInsertProductRepository
     Task<List<BasicInsertProduct>> GetAllAsync();
 }
 
-[RepositoryFor<IBasicInsertProductRepository>]
 [SqlDefine(SqlDefineTypes.SQLite)]
+[RepositoryFor(typeof(IBasicInsertProductRepository))]
 public partial class BasicInsertProductRepository : IBasicInsertProductRepository
 {
     private readonly IDbConnection _connection;

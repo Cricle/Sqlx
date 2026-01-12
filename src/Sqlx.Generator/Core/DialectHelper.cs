@@ -15,30 +15,13 @@ namespace Sqlx.Generator.Core;
 internal static class DialectHelper
 {
     /// <summary>
-    /// Extracts the dialect from RepositoryFor or SqlDefine attribute.
+    /// Extracts the dialect from SqlDefine attribute.
     /// </summary>
     /// <param name="repositoryClass">The repository class symbol.</param>
     /// <returns>The SQL dialect type, or SQLite as default.</returns>
     public static SqlDefineTypes GetDialectFromRepositoryFor(INamedTypeSymbol repositoryClass)
     {
-        // First, check RepositoryFor attribute's Dialect property
-        var repositoryForAttr = repositoryClass.GetAttributes()
-            .FirstOrDefault(attr =>
-                attr.AttributeClass?.Name == "RepositoryForAttribute" ||
-                (attr.AttributeClass?.Name.StartsWith("RepositoryForAttribute`") ?? false));
-
-        if (repositoryForAttr != null)
-        {
-            var dialectArg = repositoryForAttr.NamedArguments
-                .FirstOrDefault(arg => arg.Key == "Dialect");
-
-            if (dialectArg.Value.Value is int dialectValue)
-            {
-                return (SqlDefineTypes)dialectValue;
-            }
-        }
-
-        // Second, check SqlDefine attribute (preferred for dialect specification)
+        // Check SqlDefine attribute for dialect specification
         var sqlDefineAttr = repositoryClass.GetAttributes()
             .FirstOrDefault(attr =>
                 attr.AttributeClass?.Name == "SqlDefineAttribute" ||
@@ -56,33 +39,15 @@ internal static class DialectHelper
     }
 
     /// <summary>
-    /// Extracts the table name from RepositoryFor attribute.
-    /// Priority: RepositoryFor.TableName > TableNameAttribute > inferred from entity type.
+    /// Extracts the table name from TableName attribute or entity type.
+    /// Priority: Repository's TableNameAttribute > Entity's TableNameAttribute > inferred from entity type.
     /// </summary>
     /// <param name="repositoryClass">The repository class symbol.</param>
     /// <param name="entityType">The entity type (for fallback).</param>
     /// <returns>The table name, or null if not found.</returns>
     public static string? GetTableNameFromRepositoryFor(INamedTypeSymbol repositoryClass, INamedTypeSymbol? entityType)
     {
-        // First priority: Check RepositoryFor attribute's TableName property
-        var repositoryForAttr = repositoryClass.GetAttributes()
-            .FirstOrDefault(attr =>
-                attr.AttributeClass?.Name == "RepositoryForAttribute" ||
-                (attr.AttributeClass?.Name.StartsWith("RepositoryForAttribute`") ?? false));
-
-        if (repositoryForAttr != null)
-        {
-            // Look for TableName named argument
-            var tableNameArg = repositoryForAttr.NamedArguments
-                .FirstOrDefault(arg => arg.Key == "TableName");
-
-            if (tableNameArg.Value.Value is string tableNameValue && !string.IsNullOrEmpty(tableNameValue))
-            {
-                return tableNameValue;
-            }
-        }
-
-        // Second priority: Check if repository class has TableNameAttribute
+        // First priority: Check if repository class has TableNameAttribute
         var repositoryTableNameAttr = repositoryClass.GetAttributes()
             .FirstOrDefault(attr => attr.AttributeClass?.Name == "TableNameAttribute" ||
                                    attr.AttributeClass?.Name == "TableName");
@@ -94,7 +59,7 @@ internal static class DialectHelper
                 return tableName;
         }
 
-        // Third priority: Check if entity type has TableNameAttribute
+        // Second priority: Check if entity type has TableNameAttribute
         if (entityType != null)
         {
             var entityTableNameAttr = entityType.GetAttributes()
@@ -138,4 +103,3 @@ internal static class DialectHelper
         };
     }
 }
-

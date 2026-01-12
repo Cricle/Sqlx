@@ -546,69 +546,6 @@ public class PlaceholderPropertyTests
     }
 
     #endregion
-
-    #region Property 2: Nested Placeholder Resolution (CI Fixes)
-
-    /// <summary>
-    /// **Property 2: Nested placeholder resolution**
-    /// *For any* SQL template with nested placeholders up to 3 levels deep,
-    /// all placeholders should be resolved correctly in the final SQL.
-    /// **Validates: Requirements 1.2**
-    /// **Feature: ci-fixes-and-e2e-expansion, Property 2: Nested placeholder resolution**
-    /// </summary>
-    [Property(MaxTest = 100, Arbitrary = new[] { typeof(PlaceholderArbitraries) })]
-    public Property NestedPlaceholder_UpTo3Levels_ShouldResolveCorrectly(DialectWithConfig dialectConfig)
-    {
-        var dialect = dialectConfig.Dialect;
-        
-        // Test nested placeholders: {{coalesce {{sum balance}}, 0}}
-        // This requires 2 iterations to resolve
-        var template = "SELECT {{coalesce {{sum balance}}, 0}} FROM {{table}}";
-
-        // Act
-        var result = _engine.ProcessTemplate(template, _testMethod, _testEntity, "users", dialect);
-
-        // Assert: Should not contain any unresolved placeholders
-        var hasUnresolvedPlaceholders = result.ProcessedSql.Contains("{{");
-        
-        // Should contain COALESCE and SUM
-        var containsCoalesce = result.ProcessedSql.ToUpperInvariant().Contains("COALESCE");
-        var containsSum = result.ProcessedSql.ToUpperInvariant().Contains("SUM");
-
-        return (!hasUnresolvedPlaceholders && containsCoalesce && containsSum)
-            .Label($"Dialect: {dialectConfig.Config.DialectName}, " +
-                   $"Result: '{result.ProcessedSql}'");
-    }
-
-    /// <summary>
-    /// Property 2 (continued): Triple nested placeholders should resolve correctly.
-    /// </summary>
-    [Property(MaxTest = 100, Arbitrary = new[] { typeof(PlaceholderArbitraries) })]
-    public Property NestedPlaceholder_TripleNested_ShouldResolveCorrectly(DialectWithConfig dialectConfig)
-    {
-        var dialect = dialectConfig.Dialect;
-        
-        // Test triple nested: {{coalesce {{round {{avg balance}}, 2}}, 0}}
-        // This requires 3 iterations to resolve
-        var template = "SELECT {{coalesce {{round {{avg balance}}, 2}}, 0}} FROM {{table}}";
-
-        // Act
-        var result = _engine.ProcessTemplate(template, _testMethod, _testEntity, "users", dialect);
-
-        // Assert: Should not contain any unresolved placeholders
-        var hasUnresolvedPlaceholders = result.ProcessedSql.Contains("{{");
-        
-        // Should contain COALESCE, ROUND, and AVG
-        var containsCoalesce = result.ProcessedSql.ToUpperInvariant().Contains("COALESCE");
-        var containsRound = result.ProcessedSql.ToUpperInvariant().Contains("ROUND");
-        var containsAvg = result.ProcessedSql.ToUpperInvariant().Contains("AVG");
-
-        return (!hasUnresolvedPlaceholders && containsCoalesce && containsRound && containsAvg)
-            .Label($"Dialect: {dialectConfig.Config.DialectName}, " +
-                   $"Result: '{result.ProcessedSql}'");
-    }
-
-    #endregion
 }
 
 

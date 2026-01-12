@@ -239,21 +239,6 @@ public class TDD_NullableLimitOffset_Extended
     #region 组合占位符
 
     [TestMethod]
-    [Description("{{top}} 占位符应该与 {{limit}} 行为一致")]
-    public void TopPlaceholder_ShouldBehaveLikeLimit()
-    {
-        var template = "SELECT {{top}} * FROM {{table}}";
-
-        foreach (var dialect in AllDialects)
-        {
-            var result = _engine.ProcessTemplate(template, _methodWithNullableLimit, _userType, "users", dialect);
-            Assert.IsTrue(result.IsValid, $"[{GetDialectName(dialect)}] {{{{top}}}} 不应该有错误");
-            Assert.IsFalse(result.ProcessedSql.Contains("{{top}}"),
-                $"[{GetDialectName(dialect)}] {{{{top}}}} 应该被处理");
-        }
-    }
-
-    [TestMethod]
     [Description("{{limit}} 和 {{offset}} 顺序颠倒应该正常工作")]
     public void OffsetBeforeLimit_ShouldWork()
     {

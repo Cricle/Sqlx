@@ -91,68 +91,12 @@ namespace Sqlx.Tests.Core
             var attr = new RepositoryForAttribute(typeof(IDisposable));
             
             Assert.Equal(typeof(IDisposable), attr.ServiceType);
-            Assert.Equal(SqlDefineTypes.SQLite, attr.Dialect);
-            Assert.Null(attr.TableName);
         }
 
         [Fact]
         public void RepositoryForAttribute_WithNullServiceType_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => new RepositoryForAttribute(null!));
-        }
-
-        [Fact]
-        public void RepositoryForAttribute_SetDialect_UpdatesProperty()
-        {
-            var attr = new RepositoryForAttribute(typeof(IDisposable)) 
-            { 
-                Dialect = SqlDefineTypes.MySql 
-            };
-            
-            Assert.Equal(SqlDefineTypes.MySql, attr.Dialect);
-        }
-
-        [Fact]
-        public void RepositoryForAttribute_SetTableName_UpdatesProperty()
-        {
-            var attr = new RepositoryForAttribute(typeof(IDisposable)) 
-            { 
-                TableName = "custom_table" 
-            };
-            
-            Assert.Equal("custom_table", attr.TableName);
-        }
-
-        [Fact]
-        public void RepositoryForAttributeGeneric_ServiceType_ReturnsCorrectType()
-        {
-            var attr = new RepositoryForAttribute<IDisposable>();
-            
-            Assert.Equal(typeof(IDisposable), attr.ServiceType);
-            Assert.Equal(SqlDefineTypes.SQLite, attr.Dialect);
-            Assert.Null(attr.TableName);
-        }
-
-        [Fact]
-        public void RepositoryForAttributeGeneric_SetDialect_UpdatesProperty()
-        {
-            var attr = new RepositoryForAttribute<IDisposable> 
-            { 
-                Dialect = SqlDefineTypes.PostgreSql 
-            };
-            
-            Assert.Equal(SqlDefineTypes.PostgreSql, attr.Dialect);
-        }
-
-        [Fact]
-        public void RepositoryForAttributeGeneric_SetTableName_UpdatesProperty()
-        {
-            var attr = new RepositoryForAttribute<IDisposable> 
-            { 
-                TableName = "users" 
-            };
-            
-            Assert.Equal("users", attr.TableName);
         }
 
         #endregion

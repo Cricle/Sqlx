@@ -202,11 +202,11 @@ public class AttributeHandler
         var name when (name.Contains("getby") || name.Contains("findby") || (name.StartsWith("get") && hasParameters))
             => $"[global::Sqlx.Annotations.Sqlx(\"SELECT * FROM {tableName} WHERE Id = @{paramName}\")]",
         var name when name.Contains("create") || name.Contains("insert") || name.Contains("add")
-            => $"[global::Sqlx.Annotations.Sqlx(\"{{{{insert into}}}} ({{{{columns --exclude Id}}}}) VALUES ({{{{values}}}})\")]",
+            => $"[global::Sqlx.Annotations.Sqlx(\"INSERT INTO {{{{table}}}} ({{{{columns --exclude Id}}}}) VALUES ({{{{values}}}})\")]",
         var name when name.Contains("update") || name.Contains("modify")
-            => $"[global::Sqlx.Annotations.Sqlx(\"{{{{update}}}} SET {{{{set --exclude Id}}}} WHERE {{{{where id=@id}}}}\")]",
+            => $"[global::Sqlx.Annotations.Sqlx(\"UPDATE {{{{table}}}} SET {{{{set --exclude Id}}}} WHERE {{{{where id=@id}}}}\")]",
         var name when name.Contains("delete") || name.Contains("remove")
-            => $"[global::Sqlx.Annotations.Sqlx(\"{{{{delete from}}}} WHERE {{{{where id=@id}}}}\")]",
+            => $"[global::Sqlx.Annotations.Sqlx(\"DELETE FROM {{{{table}}}} WHERE {{{{where id=@id}}}}\")]",
         var name when name.Contains("count")
             => $"[global::Sqlx.Annotations.Sqlx(\"SELECT COUNT(*) FROM {tableName}\")]",
         var name when name.Contains("exists")

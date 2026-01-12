@@ -375,12 +375,6 @@ public static class SqlTemplateEngineExtensions
                 "groupby" => ProcessGroupByPlaceholder(type, options, dialect),
                 "having" => ProcessHavingPlaceholder(type, options, dialect),
 
-                // 基本SQL语句
-                "select" => type == "distinct" ? "SELECT DISTINCT" : "SELECT",
-                "insert" => type == "into" ? "INSERT INTO" : "INSERT",
-                "update" => "UPDATE",
-                "delete" => type == "from" ? "DELETE FROM" : "DELETE",
-
                 // 集合操作
                 "union" => type == "all" ? "UNION ALL" : "UNION",
                 "intersect" => "INTERSECT",
@@ -389,8 +383,7 @@ public static class SqlTemplateEngineExtensions
                 // DISTINCT操作
                 "distinct" => ProcessDistinctField(type, options, dialect),
 
-                // 分页相关
-                "top" => ProcessLimitPlaceholder(type, options, dialect),
+                // 分页相关 - 使用 {{limit}} 代替 {{top}}
                 "offset" => ProcessOffsetPlaceholder(type, options, dialect),
 
                 // 数据库函数

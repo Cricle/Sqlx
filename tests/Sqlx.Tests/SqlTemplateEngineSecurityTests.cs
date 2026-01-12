@@ -68,22 +68,6 @@ public class SqlTemplateEngineSecurityTests
     }
 
     [TestMethod]
-    [Description("ORDER BY 占位符应正确生成 DESC 排序")]
-    public void OrderByPlaceholder_WithDescOption_ShouldGenerateDescendingOrder()
-    {
-        // Arrange
-        var template = "SELECT {{columns}} FROM {{table}} {{orderby created_at --desc}}";
-
-        // Act
-        var result = _engine!.ProcessTemplate(template, _testMethod!, _testEntity!, "test_table");
-
-        // Assert
-        StringAssert.Contains(result.ProcessedSql, "ORDER BY");
-        StringAssert.Contains(result.ProcessedSql, "DESC");
-        StringAssert.Contains(result.ProcessedSql, "created_at");
-    }
-
-    [TestMethod]
     [Description("多个占位符选项都不应触发 SQL 注入检测")]
     public void MultipleOptions_WithDoubleDash_ShouldNotTriggerInjectionDetection()
     {
@@ -93,7 +77,7 @@ public class SqlTemplateEngineSecurityTests
             "SELECT {{columns --exclude Id}} FROM {{table}}",
             "INSERT INTO {{table}} ({{columns --exclude Id CreatedAt}}) VALUES ({{values}})",
             "UPDATE {{table}} SET {{set --exclude Id}} WHERE id = @id",
-            "SELECT * FROM {{table}} {{orderby created_at --desc}}",
+            "SELECT * FROM {{table}} WHERE created_at > @date ORDER BY created_at DESC",
             "SELECT * FROM {{table}} {{limit --offset 10}}"
         };
 

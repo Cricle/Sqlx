@@ -29,7 +29,7 @@ public class SqlTemplateEngine
     // 核心正则表达式 - 性能优化版本 (修复ExplicitCapture问题和占位符冲突)
     private static readonly Regex ParameterRegex = new(@"[@:$]\w+", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     // 支持三种占位符格式（向后兼容）：
-    // 1. 新格式（命令行风格）：{{columns --exclude Id}}, {{orderby created_at --desc}}
+    // 1. 新格式（命令行风格）：{{columns --exclude Id}}, {{limit --param count}}
     // 2. 旧格式（冒号管道风格）：{{columns:auto|exclude=Id}}, {{limit:default|count=20}}
     // 3. 动态占位符（@ 前缀）：{{@tableName}}, {{@whereClause}}
     // 4. 嵌套占位符：{{coalesce {{sum balance}}, 0}}
@@ -233,10 +233,9 @@ public class SqlTemplateEngine
                         }
                         else
                         {
-                            // 对于 orderby, limit, offset 等占位符，整个内容都是 options
-                            // 例如: {{orderby created_at --desc}} -> options = "created_at --desc"
+                            // 对于 limit, offset 等占位符，整个内容都是 options
                             // 例如: {{limit --param count}} -> options = "--param count"
-                            if (placeholderName == "orderby" || placeholderName == "limit" || placeholderName == "offset")
+                            if (placeholderName == "limit" || placeholderName == "offset")
                             {
                                 placeholderOptions = content;
                             }
@@ -285,98 +284,29 @@ public class SqlTemplateEngine
     {
         return placeholderName switch
         {
-            // 核心7个占位符（多数据库支持）
+            // 核心占位符（多数据库支持）
             "table" => ProcessTablePlaceholder(tableName, placeholderType, entityType, placeholderOptions, dialect),
             "columns" => ProcessColumnsPlaceholder(placeholderType, entityType, result, placeholderOptions, dialect),
             "values" => ProcessValuesPlaceholder(placeholderType, entityType, method, placeholderOptions, dialect, result),
             "where" => ProcessWherePlaceholder(placeholderType, entityType, method, placeholderOptions, dialect),
             "set" => ProcessSetPlaceholder(placeholderType, entityType, method, placeholderOptions, dialect, result),
-            "orderby" => ProcessOrderByPlaceholder(placeholderType, entityType, placeholderOptions, dialect, method),
             "limit" => ProcessLimitPlaceholder(placeholderType, method, placeholderOptions, dialect),
-            // 常用扩展占位符（多数据库支持）
-            "join" => ProcessJoinPlaceholder(placeholderType, entityType, placeholderOptions, dialect, method),
-            "groupby" => ProcessGroupByPlaceholder(placeholderType, entityType, method, placeholderOptions, dialect),
-            "having" => ProcessHavingPlaceholder(placeholderType, method, placeholderOptions, dialect),
-            "select" => ProcessSelectPlaceholder(placeholderType, entityType, placeholderOptions, dialect),
-            "insert" => ProcessInsertPlaceholder(placeholderType, tableName, placeholderOptions, dialect),
-            "update" => ProcessUpdatePlaceholder(placeholderType, tableName, placeholderOptions, dialect),
-            "delete" => ProcessDeletePlaceholder(placeholderType, tableName, placeholderOptions, dialect),
-            "count" => ProcessAggregateFunction("COUNT", placeholderType, placeholderOptions, dialect),
-            "sum" => ProcessAggregateFunction("SUM", placeholderType, placeholderOptions, dialect),
-            "avg" => ProcessAggregateFunction("AVG", placeholderType, placeholderOptions, dialect),
-            "max" => ProcessAggregateFunction("MAX", placeholderType, placeholderOptions, dialect),
-            "min" => ProcessAggregateFunction("MIN", placeholderType, placeholderOptions, dialect),
-            "distinct" => ProcessDistinctPlaceholder(placeholderType, placeholderOptions, dialect),
-            "union" => ProcessUnionPlaceholder(placeholderType, placeholderOptions, dialect),
-            "top" => ProcessTopPlaceholder(placeholderType, placeholderOptions, dialect),
             "offset" => ProcessOffsetPlaceholder(placeholderType, placeholderOptions, dialect, method),
-            // 增强的条件占位符
-            "between" => ProcessBetweenPlaceholder(placeholderType, placeholderOptions, dialect),
-            "like" => ProcessLikePlaceholder(placeholderType, placeholderOptions, dialect),
-            "in" => ProcessInPlaceholder(placeholderType, placeholderOptions, dialect),
-            "not_in" => ProcessInPlaceholder(placeholderType, placeholderOptions, dialect, true),
-            "or" => ProcessOrPlaceholder(placeholderType, placeholderOptions, dialect),
-            "isnull" => ProcessIsNullPlaceholder(placeholderType, placeholderOptions, dialect),
-            "notnull" => ProcessIsNullPlaceholder(placeholderType, placeholderOptions, dialect, true),
+            // 标识符包装
+            "wrap" => ProcessWrapPlaceholder(placeholderType, placeholderOptions, dialect, method),
             // Dialect-specific placeholders
             "bool_true" => GetBoolTrueLiteral(dialect),
             "bool_false" => GetBoolFalseLiteral(dialect),
             "current_timestamp" => GetCurrentTimestampSyntax(dialect),
-            // 日期时间函数
-            "today" => ProcessTodayPlaceholder(placeholderType, placeholderOptions, dialect),
-            "week" => ProcessWeekPlaceholder(placeholderType, placeholderOptions, dialect),
-            "month" => ProcessMonthPlaceholder(placeholderType, placeholderOptions, dialect),
-            "year" => ProcessYearPlaceholder(placeholderType, placeholderOptions, dialect),
-            "date_add" => ProcessDateAddPlaceholder(placeholderType, placeholderOptions, dialect),
-            "date_diff" => ProcessDateDiffPlaceholder(placeholderType, placeholderOptions, dialect),
-            // 字符串函数
-            "contains" => ProcessContainsPlaceholder(placeholderType, placeholderOptions, dialect),
-            "startswith" => ProcessStartsWithPlaceholder(placeholderType, placeholderOptions, dialect),
-            "endswith" => ProcessEndsWithPlaceholder(placeholderType, placeholderOptions, dialect),
-            "upper" => ProcessStringFunction("UPPER", placeholderType, placeholderOptions, dialect),
-            "lower" => ProcessStringFunction("LOWER", placeholderType, placeholderOptions, dialect),
-            "trim" => ProcessStringFunction("TRIM", placeholderType, placeholderOptions, dialect),
-            // 数学函数
-            "round" => ProcessMathFunction("ROUND", placeholderType, placeholderOptions, dialect),
-            "abs" => ProcessMathFunction("ABS", placeholderType, placeholderOptions, dialect),
-            "ceiling" => ProcessMathFunction("CEILING", placeholderType, placeholderOptions, dialect),
-            "floor" => ProcessMathFunction("FLOOR", placeholderType, placeholderOptions, dialect),
             // 批量操作
             "batch_values" => ProcessBatchValuesPlaceholder(placeholderType, placeholderOptions, method, dialect),
             "upsert" => ProcessUpsertPlaceholder(placeholderType, tableName, placeholderOptions, dialect),
-            // 子查询
-            "exists" => ProcessExistsPlaceholder(placeholderType, placeholderOptions, dialect),
-            "subquery" => ProcessSubqueryPlaceholder(placeholderType, placeholderOptions, dialect),
             // 分页增强
             "page" => ProcessPagePlaceholder(placeholderType, method, placeholderOptions, dialect),
             "pagination" => ProcessPaginationPlaceholder(placeholderType, method, placeholderOptions, dialect),
-            // 条件表达式
-            "case" => ProcessCasePlaceholder(placeholderType, placeholderOptions, dialect),
+            // 条件表达式（数据库方言差异较大）
             "coalesce" => ProcessCoalescePlaceholder(placeholderType, placeholderOptions, dialect),
             "ifnull" => ProcessIfNullPlaceholder(placeholderType, placeholderOptions, dialect),
-            // 类型转换
-            "cast" => ProcessCastPlaceholder(placeholderType, placeholderOptions, dialect),
-            "convert" => ProcessConvertPlaceholder(placeholderType, placeholderOptions, dialect),
-            // JSON操作
-            "json_extract" => ProcessJsonExtractPlaceholder(placeholderType, placeholderOptions, dialect),
-            "json_array" => ProcessJsonArrayPlaceholder(placeholderType, placeholderOptions, dialect),
-            "json_object" => ProcessJsonObjectPlaceholder(placeholderType, placeholderOptions, dialect),
-            // 窗口函数
-            "row_number" => ProcessRowNumberPlaceholder(placeholderType, placeholderOptions, dialect),
-            "rank" => ProcessRankPlaceholder(placeholderType, placeholderOptions, dialect),
-            "dense_rank" => ProcessDenseRankPlaceholder(placeholderType, placeholderOptions, dialect),
-            "lag" => ProcessLagPlaceholder(placeholderType, placeholderOptions, dialect),
-            "lead" => ProcessLeadPlaceholder(placeholderType, placeholderOptions, dialect),
-            // 字符串高级函数
-            "substring" => ProcessSubstringPlaceholder(placeholderType, placeholderOptions, dialect),
-            "concat" => ProcessConcatPlaceholder(placeholderType, placeholderOptions, dialect),
-            "group_concat" => ProcessGroupConcatPlaceholder(placeholderType, placeholderOptions, dialect),
-            "replace" => ProcessReplacePlaceholder(placeholderType, placeholderOptions, dialect),
-            "length" => ProcessLengthPlaceholder(placeholderType, placeholderOptions, dialect),
-            // 数学高级函数
-            "power" => ProcessPowerPlaceholder(placeholderType, placeholderOptions, dialect),
-            "sqrt" => ProcessSqrtPlaceholder(placeholderType, placeholderOptions, dialect),
-            "mod" => ProcessModPlaceholder(placeholderType, placeholderOptions, dialect),
             // 批量操作增强
             "batch_insert" => ProcessBatchInsertPlaceholder(placeholderType, tableName, entityType, placeholderOptions, dialect),
             "bulk_update" => ProcessBulkUpdatePlaceholder(placeholderType, tableName, placeholderOptions, dialect),
@@ -548,6 +478,26 @@ public class SqlTemplateEngine
     /// </summary>
     private string ProcessWherePlaceholder(string type, INamedTypeSymbol? entityType, IMethodSymbol method, string options, SqlDefine dialect)
     {
+        // NEW: Support {{where --param paramName}} syntax
+        if (!string.IsNullOrWhiteSpace(options) && options.Contains("--param"))
+        {
+            var paramMatch = System.Text.RegularExpressions.Regex.Match(options, @"--param\s+(\w+)");
+            if (paramMatch.Success)
+            {
+                var paramName = paramMatch.Groups[1].Value;
+                var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
+                if (param != null)
+                {
+                    // Check if parameter is Expression<Func<T, bool>>
+                    if (IsNativeExpressionParameter(param))
+                    {
+                        return $"{{{{RUNTIME_WHERE_NATIVE_EXPR_{paramName}}}}}"; // Marker for native Expression
+                    }
+                    return $"{{{{RUNTIME_WHERE_EXPR_{paramName}}}}}"; // Marker for code generation
+                }
+            }
+        }
+        
         // Check for ExpressionToSql parameter
         var exprParam = method.Parameters.FirstOrDefault(p =>
             p.GetAttributes().Any(a => a.AttributeClass?.Name == "ExpressionToSqlAttribute"));
@@ -575,22 +525,22 @@ public class SqlTemplateEngine
                 // Check if parameter is Expression<Func<T, bool>>
                 if (IsNativeExpressionParameter(param))
                 {
-                    return $"{{RUNTIME_WHERE_NATIVE_EXPR_{paramName}}}"; // Marker for native Expression
+                    return $"{{{{RUNTIME_WHERE_NATIVE_EXPR_{paramName}}}}}"; // Marker for native Expression
                 }
-                return $"{{RUNTIME_WHERE_{paramName}}}"; // Marker for code generation
+                return $"{{{{RUNTIME_WHERE_{paramName}}}}}"; // Marker for code generation
             }
         }
 
         if (exprParam != null)
         {
             // {{where}} with [ExpressionToSql] parameter - extract WHERE clause
-            return $"{{RUNTIME_WHERE_EXPR_{exprParam.Name}}}"; // Marker for code generation
+            return $"{{{{RUNTIME_WHERE_EXPR_{exprParam.Name}}}}}"; // Marker for code generation
         }
 
         if (dynamicWhereParam != null)
         {
             // {{where}} with [DynamicSql(Type=Fragment)] parameter
-            return $"{{RUNTIME_WHERE_DYNAMIC_{dynamicWhereParam.Name}}}"; // Marker for code generation
+            return $"{{{{RUNTIME_WHERE_DYNAMIC_{dynamicWhereParam.Name}}}}}"; // Marker for code generation
         }
 
         var baseWhereClause = type switch
@@ -690,135 +640,6 @@ public class SqlTemplateEngine
             var paramName = columnName;
             return $"{dialect.WrapColumn(columnName)} = {dialect.ParameterPrefix}{paramName}";
         }));
-    }
-
-
-    /// <summary>Processes ORDERBY placeholder - supports dynamic runtime ordering</summary>
-    private static string ProcessOrderByPlaceholder(string type, INamedTypeSymbol? entityType, string options, SqlDefine dialect, IMethodSymbol method)
-    {
-        // Check for dynamic ORDERBY parameter
-        var dynamicOrderParam = method.Parameters.FirstOrDefault(p =>
-            p.GetAttributes().Any(a =>
-                a.AttributeClass?.Name == "DynamicSqlAttribute" &&
-                a.NamedArguments.Any(arg =>
-                    arg.Key == "Type" &&
-                    arg.Value.Value?.ToString() == "1"))); // Fragment = 1
-
-        // Priority: @paramName > --param > dynamic param > options > type
-        if (!string.IsNullOrWhiteSpace(type) && type.StartsWith("@"))
-        {
-            // {{orderby @customOrder}} - use parameter as ORDERBY fragment
-            var paramName = type.Substring(1);
-            var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
-            if (param != null)
-            {
-                return $"{{RUNTIME_ORDERBY_{paramName}}}"; // Marker for code generation
-            }
-        }
-
-        // Check for --param option (e.g., {{orderby --param orderBy}})
-        if (!string.IsNullOrWhiteSpace(options))
-        {
-            var paramOption = ExtractCommandLineOption(options, "--param");
-            if (!string.IsNullOrEmpty(paramOption))
-            {
-                var param = method.Parameters.FirstOrDefault(p => p.Name == paramOption);
-                if (param != null)
-                {
-                    return $"{{RUNTIME_ORDERBY_{paramOption}}}"; // Marker for code generation
-                }
-            }
-        }
-
-        if (dynamicOrderParam != null)
-        {
-            // {{orderby}} with [DynamicSql(Type=Fragment)] parameter
-            return $"{{RUNTIME_ORDERBY_DYNAMIC_{dynamicOrderParam.Name}}}"; // Marker for code generation
-        }
-
-        // Static ORDERBY generation (existing behavior)
-        // 优先处理 options（新格式）：created_at --desc
-        if (!string.IsNullOrWhiteSpace(options))
-        {
-            // 解析格式：column_name --asc/--desc
-            var optionsParts = options.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            if (optionsParts.Length >= 1)
-            {
-                var columnName = optionsParts[0].Trim();
-                
-                // Skip if this is a --param option (already handled above)
-                if (columnName == "--param")
-                {
-                    return $"ORDER BY {dialect.WrapColumn("id")} ASC"; // Default fallback
-                }
-                
-                var direction = "ASC"; // 默认升序
-
-                // 查找方向选项
-                for (int i = 1; i < optionsParts.Length; i++)
-                {
-                    var part = optionsParts[i].ToLowerInvariant();
-                    if (part == "--desc")
-                    {
-                        direction = "DESC";
-                        break;
-                    }
-                    else if (part == "--asc")
-                    {
-                        direction = "ASC";
-                        break;
-                    }
-                }
-
-                return $"ORDER BY {dialect.WrapColumn(columnName)} {direction}";
-            }
-        }
-
-        // 兼容旧格式：处理 type 参数
-        if (!string.IsNullOrWhiteSpace(type))
-        {
-            var orderBy = type.ToLowerInvariant() switch
-            {
-                "id" => $"ORDER BY {dialect.WrapColumn("id")} ASC",
-                "id_desc" => $"ORDER BY {dialect.WrapColumn("id")} DESC",
-                "name" => $"ORDER BY {dialect.WrapColumn("name")} ASC",
-                "name_desc" => $"ORDER BY {dialect.WrapColumn("name")} DESC",
-                "created" => $"ORDER BY {dialect.WrapColumn("created_at")} DESC",
-                "created_asc" => $"ORDER BY {dialect.WrapColumn("created_at")} ASC",
-                "updated" => $"ORDER BY {dialect.WrapColumn("updated_at")} DESC",
-                "updated_asc" => $"ORDER BY {dialect.WrapColumn("updated_at")} ASC",
-                "date" => $"ORDER BY {dialect.WrapColumn("created_at")} DESC",
-                "priority" => $"ORDER BY {dialect.WrapColumn("priority")} DESC, {dialect.WrapColumn("created_at")} DESC",
-                "random" => dialect.Equals(SqlDefine.SqlServer) ? "ORDER BY NEWID()" :
-                           dialect.Equals(SqlDefine.MySql) ? "ORDER BY RAND()" :
-                           dialect.Equals(SqlDefine.PostgreSql) ? "ORDER BY RANDOM()" :
-                           dialect.Equals(SqlDefine.SQLite) ? "ORDER BY RANDOM()" :
-                           "ORDER BY NEWID()",
-                "rand" => dialect.Equals(SqlDefine.MySql) ? "ORDER BY RAND()" : "ORDER BY NEWID()",
-                _ => null
-            };
-
-            if (orderBy != null) return orderBy;
-
-            // 智能解析自定义排序 - 支持格式如 "field_asc", "field_desc"
-            if (type.Contains('_'))
-            {
-                var parts = type.Split('_');
-                if (parts.Length == 2)
-                {
-                    var field = parts[0];
-                    var direction = parts[1].ToUpperInvariant();
-                    if (direction is "ASC" or "DESC")
-                    {
-                        var columnName = SharedCodeGenerationUtilities.ConvertToSnakeCase(field);
-                        return $"ORDER BY {dialect.WrapColumn(columnName)} {direction}";
-                    }
-                }
-            }
-        }
-
-        // 默认排序
-        return $"ORDER BY {dialect.WrapColumn("id")} ASC";
     }
 
 
@@ -1338,9 +1159,9 @@ public class SqlTemplateEngine
     private static string ProcessCustomPlaceholder(string originalValue, string name, string type, string options, SqlTemplateResult result)
     {
         result.Warnings.Add($"Unknown placeholder '{name}'. Available placeholders: " +
-            "Core: table, columns, values, where, set, orderby, limit | " +
+            "Core: table, columns, values, where, set, limit, offset | " +
             "Joins: join, groupby, having | " +
-            "CRUD: select, insert, update, delete, upsert | " +
+            "CRUD: insert (use INSERT INTO {{table}}), upsert | " +
             "Aggregates: count, sum, avg, max, min, distinct, group_concat | " +
             "Conditions: between, like, in, not_in, or, isnull, notnull, exists, case, coalesce, ifnull | " +
             "Dates: today, week, month, year, date_add, date_diff, date_format | " +
@@ -1348,7 +1169,7 @@ public class SqlTemplateEngine
             "Math: round, abs, ceiling, floor, power, sqrt, mod | " +
             "Window: row_number, rank, dense_rank, lag, lead | " +
             "JSON: json_extract, json_array, json_object | " +
-            "Pagination: page, pagination, top, offset | " +
+            "Pagination: page, pagination | " +
             "Conversions: cast, convert | " +
             "Batch: batch_values, batch_insert, bulk_update, subquery, union");
         return originalValue; // 保持原始值
@@ -2615,6 +2436,40 @@ public class SqlTemplateEngine
         return dialect.Equals(SqlDefine.SqlServer)
             ? $"({dialect.WrapColumn(column)} % {divisor})"
             : $"MOD({dialect.WrapColumn(column)}, {divisor})";
+    }
+
+    /// <summary>
+    /// 处理WRAP占位符 - 使用数据库方言特定的标识符包装
+    /// 格式: {{wrap --param columnName}} 或 {{wrap columnName}}
+    /// MySQL: `column_value`
+    /// PostgreSQL: "column_value"
+    /// SQL Server/SQLite: [column_value]
+    /// </summary>
+    private static string ProcessWrapPlaceholder(string type, string options, SqlDefine dialect, IMethodSymbol method)
+    {
+        // Check for --param option (e.g., {{wrap --param column}})
+        if (!string.IsNullOrWhiteSpace(options))
+        {
+            var paramOption = ExtractCommandLineOption(options, "--param");
+            if (!string.IsNullOrEmpty(paramOption))
+            {
+                var param = method.Parameters.FirstOrDefault(p => p.Name == paramOption);
+                if (param != null)
+                {
+                    // Return runtime marker for code generation
+                    return $"{{RUNTIME_WRAP_{paramOption}}}";
+                }
+            }
+        }
+
+        // Static wrap: {{wrap columnName}} - wrap the literal column name
+        var columnName = !string.IsNullOrWhiteSpace(type) ? type : options?.Trim();
+        if (!string.IsNullOrEmpty(columnName))
+        {
+            return dialect.WrapColumn(columnName);
+        }
+
+        return ""; // Empty if no column specified
     }
 
     /// <summary>处理BATCH_INSERT占位符 - 批量插入简化</summary>

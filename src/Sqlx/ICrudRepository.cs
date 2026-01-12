@@ -43,7 +43,6 @@ namespace Sqlx
         /// <remarks>
         /// This is a convenience method also available in IAggregateRepository.
         /// Generated SQL: SELECT COUNT(*) FROM table
-        /// For large tables, consider using ISchemaRepository.GetApproximateRowCountAsync() for faster results.
         /// </remarks>
         [SqlTemplate("SELECT COUNT(*) FROM {{table}}")]
         Task<long> CountAsync(CancellationToken cancellationToken = default);

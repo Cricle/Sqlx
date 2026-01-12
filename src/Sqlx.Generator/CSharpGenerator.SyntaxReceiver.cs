@@ -111,13 +111,9 @@ public partial class CSharpGenerator
             if (string.IsNullOrEmpty(name))
                 return false;
 
-            // Support both non-generic and generic syntax:
-            // - Non-generic: "RepositoryFor" or "RepositoryForAttribute"
-            // - Generic: "RepositoryFor<T>" or "RepositoryForAttribute<T>"
-            return name == "RepositoryFor" ||
-                   name == "RepositoryForAttribute" ||
-                   name.StartsWith("RepositoryFor<") ||
-                   name.StartsWith("RepositoryForAttribute<");
+            // Only support non-generic syntax: "RepositoryFor" or "RepositoryForAttribute"
+            // Use RepositoryFor(typeof(T)) instead of RepositoryFor<T>
+            return name == "RepositoryFor" || name == "RepositoryForAttribute";
         }
     }
 }

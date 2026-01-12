@@ -20,7 +20,7 @@ namespace Sqlx.Tests.Dialects
     #region MySQL Test
 
     [SqlDefine(SqlDefineTypes.MySql)]
-    [RepositoryFor<ICrudRepository<DialectProduct, int>>]
+    [RepositoryFor(typeof(ICrudRepository<DialectProduct, int>))]
     public partial class MySqlProductRepo(DbConnection connection) 
         : ICrudRepository<DialectProduct, int>
     {
@@ -44,7 +44,7 @@ namespace Sqlx.Tests.Dialects
     #region PostgreSQL Test
 
     [SqlDefine(SqlDefineTypes.PostgreSql)]
-    [RepositoryFor<ICrudRepository<DialectProduct, int>>]
+    [RepositoryFor(typeof(ICrudRepository<DialectProduct, int>))]
     public partial class PostgreSqlProductRepo(DbConnection connection) 
         : ICrudRepository<DialectProduct, int>
     {
@@ -68,7 +68,7 @@ namespace Sqlx.Tests.Dialects
     #region SQL Server Test
 
     [SqlDefine(SqlDefineTypes.SqlServer)]
-    [RepositoryFor<ICrudRepository<DialectProduct, int>>]
+    [RepositoryFor(typeof(ICrudRepository<DialectProduct, int>))]
     public partial class SqlServerProductRepo(DbConnection connection) 
         : ICrudRepository<DialectProduct, int>
     {
@@ -92,7 +92,7 @@ namespace Sqlx.Tests.Dialects
     #region SQLite Test
 
     [SqlDefine(SqlDefineTypes.SQLite)]
-    [RepositoryFor<ICrudRepository<DialectProduct, int>>]
+    [RepositoryFor(typeof(ICrudRepository<DialectProduct, int>))]
     public partial class SQLiteProductRepo(DbConnection connection) 
         : ICrudRepository<DialectProduct, int>
     {
@@ -113,4 +113,3 @@ namespace Sqlx.Tests.Dialects
 
     #endregion
 }
-

@@ -161,67 +161,6 @@ public interface ILogRepository
     Task<long> CountByLevelAsync(string level);
 }
 
-// ==================== 6. 高级查询仓储（使用标准 SQL） ====================
-public interface IAdvancedRepository
-{
-    [SqlTemplate(@"
-        SELECT p.id as product_id, p.name as product_name, p.price, c.name as category_name
-        FROM {{table}} p
-        INNER JOIN categories c ON p.category = c.code
-        WHERE p.is_deleted = {{bool_false}}
-    ")]
-    Task<List<ProductDetail>> GetProductDetailsAsync();
-
-    [SqlTemplate(@"
-        SELECT u.id as user_id, u.name as user_name, 
-               COUNT(o.id) as order_count, 
-               COALESCE(SUM(o.total_amount), 0) as total_spent
-        FROM users u
-        LEFT JOIN orders o ON u.id = o.user_id
-        GROUP BY u.id, u.name
-        HAVING COUNT(o.id) > 0
-    ")]
-    Task<List<UserStats>> GetUserStatsAsync();
-
-    [SqlTemplate(@"
-        SELECT {{columns}} FROM users u
-        WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id AND o.total_amount > @minAmount)
-    ")]
-    Task<List<User>> GetHighValueCustomersAsync(decimal minAmount);
-
-    [SqlTemplate("SELECT {{columns}} FROM users ORDER BY balance DESC {{limit}}")]
-    Task<List<User>> GetTopRichUsersAsync(int? limit = 10);
-
-    [SqlTemplate(@"
-        SELECT name, 'user' as type FROM users WHERE balance > @minBalance
-        UNION
-        SELECT name, 'product' as type FROM products WHERE price > @minPrice
-    ")]
-    Task<List<Dictionary<string, object?>>> GetHighValueEntitiesAsync(decimal minBalance, decimal minPrice);
-
-    [SqlTemplate(@"
-        SELECT id, name, balance,
-        CASE 
-            WHEN balance > 10000 THEN 'VIP'
-            WHEN balance > 5000 THEN 'Premium'
-            ELSE 'Regular'
-        END as level
-        FROM users
-    ")]
-    Task<List<Dictionary<string, object?>>> GetUsersWithLevelAsync();
-
-    [SqlTemplate(@"
-        SELECT * FROM (
-            SELECT {{columns}}, 
-                   ROW_NUMBER() OVER (PARTITION BY category ORDER BY price DESC) as rank
-            FROM products
-            WHERE is_deleted = {{bool_false}}
-        ) ranked
-        WHERE rank <= @topN
-    ")]
-    Task<List<Product>> GetTopProductsByCategory(int topN);
-}
-
 // ==================== 仓储实现 ====================
 [SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IUserRepository))]
@@ -248,7 +187,3 @@ public partial class AccountRepository(DbConnection connection) : IAccountReposi
 [SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(ILogRepository))]
 public partial class LogRepository(DbConnection connection) : ILogRepository { }
-
-[SqlDefine(SqlDefineTypes.SQLite)]
-[RepositoryFor(typeof(IAdvancedRepository))]
-public partial class AdvancedRepository(DbConnection connection) : IAdvancedRepository { }

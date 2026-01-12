@@ -132,7 +132,10 @@ public static class SharedCodeGenerationUtilities
         sb.AppendLine("}");
         sb.AppendLine();
 
-        // Check for runtime dynamic placeholders (WHERE, SET, ORDERBY, LIMIT, etc.)
+        // Extract exclusion list from SQL template for parameter binding
+        var excludedProperties = ExtractExcludedPropertiesFromSql(sql);
+
+        // Check for runtime dynamic placeholders (WHERE, SET, ORDERBY, LIMIT, LOGICAL, etc.)
         bool hasDynamicPlaceholders = sql.Contains("{RUNTIME_WHERE_") ||
                                      sql.Contains("{RUNTIME_SET_") ||
                                      sql.Contains("{RUNTIME_ORDERBY_") ||
@@ -141,7 +144,8 @@ public static class SharedCodeGenerationUtilities
                                      sql.Contains("{RUNTIME_JOIN_") ||
                                      sql.Contains("{RUNTIME_GROUPBY_") ||
                                      sql.Contains("{RUNTIME_NULLABLE_LIMIT_") ||
-                                     sql.Contains("{RUNTIME_NULLABLE_OFFSET_");
+                                     sql.Contains("{RUNTIME_NULLABLE_OFFSET_") ||
+                                     sql.Contains("{RUNTIME_LOGICAL_");
 
         if (hasDynamicPlaceholders)
         {
@@ -163,21 +167,44 @@ public static class SharedCodeGenerationUtilities
                 foreach (var param in collectionParams)
                 {
                     sb.AppendLine();
-                    sb.AppendLine($"// Replace IN (@{param.Name}) with expanded parameter list");
+                    sb.AppendLine($"// Replace IN (@{param.Name}) or IN @{param.Name} with expanded parameter list");
                     sb.AppendLine($"if ({param.Name} != null && {param.Name}.Any())");
                     sb.AppendLine("{");
                     sb.PushIndent();
                     sb.AppendLine($"var __inClause_{param.Name}__ = string.Join(\", \", ");
                     sb.AppendLine($"    global::System.Linq.Enumerable.Range(0, global::System.Linq.Enumerable.Count({param.Name}))");
                     sb.AppendLine($"    .Select(i => $\"@{param.Name}{{i}}\"));");
+                    sb.AppendLine($"// Try both formats: IN (@param) and IN @param");
+                    sb.AppendLine($"if (__sql__.Contains(\"IN (@{param.Name})\"))");
+                    sb.AppendLine("{");
+                    sb.PushIndent();
                     sb.AppendLine($"__sql__ = __sql__.Replace(\"IN (@{param.Name})\", $\"IN ({{__inClause_{param.Name}__}})\");");
+                    sb.PopIndent();
+                    sb.AppendLine("}");
+                    sb.AppendLine($"else if (__sql__.Contains(\"IN @{param.Name}\"))");
+                    sb.AppendLine("{");
+                    sb.PushIndent();
+                    sb.AppendLine($"__sql__ = __sql__.Replace(\"IN @{param.Name}\", $\"IN ({{__inClause_{param.Name}__}})\");");
+                    sb.PopIndent();
+                    sb.AppendLine("}");
                     sb.PopIndent();
                     sb.AppendLine("}");
                     sb.AppendLine("else");
                     sb.AppendLine("{");
                     sb.PushIndent();
-                    sb.AppendLine($"// Empty collection - use 1=0 to return no results");
+                    sb.AppendLine($"// Empty collection - use NULL to return no results");
+                    sb.AppendLine($"if (__sql__.Contains(\"IN (@{param.Name})\"))");
+                    sb.AppendLine("{");
+                    sb.PushIndent();
                     sb.AppendLine($"__sql__ = __sql__.Replace(\"IN (@{param.Name})\", \"IN (NULL)\");");
+                    sb.PopIndent();
+                    sb.AppendLine("}");
+                    sb.AppendLine($"else if (__sql__.Contains(\"IN @{param.Name}\"))");
+                    sb.AppendLine("{");
+                    sb.PushIndent();
+                    sb.AppendLine($"__sql__ = __sql__.Replace(\"IN @{param.Name}\", \"IN (NULL)\");");
+                    sb.PopIndent();
+                    sb.AppendLine("}");
                     sb.PopIndent();
                     sb.AppendLine("}");
                 }
@@ -196,15 +223,232 @@ public static class SharedCodeGenerationUtilities
 
         sb.AppendLine();
 
-        // Generate parameter binding
-        GenerateParameterBinding(sb, method, hasDynamicPlaceholders);
+        // Generate parameter binding with exclusion list
+        GenerateParameterBinding(sb, method, hasDynamicPlaceholders, excludedProperties);
+    }
+
+    /// <summary>
+    /// Extract excluded properties from SQL template (e.g., {{values --exclude Id}})
+    /// </summary>
+    private static HashSet<string> ExtractExcludedPropertiesFromSql(string sql)
+    {
+        var excluded = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        
+        // Match {{values --exclude PropertyName}} or {{values --exclude Prop1 Prop2}}
+        var valuesRegex = new System.Text.RegularExpressions.Regex(
+            @"\{\{values\s+--exclude\s+([^}]+)\}\}", 
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        
+        var matches = valuesRegex.Matches(sql);
+        foreach (System.Text.RegularExpressions.Match match in matches)
+        {
+            var excludeList = match.Groups[1].Value;
+            // Split by space or comma
+            foreach (var prop in excludeList.Split(new[] { ' ', ',' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var trimmed = prop.Trim();
+                if (!string.IsNullOrEmpty(trimmed))
+                {
+                    excluded.Add(trimmed);
+                    // Also add snake_case version
+                    excluded.Add(ConvertToSnakeCase(trimmed));
+                }
+            }
+        }
+        
+        return excluded;
+    }
+
+    /// <summary>
+    /// 处理逻辑标记并生成条件代码
+    /// 可扩展设计：通过字典映射条件类型到生成器函数
+    /// </summary>
+    private static string ProcessLogicalMarkersInGeneration(IndentedStringBuilder sb, string sql, IMethodSymbol method)
+    {
+        // 定义逻辑条件生成器（可扩展）
+        var logicalGenerators = new Dictionary<string, System.Func<string, IMethodSymbol, IndentedStringBuilder, string>>
+        {
+            ["IFNULL"] = GenerateIfNullCondition,
+            ["IFNOTNULL"] = GenerateIfNotNullCondition,
+            ["IFEMPTY"] = GenerateIfEmptyCondition,
+            ["IFNOTEMPTY"] = GenerateIfNotEmptyCondition
+        };
+
+        // 匹配逻辑标记：{{RUNTIME_LOGICAL_IFNULL_paramName_guid}}{{CONTENT:...}}{{/RUNTIME_LOGICAL}}
+        var logicalRegex = new System.Text.RegularExpressions.Regex(
+            @"\{\{RUNTIME_LOGICAL_([A-Z]+)_(\w+)_([a-f0-9]+)\}\}\{\{CONTENT:(.*?)\}\}\{\{/RUNTIME_LOGICAL\}\}",
+            System.Text.RegularExpressions.RegexOptions.Singleline);
+
+        var sqlBuilder = new System.Text.StringBuilder();
+        int lastIndex = 0;
+        int conditionIndex = 0;
+
+        foreach (System.Text.RegularExpressions.Match match in logicalRegex.Matches(sql))
+        {
+            // Add SQL before this logical block
+            sqlBuilder.Append(sql.Substring(lastIndex, match.Index - lastIndex));
+
+            var conditionType = match.Groups[1].Value; // IFNULL, IFNOTNULL, etc.
+            var paramName = match.Groups[2].Value;
+            var content = UnescapeLogicalContent(match.Groups[4].Value);
+
+            // Generate condition code using extensible generator
+            if (logicalGenerators.TryGetValue(conditionType, out var generator))
+            {
+                var placeholder = generator(paramName, method, sb);
+                sqlBuilder.Append(placeholder);
+            }
+            else
+            {
+                // Unknown condition type - skip
+                sb.AppendLine($"// Warning: Unknown logical condition type: {conditionType}");
+            }
+
+            // Store content for this condition
+            var contentVar = $"__logicalContent_{conditionIndex}__";
+            sb.AppendLine($"var {contentVar} = @\"{content.Replace("\"", "\"\"")}\";");
+            conditionIndex++;
+
+            lastIndex = match.Index + match.Length;
+        }
+
+        // Add remaining SQL
+        sqlBuilder.Append(sql.Substring(lastIndex));
+
+        return sqlBuilder.ToString();
+    }
+
+    /// <summary>
+    /// 生成 ifnull 条件代码（如果参数为 null，包含内容）
+    /// </summary>
+    private static string GenerateIfNullCondition(string paramName, IMethodSymbol method, IndentedStringBuilder sb)
+    {
+        var param = method.Parameters.FirstOrDefault(p => 
+            p.Name.Equals(paramName, StringComparison.OrdinalIgnoreCase));
+
+        if (param == null)
+        {
+            return ""; // 参数不存在
+        }
+
+        var placeholder = $"{{__LOGICAL_IFNULL_{paramName}__}}";
+        
+        // 生成条件变量
+        var varName = $"__ifnull_{paramName}__";
+        sb.AppendLine($"// Logical: ifnull {paramName}");
+        sb.AppendLine($"var {varName} = {paramName} == null ? __logicalContent_{sb.GetHashCode() % 1000}__ : \"\";");
+        
+        return placeholder;
+    }
+
+    /// <summary>
+    /// 生成 ifnotnull 条件代码（如果参数不为 null，包含内容）
+    /// </summary>
+    private static string GenerateIfNotNullCondition(string paramName, IMethodSymbol method, IndentedStringBuilder sb)
+    {
+        var param = method.Parameters.FirstOrDefault(p => 
+            p.Name.Equals(paramName, StringComparison.OrdinalIgnoreCase));
+
+        if (param == null)
+        {
+            return "";
+        }
+
+        var placeholder = $"{{__LOGICAL_IFNOTNULL_{paramName}__}}";
+        
+        var varName = $"__ifnotnull_{paramName}__";
+        sb.AppendLine($"// Logical: ifnotnull {paramName}");
+        sb.AppendLine($"var {varName} = {paramName} != null ? __logicalContent_{sb.GetHashCode() % 1000}__ : \"\";");
+        
+        return placeholder;
+    }
+
+    /// <summary>
+    /// 生成 ifempty 条件代码（如果参数为空，包含内容）
+    /// 空的定义：null、空字符串、空集合
+    /// </summary>
+    private static string GenerateIfEmptyCondition(string paramName, IMethodSymbol method, IndentedStringBuilder sb)
+    {
+        var param = method.Parameters.FirstOrDefault(p => 
+            p.Name.Equals(paramName, StringComparison.OrdinalIgnoreCase));
+
+        if (param == null)
+        {
+            return "";
+        }
+
+        var placeholder = $"{{__LOGICAL_IFEMPTY_{paramName}__}}";
+        var varName = $"__ifempty_{paramName}__";
+        
+        sb.AppendLine($"// Logical: ifempty {paramName}");
+        
+        // 根据参数类型生成不同的空检查
+        if (param.Type.SpecialType == Microsoft.CodeAnalysis.SpecialType.System_String)
+        {
+            sb.AppendLine($"var {varName} = string.IsNullOrEmpty({paramName}) ? __logicalContent_{sb.GetHashCode() % 1000}__ : \"\";");
+        }
+        else if (IsEnumerableParameter(param))
+        {
+            sb.AppendLine($"var {varName} = ({paramName} == null || !{paramName}.Any()) ? __logicalContent_{sb.GetHashCode() % 1000}__ : \"\";");
+        }
+        else
+        {
+            sb.AppendLine($"var {varName} = {paramName} == null ? __logicalContent_{sb.GetHashCode() % 1000}__ : \"\";");
+        }
+        
+        return placeholder;
+    }
+
+    /// <summary>
+    /// 生成 ifnotempty 条件代码（如果参数不为空，包含内容）
+    /// </summary>
+    private static string GenerateIfNotEmptyCondition(string paramName, IMethodSymbol method, IndentedStringBuilder sb)
+    {
+        var param = method.Parameters.FirstOrDefault(p => 
+            p.Name.Equals(paramName, StringComparison.OrdinalIgnoreCase));
+
+        if (param == null)
+        {
+            return "";
+        }
+
+        var placeholder = $"{{__LOGICAL_IFNOTEMPTY_{paramName}__}}";
+        var varName = $"__ifnotempty_{paramName}__";
+        
+        sb.AppendLine($"// Logical: ifnotempty {paramName}");
+        
+        // 根据参数类型生成不同的非空检查
+        if (param.Type.SpecialType == Microsoft.CodeAnalysis.SpecialType.System_String)
+        {
+            sb.AppendLine($"var {varName} = !string.IsNullOrEmpty({paramName}) ? __logicalContent_{sb.GetHashCode() % 1000}__ : \"\";");
+        }
+        else if (IsEnumerableParameter(param))
+        {
+            sb.AppendLine($"var {varName} = ({paramName} != null && {paramName}.Any()) ? __logicalContent_{sb.GetHashCode() % 1000}__ : \"\";");
+        }
+        else
+        {
+            sb.AppendLine($"var {varName} = {paramName} != null ? __logicalContent_{sb.GetHashCode() % 1000}__ : \"\";");
+        }
+        
+        return placeholder;
+    }
+
+    /// <summary>
+    /// 反转义逻辑内容
+    /// </summary>
+    private static string UnescapeLogicalContent(string content)
+    {
+        return content.Replace("⟪⟪", "{{").Replace("⟫⟫", "}}");
     }
 
     /// <summary>
     /// Generate parameter binding code
     /// </summary>
-    private static void GenerateParameterBinding(IndentedStringBuilder sb, IMethodSymbol method, bool hasRuntimeWhere)
+    private static void GenerateParameterBinding(IndentedStringBuilder sb, IMethodSymbol method, bool hasRuntimeWhere, HashSet<string>? excludedProperties = null)
     {
+        excludedProperties ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         // First, bind parameters from ExpressionToSql if present
         if (hasRuntimeWhere)
         {
@@ -264,6 +508,13 @@ public static class SharedCodeGenerationUtilities
 
                 foreach (var prop in properties)
                 {
+                    // 🔧 FIX: Skip excluded properties (e.g., from {{values --exclude Id}})
+                    if (excludedProperties.Contains(prop.Name) || 
+                        excludedProperties.Contains(ConvertToSnakeCase(prop.Name)))
+                    {
+                        continue;
+                    }
+
                     var propSqlName = ConvertToSnakeCase(prop.Name);
                     var paramName = $"@{propSqlName}";
                     var isNullable = prop.Type.IsNullableType() || prop.Type.IsReferenceType;
@@ -340,21 +591,34 @@ public static class SharedCodeGenerationUtilities
     }
 
     /// <summary>
-    /// Generate dynamic SQL building code (WHERE, SET, ORDERBY, etc.) with zero-allocation string interpolation
+    /// Generate dynamic SQL building code (WHERE, SET, ORDERBY, LOGICAL, etc.) with zero-allocation string interpolation
     /// </summary>
     private static void GenerateDynamicSql(IndentedStringBuilder sb, string sql, IMethodSymbol method, INamedTypeSymbol? classSymbol = null)
     {
         sb.AppendLine("// Build SQL with dynamic placeholders (compile-time splitting, zero Replace calls)");
 
-        // Find all runtime dynamic markers (WHERE, SET, ORDERBY, LIMIT, OFFSET, JOIN, GROUPBY, NULLABLE_LIMIT, NULLABLE_OFFSET)
+        // Find all runtime dynamic markers (WHERE, SET, ORDERBY, LIMIT, OFFSET, JOIN, GROUPBY, NULLABLE_LIMIT, NULLABLE_OFFSET, LOGICAL)
+        var allMarkers = System.Text.RegularExpressions.Regex.Matches(sql,
+            @"\{RUNTIME_(WHERE|SET|ORDERBY|LIMIT|OFFSET|JOIN|GROUPBY|NULLABLE_LIMIT|NULLABLE_OFFSET)_([^}]+)\}|\{RUNTIME_LOGICAL_([^}]+)\}");
+
+        if (allMarkers.Count == 0)
+        {
+            // Fallback: no markers found
+            var escapedSql = sql.Replace("\"", "\"\"");
+            sb.AppendLine($"__cmd__.CommandText = @\"{escapedSql}\";");
+            return;
+        }
+
+        // Process logical placeholders first (they need special handling)
+        sql = ProcessLogicalMarkersInGeneration(sb, sql, method);
+
+        // Now find remaining runtime markers (after logical processing)
         var markers = System.Text.RegularExpressions.Regex.Matches(sql,
             @"\{RUNTIME_(WHERE|SET|ORDERBY|LIMIT|OFFSET|JOIN|GROUPBY|NULLABLE_LIMIT|NULLABLE_OFFSET)_([^}]+)\}");
 
         if (markers.Count == 0)
         {
-            // Fallback: no markers found
-            var escapedSql = sql.Replace("\"", "\"\"");
-            sb.AppendLine($"__cmd__.CommandText = @\"{escapedSql}\";");
+            // Only logical markers were present, SQL is already built
             return;
         }
 
@@ -457,35 +721,79 @@ public static class SharedCodeGenerationUtilities
             }
             else if (placeholderType == "LIMIT" || placeholderType == "OFFSET")
             {
-                // LIMIT/OFFSET parameter - generate conditional SQL for SQL Server
+                // LIMIT/OFFSET parameter - 直接拼接 int 值到 SQL（无 SQL 注入风险）
                 var paramName = markerContent;
                 var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
+                
+                // 获取数据库方言
+                var dialectValue = classSymbol != null ? GetDialectForClass(classSymbol) : GetDialectForMethod(method);
 
                 if (param != null && param.Type.Name.Contains("Nullable"))
                 {
-                    // Nullable parameter - generate conditional code
+                    // 可空参数 - 生成条件代码
                     if (placeholderType == "LIMIT")
                     {
-                        // For SQL Server: OFFSET 0 ROWS FETCH NEXT {limit} ROWS ONLY
-                        sb.AppendLine($"// Generate LIMIT clause for {paramName}");
-                        sb.AppendLine($"var {varName} = {paramName}.HasValue ? $\"OFFSET 0 ROWS FETCH NEXT {{{paramName}.Value}} ROWS ONLY\" : \"\";");
+                        sb.AppendLine($"// Generate LIMIT clause for nullable {paramName} (direct value concatenation)");
+                        if (dialectValue == "SqlServer")
+                        {
+                            sb.AppendLine($"var {varName} = {paramName}.HasValue ? $\"OFFSET 0 ROWS FETCH NEXT {{{paramName}.Value}} ROWS ONLY\" : \"\";");
+                        }
+                        else if (dialectValue == "Oracle")
+                        {
+                            sb.AppendLine($"var {varName} = {paramName}.HasValue ? $\"FETCH FIRST {{{paramName}.Value}} ROWS ONLY\" : \"\";");
+                        }
+                        else
+                        {
+                            // MySQL, PostgreSQL, SQLite
+                            sb.AppendLine($"var {varName} = {paramName}.HasValue ? $\"LIMIT {{{paramName}.Value}}\" : \"\";");
+                        }
                     }
                     else // OFFSET
                     {
-                        sb.AppendLine($"// Generate OFFSET clause for {paramName}");
-                        sb.AppendLine($"var {varName} = {paramName}.HasValue ? $\"OFFSET {{{paramName}.Value}} ROWS\" : \"\";");
+                        sb.AppendLine($"// Generate OFFSET clause for nullable {paramName} (direct value concatenation)");
+                        if (dialectValue == "SqlServer" || dialectValue == "Oracle")
+                        {
+                            sb.AppendLine($"var {varName} = {paramName}.HasValue ? $\"OFFSET {{{paramName}.Value}} ROWS\" : \"\";");
+                        }
+                        else
+                        {
+                            // MySQL, PostgreSQL, SQLite
+                            sb.AppendLine($"var {varName} = {paramName}.HasValue ? $\"OFFSET {{{paramName}.Value}}\" : \"\";");
+                        }
                     }
                 }
                 else
                 {
-                    // Non-nullable parameter
+                    // 非可空参数 - 直接拼接值
                     if (placeholderType == "LIMIT")
                     {
-                        sb.AppendLine($"var {varName} = $\"OFFSET 0 ROWS FETCH NEXT {{{paramName}}} ROWS ONLY\";");
+                        sb.AppendLine($"// Generate LIMIT clause for {paramName} (direct value concatenation)");
+                        if (dialectValue == "SqlServer")
+                        {
+                            sb.AppendLine($"var {varName} = $\"OFFSET 0 ROWS FETCH NEXT {{{paramName}}} ROWS ONLY\";");
+                        }
+                        else if (dialectValue == "Oracle")
+                        {
+                            sb.AppendLine($"var {varName} = $\"FETCH FIRST {{{paramName}}} ROWS ONLY\";");
+                        }
+                        else
+                        {
+                            // MySQL, PostgreSQL, SQLite
+                            sb.AppendLine($"var {varName} = $\"LIMIT {{{paramName}}}\";");
+                        }
                     }
                     else // OFFSET
                     {
-                        sb.AppendLine($"var {varName} = $\"OFFSET {{{paramName}}} ROWS\";");
+                        sb.AppendLine($"// Generate OFFSET clause for {paramName} (direct value concatenation)");
+                        if (dialectValue == "SqlServer" || dialectValue == "Oracle")
+                        {
+                            sb.AppendLine($"var {varName} = $\"OFFSET {{{paramName}}} ROWS\";");
+                        }
+                        else
+                        {
+                            // MySQL, PostgreSQL, SQLite
+                            sb.AppendLine($"var {varName} = $\"OFFSET {{{paramName}}}\";");
+                        }
                     }
                 }
             }
@@ -510,7 +818,7 @@ public static class SharedCodeGenerationUtilities
 
                 if (placeholderType == "NULLABLE_LIMIT")
                 {
-                    sb.AppendLine($"// 🔧 Generate conditional LIMIT clause for nullable parameter: {paramName} (dialect: {dialectValue})");
+                    sb.AppendLine($"// 🔧 Generate conditional LIMIT clause for nullable parameter: {paramName} (direct value concatenation, dialect: {dialectValue})");
                     if (dialectValue == "SqlServer")
                     {
                         // SQL Server 需要 OFFSET...FETCH 语法
@@ -525,6 +833,10 @@ public static class SharedCodeGenerationUtilities
                             // 没有 OFFSET 参数，需要添加 OFFSET 0 ROWS
                             sb.AppendLine($"var {varName} = {paramName}.HasValue ? $\"OFFSET 0 ROWS FETCH NEXT {{{paramName}.Value}} ROWS ONLY\" : \"\";");
                         }
+                    }
+                    else if (dialectValue == "Oracle")
+                    {
+                        sb.AppendLine($"var {varName} = {paramName}.HasValue ? $\"FETCH FIRST {{{paramName}.Value}} ROWS ONLY\" : \"\";");
                     }
                     else
                     {
@@ -543,7 +855,7 @@ public static class SharedCodeGenerationUtilities
                 }
                 else // NULLABLE_OFFSET
                 {
-                    sb.AppendLine($"// 🔧 Generate conditional OFFSET clause for nullable parameter: {paramName} (dialect: {dialectValue})");
+                    sb.AppendLine($"// 🔧 Generate conditional OFFSET clause for nullable parameter: {paramName} (direct value concatenation, dialect: {dialectValue})");
                     if (dialectValue == "SqlServer")
                     {
                         // SQL Server: OFFSET x ROWS (FETCH 由 LIMIT 生成)

@@ -54,28 +54,6 @@ namespace Sqlx
         [SqlTemplate("UPDATE {{table}} SET {{set --exclude Id}} WHERE id = @id")]
         Task<int> UpdateAsync(TEntity entity, CancellationToken cancellationToken = default);
 
-        /// <summary>Updates specific columns only (partial update).</summary>
-        /// <param name="id">Entity primary key</param>
-        /// <param name="updates">Anonymous object with column-value pairs to update</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Rows affected (0 = not found, 1 = success)</returns>
-        /// <example>
-        /// await repo.UpdatePartialAsync(userId, new { Name = "Alice", UpdatedAt = DateTime.Now });
-        /// </example>
-        [SqlTemplate("UPDATE {{table}} SET {{set --from updates}} WHERE id = @id")]
-        Task<int> UpdatePartialAsync(TKey id, object updates, CancellationToken cancellationToken = default);
-
-        /// <summary>Updates entities matching expression predicate.</summary>
-        /// <param name="predicate">Expression predicate for WHERE clause</param>
-        /// <param name="updates">Anonymous object with column-value pairs to update</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Rows affected</returns>
-        /// <example>
-        /// await repo.UpdateWhereAsync(x => x.Status == "Pending", new { Status = "Active" });
-        /// </example>
-        [SqlTemplate("UPDATE {{table}} SET {{set --from updates}} {{where}}")]
-        Task<int> UpdateWhereAsync([ExpressionToSql] Expression<Func<TEntity, bool>> predicate, object updates, CancellationToken cancellationToken = default);
-
         /// <summary>Inserts if not exists, updates if exists (UPSERT/MERGE).</summary>
         /// <param name="entity">Entity to upsert</param>
         /// <param name="cancellationToken">Cancellation token</param>

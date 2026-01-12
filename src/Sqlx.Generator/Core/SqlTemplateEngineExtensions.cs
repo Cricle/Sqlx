@@ -96,35 +96,21 @@ public static class SqlTemplateEngineExtensions
                 }
             }
 
-            // 如果找到了参数名，生成参数化的 LIMIT
+            // 如果找到了参数名，生成直接拼接的 LIMIT（int 类型无 SQL 注入风险）
             if (!string.IsNullOrEmpty(paramName))
             {
-                // 🔧 修复：对于可空参数，生成运行时占位符让代码生成器处理条件逻辑
+                // 对于 int 类型的 limit/offset，直接拼接到 SQL 中，不使用参数化查询
+                // 因为 int 类型不会有 SQL 注入风险
                 if (isNullableParam)
                 {
-                    // 返回运行时占位符，代码生成器会生成条件代码：
-                    // if (limit.HasValue) { sql += "LIMIT @limit"; cmd.Parameters.Add("@limit", limit.Value); }
+                    // 可空参数：生成运行时占位符，代码生成器会生成条件代码
+                    // if (limit.HasValue) { sql += "LIMIT " + limit.Value; }
                     return $"{{RUNTIME_NULLABLE_LIMIT_{paramName}}}";
                 }
 
-                // 返回参数化的LIMIT（由方法参数提供值）
-                // 使用DatabaseType字符串区分数据库，因为SQLite和SQL Server有相同的结构但不同的行为
-                var dbType = dialect.DatabaseType;
-                if (dbType == "SqlServer")
-                {
-                    // SQL Server: 使用 OFFSET...FETCH 语法（需要 ORDER BY）
-                    // 生成运行时占位符，让代码生成器处理
-                    return $"{{RUNTIME_LIMIT_{paramName}}}";
-                }
-                else if (dbType == "Oracle")
-                {
-                    return $"ROWNUM <= {dialect.ParameterPrefix}{paramName}";
-                }
-                else
-                {
-                    // MySQL, PostgreSQL, SQLite
-                    return $"LIMIT {dialect.ParameterPrefix}{paramName}";
-                }
+                // 非可空参数：直接拼接值到 SQL
+                // 返回运行时占位符，让代码生成器直接拼接值
+                return $"{{RUNTIME_LIMIT_{paramName}}}";
             }
 
             // 智能选项解析
@@ -225,23 +211,15 @@ public static class SqlTemplateEngineExtensions
 
             if (!string.IsNullOrEmpty(paramName))
             {
-                // 🔧 修复：对于可空参数，生成运行时占位符让代码生成器处理条件逻辑
+                // 对于 int 类型的 offset，直接拼接到 SQL 中，不使用参数化查询
                 if (isNullableParam)
                 {
+                    // 可空参数：生成运行时占位符
                     return $"{{RUNTIME_NULLABLE_OFFSET_{paramName}}}";
                 }
 
-                // 返回参数化的OFFSET（由方法参数提供值）
-                var dbType = dialect.DatabaseType;
-                if (dbType == "SqlServer" || dbType == "Oracle")
-                {
-                    return $"OFFSET {dialect.ParameterPrefix}{paramName} ROWS";
-                }
-                else
-                {
-                    // MySQL, PostgreSQL, SQLite
-                    return $"OFFSET {dialect.ParameterPrefix}{paramName}";
-                }
+                // 非可空参数：生成运行时占位符，让代码生成器直接拼接值
+                return $"{{RUNTIME_OFFSET_{paramName}}}";
             }
 
             // 智能选项解析

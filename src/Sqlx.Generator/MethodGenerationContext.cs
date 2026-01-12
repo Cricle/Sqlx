@@ -1675,51 +1675,6 @@ internal partial class MethodGenerationContext : GenerationContextBase
         }
     }
 
-    private bool GenerateBatchCommandLogic(IndentedStringBuilder sb)
-    {
-        // Find collection parameter
-        var collectionParam = SqlParameters.FirstOrDefault(p => !p.Type.IsCachedScalarType());
-        if (collectionParam == null)
-        {
-            sb.AppendLine(SqlxExceptionMessages.GenerateArgumentExceptionThrow(SqlxExceptionMessages.BatchCommandRequiresCollection));
-            sb.PopIndent();
-            sb.AppendLine("}");
-            return true;
-        }
-
-        // Null check and validation
-        sb.AppendLine($"if ({collectionParam.Name} == null)");
-        sb.AppendLine(SqlxExceptionMessages.GenerateArgumentNullCheck(collectionParam.Name, SqlxExceptionMessages.CollectionParameterNull));
-        sb.AppendLine();
-
-        var returnType = GetReturnType();
-
-        // Check if DbBatch is supported
-        sb.AppendLine("// Try to use native DbBatch if supported, otherwise fallback to individual commands");
-        sb.AppendLine($"if ({DbConnectionName} is global::System.Data.Common.DbConnection dbConn && dbConn.CanCreateBatch)");
-        sb.AppendLine("{");
-        sb.PushIndent();
-
-        // Generate native DbBatch implementation
-        GenerateNativeDbBatchLogic(sb, collectionParam, returnType);
-
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.AppendLine("else");
-        sb.AppendLine("{");
-        sb.PushIndent();
-
-        // Generate fallback implementation
-        GenerateFallbackBatchLogic(sb, collectionParam, returnType);
-
-        sb.PopIndent();
-        sb.AppendLine("}");
-
-        sb.PopIndent();
-        sb.AppendLine("}");
-        return true;
-    }
-
     private void GenerateNativeDbBatchLogic(IndentedStringBuilder sb, IParameterSymbol collectionParam, ReturnTypes returnType)
     {
         // Determine table, operation and properties

@@ -748,7 +748,7 @@ public class CodeGenerationService
         sb.AppendLine("tags.Add(\"db.system\",\"sql\");");
         sb.AppendLine("tags.Add(\"db.operation\",\"operationName\");");
         sb.AppendLine($"tags.Add(\"db.statement\",\"{EscapeSqlForCSharp(templateResult.ProcessedSql)}\");");
-        sb.AppendLine("__activity__.AddEvent(new ActivityEvent(\"{operationName}\",default,tags));");
+        sb.AppendLine("__activity__.AddEvent(new global::System.Diagnostics.ActivityEvent(\"{operationName}\",default,tags));");
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine("#endif");

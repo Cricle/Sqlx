@@ -57,8 +57,7 @@ namespace Sqlx
         IQueryRepository<TEntity, TKey>,
         ICommandRepository<TEntity, TKey>,
         IBatchRepository<TEntity, TKey>,
-        IAggregateRepository<TEntity, TKey>,
-        IAdvancedRepository<TEntity, TKey>
+        IAggregateRepository<TEntity, TKey>
         where TEntity : class
     {
         // This interface inherits all methods from all repository interfaces

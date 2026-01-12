@@ -156,11 +156,16 @@ public class SqlTemplateEngine
     /// 处理占位符 - 多数据库支持版本
     /// 写一次模板，所有数据库都能使用
     /// 支持嵌套占位符（例如：{{coalesce {{sum amount}}, 0}}）
-    /// 处理策略：从最内层到最外层逐层处理
+    /// 支持逻辑占位符（例如：{{*ifnotnull orderBy}}ORDER BY {{orderBy}}{{/ifnotnull}}）
+    /// 处理策略：先处理逻辑占位符，再从最内层到最外层逐层处理普通占位符
     /// </summary>
     private string ProcessPlaceholders(string sql, IMethodSymbol method, INamedTypeSymbol? entityType, string tableName, SqlTemplateResult result, SqlDefine dialect)
     {
-        // 支持嵌套占位符：最多迭代3次以处理嵌套
+        // 第一步：处理逻辑占位符（条件块）
+        // 格式：{{*ifnull paramName}}content{{/ifnull}}
+        sql = ProcessLogicalPlaceholders(sql, method, result);
+
+        // 第二步：支持嵌套占位符：最多迭代3次以处理嵌套
         // 例如：{{coalesce {{sum o.total_amount}}, 0}} 需要2次迭代
         // 策略：每次迭代处理最内层的占位符（不包含其他{{的占位符）
         string previousSql;
@@ -274,6 +279,62 @@ public class SqlTemplateEngine
         } while (sql != previousSql && iteration < maxIterations);
         
         return sql;
+    }
+
+    /// <summary>
+    /// 处理逻辑占位符（条件块）
+    /// 支持的逻辑占位符：
+    /// - {{*ifnull paramName}}content{{/ifnull}} - 如果参数为 null，生成 content
+    /// - {{*ifnotnull paramName}}content{{/ifnotnull}} - 如果参数不为 null，生成 content
+    /// - {{*ifempty paramName}}content{{/ifempty}} - 如果参数为空（null 或空字符串/集合），生成 content
+    /// - {{*ifnotempty paramName}}content{{/ifnotempty}} - 如果参数不为空，生成 content
+    /// </summary>
+    private string ProcessLogicalPlaceholders(string sql, IMethodSymbol method, SqlTemplateResult result)
+    {
+        // 匹配逻辑占位符块：{{*ifnull paramName}}content{{/ifnull}}
+        // 使用非贪婪匹配确保正确配对
+        var logicalRegex = new Regex(
+            @"\{\{\*(ifnull|ifnotnull|ifempty|ifnotempty)\s+(\w+)\}\}(.*?)\{\{/\1\}\}",
+            RegexOptions.Compiled | RegexOptions.Singleline);
+
+        sql = logicalRegex.Replace(sql, match =>
+        {
+            var condition = match.Groups[1].Value; // ifnull, ifnotnull, ifempty, ifnotempty
+            var paramName = match.Groups[2].Value;
+            var content = match.Groups[3].Value;
+
+            // 查找参数
+            var param = method.Parameters.FirstOrDefault(p => 
+                p.Name.Equals(paramName, StringComparison.OrdinalIgnoreCase));
+
+            if (param == null)
+            {
+                result.Warnings.Add($"Logical placeholder references unknown parameter: {paramName}");
+                return ""; // 参数不存在，不生成内容
+            }
+
+            // 生成运行时条件代码标记
+            // 这些标记会在代码生成阶段被替换为实际的 if 语句
+            return $"{{{{RUNTIME_LOGICAL_{condition.ToUpperInvariant()}_{paramName}_{Guid.NewGuid():N}}}}}{{{{CONTENT:{EscapeContent(content)}}}}}{{{{/RUNTIME_LOGICAL}}}}";
+        });
+
+        return sql;
+    }
+
+    /// <summary>
+    /// 转义内容用于嵌入到标记中
+    /// </summary>
+    private static string EscapeContent(string content)
+    {
+        return content.Replace("{{", "⟪⟪").Replace("}}", "⟫⟫");
+    }
+
+    /// <summary>
+    /// 反转义内容
+    /// </summary>
+    private static string UnescapeContent(string content)
+    {
+        return content.Replace("⟪⟪", "{{").Replace("⟫⟫", "}}");
     }
     
     /// <summary>
@@ -424,7 +485,24 @@ public class SqlTemplateEngine
     /// </summary>
     private string ProcessValuesPlaceholder(string type, INamedTypeSymbol? entityType, IMethodSymbol method, string options, SqlDefine dialect, SqlTemplateResult result)
     {
-        // Check for batch operation: {{values @paramName}}
+        // Check for --param option: {{values --param paramName}}
+        if (!string.IsNullOrWhiteSpace(options) && options.Contains("--param"))
+        {
+            var paramMatch = System.Text.RegularExpressions.Regex.Match(options, @"--param\s+(\w+)");
+            if (paramMatch.Success)
+            {
+                var paramName = paramMatch.Groups[1].Value;
+                var param = method.Parameters.FirstOrDefault(p => p.Name == paramName);
+
+                if (param != null && SharedCodeGenerationUtilities.IsEnumerableParameter(param))
+                {
+                    // For IN clause: return (@paramName) format
+                    return $"({dialect.ParameterPrefix}{paramName})";
+                }
+            }
+        }
+        
+        // Check for batch operation: {{values @paramName}} (old format)
         if (options != null && options.StartsWith("@"))
         {
             var paramName = options.Substring(1);
@@ -478,7 +556,7 @@ public class SqlTemplateEngine
     /// </summary>
     private string ProcessWherePlaceholder(string type, INamedTypeSymbol? entityType, IMethodSymbol method, string options, SqlDefine dialect)
     {
-        // NEW: Support {{where --param paramName}} syntax
+        // NEW: Support {{where --param paramName}} syntax (REQUIRED)
         if (!string.IsNullOrWhiteSpace(options) && options.Contains("--param"))
         {
             var paramMatch = System.Text.RegularExpressions.Regex.Match(options, @"--param\s+(\w+)");
@@ -497,10 +575,6 @@ public class SqlTemplateEngine
                 }
             }
         }
-        
-        // Check for ExpressionToSql parameter
-        var exprParam = method.Parameters.FirstOrDefault(p =>
-            p.GetAttributes().Any(a => a.AttributeClass?.Name == "ExpressionToSqlAttribute"));
 
         // Check for DynamicSql WHERE parameter
         var dynamicWhereParam = method.Parameters.FirstOrDefault(p =>
@@ -510,7 +584,7 @@ public class SqlTemplateEngine
                     arg.Key == "Type" &&
                     arg.Value.Value?.ToString() == "1"))); // Fragment = 1
 
-        // Priority: @paramName > ExpressionToSql > auto > id > default
+        // Priority: @paramName > DynamicSql > auto > id > default
         // Check both type and options for @paramName (supports both {{where:@param}} and {{where @param}})
         var paramSource = !string.IsNullOrWhiteSpace(type) && type.StartsWith("@") ? type :
                          !string.IsNullOrWhiteSpace(options) && options.StartsWith("@") ? options : null;
@@ -529,12 +603,6 @@ public class SqlTemplateEngine
                 }
                 return $"{{{{RUNTIME_WHERE_{paramName}}}}}"; // Marker for code generation
             }
-        }
-
-        if (exprParam != null)
-        {
-            // {{where}} with [ExpressionToSql] parameter - extract WHERE clause
-            return $"{{{{RUNTIME_WHERE_EXPR_{exprParam.Name}}}}}"; // Marker for code generation
         }
 
         if (dynamicWhereParam != null)

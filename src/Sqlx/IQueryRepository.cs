@@ -81,14 +81,14 @@ namespace Sqlx
         /// <example>
         /// var users = await repo.GetWhereAsync(x =&gt; x.Age &gt;= 18 &amp;&amp; x.IsActive);
         /// </example>
-        [SqlTemplate("SELECT {{columns}} FROM {{table}} {{where}}")]
+        [SqlTemplate("SELECT {{columns}} FROM {{table}} {{where --param predicate}}")]
         Task<List<TEntity>> GetWhereAsync([ExpressionToSql] Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
 
         /// <summary>Gets first entity matching expression predicate.</summary>
         /// <param name="predicate">Expression predicate</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>First matching entity or null</returns>
-        [SqlTemplate("SELECT {{columns}} FROM {{table}} {{where}} LIMIT 1")]
+        [SqlTemplate("SELECT {{columns}} FROM {{table}} {{where --param predicate}} LIMIT 1")]
         Task<TEntity?> GetFirstWhereAsync([ExpressionToSql] Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
 
         // ===== Existence Checks =====
@@ -104,7 +104,7 @@ namespace Sqlx
         /// <param name="predicate">Expression predicate</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>True if any match found, false otherwise</returns>
-        [SqlTemplate("SELECT CASE WHEN EXISTS(SELECT 1 FROM {{table}} {{where}}) THEN 1 ELSE 0 END")]
+        [SqlTemplate("SELECT CASE WHEN EXISTS(SELECT 1 FROM {{table}} {{where --param predicate}}) THEN 1 ELSE 0 END")]
         Task<bool> ExistsWhereAsync([ExpressionToSql] Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
 
         // ===== Additional Useful Methods =====

@@ -4,6 +4,9 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
+using System;
+using System.Linq;
+
 namespace Sqlx.Generator.Placeholders;
 
 /// <summary>{{bool_true}} - 布尔真值占位符</summary>
@@ -31,10 +34,9 @@ public sealed class CurrentTimestampHandler : IPlaceholderHandler
 
     public string Process(PlaceholderContext context)
     {
-        if (context.Dialect.Equals(SqlDefine.MySql)) return "NOW()";
+        // 使用标准的 CURRENT_TIMESTAMP，大多数数据库都支持
         if (context.Dialect.Equals(SqlDefine.SqlServer)) return "GETDATE()";
         if (context.Dialect.Equals(SqlDefine.Oracle)) return "SYSDATE";
-        if (context.Dialect.Equals(SqlDefine.SQLite)) return "datetime('now')";
         return "CURRENT_TIMESTAMP";
     }
 }
@@ -59,26 +61,43 @@ public sealed class CoalesceHandler : PlaceholderHandlerBase
 
     public override string Process(PlaceholderContext context)
     {
-        var options = ParseOptions(context);
+        // 支持格式: {{coalesce col1, col2, 'default'}} 或 {{coalesce col, 0}}
+        // context.Type 可能为空，内容在 context.Options 中
+        var content = !string.IsNullOrEmpty(context.Type) ? context.Type : context.Options;
+        var parts = content?.Split(',').Select(p => p.Trim()).Where(p => !string.IsNullOrEmpty(p)).ToArray() ?? Array.Empty<string>();
         
-        // 支持格式: {{coalesce column, default}} 或 {{coalesce --column col --default 0}}
-        var parts = context.Type?.Split(',') ?? new[] { "" };
-        var column = parts.Length > 0 ? parts[0].Trim() : options.Get("column", "");
-        var defaultValue = parts.Length > 1 ? parts[1].Trim() : options.Get("default", "0");
-
-        if (string.IsNullOrEmpty(column))
+        if (parts.Length == 0)
         {
-            // 可能是嵌套占位符的结果，直接使用options
-            column = options.FirstArg;
-        }
-
-        if (string.IsNullOrEmpty(column))
-        {
-            context.Result.Warnings.Add("{{coalesce}} requires a column name");
+            context.Result.Warnings.Add("{{coalesce}} requires at least one column name");
             return "COALESCE(NULL, 0)";
         }
 
-        return $"COALESCE({column}, {defaultValue})";
+        // 处理每个部分：列名需要包装，字符串字面量和数字保持原样
+        var processedParts = parts.Select(p => WrapIfColumn(p, context.Dialect)).ToArray();
+        
+        return $"COALESCE({string.Join(", ", processedParts)})";
+    }
+
+    private static string WrapIfColumn(string value, SqlDefine dialect)
+    {
+        // 字符串字面量（以引号开头）保持原样
+        if (value.StartsWith("'") || value.StartsWith("\""))
+            return value;
+        
+        // 数字保持原样
+        if (decimal.TryParse(value, out _))
+            return value;
+        
+        // NULL 保持原样
+        if (value.Equals("NULL", StringComparison.OrdinalIgnoreCase))
+            return value;
+        
+        // 已经被包装的列名保持原样
+        if (value.StartsWith("[") || value.StartsWith("`") || (value.StartsWith("\"") && value.EndsWith("\"")))
+            return value;
+        
+        // 列名需要包装
+        return dialect.WrapColumn(value);
     }
 }
 
@@ -89,21 +108,18 @@ public sealed class IfNullHandler : PlaceholderHandlerBase
 
     public override string Process(PlaceholderContext context)
     {
-        var options = ParseOptions(context);
-        var parts = context.Type?.Split(',') ?? new[] { "" };
-        var column = parts.Length > 0 ? parts[0].Trim() : options.Get("column", "");
-        var defaultValue = parts.Length > 1 ? parts[1].Trim() : options.Get("default", "0");
-
-        if (string.IsNullOrEmpty(column))
+        // context.Type 可能为空，内容在 context.Options 中
+        var content = !string.IsNullOrEmpty(context.Type) ? context.Type : context.Options;
+        var parts = content?.Split(',').Select(p => p.Trim()).Where(p => !string.IsNullOrEmpty(p)).ToArray() ?? Array.Empty<string>();
+        
+        if (parts.Length < 2)
         {
-            column = options.FirstArg;
-        }
-
-        if (string.IsNullOrEmpty(column))
-        {
-            context.Result.Warnings.Add("{{ifnull}} requires a column name");
+            context.Result.Warnings.Add("{{ifnull}} requires column and default value");
             return "IFNULL(NULL, 0)";
         }
+
+        var column = WrapIfColumn(parts[0], context.Dialect);
+        var defaultValue = parts[1]; // 默认值保持原样
 
         // 不同数据库的IFNULL语法
         if (context.Dialect.Equals(SqlDefine.SqlServer))
@@ -114,6 +130,19 @@ public sealed class IfNullHandler : PlaceholderHandlerBase
             return $"COALESCE({column}, {defaultValue})";
         
         return $"IFNULL({column}, {defaultValue})";
+    }
+
+    private static string WrapIfColumn(string value, SqlDefine dialect)
+    {
+        if (value.StartsWith("'") || value.StartsWith("\""))
+            return value;
+        if (decimal.TryParse(value, out _))
+            return value;
+        if (value.Equals("NULL", StringComparison.OrdinalIgnoreCase))
+            return value;
+        if (value.StartsWith("[") || value.StartsWith("`") || (value.StartsWith("\"") && value.EndsWith("\"")))
+            return value;
+        return dialect.WrapColumn(value);
     }
 }
 

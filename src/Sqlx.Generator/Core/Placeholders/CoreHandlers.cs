@@ -89,6 +89,21 @@ public sealed class ColumnsHandler : PlaceholderHandlerBase
         var properties = GetFilteredProperties(context.EntityType, options,
             context.Type == "auto" ? "Id" : null);
 
+        // 支持 --regex 过滤
+        var regexPattern = options.Get("regex");
+        if (!string.IsNullOrEmpty(regexPattern))
+        {
+            try
+            {
+                var regex = new System.Text.RegularExpressions.Regex(regexPattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                properties = properties.Where(p => regex.IsMatch(p.Name)).ToList();
+            }
+            catch
+            {
+                context.Result.Warnings.Add($"Invalid regex pattern: {regexPattern}");
+            }
+        }
+
         var shouldQuote = context.Type != "raw";
         var sb = new StringBuilder();
 
@@ -235,6 +250,17 @@ public sealed class WhereHandler : PlaceholderHandlerBase
             }
         }
 
+        // 自动检测 ExpressionToSql 参数（向后兼容）
+        if (context.Method != null && string.IsNullOrEmpty(paramName) && paramSource == null)
+        {
+            var expressionParam = context.Method.Parameters.FirstOrDefault(p => 
+                HasExpressionToSqlAttribute(p) || IsExpressionParameter(p));
+            if (expressionParam != null)
+            {
+                return $"{{{{RUNTIME_WHERE_EXPR_{expressionParam.Name}}}}}";
+            }
+        }
+
         // 默认WHERE生成
         return context.Type switch
         {
@@ -248,6 +274,13 @@ public sealed class WhereHandler : PlaceholderHandlerBase
     {
         var typeName = param.Type.ToDisplayString();
         return typeName.Contains("Expression<Func<") && typeName.Contains(", bool>>");
+    }
+
+    private static bool HasExpressionToSqlAttribute(IParameterSymbol param)
+    {
+        return param.GetAttributes().Any(a => 
+            a.AttributeClass?.Name == "ExpressionToSqlAttribute" ||
+            a.AttributeClass?.Name == "ExpressionToSql");
     }
 
     private string GenerateAutoWhere(PlaceholderContext context)

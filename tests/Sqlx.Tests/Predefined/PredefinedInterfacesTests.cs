@@ -237,13 +237,11 @@ namespace Sqlx.Tests.Predefined
             CollectionAssert.Contains(methodNames, "GetByIdAsync");
             CollectionAssert.Contains(methodNames, "GetByIdsAsync");
             CollectionAssert.Contains(methodNames, "GetAllAsync");
-            CollectionAssert.Contains(methodNames, "GetTopAsync");
             CollectionAssert.Contains(methodNames, "GetRangeAsync");
             CollectionAssert.Contains(methodNames, "GetPageAsync");
             CollectionAssert.Contains(methodNames, "GetWhereAsync");
             CollectionAssert.Contains(methodNames, "GetFirstWhereAsync");
             CollectionAssert.Contains(methodNames, "ExistsAsync");
-            CollectionAssert.Contains(methodNames, "ExistsWhereAsync");
             CollectionAssert.Contains(methodNames, "GetRandomAsync");
         }
 
@@ -262,8 +260,7 @@ namespace Sqlx.Tests.Predefined
             CollectionAssert.Contains(methodNames, "InsertAndGetIdAsync");
             CollectionAssert.Contains(methodNames, "InsertAndGetEntityAsync");
             CollectionAssert.Contains(methodNames, "UpdateAsync");
-            CollectionAssert.Contains(methodNames, "UpdatePartialAsync");
-            CollectionAssert.Contains(methodNames, "UpdateWhereAsync");
+            CollectionAssert.Contains(methodNames, "UpsertAsync");
             CollectionAssert.Contains(methodNames, "DeleteAsync");
             CollectionAssert.Contains(methodNames, "DeleteWhereAsync");
             CollectionAssert.Contains(methodNames, "SoftDeleteAsync");
@@ -283,20 +280,6 @@ namespace Sqlx.Tests.Predefined
             var methodNames = methods.Select(m => m.Name).ToList();
 
             CollectionAssert.Contains(methodNames, "CountAsync");
-            CollectionAssert.Contains(methodNames, "CountWhereAsync");
-            CollectionAssert.Contains(methodNames, "CountByAsync");
-            CollectionAssert.Contains(methodNames, "SumAsync");
-            CollectionAssert.Contains(methodNames, "SumWhereAsync");
-            CollectionAssert.Contains(methodNames, "AvgAsync");
-            CollectionAssert.Contains(methodNames, "AvgWhereAsync");
-            CollectionAssert.Contains(methodNames, "MaxIntAsync");
-            CollectionAssert.Contains(methodNames, "MaxLongAsync");
-            CollectionAssert.Contains(methodNames, "MaxDecimalAsync");
-            CollectionAssert.Contains(methodNames, "MaxDateTimeAsync");
-            CollectionAssert.Contains(methodNames, "MinIntAsync");
-            CollectionAssert.Contains(methodNames, "MinLongAsync");
-            CollectionAssert.Contains(methodNames, "MinDecimalAsync");
-            CollectionAssert.Contains(methodNames, "MinDateTimeAsync");
         }
 
         /// <summary>

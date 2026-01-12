@@ -617,14 +617,16 @@ public class TDD_NullableLimitOffset_AllDialects
     }
 
     [TestMethod]
-    [Description("Oracle 非可空 limit 应该生成 ROWNUM 语法")]
+    [Description("Oracle 非可空 limit 应该生成 ROWNUM 或 FETCH FIRST 语法")]
     public void Oracle_NonNullableLimit_ShouldGenerateRownumSyntax()
     {
         var template = "SELECT * FROM {{table}} ORDER BY id {{limit}}";
         var result = _engine.ProcessTemplate(template, _methodWithNonNullableLimit, _userType, "users", Sqlx.Generator.SqlDefine.Oracle);
 
-        Assert.IsTrue(result.ProcessedSql.Contains("ROWNUM"),
-            $"Oracle 非可空 limit 应该生成 ROWNUM 语法。实际 SQL: {result.ProcessedSql}");
+        // Oracle 12c+ 支持 FETCH FIRST ... ROWS ONLY 语法，这是更现代的方式
+        // 旧版本使用 ROWNUM，但 FETCH FIRST 是标准 SQL:2008 语法
+        Assert.IsTrue(result.ProcessedSql.Contains("ROWNUM") || result.ProcessedSql.Contains("FETCH FIRST"),
+            $"Oracle 非可空 limit 应该生成 ROWNUM 或 FETCH FIRST 语法。实际 SQL: {result.ProcessedSql}");
     }
 
     #endregion

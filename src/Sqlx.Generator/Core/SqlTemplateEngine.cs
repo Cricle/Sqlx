@@ -359,6 +359,7 @@ public class SqlTemplateEngine
             "bool_true" => GetBoolTrueLiteral(dialect),
             "bool_false" => GetBoolFalseLiteral(dialect),
             "current_timestamp" => GetCurrentTimestampSyntax(dialect),
+            "random" => GetRandomFunction(dialect),
             // 批量操作
             "batch_values" => ProcessBatchValuesPlaceholder(placeholderType, placeholderOptions, method, dialect),
             "upsert" => ProcessUpsertPlaceholder(placeholderType, tableName, placeholderOptions, dialect),
@@ -2637,6 +2638,23 @@ public class SqlTemplateEngine
             return "SYSTIMESTAMP";
 
         return "CURRENT_TIMESTAMP"; // PostgreSQL, MySQL, SQLite
+    }
+
+    /// <summary>
+    /// Gets the random function for the specified dialect.
+    /// Used for ORDER BY random to get random rows.
+    /// </summary>
+    private static string GetRandomFunction(SqlDefine dialect)
+    {
+        var dbType = dialect.DatabaseType;
+
+        return dbType switch
+        {
+            "SqlServer" => "NEWID()",
+            "MySql" => "RAND()",
+            "Oracle" => "DBMS_RANDOM.VALUE",
+            _ => "RANDOM()" // PostgreSQL, SQLite
+        };
     }
 
     #endregion

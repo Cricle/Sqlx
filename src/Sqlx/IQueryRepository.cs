@@ -119,9 +119,9 @@ namespace Sqlx
         /// - MySQL: ORDER BY RAND()
         /// - PostgreSQL: ORDER BY RANDOM()
         /// - SQLite: ORDER BY RANDOM()
-        /// Oracle: ORDER BY DBMS_RANDOM.VALUE
+        /// - Oracle: ORDER BY DBMS_RANDOM.VALUE
         /// </remarks>
-        [SqlTemplate("SELECT {{columns}} FROM {{table}} ORDER BY RANDOM() LIMIT @count")]
+        [SqlTemplate("SELECT {{columns}} FROM {{table}} ORDER BY {{random}} {{limit --param count}}")]
         Task<List<TEntity>> GetRandomAsync(int count, CancellationToken cancellationToken = default);
 
         // TODO: GetDistinctValuesAsync需要源生成器特殊支持来处理非实体返回类型

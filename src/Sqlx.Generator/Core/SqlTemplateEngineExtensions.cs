@@ -4,7 +4,6 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
-using System.Linq;
 using Sqlx.Generator.Placeholders;
 
 namespace Sqlx.Generator;
@@ -56,43 +55,7 @@ public static class SqlTemplateEngineExtensions
                 Result = result
             };
 
-            var opts = new PlaceholderOptions(options);
-
-            return name.ToLowerInvariant() switch
-            {
-                "groupby" => ProcessGroupBy(type, dialect),
-                "having" => ProcessHaving(type, opts, dialect),
-                _ => PlaceholderRegistry.Default.Process(context)
-            };
-        }
-
-        private static string ProcessGroupBy(string columns, SqlDefine dialect)
-        {
-            if (string.IsNullOrEmpty(columns))
-            {
-                return "GROUP BY";
-            }
-
-            var cols = columns.Split(',')
-                .Select(c => c.Trim())
-                .Where(c => !string.IsNullOrEmpty(c))
-                .Select(c => dialect.WrapColumn(SharedCodeGenerationUtilities.ConvertToSnakeCase(c)));
-
-            return $"GROUP BY {string.Join(", ", cols)}";
-        }
-
-        private static string ProcessHaving(string type, PlaceholderOptions opts, SqlDefine dialect)
-        {
-            var func = type?.ToUpperInvariant() ?? "COUNT";
-            var column = opts.Get("column", "*");
-            var min = opts.Get("min", "0");
-
-            if (column != "*")
-            {
-                column = dialect.WrapColumn(SharedCodeGenerationUtilities.ConvertToSnakeCase(column));
-            }
-
-            return $"HAVING {func}({column}) >= {min}";
+            return PlaceholderRegistry.Default.Process(context);
         }
     }
 }

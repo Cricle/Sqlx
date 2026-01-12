@@ -201,7 +201,20 @@ public sealed class BatchValuesHandler : PlaceholderHandlerBase
 
     public override string Process(PlaceholderContext context)
     {
-        // 返回运行时标记，由代码生成器处理
+        // 查找第一个 IEnumerable 参数作为批量数据源
+        if (context.Method != null)
+        {
+            var batchParam = context.Method.Parameters.FirstOrDefault(p => 
+                SharedCodeGenerationUtilities.IsEnumerableParameter(p));
+            
+            if (batchParam != null)
+            {
+                return $"__RUNTIME_BATCH_VALUES_{batchParam.Name}__";
+            }
+        }
+        
+        // 如果没有找到批量参数，返回占位符（会在代码生成时报错）
+        context.Result.Warnings.Add("{{batch_values}} requires an IEnumerable parameter");
         return "{{BATCH_VALUES_PLACEHOLDER}}";
     }
 }

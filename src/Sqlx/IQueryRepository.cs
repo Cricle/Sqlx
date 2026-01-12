@@ -100,7 +100,7 @@ namespace Sqlx
         /// // Check if active users exist
         /// bool hasActive = await repo.ExistsAsync(x => x.IsActive);
         /// </example>
-        [SqlTemplate("SELECT CASE WHEN EXISTS(SELECT 1 FROM {{table}} {{*ifnotnull predicate}}{{where --param predicate}}{{/ifnotnull}}) THEN 1 ELSE 0 END")]
+        [SqlTemplate("SELECT CASE WHEN EXISTS(SELECT 1 FROM {{table}} {{where --param predicate}}) THEN 1 ELSE 0 END")]
         Task<bool> ExistsAsync([ExpressionToSql] Expression<Func<TEntity, bool>>? predicate = null, CancellationToken cancellationToken = default);
 
         // ===== Additional Useful Methods =====

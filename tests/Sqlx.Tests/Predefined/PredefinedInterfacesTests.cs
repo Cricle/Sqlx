@@ -127,11 +127,11 @@ namespace Sqlx.Tests.Predefined
             await CreateUserTableAsync();
             var repo = new UserQueryRepository(_connection);
 
-            // Act - check if user with id 999 exists
-            var exists = await repo.ExistsAsync(x => x.Id == 999);
+            // Act - check if user with id 999 exists using GetByIdAsync
+            var user = await repo.GetByIdAsync(999);
 
             // Assert
-            Assert.IsFalse(exists);
+            Assert.IsNull(user);
         }
 
         #endregion
@@ -280,6 +280,7 @@ namespace Sqlx.Tests.Predefined
             var methodNames = methods.Select(m => m.Name).ToList();
 
             CollectionAssert.Contains(methodNames, "CountAsync");
+            CollectionAssert.Contains(methodNames, "CountWhereAsync");
         }
 
         /// <summary>

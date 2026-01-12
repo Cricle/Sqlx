@@ -21,21 +21,28 @@ namespace Sqlx
     public interface IAggregateRepository<TEntity, TKey>
         where TEntity : class
     {
-        /// <summary>Gets count of entities, optionally filtered by a predicate.</summary>
-        /// <param name="predicate">Optional expression predicate for filtering (null = count all entities)</param>
+        /// <summary>Gets total count of all entities.</summary>
         /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Count of entities</returns>
+        /// <returns>Count of all entities</returns>
         /// <example>
         /// // Count all entities
         /// long total = await repo.CountAsync();
-        /// 
+        /// </example>
+        [SqlTemplate("SELECT COUNT(*) FROM {{table}}")]
+        Task<long> CountAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>Gets count of entities filtered by a predicate.</summary>
+        /// <param name="predicate">Expression predicate for filtering</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Count of filtered entities</returns>
+        /// <example>
         /// // Count with filter
-        /// long activeCount = await repo.CountAsync(x => x.IsActive);
+        /// long activeCount = await repo.CountWhereAsync(x => x.IsActive);
         /// 
         /// // Count with complex condition
-        /// long count = await repo.CountAsync(x => x.IsActive &amp;&amp; x.Age &gt;= 18);
+        /// long count = await repo.CountWhereAsync(x => x.IsActive &amp;&amp; x.Age &gt;= 18);
         /// </example>
-        [SqlTemplate("SELECT COUNT(*) FROM {{table}} {{*ifnotnull predicate}}{{where --param predicate}}{{/ifnotnull}}")]
-        Task<long> CountAsync([ExpressionToSql] Expression<Func<TEntity, bool>>? predicate = null, CancellationToken cancellationToken = default);
+        [SqlTemplate("SELECT COUNT(*) FROM {{table}} {{where --param predicate}}")]
+        Task<long> CountWhereAsync([ExpressionToSql] Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
     }
 }

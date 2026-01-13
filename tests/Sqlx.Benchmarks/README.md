@@ -23,26 +23,26 @@ dotnet run -c Release -- --filter "*Pagination*"
 
 | Method | Mean | Allocated | Ratio |
 |--------|------|-----------|-------|
-| ADO.NET Manual | 7.984 us | 1.4 KB | 0.97 |
-| **Sqlx GetById** | **8.235 us** | **1.49 KB** | **1.00** |
-| Dapper QueryFirstOrDefault | 11.928 us | 3.15 KB | 1.45 |
+| **Sqlx GetById** | **7.677 us** | **1.49 KB** | **1.00** |
+| ADO.NET Manual | 7.880 us | 1.4 KB | 1.03 |
+| Dapper QueryFirstOrDefault | 11.229 us | 3.15 KB | 1.46 |
 
-**结论**: Sqlx 比 Dapper 快 ~45%，内存占用减少 ~50%
+**结论**: Sqlx 比 Dapper 快 ~46%，内存占用减少 ~53%
 
 ### COUNT 查询 (CountBenchmark)
 
 | Method | Mean | Allocated | Ratio |
 |--------|------|-----------|-------|
-| ADO.NET Manual | 3.753 us | 784 B | 0.97 |
-| **Sqlx Count** | **3.888 us** | **856 B** | **1.00** |
-| Dapper ExecuteScalar | 4.838 us | 856 B | 1.24 |
+| ADO.NET Manual | 3.488 us | 784 B | 0.98 |
+| **Sqlx Count** | **3.544 us** | **856 B** | **1.00** |
+| Dapper ExecuteScalar | 3.641 us | 856 B | 1.03 |
 
-**结论**: Sqlx 比 Dapper 快 ~24%
+**结论**: Sqlx 与 ADO.NET 性能相当，比 Dapper 快 ~3%
 
 ### 测试环境
 
 - BenchmarkDotNet v0.14.0
-- .NET 9.0
+- .NET 9.0.8
 - SQLite (内存数据库)
 - 10,000 条测试数据
 - AMD Ryzen 7 5800H
@@ -64,3 +64,4 @@ dotnet run -c Release -- --filter "*Pagination*"
 3. **直接 ADO.NET** - 生成的代码直接调用 ADO.NET，无中间层
 4. **最小内存分配** - 避免不必要的对象创建和装箱
 5. **缓存列序号** - ResultReader 缓存列序号，避免重复查找
+6. **高效 Render** - 动态占位符渲染使用预计算的段落拼接

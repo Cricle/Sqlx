@@ -5,8 +5,21 @@
 namespace Sqlx.Placeholders;
 
 /// <summary>
-/// Handles {{table}} placeholder. Always static.
+/// Handles the {{table}} placeholder for generating quoted table names.
 /// </summary>
+/// <remarks>
+/// <para>
+/// This handler is always static and generates a dialect-specific quoted table name.
+/// </para>
+/// </remarks>
+/// <example>
+/// <code>
+/// // Template: SELECT * FROM {{table}}
+/// // SQLite:   SELECT * FROM [users]
+/// // MySQL:    SELECT * FROM `users`
+/// // PostgreSQL: SELECT * FROM "users"
+/// </code>
+/// </example>
 public sealed class TablePlaceholderHandler : PlaceholderHandlerBase
 {
     /// <summary>

@@ -13,8 +13,29 @@ using System.Linq;
 using System.Text;
 
 /// <summary>
-/// Generates repository implementations for classes marked with [RepositoryFor].
+/// Source generator that creates repository implementations for classes marked with [RepositoryFor].
 /// </summary>
+/// <remarks>
+/// <para>
+/// This generator produces complete repository implementations including:
+/// </para>
+/// <list type="bullet">
+/// <item><description>Static SqlTemplate fields prepared at initialization</description></item>
+/// <item><description>Method implementations for all [SqlTemplate] decorated interface methods</description></item>
+/// <item><description>Parameter binding using generated IParameterBinder</description></item>
+/// <item><description>Result reading using generated IResultReader</description></item>
+/// <item><description>Activity tracking for observability</description></item>
+/// <item><description>Interceptor hooks for logging and debugging</description></item>
+/// </list>
+/// <para>
+/// Required attributes on the repository class:
+/// </para>
+/// <list type="bullet">
+/// <item><description>[RepositoryFor(typeof(IServiceInterface))] - Specifies the interface to implement</description></item>
+/// <item><description>[SqlDefine(SqlDefineTypes.XXX)] - Specifies the database dialect</description></item>
+/// <item><description>[TableName("table_name")] - Specifies the database table name</description></item>
+/// </list>
+/// </remarks>
 [Generator(LanguageNames.CSharp)]
 public class RepositoryGenerator : IIncrementalGenerator
 {

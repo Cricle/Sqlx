@@ -10,8 +10,42 @@ using System.Text.RegularExpressions;
 using Sqlx.Placeholders;
 
 /// <summary>
-/// Manages placeholder handlers.
+/// Manages placeholder handlers for SQL template processing.
 /// </summary>
+/// <remarks>
+/// <para>
+/// PlaceholderProcessor provides an extensible registry of placeholder handlers.
+/// Handlers can be registered, replaced, or retrieved at runtime using <see cref="RegisterHandler"/>
+/// and <see cref="TryGetHandler"/>.
+/// </para>
+/// <para>
+/// Default registered handlers (can be replaced or extended):
+/// </para>
+/// <list type="bullet">
+/// <item><description><c>columns</c> - Generates column list for SELECT</description></item>
+/// <item><description><c>values</c> - Generates parameter placeholders for INSERT</description></item>
+/// <item><description><c>set</c> - Generates SET clause for UPDATE</description></item>
+/// <item><description><c>table</c> - Generates quoted table name</description></item>
+/// <item><description><c>where</c> - Dynamic WHERE clause (requires --param)</description></item>
+/// <item><description><c>limit</c> - LIMIT clause (static with --count, dynamic with --param)</description></item>
+/// <item><description><c>offset</c> - OFFSET clause (static with --count, dynamic with --param)</description></item>
+/// </list>
+/// <para>
+/// Custom handlers can be registered to add new placeholder types or override existing ones.
+/// </para>
+/// </remarks>
+/// <example>
+/// <code>
+/// // Register a custom handler
+/// PlaceholderProcessor.RegisterHandler(new MyCustomHandler());
+/// 
+/// // Check if a handler exists
+/// if (PlaceholderProcessor.TryGetHandler("custom", out var handler))
+/// {
+///     // Use the handler
+/// }
+/// </code>
+/// </example>
 #if NET7_0_OR_GREATER
 public static partial class PlaceholderProcessor
 #else
@@ -34,19 +68,32 @@ public static class PlaceholderProcessor
     };
 
     /// <summary>
-    /// Registers a custom handler.
+    /// Registers a custom placeholder handler.
     /// </summary>
+    /// <param name="handler">The handler to register. Its <see cref="IPlaceholderHandler.Name"/> will be used as the key.</param>
+    /// <remarks>
+    /// If a handler with the same name already exists, it will be replaced.
+    /// Handler names are case-insensitive.
+    /// </remarks>
     public static void RegisterHandler(IPlaceholderHandler handler) => Handlers[handler.Name] = handler;
 
     /// <summary>
-    /// Tries to get a handler by name.
+    /// Tries to get a placeholder handler by name.
     /// </summary>
+    /// <param name="name">The placeholder name (case-insensitive).</param>
+    /// <param name="handler">When this method returns, contains the handler if found; otherwise, null.</param>
+    /// <returns><c>true</c> if a handler was found; otherwise, <c>false</c>.</returns>
     public static bool TryGetHandler(string name, out IPlaceholderHandler handler)
         => Handlers.TryGetValue(name, out handler!);
 
     /// <summary>
-    /// Extracts parameter names from SQL.
+    /// Extracts parameter names from a SQL string.
     /// </summary>
+    /// <param name="sql">The SQL string to extract parameters from.</param>
+    /// <returns>A list of unique parameter names found in the SQL (without prefix).</returns>
+    /// <remarks>
+    /// Recognizes parameters with @, $, or : prefixes (e.g., @id, $1, :name).
+    /// </remarks>
     public static IReadOnlyList<string> ExtractParameters(string sql)
     {
         var list = new List<string>();

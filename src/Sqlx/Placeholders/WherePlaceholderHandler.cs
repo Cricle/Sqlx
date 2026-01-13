@@ -8,8 +8,27 @@ using System;
 using System.Collections.Generic;
 
 /// <summary>
-/// Handles {{where}} placeholder. Always dynamic.
+/// Handles the {{where}} placeholder for generating dynamic WHERE clauses.
 /// </summary>
+/// <remarks>
+/// <para>
+/// This handler is always dynamic and requires a --param option specifying the parameter name
+/// that will contain the WHERE clause at render time.
+/// </para>
+/// <para>
+/// Required options:
+/// </para>
+/// <list type="bullet">
+/// <item><description><c>--param name</c> - Specifies the parameter name containing the WHERE clause</description></item>
+/// </list>
+/// </remarks>
+/// <example>
+/// <code>
+/// // Template: SELECT * FROM users WHERE {{where --param predicate}}
+/// // Render with: { "predicate": "age > 18 AND status = 'active'" }
+/// // Output:   SELECT * FROM users WHERE age > 18 AND status = 'active'
+/// </code>
+/// </example>
 public sealed class WherePlaceholderHandler : PlaceholderHandlerBase
 {
     /// <summary>

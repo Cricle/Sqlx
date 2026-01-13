@@ -12,8 +12,25 @@ using System.Linq;
 using System.Text;
 
 /// <summary>
-/// Generates IEntityProvider and IResultReader implementations for classes marked with [SqlxEntity].
+/// Source generator that creates IEntityProvider and IResultReader implementations for classes marked with [SqlxEntity].
 /// </summary>
+/// <remarks>
+/// <para>
+/// This generator produces AOT-compatible, reflection-free implementations for:
+/// </para>
+/// <list type="bullet">
+/// <item><description><c>IEntityProvider</c> - Provides column metadata for SQL generation</description></item>
+/// <item><description><c>IResultReader&lt;T&gt;</c> - Reads entities from DbDataReader efficiently</description></item>
+/// </list>
+/// <para>
+/// The generated code respects:
+/// </para>
+/// <list type="bullet">
+/// <item><description>[Column] attribute for custom column name mapping</description></item>
+/// <item><description>[IgnoreDataMember] attribute to exclude properties</description></item>
+/// <item><description>Nullable annotations for proper null handling</description></item>
+/// </list>
+/// </remarks>
 [Generator(LanguageNames.CSharp)]
 public class EntityProviderGenerator : IIncrementalGenerator
 {

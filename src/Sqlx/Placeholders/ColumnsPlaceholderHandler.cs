@@ -7,8 +7,28 @@ namespace Sqlx.Placeholders;
 using System.Linq;
 
 /// <summary>
-/// Handles {{columns}} placeholder. Always static.
+/// Handles the {{columns}} placeholder for generating SELECT column lists.
 /// </summary>
+/// <remarks>
+/// <para>
+/// This handler is always static and generates a comma-separated list of quoted column names.
+/// </para>
+/// <para>
+/// Supported options:
+/// </para>
+/// <list type="bullet">
+/// <item><description><c>--exclude col1,col2</c> - Excludes specified columns from the list</description></item>
+/// </list>
+/// </remarks>
+/// <example>
+/// <code>
+/// // Template: SELECT {{columns}} FROM users
+/// // Output:   SELECT [id], [name], [email] FROM users
+/// 
+/// // Template: SELECT {{columns --exclude Id}} FROM users
+/// // Output:   SELECT [name], [email] FROM users
+/// </code>
+/// </example>
 public sealed class ColumnsPlaceholderHandler : PlaceholderHandlerBase
 {
     /// <summary>

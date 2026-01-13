@@ -12,8 +12,19 @@ using System.Linq;
 using System.Text;
 
 /// <summary>
-/// Generates IParameterBinder implementations for classes marked with [SqlxParameter].
+/// Source generator that creates IParameterBinder implementations for classes marked with [SqlxParameter].
 /// </summary>
+/// <remarks>
+/// <para>
+/// This generator produces AOT-compatible, reflection-free parameter binding code that:
+/// </para>
+/// <list type="bullet">
+/// <item><description>Creates DbParameter instances for each entity property</description></item>
+/// <item><description>Handles nullable types and DBNull conversion</description></item>
+/// <item><description>Respects [Column] attribute for custom parameter names</description></item>
+/// <item><description>Excludes properties marked with [IgnoreDataMember]</description></item>
+/// </list>
+/// </remarks>
 [Generator(LanguageNames.CSharp)]
 public class ParameterBinderGenerator : IIncrementalGenerator
 {

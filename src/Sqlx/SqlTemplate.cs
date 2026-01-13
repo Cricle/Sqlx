@@ -10,8 +10,30 @@ using System.Text;
 using System.Text.RegularExpressions;
 
 /// <summary>
-/// Represents a prepared SQL template with efficient rendering.
+/// Represents a prepared SQL template with efficient rendering capabilities.
 /// </summary>
+/// <remarks>
+/// <para>
+/// SqlTemplate provides a two-phase approach for SQL generation:
+/// </para>
+/// <list type="number">
+/// <item><description><see cref="Prepare"/> - Pre-processes static placeholders and records dynamic placeholder positions</description></item>
+/// <item><description><see cref="Render"/> - Efficiently renders dynamic placeholders using StringBuilder</description></item>
+/// </list>
+/// <para>
+/// Supported placeholder syntax: <c>{{name}}</c> or <c>{{name --option value}}</c>
+/// </para>
+/// <para>
+/// Built-in placeholders: columns, values, set, table, where, limit, offset
+/// </para>
+/// </remarks>
+/// <example>
+/// <code>
+/// var context = new PlaceholderContext(SqlDefine.SQLite, "users", UserEntityProvider.Default.Columns);
+/// var template = SqlTemplate.Prepare("SELECT {{columns}} FROM {{table}} WHERE {{where --param predicate}}", context);
+/// var sql = template.Render(new Dictionary&lt;string, object?&gt; { ["predicate"] = "age > 18" });
+/// </code>
+/// </example>
 #if NET7_0_OR_GREATER
 public sealed partial class SqlTemplate
 #else
@@ -29,18 +51,29 @@ public sealed class SqlTemplate
     }
 
     /// <summary>
-    /// Gets the prepared SQL (static placeholders resolved).
+    /// Gets the prepared SQL with static placeholders resolved.
     /// </summary>
+    /// <remarks>
+    /// This SQL string has all static placeholders (like {{columns}}, {{table}}) already replaced.
+    /// Dynamic placeholders (like {{where --param predicate}}) are not included in this string.
+    /// </remarks>
     public string Sql { get; }
 
     /// <summary>
-    /// Gets whether the template has dynamic placeholders.
+    /// Gets a value indicating whether the template contains dynamic placeholders.
     /// </summary>
+    /// <remarks>
+    /// Dynamic placeholders require runtime parameters and must be rendered using <see cref="Render"/>.
+    /// </remarks>
     public bool HasDynamicPlaceholders => _placeholders.Length > 0;
 
     /// <summary>
-    /// Prepares a SQL template.
+    /// Prepares a SQL template by pre-processing static placeholders and recording dynamic placeholder positions.
     /// </summary>
+    /// <param name="template">The SQL template string containing placeholders.</param>
+    /// <param name="context">The placeholder context providing dialect, table name, and column metadata.</param>
+    /// <returns>A prepared <see cref="SqlTemplate"/> instance ready for rendering.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when an unknown placeholder is encountered.</exception>
     public static SqlTemplate Prepare(string template, PlaceholderContext context)
     {
         var segments = new List<string>();
@@ -87,8 +120,14 @@ public sealed class SqlTemplate
     }
 
     /// <summary>
-    /// Renders the template with dynamic parameters.
+    /// Renders the template with dynamic parameters, producing the final SQL string.
     /// </summary>
+    /// <param name="dynamicParameters">Dictionary of parameter names and values for dynamic placeholders.</param>
+    /// <returns>The fully rendered SQL string with all placeholders resolved.</returns>
+    /// <remarks>
+    /// If the template has no dynamic placeholders, this method returns <see cref="Sql"/> directly.
+    /// Otherwise, it uses StringBuilder to efficiently concatenate pre-computed segments with rendered dynamic values.
+    /// </remarks>
     public string Render(IReadOnlyDictionary<string, object?>? dynamicParameters)
     {
         if (_placeholders.Length == 0)

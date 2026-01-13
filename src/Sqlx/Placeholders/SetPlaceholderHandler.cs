@@ -7,8 +7,25 @@ namespace Sqlx.Placeholders;
 using System.Linq;
 
 /// <summary>
-/// Handles {{set}} placeholder. Always static.
+/// Handles the {{set}} placeholder for generating UPDATE SET clauses.
 /// </summary>
+/// <remarks>
+/// <para>
+/// This handler is always static and generates a comma-separated list of column=parameter assignments.
+/// </para>
+/// <para>
+/// Supported options:
+/// </para>
+/// <list type="bullet">
+/// <item><description><c>--exclude col1,col2</c> - Excludes specified columns from the SET clause</description></item>
+/// </list>
+/// </remarks>
+/// <example>
+/// <code>
+/// // Template: UPDATE users SET {{set --exclude Id}} WHERE id = @id
+/// // Output:   UPDATE users SET [name] = @name, [email] = @email WHERE id = @id
+/// </code>
+/// </example>
 public sealed class SetPlaceholderHandler : PlaceholderHandlerBase
 {
     /// <summary>

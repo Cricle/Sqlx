@@ -9,8 +9,30 @@ using System.Collections.Generic;
 using System.Globalization;
 
 /// <summary>
-/// Handles {{offset}} placeholder. Static with --count, dynamic with --param.
+/// Handles the {{offset}} placeholder for generating OFFSET clauses.
 /// </summary>
+/// <remarks>
+/// <para>
+/// This handler can be either static (with --count) or dynamic (with --param).
+/// </para>
+/// <para>
+/// Supported options:
+/// </para>
+/// <list type="bullet">
+/// <item><description><c>--count n</c> - Static offset value resolved at prepare time</description></item>
+/// <item><description><c>--param name</c> - Dynamic offset value resolved at render time</description></item>
+/// </list>
+/// </remarks>
+/// <example>
+/// <code>
+/// // Static: SELECT * FROM users LIMIT 10 {{offset --count 20}}
+/// // Output: SELECT * FROM users LIMIT 10 OFFSET 20
+/// 
+/// // Dynamic: SELECT * FROM users {{limit --param pageSize}} {{offset --param offset}}
+/// // Render with: { "pageSize": 10, "offset": 30 }
+/// // Output: SELECT * FROM users LIMIT 10 OFFSET 30
+/// </code>
+/// </example>
 public sealed class OffsetPlaceholderHandler : PlaceholderHandlerBase
 {
     /// <summary>

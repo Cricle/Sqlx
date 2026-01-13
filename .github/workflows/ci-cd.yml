@@ -13,9 +13,9 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: true
 
 jobs:
-  # 🧪 单元测试 (快速，无数据库依赖)
-  unit-tests:
-    name: 🧪 Unit Tests
+  # 🧪 单元测试
+  test:
+    name: 🧪 Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -40,7 +40,7 @@ jobs:
     - name: 🏗️ Build
       run: dotnet build --configuration Release --no-restore /p:TreatWarningsAsErrors=true
 
-    - name: 🧪 Run Unit Tests
+    - name: 🧪 Run Tests
       timeout-minutes: 10
       run: |
         dotnet test --configuration Release --no-build \
@@ -48,162 +48,24 @@ jobs:
                     --logger "console;verbosity=minimal" \
                     --logger "trx" \
                     --framework net9.0 \
-                    --filter "TestCategory!=Integration&TestCategory!=E2E&TestCategory!=CI" \
                     --results-directory ./TestResults
 
     - name: 📤 Upload test results
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: unit-test-results
+        name: test-results
         path: |
           **/TestResults/*.trx
           **/TestResults/**/coverage.cobertura.xml
         retention-days: 7
-
-  # 🧪 集成测试 - SQLite (无外部数据库)
-  integration-tests-sqlite:
-    name: 🧪 Integration Tests (SQLite)
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: 📥 Checkout
-      uses: actions/checkout@v4
-
-    - name: 🔧 Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
-
-    - name: 📦 Cache NuGet packages
-      uses: actions/cache@v4
-      with:
-        path: ~/.nuget/packages
-        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.props') }}
-        restore-keys: ${{ runner.os }}-nuget-
-
-    - name: 📦 Restore dependencies
-      run: dotnet restore
-
-    - name: 🏗️ Build
-      run: dotnet build --configuration Release --no-restore /p:TreatWarningsAsErrors=true
-
-    - name: 🧪 Run SQLite Integration Tests
-      timeout-minutes: 10
-      run: |
-        dotnet test --configuration Release --no-build \
-                    --collect:"XPlat Code Coverage" \
-                    --logger "console;verbosity=minimal" \
-                    --logger "trx" \
-                    --framework net9.0 \
-                    --filter "TestCategory=Integration&TestCategory!=PostgreSQL&TestCategory!=MySQL&TestCategory!=SqlServer" \
-                    --results-directory ./TestResults
-
-    - name: 📤 Upload test results
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: integration-test-results-sqlite
-        path: |
-          **/TestResults/*.trx
-          **/TestResults/**/coverage.cobertura.xml
-        retention-days: 7
-
-  # 🧪 集成测试 - 数据库方言 (使用 Testcontainers)
-  integration-tests-db:
-    name: 🧪 Integration Tests (${{ matrix.database }})
-    runs-on: ubuntu-latest
-    
-    strategy:
-      fail-fast: false
-      matrix:
-        database: [postgresql, mysql, sqlserver]
-        include:
-          - database: postgresql
-            test-filter: "TestCategory=PostgreSQL&FullyQualifiedName!~TDD_MySqlPostgreSql_Integration_Tests"
-          - database: mysql
-            test-filter: "TestCategory=MySQL&FullyQualifiedName!~TDD_MySqlPostgreSql_Integration_Tests"
-          - database: sqlserver
-            test-filter: "TestCategory=SqlServer&FullyQualifiedName!~TDD_MySqlPostgreSql_Integration_Tests"
-
-    steps:
-    - name: 📥 Checkout
-      uses: actions/checkout@v4
-
-    - name: 🔧 Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
-
-    - name: 📦 Cache NuGet packages
-      uses: actions/cache@v4
-      with:
-        path: ~/.nuget/packages
-        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.props') }}
-        restore-keys: ${{ runner.os }}-nuget-
-
-    - name: 📦 Restore dependencies
-      run: dotnet restore
-
-    - name: 🏗️ Build
-      run: dotnet build --configuration Release --no-restore /p:TreatWarningsAsErrors=true
-
-    - name: 🧪 Run Integration Tests
-      timeout-minutes: 15
-      run: |
-        dotnet test --configuration Release --no-build \
-                    --collect:"XPlat Code Coverage" \
-                    --logger "console;verbosity=minimal" \
-                    --logger "trx" \
-                    --framework net9.0 \
-                    --filter "${{ matrix.test-filter }}" \
-                    --settings .runsettings.ci \
-                    --results-directory ./TestResults
-
-    - name: 📤 Upload test results
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: integration-test-results-${{ matrix.database }}
-        path: |
-          **/TestResults/*.trx
-          **/TestResults/**/coverage.cobertura.xml
-        retention-days: 7
-
-  # 📊 代码覆盖率报告
-  coverage:
-    name: 📊 Coverage Report
-    runs-on: ubuntu-latest
-    needs: [unit-tests, integration-tests-sqlite, integration-tests-db]
-    if: always()
-
-    steps:
-    - name: 📥 Download all test results
-      uses: actions/download-artifact@v4
-      with:
-        path: test-results
-
-    - name: 📊 Generate combined coverage report
-      run: |
-        dotnet tool install -g dotnet-reportgenerator-globaltool --version 5.2.0 || true
-        reportgenerator -reports:"test-results/**/coverage.cobertura.xml" \
-                        -targetdir:"coverage-report" \
-                        -reporttypes:"Html;Cobertura;JsonSummary" || true
-
-    - name: 📤 Upload coverage report
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: coverage-report
-        path: coverage-report/
-        retention-days: 30
 
     - name: 📊 Upload coverage to Codecov
       uses: codecov/codecov-action@v4
       if: always()
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        directory: test-results/
+        directory: ./TestResults/
         files: "**/coverage.cobertura.xml"
         fail_ci_if_error: false
 
@@ -211,7 +73,7 @@ jobs:
   package:
     name: 📦 Package
     runs-on: ubuntu-latest
-    needs: [unit-tests, integration-tests-sqlite, integration-tests-db]
+    needs: [test]
     if: startsWith(github.ref, 'refs/tags/v')
 
     steps:
@@ -261,7 +123,6 @@ jobs:
         echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
         echo "📦 Publishing version: $VERSION"
 
-        # Validate version format (e.g., 1.0.0, 1.0.0-beta.1)
         if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
           echo "❌ Invalid version format: $VERSION"
           exit 1
@@ -273,8 +134,6 @@ jobs:
       run: |
         echo "📋 Packages to publish:"
         ls -lh ./artifacts/*.nupkg
-        echo ""
-        echo "📊 Package count: $(ls -1 ./artifacts/*.nupkg | wc -l)"
 
     - name: 🚀 Push to NuGet
       run: |

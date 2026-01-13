@@ -290,17 +290,17 @@ Console.WriteLine(template.Sql);  // 输出生成的 SQL
 
 | Method | Mean | Error | StdDev | Ratio | Allocated | Alloc Ratio |
 |--------|------|-------|--------|-------|-----------|-------------|
-| Sqlx | 7.73 us | 0.047 us | 0.039 us | 1.00 | 1.49 KB | 1.00 |
-| Dapper.AOT | 9.79 us | 0.044 us | 0.037 us | 1.27 | 2.95 KB | 1.97 |
+| Dapper.AOT | 9.760 μs | 0.703 μs | 0.039 μs | 1.00 | 2.95 KB | 0.93 |
+| Sqlx | 9.777 μs | 0.460 μs | 0.025 μs | 1.00 | 3.16 KB | 1.00 |
 
-**Sqlx 快 27%，内存少 50%**
+**性能持平**
 
 #### 计数查询 (Count)
 
 | Method | Mean | Error | StdDev | Ratio | Allocated | Alloc Ratio |
 |--------|------|-------|--------|-------|-----------|-------------|
-| Dapper.AOT | 3.48 us | 0.027 us | 0.026 us | 0.98 | 896 B | 1.05 |
-| Sqlx | 3.53 us | 0.017 us | 0.016 us | 1.00 | 856 B | 1.00 |
+| Dapper.AOT | 3.557 μs | 0.203 μs | 0.011 μs | 0.98 | 896 B | 1.05 |
+| Sqlx | 3.630 μs | 0.185 μs | 0.010 μs | 1.00 | 856 B | 1.00 |
 
 **性能持平，Sqlx 内存略少**
 
@@ -308,49 +308,70 @@ Console.WriteLine(template.Sql);  // 输出生成的 SQL
 
 | Method | Mean | Error | StdDev | Ratio | Allocated | Alloc Ratio |
 |--------|------|-------|--------|-------|-----------|-------------|
-| Sqlx | 56.82 us | 2.200 us | 6.382 us | 1.00 | 4.07 KB | 1.00 |
-| Dapper.AOT | 76.25 us | 3.003 us | 8.568 us | 1.34 | 5.47 KB | 1.34 |
+| Dapper.AOT | 62.53 μs | 147.78 μs | 8.100 μs | 0.78 | 7.31 KB | 1.54 |
+| Sqlx | 80.63 μs | 141.04 μs | 7.731 μs | 1.01 | 4.73 KB | 1.00 |
 
-**Sqlx 快 34%，内存少 26%**
+**Sqlx 内存少 35%**
 
 #### 更新操作 (Update)
 
 | Method | Mean | Error | StdDev | Ratio | Allocated | Alloc Ratio |
 |--------|------|-------|--------|-------|-----------|-------------|
-| Sqlx | 7.51 us | 0.044 us | 0.039 us | 1.00 | 1.55 KB | 1.00 |
-| Dapper.AOT | 9.95 us | 0.044 us | 0.039 us | 1.32 | 2.95 KB | 1.90 |
+| Sqlx | 14.48 μs | 1.452 μs | 0.080 μs | 1.00 | 3.27 KB | 1.00 |
+| Dapper.AOT | 16.19 μs | 0.852 μs | 0.047 μs | 1.12 | 5.83 KB | 1.78 |
 
-**Sqlx 快 32%，内存少 47%**
+**Sqlx 快 12%，内存少 44%**
 
-#### 列表查询 (SelectList, Limit=100)
+#### 列表查询 (SelectList)
 
-| Method | Mean | Error | StdDev | Ratio | Allocated | Alloc Ratio |
-|--------|------|-------|--------|-------|-----------|-------------|
-| Sqlx | 91.95 us | 0.476 us | 0.422 us | 1.00 | 23.09 KB | 1.00 |
-| Dapper.AOT | 93.95 us | 0.476 us | 0.422 us | 1.02 | 28.82 KB | 1.25 |
+| Method | Limit | Mean | Ratio | Allocated | Alloc Ratio |
+|--------|-------|------|-------|-----------|-------------|
+| Dapper.AOT | 10 | 21.20 μs | 0.90 | 6.55 KB | 0.83 |
+| Sqlx | 10 | 23.69 μs | 1.00 | 7.91 KB | 1.00 |
+| Dapper.AOT | 100 | 128.58 μs | 0.79 | 42.14 KB | 1.02 |
+| Sqlx | 100 | 162.48 μs | 1.00 | 41.36 KB | 1.00 |
+| Dapper.AOT | 1000 | 1,183 μs | 0.76 | 393.71 KB | 1.06 |
+| Sqlx | 1000 | 1,560 μs | 1.00 | 371.65 KB | 1.00 |
 
-**性能持平，Sqlx 内存少 20%**
+**大数据量时 Sqlx 内存更少**
 
 #### 分页查询 (Pagination, PageSize=100)
 
-| Method | PageSize | Offset | Mean | Allocated | Alloc Ratio |
-|--------|----------|--------|------|-----------|-------------|
-| Sqlx | 100 | 0 | 134.01 us | 35.09 KB | 1.00 |
-| Dapper.AOT | 100 | 0 | 129.42 us | 42.62 KB | 1.21 |
+| Method | Offset | Mean | Ratio | Allocated | Alloc Ratio |
+|--------|--------|------|-------|-----------|-------------|
+| Dapper.AOT | 0 | 125.03 μs | 0.80 | 42.62 KB | 1.02 |
+| Sqlx | 0 | 156.96 μs | 1.00 | 41.87 KB | 1.00 |
+| Dapper.AOT | 100 | 125.41 μs | 0.80 | 42.87 KB | 1.02 |
+| Sqlx | 100 | 156.57 μs | 1.00 | 41.91 KB | 1.00 |
+| Dapper.AOT | 500 | 128.64 μs | 0.80 | 42.87 KB | 1.02 |
+| Sqlx | 500 | 161.18 μs | 1.00 | 41.91 KB | 1.00 |
 
-**性能持平，Sqlx 内存少 18%**
+**Sqlx 内存略少**
+
+#### 条件查询 (QueryWithFilter)
+
+| Method | Mean | Ratio | Allocated | Alloc Ratio |
+|--------|------|-------|-----------|-------------|
+| Dapper.AOT | 6.839 ms | 0.81 | 1.91 MB | 1.06 |
+| Sqlx | 8.401 ms | 1.00 | 1.80 MB | 1.00 |
+
+**Sqlx 内存少 6%**
 
 ### 总结
 
-| 场景 | Sqlx 优势 |
-|------|-----------|
-| 单条查询 | **27% 更快，50% 更少内存** |
-| 插入操作 | **34% 更快，26% 更少内存** |
-| 更新操作 | **32% 更快，47% 更少内存** |
-| 列表查询 | 性能持平，**20% 更少内存** |
-| 计数查询 | 性能持平 |
+| 场景 | 性能对比 | 内存对比 |
+|------|----------|----------|
+| 单条查询 | 持平 | 持平 |
+| 计数查询 | 持平 | Sqlx 少 5% |
+| 插入操作 | Dapper.AOT 快 22% | **Sqlx 少 35%** |
+| 更新操作 | **Sqlx 快 12%** | **Sqlx 少 44%** |
+| 列表查询 | Dapper.AOT 快 20-24% | Sqlx 少 5-6% |
+| 分页查询 | Dapper.AOT 快 20% | Sqlx 少 2% |
+| 条件查询 | Dapper.AOT 快 19% | Sqlx 少 6% |
 
-> 测试环境：.NET 9.0, AMD Ryzen 7 5800H, Windows 10
+Sqlx 在更新操作上有明显优势，在内存分配上整体更优。Dapper.AOT 在批量读取场景下速度更快。
+
+> 测试环境：.NET 9.0.8, AMD Ryzen 7 5800H, Windows 10 (22H2)
 > 运行命令：`dotnet run -c Release --project tests/Sqlx.Benchmarks`
 
 ### PreparedCommandCache

@@ -26,7 +26,6 @@ public class SqlTemplateTests
         var template = SqlTemplate.Prepare("SELECT {{columns}} FROM {{table}}", context);
         
         Assert.AreEqual("SELECT [id], [name], [status] FROM [items]", template.Sql);
-        Assert.AreEqual("SELECT [id], [name], [status] FROM [items]", template.PreparedSql);
         Assert.IsFalse(template.HasDynamicPlaceholders);
     }
 
@@ -51,23 +50,29 @@ public class SqlTemplateTests
     }
 
     [TestMethod]
-    public void StaticParameters_ExtractsParameterNames()
+    public void Render_NoDynamicPlaceholders_ReturnsSql()
     {
         var context = CreateContext();
-        var template = SqlTemplate.Prepare("SELECT {{columns}} FROM {{table}} WHERE id = @id AND name = @name", context);
+        var template = SqlTemplate.Prepare("SELECT {{columns}} FROM {{table}}", context);
         
-        Assert.AreEqual(2, template.StaticParameters.Count);
-        Assert.IsTrue(template.StaticParameters.Contains("id"));
-        Assert.IsTrue(template.StaticParameters.Contains("name"));
+        var rendered = template.Render(null);
+        
+        Assert.AreEqual(template.Sql, rendered);
     }
 
     [TestMethod]
-    public void Template_PreservesOriginalTemplate()
+    public void Render_MultipleParameters_AllReplaced()
     {
         var context = CreateContext();
-        var originalTemplate = "SELECT {{columns}} FROM {{table}}";
-        var template = SqlTemplate.Prepare(originalTemplate, context);
+        var template = SqlTemplate.Prepare("SELECT {{columns}} FROM {{table}} {{limit --param limit}} {{offset --param offset}}", context);
         
-        Assert.AreEqual(originalTemplate, template.Template);
+        var rendered = template.Render(new Dictionary<string, object?> 
+        { 
+            ["limit"] = 10,
+            ["offset"] = 20
+        });
+        
+        Assert.IsTrue(rendered.Contains("LIMIT 10"));
+        Assert.IsTrue(rendered.Contains("OFFSET 20"));
     }
 }

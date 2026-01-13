@@ -8,8 +8,6 @@ using System.Linq;
 
 /// <summary>
 /// Handles {{values}} placeholder. Always static.
-/// Generates parameter placeholders like @column_name.
-/// Supports --exclude option.
 /// </summary>
 public sealed class ValuesPlaceholderHandler : PlaceholderHandlerBase
 {
@@ -24,7 +22,7 @@ public sealed class ValuesPlaceholderHandler : PlaceholderHandlerBase
     /// <inheritdoc/>
     public override string Process(PlaceholderContext context, string options)
     {
-        var columns = GetFilteredColumns(context.Columns, options);
-        return string.Join(", ", columns.Select(c => $"{context.Dialect.ParameterPrefix}{c.Name}"));
+        var columns = FilterColumns(context.Columns, options);
+        return string.Join(", ", columns.Select(c => "@" + c.Name));
     }
 }

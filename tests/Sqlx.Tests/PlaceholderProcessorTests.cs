@@ -24,81 +24,69 @@ public class PlaceholderProcessorTests
     }
 
     [TestMethod]
-    public void Prepare_TablePlaceholder_ReplacesWithTableName()
+    public void SqlTemplate_TablePlaceholder_ReplacesWithTableName()
     {
         var context = CreateContext();
-        var template = "SELECT * FROM {{table}}";
+        var template = SqlTemplate.Prepare("SELECT * FROM {{table}}", context);
         
-        var result = PlaceholderProcessor.Prepare(template, context);
-        
-        Assert.AreEqual("SELECT * FROM [users]", result);
+        Assert.AreEqual("SELECT * FROM [users]", template.Sql);
     }
 
     [TestMethod]
-    public void Prepare_ColumnsPlaceholder_ReplacesWithAllColumns()
+    public void SqlTemplate_ColumnsPlaceholder_ReplacesWithAllColumns()
     {
         var context = CreateContext();
-        var template = "SELECT {{columns}} FROM {{table}}";
+        var template = SqlTemplate.Prepare("SELECT {{columns}} FROM {{table}}", context);
         
-        var result = PlaceholderProcessor.Prepare(template, context);
-        
-        Assert.AreEqual("SELECT [id], [name], [email], [created_at] FROM [users]", result);
+        Assert.AreEqual("SELECT [id], [name], [email], [created_at] FROM [users]", template.Sql);
     }
 
     [TestMethod]
-    public void Prepare_ColumnsWithExclude_ExcludesSpecifiedColumn()
+    public void SqlTemplate_ColumnsWithExclude_ExcludesSpecifiedColumn()
     {
         var context = CreateContext();
-        var template = "INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values --exclude Id}})";
+        var template = SqlTemplate.Prepare("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values --exclude Id}})", context);
         
-        var result = PlaceholderProcessor.Prepare(template, context);
-        
-        Assert.IsTrue(result.Contains("[name], [email], [created_at]"));
-        Assert.IsFalse(result.Contains("[id]"));
+        Assert.IsTrue(template.Sql.Contains("[name], [email], [created_at]"));
+        Assert.IsFalse(template.Sql.Contains("[id]"));
     }
 
     [TestMethod]
-    public void Prepare_SetPlaceholder_GeneratesSetClause()
+    public void SqlTemplate_SetPlaceholder_GeneratesSetClause()
     {
         var context = CreateContext();
-        var template = "UPDATE {{table}} SET {{set --exclude Id}} WHERE id = @id";
+        var template = SqlTemplate.Prepare("UPDATE {{table}} SET {{set --exclude Id}} WHERE id = @id", context);
         
-        var result = PlaceholderProcessor.Prepare(template, context);
-        
-        Assert.IsTrue(result.Contains("[name] = @name"));
-        Assert.IsTrue(result.Contains("[email] = @email"));
-        Assert.IsFalse(result.Contains("[id] = @id"));
+        Assert.IsTrue(template.Sql.Contains("[name] = @name"));
+        Assert.IsTrue(template.Sql.Contains("[email] = @email"));
+        Assert.IsFalse(template.Sql.Contains("[id] = @id"));
     }
 
     [TestMethod]
-    public void Prepare_LimitWithCount_GeneratesStaticLimit()
+    public void SqlTemplate_LimitWithCount_GeneratesStaticLimit()
     {
         var context = CreateContext();
-        var template = "SELECT {{columns}} FROM {{table}} {{limit --count 10}}";
+        var template = SqlTemplate.Prepare("SELECT {{columns}} FROM {{table}} {{limit --count 10}}", context);
         
-        var result = PlaceholderProcessor.Prepare(template, context);
-        
-        Assert.IsTrue(result.Contains("LIMIT 10"));
+        Assert.IsTrue(template.Sql.Contains("LIMIT 10"));
     }
 
     [TestMethod]
-    public void ContainsDynamicPlaceholders_WithDynamicWhere_ReturnsTrue()
+    public void SqlTemplate_WithDynamicWhere_HasDynamicPlaceholders()
     {
-        var template = "SELECT * FROM {{table}} WHERE {{where --param predicate}}";
+        var context = CreateContext();
+        var template = SqlTemplate.Prepare("SELECT * FROM {{table}} WHERE {{where --param predicate}}", context);
         
-        var result = PlaceholderProcessor.ContainsDynamicPlaceholders(template);
-        
-        Assert.IsTrue(result);
+        Assert.IsTrue(template.HasDynamicPlaceholders);
     }
 
     [TestMethod]
-    public void ContainsDynamicPlaceholders_WithStaticOnly_ReturnsFalse()
+    public void SqlTemplate_WithStaticOnly_NoDynamicPlaceholders()
     {
-        var template = "SELECT {{columns}} FROM {{table}}";
+        var context = CreateContext();
+        var template = SqlTemplate.Prepare("SELECT {{columns}} FROM {{table}}", context);
         
-        var result = PlaceholderProcessor.ContainsDynamicPlaceholders(template);
-        
-        Assert.IsFalse(result);
+        Assert.IsFalse(template.HasDynamicPlaceholders);
     }
 
     [TestMethod]
@@ -115,26 +103,30 @@ public class PlaceholderProcessorTests
     }
 
     [TestMethod]
-    public void Prepare_MySqlDialect_UsesBackticks()
+    public void SqlTemplate_MySqlDialect_UsesBackticks()
     {
         var context = CreateContext(SqlDefine.MySql);
-        var template = "SELECT {{columns}} FROM {{table}}";
+        var template = SqlTemplate.Prepare("SELECT {{columns}} FROM {{table}}", context);
         
-        var result = PlaceholderProcessor.Prepare(template, context);
-        
-        Assert.IsTrue(result.Contains("`id`"));
-        Assert.IsTrue(result.Contains("`users`"));
+        Assert.IsTrue(template.Sql.Contains("`id`"));
+        Assert.IsTrue(template.Sql.Contains("`users`"));
     }
 
     [TestMethod]
-    public void Prepare_PostgreSqlDialect_UsesDoubleQuotes()
+    public void SqlTemplate_PostgreSqlDialect_UsesDoubleQuotes()
     {
         var context = CreateContext(SqlDefine.PostgreSql);
-        var template = "SELECT {{columns}} FROM {{table}}";
+        var template = SqlTemplate.Prepare("SELECT {{columns}} FROM {{table}}", context);
         
-        var result = PlaceholderProcessor.Prepare(template, context);
-        
-        Assert.IsTrue(result.Contains("\"id\""));
-        Assert.IsTrue(result.Contains("\"users\""));
+        Assert.IsTrue(template.Sql.Contains("\"id\""));
+        Assert.IsTrue(template.Sql.Contains("\"users\""));
+    }
+
+    [TestMethod]
+    public void RegisterHandler_CustomHandler_CanBeUsed()
+    {
+        // Verify handler registration works
+        Assert.IsTrue(PlaceholderProcessor.TryGetHandler("columns", out var handler));
+        Assert.AreEqual("columns", handler.Name);
     }
 }

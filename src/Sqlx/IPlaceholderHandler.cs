@@ -4,6 +4,8 @@
 
 namespace Sqlx;
 
+using System.Collections.Generic;
+
 /// <summary>
 /// Handles a specific placeholder type in SQL templates.
 /// </summary>
@@ -16,17 +18,16 @@ public interface IPlaceholderHandler
 
     /// <summary>
     /// Determines the placeholder type based on options.
-    /// For example, {{limit --count 1}} is Static, {{limit --param limit}} is Dynamic.
     /// </summary>
-    /// <param name="options">The options string after the placeholder name.</param>
-    /// <returns>The placeholder type.</returns>
     PlaceholderType GetType(string options);
 
     /// <summary>
-    /// Processes the placeholder and returns the replacement SQL.
+    /// Processes a static placeholder during Prepare phase.
     /// </summary>
-    /// <param name="context">The placeholder context.</param>
-    /// <param name="options">The options string after the placeholder name.</param>
-    /// <returns>The replacement SQL string.</returns>
     string Process(PlaceholderContext context, string options);
+
+    /// <summary>
+    /// Renders a dynamic placeholder during Render phase.
+    /// </summary>
+    string Render(PlaceholderContext context, string options, IReadOnlyDictionary<string, object?>? parameters);
 }

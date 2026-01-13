@@ -19,7 +19,5 @@ public sealed class TablePlaceholderHandler : PlaceholderHandlerBase
 
     /// <inheritdoc/>
     public override string Process(PlaceholderContext context, string options)
-    {
-        return QuoteIdentifier(context.Dialect, context.TableName);
-    }
+        => context.Dialect.WrapColumn(context.TableName);
 }

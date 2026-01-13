@@ -66,7 +66,6 @@ public class IntegrationTests
             "SELECT [id], [user_name], [email], [created_at], [is_active] FROM [users] WHERE is_active = @isActive",
             template.Sql);
         Assert.IsFalse(template.HasDynamicPlaceholders);
-        Assert.IsTrue(template.StaticParameters.Contains("isActive"));
     }
 
     [TestMethod]
@@ -127,7 +126,6 @@ public class IntegrationTests
             context);
         
         Assert.IsTrue(template.HasDynamicPlaceholders);
-        Assert.IsTrue(template.PreparedSql.Contains("{{where --param predicate}}"));
         
         // Render with dynamic parameters
         var dynamicParams = new Dictionary<string, object?> { ["predicate"] = "name = 'test'" };
@@ -204,7 +202,7 @@ public class IntegrationTests
             "SELECT {{columns}} FROM {{table}} WHERE id = @id",
             context);
         
-        // PostgreSQL uses double quotes for identifiers and $ for parameters
+        // PostgreSQL uses double quotes for identifiers
         Assert.IsTrue(template.Sql.Contains("\"id\""));
         Assert.IsTrue(template.Sql.Contains("\"users\""));
     }
@@ -314,8 +312,6 @@ public class IntegrationTests
             context);
         
         Assert.IsTrue(template.HasDynamicPlaceholders);
-        Assert.IsTrue(template.PreparedSql.Contains("[id], [name], [email], [status]"));
-        Assert.IsTrue(template.PreparedSql.Contains("[users]"));
         
         var dynamicParams = new Dictionary<string, object?>
         {

@@ -8,8 +8,6 @@ using System.Linq;
 
 /// <summary>
 /// Handles {{set}} placeholder. Always static.
-/// Generates SET clause like column = @column.
-/// Supports --exclude option.
 /// </summary>
 public sealed class SetPlaceholderHandler : PlaceholderHandlerBase
 {
@@ -24,8 +22,7 @@ public sealed class SetPlaceholderHandler : PlaceholderHandlerBase
     /// <inheritdoc/>
     public override string Process(PlaceholderContext context, string options)
     {
-        var columns = GetFilteredColumns(context.Columns, options);
-        return string.Join(", ", columns.Select(c =>
-            $"{QuoteIdentifier(context.Dialect, c.Name)} = {context.Dialect.ParameterPrefix}{c.Name}"));
+        var columns = FilterColumns(context.Columns, options);
+        return string.Join(", ", columns.Select(c => $"{context.Dialect.WrapColumn(c.Name)} = @{c.Name}"));
     }
 }

@@ -16,15 +16,9 @@ public class PlaceholderHandlerTests
         new ColumnMeta("created_at", "CreatedAt", DbType.DateTime, false),
     };
 
-    private static PlaceholderContext CreateContext(
-        SqlDialect? dialect = null,
-        IReadOnlyDictionary<string, object?>? dynamicParams = null)
+    private static PlaceholderContext CreateContext(SqlDialect? dialect = null)
     {
-        return new PlaceholderContext(
-            dialect ?? SqlDefine.SQLite,
-            "users",
-            TestColumns,
-            dynamicParams);
+        return new PlaceholderContext(dialect ?? SqlDefine.SQLite, "users", TestColumns);
     }
 
     #region ColumnsPlaceholderHandler Tests
@@ -124,18 +118,6 @@ public class PlaceholderHandlerTests
     }
 
     [TestMethod]
-    public void ValuesHandler_PostgreSqlDialect_UsesDollarPrefix()
-    {
-        var handler = ValuesPlaceholderHandler.Instance;
-        var context = CreateContext(SqlDefine.PostgreSql);
-
-        var result = handler.Process(context, "");
-
-        Assert.IsTrue(result.Contains("$id"));
-        Assert.IsTrue(result.Contains("$name"));
-    }
-
-    [TestMethod]
     public void ValuesHandler_GetType_ReturnsStatic()
     {
         var handler = ValuesPlaceholderHandler.Instance;
@@ -230,13 +212,13 @@ public class PlaceholderHandlerTests
     #region WherePlaceholderHandler Tests
 
     [TestMethod]
-    public void WhereHandler_Process_ReturnsWhereClause()
+    public void WhereHandler_Render_ReturnsWhereClause()
     {
         var handler = WherePlaceholderHandler.Instance;
+        var context = CreateContext();
         var dynamicParams = new Dictionary<string, object?> { ["predicate"] = "status = 'active'" };
-        var context = CreateContext(dynamicParams: dynamicParams);
 
-        var result = handler.Process(context, "--param predicate");
+        var result = handler.Render(context, "--param predicate", dynamicParams);
 
         Assert.AreEqual("status = 'active'", result);
     }
@@ -252,22 +234,22 @@ public class PlaceholderHandlerTests
 
     [TestMethod]
     [ExpectedException(typeof(InvalidOperationException))]
-    public void WhereHandler_WithoutParamOption_ThrowsException()
+    public void WhereHandler_Render_WithoutParamOption_ThrowsException()
     {
         var handler = WherePlaceholderHandler.Instance;
         var context = CreateContext();
 
-        handler.Process(context, "");
+        handler.Render(context, "", null);
     }
 
     [TestMethod]
     [ExpectedException(typeof(InvalidOperationException))]
-    public void WhereHandler_MissingDynamicParam_ThrowsException()
+    public void WhereHandler_Render_MissingDynamicParam_ThrowsException()
     {
         var handler = WherePlaceholderHandler.Instance;
         var context = CreateContext();
 
-        handler.Process(context, "--param predicate");
+        handler.Render(context, "--param predicate", new Dictionary<string, object?>());
     }
 
     #endregion
@@ -286,13 +268,13 @@ public class PlaceholderHandlerTests
     }
 
     [TestMethod]
-    public void LimitHandler_WithParam_ReturnsDynamicLimit()
+    public void LimitHandler_Render_WithParam_ReturnsDynamicLimit()
     {
         var handler = LimitPlaceholderHandler.Instance;
+        var context = CreateContext();
         var dynamicParams = new Dictionary<string, object?> { ["limit"] = 25 };
-        var context = CreateContext(dynamicParams: dynamicParams);
 
-        var result = handler.Process(context, "--param limit");
+        var result = handler.Render(context, "--param limit", dynamicParams);
 
         Assert.AreEqual("LIMIT 25", result);
     }
@@ -316,12 +298,12 @@ public class PlaceholderHandlerTests
 
     [TestMethod]
     [ExpectedException(typeof(InvalidOperationException))]
-    public void LimitHandler_WithoutOption_ThrowsException()
+    public void LimitHandler_Render_WithoutOption_ThrowsException()
     {
         var handler = LimitPlaceholderHandler.Instance;
         var context = CreateContext();
 
-        handler.Process(context, "");
+        handler.Render(context, "", null);
     }
 
     #endregion
@@ -340,13 +322,13 @@ public class PlaceholderHandlerTests
     }
 
     [TestMethod]
-    public void OffsetHandler_WithParam_ReturnsDynamicOffset()
+    public void OffsetHandler_Render_WithParam_ReturnsDynamicOffset()
     {
         var handler = OffsetPlaceholderHandler.Instance;
+        var context = CreateContext();
         var dynamicParams = new Dictionary<string, object?> { ["offset"] = 50 };
-        var context = CreateContext(dynamicParams: dynamicParams);
 
-        var result = handler.Process(context, "--param offset");
+        var result = handler.Render(context, "--param offset", dynamicParams);
 
         Assert.AreEqual("OFFSET 50", result);
     }
@@ -370,12 +352,12 @@ public class PlaceholderHandlerTests
 
     [TestMethod]
     [ExpectedException(typeof(InvalidOperationException))]
-    public void OffsetHandler_WithoutOption_ThrowsException()
+    public void OffsetHandler_Render_WithoutOption_ThrowsException()
     {
         var handler = OffsetPlaceholderHandler.Instance;
         var context = CreateContext();
 
-        handler.Process(context, "");
+        handler.Render(context, "", null);
     }
 
     #endregion
@@ -383,38 +365,13 @@ public class PlaceholderHandlerTests
     #region PlaceholderContext Tests
 
     [TestMethod]
-    public void PlaceholderContext_WithDynamicParameters_CreatesNewContext()
-    {
-        var context = CreateContext();
-        var dynamicParams = new Dictionary<string, object?> { ["key"] = "value" };
-
-        var newContext = context.WithDynamicParameters(dynamicParams);
-
-        Assert.IsNull(context.DynamicParameters);
-        Assert.IsNotNull(newContext.DynamicParameters);
-        Assert.AreEqual("value", newContext.DynamicParameters["key"]);
-        Assert.AreEqual(context.Dialect, newContext.Dialect);
-        Assert.AreEqual(context.TableName, newContext.TableName);
-    }
-
-    [TestMethod]
-    public void PlaceholderContext_GetDynamicParameterValue_ReturnsValue()
-    {
-        var dynamicParams = new Dictionary<string, object?> { ["param1"] = 42 };
-        var context = CreateContext(dynamicParams: dynamicParams);
-
-        var value = context.GetDynamicParameterValue("param1", "test");
-
-        Assert.AreEqual(42, value);
-    }
-
-    [TestMethod]
-    [ExpectedException(typeof(InvalidOperationException))]
-    public void PlaceholderContext_GetDynamicParameterValue_MissingParam_ThrowsException()
+    public void PlaceholderContext_Properties_AreSet()
     {
         var context = CreateContext();
 
-        context.GetDynamicParameterValue("missing", "test");
+        Assert.AreEqual(SqlDefine.SQLite, context.Dialect);
+        Assert.AreEqual("users", context.TableName);
+        Assert.AreEqual(4, context.Columns.Count);
     }
 
     #endregion

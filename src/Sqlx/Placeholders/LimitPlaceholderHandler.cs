@@ -5,11 +5,11 @@
 namespace Sqlx.Placeholders;
 
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 
 /// <summary>
-/// Handles {{limit}} placeholder.
-/// Static with --count option, Dynamic with --param option.
+/// Handles {{limit}} placeholder. Static with --count, dynamic with --param.
 /// </summary>
 public sealed class LimitPlaceholderHandler : PlaceholderHandlerBase
 {
@@ -23,26 +23,21 @@ public sealed class LimitPlaceholderHandler : PlaceholderHandlerBase
 
     /// <inheritdoc/>
     public override PlaceholderType GetType(string options)
-    {
-        // --count makes it static, --param makes it dynamic
-        return ParseCountOption(options) is not null ? PlaceholderType.Static : PlaceholderType.Dynamic;
-    }
+        => ParseCount(options) is not null ? PlaceholderType.Static : PlaceholderType.Dynamic;
 
     /// <inheritdoc/>
     public override string Process(PlaceholderContext context, string options)
     {
-        var count = ParseCountOption(options);
-        if (count is not null)
-        {
-            return $"LIMIT {count.Value}";
-        }
+        var count = ParseCount(options);
+        return count is not null ? $"LIMIT {count.Value}" : string.Empty;
+    }
 
-        var paramName = ParseParamOption(options)
-            ?? throw new InvalidOperationException("{{limit}} placeholder requires --count or --param option.");
-
-        var value = context.GetDynamicParameterValue(paramName, "limit");
-        return value is not null
-            ? $"LIMIT {Convert.ToInt32(value, CultureInfo.InvariantCulture)}"
-            : string.Empty;
+    /// <inheritdoc/>
+    public override string Render(PlaceholderContext context, string options, IReadOnlyDictionary<string, object?>? parameters)
+    {
+        var paramName = ParseParam(options)
+            ?? throw new InvalidOperationException("{{limit}} requires --count or --param option.");
+        var value = GetParam(parameters, paramName);
+        return value is not null ? $"LIMIT {Convert.ToInt32(value, CultureInfo.InvariantCulture)}" : string.Empty;
     }
 }

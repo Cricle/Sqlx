@@ -8,7 +8,6 @@ using System.Linq;
 
 /// <summary>
 /// Handles {{columns}} placeholder. Always static.
-/// Supports --exclude option.
 /// </summary>
 public sealed class ColumnsPlaceholderHandler : PlaceholderHandlerBase
 {
@@ -23,7 +22,7 @@ public sealed class ColumnsPlaceholderHandler : PlaceholderHandlerBase
     /// <inheritdoc/>
     public override string Process(PlaceholderContext context, string options)
     {
-        var columns = GetFilteredColumns(context.Columns, options);
-        return string.Join(", ", columns.Select(c => QuoteIdentifier(context.Dialect, c.Name)));
+        var columns = FilterColumns(context.Columns, options);
+        return string.Join(", ", columns.Select(c => context.Dialect.WrapColumn(c.Name)));
     }
 }

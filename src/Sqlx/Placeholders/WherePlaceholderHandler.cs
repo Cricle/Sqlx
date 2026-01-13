@@ -5,10 +5,10 @@
 namespace Sqlx.Placeholders;
 
 using System;
+using System.Collections.Generic;
 
 /// <summary>
 /// Handles {{where}} placeholder. Always dynamic.
-/// Requires --param option to specify the parameter containing WHERE clause.
 /// </summary>
 public sealed class WherePlaceholderHandler : PlaceholderHandlerBase
 {
@@ -25,11 +25,13 @@ public sealed class WherePlaceholderHandler : PlaceholderHandlerBase
 
     /// <inheritdoc/>
     public override string Process(PlaceholderContext context, string options)
-    {
-        var paramName = ParseParamOption(options)
-            ?? throw new InvalidOperationException("{{where}} placeholder requires --param option.");
+        => throw new InvalidOperationException("{{where}} is dynamic, use Render instead.");
 
-        var value = context.GetDynamicParameterValue(paramName, "where");
-        return value?.ToString() ?? string.Empty;
+    /// <inheritdoc/>
+    public override string Render(PlaceholderContext context, string options, IReadOnlyDictionary<string, object?>? parameters)
+    {
+        var paramName = ParseParam(options)
+            ?? throw new InvalidOperationException("{{where}} requires --param option.");
+        return GetParam(parameters, paramName)?.ToString() ?? string.Empty;
     }
 }

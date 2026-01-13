@@ -6,96 +6,135 @@ namespace Sqlx;
 
 using System;
 using System.Collections.Generic;
+using System.Text;
+using System.Text.RegularExpressions;
 
 /// <summary>
-/// Represents a SQL template with two-phase processing: Prepare (static) + Render (dynamic).
+/// Represents a prepared SQL template with efficient rendering.
 /// </summary>
+#if NET7_0_OR_GREATER
+public sealed partial class SqlTemplate
+#else
 public sealed class SqlTemplate
+#endif
 {
-    private readonly PlaceholderContext? _context;
-    private readonly string _preparedSql;
-    private readonly bool _hasDynamicPlaceholders;
-    private readonly IReadOnlyList<string> _staticParameters;
+    private readonly string[] _segments;
+    private readonly DynamicPlaceholder[] _placeholders;
 
-    private SqlTemplate(
-        string template,
-        PlaceholderContext context,
-        string preparedSql,
-        bool hasDynamicPlaceholders,
-        IReadOnlyList<string> staticParameters)
+    private SqlTemplate(string sql, string[] segments, DynamicPlaceholder[] placeholders)
     {
-        Template = template;
-        _context = context;
-        _preparedSql = preparedSql;
-        _hasDynamicPlaceholders = hasDynamicPlaceholders;
-        _staticParameters = staticParameters;
+        Sql = sql;
+        _segments = segments;
+        _placeholders = placeholders;
     }
 
     /// <summary>
-    /// Gets the original SQL template with placeholders.
+    /// Gets the prepared SQL (static placeholders resolved).
     /// </summary>
-    public string Template { get; }
+    public string Sql { get; }
 
     /// <summary>
-    /// Gets the prepared SQL with static placeholders resolved.
+    /// Gets whether the template has dynamic placeholders.
     /// </summary>
-    public string PreparedSql => _preparedSql;
+    public bool HasDynamicPlaceholders => _placeholders.Length > 0;
 
     /// <summary>
-    /// Gets whether the template contains dynamic placeholders.
+    /// Prepares a SQL template.
     /// </summary>
-    public bool HasDynamicPlaceholders => _hasDynamicPlaceholders;
-
-    /// <summary>
-    /// Gets the parameter names extracted from the prepared SQL.
-    /// </summary>
-    public IReadOnlyList<string> StaticParameters => _staticParameters;
-
-    /// <summary>
-    /// Gets the final SQL. If no dynamic placeholders, returns PreparedSql.
-    /// For dynamic templates, call Render() with parameters.
-    /// </summary>
-    public string Sql => _preparedSql;
-
-    /// <summary>
-    /// Prepares a SQL template by processing static placeholders.
-    /// </summary>
-    /// <param name="template">The SQL template string.</param>
-    /// <param name="context">The placeholder context.</param>
-    /// <returns>A prepared SqlTemplate instance.</returns>
     public static SqlTemplate Prepare(string template, PlaceholderContext context)
     {
-        if (template is null)
+        var segments = new List<string>();
+        var placeholders = new List<DynamicPlaceholder>();
+        var lastIndex = 0;
+
+        foreach (Match match in PlaceholderRegex().Matches(template))
         {
-            throw new ArgumentNullException(nameof(template));
+            var name = match.Groups[1].Value;
+            var options = match.Groups[2].Value;
+
+            if (!PlaceholderProcessor.TryGetHandler(name, out var handler))
+            {
+                throw new InvalidOperationException($"Unknown placeholder: {{{{{name}}}}}");
+            }
+
+            var type = handler.GetType(options);
+            if (type == PlaceholderType.Static)
+            {
+                // 静态占位符：直接替换
+                var before = template.Substring(lastIndex, match.Index - lastIndex);
+                var replacement = handler.Process(context, options);
+                segments.Add(before + replacement);
+            }
+            else
+            {
+                // 动态占位符：记录位置
+                var before = template.Substring(lastIndex, match.Index - lastIndex);
+                segments.Add(before);
+                placeholders.Add(new DynamicPlaceholder(segments.Count - 1, handler, options, context));
+            }
+
+            lastIndex = match.Index + match.Length;
         }
 
-        if (context is null)
+        // 添加最后一段
+        if (lastIndex < template.Length)
         {
-            throw new ArgumentNullException(nameof(context));
+            segments.Add(template.Substring(lastIndex));
         }
 
-        var hasDynamic = PlaceholderProcessor.ContainsDynamicPlaceholders(template);
-        var preparedSql = PlaceholderProcessor.Prepare(template, context);
-        var staticParams = PlaceholderProcessor.ExtractParameters(preparedSql);
-
-        return new SqlTemplate(template, context, preparedSql, hasDynamic, staticParams);
+        var sql = string.Concat(segments);
+        return new SqlTemplate(sql, segments.ToArray(), placeholders.ToArray());
     }
 
     /// <summary>
     /// Renders the template with dynamic parameters.
-    /// Only needed when HasDynamicPlaceholders is true.
     /// </summary>
-    /// <param name="dynamicParameters">The dynamic parameter values.</param>
-    /// <returns>The final SQL with all placeholders resolved.</returns>
-    public string Render(IReadOnlyDictionary<string, object?> dynamicParameters)
+    public string Render(IReadOnlyDictionary<string, object?>? dynamicParameters)
     {
-        if (!_hasDynamicPlaceholders || _context is null)
+        if (_placeholders.Length == 0)
         {
-            return _preparedSql;
+            return Sql;
         }
 
-        var contextWithParams = _context.WithDynamicParameters(dynamicParameters);
-        return PlaceholderProcessor.Render(_preparedSql, contextWithParams);
+        var sb = new StringBuilder();
+        var partIndex = 0;
+
+        for (var i = 0; i < _segments.Length; i++)
+        {
+            sb.Append(_segments[i]);
+
+            if (partIndex < _placeholders.Length && _placeholders[partIndex].SegmentIndex == i)
+            {
+                var p = _placeholders[partIndex];
+                sb.Append(p.Handler.Render(p.Context, p.Options, dynamicParameters));
+                partIndex++;
+            }
+        }
+
+        return sb.ToString();
+    }
+
+#if NET7_0_OR_GREATER
+    [System.Text.RegularExpressions.GeneratedRegex(@"\{\{(\w+)(?:\s+([^}]+))?\}\}")]
+    private static partial Regex PlaceholderRegex();
+#else
+    private static readonly Regex PlaceholderRegexInstance = new(@"\{\{(\w+)(?:\s+([^}]+))?\}\}", RegexOptions.Compiled);
+    private static Regex PlaceholderRegex() => PlaceholderRegexInstance;
+#endif
+
+    private readonly struct DynamicPlaceholder
+    {
+        public readonly int SegmentIndex;
+        public readonly IPlaceholderHandler Handler;
+        public readonly string Options;
+        public readonly PlaceholderContext Context;
+
+        public DynamicPlaceholder(int segmentIndex, IPlaceholderHandler handler, string options, PlaceholderContext context)
+        {
+            SegmentIndex = segmentIndex;
+            Handler = handler;
+            Options = options;
+            Context = context;
+        }
     }
 }

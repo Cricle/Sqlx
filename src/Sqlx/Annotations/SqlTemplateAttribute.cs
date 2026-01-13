@@ -53,6 +53,12 @@ namespace Sqlx.Annotations
         /// Whether to cache generated SQL, defaults to true
         /// </summary>
         public bool EnableCaching { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets the name identifier for this SQL template.
+        /// Used for debugging and template listing purposes.
+        /// </summary>
+        public string? Name { get; set; }
     }
 
 }

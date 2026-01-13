@@ -42,8 +42,8 @@ namespace Sqlx
         Task<TEntity?> GetFirstWhereAsync([ExpressionToSql] Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
 
         /// <summary>Gets entities with pagination.</summary>
-        [SqlTemplate("SELECT {{columns}} FROM {{table}} {{limit --param limit}} {{offset --param offset}}")]
-        Task<List<TEntity>> GetPagedAsync(int limit = 20, int offset = 0, CancellationToken cancellationToken = default);
+        [SqlTemplate("SELECT {{columns}} FROM {{table}} {{limit --param pageSize}} {{offset --param offset}}")]
+        Task<List<TEntity>> GetPagedAsync(int pageSize = 20, int offset = 0, CancellationToken cancellationToken = default);
 
         /// <summary>Checks if any entity exists matching predicate.</summary>
         [SqlTemplate("SELECT CASE WHEN EXISTS(SELECT 1 FROM {{table}} WHERE {{where --param predicate}}) THEN 1 ELSE 0 END")]

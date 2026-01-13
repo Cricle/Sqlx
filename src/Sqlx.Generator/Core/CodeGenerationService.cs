@@ -1086,6 +1086,7 @@ public class CodeGenerationService
         DynamicDictionary,          // Dictionary<string, object>
         DynamicDictionaryCollection, // List<Dictionary<string, object>>
         SqlTemplate,                // Sqlx.SqlTemplate
+        PagedResult,                // PagedResult<T>
         Unknown
     }
 
@@ -1098,6 +1099,11 @@ public class CodeGenerationService
         if (innerType == "Sqlx.SqlTemplate" || innerType == "SqlTemplate" || 
             innerType == "global::Sqlx.SqlTemplate")
             return (ReturnTypeCategory.SqlTemplate, innerType);
+
+        // 检查 PagedResult 类型
+        if (innerType.Contains("PagedResult<") || innerType.Contains(".PagedResult<") ||
+            innerType.Contains("Sqlx.PagedResult<"))
+            return (ReturnTypeCategory.PagedResult, innerType);
 
         // 检查动态字典集合类型：List<Dictionary<string, object>>
         if (IsDynamicDictionaryCollection(innerType))

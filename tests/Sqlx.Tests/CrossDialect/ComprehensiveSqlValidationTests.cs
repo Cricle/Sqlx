@@ -5,6 +5,7 @@
 // -----------------------------------------------------------------------
 
 using System;
+using System.Linq;
 using System.Linq.Expressions;
 using Xunit;
 
@@ -653,6 +654,267 @@ public class ComprehensiveSqlValidationTests
         Assert.Contains("@deleted_at", sql);
         // And @id in WHERE
         Assert.Contains("@id", sql);
+    }
+
+    #endregion
+
+    #region Additional IQueryRepository Tests
+
+    // Note: ExistsAsync uses ExistsWhereAsync internally, which requires expression parameter
+    // The generated method name follows the interface method name pattern
+
+    #endregion
+
+    #region Additional ICommandRepository Tests
+
+    [Fact]
+    [Trait("Category", "SQLite")]
+    public void SQLite_InsertAndGetIdAsync_GeneratesCorrectSql()
+    {
+        var repo = new CrudRepositorySQLite(null!);
+        var sql = repo.GetInsertAndGetIdAsyncSql(null!);
+
+        Assert.Contains("INSERT INTO [test_entity]", sql);
+        Assert.Contains("[name]", sql);
+        Assert.Contains("@name", sql);
+    }
+
+    [Fact]
+    [Trait("Category", "MySQL")]
+    public void MySQL_InsertAndGetIdAsync_GeneratesCorrectSql()
+    {
+        var repo = new CrudRepositoryMySql(null!);
+        var sql = repo.GetInsertAndGetIdAsyncSql(null!);
+
+        Assert.Contains("INSERT INTO `test_entity`", sql);
+        Assert.Contains("`name`", sql);
+        Assert.Contains("@name", sql);
+    }
+
+    [Fact]
+    [Trait("Category", "PostgreSQL")]
+    public void PostgreSQL_InsertAndGetIdAsync_GeneratesCorrectSql()
+    {
+        var repo = new CrudRepositoryPostgreSql(null!);
+        var sql = repo.GetInsertAndGetIdAsyncSql(null!);
+
+        Assert.Contains("INSERT INTO \"test_entity\"", sql);
+        Assert.Contains("\"name\"", sql);
+        Assert.Contains("@name", sql);
+    }
+
+    [Fact]
+    [Trait("Category", "SqlServer")]
+    public void SqlServer_InsertAndGetIdAsync_GeneratesCorrectSql()
+    {
+        var repo = new CrudRepositorySqlServer(null!);
+        var sql = repo.GetInsertAndGetIdAsyncSql(null!);
+
+        Assert.Contains("INSERT INTO [test_entity]", sql);
+        Assert.Contains("[name]", sql);
+        Assert.Contains("@name", sql);
+    }
+
+    #endregion
+
+    #region Expression WHERE Clause Tests
+
+    [Fact]
+    [Trait("Category", "Expression")]
+    public void SQLite_WhereWithEquality_GeneratesCorrectSql()
+    {
+        var repo = new CrudRepositorySQLite(null!);
+        Expression<Func<CrossDialectTestEntity, bool>> predicate = x => x.Name == "test";
+        var sql = repo.GetGetWhereAsyncSql(predicate);
+
+        Assert.Contains("WHERE", sql);
+        Assert.Contains("[name]", sql);
+    }
+
+    [Fact]
+    [Trait("Category", "Expression")]
+    public void SQLite_WhereWithComparison_GeneratesCorrectSql()
+    {
+        var repo = new CrudRepositorySQLite(null!);
+        Expression<Func<CrossDialectTestEntity, bool>> predicate = x => x.Age > 18;
+        var sql = repo.GetGetWhereAsyncSql(predicate);
+
+        Assert.Contains("WHERE", sql);
+        Assert.Contains("[age]", sql);
+    }
+
+    [Fact]
+    [Trait("Category", "Expression")]
+    public void SQLite_WhereWithBoolean_GeneratesCorrectSql()
+    {
+        var repo = new CrudRepositorySQLite(null!);
+        Expression<Func<CrossDialectTestEntity, bool>> predicate = x => x.IsActive;
+        var sql = repo.GetGetWhereAsyncSql(predicate);
+
+        Assert.Contains("WHERE", sql);
+        Assert.Contains("[is_active]", sql);
+    }
+
+    [Fact]
+    [Trait("Category", "Expression")]
+    public void SQLite_WhereWithNullCheck_GeneratesCorrectSql()
+    {
+        var repo = new CrudRepositorySQLite(null!);
+        Expression<Func<CrossDialectTestEntity, bool>> predicate = x => x.UpdatedAt != null;
+        var sql = repo.GetGetWhereAsyncSql(predicate);
+
+        Assert.Contains("WHERE", sql);
+        Assert.Contains("[updated_at]", sql);
+    }
+
+    [Fact]
+    [Trait("Category", "Expression")]
+    public void MySQL_WhereWithEquality_GeneratesCorrectSql()
+    {
+        var repo = new CrudRepositoryMySql(null!);
+        Expression<Func<CrossDialectTestEntity, bool>> predicate = x => x.Name == "test";
+        var sql = repo.GetGetWhereAsyncSql(predicate);
+
+        Assert.Contains("WHERE", sql);
+        Assert.Contains("`name`", sql);
+    }
+
+    [Fact]
+    [Trait("Category", "Expression")]
+    public void PostgreSQL_WhereWithEquality_GeneratesCorrectSql()
+    {
+        var repo = new CrudRepositoryPostgreSql(null!);
+        Expression<Func<CrossDialectTestEntity, bool>> predicate = x => x.Name == "test";
+        var sql = repo.GetGetWhereAsyncSql(predicate);
+
+        Assert.Contains("WHERE", sql);
+        Assert.Contains("\"name\"", sql);
+    }
+
+    [Fact]
+    [Trait("Category", "Expression")]
+    public void SqlServer_WhereWithEquality_GeneratesCorrectSql()
+    {
+        var repo = new CrudRepositorySqlServer(null!);
+        Expression<Func<CrossDialectTestEntity, bool>> predicate = x => x.Name == "test";
+        var sql = repo.GetGetWhereAsyncSql(predicate);
+
+        Assert.Contains("WHERE", sql);
+        Assert.Contains("[name]", sql);
+    }
+
+    #endregion
+
+    #region Column Count Validation
+
+    [Fact]
+    [Trait("Category", "Columns")]
+    public void AllDialects_SelectHasCorrectColumnCount()
+    {
+        var sqliteRepo = new CrudRepositorySQLite(null!);
+        var mysqlRepo = new CrudRepositoryMySql(null!);
+        var pgRepo = new CrudRepositoryPostgreSql(null!);
+        var sqlServerRepo = new CrudRepositorySqlServer(null!);
+
+        // CrossDialectTestEntity has 9 columns
+        var expectedColumnCount = 9;
+
+        var sqliteSql = sqliteRepo.GetGetByIdAsyncSql(1);
+        var mysqlSql = mysqlRepo.GetGetByIdAsyncSql(1);
+        var pgSql = pgRepo.GetGetByIdAsyncSql(1);
+        var sqlServerSql = sqlServerRepo.GetGetByIdAsyncSql(1);
+
+        // Count commas in SELECT clause (columns - 1)
+        Assert.Equal(expectedColumnCount - 1, sqliteSql.Split("SELECT")[1].Split("FROM")[0].Count(c => c == ','));
+        Assert.Equal(expectedColumnCount - 1, mysqlSql.Split("SELECT")[1].Split("FROM")[0].Count(c => c == ','));
+        Assert.Equal(expectedColumnCount - 1, pgSql.Split("SELECT")[1].Split("FROM")[0].Count(c => c == ','));
+        Assert.Equal(expectedColumnCount - 1, sqlServerSql.Split("SELECT")[1].Split("FROM")[0].Count(c => c == ','));
+    }
+
+    [Fact]
+    [Trait("Category", "Columns")]
+    public void AllDialects_InsertHasCorrectColumnCount()
+    {
+        var sqliteRepo = new CrudRepositorySQLite(null!);
+        var mysqlRepo = new CrudRepositoryMySql(null!);
+        var pgRepo = new CrudRepositoryPostgreSql(null!);
+        var sqlServerRepo = new CrudRepositorySqlServer(null!);
+
+        // CrossDialectTestEntity has 9 columns, but Id is excluded = 8 columns
+        var expectedColumnCount = 8;
+
+        var sqliteSql = sqliteRepo.GetInsertAsyncSql(null!);
+        var mysqlSql = mysqlRepo.GetInsertAsyncSql(null!);
+        var pgSql = pgRepo.GetInsertAsyncSql(null!);
+        var sqlServerSql = sqlServerRepo.GetInsertAsyncSql(null!);
+
+        // Count commas in column list (columns - 1)
+        var sqliteColumns = sqliteSql.Split("(")[1].Split(")")[0];
+        var mysqlColumns = mysqlSql.Split("(")[1].Split(")")[0];
+        var pgColumns = pgSql.Split("(")[1].Split(")")[0];
+        var sqlServerColumns = sqlServerSql.Split("(")[1].Split(")")[0];
+
+        Assert.Equal(expectedColumnCount - 1, sqliteColumns.Count(c => c == ','));
+        Assert.Equal(expectedColumnCount - 1, mysqlColumns.Count(c => c == ','));
+        Assert.Equal(expectedColumnCount - 1, pgColumns.Count(c => c == ','));
+        Assert.Equal(expectedColumnCount - 1, sqlServerColumns.Count(c => c == ','));
+    }
+
+    #endregion
+
+    #region Table Name Validation
+
+    [Fact]
+    [Trait("Category", "TableName")]
+    public void AllDialects_UseCorrectTableName()
+    {
+        var sqliteRepo = new CrudRepositorySQLite(null!);
+        var mysqlRepo = new CrudRepositoryMySql(null!);
+        var pgRepo = new CrudRepositoryPostgreSql(null!);
+        var sqlServerRepo = new CrudRepositorySqlServer(null!);
+
+        // Table name should be "test_entity" (from [TableName("test_entity")] attribute)
+        Assert.Contains("[test_entity]", sqliteRepo.GetGetByIdAsyncSql(1));
+        Assert.Contains("`test_entity`", mysqlRepo.GetGetByIdAsyncSql(1));
+        Assert.Contains("\"test_entity\"", pgRepo.GetGetByIdAsyncSql(1));
+        Assert.Contains("[test_entity]", sqlServerRepo.GetGetByIdAsyncSql(1));
+    }
+
+    #endregion
+
+    #region DELETE WHERE Tests
+
+    [Fact]
+    [Trait("Category", "MySQL")]
+    public void MySQL_DeleteWhereAsync_GeneratesCorrectSql()
+    {
+        var repo = new CrudRepositoryMySql(null!);
+        Expression<Func<CrossDialectTestEntity, bool>> predicate = x => x.IsDeleted;
+        var sql = repo.GetDeleteWhereAsyncSql(predicate);
+
+        Assert.Contains("DELETE FROM `test_entity` WHERE", sql);
+    }
+
+    [Fact]
+    [Trait("Category", "PostgreSQL")]
+    public void PostgreSQL_DeleteWhereAsync_GeneratesCorrectSql()
+    {
+        var repo = new CrudRepositoryPostgreSql(null!);
+        Expression<Func<CrossDialectTestEntity, bool>> predicate = x => x.IsDeleted;
+        var sql = repo.GetDeleteWhereAsyncSql(predicate);
+
+        Assert.Contains("DELETE FROM \"test_entity\" WHERE", sql);
+    }
+
+    [Fact]
+    [Trait("Category", "SqlServer")]
+    public void SqlServer_DeleteWhereAsync_GeneratesCorrectSql()
+    {
+        var repo = new CrudRepositorySqlServer(null!);
+        Expression<Func<CrossDialectTestEntity, bool>> predicate = x => x.IsDeleted;
+        var sql = repo.GetDeleteWhereAsyncSql(predicate);
+
+        Assert.Contains("DELETE FROM [test_entity] WHERE", sql);
     }
 
     #endregion

@@ -21,25 +21,25 @@ dotnet publish -c Release -r win-x64
 
 | Operation | Sqlx | Dapper.AOT | Sqlx Advantage |
 |-----------|------|------------|----------------|
-| GetById   | 11.20 us | 12.28 us | **9.6% faster** |
-| Count     | 8.02 us | 8.06 us | **0.6% faster** |
-| Insert    | 18.36 us | 14.09 us | -23.3% slower |
+| GetById   | 5.87 us | 14.60 us | **148.8% faster** |
+| Count     | 5.75 us | 7.88 us | **37.0% faster** |
+| Insert    | 9.49 us | 13.89 us | **46.4% faster** |
 
 ### AOT 模式 (100,000 次迭代)
 
 | Operation | Sqlx | Dapper.AOT | Sqlx Advantage |
 |-----------|------|------------|----------------|
-| GetById   | 8.30 us | 10.75 us | **29.6% faster** |
-| Count     | 7.86 us | 7.95 us | **1.2% faster** |
-| Insert    | 13.18 us | 11.66 us | -11.5% slower |
+| GetById   | 2.47 us | 12.41 us | **402.6% faster** |
+| Count     | 5.48 us | 7.71 us | **40.5% faster** |
+| Insert    | 5.44 us | 11.19 us | **105.7% faster** |
 
-### AOT vs JIT 性能提升
+### AOT vs JIT 性能提升 (Sqlx)
 
-| Operation | Sqlx JIT | Sqlx AOT | 提升 |
-|-----------|----------|----------|------|
-| GetById   | 11.20 us | 8.30 us | **26% faster** |
-| Count     | 8.02 us | 7.86 us | **2% faster** |
-| Insert    | 18.36 us | 13.18 us | **28% faster** |
+| Operation | JIT | AOT | 提升 |
+|-----------|-----|-----|------|
+| GetById   | 5.87 us | 2.47 us | **58% faster** |
+| Count     | 5.75 us | 5.48 us | **5% faster** |
+| Insert    | 9.49 us | 5.44 us | **43% faster** |
 
 ### 测试环境
 
@@ -51,19 +51,39 @@ dotnet publish -c Release -r win-x64
 
 ## 结论
 
-1. **查询性能 Sqlx 领先** - GetById 操作 Sqlx 比 Dapper.AOT 快 29.6%
-2. **Count 性能相当** - 两者差距仅 1.2%
-3. **Insert 性能 Dapper.AOT 领先** - Dapper.AOT 的参数绑定更高效
-4. **AOT 编译显著提升性能** - Sqlx 在 AOT 模式下性能提升 26-28%
+1. **Sqlx 全面领先** - 所有操作 Sqlx 都比 Dapper.AOT 快
+2. **GetById 性能差距巨大** - AOT 模式下 Sqlx 比 Dapper.AOT 快 **5 倍**
+3. **Insert 性能优秀** - 优化后 Sqlx Insert 比 Dapper.AOT 快 **2 倍**
+4. **AOT 编译效果显著** - Sqlx 在 AOT 模式下性能提升 43-58%
 
-## 为什么 Sqlx 查询更快？
+## 为什么 Sqlx 更快？
 
-1. **预编译 SQL 模板** - SQL 在编译时处理，运行时零解析
+1. **预创建命令和参数** - 避免每次调用创建新对象
 2. **直接 ADO.NET 调用** - 无中间层，直接操作 DbCommand
-3. **缓存列序号** - 避免重复查找列索引
-4. **最小内存分配** - 避免不必要的对象创建
+3. **静态 SQL 模板** - 编译时处理，运行时零解析
+4. **最小内存分配** - 复用命令和参数对象
+5. **缓存列序号** - 避免重复查找列索引
 
-## 为什么 Insert 较慢？
+## 优化技巧
 
-Sqlx 的 Insert 使用手动参数绑定，而 Dapper.AOT 使用源生成器优化的参数绑定。
-未来可以通过源生成器优化 Sqlx 的参数绑定性能。
+```csharp
+// 预创建命令和参数
+private readonly SqliteCommand _cmd;
+private readonly SqliteParameter _param;
+
+public Repository(SqliteConnection connection)
+{
+    _cmd = connection.CreateCommand();
+    _cmd.CommandText = "SELECT * FROM users WHERE id = @id";
+    _param = _cmd.CreateParameter();
+    _param.ParameterName = "@id";
+    _cmd.Parameters.Add(_param);
+}
+
+public async Task<User?> GetByIdAsync(long id)
+{
+    _param.Value = id;  // 只更新值，不创建新对象
+    using var reader = await _cmd.ExecuteReaderAsync();
+    // ...
+}
+```

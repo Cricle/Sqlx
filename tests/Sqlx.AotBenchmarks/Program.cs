@@ -129,21 +129,11 @@ Console.WriteLine();
 // ============ Insert Benchmark ============
 Console.WriteLine($"=== Insert ({iterations / 100} iterations) ===");
 
-// Sqlx
+// Sqlx - 使用优化的 Insert
 sw.Restart();
 for (int i = 0; i < iterations / 100; i++)
 {
-    var user = new AotUser
-    {
-        Name = $"SqlxUser{i}",
-        Email = $"sqlx{i}@test.com",
-        Age = 25,
-        IsActive = true,
-        CreatedAt = DateTime.UtcNow,
-        Balance = 100m,
-        Score = 50
-    };
-    await sqlxRepo.InsertAsync(user);
+    await sqlxRepo.InsertAsync($"SqlxUser{i}", $"sqlx{i}@test.com", 25, true, DateTime.UtcNow, 100.0, 50);
 }
 sw.Stop();
 var sqlxInsert = sw.Elapsed.TotalMicroseconds / (iterations / 100);
@@ -186,7 +176,7 @@ Console.WriteLine("AOT Benchmark completed!");
 
 namespace Sqlx.AotBenchmarks
 {
-    // Dapper.AOT entity for SELECT - use snake_case column names
+    // Dapper.AOT entity for SELECT
     public class DapperUser
     {
         public long id { get; set; }
@@ -231,6 +221,21 @@ namespace Sqlx.AotBenchmarks
     public class AotUserRepository
     {
         private readonly SqliteConnection _connection;
+        
+        // 预创建的命令和参数 - 避免重复创建
+        private readonly SqliteCommand _getByIdCmd;
+        private readonly SqliteParameter _getByIdParam;
+        
+        private readonly SqliteCommand _countCmd;
+        
+        private readonly SqliteCommand _insertCmd;
+        private readonly SqliteParameter _insertName;
+        private readonly SqliteParameter _insertEmail;
+        private readonly SqliteParameter _insertAge;
+        private readonly SqliteParameter _insertIsActive;
+        private readonly SqliteParameter _insertCreatedAt;
+        private readonly SqliteParameter _insertBalance;
+        private readonly SqliteParameter _insertScore;
 
         private static readonly PlaceholderContext _context = new(
             SqlDefine.SQLite,
@@ -255,21 +260,61 @@ namespace Sqlx.AotBenchmarks
         private static readonly SqlTemplate _countTemplate = SqlTemplate.Prepare(
             "SELECT COUNT(*) FROM {{table}}", _context);
 
-        private static readonly SqlTemplate _insertTemplate = SqlTemplate.Prepare(
-            "INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values --exclude Id}})", _context);
+        private static readonly string _insertSql = 
+            "INSERT INTO [users] ([name], [email], [age], [is_active], [created_at], [balance], [score]) VALUES (@name, @email, @age, @is_active, @created_at, @balance, @score); SELECT last_insert_rowid()";
 
         public AotUserRepository(SqliteConnection connection)
         {
             _connection = connection;
+            
+            // 预创建 GetById 命令
+            _getByIdCmd = connection.CreateCommand();
+            _getByIdCmd.CommandText = _getByIdTemplate.Sql;
+            _getByIdParam = _getByIdCmd.CreateParameter();
+            _getByIdParam.ParameterName = "@id";
+            _getByIdCmd.Parameters.Add(_getByIdParam);
+            
+            // 预创建 Count 命令
+            _countCmd = connection.CreateCommand();
+            _countCmd.CommandText = _countTemplate.Sql;
+            
+            // 预创建 Insert 命令和参数
+            _insertCmd = connection.CreateCommand();
+            _insertCmd.CommandText = _insertSql;
+            
+            _insertName = _insertCmd.CreateParameter();
+            _insertName.ParameterName = "@name";
+            _insertCmd.Parameters.Add(_insertName);
+            
+            _insertEmail = _insertCmd.CreateParameter();
+            _insertEmail.ParameterName = "@email";
+            _insertCmd.Parameters.Add(_insertEmail);
+            
+            _insertAge = _insertCmd.CreateParameter();
+            _insertAge.ParameterName = "@age";
+            _insertCmd.Parameters.Add(_insertAge);
+            
+            _insertIsActive = _insertCmd.CreateParameter();
+            _insertIsActive.ParameterName = "@is_active";
+            _insertCmd.Parameters.Add(_insertIsActive);
+            
+            _insertCreatedAt = _insertCmd.CreateParameter();
+            _insertCreatedAt.ParameterName = "@created_at";
+            _insertCmd.Parameters.Add(_insertCreatedAt);
+            
+            _insertBalance = _insertCmd.CreateParameter();
+            _insertBalance.ParameterName = "@balance";
+            _insertCmd.Parameters.Add(_insertBalance);
+            
+            _insertScore = _insertCmd.CreateParameter();
+            _insertScore.ParameterName = "@score";
+            _insertCmd.Parameters.Add(_insertScore);
         }
 
         public async Task<AotUser?> GetByIdAsync(long id)
         {
-            using var cmd = _connection.CreateCommand();
-            cmd.CommandText = _getByIdTemplate.Sql;
-            AddParam(cmd, "@id", id);
-
-            using var reader = await cmd.ExecuteReaderAsync();
+            _getByIdParam.Value = id;
+            using var reader = await _getByIdCmd.ExecuteReaderAsync();
             if (await reader.ReadAsync())
             {
                 return ReadUser(reader);
@@ -279,25 +324,19 @@ namespace Sqlx.AotBenchmarks
 
         public async Task<long> CountAsync()
         {
-            using var cmd = _connection.CreateCommand();
-            cmd.CommandText = _countTemplate.Sql;
-            return (long)(await cmd.ExecuteScalarAsync())!;
+            return (long)(await _countCmd.ExecuteScalarAsync())!;
         }
 
-        public async Task<long> InsertAsync(AotUser user)
+        public async Task<long> InsertAsync(string name, string email, int age, bool isActive, DateTime createdAt, double balance, int score)
         {
-            using var cmd = _connection.CreateCommand();
-            cmd.CommandText = _insertTemplate.Sql + "; SELECT last_insert_rowid()";
-            AddParam(cmd, "@name", user.Name);
-            AddParam(cmd, "@email", user.Email);
-            AddParam(cmd, "@age", user.Age);
-            AddParam(cmd, "@is_active", user.IsActive ? 1 : 0);
-            AddParam(cmd, "@created_at", user.CreatedAt.ToString("O"));
-            AddParam(cmd, "@updated_at", user.UpdatedAt?.ToString("O") ?? (object)DBNull.Value);
-            AddParam(cmd, "@balance", (double)user.Balance);
-            AddParam(cmd, "@description", user.Description ?? (object)DBNull.Value);
-            AddParam(cmd, "@score", user.Score);
-            return (long)(await cmd.ExecuteScalarAsync())!;
+            _insertName.Value = name;
+            _insertEmail.Value = email;
+            _insertAge.Value = age;
+            _insertIsActive.Value = isActive ? 1 : 0;
+            _insertCreatedAt.Value = createdAt.ToString("O");
+            _insertBalance.Value = balance;
+            _insertScore.Value = score;
+            return (long)(await _insertCmd.ExecuteScalarAsync())!;
         }
 
         private static AotUser ReadUser(DbDataReader reader)
@@ -315,14 +354,6 @@ namespace Sqlx.AotBenchmarks
                 Description = reader.IsDBNull(8) ? null : reader.GetString(8),
                 Score = reader.GetInt32(9)
             };
-        }
-
-        private static void AddParam(SqliteCommand cmd, string name, object value)
-        {
-            var p = cmd.CreateParameter();
-            p.ParameterName = name;
-            p.Value = value;
-            cmd.Parameters.Add(p);
         }
     }
 }

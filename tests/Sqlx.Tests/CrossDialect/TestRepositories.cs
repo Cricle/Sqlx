@@ -54,50 +54,6 @@ public partial class CrudRepositorySqlServer : ICrudRepository<CrossDialectTestE
 }
 
 // ============================================================================
-// IAggregateRepository implementations for all main dialects
-// ============================================================================
-
-[SqlxDebugger]
-[SqlDefine(SqlDefineTypes.SQLite)]
-[TableName("test_entity")]
-[RepositoryFor(typeof(IAggregateRepository<CrossDialectTestEntity, long>))]
-public partial class AggregateRepositorySQLite : IAggregateRepository<CrossDialectTestEntity, long>
-{
-    private readonly DbConnection _connection;
-    public AggregateRepositorySQLite(DbConnection connection) => _connection = connection;
-}
-
-[SqlxDebugger]
-[SqlDefine(SqlDefineTypes.MySql)]
-[TableName("test_entity")]
-[RepositoryFor(typeof(IAggregateRepository<CrossDialectTestEntity, long>))]
-public partial class AggregateRepositoryMySql : IAggregateRepository<CrossDialectTestEntity, long>
-{
-    private readonly DbConnection _connection;
-    public AggregateRepositoryMySql(DbConnection connection) => _connection = connection;
-}
-
-[SqlxDebugger]
-[SqlDefine(SqlDefineTypes.PostgreSql)]
-[TableName("test_entity")]
-[RepositoryFor(typeof(IAggregateRepository<CrossDialectTestEntity, long>))]
-public partial class AggregateRepositoryPostgreSql : IAggregateRepository<CrossDialectTestEntity, long>
-{
-    private readonly DbConnection _connection;
-    public AggregateRepositoryPostgreSql(DbConnection connection) => _connection = connection;
-}
-
-[SqlxDebugger]
-[SqlDefine(SqlDefineTypes.SqlServer)]
-[TableName("test_entity")]
-[RepositoryFor(typeof(IAggregateRepository<CrossDialectTestEntity, long>))]
-public partial class AggregateRepositorySqlServer : IAggregateRepository<CrossDialectTestEntity, long>
-{
-    private readonly DbConnection _connection;
-    public AggregateRepositorySqlServer(DbConnection connection) => _connection = connection;
-}
-
-// ============================================================================
 // IBatchRepository implementations (SQLite, MySQL, SqlServer only)
 // NOTE: PostgreSQL has generator issues with batch_values placeholder
 // ============================================================================

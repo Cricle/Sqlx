@@ -32,13 +32,6 @@ namespace Sqlx.Tests.Predefined
     }
 
     [SqlDefine(SqlDefineTypes.SQLite)]
-    [RepositoryFor(typeof(IAggregateRepository<User, long>))]
-    public partial class UserAggregateRepository(IDbConnection connection) 
-        : IAggregateRepository<User, long>
-    {
-    }
-
-    [SqlDefine(SqlDefineTypes.SQLite)]
     [RepositoryFor(typeof(IBatchRepository<User, long>))]
     public partial class UserBatchRepository(IDbConnection connection) 
         : IBatchRepository<User, long>

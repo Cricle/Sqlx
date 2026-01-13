@@ -154,24 +154,6 @@ namespace Sqlx.Tests.Predefined
 
         #endregion
 
-        #region IAggregateRepository Tests
-
-        [TestMethod]
-        public async Task IAggregateRepository_CountAsync_ShouldReturnZero()
-        {
-            // Arrange
-            await CreateUserTableAsync();
-            var repo = new UserAggregateRepository(_connection);
-
-            // Act
-            var count = await repo.CountAsync();
-
-            // Assert
-            Assert.AreEqual(0L, count);
-        }
-
-        #endregion
-
         #region IBatchRepository Tests
 
         [TestMethod]
@@ -237,12 +219,12 @@ namespace Sqlx.Tests.Predefined
             CollectionAssert.Contains(methodNames, "GetByIdAsync");
             CollectionAssert.Contains(methodNames, "GetByIdsAsync");
             CollectionAssert.Contains(methodNames, "GetAllAsync");
-            CollectionAssert.Contains(methodNames, "GetRangeAsync");
-            CollectionAssert.Contains(methodNames, "GetPageAsync");
             CollectionAssert.Contains(methodNames, "GetWhereAsync");
             CollectionAssert.Contains(methodNames, "GetFirstWhereAsync");
+            CollectionAssert.Contains(methodNames, "GetPagedAsync");
             CollectionAssert.Contains(methodNames, "ExistsAsync");
-            CollectionAssert.Contains(methodNames, "GetRandomAsync");
+            CollectionAssert.Contains(methodNames, "CountAsync");
+            CollectionAssert.Contains(methodNames, "CountWhereAsync");
         }
 
         /// <summary>
@@ -258,29 +240,10 @@ namespace Sqlx.Tests.Predefined
 
             CollectionAssert.Contains(methodNames, "InsertAsync");
             CollectionAssert.Contains(methodNames, "InsertAndGetIdAsync");
-            CollectionAssert.Contains(methodNames, "InsertAndGetEntityAsync");
             CollectionAssert.Contains(methodNames, "UpdateAsync");
-            CollectionAssert.Contains(methodNames, "UpsertAsync");
+            CollectionAssert.Contains(methodNames, "UpdateWhereAsync");
             CollectionAssert.Contains(methodNames, "DeleteAsync");
             CollectionAssert.Contains(methodNames, "DeleteWhereAsync");
-            CollectionAssert.Contains(methodNames, "SoftDeleteAsync");
-            CollectionAssert.Contains(methodNames, "RestoreAsync");
-            CollectionAssert.Contains(methodNames, "PurgeDeletedAsync");
-        }
-
-        /// <summary>
-        /// Verifies all IAggregateRepository methods are implemented.
-        /// </summary>
-        [TestMethod]
-        public void IAggregateRepository_AllMethodsShouldBeImplemented()
-        {
-            var interfaceType = typeof(IAggregateRepository<,>);
-            var methods = interfaceType.GetMethods();
-
-            var methodNames = methods.Select(m => m.Name).ToList();
-
-            CollectionAssert.Contains(methodNames, "CountAsync");
-            CollectionAssert.Contains(methodNames, "CountWhereAsync");
         }
 
         /// <summary>

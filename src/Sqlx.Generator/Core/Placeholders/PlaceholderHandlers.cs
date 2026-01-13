@@ -168,6 +168,15 @@ public sealed class SetHandler : PlaceholderHandlerBase
     {
         var options = ParseOptions(context);
 
+        // Support {{set --from paramName}} for ExpressionToSql.ToSetClause()
+        var fromParam = options.Get("from");
+        if (!string.IsNullOrEmpty(fromParam) && context.Method != null)
+        {
+            var param = context.Method.Parameters.FirstOrDefault(p => p.Name == fromParam);
+            if (param != null && IsExpressionToSqlParameter(param))
+                return $"{{{{RUNTIME_SET_EXPR_{fromParam}}}}}";
+        }
+
         if (context.Type?.StartsWith("@") == true && context.Method != null)
         {
             var paramName = context.Type.Substring(1);
@@ -189,6 +198,12 @@ public sealed class SetHandler : PlaceholderHandlerBase
             var columnName = ToSnakeCase(p.Name);
             return $"{context.Dialect.WrapColumn(columnName)} = {context.Dialect.ParameterPrefix}{columnName}";
         }));
+    }
+
+    private static bool IsExpressionToSqlParameter(IParameterSymbol param)
+    {
+        var typeName = param.Type.ToDisplayString();
+        return typeName.Contains("ExpressionToSql<") || typeName.Contains("ExpressionToSqlBase");
     }
 }
 

@@ -390,6 +390,14 @@ namespace Sqlx
         public override string ToWhereClause() =>
             _whereConditions.Count == 0 ? string.Empty : string.Join(" AND ", _whereConditions);
 
+        /// <summary>Generate SET clause part for UPDATE statements.</summary>
+        /// <returns>SET clause without SET keyword, e.g., "col1 = @col1, col2 = @col2"</returns>
+        public string ToSetClause()
+        {
+            var allSets = _sets.Concat(_expressions).ToList();
+            return allSets.Count == 0 ? string.Empty : string.Join(", ", allSets);
+        }
+
         /// <summary>Generate additional clauses (GROUP BY, HAVING, ORDER BY, LIMIT, OFFSET).</summary>
         public string ToAdditionalClause()
         {

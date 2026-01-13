@@ -255,7 +255,9 @@ public class TestDbCommand : DbCommand
 {
     private readonly TestDbParameterCollection _parameters = new();
     
-    public override string CommandText { get; set; } = string.Empty;
+#pragma warning disable CS8764 // Nullability of return type doesn't match overridden member
+    public override string? CommandText { get; set; } = string.Empty;
+#pragma warning restore CS8764
     public override int CommandTimeout { get; set; }
     public override CommandType CommandType { get; set; }
     public override bool DesignTimeVisible { get; set; }
@@ -279,9 +281,11 @@ public class TestDbParameter : DbParameter
     public override DbType DbType { get; set; }
     public override ParameterDirection Direction { get; set; }
     public override bool IsNullable { get; set; }
+#pragma warning disable CS8765 // Nullability of type of parameter doesn't match overridden member
     public override string ParameterName { get; set; } = string.Empty;
-    public override int Size { get; set; }
     public override string SourceColumn { get; set; } = string.Empty;
+#pragma warning restore CS8765
+    public override int Size { get; set; }
     public override bool SourceColumnNullMapping { get; set; }
     public override object? Value { get; set; }
 
@@ -333,11 +337,11 @@ public class TestDbParameterCollection : DbParameterCollection, IEnumerable<DbPa
     protected override DbParameter GetParameter(int index) => _parameters[index];
     protected override DbParameter GetParameter(string parameterName) => _parameters.First(p => p.ParameterName == parameterName);
 
-    protected override void SetParameter(int index, DbParameter value) => _parameters[index] = (TestDbParameter)value;
-    protected override void SetParameter(string parameterName, DbParameter value)
+    protected override void SetParameter(int index, DbParameter? value) => _parameters[index] = (TestDbParameter)value!;
+    protected override void SetParameter(string parameterName, DbParameter? value)
     {
         var idx = IndexOf(parameterName);
-        if (idx >= 0) _parameters[idx] = (TestDbParameter)value;
+        if (idx >= 0) _parameters[idx] = (TestDbParameter)value!;
     }
 }
 

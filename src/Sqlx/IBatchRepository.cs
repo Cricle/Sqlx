@@ -71,20 +71,6 @@ namespace Sqlx
         [BatchOperation(MaxBatchSize = 500)]
         Task<int> BatchUpdateAsync(List<TEntity> entities, CancellationToken cancellationToken = default);
 
-        /// <summary>Updates all entities matching condition with same values.</summary>
-        /// <param name="predicate">Expression predicate for WHERE clause</param>
-        /// <param name="updates">Anonymous object with column-value pairs</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Rows affected</returns>
-        /// <example>
-        /// await repo.BatchUpdateWhereAsync(
-        ///     x =&gt; x.Status == "Pending" &amp;&amp; x.CreatedAt &lt; DateTime.Now.AddDays(-7),
-        ///     new { Status = "Expired", UpdatedAt = DateTime.Now }
-        /// );
-        /// </example>
-        [SqlTemplate("UPDATE {{table}} SET {{set --from updates}} {{where --param predicate}}")]
-        Task<int> BatchUpdateWhereAsync([ExpressionToSql] Expression<Func<TEntity, bool>> predicate, object updates, CancellationToken cancellationToken = default);
-
         // ===== Batch Delete =====
 
         /// <summary>Batch deletes entities by primary keys.</summary>

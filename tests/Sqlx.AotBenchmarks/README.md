@@ -1,11 +1,11 @@
-# Sqlx AOT Benchmark
+# Sqlx vs Dapper.AOT Benchmark
 
-测试 Sqlx 在 Native AOT 编译后的性能表现。
+对比 Sqlx 和 Dapper.AOT 在 Native AOT 编译后的性能表现。
 
 ## 运行测试
 
 ```bash
-# 普通模式运行
+# JIT 模式运行
 dotnet run -c Release
 
 # 发布 AOT 版本
@@ -17,18 +17,29 @@ dotnet publish -c Release -r win-x64
 
 ## 测试结果
 
-### 性能对比 (100,000 次迭代)
+### JIT 模式 (100,000 次迭代)
 
-| 操作 | JIT 模式 | AOT 模式 | 提升 |
-|------|----------|----------|------|
-| GetById | 11.43 us | 8.32 us | **27% 更快** |
-| Count | 8.53 us | 8.16 us | **4% 更快** |
-| GetPaged | 81.55 us | 73.31 us | **10% 更快** |
-| Insert | 18.00 us | 15.20 us | **16% 更快** |
+| Operation | Sqlx | Dapper.AOT | Sqlx Advantage |
+|-----------|------|------------|----------------|
+| GetById   | 11.20 us | 12.28 us | **9.6% faster** |
+| Count     | 8.02 us | 8.06 us | **0.6% faster** |
+| Insert    | 18.36 us | 14.09 us | -23.3% slower |
 
-### AOT 可执行文件大小
+### AOT 模式 (100,000 次迭代)
 
-- **Sqlx.AotBenchmarks.exe**: 2.94 MB (包含 SQLite 和所有依赖)
+| Operation | Sqlx | Dapper.AOT | Sqlx Advantage |
+|-----------|------|------------|----------------|
+| GetById   | 8.30 us | 10.75 us | **29.6% faster** |
+| Count     | 7.86 us | 7.95 us | **1.2% faster** |
+| Insert    | 13.18 us | 11.66 us | -11.5% slower |
+
+### AOT vs JIT 性能提升
+
+| Operation | Sqlx JIT | Sqlx AOT | 提升 |
+|-----------|----------|----------|------|
+| GetById   | 11.20 us | 8.30 us | **26% faster** |
+| Count     | 8.02 us | 7.86 us | **2% faster** |
+| Insert    | 18.36 us | 13.18 us | **28% faster** |
 
 ### 测试环境
 
@@ -40,14 +51,19 @@ dotnet publish -c Release -r win-x64
 
 ## 结论
 
-1. **AOT 编译显著提升性能** - 所有操作都有 4-27% 的性能提升
-2. **GetById 提升最明显** - 从 11.43us 降到 8.32us，提升 27%
-3. **可执行文件体积小** - 仅 2.94 MB，包含所有依赖
-4. **完全兼容 AOT** - Sqlx 的设计完全支持 Native AOT，无需任何修改
+1. **查询性能 Sqlx 领先** - GetById 操作 Sqlx 比 Dapper.AOT 快 29.6%
+2. **Count 性能相当** - 两者差距仅 1.2%
+3. **Insert 性能 Dapper.AOT 领先** - Dapper.AOT 的参数绑定更高效
+4. **AOT 编译显著提升性能** - Sqlx 在 AOT 模式下性能提升 26-28%
 
-## 为什么 AOT 更快？
+## 为什么 Sqlx 查询更快？
 
-1. **无 JIT 编译开销** - 代码已预编译为原生机器码
-2. **更好的内联优化** - AOT 编译器可以进行更激进的优化
-3. **更小的内存占用** - 无需加载 JIT 编译器和元数据
-4. **更快的启动时间** - 无需运行时编译
+1. **预编译 SQL 模板** - SQL 在编译时处理，运行时零解析
+2. **直接 ADO.NET 调用** - 无中间层，直接操作 DbCommand
+3. **缓存列序号** - 避免重复查找列索引
+4. **最小内存分配** - 避免不必要的对象创建
+
+## 为什么 Insert 较慢？
+
+Sqlx 的 Insert 使用手动参数绑定，而 Dapper.AOT 使用源生成器优化的参数绑定。
+未来可以通过源生成器优化 Sqlx 的参数绑定性能。

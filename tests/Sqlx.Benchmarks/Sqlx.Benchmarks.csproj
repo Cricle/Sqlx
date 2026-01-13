@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Sqlx\Sqlx.csproj" />
+    <ProjectReference Include="..\..\src\Sqlx.Generator\Sqlx.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
 </Project>

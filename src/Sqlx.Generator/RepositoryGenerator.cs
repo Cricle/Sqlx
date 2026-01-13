@@ -690,8 +690,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
         sb.AppendLine("var durationMs = elapsed * 1000.0 / Stopwatch.Frequency;");
         sb.AppendLine("activity?.SetTag(\"db.duration_ms\", durationMs);");
-        sb.AppendLine($"activity?.SetTag(\"db.statement.template\", {fieldName}.Template);");
-        sb.AppendLine($"activity?.SetTag(\"db.statement.prepared\", {fieldName}.PreparedSql);");
+        sb.AppendLine($"activity?.SetTag(\"db.statement.prepared\", {fieldName}.Sql);");
         sb.AppendLine("activity?.SetTag(\"db.statement\", sqlText);");
         sb.AppendLine("#endif");
         sb.PopIndent();

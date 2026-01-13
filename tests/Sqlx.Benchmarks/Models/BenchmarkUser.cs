@@ -1,10 +1,15 @@
 using System.ComponentModel.DataAnnotations;
+using Sqlx.Annotations;
 
 namespace Sqlx.Benchmarks.Models;
 
 /// <summary>
 /// Benchmark entity for performance testing.
+/// Uses source generator to create EntityProvider, ResultReader, and ParameterBinder.
 /// </summary>
+[SqlxEntity]
+[SqlxParameter]
+[TableName("users")]
 public class BenchmarkUser
 {
     [Key]

@@ -39,7 +39,7 @@ public class SelectListBenchmark
     [Benchmark(Baseline = true, Description = "Sqlx")]
     public async Task<List<BenchmarkUser>> Sqlx_GetAll()
     {
-        return await _sqlxRepo.GetAllAsync(Limit);
+        return await _sqlxRepo.GetAllAsync(Limit, default);
     }
     
     [Benchmark(Description = "Dapper.AOT")]

@@ -35,7 +35,7 @@ public class CountBenchmark
     [Benchmark(Baseline = true, Description = "Sqlx")]
     public async Task<long> Sqlx_Count()
     {
-        return await _sqlxRepo.CountAsync();
+        return await _sqlxRepo.CountAsync(default);
     }
     
     [Benchmark(Description = "Dapper.AOT")]

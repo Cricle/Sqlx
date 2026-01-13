@@ -38,7 +38,7 @@ public class SelectSingleBenchmark
     [Benchmark(Baseline = true, Description = "Sqlx")]
     public async Task<BenchmarkUser?> Sqlx_GetById()
     {
-        return await _sqlxRepo.GetByIdAsync(_testId);
+        return await _sqlxRepo.GetByIdAsync(_testId, default);
     }
     
     [Benchmark(Description = "Dapper.AOT")]

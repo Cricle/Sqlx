@@ -26,7 +26,7 @@ public class UpdateBenchmark
         DatabaseSetup.InitializeDatabase(_connection);
         DatabaseSetup.SeedData(_connection, 10000);
         _sqlxRepo = new BenchmarkUserRepository(_connection);
-        _testUser = _sqlxRepo.GetByIdAsync(5000).GetAwaiter().GetResult()!;
+        _testUser = _sqlxRepo.GetByIdAsync(5000, default).GetAwaiter().GetResult()!;
     }
     
     [GlobalCleanup]
@@ -40,7 +40,7 @@ public class UpdateBenchmark
     {
         _testUser.Score++;
         _testUser.UpdatedAt = DateTime.UtcNow;
-        return await _sqlxRepo.UpdateAsync(_testUser);
+        return await _sqlxRepo.UpdateAsync(_testUser, default);
     }
     
     [Benchmark(Description = "Dapper.AOT")]

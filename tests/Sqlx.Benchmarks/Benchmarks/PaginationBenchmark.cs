@@ -42,7 +42,7 @@ public class PaginationBenchmark
     [Benchmark(Baseline = true, Description = "Sqlx")]
     public async Task<List<BenchmarkUser>> Sqlx_GetPaged()
     {
-        return await _sqlxRepo.GetPagedAsync(PageSize, Offset);
+        return await _sqlxRepo.GetPagedAsync(PageSize, Offset, default);
     }
     
     [Benchmark(Description = "Dapper.AOT")]

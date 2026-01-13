@@ -36,7 +36,7 @@ public class QueryWithFilterBenchmark
     [Benchmark(Baseline = true, Description = "Sqlx")]
     public async Task<List<BenchmarkUser>> Sqlx_GetByMinAge()
     {
-        return await _sqlxRepo.GetByMinAgeAsync(50);
+        return await _sqlxRepo.GetByMinAgeAsync(50, default);
     }
     
     [Benchmark(Description = "Dapper.AOT")]

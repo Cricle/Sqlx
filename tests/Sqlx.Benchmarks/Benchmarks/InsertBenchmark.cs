@@ -46,7 +46,7 @@ public class InsertBenchmark
     public async Task<long> Sqlx_Insert()
     {
         var user = DatabaseSetup.CreateTestUser(_counter++);
-        return await _sqlxRepo.InsertAndGetIdAsync(user);
+        return await _sqlxRepo.InsertAndGetIdAsync(user, default);
     }
     
     [Benchmark(Description = "Dapper.AOT")]

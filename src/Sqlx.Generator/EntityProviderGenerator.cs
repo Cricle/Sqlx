@@ -161,6 +161,15 @@ public class EntityProviderGenerator : IIncrementalGenerator
         sb.AppendLine($"public static {typeName}ResultReader Default {{ get; }} = new();");
         sb.AppendLine();
 
+        // Generate column name constants for ordinal lookup
+        sb.AppendLine("// Column names for ordinal lookup");
+        for (int i = 0; i < properties.Count; i++)
+        {
+            var columnName = GetColumnName(properties[i], columnAttr);
+            sb.AppendLine($"private const string Col{i} = \"{columnName}\";");
+        }
+        sb.AppendLine();
+
         // Sync Read method
         GenerateSyncReadMethod(sb, fullTypeName, properties, columnAttr);
         sb.AppendLine();
@@ -179,18 +188,19 @@ public class EntityProviderGenerator : IIncrementalGenerator
         sb.AppendLine("{");
         sb.PushIndent();
 
-        // Get ordinals
+        // Get ordinals once using constants
         for (int i = 0; i < properties.Count; i++)
         {
-            var columnName = GetColumnName(properties[i], columnAttr);
-            sb.AppendLine($"var ord{i} = reader.GetOrdinal(\"{columnName}\");");
+            sb.AppendLine($"var ord{i} = reader.GetOrdinal(Col{i});");
         }
         sb.AppendLine();
 
+        // Use List for better performance than yield return
+        sb.AppendLine($"var list = new List<{fullTypeName}>();");
         sb.AppendLine("while (reader.Read())");
         sb.AppendLine("{");
         sb.PushIndent();
-        sb.AppendLine($"yield return new {fullTypeName}");
+        sb.AppendLine($"list.Add(new {fullTypeName}");
         sb.AppendLine("{");
         sb.PushIndent();
 
@@ -203,9 +213,10 @@ public class EntityProviderGenerator : IIncrementalGenerator
         }
 
         sb.PopIndent();
-        sb.AppendLine("};");
+        sb.AppendLine("});");
         sb.PopIndent();
         sb.AppendLine("}");
+        sb.AppendLine("return list;");
 
         sb.PopIndent();
         sb.AppendLine("}");
@@ -221,11 +232,10 @@ public class EntityProviderGenerator : IIncrementalGenerator
         sb.AppendLine("{");
         sb.PushIndent();
 
-        // Get ordinals
+        // Get ordinals using constants
         for (int i = 0; i < properties.Count; i++)
         {
-            var columnName = GetColumnName(properties[i], columnAttr);
-            sb.AppendLine($"var ord{i} = reader.GetOrdinal(\"{columnName}\");");
+            sb.AppendLine($"var ord{i} = reader.GetOrdinal(Col{i});");
         }
         sb.AppendLine();
 

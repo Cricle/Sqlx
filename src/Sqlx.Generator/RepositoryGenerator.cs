@@ -446,19 +446,25 @@ public class RepositoryGenerator : IIncrementalGenerator
     private static void GenerateActivityStart(IndentedStringBuilder sb, string methodName, IMethodSymbol method)
     {
         sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
-        sb.AppendLine($"var activity = global::System.Diagnostics.Activity.Current?.AddEvent(new ActivityEvent(\"{methodName}\"));");
-        sb.AppendLine("activity?.SetTag(\"db.system\", _placeholderContext.Dialect.DatabaseType);");
-        sb.AppendLine("activity?.SetTag(\"db.operation\", \"sqlx.execute\");");
-        sb.AppendLine("activity?.SetTag(\"db.has_transaction\", Transaction != null);");
+        sb.AppendLine("var activity = global::System.Diagnostics.Activity.Current;");
+        sb.AppendLine("if (activity is not null)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine($"activity.AddEvent(new ActivityEvent(\"{methodName}\"));");
+        sb.AppendLine("activity.SetTag(\"db.system\", _placeholderContext.Dialect.DatabaseType);");
+        sb.AppendLine("activity.SetTag(\"db.operation\", \"sqlx.execute\");");
+        sb.AppendLine("activity.SetTag(\"db.has_transaction\", Transaction != null);");
         sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY_PARAMS");
 
         foreach (var param in method.Parameters)
         {
             if (param.Name == "cancellationToken") continue;
-            sb.AppendLine($"activity?.SetTag(\"db.param.{param.Name}\", {param.Name});");
+            sb.AppendLine($"activity.SetTag(\"db.param.{param.Name}\", {param.Name});");
         }
 
         sb.AppendLine("#endif");
+        sb.PopIndent();
+        sb.AppendLine("}");
         sb.AppendLine("#endif");
     }
 
@@ -536,7 +542,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         {
             // Return list of entities
             sb.AppendLine($"using var reader = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.Default, {ctName}).ConfigureAwait(false);");
-            sb.AppendLine($"var result = {entityName}ResultReader.Default.Read(reader).ToList();");
+            sb.AppendLine($"var result = (List<{entityFullName}>){entityName}ResultReader.Default.Read(reader);");
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
             sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
@@ -544,7 +550,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine("#endif");
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
-            sb.AppendLine("activity?.SetTag(\"db.rows_affected\", result.Count);");
+            sb.AppendLine("if (activity is not null) activity.SetTag(\"db.rows_affected\", result.Count);");
             sb.AppendLine("#endif");
             sb.AppendLine();
             sb.AppendLine("return result;");
@@ -562,7 +568,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine("#endif");
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
-            sb.AppendLine("activity?.SetTag(\"db.rows_affected\", result != null ? 1 : 0);");
+            sb.AppendLine("if (activity is not null) activity.SetTag(\"db.rows_affected\", result != null ? 1 : 0);");
             sb.AppendLine("#endif");
             sb.AppendLine();
             sb.AppendLine("return result;");
@@ -578,7 +584,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine("#endif");
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
-            sb.AppendLine("activity?.SetTag(\"db.rows_affected\", result);");
+            sb.AppendLine("if (activity is not null) activity.SetTag(\"db.rows_affected\", result);");
             sb.AppendLine("#endif");
             sb.AppendLine();
             sb.AppendLine("return result;");
@@ -611,7 +617,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine("#endif");
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
-            sb.AppendLine("activity?.SetTag(\"db.inserted_id\", insertedId);");
+            sb.AppendLine("if (activity is not null) activity.SetTag(\"db.inserted_id\", insertedId);");
             sb.AppendLine("#endif");
             sb.AppendLine();
             sb.AppendLine("return insertedId;");
@@ -651,7 +657,11 @@ public class RepositoryGenerator : IIncrementalGenerator
 
     private static void GenerateCatchBlock(IndentedStringBuilder sb, string methodName, string fieldName)
     {
+        sb.AppendLine("#if SQLX_DISABLE_INTERCEPTOR && SQLX_DISABLE_ACTIVITY");
+        sb.AppendLine("catch");
+        sb.AppendLine("#else");
         sb.AppendLine("catch (Exception ex)");
+        sb.AppendLine("#endif");
         sb.AppendLine("{");
         sb.PushIndent();
         sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
@@ -660,7 +670,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("#endif");
         sb.AppendLine();
         sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
-        sb.AppendLine("activity?.SetStatus(ActivityStatusCode.Error, ex.Message);");
+        sb.AppendLine("if (activity is not null) activity.SetStatus(ActivityStatusCode.Error, ex.Message);");
         sb.AppendLine("#endif");
         sb.AppendLine();
         sb.AppendLine("throw;");
@@ -687,11 +697,16 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("{");
         sb.PushIndent();
         sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
+        sb.AppendLine("if (activity is not null)");
+        sb.AppendLine("{");
+        sb.PushIndent();
         sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
         sb.AppendLine("var durationMs = elapsed * 1000.0 / Stopwatch.Frequency;");
-        sb.AppendLine("activity?.SetTag(\"db.duration_ms\", durationMs);");
-        sb.AppendLine($"activity?.SetTag(\"db.statement.prepared\", {fieldName}.Sql);");
-        sb.AppendLine("activity?.SetTag(\"db.statement\", sqlText);");
+        sb.AppendLine("activity.SetTag(\"db.duration_ms\", durationMs);");
+        sb.AppendLine($"activity.SetTag(\"db.statement.prepared\", {fieldName}.Sql);");
+        sb.AppendLine("activity.SetTag(\"db.statement\", sqlText);");
+        sb.PopIndent();
+        sb.AppendLine("}");
         sb.AppendLine("#endif");
         sb.PopIndent();
         sb.AppendLine("}");

@@ -111,10 +111,10 @@ public class ResultReaderTests
 
     #endregion
 
-    #region Lazy Enumeration Tests
+    #region Eager Enumeration Tests
 
     [TestMethod]
-    public void ResultReader_Read_IsLazyEnumerable()
+    public void ResultReader_Read_ReturnsListDirectly()
     {
         var reader = TestEntityResultReader.Default;
         var entities = new[]
@@ -124,13 +124,14 @@ public class ResultReaderTests
         };
         using var dbReader = new TestDbDataReader(entities);
         
-        var enumerable = reader.Read(dbReader);
+        var result = reader.Read(dbReader);
         
-        // Should not have read anything yet
-        Assert.AreEqual(0, dbReader.ReadCount);
+        // Should return a List directly for performance
+        Assert.IsInstanceOfType(result, typeof(List<TestEntity>));
+        Assert.AreEqual(2, result.Count());
         
-        // Now enumerate
-        var first = enumerable.First();
+        // Verify data
+        var first = result.First();
         Assert.AreEqual(1, first.Id);
     }
 

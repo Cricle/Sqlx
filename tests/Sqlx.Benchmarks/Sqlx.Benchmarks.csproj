@@ -7,6 +7,8 @@
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <InterceptorsNamespaces>$(InterceptorsNamespaces);Dapper.AOT</InterceptorsNamespaces>
+    <!-- Disable Activity and Interceptor for fair benchmark comparison -->
+    <DefineConstants>$(DefineConstants);SQLX_DISABLE_ACTIVITY;SQLX_DISABLE_INTERCEPTOR</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

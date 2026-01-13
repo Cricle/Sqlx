@@ -1,6 +1,9 @@
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Running;
+using Dapper;
 using Sqlx.Benchmarks.Benchmarks;
+
+[module: DapperAot]
 
 namespace Sqlx.Benchmarks;
 
@@ -8,11 +11,10 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        // Run all benchmarks
         if (args.Length == 0 || args.Contains("--all"))
         {
             Console.WriteLine("Running all benchmarks...");
-            Console.WriteLine("This may take a while. Use --filter to run specific benchmarks.");
+            Console.WriteLine("Use --filter to run specific benchmarks.");
             Console.WriteLine();
             
             var config = DefaultConfig.Instance
@@ -31,7 +33,6 @@ public class Program
         }
         else
         {
-            // Run with BenchmarkSwitcher for filtering
             BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
         }
     }

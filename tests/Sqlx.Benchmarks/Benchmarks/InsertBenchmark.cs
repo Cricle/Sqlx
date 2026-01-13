@@ -8,7 +8,7 @@ using Sqlx.Benchmarks.Repositories;
 namespace Sqlx.Benchmarks.Benchmarks;
 
 /// <summary>
-/// Benchmark for inserting entities.
+/// Sqlx vs Dapper.AOT: Insert entity (fair comparison - both use single statement with RETURNING).
 /// </summary>
 [MemoryDiagnoser]
 [Orderer(SummaryOrderPolicy.FastestToSlowest)]
@@ -37,70 +37,46 @@ public class InsertBenchmark
     [IterationSetup]
     public void IterationSetup()
     {
-        // Clear table before each iteration
         using var cmd = _connection.CreateCommand();
         cmd.CommandText = "DELETE FROM users";
         cmd.ExecuteNonQuery();
     }
     
-    [Benchmark(Baseline = true, Description = "Sqlx Insert")]
+    [Benchmark(Baseline = true, Description = "Sqlx")]
     public async Task<long> Sqlx_Insert()
     {
         var user = DatabaseSetup.CreateTestUser(_counter++);
         return await _sqlxRepo.InsertAndGetIdAsync(user);
     }
     
-    [Benchmark(Description = "Dapper Execute + LastInsertRowId")]
-    public async Task<long> Dapper_Insert()
+    [Benchmark(Description = "Dapper.AOT")]
+    public async Task<long> DapperAot_Insert()
     {
         var user = DatabaseSetup.CreateTestUser(_counter++);
-        await _connection.ExecuteAsync(
-            "INSERT INTO users (name, email, age, is_active, created_at, updated_at, balance, description, score) " +
-            "VALUES (@Name, @Email, @Age, @IsActive, @CreatedAt, @UpdatedAt, @Balance, @Description, @Score)",
-            new
-            {
-                user.Name,
-                user.Email,
-                user.Age,
-                IsActive = user.IsActive ? 1 : 0,
-                CreatedAt = user.CreatedAt.ToString("O"),
-                UpdatedAt = user.UpdatedAt?.ToString("O"),
-                Balance = (double)user.Balance,
-                user.Description,
-                user.Score
-            });
-        return await _connection.ExecuteScalarAsync<long>("SELECT last_insert_rowid()");
+        var insertUser = new DapperInsertUser
+        {
+            name = user.Name,
+            email = user.Email,
+            age = user.Age,
+            is_active = user.IsActive ? 1 : 0,
+            created_at = user.CreatedAt.ToString("O"),
+            balance = (double)user.Balance,
+            score = user.Score
+        };
+        // Single statement with last_insert_rowid() - same as Sqlx
+        return await _connection.ExecuteScalarAsync<long>(
+            "INSERT INTO users (name, email, age, is_active, created_at, balance, score) VALUES (@name, @email, @age, @is_active, @created_at, @balance, @score); SELECT last_insert_rowid()",
+            insertUser);
     }
-    
-    [Benchmark(Description = "ADO.NET Manual")]
-    public async Task<long> AdoNet_Insert()
-    {
-        var user = DatabaseSetup.CreateTestUser(_counter++);
-        
-        using var cmd = _connection.CreateCommand();
-        cmd.CommandText = "INSERT INTO users (name, email, age, is_active, created_at, updated_at, balance, description, score) " +
-                         "VALUES (@name, @email, @age, @isActive, @createdAt, @updatedAt, @balance, @description, @score); " +
-                         "SELECT last_insert_rowid()";
-        
-        AddParameter(cmd, "@name", user.Name);
-        AddParameter(cmd, "@email", user.Email);
-        AddParameter(cmd, "@age", user.Age);
-        AddParameter(cmd, "@isActive", user.IsActive ? 1 : 0);
-        AddParameter(cmd, "@createdAt", user.CreatedAt.ToString("O"));
-        AddParameter(cmd, "@updatedAt", user.UpdatedAt?.ToString("O") ?? (object)DBNull.Value);
-        AddParameter(cmd, "@balance", (double)user.Balance);
-        AddParameter(cmd, "@description", user.Description ?? (object)DBNull.Value);
-        AddParameter(cmd, "@score", user.Score);
-        
-        var result = await cmd.ExecuteScalarAsync();
-        return (long)result!;
-    }
-    
-    private static void AddParameter(SqliteCommand cmd, string name, object value)
-    {
-        var param = cmd.CreateParameter();
-        param.ParameterName = name;
-        param.Value = value;
-        cmd.Parameters.Add(param);
-    }
+}
+
+public class DapperInsertUser
+{
+    public string name { get; set; } = string.Empty;
+    public string email { get; set; } = string.Empty;
+    public int age { get; set; }
+    public int is_active { get; set; }
+    public string created_at { get; set; } = string.Empty;
+    public double balance { get; set; }
+    public int score { get; set; }
 }

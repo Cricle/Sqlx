@@ -8,7 +8,7 @@ using Sqlx.Benchmarks.Repositories;
 namespace Sqlx.Benchmarks.Benchmarks;
 
 /// <summary>
-/// Benchmark for updating entities.
+/// Sqlx vs Dapper.AOT: Update entity.
 /// </summary>
 [MemoryDiagnoser]
 [Orderer(SummaryOrderPolicy.FastestToSlowest)]
@@ -26,8 +26,6 @@ public class UpdateBenchmark
         DatabaseSetup.InitializeDatabase(_connection);
         DatabaseSetup.SeedData(_connection, 10000);
         _sqlxRepo = new BenchmarkUserRepository(_connection);
-        
-        // Get a user to update
         _testUser = _sqlxRepo.GetByIdAsync(5000).GetAwaiter().GetResult()!;
     }
     
@@ -37,7 +35,7 @@ public class UpdateBenchmark
         _connection?.Dispose();
     }
     
-    [Benchmark(Baseline = true, Description = "Sqlx Update")]
+    [Benchmark(Baseline = true, Description = "Sqlx")]
     public async Task<int> Sqlx_Update()
     {
         _testUser.Score++;
@@ -45,60 +43,45 @@ public class UpdateBenchmark
         return await _sqlxRepo.UpdateAsync(_testUser);
     }
     
-    [Benchmark(Description = "Dapper Execute")]
-    public async Task<int> Dapper_Update()
+    [Benchmark(Description = "Dapper.AOT")]
+    public async Task<int> DapperAot_Update()
     {
         _testUser.Score++;
         _testUser.UpdatedAt = DateTime.UtcNow;
+        var updateUser = new DapperUpdateUser
+        {
+            id = _testUser.Id,
+            name = _testUser.Name,
+            email = _testUser.Email,
+            age = _testUser.Age,
+            is_active = _testUser.IsActive ? 1 : 0,
+            created_at = _testUser.CreatedAt.ToString("O"),
+            updated_at = _testUser.UpdatedAt?.ToString("O"),
+            balance = (double)_testUser.Balance,
+            description = _testUser.Description,
+            score = _testUser.Score
+        };
         return await _connection.ExecuteAsync(
-            "UPDATE users SET name = @Name, email = @Email, age = @Age, is_active = @IsActive, " +
-            "created_at = @CreatedAt, updated_at = @UpdatedAt, balance = @Balance, " +
-            "description = @Description, score = @Score WHERE id = @Id",
-            new
-            {
-                _testUser.Id,
-                _testUser.Name,
-                _testUser.Email,
-                _testUser.Age,
-                IsActive = _testUser.IsActive ? 1 : 0,
-                CreatedAt = _testUser.CreatedAt.ToString("O"),
-                UpdatedAt = _testUser.UpdatedAt?.ToString("O"),
-                Balance = (double)_testUser.Balance,
-                _testUser.Description,
-                _testUser.Score
-            });
+            "UPDATE users SET name = @name, email = @email, age = @age, is_active = @is_active, " +
+            "created_at = @created_at, updated_at = @updated_at, balance = @balance, " +
+            "description = @description, score = @score WHERE id = @id",
+            updateUser);
     }
-    
-    [Benchmark(Description = "ADO.NET Manual")]
-    public async Task<int> AdoNet_Update()
-    {
-        _testUser.Score++;
-        _testUser.UpdatedAt = DateTime.UtcNow;
-        
-        using var cmd = _connection.CreateCommand();
-        cmd.CommandText = "UPDATE users SET name = @name, email = @email, age = @age, is_active = @isActive, " +
-                         "created_at = @createdAt, updated_at = @updatedAt, balance = @balance, " +
-                         "description = @description, score = @score WHERE id = @id";
-        
-        AddParameter(cmd, "@id", _testUser.Id);
-        AddParameter(cmd, "@name", _testUser.Name);
-        AddParameter(cmd, "@email", _testUser.Email);
-        AddParameter(cmd, "@age", _testUser.Age);
-        AddParameter(cmd, "@isActive", _testUser.IsActive ? 1 : 0);
-        AddParameter(cmd, "@createdAt", _testUser.CreatedAt.ToString("O"));
-        AddParameter(cmd, "@updatedAt", _testUser.UpdatedAt?.ToString("O") ?? (object)DBNull.Value);
-        AddParameter(cmd, "@balance", (double)_testUser.Balance);
-        AddParameter(cmd, "@description", _testUser.Description ?? (object)DBNull.Value);
-        AddParameter(cmd, "@score", _testUser.Score);
-        
-        return await cmd.ExecuteNonQueryAsync();
-    }
-    
-    private static void AddParameter(SqliteCommand cmd, string name, object value)
-    {
-        var param = cmd.CreateParameter();
-        param.ParameterName = name;
-        param.Value = value;
-        cmd.Parameters.Add(param);
-    }
+}
+
+/// <summary>
+/// Dapper.AOT update entity.
+/// </summary>
+public class DapperUpdateUser
+{
+    public long id { get; set; }
+    public string name { get; set; } = string.Empty;
+    public string email { get; set; } = string.Empty;
+    public int age { get; set; }
+    public int is_active { get; set; }
+    public string created_at { get; set; } = string.Empty;
+    public string? updated_at { get; set; }
+    public double balance { get; set; }
+    public string? description { get; set; }
+    public int score { get; set; }
 }

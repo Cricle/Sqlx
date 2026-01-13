@@ -7,7 +7,7 @@ using Sqlx.Benchmarks.Repositories;
 namespace Sqlx.Benchmarks.Benchmarks;
 
 /// <summary>
-/// Benchmark for COUNT queries.
+/// Sqlx vs Dapper.AOT: Count query.
 /// </summary>
 [MemoryDiagnoser]
 [Orderer(SummaryOrderPolicy.FastestToSlowest)]
@@ -32,24 +32,15 @@ public class CountBenchmark
         _connection?.Dispose();
     }
     
-    [Benchmark(Baseline = true, Description = "Sqlx Count")]
+    [Benchmark(Baseline = true, Description = "Sqlx")]
     public async Task<long> Sqlx_Count()
     {
         return await _sqlxRepo.CountAsync();
     }
     
-    [Benchmark(Description = "Dapper ExecuteScalar")]
-    public async Task<long> Dapper_Count()
+    [Benchmark(Description = "Dapper.AOT")]
+    public async Task<long> DapperAot_Count()
     {
         return await _connection.ExecuteScalarAsync<long>("SELECT COUNT(*) FROM users");
-    }
-    
-    [Benchmark(Description = "ADO.NET Manual")]
-    public async Task<long> AdoNet_Count()
-    {
-        using var cmd = _connection.CreateCommand();
-        cmd.CommandText = "SELECT COUNT(*) FROM users";
-        var result = await cmd.ExecuteScalarAsync();
-        return (long)result!;
     }
 }

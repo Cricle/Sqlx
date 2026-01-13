@@ -6,15 +6,14 @@ using System.Data.Common;
 namespace Sqlx.Benchmarks.Repositories;
 
 /// <summary>
-/// Manually implemented repository for benchmark testing.
-/// This simulates what the source generator would produce.
+/// Repository using Sqlx SqlTemplate for SQL generation.
+/// Simulates what source generator would produce.
 /// </summary>
 public class BenchmarkUserRepository
 {
     private readonly SqliteConnection _connection;
     
-    // Static PlaceholderContext - shared across all methods
-    private static readonly Sqlx.PlaceholderContext _placeholderContext = new Sqlx.PlaceholderContext(
+    private static readonly Sqlx.PlaceholderContext _context = new(
         dialect: Sqlx.SqlDefine.SQLite,
         tableName: "users",
         columns: new[]
@@ -31,38 +30,26 @@ public class BenchmarkUserRepository
             new Sqlx.ColumnMeta("score", "Score", DbType.Int32, false),
         });
     
-    // Static SqlTemplate fields - prepared once at initialization
     private static readonly Sqlx.SqlTemplate _getByIdTemplate = Sqlx.SqlTemplate.Prepare(
-        "SELECT {{columns}} FROM {{table}} WHERE id = @id",
-        _placeholderContext);
+        "SELECT {{columns}} FROM {{table}} WHERE id = @id", _context);
     
     private static readonly Sqlx.SqlTemplate _getAllTemplate = Sqlx.SqlTemplate.Prepare(
-        "SELECT {{columns}} FROM {{table}} {{limit --param limit}}",
-        _placeholderContext);
+        "SELECT {{columns}} FROM {{table}} {{limit --param limit}}", _context);
     
     private static readonly Sqlx.SqlTemplate _insertTemplate = Sqlx.SqlTemplate.Prepare(
-        "INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values --exclude Id}})",
-        _placeholderContext);
+        "INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values --exclude Id}}); SELECT last_insert_rowid()", _context);
     
     private static readonly Sqlx.SqlTemplate _updateTemplate = Sqlx.SqlTemplate.Prepare(
-        "UPDATE {{table}} SET {{set --exclude Id}} WHERE id = @id",
-        _placeholderContext);
+        "UPDATE {{table}} SET {{set --exclude Id}} WHERE id = @id", _context);
     
     private static readonly Sqlx.SqlTemplate _countTemplate = Sqlx.SqlTemplate.Prepare(
-        "SELECT COUNT(*) FROM {{table}}",
-        _placeholderContext);
+        "SELECT COUNT(*) FROM {{table}}", _context);
     
     private static readonly Sqlx.SqlTemplate _getByMinAgeTemplate = Sqlx.SqlTemplate.Prepare(
-        "SELECT {{columns}} FROM {{table}} WHERE age >= @minAge",
-        _placeholderContext);
-    
-    private static readonly Sqlx.SqlTemplate _getWhereTemplate = Sqlx.SqlTemplate.Prepare(
-        "SELECT {{columns}} FROM {{table}} WHERE {{where --param predicate}} {{limit --param limit}}",
-        _placeholderContext);
+        "SELECT {{columns}} FROM {{table}} WHERE age >= @minAge", _context);
     
     private static readonly Sqlx.SqlTemplate _getPagedTemplate = Sqlx.SqlTemplate.Prepare(
-        "SELECT {{columns}} FROM {{table}} {{limit --param pageSize}} {{offset --param offset}}",
-        _placeholderContext);
+        "SELECT {{columns}} FROM {{table}} {{limit --param pageSize}} {{offset --param offset}}", _context);
     
     public BenchmarkUserRepository(SqliteConnection connection)
     {
@@ -73,26 +60,20 @@ public class BenchmarkUserRepository
     {
         using var cmd = _connection.CreateCommand();
         cmd.CommandText = _getByIdTemplate.Sql;
-        AddParameter(cmd, "@id", id);
+        AddParam(cmd, "@id", id);
         
         using var reader = await cmd.ExecuteReaderAsync();
-        if (await reader.ReadAsync())
-        {
-            return ReadUser(reader);
-        }
-        return null;
+        return await reader.ReadAsync() ? ReadUser(reader) : null;
     }
     
     public async Task<List<BenchmarkUser>> GetAllAsync(int limit)
     {
-        var result = new List<BenchmarkUser>(limit);
-        
-        var dynamicParams = new Dictionary<string, object?> { ["limit"] = limit };
-        var sql = _getAllTemplate.Render(dynamicParams);
+        var sql = _getAllTemplate.Render(new Dictionary<string, object?> { ["limit"] = limit });
         
         using var cmd = _connection.CreateCommand();
         cmd.CommandText = sql;
         
+        var result = new List<BenchmarkUser>(limit);
         using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
@@ -104,38 +85,17 @@ public class BenchmarkUserRepository
     public async Task<long> InsertAndGetIdAsync(BenchmarkUser entity)
     {
         using var cmd = _connection.CreateCommand();
-        cmd.CommandText = _insertTemplate.Sql + "; SELECT last_insert_rowid()";
-        
-        AddParameter(cmd, "@name", entity.Name);
-        AddParameter(cmd, "@email", entity.Email);
-        AddParameter(cmd, "@age", entity.Age);
-        AddParameter(cmd, "@is_active", entity.IsActive ? 1 : 0);
-        AddParameter(cmd, "@created_at", entity.CreatedAt.ToString("O"));
-        AddParameter(cmd, "@updated_at", entity.UpdatedAt?.ToString("O") ?? (object)DBNull.Value);
-        AddParameter(cmd, "@balance", (double)entity.Balance);
-        AddParameter(cmd, "@description", entity.Description ?? (object)DBNull.Value);
-        AddParameter(cmd, "@score", entity.Score);
-        
-        var result = await cmd.ExecuteScalarAsync();
-        return (long)result!;
+        cmd.CommandText = _insertTemplate.Sql;
+        BindEntity(cmd, entity);
+        return (long)(await cmd.ExecuteScalarAsync())!;
     }
     
     public async Task<int> UpdateAsync(BenchmarkUser entity)
     {
         using var cmd = _connection.CreateCommand();
         cmd.CommandText = _updateTemplate.Sql;
-        
-        AddParameter(cmd, "@id", entity.Id);
-        AddParameter(cmd, "@name", entity.Name);
-        AddParameter(cmd, "@email", entity.Email);
-        AddParameter(cmd, "@age", entity.Age);
-        AddParameter(cmd, "@is_active", entity.IsActive ? 1 : 0);
-        AddParameter(cmd, "@created_at", entity.CreatedAt.ToString("O"));
-        AddParameter(cmd, "@updated_at", entity.UpdatedAt?.ToString("O") ?? (object)DBNull.Value);
-        AddParameter(cmd, "@balance", (double)entity.Balance);
-        AddParameter(cmd, "@description", entity.Description ?? (object)DBNull.Value);
-        AddParameter(cmd, "@score", entity.Score);
-        
+        BindEntity(cmd, entity);
+        AddParam(cmd, "@id", entity.Id);
         return await cmd.ExecuteNonQueryAsync();
     }
     
@@ -143,40 +103,16 @@ public class BenchmarkUserRepository
     {
         using var cmd = _connection.CreateCommand();
         cmd.CommandText = _countTemplate.Sql;
-        var result = await cmd.ExecuteScalarAsync();
-        return (long)result!;
+        return (long)(await cmd.ExecuteScalarAsync())!;
     }
     
     public async Task<List<BenchmarkUser>> GetByMinAgeAsync(int minAge)
     {
-        var result = new List<BenchmarkUser>();
-        
         using var cmd = _connection.CreateCommand();
         cmd.CommandText = _getByMinAgeTemplate.Sql;
-        AddParameter(cmd, "@minAge", minAge);
+        AddParam(cmd, "@minAge", minAge);
         
-        using var reader = await cmd.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
-        {
-            result.Add(ReadUser(reader));
-        }
-        return result;
-    }
-    
-    public async Task<List<BenchmarkUser>> GetWhereAsync(string whereClause, int limit)
-    {
-        var result = new List<BenchmarkUser>(limit);
-        
-        var dynamicParams = new Dictionary<string, object?> 
-        { 
-            ["predicate"] = whereClause,
-            ["limit"] = limit 
-        };
-        var sql = _getWhereTemplate.Render(dynamicParams);
-        
-        using var cmd = _connection.CreateCommand();
-        cmd.CommandText = sql;
-        
+        var result = new List<BenchmarkUser>();
         using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
@@ -187,18 +123,16 @@ public class BenchmarkUserRepository
     
     public async Task<List<BenchmarkUser>> GetPagedAsync(int pageSize, int offset)
     {
-        var result = new List<BenchmarkUser>(pageSize);
-        
-        var dynamicParams = new Dictionary<string, object?> 
+        var sql = _getPagedTemplate.Render(new Dictionary<string, object?> 
         { 
             ["pageSize"] = pageSize,
             ["offset"] = offset 
-        };
-        var sql = _getPagedTemplate.Render(dynamicParams);
+        });
         
         using var cmd = _connection.CreateCommand();
         cmd.CommandText = sql;
         
+        var result = new List<BenchmarkUser>(pageSize);
         using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
@@ -207,6 +141,7 @@ public class BenchmarkUserRepository
         return result;
     }
     
+    // Simulates generated IResultReader
     private static BenchmarkUser ReadUser(DbDataReader reader)
     {
         return new BenchmarkUser
@@ -224,11 +159,25 @@ public class BenchmarkUserRepository
         };
     }
     
-    private static void AddParameter(SqliteCommand cmd, string name, object value)
+    // Simulates generated IParameterBinder
+    private static void BindEntity(DbCommand cmd, BenchmarkUser entity)
     {
-        var param = cmd.CreateParameter();
-        param.ParameterName = name;
-        param.Value = value;
-        cmd.Parameters.Add(param);
+        AddParam(cmd, "@name", entity.Name);
+        AddParam(cmd, "@email", entity.Email);
+        AddParam(cmd, "@age", entity.Age);
+        AddParam(cmd, "@is_active", entity.IsActive ? 1 : 0);
+        AddParam(cmd, "@created_at", entity.CreatedAt.ToString("O"));
+        AddParam(cmd, "@updated_at", entity.UpdatedAt?.ToString("O") ?? (object)DBNull.Value);
+        AddParam(cmd, "@balance", (double)entity.Balance);
+        AddParam(cmd, "@description", entity.Description ?? (object)DBNull.Value);
+        AddParam(cmd, "@score", entity.Score);
+    }
+    
+    private static void AddParam(DbCommand cmd, string name, object value)
+    {
+        var p = cmd.CreateParameter();
+        p.ParameterName = name;
+        p.Value = value;
+        cmd.Parameters.Add(p);
     }
 }

@@ -59,15 +59,13 @@ namespace TestNamespace
             var compilation = await CreateCompilationAsync(source);
             var generatedCode = GetGeneratedCode(compilation);
 
-            // Verify the SQL getter method is generated
+            // Verify the SQL getter method is generated with SqlTemplate return type
             StringAssert.Contains(generatedCode, "GetGetByIdAsyncSql");
-            StringAssert.Contains(generatedCode, "public string GetGetByIdAsyncSql");
-            StringAssert.Contains(generatedCode, "long id");
-            StringAssert.Contains(generatedCode, "global::Sqlx.Generator.SqlDefine? dialect = null");
+            StringAssert.Contains(generatedCode, "public global::Sqlx.SqlTemplate GetGetByIdAsyncSql()");
         }
 
         [TestMethod]
-        public async Task SqlxDebugger_WithMultipleParameters_ShouldIncludeAllParameters()
+        public async Task SqlxDebugger_WithMultipleParameters_ShouldGenerateSqlTemplate()
         {
             var source = @"
 using System.Collections.Generic;
@@ -107,14 +105,9 @@ namespace TestNamespace
             var compilation = await CreateCompilationAsync(source);
             var generatedCode = GetGeneratedCode(compilation);
 
-            // Verify method signature includes all parameters except CancellationToken
+            // Verify method returns SqlTemplate with no parameters
             StringAssert.Contains(generatedCode, "GetGetUsersByAgeAsyncSql");
-            StringAssert.Contains(generatedCode, "int minAge");
-            StringAssert.Contains(generatedCode, "string? orderBy = default");
-            StringAssert.Contains(generatedCode, "int? limit = default");
-            
-            // Verify CancellationToken is NOT included
-            Assert.IsFalse(generatedCode.Contains("GetGetUsersByAgeAsyncSql(int minAge, string? orderBy = default, int? limit = default, CancellationToken"));
+            StringAssert.Contains(generatedCode, "public global::Sqlx.SqlTemplate GetGetUsersByAgeAsyncSql()");
         }
 
         [TestMethod]
@@ -159,7 +152,7 @@ namespace TestNamespace
         }
 
         [TestMethod]
-        public async Task SqlxDebugger_WithDialectParameter_ShouldAllowDialectSelection()
+        public async Task SqlxDebugger_WithPlaceholders_ShouldReturnSqlTemplate()
         {
             var source = @"
 using System.Threading.Tasks;
@@ -197,13 +190,13 @@ namespace TestNamespace
             var compilation = await CreateCompilationAsync(source);
             var generatedCode = GetGeneratedCode(compilation);
 
-            // Verify dialect parameter is included
-            StringAssert.Contains(generatedCode, "global::Sqlx.Generator.SqlDefine? dialect = null");
-            StringAssert.Contains(generatedCode, "var actualDialect = dialect ?? global::Sqlx.Generator.SqlDefine.PostgreSql");
+            // Verify SqlTemplate return type and parameterless method
+            StringAssert.Contains(generatedCode, "public global::Sqlx.SqlTemplate GetGetByIdAsyncSql()");
+            StringAssert.Contains(generatedCode, "new global::Sqlx.SqlTemplate");
         }
 
         [TestMethod]
-        public async Task SqlxDebugger_WithPlaceholders_ShouldProcessTemplateCorrectly()
+        public async Task SqlxDebugger_WithEntityColumns_ShouldExpandPlaceholders()
         {
             var source = @"
 using System.Collections.Generic;
@@ -243,12 +236,9 @@ namespace TestNamespace
             var compilation = await CreateCompilationAsync(source);
             var generatedCode = GetGeneratedCode(compilation);
 
-            // Verify SQL debugger method is generated with dialect-specific SQL
+            // Verify SQL debugger method is generated
             StringAssert.Contains(generatedCode, "GetGetByIdAsyncSql");
-            StringAssert.Contains(generatedCode, "global::Sqlx.Generator.SqlDefine.SQLite");
-            StringAssert.Contains(generatedCode, "global::Sqlx.Generator.SqlDefine.PostgreSql");
-            StringAssert.Contains(generatedCode, "global::Sqlx.Generator.SqlDefine.MySql");
-            StringAssert.Contains(generatedCode, "global::Sqlx.Generator.SqlDefine.SqlServer");
+            StringAssert.Contains(generatedCode, "public global::Sqlx.SqlTemplate GetGetByIdAsyncSql()");
             // Verify placeholders are processed (columns should be expanded)
             StringAssert.Contains(generatedCode, "Id");
             StringAssert.Contains(generatedCode, "Name");
@@ -295,9 +285,7 @@ namespace TestNamespace
 
             // Verify XML documentation is generated
             StringAssert.Contains(generatedCode, "/// <summary>");
-            StringAssert.Contains(generatedCode, "/// Gets the processed SQL template for");
-            StringAssert.Contains(generatedCode, "/// <param name=\"id\">");
-            StringAssert.Contains(generatedCode, "/// <param name=\"dialect\">");
+            StringAssert.Contains(generatedCode, "/// Gets the SQL template for");
             StringAssert.Contains(generatedCode, "/// <returns>");
         }
 
@@ -349,18 +337,9 @@ namespace TestNamespace
             var generatedCode = GetGeneratedCode(compilation);
 
             // Verify all three methods have SQL getter methods generated
-            StringAssert.Contains(generatedCode, "GetGetByIdAsyncSql");
-            StringAssert.Contains(generatedCode, "GetInsertAsyncSql");
-            StringAssert.Contains(generatedCode, "GetDeleteAsyncSql");
-            
-            // Verify they all have the dialect parameter
-            var getByIdCount = System.Text.RegularExpressions.Regex.Matches(generatedCode, "GetGetByIdAsyncSql").Count;
-            var insertCount = System.Text.RegularExpressions.Regex.Matches(generatedCode, "GetInsertAsyncSql").Count;
-            var deleteCount = System.Text.RegularExpressions.Regex.Matches(generatedCode, "GetDeleteAsyncSql").Count;
-            
-            Assert.IsTrue(getByIdCount >= 1, "GetGetByIdAsyncSql should be generated");
-            Assert.IsTrue(insertCount >= 1, "GetInsertAsyncSql should be generated");
-            Assert.IsTrue(deleteCount >= 1, "GetDeleteAsyncSql should be generated");
+            StringAssert.Contains(generatedCode, "public global::Sqlx.SqlTemplate GetGetByIdAsyncSql()");
+            StringAssert.Contains(generatedCode, "public global::Sqlx.SqlTemplate GetInsertAsyncSql()");
+            StringAssert.Contains(generatedCode, "public global::Sqlx.SqlTemplate GetDeleteAsyncSql()");
         }
 
         [TestMethod]
@@ -403,7 +382,7 @@ namespace TestNamespace
             var generatedCode = GetGeneratedCode(compilation);
 
             // Verify the SQL getter method is generated (should only appear once, not twice)
-            var matches = System.Text.RegularExpressions.Regex.Matches(generatedCode, @"public string GetGetByIdAsyncSql\(");
+            var matches = System.Text.RegularExpressions.Regex.Matches(generatedCode, @"public global::Sqlx\.SqlTemplate GetGetByIdAsyncSql\(\)");
             Assert.AreEqual(1, matches.Count, "GetGetByIdAsyncSql should be generated exactly once");
         }
 

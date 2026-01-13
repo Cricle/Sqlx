@@ -114,6 +114,9 @@ public sealed class PlaceholderRegistry
         // 批量操作
         registry.Register(new BatchValuesHandler());
 
+        // 参数占位符
+        registry.Register(new ArgHandler());
+
         return registry;
     }
 }

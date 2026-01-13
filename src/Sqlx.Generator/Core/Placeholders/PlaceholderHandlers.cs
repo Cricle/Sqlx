@@ -542,4 +542,36 @@ public sealed class BatchValuesHandler : PlaceholderHandlerBase
     }
 }
 
+/// <summary>{{arg --param paramName}} - Parameter with dialect-specific prefix placeholder.</summary>
+/// <remarks>
+/// Generates parameter references with the correct prefix for each database dialect:
+/// - SQL Server/MySQL/SQLite: @paramName
+/// - PostgreSQL: $paramName
+/// - Oracle: :paramName
+/// - DB2: ?
+/// </remarks>
+public sealed class ArgHandler : PlaceholderHandlerBase
+{
+    public override string Name => "arg";
+
+    public override string Process(PlaceholderContext context)
+    {
+        var options = ParseOptions(context);
+        var paramName = options.Get("param");
+
+        // Support {{arg paramName}} or {{arg --param paramName}}
+        if (string.IsNullOrEmpty(paramName))
+            paramName = !string.IsNullOrEmpty(context.Type) ? context.Type : options.FirstArg;
+
+        if (string.IsNullOrEmpty(paramName))
+        {
+            context.Result.Warnings.Add("{{arg}} requires a parameter name via --param or as first argument");
+            return "@?";
+        }
+
+        // Return parameter with dialect-specific prefix
+        return $"{context.Dialect.ParameterPrefix}{paramName}";
+    }
+}
+
 #endregion

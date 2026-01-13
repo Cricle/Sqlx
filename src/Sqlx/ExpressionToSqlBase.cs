@@ -214,17 +214,35 @@ namespace Sqlx
             };
         }
 
-        /// <summary>Parse aggregate function calls.</summary>
+        /// <summary>Parse aggregate function calls with dialect-specific syntax.</summary>
         protected string ParseAggregateMethodCall(MethodCallExpression method)
         {
-            return method.Method.Name switch
+            var name = method.Method.Name;
+            var hasArg = method.Arguments.Count > 1;
+            var arg = hasArg ? ParseLambdaExpression(method.Arguments[1]) : null;
+
+            return name switch
             {
                 "Count" => "COUNT(*)",
-                "Sum" when method.Arguments.Count > 1 => $"SUM({ParseLambdaExpression(method.Arguments[1])})",
-                "Average" or "Avg" when method.Arguments.Count > 1 => $"AVG({ParseLambdaExpression(method.Arguments[1])})",
-                "Max" when method.Arguments.Count > 1 => $"MAX({ParseLambdaExpression(method.Arguments[1])})",
-                "Min" when method.Arguments.Count > 1 => $"MIN({ParseLambdaExpression(method.Arguments[1])})",
-                _ => throw new NotSupportedException($"Aggregate function {method.Method.Name} is not supported"),
+                "CountDistinct" when hasArg => $"COUNT(DISTINCT {arg})",
+                "Sum" when hasArg => $"SUM({arg})",
+                "Average" or "Avg" when hasArg => $"AVG({arg})",
+                "Max" when hasArg => $"MAX({arg})",
+                "Min" when hasArg => $"MIN({arg})",
+                "StringAgg" when method.Arguments.Count > 2 => GetStringAggSyntax(arg!, ParseLambdaExpression(method.Arguments[2])),
+                _ => throw new NotSupportedException($"Aggregate function {name} is not supported"),
+            };
+        }
+
+        /// <summary>Gets dialect-specific string aggregation syntax.</summary>
+        private string GetStringAggSyntax(string column, string separator)
+        {
+            return DatabaseType switch
+            {
+                "MySql" => $"GROUP_CONCAT({column} SEPARATOR {separator})",
+                "SQLite" or "SqlServer" => $"GROUP_CONCAT({column}, {separator})",
+                "Oracle" => $"LISTAGG({column}, {separator}) WITHIN GROUP (ORDER BY {column})",
+                _ => $"STRING_AGG({column}, {separator})" // PostgreSQL, DB2
             };
         }
 
@@ -436,8 +454,8 @@ namespace Sqlx
                 : condition;
         }
 
-        /// <summary>Gets binary operator SQL string.</summary>
-        protected static string GetBinaryOperator(ExpressionType nodeType)
+        /// <summary>Gets binary operator SQL string based on database dialect.</summary>
+        protected string GetBinaryOperator(ExpressionType nodeType)
         {
             return nodeType switch
             {
@@ -445,9 +463,9 @@ namespace Sqlx
                 ExpressionType.Subtract => "-",
                 ExpressionType.Multiply => "*",
                 ExpressionType.Divide => "/",
-                ExpressionType.Modulo => "%",
+                ExpressionType.Modulo => DatabaseType == "Oracle" ? "MOD" : "%",
                 ExpressionType.Equal => "=",
-                ExpressionType.NotEqual => "<>",
+                ExpressionType.NotEqual => DatabaseType == "Oracle" ? "!=" : "<>",
                 ExpressionType.GreaterThan => ">",
                 ExpressionType.GreaterThanOrEqual => ">=",
                 ExpressionType.LessThan => "<",
@@ -455,7 +473,7 @@ namespace Sqlx
                 ExpressionType.AndAlso => "AND",
                 ExpressionType.OrElse => "OR",
                 ExpressionType.Coalesce => "COALESCE",
-                _ => "="
+                _ => throw new NotSupportedException($"Binary operator {nodeType} is not supported")
             };
         }
 
@@ -508,7 +526,7 @@ namespace Sqlx
         private static bool IsStringType(Type type) => type == typeof(string);
 
         private static bool IsAggregateContext(MethodCallExpression method) =>
-            method.Method.Name is "Count" or "Sum" or "Average" or "Avg" or "Max" or "Min";
+            method.Method.Name is "Count" or "CountDistinct" or "Sum" or "Average" or "Avg" or "Max" or "Min" or "StringAgg";
 
         private static bool IsAnyPlaceholder(MethodCallExpression method) =>
             method.Method.DeclaringType?.Name == "Any" && method.Method.DeclaringType?.Namespace == "Sqlx";
@@ -625,33 +643,48 @@ namespace Sqlx
         {
             if (method.Arguments.Count != 1)
             {
-                return "1=1";
+                throw new NotSupportedException("Collection Contains requires exactly one argument");
             }
 
             var columnSql = ParseExpression(method.Arguments[0]);
+            var collection = EvaluateExpression(method.Object!);
 
-            try
+            if (collection == null)
             {
-                var collection = Expression.Lambda(method.Object!).Compile().DynamicInvoke();
-                if (collection == null)
-                {
-                    return $"{columnSql} IN (NULL)";
-                }
-
-                var values = new List<string>();
-                foreach (var item in (System.Collections.IEnumerable)collection)
-                {
-                    values.Add(item == null ? "NULL" : FormatConstantValue(item));
-                }
-
-                return values.Count == 0
-                    ? $"{columnSql} IN (NULL)"
-                    : $"{columnSql} IN ({string.Join(", ", values)})";
+                return $"{columnSql} IN (NULL)";
             }
-            catch
+
+            var values = new List<string>();
+            foreach (var item in (System.Collections.IEnumerable)collection)
             {
-                return "1=1";
+                values.Add(item == null ? "NULL" : FormatConstantValue(item));
             }
+
+            return values.Count == 0
+                ? $"{columnSql} IN (NULL)"
+                : $"{columnSql} IN ({string.Join(", ", values)})";
+        }
+
+        /// <summary>Evaluates expression to get runtime value without DynamicInvoke.</summary>
+        private static object? EvaluateExpression(Expression expression)
+        {
+            return expression switch
+            {
+                ConstantExpression constant => constant.Value,
+                MemberExpression member => EvaluateMemberExpression(member),
+                _ => Expression.Lambda<Func<object?>>(Expression.Convert(expression, typeof(object))).Compile()()
+            };
+        }
+
+        private static object? EvaluateMemberExpression(MemberExpression member)
+        {
+            var obj = member.Expression != null ? EvaluateExpression(member.Expression) : null;
+            return member.Member switch
+            {
+                System.Reflection.FieldInfo field => field.GetValue(obj),
+                System.Reflection.PropertyInfo prop => prop.GetValue(obj),
+                _ => throw new NotSupportedException($"Member type {member.Member.GetType()} is not supported")
+            };
         }
 
         private string CreateParameterForAnyPlaceholder(MethodCallExpression method)
@@ -701,7 +734,7 @@ namespace Sqlx
             return nodeType switch
             {
                 ExpressionType.Equal => $"{left} = {right}",
-                ExpressionType.NotEqual => $"{left} <> {right}",
+                ExpressionType.NotEqual => DatabaseType == "Oracle" ? $"{left} != {right}" : $"{left} <> {right}",
                 ExpressionType.GreaterThan => $"{left} > {right}",
                 ExpressionType.GreaterThanOrEqual => $"{left} >= {right}",
                 ExpressionType.LessThan => $"{left} < {right}",
@@ -712,9 +745,9 @@ namespace Sqlx
                 ExpressionType.Subtract => $"{left} - {right}",
                 ExpressionType.Multiply => $"{left} * {right}",
                 ExpressionType.Divide => $"{left} / {right}",
-                ExpressionType.Modulo => $"({left} % {right})",
+                ExpressionType.Modulo => DatabaseType == "Oracle" ? $"MOD({left}, {right})" : $"({left} % {right})",
                 ExpressionType.Coalesce => $"COALESCE({left}, {right})",
-                _ => $"{left} = {right}"
+                _ => throw new NotSupportedException($"Binary operator {nodeType} is not supported")
             };
         }
 

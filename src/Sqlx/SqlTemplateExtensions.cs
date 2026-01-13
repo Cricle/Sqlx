@@ -62,7 +62,7 @@ namespace Sqlx
         /// Creates a DbCommand asynchronously, opening the connection if needed.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static async ValueTask<DbCommand> CreateCommandAsync(
+        public static async Task<DbCommand> CreateCommandAsync(
             this SqlTemplate template,
             DbConnection connection,
             DbTransaction? transaction = null,
@@ -88,7 +88,7 @@ namespace Sqlx
         /// <summary>
         /// Executes the template and returns a data reader.
         /// </summary>
-        public static async ValueTask<DbDataReader> ExecuteReaderAsync(
+        public static async Task<DbDataReader> ExecuteReaderAsync(
             this SqlTemplate template,
             DbConnection connection,
             DbTransaction? transaction = null,
@@ -112,7 +112,7 @@ namespace Sqlx
         /// <summary>
         /// Executes the template and returns the number of affected rows.
         /// </summary>
-        public static async ValueTask<int> ExecuteNonQueryAsync(
+        public static async Task<int> ExecuteNonQueryAsync(
             this SqlTemplate template,
             DbConnection connection,
             DbTransaction? transaction = null,
@@ -126,7 +126,7 @@ namespace Sqlx
         /// <summary>
         /// Executes the template and returns a scalar value.
         /// </summary>
-        public static async ValueTask<object?> ExecuteScalarAsync(
+        public static async Task<object?> ExecuteScalarAsync(
             this SqlTemplate template,
             DbConnection connection,
             DbTransaction? transaction = null,
@@ -140,7 +140,7 @@ namespace Sqlx
         /// <summary>
         /// Executes the template and returns a scalar value with type conversion.
         /// </summary>
-        public static async ValueTask<T?> ExecuteScalarAsync<T>(
+        public static async Task<T?> ExecuteScalarAsync<T>(
             this SqlTemplate template,
             DbConnection connection,
             DbTransaction? transaction = null,

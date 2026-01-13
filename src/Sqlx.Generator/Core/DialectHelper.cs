@@ -97,7 +97,7 @@ internal static class DialectHelper
             SqlDefineTypes.MySql => new MySqlDialectProvider(),
             SqlDefineTypes.SqlServer => new SqlServerDialectProvider(),
             SqlDefineTypes.SQLite => new SQLiteDialectProvider(),
-            SqlDefineTypes.Oracle => new SQLiteDialectProvider(), // TODO: Implement Oracle
+            SqlDefineTypes.Oracle => new OracleDialectProvider(),
             SqlDefineTypes.DB2 => new DB2DialectProvider(),
             _ => new SQLiteDialectProvider()
         };

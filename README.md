@@ -4,198 +4,306 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0-purple.svg)](#)
 
-**Sqlx** is a compile-time source generator for building type-safe, high-performance database access layers in .NET. Write SQL templates once, run them on any database with zero runtime overhead.
+**Sqlx** 是一个编译时源生成器，用于构建类型安全、高性能的 .NET 数据库访问层。编写一次 SQL 模板，在任何数据库上运行，零运行时开销。
 
-## ✨ Key Features
+## ✨ 核心特性
 
-- **🚀 Compile-Time Generation** - Zero runtime reflection, near-ADO.NET performance
-- **🔒 Type-Safe SQL** - Catch SQL errors at compile time, not runtime
-- **🌐 Multi-Database** - SQLite, PostgreSQL, MySQL, SQL Server with a single codebase
-- **📝 Smart Templates** - 40+ placeholders that adapt to different database dialects
-- **⚡ High Performance** - Direct ADO.NET calls, minimal allocations
-- **🎯 AOT Compatible** - Full Native AOT support for modern .NET applications
+- **🚀 编译时生成** - 零运行时反射，接近原生 ADO.NET 性能
+- **🔒 类型安全** - 编译时捕获 SQL 错误
+- **🌐 多数据库支持** - SQLite、PostgreSQL、MySQL、SQL Server、Oracle、DB2
+- **📝 智能模板** - 占位符自动适配不同数据库方言
+- **⚡ 高性能** - 直接 ADO.NET 调用，最小内存分配
+- **🎯 AOT 兼容** - 完全支持 Native AOT
 
-## 🚀 Quick Start
+## 🚀 快速开始
 
-### Installation
+### 安装
 
 ```bash
 dotnet add package Sqlx
 ```
 
-### Basic Example
+### 基础示例
 
 ```csharp
-// 1. Define your entity
+// 1. 定义实体
+[SqlxEntity]
+[SqlxParameter]
+[TableName("users")]
 public class User
 {
+    [Key]
     public long Id { get; set; }
     public string Name { get; set; }
     public int Age { get; set; }
 }
 
-// 2. Define repository interface with SQL templates
-public interface IUserRepository
+// 2. 定义仓储接口
+public interface IUserRepository : ICrudRepository<User, long>
 {
-    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
-    Task<User?> GetByIdAsync(long id);
-
-    [SqlTemplate("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values --exclude Id}})")]
-    [ReturnInsertedId]
-    Task<long> InsertAsync(User user);
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE age >= @minAge")]
+    Task<List<User>> GetAdultsAsync(int minAge);
 }
 
-// 3. Implement repository (code generated automatically)
+// 3. 实现仓储（代码自动生成）
 [SqlDefine(SqlDefineTypes.SQLite)]
-[TableName("users")]
 [RepositoryFor(typeof(IUserRepository))]
 public partial class UserRepository(DbConnection connection) : IUserRepository { }
 
-// 4. Use it
+// 4. 使用
 await using var conn = new SqliteConnection("Data Source=app.db");
-await conn.OpenAsync();
-
 var repo = new UserRepository(conn);
-var userId = await repo.InsertAsync(new User { Name = "Alice", Age = 25 });
+
+var userId = await repo.InsertAndGetIdAsync(new User { Name = "Alice", Age = 25 });
 var user = await repo.GetByIdAsync(userId);
+var adults = await repo.GetAdultsAsync(18);
 ```
 
-## 📚 Core Concepts
+## 📚 核心概念
 
-### SQL Templates with Placeholders
+### SQL 模板占位符
 
-Sqlx uses **placeholders** that automatically adapt to different database dialects:
+占位符自动适配不同数据库方言：
 
 ```csharp
 [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE is_active = {{bool_true}}")]
 Task<List<User>> GetActiveUsersAsync();
 ```
 
-**Generated SQL by Database:**
+**各数据库生成的 SQL：**
 
-| Database   | Generated SQL |
-|------------|---------------|
-| SQLite     | `SELECT id, name, age FROM users WHERE is_active = 1` |
+| 数据库 | 生成的 SQL |
+|--------|-----------|
+| SQLite | `SELECT [id], [name], [age] FROM [users] WHERE is_active = 1` |
 | PostgreSQL | `SELECT "id", "name", "age" FROM "users" WHERE is_active = true` |
-| MySQL      | ``SELECT `id`, `name`, `age` FROM `users` WHERE is_active = 1`` |
+| MySQL | ``SELECT `id`, `name`, `age` FROM `users` WHERE is_active = 1`` |
 | SQL Server | `SELECT [id], [name], [age] FROM [users] WHERE is_active = 1` |
 
-### Common Placeholders
+### 常用占位符
 
-| Placeholder | Description | Example Output |
-|-------------|-------------|----------------|
-| `{{table}}` | Table name with dialect-specific quoting | `"users"` (PostgreSQL) |
-| `{{columns}}` | All column names | `id, name, age` |
-| `{{columns --exclude Id}}` | Columns excluding specified ones | `name, age` |
-| `{{values --exclude Id}}` | Parameter placeholders | `@name, @age` |
-| `{{set --exclude Id}}` | SET clause for UPDATE | `name = @name, age = @age` |
-| `{{where}}` | WHERE clause from expression | `WHERE age > @p0` |
-| `{{orderby column}}` | ORDER BY clause | `ORDER BY column` |
-| `{{limit --param count}}` | LIMIT clause | `LIMIT @count` |
-| `{{bool_true}}` | Boolean true literal | `1` (SQLite), `true` (PostgreSQL) |
-| `{{current_timestamp}}` | Current timestamp function | `CURRENT_TIMESTAMP`, `GETDATE()` |
+| 占位符 | 说明 | 示例输出 |
+|--------|------|---------|
+| `{{table}}` | 表名（带方言引号） | `"users"` (PostgreSQL) |
+| `{{columns}}` | 所有列名 | `id, name, age` |
+| `{{columns --exclude Id}}` | 排除指定列 | `name, age` |
+| `{{values --exclude Id}}` | 参数占位符 | `@name, @age` |
+| `{{set --exclude Id}}` | UPDATE SET 子句 | `name = @name, age = @age` |
+| `{{where --param predicate}}` | WHERE 子句（表达式） | `WHERE age > @p0` |
+| `{{limit --param count}}` | LIMIT 子句 | `LIMIT @count` |
+| `{{offset --param skip}}` | OFFSET 子句 | `OFFSET @skip` |
 
-[See full placeholder reference →](docs/PLACEHOLDER_REFERENCE.md)
+### 内置仓储接口
 
-## 🌐 Multi-Database Support
-
-Write your repository interface once, implement it for multiple databases:
+继承 `ICrudRepository<TEntity, TKey>` 获得标准 CRUD 方法：
 
 ```csharp
-// Define interface with dialect-agnostic templates
-public interface ICrudRepository<TEntity, TKey>
+public interface IUserRepository : ICrudRepository<User, long>
 {
-    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
-    Task<TEntity?> GetByIdAsync(TKey id);
+    // 继承的方法：
+    // - GetByIdAsync(id)
+    // - GetByIdsAsync(ids)
+    // - GetAllAsync(limit)
+    // - GetWhereAsync(predicate, limit)
+    // - GetFirstWhereAsync(predicate)
+    // - GetPagedAsync(pageSize, offset)
+    // - ExistsAsync(predicate)
+    // - CountAsync()
+    // - CountWhereAsync(predicate)
+    // - InsertAndGetIdAsync(entity)
+    // - UpdateAsync(entity)
+    // - UpdateWhereAsync(predicate, setter)
+    // - DeleteAsync(id)
+    // - DeleteWhereAsync(predicate)
     
-    [SqlTemplate("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values --exclude Id}})")]
-    [ReturnInsertedId]
-    Task<long> InsertAsync(TEntity entity);
+    // 自定义方法
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE name LIKE @pattern")]
+    Task<List<User>> SearchByNameAsync(string pattern);
 }
-
-// SQLite implementation
-[SqlDefine(SqlDefineTypes.SQLite)]
-[TableName("users")]
-[RepositoryFor(typeof(ICrudRepository<User, long>))]
-public partial class SqliteUserRepo(DbConnection conn) : ICrudRepository<User, long> { }
-
-// PostgreSQL implementation
-[SqlDefine(SqlDefineTypes.PostgreSql)]
-[TableName("users")]
-[RepositoryFor(typeof(ICrudRepository<User, long>))]
-public partial class PostgresUserRepo(DbConnection conn) : ICrudRepository<User, long> { }
 ```
 
-## 🎯 Advanced Features
+## 🌐 多数据库支持
 
-### Expression-Based Queries
+### 可扩展的方言系统
 
-Build type-safe dynamic queries using LINQ expressions:
+`SqlDialect` 是一个抽象基类，提供丰富的可扩展方法：
+
+```csharp
+// 预定义方言
+SqlDefine.SQLite      // SQLite
+SqlDefine.PostgreSql  // PostgreSQL
+SqlDefine.MySql       // MySQL
+SqlDefine.SqlServer   // SQL Server
+SqlDefine.Oracle      // Oracle
+SqlDefine.DB2         // IBM DB2
+
+// 使用方言方法
+var dialect = SqlDefine.PostgreSql;
+dialect.WrapColumn("name")           // "name"
+dialect.Concat("a", "b")             // a || b
+dialect.CurrentTimestamp             // CURRENT_TIMESTAMP
+dialect.IfNull("col", "'default'")   // COALESCE(col, 'default')
+dialect.Paginate("10", "20")         // LIMIT 10 OFFSET 20
+dialect.Cast("col", "VARCHAR(100)")  // (col)::VARCHAR(100)
+```
+
+### 方言方法一览
+
+| 类别 | 方法 |
+|------|------|
+| 标识符 | `WrapColumn`, `WrapString`, `CreateParameter` |
+| 字符串 | `Concat`, `Upper`, `Lower`, `Trim`, `Length`, `Substring`, `Replace`, `Coalesce` |
+| 日期时间 | `CurrentTimestamp`, `CurrentDate`, `CurrentTime`, `DatePart`, `DateAdd`, `DateDiff` |
+| 数值 | `Abs`, `Round`, `Ceiling`, `Floor`, `Mod` |
+| 聚合 | `Count`, `Sum`, `Avg`, `Min`, `Max` |
+| 分页 | `Limit`, `Offset`, `Paginate` |
+| 空值 | `IfNull`, `NullIf` |
+| 条件 | `CaseWhen`, `Iif` |
+| 类型 | `Cast` |
+| 其他 | `LastInsertedId`, `BoolTrue`, `BoolFalse` |
+
+### 自定义方言
+
+继承 `SqlDialect` 创建自定义方言：
+
+```csharp
+public class MyCustomDialect : SqlDialect
+{
+    public override string DatabaseType => "MyDB";
+    public override Annotations.SqlDefineTypes DbType => /* ... */;
+    public override string ColumnLeft => "`";
+    public override string ColumnRight => "`";
+    public override string ParameterPrefix => "?";
+    
+    public override string Concat(params string[] parts) => 
+        $"CONCAT({string.Join(", ", parts)})";
+    
+    public override string CurrentTimestamp => "NOW()";
+    // ... 其他方法
+}
+```
+
+## 🎯 高级特性
+
+### AOT 兼容的实体生成
+
+使用 `[SqlxEntity]` 和 `[SqlxParameter]` 特性生成高性能代码：
+
+```csharp
+[SqlxEntity]      // 生成 EntityProvider 和 ResultReader
+[SqlxParameter]   // 生成 ParameterBinder
+public class User
+{
+    [Key]
+    public long Id { get; set; }
+    
+    [Column("user_name")]  // 自定义列名映射
+    public string Name { get; set; }
+    
+    [IgnoreDataMember]     // 排除字段
+    public string? CachedData { get; set; }
+}
+```
+
+**生成的代码：**
+- `UserEntityProvider` - 提供列元数据，无反射
+- `UserResultReader` - 从 `DbDataReader` 读取实体，缓存列序号
+- `UserParameterBinder` - 绑定实体属性到 `DbCommand` 参数
+
+### 表达式查询
+
+使用 LINQ 表达式构建类型安全的动态查询：
+
+```csharp
+// 接口定义
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE {{where --param predicate}}")]
+Task<List<User>> GetWhereAsync(Expression<Func<User, bool>> predicate);
+
+// 使用
+var adults = await repo.GetWhereAsync(u => u.Age >= 18 && u.IsActive);
+// 生成: SELECT ... FROM users WHERE age >= @p0 AND is_active = @p1
+```
+
+### 执行拦截器
+
+监控和调试 SQL 执行：
+
+```csharp
+[SqlDefine(SqlDefineTypes.SQLite)]
+[RepositoryFor(typeof(IUserRepository))]
+public partial class UserRepository : IUserRepository
+{
+    partial void OnExecuting(string operationName, DbCommand command, SqlTemplate template)
+    {
+        Console.WriteLine($"[{operationName}] SQL: {command.CommandText}");
+    }
+
+    partial void OnExecuted(string operationName, DbCommand command, SqlTemplate template, 
+                           object? result, long elapsedTicks)
+    {
+        var ms = elapsedTicks * 1000.0 / Stopwatch.Frequency;
+        Console.WriteLine($"[{operationName}] Completed in {ms:F2}ms");
+    }
+
+    partial void OnExecuteFail(string operationName, DbCommand command, SqlTemplate template,
+                              Exception exception, long elapsedTicks)
+    {
+        Console.WriteLine($"[{operationName}] Failed: {exception.Message}");
+    }
+}
+```
+
+### Activity 跟踪
+
+自动集成 OpenTelemetry 跟踪：
+
+```csharp
+// 生成的代码自动添加 Activity 事件和标签：
+// - db.system: 数据库类型
+// - db.operation: sqlx.execute
+// - db.statement: SQL 语句
+// - db.duration_ms: 执行时间
+// - db.rows_affected: 影响行数
+```
+
+### SQL 调试
+
+返回 `SqlTemplate` 类型获取生成的 SQL：
 
 ```csharp
 public interface IUserRepository
 {
-    [SqlTemplate("SELECT {{columns}} FROM {{table}} {{where}}")]
-    Task<List<User>> QueryAsync([ExpressionToSql] Expression<Func<User, bool>> predicate);
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
+    SqlTemplate GetByIdSql(long id);  // 返回 SqlTemplate 而非执行
 }
 
-// Usage
-var adults = await repo.QueryAsync(u => u.Age >= 18 && u.IsActive);
-// Generated: SELECT id, name, age FROM users WHERE age >= @p0 AND is_active = @p1
+var template = repo.GetByIdSql(123);
+Console.WriteLine(template.Sql);  // 输出生成的 SQL
 ```
 
-### Batch Operations
+## 🗄️ 支持的数据库
 
-Optimize bulk operations automatically:
+| 数据库 | 状态 | 方言枚举 |
+|--------|------|---------|
+| SQLite | ✅ 生产就绪 | `SqlDefineTypes.SQLite` |
+| PostgreSQL | ✅ 生产就绪 | `SqlDefineTypes.PostgreSql` |
+| MySQL | ✅ 生产就绪 | `SqlDefineTypes.MySql` |
+| SQL Server | ✅ 生产就绪 | `SqlDefineTypes.SqlServer` |
+| Oracle | ✅ 生产就绪 | `SqlDefineTypes.Oracle` |
+| IBM DB2 | ✅ 生产就绪 | `SqlDefineTypes.DB2` |
 
-```csharp
-[SqlTemplate("INSERT INTO {{table}} (name, age) VALUES {{batch_values}}")]
-[BatchOperation(MaxBatchSize = 500)]
-Task<int> BatchInsertAsync(IEnumerable<User> users);
-```
+## 📖 示例项目
 
-### SQL Debugging
+查看 [samples/TodoWebApi](samples/TodoWebApi/) 获取完整的 Web API 示例，演示：
+- 实体定义和仓储实现
+- CRUD 操作
+- 自定义查询方法
+- 批量操作
+- AOT 兼容配置
 
-Validate generated SQL without executing queries:
+## 🤝 贡献
 
-```csharp
-[SqlxDebugger]
-[SqlDefine(SqlDefineTypes.SQLite)]
-[TableName("users")]
-[RepositoryFor(typeof(ICrudRepository<User, long>))]
-public partial class UserRepository : ICrudRepository<User, long> { }
+欢迎提交 Pull Request！
 
-// Get generated SQL for debugging
-var sql = repo.GetGetByIdAsyncSql(123);
-// Returns: "SELECT id, name, age FROM users WHERE id = @id"
-```
+## 📄 许可证
 
-## 📖 Documentation
-
-- **[Quick Start Guide](docs/QUICK_START.md)** - Get started in 5 minutes
-- **[Placeholder Reference](docs/PLACEHOLDER_REFERENCE.md)** - Complete placeholder guide
-- **[API Reference](docs/API_REFERENCE.md)** - Full API documentation
-- **[Best Practices](docs/BEST_PRACTICES.md)** - Recommended patterns and tips
-- **[Multi-Database Guide](docs/MULTI_DATABASE.md)** - Cross-database development
-- **[Examples](samples/TodoWebApi/)** - Complete working examples
-
-## 🗄️ Supported Databases
-
-| Database   | Status | Dialect Enum |
-|------------|--------|--------------|
-| SQLite     | ✅ Production Ready | `SqlDefineTypes.SQLite` |
-| PostgreSQL | ✅ Production Ready | `SqlDefineTypes.PostgreSql` |
-| MySQL      | ✅ Production Ready | `SqlDefineTypes.MySql` |
-| SQL Server | ✅ Production Ready | `SqlDefineTypes.SqlServer` |
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE.txt](LICENSE.txt) file for details.
-
-## 🙏 Acknowledgments
-
-Built with ❤️ for the .NET community.
+MIT License - 详见 [LICENSE.txt](LICENSE.txt)

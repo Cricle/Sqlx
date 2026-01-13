@@ -69,13 +69,7 @@ app.MapPost("/api/todos", async (CreateTodoRequest request, ITodoRepository repo
         UpdatedAt = DateTime.UtcNow
     };
 
-    await repo.InsertAsync(todo);
-
-    // Get last inserted ID
-    using var cmd = conn.CreateCommand();
-    cmd.CommandText = "SELECT last_insert_rowid()";
-    var newId = (long)(await cmd.ExecuteScalarAsync() ?? 0L);
-
+    var newId = await repo.InsertAndGetIdAsync(todo);
     todo.Id = newId;
     return Results.Json(todo, TodoJsonContext.Default.Todo, statusCode: 201);
 });

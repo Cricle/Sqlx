@@ -17,17 +17,4 @@ namespace Sqlx
         where TEntity : class
     {
     }
-
-    /// <summary>
-    /// Complete repository interface with all operations including batch.
-    /// </summary>
-    /// <typeparam name="TEntity">Entity type</typeparam>
-    /// <typeparam name="TKey">Primary key type</typeparam>
-    public interface IRepository<TEntity, TKey> :
-        IQueryRepository<TEntity, TKey>,
-        ICommandRepository<TEntity, TKey>,
-        IBatchRepository<TEntity, TKey>
-        where TEntity : class
-    {
-    }
 }

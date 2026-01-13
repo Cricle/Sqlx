@@ -1,69 +1,26 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Basic project settings -->
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>12.0</LangVersion>
     <AssemblyName>Sqlx.Generator</AssemblyName>
-    <RootNamespace>Sqlx.Generator</RootNamespace>
-
-    <!-- Source generator specific settings -->
+    <RootNamespace>Sqlx</RootNamespace>
     <IsPackable>false</IsPackable>
     <IncludeBuildOutput>false</IncludeBuildOutput>
-    <GenerateAotCompatibleCode>true</GenerateAotCompatibleCode>
-    <DevelopmentDependency>true</DevelopmentDependency>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
-
-    <!-- Disable analyzer release tracking warnings (optional best practice) -->
     <NoWarn>$(NoWarn);RS2007;RS2008</NoWarn>
   </PropertyGroup>
 
-  <!-- Package metadata -->
-  <PropertyGroup>
-    <PackageId>Sqlx.Generator</PackageId>
-    <Title>Sqlx.Generator - Source Generator</Title>
-    <Description>
-      Source generator for Sqlx 0.4.0 - Generates high-performance, type-safe data access code at compile time.
-      ✨ NEW: JOIN query generation, GROUP BY/HAVING, IN/LIKE/BETWEEN, CASE WHEN support
-      💼 Transaction: Automatic Repository.Transaction property integration
-      ⚡ Optimizations: List capacity pre-allocation, ordinal caching, minimal GC
-      🛡️ Type-safe: Full nullable support, compile-time validation, zero reflection
-      🎯 AOT-ready: Compatible with Native AOT, Primary Constructor and Record types
-    </Description>
-    <PackageTags>
-      source-generator;analyzer;roslyn;codegen;orm;sql;aot;performance;
-      compile-time;zero-reflection;type-safe;join;transaction;group-by;
-      primary-constructor;record;netstandard;csharp;dotnet;production-ready
-    </PackageTags>
-    <PackageReleaseNotes>
-      v0.4.0 - Major Update
-      🔗 JOIN query code generation (INNER/LEFT/multi-table)
-      🎯 Advanced SQL: GROUP BY/HAVING, IN/LIKE/BETWEEN, CASE WHEN
-      💼 Transaction support with Repository.Transaction property
-      ⚡ Performance optimizations: List pre-allocation, ordinal caching
-      🛡️ Enhanced error handling: NULL, Unicode, large result sets
-      📊 100% tested: 963 tests passing, ready for production use
-    </PackageReleaseNotes>
-  </PropertyGroup>
-
-  <!-- Dependencies -->
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" PrivateAssets="all" />
   </ItemGroup>
 
-  <!-- Analyzer release tracking -->
   <ItemGroup>
     <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
     <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
   </ItemGroup>
 
-  <!-- Package files -->
-  <ItemGroup>
-    <None Include="..\..\README.md" Pack="true" PackagePath="\" Visible="false" />
-  </ItemGroup>
-
-  <!-- Source generator packaging -->
   <ItemGroup>
     <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers\dotnet\cs\$(AssemblyName).dll" Visible="false" />
   </ItemGroup>

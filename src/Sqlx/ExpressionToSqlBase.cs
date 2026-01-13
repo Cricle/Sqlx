@@ -85,8 +85,8 @@ namespace Sqlx
         /// <summary>Converts to SQL string.</summary>
         public abstract string ToSql();
 
-        /// <summary>Converts to SQL template.</summary>
-        public abstract SqlTemplate ToTemplate();
+        /// <summary>Converts to SQL template string.</summary>
+        public abstract string ToTemplate();
 
         #endregion
 
@@ -751,7 +751,7 @@ namespace Sqlx
             };
         }
 
-        private string GetConcatSyntax(params string[] parts) => _dialect.GetConcatFunction(parts);
+        private string GetConcatSyntax(params string[] parts) => _dialect.Concat(parts);
 
         #endregion
     }

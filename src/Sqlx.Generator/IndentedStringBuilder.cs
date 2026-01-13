@@ -1,15 +1,12 @@
-﻿// -----------------------------------------------------------------------
-// <copyright file="IndentedStringBuilder.cs" company="Cricle">
-// Copyright (c) Cricle. All rights reserved.
+﻿// <copyright file="IndentedStringBuilder.cs" company="Sqlx">
+// Copyright (c) Sqlx. All rights reserved.
 // </copyright>
-// -----------------------------------------------------------------------
 
-namespace Sqlx.Generator;
+namespace Sqlx;
 
 using System;
 using System.Runtime.CompilerServices;
 using System.Text;
-using Sqlx.Generator;
 
 /// <summary>
 /// Provides a string builder with automatic indentation functionality for generating formatted code.
@@ -120,7 +117,7 @@ public sealed class IndentedStringBuilder
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public IndentedStringBuilder PopIndent()
     {
-        if (depthLevel == 0) throw new InvalidOperationException(SqlxExceptionMessages.InvalidDepthLevel);
+        if (depthLevel == 0) throw new InvalidOperationException("Cannot pop indent when depth level is already 0.");
         depthLevel--;
         needsIndent = true;
         return this;

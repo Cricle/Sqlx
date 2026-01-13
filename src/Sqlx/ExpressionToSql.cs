@@ -383,8 +383,8 @@ namespace Sqlx
         /// <summary>Convert to SQL string.</summary>
         public override string ToSql() => BuildSql();
 
-        /// <summary>Convert to SQL template.</summary>
-        public override SqlTemplate ToTemplate() => new(BuildSql(), _parameters);
+        /// <summary>Convert to SQL template string.</summary>
+        public override string ToTemplate() => BuildSql();
 
         /// <summary>Generate WHERE clause part.</summary>
         public override string ToWhereClause() =>
@@ -559,8 +559,8 @@ namespace Sqlx
         /// <summary>Convert to SQL query string.</summary>
         public override string ToSql() => _baseQuery.ToSql();
 
-        /// <summary>Convert to SQL template.</summary>
-        public override SqlTemplate ToTemplate() => _baseQuery.ToTemplate();
+        /// <summary>Convert to SQL template string.</summary>
+        public override string ToTemplate() => _baseQuery.ToTemplate();
 
         #region SELECT Clause Building
 

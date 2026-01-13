@@ -9,6 +9,8 @@ namespace TodoWebApi.Models;
 /// TODO项目模型 - 演示Sqlx ORM的核心功能
 /// 支持多种数据类型、索引、约束和AOT编译
 /// </summary>
+[SqlxEntity]
+[SqlxParameter]
 [TableName("todos")]
 public class Todo
 {
@@ -56,6 +58,8 @@ public class Todo
 /// <summary>
 /// TODO分类模型
 /// </summary>
+[SqlxEntity]
+[SqlxParameter]
 [TableName("categories")]
 public class Category
 {
@@ -79,6 +83,8 @@ public class Category
 /// <summary>
 /// TODO与分类的关联模型
 /// </summary>
+[SqlxEntity]
+[SqlxParameter]
 [TableName("todo_categories")]
 public class TodoCategory
 {

@@ -38,7 +38,7 @@ namespace Sqlx
         Task<List<TEntity>> GetWhereAsync([ExpressionToSql] Expression<Func<TEntity, bool>> predicate, int limit = 1000, CancellationToken cancellationToken = default);
 
         /// <summary>Gets first entity matching predicate.</summary>
-        [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE {{where --param predicate}} LIMIT 1")]
+        [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE {{where --param predicate}} {{limit --count 1}}")]
         Task<TEntity?> GetFirstWhereAsync([ExpressionToSql] Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
 
         /// <summary>Gets entities with pagination.</summary>

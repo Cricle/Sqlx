@@ -339,6 +339,19 @@ public class ComprehensiveSqlValidationTests
 
     [Fact]
     [Trait("Category", "SqlServer")]
+    public void SqlServer_GetFirstWhereAsync_GeneratesCorrectSql()
+    {
+        var repo = new CrudRepositorySqlServer(null!);
+        Expression<Func<CrossDialectTestEntity, bool>> predicate = x => x.Id == 1;
+        var sql = repo.GetGetFirstWhereAsyncSql(predicate);
+
+        Assert.Contains("SELECT [id], [name], [age], [is_active], [price], [created_at], [updated_at], [is_deleted], [deleted_at] FROM [test_entity] WHERE", sql);
+        // SqlServer uses OFFSET...FETCH instead of LIMIT
+        Assert.Contains("OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY", sql);
+    }
+
+    [Fact]
+    [Trait("Category", "SqlServer")]
     public void SqlServer_CountAsync_GeneratesCorrectSql()
     {
         var repo = new CrudRepositorySqlServer(null!);

@@ -3478,6 +3478,14 @@ public class CodeGenerationService
             return $"/* RUNTIME_LIMIT --param {paramName} */";
         });
 
+        // Process {{limit --count N}} placeholder - compile-time constant
+        sql = Regex.Replace(sql, @"\{\{limit\s+--count\s+(\d+)\}\}", m => {
+            var count = int.Parse(m.Groups[1].Value);
+            if (dialect.Equals(SqlDefine.SqlServer)) return $"OFFSET 0 ROWS FETCH NEXT {count} ROWS ONLY";
+            if (dialect.Equals(SqlDefine.Oracle)) return $"FETCH FIRST {count} ROWS ONLY";
+            return $"LIMIT {count}";
+        });
+
         // Process {{offset --param paramName}} placeholder
         sql = Regex.Replace(sql, @"\{\{offset\s+--param\s+(\w+)\}\}", m => {
             var paramName = m.Groups[1].Value;

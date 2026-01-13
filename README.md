@@ -280,6 +280,54 @@ var template = repo.GetByIdSql(123);
 Console.WriteLine(template.Sql);  // 输出生成的 SQL
 ```
 
+## ⚡ 高性能模式
+
+### PreparedCommandCache
+
+对于极致性能场景，使用 `PreparedCommandCache` 预创建命令和参数：
+
+```csharp
+// 创建一次，复用多次
+var getByIdCache = new PreparedCommandCache(
+    connection, 
+    "SELECT * FROM users WHERE id = @id", 
+    "@id");
+
+// 高性能查询 - 只更新参数值，不创建新对象
+getByIdCache.SetParam(0, userId);
+using var reader = await getByIdCache.Command.ExecuteReaderAsync();
+```
+
+### 性能对比 (AOT 模式)
+
+| 操作 | Sqlx | Dapper.AOT | Sqlx 优势 |
+|------|------|------------|-----------|
+| GetById | 2.47 us | 12.41 us | **5x 更快** |
+| Count | 5.48 us | 7.71 us | **40% 更快** |
+| Insert | 5.44 us | 11.19 us | **2x 更快** |
+
+### 适用于所有数据库
+
+这种优化模式适用于所有 ADO.NET 提供程序：
+
+```csharp
+// SQLite
+var cache = new PreparedCommandCache(sqliteConn, sql, "@id");
+
+// MySQL
+var cache = new PreparedCommandCache(mysqlConn, sql, "@id");
+
+// PostgreSQL - 还可以调用 Prepare() 进一步优化
+var cache = new PreparedCommandCache(npgsqlConn, sql, "@id");
+((NpgsqlCommand)cache.Command).Prepare();
+
+// SQL Server
+var cache = new PreparedCommandCache(sqlConn, sql, "@id");
+
+// Oracle
+var cache = new PreparedCommandCache(oracleConn, sql, ":id");
+```
+
 ## 🗄️ 支持的数据库
 
 | 数据库 | 状态 | 方言枚举 |

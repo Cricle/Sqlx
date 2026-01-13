@@ -30,7 +30,7 @@ public class StrictSqlValidationTests
         var sqliteRepo = new CrudRepositorySQLite(null!);
         _output.WriteLine($"  GetByIdAsync: {sqliteRepo.GetGetByIdAsyncSql().Sql}");
         _output.WriteLine($"  GetFirstWhereAsync: {sqliteRepo.GetGetFirstWhereAsyncSql().Sql}");
-        _output.WriteLine($"  InsertAsync: {sqliteRepo.GetInsertAsyncSql().Sql}");
+        _output.WriteLine($"  InsertAndGetIdAsync: {sqliteRepo.GetInsertAndGetIdAsyncSql().Sql}");
         _output.WriteLine($"  UpdateAsync: {sqliteRepo.GetUpdateAsyncSql().Sql}");
         _output.WriteLine($"  DeleteAsync: {sqliteRepo.GetDeleteAsyncSql().Sql}");
         _output.WriteLine($"  CountAsync: {sqliteRepo.GetCountAsyncSql().Sql}");
@@ -39,7 +39,7 @@ public class StrictSqlValidationTests
         var sqlServerRepo = new CrudRepositorySqlServer(null!);
         _output.WriteLine($"  GetByIdAsync: {sqlServerRepo.GetGetByIdAsyncSql().Sql}");
         _output.WriteLine($"  GetFirstWhereAsync: {sqlServerRepo.GetGetFirstWhereAsyncSql().Sql}");
-        _output.WriteLine($"  InsertAsync: {sqlServerRepo.GetInsertAsyncSql().Sql}");
+        _output.WriteLine($"  InsertAndGetIdAsync: {sqlServerRepo.GetInsertAndGetIdAsyncSql().Sql}");
         _output.WriteLine($"  UpdateAsync: {sqlServerRepo.GetUpdateAsyncSql().Sql}");
         _output.WriteLine($"  DeleteAsync: {sqlServerRepo.GetDeleteAsyncSql().Sql}");
         _output.WriteLine($"  CountAsync: {sqlServerRepo.GetCountAsyncSql().Sql}");
@@ -47,12 +47,12 @@ public class StrictSqlValidationTests
         _output.WriteLine("\n=== MySQL Generated SQL ===");
         var mysqlRepo = new CrudRepositoryMySql(null!);
         _output.WriteLine($"  GetByIdAsync: {mysqlRepo.GetGetByIdAsyncSql().Sql}");
-        _output.WriteLine($"  InsertAsync: {mysqlRepo.GetInsertAsyncSql().Sql}");
+        _output.WriteLine($"  InsertAndGetIdAsync: {mysqlRepo.GetInsertAndGetIdAsyncSql().Sql}");
 
         _output.WriteLine("\n=== PostgreSQL Generated SQL ===");
         var pgRepo = new CrudRepositoryPostgreSql(null!);
         _output.WriteLine($"  GetByIdAsync: {pgRepo.GetGetByIdAsyncSql().Sql}");
-        _output.WriteLine($"  InsertAsync: {pgRepo.GetInsertAsyncSql().Sql}");
+        _output.WriteLine($"  InsertAndGetIdAsync: {pgRepo.GetInsertAndGetIdAsyncSql().Sql}");
     }
 
     [Fact]

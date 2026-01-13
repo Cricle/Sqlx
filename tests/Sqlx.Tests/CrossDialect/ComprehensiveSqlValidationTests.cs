@@ -90,7 +90,7 @@ public class ComprehensiveSqlValidationTests
     public void SQLite_InsertAsync_GeneratesCorrectSql()
     {
         var repo = new CrudRepositorySQLite(null!);
-        var template = repo.GetInsertAsyncSql();
+        var template = repo.GetInsertAndGetIdAsyncSql();
 
         Assert.Contains("INSERT INTO", template.Sql);
         Assert.Contains("test_entity", template.Sql);
@@ -143,7 +143,7 @@ public class ComprehensiveSqlValidationTests
     public void MySQL_InsertAsync_GeneratesCorrectSql()
     {
         var repo = new CrudRepositoryMySql(null!);
-        var template = repo.GetInsertAsyncSql();
+        var template = repo.GetInsertAndGetIdAsyncSql();
 
         Assert.Contains("INSERT INTO", template.Sql);
         Assert.Contains("test_entity", template.Sql);
@@ -184,7 +184,7 @@ public class ComprehensiveSqlValidationTests
     public void PostgreSQL_InsertAsync_GeneratesCorrectSql()
     {
         var repo = new CrudRepositoryPostgreSql(null!);
-        var template = repo.GetInsertAsyncSql();
+        var template = repo.GetInsertAndGetIdAsyncSql();
 
         Assert.Contains("INSERT INTO", template.Sql);
         Assert.Contains("test_entity", template.Sql);
@@ -225,7 +225,7 @@ public class ComprehensiveSqlValidationTests
     public void SqlServer_InsertAsync_GeneratesCorrectSql()
     {
         var repo = new CrudRepositorySqlServer(null!);
-        var template = repo.GetInsertAsyncSql();
+        var template = repo.GetInsertAndGetIdAsyncSql();
 
         Assert.Contains("INSERT INTO", template.Sql);
         Assert.Contains("test_entity", template.Sql);

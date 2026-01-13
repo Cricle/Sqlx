@@ -20,10 +20,6 @@ namespace Sqlx
     public interface ICommandRepository<TEntity, TKey>
         where TEntity : class
     {
-        /// <summary>Inserts new entity.</summary>
-        [SqlTemplate("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values --exclude Id}})")]
-        Task<int> InsertAsync(TEntity entity, CancellationToken cancellationToken = default);
-
         /// <summary>Inserts entity and returns generated primary key.</summary>
         [SqlTemplate("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values --exclude Id}})")]
         [ReturnInsertedId]

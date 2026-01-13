@@ -700,9 +700,14 @@ public static class SharedCodeGenerationUtilities
                     sb.AppendLine($"var __{paramName}_clause__ = {paramName}?.ToWhereClause(global::Sqlx.SqlDefine.{dialectValue}) ?? \"\";");
                     sb.AppendLine($"var {varName} = string.IsNullOrEmpty(__{paramName}_clause__) ? \"\" : \"WHERE \" + __{paramName}_clause__;");
                 }
+                else if (placeholderType == "SET")
+                {
+                    // For SET - use ToSetClause() to get SET clause without SET keyword
+                    sb.AppendLine($"var {varName} = {paramName}?.ToSetClause() ?? \"\";");
+                }
                 else
                 {
-                    // For SET, ORDERBY, etc. - extract as SQL fragment
+                    // For ORDERBY, etc. - extract as SQL fragment
                     sb.AppendLine($"var {varName} = {paramName}?.ToSql() ?? \"\";");
                 }
             }

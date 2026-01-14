@@ -542,7 +542,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         {
             // Return list of entities
             sb.AppendLine($"using var reader = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.Default, {ctName}).ConfigureAwait(false);");
-            sb.AppendLine($"var result = (List<{entityFullName}>){entityName}ResultReader.Default.Read(reader);");
+            sb.AppendLine($"var result = await {entityName}ResultReader.Default.ReadAsync(reader, {ctName}).ConfigureAwait(false);");
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
             sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
@@ -560,7 +560,8 @@ public class RepositoryGenerator : IIncrementalGenerator
         {
             // Return single entity
             sb.AppendLine($"using var reader = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.Default, {ctName}).ConfigureAwait(false);");
-            sb.AppendLine($"var result = {entityName}ResultReader.Default.Read(reader).FirstOrDefault();");
+            sb.AppendLine($"var entities = await {entityName}ResultReader.Default.ReadAsync(reader, {ctName}).ConfigureAwait(false);");
+            sb.AppendLine("var result = entities.Count > 0 ? entities[0] : default;");
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
             sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");

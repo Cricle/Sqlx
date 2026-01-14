@@ -7,32 +7,29 @@ namespace Sqlx;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Threading;
+using System.Threading.Tasks;
 
 /// <summary>
 /// Reads entities from DbDataReader without reflection.
-/// Returns IEnumerable/IAsyncEnumerable for flexible consumption with LINQ.
+/// Returns List for direct consumption without additional allocations.
 /// </summary>
 /// <typeparam name="TEntity">The entity type.</typeparam>
 public interface IResultReader<TEntity>
 {
     /// <summary>
-    /// Reads all entities from the reader as IEnumerable.
+    /// Reads all entities from the reader into a List.
     /// Caller is responsible for reader lifecycle.
-    /// Use LINQ methods like .ToList(), .FirstOrDefault() for further processing.
     /// </summary>
     /// <param name="reader">The data reader.</param>
-    /// <returns>Enumerable of entities.</returns>
-    IEnumerable<TEntity> Read(DbDataReader reader);
+    /// <returns>List of entities.</returns>
+    List<TEntity> Read(DbDataReader reader);
 
-#if NET8_0_OR_GREATER
     /// <summary>
-    /// Reads all entities from the reader as IAsyncEnumerable.
+    /// Reads all entities from the reader into a List asynchronously.
     /// Caller is responsible for reader lifecycle.
-    /// Use LINQ methods like .ToListAsync(), .FirstOrDefaultAsync() for further processing.
     /// </summary>
     /// <param name="reader">The data reader.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Async enumerable of entities.</returns>
-    IAsyncEnumerable<TEntity> ReadAsync(DbDataReader reader, CancellationToken cancellationToken = default);
-#endif
+    /// <returns>Task containing list of entities.</returns>
+    Task<List<TEntity>> ReadAsync(DbDataReader reader, CancellationToken cancellationToken = default);
 }

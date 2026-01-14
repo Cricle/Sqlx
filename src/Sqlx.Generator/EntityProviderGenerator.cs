@@ -184,7 +184,7 @@ public class EntityProviderGenerator : IIncrementalGenerator
     private static void GenerateSyncReadMethod(IndentedStringBuilder sb, string fullTypeName,
         System.Collections.Generic.List<IPropertySymbol> properties, INamedTypeSymbol? columnAttr)
     {
-        sb.AppendLine($"public IEnumerable<{fullTypeName}> Read(DbDataReader reader)");
+        sb.AppendLine($"public List<{fullTypeName}> Read(DbDataReader reader)");
         sb.AppendLine("{");
         sb.PushIndent();
 
@@ -195,7 +195,6 @@ public class EntityProviderGenerator : IIncrementalGenerator
         }
         sb.AppendLine();
 
-        // Use List for better performance than yield return
         sb.AppendLine($"var list = new List<{fullTypeName}>();");
         sb.AppendLine("while (reader.Read())");
         sb.AppendLine("{");
@@ -225,10 +224,9 @@ public class EntityProviderGenerator : IIncrementalGenerator
     private static void GenerateAsyncReadMethod(IndentedStringBuilder sb, string fullTypeName,
         System.Collections.Generic.List<IPropertySymbol> properties, INamedTypeSymbol? columnAttr)
     {
-        sb.AppendLine("#if NET8_0_OR_GREATER");
-        sb.AppendLine($"public async IAsyncEnumerable<{fullTypeName}> ReadAsync(");
+        sb.AppendLine($"public async System.Threading.Tasks.Task<List<{fullTypeName}>> ReadAsync(");
         sb.AppendLine("    DbDataReader reader,");
-        sb.AppendLine("    [System.Runtime.CompilerServices.EnumeratorCancellation] System.Threading.CancellationToken cancellationToken = default)");
+        sb.AppendLine("    System.Threading.CancellationToken cancellationToken = default)");
         sb.AppendLine("{");
         sb.PushIndent();
 
@@ -239,10 +237,11 @@ public class EntityProviderGenerator : IIncrementalGenerator
         }
         sb.AppendLine();
 
+        sb.AppendLine($"var list = new List<{fullTypeName}>();");
         sb.AppendLine("while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))");
         sb.AppendLine("{");
         sb.PushIndent();
-        sb.AppendLine($"yield return new {fullTypeName}");
+        sb.AppendLine($"list.Add(new {fullTypeName}");
         sb.AppendLine("{");
         sb.PushIndent();
 
@@ -255,13 +254,13 @@ public class EntityProviderGenerator : IIncrementalGenerator
         }
 
         sb.PopIndent();
-        sb.AppendLine("};");
+        sb.AppendLine("});");
         sb.PopIndent();
         sb.AppendLine("}");
+        sb.AppendLine("return list;");
 
         sb.PopIndent();
         sb.AppendLine("}");
-        sb.AppendLine("#endif");
     }
 
     private static string GetColumnName(IPropertySymbol prop, INamedTypeSymbol? columnAttr)

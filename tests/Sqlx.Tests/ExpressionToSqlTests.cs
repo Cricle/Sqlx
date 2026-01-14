@@ -645,28 +645,6 @@ public class AnyPlaceholderTests
 }
 
 [TestClass]
-public class GroupingExtensionsTests
-{
-    [TestMethod]
-    public void Count_ReturnsDefault() => Assert.AreEqual(default(int), GroupingExtensions.Count<int, ExprUser>(null!));
-
-    [TestMethod]
-    public void Sum_ReturnsDefault() => Assert.AreEqual(default(int), GroupingExtensions.Sum<int, ExprUser, int>(null!, u => u.Age));
-
-    [TestMethod]
-    public void Average_Double_ReturnsDefault() => Assert.AreEqual(default(double), GroupingExtensions.Average<int, ExprUser>(null!, u => (double)u.Age));
-
-    [TestMethod]
-    public void Average_Decimal_ReturnsDefault() => Assert.AreEqual(default(double), GroupingExtensions.Average<int, ExprUser>(null!, u => u.Salary));
-
-    [TestMethod]
-    public void Max_ReturnsDefault() => Assert.AreEqual(default(int), GroupingExtensions.Max<int, ExprUser, int>(null!, u => u.Age));
-
-    [TestMethod]
-    public void Min_ReturnsDefault() => Assert.AreEqual(default(int), GroupingExtensions.Min<int, ExprUser, int>(null!, u => u.Age));
-}
-
-[TestClass]
 public class ExpressionToSqlEdgeCaseTests
 {
     #region Null Value Handling

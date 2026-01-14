@@ -529,33 +529,4 @@ namespace Sqlx
 
         #endregion
     }
-
-    /// <summary>Grouping interface for expression tree parsing.</summary>
-    public interface IGrouping<out TKey, out TElement>
-    {
-        /// <summary>Gets the grouping key.</summary>
-        TKey Key { get; }
-    }
-
-    /// <summary>Aggregation extensions for grouped queries (expression tree parsing only).</summary>
-    public static class GroupingExtensions
-    {
-        /// <summary>Counts the elements in the group.</summary>
-        public static int Count<TKey, TElement>(this IGrouping<TKey, TElement> g) => default;
-
-        /// <summary>Computes the sum of a numeric property.</summary>
-        public static TResult Sum<TKey, TElement, TResult>(this IGrouping<TKey, TElement> g, Expression<Func<TElement, TResult>> s) => default!;
-
-        /// <summary>Computes the average of a double property.</summary>
-        public static double Average<TKey, TElement>(this IGrouping<TKey, TElement> g, Expression<Func<TElement, double>> s) => default;
-
-        /// <summary>Computes the average of a decimal property.</summary>
-        public static double Average<TKey, TElement>(this IGrouping<TKey, TElement> g, Expression<Func<TElement, decimal>> s) => default;
-
-        /// <summary>Gets the maximum value of a property.</summary>
-        public static TResult Max<TKey, TElement, TResult>(this IGrouping<TKey, TElement> g, Expression<Func<TElement, TResult>> s) => default!;
-
-        /// <summary>Gets the minimum value of a property.</summary>
-        public static TResult Min<TKey, TElement, TResult>(this IGrouping<TKey, TElement> g, Expression<Func<TElement, TResult>> s) => default!;
-    }
 }

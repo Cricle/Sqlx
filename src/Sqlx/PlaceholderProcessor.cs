@@ -56,6 +56,7 @@ public static class PlaceholderProcessor
         ["limit"] = LimitPlaceholderHandler.Instance,
         ["offset"] = OffsetPlaceholderHandler.Instance,
         ["if"] = IfPlaceholderHandler.Instance,
+        ["arg"] = ArgPlaceholderHandler.Instance,
     };
 
     private static readonly HashSet<string> BlockClosingTags = new(StringComparer.OrdinalIgnoreCase)

@@ -655,13 +655,25 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine("var insertSqlWithId = sqlText + _placeholderContext.Dialect.InsertReturningIdSuffix;");
             sb.AppendLine("cmd.CommandText = insertSqlWithId;");
             
+            // Use ExecuteReader for all cases to handle multi-statement SQL correctly
+            // For "INSERT ...; SELECT last_insert_rowid()", the ID is in the second result set
+            // For "INSERT ... RETURNING id", the ID is in the first result set
+            sb.AppendLine($"using var reader = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.Default, {ctName}).ConfigureAwait(false);");
+            
             if (isTupleReturn)
             {
-                // Return (affectedRows, insertedId) tuple using ExecuteReader + NextResult
-                sb.AppendLine($"using var reader = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.Default, {ctName}).ConfigureAwait(false);");
+                // Return (affectedRows, insertedId) tuple
                 sb.AppendLine("var affectedRows = reader.RecordsAffected;");
+                sb.AppendLine();
+                sb.AppendLine("// For multi-statement SQL (INSERT; SELECT), move to the result set containing the ID");
+                sb.AppendLine("// For RETURNING clause, the ID is already in the current result set");
+                sb.AppendLine($"if (!await reader.ReadAsync({ctName}).ConfigureAwait(false))");
+                sb.AppendLine("{");
+                sb.PushIndent();
                 sb.AppendLine($"await reader.NextResultAsync({ctName}).ConfigureAwait(false);");
                 sb.AppendLine($"await reader.ReadAsync({ctName}).ConfigureAwait(false);");
+                sb.PopIndent();
+                sb.AppendLine("}");
                 sb.AppendLine($"var insertedId = ({keyTypeName})Convert.ChangeType(reader.GetValue(0), typeof({keyTypeName}));");
                 sb.AppendLine();
                 sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
@@ -683,9 +695,17 @@ public class RepositoryGenerator : IIncrementalGenerator
             }
             else
             {
-                // Return just insertedId using ExecuteScalar
-                sb.AppendLine($"var idResult = await cmd.ExecuteScalarAsync({ctName}).ConfigureAwait(false);");
-                sb.AppendLine($"var insertedId = ({keyTypeName})Convert.ChangeType(idResult!, typeof({keyTypeName}));");
+                // Return just insertedId
+                sb.AppendLine("// For multi-statement SQL (INSERT; SELECT), move to the result set containing the ID");
+                sb.AppendLine("// For RETURNING clause, the ID is already in the current result set");
+                sb.AppendLine($"if (!await reader.ReadAsync({ctName}).ConfigureAwait(false))");
+                sb.AppendLine("{");
+                sb.PushIndent();
+                sb.AppendLine($"await reader.NextResultAsync({ctName}).ConfigureAwait(false);");
+                sb.AppendLine($"await reader.ReadAsync({ctName}).ConfigureAwait(false);");
+                sb.PopIndent();
+                sb.AppendLine("}");
+                sb.AppendLine($"var insertedId = ({keyTypeName})Convert.ChangeType(reader.GetValue(0), typeof({keyTypeName}));");
                 sb.AppendLine();
                 sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
                 sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");

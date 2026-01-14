@@ -22,7 +22,7 @@ namespace Sqlx
         where TEntity : class
     {
         /// <summary>Gets entity by primary key.</summary>
-        [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
+        [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = {{arg --param id}}")]
         Task<TEntity?> GetByIdAsync(TKey id, CancellationToken cancellationToken = default);
 
         /// <summary>Gets multiple entities by IDs.</summary>

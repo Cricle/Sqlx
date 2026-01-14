@@ -40,7 +40,7 @@ public class SqlxAnalyzer : DiagnosticAnalyzer
         category: "Usage",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "Only built-in placeholders are supported: columns, values, set, table, where, limit, offset.");
+        description: "Only built-in placeholders are supported: columns, values, set, table, where, limit, offset, arg, if.");
 
     /// <summary>
     /// SQLX003: Consider adding [Column] attribute for non-standard column name.
@@ -54,7 +54,7 @@ public class SqlxAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description: "The [Column] attribute allows customizing the database column name mapping.");
 
-    private static readonly string[] KnownPlaceholders = { "columns", "values", "set", "table", "where", "limit", "offset" };
+    private static readonly string[] KnownPlaceholders = { "columns", "values", "set", "table", "where", "limit", "offset", "arg", "if" };
     private static readonly Regex PlaceholderRegex = new(@"\{\{(\w+)(?:\s+[^}]+)?\}\}", RegexOptions.Compiled);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

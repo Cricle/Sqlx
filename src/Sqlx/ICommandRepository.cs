@@ -26,7 +26,7 @@ namespace Sqlx
         Task<TKey> InsertAndGetIdAsync(TEntity entity, CancellationToken cancellationToken = default);
 
         /// <summary>Updates entity by primary key.</summary>
-        [SqlTemplate("UPDATE {{table}} SET {{set --exclude Id}} WHERE id = @id")]
+        [SqlTemplate("UPDATE {{table}} SET {{set --exclude Id}} WHERE id = {{arg --param id}}")]
         Task<int> UpdateAsync(TEntity entity, CancellationToken cancellationToken = default);
 
         /// <summary>Updates entities matching predicate using ExpressionToSql for SET clause.</summary>
@@ -42,7 +42,7 @@ namespace Sqlx
         Task<int> UpdateWhereAsync([ExpressionToSql] Expression<Func<TEntity, bool>> predicate, ExpressionToSql<TEntity> setter, CancellationToken cancellationToken = default);
 
         /// <summary>Deletes entity by primary key.</summary>
-        [SqlTemplate("DELETE FROM {{table}} WHERE id = @id")]
+        [SqlTemplate("DELETE FROM {{table}} WHERE id = {{arg --param id}}")]
         Task<int> DeleteAsync(TKey id, CancellationToken cancellationToken = default);
 
         /// <summary>Deletes entities matching predicate.</summary>

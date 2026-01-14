@@ -29,23 +29,13 @@ using Sqlx.Placeholders;
 /// <item><description><c>where</c> - Dynamic WHERE clause (requires --param)</description></item>
 /// <item><description><c>limit</c> - LIMIT clause (static with --count, dynamic with --param)</description></item>
 /// <item><description><c>offset</c> - OFFSET clause (static with --count, dynamic with --param)</description></item>
+/// <item><description><c>in</c> - IN clause with parentheses (requires --param)</description></item>
+/// <item><description><c>if</c> - Conditional block (requires condition like notnull=param)</description></item>
 /// </list>
 /// <para>
 /// Custom handlers can be registered to add new placeholder types or override existing ones.
 /// </para>
 /// </remarks>
-/// <example>
-/// <code>
-/// // Register a custom handler
-/// PlaceholderProcessor.RegisterHandler(new MyCustomHandler());
-/// 
-/// // Check if a handler exists
-/// if (PlaceholderProcessor.TryGetHandler("custom", out var handler))
-/// {
-///     // Use the handler
-/// }
-/// </code>
-/// </example>
 #if NET7_0_OR_GREATER
 public static partial class PlaceholderProcessor
 #else
@@ -65,6 +55,13 @@ public static class PlaceholderProcessor
         ["where"] = WherePlaceholderHandler.Instance,
         ["limit"] = LimitPlaceholderHandler.Instance,
         ["offset"] = OffsetPlaceholderHandler.Instance,
+        ["in"] = InPlaceholderHandler.Instance,
+        ["if"] = IfPlaceholderHandler.Instance,
+    };
+
+    private static readonly HashSet<string> BlockClosingTags = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "/if",
     };
 
     /// <summary>
@@ -74,8 +71,35 @@ public static class PlaceholderProcessor
     /// <remarks>
     /// If a handler with the same name already exists, it will be replaced.
     /// Handler names are case-insensitive.
+    /// If the handler implements <see cref="IBlockPlaceholderHandler"/>, its closing tag is automatically registered.
     /// </remarks>
-    public static void RegisterHandler(IPlaceholderHandler handler) => Handlers[handler.Name] = handler;
+    public static void RegisterHandler(IPlaceholderHandler handler)
+    {
+        Handlers[handler.Name] = handler;
+        if (handler is IBlockPlaceholderHandler blockHandler)
+        {
+            BlockClosingTags.Add(blockHandler.ClosingTagName);
+        }
+    }
+
+    /// <summary>
+    /// Registers a block closing tag name.
+    /// </summary>
+    /// <param name="closingTagName">The closing tag name (e.g., "/if", "/foreach").</param>
+    public static void RegisterBlockClosingTag(string closingTagName)
+    {
+        BlockClosingTags.Add(closingTagName);
+    }
+
+    /// <summary>
+    /// Checks if a tag name is a block closing tag.
+    /// </summary>
+    /// <param name="tagName">The tag name to check.</param>
+    /// <returns><c>true</c> if it's a closing tag; otherwise, <c>false</c>.</returns>
+    public static bool IsBlockClosingTag(string tagName)
+    {
+        return BlockClosingTags.Contains(tagName);
+    }
 
     /// <summary>
     /// Tries to get a placeholder handler by name.

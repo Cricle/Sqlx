@@ -9,171 +9,174 @@ using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
 
-/// <summary>
-/// Represents a prepared SQL template with efficient rendering capabilities.
-/// </summary>
-/// <remarks>
-/// <para>
-/// SqlTemplate provides a two-phase approach for SQL generation:
-/// </para>
-/// <list type="number">
-/// <item><description><see cref="Prepare"/> - Pre-processes static placeholders and records dynamic placeholder positions</description></item>
-/// <item><description><see cref="Render"/> - Efficiently renders dynamic placeholders using StringBuilder</description></item>
-/// </list>
-/// <para>
-/// Supported placeholder syntax: <c>{{name}}</c> or <c>{{name --option value}}</c>
-/// </para>
-/// <para>
-/// Built-in placeholders: columns, values, set, table, where, limit, offset
-/// </para>
-/// </remarks>
-/// <example>
-/// <code>
-/// var context = new PlaceholderContext(SqlDefine.SQLite, "users", UserEntityProvider.Default.Columns);
-/// var template = SqlTemplate.Prepare("SELECT {{columns}} FROM {{table}} WHERE {{where --param predicate}}", context);
-/// var sql = template.Render(new Dictionary&lt;string, object?&gt; { ["predicate"] = "age > 18" });
-/// </code>
-/// </example>
 #if NET7_0_OR_GREATER
 public sealed partial class SqlTemplate
 #else
 public sealed class SqlTemplate
 #endif
 {
-    private readonly string[] _segments;
-    private readonly DynamicPlaceholder[] _placeholders;
+    private readonly TemplateSegment[] _segments;
+    private readonly bool _hasBlocks;
 
-    private SqlTemplate(string sql, string[] segments, DynamicPlaceholder[] placeholders)
+    private SqlTemplate(string sql, TemplateSegment[] segments, bool hasBlocks)
     {
         Sql = sql;
         _segments = segments;
-        _placeholders = placeholders;
+        _hasBlocks = hasBlocks;
     }
 
-    /// <summary>
-    /// Gets the prepared SQL with static placeholders resolved.
-    /// </summary>
-    /// <remarks>
-    /// This SQL string has all static placeholders (like {{columns}}, {{table}}) already replaced.
-    /// Dynamic placeholders (like {{where --param predicate}}) are not included in this string.
-    /// </remarks>
     public string Sql { get; }
+    public bool HasDynamicPlaceholders => _segments.Length > 1 || _hasBlocks;
 
-    /// <summary>
-    /// Gets a value indicating whether the template contains dynamic placeholders.
-    /// </summary>
-    /// <remarks>
-    /// Dynamic placeholders require runtime parameters and must be rendered using <see cref="Render"/>.
-    /// </remarks>
-    public bool HasDynamicPlaceholders => _placeholders.Length > 0;
-
-    /// <summary>
-    /// Prepares a SQL template by pre-processing static placeholders and recording dynamic placeholder positions.
-    /// </summary>
-    /// <param name="template">The SQL template string containing placeholders.</param>
-    /// <param name="context">The placeholder context providing dialect, table name, and column metadata.</param>
-    /// <returns>A prepared <see cref="SqlTemplate"/> instance ready for rendering.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when an unknown placeholder is encountered.</exception>
     public static SqlTemplate Prepare(string template, PlaceholderContext context)
     {
-        var segments = new List<string>();
-        var placeholders = new List<DynamicPlaceholder>();
+        var segments = new List<TemplateSegment>();
         var lastIndex = 0;
+        var hasBlocks = false;
 
         foreach (Match match in PlaceholderRegex().Matches(template))
         {
             var name = match.Groups[1].Value;
             var options = match.Groups[2].Value;
 
-            if (!PlaceholderProcessor.TryGetHandler(name, out var handler))
+            if (PlaceholderProcessor.IsBlockClosingTag(name))
             {
+                var before = template.Substring(lastIndex, match.Index - lastIndex);
+                if (!string.IsNullOrEmpty(before)) segments.Add(TemplateSegment.Static(before));
+                segments.Add(TemplateSegment.BlockEnd(name));
+                lastIndex = match.Index + match.Length;
+                hasBlocks = true;
+                continue;
+            }
+
+            if (!PlaceholderProcessor.TryGetHandler(name, out var handler))
                 throw new InvalidOperationException($"Unknown placeholder: {{{{{name}}}}}");
+
+            if (handler is IBlockPlaceholderHandler blockHandler)
+            {
+                var before = template.Substring(lastIndex, match.Index - lastIndex);
+                if (!string.IsNullOrEmpty(before)) segments.Add(TemplateSegment.Static(before));
+                segments.Add(TemplateSegment.BlockStart(blockHandler, options));
+                lastIndex = match.Index + match.Length;
+                hasBlocks = true;
+                continue;
             }
 
             var type = handler.GetType(options);
             if (type == PlaceholderType.Static)
             {
-                // 静态占位符：直接替换
                 var before = template.Substring(lastIndex, match.Index - lastIndex);
                 var replacement = handler.Process(context, options);
-                segments.Add(before + replacement);
+                segments.Add(TemplateSegment.Static(before + replacement));
             }
             else
             {
-                // 动态占位符：记录位置
                 var before = template.Substring(lastIndex, match.Index - lastIndex);
-                segments.Add(before);
-                placeholders.Add(new DynamicPlaceholder(segments.Count - 1, handler, options, context));
+                if (!string.IsNullOrEmpty(before)) segments.Add(TemplateSegment.Static(before));
+                segments.Add(TemplateSegment.Dynamic(handler, options, context));
             }
-
             lastIndex = match.Index + match.Length;
         }
 
-        // 添加最后一段
-        if (lastIndex < template.Length)
-        {
-            segments.Add(template.Substring(lastIndex));
-        }
-
-        var sql = string.Concat(segments);
-        return new SqlTemplate(sql, segments.ToArray(), placeholders.ToArray());
+        if (lastIndex < template.Length) segments.Add(TemplateSegment.Static(template.Substring(lastIndex)));
+        var mergedSegments = MergeStaticSegments(segments);
+        var sql = BuildStaticSql(mergedSegments);
+        return new SqlTemplate(sql, mergedSegments, hasBlocks);
     }
 
-    /// <summary>
-    /// Renders the template with dynamic parameters, producing the final SQL string.
-    /// </summary>
-    /// <param name="dynamicParameters">Dictionary of parameter names and values for dynamic placeholders.</param>
-    /// <returns>The fully rendered SQL string with all placeholders resolved.</returns>
-    /// <remarks>
-    /// If the template has no dynamic placeholders, this method returns <see cref="Sql"/> directly.
-    /// Otherwise, it uses StringBuilder to efficiently concatenate pre-computed segments with rendered dynamic values.
-    /// </remarks>
     public string Render(IReadOnlyDictionary<string, object?>? dynamicParameters)
     {
-        if (_placeholders.Length == 0)
-        {
-            return Sql;
-        }
+        if (_segments.Length == 0) return Sql;
+        if (_segments.Length == 1 && _segments[0].Type == SegmentType.Static && !_hasBlocks) return Sql;
 
         var sb = new StringBuilder();
-        var partIndex = 0;
+        var skipDepth = 0;
 
         for (var i = 0; i < _segments.Length; i++)
         {
-            sb.Append(_segments[i]);
-
-            if (partIndex < _placeholders.Length && _placeholders[partIndex].SegmentIndex == i)
+            var seg = _segments[i];
+            switch (seg.Type)
             {
-                var p = _placeholders[partIndex];
-                sb.Append(p.Handler.Render(p.Context, p.Options, dynamicParameters));
-                partIndex++;
+                case SegmentType.Static:
+                    if (skipDepth == 0) sb.Append(seg.Text);
+                    break;
+                case SegmentType.Dynamic:
+                    if (skipDepth == 0) sb.Append(seg.Handler!.Render(seg.Context!, seg.Options!, dynamicParameters));
+                    break;
+                case SegmentType.BlockStart:
+                    if (skipDepth > 0) skipDepth++;
+                    else if (!seg.BlockHandler!.ShouldInclude(seg.Options!, dynamicParameters)) skipDepth = 1;
+                    break;
+                case SegmentType.BlockEnd:
+                    if (skipDepth > 0) skipDepth--;
+                    break;
             }
         }
-
         return sb.ToString();
     }
 
+    private static string BuildStaticSql(TemplateSegment[] segments)
+    {
+        var sb = new StringBuilder();
+        foreach (var seg in segments)
+            if (seg.Type == SegmentType.Static) sb.Append(seg.Text);
+        return sb.ToString();
+    }
+
+    private static TemplateSegment[] MergeStaticSegments(List<TemplateSegment> segments)
+    {
+        if (segments.Count == 0) return Array.Empty<TemplateSegment>();
+        var result = new List<TemplateSegment>();
+        var currentStatic = new StringBuilder();
+        foreach (var seg in segments)
+        {
+            if (seg.Type == SegmentType.Static) currentStatic.Append(seg.Text);
+            else
+            {
+                if (currentStatic.Length > 0)
+                {
+                    result.Add(TemplateSegment.Static(currentStatic.ToString()));
+                    currentStatic.Clear();
+                }
+                result.Add(seg);
+            }
+        }
+        if (currentStatic.Length > 0) result.Add(TemplateSegment.Static(currentStatic.ToString()));
+        return result.ToArray();
+    }
+
 #if NET7_0_OR_GREATER
-    [System.Text.RegularExpressions.GeneratedRegex(@"\{\{(\w+)(?:\s+([^}]+))?\}\}")]
+    [GeneratedRegex(@"\{\{(/?\w+)(?:\s+([^}]+))?\}\}")]
     private static partial Regex PlaceholderRegex();
 #else
-    private static readonly Regex PlaceholderRegexInstance = new(@"\{\{(\w+)(?:\s+([^}]+))?\}\}", RegexOptions.Compiled);
+    private static readonly Regex PlaceholderRegexInstance = new(@"\{\{(/?\w+)(?:\s+([^}]+))?\}\}", RegexOptions.Compiled);
     private static Regex PlaceholderRegex() => PlaceholderRegexInstance;
 #endif
 
-    private readonly struct DynamicPlaceholder
-    {
-        public readonly int SegmentIndex;
-        public readonly IPlaceholderHandler Handler;
-        public readonly string Options;
-        public readonly PlaceholderContext Context;
+    private enum SegmentType : byte { Static, Dynamic, BlockStart, BlockEnd }
 
-        public DynamicPlaceholder(int segmentIndex, IPlaceholderHandler handler, string options, PlaceholderContext context)
+    private readonly struct TemplateSegment
+    {
+        public readonly SegmentType Type;
+        public readonly string? Text;
+        public readonly IPlaceholderHandler? Handler;
+        public readonly IBlockPlaceholderHandler? BlockHandler;
+        public readonly string? Options;
+        public readonly PlaceholderContext? Context;
+
+        private TemplateSegment(SegmentType type, string? text, IPlaceholderHandler? handler,
+            IBlockPlaceholderHandler? blockHandler, string? options, PlaceholderContext? context)
         {
-            SegmentIndex = segmentIndex;
-            Handler = handler;
-            Options = options;
-            Context = context;
+            Type = type; Text = text; Handler = handler;
+            BlockHandler = blockHandler; Options = options; Context = context;
         }
+
+        public static TemplateSegment Static(string text) => new(SegmentType.Static, text, null, null, null, null);
+        public static TemplateSegment Dynamic(IPlaceholderHandler handler, string options, PlaceholderContext context)
+            => new(SegmentType.Dynamic, null, handler, null, options, context);
+        public static TemplateSegment BlockStart(IBlockPlaceholderHandler handler, string options)
+            => new(SegmentType.BlockStart, null, null, handler, options, null);
+        public static TemplateSegment BlockEnd(string closingTagName)
+            => new(SegmentType.BlockEnd, null, null, null, null, null);
     }
 }

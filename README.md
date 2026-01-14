@@ -497,44 +497,6 @@ await connection.ExecuteBatchAsync(deleteSql, deleteIds, DeleteBinder.Default);
 - 小批量（10-100条）：**Sqlx 快 10-12%，内存少 32%**
 - 大批量（1000条）：性能持平，**Sqlx 内存少 32%**
 
-### PreparedCommandCache
-
-对于极致性能场景，使用 `PreparedCommandCache` 预创建命令和参数：
-
-```csharp
-// 创建一次，复用多次
-var getByIdCache = new PreparedCommandCache(
-    connection, 
-    "SELECT * FROM users WHERE id = @id", 
-    "@id");
-
-// 高性能查询 - 只更新参数值，不创建新对象
-getByIdCache.SetParam(0, userId);
-using var reader = await getByIdCache.Command.ExecuteReaderAsync();
-```
-
-### 适用于所有数据库
-
-这种优化模式适用于所有 ADO.NET 提供程序：
-
-```csharp
-// SQLite
-var cache = new PreparedCommandCache(sqliteConn, sql, "@id");
-
-// MySQL
-var cache = new PreparedCommandCache(mysqlConn, sql, "@id");
-
-// PostgreSQL - 还可以调用 Prepare() 进一步优化
-var cache = new PreparedCommandCache(npgsqlConn, sql, "@id");
-((NpgsqlCommand)cache.Command).Prepare();
-
-// SQL Server
-var cache = new PreparedCommandCache(sqlConn, sql, "@id");
-
-// Oracle
-var cache = new PreparedCommandCache(oracleConn, sql, ":id");
-```
-
 ## 🗄️ 支持的数据库
 
 | 数据库 | 状态 | 方言枚举 |

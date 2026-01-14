@@ -11,6 +11,7 @@
     <DefineConstants>$(DefineConstants);SQLX_DISABLE_ACTIVITY;SQLX_DISABLE_INTERCEPTOR</DefineConstants>
     <!-- Suppress Dapper.AOT generated code warnings -->
     <NoWarn>$(NoWarn);CS9270</NoWarn>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
   </PropertyGroup>
 
   <ItemGroup>

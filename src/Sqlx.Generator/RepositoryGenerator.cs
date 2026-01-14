@@ -591,24 +591,22 @@ public class RepositoryGenerator : IIncrementalGenerator
         }
         else if (isReturnInsertedId)
         {
-            // Return inserted ID - must be checked before Task<long> since InsertAndGetIdAsync returns Task<TKey>
-            sb.AppendLine($"await cmd.ExecuteNonQueryAsync({ctName}).ConfigureAwait(false);");
-            sb.AppendLine();
-            sb.AppendLine("// Get last inserted ID based on dialect");
-            sb.AppendLine("using DbCommand idCmd = _connection.CreateCommand();");
-            sb.AppendLine("if (Transaction != null) idCmd.Transaction = Transaction;");
-            sb.AppendLine("idCmd.CommandText = _dialectType switch");
+            // Return inserted ID - append SELECT last_insert_id to the INSERT statement for single round-trip
+            sb.AppendLine("// Append last inserted ID query to the INSERT statement");
+            sb.AppendLine("var insertSqlWithId = sqlText + _dialectType switch");
             sb.AppendLine("{");
             sb.PushIndent();
-            sb.AppendLine("global::Sqlx.Annotations.SqlDefineTypes.SqlServer => \"SELECT SCOPE_IDENTITY()\",");
-            sb.AppendLine("global::Sqlx.Annotations.SqlDefineTypes.MySql => \"SELECT LAST_INSERT_ID()\",");
-            sb.AppendLine("global::Sqlx.Annotations.SqlDefineTypes.PostgreSql => \"SELECT lastval()\",");
-            sb.AppendLine("global::Sqlx.Annotations.SqlDefineTypes.SQLite => \"SELECT last_insert_rowid()\",");
-            sb.AppendLine("global::Sqlx.Annotations.SqlDefineTypes.Oracle => \"SELECT SEQ.CURRVAL FROM DUAL\",");
+            sb.AppendLine("global::Sqlx.Annotations.SqlDefineTypes.SqlServer => \"; SELECT SCOPE_IDENTITY()\",");
+            sb.AppendLine("global::Sqlx.Annotations.SqlDefineTypes.MySql => \"; SELECT LAST_INSERT_ID()\",");
+            sb.AppendLine("global::Sqlx.Annotations.SqlDefineTypes.PostgreSql => \" RETURNING id\",");
+            sb.AppendLine("global::Sqlx.Annotations.SqlDefineTypes.SQLite => \"; SELECT last_insert_rowid()\",");
+            sb.AppendLine("global::Sqlx.Annotations.SqlDefineTypes.Oracle => \" RETURNING id INTO :id\",");
+            sb.AppendLine("global::Sqlx.Annotations.SqlDefineTypes.DB2 => \"; SELECT IDENTITY_VAL_LOCAL() FROM SYSIBM.SYSDUMMY1\",");
             sb.AppendLine("_ => throw new NotSupportedException($\"Last insert ID not supported for {_dialectType}\")");
             sb.PopIndent();
             sb.AppendLine("};");
-            sb.AppendLine($"var idResult = await idCmd.ExecuteScalarAsync({ctName}).ConfigureAwait(false);");
+            sb.AppendLine("cmd.CommandText = insertSqlWithId;");
+            sb.AppendLine($"var idResult = await cmd.ExecuteScalarAsync({ctName}).ConfigureAwait(false);");
             sb.AppendLine($"var insertedId = ({keyTypeName})Convert.ChangeType(idResult!, typeof({keyTypeName}));");
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");

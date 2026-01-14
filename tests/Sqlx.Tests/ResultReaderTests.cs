@@ -8,7 +8,7 @@ using System.Data.Common;
 namespace Sqlx.Tests;
 
 /// <summary>
-/// Tests for generated IResultReader implementations.
+/// Tests for generated IResultReader implementations and extension methods.
 /// </summary>
 [TestClass]
 public class ResultReaderTests
@@ -25,18 +25,52 @@ public class ResultReaderTests
     }
 
     [TestMethod]
-    public void ResultReader_EmptyReader_ReturnsEmpty()
+    public void ResultReader_GetOrdinals_ReturnsCorrectCount()
     {
         var reader = TestEntityResultReader.Default;
         using var dbReader = new TestDbDataReader(Array.Empty<TestEntity>());
         
-        var results = reader.Read(dbReader).ToList();
+        var ordinals = reader.GetOrdinals(dbReader);
+        
+        Assert.AreEqual(4, ordinals.Length);
+    }
+
+    [TestMethod]
+    public void ResultReader_Read_WithOrdinals_ReturnsEntity()
+    {
+        var reader = TestEntityResultReader.Default;
+        var entities = new[]
+        {
+            new TestEntity { Id = 1, UserName = "test", IsActive = true, CreatedAt = new DateTime(2024, 1, 1) }
+        };
+        using var dbReader = new TestDbDataReader(entities);
+        dbReader.Read(); // Position at first row
+        
+        var ordinals = reader.GetOrdinals(dbReader);
+        var result = reader.Read(dbReader, ordinals);
+        
+        Assert.AreEqual(1, result.Id);
+        Assert.AreEqual("test", result.UserName);
+        Assert.IsTrue(result.IsActive);
+    }
+
+    #endregion
+
+    #region Extension Method Tests - ToList
+
+    [TestMethod]
+    public void ResultReader_ToList_EmptyReader_ReturnsEmpty()
+    {
+        var reader = TestEntityResultReader.Default;
+        using var dbReader = new TestDbDataReader(Array.Empty<TestEntity>());
+        
+        var results = reader.ToList(dbReader);
         
         Assert.AreEqual(0, results.Count);
     }
 
     [TestMethod]
-    public void ResultReader_SingleRow_ReturnsOneEntity()
+    public void ResultReader_ToList_SingleRow_ReturnsOneEntity()
     {
         var reader = TestEntityResultReader.Default;
         var entities = new[]
@@ -45,7 +79,7 @@ public class ResultReaderTests
         };
         using var dbReader = new TestDbDataReader(entities);
         
-        var results = reader.Read(dbReader).ToList();
+        var results = reader.ToList(dbReader);
         
         Assert.AreEqual(1, results.Count);
         Assert.AreEqual(1, results[0].Id);
@@ -54,7 +88,7 @@ public class ResultReaderTests
     }
 
     [TestMethod]
-    public void ResultReader_MultipleRows_ReturnsAllEntities()
+    public void ResultReader_ToList_MultipleRows_ReturnsAllEntities()
     {
         var reader = TestEntityResultReader.Default;
         var entities = new[]
@@ -65,12 +99,118 @@ public class ResultReaderTests
         };
         using var dbReader = new TestDbDataReader(entities);
         
-        var results = reader.Read(dbReader).ToList();
+        var results = reader.ToList(dbReader);
         
         Assert.AreEqual(3, results.Count);
         Assert.AreEqual("user1", results[0].UserName);
         Assert.AreEqual("user2", results[1].UserName);
         Assert.AreEqual("user3", results[2].UserName);
+    }
+
+    [TestMethod]
+    public async Task ResultReader_ToListAsync_EmptyReader_ReturnsEmpty()
+    {
+        var reader = TestEntityResultReader.Default;
+        using var dbReader = new TestDbDataReader(Array.Empty<TestEntity>());
+        
+        var results = await reader.ToListAsync(dbReader);
+        
+        Assert.AreEqual(0, results.Count);
+    }
+
+    [TestMethod]
+    public async Task ResultReader_ToListAsync_MultipleRows_ReturnsAllEntities()
+    {
+        var reader = TestEntityResultReader.Default;
+        var entities = new[]
+        {
+            new TestEntity { Id = 1, UserName = "user1", IsActive = true, CreatedAt = DateTime.Now },
+            new TestEntity { Id = 2, UserName = "user2", IsActive = false, CreatedAt = DateTime.Now },
+        };
+        using var dbReader = new TestDbDataReader(entities);
+        
+        var results = await reader.ToListAsync(dbReader);
+        
+        Assert.AreEqual(2, results.Count);
+    }
+
+    #endregion
+
+    #region Extension Method Tests - FirstOrDefault
+
+    [TestMethod]
+    public void ResultReader_FirstOrDefault_EmptyReader_ReturnsDefault()
+    {
+        var reader = TestEntityResultReader.Default;
+        using var dbReader = new TestDbDataReader(Array.Empty<TestEntity>());
+        
+        var result = reader.FirstOrDefault(dbReader);
+        
+        Assert.IsNull(result);
+    }
+
+    [TestMethod]
+    public void ResultReader_FirstOrDefault_SingleRow_ReturnsEntity()
+    {
+        var reader = TestEntityResultReader.Default;
+        var entities = new[]
+        {
+            new TestEntity { Id = 1, UserName = "test", IsActive = true, CreatedAt = new DateTime(2024, 1, 1) }
+        };
+        using var dbReader = new TestDbDataReader(entities);
+        
+        var result = reader.FirstOrDefault(dbReader);
+        
+        Assert.IsNotNull(result);
+        Assert.AreEqual(1, result.Id);
+        Assert.AreEqual("test", result.UserName);
+        Assert.IsTrue(result.IsActive);
+    }
+
+    [TestMethod]
+    public void ResultReader_FirstOrDefault_MultipleRows_ReturnsFirstEntity()
+    {
+        var reader = TestEntityResultReader.Default;
+        var entities = new[]
+        {
+            new TestEntity { Id = 1, UserName = "user1", IsActive = true, CreatedAt = DateTime.Now },
+            new TestEntity { Id = 2, UserName = "user2", IsActive = false, CreatedAt = DateTime.Now },
+        };
+        using var dbReader = new TestDbDataReader(entities);
+        
+        var result = reader.FirstOrDefault(dbReader);
+        
+        Assert.IsNotNull(result);
+        Assert.AreEqual(1, result.Id);
+        Assert.AreEqual("user1", result.UserName);
+    }
+
+    [TestMethod]
+    public async Task ResultReader_FirstOrDefaultAsync_EmptyReader_ReturnsDefault()
+    {
+        var reader = TestEntityResultReader.Default;
+        using var dbReader = new TestDbDataReader(Array.Empty<TestEntity>());
+        
+        var result = await reader.FirstOrDefaultAsync(dbReader);
+        
+        Assert.IsNull(result);
+    }
+
+    [TestMethod]
+    public async Task ResultReader_FirstOrDefaultAsync_SingleRow_ReturnsEntity()
+    {
+        var reader = TestEntityResultReader.Default;
+        var entities = new[]
+        {
+            new TestEntity { Id = 1, UserName = "test", IsActive = true, CreatedAt = new DateTime(2024, 1, 1) }
+        };
+        using var dbReader = new TestDbDataReader(entities);
+        
+        var result = await reader.FirstOrDefaultAsync(dbReader);
+        
+        Assert.IsNotNull(result);
+        Assert.AreEqual(1, result.Id);
+        Assert.AreEqual("test", result.UserName);
     }
 
     #endregion
@@ -87,7 +227,7 @@ public class ResultReaderTests
         };
         using var dbReader = new TestDbDataReaderWithNullable(entities);
         
-        var results = reader.Read(dbReader).ToList();
+        var results = reader.ToList(dbReader);
         
         Assert.AreEqual(1, results.Count);
         Assert.IsNull(results[0].Description);
@@ -103,7 +243,7 @@ public class ResultReaderTests
         };
         using var dbReader = new TestDbDataReaderWithNullable(entities);
         
-        var results = reader.Read(dbReader).ToList();
+        var results = reader.ToList(dbReader);
         
         Assert.AreEqual(1, results.Count);
         Assert.AreEqual("desc", results[0].Description);
@@ -111,10 +251,10 @@ public class ResultReaderTests
 
     #endregion
 
-    #region Eager Enumeration Tests
+    #region Static Ordinals Tests
 
     [TestMethod]
-    public void ResultReader_Read_ReturnsListDirectly()
+    public void ResultReader_ToList_WithStaticOrdinals_ReturnsAllEntities()
     {
         var reader = TestEntityResultReader.Default;
         var entities = new[]
@@ -124,15 +264,69 @@ public class ResultReaderTests
         };
         using var dbReader = new TestDbDataReader(entities);
         
-        var result = reader.Read(dbReader);
+        // Pre-computed ordinals (simulating static ordinals from generator)
+        var ordinals = new int[] { 0, 1, 2, 3 };
+        var results = reader.ToList(dbReader, ordinals);
         
-        // Should return a List directly for performance
-        Assert.IsInstanceOfType(result, typeof(List<TestEntity>));
-        Assert.AreEqual(2, result.Count());
+        Assert.AreEqual(2, results.Count);
+        Assert.AreEqual("user1", results[0].UserName);
+        Assert.AreEqual("user2", results[1].UserName);
+    }
+
+    [TestMethod]
+    public void ResultReader_FirstOrDefault_WithStaticOrdinals_ReturnsFirstEntity()
+    {
+        var reader = TestEntityResultReader.Default;
+        var entities = new[]
+        {
+            new TestEntity { Id = 1, UserName = "user1", IsActive = true, CreatedAt = DateTime.Now },
+            new TestEntity { Id = 2, UserName = "user2", IsActive = false, CreatedAt = DateTime.Now },
+        };
+        using var dbReader = new TestDbDataReader(entities);
         
-        // Verify data
-        var first = result.First();
-        Assert.AreEqual(1, first.Id);
+        // Pre-computed ordinals
+        var ordinals = new int[] { 0, 1, 2, 3 };
+        var result = reader.FirstOrDefault(dbReader, ordinals);
+        
+        Assert.IsNotNull(result);
+        Assert.AreEqual(1, result.Id);
+        Assert.AreEqual("user1", result.UserName);
+    }
+
+    [TestMethod]
+    public async Task ResultReader_ToListAsync_WithStaticOrdinals_ReturnsAllEntities()
+    {
+        var reader = TestEntityResultReader.Default;
+        var entities = new[]
+        {
+            new TestEntity { Id = 1, UserName = "user1", IsActive = true, CreatedAt = DateTime.Now },
+            new TestEntity { Id = 2, UserName = "user2", IsActive = false, CreatedAt = DateTime.Now },
+        };
+        using var dbReader = new TestDbDataReader(entities);
+        
+        // Pre-computed ordinals
+        var ordinals = new int[] { 0, 1, 2, 3 };
+        var results = await reader.ToListAsync(dbReader, ordinals);
+        
+        Assert.AreEqual(2, results.Count);
+    }
+
+    [TestMethod]
+    public async Task ResultReader_FirstOrDefaultAsync_WithStaticOrdinals_ReturnsFirstEntity()
+    {
+        var reader = TestEntityResultReader.Default;
+        var entities = new[]
+        {
+            new TestEntity { Id = 1, UserName = "user1", IsActive = true, CreatedAt = DateTime.Now },
+        };
+        using var dbReader = new TestDbDataReader(entities);
+        
+        // Pre-computed ordinals
+        var ordinals = new int[] { 0, 1, 2, 3 };
+        var result = await reader.FirstOrDefaultAsync(dbReader, ordinals);
+        
+        Assert.IsNotNull(result);
+        Assert.AreEqual(1, result.Id);
     }
 
     #endregion
@@ -159,6 +353,11 @@ public class TestDbDataReader : DbDataReader
         ReadCount++;
         _currentIndex++;
         return _currentIndex < _entities.Length;
+    }
+
+    public override Task<bool> ReadAsync(CancellationToken cancellationToken)
+    {
+        return Task.FromResult(Read());
     }
 
     public override int GetOrdinal(string name) => name switch
@@ -224,6 +423,11 @@ public class TestDbDataReaderWithNullable : DbDataReader
     {
         _currentIndex++;
         return _currentIndex < _entities.Length;
+    }
+
+    public override Task<bool> ReadAsync(CancellationToken cancellationToken)
+    {
+        return Task.FromResult(Read());
     }
 
     public override int GetOrdinal(string name) => name switch

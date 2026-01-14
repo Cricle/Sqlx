@@ -300,7 +300,38 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine($"\"{EscapeString(template)}\",");
             sb.AppendLine("_placeholderContext);");
             sb.PopIndent();
+            
+            // Generate static ordinals for methods that use {{columns}} and return entities
+            // When SQL uses {{columns}}, column order matches EntityProvider.Columns order (0, 1, 2, ...)
+            if (UsesStaticColumns(template) && ReturnsEntity(method))
+            {
+                var ordinalsFieldName = $"_{ToCamelCase(method.Name)}Ordinals";
+                sb.AppendLine($"private static readonly int[] {ordinalsFieldName} = Enumerable.Range(0, _placeholderContext.Columns.Count).ToArray();");
+            }
         }
+    }
+
+    /// <summary>
+    /// Checks if the SQL template uses {{columns}} placeholder which means column order is static.
+    /// </summary>
+    private static bool UsesStaticColumns(string template)
+    {
+        return template.Contains("{{columns}}") || template.Contains("{{columns ");
+    }
+
+    /// <summary>
+    /// Checks if the method returns an entity or list of entities.
+    /// </summary>
+    private static bool ReturnsEntity(IMethodSymbol method)
+    {
+        var returnType = method.ReturnType.ToDisplayString();
+        return returnType.Contains("Task<List<") || 
+               returnType.Contains("Task<IList<") || 
+               returnType.Contains("Task<IEnumerable<") ||
+               !returnType.Contains("Task<int>") && 
+               !returnType.Contains("Task<long>") && 
+               !returnType.Contains("Task<bool>") &&
+               !returnType.Contains("SqlTemplate");
     }
 
     private static string? GetSqlTemplate(IMethodSymbol method, INamedTypeSymbol? sqlTemplateAttr)
@@ -326,6 +357,9 @@ public class RepositoryGenerator : IIncrementalGenerator
         var returnType = method.ReturnType.ToDisplayString();
         var methodName = method.Name;
         var fieldName = $"_{ToCamelCase(methodName)}Template";
+        var ordinalsFieldName = $"_{ToCamelCase(methodName)}Ordinals";
+        var template = GetSqlTemplate(method, sqlTemplateAttr);
+        var useStaticOrdinals = template != null && UsesStaticColumns(template) && ReturnsEntity(method);
         var isReturnInsertedId = returnInsertedIdAttr is not null && 
             method.GetAttributes().Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, returnInsertedIdAttr));
 
@@ -384,7 +418,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.PushIndent();
 
         // Execute and return based on return type
-        GenerateExecuteAndReturn(sb, method, entityFullName, entityName, keyTypeName, isReturnInsertedId, methodName, fieldName);
+        GenerateExecuteAndReturn(sb, method, entityFullName, entityName, keyTypeName, isReturnInsertedId, methodName, fieldName, useStaticOrdinals, ordinalsFieldName);
 
         sb.PopIndent();
         sb.AppendLine("}");
@@ -527,11 +561,18 @@ public class RepositoryGenerator : IIncrementalGenerator
         return false;
     }
 
-    private static void GenerateExecuteAndReturn(IndentedStringBuilder sb, IMethodSymbol method, string entityFullName, string entityName, string keyTypeName, bool isReturnInsertedId, string methodName, string fieldName)
+    private static void GenerateExecuteAndReturn(IndentedStringBuilder sb, IMethodSymbol method, string entityFullName, string entityName, string keyTypeName, bool isReturnInsertedId, string methodName, string fieldName, bool useStaticOrdinals, string ordinalsFieldName)
     {
         var returnType = method.ReturnType.ToDisplayString();
         var ctParam = method.Parameters.FirstOrDefault(p => p.Name == "cancellationToken");
         var ctName = ctParam?.Name ?? "default";
+
+        // Check for tuple return type first (but not for InsertAndGetId which handles its own tuple)
+        if (IsTupleReturnType(method.ReturnType) && !isReturnInsertedId)
+        {
+            GenerateTupleReturn(sb, method, entityName, ctName, methodName, fieldName);
+            return;
+        }
 
         // Normalize return type for comparison (handle both short and full type names)
         var normalizedReturnType = returnType
@@ -540,9 +581,16 @@ public class RepositoryGenerator : IIncrementalGenerator
 
         if (normalizedReturnType.Contains("Task<List<") || normalizedReturnType.Contains("Task<IList<") || normalizedReturnType.Contains("Task<IEnumerable<"))
         {
-            // Return list of entities
+            // Return list of entities - use static ordinals when available
             sb.AppendLine($"using var reader = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.Default, {ctName}).ConfigureAwait(false);");
-            sb.AppendLine($"var result = await {entityName}ResultReader.Default.ReadAsync(reader, {ctName}).ConfigureAwait(false);");
+            if (useStaticOrdinals)
+            {
+                sb.AppendLine($"var result = await global::Sqlx.ResultReaderExtensions.ToListAsync({entityName}ResultReader.Default, reader, {ordinalsFieldName}, {ctName}).ConfigureAwait(false);");
+            }
+            else
+            {
+                sb.AppendLine($"var result = await {entityName}ResultReader.Default.ToListAsync(reader, {ctName}).ConfigureAwait(false);");
+            }
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
             sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
@@ -558,10 +606,16 @@ public class RepositoryGenerator : IIncrementalGenerator
         else if (normalizedReturnType.Contains($"Task<{entityName}?>") || normalizedReturnType.Contains($"Task<{entityName}>") ||
                  returnType.Contains($"Task<{entityFullName}?>") || returnType.Contains($"Task<{entityFullName}>"))
         {
-            // Return single entity
+            // Return single entity - use static ordinals when available
             sb.AppendLine($"using var reader = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.Default, {ctName}).ConfigureAwait(false);");
-            sb.AppendLine($"var entities = await {entityName}ResultReader.Default.ReadAsync(reader, {ctName}).ConfigureAwait(false);");
-            sb.AppendLine("var result = entities.Count > 0 ? entities[0] : default;");
+            if (useStaticOrdinals)
+            {
+                sb.AppendLine($"var result = await global::Sqlx.ResultReaderExtensions.FirstOrDefaultAsync({entityName}ResultReader.Default, reader, {ordinalsFieldName}, {ctName}).ConfigureAwait(false);");
+            }
+            else
+            {
+                sb.AppendLine($"var result = await {entityName}ResultReader.Default.FirstOrDefaultAsync(reader, {ctName}).ConfigureAwait(false);");
+            }
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
             sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
@@ -592,6 +646,9 @@ public class RepositoryGenerator : IIncrementalGenerator
         }
         else if (isReturnInsertedId)
         {
+            // Check if return type is tuple (int, TKey) for affected rows + id
+            var isTupleReturn = IsTupleReturnType(method.ReturnType);
+            
             // Return inserted ID - append SELECT last_insert_id to the INSERT statement for single round-trip
             sb.AppendLine("// Append last inserted ID query to the INSERT statement");
             sb.AppendLine("var insertSqlWithId = sqlText + _dialectType switch");
@@ -607,19 +664,50 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.PopIndent();
             sb.AppendLine("};");
             sb.AppendLine("cmd.CommandText = insertSqlWithId;");
-            sb.AppendLine($"var idResult = await cmd.ExecuteScalarAsync({ctName}).ConfigureAwait(false);");
-            sb.AppendLine($"var insertedId = ({keyTypeName})Convert.ChangeType(idResult!, typeof({keyTypeName}));");
-            sb.AppendLine();
-            sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
-            sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
-            sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, insertedId, elapsed);");
-            sb.AppendLine("#endif");
-            sb.AppendLine();
-            sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
-            sb.AppendLine("if (activity is not null) activity.SetTag(\"db.inserted_id\", insertedId);");
-            sb.AppendLine("#endif");
-            sb.AppendLine();
-            sb.AppendLine("return insertedId;");
+            
+            if (isTupleReturn)
+            {
+                // Return (affectedRows, insertedId) tuple using ExecuteReader + NextResult
+                sb.AppendLine($"using var reader = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.Default, {ctName}).ConfigureAwait(false);");
+                sb.AppendLine("var affectedRows = reader.RecordsAffected;");
+                sb.AppendLine($"await reader.NextResultAsync({ctName}).ConfigureAwait(false);");
+                sb.AppendLine($"await reader.ReadAsync({ctName}).ConfigureAwait(false);");
+                sb.AppendLine($"var insertedId = ({keyTypeName})Convert.ChangeType(reader.GetValue(0), typeof({keyTypeName}));");
+                sb.AppendLine();
+                sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
+                sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
+                sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, (affectedRows, insertedId), elapsed);");
+                sb.AppendLine("#endif");
+                sb.AppendLine();
+                sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
+                sb.AppendLine("if (activity is not null)");
+                sb.AppendLine("{");
+                sb.PushIndent();
+                sb.AppendLine("activity.SetTag(\"db.rows_affected\", affectedRows);");
+                sb.AppendLine("activity.SetTag(\"db.inserted_id\", insertedId);");
+                sb.PopIndent();
+                sb.AppendLine("}");
+                sb.AppendLine("#endif");
+                sb.AppendLine();
+                sb.AppendLine("return (affectedRows, insertedId);");
+            }
+            else
+            {
+                // Return just insertedId using ExecuteScalar
+                sb.AppendLine($"var idResult = await cmd.ExecuteScalarAsync({ctName}).ConfigureAwait(false);");
+                sb.AppendLine($"var insertedId = ({keyTypeName})Convert.ChangeType(idResult!, typeof({keyTypeName}));");
+                sb.AppendLine();
+                sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
+                sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
+                sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, insertedId, elapsed);");
+                sb.AppendLine("#endif");
+                sb.AppendLine();
+                sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
+                sb.AppendLine("if (activity is not null) activity.SetTag(\"db.inserted_id\", insertedId);");
+                sb.AppendLine("#endif");
+                sb.AppendLine();
+                sb.AppendLine("return insertedId;");
+            }
         }
         else if (normalizedReturnType.Contains("Task<long>") || returnType.Contains("Task<Int64>"))
         {
@@ -720,6 +808,79 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("#endif");
     }
 
+    private static void GenerateTupleReturn(IndentedStringBuilder sb, IMethodSymbol method, string entityName, string ctName, string methodName, string fieldName)
+    {
+        var tupleElements = GetTupleElements(method.ReturnType);
+        if (tupleElements.Count == 0) return;
+
+        sb.AppendLine($"using var reader = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.Default, {ctName}).ConfigureAwait(false);");
+        sb.AppendLine();
+
+        // Generate variables for each tuple element
+        for (int i = 0; i < tupleElements.Count; i++)
+        {
+            var (elementType, elementName) = tupleElements[i];
+            var varName = elementName ?? $"item{i + 1}";
+            var typeName = elementType.ToDisplayString();
+            var elementEntityName = elementType.Name;
+
+            if (IsListType(elementType))
+            {
+                // List type - read all rows using ToListAsync extension
+                var listElementType = GetListElementType(elementType);
+                var listElementName = listElementType?.Name ?? "object";
+                sb.AppendLine($"// Read result set {i + 1} as list");
+                sb.AppendLine($"var {varName} = await {listElementName}ResultReader.Default.ToListAsync(reader, {ctName}).ConfigureAwait(false);");
+            }
+            else
+            {
+                // Single entity type - read first row using FirstOrDefaultAsync extension
+                sb.AppendLine($"// Read result set {i + 1} as single entity");
+                sb.AppendLine($"var {varName} = await {elementEntityName}ResultReader.Default.FirstOrDefaultAsync(reader, {ctName}).ConfigureAwait(false);");
+            }
+
+            // Move to next result set if not the last element
+            if (i < tupleElements.Count - 1)
+            {
+                sb.AppendLine();
+                sb.AppendLine($"// Move to next result set");
+                sb.AppendLine($"if (!await reader.NextResultAsync({ctName}).ConfigureAwait(false))");
+                sb.AppendLine("{");
+                sb.PushIndent();
+                // Initialize remaining elements with default values
+                for (int j = i + 1; j < tupleElements.Count; j++)
+                {
+                    var (remainingType, remainingName) = tupleElements[j];
+                    var remainingVarName = remainingName ?? $"item{j + 1}";
+                    if (IsListType(remainingType))
+                    {
+                        var listElementType = GetListElementType(remainingType);
+                        sb.AppendLine($"var {remainingVarName} = new List<{listElementType?.ToDisplayString() ?? "object"}>();");
+                    }
+                    else
+                    {
+                        sb.AppendLine($"var {remainingVarName} = default({remainingType.ToDisplayString()});");
+                    }
+                }
+                // Build tuple return with all variables
+                var allVarNames = tupleElements.Select((e, idx) => e.Name ?? $"item{idx + 1}").ToList();
+                sb.AppendLine($"return ({string.Join(", ", allVarNames)});");
+                sb.PopIndent();
+                sb.AppendLine("}");
+            }
+            sb.AppendLine();
+        }
+
+        // Build final tuple return
+        var finalVarNames = tupleElements.Select((e, idx) => e.Name ?? $"item{idx + 1}").ToList();
+        sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
+        sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
+        sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, ({string.Join(", ", finalVarNames)}), elapsed);");
+        sb.AppendLine("#endif");
+        sb.AppendLine();
+        sb.AppendLine($"return ({string.Join(", ", finalVarNames)});");
+    }
+
     private static string ToCamelCase(string name)
     {
         if (string.IsNullOrEmpty(name)) return name;
@@ -729,5 +890,69 @@ public class RepositoryGenerator : IIncrementalGenerator
     private static string EscapeString(string value)
     {
         return value.Replace("\\", "\\\\").Replace("\"", "\\\"");
+    }
+
+    /// <summary>
+    /// Checks if the return type is a tuple (ValueTuple).
+    /// </summary>
+    private static bool IsTupleReturnType(ITypeSymbol returnType)
+    {
+        // Unwrap Task<T> if present
+        if (returnType is INamedTypeSymbol namedType && 
+            namedType.OriginalDefinition.ToDisplayString().StartsWith("System.Threading.Tasks.Task<"))
+        {
+            returnType = namedType.TypeArguments[0];
+        }
+
+        // Check if it's a ValueTuple
+        var typeName = returnType.ToDisplayString();
+        return typeName.StartsWith("(") || typeName.Contains("ValueTuple");
+    }
+
+    /// <summary>
+    /// Gets the tuple element types from a tuple return type.
+    /// </summary>
+    private static List<(ITypeSymbol Type, string? Name)> GetTupleElements(ITypeSymbol returnType)
+    {
+        var elements = new List<(ITypeSymbol Type, string? Name)>();
+
+        // Unwrap Task<T> if present
+        if (returnType is INamedTypeSymbol taskType && 
+            taskType.OriginalDefinition.ToDisplayString().StartsWith("System.Threading.Tasks.Task<"))
+        {
+            returnType = taskType.TypeArguments[0];
+        }
+
+        if (returnType is INamedTypeSymbol tupleType && tupleType.IsTupleType)
+        {
+            foreach (var element in tupleType.TupleElements)
+            {
+                elements.Add((element.Type, element.IsExplicitlyNamedTupleElement ? element.Name : null));
+            }
+        }
+
+        return elements;
+    }
+
+    /// <summary>
+    /// Determines if a type represents a list/collection of entities.
+    /// </summary>
+    private static bool IsListType(ITypeSymbol type)
+    {
+        var typeName = type.ToDisplayString();
+        return typeName.Contains("List<") || typeName.Contains("IList<") || 
+               typeName.Contains("IEnumerable<") || typeName.Contains("ICollection<");
+    }
+
+    /// <summary>
+    /// Gets the element type from a List/IEnumerable type.
+    /// </summary>
+    private static ITypeSymbol? GetListElementType(ITypeSymbol type)
+    {
+        if (type is INamedTypeSymbol namedType && namedType.IsGenericType && namedType.TypeArguments.Length > 0)
+        {
+            return namedType.TypeArguments[0];
+        }
+        return null;
     }
 }

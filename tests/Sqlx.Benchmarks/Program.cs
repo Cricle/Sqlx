@@ -28,7 +28,9 @@ public class Program
                 typeof(UpdateBenchmark),
                 typeof(QueryWithFilterBenchmark),
                 typeof(CountBenchmark),
-                typeof(PaginationBenchmark)
+                typeof(PaginationBenchmark),
+                typeof(StaticOrdinalsBenchmark),
+                typeof(StaticOrdinalsFirstOrDefaultBenchmark)
             }, config);
         }
         else

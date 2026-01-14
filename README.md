@@ -290,17 +290,17 @@ Console.WriteLine(template.Sql);  // 输出生成的 SQL
 
 | Method | Mean | Ratio | Allocated | Alloc Ratio |
 |--------|------|-------|-----------|-------------|
-| Sqlx | 9.408 μs | 1.00 | 3.16 KB | 1.00 |
-| Dapper.AOT | 9.508 μs | 1.01 | 2.95 KB | 0.93 |
+| Sqlx | 8.31 μs | 1.00 | 1.7 KB | 1.00 |
+| Dapper.AOT | 9.94 μs | 1.20 | 2.95 KB | 1.73 |
 
-**Sqlx 略快 1%**
+**Sqlx 快 20%，内存少 42%**
 
 #### 计数查询 (Count)
 
 | Method | Mean | Ratio | Allocated | Alloc Ratio |
 |--------|------|-------|-----------|-------------|
-| Dapper.AOT | 3.416 μs | 0.97 | 896 B | 1.05 |
-| Sqlx | 3.523 μs | 1.00 | 856 B | 1.00 |
+| Sqlx | 3.33 μs | 1.00 | 856 B | 1.00 |
+| Dapper.AOT | 3.34 μs | 1.00 | 896 B | 1.05 |
 
 **性能持平，Sqlx 内存略少**
 
@@ -308,44 +308,80 @@ Console.WriteLine(template.Sql);  // 输出生成的 SQL
 
 | Method | Mean | Ratio | Allocated | Alloc Ratio |
 |--------|------|-------|-----------|-------------|
-| Dapper.AOT | 66.43 μs | 0.81 | 7.31 KB | 1.54 |
-| Sqlx | 83.93 μs | 1.02 | 4.73 KB | 1.00 |
+| Sqlx | 67.82 μs | 1.01 | 4.94 KB | 1.00 |
+| Dapper.AOT | 68.97 μs | 1.02 | 7.32 KB | 1.48 |
 
-**Sqlx 内存少 35%**
+**性能持平，Sqlx 内存少 32%**
 
 #### 更新操作 (Update)
 
 | Method | Mean | Ratio | Allocated | Alloc Ratio |
 |--------|------|-------|-----------|-------------|
-| Sqlx | 14.45 μs | 1.00 | 3.27 KB | 1.00 |
-| Dapper.AOT | 16.61 μs | 1.15 | 5.83 KB | 1.78 |
+| Sqlx | 14.37 μs | 1.00 | 3.27 KB | 1.00 |
+| Dapper.AOT | 16.01 μs | 1.11 | 5.83 KB | 1.78 |
 
-**Sqlx 快 15%，内存少 44%**
+**Sqlx 快 11%，内存少 44%**
 
 #### 列表查询 (SelectList)
 
 | Method | Limit | Mean | Ratio | Allocated | Alloc Ratio |
 |--------|-------|------|-------|-----------|-------------|
-| Dapper.AOT | 10 | 20.47 μs | 0.87 | 6.55 KB | 0.84 |
-| Sqlx | 10 | 23.59 μs | 1.00 | 7.83 KB | 1.00 |
-| Dapper.AOT | 100 | 120.42 μs | 0.77 | 42.14 KB | 1.02 |
-| Sqlx | 100 | 155.50 μs | 1.00 | 41.27 KB | 1.00 |
-| Dapper.AOT | 1000 | 1,117 μs | 0.73 | 393.71 KB | 1.06 |
-| Sqlx | 1000 | 1,537 μs | 1.00 | 371.56 KB | 1.00 |
+| Dapper.AOT | 10 | 21.13 μs | 0.89 | 6.55 KB | 1.01 |
+| Sqlx | 10 | 23.85 μs | 1.00 | 6.45 KB | 1.00 |
+| Dapper.AOT | 100 | 128.74 μs | 0.81 | 42.14 KB | 1.06 |
+| Sqlx | 100 | 159.80 μs | 1.00 | 39.9 KB | 1.00 |
+| Dapper.AOT | 1000 | 1,131 μs | 0.76 | 393.71 KB | 1.06 |
+| Sqlx | 1000 | 1,491 μs | 1.00 | 370.19 KB | 1.00 |
 
-**大数据量时 Sqlx 内存更少**
+**Dapper.AOT 批量读取更快，Sqlx 内存更少**
+
+#### 分页查询 (Pagination)
+
+| Method | PageSize | Mean | Ratio | Allocated | Alloc Ratio |
+|--------|----------|------|-------|-----------|-------------|
+| Dapper.AOT | 20 | 33.14 μs | 0.85 | 11.05 KB | 1.03 |
+| Sqlx | 20 | 38.97 μs | 1.00 | 10.73 KB | 1.00 |
+| Dapper.AOT | 50 | 69.25 μs | 0.83 | 22.82 KB | 1.05 |
+| Sqlx | 50 | 83.25 μs | 1.00 | 21.8 KB | 1.00 |
+| Dapper.AOT | 100 | 123.40 μs | 0.77 | 42.62 KB | 1.05 |
+| Sqlx | 100 | 159.93 μs | 1.00 | 40.41 KB | 1.00 |
+
+**Dapper.AOT 分页更快，Sqlx 内存更少**
+
+#### 条件查询 (QueryWithFilter)
+
+| Method | Mean | Ratio | Allocated | Alloc Ratio |
+|--------|------|-------|-----------|-------------|
+| Dapper.AOT | 6.75 ms | 0.78 | 1.91 MB | 1.06 |
+| Sqlx | 8.60 ms | 1.00 | 1.80 MB | 1.00 |
+
+**Dapper.AOT 更快，Sqlx 内存少 6%**
+
+### 静态列序号优化
+
+使用 `{{columns}}` 占位符时，Sqlx 在编译时确定列顺序，跳过运行时 `GetOrdinal` 调用：
+
+| Method | Mean | Ratio | Allocated | Alloc Ratio |
+|--------|------|-------|-----------|-------------|
+| Static Ordinals | 8.41 μs | 1.00 | 1.51 KB | 1.00 |
+| Dynamic Ordinals | 9.45 μs | 1.12 | 3.02 KB | 2.00 |
+
+**静态列序号快 12%，内存少 50%**
 
 ### 总结
 
 | 场景 | 性能对比 | 内存对比 |
 |------|----------|----------|
-| 单条查询 | **Sqlx 快 1%** | 持平 |
+| 单条查询 | **Sqlx 快 20%** | **Sqlx 少 42%** |
 | 计数查询 | 持平 | Sqlx 少 5% |
-| 插入操作 | Dapper.AOT 快 19% | **Sqlx 少 35%** |
-| 更新操作 | **Sqlx 快 15%** | **Sqlx 少 44%** |
-| 列表查询 | Dapper.AOT 快 13-27% | Sqlx 少 5-6% |
+| 插入操作 | 持平 | **Sqlx 少 32%** |
+| 更新操作 | **Sqlx 快 11%** | **Sqlx 少 44%** |
+| 列表查询 | Dapper.AOT 快 11-24% | Sqlx 少 5-6% |
+| 分页查询 | Dapper.AOT 快 15-23% | Sqlx 少 3-5% |
+| 条件查询 | Dapper.AOT 快 22% | Sqlx 少 6% |
 
-Sqlx 在单条查询和更新操作上有优势，在内存分配上整体更优。Dapper.AOT 在批量读取场景下速度更快。
+**Sqlx 优势场景**：单条查询、更新操作、内存敏感场景
+**Dapper.AOT 优势场景**：批量读取、分页查询
 
 > 测试环境：.NET 9.0.8, AMD Ryzen 7 5800H, Windows 10 (22H2)
 > 运行命令：`dotnet run -c Release --project tests/Sqlx.Benchmarks`

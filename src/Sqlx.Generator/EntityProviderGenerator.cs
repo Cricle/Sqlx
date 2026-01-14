@@ -161,8 +161,8 @@ public class EntityProviderGenerator : IIncrementalGenerator
         sb.AppendLine($"public static {typeName}ResultReader Default {{ get; }} = new();");
         sb.AppendLine();
 
-        // Generate column name constants for ordinal lookup
-        sb.AppendLine("// Column names for ordinal lookup");
+        // Generate column name constants
+        sb.AppendLine("// Column names");
         for (int i = 0; i < properties.Count; i++)
         {
             var columnName = GetColumnName(properties[i], columnAttr);
@@ -170,36 +170,54 @@ public class EntityProviderGenerator : IIncrementalGenerator
         }
         sb.AppendLine();
 
-        // Sync Read method
-        GenerateSyncReadMethod(sb, fullTypeName, properties, columnAttr);
+        // GetOrdinals method
+        GenerateGetOrdinalsMethod(sb, properties);
         sb.AppendLine();
 
-        // Async ReadAsync method (NET8_0_OR_GREATER only)
-        GenerateAsyncReadMethod(sb, fullTypeName, properties, columnAttr);
+        // Read(IDataReader) method
+        GenerateReadMethod(sb, fullTypeName, properties);
+        sb.AppendLine();
+
+        // Read(IDataReader, int[]) method
+        GenerateReadWithOrdinalsMethod(sb, fullTypeName, properties);
 
         sb.PopIndent();
         sb.AppendLine("}");
     }
 
-    private static void GenerateSyncReadMethod(IndentedStringBuilder sb, string fullTypeName,
-        System.Collections.Generic.List<IPropertySymbol> properties, INamedTypeSymbol? columnAttr)
+    private static void GenerateGetOrdinalsMethod(IndentedStringBuilder sb, System.Collections.Generic.List<IPropertySymbol> properties)
     {
-        sb.AppendLine($"public List<{fullTypeName}> Read(DbDataReader reader)");
+        sb.AppendLine("public int[] GetOrdinals(IDataReader reader)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine($"return new int[{properties.Count}]");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        for (int i = 0; i < properties.Count; i++)
+        {
+            sb.AppendLine($"reader.GetOrdinal(Col{i}),");
+        }
+        sb.PopIndent();
+        sb.AppendLine("};");
+        sb.PopIndent();
+        sb.AppendLine("}");
+    }
+
+    private static void GenerateReadMethod(IndentedStringBuilder sb, string fullTypeName,
+        System.Collections.Generic.List<IPropertySymbol> properties)
+    {
+        sb.AppendLine($"public {fullTypeName} Read(IDataReader reader)");
         sb.AppendLine("{");
         sb.PushIndent();
 
-        // Get ordinals once using constants
+        // Get ordinals inline
         for (int i = 0; i < properties.Count; i++)
         {
             sb.AppendLine($"var ord{i} = reader.GetOrdinal(Col{i});");
         }
         sb.AppendLine();
 
-        sb.AppendLine($"var list = new List<{fullTypeName}>();");
-        sb.AppendLine("while (reader.Read())");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        sb.AppendLine($"list.Add(new {fullTypeName}");
+        sb.AppendLine($"return new {fullTypeName}");
         sb.AppendLine("{");
         sb.PushIndent();
 
@@ -212,36 +230,20 @@ public class EntityProviderGenerator : IIncrementalGenerator
         }
 
         sb.PopIndent();
-        sb.AppendLine("});");
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.AppendLine("return list;");
+        sb.AppendLine("};");
 
         sb.PopIndent();
         sb.AppendLine("}");
     }
 
-    private static void GenerateAsyncReadMethod(IndentedStringBuilder sb, string fullTypeName,
-        System.Collections.Generic.List<IPropertySymbol> properties, INamedTypeSymbol? columnAttr)
+    private static void GenerateReadWithOrdinalsMethod(IndentedStringBuilder sb, string fullTypeName,
+        System.Collections.Generic.List<IPropertySymbol> properties)
     {
-        sb.AppendLine($"public async System.Threading.Tasks.Task<List<{fullTypeName}>> ReadAsync(");
-        sb.AppendLine("    DbDataReader reader,");
-        sb.AppendLine("    System.Threading.CancellationToken cancellationToken = default)");
+        sb.AppendLine($"public {fullTypeName} Read(IDataReader reader, int[] ordinals)");
         sb.AppendLine("{");
         sb.PushIndent();
 
-        // Get ordinals using constants
-        for (int i = 0; i < properties.Count; i++)
-        {
-            sb.AppendLine($"var ord{i} = reader.GetOrdinal(Col{i});");
-        }
-        sb.AppendLine();
-
-        sb.AppendLine($"var list = new List<{fullTypeName}>();");
-        sb.AppendLine("while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        sb.AppendLine($"list.Add(new {fullTypeName}");
+        sb.AppendLine($"return new {fullTypeName}");
         sb.AppendLine("{");
         sb.PushIndent();
 
@@ -249,15 +251,12 @@ public class EntityProviderGenerator : IIncrementalGenerator
         {
             var prop = properties[i];
             var isNullable = IsNullable(prop);
-            var readExpr = GetReaderExpression(prop.Type, $"ord{i}", isNullable);
+            var readExpr = GetReaderExpression(prop.Type, $"ordinals[{i}]", isNullable);
             sb.AppendLine($"{prop.Name} = {readExpr},");
         }
 
         sb.PopIndent();
-        sb.AppendLine("});");
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.AppendLine("return list;");
+        sb.AppendLine("};");
 
         sb.PopIndent();
         sb.AppendLine("}");

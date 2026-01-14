@@ -26,6 +26,7 @@ public class Program
                 typeof(SelectListBenchmark),
                 typeof(InsertBenchmark),
                 typeof(UpdateBenchmark),
+                typeof(DeleteBenchmark),
                 typeof(QueryWithFilterBenchmark),
                 typeof(CountBenchmark),
                 typeof(PaginationBenchmark),

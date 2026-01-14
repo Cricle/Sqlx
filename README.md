@@ -91,6 +91,37 @@ Task<List<User>> GetActiveUsersAsync();
 | `{{where --param predicate}}` | WHERE 子句（表达式） | `WHERE age > @p0` |
 | `{{limit --param count}}` | LIMIT 子句 | `LIMIT @count` |
 | `{{offset --param skip}}` | OFFSET 子句 | `OFFSET @skip` |
+| `{{if notnull=param}}...{{/if}}` | 条件包含（参数非空时） | 动态 SQL |
+| `{{if null=param}}...{{/if}}` | 条件包含（参数为空时） | 动态 SQL |
+| `{{if notempty=param}}...{{/if}}` | 条件包含（集合非空时） | 动态 SQL |
+| `{{if empty=param}}...{{/if}}` | 条件包含（集合为空时） | 动态 SQL |
+
+### 条件占位符
+
+使用 `{{if}}` 块实现动态 SQL 条件：
+
+```csharp
+// 动态搜索：只在参数有值时添加条件
+[SqlTemplate(@"
+    SELECT {{columns}} FROM {{table}} 
+    WHERE 1=1 
+    {{if notnull=name}}AND name LIKE @name{{/if}}
+    {{if notnull=minAge}}AND age >= @minAge{{/if}}
+    {{if notnull=status}}AND status = @status{{/if}}
+")]
+Task<List<User>> SearchAsync(string? name, int? minAge, string? status);
+
+// 使用
+await repo.SearchAsync("Alice%", null, "active");
+// 生成: SELECT ... WHERE 1=1 AND name LIKE @name AND status = @status
+// minAge 为 null，对应条件被排除
+```
+
+**支持的条件：**
+- `notnull=param` - 参数不为 null 时包含
+- `null=param` - 参数为 null 时包含
+- `notempty=param` - 集合不为空时包含
+- `empty=param` - 集合为空时包含
 
 ### 内置仓储接口
 
@@ -299,8 +330,8 @@ Console.WriteLine(template.Sql);  // 输出生成的 SQL
 
 | Method | Mean | Ratio | Allocated | Alloc Ratio |
 |--------|------|-------|-----------|-------------|
-| Sqlx | 3.33 μs | 1.00 | 856 B | 1.00 |
-| Dapper.AOT | 3.34 μs | 1.00 | 896 B | 1.05 |
+| Sqlx | 3.78 μs | 1.00 | 856 B | 1.00 |
+| Dapper.AOT | 3.77 μs | 1.00 | 896 B | 1.05 |
 
 **性能持平，Sqlx 内存略少**
 
@@ -308,8 +339,8 @@ Console.WriteLine(template.Sql);  // 输出生成的 SQL
 
 | Method | Mean | Ratio | Allocated | Alloc Ratio |
 |--------|------|-------|-----------|-------------|
-| Sqlx | 67.82 μs | 1.01 | 4.94 KB | 1.00 |
-| Dapper.AOT | 68.97 μs | 1.02 | 7.32 KB | 1.48 |
+| Dapper.AOT | 73.29 μs | 0.97 | 7.32 KB | 1.48 |
+| Sqlx | 76.61 μs | 1.00 | 4.94 KB | 1.00 |
 
 **性能持平，Sqlx 内存少 32%**
 
@@ -321,6 +352,15 @@ Console.WriteLine(template.Sql);  // 输出生成的 SQL
 | Dapper.AOT | 16.01 μs | 1.11 | 5.83 KB | 1.78 |
 
 **Sqlx 快 11%，内存少 44%**
+
+#### 删除操作 (Delete)
+
+| Method | Mean | Ratio | Allocated | Alloc Ratio |
+|--------|------|-------|-----------|-------------|
+| Sqlx | 38.20 μs | 1.00 | 1.16 KB | 1.00 |
+| Dapper.AOT | 50.21 μs | 1.31 | 1.45 KB | 1.25 |
+
+**Sqlx 快 24%，内存少 20%**
 
 #### 列表查询 (SelectList)
 
@@ -363,10 +403,10 @@ Console.WriteLine(template.Sql);  // 输出生成的 SQL
 
 | Method | Mean | Ratio | Allocated | Alloc Ratio |
 |--------|------|-------|-----------|-------------|
-| Static Ordinals | 8.41 μs | 1.00 | 1.51 KB | 1.00 |
-| Dynamic Ordinals | 9.45 μs | 1.12 | 3.02 KB | 2.00 |
+| Static Ordinals | 7.58 μs | 1.00 | 1.51 KB | 1.00 |
+| Dynamic Ordinals | 8.80 μs | 1.16 | 3.02 KB | 2.00 |
 
-**静态列序号快 12%，内存少 50%**
+**静态列序号快 16%，内存少 50%**
 
 ### 总结
 
@@ -376,6 +416,7 @@ Console.WriteLine(template.Sql);  // 输出生成的 SQL
 | 计数查询 | 持平 | Sqlx 少 5% |
 | 插入操作 | 持平 | **Sqlx 少 32%** |
 | 更新操作 | **Sqlx 快 11%** | **Sqlx 少 44%** |
+| 删除操作 | **Sqlx 快 24%** | **Sqlx 少 20%** |
 | 列表查询 | Dapper.AOT 快 11-24% | Sqlx 少 5-6% |
 | 分页查询 | Dapper.AOT 快 15-23% | Sqlx 少 3-5% |
 | 条件查询 | Dapper.AOT 快 22% | Sqlx 少 6% |

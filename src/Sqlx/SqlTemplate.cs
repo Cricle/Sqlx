@@ -9,6 +9,19 @@ using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
 
+/// <summary>
+/// Represents a prepared SQL template with efficient rendering for dynamic placeholders.
+/// </summary>
+/// <remarks>
+/// <para>
+/// SqlTemplate processes SQL templates containing placeholders (e.g., {{columns}}, {{where --param predicate}})
+/// and provides efficient rendering with support for both static and dynamic placeholders.
+/// </para>
+/// <para>
+/// Static placeholders are resolved once during <see cref="Prepare"/> and cached.
+/// Dynamic placeholders are resolved each time during <see cref="Render"/>.
+/// </para>
+/// </remarks>
 #if NET7_0_OR_GREATER
 public sealed partial class SqlTemplate
 #else
@@ -25,9 +38,23 @@ public sealed class SqlTemplate
         _hasBlocks = hasBlocks;
     }
 
+    /// <summary>
+    /// Gets the prepared SQL string with static placeholders resolved.
+    /// </summary>
     public string Sql { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether this template contains dynamic placeholders or conditional blocks.
+    /// </summary>
     public bool HasDynamicPlaceholders => _segments.Length > 1 || _hasBlocks;
 
+    /// <summary>
+    /// Prepares a SQL template by resolving static placeholders and recording dynamic placeholder positions.
+    /// </summary>
+    /// <param name="template">The SQL template string containing placeholders.</param>
+    /// <param name="context">The context providing dialect, table name, and column metadata.</param>
+    /// <returns>A prepared <see cref="SqlTemplate"/> instance.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when an unknown placeholder is encountered.</exception>
     public static SqlTemplate Prepare(string template, PlaceholderContext context)
     {
         var segments = new List<TemplateSegment>();
@@ -84,6 +111,11 @@ public sealed class SqlTemplate
         return new SqlTemplate(sql, mergedSegments, hasBlocks);
     }
 
+    /// <summary>
+    /// Renders the template with dynamic parameters, resolving dynamic placeholders and conditional blocks.
+    /// </summary>
+    /// <param name="dynamicParameters">A dictionary of parameter names and values for dynamic placeholders.</param>
+    /// <returns>The fully rendered SQL string.</returns>
     public string Render(IReadOnlyDictionary<string, object?>? dynamicParameters)
     {
         if (_segments.Length == 0) return Sql;

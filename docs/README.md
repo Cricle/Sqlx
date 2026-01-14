@@ -8,6 +8,7 @@ Sqlx is a high-performance, AOT-compatible SQL generation library for .NET. It u
 - **High Performance**: Minimal allocations, pre-computed SQL templates
 - **Multi-Dialect Support**: SQLite, MySQL, PostgreSQL, SQL Server, Oracle, DB2
 - **Type Safe**: Compile-time validation of SQL templates
+- **Dynamic SQL**: Conditional blocks (`{{if}}`) for flexible query building
 - **Extensible**: Custom placeholder handlers and dialects
 
 ## Quick Start

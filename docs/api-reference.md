@@ -55,6 +55,7 @@ Manages placeholder handlers.
 public static class PlaceholderProcessor
 {
     public static void RegisterHandler(IPlaceholderHandler handler);
+    public static void RegisterBlockClosingTag(string closingTag);
     public static bool TryGetHandler(string name, out IPlaceholderHandler handler);
     public static IReadOnlyList<string> ExtractParameters(string sql);
 }
@@ -88,6 +89,33 @@ public interface IPlaceholderHandler
     string Render(PlaceholderContext context, string options, IReadOnlyDictionary<string, object?>? parameters);
 }
 ```
+
+### IBlockPlaceholderHandler
+
+Contract for block-level placeholder handlers that control content inclusion.
+
+```csharp
+public interface IBlockPlaceholderHandler : IPlaceholderHandler
+{
+    /// <summary>
+    /// Gets the closing tag name (e.g., "/if" for "if" blocks).
+    /// </summary>
+    string ClosingTagName { get; }
+    
+    /// <summary>
+    /// Evaluates whether the block content should be included.
+    /// </summary>
+    bool ShouldInclude(string options, IReadOnlyDictionary<string, object?>? parameters);
+}
+```
+
+**Built-in Implementation:**
+
+`IfPlaceholderHandler` - Handles `{{if}}...{{/if}}` conditional blocks with conditions:
+- `notnull=param` - Include when parameter is not null
+- `null=param` - Include when parameter is null
+- `notempty=param` - Include when parameter is not null and not empty
+- `empty=param` - Include when parameter is null or empty
 
 ### IEntityProvider
 

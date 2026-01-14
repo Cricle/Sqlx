@@ -177,6 +177,38 @@ AMD Ryzen 7 5800H with Radeon Graphics, 1 CPU, 16 logical and 8 physical cores
 
 ---
 
+## IQueryable SQL 生成性能
+
+测试 `SqlQuery.For<T>()` API 从 LINQ 表达式生成 SQL 的性能。
+
+| 场景 | Mean | Allocated | 说明 |
+|------|------|-----------|------|
+| Simple SELECT * | **171.7 ns** | 824 B | 最简单的查询 |
+| Conditional expression | 2.54 μs | 2.98 KB | 三元表达式 |
+| WHERE single condition | 4.17 μs | 2.50 KB | 单条件过滤 |
+| Parameterized simple | 4.46 μs | 2.90 KB | 参数化单条件 |
+| Coalesce expression | 5.08 μs | 3.45 KB | ?? 空合并 |
+| WHERE with OR | 5.77 μs | 4.20 KB | OR 多条件 |
+| WHERE multiple AND | 5.82 μs | 4.38 KB | AND 多条件 |
+| Math functions | 6.15 μs | 4.34 KB | Math.Abs/Round |
+| Parameterized complex | 6.35 μs | 4.96 KB | 参数化多条件 |
+| SQLite dialect | 6.42 μs | 4.54 KB | Where+OrderBy+Take |
+| PostgreSQL dialect | 6.65 μs | 4.57 KB | Where+OrderBy+Take |
+| MySql dialect | 6.67 μs | 4.54 KB | Where+OrderBy+Take |
+| SqlServer dialect | 6.73 μs | 4.79 KB | Where+OrderBy+Take |
+| String functions | 7.12 μs | 4.50 KB | Contains/ToUpper |
+| Full chain query | **17.72 μs** | 11.45 KB | Where+Select+OrderBy+Take+Skip |
+
+### 结论
+
+- 简单 SELECT：**~170 ns**，极快
+- 单条件 WHERE：**~4 μs**
+- 复杂链式查询：**~18 μs**
+- 各数据库方言性能差异 < 5%
+- 内存分配：824B - 11.5KB
+
+---
+
 ## 运行基准测试
 
 ```bash
@@ -186,4 +218,5 @@ dotnet run -c Release --project tests/Sqlx.Benchmarks
 选择特定测试：
 ```bash
 dotnet run -c Release --project tests/Sqlx.Benchmarks -- --filter "*SelectSingle*"
+dotnet run -c Release --project tests/Sqlx.Benchmarks -- --filter "*SqlQueryBenchmark*"
 ```

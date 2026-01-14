@@ -103,9 +103,6 @@ namespace Sqlx
         /// <summary>Parses expression as raw value.</summary>
         protected string ParseExpressionRaw(Expression expression) => Parser.ParseRaw(expression);
 
-        /// <summary>Parse lambda expression.</summary>
-        protected string ParseLambdaExpression(Expression expression) => Parser.ParseLambda(expression);
-
         /// <summary>Get column name from expression.</summary>
         protected string GetColumnName(Expression expression) => Parser.GetColumnName(expression);
 

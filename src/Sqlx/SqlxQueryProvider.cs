@@ -23,18 +23,12 @@ namespace Sqlx
     {
         private readonly SqlDialect _dialect;
         private DbConnection? _connection;
+        private Func<IDataReader, object>? _mapper;
 
         /// <summary>Creates a new SqlxQueryProvider with the specified dialect.</summary>
         public SqlxQueryProvider(SqlDialect dialect)
         {
             _dialect = dialect ?? throw new ArgumentNullException(nameof(dialect));
-        }
-
-        /// <summary>Creates a new SqlxQueryProvider with the specified dialect and connection.</summary>
-        public SqlxQueryProvider(SqlDialect dialect, DbConnection connection)
-        {
-            _dialect = dialect ?? throw new ArgumentNullException(nameof(dialect));
-            _connection = connection ?? throw new ArgumentNullException(nameof(connection));
         }
 
         /// <summary>Gets the SQL dialect.</summary>
@@ -47,10 +41,17 @@ namespace Sqlx
             set => _connection = value;
         }
 
+        /// <summary>Gets or sets the mapper function.</summary>
+        public Func<IDataReader, object>? Mapper
+        {
+            get => _mapper;
+            set => _mapper = value;
+        }
+
         /// <summary>Creates a new query with the specified expression.</summary>
         public IQueryable CreateQuery(Expression expression)
         {
-            throw new NotSupportedException("Use CreateQuery<T> instead for AOT compatibility.");
+            throw new NotSupportedException("Use CreateQuery<T> for AOT compatibility.");
         }
 
         /// <summary>Creates a new typed query with the specified expression.</summary>
@@ -60,24 +61,26 @@ namespace Sqlx
 #endif
         TElement>(Expression expression)
         {
-            var queryable = new SqlxQueryable<TElement>(this, expression);
-            if (_connection != null)
-            {
-                queryable.Connection = _connection;
-            }
-            return queryable;
+            return new SqlxQueryable<TElement>(this, expression);
         }
 
-        /// <summary>Executes the query - requires mapper to be set.</summary>
+        /// <summary>Executes the query.</summary>
         public object? Execute(Expression expression)
         {
-            throw new NotSupportedException("Use Execute<T> with a mapper for AOT compatibility.");
+            if (_connection == null)
+                throw new InvalidOperationException("No database connection. Use WithConnection() before executing.");
+            if (_mapper == null)
+                throw new InvalidOperationException("No mapper function. Use WithMapper() before executing.");
+
+            var sql = ToSql(expression);
+            var parameters = GetParameters(expression);
+            return DbExecutor.ExecuteReader(_connection, sql, parameters, _mapper);
         }
 
-        /// <summary>Executes the typed query - requires mapper to be set.</summary>
+        /// <summary>Executes the typed query.</summary>
         public TResult Execute<TResult>(Expression expression)
         {
-            throw new NotSupportedException("Use ToList/First/Single with a mapper for AOT compatibility.");
+            return (TResult)Execute(expression)!;
         }
 
         /// <summary>Generates SQL from the expression tree.</summary>
@@ -93,14 +96,6 @@ namespace Sqlx
             var visitor = new SqlExpressionVisitor(_dialect, parameterized: true);
             visitor.GenerateSql(expression);
             return visitor.GetParameters();
-        }
-
-        /// <summary>Generates SQL with parameters from the expression tree.</summary>
-        internal (string Sql, Dictionary<string, object?> Parameters) ToSqlWithParameters(Expression expression)
-        {
-            var visitor = new SqlExpressionVisitor(_dialect, parameterized: true);
-            var sql = visitor.GenerateSql(expression);
-            return (sql, visitor.GetParameters());
         }
     }
 }

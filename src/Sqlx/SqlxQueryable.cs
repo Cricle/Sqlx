@@ -28,8 +28,6 @@ namespace Sqlx
     {
         private readonly SqlxQueryProvider _provider;
         private readonly Expression _expression;
-        private DbConnection? _connection;
-        private Func<IDataReader, T>? _mapper;
 
         /// <summary>Creates a new SqlxQueryable with the specified provider.</summary>
         internal SqlxQueryable(SqlxQueryProvider provider)
@@ -57,54 +55,10 @@ namespace Sqlx
         /// <summary>Gets the SQL dialect.</summary>
         public SqlDialect Dialect => _provider.Dialect;
 
-        /// <summary>Gets or sets the database connection for execution.</summary>
-        public DbConnection? Connection
-        {
-            get => _connection;
-            set => _connection = value;
-        }
-
-        /// <summary>Gets or sets the custom mapper function for reading results.</summary>
-        public Func<IDataReader, T>? Mapper
-        {
-            get => _mapper;
-            set => _mapper = value;
-        }
-
-        /// <summary>Sets the database connection and returns this queryable for chaining.</summary>
-        public SqlxQueryable<T> WithConnection(DbConnection connection)
-        {
-            _connection = connection ?? throw new ArgumentNullException(nameof(connection));
-            return this;
-        }
-
-        /// <summary>Sets the mapper function and returns this queryable for chaining.</summary>
-        public SqlxQueryable<T> WithMapper(Func<IDataReader, T> mapper)
-        {
-            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
-            return this;
-        }
-
         /// <summary>Gets the enumerator by executing the query against the database.</summary>
-        public IEnumerator<T> GetEnumerator()
-        {
-            if (_connection == null)
-                throw new InvalidOperationException("No database connection. Use WithConnection() before enumerating.");
-
-            if (_mapper == null)
-                throw new InvalidOperationException("No mapper function. Use WithMapper() before enumerating.");
-
-            return ExecuteReader().GetEnumerator();
-        }
+        public IEnumerator<T> GetEnumerator() => _provider.Execute<IEnumerable<T>>(_expression).GetEnumerator();
 
         /// <summary>Gets the enumerator by executing the query against the database.</summary>
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-        private IEnumerable<T> ExecuteReader()
-        {
-            var sql = _provider.ToSql(_expression);
-            var parameters = _provider.GetParameters(_expression).ToDictionary(x => x.Key, x => x.Value);
-            return DbExecutor.ExecuteReader(_connection!, sql, parameters, _mapper!);
-        }
     }
 }

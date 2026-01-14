@@ -22,7 +22,7 @@ namespace Sqlx
         public static IEnumerable<T> ExecuteReader<T>(
             DbConnection connection,
             string sql,
-            IReadOnlyDictionary<string, object?>? parameters,
+            IEnumerable<KeyValuePair<string, object?>>? parameters,
             Func<IDataReader, T> mapper)
         {
             if (connection == null) throw new ArgumentNullException(nameof(connection));
@@ -52,7 +52,7 @@ namespace Sqlx
         public static T? ExecuteScalar<T>(
             DbConnection connection,
             string sql,
-            IReadOnlyDictionary<string, object?>? parameters)
+            IEnumerable<KeyValuePair<string, object?>>? parameters)
         {
             if (connection == null) throw new ArgumentNullException(nameof(connection));
             if (sql == null) throw new ArgumentNullException(nameof(sql));
@@ -80,7 +80,7 @@ namespace Sqlx
         public static int ExecuteNonQuery(
             DbConnection connection,
             string sql,
-            IReadOnlyDictionary<string, object?>? parameters)
+            IEnumerable<KeyValuePair<string, object?>>? parameters)
         {
             if (connection == null) throw new ArgumentNullException(nameof(connection));
             if (sql == null) throw new ArgumentNullException(nameof(sql));
@@ -104,7 +104,7 @@ namespace Sqlx
         public static async Task<List<T>> ExecuteReaderAsync<T>(
             DbConnection connection,
             string sql,
-            IReadOnlyDictionary<string, object?>? parameters,
+            IEnumerable<KeyValuePair<string, object?>>? parameters,
             Func<IDataReader, T> mapper,
             CancellationToken cancellationToken = default)
         {
@@ -139,7 +139,7 @@ namespace Sqlx
         public static async Task<T?> ExecuteScalarAsync<T>(
             DbConnection connection,
             string sql,
-            IReadOnlyDictionary<string, object?>? parameters,
+            IEnumerable<KeyValuePair<string, object?>>? parameters,
             CancellationToken cancellationToken = default)
         {
             if (connection == null) throw new ArgumentNullException(nameof(connection));
@@ -168,7 +168,7 @@ namespace Sqlx
         public static async Task<int> ExecuteNonQueryAsync(
             DbConnection connection,
             string sql,
-            IReadOnlyDictionary<string, object?>? parameters,
+            IEnumerable<KeyValuePair<string, object?>>? parameters,
             CancellationToken cancellationToken = default)
         {
             if (connection == null) throw new ArgumentNullException(nameof(connection));
@@ -192,7 +192,7 @@ namespace Sqlx
         private static DbCommand CreateCommand(
             DbConnection connection,
             string sql,
-            IReadOnlyDictionary<string, object?>? parameters)
+            IEnumerable<KeyValuePair<string, object?>>? parameters)
         {
             var command = connection.CreateCommand();
             command.CommandText = sql;

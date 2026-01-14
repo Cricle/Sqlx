@@ -665,14 +665,21 @@ namespace Sqlx
                 : $"{columnSql} IN ({string.Join(", ", values)})";
         }
 
-        /// <summary>Evaluates expression to get runtime value without DynamicInvoke.</summary>
-        private static object? EvaluateExpression(Expression expression)
+        /// <summary>Evaluates expression to get runtime value.</summary>
+        /// <param name="expression">The expression to evaluate.</param>
+        /// <returns>The evaluated value.</returns>
+        /// <exception cref="NotSupportedException">Thrown when member type is not supported.</exception>
+        internal static object? EvaluateExpression(Expression expression)
         {
             return expression switch
             {
                 ConstantExpression constant => constant.Value,
                 MemberExpression member => EvaluateMemberExpression(member),
-                _ => Expression.Lambda<Func<object?>>(Expression.Convert(expression, typeof(object))).Compile()()
+                MethodCallExpression method => EvaluateMethodCall(method),
+                UnaryExpression { NodeType: ExpressionType.Convert } unary => EvaluateExpression(unary.Operand),
+                NewExpression newExpr => EvaluateNewExpression(newExpr),
+                NewArrayExpression arrayExpr => EvaluateNewArrayExpression(arrayExpr),
+                _ => CompileAndInvoke(expression)
             };
         }
 
@@ -685,6 +692,46 @@ namespace Sqlx
                 System.Reflection.PropertyInfo prop => prop.GetValue(obj),
                 _ => throw new NotSupportedException($"Member type {member.Member.GetType()} is not supported")
             };
+        }
+
+        private static object? EvaluateMethodCall(MethodCallExpression method)
+        {
+            var obj = method.Object != null ? EvaluateExpression(method.Object) : null;
+            var args = new object?[method.Arguments.Count];
+            for (var i = 0; i < method.Arguments.Count; i++)
+            {
+                args[i] = EvaluateExpression(method.Arguments[i]);
+            }
+
+            return method.Method.Invoke(obj, args);
+        }
+
+        private static object? EvaluateNewExpression(NewExpression newExpr)
+        {
+            var args = new object?[newExpr.Arguments.Count];
+            for (var i = 0; i < newExpr.Arguments.Count; i++)
+            {
+                args[i] = EvaluateExpression(newExpr.Arguments[i]);
+            }
+
+            return newExpr.Constructor?.Invoke(args);
+        }
+
+        private static object? EvaluateNewArrayExpression(NewArrayExpression arrayExpr)
+        {
+            var elementType = arrayExpr.Type.GetElementType()!;
+            var array = Array.CreateInstance(elementType, arrayExpr.Expressions.Count);
+            for (var i = 0; i < arrayExpr.Expressions.Count; i++)
+            {
+                array.SetValue(EvaluateExpression(arrayExpr.Expressions[i]), i);
+            }
+
+            return array;
+        }
+
+        private static object? CompileAndInvoke(Expression expression)
+        {
+            return Expression.Lambda<Func<object?>>(Expression.Convert(expression, typeof(object))).Compile()();
         }
 
         private string CreateParameterForAnyPlaceholder(MethodCallExpression method)

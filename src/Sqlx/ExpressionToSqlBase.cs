@@ -675,58 +675,25 @@ namespace Sqlx
             {
                 ConstantExpression constant => constant.Value,
                 MemberExpression member => EvaluateMemberExpression(member),
-                MethodCallExpression method => EvaluateMethodCall(method),
-                UnaryExpression { NodeType: ExpressionType.Convert } unary => EvaluateExpression(unary.Operand),
-                NewExpression newExpr => EvaluateNewExpression(newExpr),
-                NewArrayExpression arrayExpr => EvaluateNewArrayExpression(arrayExpr),
                 _ => CompileAndInvoke(expression)
             };
         }
 
         private static object? EvaluateMemberExpression(MemberExpression member)
         {
-            var obj = member.Expression != null ? EvaluateExpression(member.Expression) : null;
-            return member.Member switch
+            // Optimize for closure variable access pattern: ((DisplayClass).field)
+            if (member.Expression is ConstantExpression constant)
             {
-                System.Reflection.FieldInfo field => field.GetValue(obj),
-                System.Reflection.PropertyInfo prop => prop.GetValue(obj),
-                _ => throw new NotSupportedException($"Member type {member.Member.GetType()} is not supported")
-            };
-        }
-
-        private static object? EvaluateMethodCall(MethodCallExpression method)
-        {
-            var obj = method.Object != null ? EvaluateExpression(method.Object) : null;
-            var args = new object?[method.Arguments.Count];
-            for (var i = 0; i < method.Arguments.Count; i++)
-            {
-                args[i] = EvaluateExpression(method.Arguments[i]);
+                return member.Member switch
+                {
+                    System.Reflection.FieldInfo field => field.GetValue(constant.Value),
+                    System.Reflection.PropertyInfo prop => prop.GetValue(constant.Value),
+                    _ => throw new NotSupportedException($"Member type {member.Member.GetType()} is not supported")
+                };
             }
 
-            return method.Method.Invoke(obj, args);
-        }
-
-        private static object? EvaluateNewExpression(NewExpression newExpr)
-        {
-            var args = new object?[newExpr.Arguments.Count];
-            for (var i = 0; i < newExpr.Arguments.Count; i++)
-            {
-                args[i] = EvaluateExpression(newExpr.Arguments[i]);
-            }
-
-            return newExpr.Constructor?.Invoke(args);
-        }
-
-        private static object? EvaluateNewArrayExpression(NewArrayExpression arrayExpr)
-        {
-            var elementType = arrayExpr.Type.GetElementType()!;
-            var array = Array.CreateInstance(elementType, arrayExpr.Expressions.Count);
-            for (var i = 0; i < arrayExpr.Expressions.Count; i++)
-            {
-                array.SetValue(EvaluateExpression(arrayExpr.Expressions[i]), i);
-            }
-
-            return array;
+            // For nested member access, compile to lambda
+            return CompileAndInvoke(member);
         }
 
         private static object? CompileAndInvoke(Expression expression)

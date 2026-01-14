@@ -102,7 +102,8 @@ namespace Sqlx
 
         private IEnumerable<T> ExecuteReader()
         {
-            var (sql, parameters) = _provider.ToSqlWithParameters(_expression);
+            var sql = _provider.ToSql(_expression);
+            var parameters = _provider.GetParameters(_expression).ToDictionary(x => x.Key, x => x.Value);
             return DbExecutor.ExecuteReader(_connection!, sql, parameters, _mapper!);
         }
     }

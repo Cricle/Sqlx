@@ -87,8 +87,16 @@ namespace Sqlx
             return visitor.GenerateSql(expression);
         }
 
+        /// <summary>Gets parameters from the expression tree.</summary>
+        public IEnumerable<KeyValuePair<string, object?>> GetParameters(Expression expression)
+        {
+            var visitor = new SqlExpressionVisitor(_dialect, parameterized: true);
+            visitor.GenerateSql(expression);
+            return visitor.GetParameters();
+        }
+
         /// <summary>Generates SQL with parameters from the expression tree.</summary>
-        public (string Sql, Dictionary<string, object?> Parameters) ToSqlWithParameters(Expression expression)
+        internal (string Sql, Dictionary<string, object?> Parameters) ToSqlWithParameters(Expression expression)
         {
             var visitor = new SqlExpressionVisitor(_dialect, parameterized: true);
             var sql = visitor.GenerateSql(expression);

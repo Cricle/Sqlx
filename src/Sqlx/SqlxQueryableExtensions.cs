@@ -23,9 +23,9 @@ namespace Sqlx
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (connection == null) throw new ArgumentNullException(nameof(connection));
 
-            if (query.Provider is SqlxQueryProvider provider)
+            if (query is SqlxQueryable<T> sqlxQuery)
             {
-                provider.Connection = connection;
+                sqlxQuery.Connection = connection;
                 return query;
             }
 
@@ -38,9 +38,9 @@ namespace Sqlx
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (mapper == null) throw new ArgumentNullException(nameof(mapper));
 
-            if (query.Provider is SqlxQueryProvider provider)
+            if (query is SqlxQueryable<T> sqlxQuery)
             {
-                provider.Mapper = r => mapper(r)!;
+                sqlxQuery.Mapper = mapper;
                 return query;
             }
 

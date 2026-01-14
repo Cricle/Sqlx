@@ -18,7 +18,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace Sqlx
 {
     /// <summary>
-    /// IQueryable implementation for SQL generation (AOT-friendly).
+    /// IQueryable implementation for SQL generation (AOT-friendly, no reflection).
     /// </summary>
     public class SqlxQueryable<
 #if NET5_0_OR_GREATER
@@ -29,6 +29,7 @@ namespace Sqlx
         private readonly SqlxQueryProvider _provider;
         private readonly Expression _expression;
         private DbConnection? _connection;
+        private Func<IDataReader, T>? _mapper;
 
         /// <summary>Creates a new SqlxQueryable with the specified provider.</summary>
         internal SqlxQueryable(SqlxQueryProvider provider)
@@ -63,10 +64,24 @@ namespace Sqlx
             set => _connection = value;
         }
 
+        /// <summary>Gets or sets the custom mapper function for reading results.</summary>
+        public Func<IDataReader, T>? Mapper
+        {
+            get => _mapper;
+            set => _mapper = value;
+        }
+
         /// <summary>Sets the database connection and returns this queryable for chaining.</summary>
         public SqlxQueryable<T> WithConnection(DbConnection connection)
         {
             _connection = connection ?? throw new ArgumentNullException(nameof(connection));
+            return this;
+        }
+
+        /// <summary>Sets the mapper function and returns this queryable for chaining.</summary>
+        public SqlxQueryable<T> WithMapper(Func<IDataReader, T> mapper)
+        {
+            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
             return this;
         }
 
@@ -76,102 +91,25 @@ namespace Sqlx
             if (_connection == null)
                 throw new InvalidOperationException("No database connection. Use WithConnection() or set Connection property before enumerating.");
 
+            if (_mapper == null)
+                throw new InvalidOperationException("No mapper function. Use WithMapper() or set Mapper property before enumerating.");
+
             return ExecuteQuery().GetEnumerator();
         }
 
         /// <summary>Gets the enumerator by executing the query against the database.</summary>
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-        private List<T> ExecuteQuery()
+        internal List<T> ExecuteQuery()
         {
             var (sql, parameters) = _provider.ToSqlWithParameters(_expression);
-            var results = new List<T>();
-
-            using var command = _connection!.CreateCommand();
-            command.CommandText = sql;
-
-            foreach (var param in parameters)
-            {
-                var dbParam = command.CreateParameter();
-                dbParam.ParameterName = param.Key;
-                dbParam.Value = param.Value ?? DBNull.Value;
-                command.Parameters.Add(dbParam);
-            }
-
-            var wasOpen = _connection.State == ConnectionState.Open;
-            if (!wasOpen) _connection.Open();
-
-            try
-            {
-                using var reader = command.ExecuteReader();
-                var mapper = CreateMapper(reader);
-
-                while (reader.Read())
-                {
-                    results.Add(mapper(reader));
-                }
-            }
-            finally
-            {
-                if (!wasOpen) _connection.Close();
-            }
-
-            return results;
+            return DbExecutor.ExecuteList(_connection!, sql, parameters, _mapper!);
         }
 
-        private static Func<IDataReader, T> CreateMapper(IDataReader reader)
+        internal List<T> ExecuteQuery(Func<IDataReader, T> mapper)
         {
-            var type = typeof(T);
-
-            // Handle primitive types
-            if (type.IsPrimitive || type == typeof(string) || type == typeof(decimal) ||
-                type == typeof(DateTime) || type == typeof(Guid))
-            {
-                return r => (T)Convert.ChangeType(r.GetValue(0), type);
-            }
-
-            // Handle nullable types
-            var underlyingType = Nullable.GetUnderlyingType(type);
-            if (underlyingType != null)
-            {
-                return r =>
-                {
-                    var value = r.GetValue(0);
-                    if (value == DBNull.Value) return default!;
-                    return (T)Convert.ChangeType(value, underlyingType);
-                };
-            }
-
-            // Handle anonymous types and complex objects
-            var properties = type.GetProperties();
-            var columnOrdinals = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-
-            for (int i = 0; i < reader.FieldCount; i++)
-            {
-                columnOrdinals[reader.GetName(i)] = i;
-            }
-
-            return r =>
-            {
-                var instance = Activator.CreateInstance<T>();
-                foreach (var prop in properties)
-                {
-                    if (!prop.CanWrite) continue;
-                    if (!columnOrdinals.TryGetValue(prop.Name, out var ordinal)) continue;
-
-                    var value = r.GetValue(ordinal);
-                    if (value == DBNull.Value)
-                    {
-                        prop.SetValue(instance, null);
-                    }
-                    else
-                    {
-                        var targetType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
-                        prop.SetValue(instance, Convert.ChangeType(value, targetType));
-                    }
-                }
-                return instance;
-            };
+            var (sql, parameters) = _provider.ToSqlWithParameters(_expression);
+            return DbExecutor.ExecuteList(_connection!, sql, parameters, mapper);
         }
     }
 }

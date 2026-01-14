@@ -17,7 +17,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace Sqlx
 {
     /// <summary>
-    /// IQueryProvider implementation for SQL generation.
+    /// IQueryProvider implementation for SQL generation (AOT-friendly, no reflection).
     /// </summary>
     public class SqlxQueryProvider : IQueryProvider
     {
@@ -50,18 +50,7 @@ namespace Sqlx
         /// <summary>Creates a new query with the specified expression.</summary>
         public IQueryable CreateQuery(Expression expression)
         {
-            var elementType = GetElementType(expression.Type);
-            var queryableType = typeof(SqlxQueryable<>).MakeGenericType(elementType);
-            var queryable = Activator.CreateInstance(queryableType, this, expression)!;
-
-            // Propagate connection to new queryable
-            if (_connection != null)
-            {
-                var connectionProp = queryableType.GetProperty("Connection");
-                connectionProp?.SetValue(queryable, _connection);
-            }
-
-            return (IQueryable)queryable;
+            throw new NotSupportedException("Use CreateQuery<T> instead for AOT compatibility.");
         }
 
         /// <summary>Creates a new typed query with the specified expression.</summary>
@@ -79,54 +68,16 @@ namespace Sqlx
             return queryable;
         }
 
-        /// <summary>Executes the query and returns a single result.</summary>
+        /// <summary>Executes the query - requires mapper to be set.</summary>
         public object? Execute(Expression expression)
         {
-            if (_connection == null)
-                throw new InvalidOperationException("No database connection. Set Connection property before executing.");
-
-            return ExecuteScalar(expression);
+            throw new NotSupportedException("Use Execute<T> with a mapper for AOT compatibility.");
         }
 
-        /// <summary>Executes the typed query and returns a single result.</summary>
+        /// <summary>Executes the typed query - requires mapper to be set.</summary>
         public TResult Execute<TResult>(Expression expression)
         {
-            if (_connection == null)
-                throw new InvalidOperationException("No database connection. Set Connection property before executing.");
-
-            var result = ExecuteScalar(expression);
-            if (result == null || result == DBNull.Value)
-                return default!;
-
-            return (TResult)Convert.ChangeType(result, typeof(TResult));
-        }
-
-        private object? ExecuteScalar(Expression expression)
-        {
-            var (sql, parameters) = ToSqlWithParameters(expression);
-
-            using var command = _connection!.CreateCommand();
-            command.CommandText = sql;
-
-            foreach (var param in parameters)
-            {
-                var dbParam = command.CreateParameter();
-                dbParam.ParameterName = param.Key;
-                dbParam.Value = param.Value ?? DBNull.Value;
-                command.Parameters.Add(dbParam);
-            }
-
-            var wasOpen = _connection.State == ConnectionState.Open;
-            if (!wasOpen) _connection.Open();
-
-            try
-            {
-                return command.ExecuteScalar();
-            }
-            finally
-            {
-                if (!wasOpen) _connection.Close();
-            }
+            throw new NotSupportedException("Use ToList/First/Single with a mapper for AOT compatibility.");
         }
 
         /// <summary>Generates SQL from the expression tree.</summary>
@@ -142,20 +93,6 @@ namespace Sqlx
             var visitor = new SqlExpressionVisitor(_dialect, parameterized: true);
             var sql = visitor.GenerateSql(expression);
             return (sql, visitor.GetParameters());
-        }
-
-        private static Type GetElementType(Type type)
-        {
-            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IQueryable<>))
-                return type.GetGenericArguments()[0];
-
-            foreach (var iface in type.GetInterfaces())
-            {
-                if (iface.IsGenericType && iface.GetGenericTypeDefinition() == typeof(IQueryable<>))
-                    return iface.GetGenericArguments()[0];
-            }
-
-            return type;
         }
     }
 }

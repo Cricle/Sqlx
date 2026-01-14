@@ -378,7 +378,9 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("{");
         sb.PushIndent();
 
+        sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR || !SQLX_DISABLE_ACTIVITY");
         sb.AppendLine("var startTime = Stopwatch.GetTimestamp();");
+        sb.AppendLine("#endif");
         sb.AppendLine();
 
         // Check if method has dynamic parameters (Expression, limit, offset, etc.)
@@ -451,6 +453,34 @@ public class RepositoryGenerator : IIncrementalGenerator
 
     private static void GenerateDynamicContextAndRender(IndentedStringBuilder sb, IMethodSymbol method, string fieldName, INamedTypeSymbol? expressionToSqlAttr)
     {
+        // Collect dynamic parameters
+        var limitParam = method.Parameters.FirstOrDefault(p => p.Name is "limit" or "pageSize");
+        var offsetParam = method.Parameters.FirstOrDefault(p => p.Name == "offset");
+        var expressionParams = method.Parameters.Where(p => p.Type.ToDisplayString().Contains("Expression<")).ToList();
+
+        // Optimized path: single limit parameter only (no expressions, no offset)
+        if (limitParam != null && offsetParam == null && expressionParams.Count == 0)
+        {
+            var paramName = limitParam.Name == "pageSize" ? "pageSize" : "limit";
+            sb.AppendLine("// Optimized render for single limit parameter");
+            sb.AppendLine($"var renderedSql = {fieldName}.HasDynamicPlaceholders");
+            sb.AppendLine($"    ? {fieldName}.Render(\"{paramName}\", {limitParam.Name})");
+            sb.AppendLine($"    : {fieldName}.Sql;");
+            return;
+        }
+
+        // Optimized path: limit + offset only (no expressions)
+        if (limitParam != null && offsetParam != null && expressionParams.Count == 0)
+        {
+            var limitParamName = limitParam.Name == "pageSize" ? "pageSize" : "limit";
+            sb.AppendLine("// Optimized render for limit + offset parameters");
+            sb.AppendLine($"var renderedSql = {fieldName}.HasDynamicPlaceholders");
+            sb.AppendLine($"    ? {fieldName}.Render(\"{limitParamName}\", {limitParam.Name}, \"offset\", {offsetParam.Name})");
+            sb.AppendLine($"    : {fieldName}.Sql;");
+            return;
+        }
+
+        // General path: use dictionary for complex cases (expressions, etc.)
         sb.AppendLine("// Create dynamic parameters for runtime rendering");
         sb.AppendLine("var dynamicParams = new Dictionary<string, object?>");
         sb.AppendLine("{");
@@ -568,6 +598,10 @@ public class RepositoryGenerator : IIncrementalGenerator
         var ctParam = method.Parameters.FirstOrDefault(p => p.Name == "cancellationToken");
         var ctName = ctParam?.Name ?? "default";
 
+        // Check for capacity hint parameter (limit, pageSize)
+        var capacityHintParam = method.Parameters.FirstOrDefault(p => p.Name is "limit" or "pageSize");
+        var capacityHint = capacityHintParam?.Name;
+
         // Check for tuple return type first (but not for InsertAndGetId which handles its own tuple)
         if (IsTupleReturnType(method.ReturnType) && !isReturnInsertedId)
         {
@@ -584,7 +618,12 @@ public class RepositoryGenerator : IIncrementalGenerator
         {
             // Return list of entities - use static ordinals when available
             sb.AppendLine($"using var reader = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.Default, {ctName}).ConfigureAwait(false);");
-            if (useStaticOrdinals)
+            if (useStaticOrdinals && capacityHint != null)
+            {
+                // Use capacity hint for list pre-allocation
+                sb.AppendLine($"var result = await global::Sqlx.ResultReaderExtensions.ToListAsync({entityName}ResultReader.Default, reader, {ordinalsFieldName}, {capacityHint}, {ctName}).ConfigureAwait(false);");
+            }
+            else if (useStaticOrdinals)
             {
                 sb.AppendLine($"var result = await global::Sqlx.ResultReaderExtensions.ToListAsync({entityName}ResultReader.Default, reader, {ordinalsFieldName}, {ctName}).ConfigureAwait(false);");
             }
@@ -764,6 +803,10 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine();
         sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
         sb.AppendLine("activity?.SetStatus(ActivityStatusCode.Error, ex.Message);");
+        sb.AppendLine("#endif");
+        sb.AppendLine();
+        sb.AppendLine("#if SQLX_DISABLE_INTERCEPTOR && SQLX_DISABLE_ACTIVITY");
+        sb.AppendLine("_ = ex; // Suppress unused variable warning");
         sb.AppendLine("#endif");
         sb.AppendLine();
         sb.AppendLine("throw;");

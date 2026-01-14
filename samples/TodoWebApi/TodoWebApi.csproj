@@ -1,41 +1,41 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <!-- 基本项目设置 -->
+  <!-- Basic project settings -->
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>$(SqlxTestTargetFramework)</TargetFramework>
     <AssemblyName>TodoWebApi</AssemblyName>
     <RootNamespace>TodoWebApi</RootNamespace>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
 
-    <!-- AOT 编译设置 -->
+    <!-- AOT compilation settings -->
     <PublishAot>true</PublishAot>
     <InvariantGlobalization>true</InvariantGlobalization>
     <OptimizationPreference>Size</OptimizationPreference>
 
-    <!-- Web API 特定设置 -->
+    <!-- Web API specific settings -->
     <IsPackable>false</IsPackable>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
 
-    <!-- 警告抑制（AOT兼容性） -->
+    <!-- Warning suppression (AOT compatibility) -->
     <NoWarn>$(NoWarn);CS1591;CS8618;CS8625;IL2026;IL2104;CS8600;CS8602;CS8604</NoWarn>
 
-    <!-- 源生成器调试设置 -->
+    <!-- Source generator debug settings -->
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
   </PropertyGroup>
 
-  <!-- 应用程序描述 -->
+  <!-- Application description -->
   <PropertyGroup>
     <Product>Sqlx TODO WebAPI - AOT Native</Product>
     <Description>
-      完整的TODO WebAPI应用程序，展示Sqlx ORM的所有核心功能。
-      包含Vue SPA前端，演示多数据库模板引擎、类型安全查询、
-      23个智能占位符等特性。支持AOT原生编译。
+      Full TODO WebAPI application demonstrating all core features of Sqlx ORM.
+      Includes Vue SPA frontend, multi-database template engine, type-safe queries,
+      23 smart placeholders. Supports AOT native compilation.
     </Description>
     <Version>3.0.0-aot</Version>
   </PropertyGroup>
 
-  <!-- 项目引用 -->
+  <!-- Project references -->
   <ItemGroup Label="Project References">
     <ProjectReference Include="../../src/Sqlx/Sqlx.csproj" />
     <ProjectReference Include="../../src/Sqlx.Generator/Sqlx.Generator.csproj"
@@ -43,20 +43,18 @@
                       ReferenceOutputAssembly="false" />
   </ItemGroup>
 
-  <!-- Web API 核心包（已移除Swagger以提高AOT兼容性） -->
-
-  <!-- 数据库包 -->
+  <!-- Database packages -->
   <ItemGroup Label="Database">
     <PackageReference Include="Microsoft.Data.Sqlite" />
   </ItemGroup>
 
-  <!-- 静态文件（Vue SPA） -->
+  <!-- Static files (Vue SPA) -->
   <ItemGroup Label="Static Files">
     <None Update="wwwroot\**\*" CopyToOutputDirectory="PreserveNewest" />
     <None Update="README.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
-  <!-- AOT 优化配置 -->
+  <!-- AOT optimization configuration -->
   <PropertyGroup Condition="'$(PublishAot)' == 'true'">
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>link</TrimMode>

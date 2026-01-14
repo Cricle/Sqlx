@@ -166,4 +166,31 @@ public static class ResultReaderExtensions
         
         return list;
     }
+
+    /// <summary>
+    /// Reads all entities into a list (async), using pre-computed ordinals and capacity hint.
+    /// </summary>
+    /// <param name="reader">The result reader.</param>
+    /// <param name="dataReader">The data reader.</param>
+    /// <param name="ordinals">Pre-computed column ordinals.</param>
+    /// <param name="capacityHint">Expected number of rows for list pre-allocation.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>List of entities.</returns>
+    public static async Task<List<TEntity>> ToListAsync<TEntity>(
+        this IResultReader<TEntity> reader,
+        DbDataReader dataReader,
+        int[] ordinals,
+        int capacityHint,
+        CancellationToken cancellationToken = default)
+    {
+        var list = new List<TEntity>(capacityHint);
+        if (!await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false)) return list;
+        
+        do
+        {
+            list.Add(reader.Read(dataReader, ordinals));
+        } while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false));
+        
+        return list;
+    }
 }

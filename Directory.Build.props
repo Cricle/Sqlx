@@ -1,17 +1,26 @@
 <Project>
-  <!-- 通用项目配置 -->
+  <!-- Common project configuration -->
   <PropertyGroup>
-    <LangVersion>12.0</LangVersion>
+    <LangVersion>13.0</LangVersion>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
-  <!-- 统一版本管理 -->
+  <!-- Target frameworks - net10.0 will be added automatically when SDK 10.0+ is available -->
+  <PropertyGroup>
+    <!-- Base frameworks always supported -->
+    <SqlxTargetFrameworks>netstandard2.0;net8.0;net9.0</SqlxTargetFrameworks>
+    <SqlxTestTargetFramework>net9.0</SqlxTestTargetFramework>
+  </PropertyGroup>
+
+  <!-- Version management -->
   <PropertyGroup>
     <Version>0.5.0</Version>
   </PropertyGroup>
 
-  <!-- NuGet 包通用信息 -->
+  <!-- NuGet package common info -->
   <PropertyGroup>
     <Authors>Sqlx Team</Authors>
     <Company>Sqlx</Company>
@@ -27,7 +36,7 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
-  <!-- VS SDK 包版本定义 -->
+  <!-- VS SDK package versions -->
   <PropertyGroup>
     <VSSdkVersion>17.9.37000</VSSdkVersion>
     <VSBuildToolsVersion>17.9.3168</VSBuildToolsVersion>
@@ -35,7 +44,7 @@
     <VSLanguageServicesVersion>17.9.187</VSLanguageServicesVersion>
   </PropertyGroup>
 
-  <!-- 禁用不必要的分析器警告 -->
+  <!-- Disable unnecessary analyzer warnings -->
   <PropertyGroup>
     <NoWarn>$(NoWarn);CS1701;CS1702;CS8002;CS8618;CS8625;CS8600;CS8602;CS8604;CS8603;CS8601;VSTHRD100;VSTHRD010;VSSDK006;RS1035;SA1209;SA1111</NoWarn>
   </PropertyGroup>

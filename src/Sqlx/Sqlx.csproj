@@ -1,16 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net8.0;net9.0</TargetFrameworks>
-    <LangVersion>12.0</LangVersion>
-	  <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TargetFrameworks>$(SqlxTargetFrameworks)</TargetFrameworks>
   </PropertyGroup>
 
   <PropertyGroup>
     <PackageId>Sqlx</PackageId>
     <Title>Sqlx - High-Performance Type-Safe .NET ORM</Title>
     <PackageTags>
-      orm;sql;netstandard;net8;net9;source-generator;aot;performance;type-safe;
+      orm;sql;netstandard;net8;net9;net10;source-generator;aot;performance;type-safe;
       join;transaction;group-by;having;case-when;linq;csharp;dotnet;
       dapper-alternative;ef-core-alternative;high-performance;low-gc;
       compile-time;zero-reflection;production-ready

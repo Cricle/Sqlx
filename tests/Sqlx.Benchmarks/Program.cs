@@ -1,4 +1,6 @@
 using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Environments;
+using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Running;
 using Dapper;
 using Sqlx.Benchmarks.Benchmarks;
@@ -18,7 +20,8 @@ public class Program
             Console.WriteLine();
             
             var config = DefaultConfig.Instance
-                .WithOptions(ConfigOptions.DisableOptimizationsValidator);
+                .WithOptions(ConfigOptions.DisableOptimizationsValidator)
+                .AddJob(Job.Default.WithRuntime(NativeAotRuntime.Net90));
             
             BenchmarkRunner.Run(new[]
             {

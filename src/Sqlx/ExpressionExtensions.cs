@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
+using Sqlx.Expressions;
 
 namespace Sqlx
 {
@@ -31,9 +32,10 @@ namespace Sqlx
                 return string.Empty;
             }
 
-            return ExpressionToSql<T>.Create(dialect ?? SqlDefine.SQLite)
-                .Where(predicate)
-                .ToWhereClause();
+            var d = dialect ?? SqlDefine.SQLite;
+            var parameters = new Dictionary<string, object?>();
+            var parser = new ExpressionParser(d, parameters, false);
+            return parser.Parse(predicate.Body);
         }
 
         /// <summary>
@@ -74,7 +76,7 @@ namespace Sqlx
                     break;
 
                 case MemberExpression { Expression: not ParameterExpression } member:
-                    var value = ExpressionToSqlBase.EvaluateExpression(member);
+                    var value = ExpressionHelper.EvaluateExpression(member);
                     if (value != null)
                     {
                         parameters[$"p{parameters.Count}"] = value;

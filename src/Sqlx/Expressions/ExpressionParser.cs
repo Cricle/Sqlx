@@ -60,10 +60,15 @@ namespace Sqlx.Expressions
 
         public List<string> ExtractColumns(Expression e) => e switch
         {
-            NewExpression n => n.Arguments.OfType<MemberExpression>().Select(Col).ToList(),
-            MemberExpression m => new List<string> { Col(m) },
+            NewExpression n => n.Arguments.Select(ParseRaw).ToList(),
+            MemberExpression m when ExpressionHelper.IsStringPropertyAccess(m) => new List<string> { ParseRaw(m) },
+            MemberExpression m when ExpressionHelper.IsEntityProperty(m) => new List<string> { Col(m) },
+            MemberExpression m => new List<string> { ParseRaw(m) },
+            MethodCallExpression mc => new List<string> { ParseRaw(mc) },
+            BinaryExpression b => new List<string> { ParseRaw(b) },
+            ConditionalExpression c => new List<string> { ParseRaw(c) },
             UnaryExpression { NodeType: ExpressionType.Convert } u => ExtractColumns(u.Operand),
-            _ => new List<string> { Col(e) }
+            _ => new List<string> { ParseRaw(e) }
         };
 
         public string ParseLambda(Expression e) => e switch

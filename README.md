@@ -97,10 +97,52 @@ public interface IUserRepository : ICrudRepository<User, long>
 Task<List<User>> SearchAsync(string? name, int? minAge);
 ```
 
-## 表达式查询
+## IQueryable 查询构建器
+
+使用标准 LINQ 语法构建类型安全的 SQL 查询：
 
 ```csharp
-// 使用 LINQ 表达式构建类型安全的动态查询
+using Sqlx;
+
+// 基本查询
+var sql = SqlQuery.ForSqlite<User>()
+    .Where(u => u.Age >= 18 && u.IsActive)
+    .OrderBy(u => u.Name)
+    .Take(10)
+    .ToSql();
+// SELECT * FROM [User] WHERE ([age] >= 18 AND [is_active] = 1) ORDER BY [name] ASC LIMIT 10
+
+// 投影查询
+var sql = SqlQuery.ForPostgreSQL<User>()
+    .Where(u => u.Name.Contains("test"))
+    .Select(u => new { u.Id, u.Name })
+    .ToSql();
+// SELECT "id", "name" FROM "User" WHERE "name" LIKE '%' || 'test' || '%'
+
+// 参数化查询
+var (sql, parameters) = SqlQuery.ForSqlServer<User>()
+    .Where(u => u.Age > 18)
+    .ToSqlWithParameters();
+// SQL: SELECT * FROM [User] WHERE [age] > @p0
+// Parameters: { "@p0": 18 }
+```
+
+**支持的 LINQ 方法：**
+- `Where` - 条件过滤（支持 String/Math 方法、null 合并、条件表达式）
+- `Select` - 投影（支持匿名类型、函数调用）
+- `OrderBy` / `OrderByDescending` / `ThenBy` / `ThenByDescending` - 排序
+- `Take` / `Skip` - 分页
+- `GroupBy` - 分组
+- `Distinct` - 去重
+
+**支持的函数：**
+- String: `Contains`, `StartsWith`, `EndsWith`, `ToUpper`, `ToLower`, `Trim`, `Substring`, `Replace`, `Length`
+- Math: `Abs`, `Round`, `Floor`, `Ceiling`, `Sqrt`, `Pow`, `Min`, `Max`
+
+## 表达式查询（仓储模式）
+
+```csharp
+// 在仓储中使用 LINQ 表达式
 [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE {{where --param predicate}}")]
 Task<List<User>> GetWhereAsync(Expression<Func<User, bool>> predicate);
 

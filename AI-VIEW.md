@@ -274,3 +274,44 @@ SqlTemplate GetByIdSql(long id);  // 返回模板而非执行
 var template = repo.GetByIdSql(123);
 Console.WriteLine(template.Sql);  // 查看 SQL
 ```
+
+## IQueryable 查询构建器
+
+使用标准 LINQ 语法构建 SQL：
+
+```csharp
+using Sqlx;
+
+// 基本查询
+var sql = SqlQuery.ForSqlite<User>()
+    .Where(u => u.Age >= 18 && u.IsActive)
+    .OrderBy(u => u.Name)
+    .Take(10)
+    .ToSql();
+
+// 参数化查询
+var (sql, parameters) = SqlQuery.ForSqlServer<User>()
+    .Where(u => u.Age > 18)
+    .ToSqlWithParameters();
+```
+
+**入口方法：**
+- `SqlQuery.ForSqlite<T>()`
+- `SqlQuery.ForSqlServer<T>()`
+- `SqlQuery.ForMySql<T>()`
+- `SqlQuery.ForPostgreSQL<T>()`
+- `SqlQuery.ForOracle<T>()`
+- `SqlQuery.ForDB2<T>()`
+- `SqlQuery.For<T>(SqlDialect dialect)`
+
+**支持的 LINQ 方法：**
+- `Where` - 条件过滤
+- `Select` - 投影
+- `OrderBy` / `OrderByDescending` / `ThenBy` / `ThenByDescending` - 排序
+- `Take` / `Skip` - 分页
+- `GroupBy` - 分组
+- `Distinct` - 去重
+
+**支持的函数：**
+- String: `Contains`, `StartsWith`, `EndsWith`, `ToUpper`, `ToLower`, `Trim`, `Substring`, `Replace`, `Length`
+- Math: `Abs`, `Round`, `Floor`, `Ceiling`, `Sqrt`, `Pow`, `Min`, `Max`

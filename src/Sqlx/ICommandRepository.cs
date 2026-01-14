@@ -29,18 +29,6 @@ namespace Sqlx
         [SqlTemplate("UPDATE {{table}} SET {{set --exclude Id}} WHERE id = {{arg --param id}}")]
         Task<int> UpdateAsync(TEntity entity, CancellationToken cancellationToken = default);
 
-        /// <summary>Updates entities matching predicate using ExpressionToSql for SET clause.</summary>
-        /// <param name="predicate">WHERE condition</param>
-        /// <param name="setter">ExpressionToSql with Set() calls defining columns to update</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Rows affected</returns>
-        /// <example>
-        /// var setter = ExpressionToSql&lt;User&gt;.ForSqlite().Set(x => x.Status, "inactive");
-        /// await repo.UpdateWhereAsync(x => x.LastLogin &lt; DateTime.Now.AddYears(-1), setter);
-        /// </example>
-        [SqlTemplate("UPDATE {{table}} SET {{set --from setter}} WHERE {{where --param predicate}}")]
-        Task<int> UpdateWhereAsync([ExpressionToSql] Expression<Func<TEntity, bool>> predicate, ExpressionToSql<TEntity> setter, CancellationToken cancellationToken = default);
-
         /// <summary>Deletes entity by primary key.</summary>
         [SqlTemplate("DELETE FROM {{table}} WHERE id = {{arg --param id}}")]
         Task<int> DeleteAsync(TKey id, CancellationToken cancellationToken = default);

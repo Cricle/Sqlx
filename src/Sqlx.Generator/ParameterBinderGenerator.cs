@@ -12,82 +12,62 @@ using System.Linq;
 using System.Text;
 
 /// <summary>
-/// Source generator that creates IParameterBinder implementations for classes marked with [SqlxParameter].
+/// Generates IParameterBinder implementations for [SqlxParameter] classes.
 /// </summary>
-/// <remarks>
-/// <para>
-/// This generator produces AOT-compatible, reflection-free parameter binding code that:
-/// </para>
-/// <list type="bullet">
-/// <item><description>Creates DbParameter instances for each entity property</description></item>
-/// <item><description>Handles nullable types and DBNull conversion</description></item>
-/// <item><description>Respects [Column] attribute for custom parameter names</description></item>
-/// <item><description>Excludes properties marked with [IgnoreDataMember]</description></item>
-/// </list>
-/// </remarks>
 [Generator(LanguageNames.CSharp)]
 public class ParameterBinderGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var classDeclarations = context.SyntaxProvider
+        var classes = context.SyntaxProvider
             .CreateSyntaxProvider(
                 predicate: static (s, _) => s is ClassDeclarationSyntax c && c.AttributeLists.Count > 0,
                 transform: static (ctx, _) => GetTarget(ctx))
             .Where(static m => m is not null);
 
-        var compilationAndClasses = context.CompilationProvider.Combine(classDeclarations.Collect());
-        context.RegisterSourceOutput(compilationAndClasses, static (spc, source) => Execute(source.Left, source.Right!, spc));
+        context.RegisterSourceOutput(
+            context.CompilationProvider.Combine(classes.Collect()),
+            static (spc, source) => Execute(source.Left, source.Right!, spc));
     }
 
-    private static ClassDeclarationSyntax? GetTarget(GeneratorSyntaxContext context)
+    private static ClassDeclarationSyntax? GetTarget(GeneratorSyntaxContext ctx)
     {
-        var classDecl = (ClassDeclarationSyntax)context.Node;
-        foreach (var attrList in classDecl.AttributeLists)
-        {
-            foreach (var attr in attrList.Attributes)
-            {
-                var name = attr.Name.ToString();
-                if (name is "SqlxParameter" or "SqlxParameterAttribute")
-                    return classDecl;
-            }
-        }
+        var c = (ClassDeclarationSyntax)ctx.Node;
+        foreach (var al in c.AttributeLists)
+            foreach (var a in al.Attributes)
+                if (a.Name.ToString() is "SqlxParameter" or "SqlxParameterAttribute")
+                    return c;
         return null;
     }
 
-    private static void Execute(Compilation compilation, ImmutableArray<ClassDeclarationSyntax?> classes, SourceProductionContext context)
+    private static void Execute(Compilation compilation, ImmutableArray<ClassDeclarationSyntax?> classes, SourceProductionContext ctx)
     {
         if (classes.IsDefaultOrEmpty) return;
 
-        var sqlxParamAttr = compilation.GetTypeByMetadataName("Sqlx.Annotations.SqlxParameterAttribute");
-        if (sqlxParamAttr is null) return;
+        var sqlxAttr = compilation.GetTypeByMetadataName("Sqlx.Annotations.SqlxParameterAttribute");
+        if (sqlxAttr is null) return;
 
         var ignoreAttr = compilation.GetTypeByMetadataName("System.Runtime.Serialization.IgnoreDataMemberAttribute");
         var columnAttr = compilation.GetTypeByMetadataName("System.ComponentModel.DataAnnotations.Schema.ColumnAttribute");
 
-        foreach (var classDecl in classes.Distinct())
+        foreach (var c in classes.Distinct())
         {
-            if (classDecl is null) continue;
+            if (c is null) continue;
+            var model = compilation.GetSemanticModel(c.SyntaxTree);
+            if (model.GetDeclaredSymbol(c) is not INamedTypeSymbol ts) continue;
+            if (!ts.GetAttributes().Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, sqlxAttr))) continue;
 
-            var semanticModel = compilation.GetSemanticModel(classDecl.SyntaxTree);
-            if (semanticModel.GetDeclaredSymbol(classDecl) is not INamedTypeSymbol typeSymbol) continue;
-
-            var hasAttr = typeSymbol.GetAttributes().Any(a =>
-                SymbolEqualityComparer.Default.Equals(a.AttributeClass, sqlxParamAttr));
-            if (!hasAttr) continue;
-
-            var source = GenerateSource(typeSymbol, ignoreAttr, columnAttr);
-            context.AddSource($"{typeSymbol.Name}.ParameterBinder.g.cs", SourceText.From(source, Encoding.UTF8));
+            ctx.AddSource($"{ts.Name}.ParameterBinder.g.cs", SourceText.From(Generate(ts, ignoreAttr, columnAttr), Encoding.UTF8));
         }
     }
 
-    private static string GenerateSource(INamedTypeSymbol typeSymbol, INamedTypeSymbol? ignoreAttr, INamedTypeSymbol? columnAttr)
+    private static string Generate(INamedTypeSymbol ts, INamedTypeSymbol? ignoreAttr, INamedTypeSymbol? columnAttr)
     {
-        var ns = typeSymbol.ContainingNamespace.IsGlobalNamespace ? null : typeSymbol.ContainingNamespace.ToDisplayString();
-        var typeName = typeSymbol.Name;
-        var fullTypeName = typeSymbol.ToDisplayString();
+        var ns = ts.ContainingNamespace.IsGlobalNamespace ? "Global" : ts.ContainingNamespace.ToDisplayString();
+        var name = ts.Name;
+        var full = ts.ToDisplayString();
 
-        var properties = typeSymbol.GetMembers()
+        var props = ts.GetMembers()
             .OfType<IPropertySymbol>()
             .Where(p => p.DeclaredAccessibility == Accessibility.Public && !p.IsStatic && p.GetMethod is not null)
             .Where(p => ignoreAttr is null || !p.GetAttributes().Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, ignoreAttr)))
@@ -96,103 +76,65 @@ public class ParameterBinderGenerator : IIncrementalGenerator
         var sb = new StringBuilder();
         sb.AppendLine("// <auto-generated/>");
         sb.AppendLine("#nullable enable");
+        sb.AppendLine($"namespace {ns};");
+        sb.AppendLine("using System; using System.Data; using System.Data.Common;");
         sb.AppendLine();
-        sb.AppendLine("namespace " + (ns ?? "Global") + ";");
-        sb.AppendLine();
-        sb.AppendLine("using System;");
-        sb.AppendLine("using System.Data;");
-        sb.AppendLine("using System.Data.Common;");
-        sb.AppendLine();
-
-        sb.AppendLine($"public sealed class {typeName}ParameterBinder : global::Sqlx.IParameterBinder<{fullTypeName}>");
+        sb.AppendLine($"public sealed class {name}ParameterBinder : global::Sqlx.IParameterBinder<{full}>");
         sb.AppendLine("{");
-        sb.AppendLine($"    public static {typeName}ParameterBinder Default {{ get; }} = new();");
+        sb.AppendLine($"    public static {name}ParameterBinder Default {{ get; }} = new();");
         sb.AppendLine();
 
-        // DbCommand binding method
-        sb.AppendLine($"    public void BindEntity(DbCommand command, {fullTypeName} entity, string parameterPrefix = \"@\")");
+        // DbCommand binding
+        sb.AppendLine($"    public void BindEntity(DbCommand cmd, {full} e, string prefix = \"@\")");
         sb.AppendLine("    {");
-
-        foreach (var prop in properties)
+        foreach (var p in props)
         {
-            var columnName = GetColumnName(prop, columnAttr);
-            var isNullable = IsNullable(prop);
-
-            sb.AppendLine("        {");
-            sb.AppendLine("            var p = command.CreateParameter();");
-            sb.AppendLine($"            p.ParameterName = parameterPrefix + \"{columnName}\";");
-
-            if (isNullable || prop.Type.IsReferenceType)
-                sb.AppendLine($"            p.Value = entity.{prop.Name} ?? (object)DBNull.Value;");
-            else
-                sb.AppendLine($"            p.Value = entity.{prop.Name};");
-
-            sb.AppendLine("            command.Parameters.Add(p);");
-            sb.AppendLine("        }");
+            var col = GetColumnName(p, columnAttr);
+            var val = IsNullable(p) || p.Type.IsReferenceType ? $"e.{p.Name} ?? (object)DBNull.Value" : $"e.{p.Name}";
+            sb.AppendLine($"        {{ var p = cmd.CreateParameter(); p.ParameterName = prefix + \"{col}\"; p.Value = {val}; cmd.Parameters.Add(p); }}");
         }
-
         sb.AppendLine("    }");
-        sb.AppendLine();
 
-        // DbBatchCommand binding method (.NET 6+)
-        // Uses a factory delegate to create parameters (no reflection)
+        // DbBatchCommand binding (.NET 6+)
         sb.AppendLine("#if NET6_0_OR_GREATER");
-        sb.AppendLine($"    public void BindEntity(DbBatchCommand command, {fullTypeName} entity, Func<DbParameter> parameterFactory, string parameterPrefix = \"@\")");
+        sb.AppendLine($"    public void BindEntity(DbBatchCommand cmd, {full} e, Func<DbParameter> f, string prefix = \"@\")");
         sb.AppendLine("    {");
-
-        foreach (var prop in properties)
+        foreach (var p in props)
         {
-            var columnName = GetColumnName(prop, columnAttr);
-            var isNullable = IsNullable(prop);
-
-            sb.AppendLine("        {");
-            sb.AppendLine($"            var p = parameterFactory();");
-            sb.AppendLine($"            p.ParameterName = parameterPrefix + \"{columnName}\";");
-
-            if (isNullable || prop.Type.IsReferenceType)
-                sb.AppendLine($"            p.Value = entity.{prop.Name} ?? (object)DBNull.Value;");
-            else
-                sb.AppendLine($"            p.Value = entity.{prop.Name};");
-
-            sb.AppendLine("            command.Parameters.Add(p);");
-            sb.AppendLine("        }");
+            var col = GetColumnName(p, columnAttr);
+            var val = IsNullable(p) || p.Type.IsReferenceType ? $"e.{p.Name} ?? (object)DBNull.Value" : $"e.{p.Name}";
+            sb.AppendLine($"        {{ var p = f(); p.ParameterName = prefix + \"{col}\"; p.Value = {val}; cmd.Parameters.Add(p); }}");
         }
-
         sb.AppendLine("    }");
         sb.AppendLine("#endif");
-
         sb.AppendLine("}");
 
         return sb.ToString();
     }
 
-    private static string GetColumnName(IPropertySymbol prop, INamedTypeSymbol? columnAttr)
+    private static string GetColumnName(IPropertySymbol p, INamedTypeSymbol? columnAttr)
     {
         if (columnAttr is not null)
         {
-            var attr = prop.GetAttributes().FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, columnAttr));
-            if (attr?.ConstructorArguments.Length > 0 && attr.ConstructorArguments[0].Value is string name)
-                return name;
+            var a = p.GetAttributes().FirstOrDefault(x => SymbolEqualityComparer.Default.Equals(x.AttributeClass, columnAttr));
+            if (a?.ConstructorArguments.Length > 0 && a.ConstructorArguments[0].Value is string n) return n;
         }
-        return ToSnakeCase(prop.Name);
+        return ToSnakeCase(p.Name);
     }
 
-    private static string ToSnakeCase(string name)
+    private static string ToSnakeCase(string s)
     {
-        var sb = new StringBuilder();
-        for (int i = 0; i < name.Length; i++)
+        var sb = new StringBuilder(s.Length + 4);
+        for (int i = 0; i < s.Length; i++)
         {
-            var c = name[i];
+            var c = s[i];
             if (char.IsUpper(c) && i > 0) sb.Append('_');
             sb.Append(char.ToLowerInvariant(c));
         }
         return sb.ToString();
     }
 
-    private static bool IsNullable(IPropertySymbol prop)
-    {
-        if (prop.NullableAnnotation == NullableAnnotation.Annotated) return true;
-        if (prop.Type.IsValueType && prop.Type.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T) return true;
-        return false;
-    }
+    private static bool IsNullable(IPropertySymbol p) =>
+        p.NullableAnnotation == NullableAnnotation.Annotated ||
+        (p.Type.IsValueType && p.Type.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T);
 }

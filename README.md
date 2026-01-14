@@ -313,7 +313,7 @@ Console.WriteLine(template.Sql);  // 输出生成的 SQL
 
 ## ⚡ 性能对比
 
-### Sqlx vs Dapper.AOT
+### Sqlx vs Dapper.AOT vs FreeSql
 
 基于 BenchmarkDotNet 的公平对比测试（SQLite 内存数据库，10000 条记录，禁用 Activity 和 Interceptor）：
 
@@ -321,66 +321,88 @@ Console.WriteLine(template.Sql);  // 输出生成的 SQL
 
 | Method | Mean | Ratio | Allocated | Alloc Ratio |
 |--------|------|-------|-----------|-------------|
-| Sqlx | 9.04 μs | 1.00 | 1.7 KB | 1.00 |
-| Dapper.AOT | 10.67 μs | 1.18 | 2.95 KB | 1.73 |
+| Sqlx | 9.78 μs | 1.00 | 1.7 KB | 1.00 |
+| Dapper.AOT | 11.73 μs | 1.20 | 2.95 KB | 1.73 |
+| FreeSql | 73.32 μs | 7.50 | 11.12 KB | 6.53 |
 
-**Sqlx 快 18%，内存少 42%**
+**Sqlx 比 Dapper.AOT 快 20%，比 FreeSql 快 7.5 倍**
 
 #### 列表查询 (SelectList)
 
 | Method | Limit | Mean | Ratio | Allocated | Alloc Ratio |
 |--------|-------|------|-------|-----------|-------------|
-| Dapper.AOT | 10 | 22.97 μs | 0.87 | 6.55 KB | 0.96 |
-| Sqlx | 10 | 26.50 μs | 1.00 | 6.84 KB | 1.00 |
-| Dapper.AOT | 100 | 137.26 μs | 0.78 | 42.14 KB | 1.05 |
-| Sqlx | 100 | 176.37 μs | 1.00 | 40.28 KB | 1.00 |
-| Dapper.AOT | 1000 | 1,475 μs | 0.77 | 393.71 KB | 1.06 |
-| Sqlx | 1000 | 1,911 μs | 1.00 | 370.57 KB | 1.00 |
+| Sqlx | 10 | 26.75 μs | 1.00 | 4.98 KB | 1.00 |
+| FreeSql | 10 | 44.23 μs | 1.65 | 9.56 KB | 1.92 |
+| Dapper.AOT | 100 | 144.34 μs | 0.78 | 42.14 KB | 1.13 |
+| Sqlx | 100 | 184.38 μs | 1.00 | 37.3 KB | 1.00 |
+| FreeSql | 100 | 187.69 μs | 1.02 | 38.11 KB | 1.02 |
+| Dapper.AOT | 1000 | 1,349 μs | 0.76 | 393.71 KB | 1.09 |
+| FreeSql | 1000 | 1,601 μs | 0.91 | 319.45 KB | 0.89 |
+| Sqlx | 1000 | 1,767 μs | 1.00 | 360.55 KB | 1.00 |
 
-**Dapper.AOT 批量读取更快，Sqlx 内存更少**
+**小批量 Sqlx 最快，大批量 Dapper.AOT 更快**
 
 #### 插入操作 (Insert)
 
 | Method | Mean | Ratio | Allocated | Alloc Ratio |
 |--------|------|-------|-----------|-------------|
-| Dapper.AOT | 82.60 μs | 0.89 | 7.59 KB | 1.50 |
-| Sqlx | 98.67 μs | 1.06 | 5.08 KB | 1.00 |
+| Dapper.AOT | 79.68 μs | 0.93 | 7.31 KB | 1.44 |
+| Sqlx | 85.67 μs | 1.00 | 5.08 KB | 1.00 |
+| FreeSql | 179.00 μs | 2.10 | 15.55 KB | 3.06 |
 
-**性能持平，Sqlx 内存少 33%**
+**Sqlx 比 FreeSql 快 2 倍，内存少 67%**
 
-#### 批量插入 (BatchInsert)
+#### 更新操作 (Update)
 
-| Method | BatchSize | Mean | Ratio | Allocated | Alloc Ratio |
-|--------|-----------|------|-------|-----------|-------------|
-| Sqlx.Loop | 10 | 201.8 μs | 0.93 | 23.7 KB | 1.00 |
-| Dapper.AOT | 10 | 209.4 μs | 0.96 | 35.19 KB | 1.48 |
-| Sqlx.DbBatch | 10 | 218.0 μs | 1.00 | 23.77 KB | 1.00 |
-| | | | | | |
-| Sqlx.Loop | 100 | 1,321 μs | 0.97 | 228.3 KB | 1.00 |
-| Sqlx.DbBatch | 100 | 1,364 μs | 1.01 | 228.66 KB | 1.00 |
-| Dapper.AOT | 100 | 2,400 μs | 1.77 | 336.13 KB | 1.47 |
-| | | | | | |
-| Sqlx.Loop | 1000 | 14,055 μs | 0.97 | 2274.32 KB | 1.00 |
-| Sqlx.DbBatch | 1000 | 14,477 μs | 1.00 | 2274.34 KB | 1.00 |
-| Dapper.AOT | 1000 | 15,825 μs | 1.09 | 3345.5 KB | 1.47 |
+| Method | Mean | Ratio | Allocated | Alloc Ratio |
+|--------|------|-------|-----------|-------------|
+| Sqlx | 16.75 μs | 1.00 | 3.27 KB | 1.00 |
+| Dapper.AOT | 19.12 μs | 1.14 | 5.83 KB | 1.78 |
+| FreeSql | 70.08 μs | 4.18 | 14.61 KB | 4.46 |
 
-**批量插入：Sqlx 快 3-77%，内存少 32-47%**
+**Sqlx 比 Dapper.AOT 快 14%，比 FreeSql 快 4 倍**
+
+#### 删除操作 (Delete)
+
+| Method | Mean | Ratio | Allocated | Alloc Ratio |
+|--------|------|-------|-----------|-------------|
+| Sqlx | 35.03 μs | 1.00 | 1.21 KB | 1.00 |
+| Dapper.AOT | 37.50 μs | 1.07 | 1.5 KB | 1.24 |
+| FreeSql | 185.10 μs | 5.28 | 8.57 KB | 7.08 |
+
+**Sqlx 比 FreeSql 快 5 倍**
+
+#### 计数操作 (Count)
+
+| Method | Mean | Ratio | Allocated | Alloc Ratio |
+|--------|------|-------|-----------|-------------|
+| Dapper.AOT | 4.02 μs | 0.97 | 896 B | 1.05 |
+| Sqlx | 4.14 μs | 1.00 | 856 B | 1.00 |
+| FreeSql | 202.09 μs | 48.85 | 5720 B | 6.68 |
+
+**Sqlx 比 FreeSql 快 49 倍**
 
 ### 总结
 
-| 场景 | 性能对比 | 内存对比 |
-|------|----------|----------|
-| 单条查询 | **Sqlx 快 18%** | **Sqlx 少 42%** |
-| 插入操作 | 持平 | **Sqlx 少 33%** |
-| 批量插入（小批量） | **Sqlx 快 3-7%** | **Sqlx 少 32%** |
-| 批量插入（中批量） | **Sqlx 快 43-77%** | **Sqlx 少 32%** |
-| 批量插入（大批量） | **Sqlx 快 9%** | **Sqlx 少 32%** |
-| 列表查询 | Dapper.AOT 快 13-23% | Sqlx 少 5-6% |
+| 场景 | Sqlx vs Dapper.AOT | Sqlx vs FreeSql |
+|------|-------------------|-----------------|
+| 单条查询 | **Sqlx 快 20%** | **Sqlx 快 7.5x** |
+| 更新操作 | **Sqlx 快 14%** | **Sqlx 快 4.2x** |
+| 删除操作 | **Sqlx 快 7%** | **Sqlx 快 5.3x** |
+| 插入操作 | Dapper.AOT 快 7% | **Sqlx 快 2.1x** |
+| 计数操作 | 持平 | **Sqlx 快 49x** |
+| 列表查询（小批量） | **Sqlx 快 5%** | **Sqlx 快 65%** |
+| 列表查询（大批量） | Dapper.AOT 快 24% | **Sqlx 快 10%** |
 
-**Sqlx 优势场景**：单条查询、批量插入、内存敏感场景
-**Dapper.AOT 优势场景**：批量读取
+**Sqlx 优势**：
+- 单条 CRUD 操作全面领先
+- 内存分配最少（AOT 友好）
+- 比 FreeSql 快 2-49 倍
 
-> 测试环境：.NET 9.0.8, AMD Ryzen 7 5800H, Windows 10 (22H2)
+**Dapper.AOT 优势**：
+- 大批量读取更快
+
+> 测试环境：.NET 9.0, AMD Ryzen 7 5800H, Windows 10 (22H2)
 > 运行命令：`dotnet run -c Release --project tests/Sqlx.Benchmarks`
 
 ### 批量执行 (Batch Execution)

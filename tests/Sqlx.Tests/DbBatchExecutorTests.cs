@@ -373,7 +373,7 @@ public class DbBatchExecutorTests
         // Execute normally (not cancelled)
         var affected = await DbBatchExecutor.ExecuteAsync(
             _connection, null, sql, entities, TestUserParameterBinder.Default,
-            cancellationToken: cts.Token);
+            ct: cts.Token);
 
         Assert.AreEqual(1, affected);
     }

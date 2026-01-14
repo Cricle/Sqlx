@@ -1,6 +1,7 @@
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
 using Dapper;
+using FreeSql;
 using Microsoft.Data.Sqlite;
 using Sqlx.Benchmarks.Models;
 using Sqlx.Benchmarks.Repositories;
@@ -8,7 +9,7 @@ using Sqlx.Benchmarks.Repositories;
 namespace Sqlx.Benchmarks.Benchmarks;
 
 /// <summary>
-/// Sqlx vs Dapper.AOT: Update entity.
+/// Sqlx vs Dapper.AOT vs FreeSql: Update entity.
 /// </summary>
 [MemoryDiagnoser]
 [Orderer(SummaryOrderPolicy.FastestToSlowest)]
@@ -17,6 +18,7 @@ public class UpdateBenchmark
 {
     private SqliteConnection _connection = null!;
     private BenchmarkUserRepository _sqlxRepo = null!;
+    private IFreeSql _freeSql = null!;
     private BenchmarkUser _testUser = null!;
     
     [GlobalSetup]
@@ -27,11 +29,17 @@ public class UpdateBenchmark
         DatabaseSetup.SeedData(_connection, 10000);
         _sqlxRepo = new BenchmarkUserRepository(_connection);
         _testUser = _sqlxRepo.GetByIdAsync(5000, default).GetAwaiter().GetResult()!;
+        
+        _freeSql = new FreeSqlBuilder()
+            .UseConnectionFactory(DataType.Sqlite, () => _connection)
+            .UseAutoSyncStructure(false)
+            .Build();
     }
     
     [GlobalCleanup]
     public void Cleanup()
     {
+        _freeSql?.Dispose();
         _connection?.Dispose();
     }
     
@@ -66,6 +74,27 @@ public class UpdateBenchmark
             "created_at = @created_at, updated_at = @updated_at, balance = @balance, " +
             "description = @description, score = @score WHERE id = @id",
             updateUser);
+    }
+    
+    [Benchmark(Description = "FreeSql")]
+    public async Task<int> FreeSql_Update()
+    {
+        _testUser.Score++;
+        _testUser.UpdatedAt = DateTime.UtcNow;
+        var fsUser = new FreeSqlUser
+        {
+            Id = _testUser.Id,
+            Name = _testUser.Name,
+            Email = _testUser.Email,
+            Age = _testUser.Age,
+            IsActive = _testUser.IsActive ? 1 : 0,
+            CreatedAt = _testUser.CreatedAt.ToString("O"),
+            UpdatedAt = _testUser.UpdatedAt?.ToString("O"),
+            Balance = (double)_testUser.Balance,
+            Description = _testUser.Description,
+            Score = _testUser.Score
+        };
+        return await _freeSql.Update<FreeSqlUser>().SetSource(fsUser).ExecuteAffrowsAsync();
     }
 }
 

@@ -1,6 +1,7 @@
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
 using Dapper;
+using FreeSql;
 using Microsoft.Data.Sqlite;
 using Sqlx.Benchmarks.Models;
 using Sqlx.Benchmarks.Repositories;
@@ -8,7 +9,7 @@ using Sqlx.Benchmarks.Repositories;
 namespace Sqlx.Benchmarks.Benchmarks;
 
 /// <summary>
-/// Sqlx vs Dapper.AOT: Select single entity by ID.
+/// Sqlx vs Dapper.AOT vs FreeSql: Select single entity by ID.
 /// </summary>
 [MemoryDiagnoser]
 [Orderer(SummaryOrderPolicy.FastestToSlowest)]
@@ -17,6 +18,7 @@ public class SelectSingleBenchmark
 {
     private SqliteConnection _connection = null!;
     private BenchmarkUserRepository _sqlxRepo = null!;
+    private IFreeSql _freeSql = null!;
     private long _testId;
     
     [GlobalSetup]
@@ -27,11 +29,18 @@ public class SelectSingleBenchmark
         DatabaseSetup.SeedData(_connection, 10000);
         _sqlxRepo = new BenchmarkUserRepository(_connection);
         _testId = 5000;
+        
+        // FreeSql uses same in-memory database via connection string
+        _freeSql = new FreeSqlBuilder()
+            .UseConnectionFactory(DataType.Sqlite, () => _connection)
+            .UseAutoSyncStructure(false)
+            .Build();
     }
     
     [GlobalCleanup]
     public void Cleanup()
     {
+        _freeSql?.Dispose();
         _connection?.Dispose();
     }
     
@@ -47,6 +56,12 @@ public class SelectSingleBenchmark
         return await _connection.QueryFirstOrDefaultAsync<DapperUser>(
             "SELECT id, name, email, age, is_active, created_at, updated_at, balance, description, score FROM users WHERE id = @id",
             new { id = _testId });
+    }
+    
+    [Benchmark(Description = "FreeSql")]
+    public async Task<FreeSqlUser?> FreeSql_GetById()
+    {
+        return await _freeSql.Select<FreeSqlUser>().Where(u => u.Id == _testId).FirstAsync();
     }
 }
 

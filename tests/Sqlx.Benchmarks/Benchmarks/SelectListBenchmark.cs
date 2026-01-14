@@ -1,6 +1,7 @@
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
 using Dapper;
+using FreeSql;
 using Microsoft.Data.Sqlite;
 using Sqlx.Benchmarks.Models;
 using Sqlx.Benchmarks.Repositories;
@@ -8,7 +9,7 @@ using Sqlx.Benchmarks.Repositories;
 namespace Sqlx.Benchmarks.Benchmarks;
 
 /// <summary>
-/// Sqlx vs Dapper.AOT: Select list of entities.
+/// Sqlx vs Dapper.AOT vs FreeSql: Select list of entities.
 /// </summary>
 [MemoryDiagnoser]
 [Orderer(SummaryOrderPolicy.FastestToSlowest)]
@@ -17,6 +18,7 @@ public class SelectListBenchmark
 {
     private SqliteConnection _connection = null!;
     private BenchmarkUserRepository _sqlxRepo = null!;
+    private IFreeSql _freeSql = null!;
     
     [Params(10, 100, 1000)]
     public int Limit { get; set; }
@@ -28,11 +30,17 @@ public class SelectListBenchmark
         DatabaseSetup.InitializeDatabase(_connection);
         DatabaseSetup.SeedData(_connection, 10000);
         _sqlxRepo = new BenchmarkUserRepository(_connection);
+        
+        _freeSql = new FreeSqlBuilder()
+            .UseConnectionFactory(DataType.Sqlite, () => _connection)
+            .UseAutoSyncStructure(false)
+            .Build();
     }
     
     [GlobalCleanup]
     public void Cleanup()
     {
+        _freeSql?.Dispose();
         _connection?.Dispose();
     }
     
@@ -49,5 +57,11 @@ public class SelectListBenchmark
             "SELECT id, name, email, age, is_active, created_at, updated_at, balance, description, score FROM users LIMIT @limit",
             new { limit = Limit });
         return result.ToList();
+    }
+    
+    [Benchmark(Description = "FreeSql")]
+    public async Task<List<FreeSqlUser>> FreeSql_GetAll()
+    {
+        return await _freeSql.Select<FreeSqlUser>().Take(Limit).ToListAsync();
     }
 }

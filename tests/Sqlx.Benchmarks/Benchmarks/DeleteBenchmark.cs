@@ -1,6 +1,7 @@
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
 using Dapper;
+using FreeSql;
 using Microsoft.Data.Sqlite;
 using Sqlx.Benchmarks.Models;
 using Sqlx.Benchmarks.Repositories;
@@ -8,7 +9,7 @@ using Sqlx.Benchmarks.Repositories;
 namespace Sqlx.Benchmarks.Benchmarks;
 
 /// <summary>
-/// Sqlx vs Dapper.AOT: Delete entity.
+/// Sqlx vs Dapper.AOT vs FreeSql: Delete entity.
 /// </summary>
 [MemoryDiagnoser]
 [Orderer(SummaryOrderPolicy.FastestToSlowest)]
@@ -17,6 +18,7 @@ public class DeleteBenchmark
 {
     private SqliteConnection _connection = null!;
     private BenchmarkUserRepository _sqlxRepo = null!;
+    private IFreeSql _freeSql = null!;
     private long _nextId;
     
     [GlobalSetup]
@@ -26,18 +28,23 @@ public class DeleteBenchmark
         DatabaseSetup.InitializeDatabase(_connection);
         _sqlxRepo = new BenchmarkUserRepository(_connection);
         _nextId = 1;
+        
+        _freeSql = new FreeSqlBuilder()
+            .UseConnectionFactory(DataType.Sqlite, () => _connection)
+            .UseAutoSyncStructure(false)
+            .Build();
     }
     
     [GlobalCleanup]
     public void Cleanup()
     {
+        _freeSql?.Dispose();
         _connection?.Dispose();
     }
     
     [IterationSetup]
     public void IterationSetup()
     {
-        // Seed fresh data for each iteration
         using var cmd = _connection.CreateCommand();
         cmd.CommandText = "DELETE FROM users";
         cmd.ExecuteNonQuery();
@@ -57,5 +64,12 @@ public class DeleteBenchmark
         return await _connection.ExecuteAsync(
             "DELETE FROM users WHERE id = @id",
             new { id = _nextId++ });
+    }
+    
+    [Benchmark(Description = "FreeSql")]
+    public async Task<int> FreeSql_Delete()
+    {
+        var id = _nextId++;
+        return await _freeSql.Delete<FreeSqlUser>().Where(u => u.Id == id).ExecuteAffrowsAsync();
     }
 }

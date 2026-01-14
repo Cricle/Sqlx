@@ -210,13 +210,6 @@ public class EntityProviderGenerator : IIncrementalGenerator
         sb.AppendLine("{");
         sb.PushIndent();
 
-        // Get ordinals inline
-        for (int i = 0; i < properties.Count; i++)
-        {
-            sb.AppendLine($"var ord{i} = reader.GetOrdinal(Col{i});");
-        }
-        sb.AppendLine();
-
         sb.AppendLine($"return new {fullTypeName}");
         sb.AppendLine("{");
         sb.PushIndent();
@@ -225,7 +218,8 @@ public class EntityProviderGenerator : IIncrementalGenerator
         {
             var prop = properties[i];
             var isNullable = IsNullable(prop);
-            var readExpr = GetReaderExpression(prop.Type, $"ord{i}", isNullable);
+            // Inline GetOrdinal call directly
+            var readExpr = GetReaderExpression(prop.Type, $"reader.GetOrdinal(Col{i})", isNullable);
             sb.AppendLine($"{prop.Name} = {readExpr},");
         }
 

@@ -1,6 +1,4 @@
 using BenchmarkDotNet.Configs;
-using BenchmarkDotNet.Environments;
-using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Running;
 using Dapper;
 using Sqlx.Benchmarks.Benchmarks;
@@ -13,15 +11,14 @@ public class Program
 {
     public static void Main(string[] args)
     {
+        var config = DefaultConfig.Instance
+            .WithOptions(ConfigOptions.DisableOptimizationsValidator);
+        
         if (args.Length == 0 || args.Contains("--all"))
         {
             Console.WriteLine("Running all benchmarks...");
             Console.WriteLine("Use --filter to run specific benchmarks.");
             Console.WriteLine();
-            
-            var config = DefaultConfig.Instance
-                .WithOptions(ConfigOptions.DisableOptimizationsValidator)
-                .AddJob(Job.Default.WithRuntime(NativeAotRuntime.Net90));
             
             BenchmarkRunner.Run(new[]
             {
@@ -40,7 +37,7 @@ public class Program
         }
         else
         {
-            BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
+            BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args, config);
         }
     }
 }

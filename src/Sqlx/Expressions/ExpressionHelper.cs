@@ -17,7 +17,9 @@ namespace Sqlx.Expressions
     /// </summary>
     internal static class ExpressionHelper
     {
-        public static bool IsEntityProperty(MemberExpression m) => m.Expression is ParameterExpression;
+        public static bool IsEntityProperty(MemberExpression m) =>
+            m.Expression is ParameterExpression ||
+            (m.Expression is UnaryExpression { NodeType: ExpressionType.Convert, Operand: ParameterExpression });
         public static bool IsBooleanMember(Expression e) => e is MemberExpression { Type: var t } && t == typeof(bool);
         public static bool IsConstantTrue(Expression e) => e is ConstantExpression { Value: true };
         public static bool IsConstantFalse(Expression e) => e is ConstantExpression { Value: false };
@@ -32,6 +34,7 @@ namespace Sqlx.Expressions
                 (g == typeof(List<>) || g == typeof(IEnumerable<>) || g == typeof(ICollection<>) || g == typeof(IList<>)));
 
         public static bool IsAggregateContext(MethodCallExpression m) =>
+            m.Method.DeclaringType != typeof(Math) &&
             m.Method.Name is "Count" or "CountDistinct" or "Sum" or "Average" or "Avg" or "Max" or "Min" or "StringAgg";
 
         public static bool IsAnyPlaceholder(MethodCallExpression m) =>

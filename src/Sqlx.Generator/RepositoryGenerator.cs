@@ -383,28 +383,26 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("#endif");
         sb.AppendLine();
 
-        // Check if method has dynamic parameters (Expression, limit, offset, etc.)
-        var hasDynamicParams = HasDynamicParameters(method, expressionToSqlAttr);
-        
-        if (hasDynamicParams)
-        {
-            GenerateDynamicContextAndRender(sb, method, fieldName, expressionToSqlAttr);
-            sb.AppendLine("var sqlText = renderedSql;");
-        }
-        else
-        {
-            sb.AppendLine($"var sqlText = {fieldName}.Sql;");
-        }
-
-        sb.AppendLine();
-
         // Activity tracking
         GenerateActivityStart(sb, methodName, method);
 
         sb.AppendLine();
         sb.AppendLine("using DbCommand cmd = _connection.CreateCommand();");
         sb.AppendLine("if (Transaction != null) cmd.Transaction = Transaction;");
-        sb.AppendLine("cmd.CommandText = sqlText;");
+
+        // Check if method has dynamic parameters (Expression, limit, offset, etc.)
+        var hasDynamicParams = HasDynamicParameters(method, expressionToSqlAttr);
+        
+        if (hasDynamicParams)
+        {
+            GenerateDynamicContextAndRender(sb, method, fieldName, expressionToSqlAttr);
+            sb.AppendLine("cmd.CommandText = renderedSql;");
+        }
+        else
+        {
+            sb.AppendLine($"cmd.CommandText = {fieldName}.Sql;");
+        }
+
         sb.AppendLine();
 
         // Bind parameters
@@ -481,8 +479,13 @@ public class RepositoryGenerator : IIncrementalGenerator
         }
 
         // General path: use dictionary for complex cases (expressions, etc.)
+        // Count dynamic params for capacity
+        var dynamicParamCount = expressionParams.Count;
+        if (limitParam != null) dynamicParamCount++;
+        if (offsetParam != null) dynamicParamCount++;
+
         sb.AppendLine("// Create dynamic parameters for runtime rendering");
-        sb.AppendLine("var dynamicParams = new Dictionary<string, object?>");
+        sb.AppendLine($"var dynamicParams = new Dictionary<string, object?>({dynamicParamCount})");
         sb.AppendLine("{");
         sb.PushIndent();
 
@@ -691,8 +694,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             
             // Return inserted ID - append dialect-specific suffix to the INSERT statement
             sb.AppendLine("// Append last inserted ID query to the INSERT statement");
-            sb.AppendLine("var insertSqlWithId = sqlText + _placeholderContext.Dialect.InsertReturningIdSuffix;");
-            sb.AppendLine("cmd.CommandText = insertSqlWithId;");
+            sb.AppendLine("cmd.CommandText += _placeholderContext.Dialect.InsertReturningIdSuffix;");
             
             // Use ExecuteReader for all cases to handle multi-statement SQL correctly
             // For "INSERT ...; SELECT last_insert_rowid()", the ID is in the second result set
@@ -841,7 +843,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("var durationMs = elapsed * 1000.0 / Stopwatch.Frequency;");
         sb.AppendLine("activity.SetTag(\"db.duration_ms\", durationMs);");
         sb.AppendLine($"activity.SetTag(\"db.statement.prepared\", {fieldName}.Sql);");
-        sb.AppendLine("activity.SetTag(\"db.statement\", sqlText);");
+        sb.AppendLine("activity.SetTag(\"db.statement\", cmd.CommandText);");
         sb.PopIndent();
         sb.AppendLine("}");
         sb.PopIndent();

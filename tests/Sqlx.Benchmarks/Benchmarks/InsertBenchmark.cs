@@ -1,6 +1,7 @@
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
 using Dapper;
+using FreeSql;
 using Microsoft.Data.Sqlite;
 using Sqlx.Benchmarks.Models;
 using Sqlx.Benchmarks.Repositories;
@@ -8,7 +9,7 @@ using Sqlx.Benchmarks.Repositories;
 namespace Sqlx.Benchmarks.Benchmarks;
 
 /// <summary>
-/// Sqlx vs Dapper.AOT: Insert entity (fair comparison - both use single statement with RETURNING).
+/// Sqlx vs Dapper.AOT vs FreeSql: Insert entity.
 /// </summary>
 [MemoryDiagnoser]
 [Orderer(SummaryOrderPolicy.FastestToSlowest)]
@@ -17,6 +18,7 @@ public class InsertBenchmark
 {
     private SqliteConnection _connection = null!;
     private BenchmarkUserRepository _sqlxRepo = null!;
+    private IFreeSql _freeSql = null!;
     private int _counter;
     
     [GlobalSetup]
@@ -26,11 +28,17 @@ public class InsertBenchmark
         DatabaseSetup.InitializeDatabase(_connection);
         _sqlxRepo = new BenchmarkUserRepository(_connection);
         _counter = 0;
+        
+        _freeSql = new FreeSqlBuilder()
+            .UseConnectionFactory(DataType.Sqlite, () => _connection)
+            .UseAutoSyncStructure(false)
+            .Build();
     }
     
     [GlobalCleanup]
     public void Cleanup()
     {
+        _freeSql?.Dispose();
         _connection?.Dispose();
     }
     
@@ -63,10 +71,27 @@ public class InsertBenchmark
             balance = (double)user.Balance,
             score = user.Score
         };
-        // Single statement with last_insert_rowid() - same as Sqlx
         return await _connection.ExecuteScalarAsync<long>(
             "INSERT INTO users (name, email, age, is_active, created_at, balance, score) VALUES (@name, @email, @age, @is_active, @created_at, @balance, @score); SELECT last_insert_rowid()",
             insertUser);
+    }
+    
+    [Benchmark(Description = "FreeSql")]
+    public async Task<long> FreeSql_Insert()
+    {
+        var user = DatabaseSetup.CreateTestUser(_counter++);
+        var fsUser = new FreeSqlUser
+        {
+            Name = user.Name,
+            Email = user.Email,
+            Age = user.Age,
+            IsActive = user.IsActive ? 1 : 0,
+            CreatedAt = user.CreatedAt.ToString("O"),
+            Balance = (double)user.Balance,
+            Score = user.Score
+        };
+        var result = await _freeSql.Insert(fsUser).ExecuteIdentityAsync();
+        return result;
     }
 }
 

@@ -4,6 +4,7 @@
 
 namespace Sqlx;
 
+using System;
 using System.Data.Common;
 
 /// <summary>
@@ -19,4 +20,15 @@ public interface IParameterBinder<TEntity>
     /// <param name="entity">The entity to bind.</param>
     /// <param name="parameterPrefix">The parameter prefix (e.g., "@", "$", ":").</param>
     void BindEntity(DbCommand command, TEntity entity, string parameterPrefix = "@");
+
+#if NET6_0_OR_GREATER
+    /// <summary>
+    /// Binds all entity properties as parameters to the batch command.
+    /// </summary>
+    /// <param name="command">The database batch command.</param>
+    /// <param name="entity">The entity to bind.</param>
+    /// <param name="parameterFactory">Factory to create DbParameter instances.</param>
+    /// <param name="parameterPrefix">The parameter prefix (e.g., "@", "$", ":").</param>
+    void BindEntity(DbBatchCommand command, TEntity entity, Func<DbParameter> parameterFactory, string parameterPrefix = "@");
+#endif
 }

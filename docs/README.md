@@ -9,6 +9,7 @@ Sqlx is a high-performance, AOT-compatible SQL generation library for .NET. It u
 - **Multi-Dialect Support**: SQLite, MySQL, PostgreSQL, SQL Server, Oracle, DB2
 - **Type Safe**: Compile-time validation of SQL templates
 - **Dynamic SQL**: Conditional blocks (`{{if}}`) for flexible query building
+- **Batch Execution**: Efficient batch insert/update/delete with `DbBatch` (.NET 6+) and fallback
 - **Extensible**: Custom placeholder handlers and dialects
 
 ## Quick Start
@@ -73,6 +74,25 @@ var user = await repo.GetByEmailAsync("test@example.com");
 - [Dialects](dialects.md) - Database dialect support
 - [Source Generators](source-generators.md) - How code generation works
 - [API Reference](api-reference.md) - Complete API documentation
+
+## Batch Execution
+
+Efficiently execute batch operations using `DbBatch` on .NET 6+ with automatic fallback:
+
+```csharp
+var users = new List<User>
+{
+    new() { Name = "Alice", Email = "alice@test.com" },
+    new() { Name = "Bob", Email = "bob@test.com" }
+};
+
+var sql = "INSERT INTO users (name, email) VALUES (@name, @email)";
+var affected = await connection.ExecuteBatchAsync(
+    sql, 
+    users, 
+    UserParameterBinder.Default,
+    batchSize: 100);
+```
 
 ## Benchmarks
 

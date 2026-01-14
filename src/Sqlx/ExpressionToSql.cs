@@ -277,15 +277,6 @@ namespace Sqlx
             return this;
         }
 
-        /// <summary>INSERT all columns (uses reflection).</summary>
-        public ExpressionToSql<T> InsertAll()
-        {
-            _operation = SqlOperation.Insert;
-            _columns.Clear();
-            _columns.AddRange(typeof(T).GetProperties().Select(prop => _dialect.WrapColumn(prop.Name)));
-            return this;
-        }
-
         /// <summary>INSERT using SELECT subquery.</summary>
         public ExpressionToSql<T> InsertSelect(string sql)
         {

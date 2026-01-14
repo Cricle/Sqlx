@@ -31,7 +31,8 @@ public class Program
                 typeof(CountBenchmark),
                 typeof(PaginationBenchmark),
                 typeof(StaticOrdinalsBenchmark),
-                typeof(StaticOrdinalsFirstOrDefaultBenchmark)
+                typeof(StaticOrdinalsFirstOrDefaultBenchmark),
+                typeof(BatchInsertBenchmark)
             }, config);
         }
         else

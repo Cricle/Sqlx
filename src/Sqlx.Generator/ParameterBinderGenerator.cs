@@ -108,6 +108,8 @@ public class ParameterBinderGenerator : IIncrementalGenerator
         sb.AppendLine("{");
         sb.AppendLine($"    public static {typeName}ParameterBinder Default {{ get; }} = new();");
         sb.AppendLine();
+
+        // DbCommand binding method
         sb.AppendLine($"    public void BindEntity(DbCommand command, {fullTypeName} entity, string parameterPrefix = \"@\")");
         sb.AppendLine("    {");
 
@@ -130,6 +132,35 @@ public class ParameterBinderGenerator : IIncrementalGenerator
         }
 
         sb.AppendLine("    }");
+        sb.AppendLine();
+
+        // DbBatchCommand binding method (.NET 6+)
+        // Uses a factory delegate to create parameters (no reflection)
+        sb.AppendLine("#if NET6_0_OR_GREATER");
+        sb.AppendLine($"    public void BindEntity(DbBatchCommand command, {fullTypeName} entity, Func<DbParameter> parameterFactory, string parameterPrefix = \"@\")");
+        sb.AppendLine("    {");
+
+        foreach (var prop in properties)
+        {
+            var columnName = GetColumnName(prop, columnAttr);
+            var isNullable = IsNullable(prop);
+
+            sb.AppendLine("        {");
+            sb.AppendLine($"            var p = parameterFactory();");
+            sb.AppendLine($"            p.ParameterName = parameterPrefix + \"{columnName}\";");
+
+            if (isNullable || prop.Type.IsReferenceType)
+                sb.AppendLine($"            p.Value = entity.{prop.Name} ?? (object)DBNull.Value;");
+            else
+                sb.AppendLine($"            p.Value = entity.{prop.Name};");
+
+            sb.AppendLine("            command.Parameters.Add(p);");
+            sb.AppendLine("        }");
+        }
+
+        sb.AppendLine("    }");
+        sb.AppendLine("#endif");
+
         sb.AppendLine("}");
 
         return sb.ToString();

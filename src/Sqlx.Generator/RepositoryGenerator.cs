@@ -373,6 +373,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         // Build parameter list
         var parameters = string.Join(", ", method.Parameters.Select(p => $"{p.Type.ToDisplayString()} {p.Name}"));
 
+        sb.AppendLine("/// <inheritdoc/>");
         sb.AppendLine($"public async {returnType} {methodName}({parameters})");
         sb.AppendLine("{");
         sb.PushIndent();
@@ -484,7 +485,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("if (activity is not null)");
         sb.AppendLine("{");
         sb.PushIndent();
-        sb.AppendLine($"activity.AddEvent(new ActivityEvent(\"{methodName}\"));");
+        sb.AppendLine($"activity = activity.AddEvent(new ActivityEvent(\"{methodName}\"));");
         sb.AppendLine("activity.SetTag(\"db.system\", _placeholderContext.Dialect.DatabaseType);");
         sb.AppendLine("activity.SetTag(\"db.operation\", \"sqlx.execute\");");
         sb.AppendLine("activity.SetTag(\"db.has_transaction\", Transaction != null);");
@@ -598,7 +599,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine("#endif");
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
-            sb.AppendLine("if (activity is not null) activity.SetTag(\"db.rows_affected\", result.Count);");
+            sb.AppendLine("activity?.SetTag(\"db.rows_affected\", result.Count);");
             sb.AppendLine("#endif");
             sb.AppendLine();
             sb.AppendLine("return result;");
@@ -623,7 +624,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine("#endif");
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
-            sb.AppendLine("if (activity is not null) activity.SetTag(\"db.rows_affected\", result != null ? 1 : 0);");
+            sb.AppendLine("activity?.SetTag(\"db.rows_affected\", result != null ? 1 : 0);");
             sb.AppendLine("#endif");
             sb.AppendLine();
             sb.AppendLine("return result;");
@@ -639,7 +640,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine("#endif");
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
-            sb.AppendLine("if (activity is not null) activity.SetTag(\"db.rows_affected\", result);");
+            sb.AppendLine("activity?.SetTag(\"db.rows_affected\", result);");
             sb.AppendLine("#endif");
             sb.AppendLine();
             sb.AppendLine("return result;");
@@ -703,7 +704,7 @@ public class RepositoryGenerator : IIncrementalGenerator
                 sb.AppendLine("#endif");
                 sb.AppendLine();
                 sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
-                sb.AppendLine("if (activity is not null) activity.SetTag(\"db.inserted_id\", insertedId);");
+                sb.AppendLine("activity?.SetTag(\"db.inserted_id\", insertedId);");
                 sb.AppendLine("#endif");
                 sb.AppendLine();
                 sb.AppendLine("return insertedId;");
@@ -744,11 +745,7 @@ public class RepositoryGenerator : IIncrementalGenerator
 
     private static void GenerateCatchBlock(IndentedStringBuilder sb, string methodName, string fieldName)
     {
-        sb.AppendLine("#if SQLX_DISABLE_INTERCEPTOR && SQLX_DISABLE_ACTIVITY");
-        sb.AppendLine("catch");
-        sb.AppendLine("#else");
         sb.AppendLine("catch (Exception ex)");
-        sb.AppendLine("#endif");
         sb.AppendLine("{");
         sb.PushIndent();
         sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
@@ -757,7 +754,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("#endif");
         sb.AppendLine();
         sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
-        sb.AppendLine("if (activity is not null) activity.SetStatus(ActivityStatusCode.Error, ex.Message);");
+        sb.AppendLine("activity?.SetStatus(ActivityStatusCode.Error, ex.Message);");
         sb.AppendLine("#endif");
         sb.AppendLine();
         sb.AppendLine("throw;");
@@ -770,6 +767,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         var methodName = method.Name;
         var parameters = string.Join(", ", method.Parameters.Select(p => $"{p.Type.ToDisplayString()} {p.Name}"));
 
+        sb.AppendLine("/// <inheritdoc/>");
         sb.AppendLine($"public global::Sqlx.SqlTemplate {methodName}({parameters})");
         sb.AppendLine("{");
         sb.PushIndent();
@@ -780,10 +778,10 @@ public class RepositoryGenerator : IIncrementalGenerator
 
     private static void GenerateFinallyBlock(IndentedStringBuilder sb, string methodName, string fieldName)
     {
+        sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
         sb.AppendLine("finally");
         sb.AppendLine("{");
         sb.PushIndent();
-        sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
         sb.AppendLine("if (activity is not null)");
         sb.AppendLine("{");
         sb.PushIndent();
@@ -794,9 +792,9 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("activity.SetTag(\"db.statement\", sqlText);");
         sb.PopIndent();
         sb.AppendLine("}");
-        sb.AppendLine("#endif");
         sb.PopIndent();
         sb.AppendLine("}");
+        sb.AppendLine("#endif");
     }
 
     private static void GenerateInterceptorMethods(IndentedStringBuilder sb)

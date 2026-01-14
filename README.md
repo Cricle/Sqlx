@@ -417,15 +417,85 @@ Console.WriteLine(template.Sql);  // 输出生成的 SQL
 | 插入操作 | 持平 | **Sqlx 少 32%** |
 | 更新操作 | **Sqlx 快 11%** | **Sqlx 少 44%** |
 | 删除操作 | **Sqlx 快 24%** | **Sqlx 少 20%** |
+| 批量插入（小批量） | **Sqlx 快 17-21%** | **Sqlx 少 35%** |
+| 批量插入（大批量） | 持平 | **Sqlx 少 35%** |
 | 列表查询 | Dapper.AOT 快 11-24% | Sqlx 少 5-6% |
 | 分页查询 | Dapper.AOT 快 15-23% | Sqlx 少 3-5% |
 | 条件查询 | Dapper.AOT 快 22% | Sqlx 少 6% |
 
-**Sqlx 优势场景**：单条查询、更新操作、内存敏感场景
+**Sqlx 优势场景**：单条查询、更新操作、批量插入、内存敏感场景
 **Dapper.AOT 优势场景**：批量读取、分页查询
 
 > 测试环境：.NET 9.0.8, AMD Ryzen 7 5800H, Windows 10 (22H2)
 > 运行命令：`dotnet run -c Release --project tests/Sqlx.Benchmarks`
+
+### 批量执行 (Batch Execution)
+
+使用 `DbBatchExecutor` 高效执行批量操作：
+
+```csharp
+// 定义实体和参数绑定器（由源生成器自动生成）
+[SqlxEntity]
+[SqlxParameter]
+public class User
+{
+    public long Id { get; set; }
+    public string Name { get; set; }
+    public string Email { get; set; }
+}
+
+// 批量插入
+var users = new List<User>
+{
+    new() { Name = "Alice", Email = "alice@test.com" },
+    new() { Name = "Bob", Email = "bob@test.com" },
+    new() { Name = "Charlie", Email = "charlie@test.com" }
+};
+
+var sql = "INSERT INTO users (name, email) VALUES (@name, @email)";
+var affected = await connection.ExecuteBatchAsync(
+    sql, 
+    users, 
+    UserParameterBinder.Default,
+    batchSize: 100,        // 每批最大命令数（默认 1000）
+    commandTimeout: 60);   // 命令超时（秒）
+
+// 批量更新
+var updates = users.Select(u => new { u.Id, u.Name }).ToList();
+var updateSql = "UPDATE users SET name = @name WHERE id = @id";
+await connection.ExecuteBatchAsync(updateSql, updates, UpdateBinder.Default);
+
+// 批量删除
+var deleteIds = new List<DeleteParam> { new(1), new(2), new(3) };
+var deleteSql = "DELETE FROM users WHERE id = @id";
+await connection.ExecuteBatchAsync(deleteSql, deleteIds, DeleteBinder.Default);
+```
+
+**特性：**
+- 零反射：完全 AOT 兼容
+- 自动分批：大数据集按 `batchSize` 分批执行
+- 事务支持：可传入 `DbTransaction`
+- 高性能：复用命令对象，最小化内存分配
+
+#### 批量插入性能对比 (BatchInsert)
+
+| Method | BatchSize | Mean | Ratio | Allocated | Alloc Ratio |
+|--------|-----------|------|-------|-----------|-------------|
+| Sqlx.Loop | 10 | 155.2 μs | 0.97 | 23.70 KB | 1.00 |
+| Sqlx.DbBatch | 10 | 163.3 μs | 1.00 | 23.77 KB | 1.00 |
+| Dapper.AOT | 10 | 179.2 μs | 1.11 | 34.91 KB | 1.47 |
+| | | | | | |
+| Sqlx.Loop | 100 | 1.18 ms | 0.95 | 228.29 KB | 1.00 |
+| Sqlx.DbBatch | 100 | 1.25 ms | 1.00 | 228.66 KB | 1.00 |
+| Dapper.AOT | 100 | 1.39 ms | 1.12 | 336.13 KB | 1.47 |
+| | | | | | |
+| Dapper.AOT | 1000 | 9.81 ms | 0.94 | 3298.34 KB | 1.48 |
+| Sqlx.Loop | 1000 | 10.37 ms | 0.99 | 2227.44 KB | 1.00 |
+| Sqlx.DbBatch | 1000 | 11.22 ms | 1.07 | 2227.52 KB | 1.00 |
+
+**批量插入总结：**
+- 小批量（10-100条）：**Sqlx 快 10-12%，内存少 32%**
+- 大批量（1000条）：性能持平，**Sqlx 内存少 32%**
 
 ### PreparedCommandCache
 

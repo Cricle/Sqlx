@@ -9,8 +9,6 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Sqlx
 {
@@ -73,41 +71,6 @@ namespace Sqlx
             }
 
             throw new InvalidOperationException("GetParameters() can only be called on SqlxQueryable instances.");
-        }
-
-        /// <summary>Executes the query asynchronously and returns a list of results.</summary>
-        public static Task<List<T>> ToListAsync<T>(this IQueryable<T> query, Func<IDataReader, T> mapper, CancellationToken cancellationToken = default)
-        {
-            if (query == null) throw new ArgumentNullException(nameof(query));
-            if (mapper == null) throw new ArgumentNullException(nameof(mapper));
-
-            if (query.Provider is SqlxQueryProvider provider)
-            {
-                if (provider.Connection == null)
-                    throw new InvalidOperationException("No database connection. Use WithConnection() before executing.");
-
-                var sql = provider.ToSql(query.Expression);
-                var parameters = provider.GetParameters(query.Expression);
-                return DbExecutor.ExecuteReaderAsync(provider.Connection, sql, parameters, mapper, cancellationToken);
-            }
-
-            throw new InvalidOperationException("ToListAsync() can only be called on SqlxQueryable instances.");
-        }
-
-        /// <summary>Executes the query asynchronously and returns the first result or default.</summary>
-        public static async Task<T?> FirstOrDefaultAsync<T>(this IQueryable<T> query, Func<IDataReader, T> mapper, CancellationToken cancellationToken = default)
-        {
-            var results = await query.Take(1).ToListAsync(mapper, cancellationToken);
-            return results.Count > 0 ? results[0] : default;
-        }
-
-        /// <summary>Executes the query asynchronously and returns a single result or default.</summary>
-        public static async Task<T?> SingleOrDefaultAsync<T>(this IQueryable<T> query, Func<IDataReader, T> mapper, CancellationToken cancellationToken = default)
-        {
-            var results = await query.Take(2).ToListAsync(mapper, cancellationToken);
-            if (results.Count > 1)
-                throw new InvalidOperationException("Sequence contains more than one element.");
-            return results.Count > 0 ? results[0] : default;
         }
     }
 }

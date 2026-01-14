@@ -10,6 +10,7 @@ using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Threading;
 #if NET5_0_OR_GREATER
 using System.Diagnostics.CodeAnalysis;
 #endif
@@ -82,6 +83,21 @@ namespace Sqlx
         {
             return (TResult)Execute(expression)!;
         }
+
+#if NET8_0_OR_GREATER
+        /// <summary>Executes the query asynchronously.</summary>
+        public IAsyncEnumerator<T> ExecuteAsync<T>(Expression expression, CancellationToken cancellationToken)
+        {
+            if (_connection == null)
+                throw new InvalidOperationException("No database connection. Use WithConnection() before executing.");
+            if (_mapper == null)
+                throw new InvalidOperationException("No mapper function. Use WithMapper() before executing.");
+
+            var sql = ToSql(expression);
+            var parameters = GetParameters(expression);
+            return DbExecutor.ExecuteReaderAsync(_connection, sql, parameters, r => (T)_mapper(r), cancellationToken);
+        }
+#endif
 
         /// <summary>Generates SQL from the expression tree.</summary>
         public string ToSql(Expression expression)

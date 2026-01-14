@@ -7,10 +7,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Data;
-using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Threading;
 #if NET5_0_OR_GREATER
 using System.Diagnostics.CodeAnalysis;
 #endif
@@ -25,6 +24,9 @@ namespace Sqlx
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
 #endif
     T> : IQueryable<T>, IOrderedQueryable<T>
+#if NET8_0_OR_GREATER
+        , IAsyncEnumerable<T>
+#endif
     {
         private readonly SqlxQueryProvider _provider;
         private readonly Expression _expression;
@@ -60,5 +62,11 @@ namespace Sqlx
 
         /// <summary>Gets the enumerator by executing the query against the database.</summary>
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+#if NET8_0_OR_GREATER
+        /// <summary>Gets the async enumerator by executing the query against the database.</summary>
+        public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+            => _provider.ExecuteAsync<T>(_expression, cancellationToken);
+#endif
     }
 }

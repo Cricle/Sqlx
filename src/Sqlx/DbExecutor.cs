@@ -101,7 +101,7 @@ namespace Sqlx
         }
 
         /// <summary>Executes a query asynchronously and returns a list of results.</summary>
-        public static async Task<List<T>> ExecuteReaderAsync<T>(
+        public static async Task<List<T>> ExecuteReaderListAsync<T>(
             DbConnection connection,
             string sql,
             IEnumerable<KeyValuePair<string, object?>>? parameters,
@@ -121,7 +121,7 @@ namespace Sqlx
 
             try
             {
-                using var reader = await ExecuteReaderAsync(command, cancellationToken);
+                using var reader = await ExecuteReaderCoreAsync(command, cancellationToken);
                 while (await ReadAsync(reader, cancellationToken))
                 {
                     results.Add(mapper(reader));
@@ -134,6 +134,41 @@ namespace Sqlx
 
             return results;
         }
+
+#if NET8_0_OR_GREATER
+        /// <summary>Executes a query asynchronously and yields results.</summary>
+        public static async IAsyncEnumerator<T> ExecuteReaderAsync<T>(
+            DbConnection connection,
+            string sql,
+            IEnumerable<KeyValuePair<string, object?>>? parameters,
+            Func<IDataReader, T> mapper,
+            CancellationToken cancellationToken = default)
+        {
+            if (connection == null) throw new ArgumentNullException(nameof(connection));
+            if (sql == null) throw new ArgumentNullException(nameof(sql));
+            if (mapper == null) throw new ArgumentNullException(nameof(mapper));
+
+            using var command = CreateCommand(connection, sql, parameters);
+
+            var wasOpen = connection.State == ConnectionState.Open;
+            if (!wasOpen) await connection.OpenAsync(cancellationToken);
+
+            DbDataReader? reader = null;
+            try
+            {
+                reader = await command.ExecuteReaderAsync(cancellationToken);
+                while (await reader.ReadAsync(cancellationToken))
+                {
+                    yield return mapper(reader);
+                }
+            }
+            finally
+            {
+                if (reader != null) await reader.DisposeAsync();
+                if (!wasOpen) connection.Close();
+            }
+        }
+#endif
 
         /// <summary>Executes a query asynchronously and returns a scalar value.</summary>
         public static async Task<T?> ExecuteScalarAsync<T>(
@@ -220,7 +255,7 @@ namespace Sqlx
 #endif
         }
 
-        private static async Task<DbDataReader> ExecuteReaderAsync(DbCommand command, CancellationToken cancellationToken)
+        private static async Task<DbDataReader> ExecuteReaderCoreAsync(DbCommand command, CancellationToken cancellationToken)
         {
 #if NETSTANDARD2_0
             return await Task.Run(() => command.ExecuteReader(), cancellationToken);

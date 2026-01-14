@@ -55,7 +55,6 @@ public static class PlaceholderProcessor
         ["where"] = WherePlaceholderHandler.Instance,
         ["limit"] = LimitPlaceholderHandler.Instance,
         ["offset"] = OffsetPlaceholderHandler.Instance,
-        ["in"] = InPlaceholderHandler.Instance,
         ["if"] = IfPlaceholderHandler.Instance,
     };
 

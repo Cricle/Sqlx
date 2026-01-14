@@ -26,7 +26,7 @@ namespace Sqlx
         Task<TEntity?> GetByIdAsync(TKey id, CancellationToken cancellationToken = default);
 
         /// <summary>Gets multiple entities by IDs.</summary>
-        [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id IN {{in --param ids}}")]
+        [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id IN ({{values --param ids}})")]
         Task<List<TEntity>> GetByIdsAsync(List<TKey> ids, CancellationToken cancellationToken = default);
 
         /// <summary>Gets all entities with limit.</summary>

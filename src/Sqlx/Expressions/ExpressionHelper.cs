@@ -21,8 +21,6 @@ namespace Sqlx.Expressions
             m.Expression is ParameterExpression ||
             (m.Expression is UnaryExpression { NodeType: ExpressionType.Convert, Operand: ParameterExpression });
         public static bool IsBooleanMember(Expression e) => e is MemberExpression { Type: var t } && t == typeof(bool);
-        public static bool IsConstantTrue(Expression e) => e is ConstantExpression { Value: true };
-        public static bool IsConstantFalse(Expression e) => e is ConstantExpression { Value: false };
         public static bool IsStringType(Type t) => t == typeof(string);
         public static bool IsStringConcatenation(BinaryExpression b) => b.Type == typeof(string) && b.NodeType == ExpressionType.Add;
 

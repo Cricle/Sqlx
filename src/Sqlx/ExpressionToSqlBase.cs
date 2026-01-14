@@ -26,14 +26,9 @@ namespace Sqlx
         internal int? _take;
         internal int? _skip;
         internal string? _tableName;
-        internal ExpressionToSqlBase? _whereExpression;
-        internal List<Dictionary<string, object?>>? _batchParameters;
 
         /// <summary>Whether to use parameterized query mode.</summary>
         protected bool _parameterized;
-
-        /// <summary>Parameter counter for generating unique parameter names.</summary>
-        protected int _counter;
 
         /// <summary>The expression parser instance.</summary>
         private ExpressionParser? _parser;
@@ -67,13 +62,6 @@ namespace Sqlx
         /// <summary>Sets table name.</summary>
         public void SetTableName(string tableName) => _tableName = tableName;
 
-        /// <summary>Merges WHERE conditions from another ExpressionToSqlBase.</summary>
-        public virtual ExpressionToSqlBase WhereFrom(ExpressionToSqlBase expression)
-        {
-            _whereExpression = expression ?? throw new ArgumentNullException(nameof(expression));
-            return this;
-        }
-
         /// <summary>Gets WHERE clause without WHERE keyword.</summary>
         public virtual string ToWhereClause()
         {
@@ -103,34 +91,6 @@ namespace Sqlx
         internal void CopyHavingConditions(List<string> conditions) => _havingConditions.AddRange(conditions);
 
         internal void AddHavingCondition(string condition) => _havingConditions.Add(condition);
-
-        internal string GetMergedWhereConditions()
-        {
-            var conditions = new List<string>(_whereConditions);
-            if (_whereExpression != null)
-            {
-                conditions.AddRange(_whereExpression._whereConditions);
-            }
-
-            return conditions.Count > 0 ? string.Join(" AND ", conditions) : string.Empty;
-        }
-
-        internal Dictionary<string, object?> GetMergedParameters()
-        {
-            var merged = new Dictionary<string, object?>(_parameters);
-            if (_whereExpression == null)
-            {
-                return merged;
-            }
-
-            foreach (var kvp in _whereExpression._parameters)
-            {
-                var key = merged.ContainsKey(kvp.Key) ? $"__ext_{kvp.Key}" : kvp.Key;
-                merged[key] = kvp.Value;
-            }
-
-            return merged;
-        }
 
         #endregion
 
@@ -163,15 +123,9 @@ namespace Sqlx
         /// <summary>Creates parameter.</summary>
         protected virtual string CreateParameter(object? value) => Parser.CreateParameter(value);
 
-        /// <summary>Gets the boolean literal based on database dialect.</summary>
-        protected string GetBooleanLiteral(bool value) => ValueFormatter.GetBooleanLiteral(_dialect, value);
-
         #endregion
 
         #region Helper Methods (Delegated to ExpressionHelper)
-
-        /// <summary>Converts PascalCase/camelCase to snake_case.</summary>
-        protected static string ConvertToSnakeCase(string name) => ExpressionHelper.ConvertToSnakeCase(name);
 
         /// <summary>Removes outer parentheses from condition.</summary>
         protected static string RemoveOuterParentheses(string condition) => ExpressionHelper.RemoveOuterParentheses(condition);
@@ -198,27 +152,6 @@ namespace Sqlx
                 _ => throw new NotSupportedException($"Binary operator {nodeType} is not supported")
             };
         }
-
-        /// <summary>Checks if member is entity property.</summary>
-        protected static bool IsEntityProperty(MemberExpression member) => ExpressionHelper.IsEntityProperty(member);
-
-        /// <summary>Gets optimized member value.</summary>
-        protected static object? GetMemberValueOptimized(MemberExpression member) => ExpressionHelper.GetMemberValueOptimized(member);
-
-        /// <summary>Checks if expression is boolean member.</summary>
-        protected static bool IsBooleanMember(Expression expression) => ExpressionHelper.IsBooleanMember(expression);
-
-        /// <summary>Checks if expression is constant true.</summary>
-        protected static bool IsConstantTrue(Expression expression) => ExpressionHelper.IsConstantTrue(expression);
-
-        /// <summary>Checks if expression is constant false.</summary>
-        protected static bool IsConstantFalse(Expression expression) => ExpressionHelper.IsConstantFalse(expression);
-
-        /// <summary>Checks if member is string property access.</summary>
-        protected static bool IsStringPropertyAccess(MemberExpression member) => ExpressionHelper.IsStringPropertyAccess(member);
-
-        /// <summary>Checks if binary expression is string concatenation.</summary>
-        protected static bool IsStringConcatenation(BinaryExpression binary) => ExpressionHelper.IsStringConcatenation(binary);
 
         /// <summary>Evaluates expression to get runtime value.</summary>
         internal static object? EvaluateExpression(Expression expression) => ExpressionHelper.EvaluateExpression(expression);

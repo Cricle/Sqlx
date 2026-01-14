@@ -56,11 +56,10 @@ namespace Sqlx
             finally { if (!wasOpen) connection.Close(); }
         }
 
-#if NET8_0_OR_GREATER
         /// <summary>Executes a query asynchronously and yields results.</summary>
         public static async IAsyncEnumerator<T> ExecuteReaderAsync<T>(DbConnection connection, string sql, IEnumerable<KeyValuePair<string, object?>>? parameters, Func<IDataReader, T> mapper, CancellationToken cancellationToken = default)
         {
-            await using var command = CreateCommand(connection, sql, parameters);
+            var command = CreateCommand(connection, sql, parameters);
             var wasOpen = connection.State == ConnectionState.Open;
             if (!wasOpen) await connection.OpenAsync(cancellationToken);
             DbDataReader? reader = null;
@@ -72,10 +71,10 @@ namespace Sqlx
             finally
             {
                 if (reader != null) await reader.DisposeAsync();
+                await command.DisposeAsync();
                 if (!wasOpen) connection.Close();
             }
         }
-#endif
 
         /// <summary>Executes a scalar query asynchronously.</summary>
         public static async Task<T?> ExecuteScalarAsync<T>(DbConnection connection, string sql, IEnumerable<KeyValuePair<string, object?>>? parameters, CancellationToken cancellationToken = default)

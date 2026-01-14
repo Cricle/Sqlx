@@ -60,17 +60,17 @@ namespace Sqlx
             throw new InvalidOperationException("ToSql() can only be called on SqlxQueryable instances.");
         }
 
-        /// <summary>Gets the parameters from the query.</summary>
-        public static IEnumerable<KeyValuePair<string, object?>> GetParameters<T>(this IQueryable<T> query)
+        /// <summary>Generates parameterized SQL and parameters from the query.</summary>
+        public static (string Sql, IEnumerable<KeyValuePair<string, object?>> Parameters) ToSqlWithParameters<T>(this IQueryable<T> query)
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
 
             if (query.Provider is SqlxQueryProvider provider)
             {
-                return provider.GetParameters(query.Expression);
+                return provider.ToSqlWithParameters(query.Expression);
             }
 
-            throw new InvalidOperationException("GetParameters() can only be called on SqlxQueryable instances.");
+            throw new InvalidOperationException("ToSqlWithParameters() can only be called on SqlxQueryable instances.");
         }
     }
 }

@@ -23,50 +23,31 @@ namespace Sqlx
 #if NET5_0_OR_GREATER
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
 #endif
-    T> : IQueryable<T>, IOrderedQueryable<T>
-#if NET8_0_OR_GREATER
-        , IAsyncEnumerable<T>
-#endif
+        T> : IQueryable<T>, IOrderedQueryable<T>, IAsyncEnumerable<T>
     {
         private readonly SqlxQueryProvider _provider;
         private readonly Expression _expression;
 
-        /// <summary>Creates a new SqlxQueryable with the specified provider.</summary>
         internal SqlxQueryable(SqlxQueryProvider provider)
         {
             _provider = provider ?? throw new ArgumentNullException(nameof(provider));
             _expression = Expression.Constant(this);
         }
 
-        /// <summary>Creates a new SqlxQueryable with the specified provider and expression.</summary>
         internal SqlxQueryable(SqlxQueryProvider provider, Expression expression)
         {
             _provider = provider ?? throw new ArgumentNullException(nameof(provider));
             _expression = expression ?? throw new ArgumentNullException(nameof(expression));
         }
 
-        /// <summary>Gets the element type.</summary>
         public Type ElementType => typeof(T);
-
-        /// <summary>Gets the expression tree.</summary>
         public Expression Expression => _expression;
-
-        /// <summary>Gets the query provider.</summary>
         public IQueryProvider Provider => _provider;
-
-        /// <summary>Gets the SQL dialect.</summary>
         public SqlDialect Dialect => _provider.Dialect;
 
-        /// <summary>Gets the enumerator by executing the query against the database.</summary>
         public IEnumerator<T> GetEnumerator() => _provider.Execute<IEnumerable<T>>(_expression).GetEnumerator();
-
-        /// <summary>Gets the enumerator by executing the query against the database.</summary>
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-#if NET8_0_OR_GREATER
-        /// <summary>Gets the async enumerator by executing the query against the database.</summary>
         public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
             => _provider.ExecuteAsync<T>(_expression, cancellationToken);
-#endif
     }
 }

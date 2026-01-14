@@ -280,7 +280,7 @@ public class SqlxQueryableCrossDialectTests
         {
             Assert.IsTrue(sql.Contains(expectedPrefix), $"[{dialect}] SQL: {sql}");
         }
-        Assert.IsTrue(parameters.Count > 0, $"[{dialect}] Should have parameters");
+        Assert.IsTrue(parameters.Any(), $"[{dialect}] Should have parameters");
     }
 
     #endregion
@@ -556,7 +556,7 @@ public class SqlxQueryableNestedTests
             .Where(u => u.IsActive == true)
             .ToSqlWithParameters();
 
-        Assert.IsTrue(parameters.Count >= 3, $"[{dialect}] Expected at least 3 parameters, got {parameters.Count}");
+        Assert.IsTrue(parameters.Count() >= 3, $"[{dialect}] Expected at least 3 parameters, got {parameters.Count()}");
         
         if (dialect == "DB2")
         {

@@ -238,10 +238,10 @@ public class SqlxQueryableTests
     #region Error Handling
 
     [TestMethod]
-    public void GetEnumerator_ThrowsNotSupportedException()
+    public void GetEnumerator_WithoutConnection_ThrowsInvalidOperationException()
     {
         var query = SqlQuery.ForSqlite<QueryUser>();
-        Assert.ThrowsException<NotSupportedException>(() => query.GetEnumerator());
+        Assert.ThrowsException<InvalidOperationException>(() => query.GetEnumerator());
     }
 
     [TestMethod]
@@ -935,7 +935,7 @@ public class SqlxQueryableParameterizedTests
             .ToSqlWithParameters();
         
         Assert.IsTrue(sql.Contains("@p"), $"SQL: {sql}");
-        Assert.IsTrue(parameters.Count > 0, "Should have parameters");
+        Assert.IsTrue(parameters.Any(), "Should have parameters");
     }
 
     [TestMethod]
@@ -946,7 +946,7 @@ public class SqlxQueryableParameterizedTests
             .ToSqlWithParameters();
         
         Assert.IsTrue(sql.Contains("@p"), $"SQL: {sql}");
-        Assert.IsTrue(parameters.ContainsValue("test"), "Should contain 'test' value");
+        Assert.IsTrue(parameters.Any(p => "test".Equals(p.Value)), "Should contain 'test' value");
     }
 
     [TestMethod]
@@ -956,7 +956,7 @@ public class SqlxQueryableParameterizedTests
             .Where(u => u.Id == 1 && u.Name == "test")
             .ToSqlWithParameters();
         
-        Assert.IsTrue(parameters.Count >= 2, $"Should have at least 2 parameters, got {parameters.Count}");
+        Assert.IsTrue(parameters.Count() >= 2, $"Should have at least 2 parameters, got {parameters.Count()}");
     }
 
     #endregion

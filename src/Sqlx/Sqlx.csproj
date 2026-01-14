@@ -22,8 +22,5 @@
     <None Include="..\..\docs\**\*.md" Pack="true" PackagePath="docs\" Visible="false" />
   </ItemGroup>
 
-  <ItemGroup Condition="$(TargetFramework)=='netstandard2.0'">
-    <PackageReference Include="System.Memory" />
-  </ItemGroup>
 
 </Project>

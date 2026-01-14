@@ -1,5 +1,6 @@
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Sqlx.Benchmarks.Benchmarks;
@@ -100,7 +101,7 @@ public class SqlQueryBenchmark
     #region Parameterized Query Benchmarks
 
     [Benchmark(Description = "Parameterized simple")]
-    public (string, Dictionary<string, object?>) ParameterizedSimple()
+    public (string, IEnumerable<KeyValuePair<string, object?>>) ParameterizedSimple()
     {
         return SqlQuery.ForSqlite<BenchmarkEntity>()
             .Where(u => u.Id == 1)
@@ -108,7 +109,7 @@ public class SqlQueryBenchmark
     }
 
     [Benchmark(Description = "Parameterized complex")]
-    public (string, Dictionary<string, object?>) ParameterizedComplex()
+    public (string, IEnumerable<KeyValuePair<string, object?>>) ParameterizedComplex()
     {
         return SqlQuery.ForSqlite<BenchmarkEntity>()
             .Where(u => u.IsActive && u.Age >= 18 && u.Name == "test")

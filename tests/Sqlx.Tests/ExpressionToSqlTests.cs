@@ -123,22 +123,20 @@ public class ExpressionToSqlTests
         Assert.IsFalse(ExpressionToSql<ExprUser>.ForSqlite().Where(null!).ToSql().Contains("WHERE"));
 
     [TestMethod]
-    [DataRow(">", 18, "[age] > 18")]
-    [DataRow("<", 65, "[age] < 65")]
-    [DataRow(">=", 18, "[age] >= 18")]
-    [DataRow("<=", 65, "[age] <= 65")]
-    public void Where_ComparisonOperators_GeneratesCorrectSql(string op, int value, string expected)
-    {
-        Expression<Func<ExprUser, bool>> predicate = op switch
-        {
-            ">" => u => u.Age > value,
-            "<" => u => u.Age < value,
-            ">=" => u => u.Age >= value,
-            "<=" => u => u.Age <= value,
-            _ => throw new ArgumentException()
-        };
-        Assert.IsTrue(ExpressionToSql<ExprUser>.ForSqlite().Where(predicate).ToSql().Contains(expected));
-    }
+    public void Where_GreaterThan_GeneratesCorrectSql() =>
+        Assert.IsTrue(ExpressionToSql<ExprUser>.ForSqlite().Where(u => u.Age > 18).ToSql().Contains("[age] > 18"));
+
+    [TestMethod]
+    public void Where_LessThan_GeneratesCorrectSql() =>
+        Assert.IsTrue(ExpressionToSql<ExprUser>.ForSqlite().Where(u => u.Age < 65).ToSql().Contains("[age] < 65"));
+
+    [TestMethod]
+    public void Where_GreaterThanOrEqual_GeneratesCorrectSql() =>
+        Assert.IsTrue(ExpressionToSql<ExprUser>.ForSqlite().Where(u => u.Age >= 18).ToSql().Contains("[age] >= 18"));
+
+    [TestMethod]
+    public void Where_LessThanOrEqual_GeneratesCorrectSql() =>
+        Assert.IsTrue(ExpressionToSql<ExprUser>.ForSqlite().Where(u => u.Age <= 65).ToSql().Contains("[age] <= 65"));
 
     [TestMethod]
     public void Where_NotEqual_GeneratesCorrectSql() =>

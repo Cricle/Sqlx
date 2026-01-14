@@ -23,6 +23,8 @@ using System.Text.RegularExpressions;
 /// <item><description><c>--param name</c> - Specifies a dynamic parameter name</description></item>
 /// <item><description><c>--count n</c> - Specifies a static count value</description></item>
 /// <item><description><c>--exclude col1,col2</c> - Excludes specified columns</description></item>
+/// <item><description><c>--name alias</c> - Specifies an alias name</description></item>
+/// <item><description><c>--from source</c> - Specifies a source parameter</description></item>
 /// </list>
 /// </remarks>
 #if NET7_0_OR_GREATER
@@ -32,9 +34,8 @@ public abstract class PlaceholderHandlerBase : IPlaceholderHandler
 #endif
 {
 #if !NET7_0_OR_GREATER
-    private static readonly Regex ParamRegex = new(@"--param\s+(\S+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    private static readonly Regex CountRegex = new(@"--count\s+(\d+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    private static readonly Regex ExcludeRegex = new(@"--exclude\s+(\S+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex OptionRegex = new(@"--(\w+)\s+(\S+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex ConditionRegex = new(@"(\w+)=(\w+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 #endif
 
     /// <inheritdoc/>
@@ -51,16 +52,53 @@ public abstract class PlaceholderHandlerBase : IPlaceholderHandler
         => Process(context, options);
 
     /// <summary>
+    /// Parses a named option from the options string (--option value format).
+    /// </summary>
+    /// <param name="options">The options string to parse.</param>
+    /// <param name="optionName">The option name (without --).</param>
+    /// <returns>The option value if found; otherwise, null.</returns>
+    protected static string? ParseOption(string options, string optionName)
+    {
+        if (string.IsNullOrEmpty(options)) return null;
+        var matches = GenericOptionRegex().Matches(options);
+        foreach (Match m in matches)
+        {
+            if (string.Equals(m.Groups[1].Value, optionName, StringComparison.OrdinalIgnoreCase))
+            {
+                return m.Groups[2].Value;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Parses a condition from the options string (key=value format).
+    /// </summary>
+    /// <param name="options">The options string to parse.</param>
+    /// <param name="conditionName">The condition name.</param>
+    /// <returns>The condition value if found; otherwise, null.</returns>
+    protected static string? ParseCondition(string options, string conditionName)
+    {
+        if (string.IsNullOrEmpty(options)) return null;
+        var matches = GenericConditionRegex().Matches(options);
+        foreach (Match m in matches)
+        {
+            if (string.Equals(m.Groups[1].Value, conditionName, StringComparison.OrdinalIgnoreCase))
+            {
+                return m.Groups[2].Value;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Parses the --param option from the options string.
     /// </summary>
     /// <param name="options">The options string to parse.</param>
     /// <returns>The parameter name if found; otherwise, null.</returns>
-    protected static string? ParseParam(string options)
-    {
-        if (string.IsNullOrEmpty(options)) return null;
-        var m = ParamOptionRegex().Match(options);
-        return m.Success ? m.Groups[1].Value : null;
-    }
+    protected static string? ParseParam(string options) => ParseOption(options, "param");
 
     /// <summary>
     /// Parses the --count option from the options string.
@@ -69,9 +107,8 @@ public abstract class PlaceholderHandlerBase : IPlaceholderHandler
     /// <returns>The count value if found and valid; otherwise, null.</returns>
     protected static int? ParseCount(string options)
     {
-        if (string.IsNullOrEmpty(options)) return null;
-        var m = CountOptionRegex().Match(options);
-        return m.Success && int.TryParse(m.Groups[1].Value, out var v) ? v : null;
+        var value = ParseOption(options, "count");
+        return value != null && int.TryParse(value, out var v) ? v : null;
     }
 
     /// <summary>
@@ -81,16 +118,15 @@ public abstract class PlaceholderHandlerBase : IPlaceholderHandler
     /// <returns>A set of column names to exclude (case-insensitive); null if not specified.</returns>
     protected static HashSet<string>? ParseExclude(string options)
     {
-        if (string.IsNullOrEmpty(options)) return null;
-        var m = ExcludeOptionRegex().Match(options);
-        if (!m.Success) return null;
+        var value = ParseOption(options, "exclude");
+        if (value == null) return null;
 #if NET5_0_OR_GREATER
         return new HashSet<string>(
-            m.Groups[1].Value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+            value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
             StringComparer.OrdinalIgnoreCase);
 #else
         return new HashSet<string>(
-            m.Groups[1].Value.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()),
+            value.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()),
             StringComparer.OrdinalIgnoreCase);
 #endif
     }
@@ -122,17 +158,13 @@ public abstract class PlaceholderHandlerBase : IPlaceholderHandler
     }
 
 #if NET7_0_OR_GREATER
-    [GeneratedRegex(@"--param\s+(\S+)", RegexOptions.IgnoreCase)]
-    private static partial Regex ParamOptionRegex();
+    [GeneratedRegex(@"--(\w+)\s+(\S+)", RegexOptions.IgnoreCase)]
+    private static partial Regex GenericOptionRegex();
 
-    [GeneratedRegex(@"--count\s+(\d+)", RegexOptions.IgnoreCase)]
-    private static partial Regex CountOptionRegex();
-
-    [GeneratedRegex(@"--exclude\s+(\S+)", RegexOptions.IgnoreCase)]
-    private static partial Regex ExcludeOptionRegex();
+    [GeneratedRegex(@"(\w+)=(\w+)", RegexOptions.IgnoreCase)]
+    private static partial Regex GenericConditionRegex();
 #else
-    private static Regex ParamOptionRegex() => ParamRegex;
-    private static Regex CountOptionRegex() => CountRegex;
-    private static Regex ExcludeOptionRegex() => ExcludeRegex;
+    private static Regex GenericOptionRegex() => OptionRegex;
+    private static Regex GenericConditionRegex() => ConditionRegex;
 #endif
 }

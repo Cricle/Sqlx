@@ -6,7 +6,6 @@ namespace Sqlx.Placeholders;
 
 using System;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 
 /// <summary>
 /// Handles conditional {{if}} placeholders for dynamic SQL generation.
@@ -32,19 +31,8 @@ using System.Text.RegularExpressions;
 /// // With name = null    -> SELECT * FROM users WHERE 1=1 
 /// </code>
 /// </example>
-#if NET7_0_OR_GREATER
-public sealed partial class IfPlaceholderHandler : PlaceholderHandlerBase, IBlockPlaceholderHandler
-#else
 public sealed class IfPlaceholderHandler : PlaceholderHandlerBase, IBlockPlaceholderHandler
-#endif
 {
-#if !NET7_0_OR_GREATER
-    private static readonly Regex NullRegex = new(@"(?<![a-z])null=(\w+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    private static readonly Regex NotNullRegex = new(@"notnull=(\w+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    private static readonly Regex EmptyRegex = new(@"(?<![a-z])empty=(\w+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    private static readonly Regex NotEmptyRegex = new(@"notempty=(\w+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-#endif
-
     /// <summary>
     /// Gets the singleton instance.
     /// </summary>
@@ -71,38 +59,34 @@ public sealed class IfPlaceholderHandler : PlaceholderHandlerBase, IBlockPlaceho
     public bool ShouldInclude(string options, IReadOnlyDictionary<string, object?>? parameters)
     {
         // Check notnull=param first (before null= to avoid partial match)
-        var notNullMatch = NotNullOptionRegex().Match(options);
-        if (notNullMatch.Success)
+        var notNullParam = ParseCondition(options, "notnull");
+        if (notNullParam != null)
         {
-            var paramName = notNullMatch.Groups[1].Value;
-            var value = parameters?.TryGetValue(paramName, out var v) == true ? v : null;
+            var value = parameters?.TryGetValue(notNullParam, out var v) == true ? v : null;
             return value is not null;
         }
 
         // Check null=param
-        var nullMatch = NullOptionRegex().Match(options);
-        if (nullMatch.Success)
+        var nullParam = ParseCondition(options, "null");
+        if (nullParam != null)
         {
-            var paramName = nullMatch.Groups[1].Value;
-            var value = parameters?.TryGetValue(paramName, out var v) == true ? v : null;
+            var value = parameters?.TryGetValue(nullParam, out var v) == true ? v : null;
             return value is null;
         }
 
         // Check notempty=param first (before empty= to avoid partial match)
-        var notEmptyMatch = NotEmptyOptionRegex().Match(options);
-        if (notEmptyMatch.Success)
+        var notEmptyParam = ParseCondition(options, "notempty");
+        if (notEmptyParam != null)
         {
-            var paramName = notEmptyMatch.Groups[1].Value;
-            var value = parameters?.TryGetValue(paramName, out var v) == true ? v : null;
+            var value = parameters?.TryGetValue(notEmptyParam, out var v) == true ? v : null;
             return !IsEmpty(value);
         }
 
         // Check empty=param
-        var emptyMatch = EmptyOptionRegex().Match(options);
-        if (emptyMatch.Success)
+        var emptyParam = ParseCondition(options, "empty");
+        if (emptyParam != null)
         {
-            var paramName = emptyMatch.Groups[1].Value;
-            var value = parameters?.TryGetValue(paramName, out var v) == true ? v : null;
+            var value = parameters?.TryGetValue(emptyParam, out var v) == true ? v : null;
             return IsEmpty(value);
         }
 
@@ -122,23 +106,4 @@ public sealed class IfPlaceholderHandler : PlaceholderHandlerBase, IBlockPlaceho
         }
         return false;
     }
-
-#if NET7_0_OR_GREATER
-    [GeneratedRegex(@"(?<![a-z])null=(\w+)", RegexOptions.IgnoreCase)]
-    private static partial Regex NullOptionRegex();
-
-    [GeneratedRegex(@"notnull=(\w+)", RegexOptions.IgnoreCase)]
-    private static partial Regex NotNullOptionRegex();
-
-    [GeneratedRegex(@"(?<![a-z])empty=(\w+)", RegexOptions.IgnoreCase)]
-    private static partial Regex EmptyOptionRegex();
-
-    [GeneratedRegex(@"notempty=(\w+)", RegexOptions.IgnoreCase)]
-    private static partial Regex NotEmptyOptionRegex();
-#else
-    private static Regex NullOptionRegex() => NullRegex;
-    private static Regex NotNullOptionRegex() => NotNullRegex;
-    private static Regex EmptyOptionRegex() => EmptyRegex;
-    private static Regex NotEmptyOptionRegex() => NotEmptyRegex;
-#endif
 }

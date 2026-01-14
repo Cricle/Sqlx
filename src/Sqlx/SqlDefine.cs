@@ -254,5 +254,12 @@ public abstract class SqlDialect
     /// <summary>Gets the SQL to retrieve the last inserted ID.</summary>
     public abstract string LastInsertedId { get; }
 
+    /// <summary>
+    /// Gets the suffix to append to an INSERT statement to return the inserted ID.
+    /// For most databases, this is "; SELECT last_insert_id()" style.
+    /// For PostgreSQL, this is " RETURNING id" style.
+    /// </summary>
+    public virtual string InsertReturningIdSuffix => $"; {LastInsertedId}";
+
     #endregion
 }

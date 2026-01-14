@@ -98,5 +98,8 @@ public sealed class OracleDialect : SqlDialect
     /// <inheritdoc/>
     public override string LastInsertedId => "SELECT SEQ.CURRVAL FROM DUAL";
 
+    /// <inheritdoc/>
+    public override string InsertReturningIdSuffix => " RETURNING id INTO :id";
+
     #endregion
 }

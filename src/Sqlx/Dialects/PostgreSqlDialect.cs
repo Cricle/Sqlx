@@ -86,5 +86,8 @@ public sealed class PostgreSqlDialect : SqlDialect
     /// <inheritdoc/>
     public override string LastInsertedId => "SELECT lastval()";
 
+    /// <inheritdoc/>
+    public override string InsertReturningIdSuffix => " RETURNING id";
+
     #endregion
 }

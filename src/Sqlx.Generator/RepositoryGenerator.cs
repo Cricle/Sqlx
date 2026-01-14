@@ -650,20 +650,9 @@ public class RepositoryGenerator : IIncrementalGenerator
             // Check if return type is tuple (int, TKey) for affected rows + id
             var isTupleReturn = IsTupleReturnType(method.ReturnType);
             
-            // Return inserted ID - append SELECT last_insert_id to the INSERT statement for single round-trip
+            // Return inserted ID - append dialect-specific suffix to the INSERT statement
             sb.AppendLine("// Append last inserted ID query to the INSERT statement");
-            sb.AppendLine("var insertSqlWithId = sqlText + _dialectType switch");
-            sb.AppendLine("{");
-            sb.PushIndent();
-            sb.AppendLine("global::Sqlx.Annotations.SqlDefineTypes.SqlServer => \"; SELECT SCOPE_IDENTITY()\",");
-            sb.AppendLine("global::Sqlx.Annotations.SqlDefineTypes.MySql => \"; SELECT LAST_INSERT_ID()\",");
-            sb.AppendLine("global::Sqlx.Annotations.SqlDefineTypes.PostgreSql => \" RETURNING id\",");
-            sb.AppendLine("global::Sqlx.Annotations.SqlDefineTypes.SQLite => \"; SELECT last_insert_rowid()\",");
-            sb.AppendLine("global::Sqlx.Annotations.SqlDefineTypes.Oracle => \" RETURNING id INTO :id\",");
-            sb.AppendLine("global::Sqlx.Annotations.SqlDefineTypes.DB2 => \"; SELECT IDENTITY_VAL_LOCAL() FROM SYSIBM.SYSDUMMY1\",");
-            sb.AppendLine("_ => throw new NotSupportedException($\"Last insert ID not supported for {_dialectType}\")");
-            sb.PopIndent();
-            sb.AppendLine("};");
+            sb.AppendLine("var insertSqlWithId = sqlText + _placeholderContext.Dialect.InsertReturningIdSuffix;");
             sb.AppendLine("cmd.CommandText = insertSqlWithId;");
             
             if (isTupleReturn)

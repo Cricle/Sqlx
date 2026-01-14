@@ -127,7 +127,7 @@ await connection.ExecuteBatchAsync(sql, users, UserParameterBinder.Default);
 | 删除操作 | **快 7%** | **快 5.3x** |
 | 计数操作 | 持平 | **快 49x** |
 
-> 运行命令：`dotnet run -c Release --project tests/Sqlx.Benchmarks`
+> 详细数据见 [性能基准测试](docs/benchmarks.md)
 
 ## 支持的数据库
 
@@ -142,8 +142,14 @@ await connection.ExecuteBatchAsync(sql, users, UserParameterBinder.Default);
 
 ## 更多文档
 
-- [AI 助手完全指南](AI-VIEW.md) - 完整功能清单和代码模式
-- [示例项目](samples/TodoWebApi/) - 完整 Web API 示例
+- [快速开始](docs/getting-started.md)
+- [SQL 模板](docs/sql-templates.md)
+- [数据库方言](docs/dialects.md)
+- [源生成器](docs/source-generators.md)
+- [性能基准测试](docs/benchmarks.md)
+- [API 参考](docs/api-reference.md)
+- [AI 助手指南](AI-VIEW.md)
+- [示例项目](samples/TodoWebApi/)
 
 ## 许可证
 

@@ -89,27 +89,21 @@ namespace Sqlx
         public IEnumerator<T> GetEnumerator()
         {
             if (_connection == null)
-                throw new InvalidOperationException("No database connection. Use WithConnection() or set Connection property before enumerating.");
+                throw new InvalidOperationException("No database connection. Use WithConnection() before enumerating.");
 
             if (_mapper == null)
-                throw new InvalidOperationException("No mapper function. Use WithMapper() or set Mapper property before enumerating.");
+                throw new InvalidOperationException("No mapper function. Use WithMapper() before enumerating.");
 
-            return ExecuteQuery().GetEnumerator();
+            return ExecuteReader().GetEnumerator();
         }
 
         /// <summary>Gets the enumerator by executing the query against the database.</summary>
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-        internal List<T> ExecuteQuery()
+        private IEnumerable<T> ExecuteReader()
         {
             var (sql, parameters) = _provider.ToSqlWithParameters(_expression);
-            return DbExecutor.ExecuteList(_connection!, sql, parameters, _mapper!);
-        }
-
-        internal List<T> ExecuteQuery(Func<IDataReader, T> mapper)
-        {
-            var (sql, parameters) = _provider.ToSqlWithParameters(_expression);
-            return DbExecutor.ExecuteList(_connection!, sql, parameters, mapper);
+            return DbExecutor.ExecuteReader(_connection!, sql, parameters, _mapper!);
         }
     }
 }

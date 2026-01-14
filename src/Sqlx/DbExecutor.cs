@@ -18,8 +18,8 @@ namespace Sqlx
     /// </summary>
     public static class DbExecutor
     {
-        /// <summary>Executes a query and returns a list of results.</summary>
-        public static List<T> ExecuteList<T>(
+        /// <summary>Executes a query and yields results lazily.</summary>
+        public static IEnumerable<T> ExecuteReader<T>(
             DbConnection connection,
             string sql,
             IReadOnlyDictionary<string, object?>? parameters,
@@ -28,8 +28,6 @@ namespace Sqlx
             if (connection == null) throw new ArgumentNullException(nameof(connection));
             if (sql == null) throw new ArgumentNullException(nameof(sql));
             if (mapper == null) throw new ArgumentNullException(nameof(mapper));
-
-            var results = new List<T>();
 
             using var command = CreateCommand(connection, sql, parameters);
 
@@ -41,15 +39,13 @@ namespace Sqlx
                 using var reader = command.ExecuteReader();
                 while (reader.Read())
                 {
-                    results.Add(mapper(reader));
+                    yield return mapper(reader);
                 }
             }
             finally
             {
                 if (!wasOpen) connection.Close();
             }
-
-            return results;
         }
 
         /// <summary>Executes a query and returns a scalar value.</summary>
@@ -105,7 +101,7 @@ namespace Sqlx
         }
 
         /// <summary>Executes a query asynchronously and returns a list of results.</summary>
-        public static async Task<List<T>> ExecuteListAsync<T>(
+        public static async Task<List<T>> ExecuteReaderAsync<T>(
             DbConnection connection,
             string sql,
             IReadOnlyDictionary<string, object?>? parameters,
@@ -156,7 +152,7 @@ namespace Sqlx
 
             try
             {
-                var result = await ExecuteScalarAsync(command, cancellationToken);
+                var result = await ExecuteScalarCoreAsync(command, cancellationToken);
                 if (result == null || result == DBNull.Value)
                     return default;
 
@@ -185,7 +181,7 @@ namespace Sqlx
 
             try
             {
-                return await ExecuteNonQueryAsync(command, cancellationToken);
+                return await ExecuteNonQueryCoreAsync(command, cancellationToken);
             }
             finally
             {
@@ -242,7 +238,7 @@ namespace Sqlx
 #endif
         }
 
-        private static async Task<object?> ExecuteScalarAsync(DbCommand command, CancellationToken cancellationToken)
+        private static async Task<object?> ExecuteScalarCoreAsync(DbCommand command, CancellationToken cancellationToken)
         {
 #if NETSTANDARD2_0
             return await Task.Run(() => command.ExecuteScalar(), cancellationToken);
@@ -251,7 +247,7 @@ namespace Sqlx
 #endif
         }
 
-        private static async Task<int> ExecuteNonQueryAsync(DbCommand command, CancellationToken cancellationToken)
+        private static async Task<int> ExecuteNonQueryCoreAsync(DbCommand command, CancellationToken cancellationToken)
         {
 #if NETSTANDARD2_0
             return await Task.Run(() => command.ExecuteNonQuery(), cancellationToken);

@@ -29,6 +29,7 @@ namespace Sqlx
     {
         private readonly SqlxQueryProvider _provider;
         private DbConnection? _connection;
+        private IResultReader<T>? _resultReader;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="SqlxQueryable{T}"/> class.
@@ -100,7 +101,15 @@ namespace Sqlx
         /// <summary>
         /// Gets or sets the result reader.
         /// </summary>
-        internal IResultReader<T>? ResultReader { get; set; }
+        internal IResultReader<T>? ResultReader
+        {
+            get => _resultReader;
+            set
+            {
+                _resultReader = value;
+                _provider.ResultReader = value;
+            }
+        }
 
         /// <inheritdoc/>
         public IEnumerator<T> GetEnumerator()

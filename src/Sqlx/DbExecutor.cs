@@ -17,7 +17,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace Sqlx
 {
     /// <summary>
-    /// ADO.NET executor (AOT-friendly, no reflection).
+    /// ADO.NET executor
     /// </summary>
     public static class DbExecutor
     {
@@ -38,30 +38,18 @@ namespace Sqlx
             DbConnection connection,
             string sql,
             IEnumerable<KeyValuePair<string, object?>>? parameters,
-            Func<IDataReader, T> mapper)
+            IResultReader<T> mapper)
         {
-            using var command = CreateCommand(connection, sql, parameters);
-            var wasOpen = connection.State == ConnectionState.Open;
-
-            if (!wasOpen)
+            if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
             }
-
-            try
+            using var command = CreateCommand(connection, sql, parameters);
+            using var reader = command.ExecuteReader();
+            var origin = mapper.GetOrdinals(reader);
+            while (reader.Read())
             {
-                using var reader = command.ExecuteReader();
-                while (reader.Read())
-                {
-                    yield return mapper(reader);
-                }
-            }
-            finally
-            {
-                if (!wasOpen)
-                {
-                    connection.Close();
-                }
+                yield return mapper.Read(reader, origin);
             }
         }
 
@@ -78,26 +66,13 @@ namespace Sqlx
             string sql,
             IEnumerable<KeyValuePair<string, object?>>? parameters)
         {
-            using var command = CreateCommand(connection, sql, parameters);
-            var wasOpen = connection.State == ConnectionState.Open;
-
-            if (!wasOpen)
+            if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
             }
-
-            try
-            {
-                var result = command.ExecuteScalar();
-                return result == null || result == DBNull.Value ? default : (T)result;
-            }
-            finally
-            {
-                if (!wasOpen)
-                {
-                    connection.Close();
-                }
-            }
+            using var command = CreateCommand(connection, sql, parameters);
+            var result = command.ExecuteScalar();
+            return result == null || result == DBNull.Value ? default : (T)result;
         }
 
         /// <summary>
@@ -112,25 +87,12 @@ namespace Sqlx
             string sql,
             IEnumerable<KeyValuePair<string, object?>>? parameters)
         {
-            using var command = CreateCommand(connection, sql, parameters);
-            var wasOpen = connection.State == ConnectionState.Open;
-
-            if (!wasOpen)
+            if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
             }
-
-            try
-            {
-                return command.ExecuteNonQuery();
-            }
-            finally
-            {
-                if (!wasOpen)
-                {
-                    connection.Close();
-                }
-            }
+            using var command = CreateCommand(connection, sql, parameters);
+            return command.ExecuteNonQuery();
         }
 
         /// <summary>
@@ -151,39 +113,21 @@ namespace Sqlx
             DbConnection connection,
             string sql,
             IEnumerable<KeyValuePair<string, object?>>? parameters,
-            Func<IDataReader, T> mapper,
+            IResultReader<T> mapper,
             CancellationToken cancellationToken = default)
         {
-            var command = CreateCommand(connection, sql, parameters);
-            var wasOpen = connection.State == ConnectionState.Open;
 
-            if (!wasOpen)
+            if (connection.State != ConnectionState.Open)
             {
                 await connection.OpenAsync(cancellationToken);
             }
 
-            DbDataReader? reader = null;
-            try
+            await using var command = CreateCommand(connection, sql, parameters);
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            var origin = mapper.GetOrdinals(reader);
+            while (await reader.ReadAsync(cancellationToken))
             {
-                reader = await command.ExecuteReaderAsync(cancellationToken);
-                while (await reader.ReadAsync(cancellationToken))
-                {
-                    yield return mapper(reader);
-                }
-            }
-            finally
-            {
-                if (reader != null)
-                {
-                    await reader.DisposeAsync();
-                }
-
-                await command.DisposeAsync();
-
-                if (!wasOpen)
-                {
-                    connection.Close();
-                }
+                yield return mapper.Read(reader, origin);
             }
         }
 
@@ -202,26 +146,15 @@ namespace Sqlx
             IEnumerable<KeyValuePair<string, object?>>? parameters,
             CancellationToken cancellationToken = default)
         {
-            using var command = CreateCommand(connection, sql, parameters);
-            var wasOpen = connection.State == ConnectionState.Open;
 
-            if (!wasOpen)
+            if (connection.State != ConnectionState.Open)
             {
                 await connection.OpenAsync(cancellationToken);
             }
 
-            try
-            {
-                var result = await command.ExecuteScalarAsync(cancellationToken);
-                return result == null || result == DBNull.Value ? default : (T)result;
-            }
-            finally
-            {
-                if (!wasOpen)
-                {
-                    connection.Close();
-                }
-            }
+            await using var command = CreateCommand(connection, sql, parameters);
+            var result = await command.ExecuteScalarAsync(cancellationToken);
+            return result == null || result == DBNull.Value ? default : (T)result;
         }
 
         /// <summary>
@@ -238,25 +171,13 @@ namespace Sqlx
             IEnumerable<KeyValuePair<string, object?>>? parameters,
             CancellationToken cancellationToken = default)
         {
-            using var command = CreateCommand(connection, sql, parameters);
-            var wasOpen = connection.State == ConnectionState.Open;
-
-            if (!wasOpen)
+            if (connection.State != ConnectionState.Open)
             {
                 await connection.OpenAsync(cancellationToken);
             }
 
-            try
-            {
-                return await command.ExecuteNonQueryAsync(cancellationToken);
-            }
-            finally
-            {
-                if (!wasOpen)
-                {
-                    connection.Close();
-                }
-            }
+            await using var command = CreateCommand(connection, sql, parameters);
+            return await command.ExecuteNonQueryAsync(cancellationToken);
         }
 
         private static DbCommand CreateCommand(

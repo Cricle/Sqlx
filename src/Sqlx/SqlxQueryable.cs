@@ -7,7 +7,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
@@ -26,12 +25,10 @@ namespace Sqlx
 #if NET5_0_OR_GREATER
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
 #endif
-        T> : IQueryable<T>, IOrderedQueryable<T>, IAsyncEnumerable<T>
+        T> :  IOrderedQueryable<T>, IAsyncEnumerable<T>
     {
         private readonly SqlxQueryProvider _provider;
-        private readonly Expression _expression;
         private DbConnection? _connection;
-        private IResultReader<T>? _resultReader;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="SqlxQueryable{T}"/> class.
@@ -40,7 +37,7 @@ namespace Sqlx
         internal SqlxQueryable(SqlxQueryProvider provider)
         {
             _provider = provider ?? throw new ArgumentNullException(nameof(provider));
-            _expression = Expression.Constant(this);
+            Expression = Expression.Constant(this);
         }
 
         /// <summary>
@@ -51,7 +48,7 @@ namespace Sqlx
         internal SqlxQueryable(SqlxQueryProvider provider, Expression expression)
         {
             _provider = provider ?? throw new ArgumentNullException(nameof(provider));
-            _expression = expression ?? throw new ArgumentNullException(nameof(expression));
+            Expression = expression ?? throw new ArgumentNullException(nameof(expression));
         }
 
         /// <summary>
@@ -68,16 +65,16 @@ namespace Sqlx
             IResultReader<T>? resultReader)
         {
             _provider = provider ?? throw new ArgumentNullException(nameof(provider));
-            _expression = expression ?? throw new ArgumentNullException(nameof(expression));
+            Expression = expression ?? throw new ArgumentNullException(nameof(expression));
             _connection = connection;
-            _resultReader = resultReader;
+            ResultReader = resultReader;
         }
 
         /// <inheritdoc/>
         public Type ElementType => typeof(T);
 
         /// <inheritdoc/>
-        public Expression Expression => _expression;
+        public Expression Expression { get; }
 
         /// <inheritdoc/>
         public IQueryProvider Provider => _provider;
@@ -103,11 +100,7 @@ namespace Sqlx
         /// <summary>
         /// Gets or sets the result reader.
         /// </summary>
-        internal IResultReader<T>? ResultReader
-        {
-            get => _resultReader;
-            set => _resultReader = value;
-        }
+        internal IResultReader<T>? ResultReader { get; set; }
 
         /// <inheritdoc/>
         public IEnumerator<T> GetEnumerator()
@@ -117,56 +110,13 @@ namespace Sqlx
                 throw new InvalidOperationException("No database connection. Use WithConnection().");
             }
 
-            if (_resultReader == null)
+            if (ResultReader == null)
             {
                 throw new InvalidOperationException("No result reader. Use WithReader().");
             }
 
-            var (sql, parameters) = _provider.ToSqlWithParameters(_expression);
-            return ExecuteWithReader(sql, parameters).GetEnumerator();
-        }
-
-        private IEnumerable<T> ExecuteWithReader(string sql, IEnumerable<KeyValuePair<string, object?>> parameters)
-        {
-            using var command = _connection!.CreateCommand();
-            command.CommandText = sql;
-
-            foreach (var p in parameters)
-            {
-                var param = command.CreateParameter();
-                param.ParameterName = p.Key;
-                param.Value = p.Value ?? DBNull.Value;
-                command.Parameters.Add(param);
-            }
-
-            var wasOpen = _connection.State == ConnectionState.Open;
-            if (!wasOpen)
-            {
-                _connection.Open();
-            }
-
-            try
-            {
-                using var reader = command.ExecuteReader();
-                if (!reader.Read())
-                {
-                    yield break;
-                }
-
-                var ordinals = _resultReader!.GetOrdinals(reader);
-                do
-                {
-                    yield return _resultReader.Read(reader, ordinals);
-                }
-                while (reader.Read());
-            }
-            finally
-            {
-                if (!wasOpen)
-                {
-                    _connection.Close();
-                }
-            }
+            var (sql, parameters) = _provider.ToSqlWithParameters(Expression);
+            return DbExecutor.ExecuteReader(_connection, sql, parameters, ResultReader).GetEnumerator();
         }
 
         /// <inheritdoc/>
@@ -176,67 +126,10 @@ namespace Sqlx
         }
 
         /// <inheritdoc/>
-        public async IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+        public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
         {
-            if (_connection == null)
-            {
-                throw new InvalidOperationException("No database connection. Use WithConnection().");
-            }
-
-            if (_resultReader == null)
-            {
-                throw new InvalidOperationException("No result reader. Use WithReader().");
-            }
-
-            var (sql, parameters) = _provider.ToSqlWithParameters(_expression);
-
-            var command = _connection.CreateCommand();
-            command.CommandText = sql;
-
-            foreach (var p in parameters)
-            {
-                var param = command.CreateParameter();
-                param.ParameterName = p.Key;
-                param.Value = p.Value ?? DBNull.Value;
-                command.Parameters.Add(param);
-            }
-
-            var wasOpen = _connection.State == ConnectionState.Open;
-            if (!wasOpen)
-            {
-                await _connection.OpenAsync(cancellationToken);
-            }
-
-            DbDataReader? reader = null;
-            try
-            {
-                reader = await command.ExecuteReaderAsync(cancellationToken);
-                if (!await reader.ReadAsync(cancellationToken))
-                {
-                    yield break;
-                }
-
-                var ordinals = _resultReader.GetOrdinals(reader);
-                do
-                {
-                    yield return _resultReader.Read(reader, ordinals);
-                }
-                while (await reader.ReadAsync(cancellationToken));
-            }
-            finally
-            {
-                if (reader != null)
-                {
-                    await reader.DisposeAsync();
-                }
-
-                await command.DisposeAsync();
-
-                if (!wasOpen)
-                {
-                    _connection.Close();
-                }
-            }
+            var (sql, parameters) = _provider.ToSqlWithParameters(Expression);
+            return DbExecutor.ExecuteReaderAsync(Connection, sql, parameters, ResultReader, cancellationToken);
         }
     }
 }

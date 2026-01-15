@@ -5,6 +5,7 @@
 // -----------------------------------------------------------------------
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -18,16 +19,20 @@ namespace Sqlx
     /// </summary>
     internal class SqlExpressionVisitor : ExpressionVisitor
     {
+        // Shared StringBuilder pool for reducing allocations
+        [ThreadStatic]
+        private static StringBuilder? _sharedBuilder;
+
         private readonly SqlDialect _dialect;
         private readonly bool _parameterized;
-        private readonly Dictionary<string, object?> _parameters = new();
+        private readonly Dictionary<string, object?> _parameters;
         private readonly ExpressionParser _parser;
 
-        private readonly List<string> _selectColumns = new();
-        private readonly List<string> _whereConditions = new();
-        private readonly List<string> _orderByExpressions = new();
-        private readonly List<string> _groupByExpressions = new();
-        private readonly List<string> _havingConditions = new();
+        private readonly List<string> _selectColumns;
+        private readonly List<string> _whereConditions;
+        private readonly List<string> _orderByExpressions;
+        private readonly List<string> _groupByExpressions;
+        private readonly List<string> _havingConditions;
         private int? _take;
         private int? _skip;
         private string? _tableName;
@@ -37,7 +42,15 @@ namespace Sqlx
         {
             _dialect = dialect;
             _parameterized = parameterized;
+            _parameters = new Dictionary<string, object?>(4);
             _parser = new ExpressionParser(dialect, _parameters, parameterized);
+
+            // Pre-allocate with small capacity
+            _selectColumns = new List<string>(4);
+            _whereConditions = new List<string>(4);
+            _orderByExpressions = new List<string>(2);
+            _groupByExpressions = new List<string>(2);
+            _havingConditions = new List<string>(2);
         }
 
         public Dictionary<string, object?> GetParameters() => new(_parameters);
@@ -54,6 +67,7 @@ namespace Sqlx
             {
                 _tableName = queryable.ElementType.Name;
             }
+
             return base.VisitConstant(node);
         }
 
@@ -74,16 +88,16 @@ namespace Sqlx
                     VisitSelect(node);
                     break;
                 case "OrderBy":
-                    VisitOrderBy(node, ascending: true, thenBy: false);
+                    VisitOrderBy(node, ascending: true);
                     break;
                 case "OrderByDescending":
-                    VisitOrderBy(node, ascending: false, thenBy: false);
+                    VisitOrderBy(node, ascending: false);
                     break;
                 case "ThenBy":
-                    VisitOrderBy(node, ascending: true, thenBy: true);
+                    VisitOrderBy(node, ascending: true);
                     break;
                 case "ThenByDescending":
-                    VisitOrderBy(node, ascending: false, thenBy: true);
+                    VisitOrderBy(node, ascending: false);
                     break;
                 case "Take":
                     VisitTake(node);
@@ -96,9 +110,6 @@ namespace Sqlx
                     break;
                 case "Distinct":
                     _isDistinct = true;
-                    break;
-                default:
-                    // Unknown method - ignore for now
                     break;
             }
 
@@ -113,7 +124,7 @@ namespace Sqlx
                 if (predicate != null)
                 {
                     var condition = _parser.Parse(predicate.Body);
-                    _whereConditions.Add($"({condition})");
+                    _whereConditions.Add(string.Concat("(", condition, ")"));
                 }
             }
         }
@@ -131,7 +142,7 @@ namespace Sqlx
             }
         }
 
-        private void VisitOrderBy(MethodCallExpression node, bool ascending, bool thenBy)
+        private void VisitOrderBy(MethodCallExpression node, bool ascending)
         {
             if (node.Arguments.Count > 1)
             {
@@ -139,8 +150,7 @@ namespace Sqlx
                 if (keySelector != null)
                 {
                     var column = _parser.GetColumnName(keySelector.Body);
-                    var direction = ascending ? "ASC" : "DESC";
-                    _orderByExpressions.Add($"{column} {direction}");
+                    _orderByExpressions.Add(string.Concat(column, ascending ? " ASC" : " DESC"));
                 }
             }
         }
@@ -186,12 +196,25 @@ namespace Sqlx
 
         private string BuildSql()
         {
-            var sb = new StringBuilder();
+            // Reuse thread-local StringBuilder
+            var sb = _sharedBuilder ??= new StringBuilder(256);
+            sb.Clear();
 
             // SELECT
             sb.Append("SELECT ");
-            if (_isDistinct) sb.Append("DISTINCT ");
-            sb.Append(_selectColumns.Count > 0 ? string.Join(", ", _selectColumns) : "*");
+            if (_isDistinct)
+            {
+                sb.Append("DISTINCT ");
+            }
+
+            if (_selectColumns.Count > 0)
+            {
+                AppendJoined(sb, _selectColumns, ", ");
+            }
+            else
+            {
+                sb.Append('*');
+            }
 
             // FROM
             sb.Append(" FROM ");
@@ -201,50 +224,95 @@ namespace Sqlx
             if (_whereConditions.Count > 0)
             {
                 sb.Append(" WHERE ");
-                sb.Append(string.Join(" AND ", _whereConditions.Select(ExpressionHelper.RemoveOuterParentheses)));
+                AppendJoinedWithTransform(sb, _whereConditions, " AND ", ExpressionHelper.RemoveOuterParentheses);
             }
 
             // GROUP BY
             if (_groupByExpressions.Count > 0)
             {
                 sb.Append(" GROUP BY ");
-                sb.Append(string.Join(", ", _groupByExpressions));
+                AppendJoined(sb, _groupByExpressions, ", ");
             }
 
             // HAVING
             if (_havingConditions.Count > 0)
             {
                 sb.Append(" HAVING ");
-                sb.Append(string.Join(" AND ", _havingConditions));
+                AppendJoined(sb, _havingConditions, " AND ");
             }
 
             // ORDER BY
             if (_orderByExpressions.Count > 0)
             {
                 sb.Append(" ORDER BY ");
-                sb.Append(string.Join(", ", _orderByExpressions));
+                AppendJoined(sb, _orderByExpressions, ", ");
             }
 
             // PAGINATION
-            sb.Append(GetPaginationClause());
+            AppendPaginationClause(sb);
 
             return sb.ToString();
         }
 
-        private string GetPaginationClause()
+        private static void AppendJoined(StringBuilder sb, List<string> items, string separator)
         {
-            if (!_skip.HasValue && !_take.HasValue) return "";
+            for (var i = 0; i < items.Count; i++)
+            {
+                if (i > 0)
+                {
+                    sb.Append(separator);
+                }
+
+                sb.Append(items[i]);
+            }
+        }
+
+        private static void AppendJoinedWithTransform(StringBuilder sb, List<string> items, string separator, Func<string, string> transform)
+        {
+            for (var i = 0; i < items.Count; i++)
+            {
+                if (i > 0)
+                {
+                    sb.Append(separator);
+                }
+
+                sb.Append(transform(items[i]));
+            }
+        }
+
+        private void AppendPaginationClause(StringBuilder sb)
+        {
+            if (!_skip.HasValue && !_take.HasValue)
+            {
+                return;
+            }
 
             if (_dialect.DatabaseType == "SqlServer")
             {
-                var offset = $" OFFSET {_skip ?? 0} ROWS";
-                var fetch = _take.HasValue ? $" FETCH NEXT {_take.Value} ROWS ONLY" : "";
-                return offset + fetch;
+                sb.Append(" OFFSET ");
+                sb.Append(_skip ?? 0);
+                sb.Append(" ROWS");
+                if (_take.HasValue)
+                {
+                    sb.Append(" FETCH NEXT ");
+                    sb.Append(_take.Value);
+                    sb.Append(" ROWS ONLY");
+                }
             }
+            else
+            {
+                if (_take.HasValue)
+                {
+                    sb.Append(" LIMIT ");
+                    sb.Append(_take.Value);
+                }
 
-            var limit = _take.HasValue ? $" LIMIT {_take.Value}" : "";
-            var offsetClause = _skip.HasValue ? $" OFFSET {_skip.Value}" : "";
-            return limit + offsetClause;
+                if (_skip.HasValue)
+                {
+                    sb.Append(" OFFSET ");
+                    sb.Append(_skip.Value);
+                }
+            }
         }
     }
 }

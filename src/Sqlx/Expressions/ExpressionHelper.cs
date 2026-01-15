@@ -5,10 +5,11 @@
 // -----------------------------------------------------------------------
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Text;
+using System.Runtime.CompilerServices;
 
 namespace Sqlx.Expressions
 {
@@ -17,11 +18,21 @@ namespace Sqlx.Expressions
     /// </summary>
     internal static class ExpressionHelper
     {
+        // Cache for snake_case conversions to avoid repeated allocations
+        private static readonly ConcurrentDictionary<string, string> SnakeCaseCache = new();
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsEntityProperty(MemberExpression m) =>
             m.Expression is ParameterExpression ||
             (m.Expression is UnaryExpression { NodeType: ExpressionType.Convert, Operand: ParameterExpression });
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsBooleanMember(Expression e) => e is MemberExpression { Type: var t } && t == typeof(bool);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsStringType(Type t) => t == typeof(string);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsStringConcatenation(BinaryExpression b) => b.Type == typeof(string) && b.NodeType == ExpressionType.Add;
 
         public static bool IsStringPropertyAccess(MemberExpression m) =>
@@ -38,6 +49,7 @@ namespace Sqlx.Expressions
         public static bool IsAnyPlaceholder(MethodCallExpression m) =>
             m.Method.DeclaringType?.Name == "Any" && m.Method.DeclaringType?.Namespace == "Sqlx";
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static object? GetMemberValueOptimized(MemberExpression m) =>
             m.Type.IsValueType ? GetDefaultValueForValueType(m.Type) : null;
 
@@ -69,21 +81,71 @@ namespace Sqlx.Expressions
         public static string ConvertToSnakeCase(string name)
         {
             if (string.IsNullOrEmpty(name)) return name;
-            var hasUpper = false;
-            for (var i = 0; i < name.Length; i++) if (char.IsUpper(name[i])) { hasUpper = true; break; }
-            if (!hasUpper) return name;
 
-            var sb = new StringBuilder(name.Length + 4);
+            // Check cache first
+            if (SnakeCaseCache.TryGetValue(name, out var cached))
+            {
+                return cached;
+            }
+
+            // Check if conversion is needed
+            var hasUpper = false;
+            for (var i = 0; i < name.Length; i++)
+            {
+                if (char.IsUpper(name[i]))
+                {
+                    hasUpper = true;
+                    break;
+                }
+            }
+
+            if (!hasUpper)
+            {
+                SnakeCaseCache.TryAdd(name, name);
+                return name;
+            }
+
+            // Use stackalloc for small strings to avoid heap allocation
+            var maxLen = name.Length * 2;
+            Span<char> buffer = maxLen <= 128 ? stackalloc char[maxLen] : new char[maxLen];
+            var pos = 0;
+
             for (var i = 0; i < name.Length; i++)
             {
                 var c = name[i];
-                if (char.IsUpper(c)) { if (i > 0) sb.Append('_'); sb.Append(char.ToLowerInvariant(c)); }
-                else sb.Append(c);
+                if (char.IsUpper(c))
+                {
+                    if (i > 0)
+                    {
+                        buffer[pos++] = '_';
+                    }
+
+                    buffer[pos++] = char.ToLowerInvariant(c);
+                }
+                else
+                {
+                    buffer[pos++] = c;
+                }
             }
-            return sb.ToString();
+
+            var result = new string(buffer.Slice(0, pos));
+            SnakeCaseCache.TryAdd(name, result);
+            return result;
         }
 
-        public static string RemoveOuterParentheses(string s) =>
-            s.StartsWith("(") && s.EndsWith(")") ? s.Substring(1, s.Length - 2) : s;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static string RemoveOuterParentheses(string s)
+        {
+            if (s.Length >= 2 && s[0] == '(' && s[s.Length - 1] == ')')
+            {
+#if NETSTANDARD2_0
+                return s.Substring(1, s.Length - 2);
+#else
+                return s[1..^1];
+#endif
+            }
+
+            return s;
+        }
     }
 }

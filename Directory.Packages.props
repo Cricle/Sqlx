@@ -60,6 +60,8 @@
     <PackageVersion Include="Dapper.AOT" Version="1.0.31" />
     <PackageVersion Include="FreeSql" Version="3.2.833" />
     <PackageVersion Include="FreeSql.Provider.Sqlite" Version="3.2.833" />
+    <PackageVersion Include="SqlKata" Version="3.0.0" />
+    <PackageVersion Include="SqlKata.Execution" Version="3.0.0" />
     <PackageVersion Include="System.Diagnostics.PerformanceCounter" Version="8.0.0" />
     <PackageVersion Include="System.Linq.Async" Version="6.0.1" />
   </ItemGroup>

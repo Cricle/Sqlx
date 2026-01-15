@@ -138,6 +138,101 @@ app.MapGet("/api/todos/due-soon", async (ITodoRepository repo) =>
 app.MapGet("/api/todos/count", async (ITodoRepository repo) =>
     Results.Json((int)await repo.CountAsync(), TodoJsonContext.Default.Int32));
 
+// ========== LINQ Expression Examples ==========
+
+// Get todos using LINQ expression predicate
+app.MapGet("/api/todos/linq/high-priority-pending", async (ITodoRepository repo) =>
+{
+    var todos = await repo.GetWhereAsync(t => t.Priority >= 3 && !t.IsCompleted);
+    return Results.Json(todos, TodoJsonContext.Default.ListTodo);
+});
+
+// Count todos using LINQ expression
+app.MapGet("/api/todos/linq/count-overdue", async (ITodoRepository repo) =>
+{
+    var count = await repo.CountWhereAsync(t => 
+        t.DueDate != null && 
+        t.DueDate < DateTime.UtcNow && 
+        !t.IsCompleted);
+    return Results.Json((int)count, TodoJsonContext.Default.Int32);
+});
+
+// ========== IQueryable Examples ==========
+
+// Complex query with IQueryable - high priority todos with pagination
+app.MapGet("/api/todos/queryable/priority-paged", async (ITodoRepository repo, int page = 1, int pageSize = 10) =>
+{
+    var query = repo.AsQueryable()
+        .Where(t => t.Priority >= 3 && !t.IsCompleted)
+        .OrderByDescending(t => t.Priority)
+        .ThenBy(t => t.DueDate)
+        .Skip((page - 1) * pageSize)
+        .Take(pageSize);
+    
+    var todos = await query.ToListAsync();
+    return Results.Json(todos, TodoJsonContext.Default.ListTodo);
+});
+
+// IQueryable with projection - get only title and priority
+app.MapGet("/api/todos/queryable/titles", async (ITodoRepository repo) =>
+{
+    var query = repo.AsQueryable()
+        .Where(t => !t.IsCompleted)
+        .OrderBy(t => t.Priority)
+        .Select(t => new { t.Id, t.Title, t.Priority });
+    
+    var sql = query.ToSql();
+    Console.WriteLine($"Generated SQL: {sql}");
+    
+    // Note: For AOT, we need to execute and map manually
+    var todos = await repo.GetWhereAsync(t => !t.IsCompleted);
+    var result = todos
+        .OrderBy(t => t.Priority)
+        .Select(t => new { t.Id, t.Title, t.Priority })
+        .ToList();
+    
+    return Results.Json(result);
+});
+
+// IQueryable with string functions
+app.MapGet("/api/todos/queryable/search-advanced", async (string keyword, ITodoRepository repo) =>
+{
+    var query = repo.AsQueryable()
+        .Where(t => t.Title.Contains(keyword) || (t.Description != null && t.Description.Contains(keyword)))
+        .OrderByDescending(t => t.UpdatedAt)
+        .Take(20);
+    
+    // For demonstration, show the generated SQL
+    var sql = query.ToSql();
+    Console.WriteLine($"Generated SQL: {sql}");
+    
+    var todos = await query.ToListAsync();
+    return Results.Json(todos, TodoJsonContext.Default.ListTodo);
+});
+
+// IQueryable with aggregation
+app.MapGet("/api/todos/queryable/stats", async (ITodoRepository repo) =>
+{
+    var allQuery = repo.AsQueryable();
+    var completedQuery = repo.AsQueryable().Where(t => t.IsCompleted);
+    var highPriorityQuery = repo.AsQueryable().Where(t => t.Priority >= 3 && !t.IsCompleted);
+    
+    var total = await allQuery.CountAsync();
+    var completed = await completedQuery.CountAsync();
+    var highPriority = await highPriorityQuery.CountAsync();
+    
+    var stats = new
+    {
+        Total = total,
+        Completed = completed,
+        Pending = total - completed,
+        HighPriority = highPriority,
+        CompletionRate = total > 0 ? (double)completed / total * 100 : 0
+    };
+    
+    return Results.Json(stats);
+});
+
 // Initialize database
 using var scope = app.Services.CreateScope();
 await scope.ServiceProvider.GetRequiredService<DatabaseService>().InitializeDatabaseAsync();

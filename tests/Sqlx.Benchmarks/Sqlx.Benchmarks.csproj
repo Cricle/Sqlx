@@ -21,6 +21,7 @@
     <PackageReference Include="FreeSql" />
     <PackageReference Include="FreeSql.Provider.Sqlite" />
     <PackageReference Include="Microsoft.Data.Sqlite" />
+    <PackageReference Include="System.Linq.Async" />
   </ItemGroup>
 
   <ItemGroup>

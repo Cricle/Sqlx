@@ -183,29 +183,87 @@ AMD Ryzen 7 5800H with Radeon Graphics, 1 CPU, 16 logical and 8 physical cores
 
 | 场景 | Mean | Allocated | 说明 |
 |------|------|-----------|------|
-| Simple SELECT * | **171.7 ns** | 824 B | 最简单的查询 |
-| Conditional expression | 2.54 μs | 2.98 KB | 三元表达式 |
-| WHERE single condition | 4.17 μs | 2.50 KB | 单条件过滤 |
-| Parameterized simple | 4.46 μs | 2.90 KB | 参数化单条件 |
-| Coalesce expression | 5.08 μs | 3.45 KB | ?? 空合并 |
-| WHERE with OR | 5.77 μs | 4.20 KB | OR 多条件 |
-| WHERE multiple AND | 5.82 μs | 4.38 KB | AND 多条件 |
-| Math functions | 6.15 μs | 4.34 KB | Math.Abs/Round |
-| Parameterized complex | 6.35 μs | 4.96 KB | 参数化多条件 |
-| SQLite dialect | 6.42 μs | 4.54 KB | Where+OrderBy+Take |
-| PostgreSQL dialect | 6.65 μs | 4.57 KB | Where+OrderBy+Take |
-| MySql dialect | 6.67 μs | 4.54 KB | Where+OrderBy+Take |
-| SqlServer dialect | 6.73 μs | 4.79 KB | Where+OrderBy+Take |
-| String functions | 7.12 μs | 4.50 KB | Contains/ToUpper |
-| Full chain query | **17.72 μs** | 11.45 KB | Where+Select+OrderBy+Take+Skip |
+| Simple SELECT * | **189.9 ns** | 856 B | 最简单的查询 |
+| WHERE single condition | 4.55 μs | 2.54 KB | 单条件过滤 |
+| Parameterized simple | 4.82 μs | 2.94 KB | 参数化单条件 |
+| WHERE with OR | 5.96 μs | 4.25 KB | OR 多条件 |
+| WHERE multiple AND | 6.12 μs | 4.42 KB | AND 多条件 |
+| Math functions | 6.33 μs | 4.38 KB | Math.Abs/Round |
+| Parameterized complex | 6.85 μs | 5.01 KB | 参数化多条件 |
+| String functions | 7.40 μs | 4.55 KB | Contains/ToUpper |
+| SqlServer dialect | 8.11 μs | 5.36 KB | Where+OrderBy+Take |
+| MySQL dialect | 8.13 μs | 5.24 KB | Where+OrderBy+Take |
+| PostgreSQL dialect | 8.22 μs | 5.27 KB | Where+OrderBy+Take |
+| Oracle dialect | 8.44 μs | 5.39 KB | Where+OrderBy+Take |
+| SQLite dialect | 8.46 μs | 5.24 KB | Where+OrderBy+Take |
+| Full chain query | **18.75 μs** | 11.66 KB | Where+Select+OrderBy+Take+Skip |
 
 ### 结论
 
-- 简单 SELECT：**~170 ns**，极快
-- 单条件 WHERE：**~4 μs**
-- 复杂链式查询：**~18 μs**
+- 简单 SELECT：**~190 ns**，极快
+- 单条件 WHERE：**~4.5 μs**
+- 复杂链式查询：**~18.8 μs**
 - 各数据库方言性能差异 < 5%
-- 内存分配：824B - 11.5KB
+- 内存分配：856B - 11.7KB
+
+---
+
+## IQueryable 执行性能（同步 vs 异步）
+
+测试 `SqlxQueryable<T>` 的同步和异步执行性能对比（使用 System.Linq.Async）。
+
+### 单条查询
+
+| 场景 | Mean | Allocated | 说明 |
+|------|------|-----------|------|
+| Async: AnyAsync | **18.08 μs** | 5.40 KB | 异步存在性检查 |
+| Async: FirstOrDefaultAsync | 18.31 μs | 5.47 KB | 异步单条查询 |
+| Sync: FirstOrDefault | 19.64 μs | 5.71 KB | 同步单条查询 |
+
+### 分页查询（100 条）
+
+| 场景 | Mean | Allocated | 说明 |
+|------|------|-----------|------|
+| Async: Pagination ToListAsync | **161.25 μs** | 29.25 KB | 异步分页 |
+| Sync: Pagination | 167.78 μs | 28.96 KB | 同步分页 Skip+Take |
+
+### 条件查询（100 条）
+
+| 场景 | Mean | Allocated | 说明 |
+|------|------|-----------|------|
+| Sync: WHERE + ORDER + LIMIT | **302.18 μs** | 32.15 KB | 同步条件查询 |
+| Async: WHERE + ToListAsync | 304.20 μs | 32.44 KB | 异步条件查询 |
+
+### 聚合查询（1000 条）
+
+| 场景 | Mean | Allocated | 说明 |
+|------|------|-----------|------|
+| Async: CountAsync | 707.33 μs | 111.20 KB | 异步计数（遍历所有行） |
+
+### 全表查询（1000 条）
+
+| 场景 | Mean | Allocated | 说明 |
+|------|------|-----------|------|
+| Sync: SELECT * | **1.30 ms** | 232.49 KB | 同步全表查询 |
+| Async: ToListAsync | 1.36 ms | 232.77 KB | 异步全表查询 |
+
+### 同步 vs 异步性能对比
+
+| 场景 | 同步 | 异步 | 差异 |
+|------|------|------|------|
+| 单条查询 | 19.64 μs | 18.31 μs | -6.8% |
+| 分页查询 | 167.78 μs | 161.25 μs | -3.9% |
+| 条件查询 | 302.18 μs | 304.20 μs | +0.7% |
+| 全表查询 | 1.30 ms | 1.36 ms | +4.6% |
+
+### 结论
+
+- 异步操作开销约 **0-5%**，部分场景异步更快
+- 单条查询异步更快（~7%），得益于更优的状态机
+- 条件查询几乎无差异
+- 大批量查询差异较小（~5%）
+- 内存分配差异 < 1%
+- 对于 I/O 密集型场景，异步的并发优势远超这点开销
 
 ---
 

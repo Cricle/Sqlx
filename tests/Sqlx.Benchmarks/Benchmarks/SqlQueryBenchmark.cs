@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
 using Microsoft.Data.Sqlite;
@@ -24,15 +25,17 @@ namespace Sqlx.Benchmarks.Benchmarks
     public class SqlQueryBenchmark
     {
         private SqliteConnection _connection = null!;
+        private BenchmarkEntityReader _reader = null!;
 
         [GlobalSetup]
         public void Setup()
         {
             _connection = new SqliteConnection("Data Source=:memory:");
             _connection.Open();
+            _reader = new BenchmarkEntityReader();
 
-            using var cmd = _connection.CreateCommand();
-            cmd.CommandText = @"
+            using var createCmd = _connection.CreateCommand();
+            createCmd.CommandText = @"
                 CREATE TABLE BenchmarkEntity (
                     id INTEGER PRIMARY KEY,
                     name TEXT NOT NULL,
@@ -41,40 +44,65 @@ namespace Sqlx.Benchmarks.Benchmarks
                     is_active INTEGER NOT NULL,
                     balance REAL NOT NULL,
                     created_at TEXT NOT NULL
-                );
+                )";
+            createCmd.ExecuteNonQuery();
 
+            // Insert 1000 rows using parameterized batch insert
+            using var transaction = _connection.BeginTransaction();
+            using var insertCmd = _connection.CreateCommand();
+            insertCmd.Transaction = transaction;
+            insertCmd.CommandText = @"
                 INSERT INTO BenchmarkEntity (id, name, email, age, is_active, balance, created_at)
-                SELECT 
-                    value,
-                    'User' || value,
-                    CASE WHEN value % 3 = 0 THEN NULL ELSE 'user' || value || '@test.com' END,
-                    18 + (value % 50),
-                    value % 2,
-                    1000.0 + (value * 100),
-                    datetime('2024-01-01', '+' || value || ' days')
-                FROM generate_series(1, 1000);
-            ";
-            cmd.ExecuteNonQuery();
+                VALUES (@id, @name, @email, @age, @is_active, @balance, @created_at)";
+
+            var idParam = insertCmd.CreateParameter();
+            idParam.ParameterName = "@id";
+            insertCmd.Parameters.Add(idParam);
+
+            var nameParam = insertCmd.CreateParameter();
+            nameParam.ParameterName = "@name";
+            insertCmd.Parameters.Add(nameParam);
+
+            var emailParam = insertCmd.CreateParameter();
+            emailParam.ParameterName = "@email";
+            insertCmd.Parameters.Add(emailParam);
+
+            var ageParam = insertCmd.CreateParameter();
+            ageParam.ParameterName = "@age";
+            insertCmd.Parameters.Add(ageParam);
+
+            var isActiveParam = insertCmd.CreateParameter();
+            isActiveParam.ParameterName = "@is_active";
+            insertCmd.Parameters.Add(isActiveParam);
+
+            var balanceParam = insertCmd.CreateParameter();
+            balanceParam.ParameterName = "@balance";
+            insertCmd.Parameters.Add(balanceParam);
+
+            var createdAtParam = insertCmd.CreateParameter();
+            createdAtParam.ParameterName = "@created_at";
+            insertCmd.Parameters.Add(createdAtParam);
+
+            var baseDate = new DateTime(2024, 1, 1);
+            for (int i = 1; i <= 1000; i++)
+            {
+                idParam.Value = i;
+                nameParam.Value = "User" + i;
+                emailParam.Value = i % 3 == 0 ? DBNull.Value : (object)$"user{i}@test.com";
+                ageParam.Value = 18 + (i % 50);
+                isActiveParam.Value = i % 2;
+                balanceParam.Value = 1000.0 + (i * 100);
+                createdAtParam.Value = baseDate.AddDays(i).ToString("yyyy-MM-dd HH:mm:ss");
+                insertCmd.ExecuteNonQuery();
+            }
+
+            transaction.Commit();
         }
 
         [GlobalCleanup]
         public void Cleanup()
         {
             _connection?.Dispose();
-        }
-
-        private static BenchmarkEntity MapEntity(IDataReader reader)
-        {
-            return new BenchmarkEntity
-            {
-                Id = reader.GetInt64(0),
-                Name = reader.GetString(1),
-                Email = reader.IsDBNull(2) ? null : reader.GetString(2),
-                Age = reader.GetInt32(3),
-                IsActive = reader.GetInt32(4) == 1,
-                Balance = (decimal)reader.GetDouble(5),
-                CreatedAt = DateTime.Parse(reader.GetString(6))
-            };
         }
 
         #region SQL Generation Benchmarks
@@ -161,19 +189,19 @@ namespace Sqlx.Benchmarks.Benchmarks
 
         #endregion
 
-        #region Execution Benchmarks
+        #region Synchronous Execution Benchmarks
 
-        [Benchmark(Description = "Exec: SELECT * (1000 rows)")]
-        public List<BenchmarkEntity> Exec_SelectAll()
+        [Benchmark(Description = "Sync: SELECT * (1000 rows)")]
+        public List<BenchmarkEntity> Sync_SelectAll()
         {
             return SqlQuery.ForSqlite<BenchmarkEntity>()
                 .WithConnection(_connection)
-                .WithMapper(MapEntity)
+                .WithReader(_reader)
                 .ToList();
         }
 
-        [Benchmark(Description = "Exec: WHERE + ORDER + LIMIT")]
-        public List<BenchmarkEntity> Exec_WhereOrderLimit()
+        [Benchmark(Description = "Sync: WHERE + ORDER + LIMIT")]
+        public List<BenchmarkEntity> Sync_WhereOrderLimit()
         {
             return SqlQuery.ForSqlite<BenchmarkEntity>()
                 .Where(u => u.IsActive)
@@ -181,30 +209,98 @@ namespace Sqlx.Benchmarks.Benchmarks
                 .OrderBy(u => u.Name)
                 .Take(100)
                 .WithConnection(_connection)
-                .WithMapper(MapEntity)
+                .WithReader(_reader)
                 .ToList();
         }
 
-        [Benchmark(Description = "Exec: Pagination")]
-        public List<BenchmarkEntity> Exec_Pagination()
+        [Benchmark(Description = "Sync: Pagination")]
+        public List<BenchmarkEntity> Sync_Pagination()
         {
             return SqlQuery.ForSqlite<BenchmarkEntity>()
                 .OrderBy(u => u.Id)
                 .Skip(500)
                 .Take(100)
                 .WithConnection(_connection)
-                .WithMapper(MapEntity)
+                .WithReader(_reader)
                 .ToList();
         }
 
-        [Benchmark(Description = "Exec: FirstOrDefault")]
-        public BenchmarkEntity? Exec_FirstOrDefault()
+        [Benchmark(Description = "Sync: FirstOrDefault")]
+        public BenchmarkEntity? Sync_FirstOrDefault()
         {
             return SqlQuery.ForSqlite<BenchmarkEntity>()
                 .Where(u => u.Id == 500)
                 .WithConnection(_connection)
-                .WithMapper(MapEntity)
+                .WithReader(_reader)
                 .FirstOrDefault();
+        }
+
+        #endregion
+
+        #region Asynchronous Execution Benchmarks (System.Linq.Async)
+
+        [Benchmark(Description = "Async: ToListAsync (1000 rows)")]
+        public async Task<List<BenchmarkEntity>> Async_ToListAsync()
+        {
+            var query = (IAsyncEnumerable<BenchmarkEntity>)SqlQuery.ForSqlite<BenchmarkEntity>()
+                .WithConnection(_connection)
+                .WithReader(_reader);
+            return await query.ToListAsync();
+        }
+
+        [Benchmark(Description = "Async: WHERE + ToListAsync")]
+        public async Task<List<BenchmarkEntity>> Async_WhereToListAsync()
+        {
+            var query = (IAsyncEnumerable<BenchmarkEntity>)SqlQuery.ForSqlite<BenchmarkEntity>()
+                .Where(u => u.IsActive)
+                .Where(u => u.Age >= 25)
+                .OrderBy(u => u.Name)
+                .Take(100)
+                .WithConnection(_connection)
+                .WithReader(_reader);
+            return await query.ToListAsync();
+        }
+
+        [Benchmark(Description = "Async: FirstOrDefaultAsync")]
+        public async Task<BenchmarkEntity?> Async_FirstOrDefaultAsync()
+        {
+            var query = (IAsyncEnumerable<BenchmarkEntity>)SqlQuery.ForSqlite<BenchmarkEntity>()
+                .Where(u => u.Id == 500)
+                .WithConnection(_connection)
+                .WithReader(_reader);
+            return await query.FirstOrDefaultAsync();
+        }
+
+        [Benchmark(Description = "Async: CountAsync")]
+        public async Task<int> Async_CountAsync()
+        {
+            var query = (IAsyncEnumerable<BenchmarkEntity>)SqlQuery.ForSqlite<BenchmarkEntity>()
+                .Where(u => u.IsActive)
+                .WithConnection(_connection)
+                .WithReader(_reader);
+            return await query.CountAsync();
+        }
+
+        [Benchmark(Description = "Async: AnyAsync")]
+        public async Task<bool> Async_AnyAsync()
+        {
+            var query = (IAsyncEnumerable<BenchmarkEntity>)SqlQuery.ForSqlite<BenchmarkEntity>()
+                .Where(u => u.Id == 500)
+                .WithConnection(_connection)
+                .WithReader(_reader);
+            return await query.AnyAsync();
+        }
+
+        [Benchmark(Description = "Async: Pagination ToListAsync")]
+        public async Task<List<BenchmarkEntity>> Async_PaginationToListAsync()
+        {
+            var query = (IAsyncEnumerable<BenchmarkEntity>)SqlQuery.ForSqlite<BenchmarkEntity>()
+                .OrderBy(u => u.Id)
+                .Skip(500)
+                .Take(100)
+                .WithConnection(_connection)
+                .WithReader(_reader);
+            return await query.ToListAsync();
         }
 
         #endregion
@@ -287,5 +383,53 @@ namespace Sqlx.Benchmarks.Benchmarks
         public decimal Balance { get; set; }
 
         public DateTime CreatedAt { get; set; }
+    }
+
+    /// <summary>
+    /// Result reader for BenchmarkEntity.
+    /// </summary>
+    public class BenchmarkEntityReader : IResultReader<BenchmarkEntity>
+    {
+        public BenchmarkEntity Read(IDataReader reader)
+        {
+            return new BenchmarkEntity
+            {
+                Id = reader.GetInt64(0),
+                Name = reader.GetString(1),
+                Email = reader.IsDBNull(2) ? null : reader.GetString(2),
+                Age = reader.GetInt32(3),
+                IsActive = reader.GetInt32(4) == 1,
+                Balance = (decimal)reader.GetDouble(5),
+                CreatedAt = DateTime.Parse(reader.GetString(6))
+            };
+        }
+
+        public BenchmarkEntity Read(IDataReader reader, int[] ordinals)
+        {
+            return new BenchmarkEntity
+            {
+                Id = reader.GetInt64(ordinals[0]),
+                Name = reader.GetString(ordinals[1]),
+                Email = reader.IsDBNull(ordinals[2]) ? null : reader.GetString(ordinals[2]),
+                Age = reader.GetInt32(ordinals[3]),
+                IsActive = reader.GetInt32(ordinals[4]) == 1,
+                Balance = (decimal)reader.GetDouble(ordinals[5]),
+                CreatedAt = DateTime.Parse(reader.GetString(ordinals[6]))
+            };
+        }
+
+        public int[] GetOrdinals(IDataReader reader)
+        {
+            return new[]
+            {
+                reader.GetOrdinal("id"),
+                reader.GetOrdinal("name"),
+                reader.GetOrdinal("email"),
+                reader.GetOrdinal("age"),
+                reader.GetOrdinal("is_active"),
+                reader.GetOrdinal("balance"),
+                reader.GetOrdinal("created_at")
+            };
+        }
     }
 }

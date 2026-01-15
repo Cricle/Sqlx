@@ -6,7 +6,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Data.Common;
 using System.Linq;
 #if NET5_0_OR_GREATER
@@ -53,35 +52,35 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// Sets the mapper function for converting database results to entities.
+        /// Sets the result reader for converting database results to entities.
         /// </summary>
         /// <typeparam name="T">The entity type.</typeparam>
         /// <param name="query">The query.</param>
-        /// <param name="mapper">The mapper function.</param>
-        /// <returns>The query with mapper set.</returns>
-        public static IQueryable<T> WithMapper<
+        /// <param name="reader">The result reader.</param>
+        /// <returns>The query with reader set.</returns>
+        public static IQueryable<T> WithReader<
 #if NET5_0_OR_GREATER
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
 #endif
-            T>(this IQueryable<T> query, Func<IDataReader, T> mapper)
+            T>(this IQueryable<T> query, IResultReader<T> reader)
         {
             if (query == null)
             {
                 throw new ArgumentNullException(nameof(query));
             }
 
-            if (mapper == null)
+            if (reader == null)
             {
-                throw new ArgumentNullException(nameof(mapper));
+                throw new ArgumentNullException(nameof(reader));
             }
 
             if (query is SqlxQueryable<T> sqlxQuery)
             {
-                sqlxQuery.Mapper = mapper;
+                sqlxQuery.ResultReader = reader;
                 return query;
             }
 
-            throw new InvalidOperationException("WithMapper() can only be called on SqlxQueryable instances.");
+            throw new InvalidOperationException("WithReader() can only be called on SqlxQueryable instances.");
         }
 
         /// <summary>

@@ -6,6 +6,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
 #if NET5_0_OR_GREATER
@@ -20,6 +22,8 @@ namespace Sqlx
     public class SqlxQueryProvider : IQueryProvider
     {
         private readonly SqlDialect _dialect;
+        private DbConnection? _connection;
+        private Func<IDataReader, IEnumerable<object>>? _executeFunc;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="SqlxQueryProvider"/> class.
@@ -34,6 +38,24 @@ namespace Sqlx
         /// Gets the SQL dialect.
         /// </summary>
         public SqlDialect Dialect => _dialect;
+
+        /// <summary>
+        /// Gets or sets the database connection for query execution.
+        /// </summary>
+        internal DbConnection? Connection
+        {
+            get => _connection;
+            set => _connection = value;
+        }
+
+        /// <summary>
+        /// Gets or sets the execute function that wraps the mapper.
+        /// </summary>
+        internal Func<IDataReader, IEnumerable<object>>? ExecuteFunc
+        {
+            get => _executeFunc;
+            set => _executeFunc = value;
+        }
 
         /// <inheritdoc/>
         public IQueryable CreateQuery(Expression expression)
@@ -54,7 +76,7 @@ namespace Sqlx
         /// <inheritdoc/>
         public object? Execute(Expression expression)
         {
-            throw new NotSupportedException("Use GetEnumerator() on SqlxQueryable with WithConnection() and WithMapper().");
+            throw new NotSupportedException("Use Execute<TResult> for AOT compatibility.");
         }
 
         /// <inheritdoc/>
@@ -64,7 +86,91 @@ namespace Sqlx
 #endif
             TResult>(Expression expression)
         {
-            return (TResult)Execute(expression)!;
+            if (_connection == null)
+            {
+                throw new InvalidOperationException("No database connection. Use WithConnection().");
+            }
+
+            if (_executeFunc == null)
+            {
+                throw new InvalidOperationException("No mapper function. Use WithMapper().");
+            }
+
+            var (sql, parameters) = ToSqlWithParameters(expression);
+
+            // Execute and get results
+            var results = ExecuteQuery(sql, parameters);
+
+            // Determine what kind of result is expected
+            return GetResult<TResult>(expression, results);
+        }
+
+        private IEnumerable<object> ExecuteQuery(
+            string sql,
+            IEnumerable<KeyValuePair<string, object?>> parameters)
+        {
+            using var cmd = _connection!.CreateCommand();
+            cmd.CommandText = sql;
+
+            foreach (var param in parameters)
+            {
+                var p = cmd.CreateParameter();
+                p.ParameterName = param.Key;
+                p.Value = param.Value ?? DBNull.Value;
+                cmd.Parameters.Add(p);
+            }
+
+            using var reader = cmd.ExecuteReader();
+            return _executeFunc!(reader).ToList();
+        }
+
+        private static TResult GetResult<
+#if NET5_0_OR_GREATER
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
+#endif
+            TResult>(Expression expression, IEnumerable<object> results)
+        {
+            // Check if this is a method call expression (First, FirstOrDefault, Single, etc.)
+            if (expression is MethodCallExpression methodCall)
+            {
+                var methodName = methodCall.Method.Name;
+
+                switch (methodName)
+                {
+                    case "First":
+                        return (TResult)results.First();
+                    case "FirstOrDefault":
+                        var first = results.FirstOrDefault();
+                        return first == null ? default! : (TResult)first;
+                    case "Single":
+                        return (TResult)results.Single();
+                    case "SingleOrDefault":
+                        var single = results.SingleOrDefault();
+                        return single == null ? default! : (TResult)single;
+                    case "Last":
+                        return (TResult)results.Last();
+                    case "LastOrDefault":
+                        var last = results.LastOrDefault();
+                        return last == null ? default! : (TResult)last;
+                    case "Count":
+                        return (TResult)(object)results.Count();
+                    case "LongCount":
+                        return (TResult)(object)results.LongCount();
+                    case "Any":
+                        return (TResult)(object)results.Any();
+                    default:
+                        // For other methods, try to return as-is
+                        break;
+                }
+            }
+
+            // Default: return as enumerable or single item
+            if (results is TResult typedResult)
+            {
+                return typedResult;
+            }
+
+            throw new NotSupportedException($"Cannot convert result to {typeof(TResult).Name}.");
         }
 
         /// <summary>

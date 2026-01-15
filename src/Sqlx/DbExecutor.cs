@@ -54,48 +54,6 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// Executes a scalar query.
-        /// </summary>
-        /// <typeparam name="T">The result type.</typeparam>
-        /// <param name="connection">The database connection.</param>
-        /// <param name="sql">The SQL query.</param>
-        /// <param name="parameters">The query parameters.</param>
-        /// <returns>The scalar result.</returns>
-        public static T? ExecuteScalar<T>(
-            DbConnection connection,
-            string sql,
-            IEnumerable<KeyValuePair<string, object?>>? parameters)
-        {
-            if (connection.State != ConnectionState.Open)
-            {
-                connection.Open();
-            }
-            using var command = CreateCommand(connection, sql, parameters);
-            var result = command.ExecuteScalar();
-            return result == null || result == DBNull.Value ? default : (T)result;
-        }
-
-        /// <summary>
-        /// Executes a non-query command.
-        /// </summary>
-        /// <param name="connection">The database connection.</param>
-        /// <param name="sql">The SQL command.</param>
-        /// <param name="parameters">The command parameters.</param>
-        /// <returns>The number of rows affected.</returns>
-        public static int ExecuteNonQuery(
-            DbConnection connection,
-            string sql,
-            IEnumerable<KeyValuePair<string, object?>>? parameters)
-        {
-            if (connection.State != ConnectionState.Open)
-            {
-                connection.Open();
-            }
-            using var command = CreateCommand(connection, sql, parameters);
-            return command.ExecuteNonQuery();
-        }
-
-        /// <summary>
         /// Executes a query asynchronously and yields results.
         /// </summary>
         /// <typeparam name="T">The result type.</typeparam>
@@ -131,59 +89,7 @@ namespace Sqlx
             }
         }
 
-        /// <summary>
-        /// Executes a scalar query asynchronously.
-        /// </summary>
-        /// <typeparam name="T">The result type.</typeparam>
-        /// <param name="connection">The database connection.</param>
-        /// <param name="sql">The SQL query.</param>
-        /// <param name="parameters">The query parameters.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>The scalar result.</returns>
-        public static async Task<T?> ExecuteScalarAsync<T>(
-            DbConnection connection,
-            string sql,
-            IEnumerable<KeyValuePair<string, object?>>? parameters,
-            CancellationToken cancellationToken = default)
-        {
-
-            if (connection.State != ConnectionState.Open)
-            {
-                await connection.OpenAsync(cancellationToken);
-            }
-
-            await using var command = CreateCommand(connection, sql, parameters);
-            var result = await command.ExecuteScalarAsync(cancellationToken);
-            return result == null || result == DBNull.Value ? default : (T)result;
-        }
-
-        /// <summary>
-        /// Executes a non-query command asynchronously.
-        /// </summary>
-        /// <param name="connection">The database connection.</param>
-        /// <param name="sql">The SQL command.</param>
-        /// <param name="parameters">The command parameters.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>The number of rows affected.</returns>
-        public static async Task<int> ExecuteNonQueryAsync(
-            DbConnection connection,
-            string sql,
-            IEnumerable<KeyValuePair<string, object?>>? parameters,
-            CancellationToken cancellationToken = default)
-        {
-            if (connection.State != ConnectionState.Open)
-            {
-                await connection.OpenAsync(cancellationToken);
-            }
-
-            await using var command = CreateCommand(connection, sql, parameters);
-            return await command.ExecuteNonQueryAsync(cancellationToken);
-        }
-
-        private static DbCommand CreateCommand(
-            DbConnection connection,
-            string sql,
-            IEnumerable<KeyValuePair<string, object?>>? parameters)
+        private static DbCommand CreateCommand(DbConnection connection, string sql, IEnumerable<KeyValuePair<string, object?>>? parameters)
         {
             var command = connection.CreateCommand();
             command.CommandText = sql;

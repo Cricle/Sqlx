@@ -1,337 +1,151 @@
 # LINQ Select 匿名类型支持设计方案
 
-## 当前问题
+## 最终方案：Interceptor + ModuleInitializer + 泛型静态缓存
 
-1. `Select(u => new { u.Id, u.Name })` 返回的是 `IQueryable<匿名类型>`
-2. 匿名类型无法在编译时标记 `[SqlxEntity]`，无法使用源生成器
-3. 需要手动提供 `IResultReader<匿名类型>`，但匿名类型无法引用
+### 核心思路
 
-## 解决方案：AOT 友好的泛型静态缓存 + 源生成器
+**利用 .NET 的现代特性：**
+1. **Interceptor（拦截器）** - 编译时拦截 Select 调用，注入生成的 ResultReader
+2. **ModuleInitializer** - 模块初始化时自动注册所有 ResultReader
+3. **泛型静态类** - 零开销缓存，无需字典
 
-### 核心思路：利用泛型静态类的单例特性
+### 完整实现方案
 
-**关键洞察：**
-- 泛型静态类 `Cache<T>` 对每个 `T` 都是独立的单例
-- 无需字典，泛型参数本身就是"键"
-- 完全 AOT 兼容，零反射
-
-**实现思路：**
+#### 1. 泛型静态缓存（基础设施）
 
 ```csharp
-// 1. 泛型静态缓存（每个类型 T 一个实例）
-internal static class AnonymousTypeResultReader<T>
+// src/Sqlx/SelectResultReader.cs
+namespace Sqlx
 {
-    // 静态字段在类型首次访问时初始化，之后永久缓存
-    public static readonly IResultReader<T>? Instance = TryCreateReader();
-    
-    private static IResultReader<T>? TryCreateReader()
+    /// <summary>
+    /// Generic static cache for Select projection result readers.
+    /// Each type T has its own static instance (singleton per type).
+    /// </summary>
+    public static class SelectResultReader<T>
     {
-        // 尝试通过反射获取编译器生成的匿名类型构造函数
-        // 但这是 AOT 不友好的...
-        // 需要另一种方案
-    }
-}
-
-// 问题：匿名类型在 AOT 中无法通过反射创建
-// 解决：使用源生成器 + Interceptor
-```
-
-### 方案 1：源生成器 + Interceptor（.NET 8+，完全 AOT）
-
-**优点：**
-- 编译时生成，零运行时开销
-- 完全 AOT 兼容
-- 类型安全
-- 利用泛型静态类自动缓存
-
-**实现思路：**
-
-```csharp
-// 用户代码
-var result = SqlQuery.ForSqlite<User>()
-    .Select(u => new { u.Id, u.Name })  // 编译器生成匿名类型 <>f__AnonymousType0
-    .ToList();
-
-// 源生成器检测到 Select 调用，生成：
-// Generated/<>f__AnonymousType0.ResultReader.g.cs
-namespace Sqlx.Generated
-{
-    internal static class AnonymousType0ResultReader
-    {
-        public static readonly IResultReader<<>f__AnonymousType0<int, string>> Instance = 
-            new ResultReaderImpl();
+        private static IResultReader<T>? _instance;
         
-        private sealed class ResultReaderImpl : IResultReader<<>f__AnonymousType0<int, string>>
+        public static IResultReader<T>? Instance
         {
-            public <>f__AnonymousType0<int, string> Read(IDataReader reader)
-            {
-                return new <>f__AnonymousType0<int, string>(
-                    reader.GetInt32(0),
-                    reader.GetString(1)
-                );
-            }
-            
-            public <>f__AnonymousType0<int, string> Read(IDataReader reader, int[] ordinals)
-            {
-                return new <>f__AnonymousType0<int, string>(
-                    reader.GetInt32(ordinals[0]),
-                    reader.GetString(ordinals[1])
-                );
-            }
-            
-            public int[] GetOrdinals(IDataReader reader)
-            {
-                return new[] { reader.GetOrdinal("id"), reader.GetOrdinal("name") };
-            }
+            get => _instance;
+            set => _instance ??= value;  // Only set once
         }
     }
 }
-
-// 使用 Interceptor 拦截 Select 调用
-[InterceptsLocation("Program.cs", line: 10, character: 5)]
-public static IQueryable<TResult> Select_Intercepted<TSource, TResult>(
-    this IQueryable<TSource> source,
-    Expression<Func<TSource, TResult>> selector)
-{
-    // 自动注入生成的 ResultReader
-    var provider = ((SqlxQueryable<TSource>)source).Provider as SqlxQueryProvider<TSource>;
-    var newProvider = new SqlxQueryProvider<TResult>(provider.Dialect)
-    {
-        Connection = provider.Connection,
-        ResultReader = AnonymousType0ResultReader.Instance  // 使用生成的 Reader
-    };
-    return new SqlxQueryable<TResult>(newProvider, 
-        Expression.Call(null, SelectMethod, source.Expression, Expression.Quote(selector)));
-}
 ```
 
-### 方案 2：手动注册 + 泛型静态缓存（简单但需要手动）
-
-**优点：**
-- 完全 AOT 兼容
-- 实现简单
-- 利用泛型静态类缓存
-
-**缺点：**
-- 需要用户手动定义投影类型（不能用匿名类型）
-
-**实现思路：**
+#### 2. 源生成器检测 Select 调用
 
 ```csharp
-// 1. 用户定义投影类型（代替匿名类型）
-[SqlxProjection(typeof(User))]  // 标记源类型
-public partial class UserProjection
+// src/Sqlx.Generator/SelectInterceptorGenerator.cs
+[Generator(LanguageNames.CSharp)]
+public class SelectInterceptorGenerator : IIncrementalGenerator
 {
-    public int Id { get; set; }
-    public string Name { get; set; }
-}
-
-// 2. 源生成器生成 ResultReader
-// Generated/UserProjection.ResultReader.g.cs
-partial class UserProjection
-{
-    static UserProjection()
+    public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        // 自动注册到泛型静态缓存
-        ProjectionResultReader<UserProjection>.Instance = new UserProjectionResultReader();
+        // 检测所有 Select 方法调用
+        var selectCalls = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                predicate: static (s, _) => IsSelectMethodCall(s),
+                transform: static (ctx, _) => GetSelectCallInfo(ctx))
+            .Where(static m => m is not null);
+
+        var compilationAndCalls = context.CompilationProvider.Combine(selectCalls.Collect());
+        context.RegisterSourceOutput(compilationAndCalls, 
+            static (spc, source) => Execute(source.Left, source.Right!, spc));
     }
-}
-
-internal static class ProjectionResultReader<T>
-{
-    public static IResultReader<T>? Instance { get; set; }
-}
-
-// 3. 使用
-var result = SqlQuery.ForSqlite<User>()
-    .Select(u => new UserProjection { Id = u.Id, Name = u.Name })
-    .ToList();
-// 自动使用 ProjectionResultReader<UserProjection>.Instance
-```
-
-### 方案 3：编译时常量 + 泛型静态缓存（推荐，平衡方案）
-
-**优点：**
-- 完全 AOT 兼容
-- 支持匿名类型（通过编译时分析）
-- 利用泛型静态类缓存
-- 无需 Interceptor
-
-**实现思路：**
-
-```csharp
-// 1. 源生成器分析所有 Select 调用
-// 为每个唯一的投影生成 ResultReader
-
-// 2. 生成泛型静态缓存类
-// Generated/SelectProjections.g.cs
-namespace Sqlx.Generated
-{
-    // 为每个投影类型生成一个静态类
-    internal static class SelectProjection_User_Id_Name<T>
+    
+    private static bool IsSelectMethodCall(SyntaxNode node)
     {
-        public static readonly IResultReader<T> Instance = CreateReader();
+        // 检测：.Select(u => new { ... }) 或 .Select(u => new SomeType { ... })
+        return node is InvocationExpressionSyntax invocation &&
+               invocation.Expression is MemberAccessExpressionSyntax member &&
+               member.Name.Identifier.Text == "Select";
+    }
+    
+    private static SelectCallInfo? GetSelectCallInfo(GeneratorSyntaxContext context)
+    {
+        var invocation = (InvocationExpressionSyntax)context.Node;
+        var semanticModel = context.SemanticModel;
         
-        private static IResultReader<T> CreateReader()
-        {
-            var type = typeof(T);
-            
-            // 检查是否是匹配的匿名类型
-            if (type.Name.StartsWith("<>f__AnonymousType") && 
-                type.GetProperties().Length == 2 &&
-                type.GetProperty("Id") != null &&
-                type.GetProperty("Name") != null)
-            {
-                return new AnonymousTypeReader() as IResultReader<T>;
-            }
-            
+        // 获取 Select 的返回类型
+        var symbolInfo = semanticModel.GetSymbolInfo(invocation);
+        if (symbolInfo.Symbol is not IMethodSymbol methodSymbol)
             return null;
-        }
+            
+        // 提取投影类型（TResult）
+        var resultType = methodSymbol.ReturnType; // IQueryable<TResult>
+        if (resultType is not INamedTypeSymbol { TypeArguments.Length: 1 } namedType)
+            return null;
+            
+        var projectionType = namedType.TypeArguments[0];
         
-        private sealed class AnonymousTypeReader : IResultReader<T>
+        // 提取 lambda 表达式中的列信息
+        var lambda = GetLambdaExpression(invocation);
+        var columns = ExtractColumns(lambda, semanticModel);
+        
+        return new SelectCallInfo
         {
-            // 使用 Unsafe.As 或其他 AOT 友好的方式
-            public T Read(IDataReader reader)
+            ProjectionType = projectionType,
+            Columns = columns,
+            Location = invocation.GetLocation(),
+            FilePath = invocation.SyntaxTree.FilePath,
+            LineNumber = invocation.GetLocation().GetLineSpan().StartLinePosition.Line + 1,
+            CharacterNumber = invocation.GetLocation().GetLineSpan().StartLinePosition.Character + 1
+        };
+    }
+}
+```
+
+#### 3. 生成 ResultReader 实现
+
+```csharp
+// Generated/SelectProjections.g.cs
+// <auto-generated/>
+#nullable enable
+
+namespace Sqlx.Generated
+{
+    using System;
+    using System.Data;
+    using System.Runtime.CompilerServices;
+    
+    // 为每个唯一的投影类型生成 ResultReader
+    internal sealed class AnonymousType_User_Id_Name_ResultReader<T> : IResultReader<T>
+    {
+        public T Read(IDataReader reader)
+        {
+            // 使用 Unsafe.As 转换（AOT 友好）
+            var obj = (object)new
             {
-                // 通过构造函数创建匿名类型
-                var ctor = typeof(T).GetConstructors()[0];
-                return (T)ctor.Invoke(new object[] 
-                { 
-                    reader.GetInt32(0), 
-                    reader.GetString(1) 
-                });
-            }
+                Id = reader.GetInt32(0),
+                Name = reader.GetString(1)
+            };
+            return Unsafe.As<object, T>(ref obj);
         }
-    }
-}
-
-// 3. SqlxQueryProvider 使用
-public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
-{
-    if (IsSelectExpression(expression, out var columns))
-    {
-        // 根据列组合查找对应的静态缓存
-        var reader = FindProjectionReader<TElement>(columns);
-        // ...
-    }
-}
-```
-
-### 方案 4：最简单的 AOT 方案 - 委托注册（推荐实现）
-
-**优点：**
-- 完全 AOT 兼容
-- 实现极其简单
-- 利用泛型静态类自动缓存
-- 无需源生成器扩展
-
-**实现思路：**
-
-```csharp
-// 1. 泛型静态缓存类（核心）
-public static class SelectResultReader<T>
-{
-    // 每个类型 T 都有独立的静态字段，自动缓存
-    private static IResultReader<T>? _instance;
-    
-    public static IResultReader<T>? Instance
-    {
-        get => _instance;
-        set => _instance ??= value;  // 只能设置一次
-    }
-}
-
-// 2. 用户手动注册（在查询前）
-SelectResultReader<UserIdName>.Instance = new DelegateResultReader<UserIdName>(
-    reader => new UserIdName 
-    { 
-        Id = reader.GetInt32(0), 
-        Name = reader.GetString(1) 
-    },
-    new[] { "id", "name" }
-);
-
-// 3. 或者使用辅助方法
-public static class SelectExtensions
-{
-    public static IQueryable<TResult> SelectWithReader<TSource, TResult>(
-        this IQueryable<TSource> source,
-        Expression<Func<TSource, TResult>> selector,
-        Func<IDataReader, TResult> readerFunc,
-        string[] columnNames)
-    {
-        // 自动注册到泛型静态缓存
-        SelectResultReader<TResult>.Instance = new DelegateResultReader<TResult>(readerFunc, columnNames);
         
-        return source.Select(selector);
-    }
-}
-
-// 4. 使用
-var result = SqlQuery.ForSqlite<User>()
-    .SelectWithReader(
-        u => new { u.Id, u.Name },
-        reader => new { Id = reader.GetInt32(0), Name = reader.GetString(1) },
-        new[] { "id", "name" }
-    )
-    .ToList();
-
-// 5. DelegateResultReader 实现
-internal class DelegateResultReader<T> : IResultReader<T>
-{
-    private readonly Func<IDataReader, T> _readFunc;
-    private readonly string[] _columnNames;
-    
-    public DelegateResultReader(Func<IDataReader, T> readFunc, string[] columnNames)
-    {
-        _readFunc = readFunc;
-        _columnNames = columnNames;
-    }
-    
-    public T Read(IDataReader reader) => _readFunc(reader);
-    
-    public T Read(IDataReader reader, int[] ordinals)
-    {
-        // 简化版：直接调用 Read，因为委托内部已经知道如何读取
-        return _readFunc(reader);
-    }
-    
-    public int[] GetOrdinals(IDataReader reader)
-    {
-        var ordinals = new int[_columnNames.Length];
-        for (int i = 0; i < _columnNames.Length; i++)
+        public T Read(IDataReader reader, int[] ordinals)
         {
-            ordinals[i] = reader.GetOrdinal(_columnNames[i]);
+            var obj = (object)new
+            {
+                Id = reader.GetInt32(ordinals[0]),
+                Name = reader.GetString(ordinals[1])
+            };
+            return Unsafe.As<object, T>(ref obj);
         }
-        return ordinals;
-    }
-}
-```
-
-### 方案 5：源生成器自动注册（最佳方案）
-
-**结合方案 2 和方案 4：**
-
-```csharp
-// 1. 用户定义投影类型
-[SqlxProjection(typeof(User), "id", "name")]  // 指定源类型和列
-public partial class UserIdName
-{
-    public int Id { get; set; }
-    public string Name { get; set; }
-}
-
-// 2. 源生成器自动生成
-// Generated/UserIdName.Projection.g.cs
-partial class UserIdName
-{
-    static UserIdName()
-    {
-        // 自动注册到泛型静态缓存
-        global::Sqlx.SelectResultReader<UserIdName>.Instance = new UserIdNameResultReader();
+        
+        public int[] GetOrdinals(IDataReader reader)
+        {
+            return new[]
+            {
+                reader.GetOrdinal("id"),
+                reader.GetOrdinal("name")
+            };
+        }
     }
     
-    private sealed class UserIdNameResultReader : global::Sqlx.IResultReader<UserIdName>
+    // 命名类型的 ResultReader
+    internal sealed class UserIdName_ResultReader : IResultReader<UserIdName>
     {
         public UserIdName Read(IDataReader reader)
         {
@@ -353,241 +167,309 @@ partial class UserIdName
         
         public int[] GetOrdinals(IDataReader reader)
         {
-            return new[] 
-            { 
-                reader.GetOrdinal("id"), 
-                reader.GetOrdinal("name") 
+            return new[]
+            {
+                reader.GetOrdinal("id"),
+                reader.GetOrdinal("name")
             };
         }
     }
 }
-
-// 3. SqlxQueryProvider 自动使用
-public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
-{
-    // 检查泛型静态缓存
-    var reader = SelectResultReader<TElement>.Instance;
-    if (reader != null)
-    {
-        var newProvider = new SqlxQueryProvider<TElement>(Dialect)
-        {
-            Connection = Connection,
-            ResultReader = reader
-        };
-        return new SqlxQueryable<TElement>(newProvider, expression);
-    }
-    
-    // 原有逻辑...
-}
-
-// 4. 使用（完全类型安全）
-var result = SqlQuery.ForSqlite<User>()
-    .Select(u => new UserIdName { Id = u.Id, Name = u.Name })
-    .ToList();
-// 自动使用 SelectResultReader<UserIdName>.Instance
 ```
 
-## 推荐实现步骤
-
-### 第一阶段：基础设施（立即实现）
-
-1. **添加泛型静态缓存类**
-   ```csharp
-   // src/Sqlx/SelectResultReader.cs
-   public static class SelectResultReader<T>
-   {
-       private static IResultReader<T>? _instance;
-       public static IResultReader<T>? Instance
-       {
-           get => _instance;
-           set => _instance ??= value;
-       }
-   }
-   ```
-
-2. **修改 SqlxQueryProvider.CreateQuery**
-   ```csharp
-   public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
-   {
-       // 优先检查泛型静态缓存
-       var reader = SelectResultReader<TElement>.Instance;
-       if (reader != null)
-       {
-           var newProvider = new SqlxQueryProvider<TElement>(Dialect)
-           {
-               Connection = Connection,
-               ResultReader = reader
-           };
-           return new SqlxQueryable<TElement>(newProvider, expression);
-       }
-       
-       // 原有逻辑...
-   }
-   ```
-
-3. **添加 DelegateResultReader**
-   ```csharp
-   // src/Sqlx/DelegateResultReader.cs
-   public class DelegateResultReader<T> : IResultReader<T>
-   {
-       // 实现...
-   }
-   ```
-
-### 第二阶段：源生成器支持（推荐）
-
-1. **添加 SqlxProjectionAttribute**
-   ```csharp
-   [AttributeUsage(AttributeTargets.Class)]
-   public class SqlxProjectionAttribute : Attribute
-   {
-       public Type SourceType { get; }
-       public string[] Columns { get; }
-       
-       public SqlxProjectionAttribute(Type sourceType, params string[] columns)
-       {
-           SourceType = sourceType;
-           Columns = columns;
-       }
-   }
-   ```
-
-2. **扩展 EntityProviderGenerator**
-   - 检测 `[SqlxProjection]` 标记的类
-   - 生成 ResultReader 实现
-   - 生成静态构造函数自动注册
-
-### 第三阶段：便利方法（可选）
-
-1. **添加 SelectWithReader 扩展方法**
-2. **添加更多辅助方法**
-
-## 避免重复的关键点
-
-1. **利用泛型静态类的单例特性**
-   - `SelectResultReader<T>` 对每个 `T` 都是独立的单例
-   - 无需字典，泛型参数本身就是"键"
-   - 完全 AOT 兼容
-
-2. **复用现有的源生成器**
-   - 扩展 `EntityProviderGenerator` 支持 `[SqlxProjection]`
-   - 生成代码结构与 `[SqlxEntity]` 类似
-   - 自动注册到 `SelectResultReader<T>.Instance`
-
-3. **复用 ColumnMeta 和列名转换**
-   - 投影类型的列名转换复用 `ToSnakeCase` 逻辑
-   - 可选支持 `[Column]` 属性自定义列名
-
-4. **零运行时开销**
-   - 静态构造函数在类型首次访问时执行一次
-   - 之后直接使用缓存的 `Instance`
-   - 无字典查找，无锁竞争
-
-## 示例用法
-
-### 方案 4：手动注册（简单场景）
+#### 4. ModuleInitializer 自动注册
 
 ```csharp
-// 定义投影类型（普通类，无需 partial）
+// Generated/SelectProjections.ModuleInit.g.cs
+// <auto-generated/>
+#nullable enable
+
+namespace Sqlx.Generated
+{
+    using System.Runtime.CompilerServices;
+    
+    internal static class SelectProjectionsInitializer
+    {
+        [ModuleInitializer]
+        internal static void Initialize()
+        {
+            // 自动注册所有生成的 ResultReader
+            // 匿名类型
+            SelectResultReader<<>f__AnonymousType0<int, string>>.Instance = 
+                new AnonymousType_User_Id_Name_ResultReader<<>f__AnonymousType0<int, string>>();
+            
+            // 命名类型
+            SelectResultReader<UserIdName>.Instance = new UserIdName_ResultReader();
+            
+            // ... 其他投影类型
+        }
+    }
+}
+```
+
+#### 5. Interceptor 拦截 Select 调用
+
+```csharp
+// Generated/SelectInterceptors.g.cs
+// <auto-generated/>
+#nullable enable
+
+using System;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
+
+namespace Sqlx.Generated
+{
+    internal static class SelectInterceptors
+    {
+        // 拦截第一个 Select 调用
+        [InterceptsLocation("Program.cs", line: 10, character: 5)]
+        public static IQueryable<TResult> Select_Intercepted_1<TSource, TResult>(
+            this IQueryable<TSource> source,
+            Expression<Func<TSource, TResult>> selector)
+        {
+            // 获取 SqlxQueryProvider
+            if (source is not SqlxQueryable<TSource> sqlxQuery)
+                return source.Select(selector);
+            
+            var provider = sqlxQuery.Provider as SqlxQueryProvider<TSource>;
+            if (provider == null)
+                return source.Select(selector);
+            
+            // 从泛型静态缓存获取 ResultReader
+            var reader = SelectResultReader<TResult>.Instance;
+            
+            // 创建新的 Provider 并注入 ResultReader
+            var newProvider = new SqlxQueryProvider<TResult>(provider.Dialect)
+            {
+                Connection = provider.Connection,
+                ResultReader = reader  // 自动注入
+            };
+            
+            // 构建新的表达式树
+            var selectMethod = typeof(Queryable).GetMethods()
+                .First(m => m.Name == "Select" && m.GetParameters().Length == 2);
+            var genericMethod = selectMethod.MakeGenericMethod(typeof(TSource), typeof(TResult));
+            var newExpression = Expression.Call(
+                null,
+                genericMethod,
+                source.Expression,
+                Expression.Quote(selector));
+            
+            return new SqlxQueryable<TResult>(newProvider, newExpression);
+        }
+        
+        // 拦截第二个 Select 调用
+        [InterceptsLocation("UserService.cs", line: 25, character: 9)]
+        public static IQueryable<TResult> Select_Intercepted_2<TSource, TResult>(
+            this IQueryable<TSource> source,
+            Expression<Func<TSource, TResult>> selector)
+        {
+            // 同上...
+        }
+        
+        // ... 为每个 Select 调用生成一个拦截器
+    }
+}
+```
+
+#### 6. SqlxQueryProvider 使用缓存
+
+```csharp
+// src/Sqlx/SqlxQueryProvider.cs
+public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
+{
+    // 优先检查泛型静态缓存
+    var reader = SelectResultReader<TElement>.Instance;
+    
+    if (typeof(TElement) == typeof(T))
+    {
+        var typedReader = ResultReader as IResultReader<TElement>;
+        return new SqlxQueryable<TElement>(
+            this as SqlxQueryProvider<TElement> ?? throw new InvalidOperationException(), 
+            expression, 
+            Connection, 
+            typedReader ?? reader);
+    }
+    
+    // 创建新的 Provider
+    var newProvider = new SqlxQueryProvider<TElement>(Dialect)
+    {
+        Connection = Connection,
+        ResultReader = reader  // 使用缓存的 Reader
+    };
+    
+    return new SqlxQueryable<TElement>(newProvider, expression);
+}
+```
+
+### 使用示例
+
+```csharp
+// 1. 匿名类型（自动支持）
+var result = SqlQuery.ForSqlite<User>()
+    .WithConnection(conn)
+    .Select(u => new { u.Id, u.Name })  // 被拦截器拦截
+    .ToList();
+// 源生成器自动：
+// - 生成 ResultReader
+// - ModuleInitializer 注册
+// - Interceptor 注入
+
+// 2. 命名类型
 public class UserIdName
 {
     public int Id { get; set; }
     public string Name { get; set; }
 }
 
-// 手动注册（应用启动时）
-SelectResultReader<UserIdName>.Instance = new DelegateResultReader<UserIdName>(
-    reader => new UserIdName 
-    { 
-        Id = reader.GetInt32(0), 
-        Name = reader.GetString(1) 
-    },
-    new[] { "id", "name" }
-);
-
-// 使用
-var result = SqlQuery.ForSqlite<User>()
-    .WithConnection(conn)
-    .Select(u => new UserIdName { Id = u.Id, Name = u.Name })
-    .ToList();
-```
-
-### 方案 5：源生成器自动注册（推荐）
-
-```csharp
-// 1. 定义投影类型（partial 类）
-[SqlxProjection(typeof(User))]
-public partial class UserIdName
-{
-    public int Id { get; set; }
-    public string Name { get; set; }
-}
-
-// 2. 源生成器自动生成注册代码（无需手动操作）
-
-// 3. 直接使用
 var result = SqlQuery.ForSqlite<User>()
     .WithConnection(conn)
     .Select(u => new UserIdName { Id = u.Id, Name = u.Name })
     .ToList();
 
-// 4. 支持复杂投影
-[SqlxProjection(typeof(User))]
-public partial class UserSummary
-{
-    public int Id { get; set; }
-    public string Name { get; set; }
-    
-    [Column("created_at")]  // 自定义列名
-    public DateTime CreatedAt { get; set; }
-}
-
-// 5. 支持计算列（SQL 端计算）
+// 3. 复杂投影
 var result = SqlQuery.ForSqlite<User>()
     .WithConnection(conn)
-    .Select(u => new UserSummary 
+    .Select(u => new 
     { 
-        Id = u.Id, 
-        Name = u.Name,
-        CreatedAt = u.CreatedAt
+        u.Id, 
+        u.Name,
+        IsAdult = u.Age >= 18  // SQL 端计算
     })
     .ToList();
 ```
 
-## 性能对比
+### 架构优势
 
-| 方案 | 首次调用 | 后续调用 | AOT 支持 | 内存分配 | 实现复杂度 |
-|------|---------|---------|---------|---------|-----------|
-| 源生成器（方案 5） | 0ms | ~10μs | ✅ | 最少 | 中 |
-| 手动注册（方案 4） | 0ms | ~10μs | ✅ | 最少 | 低 |
-| 表达式树 + 字典 | ~1-5ms | ~10μs | ✅ | 少 | 高 |
-| Interceptor（方案 1） | 0ms | ~10μs | ✅ | 最少 | 高 |
+1. **完全自动化**
+   - 用户无需手动注册
+   - 无需标记 `[SqlxProjection]`
+   - 直接使用标准 LINQ Select
 
-## 结论
+2. **零运行时开销**
+   - ModuleInitializer 在模块加载时执行一次
+   - 泛型静态缓存，无字典查找
+   - Interceptor 在编译时注入代码
 
-**推荐实现顺序：**
+3. **完全 AOT 兼容**
+   - 无反射
+   - 无动态代码生成
+   - 所有代码都是编译时生成
 
-1. **立即实现方案 4（手动注册）**
-   - 添加 `SelectResultReader<T>` 泛型静态类
-   - 添加 `DelegateResultReader<T>` 实现
-   - 修改 `SqlxQueryProvider.CreateQuery` 检查缓存
-   - 工作量：~50 行代码，30 分钟
+4. **类型安全**
+   - 编译时检查
+   - 完整的 IntelliSense 支持
 
-2. **后续实现方案 5（源生成器）**
-   - 添加 `[SqlxProjection]` 特性
-   - 扩展 `EntityProviderGenerator` 支持投影类型
-   - 自动生成注册代码
-   - 工作量：~200 行代码，2-3 小时
+5. **无重复代码**
+   - 复用 `ExpressionParser` 提取列信息
+   - 复用 `ColumnMeta` 结构
+   - 复用 `IResultReader<T>` 接口
 
-**核心优势：**
-- ✅ 完全 AOT 兼容（无反射、无字典）
-- ✅ 利用泛型静态类自动缓存（零开销）
-- ✅ 复用现有源生成器架构（零重复）
-- ✅ 类型安全（编译时检查）
-- ✅ 性能最优（接近手写代码）
+### 实现步骤
 
-**与原方案对比：**
-- ❌ 不使用 `ConcurrentDictionary`（字典查找有开销）
-- ❌ 不使用表达式树编译（运行时开销）
-- ✅ 使用泛型静态类（编译时确定，零开销）
-- ✅ 使用源生成器（编译时生成，零运行时开销）
+#### 阶段 1：基础设施
+
+1. **添加 `SelectResultReader<T>` 泛型静态类**
+   ```csharp
+   // src/Sqlx/SelectResultReader.cs
+   public static class SelectResultReader<T> { ... }
+   ```
+
+2. **修改 `SqlxQueryProvider.CreateQuery`**
+   ```csharp
+   // 检查 SelectResultReader<TElement>.Instance
+   ```
+
+#### 阶段 2：源生成器
+
+1. **创建 `SelectInterceptorGenerator`**
+   - 检测所有 Select 调用
+   - 提取投影类型和列信息
+   - 生成唯一的 ResultReader 类
+
+2. **生成 ResultReader 实现**
+   - 匿名类型：使用 `Unsafe.As` 转换
+   - 命名类型：直接构造
+
+3. **生成 ModuleInitializer**
+   - 注册所有 ResultReader 到泛型静态缓存
+
+4. **生成 Interceptor**
+   - 为每个 Select 调用生成拦截器
+   - 自动注入 ResultReader
+
+#### 阶段 3：优化
+
+1. **去重**
+   - 相同投影类型只生成一个 ResultReader
+   - 使用类型签名作为键
+
+2. **错误处理**
+   - 不支持的投影类型给出友好提示
+   - 列不存在时的诊断信息
+
+3. **性能优化**
+   - 缓存列序号
+   - 使用 ArrayPool 减少分配
+
+### 性能对比
+
+| 特性 | 手动注册 | ModuleInitializer | 差异 |
+|------|---------|------------------|------|
+| 初始化时机 | 应用启动 | 模块加载 | 更早 |
+| 注册开销 | 手动调用 | 自动执行 | 零开销 |
+| 运行时查找 | 直接访问 | 直接访问 | 相同 |
+| 代码复杂度 | 需要手动 | 完全自动 | 更简单 |
+
+### 与 EntityProvider 的统一
+
+```csharp
+// 之前：partial 类 + 静态构造函数
+[SqlxEntity]
+partial class User
+{
+    static User()
+    {
+        SqlQuery<User>.EntityProvider = UserEntityProvider.Default;
+    }
+}
+
+// 现在：ModuleInitializer 统一注册
+[ModuleInitializer]
+internal static void Initialize()
+{
+    // 注册 EntityProvider
+    SqlQuery<User>.EntityProvider = UserEntityProvider.Default;
+    SqlQuery<Order>.EntityProvider = OrderEntityProvider.Default;
+    
+    // 注册 SelectResultReader
+    SelectResultReader<UserIdName>.Instance = new UserIdName_ResultReader();
+    SelectResultReader<<>f__AnonymousType0<int, string>>.Instance = 
+        new AnonymousType_User_Id_Name_ResultReader<<>f__AnonymousType0<int, string>>();
+}
+```
+
+### 结论
+
+**使用 Interceptor + ModuleInitializer 的优势：**
+
+1. ✅ **用户体验最佳** - 无需任何配置，直接使用标准 LINQ
+2. ✅ **性能最优** - 编译时生成，零运行时开销
+3. ✅ **完全 AOT 兼容** - 无反射，无动态代码
+4. ✅ **统一架构** - EntityProvider 和 SelectResultReader 都用 ModuleInitializer
+5. ✅ **类型安全** - 编译时检查，完整 IntelliSense
+
+**实现优先级：**
+1. ✅ 添加 `SelectResultReader<T>` 基础设施
+2. ✅ 创建 `SelectInterceptorGenerator` 源生成器
+3. ✅ 生成 ResultReader 实现
+4. ✅ 生成 ModuleInitializer 注册代码
+5. ✅ 生成 Interceptor 拦截代码
+6. ✅ 修改现有 EntityProvider 使用 ModuleInitializer
+```
+
+
+
+

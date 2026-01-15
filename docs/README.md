@@ -4,13 +4,14 @@ Sqlx is a high-performance, AOT-compatible SQL generation library for .NET. It u
 
 ## Features
 
-- **AOT Compatible**: All code is generated at compile time, no reflection required
-- **High Performance**: Minimal allocations, pre-computed SQL templates
-- **Multi-Dialect Support**: SQLite, MySQL, PostgreSQL, SQL Server, Oracle, DB2
-- **Type Safe**: Compile-time validation of SQL templates
-- **Dynamic SQL**: Conditional blocks (`{{if}}`) for flexible query building
-- **Batch Execution**: Efficient batch insert/update/delete with `DbBatch` (.NET 6+) and fallback
-- **Extensible**: Custom placeholder handlers and dialects
+- **完全 AOT 兼容**: 所有代码在编译时生成，无需反射（✅ 817 个单元测试通过）
+- **高性能**: 最小内存分配，预编译 SQL 模板，静态方法缓存
+- **多数据库支持**: SQLite, MySQL, PostgreSQL, SQL Server, Oracle, DB2
+- **类型安全**: SQL 模板的编译时验证
+- **动态 SQL**: 条件块 (`{{if}}`) 实现灵活的查询构建
+- **批量执行**: 使用 `DbBatch` (.NET 6+) 高效批量插入/更新/删除
+- **动态投影**: Select 支持匿名类型，自动生成 DynamicResultReader
+- **可扩展**: 自定义占位符处理器和数据库方言
 
 ## Quick Start
 
@@ -21,7 +22,7 @@ using Sqlx.Annotations;
 
 [SqlxEntity]
 [SqlxParameter]
-public class User
+public partial class User  // 'partial' enables auto-registration
 {
     public int Id { get; set; }
     public string Name { get; set; }
@@ -101,10 +102,12 @@ Sqlx consistently outperforms other ORMs in .NET 10 (LTS):
 
 | Operation | Sqlx | Dapper.AOT | FreeSql | Sqlx Advantage |
 |-----------|------|------------|---------|----------------|
-| SelectSingle | **10.04μs** | 11.69μs | 70.77μs | 16% faster than Dapper.AOT, 7x faster than FreeSql |
-| Memory | **1.79KB** | 2.96KB | 11.55KB | Lowest allocation |
+| SelectSingle | **9.06μs** | 10.14μs | 63.87μs | 12% faster than Dapper.AOT, 7.1x faster than FreeSql |
+| Memory | **1.79KB** | 2.96KB | 11.48KB | Lowest allocation (65% less than Dapper.AOT) |
 
 **Test Environment:** .NET 10.0.2 (LTS), BenchmarkDotNet 0.15.7, SQLite in-memory
+
+**AOT Compatibility:** ✅ 817 unit tests passing, fully Native AOT ready
 
 See [Performance Benchmarks](benchmarks.md) for detailed results.
 

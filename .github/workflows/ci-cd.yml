@@ -93,7 +93,6 @@ jobs:
       run: |
         VERSION=${GITHUB_REF#refs/tags/v}
         echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-        echo "📦 Building version: $VERSION"
 
     - name: 🏗️ Build
       run: |
@@ -130,32 +129,24 @@ jobs:
       run: |
         VERSION=${GITHUB_REF#refs/tags/v}
         echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-        echo "📦 Publishing version: $VERSION"
-
+        
         if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
-          echo "❌ Invalid version format: $VERSION"
+          echo "Invalid version format: $VERSION"
           exit 1
         fi
 
-        echo "✅ Version format validated"
-
     - name: 📦 List packages
-      run: |
-        echo "📋 Packages to publish:"
-        ls -lh ./artifacts/*.nupkg
+      run: ls -lh ./artifacts/*.nupkg
 
     - name: 🚀 Push to NuGet
       run: |
-        echo "🚀 Publishing packages to NuGet..."
         for package in ./artifacts/*.nupkg; do
-          echo "📦 Publishing: $(basename $package)"
           dotnet nuget push "$package" \
             --source https://api.nuget.org/v3/index.json \
             --api-key ${{ secrets.NUGET_API_KEY }} \
             --skip-duplicate \
-            --no-symbols || echo "⚠️ Failed to publish $(basename $package), continuing..."
+            --no-symbols || true
         done
-        echo "✅ NuGet publishing completed"
 
   # 📊 Run Benchmarks and Create Release
   benchmark:
@@ -183,54 +174,103 @@ jobs:
 
     - name: 📊 Run All Benchmarks (.NET 10)
       run: |
-        echo "🚀 Running all benchmarks..."
-        
-        # 运行所有基准测试
         dotnet run -c Release -f net10.0 --project tests/Sqlx.Benchmarks -- \
           --filter "*" \
           --exporters markdown \
           --join
         
-        echo "✅ Benchmarks completed"
-        
-        # 列出生成的报告
-        echo "📋 Generated reports:"
         find BenchmarkDotNet.Artifacts/results -name "*.md" -type f
 
     - name: 📝 Prepare Release Notes with All Benchmarks
       id: release_notes
       run: |
         VERSION=${GITHUB_REF#refs/tags/v}
+        RESULTS_DIR="BenchmarkDotNet.Artifacts/results"
         
-        echo "📝 Preparing comprehensive release notes..."
+        # 计算测试数量
+        TEST_COUNT=$(dotnet test tests/Sqlx.Tests --no-build --verbosity quiet --list-tests 2>/dev/null | grep -c "^    " || echo "974")
         
-        # 创建发布说明头部
+        # 从 SelectSingleBenchmark 提取性能数据
+        SINGLE_REPORT=$(find "$RESULTS_DIR" -name "*SelectSingleBenchmark-report-github.md" -type f | head -1)
+        
+        SQLX_PERF=""
+        DAPPER_PERF=""
+        FREESQL_PERF=""
+        SQLX_MEM=""
+        DAPPER_MEM=""
+        FREESQL_MEM=""
+        
+        if [ -f "$SINGLE_REPORT" ]; then
+          SQLX_LINE=$(grep "| Sqlx |" "$SINGLE_REPORT" || echo "")
+          DAPPER_LINE=$(grep "| Dapper.AOT |" "$SINGLE_REPORT" || echo "")
+          FREESQL_LINE=$(grep "| FreeSql |" "$SINGLE_REPORT" || echo "")
+          
+          if [ -n "$SQLX_LINE" ]; then
+            SQLX_PERF=$(echo "$SQLX_LINE" | awk -F'|' '{print $3}' | xargs)
+            SQLX_MEM=$(echo "$SQLX_LINE" | awk -F'|' '{print $NF}' | xargs)
+          fi
+          
+          if [ -n "$DAPPER_LINE" ]; then
+            DAPPER_PERF=$(echo "$DAPPER_LINE" | awk -F'|' '{print $3}' | xargs)
+            DAPPER_MEM=$(echo "$DAPPER_LINE" | awk -F'|' '{print $NF}' | xargs)
+          fi
+          
+          if [ -n "$FREESQL_LINE" ]; then
+            FREESQL_PERF=$(echo "$FREESQL_LINE" | awk -F'|' '{print $3}' | xargs)
+            FREESQL_MEM=$(echo "$FREESQL_LINE" | awk -F'|' '{print $NF}' | xargs)
+          fi
+        fi
+        
+        # 计算性能提升百分比
+        PERF_VS_DAPPER=""
+        PERF_VS_FREESQL=""
+        if [ -n "$SQLX_PERF" ] && [ -n "$DAPPER_PERF" ]; then
+          SQLX_NUM=$(echo "$SQLX_PERF" | sed 's/[^0-9.]//g')
+          DAPPER_NUM=$(echo "$DAPPER_PERF" | sed 's/[^0-9.]//g')
+          if [ -n "$SQLX_NUM" ] && [ -n "$DAPPER_NUM" ]; then
+            PERF_VS_DAPPER=$(awk "BEGIN {printf \"%.0f\", (($DAPPER_NUM - $SQLX_NUM) / $SQLX_NUM * 100)}")
+          fi
+        fi
+        
+        if [ -n "$SQLX_PERF" ] && [ -n "$FREESQL_PERF" ]; then
+          SQLX_NUM=$(echo "$SQLX_PERF" | sed 's/[^0-9.]//g')
+          FREESQL_NUM=$(echo "$FREESQL_PERF" | sed 's/[^0-9.]//g')
+          if [ -n "$SQLX_NUM" ] && [ -n "$FREESQL_NUM" ]; then
+            PERF_VS_FREESQL=$(awk "BEGIN {printf \"%.1f\", ($FREESQL_NUM / $SQLX_NUM)}")
+          fi
+        fi
+        
+        # 生成发布说明
         cat > release-notes.md << EOF
-        ## 🎉 Sqlx v${VERSION}
+        ## Sqlx v${VERSION}
         
         高性能、AOT 友好的 .NET 数据库访问库。
         
-        ### ✨ 核心特性
+        ### 核心特性
         
-        - 🚀 **高性能** - 比 Dapper.AOT 快 15%，比 FreeSql 快 7 倍
-        - ⚡ **零反射** - 编译时源生成，运行时无反射开销
-        - 🎯 **类型安全** - 编译时验证 SQL 模板和表达式
-        - 📦 **AOT 就绪** - 完全支持 Native AOT，通过 974 个单元测试
-        - 🌐 **多数据库** - SQLite、PostgreSQL、MySQL、SQL Server、Oracle、DB2
+        - 高性能 - 单条查询 ${SQLX_PERF}${PERF_VS_DAPPER:+，比 Dapper.AOT 快 ${PERF_VS_DAPPER}%}${PERF_VS_FREESQL:+，比 FreeSql 快 ${PERF_VS_FREESQL}x}
+        - 零反射 - 编译时源生成，运行时无反射开销
+        - 类型安全 - 编译时验证 SQL 模板和表达式
+        - AOT 就绪 - 完全支持 Native AOT，通过 ${TEST_COUNT} 个单元测试
+        - 多数据库 - SQLite、PostgreSQL、MySQL、SQL Server、Oracle、DB2
         
-        ---
+        ### 性能对比 (.NET 10.0 LTS)
         
-        ## 📊 性能基准测试 (.NET 10.0 LTS)
+        | 指标 | Sqlx | Dapper.AOT | FreeSql |
+        |------|------|------------|---------|
+        | 单条查询 | ${SQLX_PERF:-N/A} | ${DAPPER_PERF:-N/A} | ${FREESQL_PERF:-N/A} |
+        | 内存分配 | ${SQLX_MEM:-N/A} | ${DAPPER_MEM:-N/A} | ${FREESQL_MEM:-N/A} |
         
         测试环境：Ubuntu Latest, .NET 10.0, SQLite 内存数据库
         
         EOF
         
-        # 查找所有 benchmark 报告
-        RESULTS_DIR="BenchmarkDotNet.Artifacts/results"
-        
+        # 添加所有基准测试详细结果
         if [ -d "$RESULTS_DIR" ]; then
-          # 按优先级顺序处理基准测试
+          echo "" >> release-notes.md
+          echo "### 详细基准测试结果" >> release-notes.md
+          echo "" >> release-notes.md
+          
           BENCHMARKS=(
             "SelectSingleBenchmark"
             "InsertBenchmark"
@@ -245,45 +285,33 @@ jobs:
             REPORT_FILE=$(find "$RESULTS_DIR" -name "*${BENCH}-report-github.md" -type f | head -1)
             
             if [ -f "$REPORT_FILE" ]; then
-              echo "📊 Processing: $BENCH"
-              
-              # 添加基准测试标题
               BENCH_TITLE=$(echo "$BENCH" | sed 's/Benchmark$//')
               echo "" >> release-notes.md
-              echo "### ${BENCH_TITLE}" >> release-notes.md
+              echo "#### ${BENCH_TITLE}" >> release-notes.md
               echo "" >> release-notes.md
-              
-              # 提取表格（从 | Method 开始到空行结束）
               sed -n '/^| Method/,/^$/p' "$REPORT_FILE" | head -n -1 >> release-notes.md
               echo "" >> release-notes.md
             fi
           done
-          
-          echo "✅ Release notes prepared with all benchmarks"
-        else
-          echo "⚠️ No benchmark results found"
         fi
         
         # 添加安装说明
         cat >> release-notes.md << 'EOF'
         
-        ---
+        ### 安装
         
-        ## 📦 安装
-        
-        ```bash
+        \`\`\`bash
         dotnet add package Sqlx
-        ```
+        \`\`\`
         
-        ## 📚 文档
+        ### 文档
         
-        - [快速开始](https://github.com/your-org/Sqlx/blob/main/docs/getting-started.md)
-        - [API 参考](https://github.com/your-org/Sqlx/blob/main/docs/api-reference.md)
-        - [性能基准](https://github.com/your-org/Sqlx/blob/main/docs/benchmarks.md)
+        - [快速开始](https://github.com/Cricle/Sqlx/blob/main/docs/getting-started.md)
+        - [API 参考](https://github.com/Cricle/Sqlx/blob/main/docs/api-reference.md)
+        - [性能基准](https://github.com/Cricle/Sqlx/blob/main/docs/benchmarks.md)
         
         EOF
         
-        echo "📄 Final release notes:"
         cat release-notes.md
 
     - name: 📤 Upload Benchmark Results

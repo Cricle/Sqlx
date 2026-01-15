@@ -25,7 +25,7 @@
     <Authors>Sqlx Team</Authors>
     <Company>Sqlx</Company>
     <Product>Sqlx</Product>
-    <Copyright>Copyright © 2025 Sqlx Team</Copyright>
+    <Copyright>Copyright © 2026 Sqlx Team</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/sqlxorg/sqlx</PackageProjectUrl>
     <RepositoryUrl>https://github.com/sqlxorg/sqlx</RepositoryUrl>
@@ -36,16 +36,4 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
-  <!-- VS SDK package versions -->
-  <PropertyGroup>
-    <VSSdkVersion>17.9.37000</VSSdkVersion>
-    <VSBuildToolsVersion>17.9.3168</VSBuildToolsVersion>
-    <RoslynVersion>4.8.0</RoslynVersion>
-    <VSLanguageServicesVersion>17.9.187</VSLanguageServicesVersion>
-  </PropertyGroup>
-
-  <!-- Disable unnecessary analyzer warnings -->
-  <PropertyGroup>
-    <NoWarn>$(NoWarn);CS1701;CS1702;CS8002;CS8618;CS8625;CS8600;CS8602;CS8604;CS8603;CS8601;VSTHRD100;VSTHRD010;VSSDK006;RS1035;SA1209;SA1111</NoWarn>
-  </PropertyGroup>
 </Project>

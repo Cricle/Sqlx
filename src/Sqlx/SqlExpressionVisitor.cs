@@ -105,6 +105,17 @@ namespace Sqlx
                 case "Skip":
                     VisitSkip(node);
                     break;
+                case "First":
+                case "FirstOrDefault":
+                    VisitFirst(node);
+                    break;
+                case "Count":
+                case "LongCount":
+                    // Count is handled in BuildSql by wrapping the query
+                    break;
+                case "ToList":
+                    // ToList doesn't modify the SQL, just materializes results
+                    break;
                 case "GroupBy":
                     VisitGroupBy(node);
                     break;
@@ -136,12 +147,14 @@ namespace Sqlx
                 var selector = GetLambda(node.Arguments[1]);
                 if (selector != null)
                 {
-                    // If we have GROUP BY, we need to validate that SELECT only contains:
-                    // 1. Columns in GROUP BY clause
-                    // 2. Aggregate functions
-                    // For now, we'll extract columns and let the database validate
+                    // When we have GROUP BY, the Select after GroupBy needs special handling
+                    // The selector body should contain aggregate functions and/or grouping keys
                     _selectColumns.Clear();
-                    _selectColumns.AddRange(_parser.ExtractColumns(selector.Body));
+                    
+                    // Parse the selector body to extract columns/aggregates
+                    // This will handle both simple property access and aggregate function calls
+                    var columns = _parser.ExtractColumns(selector.Body);
+                    _selectColumns.AddRange(columns);
                 }
             }
         }
@@ -172,6 +185,23 @@ namespace Sqlx
             if (node.Arguments.Count > 1 && node.Arguments[1] is ConstantExpression c && c.Value is int skip)
             {
                 _skip = skip;
+            }
+        }
+
+        private void VisitFirst(MethodCallExpression node)
+        {
+            // First() and FirstOrDefault() are equivalent to Take(1)
+            _take = 1;
+            
+            // If there's a predicate argument, treat it as a Where clause
+            if (node.Arguments.Count > 1)
+            {
+                var predicate = GetLambda(node.Arguments[1]);
+                if (predicate != null)
+                {
+                    var condition = _parser.Parse(predicate.Body);
+                    _whereConditions.Add(string.Concat("(", condition, ")"));
+                }
             }
         }
 

@@ -89,6 +89,50 @@ namespace Sqlx
             }
         }
 
+        /// <summary>
+        /// Executes a scalar query and returns a single value.
+        /// </summary>
+        /// <param name="connection">The database connection.</param>
+        /// <param name="sql">The SQL query.</param>
+        /// <param name="parameters">The query parameters.</param>
+        /// <returns>The scalar result.</returns>
+        public static object? ExecuteScalar(
+            DbConnection connection,
+            string sql,
+            IEnumerable<KeyValuePair<string, object?>>? parameters)
+        {
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            using var command = CreateCommand(connection, sql, parameters);
+            return command.ExecuteScalar();
+        }
+
+        /// <summary>
+        /// Executes a scalar query asynchronously and returns a single value.
+        /// </summary>
+        /// <param name="connection">The database connection.</param>
+        /// <param name="sql">The SQL query.</param>
+        /// <param name="parameters">The query parameters.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>The scalar result.</returns>
+        public static async Task<object?> ExecuteScalarAsync(
+            DbConnection connection,
+            string sql,
+            IEnumerable<KeyValuePair<string, object?>>? parameters,
+            CancellationToken cancellationToken = default)
+        {
+            if (connection.State != ConnectionState.Open)
+            {
+                await connection.OpenAsync(cancellationToken);
+            }
+
+            await using var command = CreateCommand(connection, sql, parameters);
+            return await command.ExecuteScalarAsync(cancellationToken);
+        }
+
         private static DbCommand CreateCommand(DbConnection connection, string sql, IEnumerable<KeyValuePair<string, object?>>? parameters)
         {
             var command = connection.CreateCommand();

@@ -10,6 +10,10 @@ using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Threading;
+using System.Xml.Linq;
+
+
 #if NET5_0_OR_GREATER
 using System.Diagnostics.CodeAnalysis;
 #endif
@@ -56,7 +60,7 @@ namespace Sqlx
 #if NET5_0_OR_GREATER
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
 #endif
-            TElement>(Expression expression)
+        TElement>(Expression expression)
         {
             var reader = ResultReader as IResultReader<TElement>;
             return new SqlxQueryable<TElement>(this, expression, Connection, reader);
@@ -83,152 +87,38 @@ namespace Sqlx
             if (expression is MethodCallExpression methodCall)
             {
                 var methodName = methodCall.Method.Name;
-                
+
                 // Handle First/FirstOrDefault
-                if (methodName == "First" || methodName == "FirstOrDefault")
+                switch (methodName)
                 {
-                    return ExecuteFirst<TResult>(expression, methodName == "FirstOrDefault");
-                }
-                
-                // Handle Count/LongCount
-                if (methodName == "Count" || methodName == "LongCount")
-                {
-                    return ExecuteCount<TResult>(expression);
-                }
-                
-                // Handle ToList
-                if (methodName == "ToList")
-                {
-                    return ExecuteToList<TResult>(expression);
+                    case "First":
+                    case "FirstOrDefault":
+                        {
+                            var (sql, parameters) = ToSqlWithParameters(expression);
+                            var result = DbExecutor.ExecuteReader(Connection, sql, parameters, (IResultReader<TResult>)ResultReader!);
+                            return methodName== "First"
+                                ? result.First()
+                                : result.FirstOrDefault()!;
+                        }
+                    case "Count":
+                    case "LongCount":
+                        {
+                            // Generate the base query
+                            var visitor = new SqlExpressionVisitor(Dialect, parameterized: true);
+                            var baseSql = visitor.GenerateSql(methodCall.Arguments[0]); // Get the source query without Count
+                            var parameters = visitor.GetParameters();
+                            
+                            // Wrap in COUNT query
+                            var sql = $"SELECT COUNT(*) FROM ({baseSql}) AS CountQuery";
+                            
+                            var result = DbExecutor.ExecuteScalar(Connection, sql, parameters);
+                            return (TResult)Convert.ChangeType(result!, typeof(TResult));
+                        }
                 }
             }
 
             throw new NotSupportedException(
                 $"Execute is not supported for expression type '{expression.NodeType}'. Supported methods: First, FirstOrDefault, Count, LongCount, ToList.");
-        }
-
-        private TResult ExecuteFirst<TResult>(Expression expression, bool orDefault)
-        {
-            // Generate SQL using visitor (which will add LIMIT 1 for First)
-            var visitor = new SqlExpressionVisitor(Dialect, parameterized: true);
-            var sql = visitor.GenerateSql(expression);
-            var parameters = visitor.GetParameters();
-
-            if (Connection!.State != ConnectionState.Open)
-            {
-                Connection.Open();
-            }
-
-            using var command = Connection.CreateCommand();
-            command.CommandText = sql;
-            
-            if (parameters != null)
-            {
-                foreach (var p in parameters)
-                {
-                    var param = command.CreateParameter();
-                    param.ParameterName = p.Key;
-                    param.Value = p.Value ?? DBNull.Value;
-                    command.Parameters.Add(param);
-                }
-            }
-            
-            using var reader = command.ExecuteReader();
-            var resultReader = (IResultReader<TResult>)ResultReader!;
-            var ordinals = resultReader.GetOrdinals(reader);
-            
-            if (reader.Read())
-            {
-                return resultReader.Read(reader, ordinals);
-            }
-            
-            if (orDefault)
-            {
-                return default!;
-            }
-            
-            throw new InvalidOperationException("Sequence contains no elements");
-        }
-
-        private TResult ExecuteCount<TResult>(Expression expression)
-        {
-            // Generate the base SQL (without Count wrapper)
-            var visitor = new SqlExpressionVisitor(Dialect, parameterized: true);
-            var baseSql = visitor.GenerateSql(expression);
-            var parameters = visitor.GetParameters();
-            
-            // Wrap in COUNT query
-            var sql = $"SELECT COUNT(*) FROM ({baseSql}) AS CountQuery";
-
-            if (Connection!.State != ConnectionState.Open)
-            {
-                Connection.Open();
-            }
-
-            using var command = Connection.CreateCommand();
-            command.CommandText = sql;
-            
-            if (parameters != null)
-            {
-                foreach (var p in parameters)
-                {
-                    var param = command.CreateParameter();
-                    param.ParameterName = p.Key;
-                    param.Value = p.Value ?? DBNull.Value;
-                    command.Parameters.Add(param);
-                }
-            }
-            
-            var result = command.ExecuteScalar();
-            return (TResult)Convert.ChangeType(result!, typeof(TResult));
-        }
-
-        private TResult ExecuteToList<TResult>(Expression expression)
-        {
-            // Generate SQL using visitor
-            var visitor = new SqlExpressionVisitor(Dialect, parameterized: true);
-            var sql = visitor.GenerateSql(expression);
-            var parameters = visitor.GetParameters();
-            
-            // Get element type from List<T>
-            var elementType = typeof(TResult).GetGenericArguments()[0];
-            
-            if (Connection!.State != ConnectionState.Open)
-            {
-                Connection.Open();
-            }
-
-            using var command = Connection.CreateCommand();
-            command.CommandText = sql;
-            
-            if (parameters != null)
-            {
-                foreach (var p in parameters)
-                {
-                    var param = command.CreateParameter();
-                    param.ParameterName = p.Key;
-                    param.Value = p.Value ?? DBNull.Value;
-                    command.Parameters.Add(param);
-                }
-            }
-            
-            using var reader = command.ExecuteReader();
-            var list = (System.Collections.IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(elementType))!;
-            
-            // Get ordinals once
-            var resultReaderType = ResultReader!.GetType();
-            var getOrdinalsMethod = resultReaderType.GetMethod("GetOrdinals");
-            var ordinals = (int[]?)getOrdinalsMethod!.Invoke(ResultReader, new object[] { reader });
-            
-            // Read all rows
-            var readMethod = resultReaderType.GetMethod("Read", new[] { typeof(IDataRecord), typeof(int[]) });
-            while (reader.Read())
-            {
-                var item = readMethod!.Invoke(ResultReader, new object?[] { reader, ordinals });
-                list.Add(item);
-            }
-            
-            return (TResult)list;
         }
 
         /// <summary>

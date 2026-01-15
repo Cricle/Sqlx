@@ -11,8 +11,8 @@
   <!-- Target frameworks - net10.0 will be added automatically when SDK 10.0+ is available -->
   <PropertyGroup>
     <!-- Base frameworks always supported -->
-    <SqlxTargetFrameworks>netstandard2.1;net8.0;net9.0</SqlxTargetFrameworks>
-    <SqlxTestTargetFramework>net9.0</SqlxTestTargetFramework>
+    <SqlxTargetFrameworks>netstandard2.1;net8.0;net9.0;net10.0</SqlxTargetFrameworks>
+    <SqlxTestTargetFramework>net10.0</SqlxTestTargetFramework>
   </PropertyGroup>
 
   <!-- Version management -->

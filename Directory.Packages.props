@@ -3,97 +3,67 @@
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
+  
   <!-- 核心 .NET 运行时包 -->
   <ItemGroup Label="Runtime">
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.9" />
-    <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="5.0.0" />
     <PackageVersion Include="System.Memory" Version="4.5.5" />
     <PackageVersion Include="System.Threading.Tasks.Extensions" Version="4.5.4" />
-    <PackageVersion Include="System.Data.Common" Version="4.3.0" />
-    <PackageVersion Include="System.Text.Json" Version="8.0.5" />
   </ItemGroup>
+  
   <!-- 编译器和分析器 -->
   <ItemGroup Label="Compiler and Analyzers">
-    <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.8.0" />
-    <PackageVersion Include="StyleCop.Analyzers" Version="1.2.0-beta.556" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.12.0" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
   </ItemGroup>
+  
   <!-- 数据库连接器 -->
   <ItemGroup Label="Database Connectors">
-    <PackageVersion Include="Microsoft.Data.SqlClient" Version="5.2.2" />
-    <PackageVersion Include="Microsoft.Data.Sqlite" Version="8.0.8" />
+    <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.1" />
+    <PackageVersion Include="Npgsql" Version="9.0.2" />
     <PackageVersion Include="MySqlConnector" Version="2.4.0" />
-    <PackageVersion Include="Npgsql" Version="8.0.6" />
-    <PackageVersion Include="System.Data.SQLite" Version="1.0.119" />
-    <PackageVersion Include="IBM.Data.Db2" Version="8.0.0.300" />
+    <PackageVersion Include="Microsoft.Data.SqlClient" Version="5.2.2" />
   </ItemGroup>
-  <!-- Entity Framework（仅测试使用） -->
-  <ItemGroup Label="Entity Framework">
-    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="9.0.9" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.9" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.9" />
-  </ItemGroup>
+  
   <!-- 测试框架 -->
   <ItemGroup Label="Testing">
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
     <PackageVersion Include="MSTest.TestAdapter" Version="3.7.1" />
     <PackageVersion Include="MSTest.TestFramework" Version="3.7.1" />
-    <PackageVersion Include="xunit" Version="2.9.2" />
-    <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
-    <PackageVersion Include="FluentAssertions" Version="6.12.1" />
-    <PackageVersion Include="Moq" Version="4.20.70" />
-    <PackageVersion Include="Verify.MSTest" Version="28.9.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.3" />
-    <PackageVersion Include="FsCheck" Version="2.16.6" />
-    <PackageVersion Include="FsCheck.Xunit" Version="2.16.6" />
-    <PackageVersion Include="Testcontainers" Version="3.10.0" />
-    <PackageVersion Include="Testcontainers.PostgreSql" Version="3.10.0" />
-    <PackageVersion Include="Testcontainers.MySql" Version="3.10.0" />
-    <PackageVersion Include="Testcontainers.MsSql" Version="3.10.0" />
   </ItemGroup>
+  
   <!-- 性能和基准测试 -->
   <ItemGroup Label="Performance">
-    <PackageVersion Include="BenchmarkDotNet" Version="0.14.0" />
+    <PackageVersion Include="BenchmarkDotNet" Version="0.15.7" />
+    <PackageVersion Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.15.7" />
     <PackageVersion Include="Dapper" Version="2.1.35" />
     <PackageVersion Include="Dapper.AOT" Version="1.0.31" />
-    <PackageVersion Include="FreeSql" Version="3.2.833" />
-    <PackageVersion Include="FreeSql.Provider.Sqlite" Version="3.2.833" />
+    <PackageVersion Include="FreeSql" Version="3.5.305" />
+    <PackageVersion Include="FreeSql.Provider.Sqlite" Version="3.5.305" />
     <PackageVersion Include="SqlKata" Version="3.0.0" />
     <PackageVersion Include="SqlKata.Execution" Version="3.0.0" />
-    <PackageVersion Include="System.Diagnostics.PerformanceCounter" Version="8.0.0" />
     <PackageVersion Include="System.Linq.Async" Version="6.0.1" />
   </ItemGroup>
+  
   <!-- Microsoft Extensions -->
   <ItemGroup Label="Microsoft Extensions">
-    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Logging" Version="8.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="9.0.1" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="9.0.1" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="9.0.1" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="9.0.1" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="9.0.1" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="9.0.1" />
   </ItemGroup>
-  <!-- 开发工具 -->
-  <ItemGroup Label="Development Tools">
-    <PackageVersion Include="Microsoft.Build.Locator" Version="1.5.5" />
-    <PackageVersion Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
-  </ItemGroup>
-  <!-- 云和身份验证 -->
-  <ItemGroup Label="Cloud and Authentication">
-    <PackageVersion Include="Azure.Identity" Version="1.12.0" />
-    <PackageVersion Include="Microsoft.Identity.Client" Version="4.63.0" />
-  </ItemGroup>
+  
   <!-- Web API 框架 -->
   <ItemGroup Label="Web API">
-    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0" />
-    <PackageVersion Include="Swashbuckle.AspNetCore" Version="6.9.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="9.0.1" />
+    <PackageVersion Include="Swashbuckle.AspNetCore" Version="7.2.0" />
   </ItemGroup>
-  <!-- AOT 编译器（实验性） -->
-  <ItemGroup Label="AOT Compiler" Condition="'$(EnableAOT)' == 'true'">
-    <PackageVersion Include="Microsoft.DotNet.ILCompiler" Version="9.0.0" />
-  </ItemGroup>
-  <!-- Visual Studio SDK -->
+  
+  <!-- Visual Studio SDK (仅用于扩展开发) -->
   <ItemGroup Label="Visual Studio SDK">
     <PackageVersion Include="Microsoft.VisualStudio.SDK" Version="17.0.32112.339" />
     <PackageVersion Include="Microsoft.VSSDK.BuildTools" Version="17.14.2101" />

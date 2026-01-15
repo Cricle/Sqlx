@@ -245,7 +245,7 @@ namespace Sqlx.Benchmarks.Benchmarks
             var query = (IAsyncEnumerable<BenchmarkEntity>)SqlQuery.ForSqlite<BenchmarkEntity>()
                 .WithConnection(_connection)
                 .WithReader(_reader);
-            return await query.ToListAsync();
+            return await System.Linq.AsyncEnumerable.ToListAsync(query);
         }
 
         [Benchmark(Description = "Async: WHERE + ToListAsync")]
@@ -258,7 +258,7 @@ namespace Sqlx.Benchmarks.Benchmarks
                 .Take(100)
                 .WithConnection(_connection)
                 .WithReader(_reader);
-            return await query.ToListAsync();
+            return await System.Linq.AsyncEnumerable.ToListAsync(query);
         }
 
         [Benchmark(Description = "Async: FirstOrDefaultAsync")]
@@ -268,7 +268,7 @@ namespace Sqlx.Benchmarks.Benchmarks
                 .Where(u => u.Id == 500)
                 .WithConnection(_connection)
                 .WithReader(_reader);
-            return await query.FirstOrDefaultAsync();
+            return await System.Linq.AsyncEnumerable.FirstOrDefaultAsync(query);
         }
 
         [Benchmark(Description = "Async: CountAsync")]
@@ -278,7 +278,7 @@ namespace Sqlx.Benchmarks.Benchmarks
                 .Where(u => u.IsActive)
                 .WithConnection(_connection)
                 .WithReader(_reader);
-            return await query.CountAsync();
+            return await System.Linq.AsyncEnumerable.CountAsync(query);
         }
 
         [Benchmark(Description = "Async: AnyAsync")]
@@ -288,7 +288,7 @@ namespace Sqlx.Benchmarks.Benchmarks
                 .Where(u => u.Id == 500)
                 .WithConnection(_connection)
                 .WithReader(_reader);
-            return await query.AnyAsync();
+            return await System.Linq.AsyncEnumerable.AnyAsync(query);
         }
 
         [Benchmark(Description = "Async: Pagination ToListAsync")]
@@ -300,7 +300,7 @@ namespace Sqlx.Benchmarks.Benchmarks
                 .Take(100)
                 .WithConnection(_connection)
                 .WithReader(_reader);
-            return await query.ToListAsync();
+            return await System.Linq.AsyncEnumerable.ToListAsync(query);
         }
 
         #endregion

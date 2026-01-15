@@ -4,6 +4,8 @@
 
 ## 运行基准测试
 
+### 标准 JIT 测试
+
 ```bash
 # 运行所有基准测试
 dotnet run -c Release
@@ -18,6 +20,40 @@ dotnet run -c Release -- --filter "*Count*"
 dotnet run -c Release -- --filter "*Pagination*"
 dotnet run -c Release -- --filter "*StaticOrdinals*"
 ```
+
+### Native AOT 测试
+
+```bash
+# 运行 .NET 9 Native AOT 测试（对比 JIT vs AOT）
+dotnet run -c Release -f net9.0 -- --aot --filter "*SelectSingle*"
+
+# 运行 .NET 10 Native AOT 测试（LTS 版本）
+dotnet run -c Release -f net10.0 -- --net10-aot --filter "*SelectSingle*"
+
+# 运行所有测试的 .NET 10 AOT 对比
+dotnet run -c Release -f net10.0 -- --net10-aot
+```
+
+**注意**：
+- Native AOT 测试需要较长的编译时间（首次运行可能需要几分钟）
+- .NET 10 是 LTS（长期支持）版本，支持到 2028 年 11 月
+- AOT 测试会同时运行 JIT 和 Native AOT 版本进行对比
+
+**预期结果**：
+- Sqlx 在 JIT 和 AOT 模式下性能应该相近（因为使用源生成器）
+- Dapper.AOT 同样在两种模式下性能相近
+- 两者都应该比使用反射的 ORM（如 FreeSql）快得多
+- .NET 10 相比 .NET 9 应该有额外的性能提升
+
+## 测试配置
+
+### AotConfig
+- **JIT**: 标准 .NET 9.0 JIT 编译
+- **NativeAOT-Net9**: .NET 9.0 Native AOT 编译
+
+### Net10AotConfig
+- **JIT-Net10**: .NET 10.0 JIT 编译
+- **NativeAOT-Net10**: .NET 10.0 Native AOT 编译
 
 ## 基准测试结果
 

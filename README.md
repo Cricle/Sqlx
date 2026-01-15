@@ -2,7 +2,8 @@
 
 [![NuGet](https://img.shields.io/nuget/v/Sqlx)](https://www.nuget.org/packages/Sqlx/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
-[![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0-purple.svg)](#)
+[![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-purple.svg)](#)
+[![LTS](https://img.shields.io/badge/LTS-.NET%2010-green.svg)](#)
 
 编译时源生成器，构建类型安全、高性能的 .NET 数据库访问层。零运行时反射，完全 AOT 兼容。
 
@@ -162,25 +163,32 @@ await connection.ExecuteBatchAsync(sql, users, UserParameterBinder.Default);
 
 基于 BenchmarkDotNet 测试（SQLite 内存数据库，10000 条记录）：
 
+### .NET 10 性能（最新 LTS）
+
 | 场景 | Sqlx vs Dapper.AOT | Sqlx vs FreeSql |
 |------|-------------------|-----------------|
-| 单条查询 | **快 16%** | **快 7.2x** |
-| 更新操作 | **快 12%** | **快 4.3x** |
-| 删除操作 | 持平 | **快 5.2x** |
-| 计数操作 | 持平 | **快 51x** |
+| 单条查询 | **快 16%** | **快 7.0x** |
+| 插入操作 | 持平 | **快 2.0x** |
+| 更新操作 | **快 9%** | **快 4.2x** |
+| 删除操作 | 持平 | **快 5.4x** |
+| 计数操作 | 持平 | **快 50x** |
+
+**测试环境：** .NET 10.0.2 (LTS), BenchmarkDotNet 0.15.7, AMD Ryzen 7 5800H
 
 > 详细数据见 [性能基准测试](docs/benchmarks.md)
 
 ## 支持的数据库
 
-| 数据库 | 方言枚举 |
-|--------|---------|
-| SQLite | `SqlDefineTypes.SQLite` |
-| PostgreSQL | `SqlDefineTypes.PostgreSql` |
-| MySQL | `SqlDefineTypes.MySql` |
-| SQL Server | `SqlDefineTypes.SqlServer` |
-| Oracle | `SqlDefineTypes.Oracle` |
-| IBM DB2 | `SqlDefineTypes.DB2` |
+| 数据库 | 方言枚举 | .NET 版本 |
+|--------|---------|----------|
+| SQLite | `SqlDefineTypes.SQLite` | .NET 8.0+ |
+| PostgreSQL | `SqlDefineTypes.PostgreSql` | .NET 8.0+ |
+| MySQL | `SqlDefineTypes.MySql` | .NET 8.0+ |
+| SQL Server | `SqlDefineTypes.SqlServer` | .NET 8.0+ |
+| Oracle | `SqlDefineTypes.Oracle` | .NET 8.0+ |
+| IBM DB2 | `SqlDefineTypes.DB2` | .NET 8.0+ |
+
+**推荐：** .NET 10 (LTS) - 支持到 2028 年 11 月
 
 ## 更多文档
 

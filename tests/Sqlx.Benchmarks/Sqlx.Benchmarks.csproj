@@ -2,20 +2,27 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>$(SqlxTestTargetFramework)</TargetFramework>
+    <!-- Support .NET 9 and .NET 10 -->
+    <TargetFrameworks>net9.0;net10.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <InterceptorsNamespaces>$(InterceptorsNamespaces);Dapper.AOT</InterceptorsNamespaces>
     <!-- Disable Activity and Interceptor for fair benchmark comparison -->
     <DefineConstants>$(DefineConstants);SQLX_DISABLE_ACTIVITY;SQLX_DISABLE_INTERCEPTOR</DefineConstants>
-    <!-- Suppress Dapper.AOT generated code warnings -->
-    <NoWarn>$(NoWarn);CS9270</NoWarn>
+    <!-- Suppress warnings -->
+    <NoWarn>$(NoWarn);CS9270;NU1603;AD0001</NoWarn>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    
+    <!-- AOT compatibility settings -->
+    <IsAotCompatible>true</IsAotCompatible>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" />
+    <PackageReference Include="BenchmarkDotNet.Diagnostics.Windows" Condition="'$(OS)' == 'Windows_NT'" />
     <PackageReference Include="Dapper" />
     <PackageReference Include="Dapper.AOT" />
     <PackageReference Include="FreeSql" />
@@ -23,7 +30,8 @@
     <PackageReference Include="Microsoft.Data.Sqlite" />
     <PackageReference Include="SqlKata" />
     <PackageReference Include="SqlKata.Execution" />
-    <PackageReference Include="System.Linq.Async" />
+    <!-- System.Linq.Async only for .NET 9, .NET 10 has built-in support -->
+    <PackageReference Include="System.Linq.Async" Condition="'$(TargetFramework)' == 'net9.0'" />
   </ItemGroup>
 
   <ItemGroup>

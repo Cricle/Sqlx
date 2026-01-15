@@ -73,6 +73,7 @@ var user = await repo.GetByEmailAsync("test@example.com");
 - [SQL Templates](sql-templates.md) - Template syntax and placeholders
 - [Dialects](dialects.md) - Database dialect support
 - [Source Generators](source-generators.md) - How code generation works
+- [Performance Benchmarks](benchmarks.md) - Detailed performance comparison
 - [API Reference](api-reference.md) - Complete API documentation
 
 ## Batch Execution
@@ -96,13 +97,16 @@ var affected = await connection.ExecuteBatchAsync(
 
 ## Benchmarks
 
-Sqlx consistently outperforms Dapper.AOT in benchmarks:
+Sqlx consistently outperforms other ORMs in .NET 10 (LTS):
 
-| Operation | Sqlx | Dapper.AOT | Improvement |
-|-----------|------|------------|-------------|
-| SelectSingle | 7.73μs | 9.79μs | 27% faster |
-| Insert | 56.82μs | 76.25μs | 34% faster |
-| Update | 7.51μs | 9.95μs | 32% faster |
+| Operation | Sqlx | Dapper.AOT | FreeSql | Sqlx Advantage |
+|-----------|------|------------|---------|----------------|
+| SelectSingle | **10.04μs** | 11.69μs | 70.77μs | 16% faster than Dapper.AOT, 7x faster than FreeSql |
+| Memory | **1.79KB** | 2.96KB | 11.55KB | Lowest allocation |
+
+**Test Environment:** .NET 10.0.2 (LTS), BenchmarkDotNet 0.15.7, SQLite in-memory
+
+See [Performance Benchmarks](benchmarks.md) for detailed results.
 
 ## License
 

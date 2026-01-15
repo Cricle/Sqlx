@@ -177,7 +177,7 @@ namespace Sqlx.Tests
 
             var sql = queryable.ToSql();
 
-            Assert.AreEqual("SELECT * FROM [User] WHERE [age] >= 30 ORDER BY [name] ASC LIMIT 10", sql);
+            Assert.AreEqual("SELECT [id], [name], [age], [email] FROM [User] WHERE [age] >= 30 ORDER BY [name] ASC LIMIT 10", sql);
         }
 
         [TestMethod]
@@ -189,7 +189,7 @@ namespace Sqlx.Tests
 
             var (sql, parameters) = queryable.ToSqlWithParameters();
 
-            Assert.AreEqual("SELECT * FROM [User] WHERE ([age] >= @p0 AND [name] = @p1)", sql);
+            Assert.AreEqual("SELECT [id], [name], [age], [email] FROM [User] WHERE ([age] >= @p0 AND [name] = @p1)", sql);
             Assert.AreEqual(2, parameters.Count());
             Assert.AreEqual(30, parameters.ElementAt(0).Value);
             Assert.AreEqual("Bob", parameters.ElementAt(1).Value);
@@ -411,7 +411,8 @@ namespace Sqlx.Tests
             Assert.AreEqual(30, users[2].Age);
         }
 
-        public class User
+        [SqlxEntity]
+        public partial class User
         {
             public int Id { get; set; }
             public string Name { get; set; } = string.Empty;

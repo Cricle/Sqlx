@@ -1,10 +1,12 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Linq;
+using Sqlx.Annotations;
 
 namespace Sqlx.Tests;
 
-public class QueryUser
+[SqlxEntity]
+public partial class QueryUser
 {
     public int Id { get; set; }
     public string Name { get; set; } = "";
@@ -124,10 +126,11 @@ public class SqlxQueryableTests
     #region ToSql Basic
 
     [TestMethod]
-    public void ToSql_NoConditions_ReturnsSelectStar()
+    public void ToSql_NoConditions_ReturnsSelectAllColumns()
     {
         var sql = SqlQuery.ForSqlite<QueryUser>().ToSql();
-        Assert.IsTrue(sql.Contains("SELECT *"));
+        // Should list all columns explicitly, not SELECT *
+        Assert.IsTrue(sql.Contains("SELECT [id], [name], [age], [is_active], [salary], [created_at], [email]"));
         Assert.IsTrue(sql.Contains("FROM [QueryUser]"));
     }
 
@@ -509,10 +512,11 @@ public class SqlxQueryableSelectTests
     }
 
     [TestMethod]
-    public void Select_AllColumns_WithoutSelect_GeneratesSelectStar()
+    public void Select_AllColumns_WithoutSelect_GeneratesAllColumnsList()
     {
         var sql = SqlQuery.ForSqlite<QueryUser>().ToSql();
-        Assert.IsTrue(sql.Contains("SELECT *"), $"SQL: {sql}");
+        // Should list all columns explicitly, not SELECT *
+        Assert.IsTrue(sql.Contains("SELECT [id], [name], [age], [is_active], [salary], [created_at], [email]"), $"SQL: {sql}");
     }
 
     #endregion

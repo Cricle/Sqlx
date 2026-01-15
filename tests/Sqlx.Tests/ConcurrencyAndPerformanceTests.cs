@@ -21,7 +21,8 @@ public class ConcurrencyAndPerformanceTests
             var query = SqlQuery.ForSqlite<QueryUser>();
             Assert.IsNotNull(query);
             var sql = query.ToSql();
-            Assert.IsTrue(sql.Contains("SELECT *"));
+            Assert.IsTrue(sql.Contains("SELECT"));
+            Assert.IsTrue(sql.Contains("id")); // Should contain column names
         })).ToArray();
 
         Task.WaitAll(tasks);

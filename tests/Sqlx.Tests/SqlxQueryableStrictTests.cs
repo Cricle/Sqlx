@@ -33,16 +33,16 @@ public class SqlxQueryableCrossDialectTests
     #region Basic SELECT - All Dialects
 
     [TestMethod]
-    [DataRow("SQLite", "[QueryUser]")]
-    [DataRow("SqlServer", "[QueryUser]")]
-    [DataRow("MySql", "`QueryUser`")]
-    [DataRow("PostgreSQL", "\"QueryUser\"")]
-    [DataRow("Oracle", "\"QueryUser\"")]
-    [DataRow("DB2", "\"QueryUser\"")]
-    public void Select_AllDialects_UsesCorrectTableQuoting(string dialect, string expectedTable)
+    [DataRow("SQLite", "[QueryUser]", "[id], [name], [age], [is_active], [salary], [created_at], [email]")]
+    [DataRow("SqlServer", "[QueryUser]", "[id], [name], [age], [is_active], [salary], [created_at], [email]")]
+    [DataRow("MySql", "`QueryUser`", "`id`, `name`, `age`, `is_active`, `salary`, `created_at`, `email`")]
+    [DataRow("PostgreSQL", "\"QueryUser\"", "\"id\", \"name\", \"age\", \"is_active\", \"salary\", \"created_at\", \"email\"")]
+    [DataRow("Oracle", "\"QueryUser\"", "\"id\", \"name\", \"age\", \"is_active\", \"salary\", \"created_at\", \"email\"")]
+    [DataRow("DB2", "\"QueryUser\"", "\"id\", \"name\", \"age\", \"is_active\", \"salary\", \"created_at\", \"email\"")]
+    public void Select_AllDialects_UsesCorrectTableQuoting(string dialect, string expectedTable, string expectedColumns)
     {
         var sql = GetQuery(dialect).ToSql();
-        Assert.IsTrue(sql.Contains("SELECT *"), $"[{dialect}] SQL: {sql}");
+        Assert.IsTrue(sql.Contains($"SELECT {expectedColumns}"), $"[{dialect}] SQL: {sql}");
         Assert.IsTrue(sql.Contains($"FROM {expectedTable}"), $"[{dialect}] SQL: {sql}");
     }
 
@@ -598,10 +598,12 @@ public class SqlxQueryableEdgeCaseTests
     [DataRow("PostgreSQL")]
     [DataRow("Oracle")]
     [DataRow("DB2")]
-    public void EmptyQuery_NoConditions_ReturnsSelectStar(string dialect)
+    public void EmptyQuery_NoConditions_ReturnsAllColumns(string dialect)
     {
         var sql = GetQuery(dialect).ToSql();
-        Assert.IsTrue(sql.Contains("SELECT *"), $"[{dialect}] SQL: {sql}");
+        // Should list all columns explicitly, not SELECT *
+        Assert.IsTrue(sql.Contains("SELECT"), $"[{dialect}] SQL: {sql}");
+        Assert.IsTrue(sql.Contains("id"), $"[{dialect}] Should contain id column. SQL: {sql}");
         Assert.IsFalse(sql.Contains("WHERE"), $"[{dialect}] Should not have WHERE. SQL: {sql}");
     }
 

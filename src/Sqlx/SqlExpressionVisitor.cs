@@ -35,6 +35,7 @@ namespace Sqlx
         private int? _take;
         private int? _skip;
         private string? _tableName;
+        private Type? _entityType;
         private bool _isDistinct;
 
         public SqlExpressionVisitor(SqlDialect dialect, bool parameterized = false)
@@ -64,6 +65,7 @@ namespace Sqlx
             if (node.Value is IQueryable queryable)
             {
                 _tableName = queryable.ElementType.Name;
+                _entityType = queryable.ElementType;
             }
 
             return base.VisitConstant(node);
@@ -245,7 +247,25 @@ namespace Sqlx
             }
             else
             {
-                sb.Append('*');
+                // Never generate SELECT *, always list all columns explicitly
+                // Get all columns from the entity provider
+                var entityProvider = GetEntityProvider();
+                if (entityProvider != null && entityProvider.Columns.Count > 0)
+                {
+                    for (var i = 0; i < entityProvider.Columns.Count; i++)
+                    {
+                        if (i > 0)
+                        {
+                            sb.Append(", ");
+                        }
+                        sb.Append(_dialect.WrapColumn(entityProvider.Columns[i].Name));
+                    }
+                }
+                else
+                {
+                    // Fallback: if no entity provider, use * (should not happen in normal usage)
+                    sb.Append('*');
+                }
             }
 
             // FROM
@@ -345,6 +365,37 @@ namespace Sqlx
                     sb.Append(_skip.Value);
                 }
             }
+        }
+
+        /// <summary>
+        /// Gets the entity provider for the current entity type using reflection.
+        /// This is only called when no explicit Select is specified.
+        /// </summary>
+        private IEntityProvider? GetEntityProvider()
+        {
+            if (_entityType == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                // Try to get the cached EntityProvider from SqlQuery<T>
+                var sqlQueryType = typeof(SqlQuery<>).MakeGenericType(_entityType);
+                var entityProviderProperty = sqlQueryType.GetProperty("EntityProvider", 
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                
+                if (entityProviderProperty != null)
+                {
+                    return entityProviderProperty.GetValue(null) as IEntityProvider;
+                }
+            }
+            catch
+            {
+                // If reflection fails, return null and fall back to SELECT *
+            }
+
+            return null;
         }
     }
 }

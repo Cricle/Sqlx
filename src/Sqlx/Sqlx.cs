@@ -18,11 +18,12 @@ namespace Sqlx
     /// <typeparam name="T">The entity type.</typeparam>
     public static class SqlQuery<
 #if NET5_0_OR_GREATER
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicConstructors)]
 #endif
         T>
     {
         private static IEntityProvider? _cachedEntityProvider;
+        private static IResultReader<T>? _cachedResultReader;
         private static readonly object _lock = new object();
 
         /// <summary>
@@ -36,6 +37,22 @@ namespace Sqlx
                 lock (_lock)
                 {
                     _cachedEntityProvider = value;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the cached result reader for type T.
+        /// Used for Select projections and query results.
+        /// </summary>
+        public static IResultReader<T>? ResultReader
+        {
+            get => _cachedResultReader;
+            set
+            {
+                lock (_lock)
+                {
+                    _cachedResultReader ??= value;  // Only set once
                 }
             }
         }

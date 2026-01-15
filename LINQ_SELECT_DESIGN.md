@@ -97,7 +97,11 @@ public class SelectInterceptorGenerator : IIncrementalGenerator
 }
 ```
 
-#### 3. 生成 ResultReader 实现
+#### 3. 生成 ResultReader 实现（正确的匿名类型处理）
+
+**关键问题：** 匿名类型 `new { Id = 1, Name = "test" }` 的类型是编译器生成的，如 `<>f__AnonymousType0<int, string>`，我们无法在源生成器中直接引用它。
+
+**解决方案：** 源生成器分析 Select lambda，提取属性信息，然后生成**相同结构的匿名类型**，利用 C# 编译器的匿名类型统一机制。
 
 ```csharp
 // Generated/SelectProjections.g.cs
@@ -108,43 +112,147 @@ namespace Sqlx.Generated
 {
     using System;
     using System.Data;
-    using System.Runtime.CompilerServices;
+    using System.Linq.Expressions;
     
-    // 为每个唯一的投影类型生成 ResultReader
+    // 方案 1：利用 C# 匿名类型统一机制（推荐）
+    // 相同结构的匿名类型会被编译器统一为同一个类型
     internal sealed class AnonymousType_User_Id_Name_ResultReader<T> : IResultReader<T>
     {
+        // 编译时生成的委托
+        private static readonly Func<int, string, T> _createInstance = CreateInstanceFunc();
+        
+        private static Func<int, string, T> CreateInstanceFunc()
+        {
+            // 创建表达式：(id, name) => new { Id = id, Name = name }
+            var idParam = Expression.Parameter(typeof(int), "id");
+            var nameParam = Expression.Parameter(typeof(string), "name");
+            
+            // 创建匿名类型实例
+            // 注意：属性名和顺序必须与用户代码中的匿名类型完全一致
+            var anonymousType = new { Id = 0, Name = "" }.GetType();
+            var ctor = anonymousType.GetConstructor(new[] { typeof(int), typeof(string) })!;
+            var newExpr = Expression.New(ctor, idParam, nameParam);
+            
+            // 转换为 T（如果 T 就是这个匿名类型，转换会成功）
+            var convertExpr = Expression.Convert(newExpr, typeof(T));
+            
+            return Expression.Lambda<Func<int, string, T>>(convertExpr, idParam, nameParam).Compile();
+        }
+        
         public T Read(IDataReader reader)
         {
-            // 使用 Unsafe.As 转换（AOT 友好）
-            var obj = (object)new
-            {
-                Id = reader.GetInt32(0),
-                Name = reader.GetString(1)
-            };
-            return Unsafe.As<object, T>(ref obj);
+            return _createInstance(
+                reader.GetInt32(0),
+                reader.GetString(1)
+            );
         }
         
         public T Read(IDataReader reader, int[] ordinals)
         {
-            var obj = (object)new
-            {
-                Id = reader.GetInt32(ordinals[0]),
-                Name = reader.GetString(ordinals[1])
-            };
-            return Unsafe.As<object, T>(ref obj);
+            return _createInstance(
+                reader.GetInt32(ordinals[0]),
+                reader.GetString(ordinals[1])
+            );
         }
         
         public int[] GetOrdinals(IDataReader reader)
         {
-            return new[]
-            {
-                reader.GetOrdinal("id"),
-                reader.GetOrdinal("name")
-            };
+            return new[] { reader.GetOrdinal("id"), reader.GetOrdinal("name") };
         }
     }
     
-    // 命名类型的 ResultReader
+    // 方案 2：直接在生成的代码中创建匿名类型（最简单，推荐）
+    internal sealed class AnonymousType_User_Id_Name_ResultReader_Simple<T> : IResultReader<T>
+    {
+        public T Read(IDataReader reader)
+        {
+            // 直接创建匿名类型，让编译器处理类型统一
+            // 如果用户代码中的匿名类型结构相同，编译器会将它们统一为同一个类型
+            return (T)(object)new
+            {
+                Id = reader.GetInt32(0),
+                Name = reader.GetString(1)
+            };
+        }
+        
+        public T Read(IDataReader reader, int[] ordinals)
+        {
+            return (T)(object)new
+            {
+                Id = reader.GetInt32(ordinals[0]),
+                Name = reader.GetString(ordinals[1])
+            };
+        }
+        
+        public int[] GetOrdinals(IDataReader reader)
+        {
+            return new[] { reader.GetOrdinal("id"), reader.GetOrdinal("name") };
+        }
+    }
+    
+    // 方案 3：使用反射获取构造函数（运行时开销，但 AOT 兼容）
+    internal sealed class AnonymousType_User_Id_Name_ResultReader_Reflection<T> : IResultReader<T>
+    {
+        private static readonly Func<IDataReader, T> _readFunc = BuildReadFunc();
+        
+        private static Func<IDataReader, T> BuildReadFunc()
+        {
+            var type = typeof(T);
+            var ctor = type.GetConstructors()[0];  // 匿名类型只有一个构造函数
+            var parameters = ctor.GetParameters();
+            
+            // 构建表达式树：reader => new T(reader.GetInt32(0), reader.GetString(1))
+            var readerParam = Expression.Parameter(typeof(IDataReader), "reader");
+            
+            var args = new List<Expression>();
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                var paramType = parameters[i].ParameterType;
+                var getMethod = GetReaderMethod(paramType);
+                var callExpr = Expression.Call(
+                    readerParam, 
+                    getMethod, 
+                    Expression.Constant(i));
+                args.Add(callExpr);
+            }
+            
+            var newExpr = Expression.New(ctor, args);
+            return Expression.Lambda<Func<IDataReader, T>>(newExpr, readerParam).Compile();
+        }
+        
+        private static System.Reflection.MethodInfo GetReaderMethod(Type type)
+        {
+            var methodName = type.Name switch
+            {
+                "Int32" => "GetInt32",
+                "Int64" => "GetInt64",
+                "String" => "GetString",
+                "Boolean" => "GetBoolean",
+                "DateTime" => "GetDateTime",
+                "Decimal" => "GetDecimal",
+                "Double" => "GetDouble",
+                "Single" => "GetFloat",
+                "Guid" => "GetGuid",
+                _ => "GetValue"
+            };
+            return typeof(IDataReader).GetMethod(methodName, new[] { typeof(int) })!;
+        }
+        
+        public T Read(IDataReader reader) => _readFunc(reader);
+        
+        public T Read(IDataReader reader, int[] ordinals)
+        {
+            // 简化：直接调用 Read，因为我们在编译时已经知道列的顺序
+            return _readFunc(reader);
+        }
+        
+        public int[] GetOrdinals(IDataReader reader)
+        {
+            return new[] { reader.GetOrdinal("id"), reader.GetOrdinal("name") };
+        }
+    }
+    
+    // 命名类型的 ResultReader（最简单）
     internal sealed class UserIdName_ResultReader : IResultReader<UserIdName>
     {
         public UserIdName Read(IDataReader reader)
@@ -167,14 +275,45 @@ namespace Sqlx.Generated
         
         public int[] GetOrdinals(IDataReader reader)
         {
-            return new[]
-            {
-                reader.GetOrdinal("id"),
-                reader.GetOrdinal("name")
-            };
+            return new[] { reader.GetOrdinal("id"), reader.GetOrdinal("name") };
         }
     }
 }
+```
+
+**关键点：C# 匿名类型统一机制**
+
+```csharp
+// 这两个匿名类型会被编译器统一为同一个类型
+var obj1 = new { Id = 1, Name = "test" };
+var obj2 = new { Id = 2, Name = "test2" };
+
+// typeof(obj1) == typeof(obj2)  // true
+// 它们的类型都是 <>f__AnonymousType0<int, string>
+
+// 因此，源生成器只需要生成相同结构的匿名类型
+// 编译器会自动将它们统一为同一个类型
+```
+
+**推荐使用方案 2（最简单）：**
+
+```csharp
+public T Read(IDataReader reader)
+{
+    // 直接创建匿名类型，编译器会处理类型统一
+    return (T)(object)new
+    {
+        Id = reader.GetInt32(0),
+        Name = reader.GetString(1)
+    };
+}
+```
+
+这个方案：
+- ✅ 完全 AOT 兼容（无反射调用）
+- ✅ 利用 C# 编译器的匿名类型统一机制
+- ✅ 代码简单清晰
+- ✅ 性能优秀（只有一次装箱/拆箱）
 ```
 
 #### 4. ModuleInitializer 自动注册

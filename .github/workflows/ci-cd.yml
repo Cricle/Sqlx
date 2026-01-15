@@ -188,7 +188,7 @@ jobs:
         RESULTS_DIR="BenchmarkDotNet.Artifacts/results"
         
         # 计算测试数量
-        TEST_COUNT=$(dotnet test tests/Sqlx.Tests --no-build --verbosity quiet --list-tests 2>/dev/null | grep -c "^    " || echo "974")
+        TEST_COUNT=$(dotnet test tests/Sqlx.Tests --no-build --verbosity quiet --list-tests 2>/dev/null | grep -c "    " || echo "")
         
         # 从 SelectSingleBenchmark 提取性能数据
         SINGLE_REPORT=$(find "$RESULTS_DIR" -name "*SelectSingleBenchmark-report-github.md" -type f | head -1)
@@ -201,40 +201,42 @@ jobs:
         FREESQL_MEM=""
         
         if [ -f "$SINGLE_REPORT" ]; then
-          SQLX_LINE=$(grep "| Sqlx |" "$SINGLE_REPORT" || echo "")
-          DAPPER_LINE=$(grep "| Dapper.AOT |" "$SINGLE_REPORT" || echo "")
-          FREESQL_LINE=$(grep "| FreeSql |" "$SINGLE_REPORT" || echo "")
-          
+          # 提取 Sqlx 数据
+          SQLX_LINE=$(grep "| Sqlx " "$SINGLE_REPORT" | head -1)
           if [ -n "$SQLX_LINE" ]; then
-            SQLX_PERF=$(echo "$SQLX_LINE" | awk -F'|' '{print $3}' | xargs)
-            SQLX_MEM=$(echo "$SQLX_LINE" | awk -F'|' '{print $NF}' | xargs)
+            SQLX_PERF=$(echo "$SQLX_LINE" | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $3); print $3}')
+            SQLX_MEM=$(echo "$SQLX_LINE" | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $NF); print $NF}')
           fi
           
+          # 提取 Dapper.AOT 数据
+          DAPPER_LINE=$(grep "| Dapper.AOT " "$SINGLE_REPORT" | head -1)
           if [ -n "$DAPPER_LINE" ]; then
-            DAPPER_PERF=$(echo "$DAPPER_LINE" | awk -F'|' '{print $3}' | xargs)
-            DAPPER_MEM=$(echo "$DAPPER_LINE" | awk -F'|' '{print $NF}' | xargs)
+            DAPPER_PERF=$(echo "$DAPPER_LINE" | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $3); print $3}')
+            DAPPER_MEM=$(echo "$DAPPER_LINE" | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $NF); print $NF}')
           fi
           
+          # 提取 FreeSql 数据
+          FREESQL_LINE=$(grep "| FreeSql " "$SINGLE_REPORT" | head -1)
           if [ -n "$FREESQL_LINE" ]; then
-            FREESQL_PERF=$(echo "$FREESQL_LINE" | awk -F'|' '{print $3}' | xargs)
-            FREESQL_MEM=$(echo "$FREESQL_LINE" | awk -F'|' '{print $NF}' | xargs)
+            FREESQL_PERF=$(echo "$FREESQL_LINE" | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $3); print $3}')
+            FREESQL_MEM=$(echo "$FREESQL_LINE" | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $NF); print $NF}')
           fi
         fi
         
-        # 计算性能提升百分比
+        # 计算性能提升
         PERF_VS_DAPPER=""
         PERF_VS_FREESQL=""
         if [ -n "$SQLX_PERF" ] && [ -n "$DAPPER_PERF" ]; then
-          SQLX_NUM=$(echo "$SQLX_PERF" | sed 's/[^0-9.]//g')
-          DAPPER_NUM=$(echo "$DAPPER_PERF" | sed 's/[^0-9.]//g')
+          SQLX_NUM=$(echo "$SQLX_PERF" | grep -oE '[0-9]+\.[0-9]+' | head -1)
+          DAPPER_NUM=$(echo "$DAPPER_PERF" | grep -oE '[0-9]+\.[0-9]+' | head -1)
           if [ -n "$SQLX_NUM" ] && [ -n "$DAPPER_NUM" ]; then
             PERF_VS_DAPPER=$(awk "BEGIN {printf \"%.0f\", (($DAPPER_NUM - $SQLX_NUM) / $SQLX_NUM * 100)}")
           fi
         fi
         
         if [ -n "$SQLX_PERF" ] && [ -n "$FREESQL_PERF" ]; then
-          SQLX_NUM=$(echo "$SQLX_PERF" | sed 's/[^0-9.]//g')
-          FREESQL_NUM=$(echo "$FREESQL_PERF" | sed 's/[^0-9.]//g')
+          SQLX_NUM=$(echo "$SQLX_PERF" | grep -oE '[0-9]+\.[0-9]+' | head -1)
+          FREESQL_NUM=$(echo "$FREESQL_PERF" | grep -oE '[0-9]+\.[0-9]+' | head -1)
           if [ -n "$SQLX_NUM" ] && [ -n "$FREESQL_NUM" ]; then
             PERF_VS_FREESQL=$(awk "BEGIN {printf \"%.1f\", ($FREESQL_NUM / $SQLX_NUM)}")
           fi
@@ -246,30 +248,51 @@ jobs:
         
         高性能、AOT 友好的 .NET 数据库访问库。
         
-        ### 核心特性
+        EOF
         
-        - 高性能 - 单条查询 ${SQLX_PERF}${PERF_VS_DAPPER:+，比 Dapper.AOT 快 ${PERF_VS_DAPPER}%}${PERF_VS_FREESQL:+，比 FreeSql 快 ${PERF_VS_FREESQL}x}
-        - 零反射 - 编译时源生成，运行时无反射开销
-        - 类型安全 - 编译时验证 SQL 模板和表达式
-        - AOT 就绪 - 完全支持 Native AOT，通过 ${TEST_COUNT} 个单元测试
-        - 多数据库 - SQLite、PostgreSQL、MySQL、SQL Server、Oracle、DB2
+        # 只在有数据时添加性能摘要
+        if [ -n "$SQLX_PERF" ] || [ -n "$TEST_COUNT" ]; then
+          echo "### 核心特性" >> release-notes.md
+          echo "" >> release-notes.md
+          
+          if [ -n "$SQLX_PERF" ]; then
+            PERF_TEXT="高性能 - 单条查询 ${SQLX_PERF}"
+            [ -n "$PERF_VS_DAPPER" ] && PERF_TEXT="${PERF_TEXT}，比 Dapper.AOT 快 ${PERF_VS_DAPPER}%"
+            [ -n "$PERF_VS_FREESQL" ] && PERF_TEXT="${PERF_TEXT}，比 FreeSql 快 ${PERF_VS_FREESQL}x"
+            echo "- ${PERF_TEXT}" >> release-notes.md
+          fi
+          
+          echo "- 零反射 - 编译时源生成，运行时无反射开销" >> release-notes.md
+          echo "- 类型安全 - 编译时验证 SQL 模板和表达式" >> release-notes.md
+          
+          if [ -n "$TEST_COUNT" ]; then
+            echo "- AOT 就绪 - 完全支持 Native AOT，通过 ${TEST_COUNT} 个单元测试" >> release-notes.md
+          else
+            echo "- AOT 就绪 - 完全支持 Native AOT" >> release-notes.md
+          fi
+          
+          echo "- 多数据库 - SQLite、PostgreSQL、MySQL、SQL Server、Oracle、DB2" >> release-notes.md
+          echo "" >> release-notes.md
+        fi
         
+        # 只在有完整数据时添加性能对比表格
+        if [ -n "$SQLX_PERF" ] && [ -n "$DAPPER_PERF" ] && [ -n "$FREESQL_PERF" ]; then
+          cat >> release-notes.md << EOF
         ### 性能对比 (.NET 10.0 LTS)
         
         | 指标 | Sqlx | Dapper.AOT | FreeSql |
         |------|------|------------|---------|
-        | 单条查询 | ${SQLX_PERF:-N/A} | ${DAPPER_PERF:-N/A} | ${FREESQL_PERF:-N/A} |
-        | 内存分配 | ${SQLX_MEM:-N/A} | ${DAPPER_MEM:-N/A} | ${FREESQL_MEM:-N/A} |
+        | 单条查询 | ${SQLX_PERF} | ${DAPPER_PERF} | ${FREESQL_PERF} |
+        | 内存分配 | ${SQLX_MEM} | ${DAPPER_MEM} | ${FREESQL_MEM} |
         
         测试环境：Ubuntu Latest, .NET 10.0, SQLite 内存数据库
         
         EOF
+        fi
         
-        # 添加所有基准测试详细结果
+        # 添加详细基准测试结果
         if [ -d "$RESULTS_DIR" ]; then
-          echo "" >> release-notes.md
-          echo "### 详细基准测试结果" >> release-notes.md
-          echo "" >> release-notes.md
+          HAS_RESULTS=false
           
           BENCHMARKS=(
             "SelectSingleBenchmark"
@@ -285,8 +308,13 @@ jobs:
             REPORT_FILE=$(find "$RESULTS_DIR" -name "*${BENCH}-report-github.md" -type f | head -1)
             
             if [ -f "$REPORT_FILE" ]; then
+              if [ "$HAS_RESULTS" = false ]; then
+                echo "### 详细基准测试结果" >> release-notes.md
+                echo "" >> release-notes.md
+                HAS_RESULTS=true
+              fi
+              
               BENCH_TITLE=$(echo "$BENCH" | sed 's/Benchmark$//')
-              echo "" >> release-notes.md
               echo "#### ${BENCH_TITLE}" >> release-notes.md
               echo "" >> release-notes.md
               sed -n '/^| Method/,/^$/p' "$REPORT_FILE" | head -n -1 >> release-notes.md
@@ -297,18 +325,11 @@ jobs:
         
         # 添加安装说明
         cat >> release-notes.md << 'EOF'
-        
         ### 安装
         
-        \`\`\`bash
+        ```bash
         dotnet add package Sqlx
-        \`\`\`
-        
-        ### 文档
-        
-        - [快速开始](https://github.com/Cricle/Sqlx/blob/main/docs/getting-started.md)
-        - [API 参考](https://github.com/Cricle/Sqlx/blob/main/docs/api-reference.md)
-        - [性能基准](https://github.com/Cricle/Sqlx/blob/main/docs/benchmarks.md)
+        ```
         
         EOF
         

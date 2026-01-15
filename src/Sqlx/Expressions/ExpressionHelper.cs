@@ -46,9 +46,6 @@ namespace Sqlx.Expressions
             m.Method.DeclaringType != typeof(Math) &&
             m.Method.Name is "Count" or "CountDistinct" or "Sum" or "Average" or "Avg" or "Max" or "Min" or "StringAgg";
 
-        public static bool IsAnyPlaceholder(MethodCallExpression m) =>
-            m.Method.DeclaringType?.Name == "Any" && m.Method.DeclaringType?.Namespace == "Sqlx";
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static object? GetMemberValueOptimized(MemberExpression m) =>
             m.Type.IsValueType ? GetDefaultValueForValueType(m.Type) : null;

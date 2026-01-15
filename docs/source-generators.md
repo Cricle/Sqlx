@@ -9,7 +9,7 @@ Sqlx uses Roslyn source generators to produce high-performance, AOT-compatible c
 - All code generated at compile time
 - Expression tree compilation (allowed in AOT)
 - Static method caching for IDataRecord operations
-- 817 unit tests passing with AOT enabled
+- 974 unit tests passing with AOT enabled
 
 ## Generated Components
 

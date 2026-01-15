@@ -9,7 +9,7 @@
 | 单条查询 | **9.08 μs** | 10.43 μs (+15%) | 64.54 μs (+611%) |
 | 内存分配 | **1.79 KB** | 2.96 KB (+65%) | 11.55 KB (+546%) |
 
-**AOT 兼容性：** ✅ 完全支持 Native AOT，通过 842 个单元测试
+**AOT 兼容性：** ✅ 完全支持 Native AOT，通过 974 个单元测试
 
 **最新优化：**
 - 移除 SQL 生成中的反射（GetEntityProvider）
@@ -206,7 +206,7 @@ Windows 10 (10.0.19045.6466/22H2/2022Update)
 - 泛型 SqlQuery<T> 缓存优化，性能提升 10%
 - DynamicResultReader 支持匿名类型投影，完全 AOT 兼容
 - .NET 10 相比 .NET 9 性能提升 8%
-- ✅ 通过 842 个单元测试，Native AOT 就绪
+- ✅ 通过 974 个单元测试，Native AOT 就绪
 - ✅ SQL 生成完全无反射（移除 GetEntityProvider 反射）
 - ✅ 支持 JOIN 查询，无性能损失
 

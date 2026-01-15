@@ -67,7 +67,7 @@ public class SqlxQueryableCrossDialectTests
     [DataRow("SQLite", "= 1")]
     [DataRow("SqlServer", "= 1")]
     [DataRow("MySql", "= 1")]
-    [DataRow("PostgreSQL", "= 1")]
+    [DataRow("PostgreSQL", "= true")]
     [DataRow("Oracle", "= 1")]
     [DataRow("DB2", "= 1")]
     public void Where_BooleanTrue_AllDialects_UsesCorrectLiteral(string dialect, string expectedLiteral)
@@ -80,7 +80,7 @@ public class SqlxQueryableCrossDialectTests
     [DataRow("SQLite", "= 0")]
     [DataRow("SqlServer", "= 0")]
     [DataRow("MySql", "= 0")]
-    [DataRow("PostgreSQL", "= 0")]
+    [DataRow("PostgreSQL", "= false")]
     [DataRow("Oracle", "= 0")]
     [DataRow("DB2", "= 0")]
     public void Where_BooleanFalse_AllDialects_UsesCorrectLiteral(string dialect, string expectedLiteral)
@@ -97,8 +97,8 @@ public class SqlxQueryableCrossDialectTests
     [DataRow("SQLite", "LIMIT 10", "OFFSET 20")]
     [DataRow("MySql", "LIMIT 10", "OFFSET 20")]
     [DataRow("PostgreSQL", "LIMIT 10", "OFFSET 20")]
-    [DataRow("Oracle", "LIMIT 10", "OFFSET 20")]
-    [DataRow("DB2", "LIMIT 10", "OFFSET 20")]
+    [DataRow("Oracle", "FETCH NEXT 10 ROWS ONLY", "OFFSET 20 ROWS")]
+    [DataRow("DB2", "FETCH NEXT 10 ROWS ONLY", "OFFSET 20 ROWS")]
     public void Pagination_LimitOffset_AllDialects(string dialect, string expectedLimit, string expectedOffset)
     {
         var sql = GetQuery(dialect).Skip(20).Take(10).ToSql();
@@ -430,7 +430,7 @@ public class SqlxQueryableNestedTests
         Assert.IsTrue(sql.Contains("ASC"), $"[{dialect}] Missing ASC. SQL: {sql}");
         Assert.IsTrue(sql.Contains("DESC"), $"[{dialect}] Missing DESC. SQL: {sql}");
         
-        if (dialect == "SqlServer")
+        if (dialect == "SqlServer" || dialect == "Oracle" || dialect == "DB2")
         {
             Assert.IsTrue(sql.Contains("OFFSET 10 ROWS"), $"[{dialect}] SQL: {sql}");
             Assert.IsTrue(sql.Contains("FETCH NEXT 20 ROWS ONLY"), $"[{dialect}] SQL: {sql}");
@@ -668,7 +668,7 @@ public class SqlxQueryableEdgeCaseTests
     {
         var sql = GetQuery(dialect).Take(0).ToSql();
         
-        if (dialect == "SqlServer")
+        if (dialect == "SqlServer" || dialect == "Oracle" || dialect == "DB2")
         {
             Assert.IsTrue(sql.Contains("FETCH NEXT 0 ROWS ONLY"), $"[{dialect}] SQL: {sql}");
         }

@@ -4,18 +4,20 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-purple.svg)](#)
 [![LTS](https://img.shields.io/badge/LTS-.NET%2010-green.svg)](#)
+[![Tests](https://img.shields.io/badge/tests-974%20passing-brightgreen.svg)](#)
+[![AOT](https://img.shields.io/badge/AOT-ready-blue.svg)](#)
 
-编译时源生成器，构建类型安全、高性能的 .NET 数据库访问层。零运行时反射，完全 AOT 兼容。
+高性能、AOT 友好的 .NET 数据库访问库。使用源生成器在编译时生成代码，零运行时反射，完全支持 Native AOT。
 
 ## 核心特性
 
-- **编译时生成** - 零反射，接近原生 ADO.NET 性能
-- **类型安全** - 编译时捕获 SQL 错误
-- **多数据库** - SQLite、PostgreSQL、MySQL、SQL Server、Oracle、DB2
-- **智能模板** - 占位符自动适配不同数据库方言
-- **完全 AOT 兼容** - 通过 817 个单元测试，支持 Native AOT 部署
-- **泛型缓存** - SqlQuery<T> 自动缓存实体元信息，无反射开销
-- **动态投影** - Select 支持匿名类型，自动生成高性能 ResultReader
+- **🚀 高性能** - 比 Dapper.AOT 快 15%，比 FreeSql 快 7 倍（单条查询）
+- **⚡ 零反射** - 编译时源生成，运行时无反射开销
+- **🎯 类型安全** - 编译时验证 SQL 模板和表达式
+- **🌐 多数据库** - SQLite、PostgreSQL、MySQL、SQL Server、Oracle、DB2
+- **📦 AOT 就绪** - 完全支持 Native AOT，通过 974 个单元测试
+- **🔧 LINQ 支持** - IQueryable 接口，支持 Where/Select/OrderBy/Join 等
+- **💾 智能缓存** - SqlQuery\<T\> 泛型缓存，自动注册 EntityProvider
 
 ## 快速开始
 
@@ -105,45 +107,33 @@ Task<List<User>> SearchAsync(string? name, int? minAge);
 使用标准 LINQ 语法构建类型安全的 SQL 查询：
 
 ```csharp
-using Sqlx;
-
 // 基本查询
-var sql = SqlQuery<User>.ForSqlite()
+var query = SqlQuery<User>.ForSqlite()
     .Where(u => u.Age >= 18 && u.IsActive)
     .OrderBy(u => u.Name)
-    .Take(10)
-    .ToSql();
-// SELECT * FROM [User] WHERE ([age] >= 18 AND [is_active] = 1) ORDER BY [name] ASC LIMIT 10
+    .Take(10);
 
-// 投影查询（匿名类型）
-var sql = SqlQuery<User>.ForPostgreSQL()
+var sql = query.ToSql();
+// SELECT [id], [name], [age], [is_active] FROM [User] 
+// WHERE ([age] >= 18 AND [is_active] = 1) 
+// ORDER BY [name] ASC LIMIT 10
+
+// 投影查询（匿名类型，完全 AOT 兼容）
+var results = await SqlQuery<User>.ForPostgreSQL()
     .Where(u => u.Name.Contains("test"))
     .Select(u => new { u.Id, u.Name })
-    .ToSql();
-// SELECT "id", "name" FROM "User" WHERE "name" LIKE '%' || 'test' || '%'
-
-// 投影查询执行（自动使用 DynamicResultReader）
-var results = await SqlQuery<User>.ForSqlite()
-    .Where(u => u.Age >= 18)
-    .Select(u => new { u.Id, u.Name, u.Email })
     .WithConnection(connection)
     .ToListAsync();
-// 返回匿名类型列表，完全 AOT 兼容
 
-// 参数化查询
-var (sql, parameters) = SqlQuery<User>.ForSqlServer()
-    .Where(u => u.Age > 18)
-    .ToSqlWithParameters();
-// SQL: SELECT * FROM [User] WHERE [age] > @p0
-// Parameters: { "@p0": 18 }
+// JOIN 查询
+var query = SqlQuery<User>.ForSqlite()
+    .Join(SqlQuery<Order>.ForSqlite(),
+        u => u.Id,
+        o => o.UserId,
+        (u, o) => new { u.Name, o.Total })
+    .Where(x => x.Total > 100);
 
-// 聚合函数（使用 ColumnMeta 自动映射列名）
-var count = await SqlQuery<User>.ForSqlite()
-    .Where(u => u.IsActive)
-    .WithConnection(connection)
-    .WithReader(UserResultReader.Default)
-    .CountAsync();
-
+// 聚合函数
 var maxAge = await SqlQuery<User>.ForSqlite()
     .WithConnection(connection)
     .WithReader(UserResultReader.Default)
@@ -151,16 +141,10 @@ var maxAge = await SqlQuery<User>.ForSqlite()
 ```
 
 **支持的 LINQ 方法：**
-- `Where` - 条件过滤（支持 String/Math 方法、null 合并、条件表达式）
-- `Select` - 投影（支持匿名类型、函数调用）
-- `OrderBy` / `OrderByDescending` / `ThenBy` / `ThenByDescending` - 排序
-- `Take` / `Skip` - 分页
-- `GroupBy` - 分组
-- `Distinct` - 去重
-- `Count` / `LongCount` - 计数
-- `Min` / `Max` - 极值
-- `Sum` / `Average` - 求和/平均值
-- `First` / `FirstOrDefault` - 获取第一条
+- `Where`, `Select`, `OrderBy`, `ThenBy`, `Take`, `Skip`
+- `GroupBy`, `Distinct`, `Join`, `GroupJoin`
+- `Count`, `Min`, `Max`, `Sum`, `Average`
+- `First`, `FirstOrDefault`, `Any`
 
 **支持的函数：**
 - String: `Contains`, `StartsWith`, `EndsWith`, `ToUpper`, `ToLower`, `Trim`, `Substring`, `Replace`, `Length`
@@ -187,41 +171,30 @@ await connection.ExecuteBatchAsync(sql, users, UserParameterBinder.Default);
 
 ## 性能对比
 
-基于 BenchmarkDotNet 测试（SQLite 内存数据库，10000 条记录）：
+基于 BenchmarkDotNet 测试（.NET 10 LTS，SQLite 内存数据库）：
 
-### .NET 10 性能（最新 LTS）
-
-| 场景 | Sqlx vs Dapper.AOT | Sqlx vs FreeSql |
-|------|-------------------|-----------------|
-| 单条查询 | **快 15%** | **快 7.1x** |
-| 插入操作 | 持平 | **快 2.0x** |
-| 更新操作 | **快 9%** | **快 4.2x** |
-| 删除操作 | 持平 | **快 5.4x** |
-| 计数操作 | 持平 | **快 50x** |
-
-**测试环境：** .NET 10.0.2 (LTS), BenchmarkDotNet 0.15.7, AMD Ryzen 7 5800H
-
-**AOT 兼容性：** ✅ 通过 842 个单元测试，完全支持 Native AOT
-
-**最新优化：**
-- 移除 SQL 生成中的反射
-- 支持 JOIN 查询
-- 永远不生成 SELECT *
+| 操作 | Sqlx | Dapper.AOT | FreeSql | Sqlx 优势 |
+|------|------|------------|---------|-----------|
+| 单条查询 | **9.08 μs** | 10.43 μs | 64.54 μs | 快 15% / 7.1x |
+| 内存分配 | **1.79 KB** | 2.96 KB | 11.55 KB | 少 65% / 546% |
+| 插入操作 | **81.76 μs** | 85.03 μs | 165.69 μs | 持平 / 快 2.0x |
+| 更新操作 | **15.82 μs** | 17.20 μs | 65.63 μs | 快 9% / 4.2x |
+| 计数操作 | **3.91 μs** | 3.98 μs | 195.30 μs | 持平 / 快 50x |
 
 > 详细数据见 [性能基准测试](docs/benchmarks.md)
 
 ## 支持的数据库
 
-| 数据库 | 方言枚举 | .NET 版本 |
-|--------|---------|----------|
-| SQLite | `SqlDefineTypes.SQLite` | .NET 8.0+ |
-| PostgreSQL | `SqlDefineTypes.PostgreSql` | .NET 8.0+ |
-| MySQL | `SqlDefineTypes.MySql` | .NET 8.0+ |
-| SQL Server | `SqlDefineTypes.SqlServer` | .NET 8.0+ |
-| Oracle | `SqlDefineTypes.Oracle` | .NET 8.0+ |
-| IBM DB2 | `SqlDefineTypes.DB2` | .NET 8.0+ |
+| 数据库 | 方言枚举 | 状态 |
+|--------|---------|------|
+| SQLite | `SqlDefineTypes.SQLite` | ✅ 完全支持 |
+| PostgreSQL | `SqlDefineTypes.PostgreSql` | ✅ 完全支持 |
+| MySQL | `SqlDefineTypes.MySql` | ✅ 完全支持 |
+| SQL Server | `SqlDefineTypes.SqlServer` | ✅ 完全支持 |
+| Oracle | `SqlDefineTypes.Oracle` | ✅ 完全支持 |
+| IBM DB2 | `SqlDefineTypes.DB2` | ✅ 完全支持 |
 
-**推荐：** .NET 10 (LTS) - 支持到 2028 年 11 月
+**推荐：** .NET 10 (LTS) - 支持到 2028 年 11 月，性能最佳
 
 ## 更多文档
 

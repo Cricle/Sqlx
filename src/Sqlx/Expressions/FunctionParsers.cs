@@ -296,6 +296,6 @@ namespace Sqlx.Expressions
         };
 
         public static string GetBooleanLiteral(SqlDialect d, bool v) =>
-            d.DatabaseType == "PostgreSql" ? (v ? "true" : "false") : (v ? "1" : "0");
+            v ? d.BoolTrue : d.BoolFalse;
     }
 }

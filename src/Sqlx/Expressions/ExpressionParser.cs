@@ -26,7 +26,6 @@ namespace Sqlx.Expressions
         private readonly SqlDialect _dialect;
         private readonly Dictionary<string, object?> _parameters;
         private readonly bool _parameterized;
-        private int _counter;
 
         public ExpressionParser(SqlDialect dialect, Dictionary<string, object?> parameters, bool parameterized)
         {
@@ -147,12 +146,12 @@ namespace Sqlx.Expressions
                 var op = b.NodeType == ExpressionType.Equal ? " = " : " <> ";
                 if (ExpressionHelper.IsBooleanMember(b.Left) && b.Right is ConstantExpression { Value: bool rv })
                 {
-                    return string.Concat(Col(b.Left), op, rv ? "1" : "0");
+                    return string.Concat(Col(b.Left), op, BoolLit(rv));
                 }
 
                 if (ExpressionHelper.IsBooleanMember(b.Right) && b.Left is ConstantExpression { Value: bool lv })
                 {
-                    return string.Concat(Col(b.Right), op, lv ? "1" : "0");
+                    return string.Concat(Col(b.Right), op, BoolLit(lv));
                 }
             }
 
@@ -162,7 +161,7 @@ namespace Sqlx.Expressions
             // Handle bool member on right side of AND/OR
             if (b.Right is MemberExpression { Type: var rt } rm && rt == typeof(bool) && right == Col(rm))
             {
-                right = string.Concat(right, " = 1");
+                right = string.Concat(right, " = ", BoolLit(true));
             }
 
             // Handle NULL comparisons
@@ -230,15 +229,6 @@ namespace Sqlx.Expressions
 
         private string ParseMethod(MethodCallExpression m)
         {
-            if (ExpressionHelper.IsAnyPlaceholder(m))
-            {
-                var pn = m.Arguments.Count > 0 && m.Arguments[0] is ConstantExpression { Value: string s } && !string.IsNullOrEmpty(s)
-                    ? (s[0] == '@' ? s : "@" + s)
-                    : string.Concat("@p", _counter++.ToString());
-                _parameters[pn] = ExpressionHelper.GetDefaultValueForValueType(m.Method.ReturnType);
-                return pn;
-            }
-
             if (ExpressionHelper.IsAggregateContext(m))
             {
                 return AggregateParser.Parse(this, m);

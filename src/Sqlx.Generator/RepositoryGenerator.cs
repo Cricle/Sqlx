@@ -447,7 +447,7 @@ public class RepositoryGenerator : IIncrementalGenerator
 
     private static void GenerateDynamicContextAndRender(IndentedStringBuilder sb, IMethodSymbol method, string fieldName, INamedTypeSymbol? expressionToSqlAttr)
     {
-        // This method only handles Expression parameters (limit/offset are handled separately)
+        // This method only handles Expression parameters that need runtime SQL generation
         var expressionParams = method.Parameters.Where(p => p.Type.ToDisplayString().Contains("Expression<")).ToList();
 
         sb.AppendLine("// Create dynamic parameters for runtime rendering");
@@ -521,7 +521,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             }
             else
             {
-                // Simple parameter binding (including limit, offset, pageSize)
+                // Simple parameter binding for scalar types (int, string, etc.)
                 var isNullable = IsNullableType(paramType);
                 sb.AppendLine("{");
                 sb.PushIndent();

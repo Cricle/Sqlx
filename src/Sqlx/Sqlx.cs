@@ -16,46 +16,103 @@ namespace Sqlx
     /// </summary>
     public static class SqlQuery
     {
+        /// <summary>
+        /// Creates a query for the specified SQL dialect.
+        /// </summary>
+        /// <typeparam name="T">The entity type.</typeparam>
+        /// <param name="dialect">The SQL dialect.</param>
+        /// <returns>An IQueryable for building SQL queries.</returns>
         public static IQueryable<T> For<
 #if NET5_0_OR_GREATER
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
 #endif
-            T>(SqlDialect dialect) => new SqlxQueryable<T>(new SqlxQueryProvider(dialect));
+            T>(SqlDialect dialect)
+        {
+            return new SqlxQueryable<T>(new SqlxQueryProvider(dialect));
+        }
 
+        /// <summary>
+        /// Creates a query for SQLite.
+        /// </summary>
+        /// <typeparam name="T">The entity type.</typeparam>
+        /// <returns>An IQueryable for building SQLite queries.</returns>
         public static IQueryable<T> ForSqlite<
 #if NET5_0_OR_GREATER
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
 #endif
-            T>() => For<T>(SqlDefine.SQLite);
+            T>()
+        {
+            return For<T>(SqlDefine.SQLite);
+        }
 
+        /// <summary>
+        /// Creates a query for SQL Server.
+        /// </summary>
+        /// <typeparam name="T">The entity type.</typeparam>
+        /// <returns>An IQueryable for building SQL Server queries.</returns>
         public static IQueryable<T> ForSqlServer<
 #if NET5_0_OR_GREATER
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
 #endif
-            T>() => For<T>(SqlDefine.SqlServer);
+            T>()
+        {
+            return For<T>(SqlDefine.SqlServer);
+        }
 
+        /// <summary>
+        /// Creates a query for MySQL.
+        /// </summary>
+        /// <typeparam name="T">The entity type.</typeparam>
+        /// <returns>An IQueryable for building MySQL queries.</returns>
         public static IQueryable<T> ForMySql<
 #if NET5_0_OR_GREATER
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
 #endif
-            T>() => For<T>(SqlDefine.MySql);
+            T>()
+        {
+            return For<T>(SqlDefine.MySql);
+        }
 
+        /// <summary>
+        /// Creates a query for PostgreSQL.
+        /// </summary>
+        /// <typeparam name="T">The entity type.</typeparam>
+        /// <returns>An IQueryable for building PostgreSQL queries.</returns>
         public static IQueryable<T> ForPostgreSQL<
 #if NET5_0_OR_GREATER
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
 #endif
-            T>() => For<T>(SqlDefine.PostgreSql);
+            T>()
+        {
+            return For<T>(SqlDefine.PostgreSql);
+        }
 
+        /// <summary>
+        /// Creates a query for Oracle.
+        /// </summary>
+        /// <typeparam name="T">The entity type.</typeparam>
+        /// <returns>An IQueryable for building Oracle queries.</returns>
         public static IQueryable<T> ForOracle<
 #if NET5_0_OR_GREATER
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
 #endif
-            T>() => For<T>(SqlDefine.Oracle);
+            T>()
+        {
+            return For<T>(SqlDefine.Oracle);
+        }
 
+        /// <summary>
+        /// Creates a query for DB2.
+        /// </summary>
+        /// <typeparam name="T">The entity type.</typeparam>
+        /// <returns>An IQueryable for building DB2 queries.</returns>
         public static IQueryable<T> ForDB2<
 #if NET5_0_OR_GREATER
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
 #endif
-            T>() => For<T>(SqlDefine.DB2);
+            T>()
+        {
+            return For<T>(SqlDefine.DB2);
+        }
     }
 }

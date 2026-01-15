@@ -10,6 +10,9 @@ using System.Data;
 using System.Data.Common;
 using System.Threading;
 using System.Threading.Tasks;
+#if NET5_0_OR_GREATER
+using System.Diagnostics.CodeAnalysis;
+#endif
 
 namespace Sqlx
 {
@@ -18,92 +21,252 @@ namespace Sqlx
     /// </summary>
     public static class DbExecutor
     {
-        /// <summary>Executes a query and yields results lazily.</summary>
-        public static IEnumerable<T> ExecuteReader<T>(DbConnection connection, string sql, IEnumerable<KeyValuePair<string, object?>>? parameters, Func<IDataReader, T> mapper)
+        /// <summary>
+        /// Executes a query and yields results lazily.
+        /// </summary>
+        /// <typeparam name="T">The result type.</typeparam>
+        /// <param name="connection">The database connection.</param>
+        /// <param name="sql">The SQL query.</param>
+        /// <param name="parameters">The query parameters.</param>
+        /// <param name="mapper">The result mapper function.</param>
+        /// <returns>An enumerable of results.</returns>
+        public static IEnumerable<T> ExecuteReader<
+#if NET5_0_OR_GREATER
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
+#endif
+            T>(
+            DbConnection connection,
+            string sql,
+            IEnumerable<KeyValuePair<string, object?>>? parameters,
+            Func<IDataReader, T> mapper)
         {
             using var command = CreateCommand(connection, sql, parameters);
             var wasOpen = connection.State == ConnectionState.Open;
-            if (!wasOpen) connection.Open();
+
+            if (!wasOpen)
+            {
+                connection.Open();
+            }
+
             try
             {
                 using var reader = command.ExecuteReader();
-                while (reader.Read()) yield return mapper(reader);
+                while (reader.Read())
+                {
+                    yield return mapper(reader);
+                }
             }
-            finally { if (!wasOpen) connection.Close(); }
+            finally
+            {
+                if (!wasOpen)
+                {
+                    connection.Close();
+                }
+            }
         }
 
-        /// <summary>Executes a scalar query.</summary>
-        public static T? ExecuteScalar<T>(DbConnection connection, string sql, IEnumerable<KeyValuePair<string, object?>>? parameters)
+        /// <summary>
+        /// Executes a scalar query.
+        /// </summary>
+        /// <typeparam name="T">The result type.</typeparam>
+        /// <param name="connection">The database connection.</param>
+        /// <param name="sql">The SQL query.</param>
+        /// <param name="parameters">The query parameters.</param>
+        /// <returns>The scalar result.</returns>
+        public static T? ExecuteScalar<T>(
+            DbConnection connection,
+            string sql,
+            IEnumerable<KeyValuePair<string, object?>>? parameters)
         {
             using var command = CreateCommand(connection, sql, parameters);
             var wasOpen = connection.State == ConnectionState.Open;
-            if (!wasOpen) connection.Open();
+
+            if (!wasOpen)
+            {
+                connection.Open();
+            }
+
             try
             {
                 var result = command.ExecuteScalar();
                 return result == null || result == DBNull.Value ? default : (T)result;
             }
-            finally { if (!wasOpen) connection.Close(); }
+            finally
+            {
+                if (!wasOpen)
+                {
+                    connection.Close();
+                }
+            }
         }
 
-        /// <summary>Executes a non-query command.</summary>
-        public static int ExecuteNonQuery(DbConnection connection, string sql, IEnumerable<KeyValuePair<string, object?>>? parameters)
+        /// <summary>
+        /// Executes a non-query command.
+        /// </summary>
+        /// <param name="connection">The database connection.</param>
+        /// <param name="sql">The SQL command.</param>
+        /// <param name="parameters">The command parameters.</param>
+        /// <returns>The number of rows affected.</returns>
+        public static int ExecuteNonQuery(
+            DbConnection connection,
+            string sql,
+            IEnumerable<KeyValuePair<string, object?>>? parameters)
         {
             using var command = CreateCommand(connection, sql, parameters);
             var wasOpen = connection.State == ConnectionState.Open;
-            if (!wasOpen) connection.Open();
-            try { return command.ExecuteNonQuery(); }
-            finally { if (!wasOpen) connection.Close(); }
+
+            if (!wasOpen)
+            {
+                connection.Open();
+            }
+
+            try
+            {
+                return command.ExecuteNonQuery();
+            }
+            finally
+            {
+                if (!wasOpen)
+                {
+                    connection.Close();
+                }
+            }
         }
 
-        /// <summary>Executes a query asynchronously and yields results.</summary>
-        public static async IAsyncEnumerator<T> ExecuteReaderAsync<T>(DbConnection connection, string sql, IEnumerable<KeyValuePair<string, object?>>? parameters, Func<IDataReader, T> mapper, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// Executes a query asynchronously and yields results.
+        /// </summary>
+        /// <typeparam name="T">The result type.</typeparam>
+        /// <param name="connection">The database connection.</param>
+        /// <param name="sql">The SQL query.</param>
+        /// <param name="parameters">The query parameters.</param>
+        /// <param name="mapper">The result mapper function.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>An async enumerable of results.</returns>
+        public static async IAsyncEnumerator<T> ExecuteReaderAsync<
+#if NET5_0_OR_GREATER
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
+#endif
+            T>(
+            DbConnection connection,
+            string sql,
+            IEnumerable<KeyValuePair<string, object?>>? parameters,
+            Func<IDataReader, T> mapper,
+            CancellationToken cancellationToken = default)
         {
             var command = CreateCommand(connection, sql, parameters);
             var wasOpen = connection.State == ConnectionState.Open;
-            if (!wasOpen) await connection.OpenAsync(cancellationToken);
+
+            if (!wasOpen)
+            {
+                await connection.OpenAsync(cancellationToken);
+            }
+
             DbDataReader? reader = null;
             try
             {
                 reader = await command.ExecuteReaderAsync(cancellationToken);
-                while (await reader.ReadAsync(cancellationToken)) yield return mapper(reader);
+                while (await reader.ReadAsync(cancellationToken))
+                {
+                    yield return mapper(reader);
+                }
             }
             finally
             {
-                if (reader != null) await reader.DisposeAsync();
+                if (reader != null)
+                {
+                    await reader.DisposeAsync();
+                }
+
                 await command.DisposeAsync();
-                if (!wasOpen) connection.Close();
+
+                if (!wasOpen)
+                {
+                    connection.Close();
+                }
             }
         }
 
-        /// <summary>Executes a scalar query asynchronously.</summary>
-        public static async Task<T?> ExecuteScalarAsync<T>(DbConnection connection, string sql, IEnumerable<KeyValuePair<string, object?>>? parameters, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// Executes a scalar query asynchronously.
+        /// </summary>
+        /// <typeparam name="T">The result type.</typeparam>
+        /// <param name="connection">The database connection.</param>
+        /// <param name="sql">The SQL query.</param>
+        /// <param name="parameters">The query parameters.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>The scalar result.</returns>
+        public static async Task<T?> ExecuteScalarAsync<T>(
+            DbConnection connection,
+            string sql,
+            IEnumerable<KeyValuePair<string, object?>>? parameters,
+            CancellationToken cancellationToken = default)
         {
             using var command = CreateCommand(connection, sql, parameters);
             var wasOpen = connection.State == ConnectionState.Open;
-            if (!wasOpen) await connection.OpenAsync(cancellationToken);
+
+            if (!wasOpen)
+            {
+                await connection.OpenAsync(cancellationToken);
+            }
+
             try
             {
                 var result = await command.ExecuteScalarAsync(cancellationToken);
                 return result == null || result == DBNull.Value ? default : (T)result;
             }
-            finally { if (!wasOpen) connection.Close(); }
+            finally
+            {
+                if (!wasOpen)
+                {
+                    connection.Close();
+                }
+            }
         }
 
-        /// <summary>Executes a non-query command asynchronously.</summary>
-        public static async Task<int> ExecuteNonQueryAsync(DbConnection connection, string sql, IEnumerable<KeyValuePair<string, object?>>? parameters, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// Executes a non-query command asynchronously.
+        /// </summary>
+        /// <param name="connection">The database connection.</param>
+        /// <param name="sql">The SQL command.</param>
+        /// <param name="parameters">The command parameters.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>The number of rows affected.</returns>
+        public static async Task<int> ExecuteNonQueryAsync(
+            DbConnection connection,
+            string sql,
+            IEnumerable<KeyValuePair<string, object?>>? parameters,
+            CancellationToken cancellationToken = default)
         {
             using var command = CreateCommand(connection, sql, parameters);
             var wasOpen = connection.State == ConnectionState.Open;
-            if (!wasOpen) await connection.OpenAsync(cancellationToken);
-            try { return await command.ExecuteNonQueryAsync(cancellationToken); }
-            finally { if (!wasOpen) connection.Close(); }
+
+            if (!wasOpen)
+            {
+                await connection.OpenAsync(cancellationToken);
+            }
+
+            try
+            {
+                return await command.ExecuteNonQueryAsync(cancellationToken);
+            }
+            finally
+            {
+                if (!wasOpen)
+                {
+                    connection.Close();
+                }
+            }
         }
 
-        private static DbCommand CreateCommand(DbConnection connection, string sql, IEnumerable<KeyValuePair<string, object?>>? parameters)
+        private static DbCommand CreateCommand(
+            DbConnection connection,
+            string sql,
+            IEnumerable<KeyValuePair<string, object?>>? parameters)
         {
             var command = connection.CreateCommand();
             command.CommandText = sql;
+
             if (parameters != null)
             {
                 foreach (var p in parameters)
@@ -114,6 +277,7 @@ namespace Sqlx
                     command.Parameters.Add(param);
                 }
             }
+
             return command;
         }
     }

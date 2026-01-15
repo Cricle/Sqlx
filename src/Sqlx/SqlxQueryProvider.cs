@@ -21,30 +21,68 @@ namespace Sqlx
     {
         private readonly SqlDialect _dialect;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SqlxQueryProvider"/> class.
+        /// </summary>
+        /// <param name="dialect">The SQL dialect.</param>
         public SqlxQueryProvider(SqlDialect dialect)
         {
             _dialect = dialect ?? throw new ArgumentNullException(nameof(dialect));
         }
 
+        /// <summary>
+        /// Gets the SQL dialect.
+        /// </summary>
         public SqlDialect Dialect => _dialect;
 
+        /// <inheritdoc/>
         public IQueryable CreateQuery(Expression expression)
-            => throw new NotSupportedException("Use CreateQuery<T> for AOT compatibility.");
+        {
+            throw new NotSupportedException("Use CreateQuery<T> for AOT compatibility.");
+        }
 
+        /// <inheritdoc/>
         public IQueryable<TElement> CreateQuery<
 #if NET5_0_OR_GREATER
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
 #endif
-            TElement>(Expression expression) => new SqlxQueryable<TElement>(this, expression);
+            TElement>(Expression expression)
+        {
+            return new SqlxQueryable<TElement>(this, expression);
+        }
 
+        /// <inheritdoc/>
         public object? Execute(Expression expression)
-            => throw new NotSupportedException("Use GetEnumerator() on SqlxQueryable with WithConnection() and WithMapper().");
+        {
+            throw new NotSupportedException("Use GetEnumerator() on SqlxQueryable with WithConnection() and WithMapper().");
+        }
 
-        public TResult Execute<TResult>(Expression expression) => (TResult)Execute(expression)!;
+        /// <inheritdoc/>
+        public TResult Execute<
+#if NET5_0_OR_GREATER
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
+#endif
+            TResult>(Expression expression)
+        {
+            return (TResult)Execute(expression)!;
+        }
 
+        /// <summary>
+        /// Generates SQL from the expression.
+        /// </summary>
+        /// <param name="expression">The expression tree.</param>
+        /// <param name="parameterized">Whether to generate parameterized SQL.</param>
+        /// <returns>The generated SQL string.</returns>
         public string ToSql(Expression expression, bool parameterized = false)
-            => new SqlExpressionVisitor(_dialect, parameterized).GenerateSql(expression);
+        {
+            return new SqlExpressionVisitor(_dialect, parameterized).GenerateSql(expression);
+        }
 
+        /// <summary>
+        /// Generates parameterized SQL and parameters from the expression.
+        /// </summary>
+        /// <param name="expression">The expression tree.</param>
+        /// <returns>A tuple containing the SQL string and parameters.</returns>
         public (string Sql, IEnumerable<KeyValuePair<string, object?>> Parameters) ToSqlWithParameters(Expression expression)
         {
             var visitor = new SqlExpressionVisitor(_dialect, parameterized: true);

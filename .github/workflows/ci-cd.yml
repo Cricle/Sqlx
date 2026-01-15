@@ -88,11 +88,18 @@ jobs:
     - name: 📦 Restore dependencies
       run: dotnet restore
 
+    - name: 🏷️ Extract version from tag
+      id: get_version
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        echo "📦 Building version: $VERSION"
+
     - name: 🏗️ Build
-      run: dotnet build src/Sqlx --configuration Release --no-restore
+      run: dotnet build src/Sqlx --configuration Release --no-restore /p:Version=${{ steps.get_version.outputs.VERSION }}
 
     - name: 📦 Pack packages
-      run: dotnet pack src/Sqlx --configuration Release --no-build --output ./artifacts
+      run: dotnet pack src/Sqlx --configuration Release --no-build --output ./artifacts /p:Version=${{ steps.get_version.outputs.VERSION }}
 
     - name: 📤 Upload artifacts
       uses: actions/upload-artifact@v4

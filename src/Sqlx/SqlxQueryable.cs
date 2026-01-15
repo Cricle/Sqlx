@@ -28,8 +28,6 @@ namespace Sqlx
         T> :  IOrderedQueryable<T>, IAsyncEnumerable<T>
     {
         private readonly SqlxQueryProvider _provider;
-        private DbConnection? _connection;
-        private IResultReader<T>? _resultReader;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="SqlxQueryable{T}"/> class.
@@ -67,7 +65,7 @@ namespace Sqlx
         {
             _provider = provider ?? throw new ArgumentNullException(nameof(provider));
             Expression = expression ?? throw new ArgumentNullException(nameof(expression));
-            _connection = connection;
+            Connection = connection;
             ResultReader = resultReader;
         }
 
@@ -90,12 +88,8 @@ namespace Sqlx
         /// </summary>
         internal DbConnection? Connection
         {
-            get => _connection;
-            set
-            {
-                _connection = value;
-                _provider.Connection = value;
-            }
+            get => _provider.Connection;
+            set => _provider.Connection = value;
         }
 
         /// <summary>
@@ -103,12 +97,8 @@ namespace Sqlx
         /// </summary>
         internal IResultReader<T>? ResultReader
         {
-            get => _resultReader;
-            set
-            {
-                _resultReader = value;
-                _provider.ResultReader = value;
-            }
+            get => _provider.ResultReader as IResultReader<T>;
+            set => _provider.ResultReader = value;
         }
 
         /// <inheritdoc/>

@@ -21,9 +21,6 @@ namespace Sqlx
     /// </summary>
     public class SqlxQueryProvider : IQueryProvider
     {
-        private DbConnection? _connection;
-        private object? _resultReader;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="SqlxQueryProvider"/> class.
         /// </summary>
@@ -41,20 +38,12 @@ namespace Sqlx
         /// <summary>
         /// Gets or sets the database connection for query execution.
         /// </summary>
-        internal DbConnection? Connection
-        {
-            get => _connection;
-            set => _connection = value;
-        }
+        internal DbConnection? Connection { get; set; }
 
         /// <summary>
         /// Gets or sets the result reader (stored as object for non-generic provider).
         /// </summary>
-        internal object? ResultReader
-        {
-            get => _resultReader;
-            set => _resultReader = value;
-        }
+        internal object? ResultReader { get; set; }
 
         /// <inheritdoc/>
         public IQueryable CreateQuery(Expression expression)
@@ -69,8 +58,8 @@ namespace Sqlx
 #endif
             TElement>(Expression expression)
         {
-            var reader = _resultReader as IResultReader<TElement>;
-            return new SqlxQueryable<TElement>(this, expression, _connection, reader);
+            var reader = ResultReader as IResultReader<TElement>;
+            return new SqlxQueryable<TElement>(this, expression, Connection, reader);
         }
 
         /// <inheritdoc/>

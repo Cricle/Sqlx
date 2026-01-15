@@ -14,13 +14,14 @@ using System.Globalization;
 /// <remarks>
 /// <para>
 /// This handler can be either static (with --count) or dynamic (with --param).
+/// For dynamic limits, it generates parameterized SQL for better performance.
 /// </para>
 /// <para>
 /// Supported options:
 /// </para>
 /// <list type="bullet">
 /// <item><description><c>--count n</c> - Static limit value resolved at prepare time</description></item>
-/// <item><description><c>--param name</c> - Dynamic limit value resolved at render time</description></item>
+/// <item><description><c>--param name</c> - Dynamic limit value resolved at render time (parameterized)</description></item>
 /// </list>
 /// </remarks>
 /// <example>
@@ -29,8 +30,7 @@ using System.Globalization;
 /// // Output: SELECT * FROM users LIMIT 10
 /// 
 /// // Dynamic: SELECT * FROM users {{limit --param pageSize}}
-/// // Render with: { "pageSize": 20 }
-/// // Output: SELECT * FROM users LIMIT 20
+/// // Output: SELECT * FROM users LIMIT @pageSize (parameter added to command)
 /// </code>
 /// </example>
 public sealed class LimitPlaceholderHandler : PlaceholderHandlerBase
@@ -45,18 +45,37 @@ public sealed class LimitPlaceholderHandler : PlaceholderHandlerBase
 
     /// <inheritdoc/>
     public override PlaceholderType GetType(string options)
-        => ParseCount(options) is not null ? PlaceholderType.Static : PlaceholderType.Dynamic;
+    {
+        // Both --count and --param are static: SQL is generated at Prepare() time
+        // --count: generates "LIMIT 10" (literal value)
+        // --param: generates "LIMIT @limit" (parameterized, value bound at execution)
+        return PlaceholderType.Static;
+    }
 
     /// <inheritdoc/>
     public override string Process(PlaceholderContext context, string options)
     {
         var count = ParseCount(options);
-        return count is not null ? $"LIMIT {count.Value}" : string.Empty;
+        if (count is not null)
+        {
+            return $"LIMIT {count.Value}";
+        }
+
+        // For dynamic limits, generate parameterized SQL
+        var paramName = ParseParam(options);
+        if (paramName is not null)
+        {
+            return $"LIMIT {context.Dialect.ParameterPrefix}{paramName}";
+        }
+
+        return string.Empty;
     }
 
     /// <inheritdoc/>
     public override string Render(PlaceholderContext context, string options, IReadOnlyDictionary<string, object?>? parameters)
     {
+        // For dynamic limits with parameters, the SQL is already generated in Process()
+        // This method is kept for backward compatibility but should not be called in optimized path
         var paramName = ParseParam(options)
             ?? throw new InvalidOperationException("{{limit}} requires --count or --param option.");
         var value = GetParam(parameters, paramName);

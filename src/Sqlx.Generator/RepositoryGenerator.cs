@@ -390,13 +390,13 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("using DbCommand cmd = _connection.CreateCommand();");
         sb.AppendLine("if (Transaction != null) cmd.Transaction = Transaction;");
 
-        // Check if method has dynamic parameters (Expression, limit, offset, etc.)
+        // Check if method has dynamic parameters (Expression parameters only)
         var hasDynamicParams = HasDynamicParameters(method, expressionToSqlAttr);
         
         if (hasDynamicParams)
         {
+            // For expressions, need to render
             GenerateDynamicContextAndRender(sb, method, fieldName, expressionToSqlAttr);
-            sb.AppendLine("cmd.CommandText = renderedSql;");
         }
         else
         {
@@ -438,12 +438,8 @@ public class RepositoryGenerator : IIncrementalGenerator
     {
         foreach (var param in method.Parameters)
         {
-            // Check for Expression<Func<T, bool>> parameters
+            // Check for Expression<Func<T, bool>> parameters - these are truly dynamic
             if (param.Type.ToDisplayString().Contains("Expression<"))
-                return true;
-            
-            // Check for limit/offset parameters
-            if (param.Name is "limit" or "offset" or "pageSize")
                 return true;
         }
         return false;
@@ -451,56 +447,18 @@ public class RepositoryGenerator : IIncrementalGenerator
 
     private static void GenerateDynamicContextAndRender(IndentedStringBuilder sb, IMethodSymbol method, string fieldName, INamedTypeSymbol? expressionToSqlAttr)
     {
-        // Collect dynamic parameters
-        var limitParam = method.Parameters.FirstOrDefault(p => p.Name is "limit" or "pageSize");
-        var offsetParam = method.Parameters.FirstOrDefault(p => p.Name == "offset");
+        // This method only handles Expression parameters (limit/offset are handled separately)
         var expressionParams = method.Parameters.Where(p => p.Type.ToDisplayString().Contains("Expression<")).ToList();
 
-        // Optimized path: single limit parameter only (no expressions, no offset)
-        if (limitParam != null && offsetParam == null && expressionParams.Count == 0)
-        {
-            var paramName = limitParam.Name == "pageSize" ? "pageSize" : "limit";
-            sb.AppendLine("// Optimized render for single limit parameter");
-            sb.AppendLine($"var renderedSql = {fieldName}.HasDynamicPlaceholders");
-            sb.AppendLine($"    ? {fieldName}.Render(\"{paramName}\", {limitParam.Name})");
-            sb.AppendLine($"    : {fieldName}.Sql;");
-            return;
-        }
-
-        // Optimized path: limit + offset only (no expressions)
-        if (limitParam != null && offsetParam != null && expressionParams.Count == 0)
-        {
-            var limitParamName = limitParam.Name == "pageSize" ? "pageSize" : "limit";
-            sb.AppendLine("// Optimized render for limit + offset parameters");
-            sb.AppendLine($"var renderedSql = {fieldName}.HasDynamicPlaceholders");
-            sb.AppendLine($"    ? {fieldName}.Render(\"{limitParamName}\", {limitParam.Name}, \"offset\", {offsetParam.Name})");
-            sb.AppendLine($"    : {fieldName}.Sql;");
-            return;
-        }
-
-        // General path: use dictionary for complex cases (expressions, etc.)
-        // Count dynamic params for capacity
-        var dynamicParamCount = expressionParams.Count;
-        if (limitParam != null) dynamicParamCount++;
-        if (offsetParam != null) dynamicParamCount++;
-
         sb.AppendLine("// Create dynamic parameters for runtime rendering");
-        sb.AppendLine($"var dynamicParams = new Dictionary<string, object?>({dynamicParamCount})");
+        sb.AppendLine($"var dynamicParams = new Dictionary<string, object?>({expressionParams.Count})");
         sb.AppendLine("{");
         sb.PushIndent();
 
-        foreach (var param in method.Parameters)
+        foreach (var param in expressionParams)
         {
-            if (param.Type.ToDisplayString().Contains("Expression<"))
-            {
-                // Expression parameter - convert to SQL
-                sb.AppendLine($"[\"{param.Name}\"] = global::Sqlx.ExpressionExtensions.ToWhereClause({param.Name}, _placeholderContext.Dialect),");
-            }
-            else if (param.Name is "limit" or "offset" or "pageSize")
-            {
-                var key = param.Name == "pageSize" ? "pageSize" : param.Name;
-                sb.AppendLine($"[\"{key}\"] = {param.Name},");
-            }
+            // Expression parameter - convert to SQL
+            sb.AppendLine($"[\"{param.Name}\"] = global::Sqlx.ExpressionExtensions.ToWhereClause({param.Name}, _placeholderContext.Dialect),");
         }
 
         sb.PopIndent();
@@ -509,6 +467,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine($"var renderedSql = {fieldName}.HasDynamicPlaceholders");
         sb.AppendLine($"    ? {fieldName}.Render(dynamicParams)");
         sb.AppendLine($"    : {fieldName}.Sql;");
+        sb.AppendLine("cmd.CommandText = renderedSql;");
     }
 
     private static void GenerateActivityStart(IndentedStringBuilder sb, string methodName, IMethodSymbol method)
@@ -544,7 +503,6 @@ public class RepositoryGenerator : IIncrementalGenerator
         {
             if (param.Name == "cancellationToken") continue;
             if (param.Type.ToDisplayString().Contains("Expression<")) continue; // Already handled in dynamic context
-            if (param.Name is "limit" or "offset" or "pageSize") continue; // Already handled in dynamic context
 
             var paramType = param.Type;
             var paramTypeName = paramType.ToDisplayString();
@@ -563,7 +521,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             }
             else
             {
-                // Simple parameter binding
+                // Simple parameter binding (including limit, offset, pageSize)
                 var isNullable = IsNullableType(paramType);
                 sb.AppendLine("{");
                 sb.PushIndent();

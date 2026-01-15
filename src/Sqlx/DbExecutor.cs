@@ -19,7 +19,7 @@ namespace Sqlx
     /// <summary>
     /// ADO.NET executor
     /// </summary>
-    public static class DbExecutor
+    internal static class DbExecutor
     {
         /// <summary>
         /// Executes a query and yields results lazily.

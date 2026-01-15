@@ -105,7 +105,7 @@ namespace Sqlx
         /// <inheritdoc/>
         public IEnumerator<T> GetEnumerator()
         {
-            if (_connection == null)
+            if (Connection == null)
             {
                 throw new InvalidOperationException("No database connection. Use WithConnection().");
             }
@@ -116,7 +116,7 @@ namespace Sqlx
             }
 
             var (sql, parameters) = _provider.ToSqlWithParameters(Expression);
-            return DbExecutor.ExecuteReader(_connection, sql, parameters, ResultReader).GetEnumerator();
+            return DbExecutor.ExecuteReader(Connection, sql, parameters, ResultReader).GetEnumerator();
         }
 
         /// <inheritdoc/>
@@ -128,6 +128,16 @@ namespace Sqlx
         /// <inheritdoc/>
         public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
         {
+            if (Connection == null)
+            {
+                throw new InvalidOperationException("No database connection. Use WithConnection().");
+            }
+
+            if (ResultReader == null)
+            {
+                throw new InvalidOperationException("No result reader. Use WithReader().");
+            }
+
             var (sql, parameters) = _provider.ToSqlWithParameters(Expression);
             return DbExecutor.ExecuteReaderAsync(Connection, sql, parameters, ResultReader, cancellationToken);
         }

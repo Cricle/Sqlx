@@ -133,7 +133,7 @@ namespace Sqlx
     }
 
     /// <summary>
-    /// Non-generic convenience class for SqlQuery<T> (for backward compatibility).
+    /// Non-generic convenience class for SqlQuery&lt;T&gt; (for backward compatibility).
     /// </summary>
     public static class SqlQuery
     {

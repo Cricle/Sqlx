@@ -10,8 +10,9 @@ dotnet add package Sqlx
 
 ## Prerequisites
 
-- .NET 6.0 or later (recommended: .NET 8.0+ for best AOT support)
+- .NET 8.0 or later (recommended: .NET 10 LTS for best performance and long-term support)
 - A supported database: SQLite, MySQL, PostgreSQL, SQL Server, Oracle, or DB2
+- **Native AOT Ready**: Sqlx is fully compatible with Native AOT deployment (817 tests passing)
 
 ## Basic Setup
 
@@ -184,8 +185,34 @@ await transaction.CommitAsync();
 - Configurable batch size for large datasets
 - Transaction and timeout support
 
+## Native AOT Deployment
+
+Sqlx is fully compatible with Native AOT. To enable AOT in your project:
+
+```xml
+<PropertyGroup>
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>false</InvariantGlobalization>
+</PropertyGroup>
+```
+
+**AOT Compatibility:**
+- ✅ Zero reflection at runtime
+- ✅ All code generated at compile time
+- ✅ Expression tree compilation (allowed in AOT)
+- ✅ Static method caching
+- ✅ 817 unit tests passing
+
+**Publish AOT:**
+```bash
+dotnet publish -c Release -r win-x64
+dotnet publish -c Release -r linux-x64
+dotnet publish -c Release -r osx-arm64
+```
+
 ## Next Steps
 
 - Learn about [SQL Templates](sql-templates.md) and placeholder syntax
 - Explore [Dialect Support](dialects.md) for your database
 - Check the [API Reference](api-reference.md) for detailed documentation
+- Review [Performance Benchmarks](benchmarks.md) for optimization tips

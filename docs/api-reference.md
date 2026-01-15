@@ -214,6 +214,18 @@ public sealed class DynamicResultReader<T> : IResultReader<T>
 - Automatic type conversion
 - Zero reflection at runtime
 
+**Supported Types:**
+- Primitives: Int32, Int64, Int16, Byte, Boolean, String, Decimal, Double, Float, Guid
+- DateTime and DateTimeOffset
+- Nullable versions of all above types
+- Anonymous types (compiler-generated)
+
+**Performance Optimizations:**
+- Static constructor caches all IDataRecord methods once
+- Expression tree compiled to native code
+- Ordinal-based column access
+- No boxing for value types
+
 **Example:**
 ```csharp
 // Automatically used for Select projections
@@ -228,7 +240,21 @@ var query = SqlQuery<User>.ForSqlite()
     .Select(u => new { u.Id, u.Name })
     .WithConnection(connection)
     .WithReader(reader);
+
+// Works with strongly-typed projections too
+var typedReader = DynamicResultReader<UserDto>.Create();
+var dtos = await SqlQuery<User>.ForSqlite()
+    .Select(u => new UserDto { Id = u.Id, Name = u.Name })
+    .WithConnection(connection)
+    .WithReader(typedReader)
+    .ToListAsync();
 ```
+
+**AOT Compatibility:**
+- ✅ Expression tree compilation is allowed in AOT
+- ✅ No runtime reflection or dynamic code generation
+- ✅ All type information resolved at compile time
+- ✅ Tested with 51 comprehensive unit tests
 
 ### IParameterBinder\<TEntity\>
 

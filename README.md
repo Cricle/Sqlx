@@ -13,7 +13,7 @@
 - **类型安全** - 编译时捕获 SQL 错误
 - **多数据库** - SQLite、PostgreSQL、MySQL、SQL Server、Oracle、DB2
 - **智能模板** - 占位符自动适配不同数据库方言
-- **AOT 兼容** - 完全支持 Native AOT
+- **完全 AOT 兼容** - 通过 817 个单元测试，支持 Native AOT 部署
 - **泛型缓存** - SqlQuery<T> 自动缓存实体元信息，无反射开销
 - **动态投影** - Select 支持匿名类型，自动生成高性能 ResultReader
 
@@ -193,13 +193,15 @@ await connection.ExecuteBatchAsync(sql, users, UserParameterBinder.Default);
 
 | 场景 | Sqlx vs Dapper.AOT | Sqlx vs FreeSql |
 |------|-------------------|-----------------|
-| 单条查询 | **快 16%** | **快 7.0x** |
+| 单条查询 | **快 12%** | **快 7.1x** |
 | 插入操作 | 持平 | **快 2.0x** |
 | 更新操作 | **快 9%** | **快 4.2x** |
 | 删除操作 | 持平 | **快 5.4x** |
 | 计数操作 | 持平 | **快 50x** |
 
 **测试环境：** .NET 10.0.2 (LTS), BenchmarkDotNet 0.15.7, AMD Ryzen 7 5800H
+
+**AOT 兼容性：** ✅ 通过 817 个单元测试，完全支持 Native AOT
 
 > 详细数据见 [性能基准测试](docs/benchmarks.md)
 

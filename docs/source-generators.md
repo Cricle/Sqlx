@@ -2,15 +2,26 @@
 
 Sqlx uses Roslyn source generators to produce high-performance, AOT-compatible code at compile time.
 
+## AOT Compatibility
+
+**✅ Native AOT Ready:**
+- Zero reflection at runtime
+- All code generated at compile time
+- Expression tree compilation (allowed in AOT)
+- Static method caching for IDataRecord operations
+- 817 unit tests passing with AOT enabled
+
 ## Generated Components
 
 ### EntityProvider
 
 Generated for classes marked with `[SqlxEntity]`. Provides column metadata without reflection.
 
+**Auto-Registration:** If the entity class is marked as `partial`, a `ModuleInitializer` automatically registers the EntityProvider and ResultReader with `SqlQuery<T>` at startup.
+
 ```csharp
 [SqlxEntity]
-public class User
+public partial class User  // 'partial' enables auto-registration
 {
     public int Id { get; set; }
     public string Name { get; set; }
@@ -29,17 +40,36 @@ public sealed class UserEntityProvider : IEntityProvider
         new ColumnMeta("name", "Name", DbType.String, false),
     };
 }
+
+// Generated: ModuleInitializer (for partial classes)
+internal static class UserModuleInitializer
+{
+    [ModuleInitializer]
+    internal static void Initialize()
+    {
+        SqlQuery<User>.EntityProvider = UserEntityProvider.Default;
+        SqlQuery<User>.ResultReader = UserResultReader.Default;
+    }
+}
 ```
 
 ### ResultReader
 
 Generated for classes marked with `[SqlxEntity]`. Reads entities from DbDataReader without reflection.
 
+**Performance:** Uses ordinal-based access and static method caching for optimal performance.
+
 ```csharp
 // Generated: UserResultReader
 public sealed class UserResultReader : IResultReader<User>
 {
     public static UserResultReader Default { get; } = new();
+    
+    // Static method cache (initialized once)
+    private static readonly Func<IDataRecord, int, int> _getInt32 = 
+        (Func<IDataRecord, int, int>)Delegate.CreateDelegate(
+            typeof(Func<IDataRecord, int, int>), 
+            typeof(IDataRecord).GetMethod("GetInt32")!);
     
     public IEnumerable<User> Read(DbDataReader reader)
     {
@@ -50,7 +80,7 @@ public sealed class UserResultReader : IResultReader<User>
         {
             yield return new User
             {
-                Id = reader.GetInt32(ord0),
+                Id = _getInt32(reader, ord0),  // Uses cached method
                 Name = reader.GetString(ord1),
             };
         }

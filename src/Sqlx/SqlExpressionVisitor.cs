@@ -136,6 +136,10 @@ namespace Sqlx
                 var selector = GetLambda(node.Arguments[1]);
                 if (selector != null)
                 {
+                    // If we have GROUP BY, we need to validate that SELECT only contains:
+                    // 1. Columns in GROUP BY clause
+                    // 2. Aggregate functions
+                    // For now, we'll extract columns and let the database validate
                     _selectColumns.Clear();
                     _selectColumns.AddRange(_parser.ExtractColumns(selector.Body));
                 }

@@ -271,9 +271,10 @@ namespace Sqlx.Expressions
         private static string GetStringAgg(string db, string col, string sep) => db switch
         {
             "MySql" => $"GROUP_CONCAT({col} SEPARATOR {sep})",
-            "SQLite" or "SqlServer" => $"GROUP_CONCAT({col}, {sep})",
+            "SQLite" => $"GROUP_CONCAT({col}, {sep})",
+            "SqlServer" => $"STRING_AGG({col}, {sep})",
             "Oracle" => $"LISTAGG({col}, {sep}) WITHIN GROUP (ORDER BY {col})",
-            _ => $"STRING_AGG({col}, {sep})"
+            _ => $"STRING_AGG({col}, {sep})"  // PostgreSQL and others
         };
     }
 

@@ -53,7 +53,7 @@ public class SqlxQueryableTests
     {
         var query = SqlQuery.ForSqlite<QueryUser>();
         Assert.IsNotNull(query.Provider);
-        Assert.IsInstanceOfType(query.Provider, typeof(SqlxQueryProvider));
+        Assert.IsInstanceOfType(query.Provider, typeof(SqlxQueryProvider<QueryUser>));
     }
 
     #endregion

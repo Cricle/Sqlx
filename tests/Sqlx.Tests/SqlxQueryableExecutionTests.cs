@@ -60,7 +60,7 @@ namespace Sqlx.Tests
         [TestMethod]
         public void ToList_ReturnsAllRecords()
         {
-            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider(_dialect!))
+            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
                 .WithConnection(_connection!)
                 .WithReader(new UserReader());
 
@@ -78,7 +78,7 @@ namespace Sqlx.Tests
         [TestMethod]
         public void Where_FiltersCorrectly()
         {
-            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider(_dialect!))
+            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
                 .WithConnection(_connection!)
                 .WithReader(new UserReader())
                 .Where(u => u.Age >= 30);
@@ -95,7 +95,7 @@ namespace Sqlx.Tests
         [TestMethod]
         public void OrderBy_SortsCorrectly()
         {
-            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider(_dialect!))
+            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
                 .WithConnection(_connection!)
                 .WithReader(new UserReader())
                 .OrderBy(u => u.Name);
@@ -113,7 +113,7 @@ namespace Sqlx.Tests
         [TestMethod]
         public void Take_LimitsResults()
         {
-            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider(_dialect!))
+            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
                 .WithConnection(_connection!)
                 .WithReader(new UserReader())
                 .Take(3);
@@ -129,7 +129,7 @@ namespace Sqlx.Tests
         [TestMethod]
         public void ComplexQuery_WhereOrderByTake()
         {
-            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider(_dialect!))
+            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
                 .WithConnection(_connection!)
                 .WithReader(new UserReader())
                 .Where(u => u.Age >= 28)
@@ -148,7 +148,7 @@ namespace Sqlx.Tests
         [TestMethod]
         public async Task AsyncEnumeration_WorksCorrectly()
         {
-            var queryable = (SqlxQueryable<User>)new SqlxQueryable<User>(new SqlxQueryProvider(_dialect!))
+            var queryable = (SqlxQueryable<User>)new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
                 .WithConnection(_connection!)
                 .WithReader(new UserReader())
                 .Where(u => u.Age >= 30);
@@ -169,7 +169,7 @@ namespace Sqlx.Tests
         public void ToSql_GeneratesCorrectSql()
         {
             var queryable = System.Linq.Queryable.Where(
-                new SqlxQueryable<User>(new SqlxQueryProvider(_dialect!)),
+                new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!)),
                 u => u.Age >= 30);
 
             queryable = System.Linq.Queryable.OrderBy(queryable, u => u.Name);
@@ -184,7 +184,7 @@ namespace Sqlx.Tests
         public void ToSqlWithParameters_GeneratesParameterizedSql()
         {
             var queryable = System.Linq.Queryable.Where(
-                new SqlxQueryable<User>(new SqlxQueryProvider(_dialect!)),
+                new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!)),
                 u => u.Age >= 30 && u.Name == "Bob");
 
             var (sql, parameters) = queryable.ToSqlWithParameters();
@@ -198,7 +198,7 @@ namespace Sqlx.Tests
         [TestMethod]
         public void MultipleWhere_CombinesConditions()
         {
-            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider(_dialect!))
+            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
                 .WithConnection(_connection!)
                 .WithReader(new UserReader())
                 .Where(u => u.Age >= 25)
@@ -214,7 +214,7 @@ namespace Sqlx.Tests
         [TestMethod]
         public void OrderByThenBy_SortsCorrectly()
         {
-            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider(_dialect!))
+            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
                 .WithConnection(_connection!)
                 .WithReader(new UserReader())
                 .OrderByDescending(u => u.Age)
@@ -231,7 +231,7 @@ namespace Sqlx.Tests
         [TestMethod]
         public void EmptyResult_ReturnsEmptyList()
         {
-            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider(_dialect!))
+            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
                 .WithConnection(_connection!)
                 .WithReader(new UserReader())
                 .Where(u => u.Age > 100);
@@ -245,7 +245,7 @@ namespace Sqlx.Tests
         [TestMethod]
         public void NullValue_HandledCorrectly()
         {
-            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider(_dialect!))
+            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
                 .WithConnection(_connection!)
                 .WithReader(new UserReader())
                 .Where(u => u.Name == "Eve");
@@ -260,7 +260,7 @@ namespace Sqlx.Tests
         [TestMethod]
         public async Task AsyncLinq_ToListAsync_WorksCorrectly()
         {
-            IAsyncEnumerable<User> queryable = new SqlxQueryable<User>(new SqlxQueryProvider(_dialect!))
+            IAsyncEnumerable<User> queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
                 .WithConnection(_connection!)
                 .WithReader(new UserReader())
                 .Where(u => u.Age >= 30) as SqlxQueryable<User> ?? throw new InvalidOperationException();
@@ -276,7 +276,7 @@ namespace Sqlx.Tests
         [TestMethod]
         public async Task AsyncLinq_FirstAsync_ReturnsFirstElement()
         {
-            IAsyncEnumerable<User> queryable = new SqlxQueryable<User>(new SqlxQueryProvider(_dialect!))
+            IAsyncEnumerable<User> queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
                 .WithConnection(_connection!)
                 .WithReader(new UserReader())
                 .OrderBy(u => u.Name) as SqlxQueryable<User> ?? throw new InvalidOperationException();
@@ -292,7 +292,7 @@ namespace Sqlx.Tests
         [TestMethod]
         public async Task AsyncLinq_FirstOrDefaultAsync_ReturnsNull()
         {
-            IAsyncEnumerable<User> queryable = new SqlxQueryable<User>(new SqlxQueryProvider(_dialect!))
+            IAsyncEnumerable<User> queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
                 .WithConnection(_connection!)
                 .WithReader(new UserReader()) as SqlxQueryable<User> ?? throw new InvalidOperationException();
 
@@ -305,7 +305,7 @@ namespace Sqlx.Tests
         [TestMethod]
         public async Task AsyncLinq_CountAsync_ReturnsCorrectCount()
         {
-            IAsyncEnumerable<User> queryable = new SqlxQueryable<User>(new SqlxQueryProvider(_dialect!))
+            IAsyncEnumerable<User> queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
                 .WithConnection(_connection!)
                 .WithReader(new UserReader())
                 .Where(u => u.Age >= 30) as SqlxQueryable<User> ?? throw new InvalidOperationException();
@@ -318,7 +318,7 @@ namespace Sqlx.Tests
         [TestMethod]
         public async Task AsyncLinq_AnyAsync_ReturnsTrue()
         {
-            IAsyncEnumerable<User> queryable = new SqlxQueryable<User>(new SqlxQueryProvider(_dialect!))
+            IAsyncEnumerable<User> queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
                 .WithConnection(_connection!)
                 .WithReader(new UserReader())
                 .Where(u => u.Age >= 30) as SqlxQueryable<User> ?? throw new InvalidOperationException();
@@ -331,7 +331,7 @@ namespace Sqlx.Tests
         [TestMethod]
         public async Task AsyncLinq_AnyAsync_ReturnsFalse()
         {
-            IAsyncEnumerable<User> queryable = new SqlxQueryable<User>(new SqlxQueryProvider(_dialect!))
+            IAsyncEnumerable<User> queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
                 .WithConnection(_connection!)
                 .WithReader(new UserReader())
                 .Where(u => u.Age > 100) as SqlxQueryable<User> ?? throw new InvalidOperationException();
@@ -344,7 +344,7 @@ namespace Sqlx.Tests
         [TestMethod]
         public async Task AsyncLinq_WhereAsync_FiltersCorrectly()
         {
-            IAsyncEnumerable<User> queryable = new SqlxQueryable<User>(new SqlxQueryProvider(_dialect!))
+            IAsyncEnumerable<User> queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
                 .WithConnection(_connection!)
                 .WithReader(new UserReader())
                 .Where(u => u.Age >= 25)
@@ -359,7 +359,7 @@ namespace Sqlx.Tests
         [TestMethod]
         public async Task AsyncLinq_SelectAsync_ProjectsCorrectly()
         {
-            IAsyncEnumerable<User> queryable = new SqlxQueryable<User>(new SqlxQueryProvider(_dialect!))
+            IAsyncEnumerable<User> queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
                 .WithConnection(_connection!)
                 .WithReader(new UserReader())
                 .Where(u => u.Age >= 30) as SqlxQueryable<User> ?? throw new InvalidOperationException();
@@ -376,7 +376,7 @@ namespace Sqlx.Tests
         [TestMethod]
         public async Task AsyncLinq_TakeAsync_LimitsResults()
         {
-            IAsyncEnumerable<User> queryable = new SqlxQueryable<User>(new SqlxQueryProvider(_dialect!))
+            IAsyncEnumerable<User> queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
                 .WithConnection(_connection!)
                 .WithReader(new UserReader())
                 .OrderBy(u => u.Age) as SqlxQueryable<User> ?? throw new InvalidOperationException();
@@ -393,7 +393,7 @@ namespace Sqlx.Tests
         [TestMethod]
         public async Task AsyncLinq_ComplexQuery_WorksCorrectly()
         {
-            IAsyncEnumerable<User> queryable = new SqlxQueryable<User>(new SqlxQueryProvider(_dialect!))
+            IAsyncEnumerable<User> queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
                 .WithConnection(_connection!)
                 .WithReader(new UserReader())
                 .Where(u => u.Age >= 28)
@@ -456,3 +456,4 @@ namespace Sqlx.Tests
         }
     }
 }
+

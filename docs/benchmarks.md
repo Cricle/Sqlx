@@ -35,11 +35,11 @@ AMD Ryzen 7 5800H with Radeon Graphics, 1 CPU, 16 logical and 8 physical cores
 
 | Method | Mean | Error | StdDev | Ratio | Allocated | Alloc Ratio |
 |--------|------|-------|--------|-------|-----------|-------------|
-| **Sqlx** | **9.78 μs** | 1.57 μs | 0.09 μs | **1.00** | **1.70 KB** | **1.00** |
-| Dapper.AOT | 11.73 μs | 0.19 μs | 0.01 μs | 1.20 | 2.95 KB | 1.73 |
-| FreeSql | 73.32 μs | 80.34 μs | 4.40 μs | 7.50 | 11.12 KB | 6.53 |
+| **Sqlx** | **8.59 μs** | 0.05 μs | 0.04 μs | **1.00** | **1.70 KB** | **1.00** |
+| Dapper.AOT | 9.96 μs | 0.07 μs | 0.06 μs | 1.16 | 2.95 KB | 1.73 |
+| FreeSql | 62.10 μs | 0.54 μs | 0.48 μs | 7.23 | 11.13 KB | 6.53 |
 
-**结论**：Sqlx 比 Dapper.AOT 快 20%，比 FreeSql 快 7.5 倍，内存分配最少。
+**结论**：Sqlx 比 Dapper.AOT 快 16%，比 FreeSql 快 7.2 倍，内存分配最少。
 
 ---
 
@@ -51,25 +51,25 @@ AMD Ryzen 7 5800H with Radeon Graphics, 1 CPU, 16 logical and 8 physical cores
 
 | Method | Mean | Ratio | Allocated | Alloc Ratio |
 |--------|------|-------|-----------|-------------|
-| Dapper.AOT | 24.61 μs | 0.92 | 6.55 KB | 1.32 |
-| **Sqlx** | **26.75 μs** | **1.00** | **4.98 KB** | **1.00** |
-| FreeSql | 44.23 μs | 1.65 | 9.56 KB | 1.92 |
+| Dapper.AOT | 21.59 μs | 0.92 | 6.55 KB | 1.32 |
+| **Sqlx** | **23.41 μs** | **1.00** | **4.98 KB** | **1.00** |
+| FreeSql | 38.86 μs | 1.66 | 9.56 KB | 1.92 |
 
 ### Limit = 100
 
 | Method | Mean | Ratio | Allocated | Alloc Ratio |
 |--------|------|-------|-----------|-------------|
-| Dapper.AOT | 144.34 μs | 0.78 | 42.14 KB | 1.13 |
-| **Sqlx** | **184.38 μs** | **1.00** | **37.30 KB** | **1.00** |
-| FreeSql | 187.69 μs | 1.02 | 38.11 KB | 1.02 |
+| Dapper.AOT | 127.00 μs | 0.77 | 42.14 KB | 1.13 |
+| **Sqlx** | **163.91 μs** | **1.00** | **37.30 KB** | **1.00** |
+| FreeSql | 166.28 μs | 1.01 | 38.11 KB | 1.02 |
 
 ### Limit = 1000
 
 | Method | Mean | Ratio | Allocated | Alloc Ratio |
 |--------|------|-------|-----------|-------------|
-| Dapper.AOT | 1,348.81 μs | 0.76 | 393.71 KB | 1.09 |
-| FreeSql | 1,600.60 μs | 0.91 | 319.45 KB | 0.89 |
-| **Sqlx** | **1,767.49 μs** | **1.00** | **360.55 KB** | **1.00** |
+| Dapper.AOT | 1,178.37 μs | 0.77 | 393.71 KB | 1.09 |
+| FreeSql | 1,420.83 μs | 0.93 | 319.45 KB | 0.89 |
+| **Sqlx** | **1,531.08 μs** | **1.00** | **360.55 KB** | **1.00** |
 
 **结论**：
 - 小批量（10条）：Sqlx 内存分配最少，速度接近 Dapper.AOT
@@ -84,11 +84,11 @@ AMD Ryzen 7 5800H with Radeon Graphics, 1 CPU, 16 logical and 8 physical cores
 
 | Method | Mean | Error | StdDev | Ratio | Allocated | Alloc Ratio |
 |--------|------|-------|--------|-------|-----------|-------------|
-| Dapper.AOT | 79.68 μs | 213.87 μs | 11.72 μs | 0.93 | 7.31 KB | 1.44 |
-| **Sqlx** | **85.67 μs** | 141.15 μs | 7.74 μs | **1.00** | **5.08 KB** | **1.00** |
-| FreeSql | 179.00 μs | 883.25 μs | 48.41 μs | 2.10 | 15.55 KB | 3.06 |
+| Dapper.AOT | 72.75 μs | 3.10 μs | 8.65 μs | 0.93 | 7.32 KB | 1.36 |
+| **Sqlx** | **79.10 μs** | 3.00 μs | 8.57 μs | **1.01** | **5.37 KB** | **1.00** |
+| FreeSql | 116.33 μs | 2.44 μs | 6.67 μs | 1.49 | 15.59 KB | 2.90 |
 
-**结论**：Sqlx 比 FreeSql 快 2 倍，内存分配比 Dapper.AOT 少 30%。
+**结论**：Sqlx 与 Dapper.AOT 性能相当，比 FreeSql 快 47%，内存分配比 Dapper.AOT 少 27%。
 
 ---
 
@@ -98,11 +98,11 @@ AMD Ryzen 7 5800H with Radeon Graphics, 1 CPU, 16 logical and 8 physical cores
 
 | Method | Mean | Error | StdDev | Ratio | Allocated | Alloc Ratio |
 |--------|------|-------|--------|-------|-----------|-------------|
-| **Sqlx** | **16.75 μs** | 4.48 μs | 0.25 μs | **1.00** | **3.27 KB** | **1.00** |
-| Dapper.AOT | 19.12 μs | 3.69 μs | 0.20 μs | 1.14 | 5.83 KB | 1.78 |
-| FreeSql | 70.08 μs | 2.44 μs | 0.13 μs | 4.18 | 14.61 KB | 4.46 |
+| **Sqlx** | **14.65 μs** | 0.07 μs | 0.07 μs | **1.00** | **3.27 KB** | **1.00** |
+| Dapper.AOT | 16.39 μs | 0.17 μs | 0.15 μs | 1.12 | 5.83 KB | 1.78 |
+| FreeSql | 62.87 μs | 0.46 μs | 0.43 μs | 4.29 | 14.61 KB | 4.46 |
 
-**结论**：Sqlx 比 Dapper.AOT 快 14%，比 FreeSql 快 4.2 倍。
+**结论**：Sqlx 比 Dapper.AOT 快 12%，比 FreeSql 快 4.3 倍。
 
 ---
 
@@ -112,11 +112,11 @@ AMD Ryzen 7 5800H with Radeon Graphics, 1 CPU, 16 logical and 8 physical cores
 
 | Method | Mean | Error | StdDev | Ratio | Allocated | Alloc Ratio |
 |--------|------|-------|--------|-------|-----------|-------------|
-| **Sqlx** | **35.03 μs** | 157.47 μs | 8.63 μs | **1.00** | **1.21 KB** | **1.00** |
-| Dapper.AOT | 37.50 μs | 107.68 μs | 5.90 μs | 1.07 | 1.50 KB | 1.24 |
-| FreeSql | 185.10 μs | 1,075.21 μs | 58.94 μs | 5.28 | 8.57 KB | 7.08 |
+| **Sqlx** | **41.36 μs** | 3.57 μs | 10.46 μs | **1.06** | **1.21 KB** | **1.00** |
+| Dapper.AOT | 45.23 μs | 4.12 μs | 11.81 μs | 1.16 | 1.45 KB | 1.20 |
+| FreeSql | 214.46 μs | 17.01 μs | 50.15 μs | 5.52 | 8.57 KB | 7.08 |
 
-**结论**：Sqlx 比 FreeSql 快 5.3 倍，内存分配最少。
+**结论**：Sqlx 与 Dapper.AOT 性能相当，比 FreeSql 快 5.2 倍，内存分配最少。
 
 ---
 
@@ -126,11 +126,11 @@ AMD Ryzen 7 5800H with Radeon Graphics, 1 CPU, 16 logical and 8 physical cores
 
 | Method | Mean | Error | StdDev | Ratio | Allocated | Alloc Ratio |
 |--------|------|-------|--------|-------|-----------|-------------|
-| Dapper.AOT | 4.02 μs | 0.48 μs | 0.03 μs | 0.97 | 896 B | 1.05 |
-| **Sqlx** | **4.14 μs** | 0.95 μs | 0.05 μs | **1.00** | **856 B** | **1.00** |
-| FreeSql | 202.09 μs | 46.54 μs | 2.55 μs | 48.85 | 5,720 B | 6.68 |
+| **Sqlx** | **3.81 μs** | 0.03 μs | 0.02 μs | **1.00** | **856 B** | **1.00** |
+| Dapper.AOT | 3.86 μs | 0.02 μs | 0.02 μs | 1.01 | 896 B | 1.05 |
+| FreeSql | 194.72 μs | 1.34 μs | 1.25 μs | 51.06 | 5,720 B | 6.68 |
 
-**结论**：Sqlx 与 Dapper.AOT 性能持平，比 FreeSql 快 49 倍。
+**结论**：Sqlx 与 Dapper.AOT 性能持平，比 FreeSql 快 51 倍。
 
 ---
 
@@ -140,13 +140,13 @@ AMD Ryzen 7 5800H with Radeon Graphics, 1 CPU, 16 logical and 8 physical cores
 
 | 场景 | Sqlx vs Dapper.AOT | Sqlx vs FreeSql |
 |------|-------------------|-----------------|
-| 单条查询 | **Sqlx 快 20%** | **Sqlx 快 7.5x** |
-| 列表查询（小批量） | Dapper.AOT 快 8% | **Sqlx 快 65%** |
-| 列表查询（大批量） | Dapper.AOT 快 24% | **Sqlx 快 10%** |
-| 插入操作 | Dapper.AOT 快 7% | **Sqlx 快 2.1x** |
-| 更新操作 | **Sqlx 快 14%** | **Sqlx 快 4.2x** |
-| 删除操作 | **Sqlx 快 7%** | **Sqlx 快 5.3x** |
-| 计数操作 | 持平 | **Sqlx 快 49x** |
+| 单条查询 | **Sqlx 快 16%** | **Sqlx 快 7.2x** |
+| 列表查询（小批量） | Dapper.AOT 快 8% | **Sqlx 快 66%** |
+| 列表查询（大批量） | Dapper.AOT 快 23% | **Sqlx 快 8%** |
+| 插入操作 | 持平 | **Sqlx 快 47%** |
+| 更新操作 | **Sqlx 快 12%** | **Sqlx 快 4.3x** |
+| 删除操作 | 持平 | **Sqlx 快 5.2x** |
+| 计数操作 | 持平 | **Sqlx 快 51x** |
 
 ### 内存分配对比
 

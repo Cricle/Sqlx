@@ -54,6 +54,14 @@ namespace Sqlx
         /// </summary>
         internal object? ResultReader { get; set; }
 
+        /// <summary>
+        /// Gets the entity provider for type T (cached in SqlQuery&lt;T&gt;).
+        /// </summary>
+        private IEntityProvider? GetEntityProvider()
+        {
+            return SqlQuery<T>.EntityProvider;
+        }
+
         /// <inheritdoc/>
         public IQueryable CreateQuery(Expression expression)
         {
@@ -222,7 +230,7 @@ namespace Sqlx
         /// <param name="expression">The expression tree.</param>
         /// <param name="parameterized">Whether to generate parameterized SQL.</param>
         /// <returns>The generated SQL string.</returns>
-        public string ToSql(Expression expression, bool parameterized = false) => new SqlExpressionVisitor(Dialect, parameterized).GenerateSql(expression);
+        public string ToSql(Expression expression, bool parameterized = false) => new SqlExpressionVisitor(Dialect, parameterized, GetEntityProvider()).GenerateSql(expression);
 
         /// <summary>
         /// Generates parameterized SQL and parameters from the expression.
@@ -231,7 +239,7 @@ namespace Sqlx
         /// <returns>A tuple containing the SQL string and parameters.</returns>
         public (string Sql, IEnumerable<KeyValuePair<string, object?>> Parameters) ToSqlWithParameters(Expression expression)
         {
-            var visitor = new SqlExpressionVisitor(Dialect, parameterized: true);
+            var visitor = new SqlExpressionVisitor(Dialect, parameterized: true, GetEntityProvider());
             return (visitor.GenerateSql(expression), visitor.GetParameters());
         }
 

@@ -48,6 +48,7 @@ namespace Sqlx
         private readonly SqlDialect _dialect;
         private readonly Dictionary<string, object?> _parameters;
         private readonly ExpressionParser _parser;
+        private readonly IEntityProvider? _entityProvider;
 
         private readonly List<string> _selectColumns;
         private readonly List<string> _whereConditions;
@@ -61,11 +62,12 @@ namespace Sqlx
         private Type? _entityType;
         private bool _isDistinct;
 
-        public SqlExpressionVisitor(SqlDialect dialect, bool parameterized = false)
+        public SqlExpressionVisitor(SqlDialect dialect, bool parameterized = false, IEntityProvider? entityProvider = null)
         {
             _dialect = dialect;
             _parameters = new Dictionary<string, object?>(4);
             _parser = new ExpressionParser(dialect, _parameters, parameterized);
+            _entityProvider = entityProvider;
 
             // Pre-allocate with small capacity
             _selectColumns = new List<string>(4);
@@ -358,17 +360,16 @@ namespace Sqlx
             else
             {
                 // Never generate SELECT *, always list all columns explicitly
-                // Get all columns from the entity provider
-                var entityProvider = GetEntityProvider();
-                if (entityProvider != null && entityProvider.Columns.Count > 0)
+                // Use the provided entity provider
+                if (_entityProvider != null && _entityProvider.Columns.Count > 0)
                 {
-                    for (var i = 0; i < entityProvider.Columns.Count; i++)
+                    for (var i = 0; i < _entityProvider.Columns.Count; i++)
                     {
                         if (i > 0)
                         {
                             sb.Append(", ");
                         }
-                        sb.Append(_dialect.WrapColumn(entityProvider.Columns[i].Name));
+                        sb.Append(_dialect.WrapColumn(_entityProvider.Columns[i].Name));
                     }
                 }
                 else
@@ -501,37 +502,6 @@ namespace Sqlx
                     sb.Append(_skip.Value);
                 }
             }
-        }
-
-        /// <summary>
-        /// Gets the entity provider for the current entity type using reflection.
-        /// This is only called when no explicit Select is specified.
-        /// </summary>
-        private IEntityProvider? GetEntityProvider()
-        {
-            if (_entityType == null)
-            {
-                return null;
-            }
-
-            try
-            {
-                // Try to get the cached EntityProvider from SqlQuery<T>
-                var sqlQueryType = typeof(SqlQuery<>).MakeGenericType(_entityType);
-                var entityProviderProperty = sqlQueryType.GetProperty("EntityProvider", 
-                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-                
-                if (entityProviderProperty != null)
-                {
-                    return entityProviderProperty.GetValue(null) as IEntityProvider;
-                }
-            }
-            catch
-            {
-                // If reflection fails, return null and fall back to SELECT *
-            }
-
-            return null;
         }
     }
 }

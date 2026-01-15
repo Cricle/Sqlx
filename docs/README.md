@@ -102,12 +102,17 @@ Sqlx consistently outperforms other ORMs in .NET 10 (LTS):
 
 | Operation | Sqlx | Dapper.AOT | FreeSql | Sqlx Advantage |
 |-----------|------|------------|---------|----------------|
-| SelectSingle | **9.06μs** | 10.14μs | 63.87μs | 12% faster than Dapper.AOT, 7.1x faster than FreeSql |
-| Memory | **1.79KB** | 2.96KB | 11.48KB | Lowest allocation (65% less than Dapper.AOT) |
+| SelectSingle | **9.08μs** | 10.43μs | 64.54μs | 15% faster than Dapper.AOT, 7.1x faster than FreeSql |
+| Memory | **1.79KB** | 2.96KB | 11.55KB | Lowest allocation (65% less than Dapper.AOT) |
 
 **Test Environment:** .NET 10.0.2 (LTS), BenchmarkDotNet 0.15.7, SQLite in-memory
 
-**AOT Compatibility:** ✅ 817 unit tests passing, fully Native AOT ready
+**AOT Compatibility:** ✅ 842 unit tests passing, fully Native AOT ready
+
+**Latest Optimizations:**
+- Removed reflection from SQL generation
+- Added JOIN support (INNER JOIN, LEFT JOIN)
+- Never generates SELECT *, always explicit columns
 
 See [Performance Benchmarks](benchmarks.md) for detailed results.
 

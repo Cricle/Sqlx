@@ -193,7 +193,7 @@ await connection.ExecuteBatchAsync(sql, users, UserParameterBinder.Default);
 
 | 场景 | Sqlx vs Dapper.AOT | Sqlx vs FreeSql |
 |------|-------------------|-----------------|
-| 单条查询 | **快 12%** | **快 7.1x** |
+| 单条查询 | **快 15%** | **快 7.1x** |
 | 插入操作 | 持平 | **快 2.0x** |
 | 更新操作 | **快 9%** | **快 4.2x** |
 | 删除操作 | 持平 | **快 5.4x** |
@@ -201,7 +201,12 @@ await connection.ExecuteBatchAsync(sql, users, UserParameterBinder.Default);
 
 **测试环境：** .NET 10.0.2 (LTS), BenchmarkDotNet 0.15.7, AMD Ryzen 7 5800H
 
-**AOT 兼容性：** ✅ 通过 817 个单元测试，完全支持 Native AOT
+**AOT 兼容性：** ✅ 通过 842 个单元测试，完全支持 Native AOT
+
+**最新优化：**
+- 移除 SQL 生成中的反射
+- 支持 JOIN 查询
+- 永远不生成 SELECT *
 
 > 详细数据见 [性能基准测试](docs/benchmarks.md)
 

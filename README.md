@@ -14,6 +14,7 @@
 - **多数据库** - SQLite、PostgreSQL、MySQL、SQL Server、Oracle、DB2
 - **智能模板** - 占位符自动适配不同数据库方言
 - **AOT 兼容** - 完全支持 Native AOT
+- **泛型缓存** - SqlQuery<T> 自动缓存实体元信息，无反射开销
 
 ## 快速开始
 
@@ -22,9 +23,9 @@ dotnet add package Sqlx
 ```
 
 ```csharp
-// 1. 定义实体
+// 1. 定义实体（标记为 partial 以启用自动注册）
 [SqlxEntity, SqlxParameter, TableName("users")]
-public class User
+public partial class User
 {
     [Key] public long Id { get; set; }
     public string Name { get; set; }
@@ -106,7 +107,7 @@ Task<List<User>> SearchAsync(string? name, int? minAge);
 using Sqlx;
 
 // 基本查询
-var sql = SqlQuery.ForSqlite<User>()
+var sql = SqlQuery<User>.ForSqlite()
     .Where(u => u.Age >= 18 && u.IsActive)
     .OrderBy(u => u.Name)
     .Take(10)
@@ -114,18 +115,30 @@ var sql = SqlQuery.ForSqlite<User>()
 // SELECT * FROM [User] WHERE ([age] >= 18 AND [is_active] = 1) ORDER BY [name] ASC LIMIT 10
 
 // 投影查询
-var sql = SqlQuery.ForPostgreSQL<User>()
+var sql = SqlQuery<User>.ForPostgreSQL()
     .Where(u => u.Name.Contains("test"))
     .Select(u => new { u.Id, u.Name })
     .ToSql();
 // SELECT "id", "name" FROM "User" WHERE "name" LIKE '%' || 'test' || '%'
 
 // 参数化查询
-var (sql, parameters) = SqlQuery.ForSqlServer<User>()
+var (sql, parameters) = SqlQuery<User>.ForSqlServer()
     .Where(u => u.Age > 18)
     .ToSqlWithParameters();
 // SQL: SELECT * FROM [User] WHERE [age] > @p0
 // Parameters: { "@p0": 18 }
+
+// 聚合函数（使用 ColumnMeta 自动映射列名）
+var count = await SqlQuery<User>.ForSqlite()
+    .Where(u => u.IsActive)
+    .WithConnection(connection)
+    .WithReader(UserResultReader.Default)
+    .CountAsync();
+
+var maxAge = await SqlQuery<User>.ForSqlite()
+    .WithConnection(connection)
+    .WithReader(UserResultReader.Default)
+    .MaxAsync(u => u.Age);
 ```
 
 **支持的 LINQ 方法：**
@@ -135,6 +148,10 @@ var (sql, parameters) = SqlQuery.ForSqlServer<User>()
 - `Take` / `Skip` - 分页
 - `GroupBy` - 分组
 - `Distinct` - 去重
+- `Count` / `LongCount` - 计数
+- `Min` / `Max` - 极值
+- `Sum` / `Average` - 求和/平均值
+- `First` / `FirstOrDefault` - 获取第一条
 
 **支持的函数：**
 - String: `Contains`, `StartsWith`, `EndsWith`, `ToUpper`, `ToLower`, `Trim`, `Substring`, `Replace`, `Length`

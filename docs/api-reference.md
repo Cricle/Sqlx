@@ -2,6 +2,48 @@
 
 ## Core Classes
 
+### SqlQuery\<T\>
+
+Generic static class for building type-safe SQL queries with cached entity metadata.
+
+```csharp
+public static class SqlQuery<T>
+{
+    // Properties
+    public static IEntityProvider? EntityProvider { get; set; }  // Cached entity provider
+    
+    // Factory Methods
+    public static IQueryable<T> For(SqlDialect dialect, IEntityProvider? entityProvider = null);
+    public static IQueryable<T> ForSqlite(IEntityProvider? entityProvider = null);
+    public static IQueryable<T> ForSqlServer(IEntityProvider? entityProvider = null);
+    public static IQueryable<T> ForMySql(IEntityProvider? entityProvider = null);
+    public static IQueryable<T> ForPostgreSQL(IEntityProvider? entityProvider = null);
+    public static IQueryable<T> ForOracle(IEntityProvider? entityProvider = null);
+    public static IQueryable<T> ForDB2(IEntityProvider? entityProvider = null);
+    
+    // Internal Methods
+    internal static ColumnMeta? GetColumnByProperty(string propertyName);
+}
+```
+
+**Example:**
+```csharp
+// Auto-registration (for partial classes with [SqlxEntity])
+var query = SqlQuery<User>.ForSqlite()
+    .Where(u => u.Age > 18)
+    .OrderBy(u => u.Name);
+
+// Manual registration
+SqlQuery<User>.EntityProvider = UserEntityProvider.Default;
+var query = SqlQuery<User>.ForSqlServer();
+
+// Aggregate functions use cached ColumnMeta for correct column names
+var maxAge = await SqlQuery<User>.ForSqlite()
+    .WithConnection(connection)
+    .WithReader(UserResultReader.Default)
+    .MaxAsync(u => u.Age);  // Uses column name from ColumnMeta
+```
+
 ### SqlTemplate
 
 Represents a prepared SQL template with efficient rendering.

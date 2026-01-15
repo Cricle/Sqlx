@@ -11,6 +11,7 @@ public static class SqlQuery<T>
 {
     // Properties
     public static IEntityProvider? EntityProvider { get; set; }  // Cached entity provider
+    public static IResultReader<T>? ResultReader { get; set; }   // Cached result reader
     
     // Factory Methods
     public static IQueryable<T> For(SqlDialect dialect, IEntityProvider? entityProvider = null);
@@ -35,6 +36,7 @@ var query = SqlQuery<User>.ForSqlite()
 
 // Manual registration
 SqlQuery<User>.EntityProvider = UserEntityProvider.Default;
+SqlQuery<User>.ResultReader = UserResultReader.Default;
 var query = SqlQuery<User>.ForSqlServer();
 
 // Aggregate functions use cached ColumnMeta for correct column names
@@ -42,6 +44,13 @@ var maxAge = await SqlQuery<User>.ForSqlite()
     .WithConnection(connection)
     .WithReader(UserResultReader.Default)
     .MaxAsync(u => u.Age);  // Uses column name from ColumnMeta
+
+// Select projection with anonymous types (uses DynamicResultReader)
+var results = await SqlQuery<User>.ForSqlite()
+    .Where(u => u.Age >= 18)
+    .Select(u => new { u.Id, u.Name, u.Email })
+    .WithConnection(connection)
+    .ToListAsync();  // Returns List<dynamic>, fully AOT compatible
 ```
 
 ### SqlTemplate
@@ -183,6 +192,42 @@ public interface IResultReader<TEntity>
     // .NET 8+ only
     IAsyncEnumerable<TEntity> ReadAsync(DbDataReader reader, CancellationToken ct = default);
 }
+```
+
+### DynamicResultReader\<T\>
+
+High-performance result reader for anonymous types and dynamic projections. Automatically used by `Select()` queries.
+
+```csharp
+public sealed class DynamicResultReader<T> : IResultReader<T>
+{
+    public static DynamicResultReader<T> Create();
+    public IEnumerable<T> Read(DbDataReader reader);
+    public IAsyncEnumerable<T> ReadAsync(DbDataReader reader, CancellationToken ct = default);
+}
+```
+
+**Features:**
+- Fully AOT compatible (uses expression tree compilation)
+- Static method caching (GetInt32, GetString, IsDBNull, etc.)
+- Supports all basic types and nullable types
+- Automatic type conversion
+- Zero reflection at runtime
+
+**Example:**
+```csharp
+// Automatically used for Select projections
+var results = await SqlQuery<User>.ForSqlite()
+    .Select(u => new { u.Id, u.Name, u.Email })
+    .WithConnection(connection)
+    .ToListAsync();  // Uses DynamicResultReader<dynamic>
+
+// Manual usage (rarely needed)
+var reader = DynamicResultReader<dynamic>.Create();
+var query = SqlQuery<User>.ForSqlite()
+    .Select(u => new { u.Id, u.Name })
+    .WithConnection(connection)
+    .WithReader(reader);
 ```
 
 ### IParameterBinder\<TEntity\>

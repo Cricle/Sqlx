@@ -38,4 +38,6 @@ public partial class BenchmarkUserRepository(SqliteConnection connection) : IBen
 {
     private readonly SqliteConnection _connection = connection;
     public System.Data.Common.DbTransaction? Transaction { get; set; }
+
+
 }

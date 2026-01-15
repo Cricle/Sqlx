@@ -59,7 +59,10 @@ Windows 10 (10.0.19045.6466/22H2/2022Update)
 
 **结论：** Sqlx 比 Dapper.AOT 快 18%，比 FreeSql 快 7.0 倍。
 
-**性能提升：** 相比之前版本，Sqlx 性能提升 9%（从 10.04 μs 降至 9.14 μs），得益于泛型 SqlQuery<T> 的缓存优化。
+**性能提升：** 相比之前版本，Sqlx 性能提升 9%（从 10.04 μs 降至 9.14 μs），得益于：
+- 泛型 SqlQuery<T> 的 EntityProvider 缓存优化
+- DynamicResultReader 静态方法缓存（IDataRecord.GetInt32/GetString 等）
+- 完全消除运行时反射查找
 
 ### .NET 9
 
@@ -187,6 +190,7 @@ Windows 10 (10.0.19045.6466/22H2/2022Update)
 - 内存分配始终最少（AOT 友好）
 - 比 FreeSql 快 2-50 倍
 - 泛型 SqlQuery<T> 缓存优化，性能提升 9%
+- DynamicResultReader 支持匿名类型投影，完全 AOT 兼容
 - .NET 10 相比 .NET 9 性能提升 8%
 
 **Dapper.AOT：**
@@ -310,6 +314,7 @@ Windows 10 (10.0.19045.6466/22H2/2022Update)
 - 复杂链式查询：**~14.8 μs**
 - 各数据库方言性能差异 < 5%
 - 内存分配：1.09KB - 9.41KB
+- **Select 投影**：使用 DynamicResultReader 自动处理匿名类型，完全 AOT 兼容
 
 ---
 

@@ -15,6 +15,7 @@
 - **智能模板** - 占位符自动适配不同数据库方言
 - **AOT 兼容** - 完全支持 Native AOT
 - **泛型缓存** - SqlQuery<T> 自动缓存实体元信息，无反射开销
+- **动态投影** - Select 支持匿名类型，自动生成高性能 ResultReader
 
 ## 快速开始
 
@@ -114,12 +115,20 @@ var sql = SqlQuery<User>.ForSqlite()
     .ToSql();
 // SELECT * FROM [User] WHERE ([age] >= 18 AND [is_active] = 1) ORDER BY [name] ASC LIMIT 10
 
-// 投影查询
+// 投影查询（匿名类型）
 var sql = SqlQuery<User>.ForPostgreSQL()
     .Where(u => u.Name.Contains("test"))
     .Select(u => new { u.Id, u.Name })
     .ToSql();
 // SELECT "id", "name" FROM "User" WHERE "name" LIKE '%' || 'test' || '%'
+
+// 投影查询执行（自动使用 DynamicResultReader）
+var results = await SqlQuery<User>.ForSqlite()
+    .Where(u => u.Age >= 18)
+    .Select(u => new { u.Id, u.Name, u.Email })
+    .WithConnection(connection)
+    .ToListAsync();
+// 返回匿名类型列表，完全 AOT 兼容
 
 // 参数化查询
 var (sql, parameters) = SqlQuery<User>.ForSqlServer()

@@ -106,19 +106,7 @@ namespace Sqlx
         internal IResultReader<T>? ResultReader
         {
             get => _resultReader;
-            set
-            {
-                _resultReader = value;
-                if (value != null)
-                {
-                    // Create a wrapper function that yields objects for the provider
-                    _provider.ExecuteFunc = reader => value.ToList(reader).Cast<object>();
-                }
-                else
-                {
-                    _provider.ExecuteFunc = null;
-                }
-            }
+            set => _resultReader = value;
         }
 
         /// <inheritdoc/>

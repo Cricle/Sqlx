@@ -24,7 +24,6 @@ namespace Sqlx
         private static StringBuilder? _sharedBuilder;
 
         private readonly SqlDialect _dialect;
-        private readonly bool _parameterized;
         private readonly Dictionary<string, object?> _parameters;
         private readonly ExpressionParser _parser;
 
@@ -41,7 +40,6 @@ namespace Sqlx
         public SqlExpressionVisitor(SqlDialect dialect, bool parameterized = false)
         {
             _dialect = dialect;
-            _parameterized = parameterized;
             _parameters = new Dictionary<string, object?>(4);
             _parser = new ExpressionParser(dialect, _parameters, parameterized);
 

@@ -27,13 +27,13 @@ namespace Sqlx
 #endif
         T> :  IOrderedQueryable<T>, IAsyncEnumerable<T>
     {
-        private readonly SqlxQueryProvider _provider;
+        private readonly SqlxQueryProvider<T> _provider;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="SqlxQueryable{T}"/> class.
         /// </summary>
         /// <param name="provider">The query provider.</param>
-        internal SqlxQueryable(SqlxQueryProvider provider)
+        internal SqlxQueryable(SqlxQueryProvider<T> provider)
         {
             _provider = provider ?? throw new ArgumentNullException(nameof(provider));
             Expression = Expression.Constant(this);
@@ -44,7 +44,7 @@ namespace Sqlx
         /// </summary>
         /// <param name="provider">The query provider.</param>
         /// <param name="expression">The expression tree.</param>
-        internal SqlxQueryable(SqlxQueryProvider provider, Expression expression)
+        internal SqlxQueryable(SqlxQueryProvider<T> provider, Expression expression)
         {
             _provider = provider ?? throw new ArgumentNullException(nameof(provider));
             Expression = expression ?? throw new ArgumentNullException(nameof(expression));
@@ -58,7 +58,7 @@ namespace Sqlx
         /// <param name="connection">The database connection.</param>
         /// <param name="resultReader">The result reader.</param>
         internal SqlxQueryable(
-            SqlxQueryProvider provider,
+            SqlxQueryProvider<T> provider,
             Expression expression,
             DbConnection? connection,
             IResultReader<T>? resultReader)

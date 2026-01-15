@@ -12,7 +12,7 @@ namespace Sqlx.Tests;
 [SqlxEntity]
 [SqlxParameter]
 [TableName("test_entities")]
-public class InsertTestEntity
+public partial class InsertTestEntity
 {
     [Key]
     public long Id { get; set; }

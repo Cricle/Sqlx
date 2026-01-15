@@ -82,12 +82,15 @@ public class EntityProviderGenerator : IIncrementalGenerator
                 SymbolEqualityComparer.Default.Equals(a.AttributeClass, sqlxEntityAttr));
             if (!hasAttr) continue;
 
-            var source = GenerateSource(typeSymbol, ignoreAttr, columnAttr);
+            // Check if class is partial
+            var isPartial = classDecl.Modifiers.Any(m => m.ValueText == "partial");
+
+            var source = GenerateSource(typeSymbol, ignoreAttr, columnAttr, isPartial);
             context.AddSource($"{typeSymbol.Name}.EntityProvider.g.cs", SourceText.From(source, Encoding.UTF8));
         }
     }
 
-    private static string GenerateSource(INamedTypeSymbol typeSymbol, INamedTypeSymbol? ignoreAttr, INamedTypeSymbol? columnAttr)
+    private static string GenerateSource(INamedTypeSymbol typeSymbol, INamedTypeSymbol? ignoreAttr, INamedTypeSymbol? columnAttr, bool isPartial)
     {
         var ns = typeSymbol.ContainingNamespace.IsGlobalNamespace ? null : typeSymbol.ContainingNamespace.ToDisplayString();
         var typeName = typeSymbol.Name;
@@ -111,6 +114,13 @@ public class EntityProviderGenerator : IIncrementalGenerator
         sb.AppendLine("using System.Data.Common;");
         sb.AppendLine();
 
+        // Add static registration to the entity type only if it's partial
+        if (isPartial)
+        {
+            GenerateEntityTypeExtension(sb, typeName, fullTypeName);
+            sb.AppendLine();
+        }
+
         // EntityProvider
         GenerateEntityProvider(sb, typeName, fullTypeName, properties, columnAttr);
         sb.AppendLine();
@@ -119,6 +129,22 @@ public class EntityProviderGenerator : IIncrementalGenerator
         GenerateResultReader(sb, typeName, fullTypeName, properties, columnAttr);
 
         return sb.ToString();
+    }
+
+    private static void GenerateEntityTypeExtension(IndentedStringBuilder sb, string typeName, string fullTypeName)
+    {
+        sb.AppendLine($"// Auto-registration for {typeName}");
+        sb.AppendLine($"partial class {typeName}");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine($"static {typeName}()");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine($"global::Sqlx.SqlQuery<{fullTypeName}>.EntityProvider = {typeName}EntityProvider.Default;");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.PopIndent();
+        sb.AppendLine("}");
     }
 
     private static void GenerateEntityProvider(IndentedStringBuilder sb, string typeName, string fullTypeName, 

@@ -23,10 +23,15 @@ namespace Sqlx
     /// <summary>
     /// IQueryProvider implementation for SQL generation (AOT-friendly, no reflection).
     /// </summary>
-    public class SqlxQueryProvider : IQueryProvider
+    /// <typeparam name="T">The entity type.</typeparam>
+    public class SqlxQueryProvider<
+#if NET5_0_OR_GREATER
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
+#endif
+        T> : IQueryProvider
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="SqlxQueryProvider"/> class.
+        /// Initializes a new instance of the <see cref="SqlxQueryProvider{T}"/> class.
         /// </summary>
         /// <param name="dialect">The SQL dialect.</param>
         public SqlxQueryProvider(SqlDialect dialect)
@@ -62,8 +67,20 @@ namespace Sqlx
 #endif
         TElement>(Expression expression)
         {
-            var reader = ResultReader as IResultReader<TElement>;
-            return new SqlxQueryable<TElement>(this, expression, Connection, reader);
+            // If TElement is the same as T, reuse this provider
+            if (typeof(TElement) == typeof(T))
+            {
+                var reader = ResultReader as IResultReader<TElement>;
+                return new SqlxQueryable<TElement>(this as SqlxQueryProvider<TElement> ?? throw new InvalidOperationException(), expression, Connection, reader);
+            }
+            
+            // Otherwise create a new provider for TElement
+            var newProvider = new SqlxQueryProvider<TElement>(Dialect)
+            {
+                Connection = Connection,
+                ResultReader = ResultReader
+            };
+            return new SqlxQueryable<TElement>(newProvider, expression);
         }
 
         /// <inheritdoc/>
@@ -88,7 +105,6 @@ namespace Sqlx
             {
                 var methodName = methodCall.Method.Name;
 
-                // Handle First/FirstOrDefault
                 switch (methodName)
                 {
                     case "First":
@@ -96,21 +112,53 @@ namespace Sqlx
                         {
                             var (sql, parameters) = ToSqlWithParameters(expression);
                             var result = DbExecutor.ExecuteReader(Connection, sql, parameters, (IResultReader<TResult>)ResultReader!);
-                            return methodName== "First"
-                                ? result.First()
-                                : result.FirstOrDefault()!;
+                            return methodName == "First" ? result.First() : result.FirstOrDefault()!;
                         }
                     case "Count":
                     case "LongCount":
                         {
-                            // Generate the base query
-                            var visitor = new SqlExpressionVisitor(Dialect, parameterized: true);
-                            var baseSql = visitor.GenerateSql(methodCall.Arguments[0]); // Get the source query without Count
-                            var parameters = visitor.GetParameters();
+                            var sourceExpression = methodCall.Arguments[0];
+                            var (sourceSql, parameters) = ToSqlWithParameters(sourceExpression);
+                            var sql = $"SELECT COUNT(*) FROM ({sourceSql}) AS CountQuery";
+                            var result = DbExecutor.ExecuteScalar(Connection, sql, parameters);
+                            return (TResult)Convert.ChangeType(result!, typeof(TResult));
+                        }
+                    case "Min":
+                    case "Max":
+                    case "Sum":
+                    case "Average":
+                        {
+                            var sourceExpression = methodCall.Arguments[0];
+                            var (sourceSql, parameters) = ToSqlWithParameters(sourceExpression);
                             
-                            // Wrap in COUNT query
-                            var sql = $"SELECT COUNT(*) FROM ({baseSql}) AS CountQuery";
+                            string columnExpression = "*";
+                            if (methodCall.Arguments.Count > 1)
+                            {
+                                var selectorArg = methodCall.Arguments[1];
+                                // Unwrap Quote if present
+                                if (selectorArg is UnaryExpression { NodeType: ExpressionType.Quote } unary)
+                                {
+                                    selectorArg = unary.Operand;
+                                }
+                                
+                                if (selectorArg is LambdaExpression lambda && lambda.Body is MemberExpression member)
+                                {
+                                    // Get column name from cached metadata
+                                    var columnMeta = SqlQuery<T>.GetColumnByProperty(member.Member.Name);
+                                    var columnName = columnMeta?.Name ?? member.Member.Name;
+                                    columnExpression = Dialect.WrapColumn(columnName);
+                                }
+                            }
                             
+                            var aggregateFunc = methodName switch
+                            {
+                                "Min" => Dialect.Min(columnExpression),
+                                "Max" => Dialect.Max(columnExpression),
+                                "Sum" => Dialect.Sum(columnExpression),
+                                "Average" => Dialect.Avg(columnExpression),
+                                _ => throw new NotSupportedException($"Aggregate function '{methodName}' is not supported.")
+                            };
+                            var sql = $"SELECT {aggregateFunc} FROM ({sourceSql}) AS AggregateQuery";
                             var result = DbExecutor.ExecuteScalar(Connection, sql, parameters);
                             return (TResult)Convert.ChangeType(result!, typeof(TResult));
                         }
@@ -118,7 +166,7 @@ namespace Sqlx
             }
 
             throw new NotSupportedException(
-                $"Execute is not supported for expression type '{expression.NodeType}'. Supported methods: First, FirstOrDefault, Count, LongCount, ToList.");
+                $"Execute is not supported for expression type '{expression.NodeType}'. Supported methods: First, FirstOrDefault, Count, LongCount, Min, Max, Sum, Average, ToList.");
         }
 
         /// <summary>

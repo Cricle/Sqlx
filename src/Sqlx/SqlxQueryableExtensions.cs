@@ -100,7 +100,7 @@ namespace Sqlx
                 throw new ArgumentNullException(nameof(query));
             }
 
-            if (query.Provider is SqlxQueryProvider provider)
+            if (query.Provider is SqlxQueryProvider<T> provider)
             {
                 return provider.ToSql(query.Expression);
             }
@@ -125,7 +125,7 @@ namespace Sqlx
                 throw new ArgumentNullException(nameof(query));
             }
 
-            if (query.Provider is SqlxQueryProvider provider)
+            if (query.Provider is SqlxQueryProvider<T> provider)
             {
                 return provider.ToSqlWithParameters(query.Expression);
             }

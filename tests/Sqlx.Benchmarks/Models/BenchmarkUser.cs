@@ -10,7 +10,7 @@ namespace Sqlx.Benchmarks.Models;
 [SqlxEntity]
 [SqlxParameter]
 [TableName("users")]
-public class BenchmarkUser
+public partial class BenchmarkUser
 {
     [Key]
     public long Id { get; set; }

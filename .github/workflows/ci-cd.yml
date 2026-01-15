@@ -207,8 +207,6 @@ jobs:
           echo "⚠️ No benchmark results found, creating basic release notes"
           cat > release-notes.md << EOF
         ## Sqlx v$VERSION
-        
-        See [CHANGELOG.md](https://github.com/sqlxorg/sqlx/blob/main/CHANGELOG.md) for details.
         EOF
         fi
 

@@ -15,6 +15,28 @@ using Sqlx.Expressions;
 namespace Sqlx
 {
     /// <summary>
+    /// Represents a JOIN clause in SQL.
+    /// </summary>
+    internal class JoinClause
+    {
+        public JoinType JoinType { get; set; }
+        public string TableName { get; set; } = string.Empty;
+        public string Alias { get; set; } = string.Empty;
+        public string OnCondition { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Types of SQL JOINs.
+    /// </summary>
+    internal enum JoinType
+    {
+        Inner,
+        Left,
+        Right,
+        Full
+    }
+
+    /// <summary>
     /// Visits LINQ expression trees and generates SQL.
     /// </summary>
     internal class SqlExpressionVisitor : ExpressionVisitor
@@ -32,6 +54,7 @@ namespace Sqlx
         private readonly List<string> _orderByExpressions;
         private readonly List<string> _groupByExpressions;
         private readonly List<string> _havingConditions;
+        private readonly List<JoinClause> _joinClauses;
         private int? _take;
         private int? _skip;
         private string? _tableName;
@@ -50,6 +73,7 @@ namespace Sqlx
             _orderByExpressions = new List<string>(2);
             _groupByExpressions = new List<string>(2);
             _havingConditions = new List<string>(2);
+            _joinClauses = new List<JoinClause>(2);
         }
 
         public Dictionary<string, object?> GetParameters() => new(_parameters);
@@ -121,6 +145,12 @@ namespace Sqlx
                     break;
                 case "Distinct":
                     _isDistinct = true;
+                    break;
+                case "Join":
+                    VisitJoin(node, JoinType.Inner);
+                    break;
+                case "GroupJoin":
+                    VisitJoin(node, JoinType.Left);
                     break;
             }
 
@@ -218,6 +248,86 @@ namespace Sqlx
             }
         }
 
+        private void VisitJoin(MethodCallExpression node, JoinType joinType)
+        {
+            // Join signature: Join<TOuter, TInner, TKey, TResult>(
+            //   IQueryable<TOuter> outer,
+            //   IEnumerable<TInner> inner,
+            //   Expression<Func<TOuter, TKey>> outerKeySelector,
+            //   Expression<Func<TInner, TKey>> innerKeySelector,
+            //   Expression<Func<TOuter, TInner, TResult>> resultSelector)
+            
+            if (node.Arguments.Count < 5)
+            {
+                return;
+            }
+
+            // Get inner table
+            var innerArg = node.Arguments[1];
+            string? innerTableName = null;
+            Type? innerType = null;
+
+            if (innerArg is ConstantExpression innerConstant && innerConstant.Value is IQueryable innerQueryable)
+            {
+                innerTableName = innerQueryable.ElementType.Name;
+                innerType = innerQueryable.ElementType;
+            }
+            else if (innerArg is MethodCallExpression innerMethod)
+            {
+                // Handle chained queries like SqlQuery.ForSqlite<T>()
+                Visit(innerArg);
+                // Extract type from generic arguments
+                if (innerMethod.Method.IsGenericMethod)
+                {
+                    var genericArgs = innerMethod.Method.GetGenericArguments();
+                    if (genericArgs.Length > 0)
+                    {
+                        innerType = genericArgs[0];
+                        innerTableName = innerType.Name;
+                    }
+                }
+            }
+
+            if (string.IsNullOrEmpty(innerTableName))
+            {
+                return;
+            }
+
+            // Get key selectors
+            var outerKeySelector = GetLambda(node.Arguments[2]);
+            var innerKeySelector = GetLambda(node.Arguments[3]);
+
+            if (outerKeySelector == null || innerKeySelector == null)
+            {
+                return;
+            }
+
+            // Build ON condition
+            var outerColumn = _parser.GetColumnName(outerKeySelector.Body);
+            var innerColumn = _parser.GetColumnName(innerKeySelector.Body);
+            
+            // Add table alias to columns
+            var alias = innerTableName.ToLower();
+            var onCondition = $"{_dialect.WrapColumn(_tableName ?? "t1")}.{outerColumn} = {_dialect.WrapColumn(alias)}.{innerColumn}";
+
+            _joinClauses.Add(new JoinClause
+            {
+                JoinType = joinType,
+                TableName = innerTableName,
+                Alias = alias,
+                OnCondition = onCondition
+            });
+
+            // Handle result selector for Select clause
+            var resultSelector = GetLambda(node.Arguments[4]);
+            if (resultSelector != null)
+            {
+                _selectColumns.Clear();
+                var columns = _parser.ExtractColumns(resultSelector.Body);
+                _selectColumns.AddRange(columns);
+            }
+        }
+
         private static LambdaExpression? GetLambda(Expression expression)
         {
             return expression switch
@@ -271,6 +381,32 @@ namespace Sqlx
             // FROM
             sb.Append(" FROM ");
             sb.Append(_dialect.WrapColumn(_tableName ?? "Unknown"));
+
+            // JOIN
+            if (_joinClauses.Count > 0)
+            {
+                foreach (var join in _joinClauses)
+                {
+                    sb.Append(' ');
+                    sb.Append(join.JoinType switch
+                    {
+                        JoinType.Inner => "INNER JOIN",
+                        JoinType.Left => "LEFT JOIN",
+                        JoinType.Right => "RIGHT JOIN",
+                        JoinType.Full => "FULL OUTER JOIN",
+                        _ => "INNER JOIN"
+                    });
+                    sb.Append(' ');
+                    sb.Append(_dialect.WrapColumn(join.TableName));
+                    if (!string.IsNullOrEmpty(join.Alias))
+                    {
+                        sb.Append(" AS ");
+                        sb.Append(_dialect.WrapColumn(join.Alias));
+                    }
+                    sb.Append(" ON ");
+                    sb.Append(join.OnCondition);
+                }
+            }
 
             // WHERE
             if (_whereConditions.Count > 0)

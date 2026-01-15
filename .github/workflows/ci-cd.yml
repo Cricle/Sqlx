@@ -96,7 +96,9 @@ jobs:
         echo "📦 Building version: $VERSION"
 
     - name: 🏗️ Build
-      run: dotnet build src/Sqlx --configuration Release --no-restore /p:Version=${{ steps.get_version.outputs.VERSION }}
+      run: |
+        dotnet build src/Sqlx.Generator --configuration Release --no-restore
+        dotnet build src/Sqlx --configuration Release --no-restore /p:Version=${{ steps.get_version.outputs.VERSION }}
 
     - name: 📦 Pack packages
       run: dotnet pack src/Sqlx --configuration Release --no-build --output ./artifacts /p:Version=${{ steps.get_version.outputs.VERSION }}

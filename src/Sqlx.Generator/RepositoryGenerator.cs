@@ -634,9 +634,6 @@ public class RepositoryGenerator : IIncrementalGenerator
             // Check for Expression<Func<T, bool>> parameters - these are truly dynamic
             if (typeName.Contains("Expression<"))
                 return true;
-            // Check for IQueryable<T> parameters - these provide dynamic WHERE/SELECT
-            if (typeName.Contains("IQueryable<") || typeName.Contains("SqlxQueryable<"))
-                return true;
         }
         return false;
     }
@@ -644,27 +641,16 @@ public class RepositoryGenerator : IIncrementalGenerator
     private static void GenerateDynamicContextAndRender(IndentedStringBuilder sb, IMethodSymbol method, string fieldName, INamedTypeSymbol? expressionToSqlAttr)
     {
         var expressionParams = method.Parameters.Where(p => p.Type.ToDisplayString().Contains("Expression<")).ToList();
-        var queryableParams = method.Parameters.Where(p => 
-            p.Type.ToDisplayString().Contains("IQueryable<") || 
-            p.Type.ToDisplayString().Contains("SqlxQueryable<")).ToList();
-
-        var totalDynamicParams = expressionParams.Count + queryableParams.Count;
 
         sb.AppendLine("// Create dynamic parameters for runtime rendering");
-        sb.AppendLine($"var dynamicParams = new Dictionary<string, object?>({totalDynamicParams})");
+        sb.AppendLine($"var dynamicParams = new Dictionary<string, object?>({expressionParams.Count})");
         sb.AppendLine("{");
         sb.PushIndent();
 
         foreach (var param in expressionParams)
         {
-            // Expression parameter - convert to SQL
+            // Expression parameter - convert to SQL using ExpressionParser
             sb.AppendLine($"[\"{param.Name}\"] = global::Sqlx.ExpressionExtensions.ToWhereClause({param.Name}, _placeholderContext.Dialect),");
-        }
-
-        foreach (var param in queryableParams)
-        {
-            // IQueryable parameter - extract WHERE clause from the query
-            sb.AppendLine($"[\"{param.Name}\"] = ({param.Name} as global::Sqlx.SqlxQueryable<{GetQueryableElementType(param.Type)}>)?.ToWhereSql() ?? string.Empty,");
         }
 
         sb.PopIndent();
@@ -674,15 +660,6 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine($"    ? {fieldName}.Render(dynamicParams)");
         sb.AppendLine($"    : {fieldName}.Sql;");
         sb.AppendLine("cmd.CommandText = renderedSql;");
-    }
-
-    private static string GetQueryableElementType(ITypeSymbol type)
-    {
-        if (type is INamedTypeSymbol namedType && namedType.IsGenericType && namedType.TypeArguments.Length > 0)
-        {
-            return namedType.TypeArguments[0].ToDisplayString();
-        }
-        return "object";
     }
 
     private static void GenerateActivityStart(IndentedStringBuilder sb, string methodName, IMethodSymbol method)

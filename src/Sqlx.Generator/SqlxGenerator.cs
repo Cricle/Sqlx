@@ -45,7 +45,8 @@ public class SqlxGenerator : IIncrementalGenerator
                 predicate: static (s, _) => s is MethodDeclarationSyntax m && m.AttributeLists.Count > 0,
                 transform: static (ctx, _) => GetSqlTemplateParamTypes(ctx))
             .Where(static m => m is not null)
-            .SelectMany(static (types, _) => types!);
+            .SelectMany(static (types, _) => types!)
+            .Select(static (t, _) => (TypeSyntax?)t);
 
         // Combine all sources
         var allTypes = sqlxClasses

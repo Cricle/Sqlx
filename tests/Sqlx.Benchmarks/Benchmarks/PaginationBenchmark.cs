@@ -15,6 +15,8 @@ namespace Sqlx.Benchmarks.Benchmarks;
 [RankColumn]
 public class PaginationBenchmark
 {
+    private const string PaginationSql = "SELECT id, name, email, age, is_active, created_at, updated_at, balance, description, score FROM users LIMIT @pageSize OFFSET @offset";
+    
     private SqliteConnection _connection = null!;
     private BenchmarkUserRepository _sqlxRepo = null!;
     
@@ -46,11 +48,9 @@ public class PaginationBenchmark
     }
     
     [Benchmark(Description = "Dapper.AOT")]
-    public async Task<List<DapperUser>> DapperAot_GetPaged()
+    public async Task<List<BenchmarkUser>> DapperAot_GetPaged()
     {
-        var result = await _connection.QueryAsync<DapperUser>(
-            "SELECT id, name, email, age, is_active, created_at, updated_at, balance, description, score FROM users LIMIT @pageSize OFFSET @offset",
-            new { pageSize = PageSize, offset = Offset });
+        var result = await _connection.QueryAsync<BenchmarkUser>(PaginationSql, new { pageSize = PageSize, offset = Offset });
         return result.ToList();
     }
 }

@@ -11,12 +11,15 @@ namespace Sqlx.Benchmarks.Benchmarks;
 /// <summary>
 /// Sqlx vs Dapper.AOT vs FreeSql: Select list of entities.
 /// All use the same entity type (BenchmarkUser) for fair comparison.
+/// Uses sync methods for fair comparison (no async overhead).
 /// </summary>
 [MemoryDiagnoser]
 [Orderer(SummaryOrderPolicy.FastestToSlowest)]
 [RankColumn]
 public class SelectListBenchmark
 {
+    private const string SelectSql = "SELECT id, name, email, age, is_active, created_at, updated_at, balance, description, score FROM users LIMIT @limit";
+    
     private SqliteConnection _connection = null!;
     private BenchmarkUserRepository _sqlxRepo = null!;
     private IFreeSql _freeSql = null!;
@@ -46,24 +49,22 @@ public class SelectListBenchmark
     }
     
     [Benchmark(Baseline = true, Description = "Sqlx")]
-    public async Task<List<BenchmarkUser>> Sqlx_GetAll()
+    public List<BenchmarkUser> Sqlx_GetAll()
     {
-        return await _sqlxRepo.GetAllAsync(Limit, default);
+        return _sqlxRepo.GetAll(Limit);
     }
     
     [Benchmark(Description = "Dapper.AOT")]
-    public async Task<List<BenchmarkUser>> DapperAot_GetAll()
+    public List<BenchmarkUser> DapperAot_GetAll()
     {
         // Use same entity type as Sqlx for fair comparison
-        var result = await _connection.QueryAsync<BenchmarkUser>(
-            "SELECT id, name, email, age, is_active, created_at, updated_at, balance, description, score FROM users LIMIT @limit",
-            new { limit = Limit });
+        var result = _connection.Query<BenchmarkUser>(SelectSql, new { limit = Limit });
         return result.ToList();
     }
     
     [Benchmark(Description = "FreeSql")]
-    public async Task<List<FreeSqlUser>> FreeSql_GetAll()
+    public List<FreeSqlUser> FreeSql_GetAll()
     {
-        return await _freeSql.Select<FreeSqlUser>().Take(Limit).ToListAsync();
+        return _freeSql.Select<FreeSqlUser>().Take(Limit).ToList();
     }
 }

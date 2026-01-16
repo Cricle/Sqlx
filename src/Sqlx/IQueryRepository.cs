@@ -25,6 +25,10 @@ namespace Sqlx
         [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = {{arg --param id}}")]
         Task<TEntity?> GetByIdAsync(TKey id, CancellationToken cancellationToken = default);
 
+        /// <summary>Gets entity by primary key (sync).</summary>
+        [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = {{arg --param id}}")]
+        TEntity? GetById(TKey id);
+
         /// <summary>Gets multiple entities by IDs.</summary>
         [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id IN ({{values --param ids}})")]
         Task<List<TEntity>> GetByIdsAsync(List<TKey> ids, CancellationToken cancellationToken = default);
@@ -32,6 +36,10 @@ namespace Sqlx
         /// <summary>Gets all entities with limit.</summary>
         [SqlTemplate("SELECT {{columns}} FROM {{table}} {{limit --param limit}}")]
         Task<List<TEntity>> GetAllAsync(int limit = 1000, CancellationToken cancellationToken = default);
+
+        /// <summary>Gets all entities with limit (sync).</summary>
+        [SqlTemplate("SELECT {{columns}} FROM {{table}} {{limit --param limit}}")]
+        List<TEntity> GetAll(int limit = 1000);
 
         /// <summary>Gets entities matching predicate.</summary>
         [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE {{where --param predicate}} {{limit --param limit}}")]

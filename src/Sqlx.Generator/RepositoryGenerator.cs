@@ -555,6 +555,9 @@ public class RepositoryGenerator : IIncrementalGenerator
         var isReturnInsertedId = returnInsertedIdAttr is not null && 
             method.GetAttributes().Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, returnInsertedIdAttr));
 
+        // Check if this is a sync method (doesn't return Task)
+        var isAsync = returnType.Contains("Task<") || returnType == "Task" || returnType.Contains("System.Threading.Tasks.Task");
+
         // Check if this is a SqlTemplate return type (debug/inspection method)
         if (returnType == "Sqlx.SqlTemplate" || returnType == "global::Sqlx.SqlTemplate" || returnType.EndsWith(".SqlTemplate"))
         {
@@ -566,7 +569,14 @@ public class RepositoryGenerator : IIncrementalGenerator
         var parameters = string.Join(", ", method.Parameters.Select(p => $"{p.Type.ToDisplayString()} {p.Name}"));
 
         sb.AppendLine("/// <inheritdoc/>");
-        sb.AppendLine($"public async {returnType} {methodName}({parameters})");
+        if (isAsync)
+        {
+            sb.AppendLine($"public async {returnType} {methodName}({parameters})");
+        }
+        else
+        {
+            sb.AppendLine($"public {returnType} {methodName}({parameters})");
+        }
         sb.AppendLine("{");
         sb.PushIndent();
 
@@ -617,7 +627,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.PushIndent();
 
         // Execute and return based on return type
-        GenerateExecuteAndReturn(sb, method, entityFullName, entityName, keyTypeName, isReturnInsertedId, methodName, fieldName, useStaticOrdinals, ordinalsFieldName);
+        GenerateExecuteAndReturn(sb, method, entityFullName, entityName, keyTypeName, isReturnInsertedId, methodName, fieldName, useStaticOrdinals, ordinalsFieldName, isAsync);
 
         sb.PopIndent();
         sb.AppendLine("}");
@@ -810,7 +820,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         return false;
     }
 
-    private static void GenerateExecuteAndReturn(IndentedStringBuilder sb, IMethodSymbol method, string entityFullName, string entityName, string keyTypeName, bool isReturnInsertedId, string methodName, string fieldName, bool useStaticOrdinals, string ordinalsFieldName)
+    private static void GenerateExecuteAndReturn(IndentedStringBuilder sb, IMethodSymbol method, string entityFullName, string entityName, string keyTypeName, bool isReturnInsertedId, string methodName, string fieldName, bool useStaticOrdinals, string ordinalsFieldName, bool isAsync)
     {
         var returnType = method.ReturnType.ToDisplayString();
         var ctParam = method.Parameters.FirstOrDefault(p => p.Name == "cancellationToken");
@@ -832,7 +842,62 @@ public class RepositoryGenerator : IIncrementalGenerator
             .Replace("System.Threading.Tasks.", "")
             .Replace("System.Collections.Generic.", "");
 
-        if (normalizedReturnType.Contains("Task<List<") || normalizedReturnType.Contains("Task<IList<") || normalizedReturnType.Contains("Task<IEnumerable<"))
+        // Check for sync list return (List<Entity> without Task)
+        if (!isAsync && (normalizedReturnType.Contains("List<") || normalizedReturnType.Contains("IList<") || normalizedReturnType.Contains("IEnumerable<")))
+        {
+            // Sync list return
+            sb.AppendLine("using var reader = cmd.ExecuteReader(System.Data.CommandBehavior.Default);");
+            if (useStaticOrdinals && capacityHint != null)
+            {
+                sb.AppendLine($"var result = global::Sqlx.ResultReaderExtensions.ToList({entityName}ResultReader.Default, reader, {ordinalsFieldName});");
+            }
+            else if (useStaticOrdinals)
+            {
+                sb.AppendLine($"var result = global::Sqlx.ResultReaderExtensions.ToList({entityName}ResultReader.Default, reader, {ordinalsFieldName});");
+            }
+            else
+            {
+                sb.AppendLine($"var result = {entityName}ResultReader.Default.ToList(reader);");
+            }
+            sb.AppendLine();
+            sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
+            sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
+            sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, result, elapsed);");
+            sb.AppendLine("#endif");
+            sb.AppendLine();
+            sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
+            sb.AppendLine("activity?.SetTag(\"db.rows_affected\", result.Count);");
+            sb.AppendLine("#endif");
+            sb.AppendLine();
+            sb.AppendLine("return result;");
+        }
+        // Check for sync single entity return (Entity? without Task)
+        else if (!isAsync && (normalizedReturnType.Contains($"{entityName}?") || normalizedReturnType.Contains($"{entityName}") ||
+                 returnType.Contains($"{entityFullName}?") || returnType.Contains($"{entityFullName}")))
+        {
+            // Sync single entity return
+            sb.AppendLine("using var reader = cmd.ExecuteReader(System.Data.CommandBehavior.Default);");
+            if (useStaticOrdinals)
+            {
+                sb.AppendLine($"var result = global::Sqlx.ResultReaderExtensions.FirstOrDefault({entityName}ResultReader.Default, reader, {ordinalsFieldName});");
+            }
+            else
+            {
+                sb.AppendLine($"var result = {entityName}ResultReader.Default.FirstOrDefault(reader);");
+            }
+            sb.AppendLine();
+            sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
+            sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
+            sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, result, elapsed);");
+            sb.AppendLine("#endif");
+            sb.AppendLine();
+            sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
+            sb.AppendLine("activity?.SetTag(\"db.rows_affected\", result != null ? 1 : 0);");
+            sb.AppendLine("#endif");
+            sb.AppendLine();
+            sb.AppendLine("return result;");
+        }
+        else if (normalizedReturnType.Contains("Task<List<") || normalizedReturnType.Contains("Task<IList<") || normalizedReturnType.Contains("Task<IEnumerable<"))
         {
             // Return list of entities - use static ordinals when available
             sb.AppendLine($"using var reader = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.Default, {ctName}).ConfigureAwait(false);");

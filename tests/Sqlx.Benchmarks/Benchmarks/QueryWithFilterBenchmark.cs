@@ -15,6 +15,8 @@ namespace Sqlx.Benchmarks.Benchmarks;
 [RankColumn]
 public class QueryWithFilterBenchmark
 {
+    private const string FilterSql = "SELECT id, name, email, age, is_active, created_at, updated_at, balance, description, score FROM users WHERE age >= @minAge";
+    
     private SqliteConnection _connection = null!;
     private BenchmarkUserRepository _sqlxRepo = null!;
     
@@ -40,11 +42,9 @@ public class QueryWithFilterBenchmark
     }
     
     [Benchmark(Description = "Dapper.AOT")]
-    public async Task<List<DapperUser>> DapperAot_GetByMinAge()
+    public async Task<List<BenchmarkUser>> DapperAot_GetByMinAge()
     {
-        var result = await _connection.QueryAsync<DapperUser>(
-            "SELECT id, name, email, age, is_active, created_at, updated_at, balance, description, score FROM users WHERE age >= @minAge",
-            new { minAge = 50 });
+        var result = await _connection.QueryAsync<BenchmarkUser>(FilterSql, new { minAge = 50 });
         return result.ToList();
     }
 }

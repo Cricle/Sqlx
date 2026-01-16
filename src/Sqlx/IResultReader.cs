@@ -128,6 +128,22 @@ public static class ResultReaderExtensions
     }
 
     /// <summary>
+    /// Reads all entities into a list, using pre-computed ordinals and capacity hint.
+    /// </summary>
+    public static List<TEntity> ToList<TEntity>(this IResultReader<TEntity> reader, IDataReader dataReader, int[] ordinals, int capacityHint)
+    {
+        var list = new List<TEntity>(capacityHint);
+        if (!dataReader.Read()) return list;
+        
+        do
+        {
+            list.Add(reader.Read(dataReader, ordinals));
+        } while (dataReader.Read());
+        
+        return list;
+    }
+
+    /// <summary>
     /// Reads all entities into a list (async).
     /// </summary>
     public static async Task<List<TEntity>> ToListAsync<TEntity>(

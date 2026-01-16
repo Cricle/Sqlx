@@ -360,27 +360,15 @@ namespace Sqlx
             else
             {
                 // Never generate SELECT *, always list all columns explicitly
-                // Use the provided entity provider or try to get it from the entity type
-                IEntityProvider? provider = _entityProvider;
-                
-                // If no provider was passed but we have an entity type, try to get its provider
-                if (provider == null && _entityType != null)
+                if (_entityProvider != null && _entityProvider.Columns.Count > 0)
                 {
-                    // Use reflection to get the EntityProvider from SqlQuery<T>
-                    var sqlQueryType = typeof(SqlQuery<>).MakeGenericType(_entityType);
-                    var entityProviderProperty = sqlQueryType.GetProperty("EntityProvider", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-                    provider = entityProviderProperty?.GetValue(null) as IEntityProvider;
-                }
-                
-                if (provider != null && provider.Columns.Count > 0)
-                {
-                    for (var i = 0; i < provider.Columns.Count; i++)
+                    for (var i = 0; i < _entityProvider.Columns.Count; i++)
                     {
                         if (i > 0)
                         {
                             sb.Append(", ");
                         }
-                        sb.Append(_dialect.WrapColumn(provider.Columns[i].Name));
+                        sb.Append(_dialect.WrapColumn(_entityProvider.Columns[i].Name));
                     }
                 }
                 else

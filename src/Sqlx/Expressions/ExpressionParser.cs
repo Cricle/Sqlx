@@ -327,13 +327,33 @@ namespace Sqlx.Expressions
             var subQuerySql = GenerateSubQuerySql(m.Arguments[0]);
 
             var methodName = m.Method.Name;
-            var aggregateFunc = methodName switch
+            
+            // Handle Count with predicate: Count(y => y.Id == x.Count())
+            // This should generate: (SELECT COUNT(*) FROM (subquery) AS sq WHERE condition)
+            if ((methodName == "Count" || methodName == "LongCount") && m.Arguments.Count > 1)
+            {
+                var predicateCondition = ParseLambdaAsCondition(m.Arguments[1]);
+                return $"(SELECT COUNT(*) FROM ({subQuerySql}) AS sq WHERE {predicateCondition})";
+            }
+            
+            // Handle Sum/Average/Min/Max with predicate
+            if (methodName is "Sum" or "Average" or "Min" or "Max" && m.Arguments.Count > 1)
+            {
+                var selectorColumn = ParseLambdaColumn(m.Arguments[1]);
+                var aggregateFunc = methodName switch
+                {
+                    "Sum" => $"SUM({selectorColumn})",
+                    "Average" => $"AVG({selectorColumn})",
+                    "Min" => $"MIN({selectorColumn})",
+                    "Max" => $"MAX({selectorColumn})",
+                    _ => $"SUM({selectorColumn})"
+                };
+                return $"(SELECT {aggregateFunc} FROM ({subQuerySql}) AS sq)";
+            }
+            
+            var aggregateFuncSimple = methodName switch
             {
                 "Count" or "LongCount" => "COUNT(*)",
-                "Sum" when m.Arguments.Count > 1 => $"SUM({ParseLambdaColumn(m.Arguments[1])})",
-                "Average" when m.Arguments.Count > 1 => $"AVG({ParseLambdaColumn(m.Arguments[1])})",
-                "Min" when m.Arguments.Count > 1 => $"MIN({ParseLambdaColumn(m.Arguments[1])})",
-                "Max" when m.Arguments.Count > 1 => $"MAX({ParseLambdaColumn(m.Arguments[1])})",
                 "Any" => "1",
                 "All" => "1",
                 "First" or "FirstOrDefault" when m.Arguments.Count > 1 => ParseLambdaColumn(m.Arguments[1]),
@@ -343,7 +363,7 @@ namespace Sqlx.Expressions
             if (methodName == "Any")
                 return $"(SELECT CASE WHEN EXISTS({subQuerySql}) THEN 1 ELSE 0 END)";
 
-            return $"(SELECT {aggregateFunc} FROM ({subQuerySql}) AS sq)";
+            return $"(SELECT {aggregateFuncSimple} FROM ({subQuerySql}) AS sq)";
         }
 
         /// <summary>

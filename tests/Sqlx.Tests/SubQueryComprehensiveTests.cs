@@ -1008,4 +1008,101 @@ public class SubQueryComprehensiveTests
     }
 
     #endregion
+
+    #region SubQuery Count with Predicate Tests
+
+    [TestMethod]
+    public void SubQuery_CountWithPredicate_SimpleCondition()
+    {
+        var sql = SqlQuery<SqUser>.ForSqlite()
+            .Select(x => new { x.Id, MatchCount = SubQuery.For<SqOrder>().Count(o => o.UserId == 1) })
+            .ToSql();
+
+        Assert.AreEqual(
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder]) AS sq WHERE [user_id] = 1) AS MatchCount FROM [SqUser]",
+            sql);
+    }
+
+    [TestMethod]
+    public void SubQuery_CountWithPredicate_ComplexCondition()
+    {
+        var sql = SqlQuery<SqUser>.ForSqlite()
+            .Select(x => new { x.Id, MatchCount = SubQuery.For<SqOrder>().Count(o => o.Amount > 100 && o.Status == "completed") })
+            .ToSql();
+
+        Assert.AreEqual(
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder]) AS sq WHERE ([amount] > 100 AND [status] = 'completed')) AS MatchCount FROM [SqUser]",
+            sql);
+    }
+
+    [TestMethod]
+    public void SubQuery_CountWithPredicate_WithWhereChain()
+    {
+        var sql = SqlQuery<SqUser>.ForSqlite()
+            .Select(x => new { x.Id, MatchCount = SubQuery.For<SqOrder>().Where(o => o.Status == "active").Count(o => o.Amount > 50) })
+            .ToSql();
+
+        Assert.AreEqual(
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder] WHERE [status] = 'active') AS sq WHERE [amount] > 50) AS MatchCount FROM [SqUser]",
+            sql);
+    }
+
+    [TestMethod]
+    public void SubQuery_CountWithPredicate_AllDialects()
+    {
+        // SQLite
+        var sqliteSql = SqlQuery<SqUser>.ForSqlite()
+            .Select(x => new { x.Id, Count = SubQuery.For<SqOrder>().Count(o => o.UserId == 1) })
+            .ToSql();
+        Assert.IsTrue(sqliteSql.Contains("WHERE [user_id] = 1"), $"SQLite: {sqliteSql}");
+
+        // MySQL
+        var mysqlSql = SqlQuery<SqUser>.ForMySql()
+            .Select(x => new { x.Id, Count = SubQuery.For<SqOrder>().Count(o => o.UserId == 1) })
+            .ToSql();
+        Assert.IsTrue(mysqlSql.Contains("WHERE `user_id` = 1"), $"MySQL: {mysqlSql}");
+
+        // PostgreSQL
+        var pgSql = SqlQuery<SqUser>.ForPostgreSQL()
+            .Select(x => new { x.Id, Count = SubQuery.For<SqOrder>().Count(o => o.UserId == 1) })
+            .ToSql();
+        Assert.IsTrue(pgSql.Contains("WHERE \"user_id\" = 1"), $"PostgreSQL: {pgSql}");
+    }
+
+    [TestMethod]
+    public void SubQuery_GroupByWithCountPredicate()
+    {
+        var sql = SqlQuery<SqUser>.ForSqlite()
+            .GroupBy(x => x.DepartmentId)
+            .Select(x => new { 
+                DeptId = x.Key, 
+                UserCount = x.Count(),
+                MatchingOrders = SubQuery.For<SqOrder>().Count(o => o.Amount > 100)
+            })
+            .ToSql();
+
+        Assert.AreEqual(
+            "SELECT [department_id] AS DeptId, COUNT(*) AS UserCount, (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder]) AS sq WHERE [amount] > 100) AS MatchingOrders FROM [SqUser] GROUP BY [department_id]",
+            sql);
+    }
+
+    [TestMethod]
+    public void SubQuery_GroupByWithCountPredicateReferencingOuterCount()
+    {
+        // 测试用户场景: SubQuery.For<User>().Count(y => y.Id == x.Count())
+        // 这里 x.Count() 是外部 GroupBy 的聚合结果
+        var sql = SqlQuery<SqUser>.ForSqlite()
+            .GroupBy(x => x.Id % 3)
+            .Select(x => new { 
+                Key = x.Key, 
+                A = SubQuery.For<SqUser>().Count(y => y.Id == x.Count())
+            })
+            .ToSql();
+
+        // 期望生成: SELECT (id % 3) AS Key, (SELECT COUNT(*) FROM (SELECT * FROM [SqUser]) AS sq WHERE [id] = COUNT(*)) AS A FROM [SqUser] GROUP BY (id % 3)
+        Assert.IsTrue(sql.Contains("SELECT COUNT(*) FROM"), $"SQL: {sql}");
+        Assert.IsTrue(sql.Contains("WHERE [id] = COUNT(*)"), $"SQL: {sql}");
+    }
+
+    #endregion
 }

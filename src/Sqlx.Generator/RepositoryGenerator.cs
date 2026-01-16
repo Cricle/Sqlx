@@ -784,7 +784,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             // Check if this is an entity parameter (exact match or ends with entity name)
             if (paramType.Name == entityName)
             {
-                sb.AppendLine($"{entityName}ParameterBinder.Default.BindEntity(cmd, {param.Name}, _placeholderContext.Dialect.ParameterPrefix);");
+                sb.AppendLine($"{entityName}ParameterBinder.Default.BindEntity(cmd, {param.Name}, _paramPrefix);");
             }
             else
             {
@@ -793,7 +793,7 @@ public class RepositoryGenerator : IIncrementalGenerator
                 sb.AppendLine("{");
                 sb.PushIndent();
                 sb.AppendLine("var p = cmd.CreateParameter();");
-                sb.AppendLine($"p.ParameterName = _placeholderContext.Dialect.ParameterPrefix + \"{param.Name}\";");
+                sb.AppendLine($"p.ParameterName = _paramPrefix + \"{param.Name}\";");
                 if (isNullable)
                 {
                     sb.AppendLine($"p.Value = {param.Name} ?? (object)DBNull.Value;");
@@ -849,7 +849,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine("using var reader = cmd.ExecuteReader(System.Data.CommandBehavior.Default);");
             if (useStaticOrdinals && capacityHint != null)
             {
-                sb.AppendLine($"var result = global::Sqlx.ResultReaderExtensions.ToList({entityName}ResultReader.Default, reader, {ordinalsFieldName});");
+                sb.AppendLine($"var result = global::Sqlx.ResultReaderExtensions.ToList({entityName}ResultReader.Default, reader, {ordinalsFieldName}, {capacityHint});");
             }
             else if (useStaticOrdinals)
             {

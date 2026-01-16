@@ -133,13 +133,10 @@ public static class ResultReaderExtensions
     public static List<TEntity> ToList<TEntity>(this IResultReader<TEntity> reader, IDataReader dataReader, int[] ordinals, int capacityHint)
     {
         var list = new List<TEntity>(capacityHint);
-        if (!dataReader.Read()) return list;
-        
-        do
+        while (dataReader.Read())
         {
             list.Add(reader.Read(dataReader, ordinals));
-        } while (dataReader.Read());
-        
+        }
         return list;
     }
 

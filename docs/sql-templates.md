@@ -62,7 +62,9 @@ Generates the quoted table name.
 
 ### {{where}}
 
-Generates dynamic WHERE clauses. Always requires `--param` option.
+Generates dynamic WHERE clauses. Supports two modes:
+
+**Mode 1: Expression-based (--param)**
 
 ```csharp
 [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE {{where --param predicate}}")]
@@ -72,8 +74,42 @@ Task<List<User>> GetWhereAsync([ExpressionToSql] Expression<Func<User, bool>> pr
 // Output: SELECT [id], [name], [email] FROM [users] WHERE [age] > 18 AND [is_active] = 1
 ```
 
+**Mode 2: Dictionary-based (--object)**
+
+Generates WHERE conditions from a dictionary. Only non-null values are included. AOT compatible.
+
+```csharp
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE {{where --object filter}}")]
+Task<List<User>> FilterAsync(IReadOnlyDictionary<string, object?> filter);
+
+// Usage with multiple conditions:
+var filter = new Dictionary<string, object?>
+{
+    ["Name"] = "John",      // Generates: [name] = @name
+    ["Age"] = 25,           // Generates: [age] = @age
+    ["Email"] = null        // Ignored (null value)
+};
+await repo.FilterAsync(filter);
+// Output: SELECT ... WHERE ([name] = @name AND [age] = @age)
+
+// Single condition (no parentheses):
+var filter = new Dictionary<string, object?> { ["Name"] = "John" };
+// Output: SELECT ... WHERE [name] = @name
+
+// Empty dictionary returns always-true:
+var filter = new Dictionary<string, object?>();
+// Output: SELECT ... WHERE 1=1
+```
+
+**Dictionary Key Matching:**
+- Matches by PropertyName (e.g., `"IsActive"`)
+- Matches by ColumnName (e.g., `"is_active"`)
+- Case-insensitive matching
+- Unknown keys are ignored
+
 **Options:**
-- `--param name` - (Required) Parameter name containing the WHERE clause
+- `--param name` - Parameter name containing the WHERE clause string or expression result
+- `--object name` - Parameter name containing `IReadOnlyDictionary<string, object?>`
 
 ### {{limit}}
 

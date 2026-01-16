@@ -9,7 +9,80 @@ Sqlx uses Roslyn source generators to produce high-performance, AOT-compatible c
 - All code generated at compile time
 - Expression tree compilation (allowed in AOT)
 - Static method caching for IDataRecord operations
-- 1277 unit tests passing with AOT enabled
+- 1344 unit tests passing with AOT enabled
+
+## Auto-Discovery
+
+The source generator automatically discovers entity types from multiple sources:
+
+### 1. [Sqlx] Attribute
+
+Classes explicitly marked with `[Sqlx]` attribute:
+
+```csharp
+[Sqlx]
+public class User
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+```
+
+### 2. SqlQuery\<T\> Usage
+
+Entity types used as generic arguments in `SqlQuery<T>`:
+
+```csharp
+// Product will be auto-discovered and have providers generated
+var query = SqlQuery<Product>.ForSqlite()
+    .Where(p => p.Price > 100);
+```
+
+### 3. [SqlTemplate] Method Types
+
+Entity types from method return types and parameters:
+
+```csharp
+public interface IOrderRepository
+{
+    // Order discovered from Task<Order?> return type
+    [SqlTemplate("SELECT * FROM orders WHERE id = @id")]
+    Task<Order?> GetByIdAsync(int id);
+    
+    // OrderItem discovered from Task<List<OrderItem>> return type
+    [SqlTemplate("SELECT * FROM order_items WHERE order_id = @orderId")]
+    Task<List<OrderItem>> GetItemsAsync(int orderId);
+    
+    // FilterCriteria discovered from parameter type
+    [SqlTemplate("INSERT INTO filters VALUES (@criteria)")]
+    Task InsertFilterAsync(FilterCriteria criteria);
+}
+```
+
+**Supported Return Type Patterns:**
+- `Task<T>` → discovers T
+- `Task<T?>` → discovers T
+- `Task<List<T>>` → discovers T
+- `Task<IEnumerable<T>>` → discovers T
+- `ValueTask<T>` → discovers T
+- Direct types (non-async)
+
+### Deduplication
+
+The generator automatically deduplicates types discovered from multiple sources. Each type is only generated once.
+
+### Nested Class Naming
+
+For nested classes, generated providers use `OuterClass_InnerClass` naming to avoid conflicts:
+
+```csharp
+public class Outer
+{
+    [Sqlx]
+    public class Inner { public int Id { get; set; } }
+}
+
+// Generated: Outer_InnerEntityProvider, Outer_InnerResultReader, etc.
 
 ## Generated Components
 

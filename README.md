@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-purple.svg)](#)
 [![LTS](https://img.shields.io/badge/LTS-.NET%2010-green.svg)](#)
-[![Tests](https://img.shields.io/badge/tests-1277%20passing-brightgreen.svg)](#)
+[![Tests](https://img.shields.io/badge/tests-1344%20passing-brightgreen.svg)](#)
 [![AOT](https://img.shields.io/badge/AOT-ready-blue.svg)](#)
 
 高性能、AOT 友好的 .NET 数据库访问库。使用源生成器在编译时生成代码，零运行时反射，完全支持 Native AOT。
@@ -15,9 +15,10 @@
 - **⚡ 零反射** - 编译时源生成，运行时无反射开销
 - **🎯 类型安全** - 编译时验证 SQL 模板和表达式
 - **🌐 多数据库** - SQLite、PostgreSQL、MySQL、SQL Server、Oracle、DB2
-- **📦 AOT 就绪** - 完全支持 Native AOT，通过 1277 个单元测试
+- **📦 AOT 就绪** - 完全支持 Native AOT，通过 1344 个单元测试
 - **🔧 LINQ 支持** - IQueryable 接口，支持 Where/Select/OrderBy/Join 等
 - **💾 智能缓存** - SqlQuery\<T\> 泛型缓存，自动注册 EntityProvider
+- **🔍 自动发现** - 源生成器自动发现 SqlQuery\<T\> 和 SqlTemplate 中的实体类型
 
 ## 快速开始
 
@@ -64,6 +65,7 @@ var adults = await repo.GetAdultsAsync(18);
 | `{{columns --exclude Id}}` | 排除指定列 | `name, age` |
 | `{{values --exclude Id}}` | 参数占位符 | `@name, @age` |
 | `{{set --exclude Id}}` | UPDATE SET 子句 | `name = @name` |
+| `{{where --object filter}}` | 对象条件查询 | `(name = @name AND age = @age)` |
 | `{{if notnull=param}}...{{/if}}` | 条件包含 | 动态 SQL |
 
 **各数据库生成的 SQL：**
@@ -100,6 +102,30 @@ public interface IUserRepository : ICrudRepository<User, long>
     {{if notnull=minAge}}AND age >= @minAge{{/if}}
 ")]
 Task<List<User>> SearchAsync(string? name, int? minAge);
+```
+
+## 对象条件查询
+
+使用 `{{where --object}}` 从字典自动生成 WHERE 条件（AOT 兼容）：
+
+```csharp
+// 定义查询方法
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE {{where --object filter}}")]
+Task<List<User>> FilterAsync(IReadOnlyDictionary<string, object?> filter);
+
+// 使用：只有非空值会生成条件
+var filter = new Dictionary<string, object?>
+{
+    ["Name"] = "John",      // 生成: [name] = @name
+    ["Age"] = 25,           // 生成: [age] = @age
+    ["Email"] = null        // 忽略（null 值）
+};
+var users = await repo.FilterAsync(filter);
+// 生成: SELECT ... WHERE ([name] = @name AND [age] = @age)
+
+// 空字典返回 1=1（查询所有）
+var all = await repo.FilterAsync(new Dictionary<string, object?>());
+// 生成: SELECT ... WHERE 1=1
 ```
 
 ## IQueryable 查询构建器

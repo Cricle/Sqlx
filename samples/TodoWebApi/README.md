@@ -72,7 +72,7 @@ var sql = query.ToSql(); // Get generated SQL for debugging
 
 ### 1. Define Entity
 ```csharp
-[SqlxEntity, SqlxParameter, TableName("todos")]
+[Sqlx, TableName("todos")]
 public class Todo
 {
     [Key] public long Id { get; set; }
@@ -192,7 +192,24 @@ var todos = await repo.GetWhereAsync(t => t.Priority >= 3 && !t.IsCompleted);
 // Generates: SELECT * FROM todos WHERE priority >= 3 AND is_completed = 0
 ```
 
-### 4. **IQueryable Query Builder**
+### 4. **Dictionary-Based WHERE (AOT Compatible)**
+Use dictionaries for dynamic filtering without reflection:
+```csharp
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE {{where --object filter}}")]
+Task<List<Todo>> FilterAsync(IReadOnlyDictionary<string, object?> filter);
+
+// Usage - only non-null values generate conditions
+var filter = new Dictionary<string, object?>
+{
+    ["Priority"] = 3,           // Generates: [priority] = @priority
+    ["IsCompleted"] = false,    // Generates: [is_completed] = @is_completed
+    ["DueDate"] = null          // Ignored (null value)
+};
+var todos = await repo.FilterAsync(filter);
+// Generates: SELECT * FROM todos WHERE ([priority] = @priority AND [is_completed] = @is_completed)
+```
+
+### 5. **IQueryable Query Builder**
 Full LINQ support with deferred execution:
 ```csharp
 var query = repo.AsQueryable()
@@ -225,10 +242,10 @@ var todos = await query.ToListAsync();
 - Math: `Abs`, `Round`, `Floor`, `Ceiling`, `Sqrt`, `Pow`, `Min`, `Max`
 - DateTime: Property access (`Year`, `Month`, `Day`, etc.)
 
-### 5. **Source Generation**
+### 6. **Source Generation**
 All code generated at compile-time - zero reflection at runtime!
 
-### 6. **SqlTemplate Return Type (Debugging)**
+### 7. **SqlTemplate Return Type (Debugging)**
 Get generated SQL without executing queries:
 ```csharp
 // Debug mode - returns SqlTemplate
@@ -242,7 +259,7 @@ Console.WriteLine(template.Parameters["@query"]);  // %test%
 Console.WriteLine(template.Execute().Render());  // SELECT * FROM todos WHERE title LIKE '%test%'
 ```
 
-### 7. **AOT Compatibility**
+### 8. **AOT Compatibility**
 Full support for Native AOT compilation:
 ```bash
 dotnet publish -c Release -r win-x64 --self-contained

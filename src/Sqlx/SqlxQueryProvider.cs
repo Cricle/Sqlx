@@ -55,12 +55,39 @@ namespace Sqlx
                     Connection, 
                     ResultReader as IResultReader<TElement>);
 
+            // Get cached reader or create dynamic reader for anonymous/projected types
+            var reader = SqlQuery<TElement>.ResultReader;
+            if (reader == null && DynamicReaderCache<TElement>.ShouldCreate)
+            {
+                reader = new DynamicResultReader<TElement>();
+                SqlQuery<TElement>.ResultReader = reader;
+            }
+
             var provider = new SqlxQueryProvider<TElement>(Dialect, EntityProvider)
             {
                 Connection = Connection,
-                ResultReader = SqlQuery<TElement>.ResultReader
+                ResultReader = reader
             };
             return new SqlxQueryable<TElement>(provider, expression);
+        }
+
+        private static class DynamicReaderCache<
+#if NET5_0_OR_GREATER
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicConstructors)]
+#endif
+        TElement>
+        {
+            public static readonly bool ShouldCreate = ComputeShouldCreate();
+
+            private static bool ComputeShouldCreate()
+            {
+                var type = typeof(TElement);
+                if (type.IsPrimitive || type == typeof(string) || type == typeof(decimal) ||
+                    type == typeof(DateTime) || type == typeof(Guid) || type == typeof(TimeSpan) ||
+                    (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IGrouping<,>)))
+                    return false;
+                return true;
+            }
         }
 
         /// <inheritdoc/>

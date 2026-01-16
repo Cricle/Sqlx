@@ -34,9 +34,11 @@ namespace Sqlx
         /// Initializes a new instance of the <see cref="SqlxQueryProvider{T}"/> class.
         /// </summary>
         /// <param name="dialect">The SQL dialect.</param>
-        public SqlxQueryProvider(SqlDialect dialect)
+        /// <param name="sourceEntityProvider">Optional source entity provider (for preserving entity metadata after projections).</param>
+        public SqlxQueryProvider(SqlDialect dialect, IEntityProvider? sourceEntityProvider = null)
         {
             Dialect = dialect ?? throw new ArgumentNullException(nameof(dialect));
+            SourceEntityProvider = sourceEntityProvider;
         }
 
         /// <summary>
@@ -55,11 +57,17 @@ namespace Sqlx
         internal object? ResultReader { get; set; }
 
         /// <summary>
+        /// Gets the source entity provider (preserved from the original query before projections like GroupBy).
+        /// </summary>
+        internal IEntityProvider? SourceEntityProvider { get; }
+
+        /// <summary>
         /// Gets the entity provider for type T (cached in SqlQuery&lt;T&gt;).
+        /// Falls back to SourceEntityProvider if T's EntityProvider is null (e.g., after GroupBy).
         /// </summary>
         private IEntityProvider? GetEntityProvider()
         {
-            return SqlQuery<T>.EntityProvider;
+            return SqlQuery<T>.EntityProvider ?? SourceEntityProvider;
         }
 
         /// <inheritdoc/>
@@ -93,8 +101,12 @@ namespace Sqlx
                 SqlQuery<TElement>.ResultReader = cachedReader;
             }
             
+            // Preserve the source entity provider for operations like GroupBy that change the element type
+            // but still need access to the original entity metadata for SQL generation
+            var sourceEntityProvider = GetEntityProvider();
+            
             // Create a new provider for TElement
-            var newProvider = new SqlxQueryProvider<TElement>(Dialect)
+            var newProvider = new SqlxQueryProvider<TElement>(Dialect, sourceEntityProvider)
             {
                 Connection = Connection,
                 ResultReader = cachedReader

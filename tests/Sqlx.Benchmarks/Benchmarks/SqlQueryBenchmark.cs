@@ -110,13 +110,13 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Gen: SELECT *")]
         public string Gen_SimpleSelect()
         {
-            return SqlQuery.ForSqlite<BenchmarkEntity>().ToSql();
+            return SqlQuery<BenchmarkEntity>.ForSqlite().ToSql();
         }
 
         [Benchmark(Description = "Gen: WHERE single")]
         public string Gen_WhereSingle()
         {
-            return SqlQuery.ForSqlite<BenchmarkEntity>()
+            return SqlQuery<BenchmarkEntity>.ForSqlite()
                 .Where(u => u.Id == 1)
                 .ToSql();
         }
@@ -124,7 +124,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Gen: WHERE AND")]
         public string Gen_WhereMultipleAnd()
         {
-            return SqlQuery.ForSqlite<BenchmarkEntity>()
+            return SqlQuery<BenchmarkEntity>.ForSqlite()
                 .Where(u => u.IsActive && u.Age >= 18 && u.Age <= 65)
                 .ToSql();
         }
@@ -132,7 +132,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Gen: WHERE OR")]
         public string Gen_WhereWithOr()
         {
-            return SqlQuery.ForSqlite<BenchmarkEntity>()
+            return SqlQuery<BenchmarkEntity>.ForSqlite()
                 .Where(u => u.Age < 18 || u.Age > 65 || !u.IsActive)
                 .ToSql();
         }
@@ -140,7 +140,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Gen: Full chain")]
         public string Gen_FullChain()
         {
-            return SqlQuery.ForSqlite<BenchmarkEntity>()
+            return SqlQuery<BenchmarkEntity>.ForSqlite()
                 .Where(u => u.IsActive)
                 .Where(u => u.Age >= 18)
                 .Select(u => new { u.Id, u.Name, u.Age })
@@ -154,7 +154,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Gen: String functions")]
         public string Gen_StringFunctions()
         {
-            return SqlQuery.ForSqlite<BenchmarkEntity>()
+            return SqlQuery<BenchmarkEntity>.ForSqlite()
                 .Where(u => u.Name.Contains("test") && u.Name.ToUpper() == "TEST")
                 .ToSql();
         }
@@ -162,7 +162,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Gen: Math functions")]
         public string Gen_MathFunctions()
         {
-            return SqlQuery.ForSqlite<BenchmarkEntity>()
+            return SqlQuery<BenchmarkEntity>.ForSqlite()
                 .Where(u => Math.Abs(u.Age) > 0 && Math.Round((double)u.Balance) > 1000)
                 .ToSql();
         }
@@ -174,7 +174,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Param: Simple")]
         public (string, IEnumerable<KeyValuePair<string, object?>>) Param_Simple()
         {
-            return SqlQuery.ForSqlite<BenchmarkEntity>()
+            return SqlQuery<BenchmarkEntity>.ForSqlite()
                 .Where(u => u.Id == 1)
                 .ToSqlWithParameters();
         }
@@ -182,7 +182,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Param: Complex")]
         public (string, IEnumerable<KeyValuePair<string, object?>>) Param_Complex()
         {
-            return SqlQuery.ForSqlite<BenchmarkEntity>()
+            return SqlQuery<BenchmarkEntity>.ForSqlite()
                 .Where(u => u.IsActive && u.Age >= 18 && u.Name == "test")
                 .ToSqlWithParameters();
         }
@@ -194,7 +194,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Sync: SELECT * (1000 rows)")]
         public List<BenchmarkEntity> Sync_SelectAll()
         {
-            return SqlQuery.ForSqlite<BenchmarkEntity>()
+            return SqlQuery<BenchmarkEntity>.ForSqlite()
                 .WithConnection(_connection)
                 .WithReader(_reader)
                 .ToList();
@@ -203,7 +203,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Sync: WHERE + ORDER + LIMIT")]
         public List<BenchmarkEntity> Sync_WhereOrderLimit()
         {
-            return SqlQuery.ForSqlite<BenchmarkEntity>()
+            return SqlQuery<BenchmarkEntity>.ForSqlite()
                 .Where(u => u.IsActive)
                 .Where(u => u.Age >= 25)
                 .OrderBy(u => u.Name)
@@ -216,7 +216,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Sync: Pagination")]
         public List<BenchmarkEntity> Sync_Pagination()
         {
-            return SqlQuery.ForSqlite<BenchmarkEntity>()
+            return SqlQuery<BenchmarkEntity>.ForSqlite()
                 .OrderBy(u => u.Id)
                 .Skip(500)
                 .Take(100)
@@ -228,7 +228,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Sync: FirstOrDefault")]
         public BenchmarkEntity? Sync_FirstOrDefault()
         {
-            return SqlQuery.ForSqlite<BenchmarkEntity>()
+            return SqlQuery<BenchmarkEntity>.ForSqlite()
                 .Where(u => u.Id == 500)
                 .WithConnection(_connection)
                 .WithReader(_reader)
@@ -242,7 +242,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Async: ToListAsync (1000 rows)")]
         public async Task<List<BenchmarkEntity>> Async_ToListAsync()
         {
-            var query = (IAsyncEnumerable<BenchmarkEntity>)SqlQuery.ForSqlite<BenchmarkEntity>()
+            var query = (IAsyncEnumerable<BenchmarkEntity>)SqlQuery<BenchmarkEntity>.ForSqlite()
                 .WithConnection(_connection)
                 .WithReader(_reader);
             return await System.Linq.AsyncEnumerable.ToListAsync(query);
@@ -251,7 +251,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Async: WHERE + ToListAsync")]
         public async Task<List<BenchmarkEntity>> Async_WhereToListAsync()
         {
-            var query = (IAsyncEnumerable<BenchmarkEntity>)SqlQuery.ForSqlite<BenchmarkEntity>()
+            var query = (IAsyncEnumerable<BenchmarkEntity>)SqlQuery<BenchmarkEntity>.ForSqlite()
                 .Where(u => u.IsActive)
                 .Where(u => u.Age >= 25)
                 .OrderBy(u => u.Name)
@@ -264,7 +264,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Async: FirstOrDefaultAsync")]
         public async Task<BenchmarkEntity?> Async_FirstOrDefaultAsync()
         {
-            var query = (IAsyncEnumerable<BenchmarkEntity>)SqlQuery.ForSqlite<BenchmarkEntity>()
+            var query = (IAsyncEnumerable<BenchmarkEntity>)SqlQuery<BenchmarkEntity>.ForSqlite()
                 .Where(u => u.Id == 500)
                 .WithConnection(_connection)
                 .WithReader(_reader);
@@ -274,7 +274,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Async: CountAsync")]
         public async Task<int> Async_CountAsync()
         {
-            var query = (IAsyncEnumerable<BenchmarkEntity>)SqlQuery.ForSqlite<BenchmarkEntity>()
+            var query = (IAsyncEnumerable<BenchmarkEntity>)SqlQuery<BenchmarkEntity>.ForSqlite()
                 .Where(u => u.IsActive)
                 .WithConnection(_connection)
                 .WithReader(_reader);
@@ -284,7 +284,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Async: AnyAsync")]
         public async Task<bool> Async_AnyAsync()
         {
-            var query = (IAsyncEnumerable<BenchmarkEntity>)SqlQuery.ForSqlite<BenchmarkEntity>()
+            var query = (IAsyncEnumerable<BenchmarkEntity>)SqlQuery<BenchmarkEntity>.ForSqlite()
                 .Where(u => u.Id == 500)
                 .WithConnection(_connection)
                 .WithReader(_reader);
@@ -294,7 +294,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Async: Pagination ToListAsync")]
         public async Task<List<BenchmarkEntity>> Async_PaginationToListAsync()
         {
-            var query = (IAsyncEnumerable<BenchmarkEntity>)SqlQuery.ForSqlite<BenchmarkEntity>()
+            var query = (IAsyncEnumerable<BenchmarkEntity>)SqlQuery<BenchmarkEntity>.ForSqlite()
                 .OrderBy(u => u.Id)
                 .Skip(500)
                 .Take(100)
@@ -310,7 +310,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Dialect: SQLite")]
         public string Dialect_Sqlite()
         {
-            return SqlQuery.ForSqlite<BenchmarkEntity>()
+            return SqlQuery<BenchmarkEntity>.ForSqlite()
                 .Where(u => u.IsActive)
                 .OrderBy(u => u.Name)
                 .Skip(10)
@@ -321,7 +321,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Dialect: SqlServer")]
         public string Dialect_SqlServer()
         {
-            return SqlQuery.ForSqlServer<BenchmarkEntity>()
+            return SqlQuery<BenchmarkEntity>.ForSqlServer()
                 .Where(u => u.IsActive)
                 .OrderBy(u => u.Name)
                 .Skip(10)
@@ -332,7 +332,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Dialect: MySQL")]
         public string Dialect_MySql()
         {
-            return SqlQuery.ForMySql<BenchmarkEntity>()
+            return SqlQuery<BenchmarkEntity>.ForMySql()
                 .Where(u => u.IsActive)
                 .OrderBy(u => u.Name)
                 .Skip(10)
@@ -343,7 +343,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Dialect: PostgreSQL")]
         public string Dialect_PostgreSql()
         {
-            return SqlQuery.ForPostgreSQL<BenchmarkEntity>()
+            return SqlQuery<BenchmarkEntity>.ForPostgreSQL()
                 .Where(u => u.IsActive)
                 .OrderBy(u => u.Name)
                 .Skip(10)
@@ -354,7 +354,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Dialect: Oracle")]
         public string Dialect_Oracle()
         {
-            return SqlQuery.ForOracle<BenchmarkEntity>()
+            return SqlQuery<BenchmarkEntity>.ForOracle()
                 .Where(u => u.IsActive)
                 .OrderBy(u => u.Name)
                 .Skip(10)
@@ -433,3 +433,5 @@ namespace Sqlx.Benchmarks.Benchmarks
         }
     }
 }
+
+

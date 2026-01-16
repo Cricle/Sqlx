@@ -39,7 +39,7 @@ public class SqlxHighQualityTests
     [TestMethod]
     public void BoundaryTest_IntMaxValue_HandlesCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<HQTestEntity>()
+        var sql = SqlQuery<HQTestEntity>.ForSqlite()
             .Where(e => e.Id == int.MaxValue)
             .ToSql();
 
@@ -49,7 +49,7 @@ public class SqlxHighQualityTests
     [TestMethod]
     public void BoundaryTest_IntMinValue_HandlesCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<HQTestEntity>()
+        var sql = SqlQuery<HQTestEntity>.ForSqlite()
             .Where(e => e.Id == int.MinValue)
             .ToSql();
 
@@ -59,7 +59,7 @@ public class SqlxHighQualityTests
     [TestMethod]
     public void BoundaryTest_EmptyString_HandlesCorrectly()
     {
-        var (sql, parameters) = SqlQuery.ForSqlite<HQTestEntity>()
+        var (sql, parameters) = SqlQuery<HQTestEntity>.ForSqlite()
             .Where(e => e.Name == "")
             .ToSqlWithParameters();
 
@@ -70,7 +70,7 @@ public class SqlxHighQualityTests
     public void BoundaryTest_VeryLongString_HandlesCorrectly()
     {
         var longString = new string('x', 10000);
-        var (sql, parameters) = SqlQuery.ForSqlite<HQTestEntity>()
+        var (sql, parameters) = SqlQuery<HQTestEntity>.ForSqlite()
             .Where(e => e.Name == longString)
             .ToSqlWithParameters();
 
@@ -82,7 +82,7 @@ public class SqlxHighQualityTests
     [TestMethod]
     public void BoundaryTest_TakeZero_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<HQTestEntity>()
+        var sql = SqlQuery<HQTestEntity>.ForSqlite()
             .Take(0)
             .ToSql();
 
@@ -92,7 +92,7 @@ public class SqlxHighQualityTests
     [TestMethod]
     public void BoundaryTest_SkipZero_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<HQTestEntity>()
+        var sql = SqlQuery<HQTestEntity>.ForSqlite()
             .Skip(0)
             .ToSql();
 
@@ -106,7 +106,7 @@ public class SqlxHighQualityTests
     [TestMethod]
     public void NullTest_NullableIsNull_GeneratesIsNull()
     {
-        var sql = SqlQuery.ForSqlite<HQTestEntity>()
+        var sql = SqlQuery<HQTestEntity>.ForSqlite()
             .Where(e => e.NullableValue == null)
             .ToSql();
 
@@ -116,7 +116,7 @@ public class SqlxHighQualityTests
     [TestMethod]
     public void NullTest_NullableIsNotNull_GeneratesIsNotNull()
     {
-        var sql = SqlQuery.ForSqlite<HQTestEntity>()
+        var sql = SqlQuery<HQTestEntity>.ForSqlite()
             .Where(e => e.NullableValue != null)
             .ToSql();
 
@@ -126,7 +126,7 @@ public class SqlxHighQualityTests
     [TestMethod]
     public void NullTest_CoalesceOperator_GeneratesCoalesce()
     {
-        var sql = SqlQuery.ForSqlite<HQTestEntity>()
+        var sql = SqlQuery<HQTestEntity>.ForSqlite()
             .Where(e => (e.NullableValue ?? 0) > 10)
             .ToSql();
 
@@ -140,7 +140,7 @@ public class SqlxHighQualityTests
     [TestMethod]
     public void SpecialChars_SingleQuote_HandlesCorrectly()
     {
-        var (sql, parameters) = SqlQuery.ForSqlite<HQTestEntity>()
+        var (sql, parameters) = SqlQuery<HQTestEntity>.ForSqlite()
             .Where(e => e.Name == "O'Brien")
             .ToSqlWithParameters();
 
@@ -150,7 +150,7 @@ public class SqlxHighQualityTests
     [TestMethod]
     public void SpecialChars_Unicode_HandlesCorrectly()
     {
-        var (sql, parameters) = SqlQuery.ForSqlite<HQTestEntity>()
+        var (sql, parameters) = SqlQuery<HQTestEntity>.ForSqlite()
             .Where(e => e.Name == "你好世界🌍")
             .ToSqlWithParameters();
 
@@ -160,7 +160,7 @@ public class SqlxHighQualityTests
     [TestMethod]
     public void SpecialChars_SqlInjection_PreventedByParameterization()
     {
-        var (sql, parameters) = SqlQuery.ForSqlite<HQTestEntity>()
+        var (sql, parameters) = SqlQuery<HQTestEntity>.ForSqlite()
             .Where(e => e.Name == "'; DROP TABLE Users; --")
             .ToSqlWithParameters();
 
@@ -200,7 +200,7 @@ public class SqlxHighQualityTests
     [TestMethod]
     public void ComplexQuery_NestedBooleanLogic_GeneratesCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<HQTestEntity>()
+        var sql = SqlQuery<HQTestEntity>.ForSqlite()
             .Where(e => (e.Name == "Test1" || e.Name == "Test2") && e.IsActive)
             .ToSql();
 
@@ -211,7 +211,7 @@ public class SqlxHighQualityTests
     [TestMethod]
     public void ComplexQuery_MultipleOrderBy_PreservesOrder()
     {
-        var sql = SqlQuery.ForSqlite<HQTestEntity>()
+        var sql = SqlQuery<HQTestEntity>.ForSqlite()
             .OrderBy(e => e.Name)
             .ThenByDescending(e => e.Amount)
             .ThenBy(e => e.CreatedAt)
@@ -232,7 +232,7 @@ public class SqlxHighQualityTests
     [TestMethod]
     public void ParameterizedQuery_SingleParameter_GeneratesCorrectly()
     {
-        var (sql, parameters) = SqlQuery.ForSqlite<HQTestEntity>()
+        var (sql, parameters) = SqlQuery<HQTestEntity>.ForSqlite()
             .Where(e => e.Name == "Test")
             .ToSqlWithParameters();
 
@@ -243,7 +243,7 @@ public class SqlxHighQualityTests
     [TestMethod]
     public void ParameterizedQuery_MultipleParameters_GeneratesCorrectly()
     {
-        var (sql, parameters) = SqlQuery.ForSqlite<HQTestEntity>()
+        var (sql, parameters) = SqlQuery<HQTestEntity>.ForSqlite()
             .Where(e => e.Name == "Test" && e.Amount > 100)
             .ToSqlWithParameters();
 
@@ -279,7 +279,7 @@ public class SqlxHighQualityTests
             var index = i;
             tasks.Add(Task.Run(() =>
             {
-                return SqlQuery.ForSqlite<HQTestEntity>()
+                return SqlQuery<HQTestEntity>.ForSqlite()
                     .Where(e => e.Id == index)
                     .ToSql();
             }));
@@ -300,7 +300,7 @@ public class SqlxHighQualityTests
             var index = i;
             tasks.Add(Task.Run(() =>
             {
-                return SqlQuery.ForSqlite<HQTestEntity>()
+                return SqlQuery<HQTestEntity>.ForSqlite()
                     .Where(e => e.Id == index)
                     .ToSqlWithParameters();
             }));
@@ -318,7 +318,7 @@ public class SqlxHighQualityTests
     [TestMethod]
     public void PerformanceTest_100WhereConditions_GeneratesCorrectly()
     {
-        var query = SqlQuery.ForSqlite<HQTestEntity>().AsQueryable();
+        var query = SqlQuery<HQTestEntity>.ForSqlite().AsQueryable();
 
         for (int i = 0; i < 100; i++)
         {
@@ -336,7 +336,7 @@ public class SqlxHighQualityTests
     public void PerformanceTest_LargeInClause_GeneratesCorrectly()
     {
         var largeList = Enumerable.Range(1, 1000).ToList();
-        var sql = SqlQuery.ForSqlite<HQTestEntity>()
+        var sql = SqlQuery<HQTestEntity>.ForSqlite()
             .Where(e => largeList.Contains(e.Id))
             .ToSql();
 
@@ -360,7 +360,7 @@ public class SqlxHighQualityTests
     [TestMethod]
     public void ErrorHandling_EmptyQuery_ReturnsValidSql()
     {
-        var sql = SqlQuery.ForSqlite<HQTestEntity>().ToSql();
+        var sql = SqlQuery<HQTestEntity>.ForSqlite().ToSql();
 
         Assert.IsTrue(sql.StartsWith("SELECT"));
         Assert.IsTrue(sql.Contains("FROM"));
@@ -373,7 +373,7 @@ public class SqlxHighQualityTests
     [TestMethod]
     public void StringFunction_ToUpper_GeneratesCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<HQTestEntity>()
+        var sql = SqlQuery<HQTestEntity>.ForSqlite()
             .Where(e => e.Name.ToUpper() == "TEST")
             .ToSql();
 
@@ -383,7 +383,7 @@ public class SqlxHighQualityTests
     [TestMethod]
     public void StringFunction_ToLower_GeneratesCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<HQTestEntity>()
+        var sql = SqlQuery<HQTestEntity>.ForSqlite()
             .Where(e => e.Name.ToLower() == "test")
             .ToSql();
 
@@ -393,7 +393,7 @@ public class SqlxHighQualityTests
     [TestMethod]
     public void StringFunction_Contains_GeneratesLike()
     {
-        var sql = SqlQuery.ForSqlite<HQTestEntity>()
+        var sql = SqlQuery<HQTestEntity>.ForSqlite()
             .Where(e => e.Name.Contains("test"))
             .ToSql();
 
@@ -403,7 +403,7 @@ public class SqlxHighQualityTests
     [TestMethod]
     public void StringFunction_StartsWith_GeneratesLike()
     {
-        var sql = SqlQuery.ForSqlite<HQTestEntity>()
+        var sql = SqlQuery<HQTestEntity>.ForSqlite()
             .Where(e => e.Name.StartsWith("test"))
             .ToSql();
 
@@ -413,7 +413,7 @@ public class SqlxHighQualityTests
     [TestMethod]
     public void StringFunction_EndsWith_GeneratesLike()
     {
-        var sql = SqlQuery.ForSqlite<HQTestEntity>()
+        var sql = SqlQuery<HQTestEntity>.ForSqlite()
             .Where(e => e.Name.EndsWith("test"))
             .ToSql();
 
@@ -427,7 +427,7 @@ public class SqlxHighQualityTests
     [TestMethod]
     public void MathFunction_Abs_GeneratesCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<HQTestEntity>()
+        var sql = SqlQuery<HQTestEntity>.ForSqlite()
             .Where(e => Math.Abs(e.Id) > 10)
             .ToSql();
 
@@ -437,7 +437,7 @@ public class SqlxHighQualityTests
     [TestMethod]
     public void MathFunction_Round_GeneratesCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<HQTestEntity>()
+        var sql = SqlQuery<HQTestEntity>.ForSqlite()
             .Where(e => Math.Round(e.Amount) > 100)
             .ToSql();
 
@@ -447,7 +447,7 @@ public class SqlxHighQualityTests
     [TestMethod]
     public void MathFunction_Floor_GeneratesCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<HQTestEntity>()
+        var sql = SqlQuery<HQTestEntity>.ForSqlite()
             .Where(e => Math.Floor(e.Amount) > 100)
             .ToSql();
 
@@ -457,7 +457,7 @@ public class SqlxHighQualityTests
     [TestMethod]
     public void MathFunction_Ceiling_GeneratesCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<HQTestEntity>()
+        var sql = SqlQuery<HQTestEntity>.ForSqlite()
             .Where(e => Math.Ceiling(e.Amount) > 100)
             .ToSql();
 
@@ -472,7 +472,7 @@ public class SqlxHighQualityTests
     public void CollectionOp_InEmptyList_GeneratesCorrectly()
     {
         var emptyList = new List<int>();
-        var sql = SqlQuery.ForSqlite<HQTestEntity>()
+        var sql = SqlQuery<HQTestEntity>.ForSqlite()
             .Where(e => emptyList.Contains(e.Id))
             .ToSql();
 
@@ -483,7 +483,7 @@ public class SqlxHighQualityTests
     public void CollectionOp_InSingleItem_GeneratesCorrectly()
     {
         var singleList = new List<int> { 1 };
-        var sql = SqlQuery.ForSqlite<HQTestEntity>()
+        var sql = SqlQuery<HQTestEntity>.ForSqlite()
             .Where(e => singleList.Contains(e.Id))
             .ToSql();
 
@@ -494,7 +494,7 @@ public class SqlxHighQualityTests
     public void CollectionOp_InManyItems_GeneratesCorrectly()
     {
         var manyItems = Enumerable.Range(1, 100).ToList();
-        var sql = SqlQuery.ForSqlite<HQTestEntity>()
+        var sql = SqlQuery<HQTestEntity>.ForSqlite()
             .Where(e => manyItems.Contains(e.Id))
             .ToSql();
 
@@ -548,14 +548,15 @@ public class SqlxHighQualityTests
 
     private static IQueryable<T> GetQueryForDialect<T>(string dialectName) => dialectName switch
     {
-        "SQLite" => SqlQuery.ForSqlite<T>(),
-        "SqlServer" => SqlQuery.ForSqlServer<T>(),
-        "MySql" => SqlQuery.ForMySql<T>(),
-        "PostgreSQL" => SqlQuery.ForPostgreSQL<T>(),
-        "Oracle" => SqlQuery.ForOracle<T>(),
-        "DB2" => SqlQuery.ForDB2<T>(),
+        "SQLite" => SqlQuery<T>.ForSqlite(),
+        "SqlServer" => SqlQuery<T>.ForSqlServer(),
+        "MySql" => SqlQuery<T>.ForMySql(),
+        "PostgreSQL" => SqlQuery<T>.ForPostgreSQL(),
+        "Oracle" => SqlQuery<T>.ForOracle(),
+        "DB2" => SqlQuery<T>.ForDB2(),
         _ => throw new ArgumentException($"Unknown dialect: {dialectName}")
     };
 
     #endregion
 }
+

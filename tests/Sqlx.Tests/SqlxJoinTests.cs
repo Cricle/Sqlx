@@ -56,7 +56,7 @@ public class SqlxJoinTests
     [TestMethod]
     public void Regular_SimpleSelect_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<Customer>().ToSql();
+        var sql = SqlQuery<Customer>.ForSqlite().ToSql();
         
         Assert.IsTrue(sql.Contains("SELECT [id], [name], [email]"));
         Assert.IsTrue(sql.Contains("FROM [Customer]"));
@@ -66,7 +66,7 @@ public class SqlxJoinTests
     [TestMethod]
     public void Regular_WithWhere_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<Customer>()
+        var sql = SqlQuery<Customer>.ForSqlite()
             .Where(c => c.Id > 10)
             .ToSql();
         
@@ -77,7 +77,7 @@ public class SqlxJoinTests
     [TestMethod]
     public void Regular_WithOrderBy_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<Customer>()
+        var sql = SqlQuery<Customer>.ForSqlite()
             .OrderBy(c => c.Name)
             .ToSql();
         
@@ -87,7 +87,7 @@ public class SqlxJoinTests
     [TestMethod]
     public void Regular_WithPagination_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<Customer>()
+        var sql = SqlQuery<Customer>.ForSqlite()
             .Skip(10)
             .Take(20)
             .ToSql();
@@ -99,7 +99,7 @@ public class SqlxJoinTests
     [TestMethod]
     public void Regular_ComplexQuery_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<Customer>()
+        var sql = SqlQuery<Customer>.ForSqlite()
             .Where(c => c.Name.Contains("test"))
             .OrderBy(c => c.Name)
             .ThenByDescending(c => c.Id)
@@ -120,7 +120,7 @@ public class SqlxJoinTests
     [TestMethod]
     public void Grouped_SimpleGroupBy_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<Order>()
+        var sql = SqlQuery<Order>.ForSqlite()
             .GroupBy(o => o.CustomerId)
             .ToSql();
         
@@ -130,7 +130,7 @@ public class SqlxJoinTests
     [TestMethod]
     public void Grouped_WithWhere_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<Order>()
+        var sql = SqlQuery<Order>.ForSqlite()
             .Where(o => o.Amount > 100)
             .GroupBy(o => o.CustomerId)
             .ToSql();
@@ -143,7 +143,7 @@ public class SqlxJoinTests
     [TestMethod]
     public void Grouped_WithOrderBy_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<Order>()
+        var sql = SqlQuery<Order>.ForSqlite()
             .GroupBy(o => o.CustomerId)
             .Select(g => new { CustomerId = g.Key })
             .ToSql();
@@ -154,7 +154,7 @@ public class SqlxJoinTests
     [TestMethod]
     public void Grouped_ComplexQuery_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<Order>()
+        var sql = SqlQuery<Order>.ForSqlite()
             .Where(o => o.Status == "completed")
             .GroupBy(o => o.CustomerId)
             .Select(g => new { CustomerId = g.Key })
@@ -171,8 +171,8 @@ public class SqlxJoinTests
     [TestMethod]
     public void Join_InnerJoin_GeneratesCorrectSql()
     {
-        var customers = SqlQuery.ForSqlite<Customer>();
-        var orders = SqlQuery.ForSqlite<Order>();
+        var customers = SqlQuery<Customer>.ForSqlite();
+        var orders = SqlQuery<Order>.ForSqlite();
         
         var sql = customers
             .Join(orders,
@@ -189,8 +189,8 @@ public class SqlxJoinTests
     [TestMethod]
     public void Join_WithWhere_GeneratesCorrectSql()
     {
-        var customers = SqlQuery.ForSqlite<Customer>();
-        var orders = SqlQuery.ForSqlite<Order>();
+        var customers = SqlQuery<Customer>.ForSqlite();
+        var orders = SqlQuery<Order>.ForSqlite();
         
         var sql = customers
             .Join(orders,
@@ -207,8 +207,8 @@ public class SqlxJoinTests
     [TestMethod]
     public void Join_WithOrderBy_GeneratesCorrectSql()
     {
-        var customers = SqlQuery.ForSqlite<Customer>();
-        var orders = SqlQuery.ForSqlite<Order>();
+        var customers = SqlQuery<Customer>.ForSqlite();
+        var orders = SqlQuery<Order>.ForSqlite();
         
         var sql = customers
             .Join(orders,
@@ -225,8 +225,8 @@ public class SqlxJoinTests
     [TestMethod]
     public void Join_WithPagination_GeneratesCorrectSql()
     {
-        var customers = SqlQuery.ForSqlite<Customer>();
-        var orders = SqlQuery.ForSqlite<Order>();
+        var customers = SqlQuery<Customer>.ForSqlite();
+        var orders = SqlQuery<Order>.ForSqlite();
         
         var sql = customers
             .Join(orders,
@@ -245,9 +245,9 @@ public class SqlxJoinTests
     [TestMethod]
     public void Join_MultipleJoins_GeneratesCorrectSql()
     {
-        var orders = SqlQuery.ForSqlite<Order>();
-        var customers = SqlQuery.ForSqlite<Customer>();
-        var orderItems = SqlQuery.ForSqlite<OrderItem>();
+        var orders = SqlQuery<Order>.ForSqlite();
+        var customers = SqlQuery<Customer>.ForSqlite();
+        var orderItems = SqlQuery<OrderItem>.ForSqlite();
         
         var sql = orders
             .Join(customers,
@@ -272,8 +272,8 @@ public class SqlxJoinTests
     [TestMethod]
     public void Combined_JoinWithGroupBy_GeneratesCorrectSql()
     {
-        var customers = SqlQuery.ForSqlite<Customer>();
-        var orders = SqlQuery.ForSqlite<Order>();
+        var customers = SqlQuery<Customer>.ForSqlite();
+        var orders = SqlQuery<Order>.ForSqlite();
         
         var sql = customers
             .Join(orders,
@@ -290,8 +290,8 @@ public class SqlxJoinTests
     [TestMethod]
     public void Combined_JoinWithWhereAndGroupBy_GeneratesCorrectSql()
     {
-        var customers = SqlQuery.ForSqlite<Customer>();
-        var orders = SqlQuery.ForSqlite<Order>();
+        var customers = SqlQuery<Customer>.ForSqlite();
+        var orders = SqlQuery<Order>.ForSqlite();
         
         var sql = customers
             .Join(orders,
@@ -310,8 +310,8 @@ public class SqlxJoinTests
     [TestMethod]
     public void Combined_FullComplexQuery_GeneratesCorrectSql()
     {
-        var customers = SqlQuery.ForSqlite<Customer>();
-        var orders = SqlQuery.ForSqlite<Order>();
+        var customers = SqlQuery<Customer>.ForSqlite();
+        var orders = SqlQuery<Order>.ForSqlite();
         
         var sql = customers
             .Join(orders,
@@ -362,12 +362,12 @@ public class SqlxJoinTests
 
     private static IQueryable<T> GetQuery<T>(string dialect) => dialect switch
     {
-        "SQLite" => SqlQuery.ForSqlite<T>(),
-        "SqlServer" => SqlQuery.ForSqlServer<T>(),
-        "MySql" => SqlQuery.ForMySql<T>(),
-        "PostgreSQL" => SqlQuery.ForPostgreSQL<T>(),
-        "Oracle" => SqlQuery.ForOracle<T>(),
-        "DB2" => SqlQuery.ForDB2<T>(),
+        "SQLite" => SqlQuery<T>.ForSqlite(),
+        "SqlServer" => SqlQuery<T>.ForSqlServer(),
+        "MySql" => SqlQuery<T>.ForMySql(),
+        "PostgreSQL" => SqlQuery<T>.ForPostgreSQL(),
+        "Oracle" => SqlQuery<T>.ForOracle(),
+        "DB2" => SqlQuery<T>.ForDB2(),
         _ => throw new System.ArgumentException($"Unknown dialect: {dialect}")
     };
 
@@ -378,8 +378,8 @@ public class SqlxJoinTests
     [TestMethod]
     public void Join_EmptyResult_GeneratesCorrectSql()
     {
-        var customers = SqlQuery.ForSqlite<Customer>();
-        var orders = SqlQuery.ForSqlite<Order>();
+        var customers = SqlQuery<Customer>.ForSqlite();
+        var orders = SqlQuery<Order>.ForSqlite();
         
         var sql = customers
             .Join(orders,
@@ -396,8 +396,8 @@ public class SqlxJoinTests
     [TestMethod]
     public void Join_WithDistinct_GeneratesCorrectSql()
     {
-        var customers = SqlQuery.ForSqlite<Customer>();
-        var orders = SqlQuery.ForSqlite<Order>();
+        var customers = SqlQuery<Customer>.ForSqlite();
+        var orders = SqlQuery<Order>.ForSqlite();
         
         var sql = customers
             .Join(orders,
@@ -413,3 +413,4 @@ public class SqlxJoinTests
 
     #endregion
 }
+

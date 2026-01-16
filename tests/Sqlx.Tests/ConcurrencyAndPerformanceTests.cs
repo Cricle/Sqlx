@@ -18,7 +18,7 @@ public class ConcurrencyAndPerformanceTests
     {
         var tasks = Enumerable.Range(0, 100).Select(_ => Task.Run(() =>
         {
-            var query = SqlQuery.ForSqlite<QueryUser>();
+            var query = SqlQuery<QueryUser>.ForSqlite();
             Assert.IsNotNull(query);
             var sql = query.ToSql();
             Assert.IsTrue(sql.Contains("SELECT"));
@@ -31,7 +31,7 @@ public class ConcurrencyAndPerformanceTests
     [TestMethod]
     public void SqlQuery_ConcurrentToSql_ThreadSafe()
     {
-        var query = SqlQuery.ForSqlite<QueryUser>()
+        var query = SqlQuery<QueryUser>.ForSqlite()
             .Where(u => u.IsActive)
             .OrderBy(u => u.Name);
 
@@ -100,7 +100,7 @@ public class ConcurrencyAndPerformanceTests
 
         Parallel.For(0, 100, i =>
         {
-            var query = SqlQuery.ForSqlite<QueryUser>()
+            var query = SqlQuery<QueryUser>.ForSqlite()
                 .Where(u => u.Id == i)
                 .OrderBy(u => u.Name);
 
@@ -141,7 +141,7 @@ public class ConcurrencyAndPerformanceTests
     [TestMethod]
     public void Performance_ToSql_FastExecution()
     {
-        var query = SqlQuery.ForSqlite<QueryUser>()
+        var query = SqlQuery<QueryUser>.ForSqlite()
             .Where(u => u.IsActive)
             .Where(u => u.Age > 18)
             .OrderBy(u => u.Name)
@@ -217,7 +217,7 @@ public class ConcurrencyAndPerformanceTests
 
         for (int i = 0; i < 1000; i++)
         {
-            var query = SqlQuery.ForSqlite<QueryUser>()
+            var query = SqlQuery<QueryUser>.ForSqlite()
                 .Where(u => u.IsActive)
                 .Where(u => u.Age > 18)
                 .Where(u => u.Email != null)
@@ -287,7 +287,7 @@ public class ConcurrencyAndPerformanceTests
         {
             while (!cts.Token.IsCancellationRequested)
             {
-                var query = SqlQuery.ForSqlite<QueryUser>()
+                var query = SqlQuery<QueryUser>.ForSqlite()
                     .Where(u => u.IsActive)
                     .OrderBy(u => u.Name)
                     .Take(10);
@@ -349,3 +349,4 @@ public class ConcurrencyAndPerformanceTests
 
     #endregion
 }
+

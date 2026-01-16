@@ -85,7 +85,7 @@ namespace Sqlx
             {
                 EntityProvider = entityProvider;
             }
-            return new SqlxQueryable<T>(new SqlxQueryProvider<T>(dialect));
+            return new SqlxQueryable<T>(new SqlxQueryProvider<T>(dialect, EntityProvider));
         }
 
         /// <summary>
@@ -146,118 +146,6 @@ namespace Sqlx
         public static IQueryable<T> ForDB2(IEntityProvider? entityProvider = null)
         {
             return For(SqlDefine.DB2, entityProvider);
-        }
-    }
-
-    /// <summary>
-    /// Non-generic convenience class for SqlQuery&lt;T&gt; (for backward compatibility).
-    /// </summary>
-    public static class SqlQuery
-    {
-        /// <summary>
-        /// Creates a query for the specified SQL dialect.
-        /// </summary>
-        /// <typeparam name="T">The entity type.</typeparam>
-        /// <param name="dialect">The SQL dialect.</param>
-        /// <param name="entityProvider">Optional entity provider for metadata.</param>
-        /// <returns>An IQueryable for building SQL queries.</returns>
-        public static IQueryable<T> For<
-#if NET5_0_OR_GREATER
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
-#endif
-            T>(SqlDialect dialect, IEntityProvider? entityProvider = null)
-        {
-            return SqlQuery<T>.For(dialect, entityProvider);
-        }
-
-        /// <summary>
-        /// Creates a query for SQLite.
-        /// </summary>
-        /// <typeparam name="T">The entity type.</typeparam>
-        /// <param name="entityProvider">Optional entity provider for metadata.</param>
-        /// <returns>An IQueryable for building SQLite queries.</returns>
-        public static IQueryable<T> ForSqlite<
-#if NET5_0_OR_GREATER
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
-#endif
-            T>(IEntityProvider? entityProvider = null)
-        {
-            return SqlQuery<T>.ForSqlite(entityProvider);
-        }
-
-        /// <summary>
-        /// Creates a query for SQL Server.
-        /// </summary>
-        /// <typeparam name="T">The entity type.</typeparam>
-        /// <param name="entityProvider">Optional entity provider for metadata.</param>
-        /// <returns>An IQueryable for building SQL Server queries.</returns>
-        public static IQueryable<T> ForSqlServer<
-#if NET5_0_OR_GREATER
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
-#endif
-            T>(IEntityProvider? entityProvider = null)
-        {
-            return SqlQuery<T>.ForSqlServer(entityProvider);
-        }
-
-        /// <summary>
-        /// Creates a query for MySQL.
-        /// </summary>
-        /// <typeparam name="T">The entity type.</typeparam>
-        /// <param name="entityProvider">Optional entity provider for metadata.</param>
-        /// <returns>An IQueryable for building MySQL queries.</returns>
-        public static IQueryable<T> ForMySql<
-#if NET5_0_OR_GREATER
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
-#endif
-            T>(IEntityProvider? entityProvider = null)
-        {
-            return SqlQuery<T>.ForMySql(entityProvider);
-        }
-
-        /// <summary>
-        /// Creates a query for PostgreSQL.
-        /// </summary>
-        /// <typeparam name="T">The entity type.</typeparam>
-        /// <param name="entityProvider">Optional entity provider for metadata.</param>
-        /// <returns>An IQueryable for building PostgreSQL queries.</returns>
-        public static IQueryable<T> ForPostgreSQL<
-#if NET5_0_OR_GREATER
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
-#endif
-            T>(IEntityProvider? entityProvider = null)
-        {
-            return SqlQuery<T>.ForPostgreSQL(entityProvider);
-        }
-
-        /// <summary>
-        /// Creates a query for Oracle.
-        /// </summary>
-        /// <typeparam name="T">The entity type.</typeparam>
-        /// <param name="entityProvider">Optional entity provider for metadata.</param>
-        /// <returns>An IQueryable for building Oracle queries.</returns>
-        public static IQueryable<T> ForOracle<
-#if NET5_0_OR_GREATER
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
-#endif
-            T>(IEntityProvider? entityProvider = null)
-        {
-            return SqlQuery<T>.ForOracle(entityProvider);
-        }
-
-        /// <summary>
-        /// Creates a query for DB2.
-        /// </summary>
-        /// <typeparam name="T">The entity type.</typeparam>
-        /// <param name="entityProvider">Optional entity provider for metadata.</param>
-        /// <returns>An IQueryable for building DB2 queries.</returns>
-        public static IQueryable<T> ForDB2<
-#if NET5_0_OR_GREATER
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
-#endif
-            T>(IEntityProvider? entityProvider = null)
-        {
-            return SqlQuery<T>.ForDB2(entityProvider);
         }
     }
 }

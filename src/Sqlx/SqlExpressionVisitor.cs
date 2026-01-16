@@ -276,7 +276,7 @@ namespace Sqlx
             }
             else if (innerArg is MethodCallExpression innerMethod)
             {
-                // Handle chained queries like SqlQuery.ForSqlite<T>()
+                // Handle chained queries like SqlQuery<T>.ForSqlite()
                 Visit(innerArg);
                 // Extract type from generic arguments
                 if (innerMethod.Method.IsGenericMethod)

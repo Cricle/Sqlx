@@ -17,6 +17,14 @@ namespace Sqlx.Tests;
 [TestClass]
 public class SqlxStrictValidationTests
 {
+    [AssemblyInitialize]
+    public static void AssemblyInitialize(TestContext context)
+    {
+        // Explicitly call the generated initializer to ensure EntityProviders are registered
+        // This is a workaround for potential ModuleInitializer timing issues
+        Sqlx.Generated.EntityProvidersInitializer.Initialize();
+    }
+
     #region Test Entities
 
     [SqlxEntity]
@@ -44,12 +52,12 @@ public class SqlxStrictValidationTests
 
     private static IQueryable<T> GetQuery<T>(string dialect) => dialect switch
     {
-        "SQLite" => SqlQuery.ForSqlite<T>(),
-        "SqlServer" => SqlQuery.ForSqlServer<T>(),
-        "MySql" => SqlQuery.ForMySql<T>(),
-        "PostgreSQL" => SqlQuery.ForPostgreSQL<T>(),
-        "Oracle" => SqlQuery.ForOracle<T>(),
-        "DB2" => SqlQuery.ForDB2<T>(),
+        "SQLite" => SqlQuery<T>.ForSqlite(),
+        "SqlServer" => SqlQuery<T>.ForSqlServer(),
+        "MySql" => SqlQuery<T>.ForMySql(),
+        "PostgreSQL" => SqlQuery<T>.ForPostgreSQL(),
+        "Oracle" => SqlQuery<T>.ForOracle(),
+        "DB2" => SqlQuery<T>.ForDB2(),
         _ => throw new System.ArgumentException($"Unknown dialect: {dialect}")
     };
 
@@ -213,6 +221,67 @@ public class SqlxStrictValidationTests
 
     #endregion
 
+    #region 9.1 SELECT with GROUP BY + WHERE - All Dialects
+
+    [TestMethod]
+    [DataRow("SQLite", "SELECT [id], [name], [email], [age], [is_active] FROM [TestUser] WHERE [is_active] = 1 GROUP BY [age]")]
+    [DataRow("SqlServer", "SELECT [id], [name], [email], [age], [is_active] FROM [TestUser] WHERE [is_active] = 1 GROUP BY [age]")]
+    [DataRow("MySql", "SELECT `id`, `name`, `email`, `age`, `is_active` FROM `TestUser` WHERE `is_active` = 1 GROUP BY `age`")]
+    [DataRow("PostgreSQL", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" WHERE \"is_active\" = true GROUP BY \"age\"")]
+    [DataRow("Oracle", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" WHERE \"is_active\" = 1 GROUP BY \"age\"")]
+    [DataRow("DB2", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" WHERE \"is_active\" = 1 GROUP BY \"age\"")]
+    public void SelectWithGroupByAndWhere_AllDialects_ExactMatch(string dialect, string expectedSql)
+    {
+        var sql = GetQuery<TestUser>(dialect)
+            .Where(u => u.IsActive)
+            .GroupBy(u => u.Age)
+            .ToSql();
+        Assert.AreEqual(expectedSql, sql, $"[{dialect}] SQL mismatch");
+    }
+
+    #endregion
+
+    #region 9.2 SELECT with GROUP BY + ORDER BY - All Dialects
+
+    [TestMethod]
+    [DataRow("SQLite", "SELECT [id], [name], [email], [age], [is_active] FROM [TestUser] GROUP BY [age] ORDER BY [name] ASC")]
+    [DataRow("SqlServer", "SELECT [id], [name], [email], [age], [is_active] FROM [TestUser] GROUP BY [age] ORDER BY [name] ASC")]
+    [DataRow("MySql", "SELECT `id`, `name`, `email`, `age`, `is_active` FROM `TestUser` GROUP BY `age` ORDER BY `name` ASC")]
+    [DataRow("PostgreSQL", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" GROUP BY \"age\" ORDER BY \"name\" ASC")]
+    [DataRow("Oracle", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" GROUP BY \"age\" ORDER BY \"name\" ASC")]
+    [DataRow("DB2", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" GROUP BY \"age\" ORDER BY \"name\" ASC")]
+    public void SelectWithGroupByAndOrderBy_AllDialects_ExactMatch(string dialect, string expectedSql)
+    {
+        var sql = GetQuery<TestUser>(dialect)
+            .OrderBy(u => u.Name)
+            .GroupBy(u => u.Age)
+            .ToSql();
+        Assert.AreEqual(expectedSql, sql, $"[{dialect}] SQL mismatch");
+    }
+
+    #endregion
+
+    #region 9.3 SELECT with GROUP BY + WHERE + ORDER BY - All Dialects
+
+    [TestMethod]
+    [DataRow("SQLite", "SELECT [id], [name], [email], [age], [is_active] FROM [TestUser] WHERE [age] > 18 GROUP BY [name] ORDER BY [email] DESC")]
+    [DataRow("SqlServer", "SELECT [id], [name], [email], [age], [is_active] FROM [TestUser] WHERE [age] > 18 GROUP BY [name] ORDER BY [email] DESC")]
+    [DataRow("MySql", "SELECT `id`, `name`, `email`, `age`, `is_active` FROM `TestUser` WHERE `age` > 18 GROUP BY `name` ORDER BY `email` DESC")]
+    [DataRow("PostgreSQL", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" WHERE \"age\" > 18 GROUP BY \"name\" ORDER BY \"email\" DESC")]
+    [DataRow("Oracle", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" WHERE \"age\" > 18 GROUP BY \"name\" ORDER BY \"email\" DESC")]
+    [DataRow("DB2", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" WHERE \"age\" > 18 GROUP BY \"name\" ORDER BY \"email\" DESC")]
+    public void SelectWithGroupByWhereOrderBy_AllDialects_ExactMatch(string dialect, string expectedSql)
+    {
+        var sql = GetQuery<TestUser>(dialect)
+            .Where(u => u.Age > 18)
+            .OrderByDescending(u => u.Email)
+            .GroupBy(u => u.Name)
+            .ToSql();
+        Assert.AreEqual(expectedSql, sql, $"[{dialect}] SQL mismatch");
+    }
+
+    #endregion
+
     #region 10. SELECT with DISTINCT - All Dialects
 
     [TestMethod]
@@ -321,12 +390,14 @@ public class SqlxStrictValidationTests
     {
         // 验证测试覆盖率
         var dialectCount = 6; // SQLite, SqlServer, MySql, PostgreSQL, Oracle, DB2
-        var operationCount = 14; // 14 种不同的操作组合
+        var operationCount = 17; // 17 种不同的操作组合 (增加了 3 个 GroupBy 组合测试)
         var totalTests = dialectCount * operationCount;
 
-        // 实际测试数量应该是 6 * 14 = 84
-        Assert.AreEqual(84, totalTests, "Total test combinations should be 84");
+        // 实际测试数量应该是 6 * 17 = 102
+        Assert.AreEqual(102, totalTests, "Total test combinations should be 102");
     }
 
     #endregion
 }
+
+

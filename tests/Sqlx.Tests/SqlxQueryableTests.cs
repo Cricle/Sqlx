@@ -25,35 +25,35 @@ public class SqlxQueryableTests
     [TestMethod]
     public void SqlxQueryable_ImplementsIQueryable()
     {
-        var query = SqlQuery.ForSqlite<QueryUser>();
+        var query = SqlQuery<QueryUser>.ForSqlite();
         Assert.IsInstanceOfType(query, typeof(IQueryable<QueryUser>));
     }
 
     [TestMethod]
     public void SqlxQueryable_ImplementsIOrderedQueryable()
     {
-        var query = SqlQuery.ForSqlite<QueryUser>().OrderBy(u => u.Name);
+        var query = SqlQuery<QueryUser>.ForSqlite().OrderBy(u => u.Name);
         Assert.IsInstanceOfType(query, typeof(IOrderedQueryable<QueryUser>));
     }
 
     [TestMethod]
     public void SqlxQueryable_ElementType_ReturnsCorrectType()
     {
-        var query = SqlQuery.ForSqlite<QueryUser>();
+        var query = SqlQuery<QueryUser>.ForSqlite();
         Assert.AreEqual(typeof(QueryUser), query.ElementType);
     }
 
     [TestMethod]
     public void SqlxQueryable_Expression_IsNotNull()
     {
-        var query = SqlQuery.ForSqlite<QueryUser>();
+        var query = SqlQuery<QueryUser>.ForSqlite();
         Assert.IsNotNull(query.Expression);
     }
 
     [TestMethod]
     public void SqlxQueryable_Provider_IsNotNull()
     {
-        var query = SqlQuery.ForSqlite<QueryUser>();
+        var query = SqlQuery<QueryUser>.ForSqlite();
         Assert.IsNotNull(query.Provider);
         Assert.IsInstanceOfType(query.Provider, typeof(SqlxQueryProvider<QueryUser>));
     }
@@ -73,12 +73,12 @@ public class SqlxQueryableTests
     {
         var query = dialect switch
         {
-            "SQLite" => SqlQuery.ForSqlite<QueryUser>(),
-            "SqlServer" => SqlQuery.ForSqlServer<QueryUser>(),
-            "MySql" => SqlQuery.ForMySql<QueryUser>(),
-            "PostgreSQL" => SqlQuery.ForPostgreSQL<QueryUser>(),
-            "Oracle" => SqlQuery.ForOracle<QueryUser>(),
-            "DB2" => SqlQuery.ForDB2<QueryUser>(),
+            "SQLite" => SqlQuery<QueryUser>.ForSqlite(),
+            "SqlServer" => SqlQuery<QueryUser>.ForSqlServer(),
+            "MySql" => SqlQuery<QueryUser>.ForMySql(),
+            "PostgreSQL" => SqlQuery<QueryUser>.ForPostgreSQL(),
+            "Oracle" => SqlQuery<QueryUser>.ForOracle(),
+            "DB2" => SqlQuery<QueryUser>.ForDB2(),
             _ => throw new ArgumentException()
         };
         Assert.IsNotNull(query);
@@ -87,7 +87,7 @@ public class SqlxQueryableTests
     [TestMethod]
     public void SqlQuery_For_WithDialect_ReturnsInstance()
     {
-        var query = SqlQuery.For<QueryUser>(SqlDefine.SQLite);
+        var query = SqlQuery<QueryUser>.For(SqlDefine.SQLite);
         Assert.IsNotNull(query);
     }
 
@@ -98,7 +98,7 @@ public class SqlxQueryableTests
     [TestMethod]
     public void SqlxQueryable_MethodChaining_PreservesExpression()
     {
-        var query = SqlQuery.ForSqlite<QueryUser>()
+        var query = SqlQuery<QueryUser>.ForSqlite()
             .Where(u => u.IsActive)
             .OrderBy(u => u.Name)
             .Take(10);
@@ -113,7 +113,7 @@ public class SqlxQueryableTests
     [TestMethod]
     public void SqlxQueryable_MultipleWhere_ChainsCorrectly()
     {
-        var query = SqlQuery.ForSqlite<QueryUser>()
+        var query = SqlQuery<QueryUser>.ForSqlite()
             .Where(u => u.IsActive)
             .Where(u => u.Age > 18);
 
@@ -128,7 +128,7 @@ public class SqlxQueryableTests
     [TestMethod]
     public void ToSql_NoConditions_ReturnsSelectAllColumns()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().ToSql();
         // Should list all columns explicitly, not SELECT *
         Assert.IsTrue(sql.Contains("SELECT [id], [name], [age], [is_active], [salary], [created_at], [email]"));
         Assert.IsTrue(sql.Contains("FROM [QueryUser]"));
@@ -137,7 +137,7 @@ public class SqlxQueryableTests
     [TestMethod]
     public void ToSql_WithWhere_ReturnsWhereClause()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>()
+        var sql = SqlQuery<QueryUser>.ForSqlite()
             .Where(u => u.Id == 1)
             .ToSql();
         Assert.IsTrue(sql.Contains("WHERE"));
@@ -147,7 +147,7 @@ public class SqlxQueryableTests
     [TestMethod]
     public void ToSql_WithOrderBy_ReturnsOrderByClause()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>()
+        var sql = SqlQuery<QueryUser>.ForSqlite()
             .OrderBy(u => u.Name)
             .ToSql();
         Assert.IsTrue(sql.Contains("ORDER BY [name] ASC"));
@@ -156,7 +156,7 @@ public class SqlxQueryableTests
     [TestMethod]
     public void ToSql_WithOrderByDescending_ReturnsDescClause()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>()
+        var sql = SqlQuery<QueryUser>.ForSqlite()
             .OrderByDescending(u => u.CreatedAt)
             .ToSql();
         Assert.IsTrue(sql.Contains("ORDER BY [created_at] DESC"));
@@ -165,7 +165,7 @@ public class SqlxQueryableTests
     [TestMethod]
     public void ToSql_WithTake_ReturnsLimitClause()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>()
+        var sql = SqlQuery<QueryUser>.ForSqlite()
             .Take(10)
             .ToSql();
         Assert.IsTrue(sql.Contains("LIMIT 10"));
@@ -174,7 +174,7 @@ public class SqlxQueryableTests
     [TestMethod]
     public void ToSql_WithSkip_ReturnsOffsetClause()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>()
+        var sql = SqlQuery<QueryUser>.ForSqlite()
             .Skip(20)
             .ToSql();
         Assert.IsTrue(sql.Contains("OFFSET 20"));
@@ -183,7 +183,7 @@ public class SqlxQueryableTests
     [TestMethod]
     public void ToSql_WithTakeAndSkip_ReturnsBothClauses()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>()
+        var sql = SqlQuery<QueryUser>.ForSqlite()
             .Take(10)
             .Skip(20)
             .ToSql();
@@ -198,7 +198,7 @@ public class SqlxQueryableTests
     [TestMethod]
     public void ToSql_SqlServer_UsesSquareBrackets()
     {
-        var sql = SqlQuery.ForSqlServer<QueryUser>()
+        var sql = SqlQuery<QueryUser>.ForSqlServer()
             .Where(u => u.Id == 1)
             .ToSql();
         Assert.IsTrue(sql.Contains("[QueryUser]"));
@@ -208,7 +208,7 @@ public class SqlxQueryableTests
     [TestMethod]
     public void ToSql_MySql_UsesBackticks()
     {
-        var sql = SqlQuery.ForMySql<QueryUser>()
+        var sql = SqlQuery<QueryUser>.ForMySql()
             .Where(u => u.Id == 1)
             .ToSql();
         Assert.IsTrue(sql.Contains("`QueryUser`"));
@@ -218,7 +218,7 @@ public class SqlxQueryableTests
     [TestMethod]
     public void ToSql_PostgreSQL_UsesDoubleQuotes()
     {
-        var sql = SqlQuery.ForPostgreSQL<QueryUser>()
+        var sql = SqlQuery<QueryUser>.ForPostgreSQL()
             .Where(u => u.Id == 1)
             .ToSql();
         Assert.IsTrue(sql.Contains("\"QueryUser\""));
@@ -228,7 +228,7 @@ public class SqlxQueryableTests
     [TestMethod]
     public void ToSql_SqlServer_Pagination_UsesOffsetFetch()
     {
-        var sql = SqlQuery.ForSqlServer<QueryUser>()
+        var sql = SqlQuery<QueryUser>.ForSqlServer()
             .Take(10)
             .Skip(20)
             .ToSql();
@@ -243,7 +243,7 @@ public class SqlxQueryableTests
     [TestMethod]
     public void GetEnumerator_WithoutConnection_ThrowsInvalidOperationException()
     {
-        var query = SqlQuery.ForSqlite<QueryUser>();
+        var query = SqlQuery<QueryUser>.ForSqlite();
         Assert.ThrowsException<InvalidOperationException>(() => query.GetEnumerator());
     }
 
@@ -266,49 +266,49 @@ public class SqlxQueryableWhereTests
     [TestMethod]
     public void Where_Equality_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => u.Id == 1).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => u.Id == 1).ToSql();
         Assert.IsTrue(sql.Contains("[id] = 1"));
     }
 
     [TestMethod]
     public void Where_StringEquality_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => u.Name == "test").ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => u.Name == "test").ToSql();
         Assert.IsTrue(sql.Contains("[name] = 'test'"));
     }
 
     [TestMethod]
     public void Where_GreaterThan_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => u.Age > 18).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => u.Age > 18).ToSql();
         Assert.IsTrue(sql.Contains("[age] > 18"));
     }
 
     [TestMethod]
     public void Where_LessThan_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => u.Age < 65).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => u.Age < 65).ToSql();
         Assert.IsTrue(sql.Contains("[age] < 65"));
     }
 
     [TestMethod]
     public void Where_GreaterThanOrEqual_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => u.Age >= 18).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => u.Age >= 18).ToSql();
         Assert.IsTrue(sql.Contains("[age] >= 18"));
     }
 
     [TestMethod]
     public void Where_LessThanOrEqual_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => u.Age <= 65).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => u.Age <= 65).ToSql();
         Assert.IsTrue(sql.Contains("[age] <= 65"));
     }
 
     [TestMethod]
     public void Where_NotEqual_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => u.Id != 0).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => u.Id != 0).ToSql();
         Assert.IsTrue(sql.Contains("[id] <> 0"));
     }
 
@@ -319,21 +319,21 @@ public class SqlxQueryableWhereTests
     [TestMethod]
     public void Where_AndCondition_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => u.Age >= 18 && u.Age <= 65).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => u.Age >= 18 && u.Age <= 65).ToSql();
         Assert.IsTrue(sql.Contains("AND"));
     }
 
     [TestMethod]
     public void Where_OrCondition_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => u.Age < 18 || u.Age > 65).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => u.Age < 18 || u.Age > 65).ToSql();
         Assert.IsTrue(sql.Contains("OR"));
     }
 
     [TestMethod]
     public void Where_MultipleWhere_GeneratesAndClause()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>()
+        var sql = SqlQuery<QueryUser>.ForSqlite()
             .Where(u => u.IsActive)
             .Where(u => u.Age > 18)
             .ToSql();
@@ -347,14 +347,14 @@ public class SqlxQueryableWhereTests
     [TestMethod]
     public void Where_NullEquality_GeneratesIsNull()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => u.Email == null).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => u.Email == null).ToSql();
         Assert.IsTrue(sql.Contains("IS NULL"));
     }
 
     [TestMethod]
     public void Where_NotNull_GeneratesIsNotNull()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => u.Email != null).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => u.Email != null).ToSql();
         Assert.IsTrue(sql.Contains("IS NOT NULL"));
     }
 
@@ -365,21 +365,21 @@ public class SqlxQueryableWhereTests
     [TestMethod]
     public void Where_BooleanTrue_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => u.IsActive == true).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => u.IsActive == true).ToSql();
         Assert.IsTrue(sql.Contains("[is_active] = 1"));
     }
 
     [TestMethod]
     public void Where_BooleanFalse_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => u.IsActive == false).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => u.IsActive == false).ToSql();
         Assert.IsTrue(sql.Contains("[is_active] = 0"));
     }
 
     [TestMethod]
     public void Where_BooleanMember_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => u.IsActive).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => u.IsActive).ToSql();
         Assert.IsTrue(sql.Contains("[is_active] = 1"));
     }
 
@@ -390,49 +390,49 @@ public class SqlxQueryableWhereTests
     [TestMethod]
     public void Where_StringContains_GeneratesLike()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => u.Name.Contains("test")).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => u.Name.Contains("test")).ToSql();
         Assert.IsTrue(sql.Contains("LIKE"), $"SQL: {sql}");
     }
 
     [TestMethod]
     public void Where_StringStartsWith_GeneratesLike()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => u.Name.StartsWith("test")).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => u.Name.StartsWith("test")).ToSql();
         Assert.IsTrue(sql.Contains("LIKE"), $"SQL: {sql}");
     }
 
     [TestMethod]
     public void Where_StringEndsWith_GeneratesLike()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => u.Name.EndsWith("test")).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => u.Name.EndsWith("test")).ToSql();
         Assert.IsTrue(sql.Contains("LIKE"), $"SQL: {sql}");
     }
 
     [TestMethod]
     public void Where_StringLength_GeneratesLengthFunction()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => u.Name.Length > 5).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => u.Name.Length > 5).ToSql();
         Assert.IsTrue(sql.Contains("LENGTH([name])"), $"SQL: {sql}");
     }
 
     [TestMethod]
     public void Where_StringToUpper_GeneratesUpperFunction()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => u.Name.ToUpper() == "TEST").ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => u.Name.ToUpper() == "TEST").ToSql();
         Assert.IsTrue(sql.Contains("UPPER([name])"), $"SQL: {sql}");
     }
 
     [TestMethod]
     public void Where_StringToLower_GeneratesLowerFunction()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => u.Name.ToLower() == "test").ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => u.Name.ToLower() == "test").ToSql();
         Assert.IsTrue(sql.Contains("LOWER([name])"), $"SQL: {sql}");
     }
 
     [TestMethod]
     public void Where_StringTrim_GeneratesTrimFunction()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => u.Name.Trim() == "test").ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => u.Name.Trim() == "test").ToSql();
         Assert.IsTrue(sql.Contains("TRIM([name])"), $"SQL: {sql}");
     }
 
@@ -443,28 +443,28 @@ public class SqlxQueryableWhereTests
     [TestMethod]
     public void Where_MathAbs_GeneratesAbsFunction()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => Math.Abs(u.Age) > 0).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => Math.Abs(u.Age) > 0).ToSql();
         Assert.IsTrue(sql.Contains("ABS([age])"));
     }
 
     [TestMethod]
     public void Where_MathRound_GeneratesRoundFunction()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => Math.Round((double)u.Salary) > 1000).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => Math.Round((double)u.Salary) > 1000).ToSql();
         Assert.IsTrue(sql.Contains("ROUND([salary])"));
     }
 
     [TestMethod]
     public void Where_MathFloor_GeneratesFloorFunction()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => Math.Floor((double)u.Salary) > 1000).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => Math.Floor((double)u.Salary) > 1000).ToSql();
         Assert.IsTrue(sql.Contains("FLOOR([salary])"));
     }
 
     [TestMethod]
     public void Where_MathCeiling_GeneratesCeilingFunction()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => Math.Ceiling((double)u.Salary) > 1000).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => Math.Ceiling((double)u.Salary) > 1000).ToSql();
         Assert.IsTrue(sql.Contains("CEILING([salary])"));
     }
 
@@ -475,14 +475,14 @@ public class SqlxQueryableWhereTests
     [TestMethod]
     public void Where_NullCoalescing_GeneratesCoalesce()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => (u.Email ?? "default") == "test").ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => (u.Email ?? "default") == "test").ToSql();
         Assert.IsTrue(sql.Contains("COALESCE"));
     }
 
     [TestMethod]
     public void Where_Conditional_GeneratesCaseWhen()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => (u.Age > 18 ? "adult" : "minor") == "adult").ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => (u.Age > 18 ? "adult" : "minor") == "adult").ToSql();
         Assert.IsTrue(sql.Contains("CASE WHEN"));
     }
 
@@ -498,7 +498,7 @@ public class SqlxQueryableSelectTests
     [TestMethod]
     public void Select_SingleColumn_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Select(u => u.Name).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Select(u => u.Name).ToSql();
         Assert.IsTrue(sql.Contains("[name]"), $"SQL: {sql}");
         Assert.IsFalse(sql.Contains("*"), $"SQL: {sql}");
     }
@@ -506,7 +506,7 @@ public class SqlxQueryableSelectTests
     [TestMethod]
     public void Select_MultipleColumns_AnonymousType_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Select(u => new { u.Id, u.Name }).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Select(u => new { u.Id, u.Name }).ToSql();
         Assert.IsTrue(sql.Contains("[id]"), $"SQL: {sql}");
         Assert.IsTrue(sql.Contains("[name]"), $"SQL: {sql}");
     }
@@ -514,7 +514,7 @@ public class SqlxQueryableSelectTests
     [TestMethod]
     public void Select_AllColumns_WithoutSelect_GeneratesAllColumnsList()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().ToSql();
         // Should list all columns explicitly, not SELECT *
         Assert.IsTrue(sql.Contains("SELECT [id], [name], [age], [is_active], [salary], [created_at], [email]"), $"SQL: {sql}");
     }
@@ -526,35 +526,35 @@ public class SqlxQueryableSelectTests
     [TestMethod]
     public void Select_StringToUpper_GeneratesUpperFunction()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Select(u => u.Name.ToUpper()).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Select(u => u.Name.ToUpper()).ToSql();
         Assert.IsTrue(sql.Contains("UPPER([name])"), $"SQL: {sql}");
     }
 
     [TestMethod]
     public void Select_StringToLower_GeneratesLowerFunction()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Select(u => u.Name.ToLower()).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Select(u => u.Name.ToLower()).ToSql();
         Assert.IsTrue(sql.Contains("LOWER([name])"), $"SQL: {sql}");
     }
 
     [TestMethod]
     public void Select_StringLength_GeneratesLengthFunction()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Select(u => u.Name.Length).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Select(u => u.Name.Length).ToSql();
         Assert.IsTrue(sql.Contains("LENGTH([name])"), $"SQL: {sql}");
     }
 
     [TestMethod]
     public void Select_MathAbs_GeneratesAbsFunction()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Select(u => Math.Abs(u.Age)).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Select(u => Math.Abs(u.Age)).ToSql();
         Assert.IsTrue(sql.Contains("ABS([age])"), $"SQL: {sql}");
     }
 
     [TestMethod]
     public void Select_MathRound_GeneratesRoundFunction()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Select(u => Math.Round((double)u.Salary)).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Select(u => Math.Round((double)u.Salary)).ToSql();
         Assert.IsTrue(sql.Contains("ROUND([salary])"), $"SQL: {sql}");
     }
 
@@ -565,14 +565,14 @@ public class SqlxQueryableSelectTests
     [TestMethod]
     public void Select_Coalesce_GeneratesCoalesceFunction()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Select(u => u.Email ?? "N/A").ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Select(u => u.Email ?? "N/A").ToSql();
         Assert.IsTrue(sql.Contains("COALESCE"), $"SQL: {sql}");
     }
 
     [TestMethod]
     public void Select_Conditional_GeneratesCaseWhen()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Select(u => u.Age > 18 ? "Adult" : "Minor").ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Select(u => u.Age > 18 ? "Adult" : "Minor").ToSql();
         Assert.IsTrue(sql.Contains("CASE WHEN"), $"SQL: {sql}");
     }
 
@@ -583,7 +583,7 @@ public class SqlxQueryableSelectTests
     [TestMethod]
     public void Select_WithWhere_GeneratesBothClauses()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>()
+        var sql = SqlQuery<QueryUser>.ForSqlite()
             .Where(u => u.IsActive)
             .Select(u => new { u.Id, u.Name })
             .ToSql();
@@ -605,21 +605,21 @@ public class SqlxQueryableOrderByTests
     [TestMethod]
     public void OrderBy_SingleColumn_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().OrderBy(u => u.Name).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().OrderBy(u => u.Name).ToSql();
         Assert.IsTrue(sql.Contains("ORDER BY [name] ASC"), $"SQL: {sql}");
     }
 
     [TestMethod]
     public void OrderByDescending_SingleColumn_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().OrderByDescending(u => u.CreatedAt).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().OrderByDescending(u => u.CreatedAt).ToSql();
         Assert.IsTrue(sql.Contains("ORDER BY [created_at] DESC"), $"SQL: {sql}");
     }
 
     [TestMethod]
     public void ThenBy_AfterOrderBy_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>()
+        var sql = SqlQuery<QueryUser>.ForSqlite()
             .OrderBy(u => u.Name)
             .ThenBy(u => u.Age)
             .ToSql();
@@ -630,7 +630,7 @@ public class SqlxQueryableOrderByTests
     [TestMethod]
     public void ThenByDescending_AfterOrderBy_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>()
+        var sql = SqlQuery<QueryUser>.ForSqlite()
             .OrderBy(u => u.Name)
             .ThenByDescending(u => u.CreatedAt)
             .ToSql();
@@ -641,7 +641,7 @@ public class SqlxQueryableOrderByTests
     [TestMethod]
     public void OrderBy_MultipleColumns_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>()
+        var sql = SqlQuery<QueryUser>.ForSqlite()
             .OrderBy(u => u.Name)
             .ThenBy(u => u.Age)
             .ThenByDescending(u => u.CreatedAt)
@@ -659,7 +659,7 @@ public class SqlxQueryableOrderByTests
     [TestMethod]
     public void OrderBy_WithWhere_GeneratesBothClauses()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>()
+        var sql = SqlQuery<QueryUser>.ForSqlite()
             .Where(u => u.IsActive)
             .OrderBy(u => u.Name)
             .ToSql();
@@ -679,21 +679,21 @@ public class SqlxQueryablePaginationTests
     [TestMethod]
     public void Take_GeneratesLimitClause()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Take(10).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Take(10).ToSql();
         Assert.IsTrue(sql.Contains("LIMIT 10"), $"SQL: {sql}");
     }
 
     [TestMethod]
     public void Skip_GeneratesOffsetClause()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Skip(20).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Skip(20).ToSql();
         Assert.IsTrue(sql.Contains("OFFSET 20"), $"SQL: {sql}");
     }
 
     [TestMethod]
     public void TakeAndSkip_GeneratesBothClauses()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Take(10).Skip(20).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Take(10).Skip(20).ToSql();
         Assert.IsTrue(sql.Contains("LIMIT 10"), $"SQL: {sql}");
         Assert.IsTrue(sql.Contains("OFFSET 20"), $"SQL: {sql}");
     }
@@ -701,7 +701,7 @@ public class SqlxQueryablePaginationTests
     [TestMethod]
     public void SkipAndTake_GeneratesBothClauses()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Skip(20).Take(10).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Skip(20).Take(10).ToSql();
         Assert.IsTrue(sql.Contains("LIMIT 10"), $"SQL: {sql}");
         Assert.IsTrue(sql.Contains("OFFSET 20"), $"SQL: {sql}");
     }
@@ -713,7 +713,7 @@ public class SqlxQueryablePaginationTests
     [TestMethod]
     public void SqlServer_Pagination_UsesOffsetFetch()
     {
-        var sql = SqlQuery.ForSqlServer<QueryUser>().Skip(20).Take(10).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlServer().Skip(20).Take(10).ToSql();
         Assert.IsTrue(sql.Contains("OFFSET 20 ROWS"), $"SQL: {sql}");
         Assert.IsTrue(sql.Contains("FETCH NEXT 10 ROWS ONLY"), $"SQL: {sql}");
     }
@@ -721,7 +721,7 @@ public class SqlxQueryablePaginationTests
     [TestMethod]
     public void MySql_Pagination_UsesLimitOffset()
     {
-        var sql = SqlQuery.ForMySql<QueryUser>().Skip(20).Take(10).ToSql();
+        var sql = SqlQuery<QueryUser>.ForMySql().Skip(20).Take(10).ToSql();
         Assert.IsTrue(sql.Contains("LIMIT 10"), $"SQL: {sql}");
         Assert.IsTrue(sql.Contains("OFFSET 20"), $"SQL: {sql}");
     }
@@ -729,7 +729,7 @@ public class SqlxQueryablePaginationTests
     [TestMethod]
     public void PostgreSQL_Pagination_UsesLimitOffset()
     {
-        var sql = SqlQuery.ForPostgreSQL<QueryUser>().Skip(20).Take(10).ToSql();
+        var sql = SqlQuery<QueryUser>.ForPostgreSQL().Skip(20).Take(10).ToSql();
         Assert.IsTrue(sql.Contains("LIMIT 10"), $"SQL: {sql}");
         Assert.IsTrue(sql.Contains("OFFSET 20"), $"SQL: {sql}");
     }
@@ -741,7 +741,7 @@ public class SqlxQueryablePaginationTests
     [TestMethod]
     public void Pagination_WithWhereAndOrderBy_GeneratesAllClauses()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>()
+        var sql = SqlQuery<QueryUser>.ForSqlite()
             .Where(u => u.IsActive)
             .OrderBy(u => u.Name)
             .Skip(20)
@@ -766,14 +766,14 @@ public class SqlxQueryableGroupByTests
     [TestMethod]
     public void GroupBy_SingleColumn_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().GroupBy(u => u.IsActive).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().GroupBy(u => u.IsActive).ToSql();
         Assert.IsTrue(sql.Contains("GROUP BY [is_active]"), $"SQL: {sql}");
     }
 
     [TestMethod]
     public void GroupBy_WithWhere_GeneratesBothClauses()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>()
+        var sql = SqlQuery<QueryUser>.ForSqlite()
             .Where(u => u.Age > 18)
             .GroupBy(u => u.IsActive)
             .ToSql();
@@ -784,7 +784,7 @@ public class SqlxQueryableGroupByTests
     [TestMethod]
     public void GroupBy_WithSelect_GeneratesBothClauses()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>()
+        var sql = SqlQuery<QueryUser>.ForSqlite()
             .Select(u => new { u.IsActive, u.Age })
             .GroupBy(u => u.IsActive)
             .ToSql();
@@ -804,7 +804,7 @@ public class SqlxQueryableDialectTests
     [TestMethod]
     public void SQLite_UsesSquareBrackets()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => u.Id == 1).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => u.Id == 1).ToSql();
         Assert.IsTrue(sql.Contains("[QueryUser]"), $"SQL: {sql}");
         Assert.IsTrue(sql.Contains("[id]"), $"SQL: {sql}");
     }
@@ -812,7 +812,7 @@ public class SqlxQueryableDialectTests
     [TestMethod]
     public void SqlServer_UsesSquareBrackets()
     {
-        var sql = SqlQuery.ForSqlServer<QueryUser>().Where(u => u.Id == 1).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlServer().Where(u => u.Id == 1).ToSql();
         Assert.IsTrue(sql.Contains("[QueryUser]"), $"SQL: {sql}");
         Assert.IsTrue(sql.Contains("[id]"), $"SQL: {sql}");
     }
@@ -820,7 +820,7 @@ public class SqlxQueryableDialectTests
     [TestMethod]
     public void MySql_UsesBackticks()
     {
-        var sql = SqlQuery.ForMySql<QueryUser>().Where(u => u.Id == 1).ToSql();
+        var sql = SqlQuery<QueryUser>.ForMySql().Where(u => u.Id == 1).ToSql();
         Assert.IsTrue(sql.Contains("`QueryUser`"), $"SQL: {sql}");
         Assert.IsTrue(sql.Contains("`id`"), $"SQL: {sql}");
     }
@@ -828,7 +828,7 @@ public class SqlxQueryableDialectTests
     [TestMethod]
     public void PostgreSQL_UsesDoubleQuotes()
     {
-        var sql = SqlQuery.ForPostgreSQL<QueryUser>().Where(u => u.Id == 1).ToSql();
+        var sql = SqlQuery<QueryUser>.ForPostgreSQL().Where(u => u.Id == 1).ToSql();
         Assert.IsTrue(sql.Contains("\"QueryUser\""), $"SQL: {sql}");
         Assert.IsTrue(sql.Contains("\"id\""), $"SQL: {sql}");
     }
@@ -836,7 +836,7 @@ public class SqlxQueryableDialectTests
     [TestMethod]
     public void Oracle_UsesDoubleQuotes()
     {
-        var sql = SqlQuery.ForOracle<QueryUser>().Where(u => u.Id == 1).ToSql();
+        var sql = SqlQuery<QueryUser>.ForOracle().Where(u => u.Id == 1).ToSql();
         Assert.IsTrue(sql.Contains("\"QueryUser\""), $"SQL: {sql}");
         Assert.IsTrue(sql.Contains("\"id\""), $"SQL: {sql}");
     }
@@ -844,7 +844,7 @@ public class SqlxQueryableDialectTests
     [TestMethod]
     public void DB2_UsesDoubleQuotes()
     {
-        var sql = SqlQuery.ForDB2<QueryUser>().Where(u => u.Id == 1).ToSql();
+        var sql = SqlQuery<QueryUser>.ForDB2().Where(u => u.Id == 1).ToSql();
         Assert.IsTrue(sql.Contains("\"QueryUser\""), $"SQL: {sql}");
         Assert.IsTrue(sql.Contains("\"id\""), $"SQL: {sql}");
     }
@@ -856,14 +856,14 @@ public class SqlxQueryableDialectTests
     [TestMethod]
     public void SQLite_BooleanUsesNumeric()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => u.IsActive == true).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => u.IsActive == true).ToSql();
         Assert.IsTrue(sql.Contains("= 1"), $"SQL: {sql}");
     }
 
     [TestMethod]
     public void PostgreSQL_BooleanUsesLiteral()
     {
-        var sql = SqlQuery.ForPostgreSQL<QueryUser>().Where(u => u.IsActive == true).ToSql();
+        var sql = SqlQuery<QueryUser>.ForPostgreSQL().Where(u => u.IsActive == true).ToSql();
         Assert.IsTrue(sql.Contains("= true") || sql.Contains("= 1"), $"SQL: {sql}");
     }
 
@@ -874,7 +874,7 @@ public class SqlxQueryableDialectTests
     [TestMethod]
     public void SQLite_Pagination_UsesLimitOffset()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Skip(10).Take(20).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Skip(10).Take(20).ToSql();
         Assert.IsTrue(sql.Contains("LIMIT 20"), $"SQL: {sql}");
         Assert.IsTrue(sql.Contains("OFFSET 10"), $"SQL: {sql}");
     }
@@ -882,7 +882,7 @@ public class SqlxQueryableDialectTests
     [TestMethod]
     public void SqlServer_Pagination_UsesOffsetFetch()
     {
-        var sql = SqlQuery.ForSqlServer<QueryUser>().Skip(10).Take(20).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlServer().Skip(10).Take(20).ToSql();
         Assert.IsTrue(sql.Contains("OFFSET 10 ROWS"), $"SQL: {sql}");
         Assert.IsTrue(sql.Contains("FETCH NEXT 20 ROWS ONLY"), $"SQL: {sql}");
     }
@@ -890,7 +890,7 @@ public class SqlxQueryableDialectTests
     [TestMethod]
     public void MySql_Pagination_UsesLimitOffset()
     {
-        var sql = SqlQuery.ForMySql<QueryUser>().Skip(10).Take(20).ToSql();
+        var sql = SqlQuery<QueryUser>.ForMySql().Skip(10).Take(20).ToSql();
         Assert.IsTrue(sql.Contains("LIMIT 20"), $"SQL: {sql}");
         Assert.IsTrue(sql.Contains("OFFSET 10"), $"SQL: {sql}");
     }
@@ -898,7 +898,7 @@ public class SqlxQueryableDialectTests
     [TestMethod]
     public void PostgreSQL_Pagination_UsesLimitOffset()
     {
-        var sql = SqlQuery.ForPostgreSQL<QueryUser>().Skip(10).Take(20).ToSql();
+        var sql = SqlQuery<QueryUser>.ForPostgreSQL().Skip(10).Take(20).ToSql();
         Assert.IsTrue(sql.Contains("LIMIT 20"), $"SQL: {sql}");
         Assert.IsTrue(sql.Contains("OFFSET 10"), $"SQL: {sql}");
     }
@@ -910,14 +910,14 @@ public class SqlxQueryableDialectTests
     [TestMethod]
     public void SQLite_StringConcat_UsesPipeOperator()
     {
-        var sql = SqlQuery.ForSqlite<QueryUser>().Where(u => u.Name.Contains("test")).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlite().Where(u => u.Name.Contains("test")).ToSql();
         Assert.IsTrue(sql.Contains("||"), $"SQL: {sql}");
     }
 
     [TestMethod]
     public void MySql_StringConcat_UsesConcatFunction()
     {
-        var sql = SqlQuery.ForMySql<QueryUser>().Where(u => u.Name.Contains("test")).ToSql();
+        var sql = SqlQuery<QueryUser>.ForMySql().Where(u => u.Name.Contains("test")).ToSql();
         Assert.IsTrue(sql.Contains("CONCAT("), $"SQL: {sql}");
     }
 
@@ -934,7 +934,7 @@ public class SqlxQueryableParameterizedTests
     [TestMethod]
     public void ToSqlWithParameters_ReturnsParameterizedSql()
     {
-        var (sql, parameters) = SqlQuery.ForSqlite<QueryUser>()
+        var (sql, parameters) = SqlQuery<QueryUser>.ForSqlite()
             .Where(u => u.Id == 1)
             .ToSqlWithParameters();
         
@@ -945,7 +945,7 @@ public class SqlxQueryableParameterizedTests
     [TestMethod]
     public void ToSqlWithParameters_StringValue_CreatesParameter()
     {
-        var (sql, parameters) = SqlQuery.ForSqlite<QueryUser>()
+        var (sql, parameters) = SqlQuery<QueryUser>.ForSqlite()
             .Where(u => u.Name == "test")
             .ToSqlWithParameters();
         
@@ -956,7 +956,7 @@ public class SqlxQueryableParameterizedTests
     [TestMethod]
     public void ToSqlWithParameters_MultipleConditions_CreatesMultipleParameters()
     {
-        var (sql, parameters) = SqlQuery.ForSqlite<QueryUser>()
+        var (sql, parameters) = SqlQuery<QueryUser>.ForSqlite()
             .Where(u => u.Id == 1 && u.Name == "test")
             .ToSqlWithParameters();
         
@@ -970,7 +970,7 @@ public class SqlxQueryableParameterizedTests
     [TestMethod]
     public void SqlServer_UsesAtPrefix()
     {
-        var (sql, _) = SqlQuery.ForSqlServer<QueryUser>()
+        var (sql, _) = SqlQuery<QueryUser>.ForSqlServer()
             .Where(u => u.Id == 1)
             .ToSqlWithParameters();
         
@@ -980,7 +980,7 @@ public class SqlxQueryableParameterizedTests
     [TestMethod]
     public void MySql_UsesAtPrefix()
     {
-        var (sql, _) = SqlQuery.ForMySql<QueryUser>()
+        var (sql, _) = SqlQuery<QueryUser>.ForMySql()
             .Where(u => u.Id == 1)
             .ToSqlWithParameters();
         
@@ -990,7 +990,7 @@ public class SqlxQueryableParameterizedTests
     [TestMethod]
     public void PostgreSQL_UsesDollarPrefix()
     {
-        var (sql, _) = SqlQuery.ForPostgreSQL<QueryUser>()
+        var (sql, _) = SqlQuery<QueryUser>.ForPostgreSQL()
             .Where(u => u.Id == 1)
             .ToSqlWithParameters();
         
@@ -1000,7 +1000,7 @@ public class SqlxQueryableParameterizedTests
     [TestMethod]
     public void Oracle_UsesColonPrefix()
     {
-        var (sql, _) = SqlQuery.ForOracle<QueryUser>()
+        var (sql, _) = SqlQuery<QueryUser>.ForOracle()
             .Where(u => u.Id == 1)
             .ToSqlWithParameters();
         
@@ -1009,3 +1009,5 @@ public class SqlxQueryableParameterizedTests
 
     #endregion
 }
+
+

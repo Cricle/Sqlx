@@ -43,7 +43,7 @@ public class DynamicResultReaderTests
     [TestMethod]
     public void DynamicReader_AnonymousType_MultipleProperties_ReadsCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<TestEntity>()
+        var sql = SqlQuery<TestEntity>.ForSqlite()
             .Select(e => new { e.Id, e.UserName, e.IsActive })
             .ToSql();
 
@@ -55,7 +55,7 @@ public class DynamicResultReaderTests
     [TestMethod]
     public void DynamicReader_AnonymousType_WithNullableProperties_HandlesNull()
     {
-        var sql = SqlQuery.ForSqlite<TestEntityWithNullable>()
+        var sql = SqlQuery<TestEntityWithNullable>.ForSqlite()
             .Select(e => new { e.Id, e.Description })
             .ToSql();
 
@@ -70,7 +70,7 @@ public class DynamicResultReaderTests
     [TestMethod]
     public void DynamicReader_Int32Type_ConvertsCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<TestEntity>()
+        var sql = SqlQuery<TestEntity>.ForSqlite()
             .Select(e => new { e.Id })
             .ToSql();
 
@@ -80,7 +80,7 @@ public class DynamicResultReaderTests
     [TestMethod]
     public void DynamicReader_Int64Type_ConvertsCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<TestEntityWithAllTypes>()
+        var sql = SqlQuery<TestEntityWithAllTypes>.ForSqlite()
             .Select(e => new { e.LongValue })
             .ToSql();
 
@@ -90,7 +90,7 @@ public class DynamicResultReaderTests
     [TestMethod]
     public void DynamicReader_Int16Type_ConvertsCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<TestEntityWithAllTypes>()
+        var sql = SqlQuery<TestEntityWithAllTypes>.ForSqlite()
             .Select(e => new { e.ShortValue })
             .ToSql();
 
@@ -100,7 +100,7 @@ public class DynamicResultReaderTests
     [TestMethod]
     public void DynamicReader_ByteType_ConvertsCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<TestEntityWithAllTypes>()
+        var sql = SqlQuery<TestEntityWithAllTypes>.ForSqlite()
             .Select(e => new { e.ByteValue })
             .ToSql();
 
@@ -110,7 +110,7 @@ public class DynamicResultReaderTests
     [TestMethod]
     public void DynamicReader_BooleanType_ConvertsCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<TestEntity>()
+        var sql = SqlQuery<TestEntity>.ForSqlite()
             .Select(e => new { e.IsActive })
             .ToSql();
 
@@ -120,7 +120,7 @@ public class DynamicResultReaderTests
     [TestMethod]
     public void DynamicReader_StringType_ConvertsCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<TestEntity>()
+        var sql = SqlQuery<TestEntity>.ForSqlite()
             .Select(e => new { e.UserName })
             .ToSql();
 
@@ -130,7 +130,7 @@ public class DynamicResultReaderTests
     [TestMethod]
     public void DynamicReader_DateTimeType_ConvertsCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<TestEntity>()
+        var sql = SqlQuery<TestEntity>.ForSqlite()
             .Select(e => new { e.CreatedAt })
             .ToSql();
 
@@ -140,7 +140,7 @@ public class DynamicResultReaderTests
     [TestMethod]
     public void DynamicReader_DecimalType_ConvertsCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<TestEntityWithAllTypes>()
+        var sql = SqlQuery<TestEntityWithAllTypes>.ForSqlite()
             .Select(e => new { e.DecimalValue })
             .ToSql();
 
@@ -150,7 +150,7 @@ public class DynamicResultReaderTests
     [TestMethod]
     public void DynamicReader_DoubleType_ConvertsCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<TestEntityWithAllTypes>()
+        var sql = SqlQuery<TestEntityWithAllTypes>.ForSqlite()
             .Select(e => new { e.DoubleValue })
             .ToSql();
 
@@ -160,7 +160,7 @@ public class DynamicResultReaderTests
     [TestMethod]
     public void DynamicReader_FloatType_ConvertsCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<TestEntityWithAllTypes>()
+        var sql = SqlQuery<TestEntityWithAllTypes>.ForSqlite()
             .Select(e => new { e.FloatValue })
             .ToSql();
 
@@ -170,7 +170,7 @@ public class DynamicResultReaderTests
     [TestMethod]
     public void DynamicReader_GuidType_ConvertsCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<TestEntityWithAllTypes>()
+        var sql = SqlQuery<TestEntityWithAllTypes>.ForSqlite()
             .Select(e => new { e.GuidValue })
             .ToSql();
 
@@ -184,7 +184,7 @@ public class DynamicResultReaderTests
     [TestMethod]
     public void DynamicReader_NullableInt32_WithNull_HandlesCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<TestEntityWithNullable>()
+        var sql = SqlQuery<TestEntityWithNullable>.ForSqlite()
             .Select(e => new { e.Id, e.Description })
             .ToSql();
 
@@ -195,7 +195,7 @@ public class DynamicResultReaderTests
     [TestMethod]
     public void DynamicReader_NullableInt32_WithValue_HandlesCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<TestEntityWithAllTypes>()
+        var sql = SqlQuery<TestEntityWithAllTypes>.ForSqlite()
             .Select(e => new { e.NullableInt })
             .ToSql();
 
@@ -205,7 +205,7 @@ public class DynamicResultReaderTests
     [TestMethod]
     public void DynamicReader_NullableBoolean_WithNull_HandlesCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<TestEntityWithAllTypes>()
+        var sql = SqlQuery<TestEntityWithAllTypes>.ForSqlite()
             .Select(e => new { e.NullableBool })
             .ToSql();
 
@@ -215,7 +215,7 @@ public class DynamicResultReaderTests
     [TestMethod]
     public void DynamicReader_NullableDateTime_WithNull_HandlesCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<TestEntityWithAllTypes>()
+        var sql = SqlQuery<TestEntityWithAllTypes>.ForSqlite()
             .Select(e => new { e.NullableDateTime })
             .ToSql();
 
@@ -225,7 +225,7 @@ public class DynamicResultReaderTests
     [TestMethod]
     public void DynamicReader_NullableDecimal_WithNull_HandlesCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<TestEntityWithAllTypes>()
+        var sql = SqlQuery<TestEntityWithAllTypes>.ForSqlite()
             .Select(e => new { e.NullableDecimal })
             .ToSql();
 
@@ -235,7 +235,7 @@ public class DynamicResultReaderTests
     [TestMethod]
     public void DynamicReader_NullableGuid_WithNull_HandlesCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<TestEntityWithAllTypes>()
+        var sql = SqlQuery<TestEntityWithAllTypes>.ForSqlite()
             .Select(e => new { e.NullableGuid })
             .ToSql();
 
@@ -245,7 +245,7 @@ public class DynamicResultReaderTests
     [TestMethod]
     public void DynamicReader_ReferenceType_WithNull_HandlesCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<TestEntityWithNullable>()
+        var sql = SqlQuery<TestEntityWithNullable>.ForSqlite()
             .Select(e => new { e.Name, e.Description })
             .ToSql();
 
@@ -260,7 +260,7 @@ public class DynamicResultReaderTests
     [TestMethod]
     public void DynamicReader_MixedTypes_AllSupported_ReadsCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<TestEntityWithAllTypes>()
+        var sql = SqlQuery<TestEntityWithAllTypes>.ForSqlite()
             .Select(e => new
             {
                 e.Id,
@@ -293,7 +293,7 @@ public class DynamicResultReaderTests
     [TestMethod]
     public void DynamicReader_MixedNullableTypes_ReadsCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<TestEntityWithAllTypes>()
+        var sql = SqlQuery<TestEntityWithAllTypes>.ForSqlite()
             .Select(e => new
             {
                 e.Id,
@@ -374,7 +374,7 @@ public class DynamicResultReaderTests
     public void SqlQuery_EntityProvider_UsedInAggregates()
     {
         // Verify EntityProvider is used to get column names for aggregates
-        var sql = SqlQuery.ForSqlite<TestEntity>()
+        var sql = SqlQuery<TestEntity>.ForSqlite()
             .Select(e => e.Id)
             .ToSql();
 
@@ -388,7 +388,7 @@ public class DynamicResultReaderTests
     [TestMethod]
     public void DynamicReader_SelectWithWhere_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<TestEntity>()
+        var sql = SqlQuery<TestEntity>.ForSqlite()
             .Where(e => e.IsActive)
             .Select(e => new { e.Id, e.UserName })
             .ToSql();
@@ -402,7 +402,7 @@ public class DynamicResultReaderTests
     [TestMethod]
     public void DynamicReader_SelectWithOrderBy_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<TestEntity>()
+        var sql = SqlQuery<TestEntity>.ForSqlite()
             .Select(e => new { e.Id, e.UserName })
             .OrderBy(e => e.Id)
             .ToSql();
@@ -415,7 +415,7 @@ public class DynamicResultReaderTests
     [TestMethod]
     public void DynamicReader_SelectWithSkipTake_GeneratesCorrectSql()
     {
-        var sql = SqlQuery.ForSqlite<TestEntity>()
+        var sql = SqlQuery<TestEntity>.ForSqlite()
             .Select(e => new { e.Id, e.UserName })
             .Skip(10)
             .Take(20)
@@ -464,7 +464,7 @@ public class DynamicResultReaderTests
     public void DynamicReader_IGroupingType_DoesNotCreateDynamicReader()
     {
         // GroupBy returns IGrouping which should not create a DynamicResultReader
-        var sql = SqlQuery.ForSqlite<TestEntity>()
+        var sql = SqlQuery<TestEntity>.ForSqlite()
             .GroupBy(e => e.IsActive)
             .ToSql();
 
@@ -508,7 +508,7 @@ public class DynamicResultReaderTests
     public void DynamicReader_PrimitiveTypes_DoesNotCreateDynamicReader()
     {
         // Selecting a single primitive type should not create DynamicResultReader
-        var sql = SqlQuery.ForSqlite<TestEntity>()
+        var sql = SqlQuery<TestEntity>.ForSqlite()
             .Select(e => e.Id)
             .ToSql();
 
@@ -518,7 +518,7 @@ public class DynamicResultReaderTests
     [TestMethod]
     public void DynamicReader_StringType_DoesNotCreateDynamicReader()
     {
-        var sql = SqlQuery.ForSqlite<TestEntity>()
+        var sql = SqlQuery<TestEntity>.ForSqlite()
             .Select(e => e.UserName)
             .ToSql();
 
@@ -528,7 +528,7 @@ public class DynamicResultReaderTests
     [TestMethod]
     public void DynamicReader_DateTimeType_DoesNotCreateDynamicReader()
     {
-        var sql = SqlQuery.ForSqlite<TestEntity>()
+        var sql = SqlQuery<TestEntity>.ForSqlite()
             .Select(e => e.CreatedAt)
             .ToSql();
 
@@ -570,7 +570,7 @@ public class DynamicResultReaderTests
     [TestMethod]
     public void DynamicReader_ComplexQuery_WhereSelectOrderByPagination()
     {
-        var sql = SqlQuery.ForSqlite<TestEntity>()
+        var sql = SqlQuery<TestEntity>.ForSqlite()
             .Where(e => e.IsActive)
             .Select(e => new { e.Id, e.UserName, e.CreatedAt })
             .OrderBy(e => e.CreatedAt)
@@ -590,7 +590,7 @@ public class DynamicResultReaderTests
     [TestMethod]
     public void DynamicReader_NestedSelect_HandlesCorrectly()
     {
-        var sql = SqlQuery.ForSqlite<TestEntity>()
+        var sql = SqlQuery<TestEntity>.ForSqlite()
             .Where(e => e.IsActive)
             .Select(e => new { e.Id, e.UserName })
             .ToSql();
@@ -712,3 +712,4 @@ public partial class TestEntityWithAllTypes
     public decimal? NullableDecimal { get; set; }
     public Guid? NullableGuid { get; set; }
 }
+

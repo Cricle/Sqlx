@@ -13,12 +13,12 @@ public class SqlxQueryableCrossDialectTests
 {
     private static IQueryable<QueryUser> GetQuery(string dialect) => dialect switch
     {
-        "SQLite" => SqlQuery.ForSqlite<QueryUser>(),
-        "SqlServer" => SqlQuery.ForSqlServer<QueryUser>(),
-        "MySql" => SqlQuery.ForMySql<QueryUser>(),
-        "PostgreSQL" => SqlQuery.ForPostgreSQL<QueryUser>(),
-        "Oracle" => SqlQuery.ForOracle<QueryUser>(),
-        "DB2" => SqlQuery.ForDB2<QueryUser>(),
+        "SQLite" => SqlQuery<QueryUser>.ForSqlite(),
+        "SqlServer" => SqlQuery<QueryUser>.ForSqlServer(),
+        "MySql" => SqlQuery<QueryUser>.ForMySql(),
+        "PostgreSQL" => SqlQuery<QueryUser>.ForPostgreSQL(),
+        "Oracle" => SqlQuery<QueryUser>.ForOracle(),
+        "DB2" => SqlQuery<QueryUser>.ForDB2(),
         _ => throw new ArgumentException($"Unknown dialect: {dialect}")
     };
 
@@ -109,7 +109,7 @@ public class SqlxQueryableCrossDialectTests
     [TestMethod]
     public void Pagination_SqlServer_UsesOffsetFetch()
     {
-        var sql = SqlQuery.ForSqlServer<QueryUser>().Skip(20).Take(10).ToSql();
+        var sql = SqlQuery<QueryUser>.ForSqlServer().Skip(20).Take(10).ToSql();
         Assert.IsTrue(sql.Contains("OFFSET 20 ROWS"), $"SQL: {sql}");
         Assert.IsTrue(sql.Contains("FETCH NEXT 10 ROWS ONLY"), $"SQL: {sql}");
     }
@@ -296,12 +296,12 @@ public class SqlxQueryableNestedTests
 {
     private static IQueryable<QueryUser> GetQuery(string dialect) => dialect switch
     {
-        "SQLite" => SqlQuery.ForSqlite<QueryUser>(),
-        "SqlServer" => SqlQuery.ForSqlServer<QueryUser>(),
-        "MySql" => SqlQuery.ForMySql<QueryUser>(),
-        "PostgreSQL" => SqlQuery.ForPostgreSQL<QueryUser>(),
-        "Oracle" => SqlQuery.ForOracle<QueryUser>(),
-        "DB2" => SqlQuery.ForDB2<QueryUser>(),
+        "SQLite" => SqlQuery<QueryUser>.ForSqlite(),
+        "SqlServer" => SqlQuery<QueryUser>.ForSqlServer(),
+        "MySql" => SqlQuery<QueryUser>.ForMySql(),
+        "PostgreSQL" => SqlQuery<QueryUser>.ForPostgreSQL(),
+        "Oracle" => SqlQuery<QueryUser>.ForOracle(),
+        "DB2" => SqlQuery<QueryUser>.ForDB2(),
         _ => throw new ArgumentException($"Unknown dialect: {dialect}")
     };
 
@@ -580,12 +580,12 @@ public class SqlxQueryableEdgeCaseTests
 {
     private static IQueryable<QueryUser> GetQuery(string dialect) => dialect switch
     {
-        "SQLite" => SqlQuery.ForSqlite<QueryUser>(),
-        "SqlServer" => SqlQuery.ForSqlServer<QueryUser>(),
-        "MySql" => SqlQuery.ForMySql<QueryUser>(),
-        "PostgreSQL" => SqlQuery.ForPostgreSQL<QueryUser>(),
-        "Oracle" => SqlQuery.ForOracle<QueryUser>(),
-        "DB2" => SqlQuery.ForDB2<QueryUser>(),
+        "SQLite" => SqlQuery<QueryUser>.ForSqlite(),
+        "SqlServer" => SqlQuery<QueryUser>.ForSqlServer(),
+        "MySql" => SqlQuery<QueryUser>.ForMySql(),
+        "PostgreSQL" => SqlQuery<QueryUser>.ForPostgreSQL(),
+        "Oracle" => SqlQuery<QueryUser>.ForOracle(),
+        "DB2" => SqlQuery<QueryUser>.ForDB2(),
         _ => throw new ArgumentException($"Unknown dialect: {dialect}")
     };
 
@@ -850,12 +850,12 @@ public class SqlxQueryableSelectCrossDialectTests
 {
     private static IQueryable<QueryUser> GetQuery(string dialect) => dialect switch
     {
-        "SQLite" => SqlQuery.ForSqlite<QueryUser>(),
-        "SqlServer" => SqlQuery.ForSqlServer<QueryUser>(),
-        "MySql" => SqlQuery.ForMySql<QueryUser>(),
-        "PostgreSQL" => SqlQuery.ForPostgreSQL<QueryUser>(),
-        "Oracle" => SqlQuery.ForOracle<QueryUser>(),
-        "DB2" => SqlQuery.ForDB2<QueryUser>(),
+        "SQLite" => SqlQuery<QueryUser>.ForSqlite(),
+        "SqlServer" => SqlQuery<QueryUser>.ForSqlServer(),
+        "MySql" => SqlQuery<QueryUser>.ForMySql(),
+        "PostgreSQL" => SqlQuery<QueryUser>.ForPostgreSQL(),
+        "Oracle" => SqlQuery<QueryUser>.ForOracle(),
+        "DB2" => SqlQuery<QueryUser>.ForDB2(),
         _ => throw new ArgumentException($"Unknown dialect: {dialect}")
     };
 
@@ -994,12 +994,12 @@ public class SqlxQueryableOrderByCrossDialectTests
 {
     private static IQueryable<QueryUser> GetQuery(string dialect) => dialect switch
     {
-        "SQLite" => SqlQuery.ForSqlite<QueryUser>(),
-        "SqlServer" => SqlQuery.ForSqlServer<QueryUser>(),
-        "MySql" => SqlQuery.ForMySql<QueryUser>(),
-        "PostgreSQL" => SqlQuery.ForPostgreSQL<QueryUser>(),
-        "Oracle" => SqlQuery.ForOracle<QueryUser>(),
-        "DB2" => SqlQuery.ForDB2<QueryUser>(),
+        "SQLite" => SqlQuery<QueryUser>.ForSqlite(),
+        "SqlServer" => SqlQuery<QueryUser>.ForSqlServer(),
+        "MySql" => SqlQuery<QueryUser>.ForMySql(),
+        "PostgreSQL" => SqlQuery<QueryUser>.ForPostgreSQL(),
+        "Oracle" => SqlQuery<QueryUser>.ForOracle(),
+        "DB2" => SqlQuery<QueryUser>.ForDB2(),
         _ => throw new ArgumentException($"Unknown dialect: {dialect}")
     };
 
@@ -1101,3 +1101,5 @@ public class SqlxQueryableOrderByCrossDialectTests
 
     #endregion
 }
+
+

@@ -228,65 +228,6 @@ public sealed class SqlTemplate
     }
 
     /// <summary>
-    /// Renders the template with a single integer parameter (optimized for limit/offset).
-    /// </summary>
-    /// <param name="paramName">The parameter name.</param>
-    /// <param name="value">The integer value.</param>
-    /// <returns>The fully rendered SQL string.</returns>
-    /// <remarks>
-    /// This is an optimized path for templates with a single dynamic integer parameter,
-    /// avoiding Dictionary allocation and StringBuilder overhead.
-    /// </remarks>
-    public string Render(string paramName, int value)
-    {
-        // Fast path for simple templates: static + dynamic + static (or just static + dynamic)
-        if (!_hasBlocks && _segments.Length <= 3)
-        {
-            var result = _segments.Length switch
-            {
-                2 when _segments[0].Type == SegmentType.Static && _segments[1].Type == SegmentType.Dynamic
-                    => string.Concat(_segments[0].Text, RenderDynamicSegment(_segments[1], paramName, value)),
-                3 when _segments[0].Type == SegmentType.Static && _segments[1].Type == SegmentType.Dynamic && _segments[2].Type == SegmentType.Static
-                    => string.Concat(_segments[0].Text, RenderDynamicSegment(_segments[1], paramName, value), _segments[2].Text),
-                _ => null
-            };
-            if (result != null) return result;
-        }
-
-        // Fallback to dictionary-based render
-        var dict = new Dictionary<string, object?>(1) { [paramName] = value };
-        return Render(dict);
-    }
-
-    /// <summary>
-    /// Renders the template with two integer parameters (optimized for limit+offset).
-    /// </summary>
-    /// <param name="param1Name">The first parameter name.</param>
-    /// <param name="value1">The first integer value.</param>
-    /// <param name="param2Name">The second parameter name.</param>
-    /// <param name="value2">The second integer value.</param>
-    /// <returns>The fully rendered SQL string.</returns>
-    public string Render(string param1Name, int value1, string param2Name, int value2)
-    {
-        var dict = new Dictionary<string, object?>(2) { [param1Name] = value1, [param2Name] = value2 };
-        return Render(dict);
-    }
-
-    private static string RenderDynamicSegment(TemplateSegment seg, string paramName, int value)
-    {
-        // For limit/offset handlers, directly generate the SQL without dictionary lookup
-        var handlerName = seg.Handler?.Name;
-        if (handlerName == "limit")
-            return value > 0 ? $"LIMIT {value}" : string.Empty;
-        if (handlerName == "offset")
-            return value > 0 ? $"OFFSET {value}" : string.Empty;
-
-        // Fallback for other handlers
-        var dict = new Dictionary<string, object?>(1) { [paramName] = value };
-        return seg.Handler!.Render(seg.Context!, seg.Options!, dict);
-    }
-
-    /// <summary>
     /// Builds the static SQL string by concatenating all static segments.
     /// </summary>
     /// <param name="segments">The merged template segments.</param>

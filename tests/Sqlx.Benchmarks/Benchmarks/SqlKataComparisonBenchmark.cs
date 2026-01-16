@@ -38,7 +38,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Sqlx: SELECT *")]
         public string Sqlx_SimpleSelect()
         {
-            return SqlQuery.ForSqlite<BenchmarkEntity>().ToSql();
+            return SqlQuery<BenchmarkEntity>.ForSqlite().ToSql();
         }
 
         [Benchmark(Description = "SqlKata: SELECT *")]
@@ -55,7 +55,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Sqlx: WHERE single")]
         public string Sqlx_WhereSingle()
         {
-            return SqlQuery.ForSqlite<BenchmarkEntity>()
+            return SqlQuery<BenchmarkEntity>.ForSqlite()
                 .Where(u => u.Id == 1)
                 .ToSql();
         }
@@ -76,7 +76,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Sqlx: WHERE AND")]
         public string Sqlx_WhereAnd()
         {
-            return SqlQuery.ForSqlite<BenchmarkEntity>()
+            return SqlQuery<BenchmarkEntity>.ForSqlite()
                 .Where(u => u.IsActive && u.Age >= 18 && u.Age <= 65)
                 .ToSql();
         }
@@ -99,7 +99,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Sqlx: WHERE OR")]
         public string Sqlx_WhereOr()
         {
-            return SqlQuery.ForSqlite<BenchmarkEntity>()
+            return SqlQuery<BenchmarkEntity>.ForSqlite()
                 .Where(u => u.Age < 18 || u.Age > 65 || !u.IsActive)
                 .ToSql();
         }
@@ -123,7 +123,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Sqlx: Full chain")]
         public string Sqlx_FullChain()
         {
-            return SqlQuery.ForSqlite<BenchmarkEntity>()
+            return SqlQuery<BenchmarkEntity>.ForSqlite()
                 .Where(u => u.IsActive)
                 .Where(u => u.Age >= 18)
                 .Select(u => new { u.Id, u.Name, u.Age })
@@ -155,7 +155,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Sqlx: Parameterized")]
         public (string, IEnumerable<KeyValuePair<string, object?>>) Sqlx_Parameterized()
         {
-            return SqlQuery.ForSqlite<BenchmarkEntity>()
+            return SqlQuery<BenchmarkEntity>.ForSqlite()
                 .Where(u => u.IsActive && u.Age >= 18 && u.Name == "test")
                 .ToSqlWithParameters();
         }
@@ -178,7 +178,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Sqlx: SQLite dialect")]
         public string Sqlx_Sqlite()
         {
-            return SqlQuery.ForSqlite<BenchmarkEntity>()
+            return SqlQuery<BenchmarkEntity>.ForSqlite()
                 .Where(u => u.IsActive)
                 .OrderBy(u => u.Name)
                 .Skip(10)
@@ -201,7 +201,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Sqlx: SqlServer dialect")]
         public string Sqlx_SqlServer()
         {
-            return SqlQuery.ForSqlServer<BenchmarkEntity>()
+            return SqlQuery<BenchmarkEntity>.ForSqlServer()
                 .Where(u => u.IsActive)
                 .OrderBy(u => u.Name)
                 .Skip(10)
@@ -224,7 +224,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Sqlx: MySQL dialect")]
         public string Sqlx_MySql()
         {
-            return SqlQuery.ForMySql<BenchmarkEntity>()
+            return SqlQuery<BenchmarkEntity>.ForMySql()
                 .Where(u => u.IsActive)
                 .OrderBy(u => u.Name)
                 .Skip(10)
@@ -247,7 +247,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         [Benchmark(Description = "Sqlx: PostgreSQL dialect")]
         public string Sqlx_PostgreSql()
         {
-            return SqlQuery.ForPostgreSQL<BenchmarkEntity>()
+            return SqlQuery<BenchmarkEntity>.ForPostgreSQL()
                 .Where(u => u.IsActive)
                 .OrderBy(u => u.Name)
                 .Skip(10)
@@ -270,3 +270,4 @@ namespace Sqlx.Benchmarks.Benchmarks
         #endregion
     }
 }
+

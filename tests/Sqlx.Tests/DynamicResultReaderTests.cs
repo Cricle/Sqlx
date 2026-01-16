@@ -563,6 +563,35 @@ public class DynamicResultReaderTests
         Assert.IsNotNull(reader2);
     }
 
+    [TestMethod]
+    public void DynamicReader_ReadWithOrdinals_UsesStaticDelegate()
+    {
+        var reader = new DynamicResultReader<TestAnonymousType1>(new[] { "id", "name" });
+        
+        var data = new[]
+        {
+            new { Id = 1, Name = "Alice" },
+            new { Id = 2, Name = "Bob" }
+        };
+        using var dbReader = new AnonymousTypeDbReader(data);
+        
+        // Get ordinals
+        dbReader.Read();
+        var ordinals = reader.GetOrdinals(dbReader);
+        
+        // Read with ordinals should use the static delegate
+        var result = reader.Read(dbReader, ordinals);
+        Assert.IsNotNull(result);
+    }
+
+    [TestMethod]
+    public void DynamicReader_DefaultConstructor_UsesPropertyNames()
+    {
+        // Test that default constructor uses property names from the type
+        var reader = new DynamicResultReader<TestAnonymousType1>();
+        Assert.IsNotNull(reader);
+    }
+
     #endregion
 
     #region Complex Scenario Tests

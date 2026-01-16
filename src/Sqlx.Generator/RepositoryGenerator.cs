@@ -784,7 +784,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             // Check if this is an entity parameter (exact match or ends with entity name)
             if (paramType.Name == entityName)
             {
-                sb.AppendLine($"{entityName}ParameterBinder.Default.BindEntity(cmd, {param.Name}, _paramPrefix);");
+                sb.AppendLine($"{entityName}ParameterBinder.Default.BindEntity(cmd, {param.Name}, _placeholderContext.Dialect.ParameterPrefix);");
             }
             else
             {
@@ -793,7 +793,7 @@ public class RepositoryGenerator : IIncrementalGenerator
                 sb.AppendLine("{");
                 sb.PushIndent();
                 sb.AppendLine("var p = cmd.CreateParameter();");
-                sb.AppendLine($"p.ParameterName = _paramPrefix + \"{param.Name}\";");
+                sb.AppendLine($"p.ParameterName = _placeholderContext.Dialect.ParameterPrefix + \"{param.Name}\";");
                 if (isNullable)
                 {
                     sb.AppendLine($"p.Value = {param.Name} ?? (object)DBNull.Value;");

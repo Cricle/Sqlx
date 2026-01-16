@@ -5,6 +5,7 @@
 namespace Sqlx;
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -24,95 +25,108 @@ internal sealed class DynamicResultReader<
 #endif
     T> : IResultReader<T>
 {
-    // Cached method info for IDataRecord methods (shared across all instances)
-    private static readonly MethodInfo? _getInt32Method;
-    private static readonly MethodInfo? _getInt64Method;
-    private static readonly MethodInfo? _getInt16Method;
-    private static readonly MethodInfo? _getByteMethod;
-    private static readonly MethodInfo? _getBooleanMethod;
-    private static readonly MethodInfo? _getStringMethod;
-    private static readonly MethodInfo? _getDateTimeMethod;
-    private static readonly MethodInfo? _getDecimalMethod;
-    private static readonly MethodInfo? _getDoubleMethod;
-    private static readonly MethodInfo? _getFloatMethod;
-    private static readonly MethodInfo? _getGuidMethod;
-    private static readonly MethodInfo _getValueMethod;
-    private static readonly MethodInfo _isDbNullMethod;
+    // Static cached delegates - generated once per type
+    private static readonly Func<IDataReader, T> _readFunc;
+    private static readonly Func<IDataReader, int[], T> _readWithOrdinalsFunc;
+    private static readonly string[] _propertyNames;
 
-    private readonly Func<IDataReader, T> _readFunc;
     private readonly string[] _columnNames;
 
     static DynamicResultReader()
     {
-        // Cache all IDataRecord methods once
-        var methods = typeof(IDataRecord).GetMethods();
-        
-        _getInt32Method = methods.FirstOrDefault(m => m.Name == "GetInt32" && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType == typeof(int));
-        _getInt64Method = methods.FirstOrDefault(m => m.Name == "GetInt64" && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType == typeof(int));
-        _getInt16Method = methods.FirstOrDefault(m => m.Name == "GetInt16" && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType == typeof(int));
-        _getByteMethod = methods.FirstOrDefault(m => m.Name == "GetByte" && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType == typeof(int));
-        _getBooleanMethod = methods.FirstOrDefault(m => m.Name == "GetBoolean" && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType == typeof(int));
-        _getStringMethod = methods.FirstOrDefault(m => m.Name == "GetString" && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType == typeof(int));
-        _getDateTimeMethod = methods.FirstOrDefault(m => m.Name == "GetDateTime" && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType == typeof(int));
-        _getDecimalMethod = methods.FirstOrDefault(m => m.Name == "GetDecimal" && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType == typeof(int));
-        _getDoubleMethod = methods.FirstOrDefault(m => m.Name == "GetDouble" && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType == typeof(int));
-        _getFloatMethod = methods.FirstOrDefault(m => m.Name == "GetFloat" && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType == typeof(int));
-        _getGuidMethod = methods.FirstOrDefault(m => m.Name == "GetGuid" && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType == typeof(int));
-        
-        _getValueMethod = methods.FirstOrDefault(m => m.Name == "GetValue" && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType == typeof(int))
-            ?? throw new InvalidOperationException("Could not find GetValue method on IDataRecord");
-        _isDbNullMethod = methods.FirstOrDefault(m => m.Name == "IsDBNull" && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType == typeof(int))
-            ?? throw new InvalidOperationException("Could not find IsDBNull method on IDataRecord");
-    }
-
-    public DynamicResultReader(string[] columnNames)
-    {
-        _columnNames = columnNames;
-        _readFunc = BuildReadFunc();
-    }
-
-    private static Func<IDataReader, T> BuildReadFunc()
-    {
         var type = typeof(T);
-        var readerParam = Expression.Parameter(typeof(IDataReader), "reader");
-
-        // Check if anonymous type (has compiler-generated name)
+        
+        // Check if anonymous type
         var isAnonymous = type.Name.StartsWith("<>", StringComparison.Ordinal) ||
                          (type.Name.Contains("AnonymousType") && 
                           type.GetCustomAttributes(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute), false).Length > 0);
 
         if (isAnonymous)
         {
-            // Anonymous type: use constructor
             var ctor = type.GetConstructors()[0];
             var parameters = ctor.GetParameters();
-            var args = new Expression[parameters.Length];
-            
-            for (int i = 0; i < parameters.Length; i++)
-            {
-                args[i] = BuildGetValue(readerParam, Expression.Constant(i), parameters[i].ParameterType);
-            }
-            
-            var newExpr = Expression.New(ctor, args);
-            return Expression.Lambda<Func<IDataReader, T>>(newExpr, readerParam).Compile();
+            _propertyNames = parameters.Select(p => p.Name!).ToArray();
+            (_readFunc, _readWithOrdinalsFunc) = BuildAnonymousReadFuncs(ctor, parameters);
         }
         else
         {
-            // Named type: use property initializers
             var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Where(p => p.CanWrite)
                 .ToArray();
-            
-            var bindings = new List<MemberBinding>();
-            for (int i = 0; i < properties.Length; i++)
-            {
-                var getValue = BuildGetValue(readerParam, Expression.Constant(i), properties[i].PropertyType);
-                bindings.Add(Expression.Bind(properties[i], getValue));
-            }
-            
-            var newExpr = Expression.MemberInit(Expression.New(type), bindings);
-            return Expression.Lambda<Func<IDataReader, T>>(newExpr, readerParam).Compile();
+            _propertyNames = properties.Select(p => p.Name).ToArray();
+            (_readFunc, _readWithOrdinalsFunc) = BuildNamedTypeReadFuncs(properties);
         }
+    }
+
+    public DynamicResultReader(string[] columnNames)
+    {
+        _columnNames = columnNames;
+    }
+
+    /// <summary>
+    /// Creates a DynamicResultReader using the type's property names as column names.
+    /// </summary>
+    public DynamicResultReader() : this(_propertyNames)
+    {
+    }
+
+    private static (Func<IDataReader, T>, Func<IDataReader, int[], T>) BuildAnonymousReadFuncs(
+        ConstructorInfo ctor, ParameterInfo[] parameters)
+    {
+        // Build read func without ordinals (uses index directly)
+        var readerParam1 = Expression.Parameter(typeof(IDataReader), "reader");
+        var args1 = new Expression[parameters.Length];
+        for (int i = 0; i < parameters.Length; i++)
+        {
+            args1[i] = BuildGetValue(readerParam1, Expression.Constant(i), parameters[i].ParameterType);
+        }
+        var newExpr1 = Expression.New(ctor, args1);
+        var readFunc = Expression.Lambda<Func<IDataReader, T>>(newExpr1, readerParam1).Compile();
+
+        // Build read func with ordinals
+        var readerParam2 = Expression.Parameter(typeof(IDataReader), "reader");
+        var ordinalsParam = Expression.Parameter(typeof(int[]), "ordinals");
+        var args2 = new Expression[parameters.Length];
+        for (int i = 0; i < parameters.Length; i++)
+        {
+            var ordinalAccess = Expression.ArrayIndex(ordinalsParam, Expression.Constant(i));
+            args2[i] = BuildGetValue(readerParam2, ordinalAccess, parameters[i].ParameterType);
+        }
+        var newExpr2 = Expression.New(ctor, args2);
+        var readWithOrdinalsFunc = Expression.Lambda<Func<IDataReader, int[], T>>(newExpr2, readerParam2, ordinalsParam).Compile();
+
+        return (readFunc, readWithOrdinalsFunc);
+    }
+
+    private static (Func<IDataReader, T>, Func<IDataReader, int[], T>) BuildNamedTypeReadFuncs(PropertyInfo[] properties)
+    {
+        var type = typeof(T);
+
+        // Build read func without ordinals (uses index directly)
+        var readerParam1 = Expression.Parameter(typeof(IDataReader), "reader");
+        var bindings1 = new List<MemberBinding>();
+        for (int i = 0; i < properties.Length; i++)
+        {
+            var getValue = BuildGetValue(readerParam1, Expression.Constant(i), properties[i].PropertyType);
+            bindings1.Add(Expression.Bind(properties[i], getValue));
+        }
+        var newExpr1 = Expression.MemberInit(Expression.New(type), bindings1);
+        var readFunc = Expression.Lambda<Func<IDataReader, T>>(newExpr1, readerParam1).Compile();
+
+        // Build read func with ordinals
+        var readerParam2 = Expression.Parameter(typeof(IDataReader), "reader");
+        var ordinalsParam = Expression.Parameter(typeof(int[]), "ordinals");
+        var bindings2 = new List<MemberBinding>();
+        for (int i = 0; i < properties.Length; i++)
+        {
+            var ordinalAccess = Expression.ArrayIndex(ordinalsParam, Expression.Constant(i));
+            var getValue = BuildGetValue(readerParam2, ordinalAccess, properties[i].PropertyType);
+            bindings2.Add(Expression.Bind(properties[i], getValue));
+        }
+        var newExpr2 = Expression.MemberInit(Expression.New(type), bindings2);
+        var readWithOrdinalsFunc = Expression.Lambda<Func<IDataReader, int[], T>>(newExpr2, readerParam2, ordinalsParam).Compile();
+
+        return (readFunc, readWithOrdinalsFunc);
     }
 
     private static Expression BuildGetValue(Expression readerParam, Expression ordinalExpr, Type targetType)
@@ -120,41 +134,46 @@ internal sealed class DynamicResultReader<
         var underlyingType = Nullable.GetUnderlyingType(targetType) ?? targetType;
         var isNullable = targetType != underlyingType || !targetType.IsValueType;
 
-        // Get the appropriate cached reader method
-        MethodInfo? method = underlyingType.Name switch
+        // Get the appropriate reader method
+        var methodName = underlyingType.Name switch
         {
-            "Int32" => _getInt32Method,
-            "Int64" => _getInt64Method,
-            "Int16" => _getInt16Method,
-            "Byte" => _getByteMethod,
-            "Boolean" => _getBooleanMethod,
-            "String" => _getStringMethod,
-            "DateTime" => _getDateTimeMethod,
-            "Decimal" => _getDecimalMethod,
-            "Double" => _getDoubleMethod,
-            "Single" => _getFloatMethod,
-            "Guid" => _getGuidMethod,
+            "Int32" => "GetInt32",
+            "Int64" => "GetInt64",
+            "Int16" => "GetInt16",
+            "Byte" => "GetByte",
+            "Boolean" => "GetBoolean",
+            "String" => "GetString",
+            "DateTime" => "GetDateTime",
+            "Decimal" => "GetDecimal",
+            "Double" => "GetDouble",
+            "Single" => "GetFloat",
+            "Guid" => "GetGuid",
             _ => null
         };
 
         Expression getValue;
-        if (method != null)
+        if (methodName != null)
         {
-            getValue = Expression.Call(readerParam, method, ordinalExpr);
+            var method = typeof(IDataRecord).GetMethod(methodName, new[] { typeof(int) });
+            getValue = Expression.Call(readerParam, method!, ordinalExpr);
         }
         else
         {
             // Fallback to GetValue + Convert for unsupported types
-            var value = Expression.Call(readerParam, _getValueMethod, ordinalExpr);
+            var getValueMethod = typeof(IDataRecord).GetMethod("GetValue", new[] { typeof(int) })!;
+            var value = Expression.Call(readerParam, getValueMethod, ordinalExpr);
             getValue = Expression.Convert(value, underlyingType);
         }
 
         // Handle nullability
         if (isNullable)
         {
-            var isDbNull = Expression.Call(readerParam, _isDbNullMethod, ordinalExpr);
-            var defaultValue = Expression.Constant(null, targetType);
-            var convertedValue = targetType.IsValueType ? Expression.Convert(getValue, targetType) : getValue;
+            var isDbNullMethod = typeof(IDataRecord).GetMethod("IsDBNull", new[] { typeof(int) })!;
+            var isDbNull = Expression.Call(readerParam, isDbNullMethod, ordinalExpr);
+            var defaultValue = Expression.Default(targetType);
+            var convertedValue = targetType.IsValueType && targetType != underlyingType 
+                ? Expression.Convert(getValue, targetType) 
+                : getValue;
             return Expression.Condition(isDbNull, defaultValue, convertedValue);
         }
 
@@ -163,12 +182,7 @@ internal sealed class DynamicResultReader<
 
     public T Read(IDataReader reader) => _readFunc(reader);
 
-    public T Read(IDataReader reader, int[] ordinals)
-    {
-        // For dynamic readers, we don't optimize with pre-computed ordinals
-        // Just use the regular Read method
-        return _readFunc(reader);
-    }
+    public T Read(IDataReader reader, int[] ordinals) => _readWithOrdinalsFunc(reader, ordinals);
 
     public int[] GetOrdinals(IDataReader reader)
     {

@@ -61,11 +61,4 @@ public class RawSelectListBenchmark
         var result = await _connection.QueryAsync<BenchmarkUser>(Sql, new { limit = Limit });
         return result.ToList();
     }
-    
-    [Benchmark(Description = "Dapper.AOT (native types)")]
-    public async Task<List<DapperUser>> Dapper_NativeTypes()
-    {
-        var result = await _connection.QueryAsync<DapperUser>(Sql, new { limit = Limit });
-        return result.ToList();
-    }
 }

@@ -102,7 +102,11 @@ namespace Sqlx
             {
                 EntityProvider = entityProvider;
             }
-            return new SqlxQueryable<T>(new SqlxQueryProvider<T>(dialect, EntityProvider));
+            var provider = new SqlxQueryProvider<T>(dialect, EntityProvider)
+            {
+                ResultReader = ResultReader
+            };
+            return new SqlxQueryable<T>(provider);
         }
 
         /// <summary>

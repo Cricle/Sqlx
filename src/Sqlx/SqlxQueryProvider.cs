@@ -150,9 +150,6 @@ namespace Sqlx
                 throw new InvalidOperationException("Connection is not set. Use WithConnection() before executing queries.");
             }
 
-            // Try to get ResultReader from instance or from cached SqlQuery<TResult>
-            var reader = ResultReader as IResultReader<TResult> ?? SqlQuery<TResult>.ResultReader;
-            
             // Check if this is a method call expression
             if (expression is MethodCallExpression methodCall)
             {
@@ -163,12 +160,12 @@ namespace Sqlx
                     case "First":
                     case "FirstOrDefault":
                         {
-                            if (reader == null)
+                            if (ResultReader == null)
                             {
-                                throw new InvalidOperationException($"ResultReader is not set for type {typeof(TResult).Name}. Use WithReader() or ensure the type has a generated reader.");
+                                throw new InvalidOperationException($"ResultReader is not set for type {typeof(TResult).Name}.");
                             }
                             var (sql, parameters) = ToSqlWithParameters(expression);
-                            var result = DbExecutor.ExecuteReader(Connection, sql, parameters, reader);
+                            var result = DbExecutor.ExecuteReader(Connection, sql, parameters, (IResultReader<TResult>)ResultReader);
                             return methodName == "First" ? result.First() : result.FirstOrDefault()!;
                         }
                     case "Count":
@@ -243,19 +240,6 @@ namespace Sqlx
         {
             var visitor = new SqlExpressionVisitor(Dialect, parameterized: true, GetEntityProvider());
             return (visitor.GenerateSql(expression), visitor.GetParameters());
-        }
-
-        /// <summary>
-        /// Extracts lambda expression from a quoted or unquoted expression.
-        /// </summary>
-        private static LambdaExpression? GetLambda(Expression expression)
-        {
-            return expression switch
-            {
-                LambdaExpression lambda => lambda,
-                UnaryExpression { NodeType: ExpressionType.Quote, Operand: LambdaExpression lambda } => lambda,
-                _ => null
-            };
         }
     }
 }

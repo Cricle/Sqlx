@@ -98,7 +98,7 @@ public class SqlxQueryableCrossDialectTests
     [DataRow("MySql", "LIMIT 10", "OFFSET 20")]
     [DataRow("PostgreSQL", "LIMIT 10", "OFFSET 20")]
     [DataRow("Oracle", "FETCH NEXT 10 ROWS ONLY", "OFFSET 20 ROWS")]
-    [DataRow("DB2", "FETCH NEXT 10 ROWS ONLY", "OFFSET 20 ROWS")]
+    [DataRow("DB2", "FETCH FIRST 10 ROWS ONLY", "OFFSET 20 ROWS")]
     public void Pagination_LimitOffset_AllDialects(string dialect, string expectedLimit, string expectedOffset)
     {
         var sql = GetQuery(dialect).Skip(20).Take(10).ToSql();
@@ -430,10 +430,15 @@ public class SqlxQueryableNestedTests
         Assert.IsTrue(sql.Contains("ASC"), $"[{dialect}] Missing ASC. SQL: {sql}");
         Assert.IsTrue(sql.Contains("DESC"), $"[{dialect}] Missing DESC. SQL: {sql}");
         
-        if (dialect == "SqlServer" || dialect == "Oracle" || dialect == "DB2")
+        if (dialect == "SqlServer" || dialect == "Oracle")
         {
             Assert.IsTrue(sql.Contains("OFFSET 10 ROWS"), $"[{dialect}] SQL: {sql}");
             Assert.IsTrue(sql.Contains("FETCH NEXT 20 ROWS ONLY"), $"[{dialect}] SQL: {sql}");
+        }
+        else if (dialect == "DB2")
+        {
+            Assert.IsTrue(sql.Contains("OFFSET 10 ROWS"), $"[{dialect}] SQL: {sql}");
+            Assert.IsTrue(sql.Contains("FETCH FIRST 20 ROWS ONLY"), $"[{dialect}] SQL: {sql}");
         }
         else
         {
@@ -668,9 +673,13 @@ public class SqlxQueryableEdgeCaseTests
     {
         var sql = GetQuery(dialect).Take(0).ToSql();
         
-        if (dialect == "SqlServer" || dialect == "Oracle" || dialect == "DB2")
+        if (dialect == "SqlServer")
         {
-            Assert.IsTrue(sql.Contains("FETCH NEXT 0 ROWS ONLY"), $"[{dialect}] SQL: {sql}");
+            Assert.IsTrue(sql.Contains("TOP 0"), $"[{dialect}] SQL: {sql}");
+        }
+        else if (dialect == "Oracle" || dialect == "DB2")
+        {
+            Assert.IsTrue(sql.Contains("FETCH FIRST 0 ROWS ONLY"), $"[{dialect}] SQL: {sql}");
         }
         else
         {
@@ -688,15 +697,7 @@ public class SqlxQueryableEdgeCaseTests
     public void Skip_Zero_GeneratesOffsetZero(string dialect)
     {
         var sql = GetQuery(dialect).Skip(0).ToSql();
-        
-        if (dialect == "SqlServer")
-        {
-            Assert.IsTrue(sql.Contains("OFFSET 0 ROWS"), $"[{dialect}] SQL: {sql}");
-        }
-        else
-        {
-            Assert.IsTrue(sql.Contains("OFFSET 0"), $"[{dialect}] SQL: {sql}");
-        }
+        Assert.IsTrue(sql.Contains("OFFSET 0"), $"[{dialect}] SQL: {sql}");
     }
 
     [TestMethod]

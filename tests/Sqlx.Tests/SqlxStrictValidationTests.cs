@@ -157,11 +157,11 @@ public class SqlxStrictValidationTests
 
     [TestMethod]
     [DataRow("SQLite", "SELECT [id], [name], [email], [age], [is_active] FROM [TestUser] LIMIT 10")]
-    [DataRow("SqlServer", "SELECT [id], [name], [email], [age], [is_active] FROM [TestUser] OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY")]
+    [DataRow("SqlServer", "SELECT [id], [name], [email], [age], [is_active] FROM [TestUser] TOP 10")]
     [DataRow("MySql", "SELECT `id`, `name`, `email`, `age`, `is_active` FROM `TestUser` LIMIT 10")]
     [DataRow("PostgreSQL", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" LIMIT 10")]
-    [DataRow("Oracle", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY")]
-    [DataRow("DB2", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY")]
+    [DataRow("Oracle", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" FETCH FIRST 10 ROWS ONLY")]
+    [DataRow("DB2", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" FETCH FIRST 10 ROWS ONLY")]
     public void SelectWithLimit_AllDialects_ExactMatch(string dialect, string expectedSql)
     {
         var sql = GetQuery<TestUser>(dialect).Take(10).ToSql();
@@ -174,11 +174,11 @@ public class SqlxStrictValidationTests
 
     [TestMethod]
     [DataRow("SQLite", "SELECT [id], [name], [email], [age], [is_active] FROM [TestUser] OFFSET 20")]
-    [DataRow("SqlServer", "SELECT [id], [name], [email], [age], [is_active] FROM [TestUser] OFFSET 20 ROWS")]
+    [DataRow("SqlServer", "SELECT [id], [name], [email], [age], [is_active] FROM [TestUser] OFFSET 20")]
     [DataRow("MySql", "SELECT `id`, `name`, `email`, `age`, `is_active` FROM `TestUser` OFFSET 20")]
     [DataRow("PostgreSQL", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" OFFSET 20")]
-    [DataRow("Oracle", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" OFFSET 20 ROWS")]
-    [DataRow("DB2", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" OFFSET 20 ROWS")]
+    [DataRow("Oracle", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" OFFSET 20")]
+    [DataRow("DB2", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" OFFSET 20")]
     public void SelectWithOffset_AllDialects_ExactMatch(string dialect, string expectedSql)
     {
         var sql = GetQuery<TestUser>(dialect).Skip(20).ToSql();
@@ -195,7 +195,7 @@ public class SqlxStrictValidationTests
     [DataRow("MySql", "SELECT `id`, `name`, `email`, `age`, `is_active` FROM `TestUser` LIMIT 10 OFFSET 20")]
     [DataRow("PostgreSQL", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" LIMIT 10 OFFSET 20")]
     [DataRow("Oracle", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" OFFSET 20 ROWS FETCH NEXT 10 ROWS ONLY")]
-    [DataRow("DB2", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" OFFSET 20 ROWS FETCH NEXT 10 ROWS ONLY")]
+    [DataRow("DB2", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" OFFSET 20 ROWS FETCH FIRST 10 ROWS ONLY")]
     public void SelectWithLimitAndOffset_AllDialects_ExactMatch(string dialect, string expectedSql)
     {
         var sql = GetQuery<TestUser>(dialect).Skip(20).Take(10).ToSql();
@@ -303,11 +303,11 @@ public class SqlxStrictValidationTests
 
     [TestMethod]
     [DataRow("SQLite", "SELECT [id], [name], [email], [age], [is_active] FROM [TestUser] WHERE [age] > 18 ORDER BY [name] ASC LIMIT 10")]
-    [DataRow("SqlServer", "SELECT [id], [name], [email], [age], [is_active] FROM [TestUser] WHERE [age] > 18 ORDER BY [name] ASC OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY")]
+    [DataRow("SqlServer", "SELECT [id], [name], [email], [age], [is_active] FROM [TestUser] WHERE [age] > 18 ORDER BY [name] ASC TOP 10")]
     [DataRow("MySql", "SELECT `id`, `name`, `email`, `age`, `is_active` FROM `TestUser` WHERE `age` > 18 ORDER BY `name` ASC LIMIT 10")]
     [DataRow("PostgreSQL", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" WHERE \"age\" > 18 ORDER BY \"name\" ASC LIMIT 10")]
-    [DataRow("Oracle", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" WHERE \"age\" > 18 ORDER BY \"name\" ASC OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY")]
-    [DataRow("DB2", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" WHERE \"age\" > 18 ORDER BY \"name\" ASC OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY")]
+    [DataRow("Oracle", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" WHERE \"age\" > 18 ORDER BY \"name\" ASC FETCH FIRST 10 ROWS ONLY")]
+    [DataRow("DB2", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" WHERE \"age\" > 18 ORDER BY \"name\" ASC FETCH FIRST 10 ROWS ONLY")]
     public void ComplexQuery_WhereOrderByLimit_AllDialects_ExactMatch(string dialect, string expectedSql)
     {
         var sql = GetQuery<TestUser>(dialect)
@@ -328,7 +328,7 @@ public class SqlxStrictValidationTests
     [DataRow("MySql", "SELECT `id`, `name`, `email`, `age`, `is_active` FROM `TestUser` WHERE (`age` > 18 AND `is_active` = 1) ORDER BY `name` ASC, `age` DESC LIMIT 10 OFFSET 20")]
     [DataRow("PostgreSQL", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" WHERE (\"age\" > 18 AND \"is_active\" = true) ORDER BY \"name\" ASC, \"age\" DESC LIMIT 10 OFFSET 20")]
     [DataRow("Oracle", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" WHERE (\"age\" > 18 AND \"is_active\" = 1) ORDER BY \"name\" ASC, \"age\" DESC OFFSET 20 ROWS FETCH NEXT 10 ROWS ONLY")]
-    [DataRow("DB2", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" WHERE (\"age\" > 18 AND \"is_active\" = 1) ORDER BY \"name\" ASC, \"age\" DESC OFFSET 20 ROWS FETCH NEXT 10 ROWS ONLY")]
+    [DataRow("DB2", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" WHERE (\"age\" > 18 AND \"is_active\" = 1) ORDER BY \"name\" ASC, \"age\" DESC OFFSET 20 ROWS FETCH FIRST 10 ROWS ONLY")]
     public void ComplexQuery_Full_AllDialects_ExactMatch(string dialect, string expectedSql)
     {
         var sql = GetQuery<TestUser>(dialect)

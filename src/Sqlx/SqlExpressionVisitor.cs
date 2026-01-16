@@ -479,16 +479,17 @@ namespace Sqlx
         {
             if (!_skip.HasValue && !_take.HasValue) return;
 
-            if (_dialect.DatabaseType is "SqlServer" or "Oracle" or "DB2")
+            if (_take.HasValue && _skip.HasValue)
             {
-                sb.Append(" OFFSET ").Append(_skip ?? 0).Append(" ROWS");
-                if (_take.HasValue)
-                    sb.Append(" FETCH NEXT ").Append(_take.Value).Append(" ROWS ONLY");
+                sb.Append(' ').Append(_dialect.Paginate(_take.Value.ToString(), _skip.Value.ToString()));
             }
-            else
+            else if (_take.HasValue)
             {
-                if (_take.HasValue) sb.Append(' ').Append(_dialect.Limit(_take.Value.ToString()));
-                if (_skip.HasValue) sb.Append(' ').Append(_dialect.Offset(_skip.Value.ToString()));
+                sb.Append(' ').Append(_dialect.Limit(_take.Value.ToString()));
+            }
+            else if (_skip.HasValue)
+            {
+                sb.Append(' ').Append(_dialect.Offset(_skip.Value.ToString()));
             }
         }
     }

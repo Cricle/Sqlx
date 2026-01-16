@@ -73,22 +73,42 @@ public class EntityProviderGenerator : IIncrementalGenerator
         var columnAttr = compilation.GetTypeByMetadataName("System.ComponentModel.DataAnnotations.Schema.ColumnAttribute");
 
         var entityTypes = new List<INamedTypeSymbol>();
+        var processedTypes = new HashSet<string>();
 
         foreach (var classDecl in classes.Distinct())
         {
             if (classDecl is null) continue;
 
             var semanticModel = compilation.GetSemanticModel(classDecl.SyntaxTree);
-            if (semanticModel.GetDeclaredSymbol(classDecl) is not INamedTypeSymbol typeSymbol) continue;
+            if (semanticModel.GetDeclaredSymbol(classDecl) is not INamedTypeSymbol hostTypeSymbol) continue;
 
-            var hasAttr = typeSymbol.GetAttributes().Any(a =>
-                SymbolEqualityComparer.Default.Equals(a.AttributeClass, sqlxEntityAttr));
-            if (!hasAttr) continue;
+            var attrs = hostTypeSymbol.GetAttributes()
+                .Where(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, sqlxEntityAttr))
+                .ToList();
+            if (attrs.Count == 0) continue;
 
-            entityTypes.Add(typeSymbol);
+            foreach (var attr in attrs)
+            {
+                // Check for TargetType in constructor argument
+                INamedTypeSymbol targetType;
+                if (attr.ConstructorArguments.Length > 0 && attr.ConstructorArguments[0].Value is INamedTypeSymbol targetTypeArg)
+                {
+                    targetType = targetTypeArg;
+                }
+                else
+                {
+                    targetType = hostTypeSymbol;
+                }
 
-            var source = GenerateSource(typeSymbol, ignoreAttr, columnAttr);
-            context.AddSource($"{typeSymbol.Name}.EntityProvider.g.cs", SourceText.From(source, Encoding.UTF8));
+                var typeKey = targetType.ToDisplayString();
+                if (processedTypes.Contains(typeKey)) continue;
+                processedTypes.Add(typeKey);
+
+                entityTypes.Add(targetType);
+
+                var source = GenerateSource(targetType, ignoreAttr, columnAttr);
+                context.AddSource($"{targetType.Name}.EntityProvider.g.cs", SourceText.From(source, Encoding.UTF8));
+            }
         }
 
         // Generate ModuleInitializer for all entity types

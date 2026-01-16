@@ -49,15 +49,38 @@ public class ParameterBinderGenerator : IIncrementalGenerator
 
         var ignoreAttr = compilation.GetTypeByMetadataName("System.Runtime.Serialization.IgnoreDataMemberAttribute");
         var columnAttr = compilation.GetTypeByMetadataName("System.ComponentModel.DataAnnotations.Schema.ColumnAttribute");
+        var processedTypes = new System.Collections.Generic.HashSet<string>();
 
         foreach (var c in classes.Distinct())
         {
             if (c is null) continue;
             var model = compilation.GetSemanticModel(c.SyntaxTree);
-            if (model.GetDeclaredSymbol(c) is not INamedTypeSymbol ts) continue;
-            if (!ts.GetAttributes().Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, sqlxAttr))) continue;
+            if (model.GetDeclaredSymbol(c) is not INamedTypeSymbol hostTypeSymbol) continue;
 
-            ctx.AddSource($"{ts.Name}.ParameterBinder.g.cs", SourceText.From(Generate(ts, ignoreAttr, columnAttr), Encoding.UTF8));
+            var attrs = hostTypeSymbol.GetAttributes()
+                .Where(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, sqlxAttr))
+                .ToList();
+            if (attrs.Count == 0) continue;
+
+            foreach (var attr in attrs)
+            {
+                // Check for TargetType in constructor argument
+                INamedTypeSymbol targetType;
+                if (attr.ConstructorArguments.Length > 0 && attr.ConstructorArguments[0].Value is INamedTypeSymbol targetTypeArg)
+                {
+                    targetType = targetTypeArg;
+                }
+                else
+                {
+                    targetType = hostTypeSymbol;
+                }
+
+                var typeKey = targetType.ToDisplayString();
+                if (processedTypes.Contains(typeKey)) continue;
+                processedTypes.Add(typeKey);
+
+                ctx.AddSource($"{targetType.Name}.ParameterBinder.g.cs", SourceText.From(Generate(targetType, ignoreAttr, columnAttr), Encoding.UTF8));
+            }
         }
     }
 

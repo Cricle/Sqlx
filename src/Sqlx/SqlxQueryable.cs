@@ -124,6 +124,55 @@ namespace Sqlx
             return GetEnumerator();
         }
 
+        /// <summary>
+        /// Extracts only the WHERE clause SQL from this query.
+        /// </summary>
+        /// <returns>The WHERE clause SQL without the "WHERE" keyword, or empty string if no WHERE clause.</returns>
+        public string ToWhereSql()
+        {
+            var sql = _provider.ToSql(Expression);
+            var whereIndex = sql.IndexOf(" WHERE ", StringComparison.OrdinalIgnoreCase);
+            if (whereIndex < 0) return string.Empty;
+            
+            var whereClause = sql.Substring(whereIndex + 7); // Skip " WHERE "
+            
+            // Remove ORDER BY, LIMIT, OFFSET if present
+            var orderByIndex = whereClause.IndexOf(" ORDER BY ", StringComparison.OrdinalIgnoreCase);
+            if (orderByIndex >= 0) whereClause = whereClause.Substring(0, orderByIndex);
+            
+            var limitIndex = whereClause.IndexOf(" LIMIT ", StringComparison.OrdinalIgnoreCase);
+            if (limitIndex >= 0) whereClause = whereClause.Substring(0, limitIndex);
+            
+            var offsetIndex = whereClause.IndexOf(" OFFSET ", StringComparison.OrdinalIgnoreCase);
+            if (offsetIndex >= 0) whereClause = whereClause.Substring(0, offsetIndex);
+            
+            return whereClause.Trim();
+        }
+
+        /// <summary>
+        /// Extracts the WHERE clause SQL with parameters from this query.
+        /// </summary>
+        /// <returns>A tuple containing the WHERE clause SQL and parameters.</returns>
+        public (string WhereSql, IEnumerable<KeyValuePair<string, object?>> Parameters) ToWhereSqlWithParameters()
+        {
+            var (sql, parameters) = _provider.ToSqlWithParameters(Expression);
+            var whereIndex = sql.IndexOf(" WHERE ", StringComparison.OrdinalIgnoreCase);
+            if (whereIndex < 0) return (string.Empty, parameters);
+            
+            var whereClause = sql.Substring(whereIndex + 7);
+            
+            var orderByIndex = whereClause.IndexOf(" ORDER BY ", StringComparison.OrdinalIgnoreCase);
+            if (orderByIndex >= 0) whereClause = whereClause.Substring(0, orderByIndex);
+            
+            var limitIndex = whereClause.IndexOf(" LIMIT ", StringComparison.OrdinalIgnoreCase);
+            if (limitIndex >= 0) whereClause = whereClause.Substring(0, limitIndex);
+            
+            var offsetIndex = whereClause.IndexOf(" OFFSET ", StringComparison.OrdinalIgnoreCase);
+            if (offsetIndex >= 0) whereClause = whereClause.Substring(0, offsetIndex);
+            
+            return (whereClause.Trim(), parameters);
+        }
+
         /// <inheritdoc/>
         public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
         {

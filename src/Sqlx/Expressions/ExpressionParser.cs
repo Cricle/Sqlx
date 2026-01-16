@@ -97,9 +97,20 @@ namespace Sqlx.Expressions
             var result = new List<string>(n.Arguments.Count);
             for (var i = 0; i < n.Arguments.Count; i++)
             {
-                result.Add(ParseRaw(n.Arguments[i]));
+                var col = ParseRaw(n.Arguments[i]);
+                var memberName = n.Members?[i]?.Name;
+                
+                // Add alias if member name differs from column expression
+                if (memberName != null && !col.Equals(_dialect.WrapColumn(memberName), StringComparison.OrdinalIgnoreCase) 
+                    && !col.Equals(_dialect.WrapColumn(ExpressionHelper.ConvertToSnakeCase(memberName)), StringComparison.OrdinalIgnoreCase))
+                {
+                    result.Add($"{col} AS {memberName}");
+                }
+                else
+                {
+                    result.Add(col);
+                }
             }
-
             return result;
         }
 

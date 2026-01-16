@@ -20,7 +20,7 @@ namespace Sqlx
     {
         public JoinType JoinType { get; set; }
         public string TableName { get; set; } = string.Empty;
-        public string? SubQuery { get; set; }
+        public string? SubQuerySql { get; set; }
         public string Alias { get; set; } = string.Empty;
         public string OnCondition { get; set; } = string.Empty;
     }
@@ -49,20 +49,15 @@ namespace Sqlx
         private readonly List<string> _groupByExpressions = new(2);
         private readonly List<JoinClause> _joinClauses = new(2);
         
-        // Track property-to-alias mapping for multi-level JOINs
-        // Key: property name from result selector (e.g., "User", "Dept")
-        // Value: table alias (e.g., "t1", "t2")
+        // Track property mappings for multi-level JOINs
         private readonly Dictionary<string, string> _propertyAliasMap = new(4);
-        
-        // Track property-to-column mapping for GroupBy/OrderBy after JOIN
-        // Key: property name from result selector (e.g., "DeptName")
-        // Value: original column expression (e.g., "[name]")
         private readonly Dictionary<string, string> _propertyColumnMap = new(4);
         
         private int? _take;
         private int? _skip;
         private string? _tableName;
-        private string? _subQuery;
+        private Type? _elementType;
+        private string? _fromSubQuerySql;
         private bool _isDistinct;
 
         public SqlExpressionVisitor(SqlDialect dialect, bool parameterized = false, IEntityProvider? entityProvider = null, string? outerGroupByColumn = null)
@@ -72,44 +67,19 @@ namespace Sqlx
             _parser = new ExpressionParser(dialect, _parameters, parameterized);
             _entityProvider = entityProvider;
             
-            // If there's an outer groupByColumn, set it in the parser so that
-            // references to outer scope (like x.Key in subqueries) can be resolved
+            // Set outer scope's groupByColumn for subquery references
             if (outerGroupByColumn != null)
-            {
                 _parser.SetGroupByColumn(outerGroupByColumn);
-            }
         }
 
         public Dictionary<string, object?> GetParameters() => new(_parameters);
+        
+        public ExpressionParser Parser => _parser;
 
         public string GenerateSql(Expression expression)
         {
-            // Check if the root expression's source has a subquery source
-            var rootSource = GetRootSource(expression);
-            if (rootSource is ConstantExpression { Value: ISqlxQueryable sqlxQueryable } &&
-                sqlxQueryable.SubQuerySource != null)
-            {
-                // The source is a subquery, generate it first
-                var subVisitor = new SqlExpressionVisitor(_dialect, _parameters.Count > 0, _entityProvider);
-                _subQuery = subVisitor.GenerateSql(sqlxQueryable.SubQuerySource.Expression);
-                foreach (var p in subVisitor.GetParameters())
-                    _parameters[p.Key] = p.Value;
-                
-                // Set table name from the element type
-                _tableName = sqlxQueryable.SubQuerySource.ElementType.Name;
-            }
-            
             Visit(expression);
             return BuildSql();
-        }
-
-        private static Expression? GetRootSource(Expression expression)
-        {
-            while (expression is MethodCallExpression methodCall && methodCall.Arguments.Count > 0)
-            {
-                expression = methodCall.Arguments[0];
-            }
-            return expression;
         }
 
         protected override Expression VisitConstant(ConstantExpression node)
@@ -117,13 +87,19 @@ namespace Sqlx
             if (node.Value is IQueryable queryable)
             {
                 _tableName = queryable.ElementType.Name;
-                // Check if this is a SqlxQueryable with an expression (subquery)
-                if (queryable is ISqlxQueryable sqlxQueryable && sqlxQueryable.Expression != node)
+                _elementType = queryable.ElementType;
+                
+                // Check for FROM subquery
+                if (queryable is ISqlxQueryable sqlxQueryable)
                 {
-                    var subVisitor = new SqlExpressionVisitor(_dialect, _parameters.Count > 0, _entityProvider);
-                    _subQuery = subVisitor.GenerateSql(sqlxQueryable.Expression);
-                    foreach (var p in subVisitor.GetParameters())
-                        _parameters[p.Key] = p.Value;
+                    if (sqlxQueryable.SubQuerySource != null)
+                    {
+                        _fromSubQuerySql = GenerateSubQuery(sqlxQueryable.SubQuerySource.Expression, sqlxQueryable.SubQuerySource.ElementType);
+                    }
+                    else if (sqlxQueryable.Expression != node)
+                    {
+                        _fromSubQuerySql = GenerateSubQuery(sqlxQueryable.Expression, queryable.ElementType);
+                    }
                 }
             }
             return base.VisitConstant(node);
@@ -131,13 +107,14 @@ namespace Sqlx
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
-            // Handle SubQuery.For<T>() - get table name from generic type argument
+            // Handle SubQuery.For<T>()
             if (node.Method.DeclaringType == typeof(SubQuery) && node.Method.Name == "For")
             {
                 var genericArgs = node.Method.GetGenericArguments();
                 if (genericArgs.Length > 0)
                 {
                     _tableName = genericArgs[0].Name;
+                    _elementType = genericArgs[0];
                 }
                 return node;
             }
@@ -168,7 +145,7 @@ namespace Sqlx
         {
             var predicate = GetLambda(node.Arguments.ElementAtOrDefault(1));
             if (predicate != null)
-                _whereConditions.Add($"({_parser.Parse(predicate.Body)})");
+                _whereConditions.Add(_parser.Parse(predicate.Body));
         }
 
         private void VisitSelect(MethodCallExpression node)
@@ -180,38 +157,7 @@ namespace Sqlx
                 if (_groupByExpressions.Count > 0)
                     _parser.SetGroupByColumn(_groupByExpressions[0]);
                 _selectColumns.AddRange(_parser.ExtractColumns(selector.Body));
-                
-                // Track column mappings from the Select projection for OrderBy resolution
-                UpdateSelectColumnMapping(selector.Body);
-            }
-        }
-
-        /// <summary>
-        /// Updates the property-to-column mapping from a Select projection.
-        /// This handles cases like Select(g => new { Count = g.Count() }) where OrderBy(x => x.Count) should resolve to COUNT(*).
-        /// </summary>
-        private void UpdateSelectColumnMapping(Expression expr)
-        {
-            if (expr is not NewExpression newExpr || newExpr.Members == null)
-                return;
-
-            for (var i = 0; i < newExpr.Arguments.Count; i++)
-            {
-                var memberName = newExpr.Members[i].Name;
-                var arg = newExpr.Arguments[i];
-                
-                // Check if this is an aggregate method call (e.g., g.Count())
-                if (arg is MethodCallExpression methodCall)
-                {
-                    var aggregateSql = _parser.ParseRaw(methodCall);
-                    _propertyColumnMap[memberName] = aggregateSql;
-                }
-                else if (arg is MemberExpression memberArg)
-                {
-                    // Regular column access
-                    var columnName = _parser.GetColumnName(memberArg);
-                    _propertyColumnMap[memberName] = columnName;
-                }
+                UpdateColumnMapping(selector.Body);
             }
         }
 
@@ -220,8 +166,8 @@ namespace Sqlx
             var keySelector = GetLambda(node.Arguments.ElementAtOrDefault(1));
             if (keySelector != null)
             {
-                var columnName = GetColumnNameWithMapping(keySelector.Body);
-                _orderByExpressions.Add($"{columnName} {(ascending ? "ASC" : "DESC")}");
+                var col = ResolveColumn(keySelector.Body);
+                _orderByExpressions.Add($"{col} {(ascending ? "ASC" : "DESC")}");
             }
         }
 
@@ -242,35 +188,14 @@ namespace Sqlx
             _take = 1;
             var predicate = GetLambda(node.Arguments.ElementAtOrDefault(1));
             if (predicate != null)
-                _whereConditions.Add($"({_parser.Parse(predicate.Body)})");
+                _whereConditions.Add(_parser.Parse(predicate.Body));
         }
 
         private void VisitGroupBy(MethodCallExpression node)
         {
             var keySelector = GetLambda(node.Arguments.ElementAtOrDefault(1));
             if (keySelector != null)
-            {
-                var columnName = GetColumnNameWithMapping(keySelector.Body);
-                _groupByExpressions.Add(columnName);
-            }
-        }
-
-        /// <summary>
-        /// Gets the column name, checking the property-to-column mapping first.
-        /// This handles cases like GroupBy(x => x.DeptName) where DeptName is an alias from a result selector.
-        /// </summary>
-        private string GetColumnNameWithMapping(Expression expr)
-        {
-            // Check if this is a member access on a parameter (e.g., x.DeptName)
-            if (expr is MemberExpression m && m.Expression is ParameterExpression)
-            {
-                var propName = m.Member.Name;
-                if (_propertyColumnMap.TryGetValue(propName, out var columnExpr))
-                {
-                    return columnExpr;
-                }
-            }
-            return _parser.GetColumnName(expr);
+                _groupByExpressions.Add(ResolveColumn(keySelector.Body));
         }
 
         private void VisitJoin(MethodCallExpression node, JoinType joinType)
@@ -279,58 +204,34 @@ namespace Sqlx
 
             var innerArg = node.Arguments[1];
             string? innerTableName = null;
-            string? innerSubQuery = null;
+            string? innerSubQuerySql = null;
+            Type? innerElementType = null;
 
-            // Case 1: innerArg is a ConstantExpression containing an IQueryable
+            // Extract inner table info
             if (innerArg is ConstantExpression { Value: IQueryable innerQueryable })
             {
                 innerTableName = innerQueryable.ElementType.Name;
-                // Check if this is a SqlxQueryable with a subquery source or non-trivial expression
+                innerElementType = innerQueryable.ElementType;
+                
                 if (innerQueryable is ISqlxQueryable sqlxQueryable)
                 {
                     if (sqlxQueryable.SubQuerySource != null)
-                    {
-                        // Has explicit subquery source - get entityProvider from registry
-                        var innerEntityProvider = EntityProviderRegistry.Get(innerQueryable.ElementType);
-                        var subVisitor = new SqlExpressionVisitor(_dialect, _parameters.Count > 0, innerEntityProvider);
-                        innerSubQuery = subVisitor.GenerateSql(sqlxQueryable.SubQuerySource.Expression);
-                    }
+                        innerSubQuerySql = GenerateSubQuery(sqlxQueryable.SubQuerySource.Expression, innerElementType);
                     else if (sqlxQueryable.Expression is not ConstantExpression)
-                    {
-                        // Has non-trivial expression (e.g., Where, Select, etc.) - get entityProvider from registry
-                        var innerEntityProvider = EntityProviderRegistry.Get(innerQueryable.ElementType);
-                        var subVisitor = new SqlExpressionVisitor(_dialect, _parameters.Count > 0, innerEntityProvider);
-                        innerSubQuery = subVisitor.GenerateSql(sqlxQueryable.Expression);
-                    }
+                        innerSubQuerySql = GenerateSubQuery(sqlxQueryable.Expression, innerElementType);
                 }
             }
-            // Case 2: innerArg is a MethodCallExpression (e.g., .Where(...))
             else if (innerArg is MethodCallExpression innerMethodCall)
             {
-                // Get the element type from the method's return type
                 var returnType = innerMethodCall.Type;
-                Type? elementType = null;
                 if (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(IQueryable<>))
-                {
-                    elementType = returnType.GetGenericArguments()[0];
-                    innerTableName = elementType.Name;
-                }
+                    innerElementType = returnType.GetGenericArguments()[0];
                 else
-                {
-                    elementType = innerMethodCall.Method.GetGenericArguments().FirstOrDefault();
-                    innerTableName = elementType?.Name;
-                }
+                    innerElementType = innerMethodCall.Method.GetGenericArguments().FirstOrDefault();
                 
-                // Generate subquery SQL from the method call expression - get entityProvider from registry
-                var innerEntityProvider = elementType != null ? EntityProviderRegistry.Get(elementType) : null;
-                var subVisitor = new SqlExpressionVisitor(_dialect, _parameters.Count > 0, innerEntityProvider);
-                innerSubQuery = subVisitor.GenerateSql(innerArg);
-            }
-            else if (innerArg is MethodCallExpression innerMethod)
-            {
-                Visit(innerArg);
-                if (innerMethod.Method.IsGenericMethod)
-                    innerTableName = innerMethod.Method.GetGenericArguments().FirstOrDefault()?.Name;
+                innerTableName = innerElementType?.Name;
+                if (innerElementType != null)
+                    innerSubQuerySql = GenerateSubQuery(innerArg, innerElementType);
             }
 
             if (string.IsNullOrEmpty(innerTableName)) return;
@@ -342,18 +243,14 @@ namespace Sqlx
             var outerColumn = _parser.GetColumnName(outerKeySelector.Body);
             var innerColumn = _parser.GetColumnName(innerKeySelector.Body);
             
-            // Generate unique alias for the joined table
             var alias = $"t{_joinClauses.Count + 2}";
-            
-            // Determine the outer alias based on the outer key selector
-            // For nested access like x.Dept.CompanyId, we need to find which table "Dept" refers to
             var outerAlias = ResolveOuterAlias(outerKeySelector.Body);
 
             _joinClauses.Add(new JoinClause
             {
                 JoinType = joinType,
                 TableName = innerTableName,
-                SubQuery = innerSubQuery,
+                SubQuerySql = innerSubQuerySql,
                 Alias = alias,
                 OnCondition = $"{_dialect.WrapColumn(outerAlias)}.{outerColumn} = {_dialect.WrapColumn(alias)}.{innerColumn}"
             });
@@ -363,101 +260,93 @@ namespace Sqlx
             {
                 _selectColumns.Clear();
                 _selectColumns.AddRange(_parser.ExtractColumns(resultSelector.Body));
-                
-                // Update property-to-alias mapping from result selector
-                UpdatePropertyAliasMap(resultSelector, alias);
+                UpdateJoinPropertyMapping(resultSelector, alias);
             }
         }
 
         /// <summary>
-        /// Resolves the outer table alias from the outer key selector expression.
-        /// For nested access like x.Dept.CompanyId, finds which table "Dept" refers to.
+        /// Generates SQL for a subquery. Subquery is just another query with the same logic.
         /// </summary>
+        private string GenerateSubQuery(Expression expr, Type elementType)
+        {
+            var entityProvider = EntityProviderRegistry.Get(elementType);
+            var visitor = new SqlExpressionVisitor(_dialect, _parameters.Count > 0, entityProvider);
+            
+            // Pass groupByColumn for outer scope references
+            if (_parser.GroupByColumn != null)
+                visitor._parser.SetGroupByColumn(_parser.GroupByColumn);
+            
+            var sql = visitor.GenerateSql(expr);
+            
+            // Merge parameters
+            foreach (var p in visitor.GetParameters())
+                _parameters[p.Key] = p.Value;
+            
+            return sql;
+        }
+
+        private string ResolveColumn(Expression expr)
+        {
+            if (expr is MemberExpression m && m.Expression is ParameterExpression)
+            {
+                if (_propertyColumnMap.TryGetValue(m.Member.Name, out var col))
+                    return col;
+            }
+            return _parser.GetColumnName(expr);
+        }
+
         private string ResolveOuterAlias(Expression expr)
         {
-            // Default alias for the main table or first JOIN
-            var defaultAlias = _subQuery != null ? "sq" : (_joinClauses.Count == 0 ? "t1" : $"t{_joinClauses.Count + 1}");
+            var defaultAlias = _fromSubQuerySql != null ? "sq" : (_joinClauses.Count == 0 ? "t1" : $"t{_joinClauses.Count + 1}");
             
-            // For simple member access like u.DepartmentId, use the default alias
-            if (expr is MemberExpression m)
+            if (expr is MemberExpression m && m.Expression is MemberExpression parent && parent.Expression is ParameterExpression)
             {
-                // Check if this is a nested access like x.Dept.CompanyId
-                if (m.Expression is MemberExpression parentMember && parentMember.Expression is ParameterExpression)
-                {
-                    // parentMember.Member.Name is the property name (e.g., "Dept")
-                    var propertyName = parentMember.Member.Name;
-                    if (_propertyAliasMap.TryGetValue(propertyName, out var alias))
-                    {
-                        return alias;
-                    }
-                }
+                if (_propertyAliasMap.TryGetValue(parent.Member.Name, out var alias))
+                    return alias;
             }
-            
             return defaultAlias;
         }
 
-        /// <summary>
-        /// Updates the property-to-alias mapping from a result selector expression.
-        /// For expressions like (u, d) => new { User = u, Dept = d }, maps "User" -> outer alias, "Dept" -> inner alias.
-        /// Also updates property-to-column mapping for GroupBy/OrderBy resolution.
-        /// </summary>
-        private void UpdatePropertyAliasMap(LambdaExpression lambda, string innerAlias)
+        private void UpdateColumnMapping(Expression expr)
         {
-            if (lambda.Body is not NewExpression newExpr || newExpr.Members == null)
-                return;
+            if (expr is not NewExpression newExpr || newExpr.Members == null) return;
 
-            var outerAlias = _subQuery != null ? "sq" : (_joinClauses.Count == 1 ? "t1" : $"t{_joinClauses.Count}");
-            
-            // Get the parameter names - first is outer, second is inner
-            var outerParam = lambda.Parameters.Count > 0 ? lambda.Parameters[0].Name : null;
+            for (var i = 0; i < newExpr.Arguments.Count; i++)
+            {
+                var name = newExpr.Members[i].Name;
+                var arg = newExpr.Arguments[i];
+                
+                if (arg is MethodCallExpression mc)
+                    _propertyColumnMap[name] = _parser.ParseRaw(mc);
+                else if (arg is MemberExpression ma)
+                    _propertyColumnMap[name] = _parser.GetColumnName(ma);
+            }
+        }
+
+        private void UpdateJoinPropertyMapping(LambdaExpression lambda, string innerAlias)
+        {
+            if (lambda.Body is not NewExpression newExpr || newExpr.Members == null) return;
+
+            var outerAlias = _fromSubQuerySql != null ? "sq" : (_joinClauses.Count == 1 ? "t1" : $"t{_joinClauses.Count}");
             var innerParam = lambda.Parameters.Count > 1 ? lambda.Parameters[1].Name : null;
             
             for (var i = 0; i < newExpr.Arguments.Count; i++)
             {
-                var memberName = newExpr.Members[i].Name;
+                var name = newExpr.Members[i].Name;
                 var arg = newExpr.Arguments[i];
                 
-                // Check if this argument is a parameter (outer or inner table)
-                if (arg is ParameterExpression paramExpr)
+                if (arg is ParameterExpression p)
                 {
-                    // Check if this is the outer or inner parameter
-                    if (paramExpr.Name == innerParam)
-                    {
-                        _propertyAliasMap[memberName] = innerAlias;
-                    }
-                    else
-                    {
-                        _propertyAliasMap[memberName] = outerAlias;
-                    }
+                    _propertyAliasMap[name] = p.Name == innerParam ? innerAlias : outerAlias;
                 }
-                else if (arg is MemberExpression memberArg)
+                else if (arg is MemberExpression ma)
                 {
-                    // Check if it's accessing a property from the outer result (e.g., x.User)
-                    if (memberArg.Expression is ParameterExpression)
-                    {
-                        // This is accessing a property from the previous result selector
-                        // Check if we have a mapping for it
-                        var sourcePropName = memberArg.Member.Name;
-                        if (_propertyAliasMap.TryGetValue(sourcePropName, out var sourceAlias))
-                        {
-                            _propertyAliasMap[memberName] = sourceAlias;
-                        }
-                        else
-                        {
-                            // First JOIN - the outer parameter refers to t1
-                            _propertyAliasMap[memberName] = outerAlias;
-                        }
-                    }
+                    if (ma.Expression is ParameterExpression && _propertyAliasMap.TryGetValue(ma.Member.Name, out var src))
+                        _propertyAliasMap[name] = src;
                     else
-                    {
-                        // This might be the inner table parameter
-                        _propertyAliasMap[memberName] = innerAlias;
-                    }
+                        _propertyAliasMap[name] = outerAlias;
                     
-                    // Also track the column mapping for GroupBy/OrderBy
-                    // e.g., DeptName = d.Name -> "DeptName" maps to "[name]"
-                    var columnName = _parser.GetColumnName(memberArg);
-                    _propertyColumnMap[memberName] = columnName;
+                    _propertyColumnMap[name] = _parser.GetColumnName(ma);
                 }
             }
         }
@@ -482,17 +371,24 @@ namespace Sqlx
                 sb.AppendJoin(", ", _selectColumns);
             else if (_entityProvider?.Columns.Count > 0)
                 sb.AppendJoin(", ", _entityProvider.Columns.Select(c => _dialect.WrapColumn(c.Name)));
+            else if (_elementType != null)
+            {
+                var ep = EntityProviderRegistry.Get(_elementType);
+                if (ep?.Columns.Count > 0)
+                    sb.AppendJoin(", ", ep.Columns.Select(c => _dialect.WrapColumn(c.Name)));
+                else
+                    sb.Append('*');
+            }
             else
                 sb.Append('*');
 
-            // FROM
-            if (_subQuery != null)
+            // FROM - always use alias for subquery
+            if (_fromSubQuerySql != null)
             {
-                sb.Append(" FROM (").Append(_subQuery).Append(") AS ").Append(_dialect.WrapColumn("sq"));
+                sb.Append(" FROM (").Append(_fromSubQuerySql).Append(") AS ").Append(_dialect.WrapColumn("sq"));
             }
             else if (_joinClauses.Count > 0)
             {
-                // When there are JOINs, add alias to main table
                 sb.Append(" FROM ").Append(_dialect.WrapColumn(_tableName ?? "Unknown"))
                   .Append(" AS ").Append(_dialect.WrapColumn("t1"));
             }
@@ -513,11 +409,8 @@ namespace Sqlx
                     _ => "INNER JOIN"
                 });
 
-                // Support subquery in JOIN
-                if (!string.IsNullOrEmpty(join.SubQuery))
-                {
-                    sb.Append(" (").Append(join.SubQuery).Append(") AS ").Append(_dialect.WrapColumn(join.Alias));
-                }
+                if (!string.IsNullOrEmpty(join.SubQuerySql))
+                    sb.Append(" (").Append(join.SubQuerySql).Append(") AS ").Append(_dialect.WrapColumn(join.Alias));
                 else
                 {
                     sb.Append(' ').Append(_dialect.WrapColumn(join.TableName));
@@ -531,7 +424,7 @@ namespace Sqlx
             if (_whereConditions.Count > 0)
             {
                 sb.Append(" WHERE ");
-                sb.AppendJoin(" AND ", _whereConditions.Select(ExpressionHelper.RemoveOuterParentheses));
+                sb.AppendJoin(" AND ", _whereConditions);
             }
 
             // GROUP BY

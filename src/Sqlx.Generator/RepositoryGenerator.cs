@@ -241,6 +241,12 @@ public class RepositoryGenerator : IIncrementalGenerator
         // Generate static SqlTemplate fields for each method
         var methods = GetMethodsWithSqlTemplate(serviceType, sqlTemplateAttr);
         var methodFieldNames = BuildMethodFieldNames(methods);
+        
+        // Generate static parameter name fields
+        var paramNameFields = GenerateParameterNameFields(sb, methods, entityName);
+        if (paramNameFields.Count > 0)
+            sb.AppendLine();
+        
         GenerateSqlTemplateFields(sb, methods, sqlTemplateAttr, methodFieldNames);
         sb.AppendLine();
 
@@ -248,7 +254,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         foreach (var method in methods)
         {
             GenerateMethodImplementation(sb, method, entityFullName, entityName, keyTypeName, 
-                sqlTemplateAttr, returnInsertedIdAttr, expressionToSqlAttr, connectionInfo, methodFieldNames);
+                sqlTemplateAttr, returnInsertedIdAttr, expressionToSqlAttr, connectionInfo, methodFieldNames, paramNameFields);
             sb.AppendLine();
         }
 
@@ -414,7 +420,7 @@ public class RepositoryGenerator : IIncrementalGenerator
 
     private static void GeneratePlaceholderContext(IndentedStringBuilder sb, string entityName, string entityFullName, string sqlDefine, string tableName)
     {
-        sb.AppendLine("// PlaceholderContext - shared across all methods");
+        sb.AppendLine("// Static context - shared across all methods");
         sb.AppendLine($"private const global::Sqlx.Annotations.SqlDefineTypes _dialectType = global::Sqlx.Annotations.SqlDefineTypes.{sqlDefine};");
         sb.AppendLine($"private static readonly global::Sqlx.PlaceholderContext _placeholderContext = new global::Sqlx.PlaceholderContext(");
         sb.PushIndent();
@@ -422,6 +428,48 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine($"tableName: \"{tableName}\",");
         sb.AppendLine($"columns: {entityName}EntityProvider.Default.Columns);");
         sb.PopIndent();
+        sb.AppendLine("private static readonly string _paramPrefix = _placeholderContext.Dialect.ParameterPrefix;");
+    }
+
+    /// <summary>
+    /// Generates static parameter name fields for all scalar parameters.
+    /// Returns a dictionary mapping parameter name to field name.
+    /// </summary>
+    private static Dictionary<string, string> GenerateParameterNameFields(IndentedStringBuilder sb, List<IMethodSymbol> methods, string entityName)
+    {
+        var paramNames = new HashSet<string>();
+        
+        // Collect all scalar parameter names
+        foreach (var method in methods)
+        {
+            foreach (var param in method.Parameters)
+            {
+                if (param.Name == "cancellationToken") continue;
+                if (param.Type.ToDisplayString().Contains("Expression<")) continue;
+                if (param.Type.ToDisplayString().Contains("IQueryable<")) continue;
+                if (param.Type.ToDisplayString().Contains("SqlxQueryable<")) continue;
+                if (param.Type.Name == entityName) continue;
+                
+                var paramTypeName = param.Type.ToDisplayString();
+                if (paramTypeName.Contains("<") && paramTypeName.Contains(entityName)) continue;
+                
+                paramNames.Add(param.Name);
+            }
+        }
+        
+        if (paramNames.Count == 0)
+            return new Dictionary<string, string>();
+        
+        sb.AppendLine("// Static parameter names");
+        var result = new Dictionary<string, string>();
+        foreach (var name in paramNames.OrderBy(n => n))
+        {
+            var fieldName = $"_param_{name}";
+            result[name] = fieldName;
+            sb.AppendLine($"private static readonly string {fieldName} = _paramPrefix + \"{name}\";");
+        }
+        
+        return result;
     }
 
     private static List<IMethodSymbol> GetMethodsWithSqlTemplate(INamedTypeSymbol serviceType, INamedTypeSymbol? sqlTemplateAttr)
@@ -552,7 +600,8 @@ public class RepositoryGenerator : IIncrementalGenerator
         INamedTypeSymbol? returnInsertedIdAttr,
         INamedTypeSymbol? expressionToSqlAttr,
         ConnectionInfo connectionInfo,
-        Dictionary<string, string> methodFieldNames)
+        Dictionary<string, string> methodFieldNames,
+        Dictionary<string, string> paramNameFields)
     {
         var returnType = method.ReturnType.ToDisplayString();
         var methodName = method.Name;
@@ -626,7 +675,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine();
 
         // Bind parameters
-        GenerateParameterBinding(sb, method, entityName, expressionToSqlAttr);
+        GenerateParameterBinding(sb, method, entityName, expressionToSqlAttr, paramNameFields);
 
         sb.AppendLine();
         sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
@@ -772,7 +821,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("#endif");
     }
 
-    private static void GenerateParameterBinding(IndentedStringBuilder sb, IMethodSymbol method, string entityName, INamedTypeSymbol? expressionToSqlAttr)
+    private static void GenerateParameterBinding(IndentedStringBuilder sb, IMethodSymbol method, string entityName, INamedTypeSymbol? expressionToSqlAttr, Dictionary<string, string> paramNameFields)
     {
         sb.AppendLine("// Bind parameters");
         
@@ -796,16 +845,17 @@ public class RepositoryGenerator : IIncrementalGenerator
             // Check if this is an entity parameter (exact match or ends with entity name)
             if (paramType.Name == entityName)
             {
-                sb.AppendLine($"{entityName}ParameterBinder.Default.BindEntity(cmd, {param.Name}, _placeholderContext.Dialect.ParameterPrefix);");
+                sb.AppendLine($"{entityName}ParameterBinder.Default.BindEntity(cmd, {param.Name}, _paramPrefix);");
             }
             else
             {
                 // Simple parameter binding for scalar types (int, string, etc.)
                 var isNullable = IsNullableType(paramType);
+                var paramFieldName = paramNameFields.TryGetValue(param.Name, out var fn) ? fn : $"_paramPrefix + \"{param.Name}\"";
                 sb.AppendLine("{");
                 sb.PushIndent();
                 sb.AppendLine("var p = cmd.CreateParameter();");
-                sb.AppendLine($"p.ParameterName = _placeholderContext.Dialect.ParameterPrefix + \"{param.Name}\";");
+                sb.AppendLine($"p.ParameterName = {paramFieldName};");
                 if (isNullable)
                 {
                     sb.AppendLine($"p.Value = {param.Name} ?? (object)DBNull.Value;");

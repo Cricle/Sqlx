@@ -65,7 +65,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder]) AS sq) AS Total FROM [SqUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder]) AS sq) AS Total FROM [SqUser]",
             sql);
     }
 
@@ -77,7 +77,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder] WHERE [status] = 'active') AS sq) AS Active FROM [SqUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder] WHERE [status] = 'active') AS sq) AS Active FROM [SqUser]",
             sql);
     }
 
@@ -89,7 +89,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder] WHERE [amount] > 100) AS sq) AS Big FROM [SqUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder] WHERE [amount] > 100) AS sq) AS Big FROM [SqUser]",
             sql);
     }
 
@@ -101,7 +101,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder] WHERE ([amount] > 100 AND [status] = 'completed')) AS sq) AS Filtered FROM [SqUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder] WHERE ([amount] > 100 AND [status] = 'completed')) AS sq) AS Filtered FROM [SqUser]",
             sql);
     }
 
@@ -113,7 +113,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder] WHERE ([status] = 'pending' OR [status] = 'processing')) AS sq) AS Either FROM [SqUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder] WHERE ([status] = 'pending' OR [status] = 'processing')) AS sq) AS Either FROM [SqUser]",
             sql);
     }
 
@@ -130,7 +130,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqUser]) AS sq) AS Users, (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder]) AS sq) AS Orders, (SELECT COUNT(*) FROM (SELECT * FROM [SqDepartment]) AS sq) AS Depts FROM [SqUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [name], [department_id], [age], [is_active], [salary] FROM [SqUser]) AS sq) AS Users, (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder]) AS sq) AS Orders, (SELECT COUNT(*) FROM (SELECT [id], [name] FROM [SqDepartment]) AS sq) AS Depts FROM [SqUser]",
             sql);
     }
 
@@ -143,7 +143,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder]) AS sq) AS Total FROM [SqUser] WHERE [is_active] = 1",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder]) AS sq) AS Total FROM [SqUser] WHERE [is_active] = 1",
             sql);
     }
 
@@ -156,7 +156,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder] WHERE [status] = 'active') AS sq) AS Active FROM [SqUser] WHERE [age] > 18",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder] WHERE [status] = 'active') AS sq) AS Active FROM [SqUser] WHERE [age] > 18",
             sql);
     }
 
@@ -174,7 +174,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder] WHERE [amount] > 100 AND [status] = 'completed') AS sq) AS Filtered FROM [SqUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder] WHERE [amount] > 100 AND [status] = 'completed') AS sq) AS Filtered FROM [SqUser]",
             sql);
     }
 
@@ -190,7 +190,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder]) AS sq) AS Total FROM [SqUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder]) AS sq) AS Total FROM [SqUser]",
             sql);
     }
 
@@ -202,7 +202,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder] WHERE [status] = 'active') AS sq) AS Active FROM [SqUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder] WHERE [status] = 'active') AS sq) AS Active FROM [SqUser]",
             sql);
     }
 
@@ -218,7 +218,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqUser]) AS sq) AS Users, (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder]) AS sq) AS Orders FROM [SqUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [name], [department_id], [age], [is_active], [salary] FROM [SqUser]) AS sq) AS Users, (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder]) AS sq) AS Orders FROM [SqUser]",
             sql);
     }
 
@@ -249,7 +249,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT `id`, (SELECT COUNT(*) FROM (SELECT * FROM `SqOrder`) AS sq) AS Total FROM `SqUser`",
+            "SELECT `id`, (SELECT COUNT(*) FROM (SELECT `id`, `user_id`, `amount`, `status`, `quantity` FROM `SqOrder`) AS sq) AS Total FROM `SqUser`",
             sql);
     }
 
@@ -261,7 +261,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT `id`, (SELECT COUNT(*) FROM (SELECT * FROM `SqOrder` WHERE `status` = 'active') AS sq) AS Active FROM `SqUser`",
+            "SELECT `id`, (SELECT COUNT(*) FROM (SELECT `id`, `user_id`, `amount`, `status`, `quantity` FROM `SqOrder` WHERE `status` = 'active') AS sq) AS Active FROM `SqUser`",
             sql);
     }
 
@@ -277,7 +277,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT `id`, (SELECT COUNT(*) FROM (SELECT * FROM `SqUser`) AS sq) AS Users, (SELECT COUNT(*) FROM (SELECT * FROM `SqOrder`) AS sq) AS Orders FROM `SqUser`",
+            "SELECT `id`, (SELECT COUNT(*) FROM (SELECT `id`, `name`, `department_id`, `age`, `is_active`, `salary` FROM `SqUser`) AS sq) AS Users, (SELECT COUNT(*) FROM (SELECT `id`, `user_id`, `amount`, `status`, `quantity` FROM `SqOrder`) AS sq) AS Orders FROM `SqUser`",
             sql);
     }
 
@@ -307,7 +307,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT \"id\", (SELECT COUNT(*) FROM (SELECT * FROM \"SqOrder\") AS sq) AS Total FROM \"SqUser\"",
+            "SELECT \"id\", (SELECT COUNT(*) FROM (SELECT \"id\", \"user_id\", \"amount\", \"status\", \"quantity\" FROM \"SqOrder\") AS sq) AS Total FROM \"SqUser\"",
             sql);
     }
 
@@ -319,7 +319,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT \"id\", (SELECT COUNT(*) FROM (SELECT * FROM \"SqOrder\" WHERE \"status\" = 'active') AS sq) AS Active FROM \"SqUser\"",
+            "SELECT \"id\", (SELECT COUNT(*) FROM (SELECT \"id\", \"user_id\", \"amount\", \"status\", \"quantity\" FROM \"SqOrder\" WHERE \"status\" = 'active') AS sq) AS Active FROM \"SqUser\"",
             sql);
     }
 
@@ -332,7 +332,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT \"id\", (SELECT COUNT(*) FROM (SELECT * FROM \"SqOrder\") AS sq) AS Total FROM \"SqUser\" WHERE \"is_active\" = true",
+            "SELECT \"id\", (SELECT COUNT(*) FROM (SELECT \"id\", \"user_id\", \"amount\", \"status\", \"quantity\" FROM \"SqOrder\") AS sq) AS Total FROM \"SqUser\" WHERE \"is_active\" = true",
             sql);
     }
 
@@ -348,7 +348,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT \"id\", (SELECT COUNT(*) FROM (SELECT * FROM \"SqUser\") AS sq) AS Users, (SELECT COUNT(*) FROM (SELECT * FROM \"SqOrder\") AS sq) AS Orders FROM \"SqUser\"",
+            "SELECT \"id\", (SELECT COUNT(*) FROM (SELECT \"id\", \"name\", \"department_id\", \"age\", \"is_active\", \"salary\" FROM \"SqUser\") AS sq) AS Users, (SELECT COUNT(*) FROM (SELECT \"id\", \"user_id\", \"amount\", \"status\", \"quantity\" FROM \"SqOrder\") AS sq) AS Orders FROM \"SqUser\"",
             sql);
     }
 
@@ -364,7 +364,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT \"id\", (SELECT COUNT(*) FROM (SELECT * FROM \"SqOrder\") AS sq) AS Total FROM \"SqUser\"",
+            "SELECT \"id\", (SELECT COUNT(*) FROM (SELECT \"id\", \"user_id\", \"amount\", \"status\", \"quantity\" FROM \"SqOrder\") AS sq) AS Total FROM \"SqUser\"",
             sql);
     }
 
@@ -376,7 +376,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT \"id\", (SELECT COUNT(*) FROM (SELECT * FROM \"SqOrder\" WHERE \"status\" = 'active') AS sq) AS Active FROM \"SqUser\"",
+            "SELECT \"id\", (SELECT COUNT(*) FROM (SELECT \"id\", \"user_id\", \"amount\", \"status\", \"quantity\" FROM \"SqOrder\" WHERE \"status\" = 'active') AS sq) AS Active FROM \"SqUser\"",
             sql);
     }
 
@@ -407,7 +407,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT \"id\", (SELECT COUNT(*) FROM (SELECT * FROM \"SqOrder\") AS sq) AS Total FROM \"SqUser\"",
+            "SELECT \"id\", (SELECT COUNT(*) FROM (SELECT \"id\", \"user_id\", \"amount\", \"status\", \"quantity\" FROM \"SqOrder\") AS sq) AS Total FROM \"SqUser\"",
             sql);
     }
 
@@ -419,7 +419,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT \"id\", (SELECT COUNT(*) FROM (SELECT * FROM \"SqOrder\" WHERE \"status\" = 'active') AS sq) AS Active FROM \"SqUser\"",
+            "SELECT \"id\", (SELECT COUNT(*) FROM (SELECT \"id\", \"user_id\", \"amount\", \"status\", \"quantity\" FROM \"SqOrder\" WHERE \"status\" = 'active') AS sq) AS Active FROM \"SqUser\"",
             sql);
     }
 
@@ -438,7 +438,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], [name], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder]) AS sq) AS Orders FROM [SqUser] WHERE ([is_active] = 1 AND [age] > 18) ORDER BY [name] ASC LIMIT 10",
+            "SELECT [id], [name], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder]) AS sq) AS Orders FROM [SqUser] WHERE ([is_active] = 1 AND [age] > 18) ORDER BY [name] ASC LIMIT 10",
             sql);
     }
 
@@ -455,7 +455,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [department_id] AS DeptId, COUNT(*) AS UserCount, (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder]) AS sq) AS TotalOrders FROM [SqUser] GROUP BY [department_id]",
+            "SELECT [department_id] AS DeptId, COUNT(*) AS UserCount, (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder]) AS sq) AS TotalOrders FROM [SqUser] GROUP BY [department_id]",
             sql);
     }
 
@@ -473,7 +473,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [department_id] AS DeptId, COUNT(*) AS Count, (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder] WHERE [status] = 'active') AS sq) AS ActiveOrders FROM [SqUser] WHERE [is_active] = 1 GROUP BY [department_id]",
+            "SELECT [department_id] AS DeptId, COUNT(*) AS Count, (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder] WHERE [status] = 'active') AS sq) AS ActiveOrders FROM [SqUser] WHERE [is_active] = 1 GROUP BY [department_id]",
             sql);
     }
 
@@ -507,7 +507,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], [name], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder] WHERE [status] = 'pending') AS sq) AS PendingOrders, (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder] WHERE [status] = 'completed') AS sq) AS CompletedOrders, (SELECT COUNT(*) FROM (SELECT * FROM [SqDepartment]) AS sq) AS TotalDepts FROM [SqUser] WHERE [is_active] = 1 AND [age] >= 18 AND [salary] > 50000",
+            "SELECT [id], [name], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder] WHERE [status] = 'pending') AS sq) AS PendingOrders, (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder] WHERE [status] = 'completed') AS sq) AS CompletedOrders, (SELECT COUNT(*) FROM (SELECT [id], [name] FROM [SqDepartment]) AS sq) AS TotalDepts FROM [SqUser] WHERE [is_active] = 1 AND [age] >= 18 AND [salary] > 50000",
             sql);
     }
 
@@ -521,7 +521,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder]) AS sq) AS Total FROM [SqUser] ORDER BY [age] DESC, [name] ASC",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder]) AS sq) AS Total FROM [SqUser] ORDER BY [age] DESC, [name] ASC",
             sql);
     }
 
@@ -535,7 +535,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder]) AS sq) AS Total FROM [SqUser] LIMIT 10 OFFSET 20",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder]) AS sq) AS Total FROM [SqUser] LIMIT 10 OFFSET 20",
             sql);
     }
 
@@ -551,7 +551,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder] WHERE [amount] > 1000) AS sq) AS Big FROM [SqUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder] WHERE [amount] > 1000) AS sq) AS Big FROM [SqUser]",
             sql);
     }
 
@@ -563,7 +563,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder] WHERE [quantity] >= 5) AS sq) AS Count FROM [SqUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder] WHERE [quantity] >= 5) AS sq) AS Count FROM [SqUser]",
             sql);
     }
 
@@ -575,7 +575,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder] WHERE [amount] < 50) AS sq) AS Small FROM [SqUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder] WHERE [amount] < 50) AS sq) AS Small FROM [SqUser]",
             sql);
     }
 
@@ -587,7 +587,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder] WHERE [quantity] <= 10) AS sq) AS Count FROM [SqUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder] WHERE [quantity] <= 10) AS sq) AS Count FROM [SqUser]",
             sql);
     }
 
@@ -599,7 +599,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder] WHERE [status] <> 'cancelled') AS sq) AS NotCancelled FROM [SqUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder] WHERE [status] <> 'cancelled') AS sq) AS NotCancelled FROM [SqUser]",
             sql);
     }
 
@@ -616,7 +616,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder] WHERE (([amount] > 100 AND [amount] < 1000) AND [status] = 'completed')) AS sq) AS Filtered FROM [SqUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder] WHERE (([amount] > 100 AND [amount] < 1000) AND [status] = 'completed')) AS sq) AS Filtered FROM [SqUser]",
             sql);
     }
 
@@ -633,7 +633,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder] WHERE (([status] = 'pending' OR [status] = 'processing') OR [status] = 'shipped')) AS sq) AS Multiple FROM [SqUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder] WHERE (([status] = 'pending' OR [status] = 'processing') OR [status] = 'shipped')) AS sq) AS Multiple FROM [SqUser]",
             sql);
     }
 
@@ -650,7 +650,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder] WHERE (([status] = 'completed' OR [status] = 'shipped') AND [amount] > 100)) AS sq) AS Mixed FROM [SqUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder] WHERE (([status] = 'completed' OR [status] = 'shipped') AND [amount] > 100)) AS sq) AS Mixed FROM [SqUser]",
             sql);
     }
 
@@ -667,7 +667,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder]) AS sq) AS Total FROM [SqUser] WHERE [id] < 0",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder]) AS sq) AS Total FROM [SqUser] WHERE [id] < 0",
             sql);
     }
 
@@ -679,7 +679,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder]) AS sq) AS Total FROM [SqUser]",
+            "SELECT (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder]) AS sq) AS Total FROM [SqUser]",
             sql);
     }
 
@@ -691,7 +691,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder] LIMIT 100) AS sq) AS Limited FROM [SqUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder] LIMIT 100) AS sq) AS Limited FROM [SqUser]",
             sql);
     }
 
@@ -703,7 +703,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder] OFFSET 10) AS sq) AS Skipped FROM [SqUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder] OFFSET 10) AS sq) AS Skipped FROM [SqUser]",
             sql);
     }
 
@@ -715,7 +715,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder] ORDER BY [amount] ASC) AS sq) AS Ordered FROM [SqUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder] ORDER BY [amount] ASC) AS sq) AS Ordered FROM [SqUser]",
             sql);
     }
 
@@ -761,7 +761,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqUser]) AS sq) AS TotalUsers FROM [SqUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [name], [department_id], [age], [is_active], [salary] FROM [SqUser]) AS sq) AS TotalUsers FROM [SqUser]",
             sql);
     }
 
@@ -773,7 +773,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqUser] WHERE [is_active] = 0) AS sq) AS Inactive FROM [SqUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [name], [department_id], [age], [is_active], [salary] FROM [SqUser] WHERE [is_active] = 0) AS sq) AS Inactive FROM [SqUser]",
             sql);
     }
 
@@ -785,7 +785,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqUser] WHERE [is_active] = 0) AS sq) AS NotActive FROM [SqUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [name], [department_id], [age], [is_active], [salary] FROM [SqUser] WHERE [is_active] = 0) AS sq) AS NotActive FROM [SqUser]",
             sql);
     }
 
@@ -854,7 +854,7 @@ public class SubQueryComprehensiveTests
     {
         using var conn = CreateTestDatabase();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT id, (SELECT COUNT(*) FROM (SELECT * FROM orders) AS sq) AS Total FROM users";
+        cmd.CommandText = "SELECT id, (SELECT COUNT(*) FROM (SELECT id, user_id, amount, status, quantity FROM orders) AS sq) AS Total FROM users";
         
         using var reader = await cmd.ExecuteReaderAsync();
         int count = 0;
@@ -871,7 +871,7 @@ public class SubQueryComprehensiveTests
     {
         using var conn = CreateTestDatabase();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT id, (SELECT COUNT(*) FROM (SELECT * FROM orders WHERE status = 'completed') AS sq) AS Completed FROM users";
+        cmd.CommandText = "SELECT id, (SELECT COUNT(*) FROM (SELECT id, user_id, amount, status, quantity FROM orders WHERE status = 'completed') AS sq) AS Completed FROM users";
         
         using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
@@ -885,7 +885,7 @@ public class SubQueryComprehensiveTests
     {
         using var conn = CreateTestDatabase();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT id, (SELECT COUNT(*) FROM (SELECT * FROM orders WHERE amount > 200) AS sq) AS Big FROM users";
+        cmd.CommandText = "SELECT id, (SELECT COUNT(*) FROM (SELECT id, user_id, amount, status, quantity FROM orders WHERE amount > 200) AS sq) AS Big FROM users";
         
         using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
@@ -901,9 +901,9 @@ public class SubQueryComprehensiveTests
         using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
             SELECT id, 
-                (SELECT COUNT(*) FROM (SELECT * FROM users) AS sq) AS TotalUsers,
-                (SELECT COUNT(*) FROM (SELECT * FROM orders) AS sq) AS TotalOrders,
-                (SELECT COUNT(*) FROM (SELECT * FROM departments) AS sq) AS TotalDepts
+                (SELECT COUNT(*) FROM (SELECT id, name, department_id, age, is_active, salary FROM users) AS sq) AS TotalUsers,
+                (SELECT COUNT(*) FROM (SELECT id, user_id, amount, status, quantity FROM orders) AS sq) AS TotalOrders,
+                (SELECT COUNT(*) FROM (SELECT id, name FROM departments) AS sq) AS TotalDepts
             FROM users";
         
         using var reader = await cmd.ExecuteReaderAsync();
@@ -920,7 +920,7 @@ public class SubQueryComprehensiveTests
     {
         using var conn = CreateTestDatabase();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT id, (SELECT COUNT(*) FROM (SELECT * FROM orders) AS sq) AS Total FROM users WHERE is_active = 1";
+        cmd.CommandText = "SELECT id, (SELECT COUNT(*) FROM (SELECT id, user_id, amount, status, quantity FROM orders) AS sq) AS Total FROM users WHERE is_active = 1";
         
         using var reader = await cmd.ExecuteReaderAsync();
         int count = 0;
@@ -939,7 +939,7 @@ public class SubQueryComprehensiveTests
         using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
             SELECT department_id, COUNT(*) AS UserCount, 
-                (SELECT COUNT(*) FROM (SELECT * FROM orders) AS sq) AS TotalOrders
+                (SELECT COUNT(*) FROM (SELECT id, user_id, amount, status, quantity FROM orders) AS sq) AS TotalOrders
             FROM users 
             GROUP BY department_id 
             ORDER BY department_id";
@@ -964,7 +964,7 @@ public class SubQueryComprehensiveTests
         using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
             SELECT id, 
-                (SELECT COUNT(*) FROM (SELECT * FROM orders WHERE amount > 100 AND status = 'completed') AS sq) AS BigCompleted
+                (SELECT COUNT(*) FROM (SELECT id, user_id, amount, status, quantity FROM orders WHERE amount > 100 AND status = 'completed') AS sq) AS BigCompleted
             FROM users WHERE is_active = 1 AND age > 25";
         
         using var reader = await cmd.ExecuteReaderAsync();
@@ -1019,7 +1019,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder]) AS sq WHERE [user_id] = 1) AS MatchCount FROM [SqUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder]) AS sq WHERE [user_id] = 1) AS MatchCount FROM [SqUser]",
             sql);
     }
 
@@ -1031,7 +1031,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder]) AS sq WHERE ([amount] > 100 AND [status] = 'completed')) AS MatchCount FROM [SqUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder]) AS sq WHERE ([amount] > 100 AND [status] = 'completed')) AS MatchCount FROM [SqUser]",
             sql);
     }
 
@@ -1043,7 +1043,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder] WHERE [status] = 'active') AS sq WHERE [amount] > 50) AS MatchCount FROM [SqUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder] WHERE [status] = 'active') AS sq WHERE [amount] > 50) AS MatchCount FROM [SqUser]",
             sql);
     }
 
@@ -1082,7 +1082,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [department_id] AS DeptId, COUNT(*) AS UserCount, (SELECT COUNT(*) FROM (SELECT * FROM [SqOrder]) AS sq WHERE [amount] > 100) AS MatchingOrders FROM [SqUser] GROUP BY [department_id]",
+            "SELECT [department_id] AS DeptId, COUNT(*) AS UserCount, (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder]) AS sq WHERE [amount] > 100) AS MatchingOrders FROM [SqUser] GROUP BY [department_id]",
             sql);
     }
 
@@ -1098,7 +1098,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT ([id] % 3) AS Key, (SELECT COUNT(*) FROM (SELECT * FROM [SqUser]) AS sq WHERE [id] = COUNT(*)) AS A FROM [SqUser] GROUP BY ([id] % 3)",
+            "SELECT ([id] % 3) AS Key, (SELECT COUNT(*) FROM (SELECT [id], [name], [department_id], [age], [is_active], [salary] FROM [SqUser]) AS sq WHERE [id] = COUNT(*)) AS A FROM [SqUser] GROUP BY ([id] % 3)",
             sql);
     }
 
@@ -1114,7 +1114,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT ([id] % 3) AS Key, (SELECT * FROM [SqUser] WHERE [id] = 1 ORDER BY [name] ASC) AS A FROM [SqUser] GROUP BY ([id] % 3)",
+            "SELECT ([id] % 3) AS Key, (SELECT [id], [name], [department_id], [age], [is_active], [salary] FROM [SqUser] WHERE [id] = 1 ORDER BY [name] ASC) AS A FROM [SqUser] GROUP BY ([id] % 3)",
             sql);
     }
 
@@ -1129,7 +1129,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT * FROM [SqOrder] WHERE [status] = 'active') AS Orders FROM [SqUser]",
+            "SELECT [id], (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder] WHERE [status] = 'active') AS Orders FROM [SqUser]",
             sql);
     }
 
@@ -1144,7 +1144,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT * FROM [SqOrder] WHERE [user_id] = 1 LIMIT 1) AS FirstOrder FROM [SqUser]",
+            "SELECT [id], (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder] WHERE [user_id] = 1 LIMIT 1) AS FirstOrder FROM [SqUser]",
             sql);
     }
 
@@ -1159,7 +1159,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT * FROM [SqOrder] WHERE [amount] > 100 LIMIT 1) AS FirstBigOrder FROM [SqUser]",
+            "SELECT [id], (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder] WHERE [amount] > 100 LIMIT 1) AS FirstBigOrder FROM [SqUser]",
             sql);
     }
 
@@ -1174,7 +1174,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT CASE WHEN EXISTS(SELECT * FROM [SqOrder]) THEN 1 ELSE 0 END) AS HasOrders FROM [SqUser]",
+            "SELECT [id], (SELECT CASE WHEN EXISTS(SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder]) THEN 1 ELSE 0 END) AS HasOrders FROM [SqUser]",
             sql);
     }
 
@@ -1189,7 +1189,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT CASE WHEN EXISTS(SELECT 1 FROM (SELECT * FROM [SqOrder]) AS sq WHERE [amount] > 1000) THEN 1 ELSE 0 END) AS HasBigOrders FROM [SqUser]",
+            "SELECT [id], (SELECT CASE WHEN EXISTS(SELECT 1 FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder]) AS sq WHERE [amount] > 1000) THEN 1 ELSE 0 END) AS HasBigOrders FROM [SqUser]",
             sql);
     }
 
@@ -1204,7 +1204,7 @@ public class SubQueryComprehensiveTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT CASE WHEN NOT EXISTS(SELECT 1 FROM (SELECT * FROM [SqOrder]) AS sq WHERE NOT ([status] = 'completed')) THEN 1 ELSE 0 END) AS AllCompleted FROM [SqUser]",
+            "SELECT [id], (SELECT CASE WHEN NOT EXISTS(SELECT 1 FROM (SELECT [id], [user_id], [amount], [status], [quantity] FROM [SqOrder]) AS sq WHERE NOT ([status] = 'completed')) THEN 1 ELSE 0 END) AS AllCompleted FROM [SqUser]",
             sql);
     }
 

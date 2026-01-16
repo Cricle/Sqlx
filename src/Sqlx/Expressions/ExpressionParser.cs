@@ -430,9 +430,28 @@ namespace Sqlx.Expressions
         /// </summary>
         private string GenerateSubQuerySql(Expression expr)
         {
+            // Get the entity provider for the subquery type from the global registry
+            var elementType = GetSubQueryElementType(expr);
+            var entityProvider = elementType != null ? EntityProviderRegistry.Get(elementType) : null;
+            
             // Use SqlExpressionVisitor - subquery parsing is the same as normal query parsing
-            var visitor = new SqlExpressionVisitor(_dialect, _parameterized, null);
+            var visitor = new SqlExpressionVisitor(_dialect, _parameterized, entityProvider);
             return visitor.GenerateSql(expr);
+        }
+
+        /// <summary>
+        /// Extracts the element type from a SubQuery expression chain.
+        /// </summary>
+        private static Type? GetSubQueryElementType(Expression expr)
+        {
+            return expr switch
+            {
+                MethodCallExpression mc when mc.Method.DeclaringType == typeof(SubQuery) && mc.Method.Name == "For" 
+                    => mc.Method.GetGenericArguments().FirstOrDefault(),
+                MethodCallExpression mc when mc.Arguments.Count > 0 
+                    => GetSubQueryElementType(mc.Arguments[0]),
+                _ => null
+            };
         }
 
         private string ParseLambdaColumn(Expression expr)

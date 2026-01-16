@@ -298,7 +298,10 @@ public class SqlxGenerator : IIncrementalGenerator
             var typeName = info.Type.Name;
             var ns = info.Type.ContainingNamespace.IsGlobalNamespace ? "Global" : info.Type.ContainingNamespace.ToDisplayString();
             if (info.GenerateEntityProvider)
+            {
                 sb.AppendLine($"global::Sqlx.SqlQuery<{fullTypeName}>.EntityProvider = global::{ns}.{typeName}EntityProvider.Default;");
+                sb.AppendLine($"global::Sqlx.EntityProviderRegistry.Register(typeof({fullTypeName}), global::{ns}.{typeName}EntityProvider.Default);");
+            }
             if (info.GenerateResultReader)
                 sb.AppendLine($"global::Sqlx.SqlQuery<{fullTypeName}>.ResultReader = global::{ns}.{typeName}ResultReader.Default;");
             if (info.GenerateParameterBinder)

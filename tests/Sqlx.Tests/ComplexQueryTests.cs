@@ -172,7 +172,7 @@ public class ComplexQueryTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [name], [name] AS ManagerName FROM [CqUser] AS [t1] INNER JOIN (SELECT * FROM [CqUser] WHERE [is_active] = 1) AS [t2] ON [t1].[manager_id] = [t2].[id]",
+            "SELECT [name], [name] AS ManagerName FROM [CqUser] AS [t1] INNER JOIN (SELECT [id], [name], [department_id], [manager_id], [is_active] FROM [CqUser] WHERE [is_active] = 1) AS [t2] ON [t1].[manager_id] = [t2].[id]",
             sql);
     }
 
@@ -187,7 +187,7 @@ public class ComplexQueryTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [name], [name] AS DeptName FROM [CqUser] AS [t1] INNER JOIN (SELECT * FROM [CqDepartment] ORDER BY [name] ASC LIMIT 10) AS [t2] ON [t1].[department_id] = [t2].[id]",
+            "SELECT [name], [name] AS DeptName FROM [CqUser] AS [t1] INNER JOIN (SELECT [id], [name], [company_id] FROM [CqDepartment] ORDER BY [name] ASC LIMIT 10) AS [t2] ON [t1].[department_id] = [t2].[id]",
             sql);
     }
 
@@ -203,7 +203,7 @@ public class ComplexQueryTests
 
         // FROM subquery uses [sq] alias, JOIN adds [t2] alias
         Assert.AreEqual(
-            "SELECT [name], [name] AS DeptName FROM (SELECT [id], [name], [department_id], [manager_id], [is_active] FROM [CqUser] WHERE [is_active] = 1) AS [sq] INNER JOIN (SELECT * FROM [CqDepartment] WHERE [company_id] > 0) AS [t2] ON [sq].[department_id] = [t2].[id]",
+            "SELECT [name], [name] AS DeptName FROM (SELECT [id], [name], [department_id], [manager_id], [is_active] FROM [CqUser] WHERE [is_active] = 1) AS [sq] INNER JOIN (SELECT [id], [name], [company_id] FROM [CqDepartment] WHERE [company_id] > 0) AS [t2] ON [sq].[department_id] = [t2].[id]",
             sql);
     }
 
@@ -220,7 +220,7 @@ public class ComplexQueryTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [name] AS UserName, [name] AS DeptName, [amount] FROM [CqUser] AS [t1] INNER JOIN (SELECT * FROM [CqDepartment] WHERE [company_id] > 0) AS [t2] ON [t1].[department_id] = [t2].[id] INNER JOIN (SELECT * FROM [CqOrder] WHERE [amount] > 100) AS [t3] ON [t1].[id] = [t3].[user_id]",
+            "SELECT [name] AS UserName, [name] AS DeptName, [amount] FROM [CqUser] AS [t1] INNER JOIN (SELECT [id], [name], [company_id] FROM [CqDepartment] WHERE [company_id] > 0) AS [t2] ON [t1].[department_id] = [t2].[id] INNER JOIN (SELECT [id], [user_id], [amount], [status] FROM [CqOrder] WHERE [amount] > 100) AS [t3] ON [t1].[id] = [t3].[user_id]",
             sql);
     }
 
@@ -291,7 +291,7 @@ public class ComplexQueryTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [department_id] AS DeptId, COUNT(*) AS UserCount, (SELECT COUNT(*) FROM (SELECT * FROM [CqOrder]) AS sq) AS TotalOrders FROM [CqUser] GROUP BY [department_id]",
+            "SELECT [department_id] AS DeptId, COUNT(*) AS UserCount, (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status] FROM [CqOrder]) AS sq) AS TotalOrders FROM [CqUser] GROUP BY [department_id]",
             sql);
     }
 
@@ -308,7 +308,7 @@ public class ComplexQueryTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [department_id] AS DeptId, COUNT(*) AS UserCount, (SELECT COUNT(*) FROM (SELECT * FROM [CqOrder] WHERE [status] = 'completed') AS sq) AS CompletedOrders FROM [CqUser] GROUP BY [department_id]",
+            "SELECT [department_id] AS DeptId, COUNT(*) AS UserCount, (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status] FROM [CqOrder] WHERE [status] = 'completed') AS sq) AS CompletedOrders FROM [CqUser] GROUP BY [department_id]",
             sql);
     }
 
@@ -326,7 +326,7 @@ public class ComplexQueryTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [department_id] AS DeptId, (SELECT COUNT(*) FROM (SELECT * FROM [CqOrder] WHERE [status] = 'pending') AS sq) AS PendingOrders, (SELECT COUNT(*) FROM (SELECT * FROM [CqOrder] WHERE [status] = 'completed') AS sq) AS CompletedOrders, (SELECT COUNT(*) FROM (SELECT * FROM [CqProduct]) AS sq) AS TotalProducts FROM [CqUser] GROUP BY [department_id]",
+            "SELECT [department_id] AS DeptId, (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status] FROM [CqOrder] WHERE [status] = 'pending') AS sq) AS PendingOrders, (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status] FROM [CqOrder] WHERE [status] = 'completed') AS sq) AS CompletedOrders, (SELECT COUNT(*) FROM (SELECT [id], [name], [price], [category_id] FROM [CqProduct]) AS sq) AS TotalProducts FROM [CqUser] GROUP BY [department_id]",
             sql);
     }
 
@@ -342,7 +342,7 @@ public class ComplexQueryTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [department_id] AS DeptId, (SELECT CASE WHEN EXISTS(SELECT * FROM [CqOrder]) THEN 1 ELSE 0 END) AS HasOrders FROM [CqUser] GROUP BY [department_id]",
+            "SELECT [department_id] AS DeptId, (SELECT CASE WHEN EXISTS(SELECT [id], [user_id], [amount], [status] FROM [CqOrder]) THEN 1 ELSE 0 END) AS HasOrders FROM [CqUser] GROUP BY [department_id]",
             sql);
     }
 
@@ -358,7 +358,7 @@ public class ComplexQueryTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [department_id] AS DeptId, (SELECT * FROM [CqOrder] ORDER BY [id] ASC LIMIT 1) AS FirstOrder FROM [CqUser] GROUP BY [department_id]",
+            "SELECT [department_id] AS DeptId, (SELECT [id], [user_id], [amount], [status] FROM [CqOrder] ORDER BY [id] ASC LIMIT 1) AS FirstOrder FROM [CqUser] GROUP BY [department_id]",
             sql);
     }
 
@@ -383,7 +383,7 @@ public class ComplexQueryTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [name] AS DeptName, COUNT(*) AS UserCount, (SELECT COUNT(*) FROM (SELECT * FROM [CqOrder]) AS sq) AS TotalOrders FROM [CqUser] AS [t1] INNER JOIN [CqDepartment] AS [t2] ON [t1].[department_id] = [t2].[id] GROUP BY [name]",
+            "SELECT [name] AS DeptName, COUNT(*) AS UserCount, (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status] FROM [CqOrder]) AS sq) AS TotalOrders FROM [CqUser] AS [t1] INNER JOIN [CqDepartment] AS [t2] ON [t1].[department_id] = [t2].[id] GROUP BY [name]",
             sql);
     }
 
@@ -440,7 +440,7 @@ public class ComplexQueryTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], [name], (SELECT COUNT(*) FROM (SELECT * FROM [CqOrder] WHERE [user_id] = [id]) AS sq) AS OrderCount, (SELECT SUM([amount]) FROM (SELECT * FROM [CqOrder] WHERE [user_id] = [id]) AS sq) AS TotalAmount, (SELECT CASE WHEN EXISTS(SELECT 1 FROM (SELECT * FROM [CqOrder] WHERE [user_id] = [id]) AS sq WHERE [status] = 'pending') THEN 1 ELSE 0 END) AS HasPendingOrders FROM [CqUser] WHERE [is_active] = 1",
+            "SELECT [id], [name], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status] FROM [CqOrder] WHERE [user_id] = [id]) AS sq) AS OrderCount, (SELECT SUM([amount]) FROM (SELECT [id], [user_id], [amount], [status] FROM [CqOrder] WHERE [user_id] = [id]) AS sq) AS TotalAmount, (SELECT CASE WHEN EXISTS(SELECT 1 FROM (SELECT [id], [user_id], [amount], [status] FROM [CqOrder] WHERE [user_id] = [id]) AS sq WHERE [status] = 'pending') THEN 1 ELSE 0 END) AS HasPendingOrders FROM [CqUser] WHERE [is_active] = 1",
             sql);
     }
 
@@ -508,7 +508,7 @@ public class ComplexQueryTests
             .Select(u => new { u.Id, OrderCount = SubQuery.For<CqOrder>().Count() })
             .ToSql();
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [CqOrder]) AS sq) AS OrderCount FROM [CqUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status] FROM [CqOrder]) AS sq) AS OrderCount FROM [CqUser]",
             sqliteSql);
 
         // MySQL
@@ -516,7 +516,7 @@ public class ComplexQueryTests
             .Select(u => new { u.Id, OrderCount = SubQuery.For<CqOrder>().Count() })
             .ToSql();
         Assert.AreEqual(
-            "SELECT `id`, (SELECT COUNT(*) FROM (SELECT * FROM `CqOrder`) AS sq) AS OrderCount FROM `CqUser`",
+            "SELECT `id`, (SELECT COUNT(*) FROM (SELECT `id`, `user_id`, `amount`, `status` FROM `CqOrder`) AS sq) AS OrderCount FROM `CqUser`",
             mysqlSql);
 
         // PostgreSQL
@@ -524,7 +524,7 @@ public class ComplexQueryTests
             .Select(u => new { u.Id, OrderCount = SubQuery.For<CqOrder>().Count() })
             .ToSql();
         Assert.AreEqual(
-            "SELECT \"id\", (SELECT COUNT(*) FROM (SELECT * FROM \"CqOrder\") AS sq) AS OrderCount FROM \"CqUser\"",
+            "SELECT \"id\", (SELECT COUNT(*) FROM (SELECT \"id\", \"user_id\", \"amount\", \"status\" FROM \"CqOrder\") AS sq) AS OrderCount FROM \"CqUser\"",
             pgSql);
     }
 

@@ -110,7 +110,7 @@ public class JoinAliasAndFromSubQueryTests
 
         // JOIN 应该包含子查询（子查询使用 SELECT * 因为没有 EntityProvider）
         Assert.AreEqual(
-            "SELECT [name] FROM [JaUser] AS [t1] INNER JOIN (SELECT * FROM [JaUser] WHERE [is_active] = 1) AS [t2] ON [t1].[id] = [t2].[id]",
+            "SELECT [name] FROM [JaUser] AS [t1] INNER JOIN (SELECT [id], [name], [department_id], [is_active] FROM [JaUser] WHERE [is_active] = 1) AS [t2] ON [t1].[id] = [t2].[id]",
             sql);
     }
 
@@ -131,7 +131,7 @@ public class JoinAliasAndFromSubQueryTests
 
         // 子查询使用 SELECT * 因为没有 EntityProvider
         Assert.AreEqual(
-            "SELECT [name], [name] AS DeptName FROM [JaUser] AS [t1] INNER JOIN (SELECT * FROM [JaDepartment] WHERE [name] <> 'HR' LIMIT 10) AS [t2] ON [t1].[department_id] = [t2].[id]",
+            "SELECT [name], [name] AS DeptName FROM [JaUser] AS [t1] INNER JOIN (SELECT [id], [name] FROM [JaDepartment] WHERE [name] <> 'HR' LIMIT 10) AS [t2] ON [t1].[department_id] = [t2].[id]",
             sql);
     }
 

@@ -498,7 +498,7 @@ public class SqlxJoinOrderBySubQueryTests
             .Select(x => new { x.Id, Total = SubQuery.For<JoinTestOrder>().Count() })
             .ToSql();
 
-        Assert.AreEqual("SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [JoinTestOrder]) AS sq) AS Total FROM [JoinTestUser]", sql);
+        Assert.AreEqual("SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [order_date] FROM [JoinTestOrder]) AS sq) AS Total FROM [JoinTestUser]", sql);
     }
 
     [TestMethod]
@@ -508,7 +508,7 @@ public class SqlxJoinOrderBySubQueryTests
             .Select(x => new { x.Id, OrderCount = SubQuery.For<JoinTestOrder>().Where(o => o.Amount > 100).Count() })
             .ToSql();
 
-        Assert.AreEqual("SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [JoinTestOrder] WHERE [amount] > 100) AS sq) AS OrderCount FROM [JoinTestUser]", sql);
+        Assert.AreEqual("SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [order_date] FROM [JoinTestOrder] WHERE [amount] > 100) AS sq) AS OrderCount FROM [JoinTestUser]", sql);
     }
 
     [TestMethod]
@@ -519,7 +519,7 @@ public class SqlxJoinOrderBySubQueryTests
             .Select(x => new { x.Key, TotalOrders = SubQuery.For<JoinTestOrder>().Count() })
             .ToSql();
 
-        Assert.AreEqual("SELECT [department_id] AS Key, (SELECT COUNT(*) FROM (SELECT * FROM [JoinTestOrder]) AS sq) AS TotalOrders FROM [JoinTestUser] GROUP BY [department_id]", sql);
+        Assert.AreEqual("SELECT [department_id] AS Key, (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [order_date] FROM [JoinTestOrder]) AS sq) AS TotalOrders FROM [JoinTestUser] GROUP BY [department_id]", sql);
     }
 
     [TestMethod]
@@ -533,7 +533,7 @@ public class SqlxJoinOrderBySubQueryTests
             })
             .ToSql();
 
-        Assert.AreEqual("SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [JoinTestUser]) AS sq) AS UserCount, (SELECT COUNT(*) FROM (SELECT * FROM [JoinTestOrder]) AS sq) AS OrderCount FROM [JoinTestUser]", sql);
+        Assert.AreEqual("SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [name], [department_id], [age], [is_active] FROM [JoinTestUser]) AS sq) AS UserCount, (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [order_date] FROM [JoinTestOrder]) AS sq) AS OrderCount FROM [JoinTestUser]", sql);
     }
 
     #endregion

@@ -67,7 +67,7 @@ public class SubQueryTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SubQueryOrder]) AS sq) AS TotalOrders FROM [SubQueryUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status] FROM [SubQueryOrder]) AS sq) AS TotalOrders FROM [SubQueryUser]",
             sql);
     }
 
@@ -79,7 +79,7 @@ public class SubQueryTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SubQueryOrder] WHERE [status] = 'active') AS sq) AS ActiveOrders FROM [SubQueryUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status] FROM [SubQueryOrder] WHERE [status] = 'active') AS sq) AS ActiveOrders FROM [SubQueryUser]",
             sql);
     }
 
@@ -91,7 +91,7 @@ public class SubQueryTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SubQueryOrder] WHERE ([amount] > 100 AND [status] = 'completed')) AS sq) AS BigOrders FROM [SubQueryUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status] FROM [SubQueryOrder] WHERE ([amount] > 100 AND [status] = 'completed')) AS sq) AS BigOrders FROM [SubQueryUser]",
             sql);
     }
 
@@ -113,7 +113,7 @@ public class SubQueryTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], [name], (SELECT COUNT(*) FROM (SELECT * FROM [SubQueryUser]) AS sq) AS TotalUsers, (SELECT COUNT(*) FROM (SELECT * FROM [SubQueryOrder]) AS sq) AS TotalOrders, (SELECT COUNT(*) FROM (SELECT * FROM [SubQueryDepartment]) AS sq) AS TotalDepts FROM [SubQueryUser]",
+            "SELECT [id], [name], (SELECT COUNT(*) FROM (SELECT [id], [name], [department_id], [age], [is_active] FROM [SubQueryUser]) AS sq) AS TotalUsers, (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status] FROM [SubQueryOrder]) AS sq) AS TotalOrders, (SELECT COUNT(*) FROM (SELECT [id], [name] FROM [SubQueryDepartment]) AS sq) AS TotalDepts FROM [SubQueryUser]",
             sql);
     }
 
@@ -134,7 +134,7 @@ public class SubQueryTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [department_id] AS DeptId, COUNT(*) AS UserCount, (SELECT COUNT(*) FROM (SELECT * FROM [SubQueryOrder]) AS sq) AS TotalOrders FROM [SubQueryUser] GROUP BY [department_id]",
+            "SELECT [department_id] AS DeptId, COUNT(*) AS UserCount, (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status] FROM [SubQueryOrder]) AS sq) AS TotalOrders FROM [SubQueryUser] GROUP BY [department_id]",
             sql);
     }
 
@@ -151,7 +151,7 @@ public class SubQueryTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SubQueryOrder]) AS sq) AS OrderCount FROM [SubQueryUser] WHERE [is_active] = 1",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status] FROM [SubQueryOrder]) AS sq) AS OrderCount FROM [SubQueryUser] WHERE [is_active] = 1",
             sql);
     }
 
@@ -167,7 +167,7 @@ public class SubQueryTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SubQueryOrder]) AS sq) AS Total FROM [SubQueryUser]",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status] FROM [SubQueryOrder]) AS sq) AS Total FROM [SubQueryUser]",
             sql);
     }
 
@@ -179,7 +179,7 @@ public class SubQueryTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT `id`, (SELECT COUNT(*) FROM (SELECT * FROM `SubQueryOrder`) AS sq) AS Total FROM `SubQueryUser`",
+            "SELECT `id`, (SELECT COUNT(*) FROM (SELECT `id`, `user_id`, `amount`, `status` FROM `SubQueryOrder`) AS sq) AS Total FROM `SubQueryUser`",
             sql);
     }
 
@@ -191,7 +191,7 @@ public class SubQueryTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT \"id\", (SELECT COUNT(*) FROM (SELECT * FROM \"SubQueryOrder\") AS sq) AS Total FROM \"SubQueryUser\"",
+            "SELECT \"id\", (SELECT COUNT(*) FROM (SELECT \"id\", \"user_id\", \"amount\", \"status\" FROM \"SubQueryOrder\") AS sq) AS Total FROM \"SubQueryUser\"",
             sql);
     }
 
@@ -355,7 +355,7 @@ public class SubQueryTests
             .ToSql();
 
         // The generated SQL wraps in subquery, let's verify it's valid SQL
-        // Generated: SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SubQueryOrder]) AS sq) AS TotalOrders FROM [SubQueryUser]
+        // Generated: SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status] FROM [SubQueryOrder]) AS sq) AS TotalOrders FROM [SubQueryUser]
         // We need to use actual table names
         var executableSql = generatedSql
             .Replace("[SubQueryUser]", "users")
@@ -443,7 +443,7 @@ public class SubQueryTests
             .ToSql();
 
         Assert.AreEqual(
-            "SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [SubQueryOrder]) AS sq) AS Total FROM [SubQueryUser] WHERE [id] < 0",
+            "SELECT [id], (SELECT COUNT(*) FROM (SELECT [id], [user_id], [amount], [status] FROM [SubQueryOrder]) AS sq) AS Total FROM [SubQueryUser] WHERE [id] < 0",
             sql);
     }
 

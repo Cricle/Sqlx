@@ -283,14 +283,16 @@ namespace Sqlx
                 {
                     if (sqlxQueryable.SubQuerySource != null)
                     {
-                        // Has explicit subquery source - don't pass entityProvider, let subquery use its own
-                        var subVisitor = new SqlExpressionVisitor(_dialect, _parameters.Count > 0, null);
+                        // Has explicit subquery source - get entityProvider from registry
+                        var innerEntityProvider = EntityProviderRegistry.Get(innerQueryable.ElementType);
+                        var subVisitor = new SqlExpressionVisitor(_dialect, _parameters.Count > 0, innerEntityProvider);
                         innerSubQuery = subVisitor.GenerateSql(sqlxQueryable.SubQuerySource.Expression);
                     }
                     else if (sqlxQueryable.Expression is not ConstantExpression)
                     {
-                        // Has non-trivial expression (e.g., Where, Select, etc.) - don't pass entityProvider
-                        var subVisitor = new SqlExpressionVisitor(_dialect, _parameters.Count > 0, null);
+                        // Has non-trivial expression (e.g., Where, Select, etc.) - get entityProvider from registry
+                        var innerEntityProvider = EntityProviderRegistry.Get(innerQueryable.ElementType);
+                        var subVisitor = new SqlExpressionVisitor(_dialect, _parameters.Count > 0, innerEntityProvider);
                         innerSubQuery = subVisitor.GenerateSql(sqlxQueryable.Expression);
                     }
                 }
@@ -300,17 +302,21 @@ namespace Sqlx
             {
                 // Get the element type from the method's return type
                 var returnType = innerMethodCall.Type;
+                Type? elementType = null;
                 if (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(IQueryable<>))
                 {
-                    innerTableName = returnType.GetGenericArguments()[0].Name;
+                    elementType = returnType.GetGenericArguments()[0];
+                    innerTableName = elementType.Name;
                 }
                 else
                 {
-                    innerTableName = innerMethodCall.Method.GetGenericArguments().FirstOrDefault()?.Name;
+                    elementType = innerMethodCall.Method.GetGenericArguments().FirstOrDefault();
+                    innerTableName = elementType?.Name;
                 }
                 
-                // Generate subquery SQL from the method call expression - don't pass entityProvider
-                var subVisitor = new SqlExpressionVisitor(_dialect, _parameters.Count > 0, null);
+                // Generate subquery SQL from the method call expression - get entityProvider from registry
+                var innerEntityProvider = elementType != null ? EntityProviderRegistry.Get(elementType) : null;
+                var subVisitor = new SqlExpressionVisitor(_dialect, _parameters.Count > 0, innerEntityProvider);
                 innerSubQuery = subVisitor.GenerateSql(innerArg);
             }
             else if (innerArg is MethodCallExpression innerMethod)

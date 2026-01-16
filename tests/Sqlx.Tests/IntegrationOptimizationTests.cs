@@ -309,8 +309,7 @@ public class IntegrationOptimizationTests
 
 #region Test Entities and DbDataReaders
 
-[SqlxEntity]
-[SqlxParameter]
+[Sqlx]
 public class IntegrationEntity
 {
     public int Id { get; set; }
@@ -379,3 +378,4 @@ public class IntegrationEntityDbDataReader : System.Data.Common.DbDataReader
 }
 
 #endregion
+

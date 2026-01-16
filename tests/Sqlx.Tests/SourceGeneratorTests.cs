@@ -216,8 +216,7 @@ public class SourceGeneratorTests
 
 #region Test Entities
 
-[SqlxEntity]
-[SqlxParameter]
+[Sqlx]
 public class TestEntity
 {
     public int Id { get; set; }
@@ -226,8 +225,7 @@ public class TestEntity
     public DateTime CreatedAt { get; set; }
 }
 
-[SqlxEntity]
-[SqlxParameter]
+[Sqlx]
 public class TestEntityWithNullable
 {
     public int Id { get; set; }
@@ -235,7 +233,7 @@ public class TestEntityWithNullable
     public string? Description { get; set; }
 }
 
-[SqlxEntity]
+[Sqlx]
 public class TestEntityWithColumnAttr
 {
     public int Id { get; set; }
@@ -346,3 +344,4 @@ public class TestDbParameterCollection : DbParameterCollection, IEnumerable<DbPa
 }
 
 #endregion
+

@@ -22,12 +22,12 @@ public class SqlxStrictValidationTests
     {
         // Explicitly call the generated initializer to ensure EntityProviders are registered
         // This is a workaround for potential ModuleInitializer timing issues
-        Sqlx.Generated.EntityProvidersInitializer.Initialize();
+        Sqlx.Generated.SqlxInitializer.Initialize();
     }
 
     #region Test Entities
 
-    [SqlxEntity]
+    [Sqlx]
     public partial class TestUser
     {
         public int Id { get; set; }
@@ -37,7 +37,7 @@ public class SqlxStrictValidationTests
         public bool IsActive { get; set; }
     }
 
-    [SqlxEntity]
+    [Sqlx]
     public partial class TestOrder
     {
         public int Id { get; set; }

@@ -398,8 +398,7 @@ public class ResultReaderOptimizationTests
 
 #region Test Entities and DbDataReaders
 
-[SqlxEntity]
-[SqlxParameter]
+[Sqlx]
 public class OptimizedEntity
 {
     public int Id { get; set; }
@@ -407,8 +406,7 @@ public class OptimizedEntity
     public decimal Value { get; set; }
 }
 
-[SqlxEntity]
-[SqlxParameter]
+[Sqlx]
 public class NullableEntity
 {
     public int Id { get; set; }
@@ -534,3 +532,4 @@ public class NullableEntityDbDataReader : DbDataReader
 }
 
 #endregion
+

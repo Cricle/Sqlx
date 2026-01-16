@@ -10,7 +10,7 @@ using Sqlx.Annotations;
 
 namespace Sqlx.Tests;
 
-[SqlxEntity]
+[Sqlx]
 public partial class Customer
 {
     public int Id { get; set; }
@@ -18,7 +18,7 @@ public partial class Customer
     public string Email { get; set; } = "";
 }
 
-[SqlxEntity]
+[Sqlx]
 public partial class Order
 {
     public int Id { get; set; }
@@ -27,7 +27,7 @@ public partial class Order
     public string Status { get; set; } = "";
 }
 
-[SqlxEntity]
+[Sqlx]
 public partial class Product
 {
     public int Id { get; set; }
@@ -35,7 +35,7 @@ public partial class Product
     public decimal Price { get; set; }
 }
 
-[SqlxEntity]
+[Sqlx]
 public partial class OrderItem
 {
     public int Id { get; set; }

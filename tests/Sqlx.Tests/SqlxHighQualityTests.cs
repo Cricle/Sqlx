@@ -21,7 +21,7 @@ public class SqlxHighQualityTests
 {
     #region Test Entities
 
-    [SqlxEntity]
+    [Sqlx]
     public partial class HQTestEntity
     {
         public int Id { get; set; }

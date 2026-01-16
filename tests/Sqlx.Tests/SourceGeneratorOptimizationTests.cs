@@ -293,8 +293,7 @@ public class SourceGeneratorOptimizationTests
 
 #region Test Entities and DbDataReaders
 
-[SqlxEntity]
-[SqlxParameter]
+[Sqlx]
 public class GeneratedOptEntity
 {
     public int Id { get; set; }
@@ -365,3 +364,4 @@ public class GeneratedOptEntityDbDataReader : System.Data.Common.DbDataReader
 }
 
 #endregion
+

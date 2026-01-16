@@ -411,7 +411,7 @@ namespace Sqlx.Tests
             Assert.AreEqual(30, users[2].Age);
         }
 
-        [SqlxEntity]
+        [Sqlx]
         public partial class User
         {
             public int Id { get; set; }

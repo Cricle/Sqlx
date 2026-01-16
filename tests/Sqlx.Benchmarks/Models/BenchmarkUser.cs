@@ -7,8 +7,7 @@ namespace Sqlx.Benchmarks.Models;
 /// Benchmark entity for performance testing.
 /// Uses source generator to create EntityProvider, ResultReader, and ParameterBinder.
 /// </summary>
-[SqlxEntity]
-[SqlxParameter]
+[Sqlx]
 [TableName("users")]
 public partial class BenchmarkUser
 {
@@ -33,3 +32,4 @@ public partial class BenchmarkUser
     
     public int Score { get; set; }
 }
+

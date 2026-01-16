@@ -44,11 +44,11 @@ public class DbBatchExecutorTests
     [TestMethod]
     public async Task ExecuteAsync_EmptyList_ReturnsZero()
     {
-        var entities = new List<TestUser>();
+        var entities = new List<BatchTestUser>();
         var sql = "INSERT INTO test_users (name, email, age) VALUES (@name, @email, @age)";
 
         var affected = await DbBatchExecutor.ExecuteAsync(
-            _connection, null, sql, entities, TestUserParameterBinder.Default);
+            _connection, null, sql, entities, BatchTestUserParameterBinder.Default);
 
         Assert.AreEqual(0, affected);
     }
@@ -56,14 +56,14 @@ public class DbBatchExecutorTests
     [TestMethod]
     public async Task ExecuteAsync_SingleEntity_InsertsOne()
     {
-        var entities = new List<TestUser>
+        var entities = new List<BatchTestUser>
         {
             new() { Name = "Alice", Email = "alice@test.com", Age = 25 }
         };
         var sql = "INSERT INTO test_users (name, email, age) VALUES (@name, @email, @age)";
 
         var affected = await DbBatchExecutor.ExecuteAsync(
-            _connection, null, sql, entities, TestUserParameterBinder.Default);
+            _connection, null, sql, entities, BatchTestUserParameterBinder.Default);
 
         Assert.AreEqual(1, affected);
         Assert.AreEqual(1, GetUserCount());
@@ -72,7 +72,7 @@ public class DbBatchExecutorTests
     [TestMethod]
     public async Task ExecuteAsync_MultipleEntities_InsertsAll()
     {
-        var entities = new List<TestUser>
+        var entities = new List<BatchTestUser>
         {
             new() { Name = "Alice", Email = "alice@test.com", Age = 25 },
             new() { Name = "Bob", Email = "bob@test.com", Age = 30 },
@@ -81,7 +81,7 @@ public class DbBatchExecutorTests
         var sql = "INSERT INTO test_users (name, email, age) VALUES (@name, @email, @age)";
 
         var affected = await DbBatchExecutor.ExecuteAsync(
-            _connection, null, sql, entities, TestUserParameterBinder.Default);
+            _connection, null, sql, entities, BatchTestUserParameterBinder.Default);
 
         Assert.AreEqual(3, affected);
         Assert.AreEqual(3, GetUserCount());
@@ -94,15 +94,15 @@ public class DbBatchExecutorTests
     [TestMethod]
     public async Task ExecuteAsync_WithSmallBatchSize_SplitsIntoBatches()
     {
-        var entities = new List<TestUser>();
+        var entities = new List<BatchTestUser>();
         for (int i = 0; i < 10; i++)
         {
-            entities.Add(new TestUser { Name = $"User{i}", Email = $"user{i}@test.com", Age = 20 + i });
+            entities.Add(new BatchTestUser { Name = $"User{i}", Email = $"user{i}@test.com", Age = 20 + i });
         }
         var sql = "INSERT INTO test_users (name, email, age) VALUES (@name, @email, @age)";
 
         var affected = await DbBatchExecutor.ExecuteAsync(
-            _connection, null, sql, entities, TestUserParameterBinder.Default,
+            _connection, null, sql, entities, BatchTestUserParameterBinder.Default,
             batchSize: 3);
 
         Assert.AreEqual(10, affected);
@@ -112,7 +112,7 @@ public class DbBatchExecutorTests
     [TestMethod]
     public async Task ExecuteAsync_WithBatchSizeOne_ExecutesIndividually()
     {
-        var entities = new List<TestUser>
+        var entities = new List<BatchTestUser>
         {
             new() { Name = "Alice", Email = "alice@test.com", Age = 25 },
             new() { Name = "Bob", Email = "bob@test.com", Age = 30 }
@@ -120,7 +120,7 @@ public class DbBatchExecutorTests
         var sql = "INSERT INTO test_users (name, email, age) VALUES (@name, @email, @age)";
 
         var affected = await DbBatchExecutor.ExecuteAsync(
-            _connection, null, sql, entities, TestUserParameterBinder.Default,
+            _connection, null, sql, entities, BatchTestUserParameterBinder.Default,
             batchSize: 1);
 
         Assert.AreEqual(2, affected);
@@ -130,7 +130,7 @@ public class DbBatchExecutorTests
     [TestMethod]
     public async Task ExecuteAsync_WithLargeBatchSize_ExecutesInSingleBatch()
     {
-        var entities = new List<TestUser>
+        var entities = new List<BatchTestUser>
         {
             new() { Name = "Alice", Email = "alice@test.com", Age = 25 },
             new() { Name = "Bob", Email = "bob@test.com", Age = 30 }
@@ -138,7 +138,7 @@ public class DbBatchExecutorTests
         var sql = "INSERT INTO test_users (name, email, age) VALUES (@name, @email, @age)";
 
         var affected = await DbBatchExecutor.ExecuteAsync(
-            _connection, null, sql, entities, TestUserParameterBinder.Default,
+            _connection, null, sql, entities, BatchTestUserParameterBinder.Default,
             batchSize: 10000);
 
         Assert.AreEqual(2, affected);
@@ -148,14 +148,14 @@ public class DbBatchExecutorTests
     [TestMethod]
     public async Task ExecuteAsync_WithZeroBatchSize_UsesDefault()
     {
-        var entities = new List<TestUser>
+        var entities = new List<BatchTestUser>
         {
             new() { Name = "Alice", Email = "alice@test.com", Age = 25 }
         };
         var sql = "INSERT INTO test_users (name, email, age) VALUES (@name, @email, @age)";
 
         var affected = await DbBatchExecutor.ExecuteAsync(
-            _connection, null, sql, entities, TestUserParameterBinder.Default,
+            _connection, null, sql, entities, BatchTestUserParameterBinder.Default,
             batchSize: 0);
 
         Assert.AreEqual(1, affected);
@@ -164,14 +164,14 @@ public class DbBatchExecutorTests
     [TestMethod]
     public async Task ExecuteAsync_WithNegativeBatchSize_UsesDefault()
     {
-        var entities = new List<TestUser>
+        var entities = new List<BatchTestUser>
         {
             new() { Name = "Alice", Email = "alice@test.com", Age = 25 }
         };
         var sql = "INSERT INTO test_users (name, email, age) VALUES (@name, @email, @age)";
 
         var affected = await DbBatchExecutor.ExecuteAsync(
-            _connection, null, sql, entities, TestUserParameterBinder.Default,
+            _connection, null, sql, entities, BatchTestUserParameterBinder.Default,
             batchSize: -1);
 
         Assert.AreEqual(1, affected);
@@ -184,7 +184,7 @@ public class DbBatchExecutorTests
     [TestMethod]
     public async Task ExecuteAsync_WithTransaction_CommitsOnSuccess()
     {
-        var entities = new List<TestUser>
+        var entities = new List<BatchTestUser>
         {
             new() { Name = "Alice", Email = "alice@test.com", Age = 25 },
             new() { Name = "Bob", Email = "bob@test.com", Age = 30 }
@@ -193,7 +193,7 @@ public class DbBatchExecutorTests
 
         using var transaction = _connection.BeginTransaction();
         var affected = await DbBatchExecutor.ExecuteAsync(
-            _connection, transaction, sql, entities, TestUserParameterBinder.Default);
+            _connection, transaction, sql, entities, BatchTestUserParameterBinder.Default);
         transaction.Commit();
 
         Assert.AreEqual(2, affected);
@@ -203,7 +203,7 @@ public class DbBatchExecutorTests
     [TestMethod]
     public async Task ExecuteAsync_WithTransaction_RollbackOnFailure()
     {
-        var entities = new List<TestUser>
+        var entities = new List<BatchTestUser>
         {
             new() { Name = "Alice", Email = "alice@test.com", Age = 25 }
         };
@@ -211,7 +211,7 @@ public class DbBatchExecutorTests
 
         using var transaction = _connection.BeginTransaction();
         await DbBatchExecutor.ExecuteAsync(
-            _connection, transaction, sql, entities, TestUserParameterBinder.Default);
+            _connection, transaction, sql, entities, BatchTestUserParameterBinder.Default);
         transaction.Rollback();
 
         Assert.AreEqual(0, GetUserCount());
@@ -224,14 +224,14 @@ public class DbBatchExecutorTests
     [TestMethod]
     public async Task ExecuteAsync_WithCommandTimeout_SetsTimeout()
     {
-        var entities = new List<TestUser>
+        var entities = new List<BatchTestUser>
         {
             new() { Name = "Alice", Email = "alice@test.com", Age = 25 }
         };
         var sql = "INSERT INTO test_users (name, email, age) VALUES (@name, @email, @age)";
 
         var affected = await DbBatchExecutor.ExecuteAsync(
-            _connection, null, sql, entities, TestUserParameterBinder.Default,
+            _connection, null, sql, entities, BatchTestUserParameterBinder.Default,
             commandTimeout: 60);
 
         Assert.AreEqual(1, affected);
@@ -245,9 +245,9 @@ public class DbBatchExecutorTests
     public async Task ExecuteAsync_UpdateOperation_UpdatesRows()
     {
         // Insert initial data
-        await InsertTestUsers(3);
+        await InsertBatchTestUsers(3);
 
-        var updates = new List<TestUserUpdate>
+        var updates = new List<BatchTestUserUpdate>
         {
             new() { Id = 1, Name = "Updated1" },
             new() { Id = 2, Name = "Updated2" }
@@ -255,7 +255,7 @@ public class DbBatchExecutorTests
         var sql = "UPDATE test_users SET name = @name WHERE id = @id";
 
         var affected = await DbBatchExecutor.ExecuteAsync(
-            _connection, null, sql, updates, TestUserUpdateParameterBinder.Default);
+            _connection, null, sql, updates, BatchTestUserUpdateParameterBinder.Default);
 
         Assert.AreEqual(2, affected);
 
@@ -267,9 +267,9 @@ public class DbBatchExecutorTests
     public async Task ExecuteAsync_DeleteOperation_DeletesRows()
     {
         // Insert initial data
-        await InsertTestUsers(5);
+        await InsertBatchTestUsers(5);
 
-        var deletes = new List<TestUserDelete>
+        var deletes = new List<BatchTestUserDelete>
         {
             new() { Id = 1 },
             new() { Id = 3 },
@@ -278,7 +278,7 @@ public class DbBatchExecutorTests
         var sql = "DELETE FROM test_users WHERE id = @id";
 
         var affected = await DbBatchExecutor.ExecuteAsync(
-            _connection, null, sql, deletes, TestUserDeleteParameterBinder.Default);
+            _connection, null, sql, deletes, BatchTestUserDeleteParameterBinder.Default);
 
         Assert.AreEqual(3, affected);
         Assert.AreEqual(2, GetUserCount());
@@ -291,7 +291,7 @@ public class DbBatchExecutorTests
     [TestMethod]
     public async Task ExecuteBatchAsync_ExtensionMethod_Works()
     {
-        var entities = new List<TestUser>
+        var entities = new List<BatchTestUser>
         {
             new() { Name = "Alice", Email = "alice@test.com", Age = 25 },
             new() { Name = "Bob", Email = "bob@test.com", Age = 30 }
@@ -299,7 +299,7 @@ public class DbBatchExecutorTests
         var sql = "INSERT INTO test_users (name, email, age) VALUES (@name, @email, @age)";
 
         var affected = await _connection.ExecuteBatchAsync(
-            sql, entities, TestUserParameterBinder.Default);
+            sql, entities, BatchTestUserParameterBinder.Default);
 
         Assert.AreEqual(2, affected);
         Assert.AreEqual(2, GetUserCount());
@@ -308,7 +308,7 @@ public class DbBatchExecutorTests
     [TestMethod]
     public async Task ExecuteBatchAsync_WithAllParameters_Works()
     {
-        var entities = new List<TestUser>
+        var entities = new List<BatchTestUser>
         {
             new() { Name = "Alice", Email = "alice@test.com", Age = 25 }
         };
@@ -318,7 +318,7 @@ public class DbBatchExecutorTests
         var affected = await _connection.ExecuteBatchAsync(
             sql,
             entities,
-            TestUserParameterBinder.Default,
+            BatchTestUserParameterBinder.Default,
             transaction: transaction,
             parameterPrefix: "@",
             batchSize: 100,
@@ -335,10 +335,10 @@ public class DbBatchExecutorTests
     [TestMethod]
     public async Task ExecuteAsync_LargeDataset_HandlesCorrectly()
     {
-        var entities = new List<TestUser>();
+        var entities = new List<BatchTestUser>();
         for (int i = 0; i < 1000; i++)
         {
-            entities.Add(new TestUser
+            entities.Add(new BatchTestUser
             {
                 Name = $"User{i}",
                 Email = $"user{i}@test.com",
@@ -348,7 +348,7 @@ public class DbBatchExecutorTests
         var sql = "INSERT INTO test_users (name, email, age) VALUES (@name, @email, @age)";
 
         var affected = await DbBatchExecutor.ExecuteAsync(
-            _connection, null, sql, entities, TestUserParameterBinder.Default,
+            _connection, null, sql, entities, BatchTestUserParameterBinder.Default,
             batchSize: 100);
 
         Assert.AreEqual(1000, affected);
@@ -362,7 +362,7 @@ public class DbBatchExecutorTests
     [TestMethod]
     public async Task ExecuteAsync_WithCancellation_CanBeCancelled()
     {
-        var entities = new List<TestUser>
+        var entities = new List<BatchTestUser>
         {
             new() { Name = "Alice", Email = "alice@test.com", Age = 25 }
         };
@@ -372,7 +372,7 @@ public class DbBatchExecutorTests
         
         // Execute normally (not cancelled)
         var affected = await DbBatchExecutor.ExecuteAsync(
-            _connection, null, sql, entities, TestUserParameterBinder.Default,
+            _connection, null, sql, entities, BatchTestUserParameterBinder.Default,
             ct: cts.Token);
 
         Assert.AreEqual(1, affected);
@@ -389,7 +389,7 @@ public class DbBatchExecutorTests
         return Convert.ToInt32(cmd.ExecuteScalar());
     }
 
-    private TestUser? GetUserById(long id)
+    private BatchTestUser? GetUserById(long id)
     {
         using var cmd = _connection.CreateCommand();
         cmd.CommandText = "SELECT id, name, email, age FROM test_users WHERE id = @id";
@@ -401,7 +401,7 @@ public class DbBatchExecutorTests
         using var reader = cmd.ExecuteReader();
         if (reader.Read())
         {
-            return new TestUser
+            return new BatchTestUser
             {
                 Id = reader.GetInt64(0),
                 Name = reader.GetString(1),
@@ -412,12 +412,12 @@ public class DbBatchExecutorTests
         return null;
     }
 
-    private async Task InsertTestUsers(int count)
+    private async Task InsertBatchTestUsers(int count)
     {
-        var entities = new List<TestUser>();
+        var entities = new List<BatchTestUser>();
         for (int i = 0; i < count; i++)
         {
-            entities.Add(new TestUser
+            entities.Add(new BatchTestUser
             {
                 Name = $"User{i}",
                 Email = $"user{i}@test.com",
@@ -426,7 +426,7 @@ public class DbBatchExecutorTests
         }
         var sql = "INSERT INTO test_users (name, email, age) VALUES (@name, @email, @age)";
         await DbBatchExecutor.ExecuteAsync(
-            _connection, null, sql, entities, TestUserParameterBinder.Default);
+            _connection, null, sql, entities, BatchTestUserParameterBinder.Default);
     }
 
     #endregion
@@ -434,7 +434,7 @@ public class DbBatchExecutorTests
 
 #region Test Entities and Binders
 
-public class TestUser
+public class BatchTestUser
 {
     public long Id { get; set; }
     public string Name { get; set; } = string.Empty;
@@ -442,22 +442,22 @@ public class TestUser
     public int Age { get; set; }
 }
 
-public class TestUserUpdate
+public class BatchTestUserUpdate
 {
     public long Id { get; set; }
     public string Name { get; set; } = string.Empty;
 }
 
-public class TestUserDelete
+public class BatchTestUserDelete
 {
     public long Id { get; set; }
 }
 
-public class TestUserParameterBinder : IParameterBinder<TestUser>
+public class BatchTestUserParameterBinder : IParameterBinder<BatchTestUser>
 {
-    public static TestUserParameterBinder Default { get; } = new();
+    public static BatchTestUserParameterBinder Default { get; } = new();
 
-    public void BindEntity(DbCommand command, TestUser entity, string parameterPrefix = "@")
+    public void BindEntity(DbCommand command, BatchTestUser entity, string parameterPrefix = "@")
     {
         {
             var p = command.CreateParameter();
@@ -480,7 +480,7 @@ public class TestUserParameterBinder : IParameterBinder<TestUser>
     }
 
 #if NET6_0_OR_GREATER
-    public void BindEntity(DbBatchCommand command, TestUser entity, Func<DbParameter> parameterFactory, string parameterPrefix = "@")
+    public void BindEntity(DbBatchCommand command, BatchTestUser entity, Func<DbParameter> parameterFactory, string parameterPrefix = "@")
     {
         {
             var p = parameterFactory();
@@ -504,11 +504,11 @@ public class TestUserParameterBinder : IParameterBinder<TestUser>
 #endif
 }
 
-public class TestUserUpdateParameterBinder : IParameterBinder<TestUserUpdate>
+public class BatchTestUserUpdateParameterBinder : IParameterBinder<BatchTestUserUpdate>
 {
-    public static TestUserUpdateParameterBinder Default { get; } = new();
+    public static BatchTestUserUpdateParameterBinder Default { get; } = new();
 
-    public void BindEntity(DbCommand command, TestUserUpdate entity, string parameterPrefix = "@")
+    public void BindEntity(DbCommand command, BatchTestUserUpdate entity, string parameterPrefix = "@")
     {
         {
             var p = command.CreateParameter();
@@ -525,7 +525,7 @@ public class TestUserUpdateParameterBinder : IParameterBinder<TestUserUpdate>
     }
 
 #if NET6_0_OR_GREATER
-    public void BindEntity(DbBatchCommand command, TestUserUpdate entity, Func<DbParameter> parameterFactory, string parameterPrefix = "@")
+    public void BindEntity(DbBatchCommand command, BatchTestUserUpdate entity, Func<DbParameter> parameterFactory, string parameterPrefix = "@")
     {
         {
             var p = parameterFactory();
@@ -543,11 +543,11 @@ public class TestUserUpdateParameterBinder : IParameterBinder<TestUserUpdate>
 #endif
 }
 
-public class TestUserDeleteParameterBinder : IParameterBinder<TestUserDelete>
+public class BatchTestUserDeleteParameterBinder : IParameterBinder<BatchTestUserDelete>
 {
-    public static TestUserDeleteParameterBinder Default { get; } = new();
+    public static BatchTestUserDeleteParameterBinder Default { get; } = new();
 
-    public void BindEntity(DbCommand command, TestUserDelete entity, string parameterPrefix = "@")
+    public void BindEntity(DbCommand command, BatchTestUserDelete entity, string parameterPrefix = "@")
     {
         var p = command.CreateParameter();
         p.ParameterName = parameterPrefix + "id";
@@ -556,7 +556,7 @@ public class TestUserDeleteParameterBinder : IParameterBinder<TestUserDelete>
     }
 
 #if NET6_0_OR_GREATER
-    public void BindEntity(DbBatchCommand command, TestUserDelete entity, Func<DbParameter> parameterFactory, string parameterPrefix = "@")
+    public void BindEntity(DbBatchCommand command, BatchTestUserDelete entity, Func<DbParameter> parameterFactory, string parameterPrefix = "@")
     {
         var p = parameterFactory();
         p.ParameterName = parameterPrefix + "id";

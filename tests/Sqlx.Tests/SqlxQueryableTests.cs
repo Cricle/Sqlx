@@ -5,7 +5,7 @@ using Sqlx.Annotations;
 
 namespace Sqlx.Tests;
 
-[SqlxEntity]
+[Sqlx]
 public partial class QueryUser
 {
     public int Id { get; set; }

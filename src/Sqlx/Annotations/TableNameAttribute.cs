@@ -28,6 +28,22 @@ namespace Sqlx.Annotations
         /// Gets the table name.
         /// </summary>
         public string TableName { get; }
+
+        /// <summary>
+        /// Gets or sets the method name to call for getting the table name dynamically.
+        /// The method must be static and return a string.
+        /// When set, this takes precedence over <see cref="TableName"/>.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// [TableName("default_table", Method = nameof(GetTableName))]
+        /// public class MyEntity
+        /// {
+        ///     public static string GetTableName() => $"table_{DateTime.Now:yyyyMM}";
+        /// }
+        /// </code>
+        /// </example>
+        public string? Method { get; set; }
     }
 }
 

@@ -1,4 +1,4 @@
-// <copyright file="EntityProviderGenerator.cs" company="Sqlx">
+// <copyright file="SqlxGenerator.cs" company="Sqlx">
 // Copyright (c) Sqlx. All rights reserved.
 // </copyright>
 
@@ -13,27 +13,10 @@ using System.Linq;
 using System.Text;
 
 /// <summary>
-/// Source generator that creates IEntityProvider and IResultReader implementations for classes marked with [SqlxEntity].
+/// Source generator for [Sqlx] attribute - generates IEntityProvider, IResultReader, and IParameterBinder.
 /// </summary>
-/// <remarks>
-/// <para>
-/// This generator produces AOT-compatible, reflection-free implementations for:
-/// </para>
-/// <list type="bullet">
-/// <item><description><c>IEntityProvider</c> - Provides column metadata for SQL generation</description></item>
-/// <item><description><c>IResultReader&lt;T&gt;</c> - Reads entities from DbDataReader efficiently</description></item>
-/// </list>
-/// <para>
-/// The generated code respects:
-/// </para>
-/// <list type="bullet">
-/// <item><description>[Column] attribute for custom column name mapping</description></item>
-/// <item><description>[IgnoreDataMember] attribute to exclude properties</description></item>
-/// <item><description>Nullable annotations for proper null handling</description></item>
-/// </list>
-/// </remarks>
 [Generator(LanguageNames.CSharp)]
-public class EntityProviderGenerator : IIncrementalGenerator
+public class SqlxGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
@@ -55,7 +38,7 @@ public class EntityProviderGenerator : IIncrementalGenerator
             foreach (var attr in attrList.Attributes)
             {
                 var name = attr.Name.ToString();
-                if (name is "SqlxEntity" or "SqlxEntityAttribute")
+                if (name is "Sqlx" or "SqlxAttribute")
                     return classDecl;
             }
         }
@@ -66,14 +49,14 @@ public class EntityProviderGenerator : IIncrementalGenerator
     {
         if (classes.IsDefaultOrEmpty) return;
 
-        var sqlxEntityAttr = compilation.GetTypeByMetadataName("Sqlx.Annotations.SqlxEntityAttribute");
-        if (sqlxEntityAttr is null) return;
+        var sqlxAttr = compilation.GetTypeByMetadataName("Sqlx.Annotations.SqlxAttribute");
+        if (sqlxAttr is null) return;
 
         var ignoreAttr = compilation.GetTypeByMetadataName("System.Runtime.Serialization.IgnoreDataMemberAttribute");
         var columnAttr = compilation.GetTypeByMetadataName("System.ComponentModel.DataAnnotations.Schema.ColumnAttribute");
 
-        var entityTypes = new List<INamedTypeSymbol>();
         var processedTypes = new HashSet<string>();
+        var generatedTypes = new List<GeneratedTypeInfo>();
 
         foreach (var classDecl in classes.Distinct())
         {
@@ -83,43 +66,56 @@ public class EntityProviderGenerator : IIncrementalGenerator
             if (semanticModel.GetDeclaredSymbol(classDecl) is not INamedTypeSymbol hostTypeSymbol) continue;
 
             var attrs = hostTypeSymbol.GetAttributes()
-                .Where(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, sqlxEntityAttr))
+                .Where(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, sqlxAttr))
                 .ToList();
             if (attrs.Count == 0) continue;
 
             foreach (var attr in attrs)
             {
-                // Check for TargetType in constructor argument
+                // Get target type
                 INamedTypeSymbol targetType;
                 if (attr.ConstructorArguments.Length > 0 && attr.ConstructorArguments[0].Value is INamedTypeSymbol targetTypeArg)
-                {
                     targetType = targetTypeArg;
-                }
                 else
-                {
                     targetType = hostTypeSymbol;
-                }
 
                 var typeKey = targetType.ToDisplayString();
                 if (processedTypes.Contains(typeKey)) continue;
                 processedTypes.Add(typeKey);
 
-                entityTypes.Add(targetType);
+                // Get generation options
+                var genEntityProvider = GetNamedArgBool(attr, "GenerateEntityProvider", true);
+                var genResultReader = GetNamedArgBool(attr, "GenerateResultReader", true);
+                var genParameterBinder = GetNamedArgBool(attr, "GenerateParameterBinder", true);
 
-                var source = GenerateSource(targetType, ignoreAttr, columnAttr);
-                context.AddSource($"{targetType.Name}.EntityProvider.g.cs", SourceText.From(source, Encoding.UTF8));
+                var info = new GeneratedTypeInfo(targetType, genEntityProvider, genResultReader, genParameterBinder);
+                generatedTypes.Add(info);
+
+                var source = GenerateSource(targetType, ignoreAttr, columnAttr, genEntityProvider, genResultReader, genParameterBinder);
+                context.AddSource($"{targetType.Name}.Sqlx.g.cs", SourceText.From(source, Encoding.UTF8));
             }
         }
 
-        // Generate ModuleInitializer for all entity types
-        if (entityTypes.Count > 0)
+        // Generate ModuleInitializer
+        if (generatedTypes.Count > 0)
         {
-            var moduleInitSource = GenerateModuleInitializer(entityTypes);
-            context.AddSource("EntityProviders.ModuleInit.g.cs", SourceText.From(moduleInitSource, Encoding.UTF8));
+            var moduleInitSource = GenerateModuleInitializer(generatedTypes);
+            context.AddSource("Sqlx.ModuleInit.g.cs", SourceText.From(moduleInitSource, Encoding.UTF8));
         }
     }
 
-    private static string GenerateSource(INamedTypeSymbol typeSymbol, INamedTypeSymbol? ignoreAttr, INamedTypeSymbol? columnAttr)
+    private static bool GetNamedArgBool(AttributeData attr, string name, bool defaultValue)
+    {
+        foreach (var arg in attr.NamedArguments)
+        {
+            if (arg.Key == name && arg.Value.Value is bool b)
+                return b;
+        }
+        return defaultValue;
+    }
+
+    private static string GenerateSource(INamedTypeSymbol typeSymbol, INamedTypeSymbol? ignoreAttr, INamedTypeSymbol? columnAttr,
+        bool genEntityProvider, bool genResultReader, bool genParameterBinder)
     {
         var ns = typeSymbol.ContainingNamespace.IsGlobalNamespace ? null : typeSymbol.ContainingNamespace.ToDisplayString();
         var typeName = typeSymbol.Name;
@@ -143,29 +139,37 @@ public class EntityProviderGenerator : IIncrementalGenerator
         sb.AppendLine("using System.Data.Common;");
         sb.AppendLine();
 
-        // EntityProvider
-        GenerateEntityProvider(sb, typeName, fullTypeName, properties, columnAttr);
-        sb.AppendLine();
+        if (genEntityProvider)
+        {
+            GenerateEntityProvider(sb, typeName, fullTypeName, properties, columnAttr);
+            sb.AppendLine();
+        }
 
-        // ResultReader
-        GenerateResultReader(sb, typeName, fullTypeName, properties, columnAttr);
+        if (genResultReader)
+        {
+            GenerateResultReader(sb, typeName, fullTypeName, properties, columnAttr);
+            sb.AppendLine();
+        }
+
+        if (genParameterBinder)
+        {
+            GenerateParameterBinder(sb, typeName, fullTypeName, properties, columnAttr);
+        }
 
         return sb.ToString();
     }
 
-    private static void GenerateEntityProvider(IndentedStringBuilder sb, string typeName, string fullTypeName, 
-        System.Collections.Generic.List<IPropertySymbol> properties, INamedTypeSymbol? columnAttr)
+    private static void GenerateEntityProvider(IndentedStringBuilder sb, string typeName, string fullTypeName,
+        List<IPropertySymbol> properties, INamedTypeSymbol? columnAttr)
     {
         sb.AppendLine($"public sealed class {typeName}EntityProvider : global::Sqlx.IEntityProvider");
         sb.AppendLine("{");
         sb.PushIndent();
-
         sb.AppendLine($"public static {typeName}EntityProvider Default {{ get; }} = new();");
         sb.AppendLine($"private static readonly Type _entityType = typeof({fullTypeName});");
         sb.AppendLine("private static readonly IReadOnlyList<global::Sqlx.ColumnMeta> _columns = new global::Sqlx.ColumnMeta[]");
         sb.AppendLine("{");
         sb.PushIndent();
-
         foreach (var prop in properties)
         {
             var columnName = GetColumnName(prop, columnAttr);
@@ -173,61 +177,59 @@ public class EntityProviderGenerator : IIncrementalGenerator
             var isNullable = IsNullable(prop);
             sb.AppendLine($"new global::Sqlx.ColumnMeta(\"{columnName}\", \"{prop.Name}\", DbType.{dbType}, {isNullable.ToString().ToLowerInvariant()}),");
         }
-
         sb.PopIndent();
         sb.AppendLine("};");
         sb.AppendLine("public Type EntityType => _entityType;");
         sb.AppendLine("public IReadOnlyList<global::Sqlx.ColumnMeta> Columns => _columns;");
-
         sb.PopIndent();
         sb.AppendLine("}");
     }
 
     private static void GenerateResultReader(IndentedStringBuilder sb, string typeName, string fullTypeName,
-        System.Collections.Generic.List<IPropertySymbol> properties, INamedTypeSymbol? columnAttr)
+        List<IPropertySymbol> properties, INamedTypeSymbol? columnAttr)
     {
         sb.AppendLine($"public sealed class {typeName}ResultReader : global::Sqlx.IResultReader<{fullTypeName}>");
         sb.AppendLine("{");
         sb.PushIndent();
-
         sb.AppendLine($"public static {typeName}ResultReader Default {{ get; }} = new();");
         sb.AppendLine();
-
-        // Generate column name constants
-        sb.AppendLine("// Column names");
         for (int i = 0; i < properties.Count; i++)
         {
             var columnName = GetColumnName(properties[i], columnAttr);
             sb.AppendLine($"private const string Col{i} = \"{columnName}\";");
         }
         sb.AppendLine();
-
-        // GetOrdinals method
-        GenerateGetOrdinalsMethod(sb, properties);
-        sb.AppendLine();
-
-        // Read(IDataReader) method
-        GenerateReadMethod(sb, fullTypeName, properties);
-        sb.AppendLine();
-
-        // Read(IDataReader, int[]) method
-        GenerateReadWithOrdinalsMethod(sb, fullTypeName, properties);
-
-        sb.PopIndent();
-        sb.AppendLine("}");
-    }
-
-    private static void GenerateGetOrdinalsMethod(IndentedStringBuilder sb, System.Collections.Generic.List<IPropertySymbol> properties)
-    {
-        sb.AppendLine("public int[] GetOrdinals(IDataReader reader)");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        sb.AppendLine($"return new int[{properties.Count}]");
+        // GetOrdinals
+        sb.AppendLine("public int[] GetOrdinals(IDataReader reader) => new int[]");
         sb.AppendLine("{");
         sb.PushIndent();
         for (int i = 0; i < properties.Count; i++)
-        {
             sb.AppendLine($"reader.GetOrdinal(Col{i}),");
+        sb.PopIndent();
+        sb.AppendLine("};");
+        sb.AppendLine();
+        // Read(IDataReader)
+        sb.AppendLine($"public {fullTypeName} Read(IDataReader reader) => new {fullTypeName}");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        for (int i = 0; i < properties.Count; i++)
+        {
+            var prop = properties[i];
+            var readExpr = GetReaderExpression(prop.Type, $"reader.GetOrdinal(Col{i})", IsNullable(prop));
+            sb.AppendLine($"{prop.Name} = {readExpr},");
+        }
+        sb.PopIndent();
+        sb.AppendLine("};");
+        sb.AppendLine();
+        // Read(IDataReader, int[])
+        sb.AppendLine($"public {fullTypeName} Read(IDataReader reader, int[] ordinals) => new {fullTypeName}");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        for (int i = 0; i < properties.Count; i++)
+        {
+            var prop = properties[i];
+            var readExpr = GetReaderExpression(prop.Type, $"ordinals[{i}]", IsNullable(prop));
+            sb.AppendLine($"{prop.Name} = {readExpr},");
         }
         sb.PopIndent();
         sb.AppendLine("};");
@@ -235,57 +237,78 @@ public class EntityProviderGenerator : IIncrementalGenerator
         sb.AppendLine("}");
     }
 
-    private static void GenerateReadMethod(IndentedStringBuilder sb, string fullTypeName,
-        System.Collections.Generic.List<IPropertySymbol> properties)
+    private static void GenerateParameterBinder(IndentedStringBuilder sb, string typeName, string fullTypeName,
+        List<IPropertySymbol> properties, INamedTypeSymbol? columnAttr)
     {
-        sb.AppendLine($"public {fullTypeName} Read(IDataReader reader)");
+        sb.AppendLine($"public sealed class {typeName}ParameterBinder : global::Sqlx.IParameterBinder<{fullTypeName}>");
         sb.AppendLine("{");
         sb.PushIndent();
-
-        sb.AppendLine($"return new {fullTypeName}");
+        sb.AppendLine($"public static {typeName}ParameterBinder Default {{ get; }} = new();");
+        sb.AppendLine();
+        // BindEntity(DbCommand)
+        sb.AppendLine($"public void BindEntity(DbCommand cmd, {fullTypeName} e, string prefix = \"@\")");
         sb.AppendLine("{");
         sb.PushIndent();
-
-        for (int i = 0; i < properties.Count; i++)
+        foreach (var p in properties)
         {
-            var prop = properties[i];
-            var isNullable = IsNullable(prop);
-            // Inline GetOrdinal call directly
-            var readExpr = GetReaderExpression(prop.Type, $"reader.GetOrdinal(Col{i})", isNullable);
-            sb.AppendLine($"{prop.Name} = {readExpr},");
+            var col = GetColumnName(p, columnAttr);
+            var val = IsNullable(p) || p.Type.IsReferenceType ? $"e.{p.Name} ?? (object)DBNull.Value" : $"e.{p.Name}";
+            sb.AppendLine($"{{ var p = cmd.CreateParameter(); p.ParameterName = prefix + \"{col}\"; p.Value = {val}; cmd.Parameters.Add(p); }}");
         }
-
         sb.PopIndent();
-        sb.AppendLine("};");
-
+        sb.AppendLine("}");
+        // BindEntity(DbBatchCommand) - .NET 6+
+        sb.AppendLine("#if NET6_0_OR_GREATER");
+        sb.AppendLine($"public void BindEntity(DbBatchCommand cmd, {fullTypeName} e, Func<DbParameter> f, string prefix = \"@\")");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        foreach (var p in properties)
+        {
+            var col = GetColumnName(p, columnAttr);
+            var val = IsNullable(p) || p.Type.IsReferenceType ? $"e.{p.Name} ?? (object)DBNull.Value" : $"e.{p.Name}";
+            sb.AppendLine($"{{ var p = f(); p.ParameterName = prefix + \"{col}\"; p.Value = {val}; cmd.Parameters.Add(p); }}");
+        }
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine("#endif");
         sb.PopIndent();
         sb.AppendLine("}");
     }
 
-    private static void GenerateReadWithOrdinalsMethod(IndentedStringBuilder sb, string fullTypeName,
-        System.Collections.Generic.List<IPropertySymbol> properties)
+    private static string GenerateModuleInitializer(List<GeneratedTypeInfo> types)
     {
-        sb.AppendLine($"public {fullTypeName} Read(IDataReader reader, int[] ordinals)");
+        var sb = new IndentedStringBuilder(null);
+        sb.AppendLine("// <auto-generated/>");
+        sb.AppendLine("#nullable enable");
+        sb.AppendLine();
+        sb.AppendLine("namespace Sqlx.Generated;");
+        sb.AppendLine();
+        sb.AppendLine("using System.Runtime.CompilerServices;");
+        sb.AppendLine();
+        sb.AppendLine("internal static class SqlxInitializer");
         sb.AppendLine("{");
         sb.PushIndent();
-
-        sb.AppendLine($"return new {fullTypeName}");
+        sb.AppendLine("[ModuleInitializer]");
+        sb.AppendLine("internal static void Initialize()");
         sb.AppendLine("{");
         sb.PushIndent();
-
-        for (int i = 0; i < properties.Count; i++)
+        foreach (var info in types)
         {
-            var prop = properties[i];
-            var isNullable = IsNullable(prop);
-            var readExpr = GetReaderExpression(prop.Type, $"ordinals[{i}]", isNullable);
-            sb.AppendLine($"{prop.Name} = {readExpr},");
+            var fullTypeName = info.Type.ToDisplayString();
+            var typeName = info.Type.Name;
+            var ns = info.Type.ContainingNamespace.IsGlobalNamespace ? "Global" : info.Type.ContainingNamespace.ToDisplayString();
+            if (info.GenerateEntityProvider)
+                sb.AppendLine($"global::Sqlx.SqlQuery<{fullTypeName}>.EntityProvider = global::{ns}.{typeName}EntityProvider.Default;");
+            if (info.GenerateResultReader)
+                sb.AppendLine($"global::Sqlx.SqlQuery<{fullTypeName}>.ResultReader = global::{ns}.{typeName}ResultReader.Default;");
+            if (info.GenerateParameterBinder)
+                sb.AppendLine($"global::Sqlx.SqlQuery<{fullTypeName}>.ParameterBinder = global::{ns}.{typeName}ParameterBinder.Default;");
         }
-
-        sb.PopIndent();
-        sb.AppendLine("};");
-
         sb.PopIndent();
         sb.AppendLine("}");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        return sb.ToString();
     }
 
     private static string GetColumnName(IPropertySymbol prop, INamedTypeSymbol? columnAttr)
@@ -311,12 +334,9 @@ public class EntityProviderGenerator : IIncrementalGenerator
         return sb.ToString();
     }
 
-    private static bool IsNullable(IPropertySymbol prop)
-    {
-        if (prop.NullableAnnotation == NullableAnnotation.Annotated) return true;
-        if (prop.Type.IsValueType && prop.Type.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T) return true;
-        return false;
-    }
+    private static bool IsNullable(IPropertySymbol prop) =>
+        prop.NullableAnnotation == NullableAnnotation.Annotated ||
+        (prop.Type.IsValueType && prop.Type.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T);
 
     private static string GetDbType(ITypeSymbol type)
     {
@@ -364,49 +384,26 @@ public class EntityProviderGenerator : IIncrementalGenerator
             "Guid" => "GetGuid",
             _ => null,
         };
-
         if (method is null)
             return isNullable ? $"reader.IsDBNull({ordinal}) ? default : reader.GetValue({ordinal})" : $"reader.GetValue({ordinal})";
-
         if (isNullable)
             return $"reader.IsDBNull({ordinal}) ? default : reader.{method}({ordinal})";
-
         return $"reader.{method}({ordinal})";
     }
 
-    private static string GenerateModuleInitializer(List<INamedTypeSymbol> entityTypes)
+    private readonly struct GeneratedTypeInfo
     {
-        var sb = new IndentedStringBuilder(null);
-        sb.AppendLine("// <auto-generated/>");
-        sb.AppendLine("#nullable enable");
-        sb.AppendLine();
-        sb.AppendLine("namespace Sqlx.Generated;");
-        sb.AppendLine();
-        sb.AppendLine("using System.Runtime.CompilerServices;");
-        sb.AppendLine();
-        sb.AppendLine("internal static class EntityProvidersInitializer");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        sb.AppendLine("[ModuleInitializer]");
-        sb.AppendLine("internal static void Initialize()");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        sb.AppendLine("// Register all entity providers and result readers");
-        
-        foreach (var type in entityTypes)
+        public INamedTypeSymbol Type { get; }
+        public bool GenerateEntityProvider { get; }
+        public bool GenerateResultReader { get; }
+        public bool GenerateParameterBinder { get; }
+
+        public GeneratedTypeInfo(INamedTypeSymbol type, bool genEntityProvider, bool genResultReader, bool genParameterBinder)
         {
-            var fullTypeName = type.ToDisplayString();
-            var typeName = type.Name;
-            var ns = type.ContainingNamespace.IsGlobalNamespace ? "Global" : type.ContainingNamespace.ToDisplayString();
-            sb.AppendLine($"global::Sqlx.SqlQuery<{fullTypeName}>.EntityProvider = global::{ns}.{typeName}EntityProvider.Default;");
-            sb.AppendLine($"global::Sqlx.SqlQuery<{fullTypeName}>.ResultReader = global::{ns}.{typeName}ResultReader.Default;");
+            Type = type;
+            GenerateEntityProvider = genEntityProvider;
+            GenerateResultReader = genResultReader;
+            GenerateParameterBinder = genParameterBinder;
         }
-        
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.PopIndent();
-        sb.AppendLine("}");
-        
-        return sb.ToString();
     }
 }

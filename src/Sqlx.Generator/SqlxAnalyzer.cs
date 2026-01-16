@@ -19,16 +19,16 @@ using System.Text.RegularExpressions;
 public class SqlxAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>
-    /// SQLX001: Entity class should have [SqlxEntity] or [SqlxParameter] attribute.
+    /// SQLX001: Entity class should have [Sqlx] attribute.
     /// </summary>
     public static readonly DiagnosticDescriptor MissingEntityAttribute = new(
         id: "SQLX001",
-        title: "Missing [SqlxEntity] or [SqlxParameter] attribute",
-        messageFormat: "Entity type '{0}' used in repository should have [SqlxEntity] and/or [SqlxParameter] attribute for optimal performance",
+        title: "Missing [Sqlx] attribute",
+        messageFormat: "Entity type '{0}' used in repository should have [Sqlx] attribute for optimal performance",
         category: "Usage",
         defaultSeverity: DiagnosticSeverity.Info,
         isEnabledByDefault: true,
-        description: "Adding [SqlxEntity] generates EntityProvider and ResultReader. Adding [SqlxParameter] generates ParameterBinder. These provide AOT-compatible, reflection-free implementations.");
+        description: "Adding [Sqlx] generates EntityProvider, ResultReader, and ParameterBinder. These provide AOT-compatible, reflection-free implementations.");
 
     /// <summary>
     /// SQLX002: Unknown placeholder in SqlTemplate.
@@ -136,15 +136,12 @@ public class SqlxAnalyzer : DiagnosticAnalyzer
         if (entityType is null)
             return;
 
-        var sqlxEntityAttr = context.Compilation.GetTypeByMetadataName("Sqlx.Annotations.SqlxEntityAttribute");
-        var sqlxParamAttr = context.Compilation.GetTypeByMetadataName("Sqlx.Annotations.SqlxParameterAttribute");
+        var sqlxAttr = context.Compilation.GetTypeByMetadataName("Sqlx.Annotations.SqlxAttribute");
 
-        var hasEntityAttr = sqlxEntityAttr is not null &&
-            entityType.GetAttributes().Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, sqlxEntityAttr));
-        var hasParamAttr = sqlxParamAttr is not null &&
-            entityType.GetAttributes().Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, sqlxParamAttr));
+        var hasAttr = sqlxAttr is not null &&
+            entityType.GetAttributes().Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, sqlxAttr));
 
-        if (!hasEntityAttr && !hasParamAttr)
+        if (!hasAttr)
         {
             var diagnostic = Diagnostic.Create(
                 MissingEntityAttribute,

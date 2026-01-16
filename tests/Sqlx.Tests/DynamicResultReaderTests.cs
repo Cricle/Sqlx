@@ -690,7 +690,7 @@ public class DynamicResultReaderTests
 /// <summary>
 /// Test entity with all supported data types for comprehensive testing.
 /// </summary>
-[Sqlx.Annotations.SqlxEntity]
+[Sqlx.Annotations.Sqlx]
 public partial class TestEntityWithAllTypes
 {
     public int Id { get; set; }

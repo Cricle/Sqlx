@@ -9,8 +9,7 @@ namespace Sqlx.Tests;
 
 #region Test Entity and Repository
 
-[SqlxEntity]
-[SqlxParameter]
+[Sqlx]
 [TableName("test_entities")]
 public partial class InsertTestEntity
 {
@@ -160,3 +159,4 @@ public class InsertAndGetIdTests
 
     #endregion
 }
+

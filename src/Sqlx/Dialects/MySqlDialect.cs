@@ -80,6 +80,14 @@ public sealed class MySqlDialect : SqlDialect
 
     #endregion
 
+    #region Numeric Functions
+
+    /// <inheritdoc/>
+    public override string Mod(string dividend, string divisor) =>
+        $"MOD({dividend}, {divisor})";
+
+    #endregion
+
     #region Last Inserted ID
 
     /// <inheritdoc/>

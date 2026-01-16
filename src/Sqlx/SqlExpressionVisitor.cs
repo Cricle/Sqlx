@@ -462,8 +462,8 @@ namespace Sqlx
             }
             else
             {
-                if (_take.HasValue) sb.Append(" LIMIT ").Append(_take.Value);
-                if (_skip.HasValue) sb.Append(" OFFSET ").Append(_skip.Value);
+                if (_take.HasValue) sb.Append(' ').Append(_dialect.Limit(_take.Value.ToString()));
+                if (_skip.HasValue) sb.Append(' ').Append(_dialect.Offset(_skip.Value.ToString()));
             }
         }
     }

@@ -71,6 +71,10 @@ public sealed class PostgreSqlDialect : SqlDialect
     /// <inheritdoc/>
     public override string Ceiling(string expression) => $"CEIL({expression})";
 
+    /// <inheritdoc/>
+    public override string Mod(string dividend, string divisor) =>
+        $"MOD({dividend}, {divisor})";
+
     #endregion
 
     #region Type Casting

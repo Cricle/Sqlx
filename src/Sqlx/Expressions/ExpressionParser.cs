@@ -160,22 +160,12 @@ namespace Sqlx.Expressions
             }
 
             var inner = ParseRaw(m.Expression!);
-            return DatabaseType == "SqlServer"
-                ? string.Concat("LEN(", inner, ")")
-                : string.Concat("LENGTH(", inner, ")");
+            return _dialect.Length(inner);
         }
 
         private string BuildCaseWhen(ConditionalExpression c)
         {
-            var sb = GetBuilder();
-            sb.Append("CASE WHEN ");
-            sb.Append(Parse(c.Test));
-            sb.Append(" THEN ");
-            sb.Append(Parse(c.IfTrue));
-            sb.Append(" ELSE ");
-            sb.Append(Parse(c.IfFalse));
-            sb.Append(" END");
-            return sb.ToString();
+            return _dialect.CaseWhen(Parse(c.Test), Parse(c.IfTrue), Parse(c.IfFalse));
         }
 
         private string ParseBinary(BinaryExpression b)
@@ -235,9 +225,9 @@ namespace Sqlx.Expressions
                 ExpressionType.Multiply => string.Concat("(", left, " * ", right, ")"),
                 ExpressionType.Divide => string.Concat("(", left, " / ", right, ")"),
                 ExpressionType.Modulo => DatabaseType == "Oracle"
-                    ? string.Concat("MOD(", left, ", ", right, ")")
+                    ? _dialect.Mod(left, right)
                     : string.Concat("(", left, " % ", right, ")"),
-                ExpressionType.Coalesce => string.Concat("COALESCE(", left, ", ", right, ")"),
+                ExpressionType.Coalesce => _dialect.Coalesce(left, right),
                 _ => throw new NotSupportedException($"Binary operator {b.NodeType} is not supported")
             };
         }

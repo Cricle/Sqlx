@@ -129,6 +129,7 @@ public static class ResultReaderExtensions
 
     /// <summary>
     /// Reads all entities into a list (async).
+    /// Uses synchronous Read() in the loop for better performance when data is buffered.
     /// </summary>
     public static async Task<List<TEntity>> ToListAsync<TEntity>(
         this IResultReader<TEntity> reader,
@@ -136,19 +137,22 @@ public static class ResultReaderExtensions
         CancellationToken cancellationToken = default)
     {
         var list = new List<TEntity>();
+        // First read is async to handle network latency
         if (!await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false)) return list;
         
         var ordinals = reader.GetOrdinals(dataReader);
+        // Subsequent reads use sync Read() - data is typically buffered after first read
         do
         {
             list.Add(reader.Read(dataReader, ordinals));
-        } while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false));
+        } while (dataReader.Read());
         
         return list;
     }
 
     /// <summary>
     /// Reads all entities into a list (async), using pre-computed ordinals.
+    /// Uses synchronous Read() in the loop for better performance when data is buffered.
     /// </summary>
     public static async Task<List<TEntity>> ToListAsync<TEntity>(
         this IResultReader<TEntity> reader,
@@ -157,18 +161,21 @@ public static class ResultReaderExtensions
         CancellationToken cancellationToken = default)
     {
         var list = new List<TEntity>();
+        // First read is async to handle network latency
         if (!await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false)) return list;
         
+        // Subsequent reads use sync Read() - data is typically buffered after first read
         do
         {
             list.Add(reader.Read(dataReader, ordinals));
-        } while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false));
+        } while (dataReader.Read());
         
         return list;
     }
 
     /// <summary>
     /// Reads all entities into a list (async), using pre-computed ordinals and capacity hint.
+    /// Uses synchronous Read() in the loop for better performance when data is buffered.
     /// </summary>
     /// <param name="reader">The result reader.</param>
     /// <param name="dataReader">The data reader.</param>
@@ -184,12 +191,14 @@ public static class ResultReaderExtensions
         CancellationToken cancellationToken = default)
     {
         var list = new List<TEntity>(capacityHint);
+        // First read is async to handle network latency
         if (!await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false)) return list;
         
+        // Subsequent reads use sync Read() - data is typically buffered after first read
         do
         {
             list.Add(reader.Read(dataReader, ordinals));
-        } while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false));
+        } while (dataReader.Read());
         
         return list;
     }

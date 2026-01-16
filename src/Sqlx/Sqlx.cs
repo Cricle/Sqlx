@@ -22,57 +22,22 @@ namespace Sqlx
 #endif
         T>
     {
-        private static IEntityProvider? _cachedEntityProvider;
-        private static IResultReader<T>? _cachedResultReader;
-        private static IParameterBinder<T>? _cachedParameterBinder;
-        private static readonly object _lock = new object();
-
         /// <summary>
         /// Gets or sets the cached entity provider for type T.
         /// </summary>
-        public static IEntityProvider? EntityProvider
-        {
-            get => _cachedEntityProvider;
-            set
-            {
-                lock (_lock)
-                {
-                    _cachedEntityProvider = value;
-                }
-            }
-        }
+        public static IEntityProvider? EntityProvider { get; set; }
 
         /// <summary>
         /// Gets or sets the cached result reader for type T.
         /// Used for Select projections and query results.
         /// </summary>
-        public static IResultReader<T>? ResultReader
-        {
-            get => _cachedResultReader;
-            set
-            {
-                lock (_lock)
-                {
-                    _cachedResultReader ??= value;  // Only set once
-                }
-            }
-        }
+        public static IResultReader<T>? ResultReader { get; set; }
 
         /// <summary>
         /// Gets or sets the cached parameter binder for type T.
         /// Used for binding entity properties to command parameters.
         /// </summary>
-        public static IParameterBinder<T>? ParameterBinder
-        {
-            get => _cachedParameterBinder;
-            set
-            {
-                lock (_lock)
-                {
-                    _cachedParameterBinder ??= value;  // Only set once
-                }
-            }
-        }
+        public static IParameterBinder<T>? ParameterBinder { get; set; }
 
         /// <summary>
         /// Creates a query for the specified SQL dialect.

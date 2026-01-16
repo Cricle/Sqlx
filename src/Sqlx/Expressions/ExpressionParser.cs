@@ -72,6 +72,11 @@ namespace Sqlx.Expressions
         private string? _groupByColumn;
 
         /// <summary>
+        /// Gets the GROUP BY column for resolving Key property in Select after GroupBy.
+        /// </summary>
+        public string? GroupByColumn => _groupByColumn;
+
+        /// <summary>
         /// Sets the GROUP BY column for resolving Key property in Select after GroupBy.
         /// </summary>
         public void SetGroupByColumn(string column) => _groupByColumn = column;
@@ -435,7 +440,8 @@ namespace Sqlx.Expressions
             var entityProvider = elementType != null ? EntityProviderRegistry.Get(elementType) : null;
             
             // Use SqlExpressionVisitor - subquery parsing is the same as normal query parsing
-            var visitor = new SqlExpressionVisitor(_dialect, _parameterized, entityProvider);
+            // Pass the current groupByColumn so that references to outer scope (like x.Key) can be resolved
+            var visitor = new SqlExpressionVisitor(_dialect, _parameterized, entityProvider, _groupByColumn);
             return visitor.GenerateSql(expr);
         }
 

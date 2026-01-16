@@ -65,12 +65,19 @@ namespace Sqlx
         private string? _subQuery;
         private bool _isDistinct;
 
-        public SqlExpressionVisitor(SqlDialect dialect, bool parameterized = false, IEntityProvider? entityProvider = null)
+        public SqlExpressionVisitor(SqlDialect dialect, bool parameterized = false, IEntityProvider? entityProvider = null, string? outerGroupByColumn = null)
         {
             _dialect = dialect;
             _parameters = new Dictionary<string, object?>(4);
             _parser = new ExpressionParser(dialect, _parameters, parameterized);
             _entityProvider = entityProvider;
+            
+            // If there's an outer groupByColumn, set it in the parser so that
+            // references to outer scope (like x.Key in subqueries) can be resolved
+            if (outerGroupByColumn != null)
+            {
+                _parser.SetGroupByColumn(outerGroupByColumn);
+            }
         }
 
         public Dictionary<string, object?> GetParameters() => new(_parameters);

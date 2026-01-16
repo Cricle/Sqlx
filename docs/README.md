@@ -4,11 +4,11 @@ Sqlx 是一个高性能、AOT 友好的 SQL 生成库。使用源生成器在编
 
 ## 核心特性
 
-- **🚀 高性能** - 比 Dapper.AOT 快 15%，比 FreeSql 快 7 倍
+- **🚀 高性能** - 比 Dapper.AOT 快 19%，比 FreeSql 快 6.8 倍
 - **⚡ 零反射** - 所有代码在编译时生成
 - **🎯 类型安全** - SQL 模板的编译时验证
 - **🌐 多数据库** - SQLite, MySQL, PostgreSQL, SQL Server, Oracle, DB2
-- **📦 AOT 就绪** - 通过 974 个单元测试，完全支持 Native AOT
+- **📦 AOT 就绪** - 通过 1277 个单元测试，完全支持 Native AOT
 - **🔧 LINQ 支持** - IQueryable 接口，支持 Where/Select/OrderBy/Join
 - **💾 智能缓存** - SqlQuery\<T\> 泛型缓存，自动注册 EntityProvider
 - **🎨 动态投影** - Select 支持匿名类型，自动生成 DynamicResultReader
@@ -103,12 +103,12 @@ Sqlx 在 .NET 10 (LTS) 上的性能表现：
 
 | 操作 | Sqlx | Dapper.AOT | FreeSql | Sqlx 优势 |
 |------|------|------------|---------|-----------|
-| 单条查询 | **9.08 μs** | 10.43 μs | 64.54 μs | 快 15% / 7.1x |
-| 内存分配 | **1.79 KB** | 2.96 KB | 11.55 KB | 少 65% / 546% |
+| 单条查询 | **8.70 μs** | 10.35 μs | 59.30 μs | 快 19% / 6.8x |
+| 内存分配 | **1.41 KB** | 2.66 KB | 10.24 KB | 少 47% / 626% |
 
 **测试环境:** .NET 10.0.2 (LTS), BenchmarkDotNet 0.15.7, SQLite 内存数据库
 
-**AOT 兼容性:** ✅ 通过 974 个单元测试，完全支持 Native AOT
+**AOT 兼容性:** ✅ 通过 1277 个单元测试，完全支持 Native AOT
 
 **最新优化:**
 - 泛型 SqlQuery\<T\> 缓存优化

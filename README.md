@@ -4,18 +4,18 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-purple.svg)](#)
 [![LTS](https://img.shields.io/badge/LTS-.NET%2010-green.svg)](#)
-[![Tests](https://img.shields.io/badge/tests-974%20passing-brightgreen.svg)](#)
+[![Tests](https://img.shields.io/badge/tests-1277%20passing-brightgreen.svg)](#)
 [![AOT](https://img.shields.io/badge/AOT-ready-blue.svg)](#)
 
 高性能、AOT 友好的 .NET 数据库访问库。使用源生成器在编译时生成代码，零运行时反射，完全支持 Native AOT。
 
 ## 核心特性
 
-- **🚀 高性能** - 比 Dapper.AOT 快 15%，比 FreeSql 快 7 倍（单条查询）
+- **🚀 高性能** - 比 Dapper.AOT 快 19%，比 FreeSql 快 6.8 倍（单条查询）
 - **⚡ 零反射** - 编译时源生成，运行时无反射开销
 - **🎯 类型安全** - 编译时验证 SQL 模板和表达式
 - **🌐 多数据库** - SQLite、PostgreSQL、MySQL、SQL Server、Oracle、DB2
-- **📦 AOT 就绪** - 完全支持 Native AOT，通过 974 个单元测试
+- **📦 AOT 就绪** - 完全支持 Native AOT，通过 1277 个单元测试
 - **🔧 LINQ 支持** - IQueryable 接口，支持 Where/Select/OrderBy/Join 等
 - **💾 智能缓存** - SqlQuery\<T\> 泛型缓存，自动注册 EntityProvider
 
@@ -175,11 +175,8 @@ await connection.ExecuteBatchAsync(sql, users, UserParameterBinder.Default);
 
 | 操作 | Sqlx | Dapper.AOT | FreeSql | Sqlx 优势 |
 |------|------|------------|---------|-----------|
-| 单条查询 | **9.08 μs** | 10.43 μs | 64.54 μs | 快 15% / 7.1x |
-| 内存分配 | **1.79 KB** | 2.96 KB | 11.55 KB | 少 65% / 546% |
-| 插入操作 | **81.76 μs** | 85.03 μs | 165.69 μs | 持平 / 快 2.0x |
-| 更新操作 | **15.82 μs** | 17.20 μs | 65.63 μs | 快 9% / 4.2x |
-| 计数操作 | **3.91 μs** | 3.98 μs | 195.30 μs | 持平 / 快 50x |
+| 单条查询 | **8.70 μs** | 10.35 μs | 59.30 μs | 快 19% / 6.8x |
+| 内存分配 | **1.41 KB** | 2.66 KB | 10.24 KB | 少 47% / 626% |
 
 > 详细数据见 [性能基准测试](docs/benchmarks.md)
 

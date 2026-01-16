@@ -89,6 +89,22 @@ namespace Sqlx
         }
 
         /// <summary>
+        /// Creates a query from a subquery (FROM subquery).
+        /// </summary>
+        /// <param name="dialect">The SQL dialect.</param>
+        /// <param name="subQuery">The subquery to use as the FROM source.</param>
+        /// <returns>An IQueryable for building SQL queries with subquery as source.</returns>
+        public static IQueryable<T> For(SqlDialect dialect, IQueryable<T> subQuery)
+        {
+            var provider = new SqlxQueryProvider<T>(dialect, EntityProvider)
+            {
+                ResultReader = ResultReader
+            };
+            // Create a SqlxQueryable with subquery source marker
+            return new SqlxQueryable<T>(provider, subQuery);
+        }
+
+        /// <summary>
         /// Creates a query for the specified SQL dialect.
         /// </summary>
         /// <param name="dialect">The SQL dialect.</param>

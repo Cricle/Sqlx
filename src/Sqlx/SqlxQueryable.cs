@@ -24,6 +24,9 @@ namespace Sqlx
     {
         /// <summary>Gets the expression tree.</summary>
         Expression Expression { get; }
+        
+        /// <summary>Gets the subquery source, if any.</summary>
+        IQueryable? SubQuerySource { get; }
     }
 
     /// <summary>
@@ -45,7 +48,7 @@ namespace Sqlx
         internal SqlxQueryable(SqlxQueryProvider<T> provider)
         {
             _provider = provider ?? throw new ArgumentNullException(nameof(provider));
-            Expression = Expression.Empty();
+            Expression = Expression.Constant(this);
         }
 
         /// <summary>
@@ -57,6 +60,18 @@ namespace Sqlx
         {
             _provider = provider ?? throw new ArgumentNullException(nameof(provider));
             Expression = expression ?? throw new ArgumentNullException(nameof(expression));
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SqlxQueryable{T}"/> class with a subquery source.
+        /// </summary>
+        /// <param name="provider">The query provider.</param>
+        /// <param name="subQuerySource">The subquery to use as the FROM source.</param>
+        internal SqlxQueryable(SqlxQueryProvider<T> provider, IQueryable<T> subQuerySource)
+        {
+            _provider = provider ?? throw new ArgumentNullException(nameof(provider));
+            SubQuerySource = subQuerySource ?? throw new ArgumentNullException(nameof(subQuerySource));
+            Expression = Expression.Constant(this);
         }
 
         /// <summary>
@@ -83,6 +98,9 @@ namespace Sqlx
 
         /// <inheritdoc/>
         public Expression Expression { get; }
+
+        /// <inheritdoc/>
+        public IQueryable? SubQuerySource { get; }
 
         /// <inheritdoc/>
         public IQueryProvider Provider => _provider;

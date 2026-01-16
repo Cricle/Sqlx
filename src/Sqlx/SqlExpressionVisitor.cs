@@ -20,6 +20,7 @@ namespace Sqlx
     {
         public JoinType JoinType { get; set; }
         public string TableName { get; set; } = string.Empty;
+        public string? SubQuery { get; set; }
         public string Alias { get; set; } = string.Empty;
         public string OnCondition { get; set; } = string.Empty;
     }
@@ -65,8 +66,32 @@ namespace Sqlx
 
         public string GenerateSql(Expression expression)
         {
+            // Check if the root expression's source has a subquery source
+            var rootSource = GetRootSource(expression);
+            if (rootSource is ConstantExpression { Value: ISqlxQueryable sqlxQueryable } &&
+                sqlxQueryable.SubQuerySource != null)
+            {
+                // The source is a subquery, generate it first
+                var subVisitor = new SqlExpressionVisitor(_dialect, _parameters.Count > 0, _entityProvider);
+                _subQuery = subVisitor.GenerateSql(sqlxQueryable.SubQuerySource.Expression);
+                foreach (var p in subVisitor.GetParameters())
+                    _parameters[p.Key] = p.Value;
+                
+                // Set table name from the element type
+                _tableName = sqlxQueryable.SubQuerySource.ElementType.Name;
+            }
+            
             Visit(expression);
             return BuildSql();
+        }
+
+        private static Expression? GetRootSource(Expression expression)
+        {
+            while (expression is MethodCallExpression methodCall && methodCall.Arguments.Count > 0)
+            {
+                expression = methodCall.Arguments[0];
+            }
+            return expression;
         }
 
         protected override Expression VisitConstant(ConstantExpression node)
@@ -180,9 +205,47 @@ namespace Sqlx
 
             var innerArg = node.Arguments[1];
             string? innerTableName = null;
+            string? innerSubQuery = null;
 
+            // Case 1: innerArg is a ConstantExpression containing an IQueryable
             if (innerArg is ConstantExpression { Value: IQueryable innerQueryable })
+            {
                 innerTableName = innerQueryable.ElementType.Name;
+                // Check if this is a SqlxQueryable with a subquery source or non-trivial expression
+                if (innerQueryable is ISqlxQueryable sqlxQueryable)
+                {
+                    if (sqlxQueryable.SubQuerySource != null)
+                    {
+                        // Has explicit subquery source - don't pass entityProvider, let subquery use its own
+                        var subVisitor = new SqlExpressionVisitor(_dialect, _parameters.Count > 0, null);
+                        innerSubQuery = subVisitor.GenerateSql(sqlxQueryable.SubQuerySource.Expression);
+                    }
+                    else if (sqlxQueryable.Expression is not ConstantExpression)
+                    {
+                        // Has non-trivial expression (e.g., Where, Select, etc.) - don't pass entityProvider
+                        var subVisitor = new SqlExpressionVisitor(_dialect, _parameters.Count > 0, null);
+                        innerSubQuery = subVisitor.GenerateSql(sqlxQueryable.Expression);
+                    }
+                }
+            }
+            // Case 2: innerArg is a MethodCallExpression (e.g., .Where(...))
+            else if (innerArg is MethodCallExpression innerMethodCall)
+            {
+                // Get the element type from the method's return type
+                var returnType = innerMethodCall.Type;
+                if (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(IQueryable<>))
+                {
+                    innerTableName = returnType.GetGenericArguments()[0].Name;
+                }
+                else
+                {
+                    innerTableName = innerMethodCall.Method.GetGenericArguments().FirstOrDefault()?.Name;
+                }
+                
+                // Generate subquery SQL from the method call expression - don't pass entityProvider
+                var subVisitor = new SqlExpressionVisitor(_dialect, _parameters.Count > 0, null);
+                innerSubQuery = subVisitor.GenerateSql(innerArg);
+            }
             else if (innerArg is MethodCallExpression innerMethod)
             {
                 Visit(innerArg);
@@ -198,14 +261,18 @@ namespace Sqlx
 
             var outerColumn = _parser.GetColumnName(outerKeySelector.Body);
             var innerColumn = _parser.GetColumnName(innerKeySelector.Body);
-            var alias = innerTableName.ToLower();
+            
+            // Generate unique alias for the joined table
+            var alias = $"t{_joinClauses.Count + 2}";
+            var outerAlias = _joinClauses.Count == 0 ? "t1" : $"t{_joinClauses.Count + 1}";
 
             _joinClauses.Add(new JoinClause
             {
                 JoinType = joinType,
                 TableName = innerTableName,
+                SubQuery = innerSubQuery,
                 Alias = alias,
-                OnCondition = $"{_dialect.WrapColumn(_tableName ?? "t1")}.{outerColumn} = {_dialect.WrapColumn(alias)}.{innerColumn}"
+                OnCondition = $"{_dialect.WrapColumn(outerAlias)}.{outerColumn} = {_dialect.WrapColumn(alias)}.{innerColumn}"
             });
 
             var resultSelector = GetLambda(node.Arguments[4]);
@@ -241,9 +308,19 @@ namespace Sqlx
 
             // FROM
             if (_subQuery != null)
+            {
                 sb.Append(" FROM (").Append(_subQuery).Append(") AS ").Append(_dialect.WrapColumn("sq"));
+            }
+            else if (_joinClauses.Count > 0)
+            {
+                // When there are JOINs, add alias to main table
+                sb.Append(" FROM ").Append(_dialect.WrapColumn(_tableName ?? "Unknown"))
+                  .Append(" AS ").Append(_dialect.WrapColumn("t1"));
+            }
             else
+            {
                 sb.Append(" FROM ").Append(_dialect.WrapColumn(_tableName ?? "Unknown"));
+            }
 
             // JOIN
             foreach (var join in _joinClauses)
@@ -256,9 +333,18 @@ namespace Sqlx
                     JoinType.Full => "FULL OUTER JOIN",
                     _ => "INNER JOIN"
                 });
-                sb.Append(' ').Append(_dialect.WrapColumn(join.TableName));
-                if (!string.IsNullOrEmpty(join.Alias))
-                    sb.Append(" AS ").Append(_dialect.WrapColumn(join.Alias));
+
+                // Support subquery in JOIN
+                if (!string.IsNullOrEmpty(join.SubQuery))
+                {
+                    sb.Append(" (").Append(join.SubQuery).Append(") AS ").Append(_dialect.WrapColumn(join.Alias));
+                }
+                else
+                {
+                    sb.Append(' ').Append(_dialect.WrapColumn(join.TableName));
+                    if (!string.IsNullOrEmpty(join.Alias))
+                        sb.Append(" AS ").Append(_dialect.WrapColumn(join.Alias));
+                }
                 sb.Append(" ON ").Append(join.OnCondition);
             }
 

@@ -226,14 +226,6 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("{");
         sb.PushIndent();
 
-        // Generate connection field if needed (for primary constructor parameters)
-        // Only generate if not already defined by user
-        if (connectionInfo.NeedsField && !HasMember(repoType, connectionInfo.FieldName))
-        {
-            sb.AppendLine($"private readonly {connectionInfo.TypeName} {connectionInfo.FieldName};");
-            sb.AppendLine();
-        }
-
         // Generate Transaction property only if not already defined by user
         if (!HasMember(repoType, "Transaction"))
         {
@@ -302,34 +294,19 @@ public class RepositoryGenerator : IIncrementalGenerator
     /// </summary>
     private readonly struct ConnectionInfo
     {
-        public string AccessExpression { get; init; }
-        public string TypeName { get; init; }
-        public string FieldName { get; init; }
-        public bool NeedsField { get; init; }
+        /// <summary>Expression to access the connection (e.g., "connection", "Connection", or null for method parameter).</summary>
+        public string? AccessExpression { get; init; }
+        /// <summary>If true, connection comes from method parameter.</summary>
+        public bool FromMethodParameter { get; init; }
     }
 
     /// <summary>
     /// Finds the DbConnection source in the repository class.
-    /// Priority: field/property > primary constructor parameter
+    /// Priority: property > constructor parameter (method parameter checked per-method)
     /// </summary>
     private static ConnectionInfo FindDbConnection(INamedTypeSymbol repoType)
     {
-        // 1. Check fields first
-        foreach (var member in repoType.GetMembers())
-        {
-            if (member is IFieldSymbol field && !field.IsStatic && IsDbConnectionType(field.Type))
-            {
-                return new ConnectionInfo
-                {
-                    AccessExpression = field.Name,
-                    TypeName = field.Type.ToDisplayString(),
-                    FieldName = field.Name,
-                    NeedsField = false
-                };
-            }
-        }
-
-        // 2. Check properties
+        // 1. Check properties first
         foreach (var member in repoType.GetMembers())
         {
             if (member is IPropertySymbol prop && !prop.IsStatic && prop.GetMethod != null && IsDbConnectionType(prop.Type))
@@ -337,9 +314,20 @@ public class RepositoryGenerator : IIncrementalGenerator
                 return new ConnectionInfo
                 {
                     AccessExpression = prop.Name,
-                    TypeName = prop.Type.ToDisplayString(),
-                    FieldName = prop.Name,
-                    NeedsField = false
+                    FromMethodParameter = false
+                };
+            }
+        }
+
+        // 2. Check fields
+        foreach (var member in repoType.GetMembers())
+        {
+            if (member is IFieldSymbol field && !field.IsStatic && IsDbConnectionType(field.Type))
+            {
+                return new ConnectionInfo
+                {
+                    AccessExpression = field.Name,
+                    FromMethodParameter = false
                 };
             }
         }
@@ -356,27 +344,48 @@ public class RepositoryGenerator : IIncrementalGenerator
                 {
                     if (IsDbConnectionType(param.Type))
                     {
-                        var fieldName = "_" + param.Name;
+                        // Use parameter name directly (primary constructor captures it)
                         return new ConnectionInfo
                         {
-                            AccessExpression = fieldName,
-                            TypeName = param.Type.ToDisplayString(),
-                            FieldName = fieldName,
-                            NeedsField = true
+                            AccessExpression = param.Name,
+                            FromMethodParameter = false
                         };
                     }
                 }
             }
         }
 
-        // Default fallback
+        // No class-level connection found, will need method parameter
         return new ConnectionInfo
         {
-            AccessExpression = "_connection",
-            TypeName = "DbConnection",
-            FieldName = "_connection",
-            NeedsField = false
+            AccessExpression = null,
+            FromMethodParameter = true
         };
+    }
+
+    /// <summary>
+    /// Gets the connection access expression for a specific method.
+    /// Checks method parameter first, then falls back to class-level connection.
+    /// </summary>
+    private static string GetConnectionExpression(IMethodSymbol method, ConnectionInfo classConnectionInfo)
+    {
+        // 1. Check method parameters first
+        foreach (var param in method.Parameters)
+        {
+            if (IsDbConnectionType(param.Type))
+            {
+                return param.Name;
+            }
+        }
+
+        // 2. Fall back to class-level connection
+        if (classConnectionInfo.AccessExpression != null)
+        {
+            return classConnectionInfo.AccessExpression;
+        }
+
+        // Should not happen if interface is properly defined
+        return "_connection";
     }
 
     /// <summary>
@@ -555,6 +564,9 @@ public class RepositoryGenerator : IIncrementalGenerator
         var isReturnInsertedId = returnInsertedIdAttr is not null && 
             method.GetAttributes().Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, returnInsertedIdAttr));
 
+        // Get connection expression for this method (method param > property > ctor param)
+        var connectionExpression = GetConnectionExpression(method, connectionInfo);
+
         // Check if this is a sync method (doesn't return Task)
         var isAsync = returnType.Contains("Task<") || returnType == "Task" || returnType.Contains("System.Threading.Tasks.Task");
 
@@ -598,7 +610,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         GenerateActivityStart(sb, methodName, method, hasDynamicParams);
 
         sb.AppendLine();
-        sb.AppendLine($"using DbCommand cmd = {connectionInfo.AccessExpression}.CreateCommand();");
+        sb.AppendLine($"using DbCommand cmd = {connectionExpression}.CreateCommand();");
         sb.AppendLine("if (Transaction != null) cmd.Transaction = Transaction;");
 
         if (hasDynamicParams)

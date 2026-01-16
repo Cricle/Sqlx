@@ -58,9 +58,23 @@ namespace Sqlx.Expressions
         public string Col(Expression e) => e switch
         {
             UnaryExpression { NodeType: ExpressionType.Convert } u => Col(u.Operand),
+            MemberExpression m when m.Member.Name == "Key" && IsGroupingType(m.Expression?.Type) => _groupByColumn ?? "Key",
             MemberExpression m => _dialect.WrapColumn(ExpressionHelper.ConvertToSnakeCase(m.Member.Name)),
             _ => ParseRaw(e)
         };
+
+        private static bool IsGroupingType(Type? type)
+        {
+            if (type == null) return false;
+            return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IGrouping<,>);
+        }
+
+        private string? _groupByColumn;
+
+        /// <summary>
+        /// Sets the GROUP BY column for resolving Key property in Select after GroupBy.
+        /// </summary>
+        public void SetGroupByColumn(string column) => _groupByColumn = column;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public string GetColumnName(Expression e) => Col(e);

@@ -150,11 +150,9 @@ namespace Sqlx
                 throw new InvalidOperationException("Connection is not set. Use WithConnection() before executing queries.");
             }
 
-            if (ResultReader == null)
-            {
-                throw new InvalidOperationException("ResultReader is not set. Use WithReader() before executing queries.");
-            }
-
+            // Try to get ResultReader from instance or from cached SqlQuery<TResult>
+            var reader = ResultReader as IResultReader<TResult> ?? SqlQuery<TResult>.ResultReader;
+            
             // Check if this is a method call expression
             if (expression is MethodCallExpression methodCall)
             {
@@ -165,8 +163,12 @@ namespace Sqlx
                     case "First":
                     case "FirstOrDefault":
                         {
+                            if (reader == null)
+                            {
+                                throw new InvalidOperationException($"ResultReader is not set for type {typeof(TResult).Name}. Use WithReader() or ensure the type has a generated reader.");
+                            }
                             var (sql, parameters) = ToSqlWithParameters(expression);
-                            var result = DbExecutor.ExecuteReader(Connection, sql, parameters, (IResultReader<TResult>)ResultReader!);
+                            var result = DbExecutor.ExecuteReader(Connection, sql, parameters, reader);
                             return methodName == "First" ? result.First() : result.FirstOrDefault()!;
                         }
                     case "Count":

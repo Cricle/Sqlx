@@ -270,6 +270,13 @@ namespace Sqlx.Expressions
                 return ParseSubQueryForMethod(m);
             }
 
+            // Check if this is a SubQuery.For<T>() chain without aggregate (e.g., ToList, ToArray, etc.)
+            // In this case, generate the subquery SQL directly
+            if (IsSubQueryChainWithoutAggregate(m))
+            {
+                return ParseSubQueryChain(m);
+            }
+
             if (ExpressionHelper.IsAggregateContext(m))
             {
                 return AggregateParser.Parse(this, m);
@@ -294,6 +301,39 @@ namespace Sqlx.Expressions
                 var t when t == typeof(DateTime) => DateTimeFunctionParser.Parse(this, m),
                 _ => m.Object != null ? ParseRaw(m.Object) : "1=1"
             };
+        }
+
+        /// <summary>
+        /// Checks if this is a SubQuery chain that ends with a non-aggregate method like ToList, ToArray, etc.
+        /// </summary>
+        private static bool IsSubQueryChainWithoutAggregate(MethodCallExpression m)
+        {
+            // Methods that indicate end of query chain but not aggregates
+            if (m.Method.Name is not ("ToList" or "ToArray" or "AsEnumerable" or "AsQueryable"))
+                return false;
+
+            // Check if the source contains SubQuery.For<T>() call
+            if (m.Arguments.Count > 0)
+                return ContainsSubQueryFor(m.Arguments[0]);
+            if (m.Object != null)
+                return ContainsSubQueryFor(m.Object);
+            return false;
+        }
+
+        /// <summary>
+        /// Parses a SubQuery chain that doesn't end with an aggregate function.
+        /// Generates the subquery SQL directly.
+        /// </summary>
+        private string ParseSubQueryChain(MethodCallExpression m)
+        {
+            // Get the source expression (before ToList/ToArray/etc.)
+            var sourceExpr = m.Arguments.Count > 0 ? m.Arguments[0] : m.Object;
+            if (sourceExpr == null)
+                return "1=1";
+
+            // Generate the subquery SQL
+            var subQuerySql = GenerateSubQuerySql(sourceExpr);
+            return $"({subQuerySql})";
         }
 
         private static bool IsSubQueryForMethod(MethodCallExpression m)
@@ -336,7 +376,7 @@ namespace Sqlx.Expressions
                 return $"(SELECT COUNT(*) FROM ({subQuerySql}) AS sq WHERE {predicateCondition})";
             }
             
-            // Handle Sum/Average/Min/Max with predicate
+            // Handle Sum/Average/Min/Max with selector
             if (methodName is "Sum" or "Average" or "Min" or "Max" && m.Arguments.Count > 1)
             {
                 var selectorColumn = ParseLambdaColumn(m.Arguments[1]);
@@ -350,20 +390,39 @@ namespace Sqlx.Expressions
                 };
                 return $"(SELECT {aggregateFunc} FROM ({subQuerySql}) AS sq)";
             }
-            
-            var aggregateFuncSimple = methodName switch
+
+            // Handle First/FirstOrDefault - return subquery with LIMIT 1
+            if (methodName is "First" or "FirstOrDefault")
             {
-                "Count" or "LongCount" => "COUNT(*)",
-                "Any" => "1",
-                "All" => "1",
-                "First" or "FirstOrDefault" when m.Arguments.Count > 1 => ParseLambdaColumn(m.Arguments[1]),
-                _ => "COUNT(*)"
-            };
+                // If has predicate, add WHERE clause
+                if (m.Arguments.Count > 1)
+                {
+                    var predicateCondition = ParseLambdaAsCondition(m.Arguments[1]);
+                    return $"({subQuerySql} WHERE {predicateCondition} LIMIT 1)";
+                }
+                return $"({subQuerySql} LIMIT 1)";
+            }
 
+            // Handle Any - EXISTS check
             if (methodName == "Any")
+            {
+                if (m.Arguments.Count > 1)
+                {
+                    var predicateCondition = ParseLambdaAsCondition(m.Arguments[1]);
+                    return $"(SELECT CASE WHEN EXISTS(SELECT 1 FROM ({subQuerySql}) AS sq WHERE {predicateCondition}) THEN 1 ELSE 0 END)";
+                }
                 return $"(SELECT CASE WHEN EXISTS({subQuerySql}) THEN 1 ELSE 0 END)";
+            }
 
-            return $"(SELECT {aggregateFuncSimple} FROM ({subQuerySql}) AS sq)";
+            // Handle All - NOT EXISTS with negated condition
+            if (methodName == "All" && m.Arguments.Count > 1)
+            {
+                var predicateCondition = ParseLambdaAsCondition(m.Arguments[1]);
+                return $"(SELECT CASE WHEN NOT EXISTS(SELECT 1 FROM ({subQuerySql}) AS sq WHERE NOT ({predicateCondition})) THEN 1 ELSE 0 END)";
+            }
+            
+            // Default: Count
+            return $"(SELECT COUNT(*) FROM ({subQuerySql}) AS sq)";
         }
 
         /// <summary>

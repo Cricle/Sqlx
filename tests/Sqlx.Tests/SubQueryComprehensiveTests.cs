@@ -1089,8 +1089,6 @@ public class SubQueryComprehensiveTests
     [TestMethod]
     public void SubQuery_GroupByWithCountPredicateReferencingOuterCount()
     {
-        // 测试用户场景: SubQuery.For<User>().Count(y => y.Id == x.Count())
-        // 这里 x.Count() 是外部 GroupBy 的聚合结果
         var sql = SqlQuery<SqUser>.ForSqlite()
             .GroupBy(x => x.Id % 3)
             .Select(x => new { 
@@ -1099,9 +1097,115 @@ public class SubQueryComprehensiveTests
             })
             .ToSql();
 
-        // 期望生成: SELECT (id % 3) AS Key, (SELECT COUNT(*) FROM (SELECT * FROM [SqUser]) AS sq WHERE [id] = COUNT(*)) AS A FROM [SqUser] GROUP BY (id % 3)
-        Assert.IsTrue(sql.Contains("SELECT COUNT(*) FROM"), $"SQL: {sql}");
-        Assert.IsTrue(sql.Contains("WHERE [id] = COUNT(*)"), $"SQL: {sql}");
+        Assert.AreEqual(
+            "SELECT ([id] % 3) AS Key, (SELECT COUNT(*) FROM (SELECT * FROM [SqUser]) AS sq WHERE [id] = COUNT(*)) AS A FROM [SqUser] GROUP BY ([id] % 3)",
+            sql);
+    }
+
+    [TestMethod]
+    public void SubQuery_WithToList_GeneratesSubQuerySql()
+    {
+        var sql = SqlQuery<SqUser>.ForSqlite()
+            .GroupBy(x => x.Id % 3)
+            .Select(x => new { 
+                Key = x.Key, 
+                A = SubQuery.For<SqUser>().Where(e => e.Id == 1).OrderBy(q => q.Name).ToList()
+            })
+            .ToSql();
+
+        Assert.AreEqual(
+            "SELECT ([id] % 3) AS Key, (SELECT * FROM [SqUser] WHERE [id] = 1 ORDER BY [name] ASC) AS A FROM [SqUser] GROUP BY ([id] % 3)",
+            sql);
+    }
+
+    [TestMethod]
+    public void SubQuery_WithToArray_GeneratesSubQuerySql()
+    {
+        var sql = SqlQuery<SqUser>.ForSqlite()
+            .Select(x => new { 
+                x.Id, 
+                Orders = SubQuery.For<SqOrder>().Where(o => o.Status == "active").ToArray()
+            })
+            .ToSql();
+
+        Assert.AreEqual(
+            "SELECT [id], (SELECT * FROM [SqOrder] WHERE [status] = 'active') AS Orders FROM [SqUser]",
+            sql);
+    }
+
+    [TestMethod]
+    public void SubQuery_First_GeneratesLimitOne()
+    {
+        var sql = SqlQuery<SqUser>.ForSqlite()
+            .Select(x => new { 
+                x.Id, 
+                FirstOrder = SubQuery.For<SqOrder>().Where(o => o.UserId == 1).First()
+            })
+            .ToSql();
+
+        Assert.AreEqual(
+            "SELECT [id], (SELECT * FROM [SqOrder] WHERE [user_id] = 1 LIMIT 1) AS FirstOrder FROM [SqUser]",
+            sql);
+    }
+
+    [TestMethod]
+    public void SubQuery_FirstWithPredicate_GeneratesWhereAndLimit()
+    {
+        var sql = SqlQuery<SqUser>.ForSqlite()
+            .Select(x => new { 
+                x.Id, 
+                FirstBigOrder = SubQuery.For<SqOrder>().First(o => o.Amount > 100)
+            })
+            .ToSql();
+
+        Assert.AreEqual(
+            "SELECT [id], (SELECT * FROM [SqOrder] WHERE [amount] > 100 LIMIT 1) AS FirstBigOrder FROM [SqUser]",
+            sql);
+    }
+
+    [TestMethod]
+    public void SubQuery_Any_GeneratesExists()
+    {
+        var sql = SqlQuery<SqUser>.ForSqlite()
+            .Select(x => new { 
+                x.Id, 
+                HasOrders = SubQuery.For<SqOrder>().Any()
+            })
+            .ToSql();
+
+        Assert.AreEqual(
+            "SELECT [id], (SELECT CASE WHEN EXISTS(SELECT * FROM [SqOrder]) THEN 1 ELSE 0 END) AS HasOrders FROM [SqUser]",
+            sql);
+    }
+
+    [TestMethod]
+    public void SubQuery_AnyWithPredicate_GeneratesExistsWithWhere()
+    {
+        var sql = SqlQuery<SqUser>.ForSqlite()
+            .Select(x => new { 
+                x.Id, 
+                HasBigOrders = SubQuery.For<SqOrder>().Any(o => o.Amount > 1000)
+            })
+            .ToSql();
+
+        Assert.AreEqual(
+            "SELECT [id], (SELECT CASE WHEN EXISTS(SELECT 1 FROM (SELECT * FROM [SqOrder]) AS sq WHERE [amount] > 1000) THEN 1 ELSE 0 END) AS HasBigOrders FROM [SqUser]",
+            sql);
+    }
+
+    [TestMethod]
+    public void SubQuery_All_GeneratesNotExists()
+    {
+        var sql = SqlQuery<SqUser>.ForSqlite()
+            .Select(x => new { 
+                x.Id, 
+                AllCompleted = SubQuery.For<SqOrder>().All(o => o.Status == "completed")
+            })
+            .ToSql();
+
+        Assert.AreEqual(
+            "SELECT [id], (SELECT CASE WHEN NOT EXISTS(SELECT 1 FROM (SELECT * FROM [SqOrder]) AS sq WHERE NOT ([status] = 'completed')) THEN 1 ELSE 0 END) AS AllCompleted FROM [SqUser]",
+            sql);
     }
 
     #endregion

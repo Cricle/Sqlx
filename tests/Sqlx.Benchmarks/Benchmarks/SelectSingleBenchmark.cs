@@ -10,6 +10,7 @@ namespace Sqlx.Benchmarks.Benchmarks;
 
 /// <summary>
 /// Sqlx vs Dapper.AOT vs FreeSql: Select single entity by ID.
+/// All use the same entity type (BenchmarkUser) for fair comparison.
 /// </summary>
 [MemoryDiagnoser]
 [Orderer(SummaryOrderPolicy.FastestToSlowest)]
@@ -51,9 +52,10 @@ public class SelectSingleBenchmark
     }
     
     [Benchmark(Description = "Dapper.AOT")]
-    public async Task<DapperUser?> DapperAot_GetById()
+    public async Task<BenchmarkUser?> DapperAot_GetById()
     {
-        return await _connection.QueryFirstOrDefaultAsync<DapperUser>(
+        // Use same entity type as Sqlx for fair comparison
+        return await _connection.QueryFirstOrDefaultAsync<BenchmarkUser>(
             "SELECT id, name, email, age, is_active, created_at, updated_at, balance, description, score FROM users WHERE id = @id",
             new { id = _testId });
     }

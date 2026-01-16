@@ -24,6 +24,7 @@ namespace Sqlx
     {
         private static IEntityProvider? _cachedEntityProvider;
         private static IResultReader<T>? _cachedResultReader;
+        private static IParameterBinder<T>? _cachedParameterBinder;
         private static readonly object _lock = new object();
 
         /// <summary>
@@ -53,6 +54,22 @@ namespace Sqlx
                 lock (_lock)
                 {
                     _cachedResultReader ??= value;  // Only set once
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the cached parameter binder for type T.
+        /// Used for binding entity properties to command parameters.
+        /// </summary>
+        public static IParameterBinder<T>? ParameterBinder
+        {
+            get => _cachedParameterBinder;
+            set
+            {
+                lock (_lock)
+                {
+                    _cachedParameterBinder ??= value;  // Only set once
                 }
             }
         }

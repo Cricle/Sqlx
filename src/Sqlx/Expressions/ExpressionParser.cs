@@ -274,6 +274,13 @@ namespace Sqlx.Expressions
                 return ParseContains(m);
             }
 
+            // If the object is a constant (e.g., "A".ToLower()), evaluate at compile time
+            if (m.Object is ConstantExpression && m.Method.DeclaringType == typeof(string))
+            {
+                var result = ExpressionHelper.EvaluateExpression(m);
+                return Fmt(result);
+            }
+
             return m.Method.DeclaringType switch
             {
                 var t when t == typeof(Math) => MathFunctionParser.Parse(this, m),

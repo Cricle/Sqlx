@@ -371,57 +371,23 @@ namespace Sqlx
             if (_isDistinct) sb.Append("DISTINCT ");
 
             if (_selectColumns.Count > 0)
+            {
                 sb.AppendJoin(", ", _selectColumns);
-            else if (_entityProvider?.Columns.Count > 0)
-                sb.AppendJoin(", ", _entityProvider.Columns.Select(c => _dialect.WrapColumn(c.Name)));
-            else if (_elementType != null)
-            {
-                var ep = EntityProviderRegistry.Get(_elementType);
-                if (ep?.Columns.Count > 0)
-                    sb.AppendJoin(", ", ep.Columns.Select(c => _dialect.WrapColumn(c.Name)));
-                else
-                    sb.Append('*');
             }
             else
-                sb.Append('*');
+            {
+                // Get columns from entity provider - no fallback to SELECT *
+                var columns = GetEntityColumns();
+                if (columns.Count == 0)
+                    throw new InvalidOperationException($"No columns found for entity type '{_elementType?.Name ?? _tableName}'. Ensure the entity has [Sqlx] attribute or use explicit Select().");
+                sb.AppendJoin(", ", columns.Select(c => _dialect.WrapColumn(c.Name)));
+            }
 
-            // FROM - always use alias for subquery
-            if (_fromSubQuerySql != null)
-            {
-                sb.Append(" FROM (").Append(_fromSubQuerySql).Append(") AS ").Append(_dialect.WrapColumn("sq"));
-            }
-            else if (_joinClauses.Count > 0)
-            {
-                sb.Append(" FROM ").Append(_dialect.WrapColumn(_tableName ?? "Unknown"))
-                  .Append(" AS ").Append(_dialect.WrapColumn("t1"));
-            }
-            else
-            {
-                sb.Append(" FROM ").Append(_dialect.WrapColumn(_tableName ?? "Unknown"));
-            }
+            // FROM
+            AppendFromClause(sb);
 
             // JOIN
-            foreach (var join in _joinClauses)
-            {
-                sb.Append(' ').Append(join.JoinType switch
-                {
-                    JoinType.Inner => "INNER JOIN",
-                    JoinType.Left => "LEFT JOIN",
-                    JoinType.Right => "RIGHT JOIN",
-                    JoinType.Full => "FULL OUTER JOIN",
-                    _ => "INNER JOIN"
-                });
-
-                if (!string.IsNullOrEmpty(join.SubQuerySql))
-                    sb.Append(" (").Append(join.SubQuerySql).Append(") AS ").Append(_dialect.WrapColumn(join.Alias));
-                else
-                {
-                    sb.Append(' ').Append(_dialect.WrapColumn(join.TableName));
-                    if (!string.IsNullOrEmpty(join.Alias))
-                        sb.Append(" AS ").Append(_dialect.WrapColumn(join.Alias));
-                }
-                sb.Append(" ON ").Append(join.OnCondition);
-            }
+            AppendJoinClauses(sb);
 
             // WHERE
             if (_whereConditions.Count > 0)
@@ -448,6 +414,65 @@ namespace Sqlx
             AppendPagination(sb);
 
             return sb.ToString();
+        }
+
+        private IReadOnlyList<ColumnMeta> GetEntityColumns()
+        {
+            if (_entityProvider?.Columns.Count > 0)
+                return _entityProvider.Columns;
+            
+            if (_elementType != null)
+            {
+                var ep = EntityProviderRegistry.Get(_elementType);
+                if (ep?.Columns.Count > 0)
+                    return ep.Columns;
+            }
+            
+            return Array.Empty<ColumnMeta>();
+        }
+
+        private void AppendFromClause(StringBuilder sb)
+        {
+            var tableName = _dialect.WrapColumn(_tableName ?? throw new InvalidOperationException("Table name is not set."));
+            
+            if (_fromSubQuerySql != null)
+            {
+                sb.Append(" FROM (").Append(_fromSubQuerySql).Append(") AS ").Append(_dialect.WrapColumn("sq"));
+            }
+            else if (_joinClauses.Count > 0)
+            {
+                sb.Append(" FROM ").Append(tableName).Append(" AS ").Append(_dialect.WrapColumn("t1"));
+            }
+            else
+            {
+                sb.Append(" FROM ").Append(tableName);
+            }
+        }
+
+        private void AppendJoinClauses(StringBuilder sb)
+        {
+            foreach (var join in _joinClauses)
+            {
+                sb.Append(' ').Append(join.JoinType switch
+                {
+                    JoinType.Inner => "INNER JOIN",
+                    JoinType.Left => "LEFT JOIN",
+                    JoinType.Right => "RIGHT JOIN",
+                    JoinType.Full => "FULL OUTER JOIN",
+                    _ => "INNER JOIN"
+                });
+
+                if (!string.IsNullOrEmpty(join.SubQuerySql))
+                {
+                    sb.Append(" (").Append(join.SubQuerySql).Append(") AS ").Append(_dialect.WrapColumn(join.Alias));
+                }
+                else
+                {
+                    sb.Append(' ').Append(_dialect.WrapColumn(join.TableName));
+                    sb.Append(" AS ").Append(_dialect.WrapColumn(join.Alias));
+                }
+                sb.Append(" ON ").Append(join.OnCondition);
+            }
         }
 
         private void AppendPagination(StringBuilder sb)

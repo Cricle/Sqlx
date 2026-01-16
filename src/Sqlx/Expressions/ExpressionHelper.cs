@@ -24,10 +24,37 @@ namespace Sqlx.Expressions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsEntityProperty(MemberExpression m) =>
             m.Expression is ParameterExpression ||
-            (m.Expression is UnaryExpression { NodeType: ExpressionType.Convert, Operand: ParameterExpression });
+            (m.Expression is UnaryExpression { NodeType: ExpressionType.Convert, Operand: ParameterExpression }) ||
+            IsNestedEntityProperty(m.Expression);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsBooleanMember(Expression e) => e is MemberExpression { Type: var t } && t == typeof(bool);
+
+        /// <summary>
+        /// Checks if the expression is a nested member access chain that ultimately leads to a parameter.
+        /// This handles cases like x.User.Name where x is the parameter, User is an anonymous type property,
+        /// and Name is the actual column we want to access.
+        /// </summary>
+        private static bool IsNestedEntityProperty(Expression? expr)
+        {
+            while (expr != null)
+            {
+                switch (expr)
+                {
+                    case ParameterExpression:
+                        return true;
+                    case MemberExpression m:
+                        expr = m.Expression;
+                        break;
+                    case UnaryExpression { NodeType: ExpressionType.Convert } u:
+                        expr = u.Operand;
+                        break;
+                    default:
+                        return false;
+                }
+            }
+            return false;
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsStringType(Type t) => t == typeof(string);

@@ -48,6 +48,17 @@ namespace Sqlx
         private readonly List<string> _orderByExpressions = new(2);
         private readonly List<string> _groupByExpressions = new(2);
         private readonly List<JoinClause> _joinClauses = new(2);
+        
+        // Track property-to-alias mapping for multi-level JOINs
+        // Key: property name from result selector (e.g., "User", "Dept")
+        // Value: table alias (e.g., "t1", "t2")
+        private readonly Dictionary<string, string> _propertyAliasMap = new(4);
+        
+        // Track property-to-column mapping for GroupBy/OrderBy after JOIN
+        // Key: property name from result selector (e.g., "DeptName")
+        // Value: original column expression (e.g., "[name]")
+        private readonly Dictionary<string, string> _propertyColumnMap = new(4);
+        
         private int? _take;
         private int? _skip;
         private string? _tableName;
@@ -162,6 +173,38 @@ namespace Sqlx
                 if (_groupByExpressions.Count > 0)
                     _parser.SetGroupByColumn(_groupByExpressions[0]);
                 _selectColumns.AddRange(_parser.ExtractColumns(selector.Body));
+                
+                // Track column mappings from the Select projection for OrderBy resolution
+                UpdateSelectColumnMapping(selector.Body);
+            }
+        }
+
+        /// <summary>
+        /// Updates the property-to-column mapping from a Select projection.
+        /// This handles cases like Select(g => new { Count = g.Count() }) where OrderBy(x => x.Count) should resolve to COUNT(*).
+        /// </summary>
+        private void UpdateSelectColumnMapping(Expression expr)
+        {
+            if (expr is not NewExpression newExpr || newExpr.Members == null)
+                return;
+
+            for (var i = 0; i < newExpr.Arguments.Count; i++)
+            {
+                var memberName = newExpr.Members[i].Name;
+                var arg = newExpr.Arguments[i];
+                
+                // Check if this is an aggregate method call (e.g., g.Count())
+                if (arg is MethodCallExpression methodCall)
+                {
+                    var aggregateSql = _parser.ParseRaw(methodCall);
+                    _propertyColumnMap[memberName] = aggregateSql;
+                }
+                else if (arg is MemberExpression memberArg)
+                {
+                    // Regular column access
+                    var columnName = _parser.GetColumnName(memberArg);
+                    _propertyColumnMap[memberName] = columnName;
+                }
             }
         }
 
@@ -169,7 +212,10 @@ namespace Sqlx
         {
             var keySelector = GetLambda(node.Arguments.ElementAtOrDefault(1));
             if (keySelector != null)
-                _orderByExpressions.Add($"{_parser.GetColumnName(keySelector.Body)} {(ascending ? "ASC" : "DESC")}");
+            {
+                var columnName = GetColumnNameWithMapping(keySelector.Body);
+                _orderByExpressions.Add($"{columnName} {(ascending ? "ASC" : "DESC")}");
+            }
         }
 
         private void VisitTake(MethodCallExpression node)
@@ -196,7 +242,28 @@ namespace Sqlx
         {
             var keySelector = GetLambda(node.Arguments.ElementAtOrDefault(1));
             if (keySelector != null)
-                _groupByExpressions.Add(_parser.GetColumnName(keySelector.Body));
+            {
+                var columnName = GetColumnNameWithMapping(keySelector.Body);
+                _groupByExpressions.Add(columnName);
+            }
+        }
+
+        /// <summary>
+        /// Gets the column name, checking the property-to-column mapping first.
+        /// This handles cases like GroupBy(x => x.DeptName) where DeptName is an alias from a result selector.
+        /// </summary>
+        private string GetColumnNameWithMapping(Expression expr)
+        {
+            // Check if this is a member access on a parameter (e.g., x.DeptName)
+            if (expr is MemberExpression m && m.Expression is ParameterExpression)
+            {
+                var propName = m.Member.Name;
+                if (_propertyColumnMap.TryGetValue(propName, out var columnExpr))
+                {
+                    return columnExpr;
+                }
+            }
+            return _parser.GetColumnName(expr);
         }
 
         private void VisitJoin(MethodCallExpression node, JoinType joinType)
@@ -264,7 +331,10 @@ namespace Sqlx
             
             // Generate unique alias for the joined table
             var alias = $"t{_joinClauses.Count + 2}";
-            var outerAlias = _joinClauses.Count == 0 ? "t1" : $"t{_joinClauses.Count + 1}";
+            
+            // Determine the outer alias based on the outer key selector
+            // For nested access like x.Dept.CompanyId, we need to find which table "Dept" refers to
+            var outerAlias = ResolveOuterAlias(outerKeySelector.Body);
 
             _joinClauses.Add(new JoinClause
             {
@@ -280,6 +350,102 @@ namespace Sqlx
             {
                 _selectColumns.Clear();
                 _selectColumns.AddRange(_parser.ExtractColumns(resultSelector.Body));
+                
+                // Update property-to-alias mapping from result selector
+                UpdatePropertyAliasMap(resultSelector, alias);
+            }
+        }
+
+        /// <summary>
+        /// Resolves the outer table alias from the outer key selector expression.
+        /// For nested access like x.Dept.CompanyId, finds which table "Dept" refers to.
+        /// </summary>
+        private string ResolveOuterAlias(Expression expr)
+        {
+            // Default alias for the main table or first JOIN
+            var defaultAlias = _subQuery != null ? "sq" : (_joinClauses.Count == 0 ? "t1" : $"t{_joinClauses.Count + 1}");
+            
+            // For simple member access like u.DepartmentId, use the default alias
+            if (expr is MemberExpression m)
+            {
+                // Check if this is a nested access like x.Dept.CompanyId
+                if (m.Expression is MemberExpression parentMember && parentMember.Expression is ParameterExpression)
+                {
+                    // parentMember.Member.Name is the property name (e.g., "Dept")
+                    var propertyName = parentMember.Member.Name;
+                    if (_propertyAliasMap.TryGetValue(propertyName, out var alias))
+                    {
+                        return alias;
+                    }
+                }
+            }
+            
+            return defaultAlias;
+        }
+
+        /// <summary>
+        /// Updates the property-to-alias mapping from a result selector expression.
+        /// For expressions like (u, d) => new { User = u, Dept = d }, maps "User" -> outer alias, "Dept" -> inner alias.
+        /// Also updates property-to-column mapping for GroupBy/OrderBy resolution.
+        /// </summary>
+        private void UpdatePropertyAliasMap(LambdaExpression lambda, string innerAlias)
+        {
+            if (lambda.Body is not NewExpression newExpr || newExpr.Members == null)
+                return;
+
+            var outerAlias = _subQuery != null ? "sq" : (_joinClauses.Count == 1 ? "t1" : $"t{_joinClauses.Count}");
+            
+            // Get the parameter names - first is outer, second is inner
+            var outerParam = lambda.Parameters.Count > 0 ? lambda.Parameters[0].Name : null;
+            var innerParam = lambda.Parameters.Count > 1 ? lambda.Parameters[1].Name : null;
+            
+            for (var i = 0; i < newExpr.Arguments.Count; i++)
+            {
+                var memberName = newExpr.Members[i].Name;
+                var arg = newExpr.Arguments[i];
+                
+                // Check if this argument is a parameter (outer or inner table)
+                if (arg is ParameterExpression paramExpr)
+                {
+                    // Check if this is the outer or inner parameter
+                    if (paramExpr.Name == innerParam)
+                    {
+                        _propertyAliasMap[memberName] = innerAlias;
+                    }
+                    else
+                    {
+                        _propertyAliasMap[memberName] = outerAlias;
+                    }
+                }
+                else if (arg is MemberExpression memberArg)
+                {
+                    // Check if it's accessing a property from the outer result (e.g., x.User)
+                    if (memberArg.Expression is ParameterExpression)
+                    {
+                        // This is accessing a property from the previous result selector
+                        // Check if we have a mapping for it
+                        var sourcePropName = memberArg.Member.Name;
+                        if (_propertyAliasMap.TryGetValue(sourcePropName, out var sourceAlias))
+                        {
+                            _propertyAliasMap[memberName] = sourceAlias;
+                        }
+                        else
+                        {
+                            // First JOIN - the outer parameter refers to t1
+                            _propertyAliasMap[memberName] = outerAlias;
+                        }
+                    }
+                    else
+                    {
+                        // This might be the inner table parameter
+                        _propertyAliasMap[memberName] = innerAlias;
+                    }
+                    
+                    // Also track the column mapping for GroupBy/OrderBy
+                    // e.g., DeptName = d.Name -> "DeptName" maps to "[name]"
+                    var columnName = _parser.GetColumnName(memberArg);
+                    _propertyColumnMap[memberName] = columnName;
+                }
             }
         }
 

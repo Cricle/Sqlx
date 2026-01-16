@@ -254,6 +254,14 @@ namespace Sqlx.Expressions
         {
             var name = m.Method.Name;
             var hasArg = m.Arguments.Count > 1;
+            
+            // For Count with predicate, generate SUM(CASE WHEN condition THEN 1 ELSE 0 END)
+            if (name == "Count" && hasArg)
+            {
+                var condition = p.ParseLambdaAsCondition(m.Arguments[1]);
+                return $"SUM(CASE WHEN {condition} THEN 1 ELSE 0 END)";
+            }
+            
             var arg = hasArg ? p.ParseLambda(m.Arguments[1]) : null;
             return name switch
             {

@@ -121,6 +121,16 @@ namespace Sqlx.Expressions
             _ => ParseRaw(e),
         };
 
+        /// <summary>
+        /// Parses a lambda expression as a boolean condition (for aggregate predicates).
+        /// </summary>
+        public string ParseLambdaAsCondition(Expression e) => e switch
+        {
+            LambdaExpression l => Parse(l.Body),
+            UnaryExpression { NodeType: ExpressionType.Quote, Operand: LambdaExpression l } => Parse(l.Body),
+            _ => Parse(e),
+        };
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public string FormatConstantValue(object? v) => _parameterized ? CreateParameter(v) : ValueFormatter.FormatAsLiteral(_dialect, v);
 

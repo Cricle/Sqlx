@@ -18,6 +18,15 @@ using System.Diagnostics.CodeAnalysis;
 namespace Sqlx
 {
     /// <summary>
+    /// Marker interface for SqlxQueryable to support subquery detection.
+    /// </summary>
+    internal interface ISqlxQueryable
+    {
+        /// <summary>Gets the expression tree.</summary>
+        Expression Expression { get; }
+    }
+
+    /// <summary>
     /// IQueryable implementation for SQL generation (AOT-friendly, no reflection).
     /// </summary>
     /// <typeparam name="T">The entity type.</typeparam>
@@ -25,7 +34,7 @@ namespace Sqlx
 #if NET5_0_OR_GREATER
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
 #endif
-        T> :  IOrderedQueryable<T>, IAsyncEnumerable<T>
+        T> :  IOrderedQueryable<T>, IAsyncEnumerable<T>, ISqlxQueryable
     {
         private readonly SqlxQueryProvider<T> _provider;
 

@@ -50,6 +50,7 @@ namespace Sqlx
         private int? _take;
         private int? _skip;
         private string? _tableName;
+        private string? _subQuery;
         private bool _isDistinct;
 
         public SqlExpressionVisitor(SqlDialect dialect, bool parameterized = false, IEntityProvider? entityProvider = null)
@@ -71,7 +72,17 @@ namespace Sqlx
         protected override Expression VisitConstant(ConstantExpression node)
         {
             if (node.Value is IQueryable queryable)
+            {
                 _tableName = queryable.ElementType.Name;
+                // Check if this is a SqlxQueryable with an expression (subquery)
+                if (queryable is ISqlxQueryable sqlxQueryable && sqlxQueryable.Expression != node)
+                {
+                    var subVisitor = new SqlExpressionVisitor(_dialect, _parameters.Count > 0, _entityProvider);
+                    _subQuery = subVisitor.GenerateSql(sqlxQueryable.Expression);
+                    foreach (var p in subVisitor.GetParameters())
+                        _parameters[p.Key] = p.Value;
+                }
+            }
             return base.VisitConstant(node);
         }
 
@@ -218,7 +229,10 @@ namespace Sqlx
                 sb.Append('*');
 
             // FROM
-            sb.Append(" FROM ").Append(_dialect.WrapColumn(_tableName ?? "Unknown"));
+            if (_subQuery != null)
+                sb.Append(" FROM (").Append(_subQuery).Append(") AS ").Append(_dialect.WrapColumn("sq"));
+            else
+                sb.Append(" FROM ").Append(_dialect.WrapColumn(_tableName ?? "Unknown"));
 
             // JOIN
             foreach (var join in _joinClauses)

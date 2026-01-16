@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq;
+using System.Linq.Expressions;
 #if NET5_0_OR_GREATER
 using System.Diagnostics.CodeAnalysis;
 #endif
@@ -131,6 +132,41 @@ namespace Sqlx
             }
 
             throw new InvalidOperationException("ToSqlWithParameters() can only be called on SqlxQueryable instances.");
+        }
+
+        /// <summary>
+        /// Creates a new query using the current query as a subquery source.
+        /// </summary>
+        /// <typeparam name="T">The entity type.</typeparam>
+        /// <param name="subQuery">The subquery.</param>
+        /// <returns>A new query that uses the subquery as its source.</returns>
+        public static IQueryable<T> AsSubQuery<
+#if NET5_0_OR_GREATER
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
+#endif
+            T>(this IQueryable<T> subQuery)
+        {
+            if (subQuery == null)
+            {
+                throw new ArgumentNullException(nameof(subQuery));
+            }
+
+            if (subQuery is SqlxQueryable<T> sqlxQuery)
+            {
+                // Create a new queryable that wraps the subquery
+                var provider = (SqlxQueryProvider<T>)sqlxQuery.Provider;
+                return new SqlxQueryable<T>(
+                    new SqlxQueryProvider<T>(provider.Dialect, provider.EntityProvider)
+                    {
+                        Connection = sqlxQuery.Connection,
+                        ResultReader = sqlxQuery.ResultReader
+                    },
+                    Expression.Constant(sqlxQuery),
+                    sqlxQuery.Connection,
+                    sqlxQuery.ResultReader);
+            }
+
+            throw new InvalidOperationException("AsSubQuery() can only be called on SqlxQueryable instances.");
         }
     }
 }

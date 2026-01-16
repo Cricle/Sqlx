@@ -21,9 +21,8 @@ Sqlx 是一个高性能、AOT 友好的 SQL 生成库。使用源生成器在编
 ```csharp
 using Sqlx.Annotations;
 
-[SqlxEntity]
-[SqlxParameter]
-public partial class User  // 'partial' enables auto-registration
+[Sqlx]
+public class User
 {
     public int Id { get; set; }
     public string Name { get; set; }

@@ -15,13 +15,11 @@ Sqlx uses Roslyn source generators to produce high-performance, AOT-compatible c
 
 ### EntityProvider
 
-Generated for classes marked with `[SqlxEntity]`. Provides column metadata without reflection.
-
-**Auto-Registration:** If the entity class is marked as `partial`, a `ModuleInitializer` automatically registers the EntityProvider and ResultReader with `SqlQuery<T>` at startup.
+Generated for classes marked with `[Sqlx]`. Provides column metadata without reflection.
 
 ```csharp
-[SqlxEntity]
-public partial class User  // 'partial' enables auto-registration
+[Sqlx]
+public class User
 {
     public int Id { get; set; }
     public string Name { get; set; }
@@ -41,21 +39,22 @@ public sealed class UserEntityProvider : IEntityProvider
     };
 }
 
-// Generated: ModuleInitializer (for partial classes)
-internal static class UserModuleInitializer
+// Generated: SqlxInitializer (auto-registers all providers)
+internal static class SqlxInitializer
 {
     [ModuleInitializer]
     internal static void Initialize()
     {
         SqlQuery<User>.EntityProvider = UserEntityProvider.Default;
         SqlQuery<User>.ResultReader = UserResultReader.Default;
+        SqlQuery<User>.ParameterBinder = UserParameterBinder.Default;
     }
 }
 ```
 
 ### ResultReader
 
-Generated for classes marked with `[SqlxEntity]`. Reads entities from DbDataReader without reflection.
+Generated for classes marked with `[Sqlx]`. Reads entities from DbDataReader without reflection.
 
 **Performance:** Uses ordinal-based access and static method caching for optimal performance.
 
@@ -92,7 +91,7 @@ public sealed class UserResultReader : IResultReader<User>
 
 ### ParameterBinder
 
-Generated for classes marked with `[SqlxParameter]`. Binds entity properties to DbCommand parameters.
+Generated for classes marked with `[Sqlx]`. Binds entity properties to DbCommand parameters.
 
 ```csharp
 // Generated: UserParameterBinder
@@ -164,7 +163,7 @@ Use `[IgnoreDataMember]` to exclude properties from generation:
 ```csharp
 using System.Runtime.Serialization;
 
-[SqlxEntity]
+[Sqlx]
 public class User
 {
     public int Id { get; set; }
@@ -180,7 +179,7 @@ Sqlx includes analyzers to help catch issues at compile time:
 
 | Code | Severity | Description |
 |------|----------|-------------|
-| SQLX001 | Info | Entity should have [SqlxEntity] or [SqlxParameter] |
+| SQLX001 | Info | Entity should have [Sqlx] attribute |
 | SQLX002 | Error | Unknown placeholder in SqlTemplate |
 | SQLX003 | Info | Consider adding [Column] attribute |
 

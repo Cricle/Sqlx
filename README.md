@@ -26,9 +26,9 @@ dotnet add package Sqlx
 ```
 
 ```csharp
-// 1. 定义实体（标记为 partial 以启用自动注册）
-[SqlxEntity, SqlxParameter, TableName("users")]
-public partial class User
+// 1. 定义实体
+[Sqlx, TableName("users")]
+public class User
 {
     [Key] public long Id { get; set; }
     public string Name { get; set; }

@@ -18,17 +18,14 @@ dotnet add package Sqlx
 
 ### Step 1: Define Your Entity
 
-Create a class representing your database table and mark it with `[SqlxEntity]` and `[SqlxParameter]` attributes.
-
-**Important:** Mark the class as `partial` to enable automatic EntityProvider registration:
+Create a class representing your database table and mark it with `[Sqlx]` attribute:
 
 ```csharp
 using System.ComponentModel.DataAnnotations.Schema;
 using Sqlx.Annotations;
 
-[SqlxEntity]
-[SqlxParameter]
-public partial class User  // Note: 'partial' keyword enables auto-registration
+[Sqlx]
+public class User
 {
     public int Id { get; set; }
     
@@ -45,9 +42,13 @@ The source generator will create:
 - `UserEntityProvider` - Provides column metadata
 - `UserResultReader` - Reads entities from DbDataReader
 - `UserParameterBinder` - Binds entity properties to DbCommand parameters
-- **Auto-registration** - If the class is `partial`, a static constructor automatically registers the EntityProvider with `SqlQuery<User>`
+- `SqlxInitializer` - ModuleInitializer that auto-registers all providers with `SqlQuery<T>`
 
-**Without `partial` keyword:** The generator will still create EntityProvider, ResultReader, and ParameterBinder, but you'll need to manually register the provider if using `SqlQuery<T>` API.
+You can control what gets generated using attribute properties:
+```csharp
+[Sqlx(GenerateEntityProvider = true, GenerateResultReader = true, GenerateParameterBinder = false)]
+public class User { }
+```
 
 ### Step 2: Define Your Repository Interface
 

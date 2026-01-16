@@ -318,22 +318,21 @@ public interface ICommandRepository<TEntity, TKey> where TEntity : class
 
 ## Attributes
 
-### [SqlxEntity]
+### [Sqlx]
 
-Marks a class for EntityProvider and ResultReader generation.
-
-```csharp
-[SqlxEntity]
-public class User { }
-```
-
-### [SqlxParameter]
-
-Marks a class for ParameterBinder generation.
+Marks a class for EntityProvider, ResultReader, and ParameterBinder generation.
 
 ```csharp
-[SqlxParameter]
+[Sqlx]
 public class User { }
+
+// Control what gets generated
+[Sqlx(GenerateEntityProvider = true, GenerateResultReader = true, GenerateParameterBinder = false)]
+public class User { }
+
+// Generate for external/sealed types
+[Sqlx(typeof(ExternalEntity))]
+public class MyClass { }
 ```
 
 ### [SqlDefine]

@@ -18,10 +18,35 @@ Sqlx 是编译时源生成器，生成高性能数据访问代码。核心流程
 | `[SqlTemplate("SQL")]` | 定义 SQL 模板 |
 | `[RepositoryFor(typeof(IXxx))]` | 标记仓储实现类 |
 | `[TableName("xxx")]` | 指定表名 |
-| `[SqlxEntity]` | 生成 EntityProvider |
-| `[SqlxParameter]` | 生成 ParameterBinder |
+| `[Sqlx]` | 生成 EntityProvider/ResultReader/ParameterBinder |
 | `[ReturnInsertedId]` | 返回插入 ID |
 | `[Key]` | 标记主键 |
+
+## 源生成器自动发现
+
+源生成器会自动发现并生成以下类型的 EntityProvider/ResultReader/ParameterBinder：
+
+1. **`[Sqlx]` 标记的类** - 显式标记
+2. **`SqlQuery<T>` 泛型参数** - 使用 SqlQuery 构建器时自动发现
+3. **`[SqlTemplate]` 方法返回值** - 支持 `Task<T>`, `Task<List<T>>`, `Task<T?>` 等
+4. **`[SqlTemplate]` 方法参数** - 非基元类型参数自动发现
+
+```csharp
+// 1. 显式标记
+[Sqlx]
+public class User { ... }
+
+// 2. SqlQuery<T> 自动发现
+var query = SqlQuery<Order>.ForSqlite();  // Order 自动生成
+
+// 3. SqlTemplate 返回值自动发现
+[SqlTemplate("SELECT ...")]
+Task<List<Product>> GetProductsAsync();  // Product 自动生成
+
+// 4. SqlTemplate 参数自动发现
+[SqlTemplate("INSERT ...")]
+Task<int> InsertAsync(Customer customer);  // Customer 自动生成
+```
 
 ## 占位符速查
 
@@ -67,13 +92,44 @@ Sqlx 是编译时源生成器，生成高性能数据访问代码。核心流程
 {{if notempty=ids}}AND id IN @ids{{/if}}
 ```
 
+### WHERE 占位符
+
+```sql
+-- 表达式模式：使用 Expression<Func<T, bool>>
+{{where --param predicate}}
+
+-- 字典模式：使用 IReadOnlyDictionary<string, object?>
+{{where --object filter}}
+```
+
+**`--object` 模式说明：**
+- 字典中非 null 值生成 `column = @column` 条件
+- 多个条件用 AND 连接并加括号
+- 空字典或全 null 值返回 `1=1`
+- 支持按 PropertyName 或 ColumnName 匹配（不区分大小写）
+
+```csharp
+// 示例
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE {{where --object filter}}")]
+Task<List<User>> SearchAsync(IReadOnlyDictionary<string, object?> filter);
+
+// 调用
+var filter = new Dictionary<string, object?>
+{
+    ["Name"] = "John",    // 生成: [name] = @name
+    ["Age"] = 25,         // 生成: [age] = @age
+    ["Email"] = null      // 忽略 null 值
+};
+var users = await repo.SearchAsync(filter);
+// 生成 SQL: SELECT ... WHERE ([name] = @name AND [age] = @age)
+```
+
 ## 代码模板
 
 ### 实体定义
 
 ```csharp
-[SqlxEntity]
-[SqlxParameter]
+[Sqlx]
 [TableName("users")]
 public class User
 {
@@ -103,6 +159,10 @@ public interface IUserRepository : ICrudRepository<User, long>
         {{if notnull=minAge}}AND age >= @minAge{{/if}}
     ")]
     Task<List<User>> SearchAsync(string? name, int? minAge);
+    
+    // 字典条件查询
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE {{where --object filter}}")]
+    Task<List<User>> SearchByFilterAsync(IReadOnlyDictionary<string, object?> filter);
 }
 ```
 
@@ -134,6 +194,10 @@ Task<List<User>> GetPagedAsync(int size, int skip);
 // 表达式查询
 [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE {{where --param predicate}}")]
 Task<List<User>> GetWhereAsync(Expression<Func<User, bool>> predicate);
+
+// 字典条件查询
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE {{where --object filter}}")]
+Task<List<User>> GetByFilterAsync(IReadOnlyDictionary<string, object?> filter);
 ```
 
 ### INSERT
@@ -255,7 +319,7 @@ await connection.ExecuteBatchAsync(sql, users, UserParameterBinder.Default, batc
 | 数据库 | 枚举值 | 标识符引号 | 参数前缀 |
 |--------|--------|-----------|---------|
 | SQLite | `SqlDefineTypes.SQLite` | `[col]` | `@` |
-| PostgreSQL | `SqlDefineTypes.PostgreSql` | `"col"` | `$` |
+| PostgreSQL | `SqlDefineTypes.PostgreSql` | `"col"` | `@` |
 | MySQL | `SqlDefineTypes.MySql` | `` `col` `` | `@` |
 | SQL Server | `SqlDefineTypes.SqlServer` | `[col]` | `@` |
 | Oracle | `SqlDefineTypes.Oracle` | `"col"` | `:` |
@@ -315,3 +379,7 @@ var (sql, parameters) = SqlQuery.ForSqlServer<User>()
 **支持的函数：**
 - String: `Contains`, `StartsWith`, `EndsWith`, `ToUpper`, `ToLower`, `Trim`, `Substring`, `Replace`, `Length`
 - Math: `Abs`, `Round`, `Floor`, `Ceiling`, `Sqrt`, `Pow`, `Min`, `Max`
+
+## 测试覆盖
+
+项目包含 1344 个单元测试，覆盖所有核心功能。

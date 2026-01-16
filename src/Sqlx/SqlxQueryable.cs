@@ -45,7 +45,7 @@ namespace Sqlx
         internal SqlxQueryable(SqlxQueryProvider<T> provider)
         {
             _provider = provider ?? throw new ArgumentNullException(nameof(provider));
-            Expression = Expression.Constant(this);
+            Expression = Expression.Empty();
         }
 
         /// <summary>

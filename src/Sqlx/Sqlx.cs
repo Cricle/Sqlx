@@ -78,9 +78,8 @@ namespace Sqlx
         /// Creates a query for the specified SQL dialect.
         /// </summary>
         /// <param name="dialect">The SQL dialect.</param>
-        /// <param name="entityProvider">Optional entity provider for metadata.</param>
         /// <returns>An IQueryable for building SQL queries.</returns>
-        public static IQueryable<T> For(SqlDialect dialect, IEntityProvider? entityProvider = null)
+        public static IQueryable<T> For(SqlDialect dialect)
         {
             var provider = new SqlxQueryProvider<T>(dialect, EntityProvider)
             {
@@ -90,63 +89,96 @@ namespace Sqlx
         }
 
         /// <summary>
+        /// Creates a query for the specified SQL dialect.
+        /// </summary>
+        /// <param name="dialect">The SQL dialect.</param>
+        /// <param name="entityProvider">Optional entity provider for metadata.</param>
+        /// <returns>An IQueryable for building SQL queries.</returns>
+        public static IQueryable<T> For(SqlDialect dialect, IEntityProvider? entityProvider)
+        {
+            var provider = new SqlxQueryProvider<T>(dialect, entityProvider ?? EntityProvider)
+            {
+                ResultReader = ResultReader
+            };
+            return new SqlxQueryable<T>(provider);
+        }
+
+        /// <summary>
+        /// Creates a query for SQLite.
+        /// </summary>
+        /// <returns>An IQueryable for building SQLite queries.</returns>
+        public static IQueryable<T> ForSqlite() => For(SqlDefine.SQLite);
+
+        /// <summary>
         /// Creates a query for SQLite.
         /// </summary>
         /// <param name="entityProvider">Optional entity provider for metadata.</param>
         /// <returns>An IQueryable for building SQLite queries.</returns>
-        public static IQueryable<T> ForSqlite(IEntityProvider? entityProvider = null)
-        {
-            return For(SqlDefine.SQLite, entityProvider);
-        }
+        public static IQueryable<T> ForSqlite(IEntityProvider? entityProvider) => For(SqlDefine.SQLite, entityProvider);
+
+        /// <summary>
+        /// Creates a query for SQL Server.
+        /// </summary>
+        /// <returns>An IQueryable for building SQL Server queries.</returns>
+        public static IQueryable<T> ForSqlServer() => For(SqlDefine.SqlServer);
 
         /// <summary>
         /// Creates a query for SQL Server.
         /// </summary>
         /// <param name="entityProvider">Optional entity provider for metadata.</param>
         /// <returns>An IQueryable for building SQL Server queries.</returns>
-        public static IQueryable<T> ForSqlServer(IEntityProvider? entityProvider = null)
-        {
-            return For(SqlDefine.SqlServer, entityProvider);
-        }
+        public static IQueryable<T> ForSqlServer(IEntityProvider? entityProvider) => For(SqlDefine.SqlServer, entityProvider);
+
+        /// <summary>
+        /// Creates a query for MySQL.
+        /// </summary>
+        /// <returns>An IQueryable for building MySQL queries.</returns>
+        public static IQueryable<T> ForMySql() => For(SqlDefine.MySql);
 
         /// <summary>
         /// Creates a query for MySQL.
         /// </summary>
         /// <param name="entityProvider">Optional entity provider for metadata.</param>
         /// <returns>An IQueryable for building MySQL queries.</returns>
-        public static IQueryable<T> ForMySql(IEntityProvider? entityProvider = null)
-        {
-            return For(SqlDefine.MySql, entityProvider);
-        }
+        public static IQueryable<T> ForMySql(IEntityProvider? entityProvider) => For(SqlDefine.MySql, entityProvider);
+
+        /// <summary>
+        /// Creates a query for PostgreSQL.
+        /// </summary>
+        /// <returns>An IQueryable for building PostgreSQL queries.</returns>
+        public static IQueryable<T> ForPostgreSQL() => For(SqlDefine.PostgreSql);
 
         /// <summary>
         /// Creates a query for PostgreSQL.
         /// </summary>
         /// <param name="entityProvider">Optional entity provider for metadata.</param>
         /// <returns>An IQueryable for building PostgreSQL queries.</returns>
-        public static IQueryable<T> ForPostgreSQL(IEntityProvider? entityProvider = null)
-        {
-            return For(SqlDefine.PostgreSql, entityProvider);
-        }
+        public static IQueryable<T> ForPostgreSQL(IEntityProvider? entityProvider) => For(SqlDefine.PostgreSql, entityProvider);
+
+        /// <summary>
+        /// Creates a query for Oracle.
+        /// </summary>
+        /// <returns>An IQueryable for building Oracle queries.</returns>
+        public static IQueryable<T> ForOracle() => For(SqlDefine.Oracle);
 
         /// <summary>
         /// Creates a query for Oracle.
         /// </summary>
         /// <param name="entityProvider">Optional entity provider for metadata.</param>
         /// <returns>An IQueryable for building Oracle queries.</returns>
-        public static IQueryable<T> ForOracle(IEntityProvider? entityProvider = null)
-        {
-            return For(SqlDefine.Oracle, entityProvider);
-        }
+        public static IQueryable<T> ForOracle(IEntityProvider? entityProvider) => For(SqlDefine.Oracle, entityProvider);
+
+        /// <summary>
+        /// Creates a query for DB2.
+        /// </summary>
+        /// <returns>An IQueryable for building DB2 queries.</returns>
+        public static IQueryable<T> ForDB2() => For(SqlDefine.DB2);
 
         /// <summary>
         /// Creates a query for DB2.
         /// </summary>
         /// <param name="entityProvider">Optional entity provider for metadata.</param>
         /// <returns>An IQueryable for building DB2 queries.</returns>
-        public static IQueryable<T> ForDB2(IEntityProvider? entityProvider = null)
-        {
-            return For(SqlDefine.DB2, entityProvider);
-        }
+        public static IQueryable<T> ForDB2(IEntityProvider? entityProvider) => For(SqlDefine.DB2, entityProvider);
     }
 }

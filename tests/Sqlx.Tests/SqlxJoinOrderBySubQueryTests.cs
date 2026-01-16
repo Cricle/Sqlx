@@ -488,4 +488,53 @@ public class SqlxJoinOrderBySubQueryTests
     };
 
     #endregion
+
+    #region Scalar SubQuery in Select Tests
+
+    [TestMethod]
+    public void Select_WithScalarSubQuery_Count_GeneratesCorrectSql()
+    {
+        var sql = SqlQuery<JoinTestUser>.ForSqlite()
+            .Select(x => new { x.Id, Total = SubQuery.For<JoinTestOrder>().Count() })
+            .ToSql();
+
+        Assert.AreEqual("SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [JoinTestOrder]) AS sq) AS Total FROM [JoinTestUser]", sql);
+    }
+
+    [TestMethod]
+    public void Select_WithScalarSubQuery_CountWithWhere_GeneratesCorrectSql()
+    {
+        var sql = SqlQuery<JoinTestUser>.ForSqlite()
+            .Select(x => new { x.Id, OrderCount = SubQuery.For<JoinTestOrder>().Where(o => o.Amount > 100).Count() })
+            .ToSql();
+
+        Assert.AreEqual("SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [JoinTestOrder] WHERE [amount] > 100) AS sq) AS OrderCount FROM [JoinTestUser]", sql);
+    }
+
+    [TestMethod]
+    public void GroupBy_WithScalarSubQuery_GeneratesCorrectSql()
+    {
+        var sql = SqlQuery<JoinTestUser>.ForSqlite()
+            .GroupBy(x => x.DepartmentId)
+            .Select(x => new { x.Key, TotalOrders = SubQuery.For<JoinTestOrder>().Count() })
+            .ToSql();
+
+        Assert.AreEqual("SELECT [department_id] AS Key, (SELECT COUNT(*) FROM (SELECT * FROM [JoinTestOrder]) AS sq) AS TotalOrders FROM [JoinTestUser] GROUP BY [department_id]", sql);
+    }
+
+    [TestMethod]
+    public void Select_WithMultipleScalarSubQueries_GeneratesCorrectSql()
+    {
+        var sql = SqlQuery<JoinTestUser>.ForSqlite()
+            .Select(x => new { 
+                x.Id, 
+                UserCount = SubQuery.For<JoinTestUser>().Count(),
+                OrderCount = SubQuery.For<JoinTestOrder>().Count()
+            })
+            .ToSql();
+
+        Assert.AreEqual("SELECT [id], (SELECT COUNT(*) FROM (SELECT * FROM [JoinTestUser]) AS sq) AS UserCount, (SELECT COUNT(*) FROM (SELECT * FROM [JoinTestOrder]) AS sq) AS OrderCount FROM [JoinTestUser]", sql);
+    }
+
+    #endregion
 }

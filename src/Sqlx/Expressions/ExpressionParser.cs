@@ -264,6 +264,12 @@ namespace Sqlx.Expressions
 
         private string ParseMethod(MethodCallExpression m)
         {
+            // Check if this is a SubQuery.For<T>().Aggregate() call
+            if (IsSubQueryForMethod(m))
+            {
+                return ParseSubQueryForMethod(m);
+            }
+
             if (ExpressionHelper.IsAggregateContext(m))
             {
                 return AggregateParser.Parse(this, m);
@@ -289,6 +295,79 @@ namespace Sqlx.Expressions
                 _ => m.Object != null ? ParseRaw(m.Object) : "1=1"
             };
         }
+
+        private static bool IsSubQueryForMethod(MethodCallExpression m)
+        {
+            // Check if this is Queryable.Count/Sum/etc on a SubQuery.For<T>() chain
+            if (m.Method.DeclaringType != typeof(System.Linq.Queryable))
+                return false;
+
+            if (m.Method.Name is not ("Count" or "LongCount" or "Sum" or "Average" or "Min" or "Max" or "Any" or "All" or "First" or "FirstOrDefault"))
+                return false;
+
+            // Check if the source contains SubQuery.For<T>() call
+            return ContainsSubQueryFor(m.Arguments[0]);
+        }
+
+        private static bool ContainsSubQueryFor(Expression expr)
+        {
+            return expr switch
+            {
+                // SubQuery.For<T>() method call
+                MethodCallExpression mc when mc.Method.DeclaringType == typeof(SubQuery) && mc.Method.Name == "For" => true,
+                // Recurse into method chain (e.g., SubQuery.For<T>().Where(...))
+                MethodCallExpression mc when mc.Arguments.Count > 0 => ContainsSubQueryFor(mc.Arguments[0]),
+                _ => false
+            };
+        }
+
+        private string ParseSubQueryForMethod(MethodCallExpression m)
+        {
+            // Generate the subquery SQL from the source - subquery parsing is normal query parsing
+            var subQuerySql = GenerateSubQuerySql(m.Arguments[0]);
+
+            var methodName = m.Method.Name;
+            var aggregateFunc = methodName switch
+            {
+                "Count" or "LongCount" => "COUNT(*)",
+                "Sum" when m.Arguments.Count > 1 => $"SUM({ParseLambdaColumn(m.Arguments[1])})",
+                "Average" when m.Arguments.Count > 1 => $"AVG({ParseLambdaColumn(m.Arguments[1])})",
+                "Min" when m.Arguments.Count > 1 => $"MIN({ParseLambdaColumn(m.Arguments[1])})",
+                "Max" when m.Arguments.Count > 1 => $"MAX({ParseLambdaColumn(m.Arguments[1])})",
+                "Any" => "1",
+                "All" => "1",
+                "First" or "FirstOrDefault" when m.Arguments.Count > 1 => ParseLambdaColumn(m.Arguments[1]),
+                _ => "COUNT(*)"
+            };
+
+            if (methodName == "Any")
+                return $"(SELECT CASE WHEN EXISTS({subQuerySql}) THEN 1 ELSE 0 END)";
+
+            return $"(SELECT {aggregateFunc} FROM ({subQuerySql}) AS sq)";
+        }
+
+        /// <summary>
+        /// Generates SQL for a subquery expression. Subquery parsing is the same as normal query parsing.
+        /// </summary>
+        private string GenerateSubQuerySql(Expression expr)
+        {
+            // Use SqlExpressionVisitor - subquery parsing is the same as normal query parsing
+            var visitor = new SqlExpressionVisitor(_dialect, _parameterized, null);
+            return visitor.GenerateSql(expr);
+        }
+
+        private string ParseLambdaColumn(Expression expr)
+        {
+            var body = GetLambdaBody(expr);
+            return body != null ? Col(body) : "*";
+        }
+
+        private static Expression? GetLambdaBody(Expression expr) => expr switch
+        {
+            LambdaExpression l => l.Body,
+            UnaryExpression { NodeType: ExpressionType.Quote, Operand: LambdaExpression l } => l.Body,
+            _ => null
+        };
 
         private string ParseContains(MethodCallExpression m)
         {

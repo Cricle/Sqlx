@@ -88,6 +88,17 @@ namespace Sqlx
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
+            // Handle SubQuery.For<T>() - get table name from generic type argument
+            if (node.Method.DeclaringType == typeof(SubQuery) && node.Method.Name == "For")
+            {
+                var genericArgs = node.Method.GetGenericArguments();
+                if (genericArgs.Length > 0)
+                {
+                    _tableName = genericArgs[0].Name;
+                }
+                return node;
+            }
+
             if (node.Arguments.Count > 0)
                 Visit(node.Arguments[0]);
 

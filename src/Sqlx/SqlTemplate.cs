@@ -228,6 +228,47 @@ public sealed class SqlTemplate
     }
 
     /// <summary>
+    /// Thread-local cached dictionary for single-parameter rendering to avoid allocations.
+    /// </summary>
+    [ThreadStatic]
+    private static Dictionary<string, object?>? _singleParamCache;
+
+    /// <summary>
+    /// Renders the template with a single dynamic parameter.
+    /// </summary>
+    /// <param name="key">The parameter name.</param>
+    /// <param name="value">The parameter value.</param>
+    /// <returns>The fully rendered SQL string.</returns>
+    /// <remarks>
+    /// This overload is optimized for the common case of a single dynamic parameter,
+    /// using a thread-local cached dictionary to avoid allocations.
+    /// </remarks>
+    public string Render(string key, object? value)
+    {
+        var cache = _singleParamCache ??= new Dictionary<string, object?>(1);
+        cache.Clear();
+        cache[key] = value;
+        return Render(cache);
+    }
+
+    /// <summary>
+    /// Renders the template with two dynamic parameters.
+    /// </summary>
+    /// <param name="key1">The first parameter name.</param>
+    /// <param name="value1">The first parameter value.</param>
+    /// <param name="key2">The second parameter name.</param>
+    /// <param name="value2">The second parameter value.</param>
+    /// <returns>The fully rendered SQL string.</returns>
+    public string Render(string key1, object? value1, string key2, object? value2)
+    {
+        var cache = _singleParamCache ??= new Dictionary<string, object?>(2);
+        cache.Clear();
+        cache[key1] = value1;
+        cache[key2] = value2;
+        return Render(cache);
+    }
+
+    /// <summary>
     /// Builds the static SQL string by concatenating all static segments.
     /// </summary>
     /// <param name="segments">The merged template segments.</param>

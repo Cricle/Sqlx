@@ -594,7 +594,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         if (hasDynamicParams)
         {
             // Render SQL using dynamicParams
-            GenerateDynamicRender(sb, fieldName);
+            GenerateDynamicRender(sb, fieldName, method);
         }
         else
         {
@@ -648,27 +648,67 @@ public class RepositoryGenerator : IIncrementalGenerator
     {
         var expressionParams = method.Parameters.Where(p => p.Type.ToDisplayString().Contains("Expression<")).ToList();
 
-        sb.AppendLine("// Create dynamic parameters for runtime rendering");
-        sb.AppendLine($"var dynamicParams = new Dictionary<string, object?>({expressionParams.Count})");
-        sb.AppendLine("{");
-        sb.PushIndent();
-
-        foreach (var param in expressionParams)
+        // For single parameter, use optimized variable instead of dictionary
+        if (expressionParams.Count == 1)
         {
-            // Expression parameter - convert to SQL using ExpressionParser
-            sb.AppendLine($"[\"{param.Name}\"] = global::Sqlx.ExpressionExtensions.ToWhereClause({param.Name}, _placeholderContext.Dialect),");
+            var param = expressionParams[0];
+            sb.AppendLine($"// Convert expression to SQL");
+            sb.AppendLine($"var {param.Name}Sql = global::Sqlx.ExpressionExtensions.ToWhereClause({param.Name}, _placeholderContext.Dialect);");
         }
+        else if (expressionParams.Count == 2)
+        {
+            sb.AppendLine("// Convert expressions to SQL");
+            foreach (var param in expressionParams)
+            {
+                sb.AppendLine($"var {param.Name}Sql = global::Sqlx.ExpressionExtensions.ToWhereClause({param.Name}, _placeholderContext.Dialect);");
+            }
+        }
+        else
+        {
+            // Fallback to dictionary for 3+ parameters (rare case)
+            sb.AppendLine("// Create dynamic parameters for runtime rendering");
+            sb.AppendLine($"var dynamicParams = new Dictionary<string, object?>({expressionParams.Count})");
+            sb.AppendLine("{");
+            sb.PushIndent();
 
-        sb.PopIndent();
-        sb.AppendLine("};");
+            foreach (var param in expressionParams)
+            {
+                sb.AppendLine($"[\"{param.Name}\"] = global::Sqlx.ExpressionExtensions.ToWhereClause({param.Name}, _placeholderContext.Dialect),");
+            }
+
+            sb.PopIndent();
+            sb.AppendLine("};");
+        }
     }
 
-    private static void GenerateDynamicRender(IndentedStringBuilder sb, string fieldName)
+    private static void GenerateDynamicRender(IndentedStringBuilder sb, string fieldName, IMethodSymbol method)
     {
-        sb.AppendLine($"var renderedSql = {fieldName}.HasDynamicPlaceholders");
-        sb.AppendLine($"    ? {fieldName}.Render(dynamicParams)");
-        sb.AppendLine($"    : {fieldName}.Sql;");
-        sb.AppendLine("cmd.CommandText = renderedSql;");
+        var expressionParams = method.Parameters.Where(p => p.Type.ToDisplayString().Contains("Expression<")).ToList();
+
+        if (expressionParams.Count == 1)
+        {
+            var param = expressionParams[0];
+            sb.AppendLine($"var renderedSql = {fieldName}.HasDynamicPlaceholders");
+            sb.AppendLine($"    ? {fieldName}.Render(\"{param.Name}\", {param.Name}Sql)");
+            sb.AppendLine($"    : {fieldName}.Sql;");
+            sb.AppendLine("cmd.CommandText = renderedSql;");
+        }
+        else if (expressionParams.Count == 2)
+        {
+            var p1 = expressionParams[0];
+            var p2 = expressionParams[1];
+            sb.AppendLine($"var renderedSql = {fieldName}.HasDynamicPlaceholders");
+            sb.AppendLine($"    ? {fieldName}.Render(\"{p1.Name}\", {p1.Name}Sql, \"{p2.Name}\", {p2.Name}Sql)");
+            sb.AppendLine($"    : {fieldName}.Sql;");
+            sb.AppendLine("cmd.CommandText = renderedSql;");
+        }
+        else
+        {
+            sb.AppendLine($"var renderedSql = {fieldName}.HasDynamicPlaceholders");
+            sb.AppendLine($"    ? {fieldName}.Render(dynamicParams)");
+            sb.AppendLine($"    : {fieldName}.Sql;");
+            sb.AppendLine("cmd.CommandText = renderedSql;");
+        }
     }
 
     private static void GenerateActivityStart(IndentedStringBuilder sb, string methodName, IMethodSymbol method, bool hasDynamicParams)
@@ -693,10 +733,10 @@ public class RepositoryGenerator : IIncrementalGenerator
         {
             if (param.Name == "cancellationToken") continue;
             
-            // For Expression parameters, use the converted SQL from dynamicParams
+            // For Expression parameters, use the converted SQL variable
             if (expressionParamNames.Contains(param.Name))
             {
-                sb.AppendLine($"activity.SetTag(\"db.param.{param.Name}\", dynamicParams[\"{param.Name}\"]);");
+                sb.AppendLine($"activity.SetTag(\"db.param.{param.Name}\", {param.Name}Sql);");
             }
             else
             {

@@ -575,20 +575,26 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("#endif");
         sb.AppendLine();
 
-        // Activity tracking
-        GenerateActivityStart(sb, methodName, method);
+        // Check if method has dynamic parameters (Expression parameters only)
+        var hasDynamicParams = HasDynamicParameters(method, expressionToSqlAttr);
+        
+        // Generate dynamic params first (before activity) so we can use converted SQL in activity tags
+        if (hasDynamicParams)
+        {
+            GenerateDynamicParamsDeclaration(sb, method);
+        }
+
+        // Activity tracking (uses dynamicParams if available)
+        GenerateActivityStart(sb, methodName, method, hasDynamicParams);
 
         sb.AppendLine();
         sb.AppendLine($"using DbCommand cmd = {connectionInfo.AccessExpression}.CreateCommand();");
         sb.AppendLine("if (Transaction != null) cmd.Transaction = Transaction;");
 
-        // Check if method has dynamic parameters (Expression parameters only)
-        var hasDynamicParams = HasDynamicParameters(method, expressionToSqlAttr);
-        
         if (hasDynamicParams)
         {
-            // For expressions, need to render
-            GenerateDynamicContextAndRender(sb, method, fieldName, expressionToSqlAttr);
+            // Render SQL using dynamicParams
+            GenerateDynamicRender(sb, fieldName);
         }
         else
         {
@@ -638,7 +644,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         return false;
     }
 
-    private static void GenerateDynamicContextAndRender(IndentedStringBuilder sb, IMethodSymbol method, string fieldName, INamedTypeSymbol? expressionToSqlAttr)
+    private static void GenerateDynamicParamsDeclaration(IndentedStringBuilder sb, IMethodSymbol method)
     {
         var expressionParams = method.Parameters.Where(p => p.Type.ToDisplayString().Contains("Expression<")).ToList();
 
@@ -655,15 +661,23 @@ public class RepositoryGenerator : IIncrementalGenerator
 
         sb.PopIndent();
         sb.AppendLine("};");
-        sb.AppendLine();
+    }
+
+    private static void GenerateDynamicRender(IndentedStringBuilder sb, string fieldName)
+    {
         sb.AppendLine($"var renderedSql = {fieldName}.HasDynamicPlaceholders");
         sb.AppendLine($"    ? {fieldName}.Render(dynamicParams)");
         sb.AppendLine($"    : {fieldName}.Sql;");
         sb.AppendLine("cmd.CommandText = renderedSql;");
     }
 
-    private static void GenerateActivityStart(IndentedStringBuilder sb, string methodName, IMethodSymbol method)
+    private static void GenerateActivityStart(IndentedStringBuilder sb, string methodName, IMethodSymbol method, bool hasDynamicParams)
     {
+        var expressionParamNames = new HashSet<string>(
+            method.Parameters
+                .Where(p => p.Type.ToDisplayString().Contains("Expression<"))
+                .Select(p => p.Name));
+
         sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
         sb.AppendLine("var activity = global::System.Diagnostics.Activity.Current;");
         sb.AppendLine("if (activity is not null)");
@@ -678,7 +692,16 @@ public class RepositoryGenerator : IIncrementalGenerator
         foreach (var param in method.Parameters)
         {
             if (param.Name == "cancellationToken") continue;
-            sb.AppendLine($"activity.SetTag(\"db.param.{param.Name}\", {param.Name});");
+            
+            // For Expression parameters, use the converted SQL from dynamicParams
+            if (expressionParamNames.Contains(param.Name))
+            {
+                sb.AppendLine($"activity.SetTag(\"db.param.{param.Name}\", dynamicParams[\"{param.Name}\"]);");
+            }
+            else
+            {
+                sb.AppendLine($"activity.SetTag(\"db.param.{param.Name}\", {param.Name});");
+            }
         }
 
         sb.AppendLine("#endif");

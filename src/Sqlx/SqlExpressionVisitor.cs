@@ -110,11 +110,13 @@ namespace Sqlx
             // Handle SubQuery.For<T>()
             if (node.Method.DeclaringType == typeof(SubQuery) && node.Method.Name == "For")
             {
-                var genericArgs = node.Method.GetGenericArguments();
-                if (genericArgs.Length > 0)
+                // Get element type from the return type IQueryable<T>
+                var returnType = node.Type;
+                if (returnType.IsGenericType)
                 {
-                    _tableName = genericArgs[0].Name;
-                    _elementType = genericArgs[0];
+                    var elementType = returnType.GenericTypeArguments[0];
+                    _tableName = elementType.Name;
+                    _elementType = elementType;
                 }
                 return node;
             }
@@ -224,10 +226,11 @@ namespace Sqlx
             else if (innerArg is MethodCallExpression innerMethodCall)
             {
                 var returnType = innerMethodCall.Type;
-                if (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(IQueryable<>))
-                    innerElementType = returnType.GetGenericArguments()[0];
-                else
-                    innerElementType = innerMethodCall.Method.GetGenericArguments().FirstOrDefault();
+                if (returnType.IsGenericType)
+                {
+                    // Get element type from IQueryable<T> or IEnumerable<T>
+                    innerElementType = returnType.GenericTypeArguments.FirstOrDefault();
+                }
                 
                 innerTableName = innerElementType?.Name;
                 if (innerElementType != null)

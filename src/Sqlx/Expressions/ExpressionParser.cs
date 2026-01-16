@@ -452,8 +452,9 @@ namespace Sqlx.Expressions
         {
             return expr switch
             {
+                // Get element type from the return type IQueryable<T>
                 MethodCallExpression mc when mc.Method.DeclaringType == typeof(SubQuery) && mc.Method.Name == "For" 
-                    => mc.Method.GetGenericArguments().FirstOrDefault(),
+                    => mc.Type.IsGenericType ? mc.Type.GenericTypeArguments.FirstOrDefault() : null,
                 MethodCallExpression mc when mc.Arguments.Count > 0 
                     => GetSubQueryElementType(mc.Arguments[0]),
                 _ => null

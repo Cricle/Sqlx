@@ -79,9 +79,9 @@ namespace Sqlx
 
         public IQueryable CreateQuery(Expression expression)
         {
-            var elementType = expression.Type.GetGenericArguments().FirstOrDefault() ?? _elementType;
-            var queryableType = typeof(SubQueryable<>).MakeGenericType(elementType);
-            return (IQueryable)Activator.CreateInstance(queryableType, this, expression)!;
+            // Non-generic CreateQuery is rarely called by LINQ operators.
+            // Return a wrapper that preserves the expression without reflection.
+            return new SubQueryable<object>(new SubQueryProvider(typeof(object)), expression);
         }
 
         public IQueryable<TElement> CreateQuery<TElement>(Expression expression)

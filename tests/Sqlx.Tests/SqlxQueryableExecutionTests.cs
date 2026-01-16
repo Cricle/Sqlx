@@ -168,12 +168,10 @@ namespace Sqlx.Tests
         [TestMethod]
         public void ToSql_GeneratesCorrectSql()
         {
-            var queryable = System.Linq.Queryable.Where(
-                new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!)),
-                u => u.Age >= 30);
-
-            queryable = System.Linq.Queryable.OrderBy(queryable, u => u.Name);
-            queryable = System.Linq.Queryable.Take(queryable, 10);
+            var queryable = SqlQuery<User>.ForSqlite()
+                .Where(u => u.Age >= 30)
+                .OrderBy(u => u.Name)
+                .Take(10);
 
             var sql = queryable.ToSql();
 
@@ -183,9 +181,8 @@ namespace Sqlx.Tests
         [TestMethod]
         public void ToSqlWithParameters_GeneratesParameterizedSql()
         {
-            var queryable = System.Linq.Queryable.Where(
-                new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!)),
-                u => u.Age >= 30 && u.Name == "Bob");
+            var queryable = SqlQuery<User>.ForSqlite()
+                .Where(u => u.Age >= 30 && u.Name == "Bob");
 
             var (sql, parameters) = queryable.ToSqlWithParameters();
 

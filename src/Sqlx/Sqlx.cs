@@ -75,22 +75,6 @@ namespace Sqlx
         }
 
         /// <summary>
-        /// Gets the column metadata by property name.
-        /// </summary>
-        internal static ColumnMeta? GetColumnByProperty(string propertyName)
-        {
-            if (_cachedEntityProvider == null)
-                return null;
-
-            foreach (var column in _cachedEntityProvider.Columns)
-            {
-                if (column.PropertyName == propertyName)
-                    return column;
-            }
-            return null;
-        }
-
-        /// <summary>
         /// Creates a query for the specified SQL dialect.
         /// </summary>
         /// <param name="dialect">The SQL dialect.</param>
@@ -98,10 +82,6 @@ namespace Sqlx
         /// <returns>An IQueryable for building SQL queries.</returns>
         public static IQueryable<T> For(SqlDialect dialect, IEntityProvider? entityProvider = null)
         {
-            if (entityProvider != null)
-            {
-                EntityProvider = entityProvider;
-            }
             var provider = new SqlxQueryProvider<T>(dialect, EntityProvider)
             {
                 ResultReader = ResultReader

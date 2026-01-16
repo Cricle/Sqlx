@@ -10,9 +10,6 @@ using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Threading;
-using System.Xml.Linq;
-
 
 #if NET5_0_OR_GREATER
 using System.Diagnostics.CodeAnalysis;
@@ -34,11 +31,11 @@ namespace Sqlx
         /// Initializes a new instance of the <see cref="SqlxQueryProvider{T}"/> class.
         /// </summary>
         /// <param name="dialect">The SQL dialect.</param>
-        /// <param name="sourceEntityProvider">Optional source entity provider (for preserving entity metadata after projections).</param>
-        public SqlxQueryProvider(SqlDialect dialect, IEntityProvider? sourceEntityProvider = null)
+        /// <param name="entityProvider">Optional entity provider for metadata.</param>
+        public SqlxQueryProvider(SqlDialect dialect, IEntityProvider? entityProvider = null)
         {
             Dialect = dialect ?? throw new ArgumentNullException(nameof(dialect));
-            SourceEntityProvider = sourceEntityProvider;
+            EntityProvider = entityProvider;
         }
 
         /// <summary>
@@ -57,18 +54,9 @@ namespace Sqlx
         internal object? ResultReader { get; set; }
 
         /// <summary>
-        /// Gets the source entity provider (preserved from the original query before projections like GroupBy).
+        /// Gets the entity provider.
         /// </summary>
-        internal IEntityProvider? SourceEntityProvider { get; }
-
-        /// <summary>
-        /// Gets the entity provider for type T (cached in SqlQuery&lt;T&gt;).
-        /// Falls back to SourceEntityProvider if T's EntityProvider is null (e.g., after GroupBy).
-        /// </summary>
-        private IEntityProvider? GetEntityProvider()
-        {
-            return SqlQuery<T>.EntityProvider ?? SourceEntityProvider;
-        }
+        internal IEntityProvider? EntityProvider { get; }
 
         /// <inheritdoc/>
         public IQueryable CreateQuery(Expression expression)
@@ -90,52 +78,13 @@ namespace Sqlx
                 return new SqlxQueryable<TElement>(this as SqlxQueryProvider<TElement> ?? throw new InvalidOperationException(), expression, Connection, reader);
             }
             
-            // Check if we have a cached reader for TElement (from source generator or previous dynamic creation)
-            var cachedReader = SqlQuery<TElement>.ResultReader;
-            
-            // If no cached reader and this is a type that needs a dynamic reader, create one
-            if (cachedReader == null && ShouldCreateDynamicReader<TElement>())
-            {
-                // Create dynamic ResultReader using type's property names and cache it
-                cachedReader = new DynamicResultReader<TElement>();
-                SqlQuery<TElement>.ResultReader = cachedReader;
-            }
-            
-            // Preserve the source entity provider for operations like GroupBy that change the element type
-            // but still need access to the original entity metadata for SQL generation
-            var sourceEntityProvider = GetEntityProvider();
-            
             // Create a new provider for TElement
-            var newProvider = new SqlxQueryProvider<TElement>(Dialect, sourceEntityProvider)
+            var newProvider = new SqlxQueryProvider<TElement>(Dialect, EntityProvider)
             {
                 Connection = Connection,
-                ResultReader = cachedReader
+                ResultReader = SqlQuery<TElement>.ResultReader
             };
             return new SqlxQueryable<TElement>(newProvider, expression);
-        }
-
-        /// <summary>
-        /// Determines if a dynamic reader should be created for the given type.
-        /// </summary>
-        private static bool ShouldCreateDynamicReader<TElement>()
-        {
-            var elementType = typeof(TElement);
-            
-            // Don't create dynamic readers for primitive/simple types or IGrouping
-            if (elementType.IsPrimitive || 
-                elementType == typeof(string) ||
-                elementType == typeof(decimal) ||
-                elementType == typeof(DateTime) ||
-                elementType == typeof(DateTimeOffset) ||
-                elementType == typeof(Guid) ||
-                elementType == typeof(TimeSpan) ||
-                (elementType.IsGenericType && elementType.GetGenericTypeDefinition() == typeof(IGrouping<,>)))
-            {
-                return false;
-            }
-            
-            // Create dynamic reader for anonymous types or classes with properties
-            return true;
         }
 
         /// <inheritdoc/>
@@ -197,10 +146,20 @@ namespace Sqlx
                                 
                                 if (selectorArg is LambdaExpression lambda && lambda.Body is MemberExpression member)
                                 {
-                                    // Get column name from cached metadata
-                                    var columnMeta = SqlQuery<T>.GetColumnByProperty(member.Member.Name);
-                                    var columnName = columnMeta?.Name ?? member.Member.Name;
-                                    columnExpression = Dialect.WrapColumn(columnName);
+                                    // Get column name from entity provider
+                                    string? columnName = null;
+                                    if (EntityProvider != null)
+                                    {
+                                        foreach (var col in EntityProvider.Columns)
+                                        {
+                                            if (col.PropertyName == member.Member.Name)
+                                            {
+                                                columnName = col.Name;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    columnExpression = Dialect.WrapColumn(columnName ?? member.Member.Name);
                                 }
                             }
                             
@@ -229,7 +188,7 @@ namespace Sqlx
         /// <param name="expression">The expression tree.</param>
         /// <param name="parameterized">Whether to generate parameterized SQL.</param>
         /// <returns>The generated SQL string.</returns>
-        public string ToSql(Expression expression, bool parameterized = false) => new SqlExpressionVisitor(Dialect, parameterized, GetEntityProvider()).GenerateSql(expression);
+        public string ToSql(Expression expression, bool parameterized = false) => new SqlExpressionVisitor(Dialect, parameterized, EntityProvider).GenerateSql(expression);
 
         /// <summary>
         /// Generates parameterized SQL and parameters from the expression.
@@ -238,7 +197,7 @@ namespace Sqlx
         /// <returns>A tuple containing the SQL string and parameters.</returns>
         public (string Sql, IEnumerable<KeyValuePair<string, object?>> Parameters) ToSqlWithParameters(Expression expression)
         {
-            var visitor = new SqlExpressionVisitor(Dialect, parameterized: true, GetEntityProvider());
+            var visitor = new SqlExpressionVisitor(Dialect, parameterized: true, EntityProvider);
             return (visitor.GenerateSql(expression), visitor.GetParameters());
         }
     }

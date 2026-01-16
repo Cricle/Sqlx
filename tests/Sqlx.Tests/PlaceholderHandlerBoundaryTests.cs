@@ -242,6 +242,163 @@ public class PlaceholderHandlerBoundaryTests
         Assert.AreEqual(subqueryWhere, result);
     }
 
+    [TestMethod]
+    public void WhereHandler_ObjectMode_GeneratesAndConditions()
+    {
+        var handler = WherePlaceholderHandler.Instance;
+        var columns = new[]
+        {
+            new ColumnMeta("id", "Id", DbType.Int64, false),
+            new ColumnMeta("name", "Name", DbType.String, false),
+            new ColumnMeta("age", "Age", DbType.Int32, true),
+        };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "users", columns);
+        var filter = new Dictionary<string, object?>
+        {
+            ["Name"] = "John",
+            ["Age"] = 25,
+        };
+
+        var result = handler.Render(context, "--object filter", new Dictionary<string, object?> { ["filter"] = filter });
+
+        Assert.AreEqual("([name] = @name AND [age] = @age)", result);
+    }
+
+    [TestMethod]
+    public void WhereHandler_ObjectMode_SingleCondition_NoParentheses()
+    {
+        var handler = WherePlaceholderHandler.Instance;
+        var columns = new[]
+        {
+            new ColumnMeta("id", "Id", DbType.Int64, false),
+            new ColumnMeta("name", "Name", DbType.String, false),
+        };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "users", columns);
+        var filter = new Dictionary<string, object?> { ["Name"] = "John" };
+
+        var result = handler.Render(context, "--object filter", new Dictionary<string, object?> { ["filter"] = filter });
+
+        Assert.AreEqual("[name] = @name", result);
+    }
+
+    [TestMethod]
+    public void WhereHandler_ObjectMode_NullObject_Returns1Equals1()
+    {
+        var handler = WherePlaceholderHandler.Instance;
+        var columns = new[] { new ColumnMeta("id", "Id", DbType.Int64, false) };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "users", columns);
+
+        var result = handler.Render(context, "--object filter", new Dictionary<string, object?> { ["filter"] = null });
+
+        Assert.AreEqual("1=1", result);
+    }
+
+    [TestMethod]
+    public void WhereHandler_ObjectMode_EmptyDictionary_Returns1Equals1()
+    {
+        var handler = WherePlaceholderHandler.Instance;
+        var columns = new[] { new ColumnMeta("id", "Id", DbType.Int64, false) };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "users", columns);
+        var filter = new Dictionary<string, object?>();
+
+        var result = handler.Render(context, "--object filter", new Dictionary<string, object?> { ["filter"] = filter });
+
+        Assert.AreEqual("1=1", result);
+    }
+
+    [TestMethod]
+    public void WhereHandler_ObjectMode_AllNullValues_Returns1Equals1()
+    {
+        var handler = WherePlaceholderHandler.Instance;
+        var columns = new[]
+        {
+            new ColumnMeta("id", "Id", DbType.Int64, false),
+            new ColumnMeta("name", "Name", DbType.String, true),
+        };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "users", columns);
+        var filter = new Dictionary<string, object?> { ["Name"] = null, ["Id"] = null };
+
+        var result = handler.Render(context, "--object filter", new Dictionary<string, object?> { ["filter"] = filter });
+
+        Assert.AreEqual("1=1", result);
+    }
+
+    [TestMethod]
+    public void WhereHandler_ObjectMode_SkipsUnknownProperties()
+    {
+        var handler = WherePlaceholderHandler.Instance;
+        var columns = new[] { new ColumnMeta("name", "Name", DbType.String, false) };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "users", columns);
+        var filter = new Dictionary<string, object?>
+        {
+            ["Name"] = "John",
+            ["UnknownProp"] = "ignored",
+        };
+
+        var result = handler.Render(context, "--object filter", new Dictionary<string, object?> { ["filter"] = filter });
+
+        Assert.AreEqual("[name] = @name", result);
+        Assert.IsFalse(result.Contains("unknown"));
+    }
+
+    [TestMethod]
+    public void WhereHandler_ObjectMode_MatchesByColumnName()
+    {
+        var handler = WherePlaceholderHandler.Instance;
+        var columns = new[] { new ColumnMeta("user_name", "UserName", DbType.String, false) };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "users", columns);
+        var filter = new Dictionary<string, object?> { ["user_name"] = "John" };
+
+        var result = handler.Render(context, "--object filter", new Dictionary<string, object?> { ["filter"] = filter });
+
+        Assert.AreEqual("[user_name] = @user_name", result);
+    }
+
+    [TestMethod]
+    public void WhereHandler_ObjectMode_PostgreSQL_UsesCorrectQuotes()
+    {
+        var handler = WherePlaceholderHandler.Instance;
+        var columns = new[]
+        {
+            new ColumnMeta("name", "Name", DbType.String, false),
+            new ColumnMeta("age", "Age", DbType.Int32, false),
+        };
+        var context = new PlaceholderContext(SqlDefine.PostgreSql, "users", columns);
+        var filter = new Dictionary<string, object?> { ["Name"] = "John", ["Age"] = 25 };
+
+        var result = handler.Render(context, "--object filter", new Dictionary<string, object?> { ["filter"] = filter });
+
+        Assert.AreEqual("(\"name\" = $name AND \"age\" = $age)", result);
+    }
+
+    [TestMethod]
+    public void WhereHandler_ObjectMode_MySQL_UsesCorrectQuotes()
+    {
+        var handler = WherePlaceholderHandler.Instance;
+        var columns = new[]
+        {
+            new ColumnMeta("name", "Name", DbType.String, false),
+            new ColumnMeta("age", "Age", DbType.Int32, false),
+        };
+        var context = new PlaceholderContext(SqlDefine.MySql, "users", columns);
+        var filter = new Dictionary<string, object?> { ["Name"] = "John", ["Age"] = 25 };
+
+        var result = handler.Render(context, "--object filter", new Dictionary<string, object?> { ["filter"] = filter });
+
+        Assert.AreEqual("(`name` = @name AND `age` = @age)", result);
+    }
+
+    [TestMethod]
+    [ExpectedException(typeof(InvalidOperationException))]
+    public void WhereHandler_ObjectMode_NonDictionary_ThrowsException()
+    {
+        var handler = WherePlaceholderHandler.Instance;
+        var columns = new[] { new ColumnMeta("id", "Id", DbType.Int64, false) };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "users", columns);
+
+        handler.Render(context, "--object filter", new Dictionary<string, object?> { ["filter"] = "not a dictionary" });
+    }
+
     #endregion
 
     #region Limit/Offset Type Conversion Tests

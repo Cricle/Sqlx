@@ -51,14 +51,26 @@ Generates SET clause for UPDATE statements.
 
 ### {{table}}
 
-Generates the quoted table name.
+Generates the quoted table name. Can be static or dynamic.
 
 ```csharp
+// Static table name (from context)
 [SqlTemplate("SELECT * FROM {{table}}")]
 // SQLite:     SELECT * FROM [users]
 // MySQL:      SELECT * FROM `users`
 // PostgreSQL: SELECT * FROM "users"
+
+// Dynamic table name (from parameter)
+[SqlTemplate("SELECT * FROM {{table --param tableName}}")]
+Task<List<User>> GetFromTableAsync(string tableName);
+
+// Usage: repo.GetFromTableAsync("users_archive")
+// Output: SELECT * FROM [users_archive]
 ```
+
+**Options:**
+- No options - Uses static table name from context
+- `--param name` - Dynamic table name resolved at render time
 
 ### {{where}}
 

@@ -40,6 +40,6 @@ public sealed class SetPlaceholderHandler : PlaceholderHandlerBase
     public override string Process(PlaceholderContext context, string options)
     {
         var columns = FilterColumns(context.Columns, options);
-        return string.Join(", ", columns.Select(c => $"{context.Dialect.WrapColumn(c.Name)} = @{c.Name}"));
+        return string.Join(", ", columns.Select(c => $"{context.Dialect.WrapColumn(c.Name)} = {context.Dialect.CreateParameter(c.Name)}"));
     }
 }

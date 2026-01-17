@@ -93,8 +93,9 @@ public class RepositoryGenerator : IIncrementalGenerator
             var serviceType = repoForAttrData.ConstructorArguments.FirstOrDefault().Value as INamedTypeSymbol;
             if (serviceType is null) continue;
 
-            var sqlDefine = GetSqlDefine(typeSymbol, sqlDefineAttr);
-            var tableName = GetTableName(typeSymbol, tableNameAttr);
+            // Get dialect and table name with priority: RepositoryFor > SqlDefine/TableName attributes > inferred
+            var sqlDefine = GetSqlDefineFromRepositoryFor(repoForAttrData) ?? GetSqlDefine(typeSymbol, sqlDefineAttr);
+            var tableName = GetTableNameFromRepositoryFor(repoForAttrData) ?? GetTableName(typeSymbol, tableNameAttr, serviceType);
             var entityType = GetEntityType(serviceType);
 
             if (entityType is null) continue;
@@ -103,6 +104,37 @@ public class RepositoryGenerator : IIncrementalGenerator
                 sqlTemplateAttr, returnInsertedIdAttr, expressionToSqlAttr, compilation);
             context.AddSource($"{typeSymbol.Name}.Repository.g.cs", SourceText.From(source, Encoding.UTF8));
         }
+    }
+    
+    private static string? GetSqlDefineFromRepositoryFor(AttributeData repoForAttrData)
+    {
+        // Check for Dialect named argument in [RepositoryFor]
+        var dialectArg = repoForAttrData.NamedArguments.FirstOrDefault(a => a.Key == "Dialect");
+        if (dialectArg.Value.Value is int dialectValue && dialectValue >= 0)
+        {
+            return dialectValue switch
+            {
+                0 => "MySql",
+                1 => "SqlServer",
+                2 => "PostgreSql",
+                3 => "Oracle",
+                4 => "DB2",
+                5 => "SQLite",
+                _ => null
+            };
+        }
+        return null;
+    }
+    
+    private static string? GetTableNameFromRepositoryFor(AttributeData repoForAttrData)
+    {
+        // Check for TableName named argument in [RepositoryFor]
+        var tableNameArg = repoForAttrData.NamedArguments.FirstOrDefault(a => a.Key == "TableName");
+        if (tableNameArg.Value.Value is string tableName)
+        {
+            return tableName;
+        }
+        return null;
     }
 
     private static string GetSqlDefine(INamedTypeSymbol typeSymbol, INamedTypeSymbol? sqlDefineAttr)
@@ -132,14 +164,47 @@ public class RepositoryGenerator : IIncrementalGenerator
         return "SQLite";
     }
 
-    private static string GetTableName(INamedTypeSymbol typeSymbol, INamedTypeSymbol? tableNameAttr)
+    private static string GetTableName(INamedTypeSymbol typeSymbol, INamedTypeSymbol? tableNameAttr, INamedTypeSymbol? serviceType)
     {
-        if (tableNameAttr is null) return "unknown";
-        var attr = typeSymbol.GetAttributes()
-            .FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, tableNameAttr));
-        if (attr?.ConstructorArguments.Length > 0 && attr.ConstructorArguments[0].Value is string name)
-            return name;
-        return "unknown";
+        // Priority 1: Try to get table name from [TableName] attribute on repository class
+        if (tableNameAttr is not null)
+        {
+            var attr = typeSymbol.GetAttributes()
+                .FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, tableNameAttr));
+            if (attr?.ConstructorArguments.Length > 0 && attr.ConstructorArguments[0].Value is string name)
+                return name;
+        }
+        
+        // Priority 2: Try to get table name from [TableName] attribute on entity class
+        var entityType = serviceType is not null ? GetEntityType(serviceType) : null;
+        if (entityType is not null && tableNameAttr is not null)
+        {
+            var entityAttr = entityType.GetAttributes()
+                .FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, tableNameAttr));
+            if (entityAttr?.ConstructorArguments.Length > 0 && entityAttr.ConstructorArguments[0].Value is string entityTableName)
+                return entityTableName;
+        }
+        
+        // Priority 3: Infer from entity type name
+        if (entityType is not null)
+        {
+            return entityType.Name;
+        }
+        
+        // Priority 4: Use repository class name without "Repository" suffix
+        var repoName = typeSymbol.Name;
+        if (repoName.EndsWith("Repository"))
+            return repoName.Substring(0, repoName.Length - "Repository".Length);
+        
+        return repoName;
+    }
+    
+    private static INamedTypeSymbol? GetServiceType(INamedTypeSymbol typeSymbol)
+    {
+        // Get the service type from [RepositoryFor] attribute
+        var repositoryForAttr = typeSymbol.GetAttributes()
+            .FirstOrDefault(a => a.AttributeClass?.Name == "RepositoryForAttribute");
+        return repositoryForAttr?.ConstructorArguments.FirstOrDefault().Value as INamedTypeSymbol;
     }
 
     private static INamedTypeSymbol? GetEntityType(INamedTypeSymbol serviceType)

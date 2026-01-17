@@ -33,22 +33,35 @@ namespace Sqlx.Annotations
     /// [RepositoryFor(typeof(IUserRepository))]
     /// public partial class UserRepository : IUserRepository { }
     ///
-    /// // Example 2: Multi-dialect support with unified interface
+    /// // Example 2: Using RepositoryFor properties (simplified syntax)
+    /// [RepositoryFor(typeof(IUserRepository), TableName = "users", Dialect = SqlDefineTypes.SQLite)]
+    /// public partial class UserRepository : IUserRepository { }
+    ///
+    /// // Example 3: Multi-dialect support with unified interface
     /// public interface IUserRepositoryBase : ICrudRepository&lt;User, int&gt;
     /// {
     ///     [SqlTemplate("SELECT * FROM {{table}} WHERE id = @id")]
     ///     new Task&lt;User?&gt; GetByIdAsync(int id, CancellationToken ct);
     /// }
     ///
-    /// [SqlDefine(SqlDefineTypes.PostgreSql)]
-    /// [TableName("users")]
-    /// [RepositoryFor(typeof(IUserRepositoryBase))]
+    /// [RepositoryFor(typeof(IUserRepositoryBase), TableName = "users", Dialect = SqlDefineTypes.PostgreSql)]
     /// public partial class PostgreSQLUserRepository : IUserRepositoryBase { }
     ///
-    /// [SqlDefine(SqlDefineTypes.MySql)]
-    /// [TableName("users")]
-    /// [RepositoryFor(typeof(IUserRepositoryBase))]
+    /// [RepositoryFor(typeof(IUserRepositoryBase), TableName = "users", Dialect = SqlDefineTypes.MySql)]
     /// public partial class MySQLUserRepository : IUserRepositoryBase { }
+    ///
+    /// // Example 4: Multi-line SQL templates
+    /// public interface IProductRepository : ICrudRepository&lt;Product, long&gt;
+    /// {
+    ///     [SqlTemplate(@"
+    ///         SELECT {{columns}}
+    ///         FROM {{table}}
+    ///         WHERE category = @category
+    ///           AND price BETWEEN @minPrice AND @maxPrice
+    ///         ORDER BY name
+    ///     ")]
+    ///     Task&lt;List&lt;Product&gt;&gt; SearchAsync(string category, decimal minPrice, decimal maxPrice);
+    /// }
     /// </code>
     /// </example>
     [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
@@ -65,5 +78,18 @@ namespace Sqlx.Annotations
 
         /// <summary>Gets the service interface type.</summary>
         public System.Type ServiceType { get; }
+        
+        /// <summary>
+        /// Gets or sets the database table name.
+        /// If not specified, the table name will be inferred from the entity type or [TableName] attribute.
+        /// </summary>
+        public string? TableName { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the SQL dialect as an integer value.
+        /// Use SqlDefineTypes enum values: MySql=0, SqlServer=1, PostgreSql=2, Oracle=3, DB2=4, SQLite=5.
+        /// If not specified, the dialect will be taken from [SqlDefine] attribute.
+        /// </summary>
+        public int Dialect { get; set; } = -1; // -1 means not set
     }
 }

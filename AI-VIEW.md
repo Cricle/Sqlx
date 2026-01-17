@@ -55,6 +55,7 @@ Task<int> InsertAsync(Customer customer);  // Customer 自动生成
 | 占位符 | 输出示例 |
 |--------|---------|
 | `{{table}}` | `[users]` / `"users"` / `` `users` `` |
+| `{{table --param tableName}}` | 动态表名（从参数获取） |
 | `{{columns}}` | `[id], [name], [age]` |
 | `{{columns --exclude Id}}` | `[name], [age]` |
 | `{{values}}` | `@id, @name, @age` |

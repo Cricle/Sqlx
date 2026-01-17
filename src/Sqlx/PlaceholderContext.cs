@@ -4,6 +4,7 @@
 
 namespace Sqlx;
 
+using System;
 using System.Collections.Generic;
 
 /// <summary>
@@ -32,11 +33,16 @@ public sealed class PlaceholderContext
     /// <param name="dialect">The SQL dialect for database-specific SQL generation.</param>
     /// <param name="tableName">The database table name.</param>
     /// <param name="columns">The column metadata for the entity.</param>
+    /// <exception cref="ArgumentNullException">Thrown when dialect or columns is null.</exception>
+    /// <exception cref="ArgumentException">Thrown when tableName is null, empty, or whitespace.</exception>
     public PlaceholderContext(SqlDialect dialect, string tableName, IReadOnlyList<ColumnMeta> columns)
     {
-        Dialect = dialect;
+        if (string.IsNullOrWhiteSpace(tableName))
+            throw new ArgumentException("Table name cannot be null, empty, or whitespace.", nameof(tableName));
+
+        Dialect = dialect ?? throw new ArgumentNullException(nameof(dialect));
         TableName = tableName;
-        Columns = columns;
+        Columns = columns ?? throw new ArgumentNullException(nameof(columns));
     }
 
     /// <summary>

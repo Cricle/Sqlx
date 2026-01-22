@@ -11,7 +11,7 @@ using TodoWebApi.Services;
 using TodoWebApi.Json;
 using TodoWebApi.Models;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateSlimBuilder(args);
 
 // Configure JSON serialization for AOT
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -19,11 +19,6 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.TypeInfoResolverChain.Insert(0, TodoJsonContext.Default);
     options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
 });
-
-// Configure CORS
-builder.Services.AddCors(options =>
-    options.AddDefaultPolicy(policy =>
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
 
 // Configure SQLite connection
 var sqliteConnection = new SqliteConnection("Data Source=todos.db;Cache=Shared;Foreign Keys=true");
@@ -38,7 +33,6 @@ var app = builder.Build();
 
 // Configure middleware
 app.UseStaticFiles();
-app.UseCors();
 
 // Redirect root to index.html
 app.MapGet("/", () => Results.Redirect("/index.html"));

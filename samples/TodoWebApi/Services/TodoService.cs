@@ -33,16 +33,16 @@ namespace TodoWebApi.Services;
 [RepositoryFor(typeof(ITodoRepository))]
 public partial class TodoRepository(SqliteConnection connection) : ITodoRepository
 {
-    private readonly SqliteConnection _connection = connection;
-    public System.Data.Common.DbTransaction? Transaction { get; set; }
+    // Generator auto-generates:
+    // - private readonly SqliteConnection _connection = connection;
+    // - public DbTransaction? Transaction { get; set; }
 
     /// <summary>
     /// Returns an IQueryable for building complex LINQ queries.
     /// </summary>
-    public SqlxQueryable<Todo> AsQueryable()
+    public IQueryable<Todo> AsQueryable()
     {
-        var query = SqlQuery<Todo>.ForSqlite();
-        return (SqlxQueryable<Todo>)query.WithConnection(_connection);
+        return SqlQuery<Todo>.For(_placeholderContext.Dialect).WithConnection(_connection);
     }
 
     // Standard CRUD methods auto-generated from ICrudRepository<Todo, long>
@@ -144,7 +144,7 @@ public interface ITodoRepository : ICrudRepository<Todo, long>
     /// var todos = await query.ToListAsync();
     /// </code>
     /// </summary>
-    SqlxQueryable<Todo> AsQueryable();
+    IQueryable<Todo> AsQueryable();
 
     // ========== Debug/Testing Methods - Return SqlTemplate ==========
 

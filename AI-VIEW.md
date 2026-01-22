@@ -140,6 +140,21 @@ namespace MyApp.Repositories;
 // partial class - 源生成器会生成另一半实现
 public partial class UserRepository(DbConnection connection) : IUserRepository
 {
+    // 连接获取优先级：方法参数 > 字段 > 属性 > 主构造函数
+    
+    // 方式1：显式声明字段（推荐，优先级最高）
+    private readonly DbConnection _connection = connection;
+    public DbTransaction? Transaction { get; set; }
+    
+    // 方式2：使用属性（优先级次之）
+    // public DbConnection Connection { get; } = connection;
+    // public DbTransaction? Transaction { get; set; }
+    
+    // 方式3：不声明字段/属性，使用主构造函数（最简洁，优先级最低）
+    // 源生成器会自动生成：
+    // private readonly DbConnection _connection = connection;
+    // public DbTransaction? Transaction { get; set; }
+    
     // 不需要写任何方法实现！
     // 源生成器会自动生成所有接口方法的实现
     
@@ -170,9 +185,17 @@ public partial class UserRepository(DbConnection connection) : IUserRepository
 
 **关键说明：**
 - `[SqlDefine(SqlDefineTypes.XXX)]` - 标注在实现类上，指定数据库方言
+- **连接优先级**：方法参数 > 字段 > 属性 > 主构造函数
+  - 方法参数：最灵活，可为特定方法指定不同连接
+  - 字段：推荐方式，明确且易于调试
+  - 属性：适合需要外部访问连接的场景
+  - 主构造函数：最简洁，自动生成字段和 Transaction 属性
 - `[RepositoryFor(typeof(IXxx))]` - 标注在实现类上，指定要实现的接口
 - 类必须声明为 `partial class`
 - 构造函数接收 `DbConnection` 参数
+- **两种字段声明方式都支持**：
+  - 显式声明：`private readonly DbConnection _connection = connection;`（推荐）
+  - 隐式使用：直接使用主构造函数参数 `connection`（也可以）
 - 不需要手写任何方法实现，源生成器自动生成
 
 **[RepositoryFor] 的高级用法：**
@@ -266,6 +289,42 @@ Console.WriteLine($"Has dynamic placeholders: {sqlTemplate.HasDynamicPlaceholder
 | `[SqlTemplate("SQL")]` | **接口方法** | 定义 SQL 模板 | `[SqlTemplate("SELECT ...")] Task<List<User>> GetAllAsync();` |
 | `[ReturnInsertedId]` | **接口方法（INSERT）** | 返回自增 ID | `[SqlTemplate("INSERT ...")] [ReturnInsertedId] Task<long> InsertAsync(User u);` |
 | `[Column("col_name")]` | **实体属性** | 指定列名映射 | `[Column("user_name")] public string Name { get; set; }` |
+
+### SqlTemplate 的两种形式
+
+**重要说明：** Sqlx 中有两个不同的 `SqlTemplate`，用途完全不同：
+
+| 类型 | 命名空间 | 用途 | 使用场景 |
+|------|---------|------|---------|
+| **`[SqlTemplate]` 特性** | `Sqlx.Annotations` | 编译时标注接口方法，定义 SQL 模板 | 在接口方法上使用，源生成器会生成实现代码 |
+| **`SqlTemplate` 类** | `Sqlx` | 运行时类，表示已解析的 SQL 模板对象 | 调试时返回此类型查看生成的 SQL |
+
+**使用示例：**
+
+```csharp
+using Sqlx;                    // SqlTemplate 类
+using Sqlx.Annotations;        // [SqlTemplate] 特性
+
+public interface IUserRepository
+{
+    // 1. [SqlTemplate] 特性 - 标注方法，定义 SQL 模板
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
+    Task<User?> GetByIdAsync(long id);
+    
+    // 2. SqlTemplate 类 - 返回类型，用于调试查看生成的 SQL
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
+    SqlTemplate GetByIdSql(long id);  // 不执行查询，只返回 SQL 模板对象
+}
+
+// 使用调试方法
+var sqlTemplate = repo.GetByIdSql(123);
+Console.WriteLine($"Prepared SQL: {sqlTemplate.Sql}");
+Console.WriteLine($"Has dynamic placeholders: {sqlTemplate.HasDynamicPlaceholders}");
+```
+
+**关键区别：**
+- **`[SqlTemplate]` 特性**：用 `[]` 包裹，标注在方法上，告诉源生成器生成代码
+- **`SqlTemplate` 类**：作为返回类型，用于调试和查看生成的 SQL
 
 ### 必需的 using 命名空间
 
@@ -828,7 +887,12 @@ obj/
 
 ### 调试方法1：返回 SqlTemplate
 
+**重要：** 这里的 `SqlTemplate` 是 `Sqlx` 命名空间下的**类**（不是 `Sqlx.Annotations` 下的特性）。
+
 ```csharp
+using Sqlx;                    // SqlTemplate 类
+using Sqlx.Annotations;        // [SqlTemplate] 特性
+
 // 在接口中定义调试方法
 public interface IUserRepository
 {
@@ -836,9 +900,9 @@ public interface IUserRepository
     [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
     Task<User?> GetByIdAsync(long id);
     
-    // 调试方法：返回 SqlTemplate 查看生成的 SQL（不执行）
+    // 调试方法：返回 SqlTemplate 类查看生成的 SQL（不执行）
     [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
-    SqlTemplate GetByIdSql(long id);
+    SqlTemplate GetByIdSql(long id);  // 返回类型是 Sqlx.SqlTemplate 类
     
     // 带动态参数的调试
     [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE {{where --param predicate}}")]
@@ -853,6 +917,11 @@ Console.WriteLine($"Has dynamic placeholders: {sqlTemplate.HasDynamicPlaceholder
 var whereSql = userRepo.GetWhereSql(u => u.Age > 18 && u.IsActive);
 Console.WriteLine($"WHERE SQL: {whereSql.Render("predicate", "age > 18 AND is_active = 1")}");
 ```
+
+**说明：**
+- `[SqlTemplate]` 是**特性**（Attribute），用于标注方法
+- `SqlTemplate` 是**类**（Class），用作返回类型查看 SQL
+- 两者命名相同但用途完全不同，注意区分
 
 ### 调试方法2：使用拦截器
 
@@ -968,7 +1037,7 @@ var (sql, parameters) = SqlQuery.ForSqlServer<User>()
 
 ## 测试覆盖
 
-项目包含 **1572 个单元测试**，覆盖所有核心功能：
+项目包含 **1575 个单元测试**，覆盖所有核心功能：
 
 - ✅ 基础 CRUD 操作
 - ✅ 表达式查询和转换
@@ -978,6 +1047,7 @@ var (sql, parameters) = SqlQuery.ForSqlServer<User>()
 - ✅ IQueryable 查询构建器
 - ✅ 源生成器功能
 - ✅ AOT 兼容性
+- ✅ 主构造函数支持
 
 ## 示例项目
 
@@ -1023,7 +1093,7 @@ var (sql, parameters) = SqlQuery.ForSqlServer<User>()
 **运行示例：**
 
 ```bash
-# 启动应用
+# 启动应用（使用 CreateSlimBuilder，仅支持 HTTP）
 cd samples/TodoWebApi
 dotnet run
 
@@ -1033,6 +1103,12 @@ http://localhost:5000
 # 运行 API 测试
 pwsh test-api.ps1
 ```
+
+**重要说明：**
+- 本示例使用 `WebApplication.CreateSlimBuilder()` 以支持 Native AOT 编译
+- CreateSlimBuilder 默认不加载完整配置系统，**不支持 HTTPS 端点配置**
+- `appsettings.json` 中只配置了 HTTP 端点（`http://localhost:5000`）
+- 如需 HTTPS 支持，请改用 `WebApplication.CreateBuilder(args)`（失去 AOT 支持）
 
 **代码示例：**
 
@@ -1059,7 +1135,8 @@ public interface ITodoRepository : ICrudRepository<Todo, long>
     [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE {{where --param predicate}}")]
     Task<List<Todo>> GetWhereAsync(Expression<Func<Todo, bool>> predicate);
     
-    // 批量操作
+    // 批量操作 - 使用 json_each() 处理 ID 列表（SQLite）
+    // 注意：需要手动构建 JSON 数组字符串，如 "[1,2,3]"
     [SqlTemplate("UPDATE {{table}} SET priority = @priority WHERE id IN (SELECT value FROM json_each(@idsJson))")]
     Task<int> BatchUpdatePriorityAsync(string idsJson, int priority, DateTime updatedAt);
 }

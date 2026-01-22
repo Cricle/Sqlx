@@ -86,17 +86,37 @@ using Sqlx.Annotations;
 [RepositoryFor(typeof(IUserRepository))]
 public partial class UserRepository : IUserRepository
 {
-    private readonly DbConnection _connection;
+    // Connection Priority: Method Parameter > Field > Property > Primary Constructor
     
-    // Required: Transaction support
+    // Option 1: Explicit field (recommended)
+    private readonly DbConnection _connection;
     public DbTransaction? Transaction { get; set; }
 
     public UserRepository(DbConnection connection)
     {
         _connection = connection;
     }
+    
+    // Option 2: Property (suitable for external access)
+    // public DbConnection Connection { get; }
+    // public DbTransaction? Transaction { get; set; }
+    // public UserRepository(DbConnection connection) => Connection = connection;
+    
+    // Option 3: Primary constructor (most concise, auto-generated)
+    // public partial class UserRepository(DbConnection connection) : IUserRepository
+    // {
+    //     // Generator automatically creates:
+    //     // private readonly DbConnection _connection = connection;
+    //     // public DbTransaction? Transaction { get; set; }
+    // }
 }
 ```
+
+**Connection Management**:
+- **Method Parameter** (highest priority): Pass connection to specific methods
+- **Field** (recommended): Explicit, clear, easy to debug  
+- **Property**: Suitable when external access is needed
+- **Primary Constructor** (lowest priority): Most concise, auto-generated
 
 The source generator will implement all interface methods automatically.
 

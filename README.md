@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-purple.svg)](#)
 [![LTS](https://img.shields.io/badge/LTS-.NET%2010-green.svg)](#)
-[![Tests](https://img.shields.io/badge/tests-1572%20passing-brightgreen.svg)](#)
+[![Tests](https://img.shields.io/badge/tests-1585%20passing-brightgreen.svg)](#)
 [![AOT](https://img.shields.io/badge/AOT-ready-blue.svg)](#)
 
 高性能、AOT 友好的 .NET 数据库访问库。使用源生成器在编译时生成代码，零运行时反射，完全支持 Native AOT。
@@ -52,6 +52,30 @@ public partial class UserRepository(DbConnection connection) : IUserRepository {
 await using var conn = new SqliteConnection("Data Source=app.db");
 var repo = new UserRepository(conn);
 var adults = await repo.GetAdultsAsync(18);
+```
+
+**重要说明：** Sqlx 中有两个不同的 `SqlTemplate`：
+- **`[SqlTemplate]` 特性** (`Sqlx.Annotations`) - 用于标注接口方法，定义 SQL 模板
+- **`SqlTemplate` 类** (`Sqlx`) - 运行时类，用于调试查看生成的 SQL
+
+```csharp
+using Sqlx;                    // SqlTemplate 类
+using Sqlx.Annotations;        // [SqlTemplate] 特性
+
+public interface IUserRepository
+{
+    // [SqlTemplate] 特性 - 标注方法执行查询
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
+    Task<User?> GetByIdAsync(long id);
+    
+    // SqlTemplate 类 - 返回类型用于调试（不执行查询）
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
+    SqlTemplate GetByIdSql(long id);
+}
+
+// 调试使用
+var template = repo.GetByIdSql(123);
+Console.WriteLine($"SQL: {template.Sql}");
 ```
 
 ## SQL 模板占位符
@@ -205,6 +229,89 @@ var users = new List<User> { new() { Name = "Alice" }, new() { Name = "Bob" } };
 var sql = "INSERT INTO users (name) VALUES (@name)";
 await connection.ExecuteBatchAsync(sql, users, UserParameterBinder.Default);
 ```
+
+## 连接和事务管理
+
+### 连接获取优先级
+
+源生成器按以下优先级查找 DbConnection：
+
+**方法参数 > 字段 > 属性 > 主构造函数**
+
+```csharp
+// 方式 1: 显式字段（推荐，优先级最高）
+[SqlDefine(SqlDefineTypes.SQLite)]
+[RepositoryFor(typeof(IUserRepository))]
+public partial class UserRepository : IUserRepository
+{
+    private readonly SqliteConnection _connection;
+    public DbTransaction? Transaction { get; set; }
+    
+    public UserRepository(SqliteConnection connection)
+    {
+        _connection = connection;
+    }
+}
+
+// 方式 2: 属性（适合需要外部访问）
+public partial class UserRepository : IUserRepository
+{
+    public SqliteConnection Connection { get; }
+    public DbTransaction? Transaction { get; set; }
+    
+    public UserRepository(SqliteConnection connection)
+    {
+        Connection = connection;
+    }
+}
+
+// 方式 3: 主构造函数（最简洁，自动生成）
+public partial class UserRepository(SqliteConnection connection) : IUserRepository
+{
+    // 生成器自动生成：
+    // private readonly SqliteConnection _connection = connection;
+    // public DbTransaction? Transaction { get; set; }
+}
+
+// 方式 4: 方法参数（最灵活，优先级最高）
+public interface IUserRepository
+{
+    // 使用类级别连接
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
+    Task<User?> GetByIdAsync(long id);
+    
+    // 使用方法参数连接（覆盖类级别连接）
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
+    Task<User?> GetByIdWithConnectionAsync(DbConnection connection, long id);
+}
+```
+
+### 事务支持
+
+```csharp
+var repo = new UserRepository(connection);
+
+using var transaction = connection.BeginTransaction();
+repo.Transaction = transaction;
+
+try
+{
+    await repo.InsertAsync(user1);
+    await repo.UpdateAsync(user2);
+    await repo.DeleteAsync(user3);
+    
+    transaction.Commit();
+}
+catch
+{
+    transaction.Rollback();
+    throw;
+}
+```
+
+**自动生成规则**：
+- 如果用户未定义 `Transaction` 属性，生成器会自动生成
+- 如果用户未定义连接字段/属性，生成器会从主构造函数参数自动生成字段
 
 ## 性能对比
 

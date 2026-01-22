@@ -15,7 +15,6 @@
     <!-- Web API specific settings -->
     <IsPackable>false</IsPackable>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
 
     <!-- Warning suppression (AOT compatibility) -->
     <NoWarn>$(NoWarn);CS1591;CS8618;CS8625;IL2026;IL2104;CS8600;CS8602;CS8604</NoWarn>

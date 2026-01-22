@@ -156,20 +156,68 @@ TodoWebApi/
 ## 🔧 Key Sqlx Features Demonstrated
 
 ### 1. **ICrudRepository Interface**
-Pre-defined CRUD operations without writing SQL:
+Pre-defined CRUD operations without writing SQL (42 methods total):
+
+**Query Methods (24)**:
 ```csharp
-public interface ICrudRepository<TEntity, TKey>
-{
-    Task<TEntity?> GetByIdAsync(TKey id);
-    Task<List<TEntity>> GetAllAsync(int limit = 1000, int offset = 0);
-    Task<int> InsertAsync(TEntity entity);
-    Task<long> InsertAndGetIdAsync(TEntity entity);
-    Task<int> UpdateAsync(TEntity entity);
-    Task<int> DeleteAsync(TKey id);
-    Task<long> CountAsync();
-    Task<bool> ExistsAsync(TKey id);
-    Task<int> BatchInsertAsync(IEnumerable<TEntity> entities);
-}
+// Single Entity (4)
+Task<TEntity?> GetByIdAsync(TKey id);
+TEntity? GetById(TKey id);
+Task<TEntity?> GetFirstWhereAsync(Expression<Func<TEntity, bool>> predicate);
+TEntity? GetFirstWhere(Expression<Func<TEntity, bool>> predicate);
+
+// List Queries (6)
+Task<List<TEntity>> GetByIdsAsync(List<TKey> ids);
+List<TEntity> GetByIds(List<TKey> ids);
+Task<List<TEntity>> GetAllAsync(int limit = 1000);
+List<TEntity> GetAll(int limit = 1000);
+Task<List<TEntity>> GetWhereAsync(Expression<Func<TEntity, bool>> predicate, int limit = 1000);
+List<TEntity> GetWhere(Expression<Func<TEntity, bool>> predicate, int limit = 1000);
+
+// Pagination (4)
+Task<List<TEntity>> GetPagedAsync(int pageSize = 20, int offset = 0);
+List<TEntity> GetPaged(int pageSize = 20, int offset = 0);
+Task<List<TEntity>> GetPagedWhereAsync(Expression<Func<TEntity, bool>> predicate, int pageSize = 20, int offset = 0);
+List<TEntity> GetPagedWhere(Expression<Func<TEntity, bool>> predicate, int pageSize = 20, int offset = 0);
+
+// Existence & Count (10)
+Task<bool> ExistsByIdAsync(TKey id);
+bool ExistsById(TKey id);
+Task<bool> ExistsAsync(Expression<Func<TEntity, bool>> predicate);
+bool Exists(Expression<Func<TEntity, bool>> predicate);
+Task<long> CountAsync();
+long Count();
+Task<long> CountWhereAsync(Expression<Func<TEntity, bool>> predicate);
+long CountWhere(Expression<Func<TEntity, bool>> predicate);
+```
+
+**Command Methods (18)**:
+```csharp
+// Insert (6)
+Task<TKey> InsertAndGetIdAsync(TEntity entity);
+TKey InsertAndGetId(TEntity entity);
+Task<int> InsertAsync(TEntity entity);
+int Insert(TEntity entity);
+Task<int> BatchInsertAsync(IEnumerable<TEntity> entities);
+int BatchInsert(IEnumerable<TEntity> entities);
+
+// Update (6)
+Task<int> UpdateAsync(TEntity entity);
+int Update(TEntity entity);
+Task<int> UpdateWhereAsync(TEntity entity, Expression<Func<TEntity, bool>> predicate);
+int UpdateWhere(TEntity entity, Expression<Func<TEntity, bool>> predicate);
+Task<int> BatchUpdateAsync(IEnumerable<TEntity> entities);
+int BatchUpdate(IEnumerable<TEntity> entities);
+
+// Delete (6)
+Task<int> DeleteAsync(TKey id);
+int Delete(TKey id);
+Task<int> DeleteByIdsAsync(List<TKey> ids);
+int DeleteByIds(List<TKey> ids);
+Task<int> DeleteWhereAsync(Expression<Func<TEntity, bool>> predicate);
+int DeleteWhere(Expression<Func<TEntity, bool>> predicate);
+Task<int> DeleteAllAsync();
+int DeleteAll();
 ```
 
 ### 2. **SqlTemplate - Direct SQL with Placeholders**
@@ -267,40 +315,67 @@ dotnet publish -c Release -r win-x64 --self-contained
 
 ## 📊 API Endpoints
 
-### Basic CRUD
-- `GET /api/todos` - Get all todos
+### Basic CRUD Operations
+- `GET /api/todos` - Get all todos (limit 100)
 - `GET /api/todos/{id}` - Get todo by ID
 - `POST /api/todos` - Create new todo
 - `PUT /api/todos/{id}` - Update todo
-- `DELETE /api/todos/{id}` - Delete todo
+- `DELETE /api/todos/{id}` - Delete todo by ID
+- `PUT /api/todos/{id}/complete` - Mark todo as completed
+- `PUT /api/todos/{id}/actual-minutes` - Update actual work time
 
-### SqlTemplate Examples
-- `GET /api/todos/search?q={keyword}` - Search todos
+### Query & Filter Operations
+- `GET /api/todos/search?q={keyword}` - Search todos by title/description
 - `GET /api/todos/completed` - Get completed todos
-- `GET /api/todos/high-priority` - Get high priority todos
+- `GET /api/todos/high-priority` - Get high priority todos (priority >= 3)
+- `GET /api/todos/priority/{priority}` - Get todos by specific priority
+- `GET /api/todos/overdue` - Get overdue incomplete todos
 - `GET /api/todos/due-soon` - Get todos due in next 7 days
+- `GET /api/todos/paged?page={page}&pageSize={size}` - Get paginated todos
+- `GET /api/todos/{id}/exists` - Check if todo exists
+- `POST /api/todos/by-ids` - Get multiple todos by IDs
+
+### Count & Statistics
+- `GET /api/todos/count` - Get total todo count
+- `GET /api/todos/count/pending` - Get pending todo count
+- `GET /api/todos/linq/count-overdue` - Count overdue todos (LINQ)
+- `GET /api/todos/queryable/stats` - Get comprehensive statistics
+
+### Batch Operations
+- `PUT /api/todos/batch/priority` - Batch update priority
+- `PUT /api/todos/batch/complete` - Batch complete todos
+- `DELETE /api/todos/batch` - Batch delete todos
+- `DELETE /api/todos/completed` - Delete all completed todos
 
 ### LINQ Expression Examples
-- `GET /api/todos/linq/high-priority-pending` - High priority pending todos
-- `GET /api/todos/linq/count-overdue` - Count overdue todos
+- `GET /api/todos/linq/high-priority-pending` - High priority pending todos using LINQ expressions
 
 ### IQueryable Examples
-- `GET /api/todos/queryable/priority-paged?page=1&pageSize=10` - Paginated high priority todos
+- `GET /api/todos/queryable/priority-paged?page={page}&pageSize={size}` - Paginated high priority todos
+- `GET /api/todos/queryable/titles` - Get only titles and priorities (projection)
 - `GET /api/todos/queryable/search-advanced?keyword={text}` - Advanced search with LINQ
-- `GET /api/todos/queryable/stats` - Get statistics using aggregation
+
+**Total: 39 API endpoints** demonstrating comprehensive Sqlx features
 
 ## 📊 Performance
 
-Sqlx achieves near-raw ADO.NET performance with a clean, type-safe API:
+Sqlx achieves excellent performance with minimal GC pressure:
 
-| Method | Mean | Allocated |
-|--------|------|-----------|
-| Raw ADO.NET | 100% | Baseline |
-| **Sqlx** | **~102%** | **~Same** |
-| Dapper.AOT | ~116% | +73% |
-| EF Core | ~450% | +8.4 KB |
+### Small Dataset Performance (10-100 rows) - Typical Web API Scenario
 
-*Based on BenchmarkDotNet tests - see [benchmarks](../../docs/benchmarks.md) for details*
+| Framework | 10 rows | 100 rows | Memory (100 rows) | Gen1 GC (1000 rows) |
+|-----------|---------|----------|-------------------|---------------------|
+| **Sqlx** | **42.19 μs** 🥇 | **230.35 μs** 🥇 | **37 KB** 🥇 | **1.95** 🥇 |
+| Dapper.AOT | 43.42 μs | 233.76 μs | 45.66 KB | 3.91 |
+| FreeSql | 49.64 μs | 237.38 μs | 37.23 KB | 25.39 |
+
+**Key Advantages:**
+- ✅ **Fastest** for small datasets (10-100 rows) - typical Web API queries
+- ✅ **Lowest GC pressure** - Gen1 GC is 13x lower than FreeSql
+- ✅ **Best memory efficiency** - 23-40% less memory than Dapper.AOT
+- ✅ **Most stable** - ideal for long-running web applications
+
+*Based on BenchmarkDotNet tests (.NET 10 LTS) - see [benchmarks](../../docs/benchmarks.md) and [AOT results](../../AOT_PERFORMANCE_RESULTS.md) for details*
 
 ## 🌟 Why Sqlx?
 

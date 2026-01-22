@@ -121,7 +121,7 @@ public static class ResultReaderExtensions
     /// </summary>
     public static List<TEntity> ToList<TEntity>(this IResultReader<TEntity> reader, IDataReader dataReader, int[] ordinals, int? capacityHint)
     {
-        var list = new List<TEntity>(capacityHint ?? 5);
+        var list = capacityHint.HasValue ? new List<TEntity>(capacityHint.Value) : new List<TEntity>();
         while (dataReader.Read())
         {
             list.Add(reader.Read(dataReader, ordinals));

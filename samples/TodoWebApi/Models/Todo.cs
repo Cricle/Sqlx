@@ -162,6 +162,57 @@ public record ErrorResponse(string Message);
 public record BatchUpdateResult(int UpdatedCount);
 
 /// <summary>
+/// 批量删除请求
+/// </summary>
+public record BatchDeleteRequest
+{
+    [Required]
+    public List<long> Ids { get; init; } = new();
+}
+
+/// <summary>
+/// 批量完成请求
+/// </summary>
+public record BatchCompleteRequest
+{
+    [Required]
+    public List<long> Ids { get; init; } = new();
+}
+
+/// <summary>
+/// 批量获取请求
+/// </summary>
+public record BatchGetRequest
+{
+    [Required]
+    public List<long> Ids { get; init; } = new();
+}
+
+/// <summary>
+/// 更新实际工作时间请求
+/// </summary>
+public record UpdateActualMinutesRequest
+{
+    [Range(0, int.MaxValue)]
+    public int ActualMinutes { get; init; }
+}
+
+/// <summary>
+/// 存在性检查结果
+/// </summary>
+public record ExistsResult(bool Exists);
+
+/// <summary>
+/// TODO 标题和优先级
+/// </summary>
+public record TodoTitlePriority(long Id, string Title, int Priority);
+
+/// <summary>
+/// TODO 统计信息
+/// </summary>
+public record TodoStatsResult(long Total, long Completed, long Pending, long HighPriority, double CompletionRate);
+
+/// <summary>
 /// 创建TODO请求
 /// </summary>
 public record CreateTodoRequest

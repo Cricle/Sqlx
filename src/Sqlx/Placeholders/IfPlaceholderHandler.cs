@@ -56,14 +56,14 @@ public sealed class IfPlaceholderHandler : PlaceholderHandlerBase, IBlockPlaceho
         => string.Empty; // Block handlers don't render content directly
 
     /// <inheritdoc/>
-    public bool ShouldInclude(string options, IReadOnlyDictionary<string, object?>? parameters)
+    public string ProcessBlock(string options, string blockContent, IReadOnlyDictionary<string, object?>? parameters)
     {
         // Check notnull=param first (before null= to avoid partial match)
         var notNullParam = ParseCondition(options, "notnull");
         if (notNullParam != null)
         {
             var value = parameters?.TryGetValue(notNullParam, out var v) == true ? v : null;
-            return value is not null;
+            return value is not null ? blockContent : string.Empty;
         }
 
         // Check null=param
@@ -71,7 +71,7 @@ public sealed class IfPlaceholderHandler : PlaceholderHandlerBase, IBlockPlaceho
         if (nullParam != null)
         {
             var value = parameters?.TryGetValue(nullParam, out var v) == true ? v : null;
-            return value is null;
+            return value is null ? blockContent : string.Empty;
         }
 
         // Check notempty=param first (before empty= to avoid partial match)
@@ -79,7 +79,7 @@ public sealed class IfPlaceholderHandler : PlaceholderHandlerBase, IBlockPlaceho
         if (notEmptyParam != null)
         {
             var value = parameters?.TryGetValue(notEmptyParam, out var v) == true ? v : null;
-            return !IsEmpty(value);
+            return !IsEmpty(value) ? blockContent : string.Empty;
         }
 
         // Check empty=param
@@ -87,7 +87,7 @@ public sealed class IfPlaceholderHandler : PlaceholderHandlerBase, IBlockPlaceho
         if (emptyParam != null)
         {
             var value = parameters?.TryGetValue(emptyParam, out var v) == true ? v : null;
-            return IsEmpty(value);
+            return IsEmpty(value) ? blockContent : string.Empty;
         }
 
         throw new InvalidOperationException($"Invalid {{{{if}}}} condition: {options}. Use null=, notnull=, empty=, or notempty=.");

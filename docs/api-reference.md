@@ -143,7 +143,7 @@ public interface IPlaceholderHandler
 
 ### IBlockPlaceholderHandler
 
-Contract for block-level placeholder handlers that control content inclusion.
+Contract for block-level placeholder handlers that process content between opening and closing tags.
 
 ```csharp
 public interface IBlockPlaceholderHandler : IPlaceholderHandler
@@ -154,11 +154,20 @@ public interface IBlockPlaceholderHandler : IPlaceholderHandler
     string ClosingTagName { get; }
     
     /// <summary>
-    /// Evaluates whether the block content should be included.
+    /// Processes the block content and returns the rendered result.
     /// </summary>
-    bool ShouldInclude(string options, IReadOnlyDictionary<string, object?>? parameters);
+    /// <returns>
+    /// The rendered content. Return empty string to exclude the block,
+    /// or the processed content (possibly repeated multiple times for loops).
+    /// </returns>
+    string ProcessBlock(string options, string blockContent, IReadOnlyDictionary<string, object?>? parameters);
 }
 ```
+
+Block handlers can implement various behaviors:
+- **Conditional blocks** (e.g., `{{if}}`): Return `blockContent` if condition is true, empty string otherwise
+- **Loop blocks** (e.g., `{{foreach}}`): Render `blockContent` multiple times with different contexts
+- **Transform blocks**: Modify and return transformed `blockContent`
 
 **Built-in Implementation:**
 
@@ -273,7 +282,7 @@ public interface IParameterBinder<TEntity>
 
 ### ICrudRepository\<TEntity, TKey\>
 
-Standard CRUD repository interface.
+Standard CRUD repository interface combining query and command operations.
 
 ```csharp
 public interface ICrudRepository<TEntity, TKey> : IQueryRepository<TEntity, TKey>, ICommandRepository<TEntity, TKey>
@@ -282,37 +291,79 @@ public interface ICrudRepository<TEntity, TKey> : IQueryRepository<TEntity, TKey
 }
 ```
 
+**Total Methods**: 42 (24 query + 18 command)
+
 ### IQueryRepository\<TEntity, TKey\>
 
-Query operations.
+Query operations (24 methods).
 
 ```csharp
 public interface IQueryRepository<TEntity, TKey> where TEntity : class
 {
+    // Single Entity Queries (4 methods)
     Task<TEntity?> GetByIdAsync(TKey id, CancellationToken ct = default);
-    Task<List<TEntity>> GetByIdsAsync(List<TKey> ids, CancellationToken ct = default);
-    Task<List<TEntity>> GetAllAsync(int limit = 1000, CancellationToken ct = default);
-    Task<List<TEntity>> GetWhereAsync(Expression<Func<TEntity, bool>> predicate, int limit = 1000, CancellationToken ct = default);
+    TEntity? GetById(TKey id);
     Task<TEntity?> GetFirstWhereAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken ct = default);
+    TEntity? GetFirstWhere(Expression<Func<TEntity, bool>> predicate);
+    
+    // List Queries (6 methods)
+    Task<List<TEntity>> GetByIdsAsync(List<TKey> ids, CancellationToken ct = default);
+    List<TEntity> GetByIds(List<TKey> ids);
+    Task<List<TEntity>> GetAllAsync(int limit = 1000, CancellationToken ct = default);
+    List<TEntity> GetAll(int limit = 1000);
+    Task<List<TEntity>> GetWhereAsync(Expression<Func<TEntity, bool>> predicate, int limit = 1000, CancellationToken ct = default);
+    List<TEntity> GetWhere(Expression<Func<TEntity, bool>> predicate, int limit = 1000);
+    
+    // Pagination (4 methods)
     Task<List<TEntity>> GetPagedAsync(int pageSize = 20, int offset = 0, CancellationToken ct = default);
+    List<TEntity> GetPaged(int pageSize = 20, int offset = 0);
+    Task<List<TEntity>> GetPagedWhereAsync(Expression<Func<TEntity, bool>> predicate, int pageSize = 20, int offset = 0, CancellationToken ct = default);
+    List<TEntity> GetPagedWhere(Expression<Func<TEntity, bool>> predicate, int pageSize = 20, int offset = 0);
+    
+    // Existence & Count (10 methods)
+    Task<bool> ExistsByIdAsync(TKey id, CancellationToken ct = default);
+    bool ExistsById(TKey id);
     Task<bool> ExistsAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken ct = default);
+    bool Exists(Expression<Func<TEntity, bool>> predicate);
     Task<long> CountAsync(CancellationToken ct = default);
+    long Count();
     Task<long> CountWhereAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken ct = default);
+    long CountWhere(Expression<Func<TEntity, bool>> predicate);
 }
 ```
 
 ### ICommandRepository\<TEntity, TKey\>
 
-Command operations.
+Command operations (18 methods).
 
 ```csharp
 public interface ICommandRepository<TEntity, TKey> where TEntity : class
 {
+    // Insert Operations (6 methods)
     Task<TKey> InsertAndGetIdAsync(TEntity entity, CancellationToken ct = default);
+    TKey InsertAndGetId(TEntity entity);
+    Task<int> InsertAsync(TEntity entity, CancellationToken ct = default);
+    int Insert(TEntity entity);
+    Task<int> BatchInsertAsync(IEnumerable<TEntity> entities, CancellationToken ct = default);
+    int BatchInsert(IEnumerable<TEntity> entities);
+    
+    // Update Operations (6 methods)
     Task<int> UpdateAsync(TEntity entity, CancellationToken ct = default);
-    Task<int> UpdateWhereAsync(Expression<Func<TEntity, bool>> predicate, ExpressionToSql<TEntity> setter, CancellationToken ct = default);
+    int Update(TEntity entity);
+    Task<int> UpdateWhereAsync(TEntity entity, Expression<Func<TEntity, bool>> predicate, CancellationToken ct = default);
+    int UpdateWhere(TEntity entity, Expression<Func<TEntity, bool>> predicate);
+    Task<int> BatchUpdateAsync(IEnumerable<TEntity> entities, CancellationToken ct = default);
+    int BatchUpdate(IEnumerable<TEntity> entities);
+    
+    // Delete Operations (6 methods)
     Task<int> DeleteAsync(TKey id, CancellationToken ct = default);
+    int Delete(TKey id);
+    Task<int> DeleteByIdsAsync(List<TKey> ids, CancellationToken ct = default);
+    int DeleteByIds(List<TKey> ids);
     Task<int> DeleteWhereAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken ct = default);
+    int DeleteWhere(Expression<Func<TEntity, bool>> predicate);
+    Task<int> DeleteAllAsync(CancellationToken ct = default);
+    int DeleteAll();
 }
 ```
 

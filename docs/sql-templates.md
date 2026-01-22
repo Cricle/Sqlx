@@ -317,7 +317,9 @@ Task<List<Employee>> FilterEmployeesAsync(string? department, string? role, deci
 
 ### Custom Block Placeholder Handlers
 
-Create custom block handlers by implementing `IBlockPlaceholderHandler`:
+Create custom block handlers by implementing `IBlockPlaceholderHandler`. The `ProcessBlock` method gives you full control over how to handle the block content.
+
+#### Simple Conditional Handler
 
 ```csharp
 public class UnlessPlaceholderHandler : PlaceholderHandlerBase, IBlockPlaceholderHandler
@@ -335,16 +337,62 @@ public class UnlessPlaceholderHandler : PlaceholderHandlerBase, IBlockPlaceholde
     public override string Render(PlaceholderContext context, string options, 
         IReadOnlyDictionary<string, object?>? parameters) => string.Empty;
     
-    public bool ShouldInclude(string options, IReadOnlyDictionary<string, object?>? parameters)
+    public string ProcessBlock(string options, string blockContent, 
+        IReadOnlyDictionary<string, object?>? parameters)
     {
         // Inverse of "if notnull" - include when parameter IS null
         var paramName = options.Trim();
         var value = parameters?.TryGetValue(paramName, out var v) == true ? v : null;
-        return value is null;
+        return value is null ? blockContent : string.Empty;
     }
 }
 
 // Register the handler
 PlaceholderProcessor.RegisterHandler(UnlessPlaceholderHandler.Instance);
-PlaceholderProcessor.RegisterBlockClosingTag("/unless");
+```
+
+#### Loop Handler Example
+
+The `ProcessBlock` method enables more complex scenarios like loops:
+
+```csharp
+public class ForeachPlaceholderHandler : PlaceholderHandlerBase, IBlockPlaceholderHandler
+{
+    public static ForeachPlaceholderHandler Instance { get; } = new();
+    
+    public override string Name => "foreach";
+    public string ClosingTagName => "/foreach";
+    
+    public override PlaceholderType GetType(string options) => PlaceholderType.Dynamic;
+    
+    public override string Process(PlaceholderContext context, string options)
+        => throw new InvalidOperationException("{{foreach}} is dynamic");
+    
+    public override string Render(PlaceholderContext context, string options, 
+        IReadOnlyDictionary<string, object?>? parameters) => string.Empty;
+    
+    public string ProcessBlock(string options, string blockContent, 
+        IReadOnlyDictionary<string, object?>? parameters)
+    {
+        var paramName = options.Trim();
+        if (parameters?.TryGetValue(paramName, out var value) != true)
+            return string.Empty;
+            
+        if (value is not IEnumerable<object> items)
+            return string.Empty;
+            
+        var sb = new StringBuilder();
+        foreach (var item in items)
+        {
+            // Render blockContent for each item
+            // In a real implementation, you'd substitute placeholders in blockContent
+            // with values from the current item
+            sb.Append(blockContent);
+        }
+        return sb.ToString();
+    }
+}
+
+// Register the handler
+PlaceholderProcessor.RegisterHandler(ForeachPlaceholderHandler.Instance);
 ```

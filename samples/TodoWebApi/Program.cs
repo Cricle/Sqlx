@@ -1,9 +1,12 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using System.Text.Json;
+using Sqlx;
 using TodoWebApi.Services;
 using TodoWebApi.Json;
 using TodoWebApi.Models;
@@ -138,6 +141,103 @@ app.MapGet("/api/todos/due-soon", async (ITodoRepository repo) =>
 app.MapGet("/api/todos/count", async (ITodoRepository repo) =>
     Results.Json((int)await repo.CountAsync(), TodoJsonContext.Default.Int32));
 
+// Get pending todos count
+app.MapGet("/api/todos/count/pending", async (ITodoRepository repo) =>
+{
+    var count = await repo.CountWhereAsync(t => !t.IsCompleted);
+    return Results.Json((int)count, TodoJsonContext.Default.Int32);
+});
+
+// Get overdue todos
+app.MapGet("/api/todos/overdue", async (ITodoRepository repo) =>
+{
+    var todos = await repo.GetWhereAsync(t => 
+        t.DueDate != null && 
+        t.DueDate < DateTime.UtcNow && 
+        !t.IsCompleted);
+    return Results.Json(todos, TodoJsonContext.Default.ListTodo);
+});
+
+// Get todos by priority
+app.MapGet("/api/todos/priority/{priority:int}", async (int priority, ITodoRepository repo) =>
+{
+    var todos = await repo.GetWhereAsync(t => t.Priority == priority);
+    return Results.Json(todos, TodoJsonContext.Default.ListTodo);
+});
+
+// Batch delete todos
+app.MapDelete("/api/todos/batch", async (BatchDeleteRequest request, ITodoRepository repo) =>
+{
+    if (request.Ids == null || request.Ids.Count == 0)
+        return Results.Json(new BatchUpdateResult(0), TodoJsonContext.Default.BatchUpdateResult);
+    
+    // Workaround: Delete todos one by one (for small lists this is acceptable)
+    int deletedCount = 0;
+    foreach (var id in request.Ids)
+    {
+        var result = await repo.DeleteAsync(id);
+        deletedCount += result;
+    }
+    return Results.Json(new BatchUpdateResult(deletedCount), TodoJsonContext.Default.BatchUpdateResult);
+});
+
+// Batch complete todos
+app.MapPut("/api/todos/batch/complete", async (BatchCompleteRequest request, ITodoRepository repo) =>
+{
+    var now = DateTime.UtcNow;
+    var idsJson = $"[{string.Join(",", request.Ids)}]";
+    var result = await repo.BatchCompleteAsync(idsJson, now, now);
+    return Results.Json(new BatchUpdateResult(result), TodoJsonContext.Default.BatchUpdateResult);
+});
+
+// Update actual minutes
+app.MapPut("/api/todos/{id:long}/actual-minutes", async (long id, UpdateActualMinutesRequest request, ITodoRepository repo) =>
+{
+    var result = await repo.UpdateActualMinutesAsync(id, request.ActualMinutes, DateTime.UtcNow);
+    return result == 0 ? Results.NotFound() : Results.NoContent();
+});
+
+// Get todos with pagination
+app.MapGet("/api/todos/paged", async (int page, int pageSize, ITodoRepository repo) =>
+{
+    if (page < 1) page = 1;
+    if (pageSize < 1 || pageSize > 100) pageSize = 20;
+    
+    var todos = await repo.GetPagedAsync(pageSize, (page - 1) * pageSize);
+    return Results.Json(todos, TodoJsonContext.Default.ListTodo);
+});
+
+// Check if todo exists
+app.MapGet("/api/todos/{id:long}/exists", async (long id, ITodoRepository repo) =>
+{
+    var exists = await repo.ExistsByIdAsync(id);
+    return Results.Json(new ExistsResult(exists), TodoJsonContext.Default.ExistsResult);
+});
+
+// Get todos by IDs - using individual queries as workaround
+app.MapPost("/api/todos/by-ids", async (BatchGetRequest request, ITodoRepository repo) =>
+{
+    if (request.Ids == null || request.Ids.Count == 0)
+        return Results.Json(new List<Todo>(), TodoJsonContext.Default.ListTodo);
+    
+    // Workaround: Get todos one by one (for small lists this is acceptable)
+    var todos = new List<Todo>();
+    foreach (var id in request.Ids)
+    {
+        var todo = await repo.GetByIdAsync(id);
+        if (todo != null)
+            todos.Add(todo);
+    }
+    return Results.Json(todos, TodoJsonContext.Default.ListTodo);
+});
+
+// Delete all completed todos
+app.MapDelete("/api/todos/completed", async (ITodoRepository repo) =>
+{
+    var result = await repo.DeleteWhereAsync(t => t.IsCompleted);
+    return Results.Json(new BatchUpdateResult(result), TodoJsonContext.Default.BatchUpdateResult);
+});
+
 // ========== LINQ Expression Examples ==========
 
 // Get todos using LINQ expression predicate
@@ -162,75 +262,49 @@ app.MapGet("/api/todos/linq/count-overdue", async (ITodoRepository repo) =>
 // Complex query with IQueryable - high priority todos with pagination
 app.MapGet("/api/todos/queryable/priority-paged", async (ITodoRepository repo, int page = 1, int pageSize = 10) =>
 {
-    var query = repo.AsQueryable()
-        .Where(t => t.Priority >= 3 && !t.IsCompleted)
-        .OrderByDescending(t => t.Priority)
-        .ThenBy(t => t.DueDate)
-        .Skip((page - 1) * pageSize)
-        .Take(pageSize);
-    
-    var todos = await query.ToListAsync();
+    // Use predefined repository methods instead of IQueryable to avoid ambiguity
+    var todos = await repo.GetPagedWhereAsync(t => t.Priority >= 3 && !t.IsCompleted, pageSize, (page - 1) * pageSize);
     return Results.Json(todos, TodoJsonContext.Default.ListTodo);
 });
 
 // IQueryable with projection - get only title and priority
 app.MapGet("/api/todos/queryable/titles", async (ITodoRepository repo) =>
 {
-    var query = repo.AsQueryable()
-        .Where(t => !t.IsCompleted)
-        .OrderBy(t => t.Priority)
-        .Select(t => new { t.Id, t.Title, t.Priority });
-    
-    var sql = query.ToSql();
-    Console.WriteLine($"Generated SQL: {sql}");
-    
-    // Note: For AOT, we need to execute and map manually
+    // Use predefined repository methods
     var todos = await repo.GetWhereAsync(t => !t.IsCompleted);
     var result = todos
         .OrderBy(t => t.Priority)
-        .Select(t => new { t.Id, t.Title, t.Priority })
+        .Select(t => new TodoTitlePriority(t.Id, t.Title, t.Priority))
         .ToList();
     
-    return Results.Json(result);
+    return Results.Json(result, TodoJsonContext.Default.ListTodoTitlePriority);
 });
 
 // IQueryable with string functions
 app.MapGet("/api/todos/queryable/search-advanced", async (string keyword, ITodoRepository repo) =>
 {
-    var query = repo.AsQueryable()
-        .Where(t => t.Title.Contains(keyword) || (t.Description != null && t.Description.Contains(keyword)))
-        .OrderByDescending(t => t.UpdatedAt)
-        .Take(20);
-    
-    // For demonstration, show the generated SQL
-    var sql = query.ToSql();
-    Console.WriteLine($"Generated SQL: {sql}");
-    
-    var todos = await query.ToListAsync();
-    return Results.Json(todos, TodoJsonContext.Default.ListTodo);
+    // Use custom search method
+    var todos = await repo.SearchAsync($"%{keyword}%");
+    var result = todos.Take(20).ToList();
+    return Results.Json(result, TodoJsonContext.Default.ListTodo);
 });
 
 // IQueryable with aggregation
 app.MapGet("/api/todos/queryable/stats", async (ITodoRepository repo) =>
 {
-    var allQuery = repo.AsQueryable();
-    var completedQuery = repo.AsQueryable().Where(t => t.IsCompleted);
-    var highPriorityQuery = repo.AsQueryable().Where(t => t.Priority >= 3 && !t.IsCompleted);
+    var total = await repo.CountAsync();
+    var completed = await repo.CountWhereAsync(t => t.IsCompleted);
+    var highPriority = await repo.CountWhereAsync(t => t.Priority >= 3 && !t.IsCompleted);
     
-    var total = await allQuery.CountAsync();
-    var completed = await completedQuery.CountAsync();
-    var highPriority = await highPriorityQuery.CountAsync();
+    var stats = new TodoStatsResult(
+        Total: total,
+        Completed: completed,
+        Pending: total - completed,
+        HighPriority: highPriority,
+        CompletionRate: total > 0 ? (double)completed / total * 100 : 0
+    );
     
-    var stats = new
-    {
-        Total = total,
-        Completed = completed,
-        Pending = total - completed,
-        HighPriority = highPriority,
-        CompletionRate = total > 0 ? (double)completed / total * 100 : 0
-    };
-    
-    return Results.Json(stats);
+    return Results.Json(stats, TodoJsonContext.Default.TodoStatsResult);
 });
 
 // Initialize database

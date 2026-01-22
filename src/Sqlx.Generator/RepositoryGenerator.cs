@@ -7,6 +7,7 @@ namespace Sqlx;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -108,33 +109,14 @@ public class RepositoryGenerator : IIncrementalGenerator
     
     private static string? GetSqlDefineFromRepositoryFor(AttributeData repoForAttrData)
     {
-        // Check for Dialect named argument in [RepositoryFor]
         var dialectArg = repoForAttrData.NamedArguments.FirstOrDefault(a => a.Key == "Dialect");
-        if (dialectArg.Value.Value is int dialectValue && dialectValue >= 0)
-        {
-            return dialectValue switch
-            {
-                0 => "MySql",
-                1 => "SqlServer",
-                2 => "PostgreSql",
-                3 => "Oracle",
-                4 => "DB2",
-                5 => "SQLite",
-                _ => null
-            };
-        }
-        return null;
+        return dialectArg.Value.Value is int dialectValue ? MapDialectEnum(dialectValue) : null;
     }
     
     private static string? GetTableNameFromRepositoryFor(AttributeData repoForAttrData)
     {
-        // Check for TableName named argument in [RepositoryFor]
         var tableNameArg = repoForAttrData.NamedArguments.FirstOrDefault(a => a.Key == "TableName");
-        if (tableNameArg.Value.Value is string tableName)
-        {
-            return tableName;
-        }
-        return null;
+        return tableNameArg.Value.Value as string;
     }
 
     private static string GetSqlDefine(INamedTypeSymbol typeSymbol, INamedTypeSymbol? sqlDefineAttr)
@@ -145,24 +127,21 @@ public class RepositoryGenerator : IIncrementalGenerator
         if (attr?.ConstructorArguments.Length > 0)
         {
             var value = attr.ConstructorArguments[0].Value;
-            if (value is int intValue)
-            {
-                // Map SqlDefineTypes enum values to SqlDefine static field names
-                return intValue switch
-                {
-                    0 => "MySql",
-                    1 => "SqlServer",
-                    2 => "PostgreSql",
-                    3 => "Oracle",
-                    4 => "DB2",
-                    5 => "SQLite",
-                    _ => "SQLite"
-                };
-            }
-            return value?.ToString() ?? "SQLite";
+            return value is int intValue ? MapDialectEnum(intValue) ?? "SQLite" : value?.ToString() ?? "SQLite";
         }
         return "SQLite";
     }
+
+    private static string? MapDialectEnum(int dialectValue) => dialectValue switch
+    {
+        0 => "MySql",
+        1 => "SqlServer",
+        2 => "PostgreSql",
+        3 => "Oracle",
+        4 => "DB2",
+        5 => "SQLite",
+        _ => null
+    };
 
     private static string GetTableName(INamedTypeSymbol typeSymbol, INamedTypeSymbol? tableNameAttr, INamedTypeSymbol? serviceType)
     {
@@ -363,13 +342,7 @@ public class RepositoryGenerator : IIncrementalGenerator
     /// <summary>
     /// Information about the DbConnection source.
     /// </summary>
-    private readonly struct ConnectionInfo
-    {
-        /// <summary>Expression to access the connection (e.g., "connection", "Connection", or null for method parameter).</summary>
-        public string? AccessExpression { get; init; }
-        /// <summary>If true, connection comes from method parameter.</summary>
-        public bool FromMethodParameter { get; init; }
-    }
+    private readonly record struct ConnectionInfo(string? AccessExpression, bool FromMethodParameter);
 
     /// <summary>
     /// Finds the DbConnection source in the repository class.
@@ -440,23 +413,8 @@ public class RepositoryGenerator : IIncrementalGenerator
     /// </summary>
     private static string GetConnectionExpression(IMethodSymbol method, ConnectionInfo classConnectionInfo)
     {
-        // 1. Check method parameters first
-        foreach (var param in method.Parameters)
-        {
-            if (IsDbConnectionType(param.Type))
-            {
-                return param.Name;
-            }
-        }
-
-        // 2. Fall back to class-level connection
-        if (classConnectionInfo.AccessExpression != null)
-        {
-            return classConnectionInfo.AccessExpression;
-        }
-
-        // Should not happen if interface is properly defined
-        return "_connection";
+        var methodParam = method.Parameters.FirstOrDefault(p => IsDbConnectionType(p.Type));
+        return methodParam?.Name ?? classConnectionInfo.AccessExpression ?? "_connection";
     }
 
     /// <summary>
@@ -574,11 +532,8 @@ public class RepositoryGenerator : IIncrementalGenerator
         return methods;
     }
 
-    private static string GetMethodSignature(IMethodSymbol method)
-    {
-        var paramTypes = string.Join(",", method.Parameters.Select(p => p.Type.ToDisplayString()));
-        return $"{method.Name}({paramTypes})";
-    }
+    private static string GetMethodSignature(IMethodSymbol method) =>
+        $"{method.Name}({string.Join(",", method.Parameters.Select(p => p.Type.ToDisplayString()))})";
 
     private static void GenerateSqlTemplateFields(IndentedStringBuilder sb, List<IMethodSymbol> methods, INamedTypeSymbol? sqlTemplateAttr, Dictionary<string, string> methodFieldNames)
     {
@@ -625,10 +580,8 @@ public class RepositoryGenerator : IIncrementalGenerator
     /// <summary>
     /// Checks if the SQL template uses {{columns}} placeholder which means column order is static.
     /// </summary>
-    private static bool UsesStaticColumns(string template)
-    {
-        return template.Contains("{{columns}}") || template.Contains("{{columns ");
-    }
+    private static bool UsesStaticColumns(string template) =>
+        template.Contains("{{columns}}") || template.Contains("{{columns ");
 
     /// <summary>
     /// Checks if the method returns an entity or list of entities.
@@ -650,9 +603,8 @@ public class RepositoryGenerator : IIncrementalGenerator
         if (sqlTemplateAttr is null) return null;
         var attr = method.GetAttributes()
             .FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, sqlTemplateAttr));
-        if (attr?.ConstructorArguments.Length > 0 && attr.ConstructorArguments[0].Value is string template)
-            return template;
-        return null;
+        return attr?.ConstructorArguments.Length > 0 && attr.ConstructorArguments[0].Value is string template
+            ? template : null;
     }
 
     private static void GenerateMethodImplementation(
@@ -969,8 +921,39 @@ public class RepositoryGenerator : IIncrementalGenerator
             .Replace("System.Threading.Tasks.", "")
             .Replace("System.Collections.Generic.", "");
 
+        // Check for sync TKey return (InsertAndGetId without Task) - MUST BE FIRST!
+        if (!isAsync && isReturnInsertedId)
+        {
+            // Sync InsertAndGetId return
+            sb.AppendLine("// Append last inserted ID query to the INSERT statement");
+            sb.AppendLine("cmd.CommandText += _placeholderContext.Dialect.InsertReturningIdSuffix;");
+            sb.AppendLine();
+            sb.AppendLine("using var reader = cmd.ExecuteReader(System.Data.CommandBehavior.Default);");
+            sb.AppendLine();
+            sb.AppendLine("// For multi-statement SQL (INSERT; SELECT), move to the result set containing the ID");
+            sb.AppendLine("// For RETURNING clause, the ID is already in the current result set");
+            sb.AppendLine("if (!reader.Read())");
+            sb.AppendLine("{");
+            sb.PushIndent();
+            sb.AppendLine("reader.NextResult();");
+            sb.AppendLine("reader.Read();");
+            sb.PopIndent();
+            sb.AppendLine("}");
+            sb.AppendLine($"var insertedId = ({keyTypeName})Convert.ChangeType(reader.GetValue(0), typeof({keyTypeName}));");
+            sb.AppendLine();
+            sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
+            sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
+            sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, insertedId, elapsed);");
+            sb.AppendLine("#endif");
+            sb.AppendLine();
+            sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
+            sb.AppendLine("activity?.SetTag(\"db.inserted_id\", insertedId);");
+            sb.AppendLine("#endif");
+            sb.AppendLine();
+            sb.AppendLine("return insertedId;");
+        }
         // Check for sync list return (List<Entity> without Task)
-        if (!isAsync && (normalizedReturnType.Contains("List<") || normalizedReturnType.Contains("IList<") || normalizedReturnType.Contains("IEnumerable<")))
+        else if (!isAsync && (normalizedReturnType.Contains("List<") || normalizedReturnType.Contains("IList<") || normalizedReturnType.Contains("IEnumerable<")))
         {
             // Sync list return
             sb.AppendLine("using var reader = cmd.ExecuteReader(System.Data.CommandBehavior.Default);");
@@ -1020,6 +1003,51 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
             sb.AppendLine("activity?.SetTag(\"db.rows_affected\", result != null ? 1 : 0);");
+            sb.AppendLine("#endif");
+            sb.AppendLine();
+            sb.AppendLine("return result;");
+        }
+        // Check for sync bool return (bool without Task)
+        else if (!isAsync && (normalizedReturnType == "bool" || normalizedReturnType == "Boolean" || returnType.Contains("System.Boolean")))
+        {
+            // Sync boolean return
+            sb.AppendLine("var result = cmd.ExecuteScalar();");
+            sb.AppendLine("var exists = Convert.ToInt32(result) == 1;");
+            sb.AppendLine();
+            sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
+            sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
+            sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, exists, elapsed);");
+            sb.AppendLine("#endif");
+            sb.AppendLine();
+            sb.AppendLine("return exists;");
+        }
+        // Check for sync long return (long without Task)
+        else if (!isAsync && (normalizedReturnType == "long" || normalizedReturnType == "Int64" || returnType.Contains("System.Int64")))
+        {
+            // Sync long return (count)
+            sb.AppendLine("var result = cmd.ExecuteScalar();");
+            sb.AppendLine("var count = Convert.ToInt64(result);");
+            sb.AppendLine();
+            sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
+            sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
+            sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, count, elapsed);");
+            sb.AppendLine("#endif");
+            sb.AppendLine();
+            sb.AppendLine("return count;");
+        }
+        // Check for sync int return (int without Task)
+        else if (!isAsync && (normalizedReturnType == "int" || normalizedReturnType == "Int32" || returnType.Contains("System.Int32")))
+        {
+            // Sync int return (affected rows)
+            sb.AppendLine("var result = cmd.ExecuteNonQuery();");
+            sb.AppendLine();
+            sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
+            sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
+            sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, result, elapsed);");
+            sb.AppendLine("#endif");
+            sb.AppendLine();
+            sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
+            sb.AppendLine("activity?.SetTag(\"db.rows_affected\", result);");
             sb.AppendLine("#endif");
             sb.AppendLine();
             sb.AppendLine("return result;");
@@ -1200,23 +1228,29 @@ public class RepositoryGenerator : IIncrementalGenerator
         }
     }
 
+    private static void AppendConditionalBlock(IndentedStringBuilder sb, string condition, Action generateContent)
+    {
+        sb.AppendLine($"#if {condition}");
+        generateContent();
+        sb.AppendLine("#endif");
+    }
+
     private static void GenerateCatchBlock(IndentedStringBuilder sb, string methodName, string fieldName)
     {
         sb.AppendLine("catch (Exception ex)");
         sb.AppendLine("{");
         sb.PushIndent();
-        sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
-        sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
-        sb.AppendLine($"OnExecuteFail(\"{methodName}\", cmd, {fieldName}, ex, elapsed);");
-        sb.AppendLine("#endif");
+        AppendConditionalBlock(sb, "!SQLX_DISABLE_INTERCEPTOR", () =>
+        {
+            sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
+            sb.AppendLine($"OnExecuteFail(\"{methodName}\", cmd, {fieldName}, ex, elapsed);");
+        });
         sb.AppendLine();
-        sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
-        sb.AppendLine("activity?.SetStatus(ActivityStatusCode.Error, ex.Message);");
-        sb.AppendLine("#endif");
+        AppendConditionalBlock(sb, "!SQLX_DISABLE_ACTIVITY", () =>
+            sb.AppendLine("activity?.SetStatus(ActivityStatusCode.Error, ex.Message);"));
         sb.AppendLine();
-        sb.AppendLine("#if SQLX_DISABLE_INTERCEPTOR && SQLX_DISABLE_ACTIVITY");
-        sb.AppendLine("_ = ex; // Suppress unused variable warning");
-        sb.AppendLine("#endif");
+        AppendConditionalBlock(sb, "SQLX_DISABLE_INTERCEPTOR && SQLX_DISABLE_ACTIVITY", () =>
+            sb.AppendLine("_ = ex; // Suppress unused variable warning"));
         sb.AppendLine();
         sb.AppendLine("throw;");
         sb.PopIndent();
@@ -1237,35 +1271,33 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("}");
     }
 
-    private static void GenerateFinallyBlock(IndentedStringBuilder sb, string methodName, string fieldName)
-    {
-        sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
-        sb.AppendLine("finally");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        sb.AppendLine("if (activity is not null)");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
-        sb.AppendLine("var durationMs = elapsed * 1000.0 / Stopwatch.Frequency;");
-        sb.AppendLine("activity.SetTag(\"db.duration_ms\", durationMs);");
-        sb.AppendLine($"activity.SetTag(\"db.statement.prepared\", {fieldName}.Sql);");
-        sb.AppendLine("activity.SetTag(\"db.statement\", cmd.CommandText);");
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.AppendLine("#endif");
-    }
+    private static void GenerateFinallyBlock(IndentedStringBuilder sb, string methodName, string fieldName) =>
+        AppendConditionalBlock(sb, "!SQLX_DISABLE_ACTIVITY", () =>
+        {
+            sb.AppendLine("finally");
+            sb.AppendLine("{");
+            sb.PushIndent();
+            sb.AppendLine("if (activity is not null)");
+            sb.AppendLine("{");
+            sb.PushIndent();
+            sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
+            sb.AppendLine("var durationMs = elapsed * 1000.0 / Stopwatch.Frequency;");
+            sb.AppendLine("activity.SetTag(\"db.duration_ms\", durationMs);");
+            sb.AppendLine($"activity.SetTag(\"db.statement.prepared\", {fieldName}.Sql);");
+            sb.AppendLine("activity.SetTag(\"db.statement\", cmd.CommandText);");
+            sb.PopIndent();
+            sb.AppendLine("}");
+            sb.PopIndent();
+            sb.AppendLine("}");
+        });
 
-    private static void GenerateInterceptorMethods(IndentedStringBuilder sb)
-    {
-        sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
-        sb.AppendLine("partial void OnExecuting(string operationName, DbCommand command, global::Sqlx.SqlTemplate template);");
-        sb.AppendLine("partial void OnExecuted(string operationName, DbCommand command, global::Sqlx.SqlTemplate template, object? result, long elapsedTicks);");
-        sb.AppendLine("partial void OnExecuteFail(string operationName, DbCommand command, global::Sqlx.SqlTemplate template, Exception exception, long elapsedTicks);");
-        sb.AppendLine("#endif");
-    }
+    private static void GenerateInterceptorMethods(IndentedStringBuilder sb) =>
+        AppendConditionalBlock(sb, "!SQLX_DISABLE_INTERCEPTOR", () =>
+        {
+            sb.AppendLine("partial void OnExecuting(string operationName, DbCommand command, global::Sqlx.SqlTemplate template);");
+            sb.AppendLine("partial void OnExecuted(string operationName, DbCommand command, global::Sqlx.SqlTemplate template, object? result, long elapsedTicks);");
+            sb.AppendLine("partial void OnExecuteFail(string operationName, DbCommand command, global::Sqlx.SqlTemplate template, Exception exception, long elapsedTicks);");
+        });
 
     private static void GenerateTupleReturn(IndentedStringBuilder sb, IMethodSymbol method, string entityName, string ctName, string methodName, string fieldName)
     {
@@ -1340,16 +1372,11 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine($"return ({string.Join(", ", finalVarNames)});");
     }
 
-    private static string ToCamelCase(string name)
-    {
-        if (string.IsNullOrEmpty(name)) return name;
-        return char.ToLowerInvariant(name[0]) + name.Substring(1);
-    }
+    private static string ToCamelCase(string name) =>
+        string.IsNullOrEmpty(name) ? name : char.ToLowerInvariant(name[0]) + name.Substring(1);
 
-    private static string EscapeString(string value)
-    {
-        return value.Replace("\\", "\\\\").Replace("\"", "\\\"");
-    }
+    private static string EscapeString(string value) =>
+        value.Replace("\\", "\\\\").Replace("\"", "\\\"");
 
     /// <summary>
     /// Checks if the return type is a tuple (ValueTuple).
@@ -1406,12 +1433,7 @@ public class RepositoryGenerator : IIncrementalGenerator
     /// <summary>
     /// Gets the element type from a List/IEnumerable type.
     /// </summary>
-    private static ITypeSymbol? GetListElementType(ITypeSymbol type)
-    {
-        if (type is INamedTypeSymbol namedType && namedType.IsGenericType && namedType.TypeArguments.Length > 0)
-        {
-            return namedType.TypeArguments[0];
-        }
-        return null;
-    }
+    private static ITypeSymbol? GetListElementType(ITypeSymbol type) =>
+        type is INamedTypeSymbol { IsGenericType: true, TypeArguments.Length: > 0 } namedType
+            ? namedType.TypeArguments[0] : null;
 }

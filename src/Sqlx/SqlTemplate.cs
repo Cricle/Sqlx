@@ -98,50 +98,44 @@ public sealed class SqlTemplate
         {
             var name = match.Groups[1].Value;      // Placeholder name (e.g., "columns", "if", "/if")
             var options = match.Groups[2].Value;   // Placeholder options (e.g., "--param predicate")
+            var beforeText = template.Substring(lastIndex, match.Index - lastIndex);
+
+            void AddBefore() { if (!string.IsNullOrEmpty(beforeText)) segments.Add(TemplateSegment.Static(beforeText)); }
 
             // Handle block closing tags (e.g., {{/if}})
             if (PlaceholderProcessor.IsBlockClosingTag(name))
             {
-                // Add any text before this closing tag as a static segment
-                var before = template.Substring(lastIndex, match.Index - lastIndex);
-                if (!string.IsNullOrEmpty(before)) segments.Add(TemplateSegment.Static(before));
+                AddBefore();
                 segments.Add(TemplateSegment.BlockEnd(name));
-                lastIndex = match.Index + match.Length;
                 hasBlocks = true;
-                continue;
             }
-
-            // Look up the handler for this placeholder name
-            if (!PlaceholderProcessor.TryGetHandler(name, out var handler))
-                throw new InvalidOperationException($"Unknown placeholder: {{{{{name}}}}}");
-
-            // Handle block opening tags (e.g., {{if --param condition}})
-            if (handler is IBlockPlaceholderHandler blockHandler)
+            // Look up and handle block opening tags (e.g., {{if --param condition}})
+            else if (PlaceholderProcessor.TryGetHandler(name, out var handler) && handler is IBlockPlaceholderHandler blockHandler)
             {
-                var before = template.Substring(lastIndex, match.Index - lastIndex);
-                if (!string.IsNullOrEmpty(before)) segments.Add(TemplateSegment.Static(before));
+                AddBefore();
                 segments.Add(TemplateSegment.BlockStart(blockHandler, options));
-                lastIndex = match.Index + match.Length;
                 hasBlocks = true;
-                continue;
             }
-
-            // Determine if this is a static or dynamic placeholder
-            var type = handler.GetType(options);
-            if (type == PlaceholderType.Static)
+            // Handle regular placeholders
+            else if (handler != null)
             {
-                // Static placeholder: resolve immediately and merge with preceding text
-                var before = template.Substring(lastIndex, match.Index - lastIndex);
-                var replacement = handler.Process(context, options);
-                segments.Add(TemplateSegment.Static(before + replacement));
+                if (handler.GetType(options) == PlaceholderType.Static)
+                {
+                    // Static placeholder: resolve immediately and merge with preceding text
+                    segments.Add(TemplateSegment.Static(beforeText + handler.Process(context, options)));
+                }
+                else
+                {
+                    // Dynamic placeholder: record for later rendering
+                    AddBefore();
+                    segments.Add(TemplateSegment.Dynamic(handler, options, context));
+                }
             }
             else
             {
-                // Dynamic placeholder: record for later rendering
-                var before = template.Substring(lastIndex, match.Index - lastIndex);
-                if (!string.IsNullOrEmpty(before)) segments.Add(TemplateSegment.Static(before));
-                segments.Add(TemplateSegment.Dynamic(handler, options, context));
+                throw new InvalidOperationException($"Unknown placeholder: {{{{{name}}}}}");
             }
+
             lastIndex = match.Index + match.Length;
         }
 
@@ -152,13 +146,15 @@ public sealed class SqlTemplate
         var mergedSegments = MergeStaticSegments(segments);
 
         // Build the static SQL (with dynamic placeholders as empty strings)
-        var sql = BuildStaticSql(mergedSegments);
+        var sb = new StringBuilder();
+        foreach (var seg in mergedSegments)
+            if (seg.Type == SegmentType.Static) sb.Append(seg.Text);
 
-        return new SqlTemplate(sql, mergedSegments, hasBlocks);
+        return new SqlTemplate(sb.ToString(), mergedSegments, hasBlocks);
     }
 
     /// <summary>
-    /// Renders the template with dynamic parameters, resolving dynamic placeholders and conditional blocks.
+    /// Renders the template with dynamic parameters, resolving dynamic placeholders and block handlers.
     /// </summary>
     /// <param name="dynamicParameters">A dictionary of parameter names and values for dynamic placeholders.</param>
     /// <returns>The fully rendered SQL string.</returns>
@@ -169,11 +165,11 @@ public sealed class SqlTemplate
     /// <list type="bullet">
     /// <item><description>Static segments are appended directly.</description></item>
     /// <item><description>Dynamic segments are rendered using the provided parameters.</description></item>
-    /// <item><description>Block segments control conditional inclusion based on parameter values.</description></item>
+    /// <item><description>Block segments are collected and processed by their handlers (e.g., conditionals, loops).</description></item>
     /// </list>
     /// <para>
-    /// The skipDepth counter tracks nested conditional blocks to properly handle
-    /// nested {{if}} blocks when an outer condition is false.
+    /// Block handlers receive the complete block content and can return empty string (exclude),
+    /// the original content (include once), or repeated content (for loops).
     /// </para>
     /// </remarks>
     public string Render(IReadOnlyDictionary<string, object?>? dynamicParameters)
@@ -184,47 +180,66 @@ public sealed class SqlTemplate
         // Fast path: single static segment with no blocks means no dynamic content
         if (_segments.Length == 1 && _segments[0].Type == SegmentType.Static && !_hasBlocks) return Sql;
 
+        return RenderSegments(_segments, 0, _segments.Length, dynamicParameters);
+    }
+
+    /// <summary>
+    /// Renders a range of segments, handling nested blocks recursively.
+    /// </summary>
+    /// <param name="segments">The array of all segments.</param>
+    /// <param name="start">The starting index in the segments array.</param>
+    /// <param name="end">The ending index (exclusive) in the segments array.</param>
+    /// <param name="dynamicParameters">The dynamic parameters for rendering.</param>
+    /// <returns>The rendered content for this segment range.</returns>
+    private string RenderSegments(TemplateSegment[] segments, int start, int end, IReadOnlyDictionary<string, object?>? dynamicParameters)
+    {
         var sb = new StringBuilder();
 
-        // skipDepth tracks how many levels of false conditional blocks we're inside
-        // When skipDepth > 0, we skip all content until we exit those blocks
-        var skipDepth = 0;
-
-        for (var i = 0; i < _segments.Length; i++)
+        for (var i = start; i < end; i++)
         {
-            var seg = _segments[i];
+            var seg = segments[i];
             switch (seg.Type)
             {
                 case SegmentType.Static:
-                    // Only append static text if we're not inside a skipped block
-                    if (skipDepth == 0) sb.Append(seg.Text);
+                    sb.Append(seg.Text);
                     break;
 
                 case SegmentType.Dynamic:
-                    // Only render dynamic content if we're not inside a skipped block
-                    if (skipDepth == 0) sb.Append(seg.Handler!.Render(seg.Context!, seg.Options!, dynamicParameters));
+                    sb.Append(seg.Handler!.Render(seg.Context!, seg.Options!, dynamicParameters));
                     break;
 
                 case SegmentType.BlockStart:
-                    if (skipDepth > 0)
-                    {
-                        // Already skipping: increment depth for nested block tracking
-                        skipDepth++;
-                    }
-                    else if (!seg.BlockHandler!.ShouldInclude(seg.Options!, dynamicParameters))
-                    {
-                        // Condition is false: start skipping this block's content
-                        skipDepth = 1;
-                    }
+                    var blockEnd = FindMatchingBlockEnd(segments, i + 1, end);
+                    if (blockEnd == -1) throw new InvalidOperationException($"Unmatched block opening tag at segment {i}");
+                    var blockContent = RenderSegments(segments, i + 1, blockEnd, dynamicParameters);
+                    sb.Append(seg.BlockHandler!.ProcessBlock(seg.Options!, blockContent, dynamicParameters));
+                    i = blockEnd;
                     break;
 
                 case SegmentType.BlockEnd:
-                    // Decrement skip depth when exiting a block
-                    if (skipDepth > 0) skipDepth--;
-                    break;
+                    throw new InvalidOperationException($"Unmatched block closing tag at segment {i}");
             }
         }
+
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Finds the matching BlockEnd for a BlockStart, handling nested blocks.
+    /// </summary>
+    /// <param name="segments">The array of all segments.</param>
+    /// <param name="start">The starting index to search from (after the BlockStart).</param>
+    /// <param name="end">The ending index (exclusive) to search within.</param>
+    /// <returns>The index of the matching BlockEnd, or -1 if not found.</returns>
+    private static int FindMatchingBlockEnd(TemplateSegment[] segments, int start, int end)
+    {
+        var depth = 1;
+        for (var i = start; i < end; i++)
+        {
+            if (segments[i].Type == SegmentType.BlockStart) depth++;
+            else if (segments[i].Type == SegmentType.BlockEnd && --depth == 0) return i;
+        }
+        return -1;
     }
 
     /// <summary>
@@ -243,13 +258,7 @@ public sealed class SqlTemplate
     /// This overload is optimized for the common case of a single dynamic parameter,
     /// using a thread-local cached dictionary to avoid allocations.
     /// </remarks>
-    public string Render(string key, object? value)
-    {
-        var cache = _singleParamCache ??= new Dictionary<string, object?>(1);
-        cache.Clear();
-        cache[key] = value;
-        return Render(cache);
-    }
+    public string Render(string key, object? value) => RenderWithCache((key, value));
 
     /// <summary>
     /// Renders the template with two dynamic parameters.
@@ -259,30 +268,18 @@ public sealed class SqlTemplate
     /// <param name="key2">The second parameter name.</param>
     /// <param name="value2">The second parameter value.</param>
     /// <returns>The fully rendered SQL string.</returns>
-    public string Render(string key1, object? value1, string key2, object? value2)
-    {
-        var cache = _singleParamCache ??= new Dictionary<string, object?>(2);
-        cache.Clear();
-        cache[key1] = value1;
-        cache[key2] = value2;
-        return Render(cache);
-    }
+    public string Render(string key1, object? value1, string key2, object? value2) => RenderWithCache((key1, value1), (key2, value2));
 
     /// <summary>
-    /// Builds the static SQL string by concatenating all static segments.
+    /// Helper method to render with cached dictionary.
     /// </summary>
-    /// <param name="segments">The merged template segments.</param>
-    /// <returns>A string containing only the static portions of the template.</returns>
-    /// <remarks>
-    /// Dynamic placeholders are not included in this output, resulting in a partial SQL
-    /// that can be used when no dynamic parameters are needed.
-    /// </remarks>
-    private static string BuildStaticSql(TemplateSegment[] segments)
+    private string RenderWithCache(params (string key, object? value)[] parameters)
     {
-        var sb = new StringBuilder();
-        foreach (var seg in segments)
-            if (seg.Type == SegmentType.Static) sb.Append(seg.Text);
-        return sb.ToString();
+        var cache = _singleParamCache ??= new Dictionary<string, object?>(parameters.Length);
+        cache.Clear();
+        foreach (var (key, value) in parameters)
+            cache[key] = value;
+        return Render(cache);
     }
 
     /// <summary>
@@ -301,28 +298,27 @@ public sealed class SqlTemplate
         var result = new List<TemplateSegment>();
         var currentStatic = new StringBuilder();
 
+        void FlushStatic()
+        {
+            if (currentStatic.Length > 0)
+            {
+                result.Add(TemplateSegment.Static(currentStatic.ToString()));
+                currentStatic.Clear();
+            }
+        }
+
         foreach (var seg in segments)
         {
             if (seg.Type == SegmentType.Static)
-            {
-                // Accumulate static text
                 currentStatic.Append(seg.Text);
-            }
             else
             {
-                // Flush accumulated static text before adding non-static segment
-                if (currentStatic.Length > 0)
-                {
-                    result.Add(TemplateSegment.Static(currentStatic.ToString()));
-                    currentStatic.Clear();
-                }
+                FlushStatic();
                 result.Add(seg);
             }
         }
 
-        // Flush any remaining static text
-        if (currentStatic.Length > 0) result.Add(TemplateSegment.Static(currentStatic.ToString()));
-
+        FlushStatic();
         return result.ToArray();
     }
 
@@ -358,25 +354,10 @@ public sealed class SqlTemplate
     /// </summary>
     private enum SegmentType : byte
     {
-        /// <summary>
-        /// A static text segment that is output directly.
-        /// </summary>
-        Static,
-
-        /// <summary>
-        /// A dynamic placeholder that is rendered at runtime with parameters.
-        /// </summary>
-        Dynamic,
-
-        /// <summary>
-        /// The start of a conditional block (e.g., {{if}}).
-        /// </summary>
-        BlockStart,
-
-        /// <summary>
-        /// The end of a conditional block (e.g., {{/if}}).
-        /// </summary>
-        BlockEnd
+        Static,      // A static text segment that is output directly
+        Dynamic,     // A dynamic placeholder that is rendered at runtime with parameters
+        BlockStart,  // The start of a conditional block (e.g., {{if}})
+        BlockEnd     // The end of a conditional block (e.g., {{/if}})
     }
 
     /// <summary>
@@ -418,11 +399,8 @@ public sealed class SqlTemplate
         /// </summary>
         public readonly PlaceholderContext? Context;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="TemplateSegment"/> struct.
-        /// </summary>
-        private TemplateSegment(SegmentType type, string? text, IPlaceholderHandler? handler,
-            IBlockPlaceholderHandler? blockHandler, string? options, PlaceholderContext? context)
+        private TemplateSegment(SegmentType type, string? text = null, IPlaceholderHandler? handler = null,
+            IBlockPlaceholderHandler? blockHandler = null, string? options = null, PlaceholderContext? context = null)
         {
             Type = type;
             Text = text;
@@ -437,7 +415,7 @@ public sealed class SqlTemplate
         /// </summary>
         /// <param name="text">The static text content.</param>
         /// <returns>A new static segment.</returns>
-        public static TemplateSegment Static(string text) => new(SegmentType.Static, text, null, null, null, null);
+        public static TemplateSegment Static(string text) => new(SegmentType.Static, text);
 
         /// <summary>
         /// Creates a dynamic placeholder segment.
@@ -447,7 +425,7 @@ public sealed class SqlTemplate
         /// <param name="context">The placeholder context.</param>
         /// <returns>A new dynamic segment.</returns>
         public static TemplateSegment Dynamic(IPlaceholderHandler handler, string options, PlaceholderContext context)
-            => new(SegmentType.Dynamic, null, handler, null, options, context);
+            => new(SegmentType.Dynamic, handler: handler, options: options, context: context);
 
         /// <summary>
         /// Creates a block start segment for conditional blocks.
@@ -456,14 +434,13 @@ public sealed class SqlTemplate
         /// <param name="options">The block options (e.g., "--param condition").</param>
         /// <returns>A new block start segment.</returns>
         public static TemplateSegment BlockStart(IBlockPlaceholderHandler handler, string options)
-            => new(SegmentType.BlockStart, null, null, handler, options, null);
+            => new(SegmentType.BlockStart, blockHandler: handler, options: options);
 
         /// <summary>
         /// Creates a block end segment for closing conditional blocks.
         /// </summary>
         /// <param name="closingTagName">The closing tag name (e.g., "/if").</param>
         /// <returns>A new block end segment.</returns>
-        public static TemplateSegment BlockEnd(string closingTagName)
-            => new(SegmentType.BlockEnd, null, null, null, null, null);
+        public static TemplateSegment BlockEnd(string closingTagName) => new(SegmentType.BlockEnd);
     }
 }

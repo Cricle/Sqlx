@@ -215,6 +215,7 @@ public class SqlxGenerator : IIncrementalGenerator
     {
         return typeStr.StartsWith("Expression<") ||
                typeStr == "CancellationToken" ||
+               typeStr == "SqlTemplate" ||  // Skip SqlTemplate - it's a framework type
                typeStr == "void" ||
                typeStr == "int" || typeStr == "int?" ||
                typeStr == "long" || typeStr == "long?" ||
@@ -472,6 +473,10 @@ public class SqlxGenerator : IIncrementalGenerator
     private static void GenerateResultReader(IndentedStringBuilder sb, string typeName, string fullTypeName,
         List<IPropertySymbol> properties, INamedTypeSymbol? columnAttr)
     {
+        // Generate Ordinals struct first
+        GenerateOrdinalsStruct(sb, typeName, properties, columnAttr);
+        sb.AppendLine();
+        
         sb.AppendLine($"public sealed class {typeName}ResultReader : global::Sqlx.IResultReader<{fullTypeName}>");
         sb.AppendLine("{");
         sb.PushIndent();
@@ -491,6 +496,8 @@ public class SqlxGenerator : IIncrementalGenerator
         sb.PopIndent();
         sb.AppendLine("};");
         sb.AppendLine();
+        
+        // Read method without ordinals (slower path)
         sb.AppendLine($"public {fullTypeName} Read(IDataReader reader) => new {fullTypeName}");
         sb.AppendLine("{");
         sb.PushIndent();
@@ -503,17 +510,88 @@ public class SqlxGenerator : IIncrementalGenerator
         sb.PopIndent();
         sb.AppendLine("};");
         sb.AppendLine();
-        sb.AppendLine($"public {fullTypeName} Read(IDataReader reader, int[] ordinals) => new {fullTypeName}");
+        
+        // Read method with int[] ordinals (for backward compatibility)
+        sb.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+        sb.AppendLine($"public {fullTypeName} Read(IDataReader reader, int[] ordinals)");
         sb.AppendLine("{");
         sb.PushIndent();
+        
+        // Extract all ordinals to local variables (eliminates array access overhead)
+        sb.AppendLine("// Extract ordinals to local variables for optimal performance");
+        for (int i = 0; i < properties.Count; i++)
+        {
+            sb.AppendLine($"var ord{i} = ordinals[{i}];");
+        }
+        sb.AppendLine();
+        
+        // Create object and assign fields using local variables
+        sb.AppendLine($"var result = new {fullTypeName}();");
         for (int i = 0; i < properties.Count; i++)
         {
             var prop = properties[i];
-            var readExpr = GetReaderExpression(prop.Type, $"ordinals[{i}]", IsNullable(prop));
-            sb.AppendLine($"{prop.Name} = {readExpr},");
+            var isNullable = IsNullable(prop);
+            var readExpr = GetReaderExpressionWithLocalOrdinal(prop.Type, $"ord{i}", isNullable);
+            sb.AppendLine($"result.{prop.Name} = {readExpr};");
+        }
+        
+        sb.AppendLine("return result;");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+        
+        // Read method with Ordinals struct (optimal path)
+        sb.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+        sb.AppendLine($"public {fullTypeName} Read(IDataReader reader, in {typeName}Ordinals ordinals)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        
+        sb.AppendLine($"var result = new {fullTypeName}();");
+        for (int i = 0; i < properties.Count; i++)
+        {
+            var prop = properties[i];
+            var isNullable = IsNullable(prop);
+            var readExpr = GetReaderExpressionWithLocalOrdinal(prop.Type, $"ordinals.{prop.Name}", isNullable);
+            sb.AppendLine($"result.{prop.Name} = {readExpr};");
+        }
+        
+        sb.AppendLine("return result;");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+        
+        // GetOrdinals method that returns struct
+        sb.AppendLine($"public {typeName}Ordinals GetOrdinalsStruct(IDataReader reader) => new {typeName}Ordinals(reader);");
+        
+        sb.PopIndent();
+        sb.AppendLine("}");
+    }
+
+    private static void GenerateOrdinalsStruct(IndentedStringBuilder sb, string typeName, List<IPropertySymbol> properties, INamedTypeSymbol? columnAttr)
+    {
+        sb.AppendLine($"public readonly struct {typeName}Ordinals");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        
+        // Generate readonly fields for each property
+        foreach (var prop in properties)
+        {
+            sb.AppendLine($"public readonly int {prop.Name};");
+        }
+        sb.AppendLine();
+        
+        // Generate constructor
+        sb.AppendLine($"public {typeName}Ordinals(IDataReader reader)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        foreach (var prop in properties)
+        {
+            var columnName = GetColumnName(prop, columnAttr);
+            sb.AppendLine($"{prop.Name} = reader.GetOrdinal(\"{columnName}\");");
         }
         sb.PopIndent();
-        sb.AppendLine("};");
+        sb.AppendLine("}");
+        
         sb.PopIndent();
         sb.AppendLine("}");
     }
@@ -671,6 +749,35 @@ public class SqlxGenerator : IIncrementalGenerator
         if (isNullable)
             return $"reader.IsDBNull({ordinal}) ? default : reader.{method}({ordinal})";
         return $"reader.{method}({ordinal})";
+    }
+
+    /// <summary>
+    /// Generates reader expression using a local ordinal variable (for optimized path).
+    /// This avoids repeated array access for nullable fields.
+    /// </summary>
+    private static string GetReaderExpressionWithLocalOrdinal(ITypeSymbol type, string ordinalVar, bool isNullable)
+    {
+        var typeName = GetUnderlyingTypeName(type);
+        var method = typeName switch
+        {
+            "Int32" => "GetInt32",
+            "Int64" => "GetInt64",
+            "Int16" => "GetInt16",
+            "Byte" => "GetByte",
+            "Boolean" => "GetBoolean",
+            "String" => "GetString",
+            "DateTime" => "GetDateTime",
+            "Decimal" => "GetDecimal",
+            "Double" => "GetDouble",
+            "Single" => "GetFloat",
+            "Guid" => "GetGuid",
+            _ => null,
+        };
+        if (method is null)
+            return isNullable ? $"reader.IsDBNull({ordinalVar}) ? default : reader.GetValue({ordinalVar})" : $"reader.GetValue({ordinalVar})";
+        if (isNullable)
+            return $"reader.IsDBNull({ordinalVar}) ? default : reader.{method}({ordinalVar})";
+        return $"reader.{method}({ordinalVar})";
     }
 
     private readonly struct GeneratedTypeInfo

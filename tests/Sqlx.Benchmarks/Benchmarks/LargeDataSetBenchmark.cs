@@ -1,24 +1,25 @@
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
-using Dapper;
 using Microsoft.Data.Sqlite;
 using Sqlx.Benchmarks.Models;
+using Sqlx.Benchmarks.Repositories;
 
 namespace Sqlx.Benchmarks.Benchmarks;
 
 /// <summary>
-/// Raw comparison: Sqlx ResultReader vs Dapper with same entity type.
-/// This isolates the ResultReader performance from other factors.
+/// Focused benchmark for large dataset performance analysis.
+/// Tests Sqlx with different optimizations to identify bottlenecks.
 /// </summary>
 [MemoryDiagnoser]
 [Orderer(SummaryOrderPolicy.FastestToSlowest)]
 [RankColumn]
-public class RawSelectListBenchmark
+public class LargeDataSetBenchmark
 {
     private SqliteConnection _connection = null!;
+    private BenchmarkUserRepository _sqlxRepo = null!;
     private const string Sql = "SELECT id, name, email, age, is_active, created_at, updated_at, balance, description, score FROM users LIMIT @limit";
     
-    [Params(100, 1000)]
+    [Params(1000, 5000)]
     public int Limit { get; set; }
     
     [GlobalSetup]
@@ -27,6 +28,7 @@ public class RawSelectListBenchmark
         _connection = DatabaseSetup.CreateConnection();
         DatabaseSetup.InitializeDatabase(_connection);
         DatabaseSetup.SeedData(_connection, 10000);
+        _sqlxRepo = new BenchmarkUserRepository(_connection);
     }
     
     [GlobalCleanup]
@@ -35,8 +37,14 @@ public class RawSelectListBenchmark
         _connection?.Dispose();
     }
     
-    [Benchmark(Baseline = true, Description = "Sqlx.ResultReader")]
-    public List<BenchmarkUser> Sqlx_ResultReader()
+    [Benchmark(Baseline = true, Description = "Sqlx.Repository")]
+    public List<BenchmarkUser> Sqlx_Repository()
+    {
+        return _sqlxRepo.GetAll(Limit);
+    }
+    
+    [Benchmark(Description = "Sqlx.Manual")]
+    public List<BenchmarkUser> Sqlx_Manual()
     {
         using var cmd = _connection.CreateCommand();
         cmd.CommandText = Sql;
@@ -53,12 +61,5 @@ public class RawSelectListBenchmark
             list.Add(BenchmarkUserResultReader.Default.Read(reader, ordinals));
         }
         return list;
-    }
-    
-    [Benchmark(Description = "Dapper.AOT (same types)")]
-    public List<BenchmarkUser> Dapper_SameTypes()
-    {
-        var result = _connection.Query<BenchmarkUser>(Sql, new { limit = Limit });
-        return result.ToList();
     }
 }

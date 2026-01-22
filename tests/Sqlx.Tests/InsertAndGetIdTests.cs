@@ -19,10 +19,9 @@ public partial class InsertTestEntity
     public int Value { get; set; }
 }
 
-public interface IInsertTestEntityRepository : ICommandRepository<InsertTestEntity, long>
+public interface IInsertTestEntityRepository : ICrudRepository<InsertTestEntity, long>
 {
-    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = {{arg --param id}}")]
-    Task<InsertTestEntity?> GetByIdAsync(long id, CancellationToken ct = default);
+    // Inherited from ICrudRepository: all query and command methods
 }
 
 [TableName("test_entities")]

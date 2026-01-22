@@ -4,18 +4,18 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-purple.svg)](#)
 [![LTS](https://img.shields.io/badge/LTS-.NET%2010-green.svg)](#)
-[![Tests](https://img.shields.io/badge/tests-1344%20passing-brightgreen.svg)](#)
+[![Tests](https://img.shields.io/badge/tests-1572%20passing-brightgreen.svg)](#)
 [![AOT](https://img.shields.io/badge/AOT-ready-blue.svg)](#)
 
 高性能、AOT 友好的 .NET 数据库访问库。使用源生成器在编译时生成代码，零运行时反射，完全支持 Native AOT。
 
 ## 核心特性
 
-- **🚀 高性能** - 比 Dapper.AOT 快 19%，比 FreeSql 快 6.8 倍（单条查询）
+- **🚀 高性能** - 比 Dapper.AOT 快 1.5-2.9%，最低 GC 压力（Gen1 GC 是 FreeSql 的 1/13）
 - **⚡ 零反射** - 编译时源生成，运行时无反射开销
 - **🎯 类型安全** - 编译时验证 SQL 模板和表达式
 - **🌐 多数据库** - SQLite、PostgreSQL、MySQL、SQL Server、Oracle、DB2
-- **📦 AOT 就绪** - 完全支持 Native AOT，通过 1344 个单元测试
+- **📦 AOT 就绪** - 完全支持 Native AOT，通过 1564 个单元测试
 - **🔧 LINQ 支持** - IQueryable 接口，支持 Where/Select/OrderBy/Join 等
 - **💾 智能缓存** - SqlQuery\<T\> 泛型缓存，自动注册 EntityProvider
 - **🔍 自动发现** - 源生成器自动发现 SqlQuery\<T\> 和 SqlTemplate 中的实体类型
@@ -78,15 +78,26 @@ var adults = await repo.GetAdultsAsync(18);
 
 ## 内置仓储接口
 
-继承 `ICrudRepository<TEntity, TKey>` 获得标准 CRUD 方法：
+继承 `ICrudRepository<TEntity, TKey>` 获得 42 个标准方法（24 个查询 + 18 个命令）：
+
+**查询方法（24 个）**：
+- 单实体查询：`GetByIdAsync/GetById`, `GetFirstWhereAsync/GetFirstWhere`
+- 列表查询：`GetByIdsAsync/GetByIds`, `GetAllAsync/GetAll`, `GetWhereAsync/GetWhere`
+- 分页查询：`GetPagedAsync/GetPaged`, `GetPagedWhereAsync/GetPagedWhere`
+- 存在性检查：`ExistsByIdAsync/ExistsById`, `ExistsAsync/Exists`
+- 计数：`CountAsync/Count`, `CountWhereAsync/CountWhere`
+
+**命令方法（18 个）**：
+- 插入：`InsertAndGetIdAsync/InsertAndGetId`, `InsertAsync/Insert`, `BatchInsertAsync/BatchInsert`
+- 更新：`UpdateAsync/Update`, `UpdateWhereAsync/UpdateWhere`, `BatchUpdateAsync/BatchUpdate`
+- 删除：`DeleteAsync/Delete`, `DeleteByIdsAsync/DeleteByIds`, `DeleteWhereAsync/DeleteWhere`, `DeleteAllAsync/DeleteAll`
 
 ```csharp
 public interface IUserRepository : ICrudRepository<User, long>
 {
-    // 继承方法: GetByIdAsync, GetAllAsync, InsertAndGetIdAsync, 
-    // UpdateAsync, DeleteAsync, CountAsync, ExistsAsync...
+    // 继承 42 个标准方法，无需自定义即可使用
     
-    // 自定义方法
+    // 自定义方法（仅在需要复杂查询时）
     [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE name LIKE @pattern")]
     Task<List<User>> SearchByNameAsync(string pattern);
 }
@@ -199,12 +210,35 @@ await connection.ExecuteBatchAsync(sql, users, UserParameterBinder.Default);
 
 基于 BenchmarkDotNet 测试（.NET 10 LTS，SQLite 内存数据库）：
 
-| 操作 | Sqlx | Dapper.AOT | FreeSql | Sqlx 优势 |
-|------|------|------------|---------|-----------|
-| 单条查询 | **8.70 μs** | 10.35 μs | 59.30 μs | 快 19% / 6.8x |
-| 内存分配 | **1.41 KB** | 2.66 KB | 10.24 KB | 少 47% / 626% |
+### 小数据集性能（10-100条）- Web API 主要场景
 
-> 详细数据见 [性能基准测试](docs/benchmarks.md)
+| 数据量 | Sqlx | Dapper.AOT | FreeSql | Sqlx 优势 |
+|--------|------|------------|---------|-----------|
+| **10条** | **42.19 μs** | 43.42 μs | 49.64 μs | 🥇 快 2.9% / 17.7% |
+| **100条** | **230.35 μs** | 233.76 μs | 237.38 μs | 🥇 快 1.5% / 3.1% |
+| **1000条** | **2,165.87 μs** | 2,172.08 μs | 1,625.41 μs | 🥇 快 0.3% |
+
+### 内存效率
+
+| 数据量 | Sqlx | Dapper.AOT | FreeSql | Sqlx 优势 |
+|--------|------|------------|---------|-----------|
+| **10条** | **4.68 KB** | 6.55 KB | 8.67 KB | 🥇 少 40% / 85% |
+| **100条** | **37 KB** | 45.66 KB | 37.23 KB | 🥇 少 23% |
+| **1000条** | **360.24 KB** | 432.38 KB | 318.6 KB | 🥇 少 20% |
+
+### GC 压力（关键指标）
+
+| 数据量 | Sqlx Gen1 | Dapper.AOT Gen1 | FreeSql Gen1 | Sqlx 优势 |
+|--------|-----------|-----------------|--------------|-----------|
+| **1000条** | **1.95** | 3.91 | **25.39** | 🥇 最低（FreeSql 的 1/13） |
+
+**关键洞察**：
+- ✅ Sqlx 在小数据集（10-100条）上性能最优，这是 Web API 的主要场景
+- ✅ Sqlx 的 GC 压力最小，更适合长时间运行的应用
+- ✅ Sqlx 在所有场景下都比 Dapper.AOT 快，且内存效率更高
+- ⚠️ FreeSql 在大数据集（1000+条）上更快，但 Gen1 GC 是 Sqlx 的 13倍
+
+> 详细数据见 [性能基准测试](docs/benchmarks.md) 和 [AOT 性能测试](AOT_PERFORMANCE_RESULTS.md)
 
 ## 支持的数据库
 

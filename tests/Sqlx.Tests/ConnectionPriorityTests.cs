@@ -94,7 +94,7 @@ public partial class MethodParamVsPrimaryCtorRepository(SqliteConnection primary
 public interface IFieldVsPropertyRepository : IQueryRepository<ConnectionPriorityEntity, long>
 {
     [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
-    Task<ConnectionPriorityEntity?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
+    new Task<ConnectionPriorityEntity?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
 }
 
 [TableName("connection_priority_test")]
@@ -116,13 +116,15 @@ public partial class FieldVsPropertyRepository : IFieldVsPropertyRepository
 public interface IFieldVsPrimaryCtorRepository : IQueryRepository<ConnectionPriorityEntity, long>
 {
     [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
-    Task<ConnectionPriorityEntity?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
+    new Task<ConnectionPriorityEntity?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
 }
 
 [TableName("connection_priority_test")]
 [SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IFieldVsPrimaryCtorRepository))]
-public partial class FieldVsPrimaryCtorRepository(SqliteConnection primaryConnection) : IFieldVsPrimaryCtorRepository
+#pragma warning disable CS9113 // Parameter is unread
+public partial class FieldVsPrimaryCtorRepository(SqliteConnection _) : IFieldVsPrimaryCtorRepository
+#pragma warning restore CS9113
 {
     private readonly SqliteConnection _fieldConnection = new SqliteConnection("Data Source=field.db");
 }
@@ -131,13 +133,15 @@ public partial class FieldVsPrimaryCtorRepository(SqliteConnection primaryConnec
 public interface IPropertyVsPrimaryCtorRepository : IQueryRepository<ConnectionPriorityEntity, long>
 {
     [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
-    Task<ConnectionPriorityEntity?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
+    new Task<ConnectionPriorityEntity?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
 }
 
 [TableName("connection_priority_test")]
 [SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IPropertyVsPrimaryCtorRepository))]
-public partial class PropertyVsPrimaryCtorRepository(SqliteConnection primaryConnection) : IPropertyVsPrimaryCtorRepository
+#pragma warning disable CS9113 // Parameter is unread
+public partial class PropertyVsPrimaryCtorRepository(SqliteConnection _) : IPropertyVsPrimaryCtorRepository
+#pragma warning restore CS9113
 {
     public SqliteConnection PropertyConnection { get; } = new SqliteConnection("Data Source=property.db");
 }
@@ -146,7 +150,7 @@ public partial class PropertyVsPrimaryCtorRepository(SqliteConnection primaryCon
 public interface IPrimaryCtorOnlyRepository : IQueryRepository<ConnectionPriorityEntity, long>
 {
     [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
-    Task<ConnectionPriorityEntity?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
+    new Task<ConnectionPriorityEntity?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
 }
 
 [TableName("connection_priority_test")]
@@ -170,7 +174,9 @@ public interface IAllSourcesRepository : IQueryRepository<ConnectionPriorityEnti
 [TableName("connection_priority_test")]
 [SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IAllSourcesRepository))]
-public partial class AllSourcesRepository(SqliteConnection primaryConnection) : IAllSourcesRepository
+#pragma warning disable CS9113 // Parameter is unread
+public partial class AllSourcesRepository(SqliteConnection _) : IAllSourcesRepository
+#pragma warning restore CS9113
 {
     private readonly SqliteConnection _fieldConnection = new SqliteConnection("Data Source=field.db");
     public SqliteConnection PropertyConnection { get; } = new SqliteConnection("Data Source=property.db");
@@ -184,7 +190,7 @@ public partial class AllSourcesRepository(SqliteConnection primaryConnection) : 
 public interface IExplicitTransactionRepository : IQueryRepository<ConnectionPriorityEntity, long>
 {
     [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
-    Task<ConnectionPriorityEntity?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
+    new Task<ConnectionPriorityEntity?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
 }
 
 [TableName("connection_priority_test")]
@@ -199,7 +205,7 @@ public partial class ExplicitTransactionRepository(SqliteConnection connection) 
 public interface IAutoTransactionRepository : IQueryRepository<ConnectionPriorityEntity, long>
 {
     [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE id = @id")]
-    Task<ConnectionPriorityEntity?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
+    new Task<ConnectionPriorityEntity?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
 }
 
 [TableName("connection_priority_test")]

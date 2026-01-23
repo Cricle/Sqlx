@@ -4,7 +4,10 @@
 
 namespace Sqlx.Placeholders;
 
+using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 /// <summary>
 /// Handles the {{set}} placeholder for generating UPDATE SET clauses.
@@ -18,12 +21,16 @@ using System.Linq;
 /// </para>
 /// <list type="bullet">
 /// <item><description><c>--exclude col1,col2</c> - Excludes specified columns from the SET clause</description></item>
+/// <item><description><c>--inline PropertyName=expression</c> - Specifies inline expressions using property names</description></item>
 /// </list>
 /// </remarks>
 /// <example>
 /// <code>
 /// // Template: UPDATE users SET {{set --exclude Id}} WHERE id = @id
 /// // Output:   UPDATE users SET [name] = @name, [email] = @email WHERE id = @id
+/// 
+/// // Template: UPDATE users SET {{set --exclude Id --inline Version=Version+1}} WHERE id = @id
+/// // Output:   UPDATE users SET [name] = @name, [email] = @email, [version] = [version] + 1 WHERE id = @id
 /// </code>
 /// </example>
 public sealed class SetPlaceholderHandler : PlaceholderHandlerBase
@@ -40,6 +47,26 @@ public sealed class SetPlaceholderHandler : PlaceholderHandlerBase
     public override string Process(PlaceholderContext context, string options)
     {
         var columns = FilterColumns(context.Columns, options);
-        return string.Join(", ", columns.Select(c => $"{context.Dialect.WrapColumn(c.Name)} = {context.Dialect.CreateParameter(c.Name)}"));
+        var inlineExpressions = ParseInlineExpressions(options);
+
+        var setClauses = new List<string>();
+
+        foreach (var column in columns)
+        {
+            // 检查是否有内联表达式（通过属性名匹配）
+            if (inlineExpressions != null && inlineExpressions.TryGetValue(column.PropertyName, out var expression))
+            {
+                // 使用表达式，将表达式中的属性名替换为包装后的列名
+                var wrappedExpression = ReplacePropertyNamesWithColumns(expression, context);
+                setClauses.Add($"{context.Dialect.WrapColumn(column.Name)} = {wrappedExpression}");
+            }
+            else
+            {
+                // 使用标准参数赋值
+                setClauses.Add($"{context.Dialect.WrapColumn(column.Name)} = {context.Dialect.CreateParameter(column.Name)}");
+            }
+        }
+
+        return string.Join(", ", setClauses);
     }
 }

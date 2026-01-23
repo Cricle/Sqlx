@@ -36,6 +36,36 @@ Generates parameter placeholders for INSERT statements.
 
 **Options:**
 - `--exclude col1,col2` - Excludes specified columns
+- `--inline PropertyName=expression` - Specifies inline expressions using property names
+
+**Inline Expressions:**
+
+The `--inline` option allows you to use SQL expressions or literals instead of parameter placeholders. This is useful for default values, timestamps, and computed values.
+
+```csharp
+// Auto-generate timestamp
+[SqlTemplate("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values --exclude Id --inline CreatedAt=CURRENT_TIMESTAMP}})")]
+// Output: INSERT INTO [users] ([name], [email], [created_at]) VALUES (@name, @email, CURRENT_TIMESTAMP)
+
+// Set default values
+[SqlTemplate("INSERT INTO {{table}} ({{columns}}) VALUES ({{values --inline Status='pending',Priority=0,CreatedAt=CURRENT_TIMESTAMP}})")]
+// Output: INSERT INTO [tasks] ([id], [name], [status], [priority], [created_at]) VALUES (@id, @name, 'pending', 0, CURRENT_TIMESTAMP)
+
+// Multiple inline expressions
+[SqlTemplate("INSERT INTO {{table}} ({{columns --exclude Id}}) VALUES ({{values --exclude Id --inline Version=1,CreatedAt=CURRENT_TIMESTAMP,UpdatedAt=CURRENT_TIMESTAMP}})")]
+// Output: INSERT INTO [documents] ([title], [content], [version], [created_at], [updated_at]) VALUES (@title, @content, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+
+// Computed values
+[SqlTemplate("INSERT INTO {{table}} ({{columns}}) VALUES ({{values --inline Total=@quantity*@unitPrice}})")]
+Task<int> InsertOrderItemAsync(long id, int quantity, decimal unitPrice);
+// Output: INSERT INTO [order_items] ([id], [quantity], [unit_price], [total]) VALUES (@id, @quantity, @unit_price, @quantity*@unitPrice)
+```
+
+**Expression Rules:**
+- Use C# property names (PascalCase) in expressions, not column names
+- Property names are automatically replaced with dialect-wrapped column names
+- Parameter placeholders (@param, :param, $param) are preserved as-is
+- Supports SQL functions, literals, and complex expressions
 
 ### {{set}}
 
@@ -48,6 +78,36 @@ Generates SET clause for UPDATE statements.
 
 **Options:**
 - `--exclude col1,col2` - Excludes specified columns
+- `--inline PropertyName=expression` - Specifies inline expressions using property names
+
+**Inline Expressions:**
+
+The `--inline` option allows you to use SQL expressions instead of parameter placeholders. Property names in expressions are automatically replaced with dialect-wrapped column names.
+
+```csharp
+// Increment version counter
+[SqlTemplate("UPDATE {{table}} SET {{set --exclude Id --inline Version=Version+1}} WHERE id = @id")]
+// Output: UPDATE [users] SET [name] = @name, [email] = @email, [version] = [version] + 1 WHERE id = @id
+
+// Set timestamp to current time
+[SqlTemplate("UPDATE {{table}} SET {{set --exclude Id --inline UpdatedAt=CURRENT_TIMESTAMP}} WHERE id = @id")]
+// Output: UPDATE [users] SET [name] = @name, [email] = @email, [updated_at] = CURRENT_TIMESTAMP WHERE id = @id
+
+// Multiple expressions (comma-separated)
+[SqlTemplate("UPDATE {{table}} SET {{set --exclude Id --inline Version=Version+1,UpdatedAt=CURRENT_TIMESTAMP}} WHERE id = @id")]
+// Output: UPDATE [users] SET [name] = @name, [email] = @email, [version] = [version] + 1, [updated_at] = CURRENT_TIMESTAMP WHERE id = @id
+
+// Mix expressions with parameters
+[SqlTemplate("UPDATE {{table}} SET {{set --exclude Id --inline Counter=Counter+@increment}} WHERE id = @id")]
+Task<int> IncrementCounterAsync(long id, string name, int increment);
+// Output: UPDATE [users] SET [name] = @name, [email] = @email, [counter] = [counter] + @increment WHERE id = @id
+```
+
+**Expression Rules:**
+- Use C# property names (PascalCase) in expressions, not column names
+- Property names are automatically replaced with dialect-wrapped column names
+- Parameter placeholders (@param, :param, $param) are preserved as-is
+- Expressions can contain spaces and complex SQL operations
 
 ### {{table}}
 

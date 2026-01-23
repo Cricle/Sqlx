@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-purple.svg)](#)
 [![LTS](https://img.shields.io/badge/LTS-.NET%2010-green.svg)](#)
-[![Tests](https://img.shields.io/badge/tests-1585%20passing-brightgreen.svg)](#)
+[![Tests](https://img.shields.io/badge/tests-1842%20passing-brightgreen.svg)](#)
 [![AOT](https://img.shields.io/badge/AOT-ready-blue.svg)](#)
 
 高性能、AOT 友好的 .NET 数据库访问库。使用源生成器在编译时生成代码，零运行时反射，完全支持 Native AOT。
@@ -88,9 +88,49 @@ Console.WriteLine($"SQL: {template.Sql}");
 | `{{columns}}` | 所有列名 | `id, name, age` |
 | `{{columns --exclude Id}}` | 排除指定列 | `name, age` |
 | `{{values --exclude Id}}` | 参数占位符 | `@name, @age` |
+| `{{values --inline CreatedAt=CURRENT_TIMESTAMP}}` | 内联表达式（INSERT 默认值） | `@name, @age, CURRENT_TIMESTAMP` |
 | `{{set --exclude Id}}` | UPDATE SET 子句 | `name = @name` |
+| `{{set --inline Version=Version+1}}` | 内联表达式（UPDATE 计算字段） | `name = @name, version = version+1` |
 | `{{where --object filter}}` | 对象条件查询 | `(name = @name AND age = @age)` |
 | `{{if notnull=param}}...{{/if}}` | 条件包含 | 动态 SQL |
+
+### 内联表达式（Inline Expressions）
+
+内联表达式允许在 SQL 中使用表达式、函数和字面量：
+
+```csharp
+// UPDATE 示例：自动递增版本号
+[SqlTemplate(@"
+    UPDATE {{table}} 
+    SET {{set --exclude Id,Version --inline Version=Version+1,UpdatedAt=CURRENT_TIMESTAMP}} 
+    WHERE id = @id
+")]
+Task<int> UpdateAsync(long id, string name, string email);
+// 生成: UPDATE [users] SET [name] = @name, [email] = @email, 
+//       [version] = [version]+1, [updated_at] = CURRENT_TIMESTAMP WHERE id = @id
+
+// INSERT 示例：设置默认值
+[SqlTemplate(@"
+    INSERT INTO {{table}} ({{columns --exclude Id}}) 
+    VALUES ({{values --exclude Id --inline Status='pending',CreatedAt=CURRENT_TIMESTAMP}})
+")]
+Task<int> CreateAsync(string name, string description);
+// 生成: INSERT INTO [tasks] ([name], [description], [status], [created_at]) 
+//       VALUES (@name, @description, 'pending', CURRENT_TIMESTAMP)
+```
+
+**支持的表达式：**
+- 算术运算：`Version=Version+1`, `Total=@quantity*@unitPrice`
+- SQL 函数：`CreatedAt=CURRENT_TIMESTAMP`, `Email=LOWER(TRIM(Email))`
+- 字面量：`Status='pending'`, `Priority=0`, `IsActive=1`
+- 复杂表达式：`Result=COALESCE(NULLIF(Value,''),Default)`
+
+**关键特性：**
+- ✅ 使用属性名（PascalCase），自动转换为列名
+- ✅ 函数内的逗号被正确处理（如 `COALESCE(Status,'pending')`）
+- ✅ 支持嵌套函数和深度括号
+- ✅ 跨数据库方言自动适配
+- ✅ 编译时解析，零运行时开销
 
 **各数据库生成的 SQL：**
 

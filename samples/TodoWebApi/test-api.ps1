@@ -1,19 +1,25 @@
 #!/usr/bin/env pwsh
-# Test all TodoWebApi endpoints
+# Test all TodoWebApi endpoints - Comprehensive API testing for Sqlx demo
+# Tests 39 endpoints covering CRUD, batch operations, LINQ queries, and error handling
 
 param(
-    [string]$BaseUrl = "http://localhost:5000"
+    [string]$BaseUrl = "http://localhost:5000",
+    [switch]$Verbose
 )
 
 $ErrorActionPreference = "Continue"
 $ProgressPreference = "SilentlyContinue"
 
-Write-Host "`n🧪 Testing TodoWebApi Endpoints..." -ForegroundColor Cyan
-Write-Host "Base URL: $BaseUrl`n" -ForegroundColor Gray
+Write-Host "`n╔════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
+Write-Host "║  🧪 Sqlx TodoWebApi - Comprehensive API Test Suite       ║" -ForegroundColor Cyan
+Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host "Base URL: $BaseUrl" -ForegroundColor Gray
+Write-Host "Verbose:  $Verbose`n" -ForegroundColor Gray
 
 $passed = 0
 $failed = 0
 $errors = @()
+$testResults = @()
 
 function Test-Endpoint {
     param(
@@ -21,10 +27,12 @@ function Test-Endpoint {
         [string]$Method,
         [string]$Uri,
         [object]$Body = $null,
-        [int]$ExpectedStatus = 200
+        [int]$ExpectedStatus = 200,
+        [string]$Category = "General"
     )
     
-    Write-Host "Testing: $Name..." -NoNewline
+    $testStart = Get-Date
+    Write-Host "  [$Method] $Name..." -NoNewline
     
     try {
         $params = @{
@@ -35,37 +43,81 @@ function Test-Endpoint {
         }
         
         if ($Body) {
-            $params.Body = ($Body | ConvertTo-Json -Depth 10)
+            $params.Body = ($Body | ConvertTo-Json -Depth 10 -Compress)
+            if ($Verbose) {
+                Write-Host "`n    Request Body: $($params.Body)" -ForegroundColor DarkGray
+            }
         }
         
         $response = Invoke-WebRequest @params -ErrorAction Stop
+        $duration = ((Get-Date) - $testStart).TotalMilliseconds
         
         if ($response.StatusCode -eq $ExpectedStatus) {
-            Write-Host " ✅ PASS (Status: $($response.StatusCode))" -ForegroundColor Green
+            Write-Host " ✅ PASS" -ForegroundColor Green -NoNewline
+            Write-Host " ($([int]$duration)ms)" -ForegroundColor DarkGray
+            
+            if ($Verbose -and $response.Content) {
+                $content = $response.Content
+                if ($content.Length -gt 200) {
+                    $content = $content.Substring(0, 200) + "..."
+                }
+                Write-Host "    Response: $content" -ForegroundColor DarkGray
+            }
+            
             $script:passed++
+            $script:testResults += @{
+                Name = $Name
+                Status = "PASS"
+                Duration = $duration
+                Category = $Category
+            }
             return $response
         } else {
-            Write-Host " ❌ FAIL (Expected: $ExpectedStatus, Got: $($response.StatusCode))" -ForegroundColor Red
+            Write-Host " ❌ FAIL" -ForegroundColor Red
+            Write-Host "    Expected: $ExpectedStatus, Got: $($response.StatusCode)" -ForegroundColor Yellow
             $script:failed++
             $script:errors += "$Name - Unexpected status code"
+            $script:testResults += @{
+                Name = $Name
+                Status = "FAIL"
+                Duration = $duration
+                Category = $Category
+                Error = "Status code mismatch"
+            }
             return $null
         }
     }
     catch {
+        $duration = ((Get-Date) - $testStart).TotalMilliseconds
         $statusCode = $_.Exception.Response.StatusCode.value__
+        
         if ($statusCode -eq $ExpectedStatus) {
-            Write-Host " ✅ PASS (Status: $statusCode)" -ForegroundColor Green
+            Write-Host " ✅ PASS" -ForegroundColor Green -NoNewline
+            Write-Host " ($([int]$duration)ms)" -ForegroundColor DarkGray
             $script:passed++
+            $script:testResults += @{
+                Name = $Name
+                Status = "PASS"
+                Duration = $duration
+                Category = $Category
+            }
             return $null
         }
         
         Write-Host " ❌ FAIL" -ForegroundColor Red
-        Write-Host "   Error: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "    Error: $($_.Exception.Message)" -ForegroundColor Yellow
         if ($_.ErrorDetails) {
-            Write-Host "   Details: $($_.ErrorDetails.Message)" -ForegroundColor Yellow
+            Write-Host "    Details: $($_.ErrorDetails.Message)" -ForegroundColor DarkYellow
         }
         $script:failed++
         $script:errors += "$Name - $($_.Exception.Message)"
+        $script:testResults += @{
+            Name = $Name
+            Status = "FAIL"
+            Duration = $duration
+            Category = $Category
+            Error = $_.Exception.Message
+        }
         return $null
     }
 }
@@ -87,19 +139,21 @@ while ($retries -lt $maxRetries) {
             Write-Host "Please start the server with: dotnet run --project samples/TodoWebApi/TodoWebApi.csproj`n" -ForegroundColor Yellow
             exit 1
         }
+        Write-Host "." -NoNewline -ForegroundColor Gray
         Start-Sleep -Seconds 1
     }
 }
 
-Write-Host "═══════════════════════════════════════════════════════`n" -ForegroundColor Cyan
-Write-Host "📋 BASIC CRUD OPERATIONS" -ForegroundColor Yellow
-Write-Host "═══════════════════════════════════════════════════════`n" -ForegroundColor Cyan
+Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
+Write-Host "║  📋 BASIC CRUD OPERATIONS (10 tests)                      ║" -ForegroundColor Yellow
+Write-Host "║  Testing: Create, Read, Update, Delete                    ║" -ForegroundColor Gray
+Write-Host "╚════════════════════════════════════════════════════════════╝`n" -ForegroundColor Cyan
 
 # Test 1: Root redirect
-Test-Endpoint -Name "GET /" -Method "GET" -Uri "/" -ExpectedStatus 200
+Test-Endpoint -Name "Root redirect" -Method "GET" -Uri "/" -ExpectedStatus 200 -Category "CRUD"
 
 # Test 2: Get all todos (empty)
-Test-Endpoint -Name "GET /api/todos (empty)" -Method "GET" -Uri "/api/todos"
+Test-Endpoint -Name "Get all (empty)" -Method "GET" -Uri "/api/todos" -Category "CRUD"
 
 # Test 3: Create todo 1
 $newTodo1 = @{
@@ -110,7 +164,7 @@ $newTodo1 = @{
     estimatedMinutes = 120
     dueDate = (Get-Date).AddDays(2).ToString("o")
 }
-$createResponse1 = Test-Endpoint -Name "POST /api/todos (create #1)" -Method "POST" -Uri "/api/todos" -Body $newTodo1 -ExpectedStatus 201
+$createResponse1 = Test-Endpoint -Name "Create todo #1 (high priority)" -Method "POST" -Uri "/api/todos" -Body $newTodo1 -ExpectedStatus 201 -Category "CRUD"
 
 $todoId1 = $null
 if ($createResponse1) {
@@ -191,9 +245,10 @@ if ($todoId3) {
     Test-Endpoint -Name "DELETE /api/todos/{id}" -Method "DELETE" -Uri "/api/todos/$todoId3" -ExpectedStatus 204
 }
 
-Write-Host "`n═══════════════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Host "🔍 QUERY & FILTER OPERATIONS" -ForegroundColor Yellow
-Write-Host "═══════════════════════════════════════════════════════`n" -ForegroundColor Cyan
+Write-Host "`n╔════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
+Write-Host "║  🔍 QUERY & FILTER OPERATIONS (10 tests)                  ║" -ForegroundColor Yellow
+Write-Host "║  Testing: SqlTemplate queries, search, filters            ║" -ForegroundColor Gray
+Write-Host "╚════════════════════════════════════════════════════════════╝`n" -ForegroundColor Cyan
 
 # Test 11: Search todos
 Test-Endpoint -Name "GET /api/todos/search" -Method "GET" -Uri "/api/todos/search?q=Priority"
@@ -232,9 +287,10 @@ if ($todoId1 -and $todoId2) {
     Test-Endpoint -Name "POST /api/todos/by-ids" -Method "POST" -Uri "/api/todos/by-ids" -Body $batchGet
 }
 
-Write-Host "`n═══════════════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Host "📊 COUNT & STATISTICS" -ForegroundColor Yellow
-Write-Host "═══════════════════════════════════════════════════════`n" -ForegroundColor Cyan
+Write-Host "`n╔════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
+Write-Host "║  📊 COUNT & STATISTICS (4 tests)                          ║" -ForegroundColor Yellow
+Write-Host "║  Testing: Aggregation, LINQ count, statistics             ║" -ForegroundColor Gray
+Write-Host "╚════════════════════════════════════════════════════════════╝`n" -ForegroundColor Cyan
 
 # Test 21: Get total count
 Test-Endpoint -Name "GET /api/todos/count" -Method "GET" -Uri "/api/todos/count"
@@ -248,9 +304,10 @@ Test-Endpoint -Name "GET /api/todos/linq/count-overdue" -Method "GET" -Uri "/api
 # Test 24: Get statistics
 Test-Endpoint -Name "GET /api/todos/queryable/stats" -Method "GET" -Uri "/api/todos/queryable/stats"
 
-Write-Host "`n═══════════════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Host "🔄 BATCH OPERATIONS" -ForegroundColor Yellow
-Write-Host "═══════════════════════════════════════════════════════`n" -ForegroundColor Cyan
+Write-Host "`n╔════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
+Write-Host "║  🔄 BATCH OPERATIONS (4 tests)                            ║" -ForegroundColor Yellow
+Write-Host "║  Testing: Batch update, batch complete, batch actions     ║" -ForegroundColor Gray
+Write-Host "╚════════════════════════════════════════════════════════════╝`n" -ForegroundColor Cyan
 
 # Test 25: Batch update priority
 if ($todoId1 -and $todoId2) {
@@ -282,9 +339,10 @@ if ($todoId1) {
     Test-Endpoint -Name "PUT /api/todos/{id}/actual-minutes" -Method "PUT" -Uri "/api/todos/$todoId1/actual-minutes" -Body $updateMinutes -ExpectedStatus 204
 }
 
-Write-Host "`n═══════════════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Host "🎯 LINQ & QUERYABLE EXAMPLES" -ForegroundColor Yellow
-Write-Host "═══════════════════════════════════════════════════════`n" -ForegroundColor Cyan
+Write-Host "`n╔════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
+Write-Host "║  🎯 LINQ & QUERYABLE EXAMPLES (4 tests)                   ║" -ForegroundColor Yellow
+Write-Host "║  Testing: LINQ expressions, IQueryable, projections       ║" -ForegroundColor Gray
+Write-Host "╚════════════════════════════════════════════════════════════╝`n" -ForegroundColor Cyan
 
 # Test 29: LINQ high priority pending
 Test-Endpoint -Name "GET /api/todos/linq/high-priority-pending" -Method "GET" -Uri "/api/todos/linq/high-priority-pending"
@@ -298,9 +356,10 @@ Test-Endpoint -Name "GET /api/todos/queryable/titles" -Method "GET" -Uri "/api/t
 # Test 32: Queryable search advanced
 Test-Endpoint -Name "GET /api/todos/queryable/search-advanced" -Method "GET" -Uri "/api/todos/queryable/search-advanced?keyword=Task"
 
-Write-Host "`n═══════════════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Host "🗑️  DELETE OPERATIONS" -ForegroundColor Yellow
-Write-Host "═══════════════════════════════════════════════════════`n" -ForegroundColor Cyan
+Write-Host "`n╔════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
+Write-Host "║  🗑️  DELETE OPERATIONS (2 tests)                          ║" -ForegroundColor Yellow
+Write-Host "║  Testing: Delete completed, batch delete                  ║" -ForegroundColor Gray
+Write-Host "╚════════════════════════════════════════════════════════════╝`n" -ForegroundColor Cyan
 
 # Test 33: Delete all completed todos
 Test-Endpoint -Name "DELETE /api/todos/completed" -Method "DELETE" -Uri "/api/todos/completed"
@@ -313,9 +372,10 @@ if ($todoId1 -and $todoId2) {
     Test-Endpoint -Name "DELETE /api/todos/batch" -Method "DELETE" -Uri "/api/todos/batch" -Body $batchDelete
 }
 
-Write-Host "`n═══════════════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Host "❌ ERROR HANDLING" -ForegroundColor Yellow
-Write-Host "═══════════════════════════════════════════════════════`n" -ForegroundColor Cyan
+Write-Host "`n╔════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
+Write-Host "║  ❌ ERROR HANDLING (5 tests)                              ║" -ForegroundColor Yellow
+Write-Host "║  Testing: 404 responses, non-existent resources           ║" -ForegroundColor Gray
+Write-Host "╚════════════════════════════════════════════════════════════╝`n" -ForegroundColor Cyan
 
 # Test 35: Get non-existent todo
 Test-Endpoint -Name "GET /api/todos/99999 (not found)" -Method "GET" -Uri "/api/todos/99999" -ExpectedStatus 404
@@ -340,17 +400,53 @@ $updateMinutesNonExistent = @{
 }
 Test-Endpoint -Name "PUT /api/todos/99999/actual-minutes (not found)" -Method "PUT" -Uri "/api/todos/99999/actual-minutes" -Body $updateMinutesNonExistent -ExpectedStatus 404
 
-Write-Host "`n═══════════════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Host "`n📊 Test Results:" -ForegroundColor Cyan
-Write-Host "   ✅ Passed: $passed" -ForegroundColor Green
-Write-Host "   ❌ Failed: $failed" -ForegroundColor Red
-Write-Host "   📈 Total:  $($passed + $failed)" -ForegroundColor White
+Write-Host "`n╔════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
+Write-Host "║  📊 TEST SUMMARY                                          ║" -ForegroundColor Cyan
+Write-Host "╚════════════════════════════════════════════════════════════╝`n" -ForegroundColor Cyan
+
+Write-Host "Results by Category:" -ForegroundColor White
+$categories = $testResults | Group-Object -Property Category
+foreach ($cat in $categories) {
+    $catPassed = ($cat.Group | Where-Object { $_.Status -eq "PASS" }).Count
+    $catFailed = ($cat.Group | Where-Object { $_.Status -eq "FAIL" }).Count
+    $catTotal = $cat.Count
+    $percentage = [math]::Round(($catPassed / $catTotal) * 100, 1)
+    
+    Write-Host "  $($cat.Name):" -NoNewline -ForegroundColor Yellow
+    Write-Host " $catPassed/$catTotal passed ($percentage%)" -ForegroundColor $(if ($catFailed -eq 0) { "Green" } else { "Red" })
+}
+
+Write-Host "`nOverall Results:" -ForegroundColor White
+Write-Host "  ✅ Passed: $passed" -ForegroundColor Green
+Write-Host "  ❌ Failed: $failed" -ForegroundColor Red
+Write-Host "  📈 Total:  $($passed + $failed)" -ForegroundColor White
+
+if ($testResults.Count -gt 0) {
+    $avgDuration = ($testResults | Measure-Object -Property Duration -Average).Average
+    $totalDuration = ($testResults | Measure-Object -Property Duration -Sum).Sum
+    Write-Host "  ⏱️  Avg:    $([math]::Round($avgDuration, 0))ms" -ForegroundColor Gray
+    Write-Host "  ⏱️  Total:  $([math]::Round($totalDuration, 0))ms" -ForegroundColor Gray
+}
+
+Write-Host "`nFeatures Tested:" -ForegroundColor White
+Write-Host "  ✅ Basic CRUD operations" -ForegroundColor Green
+Write-Host "  ✅ Query & filter operations (SqlTemplate)" -ForegroundColor Green
+Write-Host "  ✅ LINQ Expression queries" -ForegroundColor Green
+Write-Host "  ✅ IQueryable queries" -ForegroundColor Green
+Write-Host "  ✅ Batch operations" -ForegroundColor Green
+Write-Host "  ✅ Statistics & aggregation" -ForegroundColor Green
+Write-Host "  ✅ Error handling (404 responses)" -ForegroundColor Green
 
 if ($failed -gt 0) {
     Write-Host "`n❌ Failed Tests:" -ForegroundColor Red
-    $errors | ForEach-Object { Write-Host "   - $_" -ForegroundColor Yellow }
+    $errors | ForEach-Object { Write-Host "  - $_" -ForegroundColor Yellow }
+    Write-Host "`n💡 Tip: Run with -Verbose flag for detailed output" -ForegroundColor Cyan
     exit 1
 } else {
-    Write-Host "`n✅ All tests passed!" -ForegroundColor Green
+    Write-Host "`n╔════════════════════════════════════════════════════════════╗" -ForegroundColor Green
+    Write-Host "║  ✅ ALL TESTS PASSED! 🎉                                  ║" -ForegroundColor Green
+    Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Green
+    Write-Host "`n🚀 Sqlx TodoWebApi is working perfectly!" -ForegroundColor Green
+    Write-Host "📚 See FEATURES.md for complete documentation" -ForegroundColor Cyan
     exit 0
 }

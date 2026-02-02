@@ -57,12 +57,56 @@ public class User
     public string? Email { get; set; }
     public int? Score { get; set; }
 }
+
+// 也支持 record 类型（使用构造函数初始化）
+[Sqlx, TableName("users")]
+public record UserRecord(long Id, string Name, int Age);
+
+// 也支持混合 record（主构造函数 + 额外属性）
+[Sqlx, TableName("users")]
+public record MixedUser(long Id, string Name)
+{
+    public string Email { get; set; } = "";
+    public int Age { get; set; }
+}
+
+// 也支持 struct 类型
+[Sqlx, TableName("users")]
+public struct UserStruct
+{
+    [Key] public long Id { get; set; }
+    public string Name { get; set; }
+    public int Age { get; set; }
+}
+
+// 也支持 struct record
+[Sqlx, TableName("points")]
+public readonly record struct Point(int X, int Y);
+
+// 只读属性会被自动忽略
+[Sqlx, TableName("users")]
+public class UserWithComputed
+{
+    [Key] public long Id { get; set; }
+    public string FirstName { get; set; } = "";
+    public string LastName { get; set; } = "";
+    
+    // 只读属性 - 自动忽略，不会生成到 SQL 中
+    public string FullName => $"{FirstName} {LastName}";
+}
 ```
 
 **关键说明：**
 - `[Sqlx]` - 标注在实体类上，生成 EntityProvider/ResultReader/ParameterBinder
 - `[TableName("table_name")]` - 标注在实体类上，指定数据库表名
 - `[Key]` - 标注在主键属性上，INSERT/UPDATE 时自动排除
+- **支持的类型**：
+  - `class` - 使用对象初始化器
+  - `record` - 使用构造函数（如果所有属性都在主构造函数中）
+  - 混合 `record` - 构造函数 + 对象初始化器（主构造函数参数 + 额外属性）
+  - `struct` - 使用对象初始化器
+  - `struct record` - 使用构造函数
+- **只读属性自动忽略** - 没有 setter 的属性不会生成到 SQL 中
 
 ### 3. 定义仓储接口
 
@@ -392,6 +436,7 @@ Task<int> InsertAsync(Customer customer);  // Customer 自动生成
 | `{{set}}` | `[name] = @name, [age] = @age` | SET 子句（用于 UPDATE） |
 | `{{set --exclude Id CreatedAt}}` | `[name] = @name, [age] = @age` | 排除不可更新的字段 |
 | `{{set --inline Version=Version+1}}` | `[name] = @name, [version] = [version]+1` | 内联表达式（用于 UPDATE 计算字段） |
+| `{{set --param updates}}` | 动态 SET 子句（从参数生成） | 运行时动态构建 SET 子句 |
 | `{{arg --param name}}` | `@name` / `:name` / `$1` | 单个参数占位符（方言适配） |
 | `{{where --param predicate}}` | 动态 WHERE 子句（从表达式生成） | 表达式查询 |
 | `{{where --object filter}}` | 动态 WHERE 子句（从字典生成） | 字典查询 |
@@ -443,6 +488,362 @@ Task<int> CreateTaskAsync(string name, string description);
 Task<int> CreateOrderItemAsync(long id, int quantity, decimal unitPrice);
 // 生成: INSERT INTO [order_items] ([id], [quantity], [unit_price], [total]) VALUES (@id, @quantity, @unit_price, @quantity*@unitPrice)
 ```
+
+### 动态 SET 占位符（`{{set --param}}`）
+
+动态 SET 占位符允许在运行时构建灵活的 SET 子句，配合 `Expression<Func<T, T>>` 实现类型安全的动态更新。
+
+**对比静态 SET 和动态 SET：**
+
+| 特性 | 静态 `{{set}}` | 动态 `{{set --param}}` + 表达式树 |
+|------|---------------|--------------------------------|
+| 编译时确定 | ✅ 是 | ❌ 否 |
+| 性能 | 🚀 最快（预编译） | ⚡ 快（运行时渲染） |
+| 灵活性 | ⚠️ 固定字段 | ✅ 任意字段组合 |
+| 类型安全 | ✅ 完全类型安全 | ✅ 完全类型安全（表达式树） |
+| IDE 支持 | ✅ 智能提示 | ✅ 智能提示 + 重构 |
+| 使用场景 | 标准 CRUD | 动态表单、部分更新、条件更新 |
+
+**使用示例：**
+
+```csharp
+// 定义动态更新方法
+[SqlTemplate("UPDATE {{table}} SET {{set --param updates}} WHERE id = @id")]
+Task<int> DynamicUpdateAsync(long id, string updates);
+
+// 示例 1: 更新单个字段（类型安全）
+Expression<Func<User, User>> expr = u => new User { Priority = 5 };
+var setClause = expr.ToSetClause(); // "[priority] = @p0"
+await repo.DynamicUpdateAsync(userId, setClause);
+
+// 示例 2: 递增表达式
+Expression<Func<User, User>> expr = u => new User { Version = u.Version + 1 };
+var setClause = expr.ToSetClause(); // "[version] = ([version] + @p0)"
+await repo.DynamicUpdateAsync(userId, setClause);
+
+// 示例 3: 多字段更新
+Expression<Func<User, User>> expr = u => new User 
+{ 
+    Name = "John",
+    Priority = 5,
+    Version = u.Version + 1
+};
+var setClause = expr.ToSetClause(); // "[name] = @p0, [priority] = @p1, [version] = ([version] + @p2)"
+await repo.DynamicUpdateAsync(userId, setClause);
+
+// 示例 4: 条件构建（动态表单）
+Expression<Func<User, User>>? updateExpr = null;
+if (updateName && updatePriority)
+{
+    updateExpr = u => new User { Name = newName, Priority = newPriority };
+}
+else if (updateName)
+{
+    updateExpr = u => new User { Name = newName };
+}
+else if (updatePriority)
+{
+    updateExpr = u => new User { Priority = newPriority };
+}
+
+if (updateExpr != null)
+{
+    var setClause = updateExpr.ToSetClause();
+    await repo.DynamicUpdateAsync(userId, setClause);
+}
+
+// 示例 5: 字符串函数
+Expression<Func<User, User>> expr = u => new User 
+{ 
+    Name = u.Name.Trim().ToUpper(),
+    Email = u.Email.ToLower()
+};
+var setClause = expr.ToSetClause(); // "[name] = UPPER(TRIM([name])), [email] = LOWER([email])"
+
+// 示例 6: 数学函数
+Expression<Func<User, User>> expr = u => new User 
+{ 
+    Age = Math.Abs(u.Age),
+    Score = Math.Round(u.Score * 1.1)
+};
+var setClause = expr.ToSetClause(); // "[age] = ABS([age]), [score] = ROUND(([score] * @p0))"
+```
+
+**支持的函数：**
+
+| 类别 | C# 函数 | SQL 输出 | 说明 |
+|------|---------|---------|------|
+| **字符串** | `ToLower()` | `LOWER(column)` | 转换为小写 |
+| | `ToUpper()` | `UPPER(column)` | 转换为大写 |
+| | `Trim()` | `TRIM(column)` | 去除首尾空格 |
+| | `Substring(start, length)` | `SUBSTR(column, start, length)` | 截取子字符串 |
+| | `Replace(old, new)` | `REPLACE(column, old, new)` | 替换字符串 |
+| | `+ (连接)` | `column \|\| value` | 字符串连接（方言适配） |
+| **数学** | `Math.Abs(x)` | `ABS(x)` | 绝对值 |
+| | `Math.Round(x)` | `ROUND(x)` | 四舍五入 |
+| | `Math.Ceiling(x)` | `CEIL(x)` | 向上取整 |
+| | `Math.Floor(x)` | `FLOOR(x)` | 向下取整 |
+| | `Math.Pow(x, y)` | `POWER(x, y)` | 幂运算 |
+| | `Math.Sqrt(x)` | `SQRT(x)` | 平方根 |
+| | `Math.Max(a, b)` | `GREATEST(a, b)` | 最大值（方言适配） |
+| | `Math.Min(a, b)` | `LEAST(a, b)` | 最小值（方言适配） |
+| **算术** | `+`, `-`, `*`, `/` | `+`, `-`, `*`, `/` | 基本算术运算 |
+| | `%` | `%` / `MOD()` | 取模（方言适配） |
+
+**类型安全的优势：**
+- ✅ 编译时检查字段名和类型
+- ✅ IDE 智能提示和重构支持
+- ✅ 自动参数化，防止 SQL 注入
+- ✅ 支持复杂表达式（递增、计算等）
+- ✅ 自动处理列名转换（PascalCase → snake_case）
+
+**扩展方法：**
+
+```csharp
+// 转换表达式为 SET 子句
+public static string ToSetClause<T>(
+    this Expression<Func<T, T>> updateExpression,
+    SqlDialect? dialect = null)
+
+// 提取表达式中的参数
+public static Dictionary<string, object?> GetSetParameters<T>(
+    this Expression<Func<T, T>> updateExpression)
+```
+
+**注意事项：**
+- 表达式必须是成员初始化表达式：`u => new User { Name = "John" }`
+- 不支持直接返回参数：`u => u`（会抛出 ArgumentException）
+- 参数会自动编号：`@p0`, `@p1`, `@p2`...
+- 列名自动转换为 snake_case 并使用方言包装
+
+---
+
+## ExpressionBlockResult - 统一表达式解析
+
+`ExpressionBlockResult` 是一个高性能的表达式解析类，提供统一的方式解析 WHERE 和 UPDATE 表达式，避免重复解析，提升性能。
+
+### 核心特性
+
+- **统一解析** - 一次解析同时获取 SQL 和参数
+- **高性能** - 避免重复遍历表达式树
+- **AOT 友好** - 零反射，纯表达式树解析
+- **线程安全** - 无共享状态
+- **多方言** - 支持所有数据库方言
+
+### API 接口
+
+```csharp
+namespace Sqlx.Expressions;
+
+public sealed class ExpressionBlockResult
+{
+    // 生成的 SQL 片段
+    public string Sql { get; }
+    
+    // 提取的参数字典
+    public Dictionary<string, object?> Parameters { get; }
+    
+    // 解析 WHERE 表达式
+    public static ExpressionBlockResult Parse(
+        Expression? expression, 
+        SqlDialect dialect);
+    
+    // 解析 UPDATE 表达式
+    public static ExpressionBlockResult ParseUpdate<T>(
+        Expression<Func<T, T>>? updateExpression, 
+        SqlDialect dialect);
+    
+    // 空结果
+    public static ExpressionBlockResult Empty { get; }
+}
+```
+
+### 使用示例
+
+#### 1. WHERE 表达式解析
+
+```csharp
+using Sqlx.Expressions;
+
+// 简单条件
+var minAge = 18;
+Expression<Func<User, bool>> predicate = u => u.Age > minAge;
+var result = ExpressionBlockResult.Parse(predicate.Body, SqlDefine.SQLite);
+
+Console.WriteLine(result.Sql);        // "[age] > @p0"
+Console.WriteLine(result.Parameters["@p0"]);  // 18
+
+// 复杂条件
+var name = "John";
+Expression<Func<User, bool>> complexPredicate = 
+    u => u.Age > minAge && u.Name == name && u.IsActive;
+var result2 = ExpressionBlockResult.Parse(complexPredicate.Body, SqlDefine.SQLite);
+
+Console.WriteLine(result2.Sql);
+// "[age] > @p0 AND [name] = @p1 AND [is_active] = @p2"
+Console.WriteLine(result2.Parameters.Count);  // 3
+```
+
+#### 2. UPDATE 表达式解析
+
+```csharp
+// 简单更新
+Expression<Func<User, User>> updateExpr = u => new User 
+{ 
+    Name = "Jane", 
+    Age = 25 
+};
+var result = ExpressionBlockResult.ParseUpdate(updateExpr, SqlDefine.SQLite);
+
+Console.WriteLine(result.Sql);
+// "[name] = @p0, [age] = @p1"
+Console.WriteLine(result.Parameters["@p0"]);  // "Jane"
+Console.WriteLine(result.Parameters["@p1"]);  // 25
+
+// 增量更新
+Expression<Func<User, User>> incrementExpr = u => new User 
+{ 
+    Age = u.Age + 1,
+    Version = u.Version + 1
+};
+var result2 = ExpressionBlockResult.ParseUpdate(incrementExpr, SqlDefine.SQLite);
+
+Console.WriteLine(result2.Sql);
+// "[age] = [age] + @p0, [version] = [version] + @p1"
+
+// 字符串函数
+Expression<Func<User, User>> funcExpr = u => new User 
+{ 
+    Name = u.Name.Trim().ToLower()
+};
+var result3 = ExpressionBlockResult.ParseUpdate(funcExpr, SqlDefine.SQLite);
+
+Console.WriteLine(result3.Sql);
+// "[name] = LOWER(TRIM([name]))"
+```
+
+#### 3. 多数据库方言
+
+```csharp
+Expression<Func<User, bool>> predicate = u => u.Age > 18;
+
+// SQLite: [age] > @p0
+var sqlite = ExpressionBlockResult.Parse(predicate.Body, SqlDefine.SQLite);
+
+// PostgreSQL: "age" > $1
+var pg = ExpressionBlockResult.Parse(predicate.Body, SqlDefine.PostgreSql);
+
+// MySQL: `age` > @p0
+var mysql = ExpressionBlockResult.Parse(predicate.Body, SqlDefine.MySql);
+
+// SQL Server: [age] > @p0
+var sqlServer = ExpressionBlockResult.Parse(predicate.Body, SqlDefine.SqlServer);
+```
+
+#### 4. 实际应用场景
+
+```csharp
+// 构建完整的 UPDATE 语句
+public async Task<int> UpdateUsersAsync(
+    Expression<Func<User, User>> updateExpr,
+    Expression<Func<User, bool>> whereExpr)
+{
+    var dialect = SqlDefine.SQLite;
+    
+    // 解析 UPDATE 和 WHERE 表达式
+    var updateResult = ExpressionBlockResult.ParseUpdate(updateExpr, dialect);
+    var whereResult = ExpressionBlockResult.Parse(whereExpr.Body, dialect);
+    
+    // 合并参数
+    var parameters = new Dictionary<string, object?>(updateResult.Parameters);
+    foreach (var param in whereResult.Parameters)
+    {
+        parameters[param.Key] = param.Value;
+    }
+    
+    // 构建完整 SQL
+    var sql = $"UPDATE [users] SET {updateResult.Sql} WHERE {whereResult.Sql}";
+    
+    // 执行 SQL
+    using var cmd = connection.CreateCommand();
+    cmd.CommandText = sql;
+    foreach (var param in parameters)
+    {
+        var p = cmd.CreateParameter();
+        p.ParameterName = param.Key;
+        p.Value = param.Value ?? DBNull.Value;
+        cmd.Parameters.Add(p);
+    }
+    
+    return await cmd.ExecuteNonQueryAsync();
+}
+
+// 使用示例
+await UpdateUsersAsync(
+    u => new User { Name = "Updated", Age = u.Age + 1 },
+    u => u.Age > 18 && u.IsActive
+);
+```
+
+### 性能优势
+
+与分别调用 `ToSetClause()` + `GetSetParameters()` 或 `ToWhereClause()` + `GetParameters()` 相比：
+
+| 方法 | 表达式遍历次数 | 性能 |
+|------|--------------|------|
+| 传统方式 | 2 次（SQL + 参数） | 基准 |
+| ExpressionBlockResult | 1 次（同时获取） | **快 2 倍** |
+
+```csharp
+// ❌ 传统方式 - 遍历 2 次
+var sql = updateExpr.ToSetClause();
+var parameters = updateExpr.GetSetParameters();
+
+// ✅ 新方式 - 遍历 1 次
+var result = ExpressionBlockResult.ParseUpdate(updateExpr, dialect);
+// result.Sql 和 result.Parameters 同时可用
+```
+
+### 支持的表达式
+
+#### WHERE 表达式
+
+- 比较运算：`>`, `<`, `>=`, `<=`, `==`, `!=`
+- 逻辑运算：`&&`, `||`, `!`
+- 字符串函数：`ToLower()`, `ToUpper()`, `Trim()`, `Contains()`, `StartsWith()`, `EndsWith()`
+- 数学函数：`Abs()`, `Round()`, `Floor()`, `Ceiling()`, `Sqrt()`, `Pow()`
+- Null 检查：`== null`, `!= null`
+- 布尔属性：`u.IsActive`（自动转换为 `u.IsActive = true`）
+
+#### UPDATE 表达式
+
+- 常量赋值：`Name = "John"`
+- 字段引用：`Age = u.Age + 1`
+- 字符串函数：`Name = u.Name.Trim().ToLower()`
+- 数学函数：`Age = Math.Abs(u.Age)`
+- 算术运算：`+`, `-`, `*`, `/`
+- Null 值：`Email = null`
+
+### 注意事项
+
+1. **参数命名**：参数名包含方言前缀，如 `@p0`（SQLite）、`$1`（PostgreSQL）
+2. **参数顺序**：参数按解析顺序编号，从 0 开始
+3. **Null 处理**：Null 值会被参数化为 `@p0 = null`
+4. **线程安全**：每次调用创建新实例，无共享状态
+5. **AOT 兼容**：完全支持 Native AOT，无反射
+
+### 测试覆盖
+
+`ExpressionBlockResult` 包含 **19 个专项测试**：
+
+- ✅ WHERE 表达式解析（简单、复杂、嵌套）
+- ✅ UPDATE 表达式解析（常量、增量、函数）
+- ✅ 多数据库方言支持
+- ✅ Null 值处理
+- ✅ 字符串和数学函数
+- ✅ 边界情况和错误处理
+
+**测试文件：** `tests/Sqlx.Tests/ExpressionBlockResultTests.cs`
 
 ### 分页与排序
 
@@ -1273,10 +1674,235 @@ Sqlx 使用智能解析器处理内联表达式，能够正确识别：
    - 与标准占位符性能完全相同
 
 3. **测试覆盖**
-   - ✅ 1842 个单元测试全部通过
+   - ✅ 1978 个单元测试全部通过
    - ✅ 包含 56 个专门的内联表达式测试
    - ✅ 覆盖所有边界情况和复杂场景
    - ✅ 验证所有 6 种数据库方言
+
+## 高级类型支持
+
+Sqlx 源生成器智能识别不同的 C# 类型，并生成最优的代码。
+
+### 支持的类型
+
+| 类型 | 示例 | 生成策略 | 说明 |
+|------|------|---------|------|
+| **Class** | `public class User { }` | 对象初始化器 | 标准类，使用 `new User { Prop = value }` |
+| **Record** | `public record User(long Id, string Name);` | 构造函数 | 纯 record，使用 `new User(id, name)` |
+| **Mixed Record** | `public record User(long Id) { public string Name { get; set; } }` | 构造函数 + 对象初始化器 | 混合 record，使用 `new User(id) { Name = name }` |
+| **Struct** | `public struct User { }` | 对象初始化器 | 值类型，使用 `new User { Prop = value }` |
+| **Struct Record** | `public readonly record struct Point(int X, int Y);` | 构造函数 | 不可变值类型，使用 `new Point(x, y)` |
+
+### 类型检测逻辑
+
+源生成器使用以下逻辑检测类型并选择生成策略：
+
+```csharp
+// 1. 检测是否为 record
+bool isRecord = typeSymbol.IsRecord;
+
+// 2. 如果是 record，检查是否为纯 record 或混合 record
+if (isRecord)
+{
+    var primaryCtor = typeSymbol.Constructors.FirstOrDefault(c => c.Parameters.Length > 0);
+    if (primaryCtor != null)
+    {
+        var ctorParamNames = primaryCtor.Parameters.Select(p => p.Name);
+        var propNames = properties.Select(p => p.Name);
+        
+        if (ctorParamNames.SetEquals(propNames))
+        {
+            // 纯 record - 所有属性都在主构造函数中
+            // 生成: new User(id, name, age)
+        }
+        else if (ctorParamNames.IsSubsetOf(propNames))
+        {
+            // 混合 record - 部分属性在主构造函数中，部分是额外属性
+            // 生成: new User(id, name) { Email = email, Age = age }
+        }
+    }
+}
+else
+{
+    // Class 或 Struct - 使用对象初始化器
+    // 生成: new User { Id = id, Name = name, Age = age }
+}
+```
+
+### 只读属性过滤
+
+源生成器自动过滤只读属性（没有 setter 的属性）：
+
+```csharp
+var properties = typeSymbol.GetMembers()
+    .OfType<IPropertySymbol>()
+    .Where(p => p.DeclaredAccessibility == Accessibility.Public && !p.IsStatic)
+    .Where(p => p.GetMethod is not null)
+    .Where(p => p.SetMethod is not null)  // 只包含有 setter 的属性
+    .ToList();
+```
+
+**示例：**
+
+```csharp
+[Sqlx, TableName("users")]
+public class User
+{
+    [Key] public long Id { get; set; }
+    public string FirstName { get; set; } = "";
+    public string LastName { get; set; } = "";
+    
+    // 只读属性 - 自动忽略
+    public string FullName => $"{FirstName} {LastName}";
+    
+    // 只读属性 - 自动忽略
+    public int NameLength => FirstName.Length + LastName.Length;
+}
+
+// 生成的 SQL 只包含 Id, FirstName, LastName
+// SELECT [id], [first_name], [last_name] FROM [users]
+```
+
+### 代码示例
+
+#### 1. 纯 Record（构造函数）
+
+```csharp
+[Sqlx, TableName("users")]
+public record User(long Id, string Name, int Age);
+
+// 生成的 ResultReader.Read() 方法：
+public User Read(IDataReader reader) => new User(
+    reader.GetInt64(reader.GetOrdinal("id")),
+    reader.GetString(reader.GetOrdinal("name")),
+    reader.GetInt32(reader.GetOrdinal("age"))
+);
+```
+
+#### 2. 混合 Record（构造函数 + 对象初始化器）
+
+```csharp
+[Sqlx, TableName("users")]
+public record MixedUser(long Id, string Name)
+{
+    public string Email { get; set; } = "";
+    public int Age { get; set; }
+}
+
+// 生成的 ResultReader.Read() 方法：
+public MixedUser Read(IDataReader reader) => new MixedUser(
+    reader.GetInt64(reader.GetOrdinal("id")),
+    reader.GetString(reader.GetOrdinal("name"))
+)
+{
+    Email = reader.GetString(reader.GetOrdinal("email")),
+    Age = reader.GetInt32(reader.GetOrdinal("age"))
+};
+```
+
+#### 3. Class（对象初始化器）
+
+```csharp
+[Sqlx, TableName("users")]
+public class User
+{
+    [Key] public long Id { get; set; }
+    public string Name { get; set; } = "";
+    public int Age { get; set; }
+}
+
+// 生成的 ResultReader.Read() 方法：
+public User Read(IDataReader reader) => new User
+{
+    Id = reader.GetInt64(reader.GetOrdinal("id")),
+    Name = reader.GetString(reader.GetOrdinal("name")),
+    Age = reader.GetInt32(reader.GetOrdinal("age"))
+};
+```
+
+#### 4. Struct Record（构造函数）
+
+```csharp
+[Sqlx, TableName("points")]
+public readonly record struct Point(int X, int Y);
+
+// 生成的 ResultReader.Read() 方法：
+public Point Read(IDataReader reader) => new Point(
+    reader.GetInt32(reader.GetOrdinal("x")),
+    reader.GetInt32(reader.GetOrdinal("y"))
+);
+```
+
+#### 5. Struct（对象初始化器）
+
+```csharp
+[Sqlx, TableName("points")]
+public struct Point
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+}
+
+// 生成的 ResultReader.Read() 方法：
+public Point Read(IDataReader reader) => new Point
+{
+    X = reader.GetInt32(reader.GetOrdinal("x")),
+    Y = reader.GetInt32(reader.GetOrdinal("y"))
+};
+```
+
+### 性能优化
+
+源生成器为不同类型生成最优代码：
+
+1. **纯 Record** - 使用构造函数，避免属性赋值开销
+2. **混合 Record** - 构造函数 + 对象初始化器，平衡性能和灵活性
+3. **Class/Struct** - 对象初始化器，标准模式
+4. **只读属性过滤** - 减少不必要的代码生成
+
+### 测试覆盖
+
+高级类型支持包含 **10 个专项测试**：
+
+- ✅ 混合 Record 生成和读取
+- ✅ 只读属性过滤
+- ✅ Struct 支持
+- ✅ Struct Record 支持
+- ✅ Struct 构造函数支持
+
+**测试文件：** `tests/Sqlx.Tests/AdvancedTypeSupportTests.cs`
+
+### 使用建议
+
+1. **选择合适的类型**
+   - 不可变数据：使用 `record` 或 `readonly record struct`
+   - 可变数据：使用 `class` 或 `struct`
+   - 小型值类型：使用 `struct` 或 `record struct`
+
+2. **混合 Record 的使用场景**
+   - 主键和核心字段放在主构造函数中
+   - 可选字段和扩展字段作为额外属性
+   ```csharp
+   public record User(long Id, string Name)  // 核心字段
+   {
+       public string? Email { get; set; }    // 可选字段
+       public int? Age { get; set; }         // 可选字段
+   }
+   ```
+
+3. **只读属性的最佳实践**
+   - 计算属性使用只读属性（自动忽略）
+   - 不需要持久化的字段使用只读属性
+   ```csharp
+   public class User
+   {
+       public string FirstName { get; set; } = "";
+       public string LastName { get; set; } = "";
+       
+       // 计算属性 - 不会持久化
+       public string FullName => $"{FirstName} {LastName}";
+   }
+   ```
 
 ## 常见错误和正确做法
 
@@ -1470,7 +2096,7 @@ var (sql, parameters) = SqlQuery.ForSqlServer<User>()
 
 ## 测试覆盖
 
-项目包含 **1575 个单元测试**，覆盖所有核心功能：
+项目包含 **1978 个单元测试**，覆盖所有核心功能：
 
 - ✅ 基础 CRUD 操作
 - ✅ 表达式查询和转换
@@ -1614,7 +2240,7 @@ app.MapPut("/api/todos/batch/priority", async (BatchRequest req, ITodoRepository
 Sqlx 包含全面的占位符生成验证测试，确保生成的 SQL 没有语法错误和逻辑问题。
 
 **测试统计：**
-- ✅ **1842 个单元测试** - 100% 通过率
+- ✅ **1978 个单元测试** - 100% 通过率
 - ✅ **56 个内联表达式专项测试** - 覆盖所有边界情况
 - ✅ **18 个占位符生成验证测试** - 验证语法正确性
 - ✅ **15 个边界情况测试** - 验证复杂场景
@@ -1856,7 +2482,7 @@ public void RealIssue_CoalesceWithComma_WorksCorrectly()
    - 编译器验证生成的代码语法正确
 
 2. **单元测试验证**
-   - 1842 个单元测试覆盖所有功能
+   - 1978 个单元测试覆盖所有功能
    - 每次提交自动运行测试
    - 100% 通过率要求
 
@@ -1881,6 +2507,14 @@ public void RealIssue_CoalesceWithComma_WorksCorrectly()
 tests/Sqlx.Tests/
 ├── SetPlaceholderStrictTests.cs              # 35 个严格测试
 ├── SetPlaceholderUpdateScenarioTests.cs      # 21 个场景测试
+├── SetPlaceholderExpressionTests.cs          # 9 个动态 SET 占位符测试
+├── SetExpressionExtensionsTests.cs           # 13 个表达式树转换测试
+├── SetExpressionFunctionTests.cs             # 17 个函数支持测试
+├── SetExpressionFunctionOutputTests.cs       # 8 个函数输出验证测试
+├── SetExpressionEdgeCaseTests.cs             # 28 个边界情况测试
+├── SetExpressionDialectTests.cs              # 15 个方言测试
+├── SetExpressionIntegrationTests.cs          # 8 个集成测试
+├── ExpressionBlockResultTests.cs             # 19 个统一表达式解析测试（新增）
 ├── PlaceholderGenerationValidationTests.cs   # 18 个验证测试
 ├── PlaceholderEdgeCaseTests.cs               # 15 个边界测试
 ├── ParseInlineExpressionsTests.cs            # 内联表达式解析测试
@@ -1892,6 +2526,70 @@ tests/Sqlx.Tests/
 ├── ValuesPlaceholderInlineEdgeCaseTests.cs   # VALUES 边界情况测试
 └── ValuesPlaceholderInlineIntegrationTests.cs # VALUES 集成测试
 ```
+
+#### 新增边界测试详情
+
+**SetExpressionEdgeCaseTests.cs** (28 个测试) - 全面的边界情况覆盖：
+
+1. **Null 和可空类型** (4 个测试)
+   - 可空属性赋值
+   - null 值参数化
+   - 可空整数处理
+   - null 值提取验证
+
+2. **布尔类型** (3 个测试)
+   - true/false 值处理
+   - 布尔取反表达式
+   - 布尔参数化
+
+3. **DateTime 类型** (2 个测试)
+   - DateTime.Now 处理
+   - AddDays 等日期函数
+
+4. **空表达式和边界** (3 个测试)
+   - 空 MemberInit 表达式
+   - 单属性无尾随逗号
+   - 多属性正确分隔
+
+5. **特殊字符和转义** (3 个测试)
+   - 字符串中的引号
+   - 反斜杠路径
+   - 空字符串
+
+6. **数值边界** (4 个测试)
+   - int.MaxValue
+   - int.MinValue
+   - 零值
+   - 负数
+
+7. **复杂嵌套表达式** (2 个测试)
+   - 深度嵌套函数调用
+   - 复杂算术表达式
+
+8. **参数提取** (3 个测试)
+   - 无参数场景
+   - 多常量提取
+   - 混合表达式和常量
+
+9. **错误处理** (4 个测试)
+   - 非 MemberInit 表达式
+   - null 表达式处理
+   - 参数提取错误处理
+
+**SetExpressionDialectTests.cs** (15 个测试) - 多数据库方言验证：
+- SQLite、PostgreSQL、MySQL、SQL Server、Oracle 方言
+- 列名包装验证（`[col]`, `"col"`, `` `col` ``）
+- 参数前缀验证（`@`, `$`, `:`, `?`）
+
+**SetExpressionIntegrationTests.cs** (8 个测试) - 实际场景集成：
+- 简单字段更新
+- 增量更新
+- 混合更新
+- 字符串函数
+- 数学函数
+- 多属性更新
+- 复杂表达式
+- 参数提取验证
 
 ### 运行测试
 

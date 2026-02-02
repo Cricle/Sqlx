@@ -34,6 +34,11 @@ public partial class PrimaryTestRepositoryWithFields(SqliteConnection connection
 {
     private readonly SqliteConnection _connection = connection;
     public DbTransaction? Transaction { get; set; }
+    
+    public IQueryable<PrimaryTestEntity> AsQueryable()
+    {
+        return SqlQuery<PrimaryTestEntity>.For(_placeholderContext.Dialect).WithConnection(_connection);
+    }
 }
 
 #endregion
@@ -52,6 +57,11 @@ public partial class PrimaryTestRepositoryNoFields(SqliteConnection connection) 
     // No explicit fields or properties - generator should auto-generate:
     // - private readonly SqliteConnection _connection = connection;
     // - public DbTransaction? Transaction { get; set; }
+    
+    public IQueryable<PrimaryTestEntity> AsQueryable()
+    {
+        return SqlQuery<PrimaryTestEntity>.For(_placeholderContext.Dialect).WithConnection(connection);
+    }
 }
 
 #endregion

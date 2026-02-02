@@ -43,7 +43,7 @@ namespace Sqlx.Expressions
             MemberExpression m when asBoolCmp && m.Type == typeof(bool) => string.Concat(Col(m), " = ", BoolLit(true)),
             MemberExpression m when ExpressionHelper.IsStringPropertyAccess(m) => StrLen(m),
             MemberExpression m when ExpressionHelper.IsEntityProperty(m) => Col(m),
-            MemberExpression m => asBoolCmp ? Col(m) : Fmt(ExpressionHelper.GetMemberValueOptimized(m)),
+            MemberExpression m => asBoolCmp ? Col(m) : Fmt(_parameterized ? ExpressionHelper.EvaluateExpression(m) : ExpressionHelper.GetMemberValueOptimized(m)),
             ConstantExpression c => Fmt(c.Value),
             UnaryExpression { NodeType: ExpressionType.Not } u => ParseNot(u.Operand),
             UnaryExpression { NodeType: ExpressionType.Convert } u => Parse(u.Operand, asBoolCmp),

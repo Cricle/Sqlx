@@ -65,7 +65,8 @@ public class Program
                 typeof(PaginationBenchmark),
                 typeof(StaticOrdinalsBenchmark),
                 typeof(StaticOrdinalsFirstOrDefaultBenchmark),
-                typeof(BatchInsertBenchmark)
+                typeof(BatchInsertBenchmark),
+                typeof(ExpressionBlockResultBenchmark)
             }, config);
         }
         else

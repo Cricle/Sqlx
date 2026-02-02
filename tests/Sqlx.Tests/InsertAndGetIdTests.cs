@@ -31,6 +31,11 @@ public partial class InsertTestEntityRepository(SqliteConnection connection) : I
 {
     private readonly SqliteConnection _connection = connection;
     public DbTransaction? Transaction { get; set; }
+    
+    public IQueryable<InsertTestEntity> AsQueryable()
+    {
+        return SqlQuery<InsertTestEntity>.For(_placeholderContext.Dialect).WithConnection(_connection);
+    }
 }
 
 #endregion

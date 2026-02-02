@@ -1,32 +1,35 @@
 # 🚀 Sqlx TODO Demo
 
-A comprehensive TODO web application demonstrating **Sqlx** - a high-performance, source-generated ORM for .NET with full IQueryable support.
+A comprehensive TODO web application demonstrating **Sqlx** - a high-performance, source-generated ORM for .NET with full Native AOT support.
 
-## ✨ Features
+## ✨ 核心特性
 
-### Sqlx Highlights
-- **🎯 Type-Safe SQL**: Compile-time SQL validation with three query approaches
-- **⚡ Zero Reflection**: 100% source-generated code  
-- **📦 AOT Native**: Full Native AOT support
-- **🔥 High Performance**: Near-raw ADO.NET speed
-- **🎨 Clean API**: Intuitive repository pattern with LINQ support
-- **🔍 IQueryable**: Full LINQ query builder with expression tree support
+### Sqlx 亮点
+- **🎯 类型安全 SQL**: 编译时 SQL 验证，三种查询方式
+- **⚡ 零反射**: 100% 源生成代码  
+- **📦 AOT 原生支持**: 完整的 Native AOT 支持
+- **🔥 高性能**: 接近原生 ADO.NET 速度
+- **🎨 简洁 API**: 直观的仓储模式 + LINQ 支持
+- **🔍 IQueryable**: 完整的 LINQ 查询构建器
+- **🏗️ 高级类型支持**: 自动识别 class/record/struct 并生成最优代码
 
-### Demo Functionality
-- ✅ Create, Read, Update, Delete todos
-- ✅ Toggle completion status
-- ✅ Real-time statistics
-- ✅ Beautiful, responsive UI
-- ✅ Three query approaches: SqlTemplate, LINQ expressions, and IQueryable
+### 示例功能
+- ✅ 完整的 CRUD 操作
+- ✅ 三种查询方式（SqlTemplate、LINQ Expression、IQueryable）
+- ✅ 批量操作（批量更新、批量删除、批量完成）
+- ✅ 高级类型支持（record、mixed record、struct、struct record）
+- ✅ 实时统计和分页
+- ✅ 美观的响应式 UI
+- ✅ 39 个 API 端点展示所有功能
 
-## 🏃 Quick Start
+## 🏃 快速开始
 
 ```bash
-# Run the application
+# 运行应用
 cd samples/TodoWebApi
 dotnet run
 
-# Open browser
+# 打开浏览器
 http://localhost:5000
 ```
 
@@ -35,7 +38,17 @@ http://localhost:5000
 - ❌ 不支持 HTTPS 端点配置（需要额外调用 `UseKestrelHttpsConfiguration()`）
 - 如需 HTTPS 支持，请改用 `WebApplication.CreateBuilder(args)`
 
-## 📝 Three Query Approaches
+## 📚 完整功能文档
+
+查看 [FEATURES.md](FEATURES.md) 了解：
+- 🎯 高级类型支持详解（class、record、mixed record、struct、struct record）
+- 📝 三种查询方式完整示例
+- 🔧 42 个内置 ICrudRepository 方法
+- 📊 所有 39 个 API 端点说明
+- 🚀 性能优化技巧
+- 🎓 最佳实践指南
+
+## 📝 三种查询方式速览
 
 Sqlx provides three powerful ways to query your data:
 
@@ -71,6 +84,24 @@ var query = repo.AsQueryable()
 
 var todos = await query.ToListAsync();
 var sql = query.ToSql(); // Get generated SQL for debugging
+```
+
+### 4. ExpressionBlockResult - Unified Expression Parsing (New!)
+```csharp
+// 高性能统一表达式解析 - 一次遍历同时获取 SQL 和参数
+Task<int> DynamicUpdateWhereAsync(
+    Expression<Func<Todo, Todo>> updateExpression,
+    Expression<Func<Todo, bool>> whereExpression);
+
+// Usage - 比传统方式快 2 倍
+await repo.DynamicUpdateWhereAsync(
+    t => new Todo { Priority = 5, UpdatedAt = DateTime.UtcNow },
+    t => t.IsCompleted == false && t.Priority < 3
+);
+
+// 性能对比：
+// 传统方式：ToSetClause() + GetSetParameters() + ToWhereClause() + GetParameters() = 4 次遍历
+// ExpressionBlockResult：ParseUpdate() + Parse() = 2 次遍历（快 2 倍）
 ```
 
 ## 🎯 Complete Example

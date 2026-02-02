@@ -9,9 +9,9 @@
 namespace Sqlx.Annotations
 {
     /// <summary>
-    /// Specifies the table name for a class.
+    /// Specifies the table name for a class or struct.
     /// </summary>
-    [System.AttributeUsage(System.AttributeTargets.Class,
+    [System.AttributeUsage(System.AttributeTargets.Class | System.AttributeTargets.Struct,
         AllowMultiple = false, Inherited = false)]
     public sealed class TableNameAttribute : System.Attribute
     {

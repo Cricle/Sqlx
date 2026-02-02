@@ -39,5 +39,12 @@ public partial class BenchmarkUserRepository(SqliteConnection connection) : IBen
     private readonly SqliteConnection _connection = connection;
     public System.Data.Common.DbTransaction? Transaction { get; set; }
 
-
+    /// <summary>
+    /// Returns an IQueryable for building complex LINQ queries.
+    /// Implements ICrudRepository.AsQueryable().
+    /// </summary>
+    public IQueryable<BenchmarkUser> AsQueryable()
+    {
+        return SqlQuery<BenchmarkUser>.For(_placeholderContext.Dialect).WithConnection(_connection);
+    }
 }

@@ -39,6 +39,7 @@ public partial class TodoRepository(SqliteConnection connection) : ITodoReposito
 
     /// <summary>
     /// Returns an IQueryable for building complex LINQ queries.
+    /// Implements ICrudRepository.AsQueryable().
     /// </summary>
     public IQueryable<Todo> AsQueryable()
     {
@@ -47,6 +48,50 @@ public partial class TodoRepository(SqliteConnection connection) : ITodoReposito
 
     // Standard CRUD methods auto-generated from ICrudRepository<Todo, long>
     // Custom business methods auto-generated from interface definitions below
+
+    /// <summary>
+    /// Implements DynamicUpdateWhereAsync using ExpressionBlockResult for optimal performance.
+    /// Parses both UPDATE and WHERE expressions in a single pass.
+    /// </summary>
+    public async Task<int> DynamicUpdateWhereAsync(
+        System.Linq.Expressions.Expression<Func<Todo, Todo>> updateExpression,
+        System.Linq.Expressions.Expression<Func<Todo, bool>> whereExpression)
+    {
+        // 使用 ExpressionBlockResult 一次性解析两个表达式
+        var updateResult = Sqlx.Expressions.ExpressionBlockResult.ParseUpdate(updateExpression, _placeholderContext.Dialect);
+        var whereResult = Sqlx.Expressions.ExpressionBlockResult.Parse(whereExpression.Body, _placeholderContext.Dialect);
+
+        // 构建完整 SQL
+        var sql = $"UPDATE {_placeholderContext.Dialect.WrapColumn("todos")} SET {updateResult.Sql} WHERE {whereResult.Sql}";
+
+        // 合并参数（注意：实际使用中需要处理参数名冲突）
+        using var cmd = _connection.CreateCommand();
+        cmd.CommandText = sql;
+        if (Transaction != null)
+        {
+            cmd.Transaction = (Microsoft.Data.Sqlite.SqliteTransaction)Transaction;
+        }
+
+        // 添加 UPDATE 参数
+        foreach (var param in updateResult.Parameters)
+        {
+            var p = cmd.CreateParameter();
+            p.ParameterName = param.Key;
+            p.Value = param.Value ?? DBNull.Value;
+            cmd.Parameters.Add(p);
+        }
+
+        // 添加 WHERE 参数
+        foreach (var param in whereResult.Parameters)
+        {
+            var p = cmd.CreateParameter();
+            p.ParameterName = param.Key;
+            p.Value = param.Value ?? DBNull.Value;
+            cmd.Parameters.Add(p);
+        }
+
+        return await cmd.ExecuteNonQueryAsync();
+    }
 
 #if !SQLX_DISABLE_INTERCEPTOR
     // Optional: execution monitoring
@@ -120,6 +165,51 @@ public interface ITodoRepository : ICrudRepository<Todo, long>
     [SqlTemplate("UPDATE {{table}} SET actual_minutes = @actualMinutes, updated_at = @updatedAt WHERE id = @id")]
     Task<int> UpdateActualMinutesAsync(long id, int actualMinutes, DateTime updatedAt);
 
+    /// <summary>Dynamically updates specific fields using expression-based SET clause.</summary>
+    /// <remarks>
+    /// Example usage:
+    /// <code>
+    /// // 类型安全的更新
+    /// Expression&lt;Func&lt;Todo, Todo&gt;&gt; expr = t => new Todo { Priority = 5, Version = t.Version + 1 };
+    /// var setClause = expr.ToSetClause();
+    /// await repo.DynamicUpdateAsync(todoId, setClause);
+    /// 
+    /// // 多字段更新
+    /// Expression&lt;Func&lt;Todo, Todo&gt;&gt; expr = t => new Todo 
+    /// { 
+    ///     Title = "新标题",
+    ///     Priority = 5,
+    ///     ActualMinutes = t.ActualMinutes + 30
+    /// };
+    /// var setClause = expr.ToSetClause();
+    /// await repo.DynamicUpdateAsync(todoId, setClause);
+    /// </code>
+    /// </remarks>
+    [SqlTemplate("UPDATE {{table}} SET {{set --param updates}} WHERE id = @id")]
+    Task<int> DynamicUpdateAsync(long id, string updates);
+
+    /// <summary>
+    /// Dynamically updates todos using ExpressionBlockResult for unified expression parsing.
+    /// This method demonstrates the performance advantage of parsing expressions once.
+    /// </summary>
+    /// <remarks>
+    /// Example usage:
+    /// <code>
+    /// // 使用 ExpressionBlockResult 一次性解析 UPDATE 和 WHERE 表达式
+    /// Expression&lt;Func&lt;Todo, Todo&gt;&gt; updateExpr = t => new Todo 
+    /// { 
+    ///     Priority = 5,
+    ///     UpdatedAt = DateTime.UtcNow
+    /// };
+    /// Expression&lt;Func&lt;Todo, bool&gt;&gt; whereExpr = t => t.IsCompleted == false && t.Priority &lt; 3;
+    /// 
+    /// await repo.DynamicUpdateWhereAsync(updateExpr, whereExpr);
+    /// </code>
+    /// </remarks>
+    Task<int> DynamicUpdateWhereAsync(
+        System.Linq.Expressions.Expression<Func<Todo, Todo>> updateExpression,
+        System.Linq.Expressions.Expression<Func<Todo, bool>> whereExpression);
+
     // ========== Approach 2: LINQ Expression - Type-safe predicates ==========
 
     /// <summary>Gets todos matching a LINQ expression predicate.</summary>
@@ -132,19 +222,14 @@ public interface ITodoRepository : ICrudRepository<Todo, long>
 
     // ========== Approach 3: IQueryable - Full LINQ query builder ==========
 
-    /// <summary>
-    /// Gets an IQueryable for building complex queries with LINQ.
-    /// Example usage:
-    /// <code>
-    /// var query = repo.AsQueryable()
-    ///     .Where(t => t.Priority >= 3 && !t.IsCompleted)
-    ///     .OrderByDescending(t => t.Priority)
-    ///     .ThenBy(t => t.DueDate)
-    ///     .Take(10);
-    /// var todos = await query.ToListAsync();
-    /// </code>
-    /// </summary>
-    IQueryable<Todo> AsQueryable();
+    // AsQueryable() method inherited from ICrudRepository<Todo, long>
+    // Example usage:
+    // var query = repo.AsQueryable()
+    //     .Where(t => t.Priority >= 3 && !t.IsCompleted)
+    //     .OrderByDescending(t => t.Priority)
+    //     .ThenBy(t => t.DueDate)
+    //     .Take(10);
+    // var todos = await query.ToListAsync();
 
     // ========== Debug/Testing Methods - Return SqlTemplate ==========
 

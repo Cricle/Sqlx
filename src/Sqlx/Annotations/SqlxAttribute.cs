@@ -7,11 +7,11 @@
 namespace Sqlx.Annotations
 {
     /// <summary>
-    /// Marks a class for source generation of IEntityProvider, IResultReader, and IParameterBinder implementations.
+    /// Marks a class or struct for source generation of IEntityProvider, IResultReader, and IParameterBinder implementations.
     /// Properties marked with [IgnoreDataMember] will be excluded.
     /// Use [Column] attribute to customize column/parameter names.
     /// </summary>
-    [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
+    [System.AttributeUsage(System.AttributeTargets.Class | System.AttributeTargets.Struct, AllowMultiple = true, Inherited = false)]
     public sealed class SqlxAttribute : System.Attribute
     {
         /// <summary>

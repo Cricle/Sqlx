@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-purple.svg)](#)
 [![LTS](https://img.shields.io/badge/LTS-.NET%2010-green.svg)](#)
-[![Tests](https://img.shields.io/badge/tests-1842%20passing-brightgreen.svg)](#)
+[![Tests](https://img.shields.io/badge/tests-1978%20passing-brightgreen.svg)](#)
 [![AOT](https://img.shields.io/badge/AOT-ready-blue.svg)](#)
 
 高性能、AOT 友好的 .NET 数据库访问库。使用源生成器在编译时生成代码，零运行时反射，完全支持 Native AOT。
@@ -15,7 +15,7 @@
 - **⚡ 零反射** - 编译时源生成，运行时无反射开销
 - **🎯 类型安全** - 编译时验证 SQL 模板和表达式
 - **🌐 多数据库** - SQLite、PostgreSQL、MySQL、SQL Server、Oracle、DB2
-- **📦 AOT 就绪** - 完全支持 Native AOT，通过 1564 个单元测试
+- **📦 AOT 就绪** - 完全支持 Native AOT，通过 1978 个单元测试
 - **🔧 LINQ 支持** - IQueryable 接口，支持 Where/Select/OrderBy/Join 等
 - **💾 智能缓存** - SqlQuery\<T\> 泛型缓存，自动注册 EntityProvider
 - **🔍 自动发现** - 源生成器自动发现 SqlQuery\<T\> 和 SqlTemplate 中的实体类型
@@ -27,9 +27,22 @@ dotnet add package Sqlx
 ```
 
 ```csharp
-// 1. 定义实体
+// 1. 定义实体（支持 class、record、struct）
 [Sqlx, TableName("users")]
 public class User
+{
+    [Key] public long Id { get; set; }
+    public string Name { get; set; }
+    public int Age { get; set; }
+}
+
+// 也支持 record 类型
+[Sqlx, TableName("users")]
+public record UserRecord(long Id, string Name, int Age);
+
+// 也支持 struct 类型
+[Sqlx, TableName("users")]
+public struct UserStruct
 {
     [Key] public long Id { get; set; }
     public string Name { get; set; }
@@ -399,6 +412,59 @@ catch
 | IBM DB2 | `SqlDefineTypes.DB2` | ✅ 完全支持 |
 
 **推荐：** .NET 10 (LTS) - 支持到 2028 年 11 月，性能最佳
+
+## 高级类型支持
+
+Sqlx 支持多种 C# 类型，自动生成最优代码：
+
+### 支持的类型
+
+| 类型 | 示例 | 生成策略 |
+|------|------|---------|
+| **Class** | `public class User { }` | 对象初始化器 |
+| **Record** | `public record User(long Id, string Name);` | 构造函数 |
+| **Mixed Record** | `public record User(long Id, string Name) { public string Email { get; set; } }` | 构造函数 + 对象初始化器 |
+| **Struct** | `public struct User { }` | 对象初始化器 |
+| **Struct Record** | `public readonly record struct User(long Id, string Name);` | 构造函数 |
+
+### 特性
+
+- ✅ **自动检测类型** - 源生成器自动识别类型并生成最优代码
+- ✅ **只读属性过滤** - 自动忽略没有 setter 的属性
+- ✅ **混合 Record 支持** - 主构造函数参数 + 额外属性
+- ✅ **完全类型安全** - 编译时验证，零运行时开销
+
+### 示例
+
+```csharp
+// 纯 Record - 使用构造函数
+[Sqlx, TableName("users")]
+public record User(long Id, string Name, int Age);
+
+// 混合 Record - 构造函数 + 对象初始化器
+[Sqlx, TableName("users")]
+public record MixedUser(long Id, string Name)
+{
+    public string Email { get; set; } = "";
+    public int Age { get; set; }
+}
+
+// 只读属性自动忽略
+[Sqlx, TableName("users")]
+public class UserWithComputed
+{
+    [Key] public long Id { get; set; }
+    public string FirstName { get; set; } = "";
+    public string LastName { get; set; } = "";
+    
+    // 只读属性 - 自动忽略
+    public string FullName => $"{FirstName} {LastName}";
+}
+
+// Struct Record
+[Sqlx, TableName("points")]
+public readonly record struct Point(int X, int Y);
+```
 
 ## 更多文档
 

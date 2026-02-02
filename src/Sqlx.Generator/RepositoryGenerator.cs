@@ -709,6 +709,13 @@ public class RepositoryGenerator : IIncrementalGenerator
             return;
         }
 
+        // Check if this is an IQueryable return type
+        if (returnType.Contains("IQueryable<") || returnType.Contains("System.Linq.IQueryable<"))
+        {
+            GenerateIQueryableReturnMethod(sb, method, entityFullName, connectionExpression);
+            return;
+        }
+
         // Build parameter list
         var parameters = string.Join(", ", method.Parameters.Select(p => $"{p.Type.ToDisplayString()} {p.Name}"));
 
@@ -1333,6 +1340,21 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("{");
         sb.PushIndent();
         sb.AppendLine($"return {fieldName};");
+        sb.PopIndent();
+        sb.AppendLine("}");
+    }
+
+    private static void GenerateIQueryableReturnMethod(IndentedStringBuilder sb, IMethodSymbol method, string entityFullName, string connectionExpression)
+    {
+        var methodName = method.Name;
+        var parameters = string.Join(", ", method.Parameters.Select(p => $"{p.Type.ToDisplayString()} {p.Name}"));
+        var returnType = method.ReturnType.ToDisplayString();
+
+        sb.AppendLine("/// <inheritdoc/>");
+        sb.AppendLine($"public {returnType} {methodName}({parameters})");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine($"return global::Sqlx.SqlQuery<{entityFullName}>.For(_placeholderContext.Dialect).WithConnection({connectionExpression});");
         sb.PopIndent();
         sb.AppendLine("}");
     }

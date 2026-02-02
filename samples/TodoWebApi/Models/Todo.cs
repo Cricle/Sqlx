@@ -110,6 +110,82 @@ public record TodoStats
     public int TotalActualMinutes { get; init; }
 }
 
+// ===== 高级类型支持示例 =====
+
+/// <summary>
+/// 纯 Record 类型示例 - 不可变数据传输对象
+/// 使用构造函数初始化，适合 API 响应和值对象
+/// </summary>
+[Sqlx, TableName("todo_snapshots")]
+public record TodoSnapshot(
+    long Id,
+    string Title,
+    bool IsCompleted,
+    int Priority,
+    DateTime CreatedAt
+);
+
+/// <summary>
+/// 混合 Record 类型示例 - 核心字段不可变，扩展字段可变
+/// 主构造函数参数为核心字段，额外属性为可选字段
+/// </summary>
+[Sqlx, TableName("todo_summaries")]
+public record TodoSummary(long Id, string Title)
+{
+    public bool IsCompleted { get; set; }
+    public int Priority { get; set; }
+    public DateTime? DueDate { get; set; }
+    
+    // 只读属性 - 自动忽略
+    public string Status => IsCompleted ? "完成" : "进行中";
+}
+
+/// <summary>
+/// Struct 类型示例 - 轻量级值类型
+/// 适合小型数据结构，减少堆分配
+/// </summary>
+[Sqlx, TableName("coordinates")]
+public struct Coordinate
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+    
+    // 只读属性 - 自动忽略
+    public double DistanceFromOrigin => Math.Sqrt(X * X + Y * Y);
+}
+
+/// <summary>
+/// Struct Record 类型示例 - 不可变值类型
+/// 零分配，适合高性能场景
+/// </summary>
+[Sqlx, TableName("points")]
+public readonly record struct Point(int X, int Y)
+{
+    // 只读属性 - 自动忽略
+    public double Distance => Math.Sqrt(X * X + Y * Y);
+}
+
+/// <summary>
+/// 带只读属性的 Class 示例 - 演示自动过滤
+/// 只读属性不会生成到 SQL 中
+/// </summary>
+[Sqlx, TableName("todo_details")]
+public class TodoDetail
+{
+    [Key]
+    public long Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public bool IsCompleted { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    
+    // 只读计算属性 - 自动忽略
+    public string DisplayTitle => $"[{(IsCompleted ? "✓" : " ")}] {Title}";
+    public int DaysOld => (DateTime.UtcNow - CreatedAt).Days;
+    public bool IsRecent => DaysOld < 7;
+}
+
 /// <summary>
 /// TODO查询过滤器
 /// </summary>

@@ -19,6 +19,48 @@ dotnet run -c Release -- --filter "*Delete*"
 dotnet run -c Release -- --filter "*Count*"
 dotnet run -c Release -- --filter "*Pagination*"
 dotnet run -c Release -- --filter "*StaticOrdinals*"
+
+# 运行 ExpressionBlockResult 性能测试（新增）⚡
+dotnet run -c Release -- --filter "*ExpressionBlockResult*"
+# 或使用 PowerShell 脚本
+pwsh run-expression-benchmark.ps1
+```
+
+### ExpressionBlockResult 性能测试（新增）⚡
+
+**测试内容：** 对比统一表达式解析 vs 传统分离解析的性能
+
+```bash
+# 运行 ExpressionBlockResult benchmark
+pwsh run-expression-benchmark.ps1
+```
+
+**测试场景：**
+1. **UPDATE 表达式解析**
+   - 传统方式：`ToSetClause()` + `GetSetParameters()` (2 次遍历)
+   - ExpressionBlockResult：`ParseUpdate()` (1 次遍历)
+   - **预期结果：快 ~2 倍** ⚡
+
+2. **WHERE 表达式解析**
+   - 传统方式：`ToWhereClause()` + `GetParameters()` (2 次遍历)
+   - ExpressionBlockResult：`Parse()` (1 次遍历)
+   - **预期结果：快 ~2 倍** ⚡
+
+3. **完整场景（UPDATE + WHERE）**
+   - 传统方式：4 次遍历
+   - ExpressionBlockResult：2 次遍历
+   - **预期结果：快 ~2 倍** ⚡
+
+4. **内存分配测试**
+   - 对比两种方式的内存分配情况
+   - ExpressionBlockResult 应该有更少的内存分配
+
+**示例输出：**
+```
+| Method                                      | Mean      | Ratio | Allocated |
+|-------------------------------------------- |----------:|------:|----------:|
+| ExpressionBlockResult: ParseUpdate          |  1.234 μs |  0.50 |     1 KB  |
+| Traditional: ToSetClause + GetSetParameters |  2.468 μs |  1.00 |     2 KB  |
 ```
 
 ### Native AOT 测试

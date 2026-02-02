@@ -47,8 +47,7 @@ public interface ISecurityTestRepository : ICrudRepository<SecurityTestUser, lon
     [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE {{where --param predicate}}")]
     Task<List<SecurityTestUser>> GetWhereAsync(Expression<Func<SecurityTestUser, bool>> predicate, CancellationToken ct = default);
     
-    // IQueryable 方法
-    IQueryable<SecurityTestUser> AsQueryable();
+    // IQueryable 方法继承自 ICrudRepository<SecurityTestUser, long>
 }
 
 [TableName("security_test_users")]

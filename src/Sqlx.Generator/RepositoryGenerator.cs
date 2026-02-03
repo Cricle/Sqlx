@@ -984,6 +984,26 @@ public class RepositoryGenerator : IIncrementalGenerator
             {
                 sb.AppendLine($"{entityName}ParameterBinder.Default.BindEntity(cmd, {param.Name}, _paramPrefix);");
             }
+            // Check if this is a collection parameter (List<T>, IEnumerable<T>, etc.)
+            else if (IsCollectionType(paramType, out var elementType))
+            {
+                // Expand collection into multiple parameters: @ids0, @ids1, @ids2, ...
+                sb.AppendLine("{");
+                sb.PushIndent();
+                sb.AppendLine($"var index = 0;");
+                sb.AppendLine($"foreach (var item in {param.Name})");
+                sb.AppendLine("{");
+                sb.PushIndent();
+                sb.AppendLine("var p = cmd.CreateParameter();");
+                sb.AppendLine($"p.ParameterName = _paramPrefix + \"{param.Name}\" + index;");
+                sb.AppendLine("p.Value = item;");
+                sb.AppendLine("cmd.Parameters.Add(p);");
+                sb.AppendLine("index++;");
+                sb.PopIndent();
+                sb.AppendLine("}");
+                sb.PopIndent();
+                sb.AppendLine("}");
+            }
             else
             {
                 // Simple parameter binding for scalar types (int, string, etc.)
@@ -1006,6 +1026,31 @@ public class RepositoryGenerator : IIncrementalGenerator
                 sb.AppendLine("}");
             }
         }
+    }
+
+    private static bool IsCollectionType(ITypeSymbol type, out ITypeSymbol? elementType)
+    {
+        elementType = null;
+        
+        // Check if it's a generic type
+        if (type is not INamedTypeSymbol namedType || !namedType.IsGenericType)
+            return false;
+        
+        var typeName = namedType.OriginalDefinition.ToDisplayString();
+        
+        // Check for common collection types
+        if (typeName.StartsWith("System.Collections.Generic.List<") ||
+            typeName.StartsWith("System.Collections.Generic.IList<") ||
+            typeName.StartsWith("System.Collections.Generic.ICollection<") ||
+            typeName.StartsWith("System.Collections.Generic.IEnumerable<") ||
+            typeName.StartsWith("System.Collections.Generic.IReadOnlyList<") ||
+            typeName.StartsWith("System.Collections.Generic.IReadOnlyCollection<"))
+        {
+            elementType = namedType.TypeArguments.FirstOrDefault();
+            return true;
+        }
+        
+        return false;
     }
 
     private static bool IsNullableType(ITypeSymbol type)

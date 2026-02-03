@@ -778,7 +778,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("{");
         sb.PushIndent();
 
-        sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR || !SQLX_DISABLE_ACTIVITY");
+        sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR || !SQLX_DISABLE_ACTIVITY || !SQLX_DISABLE_METRICS");
         sb.AppendLine("var startTime = Stopwatch.GetTimestamp();");
         sb.AppendLine("#endif");
         sb.AppendLine();
@@ -1210,6 +1210,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
             sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, insertedId, elapsed);");
             sb.AppendLine("#endif");
+            GenerateMetricsRecording(sb, methodName);
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
             sb.AppendLine("activity?.SetTag(\"db.inserted_id\", insertedId);");
@@ -1421,6 +1422,7 @@ public class RepositoryGenerator : IIncrementalGenerator
                 sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
                 sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, (affectedRows, insertedId), elapsed);");
                 sb.AppendLine("#endif");
+                GenerateMetricsRecording(sb, methodName);
                 sb.AppendLine();
                 sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
                 sb.AppendLine("if (activity is not null)");
@@ -1452,6 +1454,7 @@ public class RepositoryGenerator : IIncrementalGenerator
                 sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
                 sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, insertedId, elapsed);");
                 sb.AppendLine("#endif");
+                GenerateMetricsRecording(sb, methodName);
                 sb.AppendLine();
                 sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
                 sb.AppendLine("activity?.SetTag(\"db.inserted_id\", insertedId);");
@@ -1509,6 +1512,11 @@ public class RepositoryGenerator : IIncrementalGenerator
         {
             sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
             sb.AppendLine($"OnExecuteFail(\"{methodName}\", cmd, {fieldName}, ex, elapsed);");
+        });
+        sb.AppendLine();
+        AppendConditionalBlock(sb, "!SQLX_DISABLE_METRICS", () =>
+        {
+            sb.AppendLine($"global::Sqlx.Diagnostics.SqlTemplateMetrics.RecordError($\"{{GetType().FullName}}.{methodName}\", Stopwatch.GetTimestamp() - startTime, ex);");
         });
         sb.AppendLine();
         AppendConditionalBlock(sb, "!SQLX_DISABLE_ACTIVITY", () =>
@@ -1579,6 +1587,14 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine("partial void OnExecuteFail(string operationName, DbCommand command, global::Sqlx.SqlTemplate template, Exception exception, long elapsedTicks);");
         });
 
+    private static void GenerateMetricsRecording(IndentedStringBuilder sb, string methodName)
+    {
+        AppendConditionalBlock(sb, "!SQLX_DISABLE_METRICS", () =>
+        {
+            sb.AppendLine("global::Sqlx.Diagnostics.SqlTemplateMetrics.RecordExecution($\"{GetType().FullName}." + methodName + "\", Stopwatch.GetTimestamp() - startTime);");
+        });
+    }
+
     private static void GenerateTupleReturn(IndentedStringBuilder sb, IMethodSymbol method, string entityName, string ctName, string methodName, string fieldName)
     {
         var tupleElements = GetTupleElements(method.ReturnType);
@@ -1648,6 +1664,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
         sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, ({string.Join(", ", finalVarNames)}), elapsed);");
         sb.AppendLine("#endif");
+        GenerateMetricsRecording(sb, methodName);
         sb.AppendLine();
         sb.AppendLine($"return ({string.Join(", ", finalVarNames)});");
     }

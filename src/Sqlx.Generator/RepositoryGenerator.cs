@@ -234,6 +234,7 @@ public class RepositoryGenerator : IIncrementalGenerator
     {
         var ns = repoType.ContainingNamespace.IsGlobalNamespace ? null : repoType.ContainingNamespace.ToDisplayString();
         var repoName = repoType.Name;
+        var repoFullName = repoType.ToDisplayString();
         var entityFullName = entityType.ToDisplayString();
         var entityName = entityType.Name;
         var keyType = GetKeyType(serviceType);
@@ -303,7 +304,7 @@ public class RepositoryGenerator : IIncrementalGenerator
                 continue;
             }
             
-            GenerateMethodImplementation(sb, method, entityFullName, entityName, keyTypeName, 
+            GenerateMethodImplementation(sb, method, repoFullName, entityFullName, entityName, keyTypeName, 
                 sqlTemplateAttr, returnInsertedIdAttr, expressionToSqlAttr, connectionInfo, methodFieldNames, paramNameFields);
             sb.AppendLine();
         }
@@ -723,6 +724,7 @@ public class RepositoryGenerator : IIncrementalGenerator
     private static void GenerateMethodImplementation(
         IndentedStringBuilder sb,
         IMethodSymbol method,
+        string repoFullName,
         string entityFullName,
         string entityName,
         string keyTypeName,
@@ -825,7 +827,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.PushIndent();
 
         // Execute and return based on return type
-        GenerateExecuteAndReturn(sb, method, entityFullName, entityName, keyTypeName, isReturnInsertedId, methodName, fieldName, useStaticOrdinals, ordinalsFieldName, isAsync);
+        GenerateExecuteAndReturn(sb, method, repoFullName, entityFullName, entityName, keyTypeName, isReturnInsertedId, methodName, fieldName, useStaticOrdinals, ordinalsFieldName, isAsync);
 
         sb.PopIndent();
         sb.AppendLine("}");
@@ -1164,7 +1166,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         return false;
     }
 
-    private static void GenerateExecuteAndReturn(IndentedStringBuilder sb, IMethodSymbol method, string entityFullName, string entityName, string keyTypeName, bool isReturnInsertedId, string methodName, string fieldName, bool useStaticOrdinals, string ordinalsFieldName, bool isAsync)
+    private static void GenerateExecuteAndReturn(IndentedStringBuilder sb, IMethodSymbol method, string repoFullName, string entityFullName, string entityName, string keyTypeName, bool isReturnInsertedId, string methodName, string fieldName, bool useStaticOrdinals, string ordinalsFieldName, bool isAsync)
     {
         var returnType = method.ReturnType.ToDisplayString();
         var ctParam = method.Parameters.FirstOrDefault(p => p.Name == "cancellationToken");
@@ -1177,7 +1179,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         // Check for tuple return type first (but not for InsertAndGetId which handles its own tuple)
         if (IsTupleReturnType(method.ReturnType) && !isReturnInsertedId)
         {
-            GenerateTupleReturn(sb, method, entityName, ctName, methodName, fieldName);
+            GenerateTupleReturn(sb, method, repoFullName, entityName, ctName, methodName, fieldName);
             return;
         }
 
@@ -1210,7 +1212,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
             sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, insertedId, elapsed);");
             sb.AppendLine("#endif");
-            GenerateMetricsRecording(sb, methodName);
+            GenerateMetricsRecording(sb, repoFullName, methodName);
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
             sb.AppendLine("activity?.SetTag(\"db.inserted_id\", insertedId);");
@@ -1422,7 +1424,7 @@ public class RepositoryGenerator : IIncrementalGenerator
                 sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
                 sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, (affectedRows, insertedId), elapsed);");
                 sb.AppendLine("#endif");
-                GenerateMetricsRecording(sb, methodName);
+                GenerateMetricsRecording(sb, repoFullName, methodName);
                 sb.AppendLine();
                 sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
                 sb.AppendLine("if (activity is not null)");
@@ -1454,7 +1456,7 @@ public class RepositoryGenerator : IIncrementalGenerator
                 sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
                 sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, insertedId, elapsed);");
                 sb.AppendLine("#endif");
-                GenerateMetricsRecording(sb, methodName);
+                GenerateMetricsRecording(sb, repoFullName, methodName);
                 sb.AppendLine();
                 sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
                 sb.AppendLine("activity?.SetTag(\"db.inserted_id\", insertedId);");
@@ -1587,15 +1589,15 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine("partial void OnExecuteFail(string operationName, DbCommand command, global::Sqlx.SqlTemplate template, Exception exception, long elapsedTicks);");
         });
 
-    private static void GenerateMetricsRecording(IndentedStringBuilder sb, string methodName)
+    private static void GenerateMetricsRecording(IndentedStringBuilder sb, string repoFullName, string methodName)
     {
         AppendConditionalBlock(sb, "!SQLX_DISABLE_METRICS", () =>
         {
-            sb.AppendLine("global::Sqlx.Diagnostics.SqlTemplateMetrics.RecordExecution($\"{GetType().FullName}." + methodName + "\", Stopwatch.GetTimestamp() - startTime);");
+            sb.AppendLine($"global::Sqlx.Diagnostics.SqlTemplateMetrics.RecordExecution(\"{repoFullName}.{methodName}\", Stopwatch.GetTimestamp() - startTime);");
         });
     }
 
-    private static void GenerateTupleReturn(IndentedStringBuilder sb, IMethodSymbol method, string entityName, string ctName, string methodName, string fieldName)
+    private static void GenerateTupleReturn(IndentedStringBuilder sb, IMethodSymbol method, string repoFullName, string entityName, string ctName, string methodName, string fieldName)
     {
         var tupleElements = GetTupleElements(method.ReturnType);
         if (tupleElements.Count == 0) return;
@@ -1664,7 +1666,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
         sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, ({string.Join(", ", finalVarNames)}), elapsed);");
         sb.AppendLine("#endif");
-        GenerateMetricsRecording(sb, methodName);
+        GenerateMetricsRecording(sb, repoFullName, methodName);
         sb.AppendLine();
         sb.AppendLine($"return ({string.Join(", ", finalVarNames)});");
     }

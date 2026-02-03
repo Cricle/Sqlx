@@ -154,12 +154,12 @@ public interface ITodoRepository : ICrudRepository<Todo, long>
     Task<int> MarkAsCompletedAsync(long id, DateTime completedAt, DateTime updatedAt);
 
     /// <summary>Batch updates priority for multiple todos using SqlTemplate.</summary>
-    [SqlTemplate("UPDATE {{table}} SET priority = @priority, updated_at = @updatedAt WHERE id IN (SELECT value FROM json_each(@idsJson))")]
-    Task<int> BatchUpdatePriorityAsync(string idsJson, int priority, DateTime updatedAt);
+    [SqlTemplate("UPDATE {{table}} SET priority = @priority, updated_at = @updatedAt WHERE id IN ({{values --param ids}})")]
+    Task<int> BatchUpdatePriorityAsync(List<long> ids, int priority, DateTime updatedAt);
 
     /// <summary>Batch completes multiple todos using SqlTemplate.</summary>
-    [SqlTemplate("UPDATE {{table}} SET is_completed = 1, completed_at = @completedAt, updated_at = @updatedAt WHERE id IN (SELECT value FROM json_each(@idsJson))")]
-    Task<int> BatchCompleteAsync(string idsJson, DateTime completedAt, DateTime updatedAt);
+    [SqlTemplate("UPDATE {{table}} SET is_completed = 1, completed_at = @completedAt, updated_at = @updatedAt WHERE id IN ({{values --param ids}})")]
+    Task<int> BatchCompleteAsync(List<long> ids, DateTime completedAt, DateTime updatedAt);
 
     /// <summary>Updates actual minutes for a todo using SqlTemplate.</summary>
     [SqlTemplate("UPDATE {{table}} SET actual_minutes = @actualMinutes, updated_at = @updatedAt WHERE id = @id")]

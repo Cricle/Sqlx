@@ -109,9 +109,7 @@ app.MapPut("/api/todos/{id:long}/complete", async (long id, ITodoRepository repo
 // Batch update priority
 app.MapPut("/api/todos/batch/priority", async (BatchPriorityUpdateRequest request, ITodoRepository repo) =>
 {
-    // Manual JSON array construction for AOT compatibility
-    var idsJson = $"[{string.Join(",", request.Ids)}]";
-    var result = await repo.BatchUpdatePriorityAsync(idsJson, request.NewPriority, DateTime.UtcNow);
+    var result = await repo.BatchUpdatePriorityAsync(request.Ids, request.NewPriority, DateTime.UtcNow);
     return Results.Json(new BatchUpdateResult(result), TodoJsonContext.Default.BatchUpdateResult);
 });
 
@@ -179,8 +177,7 @@ app.MapDelete("/api/todos/batch", async (BatchDeleteRequest request, ITodoReposi
 app.MapPut("/api/todos/batch/complete", async (BatchCompleteRequest request, ITodoRepository repo) =>
 {
     var now = DateTime.UtcNow;
-    var idsJson = $"[{string.Join(",", request.Ids)}]";
-    var result = await repo.BatchCompleteAsync(idsJson, now, now);
+    var result = await repo.BatchCompleteAsync(request.Ids, now, now);
     return Results.Json(new BatchUpdateResult(result), TodoJsonContext.Default.BatchUpdateResult);
 });
 

@@ -2194,10 +2194,9 @@ public interface ITodoRepository : ICrudRepository<Todo, long>
     [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE {{where --param predicate}}")]
     Task<List<Todo>> GetWhereAsync(Expression<Func<Todo, bool>> predicate);
     
-    // 批量操作 - 使用 json_each() 处理 ID 列表（SQLite）
-    // 注意：需要手动构建 JSON 数组字符串，如 "[1,2,3]"
-    [SqlTemplate("UPDATE {{table}} SET priority = @priority WHERE id IN (SELECT value FROM json_each(@idsJson))")]
-    Task<int> BatchUpdatePriorityAsync(string idsJson, int priority, DateTime updatedAt);
+    // 批量操作 - 使用 {{values --param ids}} 占位符处理 ID 列表
+    [SqlTemplate("UPDATE {{table}} SET priority = @priority WHERE id IN ({{values --param ids}})")]
+    Task<int> BatchUpdatePriorityAsync(List<long> ids, int priority, DateTime updatedAt);
 }
 
 // 3. 实现仓储（自动生成）
@@ -2214,8 +2213,7 @@ app.MapGet("/api/todos/high-priority", async (ITodoRepository repo) =>
 
 app.MapPut("/api/todos/batch/priority", async (BatchRequest req, ITodoRepository repo) =>
 {
-    var idsJson = $"[{string.Join(",", req.Ids)}]";
-    var result = await repo.BatchUpdatePriorityAsync(idsJson, req.Priority, DateTime.UtcNow);
+    var result = await repo.BatchUpdatePriorityAsync(req.Ids, req.Priority, DateTime.UtcNow);
     return Results.Json(new { updatedCount = result });
 });
 ```

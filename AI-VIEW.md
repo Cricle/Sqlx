@@ -4,6 +4,24 @@
 
 ## 最近更新
 
+### 2026-02-03: 修复 DynamicUpdateAsync 参数绑定问题
+
+- **问题**: SET 表达式生成的参数（`@p0`, `@p1` 等）没有被正确绑定到 SQL 命令
+- **原因**: 参数绑定时使用 `kvp.Key`（例如 "p0"），缺少参数前缀（例如 "@"）
+- **修复**: 修改 `GenerateParameterBinding()` 方法，使用 `_paramPrefix + kvp.Key` 绑定参数
+- **测试**: 所有 DynamicUpdate 测试通过（5/5），所有单元测试通过（1991/1991）
+- **验证**: TodoWebApi 测试验证通过，`DynamicUpdateAsync` 和 `DynamicUpdateWhereAsync` 正常工作
+
+### 2026-02-03: 简化 ITodoRepository，展示 ICrudRepository 的强大功能
+
+- **目标**: 移除所有自定义方法，仅使用 `ICrudRepository<Todo, long>` 的标准方法
+- **实现**: 
+  - 在 `ICommandRepository` 中添加 `DynamicUpdateAsync` 和 `DynamicUpdateWhereAsync` 方法
+  - 使用表达式树动态更新指定字段：`DynamicUpdateAsync(id, t => new T { Field = value })`
+  - 使用表达式树批量更新：`DynamicUpdateWhereAsync(t => new T { Field = value }, t => t.Condition)`
+  - 修改源生成器支持 SET 表达式参数绑定
+- **结果**: `ITodoRepository` 现在只继承 `ICrudRepository<Todo, long>`，不需要任何自定义方法
+
 ### 2026-02-03: 支持 {{values --param}} 占位符用于 IN 子句
 
 - **功能**: 添加 `{{values --param paramName}}` 占位符支持，用于生成 IN 子句的参数占位符

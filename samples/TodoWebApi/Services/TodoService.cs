@@ -137,6 +137,10 @@ public interface ITodoRepository : ICrudRepository<Todo, long>
     [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE title LIKE @query OR description LIKE @query ORDER BY updated_at DESC")]
     Task<List<Todo>> SearchAsync(string query);
 
+    /// <summary>Searches todos with limit using SqlTemplate.</summary>
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE title LIKE @query OR description LIKE @query ORDER BY updated_at DESC LIMIT @limit")]
+    Task<List<Todo>> SearchWithLimitAsync(string query, int limit);
+
     /// <summary>Gets todos by completion status using SqlTemplate.</summary>
     [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE is_completed = @isCompleted ORDER BY completed_at DESC")]
     Task<List<Todo>> GetByCompletionStatusAsync(bool isCompleted = true);

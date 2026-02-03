@@ -281,6 +281,7 @@ public record ExistsResult(bool Exists);
 /// <summary>
 /// TODO 标题和优先级
 /// </summary>
+[Sqlx]
 public record TodoTitlePriority(long Id, string Title, int Priority);
 
 /// <summary>

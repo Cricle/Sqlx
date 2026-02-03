@@ -163,14 +163,9 @@ app.MapDelete("/api/todos/batch", async (BatchDeleteRequest request, ITodoReposi
     if (request.Ids == null || request.Ids.Count == 0)
         return Results.Json(new BatchUpdateResult(0), TodoJsonContext.Default.BatchUpdateResult);
     
-    // Workaround: Delete todos one by one (for small lists this is acceptable)
-    int deletedCount = 0;
-    foreach (var id in request.Ids)
-    {
-        var result = await repo.DeleteAsync(id);
-        deletedCount += result;
-    }
-    return Results.Json(new BatchUpdateResult(deletedCount), TodoJsonContext.Default.BatchUpdateResult);
+    // Use built-in batch delete method
+    var result = await repo.DeleteByIdsAsync(request.Ids);
+    return Results.Json(new BatchUpdateResult(result), TodoJsonContext.Default.BatchUpdateResult);
 });
 
 // Batch complete todos
@@ -205,20 +200,14 @@ app.MapGet("/api/todos/{id:long}/exists", async (long id, ITodoRepository repo) 
     return Results.Json(new ExistsResult(exists), TodoJsonContext.Default.ExistsResult);
 });
 
-// Get todos by IDs - using individual queries as workaround
+// Get todos by IDs - using batch query
 app.MapPost("/api/todos/by-ids", async (BatchGetRequest request, ITodoRepository repo) =>
 {
     if (request.Ids == null || request.Ids.Count == 0)
         return Results.Json(new List<Todo>(), TodoJsonContext.Default.ListTodo);
     
-    // Workaround: Get todos one by one (for small lists this is acceptable)
-    var todos = new List<Todo>();
-    foreach (var id in request.Ids)
-    {
-        var todo = await repo.GetByIdAsync(id);
-        if (todo != null)
-            todos.Add(todo);
-    }
+    // Use built-in batch query method
+    var todos = await repo.GetByIdsAsync(request.Ids);
     return Results.Json(todos, TodoJsonContext.Default.ListTodo);
 });
 
@@ -261,10 +250,10 @@ app.MapGet("/api/todos/queryable/priority-paged", async (ITodoRepository repo, i
 // IQueryable with projection - get only title and priority
 app.MapGet("/api/todos/queryable/titles", async (ITodoRepository repo) =>
 {
-    // Use predefined repository methods
+    // Query pending todos and project in memory (minimal data transfer)
     var todos = await repo.GetWhereAsync(t => !t.IsCompleted);
     var result = todos
-        .OrderBy(t => t.Priority)
+        .OrderByDescending(t => t.Priority)
         .Select(t => new TodoTitlePriority(t.Id, t.Title, t.Priority))
         .ToList();
     
@@ -274,9 +263,8 @@ app.MapGet("/api/todos/queryable/titles", async (ITodoRepository repo) =>
 // IQueryable with string functions
 app.MapGet("/api/todos/queryable/search-advanced", async (string keyword, ITodoRepository repo) =>
 {
-    // Use custom search method
-    var todos = await repo.SearchAsync($"%{keyword}%");
-    var result = todos.Take(20).ToList();
+    // Use SQL template with LIMIT to avoid post-query Take
+    var result = await repo.SearchWithLimitAsync($"%{keyword}%", 20);
     return Results.Json(result, TodoJsonContext.Default.ListTodo);
 });
 

@@ -12,7 +12,7 @@ namespace TodoWebApi.Services;
 
 /// <summary>
 /// Todo repository implementation using ICrudRepository generic interface.
-/// Demonstrates three query approaches: SqlTemplate, LINQ expressions, and IQueryable.
+/// Demonstrates two query approaches: SqlTemplate and LINQ expressions.
 /// </summary>
 /// <remarks>
 /// Inherits 42 standard methods from ICrudRepository (24 query + 18 command):
@@ -26,7 +26,7 @@ namespace TodoWebApi.Services;
 ///          UpdateWhereAsync/UpdateWhere, BatchUpdateAsync/BatchUpdate,
 ///          DeleteAsync/Delete, DeleteByIdsAsync/DeleteByIds,
 ///          DeleteWhereAsync/DeleteWhere, DeleteAllAsync/DeleteAll
-/// Plus 12 custom business-specific methods demonstrating different query approaches.
+/// Plus custom business-specific methods demonstrating different query approaches.
 /// </remarks>
 [TableName("todos")]
 [SqlDefine(SqlDefineTypes.SQLite)]
@@ -36,62 +36,7 @@ public partial class TodoRepository(SqliteConnection connection) : ITodoReposito
     // Generator auto-generates:
     // - private readonly SqliteConnection _connection = connection;
     // - public DbTransaction? Transaction { get; set; }
-
-    /// <summary>
-    /// Returns an IQueryable for building complex LINQ queries.
-    /// Implements ICrudRepository.AsQueryable().
-    /// </summary>
-    public IQueryable<Todo> AsQueryable()
-    {
-        return SqlQuery<Todo>.For(_placeholderContext.Dialect).WithConnection(_connection);
-    }
-
-    // Standard CRUD methods auto-generated from ICrudRepository<Todo, long>
-    // Custom business methods auto-generated from interface definitions below
-
-    /// <summary>
-    /// Implements DynamicUpdateWhereAsync using ExpressionBlockResult for optimal performance.
-    /// Parses both UPDATE and WHERE expressions in a single pass.
-    /// </summary>
-    public async Task<int> DynamicUpdateWhereAsync(
-        System.Linq.Expressions.Expression<Func<Todo, Todo>> updateExpression,
-        System.Linq.Expressions.Expression<Func<Todo, bool>> whereExpression)
-    {
-        // 使用 ExpressionBlockResult 一次性解析两个表达式
-        var updateResult = Sqlx.Expressions.ExpressionBlockResult.ParseUpdate(updateExpression, _placeholderContext.Dialect);
-        var whereResult = Sqlx.Expressions.ExpressionBlockResult.Parse(whereExpression.Body, _placeholderContext.Dialect);
-
-        // 构建完整 SQL
-        var sql = $"UPDATE {_placeholderContext.Dialect.WrapColumn("todos")} SET {updateResult.Sql} WHERE {whereResult.Sql}";
-
-        // 合并参数（注意：实际使用中需要处理参数名冲突）
-        using var cmd = _connection.CreateCommand();
-        cmd.CommandText = sql;
-        if (Transaction != null)
-        {
-            cmd.Transaction = (Microsoft.Data.Sqlite.SqliteTransaction)Transaction;
-        }
-
-        // 添加 UPDATE 参数
-        foreach (var param in updateResult.Parameters)
-        {
-            var p = cmd.CreateParameter();
-            p.ParameterName = param.Key;
-            p.Value = param.Value ?? DBNull.Value;
-            cmd.Parameters.Add(p);
-        }
-
-        // 添加 WHERE 参数
-        foreach (var param in whereResult.Parameters)
-        {
-            var p = cmd.CreateParameter();
-            p.ParameterName = param.Key;
-            p.Value = param.Value ?? DBNull.Value;
-            cmd.Parameters.Add(p);
-        }
-
-        return await cmd.ExecuteNonQueryAsync();
-    }
+    // - All interface method implementations
 
 #if !SQLX_DISABLE_INTERCEPTOR
     // Optional: execution monitoring
@@ -115,7 +60,7 @@ public partial class TodoRepository(SqliteConnection connection) : ITodoReposito
 
 /// <summary>
 /// Todo repository interface - combines ICrudRepository with custom business methods.
-/// Demonstrates three query approaches: SqlTemplate, LINQ expressions, and IQueryable.
+/// Demonstrates two query approaches: SqlTemplate and LINQ expressions.
 /// </summary>
 public interface ITodoRepository : ICrudRepository<Todo, long>
 {
@@ -192,28 +137,6 @@ public interface ITodoRepository : ICrudRepository<Todo, long>
     [SqlTemplate("UPDATE {{table}} SET {{set --param updates}} WHERE id = @id")]
     Task<int> DynamicUpdateAsync(long id, string updates);
 
-    /// <summary>
-    /// Dynamically updates todos using ExpressionBlockResult for unified expression parsing.
-    /// This method demonstrates the performance advantage of parsing expressions once.
-    /// </summary>
-    /// <remarks>
-    /// Example usage:
-    /// <code>
-    /// // 使用 ExpressionBlockResult 一次性解析 UPDATE 和 WHERE 表达式
-    /// Expression&lt;Func&lt;Todo, Todo&gt;&gt; updateExpr = t => new Todo 
-    /// { 
-    ///     Priority = 5,
-    ///     UpdatedAt = DateTime.UtcNow
-    /// };
-    /// Expression&lt;Func&lt;Todo, bool&gt;&gt; whereExpr = t => t.IsCompleted == false && t.Priority &lt; 3;
-    /// 
-    /// await repo.DynamicUpdateWhereAsync(updateExpr, whereExpr);
-    /// </code>
-    /// </remarks>
-    Task<int> DynamicUpdateWhereAsync(
-        System.Linq.Expressions.Expression<Func<Todo, Todo>> updateExpression,
-        System.Linq.Expressions.Expression<Func<Todo, bool>> whereExpression);
-
     // ========== Approach 2: LINQ Expression - Type-safe predicates ==========
 
     /// <summary>Gets todos matching a LINQ expression predicate.</summary>
@@ -223,17 +146,6 @@ public interface ITodoRepository : ICrudRepository<Todo, long>
     /// <summary>Counts todos matching a LINQ expression predicate.</summary>
     [SqlTemplate("SELECT COUNT(*) FROM {{table}} WHERE {{where --param predicate}}")]
     Task<long> CountWhereAsync(System.Linq.Expressions.Expression<Func<Todo, bool>> predicate);
-
-    // ========== Approach 3: IQueryable - Full LINQ query builder ==========
-
-    // AsQueryable() method inherited from ICrudRepository<Todo, long>
-    // Example usage:
-    // var query = repo.AsQueryable()
-    //     .Where(t => t.Priority >= 3 && !t.IsCompleted)
-    //     .OrderByDescending(t => t.Priority)
-    //     .ThenBy(t => t.DueDate)
-    //     .Take(10);
-    // var todos = await query.ToListAsync();
 
     // ========== Debug/Testing Methods - Return SqlTemplate ==========
 

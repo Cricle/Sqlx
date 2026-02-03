@@ -294,9 +294,15 @@ public class RepositoryGenerator : IIncrementalGenerator
         GenerateSqlTemplateFields(sb, methods, sqlTemplateAttr, methodFieldNames);
         sb.AppendLine();
 
-        // Generate method implementations
+        // Generate method implementations (skip methods already implemented by user)
         foreach (var method in methods)
         {
+            // Skip if method is already implemented in the repository class
+            if (IsMethodAlreadyImplemented(repoType, method))
+            {
+                continue;
+            }
+            
             GenerateMethodImplementation(sb, method, entityFullName, entityName, keyTypeName, 
                 sqlTemplateAttr, returnInsertedIdAttr, expressionToSqlAttr, connectionInfo, methodFieldNames, paramNameFields);
             sb.AppendLine();
@@ -571,7 +577,8 @@ public class RepositoryGenerator : IIncrementalGenerator
         // First, get methods from the direct interface (higher priority)
         foreach (var member in serviceType.GetMembers().OfType<IMethodSymbol>())
         {
-            if (member.GetAttributes().Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, sqlTemplateAttr)))
+            if (member.GetAttributes().Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, sqlTemplateAttr)) ||
+                IsSpecialMethod(member))
             {
                 var signature = GetMethodSignature(member);
                 processedSignatures.Add(signature);
@@ -584,7 +591,8 @@ public class RepositoryGenerator : IIncrementalGenerator
         {
             foreach (var member in iface.GetMembers().OfType<IMethodSymbol>())
             {
-                if (member.GetAttributes().Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, sqlTemplateAttr)))
+                if (member.GetAttributes().Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, sqlTemplateAttr)) ||
+                    IsSpecialMethod(member))
                 {
                     var signature = GetMethodSignature(member);
                     if (processedSignatures.Add(signature))
@@ -596,6 +604,45 @@ public class RepositoryGenerator : IIncrementalGenerator
         }
 
         return methods;
+    }
+
+    /// <summary>
+    /// Checks if a method is already implemented in the repository class.
+    /// </summary>
+    private static bool IsMethodAlreadyImplemented(INamedTypeSymbol repoType, IMethodSymbol method)
+    {
+        var signature = GetMethodSignature(method);
+        
+        foreach (var member in repoType.GetMembers(method.Name))
+        {
+            if (member is IMethodSymbol existingMethod && !existingMethod.IsAbstract)
+            {
+                var existingSignature = GetMethodSignature(existingMethod);
+                if (existingSignature == signature)
+                {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+
+    /// <summary>
+    /// Checks if a method is a special method that should be generated even without [SqlTemplate].
+    /// Currently supports: AsQueryable()
+    /// </summary>
+    private static bool IsSpecialMethod(IMethodSymbol method)
+    {
+        // AsQueryable() method
+        if (method.Name == "AsQueryable" && 
+            method.Parameters.Length == 0 &&
+            method.ReturnType.ToDisplayString().Contains("IQueryable<"))
+        {
+            return true;
+        }
+
+        return false;
     }
 
     private static string GetMethodSignature(IMethodSymbol method) =>

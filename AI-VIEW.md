@@ -2635,3 +2635,84 @@ Sqlx 团队持续改进占位符生成质量：
 5. 数据库方言
 
 我们会尽快修复并添加相应的测试用例。
+
+
+---
+
+## 最近更新（2026-02-03）
+
+### AsQueryable() 自动生成
+
+源生成器现在会自动为实现 `ICrudRepository<TEntity, TKey>` 的仓储类生成 `AsQueryable()` 方法，无需手动实现。
+
+**功能说明：**
+- `AsQueryable()` 方法返回 `IQueryable<TEntity>`，用于构建 LINQ 查询
+- 源生成器会自动检测 `ICrudRepository` 接口中的 `AsQueryable()` 方法并生成实现
+- 生成的代码使用 `SqlQuery<T>.For(dialect).WithConnection(connection)` 创建查询
+- 支持跳过已手动实现的方法，避免重复定义错误
+
+**使用示例：**
+
+```csharp
+// 接口定义（继承 ICrudRepository）
+public interface IUserRepository : ICrudRepository<User, long>
+{
+    // AsQueryable() 方法由 ICrudRepository 提供
+    // 源生成器会自动生成实现
+}
+
+// 仓储实现（不需要手动实现 AsQueryable）
+[SqlDefine(SqlDefineTypes.SQLite)]
+[TableName("users")]
+[RepositoryFor(typeof(IUserRepository))]
+public partial class UserRepository(SqliteConnection connection) : IUserRepository
+{
+    // 源生成器会自动生成 AsQueryable() 方法
+}
+
+// 使用 AsQueryable 构建 LINQ 查询
+var repo = new UserRepository(connection);
+var query = repo.AsQueryable()
+    .Where(u => u.Age >= 30)
+    .OrderBy(u => u.Name)
+    .Take(10);
+
+// 转换为 IAsyncEnumerable 执行异步查询
+var asyncQuery = (IAsyncEnumerable<User>)query;
+var users = await System.Linq.AsyncEnumerable.ToListAsync<User>(asyncQuery, default);
+```
+
+**生成的代码示例：**
+
+```csharp
+/// <inheritdoc/>
+public IQueryable<User> AsQueryable()
+{
+    return global::Sqlx.SqlQuery<User>.For(_placeholderContext.Dialect).WithConnection(_connection);
+}
+```
+
+**技术细节：**
+- 源生成器通过 `IsSpecialMethod()` 方法识别 `AsQueryable()` 方法
+- 识别条件：方法名为 "AsQueryable"、无参数、返回类型包含 "IQueryable<"
+- 生成器会检查方法是否已手动实现，避免重复定义
+- 支持嵌套类和顶层类（嵌套类需要移到顶层命名空间才能被源生成器识别）
+
+**注意事项：**
+- 如果实体类有 `[TableName]` 属性，确保表名与数据库表名一致
+- `AsQueryable()` 返回的 `IQueryable` 实际上是 `SqlxQueryable<T>`，实现了 `IAsyncEnumerable<T>`
+- 使用 LINQ 异步方法时需要转换为 `IAsyncEnumerable<T>`：`(IAsyncEnumerable<T>)query`
+- 异步 LINQ 方法需要显式指定类型参数：`System.Linq.AsyncEnumerable.ToListAsync<T>(query, cancellationToken)`
+
+**相关测试：**
+- `tests/Sqlx.Tests/AsQueryableGenerationTests.cs` - AsQueryable 自动生成测试
+- 测试覆盖：基本生成、LINQ 查询、异步执行
+
+**相关文件：**
+- `src/Sqlx.Generator/RepositoryGenerator.cs` - 源生成器实现
+  - `IsSpecialMethod()` - 识别特殊方法（如 AsQueryable）
+  - `IsMethodAlreadyImplemented()` - 检查方法是否已手动实现
+  - `GenerateIQueryableReturnMethod()` - 生成 AsQueryable 方法实现
+- `src/Sqlx/ICrudRepository.cs` - CRUD 仓储接口定义
+- `src/Sqlx/SqlxQueryable.cs` - IQueryable 实现类
+

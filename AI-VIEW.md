@@ -2,6 +2,33 @@
 
 > 面向 AI 助手的 Sqlx 使用指南，帮助快速理解和生成正确代码。
 
+## 最近更新
+
+### 2026-02-03: 支持 {{values --param}} 占位符用于 IN 子句
+
+- **功能**: 添加 `{{values --param paramName}}` 占位符支持，用于生成 IN 子句的参数占位符
+- **用法**: `UPDATE table SET col = @val WHERE id IN ({{values --param ids}})`
+- **实现**: 
+  - `ValuesPlaceholderHandler` 支持 `--param` 选项，生成单个参数占位符
+  - 源生成器自动检测集合参数（`List<T>`, `IEnumerable<T>` 等）并展开为多个参数（`@ids0, @ids1, @ids2`）
+  - 运行时 `Render` 方法动态展开集合参数
+- **测试**: 添加 `ValuesPlaceholderParamTests` 测试类，所有测试通过
+- **示例**: 
+  ```csharp
+  [SqlTemplate("UPDATE todos SET priority = @priority WHERE id IN ({{values --param ids}})")]
+  Task<int> BatchUpdatePriorityAsync(List<long> ids, int priority);
+  ```
+
+### 2026-02-03: 自动生成 AsQueryable() 和 ICrudRepository 方法
+
+- **功能**: 源生成器自动为 `ICrudRepository<TEntity, TKey>` 的所有方法生成实现
+- **实现**: 
+  - 添加 `IsSpecialMethod()` 方法：识别特殊方法（如 `AsQueryable()`），即使没有 `[SqlTemplate]` 标记也会生成实现
+  - 添加 `IsMethodAlreadyImplemented()` 方法：检查方法是否已手动实现，避免重复定义错误
+  - 修改方法生成逻辑：在生成前检查是否已手动实现，如果已实现则跳过
+- **测试**: 添加 `AsQueryableGenerationTests` 测试类，所有测试通过
+- **影响**: 用户不再需要手动实现 `AsQueryable()` 方法，源生成器会自动生成
+
 ## 概述
 
 Sqlx 是编译时源生成器，生成高性能数据访问代码。核心流程：
@@ -433,6 +460,7 @@ Task<int> InsertAsync(Customer customer);  // Customer 自动生成
 | `{{values}}` | `@id, @name, @age` | 所有参数占位符（用于 INSERT） |
 | `{{values --exclude Id}}` | `@name, @age` | 排除指定参数 |
 | `{{values --inline CreatedAt=CURRENT_TIMESTAMP}}` | `@id, @name, CURRENT_TIMESTAMP` | 内联表达式（用于 INSERT 默认值） |
+| `{{values --param ids}}` | `@ids0, @ids1, @ids2` | 集合参数展开（用于 IN 子句） |
 | `{{set}}` | `[name] = @name, [age] = @age` | SET 子句（用于 UPDATE） |
 | `{{set --exclude Id CreatedAt}}` | `[name] = @name, [age] = @age` | 排除不可更新的字段 |
 | `{{set --inline Version=Version+1}}` | `[name] = @name, [version] = [version]+1` | 内联表达式（用于 UPDATE 计算字段） |

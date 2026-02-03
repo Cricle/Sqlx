@@ -498,7 +498,7 @@ public class SetExpressionEdgeCaseTests
         Expression<Func<TestEntity, TestEntity>>? expr = null;
 
         // Act
-        var result = expr.ToSetClause();
+        var result = expr!.ToSetClause();
 
         // Assert
         Assert.AreEqual(string.Empty, result);
@@ -511,7 +511,7 @@ public class SetExpressionEdgeCaseTests
         Expression<Func<TestEntity, TestEntity>>? expr = null;
 
         // Act
-        var parameters = expr.GetSetParameters();
+        var parameters = expr!.GetSetParameters();
 
         // Assert
         Assert.AreEqual(0, parameters.Count);

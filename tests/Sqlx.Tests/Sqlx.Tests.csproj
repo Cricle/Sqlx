@@ -6,6 +6,8 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!-- Suppress CS9124: Primary constructor parameter captured warning in tests -->
+    <NoWarn>$(NoWarn);CS9124</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

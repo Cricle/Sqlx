@@ -148,7 +148,7 @@ public class SetExpressionExtensionsTests
         Expression<Func<TestUser, TestUser>>? expr = null;
 
         // Act
-        var result = expr.ToSetClause();
+        var result = expr!.ToSetClause();
 
         // Assert
         Assert.AreEqual(string.Empty, result);

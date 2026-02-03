@@ -27,7 +27,7 @@ All metrics include the following tags for filtering and aggregation:
 
 - `repository.class`: Full repository class name (e.g., `"MyApp.Repositories.UserRepository"`)
 - `repository.method`: Method name (e.g., `"GetByIdAsync"`)
-- `sql.template`: SQL template field name (e.g., `"_getByIdAsyncTemplate"`)
+- `sql.template`: Original SQL template string (e.g., `"SELECT {{columns}} FROM {{table}} WHERE id = @id"`)
 - `error.type`: Exception type name (only for error metrics)
 
 ## Usage
@@ -56,19 +56,19 @@ app.Run();
 ```
 # HELP sqlx_template_duration SQL template execution duration in milliseconds
 # TYPE sqlx_template_duration histogram
-sqlx_template_duration_bucket{repository_class="MyApp.UserRepository",repository_method="GetByIdAsync",sql_template="_getByIdAsyncTemplate",le="1"} 245
-sqlx_template_duration_bucket{repository_class="MyApp.UserRepository",repository_method="GetByIdAsync",sql_template="_getByIdAsyncTemplate",le="5"} 298
-sqlx_template_duration_bucket{repository_class="MyApp.UserRepository",repository_method="GetByIdAsync",sql_template="_getByIdAsyncTemplate",le="10"} 300
-sqlx_template_duration_sum{repository_class="MyApp.UserRepository",repository_method="GetByIdAsync",sql_template="_getByIdAsyncTemplate"} 892.5
-sqlx_template_duration_count{repository_class="MyApp.UserRepository",repository_method="GetByIdAsync",sql_template="_getByIdAsyncTemplate"} 300
+sqlx_template_duration_bucket{repository_class="MyApp.UserRepository",repository_method="GetByIdAsync",sql_template="SELECT {{columns}} FROM {{table}} WHERE id = @id",le="1"} 245
+sqlx_template_duration_bucket{repository_class="MyApp.UserRepository",repository_method="GetByIdAsync",sql_template="SELECT {{columns}} FROM {{table}} WHERE id = @id",le="5"} 298
+sqlx_template_duration_bucket{repository_class="MyApp.UserRepository",repository_method="GetByIdAsync",sql_template="SELECT {{columns}} FROM {{table}} WHERE id = @id",le="10"} 300
+sqlx_template_duration_sum{repository_class="MyApp.UserRepository",repository_method="GetByIdAsync",sql_template="SELECT {{columns}} FROM {{table}} WHERE id = @id"} 892.5
+sqlx_template_duration_count{repository_class="MyApp.UserRepository",repository_method="GetByIdAsync",sql_template="SELECT {{columns}} FROM {{table}} WHERE id = @id"} 300
 
 # HELP sqlx_template_executions Total number of SQL template executions
 # TYPE sqlx_template_executions counter
-sqlx_template_executions_total{repository_class="MyApp.UserRepository",repository_method="GetByIdAsync",sql_template="_getByIdAsyncTemplate"} 300
+sqlx_template_executions_total{repository_class="MyApp.UserRepository",repository_method="GetByIdAsync",sql_template="SELECT {{columns}} FROM {{table}} WHERE id = @id"} 300
 
 # HELP sqlx_template_errors Total number of SQL template execution errors
 # TYPE sqlx_template_errors counter
-sqlx_template_errors_total{repository_class="MyApp.UserRepository",repository_method="GetByIdAsync",sql_template="_getByIdAsyncTemplate",error_type="SqlException"} 2
+sqlx_template_errors_total{repository_class="MyApp.UserRepository",repository_method="GetByIdAsync",sql_template="SELECT {{columns}} FROM {{table}} WHERE id = @id",error_type="SqlException"} 2
 ```
 
 ## Disabling Metrics

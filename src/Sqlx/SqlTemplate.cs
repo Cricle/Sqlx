@@ -44,11 +44,13 @@ public sealed class SqlTemplate
     /// <param name="sql">The pre-rendered SQL with static placeholders resolved.</param>
     /// <param name="segments">The parsed template segments.</param>
     /// <param name="hasBlocks">Whether the template contains conditional blocks.</param>
-    private SqlTemplate(string sql, TemplateSegment[] segments, bool hasBlocks)
+    /// <param name="templateSql">The original template SQL string before placeholder resolution.</param>
+    private SqlTemplate(string sql, TemplateSegment[] segments, bool hasBlocks, string templateSql)
     {
         Sql = sql;
         _segments = segments;
         _hasBlocks = hasBlocks;
+        TemplateSql = templateSql;
     }
 
     /// <summary>
@@ -60,6 +62,15 @@ public sealed class SqlTemplate
     /// Use <see cref="Render(IReadOnlyDictionary{string, object})"/> to get the fully rendered SQL with dynamic values.
     /// </remarks>
     public string Sql { get; }
+
+    /// <summary>
+    /// Gets the original template SQL string before placeholder resolution.
+    /// </summary>
+    /// <remarks>
+    /// This property contains the original SQL template with all placeholders intact (e.g., "SELECT {{columns}} FROM {{table}} WHERE id = @id").
+    /// Useful for logging, debugging, and metrics collection.
+    /// </remarks>
+    public string TemplateSql { get; }
 
     /// <summary>
     /// Gets a value indicating whether this template contains dynamic placeholders or conditional blocks.
@@ -150,7 +161,7 @@ public sealed class SqlTemplate
         foreach (var seg in mergedSegments)
             if (seg.Type == SegmentType.Static) sb.Append(seg.Text);
 
-        return new SqlTemplate(sb.ToString(), mergedSegments, hasBlocks);
+        return new SqlTemplate(sb.ToString(), mergedSegments, hasBlocks, template);
     }
 
     /// <summary>

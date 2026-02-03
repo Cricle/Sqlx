@@ -1526,7 +1526,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine();
         AppendConditionalBlock(sb, "!SQLX_DISABLE_METRICS", () =>
         {
-            sb.AppendLine($"global::Sqlx.Diagnostics.SqlTemplateMetrics.RecordError(\"{repoFullName}\", \"{methodName}\", \"{fieldName}\", Stopwatch.GetTimestamp() - startTime, ex);");
+            sb.AppendLine($"global::Sqlx.Diagnostics.SqlTemplateMetrics.RecordError(\"{repoFullName}\", \"{methodName}\", {fieldName}.TemplateSql, Stopwatch.GetTimestamp() - startTime, ex);");
         });
         sb.AppendLine();
         AppendConditionalBlock(sb, "!SQLX_DISABLE_ACTIVITY", () =>
@@ -1601,7 +1601,7 @@ public class RepositoryGenerator : IIncrementalGenerator
     {
         AppendConditionalBlock(sb, "!SQLX_DISABLE_METRICS", () =>
         {
-            sb.AppendLine($"global::Sqlx.Diagnostics.SqlTemplateMetrics.RecordExecution(\"{repoFullName}\", \"{methodName}\", \"{templateFieldName}\", Stopwatch.GetTimestamp() - startTime);");
+            sb.AppendLine($"global::Sqlx.Diagnostics.SqlTemplateMetrics.RecordExecution(\"{repoFullName}\", \"{methodName}\", {templateFieldName}.TemplateSql, Stopwatch.GetTimestamp() - startTime);");
         });
     }
 

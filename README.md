@@ -454,6 +454,42 @@ catch
 - 如果用户未定义 `Transaction` 属性，生成器会自动生成
 - 如果用户未定义连接字段/属性，生成器会从主构造函数参数自动生成字段
 
+## 指标收集（Metrics）
+
+Sqlx 内置支持使用标准 `System.Diagnostics.Metrics` API 收集 SQL 执行指标（.NET 8+）：
+
+```csharp
+// 指标自动记录，无需额外配置
+var repo = new UserRepository(connection);
+await repo.GetByIdAsync(123);  // 自动记录执行时间、次数等
+
+// 使用 OpenTelemetry 导出指标
+using var meterProvider = Sdk.CreateMeterProviderBuilder()
+    .AddMeter("Sqlx.SqlTemplate")
+    .AddPrometheusExporter()
+    .Build();
+```
+
+**记录的指标**：
+- `sqlx.template.duration` (Histogram) - SQL 执行时间（毫秒）
+- `sqlx.template.executions` (Counter) - SQL 执行次数
+- `sqlx.template.errors` (Counter) - SQL 执行错误次数
+
+**指标标签（Tags）**：
+- `repository.class` - 仓储类全名（如 `MyApp.UserRepository`）
+- `repository.method` - 方法名（如 `GetByIdAsync`）
+- `sql.template` - SQL 模板（如 `SELECT {{columns}} FROM {{table}} WHERE id = @id`）
+- `error.type` - 错误类型（仅错误指标）
+
+**特性**：
+- ✅ 零配置 - 自动记录所有 SQL 执行
+- ✅ 标准 API - 兼容 OpenTelemetry、Prometheus、Application Insights
+- ✅ 高性能 - 编译时生成，零运行时开销
+- ✅ AOT 友好 - 完全支持 Native AOT
+- ✅ 向后兼容 - .NET 8 以下版本为 no-op
+
+> 详细文档见 [指标收集](docs/metrics.md)
+
 ## 性能对比
 
 基于 BenchmarkDotNet 测试（.NET 10 LTS，SQLite 内存数据库）：

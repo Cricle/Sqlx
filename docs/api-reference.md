@@ -1252,3 +1252,134 @@ var affected = await connection.ExecuteBatchAsync(
 ```
 
 
+
+
+## Diagnostics
+
+### SqlTemplateMetrics
+
+Provides metrics instrumentation for SQL template execution using `System.Diagnostics.Metrics` (.NET 8+).
+
+```csharp
+namespace Sqlx.Diagnostics;
+
+public static class SqlTemplateMetrics
+{
+    // Record successful execution
+    public static void RecordExecution(
+        string repositoryClass,
+        string methodName,
+        string sqlTemplateField,
+        long elapsedTicks);
+    
+    // Record failed execution
+    public static void RecordError(
+        string repositoryClass,
+        string methodName,
+        string sqlTemplateField,
+        long elapsedTicks,
+        Exception exception);
+}
+```
+
+**Metrics Exposed:**
+
+| Metric Name | Type | Unit | Description |
+|-------------|------|------|-------------|
+| `sqlx.template.duration` | Histogram | ms | SQL execution duration in milliseconds |
+| `sqlx.template.executions` | Counter | {execution} | Total number of SQL executions |
+| `sqlx.template.errors` | Counter | {error} | Total number of SQL execution errors |
+
+**Tags (Dimensions):**
+
+| Tag Name | Description | Example |
+|----------|-------------|---------|
+| `repository.class` | Full repository class name | `MyApp.Repositories.UserRepository` |
+| `repository.method` | Method name | `GetByIdAsync` |
+| `sql.template` | SQL template string | `SELECT {{columns}} FROM {{table}} WHERE id = @id` |
+| `error.type` | Exception type name (errors only) | `SqliteException` |
+
+**Usage:**
+
+```csharp
+// Metrics are automatically recorded by generated repository code
+var repo = new UserRepository(connection);
+await repo.GetByIdAsync(123);  // Metrics recorded automatically
+
+// Consume metrics with OpenTelemetry
+using var meterProvider = Sdk.CreateMeterProviderBuilder()
+    .AddMeter("Sqlx.SqlTemplate")
+    .AddConsoleExporter()
+    .Build();
+
+// Or with MeterListener (for testing/debugging)
+var listener = new MeterListener
+{
+    InstrumentPublished = (instrument, listener) =>
+    {
+        if (instrument.Meter.Name == "Sqlx.SqlTemplate")
+        {
+            listener.EnableMeasurementEvents(instrument);
+        }
+    }
+};
+
+listener.SetMeasurementEventCallback<double>((instrument, measurement, tags, state) =>
+{
+    Console.WriteLine($"{instrument.Name}: {measurement}ms");
+    foreach (var tag in tags)
+    {
+        Console.WriteLine($"  {tag.Key}: {tag.Value}");
+    }
+});
+
+listener.Start();
+```
+
+**Features:**
+- ✅ Zero configuration - automatically enabled
+- ✅ Standard .NET Metrics API - works with OpenTelemetry, Prometheus, Application Insights
+- ✅ High performance - compile-time code generation, zero runtime overhead
+- ✅ AOT friendly - fully supports Native AOT
+- ✅ Backward compatible - no-op on .NET 7 and earlier
+
+**Example Output (Console Exporter):**
+
+```
+sqlx.template.duration: 2.45ms
+  repository.class: MyApp.UserRepository
+  repository.method: GetByIdAsync
+  sql.template: SELECT {{columns}} FROM {{table}} WHERE id = @id
+
+sqlx.template.executions: 1
+  repository.class: MyApp.UserRepository
+  repository.method: GetByIdAsync
+  sql.template: SELECT {{columns}} FROM {{table}} WHERE id = @id
+```
+
+**Integration with Monitoring Systems:**
+
+```csharp
+// Prometheus
+using var meterProvider = Sdk.CreateMeterProviderBuilder()
+    .AddMeter("Sqlx.SqlTemplate")
+    .AddPrometheusExporter()
+    .Build();
+
+// Application Insights
+using var meterProvider = Sdk.CreateMeterProviderBuilder()
+    .AddMeter("Sqlx.SqlTemplate")
+    .AddAzureMonitorMetricExporter(options =>
+    {
+        options.ConnectionString = "InstrumentationKey=...";
+    })
+    .Build();
+
+// OTLP (OpenTelemetry Protocol)
+using var meterProvider = Sdk.CreateMeterProviderBuilder()
+    .AddMeter("Sqlx.SqlTemplate")
+    .AddOtlpExporter()
+    .Build();
+```
+
+See [Metrics Documentation](metrics.md) for more details.

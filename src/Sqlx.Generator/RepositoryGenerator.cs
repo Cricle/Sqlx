@@ -1242,6 +1242,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
             sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, result, elapsed);");
             sb.AppendLine("#endif");
+            GenerateMetricsRecording(sb, repoFullName, methodName, fieldName);
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
             sb.AppendLine("activity?.SetTag(\"db.rows_affected\", result.Count);");
@@ -1268,6 +1269,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
             sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, result, elapsed);");
             sb.AppendLine("#endif");
+            GenerateMetricsRecording(sb, repoFullName, methodName, fieldName);
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
             sb.AppendLine("activity?.SetTag(\"db.rows_affected\", result != null ? 1 : 0);");
@@ -1286,6 +1288,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
             sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, exists, elapsed);");
             sb.AppendLine("#endif");
+            GenerateMetricsRecording(sb, repoFullName, methodName, fieldName);
             sb.AppendLine();
             sb.AppendLine("return exists;");
         }
@@ -1342,6 +1345,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
             sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, result, elapsed);");
             sb.AppendLine("#endif");
+            GenerateMetricsRecording(sb, repoFullName, methodName, fieldName);
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
             sb.AppendLine("activity?.SetTag(\"db.rows_affected\", result.Count);");
@@ -1367,6 +1371,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
             sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, result, elapsed);");
             sb.AppendLine("#endif");
+            GenerateMetricsRecording(sb, repoFullName, methodName, fieldName);
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
             sb.AppendLine("activity?.SetTag(\"db.rows_affected\", result != null ? 1 : 0);");
@@ -1383,6 +1388,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
             sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, result, elapsed);");
             sb.AppendLine("#endif");
+            GenerateMetricsRecording(sb, repoFullName, methodName, fieldName);
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
             sb.AppendLine("activity?.SetTag(\"db.rows_affected\", result);");
@@ -1475,6 +1481,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
             sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, count, elapsed);");
             sb.AppendLine("#endif");
+            GenerateMetricsRecording(sb, repoFullName, methodName, fieldName);
             sb.AppendLine();
             sb.AppendLine("return count;");
         }
@@ -1488,6 +1495,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
             sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, exists, elapsed);");
             sb.AppendLine("#endif");
+            GenerateMetricsRecording(sb, repoFullName, methodName, fieldName);
             sb.AppendLine();
             sb.AppendLine("return exists;");
         }

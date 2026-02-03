@@ -1,5 +1,4 @@
 // Example: Using {{table}} placeholder with dynamic table names
-
 using Sqlx;
 using System.Collections.Generic;
 using System.Data;
@@ -7,7 +6,6 @@ using System.Threading.Tasks;
 
 namespace Sqlx.Samples;
 
-// Entity definition
 [Sqlx]
 public class LogEntry
 {
@@ -17,28 +15,22 @@ public class LogEntry
     public DateTime Timestamp { get; set; }
 }
 
-// Repository interface with dynamic table support
 public interface ILogRepository
 {
-    // Static table name (uses default "LogEntry" from context)
     [SqlTemplate("SELECT {{columns}} FROM {{table}} ORDER BY timestamp DESC {{limit --param count}}")]
     Task<List<LogEntry>> GetRecentLogsAsync(int count);
     
-    // Dynamic table name - useful for partitioned tables or multi-tenant scenarios
     [SqlTemplate("SELECT {{columns}} FROM {{table --param tableName}} WHERE timestamp >= @startDate")]
     Task<List<LogEntry>> GetLogsFromTableAsync(string tableName, DateTime startDate);
     
-    // Dynamic table with INSERT
     [SqlTemplate("INSERT INTO {{table --param tableName}} ({{columns --exclude Id}}) VALUES ({{values --exclude Id}})")]
     Task<int> InsertIntoTableAsync(string tableName, LogEntry entry);
 }
 
-// Repository implementation
 [SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(ILogRepository))]
 public partial class LogRepository(IDbConnection connection) : ILogRepository { }
 
-// Usage examples
 public class LogRepositoryUsageExamples
 {
     public static async Task ExampleUsage(ILogRepository repo)
@@ -54,11 +46,7 @@ public class LogRepositoryUsageExamples
         // Example 3: Dynamic table name - insert into current month's partition
         var currentMonth = DateTime.Now.ToString("yyyy_MM");
         var tableName = $"logs_{currentMonth}";
-        var newLog = new LogEntry 
-        { 
-            Message = "Application started", 
-            Timestamp = DateTime.Now 
-        };
+        var newLog = new LogEntry { Message = "Application started", Timestamp = DateTime.Now };
         await repo.InsertIntoTableAsync(tableName, newLog);
         // SQL: INSERT INTO [logs_2025_01] ([message], [timestamp]) VALUES (@message, @timestamp)
     }
@@ -74,10 +62,8 @@ public class LogRepositoryUsageExamples
     // Use case: Time-based partitioning
     public static async Task TimePartitioningExample(ILogRepository repo)
     {
-        // Query from different monthly partitions
         var months = new[] { "2024_11", "2024_12", "2025_01" };
         var allLogs = new List<LogEntry>();
-        
         foreach (var month in months)
         {
             var tableName = $"logs_{month}";

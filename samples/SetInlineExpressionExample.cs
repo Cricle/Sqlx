@@ -84,44 +84,24 @@ public class SetInlineExpressionExample
         Task<int> BatchUpdateAsync(long id, string title, string content, int increment);
     }
 
-    /// <summary>
-    /// Example usage of the repository.
-    /// </summary>
     public static async Task RunExampleAsync()
     {
-        // This is a conceptual example - actual implementation would require database setup
         Console.WriteLine("=== Set Inline Expression Examples ===\n");
-
         Console.WriteLine("1. Update with auto-increment version:");
         Console.WriteLine("   Template: UPDATE {{table}} SET {{set --exclude Id,Version,UpdatedAt --inline Version=Version+1,UpdatedAt=CURRENT_TIMESTAMP}} WHERE id = @id");
-        Console.WriteLine("   Generated SQL (SQLite): UPDATE [documents] SET [title] = @title, [content] = @content, [view_count] = @view_count, [version] = [version] + 1, [updated_at] = CURRENT_TIMESTAMP WHERE id = @id");
-        Console.WriteLine();
-
+        Console.WriteLine("   Generated SQL (SQLite): UPDATE [documents] SET [title] = @title, [content] = @content, [view_count] = @view_count, [version] = [version] + 1, [updated_at] = CURRENT_TIMESTAMP WHERE id = @id\n");
         Console.WriteLine("2. Increment view count:");
         Console.WriteLine("   Template: UPDATE {{table}} SET {{set --exclude Id,Title,Content,Version,UpdatedAt --inline ViewCount=ViewCount+1}} WHERE id = @id");
-        Console.WriteLine("   Generated SQL (SQLite): UPDATE [documents] SET [view_count] = [view_count] + 1 WHERE id = @id");
-        Console.WriteLine();
-
+        Console.WriteLine("   Generated SQL (SQLite): UPDATE [documents] SET [view_count] = [view_count] + 1 WHERE id = @id\n");
         Console.WriteLine("3. Increment by parameter:");
         Console.WriteLine("   Template: UPDATE {{table}} SET {{set --exclude Id,Title,Content,Version,UpdatedAt --inline ViewCount=ViewCount+@increment}} WHERE id = @id");
-        Console.WriteLine("   Generated SQL (SQLite): UPDATE [documents] SET [view_count] = [view_count] + @increment WHERE id = @id");
-        Console.WriteLine();
-
+        Console.WriteLine("   Generated SQL (SQLite): UPDATE [documents] SET [view_count] = [view_count] + @increment WHERE id = @id\n");
         Console.WriteLine("4. Complex expression (double view count):");
         Console.WriteLine("   Template: UPDATE {{table}} SET {{set --exclude Id,ViewCount --inline ViewCount=ViewCount*2}} WHERE id = @id");
-        Console.WriteLine("   Generated SQL (SQLite): UPDATE [documents] SET [title] = @title, [content] = @content, [version] = @version, [updated_at] = @updated_at, [view_count] = [view_count] * 2 WHERE id = @id");
-        Console.WriteLine();
-
+        Console.WriteLine("   Generated SQL (SQLite): UPDATE [documents] SET [title] = @title, [content] = @content, [version] = @version, [updated_at] = @updated_at, [view_count] = [view_count] * 2 WHERE id = @id\n");
         Console.WriteLine("5. Multiple expressions:");
         Console.WriteLine("   Template: UPDATE {{table}} SET {{set --exclude Id --inline Version=Version+1,UpdatedAt=CURRENT_TIMESTAMP,ViewCount=ViewCount+@increment}} WHERE id = @id");
-        Console.WriteLine("   Generated SQL (SQLite): UPDATE [documents] SET [title] = @title, [content] = @content, [version] = [version] + 1, [updated_at] = CURRENT_TIMESTAMP, [view_count] = [view_count] + @increment WHERE id = @id");
-        Console.WriteLine();
-
-        Console.WriteLine("Key Features:");
-        Console.WriteLine("- Use C# property names (PascalCase) in expressions");
-        Console.WriteLine("- Property names are automatically converted to column names");
-        Console.WriteLine("- Column names are wrapped with dialect-specific quotes");
-        Console.WriteLine("- Parameter placeholders (@param) are preserved");
-        Console.WriteLine("- Supports complex SQL expressions and functions");
+        Console.WriteLine("   Generated SQL (SQLite): UPDATE [documents] SET [title] = @title, [content] = @content, [version] = [version] + 1, [updated_at] = CURRENT_TIMESTAMP, [view_count] = [view_count] + @increment WHERE id = @id\n");
+        Console.WriteLine("Key Features:\n- Use C# property names (PascalCase) in expressions\n- Property names are automatically converted to column names\n- Column names are wrapped with dialect-specific quotes\n- Parameter placeholders (@param) are preserved\n- Supports complex SQL expressions and functions");
     }
 }

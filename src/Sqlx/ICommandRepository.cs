@@ -75,6 +75,86 @@ namespace Sqlx
         [SqlTemplate("UPDATE {{table}} SET {{set --exclude Id}} WHERE id = {{arg --param id}}")]
         int BatchUpdate(IEnumerable<TEntity> entities);
 
+        // ==================== Dynamic Update with Expression ====================
+
+        /// <summary>Dynamically updates specific fields using expression-based SET clause (async).</summary>
+        /// <param name="id">Primary key of the entity to update.</param>
+        /// <param name="updateExpression">Expression defining which fields to update and their values.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Number of affected rows.</returns>
+        /// <remarks>
+        /// <para>
+        /// This method allows type-safe partial updates using expression trees.
+        /// </para>
+        /// <para>
+        /// Example usage:
+        /// </para>
+        /// <code>
+        /// // Update single field
+        /// await repo.DynamicUpdateAsync(id, t => new TEntity { Priority = 5 });
+        /// 
+        /// // Update multiple fields
+        /// await repo.DynamicUpdateAsync(id, t => new TEntity 
+        /// { 
+        ///     Title = "New Title",
+        ///     Priority = 5,
+        ///     UpdatedAt = DateTime.UtcNow
+        /// });
+        /// 
+        /// // Update with expressions
+        /// await repo.DynamicUpdateAsync(id, t => new TEntity 
+        /// { 
+        ///     Version = t.Version + 1,
+        ///     ActualMinutes = t.ActualMinutes + 30
+        /// });
+        /// </code>
+        /// </remarks>
+        [SqlTemplate("UPDATE {{table}} SET {{set --param updateExpression}} WHERE id = {{arg --param id}}")]
+        Task<int> DynamicUpdateAsync(TKey id, [ExpressionToSql] Expression<Func<TEntity, TEntity>> updateExpression, CancellationToken cancellationToken = default);
+
+        /// <summary>Dynamically updates specific fields using expression-based SET clause (sync).</summary>
+        /// <param name="id">Primary key of the entity to update.</param>
+        /// <param name="updateExpression">Expression defining which fields to update and their values.</param>
+        /// <returns>Number of affected rows.</returns>
+        [SqlTemplate("UPDATE {{table}} SET {{set --param updateExpression}} WHERE id = {{arg --param id}}")]
+        int DynamicUpdate(TKey id, [ExpressionToSql] Expression<Func<TEntity, TEntity>> updateExpression);
+
+        /// <summary>Dynamically updates entities matching predicate using expression-based SET clause (async).</summary>
+        /// <param name="updateExpression">Expression defining which fields to update and their values.</param>
+        /// <param name="predicate">Predicate to filter entities to update.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Number of affected rows.</returns>
+        /// <remarks>
+        /// <para>
+        /// This method allows type-safe batch updates using expression trees.
+        /// </para>
+        /// <para>
+        /// Example usage:
+        /// </para>
+        /// <code>
+        /// // Update all pending tasks to high priority
+        /// await repo.DynamicUpdateWhereAsync(
+        ///     t => new TEntity { Priority = 5 },
+        ///     t => t.IsCompleted == false
+        /// );
+        /// 
+        /// // Increment version for all active entities
+        /// await repo.DynamicUpdateWhereAsync(
+        ///     t => new TEntity { Version = t.Version + 1 },
+        ///     t => t.IsActive
+        /// );
+        /// </code>
+        /// </remarks>
+        [SqlTemplate("UPDATE {{table}} SET {{set --param updateExpression}} WHERE {{where --param predicate}}")]
+        Task<int> DynamicUpdateWhereAsync([ExpressionToSql] Expression<Func<TEntity, TEntity>> updateExpression, [ExpressionToSql] Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
+
+        /// <summary>Dynamically updates entities matching predicate using expression-based SET clause (sync).</summary>
+        /// <param name="updateExpression">Expression defining which fields to update and their values.</param>
+        /// <param name="predicate">Predicate to filter entities to update.</param>
+        /// <returns>Number of affected rows.</returns>
+        [SqlTemplate("UPDATE {{table}} SET {{set --param updateExpression}} WHERE {{where --param predicate}}")]
+        int DynamicUpdateWhere([ExpressionToSql] Expression<Func<TEntity, TEntity>> updateExpression, [ExpressionToSql] Expression<Func<TEntity, bool>> predicate);
+
         // ==================== Delete Operations ====================
 
         /// <summary>Deletes entity by primary key (async).</summary>

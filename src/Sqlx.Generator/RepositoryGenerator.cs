@@ -845,7 +845,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         foreach (var param in method.Parameters)
         {
             var typeName = param.Type.ToDisplayString();
-            // Check for Expression<Func<T, bool>> parameters - these are truly dynamic
+            // Check for Expression<Func<T, bool>> or Expression<Func<T, T>> parameters - these are truly dynamic
             if (typeName.Contains("Expression<"))
                 return true;
         }
@@ -860,15 +860,37 @@ public class RepositoryGenerator : IIncrementalGenerator
         if (expressionParams.Count == 1)
         {
             var param = expressionParams[0];
+            var paramType = param.Type.ToDisplayString();
+            
             sb.AppendLine($"// Convert expression to SQL");
-            sb.AppendLine($"var {param.Name}Sql = global::Sqlx.ExpressionExtensions.ToWhereClause({param.Name}, _placeholderContext.Dialect);");
+            
+            // Check if this is a SET expression (Expression<Func<T, T>>) or WHERE expression (Expression<Func<T, bool>>)
+            if (IsSetExpression(paramType))
+            {
+                sb.AppendLine($"var {param.Name}Sql = global::Sqlx.SetExpressionExtensions.ToSetClause({param.Name}, _placeholderContext.Dialect);");
+                sb.AppendLine($"var {param.Name}Params = global::Sqlx.SetExpressionExtensions.GetSetParameters({param.Name});");
+            }
+            else
+            {
+                sb.AppendLine($"var {param.Name}Sql = global::Sqlx.ExpressionExtensions.ToWhereClause({param.Name}, _placeholderContext.Dialect);");
+            }
         }
         else if (expressionParams.Count == 2)
         {
             sb.AppendLine("// Convert expressions to SQL");
             foreach (var param in expressionParams)
             {
-                sb.AppendLine($"var {param.Name}Sql = global::Sqlx.ExpressionExtensions.ToWhereClause({param.Name}, _placeholderContext.Dialect);");
+                var paramType = param.Type.ToDisplayString();
+                
+                if (IsSetExpression(paramType))
+                {
+                    sb.AppendLine($"var {param.Name}Sql = global::Sqlx.SetExpressionExtensions.ToSetClause({param.Name}, _placeholderContext.Dialect);");
+                    sb.AppendLine($"var {param.Name}Params = global::Sqlx.SetExpressionExtensions.GetSetParameters({param.Name});");
+                }
+                else
+                {
+                    sb.AppendLine($"var {param.Name}Sql = global::Sqlx.ExpressionExtensions.ToWhereClause({param.Name}, _placeholderContext.Dialect);");
+                }
             }
         }
         else
@@ -881,12 +903,60 @@ public class RepositoryGenerator : IIncrementalGenerator
 
             foreach (var param in expressionParams)
             {
-                sb.AppendLine($"[\"{param.Name}\"] = global::Sqlx.ExpressionExtensions.ToWhereClause({param.Name}, _placeholderContext.Dialect),");
+                var paramType = param.Type.ToDisplayString();
+                
+                if (IsSetExpression(paramType))
+                {
+                    sb.AppendLine($"[\"{param.Name}\"] = global::Sqlx.SetExpressionExtensions.ToSetClause({param.Name}, _placeholderContext.Dialect),");
+                }
+                else
+                {
+                    sb.AppendLine($"[\"{param.Name}\"] = global::Sqlx.ExpressionExtensions.ToWhereClause({param.Name}, _placeholderContext.Dialect),");
+                }
             }
 
             sb.PopIndent();
             sb.AppendLine("};");
+            
+            // Also get SET parameters for all SET expressions
+            sb.AppendLine();
+            sb.AppendLine("// Get SET expression parameters");
+            foreach (var param in expressionParams)
+            {
+                var paramType = param.Type.ToDisplayString();
+                if (IsSetExpression(paramType))
+                {
+                    sb.AppendLine($"var {param.Name}Params = global::Sqlx.SetExpressionExtensions.GetSetParameters({param.Name});");
+                }
+            }
         }
+    }
+    private static bool IsSetExpression(string expressionType)
+    {
+        // Check if the expression returns the same type as the input (Expression<Func<T, T>>)
+        // This indicates a SET expression for UPDATE statements
+        // Pattern: Expression<Func<SomeType, SomeType>>
+        // Example: System.Linq.Expressions.Expression<System.Func<TodoWebApi.Models.Todo, TodoWebApi.Models.Todo>>
+        
+        if (!expressionType.Contains("Expression<") || !expressionType.Contains("Func<")) return false;
+        
+        // Extract the generic type arguments from Func<T1, T2>
+        // Match pattern: Func<type1, type2>
+        var funcMatch = System.Text.RegularExpressions.Regex.Match(
+            expressionType, 
+            @"Func<([^,<>]+(?:<[^>]+>)?),\s*([^,<>]+(?:<[^>]+>)?)>");
+        
+        if (!funcMatch.Success) return false;
+        
+        var inputType = funcMatch.Groups[1].Value.Trim();
+        var outputType = funcMatch.Groups[2].Value.Trim();
+        
+        // If input and output types are the same, it's a SET expression
+        // Compare the simple type names (without namespace)
+        var inputSimple = inputType.Split('.').Last().Split('<')[0];
+        var outputSimple = outputType.Split('.').Last().Split('<')[0];
+        
+        return inputSimple == outputSimple && inputType == outputType;
     }
 
     private static void GenerateDynamicRender(IndentedStringBuilder sb, string fieldName, IMethodSymbol method)
@@ -941,6 +1011,14 @@ public class RepositoryGenerator : IIncrementalGenerator
         {
             if (param.Name == "cancellationToken") continue;
             
+            var paramType = param.Type.ToDisplayString();
+            
+            // Skip collection types (IEnumerable, List, etc.) as they cannot be converted to string for tags
+            if (IsCollectionType(param.Type, out _))
+            {
+                continue;
+            }
+            
             // For Expression parameters, use the converted SQL variable
             if (expressionParamNames.Contains(param.Name))
             {
@@ -957,7 +1035,6 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("}");
         sb.AppendLine("#endif");
     }
-
     private static void GenerateParameterBinding(IndentedStringBuilder sb, IMethodSymbol method, string entityName, INamedTypeSymbol? expressionToSqlAttr, Dictionary<string, string> paramNameFields)
     {
         sb.AppendLine("// Bind parameters");
@@ -1021,6 +1098,29 @@ public class RepositoryGenerator : IIncrementalGenerator
                 {
                     sb.AppendLine($"p.Value = {param.Name};");
                 }
+                sb.AppendLine("cmd.Parameters.Add(p);");
+                sb.PopIndent();
+                sb.AppendLine("}");
+            }
+        }
+        
+        // Bind SET expression parameters
+        var setExpressionParams = method.Parameters
+            .Where(p => p.Type.ToDisplayString().Contains("Expression<") && IsSetExpression(p.Type.ToDisplayString()))
+            .ToList();
+        
+        if (setExpressionParams.Any())
+        {
+            sb.AppendLine();
+            sb.AppendLine("// Bind SET expression parameters");
+            foreach (var param in setExpressionParams)
+            {
+                sb.AppendLine($"foreach (var kvp in {param.Name}Params)");
+                sb.AppendLine("{");
+                sb.PushIndent();
+                sb.AppendLine("var p = cmd.CreateParameter();");
+                sb.AppendLine("p.ParameterName = _paramPrefix + kvp.Key;");
+                sb.AppendLine("p.Value = kvp.Value ?? (object)DBNull.Value;");
                 sb.AppendLine("cmd.Parameters.Add(p);");
                 sb.PopIndent();
                 sb.AppendLine("}");

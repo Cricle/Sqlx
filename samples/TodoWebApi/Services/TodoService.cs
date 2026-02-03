@@ -12,21 +12,46 @@ namespace TodoWebApi.Services;
 
 /// <summary>
 /// Todo repository implementation using ICrudRepository generic interface.
-/// Demonstrates two query approaches: SqlTemplate and LINQ expressions.
+/// Demonstrates the power of ICrudRepository - no custom methods needed!
 /// </summary>
 /// <remarks>
-/// Inherits 42 standard methods from ICrudRepository (24 query + 18 command):
-/// Query: GetByIdAsync/GetById, GetByIdsAsync/GetByIds, GetAllAsync/GetAll, 
-///        GetWhereAsync/GetWhere, GetFirstWhereAsync/GetFirstWhere,
-///        GetPagedAsync/GetPaged, GetPagedWhereAsync/GetPagedWhere,
-///        ExistsByIdAsync/ExistsById, ExistsAsync/Exists,
-///        CountAsync/Count, CountWhereAsync/CountWhere
-/// Command: InsertAndGetIdAsync/InsertAndGetId, InsertAsync/Insert,
-///          BatchInsertAsync/BatchInsert, UpdateAsync/Update,
-///          UpdateWhereAsync/UpdateWhere, BatchUpdateAsync/BatchUpdate,
-///          DeleteAsync/Delete, DeleteByIdsAsync/DeleteByIds,
-///          DeleteWhereAsync/DeleteWhere, DeleteAllAsync/DeleteAll
-/// Plus custom business-specific methods demonstrating different query approaches.
+/// <para>
+/// Inherits 46 standard methods from ICrudRepository (24 query + 22 command):
+/// </para>
+/// <para>
+/// Query Methods (24):
+/// </para>
+/// <list type="bullet">
+/// <item><description>GetByIdAsync/GetById - Get single entity by ID</description></item>
+/// <item><description>GetByIdsAsync/GetByIds - Get multiple entities by IDs</description></item>
+/// <item><description>GetAllAsync/GetAll - Get all entities with limit</description></item>
+/// <item><description>GetWhereAsync/GetWhere - Get entities matching expression</description></item>
+/// <item><description>GetFirstWhereAsync/GetFirstWhere - Get first entity matching expression</description></item>
+/// <item><description>GetPagedAsync/GetPaged - Get paginated entities</description></item>
+/// <item><description>GetPagedWhereAsync/GetPagedWhere - Get paginated entities matching expression</description></item>
+/// <item><description>ExistsByIdAsync/ExistsById - Check if entity exists by ID</description></item>
+/// <item><description>ExistsAsync/Exists - Check if any entity matches expression</description></item>
+/// <item><description>CountAsync/Count - Count all entities</description></item>
+/// <item><description>CountWhereAsync/CountWhere - Count entities matching expression</description></item>
+/// <item><description>AsQueryable - Get IQueryable for complex LINQ queries</description></item>
+/// </list>
+/// <para>
+/// Command Methods (22):
+/// </para>
+/// <list type="bullet">
+/// <item><description>InsertAndGetIdAsync/InsertAndGetId - Insert and return generated ID</description></item>
+/// <item><description>InsertAsync/Insert - Insert entity</description></item>
+/// <item><description>BatchInsertAsync/BatchInsert - Batch insert entities</description></item>
+/// <item><description>UpdateAsync/Update - Update entity by ID</description></item>
+/// <item><description>UpdateWhereAsync/UpdateWhere - Update entities matching expression</description></item>
+/// <item><description>BatchUpdateAsync/BatchUpdate - Batch update entities</description></item>
+/// <item><description>DynamicUpdateAsync/DynamicUpdate - Update specific fields by expression</description></item>
+/// <item><description>DynamicUpdateWhereAsync/DynamicUpdateWhere - Batch update specific fields by expression</description></item>
+/// <item><description>DeleteAsync/Delete - Delete entity by ID</description></item>
+/// <item><description>DeleteByIdsAsync/DeleteByIds - Delete multiple entities by IDs</description></item>
+/// <item><description>DeleteWhereAsync/DeleteWhere - Delete entities matching expression</description></item>
+/// <item><description>DeleteAllAsync/DeleteAll - Delete all entities</description></item>
+/// </list>
 /// </remarks>
 [TableName("todos")]
 [SqlDefine(SqlDefineTypes.SQLite)]
@@ -36,7 +61,7 @@ public partial class TodoRepository(SqliteConnection connection) : ITodoReposito
     // Generator auto-generates:
     // - private readonly SqliteConnection _connection = connection;
     // - public DbTransaction? Transaction { get; set; }
-    // - All interface method implementations
+    // - All 46 interface method implementations
 
 #if !SQLX_DISABLE_INTERCEPTOR
     // Optional: execution monitoring
@@ -59,101 +84,121 @@ public partial class TodoRepository(SqliteConnection connection) : ITodoReposito
 }
 
 /// <summary>
-/// Todo repository interface - combines ICrudRepository with custom business methods.
-/// Demonstrates two query approaches: SqlTemplate and LINQ expressions.
+/// Todo repository interface - demonstrates ICrudRepository usage.
+/// All operations use inherited methods from ICrudRepository - no custom methods needed!
 /// </summary>
+/// <remarks>
+/// <para>
+/// Inherited from ICrudRepository (46 methods total):
+/// </para>
+/// <list type="bullet">
+/// <item><description>Query (24): GetByIdAsync/GetById, GetByIdsAsync/GetByIds, GetAllAsync/GetAll, GetWhereAsync/GetWhere, GetFirstWhereAsync/GetFirstWhere, GetPagedAsync/GetPaged, GetPagedWhereAsync/GetPagedWhere, ExistsByIdAsync/ExistsById, ExistsAsync/Exists, CountAsync/Count, CountWhereAsync/CountWhere, AsQueryable</description></item>
+/// <item><description>Command (22): InsertAndGetIdAsync/InsertAndGetId, InsertAsync/Insert, BatchInsertAsync/BatchInsert, UpdateAsync/Update, UpdateWhereAsync/UpdateWhere, BatchUpdateAsync/BatchUpdate, DynamicUpdateAsync/DynamicUpdate, DynamicUpdateWhereAsync/DynamicUpdateWhere, DeleteAsync/Delete, DeleteByIdsAsync/DeleteByIds, DeleteWhereAsync/DeleteWhere, DeleteAllAsync/DeleteAll</description></item>
+/// </list>
+/// <para>
+/// Examples of using inherited methods:
+/// </para>
+/// <code>
+/// // ========== Query Examples ==========
+/// 
+/// // Get by ID
+/// var todo = await repo.GetByIdAsync(1);
+/// 
+/// // Get multiple by IDs
+/// var todos = await repo.GetByIdsAsync(new List&lt;long&gt; { 1, 2, 3 });
+/// 
+/// // Query by expression - completed todos
+/// var completed = await repo.GetWhereAsync(t => t.IsCompleted);
+/// 
+/// // Query by expression - high priority pending todos
+/// var highPriority = await repo.GetWhereAsync(t => t.Priority >= 3 &amp;&amp; !t.IsCompleted);
+/// 
+/// // Query by expression - due soon
+/// var dueSoon = await repo.GetWhereAsync(t => 
+///     t.DueDate != null &amp;&amp; 
+///     t.DueDate <= DateTime.UtcNow.AddDays(7) &amp;&amp; 
+///     !t.IsCompleted);
+/// 
+/// // Count by expression
+/// var pendingCount = await repo.CountWhereAsync(t => !t.IsCompleted);
+/// 
+/// // Check existence
+/// var exists = await repo.ExistsAsync(t => t.Title == "Important Task");
+/// 
+/// // Pagination
+/// var page1 = await repo.GetPagedAsync(pageSize: 20, offset: 0);
+/// var page2 = await repo.GetPagedWhereAsync(
+///     t => !t.IsCompleted, 
+///     pageSize: 20, 
+///     offset: 20);
+/// 
+/// // Complex LINQ queries with AsQueryable
+/// var query = repo.AsQueryable()
+///     .Where(t => !t.IsCompleted)
+///     .Where(t => t.Priority >= 3)
+///     .OrderByDescending(t => t.Priority)
+///     .ThenBy(t => t.DueDate);
+/// var results = await query.ToListAsync();
+/// 
+/// // ========== Update Examples ==========
+/// 
+/// // Update entire entity
+/// todo.Title = "Updated Title";
+/// await repo.UpdateAsync(todo);
+/// 
+/// // Dynamic update - single field by expression
+/// await repo.DynamicUpdateAsync(id, t => new Todo 
+/// { 
+///     IsCompleted = true, 
+///     CompletedAt = DateTime.UtcNow,
+///     UpdatedAt = DateTime.UtcNow
+/// });
+/// 
+/// // Dynamic update - multiple fields by expression
+/// await repo.DynamicUpdateAsync(id, t => new Todo 
+/// { 
+///     Title = "New Title",
+///     Priority = 5,
+///     UpdatedAt = DateTime.UtcNow
+/// });
+/// 
+/// // Dynamic update - with expressions (increment, calculate)
+/// await repo.DynamicUpdateAsync(id, t => new Todo 
+/// { 
+///     ActualMinutes = t.ActualMinutes + 30,
+///     UpdatedAt = DateTime.UtcNow
+/// });
+/// 
+/// // Batch update - update multiple todos by expression
+/// await repo.DynamicUpdateWhereAsync(
+///     t => new Todo { Priority = 5, UpdatedAt = DateTime.UtcNow },
+///     t => t.Id == 1 || t.Id == 2 || t.Id == 3);
+/// 
+/// // Batch update - mark all overdue as high priority
+/// await repo.DynamicUpdateWhereAsync(
+///     t => new Todo { Priority = 5 },
+///     t => t.DueDate != null &amp;&amp; t.DueDate &lt; DateTime.UtcNow &amp;&amp; !t.IsCompleted);
+/// 
+/// // ========== Delete Examples ==========
+/// 
+/// // Delete by ID
+/// await repo.DeleteAsync(1);
+/// 
+/// // Delete multiple by IDs
+/// await repo.DeleteByIdsAsync(new List&lt;long&gt; { 1, 2, 3 });
+/// 
+/// // Delete by expression
+/// await repo.DeleteWhereAsync(t => t.IsCompleted &amp;&amp; t.CompletedAt &lt; DateTime.UtcNow.AddMonths(-6));
+/// </code>
+/// </remarks>
 public interface ITodoRepository : ICrudRepository<Todo, long>
 {
-    // Inherited from ICrudRepository<Todo, long> (42 methods):
-    // Query (24): GetByIdAsync/GetById, GetByIdsAsync/GetByIds, GetAllAsync/GetAll,
-    //             GetWhereAsync/GetWhere, GetFirstWhereAsync/GetFirstWhere,
-    //             GetPagedAsync/GetPaged, GetPagedWhereAsync/GetPagedWhere,
-    //             ExistsByIdAsync/ExistsById, ExistsAsync/Exists,
-    //             CountAsync/Count, CountWhereAsync/CountWhere
-    // Command (18): InsertAndGetIdAsync/InsertAndGetId, InsertAsync/Insert,
-    //               BatchInsertAsync/BatchInsert, UpdateAsync/Update,
-    //               UpdateWhereAsync/UpdateWhere, BatchUpdateAsync/BatchUpdate,
-    //               DeleteAsync/Delete, DeleteByIdsAsync/DeleteByIds,
-    //               DeleteWhereAsync/DeleteWhere, DeleteAllAsync/DeleteAll
-
-    // ========== Approach 1: SqlTemplate - Direct SQL with placeholders ==========
-
-    /// <summary>Searches todos by title or description using SqlTemplate.</summary>
-    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE title LIKE @query OR description LIKE @query ORDER BY updated_at DESC")]
-    Task<List<Todo>> SearchAsync(string query);
-
-    /// <summary>Searches todos with limit using SqlTemplate.</summary>
-    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE title LIKE @query OR description LIKE @query ORDER BY updated_at DESC LIMIT @limit")]
-    Task<List<Todo>> SearchWithLimitAsync(string query, int limit);
-
-    /// <summary>Gets todos by completion status using SqlTemplate.</summary>
-    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE is_completed = @isCompleted ORDER BY completed_at DESC")]
-    Task<List<Todo>> GetByCompletionStatusAsync(bool isCompleted = true);
-
-    /// <summary>Gets high priority todos using SqlTemplate.</summary>
-    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE priority >= @minPriority AND is_completed = @isCompleted ORDER BY priority DESC")]
-    Task<List<Todo>> GetByPriorityAsync(int minPriority = 3, bool isCompleted = false);
-
-    /// <summary>Gets todos due soon using SqlTemplate.</summary>
-    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE due_date IS NOT NULL AND due_date <= @dueDate AND is_completed = @isCompleted ORDER BY due_date")]
-    Task<List<Todo>> GetDueSoonAsync(DateTime dueDate, bool isCompleted = false);
-
-    /// <summary>Marks todo as completed using SqlTemplate.</summary>
-    [SqlTemplate("UPDATE {{table}} SET is_completed = 1, completed_at = @completedAt, updated_at = @updatedAt WHERE id = @id")]
-    Task<int> MarkAsCompletedAsync(long id, DateTime completedAt, DateTime updatedAt);
-
-    /// <summary>Batch updates priority for multiple todos using SqlTemplate.</summary>
-    [SqlTemplate("UPDATE {{table}} SET priority = @priority, updated_at = @updatedAt WHERE id IN ({{values --param ids}})")]
-    Task<int> BatchUpdatePriorityAsync(List<long> ids, int priority, DateTime updatedAt);
-
-    /// <summary>Batch completes multiple todos using SqlTemplate.</summary>
-    [SqlTemplate("UPDATE {{table}} SET is_completed = 1, completed_at = @completedAt, updated_at = @updatedAt WHERE id IN ({{values --param ids}})")]
-    Task<int> BatchCompleteAsync(List<long> ids, DateTime completedAt, DateTime updatedAt);
-
-    /// <summary>Updates actual minutes for a todo using SqlTemplate.</summary>
-    [SqlTemplate("UPDATE {{table}} SET actual_minutes = @actualMinutes, updated_at = @updatedAt WHERE id = @id")]
-    Task<int> UpdateActualMinutesAsync(long id, int actualMinutes, DateTime updatedAt);
-
-    /// <summary>Dynamically updates specific fields using expression-based SET clause.</summary>
-    /// <remarks>
-    /// Example usage:
-    /// <code>
-    /// // 类型安全的更新
-    /// Expression&lt;Func&lt;Todo, Todo&gt;&gt; expr = t => new Todo { Priority = 5, Version = t.Version + 1 };
-    /// var setClause = expr.ToSetClause();
-    /// await repo.DynamicUpdateAsync(todoId, setClause);
-    /// 
-    /// // 多字段更新
-    /// Expression&lt;Func&lt;Todo, Todo&gt;&gt; expr = t => new Todo 
-    /// { 
-    ///     Title = "新标题",
-    ///     Priority = 5,
-    ///     ActualMinutes = t.ActualMinutes + 30
-    /// };
-    /// var setClause = expr.ToSetClause();
-    /// await repo.DynamicUpdateAsync(todoId, setClause);
-    /// </code>
-    /// </remarks>
-    [SqlTemplate("UPDATE {{table}} SET {{set --param updates}} WHERE id = @id")]
-    Task<int> DynamicUpdateAsync(long id, string updates);
-
-    // ========== Approach 2: LINQ Expression - Type-safe predicates ==========
-
-    /// <summary>Gets todos matching a LINQ expression predicate.</summary>
-    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE {{where --param predicate}}")]
-    Task<List<Todo>> GetWhereAsync(System.Linq.Expressions.Expression<Func<Todo, bool>> predicate);
-
-    /// <summary>Counts todos matching a LINQ expression predicate.</summary>
-    [SqlTemplate("SELECT COUNT(*) FROM {{table}} WHERE {{where --param predicate}}")]
-    Task<long> CountWhereAsync(System.Linq.Expressions.Expression<Func<Todo, bool>> predicate);
-
-    // ========== Debug/Testing Methods - Return SqlTemplate ==========
-
-    /// <summary>Gets the SQL for searching todos (debug mode).</summary>
-    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE title LIKE @query OR description LIKE @query ORDER BY updated_at DESC")]
-    SqlTemplate SearchSql(string query);
-
-    /// <summary>Gets the SQL for fetching todos by completion status (debug mode).</summary>
-    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE is_completed = @isCompleted ORDER BY completed_at DESC")]
-    SqlTemplate GetByCompletionStatusSql(bool isCompleted = true);
+    // All standard CRUD operations are inherited from ICrudRepository
+    // No custom methods needed for most scenarios!
+    
+    // Only add custom methods for complex business logic that cannot be expressed with expressions:
+    // - Full-text search across multiple fields
+    // - Complex joins with other tables
+    // - Stored procedures
+    // - Database-specific functions (e.g., PostGIS, JSON operations)
 }

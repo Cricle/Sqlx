@@ -99,35 +99,61 @@ app.MapDelete("/api/todos/{id:long}", async (long id, ITodoRepository repo) =>
     return result == 0 ? Results.NotFound() : Results.NoContent();
 });
 
-// Mark as completed
+// Mark as completed - using DynamicUpdateAsync
 app.MapPut("/api/todos/{id:long}/complete", async (long id, ITodoRepository repo) =>
 {
-    var result = await repo.MarkAsCompletedAsync(id, DateTime.UtcNow, DateTime.UtcNow);
+    var result = await repo.DynamicUpdateAsync(id, t => new Todo 
+    { 
+        IsCompleted = true, 
+        CompletedAt = DateTime.UtcNow,
+        UpdatedAt = DateTime.UtcNow
+    });
     return result == 0 ? Results.NotFound() : Results.NoContent();
 });
 
-// Batch update priority
+// Batch update priority - using DynamicUpdateWhereAsync
 app.MapPut("/api/todos/batch/priority", async (BatchPriorityUpdateRequest request, ITodoRepository repo) =>
 {
-    var result = await repo.BatchUpdatePriorityAsync(request.Ids, request.NewPriority, DateTime.UtcNow);
+    if (request.Ids == null || request.Ids.Count == 0)
+        return Results.Json(new BatchUpdateResult(0), TodoJsonContext.Default.BatchUpdateResult);
+    
+    // Build expression: t.Id == ids[0] || t.Id == ids[1] || ...
+    var result = await repo.DynamicUpdateWhereAsync(
+        t => new Todo { Priority = request.NewPriority, UpdatedAt = DateTime.UtcNow },
+        t => request.Ids.Contains(t.Id));
+    
     return Results.Json(new BatchUpdateResult(result), TodoJsonContext.Default.BatchUpdateResult);
 });
 
-// Search todos
+// Search todos - using GetWhereAsync with LIKE expression
 app.MapGet("/api/todos/search", async (string q, ITodoRepository repo) =>
-    Results.Json(await repo.SearchAsync($"%{q}%"), TodoJsonContext.Default.ListTodo));
+{
+    // Note: LIKE is not directly supported in expression trees
+    // For full-text search, consider using AsQueryable or a custom method
+    var todos = await repo.GetWhereAsync(t => 
+        t.Title.Contains(q) || 
+        (t.Description != null && t.Description.Contains(q)));
+    return Results.Json(todos, TodoJsonContext.Default.ListTodo);
+});
 
-// Get completed todos
+// Get completed todos - using GetWhereAsync
 app.MapGet("/api/todos/completed", async (ITodoRepository repo) =>
-    Results.Json(await repo.GetByCompletionStatusAsync(true), TodoJsonContext.Default.ListTodo));
+    Results.Json(await repo.GetWhereAsync(t => t.IsCompleted), TodoJsonContext.Default.ListTodo));
 
-// Get high priority todos
+// Get high priority todos - using GetWhereAsync
 app.MapGet("/api/todos/high-priority", async (ITodoRepository repo) =>
-    Results.Json(await repo.GetByPriorityAsync(3, false), TodoJsonContext.Default.ListTodo));
+    Results.Json(await repo.GetWhereAsync(t => t.Priority >= 3 && !t.IsCompleted), TodoJsonContext.Default.ListTodo));
 
-// Get todos due soon (next 7 days)
+// Get todos due soon (next 7 days) - using GetWhereAsync
 app.MapGet("/api/todos/due-soon", async (ITodoRepository repo) =>
-    Results.Json(await repo.GetDueSoonAsync(DateTime.UtcNow.AddDays(7), false), TodoJsonContext.Default.ListTodo));
+{
+    var dueDate = DateTime.UtcNow.AddDays(7);
+    var todos = await repo.GetWhereAsync(t => 
+        t.DueDate != null && 
+        t.DueDate <= dueDate && 
+        !t.IsCompleted);
+    return Results.Json(todos, TodoJsonContext.Default.ListTodo);
+});
 
 // Get total count
 app.MapGet("/api/todos/count", async (ITodoRepository repo) =>
@@ -168,18 +194,28 @@ app.MapDelete("/api/todos/batch", async (BatchDeleteRequest request, ITodoReposi
     return Results.Json(new BatchUpdateResult(result), TodoJsonContext.Default.BatchUpdateResult);
 });
 
-// Batch complete todos
+// Batch complete todos - using DynamicUpdateWhereAsync
 app.MapPut("/api/todos/batch/complete", async (BatchCompleteRequest request, ITodoRepository repo) =>
 {
+    if (request.Ids == null || request.Ids.Count == 0)
+        return Results.Json(new BatchUpdateResult(0), TodoJsonContext.Default.BatchUpdateResult);
+    
     var now = DateTime.UtcNow;
-    var result = await repo.BatchCompleteAsync(request.Ids, now, now);
+    var result = await repo.DynamicUpdateWhereAsync(
+        t => new Todo { IsCompleted = true, CompletedAt = now, UpdatedAt = now },
+        t => request.Ids.Contains(t.Id));
+    
     return Results.Json(new BatchUpdateResult(result), TodoJsonContext.Default.BatchUpdateResult);
 });
 
-// Update actual minutes
+// Update actual minutes - using DynamicUpdateAsync
 app.MapPut("/api/todos/{id:long}/actual-minutes", async (long id, UpdateActualMinutesRequest request, ITodoRepository repo) =>
 {
-    var result = await repo.UpdateActualMinutesAsync(id, request.ActualMinutes, DateTime.UtcNow);
+    var result = await repo.DynamicUpdateAsync(id, t => new Todo 
+    { 
+        ActualMinutes = request.ActualMinutes,
+        UpdatedAt = DateTime.UtcNow
+    });
     return result == 0 ? Results.NotFound() : Results.NoContent();
 });
 
@@ -263,8 +299,11 @@ app.MapGet("/api/todos/queryable/titles", async (ITodoRepository repo) =>
 // IQueryable with string functions
 app.MapGet("/api/todos/queryable/search-advanced", async (string keyword, ITodoRepository repo) =>
 {
-    // Use SQL template with LIMIT to avoid post-query Take
-    var result = await repo.SearchWithLimitAsync($"%{keyword}%", 20);
+    // Use GetWhereAsync with limit parameter
+    var result = await repo.GetWhereAsync(t => 
+        t.Title.Contains(keyword) || 
+        (t.Description != null && t.Description.Contains(keyword)),
+        limit: 20);
     return Results.Json(result, TodoJsonContext.Default.ListTodo);
 });
 

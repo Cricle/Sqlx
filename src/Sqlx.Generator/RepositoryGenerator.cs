@@ -833,7 +833,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("}");
 
         // Catch block
-        GenerateCatchBlock(sb, methodName, fieldName);
+        GenerateCatchBlock(sb, repoFullName, methodName, fieldName);
 
         // Finally block
         GenerateFinallyBlock(sb, methodName, fieldName);
@@ -1212,7 +1212,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
             sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, insertedId, elapsed);");
             sb.AppendLine("#endif");
-            GenerateMetricsRecording(sb, repoFullName, methodName);
+            GenerateMetricsRecording(sb, repoFullName, methodName, fieldName);
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
             sb.AppendLine("activity?.SetTag(\"db.inserted_id\", insertedId);");
@@ -1424,7 +1424,7 @@ public class RepositoryGenerator : IIncrementalGenerator
                 sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
                 sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, (affectedRows, insertedId), elapsed);");
                 sb.AppendLine("#endif");
-                GenerateMetricsRecording(sb, repoFullName, methodName);
+                GenerateMetricsRecording(sb, repoFullName, methodName, fieldName);
                 sb.AppendLine();
                 sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
                 sb.AppendLine("if (activity is not null)");
@@ -1456,7 +1456,7 @@ public class RepositoryGenerator : IIncrementalGenerator
                 sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
                 sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, insertedId, elapsed);");
                 sb.AppendLine("#endif");
-                GenerateMetricsRecording(sb, repoFullName, methodName);
+                GenerateMetricsRecording(sb, repoFullName, methodName, fieldName);
                 sb.AppendLine();
                 sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
                 sb.AppendLine("activity?.SetTag(\"db.inserted_id\", insertedId);");
@@ -1505,7 +1505,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("#endif");
     }
 
-    private static void GenerateCatchBlock(IndentedStringBuilder sb, string methodName, string fieldName)
+    private static void GenerateCatchBlock(IndentedStringBuilder sb, string repoFullName, string methodName, string fieldName)
     {
         sb.AppendLine("catch (Exception ex)");
         sb.AppendLine("{");
@@ -1518,7 +1518,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine();
         AppendConditionalBlock(sb, "!SQLX_DISABLE_METRICS", () =>
         {
-            sb.AppendLine($"global::Sqlx.Diagnostics.SqlTemplateMetrics.RecordError($\"{{GetType().FullName}}.{methodName}\", Stopwatch.GetTimestamp() - startTime, ex);");
+            sb.AppendLine($"global::Sqlx.Diagnostics.SqlTemplateMetrics.RecordError(\"{repoFullName}\", \"{methodName}\", \"{fieldName}\", Stopwatch.GetTimestamp() - startTime, ex);");
         });
         sb.AppendLine();
         AppendConditionalBlock(sb, "!SQLX_DISABLE_ACTIVITY", () =>
@@ -1589,11 +1589,11 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine("partial void OnExecuteFail(string operationName, DbCommand command, global::Sqlx.SqlTemplate template, Exception exception, long elapsedTicks);");
         });
 
-    private static void GenerateMetricsRecording(IndentedStringBuilder sb, string repoFullName, string methodName)
+    private static void GenerateMetricsRecording(IndentedStringBuilder sb, string repoFullName, string methodName, string templateFieldName)
     {
         AppendConditionalBlock(sb, "!SQLX_DISABLE_METRICS", () =>
         {
-            sb.AppendLine($"global::Sqlx.Diagnostics.SqlTemplateMetrics.RecordExecution(\"{repoFullName}.{methodName}\", Stopwatch.GetTimestamp() - startTime);");
+            sb.AppendLine($"global::Sqlx.Diagnostics.SqlTemplateMetrics.RecordExecution(\"{repoFullName}\", \"{methodName}\", \"{templateFieldName}\", Stopwatch.GetTimestamp() - startTime);");
         });
     }
 
@@ -1666,7 +1666,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
         sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, ({string.Join(", ", finalVarNames)}), elapsed);");
         sb.AppendLine("#endif");
-        GenerateMetricsRecording(sb, repoFullName, methodName);
+        GenerateMetricsRecording(sb, repoFullName, methodName, fieldName);
         sb.AppendLine();
         sb.AppendLine($"return ({string.Join(", ", finalVarNames)});");
     }

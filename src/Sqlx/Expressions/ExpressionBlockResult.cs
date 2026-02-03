@@ -21,12 +21,12 @@ namespace Sqlx.Expressions
         /// <summary>
         /// Gets the generated SQL fragment.
         /// </summary>
-        public string Sql { get; private set; }
+        public string Sql { get; }
 
         /// <summary>
         /// Gets the extracted parameters from the expression.
         /// </summary>
-        public Dictionary<string, object?> Parameters { get; private set; }
+        public Dictionary<string, object?> Parameters { get; }
 
         /// <summary>
         /// Gets the placeholders that need to be replaced with actual values.
@@ -47,6 +47,16 @@ namespace Sqlx.Expressions
             Placeholders = placeholders ?? new Dictionary<string, string>();
         }
 
+        /// <summary>
+        /// Copy the current result with optional new parameters.
+        /// </summary>
+        /// <param name="parameters">Override the paramters</param>
+        /// <returns>The new result</returns>
+        public ExpressionBlockResult Copy(Dictionary<string, object?>? parameters = null)
+        {
+            return new ExpressionBlockResult(Sql, new Dictionary<string, object?>(parameters ?? Parameters));
+        }
+        
         /// <summary>
         /// Parses a WHERE predicate expression into SQL and parameters.
         /// </summary>

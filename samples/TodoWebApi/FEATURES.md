@@ -197,11 +197,15 @@ var whereResult = ExpressionBlockResult.Parse(predicate.Body, dialect);   // 遍
 - ✅ 线程安全，无共享状态
 - ✅ 支持所有数据库方言
 
-### 3. ICrudRepository 内置方法（42个）
+### 3. ICrudRepository 内置方法（46个）
 
 继承 `ICrudRepository<Todo, long>` 自动获得：
 
 #### 查询方法（24个）
+
+（保持不变）
+
+#### 命令方法（22个）
 ```csharp
 // 单实体查询
 var todo = await repo.GetByIdAsync(1);
@@ -227,50 +231,155 @@ var total = await repo.CountAsync();
 var activeCount = await repo.CountWhereAsync(t => !t.IsCompleted);
 ```
 
-#### 命令方法（18个）
 ```csharp
-// 插入
+// 插入（6个）
 var newId = await repo.InsertAndGetIdAsync(todo);
 await repo.InsertAsync(todo);
 await repo.BatchInsertAsync(todos);
 
-// 更新
+// 更新（10个）
 await repo.UpdateAsync(todo);
 await repo.UpdateWhereAsync(todo, t => t.Id == todo.Id);
 await repo.BatchUpdateAsync(todos);
 
-// 删除
+// 动态更新 - 类型安全的部分字段更新 ⚡ 新功能
+await repo.DynamicUpdateAsync(todoId, t => new Todo 
+{ 
+    Priority = 5,
+    UpdatedAt = DateTime.UtcNow
+});
+
+// 动态批量更新 - 使用表达式条件 ⚡ 新功能
+await repo.DynamicUpdateWhereAsync(
+    t => new Todo { IsCompleted = true, CompletedAt = DateTime.UtcNow },
+    t => t.Priority >= 3 && t.DueDate < DateTime.Now
+);
+
+// 删除（6个）
 await repo.DeleteAsync(1);
 await repo.DeleteByIdsAsync(new[] { 1L, 2L, 3L });
 await repo.DeleteWhereAsync(t => t.IsCompleted);
 await repo.DeleteAllAsync();
 ```
 
-### 4. 批量操作
+### 4. 动态更新（DynamicUpdate）⚡ 新功能
+
+使用 `DynamicUpdateAsync` 和 `DynamicUpdateWhereAsync` 实现类型安全的动态字段更新：
 
 ```csharp
-// 批量更新优先级（使用 json_each）
-[SqlTemplate(@"
-    UPDATE {{table}} 
-    SET priority = @priority, updated_at = @updatedAt 
-    WHERE id IN (SELECT value FROM json_each(@idsJson))
-")]
-Task<int> BatchUpdatePriorityAsync(string idsJson, int priority, DateTime updatedAt);
+// 单条记录动态更新 - 只更新指定字段
+await repo.DynamicUpdateAsync(todoId, t => new Todo 
+{ 
+    Priority = 5,
+    UpdatedAt = DateTime.UtcNow
+});
+// 生成: UPDATE [todos] SET [priority] = @p0, [updated_at] = @p1 WHERE [id] = @id
 
-// 使用
-var idsJson = $"[{string.Join(",", ids)}]";
-var affected = await repo.BatchUpdatePriorityAsync(idsJson, 5, DateTime.UtcNow);
+// 批量动态更新 - 使用 WHERE 表达式
+await repo.DynamicUpdateWhereAsync(
+    t => new Todo { IsCompleted = true, CompletedAt = DateTime.UtcNow },
+    t => t.Priority >= 3 && !t.IsCompleted
+);
+// 生成: UPDATE [todos] SET [is_completed] = @p0, [completed_at] = @p1 
+//       WHERE [priority] >= @p2 AND [is_completed] = @p3
 
-// 批量完成
-[SqlTemplate(@"
-    UPDATE {{table}} 
-    SET is_completed = 1, completed_at = @completedAt, updated_at = @updatedAt 
-    WHERE id IN (SELECT value FROM json_each(@idsJson))
-")]
-Task<int> BatchCompleteAsync(string idsJson, DateTime completedAt, DateTime updatedAt);
+// 增量更新 - 字段自引用
+await repo.DynamicUpdateAsync(todoId, t => new Todo 
+{ 
+    Priority = t.Priority + 1,
+    Version = t.Version + 1
+});
+// 生成: UPDATE [todos] SET [priority] = [priority] + @p0, [version] = [version] + @p1 
+//       WHERE [id] = @id
+
+// 字符串函数
+await repo.DynamicUpdateAsync(todoId, t => new Todo 
+{ 
+    Title = t.Title.Trim().ToUpper()
+});
+// 生成: UPDATE [todos] SET [title] = UPPER(TRIM([title])) WHERE [id] = @id
 ```
 
-### 5. 内联表达式
+**优势：**
+- ✅ 类型安全 - 编译时检查字段名和类型
+- ✅ IDE 支持 - 智能提示和重构
+- ✅ 灵活性 - 任意字段组合
+- ✅ 表达式支持 - 增量、函数、计算
+- ✅ 防注入 - 自动参数化
+
+### 5. 表达式占位符（Any Placeholder）⚡ 新功能
+
+使用 `Any.Value<T>()` 创建可重用的表达式模板：
+
+```csharp
+// 定义可重用的增量表达式模板
+var incrementTemplate = ExpressionBlockResult.ParseUpdate<Todo>(
+    t => new Todo 
+    { 
+        Priority = t.Priority + Any.Value<int>("increment"),
+        Version = t.Version + 1
+    },
+    SqlDefine.SQLite
+);
+
+// 使用不同的增量值
+var result1 = incrementTemplate
+    .WithParameter("increment", 1)
+    .WithParameter("version_increment", 1);
+// SQL: [priority] = [priority] + @increment, [version] = [version] + 1
+
+var result2 = incrementTemplate
+    .WithParameter("increment", 5)
+    .WithParameter("version_increment", 1);
+// SQL: [priority] = [priority] + @increment, [version] = [version] + 1
+// 参数: increment=5
+
+// 批量操作模板
+var batchUpdateTemplate = ExpressionBlockResult.ParseUpdate<Todo>(
+    t => new Todo 
+    { 
+        Priority = Any.Value<int>("newPriority"),
+        UpdatedAt = DateTime.UtcNow
+    },
+    SqlDefine.SQLite
+);
+
+// 为不同的批次填充不同的值
+foreach (var batch in batches)
+{
+    var result = batchUpdateTemplate.WithParameter("newPriority", batch.Priority);
+    // 执行更新...
+}
+```
+
+**使用场景：**
+- ✅ 模板重用 - 一次定义，多次使用
+- ✅ 批量操作 - 相同结构，不同参数
+- ✅ 动态表单 - 运行时填充值
+- ✅ 条件更新 - 根据条件选择参数
+
+### 6. 批量操作
+
+使用内置的批量方法或 DynamicUpdateWhereAsync：
+
+```csharp
+// 方式1：使用 DynamicUpdateWhereAsync（推荐）
+await repo.DynamicUpdateWhereAsync(
+    t => new Todo { Priority = 5, UpdatedAt = DateTime.UtcNow },
+    t => ids.Contains(t.Id)
+);
+
+// 方式2：使用 BatchUpdateAsync
+var todos = await repo.GetByIdsAsync(ids);
+foreach (var todo in todos)
+{
+    todo.Priority = 5;
+    todo.UpdatedAt = DateTime.UtcNow;
+}
+await repo.BatchUpdateAsync(todos);
+```
+
+### 7. 内联表达式
 
 ```csharp
 // INSERT 时设置默认值
@@ -303,7 +412,7 @@ Task<int> UpdateWithTimestampAsync(Todo todo);
 Task<int> IncrementViewCountAsync(long id);
 ```
 
-### 6. 动态 SET 表达式（`{{set --param}}`）
+### 8. 动态 SET 表达式（`{{set --param}}`）
 
 使用 `{{set --param}}` 配合 `Expression<Func<T, T>>` 可以实现类型安全的动态更新：
 
@@ -408,7 +517,7 @@ var setClause = expr.ToSetClause();
 - ✅ 自动参数化，防止 SQL 注入
 - ✅ 支持复杂表达式（递增、计算等）
 
-### 7. 条件占位符
+### 9. 条件占位符
 
 ```csharp
 // 动态搜索
@@ -434,7 +543,7 @@ var results = await repo.SearchAsync(
 );
 ```
 
-### 8. 调试方法
+### 10. 调试方法
 
 ```csharp
 // 返回 SqlTemplate 用于调试

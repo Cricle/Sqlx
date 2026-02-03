@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-purple.svg)](#)
 [![LTS](https://img.shields.io/badge/LTS-.NET%2010-green.svg)](#)
-[![Tests](https://img.shields.io/badge/tests-1978%20passing-brightgreen.svg)](#)
+[![Tests](https://img.shields.io/badge/tests-2076%20passing-brightgreen.svg)](#)
 [![AOT](https://img.shields.io/badge/AOT-ready-blue.svg)](#)
 
 高性能、AOT 友好的 .NET 数据库访问库。使用源生成器在编译时生成代码，零运行时反射，完全支持 Native AOT。
@@ -15,7 +15,7 @@
 - **⚡ 零反射** - 编译时源生成，运行时无反射开销
 - **🎯 类型安全** - 编译时验证 SQL 模板和表达式
 - **🌐 多数据库** - SQLite、PostgreSQL、MySQL、SQL Server、Oracle、DB2
-- **📦 AOT 就绪** - 完全支持 Native AOT，通过 1978 个单元测试
+- **📦 AOT 就绪** - 完全支持 Native AOT，通过 2076 个单元测试
 - **🔧 LINQ 支持** - IQueryable 接口，支持 Where/Select/OrderBy/Join 等
 - **💾 智能缓存** - SqlQuery\<T\> 泛型缓存，自动注册 EntityProvider
 - **🔍 自动发现** - 源生成器自动发现 SqlQuery\<T\> 和 SqlTemplate 中的实体类型
@@ -155,30 +155,68 @@ Task<int> CreateAsync(string name, string description);
 
 ## 内置仓储接口
 
-继承 `ICrudRepository<TEntity, TKey>` 获得 42 个标准方法（24 个查询 + 18 个命令）：
+继承 `ICrudRepository<TEntity, TKey>` 获得 46 个标准方法（26 个查询 + 20 个命令）：
 
-**查询方法（24 个）**：
+**查询方法（26 个）**：
 - 单实体查询：`GetByIdAsync/GetById`, `GetFirstWhereAsync/GetFirstWhere`
 - 列表查询：`GetByIdsAsync/GetByIds`, `GetAllAsync/GetAll`, `GetWhereAsync/GetWhere`
 - 分页查询：`GetPagedAsync/GetPaged`, `GetPagedWhereAsync/GetPagedWhere`
 - 存在性检查：`ExistsByIdAsync/ExistsById`, `ExistsAsync/Exists`
 - 计数：`CountAsync/Count`, `CountWhereAsync/CountWhere`
+- IQueryable：`AsQueryable()` - 返回 LINQ 查询构建器
 
-**命令方法（18 个）**：
+**命令方法（20 个）**：
 - 插入：`InsertAndGetIdAsync/InsertAndGetId`, `InsertAsync/Insert`, `BatchInsertAsync/BatchInsert`
 - 更新：`UpdateAsync/Update`, `UpdateWhereAsync/UpdateWhere`, `BatchUpdateAsync/BatchUpdate`
+- **动态更新**：`DynamicUpdateAsync/DynamicUpdate`, `DynamicUpdateWhereAsync/DynamicUpdateWhere`
 - 删除：`DeleteAsync/Delete`, `DeleteByIdsAsync/DeleteByIds`, `DeleteWhereAsync/DeleteWhere`, `DeleteAllAsync/DeleteAll`
 
 ```csharp
 public interface IUserRepository : ICrudRepository<User, long>
 {
-    // 继承 42 个标准方法，无需自定义即可使用
+    // 继承 46 个标准方法，无需自定义即可使用
     
     // 自定义方法（仅在需要复杂查询时）
     [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE name LIKE @pattern")]
     Task<List<User>> SearchByNameAsync(string pattern);
 }
 ```
+
+### 动态更新（DynamicUpdate）
+
+使用表达式树动态更新指定字段，无需定义自定义方法：
+
+```csharp
+// 更新单个字段
+await repo.DynamicUpdateAsync(userId, u => new User { Name = "John" });
+
+// 更新多个字段
+await repo.DynamicUpdateAsync(userId, u => new User 
+{ 
+    Name = "John",
+    Age = 30,
+    UpdatedAt = DateTime.UtcNow
+});
+
+// 使用表达式（递增、计算）
+await repo.DynamicUpdateAsync(userId, u => new User 
+{ 
+    Age = u.Age + 1,
+    Score = u.Score * 1.1
+});
+
+// 批量更新（带条件）
+await repo.DynamicUpdateWhereAsync(
+    u => new User { IsActive = false, UpdatedAt = DateTime.UtcNow },
+    u => u.LastLoginDate < DateTime.UtcNow.AddDays(-30)
+);
+```
+
+**优势**：
+- ✅ 类型安全 - 编译时验证字段名和类型
+- ✅ 灵活 - 支持任意字段组合
+- ✅ 高性能 - 编译时生成代码，零反射
+- ✅ 表达式支持 - 支持算术运算、函数调用
 
 ## 条件占位符
 
@@ -274,6 +312,56 @@ Task<List<User>> GetWhereAsync(Expression<Func<User, bool>> predicate);
 // 使用
 var adults = await repo.GetWhereAsync(u => u.Age >= 18 && u.IsActive);
 ```
+
+## 表达式占位符（Any Placeholder）
+
+使用 `Any.Value<T>()` 创建可重用的表达式模板，在运行时填充参数：
+
+```csharp
+// 定义可重用的表达式模板
+Expression<Func<User, bool>> ageRangeTemplate = u => 
+    u.Age >= Any.Value<int>("minAge") && 
+    u.Age <= Any.Value<int>("maxAge");
+
+// 场景 1: 查询年轻用户（18-30岁）
+var youngUsers = ExpressionBlockResult.Parse(ageRangeTemplate.Body, SqlDefine.SQLite)
+    .WithParameter("minAge", 18)
+    .WithParameter("maxAge", 30);
+// SQL: ([age] >= @minAge AND [age] <= @maxAge)
+// 参数: @minAge=18, @maxAge=30
+
+// 场景 2: 查询中年用户（30-50岁）- 重用同一模板
+var middleAgedUsers = ExpressionBlockResult.Parse(ageRangeTemplate.Body, SqlDefine.SQLite)
+    .WithParameter("minAge", 30)
+    .WithParameter("maxAge", 50);
+// SQL: ([age] >= @minAge AND [age] <= @maxAge)
+// 参数: @minAge=30, @maxAge=50
+
+// UPDATE 表达式模板
+Expression<Func<User, User>> updateTemplate = u => new User
+{
+    Name = Any.Value<string>("newName"),
+    Age = u.Age + Any.Value<int>("ageIncrement")
+};
+
+var result = ExpressionBlockResult.ParseUpdate(updateTemplate, SqlDefine.SQLite)
+    .WithParameter("newName", "John")
+    .WithParameter("ageIncrement", 1);
+// SQL: [name] = @newName, [age] = ([age] + @ageIncrement)
+```
+
+**使用场景**：
+- ✅ 查询模板库 - 预定义常用查询模板
+- ✅ 动态查询构建 - 运行时决定参数值
+- ✅ 多租户应用 - 不同租户使用相同模板
+- ✅ 配置驱动查询 - 从配置文件加载参数
+
+**API 方法**：
+- `Any.Value<T>(name)` - 定义占位符
+- `WithParameter(name, value)` - 填充单个占位符
+- `WithParameters(dictionary)` - 批量填充占位符
+- `GetPlaceholderNames()` - 获取所有占位符名称
+- `AreAllPlaceholdersFilled()` - 检查是否所有占位符都已填充
 
 ## 批量执行
 

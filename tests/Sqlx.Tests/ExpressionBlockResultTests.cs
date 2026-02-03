@@ -79,12 +79,10 @@ public class ExpressionBlockResultTests
         var result = ExpressionBlockResult.Parse(predicate.Body, SqlDefine.SQLite);
 
         // Assert
-        Assert.IsTrue(result.Sql.Contains("[age] > @"));
-        Assert.IsTrue(result.Sql.Contains("[name] = @"));
-        Assert.IsTrue(result.Sql.Contains("AND"));
+        Assert.AreEqual("([age] > @p0 AND [name] = @p1)", result.Sql);
         Assert.AreEqual(2, result.Parameters.Count);
-        Assert.IsTrue(result.Parameters.ContainsValue(18));
-        Assert.IsTrue(result.Parameters.ContainsValue("John"));
+        Assert.AreEqual(18, result.Parameters["@p0"]);
+        Assert.AreEqual("John", result.Parameters["@p1"]);
     }
 
     // ========== UPDATE 表达式解析测试 ==========
@@ -114,11 +112,9 @@ public class ExpressionBlockResultTests
         var result = ExpressionBlockResult.ParseUpdate(updateExpr, SqlDefine.SQLite);
 
         // Assert
-        Assert.IsTrue(result.Sql.Contains("[age] = "));
-        Assert.IsTrue(result.Sql.Contains("[age]"));
-        Assert.IsTrue(result.Sql.Contains("+"));
+        Assert.AreEqual("[age] = ([age] + @p0)", result.Sql);
         Assert.AreEqual(1, result.Parameters.Count);
-        Assert.IsTrue(result.Parameters.ContainsValue(1));
+        Assert.AreEqual(1, result.Parameters["@p0"]);
     }
 
     [TestMethod]
@@ -136,10 +132,11 @@ public class ExpressionBlockResultTests
         var result = ExpressionBlockResult.ParseUpdate(updateExpr, SqlDefine.SQLite);
 
         // Assert
-        Assert.IsTrue(result.Sql.Contains("[name] = @p0"));
-        Assert.IsTrue(result.Sql.Contains("[age] = @p1"));
-        Assert.IsTrue(result.Sql.Contains("[is_active] = @p2"));
+        Assert.AreEqual("[name] = @p0, [age] = @p1, [is_active] = @p2", result.Sql);
         Assert.AreEqual(3, result.Parameters.Count);
+        Assert.AreEqual("John", result.Parameters["@p0"]);
+        Assert.AreEqual(30, result.Parameters["@p1"]);
+        Assert.AreEqual(true, result.Parameters["@p2"]);
     }
 
     // ========== 方言测试 ==========
@@ -155,9 +152,9 @@ public class ExpressionBlockResultTests
         var result = ExpressionBlockResult.Parse(predicate.Body, SqlDefine.PostgreSql);
 
         // Assert
-        Assert.IsTrue(result.Sql.Contains("\"age\""));
-        Assert.IsTrue(result.Sql.Contains("$")); // PostgreSQL uses $ prefix
+        Assert.AreEqual("\"age\" > $p0", result.Sql);
         Assert.AreEqual(1, result.Parameters.Count);
+        Assert.AreEqual(18, result.Parameters["$p0"]);
     }
 
     [TestMethod]
@@ -170,8 +167,9 @@ public class ExpressionBlockResultTests
         var result = ExpressionBlockResult.ParseUpdate(updateExpr, SqlDefine.MySql);
 
         // Assert
-        Assert.IsTrue(result.Sql.Contains("`name`"));
-        Assert.IsTrue(result.Sql.Contains("@p0"));
+        Assert.AreEqual("`name` = @p0", result.Sql);
+        Assert.AreEqual(1, result.Parameters.Count);
+        Assert.AreEqual("John", result.Parameters["@p0"]);
     }
 
     // ========== Null 值测试 ==========
@@ -187,8 +185,9 @@ public class ExpressionBlockResultTests
         var result = ExpressionBlockResult.Parse(predicate.Body, SqlDefine.SQLite);
 
         // Assert
-        Assert.IsTrue(result.Sql.Contains("[email]"));
-        Assert.IsTrue(result.Sql.Contains("@p0") || result.Sql.Contains("IS NULL"));
+        Assert.AreEqual("[email] = @p0", result.Sql);
+        Assert.AreEqual(1, result.Parameters.Count);
+        Assert.IsNull(result.Parameters["@p0"]);
     }
 
     [TestMethod]
@@ -202,9 +201,9 @@ public class ExpressionBlockResultTests
         var result = ExpressionBlockResult.ParseUpdate(updateExpr, SqlDefine.SQLite);
 
         // Assert
-        Assert.IsTrue(result.Sql.Contains("[email] = "));
+        Assert.AreEqual("[email] = @p0", result.Sql);
         Assert.AreEqual(1, result.Parameters.Count);
-        Assert.IsTrue(result.Parameters.ContainsValue(null));
+        Assert.IsNull(result.Parameters["@p0"]);
     }
 
     // ========== 性能和缓存测试 ==========
@@ -275,8 +274,9 @@ public class ExpressionBlockResultTests
         var result = ExpressionBlockResult.Parse(predicate.Body, SqlDefine.SQLite);
 
         // Assert
-        Assert.IsTrue(result.Sql.Contains("LOWER"));
-        Assert.IsTrue(result.Sql.Contains("[name]"));
+        Assert.AreEqual("LOWER([name]) = @p0", result.Sql);
+        Assert.AreEqual(1, result.Parameters.Count);
+        Assert.AreEqual("john", result.Parameters["@p0"]);
     }
 
     [TestMethod]
@@ -289,8 +289,8 @@ public class ExpressionBlockResultTests
         var result = ExpressionBlockResult.ParseUpdate(updateExpr, SqlDefine.SQLite);
 
         // Assert
-        Assert.IsTrue(result.Sql.Contains("UPPER"));
-        Assert.IsTrue(result.Sql.Contains("[name]"));
+        Assert.AreEqual("[name] = UPPER([name])", result.Sql);
+        Assert.AreEqual(0, result.Parameters.Count);
     }
 
     // ========== 数学函数测试 ==========
@@ -305,8 +305,8 @@ public class ExpressionBlockResultTests
         var result = ExpressionBlockResult.ParseUpdate(updateExpr, SqlDefine.SQLite);
 
         // Assert
-        Assert.IsTrue(result.Sql.Contains("ABS"));
-        Assert.IsTrue(result.Sql.Contains("[age]"));
+        Assert.AreEqual("[age] = ABS([age])", result.Sql);
+        Assert.AreEqual(0, result.Parameters.Count);
     }
 
     // ========== 复杂表达式测试 ==========
@@ -324,10 +324,11 @@ public class ExpressionBlockResultTests
         var result = ExpressionBlockResult.Parse(predicate.Body, SqlDefine.SQLite);
 
         // Assert
-        Assert.IsTrue(result.Sql.Contains("[age]"));
-        Assert.IsTrue(result.Sql.Contains("[is_active]"));
-        Assert.IsTrue(result.Sql.Contains("OR"));
+        // Note: Boolean property access is converted to "= 1" in SQLite
+        Assert.AreEqual("(([age] > @p0 AND [age] < @p1) OR [is_active] = 1)", result.Sql);
         Assert.AreEqual(2, result.Parameters.Count);
+        Assert.AreEqual(18, result.Parameters["@p0"]);
+        Assert.AreEqual(65, result.Parameters["@p1"]);
     }
 
     [TestMethod]
@@ -344,8 +345,8 @@ public class ExpressionBlockResultTests
         var result = ExpressionBlockResult.ParseUpdate(updateExpr, SqlDefine.SQLite);
 
         // Assert
-        Assert.IsTrue(result.Sql.Contains("LOWER"));
-        Assert.IsTrue(result.Sql.Contains("TRIM"));
-        Assert.IsTrue(result.Sql.Contains("[age]"));
+        Assert.AreEqual("[name] = LOWER(TRIM([name])), [age] = ([age] + @p0)", result.Sql);
+        Assert.AreEqual(1, result.Parameters.Count);
+        Assert.AreEqual(1, result.Parameters["@p0"]);
     }
 }

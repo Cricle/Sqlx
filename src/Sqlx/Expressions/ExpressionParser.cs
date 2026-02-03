@@ -26,12 +26,14 @@ namespace Sqlx.Expressions
         private readonly SqlDialect _dialect;
         private readonly Dictionary<string, object?> _parameters;
         private readonly bool _parameterized;
+        private readonly Dictionary<string, string>? _placeholders;
 
-        public ExpressionParser(SqlDialect dialect, Dictionary<string, object?> parameters, bool parameterized)
+        public ExpressionParser(SqlDialect dialect, Dictionary<string, object?> parameters, bool parameterized, Dictionary<string, string>? placeholders = null)
         {
             _dialect = dialect;
             _parameters = parameters;
             _parameterized = parameterized;
+            _placeholders = placeholders;
         }
 
         public string DatabaseType => _dialect.DatabaseType;
@@ -259,6 +261,15 @@ namespace Sqlx.Expressions
 
         private string ParseMethod(MethodCallExpression m)
         {
+            // Check if this is Any.Value<T>(name) placeholder
+            if (m.Method.DeclaringType?.Name == "Any" && m.Method.Name == "Value" && m.Arguments.Count == 1)
+            {
+                if (m.Arguments[0] is ConstantExpression { Value: string placeholderName })
+                {
+                    return HandleAnyPlaceholder(placeholderName);
+                }
+            }
+
             // Check if this is a SubQuery.For<T>().Aggregate() call
             if (IsSubQueryForMethod(m))
             {
@@ -296,6 +307,24 @@ namespace Sqlx.Expressions
                 var t when t == typeof(DateTime) => DateTimeFunctionParser.Parse(this, m),
                 _ => m.Object != null ? ParseRaw(m.Object) : "1=1"
             };
+        }
+
+        /// <summary>
+        /// Handles Any.Value&lt;T&gt;(name) placeholder by creating a parameter placeholder.
+        /// </summary>
+        private string HandleAnyPlaceholder(string placeholderName)
+        {
+            // Generate a unique parameter name for this placeholder
+            var paramName = $"{_dialect.ParameterPrefix}{placeholderName}";
+            
+            // Register the placeholder if we're tracking them
+            if (_placeholders != null)
+            {
+                _placeholders[placeholderName] = paramName;
+            }
+            
+            // Return the parameter placeholder in SQL
+            return paramName;
         }
 
         /// <summary>

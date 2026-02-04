@@ -10,8 +10,6 @@
     <InterceptorsNamespaces>$(InterceptorsNamespaces);Dapper.AOT</InterceptorsNamespaces>
     <!-- Disable Activity and Interceptor for fair benchmark comparison -->
     <DefineConstants>$(DefineConstants);SQLX_DISABLE_ACTIVITY;SQLX_DISABLE_INTERCEPTOR;SQLX_DISABLE_METRICS</DefineConstants>
-    <!-- Suppress warnings -->
-    <NoWarn>$(NoWarn);CS9270;NU1603;AD0001</NoWarn>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
   </PropertyGroup>
 

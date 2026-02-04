@@ -1316,7 +1316,18 @@ public class RepositoryGenerator : IIncrementalGenerator
         {
             // Sync single entity return
             sb.AppendLine("using var reader = cmd.ExecuteReader(System.Data.CommandBehavior.Default);");
-            sb.AppendLine($"var result = {actualReturnTypeName}ResultReader.Default.FirstOrDefault(reader);");
+            // Check if return type is nullable
+            var isNullableReturn = normalizedReturnType.Contains("?") || returnType.Contains("?") || 
+                                   method.ReturnType.NullableAnnotation == NullableAnnotation.Annotated;
+            if (isNullableReturn)
+            {
+                sb.AppendLine($"var result = {actualReturnTypeName}ResultReader.Default.FirstOrDefault(reader);");
+            }
+            else
+            {
+                // Non-nullable return type - use null-forgiving operator
+                sb.AppendLine($"var result = {actualReturnTypeName}ResultReader.Default.FirstOrDefault(reader)!;");
+            }
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
             sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
@@ -1325,7 +1336,14 @@ public class RepositoryGenerator : IIncrementalGenerator
             GenerateMetricsRecording(sb, repoFullName, methodName, fieldName);
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
-            sb.AppendLine("activity?.SetTag(\"db.rows_affected\", result != null ? 1 : 0);");
+            if (isNullableReturn)
+            {
+                sb.AppendLine("activity?.SetTag(\"db.rows_affected\", result != null ? 1 : 0);");
+            }
+            else
+            {
+                sb.AppendLine("activity?.SetTag(\"db.rows_affected\", 1);");
+            }
             sb.AppendLine("#endif");
             sb.AppendLine();
             sb.AppendLine("return result;");
@@ -1409,7 +1427,21 @@ public class RepositoryGenerator : IIncrementalGenerator
         {
             // Return single entity
             sb.AppendLine($"using var reader = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.Default, {ctName}).ConfigureAwait(false);");
-            sb.AppendLine($"var result = await {actualReturnTypeName}ResultReader.Default.FirstOrDefaultAsync(reader, {ctName}).ConfigureAwait(false);");
+            // Check if return type is nullable
+            var isNullableReturn = normalizedReturnType.Contains("?") || returnType.Contains("?") || 
+                                   method.ReturnType.NullableAnnotation == NullableAnnotation.Annotated ||
+                                   (method.ReturnType is INamedTypeSymbol { IsGenericType: true } taskType &&
+                                    taskType.TypeArguments.Length > 0 &&
+                                    taskType.TypeArguments[0].NullableAnnotation == NullableAnnotation.Annotated);
+            if (isNullableReturn)
+            {
+                sb.AppendLine($"var result = await {actualReturnTypeName}ResultReader.Default.FirstOrDefaultAsync(reader, {ctName}).ConfigureAwait(false);");
+            }
+            else
+            {
+                // Non-nullable return type - use null-forgiving operator
+                sb.AppendLine($"var result = (await {actualReturnTypeName}ResultReader.Default.FirstOrDefaultAsync(reader, {ctName}).ConfigureAwait(false))!;");
+            }
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
             sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
@@ -1418,7 +1450,14 @@ public class RepositoryGenerator : IIncrementalGenerator
             GenerateMetricsRecording(sb, repoFullName, methodName, fieldName);
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
-            sb.AppendLine("activity?.SetTag(\"db.rows_affected\", result != null ? 1 : 0);");
+            if (isNullableReturn)
+            {
+                sb.AppendLine("activity?.SetTag(\"db.rows_affected\", result != null ? 1 : 0);");
+            }
+            else
+            {
+                sb.AppendLine("activity?.SetTag(\"db.rows_affected\", 1);");
+            }
             sb.AppendLine("#endif");
             sb.AppendLine();
             sb.AppendLine("return result;");

@@ -439,9 +439,23 @@ public class OptimizedEntityDbDataReader : DbDataReader
         _ => throw new IndexOutOfRangeException($"Column '{name}' not found")
     };
 
-    public override int GetInt32(int ordinal) => _entities[_currentIndex].Id;
-    public override string GetString(int ordinal) => _entities[_currentIndex].Name;
-    public override decimal GetDecimal(int ordinal) => _entities[_currentIndex].Value;
+    public override int GetInt32(int ordinal) => ordinal switch
+    {
+        0 => _entities[_currentIndex].Id,
+        _ => throw new InvalidOperationException($"GetInt32 called for ordinal {ordinal}")
+    };
+    
+    public override string GetString(int ordinal) => ordinal switch
+    {
+        1 => _entities[_currentIndex].Name,
+        _ => throw new InvalidOperationException($"GetString called for ordinal {ordinal}")
+    };
+    
+    public override decimal GetDecimal(int ordinal) => ordinal switch
+    {
+        2 => _entities[_currentIndex].Value,
+        _ => throw new InvalidOperationException($"GetDecimal called for ordinal {ordinal}")
+    };
     public override bool IsDBNull(int ordinal) => false;
 
     public override object this[int ordinal] => throw new NotImplementedException();
@@ -465,7 +479,13 @@ public class OptimizedEntityDbDataReader : DbDataReader
     public override Guid GetGuid(int ordinal) => throw new NotImplementedException();
     public override short GetInt16(int ordinal) => throw new NotImplementedException();
     public override long GetInt64(int ordinal) => throw new NotImplementedException();
-    public override string GetName(int ordinal) => throw new NotImplementedException();
+    public override string GetName(int ordinal) => ordinal switch
+    {
+        0 => "id",
+        1 => "name",
+        2 => "value",
+        _ => throw new IndexOutOfRangeException($"Ordinal {ordinal} out of range")
+    };
     public override object GetValue(int ordinal) => throw new NotImplementedException();
     public override int GetValues(object[] values) => throw new NotImplementedException();
     public override bool NextResult() => false;

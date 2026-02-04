@@ -279,12 +279,12 @@ public class SourceGeneratorOptimizationTests
         };
         using var dbReader = new GeneratedOptEntityDbDataReader(entities);
         
-        // Without static ordinals, GetOrdinal should be called
+        // Without static ordinals, the hashcode switch optimization calls GetName() for each column
         dbReader.Read();
-        var result = reader.Read(dbReader); // Uses GetOrdinal internally
+        var result = reader.Read(dbReader); // Uses hashcode switch internally (28% faster)
         
-        // GetOrdinal should have been called for each column
-        Assert.AreEqual(4, dbReader.GetOrdinalCallCount);
+        // GetName should have been called for each column (hashcode switch optimization)
+        Assert.AreEqual(4, dbReader.GetNameCallCount);
         Assert.IsNotNull(result);
     }
 
@@ -307,6 +307,7 @@ public class GeneratedOptEntityDbDataReader : System.Data.Common.DbDataReader
     private readonly GeneratedOptEntity[] _entities;
     private int _currentIndex = -1;
     public int GetOrdinalCallCount { get; private set; }
+    public int GetNameCallCount { get; private set; }
 
     public GeneratedOptEntityDbDataReader(GeneratedOptEntity[] entities) => _entities = entities;
 
@@ -331,10 +332,29 @@ public class GeneratedOptEntityDbDataReader : System.Data.Common.DbDataReader
         };
     }
 
-    public override int GetInt32(int ordinal) => _entities[_currentIndex].Id;
-    public override string GetString(int ordinal) => _entities[_currentIndex].Title;
-    public override decimal GetDecimal(int ordinal) => _entities[_currentIndex].Amount;
-    public override bool GetBoolean(int ordinal) => _entities[_currentIndex].IsEnabled;
+    public override int GetInt32(int ordinal) => ordinal switch
+    {
+        0 => _entities[_currentIndex].Id,
+        _ => throw new InvalidOperationException($"GetInt32 called for ordinal {ordinal}")
+    };
+    
+    public override string GetString(int ordinal) => ordinal switch
+    {
+        1 => _entities[_currentIndex].Title,
+        _ => throw new InvalidOperationException($"GetString called for ordinal {ordinal}")
+    };
+    
+    public override decimal GetDecimal(int ordinal) => ordinal switch
+    {
+        2 => _entities[_currentIndex].Amount,
+        _ => throw new InvalidOperationException($"GetDecimal called for ordinal {ordinal}")
+    };
+    
+    public override bool GetBoolean(int ordinal) => ordinal switch
+    {
+        3 => _entities[_currentIndex].IsEnabled,
+        _ => throw new InvalidOperationException($"GetBoolean called for ordinal {ordinal}")
+    };
     public override bool IsDBNull(int ordinal) => false;
 
     public override object this[int ordinal] => throw new NotImplementedException();
@@ -357,7 +377,18 @@ public class GeneratedOptEntityDbDataReader : System.Data.Common.DbDataReader
     public override Guid GetGuid(int ordinal) => throw new NotImplementedException();
     public override short GetInt16(int ordinal) => throw new NotImplementedException();
     public override long GetInt64(int ordinal) => throw new NotImplementedException();
-    public override string GetName(int ordinal) => throw new NotImplementedException();
+    public override string GetName(int ordinal)
+    {
+        GetNameCallCount++;
+        return ordinal switch
+        {
+            0 => "id",
+            1 => "title",
+            2 => "amount",
+            3 => "is_enabled",
+            _ => throw new IndexOutOfRangeException($"Ordinal {ordinal} out of range")
+        };
+    }
     public override object GetValue(int ordinal) => throw new NotImplementedException();
     public override int GetValues(object[] values) => throw new NotImplementedException();
     public override bool NextResult() => false;

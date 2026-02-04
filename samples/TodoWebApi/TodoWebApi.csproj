@@ -10,7 +10,6 @@
     <!-- AOT compilation settings -->
     <PublishAot>true</PublishAot>
     <InvariantGlobalization>true</InvariantGlobalization>
-    <OptimizationPreference>Size</OptimizationPreference>
 
     <!-- Web API specific settings -->
     <IsPackable>false</IsPackable>

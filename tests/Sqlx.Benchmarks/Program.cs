@@ -63,8 +63,6 @@ public class Program
                 typeof(QueryWithFilterBenchmark),
                 typeof(CountBenchmark),
                 typeof(PaginationBenchmark),
-                typeof(StaticOrdinalsBenchmark),
-                typeof(StaticOrdinalsFirstOrDefaultBenchmark),
                 typeof(BatchInsertBenchmark),
                 typeof(ExpressionBlockResultBenchmark)
             }, config);

@@ -25,15 +25,19 @@ public class SourceGeneratorOptimizationTests
     }
 
     [TestMethod]
-    public void GeneratedResultReader_GetOrdinals_ReturnsCorrectCount()
+    public void GeneratedResultReader_GetOrdinals_Works()
     {
         var reader = GeneratedOptEntityResultReader.Default;
         using var dbReader = new GeneratedOptEntityDbDataReader(Array.Empty<GeneratedOptEntity>());
         
         var ordinals = reader.GetOrdinals(dbReader);
         
-        // GeneratedOptEntity has 4 properties: Id, Title, Amount, IsEnabled
+        // Verify ordinals array is initialized correctly
         Assert.AreEqual(4, ordinals.Length);
+        Assert.IsTrue(ordinals[0] >= 0); // Id
+        Assert.IsTrue(ordinals[1] >= 0); // Title
+        Assert.IsTrue(ordinals[2] >= 0); // Amount
+        Assert.IsTrue(ordinals[3] >= 0); // IsEnabled
     }
 
     [TestMethod]
@@ -60,8 +64,7 @@ public class SourceGeneratorOptimizationTests
         using var dbReader = new GeneratedOptEntityDbDataReader(entities);
         dbReader.Read();
         
-        var ordinals = reader.GetOrdinals(dbReader);
-        var result = reader.Read(dbReader, ordinals);
+        var result = reader.Read(dbReader);
         
         Assert.AreEqual(42, result.Id);
         Assert.AreEqual("ordinal-test", result.Title);
@@ -100,9 +103,7 @@ public class SourceGeneratorOptimizationTests
         };
         using var dbReader = new GeneratedOptEntityDbDataReader(entities);
         
-        // Simulate static ordinals from generator
-        var staticOrdinals = new int[] { 0, 1, 2, 3 };
-        var result = reader.ToList(dbReader, staticOrdinals);
+        var result = reader.ToList(dbReader);
         
         Assert.AreEqual(3, result.Count);
         Assert.AreEqual("first", result[0].Title);
@@ -111,7 +112,7 @@ public class SourceGeneratorOptimizationTests
     }
 
     [TestMethod]
-    public void StaticOrdinals_UsedWithFirstOrDefault_ProducesCorrectResult()
+    public void ResultReader_UsedWithFirstOrDefault_ProducesCorrectResult()
     {
         var reader = GeneratedOptEntityResultReader.Default;
         var entities = new[]
@@ -120,9 +121,7 @@ public class SourceGeneratorOptimizationTests
         };
         using var dbReader = new GeneratedOptEntityDbDataReader(entities);
         
-        // Simulate static ordinals from generator
-        var staticOrdinals = new int[] { 0, 1, 2, 3 };
-        var result = reader.FirstOrDefault(dbReader, staticOrdinals);
+        var result = reader.FirstOrDefault(dbReader);
         
         Assert.IsNotNull(result);
         Assert.AreEqual(100, result.Id);
@@ -207,7 +206,7 @@ public class SourceGeneratorOptimizationTests
     #region Async Extension Method Tests
 
     [TestMethod]
-    public async Task GeneratedResultReader_ToListAsync_WithStaticOrdinals_Works()
+    public async Task GeneratedResultReader_ToListAsync_Works()
     {
         var reader = GeneratedOptEntityResultReader.Default;
         var entities = new[]
@@ -216,9 +215,8 @@ public class SourceGeneratorOptimizationTests
             new GeneratedOptEntity { Id = 2, Title = "async2", Amount = 2m, IsEnabled = false },
         };
         using var dbReader = new GeneratedOptEntityDbDataReader(entities);
-        var staticOrdinals = new int[] { 0, 1, 2, 3 };
         
-        var result = await reader.ToListAsync(dbReader, staticOrdinals);
+        var result = await reader.ToListAsync(dbReader);
         
         Assert.AreEqual(2, result.Count);
         Assert.AreEqual("async1", result[0].Title);
@@ -226,7 +224,7 @@ public class SourceGeneratorOptimizationTests
     }
 
     [TestMethod]
-    public async Task GeneratedResultReader_FirstOrDefaultAsync_WithStaticOrdinals_Works()
+    public async Task GeneratedResultReader_FirstOrDefaultAsync_Works()
     {
         var reader = GeneratedOptEntityResultReader.Default;
         var entities = new[]
@@ -234,9 +232,8 @@ public class SourceGeneratorOptimizationTests
             new GeneratedOptEntity { Id = 999, Title = "async-first", Amount = 999m, IsEnabled = true },
         };
         using var dbReader = new GeneratedOptEntityDbDataReader(entities);
-        var staticOrdinals = new int[] { 0, 1, 2, 3 };
         
-        var result = await reader.FirstOrDefaultAsync(dbReader, staticOrdinals);
+        var result = await reader.FirstOrDefaultAsync(dbReader);
         
         Assert.IsNotNull(result);
         Assert.AreEqual(999, result.Id);
@@ -248,7 +245,7 @@ public class SourceGeneratorOptimizationTests
     #region Performance Verification Tests
 
     [TestMethod]
-    public void StaticOrdinals_SkipsGetOrdinalCalls()
+    public void StructOrdinals_UsedInternally()
     {
         var reader = GeneratedOptEntityResultReader.Default;
         var entities = new[]
@@ -257,15 +254,14 @@ public class SourceGeneratorOptimizationTests
         };
         using var dbReader = new GeneratedOptEntityDbDataReader(entities);
         
-        // With static ordinals, GetOrdinal should not be called during Read
-        var staticOrdinals = new int[] { 0, 1, 2, 3 };
+        // GetOrdinal is called once per column when struct ordinals are created
         var initialGetOrdinalCount = dbReader.GetOrdinalCallCount;
         
         dbReader.Read();
-        var result = reader.Read(dbReader, staticOrdinals);
+        var result = reader.Read(dbReader);
         
-        // GetOrdinal should not have been called
-        Assert.AreEqual(initialGetOrdinalCount, dbReader.GetOrdinalCallCount);
+        // GetOrdinal should have been called for each column (4 times)
+        Assert.AreEqual(initialGetOrdinalCount + 4, dbReader.GetOrdinalCallCount);
         Assert.IsNotNull(result);
     }
 
@@ -279,12 +275,12 @@ public class SourceGeneratorOptimizationTests
         };
         using var dbReader = new GeneratedOptEntityDbDataReader(entities);
         
-        // Without static ordinals, the hashcode switch optimization calls GetName() for each column
+        // With caching optimization, Read(reader) calls GetOrdinals() which calls GetOrdinal() for each column
         dbReader.Read();
-        var result = reader.Read(dbReader); // Uses hashcode switch internally (28% faster)
+        var result = reader.Read(dbReader); // Uses cached ordinals internally
         
-        // GetName should have been called for each column (hashcode switch optimization)
-        Assert.AreEqual(4, dbReader.GetNameCallCount);
+        // GetOrdinal should have been called for each column (caching optimization)
+        Assert.AreEqual(4, dbReader.GetOrdinalCallCount);
         Assert.IsNotNull(result);
     }
 

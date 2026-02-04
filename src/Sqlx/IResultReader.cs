@@ -25,23 +25,6 @@ public interface IResultReader<TEntity>
     /// <param name="reader">The data reader positioned at a row.</param>
     /// <returns>The entity.</returns>
     TEntity Read(IDataReader reader);
-
-    /// <summary>
-    /// Reads a single entity from the current row using pre-computed ordinals.
-    /// Caller must call Read() before calling this method.
-    /// </summary>
-    /// <param name="reader">The data reader positioned at a row.</param>
-    /// <param name="ordinals">Pre-computed column ordinals.</param>
-    /// <returns>The entity.</returns>
-    TEntity Read(IDataReader reader, int[] ordinals);
-
-    /// <summary>
-    /// Gets the column ordinals for this entity type.
-    /// Call once per result set, then reuse for all rows.
-    /// </summary>
-    /// <param name="reader">The data reader.</param>
-    /// <returns>Array of column ordinals.</returns>
-    int[] GetOrdinals(IDataReader reader);
 }
 
 /// <summary>
@@ -55,17 +38,7 @@ public static class ResultReaderExtensions
     public static TEntity? FirstOrDefault<TEntity>(this IResultReader<TEntity> reader, IDataReader dataReader)
     {
         if (!dataReader.Read()) return default;
-        var ordinals = reader.GetOrdinals(dataReader);
-        return reader.Read(dataReader, ordinals);
-    }
-
-    /// <summary>
-    /// Reads the first entity or default if no rows, using pre-computed ordinals.
-    /// </summary>
-    public static TEntity? FirstOrDefault<TEntity>(this IResultReader<TEntity> reader, IDataReader dataReader, int[] ordinals)
-    {
-        if (!dataReader.Read()) return default;
-        return reader.Read(dataReader, ordinals);
+        return reader.Read(dataReader);
     }
 
     /// <summary>
@@ -77,21 +50,7 @@ public static class ResultReaderExtensions
         CancellationToken cancellationToken = default)
     {
         if (!await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false)) return default;
-        var ordinals = reader.GetOrdinals(dataReader);
-        return reader.Read(dataReader, ordinals);
-    }
-
-    /// <summary>
-    /// Reads the first entity or default if no rows (async), using pre-computed ordinals.
-    /// </summary>
-    public static async Task<TEntity?> FirstOrDefaultAsync<TEntity>(
-        this IResultReader<TEntity> reader,
-        DbDataReader dataReader,
-        int[] ordinals,
-        CancellationToken cancellationToken = default)
-    {
-        if (!await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false)) return default;
-        return reader.Read(dataReader, ordinals);
+        return reader.Read(dataReader);
     }
 
     /// <summary>
@@ -100,31 +59,22 @@ public static class ResultReaderExtensions
     public static List<TEntity> ToList<TEntity>(this IResultReader<TEntity> reader, IDataReader dataReader)
     {
         var list = new List<TEntity>();
-        if (!dataReader.Read()) return list;
-        
-        var ordinals = reader.GetOrdinals(dataReader);
-        do
+        while (dataReader.Read())
         {
-            list.Add(reader.Read(dataReader, ordinals));
-        } while (dataReader.Read());
-        
+            list.Add(reader.Read(dataReader));
+        }
         return list;
     }
 
     /// <summary>
-    /// Reads all entities into a list, using pre-computed ordinals.
+    /// Reads all entities into a list with capacity hint.
     /// </summary>
-    public static List<TEntity> ToList<TEntity>(this IResultReader<TEntity> reader, IDataReader dataReader, int[] ordinals) => ToList(reader, dataReader, ordinals, null);
-
-    /// <summary>
-    /// Reads all entities into a list, using pre-computed ordinals and capacity hint.
-    /// </summary>
-    public static List<TEntity> ToList<TEntity>(this IResultReader<TEntity> reader, IDataReader dataReader, int[] ordinals, int? capacityHint)
+    public static List<TEntity> ToList<TEntity>(this IResultReader<TEntity> reader, IDataReader dataReader, int capacityHint)
     {
-        var list = capacityHint.HasValue ? new List<TEntity>(capacityHint.Value) : new List<TEntity>();
+        var list = new List<TEntity>(capacityHint);
         while (dataReader.Read())
         {
-            list.Add(reader.Read(dataReader, ordinals));
+            list.Add(reader.Read(dataReader));
         }
         return list;
     }
@@ -138,46 +88,26 @@ public static class ResultReaderExtensions
         CancellationToken cancellationToken = default)
     {
         var list = new List<TEntity>();
-        if (!await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false)) return list;
-        
-        var ordinals = reader.GetOrdinals(dataReader);
-        do
+        while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
         {
-            list.Add(reader.Read(dataReader, ordinals));
-        } while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false));
-        
+            list.Add(reader.Read(dataReader));
+        }
         return list;
     }
 
     /// <summary>
-    /// Reads all entities into a list (async), using pre-computed ordinals.
+    /// Reads all entities into a list (async) with capacity hint.
     /// </summary>
-    public static Task<List<TEntity>> ToListAsync<TEntity>(
-        this IResultReader<TEntity> reader,
-        DbDataReader dataReader,
-        int[] ordinals,
-        CancellationToken cancellationToken = default) => ToListAsync(reader, dataReader, ordinals, null, cancellationToken);
-
-    /// <summary>
-    /// Reads all entities into a list (async), using pre-computed ordinals and capacity hint.
-    /// </summary>
-    /// <param name="reader">The result reader.</param>
-    /// <param name="dataReader">The data reader.</param>
-    /// <param name="ordinals">Pre-computed column ordinals.</param>
-    /// <param name="capacityHint">Expected number of rows for list pre-allocation.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>List of entities.</returns>
     public static async Task<List<TEntity>> ToListAsync<TEntity>(
         this IResultReader<TEntity> reader,
         DbDataReader dataReader,
-        int[] ordinals,
-        int? capacityHint,
+        int capacityHint,
         CancellationToken cancellationToken = default)
     {
-        var list = new List<TEntity>(capacityHint ?? 0);
+        var list = new List<TEntity>(capacityHint);
         while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
         {
-            list.Add(reader.Read(dataReader, ordinals));
+            list.Add(reader.Read(dataReader));
         }
         return list;
     }

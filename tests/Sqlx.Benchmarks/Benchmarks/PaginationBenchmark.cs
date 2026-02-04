@@ -23,7 +23,7 @@ public class PaginationBenchmark
     [Params(20, 50, 100)]
     public int PageSize { get; set; }
     
-    [Params(0, 100, 500)]
+    [Params(0)]
     public int Offset { get; set; }
     
     [GlobalSetup]

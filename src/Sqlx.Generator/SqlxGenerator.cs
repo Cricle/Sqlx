@@ -523,131 +523,22 @@ public class SqlxGenerator : IIncrementalGenerator
             }
         }
         
-        // Generate Ordinals struct first
-        GenerateOrdinalsStruct(sb, typeName, properties, columnAttr);
-        sb.AppendLine();
-        
         sb.AppendLine($"public sealed class {typeName}ResultReader : global::Sqlx.IResultReader<{fullTypeName}>");
         sb.AppendLine("{");
         sb.PushIndent();
         sb.AppendLine($"public static {typeName}ResultReader Default {{ get; }} = new();");
         sb.AppendLine();
-        for (int i = 0; i < properties.Count; i++)
-        {
-            var columnName = GetColumnName(properties[i], columnAttr);
-            sb.AppendLine($"private const string Col{i} = \"{columnName}\";");
-        }
-        sb.AppendLine();
-        sb.AppendLine("public int[] GetOrdinals(IDataReader reader) => new int[]");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        for (int i = 0; i < properties.Count; i++)
-            sb.AppendLine($"reader.GetOrdinal(Col{i}),");
-        sb.PopIndent();
-        sb.AppendLine("};");
-        sb.AppendLine();
         
-        // Read method without ordinals - optimized with hashcode switch (28% faster than GetOrdinal per property)
+        // Read method without ordinals - calls GetOrdinals each time
         sb.AppendLine($"public {fullTypeName} Read(IDataReader reader)");
         sb.AppendLine("{");
         sb.PushIndent();
-        
-        // Generate local variables for all properties
-        for (int i = 0; i < properties.Count; i++)
-        {
-            var prop = properties[i];
-            var propType = prop.Type.ToDisplayString();
-            var defaultValue = IsNullable(prop) || prop.Type.IsReferenceType ? "default" : GetDefaultValue(prop.Type);
-            sb.AppendLine($"{propType} {ToCamelCase(prop.Name)} = {defaultValue};");
-        }
-        sb.AppendLine();
-        
-        // Generate string switch loop (C# compiler optimizes string switch to hash table, 28% faster than GetOrdinal per property)
-        sb.AppendLine("for (int i = 0; i < reader.FieldCount; i++)");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        sb.AppendLine("var columnName = reader.GetName(i);");
-        sb.AppendLine();
-        sb.AppendLine("switch (columnName)");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        
-        for (int i = 0; i < properties.Count; i++)
-        {
-            var prop = properties[i];
-            var columnName = GetColumnName(prop, columnAttr);
-            var isNullable = IsNullable(prop);
-            var readExpr = GetReaderExpressionWithLocalOrdinal(prop.Type, "i", isNullable);
-            
-            sb.AppendLine($"case \"{columnName}\":");
-            sb.PushIndent();
-            sb.AppendLine($"{ToCamelCase(prop.Name)} = {readExpr};");
-            sb.AppendLine("break;");
-            sb.PopIndent();
-        }
-        
-        sb.PopIndent();
-        sb.AppendLine("}");
+        sb.AppendLine("return Read(reader, GetOrdinals(reader));");
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
         
-        // Build and return the entity
-        if (isMixedRecord)
-        {
-            // Mixed record: use constructor for primary params + object initializer for additional properties
-            sb.AppendLine($"return new {fullTypeName}(");
-            sb.PushIndent();
-            for (int i = 0; i < ctorProperties.Count; i++)
-            {
-                var prop = ctorProperties[i];
-                var comma = i < ctorProperties.Count - 1 ? "," : "";
-                sb.AppendLine($"{ToCamelCase(prop.Name)}{comma}");
-            }
-            sb.PopIndent();
-            sb.AppendLine(")");
-            sb.AppendLine("{");
-            sb.PushIndent();
-            foreach (var prop in initProperties)
-            {
-                sb.AppendLine($"{prop.Name} = {ToCamelCase(prop.Name)},");
-            }
-            sb.PopIndent();
-            sb.AppendLine("};");
-        }
-        else if (useConstructor)
-        {
-            // Pure record: use constructor only
-            sb.AppendLine($"return new {fullTypeName}(");
-            sb.PushIndent();
-            for (int i = 0; i < properties.Count; i++)
-            {
-                var prop = properties[i];
-                var comma = i < properties.Count - 1 ? "," : "";
-                sb.AppendLine($"{ToCamelCase(prop.Name)}{comma}");
-            }
-            sb.PopIndent();
-            sb.AppendLine(");");
-        }
-        else
-        {
-            // For classes and structs, use object initializer
-            sb.AppendLine($"return new {fullTypeName}");
-            sb.AppendLine("{");
-            sb.PushIndent();
-            for (int i = 0; i < properties.Count; i++)
-            {
-                var prop = properties[i];
-                sb.AppendLine($"{prop.Name} = {ToCamelCase(prop.Name)},");
-            }
-            sb.PopIndent();
-            sb.AppendLine("};");
-        }
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.AppendLine();
-        
-        // Read method with int[] ordinals - uses ordinals array for backward compatibility
+        // Read method with int[] ordinals (optimal path)
         sb.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
         sb.AppendLine($"public {fullTypeName} Read(IDataReader reader, int[] ordinals)");
         sb.AppendLine("{");
@@ -699,77 +590,12 @@ public class SqlxGenerator : IIncrementalGenerator
         }
         else
         {
-            // For classes and structs, use object initializer
             sb.AppendLine($"var result = new {fullTypeName}();");
             for (int i = 0; i < properties.Count; i++)
             {
                 var prop = properties[i];
                 var isNullable = IsNullable(prop);
                 var readExpr = GetReaderExpressionWithLocalOrdinal(prop.Type, $"ordinals[{i}]", isNullable);
-                sb.AppendLine($"result.{prop.Name} = {readExpr};");
-            }
-            sb.AppendLine("return result;");
-        }
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.AppendLine();
-        
-        // Read method with Ordinals struct (optimal path)
-        sb.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
-        sb.AppendLine($"public {fullTypeName} Read(IDataReader reader, in {typeName}Ordinals ordinals)");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        
-        if (isMixedRecord)
-        {
-            // Mixed record: use constructor for primary params + object initializer for additional properties
-            sb.AppendLine($"return new {fullTypeName}(");
-            sb.PushIndent();
-            for (int i = 0; i < ctorProperties.Count; i++)
-            {
-                var prop = ctorProperties[i];
-                var isNullable = IsNullable(prop);
-                var readExpr = GetReaderExpressionWithLocalOrdinal(prop.Type, $"ordinals.{prop.Name}", isNullable);
-                var comma = i < ctorProperties.Count - 1 ? "," : "";
-                sb.AppendLine($"{readExpr}{comma}");
-            }
-            sb.PopIndent();
-            sb.AppendLine(")");
-            sb.AppendLine("{");
-            sb.PushIndent();
-            foreach (var prop in initProperties)
-            {
-                var isNullable = IsNullable(prop);
-                var readExpr = GetReaderExpressionWithLocalOrdinal(prop.Type, $"ordinals.{prop.Name}", isNullable);
-                sb.AppendLine($"{prop.Name} = {readExpr},");
-            }
-            sb.PopIndent();
-            sb.AppendLine("};");
-        }
-        else if (useConstructor)
-        {
-            // Pure record: use constructor only
-            sb.AppendLine($"return new {fullTypeName}(");
-            sb.PushIndent();
-            for (int i = 0; i < properties.Count; i++)
-            {
-                var prop = properties[i];
-                var isNullable = IsNullable(prop);
-                var readExpr = GetReaderExpressionWithLocalOrdinal(prop.Type, $"ordinals.{prop.Name}", isNullable);
-                var comma = i < properties.Count - 1 ? "," : "";
-                sb.AppendLine($"{readExpr}{comma}");
-            }
-            sb.PopIndent();
-            sb.AppendLine(");");
-        }
-        else
-        {
-            sb.AppendLine($"var result = new {fullTypeName}();");
-            for (int i = 0; i < properties.Count; i++)
-            {
-                var prop = properties[i];
-                var isNullable = IsNullable(prop);
-                var readExpr = GetReaderExpressionWithLocalOrdinal(prop.Type, $"ordinals.{prop.Name}", isNullable);
                 sb.AppendLine($"result.{prop.Name} = {readExpr};");
             }
             
@@ -779,35 +605,22 @@ public class SqlxGenerator : IIncrementalGenerator
         sb.AppendLine("}");
         sb.AppendLine();
         
-        // GetOrdinals method that returns struct
-        sb.AppendLine($"public {typeName}Ordinals GetOrdinalsStruct(IDataReader reader) => new {typeName}Ordinals(reader);");
-        
-        sb.PopIndent();
-        sb.AppendLine("}");
-    }
-
-    private static void GenerateOrdinalsStruct(IndentedStringBuilder sb, string typeName, List<IPropertySymbol> properties, INamedTypeSymbol? columnAttr)
-    {
-        sb.AppendLine($"public readonly struct {typeName}Ordinals");
+        // GetOrdinals method that returns int array
+        sb.AppendLine("public int[] GetOrdinals(IDataReader reader)");
         sb.AppendLine("{");
         sb.PushIndent();
-        
-        // Generate readonly fields for each property
-        foreach (var prop in properties)
-        {
-            sb.AppendLine($"public readonly int {prop.Name};");
-        }
-        sb.AppendLine();
-        
-        // Generate constructor
-        sb.AppendLine($"public {typeName}Ordinals(IDataReader reader)");
+        sb.AppendLine($"return new int[]");
         sb.AppendLine("{");
         sb.PushIndent();
-        foreach (var prop in properties)
+        for (int i = 0; i < properties.Count; i++)
         {
+            var prop = properties[i];
             var columnName = GetColumnName(prop, columnAttr);
-            sb.AppendLine($"{prop.Name} = reader.GetOrdinal(\"{columnName}\");");
+            var comma = i < properties.Count - 1 ? "," : "";
+            sb.AppendLine($"reader.GetOrdinal(\"{columnName}\"){comma}");
         }
+        sb.PopIndent();
+        sb.AppendLine("};");
         sb.PopIndent();
         sb.AppendLine("}");
         

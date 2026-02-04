@@ -46,10 +46,9 @@ namespace Sqlx
             }
             using var command = CreateCommand(connection, sql, parameters);
             using var reader = command.ExecuteReader();
-            var origin = mapper.GetOrdinals(reader);
             while (reader.Read())
             {
-                yield return mapper.Read(reader, origin);
+                yield return mapper.Read(reader);
             }
         }
 
@@ -82,10 +81,9 @@ namespace Sqlx
 
             await using var command = CreateCommand(connection, sql, parameters);
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-            var origin = mapper.GetOrdinals(reader);
             while (await reader.ReadAsync(cancellationToken))
             {
-                yield return mapper.Read(reader, origin);
+                yield return mapper.Read(reader);
             }
         }
 

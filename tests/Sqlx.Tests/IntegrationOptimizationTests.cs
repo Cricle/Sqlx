@@ -35,12 +35,10 @@ public class IntegrationOptimizationTests
         Assert.IsTrue(template.Sql.Contains("[score]"));
         Assert.IsTrue(template.Sql.Contains("[integration_entities]"));
         
-        // Step 2: Generate static ordinals (simulating what generator does)
-        // When SQL uses {{columns}}, column order matches EntityProvider.Columns order
-        var staticOrdinals = Enumerable.Range(0, columns.Count).ToArray();
-        Assert.AreEqual(3, staticOrdinals.Length);
+        // Step 2: Verify columns are in correct order
+        Assert.AreEqual(3, columns.Count);
         
-        // Step 3: Use ResultReader with static ordinals
+        // Step 3: Use ResultReader
         var reader = IntegrationEntityResultReader.Default;
         var entities = new[]
         {
@@ -48,7 +46,7 @@ public class IntegrationOptimizationTests
         };
         using var dbReader = new IntegrationEntityDbDataReader(entities);
         
-        var result = reader.FirstOrDefault(dbReader, staticOrdinals);
+        var result = reader.FirstOrDefault(dbReader);
         
         Assert.IsNotNull(result);
         Assert.AreEqual(1, result.Id);
@@ -134,57 +132,43 @@ public class IntegrationOptimizationTests
     #region Performance Comparison Tests
 
     [TestMethod]
-    public void Performance_StaticOrdinals_SkipsGetOrdinalCalls()
+    public void Performance_ResultReader_UsesStructOrdinals()
     {
         var reader = IntegrationEntityResultReader.Default;
         var entities = Enumerable.Range(1, 100)
             .Select(i => new IntegrationEntity { Id = i, Name = $"entity{i}", Score = i * 1.1 })
             .ToArray();
         
-        // Test with static ordinals
-        using var dbReader1 = new IntegrationEntityDbDataReader(entities);
-        var staticOrdinals = new int[] { 0, 1, 2 };
-        var result1 = reader.ToList(dbReader1, staticOrdinals);
-        var getOrdinalCalls1 = dbReader1.GetOrdinalCallCount;
+        // Test with ResultReader (calls GetOrdinals for each row)
+        using var dbReader = new IntegrationEntityDbDataReader(entities);
+        var result = reader.ToList(dbReader);
+        var getOrdinalCalls = dbReader.GetOrdinalCallCount;
         
-        // Test without static ordinals
-        using var dbReader2 = new IntegrationEntityDbDataReader(entities);
-        var result2 = reader.ToList(dbReader2);
-        var getOrdinalCalls2 = dbReader2.GetOrdinalCallCount;
+        // Should produce correct results
+        Assert.AreEqual(100, result.Count);
         
-        // Both should produce same results
-        Assert.AreEqual(result1.Count, result2.Count);
-        
-        // Static ordinals should have 0 GetOrdinal calls
-        Assert.AreEqual(0, getOrdinalCalls1);
-        
-        // Dynamic ordinals should have 3 GetOrdinal calls (once per column)
-        Assert.AreEqual(3, getOrdinalCalls2);
+        // Should call GetOrdinal for each row (3 columns * 100 rows = 300 times)
+        Assert.AreEqual(300, getOrdinalCalls);
     }
 
     [TestMethod]
-    public async Task Performance_StaticOrdinalsAsync_SkipsGetOrdinalCalls()
+    public async Task Performance_ResultReaderAsync_UsesStructOrdinals()
     {
         var reader = IntegrationEntityResultReader.Default;
         var entities = Enumerable.Range(1, 50)
             .Select(i => new IntegrationEntity { Id = i, Name = $"async{i}", Score = i * 2.0 })
             .ToArray();
         
-        // Test with static ordinals
-        using var dbReader1 = new IntegrationEntityDbDataReader(entities);
-        var staticOrdinals = new int[] { 0, 1, 2 };
-        var result1 = await reader.ToListAsync(dbReader1, staticOrdinals);
-        var getOrdinalCalls1 = dbReader1.GetOrdinalCallCount;
+        // Test with ResultReader (calls GetOrdinals for each row)
+        using var dbReader = new IntegrationEntityDbDataReader(entities);
+        var result = await reader.ToListAsync(dbReader);
+        var getOrdinalCalls = dbReader.GetOrdinalCallCount;
         
-        // Test without static ordinals
-        using var dbReader2 = new IntegrationEntityDbDataReader(entities);
-        var result2 = await reader.ToListAsync(dbReader2);
-        var getOrdinalCalls2 = dbReader2.GetOrdinalCallCount;
+        // Should produce correct results
+        Assert.AreEqual(50, result.Count);
         
-        // Both should produce same results
-        Assert.AreEqual(result1.Count, result2.Count);
-        Assert.AreEqual(0, getOrdinalCalls1);
-        Assert.AreEqual(3, getOrdinalCalls2);
+        // Should call GetOrdinal for each row (3 columns * 50 rows = 150 times)
+        Assert.AreEqual(150, getOrdinalCalls);
     }
 
     #endregion
@@ -192,29 +176,27 @@ public class IntegrationOptimizationTests
     #region Edge Cases
 
     [TestMethod]
-    public void EdgeCase_EmptyResultSet_WithStaticOrdinals()
+    public void EdgeCase_EmptyResultSet_Works()
     {
         var reader = IntegrationEntityResultReader.Default;
         using var dbReader = new IntegrationEntityDbDataReader(Array.Empty<IntegrationEntity>());
-        var staticOrdinals = new int[] { 0, 1, 2 };
         
-        var listResult = reader.ToList(dbReader, staticOrdinals);
+        var listResult = reader.ToList(dbReader);
         Assert.AreEqual(0, listResult.Count);
         
         using var dbReader2 = new IntegrationEntityDbDataReader(Array.Empty<IntegrationEntity>());
-        var singleResult = reader.FirstOrDefault(dbReader2, staticOrdinals);
+        var singleResult = reader.FirstOrDefault(dbReader2);
         Assert.IsNull(singleResult);
     }
 
     [TestMethod]
-    public void EdgeCase_SingleRow_WithStaticOrdinals()
+    public void EdgeCase_SingleRow_Works()
     {
         var reader = IntegrationEntityResultReader.Default;
         var entities = new[] { new IntegrationEntity { Id = 42, Name = "single", Score = 100.0 } };
         using var dbReader = new IntegrationEntityDbDataReader(entities);
-        var staticOrdinals = new int[] { 0, 1, 2 };
         
-        var result = reader.FirstOrDefault(dbReader, staticOrdinals);
+        var result = reader.FirstOrDefault(dbReader);
         
         Assert.IsNotNull(result);
         Assert.AreEqual(42, result.Id);
@@ -223,21 +205,20 @@ public class IntegrationOptimizationTests
     }
 
     [TestMethod]
-    public void EdgeCase_LargeResultSet_WithStaticOrdinals()
+    public void EdgeCase_LargeResultSet_Works()
     {
         var reader = IntegrationEntityResultReader.Default;
         var entities = Enumerable.Range(1, 10000)
             .Select(i => new IntegrationEntity { Id = i, Name = $"large{i}", Score = i * 0.1 })
             .ToArray();
         using var dbReader = new IntegrationEntityDbDataReader(entities);
-        var staticOrdinals = new int[] { 0, 1, 2 };
         
-        var result = reader.ToList(dbReader, staticOrdinals);
+        var result = reader.ToList(dbReader);
         
         Assert.AreEqual(10000, result.Count);
         Assert.AreEqual(1, result[0].Id);
         Assert.AreEqual(10000, result[9999].Id);
-        Assert.AreEqual(0, dbReader.GetOrdinalCallCount); // No GetOrdinal calls
+        Assert.AreEqual(30000, dbReader.GetOrdinalCallCount); // GetOrdinal called for each row (3 columns * 10000 rows)
     }
 
     #endregion
@@ -245,7 +226,7 @@ public class IntegrationOptimizationTests
     #region Consistency Tests
 
     [TestMethod]
-    public void Consistency_StaticAndDynamicOrdinals_ProduceSameResults()
+    public void Consistency_ResultReader_ProducesCorrectResults()
     {
         var reader = IntegrationEntityResultReader.Default;
         var entities = new[]
@@ -257,27 +238,21 @@ public class IntegrationOptimizationTests
             new IntegrationEntity { Id = 5, Name = "e", Score = 5.0 },
         };
         
-        // With static ordinals
-        using var dbReader1 = new IntegrationEntityDbDataReader(entities);
-        var staticOrdinals = new int[] { 0, 1, 2 };
-        var result1 = reader.ToList(dbReader1, staticOrdinals);
+        using var dbReader = new IntegrationEntityDbDataReader(entities);
+        var result = reader.ToList(dbReader);
         
-        // Without static ordinals
-        using var dbReader2 = new IntegrationEntityDbDataReader(entities);
-        var result2 = reader.ToList(dbReader2);
-        
-        // Verify identical results
-        Assert.AreEqual(result1.Count, result2.Count);
-        for (int i = 0; i < result1.Count; i++)
+        // Verify correct results
+        Assert.AreEqual(5, result.Count);
+        for (int i = 0; i < result.Count; i++)
         {
-            Assert.AreEqual(result1[i].Id, result2[i].Id, $"Id mismatch at index {i}");
-            Assert.AreEqual(result1[i].Name, result2[i].Name, $"Name mismatch at index {i}");
-            Assert.AreEqual(result1[i].Score, result2[i].Score, $"Score mismatch at index {i}");
+            Assert.AreEqual(i + 1, result[i].Id, $"Id mismatch at index {i}");
+            Assert.AreEqual(entities[i].Name, result[i].Name, $"Name mismatch at index {i}");
+            Assert.AreEqual(entities[i].Score, result[i].Score, $"Score mismatch at index {i}");
         }
     }
 
     [TestMethod]
-    public async Task Consistency_AsyncStaticAndDynamicOrdinals_ProduceSameResults()
+    public async Task Consistency_AsyncResultReader_ProducesCorrectResults()
     {
         var reader = IntegrationEntityResultReader.Default;
         var entities = new[]
@@ -286,21 +261,15 @@ public class IntegrationOptimizationTests
             new IntegrationEntity { Id = 20, Name = "y", Score = 20.0 },
         };
         
-        // With static ordinals
-        using var dbReader1 = new IntegrationEntityDbDataReader(entities);
-        var staticOrdinals = new int[] { 0, 1, 2 };
-        var result1 = await reader.ToListAsync(dbReader1, staticOrdinals);
+        using var dbReader = new IntegrationEntityDbDataReader(entities);
+        var result = await reader.ToListAsync(dbReader);
         
-        // Without static ordinals
-        using var dbReader2 = new IntegrationEntityDbDataReader(entities);
-        var result2 = await reader.ToListAsync(dbReader2);
-        
-        Assert.AreEqual(result1.Count, result2.Count);
-        for (int i = 0; i < result1.Count; i++)
+        Assert.AreEqual(2, result.Count);
+        for (int i = 0; i < result.Count; i++)
         {
-            Assert.AreEqual(result1[i].Id, result2[i].Id);
-            Assert.AreEqual(result1[i].Name, result2[i].Name);
-            Assert.AreEqual(result1[i].Score, result2[i].Score);
+            Assert.AreEqual(entities[i].Id, result[i].Id);
+            Assert.AreEqual(entities[i].Name, result[i].Name);
+            Assert.AreEqual(entities[i].Score, result[i].Score);
         }
     }
 

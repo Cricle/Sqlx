@@ -195,7 +195,7 @@ public interface ITodoRepository : ICrudRepository<Todo, long>
 {
     // All standard CRUD operations are inherited from ICrudRepository
     // No custom methods needed for most scenarios!
-    
+
     // Only add custom methods for complex business logic that cannot be expressed with expressions:
     // - Full-text search across multiple fields
     // - Complex joins with other tables

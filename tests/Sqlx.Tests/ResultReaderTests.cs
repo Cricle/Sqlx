@@ -25,14 +25,19 @@ public class ResultReaderTests
     }
 
     [TestMethod]
-    public void ResultReader_GetOrdinals_ReturnsCorrectCount()
+    public void ResultReader_GetOrdinals_Works()
     {
         var reader = TestEntityResultReader.Default;
         using var dbReader = new TestDbDataReader(Array.Empty<TestEntity>());
         
         var ordinals = reader.GetOrdinals(dbReader);
         
+        // Verify ordinals array is initialized correctly
         Assert.AreEqual(4, ordinals.Length);
+        Assert.IsTrue(ordinals[0] >= 0); // Id
+        Assert.IsTrue(ordinals[1] >= 0); // UserName
+        Assert.IsTrue(ordinals[2] >= 0); // IsActive
+        Assert.IsTrue(ordinals[3] >= 0); // CreatedAt
     }
 
     [TestMethod]
@@ -46,8 +51,7 @@ public class ResultReaderTests
         using var dbReader = new TestDbDataReader(entities);
         dbReader.Read(); // Position at first row
         
-        var ordinals = reader.GetOrdinals(dbReader);
-        var result = reader.Read(dbReader, ordinals);
+        var result = reader.Read(dbReader);
         
         Assert.AreEqual(1, result.Id);
         Assert.AreEqual("test", result.UserName);
@@ -264,9 +268,8 @@ public class ResultReaderTests
         };
         using var dbReader = new TestDbDataReader(entities);
         
-        // Pre-computed ordinals (simulating static ordinals from generator)
-        var ordinals = new int[] { 0, 1, 2, 3 };
-        var results = reader.ToList(dbReader, ordinals);
+        // Use ToList which internally uses struct ordinals
+        var results = reader.ToList(dbReader);
         
         Assert.AreEqual(2, results.Count);
         Assert.AreEqual("user1", results[0].UserName);
@@ -284,9 +287,7 @@ public class ResultReaderTests
         };
         using var dbReader = new TestDbDataReader(entities);
         
-        // Pre-computed ordinals
-        var ordinals = new int[] { 0, 1, 2, 3 };
-        var result = reader.FirstOrDefault(dbReader, ordinals);
+        var result = reader.FirstOrDefault(dbReader);
         
         Assert.IsNotNull(result);
         Assert.AreEqual(1, result.Id);
@@ -294,7 +295,7 @@ public class ResultReaderTests
     }
 
     [TestMethod]
-    public async Task ResultReader_ToListAsync_WithStaticOrdinals_ReturnsAllEntities()
+    public async Task ResultReader_ToListAsync_ReturnsAllEntities()
     {
         var reader = TestEntityResultReader.Default;
         var entities = new[]
@@ -304,15 +305,13 @@ public class ResultReaderTests
         };
         using var dbReader = new TestDbDataReader(entities);
         
-        // Pre-computed ordinals
-        var ordinals = new int[] { 0, 1, 2, 3 };
-        var results = await reader.ToListAsync(dbReader, ordinals);
+        var results = await reader.ToListAsync(dbReader);
         
         Assert.AreEqual(2, results.Count);
     }
 
     [TestMethod]
-    public async Task ResultReader_FirstOrDefaultAsync_WithStaticOrdinals_ReturnsFirstEntity()
+    public async Task ResultReader_FirstOrDefaultAsync_ReturnsFirstEntity()
     {
         var reader = TestEntityResultReader.Default;
         var entities = new[]
@@ -321,9 +320,7 @@ public class ResultReaderTests
         };
         using var dbReader = new TestDbDataReader(entities);
         
-        // Pre-computed ordinals
-        var ordinals = new int[] { 0, 1, 2, 3 };
-        var result = await reader.FirstOrDefaultAsync(dbReader, ordinals);
+        var result = await reader.FirstOrDefaultAsync(dbReader);
         
         Assert.IsNotNull(result);
         Assert.AreEqual(1, result.Id);

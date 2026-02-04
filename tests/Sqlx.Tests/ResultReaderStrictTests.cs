@@ -170,15 +170,12 @@ public class ResultReaderStrictTests
         var ordinals1 = reader.GetOrdinals(dbReader);
         var ordinals2 = reader.GetOrdinals(dbReader);
 
-        Assert.AreEqual(ordinals1.Length, ordinals2.Length);
-        for (int i = 0; i < ordinals1.Length; i++)
-        {
-            Assert.AreEqual(ordinals1[i], ordinals2[i]);
-        }
+        // Arrays should have same values
+        CollectionAssert.AreEqual(ordinals1, ordinals2);
     }
 
     [TestMethod]
-    public void Read_WithPrecomputedOrdinals_PerformanceOptimization()
+    public void Read_WithArrayOrdinals_PerformanceOptimization()
     {
         var reader = TestEntityResultReader.Default;
         var entities = Enumerable.Range(1, 1000)
@@ -192,11 +189,8 @@ public class ResultReaderStrictTests
             .ToArray();
         using var dbReader = new TestDbDataReader(entities);
 
-        // Precompute ordinals once
-        var ordinals = reader.GetOrdinals(dbReader);
-
-        // Use precomputed ordinals for all reads
-        var results = reader.ToList(dbReader, ordinals);
+        // ToList now uses struct ordinals internally
+        var results = reader.ToList(dbReader);
 
         Assert.AreEqual(1000, results.Count);
     }
@@ -465,8 +459,7 @@ public class ResultReaderStrictTests
         };
         using var dbReader = new TestDbDataReader(entities);
 
-        var ordinals = reader.GetOrdinals(dbReader);
-        var results = reader.ToList(dbReader, ordinals);
+        var results = reader.ToList(dbReader);
 
         Assert.AreEqual(1, results.Count);
         Assert.AreEqual(1, results[0].Id);

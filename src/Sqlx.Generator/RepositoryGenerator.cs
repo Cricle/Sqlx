@@ -292,7 +292,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         if (paramNameFields.Count > 0)
             sb.AppendLine();
         
-        GenerateSqlTemplateFields(sb, methods, sqlTemplateAttr, methodFieldNames);
+        GenerateSqlTemplateFields(sb, methods, sqlTemplateAttr, methodFieldNames, entityName);
         sb.AppendLine();
 
         // Generate method implementations (skip methods already implemented by user)
@@ -649,7 +649,7 @@ public class RepositoryGenerator : IIncrementalGenerator
     private static string GetMethodSignature(IMethodSymbol method) =>
         $"{method.Name}({string.Join(",", method.Parameters.Select(p => p.Type.ToDisplayString()))})";
 
-    private static void GenerateSqlTemplateFields(IndentedStringBuilder sb, List<IMethodSymbol> methods, INamedTypeSymbol? sqlTemplateAttr, Dictionary<string, string> methodFieldNames)
+    private static void GenerateSqlTemplateFields(IndentedStringBuilder sb, List<IMethodSymbol> methods, INamedTypeSymbol? sqlTemplateAttr, Dictionary<string, string> methodFieldNames, string entityName)
     {
         sb.AppendLine("// Static SqlTemplate fields - prepared once at initialization");
         
@@ -666,13 +666,8 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine("_placeholderContext);");
             sb.PopIndent();
             
-            // Generate static ordinals for methods that use {{columns}} and return entities
-            // When SQL uses {{columns}}, column order matches EntityProvider.Columns order (0, 1, 2, ...)
-            if (UsesStaticColumns(template) && ReturnsEntity(method))
-            {
-                var ordinalsFieldName = fieldName.Replace("Template", "Ordinals");
-                sb.AppendLine($"private static readonly int[] {ordinalsFieldName} = Enumerable.Range(0, _placeholderContext.Columns.Count).ToArray();");
-            }
+            // Generate static ordinals struct for methods that use {{columns}} and return entities
+            // Static ordinals are no longer generated - struct ordinals are created on-demand from reader
         }
     }
 
@@ -1166,6 +1161,62 @@ public class RepositoryGenerator : IIncrementalGenerator
         return false;
     }
 
+    /// <summary>
+    /// Extracts the actual return type from a method's return type.
+    /// Handles Task&lt;T&gt;, List&lt;T&gt;, IList&lt;T&gt;, IEnumerable&lt;T&gt;, and nullable types.
+    /// </summary>
+    private static ITypeSymbol? ExtractActualReturnType(ITypeSymbol returnType)
+    {
+        // Unwrap Task<T>
+        if (returnType is INamedTypeSymbol { IsGenericType: true } taskType &&
+            (taskType.OriginalDefinition.ToDisplayString().StartsWith("System.Threading.Tasks.Task<") ||
+             taskType.OriginalDefinition.ToDisplayString().StartsWith("Task<")))
+        {
+            returnType = taskType.TypeArguments.FirstOrDefault() ?? returnType;
+        }
+
+        // Unwrap List<T>, IList<T>, IEnumerable<T>
+        if (returnType is INamedTypeSymbol { IsGenericType: true } collectionType &&
+            (collectionType.OriginalDefinition.ToDisplayString().Contains("List<") ||
+             collectionType.OriginalDefinition.ToDisplayString().Contains("IList<") ||
+             collectionType.OriginalDefinition.ToDisplayString().Contains("IEnumerable<")))
+        {
+            returnType = collectionType.TypeArguments.FirstOrDefault() ?? returnType;
+        }
+
+        // Unwrap nullable types
+        if (returnType.NullableAnnotation == NullableAnnotation.Annotated && returnType is INamedTypeSymbol nullableType)
+        {
+            return nullableType;
+        }
+
+        // Return the unwrapped type (could be entity type or custom type)
+        return returnType;
+    }
+
+    /// <summary>
+    /// Gets the entity type from a method's containing type (repository interface).
+    /// </summary>
+    private static ITypeSymbol? GetEntityTypeFromMethod(IMethodSymbol method)
+    {
+        var containingType = method.ContainingType;
+        
+        // Find ICrudRepository<TEntity, TKey> interface
+        foreach (var iface in containingType.AllInterfaces)
+        {
+            if (iface.IsGenericType && 
+                (iface.OriginalDefinition.ToDisplayString().Contains("ICrudRepository<") ||
+                 iface.OriginalDefinition.ToDisplayString().Contains("IQueryRepository<") ||
+                 iface.OriginalDefinition.ToDisplayString().Contains("ICommandRepository<")))
+            {
+                // First type argument is TEntity
+                return iface.TypeArguments.FirstOrDefault();
+            }
+        }
+
+        return null;
+    }
+
     private static void GenerateExecuteAndReturn(IndentedStringBuilder sb, IMethodSymbol method, string repoFullName, string entityFullName, string entityName, string keyTypeName, bool isReturnInsertedId, string methodName, string fieldName, bool useStaticOrdinals, string ordinalsFieldName, bool isAsync)
     {
         var returnType = method.ReturnType.ToDisplayString();
@@ -1187,6 +1238,17 @@ public class RepositoryGenerator : IIncrementalGenerator
         var normalizedReturnType = returnType
             .Replace("System.Threading.Tasks.", "")
             .Replace("System.Collections.Generic.", "");
+
+        // Extract actual return type for custom types (different from entity type)
+        var actualReturnType = ExtractActualReturnType(method.ReturnType);
+        var entityType = GetEntityTypeFromMethod(method);
+        var isCustomReturnType = actualReturnType != null && entityType != null && 
+                                 !SymbolEqualityComparer.Default.Equals(actualReturnType, entityType) &&
+                                 actualReturnType.TypeKind == TypeKind.Class; // Only for class types, not primitives
+        
+        // Use custom return type name if it's a custom type, otherwise use entity name
+        var actualReturnTypeName = isCustomReturnType ? actualReturnType!.Name : entityName;
+        var actualReturnTypeFullName = isCustomReturnType ? actualReturnType!.ToDisplayString() : entityFullName;
 
         // Check for sync TKey return (InsertAndGetId without Task) - MUST BE FIRST!
         if (!isAsync && isReturnInsertedId)
@@ -1225,17 +1287,13 @@ public class RepositoryGenerator : IIncrementalGenerator
         {
             // Sync list return
             sb.AppendLine("using var reader = cmd.ExecuteReader(System.Data.CommandBehavior.Default);");
-            if (useStaticOrdinals && capacityHint != null)
+            if (capacityHint != null)
             {
-                sb.AppendLine($"var result = global::Sqlx.ResultReaderExtensions.ToList({entityName}ResultReader.Default, reader, {ordinalsFieldName}, {capacityHint});");
-            }
-            else if (useStaticOrdinals)
-            {
-                sb.AppendLine($"var result = global::Sqlx.ResultReaderExtensions.ToList({entityName}ResultReader.Default, reader, {ordinalsFieldName});");
+                sb.AppendLine($"var result = global::Sqlx.ResultReaderExtensions.ToList({actualReturnTypeName}ResultReader.Default, reader, {capacityHint});");
             }
             else
             {
-                sb.AppendLine($"var result = {entityName}ResultReader.Default.ToList(reader);");
+                sb.AppendLine($"var result = {actualReturnTypeName}ResultReader.Default.ToList(reader);");
             }
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
@@ -1250,20 +1308,15 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine();
             sb.AppendLine("return result;");
         }
-        // Check for sync single entity return (Entity? without Task)
+        // Check for sync single entity return (Entity? without Task) or custom return type
         else if (!isAsync && (normalizedReturnType.Contains($"{entityName}?") || normalizedReturnType.Contains($"{entityName}") ||
-                 returnType.Contains($"{entityFullName}?") || returnType.Contains($"{entityFullName}")))
+                 returnType.Contains($"{entityFullName}?") || returnType.Contains($"{entityFullName}") ||
+                 (isCustomReturnType && (normalizedReturnType.Contains($"{actualReturnTypeName}?") || normalizedReturnType.Contains($"{actualReturnTypeName}") ||
+                  returnType.Contains($"{actualReturnTypeFullName}?") || returnType.Contains($"{actualReturnTypeFullName}")))))
         {
             // Sync single entity return
             sb.AppendLine("using var reader = cmd.ExecuteReader(System.Data.CommandBehavior.Default);");
-            if (useStaticOrdinals)
-            {
-                sb.AppendLine($"var result = global::Sqlx.ResultReaderExtensions.FirstOrDefault({entityName}ResultReader.Default, reader, {ordinalsFieldName});");
-            }
-            else
-            {
-                sb.AppendLine($"var result = {entityName}ResultReader.Default.FirstOrDefault(reader);");
-            }
+            sb.AppendLine($"var result = {actualReturnTypeName}ResultReader.Default.FirstOrDefault(reader);");
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
             sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
@@ -1325,20 +1378,16 @@ public class RepositoryGenerator : IIncrementalGenerator
         }
         else if (normalizedReturnType.Contains("Task<List<") || normalizedReturnType.Contains("Task<IList<") || normalizedReturnType.Contains("Task<IEnumerable<"))
         {
-            // Return list of entities - use static ordinals when available
+            // Return list of entities
             sb.AppendLine($"using var reader = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.Default, {ctName}).ConfigureAwait(false);");
-            if (useStaticOrdinals && capacityHint != null)
+            if (capacityHint != null)
             {
                 // Use capacity hint for list pre-allocation
-                sb.AppendLine($"var result = await global::Sqlx.ResultReaderExtensions.ToListAsync({entityName}ResultReader.Default, reader, {ordinalsFieldName}, {capacityHint}, {ctName}).ConfigureAwait(false);");
-            }
-            else if (useStaticOrdinals)
-            {
-                sb.AppendLine($"var result = await global::Sqlx.ResultReaderExtensions.ToListAsync({entityName}ResultReader.Default, reader, {ordinalsFieldName}, {ctName}).ConfigureAwait(false);");
+                sb.AppendLine($"var result = await global::Sqlx.ResultReaderExtensions.ToListAsync({actualReturnTypeName}ResultReader.Default, reader, {capacityHint}, {ctName}).ConfigureAwait(false);");
             }
             else
             {
-                sb.AppendLine($"var result = await {entityName}ResultReader.Default.ToListAsync(reader, {ctName}).ConfigureAwait(false);");
+                sb.AppendLine($"var result = await {actualReturnTypeName}ResultReader.Default.ToListAsync(reader, {ctName}).ConfigureAwait(false);");
             }
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
@@ -1354,18 +1403,13 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine("return result;");
         }
         else if (normalizedReturnType.Contains($"Task<{entityName}?>") || normalizedReturnType.Contains($"Task<{entityName}>") ||
-                 returnType.Contains($"Task<{entityFullName}?>") || returnType.Contains($"Task<{entityFullName}>"))
+                 returnType.Contains($"Task<{entityFullName}?>") || returnType.Contains($"Task<{entityFullName}>") ||
+                 (isCustomReturnType && (normalizedReturnType.Contains($"Task<{actualReturnTypeName}?>") || normalizedReturnType.Contains($"Task<{actualReturnTypeName}>") ||
+                  returnType.Contains($"Task<{actualReturnTypeFullName}?>") || returnType.Contains($"Task<{actualReturnTypeFullName}>"))))
         {
-            // Return single entity - use static ordinals when available
+            // Return single entity
             sb.AppendLine($"using var reader = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.Default, {ctName}).ConfigureAwait(false);");
-            if (useStaticOrdinals)
-            {
-                sb.AppendLine($"var result = await global::Sqlx.ResultReaderExtensions.FirstOrDefaultAsync({entityName}ResultReader.Default, reader, {ordinalsFieldName}, {ctName}).ConfigureAwait(false);");
-            }
-            else
-            {
-                sb.AppendLine($"var result = await {entityName}ResultReader.Default.FirstOrDefaultAsync(reader, {ctName}).ConfigureAwait(false);");
-            }
+            sb.AppendLine($"var result = await {actualReturnTypeName}ResultReader.Default.FirstOrDefaultAsync(reader, {ctName}).ConfigureAwait(false);");
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
             sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");

@@ -579,8 +579,8 @@ public class DynamicResultReaderTests
         dbReader.Read();
         var ordinals = reader.GetOrdinals(dbReader);
         
-        // Read with ordinals should use the static delegate
-        var result = reader.Read(dbReader, ordinals);
+        // Read should use the static delegate
+        var result = reader.Read(dbReader);
         Assert.IsNotNull(result);
     }
 

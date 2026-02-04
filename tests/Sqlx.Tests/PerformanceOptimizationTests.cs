@@ -48,7 +48,7 @@ public class PerformanceOptimizationTests
     #region Synchronous ResultReader Tests
 
     [TestMethod]
-    public void SyncToList_WithOrdinals_ShouldReadAllRows()
+    public void SyncToList_WithStructOrdinals_ShouldReadAllRows()
     {
         // Arrange
         SeedData(10);
@@ -59,11 +59,10 @@ public class PerformanceOptimizationTests
         
         // Act
         using var dataReader = cmd.ExecuteReader();
-        var ordinals = reader.GetOrdinals(dataReader);
         var result = new List<TestData>();
         while (dataReader.Read())
         {
-            result.Add(reader.Read(dataReader, ordinals));
+            result.Add(reader.Read(dataReader));
         }
         
         // Assert
@@ -84,11 +83,10 @@ public class PerformanceOptimizationTests
         
         // Act
         using var dataReader = cmd.ExecuteReader();
-        var ordinals = reader.GetOrdinals(dataReader);
         var result = new List<TestData>(1000);
         while (dataReader.Read())
         {
-            result.Add(reader.Read(dataReader, ordinals));
+            result.Add(reader.Read(dataReader));
         }
         
         // Assert
@@ -112,16 +110,18 @@ public class PerformanceOptimizationTests
         
         // Act
         using var reader = cmd.ExecuteReader();
-        var ordinals = new TestDataOrdinals(reader);
+        var testReader = new TestDataReader();
+        var ordinals = testReader.GetOrdinals(reader);
         
         // Assert
-        Assert.AreEqual(0, ordinals.Id);
-        Assert.AreEqual(1, ordinals.Name);
-        Assert.AreEqual(2, ordinals.Value);
+        Assert.AreEqual(3, ordinals.Length);
+        Assert.AreEqual(0, ordinals[0]); // Id
+        Assert.AreEqual(1, ordinals[1]); // Name
+        Assert.AreEqual(2, ordinals[2]); // Value
     }
 
     [TestMethod]
-    public void StructOrdinals_ShouldReadCorrectly()
+    public void ArrayOrdinals_ShouldReadCorrectly()
     {
         // Arrange
         SeedData(10);
@@ -132,12 +132,12 @@ public class PerformanceOptimizationTests
         
         // Act
         using var dataReader = cmd.ExecuteReader();
-        var ordinals = new TestDataOrdinals(dataReader);
+        var ordinals = reader.GetOrdinals(dataReader);
         var results = new List<TestData>();
         
         while (dataReader.Read())
         {
-            results.Add(reader.ReadWithStruct(dataReader, in ordinals));
+            results.Add(reader.Read(dataReader, ordinals));
         }
         
         // Assert
@@ -168,11 +168,10 @@ public class PerformanceOptimizationTests
         
         // Act
         using var dataReader = cmd.ExecuteReader();
-        var ordinals = reader.GetOrdinals(dataReader);
         var result = new List<TestData>(count); // Preallocate
         while (dataReader.Read())
         {
-            result.Add(reader.Read(dataReader, ordinals));
+            result.Add(reader.Read(dataReader));
         }
         
         // Assert
@@ -192,11 +191,10 @@ public class PerformanceOptimizationTests
         
         // Act
         using var dataReader = cmd.ExecuteReader();
-        var ordinals = reader.GetOrdinals(dataReader);
         var result = new List<TestData>(); // No preallocation
         while (dataReader.Read())
         {
-            result.Add(reader.Read(dataReader, ordinals));
+            result.Add(reader.Read(dataReader));
         }
         
         // Assert
@@ -229,20 +227,6 @@ public class PerformanceOptimizationTests
         public int Value { get; set; }
     }
 
-    private readonly struct TestDataOrdinals
-    {
-        public readonly int Id;
-        public readonly int Name;
-        public readonly int Value;
-
-        public TestDataOrdinals(IDataReader reader)
-        {
-            Id = reader.GetOrdinal("id");
-            Name = reader.GetOrdinal("name");
-            Value = reader.GetOrdinal("value");
-        }
-    }
-
     private class TestDataReader : IResultReader<TestData>
     {
         public int[] GetOrdinals(IDataReader reader)
@@ -251,7 +235,7 @@ public class PerformanceOptimizationTests
             {
                 reader.GetOrdinal("id"),
                 reader.GetOrdinal("name"),
-                reader.GetOrdinal("value"),
+                reader.GetOrdinal("value")
             };
         }
 
@@ -272,16 +256,6 @@ public class PerformanceOptimizationTests
                 Id = reader.GetInt64(ordinals[0]),
                 Name = reader.GetString(ordinals[1]),
                 Value = reader.GetInt32(ordinals[2]),
-            };
-        }
-
-        public TestData ReadWithStruct(IDataReader reader, in TestDataOrdinals ordinals)
-        {
-            return new TestData
-            {
-                Id = reader.GetInt64(ordinals.Id),
-                Name = reader.GetString(ordinals.Name),
-                Value = reader.GetInt32(ordinals.Value),
             };
         }
     }

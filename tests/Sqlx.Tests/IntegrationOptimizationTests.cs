@@ -354,3 +354,255 @@ public class IntegrationEntityDbDataReader : System.Data.Common.DbDataReader
 
 #endregion
 
+
+#region Strict Ordinal Caching Tests
+
+[TestClass]
+public class StrictOrdinalCachingTests
+{
+    [TestMethod]
+    public void OrdinalCaching_VerifyGetOrdinalCalledOncePerColumn()
+    {
+        // Arrange
+        var reader = IntegrationEntityResultReader.Default;
+        var entities = Enumerable.Range(1, 1000)
+            .Select(i => new IntegrationEntity { Id = i, Name = $"test{i}", Score = i * 1.5 })
+            .ToArray();
+        
+        // Act
+        using var dbReader = new IntegrationEntityDbDataReader(entities);
+        var result = reader.ToList(dbReader);
+        
+        // Assert
+        Assert.AreEqual(1000, result.Count);
+        Assert.AreEqual(3, dbReader.GetOrdinalCallCount, 
+            "GetOrdinal should be called exactly 3 times (once per column), not 3000 times (once per row per column)");
+    }
+
+    [TestMethod]
+    public async Task OrdinalCaching_Async_VerifyGetOrdinalCalledOncePerColumn()
+    {
+        // Arrange
+        var reader = IntegrationEntityResultReader.Default;
+        var entities = Enumerable.Range(1, 500)
+            .Select(i => new IntegrationEntity { Id = i, Name = $"async{i}", Score = i * 2.0 })
+            .ToArray();
+        
+        // Act
+        using var dbReader = new IntegrationEntityDbDataReader(entities);
+        var result = await reader.ToListAsync(dbReader);
+        
+        // Assert
+        Assert.AreEqual(500, result.Count);
+        Assert.AreEqual(3, dbReader.GetOrdinalCallCount, 
+            "Async ToListAsync should also call GetOrdinal exactly 3 times (once per column)");
+    }
+
+    [TestMethod]
+    public void OrdinalCaching_PropertyCount_ReturnsCorrectValue()
+    {
+        // Arrange
+        var reader = IntegrationEntityResultReader.Default;
+        
+        // Act
+        int propertyCount = reader.PropertyCount;
+        
+        // Assert
+        Assert.AreEqual(3, propertyCount, "PropertyCount should match the number of properties in IntegrationEntity");
+    }
+
+    [TestMethod]
+    public void OrdinalCaching_GetOrdinals_FillsSpanCorrectly()
+    {
+        // Arrange
+        var reader = IntegrationEntityResultReader.Default;
+        var entities = new[] { new IntegrationEntity { Id = 1, Name = "test", Score = 1.0 } };
+        
+        // Act
+        using var dbReader = new IntegrationEntityDbDataReader(entities);
+        Span<int> ordinals = stackalloc int[3];
+        reader.GetOrdinals(dbReader, ordinals);
+        
+        // Assert
+        Assert.AreEqual(0, ordinals[0], "Id column should be at ordinal 0");
+        Assert.AreEqual(1, ordinals[1], "Name column should be at ordinal 1");
+        Assert.AreEqual(2, ordinals[2], "Score column should be at ordinal 2");
+    }
+
+    [TestMethod]
+    public void OrdinalCaching_ReadWithOrdinals_UsesPrecomputedValues()
+    {
+        // Arrange
+        var reader = IntegrationEntityResultReader.Default;
+        var entities = new[] 
+        { 
+            new IntegrationEntity { Id = 42, Name = "cached", Score = 99.9 } 
+        };
+        
+        // Act
+        using var dbReader = new IntegrationEntityDbDataReader(entities);
+        dbReader.Read();
+        
+        Span<int> ordinals = stackalloc int[3];
+        reader.GetOrdinals(dbReader, ordinals);
+        
+        int getOrdinalCallsBefore = dbReader.GetOrdinalCallCount;
+        var result = reader.Read(dbReader, ordinals);
+        int getOrdinalCallsAfter = dbReader.GetOrdinalCallCount;
+        
+        // Assert
+        Assert.AreEqual(42, result.Id);
+        Assert.AreEqual("cached", result.Name);
+        Assert.AreEqual(99.9, result.Score);
+        Assert.AreEqual(getOrdinalCallsBefore, getOrdinalCallsAfter, 
+            "Read with ordinals should not call GetOrdinal");
+    }
+
+    [TestMethod]
+    public void OrdinalCaching_CompareWithoutCaching_ShowsImprovement()
+    {
+        // Arrange
+        var reader = IntegrationEntityResultReader.Default;
+        var entities = Enumerable.Range(1, 100)
+            .Select(i => new IntegrationEntity { Id = i, Name = $"item{i}", Score = i * 1.0 })
+            .ToArray();
+        
+        // Act - With caching (ToList uses ordinal caching)
+        using var dbReaderCached = new IntegrationEntityDbDataReader(entities);
+        var resultCached = reader.ToList(dbReaderCached);
+        int getOrdinalCallsCached = dbReaderCached.GetOrdinalCallCount;
+        
+        // Act - Without caching (manual loop calling Read without ordinals)
+        using var dbReaderUncached = new IntegrationEntityDbDataReader(entities);
+        var resultUncached = new List<IntegrationEntity>();
+        while (dbReaderUncached.Read())
+        {
+            resultUncached.Add(reader.Read(dbReaderUncached));
+        }
+        int getOrdinalCallsUncached = dbReaderUncached.GetOrdinalCallCount;
+        
+        // Assert
+        Assert.AreEqual(100, resultCached.Count);
+        Assert.AreEqual(100, resultUncached.Count);
+        Assert.AreEqual(3, getOrdinalCallsCached, "With caching: 3 calls (once per column)");
+        Assert.AreEqual(300, getOrdinalCallsUncached, "Without caching: 300 calls (100 rows × 3 columns)");
+        Assert.IsTrue(getOrdinalCallsUncached > getOrdinalCallsCached * 50, 
+            "Uncached should call GetOrdinal 99x more times");
+    }
+
+    [TestMethod]
+    public void OrdinalCaching_StackallocVsHeap_BothProduceCorrectResults()
+    {
+        // Arrange
+        var reader = IntegrationEntityResultReader.Default;
+        var entities = new[] 
+        { 
+            new IntegrationEntity { Id = 1, Name = "a", Score = 1.0 },
+            new IntegrationEntity { Id = 2, Name = "b", Score = 2.0 },
+        };
+        
+        // Act - Stackalloc
+        using var dbReader1 = new IntegrationEntityDbDataReader(entities);
+        dbReader1.Read();
+        Span<int> stackOrdinals = stackalloc int[3];
+        reader.GetOrdinals(dbReader1, stackOrdinals);
+        var result1 = reader.Read(dbReader1, stackOrdinals);
+        
+        // Act - Heap
+        using var dbReader2 = new IntegrationEntityDbDataReader(entities);
+        dbReader2.Read();
+        var heapOrdinals = new int[3];
+        reader.GetOrdinals(dbReader2, heapOrdinals);
+        var result2 = reader.Read(dbReader2, heapOrdinals);
+        
+        // Assert
+        Assert.AreEqual(result1.Id, result2.Id);
+        Assert.AreEqual(result1.Name, result2.Name);
+        Assert.AreEqual(result1.Score, result2.Score);
+    }
+
+    [TestMethod]
+    public void OrdinalCaching_LargeDataset_MaintainsPerformance()
+    {
+        // Arrange
+        var reader = IntegrationEntityResultReader.Default;
+        var entities = Enumerable.Range(1, 10000)
+            .Select(i => new IntegrationEntity { Id = i, Name = $"large{i}", Score = i * 0.5 })
+            .ToArray();
+        
+        // Act
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        using var dbReader = new IntegrationEntityDbDataReader(entities);
+        var result = reader.ToList(dbReader);
+        stopwatch.Stop();
+        
+        // Assert
+        Assert.AreEqual(10000, result.Count);
+        Assert.AreEqual(3, dbReader.GetOrdinalCallCount, "Should call GetOrdinal only 3 times even for 10k rows");
+        Assert.IsTrue(stopwatch.ElapsedMilliseconds < 1000, 
+            $"Should complete in under 1 second, took {stopwatch.ElapsedMilliseconds}ms");
+    }
+
+    [TestMethod]
+    public void OrdinalCaching_VerifyDataIntegrity_AllRows()
+    {
+        // Arrange
+        var reader = IntegrationEntityResultReader.Default;
+        var entities = Enumerable.Range(1, 50)
+            .Select(i => new IntegrationEntity { Id = i, Name = $"verify{i}", Score = i * 3.14 })
+            .ToArray();
+        
+        // Act
+        using var dbReader = new IntegrationEntityDbDataReader(entities);
+        var result = reader.ToList(dbReader);
+        
+        // Assert
+        Assert.AreEqual(50, result.Count);
+        for (int i = 0; i < 50; i++)
+        {
+            Assert.AreEqual(entities[i].Id, result[i].Id, $"Row {i}: Id mismatch");
+            Assert.AreEqual(entities[i].Name, result[i].Name, $"Row {i}: Name mismatch");
+            Assert.AreEqual(entities[i].Score, result[i].Score, 0.001, $"Row {i}: Score mismatch");
+        }
+    }
+
+    [TestMethod]
+    public void OrdinalCaching_FirstOrDefault_UsesOptimization()
+    {
+        // Arrange
+        var reader = IntegrationEntityResultReader.Default;
+        var entities = new[] { new IntegrationEntity { Id = 99, Name = "first", Score = 88.8 } };
+        
+        // Act
+        using var dbReader = new IntegrationEntityDbDataReader(entities);
+        var result = reader.FirstOrDefault(dbReader);
+        
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.AreEqual(99, result.Id);
+        Assert.AreEqual("first", result.Name);
+        Assert.AreEqual(88.8, result.Score);
+        // FirstOrDefault doesn't use ordinal caching (single row), so GetOrdinal called 3 times
+        Assert.AreEqual(3, dbReader.GetOrdinalCallCount);
+    }
+
+    [TestMethod]
+    public async Task OrdinalCaching_FirstOrDefaultAsync_Works()
+    {
+        // Arrange
+        var reader = IntegrationEntityResultReader.Default;
+        var entities = new[] { new IntegrationEntity { Id = 77, Name = "async_first", Score = 66.6 } };
+        
+        // Act
+        using var dbReader = new IntegrationEntityDbDataReader(entities);
+        var result = await reader.FirstOrDefaultAsync(dbReader);
+        
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.AreEqual(77, result.Id);
+        Assert.AreEqual("async_first", result.Name);
+        Assert.AreEqual(66.6, result.Score);
+    }
+}
+
+#endregion

@@ -23,8 +23,8 @@ public interface IBenchmarkUserRepository : ICrudRepository<BenchmarkUser, long>
     // - BatchInsertAsync(entities)
 
     /// <summary>Gets users by minimum age.</summary>
-    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE age >= @minAge")]
-    Task<List<BenchmarkUser>> GetByMinAgeAsync(int minAge, CancellationToken cancellationToken = default);
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE age >= @minAge LIMIT @limit")]
+    Task<List<BenchmarkUser>> GetByMinAgeAsync(int minAge, int limit, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

@@ -139,7 +139,7 @@ public class IntegrationOptimizationTests
             .Select(i => new IntegrationEntity { Id = i, Name = $"entity{i}", Score = i * 1.1 })
             .ToArray();
         
-        // Test with ResultReader (calls GetOrdinals for each row)
+        // Test with ResultReader (now uses optimized ordinal caching with stackalloc)
         using var dbReader = new IntegrationEntityDbDataReader(entities);
         var result = reader.ToList(dbReader);
         var getOrdinalCalls = dbReader.GetOrdinalCallCount;
@@ -147,8 +147,8 @@ public class IntegrationOptimizationTests
         // Should produce correct results
         Assert.AreEqual(100, result.Count);
         
-        // Should call GetOrdinal for each row (3 columns * 100 rows = 300 times)
-        Assert.AreEqual(300, getOrdinalCalls);
+        // Should call GetOrdinal only once per column (3 columns = 3 times) due to ordinal caching optimization
+        Assert.AreEqual(3, getOrdinalCalls);
     }
 
     [TestMethod]
@@ -159,7 +159,7 @@ public class IntegrationOptimizationTests
             .Select(i => new IntegrationEntity { Id = i, Name = $"async{i}", Score = i * 2.0 })
             .ToArray();
         
-        // Test with ResultReader (calls GetOrdinals for each row)
+        // Test with ResultReader (now uses optimized ordinal caching)
         using var dbReader = new IntegrationEntityDbDataReader(entities);
         var result = await reader.ToListAsync(dbReader);
         var getOrdinalCalls = dbReader.GetOrdinalCallCount;
@@ -167,8 +167,8 @@ public class IntegrationOptimizationTests
         // Should produce correct results
         Assert.AreEqual(50, result.Count);
         
-        // Should call GetOrdinal for each row (3 columns * 50 rows = 150 times)
-        Assert.AreEqual(150, getOrdinalCalls);
+        // Should call GetOrdinal only once per column (3 columns = 3 times) due to ordinal caching optimization
+        Assert.AreEqual(3, getOrdinalCalls);
     }
 
     #endregion
@@ -218,7 +218,7 @@ public class IntegrationOptimizationTests
         Assert.AreEqual(10000, result.Count);
         Assert.AreEqual(1, result[0].Id);
         Assert.AreEqual(10000, result[9999].Id);
-        Assert.AreEqual(30000, dbReader.GetOrdinalCallCount); // GetOrdinal called for each row (3 columns * 10000 rows)
+        Assert.AreEqual(3, dbReader.GetOrdinalCallCount); // GetOrdinal called only once per column (3 columns) due to ordinal caching
     }
 
     #endregion
@@ -335,7 +335,13 @@ public class IntegrationEntityDbDataReader : System.Data.Common.DbDataReader
     public override DateTime GetDateTime(int ordinal) => throw new NotImplementedException();
     public override decimal GetDecimal(int ordinal) => throw new NotImplementedException();
     public override System.Collections.IEnumerator GetEnumerator() => throw new NotImplementedException();
-    public override Type GetFieldType(int ordinal) => throw new NotImplementedException();
+    public override Type GetFieldType(int ordinal) => ordinal switch
+    {
+        0 => typeof(int),
+        1 => typeof(string),
+        2 => typeof(double),
+        _ => throw new IndexOutOfRangeException($"Ordinal {ordinal} out of range")
+    };
     public override float GetFloat(int ordinal) => throw new NotImplementedException();
     public override Guid GetGuid(int ordinal) => throw new NotImplementedException();
     public override short GetInt16(int ordinal) => throw new NotImplementedException();

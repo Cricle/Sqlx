@@ -480,7 +480,6 @@ public class SqlxGenerator : IIncrementalGenerator
         bool isValueType = typeSymbol.IsValueType;
         
         // Determine if we should use constructor
-        // For records, check if all properties are in the primary constructor
         bool useConstructor = false;
         bool isMixedRecord = false;
         List<IPropertySymbol> ctorProperties = new List<IPropertySymbol>();
@@ -488,36 +487,27 @@ public class SqlxGenerator : IIncrementalGenerator
         
         if (isRecord)
         {
-            // Get primary constructor parameters
             var primaryCtor = typeSymbol.Constructors.FirstOrDefault(c => c.Parameters.Length > 0);
             if (primaryCtor != null)
             {
-                // Check if all properties match constructor parameters
                 var ctorParamNames = new HashSet<string>(primaryCtor.Parameters.Select(p => p.Name), System.StringComparer.OrdinalIgnoreCase);
                 var propNames = new HashSet<string>(properties.Select(p => p.Name), System.StringComparer.OrdinalIgnoreCase);
                 
                 if (ctorParamNames.SetEquals(propNames))
                 {
-                    // Pure record - all properties in constructor
                     useConstructor = true;
                 }
                 else if (ctorParamNames.Count > 0 && ctorParamNames.IsSubsetOf(propNames))
                 {
-                    // Mixed record - some properties in constructor, some additional
                     isMixedRecord = true;
                     useConstructor = true;
                     
-                    // Separate properties into constructor and init-only
                     foreach (var prop in properties)
                     {
                         if (ctorParamNames.Contains(prop.Name))
-                        {
                             ctorProperties.Add(prop);
-                        }
                         else
-                        {
                             initProperties.Add(prop);
-                        }
                     }
                 }
             }
@@ -526,24 +516,233 @@ public class SqlxGenerator : IIncrementalGenerator
         sb.AppendLine($"public sealed class {typeName}ResultReader : global::Sqlx.IResultReader<{fullTypeName}>");
         sb.AppendLine("{");
         sb.PushIndent();
+        
         sb.AppendLine($"public static {typeName}ResultReader Default {{ get; }} = new();");
         sb.AppendLine();
         
-        // Read method without ordinals - calls GetOrdinals each time
+        int propCount = properties.Count;
+        
+        // PropertyCount property
+        sb.AppendLine($"public int PropertyCount => {propCount};");
+        sb.AppendLine();
+        
+        // Simple implementation: just get ordinals and read
         sb.AppendLine($"public {fullTypeName} Read(IDataReader reader)");
         sb.AppendLine("{");
         sb.PushIndent();
-        sb.AppendLine("return Read(reader, GetOrdinals(reader));");
+        
+        // Get ordinals inline for simplicity
+        for (int i = 0; i < properties.Count; i++)
+        {
+            var prop = properties[i];
+            var columnName = GetColumnName(prop, columnAttr);
+            sb.AppendLine($"var ord{i} = reader.GetOrdinal(\"{columnName}\");");
+        }
+        sb.AppendLine();
+        
+        // Generate read body
+        GenerateSimpleReadBody(sb, fullTypeName, properties, isMixedRecord, useConstructor, ctorProperties, initProperties);
+        
         sb.PopIndent();
         sb.AppendLine("}");
         sb.AppendLine();
         
-        // Read method with int[] ordinals (optimal path)
+        // Overload with pre-computed ordinals for performance
         sb.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
-        sb.AppendLine($"public {fullTypeName} Read(IDataReader reader, int[] ordinals)");
+        sb.AppendLine($"public {fullTypeName} Read(IDataReader reader, ReadOnlySpan<int> ordinals)");
         sb.AppendLine("{");
         sb.PushIndent();
         
+        GenerateSimpleReadBodyWithOrdinals(sb, fullTypeName, properties, isMixedRecord, useConstructor, ctorProperties, initProperties);
+        
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+        
+        // GetOrdinals helper
+        sb.AppendLine("public void GetOrdinals(IDataReader reader, Span<int> ordinals)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        
+        for (int i = 0; i < properties.Count; i++)
+        {
+            var prop = properties[i];
+            var columnName = GetColumnName(prop, columnAttr);
+            sb.AppendLine($"ordinals[{i}] = reader.GetOrdinal(\"{columnName}\");");
+        }
+        
+        sb.PopIndent();
+        sb.AppendLine("}");
+        
+        sb.PopIndent();
+        sb.AppendLine("}");
+    }
+
+    private static void GenerateSimpleReadBody(IndentedStringBuilder sb, string fullTypeName, List<IPropertySymbol> properties,
+        bool isMixedRecord, bool useConstructor, List<IPropertySymbol> ctorProperties, List<IPropertySymbol> initProperties)
+    {
+        if (isMixedRecord)
+        {
+            sb.AppendLine($"return new {fullTypeName}(");
+            sb.PushIndent();
+            for (int i = 0; i < ctorProperties.Count; i++)
+            {
+                var prop = ctorProperties[i];
+                var propIndex = properties.IndexOf(prop);
+                var readExpr = GetSimpleReaderExpression(prop.Type, $"ord{propIndex}", IsNullable(prop));
+                sb.AppendLine($"{readExpr}{(i < ctorProperties.Count - 1 ? "," : "")}");
+            }
+            sb.PopIndent();
+            sb.AppendLine(")");
+            sb.AppendLine("{");
+            sb.PushIndent();
+            foreach (var prop in initProperties)
+            {
+                var propIndex = properties.IndexOf(prop);
+                var readExpr = GetSimpleReaderExpression(prop.Type, $"ord{propIndex}", IsNullable(prop));
+                sb.AppendLine($"{prop.Name} = {readExpr},");
+            }
+            sb.PopIndent();
+            sb.AppendLine("};");
+        }
+        else if (useConstructor)
+        {
+            sb.AppendLine($"return new {fullTypeName}(");
+            sb.PushIndent();
+            for (int i = 0; i < properties.Count; i++)
+            {
+                var prop = properties[i];
+                var readExpr = GetSimpleReaderExpression(prop.Type, $"ord{i}", IsNullable(prop));
+                sb.AppendLine($"{readExpr}{(i < properties.Count - 1 ? "," : "")}");
+            }
+            sb.PopIndent();
+            sb.AppendLine(");");
+        }
+        else
+        {
+            sb.AppendLine($"return new {fullTypeName}");
+            sb.AppendLine("{");
+            sb.PushIndent();
+            for (int i = 0; i < properties.Count; i++)
+            {
+                var prop = properties[i];
+                var readExpr = GetSimpleReaderExpression(prop.Type, $"ord{i}", IsNullable(prop));
+                sb.AppendLine($"{prop.Name} = {readExpr},");
+            }
+            sb.PopIndent();
+            sb.AppendLine("};");
+        }
+    }
+
+    private static void GenerateSimpleReadBodyWithOrdinals(IndentedStringBuilder sb, string fullTypeName, List<IPropertySymbol> properties,
+        bool isMixedRecord, bool useConstructor, List<IPropertySymbol> ctorProperties, List<IPropertySymbol> initProperties)
+    {
+        // Cache ordinals to local variables to eliminate Span bounds checking
+        for (int i = 0; i < properties.Count; i++)
+        {
+            sb.AppendLine($"var ord{i} = ordinals[{i}];");
+        }
+        
+        if (isMixedRecord)
+        {
+            sb.AppendLine($"return new {fullTypeName}(");
+            sb.PushIndent();
+            for (int i = 0; i < ctorProperties.Count; i++)
+            {
+                var prop = ctorProperties[i];
+                var propIndex = properties.IndexOf(prop);
+                var readExpr = GetSimpleReaderExpression(prop.Type, $"ord{propIndex}", IsNullable(prop));
+                sb.AppendLine($"{readExpr}{(i < ctorProperties.Count - 1 ? "," : "")}");
+            }
+            sb.PopIndent();
+            sb.AppendLine(")");
+            sb.AppendLine("{");
+            sb.PushIndent();
+            foreach (var prop in initProperties)
+            {
+                var propIndex = properties.IndexOf(prop);
+                var readExpr = GetSimpleReaderExpression(prop.Type, $"ord{propIndex}", IsNullable(prop));
+                sb.AppendLine($"{prop.Name} = {readExpr},");
+            }
+            sb.PopIndent();
+            sb.AppendLine("};");
+        }
+        else if (useConstructor)
+        {
+            sb.AppendLine($"return new {fullTypeName}(");
+            sb.PushIndent();
+            for (int i = 0; i < properties.Count; i++)
+            {
+                var prop = properties[i];
+                var readExpr = GetSimpleReaderExpression(prop.Type, $"ord{i}", IsNullable(prop));
+                sb.AppendLine($"{readExpr}{(i < properties.Count - 1 ? "," : "")}");
+            }
+            sb.PopIndent();
+            sb.AppendLine(");");
+        }
+        else
+        {
+            sb.AppendLine($"return new {fullTypeName}");
+            sb.AppendLine("{");
+            sb.PushIndent();
+            for (int i = 0; i < properties.Count; i++)
+            {
+                var prop = properties[i];
+                var readExpr = GetSimpleReaderExpression(prop.Type, $"ord{i}", IsNullable(prop));
+                sb.AppendLine($"{prop.Name} = {readExpr},");
+            }
+            sb.PopIndent();
+            sb.AppendLine("};");
+        }
+    }
+
+    private static string GetSimpleReaderExpression(ITypeSymbol type, string ordinal, bool isNullable)
+    {
+        var typeName = GetUnderlyingTypeName(type);
+        var fullTypeName = type.ToDisplayString();
+        
+        var method = typeName switch
+        {
+            "Int32" => "GetInt32",
+            "Int64" => "GetInt64",
+            "Int16" => "GetInt16",
+            "Byte" => "GetByte",
+            "Boolean" => "GetBoolean",
+            "String" => "GetString",
+            "DateTime" => "GetDateTime",
+            "Decimal" => "GetDecimal",
+            "Double" => "GetDouble",
+            "Single" => "GetFloat",
+            "Guid" => "GetGuid",
+            _ => null
+        };
+        
+        if (method is null)
+        {
+            // Use TypeConverter for non-standard types
+            if (isNullable)
+                return $"reader.IsDBNull({ordinal}) ? default : global::Sqlx.TypeConverter.Convert<{fullTypeName}>(reader.GetValue({ordinal}))";
+            return $"global::Sqlx.TypeConverter.Convert<{fullTypeName}>(reader.GetValue({ordinal}))";
+        }
+        
+        var isNullableValueType = type.IsValueType && type.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T;
+        if (isNullableValueType)
+        {
+            return $"reader.IsDBNull({ordinal}) ? default({fullTypeName}) : ({fullTypeName})reader.{method}({ordinal})";
+        }
+        else if (isNullable)
+        {
+            return $"reader.IsDBNull({ordinal}) ? default : reader.{method}({ordinal})";
+        }
+        else
+        {
+            return $"reader.{method}({ordinal})";
+        }
+    }
+
+    private static void GenerateOldOptimizedReadBody(IndentedStringBuilder sb, string fullTypeName, List<IPropertySymbol> properties,
+        bool isMixedRecord, bool useConstructor, List<IPropertySymbol> ctorProperties, List<IPropertySymbol> initProperties)
+    {
         if (isMixedRecord)
         {
             // Mixed record: use constructor for primary params + object initializer for additional properties
@@ -554,7 +753,7 @@ public class SqlxGenerator : IIncrementalGenerator
                 var prop = ctorProperties[i];
                 var propIndex = properties.IndexOf(prop);
                 var isNullable = IsNullable(prop);
-                var readExpr = GetReaderExpressionWithLocalOrdinal(prop.Type, $"ordinals[{propIndex}]", isNullable);
+                var readExpr = GetReaderExpressionWithOrdinal(prop.Type, $"ord{propIndex}", isNullable);
                 var comma = i < ctorProperties.Count - 1 ? "," : "";
                 sb.AppendLine($"{readExpr}{comma}");
             }
@@ -566,7 +765,7 @@ public class SqlxGenerator : IIncrementalGenerator
             {
                 var propIndex = properties.IndexOf(prop);
                 var isNullable = IsNullable(prop);
-                var readExpr = GetReaderExpressionWithLocalOrdinal(prop.Type, $"ordinals[{propIndex}]", isNullable);
+                var readExpr = GetReaderExpressionWithOrdinal(prop.Type, $"ord{propIndex}", isNullable);
                 sb.AppendLine($"{prop.Name} = {readExpr},");
             }
             sb.PopIndent();
@@ -581,7 +780,7 @@ public class SqlxGenerator : IIncrementalGenerator
             {
                 var prop = properties[i];
                 var isNullable = IsNullable(prop);
-                var readExpr = GetReaderExpressionWithLocalOrdinal(prop.Type, $"ordinals[{i}]", isNullable);
+                var readExpr = GetReaderExpressionWithOrdinal(prop.Type, $"ord{i}", isNullable);
                 var comma = i < properties.Count - 1 ? "," : "";
                 sb.AppendLine($"{readExpr}{comma}");
             }
@@ -590,42 +789,318 @@ public class SqlxGenerator : IIncrementalGenerator
         }
         else
         {
-            sb.AppendLine($"var result = new {fullTypeName}();");
+            sb.AppendLine($"return new {fullTypeName}");
+            sb.AppendLine("{");
+            sb.PushIndent();
             for (int i = 0; i < properties.Count; i++)
             {
                 var prop = properties[i];
                 var isNullable = IsNullable(prop);
-                var readExpr = GetReaderExpressionWithLocalOrdinal(prop.Type, $"ordinals[{i}]", isNullable);
-                sb.AppendLine($"result.{prop.Name} = {readExpr};");
+                var readExpr = GetReaderExpressionWithOrdinal(prop.Type, $"ord{i}", isNullable);
+                sb.AppendLine($"{prop.Name} = {readExpr},");
             }
-            
-            sb.AppendLine("return result;");
+            sb.PopIndent();
+            sb.AppendLine("};");
         }
-        sb.PopIndent();
-        sb.AppendLine("}");
-        sb.AppendLine();
+    }
+
+    private static void GenerateReadBody(IndentedStringBuilder sb, string fullTypeName, List<IPropertySymbol> properties,
+        bool isMixedRecord, bool useConstructor, List<IPropertySymbol> ctorProperties, List<IPropertySymbol> initProperties)
+    {
+        int propCount = properties.Count;
         
-        // GetOrdinals method that returns int array
-        sb.AppendLine("public int[] GetOrdinals(IDataReader reader)");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        sb.AppendLine($"return new int[]");
-        sb.AppendLine("{");
-        sb.PushIndent();
-        for (int i = 0; i < properties.Count; i++)
+        if (isMixedRecord)
         {
-            var prop = properties[i];
-            var columnName = GetColumnName(prop, columnAttr);
-            var comma = i < properties.Count - 1 ? "," : "";
-            sb.AppendLine($"reader.GetOrdinal(\"{columnName}\"){comma}");
+            // Mixed record: use constructor for primary params + object initializer for additional properties
+            sb.AppendLine($"return new {fullTypeName}(");
+            sb.PushIndent();
+            for (int i = 0; i < ctorProperties.Count; i++)
+            {
+                var prop = ctorProperties[i];
+                var propIndex = properties.IndexOf(prop);
+                var isNullable = IsNullable(prop);
+                var readExpr = GetReaderExpressionWithSequentialOrdinal(prop.Type, propIndex, propCount, isNullable);
+                var comma = i < ctorProperties.Count - 1 ? "," : "";
+                sb.AppendLine($"{readExpr}{comma}");
+            }
+            sb.PopIndent();
+            sb.AppendLine(")");
+            sb.AppendLine("{");
+            sb.PushIndent();
+            foreach (var prop in initProperties)
+            {
+                var propIndex = properties.IndexOf(prop);
+                var isNullable = IsNullable(prop);
+                var readExpr = GetReaderExpressionWithSequentialOrdinal(prop.Type, propIndex, propCount, isNullable);
+                sb.AppendLine($"{prop.Name} = {readExpr},");
+            }
+            sb.PopIndent();
+            sb.AppendLine("};");
         }
-        sb.PopIndent();
-        sb.AppendLine("};");
-        sb.PopIndent();
-        sb.AppendLine("}");
+        else if (useConstructor)
+        {
+            // Pure record: use constructor only
+            sb.AppendLine($"return new {fullTypeName}(");
+            sb.PushIndent();
+            for (int i = 0; i < properties.Count; i++)
+            {
+                var prop = properties[i];
+                var isNullable = IsNullable(prop);
+                var readExpr = GetReaderExpressionWithSequentialOrdinal(prop.Type, i, propCount, isNullable);
+                var comma = i < properties.Count - 1 ? "," : "";
+                sb.AppendLine($"{readExpr}{comma}");
+            }
+            sb.PopIndent();
+            sb.AppendLine(");");
+        }
+        else
+        {
+            sb.AppendLine($"return new {fullTypeName}");
+            sb.AppendLine("{");
+            sb.PushIndent();
+            for (int i = 0; i < properties.Count; i++)
+            {
+                var prop = properties[i];
+                var isNullable = IsNullable(prop);
+                var readExpr = GetReaderExpressionWithSequentialOrdinal(prop.Type, i, propCount, isNullable);
+                sb.AppendLine($"{prop.Name} = {readExpr},");
+            }
+            sb.PopIndent();
+            sb.AppendLine("};");
+        }
+    }
+
+    /// <summary>
+    /// Generates reader expression using sequential ordinal layout.
+    /// First N ordinals are direct reads, rest are conversions.
+    /// </summary>
+    private static string GetReaderExpressionWithSequentialOrdinal(ITypeSymbol type, int propertyIndex, int totalProperties, bool isNullable)
+    {
+        var typeName = GetUnderlyingTypeName(type);
+        var fullTypeName = type.ToDisplayString();
         
-        sb.PopIndent();
-        sb.AppendLine("}");
+        // Get the direct reader method if available
+        var method = typeName switch
+        {
+            "Int32" => "GetInt32",
+            "Int64" => "GetInt64",
+            "Int16" => "GetInt16",
+            "Byte" => "GetByte",
+            "Boolean" => "GetBoolean",
+            "String" => "GetString",
+            "DateTime" => "GetDateTime",
+            "Decimal" => "GetDecimal",
+            "Double" => "GetDouble",
+            "Single" => "GetFloat",
+            "Guid" => "GetGuid",
+            _ => null
+        };
+        
+        // For standard types with direct reader methods
+        if (method is not null)
+        {
+            var isNullableValueType = type.IsValueType && type.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T;
+            
+            // Generate code that checks ordinal position: < totalProperties = direct, >= totalProperties = conversion
+            if (isNullableValueType)
+            {
+                // Nullable value type
+                return $"ordinals[{propertyIndex}] < {totalProperties} ? (reader.IsDBNull(ordinals[{propertyIndex}]) ? default({fullTypeName}) : ({fullTypeName})reader.{method}(ordinals[{propertyIndex}])) : (reader.IsDBNull(ordinals[{propertyIndex} + {totalProperties}]) ? default({fullTypeName}) : global::Sqlx.TypeConverter.Convert<{fullTypeName}>(reader.GetValue(ordinals[{propertyIndex} + {totalProperties}])))";
+            }
+            else if (isNullable)
+            {
+                // Nullable reference type
+                return $"ordinals[{propertyIndex}] < {totalProperties} ? (reader.IsDBNull(ordinals[{propertyIndex}]) ? default : reader.{method}(ordinals[{propertyIndex}])) : (reader.IsDBNull(ordinals[{propertyIndex} + {totalProperties}]) ? default : global::Sqlx.TypeConverter.Convert<{fullTypeName}>(reader.GetValue(ordinals[{propertyIndex} + {totalProperties}])))";
+            }
+            else
+            {
+                // Non-nullable
+                return $"ordinals[{propertyIndex}] < {totalProperties} ? reader.{method}(ordinals[{propertyIndex}]) : global::Sqlx.TypeConverter.Convert<{fullTypeName}>(reader.GetValue(ordinals[{propertyIndex} + {totalProperties}]))";
+            }
+        }
+        
+        // Non-standard types: always use conversion path (will be at index >= totalProperties)
+        if (isNullable)
+        {
+            return $"reader.IsDBNull(ordinals[{propertyIndex} + {totalProperties}]) ? default : global::Sqlx.TypeConverter.Convert<{fullTypeName}>(reader.GetValue(ordinals[{propertyIndex} + {totalProperties}]))";
+        }
+        return $"global::Sqlx.TypeConverter.Convert<{fullTypeName}>(reader.GetValue(ordinals[{propertyIndex} + {totalProperties}]))";
+    }
+
+    private static bool NeedsTypeConversion(ITypeSymbol type)
+    {
+        var underlyingType = type.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T && type is INamedTypeSymbol namedType
+            ? namedType.TypeArguments[0]
+            : type;
+        
+        var typeName = underlyingType.Name;
+        
+        // Types that have direct IDataReader methods don't need conversion
+        return typeName switch
+        {
+            "Int32" or "Int64" or "Int16" or "Byte" or "Boolean" or
+            "String" or "DateTime" or "Decimal" or "Double" or "Single" or "Guid" => false,
+            _ => true
+        };
+    }
+
+    private static string GetReaderExpressionWithOrdinal(ITypeSymbol type, string ordinalVar, bool isNullable)
+    {
+        var typeName = GetUnderlyingTypeName(type);
+        var fullTypeName = type.ToDisplayString();
+        
+        // Get the direct reader method if available
+        var method = typeName switch
+        {
+            "Int32" => "GetInt32",
+            "Int64" => "GetInt64",
+            "Int16" => "GetInt16",
+            "Byte" => "GetByte",
+            "Boolean" => "GetBoolean",
+            "String" => "GetString",
+            "DateTime" => "GetDateTime",
+            "Decimal" => "GetDecimal",
+            "Double" => "GetDouble",
+            "Single" => "GetFloat",
+            "Guid" => "GetGuid",
+            _ => null
+        };
+        
+        if (method is null)
+        {
+            // Non-standard types - should not reach here in optimized path
+            if (isNullable)
+            {
+                return $"reader.IsDBNull({ordinalVar}) ? default : ({fullTypeName})reader.GetValue({ordinalVar})";
+            }
+            return $"({fullTypeName})reader.GetValue({ordinalVar})";
+        }
+        
+        // Standard types with direct reader methods
+        var isNullableValueType = type.IsValueType && type.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T;
+        if (isNullableValueType)
+        {
+            // For nullable value types: check IsDBNull, then cast to nullable
+            return $"reader.IsDBNull({ordinalVar}) ? default({fullTypeName}) : ({fullTypeName})reader.{method}({ordinalVar})";
+        }
+        else if (isNullable)
+        {
+            // For reference types (string, etc.): check IsDBNull
+            return $"reader.IsDBNull({ordinalVar}) ? default : reader.{method}({ordinalVar})";
+        }
+        else
+        {
+            // Non-nullable: direct read
+            return $"reader.{method}({ordinalVar})";
+        }
+    }
+
+    private static string GetReaderExpressionWithColumnInfo(ITypeSymbol type, string columnInfoVar, bool isNullable)
+    {
+        var typeName = GetUnderlyingTypeName(type);
+        var fullTypeName = type.ToDisplayString();
+        
+        // Get the direct reader method if available
+        var method = typeName switch
+        {
+            "Int32" => "GetInt32",
+            "Int64" => "GetInt64",
+            "Int16" => "GetInt16",
+            "Byte" => "GetByte",
+            "Boolean" => "GetBoolean",
+            "String" => "GetString",
+            "DateTime" => "GetDateTime",
+            "Decimal" => "GetDecimal",
+            "Double" => "GetDouble",
+            "Single" => "GetFloat",
+            "Guid" => "GetGuid",
+            _ => null
+        };
+        
+        // For standard types with direct reader methods, generate optimized code without runtime checks
+        if (method is not null)
+        {
+            // Check if this is a nullable value type (DateTime?, int?, etc.)
+            var isNullableValueType = type.IsValueType && type.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T;
+            if (isNullableValueType)
+            {
+                // For nullable value types: check IsDBNull, then cast to nullable
+                return $"reader.IsDBNull({columnInfoVar}.Ordinal) ? default({fullTypeName}) : ({fullTypeName})reader.{method}({columnInfoVar}.Ordinal)";
+            }
+            else if (isNullable)
+            {
+                // For reference types (string, etc.): check IsDBNull
+                return $"reader.IsDBNull({columnInfoVar}.Ordinal) ? default : reader.{method}({columnInfoVar}.Ordinal)";
+            }
+            else
+            {
+                // Non-nullable: direct read
+                return $"reader.{method}({columnInfoVar}.Ordinal)";
+            }
+        }
+        
+        // Non-standard types - need runtime check for conversion
+        if (isNullable)
+        {
+            return $"{columnInfoVar}.NeedsConversion ? (reader.IsDBNull({columnInfoVar}.Ordinal) ? default : global::Sqlx.TypeConverter.Convert<{fullTypeName}>(reader.GetValue({columnInfoVar}.Ordinal))) : (reader.IsDBNull({columnInfoVar}.Ordinal) ? default : ({fullTypeName})reader.GetValue({columnInfoVar}.Ordinal))";
+        }
+        return $"{columnInfoVar}.NeedsConversion ? global::Sqlx.TypeConverter.Convert<{fullTypeName}>(reader.GetValue({columnInfoVar}.Ordinal)) : ({fullTypeName})reader.GetValue({columnInfoVar}.Ordinal)";
+    }
+
+    /// <summary>
+    /// Generates reader expression using ordinal variable (negative = needs conversion).
+    /// </summary>
+    private static string GetReaderExpressionWithOrdinalVar(ITypeSymbol type, string ordinalVar, bool isNullable)
+    {
+        var typeName = GetUnderlyingTypeName(type);
+        var fullTypeName = type.ToDisplayString();
+        
+        // Get the direct reader method if available
+        var method = typeName switch
+        {
+            "Int32" => "GetInt32",
+            "Int64" => "GetInt64",
+            "Int16" => "GetInt16",
+            "Byte" => "GetByte",
+            "Boolean" => "GetBoolean",
+            "String" => "GetString",
+            "DateTime" => "GetDateTime",
+            "Decimal" => "GetDecimal",
+            "Double" => "GetDouble",
+            "Single" => "GetFloat",
+            "Guid" => "GetGuid",
+            _ => null
+        };
+        
+        // For standard types with direct reader methods, check if ordinal is negative (needs conversion)
+        if (method is not null)
+        {
+            var isNullableValueType = type.IsValueType && type.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T;
+            
+            // Generate code that checks if ordinal is negative (needs conversion)
+            if (isNullableValueType)
+            {
+                // Nullable value type: check negative ordinal first, then IsDBNull
+                return $"{ordinalVar} < 0 ? (reader.IsDBNull(-{ordinalVar} - 1) ? default({fullTypeName}) : global::Sqlx.TypeConverter.Convert<{fullTypeName}>(reader.GetValue(-{ordinalVar} - 1))) : (reader.IsDBNull({ordinalVar}) ? default({fullTypeName}) : ({fullTypeName})reader.{method}({ordinalVar}))";
+            }
+            else if (isNullable)
+            {
+                // Nullable reference type: check negative ordinal first, then IsDBNull
+                return $"{ordinalVar} < 0 ? (reader.IsDBNull(-{ordinalVar} - 1) ? default : global::Sqlx.TypeConverter.Convert<{fullTypeName}>(reader.GetValue(-{ordinalVar} - 1))) : (reader.IsDBNull({ordinalVar}) ? default : reader.{method}({ordinalVar}))";
+            }
+            else
+            {
+                // Non-nullable: check negative ordinal for conversion
+                return $"{ordinalVar} < 0 ? global::Sqlx.TypeConverter.Convert<{fullTypeName}>(reader.GetValue(-{ordinalVar} - 1)) : reader.{method}({ordinalVar})";
+            }
+        }
+        
+        // Non-standard types: check if ordinal is negative (needs conversion)
+        if (isNullable)
+        {
+            return $"{ordinalVar} < 0 ? (reader.IsDBNull(-{ordinalVar} - 1) ? default : global::Sqlx.TypeConverter.Convert<{fullTypeName}>(reader.GetValue(-{ordinalVar} - 1))) : (reader.IsDBNull({ordinalVar}) ? default : ({fullTypeName})reader.GetValue({ordinalVar}))";
+        }
+        return $"{ordinalVar} < 0 ? global::Sqlx.TypeConverter.Convert<{fullTypeName}>(reader.GetValue(-{ordinalVar} - 1)) : ({fullTypeName})reader.GetValue({ordinalVar})";
     }
 
     private static void GenerateParameterBinder(IndentedStringBuilder sb, string typeName, string fullTypeName,
@@ -757,6 +1232,21 @@ public class SqlxGenerator : IIncrementalGenerator
         prop.NullableAnnotation == NullableAnnotation.Annotated ||
         (prop.Type.IsValueType && prop.Type.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T);
 
+    private static string GetExpectedFieldType(ITypeSymbol type)
+    {
+        // Get the underlying type for nullable types
+        var underlyingType = type.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T && type is INamedTypeSymbol namedType
+            ? namedType.TypeArguments[0]
+            : type;
+        
+        // Return the full type name without nullable annotation for comparison
+        // Use ToDisplayString with SymbolDisplayFormat to remove nullable annotations
+        return underlyingType.ToDisplayString(new SymbolDisplayFormat(
+            typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+            genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
+            miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes));
+    }
+
     private static string GetDbType(ITypeSymbol type)
     {
         var typeName = GetUnderlyingTypeName(type);
@@ -788,6 +1278,9 @@ public class SqlxGenerator : IIncrementalGenerator
     private static string GetReaderExpression(ITypeSymbol type, string ordinal, bool isNullable)
     {
         var typeName = GetUnderlyingTypeName(type);
+        var fullTypeName = type.ToDisplayString();
+        
+        // Get the direct reader method if available
         var method = typeName switch
         {
             "Int32" => "GetInt32",
@@ -803,8 +1296,17 @@ public class SqlxGenerator : IIncrementalGenerator
             "Guid" => "GetGuid",
             _ => null,
         };
+        
         if (method is null)
-            return isNullable ? $"reader.IsDBNull({ordinal}) ? default : reader.GetValue({ordinal})" : $"reader.GetValue({ordinal})";
+        {
+            // Use TypeConverter for non-standard types (enums, custom types, etc.)
+            if (isNullable)
+            {
+                return $"reader.IsDBNull({ordinal}) ? default : global::Sqlx.TypeConverter.Convert<{fullTypeName}>(reader.GetValue({ordinal}))";
+            }
+            return $"global::Sqlx.TypeConverter.Convert<{fullTypeName}>(reader.GetValue({ordinal}))";
+        }
+        
         if (isNullable)
             return $"reader.IsDBNull({ordinal}) ? default : reader.{method}({ordinal})";
         return $"reader.{method}({ordinal})";
@@ -817,6 +1319,9 @@ public class SqlxGenerator : IIncrementalGenerator
     private static string GetReaderExpressionWithLocalOrdinal(ITypeSymbol type, string ordinalVar, bool isNullable)
     {
         var typeName = GetUnderlyingTypeName(type);
+        var fullTypeName = type.ToDisplayString();
+        
+        // Get the direct reader method if available
         var method = typeName switch
         {
             "Int32" => "GetInt32",
@@ -832,8 +1337,17 @@ public class SqlxGenerator : IIncrementalGenerator
             "Guid" => "GetGuid",
             _ => null,
         };
+        
         if (method is null)
-            return isNullable ? $"reader.IsDBNull({ordinalVar}) ? default : reader.GetValue({ordinalVar})" : $"reader.GetValue({ordinalVar})";
+        {
+            // Use TypeConverter for non-standard types (enums, custom types, etc.)
+            if (isNullable)
+            {
+                return $"reader.IsDBNull({ordinalVar}) ? default : global::Sqlx.TypeConverter.Convert<{fullTypeName}>(reader.GetValue({ordinalVar}))";
+            }
+            return $"global::Sqlx.TypeConverter.Convert<{fullTypeName}>(reader.GetValue({ordinalVar}))";
+        }
+        
         if (isNullable)
             return $"reader.IsDBNull({ordinalVar}) ? default : reader.{method}({ordinalVar})";
         return $"reader.{method}({ordinalVar})";

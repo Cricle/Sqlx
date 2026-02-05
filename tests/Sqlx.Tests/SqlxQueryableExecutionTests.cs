@@ -419,6 +419,8 @@ namespace Sqlx.Tests
 
         private class UserReader : IResultReader<User>
         {
+            public int PropertyCount => 4;
+
             public User Read(IDataReader reader)
             {
                 return new User
@@ -430,7 +432,7 @@ namespace Sqlx.Tests
                 };
             }
 
-            public User Read(IDataReader reader, int[] ordinals)
+            public User Read(IDataReader reader, ReadOnlySpan<int> ordinals)
             {
                 return new User
                 {
@@ -441,15 +443,12 @@ namespace Sqlx.Tests
                 };
             }
 
-            public int[] GetOrdinals(IDataReader reader)
+            public void GetOrdinals(IDataReader reader, Span<int> ordinals)
             {
-                return new[]
-                {
-                    reader.GetOrdinal("id"),
-                    reader.GetOrdinal("name"),
-                    reader.GetOrdinal("age"),
-                    reader.GetOrdinal("email")
-                };
+                ordinals[0] = reader.GetOrdinal("id");
+                ordinals[1] = reader.GetOrdinal("name");
+                ordinals[2] = reader.GetOrdinal("age");
+                ordinals[3] = reader.GetOrdinal("email");
             }
         }
     }

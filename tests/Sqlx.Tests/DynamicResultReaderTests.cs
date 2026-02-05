@@ -577,7 +577,8 @@ public class DynamicResultReaderTests
         
         // Get ordinals
         dbReader.Read();
-        var ordinals = reader.GetOrdinals(dbReader);
+        Span<int> ordinals = stackalloc int[2];
+        reader.GetOrdinals(dbReader, ordinals);
         
         // Read should use the static delegate
         var result = reader.Read(dbReader);
@@ -702,7 +703,13 @@ public class DynamicResultReaderTests
         public override DateTime GetDateTime(int ordinal) => throw new NotImplementedException();
         public override decimal GetDecimal(int ordinal) => throw new NotImplementedException();
         public override double GetDouble(int ordinal) => throw new NotImplementedException();
-        public override Type GetFieldType(int ordinal) => throw new NotImplementedException();
+        public override Type GetFieldType(int ordinal)
+        {
+            if (_data.Length == 0) throw new InvalidOperationException("No data");
+            var item = _data[0];
+            var properties = item.GetType().GetProperties();
+            return properties[ordinal].PropertyType;
+        }
         public override float GetFloat(int ordinal) => throw new NotImplementedException();
         public override Guid GetGuid(int ordinal) => throw new NotImplementedException();
         public override short GetInt16(int ordinal) => throw new NotImplementedException();

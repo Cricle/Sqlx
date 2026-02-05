@@ -295,7 +295,14 @@ public class MixedRecordDbReader : DbDataReader
     public override decimal GetDecimal(int ordinal) => throw new NotImplementedException();
     public override double GetDouble(int ordinal) => throw new NotImplementedException();
     public override System.Collections.IEnumerator GetEnumerator() => throw new NotImplementedException();
-    public override Type GetFieldType(int ordinal) => throw new NotImplementedException();
+    public override Type GetFieldType(int ordinal) => ordinal switch
+    {
+        0 => typeof(long),
+        1 => typeof(string),
+        2 => typeof(string),
+        3 => typeof(int),
+        _ => throw new IndexOutOfRangeException($"Ordinal {ordinal} out of range")
+    };
     public override float GetFloat(int ordinal) => throw new NotImplementedException();
     public override Guid GetGuid(int ordinal) => throw new NotImplementedException();
     public override short GetInt16(int ordinal) => throw new NotImplementedException();
@@ -348,7 +355,12 @@ public class EntityWithReadonlyDbReader : DbDataReader
     public override decimal GetDecimal(int ordinal) => throw new NotImplementedException();
     public override double GetDouble(int ordinal) => throw new NotImplementedException();
     public override System.Collections.IEnumerator GetEnumerator() => throw new NotImplementedException();
-    public override Type GetFieldType(int ordinal) => throw new NotImplementedException();
+    public override Type GetFieldType(int ordinal) => ordinal switch
+    {
+        0 => typeof(long),
+        1 => typeof(string),
+        _ => throw new IndexOutOfRangeException($"Ordinal {ordinal} out of range")
+    };
     public override float GetFloat(int ordinal) => throw new NotImplementedException();
     public override Guid GetGuid(int ordinal) => throw new NotImplementedException();
     public override short GetInt16(int ordinal) => throw new NotImplementedException();
@@ -408,7 +420,13 @@ public class UserStructDbReader : DbDataReader
     public override decimal GetDecimal(int ordinal) => throw new NotImplementedException();
     public override double GetDouble(int ordinal) => throw new NotImplementedException();
     public override System.Collections.IEnumerator GetEnumerator() => throw new NotImplementedException();
-    public override Type GetFieldType(int ordinal) => throw new NotImplementedException();
+    public override Type GetFieldType(int ordinal) => ordinal switch
+    {
+        0 => typeof(long),
+        1 => typeof(string),
+        2 => typeof(string),
+        _ => throw new IndexOutOfRangeException($"Ordinal {ordinal} out of range")
+    };
     public override float GetFloat(int ordinal) => throw new NotImplementedException();
     public override Guid GetGuid(int ordinal) => throw new NotImplementedException();
     public override short GetInt16(int ordinal) => throw new NotImplementedException();
@@ -468,7 +486,13 @@ public class UserStructRecordDbReader : DbDataReader
     public override decimal GetDecimal(int ordinal) => throw new NotImplementedException();
     public override double GetDouble(int ordinal) => throw new NotImplementedException();
     public override System.Collections.IEnumerator GetEnumerator() => throw new NotImplementedException();
-    public override Type GetFieldType(int ordinal) => throw new NotImplementedException();
+    public override Type GetFieldType(int ordinal) => ordinal switch
+    {
+        0 => typeof(long),
+        1 => typeof(string),
+        2 => typeof(string),
+        _ => throw new IndexOutOfRangeException($"Ordinal {ordinal} out of range")
+    };
     public override float GetFloat(int ordinal) => throw new NotImplementedException();
     public override Guid GetGuid(int ordinal) => throw new NotImplementedException();
     public override short GetInt16(int ordinal) => throw new NotImplementedException();
@@ -528,7 +552,13 @@ public class StructWithConstructorDbReader : DbDataReader
     public override decimal GetDecimal(int ordinal) => throw new NotImplementedException();
     public override double GetDouble(int ordinal) => throw new NotImplementedException();
     public override System.Collections.IEnumerator GetEnumerator() => throw new NotImplementedException();
-    public override Type GetFieldType(int ordinal) => throw new NotImplementedException();
+    public override Type GetFieldType(int ordinal) => ordinal switch
+    {
+        0 => typeof(long),
+        1 => typeof(string),
+        2 => typeof(string),
+        _ => throw new IndexOutOfRangeException($"Ordinal {ordinal} out of range")
+    };
     public override float GetFloat(int ordinal) => throw new NotImplementedException();
     public override Guid GetGuid(int ordinal) => throw new NotImplementedException();
     public override short GetInt16(int ordinal) => throw new NotImplementedException();

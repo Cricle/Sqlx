@@ -111,10 +111,10 @@ public class PerformanceOptimizationTests
         // Act
         using var reader = cmd.ExecuteReader();
         var testReader = new TestDataReader();
-        var ordinals = testReader.GetOrdinals(reader);
+        Span<int> ordinals = stackalloc int[3];
+        testReader.GetOrdinals(reader, ordinals);
         
         // Assert
-        Assert.AreEqual(3, ordinals.Length);
         Assert.AreEqual(0, ordinals[0]); // Id
         Assert.AreEqual(1, ordinals[1]); // Name
         Assert.AreEqual(2, ordinals[2]); // Value
@@ -132,7 +132,8 @@ public class PerformanceOptimizationTests
         
         // Act
         using var dataReader = cmd.ExecuteReader();
-        var ordinals = reader.GetOrdinals(dataReader);
+        Span<int> ordinals = stackalloc int[3];
+        reader.GetOrdinals(dataReader, ordinals);
         var results = new List<TestData>();
         
         while (dataReader.Read())
@@ -229,14 +230,13 @@ public class PerformanceOptimizationTests
 
     private class TestDataReader : IResultReader<TestData>
     {
-        public int[] GetOrdinals(IDataReader reader)
+        public int PropertyCount => 3;
+
+        public void GetOrdinals(IDataReader reader, Span<int> ordinals)
         {
-            return new int[]
-            {
-                reader.GetOrdinal("id"),
-                reader.GetOrdinal("name"),
-                reader.GetOrdinal("value")
-            };
+            ordinals[0] = reader.GetOrdinal("id");
+            ordinals[1] = reader.GetOrdinal("name");
+            ordinals[2] = reader.GetOrdinal("value");
         }
 
         public TestData Read(IDataReader reader)
@@ -249,7 +249,7 @@ public class PerformanceOptimizationTests
             };
         }
 
-        public TestData Read(IDataReader reader, int[] ordinals)
+        public TestData Read(IDataReader reader, ReadOnlySpan<int> ordinals)
         {
             return new TestData
             {

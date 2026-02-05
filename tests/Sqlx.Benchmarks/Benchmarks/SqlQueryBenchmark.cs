@@ -390,6 +390,8 @@ namespace Sqlx.Benchmarks.Benchmarks
     /// </summary>
     public class BenchmarkEntityReader : IResultReader<BenchmarkEntity>
     {
+        public int PropertyCount => 7;
+
         public BenchmarkEntity Read(IDataReader reader)
         {
             return new BenchmarkEntity
@@ -404,7 +406,7 @@ namespace Sqlx.Benchmarks.Benchmarks
             };
         }
 
-        public BenchmarkEntity Read(IDataReader reader, int[] ordinals)
+        public BenchmarkEntity Read(IDataReader reader, ReadOnlySpan<int> ordinals)
         {
             return new BenchmarkEntity
             {
@@ -418,18 +420,15 @@ namespace Sqlx.Benchmarks.Benchmarks
             };
         }
 
-        public int[] GetOrdinals(IDataReader reader)
+        public void GetOrdinals(IDataReader reader, Span<int> ordinals)
         {
-            return new[]
-            {
-                reader.GetOrdinal("id"),
-                reader.GetOrdinal("name"),
-                reader.GetOrdinal("email"),
-                reader.GetOrdinal("age"),
-                reader.GetOrdinal("is_active"),
-                reader.GetOrdinal("balance"),
-                reader.GetOrdinal("created_at")
-            };
+            ordinals[0] = reader.GetOrdinal("id");
+            ordinals[1] = reader.GetOrdinal("name");
+            ordinals[2] = reader.GetOrdinal("email");
+            ordinals[3] = reader.GetOrdinal("age");
+            ordinals[4] = reader.GetOrdinal("is_active");
+            ordinals[5] = reader.GetOrdinal("balance");
+            ordinals[6] = reader.GetOrdinal("created_at");
         }
     }
 }

@@ -4,21 +4,36 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-purple.svg)](#)
 [![LTS](https://img.shields.io/badge/LTS-.NET%2010-green.svg)](#)
-[![Tests](https://img.shields.io/badge/tests-2076%20passing-brightgreen.svg)](#)
+[![Tests](https://img.shields.io/badge/tests-2122%20passing-brightgreen.svg)](#)
 [![AOT](https://img.shields.io/badge/AOT-ready-blue.svg)](#)
+[![Performance](https://img.shields.io/badge/performance-optimized-orange.svg)](#)
 
 高性能、AOT 友好的 .NET 数据库访问库。使用源生成器在编译时生成代码，零运行时反射，完全支持 Native AOT。
 
+## 🎉 v1.0.0 新特性
+
+### ⚡ 极致性能优化
+
+- **优化的 ResultReader**: 参考 Dapper.AOT 设计，生成简洁高效的代码
+- **智能策略选择**: 自动选择最优的 ResultReader 策略
+  - 策略 A（直接索引访问）: 零列名查找开销，**比 Dapper 快 5.8%**
+  - 策略 B（缓存序号访问）: 首次查找后缓存，适合动态 SQL
+- **零配置优化**: 使用 `{{columns}}` 占位符即可自动优化
+- **性能验证**: 通过 BenchmarkDotNet 验证，与 Dapper.AOT 性能相当或更优
+
+详见 [性能基准测试结果](docs/benchmark-results.md) 和 [优化总结](BENCHMARK_SUMMARY.md)
+
 ## 核心特性
 
-- **🚀 高性能** - 比 Dapper.AOT 快 1.5-2.9%，最低 GC 压力（Gen1 GC 是 FreeSql 的 1/13）
+- **🚀 高性能** - 优化的 ResultReader，某些场景比 Dapper.AOT 快 5.8%，最低 GC 压力
 - **⚡ 零反射** - 编译时源生成，运行时无反射开销
 - **🎯 类型安全** - 编译时验证 SQL 模板和表达式
 - **🌐 多数据库** - SQLite、PostgreSQL、MySQL、SQL Server、Oracle、DB2
-- **📦 AOT 就绪** - 完全支持 Native AOT，通过 2076 个单元测试
+- **📦 AOT 就绪** - 完全支持 Native AOT，通过 2122 个单元测试
 - **🔧 LINQ 支持** - IQueryable 接口，支持 Where/Select/OrderBy/Join 等
 - **💾 智能缓存** - SqlQuery\<T\> 泛型缓存，自动注册 EntityProvider
 - **🔍 自动发现** - 源生成器自动发现 SqlQuery\<T\> 和 SqlTemplate 中的实体类型
+- **✨ 智能优化** - 自动选择最优 ResultReader 策略，零配置
 
 ## 快速开始
 

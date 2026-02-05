@@ -167,11 +167,16 @@ public class ResultReaderStrictTests
         var reader = TestEntityResultReader.Default;
         using var dbReader = new TestDbDataReader(Array.Empty<TestEntity>());
 
-        var ordinals1 = reader.GetOrdinals(dbReader);
-        var ordinals2 = reader.GetOrdinals(dbReader);
+        Span<int> ordinals1 = stackalloc int[4];
+        Span<int> ordinals2 = stackalloc int[4];
+        reader.GetOrdinals(dbReader, ordinals1);
+        reader.GetOrdinals(dbReader, ordinals2);
 
         // Arrays should have same values
-        CollectionAssert.AreEqual(ordinals1, ordinals2);
+        for (int i = 0; i < ordinals1.Length; i++)
+        {
+            Assert.AreEqual(ordinals1[i], ordinals2[i]);
+        }
     }
 
     [TestMethod]

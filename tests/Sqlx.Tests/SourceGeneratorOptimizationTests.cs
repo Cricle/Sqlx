@@ -30,10 +30,10 @@ public class SourceGeneratorOptimizationTests
         var reader = GeneratedOptEntityResultReader.Default;
         using var dbReader = new GeneratedOptEntityDbDataReader(Array.Empty<GeneratedOptEntity>());
         
-        var ordinals = reader.GetOrdinals(dbReader);
+        Span<int> ordinals = stackalloc int[4];
+        reader.GetOrdinals(dbReader, ordinals);
         
-        // Verify ordinals array is initialized correctly
-        Assert.AreEqual(4, ordinals.Length);
+        // Verify ordinals are initialized correctly (all positive for standard types)
         Assert.IsTrue(ordinals[0] >= 0); // Id
         Assert.IsTrue(ordinals[1] >= 0); // Title
         Assert.IsTrue(ordinals[2] >= 0); // Amount
@@ -368,7 +368,14 @@ public class GeneratedOptEntityDbDataReader : System.Data.Common.DbDataReader
     public override DateTime GetDateTime(int ordinal) => throw new NotImplementedException();
     public override double GetDouble(int ordinal) => throw new NotImplementedException();
     public override System.Collections.IEnumerator GetEnumerator() => throw new NotImplementedException();
-    public override Type GetFieldType(int ordinal) => throw new NotImplementedException();
+    public override Type GetFieldType(int ordinal) => ordinal switch
+    {
+        0 => typeof(int),
+        1 => typeof(string),
+        2 => typeof(decimal),
+        3 => typeof(bool),
+        _ => throw new IndexOutOfRangeException($"Ordinal {ordinal} out of range")
+    };
     public override float GetFloat(int ordinal) => throw new NotImplementedException();
     public override Guid GetGuid(int ordinal) => throw new NotImplementedException();
     public override short GetInt16(int ordinal) => throw new NotImplementedException();

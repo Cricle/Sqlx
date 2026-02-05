@@ -40,7 +40,7 @@ public class TypeConverterAdvancedTests
     [TestMethod]
     public void Convert_NullToReferenceType_ReturnsDefault()
     {
-        var result = TypeConverter.Convert<string>(null);
+        var result = TypeConverter.Convert<string?>(null);
         Assert.IsNull(result);
     }
 
@@ -274,7 +274,7 @@ public class TypeConverterAdvancedTests
     {
         int value = 42;
         var result = TypeConverter.Convert<int?>(value);
-        Assert.AreEqual(42, result.Value);
+        Assert.AreEqual(42, result!.Value);
     }
 
     [TestMethod]
@@ -290,7 +290,7 @@ public class TypeConverterAdvancedTests
     {
         int value = 2;
         var result = TypeConverter.Convert<Priority?>(value);
-        Assert.AreEqual(Priority.High, result.Value);
+        Assert.AreEqual(Priority.High, result!.Value);
     }
 
     [TestMethod]
@@ -298,13 +298,13 @@ public class TypeConverterAdvancedTests
     {
         var guid = Guid.NewGuid();
         var result = TypeConverter.Convert<Guid?>(guid.ToString());
-        Assert.AreEqual(guid, result.Value);
+        Assert.AreEqual(guid, result!.Value);
     }
 
     [TestMethod]
     public void Convert_NullToNullableGuid_ReturnsNull()
     {
-        var result = TypeConverter.Convert<Guid?>(null);
+        var result = TypeConverter.Convert<Guid?>(null!);
         Assert.IsNull(result);
     }
 

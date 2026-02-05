@@ -19,7 +19,7 @@ public static class TypeConverter
     /// Converts a database value to the target type using efficient conversion.
     /// Public API for generated code.
     /// </summary>
-    public static T Convert<T>(object value)
+    public static T Convert<T>(object? value)
     {
         if (value == null || value is DBNull)
         {

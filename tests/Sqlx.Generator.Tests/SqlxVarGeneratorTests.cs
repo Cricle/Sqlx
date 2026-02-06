@@ -108,37 +108,7 @@ namespace Test
         Assert.IsTrue(generatedCode.Contains("userId"), "Should include userId variable");
     }
 
-    // ===== Task 3.1: Return Type Validation Tests =====
-
-    [TestMethod]
-    public void ValidateReturnType_StringReturnType_NoDiagnostic()
-    {
-        // Arrange
-        var source = @"
-using Sqlx.Annotations;
-
-namespace Test
-{
-    public partial class TestRepository
-    {
-        [SqlxVar(""tenantId"")]
-        private string GetTenantId() => ""tenant-123"";
-    }
-}";
-
-        // Act
-        var generator = new SqlxVarGenerator();
-        var result = GeneratorTestHelper.RunGenerator(source, generator);
-
-        // Assert
-        var diagnostics = result.Diagnostics
-            .Where(d => d.Id == "SQLX1002")
-            .ToList();
-        
-        Assert.AreEqual(0, diagnostics.Count, "Should not produce SQLX1002 diagnostic for string return type");
-    }
-
-    // ===== Task 3.2: Parameter Validation Tests =====
+// ===== Task 3.2: Parameter Validation Tests =====
 
     [TestMethod]
     public void ValidateParameters_ZeroParameters_NoDiagnostic()
@@ -621,29 +591,6 @@ namespace Test
         Assert.IsTrue(true, "Generator should not crash on generic classes");
     }
 
-    [TestMethod]
-    public void BoundaryTest_NullableReturnType_ProducesDiagnostic()
-    {
-        // Arrange
-        var source = @"
-using Sqlx.Annotations;
-
-namespace Test
-{
-    public partial class TestRepository
-    {
-        [SqlxVar(""tenantId"")]
-        private string? GetTenantId() => null;
-    }
-}";
-
-        // Act
-        var generator = new SqlxVarGenerator();
-        var result = GeneratorTestHelper.RunGenerator(source, generator);
-
-        // Assert
-        // Nullable string is still string type, should be accepted
-        var diagnostics = result.Diagnostics.Where(d => d.Id == "SQLX1002").ToList();
-        Assert.AreEqual(0, diagnostics.Count, "Nullable string should be accepted as valid return type");
-    }
 }
+
+

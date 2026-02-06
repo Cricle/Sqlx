@@ -276,9 +276,7 @@ Methods marked with `[SqlxVar]` **must** return `string`:
 [SqlxVar("tenantId")]
 private string GetTenantId() => "tenant-123";
 
-// ❌ Invalid - compile error SQLX1002
-[SqlxVar("count")]
-private int GetCount() => 42;
+// ✅ Any return type (user handles conversion)\n[SqlxVar("count")]\nprivate string GetCount() => 42.ToString();
 ```
 
 ### Parameters
@@ -501,22 +499,6 @@ private string GetTenantIdAgain() => "tenant-456";
 
 **Solution:** Use unique variable names
 
-### Compile Error: SQLX1002
-
-**Problem:** Invalid return type
-
-```csharp
-[SqlxVar("count")]
-private int GetCount() => 42;  // Error: Must return string
-```
-
-**Solution:** Return string type
-
-```csharp
-[SqlxVar("count")]
-private string GetCount() => "42";
-```
-
 ### Compile Error: SQLX1003
 
 **Problem:** Method has parameters
@@ -607,3 +589,5 @@ ICrudRepository methods are generated with static `PlaceholderContext` for perfo
 - Complexity in source generator
 
 For most use cases, defining custom methods with `[SqlTemplate]` is the recommended approach.
+
+

@@ -1191,11 +1191,32 @@ public class SqlxGenerator : IIncrementalGenerator
 
     private static string ToSnakeCase(string name)
     {
+        if (string.IsNullOrEmpty(name)) return name;
+        
         var sb = new StringBuilder();
         for (int i = 0; i < name.Length; i++)
         {
             var c = name[i];
-            if (char.IsUpper(c) && i > 0) sb.Append('_');
+            
+            // Add underscore before uppercase letter if:
+            // 1. Not at the start (i > 0)
+            // 2. Previous char is lowercase OR digit (e.g., "userId" -> "user_id", "line1Text" -> "line1_text")
+            // 3. Previous char is uppercase AND next char is lowercase (e.g., "HTTPService" -> "http_service")
+            if (char.IsUpper(c) && i > 0)
+            {
+                var prevChar = name[i - 1];
+                var nextChar = i + 1 < name.Length ? name[i + 1] : '\0';
+                
+                // Add underscore if:
+                // - Previous char is lowercase or digit
+                // - Previous char is uppercase AND next char is lowercase (acronym boundary)
+                if (char.IsLower(prevChar) || char.IsDigit(prevChar) || 
+                    (char.IsUpper(prevChar) && char.IsLower(nextChar)))
+                {
+                    sb.Append('_');
+                }
+            }
+            
             sb.Append(char.ToLowerInvariant(c));
         }
         return sb.ToString();

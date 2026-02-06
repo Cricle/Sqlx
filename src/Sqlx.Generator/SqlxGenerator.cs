@@ -1081,7 +1081,8 @@ public class SqlxGenerator : IIncrementalGenerator
             if (isNullableValueType)
             {
                 // Nullable value type: check negative ordinal first, then IsDBNull
-                return $"{ordinalVar} < 0 ? (reader.IsDBNull(-{ordinalVar} - 1) ? default({fullTypeName}) : global::Sqlx.TypeConverter.Convert<{fullTypeName}>(reader.GetValue(-{ordinalVar} - 1))) : (reader.IsDBNull({ordinalVar}) ? default({fullTypeName}) : ({fullTypeName})reader.{method}({ordinalVar}))";
+                // No explicit cast needed - compiler handles implicit conversion to Nullable<T>
+                return $"{ordinalVar} < 0 ? (reader.IsDBNull(-{ordinalVar} - 1) ? default({fullTypeName}) : global::Sqlx.TypeConverter.Convert<{fullTypeName}>(reader.GetValue(-{ordinalVar} - 1))) : (reader.IsDBNull({ordinalVar}) ? default({fullTypeName}) : reader.{method}({ordinalVar}))";
             }
             else if (isNullable)
             {

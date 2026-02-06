@@ -11,6 +11,8 @@
     <!-- Disable Activity and Interceptor for fair benchmark comparison -->
     <DefineConstants>$(DefineConstants);SQLX_DISABLE_ACTIVITY;SQLX_DISABLE_INTERCEPTOR;SQLX_DISABLE_METRICS</DefineConstants>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <!-- Suppress warnings from external dependencies -->
+    <NoWarn>$(NoWarn);CS9270;AD0001</NoWarn>
   </PropertyGroup>
 
   <!-- AOT compatibility settings - only for .NET 10 -->

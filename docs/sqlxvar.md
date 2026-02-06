@@ -558,3 +558,52 @@ var context = new PlaceholderContext(
 - [Placeholders](placeholders.md) - All available placeholders
 - [Source Generators](source-generators.md) - How source generation works
 - [Multi-Tenancy Patterns](multi-tenancy.md) - Multi-tenant architecture patterns
+
+## Limitations
+
+### ICrudRepository Methods
+
+**Important:** Built-in `ICrudRepository` methods (like `GetAllAsync`, `GetByIdAsync`, etc.) do **not** support `{{var}}` placeholders because they use static SQL templates generated at compile time.
+
+**Workaround 1: Define Custom Methods**
+
+Instead of using `GetAllAsync()`, define a custom method:
+
+```csharp
+public interface IUserRepository : ICrudRepository<User, long>
+{
+    // Custom method with {{var}} support
+    [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE tenant_id = {{var --name tenantId}}")]
+    Task<List<User>> GetAllForTenantAsync(CancellationToken ct = default);
+}
+```
+
+**Workaround 2: Use SqlQuery with Manual Context**
+
+```csharp
+public async Task<List<User>> GetAllForTenantAsync()
+{
+    var context = new PlaceholderContext(
+        SqlDefine.SQLite,
+        "users",
+        UserEntityProvider.Default.Columns,
+        VarProvider,
+        this);
+    
+    var template = SqlTemplate.Prepare(
+        "SELECT {{columns}} FROM {{table}} WHERE tenant_id = {{var --name tenantId}}",
+        context);
+    
+    var sql = template.Render(null);
+    return await _connection.QueryAsync<User>(sql, UserResultReader.Default);
+}
+```
+
+**Why This Limitation Exists:**
+
+ICrudRepository methods are generated with static `PlaceholderContext` for performance. Adding VarProvider support would require:
+- Runtime context creation (performance overhead)
+- Breaking change to existing code
+- Complexity in source generator
+
+For most use cases, defining custom methods with `[SqlTemplate]` is the recommended approach.

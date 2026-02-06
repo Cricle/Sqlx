@@ -280,7 +280,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         }
 
         // Generate static PlaceholderContext
-        GeneratePlaceholderContext(sb, entityName, entityFullName, sqlDefine, tableName);
+        GeneratePlaceholderContext(sb, repoType, entityName, entityFullName, sqlDefine, tableName);
         sb.AppendLine();
 
         // Generate static SqlTemplate fields for each method
@@ -517,7 +517,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         return type.GetMembers(memberName).Length > 0;
     }
 
-    private static void GeneratePlaceholderContext(IndentedStringBuilder sb, string entityName, string entityFullName, string sqlDefine, string tableName)
+    private static void GeneratePlaceholderContext(IndentedStringBuilder sb, INamedTypeSymbol repoType, string entityName, string entityFullName, string sqlDefine, string tableName)
     {
         sb.AppendLine("// Static context - shared across all methods");
         sb.AppendLine($"private const global::Sqlx.Annotations.SqlDefineTypes _dialectType = global::Sqlx.Annotations.SqlDefineTypes.{sqlDefine};");

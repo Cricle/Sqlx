@@ -8,7 +8,7 @@ Sqlx 是一个高性能、AOT 友好的 SQL 生成库。使用源生成器在编
 - **⚡ 零反射** - 所有代码在编译时生成
 - **🎯 类型安全** - SQL 模板的编译时验证
 - **🌐 多数据库** - SQLite, MySQL, PostgreSQL, SQL Server, Oracle, DB2
-- **📦 AOT 就绪** - 通过 1344 个单元测试，完全支持 Native AOT
+- **📦 AOT 就绪** - 通过 2191 个单元测试，完全支持 Native AOT
 - **🔧 LINQ 支持** - IQueryable 接口，支持 Where/Select/OrderBy/Join
 - **💾 智能缓存** - SqlQuery\<T\> 泛型缓存，自动注册 EntityProvider
 - **🔍 自动发现** - 源生成器自动发现 SqlQuery\<T\> 和 SqlTemplate 中的实体类型
@@ -108,7 +108,7 @@ Sqlx 在 .NET 10 (LTS) 上的性能表现：
 
 **测试环境:** .NET 10.0.2 (LTS), BenchmarkDotNet 0.15.7, SQLite 内存数据库
 
-**AOT 兼容性:** ✅ 通过 1344 个单元测试，完全支持 Native AOT
+**AOT 兼容性:** ✅ 通过 2191 个单元测试，完全支持 Native AOT
 
 **最新优化:**
 - 泛型 SqlQuery\<T\> 缓存优化

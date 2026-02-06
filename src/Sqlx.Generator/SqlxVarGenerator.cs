@@ -22,14 +22,6 @@ namespace Sqlx;
 public class SqlxVarGenerator : IIncrementalGenerator
 {
     // Diagnostic descriptors
-    private static readonly DiagnosticDescriptor InvalidReturnTypeDescriptor = new(
-        id: "SQLX1002",
-        title: "Invalid SqlxVar return type",
-        messageFormat: "Method '{0}' marked with [SqlxVar] must return string, found '{1}'",
-        category: "Sqlx.Generator",
-        defaultSeverity: DiagnosticSeverity.Error,
-        isEnabledByDefault: true);
-
     private static readonly DiagnosticDescriptor InvalidParametersDescriptor = new(
         id: "SQLX1003",
         title: "Invalid SqlxVar method signature",
@@ -116,20 +108,6 @@ public class SqlxVarGenerator : IIncrementalGenerator
         }
 
         var diagnostics = new List<Diagnostic>();
-
-        // Validate return type
-        if (methodSymbol.ReturnType.SpecialType != SpecialType.System_String)
-        {
-            var diagnostic = Diagnostic.Create(
-                InvalidReturnTypeDescriptor,
-                methodSymbol.Locations.FirstOrDefault(),
-                methodSymbol.Name,
-                methodSymbol.ReturnType.ToDisplayString());
-            diagnostics.Add(diagnostic);
-            
-            // Return result with diagnostic but no method info
-            return new SqlxVarMethodResult(null, diagnostics);
-        }
 
         // Validate parameters
         if (methodSymbol.Parameters.Length != 0)

@@ -132,6 +132,35 @@ Task<List<User>> GetFromTableAsync(string tableName);
 - No options - Uses static table name from context
 - `--param name` - Dynamic table name resolved at render time
 
+### {{var}}
+
+Inserts application-controlled variable values as SQL literals. Values come from methods marked with `[SqlxVar]` attribute.
+
+```csharp
+// Define variables in repository
+[SqlxVar("tenantId")]
+public string GetTenantId() => _tenantId;
+
+// Use in template
+[SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE tenant_id = {{var --name tenantId}}")]
+Task<List<User>> GetAllAsync();
+
+// Output: SELECT [id], [name], [email] FROM [users] WHERE tenant_id = 'tenant-123'
+```
+
+**Options:**
+- `--name variableName` - Name of the variable (required)
+
+**⚠️ Security Warning:** Values are inserted as literals, not parameters. Only use for trusted, application-controlled values like tenant IDs or SQL keywords. Never use for user input.
+
+**Use Cases:**
+- Multi-tenant tenant IDs
+- Dynamic table/schema names
+- SQL keywords (ASC/DESC)
+- Application-controlled constants
+
+See [SqlxVar Documentation](sqlxvar.md) for complete guide.
+
 ### {{where}}
 
 Generates dynamic WHERE clauses. Supports two modes:
@@ -232,6 +261,7 @@ Resolved once during `SqlTemplate.Prepare()`:
 ### Dynamic Placeholders
 
 Resolved each time during `SqlTemplate.Render()`:
+- `{{var --name name}}`
 - `{{where --param name}}`
 - `{{limit --param name}}`
 - `{{offset --param name}}`

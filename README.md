@@ -108,6 +108,51 @@ Console.WriteLine($"SQL: {template.Sql}");
 | `{{set --inline Version=Version+1}}` | 内联表达式（UPDATE 计算字段） | `name = @name, version = version+1` |
 | `{{where --object filter}}` | 对象条件查询 | `(name = @name AND age = @age)` |
 | `{{if notnull=param}}...{{/if}}` | 条件包含 | 动态 SQL |
+| `{{var --name varName}}` | 运行时变量（SqlxVar） | `tenant-123` (字面量) |
+
+### SqlxVar - 声明式变量提供器
+
+使用 `[SqlxVar]` 特性声明运行时变量，自动生成代码，零反射，AOT 兼容：
+
+```csharp
+public partial class UserRepository
+{
+    // 标记方法为变量提供器
+    [SqlxVar("tenantId")]
+    private string GetTenantId() => TenantContext.Current;
+    
+    [SqlxVar("userId")]
+    private string GetUserId() => UserContext.CurrentUserId.ToString();
+    
+    [SqlxVar("timestamp")]
+    private static string GetTimestamp() => DateTime.UtcNow.ToString("O");
+    
+    // 源生成器自动创建 GetVar 方法和 VarProvider 属性
+}
+
+// 在 SQL 模板中使用
+[SqlTemplate(@"
+    SELECT {{columns}} FROM {{table}} 
+    WHERE tenant_id = {{var --name tenantId}} 
+    AND user_id = {{var --name userId}}
+")]
+Task<List<User>> GetMyDataAsync();
+
+// 生成的 SQL（值作为字面量插入）：
+// SELECT "id", "name" FROM "users" 
+// WHERE tenant_id = tenant-123 AND user_id = user-456
+```
+
+**关键特性：**
+- ✅ 零反射 - 编译时生成 switch 语句
+- ✅ AOT 兼容 - 完全支持 Native AOT
+- ✅ 类型安全 - 编译时验证变量名和方法签名
+- ✅ 高性能 - O(1) 调度，单次实例转换
+- ✅ 支持静态和实例方法
+
+**⚠️ 安全警告：** `{{var}}` 将值作为字面量插入 SQL。仅用于受信任的应用程序控制值（如租户 ID、SQL 关键字）。用户输入必须使用 SQL 参数（`@param`）。
+
+详见：[SqlxVar 完整文档](docs/sqlxvar.md)
 
 ### 内联表达式（Inline Expressions）
 

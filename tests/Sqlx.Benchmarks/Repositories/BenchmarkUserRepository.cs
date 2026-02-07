@@ -45,6 +45,6 @@ public partial class BenchmarkUserRepository(SqliteConnection connection) : IBen
     /// </summary>
     public IQueryable<BenchmarkUser> AsQueryable()
     {
-        return SqlQuery<BenchmarkUser>.For(_placeholderContext.Dialect).WithConnection(_connection);
+        return SqlQuery<BenchmarkUser>.For(_staticContext.Dialect).WithConnection(_connection);
     }
 }

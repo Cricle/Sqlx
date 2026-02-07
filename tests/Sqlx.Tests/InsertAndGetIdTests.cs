@@ -34,7 +34,7 @@ public partial class InsertTestEntityRepository(SqliteConnection connection) : I
     
     public IQueryable<InsertTestEntity> AsQueryable()
     {
-        return SqlQuery<InsertTestEntity>.For(_placeholderContext.Dialect).WithConnection(_connection);
+        return SqlQuery<InsertTestEntity>.For(_staticContext.Dialect).WithConnection(_connection);
     }
 }
 

@@ -58,7 +58,7 @@ public partial class SecurityTestRepository(SqliteConnection connection) : ISecu
     public IQueryable<SecurityTestUser> AsQueryable()
     {
         // 使用 SqlQuery<T>.EntityProvider 来获取正确的表名
-        return SqlQuery<SecurityTestUser>.For(_placeholderContext.Dialect, SqlQuery<SecurityTestUser>.EntityProvider)
+        return SqlQuery<SecurityTestUser>.For(_staticContext.Dialect, SqlQuery<SecurityTestUser>.EntityProvider)
             .WithConnection(_connection);
     }
 }

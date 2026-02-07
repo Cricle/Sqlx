@@ -37,7 +37,7 @@ public partial class PrimaryTestRepositoryWithFields(SqliteConnection connection
     
     public IQueryable<PrimaryTestEntity> AsQueryable()
     {
-        return SqlQuery<PrimaryTestEntity>.For(_placeholderContext.Dialect).WithConnection(_connection);
+        return SqlQuery<PrimaryTestEntity>.For(_staticContext.Dialect).WithConnection(_connection);
     }
 }
 
@@ -60,7 +60,7 @@ public partial class PrimaryTestRepositoryNoFields(SqliteConnection connection) 
     
     public IQueryable<PrimaryTestEntity> AsQueryable()
     {
-        return SqlQuery<PrimaryTestEntity>.For(_placeholderContext.Dialect).WithConnection(connection);
+        return SqlQuery<PrimaryTestEntity>.For(_staticContext.Dialect).WithConnection(connection);
     }
 }
 

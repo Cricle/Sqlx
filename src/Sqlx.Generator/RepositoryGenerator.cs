@@ -1010,7 +1010,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.PushIndent();
             sb.AppendLine($"{fieldName} = global::Sqlx.SqlTemplate.Prepare(");
             sb.PushIndent();
-            sb.AppendLine($"\"{EscapeString(template)}\",");
+            sb.AppendLine($"\"{EscapeString(template!)}\",");
             sb.AppendLine("GetDynamicContext());");
             sb.PopIndent();
             sb.PopIndent();

@@ -3,14 +3,14 @@
 ## Current Versions
 
 ### Sqlx Core Library
-- **Version**: 0.4.0
-- **Release Date**: 2024-10-26
+- **Version**: 0.6.8
+- **Release Date**: 2025-02-07
 - **Status**: Stable
 - **NuGet**: https://www.nuget.org/packages/Sqlx/
 
 ### Sqlx.Generator
-- **Version**: 0.4.0
-- **Release Date**: 2024-10-26
+- **Version**: 0.6.8
+- **Release Date**: 2025-02-07
 - **Status**: Stable
 - **NuGet**: https://www.nuget.org/packages/Sqlx.Generator/
 

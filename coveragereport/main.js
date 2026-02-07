@@ -213,70 +213,70 @@ var assemblies = [
   {
     "name": "Sqlx",
     "classes": [
-      { "name": "Sqlx.Annotations.RepositoryForAttribute", "rp": "Sqlx_RepositoryForAttribute.html", "cl": 12, "ucl": 0, "cal": 12, "tl": 252, "cb": 3, "tb": 6, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.Annotations.SqlDefineAttribute", "rp": "Sqlx_SqlDefineAttribute.html", "cl": 9, "ucl": 0, "cal": 9, "tl": 179, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.Annotations.SqlTemplateAttribute", "rp": "Sqlx_SqlTemplateAttribute.html", "cl": 0, "ucl": 21, "cal": 21, "tl": 123, "cb": 0, "tb": 6, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.Annotations.SqlxAttribute", "rp": "Sqlx_SqlxAttribute.html", "cl": 9, "ucl": 9, "cal": 18, "tl": 128, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.Annotations.SqlxVarAttribute", "rp": "Sqlx_SqlxVarAttribute.html", "cl": 0, "ucl": 24, "cal": 24, "tl": 170, "cb": 0, "tb": 3, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.Annotations.TableNameAttribute", "rp": "Sqlx_TableNameAttribute.html", "cl": 12, "ucl": 0, "cal": 12, "tl": 102, "cb": 3, "tb": 6, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.DB2Dialect", "rp": "Sqlx_DB2Dialect.html", "cl": 45, "ucl": 33, "cal": 78, "tl": 273, "cb": 9, "tb": 36, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.DbConnectionExtensions", "rp": "Sqlx_DbConnectionExtensions.html", "cl": 36, "ucl": 36, "cal": 72, "tl": 287, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.DbExecutor", "rp": "Sqlx_DbExecutor.html", "cl": 45, "ucl": 24, "cal": 69, "tl": 458, "cb": 15, "tb": 24, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.Diagnostics.SqlTemplateMetrics", "rp": "Sqlx_SqlTemplateMetrics.html", "cl": 108, "ucl": 0, "cal": 108, "tl": 298, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.DynamicEntityProvider<T>", "rp": "Sqlx_DynamicEntityProvider_1.html", "cl": 0, "ucl": 204, "cal": 204, "tl": 325, "cb": 0, "tb": 240, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.DynamicResultReader<T>", "rp": "Sqlx_DynamicResultReader_1.html", "cl": 249, "ucl": 15, "cal": 264, "tl": 478, "cb": 54, "tb": 54, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.EntityProviderRegistry", "rp": "Sqlx_EntityProviderRegistry.html", "cl": 21, "ucl": 0, "cal": 21, "tl": 110, "cb": 6, "tb": 6, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.ExpressionExtensions", "rp": "Sqlx_ExpressionExtensions.html", "cl": 78, "ucl": 57, "cal": 135, "tl": 317, "cb": 51, "tb": 84, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.Expressions.AggregateParser", "rp": "Sqlx_AggregateParser.html", "cl": 54, "ucl": 30, "cal": 84, "tl": 740, "cb": 81, "tb": 180, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.Expressions.Any", "rp": "Sqlx_Any.html", "cl": 6, "ucl": 0, "cal": 6, "tl": 675, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.Expressions.DateTimeFunctionParser", "rp": "Sqlx_DateTimeFunctionParser.html", "cl": 27, "ucl": 3, "cal": 30, "tl": 658, "cb": 9, "tb": 18, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.Expressions.ExpressionBlockResult", "rp": "Sqlx_ExpressionBlockResult.html", "cl": 198, "ucl": 24, "cal": 222, "tl": 625, "cb": 66, "tb": 84, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.Expressions.ExpressionHelper", "rp": "Sqlx_ExpressionHelper.html", "cl": 213, "ucl": 66, "cal": 279, "tl": 524, "cb": 285, "tb": 426, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.Expressions.ExpressionParser", "rp": "Sqlx_ExpressionParser.html", "cl": 894, "ucl": 99, "cal": 993, "tl": 1610, "cb": 858, "tb": 1158, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.Expressions.MathFunctionParser", "rp": "Sqlx_MathFunctionParser.html", "cl": 97, "ucl": 47, "cal": 144, "tl": 396, "cb": 175, "tb": 450, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.Expressions.StringFunctionParser", "rp": "Sqlx_StringFunctionParser.html", "cl": 132, "ucl": 132, "cal": 264, "tl": 620, "cb": 174, "tb": 450, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.Expressions.ValueFormatter", "rp": "Sqlx_ValueFormatter.html", "cl": 24, "ucl": 12, "cal": 36, "tl": 782, "cb": 54, "tb": 72, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.MySqlDialect", "rp": "Sqlx_MySqlDialect.html", "cl": 42, "ucl": 12, "cal": 54, "tl": 288, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.OracleDialect", "rp": "Sqlx_OracleDialect.html", "cl": 60, "ucl": 36, "cal": 96, "tl": 312, "cb": 33, "tb": 48, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.PlaceholderContext", "rp": "Sqlx_PlaceholderContext.html", "cl": 27, "ucl": 0, "cal": 27, "tl": 241, "cb": 18, "tb": 18, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.PlaceholderHandlerBase", "rp": "Sqlx_PlaceholderHandlerBase.html", "cl": 384, "ucl": 15, "cal": 399, "tl": 891, "cb": 210, "tb": 222, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.PlaceholderProcessor", "rp": "Sqlx_PlaceholderProcessor.html", "cl": 102, "ucl": 18, "cal": 120, "tl": 404, "cb": 15, "tb": 18, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.Placeholders.ArgPlaceholderHandler", "rp": "Sqlx_ArgPlaceholderHandler.html", "cl": 24, "ucl": 12, "cal": 36, "tl": 196, "cb": 12, "tb": 12, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.Placeholders.ColumnsPlaceholderHandler", "rp": "Sqlx_ColumnsPlaceholderHandler.html", "cl": 18, "ucl": 0, "cal": 18, "tl": 145, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.Placeholders.IfPlaceholderHandler", "rp": "Sqlx_IfPlaceholderHandler.html", "cl": 84, "ucl": 36, "cal": 120, "tl": 328, "cb": 75, "tb": 126, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.Placeholders.LimitPlaceholderHandler", "rp": "Sqlx_LimitPlaceholderHandler.html", "cl": 60, "ucl": 6, "cal": 66, "tl": 253, "cb": 15, "tb": 24, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.Placeholders.OffsetPlaceholderHandler", "rp": "Sqlx_OffsetPlaceholderHandler.html", "cl": 60, "ucl": 6, "cal": 66, "tl": 253, "cb": 15, "tb": 24, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.Placeholders.SetPlaceholderHandler", "rp": "Sqlx_SetPlaceholderHandler.html", "cl": 99, "ucl": 9, "cal": 108, "tl": 370, "cb": 42, "tb": 48, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.Placeholders.TablePlaceholderHandler", "rp": "Sqlx_TablePlaceholderHandler.html", "cl": 87, "ucl": 0, "cal": 87, "tl": 337, "cb": 30, "tb": 30, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.Placeholders.ValuesPlaceholderHandler", "rp": "Sqlx_ValuesPlaceholderHandler.html", "cl": 78, "ucl": 57, "cal": 135, "tl": 376, "cb": 30, "tb": 66, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.Placeholders.VarPlaceholderHandler", "rp": "Sqlx_VarPlaceholderHandler.html", "cl": 54, "ucl": 12, "cal": 66, "tl": 283, "cb": 12, "tb": 12, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.Placeholders.WherePlaceholderHandler", "rp": "Sqlx_WherePlaceholderHandler.html", "cl": 201, "ucl": 6, "cal": 207, "tl": 436, "cb": 102, "tb": 108, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.PostgreSqlDialect", "rp": "Sqlx_PostgreSqlDialect.html", "cl": 45, "ucl": 12, "cal": 57, "tl": 288, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.ResultReaderExtensions", "rp": "Sqlx_ResultReaderExtensions.html", "cl": 96, "ucl": 36, "cal": 132, "tl": 508, "cb": 24, "tb": 42, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.SetExpressionExtensions", "rp": "Sqlx_SetExpressionExtensions.html", "cl": 171, "ucl": 27, "cal": 198, "tl": 476, "cb": 96, "tb": 108, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.SqlDefine", "rp": "Sqlx_SqlDefine.html", "cl": 54, "ucl": 0, "cal": 54, "tl": 364, "cb": 21, "tb": 21, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.SqlDialect", "rp": "Sqlx_SqlDialect.html", "cl": 102, "ucl": 6, "cal": 108, "tl": 792, "cb": 12, "tb": 12, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.SqlExpressionVisitor", "rp": "Sqlx_SqlExpressionVisitor.html", "cl": 825, "ucl": 54, "cal": 879, "tl": 1346, "cb": 609, "tb": 714, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.SQLiteDialect", "rp": "Sqlx_SQLiteDialect.html", "cl": 63, "ucl": 12, "cal": 75, "tl": 273, "cb": 33, "tb": 36, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.SqlQuery<T>", "rp": "Sqlx_SqlQuery_1.html", "cl": 81, "ucl": 18, "cal": 99, "tl": 494, "cb": 3, "tb": 6, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.SqlServerDialect", "rp": "Sqlx_SqlServerDialect.html", "cl": 48, "ucl": 9, "cal": 57, "tl": 306, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.SqlTemplate", "rp": "Sqlx_SqlTemplate.html", "cl": 351, "ucl": 6, "cal": 357, "tl": 1370, "cb": 153, "tb": 165, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.SqlxQueryable<T>", "rp": "Sqlx_SqlxQueryable_1.html", "cl": 120, "ucl": 27, "cal": 147, "tl": 512, "cb": 36, "tb": 66, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.SqlxQueryableExtensions", "rp": "Sqlx_SqlxQueryableExtensions.html", "cl": 132, "ucl": 54, "cal": 186, "tl": 515, "cb": 39, "tb": 72, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.SqlxQueryProvider<T>", "rp": "Sqlx_SqlxQueryProvider_1.html", "cl": 114, "ucl": 174, "cal": 288, "tl": 542, "cb": 66, "tb": 282, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.SubQuery", "rp": "Sqlx_SubQuery.html", "cl": 0, "ucl": 3, "cal": 3, "tl": 171, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.SubQueryable<T>", "rp": "Sqlx_SubQueryable_1.html", "cl": 0, "ucl": 39, "cal": 39, "tl": 231, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.SubQueryProvider", "rp": "Sqlx_SubQueryProvider.html", "cl": 0, "ucl": 33, "cal": 33, "tl": 293, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.TypeConverter", "rp": "Sqlx_TypeConverter.html", "cl": 240, "ucl": 9, "cal": 249, "tl": 484, "cb": 255, "tb": 264, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.Annotations.RepositoryForAttribute", "rp": "Sqlx_RepositoryForAttribute.html", "cl": 16, "ucl": 0, "cal": 16, "tl": 384, "cb": 4, "tb": 8, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.Annotations.SqlDefineAttribute", "rp": "Sqlx_SqlDefineAttribute.html", "cl": 12, "ucl": 0, "cal": 12, "tl": 260, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.Annotations.SqlTemplateAttribute", "rp": "Sqlx_SqlTemplateAttribute.html", "cl": 0, "ucl": 28, "cal": 28, "tl": 260, "cb": 0, "tb": 8, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.Annotations.SqlxAttribute", "rp": "Sqlx_SqlxAttribute.html", "cl": 12, "ucl": 12, "cal": 24, "tl": 240, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.Annotations.SqlxVarAttribute", "rp": "Sqlx_SqlxVarAttribute.html", "cl": 0, "ucl": 32, "cal": 32, "tl": 248, "cb": 0, "tb": 4, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.Annotations.TableNameAttribute", "rp": "Sqlx_TableNameAttribute.html", "cl": 16, "ucl": 0, "cal": 16, "tl": 200, "cb": 4, "tb": 8, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.DB2Dialect", "rp": "Sqlx_DB2Dialect.html", "cl": 61, "ucl": 43, "cal": 104, "tl": 372, "cb": 12, "tb": 48, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.DbConnectionExtensions", "rp": "Sqlx_DbConnectionExtensions.html", "cl": 48, "ucl": 48, "cal": 96, "tl": 388, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.DbExecutor", "rp": "Sqlx_DbExecutor.html", "cl": 60, "ucl": 32, "cal": 92, "tl": 616, "cb": 20, "tb": 32, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.Diagnostics.SqlTemplateMetrics", "rp": "Sqlx_SqlTemplateMetrics.html", "cl": 144, "ucl": 0, "cal": 144, "tl": 400, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.DynamicEntityProvider<T>", "rp": "Sqlx_DynamicEntityProvider_1.html", "cl": 0, "ucl": 272, "cal": 272, "tl": 436, "cb": 0, "tb": 320, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.DynamicResultReader<T>", "rp": "Sqlx_DynamicResultReader_1.html", "cl": 332, "ucl": 20, "cal": 352, "tl": 640, "cb": 72, "tb": 72, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.EntityProviderRegistry", "rp": "Sqlx_EntityProviderRegistry.html", "cl": 28, "ucl": 0, "cal": 28, "tl": 152, "cb": 8, "tb": 8, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.ExpressionExtensions", "rp": "Sqlx_ExpressionExtensions.html", "cl": 104, "ucl": 76, "cal": 180, "tl": 428, "cb": 68, "tb": 112, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.Expressions.AggregateParser", "rp": "Sqlx_AggregateParser.html", "cl": 72, "ucl": 40, "cal": 112, "tl": 1048, "cb": 108, "tb": 240, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.Expressions.Any", "rp": "Sqlx_Any.html", "cl": 8, "ucl": 0, "cal": 8, "tl": 908, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.Expressions.DateTimeFunctionParser", "rp": "Sqlx_DateTimeFunctionParser.html", "cl": 36, "ucl": 4, "cal": 40, "tl": 1048, "cb": 12, "tb": 24, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.Expressions.ExpressionBlockResult", "rp": "Sqlx_ExpressionBlockResult.html", "cl": 264, "ucl": 32, "cal": 296, "tl": 908, "cb": 88, "tb": 112, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.Expressions.ExpressionHelper", "rp": "Sqlx_ExpressionHelper.html", "cl": 286, "ucl": 86, "cal": 372, "tl": 704, "cb": 386, "tb": 568, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.Expressions.ExpressionParser", "rp": "Sqlx_ExpressionParser.html", "cl": 1192, "ucl": 132, "cal": 1324, "tl": 2152, "cb": 1144, "tb": 1544, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.Expressions.MathFunctionParser", "rp": "Sqlx_MathFunctionParser.html", "cl": 142, "ucl": 50, "cal": 192, "tl": 1048, "cb": 272, "tb": 600, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.Expressions.StringFunctionParser", "rp": "Sqlx_StringFunctionParser.html", "cl": 176, "ucl": 176, "cal": 352, "tl": 1048, "cb": 232, "tb": 600, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.Expressions.ValueFormatter", "rp": "Sqlx_ValueFormatter.html", "cl": 33, "ucl": 15, "cal": 48, "tl": 1048, "cb": 73, "tb": 96, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.MySqlDialect", "rp": "Sqlx_MySqlDialect.html", "cl": 56, "ucl": 16, "cal": 72, "tl": 392, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.OracleDialect", "rp": "Sqlx_OracleDialect.html", "cl": 81, "ucl": 47, "cal": 128, "tl": 424, "cb": 44, "tb": 64, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.PlaceholderContext", "rp": "Sqlx_PlaceholderContext.html", "cl": 36, "ucl": 0, "cal": 36, "tl": 412, "cb": 24, "tb": 24, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.PlaceholderHandlerBase", "rp": "Sqlx_PlaceholderHandlerBase.html", "cl": 512, "ucl": 20, "cal": 532, "tl": 1220, "cb": 280, "tb": 296, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.PlaceholderProcessor", "rp": "Sqlx_PlaceholderProcessor.html", "cl": 136, "ucl": 24, "cal": 160, "tl": 560, "cb": 20, "tb": 24, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.Placeholders.ArgPlaceholderHandler", "rp": "Sqlx_ArgPlaceholderHandler.html", "cl": 32, "ucl": 16, "cal": 48, "tl": 264, "cb": 16, "tb": 16, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.Placeholders.ColumnsPlaceholderHandler", "rp": "Sqlx_ColumnsPlaceholderHandler.html", "cl": 24, "ucl": 0, "cal": 24, "tl": 196, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.Placeholders.IfPlaceholderHandler", "rp": "Sqlx_IfPlaceholderHandler.html", "cl": 112, "ucl": 48, "cal": 160, "tl": 440, "cb": 100, "tb": 168, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.Placeholders.LimitPlaceholderHandler", "rp": "Sqlx_LimitPlaceholderHandler.html", "cl": 80, "ucl": 8, "cal": 88, "tl": 340, "cb": 20, "tb": 32, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.Placeholders.OffsetPlaceholderHandler", "rp": "Sqlx_OffsetPlaceholderHandler.html", "cl": 80, "ucl": 8, "cal": 88, "tl": 340, "cb": 20, "tb": 32, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.Placeholders.SetPlaceholderHandler", "rp": "Sqlx_SetPlaceholderHandler.html", "cl": 132, "ucl": 12, "cal": 144, "tl": 496, "cb": 56, "tb": 64, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.Placeholders.TablePlaceholderHandler", "rp": "Sqlx_TablePlaceholderHandler.html", "cl": 116, "ucl": 0, "cal": 116, "tl": 452, "cb": 40, "tb": 40, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.Placeholders.ValuesPlaceholderHandler", "rp": "Sqlx_ValuesPlaceholderHandler.html", "cl": 104, "ucl": 76, "cal": 180, "tl": 504, "cb": 40, "tb": 88, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.Placeholders.VarPlaceholderHandler", "rp": "Sqlx_VarPlaceholderHandler.html", "cl": 72, "ucl": 16, "cal": 88, "tl": 380, "cb": 16, "tb": 16, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.Placeholders.WherePlaceholderHandler", "rp": "Sqlx_WherePlaceholderHandler.html", "cl": 268, "ucl": 8, "cal": 276, "tl": 584, "cb": 136, "tb": 144, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.PostgreSqlDialect", "rp": "Sqlx_PostgreSqlDialect.html", "cl": 60, "ucl": 16, "cal": 76, "tl": 392, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.ResultReaderExtensions", "rp": "Sqlx_ResultReaderExtensions.html", "cl": 128, "ucl": 48, "cal": 176, "tl": 896, "cb": 32, "tb": 56, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.SetExpressionExtensions", "rp": "Sqlx_SetExpressionExtensions.html", "cl": 228, "ucl": 36, "cal": 264, "tl": 640, "cb": 128, "tb": 144, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.SqlDefine", "rp": "Sqlx_SqlDefine.html", "cl": 72, "ucl": 0, "cal": 72, "tl": 1064, "cb": 28, "tb": 28, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.SqlDialect", "rp": "Sqlx_SqlDialect.html", "cl": 136, "ucl": 8, "cal": 144, "tl": 1064, "cb": 16, "tb": 16, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.SqlExpressionVisitor", "rp": "Sqlx_SqlExpressionVisitor.html", "cl": 1100, "ucl": 72, "cal": 1172, "tl": 1800, "cb": 812, "tb": 952, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.SQLiteDialect", "rp": "Sqlx_SQLiteDialect.html", "cl": 84, "ucl": 16, "cal": 100, "tl": 372, "cb": 44, "tb": 48, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.SqlQuery<T>", "rp": "Sqlx_SqlQuery_1.html", "cl": 108, "ucl": 24, "cal": 132, "tl": 664, "cb": 4, "tb": 8, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.SqlServerDialect", "rp": "Sqlx_SqlServerDialect.html", "cl": 64, "ucl": 12, "cal": 76, "tl": 416, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.SqlTemplate", "rp": "Sqlx_SqlTemplate.html", "cl": 468, "ucl": 8, "cal": 476, "tl": 1832, "cb": 204, "tb": 220, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.SqlxQueryable<T>", "rp": "Sqlx_SqlxQueryable_1.html", "cl": 160, "ucl": 36, "cal": 196, "tl": 688, "cb": 48, "tb": 88, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.SqlxQueryableExtensions", "rp": "Sqlx_SqlxQueryableExtensions.html", "cl": 176, "ucl": 72, "cal": 248, "tl": 692, "cb": 52, "tb": 96, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.SqlxQueryProvider<T>", "rp": "Sqlx_SqlxQueryProvider_1.html", "cl": 152, "ucl": 232, "cal": 384, "tl": 728, "cb": 88, "tb": 376, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.SubQuery", "rp": "Sqlx_SubQuery.html", "cl": 0, "ucl": 4, "cal": 4, "tl": 396, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.SubQueryable<T>", "rp": "Sqlx_SubQueryable_1.html", "cl": 0, "ucl": 52, "cal": 52, "tl": 396, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.SubQueryProvider", "rp": "Sqlx_SubQueryProvider.html", "cl": 0, "ucl": 44, "cal": 44, "tl": 396, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.TypeConverter", "rp": "Sqlx_TypeConverter.html", "cl": 320, "ucl": 12, "cal": 332, "tl": 648, "cb": 340, "tb": 352, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
     ]},
   {
     "name": "Sqlx.Generator",
     "classes": [
-      { "name": "Sqlx.IndentedStringBuilder", "rp": "Sqlx.Generator_IndentedStringBuilder.html", "cl": 90, "ucl": 57, "cal": 147, "tl": 403, "cb": 33, "tb": 90, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.RepositoryGenerator", "rp": "Sqlx.Generator_RepositoryGenerator.html", "cl": 0, "ucl": 3930, "cal": 3930, "tl": 5572, "cb": 0, "tb": 1983, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.SqlxAnalyzer", "rp": "Sqlx.Generator_SqlxAnalyzer.html", "cl": 0, "ucl": 336, "cal": 336, "tl": 511, "cb": 0, "tb": 156, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.SqlxGenerator", "rp": "Sqlx.Generator_SqlxGenerator.html", "cl": 1455, "ucl": 1587, "cal": 3042, "tl": 4178, "cb": 765, "tb": 2850, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "Sqlx.SqlxVarGenerator", "rp": "Sqlx.Generator_SqlxVarGenerator.html", "cl": 492, "ucl": 6, "cal": 498, "tl": 795, "cb": 87, "tb": 102, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.IndentedStringBuilder", "rp": "Sqlx.Generator_IndentedStringBuilder.html", "cl": 120, "ucl": 76, "cal": 196, "tl": 540, "cb": 44, "tb": 120, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.RepositoryGenerator", "rp": "Sqlx.Generator_RepositoryGenerator.html", "cl": 0, "ucl": 5240, "cal": 5240, "tl": 7432, "cb": 0, "tb": 2644, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.SqlxAnalyzer", "rp": "Sqlx.Generator_SqlxAnalyzer.html", "cl": 0, "ucl": 448, "cal": 448, "tl": 684, "cb": 0, "tb": 208, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.SqlxGenerator", "rp": "Sqlx.Generator_SqlxGenerator.html", "cl": 1948, "ucl": 2108, "cal": 4056, "tl": 5576, "cb": 1035, "tb": 3800, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "Sqlx.SqlxVarGenerator", "rp": "Sqlx.Generator_SqlxVarGenerator.html", "cl": 656, "ucl": 8, "cal": 664, "tl": 1108, "cb": 116, "tb": 136, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
     ]},
 ];
 
@@ -304,6 +304,12 @@ var riskHotspots = [
     ]},
   {
     "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "GenerateExecuteAndReturn(Sqlx.IndentedStringBuilder,Microsoft.CodeAnalysis.IMethodSymbol,System.String,System.String,System.String,System.String,System.Boolean,System.String,System.String,System.Boolean,System.String,System.Boolean)", "methodShortName": "GenerateExecuteAndReturn(...)", "fileIndex": 2, "line": 1241,
+    "metrics": [
+      { "value": 22650, "exceeded": true },
+      { "value": 150, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "GenerateExecuteAndReturn(Sqlx.IndentedStringBuilder,Microsoft.CodeAnalysis.IMethodSymbol,System.String,System.String,System.String,System.String,System.Boolean,System.String,System.String,System.Boolean,System.String,System.Boolean)", "methodShortName": "GenerateExecuteAndReturn(...)", "fileIndex": 3, "line": 1241,
     "metrics": [
       { "value": 22650, "exceeded": true },
       { "value": 150, "exceeded": true },
@@ -381,6 +387,30 @@ var riskHotspots = [
       { "value": 60, "exceeded": true },
     ]},
   {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxGenerator", "reportPath": "Sqlx.Generator_SqlxGenerator.html", "methodName": "GetReaderExpressionWithSequentialOrdinal(Microsoft.CodeAnalysis.ITypeSymbol,System.Int32,System.Int32,System.Boolean)", "methodShortName": "GetReaderExpressionWithSequentialOrdinal(...)", "fileIndex": 3, "line": 878,
+    "metrics": [
+      { "value": 3660, "exceeded": true },
+      { "value": 60, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxGenerator", "reportPath": "Sqlx.Generator_SqlxGenerator.html", "methodName": "GetReaderExpressionWithOrdinal(Microsoft.CodeAnalysis.ITypeSymbol,System.String,System.Boolean)", "methodShortName": "GetReaderExpressionWithOrdinal(...)", "fileIndex": 3, "line": 948,
+    "metrics": [
+      { "value": 3660, "exceeded": true },
+      { "value": 60, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxGenerator", "reportPath": "Sqlx.Generator_SqlxGenerator.html", "methodName": "GetReaderExpressionWithColumnInfo(Microsoft.CodeAnalysis.ITypeSymbol,System.String,System.Boolean)", "methodShortName": "GetReaderExpressionWithColumnInfo(...)", "fileIndex": 3, "line": 999,
+    "metrics": [
+      { "value": 3660, "exceeded": true },
+      { "value": 60, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxGenerator", "reportPath": "Sqlx.Generator_SqlxGenerator.html", "methodName": "GetReaderExpressionWithOrdinalVar(Microsoft.CodeAnalysis.ITypeSymbol,System.String,System.Boolean)", "methodShortName": "GetReaderExpressionWithOrdinalVar(...)", "fileIndex": 3, "line": 1054,
+    "metrics": [
+      { "value": 3660, "exceeded": true },
+      { "value": 60, "exceeded": true },
+    ]},
+  {
     "assembly": "Sqlx", "class": "Sqlx.DynamicEntityProvider<T>", "reportPath": "Sqlx_DynamicEntityProvider_1.html", "methodName": "GetDbType(System.Type)", "methodShortName": "GetDbType(...)", "fileIndex": 0, "line": 77,
     "metrics": [
       { "value": 3192, "exceeded": true },
@@ -394,6 +424,12 @@ var riskHotspots = [
     ]},
   {
     "assembly": "Sqlx", "class": "Sqlx.DynamicEntityProvider<T>", "reportPath": "Sqlx_DynamicEntityProvider_1.html", "methodName": "GetDbType(System.Type)", "methodShortName": "GetDbType(...)", "fileIndex": 2, "line": 77,
+    "metrics": [
+      { "value": 3192, "exceeded": true },
+      { "value": 56, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx", "class": "Sqlx.DynamicEntityProvider<T>", "reportPath": "Sqlx_DynamicEntityProvider_1.html", "methodName": "GetDbType(System.Type)", "methodShortName": "GetDbType(...)", "fileIndex": 3, "line": 77,
     "metrics": [
       { "value": 3192, "exceeded": true },
       { "value": 56, "exceeded": true },
@@ -435,6 +471,18 @@ var riskHotspots = [
       { "value": 56, "exceeded": true },
     ]},
   {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxGenerator", "reportPath": "Sqlx.Generator_SqlxGenerator.html", "methodName": "GetReaderExpression(Microsoft.CodeAnalysis.ITypeSymbol,System.String,System.Boolean)", "methodShortName": "GetReaderExpression(...)", "fileIndex": 3, "line": 1301,
+    "metrics": [
+      { "value": 3192, "exceeded": true },
+      { "value": 56, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxGenerator", "reportPath": "Sqlx.Generator_SqlxGenerator.html", "methodName": "GetReaderExpressionWithLocalOrdinal(Microsoft.CodeAnalysis.ITypeSymbol,System.String,System.Boolean)", "methodShortName": "GetReaderExpressionWithLocalOrdinal(...)", "fileIndex": 3, "line": 1342,
+    "metrics": [
+      { "value": 3192, "exceeded": true },
+      { "value": 56, "exceeded": true },
+    ]},
+  {
     "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxGenerator", "reportPath": "Sqlx.Generator_SqlxGenerator.html", "methodName": "NeedsTypeConversion(Microsoft.CodeAnalysis.ITypeSymbol)", "methodShortName": "NeedsTypeConversion(...)", "fileIndex": 0, "line": 931,
     "metrics": [
       { "value": 2970, "exceeded": true },
@@ -471,6 +519,18 @@ var riskHotspots = [
       { "value": 54, "exceeded": true },
     ]},
   {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxGenerator", "reportPath": "Sqlx.Generator_SqlxGenerator.html", "methodName": "NeedsTypeConversion(Microsoft.CodeAnalysis.ITypeSymbol)", "methodShortName": "NeedsTypeConversion(...)", "fileIndex": 3, "line": 931,
+    "metrics": [
+      { "value": 2970, "exceeded": true },
+      { "value": 54, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxGenerator", "reportPath": "Sqlx.Generator_SqlxGenerator.html", "methodName": "GetDefaultValue(Microsoft.CodeAnalysis.ITypeSymbol)", "methodShortName": "GetDefaultValue(...)", "fileIndex": 3, "line": 1233,
+    "metrics": [
+      { "value": 2970, "exceeded": true },
+      { "value": 54, "exceeded": true },
+    ]},
+  {
     "assembly": "Sqlx", "class": "Sqlx.SqlxQueryProvider<T>", "reportPath": "Sqlx_SqlxQueryProvider_1.html", "methodName": "Execute(System.Linq.Expressions.Expression)", "methodShortName": "Execute(...)", "fileIndex": 0, "line": 98,
     "metrics": [
       { "value": 1806, "exceeded": true },
@@ -489,13 +549,19 @@ var riskHotspots = [
       { "value": 42, "exceeded": true },
     ]},
   {
+    "assembly": "Sqlx", "class": "Sqlx.SqlxQueryProvider<T>", "reportPath": "Sqlx_SqlxQueryProvider_1.html", "methodName": "Execute(System.Linq.Expressions.Expression)", "methodShortName": "Execute(...)", "fileIndex": 3, "line": 98,
+    "metrics": [
+      { "value": 1806, "exceeded": true },
+      { "value": 42, "exceeded": true },
+    ]},
+  {
     "assembly": "Sqlx", "class": "Sqlx.Expressions.MathFunctionParser", "reportPath": "Sqlx_MathFunctionParser.html", "methodName": "Parse(Sqlx.Expressions.ExpressionParser,System.Linq.Expressions.MethodCallExpression)", "methodShortName": "Parse(...)", "fileIndex": 0, "line": 18,
     "metrics": [
       { "value": 1291, "exceeded": true },
       { "value": 144, "exceeded": true },
     ]},
   {
-    "assembly": "Sqlx", "class": "Sqlx.Expressions.MathFunctionParser", "reportPath": "Sqlx_MathFunctionParser.html", "methodName": "Parse(Sqlx.Expressions.ExpressionParser,System.Linq.Expressions.MethodCallExpression)", "methodShortName": "Parse(...)", "fileIndex": 1, "line": 18,
+    "assembly": "Sqlx", "class": "Sqlx.Expressions.MathFunctionParser", "reportPath": "Sqlx_MathFunctionParser.html", "methodName": "Parse(Sqlx.Expressions.ExpressionParser,System.Linq.Expressions.MethodCallExpression)", "methodShortName": "Parse(...)", "fileIndex": 2, "line": 18,
     "metrics": [
       { "value": 1291, "exceeded": true },
       { "value": 144, "exceeded": true },
@@ -591,6 +657,36 @@ var riskHotspots = [
       { "value": 26, "exceeded": true },
     ]},
   {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "FindOrGenerateDbConnection(Microsoft.CodeAnalysis.INamedTypeSymbol,Sqlx.IndentedStringBuilder)", "methodShortName": "FindOrGenerateDbConnection(...)", "fileIndex": 3, "line": 362,
+    "metrics": [
+      { "value": 702, "exceeded": true },
+      { "value": 26, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "FindDbConnection(Microsoft.CodeAnalysis.INamedTypeSymbol)", "methodShortName": "FindDbConnection(...)", "fileIndex": 3, "line": 428,
+    "metrics": [
+      { "value": 702, "exceeded": true },
+      { "value": 26, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "GenerateMethodImplementation(Sqlx.IndentedStringBuilder,Microsoft.CodeAnalysis.IMethodSymbol,System.String,System.String,System.String,System.String,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol,Sqlx.RepositoryGenerator/ConnectionInfo,System.Collections.Generic.Dictionary`2<System.String,System.String>,System.Collections.Generic.Dictionary`2<System.String,System.String>)", "methodShortName": "GenerateMethodImplementation(...)", "fileIndex": 3, "line": 752,
+    "metrics": [
+      { "value": 702, "exceeded": true },
+      { "value": 26, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "GenerateParameterBinding(Sqlx.IndentedStringBuilder,Microsoft.CodeAnalysis.IMethodSymbol,System.String,Microsoft.CodeAnalysis.INamedTypeSymbol,System.Collections.Generic.Dictionary`2<System.String,System.String>)", "methodShortName": "GenerateParameterBinding(...)", "fileIndex": 3, "line": 1056,
+    "metrics": [
+      { "value": 702, "exceeded": true },
+      { "value": 26, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "ExtractActualReturnType(Microsoft.CodeAnalysis.ITypeSymbol)", "methodShortName": "ExtractActualReturnType(...)", "fileIndex": 3, "line": 1189,
+    "metrics": [
+      { "value": 702, "exceeded": true },
+      { "value": 26, "exceeded": true },
+    ]},
+  {
     "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxGenerator", "reportPath": "Sqlx.Generator_SqlxGenerator.html", "methodName": "GetSimpleReaderExpression(Microsoft.CodeAnalysis.ITypeSymbol,System.String,System.Boolean)", "methodShortName": "GetSimpleReaderExpression(...)", "fileIndex": 0, "line": 700,
     "metrics": [
       { "value": 644, "exceeded": true },
@@ -634,6 +730,18 @@ var riskHotspots = [
     ]},
   {
     "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "GenerateTupleReturn(Sqlx.IndentedStringBuilder,Microsoft.CodeAnalysis.IMethodSymbol,System.String,System.String,System.String,System.String,System.String)", "methodShortName": "GenerateTupleReturn(...)", "fileIndex": 2, "line": 1712,
+    "metrics": [
+      { "value": 600, "exceeded": true },
+      { "value": 24, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "GetTableName(Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol)", "methodShortName": "GetTableName(...)", "fileIndex": 3, "line": 147,
+    "metrics": [
+      { "value": 600, "exceeded": true },
+      { "value": 24, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "GenerateTupleReturn(Sqlx.IndentedStringBuilder,Microsoft.CodeAnalysis.IMethodSymbol,System.String,System.String,System.String,System.String,System.String)", "methodShortName": "GenerateTupleReturn(...)", "fileIndex": 3, "line": 1712,
     "metrics": [
       { "value": 600, "exceeded": true },
       { "value": 24, "exceeded": true },
@@ -711,6 +819,30 @@ var riskHotspots = [
       { "value": 22, "exceeded": true },
     ]},
   {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "Execute(Microsoft.CodeAnalysis.Compilation,System.Collections.Immutable.ImmutableArray`1<Microsoft.CodeAnalysis.CSharp.Syntax.ClassDeclarationSyntax>,Microsoft.CodeAnalysis.SourceProductionContext)", "methodShortName": "Execute(...)", "fileIndex": 3, "line": 71,
+    "metrics": [
+      { "value": 506, "exceeded": true },
+      { "value": 22, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "GenerateSource(Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol,System.String,System.String,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.Compilation)", "methodShortName": "GenerateSource(...)", "fileIndex": 3, "line": 234,
+    "metrics": [
+      { "value": 506, "exceeded": true },
+      { "value": 22, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "GenerateParameterNameFields(Sqlx.IndentedStringBuilder,System.Collections.Generic.List`1<Microsoft.CodeAnalysis.IMethodSymbol>,System.String,System.String)", "methodShortName": "GenerateParameterNameFields(...)", "fileIndex": 3, "line": 538,
+    "metrics": [
+      { "value": 506, "exceeded": true },
+      { "value": 22, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "GetMethodsWithSqlTemplate(Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol)", "methodShortName": "GetMethodsWithSqlTemplate(...)", "fileIndex": 3, "line": 592,
+    "metrics": [
+      { "value": 506, "exceeded": true },
+      { "value": 22, "exceeded": true },
+    ]},
+  {
     "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "GenerateDynamicParamsDeclaration(Sqlx.IndentedStringBuilder,Microsoft.CodeAnalysis.IMethodSymbol)", "methodShortName": "GenerateDynamicParamsDeclaration(...)", "fileIndex": 0, "line": 873,
     "metrics": [
       { "value": 342, "exceeded": true },
@@ -724,6 +856,12 @@ var riskHotspots = [
     ]},
   {
     "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "GenerateDynamicParamsDeclaration(Sqlx.IndentedStringBuilder,Microsoft.CodeAnalysis.IMethodSymbol)", "methodShortName": "GenerateDynamicParamsDeclaration(...)", "fileIndex": 2, "line": 873,
+    "metrics": [
+      { "value": 342, "exceeded": true },
+      { "value": 18, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "GenerateDynamicParamsDeclaration(Sqlx.IndentedStringBuilder,Microsoft.CodeAnalysis.IMethodSymbol)", "methodShortName": "GenerateDynamicParamsDeclaration(...)", "fileIndex": 3, "line": 873,
     "metrics": [
       { "value": 342, "exceeded": true },
       { "value": 18, "exceeded": true },
@@ -747,6 +885,12 @@ var riskHotspots = [
       { "value": 104, "exceeded": true },
     ]},
   {
+    "assembly": "Sqlx", "class": "Sqlx.Expressions.StringFunctionParser", "reportPath": "Sqlx_StringFunctionParser.html", "methodName": "Parse(Sqlx.Expressions.ExpressionParser,System.Linq.Expressions.MethodCallExpression)", "methodShortName": "Parse(...)", "fileIndex": 3, "line": 75,
+    "metrics": [
+      { "value": 285, "exceeded": true },
+      { "value": 104, "exceeded": true },
+    ]},
+  {
     "assembly": "Sqlx", "class": "Sqlx.SqlxQueryProvider<T>", "reportPath": "Sqlx_SqlxQueryProvider_1.html", "methodName": "ExtractColumnExpression(System.Linq.Expressions.MethodCallExpression)", "methodShortName": "ExtractColumnExpression(...)", "fileIndex": 0, "line": 144,
     "metrics": [
       { "value": 272, "exceeded": true },
@@ -765,6 +909,12 @@ var riskHotspots = [
       { "value": 16, "exceeded": true },
     ]},
   {
+    "assembly": "Sqlx", "class": "Sqlx.SqlxQueryProvider<T>", "reportPath": "Sqlx_SqlxQueryProvider_1.html", "methodName": "ExtractColumnExpression(System.Linq.Expressions.MethodCallExpression)", "methodShortName": "ExtractColumnExpression(...)", "fileIndex": 3, "line": 144,
+    "metrics": [
+      { "value": 272, "exceeded": true },
+      { "value": 16, "exceeded": true },
+    ]},
+  {
     "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "IsCollectionType(Microsoft.CodeAnalysis.ITypeSymbol,Microsoft.CodeAnalysis.ITypeSymbol&)", "methodShortName": "IsCollectionType(...)", "fileIndex": 0, "line": 1149,
     "metrics": [
       { "value": 272, "exceeded": true },
@@ -778,6 +928,12 @@ var riskHotspots = [
     ]},
   {
     "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "IsCollectionType(Microsoft.CodeAnalysis.ITypeSymbol,Microsoft.CodeAnalysis.ITypeSymbol&)", "methodShortName": "IsCollectionType(...)", "fileIndex": 2, "line": 1149,
+    "metrics": [
+      { "value": 272, "exceeded": true },
+      { "value": 16, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "IsCollectionType(Microsoft.CodeAnalysis.ITypeSymbol,Microsoft.CodeAnalysis.ITypeSymbol&)", "methodShortName": "IsCollectionType(...)", "fileIndex": 3, "line": 1149,
     "metrics": [
       { "value": 272, "exceeded": true },
       { "value": 16, "exceeded": true },
@@ -819,19 +975,31 @@ var riskHotspots = [
       { "value": 16, "exceeded": true },
     ]},
   {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxGenerator", "reportPath": "Sqlx.Generator_SqlxGenerator.html", "methodName": "GenerateOldOptimizedReadBody(Sqlx.IndentedStringBuilder,System.String,System.Collections.Generic.List`1<Microsoft.CodeAnalysis.IPropertySymbol>,System.Boolean,System.Boolean,System.Collections.Generic.List`1<Microsoft.CodeAnalysis.IPropertySymbol>,System.Collections.Generic.List`1<Microsoft.CodeAnalysis.IPropertySymbol>)", "methodShortName": "GenerateOldOptimizedReadBody(...)", "fileIndex": 3, "line": 745,
+    "metrics": [
+      { "value": 272, "exceeded": true },
+      { "value": 16, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxGenerator", "reportPath": "Sqlx.Generator_SqlxGenerator.html", "methodName": "GenerateReadBody(Sqlx.IndentedStringBuilder,System.String,System.Collections.Generic.List`1<Microsoft.CodeAnalysis.IPropertySymbol>,System.Boolean,System.Boolean,System.Collections.Generic.List`1<Microsoft.CodeAnalysis.IPropertySymbol>,System.Collections.Generic.List`1<Microsoft.CodeAnalysis.IPropertySymbol>)", "methodShortName": "GenerateReadBody(...)", "fileIndex": 3, "line": 809,
+    "metrics": [
+      { "value": 272, "exceeded": true },
+      { "value": 16, "exceeded": true },
+    ]},
+  {
     "assembly": "Sqlx", "class": "Sqlx.Expressions.ExpressionHelper", "reportPath": "Sqlx_ExpressionHelper.html", "methodName": "GetDefaultValueForValueType(System.Type)", "methodShortName": "GetDefaultValueForValueType(...)", "fileIndex": 0, "line": 81,
     "metrics": [
       { "value": 230, "exceeded": true },
       { "value": 28, "exceeded": true },
     ]},
   {
-    "assembly": "Sqlx", "class": "Sqlx.Expressions.ExpressionHelper", "reportPath": "Sqlx_ExpressionHelper.html", "methodName": "GetDefaultValueForValueType(System.Type)", "methodShortName": "GetDefaultValueForValueType(...)", "fileIndex": 1, "line": 81,
+    "assembly": "Sqlx", "class": "Sqlx.Expressions.ExpressionHelper", "reportPath": "Sqlx_ExpressionHelper.html", "methodName": "GetDefaultValueForValueType(System.Type)", "methodShortName": "GetDefaultValueForValueType(...)", "fileIndex": 2, "line": 81,
     "metrics": [
       { "value": 230, "exceeded": true },
       { "value": 28, "exceeded": true },
     ]},
   {
-    "assembly": "Sqlx", "class": "Sqlx.Expressions.ExpressionHelper", "reportPath": "Sqlx_ExpressionHelper.html", "methodName": "GetDefaultValueForValueType(System.Type)", "methodShortName": "GetDefaultValueForValueType(...)", "fileIndex": 2, "line": 81,
+    "assembly": "Sqlx", "class": "Sqlx.Expressions.ExpressionHelper", "reportPath": "Sqlx_ExpressionHelper.html", "methodName": "GetDefaultValueForValueType(System.Type)", "methodShortName": "GetDefaultValueForValueType(...)", "fileIndex": 3, "line": 81,
     "metrics": [
       { "value": 230, "exceeded": true },
       { "value": 28, "exceeded": true },
@@ -850,6 +1018,12 @@ var riskHotspots = [
     ]},
   {
     "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxGenerator", "reportPath": "Sqlx.Generator_SqlxGenerator.html", "methodName": "ExtractEntityTypeFromReturnType(Microsoft.CodeAnalysis.CSharp.Syntax.TypeSyntax)", "methodShortName": "ExtractEntityTypeFromReturnType(...)", "fileIndex": 2, "line": 162,
+    "metrics": [
+      { "value": 219, "exceeded": true },
+      { "value": 38, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxGenerator", "reportPath": "Sqlx.Generator_SqlxGenerator.html", "methodName": "ExtractEntityTypeFromReturnType(Microsoft.CodeAnalysis.CSharp.Syntax.TypeSyntax)", "methodShortName": "ExtractEntityTypeFromReturnType(...)", "fileIndex": 3, "line": 162,
     "metrics": [
       { "value": 219, "exceeded": true },
       { "value": 38, "exceeded": true },
@@ -909,6 +1083,24 @@ var riskHotspots = [
       { "value": 14, "exceeded": false },
     ]},
   {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "GetSqlDefine(Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol)", "methodShortName": "GetSqlDefine(...)", "fileIndex": 3, "line": 123,
+    "metrics": [
+      { "value": 210, "exceeded": true },
+      { "value": 14, "exceeded": false },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "GetEntityType(Microsoft.CodeAnalysis.INamedTypeSymbol)", "methodShortName": "GetEntityType(...)", "fileIndex": 3, "line": 190,
+    "metrics": [
+      { "value": 210, "exceeded": true },
+      { "value": 14, "exceeded": false },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "GetKeyType(Microsoft.CodeAnalysis.INamedTypeSymbol)", "methodShortName": "GetKeyType(...)", "fileIndex": 3, "line": 208,
+    "metrics": [
+      { "value": 210, "exceeded": true },
+      { "value": 14, "exceeded": false },
+    ]},
+  {
     "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxAnalyzer", "reportPath": "Sqlx.Generator_SqlxAnalyzer.html", "methodName": "AnalyzeSqlTemplateAttribute(Microsoft.CodeAnalysis.Diagnostics.SyntaxNodeAnalysisContext)", "methodShortName": "AnalyzeSqlTemplateAttribute(...)", "fileIndex": 0, "line": 73,
     "metrics": [
       { "value": 210, "exceeded": true },
@@ -963,6 +1155,24 @@ var riskHotspots = [
       { "value": 14, "exceeded": false },
     ]},
   {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxAnalyzer", "reportPath": "Sqlx.Generator_SqlxAnalyzer.html", "methodName": "AnalyzeSqlTemplateAttribute(Microsoft.CodeAnalysis.Diagnostics.SyntaxNodeAnalysisContext)", "methodShortName": "AnalyzeSqlTemplateAttribute(...)", "fileIndex": 3, "line": 73,
+    "metrics": [
+      { "value": 210, "exceeded": true },
+      { "value": 14, "exceeded": false },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxAnalyzer", "reportPath": "Sqlx.Generator_SqlxAnalyzer.html", "methodName": "AnalyzeRepositoryForAttribute(Microsoft.CodeAnalysis.Diagnostics.SyntaxNodeAnalysisContext)", "methodShortName": "AnalyzeRepositoryForAttribute(...)", "fileIndex": 3, "line": 111,
+    "metrics": [
+      { "value": 210, "exceeded": true },
+      { "value": 14, "exceeded": false },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxAnalyzer", "reportPath": "Sqlx.Generator_SqlxAnalyzer.html", "methodName": "GetEntityType(Microsoft.CodeAnalysis.INamedTypeSymbol)", "methodShortName": "GetEntityType(...)", "fileIndex": 3, "line": 155,
+    "metrics": [
+      { "value": 210, "exceeded": true },
+      { "value": 14, "exceeded": false },
+    ]},
+  {
     "assembly": "Sqlx", "class": "Sqlx.ExpressionExtensions", "reportPath": "Sqlx_ExpressionExtensions.html", "methodName": "ExtractParameters(System.Linq.Expressions.Expression,System.Collections.Generic.Dictionary`2<System.String,System.Object>)", "methodShortName": "ExtractParameters(...)", "fileIndex": 0, "line": 61,
     "metrics": [
       { "value": 173, "exceeded": true },
@@ -981,6 +1191,12 @@ var riskHotspots = [
       { "value": 22, "exceeded": true },
     ]},
   {
+    "assembly": "Sqlx", "class": "Sqlx.ExpressionExtensions", "reportPath": "Sqlx_ExpressionExtensions.html", "methodName": "ExtractParameters(System.Linq.Expressions.Expression,System.Collections.Generic.Dictionary`2<System.String,System.Object>)", "methodShortName": "ExtractParameters(...)", "fileIndex": 3, "line": 61,
+    "metrics": [
+      { "value": 173, "exceeded": true },
+      { "value": 22, "exceeded": true },
+    ]},
+  {
     "assembly": "Sqlx", "class": "Sqlx.Placeholders.ValuesPlaceholderHandler", "reportPath": "Sqlx_ValuesPlaceholderHandler.html", "methodName": "Render(Sqlx.PlaceholderContext,System.String,System.Collections.Generic.IReadOnlyDictionary`2<System.String,System.Object>)", "methodShortName": "Render(...)", "fileIndex": 0, "line": 95,
     "metrics": [
       { "value": 156, "exceeded": true },
@@ -994,6 +1210,12 @@ var riskHotspots = [
     ]},
   {
     "assembly": "Sqlx", "class": "Sqlx.Placeholders.ValuesPlaceholderHandler", "reportPath": "Sqlx_ValuesPlaceholderHandler.html", "methodName": "Render(Sqlx.PlaceholderContext,System.String,System.Collections.Generic.IReadOnlyDictionary`2<System.String,System.Object>)", "methodShortName": "Render(...)", "fileIndex": 2, "line": 95,
+    "metrics": [
+      { "value": 156, "exceeded": true },
+      { "value": 12, "exceeded": false },
+    ]},
+  {
+    "assembly": "Sqlx", "class": "Sqlx.Placeholders.ValuesPlaceholderHandler", "reportPath": "Sqlx_ValuesPlaceholderHandler.html", "methodName": "Render(Sqlx.PlaceholderContext,System.String,System.Collections.Generic.IReadOnlyDictionary`2<System.String,System.Object>)", "methodShortName": "Render(...)", "fileIndex": 3, "line": 95,
     "metrics": [
       { "value": 156, "exceeded": true },
       { "value": 12, "exceeded": false },
@@ -1053,6 +1275,24 @@ var riskHotspots = [
       { "value": 12, "exceeded": false },
     ]},
   {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "GetParameterPrefix(System.String)", "methodShortName": "GetParameterPrefix(...)", "fileIndex": 3, "line": 580,
+    "metrics": [
+      { "value": 156, "exceeded": true },
+      { "value": 12, "exceeded": false },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "ReturnsEntity(Microsoft.CodeAnalysis.IMethodSymbol)", "methodShortName": "ReturnsEntity(...)", "fileIndex": 3, "line": 719,
+    "metrics": [
+      { "value": 156, "exceeded": true },
+      { "value": 12, "exceeded": false },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "GetTupleElements(Microsoft.CodeAnalysis.ITypeSymbol)", "methodShortName": "GetTupleElements(...)", "fileIndex": 3, "line": 1812,
+    "metrics": [
+      { "value": 156, "exceeded": true },
+      { "value": 12, "exceeded": false },
+    ]},
+  {
     "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxGenerator", "reportPath": "Sqlx.Generator_SqlxGenerator.html", "methodName": "GetDbType(Microsoft.CodeAnalysis.ITypeSymbol)", "methodShortName": "GetDbType(...)", "fileIndex": 1, "line": 1273,
     "metrics": [
       { "value": 146, "exceeded": true },
@@ -1065,7 +1305,19 @@ var riskHotspots = [
       { "value": 54, "exceeded": true },
     ]},
   {
-    "assembly": "Sqlx", "class": "Sqlx.Expressions.MathFunctionParser", "reportPath": "Sqlx_MathFunctionParser.html", "methodName": "Parse(Sqlx.Expressions.ExpressionParser,System.Linq.Expressions.MethodCallExpression)", "methodShortName": "Parse(...)", "fileIndex": 2, "line": 18,
+    "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxGenerator", "reportPath": "Sqlx.Generator_SqlxGenerator.html", "methodName": "GetDbType(Microsoft.CodeAnalysis.ITypeSymbol)", "methodShortName": "GetDbType(...)", "fileIndex": 3, "line": 1273,
+    "metrics": [
+      { "value": 146, "exceeded": true },
+      { "value": 54, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx", "class": "Sqlx.Expressions.MathFunctionParser", "reportPath": "Sqlx_MathFunctionParser.html", "methodName": "Parse(Sqlx.Expressions.ExpressionParser,System.Linq.Expressions.MethodCallExpression)", "methodShortName": "Parse(...)", "fileIndex": 1, "line": 18,
+    "metrics": [
+      { "value": 144, "exceeded": true },
+      { "value": 144, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx", "class": "Sqlx.Expressions.MathFunctionParser", "reportPath": "Sqlx_MathFunctionParser.html", "methodName": "Parse(Sqlx.Expressions.ExpressionParser,System.Linq.Expressions.MethodCallExpression)", "methodShortName": "Parse(...)", "fileIndex": 3, "line": 18,
     "metrics": [
       { "value": 144, "exceeded": true },
       { "value": 144, "exceeded": true },
@@ -1078,6 +1330,12 @@ var riskHotspots = [
     ]},
   {
     "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxGenerator", "reportPath": "Sqlx.Generator_SqlxGenerator.html", "methodName": "GetSimpleReaderExpression(Microsoft.CodeAnalysis.ITypeSymbol,System.String,System.Boolean)", "methodShortName": "GetSimpleReaderExpression(...)", "fileIndex": 2, "line": 700,
+    "metrics": [
+      { "value": 133, "exceeded": true },
+      { "value": 60, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxGenerator", "reportPath": "Sqlx.Generator_SqlxGenerator.html", "methodName": "GetSimpleReaderExpression(Microsoft.CodeAnalysis.ITypeSymbol,System.String,System.Boolean)", "methodShortName": "GetSimpleReaderExpression(...)", "fileIndex": 3, "line": 700,
     "metrics": [
       { "value": 133, "exceeded": true },
       { "value": 60, "exceeded": true },
@@ -1101,6 +1359,12 @@ var riskHotspots = [
       { "value": 10, "exceeded": false },
     ]},
   {
+    "assembly": "Sqlx", "class": "Sqlx.DynamicEntityProvider<T>", "reportPath": "Sqlx_DynamicEntityProvider_1.html", "methodName": "GetColumnName(System.Reflection.PropertyInfo)", "methodShortName": "GetColumnName(...)", "fileIndex": 3, "line": 49,
+    "metrics": [
+      { "value": 110, "exceeded": true },
+      { "value": 10, "exceeded": false },
+    ]},
+  {
     "assembly": "Sqlx", "class": "Sqlx.Expressions.StringFunctionParser", "reportPath": "Sqlx_StringFunctionParser.html", "methodName": "GetIndexOfWithStart(Sqlx.SqlDialect,System.String,System.String,System.String)", "methodShortName": "GetIndexOfWithStart(...)", "fileIndex": 0, "line": 171,
     "metrics": [
       { "value": 110, "exceeded": true },
@@ -1119,6 +1383,12 @@ var riskHotspots = [
       { "value": 10, "exceeded": false },
     ]},
   {
+    "assembly": "Sqlx", "class": "Sqlx.Expressions.StringFunctionParser", "reportPath": "Sqlx_StringFunctionParser.html", "methodName": "GetIndexOfWithStart(Sqlx.SqlDialect,System.String,System.String,System.String)", "methodShortName": "GetIndexOfWithStart(...)", "fileIndex": 3, "line": 171,
+    "metrics": [
+      { "value": 110, "exceeded": true },
+      { "value": 10, "exceeded": false },
+    ]},
+  {
     "assembly": "Sqlx.Generator", "class": "Sqlx.IndentedStringBuilder", "reportPath": "Sqlx.Generator_IndentedStringBuilder.html", "methodName": "Append(System.String)", "methodShortName": "Append(...)", "fileIndex": 0, "line": 37,
     "metrics": [
       { "value": 110, "exceeded": true },
@@ -1132,6 +1402,12 @@ var riskHotspots = [
     ]},
   {
     "assembly": "Sqlx.Generator", "class": "Sqlx.IndentedStringBuilder", "reportPath": "Sqlx.Generator_IndentedStringBuilder.html", "methodName": "Append(System.String)", "methodShortName": "Append(...)", "fileIndex": 2, "line": 37,
+    "metrics": [
+      { "value": 110, "exceeded": true },
+      { "value": 10, "exceeded": false },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.IndentedStringBuilder", "reportPath": "Sqlx.Generator_IndentedStringBuilder.html", "methodName": "Append(System.String)", "methodShortName": "Append(...)", "fileIndex": 3, "line": 37,
     "metrics": [
       { "value": 110, "exceeded": true },
       { "value": 10, "exceeded": false },
@@ -1191,6 +1467,30 @@ var riskHotspots = [
       { "value": 10, "exceeded": false },
     ]},
   {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "GetTarget(Microsoft.CodeAnalysis.GeneratorSyntaxContext)", "methodShortName": "GetTarget(...)", "fileIndex": 3, "line": 56,
+    "metrics": [
+      { "value": 110, "exceeded": true },
+      { "value": 10, "exceeded": false },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "IsNullableType(Microsoft.CodeAnalysis.ITypeSymbol)", "methodShortName": "IsNullableType(...)", "fileIndex": 3, "line": 1174,
+    "metrics": [
+      { "value": 110, "exceeded": true },
+      { "value": 10, "exceeded": false },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "GetEntityTypeFromMethod(Microsoft.CodeAnalysis.IMethodSymbol)", "methodShortName": "GetEntityTypeFromMethod(...)", "fileIndex": 3, "line": 1221,
+    "metrics": [
+      { "value": 110, "exceeded": true },
+      { "value": 10, "exceeded": false },
+    ]},
+  {
+    "assembly": "Sqlx", "class": "Sqlx.Expressions.ExpressionHelper", "reportPath": "Sqlx_ExpressionHelper.html", "methodName": "GetDefaultValueForValueType(System.Type)", "methodShortName": "GetDefaultValueForValueType(...)", "fileIndex": 1, "line": 81,
+    "metrics": [
+      { "value": 102, "exceeded": true },
+      { "value": 28, "exceeded": true },
+    ]},
+  {
     "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxGenerator", "reportPath": "Sqlx.Generator_SqlxGenerator.html", "methodName": "GenerateSimpleReadBodyWithOrdinals(Sqlx.IndentedStringBuilder,System.String,System.Collections.Generic.List`1<Microsoft.CodeAnalysis.IPropertySymbol>,System.Boolean,System.Boolean,System.Collections.Generic.List`1<Microsoft.CodeAnalysis.IPropertySymbol>,System.Collections.Generic.List`1<Microsoft.CodeAnalysis.IPropertySymbol>)", "methodShortName": "GenerateSimpleReadBodyWithOrdinals(...)", "fileIndex": 0, "line": 639,
     "metrics": [
       { "value": 97, "exceeded": true },
@@ -1204,6 +1504,12 @@ var riskHotspots = [
     ]},
   {
     "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxGenerator", "reportPath": "Sqlx.Generator_SqlxGenerator.html", "methodName": "GenerateSimpleReadBodyWithOrdinals(Sqlx.IndentedStringBuilder,System.String,System.Collections.Generic.List`1<Microsoft.CodeAnalysis.IPropertySymbol>,System.Boolean,System.Boolean,System.Collections.Generic.List`1<Microsoft.CodeAnalysis.IPropertySymbol>,System.Collections.Generic.List`1<Microsoft.CodeAnalysis.IPropertySymbol>)", "methodShortName": "GenerateSimpleReadBodyWithOrdinals(...)", "fileIndex": 2, "line": 639,
+    "metrics": [
+      { "value": 97, "exceeded": true },
+      { "value": 18, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxGenerator", "reportPath": "Sqlx.Generator_SqlxGenerator.html", "methodName": "GenerateSimpleReadBodyWithOrdinals(Sqlx.IndentedStringBuilder,System.String,System.Collections.Generic.List`1<Microsoft.CodeAnalysis.IPropertySymbol>,System.Boolean,System.Boolean,System.Collections.Generic.List`1<Microsoft.CodeAnalysis.IPropertySymbol>,System.Collections.Generic.List`1<Microsoft.CodeAnalysis.IPropertySymbol>)", "methodShortName": "GenerateSimpleReadBodyWithOrdinals(...)", "fileIndex": 3, "line": 639,
     "metrics": [
       { "value": 97, "exceeded": true },
       { "value": 18, "exceeded": true },
@@ -1227,6 +1533,12 @@ var riskHotspots = [
       { "value": 16, "exceeded": true },
     ]},
   {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxGenerator", "reportPath": "Sqlx.Generator_SqlxGenerator.html", "methodName": "GenerateSimpleReadBody(Sqlx.IndentedStringBuilder,System.String,System.Collections.Generic.List`1<Microsoft.CodeAnalysis.IPropertySymbol>,System.Boolean,System.Boolean,System.Collections.Generic.List`1<Microsoft.CodeAnalysis.IPropertySymbol>,System.Collections.Generic.List`1<Microsoft.CodeAnalysis.IPropertySymbol>)", "methodShortName": "GenerateSimpleReadBody(...)", "fileIndex": 3, "line": 583,
+    "metrics": [
+      { "value": 94, "exceeded": true },
+      { "value": 16, "exceeded": true },
+    ]},
+  {
     "assembly": "Sqlx", "class": "Sqlx.Expressions.ExpressionParser", "reportPath": "Sqlx_ExpressionParser.html", "methodName": "ParseBinary(System.Linq.Expressions.BinaryExpression)", "methodShortName": "ParseBinary(...)", "fileIndex": 0, "line": 174,
     "metrics": [
       { "value": 83, "exceeded": true },
@@ -1240,6 +1552,12 @@ var riskHotspots = [
     ]},
   {
     "assembly": "Sqlx", "class": "Sqlx.Expressions.ExpressionParser", "reportPath": "Sqlx_ExpressionParser.html", "methodName": "ParseBinary(System.Linq.Expressions.BinaryExpression)", "methodShortName": "ParseBinary(...)", "fileIndex": 2, "line": 174,
+    "metrics": [
+      { "value": 83, "exceeded": true },
+      { "value": 80, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx", "class": "Sqlx.Expressions.ExpressionParser", "reportPath": "Sqlx_ExpressionParser.html", "methodName": "ParseBinary(System.Linq.Expressions.BinaryExpression)", "methodShortName": "ParseBinary(...)", "fileIndex": 3, "line": 174,
     "metrics": [
       { "value": 83, "exceeded": true },
       { "value": 80, "exceeded": true },
@@ -1263,6 +1581,12 @@ var riskHotspots = [
       { "value": 74, "exceeded": true },
     ]},
   {
+    "assembly": "Sqlx", "class": "Sqlx.SqlExpressionVisitor", "reportPath": "Sqlx_SqlExpressionVisitor.html", "methodName": "VisitMethodCall(System.Linq.Expressions.MethodCallExpression)", "methodShortName": "VisitMethodCall(...)", "fileIndex": 3, "line": 95,
+    "metrics": [
+      { "value": 74, "exceeded": true },
+      { "value": 74, "exceeded": true },
+    ]},
+  {
     "assembly": "Sqlx", "class": "Sqlx.DynamicEntityProvider<T>", "reportPath": "Sqlx_DynamicEntityProvider_1.html", "methodName": "ToSnakeCase(System.String)", "methodShortName": "ToSnakeCase(...)", "fileIndex": 0, "line": 63,
     "metrics": [
       { "value": 72, "exceeded": true },
@@ -1276,6 +1600,12 @@ var riskHotspots = [
     ]},
   {
     "assembly": "Sqlx", "class": "Sqlx.DynamicEntityProvider<T>", "reportPath": "Sqlx_DynamicEntityProvider_1.html", "methodName": "ToSnakeCase(System.String)", "methodShortName": "ToSnakeCase(...)", "fileIndex": 2, "line": 63,
+    "metrics": [
+      { "value": 72, "exceeded": true },
+      { "value": 8, "exceeded": false },
+    ]},
+  {
+    "assembly": "Sqlx", "class": "Sqlx.DynamicEntityProvider<T>", "reportPath": "Sqlx_DynamicEntityProvider_1.html", "methodName": "ToSnakeCase(System.String)", "methodShortName": "ToSnakeCase(...)", "fileIndex": 3, "line": 63,
     "metrics": [
       { "value": 72, "exceeded": true },
       { "value": 8, "exceeded": false },
@@ -1299,6 +1629,12 @@ var riskHotspots = [
       { "value": 8, "exceeded": false },
     ]},
   {
+    "assembly": "Sqlx", "class": "Sqlx.Expressions.StringFunctionParser", "reportPath": "Sqlx_StringFunctionParser.html", "methodName": "GetIndexOf(Sqlx.SqlDialect,System.String,System.String)", "methodShortName": "GetIndexOf(...)", "fileIndex": 3, "line": 163,
+    "metrics": [
+      { "value": 72, "exceeded": true },
+      { "value": 8, "exceeded": false },
+    ]},
+  {
     "assembly": "Sqlx", "class": "Sqlx.SqlxQueryProvider<T>", "reportPath": "Sqlx_SqlxQueryProvider_1.html", "methodName": "GetAggregateFunction(System.String,System.String)", "methodShortName": "GetAggregateFunction(...)", "fileIndex": 0, "line": 161,
     "metrics": [
       { "value": 72, "exceeded": true },
@@ -1312,6 +1648,12 @@ var riskHotspots = [
     ]},
   {
     "assembly": "Sqlx", "class": "Sqlx.SqlxQueryProvider<T>", "reportPath": "Sqlx_SqlxQueryProvider_1.html", "methodName": "GetAggregateFunction(System.String,System.String)", "methodShortName": "GetAggregateFunction(...)", "fileIndex": 2, "line": 161,
+    "metrics": [
+      { "value": 72, "exceeded": true },
+      { "value": 8, "exceeded": false },
+    ]},
+  {
+    "assembly": "Sqlx", "class": "Sqlx.SqlxQueryProvider<T>", "reportPath": "Sqlx_SqlxQueryProvider_1.html", "methodName": "GetAggregateFunction(System.String,System.String)", "methodShortName": "GetAggregateFunction(...)", "fileIndex": 3, "line": 161,
     "metrics": [
       { "value": 72, "exceeded": true },
       { "value": 8, "exceeded": false },
@@ -1389,6 +1731,30 @@ var riskHotspots = [
       { "value": 8, "exceeded": false },
     ]},
   {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "IsMethodAlreadyImplemented(Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.IMethodSymbol)", "methodShortName": "IsMethodAlreadyImplemented(...)", "fileIndex": 3, "line": 634,
+    "metrics": [
+      { "value": 72, "exceeded": true },
+      { "value": 8, "exceeded": false },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "GetSqlTemplate(Microsoft.CodeAnalysis.IMethodSymbol,Microsoft.CodeAnalysis.INamedTypeSymbol)", "methodShortName": "GetSqlTemplate(...)", "fileIndex": 3, "line": 731,
+    "metrics": [
+      { "value": 72, "exceeded": true },
+      { "value": 8, "exceeded": false },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "IsSetExpression(System.String)", "methodShortName": "IsSetExpression(...)", "fileIndex": 3, "line": 952,
+    "metrics": [
+      { "value": 72, "exceeded": true },
+      { "value": 8, "exceeded": false },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "GenerateActivityStart(Sqlx.IndentedStringBuilder,System.String,Microsoft.CodeAnalysis.IMethodSymbol,System.Boolean)", "methodShortName": "GenerateActivityStart(...)", "fileIndex": 3, "line": 1010,
+    "metrics": [
+      { "value": 72, "exceeded": true },
+      { "value": 8, "exceeded": false },
+    ]},
+  {
     "assembly": "Sqlx", "class": "Sqlx.Expressions.AggregateParser", "reportPath": "Sqlx_AggregateParser.html", "methodName": "Parse(Sqlx.Expressions.ExpressionParser,System.Linq.Expressions.MethodCallExpression)", "methodShortName": "Parse(...)", "fileIndex": 0, "line": 206,
     "metrics": [
       { "value": 63, "exceeded": true },
@@ -1402,6 +1768,12 @@ var riskHotspots = [
     ]},
   {
     "assembly": "Sqlx", "class": "Sqlx.Expressions.AggregateParser", "reportPath": "Sqlx_AggregateParser.html", "methodName": "Parse(Sqlx.Expressions.ExpressionParser,System.Linq.Expressions.MethodCallExpression)", "methodShortName": "Parse(...)", "fileIndex": 2, "line": 206,
+    "metrics": [
+      { "value": 63, "exceeded": true },
+      { "value": 54, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx", "class": "Sqlx.Expressions.AggregateParser", "reportPath": "Sqlx_AggregateParser.html", "methodName": "Parse(Sqlx.Expressions.ExpressionParser,System.Linq.Expressions.MethodCallExpression)", "methodShortName": "Parse(...)", "fileIndex": 3, "line": 206,
     "metrics": [
       { "value": 63, "exceeded": true },
       { "value": 54, "exceeded": true },
@@ -1425,6 +1797,12 @@ var riskHotspots = [
       { "value": 60, "exceeded": true },
     ]},
   {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxGenerator", "reportPath": "Sqlx.Generator_SqlxGenerator.html", "methodName": "IsPrimitiveOrSkipType(System.String)", "methodShortName": "IsPrimitiveOrSkipType(...)", "fileIndex": 3, "line": 216,
+    "metrics": [
+      { "value": 60, "exceeded": true },
+      { "value": 60, "exceeded": true },
+    ]},
+  {
     "assembly": "Sqlx", "class": "Sqlx.Expressions.ExpressionParser", "reportPath": "Sqlx_ExpressionParser.html", "methodName": "IsSubQueryForMethod(System.Linq.Expressions.MethodCallExpression)", "methodShortName": "IsSubQueryForMethod(...)", "fileIndex": 0, "line": 364,
     "metrics": [
       { "value": 57, "exceeded": true },
@@ -1438,6 +1816,12 @@ var riskHotspots = [
     ]},
   {
     "assembly": "Sqlx", "class": "Sqlx.Expressions.ExpressionParser", "reportPath": "Sqlx_ExpressionParser.html", "methodName": "IsSubQueryForMethod(System.Linq.Expressions.MethodCallExpression)", "methodShortName": "IsSubQueryForMethod(...)", "fileIndex": 2, "line": 364,
+    "metrics": [
+      { "value": 57, "exceeded": true },
+      { "value": 50, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx", "class": "Sqlx.Expressions.ExpressionParser", "reportPath": "Sqlx_ExpressionParser.html", "methodName": "IsSubQueryForMethod(System.Linq.Expressions.MethodCallExpression)", "methodShortName": "IsSubQueryForMethod(...)", "fileIndex": 3, "line": 364,
     "metrics": [
       { "value": 57, "exceeded": true },
       { "value": 50, "exceeded": true },
@@ -1461,6 +1845,12 @@ var riskHotspots = [
       { "value": 7, "exceeded": false },
     ]},
   {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "MapDialectEnum(System.Int32)", "methodShortName": "MapDialectEnum(...)", "fileIndex": 3, "line": 135,
+    "metrics": [
+      { "value": 56, "exceeded": true },
+      { "value": 7, "exceeded": false },
+    ]},
+  {
     "assembly": "Sqlx", "class": "Sqlx.TypeConverter", "reportPath": "Sqlx_TypeConverter.html", "methodName": "GetReaderMethod(System.Type)", "methodShortName": "GetReaderMethod(...)", "fileIndex": 0, "line": 140,
     "metrics": [
       { "value": 52, "exceeded": true },
@@ -1474,6 +1864,12 @@ var riskHotspots = [
     ]},
   {
     "assembly": "Sqlx", "class": "Sqlx.TypeConverter", "reportPath": "Sqlx_TypeConverter.html", "methodName": "GetReaderMethod(System.Type)", "methodShortName": "GetReaderMethod(...)", "fileIndex": 2, "line": 140,
+    "metrics": [
+      { "value": 52, "exceeded": true },
+      { "value": 52, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx", "class": "Sqlx.TypeConverter", "reportPath": "Sqlx_TypeConverter.html", "methodName": "GetReaderMethod(System.Type)", "methodShortName": "GetReaderMethod(...)", "fileIndex": 3, "line": 140,
     "metrics": [
       { "value": 52, "exceeded": true },
       { "value": 52, "exceeded": true },
@@ -1497,6 +1893,12 @@ var riskHotspots = [
       { "value": 34, "exceeded": true },
     ]},
   {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxGenerator", "reportPath": "Sqlx.Generator_SqlxGenerator.html", "methodName": "GetSqlTemplateParamTypes(Microsoft.CodeAnalysis.GeneratorSyntaxContext)", "methodShortName": "GetSqlTemplateParamTypes(...)", "fileIndex": 3, "line": 106,
+    "metrics": [
+      { "value": 51, "exceeded": true },
+      { "value": 34, "exceeded": true },
+    ]},
+  {
     "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxGenerator", "reportPath": "Sqlx.Generator_SqlxGenerator.html", "methodName": "ToSnakeCase(System.String)", "methodShortName": "ToSnakeCase(...)", "fileIndex": 0, "line": 1194,
     "metrics": [
       { "value": 48, "exceeded": true },
@@ -1509,13 +1911,13 @@ var riskHotspots = [
       { "value": 22, "exceeded": true },
     ]},
   {
-    "assembly": "Sqlx", "class": "Sqlx.Expressions.ValueFormatter", "reportPath": "Sqlx_ValueFormatter.html", "methodName": "FormatAsLiteral(Sqlx.SqlDialect,System.Object)", "methodShortName": "FormatAsLiteral(...)", "fileIndex": 1, "line": 246,
+    "assembly": "Sqlx", "class": "Sqlx.Expressions.ValueFormatter", "reportPath": "Sqlx_ValueFormatter.html", "methodName": "FormatAsLiteral(Sqlx.SqlDialect,System.Object)", "methodShortName": "FormatAsLiteral(...)", "fileIndex": 2, "line": 246,
     "metrics": [
       { "value": 45, "exceeded": true },
       { "value": 22, "exceeded": true },
     ]},
   {
-    "assembly": "Sqlx", "class": "Sqlx.Expressions.ValueFormatter", "reportPath": "Sqlx_ValueFormatter.html", "methodName": "FormatAsLiteral(Sqlx.SqlDialect,System.Object)", "methodShortName": "FormatAsLiteral(...)", "fileIndex": 2, "line": 246,
+    "assembly": "Sqlx", "class": "Sqlx.Expressions.ValueFormatter", "reportPath": "Sqlx_ValueFormatter.html", "methodName": "FormatAsLiteral(Sqlx.SqlDialect,System.Object)", "methodShortName": "FormatAsLiteral(...)", "fileIndex": 3, "line": 246,
     "metrics": [
       { "value": 45, "exceeded": true },
       { "value": 22, "exceeded": true },
@@ -1539,6 +1941,12 @@ var riskHotspots = [
       { "value": 42, "exceeded": true },
     ]},
   {
+    "assembly": "Sqlx", "class": "Sqlx.Expressions.ExpressionParser", "reportPath": "Sqlx_ExpressionParser.html", "methodName": "ParseSubQueryForMethod(System.Linq.Expressions.MethodCallExpression)", "methodShortName": "ParseSubQueryForMethod(...)", "fileIndex": 3, "line": 389,
+    "metrics": [
+      { "value": 44, "exceeded": true },
+      { "value": 42, "exceeded": true },
+    ]},
+  {
     "assembly": "Sqlx", "class": "Sqlx.DB2Dialect", "reportPath": "Sqlx_DB2Dialect.html", "methodName": "GetTimestampDiffCode(System.String)", "methodShortName": "GetTimestampDiffCode(...)", "fileIndex": 0, "line": 62,
     "metrics": [
       { "value": 43, "exceeded": true },
@@ -1552,6 +1960,12 @@ var riskHotspots = [
     ]},
   {
     "assembly": "Sqlx", "class": "Sqlx.DB2Dialect", "reportPath": "Sqlx_DB2Dialect.html", "methodName": "GetTimestampDiffCode(System.String)", "methodShortName": "GetTimestampDiffCode(...)", "fileIndex": 2, "line": 62,
+    "metrics": [
+      { "value": 43, "exceeded": true },
+      { "value": 12, "exceeded": false },
+    ]},
+  {
+    "assembly": "Sqlx", "class": "Sqlx.DB2Dialect", "reportPath": "Sqlx_DB2Dialect.html", "methodName": "GetTimestampDiffCode(System.String)", "methodShortName": "GetTimestampDiffCode(...)", "fileIndex": 3, "line": 62,
     "metrics": [
       { "value": 43, "exceeded": true },
       { "value": 12, "exceeded": false },
@@ -1575,6 +1989,12 @@ var riskHotspots = [
       { "value": 6, "exceeded": false },
     ]},
   {
+    "assembly": "Sqlx", "class": "Sqlx.Expressions.AggregateParser", "reportPath": "Sqlx_AggregateParser.html", "methodName": "GetStringAgg(Sqlx.SqlDialect,System.String,System.String)", "methodShortName": "GetStringAgg(...)", "fileIndex": 3, "line": 232,
+    "metrics": [
+      { "value": 42, "exceeded": true },
+      { "value": 6, "exceeded": false },
+    ]},
+  {
     "assembly": "Sqlx", "class": "Sqlx.Expressions.ExpressionHelper", "reportPath": "Sqlx_ExpressionHelper.html", "methodName": "RemoveOuterParentheses(System.String)", "methodShortName": "RemoveOuterParentheses(...)", "fileIndex": 0, "line": 162,
     "metrics": [
       { "value": 42, "exceeded": true },
@@ -1593,13 +2013,19 @@ var riskHotspots = [
       { "value": 6, "exceeded": false },
     ]},
   {
+    "assembly": "Sqlx", "class": "Sqlx.Expressions.ExpressionHelper", "reportPath": "Sqlx_ExpressionHelper.html", "methodName": "RemoveOuterParentheses(System.String)", "methodShortName": "RemoveOuterParentheses(...)", "fileIndex": 3, "line": 162,
+    "metrics": [
+      { "value": 42, "exceeded": true },
+      { "value": 6, "exceeded": false },
+    ]},
+  {
     "assembly": "Sqlx", "class": "Sqlx.Expressions.MathFunctionParser", "reportPath": "Sqlx_MathFunctionParser.html", "methodName": "GetTruncate(Sqlx.SqlDialect,System.String)", "methodShortName": "GetTruncate(...)", "fileIndex": 0, "line": 61,
     "metrics": [
       { "value": 42, "exceeded": true },
       { "value": 6, "exceeded": false },
     ]},
   {
-    "assembly": "Sqlx", "class": "Sqlx.Expressions.MathFunctionParser", "reportPath": "Sqlx_MathFunctionParser.html", "methodName": "GetTruncate(Sqlx.SqlDialect,System.String)", "methodShortName": "GetTruncate(...)", "fileIndex": 1, "line": 61,
+    "assembly": "Sqlx", "class": "Sqlx.Expressions.MathFunctionParser", "reportPath": "Sqlx_MathFunctionParser.html", "methodName": "GetTruncate(Sqlx.SqlDialect,System.String)", "methodShortName": "GetTruncate(...)", "fileIndex": 2, "line": 61,
     "metrics": [
       { "value": 42, "exceeded": true },
       { "value": 6, "exceeded": false },
@@ -1713,6 +2139,42 @@ var riskHotspots = [
       { "value": 6, "exceeded": false },
     ]},
   {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "GetConnectionExpression(Microsoft.CodeAnalysis.IMethodSymbol,Sqlx.RepositoryGenerator/ConnectionInfo)", "methodShortName": "GetConnectionExpression(...)", "fileIndex": 3, "line": 491,
+    "metrics": [
+      { "value": 42, "exceeded": true },
+      { "value": 6, "exceeded": false },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "IsDbConnectionType(Microsoft.CodeAnalysis.ITypeSymbol)", "methodShortName": "IsDbConnectionType(...)", "fileIndex": 3, "line": 500,
+    "metrics": [
+      { "value": 42, "exceeded": true },
+      { "value": 6, "exceeded": false },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "IsSpecialMethod(Microsoft.CodeAnalysis.IMethodSymbol)", "methodShortName": "IsSpecialMethod(...)", "fileIndex": 3, "line": 657,
+    "metrics": [
+      { "value": 42, "exceeded": true },
+      { "value": 6, "exceeded": false },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "IsTupleReturnType(Microsoft.CodeAnalysis.ITypeSymbol)", "methodShortName": "IsTupleReturnType(...)", "fileIndex": 3, "line": 1795,
+    "metrics": [
+      { "value": 42, "exceeded": true },
+      { "value": 6, "exceeded": false },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "IsListType(Microsoft.CodeAnalysis.ITypeSymbol)", "methodShortName": "IsListType(...)", "fileIndex": 3, "line": 1837,
+    "metrics": [
+      { "value": 42, "exceeded": true },
+      { "value": 6, "exceeded": false },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.RepositoryGenerator", "reportPath": "Sqlx.Generator_RepositoryGenerator.html", "methodName": "GetListElementType(Microsoft.CodeAnalysis.ITypeSymbol)", "methodShortName": "GetListElementType(...)", "fileIndex": 3, "line": 1847,
+    "metrics": [
+      { "value": 42, "exceeded": true },
+      { "value": 6, "exceeded": false },
+    ]},
+  {
     "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxAnalyzer", "reportPath": "Sqlx.Generator_SqlxAnalyzer.html", "methodName": "CheckEntityTypeForAttributes(Microsoft.CodeAnalysis.Diagnostics.SyntaxNodeAnalysisContext,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.Location)", "methodShortName": "CheckEntityTypeForAttributes(...)", "fileIndex": 0, "line": 134,
     "metrics": [
       { "value": 42, "exceeded": true },
@@ -1726,6 +2188,12 @@ var riskHotspots = [
     ]},
   {
     "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxAnalyzer", "reportPath": "Sqlx.Generator_SqlxAnalyzer.html", "methodName": "CheckEntityTypeForAttributes(Microsoft.CodeAnalysis.Diagnostics.SyntaxNodeAnalysisContext,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.Location)", "methodShortName": "CheckEntityTypeForAttributes(...)", "fileIndex": 2, "line": 134,
+    "metrics": [
+      { "value": 42, "exceeded": true },
+      { "value": 6, "exceeded": false },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxAnalyzer", "reportPath": "Sqlx.Generator_SqlxAnalyzer.html", "methodName": "CheckEntityTypeForAttributes(Microsoft.CodeAnalysis.Diagnostics.SyntaxNodeAnalysisContext,Microsoft.CodeAnalysis.INamedTypeSymbol,Microsoft.CodeAnalysis.Location)", "methodShortName": "CheckEntityTypeForAttributes(...)", "fileIndex": 3, "line": 134,
     "metrics": [
       { "value": 42, "exceeded": true },
       { "value": 6, "exceeded": false },
@@ -1767,6 +2235,18 @@ var riskHotspots = [
       { "value": 38, "exceeded": true },
     ]},
   {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxGenerator", "reportPath": "Sqlx.Generator_SqlxGenerator.html", "methodName": "GetSqlQueryTypeArg(Microsoft.CodeAnalysis.GeneratorSyntaxContext)", "methodShortName": "GetSqlQueryTypeArg(...)", "fileIndex": 3, "line": 94,
+    "metrics": [
+      { "value": 42, "exceeded": true },
+      { "value": 6, "exceeded": false },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxGenerator", "reportPath": "Sqlx.Generator_SqlxGenerator.html", "methodName": "Execute(Microsoft.CodeAnalysis.Compilation,System.ValueTuple`2<System.ValueTuple`2<System.Collections.Immutable.ImmutableArray`1<Microsoft.CodeAnalysis.CSharp.Syntax.TypeDeclarationSyntax>,System.Collections.Immutable.ImmutableArray`1<Microsoft.CodeAnalysis.CSharp.Syntax.TypeSyntax>>,System.Collections.Immutable.ImmutableArray`1<Microsoft.CodeAnalysis.CSharp.Syntax.TypeSyntax>>,Microsoft.CodeAnalysis.SourceProductionContext)", "methodShortName": "Execute(...)", "fileIndex": 3, "line": 242,
+    "metrics": [
+      { "value": 42, "exceeded": true },
+      { "value": 38, "exceeded": true },
+    ]},
+  {
     "assembly": "Sqlx", "class": "Sqlx.Expressions.ExpressionHelper", "reportPath": "Sqlx_ExpressionHelper.html", "methodName": "IsAggregateContext(System.Linq.Expressions.MethodCallExpression)", "methodShortName": "IsAggregateContext(...)", "fileIndex": 0, "line": 73,
     "metrics": [
       { "value": 40, "exceeded": true },
@@ -1780,6 +2260,12 @@ var riskHotspots = [
     ]},
   {
     "assembly": "Sqlx", "class": "Sqlx.Expressions.ExpressionHelper", "reportPath": "Sqlx_ExpressionHelper.html", "methodName": "IsAggregateContext(System.Linq.Expressions.MethodCallExpression)", "methodShortName": "IsAggregateContext(...)", "fileIndex": 2, "line": 73,
+    "metrics": [
+      { "value": 40, "exceeded": true },
+      { "value": 40, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx", "class": "Sqlx.Expressions.ExpressionHelper", "reportPath": "Sqlx_ExpressionHelper.html", "methodName": "IsAggregateContext(System.Linq.Expressions.MethodCallExpression)", "methodShortName": "IsAggregateContext(...)", "fileIndex": 3, "line": 73,
     "metrics": [
       { "value": 40, "exceeded": true },
       { "value": 40, "exceeded": true },
@@ -1803,6 +2289,12 @@ var riskHotspots = [
       { "value": 38, "exceeded": true },
     ]},
   {
+    "assembly": "Sqlx", "class": "Sqlx.Expressions.ExpressionParser", "reportPath": "Sqlx_ExpressionParser.html", "methodName": "ParseMethod(System.Linq.Expressions.MethodCallExpression)", "methodShortName": "ParseMethod(...)", "fileIndex": 3, "line": 263,
+    "metrics": [
+      { "value": 38, "exceeded": true },
+      { "value": 38, "exceeded": true },
+    ]},
+  {
     "assembly": "Sqlx", "class": "Sqlx.PlaceholderHandlerBase", "reportPath": "Sqlx_PlaceholderHandlerBase.html", "methodName": "SplitRespectingParentheses(System.String)", "methodShortName": "SplitRespectingParentheses(...)", "fileIndex": 0, "line": 181,
     "metrics": [
       { "value": 35, "exceeded": true },
@@ -1821,6 +2313,18 @@ var riskHotspots = [
       { "value": 34, "exceeded": true },
     ]},
   {
+    "assembly": "Sqlx", "class": "Sqlx.PlaceholderHandlerBase", "reportPath": "Sqlx_PlaceholderHandlerBase.html", "methodName": "SplitRespectingParentheses(System.String)", "methodShortName": "SplitRespectingParentheses(...)", "fileIndex": 3, "line": 181,
+    "metrics": [
+      { "value": 35, "exceeded": true },
+      { "value": 34, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx", "class": "Sqlx.Expressions.ValueFormatter", "reportPath": "Sqlx_ValueFormatter.html", "methodName": "FormatAsLiteral(Sqlx.SqlDialect,System.Object)", "methodShortName": "FormatAsLiteral(...)", "fileIndex": 1, "line": 246,
+    "metrics": [
+      { "value": 32, "exceeded": true },
+      { "value": 22, "exceeded": true },
+    ]},
+  {
     "assembly": "Sqlx", "class": "Sqlx.Placeholders.IfPlaceholderHandler", "reportPath": "Sqlx_IfPlaceholderHandler.html", "methodName": "ProcessBlock(System.String,System.String,System.Collections.Generic.IReadOnlyDictionary`2<System.String,System.Object>)", "methodShortName": "ProcessBlock(...)", "fileIndex": 0, "line": 60,
     "metrics": [
       { "value": 32, "exceeded": true },
@@ -1834,6 +2338,12 @@ var riskHotspots = [
     ]},
   {
     "assembly": "Sqlx", "class": "Sqlx.Placeholders.IfPlaceholderHandler", "reportPath": "Sqlx_IfPlaceholderHandler.html", "methodName": "ProcessBlock(System.String,System.String,System.Collections.Generic.IReadOnlyDictionary`2<System.String,System.Object>)", "methodShortName": "ProcessBlock(...)", "fileIndex": 2, "line": 60,
+    "metrics": [
+      { "value": 32, "exceeded": true },
+      { "value": 32, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx", "class": "Sqlx.Placeholders.IfPlaceholderHandler", "reportPath": "Sqlx_IfPlaceholderHandler.html", "methodName": "ProcessBlock(System.String,System.String,System.Collections.Generic.IReadOnlyDictionary`2<System.String,System.Object>)", "methodShortName": "ProcessBlock(...)", "fileIndex": 3, "line": 60,
     "metrics": [
       { "value": 32, "exceeded": true },
       { "value": 32, "exceeded": true },
@@ -1857,6 +2367,12 @@ var riskHotspots = [
       { "value": 28, "exceeded": true },
     ]},
   {
+    "assembly": "Sqlx", "class": "Sqlx.Expressions.ExpressionParser", "reportPath": "Sqlx_ExpressionParser.html", "methodName": "Parse(System.Linq.Expressions.Expression,System.Boolean)", "methodShortName": "Parse(...)", "fileIndex": 3, "line": 42,
+    "metrics": [
+      { "value": 28, "exceeded": false },
+      { "value": 28, "exceeded": true },
+    ]},
+  {
     "assembly": "Sqlx", "class": "Sqlx.Placeholders.WherePlaceholderHandler", "reportPath": "Sqlx_WherePlaceholderHandler.html", "methodName": "RenderFromObject(Sqlx.PlaceholderContext,System.String,System.Collections.Generic.IReadOnlyDictionary`2<System.String,System.Object>)", "methodShortName": "RenderFromObject(...)", "fileIndex": 0, "line": 69,
     "metrics": [
       { "value": 28, "exceeded": false },
@@ -1870,6 +2386,12 @@ var riskHotspots = [
     ]},
   {
     "assembly": "Sqlx", "class": "Sqlx.Placeholders.WherePlaceholderHandler", "reportPath": "Sqlx_WherePlaceholderHandler.html", "methodName": "RenderFromObject(Sqlx.PlaceholderContext,System.String,System.Collections.Generic.IReadOnlyDictionary`2<System.String,System.Object>)", "methodShortName": "RenderFromObject(...)", "fileIndex": 2, "line": 69,
+    "metrics": [
+      { "value": 28, "exceeded": false },
+      { "value": 28, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx", "class": "Sqlx.Placeholders.WherePlaceholderHandler", "reportPath": "Sqlx_WherePlaceholderHandler.html", "methodName": "RenderFromObject(Sqlx.PlaceholderContext,System.String,System.Collections.Generic.IReadOnlyDictionary`2<System.String,System.Object>)", "methodShortName": "RenderFromObject(...)", "fileIndex": 3, "line": 69,
     "metrics": [
       { "value": 28, "exceeded": false },
       { "value": 28, "exceeded": true },
@@ -1893,6 +2415,12 @@ var riskHotspots = [
       { "value": 24, "exceeded": true },
     ]},
   {
+    "assembly": "Sqlx", "class": "Sqlx.TypeConverter", "reportPath": "Sqlx_TypeConverter.html", "methodName": "Convert(System.Object)", "methodShortName": "Convert(...)", "fileIndex": 3, "line": 23,
+    "metrics": [
+      { "value": 24, "exceeded": false },
+      { "value": 24, "exceeded": true },
+    ]},
+  {
     "assembly": "Sqlx", "class": "Sqlx.SqlExpressionVisitor", "reportPath": "Sqlx_SqlExpressionVisitor.html", "methodName": "ExtractInnerTableInfo(System.Linq.Expressions.Expression)", "methodShortName": "ExtractInnerTableInfo(...)", "fileIndex": 0, "line": 207,
     "metrics": [
       { "value": 20, "exceeded": false },
@@ -1906,6 +2434,12 @@ var riskHotspots = [
     ]},
   {
     "assembly": "Sqlx", "class": "Sqlx.SqlExpressionVisitor", "reportPath": "Sqlx_SqlExpressionVisitor.html", "methodName": "ExtractInnerTableInfo(System.Linq.Expressions.Expression)", "methodShortName": "ExtractInnerTableInfo(...)", "fileIndex": 2, "line": 207,
+    "metrics": [
+      { "value": 20, "exceeded": false },
+      { "value": 20, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx", "class": "Sqlx.SqlExpressionVisitor", "reportPath": "Sqlx_SqlExpressionVisitor.html", "methodName": "ExtractInnerTableInfo(System.Linq.Expressions.Expression)", "methodShortName": "ExtractInnerTableInfo(...)", "fileIndex": 3, "line": 207,
     "metrics": [
       { "value": 20, "exceeded": false },
       { "value": 20, "exceeded": true },
@@ -1929,6 +2463,12 @@ var riskHotspots = [
       { "value": 18, "exceeded": true },
     ]},
   {
+    "assembly": "Sqlx", "class": "Sqlx.Expressions.ExpressionHelper", "reportPath": "Sqlx_ExpressionHelper.html", "methodName": "ConvertToSnakeCase(System.String)", "methodShortName": "ConvertToSnakeCase(...)", "fileIndex": 3, "line": 106,
+    "metrics": [
+      { "value": 18, "exceeded": false },
+      { "value": 18, "exceeded": true },
+    ]},
+  {
     "assembly": "Sqlx", "class": "Sqlx.Expressions.ExpressionParser", "reportPath": "Sqlx_ExpressionParser.html", "methodName": "ExtractColumns(System.Linq.Expressions.Expression)", "methodShortName": "ExtractColumns(...)", "fileIndex": 0, "line": 89,
     "metrics": [
       { "value": 23, "exceeded": false },
@@ -1947,6 +2487,12 @@ var riskHotspots = [
       { "value": 18, "exceeded": true },
     ]},
   {
+    "assembly": "Sqlx", "class": "Sqlx.Expressions.ExpressionParser", "reportPath": "Sqlx_ExpressionParser.html", "methodName": "ExtractColumns(System.Linq.Expressions.Expression)", "methodShortName": "ExtractColumns(...)", "fileIndex": 3, "line": 89,
+    "metrics": [
+      { "value": 23, "exceeded": false },
+      { "value": 18, "exceeded": true },
+    ]},
+  {
     "assembly": "Sqlx", "class": "Sqlx.SetExpressionExtensions", "reportPath": "Sqlx_SetExpressionExtensions.html", "methodName": "ExtractParameters(System.Linq.Expressions.Expression,System.Collections.Generic.Dictionary`2<System.String,System.Object>)", "methodShortName": "ExtractParameters(...)", "fileIndex": 0, "line": 116,
     "metrics": [
       { "value": 21, "exceeded": false },
@@ -1960,6 +2506,12 @@ var riskHotspots = [
     ]},
   {
     "assembly": "Sqlx", "class": "Sqlx.SetExpressionExtensions", "reportPath": "Sqlx_SetExpressionExtensions.html", "methodName": "ExtractParameters(System.Linq.Expressions.Expression,System.Collections.Generic.Dictionary`2<System.String,System.Object>)", "methodShortName": "ExtractParameters(...)", "fileIndex": 2, "line": 116,
+    "metrics": [
+      { "value": 21, "exceeded": false },
+      { "value": 18, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx", "class": "Sqlx.SetExpressionExtensions", "reportPath": "Sqlx_SetExpressionExtensions.html", "methodName": "ExtractParameters(System.Linq.Expressions.Expression,System.Collections.Generic.Dictionary`2<System.String,System.Object>)", "methodShortName": "ExtractParameters(...)", "fileIndex": 3, "line": 116,
     "metrics": [
       { "value": 21, "exceeded": false },
       { "value": 18, "exceeded": true },
@@ -2001,6 +2553,18 @@ var riskHotspots = [
       { "value": 18, "exceeded": true },
     ]},
   {
+    "assembly": "Sqlx", "class": "Sqlx.SqlExpressionVisitor", "reportPath": "Sqlx_SqlExpressionVisitor.html", "methodName": "UpdateJoinPropertyMapping(System.Linq.Expressions.LambdaExpression,System.String)", "methodShortName": "UpdateJoinPropertyMapping(...)", "fileIndex": 3, "line": 296,
+    "metrics": [
+      { "value": 18, "exceeded": false },
+      { "value": 18, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx", "class": "Sqlx.SqlExpressionVisitor", "reportPath": "Sqlx_SqlExpressionVisitor.html", "methodName": "BuildSql()", "methodShortName": "BuildSql()", "fileIndex": 3, "line": 331,
+    "metrics": [
+      { "value": 18, "exceeded": false },
+      { "value": 18, "exceeded": true },
+    ]},
+  {
     "assembly": "Sqlx", "class": "Sqlx.SqlTemplate", "reportPath": "Sqlx_SqlTemplate.html", "methodName": "Prepare(System.String,Sqlx.PlaceholderContext)", "methodShortName": "Prepare(...)", "fileIndex": 0, "line": 102,
     "metrics": [
       { "value": 18, "exceeded": false },
@@ -2014,6 +2578,12 @@ var riskHotspots = [
     ]},
   {
     "assembly": "Sqlx", "class": "Sqlx.SqlTemplate", "reportPath": "Sqlx_SqlTemplate.html", "methodName": "Prepare(System.String,Sqlx.PlaceholderContext)", "methodShortName": "Prepare(...)", "fileIndex": 2, "line": 102,
+    "metrics": [
+      { "value": 18, "exceeded": false },
+      { "value": 18, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx", "class": "Sqlx.SqlTemplate", "reportPath": "Sqlx_SqlTemplate.html", "methodName": "Prepare(System.String,Sqlx.PlaceholderContext)", "methodShortName": "Prepare(...)", "fileIndex": 3, "line": 102,
     "metrics": [
       { "value": 18, "exceeded": false },
       { "value": 18, "exceeded": true },
@@ -2049,6 +2619,18 @@ var riskHotspots = [
       { "value": 18, "exceeded": true },
     ]},
   {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxGenerator", "reportPath": "Sqlx.Generator_SqlxGenerator.html", "methodName": "GenerateResultReader(Sqlx.IndentedStringBuilder,System.String,System.String,Microsoft.CodeAnalysis.INamedTypeSymbol,System.Collections.Generic.List`1<Microsoft.CodeAnalysis.IPropertySymbol>,Microsoft.CodeAnalysis.INamedTypeSymbol)", "methodShortName": "GenerateResultReader(...)", "fileIndex": 3, "line": 477,
+    "metrics": [
+      { "value": 27, "exceeded": false },
+      { "value": 18, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx.Generator", "class": "Sqlx.SqlxGenerator", "reportPath": "Sqlx.Generator_SqlxGenerator.html", "methodName": "ToSnakeCase(System.String)", "methodShortName": "ToSnakeCase(...)", "fileIndex": 3, "line": 1194,
+    "metrics": [
+      { "value": 18, "exceeded": false },
+      { "value": 18, "exceeded": true },
+    ]},
+  {
     "assembly": "Sqlx", "class": "Sqlx.PlaceholderHandlerBase", "reportPath": "Sqlx_PlaceholderHandlerBase.html", "methodName": "ParseInlineExpressions(System.String)", "methodShortName": "ParseInlineExpressions(...)", "fileIndex": 0, "line": 140,
     "metrics": [
       { "value": 16, "exceeded": false },
@@ -2067,6 +2649,12 @@ var riskHotspots = [
       { "value": 16, "exceeded": true },
     ]},
   {
+    "assembly": "Sqlx", "class": "Sqlx.PlaceholderHandlerBase", "reportPath": "Sqlx_PlaceholderHandlerBase.html", "methodName": "ParseInlineExpressions(System.String)", "methodShortName": "ParseInlineExpressions(...)", "fileIndex": 3, "line": 140,
+    "metrics": [
+      { "value": 16, "exceeded": false },
+      { "value": 16, "exceeded": true },
+    ]},
+  {
     "assembly": "Sqlx", "class": "Sqlx.SqlxQueryProvider<T>", "reportPath": "Sqlx_SqlxQueryProvider_1.html", "methodName": "ComputeShouldCreate()", "methodShortName": "ComputeShouldCreate()", "fileIndex": 0, "line": 83,
     "metrics": [
       { "value": 16, "exceeded": false },
@@ -2080,6 +2668,12 @@ var riskHotspots = [
     ]},
   {
     "assembly": "Sqlx", "class": "Sqlx.SqlxQueryProvider<T>", "reportPath": "Sqlx_SqlxQueryProvider_1.html", "methodName": "ComputeShouldCreate()", "methodShortName": "ComputeShouldCreate()", "fileIndex": 2, "line": 83,
+    "metrics": [
+      { "value": 16, "exceeded": false },
+      { "value": 16, "exceeded": true },
+    ]},
+  {
+    "assembly": "Sqlx", "class": "Sqlx.SqlxQueryProvider<T>", "reportPath": "Sqlx_SqlxQueryProvider_1.html", "methodName": "ComputeShouldCreate()", "methodShortName": "ComputeShouldCreate()", "fileIndex": 3, "line": 83,
     "metrics": [
       { "value": 16, "exceeded": false },
       { "value": 16, "exceeded": true },

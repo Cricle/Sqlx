@@ -805,15 +805,23 @@ public class RepositoryGenerator : IIncrementalGenerator
             var template = GetSqlTemplate(method, sqlTemplateAttr);
             if (template is null) continue;
 
-            // Skip templates with {{var}} placeholder - they need dynamic preparation
+            var signature = GetMethodSignature(method);
+            var fieldName = methodFieldNames[signature];
+
+            // Check if template uses {{var}} placeholder
             if (UsesVarPlaceholder(template))
             {
-                sb.AppendLine($"// Template for {method.Name} uses {{{{var}}}} and will be prepared dynamically");
+                // Generate static template for the first stage (static placeholders only)
+                sb.AppendLine($"// Template for {method.Name} uses {{{{var}}}} - static part prepared here, dynamic part at runtime");
+                sb.AppendLine($"private static readonly global::Sqlx.SqlTemplate {fieldName}_Static = global::Sqlx.SqlTemplate.Prepare(");
+                sb.PushIndent();
+                sb.AppendLine($"\"{EscapeString(template)}\",");
+                sb.AppendLine("_staticContext);");
+                sb.PopIndent();
                 continue;
             }
 
-            var signature = GetMethodSignature(method);
-            var fieldName = methodFieldNames[signature];
+            // Regular template without {{var}}
             sb.AppendLine($"private static readonly global::Sqlx.SqlTemplate {fieldName} = global::Sqlx.SqlTemplate.Prepare(");
             sb.PushIndent();
             sb.AppendLine($"\"{EscapeString(template)}\",");
@@ -965,17 +973,11 @@ public class RepositoryGenerator : IIncrementalGenerator
         
         if (usesVar)
         {
-            // Template uses {{var}} - prepare with static context first to replace static placeholders,
-            // then render with dynamic context at runtime for {{var}} placeholders
-            sb.AppendLine("// Template uses {{var}} - prepare static parts, render dynamic parts at runtime");
-            sb.AppendLine($"var staticTemplate = global::Sqlx.SqlTemplate.Prepare(");
-            sb.PushIndent();
-            sb.AppendLine($"\"{EscapeString(template)}\",");
-            sb.AppendLine("_staticContext);");
-            sb.PopIndent();
+            // Template uses {{var}} - use pre-prepared static template, then render dynamic parts at runtime
+            sb.AppendLine("// Template uses {{var}} - static parts already prepared, render dynamic parts at runtime");
             sb.AppendLine($"var {fieldName} = global::Sqlx.SqlTemplate.Prepare(");
             sb.PushIndent();
-            sb.AppendLine("staticTemplate.Sql,");
+            sb.AppendLine($"{fieldName}_Static.Sql,");
             sb.AppendLine("GetDynamicContext());");
             sb.PopIndent();
             sb.AppendLine($"cmd.CommandText = {fieldName}.Sql;");

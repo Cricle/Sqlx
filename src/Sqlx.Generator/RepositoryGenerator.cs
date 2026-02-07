@@ -621,7 +621,7 @@ public class RepositoryGenerator : IIncrementalGenerator
     
     /// <summary>
     /// Gets the variable name from a [SqlxVar] method.
-    /// Uses the attribute's Name property if specified, otherwise uses the method name.
+    /// Uses the attribute's constructor parameter (VariableName property).
     /// </summary>
     private static string GetVarName(IMethodSymbol method)
     {
@@ -630,11 +630,19 @@ public class RepositoryGenerator : IIncrementalGenerator
         
         if (attr != null)
         {
-            // Check for Name named argument
-            var nameArg = attr.NamedArguments.FirstOrDefault(a => a.Key == "Name");
-            if (nameArg.Value.Value is string name && !string.IsNullOrEmpty(name))
+            // Check constructor argument (first parameter is variableName)
+            if (attr.ConstructorArguments.Length > 0 && attr.ConstructorArguments[0].Value is string varName)
             {
-                return name;
+                return varName;
+            }
+            
+            // Fallback: check for VariableName property (though it's readonly)
+            foreach (var namedArg in attr.NamedArguments)
+            {
+                if (namedArg.Key == "VariableName" && namedArg.Value.Value is string name && !string.IsNullOrEmpty(name))
+                {
+                    return name;
+                }
             }
         }
         

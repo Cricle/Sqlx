@@ -41,7 +41,7 @@ namespace TestNamespace
     [SqlDefine(SqlDefineTypes.SQLite)]
     public partial class UserRepository
     {
-        [SqlxVar(Name = ""a"")]
+        [SqlxVar(""a"")]
         private string GetA() => ""test_value"";
     }
 }";
@@ -58,11 +58,6 @@ namespace TestNamespace
         Assert.IsTrue(repositorySource != default, "Should generate UserRepository.Repository.g.cs");
 
         var code = repositorySource.Source;
-        
-        // Debug: print generated code
-        System.Console.WriteLine("=== Generated Code ===");
-        System.Console.WriteLine(code);
-        System.Console.WriteLine("=== End Generated Code ===");
 
         // Should generate GetDynamicContext() method
         Assert.IsTrue(code.Contains("GetDynamicContext()"), "Should generate GetDynamicContext() method");
@@ -74,7 +69,77 @@ namespace TestNamespace
         Assert.IsTrue(code.Contains("AX(int a, double b, string c)"), "Should generate AX() method");
         
         // Should use dynamic context for template preparation
-        Assert.IsTrue(code.Contains("GetDynamicContext()") || code.Contains("_dynamicContext"), 
-            "Should use dynamic context for var placeholder");
+        Assert.IsTrue(code.Contains("GetDynamicContext()"), "Should use dynamic context for var placeholder");
+        
+        // Should NOT have static _aXTemplate field
+        Assert.IsFalse(code.Contains("private static readonly global::Sqlx.SqlTemplate _aXTemplate"), 
+            "Should NOT have static _aXTemplate field for var placeholder template");
+        
+        // Should have dynamic template preparation in method
+        Assert.IsTrue(code.Contains("var _aXTemplate = global::Sqlx.SqlTemplate.Prepare"), 
+            "Should have dynamic template preparation in AX method");
+    }
+
+    [TestMethod]
+    public void VarPlaceholder_MultipleVarMethods_GeneratesCorrectly()
+    {
+        var source = @"
+using Sqlx;
+using Sqlx.Annotations;
+
+namespace TestNamespace
+{
+    [Sqlx]
+    public class Product
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+
+    public interface IProductRepository : ICrudRepository<Product, int>
+    {
+        [SqlTemplate(""SELECT * FROM {{var --name tableName}} WHERE id = @id"")]
+        Product GetFromDynamicTable(int id);
+        
+        [SqlTemplate(""SELECT {{var --name columns}} FROM products"")]
+        string GetDynamicColumns();
+    }
+
+    [RepositoryFor(typeof(IProductRepository))]
+    [SqlDefine(SqlDefineTypes.SQLite)]
+    public partial class ProductRepository
+    {
+        [SqlxVar(""tableName"")]
+        private string GetTableName() => ""products_archive"";
+        
+        [SqlxVar(""columns"")]
+        private string GetColumns() => ""id, name, price"";
+    }
+}";
+
+        var generator = new RepositoryGenerator();
+        var result = GeneratorTestHelper.RunGenerator(source, generator);
+
+        Assert.IsFalse(result.Diagnostics.Any(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error),
+            $"Should not have errors. Errors: {string.Join(", ", result.Diagnostics.Where(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+
+        var generatedSources = result.GetAllGeneratedSources().ToList();
+        var repositorySource = generatedSources.FirstOrDefault(s => s.FileName.Contains("ProductRepository.Repository.g.cs"));
+        Assert.IsTrue(repositorySource != default, "Should generate ProductRepository.Repository.g.cs");
+
+        var code = repositorySource.Source;
+
+        // Debug: print generated code
+        System.Console.WriteLine("=== Generated Code ===");
+        System.Console.WriteLine(code);
+        System.Console.WriteLine("=== End Generated Code ===");
+
+        // Should generate both methods
+        Assert.IsTrue(code.Contains("GetFromDynamicTable(int id)"), "Should generate GetFromDynamicTable method");
+        Assert.IsTrue(code.Contains("GetDynamicColumns()"), "Should generate GetDynamicColumns method");
+        
+        // Should have GetVarValue with both variables
+        Assert.IsTrue(code.Contains("\"tableName\""), "Should handle tableName variable");
+        Assert.IsTrue(code.Contains("\"columns\""), "Should handle columns variable");
     }
 }

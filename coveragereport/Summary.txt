@@ -1,32 +1,32 @@
 Summary
-  Generated on: 2026/2/7 - 9:50:10
-  Coverage date: 2026/2/7 - 9:12:51 - 2026/2/7 - 9:49:02
-  Parser: MultiReport (14x Cobertura)
+  Generated on: 2026/2/7 - 10:05:15
+  Coverage date: 2026/2/7 - 9:12:51 - 2026/2/7 - 10:04:46
+  Parser: MultiReport (19x Cobertura)
   Assemblies: 2
   Classes: 60
-  Files: 208
-  Line coverage: 52.1%
-  Covered lines: 10863
-  Uncovered lines: 9969
-  Coverable lines: 20832
-  Total lines: 43408
-  Branch coverage: 42.8% (6306 of 14704)
-  Covered branches: 6306
-  Total branches: 14704
-  Method coverage: 68.6% (1540 of 2244)
-  Full method coverage: 55.4% (1244 of 2244)
-  Covered methods: 1540
-  Fully covered methods: 1244
-  Total methods: 2244
+  Files: 260
+  Line coverage: 52.3%
+  Covered lines: 13627
+  Uncovered lines: 12413
+  Coverable lines: 26040
+  Total lines: 53617
+  Branch coverage: 43.5% (8000 of 18380)
+  Covered branches: 8000
+  Total branches: 18380
+  Method coverage: 68.9% (1934 of 2805)
+  Full method coverage: 55.6% (1561 of 2805)
+  Covered methods: 1934
+  Fully covered methods: 1561
+  Total methods: 2805
 
-Sqlx                                            79.5%
+Sqlx                                            79.9%
   Sqlx.Annotations.RepositoryForAttribute        100%
   Sqlx.Annotations.SqlDefineAttribute            100%
   Sqlx.Annotations.SqlTemplateAttribute            0%
   Sqlx.Annotations.SqlxAttribute                  50%
   Sqlx.Annotations.SqlxVarAttribute                0%
   Sqlx.Annotations.TableNameAttribute            100%
-  Sqlx.DB2Dialect                               58.6%
+  Sqlx.DB2Dialect                               59.2%
   Sqlx.DbConnectionExtensions                     50%
   Sqlx.DbExecutor                               65.2%
   Sqlx.Diagnostics.SqlTemplateMetrics            100%
@@ -38,19 +38,19 @@ Sqlx                                            79.5%
   Sqlx.Expressions.Any                           100%
   Sqlx.Expressions.DateTimeFunctionParser         90%
   Sqlx.Expressions.ExpressionBlockResult        89.1%
-  Sqlx.Expressions.ExpressionHelper             76.8%
+  Sqlx.Expressions.ExpressionHelper             77.2%
   Sqlx.Expressions.ExpressionParser               90%
-  Sqlx.Expressions.MathFunctionParser           73.9%
-  Sqlx.Expressions.StringFunctionParser           50%
-  Sqlx.Expressions.ValueFormatter               68.7%
+  Sqlx.Expressions.MathFunctionParser           77.9%
+  Sqlx.Expressions.StringFunctionParser         55.2%
+  Sqlx.Expressions.ValueFormatter               71.6%
   Sqlx.MySqlDialect                             77.7%
-  Sqlx.OracleDialect                            63.2%
+  Sqlx.OracleDialect                            63.7%
   Sqlx.PlaceholderContext                        100%
   Sqlx.PlaceholderHandlerBase                   96.2%
   Sqlx.PlaceholderProcessor                       85%
   Sqlx.Placeholders.ArgPlaceholderHandler       66.6%
   Sqlx.Placeholders.ColumnsPlaceholderHandler    100%
-  Sqlx.Placeholders.IfPlaceholderHandler          70%
+  Sqlx.Placeholders.IfPlaceholderHandler          72%
   Sqlx.Placeholders.LimitPlaceholderHandler     90.9%
   Sqlx.Placeholders.OffsetPlaceholderHandler    90.9%
   Sqlx.Placeholders.SetPlaceholderHandler       91.6%
@@ -76,9 +76,9 @@ Sqlx                                            79.5%
   Sqlx.SubQueryProvider                            0%
   Sqlx.TypeConverter                            96.3%
 
-Sqlx.Generator                                  25.6%
+Sqlx.Generator                                  25.7%
   Sqlx.IndentedStringBuilder                    61.2%
   Sqlx.RepositoryGenerator                         0%
   Sqlx.SqlxAnalyzer                                0%
-  Sqlx.SqlxGenerator                              48%
+  Sqlx.SqlxGenerator                            48.1%
   Sqlx.SqlxVarGenerator                         98.7%

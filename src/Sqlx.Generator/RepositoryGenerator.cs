@@ -965,11 +965,17 @@ public class RepositoryGenerator : IIncrementalGenerator
         
         if (usesVar)
         {
-            // Template uses {{var}} - need to prepare and render dynamically
-            sb.AppendLine("// Template uses {{var}} - prepare and render dynamically");
-            sb.AppendLine($"var {fieldName} = global::Sqlx.SqlTemplate.Prepare(");
+            // Template uses {{var}} - prepare with static context first to replace static placeholders,
+            // then render with dynamic context at runtime for {{var}} placeholders
+            sb.AppendLine("// Template uses {{var}} - prepare static parts, render dynamic parts at runtime");
+            sb.AppendLine($"var staticTemplate = global::Sqlx.SqlTemplate.Prepare(");
             sb.PushIndent();
             sb.AppendLine($"\"{EscapeString(template)}\",");
+            sb.AppendLine("_staticContext);");
+            sb.PopIndent();
+            sb.AppendLine($"var {fieldName} = global::Sqlx.SqlTemplate.Prepare(");
+            sb.PushIndent();
+            sb.AppendLine("staticTemplate.Sql,");
             sb.AppendLine("GetDynamicContext());");
             sb.PopIndent();
             sb.AppendLine($"cmd.CommandText = {fieldName}.Sql;");

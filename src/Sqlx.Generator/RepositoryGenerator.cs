@@ -797,6 +797,13 @@ public class RepositoryGenerator : IIncrementalGenerator
             var template = GetSqlTemplate(method, sqlTemplateAttr);
             if (template is null) continue;
 
+            // Skip templates with {{var}} placeholder - they need dynamic preparation
+            if (UsesVarPlaceholder(template))
+            {
+                sb.AppendLine($"// Template for {method.Name} uses {{{{var}}}} and will be prepared dynamically");
+                continue;
+            }
+
             var signature = GetMethodSignature(method);
             var fieldName = methodFieldNames[signature];
             sb.AppendLine($"private static readonly global::Sqlx.SqlTemplate {fieldName} = global::Sqlx.SqlTemplate.Prepare(");
@@ -830,6 +837,12 @@ public class RepositoryGenerator : IIncrementalGenerator
     /// </summary>
     private static bool UsesStaticColumns(string template) =>
         template.Contains("{{columns}}") || template.Contains("{{columns ");
+
+    /// <summary>
+    /// Checks if the SQL template uses {{var}} placeholder which requires dynamic context.
+    /// </summary>
+    private static bool UsesVarPlaceholder(string template) =>
+        template.Contains("{{var}}") || template.Contains("{{var ");
 
     /// <summary>
     /// Checks if the method returns an entity or list of entities.
@@ -939,7 +952,21 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine($"using DbCommand cmd = {connectionExpression}.CreateCommand();");
         sb.AppendLine("if (Transaction != null) cmd.Transaction = Transaction;");
 
-        if (hasDynamicParams)
+        // Check if template uses {{var}} placeholder
+        var usesVar = template != null && UsesVarPlaceholder(template);
+        
+        if (usesVar)
+        {
+            // Template uses {{var}} - need to prepare and render dynamically
+            sb.AppendLine("// Template uses {{var}} - prepare and render dynamically");
+            sb.AppendLine($"var {fieldName} = global::Sqlx.SqlTemplate.Prepare(");
+            sb.PushIndent();
+            sb.AppendLine($"\"{EscapeString(template)}\",");
+            sb.AppendLine("GetDynamicContext());");
+            sb.PopIndent();
+            sb.AppendLine($"cmd.CommandText = {fieldName}.Sql;");
+        }
+        else if (hasDynamicParams)
         {
             // Render SQL using dynamicParams
             GenerateDynamicRender(sb, fieldName, method);

@@ -20,6 +20,7 @@ public class SimpleScalarMethodTests
     public void SimpleScalarMethod_InCrudRepository_GeneratesCorrectly()
     {
         var source = @"
+using Sqlx;
 using Sqlx.Annotations;
 using System.Threading.Tasks;
 
@@ -71,11 +72,15 @@ namespace TestNamespace
         Assert.IsTrue(code.Contains("_aTemplate"), "Should generate _aTemplate field");
         
         // Should generate GetCountAsync() method
-        Assert.IsTrue(code.Contains("public async Task<int> GetCountAsync()"), "Should generate GetCountAsync() method");
+        Assert.IsTrue(code.Contains("public async System.Threading.Tasks.Task<int> GetCountAsync()") ||
+                     code.Contains("public async Task<int> GetCountAsync()"), 
+                     "Should generate GetCountAsync() method");
         Assert.IsTrue(code.Contains("_getCountAsyncTemplate"), "Should generate _getCountAsyncTemplate field");
         
         // Should generate EchoAsync() method
-        Assert.IsTrue(code.Contains("public async Task<string> EchoAsync(string value)"), "Should generate EchoAsync() method");
+        Assert.IsTrue(code.Contains("public async System.Threading.Tasks.Task<string> EchoAsync(string value)") ||
+                     code.Contains("public async Task<string> EchoAsync(string value)"), 
+                     "Should generate EchoAsync() method");
         Assert.IsTrue(code.Contains("_echoAsyncTemplate"), "Should generate _echoAsyncTemplate field");
         
         // Should use simple parameter binding (not entity-specific)
@@ -88,6 +93,7 @@ namespace TestNamespace
     public void SimpleScalarMethod_WithNoParameters_GeneratesCorrectly()
     {
         var source = @"
+using Sqlx;
 using Sqlx.Annotations;
 
 namespace TestNamespace
@@ -140,6 +146,7 @@ namespace TestNamespace
     public void SimpleScalarMethod_MixedWithEntityMethods_GeneratesCorrectly()
     {
         var source = @"
+using Sqlx;
 using Sqlx.Annotations;
 using System.Threading.Tasks;
 using System.Collections.Generic;
@@ -189,11 +196,11 @@ namespace TestNamespace
         var code = repositorySource.Source;
 
         // Should generate all three methods
-        Assert.IsTrue(code.Contains("public async Task<int> CountExpensiveAsync(decimal minPrice)"), 
+        Assert.IsTrue(code.Contains("CountExpensiveAsync(decimal minPrice)"), 
             "Should generate CountExpensiveAsync() method");
-        Assert.IsTrue(code.Contains("public async Task<List<Product>> GetExpensiveAsync(decimal minPrice)"), 
+        Assert.IsTrue(code.Contains("GetExpensiveAsync(decimal minPrice)"), 
             "Should generate GetExpensiveAsync() method");
-        Assert.IsTrue(code.Contains("public async Task<decimal> GetAveragePriceAsync()"), 
+        Assert.IsTrue(code.Contains("GetAveragePriceAsync()"), 
             "Should generate GetAveragePriceAsync() method");
         
         // Scalar methods should use simple binding

@@ -10,7 +10,6 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Text.RegularExpressions;
 
 /// <summary>
 /// Analyzer for Sqlx best practices and error detection.
@@ -31,18 +30,6 @@ public class SqlxAnalyzer : DiagnosticAnalyzer
         description: "Adding [Sqlx] generates EntityProvider, ResultReader, and ParameterBinder. These provide AOT-compatible, reflection-free implementations.");
 
     /// <summary>
-    /// SQLX002: Unknown placeholder in SqlTemplate.
-    /// </summary>
-    public static readonly DiagnosticDescriptor UnknownPlaceholder = new(
-        id: "SQLX002",
-        title: "Unknown placeholder",
-        messageFormat: "Unknown placeholder '{0}' in SqlTemplate",
-        category: "Usage",
-        defaultSeverity: DiagnosticSeverity.Error,
-        isEnabledByDefault: true,
-        description: "Only built-in placeholders are supported: columns, values, set, table, where, limit, offset, arg, if.");
-
-    /// <summary>
     /// SQLX003: Consider adding [Column] attribute for non-standard column name.
     /// </summary>
     public static readonly DiagnosticDescriptor MissingColumnAttribute = new(
@@ -54,57 +41,15 @@ public class SqlxAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description: "The [Column] attribute allows customizing the database column name mapping.");
 
-    private static readonly string[] KnownPlaceholders = { "columns", "values", "set", "table", "where", "limit", "offset", "arg", "if" };
-    private static readonly Regex PlaceholderRegex = new(@"\{\{(\w+)(?:\s+[^}]+)?\}\}", RegexOptions.Compiled);
-
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(MissingEntityAttribute, UnknownPlaceholder, MissingColumnAttribute);
+        ImmutableArray.Create(MissingEntityAttribute, MissingColumnAttribute);
 
     public override void Initialize(AnalysisContext context)
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
 
-        context.RegisterSyntaxNodeAction(AnalyzeSqlTemplateAttribute, SyntaxKind.Attribute);
         context.RegisterSyntaxNodeAction(AnalyzeRepositoryForAttribute, SyntaxKind.Attribute);
-    }
-
-    private void AnalyzeSqlTemplateAttribute(SyntaxNodeAnalysisContext context)
-    {
-        var attribute = (AttributeSyntax)context.Node;
-        var name = attribute.Name.ToString();
-
-        if (name is not ("SqlTemplate" or "SqlTemplateAttribute"))
-            return;
-
-        // Get the template string from the attribute
-        if (attribute.ArgumentList?.Arguments.Count > 0)
-        {
-            var firstArg = attribute.ArgumentList.Arguments[0];
-            if (firstArg.Expression is LiteralExpressionSyntax literal &&
-                literal.IsKind(SyntaxKind.StringLiteralExpression))
-            {
-                var template = literal.Token.ValueText;
-                CheckPlaceholders(context, template, literal.GetLocation());
-            }
-        }
-    }
-
-    private void CheckPlaceholders(SyntaxNodeAnalysisContext context, string template, Location location)
-    {
-        var matches = PlaceholderRegex.Matches(template);
-        foreach (Match match in matches)
-        {
-            var placeholderName = match.Groups[1].Value.ToLowerInvariant();
-            if (!KnownPlaceholders.Contains(placeholderName))
-            {
-                var diagnostic = Diagnostic.Create(
-                    UnknownPlaceholder,
-                    location,
-                    placeholderName);
-                context.ReportDiagnostic(diagnostic);
-            }
-        }
     }
 
     private void AnalyzeRepositoryForAttribute(SyntaxNodeAnalysisContext context)

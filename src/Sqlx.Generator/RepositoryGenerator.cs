@@ -279,19 +279,20 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine();
         }
 
-        // Generate static PlaceholderContext
-        GeneratePlaceholderContext(sb, repoType, entityName, entityFullName, sqlDefine, tableName);
-        sb.AppendLine();
-
-        // Generate static SqlTemplate fields for each method
+        // Get methods and build field names first (needed for GeneratePlaceholderContext)
         var methods = GetMethodsWithSqlTemplate(serviceType, sqlTemplateAttr);
         var methodFieldNames = BuildMethodFieldNames(methods);
-        
+
+        // Generate static PlaceholderContext
+        GeneratePlaceholderContext(sb, repoType, entityName, entityFullName, sqlDefine, tableName, methods, sqlTemplateAttr, methodFieldNames);
+        sb.AppendLine();
+
         // Generate static parameter name fields
         var paramNameFields = GenerateParameterNameFields(sb, methods, entityName, sqlDefine);
         if (paramNameFields.Count > 0)
             sb.AppendLine();
         
+        // Generate static SqlTemplate fields for each method
         GenerateSqlTemplateFields(sb, methods, sqlTemplateAttr, methodFieldNames, entityName);
         sb.AppendLine();
 
@@ -521,7 +522,16 @@ public class RepositoryGenerator : IIncrementalGenerator
         return type.GetMembers(memberName).Length > 0;
     }
 
-    private static void GeneratePlaceholderContext(IndentedStringBuilder sb, INamedTypeSymbol repoType, string entityName, string entityFullName, string sqlDefine, string tableName)
+    private static void GeneratePlaceholderContext(
+        IndentedStringBuilder sb, 
+        INamedTypeSymbol repoType, 
+        string entityName, 
+        string entityFullName, 
+        string sqlDefine, 
+        string tableName,
+        List<IMethodSymbol> methods,
+        INamedTypeSymbol? sqlTemplateAttr,
+        Dictionary<string, string> methodFieldNames)
     {
         sb.AppendLine("// Static context - shared across all methods that don't need {{var}} support");
         sb.AppendLine($"private const global::Sqlx.Annotations.SqlDefineTypes _dialectType = global::Sqlx.Annotations.SqlDefineTypes.{sqlDefine};");
@@ -562,7 +572,24 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine("}");
             sb.AppendLine();
             
-            // Generate VarProvider method
+            // Generate cached template fields for {{var}} methods
+            var varMethods = methods.Where(m => {
+                var t = GetSqlTemplate(m, sqlTemplateAttr);
+                return t != null && UsesVarPlaceholder(t);
+            }).ToList();
+            
+            if (varMethods.Any())
+            {
+                sb.AppendLine("// Cached templates for {{var}} methods (prepared per-instance)");
+                foreach (var method in varMethods)
+                {
+                    var signature = GetMethodSignature(method);
+                    var fieldName = methodFieldNames[signature];
+                    sb.AppendLine($"private global::Sqlx.SqlTemplate? {fieldName};");
+                }
+                sb.AppendLine();
+            }
+            
             sb.AppendLine("// Variable provider for {{var}} placeholder support");
             sb.AppendLine("private string GetVarValue(object instance, string variableName)");
             sb.AppendLine("{");
@@ -572,8 +599,8 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.PushIndent();
             
             // Generate cases for each [SqlxVar] method
-            var varMethods = GetSqlxVarMethods(repoType);
-            foreach (var method in varMethods)
+            var sqlxVarMethods = GetSqlxVarMethods(repoType);
+            foreach (var method in sqlxVarMethods)
             {
                 var varName = GetVarName(method);
                 sb.AppendLine($"\"{varName}\" => {method.Name}(),");
@@ -818,13 +845,9 @@ public class RepositoryGenerator : IIncrementalGenerator
             // Check if template uses {{var}} placeholder
             if (UsesVarPlaceholder(template))
             {
-                // Generate static template for the first stage (static placeholders only)
-                sb.AppendLine($"// Template for {method.Name} uses {{{{var}}}} - static part prepared here, dynamic part at runtime");
-                sb.AppendLine($"private static readonly global::Sqlx.SqlTemplate {fieldName}_Static = global::Sqlx.SqlTemplate.Prepare(");
-                sb.PushIndent();
-                sb.AppendLine($"\"{EscapeString(template)}\",");
-                sb.AppendLine("_staticContext);");
-                sb.PopIndent();
+                // For {{var}} templates, we can't prepare at class initialization
+                // because GetDynamicContext() needs the instance
+                sb.AppendLine($"// Template for {method.Name} uses {{{{var}}}} - will be prepared per-instance");
                 continue;
             }
 
@@ -980,14 +1003,19 @@ public class RepositoryGenerator : IIncrementalGenerator
         
         if (usesVar)
         {
-            // Template uses {{var}} - use pre-prepared static template, then render dynamic parts at runtime
-            sb.AppendLine("// Template uses {{var}} - static parts already prepared, render dynamic parts at runtime");
-            sb.AppendLine($"var {fieldName} = global::Sqlx.SqlTemplate.Prepare(");
+            // Template uses {{var}} - prepare once per instance, then render each time
+            sb.AppendLine("// Template uses {{var}} - prepare once per instance, render each time");
+            sb.AppendLine($"if ({fieldName} == null)");
+            sb.AppendLine("{");
             sb.PushIndent();
-            sb.AppendLine($"{fieldName}_Static.Sql,");
+            sb.AppendLine($"{fieldName} = global::Sqlx.SqlTemplate.Prepare(");
+            sb.PushIndent();
+            sb.AppendLine($"\"{EscapeString(template)}\",");
             sb.AppendLine("GetDynamicContext());");
             sb.PopIndent();
-            sb.AppendLine($"cmd.CommandText = {fieldName}.Sql;");
+            sb.PopIndent();
+            sb.AppendLine("}");
+            sb.AppendLine($"cmd.CommandText = {fieldName}.Render(null);");
         }
         else if (hasDynamicParams)
         {

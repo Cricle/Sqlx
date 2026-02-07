@@ -79,15 +79,19 @@ namespace TestNamespace
         // Should use dynamic context for template preparation
         Assert.IsTrue(code.Contains("GetDynamicContext()"), "Should use dynamic context for var placeholder");
         
-        // Should have static _aXTemplate_Static field for pre-prepared static parts
-        Assert.IsTrue(code.Contains("private static readonly global::Sqlx.SqlTemplate _aXTemplate_Static"), 
-            "Should have static _aXTemplate_Static field for pre-prepared static template");
+        // Should have instance field for caching prepared template
+        Assert.IsTrue(code.Contains("private global::Sqlx.SqlTemplate? _aXTemplate;"), 
+            "Should have instance field _aXTemplate for caching prepared template");
         
-        // Should have dynamic template preparation in method using the static field
-        Assert.IsTrue(code.Contains("var _aXTemplate = global::Sqlx.SqlTemplate.Prepare"), 
-            "Should have dynamic template preparation in AX method");
-        Assert.IsTrue(code.Contains("_aXTemplate_Static.Sql"), 
-            "Should use _aXTemplate_Static.Sql for dynamic preparation");
+        // Should prepare template once per instance
+        Assert.IsTrue(code.Contains("if (_aXTemplate == null)"), 
+            "Should check if template is already prepared");
+        Assert.IsTrue(code.Contains("_aXTemplate = global::Sqlx.SqlTemplate.Prepare"), 
+            "Should prepare template with GetDynamicContext()");
+        
+        // Should render template each time
+        Assert.IsTrue(code.Contains("_aXTemplate.Render(null)"), 
+            "Should render template to resolve {{var}} placeholders");
     }
 
     [TestMethod]

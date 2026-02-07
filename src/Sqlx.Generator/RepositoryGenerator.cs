@@ -539,11 +539,15 @@ public class RepositoryGenerator : IIncrementalGenerator
         
         if (hasVarMethods)
         {
-            sb.AppendLine("// Dynamic context - created when {{var}} placeholders are needed");
+            sb.AppendLine("// Dynamic context - cached instance (no lock needed, worst case is creating multiple instances)");
+            sb.AppendLine("private global::Sqlx.PlaceholderContext? _dynamicContext;");
+            sb.AppendLine();
             sb.AppendLine("private global::Sqlx.PlaceholderContext GetDynamicContext()");
             sb.AppendLine("{");
             sb.PushIndent();
-            sb.AppendLine("return new global::Sqlx.PlaceholderContext(");
+            sb.AppendLine("if (_dynamicContext != null) return _dynamicContext;");
+            sb.AppendLine();
+            sb.AppendLine("var context = new global::Sqlx.PlaceholderContext(");
             sb.PushIndent();
             sb.AppendLine($"_staticContext.Dialect,");
             sb.AppendLine($"_staticContext.TableName,");
@@ -551,6 +555,9 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine($"varProvider: GetVarValue,");
             sb.AppendLine($"instance: this);");
             sb.PopIndent();
+            sb.AppendLine();
+            sb.AppendLine("_dynamicContext = context;");
+            sb.AppendLine("return context;");
             sb.PopIndent();
             sb.AppendLine("}");
             sb.AppendLine();

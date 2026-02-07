@@ -59,8 +59,16 @@ namespace TestNamespace
 
         var code = repositorySource.Source;
 
-        // Should generate GetDynamicContext() method
+        // Should generate cached _dynamicContext field
+        Assert.IsTrue(code.Contains("private global::Sqlx.PlaceholderContext? _dynamicContext;"), 
+            "Should generate _dynamicContext cache field");
+        
+        // Should generate GetDynamicContext() method with caching logic
         Assert.IsTrue(code.Contains("GetDynamicContext()"), "Should generate GetDynamicContext() method");
+        Assert.IsTrue(code.Contains("if (_dynamicContext != null) return _dynamicContext;"), 
+            "Should have cache check in GetDynamicContext()");
+        Assert.IsTrue(code.Contains("_dynamicContext = context;"), 
+            "Should cache the context in GetDynamicContext()");
         
         // Should generate GetVarValue() method
         Assert.IsTrue(code.Contains("GetVarValue(object instance, string variableName)"), "Should generate GetVarValue() method");

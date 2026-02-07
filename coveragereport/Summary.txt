@@ -1,32 +1,32 @@
 Summary
-  Generated on: 2026/2/7 - 10:05:15
-  Coverage date: 2026/2/7 - 9:12:51 - 2026/2/7 - 10:04:46
-  Parser: MultiReport (19x Cobertura)
+  Generated on: 2026/2/7 - 10:10:47
+  Coverage date: 2026/2/7 - 9:12:51 - 2026/2/7 - 10:09:55
+  Parser: MultiReport (21x Cobertura)
   Assemblies: 2
   Classes: 60
-  Files: 260
-  Line coverage: 52.3%
-  Covered lines: 13627
-  Uncovered lines: 12413
-  Coverable lines: 26040
-  Total lines: 53617
-  Branch coverage: 43.5% (8000 of 18380)
-  Covered branches: 8000
-  Total branches: 18380
-  Method coverage: 68.9% (1934 of 2805)
-  Full method coverage: 55.6% (1561 of 2805)
-  Covered methods: 1934
-  Fully covered methods: 1561
-  Total methods: 2805
+  Files: 312
+  Line coverage: 52.5%
+  Covered lines: 16414
+  Uncovered lines: 14834
+  Coverable lines: 31248
+  Total lines: 63826
+  Branch coverage: 44% (9705 of 22056)
+  Covered branches: 9705
+  Total branches: 22056
+  Method coverage: 69.2% (2332 of 3366)
+  Full method coverage: 55.9% (1882 of 3366)
+  Covered methods: 2332
+  Fully covered methods: 1882
+  Total methods: 3366
 
-Sqlx                                            79.9%
+Sqlx                                            80.2%
   Sqlx.Annotations.RepositoryForAttribute        100%
   Sqlx.Annotations.SqlDefineAttribute            100%
   Sqlx.Annotations.SqlTemplateAttribute            0%
   Sqlx.Annotations.SqlxAttribute                  50%
   Sqlx.Annotations.SqlxVarAttribute                0%
   Sqlx.Annotations.TableNameAttribute            100%
-  Sqlx.DB2Dialect                               59.2%
+  Sqlx.DB2Dialect                               59.6%
   Sqlx.DbConnectionExtensions                     50%
   Sqlx.DbExecutor                               65.2%
   Sqlx.Diagnostics.SqlTemplateMetrics            100%
@@ -38,24 +38,24 @@ Sqlx                                            79.9%
   Sqlx.Expressions.Any                           100%
   Sqlx.Expressions.DateTimeFunctionParser         90%
   Sqlx.Expressions.ExpressionBlockResult        89.1%
-  Sqlx.Expressions.ExpressionHelper             77.2%
-  Sqlx.Expressions.ExpressionParser               90%
-  Sqlx.Expressions.MathFunctionParser           77.9%
-  Sqlx.Expressions.StringFunctionParser         55.2%
-  Sqlx.Expressions.ValueFormatter               71.6%
+  Sqlx.Expressions.ExpressionHelper             77.4%
+  Sqlx.Expressions.ExpressionParser             90.1%
+  Sqlx.Expressions.MathFunctionParser           80.5%
+  Sqlx.Expressions.StringFunctionParser         58.7%
+  Sqlx.Expressions.ValueFormatter               73.6%
   Sqlx.MySqlDialect                             77.7%
-  Sqlx.OracleDialect                            63.7%
+  Sqlx.OracleDialect                              64%
   Sqlx.PlaceholderContext                        100%
   Sqlx.PlaceholderHandlerBase                   96.2%
   Sqlx.PlaceholderProcessor                       85%
-  Sqlx.Placeholders.ArgPlaceholderHandler       66.6%
+  Sqlx.Placeholders.ArgPlaceholderHandler       72.2%
   Sqlx.Placeholders.ColumnsPlaceholderHandler    100%
-  Sqlx.Placeholders.IfPlaceholderHandler          72%
+  Sqlx.Placeholders.IfPlaceholderHandler        73.3%
   Sqlx.Placeholders.LimitPlaceholderHandler     90.9%
   Sqlx.Placeholders.OffsetPlaceholderHandler    90.9%
   Sqlx.Placeholders.SetPlaceholderHandler       91.6%
   Sqlx.Placeholders.TablePlaceholderHandler      100%
-  Sqlx.Placeholders.ValuesPlaceholderHandler    57.7%
+  Sqlx.Placeholders.ValuesPlaceholderHandler    64.8%
   Sqlx.Placeholders.VarPlaceholderHandler       81.8%
   Sqlx.Placeholders.WherePlaceholderHandler     97.1%
   Sqlx.PostgreSqlDialect                        78.9%
@@ -80,5 +80,5 @@ Sqlx.Generator                                  25.7%
   Sqlx.IndentedStringBuilder                    61.2%
   Sqlx.RepositoryGenerator                         0%
   Sqlx.SqlxAnalyzer                                0%
-  Sqlx.SqlxGenerator                            48.1%
+  Sqlx.SqlxGenerator                            48.2%
   Sqlx.SqlxVarGenerator                         98.7%

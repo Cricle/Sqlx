@@ -1,84 +1,97 @@
 Summary
-  Generated on: 2026/2/7 - 10:25:35
-  Coverage date: 2026/2/7 - 9:12:51 - 2026/2/7 - 10:24:04
-  Parser: MultiReport (25x Cobertura)
+  Generated on: 2026/2/7 - 10:30:38
+  Coverage date: 2026/2/7 - 10:30:13 - 2026/2/7 - 10:30:17
+  Parser: MultiReport (2x Cobertura)
   Assemblies: 2
-  Classes: 60
-  Files: 416
-  Line coverage: 52.8%
-  Covered lines: 22027
-  Uncovered lines: 19637
-  Coverable lines: 41664
-  Total lines: 84244
-  Branch coverage: 44.6% (13138 of 29408)
-  Covered branches: 13138
-  Total branches: 29408
-  Method coverage: 69.7% (3131 of 4488)
-  Full method coverage: 56.2% (2526 of 4488)
-  Covered methods: 3131
-  Fully covered methods: 2526
-  Total methods: 4488
+  Classes: 73
+  Files: 56
+  Line coverage: 58.5%
+  Covered lines: 3762
+  Uncovered lines: 2666
+  Coverable lines: 6428
+  Total lines: 11104
+  Branch coverage: 48.8% (2001 of 4097)
+  Covered branches: 2001
+  Total branches: 4097
+  Method coverage: 73.1% (514 of 703)
+  Full method coverage: 58.6% (412 of 703)
+  Covered methods: 514
+  Fully covered methods: 412
+  Total methods: 703
 
-Sqlx                                            80.9%
-  Sqlx.Annotations.RepositoryForAttribute        100%
-  Sqlx.Annotations.SqlDefineAttribute            100%
-  Sqlx.Annotations.SqlTemplateAttribute            0%
-  Sqlx.Annotations.SqlxAttribute                  50%
-  Sqlx.Annotations.SqlxVarAttribute                0%
-  Sqlx.Annotations.TableNameAttribute            100%
-  Sqlx.DB2Dialect                                 60%
-  Sqlx.DbConnectionExtensions                     50%
-  Sqlx.DbExecutor                               65.2%
-  Sqlx.Diagnostics.SqlTemplateMetrics            100%
-  Sqlx.DynamicEntityProvider<T>                    0%
-  Sqlx.DynamicResultReader<T>                   94.3%
-  Sqlx.EntityProviderRegistry                    100%
-  Sqlx.ExpressionExtensions                     67.2%
-  Sqlx.Expressions.AggregateParser              64.2%
-  Sqlx.Expressions.Any                           100%
-  Sqlx.Expressions.DateTimeFunctionParser         90%
-  Sqlx.Expressions.ExpressionBlockResult        89.1%
-  Sqlx.Expressions.ExpressionHelper             77.6%
-  Sqlx.Expressions.ExpressionParser             90.1%
-  Sqlx.Expressions.MathFunctionParser           83.8%
-  Sqlx.Expressions.StringFunctionParser           63%
-  Sqlx.Expressions.ValueFormatter                 76%
-  Sqlx.MySqlDialect                             77.7%
-  Sqlx.OracleDialect                            64.4%
-  Sqlx.PlaceholderContext                        100%
-  Sqlx.PlaceholderHandlerBase                   96.2%
-  Sqlx.PlaceholderProcessor                       85%
-  Sqlx.Placeholders.ArgPlaceholderHandler       79.1%
-  Sqlx.Placeholders.ColumnsPlaceholderHandler    100%
-  Sqlx.Placeholders.IfPlaceholderHandler          75%
-  Sqlx.Placeholders.LimitPlaceholderHandler     90.9%
-  Sqlx.Placeholders.OffsetPlaceholderHandler    90.9%
-  Sqlx.Placeholders.SetPlaceholderHandler       91.6%
-  Sqlx.Placeholders.TablePlaceholderHandler      100%
-  Sqlx.Placeholders.ValuesPlaceholderHandler    73.6%
-  Sqlx.Placeholders.VarPlaceholderHandler       81.8%
-  Sqlx.Placeholders.WherePlaceholderHandler     97.1%
-  Sqlx.PostgreSqlDialect                        78.9%
-  Sqlx.ResultReaderExtensions                   72.7%
-  Sqlx.SetExpressionExtensions                  86.3%
-  Sqlx.SqlDefine                                 100%
-  Sqlx.SqlDialect                               94.4%
-  Sqlx.SqlExpressionVisitor                     93.8%
-  Sqlx.SQLiteDialect                              84%
-  Sqlx.SqlQuery<T>                              81.8%
-  Sqlx.SqlServerDialect                         84.2%
-  Sqlx.SqlTemplate                              98.3%
-  Sqlx.SqlxQueryable<T>                         81.6%
-  Sqlx.SqlxQueryableExtensions                  70.9%
-  Sqlx.SqlxQueryProvider<T>                     40.2%
-  Sqlx.SubQuery                                    0%
-  Sqlx.SubQueryable<T>                             0%
-  Sqlx.SubQueryProvider                            0%
-  Sqlx.TypeConverter                            96.3%
+Sqlx                                                                                                                                                      81.3%
+  Sqlx.Annotations.RepositoryForAttribute                                                                                                                 71.4%
+  Sqlx.Annotations.ReturnInsertedEntityAttribute                                                                                                             0%
+  Sqlx.Annotations.ReturnInsertedIdAttribute                                                                                                                 0%
+  Sqlx.Annotations.SetEntityIdAttribute                                                                                                                      0%
+  Sqlx.Annotations.SqlDefineAttribute                                                                                                                       80%
+  Sqlx.Annotations.SqlTemplateAttribute                                                                                                                      0%
+  Sqlx.Annotations.SqlxAttribute                                                                                                                          54.5%
+  Sqlx.Annotations.SqlxVarAttribute                                                                                                                          0%
+  Sqlx.Annotations.TableNameAttribute                                                                                                                     66.6%
+  Sqlx.ColumnMeta                                                                                                                                          100%
+  Sqlx.DB2Dialect                                                                                                                                         61.5%
+  Sqlx.DbBatchExecutor                                                                                                                                    29.4%
+  Sqlx.DbConnectionExtensions                                                                                                                               50%
+  Sqlx.DbExecutor                                                                                                                                           60%
+  Sqlx.Diagnostics.SqlTemplateMetrics                                                                                                                      100%
+  Sqlx.DynamicEntityProvider<T>                                                                                                                              0%
+  Sqlx.DynamicResultReader<T>                                                                                                                             94.3%
+  Sqlx.EntityProviderRegistry                                                                                                                              100%
+  Sqlx.ExpressionExtensions                                                                                                                               95.5%
+  Sqlx.Expressions.AggregateParser                                                                                                                        64.2%
+  Sqlx.Expressions.Any                                                                                                                                     100%
+  Sqlx.Expressions.DateTimeFunctionParser                                                                                                                   90%
+  Sqlx.Expressions.ExpressionBlockResult                                                                                                                  89.7%
+  Sqlx.Expressions.ExpressionHelper                                                                                                                       78.4%
+  Sqlx.Expressions.ExpressionParser                                                                                                                       90.3%
+  Sqlx.Expressions.MathFunctionParser                                                                                                                     93.7%
+  Sqlx.Expressions.StringFunctionParser                                                                                                                   88.6%
+  Sqlx.Expressions.ValueFormatter                                                                                                                         83.3%
+  Sqlx.JoinClause                                                                                                                                          100%
+  Sqlx.MySqlDialect                                                                                                                                       83.3%
+  Sqlx.OracleDialect                                                                                                                                      65.6%
+  Sqlx.PlaceholderContext                                                                                                                                  100%
+  Sqlx.PlaceholderHandlerBase                                                                                                                             96.2%
+  Sqlx.PlaceholderProcessor                                                                                                                               85.3%
+  Sqlx.Placeholders.ArgPlaceholderHandler                                                                                                                  100%
+  Sqlx.Placeholders.ColumnsPlaceholderHandler                                                                                                              100%
+  Sqlx.Placeholders.IfPlaceholderHandler                                                                                                                    80%
+  Sqlx.Placeholders.LimitPlaceholderHandler                                                                                                               90.9%
+  Sqlx.Placeholders.OffsetPlaceholderHandler                                                                                                              90.9%
+  Sqlx.Placeholders.SetPlaceholderHandler                                                                                                                 91.6%
+  Sqlx.Placeholders.TablePlaceholderHandler                                                                                                                100%
+  Sqlx.Placeholders.ValuesPlaceholderHandler                                                                                                               100%
+  Sqlx.Placeholders.VarPlaceholderHandler                                                                                                                 81.8%
+  Sqlx.Placeholders.WherePlaceholderHandler                                                                                                               97.1%
+  Sqlx.PostgreSqlDialect                                                                                                                                  78.9%
+  Sqlx.ResultReaderExtensions                                                                                                                             72.7%
+  Sqlx.SetExpressionExtensions                                                                                                                            86.3%
+  Sqlx.SqlDefine                                                                                                                                           100%
+  Sqlx.SqlDialect                                                                                                                                         94.4%
+  Sqlx.SqlExpressionVisitor                                                                                                                               93.8%
+  Sqlx.SQLiteDialect                                                                                                                                        84%
+  Sqlx.SqlQuery<T>                                                                                                                                        83.3%
+  Sqlx.SqlServerDialect                                                                                                                                   84.2%
+  Sqlx.SqlTemplate                                                                                                                                        98.4%
+  Sqlx.SqlxQueryable<T>                                                                                                                                   84.7%
+  Sqlx.SqlxQueryableExtensions                                                                                                                            70.9%
+  Sqlx.SqlxQueryProvider<T>                                                                                                                               47.5%
+  Sqlx.SubQuery                                                                                                                                              0%
+  Sqlx.SubQueryable<T>                                                                                                                                       0%
+  Sqlx.SubQueryProvider                                                                                                                                      0%
+  Sqlx.TypeConverter                                                                                                                                      96.3%
+  System.Text.RegularExpressions.Generated                                                                                                                80.6%
+  System.Text.RegularExpressions.Generated.<RegexGenerator_g>FA707918D98057747990B1B7F4ACF2FBB82A354DA3393D4517D9C39D1A384EC82__GenericConditionRegex_1   73.6%
+  System.Text.RegularExpressions.Generated.<RegexGenerator_g>FA707918D98057747990B1B7F4ACF2FBB82A354DA3393D4517D9C39D1A384EC82__GenericOptionRegex_0      88.5%
+  System.Text.RegularExpressions.Generated.<RegexGenerator_g>FA707918D98057747990B1B7F4ACF2FBB82A354DA3393D4517D9C39D1A384EC82__ParameterRegex_2          73.2%
+  System.Text.RegularExpressions.Generated.<RegexGenerator_g>FA707918D98057747990B1B7F4ACF2FBB82A354DA3393D4517D9C39D1A384EC82__PlaceholderRegex_3        83.3%
 
-Sqlx.Generator                                  25.8%
-  Sqlx.IndentedStringBuilder                    61.2%
-  Sqlx.RepositoryGenerator                         0%
-  Sqlx.SqlxAnalyzer                                0%
-  Sqlx.SqlxGenerator                            48.3%
-  Sqlx.SqlxVarGenerator                         98.7%
+Sqlx.Generator                                                                                                                                            26.3%
+  Sqlx.IndentedStringBuilder                                                                                                                                62%
+  Sqlx.RepositoryGenerator                                                                                                                                   0%
+  Sqlx.SqlxAnalyzer                                                                                                                                          0%
+  Sqlx.SqlxGenerator                                                                                                                                      48.9%
+  Sqlx.SqlxVarGenerator                                                                                                                                   98.7%
+  Sqlx.SqlxVarMethodInfo                                                                                                                                   100%
+  Sqlx.SqlxVarMethodResult                                                                                                                                 100%

@@ -131,7 +131,7 @@ public class ExpressionExtensionsTests
         Expression<Func<TestUser, bool>>? predicate = null;
 
         // Act
-        var result = predicate.ToWhereClause();
+        var result = predicate!.ToWhereClause();
 
         // Assert
         Assert.AreEqual(string.Empty, result);
@@ -216,7 +216,7 @@ public class ExpressionExtensionsTests
         Expression<Func<TestUser, bool>>? predicate = null;
 
         // Act
-        var parameters = predicate.GetParameters();
+        var parameters = predicate!.GetParameters();
 
         // Assert
         Assert.IsNotNull(parameters);

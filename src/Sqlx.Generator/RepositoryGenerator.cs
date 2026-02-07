@@ -780,6 +780,10 @@ public class RepositoryGenerator : IIncrementalGenerator
             return;
         }
 
+        // Check if this is a simple scalar method (no entity dependencies)
+        // These methods don't use entity-specific readers or binders
+        var isSimpleScalarMethod = IsSimpleScalarMethod(method, entityName);
+
         // Build parameter list
         var parameters = string.Join(", ", method.Parameters.Select(p => $"{p.Type.ToDisplayString()} {p.Name}"));
 
@@ -828,8 +832,15 @@ public class RepositoryGenerator : IIncrementalGenerator
 
         sb.AppendLine();
 
-        // Bind parameters
-        GenerateParameterBinding(sb, method, entityName, expressionToSqlAttr, paramNameFields);
+        // Bind parameters (skip entity-specific binding for simple scalar methods)
+        if (isSimpleScalarMethod)
+        {
+            GenerateSimpleParameterBinding(sb, method, paramNameFields);
+        }
+        else
+        {
+            GenerateParameterBinding(sb, method, entityName, expressionToSqlAttr, paramNameFields);
+        }
 
         sb.AppendLine();
         sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
@@ -855,6 +866,84 @@ public class RepositoryGenerator : IIncrementalGenerator
 
         sb.PopIndent();
         sb.AppendLine("}");
+    }
+
+    /// <summary>
+    /// Checks if a method is a simple scalar method that doesn't depend on entity types.
+    /// These methods only use primitive parameters and return primitive types.
+    /// </summary>
+    private static bool IsSimpleScalarMethod(IMethodSymbol method, string entityName)
+    {
+        // Check if return type is a simple scalar (int, long, bool, string, etc.)
+        var returnType = method.ReturnType.ToDisplayString();
+        var isScalarReturn = returnType.Contains("Task<int>") || 
+                            returnType.Contains("Task<long>") || 
+                            returnType.Contains("Task<bool>") ||
+                            returnType.Contains("Task<string>") ||
+                            returnType.Contains("Task<decimal>") ||
+                            returnType.Contains("Task<double>") ||
+                            returnType.Contains("Task<float>") ||
+                            returnType == "int" ||
+                            returnType == "long" ||
+                            returnType == "bool" ||
+                            returnType == "string" ||
+                            returnType == "decimal" ||
+                            returnType == "double" ||
+                            returnType == "float";
+
+        if (!isScalarReturn) return false;
+
+        // Check if all parameters are simple scalars (no entity types, no expressions)
+        foreach (var param in method.Parameters)
+        {
+            if (param.Name == "cancellationToken") continue;
+            
+            var paramType = param.Type.ToDisplayString();
+            
+            // If parameter is entity type or contains entity type, not simple
+            if (paramType.Contains(entityName)) return false;
+            
+            // If parameter is expression, not simple
+            if (paramType.Contains("Expression<")) return false;
+            
+            // If parameter is queryable, not simple
+            if (paramType.Contains("IQueryable<")) return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Generates simple parameter binding for scalar methods that don't use entity types.
+    /// </summary>
+    private static void GenerateSimpleParameterBinding(IndentedStringBuilder sb, IMethodSymbol method, Dictionary<string, string> paramNameFields)
+    {
+        sb.AppendLine("// Bind parameters");
+        
+        foreach (var param in method.Parameters)
+        {
+            if (param.Name == "cancellationToken") continue;
+            
+            var paramType = param.Type;
+            var isNullable = IsNullableType(paramType);
+            var paramFieldName = paramNameFields.TryGetValue(param.Name, out var fn) ? fn : $"_paramPrefix + \"{param.Name}\"";
+            
+            sb.AppendLine("{");
+            sb.PushIndent();
+            sb.AppendLine("var p = cmd.CreateParameter();");
+            sb.AppendLine($"p.ParameterName = {paramFieldName};");
+            if (isNullable)
+            {
+                sb.AppendLine($"p.Value = {param.Name} ?? (object)DBNull.Value;");
+            }
+            else
+            {
+                sb.AppendLine($"p.Value = {param.Name};");
+            }
+            sb.AppendLine("cmd.Parameters.Add(p);");
+            sb.PopIndent();
+            sb.AppendLine("}");
+        }
     }
 
     private static bool HasDynamicParameters(IMethodSymbol method, INamedTypeSymbol? expressionToSqlAttr)

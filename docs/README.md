@@ -73,6 +73,7 @@ var user = await repo.GetByEmailAsync("test@example.com");
 
 - [Getting Started](getting-started.md) - Installation and basic setup
 - [SQL Templates](sql-templates.md) - Template syntax and placeholders
+- [SqlxContext](sqlx-context.md) - Multi-repository management and transaction handling
 - [Dialects](dialects.md) - Database dialect support
 - [Source Generators](source-generators.md) - How code generation works
 - [Performance Benchmarks](benchmarks.md) - Detailed performance comparison

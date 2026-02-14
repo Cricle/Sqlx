@@ -140,6 +140,7 @@ public record BatchPriorityUpdateRequest
 public record ApiInfoResponse(string Name, string Version, string Environment, string Database, Dictionary<string, object> Endpoints, DateTime Timestamp);
 public record ErrorResponse(string Message);
 public record BatchUpdateResult(int UpdatedCount);
+public record BulkCreateResult(bool Success, int Count, List<long> Ids, string Message);
 public record BatchDeleteRequest { [Required] public List<long> Ids { get; init; } = new(); }
 public record BatchCompleteRequest { [Required] public List<long> Ids { get; init; } = new(); }
 public record BatchGetRequest { [Required] public List<long> Ids { get; init; } = new(); }

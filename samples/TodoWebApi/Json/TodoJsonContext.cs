@@ -24,6 +24,7 @@ namespace TodoWebApi.Json;
 [JsonSerializable(typeof(TodoTitlePriority))]
 [JsonSerializable(typeof(List<TodoTitlePriority>))]
 [JsonSerializable(typeof(TodoStatsResult))]
+[JsonSerializable(typeof(BulkCreateResult))]
 [JsonSerializable(typeof(Dictionary<string, object>))]
 [JsonSerializable(typeof(ErrorResponse))]
 [JsonSerializable(typeof(ApiInfoResponse))]

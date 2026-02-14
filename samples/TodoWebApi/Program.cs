@@ -20,8 +20,10 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 var sqliteConnection = new SqliteConnection("Data Source=todos.db;Cache=Shared;Foreign Keys=true");
 sqliteConnection.Open();
 builder.Services.AddSingleton(_ => sqliteConnection);
-builder.Services.AddSingleton<ITodoRepository, TodoRepository>();
+builder.Services.AddSingleton<TodoRepository>();
 builder.Services.AddSingleton<DatabaseService>();
+builder.Services.AddSqlxContext<TodoDbContext>(ServiceLifetime.Singleton);
+builder.Services.AddSingleton<ITodoRepository>(sp => sp.GetRequiredService<TodoDbContext>().Todos);
 var app = builder.Build();
 
 app.UseStaticFiles();
@@ -137,6 +139,53 @@ app.MapGet("/api/todos/queryable/stats", async (ITodoRepository repo) =>
     var highPriority = await repo.CountWhereAsync(t => t.Priority >= 3 && !t.IsCompleted);
     var stats = new TodoStatsResult(Total: total, Completed: completed, Pending: total - completed, HighPriority: highPriority, CompletionRate: total > 0 ? (double)completed / total * 100 : 0);
     return Results.Json(stats, TodoJsonContext.Default.TodoStatsResult);
+});
+
+// SqlxContext Transaction Management Example
+// Demonstrates unified transaction handling across multiple operations
+app.MapPost("/api/todos/bulk", async (List<CreateTodoRequest> requests, TodoDbContext context) =>
+{
+    if (requests == null || requests.Count == 0)
+    {
+        return Results.BadRequest(new { Error = "Request list cannot be empty" });
+    }
+
+    await using var transaction = await context.BeginTransactionAsync();
+    try
+    {
+        var ids = new List<long>();
+        var now = DateTime.UtcNow;
+        
+        foreach (var request in requests)
+        {
+            var todo = new Todo 
+            { 
+                Title = request.Title, 
+                Description = request.Description, 
+                IsCompleted = request.IsCompleted, 
+                Priority = request.Priority, 
+                DueDate = request.DueDate, 
+                Tags = request.Tags, 
+                EstimatedMinutes = request.EstimatedMinutes, 
+                CreatedAt = now, 
+                UpdatedAt = now 
+            };
+            
+            // All operations automatically participate in the transaction
+            var newId = await context.Todos.InsertAndGetIdAsync(todo, default);
+            ids.Add(newId);
+        }
+        
+        // Commit all changes atomically
+        await transaction.CommitAsync();
+        
+        return Results.Json(new BulkCreateResult(true, ids.Count, ids, $"Successfully created {ids.Count} todos in a single transaction"), TodoJsonContext.Default.BulkCreateResult);
+    }
+    catch (Exception ex)
+    {
+        // Transaction automatically rolled back on dispose
+        return Results.Json(new BulkCreateResult(false, 0, new List<long>(), $"Transaction rolled back: {ex.Message}"), TodoJsonContext.Default.BulkCreateResult, statusCode: 500);
+    }
 });
 using var scope = app.Services.CreateScope();
 await scope.ServiceProvider.GetRequiredService<DatabaseService>().InitializeDatabaseAsync();

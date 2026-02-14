@@ -203,12 +203,73 @@ TodoWebApi/
 │   └── Todo.cs                 # Entity definition
 ├── Services/
 │   ├── TodoService.cs          # Repository interface with Sqlx attributes
+│   ├── TodoDbContext.cs        # SqlxContext for unified repository management
 │   └── DatabaseService.cs      # Database initialization
 ├── wwwroot/
 │   └── index.html              # Single-page UI
 ├── Program.cs                  # Minimal API setup (using CreateSlimBuilder for AOT)
 └── appsettings.json            # Configuration (HTTP only, no HTTPS)
 ```
+
+### SqlxContext Integration
+
+This sample demonstrates SqlxContext usage for unified repository management with automatic resolution:
+
+```csharp
+// 1. Define context with repository (auto-generated constructor)
+[SqlxContext]
+[SqlDefine(SqlDefineTypes.SQLite)]
+[IncludeRepository(typeof(TodoRepository))]
+public partial class TodoDbContext : SqlxContext
+{
+    // Constructor auto-generated: (DbConnection, IServiceProvider)
+    // Repositories resolved lazily from IServiceProvider
+}
+
+// 2. Register in DI (simplified with automatic resolution)
+services.AddSingleton<TodoRepository>();
+services.AddSqlxContext<TodoDbContext>(ServiceLifetime.Singleton);
+services.AddSingleton<ITodoRepository>(sp => sp.GetRequiredService<TodoDbContext>().Todos);
+
+// 3. Use in endpoints (via interface for backward compatibility)
+app.MapGet("/api/todos", async (ITodoRepository repo) => 
+    await repo.GetAllAsync(limit: 100));
+
+// 4. Inject context directly for transaction management
+app.MapPost("/api/todos/bulk", async (List<CreateTodoRequest> requests, TodoDbContext context) =>
+{
+    await using var transaction = await context.BeginTransactionAsync();
+    try
+    {
+        var ids = new List<long>();
+        foreach (var request in requests)
+        {
+            var todo = new Todo { /* ... */ };
+            // All operations automatically participate in the transaction
+            var newId = await context.Todos.InsertAndGetIdAsync(todo);
+            ids.Add(newId);
+        }
+        
+        // Commit all changes atomically
+        await transaction.CommitAsync();
+        return Results.Json(new { Count = ids.Count, Ids = ids });
+    }
+    catch
+    {
+        // Transaction automatically rolled back on dispose
+        throw;
+    }
+});
+```
+
+**Key Benefits:**
+- ✅ **Automatic Repository Resolution** - No manual injection needed
+- ✅ **Lazy Loading** - Repositories resolved only when accessed
+- ✅ **Unified Transaction Management** - All operations in one transaction
+- ✅ **Automatic Rollback** - Transaction rolled back on error
+- ✅ **Type-Safe** - Direct property access with IntelliSense
+
+For more details on SqlxContext, see the [SqlxContext documentation](../../docs/sqlx-context.md).
 
 ### CreateSlimBuilder vs CreateBuilder
 
@@ -429,6 +490,7 @@ dotnet publish -c Release -r win-x64 --self-contained
 - `GET /api/todos/queryable/stats` - Get comprehensive statistics
 
 ### Batch Operations
+- `POST /api/todos/bulk` - **Transactional bulk insert** (SqlxContext example)
 - `PUT /api/todos/batch/priority` - Batch update priority
 - `PUT /api/todos/batch/complete` - Batch complete todos
 - `DELETE /api/todos/batch` - Batch delete todos
@@ -442,7 +504,7 @@ dotnet publish -c Release -r win-x64 --self-contained
 - `GET /api/todos/queryable/titles` - Get only titles and priorities (projection)
 - `GET /api/todos/queryable/search-advanced?keyword={text}` - Advanced search with LINQ
 
-**Total: 39 API endpoints** demonstrating comprehensive Sqlx features
+**Total: 40 API endpoints** demonstrating comprehensive Sqlx features (including SqlxContext transaction management)
 
 ## 📊 Performance
 

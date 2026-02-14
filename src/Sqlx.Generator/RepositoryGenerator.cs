@@ -264,7 +264,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         }
         sb.AppendLine();
 
-        sb.AppendLine($"public partial class {repoName}");
+        sb.AppendLine($"public partial class {repoName} : ISqlxRepository");
         sb.AppendLine("{");
         sb.PushIndent();
 
@@ -357,11 +357,146 @@ public class RepositoryGenerator : IIncrementalGenerator
 
     /// <summary>
     /// Finds the DbConnection source in the repository class, or generates one if needed.
-    /// Priority: field > property > primary constructor parameter (auto-generate field)
+    /// Always generates a property to satisfy ISqlxRepository interface requirements.
+    /// Priority: field > property > primary constructor parameter > generate default property
     /// </summary>
     private static ConnectionInfo FindOrGenerateDbConnection(INamedTypeSymbol repoType, IndentedStringBuilder sb)
     {
-        // 1. Check fields first (exclude compiler-generated backing fields)
+        // 1. Check if field exists first (highest priority after method parameter)
+        foreach (var member in repoType.GetMembers())
+        {
+            if (member is IFieldSymbol field && !field.IsStatic && !field.IsImplicitlyDeclared && IsDbConnectionType(field.Type))
+            {
+                // Check if field is readonly
+                if (field.IsReadOnly)
+                {
+                    // Generate explicit interface implementation with read-only getter
+                    sb.AppendLine($"/// <summary>Gets the database connection (wraps readonly {field.Name} field).</summary>");
+                    sb.AppendLine($"System.Data.Common.DbConnection? ISqlxRepository.Connection");
+                    sb.AppendLine("{");
+                    sb.PushIndent();
+                    sb.AppendLine($"get => {field.Name};");
+                    sb.AppendLine($"set {{ /* readonly field - cannot set */ }}");
+                    sb.PopIndent();
+                    sb.AppendLine("}");
+                    sb.AppendLine();
+                }
+                else
+                {
+                    // Generate property that wraps the field to satisfy ISqlxRepository interface
+                    sb.AppendLine($"/// <summary>Gets or sets the database connection (wraps {field.Name} field).</summary>");
+                    sb.AppendLine($"System.Data.Common.DbConnection? ISqlxRepository.Connection");
+                    sb.AppendLine("{");
+                    sb.PushIndent();
+                    sb.AppendLine($"get => {field.Name};");
+                    sb.AppendLine($"set => {field.Name} = (value as {field.Type.ToDisplayString()})!;");
+                    sb.PopIndent();
+                    sb.AppendLine("}");
+                    sb.AppendLine();
+                }
+                
+                return new ConnectionInfo
+                {
+                    AccessExpression = field.Name,
+                    FromMethodParameter = false
+                };
+            }
+        }
+
+        // 2. Check if property exists (second priority)
+        foreach (var member in repoType.GetMembers())
+        {
+            if (member is IPropertySymbol prop && !prop.IsStatic && prop.GetMethod != null && IsDbConnectionType(prop.Type))
+            {
+                // Property exists - check if it's public and can satisfy ISqlxRepository.Connection
+                // If it's public DbConnection?, we're good. Otherwise, generate explicit interface implementation.
+                var isPublicDbConnection = prop.DeclaredAccessibility == Accessibility.Public && 
+                                          prop.Type.ToDisplayString() == "System.Data.Common.DbConnection?";
+                
+                if (!isPublicDbConnection)
+                {
+                    // Generate explicit interface implementation that delegates to the existing property
+                    var canSet = prop.SetMethod != null && !prop.IsReadOnly;
+                    sb.AppendLine($"/// <summary>Gets or sets the database connection (delegates to {prop.Name}).</summary>");
+                    sb.AppendLine($"System.Data.Common.DbConnection? ISqlxRepository.Connection");
+                    sb.AppendLine("{");
+                    sb.PushIndent();
+                    sb.AppendLine($"get => {prop.Name};");
+                    if (canSet)
+                    {
+                        sb.AppendLine($"set => {prop.Name} = (value as {prop.Type.ToDisplayString()})!;");
+                    }
+                    else
+                    {
+                        sb.AppendLine($"set {{ /* readonly property - cannot set */ }}");
+                    }
+                    sb.PopIndent();
+                    sb.AppendLine("}");
+                    sb.AppendLine();
+                }
+                
+                return new ConnectionInfo
+                {
+                    AccessExpression = prop.Name,
+                    FromMethodParameter = false
+                };
+            }
+        }
+
+        // 3. Check primary constructor parameters (C# 12+) and generate property
+        if (repoType.InstanceConstructors.Length > 0)
+        {
+            var primaryCtor = repoType.InstanceConstructors
+                .FirstOrDefault(c => c.Parameters.Length > 0 && c.DeclaringSyntaxReferences.Length > 0);
+            
+            if (primaryCtor != null)
+            {
+                var connectionParam = primaryCtor.Parameters.FirstOrDefault(p => IsDbConnectionType(p.Type));
+                if (connectionParam != null)
+                {
+                    // Generate field and property from primary constructor parameter
+                    var connectionTypeName = connectionParam.Type.ToDisplayString();
+                    sb.AppendLine($"/// <summary>Database connection from primary constructor.</summary>");
+                    sb.AppendLine($"private {connectionTypeName} _connection = {connectionParam.Name};");
+                    sb.AppendLine();
+                    sb.AppendLine($"/// <summary>Gets or sets the database connection.</summary>");
+                    sb.AppendLine($"System.Data.Common.DbConnection? ISqlxRepository.Connection");
+                    sb.AppendLine("{");
+                    sb.PushIndent();
+                    sb.AppendLine("get => _connection;");
+                    sb.AppendLine($"set => _connection = (value as {connectionTypeName})!;");
+                    sb.PopIndent();
+                    sb.AppendLine("}");
+                    sb.AppendLine();
+                    
+                    return new ConnectionInfo
+                    {
+                        AccessExpression = "_connection",
+                        FromMethodParameter = false
+                    };
+                }
+            }
+        }
+
+        // No class-level connection found, generate a default property
+        sb.AppendLine("/// <summary>Database connection (auto-generated).</summary>");
+        sb.AppendLine("public System.Data.Common.DbConnection? Connection { get; set; }");
+        sb.AppendLine();
+        
+        return new ConnectionInfo
+        {
+            AccessExpression = "Connection",
+            FromMethodParameter = false
+        };
+    }
+
+    /// <summary>
+    /// Finds the DbConnection source in the repository class.
+    /// Priority: field > property > constructor parameter (method parameter checked per-method)
+    /// </summary>
+    private static ConnectionInfo FindDbConnection(INamedTypeSymbol repoType)
+    {
+        // 1. Check fields first (highest priority after method parameter)
         foreach (var member in repoType.GetMembers())
         {
             if (member is IFieldSymbol field && !field.IsStatic && !field.IsImplicitlyDeclared && IsDbConnectionType(field.Type))
@@ -374,7 +509,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             }
         }
 
-        // 2. Check properties
+        // 2. Check properties (second priority)
         foreach (var member in repoType.GetMembers())
         {
             if (member is IPropertySymbol prop && !prop.IsStatic && prop.GetMethod != null && IsDbConnectionType(prop.Type))
@@ -382,76 +517,6 @@ public class RepositoryGenerator : IIncrementalGenerator
                 return new ConnectionInfo
                 {
                     AccessExpression = prop.Name,
-                    FromMethodParameter = false
-                };
-            }
-        }
-
-        // 3. Check primary constructor parameters (C# 12+) and auto-generate field
-        if (repoType.InstanceConstructors.Length > 0)
-        {
-            var primaryCtor = repoType.InstanceConstructors
-                .FirstOrDefault(c => c.Parameters.Length > 0 && c.DeclaringSyntaxReferences.Length > 0);
-            
-            if (primaryCtor != null)
-            {
-                var connectionParam = primaryCtor.Parameters.FirstOrDefault(p => IsDbConnectionType(p.Type));
-                if (connectionParam != null)
-                {
-                    // Generate field from primary constructor parameter
-                    var connectionTypeName = connectionParam.Type.ToDisplayString();
-                    sb.AppendLine($"/// <summary>Database connection from primary constructor.</summary>");
-                    sb.AppendLine($"private readonly {connectionTypeName} _connection = {connectionParam.Name};");
-                    sb.AppendLine();
-                    
-                    return new ConnectionInfo
-                    {
-                        AccessExpression = "_connection",
-                        FromMethodParameter = false
-                    };
-                }
-            }
-        }
-
-        // No class-level connection found, generate a default field
-        sb.AppendLine("/// <summary>Database connection (auto-generated).</summary>");
-        sb.AppendLine("private readonly System.Data.Common.DbConnection _connection = null!;");
-        sb.AppendLine();
-        
-        return new ConnectionInfo
-        {
-            AccessExpression = "_connection",
-            FromMethodParameter = false
-        };
-    }
-
-    /// <summary>
-    /// Finds the DbConnection source in the repository class.
-    /// Priority: property > constructor parameter (method parameter checked per-method)
-    /// </summary>
-    private static ConnectionInfo FindDbConnection(INamedTypeSymbol repoType)
-    {
-        // 1. Check properties first
-        foreach (var member in repoType.GetMembers())
-        {
-            if (member is IPropertySymbol prop && !prop.IsStatic && prop.GetMethod != null && IsDbConnectionType(prop.Type))
-            {
-                return new ConnectionInfo
-                {
-                    AccessExpression = prop.Name,
-                    FromMethodParameter = false
-                };
-            }
-        }
-
-        // 2. Check fields
-        foreach (var member in repoType.GetMembers())
-        {
-            if (member is IFieldSymbol field && !field.IsStatic && IsDbConnectionType(field.Type))
-            {
-                return new ConnectionInfo
-                {
-                    AccessExpression = field.Name,
                     FromMethodParameter = false
                 };
             }

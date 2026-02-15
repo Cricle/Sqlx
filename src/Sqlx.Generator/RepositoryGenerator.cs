@@ -389,7 +389,7 @@ public class RepositoryGenerator : IIncrementalGenerator
                     sb.AppendLine("{");
                     sb.PushIndent();
                     sb.AppendLine($"get => {field.Name};");
-                    sb.AppendLine($"set => {field.Name} = ({field.Type.ToDisplayString()})value!;");
+                    sb.AppendLine($"set => {field.Name} = value!;");
                     sb.PopIndent();
                     sb.AppendLine("}");
                     sb.AppendLine();
@@ -424,7 +424,7 @@ public class RepositoryGenerator : IIncrementalGenerator
                     sb.AppendLine($"get => {prop.Name};");
                     if (canSet)
                     {
-                        sb.AppendLine($"set => {prop.Name} = ({prop.Type.ToDisplayString()})value!;");
+                        sb.AppendLine("set => {prop.Name} = value!;");
                     }
                     else
                     {
@@ -455,16 +455,15 @@ public class RepositoryGenerator : IIncrementalGenerator
                 if (connectionParam != null)
                 {
                     // Generate field and property from primary constructor parameter
-                    var connectionTypeName = connectionParam.Type.ToDisplayString();
                     sb.AppendLine($"/// <summary>Database connection from primary constructor.</summary>");
-                    sb.AppendLine($"private {connectionTypeName} _connection = {connectionParam.Name};");
+                    sb.AppendLine($"private System.Data.Common.DbConnection _connection = {connectionParam.Name};");
                     sb.AppendLine();
                     sb.AppendLine($"/// <summary>Gets or sets the database connection.</summary>");
                     sb.AppendLine($"System.Data.Common.DbConnection? ISqlxRepository.Connection");
                     sb.AppendLine("{");
                     sb.PushIndent();
                     sb.AppendLine("get => _connection;");
-                    sb.AppendLine($"set => _connection = ({connectionTypeName})value!;");
+                    sb.AppendLine("set => _connection = value!;");
                     sb.PopIndent();
                     sb.AppendLine("}");
                     sb.AppendLine();

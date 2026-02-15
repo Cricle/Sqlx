@@ -418,6 +418,93 @@ var sql = "INSERT INTO users (name) VALUES (@name)";
 await connection.ExecuteBatchAsync(sql, users, UserParameterBinder.Default);
 ```
 
+## SqlBuilder - 动态 SQL 构建器
+
+SqlBuilder 提供高性能、类型安全的动态 SQL 构建能力，使用 C# 插值字符串自动参数化，防止 SQL 注入。
+
+### 核心特性
+
+- **🔒 自动参数化** - 插值字符串自动转换为 SQL 参数，防止 SQL 注入
+- **⚡ 高性能** - ArrayPool<char> 零堆分配，Expression tree 优化（比反射快 20-34%）
+- **🔧 SqlTemplate 集成** - 支持 {{columns}}、{{table}} 等占位符
+- **🔗 子查询支持** - 组合式查询构建，自动参数冲突解决
+- **📦 AOT 兼容** - 零反射设计，完全支持 Native AOT
+
+### 快速示例
+
+```csharp
+// 自动参数化
+using var builder = new SqlBuilder(SqlDefine.SQLite);
+builder.Append($"SELECT * FROM users WHERE age >= {18} AND name = {"John"}");
+var template = builder.Build();
+// SQL: "SELECT * FROM users WHERE age >= @p0 AND name = @p1"
+// Parameters: { "p0": 18, "p1": "John" }
+
+// 动态条件
+using var builder2 = new SqlBuilder(SqlDefine.SQLite);
+builder2.Append($"SELECT * FROM users WHERE 1=1");
+
+if (nameFilter != null)
+    builder2.Append($" AND name LIKE {"%" + nameFilter + "%"}");
+
+if (minAge.HasValue)
+    builder2.Append($" AND age >= {minAge.Value}");
+
+var users = await connection.QueryAsync(
+    builder2.Build().Sql, 
+    builder2.Build().Parameters, 
+    UserResultReader.Default
+);
+```
+
+### SqlTemplate 集成
+
+```csharp
+// 使用 {{columns}}、{{table}} 等占位符
+var context = new PlaceholderContext(
+    SqlDefine.SQLite, 
+    "users", 
+    UserEntityProvider.Default.Columns
+);
+
+using var builder = new SqlBuilder(context);
+builder.AppendTemplate(
+    "SELECT {{columns}} FROM {{table}} WHERE age >= @minAge", 
+    new { minAge = 18 }
+);
+
+var template = builder.Build();
+// SQL: "SELECT [id], [name], [age] FROM [users] WHERE age >= @minAge"
+// Parameters: { "minAge": 18 }
+```
+
+### 子查询支持
+
+```csharp
+// 嵌套子查询，自动参数冲突解决
+using var subquery = new SqlBuilder(SqlDefine.SQLite);
+subquery.Append($"SELECT id FROM orders WHERE total > {1000}");
+
+using var mainQuery = new SqlBuilder(SqlDefine.SQLite);
+mainQuery.Append($"SELECT * FROM users WHERE id IN ");
+mainQuery.AppendSubquery(subquery);
+
+var template = mainQuery.Build();
+// SQL: "SELECT * FROM users WHERE id IN (SELECT id FROM orders WHERE total > @p0)"
+```
+
+### 性能优化
+
+SqlBuilder 使用 Expression tree 优化匿名对象参数转换：
+
+| 属性数量 | Expression Tree | Reflection | 性能提升 |
+|---------|----------------|------------|---------|
+| 2 props | 1.486 μs | 1.632 μs | **8.9%** |
+| 5 props | 1.328 μs | 1.678 μs | **20.9%** |
+| 10 props | 1.507 μs | 2.282 μs | **34.0%** |
+
+> 详细文档见 [SqlBuilder 完整指南](docs/sqlbuilder.md)
+
 ## 连接和事务管理
 
 ### 连接获取优先级
@@ -653,6 +740,7 @@ public readonly record struct Point(int X, int Y);
 ## 更多文档
 
 - [快速开始](docs/getting-started.md)
+- [SqlBuilder 动态 SQL 构建器](docs/sqlbuilder.md)
 - [SQL 模板](docs/sql-templates.md)
 - [数据库方言](docs/dialects.md)
 - [源生成器](docs/source-generators.md)

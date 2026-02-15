@@ -45,12 +45,14 @@ public sealed class SqlTemplate
     /// <param name="segments">The parsed template segments.</param>
     /// <param name="hasBlocks">Whether the template contains conditional blocks.</param>
     /// <param name="templateSql">The original template SQL string before placeholder resolution.</param>
-    private SqlTemplate(string sql, TemplateSegment[] segments, bool hasBlocks, string templateSql)
+    /// <param name="parameters">Optional parameters dictionary for the template.</param>
+    private SqlTemplate(string sql, TemplateSegment[] segments, bool hasBlocks, string templateSql, Dictionary<string, object?>? parameters = null)
     {
         Sql = sql;
         _segments = segments;
         _hasBlocks = hasBlocks;
         TemplateSql = templateSql;
+        Parameters = parameters ?? new Dictionary<string, object?>();
     }
 
     /// <summary>
@@ -62,6 +64,16 @@ public sealed class SqlTemplate
     /// Use <see cref="Render(IReadOnlyDictionary{string, object})"/> to get the fully rendered SQL with dynamic values.
     /// </remarks>
     public string Sql { get; }
+
+    /// <summary>
+    /// Gets the parameters dictionary for this template.
+    /// </summary>
+    /// <remarks>
+    /// This property contains the parameter values that should be passed to the database
+    /// when executing the SQL. For templates created from SqlBuilder, this contains all
+    /// the parameterized values from interpolated strings.
+    /// </remarks>
+    public Dictionary<string, object?> Parameters { get; }
 
     /// <summary>
     /// Gets the original template SQL string before placeholder resolution.
@@ -162,6 +174,26 @@ public sealed class SqlTemplate
             if (seg.Type == SegmentType.Static) sb.Append(seg.Text);
 
         return new SqlTemplate(sb.ToString(), mergedSegments, hasBlocks, template);
+    }
+
+    /// <summary>
+    /// Creates a SqlTemplate from SqlBuilder output with SQL and parameters.
+    /// </summary>
+    /// <param name="sql">The final SQL string.</param>
+    /// <param name="parameters">The parameters dictionary.</param>
+    /// <returns>A <see cref="SqlTemplate"/> instance.</returns>
+    /// <remarks>
+    /// This method is used by SqlBuilder to create a SqlTemplate from dynamically built SQL.
+    /// The template has no dynamic placeholders or blocks since all values are already parameterized.
+    /// </remarks>
+    public static SqlTemplate FromBuilder(string sql, Dictionary<string, object?> parameters)
+    {
+        // Create a simple template with no segments (static SQL only)
+        var segments = string.IsNullOrEmpty(sql) 
+            ? Array.Empty<TemplateSegment>() 
+            : new[] { TemplateSegment.Static(sql) };
+        
+        return new SqlTemplate(sql, segments, hasBlocks: false, templateSql: sql, parameters: parameters);
     }
 
     /// <summary>

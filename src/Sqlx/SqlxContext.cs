@@ -68,19 +68,22 @@ namespace Sqlx
     {
         private readonly DbConnection _connection;
         private readonly bool _ownsConnection;
+        private readonly SqlxContextOptions _options;
         private DbTransaction? _transaction;
         private bool _ownsTransaction;
         private bool _disposed;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="SqlxContext"/> class.
+        /// Initializes a new instance of the <see cref="SqlxContext"/> class with options.
         /// </summary>
         /// <param name="connection">The database connection to use.</param>
+        /// <param name="options">The options for configuring exception handling, retry, and logging behavior.</param>
         /// <param name="ownsConnection">If true, the context will dispose the connection when disposed.</param>
         /// <exception cref="ArgumentNullException">Thrown when connection is null.</exception>
-        protected SqlxContext(DbConnection connection, bool ownsConnection = true)
+        protected SqlxContext(DbConnection connection, SqlxContextOptions? options = null, bool ownsConnection = true)
         {
             _connection = connection ?? throw new ArgumentNullException(nameof(connection));
+            _options = options ?? new SqlxContextOptions();
             _ownsConnection = ownsConnection;
         }
 
@@ -88,6 +91,11 @@ namespace Sqlx
         /// Gets the database connection.
         /// </summary>
         public DbConnection Connection => _connection;
+
+        /// <summary>
+        /// Gets the options for this context.
+        /// </summary>
+        public SqlxContextOptions Options => _options;
 
         /// <summary>
         /// Gets the current transaction, or null if no transaction is active.

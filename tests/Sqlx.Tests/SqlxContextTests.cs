@@ -303,16 +303,16 @@ namespace Sqlx.Tests
         {
             private readonly TestRepository? _testRepository;
 
-            public TestContext(DbConnection connection, bool ownsConnection = true)
-                : base(connection, ownsConnection)
+            public TestContext(DbConnection connection, SqlxContextOptions? options = null, bool ownsConnection = true)
+                : base(connection, options, ownsConnection)
             {
                 _testRepository = new TestRepository();
                 _testRepository.Connection = connection;
                 _testRepository.Transaction = Transaction;
             }
 
-            public TestContext(DbConnection connection, TestRepository testRepository, bool ownsConnection = true)
-                : base(connection, ownsConnection)
+            public TestContext(DbConnection connection, TestRepository testRepository, SqlxContextOptions? options = null, bool ownsConnection = true)
+                : base(connection, options, ownsConnection)
             {
                 _testRepository = testRepository;
                 _testRepository.Connection = connection;

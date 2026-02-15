@@ -119,11 +119,18 @@ public partial class AppDbContext
 services.AddScoped<UserRepository>();
 services.AddScoped<OrderRepository>();
 
-// Register context
-services.AddScoped<AppDbContext>();
-
-// Or use the extension method
-services.AddSqlxContext<AppDbContext>(ServiceLifetime.Scoped);
+// Register context with options
+services.AddSqlxContext<AppDbContext>((sp, options) =>
+{
+    var connection = sp.GetRequiredService<DbConnection>();
+    var logger = sp.GetRequiredService<ILogger<AppDbContext>>();
+    
+    // Configure exception handling
+    options.Logger = logger;
+    options.EnableRetry = true;
+    
+    return new AppDbContext(connection, options, sp);
+});
 ```
 
 ### 6. Use the Context
@@ -228,22 +235,34 @@ services.AddScoped<DbConnection>(sp =>
 services.AddScoped<UserRepository>();
 services.AddScoped<OrderRepository>();
 
-// Register context (default is Scoped lifetime)
-services.AddSqlxContext<AppDbContext>();
-
-// Or with explicit lifetime
-services.AddSqlxContext<AppDbContext>(ServiceLifetime.Transient);
+// Register context with options (required)
+services.AddSqlxContext<AppDbContext>((sp, options) =>
+{
+    var connection = sp.GetRequiredService<DbConnection>();
+    var logger = sp.GetRequiredService<ILogger<AppDbContext>>();
+    
+    // Configure exception handling
+    options.Logger = logger;
+    options.EnableRetry = true;
+    
+    return new AppDbContext(connection, options, sp);
+});
 ```
 
 ### Using with Factory
 
 ```csharp
-services.AddSqlxContext<AppDbContext>(sp =>
+services.AddSqlxContext<AppDbContext>((sp, options) =>
 {
     var connection = sp.GetRequiredService<DbConnection>();
-    var users = sp.GetRequiredService<UserRepository>();
-    var orders = sp.GetRequiredService<OrderRepository>();
-    return new AppDbContext(connection, users, orders);
+    var logger = sp.GetRequiredService<ILogger<AppDbContext>>();
+    
+    // Configure options
+    options.Logger = logger;
+    options.EnableRetry = true;
+    options.MaxRetryCount = 3;
+    
+    return new AppDbContext(connection, options, sp);
 });
 ```
 
@@ -364,6 +383,260 @@ public class ManualDbContext : SqlxContext
     }
 }
 ```
+
+## Exception Handling
+
+SqlxContext provides comprehensive exception handling capabilities including automatic logging, retry for transient failures, and custom exception callbacks.
+
+### Basic Exception Handling
+
+All exceptions from repository operations are automatically enriched with context information:
+
+```csharp
+try
+{
+    var user = await context.Users.GetByIdAsync(userId);
+}
+catch (SqlxException ex)
+{
+    // Exception includes:
+    // - SQL statement that failed
+    // - Parameter values (sensitive data redacted)
+    // - Method name
+    // - Execution duration
+    // - Correlation ID for distributed tracing
+    // - Transaction isolation level (if in transaction)
+    
+    Console.WriteLine($"SQL: {ex.Sql}");
+    Console.WriteLine($"Method: {ex.MethodName}");
+    Console.WriteLine($"Duration: {ex.Duration}");
+    Console.WriteLine($"Correlation ID: {ex.CorrelationId}");
+}
+```
+
+### Configuring Exception Handling
+
+Use `SqlxContextOptions` to configure exception handling behavior:
+
+```csharp
+var options = new SqlxContextOptions
+{
+    // Enable automatic logging
+    Logger = loggerFactory.CreateLogger<AppDbContext>(),
+    
+    // Enable automatic retry for transient failures
+    EnableRetry = true,
+    MaxRetryCount = 3,
+    InitialRetryDelay = TimeSpan.FromMilliseconds(100),
+    RetryBackoffMultiplier = 2.0,
+    
+    // Custom exception callback
+    OnException = async (ex) =>
+    {
+        await telemetry.RecordException(ex);
+        await notificationService.NotifyAdmins(ex);
+    }
+};
+
+var context = new AppDbContext(connection, options, serviceProvider);
+```
+
+### Automatic Logging
+
+When a logger is configured, exceptions are automatically logged with structured data:
+
+```csharp
+var options = new SqlxContextOptions
+{
+    Logger = loggerFactory.CreateLogger<AppDbContext>()
+};
+
+var context = new AppDbContext(connection, options, serviceProvider);
+
+// Exceptions are automatically logged with:
+// - SQL statement
+// - Parameters (sanitized)
+// - Method name
+// - Execution duration
+// - Correlation ID
+// - Attempt number (for retries)
+```
+
+### Automatic Retry
+
+Enable automatic retry for transient database errors:
+
+```csharp
+var options = new SqlxContextOptions
+{
+    EnableRetry = true,
+    MaxRetryCount = 3,
+    InitialRetryDelay = TimeSpan.FromMilliseconds(100),
+    RetryBackoffMultiplier = 2.0,
+    Logger = logger
+};
+
+// Automatically retries on:
+// - Connection timeouts
+// - Deadlocks
+// - Azure SQL transient errors
+// - Other transient database errors
+
+// Uses exponential backoff:
+// Retry 1: 100ms delay
+// Retry 2: 200ms delay
+// Retry 3: 400ms delay
+```
+
+### Custom Exception Handling
+
+Use the `OnException` callback for custom error handling:
+
+```csharp
+var options = new SqlxContextOptions
+{
+    OnException = async (ex) =>
+    {
+        // Send to telemetry
+        await telemetry.RecordException(ex);
+        
+        // Send alerts for critical errors
+        if (ex.Severity == ExceptionSeverity.Critical)
+        {
+            await alertService.SendAlert(ex);
+        }
+        
+        // Log to external service
+        await externalLogger.LogAsync(new
+        {
+            ex.Sql,
+            ex.Parameters,
+            ex.MethodName,
+            ex.Duration,
+            ex.CorrelationId
+        });
+    },
+    Logger = logger
+};
+```
+
+### Sensitive Data Sanitization
+
+Sensitive parameter values are automatically redacted:
+
+```csharp
+// Parameters with these names are automatically redacted:
+// - password, pwd
+// - secret
+// - token, apikey, api_key
+
+var user = await context.Users.GetByCredentialsAsync(
+    email: "user@example.com",
+    password: "secret123"  // Will be redacted in exceptions/logs
+);
+
+// Exception will show:
+// Parameters: { email: "user@example.com", password: "***REDACTED***" }
+```
+
+### Dependency Injection with Options
+
+Register context with exception handling in DI:
+
+```csharp
+services.AddSqlxContext<AppDbContext>((sp, options) =>
+{
+    var connection = sp.GetRequiredService<DbConnection>();
+    var logger = sp.GetRequiredService<ILogger<AppDbContext>>();
+    
+    // Configure exception handling
+    options.Logger = logger;
+    options.EnableRetry = true;
+    options.MaxRetryCount = 3;
+    options.OnException = async (ex) =>
+    {
+        var telemetry = sp.GetRequiredService<ITelemetryService>();
+        await telemetry.RecordException(ex);
+    };
+    
+    return new AppDbContext(connection, options, sp);
+});
+```
+
+### Distributed Tracing
+
+Exceptions automatically include correlation IDs from `Activity.Current`:
+
+```csharp
+using var activity = new Activity("ProcessOrder").Start();
+
+try
+{
+    await context.Orders.InsertAsync(order);
+}
+catch (SqlxException ex)
+{
+    // ex.CorrelationId will match activity.Id
+    // Enables tracing across distributed systems
+    Console.WriteLine($"Trace ID: {ex.CorrelationId}");
+}
+```
+
+### Transaction Context in Exceptions
+
+Exceptions during transactions include transaction information:
+
+```csharp
+await using var transaction = await context.BeginTransactionAsync(
+    IsolationLevel.ReadCommitted);
+
+try
+{
+    await context.Users.InsertAsync(user);
+}
+catch (SqlxException ex)
+{
+    // ex.TransactionIsolationLevel will be ReadCommitted
+    Console.WriteLine($"Transaction Level: {ex.TransactionIsolationLevel}");
+}
+```
+
+### Best Practices
+
+1. **Always configure logging in production**
+   ```csharp
+   options.Logger = loggerFactory.CreateLogger<AppDbContext>();
+   ```
+
+2. **Enable retry for transient failures**
+   ```csharp
+   options.EnableRetry = true;
+   options.MaxRetryCount = 3;
+   ```
+
+3. **Use OnException for telemetry**
+   ```csharp
+   options.OnException = async (ex) => await telemetry.RecordException(ex);
+   ```
+
+4. **Handle SqlxException specifically**
+   ```csharp
+   try
+   {
+       await context.Users.InsertAsync(user);
+   }
+   catch (SqlxException ex)
+   {
+       // Rich context available
+       logger.LogError(ex, "Failed to insert user: {Sql}", ex.Sql);
+   }
+   ```
+
+5. **Use correlation IDs for distributed tracing**
+   ```csharp
+   using var activity = new Activity("Operation").Start();
+   // Exceptions will include activity.Id as CorrelationId
+   ```
 
 ## When to Use SqlxContext
 
@@ -523,25 +796,18 @@ public partial class AppDbContext : SqlxContext { }
 
 ### Extension Methods
 
-#### AddSqlxContext<TContext>()
-
-Registers a SqlxContext with the service collection.
-
-```csharp
-services.AddSqlxContext<AppDbContext>();
-services.AddSqlxContext<AppDbContext>(ServiceLifetime.Transient);
-```
-
 #### AddSqlxContext<TContext>(factory)
 
-Registers a SqlxContext with a factory function.
+Registers a SqlxContext with a factory function that provides SqlxContextOptions.
 
 ```csharp
-services.AddSqlxContext<AppDbContext>(sp =>
+services.AddSqlxContext<AppDbContext>((sp, options) =>
 {
     var connection = sp.GetRequiredService<DbConnection>();
-    var users = sp.GetRequiredService<UserRepository>();
-    return new AppDbContext(connection, users);
+    var logger = sp.GetRequiredService<ILogger<AppDbContext>>();
+    options.Logger = logger;
+    options.EnableRetry = true;
+    return new AppDbContext(connection, options, sp);
 });
 ```
 

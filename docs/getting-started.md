@@ -237,3 +237,109 @@ dotnet publish -c Release -r osx-arm64
 - Explore [Dialect Support](dialects.md) for your database
 - Check the [API Reference](api-reference.md) for detailed documentation
 - Review [Performance Benchmarks](benchmarks.md) for optimization tips
+
+
+## Exception Handling
+
+Sqlx provides comprehensive exception handling with automatic logging, retry, and context enrichment.
+
+### Basic Exception Information
+
+All database exceptions are wrapped in `SqlxException` with rich context:
+
+```csharp
+try
+{
+    var user = await repository.GetByIdAsync(userId);
+}
+catch (SqlxException ex)
+{
+    // Exception includes:
+    Console.WriteLine($"SQL: {ex.Sql}");                    // The SQL that failed
+    Console.WriteLine($"Parameters: {ex.Parameters}");      // Parameter values (sanitized)
+    Console.WriteLine($"Method: {ex.MethodName}");          // Repository method name
+    Console.WriteLine($"Duration: {ex.Duration}");          // How long it took
+    Console.WriteLine($"Correlation: {ex.CorrelationId}"); // Distributed tracing ID
+    Console.WriteLine($"Original: {ex.InnerException}");   // Original database exception
+}
+```
+
+### Configuring Exception Handling with SqlxContext
+
+Use `SqlxContextOptions` to configure global exception handling:
+
+```csharp
+var options = new SqlxContextOptions
+{
+    // Automatic logging
+    Logger = loggerFactory.CreateLogger<AppDbContext>(),
+    
+    // Automatic retry for transient failures
+    EnableRetry = true,
+    MaxRetryCount = 3,
+    InitialRetryDelay = TimeSpan.FromMilliseconds(100),
+    
+    // Custom exception callback
+    OnException = async (ex) =>
+    {
+        await telemetry.RecordException(ex);
+    }
+};
+
+var context = new AppDbContext(connection, options, serviceProvider);
+```
+
+### Automatic Retry
+
+Enable automatic retry for transient database errors:
+
+```csharp
+var options = new SqlxContextOptions
+{
+    EnableRetry = true,
+    MaxRetryCount = 3,
+    Logger = logger
+};
+
+// Automatically retries on:
+// - Connection timeouts
+// - Deadlocks  
+// - Azure SQL transient errors
+// Uses exponential backoff: 100ms, 200ms, 400ms
+```
+
+### Dependency Injection with Exception Handling
+
+```csharp
+services.AddSqlxContext<AppDbContext>((sp, options) =>
+{
+    var connection = sp.GetRequiredService<DbConnection>();
+    var logger = sp.GetRequiredService<ILogger<AppDbContext>>();
+    
+    options.Logger = logger;
+    options.EnableRetry = true;
+    options.OnException = async (ex) =>
+    {
+        var telemetry = sp.GetRequiredService<ITelemetryService>();
+        await telemetry.RecordException(ex);
+    };
+    
+    return new AppDbContext(connection, options, sp);
+});
+```
+
+### Sensitive Data Protection
+
+Sensitive parameters are automatically redacted:
+
+```csharp
+// These parameter names are automatically redacted:
+// password, pwd, secret, token, apikey, api_key
+
+await repository.AuthenticateAsync(
+    username: "user@example.com",
+    password: "secret123"  // Will show as "***REDACTED***" in logs
+);
+```
+
+For more details, see the [SqlxContext Exception Handling documentation](sqlx-context.md#exception-handling).

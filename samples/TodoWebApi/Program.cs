@@ -22,7 +22,11 @@ sqliteConnection.Open();
 builder.Services.AddSingleton(_ => sqliteConnection);
 builder.Services.AddSingleton<TodoRepository>();
 builder.Services.AddSingleton<DatabaseService>();
-builder.Services.AddSqlxContext<TodoDbContext>(ServiceLifetime.Singleton);
+builder.Services.AddSqlxContext<TodoDbContext>((sp, options) =>
+{
+    var connection = sp.GetRequiredService<SqliteConnection>();
+    return new TodoDbContext(connection, options, sp);
+}, ServiceLifetime.Singleton);
 builder.Services.AddSingleton<ITodoRepository>(sp => sp.GetRequiredService<TodoDbContext>().Todos);
 var app = builder.Build();
 

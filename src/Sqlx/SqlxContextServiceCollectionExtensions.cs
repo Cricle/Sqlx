@@ -23,57 +23,37 @@ namespace Microsoft.Extensions.DependencyInjection
     public static class SqlxContextServiceCollectionExtensions
     {
         /// <summary>
-        /// Registers a SqlxContext with the service collection.
+        /// Registers a SqlxContext with the service collection using a factory function that provides SqlxContextOptions.
         /// </summary>
         /// <typeparam name="TContext">The type of the SqlxContext to register.</typeparam>
         /// <param name="services">The service collection.</param>
+        /// <param name="implementationFactory">The factory function to create the context with options.</param>
         /// <param name="lifetime">The service lifetime (default is Scoped).</param>
         /// <returns>The service collection for chaining.</returns>
         /// <example>
         /// <code>
-        /// // Register with default scoped lifetime
-        /// services.AddSqlxContext&lt;AppDbContext&gt;();
-        /// 
-        /// // Register with transient lifetime
-        /// services.AddSqlxContext&lt;AppDbContext&gt;(ServiceLifetime.Transient);
-        /// </code>
-        /// </example>
-        public static IServiceCollection AddSqlxContext<TContext>(
-            this IServiceCollection services,
-            ServiceLifetime lifetime = ServiceLifetime.Scoped)
-            where TContext : SqlxContext
-        {
-            services.Add(new ServiceDescriptor(typeof(TContext), typeof(TContext), lifetime));
-            return services;
-        }
-
-        /// <summary>
-        /// Registers a SqlxContext with the service collection using a factory function.
-        /// </summary>
-        /// <typeparam name="TContext">The type of the SqlxContext to register.</typeparam>
-        /// <param name="services">The service collection.</param>
-        /// <param name="implementationFactory">The factory function to create the context.</param>
-        /// <param name="lifetime">The service lifetime (default is Scoped).</param>
-        /// <returns>The service collection for chaining.</returns>
-        /// <example>
-        /// <code>
-        /// // Register with factory
-        /// services.AddSqlxContext&lt;AppDbContext&gt;(sp =>
+        /// // Register with options
+        /// services.AddSqlxContext&lt;AppDbContext&gt;((sp, options) =>
         /// {
         ///     var connection = sp.GetRequiredService&lt;DbConnection&gt;();
-        ///     var users = sp.GetRequiredService&lt;UserRepository&gt;();
-        ///     var orders = sp.GetRequiredService&lt;OrderRepository&gt;();
-        ///     return new AppDbContext(connection, users, orders);
+        ///     var logger = sp.GetRequiredService&lt;ILogger&lt;AppDbContext&gt;&gt;();
+        ///     options.Logger = logger;
+        ///     options.EnableRetry = true;
+        ///     return new AppDbContext(connection, options, sp);
         /// });
         /// </code>
         /// </example>
         public static IServiceCollection AddSqlxContext<TContext>(
             this IServiceCollection services,
-            Func<IServiceProvider, TContext> implementationFactory,
+            Func<IServiceProvider, SqlxContextOptions, TContext> implementationFactory,
             ServiceLifetime lifetime = ServiceLifetime.Scoped)
             where TContext : SqlxContext
         {
-            services.Add(new ServiceDescriptor(typeof(TContext), implementationFactory, lifetime));
+            services.Add(new ServiceDescriptor(typeof(TContext), sp =>
+            {
+                var options = new SqlxContextOptions();
+                return implementationFactory(sp, options);
+            }, lifetime));
             return services;
         }
     }

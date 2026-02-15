@@ -253,9 +253,9 @@ public class ContextGenerator : IIncrementalGenerator
         // Generate a ServiceProvider-based constructor for lazy resolution
         if (!hasUserConstructor)
         {
-            builder.AppendLine($"public {className}(DbConnection connection, System.IServiceProvider serviceProvider)");
+            builder.AppendLine($"public {className}(DbConnection connection, SqlxContextOptions? options, System.IServiceProvider serviceProvider)");
             builder.PushIndent();
-            builder.AppendLine(": base(connection, ownsConnection: false)");
+            builder.AppendLine(": base(connection, options, ownsConnection: false)");
             builder.PopIndent();
             builder.AppendLine("{");
             builder.PushIndent();

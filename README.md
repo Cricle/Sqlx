@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-purple.svg)](#)
 [![LTS](https://img.shields.io/badge/LTS-.NET%2010-green.svg)](#)
-[![Tests](https://img.shields.io/badge/tests-2191%20passing-brightgreen.svg)](#)
+[![Tests](https://img.shields.io/badge/tests-2618%20passing-brightgreen.svg)](#)
 [![AOT](https://img.shields.io/badge/AOT-ready-blue.svg)](#)
 [![Performance](https://img.shields.io/badge/performance-optimized-orange.svg)](#)
 
@@ -504,6 +504,174 @@ SqlBuilder 使用 Expression tree 优化匿名对象参数转换：
 | 10 props | 1.507 μs | 2.282 μs | **34.0%** |
 
 > 详细文档见 [SqlBuilder 完整指南](docs/sqlbuilder.md)
+
+## SqlxContext - 统一上下文管理
+
+SqlxContext 提供统一的数据库上下文，支持多仓储、事务管理和异常处理：
+
+```csharp
+// 1. 定义上下文
+[SqlxContext]
+[SqlDefine(SqlDefineTypes.SQLite)]
+[IncludeRepository(typeof(UserRepository))]
+[IncludeRepository(typeof(OrderRepository))]
+public partial class AppDbContext : SqlxContext
+{
+    // 源生成器自动生成：
+    // - 构造函数
+    // - Users 和 Orders 属性（懒加载）
+    // - 事务传播逻辑
+}
+
+// 2. 注册到 DI
+services.AddSingleton<UserRepository>();
+services.AddSingleton<OrderRepository>();
+services.AddSqlxContext<AppDbContext>((sp, options) =>
+{
+    var connection = sp.GetRequiredService<SqliteConnection>();
+    
+    // 配置异常处理
+    options.OnException = (ex, context) =>
+    {
+        Console.WriteLine($"SQL Error in {context.MethodName}: {ex.Message}");
+    };
+    
+    // 配置重试
+    options.EnableRetry = true;
+    options.MaxRetryCount = 3;
+    options.RetryDelayMilliseconds = 100;
+    
+    // 配置日志
+    options.Logger = sp.GetRequiredService<ILogger<AppDbContext>>();
+    
+    return new AppDbContext(connection, options, sp);
+}, ServiceLifetime.Singleton);
+
+// 3. 使用事务
+app.MapPost("/api/orders", async (CreateOrderRequest request, AppDbContext context) =>
+{
+    await using var transaction = await context.BeginTransactionAsync();
+    try
+    {
+        var user = await context.Users.GetByIdAsync(request.UserId);
+        if (user == null) return Results.NotFound();
+        
+        var order = new Order { UserId = user.Id, Total = request.Total };
+        var orderId = await context.Orders.InsertAndGetIdAsync(order);
+        
+        await transaction.CommitAsync();
+        return Results.Created($"/api/orders/{orderId}", order);
+    }
+    catch (SqlxException ex)
+    {
+        // 异常包含完整上下文
+        Console.WriteLine($"SQL: {ex.Sql}");
+        Console.WriteLine($"Method: {ex.MethodName}");
+        Console.WriteLine($"Duration: {ex.DurationMilliseconds}ms");
+        Console.WriteLine($"Transaction: {ex.TransactionId}");
+        throw;
+    }
+});
+```
+
+### 异常处理特性
+
+**SqlxException** 提供丰富的上下文信息：
+
+```csharp
+try
+{
+    await repo.GetByIdAsync(123);
+}
+catch (SqlxException ex)
+{
+    // 完整的 SQL 上下文
+    Console.WriteLine($"SQL: {ex.Sql}");
+    Console.WriteLine($"Parameters: {string.Join(", ", ex.Parameters.Select(p => $"{p.Key}={p.Value}"))}");
+    Console.WriteLine($"Method: {ex.MethodName}");
+    Console.WriteLine($"Repository: {ex.RepositoryType}");
+    
+    // 性能信息
+    Console.WriteLine($"Duration: {ex.DurationMilliseconds}ms");
+    
+    // 事务信息
+    Console.WriteLine($"Transaction ID: {ex.TransactionId}");
+    Console.WriteLine($"In Transaction: {ex.InTransaction}");
+    
+    // 关联 ID（用于分布式追踪）
+    Console.WriteLine($"Correlation ID: {ex.CorrelationId}");
+    
+    // 原始异常
+    Console.WriteLine($"Inner: {ex.InnerException?.Message}");
+}
+```
+
+### 自动重试机制
+
+配置自动重试瞬态错误（连接超时、死锁等）：
+
+```csharp
+services.AddSqlxContext<AppDbContext>((sp, options) =>
+{
+    var connection = sp.GetRequiredService<SqliteConnection>();
+    
+    // 启用重试
+    options.EnableRetry = true;
+    options.MaxRetryCount = 3;              // 最多重试 3 次
+    options.RetryDelayMilliseconds = 100;   // 初始延迟 100ms
+    options.UseExponentialBackoff = true;   // 指数退避（100ms, 200ms, 400ms）
+    
+    return new AppDbContext(connection, options, sp);
+});
+```
+
+**支持的瞬态错误**：
+- 连接超时
+- 网络错误
+- 死锁（SQL Server、PostgreSQL、MySQL）
+- 事务冲突
+- 临时资源不可用
+
+### 全局异常回调
+
+使用 `OnException` 回调集中处理异常：
+
+```csharp
+options.OnException = (ex, context) =>
+{
+    // 记录到日志系统
+    logger.LogError(ex, 
+        "SQL Error in {Repository}.{Method}: {Message}",
+        context.RepositoryType,
+        context.MethodName,
+        ex.Message);
+    
+    // 发送到监控系统
+    telemetry.TrackException(ex, new Dictionary<string, string>
+    {
+        ["sql"] = context.Sql,
+        ["method"] = context.MethodName,
+        ["duration"] = context.DurationMilliseconds.ToString()
+    });
+    
+    // 敏感数据已自动清理（密码、令牌等）
+};
+```
+
+### 日志集成
+
+使用 `ILogger` 自动记录 SQL 执行和错误：
+
+```csharp
+options.Logger = sp.GetRequiredService<ILogger<AppDbContext>>();
+
+// 自动记录：
+// - SQL 执行（Debug 级别）
+// - 重试尝试（Warning 级别）
+// - 错误（Error 级别）
+```
+
+> 详细文档见 [SqlxContext 完整指南](docs/sqlx-context.md)
 
 ## 连接和事务管理
 

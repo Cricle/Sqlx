@@ -188,7 +188,11 @@ public class SqlBuilderParameterBenchmark
 
     // ========== Helper: Reflection-based conversion (baseline) ==========
 
-    private static Dictionary<string, object?> ConvertUsingReflection<T>(T obj)
+    private static Dictionary<string, object?> ConvertUsingReflection<
+#if NET5_0_OR_GREATER
+        [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicProperties)]
+#endif
+        T>(T obj)
     {
         var dict = new Dictionary<string, object?>();
         var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);

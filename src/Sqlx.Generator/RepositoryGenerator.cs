@@ -389,7 +389,7 @@ public class RepositoryGenerator : IIncrementalGenerator
                     sb.AppendLine("{");
                     sb.PushIndent();
                     sb.AppendLine($"get => {field.Name};");
-                    sb.AppendLine($"set => {field.Name} = (value as {field.Type.ToDisplayString()})!;");
+                    sb.AppendLine($"set => {field.Name} = ({field.Type.ToDisplayString()})value!;");
                     sb.PopIndent();
                     sb.AppendLine("}");
                     sb.AppendLine();
@@ -424,7 +424,7 @@ public class RepositoryGenerator : IIncrementalGenerator
                     sb.AppendLine($"get => {prop.Name};");
                     if (canSet)
                     {
-                        sb.AppendLine($"set => {prop.Name} = (value as {prop.Type.ToDisplayString()})!;");
+                        sb.AppendLine($"set => {prop.Name} = ({prop.Type.ToDisplayString()})value!;");
                     }
                     else
                     {
@@ -464,7 +464,7 @@ public class RepositoryGenerator : IIncrementalGenerator
                     sb.AppendLine("{");
                     sb.PushIndent();
                     sb.AppendLine("get => _connection;");
-                    sb.AppendLine($"set => _connection = (value as {connectionTypeName})!;");
+                    sb.AppendLine($"set => _connection = ({connectionTypeName})value!;");
                     sb.PopIndent();
                     sb.AppendLine("}");
                     sb.AppendLine();

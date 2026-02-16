@@ -8,10 +8,7 @@
 
 using System;
 using System.Threading.Tasks;
-
-#if NET6_0_OR_GREATER && !NETSTANDARD
 using Microsoft.Extensions.Logging;
-#endif
 
 namespace Sqlx
 {
@@ -122,7 +119,6 @@ namespace Sqlx
         /// </remarks>
         public double RetryBackoffMultiplier { get; set; } = 2.0;
 
-#if NET6_0_OR_GREATER && !NETSTANDARD
         /// <summary>
         /// Gets or sets the ILogger instance for automatic exception logging.
         /// </summary>
@@ -134,9 +130,7 @@ namespace Sqlx
         /// When a logger is provided, exceptions will be automatically logged with structured data including
         /// SQL statements, parameters (sanitized), method names, execution duration, and correlation IDs.
         /// Retry attempts will be logged at Warning level, while final failures are logged at Error level.
-        /// This property is only available when targeting .NET 6.0 or later (not .NET Standard).
         /// </remarks>
         public ILogger? Logger { get; set; }
-#endif
     }
 }

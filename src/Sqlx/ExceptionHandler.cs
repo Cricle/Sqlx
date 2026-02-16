@@ -11,10 +11,7 @@ using System.Collections.Generic;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Threading.Tasks;
-
-#if NET6_0_OR_GREATER && !NETSTANDARD
 using Microsoft.Extensions.Logging;
-#endif
 
 namespace Sqlx
 {
@@ -65,13 +62,11 @@ namespace Sqlx
                         stopwatch.Elapsed,
                         transaction);
 
-#if NET6_0_OR_GREATER && !NETSTANDARD
                     // Log if logger available
                     if (options.Logger != null)
                     {
                         LogException(options.Logger, sqlxEx, attemptCount);
                     }
-#endif
 
                     // Invoke callback if configured
                     if (options.OnException != null)
@@ -82,10 +77,8 @@ namespace Sqlx
                         }
                         catch (Exception)
                         {
-#if NET6_0_OR_GREATER && !NETSTANDARD
                             // Log callback failure but don't let it prevent exception propagation
                             // Callback exceptions are intentionally swallowed to ensure original exception is thrown
-#endif
                         }
                     }
 
@@ -99,11 +92,9 @@ namespace Sqlx
                             options.InitialRetryDelay,
                             options.RetryBackoffMultiplier);
 
-#if NET6_0_OR_GREATER && !NETSTANDARD
                         options.Logger?.LogWarning(
                             "Retrying operation {MethodName} after {Delay}ms (attempt {Attempt}/{MaxAttempts})",
                             methodName, delay.TotalMilliseconds, attemptCount, options.MaxRetryCount);
-#endif
 
                         await Task.Delay(delay);
                         stopwatch.Restart();
@@ -198,7 +189,6 @@ namespace Sqlx
             return TimeSpan.FromMilliseconds(delayMs);
         }
 
-#if NET6_0_OR_GREATER && !NETSTANDARD
         /// <summary>
         /// Logs an exception with structured data.
         /// </summary>
@@ -216,6 +206,5 @@ namespace Sqlx
                 attemptNumber,
                 ex.CorrelationId);
         }
-#endif
     }
 }

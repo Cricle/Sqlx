@@ -6,7 +6,7 @@
 
 #nullable enable
 
-#if NET6_0_OR_GREATER && !NETSTANDARD
+#if NET6_0_OR_GREATER
 
 using System;
 using Sqlx;
@@ -17,7 +17,7 @@ namespace Microsoft.Extensions.DependencyInjection
     /// Extension methods for registering SqlxContext with dependency injection.
     /// </summary>
     /// <remarks>
-    /// These extension methods are only available when targeting .NET 6.0 or later (not .NET Standard).
+    /// These extension methods are available for .NET 6.0+ and .NET Standard 2.1.
     /// They require the Microsoft.Extensions.DependencyInjection.Abstractions package.
     /// </remarks>
     public static class SqlxContextServiceCollectionExtensions

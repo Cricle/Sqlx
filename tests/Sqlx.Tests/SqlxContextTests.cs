@@ -298,6 +298,80 @@ namespace Sqlx.Tests
             Assert.IsFalse(context.HasActiveTransaction);
         }
 
+        [TestMethod]
+        public void AddSqlxContext_WithFactory_ShouldRegisterContext()
+        {
+            // Arrange
+            var services = new ServiceCollection();
+            services.AddSingleton<DbConnection>(sp => new SqliteConnection("Data Source=:memory:"));
+            
+            // Act
+            services.AddSqlxContext<TestContext>((sp, options) =>
+            {
+                var connection = sp.GetRequiredService<DbConnection>();
+                options.EnableRetry = true;
+                options.MaxRetryCount = 3;
+                return new TestContext(connection, options);
+            });
+            
+            var serviceProvider = services.BuildServiceProvider();
+            
+            // Assert
+            var context = serviceProvider.GetRequiredService<TestContext>();
+            Assert.IsNotNull(context);
+            Assert.IsNotNull(context.Connection);
+        }
+
+        [TestMethod]
+        public void AddSqlxContext_WithSingletonLifetime_ShouldRegisterAsSingleton()
+        {
+            // Arrange
+            var services = new ServiceCollection();
+            services.AddSingleton<DbConnection>(sp => new SqliteConnection("Data Source=:memory:"));
+            
+            // Act
+            services.AddSqlxContext<TestContext>((sp, options) =>
+            {
+                var connection = sp.GetRequiredService<DbConnection>();
+                return new TestContext(connection, options);
+            }, ServiceLifetime.Singleton);
+            
+            var serviceProvider = services.BuildServiceProvider();
+            
+            // Assert
+            var context1 = serviceProvider.GetRequiredService<TestContext>();
+            var context2 = serviceProvider.GetRequiredService<TestContext>();
+            Assert.AreSame(context1, context2);
+        }
+
+        [TestMethod]
+        public void AddSqlxContext_WithScopedLifetime_ShouldRegisterAsScoped()
+        {
+            // Arrange
+            var services = new ServiceCollection();
+            services.AddSingleton<DbConnection>(sp => new SqliteConnection("Data Source=:memory:"));
+            
+            // Act
+            services.AddSqlxContext<TestContext>((sp, options) =>
+            {
+                var connection = sp.GetRequiredService<DbConnection>();
+                return new TestContext(connection, options);
+            }, ServiceLifetime.Scoped);
+            
+            var serviceProvider = services.BuildServiceProvider();
+            
+            // Assert
+            using var scope1 = serviceProvider.CreateScope();
+            using var scope2 = serviceProvider.CreateScope();
+            
+            var context1a = scope1.ServiceProvider.GetRequiredService<TestContext>();
+            var context1b = scope1.ServiceProvider.GetRequiredService<TestContext>();
+            var context2 = scope2.ServiceProvider.GetRequiredService<TestContext>();
+            
+            Assert.AreSame(context1a, context1b); // Same within scope
+            Assert.AreNotSame(context1a, context2); // Different across scopes
+        }
+
         // Test context implementation
         private class TestContext : SqlxContext
         {

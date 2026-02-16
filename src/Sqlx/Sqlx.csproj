@@ -22,8 +22,8 @@
     <None Include="..\..\docs\**\*.md" Pack="true" PackagePath="docs\" Visible="false" />
   </ItemGroup>
 
-  <!-- DI support for .NET 6.0+ (not .NET Standard) -->
-  <ItemGroup Condition="'$(TargetFramework)' != 'netstandard2.1'">
+  <!-- DI support for all frameworks -->
+  <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
   </ItemGroup>

@@ -1253,4 +1253,63 @@ public class SqlBuilderTests
         Assert.AreEqual(2, template.Parameters["b"]);
         Assert.AreEqual(3, template.Parameters["c"]);
     }
+
+    [TestMethod]
+    public void SqlTemplate_AddOutputParameter_AddsToOutputParameters()
+    {
+        // Arrange
+        var columns = new[] { new ColumnMeta("id", "id", DbType.Int32, false) };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "users", columns);
+        using var builder = new SqlBuilder(context);
+        builder.AppendRaw("EXEC GetUserId @name, @userId OUT");
+        builder.AppendTemplate("", new { name = "John" });
+
+        // Act
+        var template = builder.Build();
+        template.AddOutputParameter("userId", DbType.Int32);
+
+        // Assert
+        Assert.AreEqual(1, template.OutputParameters.Count);
+        Assert.IsTrue(template.OutputParameters.ContainsKey("userId"));
+        Assert.AreEqual(DbType.Int32, template.OutputParameters["userId"]);
+    }
+
+    [TestMethod]
+    public void SqlTemplate_AddOutputParameter_MultipleParameters_AllAdded()
+    {
+        // Arrange
+        var columns = new[] { new ColumnMeta("id", "id", DbType.Int32, false) };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "users", columns);
+        using var builder = new SqlBuilder(context);
+        builder.AppendRaw("EXEC GetUserInfo @userId OUT, @userName OUT, @userAge OUT");
+
+        // Act
+        var template = builder.Build();
+        template.AddOutputParameter("userId", DbType.Int32)
+                .AddOutputParameter("userName", DbType.String)
+                .AddOutputParameter("userAge", DbType.Int32);
+
+        // Assert
+        Assert.AreEqual(3, template.OutputParameters.Count);
+        Assert.AreEqual(DbType.Int32, template.OutputParameters["userId"]);
+        Assert.AreEqual(DbType.String, template.OutputParameters["userName"]);
+        Assert.AreEqual(DbType.Int32, template.OutputParameters["userAge"]);
+    }
+
+    [TestMethod]
+    public void SqlTemplate_AddOutputParameter_ReturnsTemplateForChaining()
+    {
+        // Arrange
+        var columns = new[] { new ColumnMeta("id", "id", DbType.Int32, false) };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "users", columns);
+        using var builder = new SqlBuilder(context);
+        builder.AppendRaw("EXEC GetUserId @userId OUT");
+
+        // Act
+        var template = builder.Build();
+        var result = template.AddOutputParameter("userId", DbType.Int32);
+
+        // Assert
+        Assert.AreSame(template, result);
+    }
 }

@@ -6,6 +6,7 @@ namespace Sqlx;
 
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -76,6 +77,17 @@ public sealed class SqlTemplate
     public Dictionary<string, object?> Parameters { get; }
 
     /// <summary>
+    /// Gets the output parameters dictionary for this template.
+    /// </summary>
+    /// <remarks>
+    /// This property contains output parameter definitions (name and DbType) that should be
+    /// registered as output parameters when executing the SQL. After execution, the values
+    /// can be retrieved from the command's Parameters collection.
+    /// Use <see cref="AddOutputParameter"/> to add output parameters.
+    /// </remarks>
+    public Dictionary<string, DbType> OutputParameters { get; } = new Dictionary<string, DbType>();
+
+    /// <summary>
     /// Gets the original template SQL string before placeholder resolution.
     /// </summary>
     /// <remarks>
@@ -92,6 +104,31 @@ public sealed class SqlTemplate
     /// calling <see cref="Render(IReadOnlyDictionary{string, object})"/> is not necessary.
     /// </remarks>
     public bool HasDynamicPlaceholders => _segments.Length > 1 || _hasBlocks;
+
+    /// <summary>
+    /// Adds an output parameter to this template.
+    /// </summary>
+    /// <param name="name">The parameter name (without @ prefix).</param>
+    /// <param name="dbType">The database type of the output parameter.</param>
+    /// <returns>This SqlTemplate instance for method chaining.</returns>
+    /// <remarks>
+    /// Output parameters are typically used with stored procedures or statements that return values.
+    /// After executing the SQL, retrieve the output value from the command's Parameters collection.
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// var template = SqlTemplate.Prepare("EXEC GetUserId @name, @userId OUT", context)
+    ///     .AddOutputParameter("userId", DbType.Int32);
+    /// 
+    /// // After execution:
+    /// var userId = (int)command.Parameters["@userId"].Value;
+    /// </code>
+    /// </example>
+    public SqlTemplate AddOutputParameter(string name, DbType dbType)
+    {
+        OutputParameters[name] = dbType;
+        return this;
+    }
 
     /// <summary>
     /// Prepares a SQL template by resolving static placeholders and recording dynamic placeholder positions.

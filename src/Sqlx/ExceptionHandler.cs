@@ -63,10 +63,14 @@ namespace Sqlx
                         transaction);
 
                     // Log if logger available
-                    if (options.Logger != null)
-                    {
-                        LogException(options.Logger, sqlxEx, attemptCount);
-                    }
+                    options.Logger?.LogError(
+                        sqlxEx,
+                        "SQL operation failed: {MethodName} | SQL: {Sql} | Duration: {Duration}ms | Attempt: {Attempt} | CorrelationId: {CorrelationId}",
+                        sqlxEx.MethodName,
+                        sqlxEx.Sql,
+                        sqlxEx.Duration?.TotalMilliseconds,
+                        attemptCount,
+                        sqlxEx.CorrelationId);
 
                     // Invoke callback if configured
                     if (options.OnException != null)
@@ -154,57 +158,18 @@ namespace Sqlx
 
         /// <summary>
         /// Determines if an exception represents a transient error that can be retried.
+        /// Common transient error codes:
+        /// SQL Server: -2 (timeout), 1205 (deadlock), 40197/40501/40613 (Azure transient)
+        /// PostgreSQL: 40001 (serialization failure), 40P01 (deadlock)
+        /// MySQL: 1205 (lock wait timeout), 1213 (deadlock)
         /// </summary>
-        private static bool IsTransientError(Exception ex)
-        {
-            return ex is TimeoutException ||
-                   (ex is DbException dbEx && IsTransientDbError(dbEx));
-        }
-
-        /// <summary>
-        /// Determines if a database exception represents a transient error.
-        /// </summary>
-        private static bool IsTransientDbError(DbException ex)
-        {
-            // Common transient error codes
-            // SQL Server: -2 (timeout), 1205 (deadlock), 40197/40501/40613 (Azure transient)
-            // PostgreSQL: 40001 (serialization failure), 40P01 (deadlock)
-            // MySQL: 1205 (lock wait timeout), 1213 (deadlock)
-            return ex.ErrorCode switch
-            {
-                -2 or 1205 or 1213 or 40001 or 40197 or 40501 or 40613 => true,
-                _ => false
-            };
-        }
+        private static bool IsTransientError(Exception ex) =>
+            ex is TimeoutException or DbException { ErrorCode: -2 or 1205 or 1213 or 40001 or 40197 or 40501 or 40613 };
 
         /// <summary>
         /// Calculates the retry delay using exponential backoff.
         /// </summary>
-        private static TimeSpan CalculateRetryDelay(
-            int attemptNumber,
-            TimeSpan initialDelay,
-            double multiplier)
-        {
-            var delayMs = initialDelay.TotalMilliseconds * Math.Pow(multiplier, attemptNumber - 1);
-            return TimeSpan.FromMilliseconds(delayMs);
-        }
-
-        /// <summary>
-        /// Logs an exception with structured data.
-        /// </summary>
-        private static void LogException(
-            ILogger logger,
-            SqlxException ex,
-            int attemptNumber)
-        {
-            logger.LogError(
-                ex,
-                "SQL operation failed: {MethodName} | SQL: {Sql} | Duration: {Duration}ms | Attempt: {Attempt} | CorrelationId: {CorrelationId}",
-                ex.MethodName,
-                ex.Sql,
-                ex.Duration?.TotalMilliseconds,
-                attemptNumber,
-                ex.CorrelationId);
-        }
+        private static TimeSpan CalculateRetryDelay(int attemptNumber, TimeSpan initialDelay, double multiplier) =>
+            TimeSpan.FromMilliseconds(initialDelay.TotalMilliseconds * Math.Pow(multiplier, attemptNumber - 1));
     }
 }

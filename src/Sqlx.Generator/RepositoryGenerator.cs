@@ -1114,7 +1114,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.PushIndent();
 
         // Execute and return based on return type
-        GenerateExecuteAndReturn(sb, method, repoFullName, entityFullName, entityName, keyTypeName, isReturnInsertedId, methodName, fieldName, useStaticOrdinals, ordinalsFieldName, isAsync);
+        GenerateExecuteAndReturn(sb, method, repoFullName, entityFullName, entityName, keyTypeName, isReturnInsertedId, methodName, fieldName, useStaticOrdinals, ordinalsFieldName, isAsync, paramNameFields);
 
         sb.PopIndent();
         sb.AppendLine("}");
@@ -1423,6 +1423,73 @@ public class RepositoryGenerator : IIncrementalGenerator
                 continue;
             }
             
+            // Check if this parameter has [OutputParameter] attribute
+            var outputParamAttr = param.GetAttributes()
+                .FirstOrDefault(a => a.AttributeClass?.Name == "OutputParameterAttribute");
+            
+            if (outputParamAttr != null)
+            {
+                // Output or InputOutput parameter
+                var dbType = outputParamAttr.ConstructorArguments.Length > 0 
+                    ? outputParamAttr.ConstructorArguments[0].Value 
+                    : null;
+                var size = outputParamAttr.NamedArguments
+                    .FirstOrDefault(a => a.Key == "Size").Value.Value;
+                
+                var paramFieldName = paramNameFields.TryGetValue(param.Name, out var fn) ? fn : $"_paramPrefix + \"{param.Name}\"";
+                
+                // Check if this is OutputParameter<T> wrapper (for async methods)
+                var isOutputParameterWrapper = paramTypeName.Contains("OutputParameter<");
+                var isRefParam = param.RefKind == RefKind.Ref;
+                
+                sb.AppendLine("{");
+                sb.PushIndent();
+                sb.AppendLine("var p = cmd.CreateParameter();");
+                sb.AppendLine($"p.ParameterName = {paramFieldName};");
+                if (dbType != null)
+                {
+                    sb.AppendLine($"p.DbType = (System.Data.DbType){dbType};");
+                }
+                if (size != null && (int)size > 0)
+                {
+                    sb.AppendLine($"p.Size = {size};");
+                }
+                
+                if (isOutputParameterWrapper)
+                {
+                    // OutputParameter<T> wrapper - check if it has initial value
+                    sb.AppendLine($"if ({param.Name}.HasValue)");
+                    sb.AppendLine("{");
+                    sb.PushIndent();
+                    sb.AppendLine($"p.Value = {param.Name}.Value;");
+                    sb.AppendLine("p.Direction = System.Data.ParameterDirection.InputOutput;");
+                    sb.PopIndent();
+                    sb.AppendLine("}");
+                    sb.AppendLine("else");
+                    sb.AppendLine("{");
+                    sb.PushIndent();
+                    sb.AppendLine("p.Direction = System.Data.ParameterDirection.Output;");
+                    sb.PopIndent();
+                    sb.AppendLine("}");
+                }
+                else if (isRefParam)
+                {
+                    // ref parameter: InputOutput mode - bind initial value
+                    sb.AppendLine($"p.Value = {param.Name};");
+                    sb.AppendLine("p.Direction = System.Data.ParameterDirection.InputOutput;");
+                }
+                else
+                {
+                    // out parameter: Output mode - no initial value
+                    sb.AppendLine("p.Direction = System.Data.ParameterDirection.Output;");
+                }
+                
+                sb.AppendLine("cmd.Parameters.Add(p);");
+                sb.PopIndent();
+                sb.AppendLine("}");
+                continue;
+            }
+            
             // Check if this is an entity parameter (exact match or ends with entity name)
             if (paramType.Name == entityName)
             {
@@ -1587,7 +1654,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         return null;
     }
 
-    private static void GenerateExecuteAndReturn(IndentedStringBuilder sb, IMethodSymbol method, string repoFullName, string entityFullName, string entityName, string keyTypeName, bool isReturnInsertedId, string methodName, string fieldName, bool useStaticOrdinals, string ordinalsFieldName, bool isAsync)
+    private static void GenerateExecuteAndReturn(IndentedStringBuilder sb, IMethodSymbol method, string repoFullName, string entityFullName, string entityName, string keyTypeName, bool isReturnInsertedId, string methodName, string fieldName, bool useStaticOrdinals, string ordinalsFieldName, bool isAsync, Dictionary<string, string> paramNameFields)
     {
         var returnType = method.ReturnType.ToDisplayString();
         var ctParam = method.Parameters.FirstOrDefault(p => p.Name == "cancellationToken");
@@ -1752,6 +1819,10 @@ public class RepositoryGenerator : IIncrementalGenerator
         {
             // Sync int return (affected rows)
             sb.AppendLine("var result = cmd.ExecuteNonQuery();");
+            
+            // Retrieve output parameters if any
+            GenerateOutputParameterRetrieval(sb, method, paramNameFields);
+            
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
             sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
@@ -1836,6 +1907,10 @@ public class RepositoryGenerator : IIncrementalGenerator
         {
             // Return affected rows
             sb.AppendLine($"var result = await cmd.ExecuteNonQueryAsync({ctName}).ConfigureAwait(false);");
+            
+            // Retrieve output parameters if any
+            GenerateOutputParameterRetrieval(sb, method, paramNameFields);
+            
             sb.AppendLine();
             sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
             sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
@@ -2203,5 +2278,46 @@ public class RepositoryGenerator : IIncrementalGenerator
     private static bool UsesColumnsPlaceholder(string sqlTemplate)
     {
         return sqlTemplate.Contains("{{columns}}") || sqlTemplate.Contains("{{columns ");
+    }
+
+    /// <summary>
+    /// Generates code to retrieve output parameter values after command execution.
+    /// </summary>
+    private static void GenerateOutputParameterRetrieval(IndentedStringBuilder sb, IMethodSymbol method, Dictionary<string, string> paramNameFields)
+    {
+        var outputParams = method.Parameters
+            .Where(p => p.GetAttributes().Any(a => a.AttributeClass?.Name == "OutputParameterAttribute"))
+            .ToList();
+        
+        if (!outputParams.Any()) return;
+        
+        sb.AppendLine();
+        sb.AppendLine("// Retrieve output parameter values");
+        foreach (var param in outputParams)
+        {
+            var paramFieldName = paramNameFields.TryGetValue(param.Name, out var fn) ? fn : $"_paramPrefix + \"{param.Name}\"";
+            var paramTypeName = param.Type.ToDisplayString();
+            
+            // Check if this is OutputParameter<T> wrapper
+            var isOutputParameterWrapper = paramTypeName.Contains("OutputParameter<");
+            
+            if (isOutputParameterWrapper)
+            {
+                // Extract T from OutputParameter<T>
+                var start = paramTypeName.IndexOf("OutputParameter<") + 16;
+                var end = paramTypeName.LastIndexOf('>');
+                var innerType = paramTypeName.Substring(start, end - start);
+                
+                // Set the value in the wrapper
+                sb.AppendLine($"{param.Name}.Value = ({innerType})cmd.Parameters[{paramFieldName}].Value;");
+                sb.AppendLine($"{param.Name}.HasValue = true;");
+            }
+            else
+            {
+                // Handle ref/out parameters - need to strip the ref/out modifier
+                var actualType = paramTypeName.Replace("out ", "").Replace("ref ", "").Trim();
+                sb.AppendLine($"{param.Name} = ({actualType})cmd.Parameters[{paramFieldName}].Value;");
+            }
+        }
     }
 }

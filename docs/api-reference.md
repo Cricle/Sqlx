@@ -63,10 +63,15 @@ public sealed class SqlTemplate
     // Properties
     public string Sql { get; }                    // Prepared SQL (static placeholders resolved)
     public bool HasDynamicPlaceholders { get; }   // Whether template has dynamic placeholders
+    public IReadOnlyDictionary<string, object?> Parameters { get; }  // Input parameters
+    public IReadOnlyDictionary<string, DbType> OutputParameters { get; }  // Output parameters
     
     // Methods
     public static SqlTemplate Prepare(string template, PlaceholderContext context);
     public string Render(IReadOnlyDictionary<string, object?>? dynamicParameters);
+    
+    // Output Parameter Support
+    public SqlTemplate AddOutputParameter(string name, DbType dbType);
 }
 ```
 
@@ -81,6 +86,16 @@ var sql = template.Render(new Dictionary<string, object?>
 { 
     ["predicate"] = "age > 18" 
 });
+
+// Adding output parameters
+var builder = new SqlBuilder();
+builder.Append($"INSERT INTO users (name) VALUES (@name)");
+builder.AddParameter("name", "John");
+var template = builder.Build();
+template.AddOutputParameter("userId", DbType.Int32);
+
+// Output parameters are stored in OutputParameters dictionary
+Console.WriteLine($"Output parameters: {template.OutputParameters.Count}");
 ```
 
 ### PlaceholderContext
@@ -444,6 +459,71 @@ Marks a parameter as expression to be converted to SQL.
 
 ```csharp
 Task<List<User>> GetWhereAsync([ExpressionToSql] Expression<Func<User, bool>> predicate);
+```
+
+### [OutputParameter]
+
+Marks a method parameter as an output parameter for SQL execution.
+
+**⚠️ Important**: C# does not allow `ref` and `out` parameters in async methods. Output parameters must be used with synchronous methods only.
+
+```csharp
+using System.Data;
+using Sqlx.Annotations;
+
+public interface IUserRepository
+{
+    // Out parameter (Output mode) - receives value from database
+    [SqlTemplate("INSERT INTO {{table}} (name, age) VALUES (@name, @age); SELECT last_insert_rowid()")]
+    int InsertAndGetId(
+        string name, 
+        int age, 
+        [OutputParameter(DbType.Int32)] out int id);
+    
+    // Ref parameter (InputOutput mode) - sends and receives value
+    [SqlTemplate("UPDATE counters SET value = value + 1 WHERE name = @name; SELECT value FROM counters WHERE name = @name")]
+    int IncrementCounter(
+        string name,
+        [OutputParameter(DbType.Int32)] ref int currentValue);
+    
+    // Multiple output parameters
+    [SqlTemplate("INSERT INTO orders (total, created_at) VALUES (@total, datetime('now')); SELECT last_insert_rowid(), datetime('now')")]
+    int CreateOrder(
+        decimal total,
+        [OutputParameter(DbType.Int32)] out int orderId,
+        [OutputParameter(DbType.String, Size = 50)] out string createdAt);
+}
+```
+
+**Properties:**
+- `DbType` (required) - The database type of the output parameter
+- `Size` (optional) - The size for variable-length types (strings, binary data)
+
+**Parameter Modes:**
+- `out` parameter → `ParameterDirection.Output` - Only receives value from database
+- `ref` parameter → `ParameterDirection.InputOutput` - Sends initial value and receives updated value
+
+**Features:**
+- ✅ Type-safe - Compile-time validation
+- ✅ Dual mode - Supports both out and ref parameters
+- ✅ Multiple parameters - Can have multiple output parameters in one method
+- ✅ AOT compatible - Fully supports Native AOT
+- ⚠️ Synchronous only - C# language limitation prevents use in async methods
+
+**Example Usage:**
+```csharp
+// Out parameter
+var result = repo.InsertAndGetId("John", 25, out int newId);
+Console.WriteLine($"Inserted ID: {newId}");
+
+// Ref parameter
+int counter = 100;
+repo.IncrementCounter("page_views", ref counter);
+Console.WriteLine($"New value: {counter}"); // 101
+
+// Multiple output parameters
+repo.CreateOrder(99.99m, out int orderId, out string timestamp);
+Console.WriteLine($"Order {orderId} created at {timestamp}");
 ```
 
 ## Dialects

@@ -1312,4 +1312,415 @@ public class SqlBuilderTests
         // Assert
         Assert.AreSame(template, result);
     }
+
+    [TestMethod]
+    public void SqlTemplate_OutputParameters_InitiallyEmpty()
+    {
+        // Arrange
+        var columns = new[] { new ColumnMeta("id", "id", DbType.Int32, false) };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "users", columns);
+        using var builder = new SqlBuilder(context);
+        builder.AppendRaw("SELECT * FROM users");
+
+        // Act
+        var template = builder.Build();
+
+        // Assert
+        Assert.AreEqual(0, template.OutputParameters.Count);
+    }
+
+    [TestMethod]
+    public void SqlTemplate_AddOutputParameter_WithSize_StoresSize()
+    {
+        // Arrange
+        var columns = new[] { new ColumnMeta("id", "id", DbType.Int32, false) };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "users", columns);
+        using var builder = new SqlBuilder(context);
+        builder.AppendRaw("EXEC GetUserName @userId, @userName OUT");
+
+        // Act
+        var template = builder.Build();
+        template.AddOutputParameter("userName", DbType.String);
+
+        // Assert
+        Assert.AreEqual(DbType.String, template.OutputParameters["userName"]);
+    }
+
+    [TestMethod]
+    public void SqlTemplate_AddOutputParameter_SameNameTwice_OverwritesPrevious()
+    {
+        // Arrange
+        var columns = new[] { new ColumnMeta("id", "id", DbType.Int32, false) };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "users", columns);
+        using var builder = new SqlBuilder(context);
+        builder.AppendRaw("EXEC GetValue @value OUT");
+
+        // Act
+        var template = builder.Build();
+        template.AddOutputParameter("value", DbType.Int32);
+        template.AddOutputParameter("value", DbType.String); // Overwrite
+
+        // Assert
+        Assert.AreEqual(1, template.OutputParameters.Count);
+        Assert.AreEqual(DbType.String, template.OutputParameters["value"]);
+    }
+
+    [TestMethod]
+    public void SqlTemplate_AddOutputParameter_DifferentDbTypes_AllSupported()
+    {
+        // Arrange
+        var columns = new[] { new ColumnMeta("id", "id", DbType.Int32, false) };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "users", columns);
+        using var builder = new SqlBuilder(context);
+        builder.AppendRaw("EXEC GetMultipleValues");
+
+        // Act
+        var template = builder.Build();
+        template.AddOutputParameter("intValue", DbType.Int32)
+                .AddOutputParameter("stringValue", DbType.String)
+                .AddOutputParameter("dateValue", DbType.DateTime)
+                .AddOutputParameter("boolValue", DbType.Boolean)
+                .AddOutputParameter("decimalValue", DbType.Decimal)
+                .AddOutputParameter("guidValue", DbType.Guid);
+
+        // Assert
+        Assert.AreEqual(6, template.OutputParameters.Count);
+        Assert.AreEqual(DbType.Int32, template.OutputParameters["intValue"]);
+        Assert.AreEqual(DbType.String, template.OutputParameters["stringValue"]);
+        Assert.AreEqual(DbType.DateTime, template.OutputParameters["dateValue"]);
+        Assert.AreEqual(DbType.Boolean, template.OutputParameters["boolValue"]);
+        Assert.AreEqual(DbType.Decimal, template.OutputParameters["decimalValue"]);
+        Assert.AreEqual(DbType.Guid, template.OutputParameters["guidValue"]);
+    }
+
+    [TestMethod]
+    public void SqlTemplate_FromBuilder_OutputParametersEmpty()
+    {
+        // Arrange
+        var sql = "SELECT * FROM users WHERE id = @id";
+        var parameters = new Dictionary<string, object?> { { "id", 123 } };
+
+        // Act
+        var template = SqlTemplate.FromBuilder(sql, parameters);
+
+        // Assert
+        Assert.AreEqual(0, template.OutputParameters.Count);
+    }
+
+    [TestMethod]
+    public void SqlTemplate_FromBuilder_CanAddOutputParameters()
+    {
+        // Arrange
+        var sql = "EXEC GetUserId @name, @userId OUT";
+        var parameters = new Dictionary<string, object?> { { "name", "John" } };
+        var template = SqlTemplate.FromBuilder(sql, parameters);
+
+        // Act
+        template.AddOutputParameter("userId", DbType.Int32);
+
+        // Assert
+        Assert.AreEqual(1, template.OutputParameters.Count);
+        Assert.AreEqual(DbType.Int32, template.OutputParameters["userId"]);
+    }
+
+    [TestMethod]
+    public void SqlTemplate_AddOutputParameter_EmptyName_StillAdds()
+    {
+        // Arrange
+        var columns = new[] { new ColumnMeta("id", "id", DbType.Int32, false) };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "users", columns);
+        using var builder = new SqlBuilder(context);
+        builder.AppendRaw("EXEC GetValue");
+
+        // Act
+        var template = builder.Build();
+        template.AddOutputParameter("", DbType.Int32);
+
+        // Assert
+        Assert.AreEqual(1, template.OutputParameters.Count);
+        Assert.IsTrue(template.OutputParameters.ContainsKey(""));
+    }
+
+    [TestMethod]
+    public void SqlTemplate_AddOutputParameter_WithInputParameters_BothPresent()
+    {
+        // Arrange
+        var columns = new[] { new ColumnMeta("id", "id", DbType.Int32, false) };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "users", columns);
+        using var builder = new SqlBuilder(context);
+        builder.Append($"EXEC GetUserInfo {123}, @userName OUT");
+
+        // Act
+        var template = builder.Build();
+        template.AddOutputParameter("userName", DbType.String);
+
+        // Assert
+        Assert.AreEqual(1, template.Parameters.Count); // Input parameter
+        Assert.AreEqual(123, template.Parameters["p0"]);
+        Assert.AreEqual(1, template.OutputParameters.Count); // Output parameter
+        Assert.AreEqual(DbType.String, template.OutputParameters["userName"]);
+    }
+
+    #region Additional Output Parameter Tests
+
+    [TestMethod]
+    public void SqlTemplate_AddOutputParameter_WithNullName_ThrowsArgumentNullException()
+    {
+        // Arrange
+        var columns = new[] { new ColumnMeta("id", "id", DbType.Int32, false) };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "test", columns);
+        using var builder = new SqlBuilder(context);
+        builder.AppendRaw("SELECT 1");
+        var template = builder.Build();
+
+        // Act & Assert
+        Assert.ThrowsException<ArgumentNullException>(() =>
+        {
+            template.AddOutputParameter(null!, DbType.Int32);
+        });
+    }
+
+    [TestMethod]
+    public void SqlTemplate_AddOutputParameter_FluentApi_ReturnsTemplate()
+    {
+        // Arrange
+        var columns = new[] { new ColumnMeta("id", "id", DbType.Int32, false) };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "test", columns);
+        using var builder = new SqlBuilder(context);
+        builder.AppendRaw("INSERT INTO test VALUES (@value)");
+        var template = builder.Build();
+
+        // Act
+        var result = template.AddOutputParameter("id", DbType.Int32);
+
+        // Assert
+        Assert.AreSame(template, result);
+    }
+
+    [TestMethod]
+    public void SqlTemplate_AddOutputParameter_FluentChaining_Works()
+    {
+        // Arrange
+        var columns = new[] { new ColumnMeta("id", "id", DbType.Int32, false) };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "test", columns);
+        using var builder = new SqlBuilder(context);
+        builder.AppendRaw("EXEC MultiOutputProc");
+        var template = builder.Build();
+
+        // Act
+        template
+            .AddOutputParameter("id", DbType.Int32)
+            .AddOutputParameter("name", DbType.String)
+            .AddOutputParameter("count", DbType.Int64);
+
+        // Assert
+        Assert.AreEqual(3, template.OutputParameters.Count);
+        Assert.AreEqual(DbType.Int32, template.OutputParameters["id"]);
+        Assert.AreEqual(DbType.String, template.OutputParameters["name"]);
+        Assert.AreEqual(DbType.Int64, template.OutputParameters["count"]);
+    }
+
+    [TestMethod]
+    public void SqlTemplate_AddOutputParameter_AllDbTypes_Supported()
+    {
+        // Arrange
+        var columns = new[] { new ColumnMeta("id", "id", DbType.Int32, false) };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "test", columns);
+        using var builder = new SqlBuilder(context);
+        builder.AppendRaw("SELECT 1");
+        var template = builder.Build();
+
+        // Act & Assert - Test all DbType enum values
+        foreach (DbType dbType in Enum.GetValues(typeof(DbType)))
+        {
+            var paramName = $"param_{dbType}";
+            template.AddOutputParameter(paramName, dbType);
+            Assert.AreEqual(dbType, template.OutputParameters[paramName]);
+        }
+    }
+
+    [TestMethod]
+    public void SqlTemplate_AddOutputParameter_WithZeroSize_Works()
+    {
+        // Arrange
+        var columns = new[] { new ColumnMeta("id", "id", DbType.Int32, false) };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "test", columns);
+        using var builder = new SqlBuilder(context);
+        builder.AppendRaw("SELECT 1");
+        var template = builder.Build();
+
+        // Act
+        template.AddOutputParameter("param", DbType.String);
+
+        // Assert
+        Assert.AreEqual(1, template.OutputParameters.Count);
+        Assert.AreEqual(DbType.String, template.OutputParameters["param"]);
+    }
+
+    [TestMethod]
+    public void SqlTemplate_AddOutputParameter_WithNegativeSize_Works()
+    {
+        // Arrange
+        var columns = new[] { new ColumnMeta("id", "id", DbType.Int32, false) };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "test", columns);
+        using var builder = new SqlBuilder(context);
+        builder.AppendRaw("SELECT 1");
+        var template = builder.Build();
+
+        // Act
+        template.AddOutputParameter("param", DbType.String);
+
+        // Assert
+        Assert.AreEqual(1, template.OutputParameters.Count);
+        Assert.AreEqual(DbType.String, template.OutputParameters["param"]);
+    }
+
+    [TestMethod]
+    public void SqlTemplate_AddOutputParameter_WithMaxSize_Works()
+    {
+        // Arrange
+        var columns = new[] { new ColumnMeta("id", "id", DbType.Int32, false) };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "test", columns);
+        using var builder = new SqlBuilder(context);
+        builder.AppendRaw("SELECT 1");
+        var template = builder.Build();
+
+        // Act
+        template.AddOutputParameter("param", DbType.String);
+
+        // Assert
+        Assert.AreEqual(1, template.OutputParameters.Count);
+        Assert.AreEqual(DbType.String, template.OutputParameters["param"]);
+    }
+
+    [TestMethod]
+    public void SqlTemplate_OutputParameters_IndependentFromInputParameters()
+    {
+        // Arrange
+        var columns = new[] { new ColumnMeta("id", "id", DbType.Int32, false) };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "test", columns);
+        using var builder = new SqlBuilder(context);
+        builder.Append($"INSERT INTO test VALUES ({123})");
+        var template = builder.Build();
+
+        // Act
+        template.AddOutputParameter("output", DbType.Int32);
+
+        // Assert
+        Assert.AreEqual(1, template.Parameters.Count);
+        Assert.AreEqual(1, template.OutputParameters.Count);
+        Assert.IsTrue(template.Parameters.ContainsKey("p0"));
+        Assert.IsTrue(template.OutputParameters.ContainsKey("output"));
+        Assert.IsFalse(template.Parameters.ContainsKey("output"));
+        Assert.IsFalse(template.OutputParameters.ContainsKey("p0"));
+    }
+
+    [TestMethod]
+    public void SqlTemplate_AddOutputParameter_MultipleCallsSameName_LastWins()
+    {
+        // Arrange
+        var columns = new[] { new ColumnMeta("id", "id", DbType.Int32, false) };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "test", columns);
+        using var builder = new SqlBuilder(context);
+        builder.AppendRaw("SELECT 1");
+        var template = builder.Build();
+
+        // Act
+        template.AddOutputParameter("param", DbType.Int32);
+        template.AddOutputParameter("param", DbType.String);
+        template.AddOutputParameter("param", DbType.DateTime);
+
+        // Assert
+        Assert.AreEqual(1, template.OutputParameters.Count);
+        Assert.AreEqual(DbType.DateTime, template.OutputParameters["param"]);
+    }
+
+    [TestMethod]
+    public void SqlTemplate_AddOutputParameter_CaseSensitiveNames_TreatedAsDifferent()
+    {
+        // Arrange
+        var columns = new[] { new ColumnMeta("id", "id", DbType.Int32, false) };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "test", columns);
+        using var builder = new SqlBuilder(context);
+        builder.AppendRaw("SELECT 1");
+        var template = builder.Build();
+
+        // Act
+        template.AddOutputParameter("Param", DbType.Int32);
+        template.AddOutputParameter("param", DbType.String);
+        template.AddOutputParameter("PARAM", DbType.DateTime);
+
+        // Assert
+        Assert.AreEqual(3, template.OutputParameters.Count);
+        Assert.AreEqual(DbType.Int32, template.OutputParameters["Param"]);
+        Assert.AreEqual(DbType.String, template.OutputParameters["param"]);
+        Assert.AreEqual(DbType.DateTime, template.OutputParameters["PARAM"]);
+    }
+
+    [TestMethod]
+    public void SqlTemplate_AddOutputParameter_SpecialCharactersInName_Works()
+    {
+        // Arrange
+        var columns = new[] { new ColumnMeta("id", "id", DbType.Int32, false) };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "test", columns);
+        using var builder = new SqlBuilder(context);
+        builder.AppendRaw("SELECT 1");
+        var template = builder.Build();
+
+        // Act
+        template.AddOutputParameter("param_1", DbType.Int32);
+        template.AddOutputParameter("param-2", DbType.String);
+        template.AddOutputParameter("param.3", DbType.DateTime);
+        template.AddOutputParameter("param@4", DbType.Boolean);
+
+        // Assert
+        Assert.AreEqual(4, template.OutputParameters.Count);
+        Assert.IsTrue(template.OutputParameters.ContainsKey("param_1"));
+        Assert.IsTrue(template.OutputParameters.ContainsKey("param-2"));
+        Assert.IsTrue(template.OutputParameters.ContainsKey("param.3"));
+        Assert.IsTrue(template.OutputParameters.ContainsKey("param@4"));
+    }
+
+    [TestMethod]
+    public void SqlTemplate_AddOutputParameter_VeryLongName_Works()
+    {
+        // Arrange
+        var columns = new[] { new ColumnMeta("id", "id", DbType.Int32, false) };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "test", columns);
+        using var builder = new SqlBuilder(context);
+        builder.AppendRaw("SELECT 1");
+        var template = builder.Build();
+        var longName = new string('a', 1000);
+
+        // Act
+        template.AddOutputParameter(longName, DbType.Int32);
+
+        // Assert
+        Assert.AreEqual(1, template.OutputParameters.Count);
+        Assert.IsTrue(template.OutputParameters.ContainsKey(longName));
+    }
+
+    [TestMethod]
+    public void SqlTemplate_AddOutputParameter_UnicodeCharactersInName_Works()
+    {
+        // Arrange
+        var columns = new[] { new ColumnMeta("id", "id", DbType.Int32, false) };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "test", columns);
+        using var builder = new SqlBuilder(context);
+        builder.AppendRaw("SELECT 1");
+        var template = builder.Build();
+
+        // Act
+        template.AddOutputParameter("参数名称", DbType.Int32);
+        template.AddOutputParameter("パラメータ", DbType.String);
+        template.AddOutputParameter("параметр", DbType.DateTime);
+
+        // Assert
+        Assert.AreEqual(3, template.OutputParameters.Count);
+        Assert.IsTrue(template.OutputParameters.ContainsKey("参数名称"));
+        Assert.IsTrue(template.OutputParameters.ContainsKey("パラメータ"));
+        Assert.IsTrue(template.OutputParameters.ContainsKey("параметр"));
+    }
+
+    #endregion
 }

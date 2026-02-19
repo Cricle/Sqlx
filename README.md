@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-purple.svg)](#)
 [![LTS](https://img.shields.io/badge/LTS-.NET%2010-green.svg)](#)
-[![Tests](https://img.shields.io/badge/tests-2618%20passing-brightgreen.svg)](#)
+[![Tests](https://img.shields.io/badge/tests-2665%20passing-brightgreen.svg)](#)
 [![AOT](https://img.shields.io/badge/AOT-ready-blue.svg)](#)
 [![Performance](https://img.shields.io/badge/performance-optimized-orange.svg)](#)
 
@@ -56,6 +56,10 @@ public interface IUserRepository : ICrudRepository<User, long>
 {
     [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE age >= @minAge")]
     Task<List<User>> GetAdultsAsync(int minAge);
+    
+    // 输出参数支持（仅同步方法，C#不支持异步方法使用out/ref）
+    [SqlTemplate("INSERT INTO {{table}} (name, age) VALUES (@name, @age)")]
+    int InsertAndGetId(string name, int age, [OutputParameter(DbType.Int32)] out int id);
 }
 
 // 3. 实现仓储（代码自动生成）
@@ -67,6 +71,10 @@ public partial class UserRepository(DbConnection connection) : IUserRepository {
 await using var conn = new SqliteConnection("Data Source=app.db");
 var repo = new UserRepository(conn);
 var adults = await repo.GetAdultsAsync(18);
+
+// 使用输出参数（同步方法）
+var result = repo.InsertAndGetId("John", 25, out int newId);
+Console.WriteLine($"Inserted ID: {newId}");
 ```
 
 **重要说明：** Sqlx 中有两个不同的 `SqlTemplate`：
@@ -300,6 +308,84 @@ var users = await repo.FilterAsync(filter);
 var all = await repo.FilterAsync(new Dictionary<string, object?>());
 // 生成: SELECT ... WHERE 1=1
 ```
+
+## 输出参数（Output Parameters）
+
+Sqlx 支持 SQL 输出参数，用于存储过程、获取生成的 ID 或返回计算值。
+
+### 同步方法：使用 Out/Ref 参数
+
+#### Out 参数（Output 模式）
+
+```csharp
+public interface IUserRepository
+{
+    // 单个输出参数（同步方法）
+    [SqlTemplate("INSERT INTO {{table}} (name, age) VALUES (@name, @age); SELECT last_insert_rowid()")]
+    int InsertAndGetId(
+        string name, 
+        int age, 
+        [OutputParameter(DbType.Int32)] out int id);
+}
+
+// 使用
+var result = repo.InsertAndGetId("John", 25, out int newId);
+Console.WriteLine($"Inserted ID: {newId}");
+```
+
+#### Ref 参数（InputOutput 模式）
+
+```csharp
+public interface ICounterRepository
+{
+    // ref 参数：传入当前值，返回更新后的值（同步方法）
+    [SqlTemplate("UPDATE counters SET value = value + 1 WHERE name = @name; SELECT value FROM counters WHERE name = @name")]
+    int IncrementCounter(
+        string name,
+        [OutputParameter(DbType.Int32)] ref int currentValue);
+}
+
+// 使用
+int counter = 100;
+var result = repo.IncrementCounter("page_views", ref counter);
+Console.WriteLine($"New counter value: {counter}"); // 输出: 101
+```
+
+### 异步方法：使用 OutputParameter<T> 包装类
+
+由于 C# 不允许在异步方法中使用 `ref` 和 `out` 参数，Sqlx 提供了 `OutputParameter<T>` 包装类：
+
+```csharp
+public interface IUserRepository
+{
+    // 使用 OutputParameter<T> 包装类（异步方法）
+    [SqlTemplate("INSERT INTO users (name, age) VALUES (@name, @age); SELECT last_insert_rowid()")]
+    Task<int> InsertUserAsync(
+        string name, 
+        int age, 
+        [OutputParameter(DbType.Int32)] OutputParameter<int> userId);
+}
+
+// 使用
+var userId = new OutputParameter<int>();
+var result = await repo.InsertUserAsync("Alice", 25, userId);
+Console.WriteLine($"插入了 {result} 行，ID: {userId.Value}");
+
+// InputOutput 模式（带初始值）
+var counter = OutputParameter<int>.WithValue(100);
+var result = await repo.IncrementCounterAsync("page_views", counter);
+Console.WriteLine($"新值: {counter.Value}"); // 输出: 101
+```
+
+### 特性
+
+- ✅ **类型安全** - 编译时验证参数类型
+- ✅ **双向支持** - out（Output）和 ref（InputOutput）
+- ✅ **多参数** - 支持多个输出参数
+- ✅ **异步支持** - 通过 OutputParameter<T> 包装类
+- ✅ **AOT 兼容** - 完全支持 Native AOT
+
+> 详细示例见 [samples/OutputParameterExample.cs](samples/OutputParameterExample.cs) 和 [samples/StoredProcedureOutputExample.cs](samples/StoredProcedureOutputExample.cs)
 
 ## IQueryable 查询构建器
 
@@ -908,6 +994,7 @@ public readonly record struct Point(int X, int Y);
 ## 更多文档
 
 - [快速开始](docs/getting-started.md)
+- [输出参数](docs/output-parameters.md)
 - [SqlBuilder 动态 SQL 构建器](docs/sqlbuilder.md)
 - [SQL 模板](docs/sql-templates.md)
 - [数据库方言](docs/dialects.md)

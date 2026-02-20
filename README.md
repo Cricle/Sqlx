@@ -387,6 +387,103 @@ Console.WriteLine($"新值: {counter.Value}"); // 输出: 101
 
 > 详细示例见 [samples/OutputParameterExample.cs](samples/OutputParameterExample.cs) 和 [samples/StoredProcedureOutputExample.cs](samples/StoredProcedureOutputExample.cs)
 
+## 多结果集（Multiple Result Sets）
+
+Sqlx 支持使用元组返回类型从单个 SQL 查询返回多个标量值，在一次数据库调用中高效获取多个相关值。
+
+### 基本用法
+
+```csharp
+public interface IUserRepository
+{
+    // 使用 ResultSetMapping 明确指定映射关系
+    [SqlTemplate(@"
+        INSERT INTO users (name) VALUES (@name);
+        SELECT last_insert_rowid();
+        SELECT COUNT(*) FROM users
+    ")]
+    [ResultSetMapping(0, "rowsAffected")]
+    [ResultSetMapping(1, "userId")]
+    [ResultSetMapping(2, "totalUsers")]
+    Task<(int rowsAffected, long userId, int totalUsers)> InsertAndGetStatsAsync(string name);
+}
+
+// 使用
+var (rows, userId, total) = await repo.InsertAndGetStatsAsync("Alice");
+Console.WriteLine($"插入用户 {userId}，总用户数: {total}");
+```
+
+### 默认映射
+
+不指定 `[ResultSetMapping]` 时使用默认映射：
+- 第1个元素 → 受影响行数（ExecuteNonQuery）
+- 其余元素 → SELECT 结果（按顺序）
+
+```csharp
+[SqlTemplate(@"
+    INSERT INTO users (name) VALUES (@name);
+    SELECT last_insert_rowid();
+    SELECT COUNT(*) FROM users
+")]
+Task<(int rowsAffected, long userId, int totalUsers)> InsertAndGetStatsAsync(string name);
+```
+
+### 多个 SELECT 语句
+
+```csharp
+[SqlTemplate(@"
+    SELECT COUNT(*) FROM users;
+    SELECT MAX(id) FROM users;
+    SELECT MIN(id) FROM users
+")]
+[ResultSetMapping(0, "totalUsers")]
+[ResultSetMapping(1, "maxId")]
+[ResultSetMapping(2, "minId")]
+Task<(int totalUsers, long maxId, long minId)> GetUserStatsAsync();
+```
+
+### 同步和异步支持
+
+```csharp
+// 异步
+[SqlTemplate("...")]
+Task<(int rows, long id)> InsertAsync(string name);
+
+// 同步
+[SqlTemplate("...")]
+(int rows, long id) Insert(string name);
+```
+
+### 与输出参数结合使用
+
+可以同时使用输出参数和元组返回（需要数据库支持输出参数）：
+
+```csharp
+[SqlTemplate(@"
+    INSERT INTO users (name, created_at) VALUES (@name, @createdAt);
+    SELECT last_insert_rowid();
+    SELECT COUNT(*) FROM users
+")]
+[ResultSetMapping(0, "rowsAffected")]
+[ResultSetMapping(1, "userId")]
+[ResultSetMapping(2, "totalUsers")]
+(int rowsAffected, long userId, int totalUsers) InsertAndGetStats(
+    string name,
+    [OutputParameter(DbType.DateTime)] ref DateTime createdAt);
+```
+
+**注意**: SQLite 不支持输出参数，此功能仅适用于 SQL Server、PostgreSQL、MySQL 等数据库。
+
+### 特性
+
+- ✅ **单次往返** - 一次数据库调用获取所有值
+- ✅ **类型安全** - 编译时类型检查
+- ✅ **零反射** - 编译时代码生成
+- ✅ **AOT 兼容** - 完全支持 Native AOT
+- ✅ **自动转换** - 自动进行类型转换
+
+> 详细文档见 [docs/multiple-result-sets.md](docs/multiple-result-sets.md)
+
 ## IQueryable 查询构建器
 
 使用标准 LINQ 语法构建类型安全的 SQL 查询：

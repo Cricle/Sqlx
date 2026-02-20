@@ -15,7 +15,7 @@ env:
 jobs:
   # 🧪 单元测试
   test:
-    name: 🧪 Tests
+    name: 🧪 Unit Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -40,10 +40,11 @@ jobs:
     - name: 🏗️ Build
       run: dotnet build --configuration Release --no-restore /p:TreatWarningsAsErrors=true
 
-    - name: 🧪 Run Tests
+    - name: 🧪 Run Unit Tests
       timeout-minutes: 10
       run: |
         dotnet test --configuration Release --no-build \
+                    --filter "FullyQualifiedName!~E2ETests" \
                     --collect:"XPlat Code Coverage" \
                     --logger "console;verbosity=minimal" \
                     --logger "trx" \
@@ -54,7 +55,7 @@ jobs:
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: test-results
+        name: unit-test-results
         path: |
           **/TestResults/*.trx
           **/TestResults/**/coverage.cobertura.xml
@@ -69,11 +70,69 @@ jobs:
         files: "**/coverage.cobertura.xml"
         fail_ci_if_error: false
 
+  # 🐳 E2E 测试（使用 Docker 容器）
+  e2e-test:
+    name: 🐳 E2E Tests
+    runs-on: ubuntu-latest
+    needs: [test]
+
+    steps:
+    - name: 📥 Checkout
+      uses: actions/checkout@v4
+
+    - name: 🔧 Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: 📦 Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.props') }}
+        restore-keys: ${{ runner.os }}-nuget-
+
+    - name: 🐳 Verify Docker is available
+      run: |
+        docker --version
+        docker ps
+
+    - name: 📦 Restore dependencies
+      run: dotnet restore
+
+    - name: 🏗️ Build
+      run: dotnet build --configuration Release --no-restore /p:TreatWarningsAsErrors=true
+
+    - name: 🐳 Run E2E Tests
+      timeout-minutes: 15
+      run: |
+        dotnet test --configuration Release --no-build \
+                    --filter "FullyQualifiedName~E2ETests" \
+                    --logger "console;verbosity=detailed" \
+                    --logger "trx" \
+                    --framework net10.0 \
+                    --results-directory ./E2ETestResults
+
+    - name: 📤 Upload E2E test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: e2e-test-results
+        path: |
+          **/E2ETestResults/*.trx
+        retention-days: 7
+
+    - name: 🧹 Cleanup Docker containers
+      if: always()
+      run: |
+        docker ps -aq | xargs -r docker rm -f || true
+        docker volume prune -f || true
+
   # 📦 Package NuGet packages (only on tag push)
   package:
     name: 📦 Package
     runs-on: ubuntu-latest
-    needs: [test]
+    needs: [test, e2e-test]
     if: startsWith(github.ref, 'refs/tags/v')
 
     steps:

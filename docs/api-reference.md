@@ -526,6 +526,94 @@ repo.CreateOrder(99.99m, out int orderId, out string timestamp);
 Console.WriteLine($"Order {orderId} created at {timestamp}");
 ```
 
+### [ResultSetMapping]
+
+Specifies the mapping between result sets and tuple elements in method return values. Use this attribute to explicitly define which result set corresponds to which tuple element when returning multiple scalar values.
+
+```csharp
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = true, Inherited = false)]
+public sealed class ResultSetMappingAttribute : Attribute
+{
+    public ResultSetMappingAttribute(int index, string name);
+    
+    public int Index { get; }    // Zero-based index of the result set
+    public string Name { get; }  // Name of the tuple element
+}
+```
+
+**Parameters:**
+- `index` - Zero-based index of the result set
+  - Index 0: Affected row count (INSERT/UPDATE/DELETE)
+  - Index 1+: SELECT statement results in order
+- `name` - Name of the tuple element (must match exactly)
+
+**Example:**
+
+```csharp
+public interface IUserRepository
+{
+    // Explicit mapping with ResultSetMapping
+    [SqlTemplate(@"
+        INSERT INTO users (name) VALUES (@name);
+        SELECT last_insert_rowid();
+        SELECT COUNT(*) FROM users
+    ")]
+    [ResultSetMapping(0, "rowsAffected")]
+    [ResultSetMapping(1, "userId")]
+    [ResultSetMapping(2, "totalUsers")]
+    Task<(int rowsAffected, long userId, int totalUsers)> InsertAndGetStatsAsync(string name);
+    
+    // Default mapping (no ResultSetMapping attributes)
+    // First element = affected rows, remaining = SELECT results in order
+    [SqlTemplate(@"
+        INSERT INTO users (name) VALUES (@name);
+        SELECT last_insert_rowid()
+    ")]
+    Task<(int rowsAffected, long userId)> InsertAndGetIdAsync(string name);
+    
+    // Multiple SELECT statements
+    [SqlTemplate(@"
+        SELECT COUNT(*) FROM users;
+        SELECT MAX(id) FROM users;
+        SELECT MIN(id) FROM users
+    ")]
+    [ResultSetMapping(0, "totalUsers")]
+    [ResultSetMapping(1, "maxId")]
+    [ResultSetMapping(2, "minId")]
+    Task<(int totalUsers, long maxId, long minId)> GetStatsAsync();
+}
+```
+
+**Usage:**
+
+```csharp
+// With explicit mapping
+var (rows, userId, total) = await repo.InsertAndGetStatsAsync("Alice");
+Console.WriteLine($"Inserted user {userId}, total users: {total}");
+
+// With default mapping
+var (rows2, userId2) = await repo.InsertAndGetIdAsync("Bob");
+
+// Multiple SELECTs
+var (total, maxId, minId) = await repo.GetStatsAsync();
+```
+
+**Features:**
+- ✅ Single database round-trip - All values retrieved in one call
+- ✅ Type-safe - Compile-time type checking
+- ✅ Zero reflection - All code generated at compile-time
+- ✅ AOT compatible - Fully supports Native AOT
+- ✅ Automatic conversion - Handles type conversion automatically
+- ✅ Sync and async - Both synchronous and asynchronous methods supported
+
+**Limitations:**
+- Maximum 8 tuple elements (ValueTuple limitation)
+- Each result set should return a single scalar value (first row, first column)
+- Result sets must be in the same order as SQL statements
+- Nested tuples are not supported
+
+**See also:** [Multiple Result Sets Documentation](multiple-result-sets.md)
+
 ## Dialects
 
 ### SqlDefine

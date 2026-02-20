@@ -275,3 +275,35 @@ int Insert(string name, [OutputParameter(DbType.Int32)] out int id);
 - [API 参考](api-reference.md#outputparameter)
 - [源生成器](source-generators.md)
 - [SQL 模板](sql-templates.md)
+
+
+## 与多结果集结合使用
+
+输出参数可以与多结果集（tuple 返回值）结合使用，在一次数据库调用中获取多种类型的数据：
+
+```csharp
+public interface IUserRepository
+{
+    // 同时使用输出参数和元组返回
+    [SqlTemplate(@"
+        INSERT INTO users (name, created_at) VALUES (@name, @createdAt);
+        SELECT last_insert_rowid();
+        SELECT COUNT(*) FROM users
+    ")]
+    [ResultSetMapping(0, "rowsAffected")]
+    [ResultSetMapping(1, "userId")]
+    [ResultSetMapping(2, "totalUsers")]
+    (int rowsAffected, long userId, int totalUsers) InsertAndGetStats(
+        string name,
+        [OutputParameter(DbType.DateTime)] ref DateTime createdAt);
+}
+
+// 使用
+DateTime created = DateTime.UtcNow;
+var (rows, userId, total) = repo.InsertAndGetStats("Bob", ref created);
+Console.WriteLine($"插入了 {rows} 行，用户 ID: {userId}，总用户数: {total}，创建时间: {created}");
+```
+
+**注意**: 此功能需要数据库支持输出参数（如 SQL Server、PostgreSQL、MySQL）。SQLite 不支持输出参数。
+
+详细信息请参阅 [多结果集文档](multiple-result-sets.md)。

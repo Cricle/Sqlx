@@ -2565,14 +2565,14 @@ public class RepositoryGenerator : IIncrementalGenerator
                 var innerType = paramTypeName.Substring(start, end - start);
                 
                 // Set the value in the wrapper
-                sb.AppendLine($"{param.Name}.Value = ({innerType})cmd.Parameters[{paramFieldName}].Value;");
+                sb.AppendLine($"{param.Name}.Value = ({innerType})cmd.Parameters[{paramFieldName}].Value!;");
                 sb.AppendLine($"{param.Name}.HasValue = true;");
             }
             else
             {
                 // Handle ref/out parameters - need to strip the ref/out modifier
                 var actualType = paramTypeName.Replace("out ", "").Replace("ref ", "").Trim();
-                sb.AppendLine($"{param.Name} = ({actualType})cmd.Parameters[{paramFieldName}].Value;");
+                sb.AppendLine($"{param.Name} = ({actualType})cmd.Parameters[{paramFieldName}].Value!;");
             }
         }
     }

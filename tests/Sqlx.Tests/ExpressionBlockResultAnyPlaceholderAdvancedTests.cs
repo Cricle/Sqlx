@@ -436,8 +436,8 @@ public class ExpressionBlockResultAnyPlaceholderAdvancedTests
         // PostgreSQL
         var postgres = ExpressionBlockResult.Parse(predicate.Body, SqlDefine.PostgreSql)
             .WithParameter("minPrice", 10.0m);
-        Assert.AreEqual("\"price\" > $minPrice", postgres.Sql);
-        Assert.IsTrue(postgres.Parameters.ContainsKey("$minPrice"));
+        Assert.AreEqual("\"price\" > @minPrice", postgres.Sql);
+        Assert.IsTrue(postgres.Parameters.ContainsKey("@minPrice"));
 
         // MySQL
         var mysql = ExpressionBlockResult.Parse(predicate.Body, SqlDefine.MySql)
@@ -475,7 +475,7 @@ public class ExpressionBlockResultAnyPlaceholderAdvancedTests
         // PostgreSQL
         var postgres = ExpressionBlockResult.ParseUpdate(updateExpr, SqlDefine.PostgreSql)
             .WithParameter("newPrice", 99.99m);
-        Assert.AreEqual("\"price\" = $newPrice", postgres.Sql);
+        Assert.AreEqual("\"price\" = @newPrice", postgres.Sql);
 
         // MySQL
         var mysql = ExpressionBlockResult.ParseUpdate(updateExpr, SqlDefine.MySql)

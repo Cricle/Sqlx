@@ -42,7 +42,7 @@ public class ValuesPlaceholderDialectTests
 
         var result = handler.Process(context, string.Empty);
 
-        Assert.AreEqual("$id, $name, $email", result);
+        Assert.AreEqual("@id, @name, @email", result);
     }
 
     [TestMethod]
@@ -104,7 +104,7 @@ public class ValuesPlaceholderDialectTests
         var context = new PlaceholderContext(SqlDefine.PostgreSql, "users", TestColumns);
         var template = SqlTemplate.Prepare("INSERT INTO {{table}} ({{columns}}) VALUES ({{values}})", context);
 
-        Assert.AreEqual("INSERT INTO \"users\" (\"id\", \"name\", \"email\") VALUES ($id, $name, $email)", template.Sql);
+        Assert.AreEqual("INSERT INTO \"users\" (\"id\", \"name\", \"email\") VALUES (@id, @name, @email)", template.Sql);
     }
 
     [TestMethod]

@@ -298,11 +298,11 @@ public class SetPlaceholderStrictTests
     public void Set_PostgreSQL_UsesDoubleQuotesAndDollarPrefix()
     {
         var context = new PlaceholderContext(SqlDefine.PostgreSql, "users", StandardColumns);
-        var template = SqlTemplate.Prepare("UPDATE {{table}} SET {{set --exclude Id}} WHERE id = $id", context);
+        var template = SqlTemplate.Prepare("UPDATE {{table}} SET {{set --exclude Id}} WHERE id = @id", context);
 
         var sql = template.Sql;
-        Assert.IsTrue(sql.Contains("\"name\" = $name"));
-        Assert.IsTrue(sql.Contains("\"email\" = $email"));
+        Assert.IsTrue(sql.Contains("\"name\" = @name"));
+        Assert.IsTrue(sql.Contains("\"email\" = @email"));
     }
 
     [TestMethod]
@@ -378,9 +378,9 @@ public class SetPlaceholderStrictTests
         };
 
         var context = new PlaceholderContext(SqlDefine.PostgreSql, "docs", columns);
-        var template = SqlTemplate.Prepare("UPDATE {{table}} SET {{set --exclude Id --inline Version=Version+1}} WHERE id = $id", context);
+        var template = SqlTemplate.Prepare("UPDATE {{table}} SET {{set --exclude Id --inline Version=Version+1}} WHERE id = @id", context);
 
-        Assert.AreEqual("UPDATE \"docs\" SET \"version\" = \"version\"+1 WHERE id = $id", template.Sql);
+        Assert.AreEqual("UPDATE \"docs\" SET \"version\" = \"version\"+1 WHERE id = @id", template.Sql);
     }
 
     [TestMethod]

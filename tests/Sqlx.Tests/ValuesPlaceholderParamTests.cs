@@ -47,7 +47,7 @@ public class ValuesPlaceholderParamTests
         var result = handler.Process(context, "--param ids");
 
         // Assert
-        Assert.AreEqual("$ids", result);
+        Assert.AreEqual("@ids", result);
     }
 
     [TestMethod]

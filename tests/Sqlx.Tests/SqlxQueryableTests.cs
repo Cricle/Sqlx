@@ -994,7 +994,7 @@ public class SqlxQueryableParameterizedTests
             .Where(u => u.Id == 1)
             .ToSqlWithParameters();
         
-        Assert.IsTrue(sql.Contains("$p"), $"SQL: {sql}");
+        Assert.IsTrue(sql.Contains("@p"), $"SQL: {sql}");
     }
 
     [TestMethod]

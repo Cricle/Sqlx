@@ -268,7 +268,7 @@ public class ValuesPlaceholderHandlerTests
         var result = handler.Process(context, "");
 
         // Assert
-        Assert.IsTrue(result.Contains("$"), $"Result: {result}");
+        Assert.IsTrue(result.Contains("@"), $"Result: {result}");
     }
 
     [TestMethod]

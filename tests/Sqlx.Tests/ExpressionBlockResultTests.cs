@@ -152,9 +152,9 @@ public class ExpressionBlockResultTests
         var result = ExpressionBlockResult.Parse(predicate.Body, SqlDefine.PostgreSql);
 
         // Assert
-        Assert.AreEqual("\"age\" > $p0", result.Sql);
+        Assert.AreEqual("\"age\" > @p0", result.Sql);
         Assert.AreEqual(1, result.Parameters.Count);
-        Assert.AreEqual(18, result.Parameters["$p0"]);
+        Assert.AreEqual(18, result.Parameters["@p0"]);
     }
 
     [TestMethod]

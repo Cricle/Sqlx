@@ -243,9 +243,9 @@ public class ExpressionBlockResultAnyPlaceholderTests
             .WithParameter("minAge", 18);
 
         // Assert
-        Assert.AreEqual("\"age\" > $minAge", result.Sql);
+        Assert.AreEqual("\"age\" > @minAge", result.Sql);
         Assert.AreEqual(1, result.Parameters.Count);
-        Assert.AreEqual(18, result.Parameters["$minAge"]);
+        Assert.AreEqual(18, result.Parameters["@minAge"]);
     }
 
     [TestMethod]

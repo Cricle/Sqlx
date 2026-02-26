@@ -26,7 +26,7 @@ public class SqlDialectTests
     [DataRow("SQLite", "@param")]
     [DataRow("SqlServer", "@param")]
     [DataRow("MySql", "@param")]
-    [DataRow("PostgreSql", "$param")]
+    [DataRow("PostgreSql", "@param")]
     [DataRow("Oracle", ":param")]
     [DataRow("DB2", "?param")]
     public void CreateParameter_UsesCorrectPrefix(string dialect, string expected) =>

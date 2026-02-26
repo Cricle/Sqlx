@@ -122,7 +122,7 @@ public class PlaceholderGenerationValidationTests
         var dialects = new[]
         {
             (SqlDefine.SQLite, "[", "]", "@"),
-            (SqlDefine.PostgreSql, "\"", "\"", "$"),
+            (SqlDefine.PostgreSql, "\"", "\"", "@"),
             (SqlDefine.MySql, "`", "`", "@"),
             (SqlDefine.SqlServer, "[", "]", "@"),
             (SqlDefine.Oracle, "\"", "\"", ":"),

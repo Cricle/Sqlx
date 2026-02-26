@@ -118,8 +118,8 @@ public class ValuesPlaceholderInlineTests
             context);
 
         var sql = template.Sql;
-        Assert.IsTrue(sql.Contains("$id"));
-        Assert.IsTrue(sql.Contains("$name"));
+        Assert.IsTrue(sql.Contains("@id"));
+        Assert.IsTrue(sql.Contains("@name"));
         Assert.IsTrue(sql.Contains("NOW()"));
     }
 

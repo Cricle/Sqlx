@@ -85,7 +85,7 @@ public class ArgPlaceholderHandlerTests
         var result = handler.Process(context, "--param id");
 
         // Assert
-        Assert.AreEqual("$id", result);
+        Assert.AreEqual("@id", result);
     }
 
     [TestMethod]

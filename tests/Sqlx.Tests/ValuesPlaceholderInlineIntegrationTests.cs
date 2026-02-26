@@ -87,7 +87,7 @@ public class ValuesPlaceholderInlineIntegrationTests
 
         var sql = template.Sql;
         Assert.IsTrue(sql.Contains("gen_random_uuid()"));
-        Assert.IsTrue(sql.Contains("$name"));
+        Assert.IsTrue(sql.Contains("@name"));
         Assert.IsTrue(sql.Contains("NOW()"));
     }
 
@@ -112,8 +112,8 @@ public class ValuesPlaceholderInlineIntegrationTests
 
         var sql = template.Sql;
         Assert.IsTrue(sql.Contains("nextval('products_id_seq')"));
-        Assert.IsTrue(sql.Contains("$code"));
-        Assert.IsTrue(sql.Contains("$name"));
+        Assert.IsTrue(sql.Contains("@code"));
+        Assert.IsTrue(sql.Contains("@name"));
     }
 
     #endregion
@@ -312,7 +312,7 @@ public class ValuesPlaceholderInlineIntegrationTests
             context);
 
         Assert.IsTrue(template.Sql.Contains("NOW()"));
-        Assert.IsTrue(template.Sql.Contains("$name"));
+        Assert.IsTrue(template.Sql.Contains("@name"));
     }
 
     [TestMethod]

@@ -265,7 +265,7 @@ public class SqlxQueryableCrossDialectTests
     [DataRow("SQLite", "@p")]
     [DataRow("SqlServer", "@p")]
     [DataRow("MySql", "@p")]
-    [DataRow("PostgreSQL", "$p")]
+    [DataRow("PostgreSQL", "@p")]
     [DataRow("Oracle", ":p")]
     [DataRow("DB2", "?")]
     public void ParameterizedQuery_AllDialects_UsesCorrectPrefix(string dialect, string expectedPrefix)
@@ -550,7 +550,7 @@ public class SqlxQueryableNestedTests
     [DataRow("SQLite", "@p")]
     [DataRow("SqlServer", "@p")]
     [DataRow("MySql", "@p")]
-    [DataRow("PostgreSQL", "$p")]
+    [DataRow("PostgreSQL", "@p")]
     [DataRow("Oracle", ":p")]
     [DataRow("DB2", "?")]
     public void ParameterizedComplexQuery_AllDialects(string dialect, string expectedPrefix)

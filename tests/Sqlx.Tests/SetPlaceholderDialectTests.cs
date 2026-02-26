@@ -42,7 +42,7 @@ public class SetPlaceholderDialectTests
 
         var result = handler.Process(context, string.Empty);
 
-        Assert.AreEqual("\"id\" = $id, \"name\" = $name, \"email\" = $email", result);
+        Assert.AreEqual("\"id\" = @id, \"name\" = @name, \"email\" = @email", result);
     }
 
     [TestMethod]
@@ -102,9 +102,9 @@ public class SetPlaceholderDialectTests
     public void Set_InUpdateStatement_PostgreSQL_GeneratesCorrectSql()
     {
         var context = new PlaceholderContext(SqlDefine.PostgreSql, "users", TestColumns);
-        var template = SqlTemplate.Prepare("UPDATE {{table}} SET {{set}} WHERE id = $id", context);
+        var template = SqlTemplate.Prepare("UPDATE {{table}} SET {{set}} WHERE id = @id", context);
 
-        Assert.AreEqual("UPDATE \"users\" SET \"id\" = $id, \"name\" = $name, \"email\" = $email WHERE id = $id", template.Sql);
+        Assert.AreEqual("UPDATE \"users\" SET \"id\" = @id, \"name\" = @name, \"email\" = @email WHERE id = @id", template.Sql);
     }
 
     [TestMethod]

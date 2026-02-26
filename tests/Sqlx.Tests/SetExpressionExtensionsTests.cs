@@ -125,7 +125,7 @@ public class SetExpressionExtensionsTests
         var result = expr.ToSetClause(SqlDefine.PostgreSql);
 
         // Assert
-        Assert.AreEqual("\"name\" = $p0", result);
+        Assert.AreEqual("\"name\" = @p0", result);
     }
 
     [TestMethod]

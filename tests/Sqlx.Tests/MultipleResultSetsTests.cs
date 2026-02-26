@@ -274,43 +274,4 @@ public class MultipleResultSetsTests
         Assert.IsInstanceOfType(maxId, typeof(long));
         Assert.IsInstanceOfType(minId, typeof(long));
     }
-
-    [TestMethod]
-    [Ignore("SQLite does not support output parameters")]
-    public void InsertWithTimestamp_SyncMethod_ReturnsCorrectValuesAndSetsOutputParameter()
-    {
-        // Arrange
-        var repo = new MultiResultRepository(_connection!);
-        var timestamp = System.DateTime.UtcNow;
-
-        // Act
-        var (rows, userId, total) = repo.InsertWithTimestamp("Alice", 25, ref timestamp);
-
-        // Assert
-        Assert.AreEqual(1, rows);
-        Assert.AreEqual(1L, userId);
-        Assert.AreEqual(1, total);
-        Assert.IsNotNull(timestamp);
-        Assert.AreNotEqual(System.DateTime.MinValue, timestamp);
-    }
-
-    [TestMethod]
-    [Ignore("SQLite does not support output parameters")]
-    public async Task InsertWithTimestampAsync_AsyncMethod_ReturnsCorrectValuesAndSetsOutputParameter()
-    {
-        // Arrange
-        var repo = new MultiResultRepository(_connection!);
-        var timestamp = new OutputParameter<System.DateTime>();
-
-        // Act
-        var (rows, userId, total) = await repo.InsertWithTimestampAsync("Bob", 30, timestamp);
-
-        // Assert
-        Assert.AreEqual(1, rows);
-        Assert.AreEqual(1L, userId);
-        Assert.AreEqual(1, total);
-        Assert.IsTrue(timestamp.HasValue);
-        Assert.IsNotNull(timestamp.Value);
-        Assert.AreNotEqual(System.DateTime.MinValue, timestamp.Value);
-    }
 }

@@ -84,7 +84,7 @@ public class SetExpressionDialectTests
 
         // Assert
         Assert.IsTrue(result.StartsWith("\"name\""));
-        Assert.IsTrue(result.Contains("$p0"));
+        Assert.IsTrue(result.Contains("@p0"));
     }
 
     [TestMethod]
@@ -336,7 +336,7 @@ public class SetExpressionDialectTests
 
         // Act & Assert
         Assert.IsTrue(expr.ToSetClause(SqlDefine.SQLite).Contains("@p0"));
-        Assert.IsTrue(expr.ToSetClause(SqlDefine.PostgreSql).Contains("$p0"));
+        Assert.IsTrue(expr.ToSetClause(SqlDefine.PostgreSql).Contains("@p0"));
         Assert.IsTrue(expr.ToSetClause(SqlDefine.MySql).Contains("@p0"));
         Assert.IsTrue(expr.ToSetClause(SqlDefine.SqlServer).Contains("@p0"));
         Assert.IsTrue(expr.ToSetClause(SqlDefine.Oracle).Contains(":p0"));

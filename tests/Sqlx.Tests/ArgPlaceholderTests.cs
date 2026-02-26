@@ -37,7 +37,7 @@ public class ArgPlaceholderTests
             "SELECT * FROM {{table}} WHERE id = {{arg --param id}}",
             context);
 
-        Assert.IsTrue(template.Sql.Contains("WHERE id = $id"));
+        Assert.IsTrue(template.Sql.Contains("WHERE id = @id"));
     }
 
     [TestMethod]
@@ -96,7 +96,7 @@ public class ArgPlaceholderTests
             "SELECT * FROM {{table}} WHERE id = {{arg --param userId --name id}}",
             context);
 
-        Assert.IsTrue(template.Sql.Contains("WHERE id = $id"));
+        Assert.IsTrue(template.Sql.Contains("WHERE id = @id"));
     }
 
     #endregion
@@ -123,8 +123,8 @@ public class ArgPlaceholderTests
             "SELECT * FROM {{table}} WHERE id = {{arg --param id}} AND name = {{arg --param name}}",
             context);
 
-        Assert.IsTrue(template.Sql.Contains("WHERE id = $id"));
-        Assert.IsTrue(template.Sql.Contains("AND name = $name"));
+        Assert.IsTrue(template.Sql.Contains("WHERE id = @id"));
+        Assert.IsTrue(template.Sql.Contains("AND name = @name"));
     }
 
     #endregion

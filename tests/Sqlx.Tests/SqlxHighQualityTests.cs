@@ -254,7 +254,7 @@ public class SqlxHighQualityTests
     [DataRow("SQLite", "@p")]
     [DataRow("SqlServer", "@p")]
     [DataRow("MySql", "@p")]
-    [DataRow("PostgreSQL", "$p")]
+    [DataRow("PostgreSQL", "@p")]
     [DataRow("Oracle", ":p")]
     public void ParameterizedQuery_CorrectPrefix_AllDialects(string dialectName, string expectedPrefix)
     {

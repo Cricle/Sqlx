@@ -17,8 +17,8 @@ namespace Sqlx.Tests;
 [TestClass]
 public class SqlxStrictValidationTests
 {
-    [AssemblyInitialize]
-    public static void AssemblyInitialize(TestContext context)
+    [ClassInitialize]
+    public static void ClassInitialize(TestContext context)
     {
         // Explicitly call the generated initializer to ensure EntityProviders are registered
         // This is a workaround for potential ModuleInitializer timing issues

@@ -100,13 +100,13 @@ public class SetPlaceholderInlineTests
     {
         var context = new PlaceholderContext(SqlDefine.PostgreSql, "users", TestColumns);
         var template = SqlTemplate.Prepare(
-            "UPDATE {{table}} SET {{set --exclude Id --inline Version=Version+1}} WHERE id = $id",
+            "UPDATE {{table}} SET {{set --exclude Id --inline Version=Version+1}} WHERE id = @id",
             context);
 
         var sql = template.Sql;
         Console.WriteLine($"Actual SQL: {sql}");
         Assert.IsTrue(sql.Contains("\"version\" = \"version\"+1"));
-        Assert.IsTrue(sql.Contains("\"name\" = $name"));
+        Assert.IsTrue(sql.Contains("\"name\" = @name"));
     }
 
     [TestMethod]

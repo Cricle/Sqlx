@@ -22,7 +22,7 @@ public sealed class PostgreSqlDialect : SqlDialect
     public override string ColumnRight => "\"";
 
     /// <inheritdoc/>
-    public override string ParameterPrefix => "$";
+    public override string ParameterPrefix => "@";
 
     #region Boolean Literals
 

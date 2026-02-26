@@ -265,7 +265,7 @@ public class WhereObjectPlaceholderTests
 
         var result = handler.Render(context, "--object filter", new Dictionary<string, object?> { ["filter"] = filter });
 
-        Assert.AreEqual("(\"name\" = $name AND \"age\" = $age)", result);
+        Assert.AreEqual("(\"name\" = @name AND \"age\" = @age)", result);
     }
 
     [TestMethod]

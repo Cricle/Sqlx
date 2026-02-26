@@ -1100,6 +1100,7 @@ public readonly record struct Point(int X, int Y);
 - [API 参考](docs/api-reference.md)
 - [AI 助手指南](AI-VIEW.md)
 - [示例项目](samples/TodoWebApi/)
+- [WSL2 SQL Server 配置](docs/wsl2-sqlserver-setup.md) - WSL2 环境下运行 SQL Server 容器的配置指南 ([中文版](docs/wsl2-sqlserver-setup-zh.md))
 
 ## 许可证
 

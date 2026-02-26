@@ -240,7 +240,7 @@ public class SqlBuilderCoreE2ETests : E2ETestBase
         await using var fixture = await CreateFixtureAsync(DatabaseType.MySQL);
 
         // Act
-        SqlTemplate template;
+        Sqlx.SqlTemplate template;
         using (var builder = new Sqlx.SqlBuilder(SqlDefine.MySql))
         {
             builder.Append($"SELECT * FROM test_products WHERE id = {1}");

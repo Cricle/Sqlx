@@ -29,6 +29,7 @@ public class PrefixedDbCommand : DbCommand
     }
 
     /// <inheritdoc/>
+#pragma warning disable CS8765 // Nullability of type of parameter doesn't match overridden member
     public override string CommandText
     {
         get => _commandText;
@@ -39,6 +40,7 @@ public class PrefixedDbCommand : DbCommand
             _innerCommand.CommandText = _fixture.ApplyTablePrefixToSql(value);
         }
     }
+#pragma warning restore CS8765
 
     /// <inheritdoc/>
     public override int CommandTimeout
@@ -62,21 +64,25 @@ public class PrefixedDbCommand : DbCommand
     }
 
     /// <inheritdoc/>
+#pragma warning disable CS8765 // Nullability of type of parameter doesn't match overridden member
     protected override DbConnection? DbConnection
     {
         get => _innerCommand.Connection;
-        set => _innerCommand.Connection = value;
+        set => _innerCommand.Connection = value!;
     }
+#pragma warning restore CS8765
 
     /// <inheritdoc/>
     protected override DbParameterCollection DbParameterCollection => _innerCommand.Parameters;
 
     /// <inheritdoc/>
+#pragma warning disable CS8765 // Nullability of type of parameter doesn't match overridden member
     protected override DbTransaction? DbTransaction
     {
         get => _innerCommand.Transaction;
-        set => _innerCommand.Transaction = value;
+        set => _innerCommand.Transaction = value!;
     }
+#pragma warning restore CS8765
 
     /// <inheritdoc/>
     public override bool DesignTimeVisible

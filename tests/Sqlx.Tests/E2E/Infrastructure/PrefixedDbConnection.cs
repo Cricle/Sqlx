@@ -28,11 +28,13 @@ public class PrefixedDbConnection : DbConnection
     }
 
     /// <inheritdoc/>
+#pragma warning disable CS8765 // Nullability of type of parameter doesn't match overridden member
     public override string ConnectionString
     {
         get => _innerConnection.ConnectionString;
-        set => _innerConnection.ConnectionString = value;
+        set => _innerConnection.ConnectionString = value!;
     }
+#pragma warning restore CS8765
 
     /// <inheritdoc/>
     public override string Database => _innerConnection.Database;

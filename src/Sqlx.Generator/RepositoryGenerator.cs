@@ -243,7 +243,23 @@ public class RepositoryGenerator : IIncrementalGenerator
         // Collect all unique entity namespaces from method return types
         var methods = GetMethodsWithSqlTemplate(serviceType, sqlTemplateAttr);
         var entityNamespaces = new HashSet<string>();
-        if (entityNs is not null && entityNs != ns)
+        
+        // Define system namespaces that are already included
+        var systemNamespaces = new HashSet<string>
+        {
+            "System",
+            "System.Collections.Generic",
+            "System.Data",
+            "System.Data.Common",
+            "System.Diagnostics",
+            "System.Linq",
+            "System.Linq.Expressions",
+            "System.Threading",
+            "System.Threading.Tasks",
+            "Sqlx"
+        };
+        
+        if (entityNs is not null && entityNs != ns && !systemNamespaces.Contains(entityNs))
         {
             entityNamespaces.Add(entityNs);
         }
@@ -255,7 +271,11 @@ public class RepositoryGenerator : IIncrementalGenerator
                 !namedType.ContainingNamespace.IsGlobalNamespace &&
                 namedType.ContainingNamespace.ToDisplayString() != ns)
             {
-                entityNamespaces.Add(namedType.ContainingNamespace.ToDisplayString());
+                var namespaceName = namedType.ContainingNamespace.ToDisplayString();
+                if (!systemNamespaces.Contains(namespaceName))
+                {
+                    entityNamespaces.Add(namespaceName);
+                }
             }
         }
 

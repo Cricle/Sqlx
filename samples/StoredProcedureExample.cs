@@ -1,4 +1,4 @@
-// <copyright file="StoredProcedureOutputExample.cs" company="Sqlx">
+// <copyright file="StoredProcedureExample.cs" company="Sqlx">
 // Copyright (c) Sqlx. All rights reserved.
 // </copyright>
 
@@ -13,10 +13,10 @@ using Sqlx.Annotations;
 namespace Sqlx.Samples;
 
 /// <summary>
-/// 演示如何在存储过程中使用输出参数（同步和异步）。
-/// Demonstrates how to use output parameters with stored procedures (sync and async).
+/// 存储过程调用示例
+/// Stored procedure invocation examples
 /// </summary>
-public class StoredProcedureOutputExample
+public class StoredProcedureExample
 {
     /// <summary>
     /// 示例1: 同步方法使用 out 参数

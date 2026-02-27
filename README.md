@@ -1,5 +1,6 @@
 # Sqlx
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/fc7546f021eb4d1d9fdf99201ac91a75)](https://app.codacy.com/gh/Cricle/Sqlx?utm_source=github.com&utm_medium=referral&utm_content=Cricle/Sqlx&utm_campaign=Badge_Grade)
 [![NuGet](https://img.shields.io/nuget/v/Sqlx)](https://www.nuget.org/packages/Sqlx/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-purple.svg)](#)

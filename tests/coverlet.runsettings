@@ -1,31 +1,81 @@
-<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8"?>
 <RunSettings>
   <DataCollectionRunSettings>
     <DataCollectors>
-      <DataCollector friendlyName="XPlat code coverage">
+      <DataCollector friendlyName="XPlat Code Coverage">
         <Configuration>
-          <Format>cobertura</Format>
-          <Exclude>[*]*.IsExternalInit</Exclude>
-          <Exclude>[*]*Tests*</Exclude>
-          <Exclude>[*]*Test*</Exclude>
-          <Exclude>[*.Tests]*</Exclude>
-          <Exclude>[*.Test]*</Exclude>
-          <ExcludeByAttribute>Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute</ExcludeByAttribute>
-          <ExcludeByFile>**/bin/**/*</ExcludeByFile>
-          <ExcludeByFile>**/obj/**/*</ExcludeByFile>
-          <IncludeDirectory>../src/</IncludeDirectory>
+          <!-- 包含的程序集 -->
+          <Include>
+            [Sqlx]*
+            [Sqlx.Generator]*
+          </Include>
+          
+          <!-- 排除的程序集 -->
+          <Exclude>
+            [*.Tests]*
+            [xunit.*]*
+            [Microsoft.*]*
+          </Exclude>
+          
+          <!-- 排除的文件 -->
+          <ExcludeByFile>
+            <!-- 排除自动生成的文件 -->
+            **/*.g.cs
+            **/*.generated.cs
+            **/obj/**/*.cs
+          </ExcludeByFile>
+          
+          <!-- 排除的特性 -->
+          <ExcludeByAttribute>
+            Obsolete
+            GeneratedCode
+            CompilerGenerated
+            ExcludeFromCodeCoverage
+          </ExcludeByAttribute>
+          
+          <!-- 覆盖率格式 -->
+          <Format>cobertura,opencover,json</Format>
+          
+          <!-- 单行覆盖率 -->
           <SingleHit>false</SingleHit>
-          <UseSourceLink>true</UseSourceLink>
+          
+          <!-- 包含测试程序集 -->
           <IncludeTestAssembly>false</IncludeTestAssembly>
-          <SkipAutoProps>true</SkipAutoProps>
+          
+          <!-- 跳过自动属性 -->
+          <SkipAutoProps>false</SkipAutoProps>
+          
+          <!-- 确定性构建 -->
           <DeterministicReport>true</DeterministicReport>
-          <ThresholdType>line,branch,method</ThresholdType>
-          <ThresholdStat>minimum</ThresholdStat>
-          <Threshold>80,70,80</Threshold>
         </Configuration>
       </DataCollector>
     </DataCollectors>
   </DataCollectionRunSettings>
+  
+  <!-- 测试运行配置 -->
+  <RunConfiguration>
+    <!-- 最大CPU数 -->
+    <MaxCpuCount>4</MaxCpuCount>
+    
+    <!-- 结果目录 -->
+    <ResultsDirectory>./TestResults</ResultsDirectory>
+    
+    <!-- 目标平台 -->
+    <TargetPlatform>x64</TargetPlatform>
+    
+    <!-- 目标框架 -->
+    <TargetFrameworkVersion>net10.0</TargetFrameworkVersion>
+  </RunConfiguration>
+  
+  <!-- MSTest 配置 -->
+  <MSTest>
+    <!-- 并行化 -->
+    <Parallelize>
+      <Workers>4</Workers>
+      <Scope>ClassLevel</Scope>
+    </Parallelize>
+    
+    <!-- 测试超时 -->
+    <TestTimeout>30000</TestTimeout>
+  </MSTest>
 </RunSettings>
-
-

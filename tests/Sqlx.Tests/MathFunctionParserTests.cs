@@ -29,7 +29,7 @@ namespace Sqlx.Tests
                 "DB2" => new DB2Dialect(),
                 _ => new SqlServerDialect()
             };
-            return new ExpressionParser(dialect, null, parameterized: false);
+            return new ExpressionParser(dialect, null!, parameterized: false);
         }
 
         [TestMethod]

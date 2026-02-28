@@ -99,9 +99,13 @@ public class DynamicEntityProviderTests
         // Assert
         Assert.AreEqual(11, columnList.Count);
         
+#pragma warning disable CS8714 // The type cannot be used as type parameter in the generic type or method
+#pragma warning disable CS8621 // Nullability of reference types in return type doesn't match the target delegate
         var columnDict = columnList.ToDictionary(
             c => c.GetType().GetProperty("PropertyName")!.GetValue(c) as string,
             c => (DbType)c.GetType().GetProperty("DbType")!.GetValue(c)!);
+#pragma warning restore CS8621
+#pragma warning restore CS8714
 
         Assert.AreEqual(DbType.Int32, columnDict["IntValue"]);
         Assert.AreEqual(DbType.Int64, columnDict["LongValue"]);

@@ -562,6 +562,7 @@ public class SqlxQueryProviderTests
     }
 
     // Test helper classes
+#pragma warning disable CS8765 // Nullability of type of parameter doesn't match overridden member
     private class TestDbConnection : DbConnection
     {
         public override string ConnectionString { get; set; } = string.Empty;
@@ -657,6 +658,7 @@ public class SqlxQueryProviderTests
 
         public override void ResetDbType() { }
     }
+#pragma warning restore CS8765
 
     private class TestDbDataReader : DbDataReader
     {

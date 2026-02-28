@@ -52,6 +52,23 @@ public class VarPlaceholderHandlerTests
     }
 
     [TestMethod]
+    [ExpectedException(typeof(InvalidOperationException))]
+    public void Process_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var handler = VarPlaceholderHandler.Instance;
+        var context = new PlaceholderContext(
+            SqlDefine.SQLite,
+            "users",
+            TestColumns,
+            null,
+            null);
+
+        // Act
+        handler.Process(context, "--name tenantId");
+    }
+
+    [TestMethod]
     public void Parse_WithNameOption_ExtractsVariableName()
     {
         // Arrange
@@ -90,6 +107,44 @@ public class VarPlaceholderHandlerTests
         // Act & Assert
         var ex = Assert.ThrowsException<InvalidOperationException>(
             () => handler.Render(context, "", null));
+        Assert.IsTrue(ex.Message.Contains("--name"), 
+            "Error message should mention --name option");
+    }
+
+    [TestMethod]
+    public void Parse_NullOptions_ThrowsException()
+    {
+        // Arrange
+        var handler = VarPlaceholderHandler.Instance;
+        var context = new PlaceholderContext(
+            SqlDefine.SQLite,
+            "users",
+            TestColumns,
+            (instance, name) => "value",
+            new object());
+
+        // Act & Assert
+        var ex = Assert.ThrowsException<InvalidOperationException>(
+            () => handler.Render(context, null!, null));
+        Assert.IsTrue(ex.Message.Contains("--name"), 
+            "Error message should mention --name option");
+    }
+
+    [TestMethod]
+    public void Parse_WhitespaceOptions_ThrowsException()
+    {
+        // Arrange
+        var handler = VarPlaceholderHandler.Instance;
+        var context = new PlaceholderContext(
+            SqlDefine.SQLite,
+            "users",
+            TestColumns,
+            (instance, name) => "value",
+            new object());
+
+        // Act & Assert
+        var ex = Assert.ThrowsException<InvalidOperationException>(
+            () => handler.Render(context, "   ", null));
         Assert.IsTrue(ex.Message.Contains("--name"), 
             "Error message should mention --name option");
     }
@@ -215,6 +270,66 @@ public class VarPlaceholderHandlerTests
         // Assert
         // The value should be returned as-is, not wrapped in quotes or parameter markers
         Assert.AreEqual("literal-value", result);
+    }
+
+    [TestMethod]
+    public void Render_VarProviderReturnsNumericString_UsedAsLiteral()
+    {
+        // Arrange
+        var handler = VarPlaceholderHandler.Instance;
+        var varProvider = new Func<object, string, string>((instance, name) => "123");
+        var context = new PlaceholderContext(
+            SqlDefine.SQLite,
+            "users",
+            TestColumns,
+            varProvider,
+            new object());
+
+        // Act
+        var result = handler.Render(context, "--name count", null);
+
+        // Assert
+        Assert.AreEqual("123", result);
+    }
+
+    [TestMethod]
+    public void Render_VarProviderReturnsEmptyString_ReturnsEmptyString()
+    {
+        // Arrange
+        var handler = VarPlaceholderHandler.Instance;
+        var varProvider = new Func<object, string, string>((instance, name) => string.Empty);
+        var context = new PlaceholderContext(
+            SqlDefine.SQLite,
+            "users",
+            TestColumns,
+            varProvider,
+            new object());
+
+        // Act
+        var result = handler.Render(context, "--name empty", null);
+
+        // Assert
+        Assert.AreEqual(string.Empty, result);
+    }
+
+    [TestMethod]
+    public void Render_VarProviderReturnsSqlKeyword_UsedAsLiteral()
+    {
+        // Arrange
+        var handler = VarPlaceholderHandler.Instance;
+        var varProvider = new Func<object, string, string>((instance, name) => "CURRENT_TIMESTAMP");
+        var context = new PlaceholderContext(
+            SqlDefine.SQLite,
+            "users",
+            TestColumns,
+            varProvider,
+            new object());
+
+        // Act
+        var result = handler.Render(context, "--name timestamp", null);
+
+        // Assert
+        Assert.AreEqual("CURRENT_TIMESTAMP", result);
     }
 
     // ===== Task 7.3: Error Handling Tests =====

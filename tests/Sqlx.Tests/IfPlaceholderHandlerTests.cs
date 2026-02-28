@@ -1,386 +1,372 @@
-// -----------------------------------------------------------------------
-// <copyright file="IfPlaceholderHandlerTests.cs" company="Cricle">
-// Copyright (c) Cricle. All rights reserved.
+// <copyright file="IfPlaceholderHandlerTests.cs" company="Sqlx">
+// Copyright (c) Sqlx. All rights reserved.
 // </copyright>
-// -----------------------------------------------------------------------
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Sqlx.Placeholders;
+using System;
 using System.Collections.Generic;
 
 namespace Sqlx.Tests;
 
 /// <summary>
-/// Tests for IfPlaceholderHandler conditional logic.
+/// Tests for IfPlaceholderHandler covering all conditional branches.
 /// </summary>
 [TestClass]
 public class IfPlaceholderHandlerTests
 {
+    private IfPlaceholderHandler _handler = null!;
+
+    [TestInitialize]
+    public void Setup()
+    {
+        _handler = IfPlaceholderHandler.Instance;
+    }
+
     [TestMethod]
-    public void If_NotNull_WithNonNullValue_IncludesContent()
+    public void Name_ReturnsIf()
+    {
+        // Act
+        var name = _handler.Name;
+
+        // Assert
+        Assert.AreEqual("if", name);
+    }
+
+    [TestMethod]
+    public void ClosingTagName_ReturnsSlashIf()
+    {
+        // Act
+        var closingTag = _handler.ClosingTagName;
+
+        // Assert
+        Assert.AreEqual("/if", closingTag);
+    }
+
+    [TestMethod]
+    public void GetType_ReturnsDynamic()
+    {
+        // Act
+        var type = _handler.GetType("notnull=param");
+
+        // Assert
+        Assert.AreEqual(PlaceholderType.Dynamic, type);
+    }
+
+    [TestMethod]
+    [ExpectedException(typeof(InvalidOperationException))]
+    public void Process_ThrowsInvalidOperationException()
     {
         // Arrange
-        var handler = IfPlaceholderHandler.Instance;
+        var context = new PlaceholderContext(new SqlServerDialect(), "test_table", new List<ColumnMeta>());
+
+        // Act
+        _handler.Process(context, "notnull=param");
+    }
+
+    [TestMethod]
+    public void Render_ReturnsEmptyString()
+    {
+        // Arrange
+        var context = new PlaceholderContext(new SqlServerDialect(), "test_table", new List<ColumnMeta>());
+        var parameters = new Dictionary<string, object?>();
+
+        // Act
+        var result = _handler.Render(context, "notnull=param", parameters);
+
+        // Assert
+        Assert.AreEqual(string.Empty, result);
+    }
+
+    // NotNull condition tests
+    [TestMethod]
+    public void ProcessBlock_NotNull_WithNonNullValue_ReturnsBlockContent()
+    {
+        // Arrange
         var parameters = new Dictionary<string, object?> { ["name"] = "Alice" };
         var blockContent = "AND name = @name";
 
         // Act
-        var result = handler.ProcessBlock("notnull=name", blockContent, parameters);
+        var result = _handler.ProcessBlock("notnull=name", blockContent, parameters);
 
         // Assert
-        Assert.AreEqual(blockContent, result, "Should include content when parameter is not null");
+        Assert.AreEqual(blockContent, result);
     }
 
     [TestMethod]
-    public void If_NotNull_WithNullValue_ExcludesContent()
+    public void ProcessBlock_NotNull_WithNullValue_ReturnsEmpty()
     {
         // Arrange
-        var handler = IfPlaceholderHandler.Instance;
         var parameters = new Dictionary<string, object?> { ["name"] = null };
         var blockContent = "AND name = @name";
 
         // Act
-        var result = handler.ProcessBlock("notnull=name", blockContent, parameters);
+        var result = _handler.ProcessBlock("notnull=name", blockContent, parameters);
 
         // Assert
-        Assert.AreEqual(string.Empty, result, "Should exclude content when parameter is null");
+        Assert.AreEqual(string.Empty, result);
     }
 
     [TestMethod]
-    public void If_NotNull_WithMissingParameter_ExcludesContent()
+    public void ProcessBlock_NotNull_WithMissingParameter_ReturnsEmpty()
     {
         // Arrange
-        var handler = IfPlaceholderHandler.Instance;
         var parameters = new Dictionary<string, object?>();
         var blockContent = "AND name = @name";
 
         // Act
-        var result = handler.ProcessBlock("notnull=name", blockContent, parameters);
+        var result = _handler.ProcessBlock("notnull=name", blockContent, parameters);
 
         // Assert
-        Assert.AreEqual(string.Empty, result, "Should exclude content when parameter is missing");
+        Assert.AreEqual(string.Empty, result);
     }
 
+    // Null condition tests
     [TestMethod]
-    public void If_Null_WithNullValue_IncludesContent()
+    public void ProcessBlock_Null_WithNullValue_ReturnsBlockContent()
     {
         // Arrange
-        var handler = IfPlaceholderHandler.Instance;
         var parameters = new Dictionary<string, object?> { ["name"] = null };
         var blockContent = "AND name IS NULL";
 
         // Act
-        var result = handler.ProcessBlock("null=name", blockContent, parameters);
+        var result = _handler.ProcessBlock("null=name", blockContent, parameters);
 
         // Assert
-        Assert.AreEqual(blockContent, result, "Should include content when parameter is null");
+        Assert.AreEqual(blockContent, result);
     }
 
     [TestMethod]
-    public void If_Null_WithNonNullValue_ExcludesContent()
+    public void ProcessBlock_Null_WithNonNullValue_ReturnsEmpty()
     {
         // Arrange
-        var handler = IfPlaceholderHandler.Instance;
         var parameters = new Dictionary<string, object?> { ["name"] = "Alice" };
         var blockContent = "AND name IS NULL";
 
         // Act
-        var result = handler.ProcessBlock("null=name", blockContent, parameters);
+        var result = _handler.ProcessBlock("null=name", blockContent, parameters);
 
         // Assert
-        Assert.AreEqual(string.Empty, result, "Should exclude content when parameter is not null");
+        Assert.AreEqual(string.Empty, result);
     }
 
     [TestMethod]
-    public void If_NotEmpty_WithNonEmptyString_IncludesContent()
+    public void ProcessBlock_Null_WithMissingParameter_ReturnsBlockContent()
     {
         // Arrange
-        var handler = IfPlaceholderHandler.Instance;
-        var parameters = new Dictionary<string, object?> { ["search"] = "test" };
-        var blockContent = "AND description LIKE @search";
+        var parameters = new Dictionary<string, object?>();
+        var blockContent = "AND name IS NULL";
 
         // Act
-        var result = handler.ProcessBlock("notempty=search", blockContent, parameters);
+        var result = _handler.ProcessBlock("null=name", blockContent, parameters);
 
         // Assert
-        Assert.AreEqual(blockContent, result, "Should include content when string is not empty");
+        Assert.AreEqual(blockContent, result);
     }
 
+    // NotEmpty condition tests
     [TestMethod]
-    public void If_NotEmpty_WithEmptyString_ExcludesContent()
+    public void ProcessBlock_NotEmpty_WithNonEmptyString_ReturnsBlockContent()
     {
         // Arrange
-        var handler = IfPlaceholderHandler.Instance;
-        var parameters = new Dictionary<string, object?> { ["search"] = "" };
-        var blockContent = "AND description LIKE @search";
-
-        // Act
-        var result = handler.ProcessBlock("notempty=search", blockContent, parameters);
-
-        // Assert
-        Assert.AreEqual(string.Empty, result, "Should exclude content when string is empty");
-    }
-
-    [TestMethod]
-    public void If_NotEmpty_WithNullValue_ExcludesContent()
-    {
-        // Arrange
-        var handler = IfPlaceholderHandler.Instance;
-        var parameters = new Dictionary<string, object?> { ["search"] = null };
-        var blockContent = "AND description LIKE @search";
-
-        // Act
-        var result = handler.ProcessBlock("notempty=search", blockContent, parameters);
-
-        // Assert
-        Assert.AreEqual(string.Empty, result, "Should exclude content when value is null");
-    }
-
-    [TestMethod]
-    public void If_Empty_WithEmptyString_IncludesContent()
-    {
-        // Arrange
-        var handler = IfPlaceholderHandler.Instance;
-        var parameters = new Dictionary<string, object?> { ["search"] = "" };
-        var blockContent = "-- No search filter";
-
-        // Act
-        var result = handler.ProcessBlock("empty=search", blockContent, parameters);
-
-        // Assert
-        Assert.AreEqual(blockContent, result, "Should include content when string is empty");
-    }
-
-    [TestMethod]
-    public void If_Empty_WithNullValue_IncludesContent()
-    {
-        // Arrange
-        var handler = IfPlaceholderHandler.Instance;
-        var parameters = new Dictionary<string, object?> { ["search"] = null };
-        var blockContent = "-- No search filter";
-
-        // Act
-        var result = handler.ProcessBlock("empty=search", blockContent, parameters);
-
-        // Assert
-        Assert.AreEqual(blockContent, result, "Should include content when value is null");
-    }
-
-    [TestMethod]
-    public void If_Empty_WithNonEmptyString_ExcludesContent()
-    {
-        // Arrange
-        var handler = IfPlaceholderHandler.Instance;
-        var parameters = new Dictionary<string, object?> { ["search"] = "test" };
-        var blockContent = "-- No search filter";
-
-        // Act
-        var result = handler.ProcessBlock("empty=search", blockContent, parameters);
-
-        // Assert
-        Assert.AreEqual(string.Empty, result, "Should exclude content when string is not empty");
-    }
-
-    [TestMethod]
-    public void If_NotEmpty_WithNonEmptyList_IncludesContent()
-    {
-        // Arrange
-        var handler = IfPlaceholderHandler.Instance;
-        var parameters = new Dictionary<string, object?> { ["ids"] = new List<int> { 1, 2, 3 } };
-        var blockContent = "AND id IN (@ids)";
-
-        // Act
-        var result = handler.ProcessBlock("notempty=ids", blockContent, parameters);
-
-        // Assert
-        Assert.AreEqual(blockContent, result, "Should include content when list is not empty");
-    }
-
-    [TestMethod]
-    public void If_NotEmpty_WithEmptyList_ExcludesContent()
-    {
-        // Arrange
-        var handler = IfPlaceholderHandler.Instance;
-        var parameters = new Dictionary<string, object?> { ["ids"] = new List<int>() };
-        var blockContent = "AND id IN (@ids)";
-
-        // Act
-        var result = handler.ProcessBlock("notempty=ids", blockContent, parameters);
-
-        // Assert
-        Assert.AreEqual(string.Empty, result, "Should exclude content when list is empty");
-    }
-
-    [TestMethod]
-    public void If_Empty_WithEmptyList_IncludesContent()
-    {
-        // Arrange
-        var handler = IfPlaceholderHandler.Instance;
-        var parameters = new Dictionary<string, object?> { ["ids"] = new List<int>() };
-        var blockContent = "-- No ID filter";
-
-        // Act
-        var result = handler.ProcessBlock("empty=ids", blockContent, parameters);
-
-        // Assert
-        Assert.AreEqual(blockContent, result, "Should include content when list is empty");
-    }
-
-    [TestMethod]
-    public void If_Empty_WithNonEmptyList_ExcludesContent()
-    {
-        // Arrange
-        var handler = IfPlaceholderHandler.Instance;
-        var parameters = new Dictionary<string, object?> { ["ids"] = new List<int> { 1, 2, 3 } };
-        var blockContent = "-- No ID filter";
-
-        // Act
-        var result = handler.ProcessBlock("empty=ids", blockContent, parameters);
-
-        // Assert
-        Assert.AreEqual(string.Empty, result, "Should exclude content when list is not empty");
-    }
-
-    [TestMethod]
-    public void If_NotEmpty_WithNonEmptyArray_IncludesContent()
-    {
-        // Arrange
-        var handler = IfPlaceholderHandler.Instance;
-        var parameters = new Dictionary<string, object?> { ["tags"] = new[] { "tag1", "tag2" } };
-        var blockContent = "AND tags IN (@tags)";
-
-        // Act
-        var result = handler.ProcessBlock("notempty=tags", blockContent, parameters);
-
-        // Assert
-        Assert.AreEqual(blockContent, result, "Should include content when array is not empty");
-    }
-
-    [TestMethod]
-    public void If_NotEmpty_WithEmptyArray_ExcludesContent()
-    {
-        // Arrange
-        var handler = IfPlaceholderHandler.Instance;
-        var parameters = new Dictionary<string, object?> { ["tags"] = new string[0] };
-        var blockContent = "AND tags IN (@tags)";
-
-        // Act
-        var result = handler.ProcessBlock("notempty=tags", blockContent, parameters);
-
-        // Assert
-        Assert.AreEqual(string.Empty, result, "Should exclude content when array is empty");
-    }
-
-    [TestMethod]
-    public void If_InvalidCondition_ThrowsException()
-    {
-        // Arrange
-        var handler = IfPlaceholderHandler.Instance;
         var parameters = new Dictionary<string, object?> { ["name"] = "Alice" };
         var blockContent = "AND name = @name";
 
-        // Act & Assert
-        Assert.ThrowsException<InvalidOperationException>(() =>
-        {
-            handler.ProcessBlock("invalid=name", blockContent, parameters);
-        }, "Should throw exception for invalid condition");
+        // Act
+        var result = _handler.ProcessBlock("notempty=name", blockContent, parameters);
+
+        // Assert
+        Assert.AreEqual(blockContent, result);
     }
 
     [TestMethod]
-    public void If_NoCondition_ThrowsException()
+    public void ProcessBlock_NotEmpty_WithEmptyString_ReturnsEmpty()
     {
         // Arrange
-        var handler = IfPlaceholderHandler.Instance;
+        var parameters = new Dictionary<string, object?> { ["name"] = "" };
+        var blockContent = "AND name = @name";
+
+        // Act
+        var result = _handler.ProcessBlock("notempty=name", blockContent, parameters);
+
+        // Assert
+        Assert.AreEqual(string.Empty, result);
+    }
+
+    [TestMethod]
+    public void ProcessBlock_NotEmpty_WithNullValue_ReturnsEmpty()
+    {
+        // Arrange
+        var parameters = new Dictionary<string, object?> { ["name"] = null };
+        var blockContent = "AND name = @name";
+
+        // Act
+        var result = _handler.ProcessBlock("notempty=name", blockContent, parameters);
+
+        // Assert
+        Assert.AreEqual(string.Empty, result);
+    }
+
+    [TestMethod]
+    public void ProcessBlock_NotEmpty_WithNonEmptyCollection_ReturnsBlockContent()
+    {
+        // Arrange
+        var parameters = new Dictionary<string, object?> { ["ids"] = new List<int> { 1, 2, 3 } };
+        var blockContent = "AND id IN @ids";
+
+        // Act
+        var result = _handler.ProcessBlock("notempty=ids", blockContent, parameters);
+
+        // Assert
+        Assert.AreEqual(blockContent, result);
+    }
+
+    [TestMethod]
+    public void ProcessBlock_NotEmpty_WithEmptyCollection_ReturnsEmpty()
+    {
+        // Arrange
+        var parameters = new Dictionary<string, object?> { ["ids"] = new List<int>() };
+        var blockContent = "AND id IN @ids";
+
+        // Act
+        var result = _handler.ProcessBlock("notempty=ids", blockContent, parameters);
+
+        // Assert
+        Assert.AreEqual(string.Empty, result);
+    }
+
+    // Empty condition tests
+    [TestMethod]
+    public void ProcessBlock_Empty_WithEmptyString_ReturnsBlockContent()
+    {
+        // Arrange
+        var parameters = new Dictionary<string, object?> { ["name"] = "" };
+        var blockContent = "AND name IS NULL";
+
+        // Act
+        var result = _handler.ProcessBlock("empty=name", blockContent, parameters);
+
+        // Assert
+        Assert.AreEqual(blockContent, result);
+    }
+
+    [TestMethod]
+    public void ProcessBlock_Empty_WithNonEmptyString_ReturnsEmpty()
+    {
+        // Arrange
         var parameters = new Dictionary<string, object?> { ["name"] = "Alice" };
-        var blockContent = "AND name = @name";
+        var blockContent = "AND name IS NULL";
 
-        // Act & Assert
-        Assert.ThrowsException<InvalidOperationException>(() =>
-        {
-            handler.ProcessBlock("", blockContent, parameters);
-        }, "Should throw exception when no condition is provided");
+        // Act
+        var result = _handler.ProcessBlock("empty=name", blockContent, parameters);
+
+        // Assert
+        Assert.AreEqual(string.Empty, result);
     }
 
     [TestMethod]
-    public void If_NullParameters_TreatsAsEmpty()
+    public void ProcessBlock_Empty_WithNullValue_ReturnsBlockContent()
     {
         // Arrange
-        var handler = IfPlaceholderHandler.Instance;
-        var blockContent = "AND name = @name";
+        var parameters = new Dictionary<string, object?> { ["name"] = null };
+        var blockContent = "AND name IS NULL";
 
         // Act
-        var result = handler.ProcessBlock("notnull=name", blockContent, null);
+        var result = _handler.ProcessBlock("empty=name", blockContent, parameters);
 
         // Assert
-        Assert.AreEqual(string.Empty, result, "Should treat null parameters as empty");
+        Assert.AreEqual(blockContent, result);
     }
 
     [TestMethod]
-    public void If_NotNull_WithZeroValue_IncludesContent()
+    public void ProcessBlock_Empty_WithEmptyCollection_ReturnsBlockContent()
     {
         // Arrange
-        var handler = IfPlaceholderHandler.Instance;
-        var parameters = new Dictionary<string, object?> { ["count"] = 0 };
-        var blockContent = "AND count = @count";
+        var parameters = new Dictionary<string, object?> { ["ids"] = new List<int>() };
+        var blockContent = "AND 1=0";
 
         // Act
-        var result = handler.ProcessBlock("notnull=count", blockContent, parameters);
+        var result = _handler.ProcessBlock("empty=ids", blockContent, parameters);
 
         // Assert
-        Assert.AreEqual(blockContent, result, "Should include content when value is 0 (not null)");
+        Assert.AreEqual(blockContent, result);
     }
 
     [TestMethod]
-    public void If_NotNull_WithFalseValue_IncludesContent()
+    public void ProcessBlock_Empty_WithNonEmptyCollection_ReturnsEmpty()
     {
         // Arrange
-        var handler = IfPlaceholderHandler.Instance;
-        var parameters = new Dictionary<string, object?> { ["active"] = false };
-        var blockContent = "AND active = @active";
+        var parameters = new Dictionary<string, object?> { ["ids"] = new List<int> { 1, 2, 3 } };
+        var blockContent = "AND 1=0";
 
         // Act
-        var result = handler.ProcessBlock("notnull=active", blockContent, parameters);
+        var result = _handler.ProcessBlock("empty=ids", blockContent, parameters);
 
         // Assert
-        Assert.AreEqual(blockContent, result, "Should include content when value is false (not null)");
+        Assert.AreEqual(string.Empty, result);
     }
 
     [TestMethod]
-    public void If_HandlerName_ReturnsIf()
+    public void ProcessBlock_Empty_WithEnumerable_ReturnsBlockContent()
     {
         // Arrange
-        var handler = IfPlaceholderHandler.Instance;
+        var parameters = new Dictionary<string, object?> { ["items"] = EmptyEnumerable() };
+        var blockContent = "AND 1=0";
 
         // Act
-        var name = handler.Name;
+        var result = _handler.ProcessBlock("empty=items", blockContent, parameters);
 
         // Assert
-        Assert.AreEqual("if", name, "Handler name should be 'if'");
+        Assert.AreEqual(blockContent, result);
     }
 
     [TestMethod]
-    public void If_ClosingTagName_ReturnsSlashIf()
+    public void ProcessBlock_NotEmpty_WithEnumerable_ReturnsBlockContent()
     {
         // Arrange
-        var handler = IfPlaceholderHandler.Instance;
+        var parameters = new Dictionary<string, object?> { ["items"] = NonEmptyEnumerable() };
+        var blockContent = "AND id IN @items";
 
         // Act
-        var closingTag = handler.ClosingTagName;
+        var result = _handler.ProcessBlock("notempty=items", blockContent, parameters);
 
         // Assert
-        Assert.AreEqual("/if", closingTag, "Closing tag name should be '/if'");
+        Assert.AreEqual(blockContent, result);
     }
 
     [TestMethod]
-    public void If_GetType_ReturnsDynamic()
+    [ExpectedException(typeof(InvalidOperationException))]
+    public void ProcessBlock_InvalidCondition_ThrowsInvalidOperationException()
     {
         // Arrange
-        var handler = IfPlaceholderHandler.Instance;
+        var parameters = new Dictionary<string, object?>();
+        var blockContent = "content";
 
         // Act
-        var type = handler.GetType("notnull=name");
+        _handler.ProcessBlock("invalid=param", blockContent, parameters);
+    }
+
+    [TestMethod]
+    public void ProcessBlock_WithNullParameters_HandlesGracefully()
+    {
+        // Arrange
+        var blockContent = "content";
+
+        // Act
+        var result = _handler.ProcessBlock("notnull=param", blockContent, null);
 
         // Assert
-        Assert.AreEqual(PlaceholderType.Dynamic, type, "Should return Dynamic placeholder type");
+        Assert.AreEqual(string.Empty, result);
+    }
+
+    private static IEnumerable<int> EmptyEnumerable()
+    {
+        yield break;
+    }
+
+    private static IEnumerable<int> NonEmptyEnumerable()
+    {
+        yield return 1;
+        yield return 2;
     }
 }

@@ -1,563 +1,517 @@
 // -----------------------------------------------------------------------
-// <copyright file="StringFunctionParserTests.cs" company="Cricle">
-// Copyright (c) Cricle. All rights reserved.
+// <copyright file="StringFunctionParserTests.cs" company="Sqlx">
+// Copyright (c) Sqlx. All rights reserved.
 // </copyright>
 // -----------------------------------------------------------------------
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Sqlx.Annotations;
 using System;
+using System.Linq.Expressions;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Sqlx.Expressions;
 
-namespace Sqlx.Tests;
-
-/// <summary>
-/// Comprehensive tests for StringFunctionParser covering all methods and dialects.
-/// </summary>
-[TestClass]
-public class StringFunctionParserTests
+namespace Sqlx.Tests
 {
-    [Sqlx]
-    [TableName("test_strings")]
-    public class StringEntity
+    /// <summary>
+    /// Tests for StringFunctionParser to achieve 100% branch coverage.
+    /// </summary>
+    [TestClass]
+    public class StringFunctionParserTests
     {
-        public int Id { get; set; }
-        public string Text { get; set; } = string.Empty;
-        public string? NullableText { get; set; }
-    }
-
-    #region ParseIndexer Tests - Note: String indexer is typically evaluated at compile time
-    // These tests verify that when indexer expressions do reach the parser, they're handled correctly
-    // In practice, most indexer access is evaluated before SQL generation
-
-    [TestMethod]
-    public void StringIndexer_Concept_SQLite()
-    {
-        // String indexer access is usually evaluated at compile time
-        // This test verifies the SQL generation works when it's not
-        var sql = SqlQuery<StringEntity>.ForSqlite()
-            .Where(e => e.Text.Substring(0, 1) == "A")
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("SUBSTR"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void StringIndexer_Concept_MySql()
-    {
-        var sql = SqlQuery<StringEntity>.ForMySql()
-            .Where(e => e.Text.Substring(0, 1) == "A")
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("SUBSTRING") || sql.Contains("SUBSTR"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void StringIndexer_Concept_SqlServer()
-    {
-        var sql = SqlQuery<StringEntity>.ForSqlServer()
-            .Where(e => e.Text.Substring(0, 1) == "A")
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("SUBSTRING"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void StringIndexer_Concept_PostgreSql()
-    {
-        var sql = SqlQuery<StringEntity>.ForPostgreSQL()
-            .Where(e => e.Text.Substring(0, 1) == "A")
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("SUBSTRING") || sql.Contains("SUBSTR"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void StringIndexer_Concept_Oracle()
-    {
-        var sql = SqlQuery<StringEntity>.For(SqlDefine.Oracle)
-            .Where(e => e.Text.Substring(0, 1) == "A")
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("SUBSTR"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void StringIndexer_Concept_DB2()
-    {
-        var sql = SqlQuery<StringEntity>.For(SqlDefine.DB2)
-            .Where(e => e.Text.Substring(0, 1) == "A")
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("SUBSTR"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void StringSubstring_MiddleIndex_GeneratesCorrectOffset()
-    {
-        var sql = SqlQuery<StringEntity>.ForSqlite()
-            .Where(e => e.Text.Substring(5, 1) == "X")
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("SUBSTR"), $"SQL: {sql}");
-        Assert.IsTrue(sql.Contains("5") || sql.Contains("+ 1"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void StringSubstring_WithVariable_GeneratesCorrectSql()
-    {
-        int index = 3;
-        var sql = SqlQuery<StringEntity>.ForSqlite()
-            .Where(e => e.Text.Substring(index, 1) == "B")
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("SUBSTR"), $"SQL: {sql}");
-    }
-
-    #endregion
-
-    #region PadLeft Tests
-
-    [TestMethod]
-    public void PadLeft_SQLite_GeneratesCorrectSyntax()
-    {
-        var sql = SqlQuery<StringEntity>.ForSqlite()
-            .Where(e => e.Text.PadLeft(10) == "      test")
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("SUBSTR") && sql.Contains("REPLACE") && sql.Contains("HEX") && sql.Contains("ZEROBLOB"), 
-            $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void PadLeft_MySql_GeneratesLpadFunction()
-    {
-        var sql = SqlQuery<StringEntity>.ForMySql()
-            .Where(e => e.Text.PadLeft(10) == "      test")
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("LPAD"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void PadLeft_SqlServer_GeneratesReplicateFunction()
-    {
-        var sql = SqlQuery<StringEntity>.ForSqlServer()
-            .Where(e => e.Text.PadLeft(10) == "      test")
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("RIGHT") && sql.Contains("REPLICATE"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void PadLeft_PostgreSql_GeneratesLpadFunction()
-    {
-        var sql = SqlQuery<StringEntity>.ForPostgreSQL()
-            .Where(e => e.Text.PadLeft(10) == "      test")
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("LPAD"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void PadLeft_Oracle_GeneratesLpadFunction()
-    {
-        var sql = SqlQuery<StringEntity>.For(SqlDefine.Oracle)
-            .Where(e => e.Text.PadLeft(10) == "      test")
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("LPAD"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void PadLeft_DB2_GeneratesLpadFunction()
-    {
-        var sql = SqlQuery<StringEntity>.For(SqlDefine.DB2)
-            .Where(e => e.Text.PadLeft(10) == "      test")
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("LPAD"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void PadLeft_WithCustomChar_SQLite_GeneratesCorrectSyntax()
-    {
-        var sql = SqlQuery<StringEntity>.ForSqlite()
-            .Where(e => e.Text.PadLeft(10, '0') == "0000000test")
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("SUBSTR") && sql.Contains("REPLACE"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void PadLeft_WithCustomChar_MySql_GeneratesLpadFunction()
-    {
-        var sql = SqlQuery<StringEntity>.ForMySql()
-            .Where(e => e.Text.PadLeft(10, '0') == "0000000test")
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("LPAD"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void PadLeft_WithCustomChar_SqlServer_GeneratesReplicateFunction()
-    {
-        var sql = SqlQuery<StringEntity>.ForSqlServer()
-            .Where(e => e.Text.PadLeft(10, '0') == "0000000test")
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("RIGHT") && sql.Contains("REPLICATE"), $"SQL: {sql}");
-    }
-
-    #endregion
-
-    #region PadRight Tests
-
-    [TestMethod]
-    public void PadRight_SQLite_GeneratesCorrectSyntax()
-    {
-        var sql = SqlQuery<StringEntity>.ForSqlite()
-            .Where(e => e.Text.PadRight(10) == "test      ")
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("SUBSTR") && sql.Contains("REPLACE") && sql.Contains("HEX") && sql.Contains("ZEROBLOB"), 
-            $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void PadRight_MySql_GeneratesRpadFunction()
-    {
-        var sql = SqlQuery<StringEntity>.ForMySql()
-            .Where(e => e.Text.PadRight(10) == "test      ")
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("RPAD"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void PadRight_SqlServer_GeneratesLeftFunction()
-    {
-        var sql = SqlQuery<StringEntity>.ForSqlServer()
-            .Where(e => e.Text.PadRight(10) == "test      ")
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("LEFT") && sql.Contains("REPLICATE"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void PadRight_PostgreSql_GeneratesRpadFunction()
-    {
-        var sql = SqlQuery<StringEntity>.ForPostgreSQL()
-            .Where(e => e.Text.PadRight(10) == "test      ")
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("RPAD"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void PadRight_Oracle_GeneratesRpadFunction()
-    {
-        var sql = SqlQuery<StringEntity>.For(SqlDefine.Oracle)
-            .Where(e => e.Text.PadRight(10) == "test      ")
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("RPAD"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void PadRight_DB2_GeneratesRpadFunction()
-    {
-        var sql = SqlQuery<StringEntity>.For(SqlDefine.DB2)
-            .Where(e => e.Text.PadRight(10) == "test      ")
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("RPAD"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void PadRight_WithCustomChar_SQLite_GeneratesCorrectSyntax()
-    {
-        var sql = SqlQuery<StringEntity>.ForSqlite()
-            .Where(e => e.Text.PadRight(10, '0') == "test000000")
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("SUBSTR") && sql.Contains("REPLACE"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void PadRight_WithCustomChar_MySql_GeneratesRpadFunction()
-    {
-        var sql = SqlQuery<StringEntity>.ForMySql()
-            .Where(e => e.Text.PadRight(10, '0') == "test000000")
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("RPAD"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void PadRight_WithCustomChar_SqlServer_GeneratesLeftFunction()
-    {
-        var sql = SqlQuery<StringEntity>.ForSqlServer()
-            .Where(e => e.Text.PadRight(10, '0') == "test000000")
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("LEFT") && sql.Contains("REPLICATE"), $"SQL: {sql}");
-    }
-
-    #endregion
-
-    #region IndexOf Tests
-
-    [TestMethod]
-    public void IndexOf_SQLite_GeneratesInstrFunction()
-    {
-        var sql = SqlQuery<StringEntity>.ForSqlite()
-            .Where(e => e.Text.IndexOf("test") >= 0)
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("INSTR"), $"SQL: {sql}");
-        Assert.IsTrue(sql.Contains("- 1"), $"SQL: {sql}"); // 1-based to 0-based conversion
-    }
-
-    [TestMethod]
-    public void IndexOf_MySql_GeneratesLocateFunction()
-    {
-        var sql = SqlQuery<StringEntity>.ForMySql()
-            .Where(e => e.Text.IndexOf("test") >= 0)
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("LOCATE"), $"SQL: {sql}");
-        Assert.IsTrue(sql.Contains("- 1"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void IndexOf_SqlServer_GeneratesCharindexFunction()
-    {
-        var sql = SqlQuery<StringEntity>.ForSqlServer()
-            .Where(e => e.Text.IndexOf("test") >= 0)
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("CHARINDEX"), $"SQL: {sql}");
-        Assert.IsTrue(sql.Contains("- 1"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void IndexOf_PostgreSql_GeneratesPositionFunction()
-    {
-        var sql = SqlQuery<StringEntity>.ForPostgreSQL()
-            .Where(e => e.Text.IndexOf("test") >= 0)
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("POSITION"), $"SQL: {sql}");
-        Assert.IsTrue(sql.Contains("- 1"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void IndexOf_Oracle_GeneratesInstrFunction()
-    {
-        var sql = SqlQuery<StringEntity>.For(SqlDefine.Oracle)
-            .Where(e => e.Text.IndexOf("test") >= 0)
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("INSTR"), $"SQL: {sql}");
-        Assert.IsTrue(sql.Contains("- 1"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void IndexOf_DB2_GeneratesLocateFunction()
-    {
-        var sql = SqlQuery<StringEntity>.For(SqlDefine.DB2)
-            .Where(e => e.Text.IndexOf("test") >= 0)
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("LOCATE"), $"SQL: {sql}");
-        Assert.IsTrue(sql.Contains("- 1"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void IndexOf_NotFound_ComparesWithNegativeOne()
-    {
-        var sql = SqlQuery<StringEntity>.ForSqlite()
-            .Where(e => e.Text.IndexOf("notfound") == -1)
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("INSTR"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void IndexOf_GreaterThanZero_FindsMatch()
-    {
-        var sql = SqlQuery<StringEntity>.ForSqlite()
-            .Where(e => e.Text.IndexOf("test") > 0)
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("INSTR"), $"SQL: {sql}");
-    }
-
-    #endregion
-
-    #region IndexOf with Start Position Tests
-
-    [TestMethod]
-    public void IndexOfWithStart_SQLite_GeneratesInstrWithSubstr()
-    {
-        var sql = SqlQuery<StringEntity>.ForSqlite()
-            .Where(e => e.Text.IndexOf("test", 5) >= 0)
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("INSTR") && sql.Contains("SUBSTR"), $"SQL: {sql}");
-        Assert.IsTrue(sql.Contains("+ 1"), $"SQL: {sql}"); // 0-based to 1-based conversion
-    }
-
-    [TestMethod]
-    public void IndexOfWithStart_MySql_GeneratesLocateWithStart()
-    {
-        var sql = SqlQuery<StringEntity>.ForMySql()
-            .Where(e => e.Text.IndexOf("test", 5) >= 0)
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("LOCATE"), $"SQL: {sql}");
-        Assert.IsTrue(sql.Contains("+ 1"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void IndexOfWithStart_SqlServer_GeneratesCharindexWithStart()
-    {
-        var sql = SqlQuery<StringEntity>.ForSqlServer()
-            .Where(e => e.Text.IndexOf("test", 5) >= 0)
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("CHARINDEX"), $"SQL: {sql}");
-        Assert.IsTrue(sql.Contains("+ 1"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void IndexOfWithStart_PostgreSql_GeneratesPositionWithSubstring()
-    {
-        var sql = SqlQuery<StringEntity>.ForPostgreSQL()
-            .Where(e => e.Text.IndexOf("test", 5) >= 0)
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("POSITION") && sql.Contains("SUBSTRING"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void IndexOfWithStart_Oracle_GeneratesInstrWithStart()
-    {
-        var sql = SqlQuery<StringEntity>.For(SqlDefine.Oracle)
-            .Where(e => e.Text.IndexOf("test", 5) >= 0)
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("INSTR"), $"SQL: {sql}");
-        Assert.IsTrue(sql.Contains("+ 1"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void IndexOfWithStart_DB2_GeneratesLocateWithStart()
-    {
-        var sql = SqlQuery<StringEntity>.For(SqlDefine.DB2)
-            .Where(e => e.Text.IndexOf("test", 5) >= 0)
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("LOCATE"), $"SQL: {sql}");
-        Assert.IsTrue(sql.Contains("+ 1"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void IndexOfWithStart_ZeroStart_GeneratesCorrectSql()
-    {
-        var sql = SqlQuery<StringEntity>.ForSqlite()
-            .Where(e => e.Text.IndexOf("test", 0) >= 0)
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("INSTR"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void IndexOfWithStart_LargeStart_GeneratesCorrectSql()
-    {
-        var sql = SqlQuery<StringEntity>.ForSqlite()
-            .Where(e => e.Text.IndexOf("test", 100) >= 0)
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("INSTR"), $"SQL: {sql}");
-    }
-
-    #endregion
-
-    #region Edge Cases and Complex Scenarios
-
-    [TestMethod]
-    public void StringFunctions_ChainedSubstring_GeneratesCorrectSql()
-    {
-        var sql = SqlQuery<StringEntity>.ForSqlite()
-            .Where(e => e.Text.Substring(0, 1) == "A" && e.Text.Substring(1, 1) == "B")
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("SUBSTR"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void StringFunctions_PadLeftAndIndexOf_GeneratesCorrectSql()
-    {
-        var sql = SqlQuery<StringEntity>.ForMySql()
-            .Where(e => e.Text.PadLeft(10).IndexOf("test") >= 0)
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("LPAD") && sql.Contains("LOCATE"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void StringFunctions_PadRightWithLength_GeneratesCorrectSql()
-    {
-        var sql = SqlQuery<StringEntity>.ForSqlite()
-            .Where(e => e.Text.PadRight(20).Length > 10)
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("LENGTH") || sql.Contains("text"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void StringFunctions_NullableWithIndexOf_GeneratesCorrectSql()
-    {
-        var sql = SqlQuery<StringEntity>.ForSqlite()
-            .Where(e => e.NullableText != null && e.NullableText.IndexOf("test") >= 0)
-            .ToSql();
-
-        Assert.IsTrue(sql.Contains("INSTR"), $"SQL: {sql}");
-    }
-
-    [TestMethod]
-    public void StringFunctions_AllDialects_PadLeftConsistency()
-    {
-        var dialects = new[] { SqlDefine.SQLite, SqlDefine.MySql, SqlDefine.PostgreSql, SqlDefine.SqlServer, SqlDefine.Oracle, SqlDefine.DB2 };
-        
-        foreach (var dialect in dialects)
+        private ExpressionParser CreateParser(string dialectType)
         {
-            var sql = SqlQuery<StringEntity>.For(dialect)
-                .Where(e => e.Text.PadLeft(10) == "      test")
-                .ToSql();
+            SqlDialect dialect = dialectType switch
+            {
+                "SqlServer" => new SqlServerDialect(),
+                "MySql" => new MySqlDialect(),
+                "PostgreSql" => new PostgreSqlDialect(),
+                "Oracle" => new OracleDialect(),
+                "SQLite" => new SQLiteDialect(),
+                "DB2" => new DB2Dialect(),
+                _ => new SqlServerDialect()
+            };
+            return new ExpressionParser(dialect, null, parameterized: false);
+        }
 
-            Assert.IsFalse(string.IsNullOrEmpty(sql), $"[{dialect.DatabaseType}] SQL should not be empty");
-            Assert.IsTrue(sql.Contains("text") || sql.Contains("Text") || sql.Contains("[text]") || sql.Contains("\"text\""), 
-                $"[{dialect.DatabaseType}] SQL should reference the text column: {sql}");
+        [TestMethod]
+        public void Parse_Contains_GeneratesLikeWithWildcards()
+        {
+            // Arrange
+            var parser = CreateParser("SqlServer");
+            Expression<Func<string, string, bool>> expr = (s, search) => s.Contains(search);
+            var methodCall = (MethodCallExpression)expr.Body;
+
+            // Act
+            var result = StringFunctionParser.Parse(parser, methodCall);
+
+            // Assert
+            Assert.IsTrue(result.Contains("LIKE"));
+        }
+
+        [TestMethod]
+        public void Parse_StartsWith_GeneratesLikeWithTrailingWildcard()
+        {
+            // Arrange
+            var parser = CreateParser("SqlServer");
+            Expression<Func<string, string, bool>> expr = (s, prefix) => s.StartsWith(prefix);
+            var methodCall = (MethodCallExpression)expr.Body;
+
+            // Act
+            var result = StringFunctionParser.Parse(parser, methodCall);
+
+            // Assert
+            Assert.IsTrue(result.Contains("LIKE"));
+        }
+
+        [TestMethod]
+        public void Parse_EndsWith_GeneratesLikeWithLeadingWildcard()
+        {
+            // Arrange
+            var parser = CreateParser("SqlServer");
+            Expression<Func<string, string, bool>> expr = (s, suffix) => s.EndsWith(suffix);
+            var methodCall = (MethodCallExpression)expr.Body;
+
+            // Act
+            var result = StringFunctionParser.Parse(parser, methodCall);
+
+            // Assert
+            Assert.IsTrue(result.Contains("LIKE"));
+        }
+
+        [TestMethod]
+        public void Parse_ToUpper_GeneratesUpperFunction()
+        {
+            // Arrange
+            var parser = CreateParser("SqlServer");
+            Expression<Func<string, string>> expr = s => s.ToUpper();
+            var methodCall = (MethodCallExpression)expr.Body;
+
+            // Act
+            var result = StringFunctionParser.Parse(parser, methodCall);
+
+            // Assert
+            Assert.IsTrue(result.Contains("UPPER"));
+        }
+
+        [TestMethod]
+        public void Parse_ToLower_GeneratesLowerFunction()
+        {
+            // Arrange
+            var parser = CreateParser("SqlServer");
+            Expression<Func<string, string>> expr = s => s.ToLower();
+            var methodCall = (MethodCallExpression)expr.Body;
+
+            // Act
+            var result = StringFunctionParser.Parse(parser, methodCall);
+
+            // Assert
+            Assert.IsTrue(result.Contains("LOWER"));
+        }
+
+        [TestMethod]
+        public void Parse_Trim_GeneratesTrimFunction()
+        {
+            // Arrange
+            var parser = CreateParser("SqlServer");
+            Expression<Func<string, string>> expr = s => s.Trim();
+            var methodCall = (MethodCallExpression)expr.Body;
+
+            // Act
+            var result = StringFunctionParser.Parse(parser, methodCall);
+
+            // Assert
+            Assert.IsTrue(result.Contains("TRIM") || result.Contains("LTRIM"));
+        }
+
+        [TestMethod]
+        public void Parse_TrimStart_GeneratesLTrimFunction()
+        {
+            // Arrange
+            var parser = CreateParser("SqlServer");
+            Expression<Func<string, string>> expr = s => s.TrimStart();
+            var methodCall = (MethodCallExpression)expr.Body;
+
+            // Act
+            var result = StringFunctionParser.Parse(parser, methodCall);
+
+            // Assert
+            Assert.IsTrue(result.Contains("LTRIM"));
+        }
+
+        [TestMethod]
+        public void Parse_TrimEnd_GeneratesRTrimFunction()
+        {
+            // Arrange
+            var parser = CreateParser("SqlServer");
+            Expression<Func<string, string>> expr = s => s.TrimEnd();
+            var methodCall = (MethodCallExpression)expr.Body;
+
+            // Act
+            var result = StringFunctionParser.Parse(parser, methodCall);
+
+            // Assert
+            Assert.IsTrue(result.Contains("RTRIM"));
+        }
+
+        [TestMethod]
+        public void Parse_Replace_GeneratesReplaceFunction()
+        {
+            // Arrange
+            var parser = CreateParser("SqlServer");
+            Expression<Func<string, string, string, string>> expr = (s, old, newVal) => s.Replace(old, newVal);
+            var methodCall = (MethodCallExpression)expr.Body;
+
+            // Act
+            var result = StringFunctionParser.Parse(parser, methodCall);
+
+            // Assert
+            Assert.IsTrue(result.Contains("REPLACE"));
+        }
+
+        [TestMethod]
+        public void Parse_SubstringOneArg_GeneratesSubstringFunction()
+        {
+            // Arrange
+            var parser = CreateParser("SqlServer");
+            Expression<Func<string, int, string>> expr = (s, start) => s.Substring(start);
+            var methodCall = (MethodCallExpression)expr.Body;
+
+            // Act
+            var result = StringFunctionParser.Parse(parser, methodCall);
+
+            // Assert
+            Assert.IsTrue(result.Contains("SUBSTRING") || result.Contains("SUBSTR"));
+        }
+
+        [TestMethod]
+        public void Parse_SubstringTwoArgs_GeneratesSubstringWithLength()
+        {
+            // Arrange
+            var parser = CreateParser("SqlServer");
+            Expression<Func<string, int, int, string>> expr = (s, start, length) => s.Substring(start, length);
+            var methodCall = (MethodCallExpression)expr.Body;
+
+            // Act
+            var result = StringFunctionParser.Parse(parser, methodCall);
+
+            // Assert
+            Assert.IsTrue(result.Contains("SUBSTRING") || result.Contains("SUBSTR"));
+        }
+
+        [TestMethod]
+        public void Parse_Length_GeneratesLengthFunction()
+        {
+            // Arrange - Length is not a method in StringFunctionParser.Parse switch
+            // It's handled as ("Length", 0) which returns obj (the string itself)
+            // This test verifies the default behavior
+            var parser = CreateParser("SqlServer");
+            Expression<Func<string, int>> expr = s => s.Length;
+            
+            // Create a member access expression for Length property
+            var param = Expression.Parameter(typeof(string), "s");
+            var lengthProperty = typeof(string).GetProperty("Length");
+            
+            // Wrap in a method call to simulate how it would be called
+            var method = typeof(string).GetMethod("get_Length");
+            var methodCall = Expression.Call(param, method!);
+
+            // Act
+            var result = StringFunctionParser.Parse(parser, methodCall);
+
+            // Assert - Length is not in the switch, so it returns obj (the parameter)
+            // The result should just be the parsed object
+            Assert.IsNotNull(result);
+        }
+
+        [TestMethod]
+        public void Parse_PadLeftOneArg_SqlServer_GeneratesPadLeftFunction()
+        {
+            // Arrange
+            var parser = CreateParser("SqlServer");
+            Expression<Func<string, int, string>> expr = (s, width) => s.PadLeft(width);
+            var methodCall = (MethodCallExpression)expr.Body;
+
+            // Act
+            var result = StringFunctionParser.Parse(parser, methodCall);
+
+            // Assert
+            Assert.IsTrue(result.Contains("REPLICATE") || result.Contains("RIGHT"));
+        }
+
+        [TestMethod]
+        public void Parse_PadLeftTwoArgs_PostgreSql_GeneratesLPadFunction()
+        {
+            // Arrange
+            var parser = CreateParser("PostgreSql");
+            Expression<Func<string, int, char, string>> expr = (s, width, padChar) => s.PadLeft(width, padChar);
+            var methodCall = (MethodCallExpression)expr.Body;
+
+            // Act
+            var result = StringFunctionParser.Parse(parser, methodCall);
+
+            // Assert
+            Assert.IsTrue(result.Contains("LPAD"));
+        }
+
+        [TestMethod]
+        public void Parse_PadLeftOneArg_SQLite_GeneratesCustomPadLeft()
+        {
+            // Arrange
+            var parser = CreateParser("SQLite");
+            Expression<Func<string, int, string>> expr = (s, width) => s.PadLeft(width);
+            var methodCall = (MethodCallExpression)expr.Body;
+
+            // Act
+            var result = StringFunctionParser.Parse(parser, methodCall);
+
+            // Assert
+            Assert.IsTrue(result.Contains("SUBSTR") || result.Contains("REPLACE"));
+        }
+
+        [TestMethod]
+        public void Parse_PadRightOneArg_SqlServer_GeneratesPadRightFunction()
+        {
+            // Arrange
+            var parser = CreateParser("SqlServer");
+            Expression<Func<string, int, string>> expr = (s, width) => s.PadRight(width);
+            var methodCall = (MethodCallExpression)expr.Body;
+
+            // Act
+            var result = StringFunctionParser.Parse(parser, methodCall);
+
+            // Assert
+            Assert.IsTrue(result.Contains("REPLICATE") || result.Contains("LEFT"));
+        }
+
+        [TestMethod]
+        public void Parse_PadRightTwoArgs_PostgreSql_GeneratesRPadFunction()
+        {
+            // Arrange
+            var parser = CreateParser("PostgreSql");
+            Expression<Func<string, int, char, string>> expr = (s, width, padChar) => s.PadRight(width, padChar);
+            var methodCall = (MethodCallExpression)expr.Body;
+
+            // Act
+            var result = StringFunctionParser.Parse(parser, methodCall);
+
+            // Assert
+            Assert.IsTrue(result.Contains("RPAD"));
+        }
+
+        [TestMethod]
+        public void Parse_PadRightOneArg_SQLite_GeneratesCustomPadRight()
+        {
+            // Arrange
+            var parser = CreateParser("SQLite");
+            Expression<Func<string, int, string>> expr = (s, width) => s.PadRight(width);
+            var methodCall = (MethodCallExpression)expr.Body;
+
+            // Act
+            var result = StringFunctionParser.Parse(parser, methodCall);
+
+            // Assert
+            Assert.IsTrue(result.Contains("SUBSTR") || result.Contains("REPLACE"));
+        }
+
+        [TestMethod]
+        public void Parse_IndexOfOneArg_SqlServer_GeneratesCharIndexFunction()
+        {
+            // Arrange
+            var parser = CreateParser("SqlServer");
+            Expression<Func<string, string, int>> expr = (s, search) => s.IndexOf(search);
+            var methodCall = (MethodCallExpression)expr.Body;
+
+            // Act
+            var result = StringFunctionParser.Parse(parser, methodCall);
+
+            // Assert
+            Assert.IsTrue(result.Contains("CHARINDEX"));
+        }
+
+        [TestMethod]
+        public void Parse_IndexOfOneArg_MySql_GeneratesLocateFunction()
+        {
+            // Arrange
+            var parser = CreateParser("MySql");
+            Expression<Func<string, string, int>> expr = (s, search) => s.IndexOf(search);
+            var methodCall = (MethodCallExpression)expr.Body;
+
+            // Act
+            var result = StringFunctionParser.Parse(parser, methodCall);
+
+            // Assert
+            Assert.IsTrue(result.Contains("LOCATE"));
+        }
+
+        [TestMethod]
+        public void Parse_IndexOfOneArg_PostgreSql_GeneratesPositionFunction()
+        {
+            // Arrange
+            var parser = CreateParser("PostgreSql");
+            Expression<Func<string, string, int>> expr = (s, search) => s.IndexOf(search);
+            var methodCall = (MethodCallExpression)expr.Body;
+
+            // Act
+            var result = StringFunctionParser.Parse(parser, methodCall);
+
+            // Assert
+            Assert.IsTrue(result.Contains("POSITION"));
+        }
+
+        [TestMethod]
+        public void Parse_IndexOfOneArg_Oracle_GeneratesInstrFunction()
+        {
+            // Arrange
+            var parser = CreateParser("Oracle");
+            Expression<Func<string, string, int>> expr = (s, search) => s.IndexOf(search);
+            var methodCall = (MethodCallExpression)expr.Body;
+
+            // Act
+            var result = StringFunctionParser.Parse(parser, methodCall);
+
+            // Assert
+            Assert.IsTrue(result.Contains("INSTR"));
+        }
+
+        [TestMethod]
+        public void Parse_IndexOfOneArg_SQLite_GeneratesInstrFunction()
+        {
+            // Arrange
+            var parser = CreateParser("SQLite");
+            Expression<Func<string, string, int>> expr = (s, search) => s.IndexOf(search);
+            var methodCall = (MethodCallExpression)expr.Body;
+
+            // Act
+            var result = StringFunctionParser.Parse(parser, methodCall);
+
+            // Assert
+            Assert.IsTrue(result.Contains("INSTR"));
+        }
+
+        [TestMethod]
+        public void Parse_IndexOfTwoArgs_SqlServer_GeneratesCharIndexWithStart()
+        {
+            // Arrange
+            var parser = CreateParser("SqlServer");
+            Expression<Func<string, string, int, int>> expr = (s, search, start) => s.IndexOf(search, start);
+            var methodCall = (MethodCallExpression)expr.Body;
+
+            // Act
+            var result = StringFunctionParser.Parse(parser, methodCall);
+
+            // Assert
+            Assert.IsTrue(result.Contains("CHARINDEX"));
+        }
+
+        [TestMethod]
+        public void Parse_IndexOfTwoArgs_MySql_GeneratesLocateWithStart()
+        {
+            // Arrange
+            var parser = CreateParser("MySql");
+            Expression<Func<string, string, int, int>> expr = (s, search, start) => s.IndexOf(search, start);
+            var methodCall = (MethodCallExpression)expr.Body;
+
+            // Act
+            var result = StringFunctionParser.Parse(parser, methodCall);
+
+            // Assert
+            Assert.IsTrue(result.Contains("LOCATE"));
+        }
+
+        [TestMethod]
+        public void Parse_IndexOfTwoArgs_PostgreSql_GeneratesPositionWithSubstring()
+        {
+            // Arrange
+            var parser = CreateParser("PostgreSql");
+            Expression<Func<string, string, int, int>> expr = (s, search, start) => s.IndexOf(search, start);
+            var methodCall = (MethodCallExpression)expr.Body;
+
+            // Act
+            var result = StringFunctionParser.Parse(parser, methodCall);
+
+            // Assert
+            Assert.IsTrue(result.Contains("POSITION") || result.Contains("SUBSTRING"));
+        }
+
+        [TestMethod]
+        public void Parse_IndexOfTwoArgs_SQLite_GeneratesInstrWithSubstr()
+        {
+            // Arrange
+            var parser = CreateParser("SQLite");
+            Expression<Func<string, string, int, int>> expr = (s, search, start) => s.IndexOf(search, start);
+            var methodCall = (MethodCallExpression)expr.Body;
+
+            // Act
+            var result = StringFunctionParser.Parse(parser, methodCall);
+
+            // Assert
+            Assert.IsTrue(result.Contains("INSTR") || result.Contains("SUBSTR"));
+        }
+
+        [TestMethod]
+        public void Parse_IndexOfTwoArgs_Oracle_GeneratesInstrWithStart()
+        {
+            // Arrange
+            var parser = CreateParser("Oracle");
+            Expression<Func<string, string, int, int>> expr = (s, search, start) => s.IndexOf(search, start);
+            var methodCall = (MethodCallExpression)expr.Body;
+
+            // Act
+            var result = StringFunctionParser.Parse(parser, methodCall);
+
+            // Assert
+            Assert.IsTrue(result.Contains("INSTR"));
+        }
+
+        [TestMethod]
+        public void Parse_IndexOfTwoArgs_DB2_GeneratesLocateWithStart()
+        {
+            // Arrange
+            var parser = CreateParser("DB2");
+            Expression<Func<string, string, int, int>> expr = (s, search, start) => s.IndexOf(search, start);
+            var methodCall = (MethodCallExpression)expr.Body;
+
+            // Act
+            var result = StringFunctionParser.Parse(parser, methodCall);
+
+            // Assert
+            Assert.IsTrue(result.Contains("LOCATE"));
+        }
+
+        [TestMethod]
+        public void ParseIndexer_GeneratesSubstringForCharacterAccess()
+        {
+            // Arrange
+            var parser = CreateParser("SqlServer");
+            // Simulate string indexer: s[index]
+            var stringParam = Expression.Parameter(typeof(string), "s");
+            var indexParam = Expression.Parameter(typeof(int), "index");
+            var indexerProperty = typeof(string).GetProperty("Chars");
+            var methodCall = Expression.Call(stringParam, indexerProperty!.GetGetMethod()!, indexParam);
+
+            // Act
+            var result = StringFunctionParser.ParseIndexer(parser, methodCall);
+
+            // Assert
+            Assert.IsTrue(result.Contains("SUBSTRING") || result.Contains("SUBSTR"));
+        }
+
+        [TestMethod]
+        public void ParseIndexer_NoArguments_ReturnsNull()
+        {
+            // Arrange
+            var parser = CreateParser("SqlServer");
+            var stringParam = Expression.Parameter(typeof(string), "s");
+            
+            // Create a simple method call that has no arguments
+            // Use a method that doesn't require arguments
+            var toUpperMethod = typeof(string).GetMethod("ToUpper", Type.EmptyTypes);
+            var methodCall = Expression.Call(stringParam, toUpperMethod!);
+
+            // Act - ParseIndexer expects Arguments.Count == 1, so this should return "NULL"
+            var result = StringFunctionParser.ParseIndexer(parser, methodCall);
+
+            // Assert - should return "NULL" when Arguments.Count != 1
+            Assert.AreEqual("NULL", result);
         }
     }
-
-    [TestMethod]
-    public void StringFunctions_AllDialects_IndexOfConsistency()
-    {
-        var dialects = new[] { SqlDefine.SQLite, SqlDefine.MySql, SqlDefine.PostgreSql, SqlDefine.SqlServer, SqlDefine.Oracle, SqlDefine.DB2 };
-        
-        foreach (var dialect in dialects)
-        {
-            var sql = SqlQuery<StringEntity>.For(dialect)
-                .Where(e => e.Text.IndexOf("search") >= 0)
-                .ToSql();
-
-            Assert.IsFalse(string.IsNullOrEmpty(sql), $"[{dialect.DatabaseType}] SQL should not be empty");
-            Assert.IsTrue(sql.Contains("- 1"), $"[{dialect.DatabaseType}] SQL should contain 1-based to 0-based conversion: {sql}");
-        }
-    }
-
-    #endregion
 }

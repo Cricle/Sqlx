@@ -23,6 +23,9 @@
     
     <!-- Collect minimal data -->
     <ResultsDirectory>./TestResults</ResultsDirectory>
+    
+    <!-- Exclude Integration tests for fast execution -->
+    <TestCaseFilter>TestCategory!=Integration</TestCaseFilter>
   </RunConfiguration>
   
   <!-- Data Collection - Minimal for speed -->

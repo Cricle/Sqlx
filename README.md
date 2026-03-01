@@ -4,7 +4,8 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-purple.svg)](#)
 [![LTS](https://img.shields.io/badge/LTS-.NET%2010-green.svg)](#)
-[![Tests](https://img.shields.io/badge/tests-2665%20passing-brightgreen.svg)](#)
+[![Tests](https://img.shields.io/badge/tests-3124%20passing-brightgreen.svg)](#)
+[![Coverage](https://img.shields.io/badge/branch%20coverage-83.2%25-green.svg)](#)
 [![AOT](https://img.shields.io/badge/AOT-ready-blue.svg)](#)
 [![Performance](https://img.shields.io/badge/performance-optimized-orange.svg)](#)
 
@@ -16,7 +17,7 @@
 - **⚡ 零反射** - 编译时源生成，运行时无反射开销
 - **🎯 类型安全** - 编译时验证 SQL 模板和表达式
 - **🌐 多数据库** - SQLite、PostgreSQL、MySQL、SQL Server、Oracle、DB2
-- **📦 AOT 就绪** - 完全支持 Native AOT，通过 2191 个单元测试
+- **📦 AOT 就绪** - 完全支持 Native AOT，通过 3124 个单元测试
 - **🔧 LINQ 支持** - IQueryable 接口，支持 Where/Select/OrderBy/Join 等
 - **💾 智能缓存** - SqlQuery\<T\> 泛型缓存，自动注册 EntityProvider
 - **🔍 自动发现** - 源生成器自动发现 SqlQuery\<T\> 和 SqlTemplate 中的实体类型

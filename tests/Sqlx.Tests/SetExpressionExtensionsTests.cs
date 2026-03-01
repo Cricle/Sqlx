@@ -4,6 +4,7 @@
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Sqlx;
+using Sqlx.Tests.Helpers;
 using System;
 using System.Linq.Expressions;
 
@@ -176,7 +177,7 @@ public class SetExpressionExtensionsTests
 
         // Assert
         Assert.AreEqual(1, parameters.Count);
-        Assert.AreEqual("John", parameters["p0"]);
+        SqlAssertions.AssertParametersContain(parameters, "p0", "John");
     }
 
     [TestMethod]
@@ -194,8 +195,8 @@ public class SetExpressionExtensionsTests
 
         // Assert
         Assert.AreEqual(2, parameters.Count);
-        Assert.AreEqual("John", parameters["p0"]);
-        Assert.AreEqual(30, parameters["p1"]);
+        SqlAssertions.AssertParametersContain(parameters, "p0", "John");
+        SqlAssertions.AssertParametersContain(parameters, "p1", 30);
     }
 
     [TestMethod]
@@ -209,6 +210,6 @@ public class SetExpressionExtensionsTests
 
         // Assert
         Assert.AreEqual(1, parameters.Count);
-        Assert.AreEqual(1, parameters["p0"]);
+        SqlAssertions.AssertParametersContain(parameters, "p0", 1);
     }
 }

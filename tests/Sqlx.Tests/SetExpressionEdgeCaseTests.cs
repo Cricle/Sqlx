@@ -4,6 +4,7 @@
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Sqlx;
+using Sqlx.Tests.Helpers;
 using System;
 using System.Linq.Expressions;
 
@@ -61,7 +62,7 @@ public class SetExpressionEdgeCaseTests
         
         // 验证参数值为 null
         var parameters = expr.GetSetParameters();
-        Assert.IsNull(parameters["p0"]);
+        SqlAssertions.AssertParametersContain(parameters, "p0", null);
     }
 
     [TestMethod]
@@ -98,7 +99,7 @@ public class SetExpressionEdgeCaseTests
         
         // 验证参数值为 null
         var parameters = expr.GetSetParameters();
-        Assert.IsNull(parameters["p0"]);
+        SqlAssertions.AssertParametersContain(parameters, "p0", null);
     }
 
     // ========== 布尔类型测试 ==========
@@ -259,7 +260,7 @@ public class SetExpressionEdgeCaseTests
         
         // Verify parameter extraction
         var parameters = expr.GetSetParameters();
-        Assert.AreEqual("It's a test", parameters["p0"]);
+        SqlAssertions.AssertParametersContain(parameters, "p0", "It's a test");
     }
 
     [TestMethod]
@@ -278,7 +279,7 @@ public class SetExpressionEdgeCaseTests
         Assert.AreEqual("[name] = @p0", result);
         
         var parameters = expr.GetSetParameters();
-        Assert.AreEqual(@"C:\Path\To\File", parameters["p0"]);
+        SqlAssertions.AssertParametersContain(parameters, "p0", @"C:\Path\To\File");
     }
 
     [TestMethod]
@@ -297,7 +298,7 @@ public class SetExpressionEdgeCaseTests
         Assert.AreEqual("[name] = @p0", result);
         
         var parameters = expr.GetSetParameters();
-        Assert.AreEqual(string.Empty, parameters["p0"]);
+        SqlAssertions.AssertParametersContain(parameters, "p0", string.Empty);
     }
 
     // ========== 数值边界测试 ==========
@@ -318,7 +319,7 @@ public class SetExpressionEdgeCaseTests
         Assert.AreEqual("[id] = @p0", result);
         
         var parameters = expr.GetSetParameters();
-        Assert.AreEqual(int.MaxValue, parameters["p0"]);
+        SqlAssertions.AssertParametersContain(parameters, "p0", int.MaxValue);
     }
 
     [TestMethod]
@@ -337,7 +338,7 @@ public class SetExpressionEdgeCaseTests
         Assert.AreEqual("[id] = @p0", result);
         
         var parameters = expr.GetSetParameters();
-        Assert.AreEqual(int.MinValue, parameters["p0"]);
+        SqlAssertions.AssertParametersContain(parameters, "p0", int.MinValue);
     }
 
     [TestMethod]
@@ -356,7 +357,7 @@ public class SetExpressionEdgeCaseTests
         Assert.AreEqual("[id] = @p0", result);
         
         var parameters = expr.GetSetParameters();
-        Assert.AreEqual(0, parameters["p0"]);
+        SqlAssertions.AssertParametersContain(parameters, "p0", 0);
     }
 
     [TestMethod]
@@ -375,7 +376,7 @@ public class SetExpressionEdgeCaseTests
         Assert.AreEqual("[id] = @p0", result);
         
         var parameters = expr.GetSetParameters();
-        Assert.AreEqual(-42, parameters["p0"]);
+        SqlAssertions.AssertParametersContain(parameters, "p0", -42);
     }
 
     // ========== 复杂嵌套表达式测试 ==========
@@ -435,7 +436,7 @@ public class SetExpressionEdgeCaseTests
 
         // Assert
         Assert.AreEqual(1, parameters.Count);
-        Assert.AreEqual(1, parameters["p0"]);
+        SqlAssertions.AssertParametersContain(parameters, "p0", 1);
     }
 
     [TestMethod]
@@ -454,9 +455,9 @@ public class SetExpressionEdgeCaseTests
 
         // Assert
         Assert.AreEqual(3, parameters.Count);
-        Assert.AreEqual("test", parameters["p0"]);
-        Assert.AreEqual(42, parameters["p1"]);
-        Assert.AreEqual(true, parameters["p2"]);
+        SqlAssertions.AssertParametersContain(parameters, "p0", "test");
+        SqlAssertions.AssertParametersContain(parameters, "p1", 42);
+        SqlAssertions.AssertParametersContain(parameters, "p2", true);
     }
 
     [TestMethod]
@@ -474,8 +475,8 @@ public class SetExpressionEdgeCaseTests
 
         // Assert
         Assert.AreEqual(2, parameters.Count);
-        Assert.AreEqual("prefix", parameters["p0"]);
-        Assert.AreEqual(10, parameters["p1"]);
+        SqlAssertions.AssertParametersContain(parameters, "p0", "prefix");
+        SqlAssertions.AssertParametersContain(parameters, "p1", 10);
     }
 
     // ========== 错误处理测试 ==========

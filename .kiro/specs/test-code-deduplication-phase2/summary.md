@@ -80,7 +80,7 @@
 
 ### 3. 验证和清理 ✓
 
-- ✓ 运行完整测试套件：所有3,316个测试通过
+- ✓ 运行完整测试套件：所有3,356个测试通过
 - ✓ 测量代码指标
 - ✓ 清理临时分析脚本
 - ✓ 提交并推送更改（多次迭代）
@@ -190,9 +190,22 @@ SqlAssertions.AssertParametersContain(template.Parameters, "p0", null);
 - af60b75: docs: update phase 2 documentation with expanded SqlAssertions usage
 - c26111c: refactor(tests): apply SqlAssertions to ExpressionBlockResultTests
 - a0c9746: docs: update phase 2 progress after ExpressionBlockResultTests refactoring
+- 2bc7479: refactor(tests): apply SqlAssertions to ExpressionBlockResultAnyPlaceholderTests
+- 27a1979: refactor(tests): apply SqlAssertions to ExpressionBlockResultAnyPlaceholderAdvancedTests
+- 04aa827: refactor(tests): apply SqlAssertions to DynamicUpdateWithAnyPlaceholderTests
+- de149ee: docs: update phase 2 progress - 11 files refactored with SqlAssertions
+- 8ce0c6e: refactor(tests): apply SqlAssertions to remaining null parameter assertion in SqlBuilderTests
 
 ## 结论
 
-虽然没有完成所有计划的任务（特别是大型文件拆分），但我们成功创建了可重用的测试辅助类，并在多个测试文件中应用它们，有效减少了代码重复。所有3,316个测试继续通过，证明重构没有破坏任何功能。
+虽然没有完成所有计划的任务（特别是大型文件拆分），但我们成功创建了可重用的测试辅助类，并在11个测试文件中应用它们，有效减少了代码重复。所有3,356个测试继续通过，证明重构没有破坏任何功能。
 
 这些辅助类为未来的测试编写提供了良好的基础，团队可以在新测试中继续使用它们，逐步减少整体代码重复性。
+
+### 最终统计
+- 创建了3个测试辅助类
+- 应用到11个测试文件
+- 替换了约143处参数断言（SqlAssertions.AssertParametersContain）
+- 替换了约26处实体创建代码（TestEntityFactory）
+- 所有3,356个测试通过
+- 18次提交记录了整个重构过程

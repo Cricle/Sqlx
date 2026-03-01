@@ -42,8 +42,12 @@
    - 提高了断言的可读性和一致性
 
 3. **EntityProvider/ResultReaderStrictTests.cs**
+   - 使用TestEntityFactory替换了10处重复的实体创建代码
+   - 完整应用工厂方法
+
+4. **SourceGeneratorTests.cs**
    - 使用TestEntityFactory替换了3处重复的实体创建代码
-   - 部分应用（还有更多可以优化的地方）
+   - 简化了参数绑定测试
 
 ### 3. 验证和清理 ✓
 
@@ -57,7 +61,7 @@
 - **测试文件数**: 147
 - **代码总行数**: 57,866
 - **测试方法数**: 2,850+
-- **使用辅助类的文件**: 6
+- **使用辅助类的文件**: 8
 - **平均每文件行数**: 393.65
 
 ## 未完成的任务
@@ -150,6 +154,8 @@ SqlAssertions.AssertParametersContain(template.Parameters, "p0", 123);
 - ce86257: feat(tests): create test helper classes
 - 778a955: refactor(tests): apply test helper classes to reduce duplication
 - 0462593: chore: complete test deduplication phase 2 - cleanup and metrics
+- d8905f0: docs: add phase 2 completion summary
+- 8df2d88: refactor(tests): expand helper class usage to more test files
 
 ## 结论
 

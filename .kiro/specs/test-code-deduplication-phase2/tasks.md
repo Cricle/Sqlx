@@ -147,7 +147,7 @@
 - [x] 5.2 在识别的测试中应用 TestEntityFactory
   - 替换重复的实体创建代码
   - 确保测试仍然通过
-  - 已重构: ResultReaderTests.cs
+  - 已重构: ResultReaderTests.cs, ResultReaderStrictTests.cs, SourceGeneratorTests.cs
   - _需求: 4.2, 4.3_
 
 - [x] 5.3 识别可以使用 SqlAssertions 的测试
@@ -175,7 +175,7 @@
   - 确认重复率降低
   - 记录改进指标：
     * 创建了3个测试辅助类
-    * 应用到6个测试文件
+    * 应用到8个测试文件（新增2个）
     * 测试文件总数: 147
     * 代码总行数: 57,866
     * 测试方法数: 2,850+
@@ -193,7 +193,7 @@
   - git add 所有更改 ✓
   - 创建提交信息 ✓
   - 推送到远程仓库 ✓
-  - Commits: 778a955, 0462593
+  - Commits: 778a955, 0462593, d8905f0, 8df2d88
   - _需求: 无（版本控制）_
 
 ## 注意事项

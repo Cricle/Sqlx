@@ -65,19 +65,27 @@
    - 使用SqlAssertions替换了11处参数断言
    - 涵盖WHERE和UPDATE表达式解析测试
 
+9. **ExpressionBlockResultAnyPlaceholderTests.cs**
+   - 使用SqlAssertions替换了19处参数断言
+   - 涵盖Any占位符的基础功能测试
+
+10. **ExpressionBlockResultAnyPlaceholderAdvancedTests.cs**
+   - 使用SqlAssertions替换了17处参数断言
+   - 涵盖Any占位符的高级场景和边界情况测试
+
 ### 3. 验证和清理 ✓
 
 - ✓ 运行完整测试套件：所有3,316个测试通过
 - ✓ 测量代码指标
 - ✓ 清理临时分析脚本
-- ✓ 提交并推送更改
+- ✓ 提交并推送更改（多次迭代）
 
 ## 测试指标
 
 - **测试文件数**: 147
 - **代码总行数**: 57,866
 - **测试方法数**: 2,850+
-- **使用辅助类的文件**: 8
+- **使用辅助类的文件**: 10
 - **平均每文件行数**: 393.65
 
 ## 未完成的任务
@@ -179,6 +187,7 @@ SqlAssertions.AssertParametersContain(template.Parameters, "p0", 123);
 - 28edbc4: refactor(tests): expand SqlAssertions usage in SqlBuilderTests
 - af60b75: docs: update phase 2 documentation with expanded SqlAssertions usage
 - c26111c: refactor(tests): apply SqlAssertions to ExpressionBlockResultTests
+- a0c9746: docs: update phase 2 progress after ExpressionBlockResultTests refactoring
 
 ## 结论
 

@@ -5,6 +5,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Sqlx;
 using Sqlx.Expressions;
+using Sqlx.Tests.Helpers;
 using System;
 using System.Linq.Expressions;
 
@@ -55,7 +56,7 @@ public class ExpressionBlockResultAnyPlaceholderTests
         // Assert
         Assert.AreEqual("[age] > @minAge", result.Sql);
         Assert.AreEqual(1, result.Parameters.Count);
-        Assert.AreEqual(18, result.Parameters["@minAge"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@minAge", 18);
         Assert.IsTrue(result.AreAllPlaceholdersFilled());
     }
 
@@ -92,8 +93,8 @@ public class ExpressionBlockResultAnyPlaceholderTests
         // Assert
         Assert.AreEqual("([age] > @minAge AND [age] < @maxAge)", result.Sql);
         Assert.AreEqual(2, result.Parameters.Count);
-        Assert.AreEqual(18, result.Parameters["@minAge"]);
-        Assert.AreEqual(65, result.Parameters["@maxAge"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@minAge", 18);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@maxAge", 65);
         Assert.IsTrue(result.AreAllPlaceholdersFilled());
     }
 
@@ -112,8 +113,8 @@ public class ExpressionBlockResultAnyPlaceholderTests
         // Assert
         Assert.AreEqual("([age] > @minAge AND [age] < @p0)", result.Sql);
         Assert.AreEqual(2, result.Parameters.Count);
-        Assert.AreEqual(18, result.Parameters["@minAge"]);
-        Assert.AreEqual(30, result.Parameters["@p0"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@minAge", 18);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@p0", 30);
     }
 
     [TestMethod]
@@ -129,7 +130,7 @@ public class ExpressionBlockResultAnyPlaceholderTests
         // Assert
         Assert.AreEqual("[name] = @userName", result.Sql);
         Assert.AreEqual(1, result.Parameters.Count);
-        Assert.AreEqual("John", result.Parameters["@userName"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@userName", "John");
     }
 
     [TestMethod]
@@ -149,9 +150,9 @@ public class ExpressionBlockResultAnyPlaceholderTests
         // Assert
         Assert.AreEqual("(([age] > @minAge AND [age] < @maxAge) OR [name] = @userName)", result.Sql);
         Assert.AreEqual(3, result.Parameters.Count);
-        Assert.AreEqual(18, result.Parameters["@minAge"]);
-        Assert.AreEqual(65, result.Parameters["@maxAge"]);
-        Assert.AreEqual("John", result.Parameters["@userName"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@minAge", 18);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@maxAge", 65);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@userName", "John");
     }
 
     [TestMethod]
@@ -170,7 +171,7 @@ public class ExpressionBlockResultAnyPlaceholderTests
         // Assert
         Assert.AreEqual("[age] = @newAge", result.Sql);
         Assert.AreEqual(1, result.Parameters.Count);
-        Assert.AreEqual(25, result.Parameters["@newAge"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@newAge", 25);
     }
 
     [TestMethod]
@@ -191,8 +192,8 @@ public class ExpressionBlockResultAnyPlaceholderTests
         // Assert
         Assert.AreEqual("[name] = @newName, [age] = @newAge", result.Sql);
         Assert.AreEqual(2, result.Parameters.Count);
-        Assert.AreEqual("Jane", result.Parameters["@newName"]);
-        Assert.AreEqual(30, result.Parameters["@newAge"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@newName", "Jane");
+        SqlAssertions.AssertParametersContain(result.Parameters, "@newAge", 30);
     }
 
     [TestMethod]
@@ -215,8 +216,8 @@ public class ExpressionBlockResultAnyPlaceholderTests
         // Assert
         Assert.AreEqual("([age] > @minAge AND [name] = @userName)", result.Sql);
         Assert.AreEqual(2, result.Parameters.Count);
-        Assert.AreEqual(18, result.Parameters["@minAge"]);
-        Assert.AreEqual("John", result.Parameters["@userName"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@minAge", 18);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@userName", "John");
         Assert.IsTrue(result.AreAllPlaceholdersFilled());
     }
 
@@ -245,7 +246,7 @@ public class ExpressionBlockResultAnyPlaceholderTests
         // Assert
         Assert.AreEqual("\"age\" > @minAge", result.Sql);
         Assert.AreEqual(1, result.Parameters.Count);
-        Assert.AreEqual(18, result.Parameters["@minAge"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@minAge", 18);
     }
 
     [TestMethod]
@@ -261,7 +262,7 @@ public class ExpressionBlockResultAnyPlaceholderTests
         // Assert
         Assert.AreEqual("`age` > @minAge", result.Sql);
         Assert.AreEqual(1, result.Parameters.Count);
-        Assert.AreEqual(18, result.Parameters["@minAge"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@minAge", 18);
     }
 
     [TestMethod]
@@ -277,7 +278,7 @@ public class ExpressionBlockResultAnyPlaceholderTests
         // Assert
         Assert.AreEqual("\"age\" > :minAge", result.Sql);
         Assert.AreEqual(1, result.Parameters.Count);
-        Assert.AreEqual(18, result.Parameters[":minAge"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, ":minAge", 18);
     }
 
     [TestMethod]
@@ -293,7 +294,7 @@ public class ExpressionBlockResultAnyPlaceholderTests
         // Assert
         Assert.AreEqual("[email] = @email", result.Sql);
         Assert.AreEqual(1, result.Parameters.Count);
-        Assert.IsNull(result.Parameters["@email"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@email", null);
     }
 
     [TestMethod]

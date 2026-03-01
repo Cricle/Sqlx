@@ -5,6 +5,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Sqlx;
 using Sqlx.Expressions;
+using Sqlx.Tests.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
@@ -52,9 +53,9 @@ public class ExpressionBlockResultAnyPlaceholderAdvancedTests
         // Assert
         Assert.AreEqual("((([price] >= @minPrice AND [price] <= @maxPrice) OR [category] = @category) AND [is_active] = 1)", result.Sql);
         Assert.AreEqual(3, result.Parameters.Count);
-        Assert.AreEqual(10.0m, result.Parameters["@minPrice"]);
-        Assert.AreEqual(100.0m, result.Parameters["@maxPrice"]);
-        Assert.AreEqual("Electronics", result.Parameters["@category"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@minPrice", 10.0m);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@maxPrice", 100.0m);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@category", "Electronics");
     }
 
     [TestMethod]
@@ -72,8 +73,8 @@ public class ExpressionBlockResultAnyPlaceholderAdvancedTests
         // Assert
         Assert.AreEqual("([price] * @multiplier) > @threshold", result.Sql);
         Assert.AreEqual(2, result.Parameters.Count);
-        Assert.AreEqual(1.2m, result.Parameters["@multiplier"]);
-        Assert.AreEqual(50.0m, result.Parameters["@threshold"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@multiplier", 1.2m);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@threshold", 50.0m);
     }
 
     [TestMethod]
@@ -92,7 +93,7 @@ public class ExpressionBlockResultAnyPlaceholderAdvancedTests
         Assert.IsTrue(result.Sql.Contains("LOWER"));
         Assert.IsTrue(result.Sql.Contains("@searchTerm"));
         Assert.AreEqual(1, result.Parameters.Count);
-        Assert.AreEqual("laptop", result.Parameters["@searchTerm"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@searchTerm", "laptop");
     }
 
     [TestMethod]
@@ -113,8 +114,8 @@ public class ExpressionBlockResultAnyPlaceholderAdvancedTests
         // Assert
         Assert.AreEqual("[price] = ([price] * @priceMultiplier), [stock] = ([stock] + @stockIncrement)", result.Sql);
         Assert.AreEqual(2, result.Parameters.Count);
-        Assert.AreEqual(1.1m, result.Parameters["@priceMultiplier"]);
-        Assert.AreEqual(10, result.Parameters["@stockIncrement"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@priceMultiplier", 1.1m);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@stockIncrement", 10);
     }
 
     [TestMethod]
@@ -137,9 +138,9 @@ public class ExpressionBlockResultAnyPlaceholderAdvancedTests
         // Assert
         Assert.AreEqual("[price] = @newPrice, [updated_at] = @p0, [is_active] = @isActive", result.Sql);
         Assert.AreEqual(3, result.Parameters.Count);
-        Assert.AreEqual(99.99m, result.Parameters["@newPrice"]);
-        Assert.AreEqual(now, result.Parameters["@p0"]);
-        Assert.AreEqual(true, result.Parameters["@isActive"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@newPrice", 99.99m);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@p0", now);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@isActive", true);
     }
 
     #endregion
@@ -159,7 +160,7 @@ public class ExpressionBlockResultAnyPlaceholderAdvancedTests
 
         // Assert
         Assert.AreEqual("[price] = @exactPrice", result.Sql);
-        Assert.AreEqual(123.456m, result.Parameters["@exactPrice"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@exactPrice", 123.456m);
     }
 
     [TestMethod]
@@ -175,7 +176,7 @@ public class ExpressionBlockResultAnyPlaceholderAdvancedTests
 
         // Assert
         Assert.AreEqual("[rating] >= @minRating", result.Sql);
-        Assert.AreEqual(4.5, result.Parameters["@minRating"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@minRating", 4.5);
     }
 
     [TestMethod]
@@ -192,7 +193,7 @@ public class ExpressionBlockResultAnyPlaceholderAdvancedTests
 
         // Assert
         Assert.AreEqual("[created_at] >= @startDate", result.Sql);
-        Assert.AreEqual(testDate, result.Parameters["@startDate"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@startDate", testDate);
     }
 
     [TestMethod]
@@ -208,7 +209,7 @@ public class ExpressionBlockResultAnyPlaceholderAdvancedTests
 
         // Assert
         Assert.AreEqual("[updated_at] = @updateDate", result1.Sql);
-        Assert.IsNull(result1.Parameters["@updateDate"]);
+        SqlAssertions.AssertParametersContain(result1.Parameters, "@updateDate", null);
 
         // Act - with non-null value
         var testDate = DateTime.UtcNow;
@@ -217,7 +218,7 @@ public class ExpressionBlockResultAnyPlaceholderAdvancedTests
 
         // Assert
         Assert.AreEqual("[updated_at] = @updateDate", result2.Sql);
-        Assert.AreEqual(testDate, result2.Parameters["@updateDate"]);
+        SqlAssertions.AssertParametersContain(result2.Parameters, "@updateDate", testDate);
     }
 
     [TestMethod]
@@ -233,7 +234,7 @@ public class ExpressionBlockResultAnyPlaceholderAdvancedTests
 
         // Assert
         Assert.AreEqual("[is_active] = @activeStatus", result.Sql);
-        Assert.AreEqual(true, result.Parameters["@activeStatus"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@activeStatus", true);
     }
 
     #endregion
@@ -297,11 +298,11 @@ public class ExpressionBlockResultAnyPlaceholderAdvancedTests
             .WithParameter("threshold", 50.0m);
 
         // Assert
-        Assert.AreEqual(50.0m, result.Parameters["@threshold"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@threshold", 50.0m);
 
         // Update parameter
         result.WithParameter("threshold", 100.0m);
-        Assert.AreEqual(100.0m, result.Parameters["@threshold"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@threshold", 100.0m);
     }
 
     [TestMethod]
@@ -326,9 +327,9 @@ public class ExpressionBlockResultAnyPlaceholderAdvancedTests
 
         // Assert
         Assert.IsTrue(result.AreAllPlaceholdersFilled());
-        Assert.AreEqual(10.0m, result.Parameters["@minPrice"]);
-        Assert.AreEqual(100.0m, result.Parameters["@maxPrice"]);
-        Assert.AreEqual("Electronics", result.Parameters["@category"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@minPrice", 10.0m);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@maxPrice", 100.0m);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@category", "Electronics");
     }
 
     [TestMethod]
@@ -510,11 +511,11 @@ public class ExpressionBlockResultAnyPlaceholderAdvancedTests
             .WithParameter("maxPrice", 500.0m);
 
         // Assert - Results are independent
-        Assert.AreEqual(10.0m, result1.Parameters["@minPrice"]);
-        Assert.AreEqual(50.0m, result1.Parameters["@maxPrice"]);
+        SqlAssertions.AssertParametersContain(result1.Parameters, "@minPrice", 10.0m);
+        SqlAssertions.AssertParametersContain(result1.Parameters, "@maxPrice", 50.0m);
 
-        Assert.AreEqual(100.0m, result2.Parameters["@minPrice"]);
-        Assert.AreEqual(500.0m, result2.Parameters["@maxPrice"]);
+        SqlAssertions.AssertParametersContain(result2.Parameters, "@minPrice", 100.0m);
+        SqlAssertions.AssertParametersContain(result2.Parameters, "@maxPrice", 500.0m);
 
         // SQL should be the same
         Assert.AreEqual(result1.Sql, result2.Sql);
@@ -565,7 +566,7 @@ public class ExpressionBlockResultAnyPlaceholderAdvancedTests
         Assert.AreEqual(0, result.GetPlaceholderNames().Count);
         Assert.IsTrue(result.AreAllPlaceholdersFilled()); // No placeholders to fill
         Assert.AreEqual(1, result.Parameters.Count);
-        Assert.AreEqual(10.0m, result.Parameters["@p0"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@p0", 10.0m);
     }
 
     [TestMethod]
@@ -665,9 +666,9 @@ public class ExpressionBlockResultAnyPlaceholderAdvancedTests
         // Assert
         Assert.AreEqual("(([price] > @minPrice AND [stock] > @p0) AND [category] = @category)", result.Sql);
         Assert.AreEqual(3, result.Parameters.Count);
-        Assert.AreEqual(50.0m, result.Parameters["@minPrice"]);
-        Assert.AreEqual(100, result.Parameters["@p0"]); // Constant parameter
-        Assert.AreEqual("Electronics", result.Parameters["@category"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@minPrice", 50.0m);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@p0", 100); // Constant parameter
+        SqlAssertions.AssertParametersContain(result.Parameters, "@category", "Electronics");
     }
 
     [TestMethod]
@@ -690,9 +691,9 @@ public class ExpressionBlockResultAnyPlaceholderAdvancedTests
         // Assert
         Assert.AreEqual("[price] = @newPrice, [updated_at] = @p0, [category] = @newCategory", result.Sql);
         Assert.AreEqual(3, result.Parameters.Count);
-        Assert.AreEqual(99.99m, result.Parameters["@newPrice"]);
-        Assert.AreEqual(constantDate, result.Parameters["@p0"]);
-        Assert.AreEqual("Books", result.Parameters["@newCategory"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@newPrice", 99.99m);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@p0", constantDate);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@newCategory", "Books");
     }
 
     #endregion

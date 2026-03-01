@@ -158,7 +158,7 @@
 - [x] 5.4 在识别的测试中应用 SqlAssertions
   - 替换重复的断言代码
   - 确保测试仍然通过
-  - 已重构: SqlInterpolatedStringHandlerTests.cs, SetExpressionExtensionsTests.cs, SetExpressionEdgeCaseTests.cs, SqlBuilderTests.cs (部分)
+  - 已重构: SqlInterpolatedStringHandlerTests.cs, SetExpressionExtensionsTests.cs, SetExpressionEdgeCaseTests.cs, SqlBuilderTests.cs (24个测试方法)
   - _需求: 4.2, 4.3_
 
 - [x] 6. 最终验证和清理

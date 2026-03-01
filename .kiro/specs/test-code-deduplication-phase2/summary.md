@@ -58,8 +58,8 @@
    - 统一了null值和边界情况的断言方式
 
 7. **QueryBuilder/SqlBuilderTests.cs**
-   - 使用SqlAssertions替换了11处参数断言（部分应用）
-   - 该文件有1,471行，还有更多可以应用的地方
+   - 使用SqlAssertions替换了24处参数断言
+   - 该文件有1,471行，已应用到主要的AppendTemplate测试方法
 
 ### 3. 验证和清理 ✓
 
@@ -171,6 +171,8 @@ SqlAssertions.AssertParametersContain(template.Parameters, "p0", 123);
 - 8626750: refactor(tests): apply TestEntityFactory to SourceGeneratorTests
 - 048947d: test: apply SqlAssertions to SetExpression test files
 - 899ee65: test: apply SqlAssertions to SqlBuilderTests
+- eec4cfe: docs: update phase 2 summary with latest progress
+- 28edbc4: refactor(tests): expand SqlAssertions usage in SqlBuilderTests
 
 ## 结论
 

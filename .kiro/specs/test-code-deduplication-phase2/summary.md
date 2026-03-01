@@ -58,8 +58,9 @@
    - 统一了null值和边界情况的断言方式
 
 7. **QueryBuilder/SqlBuilderTests.cs**
-   - 使用SqlAssertions替换了34处参数断言
+   - 使用SqlAssertions替换了35处参数断言
    - 该文件有1,471行，已应用到主要的AppendTemplate测试方法
+   - 包括1个null值断言的替换
 
 8. **Expressions/ExpressionBlockResultTests.cs**
    - 使用SqlAssertions替换了11处参数断言
@@ -142,15 +143,12 @@ var entities = new[]
 
 **之前**:
 ```csharp
-Assert.IsTrue(template.Sql.Contains("@p0"));
-Assert.AreEqual(1, template.Parameters.Count);
-Assert.AreEqual(123, template.Parameters["p0"]);
+Assert.IsNull(template.Parameters["p0"]);
 ```
 
 **之后**:
 ```csharp
-SqlAssertions.AssertSqlIsParameterized(template.Sql, 1);
-SqlAssertions.AssertParametersContain(template.Parameters, "p0", 123);
+SqlAssertions.AssertParametersContain(template.Parameters, "p0", null);
 ```
 
 ## 下一步建议

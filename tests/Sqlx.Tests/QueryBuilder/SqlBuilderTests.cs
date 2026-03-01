@@ -131,7 +131,7 @@ public class SqlBuilderTests
         // Assert
         Assert.AreEqual("SELECT * FROM users WHERE name = @p0", template.Sql);
         Assert.AreEqual(1, template.Parameters.Count);
-        Assert.IsNull(template.Parameters["p0"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "p0", null);
     }
 
     [TestMethod]

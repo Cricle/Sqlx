@@ -13,6 +13,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Sqlx;
 using Sqlx.Annotations;
 using Sqlx.Expressions;
+using Sqlx.Tests.Helpers;
 
 /// <summary>
 /// Tests for DynamicUpdateAsync integration with Any placeholder support.
@@ -71,8 +72,8 @@ public class DynamicUpdateWithAnyPlaceholderTests
         // Assert
         Assert.AreEqual("([value] >= @minValue AND [value] <= @maxValue)", result.Sql);
         Assert.AreEqual(2, result.Parameters.Count);
-        Assert.AreEqual(10, result.Parameters["@minValue"]);
-        Assert.AreEqual(100, result.Parameters["@maxValue"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@minValue", 10);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@maxValue", 100);
     }
 
     [TestMethod]
@@ -94,8 +95,8 @@ public class DynamicUpdateWithAnyPlaceholderTests
         // Assert
         Assert.AreEqual("[value] = @newValue, [price] = @newPrice", result.Sql);
         Assert.AreEqual(2, result.Parameters.Count);
-        Assert.AreEqual(200, result.Parameters["@newValue"]);
-        Assert.AreEqual(99.99, result.Parameters["@newPrice"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@newValue", 200);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@newPrice", 99.99);
     }
 
     #endregion
@@ -132,24 +133,24 @@ public class DynamicUpdateWithAnyPlaceholderTests
             .WithParameter("min", 0)
             .WithParameter("max", 100);
         Assert.AreEqual("([value] >= @min AND [value] <= @max)", result1.Sql);
-        Assert.AreEqual(0, result1.Parameters["@min"]);
-        Assert.AreEqual(100, result1.Parameters["@max"]);
+        SqlAssertions.AssertParametersContain(result1.Parameters, "@min", 0);
+        SqlAssertions.AssertParametersContain(result1.Parameters, "@max", 100);
 
         // Range 2: 100-200 (should match Item2)
         var result2 = ExpressionBlockResult.Parse(rangeTemplate.Body, SqlDefine.SQLite)
             .WithParameter("min", 100)
             .WithParameter("max", 200);
         Assert.AreEqual("([value] >= @min AND [value] <= @max)", result2.Sql);
-        Assert.AreEqual(100, result2.Parameters["@min"]);
-        Assert.AreEqual(200, result2.Parameters["@max"]);
+        SqlAssertions.AssertParametersContain(result2.Parameters, "@min", 100);
+        SqlAssertions.AssertParametersContain(result2.Parameters, "@max", 200);
 
         // Range 3: 200-300 (should match Item3)
         var result3 = ExpressionBlockResult.Parse(rangeTemplate.Body, SqlDefine.SQLite)
             .WithParameter("min", 200)
             .WithParameter("max", 300);
         Assert.AreEqual("([value] >= @min AND [value] <= @max)", result3.Sql);
-        Assert.AreEqual(200, result3.Parameters["@min"]);
-        Assert.AreEqual(300, result3.Parameters["@max"]);
+        SqlAssertions.AssertParametersContain(result3.Parameters, "@min", 200);
+        SqlAssertions.AssertParametersContain(result3.Parameters, "@max", 300);
     }
 
     [TestMethod]
@@ -176,11 +177,11 @@ public class DynamicUpdateWithAnyPlaceholderTests
         Assert.AreEqual(update1.Sql, update2.Sql);
         Assert.AreEqual("[value] = ([value] + @increment), [price] = ([price] * @multiplier)", update1.Sql);
 
-        Assert.AreEqual(10, update1.Parameters["@increment"]);
-        Assert.AreEqual(1.1, update1.Parameters["@multiplier"]);
+        SqlAssertions.AssertParametersContain(update1.Parameters, "@increment", 10);
+        SqlAssertions.AssertParametersContain(update1.Parameters, "@multiplier", 1.1);
 
-        Assert.AreEqual(50, update2.Parameters["@increment"]);
-        Assert.AreEqual(1.5, update2.Parameters["@multiplier"]);
+        SqlAssertions.AssertParametersContain(update2.Parameters, "@increment", 50);
+        SqlAssertions.AssertParametersContain(update2.Parameters, "@multiplier", 1.5);
     }
 
     #endregion
@@ -252,15 +253,15 @@ public class DynamicUpdateWithAnyPlaceholderTests
         // Act - Test various integer values
         var result1 = ExpressionBlockResult.Parse(template.Body, SqlDefine.SQLite)
             .WithParameter("exactValue", 0);
-        Assert.AreEqual(0, result1.Parameters["@exactValue"]);
+        SqlAssertions.AssertParametersContain(result1.Parameters, "@exactValue", 0);
 
         var result2 = ExpressionBlockResult.Parse(template.Body, SqlDefine.SQLite)
             .WithParameter("exactValue", -100);
-        Assert.AreEqual(-100, result2.Parameters["@exactValue"]);
+        SqlAssertions.AssertParametersContain(result2.Parameters, "@exactValue", -100);
 
         var result3 = ExpressionBlockResult.Parse(template.Body, SqlDefine.SQLite)
             .WithParameter("exactValue", int.MaxValue);
-        Assert.AreEqual(int.MaxValue, result3.Parameters["@exactValue"]);
+        SqlAssertions.AssertParametersContain(result3.Parameters, "@exactValue", int.MaxValue);
     }
 
     [TestMethod]
@@ -273,15 +274,15 @@ public class DynamicUpdateWithAnyPlaceholderTests
         // Act - Test various floating point values
         var result1 = ExpressionBlockResult.Parse(template.Body, SqlDefine.SQLite)
             .WithParameter("exactPrice", 0.0);
-        Assert.AreEqual(0.0, result1.Parameters["@exactPrice"]);
+        SqlAssertions.AssertParametersContain(result1.Parameters, "@exactPrice", 0.0);
 
         var result2 = ExpressionBlockResult.Parse(template.Body, SqlDefine.SQLite)
             .WithParameter("exactPrice", 123.456);
-        Assert.AreEqual(123.456, result2.Parameters["@exactPrice"]);
+        SqlAssertions.AssertParametersContain(result2.Parameters, "@exactPrice", 123.456);
 
         var result3 = ExpressionBlockResult.Parse(template.Body, SqlDefine.SQLite)
             .WithParameter("exactPrice", -99.99);
-        Assert.AreEqual(-99.99, result3.Parameters["@exactPrice"]);
+        SqlAssertions.AssertParametersContain(result3.Parameters, "@exactPrice", -99.99);
     }
 
     [TestMethod]
@@ -294,15 +295,15 @@ public class DynamicUpdateWithAnyPlaceholderTests
         // Act - Test various string values
         var result1 = ExpressionBlockResult.Parse(template.Body, SqlDefine.SQLite)
             .WithParameter("searchName", "");
-        Assert.AreEqual("", result1.Parameters["@searchName"]);
+        SqlAssertions.AssertParametersContain(result1.Parameters, "@searchName", "");
 
         var result2 = ExpressionBlockResult.Parse(template.Body, SqlDefine.SQLite)
             .WithParameter("searchName", "Test with spaces");
-        Assert.AreEqual("Test with spaces", result2.Parameters["@searchName"]);
+        SqlAssertions.AssertParametersContain(result2.Parameters, "@searchName", "Test with spaces");
 
         var result3 = ExpressionBlockResult.Parse(template.Body, SqlDefine.SQLite)
             .WithParameter("searchName", "Test with 'quotes' and \"double quotes\"");
-        Assert.AreEqual("Test with 'quotes' and \"double quotes\"", result3.Parameters["@searchName"]);
+        SqlAssertions.AssertParametersContain(result3.Parameters, "@searchName", "Test with 'quotes' and \"double quotes\"");
     }
 
     [TestMethod]
@@ -315,11 +316,11 @@ public class DynamicUpdateWithAnyPlaceholderTests
         // Act
         var result1 = ExpressionBlockResult.Parse(template.Body, SqlDefine.SQLite)
             .WithParameter("activeStatus", true);
-        Assert.AreEqual(true, result1.Parameters["@activeStatus"]);
+        SqlAssertions.AssertParametersContain(result1.Parameters, "@activeStatus", true);
 
         var result2 = ExpressionBlockResult.Parse(template.Body, SqlDefine.SQLite)
             .WithParameter("activeStatus", false);
-        Assert.AreEqual(false, result2.Parameters["@activeStatus"]);
+        SqlAssertions.AssertParametersContain(result2.Parameters, "@activeStatus", false);
     }
 
     #endregion
@@ -358,8 +359,8 @@ public class DynamicUpdateWithAnyPlaceholderTests
 
         // Assert
         Assert.AreEqual("([value] > @min_value AND [price] > @min_price)", result.Sql);
-        Assert.AreEqual(10, result.Parameters["@min_value"]);
-        Assert.AreEqual(5.0, result.Parameters["@min_price"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@min_value", 10);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@min_price", 5.0);
     }
 
     [TestMethod]
@@ -377,8 +378,8 @@ public class DynamicUpdateWithAnyPlaceholderTests
 
         // Assert
         Assert.AreEqual("([value] > @threshold1 AND [price] > @threshold2)", result.Sql);
-        Assert.AreEqual(100, result.Parameters["@threshold1"]);
-        Assert.AreEqual(50.0, result.Parameters["@threshold2"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@threshold1", 100);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@threshold2", 50.0);
     }
 
     #endregion
@@ -428,9 +429,9 @@ public class DynamicUpdateWithAnyPlaceholderTests
         // Assert
         Assert.IsTrue(result.AreAllPlaceholdersFilled());
         Assert.AreEqual(3, result.Parameters.Count);
-        Assert.AreEqual(10, result.Parameters["@min"]);
-        Assert.AreEqual(100, result.Parameters["@max"]);
-        Assert.AreEqual("Premium", result.Parameters["@cat"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@min", 10);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@max", 100);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@cat", "Premium");
     }
 
     #endregion

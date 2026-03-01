@@ -145,9 +145,9 @@ app.MapGet("/api/todos/queryable/stats", async (ITodoRepository repo) =>
     return Results.Json(stats, TodoJsonContext.Default.TodoStatsResult);
 });
 
-// SqlxContext Transaction Management Example
-// Demonstrates unified transaction handling across multiple operations
-app.MapPost("/api/todos/bulk", async (List<CreateTodoRequest> requests, TodoDbContext context) =>
+// SqlxContext Transaction Management Example with Batch Insert
+// Demonstrates efficient batch insertion with transaction handling
+app.MapPost("/api/todos/bulk", async (List<CreateTodoRequest> requests, TodoDbContext context, SqliteConnection conn) =>
 {
     if (requests == null || requests.Count == 0)
     {
@@ -157,33 +157,29 @@ app.MapPost("/api/todos/bulk", async (List<CreateTodoRequest> requests, TodoDbCo
     await using var transaction = await context.BeginTransactionAsync();
     try
     {
-        var ids = new List<long>();
         var now = DateTime.UtcNow;
+        var todos = requests.Select(request => new Todo 
+        { 
+            Title = request.Title, 
+            Description = request.Description, 
+            IsCompleted = request.IsCompleted, 
+            Priority = request.Priority, 
+            DueDate = request.DueDate, 
+            Tags = request.Tags, 
+            EstimatedMinutes = request.EstimatedMinutes, 
+            CreatedAt = now, 
+            UpdatedAt = now 
+        }).ToList();
         
-        foreach (var request in requests)
-        {
-            var todo = new Todo 
-            { 
-                Title = request.Title, 
-                Description = request.Description, 
-                IsCompleted = request.IsCompleted, 
-                Priority = request.Priority, 
-                DueDate = request.DueDate, 
-                Tags = request.Tags, 
-                EstimatedMinutes = request.EstimatedMinutes, 
-                CreatedAt = now, 
-                UpdatedAt = now 
-            };
-            
-            // All operations automatically participate in the transaction
-            var newId = await context.Todos.InsertAndGetIdAsync(todo, default);
-            ids.Add(newId);
-        }
+        // Use batch insert for better performance
+        var sql = "INSERT INTO todos (title, description, is_completed, priority, due_date, tags, estimated_minutes, created_at, updated_at) VALUES (@title, @description, @is_completed, @priority, @due_date, @tags, @estimated_minutes, @created_at, @updated_at)";
+        var affected = await conn.ExecuteBatchAsync(sql, todos, TodoWebApi.Models.TodoParameterBinder.Default, transaction, batchSize: 100);
         
         // Commit all changes atomically
         await transaction.CommitAsync();
         
-        return Results.Json(new BulkCreateResult(true, ids.Count, ids, $"Successfully created {ids.Count} todos in a single transaction"), TodoJsonContext.Default.BulkCreateResult);
+        // Note: Batch insert doesn't return IDs, so we return empty list
+        return Results.Json(new BulkCreateResult(true, affected, new List<long>(), $"Successfully created {affected} todos using batch insert"), TodoJsonContext.Default.BulkCreateResult);
     }
     catch (Exception ex)
     {

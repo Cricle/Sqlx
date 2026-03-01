@@ -61,6 +61,10 @@
    - 使用SqlAssertions替换了24处参数断言
    - 该文件有1,471行，已应用到主要的AppendTemplate测试方法
 
+8. **Expressions/ExpressionBlockResultTests.cs**
+   - 使用SqlAssertions替换了11处参数断言
+   - 涵盖WHERE和UPDATE表达式解析测试
+
 ### 3. 验证和清理 ✓
 
 - ✓ 运行完整测试套件：所有3,316个测试通过
@@ -73,7 +77,7 @@
 - **测试文件数**: 147
 - **代码总行数**: 57,866
 - **测试方法数**: 2,850+
-- **使用辅助类的文件**: 7
+- **使用辅助类的文件**: 8
 - **平均每文件行数**: 393.65
 
 ## 未完成的任务
@@ -173,6 +177,8 @@ SqlAssertions.AssertParametersContain(template.Parameters, "p0", 123);
 - 899ee65: test: apply SqlAssertions to SqlBuilderTests
 - eec4cfe: docs: update phase 2 summary with latest progress
 - 28edbc4: refactor(tests): expand SqlAssertions usage in SqlBuilderTests
+- af60b75: docs: update phase 2 documentation with expanded SqlAssertions usage
+- c26111c: refactor(tests): apply SqlAssertions to ExpressionBlockResultTests
 
 ## 结论
 

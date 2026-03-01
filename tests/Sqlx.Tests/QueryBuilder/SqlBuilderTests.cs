@@ -3,6 +3,7 @@
 // </copyright>
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Sqlx.Tests.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -76,7 +77,7 @@ public class SqlBuilderTests
         // Assert
         Assert.AreEqual("SELECT * FROM users WHERE id = @p0", template.Sql);
         Assert.AreEqual(1, template.Parameters.Count);
-        Assert.AreEqual(123, template.Parameters["p0"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "p0", 123);
     }
 
     [TestMethod]
@@ -94,8 +95,8 @@ public class SqlBuilderTests
         // Assert
         Assert.AreEqual("SELECT * FROM users WHERE name = @p0 AND age = @p1", template.Sql);
         Assert.AreEqual(2, template.Parameters.Count);
-        Assert.AreEqual("John", template.Parameters["p0"]);
-        Assert.AreEqual(30, template.Parameters["p1"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "p0", "John");
+        SqlAssertions.AssertParametersContain(template.Parameters, "p1", 30);
     }
 
     [TestMethod]
@@ -113,7 +114,7 @@ public class SqlBuilderTests
         // Assert
         Assert.AreEqual("SELECT * FROM users WHERE age >= @p0", template.Sql);
         Assert.AreEqual(1, template.Parameters.Count);
-        Assert.AreEqual(18, template.Parameters["p0"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "p0", 18);
     }
 
     [TestMethod]
@@ -239,7 +240,7 @@ public class SqlBuilderTests
         // Assert
         Assert.IsTrue(template.Sql.Contains("SELECT * FROM users WHERE name = @p0"));
         Assert.AreEqual(1, template.Parameters.Count);
-        Assert.AreEqual(longString, template.Parameters["p0"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "p0", longString);
     }
 
     [TestMethod]
@@ -274,8 +275,8 @@ public class SqlBuilderTests
         // Assert
         Assert.AreEqual("SELECT * FROM users WHERE age >= @p0 AND age <= @p1", template.Sql);
         Assert.AreEqual(2, template.Parameters.Count);
-        Assert.AreEqual(18, template.Parameters["p0"]);
-        Assert.AreEqual(65, template.Parameters["p1"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "p0", 18);
+        SqlAssertions.AssertParametersContain(template.Parameters, "p1", 65);
     }
 
     [TestMethod]
@@ -294,8 +295,8 @@ public class SqlBuilderTests
         // Assert
         Assert.AreEqual("INSERT INTO logs (created, id, data) VALUES (@p0, @p1, @p2)", template.Sql);
         Assert.AreEqual(3, template.Parameters.Count);
-        Assert.AreEqual(date, template.Parameters["p0"]);
-        Assert.AreEqual(guid, template.Parameters["p1"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "p0", date);
+        SqlAssertions.AssertParametersContain(template.Parameters, "p1", guid);
         CollectionAssert.AreEqual(bytes, (byte[])template.Parameters["p2"]!);
     }
 
@@ -316,7 +317,7 @@ public class SqlBuilderTests
         // Assert
         Assert.IsTrue(template.Sql.Contains("SELECT * FROM users WHERE id IN (SELECT id FROM orders WHERE total > @p0)"));
         Assert.AreEqual(1, template.Parameters.Count);
-        Assert.AreEqual(1000, template.Parameters["p0"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "p0", 1000);
     }
 
     [TestMethod]
@@ -339,8 +340,8 @@ public class SqlBuilderTests
         Assert.IsTrue(template.Sql.Contains("age >= @p0"));
         Assert.IsTrue(template.Sql.Contains("total > @p1"));
         Assert.AreEqual(2, template.Parameters.Count);
-        Assert.AreEqual(18, template.Parameters["p0"]);
-        Assert.AreEqual(1000, template.Parameters["p1"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "p0", 18);
+        SqlAssertions.AssertParametersContain(template.Parameters, "p1", 1000);
     }
 
     [TestMethod]
@@ -385,7 +386,7 @@ public class SqlBuilderTests
         Assert.IsTrue(template.Sql.Contains("[users]"));
         Assert.IsTrue(template.Sql.Contains("@minAge"));
         Assert.AreEqual(1, template.Parameters.Count);
-        Assert.AreEqual(18, template.Parameters["minAge"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "minAge", 18);
     }
 
     [TestMethod]
@@ -423,7 +424,7 @@ public class SqlBuilderTests
         Assert.IsTrue(template.Sql.Contains("[users]"));
         Assert.IsTrue(template.Sql.Contains("@p0"));
         Assert.AreEqual(1, template.Parameters.Count);
-        Assert.AreEqual("active", template.Parameters["p0"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "p0", "active");
     }
 
     [TestMethod]
@@ -443,8 +444,8 @@ public class SqlBuilderTests
         Assert.AreEqual("SELECT * FROM users WHERE id = @p0 AND name = @p1", template.Sql);
         Assert.AreEqual("SELECT * FROM users WHERE id = @p0 AND name = @p1", template.TemplateSql);
         Assert.AreEqual(2, template.Parameters.Count);
-        Assert.AreEqual(42, template.Parameters["p0"]);
-        Assert.AreEqual("Alice", template.Parameters["p1"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "p0", 42);
+        SqlAssertions.AssertParametersContain(template.Parameters, "p1", "Alice");
         Assert.IsFalse(template.HasDynamicPlaceholders); // No dynamic placeholders in SqlBuilder output
     }
 

@@ -2,7 +2,14 @@
 
 ## 概述
 
-本设计文档描述了 Sqlx 生态系统增强的技术实现，包括依赖注入集成包、文档体系和真实示例。设计遵循 Sqlx 的核心原则：高性能、零反射、AOT 友好。
+本设计文档描述了 Sqlx 生态系统增强的技术实现，包括通过源生成器实现的 DI 集成、文档体系和真实示例。设计遵循 Sqlx 的核心原则：高性能、零反射、AOT 友好。
+
+## 核心设计理念
+
+1. **零反射**: 所有 DI 注册代码通过源生成器在编译时生成
+2. **AOT 友好**: 生成的代码完全兼容 Native AOT
+3. **无额外依赖**: DI 扩展直接集成在 Sqlx 核心库中
+4. **编译时安全**: 源生成器在编译时验证配置
 
 ## 架构
 
@@ -10,14 +17,17 @@
 
 ```
 Sqlx 生态系统
-├── Sqlx (核心库)
-├── Sqlx.Generator (源生成器)
-├── Sqlx.DependencyInjection (新增 - DI 集成)
-│   ├── ServiceCollectionExtensions
-│   ├── SqlxConnectionFactory
-│   └── SqlxOptions
+├── Sqlx (核心库 + DI 扩展)
+│   ├── Core (现有功能)
+│   └── DependencyInjection (新增)
+│       ├── Attributes (标记特性)
+│       └── Extensions (手写扩展方法)
+├── Sqlx.Generator (源生成器 - 增强)
+│   ├── Repository Generator (现有)
+│   └── DI Registration Generator (新增)
 ├── docs/ (增强文档)
 │   ├── getting-started.md
+│   ├── dependency-injection.md
 │   ├── performance-tuning.md
 │   └── troubleshooting.md
 └── samples/RealWorldExample/ (新增 - 完整示例)
@@ -35,10 +45,8 @@ Sqlx 生态系统
 ├─────────────────────────────────────────┤
 │  Services → Repositories                │
 │         ↓           ↓                   │
-│    Sqlx.DependencyInjection             │
-│  ├── DI Registration                    │
-│  ├── Connection Factory                 │
-│  └── Configuration                      │
+│    Generated DI Registration Code       │
+│  (源生成器生成，零反射，AOT 友好)        │
 │         ↓           ↓                   │
 │         Sqlx Core Library               │
 │  ├── SqlQuery<T>                        │
@@ -52,189 +60,218 @@ Sqlx 生态系统
 
 ## 组件设计
 
-### 1. Sqlx.DependencyInjection 包
+### 1. DI 特性标记（Sqlx 核心库）
 
-#### 1.1 ServiceCollectionExtensions
+#### 1.1 SqlxContextAttribute
 
-提供流畅的 API 配置 Sqlx：
+标记 SqlxContext 类，源生成器将为其生成 DI 注册代码：
 
 ```csharp
-public static class SqlxServiceCollectionExtensions
+namespace Sqlx;
+
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
+public sealed class SqlxContextAttribute : Attribute
 {
-    // 基础注册
-    public static ISqlxBuilder AddSqlx(
-        this IServiceCollection services,
-        Action<SqlxOptions> configure)
+    public ServiceLifetime Lifetime { get; set; } = ServiceLifetime.Scoped;
+}
+
+public enum ServiceLifetime
+{
+    Singleton,
+    Scoped,
+    Transient
+}
+```
+
+#### 1.2 用户代码示例
+
+```csharp
+// 用户定义 SqlxContext
+[SqlxContext(Lifetime = ServiceLifetime.Scoped)]
+[SqlDefine(SqlDefineTypes.SQLite)]
+public partial class AppDbContext : SqlxContext
+{
+    public AppDbContext(string connectionString) : base(connectionString)
     {
-        var options = new SqlxOptions();
-        configure(options);
-        
-        // 验证配置
-        if (string.IsNullOrEmpty(options.ConnectionString))
-            throw new ArgumentException("ConnectionString is required");
-        
-        services.AddSingleton(options);
-        services.AddSingleton<ISqlxConnectionFactory, SqlxConnectionFactory>();
-        
-        return new SqlxBuilder(services, options);
     }
     
-    // 从 IConfiguration 注册
-    public static ISqlxBuilder AddSqlx(
+    // 仓储属性
+    public IUserRepository Users => GetRepository<IUserRepository>();
+    public IOrderRepository Orders => GetRepository<IOrderRepository>();
+}
+
+// 仓储定义
+public interface IUserRepository : ICrudRepository<User, long> { }
+
+[RepositoryFor(typeof(IUserRepository))]
+public partial class UserRepository(DbConnection connection) : IUserRepository { }
+```
+
+### 2. 源生成器增强（Sqlx.Generator）
+
+#### 2.1 DI 注册代码生成器
+
+源生成器扫描标记了 `[SqlxContext]` 的类，自动生成扩展方法：
+
+**生成的代码示例**:
+
+```csharp
+// 文件: AppDbContext.g.cs
+using Microsoft.Extensions.DependencyInjection;
+using System.Data.Common;
+
+namespace Sqlx.Generated;
+
+public static class AppDbContextServiceCollectionExtensions
+{
+    public static IServiceCollection AddAppDbContext(
+        this IServiceCollection services,
+        string connectionString)
+    {
+        // 注册 DbConnection 工厂
+        services.AddScoped<DbConnection>(sp =>
+        {
+            var connection = new SqliteConnection(connectionString);
+            return connection;
+        });
+        
+        // 注册 Context
+        services.AddScoped<AppDbContext>(sp =>
+        {
+            var connection = sp.GetRequiredService<DbConnection>();
+            return new AppDbContext(connection.ConnectionString);
+        });
+        
+        // 注册所有仓储
+        services.AddScoped<IUserRepository>(sp =>
+        {
+            var connection = sp.GetRequiredService<DbConnection>();
+            return new UserRepository(connection);
+        });
+        
+        services.AddScoped<IOrderRepository>(sp =>
+        {
+            var connection = sp.GetRequiredService<DbConnection>();
+            return new OrderRepository(connection);
+        });
+        
+        return services;
+    }
+    
+    // 重载：从 IConfiguration 读取
+    public static IServiceCollection AddAppDbContext(
         this IServiceCollection services,
         IConfiguration configuration,
-        string sectionName = "Sqlx")
+        string connectionStringKey = "DefaultConnection")
     {
-        var options = configuration.GetSection(sectionName).Get<SqlxOptions>()
-            ?? throw new ArgumentException($"Configuration section '{sectionName}' not found");
+        var connectionString = configuration.GetConnectionString(connectionStringKey)
+            ?? throw new InvalidOperationException($"Connection string '{connectionStringKey}' not found");
         
-        services.AddSingleton(options);
-        services.AddSingleton<ISqlxConnectionFactory, SqlxConnectionFactory>();
+        return services.AddAppDbContext(connectionString);
+    }
+}
+```
+
+#### 2.2 生成器实现逻辑
+
+```csharp
+[Generator]
+public class DependencyInjectionGenerator : IIncrementalGenerator
+{
+    public void Initialize(IncrementalGeneratorInitializationContext context)
+    {
+        // 1. 查找所有标记了 [SqlxContext] 的类
+        var contextClasses = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                predicate: (node, _) => node is ClassDeclarationSyntax,
+                transform: (ctx, _) => GetContextClass(ctx))
+            .Where(c => c is not null);
         
-        return new SqlxBuilder(services, options);
+        // 2. 为每个 Context 生成 DI 扩展方法
+        context.RegisterSourceOutput(contextClasses, (spc, contextClass) =>
+        {
+            var source = GenerateDIExtensions(contextClass);
+            spc.AddSource($"{contextClass.Name}.g.cs", source);
+        });
     }
     
-    // 自动注册仓储
-    public static ISqlxBuilder AddSqlxRepositories(
-        this ISqlxBuilder builder,
-        ServiceLifetime lifetime = ServiceLifetime.Scoped,
-        params Assembly[] assemblies)
+    private string GenerateDIExtensions(ContextClassInfo contextClass)
     {
-        if (assemblies.Length == 0)
+        var sb = new StringBuilder();
+        
+        // 生成命名空间和类
+        sb.AppendLine($"namespace Sqlx.Generated;");
+        sb.AppendLine();
+        sb.AppendLine($"public static class {contextClass.Name}ServiceCollectionExtensions");
+        sb.AppendLine("{");
+        
+        // 生成 Add{ContextName} 方法
+        sb.AppendLine($"    public static IServiceCollection Add{contextClass.Name}(");
+        sb.AppendLine($"        this IServiceCollection services,");
+        sb.AppendLine($"        string connectionString)");
+        sb.AppendLine("    {");
+        
+        // 注册 DbConnection
+        sb.AppendLine($"        services.Add{GetLifetimeMethod(contextClass.Lifetime)}<DbConnection>(sp =>");
+        sb.AppendLine("        {");
+        sb.AppendLine($"            return new {GetConnectionType(contextClass.Dialect)}(connectionString);");
+        sb.AppendLine("        });");
+        sb.AppendLine();
+        
+        // 注册 Context
+        sb.AppendLine($"        services.Add{GetLifetimeMethod(contextClass.Lifetime)}<{contextClass.Name}>(sp =>");
+        sb.AppendLine("        {");
+        sb.AppendLine("            var connection = sp.GetRequiredService<DbConnection>();");
+        sb.AppendLine($"            return new {contextClass.Name}(connection.ConnectionString);");
+        sb.AppendLine("        });");
+        sb.AppendLine();
+        
+        // 注册所有仓储
+        foreach (var repo in contextClass.Repositories)
         {
-            assemblies = new[] { Assembly.GetCallingAssembly() };
+            sb.AppendLine($"        services.Add{GetLifetimeMethod(contextClass.Lifetime)}<{repo.InterfaceType}>(sp =>");
+            sb.AppendLine("        {");
+            sb.AppendLine("            var connection = sp.GetRequiredService<DbConnection>();");
+            sb.AppendLine($"            return new {repo.ImplementationType}(connection);");
+            sb.AppendLine("        });");
+            sb.AppendLine();
         }
         
-        foreach (var assembly in assemblies)
-        {
-            // 查找所有标记了 [RepositoryFor] 的类
-            var repositoryTypes = assembly.GetTypes()
-                .Where(t => t.IsClass && !t.IsAbstract)
-                .Where(t => t.GetCustomAttribute<RepositoryForAttribute>() != null);
-            
-            foreach (var repoType in repositoryTypes)
+        sb.AppendLine("        return services;");
+        sb.AppendLine("    }");
+        sb.AppendLine("}");
+        
+        return sb.ToString();
+    }
+}
+```
+
+### 3. 手写扩展方法（Sqlx 核心库）
+
+为了支持更灵活的场景，提供一些手写的扩展方法：
+
+```csharp
+namespace Sqlx.DependencyInjection;
+
+public static class SqlxServiceCollectionExtensions
+{
+    // 手动注册单个仓储
+    public static IServiceCollection AddSqlxRepository<TInterface, TImplementation>(
+        this IServiceCollection services,
+        ServiceLifetime lifetime = ServiceLifetime.Scoped)
+        where TInterface : class
+        where TImplementation : class, TInterface
+    {
+        services.Add(new ServiceDescriptor(
+            typeof(TInterface),
+            sp =>
             {
-                var attr = repoType.GetCustomAttribute<RepositoryForAttribute>();
-                var interfaceType = attr.InterfaceType;
-                
-                // 注册仓储
-                builder.Services.Add(new ServiceDescriptor(
-                    interfaceType,
-                    sp =>
-                    {
-                        var factory = sp.GetRequiredService<ISqlxConnectionFactory>();
-                        var connection = factory.CreateConnection();
-                        return Activator.CreateInstance(repoType, connection);
-                    },
-                    lifetime));
-            }
-        }
+                var connection = sp.GetRequiredService<DbConnection>();
+                return Activator.CreateInstance(typeof(TImplementation), connection)!;
+            },
+            lifetime));
         
-        return builder;
-    }
-    
-    // 注册命名连接
-    public static ISqlxBuilder AddNamedConnection(
-        this ISqlxBuilder builder,
-        string name,
-        string connectionString,
-        SqlDefineTypes dialect)
-    {
-        builder.Services.AddKeyedSingleton<ISqlxConnectionFactory>(
-            name,
-            (sp, key) => new SqlxConnectionFactory(connectionString, dialect));
-        
-        return builder;
-    }
-}
-
-// Builder 接口
-public interface ISqlxBuilder
-{
-    IServiceCollection Services { get; }
-    SqlxOptions Options { get; }
-}
-
-internal class SqlxBuilder : ISqlxBuilder
-{
-    public SqlxBuilder(IServiceCollection services, SqlxOptions options)
-    {
-        Services = services;
-        Options = options;
-    }
-    
-    public IServiceCollection Services { get; }
-    public SqlxOptions Options { get; }
-}
-```
-
-#### 1.2 SqlxOptions
-
-配置选项类：
-
-```csharp
-public class SqlxOptions
-{
-    public string ConnectionString { get; set; } = string.Empty;
-    public SqlDefineTypes Dialect { get; set; } = SqlDefineTypes.SQLite;
-    public int CommandTimeout { get; set; } = 30;
-    public bool EnableConnectionPooling { get; set; } = true;
-    public int MinPoolSize { get; set; } = 0;
-    public int MaxPoolSize { get; set; } = 100;
-    
-    // 验证配置
-    public void Validate()
-    {
-        if (string.IsNullOrWhiteSpace(ConnectionString))
-            throw new InvalidOperationException("ConnectionString cannot be empty");
-        
-        if (CommandTimeout < 0)
-            throw new InvalidOperationException("CommandTimeout must be non-negative");
-        
-        if (MinPoolSize < 0 || MaxPoolSize < MinPoolSize)
-            throw new InvalidOperationException("Invalid pool size configuration");
-    }
-}
-```
-
-#### 1.3 SqlxConnectionFactory
-
-连接工厂实现：
-
-```csharp
-public interface ISqlxConnectionFactory
-{
-    DbConnection CreateConnection();
-    SqlDefineTypes Dialect { get; }
-}
-
-public class SqlxConnectionFactory : ISqlxConnectionFactory
-{
-    private readonly string _connectionString;
-    private readonly SqlDefineTypes _dialect;
-    
-    public SqlxConnectionFactory(string connectionString, SqlDefineTypes dialect)
-    {
-        _connectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
-        _dialect = dialect;
-    }
-    
-    public SqlDefineTypes Dialect => _dialect;
-    
-    public DbConnection CreateConnection()
-    {
-        DbConnection connection = _dialect switch
-        {
-            SqlDefineTypes.SQLite => new SqliteConnection(_connectionString),
-            SqlDefineTypes.PostgreSQL => new NpgsqlConnection(_connectionString),
-            SqlDefineTypes.MySQL => new MySqlConnection(_connectionString),
-            SqlDefineTypes.SqlServer => new SqlConnection(_connectionString),
-            SqlDefineTypes.Oracle => new OracleConnection(_connectionString),
-            SqlDefineTypes.DB2 => throw new NotSupportedException("DB2 connection creation not implemented"),
-            _ => throw new NotSupportedException($"Dialect {_dialect} is not supported")
-        };
-        
-        return connection;
+        return services;
     }
 }
 ```
@@ -253,7 +290,6 @@ public class SqlxConnectionFactory : ISqlxConnectionFactory
 ```csharp
 // 1. 安装
 dotnet add package Sqlx
-dotnet add package Sqlx.DependencyInjection
 
 // 2. 定义实体
 [Sqlx, TableName("users")]
@@ -271,27 +307,36 @@ public interface IUserRepository : ICrudRepository<User, long> { }
 [RepositoryFor(typeof(IUserRepository))]
 public partial class UserRepository(DbConnection connection) : IUserRepository { }
 
-// 4. 配置 DI（在 Program.cs 或 Startup.cs）
-builder.Services.AddSqlx(options =>
+// 4. 定义 SqlxContext（新增）
+[SqlxContext(Lifetime = ServiceLifetime.Scoped)]
+[SqlDefine(SqlDefineTypes.SQLite)]
+public partial class AppDbContext : SqlxContext
 {
-    options.ConnectionString = "Data Source=app.db";
-    options.Dialect = SqlDefineTypes.SQLite;
-})
-.AddSqlxRepositories(); // 自动注册当前程序集的所有仓储
+    public AppDbContext(string connectionString) : base(connectionString) { }
+    
+    public IUserRepository Users => GetRepository<IUserRepository>();
+}
 
-// 5. 使用（通过构造函数注入）
+// 5. 配置 DI（在 Program.cs）
+// 源生成器会自动生成 AddAppDbContext 扩展方法
+builder.Services.AddAppDbContext("Data Source=app.db");
+
+// 或从配置读取
+builder.Services.AddAppDbContext(builder.Configuration);
+
+// 6. 使用（通过构造函数注入）
 public class UserService
 {
-    private readonly IUserRepository _userRepository;
+    private readonly AppDbContext _db;
     
-    public UserService(IUserRepository userRepository)
+    public UserService(AppDbContext db)
     {
-        _userRepository = userRepository;
+        _db = db;
     }
     
     public async Task<List<User>> GetAllUsersAsync()
     {
-        return await _userRepository.GetAllAsync();
+        return await _db.Users.GetAllAsync();
     }
 }
 ```
@@ -378,18 +423,11 @@ RealWorldExample/
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 
-// 配置 Sqlx DI
-builder.Services.AddSqlx(builder.Configuration, "Sqlx") // 从 appsettings.json 读取配置
-    .AddSqlxRepositories(); // 自动注册所有仓储
+// 配置 Sqlx DI（源生成器自动生成的扩展方法）
+builder.Services.AddAppDbContext(builder.Configuration); // 从 appsettings.json 读取
 
-// 或者手动配置
-builder.Services.AddSqlx(options =>
-{
-    options.ConnectionString = builder.Configuration.GetConnectionString("Default");
-    options.Dialect = SqlDefineTypes.SQLite;
-    options.CommandTimeout = 30;
-})
-.AddSqlxRepositories(ServiceLifetime.Scoped); // 指定生命周期
+// 或手动指定连接字符串
+builder.Services.AddAppDbContext("Data Source=app.db");
 
 // 添加控制器
 builder.Services.AddControllers();
@@ -411,15 +449,8 @@ app.Run();
 **appsettings.json**:
 ```json
 {
-  "Sqlx": {
-    "ConnectionString": "Data Source=app.db",
-    "Dialect": "SQLite",
-    "CommandTimeout": 30,
-    "EnableConnectionPooling": true,
-    "MaxPoolSize": 100
-  },
   "ConnectionStrings": {
-    "Default": "Data Source=app.db"
+    "DefaultConnection": "Data Source=app.db"
   }
 }
 ```
@@ -490,27 +521,55 @@ public class UsersController : ControllerBase
 
 ## 数据模型
 
-### SqlxOptions
+### SqlxContext 基类
 
 ```csharp
-public class SqlxOptions
+public abstract class SqlxContext : IDisposable
 {
-    public string ConnectionString { get; set; } = string.Empty;
-    public SqlDefineTypes Dialect { get; set; } = SqlDefineTypes.SQLite;
-    public int CommandTimeout { get; set; } = 30;
-    public bool EnableConnectionPooling { get; set; } = true;
-    public int MinPoolSize { get; set; } = 0;
-    public int MaxPoolSize { get; set; } = 100;
+    protected DbConnection Connection { get; }
+    private readonly Dictionary<Type, object> _repositories = new();
+    
+    protected SqlxContext(string connectionString)
+    {
+        Connection = CreateConnection(connectionString);
+    }
+    
+    protected abstract DbConnection CreateConnection(string connectionString);
+    
+    protected TRepository GetRepository<TRepository>() where TRepository : class
+    {
+        var type = typeof(TRepository);
+        if (!_repositories.TryGetValue(type, out var repo))
+        {
+            repo = CreateRepository<TRepository>();
+            _repositories[type] = repo;
+        }
+        return (TRepository)repo;
+    }
+    
+    protected abstract TRepository CreateRepository<TRepository>() where TRepository : class;
+    
+    public void Dispose()
+    {
+        Connection?.Dispose();
+    }
 }
 ```
 
-### ISqlxConnectionFactory
+### SqlxContextAttribute
 
 ```csharp
-public interface ISqlxConnectionFactory
+[AttributeUsage(AttributeTargets.Class)]
+public sealed class SqlxContextAttribute : Attribute
 {
-    DbConnection CreateConnection();
-    SqlDefineTypes Dialect { get; }
+    public ServiceLifetime Lifetime { get; set; } = ServiceLifetime.Scoped;
+}
+
+public enum ServiceLifetime
+{
+    Singleton,
+    Scoped,
+    Transient
 }
 ```
 
@@ -531,28 +590,15 @@ public class PagedResult<T>
 
 ## 错误处理
 
-### 配置验证
+### 编译时验证
 
-```csharp
-public class SqlxOptions
-{
-    // ... properties ...
-    
-    public void Validate()
-    {
-        if (string.IsNullOrWhiteSpace(ConnectionString))
-            throw new InvalidOperationException("ConnectionString cannot be empty");
-        
-        if (CommandTimeout < 0)
-            throw new InvalidOperationException("CommandTimeout must be non-negative");
-        
-        if (MinPoolSize < 0 || MaxPoolSize < MinPoolSize)
-            throw new InvalidOperationException("Invalid pool size configuration");
-    }
-}
-```
+源生成器在编译时验证：
+- SqlxContext 类必须是 partial
+- 必须有正确的构造函数签名
+- 仓储属性必须有对应的实现类
+- 连接字符串配置必须存在
 
-### 统一异常处理（Web API 示例）
+### 运行时验证（Web API 示例）
 
 ```csharp
 public class GlobalExceptionHandler : IExceptionHandler
@@ -672,19 +718,19 @@ volumes:
 
 ## 性能考虑
 
+### 源生成器性能
+
+- 代码生成在编译时完成，零运行时开销
+- 生成的代码直接调用构造函数，无反射
+- 完全 AOT 兼容
+- 目标生成时间 < 1s
+
 ### DI 注册性能
 
-- 仓储注册使用反射，但只在启动时执行一次
-- 使用 `RepositoryForAttribute` 标记减少扫描范围
-- 支持指定程序集避免全局扫描
-- 目标注册时间 < 100ms
-
-### 连接工厂性能
-
-- 连接创建使用简单的 switch 表达式
-- 不使用反射创建连接对象
-- 支持连接池配置
-- 目标连接创建开销 < 1ms
+- 生成的注册代码与手写代码性能相同
+- 无反射，无动态类型创建
+- 连接创建使用简单的 new 表达式
+- 目标注册开销 < 1ms
 
 ### 文档加载性能
 

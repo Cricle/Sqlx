@@ -2,29 +2,31 @@
 
 ## 简介
 
-为了提升 Sqlx 的用户体验和采用率，本项目将创建依赖注入集成包、完善文档体系、构建真实示例。目标是让开发者能够在 5 分钟内上手 Sqlx，并在任何 .NET 应用中通过 DI 容器轻松使用。
+为了提升 Sqlx 的用户体验和采用率，本项目将在 Sqlx 核心库中添加 DI 集成支持、完善文档体系、构建真实示例。通过源生成器实现零反射的 DI 注册，保持 AOT 友好。目标是让开发者能够在 5 分钟内上手 Sqlx，并在任何 .NET 应用中通过 DI 容器轻松使用。
 
 ## 术语表
 
-- **Sqlx.DependencyInjection**: DI 集成包，提供依赖注入扩展方法
+- **DI Extensions**: 依赖注入扩展方法，直接集成在 Sqlx 核心库中
+- **Source Generator**: 源生成器，用于生成 AOT 友好的 DI 注册代码
 - **Quick Start**: 快速开始文档，5 分钟内运行第一个示例
 - **Real World Example**: 真实世界示例，完整的 Web API 项目
 - **Performance Tuning**: 性能调优文档，优化 Sqlx 使用的最佳实践
 
 ## 需求
 
-### 需求 1: 依赖注入集成包
+### 需求 1: DI 集成支持（源生成器实现）
 
-**用户故事:** 作为 .NET 开发者，我希望有一个 DI 集成包来简化 Sqlx 的配置和使用，以便在任何使用 Microsoft.Extensions.DependencyInjection 的应用中快速集成。
+**用户故事:** 作为 .NET 开发者，我希望 Sqlx 原生支持依赖注入，通过源生成器自动生成 AOT 友好的注册代码，以便在任何使用 Microsoft.Extensions.DependencyInjection 的应用中快速集成。
 
 #### 验收标准
 
-1. THE System SHALL provide an extension method `AddSqlx()` for IServiceCollection
-2. THE System SHALL support automatic repository registration from assemblies
-3. THE System SHALL support multiple database connections with named configurations
-4. THE System SHALL support scoped, transient, and singleton lifetime management
-5. THE System SHALL provide connection factory for creating database connections
-6. THE System SHALL support configuration from IConfiguration (appsettings.json, environment variables, etc.)
+1. THE System SHALL provide a source generator that generates DI registration code
+2. THE System SHALL generate extension methods for IServiceCollection
+3. THE System SHALL support automatic repository registration through attributes
+4. THE System SHALL generate AOT-compatible code with zero reflection
+5. THE System SHALL support scoped, transient, and singleton lifetime management
+6. THE System SHALL generate connection factory registration code
+7. THE System SHALL be part of the core Sqlx library (no separate package needed)
 
 ### 需求 2: 快速开始文档
 
@@ -93,16 +95,17 @@
 
 ### 性能需求
 
-1. THE DI container registration SHALL complete within 100ms for typical applications
-2. THE Connection factory SHALL create connections with minimal overhead
+1. THE Source generator SHALL complete code generation within 1 second for typical projects
+2. THE Generated DI registration code SHALL have zero runtime overhead compared to manual registration
 3. THE Documentation SHALL load within 2 seconds
 
 ### 兼容性需求
 
-1. THE Sqlx.DependencyInjection package SHALL support .NET 8.0, 9.0, and 10.0
-2. THE Package SHALL work with any application using Microsoft.Extensions.DependencyInjection
-3. THE Examples SHALL work on Windows, Linux, and macOS
-4. THE Documentation SHALL be accessible on all modern browsers
+1. THE Sqlx library SHALL support .NET 8.0, 9.0, and 10.0
+2. THE DI integration SHALL be AOT-compatible with zero reflection
+3. THE Generated code SHALL work with any application using Microsoft.Extensions.DependencyInjection
+4. THE Examples SHALL work on Windows, Linux, and macOS
+5. THE Documentation SHALL be accessible on all modern browsers
 
 ### 可维护性需求
 
@@ -114,8 +117,9 @@
 ## 成功标准
 
 1. ✅ 用户能在 5 分钟内运行第一个 Sqlx 示例
-2. ✅ DI 集成包简化了 90% 的配置代码
-3. ✅ 集成包可用于任何 .NET 应用类型（Web API、Console、Worker Service、Blazor 等）
-4. ✅ 真实示例展示了所有核心功能
-5. ✅ 性能调优文档帮助用户优化查询性能
-6. ✅ 故障排除文档减少了 50% 的支持请求
+2. ✅ DI 集成通过源生成器实现，完全 AOT 友好，零反射
+3. ✅ 集成代码直接在 Sqlx 核心库中，无需额外的 NuGet 包
+4. ✅ 集成可用于任何 .NET 应用类型（Web API、Console、Worker Service、Blazor 等）
+5. ✅ 真实示例展示了所有核心功能
+6. ✅ 性能调优文档帮助用户优化查询性能
+7. ✅ 故障排除文档减少了 50% 的支持请求

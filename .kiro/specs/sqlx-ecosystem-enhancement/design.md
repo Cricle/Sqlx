@@ -2,7 +2,7 @@
 
 ## 概述
 
-本设计文档描述了 Sqlx 生态系统增强的技术实现，包括 ASP.NET Core 集成包、文档体系、真实示例、性能调优和日志功能。设计遵循 Sqlx 的核心原则：高性能、零反射、AOT 友好。
+本设计文档描述了 Sqlx 生态系统增强的技术实现，包括依赖注入集成包、文档体系和真实示例。设计遵循 Sqlx 的核心原则：高性能、零反射、AOT 友好。
 
 ## 架构
 
@@ -12,9 +12,10 @@
 Sqlx 生态系统
 ├── Sqlx (核心库)
 ├── Sqlx.Generator (源生成器)
-├── Sqlx.AspNetCore (新增 - ASP.NET Core 集成)
+├── Sqlx.DependencyInjection (新增 - DI 集成)
 │   ├── ServiceCollectionExtensions
-│   └── SqlLoggingMiddleware
+│   ├── SqlxConnectionFactory
+│   └── SqlxOptions
 ├── docs/ (增强文档)
 │   ├── getting-started.md
 │   ├── performance-tuning.md
@@ -29,27 +30,29 @@ Sqlx 生态系统
 
 ```
 ┌─────────────────────────────────────────┐
-│         ASP.NET Core Application        │
+│      .NET Application (任何类型)         │
+│   Web API / Console / Worker / Blazor  │
 ├─────────────────────────────────────────┤
-│  Controllers → Services → Repositories  │
-│         ↓           ↓           ↓       │
-│    Sqlx.AspNetCore Extensions           │
+│  Services → Repositories                │
+│         ↓           ↓                   │
+│    Sqlx.DependencyInjection             │
 │  ├── DI Registration                    │
-│  └── SQL Logging Middleware             │
-│         ↓           ↓           ↓       │
+│  ├── Connection Factory                 │
+│  └── Configuration                      │
+│         ↓           ↓                   │
 │         Sqlx Core Library               │
 │  ├── SqlQuery<T>                        │
 │  ├── SqlTemplate                        │
 │  ├── Repository Pattern                 │
 │  └── Source Generator                   │
-│         ↓           ↓           ↓       │
+│         ↓           ↓                   │
 │         Database (SQLite/PostgreSQL/etc)│
 └─────────────────────────────────────────┘
 ```
 
 ## 组件设计
 
-### 1. Sqlx.AspNetCore 包
+### 1. Sqlx.DependencyInjection 包
 
 #### 1.1 ServiceCollectionExtensions
 
@@ -58,6 +61,7 @@ Sqlx 生态系统
 ```csharp
 public static class SqlxServiceCollectionExtensions
 {
+    // 基础注册
     public static ISqlxBuilder AddSqlx(
         this IServiceCollection services,
         Action<SqlxOptions> configure)
@@ -65,131 +69,172 @@ public static class SqlxServiceCollectionExtensions
         var options = new SqlxOptions();
         configure(options);
         
+        // 验证配置
+        if (string.IsNullOrEmpty(options.ConnectionString))
+            throw new ArgumentException("ConnectionString is required");
+        
         services.AddSingleton(options);
         services.AddSingleton<ISqlxConnectionFactory, SqlxConnectionFactory>();
         
         return new SqlxBuilder(services, options);
     }
     
+    // 从 IConfiguration 注册
+    public static ISqlxBuilder AddSqlx(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string sectionName = "Sqlx")
+    {
+        var options = configuration.GetSection(sectionName).Get<SqlxOptions>()
+            ?? throw new ArgumentException($"Configuration section '{sectionName}' not found");
+        
+        services.AddSingleton(options);
+        services.AddSingleton<ISqlxConnectionFactory, SqlxConnectionFactory>();
+        
+        return new SqlxBuilder(services, options);
+    }
+    
+    // 自动注册仓储
     public static ISqlxBuilder AddSqlxRepositories(
         this ISqlxBuilder builder,
+        ServiceLifetime lifetime = ServiceLifetime.Scoped,
         params Assembly[] assemblies)
     {
-        // 自动扫描并注册所有仓储
+        if (assemblies.Length == 0)
+        {
+            assemblies = new[] { Assembly.GetCallingAssembly() };
+        }
+        
         foreach (var assembly in assemblies)
         {
+            // 查找所有标记了 [RepositoryFor] 的类
             var repositoryTypes = assembly.GetTypes()
                 .Where(t => t.IsClass && !t.IsAbstract)
-                .Where(t => t.GetInterfaces().Any(i => 
-                    i.IsGenericType && 
-                    i.GetGenericTypeDefinition() == typeof(ICrudRepository<,>)));
+                .Where(t => t.GetCustomAttribute<RepositoryForAttribute>() != null);
             
             foreach (var repoType in repositoryTypes)
             {
-                var interfaces = repoType.GetInterfaces();
-                foreach (var iface in interfaces)
-                {
-                    builder.Services.AddScoped(iface, repoType);
-                }
+                var attr = repoType.GetCustomAttribute<RepositoryForAttribute>();
+                var interfaceType = attr.InterfaceType;
+                
+                // 注册仓储
+                builder.Services.Add(new ServiceDescriptor(
+                    interfaceType,
+                    sp =>
+                    {
+                        var factory = sp.GetRequiredService<ISqlxConnectionFactory>();
+                        var connection = factory.CreateConnection();
+                        return Activator.CreateInstance(repoType, connection);
+                    },
+                    lifetime));
             }
         }
         
         return builder;
     }
+    
+    // 注册命名连接
+    public static ISqlxBuilder AddNamedConnection(
+        this ISqlxBuilder builder,
+        string name,
+        string connectionString,
+        SqlDefineTypes dialect)
+    {
+        builder.Services.AddKeyedSingleton<ISqlxConnectionFactory>(
+            name,
+            (sp, key) => new SqlxConnectionFactory(connectionString, dialect));
+        
+        return builder;
+    }
 }
 
-public class SqlxOptions
+// Builder 接口
+public interface ISqlxBuilder
 {
-    public string ConnectionString { get; set; }
-    public SqlDefineTypes Dialect { get; set; }
-    public bool EnableLogging { get; set; } = true;
-    public int SlowQueryThresholdMs { get; set; } = 1000;
+    IServiceCollection Services { get; }
+    SqlxOptions Options { get; }
+}
+
+internal class SqlxBuilder : ISqlxBuilder
+{
+    public SqlxBuilder(IServiceCollection services, SqlxOptions options)
+    {
+        Services = services;
+        Options = options;
+    }
+    
+    public IServiceCollection Services { get; }
+    public SqlxOptions Options { get; }
 }
 ```
 
-#### 1.2 SqlLoggingMiddleware
+#### 1.2 SqlxOptions
 
-记录所有 SQL 执行和慢查询检测：
+配置选项类：
 
 ```csharp
-public class SqlLoggingMiddleware
+public class SqlxOptions
 {
-    private readonly ILogger<SqlLoggingMiddleware> _logger;
-    private readonly SqlxOptions _options;
+    public string ConnectionString { get; set; } = string.Empty;
+    public SqlDefineTypes Dialect { get; set; } = SqlDefineTypes.SQLite;
+    public int CommandTimeout { get; set; } = 30;
+    public bool EnableConnectionPooling { get; set; } = true;
+    public int MinPoolSize { get; set; } = 0;
+    public int MaxPoolSize { get; set; } = 100;
     
-    public SqlLoggingMiddleware(
-        ILogger<SqlLoggingMiddleware> logger,
-        SqlxOptions options)
+    // 验证配置
+    public void Validate()
     {
-        _logger = logger;
-        _options = options;
+        if (string.IsNullOrWhiteSpace(ConnectionString))
+            throw new InvalidOperationException("ConnectionString cannot be empty");
+        
+        if (CommandTimeout < 0)
+            throw new InvalidOperationException("CommandTimeout must be non-negative");
+        
+        if (MinPoolSize < 0 || MaxPoolSize < MinPoolSize)
+            throw new InvalidOperationException("Invalid pool size configuration");
+    }
+}
+```
+
+#### 1.3 SqlxConnectionFactory
+
+连接工厂实现：
+
+```csharp
+public interface ISqlxConnectionFactory
+{
+    DbConnection CreateConnection();
+    SqlDefineTypes Dialect { get; }
+}
+
+public class SqlxConnectionFactory : ISqlxConnectionFactory
+{
+    private readonly string _connectionString;
+    private readonly SqlDefineTypes _dialect;
+    
+    public SqlxConnectionFactory(string connectionString, SqlDefineTypes dialect)
+    {
+        _connectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
+        _dialect = dialect;
     }
     
-    public async Task InvokeAsync(
-        HttpContext context,
-        ISqlExecutionInterceptor interceptor)
-    {
-        interceptor.OnBeforeExecute += LogSqlExecution;
-        interceptor.OnAfterExecute += LogSqlCompletion;
-        interceptor.OnError += LogSqlError;
-        
-        await _next(context);
-    }
+    public SqlDefineTypes Dialect => _dialect;
     
-    private void LogSqlExecution(SqlExecutionContext ctx)
+    public DbConnection CreateConnection()
     {
-        if (_options.EnableLogging)
+        DbConnection connection = _dialect switch
         {
-            _logger.LogDebug(
-                "Executing SQL: {Sql} | Parameters: {Parameters} | Repository: {Repository}",
-                ctx.Sql,
-                MaskSensitiveData(ctx.Parameters),
-                ctx.RepositoryName);
-        }
-    }
-    
-    private void LogSqlCompletion(SqlExecutionContext ctx)
-    {
-        var duration = ctx.Duration.TotalMilliseconds;
+            SqlDefineTypes.SQLite => new SqliteConnection(_connectionString),
+            SqlDefineTypes.PostgreSQL => new NpgsqlConnection(_connectionString),
+            SqlDefineTypes.MySQL => new MySqlConnection(_connectionString),
+            SqlDefineTypes.SqlServer => new SqlConnection(_connectionString),
+            SqlDefineTypes.Oracle => new OracleConnection(_connectionString),
+            SqlDefineTypes.DB2 => throw new NotSupportedException("DB2 connection creation not implemented"),
+            _ => throw new NotSupportedException($"Dialect {_dialect} is not supported")
+        };
         
-        if (duration > _options.SlowQueryThresholdMs)
-        {
-            _logger.LogWarning(
-                "Slow query detected ({Duration}ms): {Sql} | Repository: {Repository}.{Method}",
-                duration,
-                ctx.Sql,
-                ctx.RepositoryName,
-                ctx.MethodName);
-        }
-        else if (_options.EnableLogging)
-        {
-            _logger.LogInformation(
-                "SQL completed ({Duration}ms): {Repository}.{Method}",
-                duration,
-                ctx.RepositoryName,
-                ctx.MethodName);
-        }
-    }
-    
-    private Dictionary<string, object> MaskSensitiveData(
-        Dictionary<string, object> parameters)
-    {
-        var masked = new Dictionary<string, object>();
-        var sensitiveKeys = new[] { "password", "token", "secret", "key" };
-        
-        foreach (var (key, value) in parameters)
-        {
-            if (sensitiveKeys.Any(k => key.Contains(k, StringComparison.OrdinalIgnoreCase)))
-            {
-                masked[key] = "***MASKED***";
-            }
-            else
-            {
-                masked[key] = value;
-            }
-        }
-        
-        return masked;
+        return connection;
     }
 }
 ```
@@ -208,6 +253,7 @@ public class SqlLoggingMiddleware
 ```csharp
 // 1. 安装
 dotnet add package Sqlx
+dotnet add package Sqlx.DependencyInjection
 
 // 2. 定义实体
 [Sqlx, TableName("users")]
@@ -215,6 +261,7 @@ public class User
 {
     [Key] public long Id { get; set; }
     public string Name { get; set; }
+    public string Email { get; set; }
 }
 
 // 3. 定义仓储
@@ -224,13 +271,62 @@ public interface IUserRepository : ICrudRepository<User, long> { }
 [RepositoryFor(typeof(IUserRepository))]
 public partial class UserRepository(DbConnection connection) : IUserRepository { }
 
-// 4. 使用
-var conn = new SqliteConnection("Data Source=:memory:");
-var repo = new UserRepository(conn);
-var users = await repo.GetAllAsync();
+// 4. 配置 DI（在 Program.cs 或 Startup.cs）
+builder.Services.AddSqlx(options =>
+{
+    options.ConnectionString = "Data Source=app.db";
+    options.Dialect = SqlDefineTypes.SQLite;
+})
+.AddSqlxRepositories(); // 自动注册当前程序集的所有仓储
+
+// 5. 使用（通过构造函数注入）
+public class UserService
+{
+    private readonly IUserRepository _userRepository;
+    
+    public UserService(IUserRepository userRepository)
+    {
+        _userRepository = userRepository;
+    }
+    
+    public async Task<List<User>> GetAllUsersAsync()
+    {
+        return await _userRepository.GetAllAsync();
+    }
+}
 ```
 
 #### 2.2 性能调优文档 (docs/performance-tuning.md)
+
+**章节**:
+1. ResultReader 优化
+2. 查询设计最佳实践
+3. 连接池配置
+4. 批量操作优化
+5. 内存分配优化
+6. 数据库特定优化
+7. 性能监控
+
+**关键内容**:
+- 使用 SqlQuery<T> 的泛型缓存
+- 避免 N+1 查询
+- 使用批量操作而非循环
+- 合理使用事务
+- 连接池大小配置
+- 异步操作最佳实践
+
+#### 2.3 故障排除文档 (docs/troubleshooting.md)
+
+**章节**:
+1. 常见错误消息和解决方案
+2. 源生成器调试技巧
+3. 连接故障排除
+4. 性能故障排除
+5. AOT 编译问题
+6. FAQ
+7. 社区支持
+
+### 3. 真实世界示例 (samples/RealWorldExample)
 
 #### 3.1 项目结构
 
@@ -282,22 +378,50 @@ RealWorldExample/
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 
-// 配置 Sqlx
+// 配置 Sqlx DI
+builder.Services.AddSqlx(builder.Configuration, "Sqlx") // 从 appsettings.json 读取配置
+    .AddSqlxRepositories(); // 自动注册所有仓储
+
+// 或者手动配置
 builder.Services.AddSqlx(options =>
 {
     options.ConnectionString = builder.Configuration.GetConnectionString("Default");
     options.Dialect = SqlDefineTypes.SQLite;
-    options.EnableLogging = true;
-    options.SlowQueryThresholdMs = 500;
+    options.CommandTimeout = 30;
 })
-.AddSqlxRepositories(typeof(Program).Assembly);
+.AddSqlxRepositories(ServiceLifetime.Scoped); // 指定生命周期
+
+// 添加控制器
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// 使用 SQL 日志中间件
-app.UseSqlLogging();
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
+app.MapControllers();
 app.Run();
+```
+
+**appsettings.json**:
+```json
+{
+  "Sqlx": {
+    "ConnectionString": "Data Source=app.db",
+    "Dialect": "SQLite",
+    "CommandTimeout": 30,
+    "EnableConnectionPooling": true,
+    "MaxPoolSize": 100
+  },
+  "ConnectionStrings": {
+    "Default": "Data Source=app.db"
+  }
+}
 ```
 
 **UserController.cs**:
@@ -366,19 +490,27 @@ public class UsersController : ControllerBase
 
 ## 数据模型
 
-### SqlExecutionContext
+### SqlxOptions
 
 ```csharp
-public class SqlExecutionContext
+public class SqlxOptions
 {
-    public string Sql { get; set; }
-    public Dictionary<string, object> Parameters { get; set; }
-    public string RepositoryName { get; set; }
-    public string MethodName { get; set; }
-    public TimeSpan Duration { get; set; }
-    public Exception? Error { get; set; }
-    public string CorrelationId { get; set; }
-    public DateTime Timestamp { get; set; }
+    public string ConnectionString { get; set; } = string.Empty;
+    public SqlDefineTypes Dialect { get; set; } = SqlDefineTypes.SQLite;
+    public int CommandTimeout { get; set; } = 30;
+    public bool EnableConnectionPooling { get; set; } = true;
+    public int MinPoolSize { get; set; } = 0;
+    public int MaxPoolSize { get; set; } = 100;
+}
+```
+
+### ISqlxConnectionFactory
+
+```csharp
+public interface ISqlxConnectionFactory
+{
+    DbConnection CreateConnection();
+    SqlDefineTypes Dialect { get; }
 }
 ```
 
@@ -399,7 +531,28 @@ public class PagedResult<T>
 
 ## 错误处理
 
-### 统一异常处理
+### 配置验证
+
+```csharp
+public class SqlxOptions
+{
+    // ... properties ...
+    
+    public void Validate()
+    {
+        if (string.IsNullOrWhiteSpace(ConnectionString))
+            throw new InvalidOperationException("ConnectionString cannot be empty");
+        
+        if (CommandTimeout < 0)
+            throw new InvalidOperationException("CommandTimeout must be non-negative");
+        
+        if (MinPoolSize < 0 || MaxPoolSize < MinPoolSize)
+            throw new InvalidOperationException("Invalid pool size configuration");
+    }
+}
+```
+
+### 统一异常处理（Web API 示例）
 
 ```csharp
 public class GlobalExceptionHandler : IExceptionHandler
@@ -519,12 +672,19 @@ volumes:
 
 ## 性能考虑
 
-### SQL 日志中间件性能
+### DI 注册性能
 
-- 使用异步日志避免阻塞
-- 参数掩码使用缓存的正则表达式
-- 慢查询统计使用高效的数据结构
-- 目标开销 < 1ms per query
+- 仓储注册使用反射，但只在启动时执行一次
+- 使用 `RepositoryForAttribute` 标记减少扫描范围
+- 支持指定程序集避免全局扫描
+- 目标注册时间 < 100ms
+
+### 连接工厂性能
+
+- 连接创建使用简单的 switch 表达式
+- 不使用反射创建连接对象
+- 支持连接池配置
+- 目标连接创建开销 < 1ms
 
 ### 文档加载性能
 
@@ -534,11 +694,12 @@ volumes:
 
 ## 安全考虑
 
-### 敏感数据掩码
+### 连接字符串安全
 
-- 自动掩码密码、令牌、密钥等参数
-- 可配置的敏感字段列表
-- 日志中不包含完整的 SQL 参数值
+- 支持从环境变量读取连接字符串
+- 支持从 User Secrets 读取（开发环境）
+- 支持从 Azure Key Vault 等密钥管理服务读取
+- 不在日志中输出连接字符串
 
 ### SQL 注入防护
 

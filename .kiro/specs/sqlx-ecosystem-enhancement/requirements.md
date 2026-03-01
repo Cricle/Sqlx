@@ -2,31 +2,29 @@
 
 ## 简介
 
-为了提升 Sqlx 的用户体验和采用率，本项目将创建 ASP.NET Core 集成包、完善文档体系、构建真实示例，并提供性能调优和日志功能。目标是让开发者能够在 5 分钟内上手 Sqlx，并在生产环境中高效使用。
+为了提升 Sqlx 的用户体验和采用率，本项目将创建依赖注入集成包、完善文档体系、构建真实示例。目标是让开发者能够在 5 分钟内上手 Sqlx，并在任何 .NET 应用中通过 DI 容器轻松使用。
 
 ## 术语表
 
-- **Sqlx.AspNetCore**: ASP.NET Core 集成包，提供依赖注入、健康检查等功能
+- **Sqlx.DependencyInjection**: DI 集成包，提供依赖注入扩展方法
 - **Quick Start**: 快速开始文档，5 分钟内运行第一个示例
 - **Real World Example**: 真实世界示例，完整的 Web API 项目
 - **Performance Tuning**: 性能调优文档，优化 Sqlx 使用的最佳实践
-- **SQL Logging Middleware**: SQL 日志中间件，记录所有 SQL 执行
-- **Slow Query Detection**: 慢查询检测，自动识别性能问题
 
 ## 需求
 
-### 需求 1: ASP.NET Core 集成包
+### 需求 1: 依赖注入集成包
 
-**用户故事:** 作为 ASP.NET Core 开发者，我希望有一个集成包来简化 Sqlx 的配置和使用，以便快速集成到我的 Web 应用中。
+**用户故事:** 作为 .NET 开发者，我希望有一个 DI 集成包来简化 Sqlx 的配置和使用，以便在任何使用 Microsoft.Extensions.DependencyInjection 的应用中快速集成。
 
 #### 验收标准
 
 1. THE System SHALL provide an extension method `AddSqlx()` for IServiceCollection
 2. THE System SHALL support automatic repository registration from assemblies
 3. THE System SHALL support multiple database connections with named configurations
-4. THE System SHALL integrate with ASP.NET Core logging infrastructure
-5. THE System SHALL support configuration from appsettings.json
-6. THE System SHALL provide SQL logging middleware for debugging and monitoring
+4. THE System SHALL support scoped, transient, and singleton lifetime management
+5. THE System SHALL provide connection factory for creating database connections
+6. THE System SHALL support configuration from IConfiguration (appsettings.json, environment variables, etc.)
 
 ### 需求 2: 快速开始文档
 
@@ -95,15 +93,16 @@
 
 ### 性能需求
 
-1. THE SqlLoggingMiddleware SHALL add less than 1ms overhead per query
-2. THE Health check SHALL complete within 100ms
+1. THE DI container registration SHALL complete within 100ms for typical applications
+2. THE Connection factory SHALL create connections with minimal overhead
 3. THE Documentation SHALL load within 2 seconds
 
 ### 兼容性需求
 
-1. THE Sqlx.AspNetCore package SHALL support .NET 8.0, 9.0, and 10.0
-2. THE Examples SHALL work on Windows, Linux, and macOS
-3. THE Documentation SHALL be accessible on all modern browsers
+1. THE Sqlx.DependencyInjection package SHALL support .NET 8.0, 9.0, and 10.0
+2. THE Package SHALL work with any application using Microsoft.Extensions.DependencyInjection
+3. THE Examples SHALL work on Windows, Linux, and macOS
+4. THE Documentation SHALL be accessible on all modern browsers
 
 ### 可维护性需求
 
@@ -115,7 +114,8 @@
 ## 成功标准
 
 1. ✅ 用户能在 5 分钟内运行第一个 Sqlx 示例
-2. ✅ ASP.NET Core 集成包简化了 90% 的配置代码
-3. ✅ 真实示例展示了所有核心功能
-4. ✅ 性能调优文档帮助用户优化查询性能
-5. ✅ 故障排除文档减少了 50% 的支持请求
+2. ✅ DI 集成包简化了 90% 的配置代码
+3. ✅ 集成包可用于任何 .NET 应用类型（Web API、Console、Worker Service、Blazor 等）
+4. ✅ 真实示例展示了所有核心功能
+5. ✅ 性能调优文档帮助用户优化查询性能
+6. ✅ 故障排除文档减少了 50% 的支持请求

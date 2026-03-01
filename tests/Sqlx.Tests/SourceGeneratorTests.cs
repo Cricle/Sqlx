@@ -2,6 +2,7 @@ using System.Collections;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Sqlx;
 using Sqlx.Annotations;
+using Sqlx.Tests.Helpers;
 using System.Data;
 using System.Data.Common;
 
@@ -116,7 +117,7 @@ public class SourceGeneratorTests
     public void GeneratedParameterBinder_UsesCorrectParameterNames()
     {
         var binder = TestEntityParameterBinder.Default;
-        var entity = new TestEntity { Id = 1, UserName = "test", IsActive = true, CreatedAt = DateTime.Now };
+        var entity = TestEntityFactory.CreateTestEntity(id: 1, userName: "test");
         
         using var command = new TestDbCommand();
         binder.BindEntity(command, entity);
@@ -131,7 +132,7 @@ public class SourceGeneratorTests
     public void GeneratedParameterBinder_UsesCustomPrefix()
     {
         var binder = TestEntityParameterBinder.Default;
-        var entity = new TestEntity { Id = 1, UserName = "test", IsActive = true, CreatedAt = DateTime.Now };
+        var entity = TestEntityFactory.CreateTestEntity(id: 1, userName: "test");
         
         using var command = new TestDbCommand();
         binder.BindEntity(command, entity, "$");
@@ -144,7 +145,7 @@ public class SourceGeneratorTests
     public void GeneratedParameterBinder_HandlesNullValues()
     {
         var binder = TestEntityWithNullableParameterBinder.Default;
-        var entity = new TestEntityWithNullable { Id = 1, Name = "test", Description = null };
+        var entity = TestEntityFactory.CreateTestEntityWithNullable(id: 1, name: "test", description: null);
         
         using var command = new TestDbCommand();
         binder.BindEntity(command, entity);

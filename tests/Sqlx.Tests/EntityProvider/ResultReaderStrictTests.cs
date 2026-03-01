@@ -259,7 +259,7 @@ public class ResultReaderStrictTests
         var reader = TestEntityResultReader.Default;
         var entities = new[]
         {
-            new TestEntity { Id = 1, UserName = "", IsActive = true, CreatedAt = DateTime.Now }
+            TestEntityFactory.CreateTestEntity(id: 1, userName: "")
         };
         using var dbReader = new TestDbDataReader(entities);
 
@@ -291,7 +291,7 @@ public class ResultReaderStrictTests
         {
             var entities = new[]
             {
-                new TestEntity { Id = 1, UserName = str, IsActive = true, CreatedAt = DateTime.Now }
+                TestEntityFactory.CreateTestEntity(id: 1, userName: str)
             };
             using var dbReader = new TestDbDataReader(entities);
 
@@ -417,9 +417,9 @@ public class ResultReaderStrictTests
         var reader = TestEntityResultReader.Default;
         var entities = new[]
         {
-            new TestEntity { Id = int.MinValue, UserName = "min", IsActive = true, CreatedAt = DateTime.Now },
-            new TestEntity { Id = int.MaxValue, UserName = "max", IsActive = true, CreatedAt = DateTime.Now },
-            new TestEntity { Id = 0, UserName = "zero", IsActive = true, CreatedAt = DateTime.Now }
+            TestEntityFactory.CreateTestEntity(id: int.MinValue, userName: "min"),
+            TestEntityFactory.CreateTestEntity(id: int.MaxValue, userName: "max"),
+            TestEntityFactory.CreateTestEntity(id: 0, userName: "zero")
         };
         using var dbReader = new TestDbDataReader(entities);
 
@@ -437,8 +437,8 @@ public class ResultReaderStrictTests
         var reader = TestEntityResultReader.Default;
         var entities = new[]
         {
-            new TestEntity { Id = 1, UserName = "min", IsActive = true, CreatedAt = DateTime.MinValue },
-            new TestEntity { Id = 2, UserName = "max", IsActive = true, CreatedAt = DateTime.MaxValue }
+            TestEntityFactory.CreateTestEntity(id: 1, userName: "min", createdAt: DateTime.MinValue),
+            TestEntityFactory.CreateTestEntity(id: 2, userName: "max", createdAt: DateTime.MaxValue)
         };
         using var dbReader = new TestDbDataReader(entities);
 
@@ -461,7 +461,7 @@ public class ResultReaderStrictTests
         var reader = TestEntityResultReader.Default;
         var entities = new[]
         {
-            new TestEntity { Id = 1, UserName = "test", IsActive = true, CreatedAt = DateTime.Now }
+            TestEntityFactory.CreateTestEntity(id: 1, userName: "test")
         };
         using var dbReader = new TestDbDataReader(entities);
 

@@ -5,6 +5,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Sqlx;
 using Sqlx.Expressions;
+using Sqlx.Tests.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
@@ -40,7 +41,7 @@ public class ExpressionBlockResultTests
         // Assert
         Assert.AreEqual("[age] > @p0", result.Sql);
         Assert.AreEqual(1, result.Parameters.Count);
-        Assert.AreEqual(18, result.Parameters["@p0"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@p0", 18);
     }
 
     [TestMethod]
@@ -64,7 +65,7 @@ public class ExpressionBlockResultTests
         }
         
         Assert.IsTrue(result.Parameters.ContainsKey("@p0"));
-        Assert.AreEqual(18, result.Parameters["@p0"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@p0", 18);
     }
 
     [TestMethod]
@@ -81,8 +82,8 @@ public class ExpressionBlockResultTests
         // Assert
         Assert.AreEqual("([age] > @p0 AND [name] = @p1)", result.Sql);
         Assert.AreEqual(2, result.Parameters.Count);
-        Assert.AreEqual(18, result.Parameters["@p0"]);
-        Assert.AreEqual("John", result.Parameters["@p1"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@p0", 18);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@p1", "John");
     }
 
     // ========== UPDATE 表达式解析测试 ==========
@@ -114,7 +115,7 @@ public class ExpressionBlockResultTests
         // Assert
         Assert.AreEqual("[age] = ([age] + @p0)", result.Sql);
         Assert.AreEqual(1, result.Parameters.Count);
-        Assert.AreEqual(1, result.Parameters["@p0"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@p0", 1);
     }
 
     [TestMethod]
@@ -134,9 +135,9 @@ public class ExpressionBlockResultTests
         // Assert
         Assert.AreEqual("[name] = @p0, [age] = @p1, [is_active] = @p2", result.Sql);
         Assert.AreEqual(3, result.Parameters.Count);
-        Assert.AreEqual("John", result.Parameters["@p0"]);
-        Assert.AreEqual(30, result.Parameters["@p1"]);
-        Assert.AreEqual(true, result.Parameters["@p2"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@p0", "John");
+        SqlAssertions.AssertParametersContain(result.Parameters, "@p1", 30);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@p2", true);
     }
 
     // ========== 方言测试 ==========
@@ -154,7 +155,7 @@ public class ExpressionBlockResultTests
         // Assert
         Assert.AreEqual("\"age\" > @p0", result.Sql);
         Assert.AreEqual(1, result.Parameters.Count);
-        Assert.AreEqual(18, result.Parameters["@p0"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@p0", 18);
     }
 
     [TestMethod]
@@ -169,7 +170,7 @@ public class ExpressionBlockResultTests
         // Assert
         Assert.AreEqual("`name` = @p0", result.Sql);
         Assert.AreEqual(1, result.Parameters.Count);
-        Assert.AreEqual("John", result.Parameters["@p0"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@p0", "John");
     }
 
     // ========== Null 值测试 ==========
@@ -187,7 +188,7 @@ public class ExpressionBlockResultTests
         // Assert
         Assert.AreEqual("[email] = @p0", result.Sql);
         Assert.AreEqual(1, result.Parameters.Count);
-        Assert.IsNull(result.Parameters["@p0"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@p0", null);
     }
 
     [TestMethod]
@@ -203,7 +204,7 @@ public class ExpressionBlockResultTests
         // Assert
         Assert.AreEqual("[email] = @p0", result.Sql);
         Assert.AreEqual(1, result.Parameters.Count);
-        Assert.IsNull(result.Parameters["@p0"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@p0", null);
     }
 
     // ========== 性能和缓存测试 ==========
@@ -276,7 +277,7 @@ public class ExpressionBlockResultTests
         // Assert
         Assert.AreEqual("LOWER([name]) = @p0", result.Sql);
         Assert.AreEqual(1, result.Parameters.Count);
-        Assert.AreEqual("john", result.Parameters["@p0"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@p0", "john");
     }
 
     [TestMethod]
@@ -327,8 +328,8 @@ public class ExpressionBlockResultTests
         // Note: Boolean property access is converted to "= 1" in SQLite
         Assert.AreEqual("(([age] > @p0 AND [age] < @p1) OR [is_active] = 1)", result.Sql);
         Assert.AreEqual(2, result.Parameters.Count);
-        Assert.AreEqual(18, result.Parameters["@p0"]);
-        Assert.AreEqual(65, result.Parameters["@p1"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@p0", 18);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@p1", 65);
     }
 
     [TestMethod]
@@ -347,6 +348,6 @@ public class ExpressionBlockResultTests
         // Assert
         Assert.AreEqual("[name] = LOWER(TRIM([name])), [age] = ([age] + @p0)", result.Sql);
         Assert.AreEqual(1, result.Parameters.Count);
-        Assert.AreEqual(1, result.Parameters["@p0"]);
+        SqlAssertions.AssertParametersContain(result.Parameters, "@p0", 1);
     }
 }

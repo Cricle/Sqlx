@@ -904,9 +904,9 @@ public class SqlBuilderTests
 
         // Assert
         Assert.AreEqual(3, template.Parameters.Count);
-        Assert.AreEqual("Alice", template.Parameters["name"]);
-        Assert.IsNull(template.Parameters["age"]);
-        Assert.IsNull(template.Parameters["email"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "name", "Alice");
+        SqlAssertions.AssertParametersContain(template.Parameters, "age", null);
+        SqlAssertions.AssertParametersContain(template.Parameters, "email", null);
     }
 
     [TestMethod]
@@ -930,9 +930,9 @@ public class SqlBuilderTests
 
         // Assert
         Assert.AreEqual(3, template.Parameters.Count);
-        Assert.AreEqual(99.99m, template.Parameters["price"]);
-        Assert.AreEqual(1.5f, template.Parameters["weight"]);
-        Assert.AreEqual(0.15, template.Parameters["discount"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "price", 99.99m);
+        SqlAssertions.AssertParametersContain(template.Parameters, "weight", 1.5f);
+        SqlAssertions.AssertParametersContain(template.Parameters, "discount", 0.15);
     }
 
     [TestMethod]
@@ -1053,8 +1053,8 @@ public class SqlBuilderTests
 
         // Assert
         Assert.AreEqual(2, template.Parameters.Count);
-        Assert.AreEqual(123, template.Parameters["user_id"]);
-        Assert.AreEqual("John", template.Parameters["first_name"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "user_id", 123);
+        SqlAssertions.AssertParametersContain(template.Parameters, "first_name", "John");
     }
 
     [TestMethod]
@@ -1073,8 +1073,8 @@ public class SqlBuilderTests
 
         // Assert
         Assert.AreEqual(2, template.Parameters.Count);
-        Assert.AreEqual(18, template.Parameters["minAge"]);
-        Assert.AreEqual("active", template.Parameters["p0"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "minAge", 18);
+        SqlAssertions.AssertParametersContain(template.Parameters, "p0", "active");
     }
 
     [TestMethod]
@@ -1095,8 +1095,8 @@ public class SqlBuilderTests
 
         // Assert - Builder should have original values
         Assert.AreEqual(2, template.Parameters.Count);
-        Assert.AreEqual(25, template.Parameters["age"]);
-        Assert.AreEqual("Alice", template.Parameters["name"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "age", 25);
+        SqlAssertions.AssertParametersContain(template.Parameters, "name", "Alice");
         Assert.IsFalse(template.Parameters.ContainsKey("newParam"));
     }
 
@@ -1144,7 +1144,7 @@ public class SqlBuilderTests
 
         // Assert
         Assert.AreEqual(1, template.Parameters.Count);
-        Assert.AreEqual(specialString, template.Parameters["company"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "company", specialString);
     }
 
     [TestMethod]
@@ -1162,7 +1162,7 @@ public class SqlBuilderTests
 
         // Assert
         Assert.AreEqual(1, template.Parameters.Count);
-        Assert.AreEqual(string.Empty, template.Parameters["name"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "name", string.Empty);
     }
 
     [TestMethod]
@@ -1182,7 +1182,7 @@ public class SqlBuilderTests
 
         // Assert
         Assert.AreEqual(1, template.Parameters.Count);
-        Assert.AreEqual(42, template.Parameters[longPropName]);
+        SqlAssertions.AssertParametersContain(template.Parameters, longPropName, 42);
     }
 
     [TestMethod]
@@ -1208,10 +1208,10 @@ public class SqlBuilderTests
 
         // Assert
         Assert.AreEqual(4, template.Parameters.Count);
-        Assert.AreEqual(int.MinValue, template.Parameters["minInt"]);
-        Assert.AreEqual(int.MaxValue, template.Parameters["maxInt"]);
-        Assert.AreEqual(long.MinValue, template.Parameters["minLong"]);
-        Assert.AreEqual(long.MaxValue, template.Parameters["maxLong"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "minInt", int.MinValue);
+        SqlAssertions.AssertParametersContain(template.Parameters, "maxInt", int.MaxValue);
+        SqlAssertions.AssertParametersContain(template.Parameters, "minLong", long.MinValue);
+        SqlAssertions.AssertParametersContain(template.Parameters, "maxLong", long.MaxValue);
     }
 
     [TestMethod]
@@ -1229,7 +1229,7 @@ public class SqlBuilderTests
 
         // Assert
         Assert.AreEqual(1, template.Parameters.Count);
-        Assert.AreEqual(DbType.String, template.Parameters["type"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "type", DbType.String);
     }
 
     [TestMethod]
@@ -1250,9 +1250,9 @@ public class SqlBuilderTests
 
         // Assert
         Assert.AreEqual(3, template.Parameters.Count);
-        Assert.AreEqual(1, template.Parameters["a"]);
-        Assert.AreEqual(2, template.Parameters["b"]);
-        Assert.AreEqual(3, template.Parameters["c"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "a", 1);
+        SqlAssertions.AssertParametersContain(template.Parameters, "b", 2);
+        SqlAssertions.AssertParametersContain(template.Parameters, "c", 3);
     }
 
     [TestMethod]
@@ -1457,7 +1457,7 @@ public class SqlBuilderTests
 
         // Assert
         Assert.AreEqual(1, template.Parameters.Count); // Input parameter
-        Assert.AreEqual(123, template.Parameters["p0"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "p0", 123);
         Assert.AreEqual(1, template.OutputParameters.Count); // Output parameter
         Assert.AreEqual(DbType.String, template.OutputParameters["userName"]);
     }

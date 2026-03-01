@@ -58,7 +58,7 @@
    - 统一了null值和边界情况的断言方式
 
 7. **QueryBuilder/SqlBuilderTests.cs**
-   - 使用SqlAssertions替换了24处参数断言
+   - 使用SqlAssertions替换了34处参数断言
    - 该文件有1,471行，已应用到主要的AppendTemplate测试方法
 
 8. **Expressions/ExpressionBlockResultTests.cs**

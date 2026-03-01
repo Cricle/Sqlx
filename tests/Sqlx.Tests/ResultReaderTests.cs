@@ -2,6 +2,7 @@ using System.Collections;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Sqlx;
 using Sqlx.Annotations;
+using Sqlx.Tests.Helpers;
 using System.Data;
 using System.Data.Common;
 
@@ -46,7 +47,7 @@ public class ResultReaderTests
         var reader = TestEntityResultReader.Default;
         var entities = new[]
         {
-            new TestEntity { Id = 1, UserName = "test", IsActive = true, CreatedAt = new DateTime(2024, 1, 1) }
+            TestEntityFactory.CreateTestEntity(id: 1, userName: "test", createdAt: new DateTime(2024, 1, 1))
         };
         using var dbReader = new TestDbDataReader(entities);
         dbReader.Read(); // Position at first row
@@ -79,7 +80,7 @@ public class ResultReaderTests
         var reader = TestEntityResultReader.Default;
         var entities = new[]
         {
-            new TestEntity { Id = 1, UserName = "test", IsActive = true, CreatedAt = new DateTime(2024, 1, 1) }
+            TestEntityFactory.CreateTestEntity(id: 1, userName: "test", createdAt: new DateTime(2024, 1, 1))
         };
         using var dbReader = new TestDbDataReader(entities);
         
@@ -97,9 +98,9 @@ public class ResultReaderTests
         var reader = TestEntityResultReader.Default;
         var entities = new[]
         {
-            new TestEntity { Id = 1, UserName = "user1", IsActive = true, CreatedAt = DateTime.Now },
-            new TestEntity { Id = 2, UserName = "user2", IsActive = false, CreatedAt = DateTime.Now },
-            new TestEntity { Id = 3, UserName = "user3", IsActive = true, CreatedAt = DateTime.Now },
+            TestEntityFactory.CreateTestEntity(id: 1, userName: "user1"),
+            TestEntityFactory.CreateTestEntity(id: 2, userName: "user2", isActive: false),
+            TestEntityFactory.CreateTestEntity(id: 3, userName: "user3"),
         };
         using var dbReader = new TestDbDataReader(entities);
         
@@ -128,8 +129,8 @@ public class ResultReaderTests
         var reader = TestEntityResultReader.Default;
         var entities = new[]
         {
-            new TestEntity { Id = 1, UserName = "user1", IsActive = true, CreatedAt = DateTime.Now },
-            new TestEntity { Id = 2, UserName = "user2", IsActive = false, CreatedAt = DateTime.Now },
+            TestEntityFactory.CreateTestEntity(id: 1, userName: "user1"),
+            TestEntityFactory.CreateTestEntity(id: 2, userName: "user2", isActive: false),
         };
         using var dbReader = new TestDbDataReader(entities);
         
@@ -159,7 +160,7 @@ public class ResultReaderTests
         var reader = TestEntityResultReader.Default;
         var entities = new[]
         {
-            new TestEntity { Id = 1, UserName = "test", IsActive = true, CreatedAt = new DateTime(2024, 1, 1) }
+            TestEntityFactory.CreateTestEntity(id: 1, userName: "test", createdAt: new DateTime(2024, 1, 1))
         };
         using var dbReader = new TestDbDataReader(entities);
         
@@ -177,8 +178,8 @@ public class ResultReaderTests
         var reader = TestEntityResultReader.Default;
         var entities = new[]
         {
-            new TestEntity { Id = 1, UserName = "user1", IsActive = true, CreatedAt = DateTime.Now },
-            new TestEntity { Id = 2, UserName = "user2", IsActive = false, CreatedAt = DateTime.Now },
+            TestEntityFactory.CreateTestEntity(id: 1, userName: "user1"),
+            TestEntityFactory.CreateTestEntity(id: 2, userName: "user2", isActive: false),
         };
         using var dbReader = new TestDbDataReader(entities);
         
@@ -206,7 +207,7 @@ public class ResultReaderTests
         var reader = TestEntityResultReader.Default;
         var entities = new[]
         {
-            new TestEntity { Id = 1, UserName = "test", IsActive = true, CreatedAt = new DateTime(2024, 1, 1) }
+            TestEntityFactory.CreateTestEntity(id: 1, userName: "test", createdAt: new DateTime(2024, 1, 1))
         };
         using var dbReader = new TestDbDataReader(entities);
         
@@ -227,7 +228,7 @@ public class ResultReaderTests
         var reader = TestEntityWithNullableResultReader.Default;
         var entities = new[]
         {
-            new TestEntityWithNullable { Id = 1, Name = "test", Description = null }
+            TestEntityFactory.CreateTestEntityWithNullable(id: 1, name: "test", description: null)
         };
         using var dbReader = new TestDbDataReaderWithNullable(entities);
         
@@ -243,7 +244,7 @@ public class ResultReaderTests
         var reader = TestEntityWithNullableResultReader.Default;
         var entities = new[]
         {
-            new TestEntityWithNullable { Id = 1, Name = "test", Description = "desc" }
+            TestEntityFactory.CreateTestEntityWithNullable(id: 1, name: "test", description: "desc")
         };
         using var dbReader = new TestDbDataReaderWithNullable(entities);
         
@@ -263,8 +264,8 @@ public class ResultReaderTests
         var reader = TestEntityResultReader.Default;
         var entities = new[]
         {
-            new TestEntity { Id = 1, UserName = "user1", IsActive = true, CreatedAt = DateTime.Now },
-            new TestEntity { Id = 2, UserName = "user2", IsActive = false, CreatedAt = DateTime.Now },
+            TestEntityFactory.CreateTestEntity(id: 1, userName: "user1"),
+            TestEntityFactory.CreateTestEntity(id: 2, userName: "user2", isActive: false),
         };
         using var dbReader = new TestDbDataReader(entities);
         
@@ -282,8 +283,8 @@ public class ResultReaderTests
         var reader = TestEntityResultReader.Default;
         var entities = new[]
         {
-            new TestEntity { Id = 1, UserName = "user1", IsActive = true, CreatedAt = DateTime.Now },
-            new TestEntity { Id = 2, UserName = "user2", IsActive = false, CreatedAt = DateTime.Now },
+            TestEntityFactory.CreateTestEntity(id: 1, userName: "user1"),
+            TestEntityFactory.CreateTestEntity(id: 2, userName: "user2", isActive: false),
         };
         using var dbReader = new TestDbDataReader(entities);
         
@@ -300,8 +301,8 @@ public class ResultReaderTests
         var reader = TestEntityResultReader.Default;
         var entities = new[]
         {
-            new TestEntity { Id = 1, UserName = "user1", IsActive = true, CreatedAt = DateTime.Now },
-            new TestEntity { Id = 2, UserName = "user2", IsActive = false, CreatedAt = DateTime.Now },
+            TestEntityFactory.CreateTestEntity(id: 1, userName: "user1"),
+            TestEntityFactory.CreateTestEntity(id: 2, userName: "user2", isActive: false),
         };
         using var dbReader = new TestDbDataReader(entities);
         
@@ -316,7 +317,7 @@ public class ResultReaderTests
         var reader = TestEntityResultReader.Default;
         var entities = new[]
         {
-            new TestEntity { Id = 1, UserName = "user1", IsActive = true, CreatedAt = DateTime.Now },
+            TestEntityFactory.CreateTestEntity(id: 1, userName: "user1"),
         };
         using var dbReader = new TestDbDataReader(entities);
         

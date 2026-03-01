@@ -8,6 +8,7 @@ namespace Sqlx.Tests;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Sqlx;
+using Sqlx.Tests.Helpers;
 
 /// <summary>
 /// Tests for SqlInterpolatedStringHandler.
@@ -86,9 +87,8 @@ public class SqlInterpolatedStringHandlerTests
 
         // Assert
         var template = builder.Build();
-        Assert.IsTrue(template.Sql.Contains("@p0"));
-        Assert.AreEqual(1, template.Parameters.Count);
-        Assert.AreEqual(123, template.Parameters["p0"]);
+        SqlAssertions.AssertSqlIsParameterized(template.Sql, 1);
+        SqlAssertions.AssertParametersContain(template.Parameters, "p0", 123);
     }
 
     [TestMethod]
@@ -104,9 +104,8 @@ public class SqlInterpolatedStringHandlerTests
 
         // Assert
         var template = builder.Build();
-        Assert.IsTrue(template.Sql.Contains("@p0"));
-        Assert.AreEqual(1, template.Parameters.Count);
-        Assert.AreEqual("John", template.Parameters["p0"]);
+        SqlAssertions.AssertSqlIsParameterized(template.Sql, 1);
+        SqlAssertions.AssertParametersContain(template.Parameters, "p0", "John");
     }
 
     [TestMethod]
@@ -140,9 +139,8 @@ public class SqlInterpolatedStringHandlerTests
 
         // Assert
         var template = builder.Build();
-        Assert.IsTrue(template.Sql.Contains("@p0"));
-        Assert.AreEqual(1, template.Parameters.Count);
-        Assert.AreEqual(123, template.Parameters["p0"]);
+        SqlAssertions.AssertSqlIsParameterized(template.Sql, 1);
+        SqlAssertions.AssertParametersContain(template.Parameters, "p0", 123);
     }
 
     [TestMethod]
@@ -158,10 +156,9 @@ public class SqlInterpolatedStringHandlerTests
 
         // Assert
         var template = builder.Build();
-        Assert.IsTrue(template.Sql.Contains("@p0"));
         Assert.AreEqual(1, template.Parameters.Count);
         // Format is ignored, value is used as-is
-        Assert.AreEqual(123.45m, template.Parameters["p0"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "p0", 123.45m);
     }
 
     [TestMethod]
@@ -177,9 +174,8 @@ public class SqlInterpolatedStringHandlerTests
 
         // Assert
         var template = builder.Build();
-        Assert.IsTrue(template.Sql.Contains("@p0"));
-        Assert.AreEqual(1, template.Parameters.Count);
-        Assert.AreEqual(123, template.Parameters["p0"]);
+        SqlAssertions.AssertSqlIsParameterized(template.Sql, 1);
+        SqlAssertions.AssertParametersContain(template.Parameters, "p0", 123);
     }
 
     [TestMethod]
@@ -199,13 +195,10 @@ public class SqlInterpolatedStringHandlerTests
 
         // Assert
         var template = builder.Build();
-        Assert.IsTrue(template.Sql.Contains("@p0"));
-        Assert.IsTrue(template.Sql.Contains("@p1"));
-        Assert.IsTrue(template.Sql.Contains("@p2"));
-        Assert.AreEqual(3, template.Parameters.Count);
-        Assert.AreEqual(123, template.Parameters["p0"]);
-        Assert.AreEqual("John", template.Parameters["p1"]);
-        Assert.AreEqual(30, template.Parameters["p2"]);
+        SqlAssertions.AssertSqlIsParameterized(template.Sql, 3);
+        SqlAssertions.AssertParametersContain(template.Parameters, "p0", 123);
+        SqlAssertions.AssertParametersContain(template.Parameters, "p1", "John");
+        SqlAssertions.AssertParametersContain(template.Parameters, "p2", 30);
     }
 
     [TestMethod]
@@ -221,11 +214,9 @@ public class SqlInterpolatedStringHandlerTests
 
         // Assert
         var template = builder.Build();
-        Assert.IsTrue(template.Sql.Contains("@p0"));
-        Assert.IsTrue(template.Sql.Contains("@p1"));
-        Assert.AreEqual(2, template.Parameters.Count);
-        Assert.AreEqual(123, template.Parameters["p0"]);
-        Assert.AreEqual("John", template.Parameters["p1"]);
+        SqlAssertions.AssertSqlIsParameterized(template.Sql, 2);
+        SqlAssertions.AssertParametersContain(template.Parameters, "p0", 123);
+        SqlAssertions.AssertParametersContain(template.Parameters, "p1", "John");
     }
 
     [TestMethod]
@@ -240,10 +231,9 @@ public class SqlInterpolatedStringHandlerTests
 
         // Assert
         var template = builder.Build();
-        Assert.IsTrue(template.Sql.Contains("@p0"));
         Assert.AreEqual(1, template.Parameters.Count);
         // Format is ignored in current implementation
-        Assert.AreEqual(123.456m, template.Parameters["p0"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "p0", 123.456m);
     }
 }
 

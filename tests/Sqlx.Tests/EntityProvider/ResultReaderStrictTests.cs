@@ -1,5 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Sqlx;
+using Sqlx.Tests.Helpers;
 using System.Data;
 using System.Data.Common;
 
@@ -210,7 +211,7 @@ public class ResultReaderStrictTests
         var reader = TestEntityResultReader.Default;
         var entities = new[]
         {
-            new TestEntity { Id = int.MaxValue, UserName = "test", IsActive = true, CreatedAt = DateTime.Now }
+            TestEntityFactory.CreateTestEntity(id: int.MaxValue, userName: "test")
         };
         using var dbReader = new TestDbDataReader(entities);
 
@@ -225,8 +226,8 @@ public class ResultReaderStrictTests
         var reader = TestEntityResultReader.Default;
         var entities = new[]
         {
-            new TestEntity { Id = 1, UserName = "test", IsActive = true, CreatedAt = DateTime.Now },
-            new TestEntity { Id = 2, UserName = "test2", IsActive = false, CreatedAt = DateTime.Now }
+            TestEntityFactory.CreateTestEntity(id: 1, userName: "test"),
+            TestEntityFactory.CreateTestEntity(id: 2, userName: "test2", isActive: false)
         };
         using var dbReader = new TestDbDataReader(entities);
 
@@ -243,7 +244,7 @@ public class ResultReaderStrictTests
         var testDate = new DateTime(2024, 1, 1, 12, 30, 45);
         var entities = new[]
         {
-            new TestEntity { Id = 1, UserName = "test", IsActive = true, CreatedAt = testDate }
+            TestEntityFactory.CreateTestEntity(id: 1, userName: "test", createdAt: testDate)
         };
         using var dbReader = new TestDbDataReader(entities);
 

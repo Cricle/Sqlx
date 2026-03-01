@@ -43,7 +43,7 @@
   - 测试 TestDataBuilder 的构建功能
   - _需求: 1.1, 1.2, 1.3_
 
-- [-] 2. 拆分 SqlBuilderTests.cs (1726行)
+- [x] 2. 拆分 SqlBuilderTests.cs (1726行)
   - 将 SqlBuilderTests.cs 拆分为4个专注的测试文件
   - _需求: 2.1, 2.2, 2.3, 2.4_
 
@@ -135,28 +135,30 @@
   - 确认测试数量一致
   - _需求: 2.3, 5.2_
 
-- [ ] 5. 在其他测试中应用测试辅助类
+- [x] 5. 在其他测试中应用测试辅助类
   - 在现有测试中逐步应用新的辅助类
   - _需求: 4.1, 4.2_
 
-- [ ] 5.1 识别可以使用 TestEntityFactory 的测试
+- [x] 5.1 识别可以使用 TestEntityFactory 的测试
   - 搜索重复的实体创建代码
   - 列出需要重构的测试文件
   - _需求: 4.1_
 
-- [ ] 5.2 在识别的测试中应用 TestEntityFactory
+- [x] 5.2 在识别的测试中应用 TestEntityFactory
   - 替换重复的实体创建代码
   - 确保测试仍然通过
+  - 已重构: ResultReaderTests.cs
   - _需求: 4.2, 4.3_
 
-- [ ] 5.3 识别可以使用 SqlAssertions 的测试
+- [x] 5.3 识别可以使用 SqlAssertions 的测试
   - 搜索重复的SQL断言代码
   - 列出需要重构的测试文件
   - _需求: 4.1_
 
-- [ ] 5.4 在识别的测试中应用 SqlAssertions
+- [x] 5.4 在识别的测试中应用 SqlAssertions
   - 替换重复的断言代码
   - 确保测试仍然通过
+  - 已重构: SqlInterpolatedStringHandlerTests.cs
   - _需求: 4.2, 4.3_
 
 - [ ] 6. 最终验证和清理

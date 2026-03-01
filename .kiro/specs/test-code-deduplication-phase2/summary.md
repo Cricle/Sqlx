@@ -49,6 +49,18 @@
    - 使用TestEntityFactory替换了3处重复的实体创建代码
    - 简化了参数绑定测试
 
+5. **SetExpressionExtensionsTests.cs**
+   - 使用SqlAssertions替换了3处参数断言
+   - 提高了断言的一致性
+
+6. **SetExpressionEdgeCaseTests.cs**
+   - 使用SqlAssertions替换了13处参数断言
+   - 统一了null值和边界情况的断言方式
+
+7. **QueryBuilder/SqlBuilderTests.cs**
+   - 使用SqlAssertions替换了11处参数断言（部分应用）
+   - 该文件有1,471行，还有更多可以应用的地方
+
 ### 3. 验证和清理 ✓
 
 - ✓ 运行完整测试套件：所有3,316个测试通过
@@ -61,7 +73,7 @@
 - **测试文件数**: 147
 - **代码总行数**: 57,866
 - **测试方法数**: 2,850+
-- **使用辅助类的文件**: 8
+- **使用辅助类的文件**: 7
 - **平均每文件行数**: 393.65
 
 ## 未完成的任务
@@ -156,6 +168,9 @@ SqlAssertions.AssertParametersContain(template.Parameters, "p0", 123);
 - 0462593: chore: complete test deduplication phase 2 - cleanup and metrics
 - d8905f0: docs: add phase 2 completion summary
 - 8df2d88: refactor(tests): expand helper class usage to more test files
+- 8626750: refactor(tests): apply TestEntityFactory to SourceGeneratorTests
+- 048947d: test: apply SqlAssertions to SetExpression test files
+- 899ee65: test: apply SqlAssertions to SqlBuilderTests
 
 ## 结论
 

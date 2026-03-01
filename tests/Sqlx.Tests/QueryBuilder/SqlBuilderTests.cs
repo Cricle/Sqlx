@@ -474,8 +474,8 @@ public class SqlBuilderTests
         Assert.IsTrue(template.Sql.Contains("@minAge"));
         Assert.IsTrue(template.Sql.Contains("@maxAge"));
         Assert.AreEqual(2, template.Parameters.Count);
-        Assert.AreEqual(18, template.Parameters["minAge"]);
-        Assert.AreEqual(65, template.Parameters["maxAge"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "minAge", 18);
+        SqlAssertions.AssertParametersContain(template.Parameters, "maxAge", 65);
     }
 
     [TestMethod]
@@ -501,8 +501,8 @@ public class SqlBuilderTests
         Assert.IsTrue(template.Sql.Contains("@category"));
         Assert.IsTrue(template.Sql.Contains("@minPrice"));
         Assert.AreEqual(2, template.Parameters.Count);
-        Assert.AreEqual("Electronics", template.Parameters["category"]);
-        Assert.AreEqual(100.0, template.Parameters["minPrice"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "category", "Electronics");
+        SqlAssertions.AssertParametersContain(template.Parameters, "minPrice", 100.0);
     }
 
     [TestMethod]
@@ -529,8 +529,8 @@ public class SqlBuilderTests
         Assert.IsTrue(template.Sql.Contains("@status"));
         Assert.IsTrue(template.Sql.Contains("@minViews"));
         Assert.AreEqual(2, template.Parameters.Count);
-        Assert.AreEqual("published", template.Parameters["status"]);
-        Assert.AreEqual(1000, template.Parameters["minViews"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "status", "published");
+        SqlAssertions.AssertParametersContain(template.Parameters, "minViews", 1000);
     }
 
     [TestMethod]
@@ -555,10 +555,10 @@ public class SqlBuilderTests
 
         // Assert
         Assert.AreEqual(4, template.Parameters.Count);
-        Assert.AreEqual("John Doe", template.Parameters["customer"]);
-        Assert.AreEqual(500.0, template.Parameters["minTotal"]);
-        Assert.AreEqual("completed", template.Parameters["status"]);
-        Assert.AreEqual(new DateTime(2024, 1, 1), template.Parameters["startDate"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "customer", "John Doe");
+        SqlAssertions.AssertParametersContain(template.Parameters, "minTotal", 500.0);
+        SqlAssertions.AssertParametersContain(template.Parameters, "status", "completed");
+        SqlAssertions.AssertParametersContain(template.Parameters, "startDate", new DateTime(2024, 1, 1));
     }
 
     [TestMethod]
@@ -576,7 +576,7 @@ public class SqlBuilderTests
 
         // Assert
         Assert.AreEqual(1, template.Parameters.Count);
-        Assert.IsNull(template.Parameters["email"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "email", null);
     }
 
     [TestMethod]
@@ -597,8 +597,8 @@ public class SqlBuilderTests
 
         // Assert
         Assert.AreEqual(3, template.Parameters.Count);
-        Assert.AreEqual(guid, template.Parameters["guid"]);
-        Assert.AreEqual(date, template.Parameters["created"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "guid", guid);
+        SqlAssertions.AssertParametersContain(template.Parameters, "created", date);
         CollectionAssert.AreEqual(bytes, (byte[])template.Parameters["data"]!);
     }
 
@@ -636,8 +636,8 @@ public class SqlBuilderTests
 
         // Assert
         Assert.AreEqual(2, template.Parameters.Count);
-        Assert.AreEqual(18, template.Parameters["minAge"]);
-        Assert.AreEqual("active", template.Parameters["status"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "minAge", 18);
+        SqlAssertions.AssertParametersContain(template.Parameters, "status", "active");
     }
 
     [TestMethod]
@@ -733,8 +733,8 @@ public class SqlBuilderTests
 
         // Assert
         Assert.AreEqual(2, template.Parameters.Count);
-        Assert.AreEqual("Alice", template.Parameters["Name"]);
-        Assert.AreEqual(30, template.Parameters["age"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "Name", "Alice");
+        SqlAssertions.AssertParametersContain(template.Parameters, "age", 30);
     }
 
     [TestMethod]
@@ -757,8 +757,8 @@ public class SqlBuilderTests
 
         // Assert
         Assert.AreEqual(2, template.Parameters.Count);
-        Assert.AreEqual(18, template.Parameters["minAge"]);
-        Assert.AreEqual(1000, template.Parameters["p0"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "minAge", 18);
+        SqlAssertions.AssertParametersContain(template.Parameters, "p0", 1000);
     }
 
     [TestMethod]
@@ -776,7 +776,7 @@ public class SqlBuilderTests
         var template = builder.Build();
 
         // Assert - builder should have captured the original value
-        Assert.AreEqual(25, template.Parameters["age"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "age", 25);
     }
 
     [TestMethod]
@@ -797,9 +797,9 @@ public class SqlBuilderTests
 
         // Assert - Both should work correctly (expression tree should be cached and reused)
         Assert.AreEqual(1, template1.Parameters.Count);
-        Assert.AreEqual(20, template1.Parameters["age"]);
+        SqlAssertions.AssertParametersContain(template1.Parameters, "age", 20);
         Assert.AreEqual(1, template2.Parameters.Count);
-        Assert.AreEqual(30, template2.Parameters["age"]);
+        SqlAssertions.AssertParametersContain(template2.Parameters, "age", 30);
     }
 
     [TestMethod]
@@ -828,12 +828,12 @@ public class SqlBuilderTests
 
         // Assert
         Assert.AreEqual(6, template.Parameters.Count);
-        Assert.AreEqual(42, template.Parameters["intVal"]);
-        Assert.AreEqual(9876543210L, template.Parameters["longVal"]);
-        Assert.AreEqual(3.14159, template.Parameters["doubleVal"]);
-        Assert.AreEqual(true, template.Parameters["boolVal"]);
-        Assert.AreEqual("test", template.Parameters["stringVal"]);
-        Assert.AreEqual(new DateTime(2024, 12, 25), template.Parameters["dateVal"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "intVal", 42);
+        SqlAssertions.AssertParametersContain(template.Parameters, "longVal", 9876543210L);
+        SqlAssertions.AssertParametersContain(template.Parameters, "doubleVal", 3.14159);
+        SqlAssertions.AssertParametersContain(template.Parameters, "boolVal", true);
+        SqlAssertions.AssertParametersContain(template.Parameters, "stringVal", "test");
+        SqlAssertions.AssertParametersContain(template.Parameters, "dateVal", new DateTime(2024, 12, 25));
     }
 
     // ========== Additional tests for Expression tree optimization and edge cases ==========
@@ -852,7 +852,7 @@ public class SqlBuilderTests
 
         // Assert
         Assert.AreEqual(1, template.Parameters.Count);
-        Assert.AreEqual(999, template.Parameters["id"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "id", 999);
     }
 
     [TestMethod]

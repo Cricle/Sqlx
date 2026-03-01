@@ -123,7 +123,7 @@ public class SqlInterpolatedStringHandlerTests
         var template = builder.Build();
         Assert.IsTrue(template.Sql.Contains("@p0"));
         Assert.AreEqual(1, template.Parameters.Count);
-        Assert.IsNull(template.Parameters["p0"]);
+        SqlAssertions.AssertParametersContain(template.Parameters, "p0", null);
     }
 
     [TestMethod]

@@ -1510,9 +1510,20 @@ public class RepositoryGenerator : IIncrementalGenerator
                 sb.PushIndent();
                 sb.AppendLine("var p = cmd.CreateParameter();");
                 sb.AppendLine($"p.ParameterName = {paramFieldName};");
+                
+                // If DbType not explicitly specified, infer it from parameter type
                 if (dbType != null)
                 {
                     sb.AppendLine($"p.DbType = (System.Data.DbType){dbType};");
+                }
+                else
+                {
+                    // Auto-infer DbType from parameter type
+                    var inferredDbType = InferDbTypeFromType(param.Type);
+                    if (inferredDbType != null)
+                    {
+                        sb.AppendLine($"p.DbType = {inferredDbType};");
+                    }
                 }
                 if (size != null && (int)size > 0)
                 {
@@ -2698,5 +2709,44 @@ public class RepositoryGenerator : IIncrementalGenerator
                typeName == "byte" || typeName == "System.Byte" ||
                typeName == "System.DateTime" || typeName == "System.DateTimeOffset" ||
                typeName == "System.Guid";
+    }
+
+    /// <summary>
+    /// Infers the DbType from a C# type symbol.
+    /// </summary>
+    private static string? InferDbTypeFromType(ITypeSymbol type)
+    {
+        var typeName = type.ToDisplayString();
+        
+        // Handle nullable types
+        if (type is INamedTypeSymbol namedType && namedType.IsGenericType && 
+            namedType.ConstructedFrom.ToDisplayString() == "System.Nullable<T>")
+        {
+            type = namedType.TypeArguments[0];
+            typeName = type.ToDisplayString();
+        }
+        
+        return typeName switch
+        {
+            "bool" or "System.Boolean" => "System.Data.DbType.Boolean",
+            "byte" or "System.Byte" => "System.Data.DbType.Byte",
+            "sbyte" or "System.SByte" => "System.Data.DbType.SByte",
+            "short" or "System.Int16" => "System.Data.DbType.Int16",
+            "ushort" or "System.UInt16" => "System.Data.DbType.UInt16",
+            "int" or "System.Int32" => "System.Data.DbType.Int32",
+            "uint" or "System.UInt32" => "System.Data.DbType.UInt32",
+            "long" or "System.Int64" => "System.Data.DbType.Int64",
+            "ulong" or "System.UInt64" => "System.Data.DbType.UInt64",
+            "float" or "System.Single" => "System.Data.DbType.Single",
+            "double" or "System.Double" => "System.Data.DbType.Double",
+            "decimal" or "System.Decimal" => "System.Data.DbType.Decimal",
+            "string" or "System.String" => "System.Data.DbType.String",
+            "System.DateTime" => "System.Data.DbType.DateTime",
+            "System.DateTimeOffset" => "System.Data.DbType.DateTimeOffset",
+            "System.TimeSpan" => "System.Data.DbType.Time",
+            "System.Guid" => "System.Data.DbType.Guid",
+            "byte[]" or "System.Byte[]" => "System.Data.DbType.Binary",
+            _ => null
+        };
     }
 }

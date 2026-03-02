@@ -22,6 +22,10 @@ using System.Data;
 /// in async methods. Output parameters must be used with synchronous methods only.
 /// </para>
 /// <para>
+/// The DbType is automatically inferred from the parameter type. You can optionally
+/// specify it explicitly if needed for special cases.
+/// </para>
+/// <para>
 /// Output parameters are commonly used with:
 /// </para>
 /// <list type="bullet">
@@ -37,8 +41,13 @@ using System.Data;
 /// [TableName("users")]
 /// public partial class UserRepository
 /// {
+///     // DbType is automatically inferred from the parameter type (int -> DbType.Int32)
 ///     [SqlTemplate("EXEC GetUserId @name, @userId OUT")]
-///     int GetUserId(string name, [OutputParameter(DbType.Int32)] out int userId);
+///     int GetUserId(string name, [OutputParameter] out int userId);
+///     
+///     // You can still specify DbType explicitly if needed
+///     [SqlTemplate("EXEC GetUserIdExplicit @name, @userId OUT")]
+///     int GetUserIdExplicit(string name, [OutputParameter(DbType.Int64)] out long userId);
 /// }
 /// </code>
 /// </example>
@@ -46,7 +55,17 @@ using System.Data;
 public sealed class OutputParameterAttribute : Attribute
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="OutputParameterAttribute"/> class.
+    /// Initializes a new instance of the <see cref="OutputParameterAttribute"/> class
+    /// with automatic DbType inference from the parameter type.
+    /// </summary>
+    public OutputParameterAttribute()
+    {
+        DbType = null;
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="OutputParameterAttribute"/> class
+    /// with an explicit DbType.
     /// </summary>
     /// <param name="dbType">The database type of the output parameter.</param>
     public OutputParameterAttribute(DbType dbType)
@@ -55,9 +74,9 @@ public sealed class OutputParameterAttribute : Attribute
     }
 
     /// <summary>
-    /// Gets the database type of the output parameter.
+    /// Gets the database type of the output parameter, or null if it should be inferred.
     /// </summary>
-    public DbType DbType { get; }
+    public DbType? DbType { get; }
 
     /// <summary>
     /// Gets or sets the size of the output parameter.

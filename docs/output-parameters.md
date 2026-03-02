@@ -9,6 +9,8 @@ Sqlx 提供两种方式来处理输出参数：
 1. **同步方法 + Out/Ref 参数** - 使用 C# 原生的 `out` 和 `ref` 关键字
 2. **异步方法 + OutputParameter<T> 包装类** - 使用包装类绕过 C# 语言限制
 
+**重要提示：** `DbType` 参数是可选的。如果不指定，Sqlx 会根据参数类型自动推断 `DbType`。
+
 ## 方案 1: 同步方法使用 Out/Ref 参数
 
 ### Out 参数（Output 模式）
@@ -18,12 +20,19 @@ Sqlx 提供两种方式来处理输出参数：
 ```csharp
 public interface IUserRepository
 {
-    // 单个输出参数（同步方法）
+    // DbType 会自动从 int 类型推断为 DbType.Int32
     [SqlTemplate("INSERT INTO {{table}} (name, age) VALUES (@name, @age); SELECT last_insert_rowid()")]
     int InsertAndGetId(
         string name, 
         int age, 
-        [OutputParameter(DbType.Int32)] out int id);
+        [OutputParameter] out int id);
+    
+    // 也可以显式指定 DbType（如果需要特殊处理）
+    [SqlTemplate("INSERT INTO {{table}} (name, age) VALUES (@name, @age); SELECT last_insert_rowid()")]
+    int InsertAndGetIdExplicit(
+        string name, 
+        int age, 
+        [OutputParameter(DbType.Int64)] out long id);
 }
 
 // 使用
@@ -38,11 +47,11 @@ Console.WriteLine($"Inserted ID: {newId}");
 ```csharp
 public interface ICounterRepository
 {
-    // ref 参数：传入当前值，返回更新后的值（同步方法）
+    // DbType 会自动从 int 类型推断为 DbType.Int32
     [SqlTemplate("UPDATE counters SET value = value + 1 WHERE name = @name; SELECT value FROM counters WHERE name = @name")]
     int IncrementCounter(
         string name,
-        [OutputParameter(DbType.Int32)] ref int currentValue);
+        [OutputParameter] ref int currentValue);
 }
 
 // 使用
@@ -60,12 +69,12 @@ Console.WriteLine($"New counter value: {counter}"); // 输出: 101
 ```csharp
 public interface IUserRepository
 {
-    // 使用 OutputParameter<T> 包装类（异步方法）
+    // DbType 会自动从 int 类型推断为 DbType.Int32
     [SqlTemplate("INSERT INTO users (name, age) VALUES (@name, @age); SELECT last_insert_rowid()")]
     Task<int> InsertUserAsync(
         string name, 
         int age, 
-        [OutputParameter(DbType.Int32)] OutputParameter<int> userId);
+        [OutputParameter] OutputParameter<int> userId);
 }
 
 // 使用
@@ -83,7 +92,7 @@ public interface ICounterRepository
     [SqlTemplate("UPDATE counters SET value = value + 1 WHERE name = @name; SELECT value FROM counters WHERE name = @name")]
     Task<int> IncrementCounterAsync(
         string name,
-        [OutputParameter(DbType.Int32)] OutputParameter<int> value);
+        [OutputParameter] OutputParameter<int> value);
 }
 
 // 使用
@@ -105,8 +114,8 @@ public interface IOrderRepository
     Task<int> CreateOrderAsync(
         string customerName,
         decimal total,
-        [OutputParameter(DbType.Int32)] OutputParameter<int> orderId,
-        [OutputParameter(DbType.String, Size = 50)] OutputParameter<string> timestamp);
+        [OutputParameter] OutputParameter<int> orderId,
+        [OutputParameter(Size = 50)] OutputParameter<string> timestamp);  // 字符串可能需要指定 Size
 }
 
 // 使用
@@ -211,33 +220,33 @@ catch
 
 ```csharp
 [SqlTemplate("INSERT INTO users (name) VALUES (@name); SELECT last_insert_rowid()")]
-int Insert(string name, [OutputParameter(DbType.Int32)] out int id);
+int Insert(string name, [OutputParameter] out int id);
 ```
 
 ### SQL Server
 
 ```csharp
 [SqlTemplate("INSERT INTO users (name) VALUES (@name); SELECT SCOPE_IDENTITY()")]
-int Insert(string name, [OutputParameter(DbType.Int32)] out int id);
+int Insert(string name, [OutputParameter] out int id);
 ```
 
 ### PostgreSQL
 
 ```csharp
 [SqlTemplate("INSERT INTO users (name) VALUES (@name) RETURNING id")]
-int Insert(string name, [OutputParameter(DbType.Int32)] out int id);
+int Insert(string name, [OutputParameter] out int id);
 ```
 
 ### MySQL
 
 ```csharp
 [SqlTemplate("INSERT INTO users (name) VALUES (@name); SELECT LAST_INSERT_ID()")]
-int Insert(string name, [OutputParameter(DbType.Int32)] out int id);
+int Insert(string name, [OutputParameter] out int id);
 ```
 
-## 支持的 DbType
+## 自动类型推断
 
-`[OutputParameter]` 特性支持所有 `System.Data.DbType` 枚举值：
+Sqlx 会根据参数类型自动推断 `DbType`。支持的类型映射：
 
 - `DbType.Int32`, `DbType.Int64`, `DbType.Int16`
 - `DbType.String`, `DbType.AnsiString`

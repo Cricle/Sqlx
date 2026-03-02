@@ -145,12 +145,8 @@ namespace Sqlx.Expressions
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string RemoveOuterParentheses(string s) =>
-            s.Length >= 2 && s[0] == '(' && s[^1] == ')' 
-#if NETSTANDARD2_0
+            s.Length >= 2 && s[0] == '(' && s[s.Length - 1] == ')' 
                 ? s.Substring(1, s.Length - 2)
-#else
-                ? s[1..^1]
-#endif
                 : s;
     }
 }

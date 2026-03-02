@@ -8,22 +8,25 @@ using System;
 using System.Data;
 
 /// <summary>
-/// Marks a method parameter as an output parameter for SQL execution.
+/// Optionally marks a method parameter as an output parameter for SQL execution.
 /// </summary>
 /// <remarks>
 /// <para>
-/// This attribute is used with repository methods to indicate that a parameter
-/// should be registered as an output parameter in the database command.
+/// This attribute is OPTIONAL. Sqlx automatically detects output parameters by checking
+/// for <c>ref</c> and <c>out</c> keywords. The attribute is only needed if you want to:
+/// </para>
+/// <list type="bullet">
+/// <item><description>Explicitly specify a DbType (otherwise auto-inferred from parameter type)</description></item>
+/// <item><description>Set a Size for variable-length types like strings</description></item>
+/// </list>
+/// <para>
 /// After execution, the parameter value will be updated with the value returned
 /// from the database.
 /// </para>
 /// <para>
 /// <strong>Important:</strong> C# does not allow <c>ref</c> and <c>out</c> parameters
-/// in async methods. Output parameters must be used with synchronous methods only.
-/// </para>
-/// <para>
-/// The DbType is automatically inferred from the parameter type. You can optionally
-/// specify it explicitly if needed for special cases.
+/// in async methods. Output parameters must be used with synchronous methods only,
+/// or use <c>OutputParameter&lt;T&gt;</c> wrapper for async methods.
 /// </para>
 /// <para>
 /// Output parameters are commonly used with:
@@ -41,13 +44,17 @@ using System.Data;
 /// [TableName("users")]
 /// public partial class UserRepository
 /// {
-///     // DbType is automatically inferred from the parameter type (int -> DbType.Int32)
+///     // Attribute is optional - DbType is automatically inferred from int type
 ///     [SqlTemplate("EXEC GetUserId @name, @userId OUT")]
-///     int GetUserId(string name, [OutputParameter] out int userId);
+///     int GetUserId(string name, out int userId);
 ///     
-///     // You can still specify DbType explicitly if needed
+///     // You can still use the attribute to specify DbType explicitly if needed
 ///     [SqlTemplate("EXEC GetUserIdExplicit @name, @userId OUT")]
 ///     int GetUserIdExplicit(string name, [OutputParameter(DbType.Int64)] out long userId);
+///     
+///     // Or use it to specify Size for variable-length types
+///     [SqlTemplate("EXEC GetUserName @id, @name OUT")]
+///     int GetUserName(int id, [OutputParameter(Size = 100)] out string name);
 /// }
 /// </code>
 /// </example>

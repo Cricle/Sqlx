@@ -1487,23 +1487,24 @@ public class RepositoryGenerator : IIncrementalGenerator
                 continue;
             }
             
-            // Check if this parameter has [OutputParameter] attribute
-            var outputParamAttr = param.GetAttributes()
-                .FirstOrDefault(a => a.AttributeClass?.Name == "OutputParameterAttribute");
+            // Check if this is an output parameter (by ref/out keyword or OutputParameter<T> wrapper)
+            var isOutputParameterWrapper = paramTypeName.Contains("OutputParameter<");
+            var isRefOrOutParam = param.RefKind == RefKind.Ref || param.RefKind == RefKind.Out;
             
-            if (outputParamAttr != null)
+            if (isRefOrOutParam || isOutputParameterWrapper)
             {
                 // Output or InputOutput parameter
-                var dbType = outputParamAttr.ConstructorArguments.Length > 0 
+                // Check for optional [OutputParameter] attribute for DbType and Size
+                var outputParamAttr = param.GetAttributes()
+                    .FirstOrDefault(a => a.AttributeClass?.Name == "OutputParameterAttribute");
+                
+                var dbType = outputParamAttr?.ConstructorArguments.Length > 0 
                     ? outputParamAttr.ConstructorArguments[0].Value 
                     : null;
-                var size = outputParamAttr.NamedArguments
+                var size = outputParamAttr?.NamedArguments
                     .FirstOrDefault(a => a.Key == "Size").Value.Value;
                 
                 var paramFieldName = paramNameFields.TryGetValue(param.Name, out var fn) ? fn : $"_paramPrefix + \"{param.Name}\"";
-                
-                // Check if this is OutputParameter<T> wrapper (for async methods)
-                var isOutputParameterWrapper = paramTypeName.Contains("OutputParameter<");
                 var isRefParam = param.RefKind == RefKind.Ref;
                 
                 sb.AppendLine("{");
@@ -2615,8 +2616,11 @@ public class RepositoryGenerator : IIncrementalGenerator
     /// </summary>
     private static void GenerateOutputParameterRetrieval(IndentedStringBuilder sb, IMethodSymbol method, Dictionary<string, string> paramNameFields)
     {
+        // Find all output parameters: ref/out parameters or OutputParameter<T> wrappers
         var outputParams = method.Parameters
-            .Where(p => p.GetAttributes().Any(a => a.AttributeClass?.Name == "OutputParameterAttribute"))
+            .Where(p => p.RefKind == RefKind.Ref || 
+                       p.RefKind == RefKind.Out || 
+                       p.Type.ToDisplayString().Contains("OutputParameter<"))
             .ToList();
         
         if (!outputParams.Any()) return;

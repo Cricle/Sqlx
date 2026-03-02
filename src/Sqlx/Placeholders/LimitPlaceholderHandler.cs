@@ -4,10 +4,6 @@
 
 namespace Sqlx.Placeholders;
 
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-
 /// <summary>
 /// Handles the {{limit}} placeholder for generating LIMIT clauses.
 /// </summary>
@@ -33,7 +29,7 @@ using System.Globalization;
 /// // Output: SELECT * FROM users LIMIT @pageSize (parameter added to command)
 /// </code>
 /// </example>
-public sealed class LimitPlaceholderHandler : PlaceholderHandlerBase
+public sealed class LimitPlaceholderHandler : KeywordWithValuePlaceholderHandler
 {
     /// <summary>
     /// Gets the singleton instance.
@@ -44,41 +40,5 @@ public sealed class LimitPlaceholderHandler : PlaceholderHandlerBase
     public override string Name => "limit";
 
     /// <inheritdoc/>
-    public override PlaceholderType GetType(string options)
-    {
-        // Both --count and --param are static: SQL is generated at Prepare() time
-        // --count: generates "LIMIT 10" (literal value)
-        // --param: generates "LIMIT @limit" (parameterized, value bound at execution)
-        return PlaceholderType.Static;
-    }
-
-    /// <inheritdoc/>
-    public override string Process(PlaceholderContext context, string options)
-    {
-        var count = ParseCount(options);
-        if (count is not null)
-        {
-            return $"LIMIT {count.Value}";
-        }
-
-        // For dynamic limits, generate parameterized SQL
-        var paramName = ParseParam(options);
-        if (paramName is not null)
-        {
-            return $"LIMIT {context.Dialect.ParameterPrefix}{paramName}";
-        }
-
-        return string.Empty;
-    }
-
-    /// <inheritdoc/>
-    public override string Render(PlaceholderContext context, string options, IReadOnlyDictionary<string, object?>? parameters)
-    {
-        // For dynamic limits with parameters, the SQL is already generated in Process()
-        // This method is kept for backward compatibility but should not be called in optimized path
-        var paramName = ParseParam(options)
-            ?? throw new InvalidOperationException("{{limit}} requires --count or --param option.");
-        var value = GetParam(parameters, paramName);
-        return value is not null ? $"LIMIT {Convert.ToInt32(value, CultureInfo.InvariantCulture)}" : string.Empty;
-    }
+    protected override string Keyword => "LIMIT";
 }

@@ -4,10 +4,7 @@
 
 namespace Sqlx.Placeholders;
 
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text.RegularExpressions;
 
 /// <summary>
 /// Handles the {{set}} placeholder for generating UPDATE SET clauses.
@@ -46,7 +43,7 @@ using System.Text.RegularExpressions;
 /// // Output:   UPDATE users SET [priority] = [priority] + 1, [updated_at] = @updatedAt WHERE id = @id
 /// </code>
 /// </example>
-public sealed class SetPlaceholderHandler : PlaceholderHandlerBase
+public sealed class SetPlaceholderHandler : InlineExpressionPlaceholderHandler
 {
     /// <summary>
     /// Gets the singleton instance.
@@ -57,67 +54,39 @@ public sealed class SetPlaceholderHandler : PlaceholderHandlerBase
     public override string Name => "set";
 
     /// <inheritdoc/>
-    public override PlaceholderType GetType(string options)
+    protected override string ProcessDynamicParam(PlaceholderContext context, string paramName)
     {
-        // 如果有 --param 选项，则为动态占位符
-        return ParseParam(options) != null ? PlaceholderType.Dynamic : PlaceholderType.Static;
+        // For SET clause with --param, return empty string (needs dynamic rendering)
+        return string.Empty;
     }
 
     /// <inheritdoc/>
-    public override string Process(PlaceholderContext context, string options)
+    protected override string FormatInlineExpression(PlaceholderContext context, ColumnMeta column, string wrappedExpression)
     {
-        // 如果有 --param 选项，静态处理时返回空字符串（需要动态渲染）
-        if (ParseParam(options) != null)
-        {
-            return string.Empty;
-        }
-
-        // 标准静态处理
-        var columns = FilterColumns(context.Columns, options);
-        var inlineExpressions = ParseInlineExpressions(options);
-
-        var setClauses = new List<string>();
-
-        foreach (var column in columns)
-        {
-            // 检查是否有内联表达式（通过属性名匹配）
-            if (inlineExpressions != null && inlineExpressions.TryGetValue(column.PropertyName, out var expression))
-            {
-                // 使用表达式，将表达式中的属性名替换为包装后的列名
-                var wrappedExpression = ReplacePropertyNamesWithColumns(expression, context);
-                setClauses.Add($"{context.Dialect.WrapColumn(column.Name)} = {wrappedExpression}");
-            }
-            else
-            {
-                // 使用标准参数赋值
-                setClauses.Add($"{context.Dialect.WrapColumn(column.Name)} = {context.Dialect.CreateParameter(column.Name)}");
-            }
-        }
-
-        return string.Join(", ", setClauses);
+        // For SET clause, format as: [column] = expression
+        return $"{context.Dialect.WrapColumn(column.Name)} = {wrappedExpression}";
     }
 
     /// <inheritdoc/>
-    public override string Render(PlaceholderContext context, string options, IReadOnlyDictionary<string, object?>? parameters)
+    protected override string FormatStandardParameter(PlaceholderContext context, ColumnMeta column)
     {
-        var paramName = ParseParam(options);
-        
-        // 如果没有 --param 选项，使用标准静态处理
-        if (paramName == null)
-        {
-            return Process(context, options);
-        }
+        // For SET clause, format as: [column] = @parameter
+        return $"{context.Dialect.WrapColumn(column.Name)} = {context.Dialect.CreateParameter(column.Name)}";
+    }
 
-        // 动态渲染：从参数中获取 SET 子句
+    /// <inheritdoc/>
+    protected override string RenderDynamicParam(PlaceholderContext context, string paramName, IReadOnlyDictionary<string, object?>? parameters)
+    {
+        // Get the parameter value
         var paramValue = GetParam(parameters, paramName);
-        
-        // 如果参数为 null，返回空字符串
+
+        // If parameter is null, return empty string
         if (paramValue == null)
         {
             return string.Empty;
         }
 
-        // 返回参数值的字符串表示
+        // Return string representation of parameter value
         return paramValue.ToString() ?? string.Empty;
     }
 }

@@ -95,17 +95,15 @@ namespace Sqlx.Expressions
             };
         }
 
-        public static object? EvaluateExpression(Expression e) => e switch
+        public static object? EvaluateExpression(Expression e)
         {
-            ConstantExpression c => c.Value,
-            MemberExpression m when m.Expression is ConstantExpression c => m.Member switch
-            {
-                FieldInfo f => f.GetValue(c.Value),
-                PropertyInfo p => p.GetValue(c.Value),
-                _ => throw new NotSupportedException($"Member type {m.Member.GetType()} is not supported")
-            },
-            _ => Expression.Lambda<Func<object?>>(Expression.Convert(e, typeof(object))).Compile()()
-        };
+            // Fast path for constants
+            if (e is ConstantExpression c) return c.Value;
+            
+            // For member access on constants, compile the expression tree instead of using reflection
+            // This is faster and avoids GetValue/SetValue reflection calls
+            return Expression.Lambda<Func<object?>>(Expression.Convert(e, typeof(object))).Compile()();
+        }
 
         public static string ConvertToSnakeCase(string name)
         {

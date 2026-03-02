@@ -106,7 +106,6 @@ namespace TodoWebApi.Services;
 /// <para>For more details, see the <see href="https://github.com/yourusername/Sqlx/blob/main/docs/sqlx-context.md">SqlxContext documentation</see>.</para>
 /// </remarks>
 [SqlxContext]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [IncludeRepository(typeof(TodoRepository))]
 public partial class TodoDbContext : SqlxContext
 {

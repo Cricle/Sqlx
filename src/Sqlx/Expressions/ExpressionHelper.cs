@@ -21,6 +21,9 @@ namespace Sqlx.Expressions
     {
         // Cache for snake_case conversions to avoid repeated allocations
         private static readonly ConcurrentDictionary<string, string> SnakeCaseCache = new();
+        
+        // Cache for compiled expression evaluators to avoid repeated compilation
+        private static readonly ConcurrentDictionary<Expression, Func<object?>> ExpressionCache = new();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsEntityProperty(MemberExpression m) =>
@@ -100,9 +103,15 @@ namespace Sqlx.Expressions
             // Fast path for constants
             if (e is ConstantExpression c) return c.Value;
             
-            // For member access on constants, compile the expression tree instead of using reflection
-            // This is faster and avoids GetValue/SetValue reflection calls
-            return Expression.Lambda<Func<object?>>(Expression.Convert(e, typeof(object))).Compile()();
+            // Check cache first to avoid repeated compilation
+            if (!ExpressionCache.TryGetValue(e, out var evaluator))
+            {
+                // Compile and cache the expression evaluator
+                evaluator = Expression.Lambda<Func<object?>>(Expression.Convert(e, typeof(object))).Compile();
+                ExpressionCache.TryAdd(e, evaluator);
+            }
+            
+            return evaluator();
         }
 
         public static string ConvertToSnakeCase(string name)

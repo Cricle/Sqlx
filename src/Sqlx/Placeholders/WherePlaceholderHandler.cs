@@ -67,83 +67,118 @@ public sealed class WherePlaceholderHandler : PlaceholderHandlerBase
 
     private static string RenderFromObject(PlaceholderContext context, string objectParamName, IReadOnlyDictionary<string, object?>? parameters)
     {
-        var obj = GetParam(parameters, objectParamName);
+        var dict = ValidateAndGetDictionary(parameters, objectParamName);
+        if (dict is null || dict.Count == 0)
+        {
+            return "1=1"; // Null or empty dictionary returns always-true condition
+        }
+
+        var columnLookup = BuildColumnLookup(context.Columns);
+        var conditions = BuildConditions(dict, columnLookup, context.Columns, context.Dialect);
+
+        return FormatConditions(conditions);
+    }
+
+    private static IReadOnlyDictionary<string, object?>? ValidateAndGetDictionary(IReadOnlyDictionary<string, object?>? parameters, string paramName)
+    {
+        var obj = GetParam(parameters, paramName);
         if (obj is null)
         {
-            return "1=1"; // Null object returns always-true condition
+            return null;
         }
 
         if (obj is not IReadOnlyDictionary<string, object?> dict)
         {
             throw new InvalidOperationException(
-                $"Parameter '{objectParamName}' for --object must be IReadOnlyDictionary<string, object?>. " +
+                $"Parameter '{paramName}' for --object must be IReadOnlyDictionary<string, object?>. " +
                 $"Use entity.ToDictionary() or create a dictionary manually.");
         }
 
-        if (dict.Count == 0)
+        return dict;
+    }
+
+    private static Dictionary<string, ColumnMeta>? BuildColumnLookup(IReadOnlyList<ColumnMeta> columns)
+    {
+        if (columns.Count <= 4)
         {
-            return "1=1"; // Empty dictionary returns always-true condition
+            return null; // Use linear search for small column sets
         }
 
+        var lookup = new Dictionary<string, ColumnMeta>(columns.Count, StringComparer.OrdinalIgnoreCase);
+        foreach (var col in columns)
+        {
+            lookup[col.PropertyName] = col;
+            lookup[col.Name] = col;
+        }
+
+        return lookup;
+    }
+
+    private static List<string> BuildConditions(
+        IReadOnlyDictionary<string, object?> dict,
+        Dictionary<string, ColumnMeta>? columnLookup,
+        IReadOnlyList<ColumnMeta> columns,
+        SqlDialect dialect)
+    {
         var conditions = new List<string>(dict.Count);
-        var columns = context.Columns;
-        var dialect = context.Dialect;
-
-        // Build column name lookup for O(1) access
-        Dictionary<string, ColumnMeta>? columnLookup = null;
-        if (columns.Count > 4) // Only build lookup for larger column sets
-        {
-            columnLookup = new Dictionary<string, ColumnMeta>(columns.Count, StringComparer.OrdinalIgnoreCase);
-            foreach (var col in columns)
-            {
-                columnLookup[col.PropertyName] = col;
-                columnLookup[col.Name] = col;
-            }
-        }
 
         foreach (var kvp in dict)
         {
-            // Find matching column
-            ColumnMeta? column = null;
-            if (columnLookup != null)
-            {
-                columnLookup.TryGetValue(kvp.Key, out column);
-            }
-            else
-            {
-                foreach (var col in columns)
-                {
-                    if (string.Equals(col.PropertyName, kvp.Key, StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(col.Name, kvp.Key, StringComparison.OrdinalIgnoreCase))
-                    {
-                        column = col;
-                        break;
-                    }
-                }
-            }
-
+            var column = FindColumn(kvp.Key, columnLookup, columns);
             if (column is null)
+            {
                 continue; // Skip unknown properties
-
-            // Generate condition based on value
-            if (kvp.Value is null)
-            {
-                // column IS NULL
-                conditions.Add($"{dialect.WrapColumn(column.Name)} IS NULL");
             }
-            else
+
+            var condition = BuildCondition(column, kvp.Value, dialect);
+            conditions.Add(condition);
+        }
+
+        return conditions;
+    }
+
+    private static ColumnMeta? FindColumn(
+        string key,
+        Dictionary<string, ColumnMeta>? lookup,
+        IReadOnlyList<ColumnMeta> columns)
+    {
+        if (lookup != null)
+        {
+            return lookup.TryGetValue(key, out var col) ? col : null;
+        }
+
+        // Linear search for small column sets
+        foreach (var col in columns)
+        {
+            if (string.Equals(col.PropertyName, key, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(col.Name, key, StringComparison.OrdinalIgnoreCase))
             {
-                // column = @column
-                conditions.Add($"{dialect.WrapColumn(column.Name)} = {dialect.CreateParameter(column.Name)}");
+                return col;
             }
         }
 
+        return null;
+    }
+
+    private static string BuildCondition(ColumnMeta column, object? value, SqlDialect dialect)
+    {
+        var columnName = dialect.WrapColumn(column.Name);
+
+        if (value is null)
+        {
+            return $"{columnName} IS NULL";
+        }
+
+        return $"{columnName} = {dialect.CreateParameter(column.Name)}";
+    }
+
+    private static string FormatConditions(List<string> conditions)
+    {
         if (conditions.Count == 0)
         {
             return "1=1"; // No valid conditions, return always-true
         }
 
-        // Wrap in parentheses and join with AND
         return conditions.Count == 1
             ? conditions[0]
             : $"({string.Join(" AND ", conditions)})";

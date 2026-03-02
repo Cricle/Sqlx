@@ -183,7 +183,7 @@ public class WherePlaceholderTests
         }
 
         [TestMethod]
-        public void Render_WithObjectOption_AllNullValues_Returns1Equals1()
+        public void Render_WithObjectOption_AllNullValues_GeneratesIsNullConditions()
         {
             var handler = WherePlaceholderHandler.Instance;
             var context = new PlaceholderContext(new SqlServerDialect(), "users", TestColumns);
@@ -192,7 +192,7 @@ public class WherePlaceholderTests
 
             var result = handler.Render(context, "--object filter", parameters);
 
-            Assert.AreEqual("1=1", result);
+            Assert.AreEqual("([name] IS NULL AND [email] IS NULL)", result);
         }
 
         [TestMethod]

@@ -307,7 +307,7 @@ public class PlaceholderHandlerBoundaryTests
     }
 
     [TestMethod]
-    public void WhereHandler_ObjectMode_AllNullValues_Returns1Equals1()
+    public void WhereHandler_ObjectMode_AllNullValues_GeneratesIsNullConditions()
     {
         var handler = WherePlaceholderHandler.Instance;
         var columns = new[]
@@ -320,7 +320,7 @@ public class PlaceholderHandlerBoundaryTests
 
         var result = handler.Render(context, "--object filter", new Dictionary<string, object?> { ["filter"] = filter });
 
-        Assert.AreEqual("1=1", result);
+        Assert.AreEqual("([name] IS NULL AND [id] IS NULL)", result);
     }
 
     [TestMethod]

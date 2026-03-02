@@ -146,8 +146,8 @@ app.MapGet("/api/todos/queryable/stats", async (ITodoRepository repo) =>
 });
 
 // SqlxContext Transaction Management Example with Batch Insert
-// Demonstrates efficient batch insertion with transaction handling
-app.MapPost("/api/todos/bulk", async (List<CreateTodoRequest> requests, TodoDbContext context, SqliteConnection conn) =>
+// Demonstrates efficient batch insertion using Sqlx BatchInsertAsync
+app.MapPost("/api/todos/bulk", async (List<CreateTodoRequest> requests, TodoDbContext context) =>
 {
     if (requests == null || requests.Count == 0)
     {
@@ -171,15 +171,14 @@ app.MapPost("/api/todos/bulk", async (List<CreateTodoRequest> requests, TodoDbCo
             UpdatedAt = now 
         }).ToList();
         
-        // Use batch insert for better performance
-        var sql = "INSERT INTO todos (title, description, is_completed, priority, due_date, tags, estimated_minutes, created_at, updated_at) VALUES (@title, @description, @is_completed, @priority, @due_date, @tags, @estimated_minutes, @created_at, @updated_at)";
-        var affected = await conn.ExecuteBatchAsync(sql, todos, TodoWebApi.Models.TodoParameterBinder.Default, transaction, batchSize: 100);
+        // Use Sqlx BatchInsertAsync for efficient batch insertion
+        var affected = await context.Todos.BatchInsertAsync(todos, default);
         
         // Commit all changes atomically
         await transaction.CommitAsync();
         
         // Note: Batch insert doesn't return IDs, so we return empty list
-        return Results.Json(new BulkCreateResult(true, affected, new List<long>(), $"Successfully created {affected} todos using batch insert"), TodoJsonContext.Default.BulkCreateResult);
+        return Results.Json(new BulkCreateResult(true, affected, new List<long>(), $"Successfully created {affected} todos using Sqlx BatchInsertAsync"), TodoJsonContext.Default.BulkCreateResult);
     }
     catch (Exception ex)
     {

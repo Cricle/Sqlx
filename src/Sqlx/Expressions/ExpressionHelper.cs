@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -63,7 +64,7 @@ namespace Sqlx.Expressions
         public static bool IsStringConcatenation(BinaryExpression b) => b.Type == typeof(string) && b.NodeType == ExpressionType.Add;
 
         public static bool IsStringPropertyAccess(MemberExpression m) =>
-            m.Member.Name == "Length" && m.Expression is MemberExpression { Type: var t } sm && t == typeof(string) && IsEntityProperty(sm);
+            m.Member.Name == "Length" && m.Expression is MemberExpression { Type: var t } && t == typeof(string) && IsEntityProperty((MemberExpression)m.Expression);
 
         public static bool IsCollectionType(Type t) =>
             t.IsArray || (t.IsGenericType && t.GetGenericTypeDefinition() is var g &&
@@ -80,14 +81,18 @@ namespace Sqlx.Expressions
         public static object? GetDefaultValueForValueType(Type t)
         {
             if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(Nullable<>)) return null;
-            if (t == typeof(int) || t == typeof(long) || t == typeof(short) || t == typeof(byte)) return 0;
-            if (t == typeof(bool)) return false;
-            if (t == typeof(DateTime)) return DateTime.MinValue;
-            if (t == typeof(Guid)) return Guid.Empty;
-            if (t == typeof(decimal)) return 0m;
-            if (t == typeof(double)) return 0.0;
-            if (t == typeof(float)) return 0f;
-            return t.IsValueType ? (t.IsGenericType ? null : 0) : null;
+            
+            var typeCode = Type.GetTypeCode(t);
+            return typeCode switch
+            {
+                TypeCode.Int32 or TypeCode.Int64 or TypeCode.Int16 or TypeCode.Byte => 0,
+                TypeCode.Boolean => false,
+                TypeCode.DateTime => DateTime.MinValue,
+                TypeCode.Decimal => 0m,
+                TypeCode.Double => 0.0,
+                TypeCode.Single => 0f,
+                _ => t == typeof(Guid) ? Guid.Empty : (t.IsValueType ? (t.IsGenericType ? null : 0) : null)
+            };
         }
 
         public static object? EvaluateExpression(Expression e) => e switch
@@ -105,25 +110,10 @@ namespace Sqlx.Expressions
         public static string ConvertToSnakeCase(string name)
         {
             if (string.IsNullOrEmpty(name)) return name;
+            if (SnakeCaseCache.TryGetValue(name, out var cached)) return cached;
 
-            // Check cache first
-            if (SnakeCaseCache.TryGetValue(name, out var cached))
-            {
-                return cached;
-            }
-
-            // Check if conversion is needed
-            var hasUpper = false;
-            for (var i = 0; i < name.Length; i++)
-            {
-                if (char.IsUpper(name[i]))
-                {
-                    hasUpper = true;
-                    break;
-                }
-            }
-
-            if (!hasUpper)
+            // Quick check if conversion is needed
+            if (!name.Any(char.IsUpper))
             {
                 SnakeCaseCache.TryAdd(name, name);
                 return name;
@@ -139,11 +129,7 @@ namespace Sqlx.Expressions
                 var c = name[i];
                 if (char.IsUpper(c))
                 {
-                    if (i > 0)
-                    {
-                        buffer[pos++] = '_';
-                    }
-
+                    if (i > 0) buffer[pos++] = '_';
                     buffer[pos++] = char.ToLowerInvariant(c);
                 }
                 else
@@ -158,18 +144,13 @@ namespace Sqlx.Expressions
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static string RemoveOuterParentheses(string s)
-        {
-            if (s.Length >= 2 && s[0] == '(' && s[s.Length - 1] == ')')
-            {
+        public static string RemoveOuterParentheses(string s) =>
+            s.Length >= 2 && s[0] == '(' && s[^1] == ')' 
 #if NETSTANDARD2_0
-                return s.Substring(1, s.Length - 2);
+                ? s.Substring(1, s.Length - 2)
 #else
-                return s[1..^1];
+                ? s[1..^1]
 #endif
-            }
-
-            return s;
-        }
+                : s;
     }
 }

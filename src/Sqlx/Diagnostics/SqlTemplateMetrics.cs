@@ -6,10 +6,7 @@ namespace Sqlx.Diagnostics;
 
 using System;
 using System.Diagnostics;
-
-#if NET8_0_OR_GREATER
 using System.Diagnostics.Metrics;
-#endif
 
 /// <summary>
 /// Provides metrics instrumentation for SQL template execution using System.Diagnostics.Metrics.
@@ -26,11 +23,10 @@ using System.Diagnostics.Metrics;
 /// - repository.method: Method name
 /// - sql.template: SQL template field name
 /// 
-/// Note: Metrics are only available on .NET 8.0 or later. On earlier frameworks, these methods are no-ops.
+/// Note: Requires System.Diagnostics.DiagnosticSource 6.0.0 or later for Metrics support.
 /// </remarks>
 public static class SqlTemplateMetrics
 {
-#if NET8_0_OR_GREATER
     private static readonly Meter _meter = new("Sqlx.SqlTemplate", "1.0.0");
     
     private static readonly Histogram<double> _executionDuration = _meter.CreateHistogram<double>(
@@ -47,7 +43,6 @@ public static class SqlTemplateMetrics
         name: "sqlx.template.errors",
         unit: "{error}",
         description: "Total number of SQL template execution errors");
-#endif
 
     /// <summary>
     /// Records a successful SQL template execution.
@@ -58,7 +53,6 @@ public static class SqlTemplateMetrics
     /// <param name="elapsedTicks">Execution duration in ticks (from Stopwatch).</param>
     public static void RecordExecution(string repositoryClass, string methodName, string sqlTemplateField, long elapsedTicks)
     {
-#if NET8_0_OR_GREATER
         var durationMs = elapsedTicks * 1000.0 / Stopwatch.Frequency;
         var tags = new TagList
         {
@@ -69,7 +63,6 @@ public static class SqlTemplateMetrics
         
         _executionDuration.Record(durationMs, tags);
         _executionCount.Add(1, tags);
-#endif
     }
 
     /// <summary>
@@ -82,7 +75,6 @@ public static class SqlTemplateMetrics
     /// <param name="exception">The exception that occurred.</param>
     public static void RecordError(string repositoryClass, string methodName, string sqlTemplateField, long elapsedTicks, Exception exception)
     {
-#if NET8_0_OR_GREATER
         var durationMs = elapsedTicks * 1000.0 / Stopwatch.Frequency;
         var tags = new TagList
         {
@@ -94,6 +86,5 @@ public static class SqlTemplateMetrics
         
         _executionDuration.Record(durationMs, tags);
         _errorCount.Add(1, tags);
-#endif
     }
 }

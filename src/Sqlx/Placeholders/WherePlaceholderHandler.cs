@@ -103,9 +103,6 @@ public sealed class WherePlaceholderHandler : PlaceholderHandlerBase
 
         foreach (var kvp in dict)
         {
-            if (kvp.Value is null)
-                continue;
-
             // Find matching column
             ColumnMeta? column = null;
             if (columnLookup != null)
@@ -128,8 +125,17 @@ public sealed class WherePlaceholderHandler : PlaceholderHandlerBase
             if (column is null)
                 continue; // Skip unknown properties
 
-            // column = @column
-            conditions.Add($"{dialect.WrapColumn(column.Name)} = {dialect.CreateParameter(column.Name)}");
+            // Generate condition based on value
+            if (kvp.Value is null)
+            {
+                // column IS NULL
+                conditions.Add($"{dialect.WrapColumn(column.Name)} IS NULL");
+            }
+            else
+            {
+                // column = @column
+                conditions.Add($"{dialect.WrapColumn(column.Name)} = {dialect.CreateParameter(column.Name)}");
+            }
         }
 
         if (conditions.Count == 0)

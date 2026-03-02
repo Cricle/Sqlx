@@ -4,6 +4,8 @@
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Sqlx.Tests.E2E.Infrastructure;
+using Sqlx.Placeholders;
+using System.Collections.Generic;
 
 namespace Sqlx.Tests.E2E.SqlxCore;
 
@@ -368,5 +370,61 @@ public class NullHandlingStrictE2ETests : E2ETestBase
 
         // Assert
         Assert.IsTrue(sql.Contains(">"));
+    }
+
+    // ==================== Dictionary WHERE with NULL Values ====================
+
+    [TestMethod]
+    [TestCategory("E2E")]
+    [TestCategory("NullHandling")]
+    [TestCategory("SQLite")]
+    public void SQLite_DictionaryWhere_WithNullValue_GeneratesIsNull()
+    {
+        // Arrange
+        var columns = new[]
+        {
+            new ColumnMeta("id", "Id", System.Data.DbType.Int64, false),
+            new ColumnMeta("name", "Name", System.Data.DbType.String, true),
+            new ColumnMeta("value", "Value", System.Data.DbType.Int32, true),
+            new ColumnMeta("description", "Description", System.Data.DbType.String, true)
+        };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "test_entities", columns);
+        var handler = WherePlaceholderHandler.Instance;
+
+        // Act
+        var filter = new Dictionary<string, object?> { ["Value"] = null };
+        var result = handler.Render(context, "--object filter", new Dictionary<string, object?> { ["filter"] = filter });
+
+        // Assert
+        Assert.IsTrue(result.Contains("IS NULL"), $"Expected 'IS NULL' in SQL, got: {result}");
+        Assert.IsTrue(result.Contains("[value]"), $"Expected '[value]' column in SQL, got: {result}");
+    }
+
+    [TestMethod]
+    [TestCategory("E2E")]
+    [TestCategory("NullHandling")]
+    [TestCategory("SQLite")]
+    public void SQLite_DictionaryWhere_MixedNullAndNonNull_GeneratesBothConditions()
+    {
+        // Arrange
+        var columns = new[]
+        {
+            new ColumnMeta("id", "Id", System.Data.DbType.Int64, false),
+            new ColumnMeta("name", "Name", System.Data.DbType.String, true),
+            new ColumnMeta("value", "Value", System.Data.DbType.Int32, true),
+            new ColumnMeta("description", "Description", System.Data.DbType.String, true)
+        };
+        var context = new PlaceholderContext(SqlDefine.SQLite, "test_entities", columns);
+        var handler = WherePlaceholderHandler.Instance;
+
+        // Act
+        var filter = new Dictionary<string, object?> { ["Name"] = "Test", ["Value"] = null };
+        var result = handler.Render(context, "--object filter", new Dictionary<string, object?> { ["filter"] = filter });
+
+        // Assert
+        Assert.IsTrue(result.Contains("IS NULL"), $"Expected 'IS NULL' in SQL, got: {result}");
+        Assert.IsTrue(result.Contains("= @name"), $"Expected '= @name' in SQL, got: {result}");
+        Assert.IsTrue(result.Contains("[value] IS NULL"), $"Expected '[value] IS NULL' in SQL, got: {result}");
+        Assert.IsTrue(result.Contains("[name] = @name"), $"Expected '[name] = @name' in SQL, got: {result}");
     }
 }

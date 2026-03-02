@@ -115,7 +115,7 @@ public class WhereObjectPlaceholderTests
     }
 
     [TestMethod]
-    public void WhereObject_AllNullValues_Returns1Equals1()
+    public void WhereObject_AllNullValues_GeneratesIsNullConditions()
     {
         var handler = WherePlaceholderHandler.Instance;
         var context = new PlaceholderContext(SqlDefine.SQLite, "users", UserColumns);
@@ -128,11 +128,11 @@ public class WhereObjectPlaceholderTests
 
         var result = handler.Render(context, "--object filter", new Dictionary<string, object?> { ["filter"] = filter });
 
-        Assert.AreEqual("1=1", result);
+        Assert.AreEqual("([name] IS NULL AND [age] IS NULL AND [email] IS NULL)", result);
     }
 
     [TestMethod]
-    public void WhereObject_MixedNullAndNonNull_OnlyIncludesNonNull()
+    public void WhereObject_MixedNullAndNonNull_IncludesBothIsNullAndEquals()
     {
         var handler = WherePlaceholderHandler.Instance;
         var context = new PlaceholderContext(SqlDefine.SQLite, "users", UserColumns);
@@ -146,11 +146,23 @@ public class WhereObjectPlaceholderTests
 
         var result = handler.Render(context, "--object filter", new Dictionary<string, object?> { ["filter"] = filter });
 
-        Assert.AreEqual("([name] = @name AND [email] = @email)", result);
+        Assert.AreEqual("([name] = @name AND [age] IS NULL AND [email] = @email AND [is_active] IS NULL)", result);
     }
 
     [TestMethod]
-    public void WhereObject_OnlyOneNonNullValue_NoParentheses()
+    public void WhereObject_SingleNullValue_GeneratesIsNull()
+    {
+        var handler = WherePlaceholderHandler.Instance;
+        var context = new PlaceholderContext(SqlDefine.SQLite, "users", UserColumns);
+        var filter = new Dictionary<string, object?> { ["Age"] = null };
+
+        var result = handler.Render(context, "--object filter", new Dictionary<string, object?> { ["filter"] = filter });
+
+        Assert.AreEqual("[age] IS NULL", result);
+    }
+
+    [TestMethod]
+    public void WhereObject_OnlyOneNonNullValue_WithNullValues_GeneratesAllConditions()
     {
         var handler = WherePlaceholderHandler.Instance;
         var context = new PlaceholderContext(SqlDefine.SQLite, "users", UserColumns);
@@ -163,7 +175,7 @@ public class WhereObjectPlaceholderTests
 
         var result = handler.Render(context, "--object filter", new Dictionary<string, object?> { ["filter"] = filter });
 
-        Assert.AreEqual("[age] = @age", result);
+        Assert.AreEqual("([name] IS NULL AND [age] = @age AND [email] IS NULL)", result);
     }
 
     #endregion

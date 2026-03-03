@@ -20,6 +20,11 @@ namespace Sqlx
     /// </summary>
     internal static class ExceptionHandler
     {
+        private static readonly HashSet<string> SensitiveParameterNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "password", "pwd", "secret", "token", "apikey", "api_key"
+        };
+
         /// <summary>
         /// Executes an operation with exception handling, enrichment, logging, and retry support.
         /// </summary>
@@ -143,14 +148,10 @@ namespace Sqlx
             if (parameters == null) return null;
 
             var sanitized = new Dictionary<string, object?>();
-            var sensitiveNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            {
-                "password", "pwd", "secret", "token", "apikey", "api_key"
-            };
 
             foreach (var (key, value) in parameters)
             {
-                sanitized[key] = sensitiveNames.Contains(key) ? "***REDACTED***" : value;
+                sanitized[key] = SensitiveParameterNames.Contains(key) ? "***REDACTED***" : value;
             }
 
             return sanitized;

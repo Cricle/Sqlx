@@ -15,6 +15,8 @@ using System.Reflection;
 /// </summary>
 public static class TypeConverter
 {
+    private static readonly Type[] IntParameterTypes = new[] { typeof(int) };
+
     /// <summary>
     /// Converts a database value to the target type using efficient conversion.
     /// Public API for generated code.
@@ -101,7 +103,7 @@ public static class TypeConverter
         // Handle nullability
         if (isNullable)
         {
-            var isDbNullMethod = typeof(IDataRecord).GetMethod("IsDBNull", new[] { typeof(int) })!;
+            var isDbNullMethod = typeof(IDataRecord).GetMethod("IsDBNull", IntParameterTypes)!;
             var isDbNull = Expression.Call(readerParam, isDbNullMethod, ordinalExpr);
             var defaultValue = Expression.Default(targetType);
             
@@ -128,7 +130,7 @@ public static class TypeConverter
         }
 
         // Need conversion - get as object first, then convert using our Convert<T> method
-        var getValueMethod = typeof(IDataRecord).GetMethod("GetValue", new[] { typeof(int) })!;
+        var getValueMethod = typeof(IDataRecord).GetMethod("GetValue", IntParameterTypes)!;
         var valueExpr = Expression.Call(readerParam, getValueMethod, ordinalExpr);
         
         // Call TypeConverter.Convert<T>(value)
@@ -155,7 +157,7 @@ public static class TypeConverter
         };
 
         return methodName != null 
-            ? typeof(IDataRecord).GetMethod(methodName, new[] { typeof(int) })
+            ? typeof(IDataRecord).GetMethod(methodName, IntParameterTypes)
             : null;
     }
 }

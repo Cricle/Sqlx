@@ -9,7 +9,7 @@ using Microsoft.Data.Sqlite;
 using Sqlx;
 using Sqlx.Annotations;
 
-namespace Samples;
+namespace Sqlx.Samples;
 
 /// <summary>
 /// 演示多结果集功能的示例。

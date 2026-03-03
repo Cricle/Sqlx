@@ -1,8 +1,10 @@
-// Exception Handling 使用示例
-// 展示如何使用 SqlxContextOptions 配置异常处理、重试和日志记录
+// <copyright file="ExceptionHandlingExample.cs" company="Sqlx">
+// Copyright (c) Sqlx. All rights reserved.
+// </copyright>
 
 using System;
 using System.Data;
+using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

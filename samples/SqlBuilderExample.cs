@@ -1,11 +1,12 @@
-// SqlBuilder 使用示例
-// 展示如何使用 SqlBuilder 构建动态 SQL 查询
+// <copyright file="SqlBuilderExample.cs" company="Sqlx">
+// Copyright (c) Sqlx. All rights reserved.
+// </copyright>
 
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.SQLite;
 using System.Threading.Tasks;
+using Microsoft.Data.Sqlite;
 using Sqlx;
 
 namespace Sqlx.Samples;
@@ -17,8 +18,7 @@ public class SqlBuilderExample
 {
     public static async Task Main(string[] args)
     {
-        // 创建内存数据库
-        await using var connection = new SQLiteConnection("Data Source=:memory:");
+        await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync();
 
         // 创建测试表
@@ -49,7 +49,7 @@ public class SqlBuilderExample
     /// <summary>
     /// 示例 1: 基本查询 - 自动参数化
     /// </summary>
-    static async Task Example1_BasicQuery(SQLiteConnection connection)
+    static async Task Example1_BasicQuery(SqliteConnection connection)
     {
         Console.WriteLine("示例 1: 基本查询");
         Console.WriteLine("----------------");
@@ -71,7 +71,7 @@ public class SqlBuilderExample
     /// <summary>
     /// 示例 2: 动态条件 - 根据输入动态构建 WHERE 子句
     /// </summary>
-    static async Task Example2_DynamicConditions(SQLiteConnection connection)
+    static async Task Example2_DynamicConditions(SqliteConnection connection)
     {
         Console.WriteLine("示例 2: 动态条件");
         Console.WriteLine("----------------");
@@ -113,7 +113,7 @@ public class SqlBuilderExample
     /// <summary>
     /// 示例 3: SqlTemplate 集成 - 使用占位符
     /// </summary>
-    static async Task Example3_SqlTemplateIntegration(SQLiteConnection connection)
+    static async Task Example3_SqlTemplateIntegration(SqliteConnection connection)
     {
         Console.WriteLine("示例 3: SqlTemplate 集成");
         Console.WriteLine("----------------------");
@@ -148,7 +148,7 @@ public class SqlBuilderExample
     /// <summary>
     /// 示例 4: 子查询 - 嵌套查询构建
     /// </summary>
-    static async Task Example4_Subquery(SQLiteConnection connection)
+    static async Task Example4_Subquery(SqliteConnection connection)
     {
         Console.WriteLine("示例 4: 子查询");
         Console.WriteLine("-------------");
@@ -176,7 +176,7 @@ public class SqlBuilderExample
     /// <summary>
     /// 示例 5: 复杂查询 - 组合多种技术
     /// </summary>
-    static async Task Example5_ComplexQuery(SQLiteConnection connection)
+    static async Task Example5_ComplexQuery(SqliteConnection connection)
     {
         Console.WriteLine("示例 5: 复杂查询");
         Console.WriteLine("---------------");
@@ -236,7 +236,7 @@ public class SqlBuilderExample
     /// <summary>
     /// 创建测试表
     /// </summary>
-    static async Task CreateTestTableAsync(SQLiteConnection connection)
+    static async Task CreateTestTableAsync(SqliteConnection connection)
     {
         var sql = @"
             CREATE TABLE users (
@@ -262,7 +262,7 @@ public class SqlBuilderExample
     /// <summary>
     /// 插入测试数据
     /// </summary>
-    static async Task InsertTestDataAsync(SQLiteConnection connection)
+    static async Task InsertTestDataAsync(SqliteConnection connection)
     {
         var sql = @"
             INSERT INTO users (name, age, is_active) VALUES

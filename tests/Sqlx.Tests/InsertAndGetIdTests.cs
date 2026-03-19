@@ -25,16 +25,21 @@ public interface IInsertTestEntityRepository : ICrudRepository<InsertTestEntity,
 }
 
 [TableName("test_entities")]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IInsertTestEntityRepository))]
-public partial class InsertTestEntityRepository(SqliteConnection connection) : IInsertTestEntityRepository
+public partial class InsertTestEntityRepository : IInsertTestEntityRepository
 {
-    private readonly SqliteConnection _connection = connection;
+    private readonly SqliteConnection _connection;
     public DbTransaction? Transaction { get; set; }
+
+    public InsertTestEntityRepository(SqliteConnection connection, SqlDialect dialect)
+    {
+        _connection = connection;
+        _dialect = dialect;
+    }
     
     public IQueryable<InsertTestEntity> AsQueryable()
     {
-        return SqlQuery<InsertTestEntity>.For(_staticContext.Dialect).WithConnection(_connection);
+        return SqlQuery<InsertTestEntity>.For(Dialect).WithConnection(_connection);
     }
 }
 
@@ -75,7 +80,7 @@ public class InsertAndGetIdTests
     [TestMethod]
     public async Task InsertAndGetIdAsync_SingleInsert_ReturnsCorrectId()
     {
-        var repo = new InsertTestEntityRepository(_connection);
+        var repo = new InsertTestEntityRepository(_connection, SqlDefine.SQLite);
 
         var id = await repo.InsertAndGetIdAsync(new InsertTestEntity { Name = "Test1", Value = 100 }, default);
 
@@ -85,7 +90,7 @@ public class InsertAndGetIdTests
     [TestMethod]
     public async Task InsertAndGetIdAsync_MultipleInserts_ReturnsIncrementingIds()
     {
-        var repo = new InsertTestEntityRepository(_connection);
+        var repo = new InsertTestEntityRepository(_connection, SqlDefine.SQLite);
 
         var id1 = await repo.InsertAndGetIdAsync(new InsertTestEntity { Name = "Test1", Value = 100 }, default);
         var id2 = await repo.InsertAndGetIdAsync(new InsertTestEntity { Name = "Test2", Value = 200 }, default);
@@ -99,7 +104,7 @@ public class InsertAndGetIdTests
     [TestMethod]
     public async Task InsertAndGetIdAsync_CanRetrieveInsertedEntity()
     {
-        var repo = new InsertTestEntityRepository(_connection);
+        var repo = new InsertTestEntityRepository(_connection, SqlDefine.SQLite);
 
         var id = await repo.InsertAndGetIdAsync(new InsertTestEntity { Name = "TestEntity", Value = 42 }, default);
         var entity = await repo.GetByIdAsync(id, default);
@@ -116,7 +121,7 @@ public class InsertAndGetIdTests
     [TestMethod]
     public async Task InsertAndGetIdAsync_ConcurrentInserts_AllGetUniqueIds()
     {
-        var repo = new InsertTestEntityRepository(_connection);
+        var repo = new InsertTestEntityRepository(_connection, SqlDefine.SQLite);
         var tasks = new List<Task<long>>();
 
         // Insert 10 entities concurrently
@@ -142,7 +147,7 @@ public class InsertAndGetIdTests
     [TestMethod]
     public async Task InsertAndGetIdAsync_DataIntegrity_AllFieldsStoredCorrectly()
     {
-        var repo = new InsertTestEntityRepository(_connection);
+        var repo = new InsertTestEntityRepository(_connection, SqlDefine.SQLite);
 
         var originalEntity = new InsertTestEntity { Name = "IntegrityTest", Value = 999 };
         var id = await repo.InsertAndGetIdAsync(originalEntity, default);

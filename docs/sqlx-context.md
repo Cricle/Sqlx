@@ -58,7 +58,6 @@ Use the `[SqlxContext]` attribute and specify which repositories to include:
 
 ```csharp
 [SqlxContext]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [IncludeRepository(typeof(UserRepository))]
 [IncludeRepository(typeof(OrderRepository))]
 public partial class AppDbContext : SqlxContext
@@ -315,7 +314,6 @@ You can create multiple contexts with different repository sets:
 ```csharp
 // Application context (includes both repositories)
 [SqlxContext]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [IncludeRepository(typeof(UserRepository))]
 [IncludeRepository(typeof(OrderRepository))]
 public partial class AppDbContext : SqlxContext
@@ -330,7 +328,6 @@ public partial class AppDbContext : SqlxContext
 
 // Admin context (includes only UserRepository)
 [SqlxContext]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [IncludeRepository(typeof(UserRepository))]
 public partial class AdminDbContext : SqlxContext
 {
@@ -866,7 +863,6 @@ The [TodoWebApi sample](../samples/TodoWebApi) demonstrates SqlxContext in a pro
 /// Demonstrates SqlxContext usage with automatic repository resolution via IServiceProvider.
 /// </summary>
 [SqlxContext]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [IncludeRepository(typeof(TodoRepository))]
 public partial class TodoDbContext : SqlxContext
 {

@@ -139,9 +139,8 @@ public interface ITodoRepository : ICrudRepository<Todo, long>
 
 ### 3. Implement Repository
 ```csharp
-[SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(ITodoRepository))]
-public partial class TodoRepository(SqliteConnection connection) : ITodoRepository
+public partial class TodoRepository(SqliteConnection connection, SqlDialect dialect) : ITodoRepository
 {
     // Connection Priority: Method Parameter > Field > Property > Primary Constructor
     
@@ -218,7 +217,6 @@ This sample demonstrates SqlxContext usage for unified repository management wit
 ```csharp
 // 1. Define context with repository (auto-generated constructor)
 [SqlxContext]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [IncludeRepository(typeof(TodoRepository))]
 public partial class TodoDbContext : SqlxContext
 {

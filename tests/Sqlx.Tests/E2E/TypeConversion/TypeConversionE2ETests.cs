@@ -3,6 +3,7 @@
 // </copyright>
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Sqlx;
 using Sqlx.Tests.E2E.Infrastructure;
 using Sqlx.Tests.E2E.Models;
 using Sqlx.Annotations;
@@ -43,47 +44,51 @@ public interface ITypeConversionRepository
     Task<List<TypeTestEntity>> GetAllAsync();
 }
 
-[RepositoryFor(typeof(ITypeConversionRepository), Dialect = (int)SqlDefineTypes.MySql, TableName = "type_test")]
+[RepositoryFor(typeof(ITypeConversionRepository), TableName = "type_test")]
 public partial class MySqlTypeConversionRepository : ITypeConversionRepository
 {
     private readonly DbConnection _connection;
 
-    public MySqlTypeConversionRepository(DbConnection connection)
+    public MySqlTypeConversionRepository(DbConnection connection, SqlDialect dialect)
     {
         _connection = connection;
+        _dialect = dialect;
     }
 }
 
-[RepositoryFor(typeof(ITypeConversionRepository), Dialect = (int)SqlDefineTypes.PostgreSql, TableName = "type_test")]
+[RepositoryFor(typeof(ITypeConversionRepository), TableName = "type_test")]
 public partial class PostgreSqlTypeConversionRepository : ITypeConversionRepository
 {
     private readonly DbConnection _connection;
 
-    public PostgreSqlTypeConversionRepository(DbConnection connection)
+    public PostgreSqlTypeConversionRepository(DbConnection connection, SqlDialect dialect)
     {
         _connection = connection;
+        _dialect = dialect;
     }
 }
 
-[RepositoryFor(typeof(ITypeConversionRepository), Dialect = (int)SqlDefineTypes.SqlServer, TableName = "type_test")]
+[RepositoryFor(typeof(ITypeConversionRepository), TableName = "type_test")]
 public partial class SqlServerTypeConversionRepository : ITypeConversionRepository
 {
     private readonly DbConnection _connection;
 
-    public SqlServerTypeConversionRepository(DbConnection connection)
+    public SqlServerTypeConversionRepository(DbConnection connection, SqlDialect dialect)
     {
         _connection = connection;
+        _dialect = dialect;
     }
 }
 
-[RepositoryFor(typeof(ITypeConversionRepository), Dialect = (int)SqlDefineTypes.SQLite, TableName = "type_test")]
+[RepositoryFor(typeof(ITypeConversionRepository), TableName = "type_test")]
 public partial class SQLiteTypeConversionRepository : ITypeConversionRepository
 {
     private readonly DbConnection _connection;
 
-    public SQLiteTypeConversionRepository(DbConnection connection)
+    public SQLiteTypeConversionRepository(DbConnection connection, SqlDialect dialect)
     {
         _connection = connection;
+        _dialect = dialect;
     }
 }
 
@@ -210,7 +215,7 @@ public class TypeConversionE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.MySQL);
         await fixture.CreateSchemaAsync(GetTypeTestSchema(DatabaseType.MySQL));
-        var repo = new MySqlTypeConversionRepository(fixture.Connection);
+        var repo = new MySqlTypeConversionRepository(fixture.Connection, SqlDefine.MySql);
 
         var testString = "Hello, 世界! 🌍 Special chars: <>&\"'";
         var testNullableString = "Nullable string value";
@@ -239,7 +244,7 @@ public class TypeConversionE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.MySQL);
         await fixture.CreateSchemaAsync(GetTypeTestSchema(DatabaseType.MySQL));
-        var repo = new MySqlTypeConversionRepository(fixture.Connection);
+        var repo = new MySqlTypeConversionRepository(fixture.Connection, SqlDefine.MySql);
 
         int testInt = 2147483647;
         long testLong = 9223372036854775807;
@@ -284,7 +289,7 @@ public class TypeConversionE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.MySQL);
         await fixture.CreateSchemaAsync(GetTypeTestSchema(DatabaseType.MySQL));
-        var repo = new MySqlTypeConversionRepository(fixture.Connection);
+        var repo = new MySqlTypeConversionRepository(fixture.Connection, SqlDefine.MySql);
 
         // MySQL DATETIME has second precision, so truncate to seconds
         var testDateTime = new DateTime(2024, 12, 25, 15, 30, 45, DateTimeKind.Unspecified);
@@ -312,7 +317,7 @@ public class TypeConversionE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.MySQL);
         await fixture.CreateSchemaAsync(GetTypeTestSchema(DatabaseType.MySQL));
-        var repo = new MySqlTypeConversionRepository(fixture.Connection);
+        var repo = new MySqlTypeConversionRepository(fixture.Connection, SqlDefine.MySql);
 
         // Act - Test true
         await repo.InsertAsync(
@@ -347,7 +352,7 @@ public class TypeConversionE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.MySQL);
         await fixture.CreateSchemaAsync(GetTypeTestSchema(DatabaseType.MySQL));
-        var repo = new MySqlTypeConversionRepository(fixture.Connection);
+        var repo = new MySqlTypeConversionRepository(fixture.Connection, SqlDefine.MySql);
 
         var testBinary = new byte[] { 0x01, 0x02, 0x03, 0xFF, 0xFE, 0xFD };
 
@@ -373,7 +378,7 @@ public class TypeConversionE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.MySQL);
         await fixture.CreateSchemaAsync(GetTypeTestSchema(DatabaseType.MySQL));
-        var repo = new MySqlTypeConversionRepository(fixture.Connection);
+        var repo = new MySqlTypeConversionRepository(fixture.Connection, SqlDefine.MySql);
 
         // Act - Insert with all nullable fields as null
         await repo.InsertAsync(
@@ -407,7 +412,7 @@ public class TypeConversionE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.PostgreSQL);
         await fixture.CreateSchemaAsync(GetTypeTestSchema(DatabaseType.PostgreSQL));
-        var repo = new PostgreSqlTypeConversionRepository(fixture.Connection);
+        var repo = new PostgreSqlTypeConversionRepository(fixture.Connection, SqlDefine.PostgreSql);
 
         var testString = "PostgreSQL test 🐘";
         var testInt = 42;
@@ -451,7 +456,7 @@ public class TypeConversionE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.PostgreSQL);
         await fixture.CreateSchemaAsync(GetTypeTestSchema(DatabaseType.PostgreSQL));
-        var repo = new PostgreSqlTypeConversionRepository(fixture.Connection);
+        var repo = new PostgreSqlTypeConversionRepository(fixture.Connection, SqlDefine.PostgreSql);
 
         var unicodeString = "Hello 世界 🌍 Привет مرحبا";
 
@@ -479,7 +484,7 @@ public class TypeConversionE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.SQLite);
         await fixture.CreateSchemaAsync(GetTypeTestSchema(DatabaseType.SQLite));
-        var repo = new SQLiteTypeConversionRepository(fixture.Connection);
+        var repo = new SQLiteTypeConversionRepository(fixture.Connection, SqlDefine.SQLite);
 
         var testString = "SQLite test";
         var testInt = 42;
@@ -525,7 +530,7 @@ public class TypeConversionE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.SQLite);
         await fixture.CreateSchemaAsync(GetTypeTestSchema(DatabaseType.SQLite));
-        var repo = new SQLiteTypeConversionRepository(fixture.Connection);
+        var repo = new SQLiteTypeConversionRepository(fixture.Connection, SqlDefine.SQLite);
 
         var emptyString = string.Empty;
 
@@ -553,7 +558,7 @@ public class TypeConversionE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.SqlServer);
         await fixture.CreateSchemaAsync(GetTypeTestSchema(DatabaseType.SqlServer));
-        var repo = new SqlServerTypeConversionRepository(fixture.Connection);
+        var repo = new SqlServerTypeConversionRepository(fixture.Connection, SqlDefine.SqlServer);
 
         var testString = "SQL Server test";
         var testInt = 42;
@@ -597,7 +602,7 @@ public class TypeConversionE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.SqlServer);
         await fixture.CreateSchemaAsync(GetTypeTestSchema(DatabaseType.SqlServer));
-        var repo = new SqlServerTypeConversionRepository(fixture.Connection);
+        var repo = new SqlServerTypeConversionRepository(fixture.Connection, SqlDefine.SqlServer);
 
         // Test boundary values
         int minInt = int.MinValue;
@@ -643,7 +648,7 @@ public class TypeConversionE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.SqlServer);
         await fixture.CreateSchemaAsync(GetTypeTestSchema(DatabaseType.SqlServer));
-        var repo = new SqlServerTypeConversionRepository(fixture.Connection);
+        var repo = new SqlServerTypeConversionRepository(fixture.Connection, SqlDefine.SqlServer);
 
         // Test various Unicode and special characters
         var unicodeString = "Hello 世界 🌍 Привет مرحبا שלום こんにちは";
@@ -682,7 +687,7 @@ public class TypeConversionE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.SqlServer);
         await fixture.CreateSchemaAsync(GetTypeTestSchema(DatabaseType.SqlServer));
-        var repo = new SqlServerTypeConversionRepository(fixture.Connection);
+        var repo = new SqlServerTypeConversionRepository(fixture.Connection, SqlDefine.SqlServer);
 
         // Test large strings (approaching NVARCHAR(500) limit)
         var largeString = new string('A', 490);
@@ -712,7 +717,7 @@ public class TypeConversionE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.SqlServer);
         await fixture.CreateSchemaAsync(GetTypeTestSchema(DatabaseType.SqlServer));
-        var repo = new SqlServerTypeConversionRepository(fixture.Connection);
+        var repo = new SqlServerTypeConversionRepository(fixture.Connection, SqlDefine.SqlServer);
 
         var emptyString = string.Empty;
         var whitespaceString = "   ";
@@ -749,7 +754,7 @@ public class TypeConversionE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.SqlServer);
         await fixture.CreateSchemaAsync(GetTypeTestSchema(DatabaseType.SqlServer));
-        var repo = new SqlServerTypeConversionRepository(fixture.Connection);
+        var repo = new SqlServerTypeConversionRepository(fixture.Connection, SqlDefine.SqlServer);
 
         // SQL Server DATETIME2 has 100ns (0.0000001 second) precision
         // Round to 100ns to avoid precision issues
@@ -794,7 +799,7 @@ public class TypeConversionE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.SqlServer);
         await fixture.CreateSchemaAsync(GetTypeTestSchema(DatabaseType.SqlServer));
-        var repo = new SqlServerTypeConversionRepository(fixture.Connection);
+        var repo = new SqlServerTypeConversionRepository(fixture.Connection, SqlDefine.SqlServer);
 
         // Test DECIMAL(18, 4) precision
         var preciseDecimal1 = 12345678901234.5678m;
@@ -833,7 +838,7 @@ public class TypeConversionE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.SqlServer);
         await fixture.CreateSchemaAsync(GetTypeTestSchema(DatabaseType.SqlServer));
-        var repo = new SqlServerTypeConversionRepository(fixture.Connection);
+        var repo = new SqlServerTypeConversionRepository(fixture.Connection, SqlDefine.SqlServer);
 
         // Test various binary data sizes
         var emptyBinary = Array.Empty<byte>();
@@ -889,7 +894,7 @@ public class TypeConversionE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.SqlServer);
         await fixture.CreateSchemaAsync(GetTypeTestSchema(DatabaseType.SqlServer));
-        var repo = new SqlServerTypeConversionRepository(fixture.Connection);
+        var repo = new SqlServerTypeConversionRepository(fixture.Connection, SqlDefine.SqlServer);
 
         var emptyGuid = Guid.Empty;
         var newGuid = Guid.NewGuid();
@@ -945,7 +950,7 @@ public class TypeConversionE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.SqlServer);
         await fixture.CreateSchemaAsync(GetTypeTestSchema(DatabaseType.SqlServer));
-        var repo = new SqlServerTypeConversionRepository(fixture.Connection);
+        var repo = new SqlServerTypeConversionRepository(fixture.Connection, SqlDefine.SqlServer);
 
         int negativeInt = -12345;
         long negativeLong = -9876543210L;
@@ -985,7 +990,7 @@ public class TypeConversionE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.SqlServer);
         await fixture.CreateSchemaAsync(GetTypeTestSchema(DatabaseType.SqlServer));
-        var repo = new SqlServerTypeConversionRepository(fixture.Connection);
+        var repo = new SqlServerTypeConversionRepository(fixture.Connection, SqlDefine.SqlServer);
 
         // Act
         await repo.InsertAsync(
@@ -1019,7 +1024,7 @@ public class TypeConversionE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.SqlServer);
         await fixture.CreateSchemaAsync(GetTypeTestSchema(DatabaseType.SqlServer));
-        var repo = new SqlServerTypeConversionRepository(fixture.Connection);
+        var repo = new SqlServerTypeConversionRepository(fixture.Connection, SqlDefine.SqlServer);
 
         // Insert 10 rows with different values
         for (int i = 1; i <= 10; i++)

@@ -45,7 +45,7 @@ public class DynamicUpdateWithAnyPlaceholderTests
             )";
         cmd.ExecuteNonQuery();
 
-        _repository = new PlaceholderTestRepository(_connection);
+        _repository = new PlaceholderTestRepository(_connection, SqlDefine.SQLite);
     }
 
     [TestCleanup]
@@ -456,8 +456,14 @@ public interface IPlaceholderTestRepository : ICrudRepository<PlaceholderTestEnt
 }
 
 [TableName("placeholder_test_entities")]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IPlaceholderTestRepository))]
-public partial class PlaceholderTestRepository(SqliteConnection connection) : IPlaceholderTestRepository
+public partial class PlaceholderTestRepository : IPlaceholderTestRepository
 {
+    private readonly SqliteConnection _connection;
+
+    public PlaceholderTestRepository(SqliteConnection connection, SqlDialect dialect)
+    {
+        _connection = connection;
+        _dialect = dialect;
+    }
 }

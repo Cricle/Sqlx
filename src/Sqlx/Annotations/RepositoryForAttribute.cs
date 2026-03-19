@@ -12,7 +12,7 @@ namespace Sqlx.Annotations
     /// Marks a class as repository for a specified service interface.
     /// </summary>
     /// <remarks>
-    /// <para>Use [SqlDefine] attribute to specify the database dialect.</para>
+    /// <para>Pass <c>SqlDialect</c> via repository constructor for runtime dialect selection.</para>
     /// <para>Use [TableName] attribute to specify the table name.</para>
     /// <para><strong>Best Practice:</strong> Define a custom interface that extends ICrudRepository for better maintainability.</para>
     /// <para><strong>Supported Interface Types:</strong></para>
@@ -28,14 +28,13 @@ namespace Sqlx.Annotations
     /// // Example 1: Custom interface (recommended)
     /// public interface IUserRepository : ICrudRepository&lt;User, int&gt; { }
     ///
-    /// [SqlDefine(SqlDefineTypes.SQLite)]
     /// [TableName("users")]
     /// [RepositoryFor(typeof(IUserRepository))]
-    /// public partial class UserRepository : IUserRepository { }
+    /// public partial class UserRepository(DbConnection connection, SqlDialect dialect) : IUserRepository { }
     ///
-    /// // Example 2: Using RepositoryFor properties (simplified syntax)
-    /// [RepositoryFor(typeof(IUserRepository), TableName = "users", Dialect = SqlDefineTypes.SQLite)]
-    /// public partial class UserRepository : IUserRepository { }
+    /// // Example 2: Primary constructor with runtime dialect
+    /// [RepositoryFor(typeof(IUserRepository), TableName = "users")]
+    /// public partial class UserRepository(DbConnection connection, SqlDialect dialect) : IUserRepository { }
     ///
     /// // Example 3: Multi-dialect support with unified interface
     /// public interface IUserRepositoryBase : ICrudRepository&lt;User, int&gt;
@@ -44,11 +43,11 @@ namespace Sqlx.Annotations
     ///     new Task&lt;User?&gt; GetByIdAsync(int id, CancellationToken ct);
     /// }
     ///
-    /// [RepositoryFor(typeof(IUserRepositoryBase), TableName = "users", Dialect = SqlDefineTypes.PostgreSql)]
-    /// public partial class PostgreSQLUserRepository : IUserRepositoryBase { }
+    /// [RepositoryFor(typeof(IUserRepositoryBase), TableName = "users")]
+    /// public partial class PostgreSQLUserRepository(DbConnection connection, SqlDialect dialect) : IUserRepositoryBase { }
     ///
-    /// [RepositoryFor(typeof(IUserRepositoryBase), TableName = "users", Dialect = SqlDefineTypes.MySql)]
-    /// public partial class MySQLUserRepository : IUserRepositoryBase { }
+    /// [RepositoryFor(typeof(IUserRepositoryBase), TableName = "users")]
+    /// public partial class MySQLUserRepository(DbConnection connection, SqlDialect dialect) : IUserRepositoryBase { }
     ///
     /// // Example 4: Multi-line SQL templates
     /// public interface IProductRepository : ICrudRepository&lt;Product, long&gt;
@@ -85,11 +84,5 @@ namespace Sqlx.Annotations
         /// </summary>
         public string? TableName { get; set; }
         
-        /// <summary>
-        /// Gets or sets the SQL dialect as an integer value.
-        /// Use SqlDefineTypes enum values: MySql=0, SqlServer=1, PostgreSql=2, Oracle=3, DB2=4, SQLite=5.
-        /// If not specified, the dialect will be taken from [SqlDefine] attribute.
-        /// </summary>
-        public int Dialect { get; set; } = -1; // -1 means not set
     }
 }

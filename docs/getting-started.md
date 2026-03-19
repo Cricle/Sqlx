@@ -81,7 +81,6 @@ Create a partial class with the required attributes:
 using System.Data.Common;
 using Sqlx.Annotations;
 
-[SqlDefine(SqlDefineTypes.SQLite)]  // Specify your database dialect
 [TableName("users")]                 // Specify the table name
 [RepositoryFor(typeof(IUserRepository))]
 public partial class UserRepository : IUserRepository
@@ -89,24 +88,31 @@ public partial class UserRepository : IUserRepository
     // Connection Priority: Method Parameter > Field > Property > Primary Constructor
     
     // Option 1: Explicit field (recommended)
+    private readonly SqlDialect _dialect;
     private readonly DbConnection _connection;
     public DbTransaction? Transaction { get; set; }
 
-    public UserRepository(DbConnection connection)
+    public UserRepository(DbConnection connection, SqlDialect dialect)
     {
         _connection = connection;
+        _dialect = dialect;
     }
     
     // Option 2: Property (suitable for external access)
     // public DbConnection Connection { get; }
     // public DbTransaction? Transaction { get; set; }
-    // public UserRepository(DbConnection connection) => Connection = connection;
+    // public UserRepository(DbConnection connection, SqlDialect dialect)
+    // {
+    //     Connection = connection;
+    //     _dialect = dialect;
+    // }
     
     // Option 3: Primary constructor (most concise, auto-generated)
-    // public partial class UserRepository(DbConnection connection) : IUserRepository
+    // public partial class UserRepository(DbConnection connection, SqlDialect dialect) : IUserRepository
     // {
     //     // Generator automatically creates:
     //     // private readonly DbConnection _connection = connection;
+    //     // private readonly SqlDialect _dialect = dialect;
     //     // public DbTransaction? Transaction { get; set; }
     // }
 }
@@ -130,7 +136,7 @@ await using var connection = new SqliteConnection("Data Source=app.db");
 await connection.OpenAsync();
 
 // Create repository
-var repo = new UserRepository(connection);
+var repo = new UserRepository(connection, SqlDefine.SQLite);
 
 // Use CRUD operations
 var user = new User { Name = "John", Email = "john@example.com" };

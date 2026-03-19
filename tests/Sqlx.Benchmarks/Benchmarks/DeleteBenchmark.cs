@@ -26,7 +26,7 @@ public class DeleteBenchmark
     {
         _connection = DatabaseSetup.CreateConnection();
         DatabaseSetup.InitializeDatabase(_connection);
-        _sqlxRepo = new BenchmarkUserRepository(_connection);
+        _sqlxRepo = new BenchmarkUserRepository(_connection, Sqlx.SqlDefine.SQLite);
         _nextId = 1;
         
         _freeSql = new FreeSqlBuilder()

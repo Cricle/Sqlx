@@ -64,13 +64,12 @@ public interface IUserRepository : ICrudRepository<User, long>
 }
 
 // 3. 实现仓储（代码自动生成）
-[SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IUserRepository))]
-public partial class UserRepository(DbConnection connection) : IUserRepository { }
+public partial class UserRepository(DbConnection connection, SqlDialect dialect) : IUserRepository { }
 
 // 4. 使用
 await using var conn = new SqliteConnection("Data Source=app.db");
-var repo = new UserRepository(conn);
+var repo = new UserRepository(conn, SqlDefine.SQLite);
 var adults = await repo.GetAdultsAsync(18);
 
 // 使用输出参数（同步方法）
@@ -696,7 +695,6 @@ SqlxContext 提供统一的数据库上下文，支持多仓储、事务管理�
 ```csharp
 // 1. 定义上下文
 [SqlxContext]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [IncludeRepository(typeof(UserRepository))]
 [IncludeRepository(typeof(OrderRepository))]
 public partial class AppDbContext : SqlxContext
@@ -708,8 +706,10 @@ public partial class AppDbContext : SqlxContext
 }
 
 // 2. 注册到 DI
-services.AddSingleton<UserRepository>();
-services.AddSingleton<OrderRepository>();
+services.AddSingleton<UserRepository>(sp =>
+    new UserRepository(sp.GetRequiredService<SqliteConnection>(), SqlDefine.SQLite));
+services.AddSingleton<OrderRepository>(sp =>
+    new OrderRepository(sp.GetRequiredService<SqliteConnection>(), SqlDefine.SQLite));
 services.AddSqlxContext<AppDbContext>((sp, options) =>
 {
     var connection = sp.GetRequiredService<SqliteConnection>();
@@ -867,36 +867,40 @@ options.Logger = sp.GetRequiredService<ILogger<AppDbContext>>();
 
 ```csharp
 // 方式 1: 显式字段（推荐，优先级最高）
-[SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IUserRepository))]
 public partial class UserRepository : IUserRepository
 {
+    private readonly SqlDialect _dialect;
     private readonly SqliteConnection _connection;
     public DbTransaction? Transaction { get; set; }
     
-    public UserRepository(SqliteConnection connection)
+    public UserRepository(SqliteConnection connection, SqlDialect dialect)
     {
         _connection = connection;
+        _dialect = dialect;
     }
 }
 
 // 方式 2: 属性（适合需要外部访问）
 public partial class UserRepository : IUserRepository
 {
+    private readonly SqlDialect _dialect;
     public SqliteConnection Connection { get; }
     public DbTransaction? Transaction { get; set; }
     
-    public UserRepository(SqliteConnection connection)
+    public UserRepository(SqliteConnection connection, SqlDialect dialect)
     {
         Connection = connection;
+        _dialect = dialect;
     }
 }
 
 // 方式 3: 主构造函数（最简洁，自动生成）
-public partial class UserRepository(SqliteConnection connection) : IUserRepository
+public partial class UserRepository(SqliteConnection connection, SqlDialect dialect) : IUserRepository
 {
     // 生成器自动生成：
     // private readonly SqliteConnection _connection = connection;
+    // private readonly SqlDialect _dialect = dialect;
     // public DbTransaction? Transaction { get; set; }
 }
 
@@ -916,7 +920,7 @@ public interface IUserRepository
 ### 事务支持
 
 ```csharp
-var repo = new UserRepository(connection);
+var repo = new UserRepository(connection, SqlDefine.SQLite);
 
 using var transaction = connection.BeginTransaction();
 repo.Transaction = transaction;
@@ -946,7 +950,7 @@ Sqlx 内置支持使用标准 `System.Diagnostics.Metrics` API 收集 SQL 执行
 
 ```csharp
 // 指标自动记录，无需额外配置
-var repo = new UserRepository(connection);
+var repo = new UserRepository(connection, SqlDefine.SQLite);
 await repo.GetByIdAsync(123);  // 自动记录执行时间、次数等
 
 // 使用 OpenTelemetry 导出指标

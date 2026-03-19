@@ -3,6 +3,7 @@
 // </copyright>
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Sqlx;
 using Sqlx.Tests.E2E.Infrastructure;
 using Sqlx.Annotations;
 using System.Data.Common;
@@ -32,47 +33,51 @@ public interface IMultiResultE2ERepository
     Task<(int totalUsers, long maxId, long minId)> GetStatsAsync();
 }
 
-[RepositoryFor(typeof(IMultiResultE2ERepository), Dialect = (int)SqlDefineTypes.MySql, TableName = "test_users")]
+[RepositoryFor(typeof(IMultiResultE2ERepository), TableName = "test_users")]
 public partial class MySqlMultiResultE2ERepository : IMultiResultE2ERepository
 {
     private readonly DbConnection _connection;
 
-    public MySqlMultiResultE2ERepository(DbConnection connection)
+    public MySqlMultiResultE2ERepository(DbConnection connection, SqlDialect dialect)
     {
         _connection = connection;
+        _dialect = dialect;
     }
 }
 
-[RepositoryFor(typeof(IMultiResultE2ERepository), Dialect = (int)SqlDefineTypes.PostgreSql, TableName = "test_users")]
+[RepositoryFor(typeof(IMultiResultE2ERepository), TableName = "test_users")]
 public partial class PostgreSqlMultiResultE2ERepository : IMultiResultE2ERepository
 {
     private readonly DbConnection _connection;
 
-    public PostgreSqlMultiResultE2ERepository(DbConnection connection)
+    public PostgreSqlMultiResultE2ERepository(DbConnection connection, SqlDialect dialect)
     {
         _connection = connection;
+        _dialect = dialect;
     }
 }
 
-[RepositoryFor(typeof(IMultiResultE2ERepository), Dialect = (int)SqlDefineTypes.SqlServer, TableName = "test_users")]
+[RepositoryFor(typeof(IMultiResultE2ERepository), TableName = "test_users")]
 public partial class SqlServerMultiResultE2ERepository : IMultiResultE2ERepository
 {
     private readonly DbConnection _connection;
 
-    public SqlServerMultiResultE2ERepository(DbConnection connection)
+    public SqlServerMultiResultE2ERepository(DbConnection connection, SqlDialect dialect)
     {
         _connection = connection;
+        _dialect = dialect;
     }
 }
 
-[RepositoryFor(typeof(IMultiResultE2ERepository), Dialect = (int)SqlDefineTypes.SQLite, TableName = "test_users")]
+[RepositoryFor(typeof(IMultiResultE2ERepository), TableName = "test_users")]
 public partial class SQLiteMultiResultE2ERepository : IMultiResultE2ERepository
 {
     private readonly DbConnection _connection;
 
-    public SQLiteMultiResultE2ERepository(DbConnection connection)
+    public SQLiteMultiResultE2ERepository(DbConnection connection, SqlDialect dialect)
     {
         _connection = connection;
+        _dialect = dialect;
     }
 }
 
@@ -134,7 +139,7 @@ public class MultipleResultSetsE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.MySQL);
         await fixture.CreateSchemaAsync(GetTestUsersSchema(DatabaseType.MySQL));
-        var repo = new MySqlMultiResultE2ERepository(fixture.Connection);
+        var repo = new MySqlMultiResultE2ERepository(fixture.Connection, SqlDefine.MySql);
 
         // Act
         var (rows1, total1) = await repo.InsertAndCountAsync("Alice", 25, "alice@example.com");
@@ -156,7 +161,7 @@ public class MultipleResultSetsE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.MySQL);
         await fixture.CreateSchemaAsync(GetTestUsersSchema(DatabaseType.MySQL));
-        var repo = new MySqlMultiResultE2ERepository(fixture.Connection);
+        var repo = new MySqlMultiResultE2ERepository(fixture.Connection, SqlDefine.MySql);
 
         await repo.InsertAndCountAsync("Alice", 25, "alice@example.com");
         await repo.InsertAndCountAsync("Bob", 30, "bob@example.com");
@@ -181,7 +186,7 @@ public class MultipleResultSetsE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.MySQL);
         await fixture.CreateSchemaAsync(GetTestUsersSchema(DatabaseType.MySQL));
-        var repo = new MySqlMultiResultE2ERepository(fixture.Connection);
+        var repo = new MySqlMultiResultE2ERepository(fixture.Connection, SqlDefine.MySql);
 
         // Act
         var (total, maxId, minId) = await repo.GetStatsAsync();
@@ -201,7 +206,7 @@ public class MultipleResultSetsE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.MySQL);
         await fixture.CreateSchemaAsync(GetTestUsersSchema(DatabaseType.MySQL));
-        var repo = new MySqlMultiResultE2ERepository(fixture.Connection);
+        var repo = new MySqlMultiResultE2ERepository(fixture.Connection, SqlDefine.MySql);
 
         // Act & Assert
         var (rows1, total1) = await repo.InsertAndCountAsync("User1", 20, "user1@example.com");
@@ -232,7 +237,7 @@ public class MultipleResultSetsE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.PostgreSQL);
         await fixture.CreateSchemaAsync(GetTestUsersSchema(DatabaseType.PostgreSQL));
-        var repo = new PostgreSqlMultiResultE2ERepository(fixture.Connection);
+        var repo = new PostgreSqlMultiResultE2ERepository(fixture.Connection, SqlDefine.PostgreSql);
 
         // Act
         var (rows1, total1) = await repo.InsertAndCountAsync("Alice", 25, "alice@example.com");
@@ -254,7 +259,7 @@ public class MultipleResultSetsE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.PostgreSQL);
         await fixture.CreateSchemaAsync(GetTestUsersSchema(DatabaseType.PostgreSQL));
-        var repo = new PostgreSqlMultiResultE2ERepository(fixture.Connection);
+        var repo = new PostgreSqlMultiResultE2ERepository(fixture.Connection, SqlDefine.PostgreSql);
 
         await repo.InsertAndCountAsync("Alice", 25, "alice@example.com");
         await repo.InsertAndCountAsync("Bob", 30, "bob@example.com");
@@ -277,7 +282,7 @@ public class MultipleResultSetsE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.PostgreSQL);
         await fixture.CreateSchemaAsync(GetTestUsersSchema(DatabaseType.PostgreSQL));
-        var repo = new PostgreSqlMultiResultE2ERepository(fixture.Connection);
+        var repo = new PostgreSqlMultiResultE2ERepository(fixture.Connection, SqlDefine.PostgreSql);
 
         // Act
         var (total, maxId, minId) = await repo.GetStatsAsync();
@@ -297,7 +302,7 @@ public class MultipleResultSetsE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.PostgreSQL);
         await fixture.CreateSchemaAsync(GetTestUsersSchema(DatabaseType.PostgreSQL));
-        var repo = new PostgreSqlMultiResultE2ERepository(fixture.Connection);
+        var repo = new PostgreSqlMultiResultE2ERepository(fixture.Connection, SqlDefine.PostgreSql);
 
         // Act & Assert
         var (rows1, total1) = await repo.InsertAndCountAsync("User1", 20, "user1@example.com");
@@ -328,7 +333,7 @@ public class MultipleResultSetsE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.SqlServer);
         await fixture.CreateSchemaAsync(GetTestUsersSchema(DatabaseType.SqlServer));
-        var repo = new SqlServerMultiResultE2ERepository(fixture.Connection);
+        var repo = new SqlServerMultiResultE2ERepository(fixture.Connection, SqlDefine.SqlServer);
 
         // Act
         var (rows1, total1) = await repo.InsertAndCountAsync("Alice", 25, "alice@example.com");
@@ -350,7 +355,7 @@ public class MultipleResultSetsE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.SqlServer);
         await fixture.CreateSchemaAsync(GetTestUsersSchema(DatabaseType.SqlServer));
-        var repo = new SqlServerMultiResultE2ERepository(fixture.Connection);
+        var repo = new SqlServerMultiResultE2ERepository(fixture.Connection, SqlDefine.SqlServer);
 
         await repo.InsertAndCountAsync("Alice", 25, "alice@example.com");
         await repo.InsertAndCountAsync("Bob", 30, "bob@example.com");
@@ -374,7 +379,7 @@ public class MultipleResultSetsE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.SqlServer);
         await fixture.CreateSchemaAsync(GetTestUsersSchema(DatabaseType.SqlServer));
-        var repo = new SqlServerMultiResultE2ERepository(fixture.Connection);
+        var repo = new SqlServerMultiResultE2ERepository(fixture.Connection, SqlDefine.SqlServer);
 
         // Act
         var (total, maxId, minId) = await repo.GetStatsAsync();
@@ -394,7 +399,7 @@ public class MultipleResultSetsE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.SqlServer);
         await fixture.CreateSchemaAsync(GetTestUsersSchema(DatabaseType.SqlServer));
-        var repo = new SqlServerMultiResultE2ERepository(fixture.Connection);
+        var repo = new SqlServerMultiResultE2ERepository(fixture.Connection, SqlDefine.SqlServer);
 
         // Act & Assert
         var (rows1, total1) = await repo.InsertAndCountAsync("User1", 20, "user1@example.com");
@@ -425,7 +430,7 @@ public class MultipleResultSetsE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.SQLite);
         await fixture.CreateSchemaAsync(GetTestUsersSchema(DatabaseType.SQLite));
-        var repo = new SQLiteMultiResultE2ERepository(fixture.Connection);
+        var repo = new SQLiteMultiResultE2ERepository(fixture.Connection, SqlDefine.SQLite);
 
         // Act
         var (rows1, total1) = await repo.InsertAndCountAsync("Alice", 25, "alice@example.com");
@@ -447,7 +452,7 @@ public class MultipleResultSetsE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.SQLite);
         await fixture.CreateSchemaAsync(GetTestUsersSchema(DatabaseType.SQLite));
-        var repo = new SQLiteMultiResultE2ERepository(fixture.Connection);
+        var repo = new SQLiteMultiResultE2ERepository(fixture.Connection, SqlDefine.SQLite);
 
         await repo.InsertAndCountAsync("Alice", 25, "alice@example.com");
         await repo.InsertAndCountAsync("Bob", 30, "bob@example.com");
@@ -470,7 +475,7 @@ public class MultipleResultSetsE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.SQLite);
         await fixture.CreateSchemaAsync(GetTestUsersSchema(DatabaseType.SQLite));
-        var repo = new SQLiteMultiResultE2ERepository(fixture.Connection);
+        var repo = new SQLiteMultiResultE2ERepository(fixture.Connection, SqlDefine.SQLite);
 
         // Act
         var (total, maxId, minId) = await repo.GetStatsAsync();
@@ -490,7 +495,7 @@ public class MultipleResultSetsE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.SQLite);
         await fixture.CreateSchemaAsync(GetTestUsersSchema(DatabaseType.SQLite));
-        var repo = new SQLiteMultiResultE2ERepository(fixture.Connection);
+        var repo = new SQLiteMultiResultE2ERepository(fixture.Connection, SqlDefine.SQLite);
 
         // Act & Assert
         var (rows1, total1) = await repo.InsertAndCountAsync("User1", 20, "user1@example.com");

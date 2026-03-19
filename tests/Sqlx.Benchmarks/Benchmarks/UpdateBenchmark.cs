@@ -27,7 +27,7 @@ public class UpdateBenchmark
         _connection = DatabaseSetup.CreateConnection();
         DatabaseSetup.InitializeDatabase(_connection);
         DatabaseSetup.SeedData(_connection, 10000);
-        _sqlxRepo = new BenchmarkUserRepository(_connection);
+        _sqlxRepo = new BenchmarkUserRepository(_connection, Sqlx.SqlDefine.SQLite);
         _testUser = _sqlxRepo.GetByIdAsync(5000, default).GetAwaiter().GetResult()!;
         
         _freeSql = new FreeSqlBuilder()

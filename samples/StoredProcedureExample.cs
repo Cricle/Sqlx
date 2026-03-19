@@ -254,9 +254,14 @@ public interface IStoredProcRepository
 }
 
 [RepositoryFor(typeof(IStoredProcRepository))]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [TableName("users")]
 public partial class StoredProcRepository : IStoredProcRepository
 {
     public DbConnection? Connection { get; set; }
+
+    public StoredProcRepository(DbConnection connection, SqlDialect dialect)
+    {
+        Connection = connection;
+        _dialect = dialect;
+    }
 }

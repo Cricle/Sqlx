@@ -195,18 +195,24 @@ public sealed class UserParameterBinder : IParameterBinder<User>
 Generated for classes marked with `[RepositoryFor]`. Implements all interface methods.
 
 ```csharp
-[SqlDefine(SqlDefineTypes.SQLite)]
 [TableName("users")]
 [RepositoryFor(typeof(IUserRepository))]
 public partial class UserRepository : IUserRepository
 {
+    private readonly SqlDialect _dialect;
     private readonly DbConnection _connection;
     public DbTransaction? Transaction { get; set; }
+
+    public UserRepository(DbConnection connection, SqlDialect dialect)
+    {
+        _connection = connection;
+        _dialect = dialect;
+    }
 }
 
 // Generated implementation includes:
-// - Static PlaceholderContext
-// - Static SqlTemplate fields for each method
+// - Runtime PlaceholderContext
+// - Dialect-aware SqlTemplate caching
 // - Full method implementations with parameter binding
 // - Activity tracking (optional)
 // - Interceptor hooks (optional)

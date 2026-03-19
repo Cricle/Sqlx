@@ -40,9 +40,8 @@ using System.Data;
 /// <example>
 /// <code>
 /// [RepositoryFor(typeof(IUserRepository))]
-/// [SqlDefine(SqlDefineTypes.SqlServer)]
 /// [TableName("users")]
-/// public partial class UserRepository
+/// public partial class UserRepository(DbConnection connection, SqlDialect dialect)
 /// {
 ///     // Attribute is optional - DbType is automatically inferred from int type
 ///     [SqlTemplate("EXEC GetUserId @name, @userId OUT")]

@@ -26,7 +26,7 @@ public class CountBenchmark
         _connection = DatabaseSetup.CreateConnection();
         DatabaseSetup.InitializeDatabase(_connection);
         DatabaseSetup.SeedData(_connection, 10000);
-        _sqlxRepo = new BenchmarkUserRepository(_connection);
+        _sqlxRepo = new BenchmarkUserRepository(_connection, Sqlx.SqlDefine.SQLite);
         
         _freeSql = new FreeSqlBuilder()
             .UseConnectionFactory(DataType.Sqlite, () => _connection)

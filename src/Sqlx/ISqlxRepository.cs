@@ -29,5 +29,11 @@ namespace Sqlx
         /// Gets or sets the database transaction.
         /// </summary>
         DbTransaction? Transaction { get; set; }
+
+        /// <summary>
+        /// Gets the SQL dialect used by this repository.
+        /// This allows runtime database dialect selection instead of compile-time [SqlDefine] attribute.
+        /// </summary>
+        SqlDialect Dialect { get; }
     }
 }

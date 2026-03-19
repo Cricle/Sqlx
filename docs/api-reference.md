@@ -409,11 +409,11 @@ public class MyClass { }
 
 ### [SqlDefine]
 
-Specifies the SQL dialect.
+Specifies the default SQL dialect for backward compatibility. New code should pass `SqlDialect` via repository constructor.
 
 ```csharp
-[SqlDefine(SqlDefineTypes.SQLite)]
-public partial class UserRepository { }
+[RepositoryFor(typeof(IUserRepository))]
+public partial class UserRepository(DbConnection connection, SqlDialect dialect) : IUserRepository { }
 ```
 
 ### [TableName]

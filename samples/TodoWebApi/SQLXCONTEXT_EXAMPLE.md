@@ -23,7 +23,6 @@ See `Services/TodoDbContext.cs`:
 /// Demonstrates SqlxContext usage with lazy repository resolution via IServiceProvider.
 /// </summary>
 [SqlxContext]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [IncludeRepository(typeof(TodoRepository))]
 public partial class TodoDbContext : SqlxContext
 {

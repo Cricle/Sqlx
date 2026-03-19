@@ -32,12 +32,17 @@ public interface IBenchmarkUserRepository : ICrudRepository<BenchmarkUser, long>
 /// All interface methods are auto-generated.
 /// </summary>
 [TableName("users")]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IBenchmarkUserRepository))]
-public partial class BenchmarkUserRepository(SqliteConnection connection) : IBenchmarkUserRepository
+public partial class BenchmarkUserRepository : IBenchmarkUserRepository
 {
-    private readonly SqliteConnection _connection = connection;
+    private readonly SqliteConnection _connection;
     public System.Data.Common.DbTransaction? Transaction { get; set; }
+
+    public BenchmarkUserRepository(SqliteConnection connection, SqlDialect dialect)
+    {
+        _connection = connection;
+        _dialect = dialect;
+    }
 
     /// <summary>
     /// Returns an IQueryable for building complex LINQ queries.
@@ -45,6 +50,6 @@ public partial class BenchmarkUserRepository(SqliteConnection connection) : IBen
     /// </summary>
     public IQueryable<BenchmarkUser> AsQueryable()
     {
-        return SqlQuery<BenchmarkUser>.For(_staticContext.Dialect).WithConnection(_connection);
+        return SqlQuery<BenchmarkUser>.For(Dialect).WithConnection(_connection);
     }
 }

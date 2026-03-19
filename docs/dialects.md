@@ -18,10 +18,9 @@ Sqlx supports multiple database dialects, each providing database-specific SQL g
 ### In Repository Attributes
 
 ```csharp
-[SqlDefine(SqlDefineTypes.SQLite)]
 [TableName("users")]
 [RepositoryFor(typeof(IUserRepository))]
-public partial class UserRepository : IUserRepository { }
+public partial class UserRepository(DbConnection connection, SqlDialect dialect) : IUserRepository { }
 ```
 
 ### Programmatically

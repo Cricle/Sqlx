@@ -19,7 +19,7 @@ namespace Sqlx.Annotations
     /// <item><description>DI-friendly constructor (if not provided)</description></item>
     /// </list>
     /// <para>Use [IncludeRepository(typeof(RepositoryType))] attributes to specify which repositories to include.</para>
-    /// <para>Use [SqlDefine] attribute to specify the database dialect.</para>
+    /// <para>Repository dialect should be configured on each included repository via constructor injection.</para>
     /// </remarks>
     /// <example>
     /// <code>
@@ -34,7 +34,6 @@ namespace Sqlx.Annotations
     /// 
     /// // Define context with repository specifications
     /// [SqlxContext]
-    /// [SqlDefine(SqlDefineTypes.SQLite)]
     /// [IncludeRepository(typeof(UserRepository))]
     /// [IncludeRepository(typeof(OrderRepository))]
     /// public partial class AppDbContext : SqlxContext

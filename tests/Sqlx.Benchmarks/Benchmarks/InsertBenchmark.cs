@@ -26,7 +26,7 @@ public class InsertBenchmark
     {
         _connection = DatabaseSetup.CreateConnection();
         DatabaseSetup.InitializeDatabase(_connection);
-        _sqlxRepo = new BenchmarkUserRepository(_connection);
+        _sqlxRepo = new BenchmarkUserRepository(_connection, Sqlx.SqlDefine.SQLite);
         _counter = 0;
         
         _freeSql = new FreeSqlBuilder()

@@ -54,12 +54,12 @@ namespace TodoWebApi.Services;
 /// </list>
 /// </remarks>
 [TableName("todos")]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(ITodoRepository))]
-public partial class TodoRepository(SqliteConnection connection) : ITodoRepository
+public partial class TodoRepository(SqliteConnection connection, SqlDialect dialect) : ITodoRepository
 {
     // Generator auto-generates:
     // - private readonly SqliteConnection _connection = connection;
+    // - private readonly SqlDialect _dialect = dialect;
     // - public DbTransaction? Transaction { get; set; }
     // - All 46 interface method implementations
 

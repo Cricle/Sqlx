@@ -31,7 +31,7 @@ public class CustomReturnTypeTests
     public void SqlTemplate_WithCustomReturnType_ShouldReturnCorrectType()
     {
         // Arrange
-        var repo = new CustomReturnTypeRepository(_connection);
+        var repo = new CustomReturnTypeRepository(_connection, SqlDefine.SQLite);
 
         // Act
         var result = repo.GetCustomType();
@@ -47,7 +47,7 @@ public class CustomReturnTypeTests
     public void SqlTemplate_WithCustomReturnTypeList_ShouldReturnCorrectList()
     {
         // Arrange
-        var repo = new CustomReturnTypeRepository(_connection);
+        var repo = new CustomReturnTypeRepository(_connection, SqlDefine.SQLite);
 
         // Act
         var results = repo.GetCustomTypeList();
@@ -65,7 +65,7 @@ public class CustomReturnTypeTests
     public async Task SqlTemplate_WithCustomReturnTypeAsync_ShouldReturnCorrectType()
     {
         // Arrange
-        var repo = new CustomReturnTypeRepository(_connection);
+        var repo = new CustomReturnTypeRepository(_connection, SqlDefine.SQLite);
 
         // Act
         var result = await repo.GetCustomTypeAsync();
@@ -81,7 +81,7 @@ public class CustomReturnTypeTests
     public async Task SqlTemplate_WithCustomReturnTypeListAsync_ShouldReturnCorrectList()
     {
         // Arrange
-        var repo = new CustomReturnTypeRepository(_connection);
+        var repo = new CustomReturnTypeRepository(_connection, SqlDefine.SQLite);
 
         // Act
         var results = await repo.GetCustomTypeListAsync();
@@ -130,8 +130,14 @@ public interface ICustomReturnTypeRepository : ICrudRepository<CustomTestEntity,
 
 // Repository implementation
 [TableName("test_entities")]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(ICustomReturnTypeRepository))]
-public partial class CustomReturnTypeRepository(SqliteConnection connection) : ICustomReturnTypeRepository
+public partial class CustomReturnTypeRepository : ICustomReturnTypeRepository
 {
+    private readonly SqliteConnection _connection;
+
+    public CustomReturnTypeRepository(SqliteConnection connection, SqlDialect dialect)
+    {
+        _connection = connection;
+        _dialect = dialect;
+    }
 }

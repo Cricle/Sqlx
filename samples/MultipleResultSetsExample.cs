@@ -83,14 +83,15 @@ public class MultipleResultSetsExample
     /// <summary>
     /// 用户仓储实现（由源生成器自动生成）。
     /// </summary>
-    [RepositoryFor(typeof(IUserRepository), Dialect = SqlDefineTypes.SQLite, TableName = "users")]
+    [RepositoryFor(typeof(IUserRepository), TableName = "users")]
     public partial class UserRepository : IUserRepository
     {
         private readonly DbConnection _connection;
 
-        public UserRepository(DbConnection connection)
+        public UserRepository(DbConnection connection, SqlDialect dialect)
         {
             _connection = connection;
+            _dialect = dialect;
         }
     }
 
@@ -116,7 +117,7 @@ public class MultipleResultSetsExample
             await cmd.ExecuteNonQueryAsync();
         }
 
-        var repo = new UserRepository(connection);
+        var repo = new UserRepository(connection, SqlDefine.SQLite);
 
         // 示例 1: 使用 ResultSetMapping 特性
         Console.WriteLine("示例 1: 使用 ResultSetMapping 特性");

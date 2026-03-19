@@ -37,7 +37,6 @@ namespace Sqlx.Annotations
     /// 
     /// // Define context with repository specifications
     /// [SqlxContext]
-    /// [SqlDefine(SqlDefineTypes.SQLite)]
     /// [IncludeRepository(typeof(UserRepository))]
     /// [IncludeRepository(typeof(OrderRepository))]
     /// public partial class AppDbContext : SqlxContext

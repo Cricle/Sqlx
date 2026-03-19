@@ -205,11 +205,16 @@ public interface IProductRepository
 }
 
 [RepositoryFor(typeof(IProductRepository))]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [TableName("products")]
 public partial class ProductRepository : IProductRepository
 {
     public DbConnection? Connection { get; set; }
+
+    public ProductRepository(DbConnection connection, SqlDialect dialect)
+    {
+        Connection = connection;
+        _dialect = dialect;
+    }
 }
 
 [Sqlx]
@@ -232,11 +237,16 @@ public interface IOrderRepository
 }
 
 [RepositoryFor(typeof(IOrderRepository))]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [TableName("orders")]
 public partial class OrderRepository : IOrderRepository
 {
     public DbConnection? Connection { get; set; }
+
+    public OrderRepository(DbConnection connection, SqlDialect dialect)
+    {
+        Connection = connection;
+        _dialect = dialect;
+    }
 }
 
 [Sqlx]
@@ -255,9 +265,14 @@ public interface ICounterRepository
 }
 
 [RepositoryFor(typeof(ICounterRepository))]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [TableName("counters")]
 public partial class CounterRepository : ICounterRepository
 {
     public DbConnection? Connection { get; set; }
+
+    public CounterRepository(DbConnection connection, SqlDialect dialect)
+    {
+        Connection = connection;
+        _dialect = dialect;
+    }
 }

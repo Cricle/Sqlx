@@ -38,7 +38,6 @@ namespace TestNamespace
     }
 
     [RepositoryFor(typeof(IUserRepository))]
-    [SqlDefine(SqlDefineTypes.SQLite)]
     public partial class UserRepository
     {
         [SqlxVar(""a"")]
@@ -90,7 +89,7 @@ namespace TestNamespace
             "Should prepare template with GetDynamicContext()");
         
         // Should render template each time
-        Assert.IsTrue(code.Contains("_aXTemplate.Render(null)"), 
+        Assert.IsTrue(code.Contains("_aXTemplate.Render(null)") || code.Contains("__template.Render(null)"), 
             "Should render template to resolve {{var}} placeholders");
     }
 
@@ -120,7 +119,6 @@ namespace TestNamespace
     }
 
     [RepositoryFor(typeof(IProductRepository))]
-    [SqlDefine(SqlDefineTypes.SQLite)]
     public partial class ProductRepository
     {
         [SqlxVar(""tableName"")]

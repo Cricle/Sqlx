@@ -67,15 +67,15 @@ namespace Test
     {
     }
 
-    [SqlDefine(SqlDefineTypes.SQLite)]
     [RepositoryFor(typeof(IUserRepository))]
     public partial class UserRepository : IUserRepository
     {
-        private readonly System.Data.Common.DbConnection _connection;
-        
-        public UserRepository(System.Data.Common.DbConnection connection)
+        private readonly System.Data.Common.DbConnection _connection = null!;
+
+        public UserRepository(System.Data.Common.DbConnection connection, SqlDialect dialect)
         {
             _connection = connection;
+            _dialect = dialect;
         }
     }
 }";
@@ -130,15 +130,15 @@ namespace Test
         Task<User?> GetByEmailAsync(string email, CancellationToken ct = default);
     }
 
-    [SqlDefine(SqlDefineTypes.SQLite)]
     [RepositoryFor(typeof(IUserRepository))]
     public partial class UserRepository : IUserRepository
     {
-        private readonly System.Data.Common.DbConnection _connection;
-        
-        public UserRepository(System.Data.Common.DbConnection connection)
+        private readonly System.Data.Common.DbConnection _connection = null!;
+
+        public UserRepository(System.Data.Common.DbConnection connection, SqlDialect dialect)
         {
             _connection = connection;
+            _dialect = dialect;
         }
     }
 }";
@@ -224,15 +224,15 @@ namespace Test
     {
     }
 
-    [SqlDefine(SqlDefineTypes.SQLite | SqlDefineTypes.MySQL)]
     [RepositoryFor(typeof(IUserRepository))]
     public partial class UserRepository : IUserRepository
     {
-        private readonly System.Data.Common.DbConnection _connection;
-        
-        public UserRepository(System.Data.Common.DbConnection connection)
+        private readonly System.Data.Common.DbConnection _connection = null!;
+
+        public UserRepository(System.Data.Common.DbConnection connection, SqlDialect dialect)
         {
             _connection = connection;
+            _dialect = dialect;
         }
     }
 }";
@@ -292,7 +292,6 @@ namespace Test
     {
     }
 
-    [SqlDefine(SqlDefineTypes.SQLite)]
     public partial class UserRepository : IUserRepository
     {
         private readonly System.Data.Common.DbConnection _connection;

@@ -37,15 +37,15 @@ public interface IMethodParamVsFieldRepository : IQueryRepository<ConnectionPrio
 }
 
 [TableName("connection_priority_test")]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IMethodParamVsFieldRepository))]
 public partial class MethodParamVsFieldRepository : IMethodParamVsFieldRepository
 {
     private readonly SqliteConnection _fieldConnection;
     
-    public MethodParamVsFieldRepository(SqliteConnection fieldConnection)
+    public MethodParamVsFieldRepository(SqliteConnection fieldConnection, SqlDialect dialect)
     {
         _fieldConnection = fieldConnection;
+        _dialect = dialect;
     }
 }
 
@@ -60,15 +60,15 @@ public interface IMethodParamVsPropertyRepository : IQueryRepository<ConnectionP
 }
 
 [TableName("connection_priority_test")]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IMethodParamVsPropertyRepository))]
 public partial class MethodParamVsPropertyRepository : IMethodParamVsPropertyRepository
 {
     public SqliteConnection PropertyConnection { get; }
     
-    public MethodParamVsPropertyRepository(SqliteConnection propertyConnection)
+    public MethodParamVsPropertyRepository(SqliteConnection propertyConnection, SqlDialect dialect)
     {
         PropertyConnection = propertyConnection;
+        _dialect = dialect;
     }
 }
 
@@ -83,9 +83,8 @@ public interface IMethodParamVsPrimaryCtorRepository : IQueryRepository<Connecti
 }
 
 [TableName("connection_priority_test")]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IMethodParamVsPrimaryCtorRepository))]
-public partial class MethodParamVsPrimaryCtorRepository(SqliteConnection primaryConnection) : IMethodParamVsPrimaryCtorRepository
+public partial class MethodParamVsPrimaryCtorRepository(SqliteConnection primaryConnection, SqlDialect dialect) : IMethodParamVsPrimaryCtorRepository
 {
     // 主构造函数参数，生成器应自动生成 _connection 字段
 }
@@ -98,17 +97,17 @@ public interface IFieldVsPropertyRepository : IQueryRepository<ConnectionPriorit
 }
 
 [TableName("connection_priority_test")]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IFieldVsPropertyRepository))]
 public partial class FieldVsPropertyRepository : IFieldVsPropertyRepository
 {
     private readonly SqliteConnection _fieldConnection;
     public SqliteConnection PropertyConnection { get; }
     
-    public FieldVsPropertyRepository(SqliteConnection fieldConnection, SqliteConnection propertyConnection)
+    public FieldVsPropertyRepository(SqliteConnection fieldConnection, SqliteConnection propertyConnection, SqlDialect dialect)
     {
         _fieldConnection = fieldConnection;
         PropertyConnection = propertyConnection;
+        _dialect = dialect;
     }
 }
 
@@ -120,10 +119,9 @@ public interface IFieldVsPrimaryCtorRepository : IQueryRepository<ConnectionPrio
 }
 
 [TableName("connection_priority_test")]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IFieldVsPrimaryCtorRepository))]
 #pragma warning disable CS9113 // Parameter is unread
-public partial class FieldVsPrimaryCtorRepository(SqliteConnection _) : IFieldVsPrimaryCtorRepository
+public partial class FieldVsPrimaryCtorRepository(SqliteConnection _, SqlDialect dialect) : IFieldVsPrimaryCtorRepository
 #pragma warning restore CS9113
 {
     private readonly SqliteConnection _fieldConnection = new SqliteConnection("Data Source=field.db");
@@ -137,10 +135,9 @@ public interface IPropertyVsPrimaryCtorRepository : IQueryRepository<ConnectionP
 }
 
 [TableName("connection_priority_test")]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IPropertyVsPrimaryCtorRepository))]
 #pragma warning disable CS9113 // Parameter is unread
-public partial class PropertyVsPrimaryCtorRepository(SqliteConnection _) : IPropertyVsPrimaryCtorRepository
+public partial class PropertyVsPrimaryCtorRepository(SqliteConnection _, SqlDialect dialect) : IPropertyVsPrimaryCtorRepository
 #pragma warning restore CS9113
 {
     public SqliteConnection PropertyConnection { get; } = new SqliteConnection("Data Source=property.db");
@@ -154,9 +151,8 @@ public interface IPrimaryCtorOnlyRepository : IQueryRepository<ConnectionPriorit
 }
 
 [TableName("connection_priority_test")]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IPrimaryCtorOnlyRepository))]
-public partial class PrimaryCtorOnlyRepository(SqliteConnection connection) : IPrimaryCtorOnlyRepository
+public partial class PrimaryCtorOnlyRepository(SqliteConnection connection, SqlDialect dialect) : IPrimaryCtorOnlyRepository
 {
     // 只有主构造函数参数，生成器应自动生成 _connection 字段
 }
@@ -172,10 +168,9 @@ public interface IAllSourcesRepository : IQueryRepository<ConnectionPriorityEnti
 }
 
 [TableName("connection_priority_test")]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IAllSourcesRepository))]
 #pragma warning disable CS9113 // Parameter is unread
-public partial class AllSourcesRepository(SqliteConnection _) : IAllSourcesRepository
+public partial class AllSourcesRepository(SqliteConnection _, SqlDialect dialect) : IAllSourcesRepository
 #pragma warning restore CS9113
 {
     private readonly SqliteConnection _fieldConnection = new SqliteConnection("Data Source=field.db");
@@ -194,9 +189,8 @@ public interface IExplicitTransactionRepository : IQueryRepository<ConnectionPri
 }
 
 [TableName("connection_priority_test")]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IExplicitTransactionRepository))]
-public partial class ExplicitTransactionRepository(SqliteConnection connection) : IExplicitTransactionRepository
+public partial class ExplicitTransactionRepository(SqliteConnection connection, SqlDialect dialect) : IExplicitTransactionRepository
 {
     public DbTransaction? Transaction { get; set; }
 }
@@ -209,9 +203,8 @@ public interface IAutoTransactionRepository : IQueryRepository<ConnectionPriorit
 }
 
 [TableName("connection_priority_test")]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IAutoTransactionRepository))]
-public partial class AutoTransactionRepository(SqliteConnection connection) : IAutoTransactionRepository
+public partial class AutoTransactionRepository(SqliteConnection connection, SqlDialect dialect) : IAutoTransactionRepository
 {
     // 没有 Transaction 属性，生成器应自动生成
 }
@@ -269,7 +262,7 @@ public class ConnectionPriorityTests
         cmd.CommandText = "INSERT INTO connection_priority_test (name) VALUES ('FieldConnection')";
         cmd.ExecuteNonQuery();
         
-        var repo = new MethodParamVsFieldRepository(fieldConnection);
+        var repo = new MethodParamVsFieldRepository(fieldConnection, SqlDefine.SQLite);
         
         // 使用方法参数（应该使用 _mainConnection）
         var entityWithParam = await repo.GetWithParamAsync(_mainConnection, 1, default);
@@ -300,7 +293,7 @@ public class ConnectionPriorityTests
         cmd.CommandText = "INSERT INTO connection_priority_test (name) VALUES ('PropertyConnection')";
         cmd.ExecuteNonQuery();
         
-        var repo = new MethodParamVsPropertyRepository(propertyConnection);
+        var repo = new MethodParamVsPropertyRepository(propertyConnection, SqlDefine.SQLite);
         
         // 使用方法参数（应该使用 _mainConnection）
         var entityWithParam = await repo.GetWithParamAsync(_mainConnection, 1, default);
@@ -331,7 +324,7 @@ public class ConnectionPriorityTests
         cmd.CommandText = "INSERT INTO connection_priority_test (name) VALUES ('PrimaryConnection')";
         cmd.ExecuteNonQuery();
         
-        var repo = new MethodParamVsPrimaryCtorRepository(primaryConnection);
+        var repo = new MethodParamVsPrimaryCtorRepository(primaryConnection, SqlDefine.SQLite);
         
         // 使用方法参数（应该使用 _mainConnection）
         var entityWithParam = await repo.GetWithParamAsync(_mainConnection, 1, default);
@@ -374,7 +367,7 @@ public class ConnectionPriorityTests
         cmd2.CommandText = "INSERT INTO connection_priority_test (name) VALUES ('PropertyConnection')";
         cmd2.ExecuteNonQuery();
         
-        var repo = new FieldVsPropertyRepository(fieldConnection, propertyConnection);
+        var repo = new FieldVsPropertyRepository(fieldConnection, propertyConnection, SqlDefine.SQLite);
         var entity = await repo.GetByIdAsync(1, default);
         
         Assert.IsNotNull(entity, "字段应该优先于属性");
@@ -389,7 +382,7 @@ public class ConnectionPriorityTests
     {
         var primaryConnection = new SqliteConnection("Data Source=:memory:");
         
-        var repo = new FieldVsPrimaryCtorRepository(primaryConnection);
+        var repo = new FieldVsPrimaryCtorRepository(primaryConnection, SqlDefine.SQLite);
         
         // 获取字段连接并初始化
         var fieldType = typeof(FieldVsPrimaryCtorRepository);
@@ -422,7 +415,7 @@ public class ConnectionPriorityTests
     {
         var primaryConnection = new SqliteConnection("Data Source=:memory:");
         
-        var repo = new PropertyVsPrimaryCtorRepository(primaryConnection);
+        var repo = new PropertyVsPrimaryCtorRepository(primaryConnection, SqlDefine.SQLite);
         
         // 获取属性连接并初始化
         var propertyConnection = repo.PropertyConnection;
@@ -449,7 +442,7 @@ public class ConnectionPriorityTests
     [TestMethod]
     public async Task Priority7_PrimaryCtor_Only()
     {
-        var repo = new PrimaryCtorOnlyRepository(_mainConnection);
+        var repo = new PrimaryCtorOnlyRepository(_mainConnection, SqlDefine.SQLite);
         var entity = await repo.GetByIdAsync(1, default);
         
         Assert.IsNotNull(entity);
@@ -461,7 +454,7 @@ public class ConnectionPriorityTests
     {
         var primaryConnection = new SqliteConnection("Data Source=:memory:");
         
-        var repo = new AllSourcesRepository(primaryConnection);
+        var repo = new AllSourcesRepository(primaryConnection, SqlDefine.SQLite);
         
         // 初始化字段连接
         var fieldType = typeof(AllSourcesRepository);
@@ -498,7 +491,7 @@ public class ConnectionPriorityTests
     [TestMethod]
     public async Task Transaction_Explicit_Property()
     {
-        var repo = new ExplicitTransactionRepository(_mainConnection);
+        var repo = new ExplicitTransactionRepository(_mainConnection, SqlDefine.SQLite);
         
         using var transaction = _mainConnection.BeginTransaction();
         repo.Transaction = transaction;
@@ -514,7 +507,7 @@ public class ConnectionPriorityTests
     [TestMethod]
     public async Task Transaction_Auto_Generated()
     {
-        var repo = new AutoTransactionRepository(_mainConnection);
+        var repo = new AutoTransactionRepository(_mainConnection, SqlDefine.SQLite);
         
         // 验证 Transaction 属性存在
         var transactionProperty = typeof(AutoTransactionRepository).GetProperty("Transaction");

@@ -44,17 +44,18 @@ public interface IUserRepository : ICrudRepository<User, int>
 ### 3. Implement Your Repository
 
 ```csharp
-[SqlDefine(SqlDefineTypes.SQLite)]
 [TableName("users")]
 [RepositoryFor(typeof(IUserRepository))]
 public partial class UserRepository : IUserRepository
 {
+    private readonly SqlDialect _dialect;
     private readonly DbConnection _connection;
     public DbTransaction? Transaction { get; set; }
 
-    public UserRepository(DbConnection connection)
+    public UserRepository(DbConnection connection, SqlDialect dialect)
     {
         _connection = connection;
+        _dialect = dialect;
     }
 }
 ```
@@ -65,7 +66,7 @@ public partial class UserRepository : IUserRepository
 await using var connection = new SqliteConnection("Data Source=app.db");
 await connection.OpenAsync();
 
-var repo = new UserRepository(connection);
+var repo = new UserRepository(connection, SqlDefine.SQLite);
 var user = await repo.GetByEmailAsync("test@example.com");
 ```
 

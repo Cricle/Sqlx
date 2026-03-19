@@ -31,7 +31,6 @@ using System.Text;
 /// <list type="bullet">
 /// <item><description>[SqlxContext] - Marks the class for generation</description></item>
 /// <item><description>[IncludeRepository(typeof(RepositoryType))] - Specifies repositories to include</description></item>
-/// <item><description>[SqlDefine(SqlDefineTypes.XXX)] - Specifies the database dialect (optional)</description></item>
 /// </list>
 /// </remarks>
 [Generator(LanguageNames.CSharp)]
@@ -71,8 +70,6 @@ public class ContextGenerator : IIncrementalGenerator
         var sqlxContextAttr = compilation.GetTypeByMetadataName("Sqlx.Annotations.SqlxContextAttribute");
         var includeRepositoryAttr = compilation.GetTypeByMetadataName("Sqlx.Annotations.IncludeRepositoryAttribute");
         var repositoryForAttr = compilation.GetTypeByMetadataName("Sqlx.Annotations.RepositoryForAttribute");
-        var sqlDefineAttr = compilation.GetTypeByMetadataName("Sqlx.Annotations.SqlDefineAttribute");
-
         if (sqlxContextAttr is null || includeRepositoryAttr is null) return;
 
         foreach (var classDecl in classes.Distinct())
@@ -131,13 +128,10 @@ public class ContextGenerator : IIncrementalGenerator
 
             if (repositories.Count == 0) continue;
 
-            // Get dialect from [SqlDefine] attribute
-            var dialect = GetSqlDefine(typeSymbol, sqlDefineAttr);
-
             // Check if user has provided a constructor
             var hasUserConstructor = HasUserProvidedConstructor(classDecl);
 
-            var source = GenerateSource(typeSymbol, repositories, dialect, hasUserConstructor);
+            var source = GenerateSource(typeSymbol, repositories, hasUserConstructor);
             context.AddSource($"{typeSymbol.Name}.Context.g.cs", SourceText.From(source, Encoding.UTF8));
         }
     }
@@ -155,30 +149,6 @@ public class ContextGenerator : IIncrementalGenerator
         }
         return null;
     }
-
-    private static string GetSqlDefine(INamedTypeSymbol typeSymbol, INamedTypeSymbol? sqlDefineAttr)
-    {
-        if (sqlDefineAttr is null) return "SQLite";
-        var attr = typeSymbol.GetAttributes()
-            .FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, sqlDefineAttr));
-        if (attr?.ConstructorArguments.Length > 0)
-        {
-            var value = attr.ConstructorArguments[0].Value;
-            return value is int intValue ? MapDialectEnum(intValue) ?? "SQLite" : value?.ToString() ?? "SQLite";
-        }
-        return "SQLite";
-    }
-
-    private static string? MapDialectEnum(int dialectValue) => dialectValue switch
-    {
-        0 => "MySql",
-        1 => "SqlServer",
-        2 => "PostgreSql",
-        3 => "Oracle",
-        4 => "DB2",
-        5 => "SQLite",
-        _ => null
-    };
 
     private static bool HasUserProvidedConstructor(ClassDeclarationSyntax classDecl)
     {
@@ -213,7 +183,7 @@ public class ContextGenerator : IIncrementalGenerator
         return char.ToLowerInvariant(name[0]) + name.Substring(1);
     }
 
-    private static string GenerateSource(INamedTypeSymbol typeSymbol, List<RepositoryInfo> repositories, string dialect, bool hasUserConstructor)
+    private static string GenerateSource(INamedTypeSymbol typeSymbol, List<RepositoryInfo> repositories, bool hasUserConstructor)
     {
         var namespaceName = typeSymbol.ContainingNamespace.ToDisplayString();
         var className = typeSymbol.Name;

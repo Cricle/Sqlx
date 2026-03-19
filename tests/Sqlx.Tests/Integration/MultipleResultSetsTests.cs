@@ -90,14 +90,15 @@ public interface IMultiResultRepository
             [OutputParameter(System.Data.DbType.DateTime)] OutputParameter<System.DateTime> timestamp);
     }
 
-    [RepositoryFor(typeof(IMultiResultRepository), Dialect = (int)SqlDefineTypes.SQLite, TableName = "test_users")]
+    [RepositoryFor(typeof(IMultiResultRepository), TableName = "test_users")]
     public partial class MultiResultRepository : IMultiResultRepository
     {
         private readonly DbConnection _connection;
 
-        public MultiResultRepository(DbConnection connection)
+        public MultiResultRepository(DbConnection connection, SqlDialect dialect)
         {
             _connection = connection;
+            _dialect = dialect;
         }
     }
 
@@ -139,7 +140,7 @@ public class MultipleResultSetsTests
     public async Task InsertAndGetStatsAsync_WithResultSetMapping_ReturnsCorrectValues()
     {
         // Arrange
-        var repo = new MultiResultRepository(_connection!);
+        var repo = new MultiResultRepository(_connection!, SqlDefine.SQLite);
 
         // Act
         var (rows, userId, total) = await repo.InsertAndGetStatsAsync("Alice", 25);
@@ -154,7 +155,7 @@ public class MultipleResultSetsTests
     public async Task InsertAndGetStatsAsync_MultipleInserts_ReturnsIncrementingValues()
     {
         // Arrange
-        var repo = new MultiResultRepository(_connection!);
+        var repo = new MultiResultRepository(_connection!, SqlDefine.SQLite);
 
         // Act
         var (rows1, userId1, total1) = await repo.InsertAndGetStatsAsync("Alice", 25);
@@ -179,7 +180,7 @@ public class MultipleResultSetsTests
     public void InsertAndGetStats_SyncMethod_ReturnsCorrectValues()
     {
         // Arrange
-        var repo = new MultiResultRepository(_connection!);
+        var repo = new MultiResultRepository(_connection!, SqlDefine.SQLite);
 
         // Act
         var (rows, userId, total) = repo.InsertAndGetStats("Alice", 25);
@@ -194,7 +195,7 @@ public class MultipleResultSetsTests
     public void InsertAndGetStats_SyncMultipleInserts_ReturnsIncrementingValues()
     {
         // Arrange
-        var repo = new MultiResultRepository(_connection!);
+        var repo = new MultiResultRepository(_connection!, SqlDefine.SQLite);
 
         // Act
         var (rows1, userId1, total1) = repo.InsertAndGetStats("Alice", 25);
@@ -214,7 +215,7 @@ public class MultipleResultSetsTests
     public async Task GetStatsAsync_WithData_ReturnsCorrectStats()
     {
         // Arrange
-        var repo = new MultiResultRepository(_connection!);
+        var repo = new MultiResultRepository(_connection!, SqlDefine.SQLite);
         await repo.InsertAndGetStatsAsync("Alice", 25);
         await repo.InsertAndGetStatsAsync("Bob", 30);
         await repo.InsertAndGetStatsAsync("Charlie", 35);
@@ -232,7 +233,7 @@ public class MultipleResultSetsTests
     public void GetStats_SyncMethod_ReturnsCorrectStats()
     {
         // Arrange
-        var repo = new MultiResultRepository(_connection!);
+        var repo = new MultiResultRepository(_connection!, SqlDefine.SQLite);
         repo.InsertAndGetStats("Alice", 25);
         repo.InsertAndGetStats("Bob", 30);
 
@@ -249,7 +250,7 @@ public class MultipleResultSetsTests
     public async Task InsertAndGetStatsDefaultAsync_WithoutResultSetMapping_UsesDefaultMapping()
     {
         // Arrange
-        var repo = new MultiResultRepository(_connection!);
+        var repo = new MultiResultRepository(_connection!, SqlDefine.SQLite);
 
         // Act
         var (rows, userId, total) = await repo.InsertAndGetStatsDefaultAsync("Alice", 25);
@@ -264,7 +265,7 @@ public class MultipleResultSetsTests
     public async Task MultipleResultSets_WithDifferentTypes_HandlesTypeConversion()
     {
         // Arrange
-        var repo = new MultiResultRepository(_connection!);
+        var repo = new MultiResultRepository(_connection!, SqlDefine.SQLite);
         await repo.InsertAndGetStatsAsync("Alice", 25);
 
         // Act

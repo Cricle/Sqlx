@@ -46,7 +46,6 @@ namespace TestNamespace
     }
 
     [RepositoryFor(typeof(ITodoRepository))]
-    [SqlDefine(SqlDefineTypes.SQLite)]
     [TableName(""todos"")]
     public partial class TodoRepository
     {
@@ -115,7 +114,6 @@ namespace TestNamespace
     }
 
     [RepositoryFor(typeof(IUserRepository))]
-    [SqlDefine(SqlDefineTypes.SQLite)]
     public partial class UserRepository
     {
     }
@@ -177,7 +175,6 @@ namespace TestNamespace
     }
 
     [RepositoryFor(typeof(IProductRepository))]
-    [SqlDefine(SqlDefineTypes.SQLite)]
     public partial class ProductRepository
     {
     }

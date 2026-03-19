@@ -46,7 +46,7 @@ public class DynamicUpdateAdvancedTests
             )";
         cmd.ExecuteNonQuery();
 
-        _repository = new AdvancedDynamicTestRepository(_connection);
+        _repository = new AdvancedDynamicTestRepository(_connection, SqlDefine.SQLite);
     }
 
     [TestCleanup]
@@ -672,8 +672,14 @@ public interface IAdvancedDynamicTestRepository : ICrudRepository<AdvancedDynami
 }
 
 [TableName("advanced_dynamic_entities")]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IAdvancedDynamicTestRepository))]
-public partial class AdvancedDynamicTestRepository(SqliteConnection connection) : IAdvancedDynamicTestRepository
+public partial class AdvancedDynamicTestRepository : IAdvancedDynamicTestRepository
 {
+    private readonly SqliteConnection _connection;
+
+    public AdvancedDynamicTestRepository(SqliteConnection connection, SqlDialect dialect)
+    {
+        _connection = connection;
+        _dialect = dialect;
+    }
 }

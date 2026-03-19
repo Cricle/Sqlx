@@ -3,6 +3,7 @@
 // </copyright>
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Sqlx;
 using Sqlx.Tests.E2E.Infrastructure;
 using Sqlx.Annotations;
 using System.Data.Common;
@@ -49,47 +50,51 @@ public interface IProductRepository
     Task<List<Product>> GetTopExpensiveAsync(int limit);
 }
 
-[RepositoryFor(typeof(IProductRepository), Dialect = (int)SqlDefineTypes.MySql, TableName = "products")]
+[RepositoryFor(typeof(IProductRepository), TableName = "products")]
 public partial class MySqlProductRepository : IProductRepository
 {
     private readonly DbConnection _connection;
 
-    public MySqlProductRepository(DbConnection connection)
+    public MySqlProductRepository(DbConnection connection, SqlDialect dialect)
     {
         _connection = connection;
+        _dialect = dialect;
     }
 }
 
-[RepositoryFor(typeof(IProductRepository), Dialect = (int)SqlDefineTypes.PostgreSql, TableName = "products")]
+[RepositoryFor(typeof(IProductRepository), TableName = "products")]
 public partial class PostgreSqlProductRepository : IProductRepository
 {
     private readonly DbConnection _connection;
 
-    public PostgreSqlProductRepository(DbConnection connection)
+    public PostgreSqlProductRepository(DbConnection connection, SqlDialect dialect)
     {
         _connection = connection;
+        _dialect = dialect;
     }
 }
 
-[RepositoryFor(typeof(IProductRepository), Dialect = (int)SqlDefineTypes.SqlServer, TableName = "products")]
+[RepositoryFor(typeof(IProductRepository), TableName = "products")]
 public partial class SqlServerProductRepository : IProductRepository
 {
     private readonly DbConnection _connection;
 
-    public SqlServerProductRepository(DbConnection connection)
+    public SqlServerProductRepository(DbConnection connection, SqlDialect dialect)
     {
         _connection = connection;
+        _dialect = dialect;
     }
 }
 
-[RepositoryFor(typeof(IProductRepository), Dialect = (int)SqlDefineTypes.SQLite, TableName = "products")]
+[RepositoryFor(typeof(IProductRepository), TableName = "products")]
 public partial class SQLiteProductRepository : IProductRepository
 {
     private readonly DbConnection _connection;
 
-    public SQLiteProductRepository(DbConnection connection)
+    public SQLiteProductRepository(DbConnection connection, SqlDialect dialect)
     {
         _connection = connection;
+        _dialect = dialect;
     }
 }
 
@@ -153,7 +158,7 @@ public class RepositoryE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.MySQL);
         await fixture.CreateSchemaAsync(GetTestSchema(DatabaseType.MySQL));
-        var repo = new MySqlProductRepository(fixture.Connection);
+        var repo = new MySqlProductRepository(fixture.Connection, SqlDefine.MySql);
 
         // Act - Test Repository Insert with SqlTemplate
         var rowsAffected = await repo.InsertAsync("Laptop", 999.99m, 10, "High-end laptop");
@@ -175,7 +180,7 @@ public class RepositoryE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.PostgreSQL);
         await fixture.CreateSchemaAsync(GetTestSchema(DatabaseType.PostgreSQL));
-        var repo = new PostgreSqlProductRepository(fixture.Connection);
+        var repo = new PostgreSqlProductRepository(fixture.Connection, SqlDefine.PostgreSql);
 
         // Act - Test Repository with nullable parameter
         var rowsAffected = await repo.InsertAsync("Mouse", 29.99m, 50, null);
@@ -195,7 +200,7 @@ public class RepositoryE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.MySQL);
         await fixture.CreateSchemaAsync(GetTestSchema(DatabaseType.MySQL));
-        var repo = new MySqlProductRepository(fixture.Connection);
+        var repo = new MySqlProductRepository(fixture.Connection, SqlDefine.MySql);
 
         await repo.InsertAsync("Laptop", 999.99m, 10, "Expensive");
         await repo.InsertAsync("Mouse", 29.99m, 50, "Cheap");
@@ -218,7 +223,7 @@ public class RepositoryE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.PostgreSQL);
         await fixture.CreateSchemaAsync(GetTestSchema(DatabaseType.PostgreSQL));
-        var repo = new PostgreSqlProductRepository(fixture.Connection);
+        var repo = new PostgreSqlProductRepository(fixture.Connection, SqlDefine.PostgreSql);
 
         await repo.InsertAsync("Product A", 100m, 10, null);
         await repo.InsertAsync("Product B", 200m, 10, null);
@@ -245,7 +250,7 @@ public class RepositoryE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.SqlServer);
         await fixture.CreateSchemaAsync(GetTestSchema(DatabaseType.SqlServer));
-        var repo = new SqlServerProductRepository(fixture.Connection);
+        var repo = new SqlServerProductRepository(fixture.Connection, SqlDefine.SqlServer);
 
         await repo.InsertAsync("Old Name", 100m, 10, "Old Description");
         
@@ -277,7 +282,7 @@ public class RepositoryE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.SQLite);
         await fixture.CreateSchemaAsync(GetTestSchema(DatabaseType.SQLite));
-        var repo = new SQLiteProductRepository(fixture.Connection);
+        var repo = new SQLiteProductRepository(fixture.Connection, SqlDefine.SQLite);
 
         await repo.InsertAsync("To Delete", 50m, 5, null);
         var products = await repo.GetByMinPriceAsync(0m);
@@ -303,7 +308,7 @@ public class RepositoryE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.MySQL);
         await fixture.CreateSchemaAsync(GetTestSchema(DatabaseType.MySQL));
-        var repo = new MySqlProductRepository(fixture.Connection);
+        var repo = new MySqlProductRepository(fixture.Connection, SqlDefine.MySql);
 
         await repo.InsertAsync("Test Product", 123.45m, 99, "Test Description");
         var products = await repo.GetByMinPriceAsync(0m);
@@ -330,7 +335,7 @@ public class RepositoryE2ETests : E2ETestBase
         // Arrange
         await using var fixture = await CreateFixtureAsync(DatabaseType.PostgreSQL);
         await fixture.CreateSchemaAsync(GetTestSchema(DatabaseType.PostgreSQL));
-        var repo = new PostgreSqlProductRepository(fixture.Connection);
+        var repo = new PostgreSqlProductRepository(fixture.Connection, SqlDefine.PostgreSql);
 
         await repo.InsertAsync("Product 1", 10m, 1, null);
         await repo.InsertAsync("Product 2", 20m, 2, null);

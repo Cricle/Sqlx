@@ -28,16 +28,15 @@ public interface IPrimaryTestRepositoryWithFields : ICrudRepository<PrimaryTestE
 }
 
 [TableName("primary_test")]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IPrimaryTestRepositoryWithFields))]
-public partial class PrimaryTestRepositoryWithFields(SqliteConnection connection) : IPrimaryTestRepositoryWithFields
+public partial class PrimaryTestRepositoryWithFields(SqliteConnection connection, SqlDialect dialect) : IPrimaryTestRepositoryWithFields
 {
     private readonly SqliteConnection _connection = connection;
     public DbTransaction? Transaction { get; set; }
     
     public IQueryable<PrimaryTestEntity> AsQueryable()
     {
-        return SqlQuery<PrimaryTestEntity>.For(_staticContext.Dialect).WithConnection(_connection);
+        return SqlQuery<PrimaryTestEntity>.For(Dialect).WithConnection(_connection);
     }
 }
 
@@ -50,9 +49,8 @@ public interface IPrimaryTestRepositoryNoFields : ICrudRepository<PrimaryTestEnt
 }
 
 [TableName("primary_test")]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(IPrimaryTestRepositoryNoFields))]
-public partial class PrimaryTestRepositoryNoFields(SqliteConnection connection) : IPrimaryTestRepositoryNoFields
+public partial class PrimaryTestRepositoryNoFields(SqliteConnection connection, SqlDialect dialect) : IPrimaryTestRepositoryNoFields
 {
     // No explicit fields or properties - generator should auto-generate:
     // - private readonly SqliteConnection _connection = connection;
@@ -60,7 +58,7 @@ public partial class PrimaryTestRepositoryNoFields(SqliteConnection connection) 
     
     public IQueryable<PrimaryTestEntity> AsQueryable()
     {
-        return SqlQuery<PrimaryTestEntity>.For(_staticContext.Dialect).WithConnection(connection);
+        return SqlQuery<PrimaryTestEntity>.For(Dialect).WithConnection(connection);
     }
 }
 
@@ -98,7 +96,7 @@ public class PrimaryConstructorTests
     [TestMethod]
     public async Task WithExplicitFields_ShouldWork()
     {
-        var repo = new PrimaryTestRepositoryWithFields(_connection);
+        var repo = new PrimaryTestRepositoryWithFields(_connection, SqlDefine.SQLite);
 
         var id = await repo.InsertAndGetIdAsync(new PrimaryTestEntity { Name = "Test1" }, default);
         Assert.AreEqual(1, id);
@@ -111,7 +109,7 @@ public class PrimaryConstructorTests
     [TestMethod]
     public async Task WithoutExplicitFields_ShouldWork()
     {
-        var repo = new PrimaryTestRepositoryNoFields(_connection);
+        var repo = new PrimaryTestRepositoryNoFields(_connection, SqlDefine.SQLite);
 
         var id = await repo.InsertAndGetIdAsync(new PrimaryTestEntity { Name = "Test2" }, default);
         Assert.AreEqual(1, id);
@@ -124,7 +122,7 @@ public class PrimaryConstructorTests
     [TestMethod]
     public async Task WithoutExplicitFields_TransactionShouldWork()
     {
-        var repo = new PrimaryTestRepositoryNoFields(_connection);
+        var repo = new PrimaryTestRepositoryNoFields(_connection, SqlDefine.SQLite);
 
         using var transaction = _connection.BeginTransaction();
         repo.Transaction = transaction;
@@ -136,7 +134,7 @@ public class PrimaryConstructorTests
         transaction.Commit();
 
         // Create a new repo instance without transaction to verify
-        var repoForRead = new PrimaryTestRepositoryNoFields(_connection);
+        var repoForRead = new PrimaryTestRepositoryNoFields(_connection, SqlDefine.SQLite);
         var entity = await repoForRead.GetByIdAsync(id, default);
         Assert.IsNotNull(entity);
         Assert.AreEqual("Test3", entity.Name);

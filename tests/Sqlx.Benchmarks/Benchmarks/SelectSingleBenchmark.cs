@@ -31,7 +31,7 @@ public class SelectSingleBenchmark
         _connection = DatabaseSetup.CreateConnection();
         DatabaseSetup.InitializeDatabase(_connection);
         DatabaseSetup.SeedData(_connection, 10000);
-        _sqlxRepo = new BenchmarkUserRepository(_connection);
+        _sqlxRepo = new BenchmarkUserRepository(_connection, Sqlx.SqlDefine.SQLite);
         _testId = 5000;
         
         // FreeSql uses same in-memory database via connection string

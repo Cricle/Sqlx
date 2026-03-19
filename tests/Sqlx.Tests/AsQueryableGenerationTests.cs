@@ -28,11 +28,18 @@ public interface ITestUserRepository : ICrudRepository<TestUser, long>
     // 源生成器应该自动生成实现
 }
 
-[SqlDefine(SqlDefineTypes.SQLite)]
 [TableName("TestUser")]
 [RepositoryFor(typeof(ITestUserRepository))]
-public partial class TestUserRepository(SqliteConnection connection) : ITestUserRepository
+public partial class TestUserRepository : ITestUserRepository
 {
+    private readonly SqliteConnection _connection;
+
+    public TestUserRepository(SqliteConnection connection, SqlDialect dialect)
+    {
+        _connection = connection;
+        _dialect = dialect;
+    }
+
     // 不应该手动实现 AsQueryable()
     // 源生成器会自动生成
 }
@@ -46,7 +53,7 @@ public class AsQueryableGenerationTests
         // Arrange
         using var connection = new SqliteConnection("Data Source=:memory:");
         connection.Open();
-        var repo = new TestUserRepository(connection);
+        var repo = new TestUserRepository(connection, SqlDefine.SQLite);
 
         // Act
         var queryable = repo.AsQueryable();
@@ -84,7 +91,7 @@ public class AsQueryableGenerationTests
             await cmd.ExecuteNonQueryAsync();
         }
 
-        var repo = new TestUserRepository(connection);
+        var repo = new TestUserRepository(connection, SqlDefine.SQLite);
 
         // Act
         var query = repo.AsQueryable()

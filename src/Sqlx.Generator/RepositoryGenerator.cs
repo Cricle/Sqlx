@@ -33,7 +33,6 @@ using System.Text;
 /// </para>
 /// <list type="bullet">
 /// <item><description>[RepositoryFor(typeof(IServiceInterface))] - Specifies the interface to implement</description></item>
-/// <item><description>[SqlDefine(SqlDefineTypes.XXX)] - Specifies the database dialect</description></item>
 /// <item><description>[TableName("table_name")] - Specifies the database table name</description></item>
 /// </list>
 /// </remarks>
@@ -72,7 +71,6 @@ public class RepositoryGenerator : IIncrementalGenerator
         if (classes.IsDefaultOrEmpty) return;
 
         var repositoryForAttr = compilation.GetTypeByMetadataName("Sqlx.Annotations.RepositoryForAttribute");
-        var sqlDefineAttr = compilation.GetTypeByMetadataName("Sqlx.Annotations.SqlDefineAttribute");
         var tableNameAttr = compilation.GetTypeByMetadataName("Sqlx.Annotations.TableNameAttribute");
         var sqlTemplateAttr = compilation.GetTypeByMetadataName("Sqlx.Annotations.SqlTemplateAttribute");
         var returnInsertedIdAttr = compilation.GetTypeByMetadataName("Sqlx.Annotations.ReturnInsertedIdAttribute");
@@ -94,22 +92,14 @@ public class RepositoryGenerator : IIncrementalGenerator
             var serviceType = repoForAttrData.ConstructorArguments.FirstOrDefault().Value as INamedTypeSymbol;
             if (serviceType is null) continue;
 
-            // Get dialect and table name with priority: RepositoryFor > SqlDefine/TableName attributes > inferred
-            var sqlDefine = GetSqlDefineFromRepositoryFor(repoForAttrData) ?? GetSqlDefine(typeSymbol, sqlDefineAttr);
             var tableName = GetTableNameFromRepositoryFor(repoForAttrData) ?? GetTableName(typeSymbol, tableNameAttr, serviceType);
             var entityType = GetEntityType(serviceType);
 
             // Entity type is optional - some repositories may only have scalar methods
-            var source = GenerateSource(typeSymbol, serviceType, entityType, sqlDefine, tableName, 
+            var source = GenerateSource(typeSymbol, serviceType, entityType, tableName, 
                 sqlTemplateAttr, returnInsertedIdAttr, expressionToSqlAttr, compilation);
             context.AddSource($"{typeSymbol.Name}.Repository.g.cs", SourceText.From(source, Encoding.UTF8));
         }
-    }
-    
-    private static string? GetSqlDefineFromRepositoryFor(AttributeData repoForAttrData)
-    {
-        var dialectArg = repoForAttrData.NamedArguments.FirstOrDefault(a => a.Key == "Dialect");
-        return dialectArg.Value.Value is int dialectValue ? MapDialectEnum(dialectValue) : null;
     }
     
     private static string? GetTableNameFromRepositoryFor(AttributeData repoForAttrData)
@@ -117,30 +107,6 @@ public class RepositoryGenerator : IIncrementalGenerator
         var tableNameArg = repoForAttrData.NamedArguments.FirstOrDefault(a => a.Key == "TableName");
         return tableNameArg.Value.Value as string;
     }
-
-    private static string GetSqlDefine(INamedTypeSymbol typeSymbol, INamedTypeSymbol? sqlDefineAttr)
-    {
-        if (sqlDefineAttr is null) return "SQLite";
-        var attr = typeSymbol.GetAttributes()
-            .FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, sqlDefineAttr));
-        if (attr?.ConstructorArguments.Length > 0)
-        {
-            var value = attr.ConstructorArguments[0].Value;
-            return value is int intValue ? MapDialectEnum(intValue) ?? "SQLite" : value?.ToString() ?? "SQLite";
-        }
-        return "SQLite";
-    }
-
-    private static string? MapDialectEnum(int dialectValue) => dialectValue switch
-    {
-        0 => "MySql",
-        1 => "SqlServer",
-        2 => "PostgreSql",
-        3 => "Oracle",
-        4 => "DB2",
-        5 => "SQLite",
-        _ => null
-    };
 
     private static string GetTableName(INamedTypeSymbol typeSymbol, INamedTypeSymbol? tableNameAttr, INamedTypeSymbol? serviceType)
     {
@@ -224,7 +190,6 @@ public class RepositoryGenerator : IIncrementalGenerator
         INamedTypeSymbol repoType,
         INamedTypeSymbol serviceType,
         INamedTypeSymbol? entityType,
-        string sqlDefine,
         string tableName,
         INamedTypeSymbol? sqlTemplateAttr,
         INamedTypeSymbol? returnInsertedIdAttr,
@@ -306,8 +271,15 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("{");
         sb.PushIndent();
 
+        // Check if user has defined constructor with SqlDialect parameter
+        var hasUserDialectConstructor = repoType.HasDialectConstructor(out var userCtor);
+        var primaryCtorDialectParameterName = repoType.GetPrimaryConstructorDialectParameterName();
+
+        // Generate runtime dialect field and property
+        RuntimeDialectCodeGen.GenerateDialectField(sb, primaryCtorDialectParameterName);
+
         // Find or generate DbConnection field
-        var connectionInfo = FindOrGenerateDbConnection(repoType, sb);
+        var connectionInfo = FindOrGenerateDbConnection(repoType, sb, hasUserDialectConstructor, repoName);
 
         // Generate Transaction property only if not already defined by user
         if (!HasMember(repoType, "Transaction"))
@@ -317,32 +289,21 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine();
         }
 
-        // Build field names (needed for GeneratePlaceholderContext)
+        // Build field names (needed for template generation)
         var methodFieldNames = BuildMethodFieldNames(methods);
 
-        // Generate static PlaceholderContext
-        if (entityType != null)
-        {
-            GeneratePlaceholderContext(sb, repoType, entityName, entityFullName, sqlDefine, tableName, methods, sqlTemplateAttr, methodFieldNames);
-            sb.AppendLine();
-        }
-        else
-        {
-            // No entity type - generate minimal context for scalar methods
-            sb.AppendLine("// Static context for scalar methods");
-            sb.AppendLine($"private const global::Sqlx.Annotations.SqlDefineTypes _dialectType = global::Sqlx.Annotations.SqlDefineTypes.{sqlDefine};");
-            sb.AppendLine($"private static readonly global::Sqlx.PlaceholderContext _staticContext = new global::Sqlx.PlaceholderContext(");
-            sb.PushIndent();
-            sb.AppendLine($"dialect: global::Sqlx.SqlDefine.{sqlDefine},");
-            sb.AppendLine($"tableName: \"{tableName}\",");
-            sb.AppendLine($"columns: System.Array.Empty<global::Sqlx.ColumnMeta>());");
-            sb.PopIndent();
-            sb.AppendLine($"private static readonly string _paramPrefix = _staticContext.Dialect.ParameterPrefix;");
-            sb.AppendLine();
-        }
+        // Generate runtime PlaceholderContext (lazy-initialized)
+        RuntimeDialectCodeGen.GenerateRuntimeContext(sb, entityName, tableName, entityType != null);
+
+        // Generate table name constant
+        sb.AppendLine($"private const string _tableName = \"{tableName}\";");
+        sb.AppendLine();
+
+        // Generate runtime support for {{var}} placeholders when needed
+        GeneratePlaceholderContext(sb, repoType, entityName, entityType != null, methods, sqlTemplateAttr);
 
         // Generate static parameter name fields
-        var paramNameFields = GenerateParameterNameFields(sb, methods, entityName, sqlDefine);
+        var paramNameFields = GenerateParameterNameFields(sb, methods, entityName);
         if (paramNameFields.Count > 0)
             sb.AppendLine();
         
@@ -412,9 +373,14 @@ public class RepositoryGenerator : IIncrementalGenerator
     /// <summary>
     /// Finds the DbConnection source in the repository class, or generates one if needed.
     /// Always generates a property to satisfy ISqlxRepository interface requirements.
+    /// Also generates constructor with SqlDialect parameter if needed.
     /// Priority: field > property > primary constructor parameter > generate default property
     /// </summary>
-    private static ConnectionInfo FindOrGenerateDbConnection(INamedTypeSymbol repoType, IndentedStringBuilder sb)
+    private static ConnectionInfo FindOrGenerateDbConnection(
+        INamedTypeSymbol repoType, 
+        IndentedStringBuilder sb,
+        bool hasUserDialectConstructor,
+        string repoName)
     {
         // 1. Check if field exists first (highest priority after method parameter)
         foreach (var member in repoType.GetMembers())
@@ -478,7 +444,7 @@ public class RepositoryGenerator : IIncrementalGenerator
                     sb.AppendLine($"get => {prop.Name};");
                     if (canSet)
                     {
-                        sb.AppendLine("set => {prop.Name} = value!;");
+                        sb.AppendLine($"set => {prop.Name} = value!;");
                     }
                     else
                     {
@@ -531,78 +497,26 @@ public class RepositoryGenerator : IIncrementalGenerator
             }
         }
 
-        // No class-level connection found, generate a default property
+        // No class-level connection found, generate a default property and constructor
         sb.AppendLine("/// <summary>Database connection (auto-generated).</summary>");
-        sb.AppendLine("public System.Data.Common.DbConnection? Connection { get; set; }");
+        sb.AppendLine("private global::System.Data.Common.DbConnection _connection = null!;");
         sb.AppendLine();
+        sb.AppendLine("/// <summary>Gets or sets the database connection.</summary>");
+        sb.AppendLine("global::System.Data.Common.DbConnection? ISqlxRepository.Connection");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("get => _connection;");
+        sb.AppendLine("set => _connection = value!;");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+
+        RuntimeDialectCodeGen.GenerateConstructorIfNeeded(sb, repoName, hasUserDialectConstructor, "_connection");
         
         return new ConnectionInfo
         {
-            AccessExpression = "Connection",
+            AccessExpression = "_connection",
             FromMethodParameter = false
-        };
-    }
-
-    /// <summary>
-    /// Finds the DbConnection source in the repository class.
-    /// Priority: field > property > constructor parameter (method parameter checked per-method)
-    /// </summary>
-    private static ConnectionInfo FindDbConnection(INamedTypeSymbol repoType)
-    {
-        // 1. Check fields first (highest priority after method parameter)
-        foreach (var member in repoType.GetMembers())
-        {
-            if (member is IFieldSymbol field && !field.IsStatic && !field.IsImplicitlyDeclared && IsDbConnectionType(field.Type))
-            {
-                return new ConnectionInfo
-                {
-                    AccessExpression = field.Name,
-                    FromMethodParameter = false
-                };
-            }
-        }
-
-        // 2. Check properties (second priority)
-        foreach (var member in repoType.GetMembers())
-        {
-            if (member is IPropertySymbol prop && !prop.IsStatic && prop.GetMethod != null && IsDbConnectionType(prop.Type))
-            {
-                return new ConnectionInfo
-                {
-                    AccessExpression = prop.Name,
-                    FromMethodParameter = false
-                };
-            }
-        }
-
-        // 3. Check primary constructor parameters (C# 12+)
-        if (repoType.InstanceConstructors.Length > 0)
-        {
-            var primaryCtor = repoType.InstanceConstructors
-                .FirstOrDefault(c => c.Parameters.Length > 0 && c.DeclaringSyntaxReferences.Length > 0);
-            
-            if (primaryCtor != null)
-            {
-                foreach (var param in primaryCtor.Parameters)
-                {
-                    if (IsDbConnectionType(param.Type))
-                    {
-                        // Use parameter name directly (primary constructor captures it)
-                        return new ConnectionInfo
-                        {
-                            AccessExpression = param.Name,
-                            FromMethodParameter = false
-                        };
-                    }
-                }
-            }
-        }
-
-        // No class-level connection found, will need method parameter
-        return new ConnectionInfo
-        {
-            AccessExpression = null,
-            FromMethodParameter = true
         };
     }
 
@@ -644,92 +558,72 @@ public class RepositoryGenerator : IIncrementalGenerator
         IndentedStringBuilder sb, 
         INamedTypeSymbol repoType, 
         string entityName, 
-        string entityFullName, 
-        string sqlDefine, 
-        string tableName,
+        bool hasEntity,
         List<IMethodSymbol> methods,
-        INamedTypeSymbol? sqlTemplateAttr,
-        Dictionary<string, string> methodFieldNames)
+        INamedTypeSymbol? sqlTemplateAttr)
     {
-        sb.AppendLine("// Static context - shared across all methods that don't need {{var}} support");
-        sb.AppendLine($"private const global::Sqlx.Annotations.SqlDefineTypes _dialectType = global::Sqlx.Annotations.SqlDefineTypes.{sqlDefine};");
-        sb.AppendLine($"private static readonly global::Sqlx.PlaceholderContext _staticContext = new global::Sqlx.PlaceholderContext(");
+        var requiresDynamicContext = methods.Any(m =>
+        {
+            var template = GetSqlTemplate(m, sqlTemplateAttr);
+            return template != null && UsesVarPlaceholder(template);
+        });
+
+        if (!requiresDynamicContext)
+        {
+            return;
+        }
+
+        sb.AppendLine("// Dynamic context - cached instance for {{var}} placeholder support");
+        sb.AppendLine("private global::Sqlx.PlaceholderContext? _dynamicContext;");
+        sb.AppendLine();
+        sb.AppendLine("private global::Sqlx.PlaceholderContext GetDynamicContext()");
+        sb.AppendLine("{");
         sb.PushIndent();
-        sb.AppendLine($"dialect: global::Sqlx.SqlDefine.{sqlDefine},");
-        sb.AppendLine($"tableName: \"{tableName}\",");
-        sb.AppendLine($"columns: {entityName}EntityProvider.Default.Columns);");
+        sb.AppendLine("if (_dynamicContext != null) return _dynamicContext;");
+        sb.AppendLine();
+        sb.AppendLine("var context = new global::Sqlx.PlaceholderContext(");
+        sb.PushIndent();
+        sb.AppendLine("dialect: _dialect,");
+        sb.AppendLine("tableName: _tableName,");
+        if (hasEntity)
+        {
+            sb.AppendLine($"columns: {entityName}EntityProvider.Default.Columns,");
+        }
+        else
+        {
+            sb.AppendLine("columns: global::System.Array.Empty<global::Sqlx.ColumnMeta>(),");
+        }
+        sb.AppendLine("varProvider: GetVarValue,");
+        sb.AppendLine("instance: this);");
         sb.PopIndent();
-        sb.AppendLine($"private static readonly string _paramPrefix = _staticContext.Dialect.ParameterPrefix;");
+        sb.AppendLine();
+        sb.AppendLine("_dynamicContext = context;");
+        sb.AppendLine("return context;");
+        sb.PopIndent();
+        sb.AppendLine("}");
         sb.AppendLine();
         
-        // Check if repository has [SqlxVar] methods
-        var hasVarMethods = HasSqlxVarMethods(repoType);
+        sb.AppendLine("// Variable provider for {{var}} placeholder support");
+        sb.AppendLine("private string GetVarValue(object instance, string variableName)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("return variableName switch");
+        sb.AppendLine("{");
+        sb.PushIndent();
         
-        if (hasVarMethods)
+        // Generate cases for each [SqlxVar] method
+        var sqlxVarMethods = GetSqlxVarMethods(repoType);
+        foreach (var method in sqlxVarMethods)
         {
-            sb.AppendLine("// Dynamic context - cached instance (no lock needed, worst case is creating multiple instances)");
-            sb.AppendLine("private global::Sqlx.PlaceholderContext? _dynamicContext;");
-            sb.AppendLine();
-            sb.AppendLine("private global::Sqlx.PlaceholderContext GetDynamicContext()");
-            sb.AppendLine("{");
-            sb.PushIndent();
-            sb.AppendLine("if (_dynamicContext != null) return _dynamicContext;");
-            sb.AppendLine();
-            sb.AppendLine("var context = new global::Sqlx.PlaceholderContext(");
-            sb.PushIndent();
-            sb.AppendLine($"_staticContext.Dialect,");
-            sb.AppendLine($"_staticContext.TableName,");
-            sb.AppendLine($"_staticContext.Columns,");
-            sb.AppendLine($"varProvider: GetVarValue,");
-            sb.AppendLine($"instance: this);");
-            sb.PopIndent();
-            sb.AppendLine();
-            sb.AppendLine("_dynamicContext = context;");
-            sb.AppendLine("return context;");
-            sb.PopIndent();
-            sb.AppendLine("}");
-            sb.AppendLine();
-            
-            // Generate cached template fields for {{var}} methods
-            var varMethods = methods.Where(m => {
-                var t = GetSqlTemplate(m, sqlTemplateAttr);
-                return t != null && UsesVarPlaceholder(t);
-            }).ToList();
-            
-            if (varMethods.Any())
-            {
-                sb.AppendLine("// Cached templates for {{var}} methods (prepared per-instance)");
-                foreach (var method in varMethods)
-                {
-                    var signature = GetMethodSignature(method);
-                    var fieldName = methodFieldNames[signature];
-                    sb.AppendLine($"private global::Sqlx.SqlTemplate? {fieldName};");
-                }
-                sb.AppendLine();
-            }
-            
-            sb.AppendLine("// Variable provider for {{var}} placeholder support");
-            sb.AppendLine("private string GetVarValue(object instance, string variableName)");
-            sb.AppendLine("{");
-            sb.PushIndent();
-            sb.AppendLine("return variableName switch");
-            sb.AppendLine("{");
-            sb.PushIndent();
-            
-            // Generate cases for each [SqlxVar] method
-            var sqlxVarMethods = GetSqlxVarMethods(repoType);
-            foreach (var method in sqlxVarMethods)
-            {
-                var varName = GetVarName(method);
-                sb.AppendLine($"\"{varName}\" => {method.Name}(),");
-            }
-            
-            sb.AppendLine("_ => throw new ArgumentException($\"Unknown variable: {variableName}\", nameof(variableName))");
-            sb.PopIndent();
-            sb.AppendLine("};");
-            sb.PopIndent();
-            sb.AppendLine("}");
+            var varName = GetVarName(method);
+            sb.AppendLine($"\"{varName}\" => {method.Name}(),");
         }
+        
+        sb.AppendLine("_ => throw new ArgumentException($\"Unknown variable: {variableName}\", nameof(variableName))");
+        sb.PopIndent();
+        sb.AppendLine("};");
+        sb.PopIndent();
+        sb.AppendLine("}");
     }
     
     /// <summary>
@@ -803,10 +697,10 @@ public class RepositoryGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    /// Generates static parameter name fields for all scalar parameters.
+    /// Generates parameter name members for all scalar parameters.
     /// Returns a dictionary mapping parameter name to field name.
     /// </summary>
-    private static Dictionary<string, string> GenerateParameterNameFields(IndentedStringBuilder sb, List<IMethodSymbol> methods, string entityName, string sqlDefine)
+    private static Dictionary<string, string> GenerateParameterNameFields(IndentedStringBuilder sb, List<IMethodSymbol> methods, string entityName)
     {
         var paramNames = new HashSet<string>();
         
@@ -830,35 +724,18 @@ public class RepositoryGenerator : IIncrementalGenerator
         
         if (paramNames.Count == 0)
             return new Dictionary<string, string>();
-        
-        // Get parameter prefix based on database type (compile-time constant)
-        var paramPrefix = GetParameterPrefix(sqlDefine);
-        
-        sb.AppendLine("// Static parameter names (cached at initialization)");
+
+        sb.AppendLine("// Instance parameter names (dialect-aware)");
         var result = new Dictionary<string, string>();
         foreach (var name in paramNames.OrderBy(n => n))
         {
             var fieldName = $"_param_{name}";
             result[name] = fieldName;
-            sb.AppendLine($"private static readonly string {fieldName} = _paramPrefix + \"{name}\";");
+            sb.AppendLine($"private string {fieldName} => ParamPrefix + \"{name}\";");
         }
         
         return result;
     }
-    
-    /// <summary>
-    /// Gets the parameter prefix for the specified database type.
-    /// </summary>
-    private static string GetParameterPrefix(string sqlDefine) => sqlDefine switch
-    {
-        "SqlDefineTypes.SQLite" => "@",
-        "SqlDefineTypes.SqlServer" => "@",
-        "SqlDefineTypes.MySql" => "@",
-        "SqlDefineTypes.PostgreSql" => "$",
-        "SqlDefineTypes.Oracle" => ":",
-        "SqlDefineTypes.DB2" => "@",
-        _ => "@" // Default to @ for unknown types
-    };
 
     private static List<IMethodSymbol> GetMethodsWithSqlTemplate(INamedTypeSymbol serviceType, INamedTypeSymbol? sqlTemplateAttr)
     {
@@ -950,7 +827,7 @@ public class RepositoryGenerator : IIncrementalGenerator
 
     private static void GenerateSqlTemplateFields(IndentedStringBuilder sb, List<IMethodSymbol> methods, INamedTypeSymbol? sqlTemplateAttr, Dictionary<string, string> methodFieldNames, string entityName)
     {
-        sb.AppendLine("// Static SqlTemplate fields - prepared once at initialization");
+        sb.AppendLine("// Cached SqlTemplate fields (runtime dialect aware)");
         
         foreach (var method in methods)
         {
@@ -959,25 +836,7 @@ public class RepositoryGenerator : IIncrementalGenerator
 
             var signature = GetMethodSignature(method);
             var fieldName = methodFieldNames[signature];
-
-            // Check if template uses {{var}} placeholder
-            if (UsesVarPlaceholder(template))
-            {
-                // For {{var}} templates, we can't prepare at class initialization
-                // because GetDynamicContext() needs the instance
-                sb.AppendLine($"// Template for {method.Name} uses {{{{var}}}} - will be prepared per-instance");
-                continue;
-            }
-
-            // Regular template without {{var}}
-            sb.AppendLine($"private static readonly global::Sqlx.SqlTemplate {fieldName} = global::Sqlx.SqlTemplate.Prepare(");
-            sb.PushIndent();
-            sb.AppendLine($"\"{EscapeString(template)}\",");
-            sb.AppendLine("_staticContext);");
-            sb.PopIndent();
-            
-            // Generate static ordinals struct for methods that use {{columns}} and return entities
-            // Static ordinals are no longer generated - struct ordinals are created on-demand from reader
+            RuntimeDialectCodeGen.GenerateRuntimeTemplateField(sb, fieldName, template, UsesVarPlaceholder(template));
         }
     }
 
@@ -1063,9 +922,12 @@ public class RepositoryGenerator : IIncrementalGenerator
         var isAsync = returnType.Contains("Task<") || returnType == "Task" || returnType.Contains("System.Threading.Tasks.Task");
 
         // Check if this is a SqlTemplate return type (debug/inspection method)
+        var usesVar = template != null && UsesVarPlaceholder(template);
+        var templateReferenceName = "__template";
+
         if (returnType == "Sqlx.SqlTemplate" || returnType == "global::Sqlx.SqlTemplate" || returnType.EndsWith(".SqlTemplate"))
         {
-            GenerateSqlTemplateReturnMethod(sb, method, fieldName);
+            GenerateSqlTemplateReturnMethod(sb, method, fieldName, template!, usesVar, templateReferenceName);
             return;
         }
 
@@ -1126,33 +988,25 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine($"using DbCommand cmd = {connectionExpression}.CreateCommand();");
         sb.AppendLine("if (Transaction != null) cmd.Transaction = Transaction;");
 
-        // Check if template uses {{var}} placeholder
-        var usesVar = template != null && UsesVarPlaceholder(template);
-        
+        if (template != null)
+        {
+            RuntimeDialectCodeGen.GenerateGetTemplate(sb, fieldName, template, usesVar);
+            sb.AppendLine(GetTemplateLocalDeclaration(templateReferenceName, fieldName));
+            sb.AppendLine();
+        }
+
         if (usesVar)
         {
-            // Template uses {{var}} - prepare once per instance, then render each time
-            sb.AppendLine("// Template uses {{var}} - prepare once per instance, render each time");
-            sb.AppendLine($"if ({fieldName} == null)");
-            sb.AppendLine("{");
-            sb.PushIndent();
-            sb.AppendLine($"{fieldName} = global::Sqlx.SqlTemplate.Prepare(");
-            sb.PushIndent();
-            sb.AppendLine($"\"{EscapeString(template!)}\",");
-            sb.AppendLine("GetDynamicContext());");
-            sb.PopIndent();
-            sb.PopIndent();
-            sb.AppendLine("}");
-            sb.AppendLine($"cmd.CommandText = {fieldName}.Render(null);");
+            sb.AppendLine($"cmd.CommandText = {templateReferenceName}.Render(null);");
         }
         else if (hasDynamicParams)
         {
             // Render SQL using dynamicParams
-            GenerateDynamicRender(sb, fieldName, method);
+            GenerateDynamicRender(sb, templateReferenceName, method);
         }
         else
         {
-            sb.AppendLine($"cmd.CommandText = {fieldName}.Sql;");
+            sb.AppendLine($"cmd.CommandText = {templateReferenceName}.Sql;");
         }
 
         sb.AppendLine();
@@ -1169,7 +1023,7 @@ public class RepositoryGenerator : IIncrementalGenerator
 
         sb.AppendLine();
         sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
-        sb.AppendLine($"OnExecuting(\"{methodName}\", cmd, {fieldName});");
+        sb.AppendLine($"OnExecuting(\"{methodName}\", cmd, {templateReferenceName});");
         sb.AppendLine("#endif");
         sb.AppendLine();
 
@@ -1178,16 +1032,16 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.PushIndent();
 
         // Execute and return based on return type
-        GenerateExecuteAndReturn(sb, method, repoFullName, entityFullName, entityName, keyTypeName, isReturnInsertedId, methodName, fieldName, useStaticOrdinals, ordinalsFieldName, isAsync, paramNameFields);
+        GenerateExecuteAndReturn(sb, method, repoFullName, entityFullName, entityName, keyTypeName, isReturnInsertedId, methodName, templateReferenceName, useStaticOrdinals, ordinalsFieldName, isAsync, paramNameFields);
 
         sb.PopIndent();
         sb.AppendLine("}");
 
         // Catch block
-        GenerateCatchBlock(sb, repoFullName, methodName, fieldName);
+        GenerateCatchBlock(sb, repoFullName, methodName, templateReferenceName);
 
         // Finally block
-        GenerateFinallyBlock(sb, methodName, fieldName);
+        GenerateFinallyBlock(sb, methodName, templateReferenceName);
 
         sb.PopIndent();
         sb.AppendLine("}");
@@ -1251,7 +1105,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             
             var paramType = param.Type;
             var isNullable = IsNullableType(paramType);
-            var paramFieldName = paramNameFields.TryGetValue(param.Name, out var fn) ? fn : $"_paramPrefix + \"{param.Name}\"";
+            var paramFieldName = paramNameFields.TryGetValue(param.Name, out var fn) ? fn : $"ParamPrefix + \"{param.Name}\"";
             
             sb.AppendLine("{");
             sb.PushIndent();
@@ -1298,12 +1152,12 @@ public class RepositoryGenerator : IIncrementalGenerator
             // Check if this is a SET expression (Expression<Func<T, T>>) or WHERE expression (Expression<Func<T, bool>>)
             if (IsSetExpression(paramType))
             {
-                sb.AppendLine($"var {param.Name}Sql = global::Sqlx.SetExpressionExtensions.ToSetClause({param.Name}, _staticContext.Dialect);");
+                sb.AppendLine($"var {param.Name}Sql = global::Sqlx.SetExpressionExtensions.ToSetClause({param.Name}, Dialect);");
                 sb.AppendLine($"var {param.Name}Params = global::Sqlx.SetExpressionExtensions.GetSetParameters({param.Name});");
             }
             else
             {
-                sb.AppendLine($"var {param.Name}Sql = global::Sqlx.ExpressionExtensions.ToWhereClause({param.Name}, _staticContext.Dialect);");
+                sb.AppendLine($"var {param.Name}Sql = global::Sqlx.ExpressionExtensions.ToWhereClause({param.Name}, Dialect);");
             }
         }
         else if (expressionParams.Count == 2)
@@ -1315,12 +1169,12 @@ public class RepositoryGenerator : IIncrementalGenerator
                 
                 if (IsSetExpression(paramType))
                 {
-                    sb.AppendLine($"var {param.Name}Sql = global::Sqlx.SetExpressionExtensions.ToSetClause({param.Name}, _staticContext.Dialect);");
+                    sb.AppendLine($"var {param.Name}Sql = global::Sqlx.SetExpressionExtensions.ToSetClause({param.Name}, Dialect);");
                     sb.AppendLine($"var {param.Name}Params = global::Sqlx.SetExpressionExtensions.GetSetParameters({param.Name});");
                 }
                 else
                 {
-                    sb.AppendLine($"var {param.Name}Sql = global::Sqlx.ExpressionExtensions.ToWhereClause({param.Name}, _staticContext.Dialect);");
+                    sb.AppendLine($"var {param.Name}Sql = global::Sqlx.ExpressionExtensions.ToWhereClause({param.Name}, Dialect);");
                 }
             }
         }
@@ -1338,11 +1192,11 @@ public class RepositoryGenerator : IIncrementalGenerator
                 
                 if (IsSetExpression(paramType))
                 {
-                    sb.AppendLine($"[\"{param.Name}\"] = global::Sqlx.SetExpressionExtensions.ToSetClause({param.Name}, _staticContext.Dialect),");
+                    sb.AppendLine($"[\"{param.Name}\"] = global::Sqlx.SetExpressionExtensions.ToSetClause({param.Name}, Dialect),");
                 }
                 else
                 {
-                    sb.AppendLine($"[\"{param.Name}\"] = global::Sqlx.ExpressionExtensions.ToWhereClause({param.Name}, _staticContext.Dialect),");
+                    sb.AppendLine($"[\"{param.Name}\"] = global::Sqlx.ExpressionExtensions.ToWhereClause({param.Name}, Dialect),");
                 }
             }
 
@@ -1433,7 +1287,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("{");
         sb.PushIndent();
         sb.AppendLine($"activity = activity.AddEvent(new ActivityEvent(\"{methodName}\"));");
-        sb.AppendLine("activity.SetTag(\"db.system\", _staticContext.Dialect.DatabaseType);");
+        sb.AppendLine("activity.SetTag(\"db.system\", Dialect.DatabaseType);");
         sb.AppendLine("activity.SetTag(\"db.operation\", \"sqlx.execute\");");
         sb.AppendLine("activity.SetTag(\"db.has_transaction\", Transaction != null);");
         sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY_PARAMS");
@@ -1504,7 +1358,7 @@ public class RepositoryGenerator : IIncrementalGenerator
                 var size = outputParamAttr?.NamedArguments
                     .FirstOrDefault(a => a.Key == "Size").Value.Value;
                 
-                var paramFieldName = paramNameFields.TryGetValue(param.Name, out var fn) ? fn : $"_paramPrefix + \"{param.Name}\"";
+                var paramFieldName = paramNameFields.TryGetValue(param.Name, out var fn) ? fn : $"ParamPrefix + \"{param.Name}\"";
                 var isRefParam = param.RefKind == RefKind.Ref;
                 
                 sb.AppendLine("{");
@@ -1569,7 +1423,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             // Check if this is an entity parameter (exact match or ends with entity name)
             if (paramType.Name == entityName)
             {
-                sb.AppendLine($"{entityName}ParameterBinder.Default.BindEntity(cmd, {param.Name}, _paramPrefix);");
+                sb.AppendLine($"{entityName}ParameterBinder.Default.BindEntity(cmd, {param.Name}, ParamPrefix);");
             }
             // Check if this is a collection parameter (List<T>, IEnumerable<T>, etc.)
             else if (IsCollectionType(paramType, out var elementType))
@@ -1582,7 +1436,7 @@ public class RepositoryGenerator : IIncrementalGenerator
                 sb.AppendLine("{");
                 sb.PushIndent();
                 sb.AppendLine("var p = cmd.CreateParameter();");
-                sb.AppendLine($"p.ParameterName = _paramPrefix + \"{param.Name}\" + index;");
+                sb.AppendLine($"p.ParameterName = ParamPrefix + \"{param.Name}\" + index;");
                 sb.AppendLine("p.Value = item;");
                 sb.AppendLine("cmd.Parameters.Add(p);");
                 sb.AppendLine("index++;");
@@ -1595,7 +1449,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             {
                 // Simple parameter binding for scalar types (int, string, etc.)
                 var isNullable = IsNullableType(paramType);
-                var paramFieldName = paramNameFields.TryGetValue(param.Name, out var fn) ? fn : $"_paramPrefix + \"{param.Name}\"";
+                var paramFieldName = paramNameFields.TryGetValue(param.Name, out var fn) ? fn : $"ParamPrefix + \"{param.Name}\"";
                 sb.AppendLine("{");
                 sb.PushIndent();
                 sb.AppendLine("var p = cmd.CreateParameter();");
@@ -1629,7 +1483,7 @@ public class RepositoryGenerator : IIncrementalGenerator
                 sb.AppendLine("{");
                 sb.PushIndent();
                 sb.AppendLine("var p = cmd.CreateParameter();");
-                sb.AppendLine("p.ParameterName = _paramPrefix + kvp.Key;");
+                sb.AppendLine("p.ParameterName = ParamPrefix + kvp.Key;");
                 sb.AppendLine("p.Value = kvp.Value ?? (object)DBNull.Value;");
                 sb.AppendLine("cmd.Parameters.Add(p);");
                 sb.PopIndent();
@@ -1793,7 +1647,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         {
             // Sync InsertAndGetId return
             sb.AppendLine("// Append last inserted ID query to the INSERT statement");
-            sb.AppendLine("cmd.CommandText += _staticContext.Dialect.InsertReturningIdSuffix;");
+            sb.AppendLine("cmd.CommandText += Dialect.InsertReturningIdSuffix;");
             sb.AppendLine();
             sb.AppendLine("using var reader = cmd.ExecuteReader(System.Data.CommandBehavior.Default);");
             sb.AppendLine();
@@ -2032,7 +1886,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             
             // Return inserted ID - append dialect-specific suffix to the INSERT statement
             sb.AppendLine("// Append last inserted ID query to the INSERT statement");
-            sb.AppendLine("cmd.CommandText += _staticContext.Dialect.InsertReturningIdSuffix;");
+            sb.AppendLine("cmd.CommandText += Dialect.InsertReturningIdSuffix;");
             
             // Use ExecuteReader for all cases to handle multi-statement SQL correctly
             // For "INSERT ...; SELECT last_insert_rowid()", the ID is in the second result set
@@ -2169,7 +2023,13 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("}");
     }
 
-    private static void GenerateSqlTemplateReturnMethod(IndentedStringBuilder sb, IMethodSymbol method, string fieldName)
+    private static void GenerateSqlTemplateReturnMethod(
+        IndentedStringBuilder sb,
+        IMethodSymbol method,
+        string fieldName,
+        string template,
+        bool usesVar,
+        string templateReferenceName)
     {
         var methodName = method.Name;
         var parameters = string.Join(", ", method.Parameters.Select(p =>
@@ -2188,10 +2048,15 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine($"public global::Sqlx.SqlTemplate {methodName}({parameters})");
         sb.AppendLine("{");
         sb.PushIndent();
-        sb.AppendLine($"return {fieldName};");
+        RuntimeDialectCodeGen.GenerateGetTemplate(sb, fieldName, template, usesVar);
+        sb.AppendLine(GetTemplateLocalDeclaration(templateReferenceName, fieldName));
+        sb.AppendLine($"return {templateReferenceName};");
         sb.PopIndent();
         sb.AppendLine("}");
     }
+
+    private static string GetTemplateLocalDeclaration(string templateReferenceName, string fieldName) =>
+        $"var {templateReferenceName} = {fieldName} ?? throw new global::System.InvalidOperationException(\"SQL template cache was not initialized.\");";
 
     private static void GenerateIQueryableReturnMethod(IndentedStringBuilder sb, IMethodSymbol method, string entityFullName, string connectionExpression)
     {
@@ -2213,7 +2078,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine($"public {returnType} {methodName}({parameters})");
         sb.AppendLine("{");
         sb.PushIndent();
-        sb.AppendLine($"return global::Sqlx.SqlQuery<{entityFullName}>.For(_staticContext.Dialect).WithConnection({connectionExpression});");
+        sb.AppendLine($"return global::Sqlx.SqlQuery<{entityFullName}>.For(Dialect).WithConnection({connectionExpression});");
         sb.PopIndent();
         sb.AppendLine("}");
     }
@@ -2629,7 +2494,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("// Retrieve output parameter values");
         foreach (var param in outputParams)
         {
-            var paramFieldName = paramNameFields.TryGetValue(param.Name, out var fn) ? fn : $"_paramPrefix + \"{param.Name}\"";
+            var paramFieldName = paramNameFields.TryGetValue(param.Name, out var fn) ? fn : $"ParamPrefix + \"{param.Name}\"";
             var paramTypeName = param.Type.ToDisplayString();
             
             // Check if this is OutputParameter<T> wrapper

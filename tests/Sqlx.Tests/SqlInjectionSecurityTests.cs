@@ -51,14 +51,21 @@ public interface ISecurityTestRepository : ICrudRepository<SecurityTestUser, lon
 }
 
 [TableName("security_test_users")]
-[SqlDefine(SqlDefineTypes.SQLite)]
 [RepositoryFor(typeof(ISecurityTestRepository))]
-public partial class SecurityTestRepository(SqliteConnection connection) : ISecurityTestRepository
+public partial class SecurityTestRepository : ISecurityTestRepository
 {
+    private readonly SqliteConnection _connection;
+
+    public SecurityTestRepository(SqliteConnection connection, SqlDialect dialect)
+    {
+        _connection = connection;
+        _dialect = dialect;
+    }
+
     public IQueryable<SecurityTestUser> AsQueryable()
     {
         // 使用 SqlQuery<T>.EntityProvider 来获取正确的表名
-        return SqlQuery<SecurityTestUser>.For(_staticContext.Dialect, SqlQuery<SecurityTestUser>.EntityProvider)
+        return SqlQuery<SecurityTestUser>.For(Dialect, SqlQuery<SecurityTestUser>.EntityProvider)
             .WithConnection(_connection);
     }
 }
@@ -101,7 +108,7 @@ public class SqlInjectionSecurityTests
             ('test', 'test@test.com', 'test123', 0)";
         cmd.ExecuteNonQuery();
 
-        _repo = new SecurityTestRepository(_connection);
+        _repo = new SecurityTestRepository(_connection, SqlDefine.SQLite);
     }
 
     [TestCleanup]

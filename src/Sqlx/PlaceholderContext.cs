@@ -6,6 +6,9 @@ namespace Sqlx;
 
 using System;
 using System.Collections.Generic;
+#if NET5_0_OR_GREATER
+using System.Diagnostics.CodeAnalysis;
+#endif
 
 /// <summary>
 /// Provides context information for placeholder processing in SQL templates.
@@ -27,6 +30,41 @@ using System.Collections.Generic;
 /// </example>
 public sealed class PlaceholderContext
 {
+    /// <summary>
+    /// Creates a placeholder context from an entity type using its registered or dynamic metadata.
+    /// </summary>
+    /// <typeparam name="T">The entity type.</typeparam>
+    /// <param name="dialect">The SQL dialect for database-specific SQL generation.</param>
+    /// <param name="entityProvider">Optional explicit entity provider. If omitted, Sqlx uses cached, registered, or dynamic metadata.</param>
+    /// <param name="varProvider">Optional variable provider function for {{var}} placeholder support.</param>
+    /// <param name="instance">Optional repository instance for variable provider invocation.</param>
+    /// <returns>A placeholder context initialized from the entity metadata.</returns>
+    public static PlaceholderContext Create<
+#if NET5_0_OR_GREATER
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
+#endif
+        T>(
+        SqlDialect dialect,
+        IEntityProvider? entityProvider = null,
+        Func<object, string, string>? varProvider = null,
+        object? instance = null)
+    {
+        if (dialect == null)
+        {
+            throw new ArgumentNullException(nameof(dialect));
+        }
+
+        var provider = EntityProviderResolver.ResolveOrCreate<T>(entityProvider);
+        EntityProviderResolver.EnsureProviderMatches(typeof(T), provider, nameof(entityProvider));
+
+        return new PlaceholderContext(
+            dialect,
+            TableNameResolver.Resolve(typeof(T)),
+            provider.Columns,
+            varProvider,
+            instance);
+    }
+
     /// <summary>
     /// Initializes a new instance of the <see cref="PlaceholderContext"/> class.
     /// </summary>

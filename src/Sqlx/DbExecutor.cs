@@ -29,6 +29,7 @@ namespace Sqlx
         /// <param name="sql">The SQL query.</param>
         /// <param name="parameters">The query parameters.</param>
         /// <param name="mapper">The result mapper function.</param>
+        /// <param name="transaction">The database transaction, if any.</param>
         /// <returns>An enumerable of results.</returns>
         public static IEnumerable<T> ExecuteReader<
 #if NET5_0_OR_GREATER
@@ -38,13 +39,14 @@ namespace Sqlx
             DbConnection connection,
             string sql,
             IEnumerable<KeyValuePair<string, object?>>? parameters,
-            IResultReader<T> mapper)
+            IResultReader<T> mapper,
+            DbTransaction? transaction = null)
         {
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
             }
-            using var command = CreateCommand(connection, sql, parameters);
+            using var command = CreateCommand(connection, sql, parameters, transaction);
             using var reader = command.ExecuteReader();
             while (reader.Read())
             {
@@ -60,6 +62,7 @@ namespace Sqlx
         /// <param name="sql">The SQL query.</param>
         /// <param name="parameters">The query parameters.</param>
         /// <param name="mapper">The result mapper function.</param>
+        /// <param name="transaction">The database transaction, if any.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>An async enumerable of results.</returns>
         public static async IAsyncEnumerator<T> ExecuteReaderAsync<
@@ -71,6 +74,7 @@ namespace Sqlx
             string sql,
             IEnumerable<KeyValuePair<string, object?>>? parameters,
             IResultReader<T> mapper,
+            DbTransaction? transaction = null,
             CancellationToken cancellationToken = default)
         {
 
@@ -79,7 +83,7 @@ namespace Sqlx
                 await connection.OpenAsync(cancellationToken);
             }
 
-            await using var command = CreateCommand(connection, sql, parameters);
+            await using var command = CreateCommand(connection, sql, parameters, transaction);
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
             while (await reader.ReadAsync(cancellationToken))
             {
@@ -93,18 +97,20 @@ namespace Sqlx
         /// <param name="connection">The database connection.</param>
         /// <param name="sql">The SQL query.</param>
         /// <param name="parameters">The query parameters.</param>
+        /// <param name="transaction">The database transaction, if any.</param>
         /// <returns>The scalar result.</returns>
         public static object? ExecuteScalar(
             DbConnection connection,
             string sql,
-            IEnumerable<KeyValuePair<string, object?>>? parameters)
+            IEnumerable<KeyValuePair<string, object?>>? parameters,
+            DbTransaction? transaction = null)
         {
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
             }
 
-            using var command = CreateCommand(connection, sql, parameters);
+            using var command = CreateCommand(connection, sql, parameters, transaction);
             return command.ExecuteScalar();
         }
 
@@ -114,12 +120,14 @@ namespace Sqlx
         /// <param name="connection">The database connection.</param>
         /// <param name="sql">The SQL query.</param>
         /// <param name="parameters">The query parameters.</param>
+        /// <param name="transaction">The database transaction, if any.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>The scalar result.</returns>
         public static async Task<object?> ExecuteScalarAsync(
             DbConnection connection,
             string sql,
             IEnumerable<KeyValuePair<string, object?>>? parameters,
+            DbTransaction? transaction = null,
             CancellationToken cancellationToken = default)
         {
             if (connection.State != ConnectionState.Open)
@@ -127,14 +135,22 @@ namespace Sqlx
                 await connection.OpenAsync(cancellationToken);
             }
 
-            await using var command = CreateCommand(connection, sql, parameters);
+            await using var command = CreateCommand(connection, sql, parameters, transaction);
             return await command.ExecuteScalarAsync(cancellationToken);
         }
 
-        private static DbCommand CreateCommand(DbConnection connection, string sql, IEnumerable<KeyValuePair<string, object?>>? parameters)
+        private static DbCommand CreateCommand(
+            DbConnection connection,
+            string sql,
+            IEnumerable<KeyValuePair<string, object?>>? parameters,
+            DbTransaction? transaction = null)
         {
             var command = connection.CreateCommand();
             command.CommandText = sql;
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
 
             if (parameters != null)
             {

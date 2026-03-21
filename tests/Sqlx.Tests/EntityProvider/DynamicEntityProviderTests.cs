@@ -97,7 +97,7 @@ public class DynamicEntityProviderTests
         var columnList = columns.Cast<object>().ToList();
 
         // Assert
-        Assert.AreEqual(11, columnList.Count);
+        Assert.AreEqual(15, columnList.Count);
         
 #pragma warning disable CS8714 // The type cannot be used as type parameter in the generic type or method
 #pragma warning disable CS8621 // Nullability of reference types in return type doesn't match the target delegate
@@ -107,6 +107,10 @@ public class DynamicEntityProviderTests
 #pragma warning restore CS8621
 #pragma warning restore CS8714
 
+        Assert.AreEqual(DbType.SByte, columnDict["SignedByteValue"]);
+        Assert.AreEqual(DbType.UInt16, columnDict["UnsignedShortValue"]);
+        Assert.AreEqual(DbType.UInt32, columnDict["UnsignedIntValue"]);
+        Assert.AreEqual(DbType.UInt64, columnDict["UnsignedLongValue"]);
         Assert.AreEqual(DbType.Int32, columnDict["IntValue"]);
         Assert.AreEqual(DbType.Int64, columnDict["LongValue"]);
         Assert.AreEqual(DbType.Int16, columnDict["ShortValue"]);
@@ -216,8 +220,8 @@ public class DynamicEntityProviderTests
             return prop?.GetValue(c) as string ?? string.Empty;
         }).ToList();
         
-        CollectionAssert.Contains(columnNames, "u_r_l");
-        CollectionAssert.Contains(columnNames, "h_t_t_p_status");
+        CollectionAssert.Contains(columnNames, "url");
+        CollectionAssert.Contains(columnNames, "http_status");
     }
 
     [TestMethod]
@@ -276,6 +280,74 @@ public class DynamicEntityProviderTests
         Assert.IsTrue(isNullable);
     }
 
+    [TestMethod]
+    public void Columns_HandlesDateTimeOffset()
+    {
+        // Arrange
+        var provider = CreateProvider(typeof(DateTimeOffsetEntity));
+        var columnsProperty = provider.GetType().GetProperty("Columns")!;
+
+        // Act
+        var columns = (System.Collections.IEnumerable)columnsProperty.GetValue(provider)!;
+        var columnList = columns.Cast<object>().ToList();
+
+        // Assert
+        var column = columnList.First();
+        var dbType = (DbType)column.GetType().GetProperty("DbType")!.GetValue(column)!;
+        Assert.AreEqual(DbType.DateTimeOffset, dbType);
+    }
+
+    [TestMethod]
+    public void Columns_HandlesTimeSpan()
+    {
+        // Arrange
+        var provider = CreateProvider(typeof(TimeSpanEntity));
+        var columnsProperty = provider.GetType().GetProperty("Columns")!;
+
+        // Act
+        var columns = (System.Collections.IEnumerable)columnsProperty.GetValue(provider)!;
+        var columnList = columns.Cast<object>().ToList();
+
+        // Assert
+        var column = columnList.First();
+        var dbType = (DbType)column.GetType().GetProperty("DbType")!.GetValue(column)!;
+        Assert.AreEqual(DbType.Time, dbType);
+    }
+
+    [TestMethod]
+    public void Columns_HandlesDateOnly()
+    {
+        // Arrange
+        var provider = CreateProvider(typeof(DateOnlyEntity));
+        var columnsProperty = provider.GetType().GetProperty("Columns")!;
+
+        // Act
+        var columns = (System.Collections.IEnumerable)columnsProperty.GetValue(provider)!;
+        var columnList = columns.Cast<object>().ToList();
+
+        // Assert
+        var column = columnList.First();
+        var dbType = (DbType)column.GetType().GetProperty("DbType")!.GetValue(column)!;
+        Assert.AreEqual(DbType.Date, dbType);
+    }
+
+    [TestMethod]
+    public void Columns_HandlesTimeOnly()
+    {
+        // Arrange
+        var provider = CreateProvider(typeof(TimeOnlyEntity));
+        var columnsProperty = provider.GetType().GetProperty("Columns")!;
+
+        // Act
+        var columns = (System.Collections.IEnumerable)columnsProperty.GetValue(provider)!;
+        var columnList = columns.Cast<object>().ToList();
+
+        // Assert
+        var column = columnList.First();
+        var dbType = (DbType)column.GetType().GetProperty("DbType")!.GetValue(column)!;
+        Assert.AreEqual(DbType.Time, dbType);
+    }
+
     // Test entity classes
     private class SimpleEntity
     {
@@ -286,6 +358,10 @@ public class DynamicEntityProviderTests
 
     private class TypedEntity
     {
+        public sbyte SignedByteValue { get; set; }
+        public ushort UnsignedShortValue { get; set; }
+        public uint UnsignedIntValue { get; set; }
+        public ulong UnsignedLongValue { get; set; }
         public int IntValue { get; set; }
         public long LongValue { get; set; }
         public short ShortValue { get; set; }
@@ -344,5 +420,25 @@ public class DynamicEntityProviderTests
     private class NullableGuidEntity
     {
         public Guid? Id { get; set; }
+    }
+
+    private class DateTimeOffsetEntity
+    {
+        public DateTimeOffset CreatedAt { get; set; }
+    }
+
+    private class TimeSpanEntity
+    {
+        public TimeSpan Duration { get; set; }
+    }
+
+    private class DateOnlyEntity
+    {
+        public DateOnly ScheduledOn { get; set; }
+    }
+
+    private class TimeOnlyEntity
+    {
+        public TimeOnly StartsAt { get; set; }
     }
 }

@@ -38,12 +38,14 @@
 - ✅ Sqlx 内存分配在小批量场景下最少，比 Dapper.AOT 少 19-47%
 - ✅ 在 100 条查询中，Sqlx 比 Dapper.AOT 快 3%，内存少 19%
 
-**AOT 兼容性：** ✅ 完全支持 Native AOT，通过 2060 个单元测试
+**AOT 兼容性：** ✅ 完全支持 Native AOT，已通过大规模单元测试验证
 
 **最新优化：**
 - 移除 Ordinals struct，使用 int[] 数组（代码更简洁）
 - 无实例缓存，完全无状态设计（线程安全）
 - 用户可手动缓存 ordinals 优化性能
+- ResultReader 扩展方法对 DynamicResultReader 走数组快路径，批量读取时整批复用 ordinals
+- DynamicResultReader 的 span 兼容路径改为 ArrayPool 兜底，避免直接调用时的额外 GC 分配
 - 移除列名常量生成（减少代码体积）
 - 支持 JOIN 查询（INNER JOIN, LEFT JOIN）
 - 永远不生成 SELECT *，显式列出所有列
@@ -106,10 +108,10 @@ Windows 10 (10.0.19045.6466/22H2/2022Update)
 - 使用 SqlDialect 方法复用，减少代码重复
 
 **AOT 兼容性：** ✅ 完全支持 Native AOT
-- 通过 3124 个单元测试（100% 通过率）
-- 使用表达式树编译，无运行时反射
+- 通过大规模单元测试（保持高通过率）
+- 源生成主路径使用表达式树编译与静态缓存，不依赖运行时反射
 - 静态方法缓存，零动态代码生成
-- SQL 生成过程完全无反射
+- 对未标记 `[Sqlx]` 的普通 POCO，仍保留反射 fallback 以保证可用性
 
 ### .NET 9
 
@@ -246,8 +248,8 @@ Windows 10 (10.0.19045.6466/22H2/2022Update)
 - 比 FreeSql 快 1.7-4.9 倍
 - 使用 int[] 数组替代 struct ordinals（代码更简洁）
 - 完全无状态设计，线程安全
-- ✅ 通过 2060 个单元测试，Native AOT 就绪
-- ✅ SQL 生成完全无反射
+- ✅ 已通过大规模单元测试，Native AOT 就绪
+- ✅ 源生成主路径避免运行时反射，普通 POCO 查询保留 fallback
 - ✅ 支持 JOIN 查询，无性能损失
 
 **Dapper.AOT：**
@@ -438,10 +440,84 @@ Windows 10 (10.0.19045.6466/22H2/2022Update)
 
 - 异步操作开销约 **0-10%**，部分场景异步更快
 - 条件查询异步更快（~10%）
-- 分页查询差异较小（~3%）
-- 全表查询异步略快（~2%）
-- 内存分配差异 < 1%
-- 对于 I/O 密集型场景，异步的并发优势远超这点开销
+
+---
+
+## ResultReader 映射开销（纯映射）
+
+这个基准使用内存 `DbDataReader` 隔离映射层本身的开销，不受 SQLite 命令执行、参数绑定和 SQL 调度影响。它更适合验证 ResultReader 和 ordinals 优化本身是否生效。
+
+### RowCount = 100
+
+| Method | Mean | Ratio | Allocated |
+|--------|------|-------|-----------|
+| **Generated cached ordinals** | **6.378 μs** | **1.00** | 10.16 KB |
+| Dynamic array fast path | 8.770 μs | 1.38 | 10.16 KB |
+| Dynamic span fallback | 10.926 μs | 1.72 | 10.16 KB |
+| Generated uncached ordinals | 29.178 μs | 4.59 | 10.16 KB |
+
+### RowCount = 1000
+
+| Method | Mean | Ratio | Allocated |
+|--------|------|-------|-----------|
+| **Generated cached ordinals** | **60.158 μs** | **1.00** | 101.56 KB |
+| Dynamic array fast path | 81.224 μs | 1.35 | 101.56 KB |
+| Dynamic span fallback | 106.770 μs | 1.78 | 101.56 KB |
+| Generated uncached ordinals | 276.220 μs | 4.59 | 101.56 KB |
+
+**结论：**
+- Generated reader 使用 cached ordinals 后，纯映射开销比 uncached ordinals 低约 **4.6 倍**
+- DynamicResultReader 的 array fast path 比 span fallback 快约 **24%**
+- 这说明本轮对 `IArrayOrdinalReader<T>`、ArrayPool 和 cached ordinals 的优化，在映射层本身是有效的
+
+---
+
+## DynamicResultReader Ordinals 路径（端到端）
+
+这个基准仍然包含 SQLite 命令执行和数据读取，因此更接近真实查询路径，但也会把映射层差异“稀释”掉。
+
+### RowCount = 1000
+
+| Method | Mean | Ratio | Allocated |
+|--------|------|-------|-----------|
+| **ToList fast path** | **1.015 ms** | **1.00** | 174.22 KB |
+| manual span loop | 1.022 ms | 1.01 | 165.88 KB |
+| manual pooled array loop | 1.044 ms | 1.03 | 165.88 KB |
+| manual span loop async | 1.116 ms | 1.10 | 166.05 KB |
+| ToListAsync fast path | 1.176 ms | 1.16 | 174.43 KB |
+
+**结论：**
+- 在真实查询路径里，数据库执行和数据读取占主导，ResultReader 的优化收益会比纯映射 benchmark 更温和
+- `ToList` 快路径已经处在最优组，说明扩展方法没有引入额外的明显回退
+- 如果要继续放大收益，下一步更值得优化的是映射对象创建和类型转换，而不是 ordinals 缓存本身
+
+---
+
+## TypeConverter 微基准
+
+这个基准聚焦 `TypeConverter` 本身的常见转换路径，用来评估包装层相对直接 BCL 调用的额外成本。
+
+| Method | Mean | Allocated |
+|--------|-----:|----------:|
+| BCL: TimeSpan.FromTicks | 0.602 ns | - |
+| BCL: new Guid(byte[]) | 2.549 ns | - |
+| TypeConverter: byte[] -> Guid | 12.308 ns | - |
+| TypeConverter: ticks -> TimeSpan | 14.233 ns | 24 B |
+| TypeConverter: Int32 same type | 14.891 ns | 24 B |
+| BCL: decimal.Parse invariant | 189.843 ns | - |
+| TypeConverter: string -> decimal | 190.496 ns | - |
+| TypeConverter: string -> TimeOnly | 305.121 ns | 24 B |
+| BCL: TimeOnly.Parse invariant | 317.617 ns | - |
+| TypeConverter: string -> DateOnly | 334.068 ns | 24 B |
+| BCL: DateOnly.Parse invariant | 342.090 ns | - |
+| TypeConverter: string -> DateTimeOffset | 549.464 ns | - |
+| BCL: DateTimeOffset.Parse invariant | 565.486 ns | - |
+
+**结论：**
+- `Int32` 同类型直返、`ticks -> TimeSpan`、`byte[] -> Guid` 都已经很轻，属于纳秒级成本
+- `string -> DateOnly` / `string -> TimeOnly` 与直接 BCL `Parse` 已经非常接近
+- `string -> DateTimeOffset` 仍然和直接 `DateTimeOffset.Parse(..., InvariantCulture)` 处于同一量级
+- 当前 `TypeConverter` 的热点已经更多集中在高层调用场景，而不是基础字符串解析本身
 
 ---
 

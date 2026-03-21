@@ -22,10 +22,20 @@ namespace Sqlx
 #endif
         T>
     {
+        private static IEntityProvider? _entityProvider;
+
         /// <summary>
         /// Gets or sets the cached entity provider for type T.
         /// </summary>
-        public static IEntityProvider? EntityProvider { get; set; }
+        public static IEntityProvider? EntityProvider
+        {
+            get => _entityProvider;
+            set
+            {
+                EntityProviderResolver.EnsureProviderMatches(typeof(T), value, nameof(value));
+                _entityProvider = value;
+            }
+        }
 
         /// <summary>
         /// Gets or sets the cached result reader for type T.
@@ -46,7 +56,9 @@ namespace Sqlx
         /// <returns>An IQueryable for building SQL queries.</returns>
         public static IQueryable<T> For(SqlDialect dialect)
         {
-            var provider = new SqlxQueryProvider<T>(dialect, EntityProvider)
+            EntityProviderResolver.EnsureProviderMatches(typeof(T), EntityProvider, nameof(EntityProvider));
+
+            var provider = new SqlxQueryProvider<T>(dialect, EntityProviderResolver.ResolveOrCreate<T>(EntityProvider))
             {
                 ResultReader = ResultReader
             };
@@ -61,7 +73,9 @@ namespace Sqlx
         /// <returns>An IQueryable for building SQL queries with subquery as source.</returns>
         public static IQueryable<T> For(SqlDialect dialect, IQueryable<T> subQuery)
         {
-            var provider = new SqlxQueryProvider<T>(dialect, EntityProvider)
+            EntityProviderResolver.EnsureProviderMatches(typeof(T), EntityProvider, nameof(EntityProvider));
+
+            var provider = new SqlxQueryProvider<T>(dialect, EntityProviderResolver.ResolveOrCreate<T>(EntityProvider))
             {
                 ResultReader = ResultReader
             };
@@ -77,7 +91,10 @@ namespace Sqlx
         /// <returns>An IQueryable for building SQL queries.</returns>
         public static IQueryable<T> For(SqlDialect dialect, IEntityProvider? entityProvider)
         {
-            var provider = new SqlxQueryProvider<T>(dialect, entityProvider ?? EntityProvider)
+            var selectedProvider = entityProvider ?? EntityProvider;
+            EntityProviderResolver.EnsureProviderMatches(typeof(T), selectedProvider, nameof(entityProvider));
+
+            var provider = new SqlxQueryProvider<T>(dialect, EntityProviderResolver.ResolveOrCreate<T>(selectedProvider))
             {
                 ResultReader = ResultReader
             };

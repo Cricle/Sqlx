@@ -64,6 +64,13 @@ public class Program
                 typeof(CountBenchmark),
                 typeof(PaginationBenchmark),
                 typeof(BatchInsertBenchmark),
+                typeof(DynamicResultReaderOrdinalBenchmark),
+                typeof(PureMappingResultReaderBenchmark),
+                typeof(TypeConverterBenchmark),
+                typeof(ParameterExtractionBenchmark),
+                typeof(ColumnNameResolverBenchmark),
+                typeof(TableNameResolverBenchmark),
+                typeof(SnakeCaseConversionBenchmark),
                 typeof(ExpressionBlockResultBenchmark)
             }, config);
         }

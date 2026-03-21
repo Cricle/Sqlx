@@ -72,7 +72,9 @@ namespace Sqlx.Expressions
 
             var parameters = new Dictionary<string, object?>();
             var placeholders = new Dictionary<string, string>();
-            var parser = new ExpressionParser(dialect, parameters, true, placeholders);
+            var parameterType = ExpressionHelper.FindRootParameterType(expression);
+            var entityProvider = parameterType != null ? EntityProviderResolver.ResolveOrCreate(parameterType) : null;
+            var parser = new ExpressionParser(dialect, parameters, true, placeholders, entityProvider);
             var sql = parser.Parse(expression);
 
             return new ExpressionBlockResult(sql, parameters, placeholders);
@@ -100,7 +102,8 @@ namespace Sqlx.Expressions
 
             var parameters = new Dictionary<string, object?>();
             var placeholders = new Dictionary<string, string>();
-            var parser = new ExpressionParser(dialect, parameters, true, placeholders);
+            var entityProvider = EntityProviderResolver.ResolveOrCreate<T>();
+            var parser = new ExpressionParser(dialect, parameters, true, placeholders, entityProvider);
             var setClauses = new List<string>(memberInit.Bindings.Count);
 
             foreach (var binding in memberInit.Bindings)
@@ -112,7 +115,7 @@ namespace Sqlx.Expressions
 
                 // Get column name from property name
                 var propertyName = assignment.Member.Name;
-                var columnName = ExpressionHelper.ConvertToSnakeCase(propertyName);
+                var columnName = ResolveColumnName(entityProvider, propertyName);
                 var wrappedColumn = dialect.WrapColumn(columnName);
 
                 // Parse the value expression
@@ -124,6 +127,11 @@ namespace Sqlx.Expressions
 
             var sql = string.Join(", ", setClauses);
             return new ExpressionBlockResult(sql, parameters, placeholders);
+        }
+
+        private static string ResolveColumnName(IEntityProvider entityProvider, string propertyName)
+        {
+            return ColumnNameResolver.Resolve(entityProvider, propertyName);
         }
 
         /// <summary>

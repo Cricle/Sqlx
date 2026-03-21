@@ -5,7 +5,7 @@
 namespace Sqlx;
 
 using System;
-using System.Collections.Concurrent;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -23,7 +23,7 @@ internal sealed class DynamicResultReader<
         System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicProperties |
         System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicConstructors)]
 #endif
-    T> : IResultReader<T>
+    T> : IResultReader<T>, IArrayOrdinalReader<T>
 {
     // Static cached delegates - generated once per type
     private static readonly Func<IDataReader, T> _readFunc;
@@ -142,11 +142,28 @@ internal sealed class DynamicResultReader<
 
     public T Read(IDataReader reader) => _readFunc(reader);
 
+    public T Read(IDataReader reader, int[] ordinals)
+    {
+        return _readWithOrdinalsFunc(reader, ordinals);
+    }
+
     public T Read(IDataReader reader, ReadOnlySpan<int> ordinals)
     {
-        // Convert span to array for the delegate
-        var ordinalsArray = ordinals.ToArray();
-        return _readWithOrdinalsFunc(reader, ordinalsArray);
+        if (ordinals.IsEmpty)
+        {
+            return _readFunc(reader);
+        }
+
+        var rentedOrdinals = ArrayPool<int>.Shared.Rent(ordinals.Length);
+        try
+        {
+            ordinals.CopyTo(rentedOrdinals);
+            return _readWithOrdinalsFunc(reader, rentedOrdinals);
+        }
+        finally
+        {
+            ArrayPool<int>.Shared.Return(rentedOrdinals);
+        }
     }
 
     public void GetOrdinals(IDataReader reader, Span<int> ordinals)

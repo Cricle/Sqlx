@@ -321,4 +321,103 @@ public class TypeConverterAdvancedTests
         var result = TypeConverter.Convert<Priority>(-1);
         Assert.AreEqual((Priority)(-1), result);
     }
+
+    [TestMethod]
+    public void Convert_StringToDateTimeOffset_Success()
+    {
+        var value = "2024-02-20T14:30:00+08:00";
+        var result = TypeConverter.Convert<DateTimeOffset>(value);
+
+        Assert.AreEqual(2024, result.Year);
+        Assert.AreEqual(2, result.Month);
+        Assert.AreEqual(20, result.Day);
+        Assert.AreEqual(TimeSpan.FromHours(8), result.Offset);
+    }
+
+    [TestMethod]
+    public void Convert_DateTimeToDateTimeOffset_Success()
+    {
+        var value = new DateTime(2024, 2, 20, 14, 30, 0, DateTimeKind.Utc);
+        var result = TypeConverter.Convert<DateTimeOffset>(value);
+
+        Assert.AreEqual(value, result.UtcDateTime);
+    }
+
+    [TestMethod]
+    public void Convert_StringToTimeSpan_Success()
+    {
+        var result = TypeConverter.Convert<TimeSpan>("01:02:03");
+        Assert.AreEqual(TimeSpan.FromHours(1) + TimeSpan.FromMinutes(2) + TimeSpan.FromSeconds(3), result);
+    }
+
+    [TestMethod]
+    public void Convert_TicksToTimeSpan_Success()
+    {
+        long ticks = TimeSpan.FromMinutes(15).Ticks;
+        var result = TypeConverter.Convert<TimeSpan>(ticks);
+        Assert.AreEqual(TimeSpan.FromMinutes(15), result);
+    }
+
+    [TestMethod]
+    public void Convert_StringToNullableDateTimeOffset_Success()
+    {
+        var value = "2024-02-20T14:30:00+00:00";
+        var result = TypeConverter.Convert<DateTimeOffset?>(value);
+        Assert.IsNotNull(result);
+        Assert.AreEqual(TimeSpan.Zero, result.Value.Offset);
+    }
+
+    [TestMethod]
+    public void Convert_StringToNullableTimeSpan_Success()
+    {
+        var result = TypeConverter.Convert<TimeSpan?>("00:05:00");
+        Assert.IsNotNull(result);
+        Assert.AreEqual(TimeSpan.FromMinutes(5), result.Value);
+    }
+
+    [TestMethod]
+    public void Convert_StringToDateOnly_Success()
+    {
+        var result = TypeConverter.Convert<DateOnly>("2024-02-20");
+        Assert.AreEqual(new DateOnly(2024, 2, 20), result);
+    }
+
+    [TestMethod]
+    public void Convert_DateTimeToDateOnly_Success()
+    {
+        var value = new DateTime(2024, 2, 20, 14, 30, 0);
+        var result = TypeConverter.Convert<DateOnly>(value);
+        Assert.AreEqual(new DateOnly(2024, 2, 20), result);
+    }
+
+    [TestMethod]
+    public void Convert_StringToTimeOnly_Success()
+    {
+        var result = TypeConverter.Convert<TimeOnly>("14:30:15");
+        Assert.AreEqual(new TimeOnly(14, 30, 15), result);
+    }
+
+    [TestMethod]
+    public void Convert_TimeSpanToTimeOnly_Success()
+    {
+        var value = TimeSpan.FromHours(14) + TimeSpan.FromMinutes(30) + TimeSpan.FromSeconds(15);
+        var result = TypeConverter.Convert<TimeOnly>(value);
+        Assert.AreEqual(new TimeOnly(14, 30, 15), result);
+    }
+
+    [TestMethod]
+    public void Convert_StringToNullableDateOnly_Success()
+    {
+        var result = TypeConverter.Convert<DateOnly?>("2024-02-21");
+        Assert.IsNotNull(result);
+        Assert.AreEqual(new DateOnly(2024, 2, 21), result.Value);
+    }
+
+    [TestMethod]
+    public void Convert_StringToNullableTimeOnly_Success()
+    {
+        var result = TypeConverter.Convert<TimeOnly?>("09:45:00");
+        Assert.IsNotNull(result);
+        Assert.AreEqual(new TimeOnly(9, 45, 0), result.Value);
+    }
 }

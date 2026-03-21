@@ -6,6 +6,7 @@ namespace Sqlx;
 
 using System;
 using System.Data;
+using System.Globalization;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -16,6 +17,13 @@ using System.Reflection;
 public static class TypeConverter
 {
     private static readonly Type[] IntParameterTypes = new[] { typeof(int) };
+    private static readonly Type? DateOnlyType = typeof(DateTime).Assembly.GetType("System.DateOnly");
+    private static readonly Type? TimeOnlyType = typeof(DateTime).Assembly.GetType("System.TimeOnly");
+    private static readonly Func<DateTime, object>? DateOnlyFromDateTime = CreateUnaryBoxingDelegate<DateTime>(DateOnlyType, "FromDateTime");
+    private static readonly Func<string, IFormatProvider, object>? DateOnlyParse = CreateBinaryBoxingDelegate<string, IFormatProvider>(DateOnlyType, "Parse");
+    private static readonly Func<DateTime, object>? TimeOnlyFromDateTime = CreateUnaryBoxingDelegate<DateTime>(TimeOnlyType, "FromDateTime");
+    private static readonly Func<TimeSpan, object>? TimeOnlyFromTimeSpan = CreateUnaryBoxingDelegate<TimeSpan>(TimeOnlyType, "FromTimeSpan");
+    private static readonly Func<string, IFormatProvider, object>? TimeOnlyParse = CreateBinaryBoxingDelegate<string, IFormatProvider>(TimeOnlyType, "Parse");
 
     /// <summary>
     /// Converts a database value to the target type using efficient conversion.
@@ -76,16 +84,165 @@ public static class TypeConverter
             return (T)value;
         }
 
+        if (sourceType == typeof(string))
+        {
+            return ConvertFromString<T>((string)value, underlyingType);
+        }
+
+        // Handle DateTimeOffset
+        if (underlyingType == typeof(DateTimeOffset))
+        {
+            if (sourceType == typeof(DateTime))
+            {
+                return (T)(object)new DateTimeOffset((DateTime)value);
+            }
+
+            return (T)value;
+        }
+
+        // Handle DateOnly
+        if (IsDateOnlyType(underlyingType))
+        {
+            if (sourceType == typeof(DateTime))
+            {
+                return (T)CreateDateOnlyFromDateTime((DateTime)value);
+            }
+
+            if (sourceType == typeof(DateTimeOffset))
+            {
+                return (T)CreateDateOnlyFromDateTime(((DateTimeOffset)value).DateTime);
+            }
+
+            return (T)value;
+        }
+
+        // Handle TimeSpan
+        if (underlyingType == typeof(TimeSpan))
+        {
+            if (value is IConvertible convertible)
+            {
+                return (T)(object)TimeSpan.FromTicks(convertible.ToInt64(CultureInfo.InvariantCulture));
+            }
+
+            return (T)value;
+        }
+
+        // Handle TimeOnly
+        if (IsTimeOnlyType(underlyingType))
+        {
+            if (sourceType == typeof(TimeSpan))
+            {
+                return (T)CreateTimeOnlyFromTimeSpan((TimeSpan)value);
+            }
+
+            if (sourceType == typeof(DateTime))
+            {
+                return (T)CreateTimeOnlyFromDateTime((DateTime)value);
+            }
+
+            if (sourceType == typeof(DateTimeOffset))
+            {
+                return (T)CreateTimeOnlyFromDateTime(((DateTimeOffset)value).DateTime);
+            }
+
+            return (T)value;
+        }
+
         // Use TypeCode-based conversion for primitive types
         var typeCode = Type.GetTypeCode(underlyingType);
         if (typeCode != TypeCode.Object)
         {
-            var converted = System.Convert.ChangeType(value, typeCode);
+            var converted = System.Convert.ChangeType(value, typeCode, CultureInfo.InvariantCulture);
             return (T)converted;
         }
 
         // Fallback to direct cast
-        return (T)System.Convert.ChangeType(value, underlyingType);
+        return (T)System.Convert.ChangeType(value, underlyingType, CultureInfo.InvariantCulture);
+    }
+
+    private static T ConvertFromString<T>(string value, Type targetType)
+    {
+        if (targetType == typeof(string))
+        {
+            return (T)(object)value;
+        }
+
+        if (targetType == typeof(int))
+        {
+            return (T)(object)int.Parse(value, NumberStyles.Integer, CultureInfo.InvariantCulture);
+        }
+
+        if (targetType == typeof(long))
+        {
+            return (T)(object)long.Parse(value, NumberStyles.Integer, CultureInfo.InvariantCulture);
+        }
+
+        if (targetType == typeof(short))
+        {
+            return (T)(object)short.Parse(value, NumberStyles.Integer, CultureInfo.InvariantCulture);
+        }
+
+        if (targetType == typeof(byte))
+        {
+            return (T)(object)byte.Parse(value, NumberStyles.Integer, CultureInfo.InvariantCulture);
+        }
+
+        if (targetType == typeof(decimal))
+        {
+            return (T)(object)decimal.Parse(value, NumberStyles.Number, CultureInfo.InvariantCulture);
+        }
+
+        if (targetType == typeof(double))
+        {
+            return (T)(object)double.Parse(value, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture);
+        }
+
+        if (targetType == typeof(float))
+        {
+            return (T)(object)float.Parse(value, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture);
+        }
+
+        if (targetType == typeof(bool))
+        {
+            return (T)(object)bool.Parse(value);
+        }
+
+        if (targetType == typeof(DateTime))
+        {
+            return (T)(object)DateTime.Parse(value, CultureInfo.InvariantCulture);
+        }
+
+        if (targetType == typeof(DateTimeOffset))
+        {
+            return (T)(object)DateTimeOffset.Parse(value, CultureInfo.InvariantCulture);
+        }
+
+        if (IsDateOnlyType(targetType))
+        {
+            return (T)ParseDateOnly(value);
+        }
+
+        if (targetType == typeof(TimeSpan))
+        {
+            return (T)(object)TimeSpan.Parse(value, CultureInfo.InvariantCulture);
+        }
+
+        if (IsTimeOnlyType(targetType))
+        {
+            return (T)ParseTimeOnly(value);
+        }
+
+        if (targetType == typeof(Guid))
+        {
+            return (T)(object)Guid.Parse(value);
+        }
+
+        if (targetType == typeof(byte[]))
+        {
+            return (T)(object)System.Convert.FromBase64String(value);
+        }
+
+        return (T)System.Convert.ChangeType(value, targetType, CultureInfo.InvariantCulture);
     }
 
     /// <summary>
@@ -159,5 +316,90 @@ public static class TypeConverter
         return methodName != null 
             ? typeof(IDataRecord).GetMethod(methodName, IntParameterTypes)
             : null;
+    }
+
+    private static bool IsDateOnlyType(Type type) => DateOnlyType != null && type == DateOnlyType;
+
+    private static bool IsTimeOnlyType(Type type) => TimeOnlyType != null && type == TimeOnlyType;
+
+    private static object CreateDateOnlyFromDateTime(DateTime value)
+    {
+        return DateOnlyFromDateTime?.Invoke(value)
+            ?? throw new InvalidOperationException("DateOnly conversion is not available on this target framework.");
+    }
+
+    private static object CreateTimeOnlyFromDateTime(DateTime value)
+    {
+        return TimeOnlyFromDateTime?.Invoke(value)
+            ?? throw new InvalidOperationException("TimeOnly conversion is not available on this target framework.");
+    }
+
+    private static object CreateTimeOnlyFromTimeSpan(TimeSpan value)
+    {
+        return TimeOnlyFromTimeSpan?.Invoke(value)
+            ?? throw new InvalidOperationException("TimeOnly conversion is not available on this target framework.");
+    }
+
+    private static object ParseDateOnly(string value)
+    {
+        return DateOnlyParse?.Invoke(value, CultureInfo.InvariantCulture)
+            ?? throw new InvalidOperationException("DateOnly parsing is not available on this target framework.");
+    }
+
+    private static object ParseTimeOnly(string value)
+    {
+        return TimeOnlyParse?.Invoke(value, CultureInfo.InvariantCulture)
+            ?? throw new InvalidOperationException("TimeOnly parsing is not available on this target framework.");
+    }
+
+    private static Func<TArg, object>? CreateUnaryBoxingDelegate<TArg>(Type? declaringType, string methodName)
+    {
+        if (declaringType == null)
+        {
+            return null;
+        }
+
+        var method = declaringType.GetMethod(
+            methodName,
+            BindingFlags.Public | BindingFlags.Static,
+            binder: null,
+            types: new[] { typeof(TArg) },
+            modifiers: null);
+
+        if (method == null)
+        {
+            return null;
+        }
+
+        var arg = Expression.Parameter(typeof(TArg), "arg");
+        var call = Expression.Call(method, arg);
+        var box = Expression.Convert(call, typeof(object));
+        return Expression.Lambda<Func<TArg, object>>(box, arg).Compile();
+    }
+
+    private static Func<TArg1, TArg2, object>? CreateBinaryBoxingDelegate<TArg1, TArg2>(Type? declaringType, string methodName)
+    {
+        if (declaringType == null)
+        {
+            return null;
+        }
+
+        var method = declaringType.GetMethod(
+            methodName,
+            BindingFlags.Public | BindingFlags.Static,
+            binder: null,
+            types: new[] { typeof(TArg1), typeof(TArg2) },
+            modifiers: null);
+
+        if (method == null)
+        {
+            return null;
+        }
+
+        var arg1 = Expression.Parameter(typeof(TArg1), "arg1");
+        var arg2 = Expression.Parameter(typeof(TArg2), "arg2");
+        var call = Expression.Call(method, arg1, arg2);
+        var box = Expression.Convert(call, typeof(object));
+        return Expression.Lambda<Func<TArg1, TArg2, object>>(box, arg1, arg2).Compile();
     }
 }

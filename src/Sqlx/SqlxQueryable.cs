@@ -81,16 +81,19 @@ namespace Sqlx
         /// <param name="expression">The expression tree.</param>
         /// <param name="connection">The database connection.</param>
         /// <param name="resultReader">The result reader.</param>
+        /// <param name="transaction">The database transaction.</param>
         internal SqlxQueryable(
             SqlxQueryProvider<T> provider,
             Expression expression,
             DbConnection? connection,
-            IResultReader<T>? resultReader)
+            IResultReader<T>? resultReader,
+            DbTransaction? transaction = null)
         {
             _provider = provider ?? throw new ArgumentNullException(nameof(provider));
             Expression = expression ?? throw new ArgumentNullException(nameof(expression));
             Connection = connection;
             ResultReader = resultReader;
+            Transaction = transaction;
         }
 
         /// <inheritdoc/>
@@ -128,6 +131,12 @@ namespace Sqlx
             set => _provider.ResultReader = value;
         }
 
+        internal DbTransaction? Transaction
+        {
+            get => _provider.Transaction;
+            set => _provider.Transaction = value;
+        }
+
         /// <inheritdoc/>
         public IEnumerator<T> GetEnumerator()
         {
@@ -142,7 +151,7 @@ namespace Sqlx
             }
 
             var (sql, parameters) = _provider.ToSqlWithParameters(Expression);
-            return DbExecutor.ExecuteReader(Connection, sql, parameters, ResultReader).GetEnumerator();
+            return DbExecutor.ExecuteReader(Connection, sql, parameters, ResultReader, Transaction).GetEnumerator();
         }
 
         /// <inheritdoc/>
@@ -165,7 +174,7 @@ namespace Sqlx
             }
 
             var (sql, parameters) = _provider.ToSqlWithParameters(Expression);
-            return DbExecutor.ExecuteReaderAsync(Connection, sql, parameters, ResultReader, cancellationToken);
+            return DbExecutor.ExecuteReaderAsync(Connection, sql, parameters, ResultReader, Transaction, cancellationToken);
         }
     }
 }

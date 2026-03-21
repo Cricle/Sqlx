@@ -550,10 +550,56 @@ public class PlaceholderHandlerBoundaryTests
     [TestMethod]
     public void ExtractParameters_ParameterInString_NotExtracted()
     {
-        // This tests current behavior - parameters in string literals might still be extracted
-        // depending on implementation
         var result = PlaceholderProcessor.ExtractParameters("SELECT * FROM users WHERE name = '@notaparam'");
-        // Current implementation extracts it - this documents the behavior
+        Assert.AreEqual(0, result.Count);
+    }
+
+    [TestMethod]
+    public void ExtractParameters_ParameterOutsideAndInsideString_OnlyExtractsRealParameter()
+    {
+        var result = PlaceholderProcessor.ExtractParameters("SELECT * FROM users WHERE name = '@notaparam' AND id = @id");
+        Assert.AreEqual(1, result.Count);
+        Assert.AreEqual("id", result[0]);
+    }
+
+    [TestMethod]
+    public void ExtractParameters_ParameterInLineComment_NotExtracted()
+    {
+        var result = PlaceholderProcessor.ExtractParameters("SELECT * FROM users -- @commented\r\nWHERE id = @id");
+        Assert.AreEqual(1, result.Count);
+        Assert.AreEqual("id", result[0]);
+    }
+
+    [TestMethod]
+    public void ExtractParameters_ParameterInBlockComment_NotExtracted()
+    {
+        var result = PlaceholderProcessor.ExtractParameters("SELECT /* @ignored */ * FROM users WHERE id = @id");
+        Assert.AreEqual(1, result.Count);
+        Assert.AreEqual("id", result[0]);
+    }
+
+    [TestMethod]
+    public void ExtractParameters_PostgreSqlCast_NotExtractedAsParameter()
+    {
+        var result = PlaceholderProcessor.ExtractParameters("SELECT created_at::text FROM users WHERE id = @id");
+        Assert.AreEqual(1, result.Count);
+        Assert.AreEqual("id", result[0]);
+    }
+
+    [TestMethod]
+    public void ExtractParameters_DollarQuotedString_NotExtracted()
+    {
+        var result = PlaceholderProcessor.ExtractParameters("SELECT $$@ignored$$, @id FROM users");
+        Assert.AreEqual(1, result.Count);
+        Assert.AreEqual("id", result[0]);
+    }
+
+    [TestMethod]
+    public void ExtractParameters_TaggedDollarQuotedString_NotExtracted()
+    {
+        var result = PlaceholderProcessor.ExtractParameters("SELECT $tag$@ignored$tag$, @id FROM users");
+        Assert.AreEqual(1, result.Count);
+        Assert.AreEqual("id", result[0]);
     }
 
     #endregion

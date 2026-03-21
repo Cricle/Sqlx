@@ -4,24 +4,24 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.txt)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-purple.svg)](#)
 [![LTS](https://img.shields.io/badge/LTS-.NET%2010-green.svg)](#)
-[![Tests](https://img.shields.io/badge/tests-3124%20passing-brightgreen.svg)](#)
+[![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](#)
 [![Coverage](https://img.shields.io/badge/branch%20coverage-83.2%25-green.svg)](#)
 [![AOT](https://img.shields.io/badge/AOT-ready-blue.svg)](#)
 [![Performance](https://img.shields.io/badge/performance-optimized-orange.svg)](#)
 
-高性能、AOT 友好的 .NET 数据库访问库。使用源生成器在编译时生成代码，零运行时反射，完全支持 Native AOT。
+高性能、AOT 友好的 .NET 数据库访问库。源生成主路径在编译时生成代码，避免运行时反射；对于未标记 `[Sqlx]` 的普通 POCO，也提供反射 fallback 以保持可用性。在单条查询、小批量读取和低 GC 压力场景下表现突出。
 
 ## 核心特性
 
-- **🚀 高性能** - 优化的 ResultReader，某些场景比 Dapper.AOT 快 5.8%，最低 GC 压力
-- **⚡ 零反射** - 编译时源生成，运行时无反射开销
+- **🚀 高性能** - 单条查询和小批量读取具备竞争力，ResultReader/ordinals 热路径持续优化，GC 压力低
+- **⚡ 源生成主路径零反射** - 编译时生成高频代码路径；普通 POCO 查询支持反射 fallback
 - **🎯 类型安全** - 编译时验证 SQL 模板和表达式
-- **🌐 多数据库** - SQLite、PostgreSQL、MySQL、SQL Server、Oracle、DB2
-- **📦 AOT 就绪** - 完全支持 Native AOT，通过 3124 个单元测试
+- **🌐 多数据库** - 当前维护并验证 SQLite、PostgreSQL、MySQL、SQL Server；保留 Oracle、DB2 方言/API 兼容入口
+- **📦 AOT 就绪** - 完全支持 Native AOT，已通过大规模单元测试验证
 - **🔧 LINQ 支持** - IQueryable 接口，支持 Where/Select/OrderBy/Join 等
 - **💾 智能缓存** - SqlQuery\<T\> 泛型缓存，自动注册 EntityProvider
 - **🔍 自动发现** - 源生成器自动发现 SqlQuery\<T\> 和 SqlTemplate 中的实体类型
-- **✨ 智能优化** - 自动选择最优 ResultReader 策略，零配置
+- **✨ 智能优化** - 自动使用 cached ordinals、DynamicResultReader 快路径和低分配渲染策略
 
 ## 快速开始
 
@@ -611,7 +611,7 @@ SqlBuilder 提供高性能、类型安全的动态 SQL 构建能力，使用 C# 
 - **⚡ 高性能** - ArrayPool<char> 零堆分配，Expression tree 优化（比反射快 20-34%）
 - **🔧 SqlTemplate 集成** - 支持 {{columns}}、{{table}} 等占位符
 - **🔗 子查询支持** - 组合式查询构建，自动参数冲突解决
-- **📦 AOT 兼容** - 零反射设计，完全支持 Native AOT
+- **📦 AOT 兼容** - 源生成主路径对 Native AOT 友好，完全支持 Native AOT
 
 ### 快速示例
 
@@ -644,11 +644,7 @@ var users = await connection.QueryAsync(
 
 ```csharp
 // 使用 {{columns}}、{{table}} 等占位符
-var context = new PlaceholderContext(
-    SqlDefine.SQLite, 
-    "users", 
-    UserEntityProvider.Default.Columns
-);
+var context = PlaceholderContext.Create<User>(SqlDefine.SQLite);
 
 using var builder = new SqlBuilder(context);
 builder.AppendTemplate(
@@ -1023,7 +1019,13 @@ using var meterProvider = Sdk.CreateMeterProviderBuilder()
 - ✅ **内存效率高** - 比 Dapper.AOT 少分配 16.4% 内存（1000行）
 - ✅ **GC 压力低** - Gen1 GC 比 Dapper.AOT 低 16.7%，比 FreeSql 低 50%
 - ✅ **小数据集优势** - 在 Web API 主要场景（10-100行）中性能最优
+- ✅ **映射层优化有效** - 纯映射 benchmark 中，generated cached ordinals 比 uncached ordinals 快约 4.6 倍
+- ✅ **动态投影更快** - DynamicResultReader 的 array fast path 比 span fallback 快约 24%
 - ⚠️ **大数据集权衡** - 1000行时比 FreeSql 慢 19.2%，但内存和 GC 更优
+
+**补充说明：**
+- 纯映射 benchmark 更能反映 ResultReader 和 ordinals 优化本身
+- 真实 SQLite 查询里，这部分收益会被数据库执行时间稀释，所以端到端差距通常比纯映射 benchmark 更小
 
 > 详细数据见 [性能基准测试结果](docs/benchmark-results.md)
 
@@ -1035,8 +1037,10 @@ using var meterProvider = Sdk.CreateMeterProviderBuilder()
 | PostgreSQL | `SqlDefineTypes.PostgreSql` | ✅ 完全支持 |
 | MySQL | `SqlDefineTypes.MySql` | ✅ 完全支持 |
 | SQL Server | `SqlDefineTypes.SqlServer` | ✅ 完全支持 |
-| Oracle | `SqlDefineTypes.Oracle` | ✅ 完全支持 |
-| IBM DB2 | `SqlDefineTypes.DB2` | ✅ 完全支持 |
+| Oracle | `SqlDefineTypes.Oracle` | ⚠️ 保留兼容入口，当前版本未纳入支持承诺 |
+| IBM DB2 | `SqlDefineTypes.DB2` | ⚠️ 保留兼容入口，当前版本未纳入支持承诺 |
+
+**当前维护/验证范围：** SQLite、PostgreSQL、MySQL、SQL Server。Oracle 和 DB2 的方言/API 入口仍然保留，但当前版本未纳入持续验证和支持承诺。
 
 **推荐：** .NET 10 (LTS) - 支持到 2028 年 11 月，性能最佳
 

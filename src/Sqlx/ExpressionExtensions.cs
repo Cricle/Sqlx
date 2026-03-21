@@ -34,7 +34,8 @@ namespace Sqlx
 
             var d = dialect ?? SqlDefine.SQLite;
             var parameters = new Dictionary<string, object?>();
-            var parser = new ExpressionParser(d, parameters, false);
+            var entityProvider = EntityProviderResolver.ResolveOrCreate<T>();
+            var parser = new ExpressionParser(d, parameters, false, entityProvider: entityProvider);
             return parser.Parse(predicate.Body);
         }
 

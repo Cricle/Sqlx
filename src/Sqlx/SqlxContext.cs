@@ -20,7 +20,7 @@ namespace Sqlx
     /// <remarks>
     /// <para>SqlxContext provides EF Core-style API for managing repositories while maintaining Sqlx's core principles:</para>
     /// <list type="bullet">
-    /// <item><description>Zero reflection at runtime</description></item>
+    /// <item><description>Source-generated repository hot paths avoid runtime reflection</description></item>
     /// <item><description>Full Native AOT compatibility</description></item>
     /// <item><description>Minimal memory overhead</description></item>
     /// <item><description>Compile-time code generation</description></item>

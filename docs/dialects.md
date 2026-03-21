@@ -1,6 +1,9 @@
 # Database Dialects
 
-Sqlx supports multiple database dialects, each providing database-specific SQL generation.
+Sqlx provides multiple database dialect implementations for database-specific SQL generation.
+
+Current support promise and routine validation cover SQLite, MySQL, PostgreSQL, and SQL Server.
+Oracle and DB2 dialect entries remain available for compatibility, but are not part of the actively validated support matrix for this release.
 
 ## Supported Dialects
 

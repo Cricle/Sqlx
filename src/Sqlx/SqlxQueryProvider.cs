@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
+using Sqlx.Expressions;
 
 #if NET5_0_OR_GREATER
 using System.Diagnostics.CodeAnalysis;
@@ -29,14 +30,25 @@ namespace Sqlx
         public SqlxQueryProvider(SqlDialect dialect, IEntityProvider? entityProvider = null)
         {
             Dialect = dialect ?? throw new ArgumentNullException(nameof(dialect));
-            EntityProvider = entityProvider;
+            EntityProvider = EntityProviderResolver.ResolveOrCreate<T>(entityProvider);
         }
 
         /// <summary>Gets the SQL dialect.</summary>
         public SqlDialect Dialect { get; }
         internal DbConnection? Connection { get; set; }
+        internal DbTransaction? Transaction { get; set; }
         internal object? ResultReader { get; set; }
         internal IEntityProvider? EntityProvider { get; }
+
+        internal SqlxQueryProvider<T> Clone()
+        {
+            return new SqlxQueryProvider<T>(Dialect, EntityProvider)
+            {
+                Connection = Connection,
+                Transaction = Transaction,
+                ResultReader = ResultReader,
+            };
+        }
 
         /// <inheritdoc/>
         public IQueryable CreateQuery(Expression expression) => throw new NotSupportedException("Use CreateQuery<T>.");
@@ -49,11 +61,17 @@ namespace Sqlx
         TElement>(Expression expression)
         {
             if (typeof(TElement) == typeof(T))
+            {
+                var clonedProvider = Clone() as SqlxQueryProvider<TElement>
+                    ?? throw new InvalidOperationException("Failed to clone query provider.");
+
                 return new SqlxQueryable<TElement>(
-                    (this as SqlxQueryProvider<TElement>)!, 
+                    clonedProvider, 
                     expression, 
                     Connection, 
-                    ResultReader as IResultReader<TElement>);
+                    ResultReader as IResultReader<TElement>,
+                    Transaction);
+            }
 
             // Get cached reader or create dynamic reader for anonymous/projected types
             var reader = SqlQuery<TElement>.ResultReader;
@@ -66,6 +84,7 @@ namespace Sqlx
             var provider = new SqlxQueryProvider<TElement>(Dialect, EntityProvider)
             {
                 Connection = Connection,
+                Transaction = Transaction,
                 ResultReader = reader
             };
             return new SqlxQueryable<TElement>(provider, expression);
@@ -83,7 +102,9 @@ namespace Sqlx
             {
                 var type = typeof(TElement);
                 if (type.IsPrimitive || type == typeof(string) || type == typeof(decimal) ||
-                    type == typeof(DateTime) || type == typeof(Guid) || type == typeof(TimeSpan) ||
+                    type == typeof(DateTime) || type == typeof(DateTimeOffset) ||
+                    type == typeof(Guid) || type == typeof(TimeSpan) ||
+                    type.FullName == "System.DateOnly" || type.FullName == "System.TimeOnly" ||
                     (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IGrouping<,>)))
                     return false;
                 return true;
@@ -118,7 +139,12 @@ namespace Sqlx
                 throw new InvalidOperationException("ResultReader is not set.");
 
             var (sql, parameters) = ToSqlWithParameters(methodCall);
-            var result = DbExecutor.ExecuteReader(Connection!, sql, parameters, (IResultReader<TResult>)ResultReader);
+            var result = DbExecutor.ExecuteReader(
+                Connection!,
+                sql,
+                parameters,
+                (IResultReader<TResult>)ResultReader,
+                Transaction);
             return throwIfEmpty ? result.First() : result.FirstOrDefault()!;
         }
 
@@ -126,7 +152,7 @@ namespace Sqlx
         {
             var (sql, parameters) = ToSqlWithParameters(methodCall.Arguments[0]);
             var countSql = $"SELECT COUNT(*) FROM ({sql}) AS q";
-            var result = DbExecutor.ExecuteScalar(Connection!, countSql, parameters);
+            var result = DbExecutor.ExecuteScalar(Connection!, countSql, parameters, Transaction);
             return (TResult)Convert.ChangeType(result!, typeof(TResult));
         }
 
@@ -136,7 +162,7 @@ namespace Sqlx
             var column = ExtractColumnExpression(methodCall);
             var func = GetAggregateFunction(methodCall.Method.Name, column);
             var aggSql = $"SELECT {func} FROM ({sql}) AS q";
-            var result = DbExecutor.ExecuteScalar(Connection!, aggSql, parameters);
+            var result = DbExecutor.ExecuteScalar(Connection!, aggSql, parameters, Transaction);
             return (TResult)Convert.ChangeType(result!, typeof(TResult));
         }
 
@@ -152,10 +178,27 @@ namespace Sqlx
             if (arg is LambdaExpression { Body: MemberExpression member })
             {
                 var propName = member.Member.Name;
-                var colName = EntityProvider?.Columns.FirstOrDefault(c => c.PropertyName == propName)?.Name ?? propName;
+                var colName = ResolveAggregateColumnName(propName);
                 return Dialect.WrapColumn(colName);
             }
             return "*";
+        }
+
+        private string ResolveAggregateColumnName(string propertyName)
+        {
+            if (ColumnNameResolver.TryResolveMappedColumnName(EntityProvider, propertyName, out var columnName))
+            {
+                return columnName;
+            }
+
+            if (EntityProvider?.Columns.Count > 0)
+            {
+                // If the provider exists but doesn't know this member, we're likely aggregating
+                // over a projected alias rather than an entity property.
+                return propertyName;
+            }
+
+            return ExpressionHelper.ConvertToSnakeCase(propertyName);
         }
 
         private string GetAggregateFunction(string methodName, string column) => methodName switch

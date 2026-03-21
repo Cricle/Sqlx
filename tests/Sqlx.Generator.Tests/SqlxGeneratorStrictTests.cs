@@ -247,6 +247,80 @@ namespace Test
     }
 
     [TestMethod]
+    public void GenerateEntityProvider_WithDateTimeOffsetAndTimeSpan_EmitsExpectedDbTypes()
+    {
+        // Arrange
+        var source = @"
+using Sqlx.Annotations;
+using System;
+
+namespace Test
+{
+    [Sqlx]
+    public class TemporalEntity
+    {
+        public int Id { get; set; }
+        public DateTimeOffset OccurredAt { get; set; }
+        public TimeSpan Duration { get; set; }
+        public DateOnly ScheduledOn { get; set; }
+        public TimeOnly StartsAt { get; set; }
+    }
+}";
+
+        // Act
+        var generator = new SqlxGenerator();
+        var result = GeneratorTestHelper.RunGenerator(source, generator);
+
+        // Assert
+        var generatedSources = result.GetAllGeneratedSources().ToList();
+        var entityProviderFile = generatedSources.FirstOrDefault(s => s.FileName.Contains("TemporalEntity"));
+        Assert.IsTrue(entityProviderFile != default, "Should generate TemporalEntity file");
+
+        var generatedCode = entityProviderFile.Source;
+
+        Assert.IsTrue(generatedCode.Contains("DbType.DateTimeOffset"), "Should contain DateTimeOffset type");
+        Assert.IsTrue(generatedCode.Contains("DbType.Time"), "Should contain Time type for TimeSpan");
+        Assert.IsTrue(generatedCode.Contains("DbType.Date"), "Should contain Date type for DateOnly");
+    }
+
+    [TestMethod]
+    public void GenerateEntityProvider_WithUnsignedIntegralTypes_EmitsExpectedDbTypes()
+    {
+        // Arrange
+        var source = @"
+using Sqlx.Annotations;
+
+namespace Test
+{
+    [Sqlx]
+    public class UnsignedEntity
+    {
+        public int Id { get; set; }
+        public sbyte SignedByteValue { get; set; }
+        public ushort UnsignedShortValue { get; set; }
+        public uint UnsignedIntValue { get; set; }
+        public ulong UnsignedLongValue { get; set; }
+    }
+}";
+
+        // Act
+        var generator = new SqlxGenerator();
+        var result = GeneratorTestHelper.RunGenerator(source, generator);
+
+        // Assert
+        var generatedSources = result.GetAllGeneratedSources().ToList();
+        var entityProviderFile = generatedSources.FirstOrDefault(s => s.FileName.Contains("UnsignedEntity"));
+        Assert.IsTrue(entityProviderFile != default, "Should generate UnsignedEntity file");
+
+        var generatedCode = entityProviderFile.Source;
+
+        Assert.IsTrue(generatedCode.Contains("DbType.SByte"), "Should contain SByte type");
+        Assert.IsTrue(generatedCode.Contains("DbType.UInt16"), "Should contain UInt16 type");
+        Assert.IsTrue(generatedCode.Contains("DbType.UInt32"), "Should contain UInt32 type");
+        Assert.IsTrue(generatedCode.Contains("DbType.UInt64"), "Should contain UInt64 type");
+    }
+
+    [TestMethod]
     public void GenerateEntityProvider_ColumnOrder_IsStable()
     {
         // Arrange

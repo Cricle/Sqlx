@@ -581,8 +581,10 @@ public class DynamicResultReaderTests
         reader.GetOrdinals(dbReader, ordinals);
         
         // Read should use the static delegate
-        var result = reader.Read(dbReader);
+        var result = reader.Read(dbReader, ordinals);
         Assert.IsNotNull(result);
+        Assert.AreEqual(1, result.Id);
+        Assert.AreEqual("Alice", result.Name);
     }
 
     [TestMethod]
@@ -591,6 +593,26 @@ public class DynamicResultReaderTests
         // Test that default constructor uses property names from the type
         var reader = new DynamicResultReader<TestAnonymousType1>();
         Assert.IsNotNull(reader);
+    }
+
+    [TestMethod]
+    public void DynamicReader_ToList_UsesOrdinalCachingPath()
+    {
+        var reader = new DynamicResultReader<TestAnonymousType1>(new[] { "id", "name" });
+        var data = new object[]
+        {
+            new { Id = 1, Name = "Alice" },
+            new { Id = 2, Name = "Bob" }
+        };
+
+        using var dbReader = new AnonymousTypeDbReader(data);
+        var results = reader.ToList(dbReader);
+
+        Assert.AreEqual(2, results.Count);
+        Assert.AreEqual(1, results[0].Id);
+        Assert.AreEqual("Alice", results[0].Name);
+        Assert.AreEqual(2, results[1].Id);
+        Assert.AreEqual("Bob", results[1].Name);
     }
 
     #endregion

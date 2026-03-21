@@ -8,6 +8,7 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Linq.Expressions;
+using System.Text;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
@@ -180,7 +181,7 @@ public sealed class SqlBuilder : IDisposable
         ThrowIfDisposed();
 
         // Generate unique parameter name
-        var paramName = $"p{_parameterCounter++}";
+        var paramName = GenerateUniqueParameterName();
         
         // Add parameter to dictionary
         _parameters[paramName] = value;
@@ -470,6 +471,15 @@ public sealed class SqlBuilder : IDisposable
     public SqlBuilder AppendSubquery(SqlBuilder subquery)
     {
         ThrowIfDisposed();
+        if (subquery == null)
+            throw new ArgumentNullException(nameof(subquery));
+
+        if (!string.Equals(_dialect.DatabaseType, subquery._dialect.DatabaseType, StringComparison.Ordinal) ||
+            !string.Equals(_dialect.ParameterPrefix, subquery._dialect.ParameterPrefix, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "Subquery dialect and parameter prefix must match the parent SqlBuilder.");
+        }
 
         // Build the subquery
         var subqueryTemplate = subquery.Build();
@@ -479,104 +489,142 @@ public sealed class SqlBuilder : IDisposable
         if (string.IsNullOrWhiteSpace(subquerySql))
             return this;
 
-        // Append opening parenthesis
-        EnsureCapacity(1 + subquerySql.Length + 1);
-        _buffer[_position++] = '(';
+        var usedNames = new HashSet<string>(_parameters.Keys, StringComparer.Ordinal);
+        var parameterNameMap = new Dictionary<string, string>(StringComparer.Ordinal);
 
-        // Append subquery SQL
-        subquerySql.AsSpan().CopyTo(_buffer.AsSpan(_position));
-        _position += subquerySql.Length;
-
-        // Append closing parenthesis
-        _buffer[_position++] = ')';
-
-        // Merge subquery parameters, resolving conflicts
         foreach (var kvp in subqueryParams)
         {
-            var paramName = kvp.Key;
-            
-            // Check for parameter name conflict
-            if (_parameters.ContainsKey(paramName))
+            var finalName = kvp.Key;
+            if (usedNames.Contains(finalName))
             {
-                // Rename the parameter to avoid conflict
-                var newParamName = $"p{_parameterCounter++}";
-                _parameters[newParamName] = kvp.Value;
-                
-                // Replace the old parameter name in the buffer with the new one
-                // This is a simple approach - in production, you might want a more sophisticated replacement
-                var oldPlaceholder = _dialect.CreateParameter(paramName);
-                var newPlaceholder = _dialect.CreateParameter(newParamName);
-                
-                // Find and replace in the recently added subquery portion
-                var subqueryStart = _position - subquerySql.Length - 1; // -1 for closing paren
-                ReplaceParameterInRange(subqueryStart, _position - 1, oldPlaceholder, newPlaceholder);
+                finalName = GenerateUniqueParameterName(usedNames);
+                parameterNameMap[kvp.Key] = finalName;
             }
-            else
-            {
-                _parameters[paramName] = kvp.Value;
-            }
+
+            usedNames.Add(finalName);
+            _parameters[finalName] = kvp.Value;
         }
+
+        var rewrittenSubquerySql = RewriteParameterPlaceholders(
+            subquerySql,
+            parameterNameMap,
+            _dialect.ParameterPrefix);
+
+        EnsureCapacity(1 + rewrittenSubquerySql.Length + 1);
+        _buffer[_position++] = '(';
+        rewrittenSubquerySql.AsSpan().CopyTo(_buffer.AsSpan(_position));
+        _position += rewrittenSubquerySql.Length;
+        _buffer[_position++] = ')';
 
         return this;
     }
 
-    /// <summary>
-    /// Replaces a parameter placeholder in a specific range of the buffer.
-    /// </summary>
-    /// <param name="start">The start position in the buffer.</param>
-    /// <param name="end">The end position in the buffer.</param>
-    /// <param name="oldPlaceholder">The old parameter placeholder to replace.</param>
-    /// <param name="newPlaceholder">The new parameter placeholder.</param>
-    private void ReplaceParameterInRange(int start, int end, string oldPlaceholder, string newPlaceholder)
+    private string GenerateUniqueParameterName()
     {
-        var searchSpan = _buffer.AsSpan(start, end - start);
-        var oldSpan = oldPlaceholder.AsSpan();
-        
-        var index = searchSpan.IndexOf(oldSpan);
-        while (index >= 0)
+        return GenerateUniqueParameterName(_parameters.Keys);
+    }
+
+    private string GenerateUniqueParameterName(IEnumerable<string> reservedNames)
+    {
+        var reserved = reservedNames as ISet<string>;
+        while (true)
         {
-            var absoluteIndex = start + index;
-            
-            // Check if we need to grow the buffer
-            var lengthDiff = newPlaceholder.Length - oldPlaceholder.Length;
-            if (lengthDiff > 0)
+            var candidate = $"p{_parameterCounter++}";
+            if (_parameters.ContainsKey(candidate))
             {
-                EnsureCapacity(lengthDiff);
-                
-                // Shift content after the placeholder
-                var shiftStart = absoluteIndex + oldPlaceholder.Length;
-                var shiftLength = _position - shiftStart;
-                if (shiftLength > 0)
+                continue;
+            }
+
+            if (reserved != null)
+            {
+                if (!reserved.Contains(candidate))
+                    return candidate;
+
+                continue;
+            }
+
+            var exists = false;
+            foreach (var reservedName in reservedNames)
+            {
+                if (string.Equals(reservedName, candidate, StringComparison.Ordinal))
                 {
-                    _buffer.AsSpan(shiftStart, shiftLength).CopyTo(_buffer.AsSpan(shiftStart + lengthDiff));
+                    exists = true;
+                    break;
                 }
-                
-                _position += lengthDiff;
             }
-            else if (lengthDiff < 0)
-            {
-                // Shift content after the placeholder
-                var shiftStart = absoluteIndex + oldPlaceholder.Length;
-                var shiftLength = _position - shiftStart;
-                if (shiftLength > 0)
-                {
-                    _buffer.AsSpan(shiftStart, shiftLength).CopyTo(_buffer.AsSpan(shiftStart + lengthDiff));
-                }
-                
-                _position += lengthDiff;
-            }
-            
-            // Write the new placeholder
-            newPlaceholder.AsSpan().CopyTo(_buffer.AsSpan(absoluteIndex));
-            
-            // Continue searching after this replacement
-            searchSpan = _buffer.AsSpan(absoluteIndex + newPlaceholder.Length, _position - (absoluteIndex + newPlaceholder.Length));
-            index = searchSpan.IndexOf(oldSpan);
-            if (index >= 0)
-            {
-                index += absoluteIndex + newPlaceholder.Length - start;
-            }
+
+            if (!exists)
+                return candidate;
         }
+    }
+
+    private static string RewriteParameterPlaceholders(
+        string sql,
+        IReadOnlyDictionary<string, string> parameterNameMap,
+        string parameterPrefix)
+    {
+        if (parameterNameMap.Count == 0 || string.IsNullOrEmpty(sql))
+            return sql;
+
+        var builder = new StringBuilder(sql.Length);
+        var inStringLiteral = false;
+
+        for (var i = 0; i < sql.Length; i++)
+        {
+            var current = sql[i];
+
+            if (current == '\'')
+            {
+                builder.Append(current);
+
+                if (inStringLiteral && i + 1 < sql.Length && sql[i + 1] == '\'')
+                {
+                    builder.Append('\'');
+                    i++;
+                    continue;
+                }
+
+                inStringLiteral = !inStringLiteral;
+                continue;
+            }
+
+            if (!inStringLiteral && MatchesParameterPrefix(sql, i, parameterPrefix))
+            {
+                var nameStart = i + parameterPrefix.Length;
+                var nameEnd = nameStart;
+                while (nameEnd < sql.Length && IsParameterNameChar(sql[nameEnd]))
+                {
+                    nameEnd++;
+                }
+
+                if (nameEnd > nameStart)
+                {
+                    var originalName = sql.Substring(nameStart, nameEnd - nameStart);
+                    if (parameterNameMap.TryGetValue(originalName, out var rewrittenName))
+                    {
+                        builder.Append(parameterPrefix);
+                        builder.Append(rewrittenName);
+                        i = nameEnd - 1;
+                        continue;
+                    }
+                }
+            }
+
+            builder.Append(current);
+        }
+
+        return builder.ToString();
+    }
+
+    private static bool MatchesParameterPrefix(string sql, int index, string parameterPrefix)
+    {
+        return index + parameterPrefix.Length <= sql.Length &&
+               string.CompareOrdinal(sql, index, parameterPrefix, 0, parameterPrefix.Length) == 0;
+    }
+
+    private static bool IsParameterNameChar(char value)
+    {
+        return char.IsLetterOrDigit(value) || value == '_';
     }
 
     /// <summary>

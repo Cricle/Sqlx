@@ -3,6 +3,7 @@
 // </copyright>
 
 using System.Data.Common;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
@@ -173,17 +174,81 @@ public class DatabaseFixture : IDatabaseFixture
     /// <inheritdoc/>
     public async Task<int> InsertTestDataAsync<T>(IEnumerable<T> data)
     {
-        // This is a simplified implementation
-        // In a real scenario, you would use Sqlx to insert the data
-        var count = 0;
-        foreach (var item in data)
+        if (data == null)
         {
-            // TODO: Implement actual insert logic using Sqlx
-            count++;
+            throw new ArgumentNullException(nameof(data));
         }
 
-        await Task.CompletedTask;
-        return count;
+        if (_connection == null || _connection.State != System.Data.ConnectionState.Open)
+        {
+            throw new InvalidOperationException("Connection is not open");
+        }
+
+        var entities = data as IList<T> ?? data.ToList();
+        if (entities.Count == 0)
+        {
+            return 0;
+        }
+
+        var entityType = typeof(T);
+        var tableName = TableNameResolver.Resolve(entityType);
+        var dialect = GetDialect();
+        var entityProvider = EntityProviderResolver.ResolveOrCreate<T>();
+        var readableProperties = entityType
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(static property => property.CanRead && property.GetIndexParameters().Length == 0)
+            .ToDictionary(static property => property.Name, StringComparer.Ordinal);
+
+        var insertableColumns = entityProvider.Columns
+            .Where(column => readableProperties.ContainsKey(column.PropertyName))
+            .ToArray();
+
+        if (insertableColumns.Length == 0)
+        {
+            throw new InvalidOperationException(
+                $"No insertable columns were found for entity type '{entityType.Name}'.");
+        }
+
+        var connection = Connection;
+        var insertedCount = 0;
+
+        foreach (var entity in entities)
+        {
+            var values = new List<(ColumnMeta Column, object? Value)>(insertableColumns.Length);
+            foreach (var column in insertableColumns)
+            {
+                var property = readableProperties[column.PropertyName];
+                var value = property.GetValue(entity);
+
+                if (ShouldSkipProperty(property, value))
+                {
+                    continue;
+                }
+
+                values.Add((column, value));
+            }
+
+            if (values.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    $"Entity type '{entityType.Name}' did not provide any values to insert.");
+            }
+
+            using var command = connection.CreateCommand();
+            command.CommandText = BuildInsertSql(dialect, tableName, values);
+
+            for (var i = 0; i < values.Count; i++)
+            {
+                var parameter = command.CreateParameter();
+                parameter.ParameterName = $"@p{i}";
+                parameter.Value = values[i].Value ?? DBNull.Value;
+                command.Parameters.Add(parameter);
+            }
+
+            insertedCount += await command.ExecuteNonQueryAsync();
+        }
+
+        return insertedCount;
     }
 
     /// <inheritdoc/>
@@ -297,5 +362,60 @@ public class DatabaseFixture : IDatabaseFixture
         };
 
         await _connection.OpenAsync();
+    }
+
+    private SqlDialect GetDialect()
+    {
+        return DatabaseType switch
+        {
+            DatabaseType.MySQL => SqlDefine.MySql,
+            DatabaseType.PostgreSQL => SqlDefine.PostgreSql,
+            DatabaseType.SqlServer => SqlDefine.SqlServer,
+            DatabaseType.SQLite => SqlDefine.SQLite,
+            _ => throw new NotSupportedException($"Database type {DatabaseType} is not supported"),
+        };
+    }
+
+    private static bool ShouldSkipProperty(PropertyInfo property, object? value)
+    {
+        if (!IsKeyProperty(property))
+        {
+            return false;
+        }
+
+        return IsDefaultValue(property.PropertyType, value);
+    }
+
+    private static bool IsKeyProperty(MemberInfo property)
+    {
+        return string.Equals(property.Name, "Id", StringComparison.OrdinalIgnoreCase) ||
+               property.GetCustomAttributes()
+                   .Any(static attribute => string.Equals(attribute.GetType().Name, "KeyAttribute", StringComparison.Ordinal));
+    }
+
+    private static bool IsDefaultValue(Type propertyType, object? value)
+    {
+        if (value == null)
+        {
+            return true;
+        }
+
+        var underlyingType = Nullable.GetUnderlyingType(propertyType) ?? propertyType;
+        if (!underlyingType.IsValueType)
+        {
+            return false;
+        }
+
+        return value.Equals(Activator.CreateInstance(underlyingType));
+    }
+
+    private static string BuildInsertSql(
+        SqlDialect dialect,
+        string tableName,
+        IReadOnlyList<(ColumnMeta Column, object? Value)> values)
+    {
+        var columns = string.Join(", ", values.Select(item => dialect.WrapColumn(item.Column.Name)));
+        var parameters = string.Join(", ", values.Select((_, index) => $"@p{index}"));
+        return $"INSERT INTO {dialect.WrapColumn(tableName)} ({columns}) VALUES ({parameters})";
     }
 }

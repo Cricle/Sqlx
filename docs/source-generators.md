@@ -5,8 +5,9 @@ Sqlx uses Roslyn source generators to produce high-performance, AOT-compatible c
 ## AOT Compatibility
 
 **✅ Native AOT Ready:**
-- Zero reflection at runtime
-- All code generated at compile time
+- Source-generated hot paths avoid runtime reflection
+- Repositories, binders, and readers are generated at compile time
+- Plain POCO queries can still use reflection fallback when no generated metadata exists
 - Expression tree compilation (allowed in AOT)
 - Static method caching for IDataRecord operations
 - 3124 unit tests passing with AOT enabled

@@ -32,6 +32,7 @@ namespace Sqlx
         private static StringBuilder? _sharedBuilder;
 
         private readonly SqlDialect _dialect;
+        private readonly bool _parameterized;
         private readonly Dictionary<string, object?> _parameters;
         private readonly ExpressionParser _parser;
         private readonly IEntityProvider? _entityProvider;
@@ -53,11 +54,17 @@ namespace Sqlx
         private string? _fromSubQuerySql;
         private bool _isDistinct;
 
-        public SqlExpressionVisitor(SqlDialect dialect, bool parameterized = false, IEntityProvider? entityProvider = null, string? outerGroupByColumn = null)
+        public SqlExpressionVisitor(
+            SqlDialect dialect,
+            bool parameterized = false,
+            IEntityProvider? entityProvider = null,
+            string? outerGroupByColumn = null,
+            Dictionary<string, object?>? parameterStore = null)
         {
             _dialect = dialect;
-            _parameters = new Dictionary<string, object?>(4);
-            _parser = new ExpressionParser(dialect, _parameters, parameterized);
+            _parameterized = parameterized;
+            _parameters = parameterStore ?? new Dictionary<string, object?>(4);
+            _parser = new ExpressionParser(dialect, _parameters, parameterized, entityProvider: entityProvider);
             _entityProvider = entityProvider;
             
             // Set outer scope's groupByColumn for subquery references
@@ -65,7 +72,7 @@ namespace Sqlx
                 _parser.SetGroupByColumn(outerGroupByColumn);
         }
 
-        public Dictionary<string, object?> GetParameters() => new(_parameters);
+        public IEnumerable<KeyValuePair<string, object?>> GetParameters() => _parameters;
         
         public ExpressionParser Parser => _parser;
 
@@ -79,7 +86,7 @@ namespace Sqlx
         {
             if (node.Value is IQueryable queryable)
             {
-                _tableName = queryable.ElementType.Name;
+                _tableName = TableNameResolver.Resolve(queryable.ElementType);
                 _elementType = queryable.ElementType;
                 
                 // Check for FROM subquery
@@ -97,7 +104,7 @@ namespace Sqlx
             if (node.Method.DeclaringType == typeof(SubQuery) && node.Method.Name == "For" && node.Type.IsGenericType)
             {
                 var elementType = node.Type.GenericTypeArguments[0];
-                _tableName = elementType.Name;
+                _tableName = TableNameResolver.Resolve(elementType);
                 _elementType = elementType;
                 return node;
             }
@@ -139,8 +146,8 @@ namespace Sqlx
                 _selectColumns.Clear();
                 if (_groupByExpressions.Count > 0)
                     _parser.SetGroupByColumn(_groupByExpressions[0]);
-                _selectColumns.AddRange(_parser.ExtractColumns(selector.Body));
-                UpdateColumnMapping(selector.Body);
+                _parser.ExtractColumns(selector.Body, _selectColumns);
+                UpdateColumnMapping(selector.Body, _selectColumns);
             }
         }
 
@@ -198,7 +205,7 @@ namespace Sqlx
             if (resultSelector != null)
             {
                 _selectColumns.Clear();
-                _selectColumns.AddRange(_parser.ExtractColumns(resultSelector.Body));
+                _parser.ExtractColumns(resultSelector.Body, _selectColumns);
                 UpdateJoinPropertyMapping(resultSelector, alias);
             }
         }
@@ -211,7 +218,7 @@ namespace Sqlx
 
             if (innerArg is ConstantExpression { Value: IQueryable innerQueryable })
             {
-                tableName = innerQueryable.ElementType.Name;
+                tableName = TableNameResolver.Resolve(innerQueryable.ElementType);
                 elementType = innerQueryable.ElementType;
                 
                 if (innerQueryable is ISqlxQueryable sqlxQueryable)
@@ -225,7 +232,7 @@ namespace Sqlx
             else if (innerArg is MethodCallExpression { Type.IsGenericType: true } methodCall)
             {
                 elementType = methodCall.Type.GenericTypeArguments.FirstOrDefault();
-                tableName = elementType?.Name;
+                tableName = elementType != null ? TableNameResolver.Resolve(elementType) : null;
                 if (elementType != null)
                     subQuerySql = GenerateSubQuery(innerArg, elementType);
             }
@@ -238,20 +245,15 @@ namespace Sqlx
         /// </summary>
         private string GenerateSubQuery(Expression expr, Type elementType)
         {
-            var entityProvider = EntityProviderRegistry.Get(elementType);
-            var visitor = new SqlExpressionVisitor(_dialect, _parameters.Count > 0, entityProvider);
+            var entityProvider = EntityProviderResolver.ResolveOrCreate(elementType);
+            var visitor = new SqlExpressionVisitor(
+                _dialect,
+                _parameterized,
+                entityProvider,
+                _parser.GroupByColumn,
+                _parameters);
             
-            // Pass groupByColumn for outer scope references
-            if (_parser.GroupByColumn != null)
-                visitor._parser.SetGroupByColumn(_parser.GroupByColumn);
-            
-            var sql = visitor.GenerateSql(expr);
-            
-            // Merge parameters
-            foreach (var p in visitor.GetParameters())
-                _parameters[p.Key] = p.Value;
-            
-            return sql;
+            return visitor.GenerateSql(expr);
         }
 
         private string ResolveColumn(Expression expr)
@@ -276,7 +278,7 @@ namespace Sqlx
             return GetCurrentAlias(1);
         }
 
-        private void UpdateColumnMapping(Expression expr)
+        private void UpdateColumnMapping(Expression expr, IReadOnlyList<string> extractedColumns)
         {
             if (expr is not NewExpression newExpr || newExpr.Members == null) return;
 
@@ -284,12 +286,27 @@ namespace Sqlx
             {
                 var name = newExpr.Members[i].Name;
                 var arg = newExpr.Arguments[i];
+                var extractedColumn = i < extractedColumns.Count
+                    ? RemoveProjectionAlias(extractedColumns[i], name)
+                    : null;
                 
-                if (arg is MethodCallExpression mc)
-                    _propertyColumnMap[name] = _parser.ParseRaw(mc);
-                else if (arg is MemberExpression ma)
+                if (arg is MemberExpression ma)
+                {
                     _propertyColumnMap[name] = _parser.GetColumnName(ma);
+                }
+                else if (!string.IsNullOrEmpty(extractedColumn))
+                {
+                    _propertyColumnMap[name] = extractedColumn;
+                }
             }
+        }
+
+        private static string RemoveProjectionAlias(string columnExpression, string alias)
+        {
+            var aliasSuffix = $" AS {alias}";
+            return columnExpression.EndsWith(aliasSuffix, StringComparison.Ordinal)
+                ? columnExpression.Substring(0, columnExpression.Length - aliasSuffix.Length)
+                : columnExpression;
         }
 
         private void UpdateJoinPropertyMapping(LambdaExpression lambda, string innerAlias)
@@ -338,15 +355,15 @@ namespace Sqlx
 
             if (_selectColumns.Count > 0)
             {
-                sb.AppendJoin(", ", _selectColumns);
+                AppendJoined(sb, _selectColumns, ", ");
             }
             else
             {
                 // Get columns from entity provider - no fallback to SELECT *
                 var columns = GetEntityColumns();
                 if (columns.Count == 0)
-                    throw new InvalidOperationException($"No columns found for entity type '{_elementType?.Name ?? _tableName}'. Ensure the entity has [Sqlx] attribute or use explicit Select().");
-                sb.AppendJoin(", ", columns.Select(c => _dialect.WrapColumn(c.Name)));
+                    throw new InvalidOperationException($"No columns found for entity type '{_elementType?.Name ?? _tableName}'. Ensure the type exposes readable and writable properties, or use explicit Select().");
+                AppendWrappedColumns(sb, columns);
             }
 
             // FROM
@@ -359,21 +376,21 @@ namespace Sqlx
             if (_whereConditions.Count > 0)
             {
                 sb.Append(" WHERE ");
-                sb.AppendJoin(" AND ", _whereConditions);
+                AppendJoined(sb, _whereConditions, " AND ");
             }
 
             // GROUP BY
             if (_groupByExpressions.Count > 0)
             {
                 sb.Append(" GROUP BY ");
-                sb.AppendJoin(", ", _groupByExpressions);
+                AppendJoined(sb, _groupByExpressions, ", ");
             }
 
             // ORDER BY
             if (_orderByExpressions.Count > 0)
             {
                 sb.Append(" ORDER BY ");
-                sb.AppendJoin(", ", _orderByExpressions);
+                AppendJoined(sb, _orderByExpressions, ", ");
             }
 
             // PAGINATION
@@ -389,7 +406,7 @@ namespace Sqlx
             
             if (_elementType != null)
             {
-                var ep = EntityProviderRegistry.Get(_elementType);
+                var ep = EntityProviderResolver.ResolveOrCreate(_elementType);
                 if (ep?.Columns.Count > 0)
                     return ep.Columns;
             }
@@ -416,6 +433,32 @@ namespace Sqlx
         }
 
         private static readonly string[] JoinTypeNames = { "INNER JOIN", "LEFT JOIN", "RIGHT JOIN", "FULL OUTER JOIN" };
+
+        private static void AppendJoined(StringBuilder sb, IReadOnlyList<string> values, string separator)
+        {
+            for (var i = 0; i < values.Count; i++)
+            {
+                if (i > 0)
+                {
+                    sb.Append(separator);
+                }
+
+                sb.Append(values[i]);
+            }
+        }
+
+        private void AppendWrappedColumns(StringBuilder sb, IReadOnlyList<ColumnMeta> columns)
+        {
+            for (var i = 0; i < columns.Count; i++)
+            {
+                if (i > 0)
+                {
+                    sb.Append(", ");
+                }
+
+                sb.Append(_dialect.WrapColumn(columns[i].Name));
+            }
+        }
 
         private void AppendJoinClauses(StringBuilder sb)
         {

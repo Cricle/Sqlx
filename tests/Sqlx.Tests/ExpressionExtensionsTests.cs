@@ -8,6 +8,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Sqlx.Annotations;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq.Expressions;
 
 namespace Sqlx.Tests;
@@ -27,6 +28,17 @@ public class ExpressionExtensionsTests
         public int Age { get; set; }
         public bool IsActive { get; set; }
         public string? Email { get; set; }
+    }
+
+    public class TemporalUser
+    {
+        public DateOnly ScheduledOn { get; set; }
+        public TimeOnly StartsAt { get; set; }
+    }
+
+    public class DecimalUser
+    {
+        public decimal Amount { get; set; }
     }
 
     [TestMethod]
@@ -164,6 +176,44 @@ public class ExpressionExtensionsTests
         // Assert
         Assert.IsTrue(result.Contains("age") || result.Contains("Age"), $"Result: {result}");
         Assert.IsTrue(result.Contains("OR") || result.Contains("or"), $"Result: {result}");
+    }
+
+    [TestMethod]
+    public void ToWhereClause_WithCapturedDateOnlyAndTimeOnly_UsesActualValues()
+    {
+        var scheduledOn = new DateOnly(2024, 2, 21);
+        var startsAt = new TimeOnly(9, 45, 0);
+        Expression<Func<TemporalUser, bool>> predicate = u => u.ScheduledOn == scheduledOn && u.StartsAt == startsAt;
+
+        var result = predicate.ToWhereClause(SqlDefine.SQLite);
+
+        Assert.IsTrue(result.Contains("2024-02-21"), $"Result: {result}");
+        Assert.IsTrue(result.Contains("09:45:00"), $"Result: {result}");
+    }
+
+    [TestMethod]
+    public void ToWhereClause_WithCapturedDecimal_UsesInvariantLiteral()
+    {
+        var originalCulture = CultureInfo.CurrentCulture;
+        var originalUiCulture = CultureInfo.CurrentUICulture;
+
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("fr-FR");
+            CultureInfo.CurrentUICulture = new CultureInfo("fr-FR");
+            var limit = 12.5m;
+            Expression<Func<DecimalUser, bool>> predicate = u => u.Amount > limit;
+
+            var result = predicate.ToWhereClause(SqlDefine.SQLite);
+
+            Assert.IsTrue(result.Contains("12.5"), $"Result: {result}");
+            Assert.IsFalse(result.Contains("12,5"), $"Result: {result}");
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = originalCulture;
+            CultureInfo.CurrentUICulture = originalUiCulture;
+        }
     }
 
     [TestMethod]

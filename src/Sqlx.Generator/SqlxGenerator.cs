@@ -218,6 +218,10 @@ public class SqlxGenerator : IIncrementalGenerator
                typeStr == "CancellationToken" ||
                typeStr == "SqlTemplate" ||  // Skip SqlTemplate - it's a framework type
                typeStr == "void" ||
+               typeStr == "sbyte" || typeStr == "sbyte?" ||
+               typeStr == "ushort" || typeStr == "ushort?" ||
+               typeStr == "uint" || typeStr == "uint?" ||
+               typeStr == "ulong" || typeStr == "ulong?" ||
                typeStr == "int" || typeStr == "int?" ||
                typeStr == "long" || typeStr == "long?" ||
                typeStr == "short" || typeStr == "short?" ||
@@ -228,7 +232,10 @@ public class SqlxGenerator : IIncrementalGenerator
                typeStr == "double" || typeStr == "double?" ||
                typeStr == "float" || typeStr == "float?" ||
                typeStr == "DateTime" || typeStr == "DateTime?" ||
+               typeStr == "DateOnly" || typeStr == "DateOnly?" ||
                typeStr == "DateTimeOffset" || typeStr == "DateTimeOffset?" ||
+               typeStr == "TimeOnly" || typeStr == "TimeOnly?" ||
+               typeStr == "TimeSpan" || typeStr == "TimeSpan?" ||
                typeStr == "Guid" || typeStr == "Guid?" ||
                typeStr == "object" ||
                typeStr == "Task" ||
@@ -1274,6 +1281,10 @@ public class SqlxGenerator : IIncrementalGenerator
         var typeName = GetUnderlyingTypeName(type);
         return typeName switch
         {
+            "SByte" => "SByte",
+            "UInt16" => "UInt16",
+            "UInt32" => "UInt32",
+            "UInt64" => "UInt64",
             "Int32" => "Int32",
             "Int64" => "Int64",
             "Int16" => "Int16",
@@ -1281,7 +1292,10 @@ public class SqlxGenerator : IIncrementalGenerator
             "Boolean" => "Boolean",
             "String" => "String",
             "DateTime" => "DateTime",
+            "DateOnly" => "Date",
             "DateTimeOffset" => "DateTimeOffset",
+            "TimeOnly" => "Time",
+            "TimeSpan" => "Time",
             "Decimal" => "Decimal",
             "Double" => "Double",
             "Single" => "Single",

@@ -11,8 +11,9 @@ dotnet add package Sqlx
 ## Prerequisites
 
 - .NET 8.0 or later (recommended: .NET 10 LTS for best performance and long-term support)
-- A supported database: SQLite, MySQL, PostgreSQL, SQL Server, Oracle, or DB2
-- **Native AOT Ready**: Sqlx is fully compatible with Native AOT deployment (3124 tests passing)
+- A currently supported database: SQLite, MySQL, PostgreSQL, or SQL Server
+- Oracle and DB2 dialect/API entry points remain in the package for compatibility, but are not part of the actively validated support matrix for this release
+- **Native AOT Ready**: Sqlx is fully compatible with Native AOT deployment and validated by a large test suite
 
 ## Basic Setup
 
@@ -224,11 +225,12 @@ Sqlx is fully compatible with Native AOT. To enable AOT in your project:
 ```
 
 **AOT Compatibility:**
-- ✅ Zero reflection at runtime
-- ✅ All code generated at compile time
+- ✅ Source-generated hot paths avoid runtime reflection
+- ✅ Generated repositories/templates run without runtime reflection requirements
+- ✅ Plain POCO queries remain available through reflection fallback when needed
 - ✅ Expression tree compilation (allowed in AOT)
 - ✅ Static method caching
-- ✅ 3124 unit tests passing
+- ✅ validated by a large automated test suite
 
 **Publish AOT:**
 ```bash

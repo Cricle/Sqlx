@@ -1,14 +1,14 @@
 # Sqlx Documentation
 
-Sqlx 是一个高性能、AOT 友好的 SQL 生成库。使用源生成器在编译时生成代码，零运行时反射，完全支持 Native AOT。
+Sqlx 是一个高性能、AOT 友好的 SQL 生成库。源生成主路径在编译时生成代码，避免运行时反射；对于未标记 `[Sqlx]` 的普通 POCO，也提供反射 fallback 以保持可用性。在单条查询、小批量读取和低 GC 压力场景下表现突出。
 
 ## 核心特性
 
 - **🚀 高性能** - 比 Dapper.AOT 快 19%，比 FreeSql 快 6.8 倍
-- **⚡ 零反射** - 所有代码在编译时生成
+- **⚡ 源生成主路径零反射** - 高频路径在编译时生成；普通 POCO 查询支持反射 fallback
 - **🎯 类型安全** - SQL 模板的编译时验证
-- **🌐 多数据库** - SQLite, MySQL, PostgreSQL, SQL Server, Oracle, DB2
-- **📦 AOT 就绪** - 通过 3124 个单元测试，完全支持 Native AOT
+- **🌐 多数据库** - currently maintained and validated on SQLite, MySQL, PostgreSQL, and SQL Server; Oracle/DB2 APIs remain for compatibility
+- **📦 AOT 就绪** - 完全支持 Native AOT，已通过大规模单元测试验证
 - **🔧 LINQ 支持** - IQueryable 接口，支持 Where/Select/OrderBy/Join
 - **💾 智能缓存** - SqlQuery\<T\> 泛型缓存，自动注册 EntityProvider
 - **🔍 自动发现** - 源生成器自动发现 SqlQuery\<T\> 和 SqlTemplate 中的实体类型
@@ -72,6 +72,8 @@ var user = await repo.GetByEmailAsync("test@example.com");
 
 ## Documentation
 
+Current support promise and routine validation cover SQLite, MySQL, PostgreSQL, and SQL Server. Oracle and DB2 dialect/API entry points remain available for compatibility but are not part of the actively validated support matrix for this release.
+
 - [Getting Started](getting-started.md) - Installation and basic setup
 - [SQL Templates](sql-templates.md) - Template syntax and placeholders
 - [SqlxContext](sqlx-context.md) - Multi-repository management and transaction handling
@@ -110,7 +112,7 @@ Sqlx 在 .NET 10 (LTS) 上的性能表现：
 
 **测试环境:** .NET 10.0.2 (LTS), BenchmarkDotNet 0.15.7, SQLite 内存数据库
 
-**AOT 兼容性:** ✅ 通过 3124 个单元测试，完全支持 Native AOT
+**AOT 兼容性:** ✅ 已通过大规模单元测试验证，完全支持 Native AOT
 
 **最新优化:**
 - 泛型 SqlQuery\<T\> 缓存优化

@@ -49,7 +49,8 @@ namespace Sqlx
 
             var d = dialect ?? SqlDefine.SQLite;
             var parameters = new Dictionary<string, object?>();
-            var parser = new ExpressionParser(d, parameters, true);
+            var entityProvider = EntityProviderResolver.ResolveOrCreate<T>();
+            var parser = new ExpressionParser(d, parameters, true, entityProvider: entityProvider);
 
             // The body should be a MemberInitExpression (new T { ... })
             if (updateExpression.Body is not MemberInitExpression memberInit)
@@ -70,7 +71,7 @@ namespace Sqlx
 
                 // Get column name from property name
                 var propertyName = assignment.Member.Name;
-                var columnName = ExpressionHelper.ConvertToSnakeCase(propertyName);
+                var columnName = ResolveColumnName(entityProvider, propertyName);
                 var wrappedColumn = d.WrapColumn(columnName);
 
                 // Parse the value expression
@@ -81,6 +82,11 @@ namespace Sqlx
             }
 
             return string.Join(", ", setClauses);
+        }
+
+        private static string ResolveColumnName(IEntityProvider entityProvider, string propertyName)
+        {
+            return ColumnNameResolver.Resolve(entityProvider, propertyName);
         }
 
         /// <summary>

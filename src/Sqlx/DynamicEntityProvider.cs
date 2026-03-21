@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Reflection;
+using Sqlx.Expressions;
 
 /// <summary>
 /// Dynamic entity provider using reflection.
@@ -56,21 +57,7 @@ internal sealed class DynamicEntityProvider<
             if (nameProp?.GetValue(columnAttr) is string name && !string.IsNullOrEmpty(name))
                 return name;
         }
-        return ToSnakeCase(prop.Name);
-    }
-
-    private static string ToSnakeCase(string name)
-    {
-        if (string.IsNullOrEmpty(name)) return name;
-        var result = new System.Text.StringBuilder(name.Length + 4);
-        for (int i = 0; i < name.Length; i++)
-        {
-            var c = name[i];
-            if (char.IsUpper(c) && i > 0)
-                result.Append('_');
-            result.Append(char.ToLowerInvariant(c));
-        }
-        return result.ToString();
+        return ExpressionHelper.ConvertToSnakeCase(prop.Name);
     }
 
     private static DbType GetDbType(Type type)
@@ -78,6 +65,10 @@ internal sealed class DynamicEntityProvider<
         var underlyingType = Nullable.GetUnderlyingType(type) ?? type;
         return underlyingType.Name switch
         {
+            "SByte" => DbType.SByte,
+            "UInt16" => DbType.UInt16,
+            "UInt32" => DbType.UInt32,
+            "UInt64" => DbType.UInt64,
             "Int32" => DbType.Int32,
             "Int64" => DbType.Int64,
             "Int16" => DbType.Int16,
@@ -85,6 +76,10 @@ internal sealed class DynamicEntityProvider<
             "Boolean" => DbType.Boolean,
             "String" => DbType.String,
             "DateTime" => DbType.DateTime,
+            "DateOnly" => DbType.Date,
+            "DateTimeOffset" => DbType.DateTimeOffset,
+            "TimeOnly" => DbType.Time,
+            "TimeSpan" => DbType.Time,
             "Decimal" => DbType.Decimal,
             "Double" => DbType.Double,
             "Single" => DbType.Single,

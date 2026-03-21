@@ -312,6 +312,44 @@ public class ResultReaderTests
     }
 
     [TestMethod]
+    public void ResultReader_ToList_ArrayOrdinalReader_UsesArrayFastPath()
+    {
+        var reader = new ArrayOrdinalTrackingReader();
+        var entities = new[]
+        {
+            TestEntityFactory.CreateTestEntity(id: 1, userName: "user1"),
+            TestEntityFactory.CreateTestEntity(id: 2, userName: "user2", isActive: false),
+        };
+        using var dbReader = new TestDbDataReader(entities);
+
+        var results = reader.ToList(dbReader);
+
+        Assert.AreEqual(2, results.Count);
+        Assert.AreEqual(1, reader.GetOrdinalsCallCount);
+        Assert.AreEqual(2, reader.ReadWithArrayOrdinalsCallCount);
+        Assert.AreEqual(0, reader.ReadWithSpanOrdinalsCallCount);
+    }
+
+    [TestMethod]
+    public async Task ResultReader_ToListAsync_ArrayOrdinalReader_UsesArrayFastPath()
+    {
+        var reader = new ArrayOrdinalTrackingReader();
+        var entities = new[]
+        {
+            TestEntityFactory.CreateTestEntity(id: 1, userName: "user1"),
+            TestEntityFactory.CreateTestEntity(id: 2, userName: "user2", isActive: false),
+        };
+        using var dbReader = new TestDbDataReader(entities);
+
+        var results = await reader.ToListAsync(dbReader);
+
+        Assert.AreEqual(2, results.Count);
+        Assert.AreEqual(1, reader.GetOrdinalsCallCount);
+        Assert.AreEqual(2, reader.ReadWithArrayOrdinalsCallCount);
+        Assert.AreEqual(0, reader.ReadWithSpanOrdinalsCallCount);
+    }
+
+    [TestMethod]
     public async Task ResultReader_FirstOrDefaultAsync_ReturnsFirstEntity()
     {
         var reader = TestEntityResultReader.Default;
@@ -328,6 +366,58 @@ public class ResultReaderTests
     }
 
     #endregion
+
+    private sealed class ArrayOrdinalTrackingReader : IResultReader<TestEntity>, IArrayOrdinalReader<TestEntity>
+    {
+        public int PropertyCount => 4;
+        public int GetOrdinalsCallCount { get; private set; }
+        public int ReadWithArrayOrdinalsCallCount { get; private set; }
+        public int ReadWithSpanOrdinalsCallCount { get; private set; }
+
+        public void GetOrdinals(IDataReader reader, Span<int> ordinals)
+        {
+            GetOrdinalsCallCount++;
+            ordinals[0] = reader.GetOrdinal("id");
+            ordinals[1] = reader.GetOrdinal("user_name");
+            ordinals[2] = reader.GetOrdinal("is_active");
+            ordinals[3] = reader.GetOrdinal("created_at");
+        }
+
+        public TestEntity Read(IDataReader reader)
+        {
+            return new TestEntity
+            {
+                Id = reader.GetInt32(0),
+                UserName = reader.GetString(1),
+                IsActive = reader.GetBoolean(2),
+                CreatedAt = reader.GetDateTime(3),
+            };
+        }
+
+        public TestEntity Read(IDataReader reader, ReadOnlySpan<int> ordinals)
+        {
+            ReadWithSpanOrdinalsCallCount++;
+            return new TestEntity
+            {
+                Id = reader.GetInt32(ordinals[0]),
+                UserName = reader.GetString(ordinals[1]),
+                IsActive = reader.GetBoolean(ordinals[2]),
+                CreatedAt = reader.GetDateTime(ordinals[3]),
+            };
+        }
+
+        public TestEntity Read(IDataReader reader, int[] ordinals)
+        {
+            ReadWithArrayOrdinalsCallCount++;
+            return new TestEntity
+            {
+                Id = reader.GetInt32(ordinals[0]),
+                UserName = reader.GetString(ordinals[1]),
+                IsActive = reader.GetBoolean(ordinals[2]),
+                CreatedAt = reader.GetDateTime(ordinals[3]),
+            };
+        }
+    }
 }
 
 #region Test DbDataReader Implementations

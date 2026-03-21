@@ -27,13 +27,20 @@ namespace Sqlx.Expressions
         private readonly Dictionary<string, object?> _parameters;
         private readonly bool _parameterized;
         private readonly Dictionary<string, string>? _placeholders;
+        private readonly IEntityProvider? _entityProvider;
 
-        public ExpressionParser(SqlDialect dialect, Dictionary<string, object?> parameters, bool parameterized, Dictionary<string, string>? placeholders = null)
+        public ExpressionParser(
+            SqlDialect dialect,
+            Dictionary<string, object?> parameters,
+            bool parameterized,
+            Dictionary<string, string>? placeholders = null,
+            IEntityProvider? entityProvider = null)
         {
             _dialect = dialect;
             _parameters = parameters;
             _parameterized = parameterized;
             _placeholders = placeholders;
+            _entityProvider = entityProvider;
         }
 
         public string DatabaseType => _dialect.DatabaseType;
@@ -61,9 +68,14 @@ namespace Sqlx.Expressions
         {
             UnaryExpression { NodeType: ExpressionType.Convert } u => Col(u.Operand),
             MemberExpression m when m.Member.Name == "Key" && IsGroupingType(m.Expression?.Type) => _groupByColumn ?? "Key",
-            MemberExpression m => _dialect.WrapColumn(ExpressionHelper.ConvertToSnakeCase(m.Member.Name)),
+            MemberExpression m => _dialect.WrapColumn(ResolveColumnName(m.Member.Name)),
             _ => ParseRaw(e)
         };
+
+        private string ResolveColumnName(string propertyName)
+        {
+            return ColumnNameResolver.Resolve(_entityProvider, propertyName);
+        }
 
         private static bool IsGroupingType(Type? type)
         {
@@ -86,22 +98,42 @@ namespace Sqlx.Expressions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public string GetColumnName(Expression e) => Col(e);
 
-        public List<string> ExtractColumns(Expression e) => e switch
+        public void ExtractColumns(Expression e, List<string> target)
         {
-            NewExpression n => ExtractFromNewExpression(n),
-            MemberExpression m when ExpressionHelper.IsStringPropertyAccess(m) => new List<string>(1) { ParseRaw(m) },
-            MemberExpression m when ExpressionHelper.IsEntityProperty(m) => new List<string>(1) { Col(m) },
-            MemberExpression m => new List<string>(1) { ParseRaw(m) },
-            MethodCallExpression mc => new List<string>(1) { ParseRaw(mc) },
-            BinaryExpression b => new List<string>(1) { ParseRaw(b) },
-            ConditionalExpression c => new List<string>(1) { ParseRaw(c) },
-            UnaryExpression { NodeType: ExpressionType.Convert } u => ExtractColumns(u.Operand),
-            _ => new List<string>(1) { ParseRaw(e) }
-        };
+            switch (e)
+            {
+                case NewExpression n:
+                    ExtractFromNewExpression(n, target);
+                    return;
+                case MemberExpression m when ExpressionHelper.IsStringPropertyAccess(m):
+                    target.Add(ParseRaw(m));
+                    return;
+                case MemberExpression m when ExpressionHelper.IsEntityProperty(m):
+                    target.Add(Col(m));
+                    return;
+                case MemberExpression m:
+                    target.Add(ParseRaw(m));
+                    return;
+                case MethodCallExpression mc:
+                    target.Add(ParseRaw(mc));
+                    return;
+                case BinaryExpression b:
+                    target.Add(ParseRaw(b));
+                    return;
+                case ConditionalExpression c:
+                    target.Add(ParseRaw(c));
+                    return;
+                case UnaryExpression { NodeType: ExpressionType.Convert } u:
+                    ExtractColumns(u.Operand, target);
+                    return;
+                default:
+                    target.Add(ParseRaw(e));
+                    return;
+            }
+        }
 
-        private List<string> ExtractFromNewExpression(NewExpression n)
+        private void ExtractFromNewExpression(NewExpression n, List<string> target)
         {
-            var result = new List<string>(n.Arguments.Count);
             for (var i = 0; i < n.Arguments.Count; i++)
             {
                 var col = ParseRaw(n.Arguments[i]);
@@ -111,14 +143,13 @@ namespace Sqlx.Expressions
                 if (memberName != null && !col.Equals(_dialect.WrapColumn(memberName), StringComparison.OrdinalIgnoreCase) 
                     && !col.Equals(_dialect.WrapColumn(ExpressionHelper.ConvertToSnakeCase(memberName)), StringComparison.OrdinalIgnoreCase))
                 {
-                    result.Add($"{col} AS {memberName}");
+                    target.Add($"{col} AS {memberName}");
                 }
                 else
                 {
-                    result.Add(col);
+                    target.Add(col);
                 }
             }
-            return result;
         }
 
         public string ParseLambda(Expression e) => e switch
@@ -454,13 +485,12 @@ namespace Sqlx.Expressions
         /// </summary>
         private string GenerateSubQuerySql(Expression expr)
         {
-            // Get the entity provider for the subquery type from the global registry
             var elementType = GetSubQueryElementType(expr);
-            var entityProvider = elementType != null ? EntityProviderRegistry.Get(elementType) : null;
+            var entityProvider = elementType != null ? EntityProviderResolver.ResolveOrCreate(elementType) : null;
             
             // Use SqlExpressionVisitor - subquery parsing is the same as normal query parsing
             // Pass the current groupByColumn so that references to outer scope (like x.Key) can be resolved
-            var visitor = new SqlExpressionVisitor(_dialect, _parameterized, entityProvider, _groupByColumn);
+            var visitor = new SqlExpressionVisitor(_dialect, _parameterized, entityProvider, _groupByColumn, _parameters);
             return visitor.GenerateSql(expr);
         }
 

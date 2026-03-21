@@ -326,7 +326,7 @@ public sealed class SqlTemplate
     /// Thread-local cached dictionary for single-parameter rendering to avoid allocations.
     /// </summary>
     [ThreadStatic]
-    private static Dictionary<string, object?>? _singleParamCache;
+    private static RenderParameterBag? _renderParamCache;
 
     /// <summary>
     /// Renders the template with a single dynamic parameter.
@@ -338,7 +338,12 @@ public sealed class SqlTemplate
     /// This overload is optimized for the common case of a single dynamic parameter,
     /// using a thread-local cached dictionary to avoid allocations.
     /// </remarks>
-    public string Render(string key, object? value) => RenderWithCache((key, value));
+    public string Render(string key, object? value)
+    {
+        var cache = GetRenderParamCache();
+        cache.SetSingle(key, value);
+        return Render(cache);
+    }
 
     /// <summary>
     /// Renders the template with two dynamic parameters.
@@ -348,18 +353,16 @@ public sealed class SqlTemplate
     /// <param name="key2">The second parameter name.</param>
     /// <param name="value2">The second parameter value.</param>
     /// <returns>The fully rendered SQL string.</returns>
-    public string Render(string key1, object? value1, string key2, object? value2) => RenderWithCache((key1, value1), (key2, value2));
-
-    /// <summary>
-    /// Helper method to render with cached dictionary.
-    /// </summary>
-    private string RenderWithCache(params (string key, object? value)[] parameters)
+    public string Render(string key1, object? value1, string key2, object? value2)
     {
-        var cache = _singleParamCache ??= new Dictionary<string, object?>(parameters.Length);
-        cache.Clear();
-        foreach (var (key, value) in parameters)
-            cache[key] = value;
+        var cache = GetRenderParamCache();
+        cache.SetDouble(key1, value1, key2, value2);
         return Render(cache);
+    }
+
+    private static RenderParameterBag GetRenderParamCache()
+    {
+        return _renderParamCache ??= new RenderParameterBag();
     }
 
     /// <summary>
@@ -400,6 +403,127 @@ public sealed class SqlTemplate
 
         FlushStatic();
         return result.ToArray();
+    }
+
+    private sealed class RenderParameterBag : IReadOnlyDictionary<string, object?>
+    {
+        private string? _key1;
+        private string? _key2;
+        private object? _value1;
+        private object? _value2;
+        private int _count;
+
+        public object? this[string key]
+        {
+            get
+            {
+                if (TryGetValue(key, out var value))
+                {
+                    return value;
+                }
+
+                throw new KeyNotFoundException();
+            }
+        }
+
+        public IEnumerable<string> Keys
+        {
+            get
+            {
+                if (_count >= 1 && _key1 != null)
+                {
+                    yield return _key1;
+                }
+
+                if (_count >= 2 && _key2 != null)
+                {
+                    yield return _key2;
+                }
+            }
+        }
+
+        public IEnumerable<object?> Values
+        {
+            get
+            {
+                if (_count >= 1)
+                {
+                    yield return _value1;
+                }
+
+                if (_count >= 2)
+                {
+                    yield return _value2;
+                }
+            }
+        }
+
+        public int Count => _count;
+
+        public void SetSingle(string key, object? value)
+        {
+            _key1 = key;
+            _value1 = value;
+            _key2 = null;
+            _value2 = null;
+            _count = 1;
+        }
+
+        public void SetDouble(string key1, object? value1, string key2, object? value2)
+        {
+            if (string.Equals(key1, key2, StringComparison.Ordinal))
+            {
+                SetSingle(key2, value2);
+                return;
+            }
+
+            _key1 = key1;
+            _value1 = value1;
+            _key2 = key2;
+            _value2 = value2;
+            _count = 2;
+        }
+
+        public bool ContainsKey(string key)
+        {
+            return TryGetValue(key, out _);
+        }
+
+        public bool TryGetValue(string key, out object? value)
+        {
+            if (_count >= 1 && string.Equals(_key1, key, StringComparison.Ordinal))
+            {
+                value = _value1;
+                return true;
+            }
+
+            if (_count >= 2 && string.Equals(_key2, key, StringComparison.Ordinal))
+            {
+                value = _value2;
+                return true;
+            }
+
+            value = null;
+            return false;
+        }
+
+        public IEnumerator<KeyValuePair<string, object?>> GetEnumerator()
+        {
+            if (_count >= 1 && _key1 != null)
+            {
+                yield return new KeyValuePair<string, object?>(_key1, _value1);
+            }
+
+            if (_count >= 2 && _key2 != null)
+            {
+                yield return new KeyValuePair<string, object?>(_key2, _value2);
+            }
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
     }
 
 #if NET7_0_OR_GREATER

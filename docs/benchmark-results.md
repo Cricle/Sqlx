@@ -149,6 +149,32 @@ Description = reader.IsDBNull(ord8) ? default : reader.GetString(ord8),
 
 ## 性能优化总结
 
+### ResultReader / Ordinals 优化验证
+
+新增了两组更聚焦的 benchmark：
+
+1. **DynamicResultReader Ordinals Benchmark**
+   - 仍包含 SQLite 命令执行
+   - 用于验证端到端查询路径下的 ordinals 快路径是否回退
+
+2. **Pure Mapping ResultReader Benchmark**
+   - 使用内存 `DbDataReader`
+   - 隔离映射层开销，更适合评估 ResultReader 本身
+
+#### Pure Mapping（1000 行）
+
+| 方法 | Mean | Ratio |
+|------|------|-------|
+| **Generated cached ordinals** | **60.158 μs** | **1.00** |
+| Dynamic array fast path | 81.224 μs | 1.35 |
+| Dynamic span fallback | 106.770 μs | 1.78 |
+| Generated uncached ordinals | 276.220 μs | 4.59 |
+
+**结论：**
+- ✅ Generated reader 的 cached ordinals 比 uncached ordinals 快约 **4.6 倍**
+- ✅ DynamicResultReader 的 array fast path 比 span fallback 快约 **24%**
+- ✅ 这证明 recent ResultReader 优化确实命中了映射层热路径
+
 ### ✅ 优化成功的场景
 
 1. **单行查询**

@@ -1,5 +1,7 @@
 # API Reference
 
+Compatibility note: Oracle and DB2 API entry points remain available in the public surface, but the current support promise and routine validation focus on SQLite, MySQL, PostgreSQL, and SQL Server.
+
 ## Core Classes
 
 ### SqlQuery\<T\>
@@ -77,7 +79,7 @@ public sealed class SqlTemplate
 
 **Example:**
 ```csharp
-var context = new PlaceholderContext(SqlDefine.SQLite, "users", UserEntityProvider.Default.Columns);
+var context = PlaceholderContext.Create<User>(SqlDefine.SQLite);
 var template = SqlTemplate.Prepare(
     "SELECT {{columns}} FROM {{table}} WHERE {{where --param predicate}}", 
     context);
@@ -106,6 +108,11 @@ Provides context for placeholder processing.
 public sealed class PlaceholderContext
 {
     public PlaceholderContext(SqlDialect dialect, string tableName, IReadOnlyList<ColumnMeta> columns);
+    public static PlaceholderContext Create<T>(
+        SqlDialect dialect,
+        IEntityProvider? entityProvider = null,
+        Func<object, string, string>? varProvider = null,
+        object? instance = null);
     
     public SqlDialect Dialect { get; }
     public string TableName { get; }
@@ -236,7 +243,7 @@ public sealed class DynamicResultReader<T> : IResultReader<T>
 - Static method caching (GetInt32, GetString, IsDBNull, etc.)
 - Supports all basic types and nullable types
 - Automatic type conversion
-- Zero reflection at runtime
+- Source-generated repository hot paths avoid runtime reflection
 
 **Supported Types:**
 - Primitives: Int32, Int64, Int16, Byte, Boolean, String, Decimal, Double, Float, Guid
@@ -601,7 +608,7 @@ var (total, maxId, minId) = await repo.GetStatsAsync();
 **Features:**
 - ✅ Single database round-trip - All values retrieved in one call
 - ✅ Type-safe - Compile-time type checking
-- ✅ Zero reflection - All code generated at compile-time
+- ✅ Source-generated hot paths avoid runtime reflection
 - ✅ AOT compatible - Fully supports Native AOT
 - ✅ Automatic conversion - Handles type conversion automatically
 - ✅ Sync and async - Both synchronous and asynchronous methods supported
@@ -714,7 +721,7 @@ public enum PlaceholderType
 
 - **Unified Parsing** - Get SQL and parameters in one pass
 - **High Performance** - Avoid repeated expression tree traversal (2x faster)
-- **AOT Friendly** - Zero reflection, pure expression tree parsing
+- **AOT Friendly** - Source-generated hot paths avoid runtime reflection; expression parsing remains reflection-light with fallback metadata support
 - **Thread Safe** - No shared state
 - **Multi-Dialect** - Supports all database dialects
 

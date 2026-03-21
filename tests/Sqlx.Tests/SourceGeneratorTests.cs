@@ -69,6 +69,33 @@ public class SourceGeneratorTests
     }
 
     [TestMethod]
+    public void GeneratedEntityProvider_DbTypes_HandleDateTimeOffsetAndTimeSpan()
+    {
+        var provider = TemporalEntityEntityProvider.Default;
+
+        var occurredAtColumn = provider.Columns.First(c => c.PropertyName == "OccurredAt");
+        var durationColumn = provider.Columns.First(c => c.PropertyName == "Duration");
+        var scheduledOnColumn = provider.Columns.First(c => c.PropertyName == "ScheduledOn");
+        var startsAtColumn = provider.Columns.First(c => c.PropertyName == "StartsAt");
+
+        Assert.AreEqual(DbType.DateTimeOffset, occurredAtColumn.DbType);
+        Assert.AreEqual(DbType.Time, durationColumn.DbType);
+        Assert.AreEqual(DbType.Date, scheduledOnColumn.DbType);
+        Assert.AreEqual(DbType.Time, startsAtColumn.DbType);
+    }
+
+    [TestMethod]
+    public void GeneratedEntityProvider_DbTypes_HandleUnsignedIntegralTypes()
+    {
+        var provider = UnsignedEntityEntityProvider.Default;
+
+        Assert.AreEqual(DbType.SByte, provider.Columns.First(c => c.PropertyName == "SignedByteValue").DbType);
+        Assert.AreEqual(DbType.UInt16, provider.Columns.First(c => c.PropertyName == "UnsignedShortValue").DbType);
+        Assert.AreEqual(DbType.UInt32, provider.Columns.First(c => c.PropertyName == "UnsignedIntValue").DbType);
+        Assert.AreEqual(DbType.UInt64, provider.Columns.First(c => c.PropertyName == "UnsignedLongValue").DbType);
+    }
+
+    [TestMethod]
     public void GeneratedEntityProvider_NullabilityIsCorrect()
     {
         var provider = TestEntityWithNullableEntityProvider.Default;
@@ -241,6 +268,26 @@ public class TestEntityWithColumnAttr
     
     [System.ComponentModel.DataAnnotations.Schema.Column("custom_column_name")]
     public string CustomName { get; set; } = string.Empty;
+}
+
+[Sqlx]
+public class TemporalEntity
+{
+    public int Id { get; set; }
+    public DateTimeOffset OccurredAt { get; set; }
+    public TimeSpan Duration { get; set; }
+    public DateOnly ScheduledOn { get; set; }
+    public TimeOnly StartsAt { get; set; }
+}
+
+[Sqlx]
+public class UnsignedEntity
+{
+    public int Id { get; set; }
+    public sbyte SignedByteValue { get; set; }
+    public ushort UnsignedShortValue { get; set; }
+    public uint UnsignedIntValue { get; set; }
+    public ulong UnsignedLongValue { get; set; }
 }
 
 #endregion

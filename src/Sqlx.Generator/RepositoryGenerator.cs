@@ -1032,7 +1032,8 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.PushIndent();
 
         // Execute and return based on return type
-        GenerateExecuteAndReturn(sb, method, repoFullName, entityFullName, entityName, keyTypeName, isReturnInsertedId, methodName, templateReferenceName, useStaticOrdinals, ordinalsFieldName, isAsync, paramNameFields);
+        var useSimpleScalarExecution = isSimpleScalarMethod && ShouldUseSimpleScalarExecution(method.ReturnType, template);
+        GenerateExecuteAndReturn(sb, method, repoFullName, entityFullName, entityName, keyTypeName, isReturnInsertedId, methodName, templateReferenceName, useStaticOrdinals, ordinalsFieldName, isAsync, useSimpleScalarExecution, paramNameFields);
 
         sb.PopIndent();
         sb.AppendLine("}");
@@ -1053,43 +1054,82 @@ public class RepositoryGenerator : IIncrementalGenerator
     /// </summary>
     private static bool IsSimpleScalarMethod(IMethodSymbol method, string entityName)
     {
-        // Check if return type is a simple scalar (int, long, bool, string, etc.)
-        var returnType = method.ReturnType.ToDisplayString();
-        var isScalarReturn = returnType.Contains("Task<int>") || 
-                            returnType.Contains("Task<long>") || 
-                            returnType.Contains("Task<bool>") ||
-                            returnType.Contains("Task<string>") ||
-                            returnType.Contains("Task<decimal>") ||
-                            returnType.Contains("Task<double>") ||
-                            returnType.Contains("Task<float>") ||
-                            returnType == "int" ||
-                            returnType == "long" ||
-                            returnType == "bool" ||
-                            returnType == "string" ||
-                            returnType == "decimal" ||
-                            returnType == "double" ||
-                            returnType == "float";
-
-        if (!isScalarReturn) return false;
+        if (!TryGetSimpleScalarType(method.ReturnType, out _))
+        {
+            return false;
+        }
 
         // Check if all parameters are simple scalars (no entity types, no expressions)
         foreach (var param in method.Parameters)
         {
-            if (param.Name == "cancellationToken") continue;
-            
+            if (param.Name == "cancellationToken")
+            {
+                continue;
+            }
+
             var paramType = param.Type.ToDisplayString();
-            
+
             // If parameter is entity type or contains entity type, not simple
-            if (paramType.Contains(entityName)) return false;
-            
+            if (paramType.Contains(entityName))
+            {
+                return false;
+            }
+
             // If parameter is expression, not simple
-            if (paramType.Contains("Expression<")) return false;
-            
+            if (paramType.Contains("Expression<"))
+            {
+                return false;
+            }
+
             // If parameter is queryable, not simple
-            if (paramType.Contains("IQueryable<")) return false;
+            if (paramType.Contains("IQueryable<"))
+            {
+                return false;
+            }
+
+            // ref/out and OutputParameter<T> require the richer binding path
+            if (param.RefKind is RefKind.Ref or RefKind.Out || paramType.Contains("OutputParameter<"))
+            {
+                return false;
+            }
+
+            if (IsCollectionType(param.Type, out _))
+            {
+                return false;
+            }
+
+            if (InferDbTypeFromType(param.Type) == null)
+            {
+                return false;
+            }
         }
 
         return true;
+    }
+
+    private static bool TryGetSimpleScalarType(ITypeSymbol type, out ITypeSymbol scalarType)
+    {
+        scalarType = type;
+
+        var typeName = type.ToDisplayString();
+        if (typeName == "Task" || typeName == "System.Threading.Tasks.Task" ||
+            typeName == "ValueTask" || typeName == "System.Threading.Tasks.ValueTask")
+        {
+            return false;
+        }
+
+        if (type is INamedTypeSymbol namedType && namedType.IsGenericType)
+        {
+            var constructedName = namedType.ConstructedFrom.ToDisplayString();
+            if ((constructedName == "System.Threading.Tasks.Task<TResult>" ||
+                 constructedName == "System.Threading.Tasks.ValueTask<TResult>") &&
+                namedType.TypeArguments.Length == 1)
+            {
+                scalarType = namedType.TypeArguments[0];
+            }
+        }
+
+        return InferDbTypeFromType(scalarType) != null;
     }
 
     /// <summary>
@@ -1111,6 +1151,11 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.PushIndent();
             sb.AppendLine("var p = cmd.CreateParameter();");
             sb.AppendLine($"p.ParameterName = {paramFieldName};");
+            var inferredDbType = InferDbTypeFromType(paramType);
+            if (inferredDbType != null)
+            {
+                sb.AppendLine($"p.DbType = {inferredDbType};");
+            }
             if (isNullable)
             {
                 sb.AppendLine($"p.Value = {param.Name} ?? (object)DBNull.Value;");
@@ -1584,7 +1629,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         return null;
     }
 
-    private static void GenerateExecuteAndReturn(IndentedStringBuilder sb, IMethodSymbol method, string repoFullName, string entityFullName, string entityName, string keyTypeName, bool isReturnInsertedId, string methodName, string fieldName, bool useStaticOrdinals, string ordinalsFieldName, bool isAsync, Dictionary<string, string> paramNameFields)
+    private static void GenerateExecuteAndReturn(IndentedStringBuilder sb, IMethodSymbol method, string repoFullName, string entityFullName, string entityName, string keyTypeName, bool isReturnInsertedId, string methodName, string fieldName, bool useStaticOrdinals, string ordinalsFieldName, bool isAsync, bool useSimpleScalarExecution, Dictionary<string, string> paramNameFields)
     {
         var returnType = method.ReturnType.ToDisplayString();
         var ctParam = method.Parameters.FirstOrDefault(p => p.Name == "cancellationToken");
@@ -1598,6 +1643,30 @@ public class RepositoryGenerator : IIncrementalGenerator
         if (IsTupleReturnType(method.ReturnType) && !isReturnInsertedId)
         {
             GenerateTupleReturn(sb, method, repoFullName, entityName, ctName, methodName, fieldName, paramNameFields);
+            return;
+        }
+
+        if (useSimpleScalarExecution && TryGetSimpleScalarType(method.ReturnType, out var scalarReturnType))
+        {
+            var scalarTypeName = scalarReturnType.ToDisplayString();
+            if (isAsync)
+            {
+                sb.AppendLine($"var result = await cmd.ExecuteScalarAsync({ctName}).ConfigureAwait(false);");
+            }
+            else
+            {
+                sb.AppendLine("var result = cmd.ExecuteScalar();");
+            }
+
+            sb.AppendLine($"var scalarValue = global::Sqlx.TypeConverter.Convert<{scalarTypeName}>(result);");
+            sb.AppendLine();
+            sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
+            sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
+            sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, scalarValue, elapsed);");
+            sb.AppendLine("#endif");
+            GenerateMetricsRecording(sb, repoFullName, methodName, fieldName);
+            sb.AppendLine();
+            sb.AppendLine("return scalarValue;");
             return;
         }
 
@@ -1987,6 +2056,75 @@ public class RepositoryGenerator : IIncrementalGenerator
             // Default: execute non-query
             sb.AppendLine($"await cmd.ExecuteNonQueryAsync({ctName}).ConfigureAwait(false);");
         }
+    }
+
+    private static bool ShouldUseSimpleScalarExecution(ITypeSymbol returnType, string? template)
+    {
+        if (!TryGetSimpleScalarType(returnType, out var scalarReturnType))
+        {
+            return false;
+        }
+
+        var scalarTypeName = scalarReturnType.ToDisplayString();
+        if (scalarTypeName != "int" && scalarTypeName != "System.Int32")
+        {
+            return true;
+        }
+
+        return LooksLikeScalarQuery(template);
+    }
+
+    private static bool LooksLikeScalarQuery(string? template)
+    {
+        if (string.IsNullOrWhiteSpace(template))
+        {
+            return false;
+        }
+
+        var sql = template!;
+        var index = 0;
+        while (index < sql.Length)
+        {
+            while (index < sql.Length && char.IsWhiteSpace(sql[index]))
+            {
+                index++;
+            }
+
+            if (index + 1 < sql.Length && sql[index] == '-' && sql[index + 1] == '-')
+            {
+                index += 2;
+                while (index < sql.Length && sql[index] != '\n')
+                {
+                    index++;
+                }
+
+                continue;
+            }
+
+            if (index + 1 < sql.Length && sql[index] == '/' && sql[index + 1] == '*')
+            {
+                index += 2;
+                while (index + 1 < sql.Length && !(sql[index] == '*' && sql[index + 1] == '/'))
+                {
+                    index++;
+                }
+
+                index = Math.Min(index + 2, sql.Length);
+                continue;
+            }
+
+            break;
+        }
+
+        if (index >= sql.Length)
+        {
+            return false;
+        }
+
+        var remaining = sql.Substring(index).TrimStart();
+        return remaining.StartsWith("SELECT", StringComparison.OrdinalIgnoreCase) ||
+               remaining.StartsWith("WITH", StringComparison.OrdinalIgnoreCase) ||
+               remaining.StartsWith("VALUES", StringComparison.OrdinalIgnoreCase);
     }
 
     private static void AppendConditionalBlock(IndentedStringBuilder sb, string condition, Action generateContent)
@@ -2576,7 +2714,9 @@ public class RepositoryGenerator : IIncrementalGenerator
                typeName == "float" || typeName == "System.Single" ||
                typeName == "short" || typeName == "System.Int16" ||
                typeName == "byte" || typeName == "System.Byte" ||
-               typeName == "System.DateTime" || typeName == "System.DateTimeOffset" ||
+               typeName == "System.DateTime" || typeName == "System.DateOnly" ||
+               typeName == "System.DateTimeOffset" ||
+               typeName == "System.TimeOnly" || typeName == "System.TimeSpan" ||
                typeName == "System.Guid";
     }
 
@@ -2593,6 +2733,14 @@ public class RepositoryGenerator : IIncrementalGenerator
         {
             type = namedType.TypeArguments[0];
             typeName = type.ToDisplayString();
+        }
+
+        // Handle nullable reference annotations (e.g. string?, MyType?)
+        if (type.NullableAnnotation == NullableAnnotation.Annotated &&
+            !type.IsValueType &&
+            typeName.EndsWith("?", StringComparison.Ordinal))
+        {
+            typeName = typeName.Substring(0, typeName.Length - 1);
         }
         
         return typeName switch
@@ -2611,7 +2759,9 @@ public class RepositoryGenerator : IIncrementalGenerator
             "decimal" or "System.Decimal" => "System.Data.DbType.Decimal",
             "string" or "System.String" => "System.Data.DbType.String",
             "System.DateTime" => "System.Data.DbType.DateTime",
+            "System.DateOnly" => "System.Data.DbType.Date",
             "System.DateTimeOffset" => "System.Data.DbType.DateTimeOffset",
+            "System.TimeOnly" => "System.Data.DbType.Time",
             "System.TimeSpan" => "System.Data.DbType.Time",
             "System.Guid" => "System.Data.DbType.Guid",
             "byte[]" or "System.Byte[]" => "System.Data.DbType.Binary",

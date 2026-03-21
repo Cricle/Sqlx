@@ -75,11 +75,7 @@ SqlBuilder 完全集成 Sqlx 的 SqlTemplate 系统，支持所有占位符：
 
 ```csharp
 // 创建带 PlaceholderContext 的 builder
-var context = new PlaceholderContext(
-    SqlDefine.SQLite, 
-    "users", 
-    UserEntityProvider.Default.Columns
-);
+var context = PlaceholderContext.Create<User>(SqlDefine.SQLite);
 
 using var builder = new SqlBuilder(context);
 

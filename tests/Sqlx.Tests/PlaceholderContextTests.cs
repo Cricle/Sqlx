@@ -2,10 +2,13 @@
 // Copyright (c) Sqlx. All rights reserved.
 // </copyright>
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Data;
+using System.Linq;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Sqlx.Annotations;
 
 namespace Sqlx.Tests;
 
@@ -146,7 +149,90 @@ public class PlaceholderContextTests
         Assert.IsNull(context.Instance);
     }
 
+    [TestMethod]
+    public void Create_UsesTableAndColumnMetadataFromEntity()
+    {
+        var context = PlaceholderContext.Create<PlaceholderMappedEntity>(SqlDefine.SQLite);
+
+        Assert.AreEqual("placeholder_users", context.TableName);
+        Assert.IsTrue(context.Columns.Any(column => column.PropertyName == "DisplayName" && column.Name == "display_name"));
+    }
+
+    [TestMethod]
+    public void Create_UsesDynamicTableNameMethod_WhenConfigured()
+    {
+        var context = PlaceholderContext.Create<RuntimePlaceholderEntity>(SqlDefine.SQLite);
+
+        Assert.AreEqual("runtime_placeholder_users", context.TableName);
+    }
+
+    [TestMethod]
+    public void Create_WithVarProvider_PreservesVarProviderAndInstance()
+    {
+        var repository = new TestRepository();
+        Func<object, string, string> varProvider = static (_, name) => $"var:{name}";
+
+        var context = PlaceholderContext.Create<PlaceholderMappedEntity>(
+            SqlDefine.SQLite,
+            varProvider: varProvider,
+            instance: repository);
+
+        Assert.AreEqual(varProvider, context.VarProvider);
+        Assert.AreSame(repository, context.Instance);
+    }
+
+    [TestMethod]
+    public void Create_WithPlainPoco_UsesReflectionFallbackForTableAndColumns()
+    {
+        var context = PlaceholderContext.Create<PlainMappedPlaceholderEntity>(SqlDefine.SQLite);
+
+        Assert.AreEqual("plain_placeholder_users", context.TableName);
+        Assert.IsTrue(context.Columns.Any(column => column.PropertyName == "UserName" && column.Name == "user_name"));
+    }
+
+    [TestMethod]
+    public void Create_WithPlainPocoWithoutAttributes_UsesTypeNameAndSnakeCaseColumns()
+    {
+        var context = PlaceholderContext.Create<PlainPlaceholderEntity>(SqlDefine.SQLite);
+
+        Assert.AreEqual("PlainPlaceholderEntity", context.TableName);
+        Assert.IsTrue(context.Columns.Any(column => column.PropertyName == "DisplayName" && column.Name == "display_name"));
+    }
+
     // Test helper class
+    [Sqlx, TableName("placeholder_users")]
+    public partial class PlaceholderMappedEntity
+    {
+        public int Id { get; set; }
+
+        [Column("display_name")]
+        public string DisplayName { get; set; } = string.Empty;
+    }
+
+    [Sqlx, TableName("fallback_placeholder_users", Method = nameof(GetTableName))]
+    public partial class RuntimePlaceholderEntity
+    {
+        public int Id { get; set; }
+
+        public static string GetTableName() => "runtime_placeholder_users";
+    }
+
+    [TableName("plain_placeholder_users")]
+    public class PlainMappedPlaceholderEntity
+    {
+        public int Id { get; set; }
+
+        [Column("user_name")]
+        public string UserName { get; set; } = string.Empty;
+    }
+
+    public class PlainPlaceholderEntity
+    {
+        public int Id { get; set; }
+
+        public string DisplayName { get; set; } = string.Empty;
+    }
+
     private class TestRepository
     {
         public string GetTenantId() => "tenant-123";

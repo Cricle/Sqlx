@@ -69,18 +69,28 @@ namespace TestNamespace
         // Should generate A() method
         Assert.IsTrue(code.Contains("public int A()"), "Should generate A() method");
         Assert.IsTrue(code.Contains("_aTemplate"), "Should generate _aTemplate field");
+        Assert.IsTrue(code.Contains("var result = cmd.ExecuteScalar();"),
+            "SELECT scalar methods should use ExecuteScalar");
+        Assert.IsTrue(code.Contains("global::Sqlx.TypeConverter.Convert<int>(result)"),
+            "SELECT scalar methods should convert scalar result through TypeConverter");
         
         // Should generate GetCountAsync() method
         Assert.IsTrue(code.Contains("public async System.Threading.Tasks.Task<int> GetCountAsync()") ||
                      code.Contains("public async Task<int> GetCountAsync()"), 
                      "Should generate GetCountAsync() method");
         Assert.IsTrue(code.Contains("_getCountAsyncTemplate"), "Should generate _getCountAsyncTemplate field");
+        Assert.IsTrue(code.Contains("var result = await cmd.ExecuteScalarAsync") || code.Contains("var result = cmd.ExecuteScalar();"),
+            "Simple scalar count method should use ExecuteScalar");
+        Assert.IsTrue(code.Contains("global::Sqlx.TypeConverter.Convert<int>(result)"),
+            "Simple scalar count method should convert scalar result through TypeConverter");
         
         // Should generate EchoAsync() method
         Assert.IsTrue(code.Contains("public async System.Threading.Tasks.Task<string> EchoAsync(string value)") ||
                      code.Contains("public async Task<string> EchoAsync(string value)"), 
                      "Should generate EchoAsync() method");
         Assert.IsTrue(code.Contains("_echoAsyncTemplate"), "Should generate _echoAsyncTemplate field");
+        Assert.IsTrue(code.Contains("global::Sqlx.TypeConverter.Convert<string>(result)"),
+            "Simple string scalar method should convert scalar result through TypeConverter");
         
         // Should use simple parameter binding (not entity-specific)
         Assert.IsTrue(code.Contains("p.ParameterName = _paramPrefix + \"value\"") || 
@@ -202,5 +212,190 @@ namespace TestNamespace
         
         // Scalar methods should use simple binding
         // Entity method should use ProductParameterBinder (but we're not checking that here)
+    }
+
+    [TestMethod]
+    public void SimpleScalarMethod_WithUnsignedScalar_InfersDbTypeAndGeneratesCorrectly()
+    {
+        var source = @"
+using Sqlx;
+using Sqlx.Annotations;
+using System.Threading.Tasks;
+
+namespace TestNamespace
+{
+    [Sqlx]
+    public class CounterEntity
+    {
+        public int Id { get; set; }
+        public uint Count { get; set; }
+    }
+
+    public interface ICounterRepository : ICrudRepository<CounterEntity, int>
+    {
+        [SqlTemplate(""SELECT @minValue"")]
+        Task<uint> EchoUnsignedAsync(uint minValue);
+    }
+
+    [RepositoryFor(typeof(ICounterRepository))]
+    public partial class CounterRepository
+    {
+    }
+}";
+
+        var generator = new RepositoryGenerator();
+        var result = GeneratorTestHelper.RunGenerator(source, generator);
+
+        Assert.IsFalse(result.Diagnostics.Any(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error),
+            $"Should not have errors. Errors: {string.Join(", ", result.Diagnostics.Where(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+
+        var generatedSources = result.GetAllGeneratedSources().ToList();
+        var repositorySource = generatedSources.FirstOrDefault(s => s.FileName.Contains("CounterRepository.Repository.g.cs"));
+        Assert.IsTrue(repositorySource != default, "Should generate CounterRepository.Repository.g.cs");
+
+        var code = repositorySource.Source;
+
+        Assert.IsTrue(code.Contains("EchoUnsignedAsync(uint minValue)"), "Should generate unsigned scalar method");
+        Assert.IsTrue(code.Contains("p.DbType = System.Data.DbType.UInt32;"), "Should infer DbType.UInt32 for uint parameter");
+        Assert.IsTrue(code.Contains("global::Sqlx.TypeConverter.Convert<uint>(result)"),
+            "Unsigned scalar method should convert ExecuteScalar result through TypeConverter");
+    }
+
+    [TestMethod]
+    public void SimpleScalarMethod_WithOutputParameterWrapper_UsesOutputBindingPath()
+    {
+        var source = @"
+using Sqlx;
+using Sqlx.Annotations;
+using System.Threading.Tasks;
+
+namespace TestNamespace
+{
+    [Sqlx]
+    public class AuditEntity
+    {
+        public int Id { get; set; }
+    }
+
+    public interface IAuditRepository : ICrudRepository<AuditEntity, int>
+    {
+        [SqlTemplate(""EXEC test_output"")]
+        Task<int> RunAsync(OutputParameter<int> outputValue);
+    }
+
+    [RepositoryFor(typeof(IAuditRepository))]
+    public partial class AuditRepository
+    {
+    }
+}";
+
+        var generator = new RepositoryGenerator();
+        var result = GeneratorTestHelper.RunGenerator(source, generator);
+
+        Assert.IsFalse(result.Diagnostics.Any(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error),
+            $"Should not have errors. Errors: {string.Join(", ", result.Diagnostics.Where(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+
+        var generatedSources = result.GetAllGeneratedSources().ToList();
+        var repositorySource = generatedSources.FirstOrDefault(s => s.FileName.Contains("AuditRepository.Repository.g.cs"));
+        Assert.IsTrue(repositorySource != default, "Should generate AuditRepository.Repository.g.cs");
+
+        var code = repositorySource.Source;
+
+        Assert.IsTrue(code.Contains("Direction = System.Data.ParameterDirection.Output") ||
+                      code.Contains("Direction = System.Data.ParameterDirection.InputOutput"),
+            "OutputParameter<T> should use the richer output binding path.");
+    }
+
+    [TestMethod]
+    public void SimpleScalarMethod_WithIntDml_ReturnsAffectedRowsViaExecuteNonQuery()
+    {
+        var source = @"
+using Sqlx;
+using Sqlx.Annotations;
+using System.Threading.Tasks;
+
+namespace TestNamespace
+{
+    [Sqlx]
+    public class CounterEntity
+    {
+        public int Id { get; set; }
+        public uint Count { get; set; }
+    }
+
+    public interface ICounterMutationRepository : ICrudRepository<CounterEntity, int>
+    {
+        [SqlTemplate(""UPDATE counters SET count = @count WHERE id = @id"")]
+        Task<int> UpdateCountAsync(int id, uint count);
+    }
+
+    [RepositoryFor(typeof(ICounterMutationRepository))]
+    public partial class CounterMutationRepository
+    {
+    }
+}";
+
+        var generator = new RepositoryGenerator();
+        var result = GeneratorTestHelper.RunGenerator(source, generator);
+
+        Assert.IsFalse(result.Diagnostics.Any(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error),
+            $"Should not have errors. Errors: {string.Join(", ", result.Diagnostics.Where(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+
+        var generatedSources = result.GetAllGeneratedSources().ToList();
+        var repositorySource = generatedSources.FirstOrDefault(s => s.FileName.Contains("CounterMutationRepository.Repository.g.cs"));
+        Assert.IsTrue(repositorySource != default, "Should generate CounterMutationRepository.Repository.g.cs");
+
+        var code = repositorySource.Source;
+
+        Assert.IsTrue(code.Contains("UpdateCountAsync(int id, uint count)"), "Should generate DML int method");
+        Assert.IsTrue(code.Contains("await cmd.ExecuteNonQueryAsync"), "DML int methods should use ExecuteNonQueryAsync");
+        Assert.IsFalse(code.Contains("global::Sqlx.TypeConverter.Convert<int>(result)"), "DML int methods should not be treated as scalar ExecuteScalar queries");
+    }
+
+    [TestMethod]
+    public void SimpleScalarMethod_WithNullableReferenceScalar_UsesScalarPathAndNullBinding()
+    {
+        var source = @"
+using Sqlx;
+using Sqlx.Annotations;
+using System.Threading.Tasks;
+
+namespace TestNamespace
+{
+    [Sqlx]
+    public class MessageEntity
+    {
+        public int Id { get; set; }
+    }
+
+    public interface IMessageRepository : ICrudRepository<MessageEntity, int>
+    {
+        [SqlTemplate(""SELECT @prefix"")]
+        Task<string?> EchoNullableAsync(string? prefix);
+    }
+
+    [RepositoryFor(typeof(IMessageRepository))]
+    public partial class MessageRepository
+    {
+    }
+}";
+
+        var generator = new RepositoryGenerator();
+        var result = GeneratorTestHelper.RunGenerator(source, generator);
+
+        Assert.IsFalse(result.Diagnostics.Any(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error),
+            $"Should not have errors. Errors: {string.Join(", ", result.Diagnostics.Where(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+
+        var generatedSources = result.GetAllGeneratedSources().ToList();
+        var repositorySource = generatedSources.FirstOrDefault(s => s.FileName.Contains("MessageRepository.Repository.g.cs"));
+        Assert.IsTrue(repositorySource != default, "Should generate MessageRepository.Repository.g.cs");
+
+        var code = repositorySource.Source;
+
+        Assert.IsTrue(code.Contains("EchoNullableAsync(string? prefix)"), "Should generate nullable string scalar method");
+        Assert.IsTrue(code.Contains("p.DbType = System.Data.DbType.String;"), "Should infer DbType.String for nullable string parameter");
+        Assert.IsTrue(code.Contains("p.Value = prefix ?? (object)DBNull.Value;"), "Nullable string parameter should bind DBNull when null");
+        Assert.IsTrue(code.Contains("await cmd.ExecuteScalarAsync"), "Nullable string scalar method should use ExecuteScalarAsync");
+        Assert.IsTrue(code.Contains("global::Sqlx.TypeConverter.Convert<string?>(result)"), "Nullable string scalar method should convert scalar result through TypeConverter");
     }
 }

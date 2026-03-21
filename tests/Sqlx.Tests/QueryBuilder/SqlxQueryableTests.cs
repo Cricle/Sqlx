@@ -1,5 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.Globalization;
 using System.Linq;
 using Sqlx.Annotations;
 
@@ -121,6 +122,55 @@ public class SqlxQueryableTests
         Assert.IsTrue(sql.Contains("AND"));
     }
 
+    [TestMethod]
+    public void SqlxQueryable_SameTypeBranches_DoNotShareProviderInstance()
+    {
+        var baseQuery = (SqlxQueryable<QueryUser>)SqlQuery<QueryUser>.ForSqlite();
+        var left = (SqlxQueryable<QueryUser>)Queryable.Where((IQueryable<QueryUser>)baseQuery, u => u.IsActive);
+        var right = (SqlxQueryable<QueryUser>)Queryable.Where((IQueryable<QueryUser>)baseQuery, u => u.Age > 18);
+
+        Assert.AreNotSame(baseQuery.Provider, left.Provider);
+        Assert.AreNotSame(baseQuery.Provider, right.Provider);
+        Assert.AreNotSame(left.Provider, right.Provider);
+    }
+
+    [TestMethod]
+    public void SqlxQueryable_BranchConnections_AreIsolated()
+    {
+        var baseQuery = (SqlxQueryable<QueryUser>)SqlQuery<QueryUser>.ForSqlite();
+        var left = (SqlxQueryable<QueryUser>)Queryable.Where((IQueryable<QueryUser>)baseQuery, u => u.IsActive);
+        var right = (SqlxQueryable<QueryUser>)Queryable.Where((IQueryable<QueryUser>)baseQuery, u => u.Age > 18);
+
+        using var connection1 = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=:memory:");
+        using var connection2 = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=:memory:");
+
+        left.WithConnection(connection1);
+        right.WithConnection(connection2);
+
+        Assert.IsNull(baseQuery.Connection);
+        Assert.AreSame(connection1, left.Connection);
+        Assert.AreSame(connection2, right.Connection);
+    }
+
+    [TestMethod]
+    public void SqlxQueryable_BranchReaders_AreIsolated()
+    {
+        var baseQuery = (SqlxQueryable<QueryUser>)SqlQuery<QueryUser>.ForSqlite();
+        var left = (SqlxQueryable<QueryUser>)Queryable.Where((IQueryable<QueryUser>)baseQuery, u => u.IsActive);
+        var right = (SqlxQueryable<QueryUser>)Queryable.Where((IQueryable<QueryUser>)baseQuery, u => u.Age > 18);
+        var originalReader = baseQuery.ResultReader;
+
+        var reader1 = new BranchQueryUserReader();
+        var reader2 = new BranchQueryUserReader();
+
+        left.WithReader(reader1);
+        right.WithReader(reader2);
+
+        Assert.AreSame(originalReader, baseQuery.ResultReader);
+        Assert.AreSame(reader1, left.ResultReader);
+        Assert.AreSame(reader2, right.ResultReader);
+    }
+
     #endregion
 
     #region ToSql Basic
@@ -142,6 +192,56 @@ public class SqlxQueryableTests
             .ToSql();
         Assert.IsTrue(sql.Contains("WHERE"));
         Assert.IsTrue(sql.Contains("[id] = 1"));
+    }
+
+    [TestMethod]
+    public void ToSql_WithCapturedLocalValue_UsesActualValue()
+    {
+        var minAge = 18;
+
+        var sql = SqlQuery<QueryUser>.ForSqlite()
+            .Where(u => u.Age > minAge)
+            .ToSql();
+
+        Assert.IsTrue(sql.Contains("[age] > 18"), sql);
+    }
+
+    [TestMethod]
+    public void ToSql_WithCapturedDateTime_UsesActualValue()
+    {
+        var createdAt = new DateTime(2024, 2, 20, 14, 30, 0);
+
+        var sql = SqlQuery<QueryUser>.ForSqlite()
+            .Where(u => u.CreatedAt >= createdAt)
+            .ToSql();
+
+        Assert.IsTrue(sql.Contains("2024-02-20 14:30:00"), sql);
+    }
+
+    [TestMethod]
+    public void ToSql_WithCapturedDecimal_UsesInvariantLiteral()
+    {
+        var originalCulture = CultureInfo.CurrentCulture;
+        var originalUiCulture = CultureInfo.CurrentUICulture;
+
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("fr-FR");
+            CultureInfo.CurrentUICulture = new CultureInfo("fr-FR");
+            var threshold = 12.5m;
+
+            var sql = SqlQuery<QueryUser>.ForSqlite()
+                .Where(u => u.Salary > threshold)
+                .ToSql();
+
+            Assert.IsTrue(sql.Contains("12.5"), sql);
+            Assert.IsFalse(sql.Contains("12,5"), sql);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = originalCulture;
+            CultureInfo.CurrentUICulture = originalUiCulture;
+        }
     }
 
     [TestMethod]
@@ -255,6 +355,25 @@ public class SqlxQueryableTests
     }
 
     #endregion
+
+    private sealed class BranchQueryUserReader : IResultReader<QueryUser>
+    {
+        public int PropertyCount => 0;
+
+        public QueryUser Read(System.Data.IDataReader reader)
+        {
+            throw new NotImplementedException();
+        }
+
+        public QueryUser Read(System.Data.IDataReader reader, ReadOnlySpan<int> ordinals)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void GetOrdinals(System.Data.IDataReader reader, Span<int> ordinals)
+        {
+        }
+    }
 }
 
 

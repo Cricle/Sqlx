@@ -142,6 +142,13 @@ public class SourceGeneratorAutoDiscoveryTests
     }
 
     [TestMethod]
+    public void SqlQueryUsage_PrimitiveScalar_IsIgnoredByAutoDiscovery()
+    {
+        Assert.IsNull(SqlQuery<uint>.EntityProvider);
+        Assert.IsNull(SqlQuery<ulong>.EntityProvider);
+    }
+
+    [TestMethod]
     public void SqlQueryUsage_CanBuildQuery()
     {
         var query = SqlQuery<SqlQueryDiscoveredEntity>.ForSqlite()
@@ -334,6 +341,12 @@ public class SqlQueryDiscoveredEntity
 internal static class SqlQueryDiscoveredEntityUsage
 {
     private static readonly IQueryable<SqlQueryDiscoveredEntity> _query = SqlQuery<SqlQueryDiscoveredEntity>.ForSqlite();
+}
+
+internal static class PrimitiveSqlQueryDiscoveredUsage
+{
+    private static readonly IQueryable<uint> _uintQuery = SqlQuery<uint>.ForSqlite();
+    private static readonly IQueryable<ulong> _ulongQuery = SqlQuery<ulong>.ForSqlite();
 }
 
 /// <summary>

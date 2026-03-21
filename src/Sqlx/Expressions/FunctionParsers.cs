@@ -5,6 +5,7 @@
 // -----------------------------------------------------------------------
 
 using System;
+using System.Globalization;
 using System.Linq.Expressions;
 
 namespace Sqlx.Expressions
@@ -248,10 +249,19 @@ namespace Sqlx.Expressions
             null => "NULL",
             string s => d.WrapString(s.Replace("'", "''")),
             bool b => GetBooleanLiteral(d, b),
-            DateTime dt => d.WrapString(dt.ToString("yyyy-MM-dd HH:mm:ss")),
+            DateTime dt => d.WrapString(dt.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)),
+            DateTimeOffset dto => d.WrapString(dto.ToString("yyyy-MM-dd HH:mm:ss zzz", CultureInfo.InvariantCulture)),
             Guid g => d.WrapString(g.ToString()),
-            decimal or double or float => v.ToString()!,
+            TimeSpan ts => d.WrapString(ts.ToString("c", CultureInfo.InvariantCulture)),
+            decimal dec => dec.ToString(CultureInfo.InvariantCulture),
+            double dbl => dbl.ToString(CultureInfo.InvariantCulture),
+            float flt => flt.ToString(CultureInfo.InvariantCulture),
             char c => d.WrapString(c.ToString()),
+            IFormattable formattable when v.GetType().FullName == "System.DateOnly"
+                => d.WrapString(formattable.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
+            IFormattable formattable when v.GetType().FullName == "System.TimeOnly"
+                => d.WrapString(formattable.ToString("HH:mm:ss.fffffff", CultureInfo.InvariantCulture)),
+            IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
             _ => v?.ToString() ?? "NULL"
         };
 

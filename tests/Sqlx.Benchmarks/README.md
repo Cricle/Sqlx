@@ -19,6 +19,10 @@ dotnet run -c Release -- --filter "*Delete*"
 dotnet run -c Release -- --filter "*Count*"
 dotnet run -c Release -- --filter "*Pagination*"
 dotnet run -c Release -- --filter "*StaticOrdinals*"
+dotnet run -c Release -- --filter "*DynamicResultReaderOrdinal*"
+dotnet run -c Release -- --filter "*PureMappingResultReader*"
+dotnet run -c Release -- --filter "*TypeConverter*"
+dotnet run -c Release -- --filter "*ParameterExtraction*"
 
 # 运行 ExpressionBlockResult 性能测试（新增）⚡
 dotnet run -c Release -- --filter "*ExpressionBlockResult*"
@@ -34,6 +38,132 @@ pwsh run-expression-benchmark.ps1
 # 运行 ExpressionBlockResult benchmark
 pwsh run-expression-benchmark.ps1
 ```
+
+### DynamicResultReader Ordinals Benchmark
+
+**测试内容：** 对比 DynamicResultReader 在不同 ordinals 消费路径下的开销
+
+```bash
+dotnet run -c Release -- --filter "*DynamicResultReaderOrdinal*"
+```
+
+**测试场景：**
+1. `ToList` / `ToListAsync` 快路径
+   - 扩展方法内部租借一次 ordinals 数组并整批复用
+2. 手写 span 循环
+   - 每行走 `Read(IDataReader, ReadOnlySpan<int>)`
+   - 会触发 DynamicResultReader 的兼容性兜底路径
+3. 手写数组循环
+   - 直接走 `IArrayOrdinalReader<T>` 快路径
+   - 用来验证扩展方法是否已经接近最优路径
+
+**最新 ShortRun 结果（.NET 10, RowCount=1000）：**
+- `ToList` fast path: **1.015 ms**
+- manual span loop: `1.022 ms`
+- manual pooled array loop: `1.044 ms`
+- manual span loop async: `1.116 ms`
+- `ToListAsync` fast path: `1.176 ms`
+
+**结论：**
+- 端到端查询里，数据库执行时间占主导，DynamicResultReader 的不同 ordinals 路径差距不会特别大
+- `ToList` 快路径已经处在最优组，说明扩展方法快路径没有明显回退
+- 如果要观察映射层本身的收益，更适合看下面的 Pure Mapping benchmark
+
+### Pure Mapping ResultReader Benchmark
+
+**测试内容：** 使用内存 `DbDataReader` 隔离 ResultReader 本身的映射成本，不受 SQLite 命令执行影响
+
+```bash
+dotnet run -c Release -- --filter "*PureMappingResultReader*"
+```
+
+**测试场景：**
+1. Generated reader + cached ordinals
+2. Generated reader + uncached ordinals
+3. Dynamic reader + array fast path
+4. Dynamic reader + span fallback
+
+**最新 ShortRun 结果：**
+
+| Method | RowCount | Mean | Ratio |
+|--------|---------:|-----:|------:|
+| Generated cached ordinals | 100 | **6.378 μs** | **1.00** |
+| Dynamic array fast path | 100 | 8.770 μs | 1.38 |
+| Dynamic span fallback | 100 | 10.926 μs | 1.72 |
+| Generated uncached ordinals | 100 | 29.178 μs | 4.59 |
+| Generated cached ordinals | 1000 | **60.158 μs** | **1.00** |
+| Dynamic array fast path | 1000 | 81.224 μs | 1.35 |
+| Dynamic span fallback | 1000 | 106.770 μs | 1.78 |
+| Generated uncached ordinals | 1000 | 276.220 μs | 4.59 |
+
+**结论：**
+- generated reader 的 cached ordinals 比 uncached ordinals 快约 **4.6 倍**
+- dynamic reader 的 array fast path 比 span fallback 快约 **24%**
+- 这个 benchmark 明确证明了 cached ordinals、`IArrayOrdinalReader<T>` 和 ArrayPool 优化在映射层本身是有效的
+
+### TypeConverter Benchmark
+
+**测试内容：** 对比 `TypeConverter` 的关键转换路径与直接 BCL 调用的开销
+
+```bash
+dotnet run -c Release -- --filter "*TypeConverter*"
+```
+
+**测试场景：**
+1. 相同类型直返
+2. `string -> decimal`
+3. `string -> DateTimeOffset`
+4. `string -> DateOnly`
+5. `ticks -> TimeSpan`
+6. `string -> TimeOnly`
+7. `byte[] -> Guid`
+
+**用途：**
+- 量化 `TypeConverter` 自身的常见转换开销
+- 对比直接 BCL 调用与 `TypeConverter` 封装之间的差距
+- 为后续是否继续优化 `TypeConverter` 提供数据依据
+
+**最新 ShortRun 结果（.NET 10）：**
+
+| Method | Mean | Allocated |
+|--------|-----:|----------:|
+| BCL: TimeSpan.FromTicks | 0.602 ns | - |
+| BCL: new Guid(byte[]) | 2.549 ns | - |
+| TypeConverter: byte[] -> Guid | 12.308 ns | - |
+| TypeConverter: ticks -> TimeSpan | 14.233 ns | 24 B |
+| TypeConverter: Int32 same type | 14.891 ns | 24 B |
+| BCL: decimal.Parse invariant | 189.843 ns | - |
+| TypeConverter: string -> decimal | 190.496 ns | - |
+| TypeConverter: string -> TimeOnly | 305.121 ns | 24 B |
+| BCL: TimeOnly.Parse invariant | 317.617 ns | - |
+| TypeConverter: string -> DateOnly | 334.068 ns | 24 B |
+| BCL: DateOnly.Parse invariant | 342.090 ns | - |
+| TypeConverter: string -> DateTimeOffset | 549.464 ns | - |
+| BCL: DateTimeOffset.Parse invariant | 565.486 ns | - |
+
+**结论：**
+- 同类型直返、ticks 和 `byte[] -> Guid` 这类轻量路径依然是纳秒级，包装成本很低
+- `string -> DateOnly` / `string -> TimeOnly` 与直接 BCL `Parse` 已经非常接近，新增现代日期类型支持没有带来明显额外开销
+- `string -> DateTimeOffset` 仍然和直接 BCL `Parse` 处于同一量级
+- 当前 `TypeConverter` 更值得关注的是高层映射调用场景，而不是基础解析本身
+
+### Parameter Extraction Benchmark
+
+**测试内容：** 对比 `PlaceholderProcessor.ExtractParameters()` 在不同 SQL 形态下的开销
+
+```bash
+dotnet run -c Release -- --filter "*ParameterExtraction*"
+```
+
+**测试场景：**
+1. 简单参数 SQL
+2. 重复参数 SQL
+3. 含字符串和注释的 SQL
+4. 含 PostgreSQL cast / dollar-quoted string 的 SQL
+
+**用途：**
+- 为当前单次扫描实现建立性能基线
+- 确认支持字符串、注释、`::cast`、dollar-quoted string 后没有明显性能回退
 
 **测试场景：**
 1. **UPDATE 表达式解析**
@@ -157,6 +287,100 @@ dotnet run -c Release -f net10.0 -- --net10-aot
 
 **结论**: Dapper.AOT 批量读取更快，Sqlx 内存更少
 
+### SqlTemplate Render (SqlTemplateRenderBenchmark)
+
+**最新 ShortRun 结果（.NET 10）**
+
+| Method | Mean | Allocated | 说明 |
+|--------|------|-----------|------|
+| Single param: Dictionary Render | **889.6 ns** | 2.01 KB | 预先构造字典并复用 |
+| Single param: Optimized Render(key, value) | 978.4 ns | **2.01 KB** | 避免调用方每次新建字典 |
+| Single param: New Dictionary each call | 970.8 ns | 2.22 KB | 每次调用都分配新字典 |
+| Double param: Optimized Render(k1,v1,k2,v2) | **1.639 μs** | **3.48 KB** | 线程本地小型参数包 |
+| Double param: Dictionary Render | 1.881 μs | 3.48 KB | 预先构造字典并复用 |
+| Double param: New Dictionary each call | 1.953 μs | 3.69 KB | 每次调用都分配新字典 |
+
+**结论**
+- 单参数场景下，传入一个预先构造并复用的字典仍然是最快路径
+- 单参数优化重载的主要价值是避免调用方手动创建字典，时间上接近字典路径，分配低于“每次新建字典”
+- 双参数场景下，优化重载已经是最快路径，同时避免了每次构造字典的额外分配
+
+### ResultReader / Ordinals 热路径
+
+**DynamicResultReader Ordinals Benchmark（ShortRun, .NET 10, RowCount=1000）**
+
+| Method | Mean | Allocated |
+|--------|------|-----------|
+| DynamicReader: ToList fast path | **1.015 ms** | 174.22 KB |
+| DynamicReader: manual span loop | 1.022 ms | 165.88 KB |
+| DynamicReader: manual pooled array loop | 1.044 ms | 165.88 KB |
+| DynamicReader: manual span loop async | 1.116 ms | 166.05 KB |
+| DynamicReader: ToListAsync fast path | 1.176 ms | 174.43 KB |
+
+**Pure Mapping ResultReader Benchmark（ShortRun, .NET 10）**
+
+| Method | RowCount | Mean | Ratio |
+|--------|---------:|-----:|------:|
+| Generated cached ordinals | 100 | **6.378 μs** | **1.00** |
+| Dynamic array fast path | 100 | 8.770 μs | 1.38 |
+| Dynamic span fallback | 100 | 10.926 μs | 1.72 |
+| Generated uncached ordinals | 100 | 29.178 μs | 4.59 |
+| Generated cached ordinals | 1000 | **60.158 μs** | **1.00** |
+| Dynamic array fast path | 1000 | 81.224 μs | 1.35 |
+| Dynamic span fallback | 1000 | 106.770 μs | 1.78 |
+| Generated uncached ordinals | 1000 | 276.220 μs | 4.59 |
+
+**结论**
+- 真实 SQLite 查询路径里，ResultReader 优化收益会被数据库执行时间稀释
+- 纯映射 benchmark 明确表明：generated cached ordinals 比 uncached ordinals 快约 4.6 倍
+- DynamicResultReader 的 array fast path 比 span fallback 快约 24%，说明 `IArrayOrdinalReader<T>` 和 ArrayPool 优化命中了映射层热路径
+
+### ColumnNameResolver 热路径
+
+**ColumnNameResolver Benchmark（ShortRun, .NET 10）**
+
+| Method | Mean | Allocated |
+|--------|------|-----------|
+| Resolve fallback snake_case | **21.09 ns** | 0 B |
+| Resolve second mapped column | 25.28 ns | 0 B |
+| Resolve mapped column | 42.20 ns | 0 B |
+
+**结论**
+- provider 映射解析已经稳定在几十纳秒级，并且没有额外分配
+- `TableNameResolver` / `EntityProviderResolver` 之外，`ColumnNameResolver` 现在也具备很低的元数据访问成本
+- 表达式解析、聚合选择器、`SetClause` 等多处共享这条热路径，缓存化映射表让这些场景的重复列名解析更轻
+
+### TableNameResolver 热路径
+
+**TableNameResolver Benchmark（ShortRun, .NET 10）**
+
+| Method | Mean | Allocated |
+|--------|------|-----------|
+| Resolve type-name fallback | **16.78 ns** | 0 B |
+| Resolve static table name | 31.24 ns | 0 B |
+| Resolve dynamic method table name | 44.62 ns | 0 B |
+
+**结论**
+- `TableNameResolver` 现在把 attribute/method 元数据查找缓存下来，静态表名解析稳定在几十纳秒级
+- 动态表名方法仍然保持“每次调用都重新求值”的语义，但公开静态方法路径已经避免了每次 `MethodInfo.Invoke` 的反射调用成本
+- 表名解析本身没有额外分配，适合继续作为查询翻译主路径的一部分
+
+### SnakeCaseConversion 热路径
+
+**SnakeCaseConversion Benchmark（ShortRun, .NET 10）**
+
+| Method | Mean | Allocated |
+|--------|------|-----------|
+| SnakeCase cached acronym | **12.29 ns** | 0 B |
+| SnakeCase cached lowercase | 14.07 ns | 0 B |
+| SnakeCase core mixed case | 48.10 ns | 48 B |
+| SnakeCase core acronym | 69.52 ns | 56 B |
+
+**结论**
+- `ConvertToSnakeCase` 的缓存命中路径已经稳定在十几纳秒级，没有额外分配
+- 新的 acronym 兼容算法虽然比简单大小写场景更重，但 uncached 路径仍然保持在几十纳秒级
+- 运行时反射 fallback 现在和源生成器使用同一套 acronym 边界规则，性能和一致性都更可控
+
 ### 测试环境
 
 - BenchmarkDotNet v0.14.0
@@ -175,7 +399,10 @@ dotnet run -c Release -f net10.0 -- --net10-aot
 6. **QueryWithFilterBenchmark** - 带 WHERE 条件的查询
 7. **CountBenchmark** - COUNT 聚合查询
 8. **PaginationBenchmark** - 分页查询
-9. **StaticOrdinalsBenchmark** - 静态列序号 vs 动态列序号
+9. **ColumnNameResolverBenchmark** - provider 元数据列名解析热路径
+10. **TableNameResolverBenchmark** - 表名元数据解析与动态表名方法热路径
+11. **SnakeCaseConversionBenchmark** - snake_case 转换缓存命中与核心算法热路径
+12. **StaticOrdinalsBenchmark** - 静态列序号 vs 动态列序号
 
 ## 为什么 Sqlx 更快？
 

@@ -7,7 +7,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -33,6 +32,31 @@ namespace Sqlx.Expressions
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsBooleanMember(Expression e) => e is MemberExpression { Type: var t } && t == typeof(bool);
+
+        public static Type? FindRootParameterType(Expression? expr)
+        {
+            while (expr != null)
+            {
+                switch (expr)
+                {
+                    case ParameterExpression parameter:
+                        return parameter.Type;
+                    case MemberExpression member:
+                        expr = member.Expression;
+                        break;
+                    case UnaryExpression { NodeType: ExpressionType.Convert } unary:
+                        expr = unary.Operand;
+                        break;
+                    case MethodCallExpression methodCall when methodCall.Object != null:
+                        expr = methodCall.Object;
+                        break;
+                    default:
+                        return null;
+                }
+            }
+
+            return null;
+        }
 
         /// <summary>
         /// Checks if the expression is a nested member access chain that ultimately leads to a parameter.
@@ -77,25 +101,14 @@ namespace Sqlx.Expressions
             m.Method.DeclaringType != typeof(Math) &&
             m.Method.Name is "Count" or "CountDistinct" or "Sum" or "Average" or "Avg" or "Max" or "Min" or "StringAgg";
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static object? GetMemberValueOptimized(MemberExpression m) =>
-            m.Type.IsValueType ? GetDefaultValueForValueType(m.Type) : null;
-
-        public static object? GetDefaultValueForValueType(Type t)
+        public static object? GetMemberValueOptimized(MemberExpression m)
         {
-            if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(Nullable<>)) return null;
-            
-            var typeCode = Type.GetTypeCode(t);
-            return typeCode switch
+            if (TryEvaluateMemberValue(m, out var value))
             {
-                TypeCode.Int32 or TypeCode.Int64 or TypeCode.Int16 or TypeCode.Byte => 0,
-                TypeCode.Boolean => false,
-                TypeCode.DateTime => DateTime.MinValue,
-                TypeCode.Decimal => 0m,
-                TypeCode.Double => 0.0,
-                TypeCode.Single => 0f,
-                _ => t == typeof(Guid) ? Guid.Empty : (t.IsValueType ? (t.IsGenericType ? null : 0) : null)
-            };
+                return value;
+            }
+
+            return EvaluateExpression(m);
         }
 
         public static object? EvaluateExpression(Expression e)
@@ -114,17 +127,69 @@ namespace Sqlx.Expressions
             return evaluator();
         }
 
+        private static bool TryEvaluateMemberValue(Expression? expression, out object? value)
+        {
+            switch (expression)
+            {
+                case null:
+                    value = null;
+                    return true;
+
+                case ConstantExpression constant:
+                    value = constant.Value;
+                    return true;
+
+                case MemberExpression member:
+                    if (!TryEvaluateMemberValue(member.Expression, out var target))
+                    {
+                        value = null;
+                        return false;
+                    }
+
+                    switch (member.Member)
+                    {
+                        case FieldInfo field:
+                            value = field.GetValue(target);
+                            return true;
+
+                        case PropertyInfo property when property.GetIndexParameters().Length == 0:
+                            value = property.GetValue(target);
+                            return true;
+
+                        default:
+                            value = null;
+                            return false;
+                    }
+
+                case UnaryExpression { NodeType: ExpressionType.Convert or ExpressionType.ConvertChecked } unary:
+                    return TryEvaluateMemberValue(unary.Operand, out value);
+
+                default:
+                    value = null;
+                    return false;
+            }
+        }
+
         public static string ConvertToSnakeCase(string name)
         {
             if (string.IsNullOrEmpty(name)) return name;
             if (SnakeCaseCache.TryGetValue(name, out var cached)) return cached;
 
             // Quick check if conversion is needed
-            if (!name.Any(char.IsUpper))
+            if (!ContainsUppercase(name))
             {
                 SnakeCaseCache.TryAdd(name, name);
                 return name;
             }
+
+            var result = ConvertToSnakeCaseCore(name);
+            SnakeCaseCache.TryAdd(name, result);
+            return result;
+        }
+
+        internal static string ConvertToSnakeCaseCore(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return name;
 
             // Use stackalloc for small strings to avoid heap allocation
             var maxLen = name.Length * 2;
@@ -136,7 +201,18 @@ namespace Sqlx.Expressions
                 var c = name[i];
                 if (char.IsUpper(c))
                 {
-                    if (i > 0) buffer[pos++] = '_';
+                    if (i > 0)
+                    {
+                        var prevChar = name[i - 1];
+                        var nextChar = i + 1 < name.Length ? name[i + 1] : '\0';
+
+                        if (char.IsLower(prevChar) || char.IsDigit(prevChar) ||
+                            (char.IsUpper(prevChar) && char.IsLower(nextChar)))
+                        {
+                            buffer[pos++] = '_';
+                        }
+                    }
+
                     buffer[pos++] = char.ToLowerInvariant(c);
                 }
                 else
@@ -145,9 +221,7 @@ namespace Sqlx.Expressions
                 }
             }
 
-            var result = new string(buffer.Slice(0, pos));
-            SnakeCaseCache.TryAdd(name, result);
-            return result;
+            return new string(buffer.Slice(0, pos));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -155,5 +229,19 @@ namespace Sqlx.Expressions
             s.Length >= 2 && s[0] == '(' && s[s.Length - 1] == ')' 
                 ? s.Substring(1, s.Length - 2)
                 : s;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool ContainsUppercase(string name)
+        {
+            for (var i = 0; i < name.Length; i++)
+            {
+                if (char.IsUpper(name[i]))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
     }
 }

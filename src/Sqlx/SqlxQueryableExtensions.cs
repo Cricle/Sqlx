@@ -20,6 +20,12 @@ namespace Sqlx
     /// </summary>
     public static class SqlxQueryableExtensions
     {
+        private static SqlxQueryable<T> GetSqlxQueryableOrThrow<T>(IQueryable<T> query)
+        {
+            return query as SqlxQueryable<T>
+                ?? throw new InvalidOperationException("This method can only be called on SqlxQueryable instances.");
+        }
+
         /// <summary>
         /// Sets the database connection for query execution.
         /// </summary>
@@ -43,13 +49,44 @@ namespace Sqlx
                 throw new ArgumentNullException(nameof(connection));
             }
 
-            if (query is SqlxQueryable<T> sqlxQuery)
+            var sqlxQuery = GetSqlxQueryableOrThrow(query);
+            EnsureConnectionMatchesTransaction(sqlxQuery.Transaction, connection);
+            sqlxQuery.Connection = connection;
+            return query;
+        }
+
+        /// <summary>
+        /// Sets the database transaction for query execution.
+        /// </summary>
+        /// <typeparam name="T">The entity type.</typeparam>
+        /// <param name="query">The query.</param>
+        /// <param name="transaction">The database transaction.</param>
+        /// <returns>The query with transaction set.</returns>
+        public static IQueryable<T> WithTransaction<
+#if NET5_0_OR_GREATER
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
+#endif
+            T>(this IQueryable<T> query, DbTransaction transaction)
+        {
+            if (query == null)
             {
-                sqlxQuery.Connection = connection;
-                return query;
+                throw new ArgumentNullException(nameof(query));
             }
 
-            throw new InvalidOperationException("WithConnection() can only be called on SqlxQueryable instances.");
+            if (transaction == null)
+            {
+                throw new ArgumentNullException(nameof(transaction));
+            }
+
+            var connection = transaction.Connection
+                ?? throw new InvalidOperationException("The provided transaction is not associated with a connection.");
+
+            var sqlxQuery = GetSqlxQueryableOrThrow(query);
+            EnsureTransactionMatchesConnection(sqlxQuery.Connection, transaction);
+
+            sqlxQuery.Transaction = transaction;
+            sqlxQuery.Connection ??= connection;
+            return query;
         }
 
         /// <summary>
@@ -75,13 +112,9 @@ namespace Sqlx
                 throw new ArgumentNullException(nameof(reader));
             }
 
-            if (query is SqlxQueryable<T> sqlxQuery)
-            {
-                sqlxQuery.ResultReader = reader;
-                return query;
-            }
-
-            throw new InvalidOperationException("WithReader() can only be called on SqlxQueryable instances.");
+            var sqlxQuery = GetSqlxQueryableOrThrow(query);
+            sqlxQuery.ResultReader = reader;
+            return query;
         }
 
         /// <summary>
@@ -151,22 +184,42 @@ namespace Sqlx
                 throw new ArgumentNullException(nameof(subQuery));
             }
 
-            if (subQuery is SqlxQueryable<T> sqlxQuery)
-            {
-                // Create a new queryable that wraps the subquery
-                var provider = (SqlxQueryProvider<T>)sqlxQuery.Provider;
-                return new SqlxQueryable<T>(
-                    new SqlxQueryProvider<T>(provider.Dialect, provider.EntityProvider)
-                    {
-                        Connection = sqlxQuery.Connection,
-                        ResultReader = sqlxQuery.ResultReader
-                    },
-                    Expression.Constant(sqlxQuery),
-                    sqlxQuery.Connection,
-                    sqlxQuery.ResultReader);
-            }
+            var sqlxQuery = GetSqlxQueryableOrThrow(subQuery);
 
-            throw new InvalidOperationException("AsSubQuery() can only be called on SqlxQueryable instances.");
+            // Create a new queryable that wraps the subquery
+            var provider = (SqlxQueryProvider<T>)sqlxQuery.Provider;
+            return new SqlxQueryable<T>(
+                new SqlxQueryProvider<T>(provider.Dialect, provider.EntityProvider)
+                {
+                    Connection = sqlxQuery.Connection,
+                    Transaction = sqlxQuery.Transaction,
+                    ResultReader = sqlxQuery.ResultReader
+                },
+                Expression.Constant(sqlxQuery),
+                sqlxQuery.Connection,
+                sqlxQuery.ResultReader,
+                sqlxQuery.Transaction);
+        }
+
+        private static void EnsureTransactionMatchesConnection(DbConnection? connection, DbTransaction transaction)
+        {
+            var transactionConnection = transaction.Connection
+                ?? throw new InvalidOperationException("The provided transaction is not associated with a connection.");
+
+            if (connection != null && !ReferenceEquals(connection, transactionConnection))
+            {
+                throw new InvalidOperationException(
+                    "The provided transaction belongs to a different connection than the query.");
+            }
+        }
+
+        private static void EnsureConnectionMatchesTransaction(DbTransaction? transaction, DbConnection connection)
+        {
+            if (transaction?.Connection != null && !ReferenceEquals(transaction.Connection, connection))
+            {
+                throw new InvalidOperationException(
+                    "The provided connection does not match the query transaction connection.");
+            }
         }
     }
 }

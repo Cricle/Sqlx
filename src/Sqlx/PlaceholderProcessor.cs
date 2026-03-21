@@ -5,6 +5,7 @@
 namespace Sqlx;
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using Sqlx.Placeholders;
@@ -46,7 +47,7 @@ public static class PlaceholderProcessor
     private static readonly Regex ParamRegex = new(@"[@$:](\w+)", RegexOptions.Compiled);
 #endif
 
-    private static readonly Dictionary<string, IPlaceholderHandler> Handlers = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly ConcurrentDictionary<string, IPlaceholderHandler> Handlers = new(StringComparer.OrdinalIgnoreCase)
     {
         ["columns"] = ColumnsPlaceholderHandler.Instance,
         ["values"] = ValuesPlaceholderHandler.Instance,
@@ -60,9 +61,9 @@ public static class PlaceholderProcessor
         ["var"] = VarPlaceholderHandler.Instance,
     };
 
-    private static readonly HashSet<string> BlockClosingTags = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly ConcurrentDictionary<string, byte> BlockClosingTags = new(StringComparer.OrdinalIgnoreCase)
     {
-        "/if",
+        ["/if"] = 0,
     };
 
     /// <summary>
@@ -79,7 +80,7 @@ public static class PlaceholderProcessor
         Handlers[handler.Name] = handler;
         if (handler is IBlockPlaceholderHandler blockHandler)
         {
-            BlockClosingTags.Add(blockHandler.ClosingTagName);
+            BlockClosingTags[blockHandler.ClosingTagName] = 0;
         }
     }
 
@@ -89,7 +90,7 @@ public static class PlaceholderProcessor
     /// <param name="closingTagName">The closing tag name (e.g., "/if", "/foreach").</param>
     public static void RegisterBlockClosingTag(string closingTagName)
     {
-        BlockClosingTags.Add(closingTagName);
+        BlockClosingTags[closingTagName] = 0;
     }
 
     /// <summary>
@@ -99,7 +100,7 @@ public static class PlaceholderProcessor
     /// <returns><c>true</c> if it's a closing tag; otherwise, <c>false</c>.</returns>
     public static bool IsBlockClosingTag(string tagName)
     {
-        return BlockClosingTags.Contains(tagName);
+        return BlockClosingTags.ContainsKey(tagName);
     }
 
     /// <summary>
@@ -121,13 +122,250 @@ public static class PlaceholderProcessor
     /// </remarks>
     public static IReadOnlyList<string> ExtractParameters(string sql)
     {
-        var list = new List<string>();
-        foreach (Match m in ParameterRegex().Matches(sql))
+        if (string.IsNullOrEmpty(sql))
         {
-            var name = m.Groups[1].Value;
-            if (!list.Contains(name)) list.Add(name);
+            return Array.Empty<string>();
         }
+
+        var list = new List<string>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var state = ExtractState.None;
+        string? dollarQuotedDelimiter = null;
+
+        for (var i = 0; i < sql.Length; i++)
+        {
+            if (TryAdvanceQuotedOrCommentState(sql, ref i, ref state, ref dollarQuotedDelimiter))
+            {
+                continue;
+            }
+
+            if (!IsParameterPrefix(sql[i]) || !CanStartParameter(sql, i))
+            {
+                continue;
+            }
+
+            var start = i + 1;
+            if (start >= sql.Length || !IsParameterNameChar(sql[start]))
+            {
+                continue;
+            }
+
+            var end = start + 1;
+            while (end < sql.Length && IsParameterNameChar(sql[end]))
+            {
+                end++;
+            }
+
+            var name = sql.Substring(start, end - start);
+            if (seen.Add(name))
+            {
+                list.Add(name);
+            }
+
+            i = end - 1;
+        }
+
         return list;
+    }
+
+    private static bool TryAdvanceQuotedOrCommentState(
+        string sql,
+        ref int index,
+        ref ExtractState state,
+        ref string? dollarQuotedDelimiter)
+    {
+        var current = sql[index];
+        var hasNext = index + 1 < sql.Length;
+        var next = hasNext ? sql[index + 1] : '\0';
+
+        switch (state)
+        {
+            case ExtractState.SingleQuotedString:
+                if (current == '\'')
+                {
+                    if (hasNext && next == '\'')
+                    {
+                        index++;
+                    }
+                    else
+                    {
+                        state = ExtractState.None;
+                    }
+                }
+                return true;
+
+            case ExtractState.DoubleQuotedIdentifier:
+                if (current == '"')
+                {
+                    if (hasNext && next == '"')
+                    {
+                        index++;
+                    }
+                    else
+                    {
+                        state = ExtractState.None;
+                    }
+                }
+                return true;
+
+            case ExtractState.BacktickIdentifier:
+                if (current == '`')
+                {
+                    if (hasNext && next == '`')
+                    {
+                        index++;
+                    }
+                    else
+                    {
+                        state = ExtractState.None;
+                    }
+                }
+                return true;
+
+            case ExtractState.BracketIdentifier:
+                if (current == ']')
+                {
+                    if (hasNext && next == ']')
+                    {
+                        index++;
+                    }
+                    else
+                    {
+                        state = ExtractState.None;
+                    }
+                }
+                return true;
+
+            case ExtractState.LineComment:
+                if (current is '\r' or '\n')
+                {
+                    state = ExtractState.None;
+                }
+                return true;
+
+            case ExtractState.BlockComment:
+                if (current == '*' && hasNext && next == '/')
+                {
+                    state = ExtractState.None;
+                    index++;
+                }
+                return true;
+
+            case ExtractState.DollarQuotedString:
+                if (dollarQuotedDelimiter != null &&
+                    index + dollarQuotedDelimiter.Length <= sql.Length &&
+                    string.CompareOrdinal(sql, index, dollarQuotedDelimiter, 0, dollarQuotedDelimiter.Length) == 0)
+                {
+                    state = ExtractState.None;
+                    index += dollarQuotedDelimiter.Length - 1;
+                    dollarQuotedDelimiter = null;
+                }
+                return true;
+        }
+
+        if (current == '\'')
+        {
+            state = ExtractState.SingleQuotedString;
+            return true;
+        }
+
+        if (current == '"')
+        {
+            state = ExtractState.DoubleQuotedIdentifier;
+            return true;
+        }
+
+        if (current == '`')
+        {
+            state = ExtractState.BacktickIdentifier;
+            return true;
+        }
+
+        if (current == '[')
+        {
+            state = ExtractState.BracketIdentifier;
+            return true;
+        }
+
+        if (current == '-' && hasNext && next == '-')
+        {
+            state = ExtractState.LineComment;
+            index++;
+            return true;
+        }
+
+        if (current == '/' && hasNext && next == '*')
+        {
+            state = ExtractState.BlockComment;
+            index++;
+            return true;
+        }
+
+        if (current == '$' && TryGetDollarQuotedDelimiter(sql, index, out var delimiter))
+        {
+            state = ExtractState.DollarQuotedString;
+            dollarQuotedDelimiter = delimiter;
+            index += delimiter.Length - 1;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryGetDollarQuotedDelimiter(string sql, int index, out string delimiter)
+    {
+        var i = index + 1;
+        while (i < sql.Length && (char.IsLetterOrDigit(sql[i]) || sql[i] == '_'))
+        {
+            i++;
+        }
+
+        if (i < sql.Length && sql[i] == '$')
+        {
+            delimiter = sql.Substring(index, i - index + 1);
+            return true;
+        }
+
+        delimiter = string.Empty;
+        return false;
+    }
+
+    private static bool CanStartParameter(string sql, int index)
+    {
+        if (index == 0)
+        {
+            return true;
+        }
+
+        var previous = sql[index - 1];
+        if (char.IsLetterOrDigit(previous) || previous == '_')
+        {
+            return false;
+        }
+
+        return !(sql[index] == ':' && previous == ':');
+    }
+
+    private static bool IsParameterPrefix(char value)
+    {
+        return value is '@' or '$' or ':';
+    }
+
+    private static bool IsParameterNameChar(char value)
+    {
+        return char.IsLetterOrDigit(value) || value == '_';
+    }
+
+    private enum ExtractState
+    {
+        None,
+        SingleQuotedString,
+        DoubleQuotedIdentifier,
+        BacktickIdentifier,
+        BracketIdentifier,
+        LineComment,
+        BlockComment,
+        DollarQuotedString,
     }
 
 #if NET7_0_OR_GREATER

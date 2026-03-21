@@ -4,6 +4,7 @@
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
@@ -196,6 +197,45 @@ public class SqlxQueryProviderTests
     }
 
     [TestMethod]
+    public void CreateQuery_DateTimeOffsetType_DoesNotCreateDynamicReader()
+    {
+        // Arrange
+        var expression = Expression.Constant(new[] { DateTimeOffset.UtcNow }.AsQueryable());
+
+        // Act
+        var result = _provider.CreateQuery<DateTimeOffset>(expression);
+
+        // Assert
+        Assert.IsNotNull(result);
+    }
+
+    [TestMethod]
+    public void CreateQuery_DateOnlyType_DoesNotCreateDynamicReader()
+    {
+        // Arrange
+        var expression = Expression.Constant(new[] { new DateOnly(2024, 2, 20) }.AsQueryable());
+
+        // Act
+        var result = _provider.CreateQuery<DateOnly>(expression);
+
+        // Assert
+        Assert.IsNotNull(result);
+    }
+
+    [TestMethod]
+    public void CreateQuery_TimeOnlyType_DoesNotCreateDynamicReader()
+    {
+        // Arrange
+        var expression = Expression.Constant(new[] { new TimeOnly(14, 30, 0) }.AsQueryable());
+
+        // Act
+        var result = _provider.CreateQuery<TimeOnly>(expression);
+
+        // Assert
+        Assert.IsNotNull(result);
+    }
+
+    [TestMethod]
     [ExpectedException(typeof(NotSupportedException))]
     public void Execute_NonGeneric_ThrowsNotSupportedException()
     {
@@ -375,6 +415,85 @@ public class SqlxQueryProviderTests
     }
 
     [TestMethod]
+    public void ExtractColumnExpression_WithColumnAttribute_UsesMappedColumnName()
+    {
+        // Arrange
+        var provider = new SqlxQueryProvider<ColumnMappedAggregateEntity>(
+            _dialect,
+            new DynamicEntityProvider<ColumnMappedAggregateEntity>());
+        var queryable = new[] { new ColumnMappedAggregateEntity() }.AsQueryable();
+        Expression<Func<ColumnMappedAggregateEntity, int>> selector = x => x.Score;
+        var expression = Expression.Call(
+            typeof(Queryable),
+            nameof(Queryable.Max),
+            new[] { typeof(ColumnMappedAggregateEntity), typeof(int) },
+            queryable.Expression,
+            Expression.Quote(selector));
+
+        // Act
+        var method = typeof(SqlxQueryProvider<ColumnMappedAggregateEntity>).GetMethod(
+            "ExtractColumnExpression",
+            BindingFlags.NonPublic | BindingFlags.Instance);
+        var result = (string)method!.Invoke(provider, new object[] { expression })!;
+
+        // Assert
+        Assert.IsTrue(result.Contains("custom_score"), result);
+        Assert.IsFalse(result.Contains("Score"), result);
+    }
+
+    [TestMethod]
+    public void ExtractColumnExpression_WithoutEntityProvider_FallsBackToSnakeCase()
+    {
+        // Arrange
+        var provider = new SqlxQueryProvider<FallbackAggregateEntity>(_dialect);
+        var queryable = new[] { new FallbackAggregateEntity() }.AsQueryable();
+        Expression<Func<FallbackAggregateEntity, int>> selector = x => x.TotalScore;
+        var expression = Expression.Call(
+            typeof(Queryable),
+            nameof(Queryable.Max),
+            new[] { typeof(FallbackAggregateEntity), typeof(int) },
+            queryable.Expression,
+            Expression.Quote(selector));
+
+        // Act
+        var method = typeof(SqlxQueryProvider<FallbackAggregateEntity>).GetMethod(
+            "ExtractColumnExpression",
+            BindingFlags.NonPublic | BindingFlags.Instance);
+        var result = (string)method!.Invoke(provider, new object[] { expression })!;
+
+        // Assert
+        Assert.IsTrue(result.Contains("total_score"), result);
+        Assert.IsFalse(result.Contains("TotalScore"), result);
+    }
+
+    [TestMethod]
+    public void ExtractColumnExpression_WithProjectionAlias_KeepsAliasName()
+    {
+        // Arrange
+        var provider = new SqlxQueryProvider<ProjectionAliasEntity>(
+            _dialect,
+            new DynamicEntityProvider<TestEntity>());
+        var queryable = new[] { new ProjectionAliasEntity() }.AsQueryable();
+        Expression<Func<ProjectionAliasEntity, int>> selector = x => x.TotalScore;
+        var expression = Expression.Call(
+            typeof(Queryable),
+            nameof(Queryable.Max),
+            new[] { typeof(ProjectionAliasEntity), typeof(int) },
+            queryable.Expression,
+            Expression.Quote(selector));
+
+        // Act
+        var method = typeof(SqlxQueryProvider<ProjectionAliasEntity>).GetMethod(
+            "ExtractColumnExpression",
+            BindingFlags.NonPublic | BindingFlags.Instance);
+        var result = (string)method!.Invoke(provider, new object[] { expression })!;
+
+        // Assert
+        Assert.IsTrue(result.Contains("TotalScore"), result);
+        Assert.IsFalse(result.Contains("total_score"), result);
+    }
+
+    [TestMethod]
     public void GetAggregateFunction_Min_ReturnsMinFunction()
     {
         // Arrange & Act - Use reflection to call private method
@@ -519,6 +638,48 @@ public class SqlxQueryProviderTests
     }
 
     [TestMethod]
+    public void DynamicReaderCache_DateTimeOffsetType_ShouldNotCreate()
+    {
+        // Arrange
+        var expression = Expression.Constant(new[] { DateTimeOffset.UtcNow }.AsQueryable());
+
+        // Act - CreateQuery for DateTimeOffset type should not create dynamic reader
+        var result = _provider.CreateQuery<DateTimeOffset>(expression);
+
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsInstanceOfType(result, typeof(SqlxQueryable<DateTimeOffset>));
+    }
+
+    [TestMethod]
+    public void DynamicReaderCache_DateOnlyType_ShouldNotCreate()
+    {
+        // Arrange
+        var expression = Expression.Constant(new[] { new DateOnly(2024, 2, 20) }.AsQueryable());
+
+        // Act - CreateQuery for DateOnly type should not create dynamic reader
+        var result = _provider.CreateQuery<DateOnly>(expression);
+
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsInstanceOfType(result, typeof(SqlxQueryable<DateOnly>));
+    }
+
+    [TestMethod]
+    public void DynamicReaderCache_TimeOnlyType_ShouldNotCreate()
+    {
+        // Arrange
+        var expression = Expression.Constant(new[] { new TimeOnly(14, 30, 0) }.AsQueryable());
+
+        // Act - CreateQuery for TimeOnly type should not create dynamic reader
+        var result = _provider.CreateQuery<TimeOnly>(expression);
+
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsInstanceOfType(result, typeof(SqlxQueryable<TimeOnly>));
+    }
+
+    [TestMethod]
     public void DynamicReaderCache_IGroupingType_ShouldNotCreate()
     {
         // Arrange
@@ -559,6 +720,24 @@ public class SqlxQueryProviderTests
     private class ProjectedEntity
     {
         public int Id { get; set; }
+    }
+
+    private class ColumnMappedAggregateEntity
+    {
+        public int Id { get; set; }
+
+        [Column("custom_score")]
+        public int Score { get; set; }
+    }
+
+    private class FallbackAggregateEntity
+    {
+        public int TotalScore { get; set; }
+    }
+
+    private class ProjectionAliasEntity
+    {
+        public int TotalScore { get; set; }
     }
 
     // Test helper classes

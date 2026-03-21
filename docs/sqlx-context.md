@@ -2,13 +2,13 @@
 
 ## Overview
 
-SqlxContext is a lightweight context manager for Sqlx that simplifies multi-repository management and unified transaction handling. It provides an EF Core-style API while maintaining Sqlx's core principles of high performance, zero reflection, and AOT compatibility.
+SqlxContext is a lightweight context manager for Sqlx that simplifies multi-repository management and unified transaction handling. It provides an EF Core-style API while maintaining Sqlx's core principles of high performance, source-generated hot paths, and AOT compatibility.
 
 ## Key Features
 
 - **EF Core-style API**: Access repositories through direct properties (e.g., `context.Users`, `context.Orders`)
 - **Unified Transaction Management**: Automatically propagate transactions to all repositories
-- **Zero Reflection**: All code is generated at compile time
+- **Source-Generated Hot Paths**: Repository access is generated at compile time; plain POCO query fallback remains available elsewhere in Sqlx
 - **AOT Compatible**: Fully supports Native AOT compilation
 - **Minimal Overhead**: Thin wrapper around repository instances
 - **Optional**: Existing code continues to work without changes

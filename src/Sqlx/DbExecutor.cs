@@ -38,6 +38,34 @@ namespace Sqlx
             T>(
             DbConnection connection,
             string sql,
+            IReadOnlyDictionary<string, object?>? parameters,
+            IResultReader<T> mapper,
+            DbTransaction? transaction = null)
+        {
+            var shouldCloseConnection = EnsureConnectionOpen(connection);
+
+            try
+            {
+                using var command = CreateCommand(connection, sql, parameters, transaction);
+                using var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    yield return mapper.Read(reader);
+                }
+            }
+            finally
+            {
+                CloseConnection(connection, transaction, shouldCloseConnection);
+            }
+        }
+
+        public static IEnumerable<T> ExecuteReader<
+#if NET5_0_OR_GREATER
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
+#endif
+            T>(
+            DbConnection connection,
+            string sql,
             IEnumerable<KeyValuePair<string, object?>>? parameters,
             IResultReader<T> mapper,
             DbTransaction? transaction = null)
@@ -70,6 +98,35 @@ namespace Sqlx
         /// <param name="transaction">The database transaction, if any.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>An async enumerable of results.</returns>
+        public static async IAsyncEnumerator<T> ExecuteReaderAsync<
+#if NET5_0_OR_GREATER
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
+#endif
+            T>(
+            DbConnection connection,
+            string sql,
+            IReadOnlyDictionary<string, object?>? parameters,
+            IResultReader<T> mapper,
+            DbTransaction? transaction = null,
+            CancellationToken cancellationToken = default)
+        {
+            var shouldCloseConnection = await EnsureConnectionOpenAsync(connection, cancellationToken).ConfigureAwait(false);
+
+            try
+            {
+                await using var command = CreateCommand(connection, sql, parameters, transaction);
+                await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+                while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    yield return mapper.Read(reader);
+                }
+            }
+            finally
+            {
+                CloseConnection(connection, transaction, shouldCloseConnection);
+            }
+        }
+
         public static async IAsyncEnumerator<T> ExecuteReaderAsync<
 #if NET5_0_OR_GREATER
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
@@ -110,6 +167,25 @@ namespace Sqlx
         public static object? ExecuteScalar(
             DbConnection connection,
             string sql,
+            IReadOnlyDictionary<string, object?>? parameters,
+            DbTransaction? transaction = null)
+        {
+            var shouldCloseConnection = EnsureConnectionOpen(connection);
+
+            try
+            {
+                using var command = CreateCommand(connection, sql, parameters, transaction);
+                return command.ExecuteScalar();
+            }
+            finally
+            {
+                CloseConnection(connection, transaction, shouldCloseConnection);
+            }
+        }
+
+        public static object? ExecuteScalar(
+            DbConnection connection,
+            string sql,
             IEnumerable<KeyValuePair<string, object?>>? parameters,
             DbTransaction? transaction = null)
         {
@@ -135,6 +211,26 @@ namespace Sqlx
         /// <param name="transaction">The database transaction, if any.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>The scalar result.</returns>
+        public static async Task<object?> ExecuteScalarAsync(
+            DbConnection connection,
+            string sql,
+            IReadOnlyDictionary<string, object?>? parameters,
+            DbTransaction? transaction = null,
+            CancellationToken cancellationToken = default)
+        {
+            var shouldCloseConnection = await EnsureConnectionOpenAsync(connection, cancellationToken).ConfigureAwait(false);
+
+            try
+            {
+                await using var command = CreateCommand(connection, sql, parameters, transaction);
+                return await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                CloseConnection(connection, transaction, shouldCloseConnection);
+            }
+        }
+
         public static async Task<object?> ExecuteScalarAsync(
             DbConnection connection,
             string sql,
@@ -166,6 +262,25 @@ namespace Sqlx
         public static int ExecuteNonQuery(
             DbConnection connection,
             string sql,
+            IReadOnlyDictionary<string, object?>? parameters,
+            DbTransaction? transaction = null)
+        {
+            var shouldCloseConnection = EnsureConnectionOpen(connection);
+
+            try
+            {
+                using var command = CreateCommand(connection, sql, parameters, transaction);
+                return command.ExecuteNonQuery();
+            }
+            finally
+            {
+                CloseConnection(connection, transaction, shouldCloseConnection);
+            }
+        }
+
+        public static int ExecuteNonQuery(
+            DbConnection connection,
+            string sql,
             IEnumerable<KeyValuePair<string, object?>>? parameters,
             DbTransaction? transaction = null)
         {
@@ -191,6 +306,26 @@ namespace Sqlx
         /// <param name="transaction">The database transaction, if any.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>The number of affected rows.</returns>
+        public static async Task<int> ExecuteNonQueryAsync(
+            DbConnection connection,
+            string sql,
+            IReadOnlyDictionary<string, object?>? parameters,
+            DbTransaction? transaction = null,
+            CancellationToken cancellationToken = default)
+        {
+            var shouldCloseConnection = await EnsureConnectionOpenAsync(connection, cancellationToken).ConfigureAwait(false);
+
+            try
+            {
+                await using var command = CreateCommand(connection, sql, parameters, transaction);
+                return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                CloseConnection(connection, transaction, shouldCloseConnection);
+            }
+        }
+
         public static async Task<int> ExecuteNonQueryAsync(
             DbConnection connection,
             string sql,
@@ -246,6 +381,27 @@ namespace Sqlx
         private static DbCommand CreateCommand(
             DbConnection connection,
             string sql,
+            IReadOnlyDictionary<string, object?>? parameters,
+            DbTransaction? transaction = null)
+        {
+            var command = connection.CreateCommand();
+            command.CommandText = sql;
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+
+            if (parameters != null && parameters.Count > 0)
+            {
+                AddParameters(command, parameters);
+            }
+
+            return command;
+        }
+
+        private static DbCommand CreateCommand(
+            DbConnection connection,
+            string sql,
             IEnumerable<KeyValuePair<string, object?>>? parameters,
             DbTransaction? transaction = null)
         {
@@ -266,7 +422,7 @@ namespace Sqlx
 
         private static void AddParameters(
             DbCommand command,
-            IEnumerable<KeyValuePair<string, object?>> parameters)
+            IReadOnlyDictionary<string, object?> parameters)
         {
             if (parameters is Dictionary<string, object?> dictionary)
             {
@@ -278,14 +434,19 @@ namespace Sqlx
                 return;
             }
 
-            if (parameters is IReadOnlyList<KeyValuePair<string, object?>> parameterList)
+            foreach (var parameter in parameters)
             {
-                for (var i = 0; i < parameterList.Count; i++)
-                {
-                    var parameter = parameterList[i];
-                    AddParameter(command, parameter.Key, parameter.Value);
-                }
+                AddParameter(command, parameter.Key, parameter.Value);
+            }
+        }
 
+        private static void AddParameters(
+            DbCommand command,
+            IEnumerable<KeyValuePair<string, object?>> parameters)
+        {
+            if (parameters is IReadOnlyDictionary<string, object?> dictionary)
+            {
+                AddParameters(command, dictionary);
                 return;
             }
 

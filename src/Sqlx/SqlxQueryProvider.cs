@@ -215,7 +215,7 @@ namespace Sqlx
             => new SqlExpressionVisitor(Dialect, parameterized, EntityProvider).GenerateSql(expression);
 
         /// <summary>Generates parameterized SQL and parameters.</summary>
-        public (string Sql, IEnumerable<KeyValuePair<string, object?>> Parameters) ToSqlWithParameters(Expression expression)
+        public (string Sql, IReadOnlyDictionary<string, object?> Parameters) ToSqlWithParameters(Expression expression)
         {
             var visitor = new SqlExpressionVisitor(Dialect, parameterized: true, EntityProvider);
             return (visitor.GenerateSql(expression), visitor.GetParameters());

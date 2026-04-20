@@ -153,7 +153,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         #region Parameterized query
 
         [Benchmark(Description = "Sqlx: Parameterized")]
-        public (string, IEnumerable<KeyValuePair<string, object?>>) Sqlx_Parameterized()
+        public (string, IReadOnlyDictionary<string, object?>) Sqlx_Parameterized()
         {
             return SqlQuery<BenchmarkEntity>.ForSqlite()
                 .Where(u => u.IsActive && u.Age >= 18 && u.Name == "test")
@@ -270,4 +270,3 @@ namespace Sqlx.Benchmarks.Benchmarks
         #endregion
     }
 }
-

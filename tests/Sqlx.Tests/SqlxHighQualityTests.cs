@@ -293,7 +293,7 @@ public class SqlxHighQualityTests
     [TestMethod]
     public void ConcurrentParameterizedQueries_100Tasks_ThreadSafe()
     {
-        var tasks = new List<Task<(string, IEnumerable<KeyValuePair<string, object?>>)>>();
+        var tasks = new List<Task<(string, IReadOnlyDictionary<string, object?>)>>();
 
         for (int i = 0; i < 100; i++)
         {
@@ -559,4 +559,3 @@ public class SqlxHighQualityTests
 
     #endregion
 }
-

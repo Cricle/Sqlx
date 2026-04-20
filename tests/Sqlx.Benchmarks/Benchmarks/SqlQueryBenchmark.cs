@@ -172,7 +172,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         #region Parameterized SQL Benchmarks
 
         [Benchmark(Description = "Param: Simple")]
-        public (string, IEnumerable<KeyValuePair<string, object?>>) Param_Simple()
+        public (string, IReadOnlyDictionary<string, object?>) Param_Simple()
         {
             return SqlQuery<BenchmarkEntity>.ForSqlite()
                 .Where(u => u.Id == 1)
@@ -180,7 +180,7 @@ namespace Sqlx.Benchmarks.Benchmarks
         }
 
         [Benchmark(Description = "Param: Complex")]
-        public (string, IEnumerable<KeyValuePair<string, object?>>) Param_Complex()
+        public (string, IReadOnlyDictionary<string, object?>) Param_Complex()
         {
             return SqlQuery<BenchmarkEntity>.ForSqlite()
                 .Where(u => u.IsActive && u.Age >= 18 && u.Name == "test")

@@ -72,7 +72,7 @@ namespace Sqlx
                 _parser.SetGroupByColumn(outerGroupByColumn);
         }
 
-        public IEnumerable<KeyValuePair<string, object?>> GetParameters() => _parameters;
+        public IReadOnlyDictionary<string, object?> GetParameters() => _parameters;
         
         public ExpressionParser Parser => _parser;
 

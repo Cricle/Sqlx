@@ -150,7 +150,7 @@ namespace Sqlx
         /// <typeparam name="T">The entity type.</typeparam>
         /// <param name="query">The query.</param>
         /// <returns>A tuple containing the SQL string and parameters.</returns>
-        public static (string Sql, IEnumerable<KeyValuePair<string, object?>> Parameters) ToSqlWithParameters<
+        public static (string Sql, IReadOnlyDictionary<string, object?> Parameters) ToSqlWithParameters<
 #if NET5_0_OR_GREATER
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
 #endif
@@ -354,7 +354,7 @@ namespace Sqlx
         private static DbCommand CreateCommand(
             DbConnection connection,
             string sql,
-            IEnumerable<KeyValuePair<string, object?>> parameters,
+            IReadOnlyDictionary<string, object?> parameters,
             DbTransaction? transaction)
         {
             var command = connection.CreateCommand();
@@ -364,30 +364,22 @@ namespace Sqlx
                 command.Transaction = transaction;
             }
 
-            AddParameters(command, parameters);
+            if (parameters.Count > 0)
+            {
+                AddParameters(command, parameters);
+            }
 
             return command;
         }
 
         private static void AddParameters(
             DbCommand command,
-            IEnumerable<KeyValuePair<string, object?>> parameters)
+            IReadOnlyDictionary<string, object?> parameters)
         {
             if (parameters is Dictionary<string, object?> dictionary)
             {
                 foreach (var parameter in dictionary)
                 {
-                    AddParameter(command, parameter.Key, parameter.Value);
-                }
-
-                return;
-            }
-
-            if (parameters is IReadOnlyList<KeyValuePair<string, object?>> parameterList)
-            {
-                for (var i = 0; i < parameterList.Count; i++)
-                {
-                    var parameter = parameterList[i];
                     AddParameter(command, parameter.Key, parameter.Value);
                 }
 

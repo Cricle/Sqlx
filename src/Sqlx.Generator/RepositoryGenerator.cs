@@ -1113,9 +1113,11 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine();
         }
 
+        sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
         sb.AppendLine("try");
         sb.AppendLine("{");
         sb.PushIndent();
+        sb.AppendLine("#endif");
         sb.AppendLine("while (true)");
         sb.AppendLine("{");
         sb.PushIndent();
@@ -1187,8 +1189,10 @@ public class RepositoryGenerator : IIncrementalGenerator
         GenerateCatchBlock(sb, repoFullName, methodName, templateReferenceName, isAsync);
         sb.PopIndent();
         sb.AppendLine("}");
+        sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
         sb.PopIndent();
         sb.AppendLine("}");
+        sb.AppendLine("#endif");
 
         // Finally block
         GenerateFinallyBlock(sb, methodName, templateReferenceName);

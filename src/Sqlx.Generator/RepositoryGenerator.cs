@@ -1147,7 +1147,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         }
         else
         {
-            GenerateParameterBinding(sb, method, entityName, actualReturnTypeName, actualReturnTypeFullName, actualReturnTypeIsEntity, template, expressionToSqlAttr, paramNameFields);
+            GenerateParameterBinding(sb, method, entityName, actualReturnTypeName, actualReturnTypeFullName, actualReturnTypeIsEntity, template, expressionToSqlAttr, paramNameFields, validateParameters);
         }
 
         sb.AppendLine();
@@ -1546,7 +1546,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("}");
         sb.AppendLine("#endif");
     }
-    private static void GenerateParameterBinding(IndentedStringBuilder sb, IMethodSymbol method, string entityName, string actualReturnTypeName, string actualReturnTypeFullName, bool actualReturnTypeIsEntity, string? template, INamedTypeSymbol? expressionToSqlAttr, Dictionary<string, string> paramNameFields)
+    private static void GenerateParameterBinding(IndentedStringBuilder sb, IMethodSymbol method, string entityName, string actualReturnTypeName, string actualReturnTypeFullName, bool actualReturnTypeIsEntity, string? template, INamedTypeSymbol? expressionToSqlAttr, Dictionary<string, string> paramNameFields, bool validateParameters)
     {
         sb.AppendLine("// Bind parameters");
         
@@ -1662,8 +1662,9 @@ public class RepositoryGenerator : IIncrementalGenerator
             if (matchesRepositoryEntity || matchesReturnedEntity)
             {
                 var binderTypeName = matchesRepositoryEntity ? entityName : actualReturnTypeName;
-                sb.AppendLine($"global::Sqlx.ValidationHelper.ValidateObject({param.Name}, nameof({param.Name}));");
-                sb.AppendLine($"{binderTypeName}ParameterBinder.Default.BindEntity(cmd, {param.Name}, ParamPrefix);");
+                sb.AppendLine(validateParameters
+                    ? $"{binderTypeName}ParameterBinder.Default.BindEntity(cmd, {param.Name}, ParamPrefix);"
+                    : $"{binderTypeName}ParameterBinder.Default.BindEntityWithoutValidation(cmd, {param.Name}, ParamPrefix);");
             }
             // Check if this is a collection parameter (List<T>, IEnumerable<T>, etc.)
             else if (IsCollectionType(paramType, out var elementType))

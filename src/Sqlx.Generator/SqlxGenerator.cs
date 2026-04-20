@@ -1123,6 +1123,13 @@ public class SqlxGenerator : IIncrementalGenerator
         sb.AppendLine("{");
         sb.PushIndent();
         sb.AppendLine("global::Sqlx.ValidationHelper.ValidateObject(e!, nameof(e));");
+        sb.AppendLine("BindEntityWithoutValidation(cmd, e, prefix);");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+        sb.AppendLine($"public void BindEntityWithoutValidation(DbCommand cmd, {fullTypeName} e, string prefix = \"@\")");
+        sb.AppendLine("{");
+        sb.PushIndent();
         foreach (var p in properties)
         {
             var col = GetColumnName(p, columnAttr);
@@ -1136,6 +1143,13 @@ public class SqlxGenerator : IIncrementalGenerator
         sb.AppendLine("{");
         sb.PushIndent();
         sb.AppendLine("global::Sqlx.ValidationHelper.ValidateObject(e!, nameof(e));");
+        sb.AppendLine("BindEntityWithoutValidation(cmd, e, f, prefix);");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+        sb.AppendLine($"public void BindEntityWithoutValidation(DbBatchCommand cmd, {fullTypeName} e, Func<DbParameter> f, string prefix = \"@\")");
+        sb.AppendLine("{");
+        sb.PushIndent();
         foreach (var p in properties)
         {
             var col = GetColumnName(p, columnAttr);

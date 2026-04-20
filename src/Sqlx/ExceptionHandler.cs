@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
@@ -59,31 +60,18 @@ namespace Sqlx
                 {
                     stopwatch.Stop();
 
-                    var sqlxEx = CreateSqlxException(
+                    var sqlxEx = await HandleFailureAndRetryAsync(
                         ex,
+                        options,
                         methodName,
                         sql,
                         parameters,
                         stopwatch.Elapsed,
-                        transaction);
+                        transaction,
+                        attemptCount).ConfigureAwait(false);
 
-                    await NotifyFailureAsync(sqlxEx, options, attemptCount).ConfigureAwait(false);
-
-                    // Retry logic
-                    if (options.EnableRetry &&
-                        attemptCount < options.MaxRetryCount &&
-                        IsTransientError(ex))
+                    if (sqlxEx is null)
                     {
-                        var delay = CalculateRetryDelay(
-                            attemptCount,
-                            options.InitialRetryDelay,
-                            options.RetryBackoffMultiplier);
-
-                        options.Logger?.LogWarning(
-                            "Retrying operation {MethodName} after {Delay}ms (attempt {Attempt}/{MaxAttempts})",
-                            methodName, delay.TotalMilliseconds, attemptCount, options.MaxRetryCount);
-
-                        await Task.Delay(delay);
                         stopwatch.Restart();
                         continue;
                     }
@@ -91,6 +79,120 @@ namespace Sqlx
                     throw sqlxEx;
                 }
             }
+        }
+
+        /// <summary>
+        /// Handles a repository async failure and returns null when the caller should retry.
+        /// </summary>
+        public static async Task<SqlxException?> HandleFailureAndRetryAsync(
+            Exception ex,
+            SqlxContextOptions? options,
+            string methodName,
+            string sql,
+            DbParameterCollection? parameters,
+            DbTransaction? transaction,
+            TimeSpan duration,
+            int attemptCount)
+        {
+            var sqlxEx = CreateSqlxException(
+                ex,
+                methodName,
+                sql,
+                ExtractParameters(parameters),
+                duration,
+                transaction);
+
+            await NotifyFailureAsync(sqlxEx, options, attemptCount).ConfigureAwait(false);
+
+            if (!ShouldRetry(options, ex, attemptCount, out var delay))
+            {
+                return sqlxEx;
+            }
+
+            options!.Logger?.LogWarning(
+                "Retrying operation {MethodName} after {Delay}ms (attempt {Attempt}/{MaxAttempts})",
+                methodName,
+                delay.TotalMilliseconds,
+                attemptCount,
+                options.MaxRetryCount);
+
+            await Task.Delay(delay).ConfigureAwait(false);
+            return null;
+        }
+
+        private static async Task<SqlxException?> HandleFailureAndRetryAsync(
+            Exception ex,
+            SqlxContextOptions? options,
+            string methodName,
+            string sql,
+            IReadOnlyDictionary<string, object?>? parameters,
+            TimeSpan duration,
+            DbTransaction? transaction,
+            int attemptCount)
+        {
+            var sqlxEx = CreateSqlxException(
+                ex,
+                methodName,
+                sql,
+                parameters,
+                duration,
+                transaction);
+
+            await NotifyFailureAsync(sqlxEx, options, attemptCount).ConfigureAwait(false);
+
+            if (!ShouldRetry(options, ex, attemptCount, out var delay))
+            {
+                return sqlxEx;
+            }
+
+            options!.Logger?.LogWarning(
+                "Retrying operation {MethodName} after {Delay}ms (attempt {Attempt}/{MaxAttempts})",
+                methodName,
+                delay.TotalMilliseconds,
+                attemptCount,
+                options.MaxRetryCount);
+
+            await Task.Delay(delay).ConfigureAwait(false);
+            return null;
+        }
+
+        /// <summary>
+        /// Handles a repository sync failure and returns null when the caller should retry.
+        /// </summary>
+        public static SqlxException? HandleFailureAndRetry(
+            Exception ex,
+            SqlxContextOptions? options,
+            string methodName,
+            string sql,
+            DbParameterCollection? parameters,
+            DbTransaction? transaction,
+            TimeSpan duration,
+            int attemptCount)
+        {
+            var sqlxEx = CreateSqlxException(
+                ex,
+                methodName,
+                sql,
+                ExtractParameters(parameters),
+                duration,
+                transaction);
+
+            NotifyFailure(sqlxEx, options, attemptCount);
+
+            if (!ShouldRetry(options, ex, attemptCount, out var delay))
+            {
+                return sqlxEx;
+            }
+
+            options!.Logger?.LogWarning(
+                "Retrying operation {MethodName} after {Delay}ms (attempt {Attempt}/{MaxAttempts})",
+                methodName,
+                delay.TotalMilliseconds,
+                attemptCount,
+                options.MaxRetryCount);
+
+            Thread.Sleep(delay);
+            return null;
         }
 
         /// <summary>
@@ -113,16 +215,16 @@ namespace Sqlx
             DbTransaction? transaction,
             TimeSpan duration)
         {
-            var sqlxEx = CreateSqlxException(
+            return await HandleFailureAndRetryAsync(
                 ex,
+                options,
                 methodName,
                 sql,
-                ExtractParameters(parameters),
+                parameters,
+                transaction,
                 duration,
-                transaction);
-
-            await NotifyFailureAsync(sqlxEx, options, attemptCount: 1).ConfigureAwait(false);
-            return sqlxEx;
+                attemptCount: 1).ConfigureAwait(false)
+                ?? throw new InvalidOperationException("Retry handling returned no exception for a non-retry path.");
         }
 
         /// <summary>
@@ -145,16 +247,16 @@ namespace Sqlx
             DbTransaction? transaction,
             TimeSpan duration)
         {
-            var sqlxEx = CreateSqlxException(
+            return HandleFailureAndRetry(
                 ex,
+                options,
                 methodName,
                 sql,
-                ExtractParameters(parameters),
+                parameters,
+                transaction,
                 duration,
-                transaction);
-
-            NotifyFailure(sqlxEx, options, attemptCount: 1);
-            return sqlxEx;
+                attemptCount: 1)
+                ?? throw new InvalidOperationException("Retry handling returned no exception for a non-retry path.");
         }
 
         /// <summary>
@@ -292,6 +394,30 @@ namespace Sqlx
                 sqlxEx.Duration?.TotalMilliseconds,
                 attemptCount,
                 sqlxEx.CorrelationId);
+        }
+
+        private static bool ShouldRetry(
+            SqlxContextOptions? options,
+            Exception ex,
+            int attemptCount,
+            out TimeSpan delay)
+        {
+            delay = default;
+
+            if (options == null ||
+                !options.EnableRetry ||
+                attemptCount >= options.MaxRetryCount ||
+                !IsTransientError(ex))
+            {
+                return false;
+            }
+
+            delay = CalculateRetryDelay(
+                attemptCount,
+                options.InitialRetryDelay,
+                options.RetryBackoffMultiplier);
+
+            return true;
         }
 
         /// <summary>

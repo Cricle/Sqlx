@@ -989,6 +989,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.PushIndent();
 
         sb.AppendLine("var startTime = Stopwatch.GetTimestamp();");
+        sb.AppendLine("var attemptCount = 0;");
         sb.AppendLine();
 
         // Check if method has dynamic parameters (Expression parameters only)
@@ -1013,6 +1014,17 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine(GetTemplateLocalDeclaration(templateReferenceName, fieldName));
             sb.AppendLine();
         }
+
+        sb.AppendLine("try");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("while (true)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("attemptCount++;");
+        sb.AppendLine("startTime = Stopwatch.GetTimestamp();");
+        sb.AppendLine("cmd.Parameters.Clear();");
+        sb.AppendLine();
 
         if (usesVar)
         {
@@ -1075,6 +1087,10 @@ public class RepositoryGenerator : IIncrementalGenerator
 
         // Catch block
         GenerateCatchBlock(sb, repoFullName, methodName, templateReferenceName, isAsync);
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.PopIndent();
+        sb.AppendLine("}");
 
         // Finally block
         GenerateFinallyBlock(sb, methodName, templateReferenceName);
@@ -2416,19 +2432,16 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine($"global::Sqlx.Diagnostics.SqlTemplateMetrics.RecordError(\"{repoFullName}\", \"{methodName}\", {fieldName}.TemplateSql, Stopwatch.GetTimestamp() - startTime, ex);");
         });
         sb.AppendLine();
-        AppendConditionalBlock(sb, "!SQLX_DISABLE_ACTIVITY", () =>
-            sb.AppendLine("activity?.SetStatus(ActivityStatusCode.Error, ex.Message);"));
-        sb.AppendLine();
         AppendConditionalBlock(sb, "SQLX_DISABLE_INTERCEPTOR && SQLX_DISABLE_ACTIVITY", () =>
             sb.AppendLine("_ = ex; // Suppress unused variable warning"));
         sb.AppendLine();
         if (isAsync)
         {
-            sb.AppendLine("var sqlxException = await global::Sqlx.ExceptionHandler.HandleExceptionAsync(");
+            sb.AppendLine("var sqlxException = await global::Sqlx.ExceptionHandler.HandleFailureAndRetryAsync(");
         }
         else
         {
-            sb.AppendLine("var sqlxException = global::Sqlx.ExceptionHandler.HandleException(");
+            sb.AppendLine("var sqlxException = global::Sqlx.ExceptionHandler.HandleFailureAndRetry(");
         }
         sb.PushIndent();
         sb.AppendLine("ex,");
@@ -2437,8 +2450,19 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("cmd.CommandText,");
         sb.AppendLine("cmd.Parameters,");
         sb.AppendLine("cmd.Transaction,");
-        sb.AppendLine("Stopwatch.GetElapsedTime(startTime));");
+        sb.AppendLine("Stopwatch.GetElapsedTime(startTime),");
+        sb.AppendLine("attemptCount);");
         sb.PopIndent();
+        sb.AppendLine("if (sqlxException is null)");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("continue;");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine();
+        AppendConditionalBlock(sb, "!SQLX_DISABLE_ACTIVITY", () =>
+            sb.AppendLine("activity?.SetStatus(ActivityStatusCode.Error, sqlxException.Message);"));
+        sb.AppendLine();
         sb.AppendLine("throw sqlxException;");
         sb.PopIndent();
         sb.AppendLine("}");

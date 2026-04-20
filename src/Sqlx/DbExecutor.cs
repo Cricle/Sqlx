@@ -258,16 +258,49 @@ namespace Sqlx
 
             if (parameters != null)
             {
-                foreach (var p in parameters)
-                {
-                    var param = command.CreateParameter();
-                    param.ParameterName = p.Key;
-                    param.Value = p.Value ?? DBNull.Value;
-                    command.Parameters.Add(param);
-                }
+                AddParameters(command, parameters);
             }
 
             return command;
+        }
+
+        private static void AddParameters(
+            DbCommand command,
+            IEnumerable<KeyValuePair<string, object?>> parameters)
+        {
+            if (parameters is Dictionary<string, object?> dictionary)
+            {
+                foreach (var parameter in dictionary)
+                {
+                    AddParameter(command, parameter.Key, parameter.Value);
+                }
+
+                return;
+            }
+
+            if (parameters is IReadOnlyList<KeyValuePair<string, object?>> parameterList)
+            {
+                for (var i = 0; i < parameterList.Count; i++)
+                {
+                    var parameter = parameterList[i];
+                    AddParameter(command, parameter.Key, parameter.Value);
+                }
+
+                return;
+            }
+
+            foreach (var parameter in parameters)
+            {
+                AddParameter(command, parameter.Key, parameter.Value);
+            }
+        }
+
+        private static void AddParameter(DbCommand command, string name, object? value)
+        {
+            var param = command.CreateParameter();
+            param.ParameterName = name;
+            param.Value = value ?? DBNull.Value;
+            command.Parameters.Add(param);
         }
     }
 }

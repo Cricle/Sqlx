@@ -117,15 +117,14 @@ namespace Sqlx
             IsolationLevel isolationLevel = IsolationLevel.ReadCommitted,
             CancellationToken cancellationToken = default)
         {
-            if (_transaction != null)
+            ThrowIfTransactionActive();
+            if (_connection.State != ConnectionState.Open)
             {
-                throw new InvalidOperationException("A transaction is already active.");
+                await _connection.OpenAsync(cancellationToken).ConfigureAwait(false);
             }
 
-            _transaction = await _connection.BeginTransactionAsync(isolationLevel, cancellationToken);
-            _ownsTransaction = true;
-            PropagateTransactionToRepositories();
-            return _transaction;
+            return SetOwnedTransaction(
+                await _connection.BeginTransactionAsync(isolationLevel, cancellationToken).ConfigureAwait(false));
         }
 
         /// <summary>
@@ -136,15 +135,13 @@ namespace Sqlx
         /// <exception cref="InvalidOperationException">Thrown when a transaction is already active.</exception>
         public DbTransaction BeginTransaction(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted)
         {
-            if (_transaction != null)
+            ThrowIfTransactionActive();
+            if (_connection.State != ConnectionState.Open)
             {
-                throw new InvalidOperationException("A transaction is already active.");
+                _connection.Open();
             }
 
-            _transaction = _connection.BeginTransaction(isolationLevel);
-            _ownsTransaction = true;
-            PropagateTransactionToRepositories();
-            return _transaction;
+            return SetOwnedTransaction(_connection.BeginTransaction(isolationLevel));
         }
 
         /// <summary>
@@ -253,6 +250,22 @@ namespace Sqlx
             }
 
             _disposed = true;
+        }
+
+        private void ThrowIfTransactionActive()
+        {
+            if (_transaction != null)
+            {
+                throw new InvalidOperationException("A transaction is already active.");
+            }
+        }
+
+        private DbTransaction SetOwnedTransaction(DbTransaction transaction)
+        {
+            _transaction = transaction;
+            _ownsTransaction = true;
+            PropagateTransactionToRepositories();
+            return transaction;
         }
     }
 }

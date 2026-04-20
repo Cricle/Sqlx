@@ -44,16 +44,13 @@ namespace Sqlx.Tests.Context
         {
             // Arrange
             using var connection = new SqliteConnection("Data Source=:memory:");
-            await connection.OpenAsync();
             using var context = new TestContext(connection);
             
             // Act
             await using var transaction = await context.BeginTransactionAsync();
             
             // Assert
-            Assert.IsNotNull(transaction);
-            Assert.IsTrue(context.HasActiveTransaction);
-            Assert.AreEqual(transaction, context.Transaction);
+            AssertTransactionStarted(context, connection, transaction);
         }
 
         [TestMethod]
@@ -75,16 +72,13 @@ namespace Sqlx.Tests.Context
         {
             // Arrange
             using var connection = new SqliteConnection("Data Source=:memory:");
-            connection.Open();
             using var context = new TestContext(connection);
             
             // Act
             using var transaction = context.BeginTransaction();
             
             // Assert
-            Assert.IsNotNull(transaction);
-            Assert.IsTrue(context.HasActiveTransaction);
-            Assert.AreEqual(transaction, context.Transaction);
+            AssertTransactionStarted(context, connection, transaction);
         }
 
         [TestMethod]
@@ -259,6 +253,14 @@ namespace Sqlx.Tests.Context
             await context.DisposeAsync(); // Should not throw
         }
 
+        private static void AssertTransactionStarted(TestContext context, DbConnection connection, DbTransaction transaction)
+        {
+            Assert.IsNotNull(transaction);
+            Assert.IsTrue(context.HasActiveTransaction);
+            Assert.AreEqual(transaction, context.Transaction);
+            Assert.AreEqual(ConnectionState.Open, connection.State);
+        }
+
         [TestMethod]
         public async Task HasActiveTransaction_ShouldReflectTransactionState()
         {
@@ -296,6 +298,22 @@ namespace Sqlx.Tests.Context
             Assert.IsNotNull(context);
             Assert.AreEqual(connection, context.Connection);
             Assert.IsFalse(context.HasActiveTransaction);
+        }
+
+        [TestMethod]
+        public void Constructor_WithOptions_ShouldPropagateOptionsToRepository()
+        {
+            // Arrange
+            using var connection = new SqliteConnection("Data Source=:memory:");
+            var options = new SqlxContextOptions { EnableRetry = true };
+
+            // Act
+            using var context = new TestContext(connection, options);
+
+            // Assert
+            Assert.AreSame(options, context.Options);
+            Assert.IsNotNull(context.TestEntities);
+            Assert.AreSame(options, context.TestEntities.Options);
         }
 
         [TestMethod]
@@ -382,6 +400,7 @@ namespace Sqlx.Tests.Context
             {
                 _testRepository = new TestRepository();
                 _testRepository.Connection = connection;
+                _testRepository.Options = Options;
                 _testRepository.Transaction = Transaction;
             }
 
@@ -390,6 +409,7 @@ namespace Sqlx.Tests.Context
             {
                 _testRepository = testRepository;
                 _testRepository.Connection = connection;
+                _testRepository.Options = Options;
                 _testRepository.Transaction = Transaction;
             }
 
@@ -413,8 +433,8 @@ namespace Sqlx.Tests.Context
         {
             public DbConnection? Connection { get; set; }
             public DbTransaction? Transaction { get; set; }
+            public SqlxContextOptions? Options { get; set; }
             public SqlDialect Dialect => SqlDefine.SQLite;
         }
     }
 }
-

@@ -257,12 +257,12 @@ namespace Sqlx.Tests
         [TestMethod]
         public async Task AsyncLinq_ToListAsync_WorksCorrectly()
         {
-            IAsyncEnumerable<User> queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
+            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
                 .WithConnection(_connection!)
                 .WithReader(new UserReader())
-                .Where(u => u.Age >= 30) as SqlxQueryable<User> ?? throw new InvalidOperationException();
+                .Where(u => u.Age >= 30);
 
-            var users = await AsyncEnumerable.ToListAsync<User>(queryable);
+            var users = await queryable.ToListAsync();
 
             Assert.AreEqual(3, users.Count);
             Assert.AreEqual("Bob", users[0].Name);
@@ -289,12 +289,12 @@ namespace Sqlx.Tests
         [TestMethod]
         public async Task AsyncLinq_FirstOrDefaultAsync_ReturnsNull()
         {
-            IAsyncEnumerable<User> queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
+            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
                 .WithConnection(_connection!)
-                .WithReader(new UserReader()) as SqlxQueryable<User> ?? throw new InvalidOperationException();
+                .WithReader(new UserReader())
+                .Where(u => u.Age > 100);
 
-            var filtered = AsyncEnumerable.Where<User>(queryable, u => u.Age > 100);
-            var user = await AsyncEnumerable.FirstOrDefaultAsync<User>(filtered);
+            var user = await queryable.FirstOrDefaultAsync();
 
             Assert.IsNull(user);
         }
@@ -302,25 +302,25 @@ namespace Sqlx.Tests
         [TestMethod]
         public async Task AsyncLinq_CountAsync_ReturnsCorrectCount()
         {
-            IAsyncEnumerable<User> queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
+            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
                 .WithConnection(_connection!)
                 .WithReader(new UserReader())
-                .Where(u => u.Age >= 30) as SqlxQueryable<User> ?? throw new InvalidOperationException();
+                .Where(u => u.Age >= 30);
 
-            var count = await AsyncEnumerable.CountAsync<User>(queryable);
+            var count = await queryable.CountAsync();
 
-            Assert.AreEqual(3, count);
+            Assert.AreEqual(3L, count);
         }
 
         [TestMethod]
         public async Task AsyncLinq_AnyAsync_ReturnsTrue()
         {
-            IAsyncEnumerable<User> queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
+            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
                 .WithConnection(_connection!)
                 .WithReader(new UserReader())
-                .Where(u => u.Age >= 30) as SqlxQueryable<User> ?? throw new InvalidOperationException();
+                .Where(u => u.Age >= 30);
 
-            var hasAny = await AsyncEnumerable.AnyAsync<User>(queryable);
+            var hasAny = await queryable.AnyAsync();
 
             Assert.IsTrue(hasAny);
         }
@@ -328,12 +328,12 @@ namespace Sqlx.Tests
         [TestMethod]
         public async Task AsyncLinq_AnyAsync_ReturnsFalse()
         {
-            IAsyncEnumerable<User> queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
+            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
                 .WithConnection(_connection!)
                 .WithReader(new UserReader())
-                .Where(u => u.Age > 100) as SqlxQueryable<User> ?? throw new InvalidOperationException();
+                .Where(u => u.Age > 100);
 
-            var hasAny = await AsyncEnumerable.AnyAsync<User>(queryable);
+            var hasAny = await queryable.AnyAsync();
 
             Assert.IsFalse(hasAny);
         }
@@ -390,14 +390,14 @@ namespace Sqlx.Tests
         [TestMethod]
         public async Task AsyncLinq_ComplexQuery_WorksCorrectly()
         {
-            IAsyncEnumerable<User> queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
+            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(_dialect!))
                 .WithConnection(_connection!)
                 .WithReader(new UserReader())
                 .Where(u => u.Age >= 28)
                 .OrderByDescending(u => u.Age)
-                .Take(3) as SqlxQueryable<User> ?? throw new InvalidOperationException();
+                .Take(3);
 
-            var users = await AsyncEnumerable.ToListAsync<User>(queryable);
+            var users = await queryable.ToListAsync();
 
             Assert.AreEqual(3, users.Count);
             Assert.AreEqual("David", users[0].Name);
@@ -406,6 +406,87 @@ namespace Sqlx.Tests
             Assert.AreEqual(35, users[1].Age);
             Assert.AreEqual("Bob", users[2].Name);
             Assert.AreEqual(30, users[2].Age);
+        }
+
+        [TestMethod]
+        public async Task SqlxQueryableExtensions_ToListAsync_WithClosedConnection_OpensAndClosesConnection()
+        {
+            using var keeper = new SqliteConnection("Data Source=sqlx_queryable_tolistasync;Mode=Memory;Cache=Shared");
+            keeper.Open();
+
+            using (var cmd = keeper.CreateCommand())
+            {
+                cmd.CommandText = @"
+                    CREATE TABLE User (
+                        id INTEGER PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        age INTEGER NOT NULL,
+                        email TEXT
+                    )";
+                cmd.ExecuteNonQuery();
+
+                cmd.CommandText = @"
+                    INSERT INTO User (id, name, age, email) VALUES
+                    (1, 'Alice', 25, 'alice@example.com'),
+                    (2, 'Bob', 30, 'bob@example.com')";
+                cmd.ExecuteNonQuery();
+            }
+
+            using var connection = new SqliteConnection("Data Source=sqlx_queryable_tolistasync;Mode=Memory;Cache=Shared");
+            connection.Open();
+
+            connection.Close();
+
+            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(SqlDefine.SQLite))
+                .WithConnection(connection)
+                .WithReader(new UserReader());
+
+            var users = await queryable.ToListAsync();
+
+            Assert.AreEqual(2, users.Count);
+            Assert.AreEqual(ConnectionState.Closed, connection.State);
+        }
+
+        [TestMethod]
+        public async Task SqlxQueryableExtensions_CountAndAnyAsync_WithClosedConnection_WorkCorrectly()
+        {
+            using var keeper = new SqliteConnection("Data Source=sqlx_queryable_countany;Mode=Memory;Cache=Shared");
+            keeper.Open();
+
+            using (var cmd = keeper.CreateCommand())
+            {
+                cmd.CommandText = @"
+                    CREATE TABLE User (
+                        id INTEGER PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        age INTEGER NOT NULL,
+                        email TEXT
+                    )";
+                cmd.ExecuteNonQuery();
+
+                cmd.CommandText = @"
+                    INSERT INTO User (id, name, age, email) VALUES
+                    (1, 'Alice', 25, 'alice@example.com'),
+                    (2, 'Bob', 30, 'bob@example.com')";
+                cmd.ExecuteNonQuery();
+            }
+
+            using var connection = new SqliteConnection("Data Source=sqlx_queryable_countany;Mode=Memory;Cache=Shared");
+            connection.Open();
+
+            connection.Close();
+
+            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(SqlDefine.SQLite))
+                .WithConnection(connection)
+                .WithReader(new UserReader())
+                .Where(u => u.Age >= 30);
+
+            var count = await queryable.CountAsync();
+            var any = await queryable.AnyAsync();
+
+            Assert.AreEqual(1L, count);
+            Assert.IsTrue(any);
+            Assert.AreEqual(ConnectionState.Closed, connection.State);
         }
 
         [Sqlx]
@@ -453,4 +534,3 @@ namespace Sqlx.Tests
         }
     }
 }
-

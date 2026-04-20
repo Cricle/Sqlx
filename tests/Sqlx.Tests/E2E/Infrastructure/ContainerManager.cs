@@ -288,8 +288,7 @@ public class ContainerManager : IContainerManager
 
     private async Task InitializeSqlServerAsync()
     {
-        // Use Azure SQL Edge for faster container startup and better performance in tests
-        // Azure SQL Edge is a lightweight version of SQL Server optimized for containers
+        // Use Azure SQL Edge because it is lighter and already cached in the local Docker environment.
         _msSqlContainer = new MsSqlBuilder()
             .WithImage("mcr.microsoft.com/azure-sql-edge:latest")
             .WithPassword("Test@1234")

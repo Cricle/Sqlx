@@ -74,6 +74,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         var tableNameAttr = compilation.GetTypeByMetadataName("Sqlx.Annotations.TableNameAttribute");
         var sqlTemplateAttr = compilation.GetTypeByMetadataName("Sqlx.Annotations.SqlTemplateAttribute");
         var returnInsertedIdAttr = compilation.GetTypeByMetadataName("Sqlx.Annotations.ReturnInsertedIdAttribute");
+        var returnInsertedEntityAttr = compilation.GetTypeByMetadataName("Sqlx.Annotations.ReturnInsertedEntityAttribute");
         var expressionToSqlAttr = compilation.GetTypeByMetadataName("Sqlx.Annotations.ExpressionToSqlAttribute");
 
         if (repositoryForAttr is null) return;
@@ -97,7 +98,7 @@ public class RepositoryGenerator : IIncrementalGenerator
 
             // Entity type is optional - some repositories may only have scalar methods
             var source = GenerateSource(typeSymbol, serviceType, entityType, tableName, 
-                sqlTemplateAttr, returnInsertedIdAttr, expressionToSqlAttr, compilation);
+                sqlTemplateAttr, returnInsertedIdAttr, returnInsertedEntityAttr, expressionToSqlAttr, compilation);
             context.AddSource($"{typeSymbol.Name}.Repository.g.cs", SourceText.From(source, Encoding.UTF8));
         }
     }
@@ -193,6 +194,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         string tableName,
         INamedTypeSymbol? sqlTemplateAttr,
         INamedTypeSymbol? returnInsertedIdAttr,
+        INamedTypeSymbol? returnInsertedEntityAttr,
         INamedTypeSymbol? expressionToSqlAttr,
         Compilation compilation)
     {
@@ -289,6 +291,13 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine();
         }
 
+        if (!HasMember(repoType, "Options"))
+        {
+            sb.AppendLine("/// <summary>Gets or sets the SqlxContext options propagated by SqlxContext.</summary>");
+            sb.AppendLine("public global::Sqlx.SqlxContextOptions? Options { get; set; }");
+            sb.AppendLine();
+        }
+
         // Build field names (needed for template generation)
         var methodFieldNames = BuildMethodFieldNames(methods);
 
@@ -324,7 +333,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             }
             
             GenerateMethodImplementation(sb, method, repoFullName, entityFullName, entityName, keyTypeName, 
-                sqlTemplateAttr, returnInsertedIdAttr, expressionToSqlAttr, connectionInfo, methodFieldNames, paramNameFields);
+                sqlTemplateAttr, returnInsertedIdAttr, returnInsertedEntityAttr, expressionToSqlAttr, connectionInfo, methodFieldNames, paramNameFields);
             sb.AppendLine();
         }
 
@@ -900,6 +909,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         string keyTypeName,
         INamedTypeSymbol? sqlTemplateAttr,
         INamedTypeSymbol? returnInsertedIdAttr,
+        INamedTypeSymbol? returnInsertedEntityAttr,
         INamedTypeSymbol? expressionToSqlAttr,
         ConnectionInfo connectionInfo,
         Dictionary<string, string> methodFieldNames,
@@ -914,6 +924,12 @@ public class RepositoryGenerator : IIncrementalGenerator
         var useStaticOrdinals = template != null && UsesStaticColumns(template) && ReturnsEntity(method);
         var isReturnInsertedId = returnInsertedIdAttr is not null && 
             method.GetAttributes().Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, returnInsertedIdAttr));
+        var returnInsertedEntityAttrData = returnInsertedEntityAttr is not null
+            ? method.GetAttributes().FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, returnInsertedEntityAttr))
+            : null;
+        var isReturnInsertedEntity = returnInsertedEntityAttrData is not null;
+        var returnInsertedEntityIdPropertyName = returnInsertedEntityAttrData?.NamedArguments
+            .FirstOrDefault(a => a.Key == "IdColumnName").Value.Value as string ?? "Id";
 
         // Get connection expression for this method (method param > property > ctor param)
         var connectionExpression = GetConnectionExpression(method, connectionInfo);
@@ -937,6 +953,11 @@ public class RepositoryGenerator : IIncrementalGenerator
             GenerateIQueryableReturnMethod(sb, method, entityFullName, connectionExpression);
             return;
         }
+
+        var actualReturnType = ExtractActualReturnType(method.ReturnType);
+        var actualReturnTypeName = actualReturnType?.Name ?? entityName;
+        var actualReturnTypeFullName = actualReturnType?.ToDisplayString() ?? entityFullName;
+        var actualReturnTypeIsEntity = actualReturnType is INamedTypeSymbol { TypeKind: TypeKind.Class };
 
         // Check if this is a simple scalar method (no entity dependencies)
         // These methods don't use entity-specific readers or binders
@@ -967,9 +988,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("{");
         sb.PushIndent();
 
-        sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR || !SQLX_DISABLE_ACTIVITY || !SQLX_DISABLE_METRICS");
         sb.AppendLine("var startTime = Stopwatch.GetTimestamp();");
-        sb.AppendLine("#endif");
         sb.AppendLine();
 
         // Check if method has dynamic parameters (Expression parameters only)
@@ -1018,7 +1037,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         }
         else
         {
-            GenerateParameterBinding(sb, method, entityName, expressionToSqlAttr, paramNameFields);
+            GenerateParameterBinding(sb, method, entityName, actualReturnTypeName, actualReturnTypeFullName, actualReturnTypeIsEntity, template, expressionToSqlAttr, paramNameFields);
         }
 
         sb.AppendLine();
@@ -1033,13 +1052,29 @@ public class RepositoryGenerator : IIncrementalGenerator
 
         // Execute and return based on return type
         var useSimpleScalarExecution = isSimpleScalarMethod && ShouldUseSimpleScalarExecution(method.ReturnType, template);
-        GenerateExecuteAndReturn(sb, method, repoFullName, entityFullName, entityName, keyTypeName, isReturnInsertedId, methodName, templateReferenceName, useStaticOrdinals, ordinalsFieldName, isAsync, useSimpleScalarExecution, paramNameFields);
+        GenerateExecuteAndReturn(
+            sb,
+            method,
+            repoFullName,
+            entityFullName,
+            entityName,
+            keyTypeName,
+            isReturnInsertedId,
+            isReturnInsertedEntity,
+            returnInsertedEntityIdPropertyName,
+            methodName,
+            templateReferenceName,
+            useStaticOrdinals,
+            ordinalsFieldName,
+            isAsync,
+            useSimpleScalarExecution,
+            paramNameFields);
 
         sb.PopIndent();
         sb.AppendLine("}");
 
         // Catch block
-        GenerateCatchBlock(sb, repoFullName, methodName, templateReferenceName);
+        GenerateCatchBlock(sb, repoFullName, methodName, templateReferenceName, isAsync);
 
         // Finally block
         GenerateFinallyBlock(sb, methodName, templateReferenceName);
@@ -1156,7 +1191,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             {
                 sb.AppendLine($"p.DbType = {inferredDbType};");
             }
-            if (isNullable)
+            if (isNullable || paramType.IsReferenceType)
             {
                 sb.AppendLine($"p.Value = {param.Name} ?? (object)DBNull.Value;");
             }
@@ -1340,6 +1375,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         foreach (var param in method.Parameters)
         {
             if (param.Name == "cancellationToken") continue;
+            if (param.RefKind == RefKind.Out) continue;
             
             var paramType = param.Type.ToDisplayString();
             
@@ -1365,7 +1401,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("}");
         sb.AppendLine("#endif");
     }
-    private static void GenerateParameterBinding(IndentedStringBuilder sb, IMethodSymbol method, string entityName, INamedTypeSymbol? expressionToSqlAttr, Dictionary<string, string> paramNameFields)
+    private static void GenerateParameterBinding(IndentedStringBuilder sb, IMethodSymbol method, string entityName, string actualReturnTypeName, string actualReturnTypeFullName, bool actualReturnTypeIsEntity, string? template, INamedTypeSymbol? expressionToSqlAttr, Dictionary<string, string> paramNameFields)
     {
         sb.AppendLine("// Bind parameters");
         
@@ -1392,7 +1428,15 @@ public class RepositoryGenerator : IIncrementalGenerator
             
             if (isRefOrOutParam || isOutputParameterWrapper)
             {
-                // Output or InputOutput parameter
+                // Output parameters are primarily populated from result sets. Only bind as
+                // regular input parameters when the SQL template actually references them.
+                var isReferencedInTemplate = TemplateReferencesParameter(template, param.Name);
+                if (!isReferencedInTemplate)
+                {
+                    continue;
+                }
+
+                // When referenced in SQL, treat them as normal input parameters.
                 // Check for optional [OutputParameter] attribute for DbType and Size
                 var outputParamAttr = param.GetAttributes()
                     .FirstOrDefault(a => a.AttributeClass?.Name == "OutputParameterAttribute");
@@ -1432,31 +1476,29 @@ public class RepositoryGenerator : IIncrementalGenerator
                 
                 if (isOutputParameterWrapper)
                 {
-                    // OutputParameter<T> wrapper - check if it has initial value
+                    // OutputParameter<T> wrapper behaves as input only when referenced in SQL.
                     sb.AppendLine($"if ({param.Name}.HasValue)");
                     sb.AppendLine("{");
                     sb.PushIndent();
                     sb.AppendLine($"p.Value = {param.Name}.Value;");
-                    sb.AppendLine("p.Direction = System.Data.ParameterDirection.InputOutput;");
                     sb.PopIndent();
                     sb.AppendLine("}");
                     sb.AppendLine("else");
                     sb.AppendLine("{");
                     sb.PushIndent();
-                    sb.AppendLine("p.Direction = System.Data.ParameterDirection.Output;");
+                    sb.AppendLine("p.Value = DBNull.Value;");
                     sb.PopIndent();
                     sb.AppendLine("}");
                 }
                 else if (isRefParam)
                 {
-                    // ref parameter: InputOutput mode - bind initial value
+                    // ref parameter: bind the initial value if referenced in SQL
                     sb.AppendLine($"p.Value = {param.Name};");
-                    sb.AppendLine("p.Direction = System.Data.ParameterDirection.InputOutput;");
                 }
                 else
                 {
-                    // out parameter: Output mode - no initial value
-                    sb.AppendLine("p.Direction = System.Data.ParameterDirection.Output;");
+                    // out parameter referenced in SQL: provide DBNull placeholder.
+                    sb.AppendLine("p.Value = DBNull.Value;");
                 }
                 
                 sb.AppendLine("cmd.Parameters.Add(p);");
@@ -1466,14 +1508,22 @@ public class RepositoryGenerator : IIncrementalGenerator
             }
             
             // Check if this is an entity parameter (exact match or ends with entity name)
-            if (paramType.Name == entityName)
+            var matchesRepositoryEntity = paramType.Name == entityName;
+            var matchesReturnedEntity = actualReturnTypeIsEntity &&
+                (paramType.Name == actualReturnTypeName ||
+                 paramTypeName == actualReturnTypeFullName ||
+                 paramTypeName == $"{actualReturnTypeFullName}?");
+
+            if (matchesRepositoryEntity || matchesReturnedEntity)
             {
-                sb.AppendLine($"{entityName}ParameterBinder.Default.BindEntity(cmd, {param.Name}, ParamPrefix);");
+                var binderTypeName = matchesRepositoryEntity ? entityName : actualReturnTypeName;
+                sb.AppendLine($"{binderTypeName}ParameterBinder.Default.BindEntity(cmd, {param.Name}, ParamPrefix);");
             }
             // Check if this is a collection parameter (List<T>, IEnumerable<T>, etc.)
             else if (IsCollectionType(paramType, out var elementType))
             {
                 // Expand collection into multiple parameters: @ids0, @ids1, @ids2, ...
+                var elementCanBeNull = elementType is not null && (elementType.IsReferenceType || IsNullableType(elementType));
                 sb.AppendLine("{");
                 sb.PushIndent();
                 sb.AppendLine($"var index = 0;");
@@ -1482,7 +1532,14 @@ public class RepositoryGenerator : IIncrementalGenerator
                 sb.PushIndent();
                 sb.AppendLine("var p = cmd.CreateParameter();");
                 sb.AppendLine($"p.ParameterName = ParamPrefix + \"{param.Name}\" + index;");
-                sb.AppendLine("p.Value = item;");
+                if (elementCanBeNull)
+                {
+                    sb.AppendLine("p.Value = item is null ? (object)DBNull.Value : item;");
+                }
+                else
+                {
+                    sb.AppendLine("p.Value = item;");
+                }
                 sb.AppendLine("cmd.Parameters.Add(p);");
                 sb.AppendLine("index++;");
                 sb.PopIndent();
@@ -1499,7 +1556,7 @@ public class RepositoryGenerator : IIncrementalGenerator
                 sb.PushIndent();
                 sb.AppendLine("var p = cmd.CreateParameter();");
                 sb.AppendLine($"p.ParameterName = {paramFieldName};");
-                if (isNullable)
+                if (isNullable || paramType.IsReferenceType)
                 {
                     sb.AppendLine($"p.Value = {param.Name} ?? (object)DBNull.Value;");
                 }
@@ -1629,7 +1686,99 @@ public class RepositoryGenerator : IIncrementalGenerator
         return null;
     }
 
-    private static void GenerateExecuteAndReturn(IndentedStringBuilder sb, IMethodSymbol method, string repoFullName, string entityFullName, string entityName, string keyTypeName, bool isReturnInsertedId, string methodName, string fieldName, bool useStaticOrdinals, string ordinalsFieldName, bool isAsync, bool useSimpleScalarExecution, Dictionary<string, string> paramNameFields)
+    private static IParameterSymbol? FindEntityParameter(IMethodSymbol method)
+    {
+        var entityType = GetEntityTypeFromMethod(method);
+        foreach (var parameter in method.Parameters)
+        {
+            if (parameter.Name == "cancellationToken")
+            {
+                continue;
+            }
+
+            if (entityType != null && SymbolEqualityComparer.Default.Equals(parameter.Type, entityType))
+            {
+                return parameter;
+            }
+        }
+
+        return method.Parameters.FirstOrDefault(static p =>
+            p.Name != "cancellationToken" &&
+            p.RefKind == RefKind.None &&
+            p.Type.TypeKind == TypeKind.Class);
+    }
+
+    private static IPropertySymbol? GetEntityIdProperty(ITypeSymbol entityType, string propertyName)
+    {
+        if (entityType is not INamedTypeSymbol namedType)
+        {
+            return null;
+        }
+
+        return namedType.GetMembers()
+            .OfType<IPropertySymbol>()
+            .FirstOrDefault(property =>
+                property.SetMethod != null &&
+                string.Equals(property.Name, propertyName, StringComparison.Ordinal));
+    }
+
+    private static bool HasOutputParameters(IMethodSymbol method)
+    {
+        return method.Parameters.Any(p =>
+            p.RefKind == RefKind.Ref ||
+            p.RefKind == RefKind.Out ||
+            p.Type.ToDisplayString().Contains("OutputParameter<"));
+    }
+
+    private static bool TemplateReferencesParameter(string? template, string parameterName)
+    {
+        if (string.IsNullOrWhiteSpace(template))
+        {
+            return false;
+        }
+
+        return template!.IndexOf("@" + parameterName, StringComparison.Ordinal) >= 0 ||
+               template.IndexOf(":" + parameterName, StringComparison.Ordinal) >= 0 ||
+               template.IndexOf("$" + parameterName, StringComparison.Ordinal) >= 0;
+    }
+
+    private static void GenerateOutputValueRetrievalFromReader(IndentedStringBuilder sb, IMethodSymbol method)
+    {
+        var outputParams = method.Parameters
+            .Where(p => p.RefKind == RefKind.Ref ||
+                       p.RefKind == RefKind.Out ||
+                       p.Type.ToDisplayString().Contains("OutputParameter<"))
+            .ToList();
+
+        if (!outputParams.Any())
+        {
+            return;
+        }
+
+        sb.AppendLine("var __outputIndex = 0;");
+        foreach (var param in outputParams)
+        {
+            var paramTypeName = param.Type.ToDisplayString();
+            var isOutputParameterWrapper = paramTypeName.Contains("OutputParameter<");
+
+            if (isOutputParameterWrapper)
+            {
+                var start = paramTypeName.IndexOf("OutputParameter<", StringComparison.Ordinal) + 16;
+                var end = paramTypeName.LastIndexOf('>');
+                var innerType = paramTypeName.Substring(start, end - start);
+                sb.AppendLine($"{param.Name}.Value = global::Sqlx.TypeConverter.Convert<{innerType}>(reader.GetValue(__outputIndex));");
+                sb.AppendLine($"{param.Name}.HasValue = true;");
+            }
+            else
+            {
+                sb.AppendLine($"{param.Name} = global::Sqlx.TypeConverter.Convert<{paramTypeName}>((object?)reader.GetValue(__outputIndex));");
+            }
+
+            sb.AppendLine("__outputIndex++;");
+        }
+    }
+
+    private static void GenerateExecuteAndReturn(IndentedStringBuilder sb, IMethodSymbol method, string repoFullName, string entityFullName, string entityName, string keyTypeName, bool isReturnInsertedId, bool isReturnInsertedEntity, string returnInsertedEntityIdPropertyName, string methodName, string fieldName, bool useStaticOrdinals, string ordinalsFieldName, bool isAsync, bool useSimpleScalarExecution, Dictionary<string, string> paramNameFields)
     {
         var returnType = method.ReturnType.ToDisplayString();
         var ctParam = method.Parameters.FirstOrDefault(p => p.Name == "cancellationToken");
@@ -1646,7 +1795,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             return;
         }
 
-        if (useSimpleScalarExecution && TryGetSimpleScalarType(method.ReturnType, out var scalarReturnType))
+        if (!isReturnInsertedId && !isReturnInsertedEntity && useSimpleScalarExecution && TryGetSimpleScalarType(method.ReturnType, out var scalarReturnType))
         {
             var scalarTypeName = scalarReturnType.ToDisplayString();
             if (isAsync)
@@ -1770,7 +1919,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine("return result;");
         }
         // Check for sync single entity return (Entity? without Task) or custom return type
-        else if (!isAsync && (normalizedReturnType.Contains($"{entityName}?") || normalizedReturnType.Contains($"{entityName}") ||
+        else if (!isReturnInsertedEntity && !isAsync && (normalizedReturnType.Contains($"{entityName}?") || normalizedReturnType.Contains($"{entityName}") ||
                  returnType.Contains($"{entityFullName}?") || returnType.Contains($"{entityFullName}") ||
                  (isCustomReturnType && (normalizedReturnType.Contains($"{actualReturnTypeName}?") || normalizedReturnType.Contains($"{actualReturnTypeName}") ||
                   returnType.Contains($"{actualReturnTypeFullName}?") || returnType.Contains($"{actualReturnTypeFullName}")))))
@@ -1841,23 +1990,51 @@ public class RepositoryGenerator : IIncrementalGenerator
         // Check for sync int return (int without Task)
         else if (!isAsync && (normalizedReturnType == "int" || normalizedReturnType == "Int32" || returnType.Contains("System.Int32")))
         {
-            // Sync int return (affected rows)
-            sb.AppendLine("var result = cmd.ExecuteNonQuery();");
-            
-            // Retrieve output parameters if any
-            GenerateOutputParameterRetrieval(sb, method, paramNameFields);
-            
-            sb.AppendLine();
-            sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
-            sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
-            sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, result, elapsed);");
-            sb.AppendLine("#endif");
-            sb.AppendLine();
-            sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
-            sb.AppendLine("activity?.SetTag(\"db.rows_affected\", result);");
-            sb.AppendLine("#endif");
-            sb.AppendLine();
-            sb.AppendLine("return result;");
+            if (HasOutputParameters(method))
+            {
+                sb.AppendLine("using var reader = cmd.ExecuteReader(System.Data.CommandBehavior.Default);");
+                sb.AppendLine("var result = reader.RecordsAffected;");
+                sb.AppendLine("if (!reader.Read())");
+                sb.AppendLine("{");
+                sb.PushIndent();
+                sb.AppendLine("reader.NextResult();");
+                sb.AppendLine("reader.Read();");
+                sb.PopIndent();
+                sb.AppendLine("}");
+                GenerateOutputValueRetrievalFromReader(sb, method);
+                sb.AppendLine("if (result < 0) result = 1;");
+                sb.AppendLine();
+                sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
+                sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
+                sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, result, elapsed);");
+                sb.AppendLine("#endif");
+                sb.AppendLine();
+                sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
+                sb.AppendLine("activity?.SetTag(\"db.rows_affected\", result);");
+                sb.AppendLine("#endif");
+                sb.AppendLine();
+                sb.AppendLine("return result;");
+            }
+            else
+            {
+                // Sync int return (affected rows)
+                sb.AppendLine("var result = cmd.ExecuteNonQuery();");
+                
+                // Retrieve output parameters if any
+                GenerateOutputParameterRetrieval(sb, method, paramNameFields);
+                
+                sb.AppendLine();
+                sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
+                sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
+                sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, result, elapsed);");
+                sb.AppendLine("#endif");
+                sb.AppendLine();
+                sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
+                sb.AppendLine("activity?.SetTag(\"db.rows_affected\", result);");
+                sb.AppendLine("#endif");
+                sb.AppendLine();
+                sb.AppendLine("return result;");
+            }
         }
         else if (normalizedReturnType.Contains("Task<List<") || normalizedReturnType.Contains("Task<IList<") || normalizedReturnType.Contains("Task<IEnumerable<"))
         {
@@ -1885,10 +2062,10 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine();
             sb.AppendLine("return result;");
         }
-        else if (normalizedReturnType.Contains($"Task<{entityName}?>") || normalizedReturnType.Contains($"Task<{entityName}>") ||
+        else if (!isReturnInsertedEntity && (normalizedReturnType.Contains($"Task<{entityName}?>") || normalizedReturnType.Contains($"Task<{entityName}>") ||
                  returnType.Contains($"Task<{entityFullName}?>") || returnType.Contains($"Task<{entityFullName}>") ||
                  (isCustomReturnType && (normalizedReturnType.Contains($"Task<{actualReturnTypeName}?>") || normalizedReturnType.Contains($"Task<{actualReturnTypeName}>") ||
-                  returnType.Contains($"Task<{actualReturnTypeFullName}?>") || returnType.Contains($"Task<{actualReturnTypeFullName}>"))))
+                  returnType.Contains($"Task<{actualReturnTypeFullName}?>") || returnType.Contains($"Task<{actualReturnTypeFullName}>")))))
         {
             // Return single entity
             sb.AppendLine($"using var reader = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.Default, {ctName}).ConfigureAwait(false);");
@@ -1929,24 +2106,53 @@ public class RepositoryGenerator : IIncrementalGenerator
         }
         else if (normalizedReturnType.Contains("Task<int>") || returnType.Contains("Task<Int32>"))
         {
-            // Return affected rows
-            sb.AppendLine($"var result = await cmd.ExecuteNonQueryAsync({ctName}).ConfigureAwait(false);");
-            
-            // Retrieve output parameters if any
-            GenerateOutputParameterRetrieval(sb, method, paramNameFields);
-            
-            sb.AppendLine();
-            sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
-            sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
-            sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, result, elapsed);");
-            sb.AppendLine("#endif");
-            GenerateMetricsRecording(sb, repoFullName, methodName, fieldName);
-            sb.AppendLine();
-            sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
-            sb.AppendLine("activity?.SetTag(\"db.rows_affected\", result);");
-            sb.AppendLine("#endif");
-            sb.AppendLine();
-            sb.AppendLine("return result;");
+            if (HasOutputParameters(method))
+            {
+                sb.AppendLine($"using var reader = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.Default, {ctName}).ConfigureAwait(false);");
+                sb.AppendLine("var result = reader.RecordsAffected;");
+                sb.AppendLine($"if (!await reader.ReadAsync({ctName}).ConfigureAwait(false))");
+                sb.AppendLine("{");
+                sb.PushIndent();
+                sb.AppendLine($"await reader.NextResultAsync({ctName}).ConfigureAwait(false);");
+                sb.AppendLine($"await reader.ReadAsync({ctName}).ConfigureAwait(false);");
+                sb.PopIndent();
+                sb.AppendLine("}");
+                GenerateOutputValueRetrievalFromReader(sb, method);
+                sb.AppendLine("if (result < 0) result = 1;");
+                sb.AppendLine();
+                sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
+                sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
+                sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, result, elapsed);");
+                sb.AppendLine("#endif");
+                GenerateMetricsRecording(sb, repoFullName, methodName, fieldName);
+                sb.AppendLine();
+                sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
+                sb.AppendLine("activity?.SetTag(\"db.rows_affected\", result);");
+                sb.AppendLine("#endif");
+                sb.AppendLine();
+                sb.AppendLine("return result;");
+            }
+            else
+            {
+                // Return affected rows
+                sb.AppendLine($"var result = await cmd.ExecuteNonQueryAsync({ctName}).ConfigureAwait(false);");
+                
+                // Retrieve output parameters if any
+                GenerateOutputParameterRetrieval(sb, method, paramNameFields);
+                
+                sb.AppendLine();
+                sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
+                sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
+                sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, result, elapsed);");
+                sb.AppendLine("#endif");
+                GenerateMetricsRecording(sb, repoFullName, methodName, fieldName);
+                sb.AppendLine();
+                sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
+                sb.AppendLine("activity?.SetTag(\"db.rows_affected\", result);");
+                sb.AppendLine("#endif");
+                sb.AppendLine();
+                sb.AppendLine("return result;");
+            }
         }
         else if (isReturnInsertedId)
         {
@@ -2022,6 +2228,66 @@ public class RepositoryGenerator : IIncrementalGenerator
                 sb.AppendLine();
                 sb.AppendLine("return insertedId;");
             }
+        }
+        else if (isReturnInsertedEntity)
+        {
+            var entityParam = FindEntityParameter(method);
+            if (entityParam is null)
+            {
+                sb.AppendLine("throw new global::System.InvalidOperationException(\"[ReturnInsertedEntity] requires an entity parameter.\");");
+                return;
+            }
+
+            var entityParamName = entityParam.Name;
+            var entityParamTypeName = entityParam.Type.ToDisplayString();
+            var entityIdProperty = GetEntityIdProperty(entityParam.Type, returnInsertedEntityIdPropertyName);
+            var entityIdPropertyType = entityIdProperty?.Type.ToDisplayString() ?? keyTypeName;
+
+            sb.AppendLine("// Append last inserted ID query to the INSERT statement");
+            sb.AppendLine("cmd.CommandText += Dialect.InsertReturningIdSuffix;");
+            sb.AppendLine();
+
+            if (isAsync)
+            {
+                sb.AppendLine($"using var reader = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.Default, {ctName}).ConfigureAwait(false);");
+                sb.AppendLine($"if (!await reader.ReadAsync({ctName}).ConfigureAwait(false))");
+            }
+            else
+            {
+                sb.AppendLine("using var reader = cmd.ExecuteReader(System.Data.CommandBehavior.Default);");
+                sb.AppendLine("if (!reader.Read())");
+            }
+
+            sb.AppendLine("{");
+            sb.PushIndent();
+            if (isAsync)
+            {
+                sb.AppendLine($"await reader.NextResultAsync({ctName}).ConfigureAwait(false);");
+                sb.AppendLine($"await reader.ReadAsync({ctName}).ConfigureAwait(false);");
+            }
+            else
+            {
+                sb.AppendLine("reader.NextResult();");
+                sb.AppendLine("reader.Read();");
+            }
+            sb.PopIndent();
+            sb.AppendLine("}");
+
+            sb.AppendLine($"var insertedId = ({keyTypeName})Convert.ChangeType(reader.GetValue(0), typeof({keyTypeName}));");
+            sb.AppendLine($"{entityParamName}.{returnInsertedEntityIdPropertyName} = ({entityIdPropertyType})Convert.ChangeType(insertedId, typeof({entityIdPropertyType}));");
+            sb.AppendLine($"var resultEntity = {entityParamName};");
+            sb.AppendLine();
+            sb.AppendLine("#if !SQLX_DISABLE_INTERCEPTOR");
+            sb.AppendLine("var elapsed = Stopwatch.GetTimestamp() - startTime;");
+            sb.AppendLine($"OnExecuted(\"{methodName}\", cmd, {fieldName}, resultEntity, elapsed);");
+            sb.AppendLine("#endif");
+            GenerateMetricsRecording(sb, repoFullName, methodName, fieldName);
+            sb.AppendLine();
+            sb.AppendLine("#if !SQLX_DISABLE_ACTIVITY");
+            sb.AppendLine("activity?.SetTag(\"db.inserted_id\", insertedId);");
+            sb.AppendLine("#endif");
+            sb.AppendLine();
+            sb.AppendLine("return resultEntity;");
         }
         else if (normalizedReturnType.Contains("Task<long>") || returnType.Contains("Task<Int64>"))
         {
@@ -2134,7 +2400,7 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine("#endif");
     }
 
-    private static void GenerateCatchBlock(IndentedStringBuilder sb, string repoFullName, string methodName, string fieldName)
+    private static void GenerateCatchBlock(IndentedStringBuilder sb, string repoFullName, string methodName, string fieldName, bool isAsync)
     {
         sb.AppendLine("catch (Exception ex)");
         sb.AppendLine("{");
@@ -2156,7 +2422,24 @@ public class RepositoryGenerator : IIncrementalGenerator
         AppendConditionalBlock(sb, "SQLX_DISABLE_INTERCEPTOR && SQLX_DISABLE_ACTIVITY", () =>
             sb.AppendLine("_ = ex; // Suppress unused variable warning"));
         sb.AppendLine();
-        sb.AppendLine("throw;");
+        if (isAsync)
+        {
+            sb.AppendLine("var sqlxException = await global::Sqlx.ExceptionHandler.HandleExceptionAsync(");
+        }
+        else
+        {
+            sb.AppendLine("var sqlxException = global::Sqlx.ExceptionHandler.HandleException(");
+        }
+        sb.PushIndent();
+        sb.AppendLine("ex,");
+        sb.AppendLine("Options,");
+        sb.AppendLine($"\"{methodName}\",");
+        sb.AppendLine("cmd.CommandText,");
+        sb.AppendLine("cmd.Parameters,");
+        sb.AppendLine("cmd.Transaction,");
+        sb.AppendLine("Stopwatch.GetElapsedTime(startTime));");
+        sb.PopIndent();
+        sb.AppendLine("throw sqlxException;");
         sb.PopIndent();
         sb.AppendLine("}");
     }
@@ -2359,8 +2642,42 @@ public class RepositoryGenerator : IIncrementalGenerator
             }
         }
 
-        // Retrieve output parameters if any
-        GenerateOutputParameterRetrieval(sb, method, paramNameFields);
+        // Retrieve output values from the current result set if any
+        var hasOutputParameters = HasOutputParameters(method);
+        if (hasOutputParameters)
+        {
+            if (isAsync)
+            {
+                sb.AppendLine("if (!await reader.NextResultAsync(" + ctName + ").ConfigureAwait(false))");
+                sb.AppendLine("{");
+                sb.PushIndent();
+                sb.AppendLine("throw new InvalidOperationException(\"No data returned for output parameter result set\");");
+                sb.PopIndent();
+                sb.AppendLine("}");
+                sb.AppendLine("if (!await reader.ReadAsync(" + ctName + ").ConfigureAwait(false))");
+                sb.AppendLine("{");
+                sb.PushIndent();
+                sb.AppendLine("throw new InvalidOperationException(\"No row returned for output parameter values\");");
+                sb.PopIndent();
+                sb.AppendLine("}");
+            }
+            else
+            {
+                sb.AppendLine("if (!reader.NextResult())");
+                sb.AppendLine("{");
+                sb.PushIndent();
+                sb.AppendLine("throw new InvalidOperationException(\"No data returned for output parameter result set\");");
+                sb.PopIndent();
+                sb.AppendLine("}");
+                sb.AppendLine("if (!reader.Read())");
+                sb.AppendLine("{");
+                sb.PushIndent();
+                sb.AppendLine("throw new InvalidOperationException(\"No row returned for output parameter values\");");
+                sb.PopIndent();
+                sb.AppendLine("}");
+            }
+            GenerateOutputValueRetrievalFromReader(sb, method);
+        }
 
         // Build tuple return
         var varNames = tupleElements.Select(e => e.Name ?? "Item1").ToList();

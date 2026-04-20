@@ -77,6 +77,38 @@ var result = repo.InsertAndGetId("John", 25, out int newId);
 Console.WriteLine($"Inserted ID: {newId}");
 ```
 
+### 轻量模式：不写接口、不写仓储类
+
+如果你只是想直接执行 SQL，也可以只定义实体，然后直接从 `DbConnection` 调用轻量 API：
+
+```csharp
+[Sqlx, TableName("users")]
+public class User
+{
+    [Key] public long Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public int Age { get; set; }
+}
+
+await using var conn = new SqliteConnection("Data Source=app.db");
+
+var adults = await conn.SqlxQueryAsync<User>(
+    "SELECT {{columns}} FROM {{table}} WHERE age >= @minAge ORDER BY id",
+    SqlDefine.SQLite,
+    new { minAge = 18 });
+
+var total = await conn.SqlxScalarAsync<long, User>(
+    "SELECT COUNT(*) FROM {{table}}",
+    SqlDefine.SQLite);
+
+await conn.SqlxExecuteAsync<User>(
+    "UPDATE {{table}} SET {{set --exclude Id}} WHERE id = @id",
+    SqlDefine.SQLite,
+    new User { Id = 1, Name = "Updated", Age = 20 });
+```
+
+这条路径仍然复用 Sqlx 现有的模板占位符、实体元数据、ResultReader 和执行器，只是把入口换成了 `DbConnection` 扩展方法。
+
 **重要说明：** Sqlx 中有两个不同的 `SqlTemplate`：
 - **`[SqlTemplate]` 特性** (`Sqlx.Annotations`) - 用于标注接口方法，定义 SQL 模板
 - **`SqlTemplate` 类** (`Sqlx`) - 运行时类，用于调试查看生成的 SQL
@@ -520,7 +552,31 @@ var maxAge = await SqlQuery<User>.ForSqlite()
     .WithConnection(connection)
     .WithReader(UserResultReader.Default)
     .MaxAsync(u => u.Age);
+
+// 小结果集：直接取第一条，避免额外枚举开销
+var firstAdult = await SqlQuery<User>.ForSqlite()
+    .Where(u => u.Age >= 18)
+    .WithConnection(connection)
+    .FirstOrDefaultAsync();
+
+// 大结果集：直接 materialize 到 List，走 Sqlx 的批量读取优化路径
+var page = await SqlQuery<User>.ForSqlite()
+    .OrderBy(u => u.Id)
+    .Skip(1000)
+    .Take(200)
+    .WithConnection(connection)
+    .ToListAsync();
+
+var totalAdults = await SqlQuery<User>.ForSqlite()
+    .Where(u => u.Age >= 18)
+    .WithConnection(connection)
+    .CountAsync();
 ```
+
+**执行建议：**
+- 小结果集优先用 `FirstOrDefaultAsync()` / `AnyAsync()` / `CountAsync()`
+- 需要分页或批量读取时优先用 `ToListAsync()`
+- 只有确实需要逐条异步流式消费时，再直接枚举 `IAsyncEnumerable<T>`
 
 **支持的 LINQ 方法：**
 - `Where`, `Select`, `OrderBy`, `ThenBy`, `Take`, `Skip`
@@ -1095,6 +1151,13 @@ public class UserWithComputed
 // Struct Record
 [Sqlx, TableName("points")]
 public readonly record struct Point(int X, int Y);
+```
+
+## 测试与覆盖率
+
+```bash
+bash scripts/coverage.sh
+bash scripts/coverage.sh --unit
 ```
 
 ## 更多文档

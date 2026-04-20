@@ -51,7 +51,67 @@ You can control what gets generated using attribute properties:
 public class User { }
 ```
 
-### Step 2: Define Your Repository Interface
+### Step 2: Use The Lightweight API
+
+If you do not want to create a repository interface and partial class, you can query directly from `DbConnection`:
+
+```csharp
+using Microsoft.Data.Sqlite;
+using Sqlx;
+using Sqlx.Annotations;
+
+[Sqlx, TableName("users")]
+public class User
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+}
+
+await using var connection = new SqliteConnection("Data Source=app.db");
+await connection.OpenAsync();
+
+var users = await connection.SqlxQueryAsync<User>(
+    "SELECT {{columns}} FROM {{table}} WHERE id >= @minId ORDER BY id",
+    SqlDefine.SQLite,
+    new { minId = 10 });
+
+var total = await connection.SqlxScalarAsync<long, User>(
+    "SELECT COUNT(*) FROM {{table}}",
+    SqlDefine.SQLite);
+
+await connection.SqlxExecuteAsync<User>(
+    "UPDATE {{table}} SET {{set --exclude Id}} WHERE id = @id",
+    SqlDefine.SQLite,
+    new User { Id = 10, Name = "Updated", Email = "u@test.com", CreatedAt = DateTime.UtcNow });
+```
+
+This path still uses the existing Sqlx template engine, placeholder processing, entity metadata, and result readers. It only removes the repository boilerplate.
+
+For LINQ-style execution, prefer the direct helpers on `SqlxQueryable`:
+
+```csharp
+var page = await SqlQuery<User>.ForSqlite()
+    .Where(u => u.CreatedAt >= DateTime.UtcNow.AddDays(-30))
+    .OrderBy(u => u.Id)
+    .Take(100)
+    .WithConnection(connection)
+    .ToListAsync();
+
+var firstUser = await SqlQuery<User>.ForSqlite()
+    .Where(u => u.Email == "john@example.com")
+    .WithConnection(connection)
+    .FirstOrDefaultAsync();
+
+var totalUsers = await SqlQuery<User>.ForSqlite()
+    .WithConnection(connection)
+    .CountAsync();
+```
+
+These helpers avoid the extra overhead of routing through a generic async-enumerable adapter and are the recommended path for both small and large result sets.
+
+### Step 3: Define Your Repository Interface
 
 Create an interface extending `ICrudRepository<TEntity, TKey>` or define custom methods with `[SqlTemplate]`:
 
@@ -74,7 +134,7 @@ public interface IUserRepository : ICrudRepository<User, int>
 }
 ```
 
-### Step 3: Implement Your Repository
+### Step 4: Implement Your Repository
 
 Create a partial class with the required attributes:
 
@@ -127,7 +187,7 @@ public partial class UserRepository : IUserRepository
 
 The source generator will implement all interface methods automatically.
 
-### Step 4: Use Your Repository
+### Step 5: Use Your Repository
 
 ```csharp
 using Microsoft.Data.Sqlite;

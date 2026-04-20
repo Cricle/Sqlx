@@ -4,19 +4,20 @@
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 
 namespace Sqlx.Tests.Core;
 
 /// <summary>
-/// Tests for ExceptionHandler internal class covering exception enrichment, logging, retry logic, and parameter sanitization.
-/// Uses reflection to access internal static class.
+/// Tests for ExceptionHandler covering exception enrichment, logging, retry logic, and parameter sanitization.
 /// </summary>
 [TestClass]
 public class ExceptionHandlerTests
@@ -497,6 +498,81 @@ public class ExceptionHandlerTests
         Assert.IsTrue(exception.Duration.Value.TotalMilliseconds >= 40);
     }
 
+    [TestMethod]
+    public async Task HandleExceptionAsync_WithCommandParameters_ExtractsParametersLogsAndInvokesCallback()
+    {
+        // Arrange
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT * FROM users WHERE id = @id AND password = @password";
+        command.Parameters.AddWithValue("@id", 123);
+        command.Parameters.AddWithValue("@password", "secret123");
+
+        SqlxException? callbackException = null;
+        var logger = new TestLogger();
+        var options = new SqlxContextOptions
+        {
+            Logger = logger,
+            OnException = ex =>
+            {
+                callbackException = ex;
+                return Task.CompletedTask;
+            }
+        };
+
+        // Act
+        var sqlxException = await ExceptionHandler.HandleExceptionAsync(
+            new InvalidOperationException("Boom"),
+            options,
+            "BrokenAsync",
+            command.CommandText,
+            command.Parameters,
+            null,
+            TimeSpan.FromMilliseconds(12));
+
+        // Assert
+        Assert.AreEqual("BrokenAsync", sqlxException.MethodName);
+        Assert.AreEqual(123L, Convert.ToInt64(sqlxException.Parameters!["id"]));
+        Assert.AreEqual("***REDACTED***", sqlxException.Parameters["password"]);
+        Assert.AreSame(sqlxException, callbackException);
+        Assert.AreEqual(1, logger.Entries.Count(e => e.LogLevel == LogLevel.Error));
+        Assert.AreSame(sqlxException, logger.Entries.Single(e => e.LogLevel == LogLevel.Error).Exception);
+    }
+
+    [TestMethod]
+    public void HandleException_CallbackThrows_LogsWarningAndReturnsSqlxException()
+    {
+        // Arrange
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT @token";
+        command.Parameters.AddWithValue("@token", "abc");
+
+        var logger = new TestLogger();
+        var options = new SqlxContextOptions
+        {
+            Logger = logger,
+            OnException = _ => throw new InvalidOperationException("Callback error")
+        };
+
+        // Act
+        var sqlxException = ExceptionHandler.HandleException(
+            new InvalidOperationException("Boom"),
+            options,
+            "BrokenSync",
+            command.CommandText,
+            command.Parameters,
+            null,
+            TimeSpan.FromMilliseconds(5));
+
+        // Assert
+        Assert.AreEqual("BrokenSync", sqlxException.MethodName);
+        Assert.AreEqual("***REDACTED***", sqlxException.Parameters!["token"]);
+        Assert.AreEqual(1, logger.Entries.Count(e => e.LogLevel == LogLevel.Error));
+        Assert.AreEqual(1, logger.Entries.Count(e => e.LogLevel == LogLevel.Warning));
+        Assert.AreEqual("Callback error", logger.Entries.Single(e => e.LogLevel == LogLevel.Warning).Exception!.Message);
+    }
+
     private class TestDbException : DbException
     {
         public TestDbException(int errorCode)
@@ -520,5 +596,35 @@ public class ExceptionHandlerTests
         protected override DbConnection? DbConnection => null;
         public override void Commit() { }
         public override void Rollback() { }
+    }
+
+    private sealed class TestLogger : ILogger
+    {
+        public List<LogEntry> Entries { get; } = new();
+
+        public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            Entries.Add(new LogEntry(logLevel, eventId, formatter(state, exception), exception));
+        }
+    }
+
+    private sealed record LogEntry(LogLevel LogLevel, EventId EventId, string Message, Exception? Exception);
+
+    private sealed class NullScope : IDisposable
+    {
+        public static NullScope Instance { get; } = new();
+
+        public void Dispose()
+        {
+        }
     }
 }

@@ -615,6 +615,25 @@ public class DynamicResultReaderTests
         Assert.AreEqual("Bob", results[1].Name);
     }
 
+    [TestMethod]
+    public void DynamicReader_DefaultReader_GetOrdinals_FallsBackToSnakeCaseColumnNames()
+    {
+        var reader = new DynamicResultReader<SnakeCaseProjection>();
+        var table = new DataTable();
+        table.Columns.Add("id", typeof(int));
+        table.Columns.Add("user_name", typeof(string));
+        table.Rows.Add(1, "Alice");
+        using var dbReader = table.CreateDataReader();
+
+        Assert.IsTrue(dbReader.Read());
+        Span<int> ordinals = stackalloc int[2];
+        reader.GetOrdinals(dbReader, ordinals);
+
+        var result = reader.Read(dbReader, ordinals);
+        Assert.AreEqual(1, result.Id);
+        Assert.AreEqual("Alice", result.UserName);
+    }
+
     #endregion
 
     #region Complex Scenario Tests
@@ -666,6 +685,12 @@ public class DynamicResultReaderTests
     {
         public int Id { get; set; }
         public decimal Value { get; set; }
+    }
+
+    private class SnakeCaseProjection
+    {
+        public int Id { get; set; }
+        public string UserName { get; set; } = "";
     }
 
     private class AnonymousTypeDbReader : DbDataReader
@@ -770,4 +795,3 @@ public partial class TestEntityWithAllTypes
     public decimal? NullableDecimal { get; set; }
     public Guid? NullableGuid { get; set; }
 }
-

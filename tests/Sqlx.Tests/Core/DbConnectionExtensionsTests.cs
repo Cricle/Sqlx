@@ -8,12 +8,27 @@ using Microsoft.Data.Sqlite;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Sqlx.Annotations;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Sqlx.Tests.Core;
 
 [Sqlx]
+[TableName("batch_test_entity")]
 public class BatchTestEntity
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
+
+public class LightweightBatchDto
+{
+    public int Id { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
+}
+
+[TableName("batch_test_entity")]
+public class PlainLightweightEntity
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
@@ -25,6 +40,26 @@ public class BatchTestEntity
 [TestClass]
 public class DbConnectionExtensionsTests
 {
+    private static async Task<SqliteConnection> CreateTestConnectionAsync()
+    {
+        var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        using var createCmd = connection.CreateCommand();
+        createCmd.CommandText = """
+            CREATE TABLE batch_test_entity (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL
+            );
+            INSERT INTO batch_test_entity (id, name) VALUES
+                (1, 'Alpha'),
+                (2, 'Beta'),
+                (3, 'Gamma');
+            """;
+        await createCmd.ExecuteNonQueryAsync();
+        return connection;
+    }
+
 
     [TestMethod]
     public async Task ExecuteBatchAsync_WithEntities_ExecutesSuccessfully()
@@ -143,6 +178,98 @@ public class DbConnectionExtensionsTests
 
         // Assert
         Assert.AreEqual(0, result);
+    }
+
+    [TestMethod]
+    public async Task SqlxQueryAsync_WithTemplatePlaceholders_ReturnsEntities()
+    {
+        await using var connection = await CreateTestConnectionAsync();
+
+        var users = await connection.SqlxQueryAsync<BatchTestEntity>(
+            "SELECT {{columns}} FROM {{table}} WHERE id >= @minId ORDER BY id",
+            SqlDefine.SQLite,
+            new { minId = 2 });
+
+        Assert.AreEqual(2, users.Count);
+        CollectionAssert.AreEqual(new[] { 2, 3 }, users.Select(x => x.Id).ToArray());
+        CollectionAssert.AreEqual(new[] { "Beta", "Gamma" }, users.Select(x => x.Name).ToArray());
+    }
+
+    [TestMethod]
+    public async Task SqlxQueryAsync_WithDtoProjection_UsesEntityTemplateContext()
+    {
+        await using var connection = await CreateTestConnectionAsync();
+
+        var users = await connection.SqlxQueryAsync<LightweightBatchDto, BatchTestEntity>(
+            "SELECT id AS Id, name AS DisplayName FROM {{table}} WHERE id <= @maxId ORDER BY id",
+            SqlDefine.SQLite,
+            new Dictionary<string, object?> { ["maxId"] = 2 });
+
+        Assert.AreEqual(2, users.Count);
+        Assert.AreEqual(1, users[0].Id);
+        Assert.AreEqual("Alpha", users[0].DisplayName);
+        Assert.AreEqual(2, users[1].Id);
+        Assert.AreEqual("Beta", users[1].DisplayName);
+    }
+
+    [TestMethod]
+    public async Task SqlxQueryFirstOrDefaultAsync_WithPlainPoco_FallsBackToDynamicMetadata()
+    {
+        await using var connection = await CreateTestConnectionAsync();
+
+        var user = await connection.SqlxQueryFirstOrDefaultAsync<PlainLightweightEntity>(
+            "SELECT {{columns}} FROM {{table}} WHERE id = @id",
+            SqlDefine.SQLite,
+            new { id = 1 });
+
+        Assert.IsNotNull(user);
+        Assert.AreEqual(1, user!.Id);
+        Assert.AreEqual("Alpha", user.Name);
+    }
+
+    [TestMethod]
+    public async Task SqlxExecuteAsync_WithTemplatePlaceholders_UpdatesRows()
+    {
+        await using var connection = await CreateTestConnectionAsync();
+
+        var affected = await connection.SqlxExecuteAsync<BatchTestEntity>(
+            "UPDATE {{table}} SET {{set --exclude Id}} WHERE id = @id",
+            SqlDefine.SQLite,
+            new BatchTestEntity { Id = 2, Name = "Updated" });
+
+        Assert.AreEqual(1, affected);
+
+        using var verifyCmd = connection.CreateCommand();
+        verifyCmd.CommandText = "SELECT name FROM batch_test_entity WHERE id = 2";
+        var name = (string)(await verifyCmd.ExecuteScalarAsync())!;
+        Assert.AreEqual("Updated", name);
+    }
+
+    [TestMethod]
+    public async Task SqlxScalarAsync_WithTemplatePlaceholders_ReturnsScalarValue()
+    {
+        await using var connection = await CreateTestConnectionAsync();
+
+        var count = await connection.SqlxScalarAsync<long, BatchTestEntity>(
+            "SELECT COUNT(*) FROM {{table}} WHERE id >= @minId",
+            SqlDefine.SQLite,
+            new { minId = 2 });
+
+        Assert.AreEqual(2L, count);
+    }
+
+    [TestMethod]
+    public void SqlxQuerySingle_WithTemplatePlaceholders_ReturnsSingleEntity()
+    {
+        using var connection = CreateTestConnectionAsync().GetAwaiter().GetResult();
+
+        var user = connection.SqlxQuerySingle<BatchTestEntity>(
+            "SELECT {{columns}} FROM {{table}} WHERE id = @id",
+            SqlDefine.SQLite,
+            new { id = 3 });
+
+        Assert.AreEqual(3, user.Id);
+        Assert.AreEqual("Gamma", user.Name);
     }
 
 #if NET6_0_OR_GREATER

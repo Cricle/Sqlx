@@ -64,6 +64,7 @@ public class Program
                 typeof(CountBenchmark),
                 typeof(PaginationBenchmark),
                 typeof(BatchInsertBenchmark),
+                typeof(SqlQueryBenchmark),
                 typeof(DynamicResultReaderOrdinalBenchmark),
                 typeof(PureMappingResultReaderBenchmark),
                 typeof(TypeConverterBenchmark),

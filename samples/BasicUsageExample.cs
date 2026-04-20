@@ -69,7 +69,8 @@ public class BasicUsageExample
 
         // 使用 SqlQuery 查询所有用户
         var users = await SqlQuery<User>.ForSqlite()
-            .ToListAsync(connection);
+            .WithConnection(connection)
+            .ToListAsync();
 
         Console.WriteLine($"查询到 {users.Count} 个用户:");
         foreach (var user in users)
@@ -92,7 +93,8 @@ public class BasicUsageExample
         var users = await SqlQuery<User>.ForSqlite()
             .Where(u => u.Age > 25)
             .OrderBy(u => u.Name)
-            .ToListAsync(connection);
+            .WithConnection(connection)
+            .ToListAsync();
 
         Console.WriteLine($"年龄 > 25 的用户 ({users.Count} 个):");
         foreach (var user in users)
@@ -138,7 +140,8 @@ public class BasicUsageExample
         // Read - 查询用户
         var user = await SqlQuery<User>.ForSqlite()
             .Where(u => u.Name == "Frank")
-            .FirstOrDefaultAsync(connection);
+            .WithConnection(connection)
+            .FirstOrDefaultAsync();
         Console.WriteLine($"✓ 查询用户: {user?.Name} ({user?.Email})");
 
         // Update - 更新用户
@@ -196,7 +199,8 @@ public class BasicUsageExample
             .OrderByDescending(u => u.Age)
             .ThenBy(u => u.Name)
             .Take(3)
-            .ToListAsync(connection);
+            .WithConnection(connection)
+            .ToListAsync();
 
         Console.WriteLine("年龄在 25-35 之间，邮箱包含 @example.com 的用户（前3个）:");
         foreach (var user in users)

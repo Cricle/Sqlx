@@ -6,6 +6,7 @@ namespace Sqlx;
 
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.Common;
 using System.Threading;
 using System.Threading.Tasks;
@@ -32,19 +33,16 @@ public static class DbBatchExecutor
     {
         if (entities == null || entities.Count == 0) return 0;
 
-        var total = 0;
-        using var cmd = connection.CreateCommand();
-        cmd.CommandText = sql;
-        cmd.Transaction = transaction;
-        if (commandTimeout.HasValue) cmd.CommandTimeout = commandTimeout.Value;
-
-        for (var i = 0; i < entities.Count; i++)
-        {
-            cmd.Parameters.Clear();
-            binder.BindEntity(cmd, entities[i], parameterPrefix);
-            total += await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
-        }
-        return total;
+        return await ExecuteLoopAsync(
+            connection,
+            transaction,
+            sql,
+            entities,
+            binder,
+            parameterPrefix,
+            batchSize,
+            commandTimeout,
+            ct).ConfigureAwait(false);
     }
 
 #if NET6_0_OR_GREATER
@@ -63,46 +61,119 @@ public static class DbBatchExecutor
     {
         if (entities == null || entities.Count == 0) return 0;
 
-        // Fallback to loop if batch not supported
         if (!connection.CanCreateBatch)
         {
-            var total = 0;
-            using var cmd = connection.CreateCommand();
-            cmd.CommandText = sql;
-            cmd.Transaction = transaction;
-            if (commandTimeout.HasValue) cmd.CommandTimeout = commandTimeout.Value;
-
-            for (var i = 0; i < entities.Count; i++)
-            {
-                cmd.Parameters.Clear();
-                binder.BindEntity(cmd, entities[i], parameterPrefix);
-                total += await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
-            }
-            return total;
+            return await ExecuteAsync(
+                connection,
+                transaction,
+                sql,
+                entities,
+                binder,
+                parameterPrefix,
+                batchSize,
+                commandTimeout,
+                ct).ConfigureAwait(false);
         }
 
-        // Use DbBatch with typed parameter factory
         var size = batchSize > 0 ? batchSize : DefaultBatchSize;
-        var result = 0;
-        static DbParameter Factory() => new TParameter();
+        var shouldCloseConnection = await EnsureConnectionOpenAsync(connection, ct).ConfigureAwait(false);
 
-        for (var i = 0; i < entities.Count; i += size)
+        try
         {
-            using var batch = connection.CreateBatch();
-            batch.Transaction = transaction;
-            if (commandTimeout.HasValue) batch.Timeout = commandTimeout.Value;
+            // Use DbBatch with typed parameter factory
+            var result = 0;
+            static DbParameter Factory() => new TParameter();
 
-            var end = Math.Min(i + size, entities.Count);
-            for (var j = i; j < end; j++)
+            for (var i = 0; i < entities.Count; i += size)
             {
-                var cmd = batch.CreateBatchCommand();
-                cmd.CommandText = sql;
-                binder.BindEntity(cmd, entities[j], Factory, parameterPrefix);
-                batch.BatchCommands.Add(cmd);
+                using var batch = connection.CreateBatch();
+                batch.Transaction = transaction;
+                if (commandTimeout.HasValue) batch.Timeout = commandTimeout.Value;
+
+                var end = Math.Min(i + size, entities.Count);
+                for (var j = i; j < end; j++)
+                {
+                    var cmd = batch.CreateBatchCommand();
+                    cmd.CommandText = sql;
+                    binder.BindEntity(cmd, entities[j], Factory, parameterPrefix);
+                    batch.BatchCommands.Add(cmd);
+                }
+                result += await batch.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
             }
-            result += await batch.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+
+            return result;
         }
-        return result;
+        finally
+        {
+            CloseConnection(connection, transaction, shouldCloseConnection);
+        }
     }
 #endif
+
+    private static async Task<int> ExecuteLoopAsync<TEntity>(
+        DbConnection connection,
+        DbTransaction? transaction,
+        string sql,
+        IReadOnlyList<TEntity> entities,
+        IParameterBinder<TEntity> binder,
+        string parameterPrefix,
+        int batchSize,
+        int? commandTimeout,
+        CancellationToken ct)
+    {
+        var size = batchSize > 0 ? batchSize : DefaultBatchSize;
+        var shouldCloseConnection = await EnsureConnectionOpenAsync(connection, ct).ConfigureAwait(false);
+
+        try
+        {
+            var total = 0;
+            using var cmd = CreateCommand(connection, transaction, sql, commandTimeout);
+
+            for (var i = 0; i < entities.Count; i += size)
+            {
+                var end = Math.Min(i + size, entities.Count);
+                for (var j = i; j < end; j++)
+                {
+                    cmd.Parameters.Clear();
+                    binder.BindEntity(cmd, entities[j], parameterPrefix);
+                    total += await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+                }
+            }
+
+            return total;
+        }
+        finally
+        {
+            CloseConnection(connection, transaction, shouldCloseConnection);
+        }
+    }
+
+    private static async Task<bool> EnsureConnectionOpenAsync(DbConnection connection, CancellationToken ct)
+    {
+        if (connection.State == ConnectionState.Open)
+        {
+            return false;
+        }
+
+        await connection.OpenAsync(ct).ConfigureAwait(false);
+        return true;
+    }
+
+    private static DbCommand CreateCommand(
+        DbConnection connection,
+        DbTransaction? transaction,
+        string sql,
+        int? commandTimeout)
+    {
+        var command = connection.CreateCommand();
+        command.CommandText = sql;
+        command.Transaction = transaction;
+        if (commandTimeout.HasValue) command.CommandTimeout = commandTimeout.Value;
+        return command;
+    }
+
+    private static void CloseConnection(DbConnection connection, DbTransaction? transaction, bool shouldCloseConnection)
+    {
+        if (shouldCloseConnection && transaction == null && connection.State != ConnectionState.Closed) connection.Close();
+    }
 }

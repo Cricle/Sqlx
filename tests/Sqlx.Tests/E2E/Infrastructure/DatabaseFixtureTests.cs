@@ -14,6 +14,51 @@ namespace Sqlx.Tests.E2E.Infrastructure;
 public class DatabaseFixtureTests
 {
     [TestMethod]
+    public async Task DatabaseFixture_WithOwnedSqliteDatabase_UsesUniqueDatabaseNameAcrossConnections()
+    {
+        var databaseName = $"sqlite_{Guid.NewGuid():N}";
+        await using var fixture = new DatabaseFixture(DatabaseType.SQLite, "Data Source=:memory:", databaseName);
+        await fixture.InitializeAsync();
+        await fixture.CreateSchemaAsync("""
+            CREATE TABLE shared_users (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL
+            )
+            """);
+
+        var inserted = await fixture.InsertTestDataAsync(new[]
+        {
+            new SharedFixtureUser { Id = 1, Name = "Alpha" },
+        });
+
+        Assert.AreEqual(1, inserted);
+        Assert.AreEqual(databaseName, fixture.DatabaseName);
+
+        await using var secondConnection = await fixture.CreateNewConnectionAsync();
+        using var command = secondConnection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*), MIN(id), MAX(id) FROM shared_users";
+
+        using var reader = await command.ExecuteReaderAsync();
+        Assert.IsTrue(await reader.ReadAsync());
+        Assert.AreEqual(1L, reader.GetInt64(0));
+        Assert.AreEqual(1L, reader.GetInt64(1));
+        Assert.AreEqual(1L, reader.GetInt64(2));
+    }
+
+    [TestMethod]
+    public async Task DatabaseFixtureFactory_CreateFixtureAsync_ForSqlite_GeneratesUniqueDatabaseNames()
+    {
+        var factory = new DatabaseFixtureFactory(new FakeContainerManager());
+
+        await using var firstFixture = await factory.CreateFixtureAsync(DatabaseType.SQLite);
+        await using var secondFixture = await factory.CreateFixtureAsync(DatabaseType.SQLite);
+
+        Assert.AreNotEqual(firstFixture.DatabaseName, secondFixture.DatabaseName);
+        StringAssert.StartsWith(firstFixture.DatabaseName, "sqlx_sqlite_");
+        StringAssert.StartsWith(secondFixture.DatabaseName, "sqlx_sqlite_");
+    }
+
+    [TestMethod]
     public async Task InsertTestDataAsync_WithAnnotatedEntity_InsertsRowsAndSkipsDefaultKey()
     {
         await using var fixture = new DatabaseFixture(DatabaseType.SQLite, "Data Source=:memory:");
@@ -136,5 +181,31 @@ public class DatabaseFixtureTests
         public string Name { get; set; } = string.Empty;
 
         public static string GetTableName() => "runtime_fixture_users";
+    }
+
+    [Sqlx]
+    [TableName("shared_users")]
+    public class SharedFixtureUser
+    {
+        [Key]
+        public long Id { get; set; }
+
+        public string Name { get; set; } = string.Empty;
+    }
+
+    private sealed class FakeContainerManager : IContainerManager
+    {
+        public bool IsInitialized => true;
+
+        public Task DisposeContainersAsync() => Task.CompletedTask;
+
+        public Task<string> GetConnectionStringAsync(DatabaseType dbType)
+        {
+            return Task.FromResult(dbType == DatabaseType.SQLite ? "Data Source=:memory:" : "unused");
+        }
+
+        public Task InitializeContainersAsync() => Task.CompletedTask;
+
+        public Task<bool> IsDockerAvailableAsync() => Task.FromResult(true);
     }
 }

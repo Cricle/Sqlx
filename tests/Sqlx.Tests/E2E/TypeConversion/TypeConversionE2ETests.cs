@@ -420,7 +420,7 @@ public class TypeConversionE2ETests : E2ETestBase
         var testDecimal = 123.4567m;
         var testDouble = 123.456789;
         var testFloat = 123.45f;
-        var testDateTime = new DateTime(2024, 12, 25, 15, 30, 45, DateTimeKind.Unspecified);
+        var testDateTime = new DateTime(2024, 12, 25, 15, 30, 45, DateTimeKind.Utc);
         var testBool = true;
         var testBinary = new byte[] { 0xDE, 0xAD, 0xBE, 0xEF };
         var testGuid = Guid.NewGuid();
@@ -459,11 +459,12 @@ public class TypeConversionE2ETests : E2ETestBase
         var repo = new PostgreSqlTypeConversionRepository(fixture.Connection, SqlDefine.PostgreSql);
 
         var unicodeString = "Hello 世界 🌍 Привет مرحبا";
+        var utcNow = DateTime.UtcNow;
 
         // Act
         await repo.InsertAsync(
             unicodeString, unicodeString, 1, 1, 1L, 1L, 1.0m, 1.0m, 1.0, 1.0, 1.0f, 1.0f,
-            DateTime.Now, DateTime.Now, true, true, null, Guid.NewGuid(), Guid.NewGuid());
+            utcNow, utcNow, true, true, null, Guid.NewGuid(), Guid.NewGuid());
 
         var result = await repo.GetByIdAsync(1);
 

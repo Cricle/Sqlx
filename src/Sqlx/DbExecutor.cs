@@ -42,15 +42,20 @@ namespace Sqlx
             IResultReader<T> mapper,
             DbTransaction? transaction = null)
         {
-            if (connection.State != ConnectionState.Open)
+            var shouldCloseConnection = EnsureConnectionOpen(connection);
+
+            try
             {
-                connection.Open();
+                using var command = CreateCommand(connection, sql, parameters, transaction);
+                using var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    yield return mapper.Read(reader);
+                }
             }
-            using var command = CreateCommand(connection, sql, parameters, transaction);
-            using var reader = command.ExecuteReader();
-            while (reader.Read())
+            finally
             {
-                yield return mapper.Read(reader);
+                CloseConnection(connection, transaction, shouldCloseConnection);
             }
         }
 
@@ -77,17 +82,20 @@ namespace Sqlx
             DbTransaction? transaction = null,
             CancellationToken cancellationToken = default)
         {
+            var shouldCloseConnection = await EnsureConnectionOpenAsync(connection, cancellationToken).ConfigureAwait(false);
 
-            if (connection.State != ConnectionState.Open)
+            try
             {
-                await connection.OpenAsync(cancellationToken);
+                await using var command = CreateCommand(connection, sql, parameters, transaction);
+                await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+                while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    yield return mapper.Read(reader);
+                }
             }
-
-            await using var command = CreateCommand(connection, sql, parameters, transaction);
-            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-            while (await reader.ReadAsync(cancellationToken))
+            finally
             {
-                yield return mapper.Read(reader);
+                CloseConnection(connection, transaction, shouldCloseConnection);
             }
         }
 
@@ -105,13 +113,17 @@ namespace Sqlx
             IEnumerable<KeyValuePair<string, object?>>? parameters,
             DbTransaction? transaction = null)
         {
-            if (connection.State != ConnectionState.Open)
-            {
-                connection.Open();
-            }
+            var shouldCloseConnection = EnsureConnectionOpen(connection);
 
-            using var command = CreateCommand(connection, sql, parameters, transaction);
-            return command.ExecuteScalar();
+            try
+            {
+                using var command = CreateCommand(connection, sql, parameters, transaction);
+                return command.ExecuteScalar();
+            }
+            finally
+            {
+                CloseConnection(connection, transaction, shouldCloseConnection);
+            }
         }
 
         /// <summary>
@@ -130,13 +142,105 @@ namespace Sqlx
             DbTransaction? transaction = null,
             CancellationToken cancellationToken = default)
         {
-            if (connection.State != ConnectionState.Open)
+            var shouldCloseConnection = await EnsureConnectionOpenAsync(connection, cancellationToken).ConfigureAwait(false);
+
+            try
             {
-                await connection.OpenAsync(cancellationToken);
+                await using var command = CreateCommand(connection, sql, parameters, transaction);
+                return await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                CloseConnection(connection, transaction, shouldCloseConnection);
+            }
+        }
+
+        /// <summary>
+        /// Executes a command and returns the number of affected rows.
+        /// </summary>
+        /// <param name="connection">The database connection.</param>
+        /// <param name="sql">The SQL command.</param>
+        /// <param name="parameters">The command parameters.</param>
+        /// <param name="transaction">The database transaction, if any.</param>
+        /// <returns>The number of affected rows.</returns>
+        public static int ExecuteNonQuery(
+            DbConnection connection,
+            string sql,
+            IEnumerable<KeyValuePair<string, object?>>? parameters,
+            DbTransaction? transaction = null)
+        {
+            var shouldCloseConnection = EnsureConnectionOpen(connection);
+
+            try
+            {
+                using var command = CreateCommand(connection, sql, parameters, transaction);
+                return command.ExecuteNonQuery();
+            }
+            finally
+            {
+                CloseConnection(connection, transaction, shouldCloseConnection);
+            }
+        }
+
+        /// <summary>
+        /// Executes a command asynchronously and returns the number of affected rows.
+        /// </summary>
+        /// <param name="connection">The database connection.</param>
+        /// <param name="sql">The SQL command.</param>
+        /// <param name="parameters">The command parameters.</param>
+        /// <param name="transaction">The database transaction, if any.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>The number of affected rows.</returns>
+        public static async Task<int> ExecuteNonQueryAsync(
+            DbConnection connection,
+            string sql,
+            IEnumerable<KeyValuePair<string, object?>>? parameters,
+            DbTransaction? transaction = null,
+            CancellationToken cancellationToken = default)
+        {
+            var shouldCloseConnection = await EnsureConnectionOpenAsync(connection, cancellationToken).ConfigureAwait(false);
+
+            try
+            {
+                await using var command = CreateCommand(connection, sql, parameters, transaction);
+                return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                CloseConnection(connection, transaction, shouldCloseConnection);
+            }
+        }
+
+        private static bool EnsureConnectionOpen(DbConnection connection)
+        {
+            if (connection.State == ConnectionState.Open)
+            {
+                return false;
             }
 
-            await using var command = CreateCommand(connection, sql, parameters, transaction);
-            return await command.ExecuteScalarAsync(cancellationToken);
+            connection.Open();
+            return true;
+        }
+
+        private static async Task<bool> EnsureConnectionOpenAsync(
+            DbConnection connection,
+            CancellationToken cancellationToken)
+        {
+            if (connection.State == ConnectionState.Open)
+            {
+                return false;
+            }
+
+            await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+            return true;
+        }
+
+        private static void CloseConnection(
+            DbConnection connection,
+            DbTransaction? transaction,
+            bool shouldCloseConnection)
+        {
+            if (shouldCloseConnection && transaction == null && connection.State != ConnectionState.Closed) connection.Close();
         }
 
         private static DbCommand CreateCommand(

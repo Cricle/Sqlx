@@ -18,7 +18,7 @@ namespace Sqlx
     /// <summary>
     /// Internal handler for exception enrichment, logging, and retry logic.
     /// </summary>
-    internal static class ExceptionHandler
+    public static class ExceptionHandler
     {
         private static readonly HashSet<string> SensitiveParameterNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -59,7 +59,7 @@ namespace Sqlx
                 {
                     stopwatch.Stop();
 
-                    var sqlxEx = EnrichException(
+                    var sqlxEx = CreateSqlxException(
                         ex,
                         methodName,
                         sql,
@@ -67,29 +67,7 @@ namespace Sqlx
                         stopwatch.Elapsed,
                         transaction);
 
-                    // Log if logger available
-                    options.Logger?.LogError(
-                        sqlxEx,
-                        "SQL operation failed: {MethodName} | SQL: {Sql} | Duration: {Duration}ms | Attempt: {Attempt} | CorrelationId: {CorrelationId}",
-                        sqlxEx.MethodName,
-                        sqlxEx.Sql,
-                        sqlxEx.Duration?.TotalMilliseconds,
-                        attemptCount,
-                        sqlxEx.CorrelationId);
-
-                    // Invoke callback if configured
-                    if (options.OnException != null)
-                    {
-                        try
-                        {
-                            await options.OnException(sqlxEx);
-                        }
-                        catch (Exception)
-                        {
-                            // Log callback failure but don't let it prevent exception propagation
-                            // Callback exceptions are intentionally swallowed to ensure original exception is thrown
-                        }
-                    }
+                    await NotifyFailureAsync(sqlxEx, options, attemptCount).ConfigureAwait(false);
 
                     // Retry logic
                     if (options.EnableRetry &&
@@ -116,9 +94,73 @@ namespace Sqlx
         }
 
         /// <summary>
+        /// Enriches and logs an exception captured by a generated repository async path.
+        /// </summary>
+        /// <param name="ex">The original exception.</param>
+        /// <param name="options">The context options propagated to the repository.</param>
+        /// <param name="methodName">The repository method name.</param>
+        /// <param name="sql">The SQL statement that was executed.</param>
+        /// <param name="parameters">The command parameters.</param>
+        /// <param name="transaction">The active transaction, if any.</param>
+        /// <param name="duration">The elapsed duration before failure.</param>
+        /// <returns>The enriched <see cref="SqlxException"/> ready to be thrown.</returns>
+        public static async Task<SqlxException> HandleExceptionAsync(
+            Exception ex,
+            SqlxContextOptions? options,
+            string methodName,
+            string sql,
+            DbParameterCollection? parameters,
+            DbTransaction? transaction,
+            TimeSpan duration)
+        {
+            var sqlxEx = CreateSqlxException(
+                ex,
+                methodName,
+                sql,
+                ExtractParameters(parameters),
+                duration,
+                transaction);
+
+            await NotifyFailureAsync(sqlxEx, options, attemptCount: 1).ConfigureAwait(false);
+            return sqlxEx;
+        }
+
+        /// <summary>
+        /// Enriches and logs an exception captured by a generated repository sync path.
+        /// </summary>
+        /// <param name="ex">The original exception.</param>
+        /// <param name="options">The context options propagated to the repository.</param>
+        /// <param name="methodName">The repository method name.</param>
+        /// <param name="sql">The SQL statement that was executed.</param>
+        /// <param name="parameters">The command parameters.</param>
+        /// <param name="transaction">The active transaction, if any.</param>
+        /// <param name="duration">The elapsed duration before failure.</param>
+        /// <returns>The enriched <see cref="SqlxException"/> ready to be thrown.</returns>
+        public static SqlxException HandleException(
+            Exception ex,
+            SqlxContextOptions? options,
+            string methodName,
+            string sql,
+            DbParameterCollection? parameters,
+            DbTransaction? transaction,
+            TimeSpan duration)
+        {
+            var sqlxEx = CreateSqlxException(
+                ex,
+                methodName,
+                sql,
+                ExtractParameters(parameters),
+                duration,
+                transaction);
+
+            NotifyFailure(sqlxEx, options, attemptCount: 1);
+            return sqlxEx;
+        }
+
+        /// <summary>
         /// Enriches an exception with SQL context information.
         /// </summary>
-        private static SqlxException EnrichException(
+        private static SqlxException CreateSqlxException(
             Exception ex,
             string methodName,
             string sql,
@@ -147,14 +189,109 @@ namespace Sqlx
         {
             if (parameters == null) return null;
 
-            var sanitized = new Dictionary<string, object?>();
+            var sanitized = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var (key, value) in parameters)
             {
-                sanitized[key] = SensitiveParameterNames.Contains(key) ? "***REDACTED***" : value;
+                sanitized[key] = SensitiveParameterNames.Contains(NormalizeParameterName(key)) ? "***REDACTED***" : value;
             }
 
             return sanitized;
+        }
+
+        private static IReadOnlyDictionary<string, object?>? ExtractParameters(DbParameterCollection? parameters)
+        {
+            if (parameters == null || parameters.Count == 0)
+            {
+                return null;
+            }
+
+            var values = new Dictionary<string, object?>(parameters.Count, StringComparer.OrdinalIgnoreCase);
+            foreach (DbParameter parameter in parameters)
+            {
+                var parameterName = NormalizeParameterName(parameter.ParameterName);
+                values[parameterName] = parameter.Value == DBNull.Value ? null : parameter.Value;
+            }
+
+            return values;
+        }
+
+        private static string NormalizeParameterName(string? parameterName)
+        {
+            if (string.IsNullOrEmpty(parameterName))
+            {
+                return string.Empty;
+            }
+
+            return parameterName[0] is '@' or ':' or '?'
+                ? parameterName.Substring(1)
+                : parameterName;
+        }
+
+        private static async Task NotifyFailureAsync(SqlxException sqlxEx, SqlxContextOptions? options, int attemptCount)
+        {
+            if (options == null)
+            {
+                return;
+            }
+
+            LogFailure(options.Logger, sqlxEx, attemptCount);
+
+            if (options.OnException == null)
+            {
+                return;
+            }
+
+            try
+            {
+                await options.OnException(sqlxEx).ConfigureAwait(false);
+            }
+            catch (Exception callbackException)
+            {
+                options.Logger?.LogWarning(
+                    callbackException,
+                    "Sqlx OnException callback failed for {MethodName}",
+                    sqlxEx.MethodName);
+            }
+        }
+
+        private static void NotifyFailure(SqlxException sqlxEx, SqlxContextOptions? options, int attemptCount)
+        {
+            if (options == null)
+            {
+                return;
+            }
+
+            LogFailure(options.Logger, sqlxEx, attemptCount);
+
+            if (options.OnException == null)
+            {
+                return;
+            }
+
+            try
+            {
+                options.OnException(sqlxEx).GetAwaiter().GetResult();
+            }
+            catch (Exception callbackException)
+            {
+                options.Logger?.LogWarning(
+                    callbackException,
+                    "Sqlx OnException callback failed for {MethodName}",
+                    sqlxEx.MethodName);
+            }
+        }
+
+        private static void LogFailure(ILogger? logger, SqlxException sqlxEx, int attemptCount)
+        {
+            logger?.LogError(
+                sqlxEx,
+                "SQL operation failed: {MethodName} | SQL: {Sql} | Duration: {Duration}ms | Attempt: {Attempt} | CorrelationId: {CorrelationId}",
+                sqlxEx.MethodName,
+                sqlxEx.Sql,
+                sqlxEx.Duration?.TotalMilliseconds,
+                attemptCount,
+                sqlxEx.CorrelationId);
         }
 
         /// <summary>

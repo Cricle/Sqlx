@@ -31,6 +31,32 @@ public interface IMultiResultE2ERepository
     [ResultSetMapping(1, "maxId")]
     [ResultSetMapping(2, "minId")]
     Task<(int totalUsers, long maxId, long minId)> GetStatsAsync();
+
+    [SqlTemplate(@"
+        INSERT INTO test_users (name, age, email) VALUES (@name, @age, @email);
+        SELECT COALESCE(MAX(id), 0) FROM test_users;
+        SELECT COUNT(*) FROM test_users
+    ")]
+    [ResultSetMapping(0, "userId")]
+    [ResultSetMapping(1, "totalUsers")]
+    int InsertWithCounter(
+        string name,
+        int age,
+        string email,
+        ref int totalUsersSnapshot);
+
+    [SqlTemplate(@"
+        INSERT INTO test_users (name, age, email) VALUES (@name, @age, @email);
+        SELECT COALESCE(MAX(id), 0) FROM test_users;
+        SELECT COUNT(*) FROM test_users
+    ")]
+    [ResultSetMapping(0, "userId")]
+    [ResultSetMapping(1, "totalUsers")]
+    Task<(long userId, int totalUsers)> InsertWithCounterAsync(
+        string name,
+        int age,
+        string email,
+        OutputParameter<int> totalUsersSnapshot);
 }
 
 [RepositoryFor(typeof(IMultiResultE2ERepository), TableName = "test_users")]
@@ -226,6 +252,24 @@ public class MultipleResultSetsE2ETests : E2ETestBase
         Assert.AreEqual(4, total4);
     }
 
+    [TestMethod]
+    [TestCategory("E2E")]
+    [TestCategory("MultipleResultSets")]
+    [TestCategory("MySQL")]
+    public async Task MySQL_MultipleResultSets_WithRefOutput_ReturnsTupleAndUpdatesRef()
+    {
+        await using var fixture = await CreateFixtureAsync(DatabaseType.MySQL);
+        await fixture.CreateSchemaAsync(GetTestUsersSchema(DatabaseType.MySQL));
+        var repo = new MySqlMultiResultE2ERepository(fixture.Connection, SqlDefine.MySql);
+
+        int snapshot = 0;
+        var userId = repo.InsertWithCounter("Alice", 25, "alice@example.com", ref snapshot);
+
+        Assert.AreEqual(1L, userId);
+        Assert.AreEqual(1, snapshot);
+    }
+
+
     // ==================== PostgreSQL Multiple Result Sets Tests ====================
 
     [TestMethod]
@@ -321,6 +365,24 @@ public class MultipleResultSetsE2ETests : E2ETestBase
         Assert.AreEqual(1, rows4);
         Assert.AreEqual(4, total4);
     }
+
+    [TestMethod]
+    [TestCategory("E2E")]
+    [TestCategory("MultipleResultSets")]
+    [TestCategory("PostgreSQL")]
+    public async Task PostgreSQL_MultipleResultSets_WithRefOutput_ReturnsTupleAndUpdatesRef()
+    {
+        await using var fixture = await CreateFixtureAsync(DatabaseType.PostgreSQL);
+        await fixture.CreateSchemaAsync(GetTestUsersSchema(DatabaseType.PostgreSQL));
+        var repo = new PostgreSqlMultiResultE2ERepository(fixture.Connection, SqlDefine.PostgreSql);
+
+        int snapshot = 0;
+        var userId = repo.InsertWithCounter("Alice", 25, "alice@example.com", ref snapshot);
+
+        Assert.AreEqual(1L, userId);
+        Assert.AreEqual(1, snapshot);
+    }
+
 
     // ==================== SQL Server Multiple Result Sets Tests ====================
 
@@ -419,6 +481,24 @@ public class MultipleResultSetsE2ETests : E2ETestBase
         Assert.AreEqual(4, total4);
     }
 
+    [TestMethod]
+    [TestCategory("E2E")]
+    [TestCategory("MultipleResultSets")]
+    [TestCategory("SqlServer")]
+    public async Task SqlServer_MultipleResultSets_WithRefOutput_ReturnsTupleAndUpdatesRef()
+    {
+        await using var fixture = await CreateFixtureAsync(DatabaseType.SqlServer);
+        await fixture.CreateSchemaAsync(GetTestUsersSchema(DatabaseType.SqlServer));
+        var repo = new SqlServerMultiResultE2ERepository(fixture.Connection, SqlDefine.SqlServer);
+
+        int snapshot = 0;
+        var userId = repo.InsertWithCounter("Alice", 25, "alice@example.com", ref snapshot);
+
+        Assert.AreEqual(1L, userId);
+        Assert.AreEqual(1, snapshot);
+    }
+
+
     // ==================== SQLite Multiple Result Sets Tests ====================
 
     [TestMethod]
@@ -514,4 +594,22 @@ public class MultipleResultSetsE2ETests : E2ETestBase
         Assert.AreEqual(1, rows4);
         Assert.AreEqual(4, total4);
     }
+
+    [TestMethod]
+    [TestCategory("E2E")]
+    [TestCategory("MultipleResultSets")]
+    [TestCategory("SQLite")]
+    public async Task SQLite_MultipleResultSets_WithRefOutput_ReturnsTupleAndUpdatesRef()
+    {
+        await using var fixture = await CreateFixtureAsync(DatabaseType.SQLite);
+        await fixture.CreateSchemaAsync(GetTestUsersSchema(DatabaseType.SQLite));
+        var repo = new SQLiteMultiResultE2ERepository(fixture.Connection, SqlDefine.SQLite);
+
+        int snapshot = 0;
+        var userId = repo.InsertWithCounter("Alice", 25, "alice@example.com", ref snapshot);
+
+        Assert.AreEqual(1L, userId);
+        Assert.AreEqual(1, snapshot);
+    }
+
 }

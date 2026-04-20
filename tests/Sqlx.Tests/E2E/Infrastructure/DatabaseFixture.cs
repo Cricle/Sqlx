@@ -13,36 +13,51 @@ using Npgsql;
 namespace Sqlx.Tests.E2E.Infrastructure;
 
 /// <summary>
-/// Provides an isolated test database using table prefixes for isolation.
-/// This approach is much faster than creating separate databases for each test.
-/// Uses single container instance and single database with table-level isolation.
+/// Provides an isolated test database fixture.
+/// When a database name is provided, the fixture owns that database and manages its lifecycle.
+/// The legacy table-prefix path remains available for compatibility but is not the default.
 /// </summary>
 public class DatabaseFixture : IDatabaseFixture
 {
-    private readonly string _connectionString;
+    private readonly string _baseConnectionString;
+    private readonly string _tablePrefix;
+    private readonly bool _ownsDatabase;
+    private readonly bool _useTablePrefix;
+    private readonly List<string> _createdTables = new();
     private DbConnection? _connection;
     private bool _disposed;
-    private readonly string _tablePrefix;
-    private readonly List<string> _createdTables = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DatabaseFixture"/> class.
     /// </summary>
     /// <param name="databaseType">The database type.</param>
-    /// <param name="connectionString">The connection string to the shared test database.</param>
-    public DatabaseFixture(DatabaseType databaseType, string connectionString)
+    /// <param name="connectionString">The base connection string.</param>
+    /// <param name="databaseName">The database name owned by this fixture. If null, the fixture uses the existing database from the connection string.</param>
+    /// <param name="useTablePrefix">Whether to retain legacy table-prefix isolation.</param>
+    public DatabaseFixture(
+        DatabaseType databaseType,
+        string connectionString,
+        string? databaseName = null,
+        bool useTablePrefix = false)
     {
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new ArgumentException("Connection string cannot be null or whitespace.", nameof(connectionString));
+        }
+
         DatabaseType = databaseType;
-        _connectionString = connectionString;
-        _tablePrefix = GenerateRandomTablePrefix();
-        DatabaseName = databaseType == DatabaseType.SQLite ? ":memory:" : "testdb";
+        _baseConnectionString = connectionString;
+        _ownsDatabase = !string.IsNullOrWhiteSpace(databaseName);
+        _useTablePrefix = useTablePrefix;
+        _tablePrefix = useTablePrefix ? GenerateRandomTablePrefix() : string.Empty;
+        DatabaseName = databaseName ?? ResolveExistingDatabaseName(databaseType, connectionString);
     }
 
     /// <inheritdoc/>
     public string DatabaseName { get; }
 
     /// <summary>
-    /// Gets the unique table prefix for this test fixture.
+    /// Gets the unique table prefix for legacy prefix-based isolation.
     /// </summary>
     public string TablePrefix => _tablePrefix;
 
@@ -57,8 +72,7 @@ public class DatabaseFixture : IDatabaseFixture
                     "Connection has not been initialized. Call InitializeAsync first.");
             }
 
-            // Return a wrapped connection that automatically applies table prefixes
-            return new PrefixedDbConnection(_connection, this);
+            return _useTablePrefix ? new PrefixedDbConnection(_connection, this) : _connection;
         }
     }
 
@@ -66,12 +80,16 @@ public class DatabaseFixture : IDatabaseFixture
     public DatabaseType DatabaseType { get; }
 
     /// <summary>
-    /// Initializes the database fixture by creating the connection.
-    /// No database creation needed - we use table prefixes for isolation.
+    /// Initializes the database fixture and creates the owned database when needed.
     /// </summary>
     /// <returns>A task representing the asynchronous operation.</returns>
     public async Task InitializeAsync()
     {
+        if (_ownsDatabase && DatabaseType != DatabaseType.SQLite)
+        {
+            await CreateOwnedDatabaseAsync();
+        }
+
         await CreateConnectionAsync();
     }
 
@@ -83,92 +101,11 @@ public class DatabaseFixture : IDatabaseFixture
             throw new InvalidOperationException("Connection is not open");
         }
 
-        // Apply table prefix to isolate this test's tables
-        var modifiedSchema = ApplyTablePrefix(schemaDefinition);
+        var modifiedSchema = _useTablePrefix ? ApplyTablePrefix(schemaDefinition) : schemaDefinition;
 
         using var command = _connection.CreateCommand();
         command.CommandText = modifiedSchema;
         await command.ExecuteNonQueryAsync();
-    }
-
-    /// <summary>
-    /// Applies the table prefix to all table names in the schema definition.
-    /// This ensures each test has isolated tables in the shared database.
-    /// </summary>
-    /// <param name="schemaDefinition">The original schema definition.</param>
-    /// <returns>The modified schema with prefixed table names.</returns>
-    private string ApplyTablePrefix(string schemaDefinition)
-    {
-        // Pattern to match CREATE TABLE statements with various quote styles
-        // Supports: CREATE TABLE table_name, CREATE TABLE `table_name`, CREATE TABLE [table_name], CREATE TABLE "table_name"
-        var pattern = @"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([`\[\""']?)(\w+)([`\]\""']?)";
-        
-        var result = Regex.Replace(
-            schemaDefinition,
-            pattern,
-            match =>
-            {
-                var openQuote = match.Groups[1].Value;
-                var tableName = match.Groups[2].Value;
-                var closeQuote = match.Groups[3].Value;
-                var prefixedName = $"{_tablePrefix}_{tableName}";
-                
-                // Track created tables for cleanup
-                _createdTables.Add(prefixedName);
-                
-                return $"CREATE TABLE {openQuote}{prefixedName}{closeQuote}";
-            },
-            RegexOptions.IgnoreCase);
-
-        return result;
-    }
-
-    /// <summary>
-    /// Applies the table prefix to SQL statements (INSERT, UPDATE, DELETE, SELECT).
-    /// This ensures all SQL operations use the isolated tables.
-    /// </summary>
-    /// <param name="sql">The original SQL statement.</param>
-    /// <returns>The modified SQL with prefixed table names.</returns>
-    public string ApplyTablePrefixToSql(string sql)
-    {
-        // Pattern to match table names in various SQL contexts
-        // Matches: FROM table_name, JOIN table_name, INTO table_name, UPDATE table_name, TABLE table_name
-        // Supports various quote styles: table_name, `table_name`, [table_name], "table_name"
-        var patterns = new[]
-        {
-            // FROM, JOIN, INTO, UPDATE, TABLE keywords followed by table name
-            @"(FROM|JOIN|INTO|UPDATE|TABLE)\s+([`\[\""']?)(\w+)([`\]\""']?)",
-            // INSERT INTO with optional quotes
-            @"(INSERT\s+INTO)\s+([`\[\""']?)(\w+)([`\]\""']?)",
-        };
-
-        var result = sql;
-        foreach (var pattern in patterns)
-        {
-            result = Regex.Replace(
-                result,
-                pattern,
-                match =>
-                {
-                    var keyword = match.Groups[1].Value;
-                    var openQuote = match.Groups[2].Value;
-                    var tableName = match.Groups[3].Value;
-                    var closeQuote = match.Groups[4].Value;
-                    
-                    // Skip if table name already has the prefix
-                    if (tableName.StartsWith(_tablePrefix + "_", StringComparison.Ordinal))
-                    {
-                        return match.Value;
-                    }
-                    
-                    var prefixedName = $"{_tablePrefix}_{tableName}";
-                    
-                    return $"{keyword} {openQuote}{prefixedName}{closeQuote}";
-                },
-                RegexOptions.IgnoreCase);
-        }
-
-        return result;
     }
 
     /// <inheritdoc/>
@@ -254,27 +191,133 @@ public class DatabaseFixture : IDatabaseFixture
     /// <inheritdoc/>
     public async Task CleanupAsync()
     {
-        // Drop all tables created by this fixture
-        if (_connection != null && _connection.State == System.Data.ConnectionState.Open)
+        if (_connection != null)
         {
             try
             {
-                await DropTablesAsync();
+                if (_useTablePrefix)
+                {
+                    await DropTablesAsync();
+                }
             }
             catch
             {
-                // Ignore cleanup errors - best effort
+                // Best effort cleanup.
             }
 
-            await _connection.CloseAsync();
+            try
+            {
+                if (_connection.State != System.Data.ConnectionState.Closed)
+                {
+                    await _connection.CloseAsync();
+                }
+            }
+            catch
+            {
+                // Best effort cleanup.
+            }
+
             await _connection.DisposeAsync();
             _connection = null;
         }
+
+        if (_ownsDatabase && DatabaseType != DatabaseType.SQLite)
+        {
+            try
+            {
+                await DropOwnedDatabaseAsync();
+            }
+            catch
+            {
+                // Best effort cleanup.
+            }
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<DbConnection> CreateNewConnectionAsync()
+    {
+        var connection = CreateConnection(CreateOperationalConnectionString());
+        await connection.OpenAsync();
+        return _useTablePrefix ? new PrefixedDbConnection(connection, this) : connection;
+    }
+
+    /// <inheritdoc/>
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        await CleanupAsync();
+        _disposed = true;
+        GC.SuppressFinalize(this);
     }
 
     /// <summary>
-    /// Drops all tables created by this fixture.
+    /// Applies the table prefix to SQL statements when prefix mode is enabled.
     /// </summary>
+    /// <param name="sql">The original SQL statement.</param>
+    /// <returns>The modified SQL.</returns>
+    public string ApplyTablePrefixToSql(string sql)
+    {
+        if (!_useTablePrefix || string.IsNullOrWhiteSpace(sql))
+        {
+            return sql;
+        }
+
+        var patterns = new[]
+        {
+            @"(FROM|JOIN|INTO|UPDATE|TABLE)\s+([`\[\""']?)(\w+)([`\]\""']?)",
+            @"(INSERT\s+INTO)\s+([`\[\""']?)(\w+)([`\]\""']?)",
+        };
+
+        var result = sql;
+        foreach (var pattern in patterns)
+        {
+            result = Regex.Replace(
+                result,
+                pattern,
+                match =>
+                {
+                    var keyword = match.Groups[1].Value;
+                    var openQuote = match.Groups[2].Value;
+                    var tableName = match.Groups[3].Value;
+                    var closeQuote = match.Groups[4].Value;
+
+                    if (tableName.StartsWith(_tablePrefix + "_", StringComparison.Ordinal))
+                    {
+                        return match.Value;
+                    }
+
+                    return $"{keyword} {openQuote}{_tablePrefix}_{tableName}{closeQuote}";
+                },
+                RegexOptions.IgnoreCase);
+        }
+
+        return result;
+    }
+
+    private string ApplyTablePrefix(string schemaDefinition)
+    {
+        var pattern = @"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([`\[\""']?)(\w+)([`\]\""']?)";
+
+        return Regex.Replace(
+            schemaDefinition,
+            pattern,
+            match =>
+            {
+                var openQuote = match.Groups[1].Value;
+                var tableName = match.Groups[2].Value;
+                var closeQuote = match.Groups[3].Value;
+                var prefixedName = $"{_tablePrefix}_{tableName}";
+                _createdTables.Add(prefixedName);
+                return $"CREATE TABLE {openQuote}{prefixedName}{closeQuote}";
+            },
+            RegexOptions.IgnoreCase);
+    }
+
     private async Task DropTablesAsync()
     {
         if (_connection == null || _createdTables.Count == 0)
@@ -300,68 +343,147 @@ public class DatabaseFixture : IDatabaseFixture
             }
             catch
             {
-                // Ignore individual table drop errors
+                // Best effort cleanup.
             }
         }
 
         _createdTables.Clear();
     }
 
-    /// <inheritdoc/>
-    public async ValueTask DisposeAsync()
+    private async Task CreateOwnedDatabaseAsync()
     {
-        if (_disposed)
+        await using var connection = CreateConnection(CreateAdminConnectionString());
+        await connection.OpenAsync();
+
+        var createSql = DatabaseType switch
         {
-            return;
-        }
-
-        await CleanupAsync();
-        _disposed = true;
-        GC.SuppressFinalize(this);
-    }
-
-    /// <summary>
-    /// Generates a random table prefix for isolation.
-    /// Uses a short, readable format for easier debugging.
-    /// </summary>
-    private static string GenerateRandomTablePrefix()
-    {
-        // Use timestamp + random for uniqueness and readability
-        var timestamp = DateTime.UtcNow.ToString("HHmmss");
-        var random = Guid.NewGuid().ToString("N").Substring(0, 6);
-        return $"t{timestamp}{random}";
-    }
-
-    /// <inheritdoc/>
-    public async Task<DbConnection> CreateNewConnectionAsync()
-    {
-        var connection = DatabaseType switch
-        {
-            DatabaseType.MySQL => (DbConnection)new MySqlConnection(_connectionString),
-            DatabaseType.PostgreSQL => (DbConnection)new NpgsqlConnection(_connectionString),
-            DatabaseType.SqlServer => (DbConnection)new SqlConnection(_connectionString),
-            DatabaseType.SQLite => (DbConnection)new SqliteConnection(_connectionString),
+            DatabaseType.MySQL => $"CREATE DATABASE `{DatabaseName}`",
+            DatabaseType.PostgreSQL => $"CREATE DATABASE \"{DatabaseName}\"",
+            DatabaseType.SqlServer => $"CREATE DATABASE [{DatabaseName}]",
             _ => throw new NotSupportedException($"Database type {DatabaseType} is not supported"),
         };
 
+        using var command = connection.CreateCommand();
+        command.CommandText = createSql;
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private async Task DropOwnedDatabaseAsync()
+    {
+        await using var connection = CreateConnection(CreateAdminConnectionString());
         await connection.OpenAsync();
-        
-        // Return a wrapped connection that automatically applies table prefixes
-        return new PrefixedDbConnection(connection, this);
+
+        var dropSql = DatabaseType switch
+        {
+            DatabaseType.MySQL => $"DROP DATABASE IF EXISTS `{DatabaseName}`",
+            DatabaseType.PostgreSQL => $"DROP DATABASE IF EXISTS \"{DatabaseName}\" WITH (FORCE)",
+            DatabaseType.SqlServer => $"""
+                IF DB_ID('{DatabaseName}') IS NOT NULL
+                BEGIN
+                    ALTER DATABASE [{DatabaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+                    DROP DATABASE [{DatabaseName}];
+                END
+                """,
+            _ => throw new NotSupportedException($"Database type {DatabaseType} is not supported"),
+        };
+
+        using var command = connection.CreateCommand();
+        command.CommandText = dropSql;
+        await command.ExecuteNonQueryAsync();
     }
 
     private async Task CreateConnectionAsync()
     {
-        _connection = DatabaseType switch
+        _connection = CreateConnection(CreateOperationalConnectionString());
+        await _connection.OpenAsync();
+    }
+
+    private string CreateOperationalConnectionString()
+    {
+        return DatabaseType switch
         {
-            DatabaseType.MySQL => new MySqlConnection(_connectionString),
-            DatabaseType.PostgreSQL => new NpgsqlConnection(_connectionString),
-            DatabaseType.SqlServer => new SqlConnection(_connectionString),
-            DatabaseType.SQLite => new SqliteConnection(_connectionString),
+            DatabaseType.MySQL => BuildMySqlConnectionString(DatabaseName),
+            DatabaseType.PostgreSQL => BuildPostgreSqlConnectionString(DatabaseName),
+            DatabaseType.SqlServer => BuildSqlServerConnectionString(DatabaseName),
+            DatabaseType.SQLite => _ownsDatabase ? BuildSqliteConnectionString(DatabaseName) : _baseConnectionString,
             _ => throw new NotSupportedException($"Database type {DatabaseType} is not supported"),
         };
+    }
 
-        await _connection.OpenAsync();
+    private string CreateAdminConnectionString()
+    {
+        return DatabaseType switch
+        {
+            DatabaseType.MySQL => BuildMySqlConnectionString("mysql"),
+            DatabaseType.PostgreSQL => BuildPostgreSqlConnectionString("postgres"),
+            DatabaseType.SqlServer => BuildSqlServerConnectionString("master"),
+            _ => throw new NotSupportedException($"Database type {DatabaseType} does not use an admin connection"),
+        };
+    }
+
+    private DbConnection CreateConnection(string connectionString)
+    {
+        return DatabaseType switch
+        {
+            DatabaseType.MySQL => new MySqlConnection(connectionString),
+            DatabaseType.PostgreSQL => new NpgsqlConnection(connectionString),
+            DatabaseType.SqlServer => new SqlConnection(connectionString),
+            DatabaseType.SQLite => new SqliteConnection(connectionString),
+            _ => throw new NotSupportedException($"Database type {DatabaseType} is not supported"),
+        };
+    }
+
+    private string BuildMySqlConnectionString(string databaseName)
+    {
+        var builder = new MySqlConnectionStringBuilder(_baseConnectionString)
+        {
+            Database = databaseName,
+            Pooling = false,
+        };
+        return builder.ConnectionString;
+    }
+
+    private string BuildPostgreSqlConnectionString(string databaseName)
+    {
+        var builder = new NpgsqlConnectionStringBuilder(_baseConnectionString)
+        {
+            Database = databaseName,
+            Pooling = false,
+        };
+        return builder.ConnectionString;
+    }
+
+    private string BuildSqlServerConnectionString(string databaseName)
+    {
+        var builder = new SqlConnectionStringBuilder(_baseConnectionString)
+        {
+            InitialCatalog = databaseName,
+            Pooling = false,
+        };
+        return builder.ConnectionString;
+    }
+
+    private static string BuildSqliteConnectionString(string databaseName)
+    {
+        var builder = new SqliteConnectionStringBuilder
+        {
+            DataSource = databaseName,
+            Mode = SqliteOpenMode.Memory,
+            Cache = SqliteCacheMode.Shared,
+        };
+        return builder.ToString();
+    }
+
+    private static string ResolveExistingDatabaseName(DatabaseType databaseType, string connectionString)
+    {
+        return databaseType switch
+        {
+            DatabaseType.MySQL => new MySqlConnectionStringBuilder(connectionString).Database ?? string.Empty,
+            DatabaseType.PostgreSQL => new NpgsqlConnectionStringBuilder(connectionString).Database ?? string.Empty,
+            DatabaseType.SqlServer => new SqlConnectionStringBuilder(connectionString).InitialCatalog ?? string.Empty,
+            DatabaseType.SQLite => new SqliteConnectionStringBuilder(connectionString).DataSource ?? ":memory:",
+            _ => throw new NotSupportedException($"Database type {databaseType} is not supported"),
+        };
     }
 
     private SqlDialect GetDialect()
@@ -374,6 +496,13 @@ public class DatabaseFixture : IDatabaseFixture
             DatabaseType.SQLite => SqlDefine.SQLite,
             _ => throw new NotSupportedException($"Database type {DatabaseType} is not supported"),
         };
+    }
+
+    private static string GenerateRandomTablePrefix()
+    {
+        var timestamp = DateTime.UtcNow.ToString("HHmmss");
+        var random = Guid.NewGuid().ToString("N")[..6];
+        return $"t{timestamp}{random}";
     }
 
     private static bool ShouldSkipProperty(PropertyInfo property, object? value)

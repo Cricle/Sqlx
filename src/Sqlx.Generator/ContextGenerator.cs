@@ -109,20 +109,13 @@ public class ContextGenerator : IIncrementalGenerator
                 var entityType = GetEntityType(serviceType);
                 if (entityType is null) continue;
 
-                var entityName = entityType.Name;
-                var propertyName = Pluralize(entityName);
-                var paramName = ToCamelCase(propertyName);
-                var fieldName = $"_{paramName}";
+                var propertyName = Pluralize(entityType.Name);
 
                 repositories.Add(new RepositoryInfo
                 {
                     RepositoryType = repositoryType.ToDisplayString(),
-                    RepositoryTypeName = repositoryType.Name,
-                    EntityType = entityType.ToDisplayString(),
-                    EntityName = entityName,
                     PropertyName = propertyName,
-                    ParamName = paramName,
-                    FieldName = fieldName
+                    FieldName = $"_{ToCamelCase(propertyName)}"
                 });
             }
 
@@ -249,6 +242,7 @@ public class ContextGenerator : IIncrementalGenerator
             builder.PushIndent();
             builder.AppendLine($"{repo.FieldName} = _serviceProvider.GetRequiredService<{repo.RepositoryType}>();");
             builder.AppendLine($"((ISqlxRepository){repo.FieldName}).Connection = Connection;");
+            builder.AppendLine($"((ISqlxRepository){repo.FieldName}).Options = Options;");
             builder.AppendLine($"{repo.FieldName}.Transaction = Transaction;");
             builder.PopIndent();
             builder.AppendLine("}");
@@ -297,11 +291,7 @@ public class ContextGenerator : IIncrementalGenerator
     private class RepositoryInfo
     {
         public string RepositoryType { get; set; } = string.Empty;
-        public string RepositoryTypeName { get; set; } = string.Empty;
-        public string EntityType { get; set; } = string.Empty;
-        public string EntityName { get; set; } = string.Empty;
         public string PropertyName { get; set; } = string.Empty;
-        public string ParamName { get; set; } = string.Empty;
         public string FieldName { get; set; } = string.Empty;
     }
 }

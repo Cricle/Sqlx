@@ -31,6 +31,11 @@ namespace Sqlx
         DbTransaction? Transaction { get; set; }
 
         /// <summary>
+        /// Gets or sets the context options propagated from SqlxContext.
+        /// </summary>
+        SqlxContextOptions? Options { get; set; }
+
+        /// <summary>
         /// Gets the SQL dialect used by this repository.
         /// This allows runtime database dialect selection instead of compile-time [SqlDefine] attribute.
         /// </summary>

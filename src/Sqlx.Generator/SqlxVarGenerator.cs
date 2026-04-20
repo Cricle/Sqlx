@@ -162,13 +162,15 @@ public class SqlxVarGenerator : IIncrementalGenerator
         {
             var typeSymbol = kvp.Key;
             var methods = kvp.Value;
+            var hasDuplicates = false;
             
             // Check for duplicate variable names
             var variableNames = new Dictionary<string, SqlxVarMethodInfo>(StringComparer.OrdinalIgnoreCase);
             foreach (var method in methods)
             {
-                if (variableNames.TryGetValue(method.VariableName, out var existingMethod))
+                if (variableNames.ContainsKey(method.VariableName))
                 {
+                    var existingMethod = variableNames[method.VariableName];
                     // Report duplicate variable name diagnostic
                     var diagnostic = Diagnostic.Create(
                         DuplicateVariableNameDescriptor,
@@ -178,15 +180,16 @@ public class SqlxVarGenerator : IIncrementalGenerator
                         existingMethod.MethodName,
                         method.MethodName);
                     context.ReportDiagnostic(diagnostic);
-                    
-                    // Skip generating code for this class if there are duplicates
-                    continue;
+                    hasDuplicates = true;
                 }
-                variableNames[method.VariableName] = method;
+                else
+                {
+                    variableNames[method.VariableName] = method;
+                }
             }
             
             // Only generate code if no duplicates were found
-            if (variableNames.Count == methods.Count)
+            if (!hasDuplicates)
             {
                 var source = GenerateSource(typeSymbol, methods);
                 var fileName = $"{typeSymbol.ToDisplayString().Replace(".", "_")}.SqlxVar.g.cs";

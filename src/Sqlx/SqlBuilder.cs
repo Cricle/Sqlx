@@ -107,10 +107,13 @@ public sealed class SqlBuilder : IDisposable
 
         if (_buffer != null)
         {
+            _buffer.AsSpan(0, _position).Clear();
             ArrayPool<char>.Shared.Return(_buffer);
             _buffer = null!;
         }
 
+        _parameters = new Dictionary<string, object?>();
+        _position = 0;
         _disposed = true;
     }
 
@@ -140,6 +143,7 @@ public sealed class SqlBuilder : IDisposable
         }
         
         // Return old buffer
+        _buffer.AsSpan(0, _position).Clear();
         ArrayPool<char>.Shared.Return(_buffer);
         
         // Update buffer reference

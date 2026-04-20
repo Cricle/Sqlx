@@ -37,41 +37,7 @@ public class TestAssemblyInitializer
             return;
         }
 
-        context.WriteLine("Docker is available. Pre-starting all database containers...");
-
-        try
-        {
-            // Pre-start all containers in parallel for maximum speed
-            var startTasks = new[]
-            {
-                Task.Run(async () =>
-                {
-                    var sw = System.Diagnostics.Stopwatch.StartNew();
-                    await _containerManager.GetConnectionStringAsync(DatabaseType.MySQL);
-                    context.WriteLine($"MySQL container started in {sw.ElapsedMilliseconds}ms");
-                }),
-                Task.Run(async () =>
-                {
-                    var sw = System.Diagnostics.Stopwatch.StartNew();
-                    await _containerManager.GetConnectionStringAsync(DatabaseType.PostgreSQL);
-                    context.WriteLine($"PostgreSQL container started in {sw.ElapsedMilliseconds}ms");
-                }),
-                Task.Run(async () =>
-                {
-                    var sw = System.Diagnostics.Stopwatch.StartNew();
-                    await _containerManager.GetConnectionStringAsync(DatabaseType.SqlServer);
-                    context.WriteLine($"SQL Server container started in {sw.ElapsedMilliseconds}ms");
-                })
-            };
-
-            await Task.WhenAll(startTasks);
-            context.WriteLine("All database containers are ready!");
-        }
-        catch (Exception ex)
-        {
-            context.WriteLine($"ERROR: Failed to start containers: {ex.Message}");
-            throw;
-        }
+        context.WriteLine("Docker is available. Containers will start lazily when tests request them.");
     }
 
     /// <summary>

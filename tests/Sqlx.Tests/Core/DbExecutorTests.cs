@@ -9,6 +9,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Sqlx.Annotations;
 using System.Collections.Generic;
 using System.Linq;
+using System.Data;
 using System.Threading.Tasks;
 
 namespace Sqlx.Tests.Core;
@@ -169,15 +170,7 @@ public class DbExecutorTests
         var reader = ExecutorTestEntityResultReader.Default;
 
         // Act
-        var results = new List<ExecutorTestEntity>();
-        var enumerator = DbExecutor.ExecuteReaderAsync(_connection!, sql, parameters, reader);
-        await using (enumerator)
-        {
-            while (await enumerator.MoveNextAsync())
-            {
-                results.Add(enumerator.Current);
-            }
-        }
+        var results = await ReadAllAsync(DbExecutor.ExecuteReaderAsync(_connection!, sql, parameters, reader));
 
         // Assert
         Assert.AreEqual(2, results.Count);
@@ -195,15 +188,7 @@ public class DbExecutorTests
         var reader = ExecutorTestEntityResultReader.Default;
 
         // Act
-        var results = new List<ExecutorTestEntity>();
-        var enumerator = DbExecutor.ExecuteReaderAsync(_connection!, sql, null, reader);
-        await using (enumerator)
-        {
-            while (await enumerator.MoveNextAsync())
-            {
-                results.Add(enumerator.Current);
-            }
-        }
+        var results = await ReadAllAsync(DbExecutor.ExecuteReaderAsync(_connection!, sql, null, reader));
 
         // Assert
         Assert.AreEqual(3, results.Count);
@@ -235,21 +220,15 @@ public class DbExecutorTests
     {
         // Arrange
         using var closedConnection = new SqliteConnection("Data Source=:memory:");
-        // Don't open the connection - just test that it opens automatically
-        var sql = "SELECT 1 as value";
-        
-        // Create a simple reader that doesn't depend on entity structure
+        var sql = "SELECT 1 AS id, 'Test' AS name";
         var reader = ExecutorTestEntityResultReader.Default;
 
-        // Act & Assert - should not throw, connection should open automatically
-        // Note: We can't use ExecutorTestEntityResultReader here because the table doesn't exist
-        // So we'll just verify the connection opens by executing a simple query
-        closedConnection.Open();
-        using var cmd = closedConnection.CreateCommand();
-        cmd.CommandText = sql;
-        var result = cmd.ExecuteScalar();
-        Assert.IsNotNull(result);
-        Assert.AreEqual(1L, (long)result);
+        // Act
+        var results = DbExecutor.ExecuteReader(closedConnection, sql, null, reader).ToList();
+
+        // Assert
+        AssertSingleTestEntity(results);
+        Assert.AreEqual(ConnectionState.Closed, closedConnection.State);
     }
 
     [TestMethod]
@@ -266,5 +245,59 @@ public class DbExecutorTests
         // Assert
         Assert.IsNotNull(result);
         Assert.AreEqual(1L, (long)result);
+        Assert.AreEqual(ConnectionState.Closed, closedConnection.State);
+    }
+
+    [TestMethod]
+    public void ExecuteScalar_WithClosedConnection_ClosesConnectionAfterExecution()
+    {
+        // Arrange
+        using var closedConnection = new SqliteConnection("Data Source=:memory:");
+        var sql = "SELECT 1";
+
+        // Act
+        var result = DbExecutor.ExecuteScalar(closedConnection, sql, null);
+
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.AreEqual(1L, (long)result);
+        Assert.AreEqual(ConnectionState.Closed, closedConnection.State);
+    }
+
+    [TestMethod]
+    public async Task ExecuteReaderAsync_WithClosedConnection_ClosesConnectionAfterEnumeration()
+    {
+        // Arrange
+        using var closedConnection = new SqliteConnection("Data Source=:memory:");
+        var sql = "SELECT 1 AS id, 'Test' AS name";
+        var reader = ExecutorTestEntityResultReader.Default;
+
+        // Act
+        var results = await ReadAllAsync(DbExecutor.ExecuteReaderAsync(closedConnection, sql, null, reader));
+
+        // Assert
+        AssertSingleTestEntity(results);
+        Assert.AreEqual(ConnectionState.Closed, closedConnection.State);
+    }
+
+    private static async Task<List<ExecutorTestEntity>> ReadAllAsync(IAsyncEnumerator<ExecutorTestEntity> enumerator)
+    {
+        var results = new List<ExecutorTestEntity>();
+        await using (enumerator)
+        {
+            while (await enumerator.MoveNextAsync())
+            {
+                results.Add(enumerator.Current);
+            }
+        }
+
+        return results;
+    }
+
+    private static void AssertSingleTestEntity(IReadOnlyList<ExecutorTestEntity> results)
+    {
+        Assert.AreEqual(1, results.Count);
+        Assert.AreEqual(1, results[0].Id);
+        Assert.AreEqual("Test", results[0].Name);
     }
 }

@@ -926,6 +926,24 @@ var maxAge = await SqlQuery<User>.ForSqlite()
     .WithConnection(connection)
     .WithReader(UserResultReader.Default)
     .MaxAsync(u => u.Age);
+
+// Fast direct execution helpers
+var firstAdult = await SqlQuery<User>.ForSqlite()
+    .Where(u => u.Age >= 18)
+    .WithConnection(connection)
+    .FirstOrDefaultAsync();
+
+var page = await SqlQuery<User>.ForSqlite()
+    .OrderBy(u => u.Id)
+    .Skip(1000)
+    .Take(200)
+    .WithConnection(connection)
+    .ToListAsync();
+
+var totalAdults = await SqlQuery<User>.ForSqlite()
+    .Where(u => u.Age >= 18)
+    .WithConnection(connection)
+    .CountAsync();
 ```
 
 ### Supported LINQ Methods
@@ -2155,7 +2173,6 @@ For more information, see:
 - [Documentation](docs/)
 - [Samples](samples/)
 - [Tests](tests/)
-
 
 
 

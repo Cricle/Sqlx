@@ -11,6 +11,7 @@ using System.Data;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using Sqlx.Expressions;
 
 /// <summary>
 /// Dynamic result reader using expression trees.
@@ -170,7 +171,51 @@ internal sealed class DynamicResultReader<
     {
         for (int i = 0; i < _columnNames.Length && i < ordinals.Length; i++)
         {
-            ordinals[i] = reader.GetOrdinal(_columnNames[i]);
+            ordinals[i] = ResolveOrdinal(reader, _columnNames[i]);
         }
+    }
+
+    private static int ResolveOrdinal(IDataReader reader, string columnName)
+    {
+        if (TryGetOrdinal(reader, columnName, out var ordinal))
+        {
+            return ordinal;
+        }
+
+        var snakeCaseName = ExpressionHelper.ConvertToSnakeCase(columnName);
+        if (!string.Equals(snakeCaseName, columnName, StringComparison.Ordinal) &&
+            TryGetOrdinal(reader, snakeCaseName, out ordinal))
+        {
+            return ordinal;
+        }
+
+        throw new IndexOutOfRangeException($"The column '{columnName}' could not be found in the result set.");
+    }
+
+    private static bool TryGetOrdinal(IDataReader reader, string columnName, out int ordinal)
+    {
+        try
+        {
+            ordinal = reader.GetOrdinal(columnName);
+            return true;
+        }
+        catch (IndexOutOfRangeException)
+        {
+        }
+        catch (ArgumentException)
+        {
+        }
+
+        for (var i = 0; i < reader.FieldCount; i++)
+        {
+            if (string.Equals(reader.GetName(i), columnName, StringComparison.OrdinalIgnoreCase))
+            {
+                ordinal = i;
+                return true;
+            }
+        }
+
+        ordinal = -1;
+        return false;
     }
 }

@@ -237,19 +237,83 @@ namespace Sqlx.Benchmarks.Benchmarks
 
         #endregion
 
-        #region Asynchronous Execution Benchmarks (System.Linq.Async)
+        #region Asynchronous Execution Benchmarks
 
-        [Benchmark(Description = "Async: ToListAsync (1000 rows)")]
-        public async Task<List<BenchmarkEntity>> Async_ToListAsync()
+        [Benchmark(Baseline = true, Description = "Async Direct: ToListAsync (1000 rows)")]
+        public async Task<List<BenchmarkEntity>> Async_Direct_ToListAsync()
+        {
+            var query = SqlQuery<BenchmarkEntity>.ForSqlite()
+                .WithConnection(_connection)
+                .WithReader(_reader);
+            return await query.ToListAsync();
+        }
+
+        [Benchmark(Description = "Async Direct: WHERE + ToListAsync")]
+        public async Task<List<BenchmarkEntity>> Async_Direct_WhereToListAsync()
+        {
+            var query = SqlQuery<BenchmarkEntity>.ForSqlite()
+                .Where(u => u.IsActive)
+                .Where(u => u.Age >= 25)
+                .OrderBy(u => u.Name)
+                .Take(100)
+                .WithConnection(_connection)
+                .WithReader(_reader);
+            return await query.ToListAsync();
+        }
+
+        [Benchmark(Description = "Async Direct: FirstOrDefaultAsync")]
+        public async Task<BenchmarkEntity?> Async_Direct_FirstOrDefaultAsync()
+        {
+            var query = SqlQuery<BenchmarkEntity>.ForSqlite()
+                .Where(u => u.Id == 500)
+                .WithConnection(_connection)
+                .WithReader(_reader);
+            return await query.FirstOrDefaultAsync();
+        }
+
+        [Benchmark(Description = "Async Direct: CountAsync")]
+        public async Task<int> Async_Direct_CountAsync()
+        {
+            var query = SqlQuery<BenchmarkEntity>.ForSqlite()
+                .Where(u => u.IsActive)
+                .WithConnection(_connection)
+                .WithReader(_reader);
+            return (int)await query.CountAsync();
+        }
+
+        [Benchmark(Description = "Async Direct: AnyAsync")]
+        public async Task<bool> Async_Direct_AnyAsync()
+        {
+            var query = SqlQuery<BenchmarkEntity>.ForSqlite()
+                .Where(u => u.Id == 500)
+                .WithConnection(_connection)
+                .WithReader(_reader);
+            return await query.AnyAsync();
+        }
+
+        [Benchmark(Description = "Async Direct: Pagination ToListAsync")]
+        public async Task<List<BenchmarkEntity>> Async_Direct_PaginationToListAsync()
+        {
+            var query = SqlQuery<BenchmarkEntity>.ForSqlite()
+                .OrderBy(u => u.Id)
+                .Skip(500)
+                .Take(100)
+                .WithConnection(_connection)
+                .WithReader(_reader);
+            return await query.ToListAsync();
+        }
+
+        [Benchmark(Description = "AsyncEnumerable: ToListAsync (1000 rows)")]
+        public async Task<List<BenchmarkEntity>> AsyncEnumerable_ToListAsync()
         {
             var query = (IAsyncEnumerable<BenchmarkEntity>)SqlQuery<BenchmarkEntity>.ForSqlite()
                 .WithConnection(_connection)
                 .WithReader(_reader);
-            return await System.Linq.AsyncEnumerable.ToListAsync(query);
+            return await global::System.Linq.AsyncEnumerable.ToListAsync(query);
         }
 
-        [Benchmark(Description = "Async: WHERE + ToListAsync")]
-        public async Task<List<BenchmarkEntity>> Async_WhereToListAsync()
+        [Benchmark(Description = "AsyncEnumerable: WHERE + ToListAsync")]
+        public async Task<List<BenchmarkEntity>> AsyncEnumerable_WhereToListAsync()
         {
             var query = (IAsyncEnumerable<BenchmarkEntity>)SqlQuery<BenchmarkEntity>.ForSqlite()
                 .Where(u => u.IsActive)
@@ -258,41 +322,41 @@ namespace Sqlx.Benchmarks.Benchmarks
                 .Take(100)
                 .WithConnection(_connection)
                 .WithReader(_reader);
-            return await System.Linq.AsyncEnumerable.ToListAsync(query);
+            return await global::System.Linq.AsyncEnumerable.ToListAsync(query);
         }
 
-        [Benchmark(Description = "Async: FirstOrDefaultAsync")]
-        public async Task<BenchmarkEntity?> Async_FirstOrDefaultAsync()
+        [Benchmark(Description = "AsyncEnumerable: FirstOrDefaultAsync")]
+        public async Task<BenchmarkEntity?> AsyncEnumerable_FirstOrDefaultAsync()
         {
             var query = (IAsyncEnumerable<BenchmarkEntity>)SqlQuery<BenchmarkEntity>.ForSqlite()
                 .Where(u => u.Id == 500)
                 .WithConnection(_connection)
                 .WithReader(_reader);
-            return await System.Linq.AsyncEnumerable.FirstOrDefaultAsync(query);
+            return await global::System.Linq.AsyncEnumerable.FirstOrDefaultAsync(query);
         }
 
-        [Benchmark(Description = "Async: CountAsync")]
-        public async Task<int> Async_CountAsync()
+        [Benchmark(Description = "AsyncEnumerable: CountAsync")]
+        public async Task<int> AsyncEnumerable_CountAsync()
         {
             var query = (IAsyncEnumerable<BenchmarkEntity>)SqlQuery<BenchmarkEntity>.ForSqlite()
                 .Where(u => u.IsActive)
                 .WithConnection(_connection)
                 .WithReader(_reader);
-            return await System.Linq.AsyncEnumerable.CountAsync(query);
+            return await global::System.Linq.AsyncEnumerable.CountAsync(query);
         }
 
-        [Benchmark(Description = "Async: AnyAsync")]
-        public async Task<bool> Async_AnyAsync()
+        [Benchmark(Description = "AsyncEnumerable: AnyAsync")]
+        public async Task<bool> AsyncEnumerable_AnyAsync()
         {
             var query = (IAsyncEnumerable<BenchmarkEntity>)SqlQuery<BenchmarkEntity>.ForSqlite()
                 .Where(u => u.Id == 500)
                 .WithConnection(_connection)
                 .WithReader(_reader);
-            return await System.Linq.AsyncEnumerable.AnyAsync(query);
+            return await global::System.Linq.AsyncEnumerable.AnyAsync(query);
         }
 
-        [Benchmark(Description = "Async: Pagination ToListAsync")]
-        public async Task<List<BenchmarkEntity>> Async_PaginationToListAsync()
+        [Benchmark(Description = "AsyncEnumerable: Pagination ToListAsync")]
+        public async Task<List<BenchmarkEntity>> AsyncEnumerable_PaginationToListAsync()
         {
             var query = (IAsyncEnumerable<BenchmarkEntity>)SqlQuery<BenchmarkEntity>.ForSqlite()
                 .OrderBy(u => u.Id)
@@ -300,7 +364,7 @@ namespace Sqlx.Benchmarks.Benchmarks
                 .Take(100)
                 .WithConnection(_connection)
                 .WithReader(_reader);
-            return await System.Linq.AsyncEnumerable.ToListAsync(query);
+            return await global::System.Linq.AsyncEnumerable.ToListAsync(query);
         }
 
         #endregion
@@ -432,5 +496,3 @@ namespace Sqlx.Benchmarks.Benchmarks
         }
     }
 }
-
-

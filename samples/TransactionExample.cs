@@ -59,7 +59,8 @@ public class TransactionExample
 
         // 查询初始余额
         var accounts = await SqlQuery<Account>.ForSqlite()
-            .ToListAsync(connection);
+            .WithConnection(connection)
+            .ToListAsync();
         
         Console.WriteLine("转账前余额:");
         foreach (var acc in accounts)
@@ -118,7 +119,8 @@ public class TransactionExample
 
         // 查询最终余额
         accounts = await SqlQuery<Account>.ForSqlite()
-            .ToListAsync(connection);
+            .WithConnection(connection)
+            .ToListAsync();
         
         Console.WriteLine("\n转账后余额:");
         foreach (var acc in accounts)
@@ -140,7 +142,8 @@ public class TransactionExample
         // 查询初始余额
         var bobAccount = await SqlQuery<Account>.ForSqlite()
             .Where(a => a.Name == "Bob")
-            .FirstOrDefaultAsync(connection);
+            .WithConnection(connection)
+            .FirstOrDefaultAsync();
         
         Console.WriteLine($"Bob 当前余额: ${bobAccount?.Balance:F2}");
 
@@ -185,7 +188,8 @@ public class TransactionExample
         // 验证余额未改变
         bobAccount = await SqlQuery<Account>.ForSqlite()
             .Where(a => a.Name == "Bob")
-            .FirstOrDefaultAsync(connection);
+            .WithConnection(connection)
+            .FirstOrDefaultAsync();
         
         Console.WriteLine($"Bob 最终余额: ${bobAccount?.Balance:F2} (未改变)");
         Console.WriteLine();
@@ -217,7 +221,8 @@ public class TransactionExample
             
             // 执行查询
             var accounts = await SqlQuery<Account>.ForSqlite()
-                .ToListAsync(connection);
+                .WithConnection(connection)
+                .ToListAsync();
             
             Console.WriteLine($"  查询到 {accounts.Count} 个账户");
 
@@ -293,7 +298,8 @@ public class TransactionExample
                 // 检查余额（模拟业务逻辑检查）
                 var bob = await SqlQuery<Account>.ForSqlite()
                     .Where(a => a.Name == "Bob")
-                    .FirstOrDefaultAsync(connection);
+                    .WithConnection(connection)
+                    .FirstOrDefaultAsync();
                 
                 if (bob != null && bob.Balance < 0)
                 {

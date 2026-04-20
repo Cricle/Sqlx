@@ -25,8 +25,25 @@ public class DatabaseFixtureFactory : IDatabaseFixtureFactory
     {
         // GetConnectionStringAsync handles lazy initialization for all database types
         var connectionString = await _containerManager.GetConnectionStringAsync(dbType);
-        var fixture = new DatabaseFixture(dbType, connectionString);
+        var databaseName = GenerateDatabaseName(dbType);
+        var fixture = new DatabaseFixture(dbType, connectionString, databaseName);
         await fixture.InitializeAsync();
         return fixture;
+    }
+
+    private static string GenerateDatabaseName(DatabaseType dbType)
+    {
+        var databaseCode = dbType switch
+        {
+            DatabaseType.MySQL => "mysql",
+            DatabaseType.PostgreSQL => "pgsql",
+            DatabaseType.SqlServer => "sqlsrv",
+            DatabaseType.SQLite => "sqlite",
+            _ => "db",
+        };
+
+        var timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
+        var random = Guid.NewGuid().ToString("N")[..8];
+        return $"sqlx_{databaseCode}_{timestamp}_{random}";
     }
 }

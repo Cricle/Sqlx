@@ -9,6 +9,8 @@ using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Threading;
+using System.Threading.Tasks;
 #if NET5_0_OR_GREATER
 using System.Diagnostics.CodeAnalysis;
 #endif
@@ -168,6 +170,133 @@ namespace Sqlx
         }
 
         /// <summary>
+        /// Executes the query and materializes all rows into a list using the query's configured reader.
+        /// This avoids the per-row async-enumerator overhead of generic async LINQ adapters.
+        /// </summary>
+        public static async Task<List<T>> ToListAsync<
+#if NET5_0_OR_GREATER
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
+#endif
+            T>(this IQueryable<T> query, CancellationToken cancellationToken = default)
+        {
+            if (query == null)
+            {
+                throw new ArgumentNullException(nameof(query));
+            }
+
+            var sqlxQuery = GetSqlxQueryableOrThrow(query);
+            var reader = sqlxQuery.ResultReader
+                ?? throw new InvalidOperationException("No result reader. Use WithReader().");
+            var connection = sqlxQuery.Connection
+                ?? throw new InvalidOperationException("No database connection. Use WithConnection().");
+
+            var provider = (SqlxQueryProvider<T>)sqlxQuery.Provider;
+            var (sql, parameters) = provider.ToSqlWithParameters(query.Expression);
+
+            var shouldCloseConnection = await EnsureConnectionOpenAsync(connection, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await using var command = CreateCommand(connection, sql, parameters, sqlxQuery.Transaction);
+                await using var dbReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+
+                var capacityHint = TryGetTakeCount(query.Expression);
+                return capacityHint.HasValue
+                    ? await reader.ToListAsync(dbReader, capacityHint.Value, cancellationToken).ConfigureAwait(false)
+                    : await reader.ToListAsync(dbReader, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                CloseConnectionIfNeeded(connection, sqlxQuery.Transaction, shouldCloseConnection);
+            }
+        }
+
+        /// <summary>
+        /// Executes the query and returns the first row or default.
+        /// </summary>
+        public static async Task<T?> FirstOrDefaultAsync<
+#if NET5_0_OR_GREATER
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
+#endif
+            T>(this IQueryable<T> query, CancellationToken cancellationToken = default)
+        {
+            if (query == null)
+            {
+                throw new ArgumentNullException(nameof(query));
+            }
+
+            var sqlxQuery = GetSqlxQueryableOrThrow(query);
+            var reader = sqlxQuery.ResultReader
+                ?? throw new InvalidOperationException("No result reader. Use WithReader().");
+            var connection = sqlxQuery.Connection
+                ?? throw new InvalidOperationException("No database connection. Use WithConnection().");
+
+            var provider = (SqlxQueryProvider<T>)sqlxQuery.Provider;
+            var (sql, parameters) = provider.ToSqlWithParameters(query.Expression);
+
+            var shouldCloseConnection = await EnsureConnectionOpenAsync(connection, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await using var command = CreateCommand(connection, sql, parameters, sqlxQuery.Transaction);
+                await using var dbReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+                return await reader.FirstOrDefaultAsync(dbReader, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                CloseConnectionIfNeeded(connection, sqlxQuery.Transaction, shouldCloseConnection);
+            }
+        }
+
+        /// <summary>
+        /// Executes the query as COUNT(*) over the generated SQL.
+        /// </summary>
+        public static async Task<long> CountAsync<
+#if NET5_0_OR_GREATER
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
+#endif
+            T>(this IQueryable<T> query, CancellationToken cancellationToken = default)
+        {
+            if (query == null)
+            {
+                throw new ArgumentNullException(nameof(query));
+            }
+
+            var sqlxQuery = GetSqlxQueryableOrThrow(query);
+            var connection = sqlxQuery.Connection
+                ?? throw new InvalidOperationException("No database connection. Use WithConnection().");
+
+            var provider = (SqlxQueryProvider<T>)sqlxQuery.Provider;
+            var (sql, parameters) = provider.ToSqlWithParameters(query.Expression);
+            var countSql = $"SELECT COUNT(*) FROM ({sql}) AS q";
+            var result = await DbExecutor.ExecuteScalarAsync(connection, countSql, parameters, sqlxQuery.Transaction, cancellationToken).ConfigureAwait(false);
+            return Convert.ToInt64(result);
+        }
+
+        /// <summary>
+        /// Executes the query and returns whether it yields at least one row.
+        /// </summary>
+        public static async Task<bool> AnyAsync<
+#if NET5_0_OR_GREATER
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
+#endif
+            T>(this IQueryable<T> query, CancellationToken cancellationToken = default)
+        {
+            if (query == null)
+            {
+                throw new ArgumentNullException(nameof(query));
+            }
+
+            var sqlxQuery = GetSqlxQueryableOrThrow(query);
+            var connection = sqlxQuery.Connection
+                ?? throw new InvalidOperationException("No database connection. Use WithConnection().");
+
+            var provider = (SqlxQueryProvider<T>)sqlxQuery.Provider;
+            var (sql, parameters) = provider.ToSqlWithParameters(query.Expression);
+            var existsSql = $"SELECT 1 FROM ({sql}) AS q";
+            var result = await DbExecutor.ExecuteScalarAsync(connection, existsSql, parameters, sqlxQuery.Transaction, cancellationToken).ConfigureAwait(false);
+            return result != null && result != DBNull.Value;
+        }
+
+        /// <summary>
         /// Creates a new query using the current query as a subquery source.
         /// </summary>
         /// <typeparam name="T">The entity type.</typeparam>
@@ -220,6 +349,71 @@ namespace Sqlx
                 throw new InvalidOperationException(
                     "The provided connection does not match the query transaction connection.");
             }
+        }
+
+        private static DbCommand CreateCommand(
+            DbConnection connection,
+            string sql,
+            IEnumerable<KeyValuePair<string, object?>> parameters,
+            DbTransaction? transaction)
+        {
+            var command = connection.CreateCommand();
+            command.CommandText = sql;
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+
+            foreach (var parameter in parameters)
+            {
+                var dbParameter = command.CreateParameter();
+                dbParameter.ParameterName = parameter.Key;
+                dbParameter.Value = parameter.Value ?? DBNull.Value;
+                command.Parameters.Add(dbParameter);
+            }
+
+            return command;
+        }
+
+        private static async Task<bool> EnsureConnectionOpenAsync(DbConnection connection, CancellationToken cancellationToken)
+        {
+            if (connection.State == System.Data.ConnectionState.Open)
+            {
+                return false;
+            }
+
+            await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+            return true;
+        }
+
+        private static void CloseConnectionIfNeeded(DbConnection connection, DbTransaction? transaction, bool shouldCloseConnection)
+        {
+            if (shouldCloseConnection &&
+                transaction == null &&
+                connection.State != System.Data.ConnectionState.Closed)
+            {
+                connection.Close();
+            }
+        }
+
+        private static int? TryGetTakeCount(Expression expression)
+        {
+            if (expression is MethodCallExpression call)
+            {
+                if (string.Equals(call.Method.Name, "Take", StringComparison.Ordinal) &&
+                    call.Arguments.Count > 1 &&
+                    call.Arguments[1] is ConstantExpression { Value: int takeCount })
+                {
+                    return takeCount;
+                }
+
+                if (call.Arguments.Count > 0)
+                {
+                    return TryGetTakeCount(call.Arguments[0]);
+                }
+            }
+
+            return null;
         }
     }
 }

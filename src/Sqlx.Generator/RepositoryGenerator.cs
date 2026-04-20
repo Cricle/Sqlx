@@ -894,10 +894,99 @@ public class RepositoryGenerator : IIncrementalGenerator
     private static string? GetSqlTemplate(IMethodSymbol method, INamedTypeSymbol? sqlTemplateAttr)
     {
         if (sqlTemplateAttr is null) return null;
+        return GetSqlTemplateAttribute(method, sqlTemplateAttr)?.ConstructorArguments.Length > 0 &&
+               GetSqlTemplateAttribute(method, sqlTemplateAttr)?.ConstructorArguments[0].Value is string template
+            ? template : null;
+    }
+
+    private static AttributeData? GetSqlTemplateAttribute(IMethodSymbol method, INamedTypeSymbol? sqlTemplateAttr)
+    {
+        if (sqlTemplateAttr is null) return null;
         var attr = method.GetAttributes()
             .FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, sqlTemplateAttr));
-        return attr?.ConstructorArguments.Length > 0 && attr.ConstructorArguments[0].Value is string template
-            ? template : null;
+        return attr;
+    }
+
+    private static List<AttributeData> GetValidationAttributes(ISymbol symbol)
+    {
+        return symbol.GetAttributes()
+            .Where(a => IsValidationAttribute(a.AttributeClass))
+            .ToList();
+    }
+
+    private static bool IsValidationAttribute(INamedTypeSymbol? attributeClass)
+    {
+        var current = attributeClass;
+        while (current != null)
+        {
+            if (current.ToDisplayString() == "System.ComponentModel.DataAnnotations.ValidationAttribute")
+            {
+                return true;
+            }
+
+            current = current.BaseType;
+        }
+
+        return false;
+    }
+
+    private static string RenderValidationAttributes(List<AttributeData> attributes)
+    {
+        return string.Join(", ", attributes.Select(RenderValidationAttribute));
+    }
+
+    private static string RenderValidationAttribute(AttributeData attr)
+    {
+        var typeName = attr.AttributeClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+            ?? "global::System.ComponentModel.DataAnnotations.ValidationAttribute";
+        var ctorArgs = string.Join(", ", attr.ConstructorArguments.Select(RenderTypedConstant));
+        var namedArgs = attr.NamedArguments.Select(arg => $"{arg.Key} = {RenderTypedConstant(arg.Value)}").ToList();
+
+        var creation = $"new {typeName}({ctorArgs})";
+        if (namedArgs.Count == 0)
+        {
+            return creation;
+        }
+
+        return $"{creation} {{ {string.Join(", ", namedArgs)} }}";
+    }
+
+    private static string RenderTypedConstant(TypedConstant constant)
+    {
+        return constant.Kind switch
+        {
+            TypedConstantKind.Array => $"new[] {{ {string.Join(", ", constant.Values.Select(RenderTypedConstant))} }}",
+            TypedConstantKind.Enum => $"({constant.Type?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "global::System.Enum"}){constant.Value}",
+            TypedConstantKind.Type => constant.Value is null
+                ? "null"
+                : $"typeof({((ITypeSymbol)constant.Value).ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)})",
+            TypedConstantKind.Primitive => RenderPrimitive(constant.Value),
+            TypedConstantKind.Error => "default",
+            _ => constant.Value is null ? "null" : RenderPrimitive(constant.Value),
+        };
+    }
+
+    private static string RenderPrimitive(object? value)
+    {
+        return value switch
+        {
+            null => "null",
+            string s => Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(s, true),
+            char c => Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(c, true),
+            bool b => b ? "true" : "false",
+            byte b => b.ToString(),
+            sbyte sb => sb.ToString(),
+            short s => s.ToString(),
+            ushort us => us.ToString(),
+            int i => i.ToString(),
+            uint ui => ui.ToString() + "u",
+            long l => l.ToString() + "L",
+            ulong ul => ul.ToString() + "UL",
+            float f => f.ToString(System.Globalization.CultureInfo.InvariantCulture) + "f",
+            double d => d.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            decimal m => m.ToString(System.Globalization.CultureInfo.InvariantCulture) + "m",
+            _ => value.ToString() ?? "null",
+        };
     }
 
     private static void GenerateMethodImplementation(
@@ -920,7 +1009,12 @@ public class RepositoryGenerator : IIncrementalGenerator
         var signature = GetMethodSignature(method);
         var fieldName = methodFieldNames[signature];
         var ordinalsFieldName = fieldName.Replace("Template", "Ordinals");
-        var template = GetSqlTemplate(method, sqlTemplateAttr);
+        var templateAttrData = GetSqlTemplateAttribute(method, sqlTemplateAttr);
+        var template = templateAttrData?.ConstructorArguments.Length > 0 &&
+                       templateAttrData.ConstructorArguments[0].Value is string templateValue
+            ? templateValue
+            : null;
+        var validateParameters = templateAttrData?.NamedArguments.FirstOrDefault(a => a.Key == "ValidateParameters").Value.Value as bool? ?? true;
         var useStaticOrdinals = template != null && UsesStaticColumns(template) && ReturnsEntity(method);
         var isReturnInsertedId = returnInsertedIdAttr is not null && 
             method.GetAttributes().Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, returnInsertedIdAttr));
@@ -1007,6 +1101,10 @@ public class RepositoryGenerator : IIncrementalGenerator
         sb.AppendLine();
         sb.AppendLine($"using DbCommand cmd = {connectionExpression}.CreateCommand();");
         sb.AppendLine("if (Transaction != null) cmd.Transaction = Transaction;");
+        if (validateParameters)
+        {
+            GenerateMethodParameterValidation(sb, method, entityName);
+        }
 
         if (template != null)
         {
@@ -1218,6 +1316,37 @@ public class RepositoryGenerator : IIncrementalGenerator
             sb.AppendLine("cmd.Parameters.Add(p);");
             sb.PopIndent();
             sb.AppendLine("}");
+        }
+    }
+
+    private static void GenerateMethodParameterValidation(IndentedStringBuilder sb, IMethodSymbol method, string entityName)
+    {
+        foreach (var param in method.Parameters)
+        {
+            if (param.Name == "cancellationToken")
+            {
+                continue;
+            }
+
+            if (param.Type.ToDisplayString().Contains("Expression<") ||
+                param.Type.ToDisplayString().Contains("IQueryable<") ||
+                param.Type.ToDisplayString().Contains("SqlxQueryable<"))
+            {
+                continue;
+            }
+
+            if (param.Type.Name == entityName)
+            {
+                continue;
+            }
+
+            var validationAttributes = GetValidationAttributes(param);
+            if (validationAttributes.Count == 0)
+            {
+                continue;
+            }
+
+            sb.AppendLine($"global::Sqlx.ValidationHelper.ValidateValue({param.Name}, nameof({param.Name}), {RenderValidationAttributes(validationAttributes)});");
         }
     }
 
@@ -1533,6 +1662,7 @@ public class RepositoryGenerator : IIncrementalGenerator
             if (matchesRepositoryEntity || matchesReturnedEntity)
             {
                 var binderTypeName = matchesRepositoryEntity ? entityName : actualReturnTypeName;
+                sb.AppendLine($"global::Sqlx.ValidationHelper.ValidateObject({param.Name}, nameof({param.Name}));");
                 sb.AppendLine($"{binderTypeName}ParameterBinder.Default.BindEntity(cmd, {param.Name}, ParamPrefix);");
             }
             // Check if this is a collection parameter (List<T>, IEnumerable<T>, etc.)

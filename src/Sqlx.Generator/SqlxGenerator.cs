@@ -1122,6 +1122,7 @@ public class SqlxGenerator : IIncrementalGenerator
         sb.AppendLine($"public void BindEntity(DbCommand cmd, {fullTypeName} e, string prefix = \"@\")");
         sb.AppendLine("{");
         sb.PushIndent();
+        sb.AppendLine("global::Sqlx.ValidationHelper.ValidateObject(e!, nameof(e));");
         foreach (var p in properties)
         {
             var col = GetColumnName(p, columnAttr);
@@ -1134,6 +1135,7 @@ public class SqlxGenerator : IIncrementalGenerator
         sb.AppendLine($"public void BindEntity(DbBatchCommand cmd, {fullTypeName} e, Func<DbParameter> f, string prefix = \"@\")");
         sb.AppendLine("{");
         sb.PushIndent();
+        sb.AppendLine("global::Sqlx.ValidationHelper.ValidateObject(e!, nameof(e));");
         foreach (var p in properties)
         {
             var col = GetColumnName(p, columnAttr);

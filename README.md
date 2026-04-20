@@ -16,6 +16,7 @@
 - **🚀 高性能** - 单条查询和小批量读取具备竞争力，ResultReader/ordinals 热路径持续优化，GC 压力低
 - **⚡ 源生成主路径零反射** - 编译时生成高频代码路径；普通 POCO 查询支持反射 fallback
 - **🎯 类型安全** - 编译时验证 SQL 模板和表达式
+- **✅ 参数验证** - 支持 `ValidationAttribute`，自动校验仓储方法参数和实体参数
 - **🌐 多数据库** - 当前维护并验证 SQLite、PostgreSQL、MySQL、SQL Server；保留 Oracle、DB2 方言/API 兼容入口
 - **📦 AOT 就绪** - 完全支持 Native AOT，已通过大规模单元测试验证
 - **🔧 LINQ 支持** - IQueryable 接口，支持 Where/Select/OrderBy/Join 等
@@ -257,6 +258,41 @@ Task<int> CreateAsync(string name, string description);
 - 更新：`UpdateAsync/Update`, `UpdateWhereAsync/UpdateWhere`, `BatchUpdateAsync/BatchUpdate`
 - **动态更新**：`DynamicUpdateAsync/DynamicUpdate`, `DynamicUpdateWhereAsync/DynamicUpdateWhere`
 - 删除：`DeleteAsync/Delete`, `DeleteByIdsAsync/DeleteByIds`, `DeleteWhereAsync/DeleteWhere`, `DeleteAllAsync/DeleteAll`
+
+### DataAnnotations 验证
+
+生成仓储会自动识别 `System.ComponentModel.DataAnnotations.ValidationAttribute`：
+
+```csharp
+[Sqlx, TableName("users")]
+public class User
+{
+    [Key] public long Id { get; set; }
+
+    [Required]
+    [StringLength(20)]
+    public string Name { get; set; } = string.Empty;
+
+    [Range(1, 120)]
+    public int Age { get; set; }
+}
+
+public interface IUserRepository : ICrudRepository<User, long>
+{
+    [SqlTemplate("SELECT COUNT(*) FROM users WHERE name = @name")]
+    Task<int> CountByNameAsync([Required, StringLength(20)] string name);
+}
+
+await repo.InsertAsync(new User { Name = "", Age = 18 });     // throws ValidationException
+await repo.CountByNameAsync("name-that-is-too-long");         // throws ValidationException
+```
+
+如果你需要跳过方法参数验证，可以关闭 `SqlTemplateAttribute.ValidateParameters`：
+
+```csharp
+[SqlTemplate("SELECT COUNT(*) FROM users WHERE name = @name", ValidateParameters = false)]
+Task<int> CountByNameUncheckedAsync([Required, StringLength(20)] string name);
+```
 
 ```csharp
 public interface IUserRepository : ICrudRepository<User, long>

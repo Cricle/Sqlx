@@ -4,6 +4,7 @@
 
 namespace Sqlx;
 
+using System.Collections.Concurrent;
 using System;
 
 /// <summary>
@@ -54,6 +55,8 @@ public static class SqlDefine
 /// </summary>
 public abstract class SqlDialect
 {
+    private readonly ConcurrentDictionary<string, string> _wrappedColumnCache = new(StringComparer.Ordinal);
+
     /// <summary>Gets the database type name.</summary>
     public abstract string DatabaseType { get; }
 
@@ -79,7 +82,9 @@ public abstract class SqlDialect
 
     /// <summary>Wraps a column/table name with dialect-specific delimiters.</summary>
     public virtual string WrapColumn(string name) =>
-        string.IsNullOrEmpty(name) ? string.Empty : $"{ColumnLeft}{name}{ColumnRight}";
+        string.IsNullOrEmpty(name)
+            ? string.Empty
+            : _wrappedColumnCache.GetOrAdd(name, static (n, state) => $"{state.Item1}{n}{state.Item2}", (ColumnLeft, ColumnRight));
 
     /// <summary>Wraps a string value with dialect-specific delimiters.</summary>
     public virtual string WrapString(string value) =>

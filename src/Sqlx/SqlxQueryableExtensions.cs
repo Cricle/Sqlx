@@ -265,8 +265,7 @@ namespace Sqlx
                 ?? throw new InvalidOperationException("No database connection. Use WithConnection().");
 
             var provider = (SqlxQueryProvider<T>)sqlxQuery.Provider;
-            var (sql, parameters) = provider.ToSqlWithParameters(query.Expression);
-            var countSql = $"SELECT COUNT(*) FROM ({sql}) AS q";
+            var (countSql, parameters) = provider.ToCountQuery(query.Expression);
             var result = await DbExecutor.ExecuteScalarAsync(connection, countSql, parameters, sqlxQuery.Transaction, cancellationToken).ConfigureAwait(false);
             return Convert.ToInt64(result);
         }
@@ -290,8 +289,7 @@ namespace Sqlx
                 ?? throw new InvalidOperationException("No database connection. Use WithConnection().");
 
             var provider = (SqlxQueryProvider<T>)sqlxQuery.Provider;
-            var (sql, parameters) = provider.ToSqlWithParameters(query.Expression);
-            var existsSql = $"SELECT 1 FROM ({sql}) AS q";
+            var (existsSql, parameters) = provider.ToExistsQuery(query.Expression);
             var result = await DbExecutor.ExecuteScalarAsync(connection, existsSql, parameters, sqlxQuery.Transaction, cancellationToken).ConfigureAwait(false);
             return result != null && result != DBNull.Value;
         }

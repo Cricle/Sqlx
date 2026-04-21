@@ -127,6 +127,7 @@ namespace Sqlx
             {
                 "First" => ExecuteFirst<TResult>(methodCall, throwIfEmpty: true),
                 "FirstOrDefault" => ExecuteFirst<TResult>(methodCall, throwIfEmpty: false),
+                "Any" => ExecuteAny<TResult>(methodCall),
                 "Count" or "LongCount" => ExecuteCount<TResult>(methodCall),
                 "Min" or "Max" or "Sum" or "Average" => ExecuteAggregate<TResult>(methodCall),
                 _ => throw new NotSupportedException($"Method '{methodCall.Method.Name}' is not supported.")
@@ -150,10 +151,28 @@ namespace Sqlx
 
         private TResult ExecuteCount<TResult>(MethodCallExpression methodCall)
         {
-            var (sql, parameters) = ToSqlWithParameters(methodCall.Arguments[0]);
-            var countSql = $"SELECT COUNT(*) FROM ({sql}) AS q";
+            var (countSql, parameters) = ToCountQuery(methodCall.Arguments[0]);
             var result = DbExecutor.ExecuteScalar(Connection!, countSql, parameters, Transaction);
             return (TResult)Convert.ChangeType(result!, typeof(TResult));
+        }
+
+        private TResult ExecuteAny<TResult>(MethodCallExpression methodCall)
+        {
+            var sourceExpression = methodCall.Arguments[0];
+            if (methodCall.Arguments.Count > 1 &&
+                GetLambdaExpression(methodCall.Arguments[1]) is LambdaExpression predicate)
+            {
+                sourceExpression = Expression.Call(
+                    typeof(Queryable),
+                    nameof(Queryable.Where),
+                    new[] { typeof(T) },
+                    sourceExpression,
+                    Expression.Quote(predicate));
+            }
+
+            var (existsSql, parameters) = ToExistsQuery(sourceExpression);
+            var result = DbExecutor.ExecuteScalar(Connection!, existsSql, parameters, Transaction);
+            return (TResult)(object)(result != null && result != DBNull.Value);
         }
 
         private TResult ExecuteAggregate<TResult>(MethodCallExpression methodCall)
@@ -220,5 +239,40 @@ namespace Sqlx
             var visitor = new SqlExpressionVisitor(Dialect, parameterized: true, EntityProvider);
             return (visitor.GenerateSql(expression), visitor.GetParameters());
         }
+
+        internal (string Sql, IReadOnlyDictionary<string, object?> Parameters) ToCountQuery(Expression expression)
+        {
+            var visitor = new SqlExpressionVisitor(Dialect, parameterized: true, EntityProvider);
+            var sql = visitor.GenerateSql(expression);
+
+            var parameters = visitor.GetParameters();
+            if (visitor.CanBuildDirectAggregateQuery())
+            {
+                return (visitor.BuildCountSql(), parameters);
+            }
+
+            return ($"SELECT COUNT(*) FROM ({sql}) AS q", parameters);
+        }
+
+        internal (string Sql, IReadOnlyDictionary<string, object?> Parameters) ToExistsQuery(Expression expression)
+        {
+            var visitor = new SqlExpressionVisitor(Dialect, parameterized: true, EntityProvider);
+            var sql = visitor.GenerateSql(expression);
+
+            var parameters = visitor.GetParameters();
+            if (visitor.CanBuildDirectAggregateQuery())
+            {
+                return (visitor.BuildExistsSql(), parameters);
+            }
+
+            return ($"SELECT 1 FROM ({sql}) AS q", parameters);
+        }
+
+        private static LambdaExpression? GetLambdaExpression(Expression expression) => expression switch
+        {
+            LambdaExpression lambda => lambda,
+            UnaryExpression { NodeType: ExpressionType.Quote, Operand: LambdaExpression lambda } => lambda,
+            _ => null,
+        };
     }
 }

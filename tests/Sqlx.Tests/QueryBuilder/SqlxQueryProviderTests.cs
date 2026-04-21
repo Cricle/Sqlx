@@ -275,8 +275,7 @@ public class SqlxQueryProviderTests
     }
 
     [TestMethod]
-    [ExpectedException(typeof(NotSupportedException))]
-    public void Execute_UnsupportedMethod_ThrowsNotSupportedException()
+    public void Execute_AnyMethod_ReturnsBooleanResult()
     {
         // Arrange
         var queryable = new[] { new TestEntity() }.AsQueryable();
@@ -287,7 +286,10 @@ public class SqlxQueryProviderTests
             queryable.Expression);
 
         // Act
-        _provider.Execute<bool>(expression);
+        var result = _provider.Execute<bool>(expression);
+
+        // Assert
+        Assert.IsTrue(result);
     }
 
     [TestMethod]

@@ -16,6 +16,8 @@ namespace Sqlx.Generator.Tests;
 /// </summary>
 public static class GeneratorTestHelper
 {
+    private static readonly Lazy<ImmutableArray<MetadataReference>> DefaultReferences = new(CreateDefaultReferences);
+
     /// <summary>
     /// Runs a source generator on the provided source code.
     /// </summary>
@@ -25,30 +27,11 @@ public static class GeneratorTestHelper
     public static GeneratorTestResult RunGenerator(string source, IIncrementalGenerator generator)
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(source);
-        
-        // Get all loaded assemblies including Sqlx
-        var references = new List<MetadataReference>();
-        
-        // Add standard references
-        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-        {
-            if (!assembly.IsDynamic && !string.IsNullOrWhiteSpace(assembly.Location))
-            {
-                references.Add(MetadataReference.CreateFromFile(assembly.Location));
-            }
-        }
-        
-        // Explicitly add Sqlx assembly reference
-        var sqlxAssembly = typeof(Sqlx.Annotations.SqlxVarAttribute).Assembly;
-        if (!string.IsNullOrWhiteSpace(sqlxAssembly.Location))
-        {
-            references.Add(MetadataReference.CreateFromFile(sqlxAssembly.Location));
-        }
 
         var compilation = CSharpCompilation.Create(
             "TestAssembly",
             new[] { syntaxTree },
-            references,
+            DefaultReferences.Value,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
         var driver = CSharpGeneratorDriver.Create(generator);
@@ -74,6 +57,40 @@ public static class GeneratorTestHelper
     {
         var tree = CSharpSyntaxTree.ParseText(code);
         return tree.GetRoot().NormalizeWhitespace().ToFullString();
+    }
+
+    private static ImmutableArray<MetadataReference> CreateDefaultReferences()
+    {
+        var references = new List<MetadataReference>();
+        var seenPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        if (AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") is string trustedPlatformAssemblies)
+        {
+            foreach (var path in trustedPlatformAssemblies.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (seenPaths.Add(path))
+                {
+                    references.Add(MetadataReference.CreateFromFile(path));
+                }
+            }
+        }
+
+        AddAssemblyReference(references, seenPaths, typeof(Sqlx.Annotations.SqlxVarAttribute).Assembly);
+        AddAssemblyReference(references, seenPaths, typeof(GeneratorTestHelper).Assembly);
+        AddAssemblyReference(references, seenPaths, typeof(System.ComponentModel.DataAnnotations.KeyAttribute).Assembly);
+        AddAssemblyReference(references, seenPaths, typeof(System.ComponentModel.DataAnnotations.Schema.NotMappedAttribute).Assembly);
+
+        return references.ToImmutableArray();
+    }
+
+    private static void AddAssemblyReference(List<MetadataReference> references, HashSet<string> seenPaths, Assembly assembly)
+    {
+        if (string.IsNullOrWhiteSpace(assembly.Location) || !seenPaths.Add(assembly.Location))
+        {
+            return;
+        }
+
+        references.Add(MetadataReference.CreateFromFile(assembly.Location));
     }
 }
 

@@ -164,6 +164,7 @@ public partial class RawRepository
 
         var sqlTemplateAttr = compilation.GetTypeByMetadataName("Sqlx.Annotations.SqlTemplateAttribute");
         var returnInsertedIdAttr = compilation.GetTypeByMetadataName("Sqlx.Annotations.ReturnInsertedIdAttribute");
+        var returnInsertedEntityAttr = compilation.GetTypeByMetadataName("Sqlx.Annotations.ReturnInsertedEntityAttribute");
         var expressionToSqlAttr = compilation.GetTypeByMetadataName("Sqlx.Annotations.ExpressionToSqlAttribute");
 
         var userRepo = GetType(compilation, "Test.UserRepository");
@@ -182,6 +183,7 @@ public partial class RawRepository
             "users",
             sqlTemplateAttr,
             returnInsertedIdAttr,
+            returnInsertedEntityAttr,
             expressionToSqlAttr,
             compilation
         })!;
@@ -194,6 +196,7 @@ public partial class RawRepository
             "users",
             sqlTemplateAttr,
             returnInsertedIdAttr,
+            returnInsertedEntityAttr,
             expressionToSqlAttr,
             compilation
         })!;
@@ -217,6 +220,7 @@ public partial class RawRepository
             "raw_table",
             sqlTemplateAttr,
             returnInsertedIdAttr,
+            returnInsertedEntityAttr,
             expressionToSqlAttr,
             compilation
         })!;
@@ -253,7 +257,19 @@ public partial class RawRepository
         StringAssert.Contains(dynamicCode, "ToWhereClause(predicate2, Dialect)");
 
         var bindingSb = new IndentedStringBuilder(null);
-        GetPrivateMethod(typeof(RepositoryGenerator), "GenerateParameterBinding").Invoke(null, new object?[] { bindingSb, outputMethod, "User", expressionToSqlAttr, new Dictionary<string, string>() });
+        GetPrivateMethod(typeof(RepositoryGenerator), "GenerateParameterBinding").Invoke(null, new object?[]
+        {
+            bindingSb,
+            outputMethod,
+            "User",
+            "Int32",
+            "int",
+            false,
+            "EXEC test_output @outputValue",
+            expressionToSqlAttr,
+            new Dictionary<string, string>(),
+            true
+        });
         StringAssert.Contains(bindingSb.ToString(), "ParamPrefix + \"outputValue\"");
 
         var retrievalSb = new IndentedStringBuilder(null);
@@ -274,6 +290,7 @@ public partial class RawRepository
             "int",
             sqlTemplateAttr,
             returnInsertedIdAttr,
+            returnInsertedEntityAttr,
             expressionToSqlAttr,
             connectionInfo,
             methodFieldNames,

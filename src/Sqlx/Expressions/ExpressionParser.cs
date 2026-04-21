@@ -28,6 +28,9 @@ namespace Sqlx.Expressions
         private readonly bool _parameterized;
         private readonly Dictionary<string, string>? _placeholders;
         private readonly IEntityProvider? _entityProvider;
+        private Dictionary<Expression, string>? _subQuerySqlCache;
+        private Dictionary<Type, IEntityProvider>? _subQueryEntityProviderCache;
+        private int _parameterIndex;
 
         public ExpressionParser(
             SqlDialect dialect,
@@ -37,10 +40,11 @@ namespace Sqlx.Expressions
             IEntityProvider? entityProvider = null)
         {
             _dialect = dialect;
-            _parameters = parameters;
+            _parameters = parameters ?? new Dictionary<string, object?>(4);
             _parameterized = parameterized;
             _placeholders = placeholders;
             _entityProvider = entityProvider;
+            _parameterIndex = _parameters.Count;
         }
 
         public string DatabaseType => _dialect.DatabaseType;
@@ -174,9 +178,31 @@ namespace Sqlx.Expressions
 
         public string CreateParameter(object? v)
         {
-            var n = string.Concat(_dialect.ParameterPrefix, "p", _parameters.Count.ToString());
+            var n = CreateParameterName(_dialect.ParameterPrefix, _parameterIndex++);
             _parameters[n] = v;
             return n;
+        }
+
+        private static string CreateParameterName(string prefix, int index)
+        {
+            var digits = CountDigits(index);
+            return string.Create(prefix.Length + 1 + digits, (prefix, index), static (span, state) =>
+            {
+                state.prefix.AsSpan().CopyTo(span);
+                var pos = state.prefix.Length;
+                span[pos++] = 'p';
+                state.index.TryFormat(span[pos..], out _);
+            });
+        }
+
+        private static int CountDigits(int value)
+        {
+            if (value < 10) return 1;
+            if (value < 100) return 2;
+            if (value < 1000) return 3;
+            if (value < 10000) return 4;
+            if (value < 100000) return 5;
+            return value.ToString().Length;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -418,13 +444,10 @@ namespace Sqlx.Expressions
 
         private string ParseSubQueryForMethod(MethodCallExpression m)
         {
-            // Generate the subquery SQL from the source - subquery parsing is normal query parsing
             var subQuerySql = GenerateSubQuerySql(m.Arguments[0]);
-
             var methodName = m.Method.Name;
             
             // Handle Count with predicate: Count(y => y.Id == x.Count())
-            // This should generate: (SELECT COUNT(*) FROM (subquery) AS sq WHERE condition)
             if ((methodName == "Count" || methodName == "LongCount") && m.Arguments.Count > 1)
             {
                 var predicateCondition = ParseLambdaAsCondition(m.Arguments[1]);
@@ -466,6 +489,7 @@ namespace Sqlx.Expressions
                     var predicateCondition = ParseLambdaAsCondition(m.Arguments[1]);
                     return $"(SELECT CASE WHEN EXISTS(SELECT 1 FROM ({subQuerySql}) AS sq WHERE {predicateCondition}) THEN 1 ELSE 0 END)";
                 }
+
                 return $"(SELECT CASE WHEN EXISTS({subQuerySql}) THEN 1 ELSE 0 END)";
             }
 
@@ -485,13 +509,32 @@ namespace Sqlx.Expressions
         /// </summary>
         private string GenerateSubQuerySql(Expression expr)
         {
+            if (_subQuerySqlCache != null && _subQuerySqlCache.TryGetValue(expr, out var cached))
+            {
+                return cached;
+            }
+
             var elementType = GetSubQueryElementType(expr);
-            var entityProvider = elementType != null ? EntityProviderResolver.ResolveOrCreate(elementType) : null;
+            var entityProvider = elementType != null ? ResolveSubQueryEntityProvider(elementType) : null;
             
             // Use SqlExpressionVisitor - subquery parsing is the same as normal query parsing
             // Pass the current groupByColumn so that references to outer scope (like x.Key) can be resolved
             var visitor = new SqlExpressionVisitor(_dialect, _parameterized, entityProvider, _groupByColumn, _parameters);
-            return visitor.GenerateSql(expr);
+            var sql = visitor.GenerateSql(expr);
+            (_subQuerySqlCache ??= new Dictionary<Expression, string>(ReferenceEqualityComparer<Expression>.Instance))[expr] = sql;
+            return sql;
+        }
+
+        private IEntityProvider ResolveSubQueryEntityProvider(Type elementType)
+        {
+            if (_subQueryEntityProviderCache != null && _subQueryEntityProviderCache.TryGetValue(elementType, out var cached))
+            {
+                return cached;
+            }
+
+            var provider = EntityProviderResolver.ResolveOrCreate(elementType);
+            (_subQueryEntityProviderCache ??= new Dictionary<Type, IEntityProvider>())[elementType] = provider;
+            return provider;
         }
 
         /// <summary>

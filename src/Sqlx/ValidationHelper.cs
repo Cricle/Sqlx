@@ -24,7 +24,10 @@ namespace Sqlx
         /// <param name="paramName">The logical parameter name for error messages.</param>
         public static void ValidateObject(object instance, string paramName)
         {
-            ArgumentNullException.ThrowIfNull(instance, paramName);
+            if (instance is null)
+            {
+                throw new ArgumentNullException(paramName);
+            }
 
             var context = new ValidationContext(instance);
             var results = new List<ValidationResult>();
@@ -57,7 +60,7 @@ namespace Sqlx
             };
 
             var results = new List<ValidationResult>();
-            if (Validator.TryValidateValue(value, context, results, attributes))
+            if (Validator.TryValidateValue(value!, context, results, attributes))
             {
                 return;
             }

@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.Common;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
@@ -489,6 +490,72 @@ namespace Sqlx.Tests
             Assert.AreEqual(ConnectionState.Closed, connection.State);
         }
 
+        [TestMethod]
+        public async Task CountAsync_SimpleQuery_UsesDirectCountSql()
+        {
+            var connection = new CapturingDbConnection();
+            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(SqlDefine.SQLite))
+                .WithConnection(connection)
+                .Where(u => u.Age >= 30)
+                .OrderBy(u => u.Name);
+
+            var count = await queryable.CountAsync();
+
+            Assert.AreEqual(1L, count);
+            Assert.IsNotNull(connection.LastCreatedCommand);
+            Assert.AreEqual("SELECT COUNT(*) FROM [User] WHERE [age] >= @p0", connection.LastCreatedCommand.CommandText);
+            Assert.AreEqual(1, connection.LastCreatedCommand.ParameterCount);
+        }
+
+        [TestMethod]
+        public async Task AnyAsync_SimpleQuery_UsesDirectExistsSql()
+        {
+            var connection = new CapturingDbConnection();
+            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(SqlDefine.SQLite))
+                .WithConnection(connection)
+                .Where(u => u.Age >= 30)
+                .OrderBy(u => u.Name);
+
+            var any = await queryable.AnyAsync();
+
+            Assert.IsTrue(any);
+            Assert.IsNotNull(connection.LastCreatedCommand);
+            Assert.AreEqual("SELECT 1 FROM [User] WHERE [age] >= @p0 LIMIT 1", connection.LastCreatedCommand.CommandText);
+            Assert.AreEqual(1, connection.LastCreatedCommand.ParameterCount);
+        }
+
+        [TestMethod]
+        public void Any_SimpleQuery_UsesDirectExistsSql()
+        {
+            var connection = new CapturingDbConnection();
+            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(SqlDefine.SQLite))
+                .WithConnection(connection)
+                .Where(u => u.Age >= 30)
+                .OrderBy(u => u.Name);
+
+            var any = queryable.Any();
+
+            Assert.IsTrue(any);
+            Assert.IsNotNull(connection.LastCreatedCommand);
+            Assert.AreEqual("SELECT 1 FROM [User] WHERE [age] >= @p0 LIMIT 1", connection.LastCreatedCommand.CommandText);
+            Assert.AreEqual(1, connection.LastCreatedCommand.ParameterCount);
+        }
+
+        [TestMethod]
+        public void Any_WithPredicate_UsesDirectExistsSql()
+        {
+            var connection = new CapturingDbConnection();
+            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(SqlDefine.SQLite))
+                .WithConnection(connection);
+
+            var any = queryable.Any(u => u.Age >= 30);
+
+            Assert.IsTrue(any);
+            Assert.IsNotNull(connection.LastCreatedCommand);
+            Assert.AreEqual("SELECT 1 FROM [User] WHERE [age] >= @p0 LIMIT 1", connection.LastCreatedCommand.CommandText);
+            Assert.AreEqual(1, connection.LastCreatedCommand.ParameterCount);
+        }
+
         [Sqlx]
         public partial class User
         {
@@ -532,5 +599,119 @@ namespace Sqlx.Tests
                 ordinals[3] = reader.GetOrdinal("email");
             }
         }
+
+#pragma warning disable CS8765
+        private sealed class CapturingDbConnection : DbConnection
+        {
+            public CapturingDbCommand? LastCreatedCommand { get; private set; }
+
+            public override string ConnectionString { get; set; } = string.Empty;
+            public override string Database => "Captured";
+            public override string DataSource => "Captured";
+            public override string ServerVersion => "1.0";
+            public override ConnectionState State => ConnectionState.Open;
+
+            public override void ChangeDatabase(string databaseName) { }
+            public override void Close() { }
+            public override void Open() { }
+            protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel) => throw new NotImplementedException();
+
+            protected override DbCommand CreateDbCommand()
+            {
+                LastCreatedCommand = new CapturingDbCommand { Connection = this };
+                return LastCreatedCommand;
+            }
+        }
+
+        private sealed class CapturingDbCommand : DbCommand
+        {
+            public int ParameterCount => DbParameterCollection.Count;
+
+            public override string CommandText { get; set; } = string.Empty;
+            public override int CommandTimeout { get; set; }
+            public override CommandType CommandType { get; set; }
+            public override bool DesignTimeVisible { get; set; }
+            public override UpdateRowSource UpdatedRowSource { get; set; }
+            protected override DbConnection? DbConnection { get; set; }
+            protected override DbParameterCollection DbParameterCollection { get; } = new CapturingParameterCollection();
+            protected override DbTransaction? DbTransaction { get; set; }
+
+            public override void Cancel() { }
+            public override int ExecuteNonQuery() => 0;
+            public override object? ExecuteScalar() => 1L;
+            public override void Prepare() { }
+            protected override DbParameter CreateDbParameter() => new CapturingDbParameter();
+            protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior) => throw new NotSupportedException();
+        }
+
+        private sealed class CapturingParameterCollection : DbParameterCollection
+        {
+            private readonly List<DbParameter> _parameters = new();
+
+            public override int Count => _parameters.Count;
+            public override object SyncRoot => _parameters;
+            public override int Add(object value)
+            {
+                _parameters.Add((DbParameter)value);
+                return _parameters.Count - 1;
+            }
+
+            public override void AddRange(Array values)
+            {
+                foreach (var value in values)
+                {
+                    _parameters.Add((DbParameter)value);
+                }
+            }
+
+            public override void Clear() => _parameters.Clear();
+            public override bool Contains(object value) => _parameters.Contains((DbParameter)value);
+            public override bool Contains(string value) => _parameters.Any(p => p.ParameterName == value);
+            public override void CopyTo(Array array, int index) => _parameters.ToArray().CopyTo(array, index);
+            public override System.Collections.IEnumerator GetEnumerator() => _parameters.GetEnumerator();
+            public override int IndexOf(object value) => _parameters.IndexOf((DbParameter)value);
+            public override int IndexOf(string parameterName) => _parameters.FindIndex(p => p.ParameterName == parameterName);
+            public override void Insert(int index, object value) => _parameters.Insert(index, (DbParameter)value);
+            public override void Remove(object value) => _parameters.Remove((DbParameter)value);
+            public override void RemoveAt(int index) => _parameters.RemoveAt(index);
+            public override void RemoveAt(string parameterName)
+            {
+                var index = IndexOf(parameterName);
+                if (index >= 0)
+                {
+                    _parameters.RemoveAt(index);
+                }
+            }
+
+            protected override DbParameter GetParameter(int index) => _parameters[index];
+            protected override DbParameter GetParameter(string parameterName) => _parameters[IndexOf(parameterName)];
+            protected override void SetParameter(int index, DbParameter value) => _parameters[index] = value;
+            protected override void SetParameter(string parameterName, DbParameter value)
+            {
+                var index = IndexOf(parameterName);
+                if (index >= 0)
+                {
+                    _parameters[index] = value;
+                }
+                else
+                {
+                    _parameters.Add(value);
+                }
+            }
+        }
+
+        private sealed class CapturingDbParameter : DbParameter
+        {
+            public override DbType DbType { get; set; }
+            public override ParameterDirection Direction { get; set; }
+            public override bool IsNullable { get; set; }
+            public override string ParameterName { get; set; } = string.Empty;
+            public override string SourceColumn { get; set; } = string.Empty;
+            public override object? Value { get; set; }
+            public override bool SourceColumnNullMapping { get; set; }
+            public override int Size { get; set; }
+            public override void ResetDbType() { }
+        }
+#pragma warning restore CS8765
     }
 }

@@ -262,7 +262,7 @@ namespace TestNamespace
     }
 
     [TestMethod]
-    public void SimpleScalarMethod_WithOutputParameterWrapper_UsesOutputBindingPath()
+    public void SimpleScalarMethod_WithOutputParameterWrapper_UsesReaderOutputPath()
     {
         var source = @"
 using Sqlx;
@@ -301,9 +301,10 @@ namespace TestNamespace
 
         var code = repositorySource.Source;
 
-        Assert.IsTrue(code.Contains("Direction = System.Data.ParameterDirection.Output") ||
-                      code.Contains("Direction = System.Data.ParameterDirection.InputOutput"),
-            "OutputParameter<T> should use the richer output binding path.");
+        Assert.IsTrue(code.Contains("using var reader = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.Default, default).ConfigureAwait(false);") &&
+                      code.Contains("outputValue.Value = global::Sqlx.TypeConverter.Convert<int>(reader.GetValue(__outputIndex));") &&
+                      code.Contains("outputValue.HasValue = true;"),
+            "OutputParameter<T> should be populated from the result reader path.");
     }
 
     [TestMethod]

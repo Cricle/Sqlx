@@ -37,15 +37,15 @@ namespace Sqlx
         private readonly ExpressionParser _parser;
         private readonly IEntityProvider? _entityProvider;
 
-        private readonly List<string> _selectColumns = new(4);
-        private readonly List<string> _whereConditions = new(4);
-        private readonly List<string> _orderByExpressions = new(2);
-        private readonly List<string> _groupByExpressions = new(2);
-        private readonly List<JoinClause> _joinClauses = new(2);
+        private List<string>? _selectColumns;
+        private List<string>? _whereConditions;
+        private List<string>? _orderByExpressions;
+        private List<string>? _groupByExpressions;
+        private List<JoinClause>? _joinClauses;
         
         // Track property mappings for multi-level JOINs
-        private readonly Dictionary<string, string> _propertyAliasMap = new(4);
-        private readonly Dictionary<string, string> _propertyColumnMap = new(4);
+        private Dictionary<string, string>? _propertyAliasMap;
+        private Dictionary<string, string>? _propertyColumnMap;
         
         private int? _take;
         private int? _skip;
@@ -53,6 +53,7 @@ namespace Sqlx
         private Type? _elementType;
         private string? _fromSubQuerySql;
         private bool _isDistinct;
+        private Dictionary<Expression, string>? _subQuerySqlCache;
 
         public SqlExpressionVisitor(
             SqlDialect dialect,
@@ -80,6 +81,41 @@ namespace Sqlx
         {
             Visit(expression);
             return BuildSql();
+        }
+
+        public bool CanBuildDirectAggregateQuery() =>
+            !_isDistinct &&
+            (_groupByExpressions?.Count ?? 0) == 0 &&
+            !_skip.HasValue &&
+            !_take.HasValue;
+
+        public string BuildCountSql()
+        {
+            var sb = _sharedBuilder ??= new StringBuilder(256);
+            sb.Clear();
+            sb.Append("SELECT ").Append(_dialect.Count());
+            AppendDirectAggregateBody(sb);
+            return sb.ToString();
+        }
+
+        public string BuildExistsSql()
+        {
+            var sb = _sharedBuilder ??= new StringBuilder(256);
+            sb.Clear();
+
+            if (_dialect.DatabaseType == "SqlServer")
+            {
+                sb.Append("SELECT ").Append(_dialect.Limit("1")).Append(" 1");
+                AppendDirectAggregateBody(sb);
+            }
+            else
+            {
+                sb.Append("SELECT 1");
+                AppendDirectAggregateBody(sb);
+                sb.Append(' ').Append(_dialect.Limit("1"));
+            }
+
+            return sb.ToString();
         }
 
         protected override Expression VisitConstant(ConstantExpression node)
@@ -135,7 +171,7 @@ namespace Sqlx
         {
             var predicate = GetLambda(node.Arguments.ElementAtOrDefault(1));
             if (predicate != null)
-                _whereConditions.Add(_parser.Parse(predicate.Body));
+                (_whereConditions ??= new List<string>(4)).Add(_parser.Parse(predicate.Body));
         }
 
         private void VisitSelect(MethodCallExpression node)
@@ -143,11 +179,12 @@ namespace Sqlx
             var selector = GetLambda(node.Arguments.ElementAtOrDefault(1));
             if (selector != null)
             {
-                _selectColumns.Clear();
-                if (_groupByExpressions.Count > 0)
-                    _parser.SetGroupByColumn(_groupByExpressions[0]);
-                _parser.ExtractColumns(selector.Body, _selectColumns);
-                UpdateColumnMapping(selector.Body, _selectColumns);
+                var selectColumns = _selectColumns ??= new List<string>(4);
+                selectColumns.Clear();
+                if ((_groupByExpressions?.Count ?? 0) > 0)
+                    _parser.SetGroupByColumn(_groupByExpressions![0]);
+                _parser.ExtractColumns(selector.Body, selectColumns);
+                UpdateColumnMapping(selector.Body, selectColumns);
             }
         }
 
@@ -155,7 +192,7 @@ namespace Sqlx
         {
             var keySelector = GetLambda(node.Arguments.ElementAtOrDefault(1));
             if (keySelector != null)
-                _orderByExpressions.Add($"{ResolveColumn(keySelector.Body)} {(ascending ? "ASC" : "DESC")}");
+                (_orderByExpressions ??= new List<string>(2)).Add($"{ResolveColumn(keySelector.Body)} {(ascending ? "ASC" : "DESC")}");
         }
 
         private void VisitTake(MethodCallExpression node) => _take = (node.Arguments.ElementAtOrDefault(1) as ConstantExpression)?.Value as int?;
@@ -167,14 +204,14 @@ namespace Sqlx
             _take = 1;
             var predicate = GetLambda(node.Arguments.ElementAtOrDefault(1));
             if (predicate != null)
-                _whereConditions.Add(_parser.Parse(predicate.Body));
+                (_whereConditions ??= new List<string>(4)).Add(_parser.Parse(predicate.Body));
         }
 
         private void VisitGroupBy(MethodCallExpression node)
         {
             var keySelector = GetLambda(node.Arguments.ElementAtOrDefault(1));
             if (keySelector != null)
-                _groupByExpressions.Add(ResolveColumn(keySelector.Body));
+                (_groupByExpressions ??= new List<string>(2)).Add(ResolveColumn(keySelector.Body));
         }
 
         private void VisitJoin(MethodCallExpression node, JoinType joinType)
@@ -191,10 +228,11 @@ namespace Sqlx
             var outerColumn = _parser.GetColumnName(outerKeySelector.Body);
             var innerColumn = _parser.GetColumnName(innerKeySelector.Body);
             
-            var alias = $"t{_joinClauses.Count + 2}";
+            var joinClauses = _joinClauses ??= new List<JoinClause>(2);
+            var alias = $"t{joinClauses.Count + 2}";
             var outerAlias = ResolveOuterAlias(outerKeySelector.Body);
 
-            _joinClauses.Add(new JoinClause(
+            joinClauses.Add(new JoinClause(
                 joinType,
                 innerTableName,
                 innerSubQuerySql,
@@ -204,8 +242,9 @@ namespace Sqlx
             var resultSelector = GetLambda(node.Arguments[4]);
             if (resultSelector != null)
             {
-                _selectColumns.Clear();
-                _parser.ExtractColumns(resultSelector.Body, _selectColumns);
+                var selectColumns = _selectColumns ??= new List<string>(4);
+                selectColumns.Clear();
+                _parser.ExtractColumns(resultSelector.Body, selectColumns);
                 UpdateJoinPropertyMapping(resultSelector, alias);
             }
         }
@@ -245,6 +284,11 @@ namespace Sqlx
         /// </summary>
         private string GenerateSubQuery(Expression expr, Type elementType)
         {
+            if (_subQuerySqlCache != null && _subQuerySqlCache.TryGetValue(expr, out var cached))
+            {
+                return cached;
+            }
+
             var entityProvider = EntityProviderResolver.ResolveOrCreate(elementType);
             var visitor = new SqlExpressionVisitor(
                 _dialect,
@@ -252,27 +296,29 @@ namespace Sqlx
                 entityProvider,
                 _parser.GroupByColumn,
                 _parameters);
-            
-            return visitor.GenerateSql(expr);
+
+            var sql = visitor.GenerateSql(expr);
+            (_subQuerySqlCache ??= new Dictionary<Expression, string>(ReferenceEqualityComparer<Expression>.Instance))[expr] = sql;
+            return sql;
         }
 
         private string ResolveColumn(Expression expr)
         {
             if (expr is MemberExpression m && m.Expression is ParameterExpression)
             {
-                if (_propertyColumnMap.TryGetValue(m.Member.Name, out var col))
+                if (_propertyColumnMap != null && _propertyColumnMap.TryGetValue(m.Member.Name, out var col))
                     return col;
             }
             return _parser.GetColumnName(expr);
         }
 
-        private string GetCurrentAlias(int offset = 0) => _fromSubQuerySql != null ? "sq" : (_joinClauses.Count == 0 ? "t1" : $"t{_joinClauses.Count + offset}");
+        private string GetCurrentAlias(int offset = 0) => _fromSubQuerySql != null ? "sq" : ((_joinClauses?.Count ?? 0) == 0 ? "t1" : $"t{_joinClauses!.Count + offset}");
 
         private string ResolveOuterAlias(Expression expr)
         {            
             if (expr is MemberExpression m && m.Expression is MemberExpression parent && parent.Expression is ParameterExpression)
             {
-                if (_propertyAliasMap.TryGetValue(parent.Member.Name, out var alias))
+                if (_propertyAliasMap != null && _propertyAliasMap.TryGetValue(parent.Member.Name, out var alias))
                     return alias;
             }
             return GetCurrentAlias(1);
@@ -292,11 +338,11 @@ namespace Sqlx
                 
                 if (arg is MemberExpression ma)
                 {
-                    _propertyColumnMap[name] = _parser.GetColumnName(ma);
+                    (_propertyColumnMap ??= new Dictionary<string, string>(4))[name] = _parser.GetColumnName(ma);
                 }
                 else if (!string.IsNullOrEmpty(extractedColumn))
                 {
-                    _propertyColumnMap[name] = extractedColumn;
+                    (_propertyColumnMap ??= new Dictionary<string, string>(4))[name] = extractedColumn;
                 }
             }
         }
@@ -323,16 +369,16 @@ namespace Sqlx
                 
                 if (arg is ParameterExpression p)
                 {
-                    _propertyAliasMap[name] = p.Name == innerParam ? innerAlias : outerAlias;
+                    (_propertyAliasMap ??= new Dictionary<string, string>(4))[name] = p.Name == innerParam ? innerAlias : outerAlias;
                 }
                 else if (arg is MemberExpression ma)
                 {
-                    if (ma.Expression is ParameterExpression && _propertyAliasMap.TryGetValue(ma.Member.Name, out var src))
-                        _propertyAliasMap[name] = src;
+                    if (ma.Expression is ParameterExpression && _propertyAliasMap != null && _propertyAliasMap.TryGetValue(ma.Member.Name, out var src))
+                        (_propertyAliasMap ??= new Dictionary<string, string>(4))[name] = src;
                     else
-                        _propertyAliasMap[name] = outerAlias;
+                        (_propertyAliasMap ??= new Dictionary<string, string>(4))[name] = outerAlias;
                     
-                    _propertyColumnMap[name] = _parser.GetColumnName(ma);
+                    (_propertyColumnMap ??= new Dictionary<string, string>(4))[name] = _parser.GetColumnName(ma);
                 }
             }
         }
@@ -353,9 +399,9 @@ namespace Sqlx
             sb.Append("SELECT ");
             if (_isDistinct) sb.Append("DISTINCT ");
 
-            if (_selectColumns.Count > 0)
+            if ((_selectColumns?.Count ?? 0) > 0)
             {
-                AppendJoined(sb, _selectColumns, ", ");
+                AppendJoined(sb, _selectColumns!, ", ");
             }
             else
             {
@@ -373,30 +419,42 @@ namespace Sqlx
             AppendJoinClauses(sb);
 
             // WHERE
-            if (_whereConditions.Count > 0)
+            if ((_whereConditions?.Count ?? 0) > 0)
             {
                 sb.Append(" WHERE ");
-                AppendJoined(sb, _whereConditions, " AND ");
+                AppendJoined(sb, _whereConditions!, " AND ");
             }
 
             // GROUP BY
-            if (_groupByExpressions.Count > 0)
+            if ((_groupByExpressions?.Count ?? 0) > 0)
             {
                 sb.Append(" GROUP BY ");
-                AppendJoined(sb, _groupByExpressions, ", ");
+                AppendJoined(sb, _groupByExpressions!, ", ");
             }
 
             // ORDER BY
-            if (_orderByExpressions.Count > 0)
+            if ((_orderByExpressions?.Count ?? 0) > 0)
             {
                 sb.Append(" ORDER BY ");
-                AppendJoined(sb, _orderByExpressions, ", ");
+                AppendJoined(sb, _orderByExpressions!, ", ");
             }
 
             // PAGINATION
             AppendPagination(sb);
 
             return sb.ToString();
+        }
+
+        private void AppendDirectAggregateBody(StringBuilder sb)
+        {
+            AppendFromClause(sb);
+            AppendJoinClauses(sb);
+
+            if ((_whereConditions?.Count ?? 0) > 0)
+            {
+                sb.Append(" WHERE ");
+                AppendJoined(sb, _whereConditions!, " AND ");
+            }
         }
 
         private IReadOnlyList<ColumnMeta> GetEntityColumns()
@@ -422,7 +480,7 @@ namespace Sqlx
             {
                 sb.Append(" FROM (").Append(_fromSubQuerySql).Append(") AS ").Append(_dialect.WrapColumn("sq"));
             }
-            else if (_joinClauses.Count > 0)
+            else if ((_joinClauses?.Count ?? 0) > 0)
             {
                 sb.Append(" FROM ").Append(tableName).Append(" AS ").Append(_dialect.WrapColumn("t1"));
             }
@@ -462,6 +520,11 @@ namespace Sqlx
 
         private void AppendJoinClauses(StringBuilder sb)
         {
+            if (_joinClauses == null)
+            {
+                return;
+            }
+
             foreach (var join in _joinClauses)
             {
                 sb.Append(' ').Append(JoinTypeNames[(int)join.JoinType]);

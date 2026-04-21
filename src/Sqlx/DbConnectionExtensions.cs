@@ -583,12 +583,12 @@ public static class DbConnectionExtensions
         PreparedSql prepared,
         DbTransaction? transaction)
     {
-        return DbExecutor.ExecuteReader(
+        return DbExecutor.ExecuteFirstOrDefault(
             connection,
             prepared.Sql,
             prepared.Parameters,
             ResolveResultReader<TResult>(),
-            transaction).FirstOrDefault();
+            transaction);
     }
 
     private static TResult ExecuteQuerySingle<TResult>(

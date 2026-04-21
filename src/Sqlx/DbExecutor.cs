@@ -202,6 +202,51 @@ namespace Sqlx
             }
         }
 
+        public static T? ExecuteFirstOrDefault<
+#if NET5_0_OR_GREATER
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
+#endif
+            T>(
+            DbConnection connection,
+            string sql,
+            IReadOnlyDictionary<string, object?>? parameters,
+            IResultReader<T> mapper,
+            DbTransaction? transaction = null)
+        {
+            var shouldCloseConnection = EnsureConnectionOpen(connection);
+
+            try
+            {
+                using var command = CreateCommand(connection, sql, parameters, transaction);
+                using var reader = command.ExecuteReader();
+                return reader.Read() ? mapper.Read(reader) : default;
+            }
+            finally
+            {
+                CloseConnection(connection, transaction, shouldCloseConnection);
+            }
+        }
+
+        public static T ExecuteFirst<
+#if NET5_0_OR_GREATER
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
+#endif
+            T>(
+            DbConnection connection,
+            string sql,
+            IReadOnlyDictionary<string, object?>? parameters,
+            IResultReader<T> mapper,
+            DbTransaction? transaction = null)
+        {
+            var result = ExecuteFirstOrDefault(connection, sql, parameters, mapper, transaction);
+            if (result is null)
+            {
+                throw new InvalidOperationException("Sequence contains no elements.");
+            }
+
+            return result;
+        }
+
         /// <summary>
         /// Executes a scalar query asynchronously and returns a single value.
         /// </summary>

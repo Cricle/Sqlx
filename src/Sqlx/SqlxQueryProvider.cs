@@ -140,13 +140,9 @@ namespace Sqlx
                 throw new InvalidOperationException("ResultReader is not set.");
 
             var (sql, parameters) = ToSqlWithParameters(methodCall);
-            var result = DbExecutor.ExecuteReader(
-                Connection!,
-                sql,
-                parameters,
-                (IResultReader<TResult>)ResultReader,
-                Transaction);
-            return throwIfEmpty ? result.First() : result.FirstOrDefault()!;
+            return throwIfEmpty
+                ? DbExecutor.ExecuteFirst(Connection!, sql, parameters, (IResultReader<TResult>)ResultReader, Transaction)
+                : DbExecutor.ExecuteFirstOrDefault(Connection!, sql, parameters, (IResultReader<TResult>)ResultReader, Transaction)!;
         }
 
         private TResult ExecuteCount<TResult>(MethodCallExpression methodCall)

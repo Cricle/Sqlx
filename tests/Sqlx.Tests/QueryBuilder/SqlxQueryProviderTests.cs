@@ -293,6 +293,40 @@ public class SqlxQueryProviderTests
     }
 
     [TestMethod]
+    public void Execute_FirstMethod_ReturnsEntityResult()
+    {
+        var queryable = new[] { new TestEntity() }.AsQueryable();
+        var expression = Expression.Call(
+            typeof(Queryable),
+            nameof(Queryable.First),
+            new[] { typeof(TestEntity) },
+            queryable.Expression);
+
+        var result = _provider.Execute<TestEntity>(expression);
+
+        Assert.IsNotNull(result);
+        Assert.AreEqual(1, result.Id);
+        Assert.AreEqual("Test", result.Name);
+    }
+
+    [TestMethod]
+    public void Execute_FirstOrDefaultMethod_ReturnsEntityResult()
+    {
+        var queryable = new[] { new TestEntity() }.AsQueryable();
+        var expression = Expression.Call(
+            typeof(Queryable),
+            nameof(Queryable.FirstOrDefault),
+            new[] { typeof(TestEntity) },
+            queryable.Expression);
+
+        var result = _provider.Execute<TestEntity>(expression);
+
+        Assert.IsNotNull(result);
+        Assert.AreEqual(1, result.Id);
+        Assert.AreEqual("Test", result.Name);
+    }
+
+    [TestMethod]
     public void ToSql_SimpleExpression_GeneratesSql()
     {
         // Arrange

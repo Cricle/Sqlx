@@ -79,9 +79,16 @@ namespace Sqlx
 
         public string GenerateSql(Expression expression)
         {
-            Visit(expression);
+            Analyze(expression);
             return BuildSql();
         }
+
+        public void Analyze(Expression expression)
+        {
+            Visit(expression);
+        }
+
+        public string BuildAnalyzedSql() => BuildSql();
 
         public bool CanBuildDirectAggregateQuery() =>
             !_isDistinct &&

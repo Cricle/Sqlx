@@ -63,6 +63,8 @@ internal interface IArrayOrdinalReader<TEntity>
 /// </summary>
 public static class ResultReaderExtensions
 {
+    private const int StackAllocOrdinalThreshold = 32;
+
     /// <summary>
     /// Reads the first entity or default if no rows.
     /// </summary>
@@ -114,13 +116,32 @@ public static class ResultReaderExtensions
             }
             else
             {
-                // Use stackalloc for better performance
-                Span<int> ordinals = stackalloc int[propCount];
-                reader.GetOrdinals(dataReader, ordinals);
-                
-                while (dataReader.Read())
+                if (propCount <= StackAllocOrdinalThreshold)
                 {
-                    list.Add(reader.Read(dataReader, ordinals));
+                    Span<int> ordinals = stackalloc int[propCount];
+                    reader.GetOrdinals(dataReader, ordinals);
+
+                    while (dataReader.Read())
+                    {
+                        list.Add(reader.Read(dataReader, ordinals));
+                    }
+                }
+                else
+                {
+                    var ordinals = ArrayPool<int>.Shared.Rent(propCount);
+                    try
+                    {
+                        reader.GetOrdinals(dataReader, ordinals.AsSpan(0, propCount));
+
+                        while (dataReader.Read())
+                        {
+                            list.Add(reader.Read(dataReader, ordinals));
+                        }
+                    }
+                    finally
+                    {
+                        ArrayPool<int>.Shared.Return(ordinals);
+                    }
                 }
             }
         }
@@ -165,13 +186,32 @@ public static class ResultReaderExtensions
             }
             else
             {
-                // Use stackalloc for better performance
-                Span<int> ordinals = stackalloc int[propCount];
-                reader.GetOrdinals(dataReader, ordinals);
-                
-                while (dataReader.Read())
+                if (propCount <= StackAllocOrdinalThreshold)
                 {
-                    list.Add(reader.Read(dataReader, ordinals));
+                    Span<int> ordinals = stackalloc int[propCount];
+                    reader.GetOrdinals(dataReader, ordinals);
+
+                    while (dataReader.Read())
+                    {
+                        list.Add(reader.Read(dataReader, ordinals));
+                    }
+                }
+                else
+                {
+                    var ordinals = ArrayPool<int>.Shared.Rent(propCount);
+                    try
+                    {
+                        reader.GetOrdinals(dataReader, ordinals.AsSpan(0, propCount));
+
+                        while (dataReader.Read())
+                        {
+                            list.Add(reader.Read(dataReader, ordinals));
+                        }
+                    }
+                    finally
+                    {
+                        ArrayPool<int>.Shared.Return(ordinals);
+                    }
                 }
             }
         }
@@ -220,17 +260,19 @@ public static class ResultReaderExtensions
             }
             else
             {
-                // Pre-compute ordinals once
-#if NETSTANDARD2_1
-                var ordinals = new int[propCount];
-#else
-                var ordinals = GC.AllocateUninitializedArray<int>(propCount);
-#endif
-                reader.GetOrdinals(dataReader, ordinals);
-
-                while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
+                var ordinals = ArrayPool<int>.Shared.Rent(propCount);
+                try
                 {
-                    list.Add(reader.Read(dataReader, ordinals));
+                    reader.GetOrdinals(dataReader, ordinals.AsSpan(0, propCount));
+
+                    while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
+                    {
+                        list.Add(reader.Read(dataReader, ordinals));
+                    }
+                }
+                finally
+                {
+                    ArrayPool<int>.Shared.Return(ordinals);
                 }
             }
         }
@@ -281,17 +323,19 @@ public static class ResultReaderExtensions
             }
             else
             {
-                // Pre-compute ordinals once
-#if NETSTANDARD2_1
-                var ordinals = new int[propCount];
-#else
-                var ordinals = GC.AllocateUninitializedArray<int>(propCount);
-#endif
-                reader.GetOrdinals(dataReader, ordinals);
-
-                while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
+                var ordinals = ArrayPool<int>.Shared.Rent(propCount);
+                try
                 {
-                    list.Add(reader.Read(dataReader, ordinals));
+                    reader.GetOrdinals(dataReader, ordinals.AsSpan(0, propCount));
+
+                    while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
+                    {
+                        list.Add(reader.Read(dataReader, ordinals));
+                    }
+                }
+                finally
+                {
+                    ArrayPool<int>.Shared.Return(ordinals);
                 }
             }
         }

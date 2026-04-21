@@ -525,6 +525,39 @@ namespace Sqlx.Tests
         }
 
         [TestMethod]
+        public async Task CountAsync_PaginatedQuery_UsesWrappedSubquerySql()
+        {
+            var connection = new CapturingDbConnection();
+            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(SqlDefine.SQLite))
+                .WithConnection(connection)
+                .OrderBy(u => u.Name)
+                .Skip(5)
+                .Take(10);
+
+            var count = await queryable.CountAsync();
+
+            Assert.AreEqual(1L, count);
+            Assert.IsNotNull(connection.LastCreatedCommand);
+            Assert.AreEqual("SELECT COUNT(*) FROM (SELECT [id], [name], [age], [email] FROM [User] ORDER BY [name] ASC LIMIT 10 OFFSET 5) AS q", connection.LastCreatedCommand.CommandText);
+        }
+
+        [TestMethod]
+        public async Task AnyAsync_DistinctQuery_UsesWrappedSubquerySql()
+        {
+            var connection = new CapturingDbConnection();
+            var queryable = new SqlxQueryable<User>(new SqlxQueryProvider<User>(SqlDefine.SQLite))
+                .WithConnection(connection)
+                .Select(u => u.Name)
+                .Distinct();
+
+            var any = await queryable.AnyAsync();
+
+            Assert.IsTrue(any);
+            Assert.IsNotNull(connection.LastCreatedCommand);
+            Assert.AreEqual("SELECT 1 FROM (SELECT DISTINCT [name] FROM [User]) AS q", connection.LastCreatedCommand.CommandText);
+        }
+
+        [TestMethod]
         public void Any_SimpleQuery_UsesDirectExistsSql()
         {
             var connection = new CapturingDbConnection();

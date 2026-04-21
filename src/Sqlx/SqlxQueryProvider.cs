@@ -243,7 +243,7 @@ namespace Sqlx
         internal (string Sql, IReadOnlyDictionary<string, object?> Parameters) ToCountQuery(Expression expression)
         {
             var visitor = new SqlExpressionVisitor(Dialect, parameterized: true, EntityProvider);
-            var sql = visitor.GenerateSql(expression);
+            visitor.Analyze(expression);
 
             var parameters = visitor.GetParameters();
             if (visitor.CanBuildDirectAggregateQuery())
@@ -251,13 +251,14 @@ namespace Sqlx
                 return (visitor.BuildCountSql(), parameters);
             }
 
+            var sql = visitor.BuildAnalyzedSql();
             return ($"SELECT COUNT(*) FROM ({sql}) AS q", parameters);
         }
 
         internal (string Sql, IReadOnlyDictionary<string, object?> Parameters) ToExistsQuery(Expression expression)
         {
             var visitor = new SqlExpressionVisitor(Dialect, parameterized: true, EntityProvider);
-            var sql = visitor.GenerateSql(expression);
+            visitor.Analyze(expression);
 
             var parameters = visitor.GetParameters();
             if (visitor.CanBuildDirectAggregateQuery())
@@ -265,6 +266,7 @@ namespace Sqlx
                 return (visitor.BuildExistsSql(), parameters);
             }
 
+            var sql = visitor.BuildAnalyzedSql();
             return ($"SELECT 1 FROM ({sql}) AS q", parameters);
         }
 

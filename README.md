@@ -1070,50 +1070,59 @@ using var meterProvider = Sdk.CreateMeterProviderBuilder()
 
 ## 性能对比
 
-基于 BenchmarkDotNet 测试（.NET 10.0.2 LTS，SQLite 内存数据库）：
+基于 BenchmarkDotNet 测试（.NET 10.0.5 LTS，SQLite 内存数据库，Intel Xeon Platinum 8457C）：
 
 ### 单行查询性能
 
 | ORM | Mean | vs Sqlx | Allocated | vs Sqlx |
-|-----|------|---------|-----------|---------|
-| **Sqlx** | **9.447 μs** | baseline | **2.85 KB** | baseline |
-| Dapper.AOT | 10.040 μs | +6.3% | 2.66 KB | -6.7% |
-| FreeSql | 55.817 μs | +491% | 10.17 KB | +257% |
+|-----|-----:|--------:|----------:|--------:|
+| **Sqlx** | **10.52 μs** | baseline | **2.88 KB** | baseline |
+| Dapper.AOT | 11.51 μs | +8.6% | 2.66 KB | -7.6% |
+| FreeSql | 27.69 μs | +163% | 10.24 KB | +255% |
 
 ### 批量查询性能（不同数据量）
 
 #### 10 行数据
 
 | ORM | Mean | vs Sqlx | Allocated | vs Sqlx |
-|-----|------|---------|-----------|---------|
-| Dapper.AOT | 31.58 μs | -5.0% | 6.55 KB | +6.9% |
-| **Sqlx** | **33.25 μs** | baseline | **6.13 KB** | baseline |
-| FreeSql | 34.63 μs | +4.1% | 8.67 KB | +41.4% |
+|-----|-----:|--------:|----------:|--------:|
+| FreeSql | 38.51 μs | -1.6% | 8.67 KB | +40.7% |
+| **Sqlx** | **39.14 μs** | baseline | **6.16 KB** | baseline |
+| Dapper.AOT | 39.53 μs | +1.0% | 6.55 KB | +6.3% |
 
 #### 100 行数据
 
 | ORM | Mean | vs Sqlx | Allocated | vs Sqlx |
-|-----|------|---------|-----------|---------|
-| FreeSql | 151.15 μs | -14.4% | 37.23 KB | -3.2% |
-| Dapper.AOT | 162.24 μs | -8.1% | 45.66 KB | +18.8% |
-| **Sqlx** | **176.54 μs** | baseline | **38.45 KB** | baseline |
+|-----|-----:|--------:|----------:|--------:|
+| Dapper.AOT | 246.23 μs | -1.3% | 45.66 KB | +18.7% |
+| **Sqlx** | **249.45 μs** | baseline | **38.48 KB** | baseline |
+| FreeSql | 250.43 μs | +0.4% | 37.22 KB | -3.3% |
 
 #### 1000 行数据
 
 | ORM | Mean | vs Sqlx | Allocated | vs Sqlx | Gen1 GC |
-|-----|------|---------|-----------|---------|---------|
-| FreeSql | 1,290.47 μs | -19.2% | 318.56 KB | -11.9% | 9.77 |
-| Dapper.AOT | 1,433.50 μs | -10.2% | 432.38 KB | +19.5% | 23.44 |
-| **Sqlx** | **1,596.93 μs** | baseline | **361.69 KB** | baseline | **19.53** |
+|-----|-----:|--------:|----------:|--------:|--------:|
+| FreeSql | 2,311.99 μs | -5.7% | 318.49 KB | -11.9% | 3.91 |
+| Dapper.AOT | 2,368.24 μs | -3.4% | 432.38 KB | +19.5% | 7.81 |
+| **Sqlx** | **2,452.30 μs** | baseline | **361.73 KB** | baseline | **3.91** |
+
+### Sqlx vs EF Core
+
+| 场景 | Sqlx | Dapper.AOT | EF Core | Sqlx vs EF Core |
+|------|-----:|-----------:|--------:|:---------------:|
+| Count | **3.65 μs** | 3.61 μs | 34.31 μs | **快 9.4×** |
+| GetById | **10.78 μs** | 11.71 μs | 45.97 μs | **快 4.3×** |
+| GetList(10) | **44.27 μs** | 44.80 μs | 87.40 μs | **快 2.0×** |
+| GetList(100) | **272.24 μs** | 276.97 μs | 339.86 μs | **快 25%** |
 
 **关键洞察**：
-- ✅ **单行查询最快** - Sqlx 比 Dapper.AOT 快 6.3%，比 FreeSql 快 5.9倍
+- ✅ **单行查询最快** - Sqlx 比 Dapper.AOT 快 8.6%，比 FreeSql 快 2.6倍
 - ✅ **内存效率高** - 比 Dapper.AOT 少分配 16.4% 内存（1000行）
-- ✅ **GC 压力低** - Gen1 GC 比 Dapper.AOT 低 16.7%，比 FreeSql 低 50%
+- ✅ **GC 压力低** - Gen1 GC 比 Dapper.AOT 低 50%，比 FreeSql 持平
 - ✅ **小数据集优势** - 在 Web API 主要场景（10-100行）中性能最优
 - ✅ **映射层优化有效** - 纯映射 benchmark 中，generated cached ordinals 比 uncached ordinals 快约 4.6 倍
 - ✅ **动态投影更快** - DynamicResultReader 的 array fast path 比 span fallback 快约 24%
-- ⚠️ **大数据集权衡** - 1000行时比 FreeSql 慢 19.2%，但内存和 GC 更优
+- ⚠️ **大数据集权衡** - 1000行时比 FreeSql 慢 5.7%，但内存和 GC 更优
 
 **补充说明：**
 - 纯映射 benchmark 更能反映 ResultReader 和 ordinals 优化本身

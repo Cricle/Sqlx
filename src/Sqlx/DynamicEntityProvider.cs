@@ -6,6 +6,7 @@ namespace Sqlx;
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Data;
 using System.Linq;
 using System.Reflection;
@@ -48,15 +49,8 @@ internal sealed class DynamicEntityProvider<
 
     private static string GetColumnName(PropertyInfo prop)
     {
-        // Check for Column attribute
-        var columnAttr = prop.GetCustomAttributes()
-            .FirstOrDefault(a => a.GetType().Name == "ColumnAttribute");
-        if (columnAttr != null)
-        {
-            var nameProp = columnAttr.GetType().GetProperty("Name");
-            if (nameProp?.GetValue(columnAttr) is string name && !string.IsNullOrEmpty(name))
-                return name;
-        }
+        var columnAttr = prop.GetCustomAttribute<ColumnAttribute>();
+        if (columnAttr?.Name is { Length: > 0 } name) return name;
         return ExpressionHelper.ConvertToSnakeCase(prop.Name);
     }
 
@@ -92,12 +86,11 @@ internal sealed class DynamicEntityProvider<
     private static bool IsNullable(PropertyInfo prop)
     {
         if (prop.PropertyType.IsValueType)
-        {
             return Nullable.GetUnderlyingType(prop.PropertyType) != null;
-        }
-        // Reference types - check nullable annotation
-        var nullableAttr = prop.CustomAttributes
-            .FirstOrDefault(a => a.AttributeType.Name == "NullableAttribute");
-        return nullableAttr != null;
+#if NET6_0_OR_GREATER
+        return new NullabilityInfoContext().Create(prop).WriteState == NullabilityState.Nullable;
+#else
+        return prop.CustomAttributes.Any(a => a.AttributeType.Name == "NullableAttribute");
+#endif
     }
 }

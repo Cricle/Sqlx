@@ -84,7 +84,7 @@ namespace Sqlx
         /// <summary>
         /// Handles a repository async failure and returns null when the caller should retry.
         /// </summary>
-        public static async Task<SqlxException?> HandleFailureAndRetryAsync(
+        public static Task<SqlxException?> HandleFailureAndRetryAsync(
             Exception ex,
             SqlxContextOptions? options,
             string methodName,
@@ -93,32 +93,7 @@ namespace Sqlx
             DbTransaction? transaction,
             TimeSpan duration,
             int attemptCount)
-        {
-            var sqlxEx = CreateSqlxException(
-                ex,
-                methodName,
-                sql,
-                ExtractParameters(parameters),
-                duration,
-                transaction);
-
-            await NotifyFailureAsync(sqlxEx, options, attemptCount).ConfigureAwait(false);
-
-            if (!ShouldRetry(options, ex, attemptCount, out var delay))
-            {
-                return sqlxEx;
-            }
-
-            options!.Logger?.LogWarning(
-                "Retrying operation {MethodName} after {Delay}ms (attempt {Attempt}/{MaxAttempts})",
-                methodName,
-                delay.TotalMilliseconds,
-                attemptCount,
-                options.MaxRetryCount);
-
-            await Task.Delay(delay).ConfigureAwait(false);
-            return null;
-        }
+            => HandleFailureAndRetryAsync(ex, options, methodName, sql, ExtractParameters(parameters), duration, transaction, attemptCount);
 
         private static async Task<SqlxException?> HandleFailureAndRetryAsync(
             Exception ex,
@@ -130,27 +105,15 @@ namespace Sqlx
             DbTransaction? transaction,
             int attemptCount)
         {
-            var sqlxEx = CreateSqlxException(
-                ex,
-                methodName,
-                sql,
-                parameters,
-                duration,
-                transaction);
-
+            var sqlxEx = CreateSqlxException(ex, methodName, sql, parameters, duration, transaction);
             await NotifyFailureAsync(sqlxEx, options, attemptCount).ConfigureAwait(false);
 
             if (!ShouldRetry(options, ex, attemptCount, out var delay))
-            {
                 return sqlxEx;
-            }
 
             options!.Logger?.LogWarning(
                 "Retrying operation {MethodName} after {Delay}ms (attempt {Attempt}/{MaxAttempts})",
-                methodName,
-                delay.TotalMilliseconds,
-                attemptCount,
-                options.MaxRetryCount);
+                methodName, delay.TotalMilliseconds, attemptCount, options.MaxRetryCount);
 
             await Task.Delay(delay).ConfigureAwait(false);
             return null;
@@ -169,27 +132,15 @@ namespace Sqlx
             TimeSpan duration,
             int attemptCount)
         {
-            var sqlxEx = CreateSqlxException(
-                ex,
-                methodName,
-                sql,
-                ExtractParameters(parameters),
-                duration,
-                transaction);
-
+            var sqlxEx = CreateSqlxException(ex, methodName, sql, ExtractParameters(parameters), duration, transaction);
             NotifyFailure(sqlxEx, options, attemptCount);
 
             if (!ShouldRetry(options, ex, attemptCount, out var delay))
-            {
                 return sqlxEx;
-            }
 
             options!.Logger?.LogWarning(
                 "Retrying operation {MethodName} after {Delay}ms (attempt {Attempt}/{MaxAttempts})",
-                methodName,
-                delay.TotalMilliseconds,
-                attemptCount,
-                options.MaxRetryCount);
+                methodName, delay.TotalMilliseconds, attemptCount, options.MaxRetryCount);
 
             Thread.Sleep(delay);
             return null;

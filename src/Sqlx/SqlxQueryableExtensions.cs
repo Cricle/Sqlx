@@ -193,10 +193,10 @@ namespace Sqlx
             var provider = (SqlxQueryProvider<T>)sqlxQuery.Provider;
             var (sql, parameters) = provider.ToSqlWithParameters(query.Expression);
 
-            var shouldCloseConnection = await EnsureConnectionOpenAsync(connection, cancellationToken).ConfigureAwait(false);
+            var shouldCloseConnection = await DbExecutor.EnsureConnectionOpenAsync(connection, cancellationToken).ConfigureAwait(false);
             try
             {
-                await using var command = CreateCommand(connection, sql, parameters, sqlxQuery.Transaction);
+                await using var command = DbExecutor.CreateCommand(connection, sql, parameters, sqlxQuery.Transaction);
                 await using var dbReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
 
                 var capacityHint = TryGetTakeCount(query.Expression);
@@ -206,7 +206,7 @@ namespace Sqlx
             }
             finally
             {
-                CloseConnectionIfNeeded(connection, sqlxQuery.Transaction, shouldCloseConnection);
+                DbExecutor.CloseConnection(connection, sqlxQuery.Transaction, shouldCloseConnection);
             }
         }
 
@@ -233,16 +233,16 @@ namespace Sqlx
             var provider = (SqlxQueryProvider<T>)sqlxQuery.Provider;
             var (sql, parameters) = provider.ToSqlWithParameters(query.Expression);
 
-            var shouldCloseConnection = await EnsureConnectionOpenAsync(connection, cancellationToken).ConfigureAwait(false);
+            var shouldCloseConnection = await DbExecutor.EnsureConnectionOpenAsync(connection, cancellationToken).ConfigureAwait(false);
             try
             {
-                await using var command = CreateCommand(connection, sql, parameters, sqlxQuery.Transaction);
+                await using var command = DbExecutor.CreateCommand(connection, sql, parameters, sqlxQuery.Transaction);
                 await using var dbReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
                 return await reader.FirstOrDefaultAsync(dbReader, cancellationToken).ConfigureAwait(false);
             }
             finally
             {
-                CloseConnectionIfNeeded(connection, sqlxQuery.Transaction, shouldCloseConnection);
+                DbExecutor.CloseConnection(connection, sqlxQuery.Transaction, shouldCloseConnection);
             }
         }
 
@@ -334,89 +334,13 @@ namespace Sqlx
                 ?? throw new InvalidOperationException("The provided transaction is not associated with a connection.");
 
             if (connection != null && !ReferenceEquals(connection, transactionConnection))
-            {
-                throw new InvalidOperationException(
-                    "The provided transaction belongs to a different connection than the query.");
-            }
+                throw new InvalidOperationException("The provided transaction belongs to a different connection than the query.");
         }
 
         private static void EnsureConnectionMatchesTransaction(DbTransaction? transaction, DbConnection connection)
         {
             if (transaction?.Connection != null && !ReferenceEquals(transaction.Connection, connection))
-            {
-                throw new InvalidOperationException(
-                    "The provided connection does not match the query transaction connection.");
-            }
-        }
-
-        private static DbCommand CreateCommand(
-            DbConnection connection,
-            string sql,
-            IReadOnlyDictionary<string, object?> parameters,
-            DbTransaction? transaction)
-        {
-            var command = connection.CreateCommand();
-            command.CommandText = sql;
-            if (transaction != null)
-            {
-                command.Transaction = transaction;
-            }
-
-            if (parameters.Count > 0)
-            {
-                AddParameters(command, parameters);
-            }
-
-            return command;
-        }
-
-        private static void AddParameters(
-            DbCommand command,
-            IReadOnlyDictionary<string, object?> parameters)
-        {
-            if (parameters is Dictionary<string, object?> dictionary)
-            {
-                foreach (var parameter in dictionary)
-                {
-                    AddParameter(command, parameter.Key, parameter.Value);
-                }
-
-                return;
-            }
-
-            foreach (var parameter in parameters)
-            {
-                AddParameter(command, parameter.Key, parameter.Value);
-            }
-        }
-
-        private static void AddParameter(DbCommand command, string name, object? value)
-        {
-            var dbParameter = command.CreateParameter();
-            dbParameter.ParameterName = name;
-            dbParameter.Value = value ?? DBNull.Value;
-            command.Parameters.Add(dbParameter);
-        }
-
-        private static async Task<bool> EnsureConnectionOpenAsync(DbConnection connection, CancellationToken cancellationToken)
-        {
-            if (connection.State == System.Data.ConnectionState.Open)
-            {
-                return false;
-            }
-
-            await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-            return true;
-        }
-
-        private static void CloseConnectionIfNeeded(DbConnection connection, DbTransaction? transaction, bool shouldCloseConnection)
-        {
-            if (shouldCloseConnection &&
-                transaction == null &&
-                connection.State != System.Data.ConnectionState.Closed)
-            {
-                connection.Close();
-            }
+                throw new InvalidOperationException("The provided connection does not match the query transaction connection.");
         }
 
         private static int? TryGetTakeCount(Expression expression)
@@ -426,16 +350,11 @@ namespace Sqlx
                 if (string.Equals(call.Method.Name, "Take", StringComparison.Ordinal) &&
                     call.Arguments.Count > 1 &&
                     call.Arguments[1] is ConstantExpression { Value: int takeCount })
-                {
                     return takeCount;
-                }
 
                 if (call.Arguments.Count > 0)
-                {
                     return TryGetTakeCount(call.Arguments[0]);
-                }
             }
-
             return null;
         }
     }

@@ -7,36 +7,12 @@ namespace Sqlx;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 
 /// <summary>
 /// Base class for placeholder handlers providing common option parsing functionality.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Placeholder handlers process SQL template placeholders like <c>{{columns}}</c> or <c>{{limit --count 10}}</c>.
-/// </para>
-/// <para>
-/// Supported options:
-/// </para>
-/// <list type="bullet">
-/// <item><description><c>--param name</c> - Specifies a dynamic parameter name</description></item>
-/// <item><description><c>--count n</c> - Specifies a static count value</description></item>
-/// <item><description><c>--exclude col1,col2</c> - Excludes specified columns</description></item>
-/// <item><description><c>--name alias</c> - Specifies an alias name</description></item>
-/// <item><description><c>--from source</c> - Specifies a source parameter</description></item>
-/// </list>
-/// </remarks>
-#if NET7_0_OR_GREATER
-public abstract partial class PlaceholderHandlerBase : IPlaceholderHandler
-#else
 public abstract class PlaceholderHandlerBase : IPlaceholderHandler
-#endif
 {
-#if !NET7_0_OR_GREATER
-    private static readonly Regex OptionRegex = new(@"--(\w+)\s+(\S+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    private static readonly Regex ConditionRegex = new(@"(\w+)=(\w+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-#endif
 
     /// <inheritdoc/>
     public abstract string Name { get; }
@@ -60,13 +36,31 @@ public abstract class PlaceholderHandlerBase : IPlaceholderHandler
     protected static string? ParseOption(string options, string optionName)
     {
         if (string.IsNullOrEmpty(options)) return null;
-        var matches = GenericOptionRegex().Matches(options);
-        foreach (Match m in matches)
+
+        // Manual parse of "--optionName value" to avoid Regex allocation
+        var search = "--" + optionName;
+        var i = 0;
+        while (i < options.Length)
         {
-            if (string.Equals(m.Groups[1].Value, optionName, StringComparison.OrdinalIgnoreCase))
+            var idx = options.IndexOf(search, i, StringComparison.OrdinalIgnoreCase);
+            if (idx < 0) return null;
+
+            // Ensure it's a word boundary (not part of a longer option name)
+            var afterOption = idx + search.Length;
+            if (afterOption < options.Length && (char.IsLetterOrDigit(options[afterOption]) || options[afterOption] == '_'))
             {
-                return m.Groups[2].Value;
+                i = afterOption;
+                continue;
             }
+
+            // Skip whitespace after option name
+            while (afterOption < options.Length && options[afterOption] == ' ') afterOption++;
+            if (afterOption >= options.Length) return null;
+
+            // Read value until whitespace or end
+            var valueStart = afterOption;
+            while (afterOption < options.Length && options[afterOption] != ' ') afterOption++;
+            return options.Substring(valueStart, afterOption - valueStart);
         }
 
         return null;
@@ -81,13 +75,32 @@ public abstract class PlaceholderHandlerBase : IPlaceholderHandler
     protected static string? ParseCondition(string options, string conditionName)
     {
         if (string.IsNullOrEmpty(options)) return null;
-        var matches = GenericConditionRegex().Matches(options);
-        foreach (Match m in matches)
+
+        // Manual parse of "conditionName=value"
+        var i = 0;
+        while (i < options.Length)
         {
-            if (string.Equals(m.Groups[1].Value, conditionName, StringComparison.OrdinalIgnoreCase))
+            var idx = options.IndexOf(conditionName, i, StringComparison.OrdinalIgnoreCase);
+            if (idx < 0) return null;
+
+            // Ensure word boundary before
+            if (idx > 0 && (char.IsLetterOrDigit(options[idx - 1]) || options[idx - 1] == '_'))
             {
-                return m.Groups[2].Value;
+                i = idx + 1;
+                continue;
             }
+
+            var afterName = idx + conditionName.Length;
+            if (afterName >= options.Length || options[afterName] != '=')
+            {
+                i = afterName;
+                continue;
+            }
+
+            var valueStart = afterName + 1;
+            var valueEnd = valueStart;
+            while (valueEnd < options.Length && options[valueEnd] != ' ' && options[valueEnd] != ',') valueEnd++;
+            return options.Substring(valueStart, valueEnd - valueStart);
         }
 
         return null;
@@ -290,15 +303,4 @@ public abstract class PlaceholderHandlerBase : IPlaceholderHandler
             throw new InvalidOperationException($"Parameter '{name}' not provided.");
         return value;
     }
-
-#if NET7_0_OR_GREATER
-    [GeneratedRegex(@"--(\w+)\s+(\S+)", RegexOptions.IgnoreCase)]
-    private static partial Regex GenericOptionRegex();
-
-    [GeneratedRegex(@"(\w+)=(\w+)", RegexOptions.IgnoreCase)]
-    private static partial Regex GenericConditionRegex();
-#else
-    private static Regex GenericOptionRegex() => OptionRegex;
-    private static Regex GenericConditionRegex() => ConditionRegex;
-#endif
 }

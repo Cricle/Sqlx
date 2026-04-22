@@ -40,13 +40,15 @@ namespace Sqlx
     /// </summary>
     internal sealed class SubQueryable<T> : IQueryable<T>
     {
+        private static readonly Expression ForCallExpression = Expression.Call(
+            typeof(SubQuery).GetMethod(nameof(SubQuery.For))!.MakeGenericMethod(typeof(T)));
+
         private readonly SubQueryProvider _provider;
 
         public SubQueryable()
         {
             _provider = new SubQueryProvider(typeof(T));
-            Expression = Expression.Call(
-                typeof(SubQuery).GetMethod(nameof(SubQuery.For))!.MakeGenericMethod(typeof(T)));
+            Expression = ForCallExpression;
         }
 
         internal SubQueryable(SubQueryProvider provider, Expression expression)

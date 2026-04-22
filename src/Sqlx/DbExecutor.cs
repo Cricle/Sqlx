@@ -393,29 +393,21 @@ namespace Sqlx
 
         private static bool EnsureConnectionOpen(DbConnection connection)
         {
-            if (connection.State == ConnectionState.Open)
-            {
-                return false;
-            }
-
+            if (connection.State == ConnectionState.Open) return false;
             connection.Open();
             return true;
         }
 
-        private static async Task<bool> EnsureConnectionOpenAsync(
+        internal static async Task<bool> EnsureConnectionOpenAsync(
             DbConnection connection,
             CancellationToken cancellationToken)
         {
-            if (connection.State == ConnectionState.Open)
-            {
-                return false;
-            }
-
+            if (connection.State == ConnectionState.Open) return false;
             await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
             return true;
         }
 
-        private static void CloseConnection(
+        internal static void CloseConnection(
             DbConnection connection,
             DbTransaction? transaction,
             bool shouldCloseConnection)
@@ -423,7 +415,7 @@ namespace Sqlx
             if (shouldCloseConnection && transaction == null && connection.State != ConnectionState.Closed) connection.Close();
         }
 
-        private static DbCommand CreateCommand(
+        internal static DbCommand CreateCommand(
             DbConnection connection,
             string sql,
             IReadOnlyDictionary<string, object?>? parameters,
@@ -431,16 +423,8 @@ namespace Sqlx
         {
             var command = connection.CreateCommand();
             command.CommandText = sql;
-            if (transaction != null)
-            {
-                command.Transaction = transaction;
-            }
-
-            if (parameters != null && parameters.Count > 0)
-            {
-                AddParameters(command, parameters);
-            }
-
+            if (transaction != null) command.Transaction = transaction;
+            if (parameters != null && parameters.Count > 0) AddParameters(command, parameters);
             return command;
         }
 
@@ -452,16 +436,8 @@ namespace Sqlx
         {
             var command = connection.CreateCommand();
             command.CommandText = sql;
-            if (transaction != null)
-            {
-                command.Transaction = transaction;
-            }
-
-            if (parameters != null)
-            {
-                AddParameters(command, parameters);
-            }
-
+            if (transaction != null) command.Transaction = transaction;
+            if (parameters != null) AddParameters(command, parameters);
             return command;
         }
 
@@ -469,36 +445,16 @@ namespace Sqlx
             DbCommand command,
             IReadOnlyDictionary<string, object?> parameters)
         {
-            if (parameters is Dictionary<string, object?> dictionary)
-            {
-                foreach (var parameter in dictionary)
-                {
-                    AddParameter(command, parameter.Key, parameter.Value);
-                }
-
-                return;
-            }
-
             foreach (var parameter in parameters)
-            {
                 AddParameter(command, parameter.Key, parameter.Value);
-            }
         }
 
         private static void AddParameters(
             DbCommand command,
             IEnumerable<KeyValuePair<string, object?>> parameters)
         {
-            if (parameters is IReadOnlyDictionary<string, object?> dictionary)
-            {
-                AddParameters(command, dictionary);
-                return;
-            }
-
             foreach (var parameter in parameters)
-            {
                 AddParameter(command, parameter.Key, parameter.Value);
-            }
         }
 
         private static void AddParameter(DbCommand command, string name, object? value)

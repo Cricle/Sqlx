@@ -182,76 +182,23 @@ public static class PlaceholderProcessor
         switch (state)
         {
             case ExtractState.SingleQuotedString:
-                if (current == '\'')
-                {
-                    if (hasNext && next == '\'')
-                    {
-                        index++;
-                    }
-                    else
-                    {
-                        state = ExtractState.None;
-                    }
-                }
+                if (current == '\'') { if (hasNext && next == '\'') index++; else state = ExtractState.None; }
                 return true;
-
             case ExtractState.DoubleQuotedIdentifier:
-                if (current == '"')
-                {
-                    if (hasNext && next == '"')
-                    {
-                        index++;
-                    }
-                    else
-                    {
-                        state = ExtractState.None;
-                    }
-                }
+                if (current == '"') { if (hasNext && next == '"') index++; else state = ExtractState.None; }
                 return true;
-
             case ExtractState.BacktickIdentifier:
-                if (current == '`')
-                {
-                    if (hasNext && next == '`')
-                    {
-                        index++;
-                    }
-                    else
-                    {
-                        state = ExtractState.None;
-                    }
-                }
+                if (current == '`') { if (hasNext && next == '`') index++; else state = ExtractState.None; }
                 return true;
-
             case ExtractState.BracketIdentifier:
-                if (current == ']')
-                {
-                    if (hasNext && next == ']')
-                    {
-                        index++;
-                    }
-                    else
-                    {
-                        state = ExtractState.None;
-                    }
-                }
+                if (current == ']') { if (hasNext && next == ']') index++; else state = ExtractState.None; }
                 return true;
-
             case ExtractState.LineComment:
-                if (current is '\r' or '\n')
-                {
-                    state = ExtractState.None;
-                }
+                if (current is '\r' or '\n') state = ExtractState.None;
                 return true;
-
             case ExtractState.BlockComment:
-                if (current == '*' && hasNext && next == '/')
-                {
-                    state = ExtractState.None;
-                    index++;
-                }
+                if (current == '*' && hasNext && next == '/') { state = ExtractState.None; index++; }
                 return true;
-
             case ExtractState.DollarQuotedString:
                 if (dollarQuotedDelimiter != null &&
                     index + dollarQuotedDelimiter.Length <= sql.Length &&
@@ -264,44 +211,12 @@ public static class PlaceholderProcessor
                 return true;
         }
 
-        if (current == '\'')
-        {
-            state = ExtractState.SingleQuotedString;
-            return true;
-        }
-
-        if (current == '"')
-        {
-            state = ExtractState.DoubleQuotedIdentifier;
-            return true;
-        }
-
-        if (current == '`')
-        {
-            state = ExtractState.BacktickIdentifier;
-            return true;
-        }
-
-        if (current == '[')
-        {
-            state = ExtractState.BracketIdentifier;
-            return true;
-        }
-
-        if (current == '-' && hasNext && next == '-')
-        {
-            state = ExtractState.LineComment;
-            index++;
-            return true;
-        }
-
-        if (current == '/' && hasNext && next == '*')
-        {
-            state = ExtractState.BlockComment;
-            index++;
-            return true;
-        }
-
+        if (current == '\'') { state = ExtractState.SingleQuotedString; return true; }
+        if (current == '"') { state = ExtractState.DoubleQuotedIdentifier; return true; }
+        if (current == '`') { state = ExtractState.BacktickIdentifier; return true; }
+        if (current == '[') { state = ExtractState.BracketIdentifier; return true; }
+        if (current == '-' && hasNext && next == '-') { state = ExtractState.LineComment; index++; return true; }
+        if (current == '/' && hasNext && next == '*') { state = ExtractState.BlockComment; index++; return true; }
         if (current == '$' && TryGetDollarQuotedDelimiter(sql, index, out var delimiter))
         {
             state = ExtractState.DollarQuotedString;

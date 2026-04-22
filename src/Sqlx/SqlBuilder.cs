@@ -525,41 +525,18 @@ public sealed class SqlBuilder : IDisposable
 
     private string GenerateUniqueParameterName()
     {
-        return GenerateUniqueParameterName(_parameters.Keys);
+        string candidate;
+        do { candidate = $"p{_parameterCounter++}"; }
+        while (_parameters.ContainsKey(candidate));
+        return candidate;
     }
 
-    private string GenerateUniqueParameterName(IEnumerable<string> reservedNames)
+    private string GenerateUniqueParameterName(ISet<string> reservedNames)
     {
-        var reserved = reservedNames as ISet<string>;
-        while (true)
-        {
-            var candidate = $"p{_parameterCounter++}";
-            if (_parameters.ContainsKey(candidate))
-            {
-                continue;
-            }
-
-            if (reserved != null)
-            {
-                if (!reserved.Contains(candidate))
-                    return candidate;
-
-                continue;
-            }
-
-            var exists = false;
-            foreach (var reservedName in reservedNames)
-            {
-                if (string.Equals(reservedName, candidate, StringComparison.Ordinal))
-                {
-                    exists = true;
-                    break;
-                }
-            }
-
-            if (!exists)
-                return candidate;
-        }
+        string candidate;
+        do { candidate = $"p{_parameterCounter++}"; }
+        while (_parameters.ContainsKey(candidate) || reservedNames.Contains(candidate));
+        return candidate;
     }
 
     private static string RewriteParameterPlaceholders(
@@ -635,58 +612,44 @@ public sealed class SqlBuilder : IDisposable
     /// Cache for reflection-based parameter conversion.
     /// Uses compiled expression trees for high-performance property access.
     /// </summary>
+    // Shared across all ParameterCache<T> instances
+    private static readonly MethodInfo DictSetItemMethod =
+        typeof(Dictionary<string, object?>).GetMethod("set_Item", [typeof(string), typeof(object)])!;
+
     private static class ParameterCache<
 #if NET5_0_OR_GREATER
         [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicProperties)]
 #endif
         T>
     {
-        private static readonly Action<T, Dictionary<string, object?>>? Populator;
+        private static readonly Action<T, Dictionary<string, object?>> Populator;
 
         static ParameterCache()
         {
             var type = typeof(T);
             var properties = type.GetProperties();
-            
-            if (properties.Length == 0)
-            {
-                Populator = null;
-                return;
-            }
 
-            // Build expression tree: (obj, dict) => { dict["prop1"] = obj.prop1; dict["prop2"] = obj.prop2; ... }
+            if (properties.Length == 0) { Populator = static (_, _) => { }; return; }
+
             var objParameter = Expression.Parameter(type, "obj");
             var dictParameter = Expression.Parameter(typeof(Dictionary<string, object?>), "dict");
-            
-            // Get the indexer property (Item[string])
-            var indexer = typeof(Dictionary<string, object?>).GetProperty("Item");
-            if (indexer == null)
+            var assignments = new Expression[properties.Length];
+
+            for (var i = 0; i < properties.Length; i++)
             {
-                Populator = null;
-                return;
+                var prop = properties[i];
+                assignments[i] = Expression.Call(
+                    dictParameter,
+                    DictSetItemMethod,
+                    Expression.Constant(prop.Name),
+                    Expression.Convert(Expression.Property(objParameter, prop), typeof(object)));
             }
 
-            // Create: dict["propName"] = (object)obj.propName for each property
-            var assignments = new List<Expression>();
-            
-            foreach (var prop in properties)
-            {
-                var propAccess = Expression.Property(objParameter, prop);
-                var propValue = Expression.Convert(propAccess, typeof(object));
-                var propName = Expression.Constant(prop.Name);
-                var indexerAccess = Expression.Property(dictParameter, indexer, propName);
-                var assignment = Expression.Assign(indexerAccess, propValue);
-                assignments.Add(assignment);
-            }
-
-            var block = Expression.Block(assignments);
-            var lambda = Expression.Lambda<Action<T, Dictionary<string, object?>>>(block, objParameter, dictParameter);
-            Populator = lambda.Compile();
+            Populator = Expression.Lambda<Action<T, Dictionary<string, object?>>>(
+                Expression.Block(assignments), objParameter, dictParameter).Compile();
         }
 
         public static void PopulateDictionary(T parameters, Dictionary<string, object?> dictionary)
-        {
-            Populator?.Invoke(parameters, dictionary);
-        }
+            => Populator(parameters, dictionary);
     }
 }

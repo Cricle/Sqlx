@@ -64,7 +64,8 @@ public static class DbConnectionExtensions
         SqlDialect dialect,
         DbTransaction? transaction = null)
     {
-        return SqlxQuery<TResult, TResult>(connection, template, dialect, transaction);
+        var prepared = PrepareSql<TResult>(template, dialect);
+        return ExecuteQueryList<TResult>(connection, prepared, transaction);
     }
 
     public static List<TResult> SqlxQuery<TResult>(
@@ -74,7 +75,8 @@ public static class DbConnectionExtensions
         object? parameters,
         DbTransaction? transaction = null)
     {
-        return SqlxQuery<TResult, TResult>(connection, template, dialect, parameters, transaction);
+        var prepared = PrepareSql<TResult>(template, dialect, parameters);
+        return ExecuteQueryList<TResult>(connection, prepared, transaction);
     }
 
     public static List<TResult> SqlxQuery<TResult, TEntity>(
@@ -105,7 +107,8 @@ public static class DbConnectionExtensions
         DbTransaction? transaction = null,
         CancellationToken cancellationToken = default)
     {
-        return SqlxQueryAsync<TResult, TResult>(connection, template, dialect, transaction, cancellationToken);
+        var prepared = PrepareSql<TResult>(template, dialect);
+        return ExecuteQueryListAsync<TResult>(connection, prepared, transaction, cancellationToken);
     }
 
     public static Task<List<TResult>> SqlxQueryAsync<TResult>(
@@ -116,13 +119,8 @@ public static class DbConnectionExtensions
         DbTransaction? transaction = null,
         CancellationToken cancellationToken = default)
     {
-        return SqlxQueryAsync<TResult, TResult>(
-            connection,
-            template,
-            dialect,
-            parameters,
-            transaction,
-            cancellationToken);
+        var prepared = PrepareSql<TResult>(template, dialect, parameters);
+        return ExecuteQueryListAsync<TResult>(connection, prepared, transaction, cancellationToken);
     }
 
     public static Task<List<TResult>> SqlxQueryAsync<TResult, TEntity>(
@@ -154,7 +152,8 @@ public static class DbConnectionExtensions
         SqlDialect dialect,
         DbTransaction? transaction = null)
     {
-        return SqlxQueryFirstOrDefault<TResult, TResult>(connection, template, dialect, transaction);
+        var prepared = PrepareSql<TResult>(template, dialect);
+        return ExecuteQueryFirstOrDefault<TResult>(connection, prepared, transaction);
     }
 
     public static TResult? SqlxQueryFirstOrDefault<TResult>(
@@ -164,7 +163,8 @@ public static class DbConnectionExtensions
         object? parameters,
         DbTransaction? transaction = null)
     {
-        return SqlxQueryFirstOrDefault<TResult, TResult>(connection, template, dialect, parameters, transaction);
+        var prepared = PrepareSql<TResult>(template, dialect, parameters);
+        return ExecuteQueryFirstOrDefault<TResult>(connection, prepared, transaction);
     }
 
     public static TResult? SqlxQueryFirstOrDefault<TResult, TEntity>(
@@ -195,7 +195,8 @@ public static class DbConnectionExtensions
         DbTransaction? transaction = null,
         CancellationToken cancellationToken = default)
     {
-        return SqlxQueryFirstOrDefaultAsync<TResult, TResult>(connection, template, dialect, transaction, cancellationToken);
+        var prepared = PrepareSql<TResult>(template, dialect);
+        return ExecuteQueryFirstOrDefaultAsync<TResult>(connection, prepared, transaction, cancellationToken);
     }
 
     public static Task<TResult?> SqlxQueryFirstOrDefaultAsync<TResult>(
@@ -206,13 +207,8 @@ public static class DbConnectionExtensions
         DbTransaction? transaction = null,
         CancellationToken cancellationToken = default)
     {
-        return SqlxQueryFirstOrDefaultAsync<TResult, TResult>(
-            connection,
-            template,
-            dialect,
-            parameters,
-            transaction,
-            cancellationToken);
+        var prepared = PrepareSql<TResult>(template, dialect, parameters);
+        return ExecuteQueryFirstOrDefaultAsync<TResult>(connection, prepared, transaction, cancellationToken);
     }
 
     public static Task<TResult?> SqlxQueryFirstOrDefaultAsync<TResult, TEntity>(
@@ -244,7 +240,8 @@ public static class DbConnectionExtensions
         SqlDialect dialect,
         DbTransaction? transaction = null)
     {
-        return SqlxQuerySingle<TResult, TResult>(connection, template, dialect, transaction);
+        var prepared = PrepareSql<TResult>(template, dialect);
+        return ExecuteQuerySingle<TResult>(connection, prepared, transaction);
     }
 
     public static TResult SqlxQuerySingle<TResult>(
@@ -254,7 +251,8 @@ public static class DbConnectionExtensions
         object? parameters,
         DbTransaction? transaction = null)
     {
-        return SqlxQuerySingle<TResult, TResult>(connection, template, dialect, parameters, transaction);
+        var prepared = PrepareSql<TResult>(template, dialect, parameters);
+        return ExecuteQuerySingle<TResult>(connection, prepared, transaction);
     }
 
     public static TResult SqlxQuerySingle<TResult, TEntity>(
@@ -285,7 +283,8 @@ public static class DbConnectionExtensions
         DbTransaction? transaction = null,
         CancellationToken cancellationToken = default)
     {
-        return SqlxQuerySingleAsync<TResult, TResult>(connection, template, dialect, transaction, cancellationToken);
+        var prepared = PrepareSql<TResult>(template, dialect);
+        return ExecuteQuerySingleAsync<TResult>(connection, prepared, transaction, cancellationToken);
     }
 
     public static Task<TResult> SqlxQuerySingleAsync<TResult>(
@@ -296,13 +295,8 @@ public static class DbConnectionExtensions
         DbTransaction? transaction = null,
         CancellationToken cancellationToken = default)
     {
-        return SqlxQuerySingleAsync<TResult, TResult>(
-            connection,
-            template,
-            dialect,
-            parameters,
-            transaction,
-            cancellationToken);
+        var prepared = PrepareSql<TResult>(template, dialect, parameters);
+        return ExecuteQuerySingleAsync<TResult>(connection, prepared, transaction, cancellationToken);
     }
 
     public static Task<TResult> SqlxQuerySingleAsync<TResult, TEntity>(
@@ -449,48 +443,47 @@ public static class DbConnectionExtensions
     private static IReadOnlyDictionary<string, object?> NormalizeParameters(object parameters)
     {
         if (parameters is IReadOnlyDictionary<string, object?> readOnlyDictionary)
-        {
             return readOnlyDictionary;
-        }
 
         var type = parameters.GetType();
-        var properties = PropertyCache.GetOrAdd(
-            type,
-            static key => key.GetProperties(BindingFlags.Public | BindingFlags.Instance));
-
-        var dictionary = new Dictionary<string, object?>(properties.Length, StringComparer.Ordinal);
-        foreach (var property in properties)
-        {
-            var value = property.GetValue(parameters);
-            AddParameterAlias(dictionary, property.Name, value);
-
-            var camelCaseName = ToCamelCase(property.Name);
-            if (!string.Equals(camelCaseName, property.Name, StringComparison.Ordinal))
-            {
-                AddParameterAlias(dictionary, camelCaseName, value);
-            }
-
-            var snakeCaseName = ToSnakeCase(property.Name);
-            if (!string.Equals(snakeCaseName, property.Name, StringComparison.Ordinal) &&
-                !string.Equals(snakeCaseName, camelCaseName, StringComparison.Ordinal))
-            {
-                AddParameterAlias(dictionary, snakeCaseName, value);
-            }
-        }
-
+        var populator = NormalizeParameterCache.GetOrAdd(type, BuildNormalizePopulator);
+        var dictionary = new Dictionary<string, object?>(StringComparer.Ordinal);
+        populator(parameters, dictionary);
         return dictionary;
     }
 
-    private static void AddParameterAlias(
-        Dictionary<string, object?> dictionary,
-        string name,
-        object? value)
+    private static Action<object, Dictionary<string, object?>> BuildNormalizePopulator(Type type)
     {
-        if (!dictionary.ContainsKey(name))
+        var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+        if (properties.Length == 0) return static (_, _) => { };
+
+        var objParam = Expression.Parameter(typeof(object), "obj");
+        var dictParam = Expression.Parameter(typeof(Dictionary<string, object?>), "dict");
+        var typedObj = Expression.Convert(objParam, type);
+        var tryAddMethod = typeof(Dictionary<string, object?>).GetMethod("TryAdd", [typeof(string), typeof(object)])!;
+
+        var stmts = new List<Expression>(properties.Length * 3);
+        foreach (var prop in properties)
         {
-            dictionary[name] = value;
+            var value = Expression.Convert(Expression.Property(typedObj, prop), typeof(object));
+            var name = prop.Name;
+            stmts.Add(Expression.Call(dictParam, tryAddMethod, Expression.Constant(name), value));
+
+            var camelCase = ToCamelCase(name);
+            if (!string.Equals(camelCase, name, StringComparison.Ordinal))
+                stmts.Add(Expression.Call(dictParam, tryAddMethod, Expression.Constant(camelCase), value));
+
+            var snakeCase = ToSnakeCase(name);
+            if (!string.Equals(snakeCase, name, StringComparison.Ordinal) &&
+                !string.Equals(snakeCase, camelCase, StringComparison.Ordinal))
+                stmts.Add(Expression.Call(dictParam, tryAddMethod, Expression.Constant(snakeCase), value));
         }
+
+        return Expression.Lambda<Action<object, Dictionary<string, object?>>>(
+            Expression.Block(stmts), objParam, dictParam).Compile();
     }
+
+    private static readonly ConcurrentDictionary<Type, Action<object, Dictionary<string, object?>>> NormalizeParameterCache = new();
 
     private static IReadOnlyDictionary<string, object?>? NormalizeCommandParameters(
         IReadOnlyDictionary<string, object?> parameters,
@@ -523,27 +516,16 @@ public static class DbConnectionExtensions
 
     private static string ToCamelCase(string value)
     {
-        if (string.IsNullOrEmpty(value) || char.IsLower(value[0]))
-        {
-            return value;
-        }
-
-        if (value.Length == 1)
-        {
-            return char.ToLowerInvariant(value[0]).ToString();
-        }
-
-        return char.ToLowerInvariant(value[0]) + value.Substring(1);
+        if (string.IsNullOrEmpty(value) || char.IsLower(value[0])) return value;
+        if (value.Length == 1) return char.ToLowerInvariant(value[0]).ToString();
+        return string.Concat(char.ToLowerInvariant(value[0]).ToString(), value.AsSpan(1));
     }
 
     private static string ToSnakeCase(string value)
     {
-        if (string.IsNullOrEmpty(value))
-        {
-            return value;
-        }
+        if (string.IsNullOrEmpty(value)) return value;
 
-        var buffer = new char[value.Length * 2];
+        Span<char> buffer = value.Length * 2 <= 128 ? stackalloc char[value.Length * 2] : new char[value.Length * 2];
         var index = 0;
 
         for (var i = 0; i < value.Length; i++)
@@ -551,11 +533,7 @@ public static class DbConnectionExtensions
             var current = value[i];
             if (char.IsUpper(current))
             {
-                if (i > 0)
-                {
-                    buffer[index++] = '_';
-                }
-
+                if (i > 0) buffer[index++] = '_';
                 buffer[index++] = char.ToLowerInvariant(current);
             }
             else
@@ -564,7 +542,7 @@ public static class DbConnectionExtensions
             }
         }
 
-        return new string(buffer, 0, index);
+        return new string(buffer.Slice(0, index));
     }
 
     private static List<TResult> ExecuteQueryList<TResult>(
@@ -748,7 +726,6 @@ public static class DbConnectionExtensions
         public IReadOnlyDictionary<string, object?>? Parameters { get; }
     }
 
-    private static readonly ConcurrentDictionary<Type, PropertyInfo[]> PropertyCache = new();
 
 #if NET6_0_OR_GREATER
     /// <summary>

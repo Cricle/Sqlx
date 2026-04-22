@@ -91,70 +91,7 @@ public static class ResultReaderExtensions
     /// Uses stackalloc for ordinal caching to avoid heap allocations.
     /// </summary>
     public static List<TEntity> ToList<TEntity>(this IResultReader<TEntity> reader, IDataReader dataReader)
-    {
-        var list = new List<TEntity>();
-        
-        var propCount = reader.PropertyCount;
-        if (propCount > 0)
-        {
-            if (reader is IArrayOrdinalReader<TEntity> arrayReader)
-            {
-                var ordinals = ArrayPool<int>.Shared.Rent(propCount);
-                try
-                {
-                    reader.GetOrdinals(dataReader, ordinals.AsSpan(0, propCount));
-
-                    while (dataReader.Read())
-                    {
-                        list.Add(arrayReader.Read(dataReader, ordinals));
-                    }
-                }
-                finally
-                {
-                    ArrayPool<int>.Shared.Return(ordinals);
-                }
-            }
-            else
-            {
-                if (propCount <= StackAllocOrdinalThreshold)
-                {
-                    Span<int> ordinals = stackalloc int[propCount];
-                    reader.GetOrdinals(dataReader, ordinals);
-
-                    while (dataReader.Read())
-                    {
-                        list.Add(reader.Read(dataReader, ordinals));
-                    }
-                }
-                else
-                {
-                    var ordinals = ArrayPool<int>.Shared.Rent(propCount);
-                    try
-                    {
-                        reader.GetOrdinals(dataReader, ordinals.AsSpan(0, propCount));
-
-                        while (dataReader.Read())
-                        {
-                            list.Add(reader.Read(dataReader, ordinals));
-                        }
-                    }
-                    finally
-                    {
-                        ArrayPool<int>.Shared.Return(ordinals);
-                    }
-                }
-            }
-        }
-        else
-        {
-            while (dataReader.Read())
-            {
-                list.Add(reader.Read(dataReader));
-            }
-        }
-        
-        return list;
-    }
+        => ToList(reader, dataReader, 0);
 
     /// <summary>
     /// Reads all entities into a list with capacity hint.
@@ -162,136 +99,58 @@ public static class ResultReaderExtensions
     /// </summary>
     public static List<TEntity> ToList<TEntity>(this IResultReader<TEntity> reader, IDataReader dataReader, int capacityHint)
     {
-        var list = new List<TEntity>(capacityHint);
-        
+        var list = capacityHint > 0 ? new List<TEntity>(capacityHint) : new List<TEntity>();
         var propCount = reader.PropertyCount;
-        if (propCount > 0)
+
+        if (propCount == 0)
         {
-            if (reader is IArrayOrdinalReader<TEntity> arrayReader)
+            while (dataReader.Read()) list.Add(reader.Read(dataReader));
+            return list;
+        }
+
+        if (reader is IArrayOrdinalReader<TEntity> arrayReader)
+        {
+            var ordinals = ArrayPool<int>.Shared.Rent(propCount);
+            try
             {
-                var ordinals = ArrayPool<int>.Shared.Rent(propCount);
-                try
-                {
-                    reader.GetOrdinals(dataReader, ordinals.AsSpan(0, propCount));
-
-                    while (dataReader.Read())
-                    {
-                        list.Add(arrayReader.Read(dataReader, ordinals));
-                    }
-                }
-                finally
-                {
-                    ArrayPool<int>.Shared.Return(ordinals);
-                }
+                reader.GetOrdinals(dataReader, ordinals.AsSpan(0, propCount));
+                while (dataReader.Read()) list.Add(arrayReader.Read(dataReader, ordinals));
             }
-            else
-            {
-                if (propCount <= StackAllocOrdinalThreshold)
-                {
-                    Span<int> ordinals = stackalloc int[propCount];
-                    reader.GetOrdinals(dataReader, ordinals);
+            finally { ArrayPool<int>.Shared.Return(ordinals); }
+            return list;
+        }
 
-                    while (dataReader.Read())
-                    {
-                        list.Add(reader.Read(dataReader, ordinals));
-                    }
-                }
-                else
-                {
-                    var ordinals = ArrayPool<int>.Shared.Rent(propCount);
-                    try
-                    {
-                        reader.GetOrdinals(dataReader, ordinals.AsSpan(0, propCount));
-
-                        while (dataReader.Read())
-                        {
-                            list.Add(reader.Read(dataReader, ordinals));
-                        }
-                    }
-                    finally
-                    {
-                        ArrayPool<int>.Shared.Return(ordinals);
-                    }
-                }
-            }
+        if (propCount <= StackAllocOrdinalThreshold)
+        {
+            Span<int> ordinals = stackalloc int[propCount];
+            reader.GetOrdinals(dataReader, ordinals);
+            while (dataReader.Read()) list.Add(reader.Read(dataReader, ordinals));
         }
         else
         {
-            while (dataReader.Read())
+            var ordinals = ArrayPool<int>.Shared.Rent(propCount);
+            try
             {
-                list.Add(reader.Read(dataReader));
+                reader.GetOrdinals(dataReader, ordinals.AsSpan(0, propCount));
+                while (dataReader.Read()) list.Add(reader.Read(dataReader, ordinals));
             }
+            finally { ArrayPool<int>.Shared.Return(ordinals); }
         }
-        
+
         return list;
     }
 
     /// <summary>
     /// Reads all entities into a list (async).
-    /// Optimized version that caches column ordinals for better performance.
-    /// Uses GC.AllocateUninitializedArray on supported platforms for better performance.
     /// </summary>
-    public static async Task<List<TEntity>> ToListAsync<TEntity>(
+    public static Task<List<TEntity>> ToListAsync<TEntity>(
         this IResultReader<TEntity> reader,
         DbDataReader dataReader,
         CancellationToken cancellationToken = default)
-    {
-        var list = new List<TEntity>();
-        
-        var propCount = reader.PropertyCount;
-        if (propCount > 0)
-        {
-            if (reader is IArrayOrdinalReader<TEntity> arrayReader)
-            {
-                var ordinals = ArrayPool<int>.Shared.Rent(propCount);
-                try
-                {
-                    reader.GetOrdinals(dataReader, ordinals.AsSpan(0, propCount));
-
-                    while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
-                    {
-                        list.Add(arrayReader.Read(dataReader, ordinals));
-                    }
-                }
-                finally
-                {
-                    ArrayPool<int>.Shared.Return(ordinals);
-                }
-            }
-            else
-            {
-                var ordinals = ArrayPool<int>.Shared.Rent(propCount);
-                try
-                {
-                    reader.GetOrdinals(dataReader, ordinals.AsSpan(0, propCount));
-
-                    while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
-                    {
-                        list.Add(reader.Read(dataReader, ordinals));
-                    }
-                }
-                finally
-                {
-                    ArrayPool<int>.Shared.Return(ordinals);
-                }
-            }
-        }
-        else
-        {
-            // Fallback for types without properties
-            while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
-            {
-                list.Add(reader.Read(dataReader));
-            }
-        }
-        
-        return list;
-    }
+        => ToListAsync(reader, dataReader, 0, cancellationToken);
 
     /// <summary>
     /// Reads all entities into a list (async) with capacity hint.
-    /// Optimized version that caches column ordinals for better performance.
-    /// Uses GC.AllocateUninitializedArray on supported platforms for better performance.
     /// </summary>
     public static async Task<List<TEntity>> ToListAsync<TEntity>(
         this IResultReader<TEntity> reader,
@@ -299,55 +158,34 @@ public static class ResultReaderExtensions
         int capacityHint,
         CancellationToken cancellationToken = default)
     {
-        var list = new List<TEntity>(capacityHint);
-        
+        var list = capacityHint > 0 ? new List<TEntity>(capacityHint) : new List<TEntity>();
         var propCount = reader.PropertyCount;
-        if (propCount > 0)
+
+        if (propCount == 0)
         {
+            while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
+                list.Add(reader.Read(dataReader));
+            return list;
+        }
+
+        var ordinals = ArrayPool<int>.Shared.Rent(propCount);
+        try
+        {
+            reader.GetOrdinals(dataReader, ordinals.AsSpan(0, propCount));
+
             if (reader is IArrayOrdinalReader<TEntity> arrayReader)
             {
-                var ordinals = ArrayPool<int>.Shared.Rent(propCount);
-                try
-                {
-                    reader.GetOrdinals(dataReader, ordinals.AsSpan(0, propCount));
-
-                    while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
-                    {
-                        list.Add(arrayReader.Read(dataReader, ordinals));
-                    }
-                }
-                finally
-                {
-                    ArrayPool<int>.Shared.Return(ordinals);
-                }
+                while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
+                    list.Add(arrayReader.Read(dataReader, ordinals));
             }
             else
             {
-                var ordinals = ArrayPool<int>.Shared.Rent(propCount);
-                try
-                {
-                    reader.GetOrdinals(dataReader, ordinals.AsSpan(0, propCount));
+                while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
+                    list.Add(reader.Read(dataReader, ordinals));
+            }
+        }
+        finally { ArrayPool<int>.Shared.Return(ordinals); }
 
-                    while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
-                    {
-                        list.Add(reader.Read(dataReader, ordinals));
-                    }
-                }
-                finally
-                {
-                    ArrayPool<int>.Shared.Return(ordinals);
-                }
-            }
-        }
-        else
-        {
-            // Fallback for types without properties
-            while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
-            {
-                list.Add(reader.Read(dataReader));
-            }
-        }
-        
         return list;
     }
 }

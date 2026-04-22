@@ -16,7 +16,6 @@ using System.Reflection;
 /// </summary>
 public static class TypeConverter
 {
-    private static readonly Type[] IntParameterTypes = new[] { typeof(int) };
     private static readonly Type? DateOnlyType = typeof(DateTime).Assembly.GetType("System.DateOnly");
     private static readonly Type? TimeOnlyType = typeof(DateTime).Assembly.GetType("System.TimeOnly");
     private static readonly Func<DateTime, object>? DateOnlyFromDateTime = CreateUnaryBoxingDelegate<DateTime>(DateOnlyType, "FromDateTime");
@@ -24,6 +23,21 @@ public static class TypeConverter
     private static readonly Func<DateTime, object>? TimeOnlyFromDateTime = CreateUnaryBoxingDelegate<DateTime>(TimeOnlyType, "FromDateTime");
     private static readonly Func<TimeSpan, object>? TimeOnlyFromTimeSpan = CreateUnaryBoxingDelegate<TimeSpan>(TimeOnlyType, "FromTimeSpan");
     private static readonly Func<string, IFormatProvider, object>? TimeOnlyParse = CreateBinaryBoxingDelegate<string, IFormatProvider>(TimeOnlyType, "Parse");
+
+    // Pre-resolved IDataRecord reader methods - avoids reflection on every BuildConversion call
+    private static readonly MethodInfo GetInt32Method   = typeof(IDataRecord).GetMethod("GetInt32",   [typeof(int)])!;
+    private static readonly MethodInfo GetInt64Method   = typeof(IDataRecord).GetMethod("GetInt64",   [typeof(int)])!;
+    private static readonly MethodInfo GetInt16Method   = typeof(IDataRecord).GetMethod("GetInt16",   [typeof(int)])!;
+    private static readonly MethodInfo GetByteMethod    = typeof(IDataRecord).GetMethod("GetByte",    [typeof(int)])!;
+    private static readonly MethodInfo GetBooleanMethod = typeof(IDataRecord).GetMethod("GetBoolean", [typeof(int)])!;
+    private static readonly MethodInfo GetStringMethod  = typeof(IDataRecord).GetMethod("GetString",  [typeof(int)])!;
+    private static readonly MethodInfo GetDateTimeMethod= typeof(IDataRecord).GetMethod("GetDateTime",[typeof(int)])!;
+    private static readonly MethodInfo GetDecimalMethod = typeof(IDataRecord).GetMethod("GetDecimal", [typeof(int)])!;
+    private static readonly MethodInfo GetDoubleMethod  = typeof(IDataRecord).GetMethod("GetDouble",  [typeof(int)])!;
+    private static readonly MethodInfo GetFloatMethod   = typeof(IDataRecord).GetMethod("GetFloat",   [typeof(int)])!;
+    private static readonly MethodInfo GetGuidMethod    = typeof(IDataRecord).GetMethod("GetGuid",    [typeof(int)])!;
+    private static readonly MethodInfo GetValueMethod   = typeof(IDataRecord).GetMethod("GetValue",   [typeof(int)])!;
+    private static readonly MethodInfo IsDBNullMethod   = typeof(IDataRecord).GetMethod("IsDBNull",   [typeof(int)])!;
 
     /// <summary>
     /// Converts a database value to the target type using efficient conversion.
@@ -255,70 +269,51 @@ public static class TypeConverter
         var underlyingType = Nullable.GetUnderlyingType(targetType) ?? targetType;
         var isNullable = targetType != underlyingType || !targetType.IsValueType;
 
-        // Build the value retrieval and conversion
         Expression getValue = BuildDirectConversion(readerParam, ordinalExpr, underlyingType);
 
-        // Handle nullability
         if (isNullable)
         {
-            var isDbNullMethod = typeof(IDataRecord).GetMethod("IsDBNull", IntParameterTypes)!;
-            var isDbNull = Expression.Call(readerParam, isDbNullMethod, ordinalExpr);
+            var isDbNull = Expression.Call(readerParam, IsDBNullMethod, ordinalExpr);
             var defaultValue = Expression.Default(targetType);
-            
-            // Convert to nullable if needed
-            var convertedValue = targetType.IsValueType && targetType != underlyingType 
-                ? Expression.Convert(getValue, targetType) 
+            var convertedValue = targetType.IsValueType && targetType != underlyingType
+                ? Expression.Convert(getValue, targetType)
                 : getValue;
-            
             return Expression.Condition(isDbNull, defaultValue, convertedValue);
         }
 
         return getValue;
     }
 
+    private static readonly MethodInfo ConvertOpenMethod = typeof(TypeConverter).GetMethod(nameof(Convert))!;
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, MethodInfo> ConvertMethodCache = new();
+
     [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
     private static Expression BuildDirectConversion(Expression readerParam, Expression ordinalExpr, Type targetType)
     {
-        // Try to get the value using the most appropriate IDataReader method
         var readerMethod = GetReaderMethod(targetType);
-        
         if (readerMethod != null)
-        {
-            // Direct read - no conversion needed
             return Expression.Call(readerParam, readerMethod, ordinalExpr);
-        }
 
-        // Need conversion - get as object first, then convert using our Convert<T> method
-        var getValueMethod = typeof(IDataRecord).GetMethod("GetValue", IntParameterTypes)!;
-        var valueExpr = Expression.Call(readerParam, getValueMethod, ordinalExpr);
-        
-        // Call TypeConverter.Convert<T>(value)
-        var convertMethod = typeof(TypeConverter).GetMethod(nameof(Convert))!.MakeGenericMethod(targetType);
+        var valueExpr = Expression.Call(readerParam, GetValueMethod, ordinalExpr);
+        var convertMethod = ConvertMethodCache.GetOrAdd(targetType, static t => ConvertOpenMethod.MakeGenericMethod(t));
         return Expression.Call(convertMethod, valueExpr);
     }
 
-    private static MethodInfo? GetReaderMethod(Type targetType)
+    private static MethodInfo? GetReaderMethod(Type targetType) => targetType.Name switch
     {
-        var methodName = targetType.Name switch
-        {
-            "Int32" => "GetInt32",
-            "Int64" => "GetInt64",
-            "Int16" => "GetInt16",
-            "Byte" => "GetByte",
-            "Boolean" => "GetBoolean",
-            "String" => "GetString",
-            "DateTime" => "GetDateTime",
-            "Decimal" => "GetDecimal",
-            "Double" => "GetDouble",
-            "Single" => "GetFloat",
-            "Guid" => "GetGuid",
-            _ => null
-        };
-
-        return methodName != null 
-            ? typeof(IDataRecord).GetMethod(methodName, IntParameterTypes)
-            : null;
-    }
+        "Int32"   => GetInt32Method,
+        "Int64"   => GetInt64Method,
+        "Int16"   => GetInt16Method,
+        "Byte"    => GetByteMethod,
+        "Boolean" => GetBooleanMethod,
+        "String"  => GetStringMethod,
+        "DateTime"=> GetDateTimeMethod,
+        "Decimal" => GetDecimalMethod,
+        "Double"  => GetDoubleMethod,
+        "Single"  => GetFloatMethod,
+        "Guid"    => GetGuidMethod,
+        _         => null
+    };
 
     private static bool IsDateOnlyType(Type type) => DateOnlyType != null && type == DateOnlyType;
 

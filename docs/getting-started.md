@@ -286,8 +286,8 @@ Sqlx is fully compatible with Native AOT. To enable AOT in your project:
 
 **AOT Compatibility:**
 - ✅ Source-generated hot paths avoid runtime reflection
-- ✅ Generated repositories/templates run without runtime reflection requirements
-- ✅ Plain POCO queries remain available through reflection fallback when needed
+- ✅ All hot paths (parameter binding, SQL rendering, type conversion, result reading) are reflection-free at runtime
+- ✅ Plain POCO fallback paths use reflection only once at initialization to build expression trees; subsequent calls are zero-reflection
 - ✅ Expression tree compilation (allowed in AOT)
 - ✅ Static method caching
 - ✅ validated by a large automated test suite

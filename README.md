@@ -9,12 +9,12 @@
 [![AOT](https://img.shields.io/badge/AOT-ready-blue.svg)](#)
 [![Performance](https://img.shields.io/badge/performance-optimized-orange.svg)](#)
 
-高性能、AOT 友好的 .NET 数据库访问库。源生成主路径在编译时生成代码，避免运行时反射；对于未标记 `[Sqlx]` 的普通 POCO，也提供反射 fallback 以保持可用性。在单条查询、小批量读取和低 GC 压力场景下表现突出。
+高性能、AOT 友好的 .NET 数据库访问库。源生成主路径在编译时生成代码，避免运行时反射；热路径（参数绑定、SQL 渲染、类型转换、结果读取）全部无运行时反射；对于未标记 `[Sqlx]` 的普通 POCO，fallback 路径仅在首次初始化时用反射构建表达式树，之后缓存委托零反射执行。在单条查询、小批量读取和低 GC 压力场景下表现突出。
 
 ## 核心特性
 
 - **🚀 高性能** - 单条查询和小批量读取具备竞争力，ResultReader/ordinals 热路径持续优化，GC 压力低
-- **⚡ 源生成主路径零反射** - 编译时生成高频代码路径；普通 POCO 查询支持反射 fallback
+- **⚡ 热路径零反射** - 编译时生成高频代码路径；参数绑定、SQL 渲染、类型转换全部无运行时反射；普通 POCO 的 fallback 路径首次初始化后缓存委托，后续调用零反射
 - **🎯 类型安全** - 编译时验证 SQL 模板和表达式
 - **✅ 参数验证** - 支持 `ValidationAttribute`，自动校验仓储方法参数和实体参数
 - **🌐 多数据库** - 当前维护并验证 SQLite、PostgreSQL、MySQL、SQL Server；保留 Oracle、DB2 方言/API 兼容入口

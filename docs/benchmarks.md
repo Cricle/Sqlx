@@ -41,14 +41,13 @@
 **AOT 兼容性：** ✅ 完全支持 Native AOT，已通过大规模单元测试验证
 
 **最新优化：**
-- 移除 Ordinals struct，使用 int[] 数组（代码更简洁）
-- 无实例缓存，完全无状态设计（线程安全）
-- 用户可手动缓存 ordinals 优化性能
-- ResultReader 扩展方法对 DynamicResultReader 走数组快路径，批量读取时整批复用 ordinals
-- DynamicResultReader 的 span 兼容路径改为 ArrayPool 兜底，避免直接调用时的额外 GC 分配
-- 移除列名常量生成（减少代码体积）
-- 支持 JOIN 查询（INNER JOIN, LEFT JOIN）
-- 永远不生成 SELECT *，显式列出所有列
+- 热路径全面消除运行时反射：`NormalizeParameters` 改用表达式树缓存委托，`ParseOption`/`ParseCondition` 改为手动字符串解析，`TypeConverter.BuildConversion` 的 `MakeGenericMethod` 结果缓存，`TableNameResolver` 统一用 `CreateDelegate` 替代 `MethodInfo.Invoke`
+- `IResultReader` 的 `ToList`/`ToListAsync` 合并重复实现，减少代码量约 120 行
+- `SqlTemplate.RenderParameterBag` 简化，`MergeStaticSegments` 预分配容量
+- `DbExecutor` 与 `SqlxQueryableExtensions` 消除重复的 `CreateCommand`/`AddParameters` 代码
+- `PlaceholderHandlerBase.ParseOption` 改为零分配手动解析，消除每次调用的 `Regex.Matches()` 开销
+- `SubQuery` 的 `MakeGenericMethod` 结果提升为静态字段，每个 T 只反射一次
+- `DynamicEntityProvider` 改用 `GetCustomAttribute<ColumnAttribute>()` 直接读取，消除两次间接反射
 
 ---
 

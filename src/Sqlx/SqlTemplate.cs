@@ -378,68 +378,65 @@ public sealed class SqlTemplate
     {
         if (segments.Count == 0) return Array.Empty<TemplateSegment>();
 
-        var result = new List<TemplateSegment>();
-        var currentStatic = new StringBuilder();
-
-        void FlushStatic()
-        {
-            if (currentStatic.Length > 0)
-            {
-                result.Add(TemplateSegment.Static(currentStatic.ToString()));
-                currentStatic.Clear();
-            }
-        }
+        var result = new List<TemplateSegment>(segments.Count);
+        var sb = new StringBuilder();
 
         foreach (var seg in segments)
         {
             if (seg.Type == SegmentType.Static)
-                currentStatic.Append(seg.Text);
+            {
+                sb.Append(seg.Text);
+            }
             else
             {
-                FlushStatic();
+                if (sb.Length > 0) { result.Add(TemplateSegment.Static(sb.ToString())); sb.Clear(); }
                 result.Add(seg);
             }
         }
 
-        FlushStatic();
+        if (sb.Length > 0) result.Add(TemplateSegment.Static(sb.ToString()));
         return result.ToArray();
     }
 
     [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
     private sealed class RenderParameterBag : IReadOnlyDictionary<string, object?>
     {
-        private string? _key1;
-        private string? _key2;
-        private object? _value1;
-        private object? _value2;
+        private string? _key1, _key2;
+        private object? _value1, _value2;
         private int _count;
 
-        public object? this[string key]
+        public void SetSingle(string key, object? value)
         {
-            get
-            {
-                if (TryGetValue(key, out var value))
-                {
-                    return value;
-                }
-
-                throw new KeyNotFoundException();
-            }
+            _key1 = key; _value1 = value;
+            _key2 = null; _value2 = null;
+            _count = 1;
         }
+
+        public void SetDouble(string key1, object? value1, string key2, object? value2)
+        {
+            if (string.Equals(key1, key2, StringComparison.Ordinal)) { SetSingle(key2, value2); return; }
+            _key1 = key1; _value1 = value1;
+            _key2 = key2; _value2 = value2;
+            _count = 2;
+        }
+
+        public bool TryGetValue(string key, out object? value)
+        {
+            if (_count >= 1 && string.Equals(_key1, key, StringComparison.Ordinal)) { value = _value1; return true; }
+            if (_count >= 2 && string.Equals(_key2, key, StringComparison.Ordinal)) { value = _value2; return true; }
+            value = null; return false;
+        }
+
+        public object? this[string key] => TryGetValue(key, out var v) ? v : throw new KeyNotFoundException();
+        public int Count => _count;
+        public bool ContainsKey(string key) => TryGetValue(key, out _);
 
         public IEnumerable<string> Keys
         {
             get
             {
-                if (_count >= 1 && _key1 != null)
-                {
-                    yield return _key1;
-                }
-
-                if (_count >= 2 && _key2 != null)
-                {
-                    yield return _key2;
-                }
+                if (_count >= 1 && _key1 != null) yield return _key1;
+                if (_count >= 2 && _key2 != null) yield return _key2;
             }
         }
 
@@ -447,84 +444,18 @@ public sealed class SqlTemplate
         {
             get
             {
-                if (_count >= 1)
-                {
-                    yield return _value1;
-                }
-
-                if (_count >= 2)
-                {
-                    yield return _value2;
-                }
+                if (_count >= 1) yield return _value1;
+                if (_count >= 2) yield return _value2;
             }
-        }
-
-        public int Count => _count;
-
-        public void SetSingle(string key, object? value)
-        {
-            _key1 = key;
-            _value1 = value;
-            _key2 = null;
-            _value2 = null;
-            _count = 1;
-        }
-
-        public void SetDouble(string key1, object? value1, string key2, object? value2)
-        {
-            if (string.Equals(key1, key2, StringComparison.Ordinal))
-            {
-                SetSingle(key2, value2);
-                return;
-            }
-
-            _key1 = key1;
-            _value1 = value1;
-            _key2 = key2;
-            _value2 = value2;
-            _count = 2;
-        }
-
-        public bool ContainsKey(string key)
-        {
-            return TryGetValue(key, out _);
-        }
-
-        public bool TryGetValue(string key, out object? value)
-        {
-            if (_count >= 1 && string.Equals(_key1, key, StringComparison.Ordinal))
-            {
-                value = _value1;
-                return true;
-            }
-
-            if (_count >= 2 && string.Equals(_key2, key, StringComparison.Ordinal))
-            {
-                value = _value2;
-                return true;
-            }
-
-            value = null;
-            return false;
         }
 
         public IEnumerator<KeyValuePair<string, object?>> GetEnumerator()
         {
-            if (_count >= 1 && _key1 != null)
-            {
-                yield return new KeyValuePair<string, object?>(_key1, _value1);
-            }
-
-            if (_count >= 2 && _key2 != null)
-            {
-                yield return new KeyValuePair<string, object?>(_key2, _value2);
-            }
+            if (_count >= 1 && _key1 != null) yield return new KeyValuePair<string, object?>(_key1, _value1);
+            if (_count >= 2 && _key2 != null) yield return new KeyValuePair<string, object?>(_key2, _value2);
         }
 
-        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
-        {
-            return GetEnumerator();
-        }
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
     }
 
 #if NET7_0_OR_GREATER

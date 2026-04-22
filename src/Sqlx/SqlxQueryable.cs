@@ -138,6 +138,7 @@ namespace Sqlx
         }
 
         /// <inheritdoc/>
+        [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
         public IEnumerator<T> GetEnumerator()
         {
             if (Connection == null)
@@ -155,12 +156,14 @@ namespace Sqlx
         }
 
         /// <inheritdoc/>
+        [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerator();
         }
 
         /// <inheritdoc/>
+        [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
         public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
         {
             if (Connection == null)

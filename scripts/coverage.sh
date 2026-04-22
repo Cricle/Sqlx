@@ -40,6 +40,8 @@ args=(
   --collect:"XPlat Code Coverage"
   --results-directory "$results_dir"
   --verbosity minimal
+  --
+  DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.ExcludeByFile="**/*.g.cs,**/*.generated.cs,**/obj/**/*.cs"
 )
 
 case "$mode" in

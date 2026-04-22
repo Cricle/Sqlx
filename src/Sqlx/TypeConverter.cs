@@ -160,6 +160,7 @@ public static class TypeConverter
         return (T)System.Convert.ChangeType(value, underlyingType, CultureInfo.InvariantCulture);
     }
 
+    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
     private static T ConvertFromString<T>(string value, Type targetType)
     {
         if (targetType == typeof(string))
@@ -275,6 +276,7 @@ public static class TypeConverter
         return getValue;
     }
 
+    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
     private static Expression BuildDirectConversion(Expression readerParam, Expression ordinalExpr, Type targetType)
     {
         // Try to get the value using the most appropriate IDataReader method

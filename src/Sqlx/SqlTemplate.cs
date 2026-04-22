@@ -405,6 +405,7 @@ public sealed class SqlTemplate
         return result.ToArray();
     }
 
+    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
     private sealed class RenderParameterBag : IReadOnlyDictionary<string, object?>
     {
         private string? _key1;

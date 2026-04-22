@@ -47,6 +47,7 @@ public static class DbBatchExecutor
 
 #if NET6_0_OR_GREATER
     /// <summary>Batch executes SQL using DbBatch with typed parameter factory (best performance).</summary>
+    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
     public static async Task<int> ExecuteAsync<TEntity, TParameter>(
         DbConnection connection,
         DbTransaction? transaction,

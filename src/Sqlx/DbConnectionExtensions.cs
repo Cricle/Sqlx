@@ -2,6 +2,8 @@
 // Copyright (c) Sqlx. All rights reserved.
 // </copyright>
 
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+
 namespace Sqlx;
 
 using System;

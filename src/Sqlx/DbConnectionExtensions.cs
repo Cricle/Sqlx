@@ -460,22 +460,28 @@ public static class DbConnectionExtensions
 
         var objParam = Expression.Parameter(typeof(object), "obj");
         var dictParam = Expression.Parameter(typeof(Dictionary<string, object?>), "dict");
-        var typedObj = Expression.Convert(objParam, type);
+        var typedVar = Expression.Variable(type, "typed");
         var tryAddMethod = typeof(Dictionary<string, object?>).GetMethod("TryAdd", [typeof(string), typeof(object)])!;
 
-        var stmts = new List<Expression>(properties.Length * 3);
+        var vars = new List<ParameterExpression>(properties.Length + 1) { typedVar };
+        var stmts = new List<Expression>(properties.Length * 4 + 1);
+        stmts.Add(Expression.Assign(typedVar, Expression.Convert(objParam, type)));
+
         var capacity = 0;
         foreach (var prop in properties)
         {
-            var value = Expression.Convert(Expression.Property(typedObj, prop), typeof(object));
+            var propVar = Expression.Variable(typeof(object), prop.Name + "_v");
+            vars.Add(propVar);
+            stmts.Add(Expression.Assign(propVar, Expression.Convert(Expression.Property(typedVar, prop), typeof(object))));
+
             var name = prop.Name;
-            stmts.Add(Expression.Call(dictParam, tryAddMethod, Expression.Constant(name), value));
+            stmts.Add(Expression.Call(dictParam, tryAddMethod, Expression.Constant(name), propVar));
             capacity++;
 
             var camelCase = ToCamelCase(name);
             if (!string.Equals(camelCase, name, StringComparison.Ordinal))
             {
-                stmts.Add(Expression.Call(dictParam, tryAddMethod, Expression.Constant(camelCase), value));
+                stmts.Add(Expression.Call(dictParam, tryAddMethod, Expression.Constant(camelCase), propVar));
                 capacity++;
             }
 
@@ -483,13 +489,13 @@ public static class DbConnectionExtensions
             if (!string.Equals(snakeCase, name, StringComparison.Ordinal) &&
                 !string.Equals(snakeCase, camelCase, StringComparison.Ordinal))
             {
-                stmts.Add(Expression.Call(dictParam, tryAddMethod, Expression.Constant(snakeCase), value));
+                stmts.Add(Expression.Call(dictParam, tryAddMethod, Expression.Constant(snakeCase), propVar));
                 capacity++;
             }
         }
 
         var populator = Expression.Lambda<Action<object, Dictionary<string, object?>>>(
-            Expression.Block(stmts), objParam, dictParam).Compile();
+            Expression.Block(vars, stmts), objParam, dictParam).Compile();
         return (capacity, populator);
     }
 

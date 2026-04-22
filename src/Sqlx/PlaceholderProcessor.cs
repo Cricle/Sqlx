@@ -56,6 +56,7 @@ public static class PlaceholderProcessor
         ["where"] = WherePlaceholderHandler.Instance,
         ["limit"] = LimitPlaceholderHandler.Instance,
         ["offset"] = OffsetPlaceholderHandler.Instance,
+        ["paginate"] = PaginatePlaceholderHandler.Instance,
         ["if"] = IfPlaceholderHandler.Instance,
         ["arg"] = ArgPlaceholderHandler.Instance,
         ["var"] = VarPlaceholderHandler.Instance,

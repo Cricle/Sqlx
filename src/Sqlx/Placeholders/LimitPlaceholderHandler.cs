@@ -41,4 +41,8 @@ public sealed class LimitPlaceholderHandler : KeywordWithValuePlaceholderHandler
 
     /// <inheritdoc/>
     protected override string Keyword => "LIMIT";
+
+    /// <inheritdoc/>
+    protected override string FormatClause(PlaceholderContext context, string value) =>
+        context.Dialect.LimitClause(value);
 }

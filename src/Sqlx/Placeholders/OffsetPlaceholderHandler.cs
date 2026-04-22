@@ -41,4 +41,8 @@ public sealed class OffsetPlaceholderHandler : KeywordWithValuePlaceholderHandle
 
     /// <inheritdoc/>
     protected override string Keyword => "OFFSET";
+
+    /// <inheritdoc/>
+    protected override string FormatClause(PlaceholderContext context, string value) =>
+        context.Dialect.OffsetClause(value);
 }

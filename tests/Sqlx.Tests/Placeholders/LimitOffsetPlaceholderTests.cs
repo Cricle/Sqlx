@@ -28,7 +28,7 @@ public class LimitOffsetPlaceholderTests
         public void Setup()
         {
             _handler = LimitPlaceholderHandler.Instance;
-            _context = new PlaceholderContext(new SqlServerDialect(), "test_table", new List<ColumnMeta>());
+            _context = new PlaceholderContext(SqlDefine.SQLite, "test_table", new List<ColumnMeta>());
         }
 
         [TestMethod]
@@ -121,7 +121,7 @@ public class LimitOffsetPlaceholderTests
         public void Setup()
         {
             _handler = OffsetPlaceholderHandler.Instance;
-            _context = new PlaceholderContext(new SqlServerDialect(), "test_table", new List<ColumnMeta>());
+            _context = new PlaceholderContext(SqlDefine.SQLite, "test_table", new List<ColumnMeta>());
         }
 
         [TestMethod]
@@ -216,7 +216,7 @@ public class LimitOffsetPlaceholderTests
         {
             _limitHandler = LimitPlaceholderHandler.Instance;
             _offsetHandler = OffsetPlaceholderHandler.Instance;
-            _context = new PlaceholderContext(new SqlServerDialect(), "test_table", new List<ColumnMeta>());
+            _context = new PlaceholderContext(SqlDefine.SQLite, "test_table", new List<ColumnMeta>());
         }
 
         [TestMethod]

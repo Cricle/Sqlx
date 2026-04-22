@@ -1048,6 +1048,16 @@ public class RepositoryGenerator : IIncrementalGenerator
             return;
         }
 
+        // Check if this is a batch entity method (IEnumerable<TEntity> parameter)
+        var batchEntityParam = method.Parameters.FirstOrDefault(p =>
+            IsCollectionType(p.Type, out var elemType) &&
+            elemType?.Name == entityName);
+        if (batchEntityParam != null && template != null)
+        {
+            GenerateBatchEntityMethod(sb, method, entityFullName, entityName, fieldName, template, connectionExpression, validateParameters);
+            return;
+        }
+
         var actualReturnType = ExtractActualReturnType(method.ReturnType);
         var actualReturnTypeName = actualReturnType?.Name ?? entityName;
         var actualReturnTypeFullName = actualReturnType?.ToDisplayString() ?? entityFullName;
@@ -1134,6 +1144,11 @@ public class RepositoryGenerator : IIncrementalGenerator
         {
             // Render SQL using dynamicParams
             GenerateDynamicRender(sb, templateReferenceName, method);
+        }
+        else if (HasCollectionParams(method, entityName))
+        {
+            // Render template dynamically to expand collection params (e.g. IN (@ids0, @ids1, ...))
+            GenerateCollectionParamRender(sb, templateReferenceName, method, entityName);
         }
         else
         {
@@ -1364,6 +1379,50 @@ public class RepositoryGenerator : IIncrementalGenerator
                 return true;
         }
         return false;
+    }
+
+    /// <summary>Returns true if the method has a non-entity collection parameter (e.g. List&lt;TKey&gt; ids).</summary>
+    private static bool HasCollectionParams(IMethodSymbol method, string entityName)
+    {
+        foreach (var param in method.Parameters)
+        {
+            if (param.Name == "cancellationToken") continue;
+            var typeName = param.Type.ToDisplayString();
+            if (typeName.Contains("Expression<") || typeName.Contains(entityName)) continue;
+            if (IsCollectionType(param.Type, out _)) return true;
+        }
+        return false;
+    }
+
+    /// <summary>Generates code to render the template dynamically, expanding collection params.</summary>
+    private static void GenerateCollectionParamRender(IndentedStringBuilder sb, string fieldName, IMethodSymbol method, string entityName)
+    {
+        var collectionParams = method.Parameters
+            .Where(p => p.Name != "cancellationToken"
+                && !p.Type.ToDisplayString().Contains("Expression<")
+                && !p.Type.ToDisplayString().Contains(entityName)
+                && IsCollectionType(p.Type, out _))
+            .ToList();
+
+        if (collectionParams.Count == 1)
+        {
+            var p = collectionParams[0];
+            sb.AppendLine($"var renderedSql = {fieldName}.HasDynamicPlaceholders");
+            sb.AppendLine($"    ? {fieldName}.Render(\"{p.Name}\", {p.Name})");
+            sb.AppendLine($"    : {fieldName}.Sql;");
+            sb.AppendLine("cmd.CommandText = renderedSql;");
+        }
+        else
+        {
+            // Multiple collection params: build a dictionary
+            sb.AppendLine($"var __dynParams = new System.Collections.Generic.Dictionary<string, object?>();");
+            foreach (var p in collectionParams)
+                sb.AppendLine($"__dynParams[\"{p.Name}\"] = {p.Name};");
+            sb.AppendLine($"var renderedSql = {fieldName}.HasDynamicPlaceholders");
+            sb.AppendLine($"    ? {fieldName}.Render(__dynParams)");
+            sb.AppendLine($"    : {fieldName}.Sql;");
+            sb.AppendLine("cmd.CommandText = renderedSql;");
+        }
     }
 
     private static void GenerateDynamicParamsDeclaration(IndentedStringBuilder sb, IMethodSymbol method)
@@ -2637,6 +2696,81 @@ public class RepositoryGenerator : IIncrementalGenerator
 
     private static string GetTemplateLocalDeclaration(string templateReferenceName, string fieldName) =>
         $"var {templateReferenceName} = {fieldName} ?? throw new global::System.InvalidOperationException(\"SQL template cache was not initialized.\");";
+
+    private static void GenerateBatchEntityMethod(
+        IndentedStringBuilder sb,
+        IMethodSymbol method,
+        string entityFullName,
+        string entityName,
+        string fieldName,
+        string template,
+        string connectionExpression,
+        bool validateParameters)
+    {
+        var methodName = method.Name;
+        var isAsync = method.ReturnType.ToDisplayString().Contains("Task");
+        var returnType = method.ReturnType.ToDisplayString();
+        var parameters = string.Join(", ", method.Parameters.Select(p =>
+            $"{p.Type.ToDisplayString()} {p.Name}"));
+        var entitiesParam = method.Parameters.First(p =>
+            IsCollectionType(p.Type, out var et) && et?.Name == entityName);
+        var ctParam = method.Parameters.FirstOrDefault(p => p.Name == "cancellationToken");
+        var ctArg = ctParam != null ? ctParam.Name : "default";
+
+        sb.AppendLine("/// <inheritdoc/>");
+        if (isAsync)
+            sb.AppendLine($"public async {returnType} {methodName}({parameters})");
+        else
+            sb.AppendLine($"public {returnType} {methodName}({parameters})");
+        sb.AppendLine("{");
+        sb.PushIndent();
+
+        // Get or create template
+        RuntimeDialectCodeGen.GenerateGetTemplate(sb, fieldName, template, false);
+        sb.AppendLine($"var __template = {fieldName} ?? throw new global::System.InvalidOperationException(\"SQL template cache was not initialized.\");");
+        sb.AppendLine();
+
+        // Ensure connection open
+        sb.AppendLine($"var __shouldClose = {connectionExpression}.State != System.Data.ConnectionState.Open;");
+        if (isAsync)
+            sb.AppendLine($"if (__shouldClose) await {connectionExpression}.OpenAsync({ctArg}).ConfigureAwait(false);");
+        else
+            sb.AppendLine($"if (__shouldClose) {connectionExpression}.Open();");
+        sb.AppendLine("try");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("var __total = 0;");
+        sb.AppendLine($"using DbCommand __cmd = {connectionExpression}.CreateCommand();");
+        sb.AppendLine("if (Transaction != null) __cmd.Transaction = Transaction;");
+        sb.AppendLine($"__cmd.CommandText = __template.Sql;");
+        sb.AppendLine($"foreach (var __entity in {entitiesParam.Name})");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine("__cmd.Parameters.Clear();");
+        if (validateParameters)
+            sb.AppendLine($"{entityName}ParameterBinder.Default.BindEntity(__cmd, __entity, ParamPrefix);");
+        else
+            sb.AppendLine($"{entityName}ParameterBinder.Default.BindEntityWithoutValidation(__cmd, __entity, ParamPrefix);");
+        if (isAsync)
+            sb.AppendLine($"__total += await __cmd.ExecuteNonQueryAsync({ctArg}).ConfigureAwait(false);");
+        else
+            sb.AppendLine("__total += __cmd.ExecuteNonQuery();");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine("return __total;");
+        sb.PopIndent();
+        sb.AppendLine("}");
+        sb.AppendLine("finally");
+        sb.AppendLine("{");
+        sb.PushIndent();
+        sb.AppendLine($"if (__shouldClose && Transaction == null && {connectionExpression}.State != System.Data.ConnectionState.Closed)");
+        sb.AppendLine($"    {connectionExpression}.Close();");
+        sb.PopIndent();
+        sb.AppendLine("}");
+
+        sb.PopIndent();
+        sb.AppendLine("}");
+    }
 
     private static void GenerateIQueryableReturnMethod(IndentedStringBuilder sb, IMethodSymbol method, string entityFullName, string connectionExpression)
     {

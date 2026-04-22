@@ -31,20 +31,26 @@ public abstract class KeywordWithValuePlaceholderHandler : PlaceholderHandlerBas
         return PlaceholderType.Static;
     }
 
+    /// <summary>
+    /// Generates the dialect-specific clause for a given value string.
+    /// </summary>
+    protected virtual string FormatClause(PlaceholderContext context, string value) =>
+        $"{Keyword} {value}";
+
     /// <inheritdoc/>
     public override string Process(PlaceholderContext context, string options)
     {
         var count = ParseCount(options);
         if (count is not null)
         {
-            return $"{Keyword} {count.Value}";
+            return FormatClause(context, count.Value.ToString(CultureInfo.InvariantCulture));
         }
 
         // For dynamic values, generate parameterized SQL
         var paramName = ParseParam(options);
         if (paramName is not null)
         {
-            return $"{Keyword} {context.Dialect.ParameterPrefix}{paramName}";
+            return FormatClause(context, context.Dialect.ParameterPrefix + paramName);
         }
 
         return string.Empty;
@@ -53,11 +59,9 @@ public abstract class KeywordWithValuePlaceholderHandler : PlaceholderHandlerBas
     /// <inheritdoc/>
     public override string Render(PlaceholderContext context, string options, IReadOnlyDictionary<string, object?>? parameters)
     {
-        // For dynamic values with parameters, the SQL is already generated in Process()
-        // This method is kept for backward compatibility but should not be called in optimized path
         var paramName = ParseParam(options)
             ?? throw new InvalidOperationException($"{{{{{Keyword.ToLower()}}}}} requires --count or --param option.");
         var value = GetParam(parameters, paramName);
-        return value is not null ? $"{Keyword} {Convert.ToInt32(value, CultureInfo.InvariantCulture)}" : string.Empty;
+        return value is not null ? FormatClause(context, Convert.ToInt32(value, CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture)) : string.Empty;
     }
 }

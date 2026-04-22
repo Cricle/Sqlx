@@ -216,6 +216,12 @@ public abstract class SqlDialect
     /// <summary>Gets the OFFSET clause.</summary>
     public virtual string Offset(string count) => $"OFFSET {count}";
 
+    /// <summary>Gets the LIMIT clause for use at end of query (e.g. in templates).</summary>
+    public virtual string LimitClause(string count) => Limit(count);
+
+    /// <summary>Gets the OFFSET clause for use at end of query (e.g. in templates).</summary>
+    public virtual string OffsetClause(string count) => Offset(count);
+
     /// <summary>Gets the pagination clause (LIMIT + OFFSET combined).</summary>
     public virtual string Paginate(string limit, string offset) =>
         $"LIMIT {limit} OFFSET {offset}";

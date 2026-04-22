@@ -17,9 +17,7 @@
 
   <!-- AOT compatibility settings - only for .NET 10 -->
   <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
-    <IsAotCompatible>true</IsAotCompatible>
-    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
-    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
+    <IsAotCompatible>false</IsAotCompatible>
   </PropertyGroup>
 
   <ItemGroup>
@@ -32,6 +30,7 @@
     <PackageReference Include="Microsoft.Data.Sqlite" />
     <PackageReference Include="SqlKata" />
     <PackageReference Include="SqlKata.Execution" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
     <!-- System.Linq.Async only for .NET 9, .NET 10 has built-in support -->
     <PackageReference Include="System.Linq.Async" Condition="'$(TargetFramework)' == 'net9.0'" />
   </ItemGroup>

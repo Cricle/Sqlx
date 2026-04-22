@@ -68,6 +68,15 @@ public sealed class SqlServerDialect : SqlDialect
     public override string Paginate(string limit, string offset) =>
         $"OFFSET {offset} ROWS FETCH NEXT {limit} ROWS ONLY";
 
+    /// <inheritdoc/>
+    public override string Offset(string count) => $"OFFSET {count} ROWS";
+
+    /// <inheritdoc/>
+    public override string LimitClause(string count) => $"ORDER BY (SELECT NULL) OFFSET 0 ROWS FETCH NEXT {count} ROWS ONLY";
+
+    /// <inheritdoc/>
+    public override string OffsetClause(string count) => $"ORDER BY (SELECT NULL) OFFSET {count} ROWS FETCH NEXT 2147483647 ROWS ONLY";
+
     #endregion
 
     #region Null Handling

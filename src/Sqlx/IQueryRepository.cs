@@ -68,19 +68,19 @@ namespace Sqlx
         // ==================== Pagination ====================
 
         /// <summary>Gets entities with pagination (async).</summary>
-        [SqlTemplate("SELECT {{columns}} FROM {{table}} {{limit --param pageSize}} {{offset --param offset}}")]
+        [SqlTemplate("SELECT {{columns}} FROM {{table}} {{paginate --limit pageSize --offset offset}}")]
         Task<List<TEntity>> GetPagedAsync(int pageSize = 20, int offset = 0, CancellationToken cancellationToken = default);
 
         /// <summary>Gets entities with pagination (sync).</summary>
-        [SqlTemplate("SELECT {{columns}} FROM {{table}} {{limit --param pageSize}} {{offset --param offset}}")]
+        [SqlTemplate("SELECT {{columns}} FROM {{table}} {{paginate --limit pageSize --offset offset}}")]
         List<TEntity> GetPaged(int pageSize = 20, int offset = 0);
 
         /// <summary>Gets entities with pagination and predicate (async).</summary>
-        [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE {{where --param predicate}} {{limit --param pageSize}} {{offset --param offset}}")]
+        [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE {{where --param predicate}} {{paginate --limit pageSize --offset offset}}")]
         Task<List<TEntity>> GetPagedWhereAsync([ExpressionToSql] Expression<Func<TEntity, bool>> predicate, int pageSize = 20, int offset = 0, CancellationToken cancellationToken = default);
 
         /// <summary>Gets entities with pagination and predicate (sync).</summary>
-        [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE {{where --param predicate}} {{limit --param pageSize}} {{offset --param offset}}")]
+        [SqlTemplate("SELECT {{columns}} FROM {{table}} WHERE {{where --param predicate}} {{paginate --limit pageSize --offset offset}}")]
         List<TEntity> GetPagedWhere([ExpressionToSql] Expression<Func<TEntity, bool>> predicate, int pageSize = 20, int offset = 0);
 
         // ==================== Existence & Count ====================

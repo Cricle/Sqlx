@@ -296,9 +296,8 @@ public class PlaceholderTests
         var context = CreateContext(SqlDefine.SqlServer);
         var template = SqlTemplate.Prepare("SELECT {{limit --count 10}} * FROM {{table}}", context);
         
-        // SQL Server 使用 TOP 语法
-        // 注意：这可能需要特殊处理，如果失败则说明功能未实现
-        Assert.IsTrue(template.Sql.Contains("LIMIT 10") || template.Sql.Contains("TOP 10"));
+        // SQL Server uses OFFSET/FETCH syntax at end of query
+        Assert.IsTrue(template.Sql.Contains("FETCH NEXT 10 ROWS ONLY") || template.Sql.Contains("TOP 10") || template.Sql.Contains("LIMIT 10"));
     }
 
     [TestMethod]

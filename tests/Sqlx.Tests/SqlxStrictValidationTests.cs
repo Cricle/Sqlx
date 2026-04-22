@@ -174,7 +174,7 @@ public class SqlxStrictValidationTests
 
     [TestMethod]
     [DataRow("SQLite", "SELECT [id], [name], [email], [age], [is_active] FROM [TestUser] OFFSET 20")]
-    [DataRow("SqlServer", "SELECT [id], [name], [email], [age], [is_active] FROM [TestUser] OFFSET 20")]
+    [DataRow("SqlServer", "SELECT [id], [name], [email], [age], [is_active] FROM [TestUser] OFFSET 20 ROWS")]
     [DataRow("MySql", "SELECT `id`, `name`, `email`, `age`, `is_active` FROM `TestUser` OFFSET 20")]
     [DataRow("PostgreSQL", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" OFFSET 20")]
     [DataRow("Oracle", "SELECT \"id\", \"name\", \"email\", \"age\", \"is_active\" FROM \"TestUser\" OFFSET 20")]

@@ -395,7 +395,23 @@ public class DatabaseFixture : IDatabaseFixture
     private async Task CreateConnectionAsync()
     {
         _connection = CreateConnection(CreateOperationalConnectionString());
-        await _connection.OpenAsync();
+
+        // Retry for MySQL which may not be fully ready immediately after container start
+        const int maxAttempts = 5;
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            try
+            {
+                await _connection.OpenAsync();
+                return;
+            }
+            catch when (attempt < maxAttempts && DatabaseType == DatabaseType.MySQL)
+            {
+                await Task.Delay(attempt * 1000);
+                _connection.Dispose();
+                _connection = CreateConnection(CreateOperationalConnectionString());
+            }
+        }
     }
 
     private string CreateOperationalConnectionString()

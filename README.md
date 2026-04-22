@@ -5,7 +5,7 @@
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-purple.svg)](#)
 [![LTS](https://img.shields.io/badge/LTS-.NET%2010-green.svg)](#)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](#)
-[![Coverage](https://img.shields.io/badge/branch%20coverage-92.85%25-brightgreen.svg)](#)
+[![Coverage](https://img.shields.io/badge/branch%20coverage-92.78%25-brightgreen.svg)](#)
 [![AOT](https://img.shields.io/badge/AOT-ready-blue.svg)](#)
 [![Performance](https://img.shields.io/badge/performance-optimized-orange.svg)](#)
 
@@ -1206,8 +1206,8 @@ bash scripts/coverage.sh --unit
 ```
 
 当前仓库实测全量覆盖率：
-- Line: `97.24%`
-- Branch: `92.85%`
+- Line: `97.14%`
+- Branch: `92.78%`
 
 ## 更多文档
 

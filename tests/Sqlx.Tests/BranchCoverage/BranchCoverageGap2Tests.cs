@@ -164,6 +164,41 @@ public class BranchCoverageGap2Tests
         Assert.AreEqual("Method", result.MethodName);
     }
 
+    [TestMethod]
+    public async Task ExceptionHandler_ExecuteWithHandlingAsync_RetryThenSucceed()
+    {
+        // Exercises the private dict-based HandleFailureAndRetryAsync via ExecuteWithHandlingAsync
+        var options = new SqlxContextOptions
+        {
+            EnableRetry = true,
+            MaxRetryCount = 3,
+            InitialRetryDelay = TimeSpan.FromMilliseconds(1),
+            RetryBackoffMultiplier = 1.0
+        };
+        var attempts = 0;
+        var result = await ExceptionHandler.ExecuteWithHandlingAsync(
+            async () =>
+            {
+                attempts++;
+                if (attempts < 2) throw new TimeoutException("transient");
+                return 42;
+            },
+            options, "TestMethod", "SELECT 1",
+            new Dictionary<string, object?> { ["id"] = 1 }, null);
+        Assert.AreEqual(42, result);
+        Assert.AreEqual(2, attempts);
+    }
+
+    [TestMethod]
+    public async Task ExceptionHandler_ExecuteWithHandlingAsync_NonTransient_Throws()
+    {
+        var options = new SqlxContextOptions { EnableRetry = true, MaxRetryCount = 3 };
+        await Assert.ThrowsExceptionAsync<SqlxException>(async () =>
+            await ExceptionHandler.ExecuteWithHandlingAsync<int>(
+                () => throw new InvalidOperationException("non-transient"),
+                options, "TestMethod", "SELECT 1", null, null));
+    }
+
     // ── RepositoryForAttribute / TableNameAttribute null guard ────────────────
 
     [TestMethod]

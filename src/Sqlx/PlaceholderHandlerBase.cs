@@ -37,7 +37,6 @@ public abstract class PlaceholderHandlerBase : IPlaceholderHandler
     {
         if (string.IsNullOrEmpty(options)) return null;
 
-        // Manual parse of "--optionName value" to avoid Regex allocation
         var search = "--" + optionName;
         var i = 0;
         while (i < options.Length)
@@ -45,7 +44,6 @@ public abstract class PlaceholderHandlerBase : IPlaceholderHandler
             var idx = options.IndexOf(search, i, StringComparison.OrdinalIgnoreCase);
             if (idx < 0) return null;
 
-            // Ensure it's a word boundary (not part of a longer option name)
             var afterOption = idx + search.Length;
             if (afterOption < options.Length && (char.IsLetterOrDigit(options[afterOption]) || options[afterOption] == '_'))
             {
@@ -54,12 +52,12 @@ public abstract class PlaceholderHandlerBase : IPlaceholderHandler
             }
 
             // Skip whitespace after option name
-            while (afterOption < options.Length && options[afterOption] == ' ') afterOption++;
+            while (afterOption < options.Length && char.IsWhiteSpace(options[afterOption])) afterOption++;
             if (afterOption >= options.Length) return null;
 
             // Read value until whitespace or end
             var valueStart = afterOption;
-            while (afterOption < options.Length && options[afterOption] != ' ') afterOption++;
+            while (afterOption < options.Length && !char.IsWhiteSpace(options[afterOption])) afterOption++;
             return options.Substring(valueStart, afterOption - valueStart);
         }
 

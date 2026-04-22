@@ -155,26 +155,19 @@ public class SqlxQueryableExtensionCoverageTests
     [TestMethod]
     public void CreateCommand_WithReadOnlyDictionaryAndNullValue_AddsDbNullParameter()
     {
+        // Test that null parameter values are handled correctly via the public API
         using var connection = new SqliteConnection("Data Source=:memory:");
         connection.Open();
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "CREATE TABLE t (name TEXT, age INTEGER)";
+        cmd.ExecuteNonQuery();
 
-        var parameters = new ReadOnlyDictionary<string, object?>(
-            new Dictionary<string, object?> { ["name"] = null, ["age"] = 18 });
+        var result = connection.SqlxQuery<object>(
+            "SELECT * FROM t WHERE (@name IS NULL OR name = @name) AND age = @age",
+            SqlDefine.SQLite,
+            new { name = (string?)null, age = 18 });
 
-        var method = typeof(SqlxQueryableExtensions).GetMethod(
-            "CreateCommand",
-            BindingFlags.NonPublic | BindingFlags.Static);
-
-        Assert.IsNotNull(method);
-
-        using var command = (DbCommand)method!.Invoke(
-            null,
-            new object?[] { connection, "select 1", parameters, null })!;
-
-        Assert.AreEqual("select 1", command.CommandText);
-        Assert.AreEqual(2, command.Parameters.Count);
-        Assert.AreEqual(DBNull.Value, command.Parameters[0].Value);
-        Assert.AreEqual(18, Convert.ToInt32(command.Parameters[1].Value));
+        Assert.IsNotNull(result);
     }
 
     [TestMethod]

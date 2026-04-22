@@ -105,7 +105,7 @@ public class BranchCoverageGap4Tests
     public void ExpressionParser_Select_BinaryInProjection()
     {
         var sql = SqlQuery<VfItem>.ForSqlite()
-            .Select(x => new { Total = x.Amount + x.Score })
+            .Select(x => new { Total = x.Score + x.Rating })
             .ToSql();
         Assert.IsTrue(sql.Length > 0);
     }

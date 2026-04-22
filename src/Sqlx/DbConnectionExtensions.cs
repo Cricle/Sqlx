@@ -11,6 +11,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -446,16 +447,16 @@ public static class DbConnectionExtensions
             return readOnlyDictionary;
 
         var type = parameters.GetType();
-        var populator = NormalizeParameterCache.GetOrAdd(type, BuildNormalizePopulator);
-        var dictionary = new Dictionary<string, object?>(StringComparer.Ordinal);
+        var (capacity, populator) = NormalizeParameterCache.GetOrAdd(type, BuildNormalizePopulator);
+        var dictionary = new Dictionary<string, object?>(capacity, StringComparer.Ordinal);
         populator(parameters, dictionary);
         return dictionary;
     }
 
-    private static Action<object, Dictionary<string, object?>> BuildNormalizePopulator(Type type)
+    private static (int Capacity, Action<object, Dictionary<string, object?>> Populator) BuildNormalizePopulator(Type type)
     {
         var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
-        if (properties.Length == 0) return static (_, _) => { };
+        if (properties.Length == 0) return (0, static (_, _) => { });
 
         var objParam = Expression.Parameter(typeof(object), "obj");
         var dictParam = Expression.Parameter(typeof(Dictionary<string, object?>), "dict");
@@ -463,27 +464,36 @@ public static class DbConnectionExtensions
         var tryAddMethod = typeof(Dictionary<string, object?>).GetMethod("TryAdd", [typeof(string), typeof(object)])!;
 
         var stmts = new List<Expression>(properties.Length * 3);
+        var capacity = 0;
         foreach (var prop in properties)
         {
             var value = Expression.Convert(Expression.Property(typedObj, prop), typeof(object));
             var name = prop.Name;
             stmts.Add(Expression.Call(dictParam, tryAddMethod, Expression.Constant(name), value));
+            capacity++;
 
             var camelCase = ToCamelCase(name);
             if (!string.Equals(camelCase, name, StringComparison.Ordinal))
+            {
                 stmts.Add(Expression.Call(dictParam, tryAddMethod, Expression.Constant(camelCase), value));
+                capacity++;
+            }
 
             var snakeCase = ToSnakeCase(name);
             if (!string.Equals(snakeCase, name, StringComparison.Ordinal) &&
                 !string.Equals(snakeCase, camelCase, StringComparison.Ordinal))
+            {
                 stmts.Add(Expression.Call(dictParam, tryAddMethod, Expression.Constant(snakeCase), value));
+                capacity++;
+            }
         }
 
-        return Expression.Lambda<Action<object, Dictionary<string, object?>>>(
+        var populator = Expression.Lambda<Action<object, Dictionary<string, object?>>>(
             Expression.Block(stmts), objParam, dictParam).Compile();
+        return (capacity, populator);
     }
 
-    private static readonly ConcurrentDictionary<Type, Action<object, Dictionary<string, object?>>> NormalizeParameterCache = new();
+    private static readonly ConcurrentDictionary<Type, (int Capacity, Action<object, Dictionary<string, object?>> Populator)> NormalizeParameterCache = new();
 
     private static IReadOnlyDictionary<string, object?>? NormalizeCommandParameters(
         IReadOnlyDictionary<string, object?> parameters,
@@ -518,7 +528,7 @@ public static class DbConnectionExtensions
     {
         if (string.IsNullOrEmpty(value) || char.IsLower(value[0])) return value;
         if (value.Length == 1) return char.ToLowerInvariant(value[0]).ToString();
-        return string.Concat(char.ToLowerInvariant(value[0]).ToString(), value.AsSpan(1));
+        return char.ToLowerInvariant(value[0]) + value.Substring(1);
     }
 
     private static string ToSnakeCase(string value)

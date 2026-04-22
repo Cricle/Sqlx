@@ -268,6 +268,9 @@ public class ContainerManager : IContainerManager
             .WithUsername("root")
             .WithPassword("testpass")
             .WithCommand("--innodb-use-native-aio=0")
+            .WithWaitStrategy(DotNet.Testcontainers.Builders.Wait.ForUnixContainer()
+                .UntilPortIsAvailable(3306)
+                .UntilMessageIsLogged("ready for connections"))
             .Build();
 
         await _mySqlContainer.StartAsync();
